@@ -45,14 +45,9 @@ func TestPipeline(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Set up expected values for simple aggregations.
-	match := bson.M{
-		"$match": bson.M{
-			"_id.project":   project,
-			"_id.date":      bson.M{"$gte": after, "$lt": before.Add(24 * time.Hour)},
-			"_id.requester": bson.M{"$in": requesters},
-		},
-	}
+	task := "lint"
+	variant := "enterprise-rhel-62-64-bit"
+	distro := "rhel62-small"
 
 	simpleGroup := bson.M{
 		"$group": bson.M{
@@ -66,47 +61,6 @@ func TestPipeline(t *testing.T) {
 			"total_duration_success": bson.M{"$sum": bson.M{"$multiply": stats.Array{"$num_success", "$avg_duration_success"}}},
 		},
 	}
-	projection := bson.M{
-		"$project": bson.M{
-			"avg_duration_success": bson.M{
-				"$cond": bson.M{
-					"else": nil,
-					"if": bson.M{
-						"$ne": stats.Array{
-							"$num_success",
-							0,
-						},
-					},
-					"then": bson.M{
-						"$divide": stats.Array{
-							"$total_duration_success",
-							"$num_success",
-						},
-					},
-				},
-			},
-			"date":              "$_id.date",
-			"distro":            "$_id.distro",
-			"num_failed":        1,
-			"num_setup_failed":  1,
-			"num_success":       1,
-			"num_system_failed": 1,
-			"num_test_failed":   1,
-			"num_timeout":       1,
-			"num_total":         bson.M{"$add": stats.Array{"$num_success", "$num_failed"}},
-			"task_name":         "$_id.task_name",
-			"variant":           "$_id.variant",
-		},
-	}
-	sort := bson.M{
-		"$sort": bson.D{
-			{Key: "date", Value: 1},
-			{Key: "variant", Value: 1},
-			{Key: "task_name", Value: 1},
-			{Key: "distro", Value: 1},
-		},
-	}
-	limit := bson.M{"$limit": 1}
 
 	withCancelledContext := func(ctx context.Context, fn func(context.Context)) {
 		ctx, cancel := context.WithCancel(ctx)
@@ -115,15 +69,43 @@ func TestPipeline(t *testing.T) {
 	}
 
 	for opName, opTests := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment){
-		"BuildMatchStageForTask": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
+		// Test DateBoundary creation for the task reliability pipeline.
+		"DateBoundaries": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter){
 				"Simple": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
-
-					// Adding 1 day to to before for consistency with TaskReliabilityQueryPipeline.
-					boundaries := []time.Time{before.Add(24 * time.Hour), after}
 					withCancelledContext(ctx, func(ctx context.Context) {
-						stage := filter.BuildMatchStageForTask(boundaries)
-						assert.Equal(t, stage, match)
+						expected := []time.Time{before.Add(24 * time.Hour), before, after}
+						boundaries := filter.dateBoundaries()
+						assert.Equal(t, len(expected), len(boundaries))
+						assert.Equal(t, expected, boundaries)
+					})
+				},
+				"Before": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
+					filter.StatsFilter.BeforeDate = before.Add(24 * time.Hour)
+					withCancelledContext(ctx, func(ctx context.Context) {
+						expected := []time.Time{before.Add(2 * 24 * time.Hour), before.Add(24 * time.Hour), before, after}
+						boundaries := filter.dateBoundaries()
+						assert.Equal(t, len(expected), len(boundaries))
+						assert.Equal(t, expected, boundaries)
+					})
+				},
+				"BeforeAndAfter": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
+					filter.StatsFilter.BeforeDate = before.Add(24 * time.Hour)
+					filter.StatsFilter.AfterDate = after.Add(-24 * time.Hour)
+					withCancelledContext(ctx, func(ctx context.Context) {
+						expected := []time.Time{before.Add(2 * 24 * time.Hour), before.Add(24 * time.Hour), before, after, after.Add(-24 * time.Hour)}
+						boundaries := filter.dateBoundaries()
+						assert.Equal(t, len(expected), len(boundaries))
+						assert.Equal(t, expected, boundaries)
+					})
+				},
+				"After": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
+					filter.StatsFilter.AfterDate = after.Add(-24 * time.Hour)
+					withCancelledContext(ctx, func(ctx context.Context) {
+						expected := []time.Time{before.Add(24 * time.Hour), before, after, after.Add(-24 * time.Hour)}
+						boundaries := filter.dateBoundaries()
+						assert.Equal(t, len(expected), len(boundaries))
+						assert.Equal(t, expected, boundaries)
 					})
 				},
 			} {
@@ -132,9 +114,307 @@ func TestPipeline(t *testing.T) {
 						filter := TaskReliabilityFilter{
 							StatsFilter: stats.StatsFilter{
 								Project:    project,
-								Requesters: requesters},
+								Requesters: requesters,
+								AfterDate:  after,
+								BeforeDate: before,
+							},
 						}
 						testCase(ctx, t, &filter)
+					})
+				})
+			}
+		},
+		// Test BuildTaskPaginationOrBranches creation for the task reliability pipeline.
+		"BuildTaskPaginationOrBranches": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
+			after := time.Date(2018, 7, 12, 0, 0, 0, 0, time.UTC)
+			before := time.Date(2018, 9, 13, 0, 0, 0, 0, time.UTC)
+
+			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter){
+				"Sort Latest, GroupBy task, Num Days 1": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
+					withCancelledContext(ctx, func(ctx context.Context) {
+						expected := []bson.M{
+							bson.M{"_id.date": bson.M{"$lt": filter.StatsFilter.StartAt.Date}},
+							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.task_name": bson.M{"$gt": task}},
+						}
+						branches := filter.buildTaskPaginationOrBranches()
+						assert.Equal(t, expected, branches)
+					})
+				},
+				"Sort Earliest, GroupBy task, Num Days 1": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
+					filter.StatsFilter.Sort = stats.SortEarliestFirst
+					withCancelledContext(ctx, func(ctx context.Context) {
+						expected := []bson.M{
+							bson.M{"_id.date": bson.M{"$gt": filter.StatsFilter.StartAt.Date}},
+							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.task_name": bson.M{"$gt": task}},
+						}
+						branches := filter.buildTaskPaginationOrBranches()
+						assert.Equal(t, expected, branches)
+					})
+				},
+				"Sort Latest, GroupBy task, Num Days 28": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
+					groupNumDays := 28
+					startAtDate := after.Add(28 * 24 * time.Hour)
+					filter.StatsFilter.GroupNumDays = groupNumDays
+					filter.StatsFilter.StartAt.Date = startAtDate
+
+					withCancelledContext(ctx, func(ctx context.Context) {
+						expected := []bson.M{
+							bson.M{"_id.date": bson.M{"$lte": startAtDate}},
+							bson.M{"_id.date": bson.M{"$lte": startAtDate, "$gt": startAtDate}, "_id.task_name": bson.M{"$gt": task}},
+						}
+						branches := filter.buildTaskPaginationOrBranches()
+						assert.Equal(t, expected, branches)
+					})
+				},
+				// Variant
+				"Sort Latest, GroupBy variant, Num Days 1": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
+					filter.StatsFilter.GroupBy = stats.GroupByVariant
+					withCancelledContext(ctx, func(ctx context.Context) {
+						expected := []bson.M{
+							bson.M{"_id.date": bson.M{"$lt": filter.StatsFilter.StartAt.Date}},
+							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": bson.M{"$gt": variant}},
+							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
+						}
+						branches := filter.buildTaskPaginationOrBranches()
+						assert.Equal(t, expected, branches)
+					})
+				},
+				"Sort Earliest, GroupBy variant, Num Days 1": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
+					filter.StatsFilter.Sort = stats.SortEarliestFirst
+					filter.StatsFilter.GroupBy = stats.GroupByVariant
+					withCancelledContext(ctx, func(ctx context.Context) {
+						expected := []bson.M{
+							bson.M{"_id.date": bson.M{"$gt": filter.StatsFilter.StartAt.Date}},
+							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": bson.M{"$gt": variant}},
+							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
+						}
+						branches := filter.buildTaskPaginationOrBranches()
+						assert.Equal(t, expected, branches)
+					})
+				},
+				"Sort Latest, GroupBy variant, Num Days 28": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
+					groupNumDays := 28
+					startAtDate := after.Add(28 * 24 * time.Hour)
+					filter.StatsFilter.GroupNumDays = groupNumDays
+					filter.StatsFilter.StartAt.Date = startAtDate
+					filter.StatsFilter.GroupBy = stats.GroupByVariant
+
+					withCancelledContext(ctx, func(ctx context.Context) {
+						expected := []bson.M{
+							bson.M{"_id.date": bson.M{"$lte": filter.StatsFilter.StartAt.Date}},
+							bson.M{"_id.date": bson.M{"$lte": filter.StatsFilter.StartAt.Date, "$gt": filter.StatsFilter.StartAt.Date}, "_id.variant": bson.M{"$gt": variant}},
+							bson.M{"_id.date": bson.M{"$lte": filter.StatsFilter.StartAt.Date, "$gt": filter.StatsFilter.StartAt.Date}, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
+						}
+						branches := filter.buildTaskPaginationOrBranches()
+						assert.Equal(t, expected, branches)
+					})
+				},
+				// Distro
+				"Sort Latest, GroupBy distro, Num Days 1": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
+					filter.StatsFilter.GroupBy = stats.GroupByDistro
+					filter.StatsFilter.StartAt.Date = after.Add(24 * time.Hour)
+
+					withCancelledContext(ctx, func(ctx context.Context) {
+						expected := []bson.M{
+							bson.M{"_id.date": bson.M{"$lt": filter.StatsFilter.StartAt.Date}},
+							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": bson.M{"$gt": variant}},
+							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
+							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": variant, "_id.task_name": task, "_id.distro": bson.M{"$gt": distro}},
+						}
+						branches := filter.buildTaskPaginationOrBranches()
+						assert.Equal(t, expected, branches)
+					})
+				},
+				"Sort Earliest, GroupBy distro, Num Days 1": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
+					filter.StatsFilter.GroupBy = stats.GroupByDistro
+					filter.StatsFilter.Sort = stats.SortEarliestFirst
+					filter.StatsFilter.StartAt.Date = after.Add(24 * time.Hour)
+					withCancelledContext(ctx, func(ctx context.Context) {
+						expected := []bson.M{
+							bson.M{"_id.date": bson.M{"$gt": filter.StatsFilter.StartAt.Date}},
+							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": bson.M{"$gt": variant}},
+							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
+							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": variant, "_id.task_name": task, "_id.distro": bson.M{"$gt": distro}},
+						}
+						branches := filter.buildTaskPaginationOrBranches()
+						assert.Equal(t, expected, branches)
+					})
+				},
+				"Sort Latest, GroupBy distro, Num Days 28": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
+					filter.StatsFilter.GroupBy = stats.GroupByDistro
+					groupNumDays := 28
+					startAtDate := after.Add(28 * 24 * time.Hour)
+					filter.StatsFilter.GroupNumDays = groupNumDays
+					filter.StatsFilter.StartAt.Date = startAtDate
+					withCancelledContext(ctx, func(ctx context.Context) {
+						expected := []bson.M{
+							bson.M{"_id.date": bson.M{"$lte": filter.StatsFilter.StartAt.Date}},
+							bson.M{"_id.date": bson.M{"$lte": filter.StatsFilter.StartAt.Date, "$gt": filter.StatsFilter.StartAt.Date}, "_id.variant": bson.M{"$gt": variant}},
+							bson.M{"_id.date": bson.M{"$lte": filter.StatsFilter.StartAt.Date, "$gt": filter.StatsFilter.StartAt.Date}, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
+							bson.M{"_id.date": bson.M{"$lte": filter.StatsFilter.StartAt.Date, "$gt": filter.StatsFilter.StartAt.Date}, "_id.variant": variant, "_id.task_name": task, "_id.distro": bson.M{"$gt": distro}},
+						}
+						branches := filter.buildTaskPaginationOrBranches()
+						assert.Equal(t, expected, branches)
+					})
+				},
+				"Before": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
+					after = time.Date(2018, 9, 12, 0, 0, 0, 0, time.UTC)
+					before = time.Date(2018, 9, 13, 0, 0, 0, 0, time.UTC)
+					filter.StatsFilter.AfterDate = after
+					filter.StatsFilter.BeforeDate = before.Add(24 * time.Hour)
+					withCancelledContext(ctx, func(ctx context.Context) {
+						expected := []time.Time{before.Add(2 * 24 * time.Hour), before.Add(24 * time.Hour), before, after}
+						boundaries := filter.dateBoundaries()
+						assert.Equal(t, len(expected), len(boundaries))
+						assert.Equal(t, expected, boundaries)
+					})
+				},
+				"BeforeAndAfter": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
+					before = after.Add(24 * time.Hour)
+
+					filter.StatsFilter.BeforeDate = before.Add(24 * time.Hour)
+					filter.StatsFilter.AfterDate = after.Add(-24 * time.Hour)
+					withCancelledContext(ctx, func(ctx context.Context) {
+						expected := []time.Time{before.Add(2 * 24 * time.Hour), before.Add(24 * time.Hour), before, after, after.Add(-24 * time.Hour)}
+						boundaries := filter.dateBoundaries()
+						assert.Equal(t, len(expected), len(boundaries))
+						assert.Equal(t, expected, boundaries)
+					})
+				},
+				"After": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
+					before = after.Add(24 * time.Hour)
+
+					filter.StatsFilter.AfterDate = after.Add(-24 * time.Hour)
+					filter.StatsFilter.BeforeDate = before
+					withCancelledContext(ctx, func(ctx context.Context) {
+						expected := []time.Time{before.Add(24 * time.Hour), before, after, after.Add(-24 * time.Hour)}
+						boundaries := filter.dateBoundaries()
+						assert.Equal(t, len(expected), len(boundaries))
+						assert.Equal(t, expected, boundaries)
+					})
+				},
+			} {
+				t.Run(testName, func(t *testing.T) {
+					withSetupAndTeardown(t, env, func() {
+						filter := TaskReliabilityFilter{
+							StatsFilter: stats.StatsFilter{
+								Project:      project,
+								Requesters:   requesters,
+								GroupNumDays: 1,
+								GroupBy:      stats.GroupByTask,
+								Sort:         stats.SortLatestFirst,
+								AfterDate:    after,
+								BeforeDate:   before,
+								StartAt: &stats.StartAt{
+									Date:         after.Add(24 * time.Hour),
+									Task:         task,
+									BuildVariant: variant,
+									Distro:       distro,
+								},
+							},
+						}
+						testCase(ctx, t, &filter)
+					})
+				})
+			}
+		},
+		// Test BuildMatchStageForTask.
+		"BuildMatchStageForTask": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
+
+			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter, expected bson.M){
+				"Simple": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter, expected bson.M) {
+					withCancelledContext(ctx, func(ctx context.Context) {
+						stage := filter.buildMatchStageForTask()
+						assert.Equal(t, stage, expected)
+					})
+				},
+				"Task": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter, expected bson.M) {
+					filter.Tasks = []string{task}
+					expected["$match"].(bson.M)["_id.task_name"] = filter.Tasks[0]
+					withCancelledContext(ctx, func(ctx context.Context) {
+						stage := filter.buildMatchStageForTask()
+						assert.Equal(t, stage, expected)
+					})
+				},
+				"Tasks": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter, expected bson.M) {
+					filter.Tasks = []string{task, "compile"}
+					expected["$match"].(bson.M)["_id.task_name"] = bson.M{"$in": filter.Tasks}
+					withCancelledContext(ctx, func(ctx context.Context) {
+						stage := filter.buildMatchStageForTask()
+						assert.Equal(t, stage, expected)
+					})
+				},
+				"Variant": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter, expected bson.M) {
+					filter.BuildVariants = []string{variant}
+					expected["$match"].(bson.M)["_id.variant"] = filter.BuildVariants[0]
+					withCancelledContext(ctx, func(ctx context.Context) {
+						stage := filter.buildMatchStageForTask()
+						assert.Equal(t, stage, expected)
+					})
+				},
+				"Variants": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter, expected bson.M) {
+					filter.BuildVariants = []string{variant, "rhel76-build"}
+					expected["$match"].(bson.M)["_id.variant"] = bson.M{"$in": filter.BuildVariants}
+					withCancelledContext(ctx, func(ctx context.Context) {
+						stage := filter.buildMatchStageForTask()
+						assert.Equal(t, stage, expected)
+					})
+				},
+				"Distro": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter, expected bson.M) {
+					filter.Distros = []string{distro}
+					expected["$match"].(bson.M)["_id.distro"] = filter.Distros[0]
+					withCancelledContext(ctx, func(ctx context.Context) {
+						stage := filter.buildMatchStageForTask()
+						assert.Equal(t, stage, expected)
+					})
+				},
+				"Distros": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter, expected bson.M) {
+					filter.Distros = []string{distro, "debian71-build"}
+					expected["$match"].(bson.M)["_id.distro"] = bson.M{"$in": filter.Distros}
+					withCancelledContext(ctx, func(ctx context.Context) {
+						stage := filter.buildMatchStageForTask()
+						assert.Equal(t, stage, expected)
+					})
+				},
+				"Pagination": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter, expected bson.M) {
+					startAt := after.Add(24 * time.Hour)
+					filter.StatsFilter.StartAt = &stats.StartAt{
+						Date:         startAt,
+						Task:         task,
+						BuildVariant: variant,
+						Distro:       distro,
+					}
+					expected["$match"].(bson.M)["$or"] = []bson.M{
+						bson.M{"_id.date": bson.M{"$gt": startAt}},
+						bson.M{"_id.date": startAt, "_id.variant": bson.M{"$gt": variant}},
+						bson.M{"_id.date": startAt, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
+						bson.M{"_id.date": startAt, "_id.variant": variant, "_id.task_name": task, "_id.distro": bson.M{"$gt": distro}},
+					}
+					withCancelledContext(ctx, func(ctx context.Context) {
+						stage := filter.buildMatchStageForTask()
+						assert.Equal(t, stage, expected)
+					})
+				},
+			} {
+				t.Run(testName, func(t *testing.T) {
+					withSetupAndTeardown(t, env, func() {
+						filter := TaskReliabilityFilter{
+							StatsFilter: stats.StatsFilter{
+								Project:    project,
+								Requesters: requesters,
+								AfterDate:  after,
+								BeforeDate: before,
+								GroupBy:    stats.GroupByDistro,
+							},
+						}
+						match := bson.M{
+							"$match": bson.M{
+								"_id.project":   project,
+								"_id.date":      bson.M{"$gte": after, "$lt": before.Add(24 * time.Hour)},
+								"_id.requester": bson.M{"$in": requesters},
+							},
+						}
+						testCase(ctx, t, &filter, match)
 					})
 				})
 			}
@@ -208,6 +488,54 @@ func TestPipeline(t *testing.T) {
 			}
 		},
 		"TaskReliabilityQueryPipeline": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
+			match := bson.M{
+				"$match": bson.M{
+					"_id.project":   project,
+					"_id.date":      bson.M{"$gte": after, "$lt": before.Add(24 * time.Hour)},
+					"_id.requester": bson.M{"$in": requesters},
+				},
+			}
+			projection := bson.M{
+				"$project": bson.M{
+					"avg_duration_success": bson.M{
+						"$cond": bson.M{
+							"else": nil,
+							"if": bson.M{
+								"$ne": stats.Array{
+									"$num_success",
+									0,
+								},
+							},
+							"then": bson.M{
+								"$divide": stats.Array{
+									"$total_duration_success",
+									"$num_success",
+								},
+							},
+						},
+					},
+					"date":              "$_id.date",
+					"distro":            "$_id.distro",
+					"num_failed":        1,
+					"num_setup_failed":  1,
+					"num_success":       1,
+					"num_system_failed": 1,
+					"num_test_failed":   1,
+					"num_timeout":       1,
+					"num_total":         bson.M{"$add": stats.Array{"$num_success", "$num_failed"}},
+					"task_name":         "$_id.task_name",
+					"variant":           "$_id.variant",
+				},
+			}
+			sort := bson.M{
+				"$sort": bson.D{
+					{Key: "date", Value: 1},
+					{Key: "variant", Value: 1},
+					{Key: "task_name", Value: 1},
+					{Key: "distro", Value: 1},
+				},
+			}
+			limit := bson.M{"$limit": 1}
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter){
 				"Simple": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
 					filter.StatsFilter.AfterDate = after
@@ -216,7 +544,7 @@ func TestPipeline(t *testing.T) {
 					filter.StatsFilter.Limit = 1
 
 					withCancelledContext(ctx, func(ctx context.Context) {
-						pipeline := filter.TaskReliabilityQueryPipeline()
+						pipeline := filter.taskReliabilityQueryPipeline()
 						assert.Equal(t, pipeline, []bson.M{
 							match,
 							simpleGroup,

@@ -4,7 +4,6 @@ import (
 	"math"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -13,10 +12,16 @@ import (
 )
 
 const (
-	MaxQueryLimit        = 51 // route.ReliabilityAPIMaxNumTasks + 1
+	MaxQueryLimit        = stats.MaxQueryLimit - 1 // 1000 // route.ReliabilityAPIMaxNumTasks
 	MaxSignificanceLimit = 1.0
 	MinSignificanceLimit = 0.0
 	DefaultSignificance  = 0.05
+
+	GroupByTask       = stats.GroupByTask
+	GroupByVariant    = stats.GroupByVariant
+	GroupByDistro     = stats.GroupByDistro
+	SortEarliestFirst = stats.SortEarliestFirst
+	SortLatestFirst   = stats.SortLatestFirst
 )
 
 // TaskReliabilityFilter represents search and aggregation parameters when querying the test or task statistics.
@@ -141,9 +146,7 @@ func GetTaskReliabilityScores(filter TaskReliabilityFilter) ([]TaskReliability, 
 	if err != nil {
 		return nil, errors.Wrap(err, "The provided StatsFilter is invalid")
 	}
-	var taskStats []stats.TaskStats
-	pipeline := filter.TaskReliabilityQueryPipeline()
-	err = db.Aggregate(stats.DailyTaskStatsCollection, pipeline, &taskStats)
+	taskStats, err := filter.GetTaskStats()
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to aggregate task statistics")
 	}

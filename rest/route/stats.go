@@ -284,14 +284,14 @@ func (sh *StatsHandler) readStartAt(startAtValue string) (*stats.StartAt, error)
 	elements := strings.Split(startAtValue, "|")
 	if len(elements) != 5 {
 		return nil, gimlet.ErrorResponse{
-			Message:    "Invalid start_by value",
+			Message:    "Invalid start_at value",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
 	date, err := time.ParseInLocation(statsAPIDateFormat, elements[0], time.UTC)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
-			Message:    "Invalid start_by value",
+			Message:    "Invalid start_at value",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
