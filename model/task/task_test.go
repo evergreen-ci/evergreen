@@ -924,13 +924,29 @@ func TestGetTestResultsForDisplayTask(t *testing.T) {
 	assert.Equal("myTest", results[0].TestFile)
 }
 
+func TestBlocked(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	t1 := Task{
+		Id: "t1",
+		DependsOn: []Dependency{
+			{Unattainable: false},
+			{Unattainable: false},
+			{Unattainable: true},
+		},
+	}
+	assert.True(t1.Blocked())
+
+}
+
 func TestBlockedState(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 	t1 := Task{
 		Id: "t1",
 		DependsOn: []Dependency{
-			{TaskId: "t2", Status: evergreen.TaskSucceeded},
+			{TaskId: "t2", Status: evergreen.TaskSucceeded, Unattainable: true},
 		},
 	}
 	assert.NoError(t1.Insert())
@@ -952,22 +968,22 @@ func TestBlockedState(t *testing.T) {
 	assert.NoError(t3.Insert())
 	t4 := Task{
 		Id:     "t4",
-		Status: evergreen.TaskSucceeded,
+		Status: evergreen.TaskFailed,
 	}
 	assert.NoError(t4.Insert())
 
-	state, err := t4.BlockedState(nil)
+	state, err := t4.BlockedState()
 	assert.NoError(err)
 	assert.Equal("", state)
-	state, err = t3.BlockedState(nil)
+	state, err = t3.BlockedState()
 	assert.NoError(err)
 	assert.Equal("", state)
-	state, err = t2.BlockedState(nil)
+	state, err = t2.BlockedState()
 	assert.NoError(err)
-	assert.Equal("pending", state)
-	state, err = t1.BlockedState(nil)
+	assert.Equal(evergreen.TaskPending, state)
+	state, err = t1.BlockedState()
 	assert.NoError(err)
-	assert.Equal("blocked", state)
+	assert.Equal(evergreen.TaskBlocked, state)
 }
 
 func TestCircularDependency(t *testing.T) {
@@ -1040,9 +1056,9 @@ func TestSiblingDependency(t *testing.T) {
 		Status:      evergreen.TaskSucceeded,
 	}
 	assert.NoError(t4.Insert())
-	state, err := t1.BlockedState(nil)
+	state, err := t1.BlockedState()
 	assert.NoError(err)
-	assert.Equal("pending", state)
+	assert.Equal(evergreen.TaskPending, state)
 }
 
 func TestBulkInsert(t *testing.T) {
@@ -1392,6 +1408,64 @@ func TestFindAllMarkedUnattainableDependencies(t *testing.T) {
 	unattainableTasks, err := t1.findAllMarkedUnattainableDependencies()
 	assert.NoError(err)
 	assert.Len(unattainableTasks, 1)
+}
+
+func TestScheduleableTasksQuery(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+	tasks := []Task{
+		{
+			Id:        "t0",
+			Activated: true,
+			Status:    evergreen.TaskUndispatched,
+			DependsOn: []Dependency{
+				{
+					TaskId:       "t10",
+					Unattainable: true,
+				},
+				{
+					TaskId:       "t11",
+					Unattainable: false,
+				},
+			},
+			Priority: 0,
+		},
+		{
+			Id:        "t1",
+			Activated: true,
+			Status:    evergreen.TaskUndispatched,
+			DependsOn: []Dependency{
+				{
+					TaskId:       "t10",
+					Unattainable: false,
+				},
+				{
+					TaskId:       "t11",
+					Unattainable: false,
+				},
+			},
+			Priority: 0,
+		},
+		{
+			Id:        "t2",
+			Activated: true,
+			Status:    evergreen.TaskUndispatched,
+			Priority:  0,
+			DependsOn: []Dependency{
+				{
+					TaskId: "t10",
+				},
+			},
+		},
+	}
+	for _, task := range tasks {
+		assert.NoError(task.Insert())
+	}
+
+	q := scheduleableTasksQuery()
+	schedulableTasks, err := FindAll(db.Query(q))
+	assert.NoError(err)
+	assert.Len(schedulableTasks, 2)
 }
 
 func TestGetTimeSpent(t *testing.T) {
