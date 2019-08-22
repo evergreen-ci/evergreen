@@ -39,4 +39,8 @@ const (
 	// maxHeartbeats is the number of failed heartbeats after which an agent
 	// reports an error
 	maxHeartbeats = 10
+
+	// dockerTimeout is the duration to timeout the Docker cleanup that happens
+	// after an agent completes a task
+	dockerTimeout = 1 * time.Minute
 )
