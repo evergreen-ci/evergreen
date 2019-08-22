@@ -547,21 +547,21 @@ func TestRun(t *testing.T) {
 					sc := handler.sc.(*data.MockConnector)
 					sc.URL = url
 
-					// 1001 documents are available but only 1000 will be returned
-					sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", 1001)
-
 					handler.filter = reliability.TaskReliabilityFilter{
 						StatsFilter: stats.StatsFilter{
 							Limit: 1000,
 						},
 					}
 
+					// limit + 1 documents are available but only limit will be returned
+					sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", handler.filter.StatsFilter.Limit+1)
+
 					resp := handler.Run(ctx)
 
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
 					data := resp.Data().([]interface{})
-					require.Equal(t, 1000, len(data))
+					require.Equal(t, handler.filter.StatsFilter.Limit, len(data))
 					require.NotNil(t, resp.Pages())
 				},
 				"StartAt Not Set": func(ctx context.Context, t *testing.T, handler *taskReliabilityHandler) {
@@ -575,23 +575,22 @@ func TestRun(t *testing.T) {
 					sc := handler.sc.(*data.MockConnector)
 					sc.URL = url
 
-					// 100 are available but only 100 documents will be returned
-					sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", 100)
-
 					handler.filter = reliability.TaskReliabilityFilter{
 						StatsFilter: stats.StatsFilter{
 							Limit: 101,
 						},
 					}
 
+					// limit - 1 documents are available.
+					sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", handler.filter.StatsFilter.Limit-1)
+
 					resp := handler.Run(ctx)
 
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
 					data := resp.Data().([]interface{})
-					require.Equal(t, 100, len(data))
-					require.NotNil(t, resp.Pages())
-					require.Nil(t, resp.Pages().Next.Key)
+					require.Equal(t, handler.filter.StatsFilter.Limit-1, len(data))
+					require.Nil(t, resp.Pages())
 				},
 				"StartAt Set": func(ctx context.Context, t *testing.T, handler *taskReliabilityHandler) {
 					err := setupTest(t)
@@ -604,22 +603,23 @@ func TestRun(t *testing.T) {
 					sc := handler.sc.(*data.MockConnector)
 					sc.URL = url
 
-					sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", 101)
-
 					handler.filter = reliability.TaskReliabilityFilter{
 						StatsFilter: stats.StatsFilter{
-							Limit: 101,
+							Limit: 100,
 						},
 					}
+
+					// limit + 1 documents are available.
+					sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", handler.filter.StatsFilter.Limit+1)
 
 					resp := handler.Run(ctx)
 
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
 					data := resp.Data().([]interface{})
-					require.Equal(t, 1000, len(data))
+					require.Equal(t, handler.filter.StatsFilter.Limit, len(data))
 					require.NotNil(t, resp.Pages())
-					lastDoc := sc.MockTaskReliabilityConnector.CachedTaskReliability[100]
+					lastDoc := sc.MockTaskReliabilityConnector.CachedTaskReliability[handler.filter.StatsFilter.Limit-1]
 					require.Equal(t, lastDoc.StartAtKey(), resp.Pages().Next.Key)
 				},
 			} {
