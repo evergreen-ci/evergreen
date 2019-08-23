@@ -324,7 +324,7 @@ func ensureHasValidPlannerSettings(ctx context.Context, d *distro.Distro, s *eve
 	}
 	if ps.PatchFactor < 0 || ps.PatchFactor > 100 {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("invalid planner_settings.patch_zipper_factor value of %d for distro '%s' - its value must be a non-negative integer between 0 and 100, inclusive", ps.PatchFactor, d.Id),
+			Message: fmt.Sprintf("invalid planner_settings.patch_factor value of %d for distro '%s' - its value must be a non-negative integer between 0 and 100, inclusive", ps.PatchFactor, d.Id),
 			Level:   Error,
 		})
 	}

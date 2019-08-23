@@ -283,7 +283,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 			TargetTime:             0,
 			AcceptableHostIdleTime: 0,
 			GroupVersions:          nil,
-			PatchZipperFactor:      0,
+			PatchFactor:            0,
 			TaskOrdering:           "",
 		},
 	}
@@ -296,7 +296,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		TargetTimeSeconds:             112358,
 		AcceptableHostIdleTimeSeconds: 132134,
 		GroupVersions:                 false,
-		PatchZipperFactor:             50,
+		PatchFactor:                   50,
 		TaskOrdering:                  evergreen.TaskOrderingInterleave,
 	}
 
@@ -311,7 +311,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	assert.Equal(t, time.Duration(132134)*time.Second, resolved0.AcceptableHostIdleTime)
 	// Fallback to the SchedulerConfig.GroupVersions as PlannerSettings.GroupVersions is nil
 	assert.Equal(t, false, *resolved0.GroupVersions)
-	assert.EqualValues(t, 50, resolved0.PatchZipperFactor)
+	assert.EqualValues(t, 50, resolved0.PatchFactor)
 	// Fallback to the SchedulerConfig task ordering as PlannerSettings.TaskOrdering is an empty string
 	assert.Equal(t, evergreen.TaskOrderingInterleave, resolved0.TaskOrdering)
 
@@ -325,7 +325,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 			TargetTime:             98765000000000,
 			AcceptableHostIdleTime: 56789000000000,
 			GroupVersions:          &pTrue,
-			PatchZipperFactor:      25,
+			PatchFactor:            25,
 			TaskOrdering:           evergreen.TaskOrderingPatchFirst,
 		},
 	}
@@ -338,7 +338,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		TargetTimeSeconds:             10,
 		AcceptableHostIdleTimeSeconds: 60,
 		GroupVersions:                 false,
-		PatchZipperFactor:             50,
+		PatchFactor:                   50,
 		TaskOrdering:                  evergreen.TaskOrderingInterleave,
 	}
 
@@ -353,7 +353,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	assert.Equal(t, time.Duration(98765)*time.Second, resolved1.TargetTime)
 	assert.Equal(t, time.Duration(56789)*time.Second, resolved1.AcceptableHostIdleTime)
 	assert.Equal(t, true, *resolved1.GroupVersions)
-	assert.EqualValues(t, 25, resolved1.PatchZipperFactor)
+	assert.EqualValues(t, 25, resolved1.PatchFactor)
 	assert.Equal(t, evergreen.TaskOrderingPatchFirst, resolved1.TaskOrdering)
 
 	ps := &PlannerSettings{
@@ -363,7 +363,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		TargetTime:             0,
 		AcceptableHostIdleTime: 0,
 		GroupVersions:          nil,
-		PatchZipperFactor:      25,
+		PatchFactor:            25,
 		TaskOrdering:           "",
 	}
 	d2 := Distro{
@@ -379,7 +379,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		TargetTimeSeconds:             12345,
 		AcceptableHostIdleTimeSeconds: 67890,
 		GroupVersions:                 false,
-		PatchZipperFactor:             0,
+		PatchFactor:                   0,
 		TaskOrdering:                  evergreen.TaskOrderingMainlineFirst,
 	}
 	settings2 := &evergreen.Settings{Scheduler: config2}
