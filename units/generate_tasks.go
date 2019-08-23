@@ -23,7 +23,7 @@ import (
 const (
 	generateTasksJobName    = "generate-tasks"
 	generateTaskRequeueWait = 10 * time.Second
-	generateTaskMaxAttempts = 6 * 60 // 1 hour, if generateTaskRequeueWait is 10 seconds
+	generateTaskMaxAttempts = 2 * 6 * 60 // 2 hours, if generateTaskRequeueWait is 10 seconds
 )
 
 func init() {
