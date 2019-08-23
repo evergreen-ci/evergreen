@@ -224,6 +224,7 @@ func (d *mgoGroupDriver) Save(_ context.Context, j amboy.Job) error {
 	stat := j.Status()
 	stat.Owner = d.instanceID
 	stat.ModificationCount++
+	stat.ErrorCount = len(stat.Errors)
 	stat.ModificationTime = time.Now()
 	j.SetStatus(stat)
 
@@ -269,6 +270,7 @@ func (d *mgoGroupDriver) SaveStatus(_ context.Context, j amboy.Job, stat amboy.J
 	stat.Owner = d.instanceID
 	stat.ModificationCount++
 	stat.ModificationTime = time.Now()
+	stat.ErrorCount = len(stat.Errors)
 	timeInfo := j.TimeInfo()
 
 	err := jobs.Update(query, bson.M{"$set": bson.M{"status": stat, "time_info": timeInfo}})

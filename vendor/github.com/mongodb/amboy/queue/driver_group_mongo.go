@@ -262,6 +262,7 @@ func (d *mongoGroupDriver) Save(ctx context.Context, j amboy.Job) error {
 	stat := j.Status()
 	stat.Owner = d.instanceID
 	stat.ModificationCount++
+	stat.ErrorCount = len(stat.Errors)
 	stat.ModificationTime = time.Now()
 	j.SetStatus(stat)
 
@@ -301,6 +302,7 @@ func (d *mongoGroupDriver) SaveStatus(ctx context.Context, j amboy.Job, stat amb
 	query := getAtomicQuery(d.instanceID, buildCompoundJobID(d.group, j), stat.ModificationCount)
 	stat.Owner = d.instanceID
 	stat.ModificationCount++
+	stat.ErrorCount = len(stat.Errors)
 	stat.ModificationTime = time.Now()
 	timeInfo := j.TimeInfo()
 
