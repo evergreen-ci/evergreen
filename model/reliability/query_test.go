@@ -30,6 +30,22 @@ const (
 	distro1    = "d1"
 	distro2    = "d2"
 	distroFmt  = "distro %04d"
+
+	numSuccess      = 10
+	numFailed       = 5
+	numTimeout      = 1
+	numTestFailed   = 1
+	numSystemFailed = 1
+	numSetupFailed  = 2
+	avgDuration     = 10.5
+
+	numSuccess1      = 20
+	numFailed1       = 7
+	numTimeout1      = 7
+	numTestFailed1   = 0
+	numSystemFailed1 = 0
+	numSetupFailed1  = 0
+	avgDuration1     = 20.0
 )
 
 var requesters = []string{
@@ -47,13 +63,13 @@ var task1Item1 = stats.DbTaskStats{
 		Distro:       distro1,
 		Date:         day1,
 	},
-	NumSuccess:         10,
-	NumFailed:          5,
-	NumTimeout:         1,
-	NumTestFailed:      1,
-	NumSystemFailed:    1,
-	NumSetupFailed:     2,
-	AvgDurationSuccess: 10.5,
+	NumSuccess:         numSuccess,
+	NumFailed:          numFailed,
+	NumTimeout:         numTimeout,
+	NumTestFailed:      numTestFailed,
+	NumSystemFailed:    numSystemFailed,
+	NumSetupFailed:     numSetupFailed,
+	AvgDurationSuccess: avgDuration,
 }
 
 var task1Item2 = stats.DbTaskStats{
@@ -65,13 +81,13 @@ var task1Item2 = stats.DbTaskStats{
 		Distro:       distro1,
 		Date:         day2.Add(-1 * time.Hour),
 	},
-	NumSuccess:         20,
-	NumFailed:          7,
-	NumTimeout:         7,
-	NumTestFailed:      0,
-	NumSystemFailed:    0,
-	NumSetupFailed:     0,
-	AvgDurationSuccess: 20.0,
+	NumSuccess:         numSuccess1,
+	NumFailed:          numFailed1,
+	NumTimeout:         numTimeout1,
+	NumTestFailed:      numTestFailed1,
+	NumSystemFailed:    numSystemFailed1,
+	NumSetupFailed:     numSetupFailed1,
+	AvgDurationSuccess: avgDuration1,
 }
 
 var task2Item1 = stats.DbTaskStats{
@@ -83,13 +99,13 @@ var task2Item1 = stats.DbTaskStats{
 		Distro:       distro2,
 		Date:         day2,
 	},
-	NumSuccess:         10,
-	NumFailed:          5,
-	NumTimeout:         1,
-	NumTestFailed:      1,
-	NumSystemFailed:    1,
-	NumSetupFailed:     2,
-	AvgDurationSuccess: 10.5,
+	NumSuccess:         numSuccess,
+	NumFailed:          numFailed,
+	NumTimeout:         numTimeout,
+	NumTestFailed:      numTestFailed,
+	NumSystemFailed:    numSystemFailed,
+	NumSetupFailed:     numSetupFailed,
+	AvgDurationSuccess: avgDuration,
 }
 var task2Item2 = stats.DbTaskStats{
 	Id: stats.DbTaskStatsId{
@@ -100,13 +116,13 @@ var task2Item2 = stats.DbTaskStats{
 		Distro:       distro2,
 		Date:         day2.Add(-1 * time.Hour),
 	},
-	NumSuccess:         20,
-	NumFailed:          7,
-	NumTimeout:         7,
-	NumTestFailed:      0,
-	NumSystemFailed:    0,
-	NumSetupFailed:     0,
-	AvgDurationSuccess: 20.0,
+	NumSuccess:         numSuccess1,
+	NumFailed:          numFailed1,
+	NumTimeout:         numTimeout1,
+	NumTestFailed:      numTestFailed1,
+	NumSystemFailed:    numSystemFailed1,
+	NumSetupFailed:     numSetupFailed1,
+	AvgDurationSuccess: avgDuration1,
 }
 
 var task3item1 = stats.DbTaskStats{
@@ -118,13 +134,13 @@ var task3item1 = stats.DbTaskStats{
 		Distro:       distro2,
 		Date:         day1,
 	},
-	NumSuccess:         10,
-	NumFailed:          5,
-	NumTimeout:         1,
-	NumTestFailed:      1,
-	NumSystemFailed:    1,
-	NumSetupFailed:     2,
-	AvgDurationSuccess: 10.5,
+	NumSuccess:         numSuccess,
+	NumFailed:          numFailed,
+	NumTimeout:         numTimeout,
+	NumTestFailed:      numTestFailed,
+	NumSystemFailed:    numSystemFailed,
+	NumSetupFailed:     numSetupFailed,
+	AvgDurationSuccess: avgDuration,
 }
 
 func createValidFilter() TaskReliabilityFilter {
@@ -191,15 +207,14 @@ func TestValidFilter(t *testing.T) {
 }
 
 func TestFilterValidAfterEqualsBefore(t *testing.T) {
-        var err error
-        require := require.New(t)
-        filter := createValidFilter()
+	var err error
+	require := require.New(t)
+	filter := createValidFilter()
 
-        filter.AfterDate = day1
-        filter.BeforeDate = day1
-        err = filter.ValidateForTaskReliability()
-        require.NoError(err)
-
+	filter.AfterDate = day1
+	filter.BeforeDate = day1
+	err = filter.ValidateForTaskReliability()
+	require.NoError(err)
 }
 
 func TestFilterInvalidAfterDateAfterBeforeDate(t *testing.T) {
@@ -225,7 +240,7 @@ func TestFilterInvalidAfterDateEqualBeforeDate(t *testing.T) {
 
 	// With AfterDate equal to BeforeDate.
 	filter.AfterDate = day1
-        filter.BeforeDate = day1.Add(-24 * time.Hour)
+	filter.BeforeDate = day1.Add(-24 * time.Hour)
 	err = filter.ValidateForTaskReliability()
 	require.Error(err)
 	assert.Equal("Invalid AfterDate/BeforeDate values", err.Error())
@@ -518,418 +533,462 @@ func TestValidateForTaskReliability(t *testing.T) {
 	require.Error(err)
 	message := err.Error()
 	assert.Contains(message, "Invalid Limit value")
-        assert.Contains(message, "Invalid Significance value")
+	assert.Contains(message, "Invalid Significance value")
 }
 
 func TestGetTaskReliabilityScores(t *testing.T) {
-        requesters := []string{
-                evergreen.PatchVersionRequester,
-                evergreen.GithubPRRequester,
-                evergreen.MergeTestRequester,
-        }
+	requesters := []string{
+		evergreen.PatchVersionRequester,
+		evergreen.GithubPRRequester,
+		evergreen.MergeTestRequester,
+	}
 
-        ctx, cancel := context.WithCancel(context.Background())
-        defer cancel()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-        withCancelledContext := func(ctx context.Context, fn func(context.Context)) {
-                ctx, cancel := context.WithCancel(ctx)
-                cancel()
-                fn(ctx)
-        }
-        const (
-                task1 = "task1"
-                task2 = "task2"
+	withCancelledContext := func(ctx context.Context, fn func(context.Context)) {
+		ctx, cancel := context.WithCancel(ctx)
+		cancel()
+		fn(ctx)
+	}
 
-                variant1 = "v1"
-                variant2 = "v2"
+	commonSetup := func(ctx context.Context, t *testing.T) TaskReliabilityFilter {
+		filter := TaskReliabilityFilter{
+			StatsFilter: stats.StatsFilter{
+				Project:       project,
+				Requesters:    requesters,
+				Tasks:         []string{task1},
+				BuildVariants: []string{variant1, variant2},
+				Distros:       []string{distro1, distro2},
+				BeforeDate:    day1,
+				AfterDate:     day1,
+				GroupNumDays:  1,
+				GroupBy:       "distro",
+				Limit:         MaxQueryLimit,
+				Sort:          stats.SortEarliestFirst,
+			},
+			Significance: .05,
+		}
+		err := clearCollection()
+		require.NoError(t, err)
 
-                distro1 = "d1"
-                distro2 = "d2"
+		require.NoError(t, InsertDailyTaskStats(
+			stats.DbTaskStats{
+				Id: stats.DbTaskStatsId{
+					Project:      project,
+					Requester:    requesters[0],
+					TaskName:     task1,
+					BuildVariant: variant1,
+					Distro:       distro1,
+					Date:         day1,
+				},
+				NumSuccess:         numSuccess,
+				NumFailed:          numFailed,
+				NumTimeout:         numTimeout,
+				NumTestFailed:      numTestFailed,
+				NumSystemFailed:    numSystemFailed,
+				NumSetupFailed:     numSetupFailed,
+				AvgDurationSuccess: avgDuration,
+			},
+			stats.DbTaskStats{
+				Id: stats.DbTaskStatsId{
+					Project:      project,
+					Requester:    requesters[0],
+					TaskName:     task2,
+					BuildVariant: variant1,
+					Distro:       distro2,
+					Date:         day1,
+				},
+				NumSuccess:         numSuccess1,
+				NumFailed:          numFailed1,
+				NumTimeout:         numTimeout1,
+				NumTestFailed:      numTestFailed1,
+				NumSystemFailed:    numSystemFailed1,
+				NumSetupFailed:     numSetupFailed1,
+				AvgDurationSuccess: avgDuration1,
+			}))
 
-                numSuccess      = 20
-                numFailed       = 15
-                numTimeout      = 1
-                numTestFailed   = 2
-                numSystemFailed = 3
-                numSetupFailed  = 4
-                avgDuration     = 10.5
-        )
+		// 60 relates to the max date range test, picked a value to ensure that there is more than enough data.
+		for i := 1; i < 60; i++ {
+			delta := time.Duration(i) * 24 * time.Hour
+			require.NoError(t, InsertDailyTaskStats(
+				stats.DbTaskStats{
+					Id: stats.DbTaskStatsId{
+						Project:      project,
+						Requester:    requesters[0],
+						TaskName:     task1,
+						BuildVariant: variant1,
+						Distro:       distro1,
+						Date:         day1.Add(delta),
+					},
+					NumSuccess:         numSuccess,
+					NumFailed:          numFailed,
+					NumTimeout:         numTimeout,
+					NumTestFailed:      numTestFailed,
+					NumSystemFailed:    numSystemFailed,
+					NumSetupFailed:     numSetupFailed,
+					AvgDurationSuccess: avgDuration,
+				},
+				stats.DbTaskStats{
+					Id: stats.DbTaskStatsId{
+						Project:      project,
+						Requester:    requesters[0],
+						TaskName:     task2,
+						BuildVariant: variant1,
+						Distro:       distro1,
+						Date:         day2.Add(delta),
+					},
+					NumSuccess:         numSuccess,
+					NumFailed:          numFailed,
+					NumTimeout:         numTimeout,
+					NumTestFailed:      numTestFailed,
+					NumSystemFailed:    numSystemFailed,
+					NumSetupFailed:     numSetupFailed,
+					AvgDurationSuccess: avgDuration,
+				}))
+		}
+		return filter
+	}
 
-        commonSetup := func(ctx context.Context, t *testing.T) TaskReliabilityFilter {
-                filter := TaskReliabilityFilter{
-                        StatsFilter: stats.StatsFilter{
-                                Project:       project,
-                                Requesters:    requesters,
-                                Tasks:         []string{task1},
-                                BuildVariants: []string{variant1, variant2},
-                                Distros:       []string{distro1, distro2},
-                                BeforeDate:    day1,
-                                AfterDate:     day1,
-                                GroupNumDays:  1,
-                                GroupBy:       "distro",
-                                Limit:         MaxQueryLimit,
-                                Sort:          stats.SortEarliestFirst,
-                        },
-                        Significance: .05,
-                }
-                err := clearCollection()
-                require.NoError(t, err)
+	for opName, opTests := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment){
+		"GroupNumDays": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
+			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter){
+				"1": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
+					require := require.New(t)
+					withCancelledContext(ctx, func(ctx context.Context) {
+						docs, err := GetTaskReliabilityScores(filter)
+						require.NoError(err)
+						require.Len(docs, 1)
 
-                require.NoError(t, insertDailyTaskStats(project, requesters[0], task1, variant1, distro1, day1, numSuccess, numFailed, numTimeout, numTestFailed, numSystemFailed, numSetupFailed, avgDuration))
-                require.NoError(t, insertDailyTaskStats(project, requesters[0], task2, variant1, distro2, day1, numSuccess, numFailed, numTimeout, numTestFailed, numSystemFailed, numSetupFailed, avgDuration))
+						require.Equal(docs[0].Date, day1)
+						require.Equal(docs[0].NumSuccess, numSuccess)
+						require.Equal(docs[0].NumFailed, numFailed)
+					})
+				},
+				"2": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
+					require := require.New(t)
+					withCancelledContext(ctx, func(ctx context.Context) {
+						filter.StatsFilter.GroupNumDays = 2
+						filter.StatsFilter.BeforeDate = day2
+						docs, err := GetTaskReliabilityScores(filter)
+						require.NoError(err)
+						require.Len(docs, 1)
 
-                var i int
-                // 60 relates to the max date range test, picked a value to ensure that there is more than enough data.
-                for i = 1; i < 60; i++ {
-                        delta := time.Duration(i) * 24 * time.Hour
-                        require.NoError(t, insertDailyTaskStats(project, requesters[0], task1, variant1, distro1, day1.Add(delta), numSuccess, numFailed, numTimeout, numTestFailed, numSystemFailed, numSetupFailed, avgDuration))
-                        require.NoError(t, insertDailyTaskStats(project, requesters[0], task2, variant1, distro1, day2.Add(delta), numSuccess, numFailed, numTimeout, numTestFailed, numSystemFailed, numSetupFailed, avgDuration))
+						require.Equal(docs[0].Date, day1)
+						require.Equal(docs[0].NumSuccess, numSuccess*filter.StatsFilter.GroupNumDays)
+						require.Equal(docs[0].NumFailed, numFailed*filter.StatsFilter.GroupNumDays)
+					})
+				},
+				"7": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
+					require := require.New(t)
+					withCancelledContext(ctx, func(ctx context.Context) {
+						filter.StatsFilter.GroupNumDays = 7
+						filter.StatsFilter.BeforeDate = day1.Add(time.Duration(filter.StatsFilter.GroupNumDays-1) * 24 * time.Hour)
+						docs, err := GetTaskReliabilityScores(filter)
+						require.NoError(err)
+						require.Len(docs, 1)
 
-                }
-                return filter
-        }
+						require.Equal(docs[0].Date, day1)
+						require.Equal(docs[0].NumSuccess, numSuccess*filter.StatsFilter.GroupNumDays)
+						require.Equal(docs[0].NumFailed, numFailed*filter.StatsFilter.GroupNumDays)
+					})
+				},
+				"28": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
+					require := require.New(t)
+					withCancelledContext(ctx, func(ctx context.Context) {
+						filter.StatsFilter.GroupNumDays = 28
+						filter.StatsFilter.BeforeDate = day1.Add(time.Duration(filter.StatsFilter.GroupNumDays-1) * 24 * time.Hour)
+						docs, err := GetTaskReliabilityScores(filter)
+						require.NoError(err)
+						require.Len(docs, 1)
 
-        for opName, opTests := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment){
-                "GroupNumDays": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
-                        for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter){
-                                "1": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
-                                        require := require.New(t)
-                                        withCancelledContext(ctx, func(ctx context.Context) {
-                                                docs, err := GetTaskReliabilityScores(filter)
-                                                require.NoError(err)
-                                                require.Len(docs, 1)
+						require.Equal(docs[0].Date, day1)
+						require.Equal(docs[0].NumSuccess, numSuccess*filter.StatsFilter.GroupNumDays)
+						require.Equal(docs[0].NumFailed, numFailed*filter.StatsFilter.GroupNumDays)
+					})
+				},
+			} {
+				t.Run(testName, func(t *testing.T) {
+					withSetupAndTeardown(t, env, func() {
+						filter := commonSetup(ctx, t)
+						testCase(ctx, t, filter)
+					})
+				})
+			}
+		},
+		"Sort": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
+			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter){
+				"SortLatestFirst": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
+					require := require.New(t)
+					withCancelledContext(ctx, func(ctx context.Context) {
+						duration := 7
+						filter.StatsFilter.Sort = stats.SortLatestFirst
+						filter.StatsFilter.GroupNumDays = 1
+						filter.StatsFilter.BeforeDate = day1.Add(time.Duration(duration-1) * 24 * time.Hour)
+						docs, err := GetTaskReliabilityScores(filter)
+						require.NoError(err)
+						require.Len(docs, duration)
 
-                                                require.Equal(docs[0].Date, day1)
-                                                require.Equal(docs[0].NumSuccess, numSuccess)
-                                                require.Equal(docs[0].NumFailed, numFailed)
-                                        })
-                                },
-                                "2": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
-                                        require := require.New(t)
-                                        withCancelledContext(ctx, func(ctx context.Context) {
-                                                filter.StatsFilter.GroupNumDays = 2
-                                                filter.StatsFilter.BeforeDate = day2
-                                                docs, err := GetTaskReliabilityScores(filter)
-                                                require.NoError(err)
-                                                require.Len(docs, 1)
+						require.Equal(docs[0].Date, filter.StatsFilter.BeforeDate)
+						require.Equal(docs[0].NumSuccess, numSuccess)
+						require.Equal(docs[0].NumFailed, numFailed)
 
-                                                require.Equal(docs[0].Date, day1)
-                                                require.Equal(docs[0].NumSuccess, numSuccess*filter.StatsFilter.GroupNumDays)
-                                                require.Equal(docs[0].NumFailed, numFailed*filter.StatsFilter.GroupNumDays)
-                                        })
-                                },
-                                "7": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
-                                        require := require.New(t)
-                                        withCancelledContext(ctx, func(ctx context.Context) {
-                                                filter.StatsFilter.GroupNumDays = 7
-                                                filter.StatsFilter.BeforeDate = day1.Add(time.Duration(filter.StatsFilter.GroupNumDays-1) * 24 * time.Hour)
-                                                docs, err := GetTaskReliabilityScores(filter)
-                                                require.NoError(err)
-                                                require.Len(docs, 1)
+						last := len(docs) - 1
+						require.Equal(docs[last].Date, day1)
+						require.Equal(docs[last].NumSuccess, numSuccess)
+						require.Equal(docs[last].NumFailed, numFailed)
 
-                                                require.Equal(docs[0].Date, day1)
-                                                require.Equal(docs[0].NumSuccess, numSuccess*filter.StatsFilter.GroupNumDays)
-                                                require.Equal(docs[0].NumFailed, numFailed*filter.StatsFilter.GroupNumDays)
-                                        })
-                                },
-                                "28": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
-                                        require := require.New(t)
-                                        withCancelledContext(ctx, func(ctx context.Context) {
-                                                filter.StatsFilter.GroupNumDays = 28
-                                                filter.StatsFilter.BeforeDate = day1.Add(time.Duration(filter.StatsFilter.GroupNumDays-1) * 24 * time.Hour)
-                                                docs, err := GetTaskReliabilityScores(filter)
-                                                require.NoError(err)
-                                                require.Len(docs, 1)
+					})
+				},
+				"SortEarliestFirst": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
+					require := require.New(t)
+					withCancelledContext(ctx, func(ctx context.Context) {
+						duration := 7
+						filter.StatsFilter.Sort = stats.SortEarliestFirst
+						filter.StatsFilter.GroupNumDays = 1
+						filter.StatsFilter.BeforeDate = day1.Add(time.Duration(duration-1) * 24 * time.Hour)
+						docs, err := GetTaskReliabilityScores(filter)
+						require.NoError(err)
+						require.Len(docs, duration)
 
-                                                require.Equal(docs[0].Date, day1)
-                                                require.Equal(docs[0].NumSuccess, numSuccess*filter.StatsFilter.GroupNumDays)
-                                                require.Equal(docs[0].NumFailed, numFailed*filter.StatsFilter.GroupNumDays)
-                                        })
-                                },
-                        } {
-                                t.Run(testName, func(t *testing.T) {
-                                        withSetupAndTeardown(t, env, func() {
-                                                filter := commonSetup(ctx, t)
-                                                testCase(ctx, t, filter)
-                                        })
-                                })
-                        }
-                },
-                "Sort": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
-                        for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter){
-                                "SortLatestFirst": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
-                                        require := require.New(t)
-                                        withCancelledContext(ctx, func(ctx context.Context) {
-                                                duration := 7
-                                                filter.StatsFilter.Sort = stats.SortLatestFirst
-                                                filter.StatsFilter.GroupNumDays = 1
-                                                filter.StatsFilter.BeforeDate = day1.Add(time.Duration(duration-1) * 24 * time.Hour)
-                                                docs, err := GetTaskReliabilityScores(filter)
-                                                require.NoError(err)
-                                                require.Len(docs, duration)
+						require.Equal(docs[0].Date, day1)
+						require.Equal(docs[0].NumSuccess, numSuccess)
+						require.Equal(docs[0].NumFailed, numFailed)
 
-                                                require.Equal(docs[0].Date, filter.StatsFilter.BeforeDate)
-                                                require.Equal(docs[0].NumSuccess, numSuccess)
-                                                require.Equal(docs[0].NumFailed, numFailed)
+						last := len(docs) - 1
+						require.Equal(docs[last].Date, filter.StatsFilter.BeforeDate)
+						require.Equal(docs[last].NumSuccess, numSuccess)
+						require.Equal(docs[last].NumFailed, numFailed)
 
-                                                last := len(docs) - 1
-                                                require.Equal(docs[last].Date, day1)
-                                                require.Equal(docs[last].NumSuccess, numSuccess)
-                                                require.Equal(docs[last].NumFailed, numFailed)
+					})
+				},
+			} {
+				t.Run(testName, func(t *testing.T) {
+					withSetupAndTeardown(t, env, func() {
+						filter := commonSetup(ctx, t)
+						testCase(ctx, t, filter)
+					})
+				})
+			}
+		},
+		"DateRange": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
+			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter){
+				"1 Day": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
+					require := require.New(t)
+					withCancelledContext(ctx, func(ctx context.Context) {
+						docs, err := GetTaskReliabilityScores(filter)
+						require.NoError(err)
+						require.Len(docs, 1)
 
-                                        })
-                                },
-                                "SortEarliestFirst": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
-                                        require := require.New(t)
-                                        withCancelledContext(ctx, func(ctx context.Context) {
-                                                duration := 7
-                                                filter.StatsFilter.Sort = stats.SortEarliestFirst
-                                                filter.StatsFilter.GroupNumDays = 1
-                                                filter.StatsFilter.BeforeDate = day1.Add(time.Duration(duration-1) * 24 * time.Hour)
-                                                docs, err := GetTaskReliabilityScores(filter)
-                                                require.NoError(err)
-                                                require.Len(docs, duration)
+						require.Equal(docs[0].Date, day1)
+						require.Equal(docs[0].NumSuccess, numSuccess)
+						require.Equal(docs[0].NumFailed, numFailed)
+					})
+				},
+				"2 Days": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
+					require := require.New(t)
+					withCancelledContext(ctx, func(ctx context.Context) {
+						filter.StatsFilter.GroupNumDays = 1
+						filter.StatsFilter.BeforeDate = day2
+						docs, err := GetTaskReliabilityScores(filter)
+						require.NoError(err)
+						require.Len(docs, 2)
 
-                                                require.Equal(docs[0].Date, day1)
-                                                require.Equal(docs[0].NumSuccess, numSuccess)
-                                                require.Equal(docs[0].NumFailed, numFailed)
+						require.Equal(docs[0].Date, day1)
+						require.Equal(docs[0].NumSuccess, numSuccess)
+						require.Equal(docs[0].NumFailed, numFailed)
+						require.Equal(docs[1].Date, day2)
+						require.Equal(docs[1].NumSuccess, numSuccess)
+						require.Equal(docs[1].NumFailed, numFailed)
+					})
+				},
+				"7 Days": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
+					require := require.New(t)
+					withCancelledContext(ctx, func(ctx context.Context) {
+						filter.StatsFilter.GroupNumDays = 1
+						filter.StatsFilter.BeforeDate = day1.Add(6 * 24 * time.Hour)
+						docs, err := GetTaskReliabilityScores(filter)
+						require.NoError(err)
+						require.Len(docs, 7)
 
-                                                last := len(docs) - 1
-                                                require.Equal(docs[last].Date, filter.StatsFilter.BeforeDate)
-                                                require.Equal(docs[last].NumSuccess, numSuccess)
-                                                require.Equal(docs[last].NumFailed, numFailed)
+						require.Equal(docs[0].Date, day1)
+						require.Equal(docs[0].NumSuccess, numSuccess)
+						require.Equal(docs[0].NumFailed, numFailed)
 
-                                        })
-                                },
-                        } {
-                                t.Run(testName, func(t *testing.T) {
-                                        withSetupAndTeardown(t, env, func() {
-                                                filter := commonSetup(ctx, t)
-                                                testCase(ctx, t, filter)
-                                        })
-                                })
-                        }
-                },
-                "DateRange": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
-                        for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter){
-                                "1 Day": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
-                                        require := require.New(t)
-                                        withCancelledContext(ctx, func(ctx context.Context) {
-                                                docs, err := GetTaskReliabilityScores(filter)
-                                                require.NoError(err)
-                                                require.Len(docs, 1)
+						last := len(docs) - 1
+						require.Equal(docs[last].Date, filter.StatsFilter.BeforeDate)
+						require.Equal(docs[last].NumSuccess, numSuccess)
+						require.Equal(docs[last].NumFailed, numFailed)
 
-                                                require.Equal(docs[0].Date, day1)
-                                                require.Equal(docs[0].NumSuccess, numSuccess)
-                                                require.Equal(docs[0].NumFailed, numFailed)
-                                        })
-                                },
-                                "2 Days": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
-                                        require := require.New(t)
-                                        withCancelledContext(ctx, func(ctx context.Context) {
-                                                filter.StatsFilter.GroupNumDays = 1
-                                                filter.StatsFilter.BeforeDate = day2
-                                                docs, err := GetTaskReliabilityScores(filter)
-                                                require.NoError(err)
-                                                require.Len(docs, 2)
+					})
+				},
+				"28 Days": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
+					require := require.New(t)
+					withCancelledContext(ctx, func(ctx context.Context) {
+						filter.StatsFilter.GroupNumDays = 1
+						filter.StatsFilter.BeforeDate = day1.Add(27 * 24 * time.Hour)
+						docs, err := GetTaskReliabilityScores(filter)
+						require.NoError(err)
+						require.Len(docs, 28)
 
-                                                require.Equal(docs[0].Date, day1)
-                                                require.Equal(docs[0].NumSuccess, numSuccess)
-                                                require.Equal(docs[0].NumFailed, numFailed)
-                                                require.Equal(docs[1].Date, day2)
-                                                require.Equal(docs[1].NumSuccess, numSuccess)
-                                                require.Equal(docs[1].NumFailed, numFailed)
-                                        })
-                                },
-                                //<--
-                                "7 Days": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
-                                        require := require.New(t)
-                                        withCancelledContext(ctx, func(ctx context.Context) {
-                                                filter.StatsFilter.GroupNumDays = 1
-                                                filter.StatsFilter.BeforeDate = day1.Add(6 * 24 * time.Hour)
-                                                docs, err := GetTaskReliabilityScores(filter)
-                                                require.NoError(err)
-                                                require.Len(docs, 7)
+						require.Equal(docs[0].Date, day1)
+						require.Equal(docs[0].NumSuccess, numSuccess)
+						require.Equal(docs[0].NumFailed, numFailed)
 
-                                                require.Equal(docs[0].Date, day1)
-                                                require.Equal(docs[0].NumSuccess, numSuccess)
-                                                require.Equal(docs[0].NumFailed, numFailed)
+						last := len(docs) - 1
+						require.Equal(docs[last].Date, filter.StatsFilter.BeforeDate)
+						require.Equal(docs[last].NumSuccess, numSuccess)
+						require.Equal(docs[last].NumFailed, numFailed)
 
-                                                last := len(docs) - 1
-                                                require.Equal(docs[last].Date, filter.StatsFilter.BeforeDate)
-                                                require.Equal(docs[last].NumSuccess, numSuccess)
-                                                require.Equal(docs[last].NumFailed, numFailed)
+					})
+				},
+				"56 Days": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
+					require := require.New(t)
+					withCancelledContext(ctx, func(ctx context.Context) {
+						filter.StatsFilter.GroupNumDays = 56
+						filter.StatsFilter.BeforeDate = day1.Add(time.Duration(filter.StatsFilter.GroupNumDays-1) * 24 * time.Hour)
+						docs, err := GetTaskReliabilityScores(filter)
+						require.NoError(err)
+						require.Len(docs, 1)
 
-                                        })
-                                },
-                                //<--
-                                "28 Days": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
-                                        require := require.New(t)
-                                        withCancelledContext(ctx, func(ctx context.Context) {
-                                                filter.StatsFilter.GroupNumDays = 1
-                                                filter.StatsFilter.BeforeDate = day1.Add(27 * 24 * time.Hour)
-                                                docs, err := GetTaskReliabilityScores(filter)
-                                                require.NoError(err)
-                                                require.Len(docs, 28)
+						require.Equal(docs[0].Date, day1)
+						require.Equal(docs[0].NumSuccess, numSuccess*filter.StatsFilter.GroupNumDays)
+						require.Equal(docs[0].NumFailed, numFailed*filter.StatsFilter.GroupNumDays)
+					})
+				},
+			} {
+				t.Run(testName, func(t *testing.T) {
+					withSetupAndTeardown(t, env, func() {
+						filter := commonSetup(ctx, t)
+						testCase(ctx, t, filter)
+					})
+				})
+			}
+		},
+		// Test some common expected combinations.
+		"Combined": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
+			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter){
+				// Group by day for 1 day
+				"1 Day / Group 1": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
+					require := require.New(t)
+					withCancelledContext(ctx, func(ctx context.Context) {
+						docs, err := GetTaskReliabilityScores(filter)
+						require.NoError(err)
+						require.Len(docs, 1)
 
-                                                require.Equal(docs[0].Date, day1)
-                                                require.Equal(docs[0].NumSuccess, numSuccess)
-                                                require.Equal(docs[0].NumFailed, numFailed)
+						require.Equal(docs[0].Date, day1)
+						require.Equal(docs[0].NumSuccess, numSuccess)
+						require.Equal(docs[0].NumFailed, numFailed)
+					})
+				},
+				// group by day for a week newest first.
+				"7 Day / Group 1 ascending": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
+					require := require.New(t)
+					withCancelledContext(ctx, func(ctx context.Context) {
+						duration := 7
+						filter.StatsFilter.Sort = stats.SortLatestFirst
+						filter.StatsFilter.GroupNumDays = 1
+						filter.StatsFilter.BeforeDate = day1.Add(time.Duration(duration-1) * 24 * time.Hour)
+						docs, err := GetTaskReliabilityScores(filter)
+						require.NoError(err)
+						require.Len(docs, duration)
 
-                                                last := len(docs) - 1
-                                                require.Equal(docs[last].Date, filter.StatsFilter.BeforeDate)
-                                                require.Equal(docs[last].NumSuccess, numSuccess)
-                                                require.Equal(docs[last].NumFailed, numFailed)
+						require.Equal(docs[0].Date, filter.StatsFilter.BeforeDate)
+						require.Equal(docs[0].NumSuccess, numSuccess)
+						require.Equal(docs[0].NumFailed, numFailed)
 
-                                        })
-                                },
-                                "56 Days": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
-                                        require := require.New(t)
-                                        withCancelledContext(ctx, func(ctx context.Context) {
-                                                filter.StatsFilter.GroupNumDays = 56
-                                                filter.StatsFilter.BeforeDate = day1.Add(time.Duration(filter.StatsFilter.GroupNumDays-1) * 24 * time.Hour)
-                                                docs, err := GetTaskReliabilityScores(filter)
-                                                require.NoError(err)
-                                                require.Len(docs, 1)
+						last := len(docs) - 1
+						require.Equal(docs[last].Date, day1)
+						require.Equal(docs[last].NumSuccess, numSuccess)
+						require.Equal(docs[last].NumFailed, numFailed)
 
-                                                require.Equal(docs[0].Date, day1)
-                                                require.Equal(docs[0].NumSuccess, numSuccess*filter.StatsFilter.GroupNumDays)
-                                                require.Equal(docs[0].NumFailed, numFailed*filter.StatsFilter.GroupNumDays)
-                                        })
-                                },
-                        } {
-                                t.Run(testName, func(t *testing.T) {
-                                        withSetupAndTeardown(t, env, func() {
-                                                filter := commonSetup(ctx, t)
-                                                testCase(ctx, t, filter)
-                                        })
-                                })
-                        }
-                },
-                // Test some common expected combinations.
-                "Combined": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
-                        for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter){
-                                // Group by day for 1 day
-                                "1 Day / Group 1": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
-                                        require := require.New(t)
-                                        withCancelledContext(ctx, func(ctx context.Context) {
-                                                docs, err := GetTaskReliabilityScores(filter)
-                                                require.NoError(err)
-                                                require.Len(docs, 1)
+					})
+				},
+				// group by day for a week oldest first.
+				"7 Day / Group 1 descending": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
+					require := require.New(t)
+					withCancelledContext(ctx, func(ctx context.Context) {
+						duration := 7
+						filter.StatsFilter.Sort = stats.SortEarliestFirst
+						filter.StatsFilter.GroupNumDays = 1
+						filter.StatsFilter.BeforeDate = day1.Add(time.Duration(duration-1) * 24 * time.Hour)
+						docs, err := GetTaskReliabilityScores(filter)
+						require.NoError(err)
+						require.Len(docs, duration)
 
-                                                require.Equal(docs[0].Date, day1)
-                                                require.Equal(docs[0].NumSuccess, numSuccess)
-                                                require.Equal(docs[0].NumFailed, numFailed)
-                                        })
-                                },
-                                // group by day for a week newest first.
-                                "7 Day / Group 1 ascending": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
-                                        require := require.New(t)
-                                        withCancelledContext(ctx, func(ctx context.Context) {
-                                                duration := 7
-                                                filter.StatsFilter.Sort = stats.SortLatestFirst
-                                                filter.StatsFilter.GroupNumDays = 1
-                                                filter.StatsFilter.BeforeDate = day1.Add(time.Duration(duration-1) * 24 * time.Hour)
-                                                docs, err := GetTaskReliabilityScores(filter)
-                                                require.NoError(err)
-                                                require.Len(docs, duration)
+						require.Equal(docs[0].Date, day1)
+						require.Equal(docs[0].NumSuccess, numSuccess)
+						require.Equal(docs[0].NumFailed, numFailed)
 
-                                                require.Equal(docs[0].Date, filter.StatsFilter.BeforeDate)
-                                                require.Equal(docs[0].NumSuccess, numSuccess)
-                                                require.Equal(docs[0].NumFailed, numFailed)
+						last := len(docs) - 1
+						require.Equal(docs[last].Date, filter.StatsFilter.BeforeDate)
+						require.Equal(docs[last].NumSuccess, numSuccess)
+						require.Equal(docs[last].NumFailed, numFailed)
 
-                                                last := len(docs) - 1
-                                                require.Equal(docs[last].Date, day1)
-                                                require.Equal(docs[last].NumSuccess, numSuccess)
-                                                require.Equal(docs[last].NumFailed, numFailed)
+					})
+				},
+				// group by week for a month newest first.
+				"28 Day / Group 7": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
+					require := require.New(t)
+					withCancelledContext(ctx, func(ctx context.Context) {
+						duration := 28
+						filter.StatsFilter.GroupNumDays = 1
+						filter.StatsFilter.BeforeDate = day1.Add(time.Duration(duration-1) * 24 * time.Hour)
+						docs, err := GetTaskReliabilityScores(filter)
+						require.NoError(err)
+						require.Len(docs, duration)
 
-                                        })
-                                },
-                                // group by day for a week oldest first.
-                                "7 Day / Group 1 descending": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
-                                        require := require.New(t)
-                                        withCancelledContext(ctx, func(ctx context.Context) {
-                                                duration := 7
-                                                filter.StatsFilter.Sort = stats.SortEarliestFirst
-                                                filter.StatsFilter.GroupNumDays = 1
-                                                filter.StatsFilter.BeforeDate = day1.Add(time.Duration(duration-1) * 24 * time.Hour)
-                                                docs, err := GetTaskReliabilityScores(filter)
-                                                require.NoError(err)
-                                                require.Len(docs, duration)
+						require.Equal(docs[0].Date, day1)
+						require.Equal(docs[0].NumSuccess, numSuccess)
+						require.Equal(docs[0].NumFailed, numFailed)
 
-                                                require.Equal(docs[0].Date, day1)
-                                                require.Equal(docs[0].NumSuccess, numSuccess)
-                                                require.Equal(docs[0].NumFailed, numFailed)
+						last := len(docs) - 1
+						require.Equal(docs[last].Date, filter.StatsFilter.BeforeDate)
+						require.Equal(docs[last].NumSuccess, numSuccess)
+						require.Equal(docs[last].NumFailed, numFailed)
 
-                                                last := len(docs) - 1
-                                                require.Equal(docs[last].Date, filter.StatsFilter.BeforeDate)
-                                                require.Equal(docs[last].NumSuccess, numSuccess)
-                                                require.Equal(docs[last].NumFailed, numFailed)
+					})
+				},
+				// group by month for a month newest first.
+				"28 Day / Group 28": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
+					require := require.New(t)
+					withCancelledContext(ctx, func(ctx context.Context) {
+						filter.StatsFilter.GroupNumDays = 28
+						filter.StatsFilter.BeforeDate = day1.Add(time.Duration(filter.StatsFilter.GroupNumDays-1) * 24 * time.Hour)
+						docs, err := GetTaskReliabilityScores(filter)
+						require.NoError(err)
+						require.Len(docs, 1)
 
-                                        })
-                                },
-                                // group by week for a month newest first.
-                                "28 Day / Group 7": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
-                                        require := require.New(t)
-                                        withCancelledContext(ctx, func(ctx context.Context) {
-                                                duration := 28
-                                                filter.StatsFilter.GroupNumDays = 1
-                                                filter.StatsFilter.BeforeDate = day1.Add(time.Duration(duration-1) * 24 * time.Hour)
-                                                docs, err := GetTaskReliabilityScores(filter)
-                                                require.NoError(err)
-                                                require.Len(docs, duration)
+						require.Equal(docs[0].Date, day1)
+						require.Equal(docs[0].NumSuccess, numSuccess*filter.StatsFilter.GroupNumDays)
+						require.Equal(docs[0].NumFailed, numFailed*filter.StatsFilter.GroupNumDays)
+					})
+				},
+			} {
+				t.Run(testName, func(t *testing.T) {
+					withSetupAndTeardown(t, env, func() {
+						filter := commonSetup(ctx, t)
+						testCase(ctx, t, filter)
+					})
+				})
+			}
+		},
+	} {
+		t.Run(opName, func(t *testing.T) {
+			env, err := setupEnv(ctx)
+			require.NoError(t, err)
 
-                                                require.Equal(docs[0].Date, day1)
-                                                require.Equal(docs[0].NumSuccess, numSuccess)
-                                                require.Equal(docs[0].NumFailed, numFailed)
+			tctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			defer cancel()
 
-                                                last := len(docs) - 1
-                                                require.Equal(docs[last].Date, filter.StatsFilter.BeforeDate)
-                                                require.Equal(docs[last].NumSuccess, numSuccess)
-                                                require.Equal(docs[last].NumFailed, numFailed)
+			env.Settings().DomainName = "test"
+			localTime := time.Local
+			time.Local = nil
+			defer func() {
+				time.Local = localTime
+			}()
 
-                                        })
-                                },
-                                // group by month for a month newest first.
-                                "28 Day / Group 28": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
-                                        require := require.New(t)
-                                        withCancelledContext(ctx, func(ctx context.Context) {
-                                                filter.StatsFilter.GroupNumDays = 28
-                                                filter.StatsFilter.BeforeDate = day1.Add(time.Duration(filter.StatsFilter.GroupNumDays-1) * 24 * time.Hour)
-                                                docs, err := GetTaskReliabilityScores(filter)
-                                                require.NoError(err)
-                                                require.Len(docs, 1)
-
-                                                require.Equal(docs[0].Date, day1)
-                                                require.Equal(docs[0].NumSuccess, numSuccess*filter.StatsFilter.GroupNumDays)
-                                                require.Equal(docs[0].NumFailed, numFailed*filter.StatsFilter.GroupNumDays)
-                                        })
-                                },
-                        } {
-                                t.Run(testName, func(t *testing.T) {
-                                        withSetupAndTeardown(t, env, func() {
-                                                filter := commonSetup(ctx, t)
-                                                testCase(ctx, t, filter)
-                                        })
-                                })
-                        }
-                },
-        } {
-                t.Run(opName, func(t *testing.T) {
-                        env, err := setupEnv(ctx)
-                        require.NoError(t, err)
-
-                        tctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-                        defer cancel()
-
-                        env.Settings().DomainName = "test"
-                        localTime := time.Local
-                        time.Local = nil
-                        defer func() {
-                                time.Local = localTime
-                        }()
-
-                        opTests(tctx, t, env)
-                })
-        }
+			opTests(tctx, t, env)
+		})
+	}
 }
