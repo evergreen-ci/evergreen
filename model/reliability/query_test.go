@@ -291,7 +291,7 @@ func TestGetTaskStatsTwoDocuments(t *testing.T) {
 	assert.Equal(docs[1].SuccessRate, float64(.42))
 }
 
-func TestGetTaskReliability(t *testing.T) {
+func GetTaskReliability(t *testing.T) {
 	requesters := []string{
 		evergreen.PatchVersionRequester,
 		evergreen.GithubPRRequester,
