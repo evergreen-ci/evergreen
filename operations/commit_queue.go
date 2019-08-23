@@ -105,7 +105,7 @@ func mergeCommand() cli.Command {
 		Usage: "test and merge a feature branch",
 		Flags: mergeFlagSlices(addProjectFlag(), addLargeFlag(), addRefFlag(), addYesFlag(
 			cli.StringFlag{
-				Name:  resumeFlagName,
+				Name:  joinFlagNames(resumeFlagName, "r", patchFinalizeFlagName, "f"),
 				Usage: "resume testing a preexisting item with `ID`",
 			},
 			cli.BoolFlag{
