@@ -356,8 +356,8 @@ type DbTaskStatsId struct {
 	Date         time.Time `bson:"date"`
 }
 
-// dbTaskStats represents the daily_task_stats documents.
-type dbTaskStats struct {
+// DbTaskStats represents the daily_task_stats documents.
+type DbTaskStats struct {
 	Id                 DbTaskStatsId `bson:"_id"`
 	NumSuccess         int           `bson:"num_success"`
 	NumFailed          int           `bson:"num_failed"`
@@ -369,8 +369,8 @@ type dbTaskStats struct {
 	LastUpdate         time.Time     `bson:"last_update"`
 }
 
-func (d *dbTaskStats) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(d) }
-func (d *dbTaskStats) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, d) }
+func (d *DbTaskStats) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(d) }
+func (d *DbTaskStats) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, d) }
 
 var (
 	// BSON fields for the task stats id struct
@@ -382,15 +382,15 @@ var (
 	DbTaskStatsIdDateKey         = bsonutil.MustHaveTag(DbTaskStatsId{}, "Date")
 
 	// BSON fields for the test stats struct
-	DbTaskStatsIdKey                 = bsonutil.MustHaveTag(dbTaskStats{}, "Id")
-	DbTaskStatsNumSuccessKey         = bsonutil.MustHaveTag(dbTaskStats{}, "NumSuccess")
-	DbTaskStatsNumFailedKey          = bsonutil.MustHaveTag(dbTaskStats{}, "NumFailed")
-	DbTaskStatsNumTestFailedKey      = bsonutil.MustHaveTag(dbTaskStats{}, "NumTestFailed")
-	DbTaskStatsNumSetupFailedKey     = bsonutil.MustHaveTag(dbTaskStats{}, "NumSetupFailed")
-	DbTaskStatsNumSystemFailedKey    = bsonutil.MustHaveTag(dbTaskStats{}, "NumSystemFailed")
-	DbTaskStatsNumTimeoutKey         = bsonutil.MustHaveTag(dbTaskStats{}, "NumTimeout")
-	DbTaskStatsAvgDurationSuccessKey = bsonutil.MustHaveTag(dbTaskStats{}, "AvgDurationSuccess")
-	DbTaskStatsLastUpdateKey         = bsonutil.MustHaveTag(dbTaskStats{}, "LastUpdate")
+	DbTaskStatsIdKey                 = bsonutil.MustHaveTag(DbTaskStats{}, "Id")
+	DbTaskStatsNumSuccessKey         = bsonutil.MustHaveTag(DbTaskStats{}, "NumSuccess")
+	DbTaskStatsNumFailedKey          = bsonutil.MustHaveTag(DbTaskStats{}, "NumFailed")
+	DbTaskStatsNumTestFailedKey      = bsonutil.MustHaveTag(DbTaskStats{}, "NumTestFailed")
+	DbTaskStatsNumSetupFailedKey     = bsonutil.MustHaveTag(DbTaskStats{}, "NumSetupFailed")
+	DbTaskStatsNumSystemFailedKey    = bsonutil.MustHaveTag(DbTaskStats{}, "NumSystemFailed")
+	DbTaskStatsNumTimeoutKey         = bsonutil.MustHaveTag(DbTaskStats{}, "NumTimeout")
+	DbTaskStatsAvgDurationSuccessKey = bsonutil.MustHaveTag(DbTaskStats{}, "AvgDurationSuccess")
+	DbTaskStatsLastUpdateKey         = bsonutil.MustHaveTag(DbTaskStats{}, "LastUpdate")
 
 	// BSON dotted field names for task stats id elements
 	DbTaskStatsIdTaskNameKeyFull     = bsonutil.GetDottedKeyName(DbTaskStatsIdKey, DbTaskStatsIdTaskNameKey)
@@ -1095,8 +1095,8 @@ func GetHourlyTestDoc(id DbTestStatsId) (*dbTestStats, error) {
 	return &doc, err
 }
 
-func GetDailyTaskDoc(id DbTaskStatsId) (*dbTaskStats, error) {
-	doc := dbTaskStats{}
+func GetDailyTaskDoc(id DbTaskStatsId) (*DbTaskStats, error) {
+	doc := DbTaskStats{}
 	err := db.FindOne(DailyTaskStatsCollection, bson.M{"_id": id}, db.NoProjection, db.NoSort, &doc)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
