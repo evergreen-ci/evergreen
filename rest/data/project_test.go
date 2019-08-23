@@ -255,8 +255,7 @@ func (s *ProjectConnectorGetSuite) TearDownSuite() {
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchTooManyAsc() {
-	isAuthenticated := false
-	projects, err := s.ctx.FindProjects("", 7, 1, isAuthenticated)
+	projects, err := s.ctx.FindProjects("", 7, 1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 3)
@@ -271,8 +270,7 @@ func (s *ProjectConnectorGetSuite) TestFetchTooManyAsc() {
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchTooManyAscAuth() {
-	isAuthenticated := true
-	projects, err := s.ctx.FindProjects("", 7, 1, isAuthenticated)
+	projects, err := s.ctx.FindProjects("", 7, 1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 6)
@@ -287,8 +285,7 @@ func (s *ProjectConnectorGetSuite) TestFetchTooManyAscAuth() {
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchTooManyDesc() {
-	isAuthenticated := false
-	projects, err := s.ctx.FindProjects("zzz", 7, -1, isAuthenticated)
+	projects, err := s.ctx.FindProjects("zzz", 7, -1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 3)
@@ -303,8 +300,7 @@ func (s *ProjectConnectorGetSuite) TestFetchTooManyDesc() {
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchTooManyDescAuth() {
-	isAuthenticated := true
-	projects, err := s.ctx.FindProjects("zzz", 7, -1, isAuthenticated)
+	projects, err := s.ctx.FindProjects("zzz", 7, -1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 6)
@@ -319,8 +315,7 @@ func (s *ProjectConnectorGetSuite) TestFetchTooManyDescAuth() {
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchExactNumber() {
-	isAuthenticated := false
-	projects, err := s.ctx.FindProjects("", 3, 1, isAuthenticated)
+	projects, err := s.ctx.FindProjects("", 3, 1)
 	s.NoError(err)
 	s.NotNil(projects)
 
@@ -335,8 +330,7 @@ func (s *ProjectConnectorGetSuite) TestFetchExactNumber() {
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchExactNumberAuth() {
-	isAuthenticated := true
-	projects, err := s.ctx.FindProjects("", 6, 1, isAuthenticated)
+	projects, err := s.ctx.FindProjects("", 6, 1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 6)
@@ -351,8 +345,7 @@ func (s *ProjectConnectorGetSuite) TestFetchExactNumberAuth() {
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchTooFewAsc() {
-	isAuthenticated := false
-	projects, err := s.ctx.FindProjects("", 2, 1, isAuthenticated)
+	projects, err := s.ctx.FindProjects("", 2, 1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 2)
@@ -365,8 +358,7 @@ func (s *ProjectConnectorGetSuite) TestFetchTooFewAsc() {
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchTooFewAscAuth() {
-	isAuthenticated := true
-	projects, err := s.ctx.FindProjects("", 2, 1, isAuthenticated)
+	projects, err := s.ctx.FindProjects("", 2, 1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 2)
@@ -379,8 +371,7 @@ func (s *ProjectConnectorGetSuite) TestFetchTooFewAscAuth() {
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchTooFewDesc() {
-	isAuthenticated := false
-	projects, err := s.ctx.FindProjects("zzz", 2, -1, isAuthenticated)
+	projects, err := s.ctx.FindProjects("zzz", 2, -1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 2)
@@ -393,8 +384,7 @@ func (s *ProjectConnectorGetSuite) TestFetchTooFewDesc() {
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchTooFewDescAuth() {
-	isAuthenticated := true
-	projects, err := s.ctx.FindProjects("zzz", 2, -1, isAuthenticated)
+	projects, err := s.ctx.FindProjects("zzz", 2, -1)
 	s.NoError(err)
 	s.NotNil(projects)
 
@@ -407,8 +397,7 @@ func (s *ProjectConnectorGetSuite) TestFetchTooFewDescAuth() {
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchKeyWithinBoundAsc() {
-	isAuthenticated := false
-	projects, err := s.ctx.FindProjects("projectB", 1, 1, isAuthenticated)
+	projects, err := s.ctx.FindProjects("projectB", 1, 1)
 	s.NoError(err)
 	s.Len(projects, 1)
 	s.Equal("projectD", projects[0].Identifier)
@@ -416,8 +405,7 @@ func (s *ProjectConnectorGetSuite) TestFetchKeyWithinBoundAsc() {
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchKeyWithinBoundAscAuth() {
-	isAuthenticated := true
-	projects, err := s.ctx.FindProjects("projectB", 1, 1, isAuthenticated)
+	projects, err := s.ctx.FindProjects("projectB", 1, 1)
 	s.NoError(err)
 	s.Len(projects, 1)
 	s.Equal("projectB", projects[0].Identifier)
@@ -425,8 +413,7 @@ func (s *ProjectConnectorGetSuite) TestFetchKeyWithinBoundAscAuth() {
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchKeyWithinBoundDesc() {
-	isAuthenticated := false
-	projects, err := s.ctx.FindProjects("projectD", 1, -1, isAuthenticated)
+	projects, err := s.ctx.FindProjects("projectD", 1, -1)
 	s.NoError(err)
 	s.Len(projects, 1)
 	s.Equal("projectA", projects[0].Identifier)
@@ -434,8 +421,7 @@ func (s *ProjectConnectorGetSuite) TestFetchKeyWithinBoundDesc() {
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchKeyWithinBoundDescAuth() {
-	isAuthenticated := true
-	projects, err := s.ctx.FindProjects("projectD", 1, -1, isAuthenticated)
+	projects, err := s.ctx.FindProjects("projectD", 1, -1)
 	s.NoError(err)
 	s.Len(projects, 1)
 	s.Equal("projectC", projects[0].Identifier)
@@ -443,15 +429,13 @@ func (s *ProjectConnectorGetSuite) TestFetchKeyWithinBoundDescAuth() {
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchKeyOutOfBoundAsc() {
-	isAuthenticated := false
-	projects, err := s.ctx.FindProjects("zzz", 1, 1, isAuthenticated)
+	projects, err := s.ctx.FindProjects("zzz", 1, 1)
 	s.NoError(err)
 	s.Len(projects, 0)
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchKeyOutOfBoundDesc() {
-	isAuthenticated := false
-	projects, err := s.ctx.FindProjects("aaa", 1, -1, isAuthenticated)
+	projects, err := s.ctx.FindProjects("aaa", 1, -1)
 	s.NoError(err)
 	s.Len(projects, 0)
 }
