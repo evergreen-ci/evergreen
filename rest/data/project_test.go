@@ -258,90 +258,21 @@ func (s *ProjectConnectorGetSuite) TestFetchTooManyAsc() {
 	projects, err := s.ctx.FindProjects("", 7, 1)
 	s.NoError(err)
 	s.NotNil(projects)
-	s.Len(projects, 3)
-
-	s.Equal("projectA", projects[0].Identifier)
-	s.Equal("projectD", projects[1].Identifier)
-	s.Equal("projectE", projects[2].Identifier)
-
-	s.False(projects[0].Private)
-	s.False(projects[1].Private)
-	s.False(projects[2].Private)
-}
-
-func (s *ProjectConnectorGetSuite) TestFetchTooManyAscAuth() {
-	projects, err := s.ctx.FindProjects("", 7, 1)
-	s.NoError(err)
-	s.NotNil(projects)
 	s.Len(projects, 6)
-
-	s.Equal("projectA", projects[0].Identifier)
-	s.Equal("projectB", projects[1].Identifier)
-	s.Equal("projectC", projects[2].Identifier)
-
-	s.False(projects[0].Private)
-	s.True(projects[1].Private)
-	s.True(projects[2].Private)
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchTooManyDesc() {
 	projects, err := s.ctx.FindProjects("zzz", 7, -1)
 	s.NoError(err)
 	s.NotNil(projects)
-	s.Len(projects, 3)
-
-	s.Equal("projectE", projects[0].Identifier)
-	s.Equal("projectD", projects[1].Identifier)
-	s.Equal("projectA", projects[2].Identifier)
-
-	s.False(projects[0].Private)
-	s.False(projects[1].Private)
-	s.False(projects[2].Private)
-}
-
-func (s *ProjectConnectorGetSuite) TestFetchTooManyDescAuth() {
-	projects, err := s.ctx.FindProjects("zzz", 7, -1)
-	s.NoError(err)
-	s.NotNil(projects)
 	s.Len(projects, 6)
-
-	s.Equal("projectF", projects[0].Identifier)
-	s.Equal("projectE", projects[1].Identifier)
-	s.Equal("projectD", projects[2].Identifier)
-
-	s.True(projects[0].Private)
-	s.False(projects[1].Private)
-	s.False(projects[2].Private)
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchExactNumber() {
 	projects, err := s.ctx.FindProjects("", 3, 1)
 	s.NoError(err)
 	s.NotNil(projects)
-
 	s.Len(projects, 3)
-	s.Equal("projectA", projects[0].Identifier)
-	s.Equal("projectD", projects[1].Identifier)
-	s.Equal("projectE", projects[2].Identifier)
-
-	s.False(projects[0].Private)
-	s.False(projects[1].Private)
-	s.False(projects[2].Private)
-}
-
-func (s *ProjectConnectorGetSuite) TestFetchExactNumberAuth() {
-	projects, err := s.ctx.FindProjects("", 6, 1)
-	s.NoError(err)
-	s.NotNil(projects)
-	s.Len(projects, 6)
-
-	s.Equal("projectA", projects[0].Identifier)
-	s.Equal("projectB", projects[1].Identifier)
-	s.Equal("projectC", projects[2].Identifier)
-
-	s.False(projects[0].Private)
-	s.True(projects[1].Private)
-	s.True(projects[2].Private)
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchTooFewAsc() {
@@ -349,25 +280,6 @@ func (s *ProjectConnectorGetSuite) TestFetchTooFewAsc() {
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 2)
-
-	s.Equal("projectA", projects[0].Identifier)
-	s.Equal("projectD", projects[1].Identifier)
-
-	s.False(projects[0].Private)
-	s.False(projects[1].Private)
-}
-
-func (s *ProjectConnectorGetSuite) TestFetchTooFewAscAuth() {
-	projects, err := s.ctx.FindProjects("", 2, 1)
-	s.NoError(err)
-	s.NotNil(projects)
-	s.Len(projects, 2)
-
-	s.Equal("projectA", projects[0].Identifier)
-	s.Equal("projectB", projects[1].Identifier)
-
-	s.False(projects[0].Private)
-	s.True(projects[1].Private)
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchTooFewDesc() {
@@ -375,57 +287,18 @@ func (s *ProjectConnectorGetSuite) TestFetchTooFewDesc() {
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 2)
-
-	s.Equal("projectE", projects[0].Identifier)
-	s.Equal("projectD", projects[1].Identifier)
-
-	s.False(projects[0].Private)
-	s.False(projects[1].Private)
-}
-
-func (s *ProjectConnectorGetSuite) TestFetchTooFewDescAuth() {
-	projects, err := s.ctx.FindProjects("zzz", 2, -1)
-	s.NoError(err)
-	s.NotNil(projects)
-
-	s.Len(projects, 2)
-	s.Equal("projectF", projects[0].Identifier)
-	s.Equal("projectE", projects[1].Identifier)
-
-	s.True(projects[0].Private)
-	s.False(projects[1].Private)
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchKeyWithinBoundAsc() {
 	projects, err := s.ctx.FindProjects("projectB", 1, 1)
 	s.NoError(err)
 	s.Len(projects, 1)
-	s.Equal("projectD", projects[0].Identifier)
-	s.False(projects[0].Private)
-}
-
-func (s *ProjectConnectorGetSuite) TestFetchKeyWithinBoundAscAuth() {
-	projects, err := s.ctx.FindProjects("projectB", 1, 1)
-	s.NoError(err)
-	s.Len(projects, 1)
-	s.Equal("projectB", projects[0].Identifier)
-	s.True(projects[0].Private)
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchKeyWithinBoundDesc() {
 	projects, err := s.ctx.FindProjects("projectD", 1, -1)
 	s.NoError(err)
 	s.Len(projects, 1)
-	s.Equal("projectA", projects[0].Identifier)
-	s.False(projects[0].Private)
-}
-
-func (s *ProjectConnectorGetSuite) TestFetchKeyWithinBoundDescAuth() {
-	projects, err := s.ctx.FindProjects("projectD", 1, -1)
-	s.NoError(err)
-	s.Len(projects, 1)
-	s.Equal("projectC", projects[0].Identifier)
-	s.True(projects[0].Private)
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchKeyOutOfBoundAsc() {
@@ -454,7 +327,6 @@ func (s *ProjectConnectorGetSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBr
 	projRef, err = s.ctx.GetProjectWithCommitQueueByOwnerRepoAndBranch("evergreen-ci", "evergreen", "master")
 	s.NoError(err)
 	s.NotNil(projRef)
-	s.Equal("projectB", projRef.Identifier)
 }
 
 func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
