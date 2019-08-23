@@ -614,6 +614,11 @@ func TestUpdateHostRunningTask(t *testing.T) {
 			_, err := h.UpdateRunningTask(&task.Task{})
 			So(err, ShouldNotBeNil)
 		})
+		Convey("updating the running task when the running task doesn't match the db should error", func() {
+			h.RunningTask = "intervening_task"
+			_, err := h.UpdateRunningTask(&task.Task{Id: oldTaskId})
+			So(err, ShouldNotBeNil)
+		})
 	})
 }
 
