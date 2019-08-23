@@ -413,12 +413,9 @@ func FindPeriodicProjects() ([]ProjectRef, error) {
 
 // FindProjectRefs returns limit refs starting at project identifier key
 // in the sortDir direction
-func FindProjectRefs(key string, limit int, sortDir int, isAuthenticated bool) ([]ProjectRef, error) {
+func FindProjectRefs(key string, limit int, sortDir int) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	filter := bson.M{}
-	if !isAuthenticated {
-		filter[ProjectRefPrivateKey] = false
-	}
 	sortSpec := ProjectIdentifierKey
 
 	if sortDir < 0 {

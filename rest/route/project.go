@@ -58,12 +58,7 @@ func (p *projectGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *projectGetHandler) Run(ctx context.Context) gimlet.Responder {
-	isAuthenticated := false
-	if p.user != nil {
-		isAuthenticated = true
-	}
-
-	projects, err := p.sc.FindProjects(p.key, p.limit+1, 1, isAuthenticated)
+	projects, err := p.sc.FindProjects(p.key, p.limit+1, 1)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}

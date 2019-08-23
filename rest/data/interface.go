@@ -100,7 +100,7 @@ type Connector interface {
 	// UpdateProjectRevision updates the given project's revision
 	UpdateProjectRevision(string, string) error
 	// FindProjects is a method to find projects as ordered by name
-	FindProjects(string, int, int, bool) ([]model.ProjectRef, error)
+	FindProjects(string, int, int) ([]model.ProjectRef, error)
 	// FindProjectByBranch is a method to find the projectref given a branch name.
 	FindProjectByBranch(string) (*model.ProjectRef, error)
 	GetProjectWithCommitQueueByOwnerRepoAndBranch(string, string, string) (*model.ProjectRef, error)
