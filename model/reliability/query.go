@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/stats"
-        "github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -34,30 +34,30 @@ type TaskReliabilityFilter struct {
 // ValidateForTaskReliability validates that the StartAt struct is valid for use with test stats.
 func (f *TaskReliabilityFilter) ValidateForTaskReliability() error {
 	catcher := grip.NewBasicCatcher()
-        catcher.Add(f.ValidateCommon())
+	catcher.Add(f.ValidateCommon())
 
-        if !f.AfterDate.Equal(util.GetUTCDay(f.AfterDate)) {
-                catcher.New("Invalid AfterDate value")
-        }
-        if !f.BeforeDate.Equal(util.GetUTCDay(f.BeforeDate)) {
-                catcher.New("Invalid BeforeDate value")
-        }
-        if f.BeforeDate.Before(f.AfterDate) {
-                catcher.New("Invalid AfterDate/BeforeDate values")
-        }
+	if !f.AfterDate.Equal(util.GetUTCDay(f.AfterDate)) {
+		catcher.New("Invalid AfterDate value")
+	}
+	if !f.BeforeDate.Equal(util.GetUTCDay(f.BeforeDate)) {
+		catcher.New("Invalid BeforeDate value")
+	}
+	if f.BeforeDate.Before(f.AfterDate) {
+		catcher.New("Invalid AfterDate/BeforeDate values")
+	}
 
-        if f.Limit > MaxQueryLimit || f.Limit <= 0 {
-                catcher.New("Invalid Limit value")
-        }
+	if f.Limit > MaxQueryLimit || f.Limit <= 0 {
+		catcher.New("Invalid Limit value")
+	}
 
-        if f.Significance > MaxSignificanceLimit || f.Significance < MinSignificanceLimit {
-                catcher.New("Invalid Significance value")
-        }
+	if f.Significance > MaxSignificanceLimit || f.Significance < MinSignificanceLimit {
+		catcher.New("Invalid Significance value")
+	}
 
-        if len(f.Tasks) == 0 {
-                catcher.New("Missing Tasks values")
-        }
-        return catcher.Resolve()
+	if len(f.Tasks) == 0 {
+		catcher.New("Missing Tasks values")
+	}
+	return catcher.Resolve()
 }
 
 //////////////////////////////
