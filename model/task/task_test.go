@@ -1224,7 +1224,7 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 		assert.NoError(task.Insert())
 	}
 
-	assert.NoError(tasks[0].UpdateBlockedDependencies(false))
+	assert.NoError(tasks[0].UpdateBlockedDependencies())
 	dbTask1, err := FindOneId(tasks[1].Id)
 	assert.NoError(err)
 	assert.True(dbTask1.DependsOn[0].Unattainable)
@@ -1310,7 +1310,7 @@ func TestFindAllUnmarkedBlockedDependencies(t *testing.T) {
 			DependsOn: []Dependency{
 				{
 					TaskId: "t1",
-					Status: "",
+					Status: evergreen.TaskSucceeded,
 				},
 			},
 		},
@@ -1328,7 +1328,7 @@ func TestFindAllUnmarkedBlockedDependencies(t *testing.T) {
 			DependsOn: []Dependency{
 				{
 					TaskId:       "t1",
-					Status:       "",
+					Status:       evergreen.TaskSucceeded,
 					Unattainable: true,
 				},
 			},
@@ -1342,7 +1342,7 @@ func TestFindAllUnmarkedBlockedDependencies(t *testing.T) {
 				},
 				{
 					TaskId: "t2",
-					Status: "",
+					Status: evergreen.TaskSucceeded,
 				},
 			},
 		},
@@ -1351,13 +1351,9 @@ func TestFindAllUnmarkedBlockedDependencies(t *testing.T) {
 		assert.NoError(task.Insert())
 	}
 
-	deps, err := t1.FindAllUnmarkedBlockedDependencies(false)
+	deps, err := t1.findAllUnmarkedBlockedDependencies()
 	assert.NoError(err)
 	assert.Len(deps, 1)
-
-	deps, err = t1.FindAllUnmarkedBlockedDependencies(true)
-	assert.NoError(err)
-	assert.Len(deps, 3)
 }
 
 func TestFindAllMarkedUnattainableDependencies(t *testing.T) {

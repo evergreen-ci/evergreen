@@ -1072,6 +1072,13 @@ func (t *Task) MarkUnscheduled() error {
 }
 
 func (t *Task) MarkUnattainableDependency(dependency *Task, unattainable bool) error {
+	for i := range t.DependsOn {
+		if t.DependsOn[i].TaskId == dependency.Id {
+			t.DependsOn[i].Unattainable = unattainable
+			break
+		}
+	}
+
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
@@ -1763,11 +1770,8 @@ func (t *Task) IsBlockedDisplayTask() bool {
 	return blockedState == taskBlocked
 }
 
-func (t *Task) FindAllUnmarkedBlockedDependencies(blocked bool) ([]Task, error) {
-	okStatusSet := []string{AllStatuses}
-	if !blocked {
-		okStatusSet = append(okStatusSet, t.Status)
-	}
+func (t *Task) findAllUnmarkedBlockedDependencies() ([]Task, error) {
+	okStatusSet := []string{AllStatuses, t.Status}
 	query := db.Query(bson.M{
 		DependsOnKey: bson.M{"$elemMatch": bson.M{
 			DependencyTaskIdKey:       t.Id,
@@ -1779,8 +1783,10 @@ func (t *Task) FindAllUnmarkedBlockedDependencies(blocked bool) ([]Task, error) 
 	return FindAll(query)
 }
 
-func (t *Task) UpdateBlockedDependencies(blocked bool) error {
-	dependentTasks, err := t.FindAllUnmarkedBlockedDependencies(blocked)
+// UpdateBlockedDependencies traverses the dependency graph and recursively sets each
+// parent dependency as unattainable in depending tasks.
+func (t *Task) UpdateBlockedDependencies() error {
+	dependentTasks, err := t.findAllUnmarkedBlockedDependencies()
 	if err != nil {
 		return errors.Wrapf(err, "can't get tasks depending on task '%s'", t.Id)
 	}
@@ -1789,7 +1795,7 @@ func (t *Task) UpdateBlockedDependencies(blocked bool) error {
 		if err = dependentTask.MarkUnattainableDependency(t, true); err != nil {
 			return errors.Wrap(err, "error marking dependency unattainable")
 		}
-		return errors.WithStack(dependentTask.UpdateBlockedDependencies(true))
+		return errors.WithStack(dependentTask.UpdateBlockedDependencies())
 	}
 	return nil
 }
