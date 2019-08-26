@@ -14,7 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/credentials"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	stestutil "github.com/evergreen-ci/evergreen/service/testutil"
+	"github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	jaspercli "github.com/mongodb/jasper/cli"
@@ -29,7 +29,7 @@ func setupJasperService(ctx context.Context, env *mock.Environment, mngr *jasper
 	if _, err := h.Upsert(); err != nil {
 		return nil, errors.WithStack(err)
 	}
-	port := stestutil.NextPort()
+	port := testutil.NextPort()
 	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", port))
 	if err != nil {
 		return nil, errors.WithStack(err)
