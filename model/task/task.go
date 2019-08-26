@@ -1800,7 +1800,7 @@ func (t *Task) UpdateBlockedDependencies() error {
 	return nil
 }
 
-func (t *Task) FindAllMarkedUnattainableDependencies() ([]Task, error) {
+func (t *Task) findAllMarkedUnattainableDependencies() ([]Task, error) {
 	query := db.Query(bson.M{
 		DependsOnKey: bson.M{"$elemMatch": bson.M{
 			DependencyTaskIdKey:       t.Id,
@@ -1812,7 +1812,7 @@ func (t *Task) FindAllMarkedUnattainableDependencies() ([]Task, error) {
 }
 
 func (t *Task) UpdateUnblockedDependencies() error {
-	blockedTasks, err := t.FindAllMarkedUnattainableDependencies()
+	blockedTasks, err := t.findAllMarkedUnattainableDependencies()
 	if err != nil {
 		return errors.Wrap(err, "can't get dependencies marked unattainable")
 	}

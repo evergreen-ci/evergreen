@@ -1389,7 +1389,7 @@ func TestFindAllMarkedUnattainableDependencies(t *testing.T) {
 		assert.NoError(task.Insert())
 	}
 
-	unattainableTasks, err := t1.FindAllMarkedUnattainableDependencies()
+	unattainableTasks, err := t1.findAllMarkedUnattainableDependencies()
 	assert.NoError(err)
 	assert.Len(unattainableTasks, 1)
 }
