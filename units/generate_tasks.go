@@ -55,6 +55,7 @@ func makeGenerateTaskJob() *generateTasksJob {
 func NewGenerateTasksJob(id string, attempt int) amboy.Job {
 	j := makeGenerateTaskJob()
 	j.TaskID = id
+	j.Attempt = attempt
 
 	j.SetID(fmt.Sprintf("%s-%s-%d", generateTasksJobName, id, attempt))
 	return j
