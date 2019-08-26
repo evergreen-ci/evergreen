@@ -5,11 +5,9 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"runtime"
 	"testing"
 
-	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,29 +44,25 @@ func TestCLIRemote(t *testing.T) {
 	} {
 		t.Run(remoteType, func(t *testing.T) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, c *cli.Context){
-				"ConfigureCachePasses": func(ctx context.Context, t *testing.T, c *cli.Context) {
+				"ConfigureCacheSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context) {
 					input, err := json.Marshal(jasper.CacheOptions{})
 					require.NoError(t, err)
 					resp := &OutcomeResponse{}
 					require.NoError(t, execCLICommandInputOutput(t, c, remoteConfigureCache(), input, resp))
 					assert.True(t, resp.Successful())
 				},
-				"DownloadFilePasses": func(ctx context.Context, t *testing.T, c *cli.Context) {
-					cwd, err := os.Getwd()
-					require.NoError(t, err)
-
-					tmpFile, err := ioutil.TempFile(filepath.Join(filepath.Dir(cwd), "build"), "out.txt")
+				"DownloadFileSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context) {
+					tmpFile, err := ioutil.TempFile(buildDir(t), "out.txt")
 					require.NoError(t, err)
 					defer func() {
-						require.NoError(t, tmpFile.Close())
-						os.Remove(tmpFile.Name())
+						assert.NoError(t, tmpFile.Close())
+						assert.NoError(t, os.RemoveAll(tmpFile.Name()))
 					}()
 
 					input, err := json.Marshal(jasper.DownloadInfo{
 						URL:  "https://example.com",
 						Path: tmpFile.Name(),
 					})
-					grip.Infof("tmpfile name = %s", tmpFile.Name())
 					require.NoError(t, err)
 
 					resp := &OutcomeResponse{}
@@ -78,11 +72,8 @@ func TestCLIRemote(t *testing.T) {
 					require.NoError(t, err)
 					assert.NotZero(t, info.Size)
 				},
-				"DownloadMongoDBPasses": func(ctx context.Context, t *testing.T, c *cli.Context) {
-					cwd, err := os.Getwd()
-					require.NoError(t, err)
-
-					tmpDir, err := ioutil.TempDir(filepath.Join(filepath.Dir(cwd), "build"), "out")
+				"DownloadMongoDBSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context) {
+					tmpDir, err := ioutil.TempDir(buildDir(t), "out")
 					require.NoError(t, err)
 					defer func() {
 						assert.NoError(t, os.RemoveAll(tmpDir))
@@ -102,7 +93,7 @@ func TestCLIRemote(t *testing.T) {
 					require.NoError(t, execCLICommandInputOutput(t, c, remoteGetBuildloggerURLs(), input, resp))
 					assert.False(t, resp.Successful())
 				},
-				"GetLogStreamPasses": func(ctx context.Context, t *testing.T, c *cli.Context) {
+				"GetLogStreamSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context) {
 					opts := trueCreateOpts()
 					opts.Output.Loggers = []jasper.Logger{jasper.NewInMemoryLogger(10)}
 					createInput, err := json.Marshal(opts)
@@ -116,6 +107,27 @@ func TestCLIRemote(t *testing.T) {
 					require.NoError(t, execCLICommandInputOutput(t, c, remoteGetLogStream(), input, resp))
 
 					assert.True(t, resp.Successful())
+				},
+				"WriteFileSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context) {
+					tmpFile, err := ioutil.TempFile(buildDir(t), "write_file")
+					require.NoError(t, err)
+					defer func() {
+						assert.NoError(t, tmpFile.Close())
+						assert.NoError(t, os.RemoveAll(tmpFile.Name()))
+					}()
+
+					info := jasper.WriteFileInfo{Path: tmpFile.Name(), Content: []byte("foo")}
+					input, err := json.Marshal(info)
+					require.NoError(t, err)
+					resp := &OutcomeResponse{}
+
+					require.NoError(t, execCLICommandInputOutput(t, c, remoteWriteFile(), input, resp))
+
+					assert.True(t, resp.Successful())
+
+					data, err := ioutil.ReadFile(info.Path)
+					require.NoError(t, err)
+					assert.Equal(t, info.Content, data)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {

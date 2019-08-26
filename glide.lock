@@ -114,7 +114,7 @@ imports:
   - name: github.com/mongodb/anser
     version: c7518f4c967d32231c92683c8c967307d5de5e5c
   - name: github.com/mongodb/amboy
-    version: 11ed5e9e8137c9a4d0f9b9b0626d564f6ea9b949
+    version: fd4248208c6bd99bc3793b02c8b338dd4fb560cc
   - name: github.com/evergreen-ci/gimlet
     version: 2174a9b1266e1b45c99cc80e00ccc8444c84ad38
   - name: github.com/evergreen-ci/shrub
@@ -122,7 +122,7 @@ imports:
   - name: github.com/evergreen-ci/pail
     version: 7b2f8e0b2d972ca621cad3777d68276a54da13d0
   - name: github.com/mongodb/jasper
-    version: a356ec7a64a3b1a5f4a9c8733ecb6e6656e598fd
+    version: 4fcfe07c551a7d1c6b47be9d3cc5fb240546e2c8
   - name: go.mongodb.org/mongo-driver
     version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86
 

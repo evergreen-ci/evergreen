@@ -2,7 +2,6 @@ package queue
 
 import (
 	"context"
-	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
@@ -22,7 +21,6 @@ type priorityDriver struct {
 	name    string
 	storage *priorityStorage
 	closer  context.CancelFunc
-	LockManager
 }
 
 // NewPriorityDriver returns an initialized Priority Driver instances.
@@ -47,8 +45,6 @@ func (p *priorityDriver) Open(ctx context.Context) error {
 
 	_, cancel := context.WithCancel(ctx)
 	p.closer = cancel
-	p.LockManager = NewLockManager(ctx, p)
-
 	return nil
 }
 
@@ -82,26 +78,6 @@ func (p *priorityDriver) Save(_ context.Context, j amboy.Job) error {
 // Put saves a new job returning an error if that job already exists.
 func (p *priorityDriver) Put(_ context.Context, j amboy.Job) error {
 	return errors.WithStack(p.storage.Insert(j))
-}
-
-// SaveStatus persists only the status document in the job in the
-// persistence layer. If the job does not exist, this method produces
-// an error.
-func (p *priorityDriver) SaveStatus(ctx context.Context, j amboy.Job, stat amboy.JobStatusInfo) error {
-	job, err := p.Get(ctx, j.ID())
-	if err != nil {
-		return errors.Wrap(err, "problem saving status")
-	}
-
-	stat.ModificationTime = time.Now()
-	stat.ModificationCount++
-
-	job.SetStatus(stat)
-	if err := p.Save(ctx, job); err != nil {
-		return errors.Wrap(err, "problem saving status")
-	}
-
-	return nil
 }
 
 // Jobs returns an iterator of all Job objects tracked by the Driver.

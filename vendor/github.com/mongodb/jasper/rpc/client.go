@@ -7,6 +7,7 @@ import (
 	"syscall"
 
 	empty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	internal "github.com/mongodb/jasper/rpc/internal"
 	"github.com/pkg/errors"
@@ -72,37 +73,33 @@ func newRPCClient(cc *grpc.ClientConn) jasper.RemoteClient {
 	}
 }
 
-func (m *rpcClient) CloseConnection() error {
-	return m.clientCloser()
-}
-
-func (m *rpcClient) ID() string {
-	resp, err := m.client.ID(context.Background(), &empty.Empty{})
+func (c *rpcClient) ID() string {
+	resp, err := c.client.ID(context.Background(), &empty.Empty{})
 	if err != nil {
 		return ""
 	}
 	return resp.Value
 }
 
-func (m *rpcClient) CreateProcess(ctx context.Context, opts *jasper.CreateOptions) (jasper.Process, error) {
-	proc, err := m.client.Create(ctx, internal.ConvertCreateOptions(opts))
+func (c *rpcClient) CreateProcess(ctx context.Context, opts *jasper.CreateOptions) (jasper.Process, error) {
+	proc, err := c.client.Create(ctx, internal.ConvertCreateOptions(opts))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	return &rpcProcess{client: m.client, info: proc}, nil
+	return &rpcProcess{client: c.client, info: proc}, nil
 }
 
-func (m *rpcClient) CreateCommand(ctx context.Context) *jasper.Command {
-	return jasper.NewCommand().ProcConstructor(m.CreateProcess)
+func (c *rpcClient) CreateCommand(ctx context.Context) *jasper.Command {
+	return jasper.NewCommand().ProcConstructor(c.CreateProcess)
 }
 
-func (m *rpcClient) Register(ctx context.Context, proc jasper.Process) error {
+func (c *rpcClient) Register(ctx context.Context, proc jasper.Process) error {
 	return errors.New("cannot register extant processes on remote process managers")
 }
 
-func (m *rpcClient) List(ctx context.Context, f jasper.Filter) ([]jasper.Process, error) {
-	procs, err := m.client.List(ctx, internal.ConvertFilter(f))
+func (c *rpcClient) List(ctx context.Context, f jasper.Filter) ([]jasper.Process, error) {
+	procs, err := c.client.List(ctx, internal.ConvertFilter(f))
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting streaming client")
 	}
@@ -117,7 +114,7 @@ func (m *rpcClient) List(ctx context.Context, f jasper.Filter) ([]jasper.Process
 		}
 
 		out = append(out, &rpcProcess{
-			client: m.client,
+			client: c.client,
 			info:   info,
 		})
 	}
@@ -125,8 +122,8 @@ func (m *rpcClient) List(ctx context.Context, f jasper.Filter) ([]jasper.Process
 	return out, nil
 }
 
-func (m *rpcClient) Group(ctx context.Context, name string) ([]jasper.Process, error) {
-	procs, err := m.client.Group(ctx, &internal.TagName{Value: name})
+func (c *rpcClient) Group(ctx context.Context, name string) ([]jasper.Process, error) {
+	procs, err := c.client.Group(ctx, &internal.TagName{Value: name})
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting streaming client")
 	}
@@ -141,7 +138,7 @@ func (m *rpcClient) Group(ctx context.Context, name string) ([]jasper.Process, e
 		}
 
 		out = append(out, &rpcProcess{
-			client: m.client,
+			client: c.client,
 			info:   info,
 		})
 	}
@@ -149,21 +146,21 @@ func (m *rpcClient) Group(ctx context.Context, name string) ([]jasper.Process, e
 	return out, nil
 }
 
-func (m *rpcClient) Get(ctx context.Context, name string) (jasper.Process, error) {
-	info, err := m.client.Get(ctx, &internal.JasperProcessID{Value: name})
+func (c *rpcClient) Get(ctx context.Context, name string) (jasper.Process, error) {
+	info, err := c.client.Get(ctx, &internal.JasperProcessID{Value: name})
 	if err != nil {
 		return nil, errors.Wrap(err, "problem finding process")
 	}
 
-	return &rpcProcess{client: m.client, info: info}, nil
+	return &rpcProcess{client: c.client, info: info}, nil
 }
 
-func (m *rpcClient) Clear(ctx context.Context) {
-	_, _ = m.client.Clear(ctx, &empty.Empty{})
+func (c *rpcClient) Clear(ctx context.Context) {
+	_, _ = c.client.Clear(ctx, &empty.Empty{})
 }
 
-func (m *rpcClient) Close(ctx context.Context) error {
-	resp, err := m.client.Close(ctx, &empty.Empty{})
+func (c *rpcClient) Close(ctx context.Context) error {
+	resp, err := c.client.Close(ctx, &empty.Empty{})
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -174,16 +171,20 @@ func (m *rpcClient) Close(ctx context.Context) error {
 	return errors.New(resp.Text)
 }
 
-func (m *rpcClient) Status(ctx context.Context) (string, bool, error) {
-	resp, err := m.client.Status(ctx, &empty.Empty{})
+func (c *rpcClient) Status(ctx context.Context) (string, bool, error) {
+	resp, err := c.client.Status(ctx, &empty.Empty{})
 	if err != nil {
 		return "", false, errors.WithStack(err)
 	}
 	return resp.HostId, resp.Active, nil
 }
 
-func (m *rpcClient) ConfigureCache(ctx context.Context, opts jasper.CacheOptions) error {
-	resp, err := m.client.ConfigureCache(ctx, internal.ConvertCacheOptions(opts))
+func (c *rpcClient) CloseConnection() error {
+	return c.clientCloser()
+}
+
+func (c *rpcClient) ConfigureCache(ctx context.Context, opts jasper.CacheOptions) error {
+	resp, err := c.client.ConfigureCache(ctx, internal.ConvertCacheOptions(opts))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -194,8 +195,8 @@ func (m *rpcClient) ConfigureCache(ctx context.Context, opts jasper.CacheOptions
 	return errors.New(resp.Text)
 }
 
-func (m *rpcClient) DownloadFile(ctx context.Context, info jasper.DownloadInfo) error {
-	resp, err := m.client.DownloadFile(ctx, internal.ConvertDownloadInfo(info))
+func (c *rpcClient) DownloadFile(ctx context.Context, info jasper.DownloadInfo) error {
+	resp, err := c.client.DownloadFile(ctx, internal.ConvertDownloadInfo(info))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -206,8 +207,8 @@ func (m *rpcClient) DownloadFile(ctx context.Context, info jasper.DownloadInfo) 
 	return errors.New(resp.Text)
 }
 
-func (m *rpcClient) DownloadMongoDB(ctx context.Context, opts jasper.MongoDBDownloadOptions) error {
-	resp, err := m.client.DownloadMongoDB(ctx, internal.ConvertMongoDBDownloadOptions(opts))
+func (c *rpcClient) DownloadMongoDB(ctx context.Context, opts jasper.MongoDBDownloadOptions) error {
+	resp, err := c.client.DownloadMongoDB(ctx, internal.ConvertMongoDBDownloadOptions(opts))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -218,8 +219,8 @@ func (m *rpcClient) DownloadMongoDB(ctx context.Context, opts jasper.MongoDBDown
 	return errors.New(resp.Text)
 }
 
-func (m *rpcClient) GetLogStream(ctx context.Context, id string, count int) (jasper.LogStream, error) {
-	stream, err := m.client.GetLogStream(ctx, &internal.LogRequest{
+func (c *rpcClient) GetLogStream(ctx context.Context, id string, count int) (jasper.LogStream, error) {
+	stream, err := c.client.GetLogStream(ctx, &internal.LogRequest{
 		Id:    &internal.JasperProcessID{Value: id},
 		Count: int64(count),
 	})
@@ -229,16 +230,16 @@ func (m *rpcClient) GetLogStream(ctx context.Context, id string, count int) (jas
 	return stream.Export(), nil
 }
 
-func (m *rpcClient) GetBuildloggerURLs(ctx context.Context, id string) ([]string, error) {
-	resp, err := m.client.GetBuildloggerURLs(ctx, &internal.JasperProcessID{Value: id})
+func (c *rpcClient) GetBuildloggerURLs(ctx context.Context, id string) ([]string, error) {
+	resp, err := c.client.GetBuildloggerURLs(ctx, &internal.JasperProcessID{Value: id})
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 	return resp.Urls, nil
 }
 
-func (m *rpcClient) SignalEvent(ctx context.Context, name string) error {
-	resp, err := m.client.SignalEvent(ctx, &internal.EventName{Value: name})
+func (c *rpcClient) SignalEvent(ctx context.Context, name string) error {
+	resp, err := c.client.SignalEvent(ctx, &internal.EventName{Value: name})
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -247,6 +248,36 @@ func (m *rpcClient) SignalEvent(ctx context.Context, name string) error {
 	}
 
 	return errors.New(resp.Text)
+}
+
+func (c *rpcClient) WriteFile(ctx context.Context, jinfo jasper.WriteFileInfo) error {
+	stream, err := c.client.WriteFile(ctx)
+	if err != nil {
+		return errors.Wrap(err, "error getting client stream to write file")
+	}
+
+	sendInfo := func(jinfo jasper.WriteFileInfo) error {
+		info := internal.ConvertWriteFileInfo(jinfo)
+		return stream.Send(info)
+	}
+
+	if err := jinfo.WriteBufferedContent(sendInfo); err != nil {
+		catcher := grip.NewBasicCatcher()
+		catcher.Wrapf(err, "error reading from content source")
+		catcher.Wrapf(stream.CloseSend(), "error closing send stream after error during read: %s", err.Error())
+		return catcher.Resolve()
+	}
+
+	resp, err := stream.CloseAndRecv()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if !resp.Success {
+		return errors.New(resp.Text)
+	}
+
+	return nil
 }
 
 type rpcProcess struct {

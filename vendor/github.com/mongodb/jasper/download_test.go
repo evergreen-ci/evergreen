@@ -51,9 +51,12 @@ func addFileToDirectory(dir string, fileName string, fileContents string) error 
 		if err != nil {
 			return err
 		}
-		defer os.Remove(tmpFile.Name())
+		defer os.RemoveAll(tmpFile.Name())
 		if _, err := tmpFile.Write([]byte(fileContents)); err != nil {
-			return err
+			catcher := grip.NewBasicCatcher()
+			catcher.Add(err)
+			catcher.Add(tmpFile.Close())
+			return catcher.Resolve()
 		}
 		if err := tmpFile.Close(); err != nil {
 			return err
@@ -69,11 +72,13 @@ func addFileToDirectory(dir string, fileName string, fileContents string) error 
 	if err != nil {
 		return err
 	}
-	defer file.Close()
 	if _, err := file.Write([]byte(fileContents)); err != nil {
-		return err
+		catcher := grip.NewBasicCatcher()
+		catcher.Add(err)
+		catcher.Add(file.Close())
+		return catcher.Resolve()
 	}
-	return nil
+	return file.Close()
 }
 
 func TestSetupDownloadMongoDBReleasesFailsWithZeroOptions(t *testing.T) {

@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -32,9 +33,11 @@ func init() {
 	grip.SetName("amboy.queue.tests")
 	grip.Error(grip.SetSender(send.MakeNative()))
 
-	lvl := grip.GetSender().Level()
-	lvl.Threshold = level.Error
-	_ = grip.GetSender().SetLevel(lvl)
+	if !testing.Verbose() {
+		lvl := grip.GetSender().Level()
+		lvl.Threshold = level.Error
+		_ = grip.GetSender().SetLevel(lvl)
+	}
 
 	job.RegisterDefaultJobs()
 }
@@ -90,12 +93,6 @@ type SizeTestCase struct {
 
 func DefaultQueueTestCases() []QueueTestCase {
 	return []QueueTestCase{
-		{
-			Name:                    "Local",
-			WaitUntilSupported:      true,
-			DispatchBeforeSupported: true,
-			Constructor:             func(ctx context.Context, size int) (amboy.Queue, error) { return NewLocalUnordered(size), nil },
-		},
 		{
 			Name:                    "AdaptiveOrdering",
 			OrderedSupported:        true,
@@ -684,6 +681,10 @@ func TestQueueSmoke(t *testing.T) {
 									continue
 								}
 
+								if size.Size > 8 && (runtime.GOOS == "windows" || runtime.GOOS == "darwin" || testing.Short()) {
+									continue
+								}
+
 								t.Run(size.Name, func(t *testing.T) {
 									if !test.SkipUnordered {
 										t.Run("Unordered", func(t *testing.T) {
@@ -886,9 +887,7 @@ func WaitUntilTest(bctx context.Context, t *testing.T, test QueueTestCase, drive
 	} else if sz < 2 {
 		sz = 2
 	}
-
 	numJobs := sz * len(testNames)
-
 	wg := &sync.WaitGroup{}
 
 	for i := 0; i < sz; i++ {
@@ -918,7 +917,6 @@ func WaitUntilTest(bctx context.Context, t *testing.T, test QueueTestCase, drive
 		}(i)
 	}
 	wg.Wait()
-
 	// waitC for things to finish
 	const (
 		interval = 100 * time.Millisecond
@@ -948,7 +946,7 @@ waitLoop:
 	}
 
 	stats := q.Stats(ctx)
-	require.Equal(t, numJobs*2, stats.Total)
+	require.Equal(t, numJobs*2, stats.Total, "%+v", stats)
 	assert.Equal(t, numJobs, stats.Completed)
 
 	completed := 0

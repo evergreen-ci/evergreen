@@ -278,7 +278,7 @@ func (c *restClient) DownloadFile(ctx context.Context, info DownloadInfo) error 
 
 	resp, err := c.doRequest(ctx, http.MethodPost, c.getURL("/download"), body)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "problem downloading file")
 	}
 	defer resp.Body.Close()
 
@@ -325,6 +325,22 @@ func (c *restClient) SignalEvent(ctx context.Context, name string) error {
 	defer resp.Body.Close()
 
 	return nil
+}
+
+func (c *restClient) WriteFile(ctx context.Context, info WriteFileInfo) error {
+	sendInfo := func(info WriteFileInfo) error {
+		body, err := makeBody(info)
+		if err != nil {
+			return errors.Wrap(err, "problem building request")
+		}
+		resp, err := c.doRequest(ctx, http.MethodPut, c.getURL("/file/write"), body)
+		if err != nil {
+			return errors.Wrap(err, "problem writing file")
+		}
+		return errors.Wrap(resp.Body.Close(), "problem closing response body")
+	}
+
+	return info.WriteBufferedContent(sendInfo)
 }
 
 type restProcess struct {

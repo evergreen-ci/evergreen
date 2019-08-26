@@ -17,12 +17,13 @@ type CloseFunc func() error
 type RemoteClient interface {
 	Manager
 	CloseConnection() error
-	ConfigureCache(context.Context, CacheOptions) error
-	DownloadFile(context.Context, DownloadInfo) error
-	DownloadMongoDB(context.Context, MongoDBDownloadOptions) error
-	GetLogStream(context.Context, string, int) (LogStream, error)
-	GetBuildloggerURLs(context.Context, string) ([]string, error)
-	SignalEvent(context.Context, string) error
+	ConfigureCache(ctx context.Context, opts CacheOptions) error
+	DownloadFile(ctx context.Context, info DownloadInfo) error
+	DownloadMongoDB(ctx context.Context, opts MongoDBDownloadOptions) error
+	GetLogStream(ctx context.Context, id string, count int) (LogStream, error)
+	GetBuildloggerURLs(ctx context.Context, id string) ([]string, error)
+	SignalEvent(ctx context.Context, name string) error
+	WriteFile(ctx context.Context, info WriteFileInfo) error
 }
 
 // RemoteOptions represents options to SSH into a remote machine.

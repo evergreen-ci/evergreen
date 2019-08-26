@@ -16,6 +16,7 @@ const (
 	GetBuildloggerURLsCommand = "get-buildlogger-urls"
 	GetLogStreamCommand       = "get-log-stream"
 	SignalEventCommand        = "signal-event"
+	WriteFileCommand          = "write-file"
 )
 
 // Remote creates a cli.Command that allows the remote-specific methods in the
@@ -31,6 +32,7 @@ func Remote() cli.Command {
 			remoteGetLogStream(),
 			remoteGetBuildloggerURLs(),
 			remoteSignalEvent(),
+			remoteWriteFile(),
 		},
 	}
 }
@@ -44,6 +46,20 @@ func remoteConfigureCache() cli.Command {
 			input := jasper.CacheOptions{}
 			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client jasper.RemoteClient) interface{} {
 				return makeOutcomeResponse(client.ConfigureCache(ctx, input))
+			})
+		},
+	}
+}
+
+func remoteWriteFile() cli.Command {
+	return cli.Command{
+		Name:   WriteFileCommand,
+		Flags:  clientFlags(),
+		Before: clientBefore(),
+		Action: func(c *cli.Context) error {
+			input := jasper.WriteFileInfo{}
+			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client jasper.RemoteClient) interface{} {
+				return makeOutcomeResponse(client.WriteFile(ctx, input))
 			})
 		},
 	}

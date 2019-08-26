@@ -2,6 +2,7 @@ package queue
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
+	uuid "github.com/satori/go.uuid"
 )
 
 // LocalPriorityQueue is an amboy.Queue implementation that dispatches
@@ -22,6 +24,7 @@ type priorityLocalQueue struct {
 	fixed    *fixedStorage
 	channel  chan amboy.Job
 	runner   amboy.Runner
+	id       string
 	counters struct {
 		started   int
 		completed int
@@ -36,11 +39,14 @@ func NewLocalPriorityQueue(workers, capacity int) amboy.Queue {
 	q := &priorityLocalQueue{
 		storage: makePriorityStorage(),
 		fixed:   newFixedStorage(capacity),
+		id:      fmt.Sprintf("queue.local.unordered.priority.%s", uuid.NewV4().String()),
 	}
 
 	q.runner = pool.NewLocalWorkers(workers, q)
 	return q
 }
+
+func (q *priorityLocalQueue) ID() string { return q.id }
 
 // Put adds a job to the priority queue. If the Job already exists,
 // this operation updates it in the queue, potentially reordering the
@@ -55,6 +61,11 @@ func (q *priorityLocalQueue) Put(ctx context.Context, j amboy.Job) error {
 	}
 
 	return q.storage.Insert(j)
+}
+
+func (q *priorityLocalQueue) Save(ctx context.Context, j amboy.Job) error {
+	q.storage.Save(j)
+	return nil
 }
 
 // Get takes the name of a job and returns the job from the queue that
