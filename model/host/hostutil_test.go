@@ -148,7 +148,7 @@ func TestJasperCommands(t *testing.T) {
 			settings.Splunk.Channel = "channel"
 
 			cmd := h.ForceReinstallJasperCommand(settings)
-			assert.Equal(t, "sudo /foo/jasper_cli jasper service force-reinstall rpc --host=0.0.0.0 --port=12345 --creds_path=/bar --user=user --log_level=error --splunk_url=url --splunk_token=token --splunk_channel=channel", cmd)
+			assert.Equal(t, "sudo /foo/jasper_cli jasper service force-reinstall rpc --host=0.0.0.0 --port=12345 --creds_path=/bar --user=user --splunk_url=url --splunk_token=token --splunk_channel=channel", cmd)
 		},
 	} {
 		t.Run(opName, func(t *testing.T) {

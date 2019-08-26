@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper"
 	jaspercli "github.com/mongodb/jasper/cli"
@@ -248,7 +247,6 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 	}
 	if settings.Splunk.Populated() {
 		params = append(params,
-			fmt.Sprintf("--log_level=%s", level.Error.String()),
 			fmt.Sprintf("--splunk_url=%s", settings.Splunk.ServerURL),
 			fmt.Sprintf("--splunk_token=%s", settings.Splunk.Token),
 			fmt.Sprintf("--splunk_channel=%s", settings.Splunk.Channel),
