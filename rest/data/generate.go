@@ -30,23 +30,7 @@ func (gc *GenerateConnector) GenerateTasks(ctx context.Context, taskID string, j
 	if err != nil {
 		return errors.Wrapf(err, "problem getting queue for version %s", t.Version)
 	}
-	if err = t.SetGeneratedJSON(jsonBytes); err != nil {
-		return errors.Wrapf(err, "problem setting generated json in task document for %s", t.Id)
-	}
-
-	// Make sure legacy attempt does not exist. This could be a task restart.
-	if t.GenerateAttempt == 0 {
-		jobID := fmt.Sprintf("generate-tasks-%s", taskID)
-		_, exists := q.Get(ctx, jobID)
-		if exists {
-			return nil
-		}
-	}
-
-	if err = t.IncrementGenerateAttempt(); err != nil {
-		return errors.Wrapf(err, "problem incrementing generator for %s", t.Id)
-	}
-	err = q.Put(ctx, units.NewGenerateTasksJob(taskID, t.GenerateAttempt))
+	err = q.Put(ctx, units.NewGenerateTasksJob(taskID, jsonBytes))
 	grip.Debug(message.WrapError(err, message.Fields{
 		"message": "problem saving new generate tasks job for task",
 		"task_id": taskID}))
@@ -67,32 +51,10 @@ func (gc *GenerateConnector) GeneratePoll(ctx context.Context, taskID string, gr
 	if err != nil {
 		return false, nil, errors.Wrapf(err, "problem getting queue for version %s", t.Version)
 	}
-
-	var jobID string
-	var j amboy.Job
-	var exists bool
-	for {
-		if ctx.Err() != nil {
-			return false, []string{}, errors.WithStack(errors.New("context canceled"))
-		}
-		if t.GenerateAttempt == 0 {
-			jobID = fmt.Sprintf("generate-tasks-%s", taskID) // legacy job id
-		} else {
-			jobID = fmt.Sprintf("generate-tasks-%s-%d", taskID, t.GenerateAttempt)
-		}
-		generateAttempt := t.GenerateAttempt
-		j, exists = q.Get(ctx, jobID)
-		if !exists {
-			return false, nil, errors.Errorf("task %s not in queue", taskID)
-		}
-		t, err := task.FindOneId(taskID)
-		if err != nil {
-			return false, nil, errors.Wrapf(err, "problem finding task %s", taskID)
-		}
-		// If attempt has incremented, the requeue job has raced with the poll job. Try again. Otherwise break.
-		if generateAttempt == t.GenerateAttempt {
-			break
-		}
+	jobID := fmt.Sprintf("generate-tasks-%s", taskID)
+	j, exists := q.Get(ctx, jobID)
+	if !exists {
+		return false, nil, errors.Errorf("task %s not in queue", taskID)
 	}
 	return j.Status().Completed, j.Status().Errors, nil
 }

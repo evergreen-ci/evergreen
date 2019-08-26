@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCreateEnclosingDirectory(t *testing.T) {
+func TestCreateEncluosingDirectory(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
