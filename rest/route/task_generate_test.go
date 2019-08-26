@@ -63,7 +63,7 @@ func TestGenerateExecute(t *testing.T) {
 }
 
 func localConstructor(ctx context.Context) (amboy.Queue, error) {
-	return queue.NewLocalUnordered(1), nil
+	return queue.NewLocalLimitedSize(1, 1048), nil
 }
 
 func remoteConstructor(ctx context.Context) (queue.Remote, error) {

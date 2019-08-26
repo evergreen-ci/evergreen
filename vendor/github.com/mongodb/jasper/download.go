@@ -259,7 +259,7 @@ func processDownloadJobs(ctx context.Context, processFile func(string) error) fu
 }
 
 func setupDownloadJobsAsync(ctx context.Context, jobs <-chan amboy.Job, processJobs func(amboy.Queue) error) error {
-	q := queue.NewLocalUnordered(2)
+	q := queue.NewLocalLimitedSize(2, 1048)
 	if err := q.Start(ctx); err != nil {
 		return errors.Wrap(err, "problem starting download job queue")
 	}

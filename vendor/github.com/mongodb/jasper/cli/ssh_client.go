@@ -190,6 +190,22 @@ func (c *sshClient) DownloadFile(ctx context.Context, info jasper.DownloadInfo) 
 	return nil
 }
 
+func (c *sshClient) WriteFile(ctx context.Context, info jasper.WriteFileInfo) error {
+	sendInfo := func(info jasper.WriteFileInfo) error {
+		output, err := c.runRemoteCommand(ctx, WriteFileCommand, &info)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if _, err := ExtractOutcomeResponse(output); err != nil {
+			return errors.WithStack(err)
+		}
+
+		return nil
+	}
+	return info.WriteBufferedContent(sendInfo)
+}
+
 func (c *sshClient) DownloadMongoDB(ctx context.Context, opts jasper.MongoDBDownloadOptions) error {
 	output, err := c.runRemoteCommand(ctx, DownloadMongoDBCommand, &opts)
 	if err != nil {

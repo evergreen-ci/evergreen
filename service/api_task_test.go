@@ -790,7 +790,7 @@ func TestCheckHostHealth(t *testing.T) {
 }
 
 func localGroupConstructor(ctx context.Context) (amboy.Queue, error) {
-	return queue.NewLocalUnordered(1), nil
+	return queue.NewLocalLimitedSize(1, 1048), nil
 }
 
 func TestTaskLifecycleEndpoints(t *testing.T) {

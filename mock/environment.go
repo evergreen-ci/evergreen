@@ -62,7 +62,7 @@ func (e *Environment) Configure(ctx context.Context, path string, db *evergreen.
 		return err
 	}
 	e.Remote = rq
-	e.Local = queue.NewLocalUnordered(2)
+	e.Local = queue.NewLocalLimitedSize(2, 1048)
 
 	e.InternalSender = send.MakeInternalLogger()
 

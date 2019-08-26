@@ -12,7 +12,7 @@ func TestGroupCache(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	queue := NewLocalUnordered(2)
+	queue := NewLocalLimitedSize(2, 128)
 	require.NotNil(t, queue)
 
 	for _, impl := range []struct {
@@ -97,7 +97,7 @@ func TestGroupCache(t *testing.T) {
 				{
 					name: "RemoveQueueWithWork",
 					test: func(t *testing.T, cache GroupCache) {
-						q := NewLocalUnordered(1)
+						q := NewLocalLimitedSize(1, 128)
 						require.NoError(t, q.Start(ctx))
 						require.NoError(t, q.Put(ctx, &sleepJob{sleep: time.Minute}))
 
@@ -116,7 +116,8 @@ func TestGroupCache(t *testing.T) {
 				{
 					name: "PruneOne",
 					test: func(t *testing.T, cache GroupCache) {
-						require.NoError(t, cache.Set("foo", queue, 1))
+						require.NoError(t, cache.Set("foo", queue, time.Millisecond))
+						time.Sleep(2 * time.Millisecond)
 						require.NoError(t, cache.Prune(ctx))
 						require.Zero(t, cache.Len())
 					},
