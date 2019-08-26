@@ -2,12 +2,9 @@ package queue
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
-	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/grip"
 	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/suite"
@@ -83,23 +80,4 @@ func (s *MongoDBDriverSuite) TestNextIsBlocking() {
 	defer cancel()
 	s.Nil(s.driver.Next(ctx))
 	s.True(time.Since(startAt) >= 2*time.Second)
-}
-
-func (s *MongoDBDriverSuite) TestSaveStatusSavesTimeInfo() {
-	ctx := context.Background()
-	s.NoError(s.driver.Open(ctx))
-	j := newMockJob()
-	jobID := fmt.Sprintf("%d.%s.%d", 1, "mock-job", job.GetNumber())
-	j.SetID(jobID)
-	s.NoError(s.driver.Put(ctx, j))
-	j2, err := s.driver.Get(ctx, jobID)
-	s.Require().NoError(err)
-	s.Zero(j2.TimeInfo().Start)
-	now := time.Now().Round(time.Millisecond)
-	ti := amboy.JobTimeInfo{Start: now}
-	j.UpdateTimeInfo(ti)
-	s.NoError(s.driver.SaveStatus(ctx, j, j.Status()))
-	j3, err := s.driver.Get(ctx, jobID)
-	s.NoError(err)
-	s.Equal(now, j3.TimeInfo().Start)
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
@@ -169,7 +170,7 @@ func (db *dbLegacyQueueStat) JobStatus(ctx context.Context, f CounterFilter) (*J
 			bson.M{"$match": bson.M{
 				"status.completed": false,
 				"status.in_prog":   true,
-				"status.mod_ts":    bson.M{"$gt": time.Now().Add(-queue.LockTimeout)},
+				"status.mod_ts":    bson.M{"$gt": time.Now().Add(-amboy.LockTimeout)},
 			}},
 			bson.M{"$group": bson.M{
 				"_id":   "$type",
@@ -287,7 +288,7 @@ func (db *dbLegacyQueueStat) JobIDsByState(ctx context.Context, jobType string, 
 			"type":             jobType,
 			"status.completed": false,
 			"status.in_prog":   true,
-			"status.mod_ts":    bson.M{"$gt": time.Now().Add(-queue.LockTimeout)},
+			"status.mod_ts":    bson.M{"$gt": time.Now().Add(-amboy.LockTimeout)},
 		})
 
 	default:

@@ -17,15 +17,12 @@ type Driver interface {
 	Get(context.Context, string) (amboy.Job, error)
 	Put(context.Context, amboy.Job) error
 	Save(context.Context, amboy.Job) error
-	SaveStatus(context.Context, amboy.Job, amboy.JobStatusInfo) error
 
 	Jobs(context.Context) <-chan amboy.Job
 	Next(context.Context) amboy.Job
 
 	Stats(context.Context) amboy.QueueStats
 	JobStats(context.Context) <-chan amboy.JobStatusInfo
-
-	LockManager
 }
 
 // MongoDBOptions is a struct passed to the NewMgo constructor to

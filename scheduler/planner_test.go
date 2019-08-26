@@ -209,13 +209,13 @@ func TestPlanner(t *testing.T) {
 					t.Run("CLI", func(t *testing.T) {
 						unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.PatchVersionRequester})
 						unit.SetDistro(&distro.Distro{})
-						unit.distro.PlannerSettings.PatchZipperFactor = 10
+						unit.distro.PlannerSettings.PatchFactor = 10
 						assert.EqualValues(t, 22, unit.RankValue())
 					})
 					t.Run("Github", func(t *testing.T) {
 						unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.GithubPRRequester})
 						unit.SetDistro(&distro.Distro{})
-						unit.distro.PlannerSettings.PatchZipperFactor = 10
+						unit.distro.PlannerSettings.PatchFactor = 10
 						assert.EqualValues(t, 22, unit.RankValue())
 					})
 				})

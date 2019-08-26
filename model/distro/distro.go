@@ -102,7 +102,7 @@ type PlannerSettings struct {
 	AcceptableHostIdleTime time.Duration `bson:"acceptable_host_idle_time" json:"acceptable_host_idle_time" mapstructure:"acceptable_host_idle_time,omitempty"`
 	GroupVersions          *bool         `bson:"group_versions" json:"group_versions" mapstructure:"group_versions,omitempty"`
 	TaskOrdering           string        `bson:"task_ordering" json:"task_ordering" mapstructure:"task_ordering,omitempty"`
-	PatchZipperFactor      int64         `bson:"patch_zipper_factor" json:"patch_zipper_factor" mapstructure:"patch_zipper_factor"`
+	PatchFactor            int64         `bson:"patch_zipper_factor" json:"patch_factor" mapstructure:"patch_factor"`
 	TimeInQueueFactor      int64         `bson:"time_in_queue_factor" json:"time_in_queue_factor" mapstructure:"time_in_queue_factor"`
 	ExpectedRuntimeFactor  int64         `bson:"expected_runtime_factor" json:"expected_runtime_factor" mapstructure:"expected_runtime_factor"`
 
@@ -223,11 +223,11 @@ func (d *Distro) ShouldGroupVersions() bool {
 	return *d.PlannerSettings.GroupVersions
 }
 
-func (d *Distro) GetPatchZipperFactor() int64 {
-	if d.PlannerSettings.PatchZipperFactor <= 0 {
+func (d *Distro) GetPatchFactor() int64 {
+	if d.PlannerSettings.PatchFactor <= 0 {
 		return 1
 	}
-	return d.PlannerSettings.PatchZipperFactor
+	return d.PlannerSettings.PatchFactor
 }
 
 func (d *Distro) GetTimeInQueueFactor() int64 {
@@ -430,7 +430,7 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 		AcceptableHostIdleTime: ps.AcceptableHostIdleTime,
 		GroupVersions:          ps.GroupVersions,
 		TaskOrdering:           ps.TaskOrdering,
-		PatchZipperFactor:      ps.PatchZipperFactor,
+		PatchFactor:            ps.PatchFactor,
 		TimeInQueueFactor:      ps.TimeInQueueFactor,
 		ExpectedRuntimeFactor:  ps.ExpectedRuntimeFactor,
 		maxDurationPerHost:     evergreen.MaxDurationPerDistroHost,
@@ -472,8 +472,8 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	if resolved.GroupVersions == nil {
 		resolved.GroupVersions = &config.GroupVersions
 	}
-	if resolved.PatchZipperFactor == 0 {
-		resolved.PatchZipperFactor = config.PatchZipperFactor
+	if resolved.PatchFactor == 0 {
+		resolved.PatchFactor = config.PatchFactor
 	}
 	if resolved.TimeInQueueFactor == 0 {
 		resolved.TimeInQueueFactor = config.TimeInQueueFactor

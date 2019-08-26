@@ -35,7 +35,7 @@ func FetchReleases(ctx context.Context, releases []string, path string, options 
 		return errors.Wrap(err, "problem generating data feed")
 	}
 
-	q := queue.NewLocalUnordered(4)
+	q := queue.NewLocalLimitedSize(4, 1048)
 	if err := q.Start(ctx); err != nil {
 		return errors.Wrap(err, "problem starting queue")
 	}

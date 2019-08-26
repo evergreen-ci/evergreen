@@ -19,6 +19,7 @@ package queue
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -28,6 +29,7 @@ import (
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	uuid "github.com/satori/go.uuid"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
@@ -43,6 +45,7 @@ import (
 type depGraphOrderedLocal struct {
 	started    bool
 	numStarted int
+	id         string
 	channel    chan amboy.Job
 	tasks      struct {
 		m         map[string]amboy.Job
@@ -68,11 +71,17 @@ func NewLocalOrdered(workers int) amboy.Queue {
 	q.tasks.nodes = make(map[int64]amboy.Job)
 	q.tasks.completed = make(map[string]bool)
 	q.tasks.graph = simple.NewDirectedGraph()
-
+	q.id = fmt.Sprintf("queue.local.ordered.graph.%s", uuid.NewV4().String())
 	r := pool.NewLocalWorkers(workers, q)
 	q.runner = r
 
 	return q
+}
+
+func (q *depGraphOrderedLocal) ID() string {
+	q.mutex.RLock()
+	defer q.mutex.RUnlock()
+	return q.id
 }
 
 // Put adds a job to the queue. If the queue has started dispatching
@@ -107,6 +116,24 @@ func (q *depGraphOrderedLocal) Put(ctx context.Context, j amboy.Job) error {
 	q.tasks.nodes[id] = j
 	q.tasks.graph.AddNode(node)
 
+	return nil
+}
+
+func (q *depGraphOrderedLocal) Save(ctx context.Context, j amboy.Job) error {
+	name := j.ID()
+
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
+
+	if !q.started {
+		return errors.Errorf("cannot save %s because dispatching has not begun", name)
+	}
+
+	if _, ok := q.tasks.m[name]; !ok {
+		return errors.Errorf("cannot add %s because job does not exist", name)
+	}
+
+	q.tasks.m[name] = j
 	return nil
 }
 

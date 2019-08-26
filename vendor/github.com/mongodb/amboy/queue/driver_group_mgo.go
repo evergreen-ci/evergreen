@@ -28,7 +28,6 @@ type mgoGroupDriver struct {
 	instanceID string
 	canceler   context.CancelFunc
 	mu         sync.RWMutex
-	LockManager
 }
 
 // NewMgoGroupDriver creates a driver object given a name, which
@@ -84,8 +83,6 @@ func (d *mgoGroupDriver) Open(ctx context.Context) error {
 }
 
 func (d *mgoGroupDriver) start(ctx context.Context, session *mgo.Session) error {
-	d.LockManager = NewLockManager(ctx, d)
-
 	dCtx, cancel := context.WithCancel(ctx)
 	d.canceler = cancel
 
@@ -222,8 +219,6 @@ func (d *mgoGroupDriver) Save(_ context.Context, j amboy.Job) error {
 	defer session.Close()
 
 	stat := j.Status()
-	stat.Owner = d.instanceID
-	stat.ModificationCount++
 	stat.ErrorCount = len(stat.Errors)
 	stat.ModificationTime = time.Now()
 	j.SetStatus(stat)
@@ -254,32 +249,6 @@ func (d *mgoGroupDriver) Save(_ context.Context, j amboy.Job) error {
 
 		return errors.Wrapf(err, "problem saving document %s", name)
 	}
-
-	return nil
-}
-
-// SaveStatus persists only the status and time_info documents in the job in the
-// persistence layer. If the job does not exist, or the underlying
-// status document has changed incompatibly this operation produces
-// an error.
-func (d *mgoGroupDriver) SaveStatus(_ context.Context, j amboy.Job, stat amboy.JobStatusInfo) error {
-	session, jobs := d.getJobsCollection()
-	defer session.Close()
-
-	query := getAtomicQuery(d.instanceID, buildCompoundJobID(d.group, j), stat.ModificationCount)
-	stat.Owner = d.instanceID
-	stat.ModificationCount++
-	stat.ModificationTime = time.Now()
-	stat.ErrorCount = len(stat.Errors)
-	timeInfo := j.TimeInfo()
-
-	err := jobs.Update(query, bson.M{"$set": bson.M{"status": stat, "time_info": timeInfo}})
-
-	if err != nil {
-		return errors.Wrapf(err, "problem updating status document for %s", j.ID())
-	}
-
-	j.SetStatus(stat)
 
 	return nil
 }
@@ -393,7 +362,7 @@ func (d *mgoGroupDriver) Next(ctx context.Context) amboy.Job {
 			},
 			{
 				"status.completed": false,
-				"status.mod_ts":    bson.M{"$lte": time.Now().Add(-LockTimeout)},
+				"status.mod_ts":    bson.M{"$lte": time.Now().Add(-amboy.LockTimeout)},
 				"status.in_prog":   true,
 			},
 		},
