@@ -250,7 +250,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
-				Message:    "item is not an integer",
+				Message:    "Can't enqueue to project without an enabled commit queue",
 			}))
 			return
 		}
