@@ -338,6 +338,38 @@ func (d *mgoDriver) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
 	return output
 }
 
+func (d *mgoDriver) getNextQuery() bson.M {
+	now := time.Now()
+	qd := bson.M{
+		"$or": []bson.M{
+			{
+				"status.completed": false,
+				"status.in_prog":   false,
+			},
+			{
+				"status.completed": false,
+				"status.mod_ts":    bson.M{"$lte": now.Add(-amboy.LockTimeout)},
+				"status.in_prog":   true,
+			},
+		},
+	}
+
+	timeLimits := bson.M{}
+	if d.opts.CheckWaitUntil {
+		timeLimits["time_info.wait_until"] = bson.M{"$lte": now}
+	}
+	if d.opts.CheckDispatchBy {
+		timeLimits["$or"] = []bson.M{
+			{"time_info.dispatch_by": bson.M{"$gt": now}},
+			{"time_info.dispatch_by": time.Time{}},
+		}
+	}
+	if len(timeLimits) > 0 {
+		qd = bson.M{"$and": []bson.M{qd, timeLimits}}
+	}
+	return qd
+}
+
 // Next returns one job, not marked complete from the database.
 func (d *mgoDriver) Next(ctx context.Context) amboy.Job {
 	session, jobs := d.getJobsCollection()
@@ -355,42 +387,13 @@ func (d *mgoDriver) Next(ctx context.Context) amboy.Job {
 		job    amboy.Job
 	)
 
-	qd = bson.M{
-		"$or": []bson.M{
-			{
-				"status.completed": false,
-				"status.in_prog":   false,
-			},
-			{
-				"status.completed": false,
-				"status.mod_ts":    bson.M{"$lte": time.Now().Add(-amboy.LockTimeout)},
-				"status.in_prog":   true,
-			},
-		},
-	}
-
-	timeLimits := bson.M{}
-	now := time.Now()
-	if d.opts.CheckWaitUntil {
-		timeLimits["time_info.wait_until"] = bson.M{"$lte": now}
-	}
-	if d.opts.CheckDispatchBy {
-		timeLimits["$or"] = []bson.M{
-			{"time_info.dispatch_by": bson.M{"$gt": now}},
-			{"time_info.dispatch_by": time.Time{}},
-		}
-	}
-	if len(timeLimits) > 0 {
-		qd = bson.M{"$and": []bson.M{qd, timeLimits}}
-	}
-
+	qd = d.getNextQuery()
 	query := jobs.Find(qd).Batch(4)
-
 	if d.opts.Priority {
 		query = query.Sort("-priority")
 	}
-
 	iter := query.Iter()
+
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
@@ -413,6 +416,11 @@ func (d *mgoDriver) Next(ctx context.Context) amboy.Job {
 				}
 
 				timer.Reset(time.Duration(misses * rand.Int63n(int64(d.opts.WaitInterval))))
+				qd = d.getNextQuery()
+				query := jobs.Find(qd).Batch(4)
+				if d.opts.Priority {
+					query = query.Sort("-priority")
+				}
 				iter = query.Iter()
 				continue
 			}
