@@ -517,7 +517,7 @@ Evergreen - Distros
             <div>
               <label class="distro-label">Patch Factor (0 to 100 inclusive):</label>
               <input ng-readonly="readOnly" type="number" ng-required="activeDistro.planner_settings.version == 'tunable'"
-                name="plannerSettingsPatchFactor" class="form-control" ng-model="activeDistro.planner_settings.patch_zipper_factor" placeholder="Set to 0 to use the its global default">
+                name="plannerSettingsPatchFactor" class="form-control" ng-model="activeDistro.planner_settings.patch_factor" placeholder="Set to 0 to use the its global default">
             </div>
             <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsPatchFactor.$dirty && form.plannerSettingsPatchFactor.$error.required ||
               form.plannerSettingsPatchFactor.$invalid ||
