@@ -169,13 +169,9 @@ func TestReportingSuiteBackedByMongoDBMultiGroup(t *testing.T) {
 }
 
 func TestReportingSuiteBackedByQueueMethods(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	s := new(ReportingSuite)
 	s.setup = func() {
-		s.queue = queue.NewLocalLimitedSize(2, 128)
-		s.Require().NoError(s.queue.Start(ctx))
+		s.queue = queue.NewLocalUnordered(2)
 	}
 
 	s.factory = func() Reporter {

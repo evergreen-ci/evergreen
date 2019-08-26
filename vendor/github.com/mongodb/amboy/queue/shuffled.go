@@ -16,7 +16,6 @@ package queue
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -25,7 +24,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 )
 
 // LocalShuffled provides a queue implementation that shuffles the
@@ -35,7 +33,6 @@ import (
 type shuffledLocal struct {
 	operations chan func(map[string]amboy.Job, map[string]amboy.Job, map[string]amboy.Job, *fixedStorage)
 	capacity   int
-	id         string
 	starter    sync.Once
 	runner     amboy.Runner
 }
@@ -43,16 +40,11 @@ type shuffledLocal struct {
 // NewShuffledLocal provides a queue implementation that shuffles the
 // order of jobs, relative the insertion order.
 func NewShuffledLocal(workers, capacity int) amboy.Queue {
-	q := &shuffledLocal{
-		capacity: capacity,
-		id:       fmt.Sprintf("queue.local.unordered.shuffled.%s", uuid.NewV4().String()),
-	}
-
+	q := &shuffledLocal{}
 	q.runner = pool.NewLocalWorkers(workers, q)
+	q.capacity = capacity
 	return q
 }
-
-func (q *shuffledLocal) ID() string { return q.id }
 
 // Start takes a context object and starts the embedded Runner instance
 // and the queue's own background dispatching thread. Returns an error
@@ -127,47 +119,6 @@ func (q *shuffledLocal) Put(ctx context.Context, j amboy.Job) error {
 		pending[id] = j
 
 		close(ret)
-	}
-
-	select {
-	case <-ctx.Done():
-		return errors.WithStack(ctx.Err())
-	case q.operations <- op:
-		return <-ret
-	}
-}
-
-func (q *shuffledLocal) Save(ctx context.Context, j amboy.Job) error {
-	id := j.ID()
-
-	if !q.Started() {
-		return errors.Errorf("cannot save job %s; queue not started", id)
-	}
-
-	ret := make(chan error)
-	op := func(
-		pending map[string]amboy.Job,
-		completed map[string]amboy.Job,
-		dispatched map[string]amboy.Job,
-		toDelete *fixedStorage,
-	) {
-		defer close(ret)
-		if _, ok := pending[id]; ok {
-			pending[id] = j
-			return
-		}
-
-		if _, ok := completed[id]; ok {
-			completed[id] = j
-			return
-		}
-
-		if _, ok := dispatched[id]; ok {
-			dispatched[id] = j
-			return
-		}
-
-		ret <- errors.Errorf("job '%s' does not exist", id)
 	}
 
 	select {

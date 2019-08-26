@@ -10,7 +10,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
-	"github.com/pkg/errors"
 )
 
 type workUnit struct {
@@ -19,7 +18,7 @@ type workUnit struct {
 }
 
 func executeJob(ctx context.Context, id string, job amboy.Job, q amboy.Queue) {
-	didRun := runJob(ctx, job, q, time.Now())
+	runJob(ctx, job, q, time.Now())
 
 	r := message.Fields{
 		"job":           job.ID(),
@@ -28,7 +27,6 @@ func executeJob(ctx context.Context, id string, job amboy.Job, q amboy.Queue) {
 		"queue_type":    fmt.Sprintf("%T", q),
 		"stat":          job.Status(),
 		"pool":          id,
-		"executed":      didRun,
 	}
 	if err := job.Error(); err != nil {
 		r["error"] = err.Error()
@@ -39,15 +37,11 @@ func executeJob(ctx context.Context, id string, job amboy.Job, q amboy.Queue) {
 
 }
 
-func runJob(ctx context.Context, job amboy.Job, q amboy.Queue, startAt time.Time) bool {
+func runJob(ctx context.Context, job amboy.Job, q amboy.Queue, startAt time.Time) {
 	ti := amboy.JobTimeInfo{
 		Start: time.Now(),
 	}
 	job.UpdateTimeInfo(ti)
-	defer func() {
-		ti.End = time.Now()
-		job.UpdateTimeInfo(ti)
-	}()
 
 	maxTime := job.TimeInfo().MaxTime
 	if maxTime > 0 {
@@ -55,40 +49,6 @@ func runJob(ctx context.Context, job amboy.Job, q amboy.Queue, startAt time.Time
 		ctx, cancel = context.WithTimeout(ctx, maxTime)
 		defer cancel()
 	}
-
-	if err := job.Lock(q.ID()); err != nil {
-		job.AddError(errors.Wrap(err, "problem locking job"))
-		return false
-	}
-	if err := q.Save(ctx, job); err != nil {
-		job.AddError(errors.Wrap(err, "problem saving job state"))
-		return false
-	}
-
-	pingerCtx, stopPing := context.WithCancel(ctx)
-	defer stopPing()
-	go func() {
-		defer recovery.LogStackTraceAndContinue("background lock ping", job.ID())
-		iters := 0
-		ticker := time.NewTicker(amboy.LockTimeout / 2)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-pingerCtx.Done():
-				return
-			case <-ticker.C:
-				if err := job.Lock(q.ID()); err != nil {
-					job.AddError(errors.Wrapf(err, "problem pinging job lock on cycle #%d", iters))
-					return
-				}
-				if err := q.Save(ctx, job); err != nil {
-					job.AddError(errors.Wrapf(err, "problem saving job for lock ping on cycle #%d", iters))
-					return
-				}
-			}
-			iters++
-		}
-	}()
 
 	job.Run(ctx)
 
@@ -98,11 +58,9 @@ func runJob(ctx context.Context, job amboy.Job, q amboy.Queue, startAt time.Time
 	ti.End = time.Now()
 	job.UpdateTimeInfo(ti)
 
-	stopPing()
-
 	q.Complete(ctx, job)
-
-	return true
+	ti.End = time.Now()
+	job.UpdateTimeInfo(ti)
 }
 
 func worker(ctx context.Context, id string, jobs <-chan workUnit, q amboy.Queue, wg *sync.WaitGroup) {

@@ -2,7 +2,6 @@ package queue
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 )
 
 // LocalLimitedSize implements the amboy.Queue interface, and unlike
@@ -32,9 +30,9 @@ type limitedSizeLocal struct {
 
 	deletedCount int
 	staleCount   int
-	id           string
-	runner       amboy.Runner
-	mu           sync.RWMutex
+
+	runner amboy.Runner
+	mu     sync.RWMutex
 }
 
 // NewLocalLimitedSize constructs a LocalLimitedSize queue instance
@@ -43,17 +41,9 @@ func NewLocalLimitedSize(workers, capacity int) amboy.Queue {
 	q := &limitedSizeLocal{
 		capacity: capacity,
 		storage:  make(map[string]amboy.Job),
-		id:       fmt.Sprintf("queue.local.unordered.fixed.%s", uuid.NewV4().String()),
 	}
 	q.runner = pool.NewLocalWorkers(workers, q)
 	return q
-}
-
-func (q *limitedSizeLocal) ID() string {
-	q.mu.RLock()
-	defer q.mu.RUnlock()
-
-	return q.id
 }
 
 // Put adds a job to the queue, returning an error if the queue isn't
@@ -89,23 +79,6 @@ func (q *limitedSizeLocal) Put(ctx context.Context, j amboy.Job) error {
 		q.storage[name] = j
 		return nil
 	}
-}
-
-func (q *limitedSizeLocal) Save(ctx context.Context, j amboy.Job) error {
-	if !q.Started() {
-		return errors.Errorf("queue not open. could not add %s", j.ID())
-	}
-
-	name := j.ID()
-	q.mu.Lock()
-	defer q.mu.Unlock()
-
-	if _, ok := q.storage[name]; !ok {
-		return errors.Errorf("cannot save '%s', which is not tracked", name)
-	}
-
-	q.storage[name] = j
-	return nil
 }
 
 // Get returns a job, by name. This will include all tasks currently

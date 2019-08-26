@@ -49,6 +49,7 @@ func (q *remoteUnordered) Next(ctx context.Context) amboy.Job {
 
 	start := time.Now()
 	count := 0
+	lockingErrors := 0
 	getErrors := 0
 	dispatchableErrors := 0
 	for {
@@ -72,6 +73,11 @@ func (q *remoteUnordered) Next(ctx context.Context) amboy.Job {
 					"id":        job.ID(),
 					"operation": "problem refreshing job in dispatching from remote queue",
 				}))
+				grip.Debug(message.WrapError(q.driver.Unlock(ctx, job),
+					message.Fields{
+						"id":        job.ID(),
+						"operation": "unlocking job, may leave a stale job",
+					}))
 
 				getErrors++
 				continue
@@ -88,6 +94,11 @@ func (q *remoteUnordered) Next(ctx context.Context) amboy.Job {
 			}
 			job.UpdateTimeInfo(ti)
 
+			if err := q.driver.Lock(ctx, job); err != nil {
+				lockingErrors++
+				continue
+			}
+
 			dispatchSecs := time.Since(start).Seconds()
 			grip.DebugWhen(dispatchSecs > dispatchWarningThreshold.Seconds() || count > 3,
 				message.Fields{
@@ -98,6 +109,7 @@ func (q *remoteUnordered) Next(ctx context.Context) amboy.Job {
 					"stat":                status,
 					"job":                 job.ID(),
 					"get_errors":          getErrors,
+					"locking_errors":      lockingErrors,
 					"dispatchable_errors": dispatchableErrors,
 				})
 
