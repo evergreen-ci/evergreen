@@ -262,7 +262,7 @@ func (s *DistroByIDSuite) SetupSuite() {
 					TargetTime:             60000000000,
 					AcceptableHostIdleTime: 10000000000,
 					GroupVersions:          &pTrue,
-					PatchZipperFactor:      7,
+					PatchFactor:            7,
 					TaskOrdering:           evergreen.TaskOrderingInterleave,
 				},
 				BootstrapSettings: distro.BootstrapSettings{
@@ -304,7 +304,7 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 	s.Equal(model.NewAPIDuration(60000000000), d.PlannerSettings.TargetTime)
 	s.Equal(model.NewAPIDuration(10000000000), d.PlannerSettings.AcceptableHostIdleTime)
 	s.Equal(true, *d.PlannerSettings.GroupVersions)
-	s.EqualValues(7, d.PlannerSettings.PatchZipperFactor)
+	s.EqualValues(7, d.PlannerSettings.PatchFactor)
 	s.Equal(model.ToAPIString(evergreen.TaskOrderingInterleave), d.PlannerSettings.TaskOrdering)
 	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), d.BootstrapSettings.Method)
 	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), d.BootstrapSettings.Communication)
@@ -374,7 +374,7 @@ func (s *DistroPutSuite) TestParse() {
     		"target_time": 30000000000,
     		"acceptable_host_idle_time": 5000000000,
     		"group_versions": false,
-    		"patch_zipper_factor": 2,
+    		"patch_factor": 2,
     		"task_ordering": "interleave" ,
     		"patch_first": false
   		},

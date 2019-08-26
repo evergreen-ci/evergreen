@@ -219,7 +219,7 @@ func (unit *Unit) RankValue() int64 {
 	}
 
 	if inPatch {
-		unit.cachedValue += unit.distro.GetPatchZipperFactor()
+		unit.cachedValue += unit.distro.GetPatchFactor()
 	}
 
 	if !anyNonGroupTasks {
