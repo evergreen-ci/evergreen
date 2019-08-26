@@ -360,6 +360,7 @@ func (s *DistroPutSuite) SetupTest() {
 
 func (s *DistroPutSuite) TestParse() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	json := []byte(`
   	{
 		"arch": "linux_amd64",
@@ -445,6 +446,7 @@ func (s *DistroPutSuite) TestRunNewConflictingName() {
 
 func (s *DistroPutSuite) TestRunExistingWithValidEntity() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "SSH Key", "provider": "mock", "user": "tibor"}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro3"
