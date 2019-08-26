@@ -266,6 +266,9 @@ func (s *CommitQueueSuite) TestDeleteCommitQueueItem() {
 	projectRef := model.ProjectRef{
 		Identifier: "mci",
 		Admins:     []string{"testuser"},
+		CommitQueue: model.CommitQueueParams{
+			Enabled: true,
+		},
 	}
 	s.NoError(projectRef.Insert())
 
