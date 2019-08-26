@@ -178,6 +178,9 @@ tasks:
   - <<: *run-go-test-suite
     name: test-rest
     tags: ["test"]
+  - <<: *run-go-test-suite
+    name: test-logger
+    tags: ["test"]
   - <<: *run-go-test-suite-with-mongodb
     name: test-queue
     tags: ["test"]
@@ -191,6 +194,9 @@ tasks:
     tags: ["race"]
   - <<: *run-go-test-suite
     name: race-rest
+    tags: ["race"]
+  - <<: *run-go-test-suite
+    name: race-logger
     tags: ["race"]
   - <<: *run-go-test-suite
     name: race-registry
@@ -250,7 +256,7 @@ buildvariants:
     display_name: Race Detector
     expansions:
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
-      build_env: "RUN_COUNT=5"
+      test_timeout: 15m
     run_on:
       - archlinux-build
     tasks:
@@ -283,8 +289,10 @@ buildvariants:
     expansions:
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-3.6.4.tgz
       build_env: " DISABLE_COVERAGE=yes GOROOT=/opt/golang/go1.12 PATH=/opt/golang/go1.12/bin:$PATH"
+      test_timeout: 15m
     run_on:
       - macos-1014
+      - macos-1014-i7
     tasks:
       - ".dist"
       - ".test"
@@ -293,7 +301,18 @@ buildvariants:
     display_name: Windows
     run_on:
       - windows-64-vs2017-compile
+      - windows-64-vs2017-test
+      - windows-64-vs2017-compile-m5
+      - windows-64-vs2015-compile
+      - windows-64-vs2015-large
+      - windows-64-vs2015-small
+      - windows-64-vs2015-test
+      - windows-64-vs2013-compile
+      - windows-64-vs2013-test
+      - windows-64-vs2010-compile
+      - windows-64-vs2010-test
     expansions:
+      test_timeout: 15m
       build_env: "GOROOT=c:/golang/go1.12 DISABLE_COVERAGE=yes PATH=/cygdrive/c/golang/go1.12/bin:$PATH"
       mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-3.6.4.zip
       extension: ".exe"
