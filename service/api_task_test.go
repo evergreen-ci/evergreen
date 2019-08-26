@@ -203,6 +203,8 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionLegacy(t *testing.T) {
 					Status: evergreen.TaskStarted,
 				}
 				So(undispatchedTask.Insert(), ShouldBeNil)
+				So(theHostWhoCanBoastTheMostRoast.ClearRunningTask(), ShouldBeNil)
+
 				t, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskDispatcherTTL), &theHostWhoCanBoastTheMostRoast)
 				So(err, ShouldBeNil)
 				So(t.Id, ShouldEqual, "task2")
