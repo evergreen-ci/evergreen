@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -76,9 +75,8 @@ func TestWriteOutputInvalidInput(t *testing.T) {
 
 func TestWriteOutputInvalidOutput(t *testing.T) {
 	input := bytes.NewBufferString(`{"foo":"bar"}`)
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-	output, err := ioutil.TempFile(filepath.Join(filepath.Dir(cwd), "build"), "write_output.txt")
+
+	output, err := ioutil.TempFile(buildDir(t), "write_output.txt")
 	require.NoError(t, err)
 	defer os.RemoveAll(output.Name())
 	require.NoError(t, output.Close())

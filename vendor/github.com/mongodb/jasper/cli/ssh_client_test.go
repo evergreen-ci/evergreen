@@ -1,10 +1,11 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io/ioutil"
-	"bytes"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -450,6 +451,33 @@ func TestSSHClient(t *testing.T) {
 		"SignalEventFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
 			baseManager.FailCreate = true
 			assert.Error(t, client.SignalEvent(ctx, "foo"))
+		},
+		"WriteFileSucceeds": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+			inputChecker := jasper.WriteFileInfo{}
+			baseManager.Create = makeCreateFunc(
+				t, client,
+				[]string{RemoteCommand, WriteFileCommand},
+				&inputChecker,
+				makeOutcomeResponse(nil),
+			)
+
+			info := jasper.WriteFileInfo{Path: filepath.Join(buildDir(t), "write_file"), Content: []byte("foo")}
+			require.NoError(t, client.WriteFile(ctx, info))
+		},
+		"WriteFileFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+			baseManager.Create = makeCreateFunc(
+				t, client,
+				[]string{RemoteCommand, WriteFileCommand},
+				nil,
+				invalidResponse(),
+			)
+			info := jasper.WriteFileInfo{Path: filepath.Join(buildDir(t), "write_file"), Content: []byte("foo")}
+			assert.Error(t, client.WriteFile(ctx, info))
+		},
+		"WriteFileFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+			baseManager.FailCreate = true
+			info := jasper.WriteFileInfo{Path: filepath.Join(buildDir(t), "write_file"), Content: []byte("foo")}
+			assert.Error(t, client.WriteFile(ctx, info))
 		},
 		// "": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {},
 	} {

@@ -252,3 +252,9 @@ func BuildRemoteGetBuildloggerURLsCommand(basePrefix ...string) []string {
 func BuildRemoteSignalEventCommand(basePrefix ...string) []string {
 	return append(BuildRemoteCommand(basePrefix...), SignalEventCommand)
 }
+
+// BuildRemoteWriteFileCommand is a convenience function to generate the slice
+// of strings to invoke the Jasper.Client.Remote.WriteFile subcommand.
+func BuildRemoteWriteFileCommand(basePrefix ...string) []string {
+	return append(BuildRemoteCommand(basePrefix...), WriteFileCommand)
+}
