@@ -135,7 +135,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, h *host.Host, settings *ev
 		event.LogHostProvisionError(h.Id)
 
 		if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodSSH {
-			grip.Error(message.WrapError(j.host.DeleteJasperCredentials(ctx, j.env), message.Fields{
+			grip.Error(message.WrapError(j.host.DeleteJasperCredentials(ctx), message.Fields{
 				"message":  "could not delete Jasper credentials after failed provision attempt",
 				"host":     j.host.Id,
 				"distro":   j.host.Distro.Id,
@@ -327,7 +327,7 @@ func (j *setupHostJob) setupJasper(ctx context.Context) error {
 // putJasperCredentials creates Jasper credentials for the host and puts the
 // credentials file on the host.
 func (j *setupHostJob) putJasperCredentials(ctx context.Context, fileName string, sshOptions []string) error {
-	creds, err := j.host.GenerateJasperCredentials(ctx, j.env)
+	creds, err := j.host.GenerateJasperCredentials(ctx)
 	if err != nil {
 		return errors.Wrap(err, "could not generate Jasper credentials for host")
 	}
@@ -395,7 +395,7 @@ func (j *setupHostJob) putJasperCredentials(ctx context.Context, fileName string
 		return errors.Wrap(err, "error copying credentials to remote machine")
 	}
 
-	if err := j.host.SaveJasperCredentials(ctx, j.env, creds); err != nil {
+	if err := j.host.SaveJasperCredentials(ctx, creds); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "problem saving host credentials",
 			"job":     j.ID(),

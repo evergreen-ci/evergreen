@@ -146,7 +146,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err = j.runSetupScript(ctx); err != nil {
+	if err = j.runSetupScript(ctx, settings); err != nil {
 		j.AddError(err)
 		return
 	}
@@ -207,7 +207,7 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, settings *everg
 		Args:             []string{"bash", "-c", j.host.CurlCommand(settings)},
 		WorkingDirectory: j.host.Distro.HomeDir(),
 	}
-	output, err := j.host.RunJasperProcess(ctx, j.env, opts)
+	output, err := j.host.RunJasperProcess(ctx, settings, opts)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error fetching agent monitor binary on host",
@@ -225,7 +225,7 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, settings *everg
 
 // runSetupScript runs the setup script on the host through the host's Jasper
 // service.
-func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context) error {
+func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context, settings *evergreen.Settings) error {
 	grip.Info(message.Fields{
 		"message":       "running setup script on host",
 		"host":          j.host.Id,
@@ -238,7 +238,7 @@ func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context) error {
 		Args:             []string{"bash", "-c", j.host.SetupCommand()},
 		WorkingDirectory: j.host.Distro.HomeDir(),
 	}
-	output, err := j.host.RunJasperProcess(ctx, j.env, opts)
+	output, err := j.host.RunJasperProcess(ctx, settings, opts)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error running setup script on host",
@@ -272,7 +272,7 @@ func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, settings 
 	}
 
 	grip.Info(j.deployMessage())
-	if err := j.host.StartJasperProcess(ctx, j.env, j.host.AgentMonitorOptions(settings)); err != nil {
+	if err := j.host.StartJasperProcess(ctx, settings, j.host.AgentMonitorOptions(settings)); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "failed to start agent monitor on host",
 			"host":    j.host.Id,
