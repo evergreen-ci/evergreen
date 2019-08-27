@@ -577,7 +577,6 @@ buildvariants:
     batchtime: 2880
     run_on:
       - rhel71-power8-test
-      - rhel71-power8-build
     expansions:
       disable_coverage: yes
       xc_build: yes
@@ -594,7 +593,6 @@ buildvariants:
     batchtime: 2880
     run_on:
       - rhel72-zseries-test
-      - rhel72-zseries-build
     expansions:
       xc_build: yes
       disable_coverage: yes
@@ -612,7 +610,6 @@ buildvariants:
     batchtime: 2880
     run_on:
       - ubuntu1604-arm64-small
-      - ubuntu1604-arm64-large
     expansions:
       disable_coverage: yes
       xc_build: yes
