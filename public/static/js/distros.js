@@ -9,7 +9,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   for (var i = 0; i < $scope.distros.length; i++) {
     $scope.distros[i].pool_size = $scope.distros[i].pool_size || 0;
     $scope.distros[i].planner_settings = $scope.distros[i].planner_settings || {};
-    $scope.distros[i].planner_settings.version = $scope.distros[i].planner_settings.version || "legacy";
+    $scope.distros[i].planner_settings.version = $scope.distros[i].planner_settings.version || 'legacy';
     $scope.distros[i].planner_settings.minimum_hosts = $scope.distros[i].planner_settings.minimum_hosts || 0;
     $scope.distros[i].planner_settings.maximum_hosts = $scope.distros[i].planner_settings.maximum_hosts || 0;
     $scope.distros[i].planner_settings.target_time = $scope.distros[i].planner_settings.target_time || 0;
@@ -25,9 +25,9 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
       $scope.distros[i].planner_settings.acceptable_host_idle_time /= 1e9;
     }
     $scope.distros[i].planner_settings.group_versions = $scope.distros[i].planner_settings.group_versions;
-    $scope.distros[i].planner_settings.task_ordering = $scope.distros[i].planner_settings.task_ordering || "interleave";
+    $scope.distros[i].planner_settings.task_ordering = $scope.distros[i].planner_settings.task_ordering || 'interleave';
     $scope.distros[i].finder_settings = $scope.distros[i].finder_settings || {};
-    $scope.distros[i].finder_settings.version = $scope.distros[i].finder_settings.version || "legacy";
+    $scope.distros[i].finder_settings.version = $scope.distros[i].finder_settings.version || 'legacy'";
     $scope.distros[i].bootstrap_settings.method = $scope.distros[i].bootstrap_settings.method || 'legacy-ssh';
     $scope.distros[i].bootstrap_settings.communication = $scope.distros[i].bootstrap_settings.communication || 'legacy-ssh';
     $scope.distros[i].clone_method = $scope.distros[i].clone_method || 'legacy-ssh';
