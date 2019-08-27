@@ -23,7 +23,7 @@ func serviceCommandRPC(cmd string, operation serviceOperation) cli.Command {
 	return cli.Command{
 		Name:  RPCService,
 		Usage: fmt.Sprintf("%s an RPC service", cmd),
-		Flags: []cli.Flag{
+		Flags: append(serviceLoggingFlags(),
 			cli.StringFlag{
 				Name:   hostFlagName,
 				EnvVar: rpcHostEnvVar,
@@ -44,7 +44,7 @@ func serviceCommandRPC(cmd string, operation serviceOperation) cli.Command {
 				Name:  userFlagName,
 				Usage: "the user who will run the RPC service",
 			},
-		},
+		),
 		Before: validatePort(portFlagName),
 		Action: func(c *cli.Context) error {
 			manager, err := jasper.NewLocalManager(false)
@@ -52,7 +52,7 @@ func serviceCommandRPC(cmd string, operation serviceOperation) cli.Command {
 				return errors.Wrap(err, "error creating RPC manager")
 			}
 
-			daemon := newRPCDaemon(c.String(hostFlagName), c.Int(portFlagName), manager, c.String(credsFilePathFlagName))
+			daemon := newRPCDaemon(c.String(hostFlagName), c.Int(portFlagName), manager, c.String(credsFilePathFlagName), makeLogger(c))
 
 			config := serviceConfig(RPCService, buildRunCommand(c, RPCService))
 			config.UserName = c.String(userFlagName)
@@ -67,20 +67,30 @@ type rpcDaemon struct {
 	Port          int
 	CredsFilePath string
 	Manager       jasper.Manager
+	Logger        *jasper.Logger
 
 	exit chan struct{}
 }
 
-func newRPCDaemon(host string, port int, manager jasper.Manager, credsFilePath string) *rpcDaemon {
+func newRPCDaemon(host string, port int, manager jasper.Manager, credsFilePath string, logger *jasper.Logger) *rpcDaemon {
 	return &rpcDaemon{
 		Host:          host,
 		Port:          port,
-		Manager:       manager,
 		CredsFilePath: credsFilePath,
+		Manager:       manager,
+		Logger:        logger,
 	}
 }
 
 func (d *rpcDaemon) Start(s service.Service) error {
+	if d.Logger != nil {
+		sender, err := d.Logger.Configure()
+		if err != nil {
+			return errors.Wrap(err, "could not set up logging")
+		}
+		grip.SetSender(sender)
+	}
+
 	d.exit = make(chan struct{})
 	if d.Manager == nil {
 		var err error

@@ -2,16 +2,19 @@ package pool
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/pkg/errors"
+	uuid "github.com/satori/go.uuid"
 )
 
 type QueueTester struct {
 	started     bool
 	pool        amboy.Runner
+	id          string
 	numComplete int
 	toProcess   chan amboy.Job
 	storage     map[string]amboy.Job
@@ -21,7 +24,6 @@ type QueueTester struct {
 
 func NewQueueTester(p amboy.Runner) *QueueTester {
 	q := NewQueueTesterInstance()
-
 	_ = p.SetQueue(q)
 	q.pool = p
 
@@ -35,6 +37,7 @@ func NewQueueTesterInstance() *QueueTester {
 	return &QueueTester{
 		toProcess: make(chan amboy.Job, 101),
 		storage:   make(map[string]amboy.Job),
+		id:        uuid.NewV4().String(),
 	}
 }
 
@@ -43,12 +46,32 @@ func (q *QueueTester) Put(ctx context.Context, j amboy.Job) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	case q.toProcess <- j:
+		q.mutex.Lock()
+		defer q.mutex.Unlock()
+
 		q.storage[j.ID()] = j
 		return nil
 	}
 }
 
+func (q *QueueTester) Save(ctx context.Context, j amboy.Job) error {
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
+
+	id := j.ID()
+	if _, ok := q.storage[id]; !ok {
+		return nil
+	}
+	q.storage[id] = j
+	return nil
+}
+
+func (q *QueueTester) ID() string { return fmt.Sprintf("queue.tester.%s", q.id) }
+
 func (q *QueueTester) Get(ctx context.Context, name string) (amboy.Job, bool) {
+	q.mutex.RLock()
+	defer q.mutex.RUnlock()
+
 	job, ok := q.storage[name]
 	return job, ok
 }

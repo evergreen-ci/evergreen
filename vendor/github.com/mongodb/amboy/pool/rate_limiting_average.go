@@ -2,7 +2,6 @@ package pool
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"strings"
 	"sync"
@@ -11,7 +10,6 @@ import (
 	"github.com/VividCortex/ewma"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
@@ -192,8 +190,6 @@ func (p *ewmaRateLimiting) addCanceler(id string, cancel context.CancelFunc) {
 }
 
 func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duration {
-	start := time.Now()
-
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithCancel(ctx)
 	p.addCanceler(j.ID(), cancel)
@@ -205,26 +201,9 @@ func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duratio
 		delete(p.jobs, j.ID())
 	}()
 
-	runJob(ctx, j, p.queue, start)
+	executeJob(ctx, "rate-limited-average", j, p.queue)
 
-	duration := time.Since(start)
-	interval := p.getNextTime(duration)
-	r := message.Fields{
-		"id":            j.ID(),
-		"job_type":      j.Type().Name,
-		"duration_secs": duration.Seconds(),
-		"queue_type":    fmt.Sprintf("%T", p.queue),
-		"interval_secs": interval.Seconds(),
-		"pool":          "rate-limited-average",
-	}
-	if err := j.Error(); err != nil {
-		r["error"] = err.Error()
-		grip.Error(r)
-	} else {
-		grip.Info(r)
-	}
-
-	return interval
+	return j.TimeInfo().Duration()
 }
 
 func (p *ewmaRateLimiting) SetQueue(q amboy.Queue) error {

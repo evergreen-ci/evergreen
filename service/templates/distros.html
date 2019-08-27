@@ -525,6 +525,28 @@ Evergreen - Distros
               form.plannerSettingsPatchFactor.$modelValue < 0 ||
               form.plannerSettingsPatchFactor.$modelValue % 1 != 0"> Patch Factor must be an integer between 0 and 100
             </div>
+            <div>
+              <label class="distro-label">Time In Queue Factor (0 to 100 inclusive):</label>
+              <input ng-readonly="readOnly" type="number" ng-required="activeDistro.planner_settings.version == 'tunable'"
+                name="plannerSettingsTimeInQueueFactor" class="form-control" ng-model="activeDistro.planner_settings.time_in_queue_factor" placeholder="Set to 0 to use its global default">
+            </div>
+            <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsTimeInQueueFactor.$dirty && form.plannerSettingsTimeInQueueFactor.$error.required ||
+              form.plannerSettingsTimeInQueueFactor.$invalid ||
+              form.plannerSettingsTimeInQueueFactor.$modelValue > 100 ||
+              form.plannerSettingsTimeInQueueFactor.$modelValue < 0 ||
+              form.plannerSettingsTimeInQueueFactor.$modelValue % 1 != 0"> Time In Queue Factor must be an integer between 0 and 100
+            </div>
+            <div>
+              <label class="distro-label">Expected Runtime Factor (0 to 100 inclusive):</label>
+              <input ng-readonly="readOnly" type="number" ng-required="activeDistro.planner_settings.version == 'tunable'"
+                name="plannerSettingsExpectedRuntimeFactor" class="form-control" ng-model="activeDistro.planner_settings.expected_runtime_factor" placeholder="Set to 0 to use its global default">
+            </div>
+            <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsExpectedRuntimeFactor.$dirty && form.plannerSettingsExpectedRuntimeFactor.$error.required ||
+              form.plannerSettingsExpectedRuntimeFactor.$invalid ||
+              form.plannerSettingsExpectedRuntimeFactor.$modelValue > 100 ||
+              form.plannerSettingsExpectedRuntimeFactor.$modelValue < 0 ||
+              form.plannerSettingsExpectedRuntimeFactor.$modelValue % 1 != 0"> Time In Queue Factor must be an integer between 0 and 100
+            </div>
             <br/>
             <div class="dropdown">
               <span>Task Ordering:</span>

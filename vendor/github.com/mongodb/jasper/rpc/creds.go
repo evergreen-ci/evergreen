@@ -50,6 +50,7 @@ func NewCredentialsFromFile(path string) (*Credentials, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error opening credentials file")
 	}
+	defer file.Close()
 
 	contents, err := ioutil.ReadAll(file)
 	if err != nil {

@@ -278,7 +278,10 @@ func TestProcessImplementations(t *testing.T) {
 
 					file, err := ioutil.TempFile("build", "out.txt")
 					require.NoError(t, err)
-					defer os.Remove(file.Name())
+					defer func() {
+						assert.NoError(t, file.Close())
+						assert.NoError(t, os.RemoveAll(file.Name()))
+					}()
 					info, err := file.Stat()
 					assert.NoError(t, err)
 					assert.Zero(t, info.Size())
@@ -299,7 +302,10 @@ func TestProcessImplementations(t *testing.T) {
 
 					file, err := ioutil.TempFile("build", "out.txt")
 					require.NoError(t, err)
-					defer os.Remove(file.Name())
+					defer func() {
+						assert.NoError(t, file.Close())
+						assert.NoError(t, os.RemoveAll(file.Name()))
+					}()
 					info, err := file.Stat()
 					assert.NoError(t, err)
 					assert.Zero(t, info.Size())
@@ -342,7 +348,10 @@ func TestProcessImplementations(t *testing.T) {
 					}
 					file, err := ioutil.TempFile("build", "out.txt")
 					require.NoError(t, err)
-					defer os.Remove(file.Name())
+					defer func() {
+						assert.NoError(t, file.Close())
+						assert.NoError(t, os.RemoveAll(file.Name()))
+					}()
 					info, err := file.Stat()
 					assert.NoError(t, err)
 					assert.Zero(t, info.Size())

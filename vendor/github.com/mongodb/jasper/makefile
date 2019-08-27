@@ -67,6 +67,7 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/pkg/errors
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/evergreen-ci/gimlet
 	rm -rf vendor/github.com/mongodb/amboy/vendor/golang.org/x/tools
+	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/urfave/
 	rm -rf vendor/github.com/mongodb/ftdc/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/mongodb/ftdc/vendor/go.mongodb.org/mongo-driver/
 	rm -rf vendor/github.com/mongodb/ftdc/vendor/gopkg.in/mgo.v2/
@@ -94,4 +95,4 @@ vendor-clean:
 	rm -rf vendor/github.com/mholt/archiver/tarsz.go
 	rm -rf vendor/github.com/mholt/archiver/tarxz.go
 	find vendor/ -name "*.gif" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" -o -name "*testdata*" | xargs rm -rf
-	find vendor -type d -empty | xargs rm -rf 
+	find vendor -type d -empty | xargs rm -rf

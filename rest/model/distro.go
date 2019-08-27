@@ -20,7 +20,7 @@ type APIPlannerSettings struct {
 	AcceptableHostIdleTime APIDuration `json:"acceptable_host_idle_time"`
 	GroupVersions          *bool       `json:"group_versions"`
 	TaskOrdering           APIString   `json:"task_ordering"`
-	PatchFactor      int64       `json:"patch_factor"`
+	PatchFactor            int64       `json:"patch_factor"`
 	TimeInQueueFactor      int64       `json:"time_in_queue_factor"`
 	ExpectedRuntimeFactor  int64       `json:"expected_runtime_factor"`
 }

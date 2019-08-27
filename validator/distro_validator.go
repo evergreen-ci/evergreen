@@ -328,19 +328,18 @@ func ensureHasValidPlannerSettings(ctx context.Context, d *distro.Distro, s *eve
 			Level:   Error,
 		})
 	}
-	if ps.ExpectedRuntimeFactor < 0 {
+	if ps.TimeInQueueFactor < 0 || ps.TimeInQueueFactor > 100 {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("invalid planner_settings.expected_runtime_factor value of %d for distro '%s' - its value must be a non-negative integer", ps.ExpectedRuntimeFactor, d.Id),
+			Message: fmt.Sprintf("invalid planner_settings.time_in_queue_factor value of %d for distro '%s' - its value must be a non-negative integer between 0 and 100, inclusive", ps.TimeInQueueFactor, d.Id),
 			Level:   Error,
 		})
 	}
-	if ps.TimeInQueueFactor < 0 {
+	if ps.ExpectedRuntimeFactor < 0 || ps.ExpectedRuntimeFactor > 100 {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("invalid planner_settings.time_in_queue value of %d for distro '%s' - its value must be a non-negative integer", ps.TimeInQueueFactor, d.Id),
+			Message: fmt.Sprintf("invalid planner_settings.expected_runtime_factor value of %d for distro '%s' - its value must be a non-negative integer between 0 and 100, inclusive", ps.ExpectedRuntimeFactor, d.Id),
 			Level:   Error,
 		})
 	}
-
 	if !util.StringSliceContains(evergreen.ValidTaskOrderings, ps.TaskOrdering) {
 		errs = append(errs, ValidationError{
 			Message: fmt.Sprintf("invalid planner_settings.task_ordering '%s' for distro '%s'", ps.TaskOrdering, d.Id),

@@ -9,8 +9,11 @@ import (
 
 	"github.com/kardianos/service"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
+	"github.com/mongodb/grip/send"
+	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -35,8 +38,18 @@ const (
 	CombinedService = "combined"
 )
 
+// Constants representing service flags.
 const (
 	userFlagName = "user"
+
+	logNameFlagName = "log_name"
+	defaultLogName  = "jasper"
+
+	logLevelFlagName = "log_level"
+
+	splunkURLFlagName     = "splunk_url"
+	splunkTokenFlagName   = "splunk_token"
+	splunkChannelFlagName = "splunk_channel"
 )
 
 // Service encapsulates the functionality to set up Jasper services.
@@ -75,6 +88,81 @@ func handleDaemonSignals(ctx context.Context, cancel context.CancelFunc, exit ch
 		grip.Debug("context canceled")
 	case <-exit:
 		grip.Debug("received daemon exit signal")
+	}
+}
+
+func serviceLoggingFlags() []cli.Flag {
+	return []cli.Flag{
+		cli.StringFlag{
+			Name:  logNameFlagName,
+			Value: defaultLogName,
+		},
+		cli.StringFlag{
+			Name:  logLevelFlagName,
+			Usage: "the threshold visible logging level",
+			Value: level.Error.String(),
+		},
+		cli.StringFlag{
+			Name:   splunkURLFlagName,
+			Usage:  "the URL of the splunk server",
+			EnvVar: "GRIP_SPLUNK_SERVER_URL",
+		},
+		cli.StringFlag{
+			Name:   splunkTokenFlagName,
+			Usage:  "the splunk token",
+			EnvVar: "GRIP_SPLUNK_CLIENT_TOKEN",
+		},
+		cli.StringFlag{
+			Name:   splunkChannelFlagName,
+			Usage:  "the splunk channel",
+			EnvVar: "GRIP_SPLUNK_CHANNEL",
+		},
+	}
+}
+
+func serviceBefore() func(*cli.Context) error {
+	return mergeBeforeFuncs(
+		validatePort(portFlagName),
+		validateLogLevel(logLevelFlagName),
+	)
+}
+
+func validateLogLevel(flagName string) func(*cli.Context) error {
+	return func(c *cli.Context) error {
+		l := c.String(logLevelFlagName)
+		priority := level.FromString(l)
+		if !level.IsValidPriority(priority) {
+			return errors.Errorf("%s is not a valid log level", l)
+		}
+		return nil
+	}
+}
+
+// makeLogger creates a splunk logger. It may return nil if the splunk flags are
+// not populated.
+func makeLogger(c *cli.Context) *jasper.Logger {
+	info := send.SplunkConnectionInfo{
+		ServerURL: c.String(splunkURLFlagName),
+		Token:     c.String(splunkTokenFlagName),
+		Channel:   c.String(splunkChannelFlagName),
+	}
+	if !info.Populated() {
+		return nil
+	}
+
+	l := c.String(logLevelFlagName)
+	priority := level.FromString(l)
+	if !level.IsValidPriority(priority) {
+		return nil
+	}
+
+	return &jasper.Logger{
+		Type: jasper.LogSplunk,
+		Options: jasper.LogOptions{
+			Format:        jasper.LogFormatDefault,
+			Level:         send.LevelInfo{Default: priority, Threshold: priority},
+			SplunkOptions: info,
+		},
 	}
 }
 

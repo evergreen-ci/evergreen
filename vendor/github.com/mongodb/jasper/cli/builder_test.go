@@ -56,6 +56,7 @@ func TestBuildSubcommands(t *testing.T) {
 		{subcommand: []string{binary, JasperCommand, ClientCommand, RemoteCommand, GetLogStreamCommand}, buildSubcommand: BuildRemoteGetLogStreamCommand},
 		{subcommand: []string{binary, JasperCommand, ClientCommand, RemoteCommand, GetBuildloggerURLsCommand}, buildSubcommand: BuildRemoteGetBuildloggerURLsCommand},
 		{subcommand: []string{binary, JasperCommand, ClientCommand, RemoteCommand, SignalEventCommand}, buildSubcommand: BuildRemoteSignalEventCommand},
+		{subcommand: []string{binary, JasperCommand, ClientCommand, RemoteCommand, WriteFileCommand}, buildSubcommand: BuildRemoteWriteFileCommand},
 	} {
 		t.Run(strings.Join(testCase.subcommand, "/"), func(t *testing.T) {
 			assert.Equal(t, testCase.subcommand, testCase.buildSubcommand(binary))

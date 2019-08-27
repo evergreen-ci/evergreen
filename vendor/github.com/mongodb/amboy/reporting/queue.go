@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/queue"
 	"github.com/pkg/errors"
 )
 
@@ -59,7 +58,7 @@ func (r *queueReporter) JobStatus(ctx context.Context, f CounterFilter) (*JobSta
 		}
 	case Stale:
 		for stat := range r.queue.JobStats(ctx) {
-			if !stat.Completed && stat.InProgress && time.Since(stat.ModificationTime) > queue.LockTimeout {
+			if !stat.Completed && stat.InProgress && time.Since(stat.ModificationTime) > amboy.LockTimeout {
 				job, ok := r.queue.Get(ctx, stat.ID)
 				if ok {
 					counters[job.Type().Name]++
@@ -206,7 +205,7 @@ func (r *queueReporter) JobIDsByState(ctx context.Context, jobType string, f Cou
 					continue
 				}
 			}
-			if !stat.Completed && stat.InProgress && time.Since(stat.ModificationTime) > queue.LockTimeout {
+			if !stat.Completed && stat.InProgress && time.Since(stat.ModificationTime) > amboy.LockTimeout {
 				ids = append(ids, stat.ID)
 			}
 		}

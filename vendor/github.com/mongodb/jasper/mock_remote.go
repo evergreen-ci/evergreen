@@ -15,15 +15,19 @@ type MockRemoteClient struct {
 	FailGetLogStream       bool
 	FailGetBuildloggerURLs bool
 	FailSignalEvent        bool
+	FailWriteFile          bool
 
 	// ConfigureCache input
-	CacheOptions
+	CacheOptions CacheOptions
 
 	// DownloadFile input
-	DownloadInfo
+	DownloadInfo DownloadInfo
+
+	// WriteFile input
+	WriteFileInfo WriteFileInfo
 
 	// DownloadMongoDB input
-	MongoDBDownloadOptions
+	MongoDBDownloadOptions MongoDBDownloadOptions
 
 	// LogStream input/output
 	LogStreamID    string
@@ -97,6 +101,16 @@ func (c *MockRemoteClient) SignalEvent(ctx context.Context, name string) error {
 	}
 
 	c.EventName = name
+
+	return nil
+}
+
+func (c *MockRemoteClient) WriteFile(ctx context.Context, info WriteFileInfo) error {
+	if c.FailWriteFile {
+		return mockFail()
+	}
+
+	c.WriteFileInfo = info
 
 	return nil
 }

@@ -262,7 +262,7 @@ func (s *DistroByIDSuite) SetupSuite() {
 					TargetTime:             60000000000,
 					AcceptableHostIdleTime: 10000000000,
 					GroupVersions:          &pTrue,
-					PatchZipperFactor:      7,
+					PatchFactor:            7,
 					TaskOrdering:           evergreen.TaskOrderingInterleave,
 				},
 				BootstrapSettings: distro.BootstrapSettings{
@@ -304,7 +304,7 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 	s.Equal(model.NewAPIDuration(60000000000), d.PlannerSettings.TargetTime)
 	s.Equal(model.NewAPIDuration(10000000000), d.PlannerSettings.AcceptableHostIdleTime)
 	s.Equal(true, *d.PlannerSettings.GroupVersions)
-	s.EqualValues(7, d.PlannerSettings.PatchZipperFactor)
+	s.EqualValues(7, d.PlannerSettings.PatchFactor)
 	s.Equal(model.ToAPIString(evergreen.TaskOrderingInterleave), d.PlannerSettings.TaskOrdering)
 	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), d.BootstrapSettings.Method)
 	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), d.BootstrapSettings.Communication)
@@ -374,7 +374,7 @@ func (s *DistroPutSuite) TestParse() {
     		"target_time": 30000000000,
     		"acceptable_host_idle_time": 5000000000,
     		"group_versions": false,
-    		"patch_zipper_factor": 2,
+    		"patch_factor": 2,
     		"task_ordering": "interleave" ,
     		"patch_first": false
   		},
@@ -390,6 +390,7 @@ func (s *DistroPutSuite) TestParse() {
 
 func (s *DistroPutSuite) TestRunNewWithValidEntity() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "SSH Key", "provider": "mock", "user": "tibor"}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro4"
@@ -402,6 +403,7 @@ func (s *DistroPutSuite) TestRunNewWithValidEntity() {
 
 func (s *DistroPutSuite) TestRunNewWithInvalidEntity() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	json := []byte(`
 	{
 		"arch": "linux_amd64",
@@ -431,6 +433,7 @@ func (s *DistroPutSuite) TestRunNewWithInvalidEntity() {
 
 func (s *DistroPutSuite) TestRunNewConflictingName() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	json := []byte(`{"name": "distro5", "arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "", "provider": "mock", "user": "tibor"}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro4"
@@ -445,6 +448,7 @@ func (s *DistroPutSuite) TestRunNewConflictingName() {
 
 func (s *DistroPutSuite) TestRunExistingWithValidEntity() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "SSH Key", "provider": "mock", "user": "tibor"}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro3"
@@ -457,6 +461,7 @@ func (s *DistroPutSuite) TestRunExistingWithValidEntity() {
 
 func (s *DistroPutSuite) TestRunExistingWithInvalidEntity() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	json := []byte(`{"arch": "", "work_dir": "/data/mci", "ssh_key": "SSH Key", "provider": "", "user": ""}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro3"
@@ -473,6 +478,7 @@ func (s *DistroPutSuite) TestRunExistingWithInvalidEntity() {
 
 func (s *DistroPutSuite) TestRunExistingConflictingName() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	json := []byte(`{"name": "distro5", "arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "", "provider": "mock", "user": "tibor"}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro3"

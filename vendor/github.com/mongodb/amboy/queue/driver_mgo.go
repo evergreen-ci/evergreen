@@ -27,7 +27,6 @@ type mgoDriver struct {
 	instanceID string
 	canceler   context.CancelFunc
 	mu         sync.RWMutex
-	LockManager
 }
 
 // NewMgoDriver creates a driver object given a name, which
@@ -82,8 +81,6 @@ func (d *mgoDriver) Open(ctx context.Context) error {
 }
 
 func (d *mgoDriver) start(ctx context.Context, session *mgo.Session) error {
-	d.LockManager = NewLockManager(ctx, d)
-
 	dCtx, cancel := context.WithCancel(ctx)
 	d.canceler = cancel
 
@@ -188,7 +185,7 @@ func (d *mgoDriver) Get(_ context.Context, name string) (amboy.Job, error) {
 }
 
 func getAtomicQuery(owner, jobName string, modCount int) bson.M {
-	timeoutTs := time.Now().Add(-LockTimeout)
+	timeoutTs := time.Now().Add(-amboy.LockTimeout)
 
 	return bson.M{
 		"_id": jobName,
@@ -233,9 +230,7 @@ func (d *mgoDriver) Save(_ context.Context, j amboy.Job) error {
 	defer session.Close()
 
 	stat := j.Status()
-	stat.Owner = d.instanceID
 	stat.ErrorCount = len(stat.Errors)
-	stat.ModificationCount++
 	stat.ModificationTime = time.Now()
 	j.SetStatus(stat)
 
@@ -261,33 +256,6 @@ func (d *mgoDriver) Save(_ context.Context, j amboy.Job) error {
 
 		return errors.Wrapf(err, "problem saving document %s", name)
 	}
-
-	return nil
-}
-
-// SaveStatus persists only the status and time_info documents in the job in the
-// persistence layer. If the job does not exist, or the underlying
-// status document has changed incompatibly this operation produces
-// an error.
-func (d *mgoDriver) SaveStatus(_ context.Context, j amboy.Job, stat amboy.JobStatusInfo) error {
-	session, jobs := d.getJobsCollection()
-	defer session.Close()
-
-	id := j.ID()
-	query := getAtomicQuery(d.instanceID, id, stat.ModificationCount)
-	stat.Owner = d.instanceID
-	stat.ErrorCount = len(stat.Errors)
-	stat.ModificationCount++
-	stat.ModificationTime = time.Now()
-	timeInfo := j.TimeInfo()
-
-	err := jobs.Update(query, bson.M{"$set": bson.M{"status": stat, "time_info": timeInfo}})
-
-	if err != nil {
-		return errors.Wrapf(err, "problem updating status document for %s", id)
-	}
-
-	j.SetStatus(stat)
 
 	return nil
 }
@@ -395,7 +363,7 @@ func (d *mgoDriver) Next(ctx context.Context) amboy.Job {
 			},
 			{
 				"status.completed": false,
-				"status.mod_ts":    bson.M{"$lte": time.Now().Add(-LockTimeout)},
+				"status.mod_ts":    bson.M{"$lte": time.Now().Add(-amboy.LockTimeout)},
 				"status.in_prog":   true,
 			},
 		},

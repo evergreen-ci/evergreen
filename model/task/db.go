@@ -92,6 +92,13 @@ var (
 	TaskEndDetailDescription = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "Description")
 )
 
+var (
+	// BSON fields for task dependency struct
+	DependencyTaskIdKey       = bsonutil.MustHaveTag(Dependency{}, "TaskId")
+	DependencyStatusKey       = bsonutil.MustHaveTag(Dependency{}, "Status")
+	DependencyUnattainableKey = bsonutil.MustHaveTag(Dependency{}, "Unattainable")
+)
+
 // Queries
 
 // All returns all tasks.

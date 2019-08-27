@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -241,7 +242,7 @@ func (db *dbQueueStat) JobStatus(ctx context.Context, f CounterFilter) (*JobStat
 		match["status.in_prog"] = false
 	case Stale:
 		match["status.in_prog"] = true
-		match["status.mod_ts"] = bson.M{"$gt": time.Now().Add(-queue.LockTimeout)}
+		match["status.mod_ts"] = bson.M{"$gt": time.Now().Add(-amboy.LockTimeout)}
 	default:
 		return nil, errors.New("invalid job status filter")
 	}
@@ -376,7 +377,7 @@ func (db *dbQueueStat) JobIDsByState(ctx context.Context, jobType string, f Coun
 		query["status.in_prog"] = false
 	case Stale:
 		query["status.in_prog"] = true
-		query["status.mod_ts"] = bson.M{"$gt": time.Now().Add(-queue.LockTimeout)}
+		query["status.mod_ts"] = bson.M{"$gt": time.Now().Add(-amboy.LockTimeout)}
 	default:
 		return nil, errors.New("invalid job status filter")
 	}
