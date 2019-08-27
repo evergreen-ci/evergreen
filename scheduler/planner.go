@@ -184,6 +184,7 @@ func (unit *Unit) RankValue() int64 {
 	var (
 		expectedRuntime  time.Duration
 		timeInQueue      time.Duration
+		lifeTime         time.Duration
 		totalPriority    int64
 		numDeps          int64
 		inCommitQueue    bool
@@ -206,9 +207,14 @@ func (unit *Unit) RankValue() int64 {
 			timeInQueue += time.Since(t.ActivatedTime)
 		}
 
+		if !t.IngestTime.IsZero() {
+			lifeTime += time.Since(t.IngestTime)
+		}
+
 		totalPriority += t.Priority
 		expectedRuntime += t.FetchExpectedDuration()
 		numDeps += int64(t.NumDependents)
+
 	}
 
 	num := int64(len(unit.tasks))
@@ -235,6 +241,24 @@ func (unit *Unit) RankValue() int64 {
 	unit.cachedValue += num
 	unit.cachedValue += priority
 
+	// for mainline builds that are more recent, give them a bit
+	// of a bump, to avoid running older builds first
+	if !inPatch && lifeTime > 0 {
+		avgLifeTime := lifeTime / time.Duration(num)
+
+		if avgLifeTime < time.Duration(12)*time.Hour {
+			factor := int64(13)
+			for i := 1; i < 13; i++ {
+				factor--
+				if avgLifeTime < time.Duration(i)*time.Hour {
+					unit.cachedValue += priority * factor
+					break
+				}
+
+			}
+		}
+	}
+
 	// The remaining values are normalized per tasks, to avoid
 	// situations where larger units are always prioritized above
 	// smaller groups.
@@ -252,27 +276,8 @@ func (unit *Unit) RankValue() int64 {
 	// settings, and makes it possible to control what the impact
 	// of expected runtime (defaults to 10m for tasks that haven't
 	// run before) and time-in-queue is.
-
 	unit.cachedValue += priority * unit.distro.GetExpectedRuntimeFactor() * int64(math.Floor(expectedRuntime.Minutes()/float64(num)))
-
-	// older tasks should bubble up to the top of the queue
-	// (e.g. fairness for patches, triggers, and things people are
-	// waiting on,); but older mainline tasks shouldn't get this
-	// bump, particularly because a passing task will deactivate
-	// earlier versions of itself on the mainline.
-	//
-	// Additionally, mainline builds should get more points if
-	// they're newer.
-	timeInQueueValue := priority * unit.distro.GetTimeInQueueFactor() * int64(math.Floor(timeInQueue.Minutes()/float64(num)))
-	if timeInQueueValue > unit.cachedValue {
-		timeInQueueValue = 0
-	}
-
-	if inPatch || inCommitQueue {
-		unit.cachedValue += timeInQueueValue
-	} else {
-		unit.cachedValue -= timeInQueueValue
-	}
+	unit.cachedValue += priority * unit.distro.GetTimeInQueueFactor() * int64(math.Floor(timeInQueue.Minutes()/float64(num)))
 
 	return unit.cachedValue
 }
