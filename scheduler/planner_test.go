@@ -227,12 +227,12 @@ func TestPlanner(t *testing.T) {
 				t.Run("TimeInQueuePatch", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.PatchVersionRequester, ActivatedTime: time.Now().Add(-time.Hour)})
 					unit.SetDistro(&distro.Distro{})
-					assert.EqualValues(t, 73, unit.RankValue())
+					assert.EqualValues(t, 13, unit.RankValue())
 				})
 				t.Run("TimeInQueueMainline", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.RepotrackerVersionRequester, ActivatedTime: time.Now().Add(-time.Hour)})
 					unit.SetDistro(&distro.Distro{})
-					assert.EqualValues(t, 42, unit.RankValue())
+					assert.EqualValues(t, 12, unit.RankValue())
 				})
 				t.Run("NumDeps", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", NumDependents: 2})

@@ -203,18 +203,7 @@ func (unit *Unit) RankValue() int64 {
 		}
 
 		if !t.ActivatedTime.IsZero() {
-			// older tasks should bubble up to the top of
-			// the queue (e.g. fairness for patches,
-			// triggers, and things people are waiting
-			// on,); but older mainline tasks shouldn't
-			// get this bump, particularly because a
-			// passing task will deactivate earlier
-			// versions of itself on the mainline.
-			if t.Requester == evergreen.RepotrackerVersionRequester {
-				timeInQueue += time.Since(t.ActivatedTime) / 2
-			} else {
-				timeInQueue += time.Since(t.ActivatedTime)
-			}
+			timeInQueue += time.Since(t.ActivatedTime)
 		}
 
 		totalPriority += t.Priority
@@ -263,8 +252,27 @@ func (unit *Unit) RankValue() int64 {
 	// settings, and makes it possible to control what the impact
 	// of expected runtime (defaults to 10m for tasks that haven't
 	// run before) and time-in-queue is.
+
 	unit.cachedValue += priority * unit.distro.GetExpectedRuntimeFactor() * int64(math.Floor(expectedRuntime.Minutes()/float64(num)))
-	unit.cachedValue += priority * unit.distro.GetTimeInQueueFactor() * int64(math.Floor(timeInQueue.Minutes()/float64(num)))
+
+	// older tasks should bubble up to the top of the queue
+	// (e.g. fairness for patches, triggers, and things people are
+	// waiting on,); but older mainline tasks shouldn't get this
+	// bump, particularly because a passing task will deactivate
+	// earlier versions of itself on the mainline.
+	//
+	// Additionally, mainline builds should get more points if
+	// they're newer.
+	timeInQueueValue := priority * unit.distro.GetTimeInQueueFactor() * int64(math.Floor(timeInQueue.Minutes()/float64(num)))
+	if timeInQueueValue > unit.cachedValue {
+		timeInQueueValue = 0
+	}
+
+	if inPatch || inCommitQueue {
+		unit.cachedValue += timeInQueueValue
+	} else {
+		unit.cachedValue -= timeInQueueValue
+	}
 
 	return unit.cachedValue
 }
