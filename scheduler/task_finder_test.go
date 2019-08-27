@@ -266,6 +266,10 @@ func (s *TaskFinderComparisonSuite) SetupTest() {
 	})
 }
 
+func (s *TaskFinderComparisonSuite) TearDownTest() {
+	s.NoError(db.Clear(task.Collection))
+}
+
 func (s *TaskFinderComparisonSuite) TestFindRunnableHostsIsIdentical() {
 	idsOldMethod := []string{}
 	for _, task := range s.oldRunnableTasks {

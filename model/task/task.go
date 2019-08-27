@@ -1690,7 +1690,7 @@ func (t *Task) Blocked() bool {
 
 func (t *Task) BlockedState() (string, error) {
 	if t.Blocked() {
-		return evergreen.TaskBlocked, nil
+		return evergreen.TaskStatusBlocked, nil
 	}
 
 	for _, dep := range t.DependsOn {
@@ -1699,7 +1699,7 @@ func (t *Task) BlockedState() (string, error) {
 			return "", errors.Wrapf(err, "can't get dependent task '%s'", dep.TaskId)
 		}
 		if !t.satisfiesDependency(depTask) {
-			return evergreen.TaskPending, nil
+			return evergreen.TaskStatusPending, nil
 		}
 	}
 
