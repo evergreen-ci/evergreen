@@ -155,7 +155,7 @@ func setModuleCommand() cli.Command {
 		Usage: "update or add module to an existing merge patch",
 		Flags: mergeFlagSlices(addLargeFlag(), addPatchIDFlag(), addModuleFlag(), addYesFlag(), addRefFlag(
 			cli.StringFlag{
-				Name:  joinFlagNames(messageFlagName, "m", "description", "d"),
+				Name:  joinFlagNames("description", "d"),
 				Usage: "commit message",
 			},
 		)),
