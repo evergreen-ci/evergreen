@@ -502,41 +502,31 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 }
 
 func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupCheck bool) {
+	logger := grip.NewJournaler("killProcs")
+	if tc.logger != nil && !tc.logger.Closed() {
+		logger = tc.logger.Task()
+		logger.Info("task logger")
+	}
+
 	if a.shouldKill(tc, ignoreTaskGroupCheck) {
 		if tc.task.ID != "" {
-			if tc.logger != nil && !tc.logger.Closed() {
-				tc.logger.Task().Infof("cleaning up processes for task: %s", tc.task.ID)
-			} else {
-				grip.Infof("cleaning up processes for task: %s", tc.task.ID)
-			}
-			if err := util.KillSpawnedProcs(tc.task.ID, tc.logger.Task()); err != nil {
+			logger.Infof("cleaning up processes for task: %s", tc.task.ID)
+			if err := util.KillSpawnedProcs(tc.task.ID, logger); err != nil {
 				msg := fmt.Sprintf("Error cleaning up spawned processes (agent-exit): %v", err)
 				grip.Critical(msg)
 			}
-		}
-		if tc.logger != nil && !tc.logger.Closed() {
-			tc.logger.Task().Infof("cleaned up processes for task: %s", tc.task.ID)
-		} else {
-			grip.Infof("cleaned up processes for task: %s", tc.task.ID)
+
+			logger.Infof("cleaned up processes for task: %s", tc.task.ID)
 		}
 
-		if tc.logger != nil && !tc.logger.Closed() {
-			tc.logger.Task().Info("cleaning up Docker artifacts")
-		} else {
-			grip.Info("cleaning up Docker artifacts")
-		}
-
+		logger.Info("cleaning up Docker artifacts")
 		ctx, cancel := context.WithTimeout(ctx, dockerTimeout)
 		defer cancel()
-		if err := docker.Cleanup(ctx, tc.logger.Task()); err != nil {
+		if err := docker.Cleanup(ctx, logger); err != nil {
 			msg := fmt.Sprintf("Error cleaning up Docker artifacts (agent-exit): %s", err)
 			grip.Critical(msg)
 		}
-		if tc.logger != nil && !tc.logger.Closed() {
-			tc.logger.Task().Info("cleaned up Docker artifacts")
-		} else {
-			grip.Info("cleaned up Docker artifacts")
-		}
+		logger.Info("cleaned up Docker artifacts")
 	}
 }
 
