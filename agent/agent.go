@@ -505,7 +505,6 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 	logger := grip.NewJournaler("killProcs")
 	if tc.logger != nil && !tc.logger.Closed() {
 		logger = tc.logger.Task()
-		logger.Info("task logger")
 	}
 
 	if a.shouldKill(tc, ignoreTaskGroupCheck) {
