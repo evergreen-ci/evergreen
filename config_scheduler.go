@@ -19,7 +19,7 @@ type SchedulerConfig struct {
 	TargetTimeSeconds             int     `bson:"target_time_seconds" json:"target_time_seconds" mapstructure:"target_time_seconds"`
 	AcceptableHostIdleTimeSeconds int     `bson:"acceptable_host_idle_time_seconds" json:"acceptable_host_idle_time_seconds" mapstructure:"acceptable_host_idle_time_seconds"`
 	GroupVersions                 bool    `bson:"group_versions" json:"group_versions" mapstructure:"group_versions"`
-	PatchZipperFactor             int64   `bson:"patch_zipper_factor" json:"patch_zipper_factor" mapstructure:"patch_zipper_factor"`
+	PatchFactor                   int64   `bson:"patch_zipper_factor" json:"patch_factor" mapstructure:"patch_factor"`
 	TimeInQueueFactor             int64   `bson:"time_in_queue_factor" json:"time_in_queue_factor" mapstructure:"time_in_queue_factor"`
 	ExpectedRuntimeFactor         int64   `bson:"expected_runtime_factor" json:"expected_runtime_factor" mapstructure:"expected_runtime_factor"`
 }
@@ -57,12 +57,15 @@ func (c *SchedulerConfig) Set() error {
 			"task_finder":                       c.TaskFinder,
 			"host_allocator":                    c.HostAllocator,
 			"free_host_fraction":                c.FreeHostFraction,
+			"cache_duration_seconds":            c.CacheDurationSeconds,
 			"planner":                           c.Planner,
+			"task_ordering":                     c.TaskOrdering,
 			"target_time_seconds":               c.TargetTimeSeconds,
 			"acceptable_host_idle_time_seconds": c.AcceptableHostIdleTimeSeconds,
 			"group_versions":                    c.GroupVersions,
-			"patch_zipper_factor":               c.PatchZipperFactor,
-			"task_ordering":                     c.TaskOrdering,
+			"patch_zipper_factor":               c.PatchFactor,
+			"time_in_queue_factor":              c.TimeInQueueFactor,
+			"expected_runtime_factor":           c.ExpectedRuntimeFactor,
 		},
 	}, options.Update().SetUpsert(true))
 

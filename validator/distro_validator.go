@@ -322,21 +322,21 @@ func ensureHasValidPlannerSettings(ctx context.Context, d *distro.Distro, s *eve
 			Level:   Error,
 		})
 	}
-	if ps.PatchZipperFactor < 0 || ps.PatchZipperFactor > 100 {
+	if ps.PatchFactor < 0 || ps.PatchFactor > 100 {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("invalid planner_settings.patch_zipper_factor value of %d for distro '%s' - its value must be a non-negative integer between 0 and 100, inclusive", ps.PatchZipperFactor, d.Id),
+			Message: fmt.Sprintf("invalid planner_settings.patch_factor value of %d for distro '%s' - its value must be a non-negative integer between 0 and 100, inclusive", ps.PatchFactor, d.Id),
 			Level:   Error,
 		})
 	}
 	if ps.ExpectedRuntimeFactor < 0 {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("invalid planner_settings.expected_runtime_factor value of %d for distro '%s' - its value must be a non-negative integer", ps.PatchZipperFactor, d.Id),
+			Message: fmt.Sprintf("invalid planner_settings.expected_runtime_factor value of %d for distro '%s' - its value must be a non-negative integer", ps.ExpectedRuntimeFactor, d.Id),
 			Level:   Error,
 		})
 	}
 	if ps.TimeInQueueFactor < 0 {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("invalid planner_settings.time_in_queue value of %d for distro '%s' - its value must be a non-negative integer", ps.PatchZipperFactor, d.Id),
+			Message: fmt.Sprintf("invalid planner_settings.time_in_queue value of %d for distro '%s' - its value must be a non-negative integer", ps.TimeInQueueFactor, d.Id),
 			Level:   Error,
 		})
 	}
