@@ -508,7 +508,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 			"message":            "slow next_task operation",
 			"host_id":            h.Id,
 			"distro":             h.Distro.Id,
-			"latency":            time.Since(begin),
+			"latency":            time.Since(begin).Seconds(),
 			"stop_agent_monitor": stopAgentMonitor,
 		})
 	}()
