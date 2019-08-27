@@ -1116,8 +1116,8 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for testName, testCase := range map[string]func(t *testing.T, env evergreen.Environment){
-		"IgnoresLegacyHost": func(t *testing.T, env evergreen.Environment) {
+	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T){
+		"IgnoresLegacyHost": func(ctx context.Context, t *testing.T) {
 			h := &Host{
 				Id: "id",
 				Distro: distro.Distro{
@@ -1131,15 +1131,15 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			}
 			require.NoError(t, h.Insert())
 
-			creds, err := h.GenerateJasperCredentials(ctx, env)
+			creds, err := h.GenerateJasperCredentials(ctx)
 			require.NoError(t, err)
-			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
+			require.NoError(t, h.SaveJasperCredentials(ctx, creds))
 
 			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
 			require.NoError(t, err)
 			assert.Empty(t, dbHosts)
 		},
-		"IgnoresWithoutCredentials": func(t *testing.T, env evergreen.Environment) {
+		"IgnoresWithoutCredentials": func(ctx context.Context, t *testing.T) {
 			h := &Host{
 				Id: "id",
 				Distro: distro.Distro{
@@ -1157,7 +1157,7 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			require.NoError(t, err)
 			assert.Empty(t, dbHosts)
 		},
-		"IgnoresNonexpiringCredentials": func(t *testing.T, env evergreen.Environment) {
+		"IgnoresNonexpiringCredentials": func(ctx context.Context, t *testing.T) {
 			h := &Host{
 				Id: "id",
 				Distro: distro.Distro{
@@ -1171,15 +1171,15 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			}
 			require.NoError(t, h.Insert())
 
-			creds, err := h.GenerateJasperCredentials(ctx, env)
+			creds, err := h.GenerateJasperCredentials(ctx)
 			require.NoError(t, err)
-			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
+			require.NoError(t, h.SaveJasperCredentials(ctx, creds))
 
 			dbHosts, err := FindByExpiringJasperCredentials(time.Second)
 			require.NoError(t, err)
 			assert.Empty(t, dbHosts)
 		},
-		"ReturnsWithExpiringCredentials": func(t *testing.T, env evergreen.Environment) {
+		"ReturnsWithExpiringCredentials": func(ctx context.Context, t *testing.T) {
 			h := &Host{
 				Id: "id",
 				Distro: distro.Distro{
@@ -1193,16 +1193,16 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			}
 			require.NoError(t, h.Insert())
 
-			creds, err := h.GenerateJasperCredentials(ctx, env)
+			creds, err := h.GenerateJasperCredentials(ctx)
 			require.NoError(t, err)
-			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
+			require.NoError(t, h.SaveJasperCredentials(ctx, creds))
 
 			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
 			require.NoError(t, err)
 			require.Len(t, dbHosts, 1)
 			assert.Equal(t, h.Id, dbHosts[0].Id)
 		},
-		"IgnoresNotRunning": func(t *testing.T, env evergreen.Environment) {
+		"IgnoresNotRunning": func(ctx context.Context, t *testing.T) {
 			h := &Host{
 				Id: "id",
 				Distro: distro.Distro{
@@ -1216,15 +1216,15 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			}
 			require.NoError(t, h.Insert())
 
-			creds, err := h.GenerateJasperCredentials(ctx, env)
+			creds, err := h.GenerateJasperCredentials(ctx)
 			require.NoError(t, err)
-			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
+			require.NoError(t, h.SaveJasperCredentials(ctx, creds))
 
 			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
 			require.NoError(t, err)
 			assert.Empty(t, dbHosts)
 		},
-		"IgnoresContainers": func(t *testing.T, env evergreen.Environment) {
+		"IgnoresContainers": func(ctx context.Context, t *testing.T) {
 			h := &Host{
 				Id: "id",
 				Distro: distro.Distro{
@@ -1239,9 +1239,9 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			}
 			require.NoError(t, h.Insert())
 
-			creds, err := h.GenerateJasperCredentials(ctx, env)
+			creds, err := h.GenerateJasperCredentials(ctx)
 			require.NoError(t, err)
-			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
+			require.NoError(t, h.SaveJasperCredentials(ctx, creds))
 
 			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
 			require.NoError(t, err)
@@ -1257,7 +1257,7 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			env.EnvContext = tctx
 
 			require.NoError(t, setupCredentialsCollection(ctx, env))
-			testCase(t, env)
+			testCase(tctx, t)
 			assert.NoError(t, db.ClearCollections(credentials.Collection, Collection))
 		})
 	}
