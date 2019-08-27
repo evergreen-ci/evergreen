@@ -173,6 +173,11 @@ func makeTags(intentHost *host.Host) map[string]string {
 		"expire-on":         expireOn,
 	}
 
+	// add InstanceTags specified by user
+	for key, value := range intentHost.InstanceTags {
+		tags[key] = value
+	}
+
 	if intentHost.UserHost {
 		tags["mode"] = "testing"
 	}

@@ -206,7 +206,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	})
 	s.NoError(testUser.Insert())
 
-	intentHost, err := (&DBHostConnector{}).NewIntentHost(testDistroID, testPublicKeyName, "", "", testUser)
+	intentHost, err := (&DBHostConnector{}).NewIntentHost(testDistroID, testPublicKeyName, "", "", nil, testUser)
 	s.NotNil(intentHost)
 	s.NoError(err)
 	foundHost, err := host.FindOne(host.ById(intentHost.Id))

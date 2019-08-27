@@ -60,7 +60,7 @@ func (dbc *DBConnector) FindHostByIdWithOwner(hostID string, user gimlet.User) (
 
 // NewIntentHost is a method to insert an intent host given a distro and a public key
 // The public key can be the name of a saved key or the actual key string
-func (hc *DBHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID, userData string, user *user.DBUser) (*host.Host, error) {
+func (hc *DBHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID, userData string, instanceTags map[string]string, user *user.DBUser) (*host.Host, error) {
 	keyVal, err := user.GetPublicKey(keyNameOrVal)
 	if err != nil {
 		keyVal = keyNameOrVal
@@ -86,6 +86,7 @@ func (hc *DBHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID, userDat
 		PublicKey:        keyVal,
 		TaskId:           taskID,
 		Owner:            user,
+		InstanceTags:     instanceTags,
 	}
 
 	intentHost, err := cloud.CreateSpawnHost(spawnOptions)
@@ -196,7 +197,7 @@ func (hc *MockHostConnector) FindHostById(id string) (*host.Host, error) {
 
 // NewIntentHost is a method to mock "insert" an intent host given a distro and a public key
 // The public key can be the name of a saved key or the actual key string
-func (hc *MockHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID, userData string, user *user.DBUser) (*host.Host, error) {
+func (hc *MockHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID, userData string, tags map[string]string, user *user.DBUser) (*host.Host, error) {
 	keyVal := strings.Join([]string{"ssh-rsa", base64.StdEncoding.EncodeToString([]byte("foo"))}, " ")
 
 	spawnOptions := cloud.SpawnOptions{
@@ -206,6 +207,7 @@ func (hc *MockHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID, userD
 		PublicKey:        keyVal,
 		TaskId:           taskID,
 		Owner:            user,
+		InstanceTags:     tags,
 	}
 
 	intentHost, err := cloud.CreateSpawnHost(spawnOptions)

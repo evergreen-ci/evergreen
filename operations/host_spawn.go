@@ -3,6 +3,7 @@ package operations
 import (
 	"context"
 	"io/ioutil"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
@@ -15,6 +16,7 @@ func hostCreate() cli.Command {
 		distroFlagName = "distro"
 		keyFlagName    = "key"
 		scriptFlagName = "script"
+		tagFlagName    = "tag"
 	)
 
 	return cli.Command{
@@ -33,12 +35,17 @@ func hostCreate() cli.Command {
 				Name:  joinFlagNames(scriptFlagName, "s"),
 				Usage: "path to userdata script to run",
 			},
+			cli.StringFlag{
+				Name:  joinFlagNames(tagFlagName, "t"),
+				Usage: "key=value pair representing an instance tag, with one pair per flag",
+			},
 		},
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			distro := c.String(distroFlagName)
 			key := c.String(keyFlagName)
 			fn := c.String(scriptFlagName)
+			tagSlice := c.StringSlice(tagFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -60,7 +67,17 @@ func hostCreate() cli.Command {
 				script = string(out)
 			}
 
-			host, err := client.CreateSpawnHost(ctx, distro, key, script)
+			// create map of tags
+			var tags = make(map[string]string)
+			for _, tagString := range tagSlice {
+				pair := strings.Split(tagString, "=")
+				if len(pair) != 2 {
+					return errors.Errorf("problem parsing tag %s", tagString)
+				}
+				tags[pair[0]] = pair[1]
+			}
+
+			host, err := client.CreateSpawnHost(ctx, distro, key, script, tags)
 			if host == nil {
 				return errors.New("Unable to create a spawn host. Double check that the params and .evergreen.yml are correct")
 			}
