@@ -99,7 +99,7 @@ func (b *Build) AllUnblockedTasksFinished() (bool, string, error) {
 			if !t.Activated {
 				continue
 			}
-			if t.Blocked() {
+			if !t.Blocked() {
 				allFinished = false
 			}
 		}
