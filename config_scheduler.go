@@ -78,10 +78,6 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 		c.TaskFinder = FinderVersionLegacy
 	}
 
-	if c.CacheDurationSeconds == 0 || c.CacheDurationSeconds > 600 {
-		c.CacheDurationSeconds = 20
-	}
-
 	if !util.StringSliceContains(ValidFinderVersions, c.TaskFinder) {
 		return errors.Errorf("supported finders are %s; %s is not supported",
 			ValidFinderVersions, c.TaskFinder)
@@ -93,7 +89,7 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 	}
 
 	if !util.StringSliceContains(ValidHostAllocators, c.HostAllocator) {
-		return errors.Errorf("supported allocators are %s; %s is not supported",
+		return errors.Errorf("supported host allocators are %s; %s is not supported",
 			ValidHostAllocators, c.HostAllocator)
 	}
 
@@ -101,14 +97,49 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 		return errors.New("free host fraction must be between 0 and 1")
 	}
 
+	if c.CacheDurationSeconds == 0 || c.CacheDurationSeconds > 600 {
+		// TODO Why are we setting it to a magic number; why 20 seconds?
+		c.CacheDurationSeconds = 20
+	}
+
 	if c.Planner == "" {
-		// default to 'legacy'
+		// default to legacy
 		c.Planner = PlannerVersionLegacy
+	}
+
+	if !util.StringSliceContains(ValidPlannerVersions, c.Planner) {
+		return errors.Errorf("supported planners are %s; %s is not supported",
+			ValidPlannerVersions, c.Planner)
 	}
 
 	if c.TaskOrdering == "" {
 		// default to 'interleave'
 		c.TaskOrdering = TaskOrderingInterleave
+	}
+
+	if !util.StringSliceContains(ValidTaskOrderings, c.TaskOrdering) {
+		return errors.Errorf("supported task orderings are %s; %s is not supported",
+			ValidTaskOrderings, c.TaskOrdering)
+	}
+
+	if c.TargetTimeSeconds < 0 {
+		return errors.New("target time seconds cannot be a negative value")
+	}
+
+	if c.AcceptableHostIdleTimeSeconds < 0 {
+		return errors.New("acceptable host idle time seconds cannot be a negative value")
+	}
+
+	if c.PatchFactor < 0 || c.PatchFactor > 100 {
+		return errors.New("patch factor must be between 0 and 100")
+	}
+
+	if c.TimeInQueueFactor < 0 || c.TimeInQueueFactor > 100 {
+		return errors.New("time in queue factor must be between 0 and 100")
+	}
+
+	if c.ExpectedRuntimeFactor < 0 || c.ExpectedRuntimeFactor > 100 {
+		return errors.New("expected runtime factor must be between 0 and 100")
 	}
 
 	return nil

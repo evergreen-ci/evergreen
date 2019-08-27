@@ -15,13 +15,9 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     $scope.distros[i].planner_settings.target_time = $scope.distros[i].planner_settings.target_time || 0;
     $scope.distros[i].planner_settings.acceptable_host_idle_time = $scope.distros[i].planner_settings.acceptable_host_idle_time || 0;
     $scope.distros[i].planner_settings.patch_factor = $scope.distros[i].planner_settings.patch_factor || 0;
-<<<<<<< HEAD
-    // Convert from nanoseconds (time.Duration) to seconds (UI display units)
-=======
     $scope.distros[i].planner_settings.time_in_queue_factor = $scope.distros[i].planner_settings.time_in_queue_factor || 0;
     $scope.distros[i].planner_settings.expected_runtime_factor = $scope.distros[i].planner_settings.expected_runtime_factor || 0;
     // Convert from nanoseconds (time.Duration) to seconds (UI display units) for the relevant planner_settings' fields.
->>>>>>> master
     if ($scope.distros[i].planner_settings.target_time > 0) {
       $scope.distros[i].planner_settings.target_time /= 1e9;
     }
