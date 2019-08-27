@@ -27,7 +27,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     $scope.distros[i].planner_settings.group_versions = $scope.distros[i].planner_settings.group_versions;
     $scope.distros[i].planner_settings.task_ordering = $scope.distros[i].planner_settings.task_ordering || 'interleave';
     $scope.distros[i].finder_settings = $scope.distros[i].finder_settings || {};
-    $scope.distros[i].finder_settings.version = $scope.distros[i].finder_settings.version || 'legacy'";
+    $scope.distros[i].finder_settings.version = $scope.distros[i].finder_settings.version || 'legacy';
     $scope.distros[i].bootstrap_settings.method = $scope.distros[i].bootstrap_settings.method || 'legacy-ssh';
     $scope.distros[i].bootstrap_settings.communication = $scope.distros[i].bootstrap_settings.communication || 'legacy-ssh';
     $scope.distros[i].clone_method = $scope.distros[i].clone_method || 'legacy-ssh';
