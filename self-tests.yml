@@ -466,6 +466,7 @@ buildvariants:
     display_name: Ubuntu 16.04
     run_on:
       - ubuntu1604-test
+      - ubuntu1604-build
     expansions:
       disable_coverage: yes
       goos: linux
@@ -501,6 +502,7 @@ buildvariants:
     display_name: Race Detector
     run_on:
       - archlinux-test
+      - archlinux-build
     expansions:
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       race_detector: true
@@ -513,6 +515,7 @@ buildvariants:
     display_name: Lint
     run_on:
       - archlinux-test
+      - archlinux-build
     tasks:
       - name: generate-lint
 
@@ -520,6 +523,7 @@ buildvariants:
     display_name: Coverage
     run_on:
       - archlinux-test
+      - archlinux-build
     expansions:
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       test_timeout: 15m
@@ -532,6 +536,7 @@ buildvariants:
     batchtime: 2880
     run_on:
       - macos-1014
+      - macos-1014-17
     expansions:
       disable_coverage: yes
       gobin: /opt/golang/go1.9/bin/go
@@ -545,6 +550,17 @@ buildvariants:
     display_name: Windows
     run_on:
       - windows-64-vs2015-small
+      - windows-64-vs2015-test
+      - windows-64-vs2015-small
+      - windows-64-vs2015-large
+      - windows-64-vs2015-compile
+      - windows-64-vs2013-test
+      - windows-64-vs2013-compile
+      - windows-64-vs2010-test
+      - windows-64-vs2010-compile
+      - windows-64-vs2017-test
+      - windows-64-vs2017-compile-m5
+      - windows-64-vs2017-compile
     expansions:
       disable_coverage: yes
       gobin: /cygdrive/c/golang/go1.9/bin/go
@@ -561,6 +577,7 @@ buildvariants:
     batchtime: 2880
     run_on:
       - rhel71-power8-test
+      - rhel71-power8-build
     expansions:
       disable_coverage: yes
       xc_build: yes
@@ -577,6 +594,7 @@ buildvariants:
     batchtime: 2880
     run_on:
       - rhel72-zseries-test
+      - rhel72-zseries-build
     expansions:
       xc_build: yes
       disable_coverage: yes
@@ -594,6 +612,7 @@ buildvariants:
     batchtime: 2880
     run_on:
       - ubuntu1604-arm64-small
+      - ubuntu1604-arm64-large
     expansions:
       disable_coverage: yes
       xc_build: yes
