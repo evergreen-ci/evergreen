@@ -204,10 +204,9 @@ tasks:
 - name: one
 `
 	v := Version{
-		Identifier: "a",
-		Revision:   "b",
-		Requester:  evergreen.RepotrackerVersionRequester,
-		Config:     yml,
+		Id:        "b",
+		Requester: evergreen.RepotrackerVersionRequester,
+		Config:    yml,
 	}
 	require.NoError(v.Insert())
 	tasks := []task.Task{
@@ -248,13 +247,18 @@ tasks:
 			Length: 1,
 		},
 	))
+	queue, err := LoadTaskQueue("distro_1")
+	assert.NoError(err)
+	assert.NotNil(queue)
+
 	assert.NoError(BlockTaskGroupTasks("task_id_1"))
 	found, err := task.FindOneId("one_1")
 	assert.NoError(err)
 	assert.Equal("task_id_1", found.DependsOn[0].TaskId)
-	queue, err := LoadTaskQueue("distro_1")
+
+	queue, err = LoadTaskQueue("distro_1")
 	assert.NoError(err)
-	assert.Len(queue.Queue, 0)
+	assert.Nil(queue)
 }
 
 func TestBlockTaskGroupTasksFailsWithCircularDependencies(t *testing.T) {

@@ -175,7 +175,7 @@ func (h *versionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	proj, err := dbModel.FindProject("", projRef)
+	proj, err := dbModel.FindLastKnownGoodProject(projRef.Identifier)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,

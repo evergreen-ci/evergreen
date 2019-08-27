@@ -228,7 +228,7 @@ func BlockTaskGroupTasks(taskID string) error {
 		return errors.Errorf("found nil task %s", taskID)
 	}
 
-	p, err := FindProjectFromTask(t)
+	p, err := FindProjectFromVersionID(t.Version)
 	if err != nil {
 		return errors.Wrapf(err, "problem getting project for task %s", t.Id)
 	}

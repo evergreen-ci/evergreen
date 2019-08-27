@@ -356,7 +356,6 @@ func getMockProjectsConnector() *data.MockConnector {
 					RemotePath:         "evergreen.yml",
 					Identifier:         "dimoxinil",
 					DisplayName:        "Dimoxinil",
-					LocalConfig:        "",
 					DeactivatePrevious: false,
 					TracksPushEvents:   false,
 					PRTestingEnabled:   false,

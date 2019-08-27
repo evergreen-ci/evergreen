@@ -332,7 +332,7 @@ func getStepback(taskId string) (bool, error) {
 		return false, errors.Wrapf(err, "problem finding task %s", taskId)
 	}
 
-	project, err := FindProjectFromTask(t)
+	project, err := FindProjectFromVersionID(t.Version)
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
@@ -844,18 +844,7 @@ func doRestartFailedTasks(tasks []task.Task, user string, results RestartResults
 	var tasksErrored []string
 
 	for _, t := range tasks {
-		projectRef, err := FindOneProjectRef(t.Project)
-		if err != nil {
-			tasksErrored = append(tasksErrored, t.Id)
-			grip.Error(message.Fields{
-				"task":    t.Id,
-				"status":  "failed",
-				"message": "error retrieving project ref",
-				"error":   err.Error(),
-			})
-			continue
-		}
-		p, err := FindProject(t.Revision, projectRef)
+		p, err := FindProjectFromVersionID(t.Version)
 		if err != nil || p == nil {
 			tasksErrored = append(tasksErrored, t.Id)
 			grip.Error(message.Fields{

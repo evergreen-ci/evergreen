@@ -172,7 +172,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "Error getting project ref with id %v", p.Project))
 		return
 	}
-	project, err := model.FindProject("", projectRef)
+	project, err := model.FindLastKnownGoodProject(projectRef.Identifier)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error getting patch"))
 		return
