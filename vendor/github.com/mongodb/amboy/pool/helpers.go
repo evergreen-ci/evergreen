@@ -30,13 +30,16 @@ func executeJob(ctx context.Context, id string, job amboy.Job, q amboy.Queue) {
 		"pool":          id,
 		"executed":      didRun,
 	}
-	if err := job.Error(); err != nil {
+	err := job.Error()
+	if err != nil {
 		r["error"] = err.Error()
+	}
+
+	if didRun && err != nil {
 		grip.Error(r)
 	} else {
 		grip.Debug(r)
 	}
-
 }
 
 func runJob(ctx context.Context, job amboy.Job, q amboy.Queue, startAt time.Time) bool {

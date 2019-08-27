@@ -400,14 +400,9 @@ func (d *mongoGroupDriver) JobStats(ctx context.Context) <-chan amboy.JobStatusI
 	return output
 }
 
-func (d *mongoGroupDriver) Next(ctx context.Context) amboy.Job {
-	var (
-		qd     bson.M
-		job    amboy.Job
-		misses int64
-	)
-
-	qd = bson.M{
+func (d *mongoGroupDriver) getNextQuery() bson.M {
+	now := time.Now()
+	qd := bson.M{
 		"group": d.group,
 		"$or": []bson.M{
 			{
@@ -416,14 +411,13 @@ func (d *mongoGroupDriver) Next(ctx context.Context) amboy.Job {
 			},
 			{
 				"status.completed": false,
-				"status.mod_ts":    bson.M{"$lte": time.Now().Add(-amboy.LockTimeout)},
+				"status.mod_ts":    bson.M{"$lte": now.Add(-amboy.LockTimeout)},
 				"status.in_prog":   true,
 			},
 		},
 	}
 
 	timeLimits := bson.M{}
-	now := time.Now()
 	if d.opts.CheckWaitUntil {
 		timeLimits["time_info.wait_until"] = bson.M{"$lte": now}
 	}
@@ -436,6 +430,15 @@ func (d *mongoGroupDriver) Next(ctx context.Context) amboy.Job {
 	if len(timeLimits) > 0 {
 		qd = bson.M{"$and": []bson.M{qd, timeLimits}}
 	}
+	return qd
+}
+
+func (d *mongoGroupDriver) Next(ctx context.Context) amboy.Job {
+	var (
+		qd     bson.M
+		job    amboy.Job
+		misses int64
+	)
 
 	opts := options.Find().SetBatchSize(4)
 	if d.opts.Priority {
@@ -453,6 +456,7 @@ RETRY:
 			return nil
 		case <-timer.C:
 			misses++
+			qd = d.getNextQuery()
 			iter, err := d.getCollection().Find(ctx, qd, opts)
 			if err != nil {
 				grip.Debug(message.WrapError(err, message.Fields{
