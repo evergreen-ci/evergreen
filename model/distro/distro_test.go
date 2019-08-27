@@ -366,8 +366,10 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	assert.Equal(t, time.Duration(98765)*time.Second, resolved1.TargetTime)
 	assert.Equal(t, time.Duration(56789)*time.Second, resolved1.AcceptableHostIdleTime)
 	assert.Equal(t, true, *resolved1.GroupVersions)
-	assert.EqualValues(t, 25, resolved1.PatchFactor)
 	assert.Equal(t, evergreen.TaskOrderingPatchFirst, resolved1.TaskOrdering)
+	assert.EqualValues(t, 25, resolved1.PatchFactor)
+	assert.EqualValues(t, 0, resolved1.TimeInQueueFactor)
+	assert.EqualValues(t, 0, resolved1.ExpectedRuntimeFactor)
 
 	ps := &PlannerSettings{
 		Version:                "",
@@ -377,7 +379,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		AcceptableHostIdleTime: 0,
 		GroupVersions:          nil,
 		TaskOrdering:           "",
-		PatchFactor:            25,
+		PatchFactor:            19,
 		TimeInQueueFactor:      0,
 		ExpectedRuntimeFactor:  0,
 	}
@@ -414,6 +416,9 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	assert.Equal(t, false, *resolved2.GroupVersions)
 	// d2.PlannerSetting.TaskOrdering is an empty string -- fallback on the SchedulerConfig.TaskOrdering value
 	assert.Equal(t, evergreen.TaskOrderingMainlineFirst, resolved2.TaskOrdering)
+	assert.EqualValues(t, 19, resolved2.PatchFactor)
+	assert.EqualValues(t, 0, resolved2.TimeInQueueFactor)
+	assert.EqualValues(t, 0, resolved2.ExpectedRuntimeFactor)
 
 	d2.PlannerSettings = *ps
 	d2.PlannerSettings.Version = ""
