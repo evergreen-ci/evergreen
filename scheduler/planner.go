@@ -202,8 +202,19 @@ func (unit *Unit) RankValue() int64 {
 			anyNonGroupTasks = true
 		}
 
-		if !t.ScheduledTime.IsZero() {
-			timeInQueue += time.Since(t.ScheduledTime)
+		if !t.ActivatedTime.IsZero() {
+			// older tasks should bubble up to the top of
+			// the queue (e.g. fairness for patches,
+			// triggers, and things people are waiting
+			// on,); but older mainline tasks shouldn't
+			// get this bump, particularly because a
+			// passing task will deactivate earlier
+			// versions of itself on the mainline.
+			if t.Requester == evergreen.RepotrackerVersionRequester {
+				timeInQueue += time.Since(t.ActivatedTime) / 2
+			} else {
+				timeInQueue += time.Since(t.ActivatedTime)
+			}
 		}
 
 		totalPriority += t.Priority
