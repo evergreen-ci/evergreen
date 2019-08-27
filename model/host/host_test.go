@@ -595,9 +595,8 @@ func TestUpdateHostRunningTask(t *testing.T) {
 		oldTaskId := "oldId"
 		newTaskId := "newId"
 		h := Host{
-			Id:          "test",
-			RunningTask: oldTaskId,
-			Status:      evergreen.HostRunning,
+			Id:     "test",
+			Status: evergreen.HostRunning,
 		}
 		So(h.Insert(), ShouldBeNil)
 		Convey("updating the running task id should set proper fields", func() {
@@ -612,6 +611,12 @@ func TestUpdateHostRunningTask(t *testing.T) {
 		})
 		Convey("updating the running task to an empty string should error out", func() {
 			_, err := h.UpdateRunningTask(&task.Task{})
+			So(err, ShouldNotBeNil)
+		})
+		Convey("updating the running task when a task is already running should error", func() {
+			_, err := h.UpdateRunningTask(&task.Task{Id: oldTaskId})
+			So(err, ShouldBeNil)
+			_, err = h.UpdateRunningTask(&task.Task{Id: newTaskId})
 			So(err, ShouldNotBeNil)
 		})
 	})
