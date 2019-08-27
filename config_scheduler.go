@@ -97,8 +97,11 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 		return errors.New("free host fraction must be between 0 and 1")
 	}
 
-	if c.CacheDurationSeconds == 0 || c.CacheDurationSeconds > 600 {
-		// TODO Why are we setting it to a magic number; why 20 seconds?
+	if c.CacheDurationSeconds > 600 {
+		return errors.New("cache duration seconds cannot be greater that 600 seconds (10 minutes)")
+	}
+
+	if c.CacheDurationSeconds <= 0 {
 		c.CacheDurationSeconds = 20
 	}
 
