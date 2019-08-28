@@ -1,7 +1,3 @@
-// imported elsewhere in global scope
-let _;
-let d3;
-
 // Helper function
 // TODO Make it accept (d, i) and return function (FP)
 function d3Translate(x, y) {
