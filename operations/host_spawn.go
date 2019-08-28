@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/cloud"
-
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -15,12 +14,13 @@ import (
 
 // makeAWSTags creates and validates a map of supplied instance tags
 func makeAWSTags(tagSlice []string) (map[string]string, error) {
-
+	catcher := grip.NewBasicCatcher()
 	var tags = make(map[string]string)
 	for _, tagString := range tagSlice {
 		pair := strings.Split(tagString, "=")
 		if len(pair) != 2 {
-			return nil, errors.Errorf("problem parsing tag \"%s\"", tagString)
+			catcher.Add(errors.Errorf("problem parsing tag '%s'", tagString))
+			continue
 		}
 
 		key := pair[0]
@@ -28,21 +28,21 @@ func makeAWSTags(tagSlice []string) (map[string]string, error) {
 
 		// AWS tag key must contain no more than 128 characters
 		if len(key) > 128 {
-			return nil, errors.Errorf("key \"%s\" is longer than 128 characters", key)
+			catcher.Add(errors.Errorf("key '%s' is longer than 128 characters", key))
 		}
 		// AWS tag value must contain no more than 256 characters
 		if len(value) > 256 {
-			return nil, errors.Errorf("value \"%s\" is longer than 256 characters", value)
+			catcher.Add(errors.Errorf("value '%s' is longer than 256 characters", value))
 		}
 		// tag prefix aws: is reserved
-		if len(key) > 4 && key[0:4] == "aws:" || len(value) > 4 && key[0:4] == "aws:" {
-			return nil, errors.Errorf("illegal tag prefix \"aws:\"")
+		if strings.HasPrefix(key, "aws:") || strings.HasPrefix(value, "aws:") {
+			catcher.Add(errors.Errorf("illegal tag prefix 'aws:'"))
 		}
 
 		tags[key] = value
 	}
 
-	return tags, nil
+	return tags, catcher.Resolve()
 }
 
 func hostCreate() cli.Command {
