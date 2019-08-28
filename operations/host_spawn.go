@@ -12,6 +12,11 @@ import (
 	"github.com/urfave/cli"
 )
 
+const (
+	MaxTagKeyLength   = 128
+	MaxTagValueLength = 256
+)
+
 // makeAWSTags creates and validates a map of supplied instance tags
 func makeAWSTags(tagSlice []string) (map[string]string, error) {
 	catcher := grip.NewBasicCatcher()
@@ -27,11 +32,11 @@ func makeAWSTags(tagSlice []string) (map[string]string, error) {
 		value := pair[1]
 
 		// AWS tag key must contain no more than 128 characters
-		if len(key) > 128 {
+		if len(key) > MaxTagKeyLength {
 			catcher.Add(errors.Errorf("key '%s' is longer than 128 characters", key))
 		}
 		// AWS tag value must contain no more than 256 characters
-		if len(value) > 256 {
+		if len(value) > MaxTagValueLength {
 			catcher.Add(errors.Errorf("value '%s' is longer than 256 characters", value))
 		}
 		// tag prefix aws: is reserved
@@ -42,7 +47,11 @@ func makeAWSTags(tagSlice []string) (map[string]string, error) {
 		tags[key] = value
 	}
 
-	return tags, catcher.Resolve()
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+
+	return tags, nil
 }
 
 func hostCreate() cli.Command {
