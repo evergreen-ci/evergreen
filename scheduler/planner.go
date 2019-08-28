@@ -225,7 +225,7 @@ func (unit *Unit) RankValue() int64 {
 	}
 
 	if !anyNonGroupTasks {
-		// if all tasks in the unit are in a task  group then
+		// if all tasks in the unit are in a task group then
 		// we should give it a little bump, so that task
 		// groups tasks are sorted together even when they
 		// would also be scheduled in a version.
@@ -233,31 +233,27 @@ func (unit *Unit) RankValue() int64 {
 	}
 
 	if inPatch {
+		// give patches a bump, over non-patches.
 		unit.cachedValue += priority * unit.distro.GetPatchFactor()
+		// patches that have spent more time in the queue
+		// should get worked on first (because people are
+		// waiting on the results), and because FIFO feels
+		// fair in this context.
+		unit.cachedValue += priority * unit.distro.GetTimeInQueueFactor() * int64(math.Floor(timeInQueue.Minutes()/float64(num)))
+	} else {
+		// for mainline builds that are more recent, give them a bit
+		// of a bump, to avoid running older builds first.
+		avgLifeTime := lifeTime / time.Duration(num)
+
+		if avgLifeTime < time.Duration(8)*time.Hour {
+			unit.cachedValue += priority * unit.distro.GetTimeInQueueFactor() * int64((8*time.Hour - avgLifeTime).Hours())
+		}
 	}
 
 	// Start with the number of tasks, and then add the priority
 	// setting as a base.
 	unit.cachedValue += num
 	unit.cachedValue += priority
-
-	// for mainline builds that are more recent, give them a bit
-	// of a bump, to avoid running older builds first
-	if !inPatch && lifeTime > 0 {
-		avgLifeTime := lifeTime / time.Duration(num)
-
-		if avgLifeTime < time.Duration(12)*time.Hour {
-			factor := int64(13)
-			for i := 1; i < 13; i++ {
-				factor--
-				if avgLifeTime < time.Duration(i)*time.Hour {
-					unit.cachedValue += priority * factor
-					break
-				}
-
-			}
-		}
-	}
 
 	// The remaining values are normalized per tasks, to avoid
 	// situations where larger units are always prioritized above
@@ -272,12 +268,11 @@ func (unit *Unit) RankValue() int64 {
 	// that don't block other tasks.
 	unit.cachedValue += priority * (numDeps / num)
 
-	// The impact of these values is configurable in the distro
-	// settings, and makes it possible to control what the impact
-	// of expected runtime (defaults to 10m for tasks that haven't
-	// run before) and time-in-queue is.
+	// Increase the value for tasks with longer runtimes, given
+	// that most of our workloads have different runtimes, and we
+	// don't want to have longer makespans if longer running tasks
+	// have to execute after shorter running tasks.
 	unit.cachedValue += priority * unit.distro.GetExpectedRuntimeFactor() * int64(math.Floor(expectedRuntime.Minutes()/float64(num)))
-	unit.cachedValue += priority * unit.distro.GetTimeInQueueFactor() * int64(math.Floor(timeInQueue.Minutes()/float64(num)))
 
 	return unit.cachedValue
 }
