@@ -488,15 +488,19 @@ func translateProject(pp *parserProject) (*Project, []error) {
 	tgse := newTaskGroupSelectorEvaluator(pp.TaskGroups)
 	ase := NewAxisSelectorEvaluator(pp.Axes)
 	regularBVs, matrices := sieveMatrixVariants(pp.BuildVariants)
+
 	var evalErrs, errs []error
 	matrixVariants, errs := buildMatrixVariants(pp.Axes, ase, matrices)
 	evalErrs = append(evalErrs, errs...)
-	pp.BuildVariants = append(regularBVs, matrixVariants...)
-	vse := NewVariantSelectorEvaluator(pp.BuildVariants, ase)
+	buildVariants := append(regularBVs, matrixVariants...)
+	vse := NewVariantSelectorEvaluator(buildVariants, ase)
+
 	proj.Tasks, proj.TaskGroups, errs = evaluateTaskUnits(tse, tgse, vse, pp.Tasks, pp.TaskGroups)
 	evalErrs = append(evalErrs, errs...)
-	proj.BuildVariants, errs = evaluateBuildVariants(tse, tgse, vse, pp.BuildVariants, pp.Tasks, proj.TaskGroups)
+
+	proj.BuildVariants, errs = evaluateBuildVariants(tse, tgse, vse, buildVariants, pp.Tasks, proj.TaskGroups)
 	evalErrs = append(evalErrs, errs...)
+
 	return proj, evalErrs
 }
 
@@ -589,6 +593,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			Tags:        pbv.Tags,
 		}
 		bv.Tasks, errs = evaluateBVTasks(tse, tgse, vse, pbv)
+
 		// evaluate any rules passed in during matrix construction
 		for _, r := range pbv.matrixRules {
 			// remove_tasks removes all tasks with matching names
@@ -610,6 +615,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 				}
 				bv.Tasks = prunedTasks
 			}
+
 			// add_tasks adds the given BuildVariantTasks, returning errors for any collisions
 			if len(r.AddTasks) > 0 {
 				// cache existing tasks so we can check for duplicates
@@ -619,6 +625,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 				}
 
 				var added []BuildVariantTaskUnit
+				// TODO: this might also be a mistake but unsure how to duplicate
 				pbv.Tasks = r.AddTasks
 				added, errs = evaluateBVTasks(tse, tgse, vse, pbv)
 				evalErrs = append(evalErrs, errs...)
@@ -637,23 +644,11 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			}
 		}
 
-		//resolve tags for display tasks
 		tgMap := map[string]TaskGroup{}
 		for _, tg := range tgs {
 			tgMap[tg.Name] = tg
 		}
 		dtse := newDisplayTaskSelectorEvaluator(bv, tasks, tgs, tgMap)
-		for i, dt := range pbv.DisplayTasks {
-			tasks := []string{}
-			for _, et := range dt.ExecutionTasks {
-				results, err := dtse.evalSelector(ParseSelector(et))
-				if err != nil {
-					errs = append(errs, err)
-				}
-				tasks = append(tasks, results...)
-			}
-			pbv.DisplayTasks[i].ExecutionTasks = tasks
-		}
 
 		// check that display tasks contain real tasks that are not duplicated
 		bvTasks := make(map[string]struct{})        // map of all execution tasks
@@ -667,13 +662,26 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 				bvTasks[t.Name] = struct{}{}
 			}
 		}
+
+		// save display task if it contains valid execution tasks
 		for _, dt := range pbv.DisplayTasks {
 			projectDt := DisplayTask{Name: dt.Name}
 			if _, exists := bvTasks[dt.Name]; exists {
 				errs = append(errs, fmt.Errorf("display task %s cannot have the same name as an execution task", dt.Name))
 				continue
 			}
+
+			//resolve tags for display tasks
+			tasks := []string{}
 			for _, et := range dt.ExecutionTasks {
+				results, err := dtse.evalSelector(ParseSelector(et))
+				if err != nil {
+					errs = append(errs, err)
+				}
+				tasks = append(tasks, results...)
+			}
+
+			for _, et := range tasks {
 				if _, exists := bvTasks[et]; !exists {
 					errs = append(errs, fmt.Errorf("display task %s contains execution task %s which does not exist in build variant", dt.Name, et))
 				} else {
