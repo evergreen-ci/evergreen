@@ -244,7 +244,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		grip.Warning(message.WrapError(err, "problem updating expected duration"))
 	}
 
-	env := evergreen.GetEnvironment()
 	if checkHostHealth(currentHost) {
 		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 		defer cancel()
@@ -274,7 +273,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		if currentHost.Provider != evergreen.ProviderNameStatic {
 			err = currentHost.DisablePoisonedHost(msg)
 
-			job := units.NewDecoHostNotifyJob(env, currentHost, err, msg)
+			job := units.NewDecoHostNotifyJob(as.env, currentHost, err, msg)
 			grip.Critical(message.WrapError(as.queue.Put(r.Context(), job),
 				message.Fields{
 					"host_id": currentHost.Id,
@@ -310,6 +309,49 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		"duration":  time.Since(finishTime),
 	})
 	gimlet.WriteJSON(w, endTaskResp)
+}
+
+// prepareForReprovision readies host for reprovisioning.
+func prepareForReprovision(ctx context.Context, env evergreen.Environment, settings *evergreen.Settings, h *host.Host, w http.ResponseWriter) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	if err := h.StopAgentMonitor(ctx, env); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":   "problem stopping agent monitor",
+			"host":      h.Id,
+			"operation": "next_task",
+			"revision":  evergreen.BuildRevision,
+		}))
+		return err
+	}
+
+	if err := h.MarkAsReprovisioning(); err != nil {
+		return errors.Wrap(err, "error marking host as ready for reprovisioning")
+	}
+
+	ts := util.RoundPartOfHour(0).Format(units.TSFormat)
+	switch h.NeedsReprovision {
+	case host.ReprovisionToLegacy:
+		if err := env.RemoteQueue().Put(ctx, units.NewConvertHostToLegacyProvisioningJob(env, *h, ts, 0)); err != nil {
+			return errors.Wrap(err, "problem enqueueing jobs to reprovision host to legacy")
+		}
+	case host.ReprovisionToNew:
+		if err := env.RemoteQueue().Put(ctx, units.NewConvertHostToNewProvisioningJob(env, *h, ts, 0)); err != nil {
+			return errors.Wrap(err, "problem enqueueing jobs to reprovision host to new")
+		}
+	case host.ReprovisionJasperRestart:
+		expiration, err := h.JasperCredentialsExpiration(ctx, env)
+		if err != nil {
+			return errors.Wrapf(err, "problem getting credentials expiration time", h.Id)
+		}
+		ts := util.RoundPartOfHour(0).Format(units.TSFormat)
+		if err := env.RemoteQueue().Put(ctx, units.NewJasperRestartJob(env, *h, expiration, h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC, ts)); err != nil {
+			return errors.Wrap(err, "problem enqueueing jobs to reprovision host to new")
+		}
+	}
+
+	return nil
 }
 
 // assignNextAvailableTask gets the next task from the queue and sets the running task field
@@ -525,15 +567,15 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		"operation":    "next_task",
 	}))
 
-	// stopAgentMonitor is only used for debug log purposes.
-	var stopAgentMonitor bool
+	stoppedAgentMonitor := (h.LegacyBootstrap() && h.NeedsReprovision == host.ReprovisionToLegacy ||
+		h.NeedsReprovision == host.ReprovisionJasperRestart)
 	defer func() {
 		grip.DebugWhen(time.Since(begin) > time.Second, message.Fields{
-			"message":            "slow next_task operation",
-			"host_id":            h.Id,
-			"distro":             h.Distro.Id,
-			"latency":            time.Since(begin).Seconds(),
-			"stop_agent_monitor": stopAgentMonitor,
+			"message":               "slow next_task operation",
+			"host_id":               h.Id,
+			"distro":                h.Distro.Id,
+			"latency":               time.Since(begin).Seconds(),
+			"stopped_agent_monitor": stoppedAgentMonitor,
 		})
 	}()
 
@@ -542,7 +584,6 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	if checkHostHealth(h) {
 		ctx, cancel = context.WithTimeout(r.Context(), 30*time.Second)
 		defer cancel()
-		stopAgentMonitor = !h.LegacyBootstrap()
 		if err = h.StopAgentMonitor(ctx, as.env); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":   "problem stopping agent monitor",
@@ -574,7 +615,10 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	if agentExit {
 		return
 	}
-	response, agentExit = handleOldAgentRevision(response, h, details, w)
+	if responded := handleReprovisioning(ctx, as.env, as.env.Settings(), response, h, w); responded {
+		return
+	}
+	response, agentExit = handleOldAgentRevision(response, details, h, w)
 	if agentExit {
 		return
 	}
@@ -711,7 +755,21 @@ func getDetails(response apimodels.NextTaskResponse, h *host.Host, w http.Respon
 	return details, false
 }
 
-func handleOldAgentRevision(response apimodels.NextTaskResponse, h *host.Host, details *apimodels.GetNextTaskDetails, w http.ResponseWriter) (apimodels.NextTaskResponse, bool) {
+func handleReprovisioning(ctx context.Context, env evergreen.Environment, settings *evergreen.Settings, response apimodels.NextTaskResponse, h *host.Host, w http.ResponseWriter) (responded bool) {
+	if h.NeedsReprovision == host.ReprovisionNone {
+		return false
+	}
+
+	if err := prepareForReprovision(ctx, env, settings, h, w); err != nil {
+		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
+		return true
+	}
+	response.ShouldExit = true
+	gimlet.WriteJSON(w, response)
+	return true
+}
+
+func handleOldAgentRevision(response apimodels.NextTaskResponse, details *apimodels.GetNextTaskDetails, h *host.Host, w http.ResponseWriter) (apimodels.NextTaskResponse, bool) {
 	if !agentRevisionIsOld(h) {
 		return response, false
 	}

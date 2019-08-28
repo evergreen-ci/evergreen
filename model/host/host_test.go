@@ -394,10 +394,17 @@ func TestMarkAsProvisioned(t *testing.T) {
 			Status: evergreen.HostTerminated,
 		}
 
+		host3 := &Host{
+			Id:               "hostThree",
+			Status:           evergreen.HostProvisioning,
+			NeedsReprovision: ReprovisionToNew,
+		}
+
 		So(host.Insert(), ShouldBeNil)
 		So(host2.Insert(), ShouldBeNil)
-		Convey("marking a host that isn't down as provisioned should update the status,"+
-			" provisioned, and host name fields in both the in-memory and"+
+		So(host3.Insert(), ShouldBeNil)
+		Convey("marking a host that isn't down as provisioned should update the status"+
+			" and provisioning fields in both the in-memory and"+
 			" database copies of the host", func() {
 
 			So(host.MarkAsProvisioned(), ShouldBeNil)
@@ -461,6 +468,26 @@ func TestMarkAsReprovisioning(t *testing.T) {
 			assert.Equal(t, util.ZeroTime, h.AgentStartTime)
 			assert.False(t, h.Provisioned)
 			assert.False(t, h.NeedsNewAgentMonitor)
+		"NeedsJasperRestartSetsNeedsAgentForLegacyProvisioning": func(t *testing.T, h *Host) {
+			h.NeedsReprovision = ReprovisionJasperRestart
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodLegacySSH
+			require.NoError(t, h.Insert())
+
+			require.NoError(t, h.MarkAsReprovisioning())
+			assert.Equal(t, util.ZeroTime, h.AgentStartTime)
+			assert.False(t, h.Provisioned)
+			assert.True(t, h.NeedsNewAgent)
+			assert.False(t, h.NeedsNewAgentMonitor)
+		},
+		"NeedsJasperRestartSetsNeedsAgentMonitorForNewProvisioning": func(t *testing.T, h *Host) {
+			h.NeedsReprovision = ReprovisionJasperRestart
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
+			require.NoError(t, h.Insert())
+
+			require.NoError(t, h.MarkAsReprovisioning())
+			assert.Equal(t, util.ZeroTime, h.AgentStartTime)
+			assert.False(t, h.Provisioned)
+			assert.True(t, h.NeedsNewAgentMonitor)
 			assert.False(t, h.NeedsNewAgent)
 		},
 	} {
@@ -974,6 +1001,23 @@ func TestFindNeedsNewAgent(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 1)
 			So(hosts[0].Id, ShouldEqual, h.Id)
+		})
+		Convey("with a host with that is still provisioning and has not yet communicated", func() {
+			h := Host{
+				Id:            "h",
+				Status:        evergreen.HostProvisioning,
+				StartedBy:     evergreen.User,
+				NeedsNewAgent: true,
+			}
+			So(h.Insert(), ShouldBeNil)
+			hosts, err := Find(db.Query(NeedsAgentDeploy(now)))
+			So(err, ShouldBeNil)
+			So(len(hosts), ShouldEqual, 1)
+			So(hosts[0].Id, ShouldEqual, h.Id)
+
+			hosts, err = Find(ShouldDeployAgent())
+			So(err, ShouldBeNil)
+			So(len(hosts), ShouldEqual, 0)
 		})
 		Convey("with a host with that is still provisioning and has not yet communicated", func() {
 			h := Host{

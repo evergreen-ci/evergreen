@@ -677,7 +677,6 @@ func (h *Host) MarkAsProvisioned() error {
 				ProvisionedKey:   true,
 				ProvisionTimeKey: now,
 			},
-			"$unset": bson.M{NeedsReprovisionKey: ReprovisionNone},
 		},
 	)
 
@@ -688,7 +687,6 @@ func (h *Host) MarkAsProvisioned() error {
 	h.Status = evergreen.HostRunning
 	h.Provisioned = true
 	h.ProvisionTime = now
-	h.NeedsReprovision = ReprovisionNone
 
 	event.LogHostProvisioned(h.Id)
 
@@ -742,6 +740,41 @@ func (h *Host) UpdateProvisioningToRunning() error {
 	h.Status = evergreen.HostRunning
 
 	event.LogHostProvisioned(h.Id)
+
+	return nil
+}
+
+// SetNeedsJasperRestart sets this host as needing to have its Jasper service
+// restarted. If the host is ready to reprovision now (i.e. no agent monitor is
+// running), it is put in the reprovisioning state.
+func (h *Host) SetNeedsJasperRestart() error {
+	if h.StartedBy == evergreen.User && !h.NeedsNewAgentMonitor {
+		return h.setAwaitingJasperRestart()
+	}
+	return h.MarkAsReprovisioning()
+}
+
+// setAwaitingJasperRestart marks a host running an agent as needing Jasper to
+// be restarted but is not yet ready to reprovision now (i.e. the agent monitor
+// is still running).
+func (h *Host) setAwaitingJasperRestart() error {
+	if err := UpdateOne(bson.M{
+		IdKey:     h.Id,
+		StatusKey: bson.M{"$in": []string{evergreen.HostProvisioning, evergreen.HostRunning}},
+		"$or": []bson.M{
+			{NeedsReprovisionKey: bson.M{"$exists": false}},
+			{NeedsReprovisionKey: ReprovisionJasperRestart},
+		},
+		ReprovisioningLockedKey: bson.M{"$ne": true},
+	}, bson.M{
+		"$set": bson.M{
+			NeedsReprovisionKey: ReprovisionJasperRestart,
+		},
+	}); err != nil {
+		return err
+	}
+
+	h.NeedsReprovision = ReprovisionJasperRestart
 
 	return nil
 }
@@ -1018,36 +1051,6 @@ func (h *Host) SetNeedsNewAgentMonitorAtomically(needsAgentMonitor bool) error {
 	return nil
 }
 
-// SetNeedsJasperRestart sets this host as needing to have its Jasper
-// service restarted.
-func (h *Host) SetNeedsJasperRestart() error {
-	if err := UpdateOne(
-		bson.M{
-			IdKey:     h.Id,
-			StatusKey: bson.M{"$in": []string{evergreen.HostRunning, evergreen.HostProvisioning}},
-			"$or": []bson.M{
-				{NeedsReprovisionKey: bson.M{"$exists": false}},
-				{NeedsReprovisionKey: ReprovisionJasperRestart},
-			},
-			ReprovisioningLockedKey: bson.M{"$ne": true},
-		},
-		bson.M{
-			"$set": bson.M{
-				NeedsReprovisionKey: ReprovisionJasperRestart,
-			},
-		},
-	); err != nil {
-		return err
-	}
-
-	h.Status = evergreen.HostProvisioning
-	h.Provisioned = false
-	h.NeedsReprovision = ReprovisionJasperRestart
-	h.JasperRestartAttempts = 0
-
-	return nil
-}
-
 // SetReprovisioningLocked sets the "provisioning is locked" flag on the host to
 // indicate that provisioning jobs should not run.
 func (h *Host) SetReprovisioningLocked(locked bool) error {
@@ -1168,41 +1171,41 @@ func (h *Host) MarkReachable() error {
 }
 
 func (h *Host) Upsert() (*adb.ChangeInfo, error) {
-	return UpsertOne(
-		bson.M{
-			IdKey: h.Id,
+	setFields := bson.M{
+		// If adding or removing fields here, make sure that all callers will work
+		// correctly after the change. Any fields defined here but not set by the
+		// caller will insert the zero value into the document
+		DNSKey:               h.Host,
+		UserKey:              h.User,
+		DistroKey:            h.Distro,
+		StartedByKey:         h.StartedBy,
+		ExpirationTimeKey:    h.ExpirationTime,
+		ProviderKey:          h.Provider,
+		TagKey:               h.Tag,
+		InstanceTypeKey:      h.InstanceType,
+		ZoneKey:              h.Zone,
+		ProjectKey:           h.Project,
+		ProvisionedKey:       h.Provisioned,
+		ProvisionAttemptsKey: h.ProvisionAttempts,
+		ProvisionOptionsKey:  h.ProvisionOptions,
+		StartTimeKey:         h.StartTime,
+		HasContainersKey:     h.HasContainers,
+		ContainerImagesKey:   h.ContainerImages,
+	}
+	update := bson.M{
+		"$setOnInsert": bson.M{
+			StatusKey:     h.Status,
+			CreateTimeKey: h.CreationTime,
 		},
-		bson.M{
-			"$set": bson.M{
-				// If adding or removing fields here, make sure that all callers will work
-				// correctly after the change. Any fields defined here but not set by the
-				// caller will insert the zero value into the document
-				DNSKey:                   h.Host,
-				UserKey:                  h.User,
-				DistroKey:                h.Distro,
-				ProvisionedKey:           h.Provisioned,
-				StartedByKey:             h.StartedBy,
-				ExpirationTimeKey:        h.ExpirationTime,
-				ProviderKey:              h.Provider,
-				TagKey:                   h.Tag,
-				InstanceTypeKey:          h.InstanceType,
-				ZoneKey:                  h.Zone,
-				ProjectKey:               h.Project,
-				ProvisionAttemptsKey:     h.ProvisionAttempts,
-				ProvisionOptionsKey:      h.ProvisionOptions,
-				StartTimeKey:             h.StartTime,
-				HasContainersKey:         h.HasContainers,
-				ContainerImagesKey:       h.ContainerImages,
-				NeedsNewAgentMonitorKey:  h.NeedsNewAgentMonitor,
-				JasperCredentialsIDKey:   h.JasperCredentialsID,
-				JasperRestartAttemptsKey: h.JasperRestartAttempts,
-			},
-			"$setOnInsert": bson.M{
-				StatusKey:     h.Status,
-				CreateTimeKey: h.CreationTime,
-			},
-		},
-	)
+	}
+	if h.NeedsReprovision != ReprovisionNone {
+		setFields[NeedsReprovisionKey] = h.NeedsReprovision
+	} else {
+		update["$unset"] = bson.M{NeedsReprovisionKey: ReprovisionNone}
+	}
+	update["$set"] = setFields
+
+	return UpsertOne(bson.M{IdKey: h.Id}, update)
 }
 
 func (h *Host) CacheHostData() error {
@@ -1913,7 +1916,6 @@ func (h *Host) addTag(new Tag, hasPermissions bool) {
 		}
 	}
 	h.InstanceTags = append(h.InstanceTags, new)
-	return
 }
 
 func (h *Host) deleteTag(key string, hasPermissions bool) {
@@ -1925,7 +1927,6 @@ func (h *Host) deleteTag(key string, hasPermissions bool) {
 			return
 		}
 	}
-	return
 }
 
 // AddTags adds the specified tags to the host document, or modifies

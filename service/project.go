@@ -24,8 +24,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const tsFormat = "2006-01-02.15-04-05"
-
 // publicProjectFields are the fields needed by the UI
 // on base_angular and the menu
 type UIProjectFields struct {
@@ -429,7 +427,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if responseRef.ForceRepotrackerRun {
-		ts := util.RoundPartOfHour(1).Format(tsFormat)
+		ts := util.RoundPartOfHour(1).Format(units.TSFormat)
 		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Identifier)
 		if err = uis.queue.Put(ctx, j); err != nil {
 			grip.Error(errors.Wrap(err, "problem creating catchup job from UI"))
@@ -668,7 +666,7 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// run the repotracker for the project
-	ts := util.RoundPartOfHour(1).Format(tsFormat)
+	ts := util.RoundPartOfHour(1).Format(units.TSFormat)
 	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Identifier)
 	if err := uis.queue.Put(r.Context(), j); err != nil {
 		grip.Error(errors.Wrap(err, "problem creating catchup job from UI"))
