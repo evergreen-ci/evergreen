@@ -37,6 +37,7 @@ const (
 	// GitHub intent processing errors
 	ProjectDisabled     = "project was disabled"
 	PatchingDisabled    = "patching was disabled"
+	NoTasksOrVariants   = "no task/variants were configured"
 	GitHubInternalError = "GitHub returned an error"
 	InvalidConfig       = "config file was invalid"
 	OtherErrors         = "Evergreen error"
