@@ -599,10 +599,14 @@ func TestGetDistroQueueInfo(t *testing.T) {
 		{Id: "c"},
 	}
 
+	distroQueueInfoOut, err := GetDistroQueueInfo(distroID)
+	assert.NoError(err)
+	assert.Nil(distroQueueInfoOut)
+
 	taskQueueIn := NewTaskQueue(distroID, taskQueueItems, info)
 	assert.NoError(taskQueueIn.Save())
 
-	distroQueueInfoOut, err := GetDistroQueueInfo(distroID)
+	distroQueueInfoOut, err = GetDistroQueueInfo(distroID)
 	assert.NoError(err)
 	assert.Equal(distroQueueInfoOut.Length, 8)
 	assert.Len(distroQueueInfoOut.TaskGroupInfos, 1)

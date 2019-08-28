@@ -43,7 +43,7 @@ type DistroQueueInfo struct {
 	AliasQueue           bool            `bson:"alias_queue" json:"alias_queue"`
 }
 
-func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
+func GetDistroQueueInfo(distroID string) (*DistroQueueInfo, error) {
 	taskQueue := &TaskQueue{}
 	err := db.FindOne(
 		TaskQueuesCollection,
@@ -53,11 +53,15 @@ func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
 		taskQueue,
 	)
 
-	if err != nil {
-		return DistroQueueInfo{}, errors.Wrapf(err, "Database error retrieving DistroQueueInfo for distro id '%s'", distroID)
+	if err != nil && adb.ResultsNotFound(err) {
+		return nil, nil
 	}
 
-	return taskQueue.DistroQueueInfo, nil
+	if err != nil {
+		return nil, errors.Wrapf(err, "Database error retrieving DistroQueueInfo for distro id '%s'", distroID)
+	}
+
+	return &taskQueue.DistroQueueInfo, nil
 }
 
 func (q *DistroQueueInfo) GetQueueCollection() string {

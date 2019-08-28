@@ -84,7 +84,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 
 	if flags.HostAllocatorDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-			"job":     hostAllocatorJobName,
+			"runner":  hostAllocatorJobName,
 			"message": "host allocation is disabled",
 		})
 		return
@@ -125,6 +125,15 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	distroQueueInfo, err := model.GetDistroQueueInfo(j.DistroID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "Database error retrieving DistroQueueInfo for distro id '%s'", j.DistroID))
+		return
+	}
+	if distroQueueInfo == nil {
+		grip.Debug(message.Fields{
+			"runner":   hostAllocatorJobName,
+			"distro":   j.DistroID,
+			"instance": j.ID(),
+			"message":  "distro queue is nil",
+		})
 		return
 	}
 
