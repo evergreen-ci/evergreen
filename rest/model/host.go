@@ -25,7 +25,7 @@ type HostPostRequest struct {
 	DistroID     string            `json:"distro"`
 	KeyName      string            `json:"keyname"`
 	UserData     string            `json:"userdata"`
-	InstanceTags map[string]string `json:"instancetags`
+	InstanceTags map[string]string `json:"instancetags"`
 }
 
 type DistroInfo struct {
