@@ -123,6 +123,7 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 	id := j.ID()
 	count := 0
 
+	var err error
 	for {
 		count++
 		select {
@@ -139,7 +140,8 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 				End:   time.Now(),
 			})
 
-			if err := q.driver.Save(ctx, j); err != nil {
+			err = q.driver.Save(ctx, j)
+			if err != nil {
 				if time.Since(startAt) > time.Minute+amboy.LockTimeout {
 					grip.Error(message.WrapError(err, message.Fields{
 						"job_id":      id,
@@ -163,6 +165,8 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 					continue
 				}
 			}
+
+			j.AddError(err)
 
 			q.mutex.Lock()
 			defer q.mutex.Unlock()

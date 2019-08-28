@@ -728,6 +728,53 @@ func TestQueueSmoke(t *testing.T) {
 											})
 										}
 									}
+
+									t.Run("SaveLockingCheck", func(t *testing.T) {
+										if test.OrderedSupported && !test.OrderedStartsBefore {
+											t.Skip("test does not support queues where queues don't accept work after dispatching")
+										}
+										ctx, cancel := context.WithCancel(bctx)
+										defer cancel()
+
+										q, err := test.Constructor(ctx, size.Size)
+										require.NoError(t, err)
+										require.NoError(t, runner.SetPool(q, size.Size))
+
+										dcloser, err := driver.SetDriver(ctx, q, newDriverID())
+										require.NoError(t, err)
+										defer func() { require.NoError(t, dcloser(ctx)) }()
+										j := amboy.Job(job.NewShellJob("sleep 300", ""))
+										j.UpdateTimeInfo(amboy.JobTimeInfo{
+											WaitUntil: time.Now().Add(4 * amboy.LockTimeout),
+										})
+										require.NoError(t, q.Start(ctx))
+										require.NoError(t, q.Put(ctx, j))
+
+										require.NoError(t, j.Lock(q.ID()))
+										require.NoError(t, q.Save(ctx, j))
+
+										if test.IsRemote && driver.SupportsMulti {
+											// this errors because you can't save if you've double-locked,
+											// but only real remote drivers check locks.
+											require.NoError(t, j.Lock(q.ID()))
+											require.NoError(t, j.Lock(q.ID()))
+											require.Error(t, q.Save(ctx, j))
+										}
+
+										for i := 0; i < 25; i++ {
+											j, ok := q.Get(ctx, j.ID())
+											require.True(t, ok)
+											require.NoError(t, j.Lock(q.ID()))
+											require.NoError(t, q.Save(ctx, j))
+										}
+
+										j, ok := q.Get(ctx, j.ID())
+										require.True(t, ok)
+
+										require.NoError(t, j.Error())
+										q.Complete(ctx, j)
+										require.NoError(t, j.Error())
+									})
 								})
 							}
 						})
