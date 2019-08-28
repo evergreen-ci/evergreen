@@ -267,6 +267,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 
 	if j.intent.ShouldFinalizePatch() && len(patchDoc.Tasks) == 0 &&
 		len(patchDoc.BuildVariants) == 0 {
+		j.gitHubError = NoTasksOrVariants
 		return errors.New("patch has no build variants or tasks")
 	}
 
