@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
@@ -77,12 +78,19 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 			attemptStart := time.Now()
 			attempt++
 
-			p, v, t, pm, err := g.NewVersion() // nolint
+			t, err := task.FindOneId(j.TaskID)
 			if err != nil {
 				return false, err
 			}
+			if t == nil {
+				return false, errors.Errorf("unable to find task %s", g.TaskID)
+			}
 			if t.GeneratedTasks {
 				return false, nil // already generated tasks, noop
+			}
+			p, v, t, pm, err := g.NewVersion() // nolint
+			if err != nil {
+				return false, err
 			}
 			if err = validator.CheckProjectConfigurationIsValid(p); err != nil {
 				return false, err
