@@ -224,16 +224,16 @@ func (unit *Unit) RankValue() int64 {
 		priority += 100
 	}
 
-	if inPatch {
-		unit.cachedValue += unit.distro.GetPatchZipperFactor()
-	}
-
 	if !anyNonGroupTasks {
 		// if all tasks in the unit are in a task  group then
 		// we should give it a little bump, so that task
 		// groups tasks are sorted together even when they
 		// would also be scheduled in a version.
 		priority += num
+	}
+
+	if inPatch {
+		unit.cachedValue += priority * unit.distro.GetPatchZipperFactor()
 	}
 
 	// Start with the number of tasks, and then add the priority
