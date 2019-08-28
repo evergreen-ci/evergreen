@@ -62,6 +62,7 @@ func (dbc *DBConnector) FindHostByIdWithOwner(hostID string, user gimlet.User) (
 func (hc *DBHostConnector) NewIntentHost(spawnOptions cloud.SpawnOptions, userData string) (*host.Host, error) {
 	spawnOptions.UserName = spawnOptions.Owner.Username()
 
+	// Get key value if PublicKey is a name
 	keyVal, err := spawnOptions.Owner.GetPublicKey(spawnOptions.PublicKey)
 	if err != nil {
 		keyVal = spawnOptions.PublicKey
@@ -69,6 +70,8 @@ func (hc *DBHostConnector) NewIntentHost(spawnOptions cloud.SpawnOptions, userDa
 	if keyVal == "" {
 		return nil, errors.New("invalid key")
 	}
+	spawnOptions.PublicKey = keyVal
+
 	var providerSettings *map[string]interface{}
 	if userData != "" {
 		var d distro.Distro
@@ -90,7 +93,6 @@ func (hc *DBHostConnector) NewIntentHost(spawnOptions cloud.SpawnOptions, userDa
 	if err := intentHost.Insert(); err != nil {
 		return nil, err
 	}
-
 	return intentHost, nil
 }
 
@@ -116,7 +118,7 @@ func (hc *DBHostConnector) CheckHostSecret(r *http.Request) (int, error) {
 }
 
 // MockHostConnector is a struct that implements the Host related methods
-// from the Connector through interactions with he backing database.
+// from the Connector through interactions with the backing database.
 type MockHostConnector struct {
 	CachedHosts []host.Host
 }
