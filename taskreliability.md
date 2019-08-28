@@ -4,7 +4,7 @@
 TaskReliability
 ----------
 
-Task Reliability success scores are aggregated task execution statistics for a given project. statistics can be grouped by time period (days) and by task, variant, distro combinations.
+Task Reliability success scores are aggregated task execution statistics for a given project. Statistics can be grouped by time period (days) and by task, variant, distro combinations.
 
 The score is based on the lower bound value of a [Binomial proportion confidence interval](https://en.wikipedia.org/wiki/Binomial_proportion_confidence_interval).
 
