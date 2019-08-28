@@ -133,6 +133,9 @@ func (a *Agent) loop(ctx context.Context) error {
 	tc := &taskContext{}
 	needPostGroup := false
 
+	// killProcs will remove any Docker artifacts left over from previous agent runs
+	a.killProcs(ctx, tc, true)
+
 LOOP:
 	for {
 		select {
