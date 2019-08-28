@@ -78,7 +78,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 			attemptStart := time.Now()
 			attempt++
 
-			t, err := task.FindOneId(g.TaskID)
+			t, err := task.FindOneId(j.TaskID)
 			if err != nil {
 				return false, err
 			}
