@@ -51,7 +51,7 @@ func setupJasperService(ctx context.Context, env *mock.Environment, mngr *jmock.
 	return closeService, errors.WithStack(h.SaveJasperCredentials(ctx, env, creds))
 }
 
-// setupCredentialsCollection is used to bootstrap the credentials collection
+// setupHostCredentials is used to bootstrap the credentials collection
 // for testing.
 func setupCredentialsCollection(ctx context.Context, env *mock.Environment) error {
 	settings := env.Settings()
@@ -95,17 +95,21 @@ func setupCredentialsCollection(ctx context.Context, env *mock.Environment) erro
 
 func teardownJasperService(closeService jasper.CloseFunc) error {
 	catcher := grip.NewBasicCatcher()
-	// catcher.Add(db.ClearCollections(credentials.Collection, host.Collection))
+	catcher.Add(teardownHostCredentials())
 	if closeService != nil {
 		catcher.Add(closeService())
 	}
 	return catcher.Resolve()
 }
 
-func getJasperDeployJobName(hostID string, deployThroughJasper bool, jobID string) string {
-	id := fmt.Sprintf("%s.%s.%s", jasperDeployJobName, hostID, jobID)
-	if deployThroughJasper {
-		id += ".deploy-through-jasper"
+func teardownHostCredentials() error {
+	return db.ClearCollections(credentials.Collection, host.Collection)
+}
+
+func getJasperRestartJobName(hostID string, restartThroughJasper bool, jobID string) string {
+	id := fmt.Sprintf("%s.%s.%s", jasperRestartJobName, hostID, jobID)
+	if restartThroughJasper {
+		id += ".restart-through-jasper"
 	}
 	return id
 }
@@ -113,8 +117,8 @@ func getJasperDeployJobName(hostID string, deployThroughJasper bool, jobID strin
 // withJasperServiceSetupAndTeardown performs necessary setup to start a
 // Jasper RPC service, executes the given test function, and cleans up.
 func withJasperServiceSetupAndTeardown(ctx context.Context, env *mock.Environment, manager *jmock.Manager, h *host.Host, fn func(evergreen.Environment)) error {
-	if err := setupCredentialsCollection(ctx, env); err != nil {
-		grip.Error(errors.Wrap(teardownJasperService(nil), "problem tearing down test"))
+	if err := setupHostCredentials(ctx, env); err != nil {
+		grip.Error(errors.Wrap(teardownHostCredentials(), "problem tearing down test"))
 		return errors.Wrap(err, "problem setting up credentials collection")
 	}
 
@@ -129,7 +133,7 @@ func withJasperServiceSetupAndTeardown(ctx context.Context, env *mock.Environmen
 	return errors.Wrap(teardownJasperService(closeService), "problem tearing down test")
 }
 
-func TestJasperDeployJob(t *testing.T) {
+func TestJasperRestartJob(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -137,87 +141,83 @@ func TestJasperDeployJob(t *testing.T) {
 		"NewJasperDeployJobPopulatesFields": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
 			expiration := time.Now()
 
-			j := NewJasperDeployJob(env, h, expiration, true, "attempt-0")
-			deployJob, ok := j.(*jasperDeployJob)
+			j := NewJasperRestartJob(env, *h, expiration, true, "attempt-0")
+			restartJob, ok := j.(*jasperRestartJob)
 			require.True(t, ok)
 
-			assert.Equal(t, h.Id, deployJob.HostID)
-			assert.True(t, deployJob.DeployThroughJasper)
-			assert.Equal(t, expiration, deployJob.CredentialsExpiration)
-			assert.Equal(t, getJasperDeployJobName(h.Id, true, "attempt-0"), deployJob.ID())
+			assert.Equal(t, h.Id, restartJob.HostID)
+			assert.True(t, restartJob.RestartThroughJasper)
+			assert.Equal(t, expiration, restartJob.CredentialsExpiration)
+			assert.Equal(t, getJasperRestartJobName(h.Id, true, "attempt-0"), restartJob.ID())
 		},
-		"RequeueJobRedeploysThroughJasperIfAttemptsRemainingAndCredentialsNotExpiring": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
+		"RequeueJobRestartsThroughJasperIfAttemptsRemainingAndCredentialsNotExpiring": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
 			expiration := time.Now().Add(24 * time.Hour)
 
-			j := NewJasperDeployJob(env, h, expiration, true, "attempt-0")
-			deployJob, ok := j.(*jasperDeployJob)
+			j := NewJasperRestartJob(env, *h, expiration, true, "attempt-0")
+			restartJob, ok := j.(*jasperRestartJob)
 			require.True(t, ok)
 
-			require.NoError(t, deployJob.tryRequeueDeploy(ctx))
+			require.NoError(t, restartJob.tryRequeue(ctx))
 
-			newJob, ok := env.RemoteQueue().Get(ctx, getJasperDeployJobName(h.Id, true, "attempt-1"))
+			newJob, ok := env.RemoteQueue().Get(ctx, getJasperRestartJobName(h.Id, true, "attempt-1"))
 			require.True(t, ok)
 			require.NotNil(t, newJob)
-			newDeployJob, ok := newJob.(*jasperDeployJob)
+			newDeployJob, ok := newJob.(*jasperRestartJob)
 			require.True(t, ok)
 			require.NotNil(t, newDeployJob)
 
-			assert.True(t, newDeployJob.DeployThroughJasper)
+			assert.True(t, newDeployJob.RestartThroughJasper)
 		},
-		"RequeueJobDoesNotDeployThroughJasperIfCredentialsExpiring": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
+		"RequeueJobDoesNotRestartThroughJasperIfCredentialsExpiring": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
 			expiration := time.Now()
 
-			j := NewJasperDeployJob(env, h, expiration, true, "attempt-0")
-			deployJob, ok := j.(*jasperDeployJob)
+			j := NewJasperRestartJob(env, *h, expiration, true, "attempt-0")
+			restartJob, ok := j.(*jasperRestartJob)
 			require.True(t, ok)
 
-			require.NoError(t, deployJob.tryRequeueDeploy(ctx))
+			require.NoError(t, restartJob.tryRequeue(ctx))
 
-			newJob, ok := env.RemoteQueue().Get(ctx, getJasperDeployJobName(h.Id, false, "attempt-0"))
+			newJob, ok := env.RemoteQueue().Get(ctx, getJasperRestartJobName(h.Id, false, "attempt-0"))
 			require.True(t, ok)
 			require.NotNil(t, newJob)
-			newDeployJob, ok := newJob.(*jasperDeployJob)
+			newDeployJob, ok := newJob.(*jasperRestartJob)
 			require.True(t, ok)
 			require.NotNil(t, newDeployJob)
 
-			assert.False(t, newDeployJob.DeployThroughJasper)
+			assert.False(t, newDeployJob.RestartThroughJasper)
 		},
-		"ChecksAttemptsBeforeRequeueingWithJasperDeploy": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
+		"ChecksAttemptsBeforeRequeueingWithJasperRestart": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
 			expiration := time.Now().Add(24 * time.Hour)
 
-			h.JasperDeployAttempts = jasperDeployRetryLimit
-			_, err := h.Upsert()
-			require.NoError(t, err)
+			require.NoError(t, h.SetJasperRestartAttempts(jasperRestartRetryLimit))
 
-			j := NewJasperDeployJob(env, h, expiration, true, fmt.Sprintf("attempt-%d", jasperDeployRetryLimit))
-			deployJob, ok := j.(*jasperDeployJob)
+			j := NewJasperRestartJob(env, *h, expiration, true, fmt.Sprintf("attempt-%d", jasperRestartRetryLimit))
+			restartJob, ok := j.(*jasperRestartJob)
 			require.True(t, ok)
 
-			require.NoError(t, deployJob.tryRequeueDeploy(ctx))
+			require.NoError(t, restartJob.tryRequeue(ctx))
 
-			_, ok = env.RemoteQueue().Get(ctx, getJasperDeployJobName(h.Id, true, fmt.Sprintf("attempt-%d", jasperDeployRetryLimit+1)))
+			_, ok = env.RemoteQueue().Get(ctx, getJasperRestartJobName(h.Id, true, fmt.Sprintf("attempt-%d", jasperRestartRetryLimit+1)))
 			assert.False(t, ok)
 
-			newJob, ok := env.RemoteQueue().Get(ctx, getJasperDeployJobName(h.Id, false, "attempt-0"))
+			newJob, ok := env.RemoteQueue().Get(ctx, getJasperRestartJobName(h.Id, false, "attempt-0"))
 			require.True(t, ok)
-			newDeployJob, ok := newJob.(*jasperDeployJob)
+			newDeployJob, ok := newJob.(*jasperRestartJob)
 			require.True(t, ok)
 			require.NotNil(t, newDeployJob)
 
-			assert.False(t, newDeployJob.DeployThroughJasper)
+			assert.False(t, newDeployJob.RestartThroughJasper)
 		},
 		"DoesNotRequeueIfNoAttemptsRemainingAndNotDeployingThroughJasper": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
 			expiration := time.Now()
 
-			h.JasperDeployAttempts = jasperDeployRetryLimit
-			_, err := h.Upsert()
-			require.NoError(t, err)
+			require.NoError(t, h.SetJasperRestartAttempts(jasperRestartRetryLimit))
 
-			j := NewJasperDeployJob(env, h, expiration, false, fmt.Sprintf("attempt-%d", jasperDeployRetryLimit))
-			deployJob, ok := j.(*jasperDeployJob)
+			j := NewJasperRestartJob(env, *h, expiration, false, fmt.Sprintf("attempt-%d", jasperRestartRetryLimit))
+			restartJob, ok := j.(*jasperRestartJob)
 			require.True(t, ok)
 
-			assert.Error(t, deployJob.tryRequeueDeploy(ctx))
+			assert.Error(t, restartJob.tryRequeue(ctx))
 		},
 		"RunPerformsExpectedOperationsWhenDeployingThroughJasper": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
 			clientCreds, err := env.CertificateDepot().Find(env.Settings().DomainName)
@@ -234,14 +234,14 @@ func TestJasperDeployJob(t *testing.T) {
 
 			expiration := time.Now().Add(24 * time.Hour)
 
-			j := NewJasperDeployJob(env, h, expiration, true, "attempt-0")
+			j := NewJasperRestartJob(env, *h, expiration, true, "attempt-0")
 			j.Run(ctx)
 
-			deployJob, ok := j.(*jasperDeployJob)
+			restartJob, ok := j.(*jasperRestartJob)
 			require.True(t, ok)
 
 			// Job will error because mock service will not be restarted.
-			assert.True(t, deployJob.HasErrors())
+			assert.True(t, restartJob.HasErrors())
 
 			// Job updates LCT.
 			dbHost, err := host.FindOneId(h.Id)
@@ -290,13 +290,14 @@ func TestJasperDeployJob(t *testing.T) {
 					BootstrapSettings: distro.BootstrapSettings{
 						Method:                distro.BootstrapMethodUserData,
 						Communication:         distro.CommunicationMethodRPC,
-						JasperCredentialsPath: "/etc/creds.pem",
+						JasperCredentialsPath: "/jasper_credentials_path",
 					},
-					SSHKey: "/etc/mci.pem",
+					SSHKey: "ssh_key",
 				},
+				Status:               evergreen.HostProvisioning,
+				NeedsReprovision:     host.ReprovisionJasperRestart,
+				NeedsNewAgentMonitor: true,
 			}
-			_, err := h.Upsert()
-			require.NoError(t, err)
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(tctx, "", nil))

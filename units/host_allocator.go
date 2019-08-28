@@ -56,7 +56,7 @@ func makeHostAllocatorJob() *hostAllocatorJob {
 func NewHostAllocatorJob(env evergreen.Environment, distroID string, timestamp time.Time) amboy.Job {
 	job := makeHostAllocatorJob()
 	job.DistroID = distroID
-	job.SetID(fmt.Sprintf("%s.%s.%s", hostAllocatorJobName, distroID, timestamp.Format(tsFormat)))
+	job.SetID(fmt.Sprintf("%s.%s.%s", hostAllocatorJobName, distroID, timestamp.Format(TSFormat)))
 	job.env = env
 
 	return job

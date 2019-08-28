@@ -49,7 +49,7 @@ func makeDistroAliasSchedulerJob() *distroAliasSchedulerJob {
 func NewDistroAliasSchedulerJob(distroID string, ts time.Time) amboy.Job {
 	j := makeDistroAliasSchedulerJob()
 	j.DistroID = distroID
-	j.SetID(fmt.Sprintf("%s.%s.%s", schedulerAliasJobName, distroID, ts.Format(tsFormat)))
+	j.SetID(fmt.Sprintf("%s.%s.%s", schedulerAliasJobName, distroID, ts.Format(TSFormat)))
 
 	return j
 }

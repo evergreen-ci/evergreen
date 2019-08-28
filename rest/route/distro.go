@@ -613,8 +613,7 @@ func (h *distroIDExecuteHandler) Run(ctx context.Context) gimlet.Responder {
 
 	catcher := grip.NewBasicCatcher()
 	for _, host := range hosts {
-		const tsFormat = "2006-01-02.15-04-05"
-		ts := util.RoundPartOfMinute(0).Format(tsFormat)
+		ts := util.RoundPartOfMinute(0).Format(units.TSFormat)
 		catcher.Wrapf(h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, h.Script, ts)), "problem enqueueing job to run script on host %s", host.Id)
 	}
 	if catcher.HasErrors() {

@@ -8,37 +8,38 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestJasperDeployCounter(t *testing.T) {
+func TestJasperRestartCounter(t *testing.T) {
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"FailsIfNotInDatabase": func(t *testing.T, h *Host) {
 			require.NoError(t, h.Remove())
-			assert.Error(t, h.IncJasperDeployAttempts())
-			assert.Error(t, h.ResetJasperDeployAttempts())
+			assert.Error(t, h.IncJasperRestartAttempts())
+			assert.Error(t, h.SetJasperRestartAttempts(0))
 		},
-		"IncJasperDeployAttemptsSucceeds": func(t *testing.T, h *Host) {
+		"IncJasperRestartAttemptsSucceeds": func(t *testing.T, h *Host) {
 			for i := 0; i < 10; i++ {
-				require.NoError(t, h.IncJasperDeployAttempts())
-				assert.Equal(t, i+1, h.JasperDeployAttempts)
+				require.NoError(t, h.IncJasperRestartAttempts())
+				assert.Equal(t, i+1, h.JasperRestartAttempts)
 
 				dbHost, err := FindOneId(h.Id)
 				require.NoError(t, err)
-				assert.Equal(t, i+1, dbHost.JasperDeployAttempts)
+				assert.Equal(t, i+1, dbHost.JasperRestartAttempts)
 			}
 		},
-		"ResetJasperDeployAttemptsResetsToZero": func(t *testing.T, h *Host) {
-			require.NoError(t, h.IncJasperDeployAttempts())
-			assert.Equal(t, 1, h.JasperDeployAttempts)
+		"SetJasperRestartAttemptsSetsValue": func(t *testing.T, h *Host) {
+			require.NoError(t, h.IncJasperRestartAttempts())
+			assert.Equal(t, 1, h.JasperRestartAttempts)
 
 			dbHost, err := FindOneId(h.Id)
 			require.NoError(t, err)
-			assert.Equal(t, 1, dbHost.JasperDeployAttempts)
+			assert.Equal(t, 1, dbHost.JasperRestartAttempts)
 
-			require.NoError(t, h.ResetJasperDeployAttempts())
-			assert.Zero(t, h.JasperDeployAttempts)
+			attempts := 15
+			require.NoError(t, h.SetJasperRestartAttempts(attempts))
+			assert.Equal(t, attempts, h.JasperRestartAttempts)
 
 			dbHost, err = FindOneId(h.Id)
 			require.NoError(t, err)
-			assert.Zero(t, dbHost.JasperDeployAttempts)
+			assert.Equal(t, attempts, dbHost.JasperRestartAttempts)
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
