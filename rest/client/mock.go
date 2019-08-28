@@ -335,25 +335,31 @@ func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData) (*patchmodel.Patch
 // GetHostsByUser will return an array with a single mock host
 func (c *Mock) GetHostsByUser(ctx context.Context, user string) ([]*model.APIHost, error) {
 	hosts := make([]*model.APIHost, 1)
-	host, _ := c.CreateSpawnHost(ctx, "mock_distro", "mock_key", "", nil)
+	spawnOptions := cloud.SpawnOptions{
+		DistroId:     "mock_distro",
+		PublicKey:    "mock_key",
+		InstanceTags: nil,
+	}
+	host, _ := c.CreateSpawnHost(ctx, spawnOptions, "")
 	hosts = append(hosts, host)
 	return hosts, nil
 }
 
 // CreateSpawnHost will return a mock host that would have been intended
-func (*Mock) CreateSpawnHost(ctx context.Context, distroID, keyName, userData string, tags map[string]string) (*model.APIHost, error) {
+func (*Mock) CreateSpawnHost(ctx context.Context, spawnOptions cloud.SpawnOptions, userData string) (*model.APIHost, error) {
 	mockHost := &model.APIHost{
 		Id:      model.ToAPIString("mock_host_id"),
 		HostURL: model.ToAPIString("mock_url"),
 		Distro: model.DistroInfo{
-			Id:       model.ToAPIString(distroID),
+			Id:       model.ToAPIString(spawnOptions.DistroId),
 			Provider: model.ToAPIString(evergreen.ProviderNameMock),
 		},
-		Type:        model.ToAPIString("mock_type"),
-		Status:      model.ToAPIString(evergreen.HostUninitialized),
-		StartedBy:   model.ToAPIString("mock_user"),
-		UserHost:    true,
-		Provisioned: false,
+		Type:         model.ToAPIString("mock_type"),
+		Status:       model.ToAPIString(evergreen.HostUninitialized),
+		StartedBy:    model.ToAPIString("mock_user"),
+		UserHost:     true,
+		Provisioned:  false,
+		InstanceTags: spawnOptions.InstanceTags,
 	}
 	return mockHost, nil
 }
@@ -373,7 +379,12 @@ func (*Mock) ExtendSpawnHostExpiration(context.Context, string, int) error {
 // GetHosts will return an array with a single mock host
 func (c *Mock) GetHosts(ctx context.Context, f func([]*model.APIHost) error) error {
 	hosts := make([]*model.APIHost, 1)
-	host, _ := c.CreateSpawnHost(ctx, "mock_distro", "mock_key", "", nil)
+	spawnOptions := cloud.SpawnOptions{
+		DistroId:     "mock_distro",
+		PublicKey:    "mock_key",
+		InstanceTags: nil,
+	}
+	host, _ := c.CreateSpawnHost(ctx, spawnOptions, "")
 	hosts = append(hosts, host)
 	err := f(hosts)
 	return err

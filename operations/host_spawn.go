@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen/cloud"
+
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -104,7 +106,13 @@ func hostCreate() cli.Command {
 				return errors.Wrap(err, "problem generating tags")
 			}
 
-			host, err := client.CreateSpawnHost(ctx, distro, key, script, tags)
+			spawnOptions := cloud.SpawnOptions{
+				DistroId:     distro,
+				PublicKey:    key,
+				InstanceTags: tags,
+			}
+
+			host, err := client.CreateSpawnHost(ctx, spawnOptions, script)
 			if host == nil {
 				return errors.New("Unable to create a spawn host. Double check that the params and .evergreen.yml are correct")
 			}

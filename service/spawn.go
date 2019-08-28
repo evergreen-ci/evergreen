@@ -108,7 +108,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		SaveKey       bool              `json:"save_key"`
 		UserData      string            `json:"userdata"`
 		UseTaskConfig bool              `json:"use_task_config"`
-		InstanceTags  map[string]string `json:"instancetags"`
+		InstanceTags  map[string]string `json:"instance_tags"`
 	}{}
 
 	err := util.ReadJSONInto(util.NewRequestReader(r), &putParams)
@@ -126,7 +126,14 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Public key successfully saved."))
 	}
 	hc := &data.DBConnector{}
-	spawnHost, err := hc.NewIntentHost(putParams.Distro, putParams.PublicKey, putParams.Task, putParams.UserData, putParams.InstanceTags, authedUser)
+	spawnOptions := cloud.SpawnOptions{
+		DistroId:     putParams.Distro,
+		PublicKey:    putParams.PublicKey,
+		TaskId:       putParams.Task,
+		Owner:        authedUser,
+		InstanceTags: nil,
+	}
+	spawnHost, err := hc.NewIntentHost(spawnOptions, putParams.UserData)
 
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error spawning host"))

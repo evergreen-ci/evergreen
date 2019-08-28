@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/cloud"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -206,7 +208,14 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	})
 	s.NoError(testUser.Insert())
 
-	intentHost, err := (&DBHostConnector{}).NewIntentHost(testDistroID, testPublicKeyName, "", "", nil, testUser)
+	spawnOptions := cloud.SpawnOptions{
+		DistroId:     testDistroID,
+		PublicKey:    testPublicKeyName,
+		TaskId:       "",
+		InstanceTags: nil,
+		Owner:        testUser,
+	}
+	intentHost, err := (&DBHostConnector{}).NewIntentHost(spawnOptions, "")
 	s.NotNil(intentHost)
 	s.NoError(err)
 	foundHost, err := host.FindOne(host.ById(intentHost.Id))

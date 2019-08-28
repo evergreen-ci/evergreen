@@ -60,7 +60,14 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hc := &data.DBHostConnector{}
-	spawnHost, err := hc.NewIntentHost(hostRequest.Distro, hostRequest.PublicKey, "", "", nil, user)
+	spawnOptions := cloud.SpawnOptions{
+		DistroId:     hostRequest.Distro,
+		PublicKey:    hostRequest.PublicKey,
+		TaskId:       "",
+		Owner:        user,
+		InstanceTags: nil,
+	}
+	spawnHost, err := hc.NewIntentHost(spawnOptions, "")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
