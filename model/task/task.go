@@ -1795,7 +1795,9 @@ func (t *Task) UpdateBlockedDependencies() error {
 		if err = dependentTask.MarkUnattainableDependency(t, true); err != nil {
 			return errors.Wrap(err, "error marking dependency unattainable")
 		}
-		return errors.WithStack(dependentTask.UpdateBlockedDependencies())
+		if err = dependentTask.UpdateBlockedDependencies(); err != nil {
+			return errors.WithStack(err)
+		}
 	}
 	return nil
 }
