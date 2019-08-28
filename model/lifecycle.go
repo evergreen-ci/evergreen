@@ -476,6 +476,11 @@ func RefreshTasksCache(buildId string) error {
 	}
 
 	cache := CreateTasksCache(tasks)
+	grip.Debug(message.Fields{
+		"messsage": "refresing task cache",
+		"build":    buildId,
+		"cache":    cache,
+	})
 	return errors.WithStack(build.SetTasksCache(buildId, cache))
 }
 
