@@ -392,12 +392,6 @@ func (q *shuffledLocal) Complete(ctx context.Context, j amboy.Job) {
 
 		id := j.ID()
 
-		if ctx.Err() != nil {
-			grip.Noticef("did not complete %s job, because operation "+
-				"was canceled.", id)
-			return
-		}
-
 		completed[id] = j
 		delete(dispatched, id)
 		toDelete.Push(id)

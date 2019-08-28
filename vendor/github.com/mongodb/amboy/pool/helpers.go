@@ -13,11 +13,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-type workUnit struct {
-	job    amboy.Job
-	cancel context.CancelFunc
-}
-
 func executeJob(ctx context.Context, id string, job amboy.Job, q amboy.Queue) {
 	res := runJob(ctx, job, q, time.Now())
 	ti := job.TimeInfo()
@@ -83,7 +78,7 @@ func runJob(ctx context.Context, job amboy.Job, q amboy.Queue, startAt time.Time
 	go func() {
 		defer recovery.LogStackTraceAndContinue("background lock ping", job.ID())
 		iters := 0
-		ticker := time.NewTicker(amboy.LockTimeout / 2)
+		ticker := time.NewTicker(amboy.LockTimeout / 4)
 		defer ticker.Stop()
 		for {
 			select {
@@ -100,6 +95,12 @@ func runJob(ctx context.Context, job amboy.Job, q amboy.Queue, startAt time.Time
 					jcancel()
 					return
 				}
+				grip.Debug(message.Fields{
+					"queue_id":  q.ID(),
+					"job_id":    job.ID(),
+					"ping_iter": iters,
+					"stat":      job.Status(),
+				})
 			}
 			iters++
 		}
@@ -121,11 +122,12 @@ func runJob(ctx context.Context, job amboy.Job, q amboy.Queue, startAt time.Time
 	return
 }
 
-func worker(ctx context.Context, id string, jobs <-chan workUnit, q amboy.Queue, wg *sync.WaitGroup) {
+func worker(bctx context.Context, id string, jobs <-chan amboy.Job, q amboy.Queue, wg *sync.WaitGroup) {
 	var (
 		err    error
 		job    amboy.Job
 		cancel context.CancelFunc
+		ctx    context.Context
 	)
 
 	wg.Add(1)
@@ -136,10 +138,10 @@ func worker(ctx context.Context, id string, jobs <-chan workUnit, q amboy.Queue,
 		if err != nil {
 			if job != nil {
 				job.AddError(err)
-				q.Complete(ctx, job)
+				q.Complete(bctx, job)
 			}
 			// start a replacement worker.
-			go worker(ctx, id, jobs, q, wg)
+			go worker(bctx, id, jobs, q, wg)
 		}
 
 		if cancel != nil {
@@ -149,25 +151,22 @@ func worker(ctx context.Context, id string, jobs <-chan workUnit, q amboy.Queue,
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-bctx.Done():
 			return
-		case wu := <-jobs:
-			if wu.job == nil {
+		case job = <-jobs:
+			if job == nil {
 				continue
 			}
 
-			job = wu.job
-			cancel = wu.cancel
+			ctx, cancel = context.WithCancel(bctx)
 			executeJob(ctx, id, job, q)
 			cancel()
 		}
 	}
 }
 
-func startWorkerServer(ctx context.Context, q amboy.Queue, wg *sync.WaitGroup) <-chan workUnit {
-	var nctx context.Context
-
-	output := make(chan workUnit)
+func startWorkerServer(ctx context.Context, q amboy.Queue, wg *sync.WaitGroup) <-chan amboy.Job {
+	output := make(chan amboy.Job)
 
 	wg.Add(1)
 	go func() {
@@ -177,21 +176,21 @@ func startWorkerServer(ctx context.Context, q amboy.Queue, wg *sync.WaitGroup) <
 			case <-ctx.Done():
 				return
 			default:
-				wu := workUnit{}
-				nctx, wu.cancel = context.WithCancel(ctx)
-
-				job := q.Next(nctx)
+				job := q.Next(ctx)
 				if job == nil {
 					continue
 				}
 
 				if job.Status().Completed {
-					grip.Debugf("job '%s' was dispatched from the queue but was completed",
-						job.ID())
+					grip.Debug(message.Fields{
+						"message":    "completed job dispatched from the queue",
+						"job":        job.ID(),
+						"queue_type": fmt.Sprintf("%T", q),
+						"stat":       job.Status(),
+					})
 					continue
 				}
-				wu.job = job
-				output <- wu
+				output <- job
 			}
 		}
 	}()

@@ -116,10 +116,11 @@ func (p *abortablePool) Start(ctx context.Context) error {
 	return nil
 }
 
-func (p *abortablePool) worker(ctx context.Context, jobs <-chan workUnit) {
+func (p *abortablePool) worker(bctx context.Context, jobs <-chan amboy.Job) {
 	var (
 		err    error
 		job    amboy.Job
+		ctx    context.Context
 		cancel context.CancelFunc
 	)
 
@@ -134,13 +135,11 @@ func (p *abortablePool) worker(ctx context.Context, jobs <-chan workUnit) {
 		if err != nil {
 			if job != nil {
 				job.AddError(err)
-				p.queue.Complete(ctx, job)
+				p.queue.Complete(bctx, job)
 			}
 
-			if ctx.Err() == nil {
-				// start a replacement worker.
-				go p.worker(ctx, jobs)
-			}
+			// start a replacement worker
+			go p.worker(bctx, jobs)
 		}
 
 		if cancel != nil {
@@ -150,15 +149,14 @@ func (p *abortablePool) worker(ctx context.Context, jobs <-chan workUnit) {
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-bctx.Done():
 			return
-		case wu := <-jobs:
-			if wu.job == nil {
+		case job = <-jobs:
+			if job == nil {
 				continue
 			}
 
-			job = wu.job
-			cancel = wu.cancel
+			ctx, cancel = context.WithCancel(bctx)
 			p.runJob(ctx, job)
 			cancel()
 		}
