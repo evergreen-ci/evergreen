@@ -19,30 +19,37 @@ type workUnit struct {
 }
 
 func executeJob(ctx context.Context, id string, job amboy.Job, q amboy.Queue) {
-	didRun := runJob(ctx, job, q, time.Now())
-
+	res := runJob(ctx, job, q, time.Now())
+	ti := job.TimeInfo()
 	r := message.Fields{
 		"job":           job.ID(),
 		"job_type":      job.Type().Name,
-		"duration_secs": job.TimeInfo().Duration().Seconds(),
+		"duration_secs": ti.Duration().Seconds(),
 		"queue_type":    fmt.Sprintf("%T", q),
 		"stat":          job.Status(),
 		"pool":          id,
-		"executed":      didRun,
+		"executed":      res.executed,
+		"aborted":       res.aborted,
+		"max_time_secs": ti.MaxTime.Seconds(),
 	}
 	err := job.Error()
 	if err != nil {
 		r["error"] = err.Error()
 	}
 
-	if didRun && err != nil {
+	if res.executed && !res.aborted && err != nil {
 		grip.Error(r)
 	} else {
 		grip.Debug(r)
 	}
 }
 
-func runJob(ctx context.Context, job amboy.Job, q amboy.Queue, startAt time.Time) bool {
+type runJobResult struct {
+	executed bool
+	aborted  bool
+}
+
+func runJob(ctx context.Context, job amboy.Job, q amboy.Queue, startAt time.Time) (res runJobResult) {
 	ti := amboy.JobTimeInfo{
 		Start: time.Now(),
 	}
@@ -61,12 +68,15 @@ func runJob(ctx context.Context, job amboy.Job, q amboy.Queue, startAt time.Time
 
 	if err := job.Lock(q.ID()); err != nil {
 		job.AddError(errors.Wrap(err, "problem locking job"))
-		return false
+		return
 	}
 	if err := q.Save(ctx, job); err != nil {
 		job.AddError(errors.Wrap(err, "problem saving job state"))
-		return false
+		return
 	}
+
+	jctx, jcancel := context.WithCancel(ctx)
+	defer jcancel()
 
 	pingerCtx, stopPing := context.WithCancel(ctx)
 	defer stopPing()
@@ -82,10 +92,12 @@ func runJob(ctx context.Context, job amboy.Job, q amboy.Queue, startAt time.Time
 			case <-ticker.C:
 				if err := job.Lock(q.ID()); err != nil {
 					job.AddError(errors.Wrapf(err, "problem pinging job lock on cycle #%d", iters))
+					jcancel()
 					return
 				}
 				if err := q.Save(ctx, job); err != nil {
 					job.AddError(errors.Wrapf(err, "problem saving job for lock ping on cycle #%d", iters))
+					jcancel()
 					return
 				}
 			}
@@ -93,8 +105,9 @@ func runJob(ctx context.Context, job amboy.Job, q amboy.Queue, startAt time.Time
 		}
 	}()
 
-	job.Run(ctx)
-
+	job.Run(jctx)
+	res.aborted = jctx.Err() != nil
+	res.executed = true
 	// we want the final end time to include
 	// marking complete, but setting it twice is
 	// necessary for some queues
@@ -105,7 +118,7 @@ func runJob(ctx context.Context, job amboy.Job, q amboy.Queue, startAt time.Time
 
 	q.Complete(ctx, job)
 
-	return true
+	return
 }
 
 func worker(ctx context.Context, id string, jobs <-chan workUnit, q amboy.Queue, wg *sync.WaitGroup) {
