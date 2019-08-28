@@ -372,10 +372,8 @@ dlvArgs += -test.race
 endif
 ifneq (,$(TEST_TIMEOUT))
 testArgs += -timeout=$(TEST_TIMEOUT)
-dlvArgs += -test.timeout=$(TEST_TIMEOUT)
 else
 testArgs += -timeout=10m
-dlvArgs += -test.timeout=10m
 endif
 #  targets to run any tests in the top-level package
 $(buildDir):

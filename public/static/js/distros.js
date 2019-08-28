@@ -9,24 +9,25 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   for (var i = 0; i < $scope.distros.length; i++) {
     $scope.distros[i].pool_size = $scope.distros[i].pool_size || 0;
     $scope.distros[i].planner_settings = $scope.distros[i].planner_settings || {};
-    $scope.distros[i].planner_settings.version = $scope.distros[i].planner_settings.version || "legacy";
+    $scope.distros[i].planner_settings.version = $scope.distros[i].planner_settings.version || 'legacy';
     $scope.distros[i].planner_settings.minimum_hosts = $scope.distros[i].planner_settings.minimum_hosts || 0;
     $scope.distros[i].planner_settings.maximum_hosts = $scope.distros[i].planner_settings.maximum_hosts || 0;
     $scope.distros[i].planner_settings.target_time = $scope.distros[i].planner_settings.target_time || 0;
     $scope.distros[i].planner_settings.acceptable_host_idle_time = $scope.distros[i].planner_settings.acceptable_host_idle_time || 0;
-    $scope.distros[i].planner_settings.patch_zipper_factor = $scope.distros[i].planner_settings.patch_zipper_factor || 0;
-    // Convert from nanoseconds (time.Duration) to seconds (UI display units)
+    $scope.distros[i].planner_settings.patch_factor = $scope.distros[i].planner_settings.patch_factor || 0;
+    $scope.distros[i].planner_settings.time_in_queue_factor = $scope.distros[i].planner_settings.time_in_queue_factor || 0;
+    $scope.distros[i].planner_settings.expected_runtime_factor = $scope.distros[i].planner_settings.expected_runtime_factor || 0;
+    // Convert from nanoseconds (time.Duration) to seconds (UI display units) for the relevant planner_settings' fields.
     if ($scope.distros[i].planner_settings.target_time > 0) {
       $scope.distros[i].planner_settings.target_time /= 1e9;
     }
-    // Convert from nanoseconds (time.Duration) to seconds (UI display units)
     if ($scope.distros[i].planner_settings.acceptable_host_idle_time > 0) {
       $scope.distros[i].planner_settings.acceptable_host_idle_time /= 1e9;
     }
     $scope.distros[i].planner_settings.group_versions = $scope.distros[i].planner_settings.group_versions;
-    $scope.distros[i].planner_settings.task_ordering = $scope.distros[i].planner_settings.task_ordering || "";
+    $scope.distros[i].planner_settings.task_ordering = $scope.distros[i].planner_settings.task_ordering || 'interleave';
     $scope.distros[i].finder_settings = $scope.distros[i].finder_settings || {};
-    $scope.distros[i].finder_settings.version = $scope.distros[i].finder_settings.version || "legacy";
+    $scope.distros[i].finder_settings.version = $scope.distros[i].finder_settings.version || 'legacy';
     $scope.distros[i].bootstrap_settings.method = $scope.distros[i].bootstrap_settings.method || 'legacy-ssh';
     $scope.distros[i].bootstrap_settings.communication = $scope.distros[i].bootstrap_settings.communication || 'legacy-ssh';
     $scope.distros[i].clone_method = $scope.distros[i].clone_method || 'legacy-ssh';
@@ -314,11 +315,10 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   }
 
   $scope.saveConfiguration = function() {
-    // Convert from UI display units (sec) to nanoseconds
+    // Convert from UI display units (seconds) to nanoseconds (time.Duration) for relevant planner_settings' fields.
     if($scope.activeDistro.planner_settings.target_time > 0) {
       $scope.activeDistro.planner_settings.target_time *= 1e9
     }
-    // Convert from UI display units (sec) to nanoseconds
     if($scope.activeDistro.planner_settings.acceptable_host_idle_time > 0) {
       $scope.activeDistro.planner_settings.acceptable_host_idle_time *= 1e9
     }

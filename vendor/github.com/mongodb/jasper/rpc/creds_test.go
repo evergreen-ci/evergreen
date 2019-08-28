@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -66,10 +65,7 @@ EKTcWGekdmdDPsHloRNtsiCa697B2O9IFA==
 	require.NoError(t, err)
 
 	makeFile := func(t *testing.T) *os.File {
-		dir, err := os.Getwd()
-		require.NoError(t, err)
-
-		file, err := ioutil.TempFile(filepath.Join(filepath.Dir(dir), "build"), "creds")
+		file, err := ioutil.TempFile(buildDir(t), "creds")
 		require.NoError(t, err)
 		return file
 	}
@@ -82,14 +78,20 @@ EKTcWGekdmdDPsHloRNtsiCa697B2O9IFA==
 		},
 		"NewCredentialsEmptyFile": func(t *testing.T) {
 			file := makeFile(t)
-			defer os.Remove(file.Name())
+			defer func() {
+				assert.NoError(t, file.Close())
+				assert.NoError(t, os.RemoveAll(file.Name()))
+			}()
 			creds, err := NewCredentialsFromFile(file.Name())
 			assert.Error(t, err)
 			assert.Nil(t, creds)
 		},
 		"NewCredentialsMissingFields": func(t *testing.T) {
 			file := makeFile(t)
-			defer os.Remove(file.Name())
+			defer func() {
+				assert.NoError(t, file.Close())
+				assert.NoError(t, os.RemoveAll(file.Name()))
+			}()
 			_, err := file.Write([]byte(fmt.Sprintf(`{
 				"ca_cert": %s,
 				"cert": %s
@@ -100,7 +102,10 @@ EKTcWGekdmdDPsHloRNtsiCa697B2O9IFA==
 		},
 		"NewCredentialsSucceeds": func(t *testing.T) {
 			file := makeFile(t)
-			defer os.Remove(file.Name())
+			defer func() {
+				assert.NoError(t, file.Close())
+				assert.NoError(t, os.RemoveAll(file.Name()))
+			}()
 			_, err := file.Write([]byte(fmt.Sprintf(`{
 				"ca_cert": %s,
 				"cert": %s,

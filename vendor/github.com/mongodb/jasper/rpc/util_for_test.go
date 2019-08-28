@@ -4,11 +4,15 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
+	"path/filepath"
+	"testing"
 	"time"
 
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/require"
 )
 
 var intSource <-chan int
@@ -97,4 +101,11 @@ func newTestClient(ctx context.Context, addr net.Addr, creds *Credentials) (jasp
 	}()
 
 	return client, nil
+}
+
+// buildDir gets the Jasper build directory.
+func buildDir(t *testing.T) string {
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	return filepath.Join(filepath.Dir(cwd), "build")
 }

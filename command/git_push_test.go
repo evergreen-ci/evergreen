@@ -1,8 +1,13 @@
 package command
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -71,7 +76,6 @@ func TestGitPush(t *testing.T) {
 			commands := []string{
 				"git checkout master",
 				"git rev-parse HEAD",
-				`git add "hello.txt"`,
 				`git -c "user.name=octocat" -c "user.email=octocat@github.com" commit --file - --author="evergreen <evergreen@mongodb.com>"`,
 				"git push origin master",
 			}
@@ -84,7 +88,7 @@ func TestGitPush(t *testing.T) {
 				assert.Equal(t, splitCommand, args)
 			}
 		},
-		"PushPatch": func(*testing.T) {
+		"PushPatchMock": func(*testing.T) {
 			manager := &jasper.MockManager{}
 			manager.Create = func(opts *jasper.CreateOptions) jasper.MockProcess {
 				_, err = opts.Output.Error.Write([]byte(fmt.Sprintf("The key: %s", token)))
@@ -98,7 +102,6 @@ func TestGitPush(t *testing.T) {
 				directory:     c.Directory,
 				authorName:    "baxterthehacker",
 				authorEmail:   "baxter@thehacker.com",
-				files:         []string{"hello.txt"},
 				commitMessage: "testing 123",
 				branch:        "master",
 				token:         token,
@@ -106,7 +109,6 @@ func TestGitPush(t *testing.T) {
 
 			assert.NoError(t, c.pushPatch(context.Background(), logger, params))
 			commands := []string{
-				`git add "hello.txt"`,
 				`git -c "user.name=octocat" -c "user.email=octocat@github.com" commit --file - --author="baxterthehacker <baxter@thehacker.com>"`,
 				"git push origin master",
 			}
@@ -121,6 +123,56 @@ func TestGitPush(t *testing.T) {
 			assert.NoError(t, logger.Close())
 			msgs := comm.GetMockMessages()[""]
 			assert.Equal(t, "The key: [redacted oauth token]", msgs[len(msgs)-1].Message)
+		},
+		"PushPatch": func(*testing.T) {
+			ctx := context.Background()
+			jpm, err := jasper.NewLocalManager(false)
+			require.NoError(t, err)
+			c.base.jasper = jpm
+			c.DryRun = true
+
+			repoDir, err := ioutil.TempDir("", "test_repo")
+			require.NoError(t, err)
+			require.NoError(t, ioutil.WriteFile(path.Join(repoDir, "test1.txt"), []byte("test1"), 0644))
+			require.NoError(t, ioutil.WriteFile(path.Join(repoDir, "test2.txt"), []byte("test2"), 0644))
+
+			// create repo
+			createRepoCommands := []string{
+				`git init`,
+				`git add --all`,
+				`git -c "user.name=baxterthehacker" -c "user.email=baxter@thehacker.com" commit -m "testing..."`,
+			}
+			cmd := jpm.CreateCommand(ctx).Directory(repoDir).Append(createRepoCommands...)
+			require.NoError(t, cmd.Run(ctx))
+
+			require.NoError(t, ioutil.WriteFile(path.Join(repoDir, "test3.txt"), []byte("test3"), 0644))
+			addToIndexCommands := []string{
+				`git rm test1.txt`,
+				`git add test3.txt`,
+			}
+			cmd = jpm.CreateCommand(ctx).Directory(repoDir).Append(addToIndexCommands...)
+			require.NoError(t, cmd.Run(ctx))
+
+			params := pushParams{
+				directory:     repoDir,
+				authorName:    "baxterthehacker",
+				authorEmail:   "baxter@thehacker.com",
+				commitMessage: "testing 123",
+				branch:        "master",
+			}
+			assert.NoError(t, c.pushPatch(ctx, logger, params))
+
+			stdout := noopWriteCloser{&bytes.Buffer{}}
+			cmd = jpm.CreateCommand(ctx).Directory(repoDir).Append(`git diff-tree --no-commit-id --name-only -r HEAD`).SetOutputWriter(stdout)
+			assert.NoError(t, cmd.Run(ctx))
+
+			filesChanged := strings.TrimSpace(stdout.String())
+			filesChangedSlice := strings.Split(strings.Replace(filesChanged, "\r\n", "\n", -1), "\n")
+			assert.Len(t, filesChangedSlice, 2)
+			assert.Equal(t, "test1.txt", filesChangedSlice[0])
+			assert.Equal(t, "test3.txt", filesChangedSlice[1])
+
+			assert.NoError(t, os.RemoveAll(repoDir))
 		},
 		"RevParse": func(*testing.T) {
 			manager := &jasper.MockManager{}
@@ -138,6 +190,7 @@ func TestGitPush(t *testing.T) {
 			}
 		},
 	} {
+		c.DryRun = false
 		t.Run(name, test)
 	}
 }

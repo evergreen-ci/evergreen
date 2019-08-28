@@ -136,6 +136,9 @@ func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
 		Owner:      "evergreen-ci",
 		Repo:       "evergreen",
 		Branch:     "master",
+		CommitQueue: model.CommitQueueParams{
+			Enabled: true,
+		},
 	}
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{
 		Settings: user.UserSettings{
@@ -175,6 +178,9 @@ func TestCommitQueueItemOwnerMiddlewareProjectAdmin(t *testing.T) {
 		Repo:       "evergreen",
 		Branch:     "master",
 		Admins:     []string{"admin"},
+		CommitQueue: model.CommitQueueParams{
+			Enabled: true,
+		},
 	}
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{
 		Settings: user.UserSettings{
@@ -218,6 +224,7 @@ func TestCommitQueueItemOwnerMiddlewareUnauthorizedUserGitHub(t *testing.T) {
 		Branch:     "master",
 		CommitQueue: model.CommitQueueParams{
 			PatchType: commitqueue.PRPatchType,
+			Enabled:   true,
 		},
 	}
 
@@ -261,6 +268,7 @@ func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 		Branch:     "master",
 		CommitQueue: model.CommitQueueParams{
 			PatchType: commitqueue.CLIPatchType,
+			Enabled:   true,
 		},
 	}
 

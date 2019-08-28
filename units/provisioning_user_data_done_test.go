@@ -93,7 +93,7 @@ func TestUserDataDoneJob(t *testing.T) {
 				Status:      evergreen.HostProvisioning,
 				Provisioned: true,
 			}
-			require.NoError(t, withJasperServiceSetupAndTeardown(tctx, env, mngr, h, func() {
+			require.NoError(t, withJasperServiceSetupAndTeardown(tctx, env, mngr, h, func(env evergreen.Environment) {
 				testCase(tctx, t, env, mngr, h)
 			}))
 		})

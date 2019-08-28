@@ -302,7 +302,10 @@ func TestLoggers(t *testing.T) {
 		"ConfigureLogFilePasses": func(t *testing.T, l Logger) {
 			file, err := ioutil.TempFile("build", "foo.txt")
 			require.NoError(t, err)
-			defer os.Remove(file.Name())
+			defer func() {
+				assert.NoError(t, file.Close())
+				os.RemoveAll(file.Name())
+			}()
 
 			l.Type = LogFile
 			l.Options.FileName = file.Name()

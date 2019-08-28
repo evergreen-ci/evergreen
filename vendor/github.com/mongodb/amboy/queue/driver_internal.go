@@ -3,7 +3,6 @@ package queue
 import (
 	"context"
 	"sync"
-	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -26,7 +25,6 @@ type driverInternal struct {
 		sync.RWMutex
 	}
 	closer context.CancelFunc
-	LockManager
 }
 
 // NewInternalDriver creates a local persistence layer object.
@@ -46,8 +44,6 @@ func (d *driverInternal) ID() string { return d.name }
 func (d *driverInternal) Open(ctx context.Context) error {
 	_, cancel := context.WithCancel(ctx)
 	d.closer = cancel
-	d.LockManager = NewLockManager(ctx, d)
-
 	return nil
 }
 
@@ -128,25 +124,6 @@ func (d *driverInternal) JobStats(ctx context.Context) <-chan amboy.JobStatusInf
 	}
 
 	return out
-}
-
-// SaveStatus persists only the status document in the job in the
-// persistence layer. If the job does not exist, this method produces
-// an error.
-func (d *driverInternal) SaveStatus(_ context.Context, j amboy.Job, stat amboy.JobStatusInfo) error {
-	d.jobs.Lock()
-	defer d.jobs.Unlock()
-	name := j.ID()
-
-	if job, ok := d.jobs.m[name]; ok {
-		stat.ModificationTime = time.Now()
-		stat.ModificationCount++
-		job.SetStatus(stat)
-		d.jobs.m[name] = job
-		return nil
-	}
-
-	return errors.Errorf("cannot save a status for job named %s, which doesn't exist.", name)
 }
 
 // Jobs is a generator of all Job objects stored by the driver. There

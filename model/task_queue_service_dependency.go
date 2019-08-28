@@ -171,6 +171,10 @@ func (t *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 		}
 	}
 
+	for _, su := range t.taskGroups {
+		sort.SliceStable(su.tasks, func(i, j int) bool { return su.tasks[i].GroupIndex < su.tasks[j].GroupIndex })
+	}
+
 	// Add edges for task dependencies
 	for _, item := range items {
 		for _, dependency := range item.Dependencies {

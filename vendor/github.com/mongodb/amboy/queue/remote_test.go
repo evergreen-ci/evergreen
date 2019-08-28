@@ -311,20 +311,17 @@ func (s *RemoteUnorderedSuite) TestNextMethodSkipsLockedJobs() {
 		cmd := fmt.Sprintf("echo 'foo: %d'", i)
 		j := job.NewShellJob(cmd, "")
 
-		if s.NoError(s.queue.Put(ctx, j)) {
-			created++
-		}
-
 		if i%3 == 0 {
 			numLocked++
-			err := s.driver.Lock(ctx, j)
+			err := j.Lock(s.driver.ID())
 			s.NoError(err)
 
-			stat := j.Status()
-			stat.Owner = "elsewhere"
-			stat.Completed = false
-			j.SetStatus(stat)
+			s.Error(j.Lock("elsewhere"))
 			lockedJobs[j.ID()] = struct{}{}
+		}
+
+		if s.NoError(s.queue.Put(ctx, j)) {
+			created++
 		}
 	}
 
@@ -358,7 +355,7 @@ checkResults:
 	s.True(qStat.Running >= numLocked)
 	s.True(qStat.Total == created)
 	s.True(qStat.Completed <= observed, fmt.Sprintf("%d <= %d", qStat.Completed, observed))
-	s.Equal(created-numLocked, observed, fmt.Sprintf("%+v", s.queue.Stats(ctx)))
+	s.Equal(numLocked, qStat.Running)
 }
 
 func (s *RemoteUnorderedSuite) TestJobStatsIterator() {

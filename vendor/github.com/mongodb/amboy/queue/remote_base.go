@@ -31,6 +31,8 @@ func newRemoteBase() *remoteBase {
 	}
 }
 
+func (q *remoteBase) ID() string { return q.driver.ID() }
+
 // Put adds a Job to the queue. It is generally an error to add the
 // same job to a queue more than once, but this depends on the
 // implementation of the underlying driver.
@@ -103,6 +105,10 @@ func (q *remoteBase) Started() bool {
 	return q.started
 }
 
+func (q *remoteBase) Save(ctx context.Context, j amboy.Job) error {
+	return q.driver.Save(ctx, j)
+}
+
 // Complete takes a context and, asynchronously, marks the job
 // complete, in the queue.
 func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
@@ -124,7 +130,6 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 			return
 		case <-timer.C:
 			stat := j.Status()
-			stat.InProgress = false
 			stat.Completed = true
 			j.SetStatus(stat)
 
@@ -135,7 +140,7 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 			})
 
 			if err := q.driver.Save(ctx, j); err != nil {
-				if time.Since(startAt) > time.Minute+LockTimeout {
+				if time.Since(startAt) > time.Minute+amboy.LockTimeout {
 					grip.Error(message.WrapError(err, message.Fields{
 						"job_id":      id,
 						"job_type":    j.Type().Name,
@@ -158,20 +163,6 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 					continue
 				}
 			}
-
-			grip.Error(message.WrapError(q.driver.Unlock(ctx, j),
-				message.Fields{
-					"job_id":      id,
-					"job_type":    j.Type().Name,
-					"driver_type": q.driverType,
-					"driver_id":   q.driver.ID(),
-					"message":     "problem unlocking remote job",
-					"impact": []string{
-						"stuck jobs",
-						"redundant work",
-						"collisions",
-					},
-				}))
 
 			q.mutex.Lock()
 			defer q.mutex.Unlock()
@@ -328,7 +319,7 @@ func isDispatchable(stat amboy.JobStatusInfo) bool {
 
 	// don't return an inprogress job if the mod
 	// time is less than the lock timeout
-	if stat.InProgress && time.Since(stat.ModificationTime) < LockTimeout {
+	if stat.InProgress && time.Since(stat.ModificationTime) < amboy.LockTimeout {
 		return false
 	}
 

@@ -68,18 +68,6 @@ func (j *mockJob) Run(_ context.Context) {
 	mockJobCounters.Inc()
 }
 
-type jobThatPanics struct {
-	sleep time.Duration
-	job.Base
-}
-
-func (j *jobThatPanics) Run(_ context.Context) {
-	defer j.MarkComplete()
-
-	time.Sleep(j.sleep)
-	panic("panic err")
-}
-
 type sleepJob struct {
 	sleep time.Duration
 	job.Base

@@ -453,7 +453,10 @@ func TestRestService(t *testing.T) {
 		"DownloadFileCreatesResource": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
 			file, err := ioutil.TempFile("build", "out.txt")
 			require.NoError(t, err)
-			defer os.Remove(file.Name())
+			defer func() {
+				assert.NoError(t, file.Close())
+				assert.NoError(t, os.RemoveAll(file.Name()))
+			}()
 			absPath, err := filepath.Abs(file.Name())
 			require.NoError(t, err)
 
@@ -466,11 +469,15 @@ func TestRestService(t *testing.T) {
 		"DownloadFileCreatesResourceAndExtracts": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
 			downloadDir, err := ioutil.TempDir("build", "rest_test")
 			require.NoError(t, err)
-			defer os.RemoveAll(downloadDir)
+			defer func() {
+				assert.NoError(t, os.RemoveAll(downloadDir))
+			}()
 
 			fileServerDir, err := ioutil.TempDir("build", "rest_test_server")
 			require.NoError(t, err)
-			defer os.RemoveAll(fileServerDir)
+			defer func() {
+				assert.NoError(t, os.RemoveAll(fileServerDir))
+			}()
 
 			fileName := "foo.zip"
 			fileContents := "foo"
@@ -537,10 +544,15 @@ func TestRestService(t *testing.T) {
 		"DownloadFileFailsForUnarchivedFile": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
 			file, err := ioutil.TempFile("build", "out.txt")
 			require.NoError(t, err)
-			defer os.Remove(file.Name())
+			defer func() {
+				assert.NoError(t, file.Close())
+				assert.NoError(t, os.RemoveAll(file.Name()))
+			}()
 			extractDir, err := ioutil.TempDir("build", "out")
 			require.NoError(t, err)
-			defer os.RemoveAll(extractDir)
+			defer func() {
+				assert.NoError(t, os.RemoveAll(extractDir))
+			}()
 
 			info := DownloadInfo{
 				URL:  "https://example.com",
@@ -563,7 +575,10 @@ func TestRestService(t *testing.T) {
 		"DownloadFileFailsForNonexistentURL": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
 			file, err := ioutil.TempFile("build", "out.txt")
 			require.NoError(t, err)
-			defer os.Remove(file.Name())
+			defer func() {
+				assert.NoError(t, file.Close())
+				assert.NoError(t, os.RemoveAll(file.Name()))
+			}()
 			assert.Error(t, client.DownloadFile(ctx, DownloadInfo{URL: "https://example.com/foo", Path: file.Name()}))
 		},
 		"DownloadFileFailsForInsufficientPermissions": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
@@ -602,7 +617,7 @@ func TestRestService(t *testing.T) {
 			rw := httptest.NewRecorder()
 
 			srv.downloadFile(rw, req)
-			assert.Equal(t, http.StatusBadRequest, rw.Code)
+			assert.Equal(t, http.StatusInternalServerError, rw.Code)
 		},
 		"WithInMemoryLogger": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
 			output := "foo"
@@ -752,7 +767,10 @@ func TestRestService(t *testing.T) {
 		"CreateWithMultipleLoggers": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
 			file, err := ioutil.TempFile("build", "out.txt")
 			require.NoError(t, err)
-			defer os.Remove(file.Name())
+			defer func() {
+				assert.NoError(t, file.Close())
+				assert.NoError(t, os.RemoveAll(file.Name()))
+			}()
 
 			fileLogger := Logger{
 				Type: LogFile,
@@ -786,6 +804,76 @@ func TestRestService(t *testing.T) {
 			require.NoError(t, err)
 			assert.NotZero(t, info.Size())
 
+		},
+		"WriteFileSucceeds": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
+			tmpFile, err := ioutil.TempFile("build", filepath.Base(t.Name()))
+			require.NoError(t, err)
+			defer func() {
+				assert.NoError(t, tmpFile.Close())
+				assert.NoError(t, os.RemoveAll(tmpFile.Name()))
+			}()
+
+			info := WriteFileInfo{Path: tmpFile.Name(), Content: []byte("foo")}
+			require.NoError(t, client.WriteFile(ctx, info))
+
+			content, err := ioutil.ReadFile(tmpFile.Name())
+			require.NoError(t, err)
+
+			assert.Equal(t, info.Content, content)
+		},
+		"WriteFileAcceptsContentFromReader": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
+			tmpFile, err := ioutil.TempFile("build", filepath.Base(t.Name()))
+			require.NoError(t, err)
+			defer func() {
+				assert.NoError(t, tmpFile.Close())
+				assert.NoError(t, os.RemoveAll(tmpFile.Name()))
+			}()
+
+			buf := []byte("foo")
+			info := WriteFileInfo{Path: tmpFile.Name(), Reader: bytes.NewBuffer(buf)}
+			require.NoError(t, client.WriteFile(ctx, info))
+
+			content, err := ioutil.ReadFile(tmpFile.Name())
+			require.NoError(t, err)
+
+			assert.Equal(t, buf, content)
+		},
+		"WriteFileSucceedsWithLargeContentReader": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
+			tmpFile, err := ioutil.TempFile("build", filepath.Base(t.Name()))
+			require.NoError(t, err)
+			defer func() {
+				assert.NoError(t, tmpFile.Close())
+				assert.NoError(t, os.RemoveAll(tmpFile.Name()))
+			}()
+
+			const mb = 1024 * 1024
+			buf := bytes.Repeat([]byte("foo"), 2*mb)
+			info := WriteFileInfo{Path: tmpFile.Name(), Reader: bytes.NewBuffer(buf)}
+			require.NoError(t, client.WriteFile(ctx, info))
+
+			content, err := ioutil.ReadFile(tmpFile.Name())
+			require.NoError(t, err)
+
+			assert.Equal(t, buf, content)
+		},
+		"WriteFileFailsWithInvalidPath": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
+			info := WriteFileInfo{Content: []byte("foo")}
+			assert.Error(t, client.WriteFile(ctx, info))
+		},
+		"WriteFileSucceedsWithNoContent": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
+			path := filepath.Join("build", "write_file")
+			require.NoError(t, os.RemoveAll(path))
+			defer func() {
+				assert.NoError(t, os.RemoveAll(path))
+			}()
+
+			info := WriteFileInfo{Path: path}
+			require.NoError(t, client.WriteFile(ctx, info))
+
+			stat, err := os.Stat(path)
+			require.NoError(t, err)
+
+			assert.Zero(t, stat.Size())
 		},
 		"ServiceRegisterSignalTriggerIDChecksForExistingProcess": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
 			req, err := http.NewRequest(http.MethodPatch, client.getURL("/process/%s/trigger/signal/%s", "foo", CleanTerminationSignalTrigger), nil)

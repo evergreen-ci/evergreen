@@ -233,7 +233,7 @@ func (unit *Unit) RankValue() int64 {
 	}
 
 	if inPatch {
-		unit.cachedValue += priority * unit.distro.GetPatchZipperFactor()
+		unit.cachedValue += priority * unit.distro.GetPatchFactor()
 	}
 
 	// Start with the number of tasks, and then add the priority

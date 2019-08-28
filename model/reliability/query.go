@@ -4,8 +4,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/stats"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -13,10 +13,16 @@ import (
 )
 
 const (
-	MaxQueryLimit        = 51 // route.ReliabilityAPIMaxNumTasks + 1
+	MaxQueryLimit        = stats.MaxQueryLimit - 1 // 1000 // route.ReliabilityAPIMaxNumTasks
 	MaxSignificanceLimit = 1.0
 	MinSignificanceLimit = 0.0
 	DefaultSignificance  = 0.05
+
+	GroupByTask       = stats.GroupByTask
+	GroupByVariant    = stats.GroupByVariant
+	GroupByDistro     = stats.GroupByDistro
+	SortEarliestFirst = stats.SortEarliestFirst
+	SortLatestFirst   = stats.SortLatestFirst
 )
 
 // TaskReliabilityFilter represents search and aggregation parameters when querying the test or task statistics.
@@ -30,16 +36,26 @@ func (f *TaskReliabilityFilter) ValidateForTaskReliability() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(f.ValidateCommon())
 
+	if !f.AfterDate.Equal(util.GetUTCDay(f.AfterDate)) {
+		catcher.New("Invalid AfterDate value")
+	}
+	if !f.BeforeDate.Equal(util.GetUTCDay(f.BeforeDate)) {
+		catcher.New("Invalid BeforeDate value")
+	}
+	if f.BeforeDate.Before(f.AfterDate) {
+		catcher.New("Invalid AfterDate/BeforeDate values")
+	}
+
 	if f.Limit > MaxQueryLimit || f.Limit <= 0 {
-		catcher.Add(errors.New("Invalid Limit value"))
+		catcher.New("Invalid Limit value")
 	}
 
 	if f.Significance > MaxSignificanceLimit || f.Significance < MinSignificanceLimit {
-		catcher.Add(errors.New("Invalid Significance value"))
+		catcher.New("Invalid Significance value")
 	}
 
 	if len(f.Tasks) == 0 {
-		catcher.Add(errors.New("Missing Tasks values"))
+		catcher.New("Missing Tasks values")
 	}
 	return catcher.Resolve()
 }
@@ -68,7 +84,7 @@ type TaskReliability struct {
 }
 
 // calculateSuccessRate using
-// // https://en.wikipedia.org/wiki/Binomial_proportion_confidence_interval#Wilson_score_interval
+// https://en.wikipedia.org/wiki/Binomial_proportion_confidence_interval#Wilson_score_interval
 // and return the lower value (for success rates).
 func (s *TaskReliability) calculateSuccessRate() {
 	total := float64(s.NumTotal)
@@ -141,9 +157,7 @@ func GetTaskReliabilityScores(filter TaskReliabilityFilter) ([]TaskReliability, 
 	if err != nil {
 		return nil, errors.Wrap(err, "The provided StatsFilter is invalid")
 	}
-	var taskStats []stats.TaskStats
-	pipeline := filter.TaskReliabilityQueryPipeline()
-	err = db.Aggregate(stats.DailyTaskStatsCollection, pipeline, &taskStats)
+	taskStats, err := filter.GetTaskStats()
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to aggregate task statistics")
 	}

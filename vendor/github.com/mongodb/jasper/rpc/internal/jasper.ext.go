@@ -2,9 +2,11 @@ package internal
 
 import (
 	"bytes"
+	"os"
 	"syscall"
 	"time"
 
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	"github.com/tychoish/bond"
@@ -289,6 +291,9 @@ func (opts LogOptions) Export() jasper.LogOptions {
 	if opts.BuildloggerOptions != nil {
 		out.BuildloggerOptions = opts.BuildloggerOptions.Export()
 	}
+	if opts.Level != nil {
+		out.Level = opts.Level.Export()
+	}
 
 	return out
 }
@@ -304,6 +309,7 @@ func ConvertLogOptions(opts jasper.LogOptions) *LogOptions {
 		FileName:           opts.FileName,
 		Format:             ConvertLogFormat(opts.Format),
 		InMemoryCap:        int64(opts.InMemoryCap),
+		Level:              ConvertLogLevel(opts.Level),
 		SplunkOptions:      ConvertSplunkOptions(opts.SplunkOptions),
 		SumoEndpoint:       opts.SumoEndpoint,
 	}
@@ -426,6 +432,19 @@ func ConvertLogFormat(f jasper.LogFormat) LogFormat {
 	}
 }
 
+// Export takes a protobuf RPC LogLevel struct and returns the analogous send
+// LevelInfo struct.
+func (l *LogLevel) Export() send.LevelInfo {
+	return send.LevelInfo{Threshold: level.Priority(l.Threshold), Default: level.Priority(l.Default)}
+}
+
+// ConvertLogLevel takes a send LevelInfo struct and returns an equivalent
+// protobuf RPC LogLevel struct. ConvertLogLevel is the inverse of
+// (*LogLevel) Export().
+func ConvertLogLevel(l send.LevelInfo) *LogLevel {
+	return &LogLevel{Threshold: int32(l.Threshold), Default: int32(l.Default)}
+}
+
 // Export takes a protobuf RPC BuildOptions struct and returns the analogous
 // bond.BuildOptions struct.
 func (opts *BuildOptions) Export() bond.BuildOptions {
@@ -514,6 +533,29 @@ func ConvertDownloadInfo(info jasper.DownloadInfo) *DownloadInfo {
 		Path:        info.Path,
 		Url:         info.URL,
 		ArchiveOpts: ConvertArchiveOptions(info.ArchiveOpts),
+	}
+}
+
+// Export takes a protobuf RPC WriteFileInfo struct and returns the analogous
+// Jasper WriteFileInfo struct.
+func (info *WriteFileInfo) Export() jasper.WriteFileInfo {
+	return jasper.WriteFileInfo{
+		Path:    info.Path,
+		Content: info.Content,
+		Append:  info.Append,
+		Perm:    os.FileMode(info.Perm),
+	}
+}
+
+// ConvertWriteFileInfo takes a Jasper WriteFileInfo struct and returns an
+// equivalent protobuf RPC WriteFileInfo struct. ConvertWriteFileInfo is the
+// inverse of (*WriteFileInfo) Export().
+func ConvertWriteFileInfo(info jasper.WriteFileInfo) *WriteFileInfo {
+	return &WriteFileInfo{
+		Path:    info.Path,
+		Content: info.Content,
+		Append:  info.Append,
+		Perm:    uint32(info.Perm),
 	}
 }
 

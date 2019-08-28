@@ -134,6 +134,16 @@ func (j *setupHostJob) setupHost(ctx context.Context, h *host.Host, settings *ev
 	if err := j.provisionHost(ctx, h, settings); err != nil {
 		event.LogHostProvisionError(h.Id)
 
+		if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodSSH {
+			grip.Error(message.WrapError(j.host.DeleteJasperCredentials(ctx), message.Fields{
+				"message":  "could not delete Jasper credentials after failed provision attempt",
+				"host":     j.host.Id,
+				"distro":   j.host.Distro.Id,
+				"attempts": h.ProvisionAttempts,
+				"job":      j.ID(),
+			}))
+		}
+
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":  "provisioning host encountered error",
 			"job":      j.ID(),
@@ -317,7 +327,7 @@ func (j *setupHostJob) setupJasper(ctx context.Context) error {
 // putJasperCredentials creates Jasper credentials for the host and puts the
 // credentials file on the host.
 func (j *setupHostJob) putJasperCredentials(ctx context.Context, fileName string, sshOptions []string) error {
-	creds, err := j.host.GenerateJasperCredentials(ctx, j.env)
+	creds, err := j.host.GenerateJasperCredentials(ctx)
 	if err != nil {
 		return errors.Wrap(err, "could not generate Jasper credentials for host")
 	}
@@ -385,7 +395,7 @@ func (j *setupHostJob) putJasperCredentials(ctx context.Context, fileName string
 		return errors.Wrap(err, "error copying credentials to remote machine")
 	}
 
-	if err := j.host.SaveJasperCredentials(ctx, j.env, creds); err != nil {
+	if err := j.host.SaveJasperCredentials(ctx, creds); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "problem saving host credentials",
 			"job":     j.ID(),
@@ -401,7 +411,7 @@ func (j *setupHostJob) putJasperCredentials(ctx context.Context, fileName string
 // doFetchAndReinstallJasper runs the SSH command over that downloads the latest
 // Jasper binary and restarts the service.
 func (j *setupHostJob) doFetchAndReinstallJasper(ctx context.Context, sshOptions []string) error {
-	cmd := j.host.FetchAndReinstallJasperCommand(j.env.Settings().HostJasper)
+	cmd := j.host.FetchAndReinstallJasperCommand(j.env.Settings())
 	if logs, err := j.host.RunSSHCommand(ctx, cmd, sshOptions); err != nil {
 		return errors.Wrapf(err, "error while fetching Jasper binary and installing service on remote host: command returned %s", logs)
 	}

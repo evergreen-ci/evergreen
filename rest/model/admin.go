@@ -1063,9 +1063,9 @@ type APISchedulerConfig struct {
 	TargetTimeSeconds             int       `json:"target_time_seconds"`
 	AcceptableHostIdleTimeSeconds int       `json:"acceptable_host_idle_time_seconds"`
 	GroupVersions                 bool      `json:"group_versions"`
-	PatchZipperFactor             int64     `json:"patch_zipper_factor"`
+	PatchFactor                   int64     `json:"patch_factor"`
 	TimeInQueueFactor             int64     `json:"time_in_queue_factor"`
-	ExpectedRuntimeFactor         int64     `json:"expected_runtime_factor_factor"`
+	ExpectedRuntimeFactor         int64     `json:"expected_runtime_factor"`
 }
 
 func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
@@ -1080,7 +1080,7 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 		a.TargetTimeSeconds = v.TargetTimeSeconds
 		a.AcceptableHostIdleTimeSeconds = v.AcceptableHostIdleTimeSeconds
 		a.GroupVersions = v.GroupVersions
-		a.PatchZipperFactor = v.PatchZipperFactor
+		a.PatchFactor = v.PatchFactor
 		a.TimeInQueueFactor = v.TimeInQueueFactor
 		a.ExpectedRuntimeFactor = v.ExpectedRuntimeFactor
 	default:
@@ -1100,7 +1100,7 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 		TargetTimeSeconds:             a.TargetTimeSeconds,
 		AcceptableHostIdleTimeSeconds: a.AcceptableHostIdleTimeSeconds,
 		GroupVersions:                 a.GroupVersions,
-		PatchZipperFactor:             a.PatchZipperFactor,
+		PatchFactor:                   a.PatchFactor,
 		ExpectedRuntimeFactor:         a.ExpectedRuntimeFactor,
 		TimeInQueueFactor:             a.TimeInQueueFactor,
 	}, nil

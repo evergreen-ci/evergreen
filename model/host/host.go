@@ -361,21 +361,21 @@ func (h *Host) SetAgentStartTime() error {
 // JasperCredentials gets the Jasper credentials for this host's running Jasper
 // service from the database. These credentials should not be used to connect to
 // the Jasper service - use JasperClientCredentials for this purpose.
-func (h *Host) JasperCredentials(ctx context.Context, env evergreen.Environment) (*rpc.Credentials, error) {
-	return credentials.FindByID(ctx, env, h.JasperCredentialsID)
+func (h *Host) JasperCredentials(ctx context.Context) (*rpc.Credentials, error) {
+	return credentials.FindByID(ctx, h.JasperCredentialsID)
 }
 
 // JasperCredentialsExpiration returns the time at which the host's Jasper
 // credentials will expire.
-func (h *Host) JasperCredentialsExpiration(ctx context.Context, env evergreen.Environment) (time.Time, error) {
-	return credentials.FindExpirationByID(ctx, env, h.JasperCredentialsID)
+func (h *Host) JasperCredentialsExpiration(ctx context.Context) (time.Time, error) {
+	return credentials.FindExpirationByID(ctx, h.JasperCredentialsID)
 }
 
 // JasperClientCredentials gets the Jasper credentials for a client to
 // communicate with the host's running Jasper service. These credentials should
 // be used only to connect to the host's Jasper service.
-func (h *Host) JasperClientCredentials(ctx context.Context, env evergreen.Environment) (*rpc.Credentials, error) {
-	creds, err := credentials.ForJasperClient(ctx, env)
+func (h *Host) JasperClientCredentials(ctx context.Context) (*rpc.Credentials, error) {
+	creds, err := credentials.ForJasperClient(ctx)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -386,7 +386,7 @@ func (h *Host) JasperClientCredentials(ctx context.Context, env evergreen.Enviro
 // GenerateJasperCredentials creates the Jasper credentials for the given host
 // without saving them to the database. If credentials already exist in the
 // database, they are deleted.
-func (h *Host) GenerateJasperCredentials(ctx context.Context, env evergreen.Environment) (*rpc.Credentials, error) {
+func (h *Host) GenerateJasperCredentials(ctx context.Context) (*rpc.Credentials, error) {
 	if h.JasperCredentialsID == "" {
 		if err := h.UpdateJasperCredentialsID(h.Id); err != nil {
 			return nil, errors.Wrap(err, "problem setting Jasper credentials ID")
@@ -394,25 +394,25 @@ func (h *Host) GenerateJasperCredentials(ctx context.Context, env evergreen.Envi
 	}
 	// We have to delete this host's credentials because GenerateInMemory will
 	// fail if credentials already exist in the database.
-	if err := credentials.DeleteByID(ctx, env, h.JasperCredentialsID); err != nil {
+	if err := credentials.DeleteByID(ctx, h.JasperCredentialsID); err != nil {
 		return nil, errors.Wrap(err, "problem deleting existing Jasper credentials")
 	}
-	return credentials.GenerateInMemory(ctx, env, h.JasperCredentialsID)
+	return credentials.GenerateInMemory(ctx, h.JasperCredentialsID)
 }
 
 // SaveJasperCredentials saves the given Jasper credentials in the database for
 // the host.
-func (h *Host) SaveJasperCredentials(ctx context.Context, env evergreen.Environment, creds *rpc.Credentials) error {
+func (h *Host) SaveJasperCredentials(ctx context.Context, creds *rpc.Credentials) error {
 	if h.JasperCredentialsID == "" {
 		return errors.New("Jasper credentials ID is empty")
 	}
-	return credentials.SaveByID(ctx, env, h.JasperCredentialsID, creds)
+	return credentials.SaveByID(ctx, h.JasperCredentialsID, creds)
 }
 
 // DeleteJasperCredentials deletes the Jasper credentials for the host and
 // updates the host both in memory and in the database.
-func (h *Host) DeleteJasperCredentials(ctx context.Context, env evergreen.Environment) error {
-	return credentials.DeleteByID(ctx, env, h.JasperCredentialsID)
+func (h *Host) DeleteJasperCredentials(ctx context.Context) error {
+	return credentials.DeleteByID(ctx, h.JasperCredentialsID)
 }
 
 // UpdateJasperCredentialsID sets the ID of the host's Jasper credentials.
@@ -682,8 +682,9 @@ func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
 	}
 
 	selector := bson.M{
-		IdKey:     h.Id,
-		StatusKey: evergreen.HostRunning,
+		IdKey:          h.Id,
+		StatusKey:      evergreen.HostRunning,
+		RunningTaskKey: bson.M{"$exists": false},
 	}
 
 	update := bson.M{

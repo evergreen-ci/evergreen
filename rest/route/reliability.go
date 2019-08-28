@@ -19,7 +19,10 @@ import (
 )
 
 const (
-	reliabilityAPIMaxNumTasksLimit = 50
+	// reliabilityAPIMaxNumTasksLimit is the max number of structs returned in a single
+	// page of results. That is, the 'limit' URL param is math.Min(limit, reliabilityAPIMaxNumTasksLimit).
+	// A high value like 1000 will generally ensures that there will only be a single page of results.
+	reliabilityAPIMaxNumTasksLimit = 1000
 	dayInHours                     = 24 * time.Hour
 )
 
@@ -56,7 +59,7 @@ func getDefaultAfterDate() string {
 }
 
 // ParseCommonFilter wraps StatsHandler.ParseCommonFilter and copies the Statshandler
-// struct contents into the TaslReiabilitityHandler filter fields.
+// struct contents into the TaskReliabilityHandler filter fields.
 func (trh *taskReliabilityHandler) ParseCommonFilter(vals url.Values) error {
 	err := trh.StatsHandler.ParseCommonFilter(vals)
 	if err == nil {
@@ -87,8 +90,6 @@ func (trh *taskReliabilityHandler) parseTaskReliabilityFilter(vals url.Values) e
 			StatusCode: http.StatusBadRequest,
 		}
 	}
-	// Add 1 for pagination
-	trh.filter.Limit++
 
 	// tasks
 	trh.filter.Tasks = trh.readStringList(vals["tasks"])
@@ -232,18 +233,16 @@ func (trh *taskReliabilityHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
-	requestLimit := trh.filter.Limit - 1
-	lastIndex := len(taskReliabilityResult)
-	if len(taskReliabilityResult) > requestLimit {
-		lastIndex = requestLimit
-
+	requestLimit := trh.filter.Limit
+	if len(taskReliabilityResult) == requestLimit {
+		last := taskReliabilityResult[len(taskReliabilityResult)-1]
 		err = resp.SetPages(&gimlet.ResponsePages{
 			Next: &gimlet.Page{
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
 				BaseURL:         trh.sc.GetURL(),
-				Key:             taskReliabilityResult[requestLimit].StartAtKey(),
+				Key:             last.StartAtKey(),
 				Limit:           requestLimit,
 			},
 		})
@@ -252,7 +251,6 @@ func (trh *taskReliabilityHandler) Run(ctx context.Context) gimlet.Responder {
 				"Problem paginating response"))
 		}
 	}
-	taskReliabilityResult = taskReliabilityResult[:lastIndex]
 
 	for _, apiTaskStats := range taskReliabilityResult {
 		if err = resp.AddData(apiTaskStats); err != nil {
