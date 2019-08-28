@@ -542,29 +542,25 @@ mciModule.controller('PerfController', function PerfController(
   $scope.redrawGraphs = function(){
       setTimeout(function(){
         $scope.hideEmptyGraphs();
+        $scope.hideCanaries();
         drawTrendGraph($scope);
         drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id, $scope.metricSelect.value.key);
       }, 0)
   }
 
   $scope.hideEmptyGraphs = function() {
-    let tests = $scope.perfSample && $scope.perfSample.sample && $scope.perfSample.sample.data && $scope.perfSample.sample.data.results;
+    let samples = getSamples($scope);
     let metric = $scope.metricSelect.value.key;
-    if (tests) {
+    if (samples) {
+      let series = samples.seriesByName;
       $scope.hiddenGraphs = {};
-      _.each(tests, function(test) {
-        let hasMetric = false;
-        _.each(test.results, function(metrics, threadLevel) {
-          if (metrics[metric]) {
-            hasMetric = true;
-          }
-        })
-        if (hasMetric) {
-          delete($scope.hiddenGraphs[test.name]);
+      _.each(series, function(testResults, testName) {
+        if (_.some(testResults, (singleResult) => { return singleResult[metric]} )) {
+          delete($scope.hiddenGraphs[testName]);
         } else {
-          $scope.hiddenGraphs[test.name] = true;
+          $scope.hiddenGraphs[testName] = true;
         }
-      })
+      });
     }
   }
 
