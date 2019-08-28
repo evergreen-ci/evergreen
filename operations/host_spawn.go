@@ -11,6 +11,38 @@ import (
 	"github.com/urfave/cli"
 )
 
+// makeAWSTags creates and validates a map of supplied instance tags
+func makeAWSTags(tagSlice []string) (map[string]string, error) {
+
+	var tags = make(map[string]string)
+	for _, tagString := range tagSlice {
+		pair := strings.Split(tagString, "=")
+		if len(pair) != 2 {
+			return nil, errors.Errorf("problem parsing tag \"%s\"", tagString)
+		}
+
+		key := pair[0]
+		value := pair[1]
+
+		// AWS tag key must contain no more than 128 characters
+		if len(key) > 128 {
+			return nil, errors.Errorf("key \"%s\" is longer than 128 characters", key)
+		}
+		// AWS tag value must contain no more than 256 characters
+		if len(value) > 256 {
+			return nil, errors.Errorf("value \"%s\" is longer than 256 characters", value)
+		}
+		// tag prefix aws: is reserved
+		if len(key) > 4 && key[0:4] == "aws:" || len(value) > 4 && key[0:4] == "aws:" {
+			return nil, errors.Errorf("illegal tag prefix \"aws:\"")
+		}
+
+		tags[key] = value
+	}
+
+	return tags, nil
+}
+
 func hostCreate() cli.Command {
 	const (
 		distroFlagName = "distro"
@@ -67,14 +99,9 @@ func hostCreate() cli.Command {
 				script = string(out)
 			}
 
-			// create map of tags
-			var tags = make(map[string]string)
-			for _, tagString := range tagSlice {
-				pair := strings.Split(tagString, "=")
-				if len(pair) != 2 {
-					return errors.Errorf("problem parsing tag %s", tagString)
-				}
-				tags[pair[0]] = pair[1]
+			tags, err := makeAWSTags(tagSlice)
+			if err != nil {
+				return errors.Wrap(err, "problem generating tags")
 			}
 
 			host, err := client.CreateSpawnHost(ctx, distro, key, script, tags)
