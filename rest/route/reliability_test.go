@@ -385,20 +385,25 @@ func TestParse(t *testing.T) {
 					require.Equal(t, handler.filter.Sort, stats.SortLatestFirst)
 					require.Equal(t, handler.filter.Significance, reliability.DefaultSignificance)
 
+					require.Equal(t, handler.filter.Requesters, []string{"gitter_request"})
+					require.Equal(t, handler.filter.GroupNumDays, 1)
+					require.Equal(t, handler.filter.GroupBy, reliability.GroupByTask)
 					require.Equal(t, handler.filter.BeforeDate, truncatedTime(0))
-					require.Equal(t, handler.filter.AfterDate, truncatedTime(-20*dayInHours))
+					require.Equal(t, handler.filter.AfterDate, truncatedTime(0))
 				},
 				"All Values": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
 					err := setupTest(t)
 					require.NoError(t, err)
 
 					values := url.Values{
-						"requesters":   []string{statsAPIRequesterMainline, statsAPIRequesterPatch},
-						"after_date":   []string{"1998-07-12"},
-						"before_date":  []string{"2018-07-15"},
-						"tasks":        []string{"aggregation_expression_multiversion_fuzzer", "compile"},
-						"variants":     []string{"enterprise-rhel-62-64-bit,enterprise-windows", "enterprise-rhel-80-64-bit"},
-						"significance": []string{"0.1"},
+						"requesters":     []string{statsAPIRequesterMainline, statsAPIRequesterPatch},
+						"after_date":     []string{"1998-07-12"},
+						"before_date":    []string{"2018-07-15"},
+						"tasks":          []string{"aggregation_expression_multiversion_fuzzer", "compile"},
+						"variants":       []string{"enterprise-rhel-62-64-bit,enterprise-windows", "enterprise-rhel-80-64-bit"},
+						"significance":   []string{"0.1"},
+						"group_by":       []string{"task_variant_distro"},
+						"group_num_days": []string{"28"},
 					}
 
 					err = handler.parseTaskReliabilityFilter(values)
@@ -416,10 +421,11 @@ func TestParse(t *testing.T) {
 					require.Equal(t, []string{"enterprise-rhel-62-64-bit", "enterprise-windows", "enterprise-rhel-80-64-bit"}, handler.filter.BuildVariants)
 					require.Nil(t, handler.filter.Distros)
 					require.Nil(t, handler.filter.StartAt)
+					require.Equal(t, 28, handler.filter.GroupNumDays)
 					require.Equal(t, reliability.GroupByDistro, handler.filter.GroupBy) // default value
 					require.Equal(t, reliability.SortLatestFirst, handler.filter.Sort)  // default value
 					require.Equal(t, reliability.MaxQueryLimit, handler.filter.Limit)   // default value
-					require.Equal(t, handler.filter.Significance, 0.1)
+					require.Equal(t, 0.1, handler.filter.Significance)
 				},
 				"Some Values": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
 					err := setupTest(t)
