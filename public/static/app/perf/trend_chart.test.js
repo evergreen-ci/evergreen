@@ -1,14 +1,22 @@
 describe('DrawPerfTrendChartTest', function () {
   beforeEach(module('MCI'));
   let svcFactory = null;
-  let scope = null;
+  let rootScope = null;
 
   beforeEach(inject(function ($injector, $rootScope) {
     svcFactory = $injector.get('DrawPerfTrendChart');
-    scope = $rootScope
+    rootScope = $rootScope
   }));
 
   it('should not generate error when given non-constant max indices', function () {
+    let scope = {
+      task:{
+        id: "sys_perf_linux_standalone_big_update_bb9114dc71bfcf42422471f7789eca00881b8864_19_01_03_20_13_57",
+      },
+      $parent: rootScope,
+      $on: function(){}
+    }
+
     let params = {
       series: [
         {
@@ -46,11 +54,14 @@ describe('DrawPerfTrendChartTest', function () {
       scope: scope,
       containerId: 'containerId',
       compareSamples: [],
-      threadMode: 'maxOnly',
+      threadMode: 'maxonly',
       linearMode: true,
       originMode: true
     };
 
+    document.getElementById = function (){
+      return {}
+    };
     svcFactory(params)
   });
 });
