@@ -64,5 +64,4 @@ func TestHostPostHandler(t *testing.T) {
 
 	h2 := h.sc.(*data.MockConnector).MockHostConnector.CachedHosts[2]
 	assert.Equal(map[string]string{"key": "value"}, h2.InstanceTags)
-
 }

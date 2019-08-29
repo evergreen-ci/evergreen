@@ -90,6 +90,7 @@ func (hc *DBHostConnector) NewIntentHost(options *restmodel.HostRequestOptions, 
 		PublicKey:        keyVal,
 		TaskId:           options.TaskID,
 		Owner:            user,
+		InstanceTags:     options.InstanceTags,
 	}
 
 	intentHost, err := cloud.CreateSpawnHost(spawnOptions)
@@ -209,6 +210,7 @@ func (hc *MockHostConnector) NewIntentHost(options *restmodel.HostRequestOptions
 		PublicKey:        keyVal,
 		TaskId:           options.TaskID,
 		Owner:            user,
+		InstanceTags:     options.InstanceTags,
 	}
 
 	intentHost, err := cloud.CreateSpawnHost(spawnOptions)
