@@ -871,7 +871,12 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 				newTask.DependsOn = append(newTask.DependsOn, newDeps...)
 			}
 		}
-		newTask.DisplayTask = displayTasks[newTask.DisplayName]
+
+		// Display tasks depend on all exec task dependencies
+		if displayTask, ok := displayTasks[newTask.DisplayName]; ok {
+			displayTask.DependsOn = append(displayTask.DependsOn, newTask.DependsOn...)
+			newTask.DisplayTask = displayTask
+		}
 
 		newTask.GeneratedBy = generatedBy
 		// append the task to the list of the created tasks

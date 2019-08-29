@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -174,8 +175,9 @@ func (t *Task) GetTaskGroupString() string {
 // Dependency represents a task that must be completed before the owning
 // task can be scheduled.
 type Dependency struct {
-	TaskId string `bson:"_id" json:"id"`
-	Status string `bson:"status" json:"status"`
+	TaskId       string `bson:"_id" json:"id"`
+	Status       string `bson:"status" json:"status"`
+	Unattainable bool   `bson:"unattainable" json:"unattainable"`
 }
 
 // VersionCost is service level model for representing cost data related to a version.
@@ -844,6 +846,10 @@ func (t *Task) Reset() error {
 		}
 	}
 
+	if err := t.UpdateUnblockedDependencies(); err != nil {
+		return errors.Wrap(err, "can't clear cached unattainable dependencies")
+	}
+
 	t.Activated = true
 	t.Secret = util.RandomString()
 	t.DispatchTime = util.ZeroTime
@@ -885,6 +891,9 @@ func ResetTasks(taskIds []string) error {
 	for _, t := range tasks {
 		if t.DisplayOnly {
 			taskIds = append(taskIds, t.Id)
+		}
+		if err = t.UpdateUnblockedDependencies(); err != nil {
+			return errors.Wrap(err, "can't clear cached unattainable dependencies")
 		}
 	}
 
@@ -1060,6 +1069,25 @@ func (t *Task) MarkUnscheduled() error {
 		},
 	)
 
+}
+
+func (t *Task) MarkUnattainableDependency(dependency *Task, unattainable bool) error {
+	for i := range t.DependsOn {
+		if t.DependsOn[i].TaskId == dependency.Id {
+			t.DependsOn[i].Unattainable = unattainable
+			break
+		}
+	}
+
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+			bsonutil.GetDottedKeyName(DependsOnKey, DependencyTaskIdKey): dependency.Id,
+		},
+		bson.M{
+			"$set": bson.M{bsonutil.GetDottedKeyName(DependsOnKey, "$", DependencyUnattainableKey): unattainable},
+		},
+	)
 }
 
 // SetCost updates the task's Cost field
@@ -1324,6 +1352,7 @@ func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 		"$project": bson.M{
 			LogsKey:      0,
 			OldTaskIdKey: 0,
+			DependsOnKey + "." + DependencyUnattainableKey: 0,
 		},
 	}
 
@@ -1739,6 +1768,63 @@ func (t *Task) IsBlockedDisplayTask() bool {
 		return false
 	}
 	return blockedState == taskBlocked
+}
+
+func (t *Task) findAllUnmarkedBlockedDependencies() ([]Task, error) {
+	okStatusSet := []string{AllStatuses, t.Status}
+	query := db.Query(bson.M{
+		DependsOnKey: bson.M{"$elemMatch": bson.M{
+			DependencyTaskIdKey:       t.Id,
+			DependencyStatusKey:       bson.M{"$nin": okStatusSet},
+			DependencyUnattainableKey: bson.M{"$ne": true},
+		},
+		}})
+
+	return FindAll(query)
+}
+
+// UpdateBlockedDependencies traverses the dependency graph and recursively sets each
+// parent dependency as unattainable in depending tasks.
+func (t *Task) UpdateBlockedDependencies() error {
+	dependentTasks, err := t.findAllUnmarkedBlockedDependencies()
+	if err != nil {
+		return errors.Wrapf(err, "can't get tasks depending on task '%s'", t.Id)
+	}
+
+	for _, dependentTask := range dependentTasks {
+		if err = dependentTask.MarkUnattainableDependency(t, true); err != nil {
+			return errors.Wrap(err, "error marking dependency unattainable")
+		}
+		return errors.WithStack(dependentTask.UpdateBlockedDependencies())
+	}
+	return nil
+}
+
+func (t *Task) findAllMarkedUnattainableDependencies() ([]Task, error) {
+	query := db.Query(bson.M{
+		DependsOnKey: bson.M{"$elemMatch": bson.M{
+			DependencyTaskIdKey:       t.Id,
+			DependencyUnattainableKey: true,
+		},
+		}})
+
+	return FindAll(query)
+}
+
+func (t *Task) UpdateUnblockedDependencies() error {
+	blockedTasks, err := t.findAllMarkedUnattainableDependencies()
+	if err != nil {
+		return errors.Wrap(err, "can't get dependencies marked unattainable")
+	}
+
+	for _, blockedTask := range blockedTasks {
+		if err = blockedTask.MarkUnattainableDependency(t, false); err != nil {
+			return errors.Wrap(err, "error marking dependency attainable")
+		}
+		return errors.WithStack(blockedTask.UpdateUnblockedDependencies())
+	}
+
+	return nil
 }
 
 // GetTimeSpent returns the total time_taken and makespan of tasks
