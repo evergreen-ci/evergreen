@@ -92,7 +92,7 @@ Returns a paginated list of task reliability scores associated with a specific p
      - The start date (included) of the targeted time interval. The format is "YYYY-MM-DD". The date is UTC. Defaults to today.
    * - ``before_date``
      - string
-     - The end date (included) of the targeted time interval. The format is "YYYY-MM-DD". The date is UTC. Defaults to today.
+     - The end date (included) of the targeted time interval. The format is "YYYY-MM-DD". The date is UTC. Defaults to ``after_date``.
    * - ``group_num_days``
      - int
      - Optional. Indicates that the statistics should be aggregated by groups of ``group_num_days`` days. The first group will start on the nearest first date greater than ``after_date``, the last group will start on ``before_date`` - ``group_num_days``` days. Defaults to 1.
@@ -120,3 +120,49 @@ Returns a paginated list of task reliability scores associated with a specific p
    * - ``limit``
      - int
      - Optional. The number of task stats to be returned per page of pagination. Defaults to 1000.
+
+
+Examples
+````````
+
+Get the current daily task reliability score.
+````````
+::
+
+ GET /projects/mongodb-mongo-master/task_reliability?tasks=lint
+
+Get the daily task reliability score for a specific day.
+````````
+::
+
+ GET /projects/mongodb-mongo-master/task_reliability?tasks=lint&before_date=2019-06-15
+ GET /projects/mongodb-mongo-master/task_reliability?tasks=lint&before_date=2019-06-15&after_date=2019-06-15
+
+Get the daily task reliability score from after date to today.
+````````
+::
+
+ GET /projects/mongodb-mongo-master/task_reliability?tasks=lint&after_date=2019-06-15
+
+Get the current weekly task reliability score. 
+````````
+::
+
+ GET /projects/mongodb-mongo-master/task_reliability?tasks=lint&group_num_days=7
+
+Get the current monthly task reliability score. 
+````````
+::
+
+ GET /projects/mongodb-mongo-master/task_reliability?tasks=lint&group_num_days=28
+
+Get the task reliability score trends.
+````````
+
+Project is mongodb-mongo-master, task is lint. Assuming today is 2019-08-29 then
+2019-03-15 is 6 months ago.
+::
+
+ GET /projects/mongodb-mongo-master/task_reliability?tasks=lint&after_date=2019-03-15
+ GET /projects/mongodb-mongo-master/task_reliability?tasks=lint&after_date=2019-03-15&group_num_days=7
+ GET /projects/mongodb-mongo-master/task_reliability?tasks=lint&after_date=2019-03-15&group_num_days=28
