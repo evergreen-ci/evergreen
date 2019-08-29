@@ -83,10 +83,11 @@ mciModule.factory('DrawPerfTrendChart', function (
 
     const allLevelsByIndex = series.map(entry => entry.threadResults.map(result => result.threadLevel));
     const allLevels = allLevelsByIndex.reduce((oneLevel, anotherLevel) => _.union(oneLevel, anotherLevel));
-    const maxLevelByIndex = allLevelsByIndex.map(level => _.max(level));
 
     function maxLevelIdx(seriesIndex) {
-      return series[seriesIndex].threadResults.map(result => result.threadLevel).indexOf(maxLevelByIndex[seriesIndex]);
+      let results = series[seriesIndex].threadResults.map(result => result.ops_per_sec)
+      let max = _.max(results)
+      return results.indexOf(max)
     }
 
     maxIdx = _.max(allLevels);
