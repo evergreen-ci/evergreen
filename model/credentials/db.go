@@ -22,7 +22,10 @@ const (
 	defaultExpiration = 365 * 24 * time.Hour // 1 year (approx.)
 )
 
-var serviceName string
+// Variables set during bootstrapping
+var (
+	serviceName string
+)
 
 // Constants for bson struct tags.
 var (
@@ -39,30 +42,32 @@ var (
 // operations on this collection, collection, this must succeed.
 func Bootstrap(env evergreen.Environment) error {
 	settings := env.Settings()
+
 	if settings.DomainName == "" {
 		return errors.Errorf("bootstrapping %s collection requires domain name to be set in admin settings", settings.DomainName)
 	}
 
 	maxExpiration := time.Duration(math.MaxInt64)
-	serviceConfig := certdepot.CertificateOptions{
-		CA:         CAName,
-		CommonName: settings.DomainName,
-		Host:       settings.DomainName,
-		Expires:    maxExpiration,
-	}
-
-	caConfig := certdepot.CertificateOptions{
-		CA:         CAName,
-		CommonName: CAName,
-		Expires:    maxExpiration,
-	}
 
 	bootstrapConfig := certdepot.BootstrapDepotConfig{
-		MongoDepot:  mongoConfig(settings),
-		CAName:      CAName,
-		CAOpts:      &caConfig,
+		CAName: CAName,
+		MongoDepot: &certdepot.MongoDBOptions{
+			MongoDBURI:     settings.Database.Url,
+			DatabaseName:   settings.Database.DB,
+			CollectionName: Collection,
+		},
+		CAOpts: &certdepot.CertificateOptions{
+			CA:         CAName,
+			CommonName: CAName,
+			Expires:    maxExpiration,
+		},
 		ServiceName: settings.DomainName,
-		ServiceOpts: &serviceConfig,
+		ServiceOpts: &certdepot.CertificateOptions{
+			CA:         CAName,
+			CommonName: settings.DomainName,
+			Host:       settings.DomainName,
+			Expires:    maxExpiration,
+		},
 	}
 
 	ctx, cancel := env.Context()
@@ -77,17 +82,16 @@ func Bootstrap(env evergreen.Environment) error {
 	return nil
 }
 
-func mongoConfig(settings *evergreen.Settings) *certdepot.MongoDBOptions {
-	return &certdepot.MongoDBOptions{
+// getDepot returns the certificate depot connected to the database.
+func getDepot(ctx context.Context) (certdepot.Depot, error) {
+	env := evergreen.GetEnvironment()
+	settings := env.Settings()
+
+	return certdepot.NewMongoDBCertDepotWithClient(ctx, env.Client(), &certdepot.MongoDBOptions{
 		MongoDBURI:     settings.Database.Url,
 		DatabaseName:   settings.Database.DB,
 		CollectionName: Collection,
-	}
-}
-
-// getDepot returns the certificate depot connected to the database.
-func getDepot(ctx context.Context, env evergreen.Environment) (certdepot.Depot, error) {
-	return certdepot.NewMongoDBCertDepotWithClient(ctx, env.Client(), mongoConfig(env.Settings()))
+	})
 }
 
 func deleteIfExists(dpt certdepot.Depot, tags ...*depot.Tag) error {
@@ -103,8 +107,8 @@ func deleteIfExists(dpt certdepot.Depot, tags ...*depot.Tag) error {
 // SaveByID saves the credentials from the options for the given user
 // name. If the credentials already exist, this will overwrite the existing
 // credentials.
-func SaveByID(ctx context.Context, env evergreen.Environment, name string, creds *rpc.Credentials) error {
-	dpt, err := getDepot(ctx, env)
+func SaveByID(ctx context.Context, name string, creds *rpc.Credentials) error {
+	dpt, err := getDepot(ctx)
 	if err != nil {
 		return errors.Wrap(err, "could not get depot")
 	}
@@ -140,7 +144,7 @@ func SaveByID(ctx context.Context, env evergreen.Environment, name string, creds
 // database. This is not idempotent, so separate calls with the same inputs will
 // return different credentials. This will fail if credentials for the given
 // name already exist in the database.
-func GenerateInMemory(ctx context.Context, env evergreen.Environment, name string) (*rpc.Credentials, error) {
+func GenerateInMemory(ctx context.Context, name string) (*rpc.Credentials, error) {
 	opts := certdepot.CertificateOptions{
 		CA:         CAName,
 		CommonName: name,
@@ -148,7 +152,7 @@ func GenerateInMemory(ctx context.Context, env evergreen.Environment, name strin
 		Expires:    defaultExpiration,
 	}
 
-	dpt, err := getDepot(ctx, env)
+	dpt, err := getDepot(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get depot")
 	}
@@ -188,8 +192,8 @@ func GenerateInMemory(ctx context.Context, env evergreen.Environment, name strin
 }
 
 // FindByID gets the credentials for the given name.
-func FindByID(ctx context.Context, env evergreen.Environment, name string) (*rpc.Credentials, error) {
-	dpt, err := getDepot(ctx, env)
+func FindByID(ctx context.Context, name string) (*rpc.Credentials, error) {
+	dpt, err := getDepot(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get depot")
 	}
@@ -220,8 +224,8 @@ func FindByID(ctx context.Context, env evergreen.Environment, name string) (*rpc
 
 // FindExpirationByID returns the time at which the credentials for the given
 // name will expire.
-func FindExpirationByID(ctx context.Context, env evergreen.Environment, name string) (time.Time, error) {
-	dpt, err := getDepot(ctx, env)
+func FindExpirationByID(ctx context.Context, name string) (time.Time, error) {
+	dpt, err := getDepot(ctx)
 	if err != nil {
 		return time.Time{}, errors.Wrap(err, "could not get depot")
 	}
@@ -230,8 +234,8 @@ func FindExpirationByID(ctx context.Context, env evergreen.Environment, name str
 }
 
 // DeleteByID removes the credentials from the database if they exist.
-func DeleteByID(ctx context.Context, env evergreen.Environment, name string) error {
-	dpt, err := getDepot(ctx, env)
+func DeleteByID(ctx context.Context, name string) error {
+	dpt, err := getDepot(ctx)
 	if err != nil {
 		return errors.Wrap(err, "could not get depot")
 	}
