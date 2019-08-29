@@ -476,11 +476,6 @@ func RefreshTasksCache(buildId string) error {
 	}
 
 	cache := CreateTasksCache(tasks)
-	grip.Debug(message.Fields{
-		"messsage": "refresing task cache",
-		"build":    buildId,
-		"cache":    cache,
-	})
 	return errors.WithStack(build.SetTasksCache(buildId, cache))
 }
 
@@ -504,39 +499,10 @@ func AddTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 	if err = tasks.InsertUnordered(ctx); err != nil {
 		return nil, errors.Wrapf(err, "error inserting tasks for build '%s'", b.Id)
 	}
-	if generatedBy != "" {
-		taskIds := []string{}
-		for _, t := range tasks {
-			taskIds = append(taskIds, t.Id)
-		}
-		grip.Debug(message.Fields{
-			"message":      "adding generated tasks to build",
-			"build":        b.Id,
-			"project":      v.Identifier,
-			"version":      v.Id,
-			"generated_by": generatedBy,
-			"tasks":        taskIds,
-		})
-	}
 
 	// update the build to hold the new tasks
 	if err := RefreshTasksCache(b.Id); err != nil {
 		return nil, errors.Wrapf(err, "error updating task cache for '%s'", b.Id)
-	}
-
-	if generatedBy != "" {
-		taskIds := []string{}
-		for _, t := range tasks {
-			taskIds = append(taskIds, t.Id)
-		}
-		grip.Debug(message.Fields{
-			"message":      "refreshing build cache with generated tasks",
-			"build":        b.Id,
-			"project":      v.Identifier,
-			"version":      v.Id,
-			"generated_by": generatedBy,
-			"cache":        b.Tasks,
-		})
 	}
 
 	return b, nil
