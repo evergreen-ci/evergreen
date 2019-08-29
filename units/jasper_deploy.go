@@ -63,7 +63,6 @@ func makeJasperDeployJob() *jasperDeployJob {
 func NewJasperDeployJob(env evergreen.Environment, h *host.Host, expiration time.Time, deployThroughJasper bool, id string) amboy.Job {
 	j := makeJasperDeployJob()
 	j.env = env
-	j.settings = env.Settings()
 	j.HostID = h.Id
 	j.host = h
 	j.CredentialsExpiration = expiration
@@ -119,7 +118,7 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 		"job":     j.ID(),
 	})
 
-	creds, err := j.host.GenerateJasperCredentials(ctx)
+	creds, err := j.host.GenerateJasperCredentials(ctx, j.env)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "problem generating new Jasper credentials",
@@ -144,7 +143,7 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 	}
 
 	if j.DeployThroughJasper {
-		client, err := j.host.JasperClient(ctx, j.settings)
+		client, err := j.host.JasperClient(ctx, j.env)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not get Jasper client",
@@ -168,7 +167,7 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 			},
 		}
 		var output string
-		if output, err = j.host.RunJasperProcess(ctx, j.settings, writeCredentialsOpts); err != nil {
+		if output, err = j.host.RunJasperProcess(ctx, j.env, writeCredentialsOpts); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not replace existing Jasper credentials on host",
 				"logs":    output,
@@ -190,7 +189,7 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 			},
 		}
 
-		if err = j.host.StartJasperProcess(ctx, j.settings, restartJasperOpts); err != nil {
+		if err = j.host.StartJasperProcess(ctx, j.env, restartJasperOpts); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not restart Jasper service",
 				"host":    j.host.Id,
@@ -203,7 +202,7 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 
 		// Verify that the ID of the service has changed to indicate that the
 		// service restarted.
-		if client, err = j.host.JasperClient(ctx, j.settings); err != nil {
+		if client, err = j.host.JasperClient(ctx, j.env); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not get Jasper client",
 				"host":    j.host.Id,
@@ -281,7 +280,7 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 	// We can only save the Jasper credentials with the new expiration once we
 	// have reasonable confidence that the host has a Jasper service running
 	// with the new credentials and the agent monitor will be deployed.
-	if err := j.host.SaveJasperCredentials(ctx, creds); err != nil {
+	if err := j.host.SaveJasperCredentials(ctx, j.env, creds); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "problem saving new Jasper credentials",
 			"host":    j.host.Id,
@@ -356,7 +355,7 @@ func (j *jasperDeployJob) populateIfUnset(ctx context.Context) error {
 	}
 
 	if j.CredentialsExpiration.IsZero() {
-		expiration, err := j.host.JasperCredentialsExpiration(ctx)
+		expiration, err := j.host.JasperCredentialsExpiration(ctx, j.env)
 		if err != nil {
 			return errors.Wrapf(err, "could not get credentials expiration time for host %s in job %s", j.HostID, j.ID())
 		}

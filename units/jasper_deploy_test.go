@@ -36,7 +36,7 @@ func setupJasperService(ctx context.Context, env *mock.Environment, mngr *jasper
 	}
 	env.Settings().HostJasper.Port = port
 
-	creds, err := h.GenerateJasperCredentials(ctx)
+	creds, err := h.GenerateJasperCredentials(ctx, env)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -46,7 +46,7 @@ func setupJasperService(ctx context.Context, env *mock.Environment, mngr *jasper
 		return nil, errors.WithStack(err)
 	}
 
-	return closeService, errors.WithStack(h.SaveJasperCredentials(ctx, creds))
+	return closeService, errors.WithStack(h.SaveJasperCredentials(ctx, env, creds))
 }
 
 // setupCredentialsCollection is used to bootstrap the credentials collection
@@ -80,7 +80,7 @@ func getJasperDeployJobName(hostID string, deployThroughJasper bool, jobID strin
 
 // withJasperServiceSetupAndTeardown performs necessary setup to start a
 // Jasper RPC service, executes the given test function, and cleans up.
-func withJasperServiceSetupAndTeardown(ctx context.Context, env *mock.Environment, manager *jasper.MockManager, h *host.Host, fn func(evergreen.Environment)) error {
+func withJasperServiceSetupAndTeardown(ctx context.Context, env *mock.Environment, manager *jasper.MockManager, h *host.Host, fn func()) error {
 	if err := setupCredentialsCollection(ctx, env); err != nil {
 		grip.Error(errors.Wrap(teardownJasperService(nil), "problem tearing down test"))
 		return errors.Wrap(err, "problem setting up credentials collection")
@@ -92,7 +92,7 @@ func withJasperServiceSetupAndTeardown(ctx context.Context, env *mock.Environmen
 		return errors.Wrap(err, "problem setting up Jasper service")
 	}
 
-	fn(env)
+	fn()
 
 	return errors.Wrap(teardownJasperService(closeService), "problem tearing down test")
 }
@@ -188,10 +188,10 @@ func TestJasperDeployJob(t *testing.T) {
 			assert.Error(t, deployJob.tryRequeueDeploy(ctx))
 		},
 		"RunPerformsExpectedOperationsWhenDeployingThroughJasper": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jasper.MockManager, h *host.Host) {
-			clientCreds, err := credentials.ForJasperClient(ctx)
+			clientCreds, err := credentials.ForJasperClient(ctx, env)
 			require.NoError(t, err)
 
-			creds, err := h.JasperClientCredentials(ctx)
+			creds, err := h.JasperClientCredentials(ctx, env)
 			require.NoError(t, err)
 
 			assert.Equal(t, clientCreds.Cert, creds.Cert)
@@ -249,6 +249,10 @@ func TestJasperDeployJob(t *testing.T) {
 			tctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 			defer cancel()
 
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(tctx, "", nil))
+			env.Settings().HostJasper = evergreen.HostJasperConfig{}
+
 			mngr := &jasper.MockManager{}
 			mngr.ManagerID = "mock-manager-id"
 
@@ -267,10 +271,7 @@ func TestJasperDeployJob(t *testing.T) {
 			_, err := h.Upsert()
 			require.NoError(t, err)
 
-			env := &mock.Environment{}
-			require.NoError(t, env.Configure(tctx, "", nil))
-
-			require.NoError(t, withJasperServiceSetupAndTeardown(tctx, env, mngr, h, func(env evergreen.Environment) {
+			require.NoError(t, withJasperServiceSetupAndTeardown(tctx, env, mngr, h, func() {
 				testCase(tctx, t, env, mngr, h)
 			}))
 		})

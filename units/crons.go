@@ -875,7 +875,7 @@ func PopulateJasperDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 				catcher.Add(errors.Wrapf(err, "problem resetting Jasper deploy attempts for host %s", h.Id))
 				continue
 			}
-			expiration, err := h.JasperCredentialsExpiration(ctx)
+			expiration, err := h.JasperCredentialsExpiration(ctx, env)
 			if err != nil {
 				catcher.Add(errors.Wrapf(err, "problem getting expiration time on credentials for host %s", h.Id))
 				continue

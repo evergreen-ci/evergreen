@@ -19,13 +19,10 @@ const (
 	testSettings = "evg_settings.yml"
 )
 
-func testConfigFile() string {
-	return filepath.Join(FindEvergreenHome(), testDir, testSettings)
-}
-
 // TestConfig creates test settings from a test config.
 func testConfig() *Settings {
-	settings, err := NewSettings(testConfigFile())
+	file := filepath.Join(FindEvergreenHome(), testDir, testSettings)
+	settings, err := NewSettings(file)
 	if err != nil {
 		panic(err)
 	}
@@ -99,11 +96,7 @@ func TestAdminSuite(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	configFile := os.Getenv("SETTINGS_OVERRIDE")
-	if configFile == "" {
-		configFile = testConfigFile()
-	}
-	env, err := NewEnvironment(ctx, configFile, nil)
+	env, err := NewEnvironment(ctx, os.Getenv("SETTINGS_OVERRIDE"), nil)
 	require.NoError(t, err)
 	SetEnvironment(env)
 

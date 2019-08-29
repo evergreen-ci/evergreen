@@ -378,7 +378,7 @@ func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, 
 	}, " "), nil
 }
 
-// WriteJasperCredentialsFileCommand builds the command to write the Jasper
+// WriteJasperCredentialsCommand builds the command to write the Jasper
 // credentials to a file.
 func (h *Host) WriteJasperCredentialsFileCommand(creds *rpc.Credentials) (string, error) {
 	if h.Distro.BootstrapSettings.JasperCredentialsPath == "" {
@@ -394,8 +394,8 @@ func (h *Host) WriteJasperCredentialsFileCommand(creds *rpc.Credentials) (string
 // RunJasperProcess makes a request to the host's Jasper service to create the
 // process with the given options, wait for its completion, and returns the
 // output from it.
-func (h *Host) RunJasperProcess(ctx context.Context, settings *evergreen.Settings, opts *jasper.CreateOptions) (string, error) {
-	client, err := h.JasperClient(ctx, settings)
+func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, opts *jasper.CreateOptions) (string, error) {
+	client, err := h.JasperClient(ctx, env)
 	if err != nil {
 		return "", errors.Wrap(err, "could not get a Jasper client")
 	}
@@ -424,8 +424,8 @@ func (h *Host) RunJasperProcess(ctx context.Context, settings *evergreen.Setting
 
 // StartJasperProcess makes a request to the host's Jasper service to start a
 // process with the given options without waiting for its completion.
-func (h *Host) StartJasperProcess(ctx context.Context, settings *evergreen.Settings, opts *jasper.CreateOptions) error {
-	client, err := h.JasperClient(ctx, settings)
+func (h *Host) StartJasperProcess(ctx context.Context, env evergreen.Environment, opts *jasper.CreateOptions) error {
+	client, err := h.JasperClient(ctx, env)
 	if err != nil {
 		return errors.Wrap(err, "could not get a Jasper client")
 	}
@@ -442,10 +442,12 @@ const jasperDialTimeout = 15 * time.Second
 
 // JasperClient returns a remote client that communicates with this host's
 // Jasper service.
-func (h *Host) JasperClient(ctx context.Context, settings *evergreen.Settings) (jasper.RemoteClient, error) {
+func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jasper.RemoteClient, error) {
 	if h.LegacyBootstrap() || h.LegacyCommunication() {
 		return nil, errors.New("legacy host does not support remote Jasper process management")
 	}
+
+	settings := env.Settings()
 
 	if h.JasperCommunication() {
 		switch h.Distro.BootstrapSettings.Communication {
@@ -473,7 +475,7 @@ func (h *Host) JasperClient(ctx context.Context, settings *evergreen.Settings) (
 
 			return jaspercli.NewSSHClient(remoteOpts, clientOpts, true)
 		case distro.CommunicationMethodRPC:
-			creds, err := h.JasperClientCredentials(ctx)
+			creds, err := h.JasperClientCredentials(ctx, env)
 			if err != nil {
 				return nil, errors.Wrap(err, "could not get client credentials to communicate with the host's Jasper service")
 			}
@@ -538,12 +540,12 @@ func (h *Host) StartAgentMonitorRequest(settings *evergreen.Settings) (string, e
 
 // StopAgentMonitor stops the agent monitor (if it is running) on the host via
 // its Jasper service . On legacy hosts, this is a no-op.
-func (h *Host) StopAgentMonitor(ctx context.Context, settings *evergreen.Settings) error {
+func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) error {
 	if h.LegacyBootstrap() {
 		return nil
 	}
 
-	client, err := h.JasperClient(ctx, settings)
+	client, err := h.JasperClient(ctx, env)
 	if err != nil {
 		return errors.Wrap(err, "could not get a Jasper client")
 	}

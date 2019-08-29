@@ -98,7 +98,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err = j.host.DeleteJasperCredentials(ctx); err != nil {
+	if err = j.host.DeleteJasperCredentials(ctx, j.env); err != nil {
 		j.AddError(err)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":  "problem deleting Jasper credentials",
