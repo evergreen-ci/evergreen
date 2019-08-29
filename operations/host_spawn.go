@@ -77,7 +77,7 @@ func hostCreate() cli.Command {
 				Name:  joinFlagNames(scriptFlagName, "s"),
 				Usage: "path to userdata script to run",
 			},
-			cli.StringFlag{
+			cli.StringSliceFlag{
 				Name:  joinFlagNames(tagFlagName, "t"),
 				Usage: "key=value pair representing an instance tag, with one pair per flag",
 			},
@@ -122,11 +122,11 @@ func hostCreate() cli.Command {
 			}
 
 			host, err := client.CreateSpawnHost(ctx, spawnRequest)
-			if host == nil {
-				return errors.New("Unable to create a spawn host. Double check that the params and .evergreen.yml are correct")
-			}
 			if err != nil {
 				return errors.Wrap(err, "problem contacting evergreen service")
+			}
+			if host == nil {
+				return errors.New("Unable to create a spawn host. Double check that the params and .evergreen.yml are correct")
 			}
 
 			grip.Infof("Spawn host created with ID '%s'. Visit the hosts page in Evergreen to check on its status.", model.FromAPIString(host.Id))
