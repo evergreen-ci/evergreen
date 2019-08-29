@@ -28,8 +28,6 @@ type mongoGroupDriver struct {
 	instanceID string
 	mu         sync.RWMutex
 	canceler   context.CancelFunc
-
-	LockManager
 }
 
 // NewMongoGroupDriver is similar to the MongoDriver, except it
@@ -88,8 +86,6 @@ func (d *mongoGroupDriver) Open(ctx context.Context) error {
 }
 
 func (d *mongoGroupDriver) start(ctx context.Context, client *mongo.Client) error {
-	d.LockManager = NewLockManager(ctx, d)
-
 	dCtx, cancel := context.WithCancel(ctx)
 	d.canceler = cancel
 
@@ -260,8 +256,6 @@ func buildCompoundID(n, id string) string               { return fmt.Sprintf("%s
 func (d *mongoGroupDriver) Save(ctx context.Context, j amboy.Job) error {
 	name := j.ID()
 	stat := j.Status()
-	stat.Owner = d.instanceID
-	stat.ModificationCount++
 	stat.ErrorCount = len(stat.Errors)
 	stat.ModificationTime = time.Now()
 	j.SetStatus(stat)
@@ -294,28 +288,6 @@ func (d *mongoGroupDriver) Save(ctx context.Context, j amboy.Job) error {
 	if res.MatchedCount == 0 {
 		return errors.Errorf("problem saving job [id=%s, matched=%d, modified=%d]", name, res.MatchedCount, res.ModifiedCount)
 	}
-
-	return nil
-}
-
-func (d *mongoGroupDriver) SaveStatus(ctx context.Context, j amboy.Job, stat amboy.JobStatusInfo) error {
-	query := getAtomicQuery(d.instanceID, buildCompoundJobID(d.group, j), stat.ModificationCount)
-	stat.Owner = d.instanceID
-	stat.ModificationCount++
-	stat.ErrorCount = len(stat.Errors)
-	stat.ModificationTime = time.Now()
-	timeInfo := j.TimeInfo()
-
-	res, err := d.getCollection().UpdateOne(ctx, query, bson.M{"$set": bson.M{"status": stat, "time_info": timeInfo}})
-	if err != nil {
-		return errors.Wrapf(err, "problem updating status document for %s", j.ID())
-	}
-
-	if res.MatchedCount == 0 {
-		return errors.Errorf("did not update any status documents [id=%s, matched=%d, modified=%d]", j.ID(), res.MatchedCount, res.ModifiedCount)
-	}
-
-	j.SetStatus(stat)
 
 	return nil
 }
@@ -428,14 +400,9 @@ func (d *mongoGroupDriver) JobStats(ctx context.Context) <-chan amboy.JobStatusI
 	return output
 }
 
-func (d *mongoGroupDriver) Next(ctx context.Context) amboy.Job {
-	var (
-		qd     bson.M
-		job    amboy.Job
-		misses int64
-	)
-
-	qd = bson.M{
+func (d *mongoGroupDriver) getNextQuery() bson.M {
+	now := time.Now()
+	qd := bson.M{
 		"group": d.group,
 		"$or": []bson.M{
 			{
@@ -444,14 +411,13 @@ func (d *mongoGroupDriver) Next(ctx context.Context) amboy.Job {
 			},
 			{
 				"status.completed": false,
-				"status.mod_ts":    bson.M{"$lte": time.Now().Add(-LockTimeout)},
+				"status.mod_ts":    bson.M{"$lte": now.Add(-amboy.LockTimeout)},
 				"status.in_prog":   true,
 			},
 		},
 	}
 
 	timeLimits := bson.M{}
-	now := time.Now()
 	if d.opts.CheckWaitUntil {
 		timeLimits["time_info.wait_until"] = bson.M{"$lte": now}
 	}
@@ -464,6 +430,15 @@ func (d *mongoGroupDriver) Next(ctx context.Context) amboy.Job {
 	if len(timeLimits) > 0 {
 		qd = bson.M{"$and": []bson.M{qd, timeLimits}}
 	}
+	return qd
+}
+
+func (d *mongoGroupDriver) Next(ctx context.Context) amboy.Job {
+	var (
+		qd     bson.M
+		job    amboy.Job
+		misses int64
+	)
 
 	opts := options.Find().SetBatchSize(4)
 	if d.opts.Priority {
@@ -481,6 +456,7 @@ RETRY:
 			return nil
 		case <-timer.C:
 			misses++
+			qd = d.getNextQuery()
 			iter, err := d.getCollection().Find(ctx, qd, opts)
 			if err != nil {
 				grip.Debug(message.WrapError(err, message.Fields{

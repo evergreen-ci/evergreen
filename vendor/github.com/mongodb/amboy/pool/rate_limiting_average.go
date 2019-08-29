@@ -2,7 +2,6 @@ package pool
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"strings"
 	"sync"
@@ -11,7 +10,6 @@ import (
 	"github.com/VividCortex/ewma"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
@@ -127,18 +125,17 @@ func (p *ewmaRateLimiting) Start(ctx context.Context) error {
 
 	ctx, p.canceler = context.WithCancel(ctx)
 
-	jobs := startWorkerServer(ctx, p.queue, &p.wg)
-
 	for w := 1; w <= p.size; w++ {
-		go p.worker(ctx, jobs)
+		go p.worker(ctx)
 	}
 	return nil
 }
 
-func (p *ewmaRateLimiting) worker(ctx context.Context, jobs <-chan workUnit) {
+func (p *ewmaRateLimiting) worker(bctx context.Context) {
 	var (
 		err    error
 		job    amboy.Job
+		ctx    context.Context
 		cancel context.CancelFunc
 	)
 
@@ -154,7 +151,7 @@ func (p *ewmaRateLimiting) worker(ctx context.Context, jobs <-chan workUnit) {
 				job.AddError(err)
 			}
 			// start a replacement worker.
-			go p.worker(ctx, jobs)
+			go p.worker(bctx)
 		}
 		if cancel != nil {
 			cancel()
@@ -165,21 +162,20 @@ func (p *ewmaRateLimiting) worker(ctx context.Context, jobs <-chan workUnit) {
 	defer timer.Stop()
 	for {
 		select {
-		case <-ctx.Done():
+		case <-bctx.Done():
 			return
 		case <-timer.C:
-			select {
-			case <-ctx.Done():
-				return
-			case wu := <-jobs:
-				cancel = wu.cancel
-				job = wu.job
-
-				interval := p.runJob(ctx, job)
-				cancel()
-
-				timer.Reset(interval)
+			job := p.queue.Next(bctx)
+			if job == nil {
+				timer.Reset(jitterNilJobWait())
+				continue
 			}
+
+			ctx, cancel = context.WithCancel(bctx)
+			interval := p.runJob(ctx, job)
+			cancel()
+
+			timer.Reset(interval)
 		}
 	}
 }
@@ -192,8 +188,6 @@ func (p *ewmaRateLimiting) addCanceler(id string, cancel context.CancelFunc) {
 }
 
 func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duration {
-	start := time.Now()
-
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithCancel(ctx)
 	p.addCanceler(j.ID(), cancel)
@@ -205,26 +199,9 @@ func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duratio
 		delete(p.jobs, j.ID())
 	}()
 
-	runJob(ctx, j, p.queue, start)
+	executeJob(ctx, "rate-limited-average", j, p.queue)
 
-	duration := time.Since(start)
-	interval := p.getNextTime(duration)
-	r := message.Fields{
-		"id":            j.ID(),
-		"job_type":      j.Type().Name,
-		"duration_secs": duration.Seconds(),
-		"queue_type":    fmt.Sprintf("%T", p.queue),
-		"interval_secs": interval.Seconds(),
-		"pool":          "rate-limited-average",
-	}
-	if err := j.Error(); err != nil {
-		r["error"] = err.Error()
-		grip.Error(r)
-	} else {
-		grip.Info(r)
-	}
-
-	return interval
+	return j.TimeInfo().Duration()
 }
 
 func (p *ewmaRateLimiting) SetQueue(q amboy.Queue) error {

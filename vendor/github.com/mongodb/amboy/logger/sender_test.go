@@ -51,18 +51,18 @@ func (s *SenderSuite) SetupTest() {
 	s.Require().NoError(err)
 	s.senders = map[string]send.Sender{}
 
-	s.senders["single"], err = NewQueueBackedSender(ctx, s.mock, 2, 4)
+	s.senders["single"], err = NewQueueBackedSender(ctx, s.mock, 2, 128)
 	s.Require().NoError(err)
 
-	s.senders["multi"], err = NewQueueMultiSender(ctx, 2, 4, s.mock)
+	s.senders["multi"], err = NewQueueMultiSender(ctx, 2, 128, s.mock)
 	s.Require().NoError(err)
 
-	s.queue = queue.NewLocalLimitedSize(2, 8)
+	s.queue = queue.NewLocalLimitedSize(4, 128)
 	s.NoError(s.queue.Start(ctx))
+	s.Require().True(s.queue.Started())
 
 	s.senders["single-shared"] = MakeQueueSender(ctx, s.queue, s.mock)
 	s.senders["multi-shared"] = MakeQueueMultiSender(ctx, s.queue, s.mock)
-
 }
 
 func (s *SenderSuite) TearDownTest() {
