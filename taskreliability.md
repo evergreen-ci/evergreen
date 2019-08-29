@@ -87,12 +87,12 @@ Returns a paginated list of task reliability scores associated with a specific p
    * - Name
      - Type
      - Description
-   * - ``after_date``
-     - string
-     - The start date (included) of the targeted time interval. The format is "YYYY-MM-DD". The date is UTC. Defaults to today.
    * - ``before_date``
      - string
-     - The end date (included) of the targeted time interval. The format is "YYYY-MM-DD". The date is UTC. Defaults to ``after_date``.
+     - The end date (included) of the targeted time interval. The format is "YYYY-MM-DD". The date is UTC. Defaults to today.
+   * - ``after_date``
+     - string
+     - The start date (included) of the targeted time interval. The format is "YYYY-MM-DD". The date is UTC. Defaults to ``before_date``.
    * - ``group_num_days``
      - int
      - Optional. Indicates that the statistics should be aggregated by groups of ``group_num_days`` days. The first group will start on the nearest first date greater than ``after_date``, the last group will start on ``before_date`` - ``group_num_days``` days. Defaults to 1.
