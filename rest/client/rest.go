@@ -63,13 +63,8 @@ func (*communicatorImpl) SetHostStatus()   {}
 func (*communicatorImpl) SetHostStatuses() {}
 
 // CreateSpawnHost will insert an intent host into the DB that will be spawned later by the runner
-func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, options cloud.SpawnOptions, userData string) (*model.APIHost, error) {
-	spawnRequest := &model.HostPostRequest{
-		DistroID:     options.DistroId,
-		KeyName:      options.PublicKey,
-		UserData:     userData,
-		InstanceTags: options.InstanceTags,
-	}
+func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostPostRequest) (*model.APIHost, error) {
+
 	info := requestInfo{
 		method:  post,
 		path:    "hosts",

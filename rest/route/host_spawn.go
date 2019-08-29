@@ -46,15 +46,15 @@ func (hph *hostPostHandler) Parse(ctx context.Context, r *http.Request) error {
 func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 
-	options := cloud.SpawnOptions{
-		DistroId:     hph.Distro,
-		PublicKey:    hph.KeyName,
-		TaskId:       hph.Task,
-		Owner:        user,
+	options := &model.HostPostRequest{
+		DistroID:     hph.Distro,
+		TaskID:       hph.Task,
+		KeyName:      hph.KeyName,
+		UserData:     hph.UserData,
 		InstanceTags: hph.InstanceTags,
 	}
 
-	intentHost, err := hph.sc.NewIntentHost(options, hph.UserData)
+	intentHost, err := hph.sc.NewIntentHost(options, user)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error spawning host"))
 	}

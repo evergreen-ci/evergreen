@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/suite"
 )
@@ -207,14 +207,15 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	})
 	s.NoError(testUser.Insert())
 
-	spawnOptions := cloud.SpawnOptions{
-		DistroId:     testDistroID,
-		PublicKey:    testPublicKeyName,
-		TaskId:       "",
+	options := &restmodel.HostPostRequest{
+		DistroID:     testDistroID,
+		TaskID:       "",
+		KeyName:      testPublicKeyName,
+		UserData:     "",
 		InstanceTags: nil,
-		Owner:        testUser,
 	}
-	intentHost, err := (&DBHostConnector{}).NewIntentHost(spawnOptions, "")
+
+	intentHost, err := (&DBHostConnector{}).NewIntentHost(options, testUser)
 	s.NotNil(intentHost)
 	s.NoError(err)
 	foundHost, err := host.FindOne(host.ById(intentHost.Id))

@@ -24,6 +24,7 @@ type APIHost struct {
 // HostPostRequest is a struct that holds the format of a POST request to /hosts
 type HostPostRequest struct {
 	DistroID     string            `json:"distro"`
+	TaskID       string            `json:"task"`
 	KeyName      string            `json:"keyname"`
 	UserData     string            `json:"userdata"`
 	InstanceTags map[string]string `json:"instance_tags"`

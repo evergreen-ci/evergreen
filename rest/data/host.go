@@ -14,6 +14,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/user"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -59,31 +61,36 @@ func (dbc *DBConnector) FindHostByIdWithOwner(hostID string, user gimlet.User) (
 
 // NewIntentHost is a method to insert an intent host given a distro and a public key
 // The public key can be the name of a saved key or the actual key string
-func (hc *DBHostConnector) NewIntentHost(spawnOptions cloud.SpawnOptions, userData string) (*host.Host, error) {
-	spawnOptions.UserName = spawnOptions.Owner.Username()
+func (hc *DBHostConnector) NewIntentHost(options *restmodel.HostPostRequest, user *user.DBUser) (*host.Host, error) {
 
 	// Get key value if PublicKey is a name
-	keyVal, err := spawnOptions.Owner.GetPublicKey(spawnOptions.PublicKey)
+	keyVal, err := user.GetPublicKey(options.KeyName)
 	if err != nil {
-		keyVal = spawnOptions.PublicKey
+		keyVal = options.KeyName
 	}
 	if keyVal == "" {
 		return nil, errors.New("invalid key")
 	}
-	spawnOptions.PublicKey = keyVal
 
 	var providerSettings *map[string]interface{}
-	if userData != "" {
+	if options.UserData != "" {
 		var d distro.Distro
-		d, err = distro.FindOne(distro.ById(spawnOptions.DistroId))
+		d, err = distro.FindOne(distro.ById(options.DistroID))
 		if err != nil {
-			return nil, errors.Wrapf(err, "error finding distro '%s'", spawnOptions.DistroId)
+			return nil, errors.Wrapf(err, "error finding distro '%s'", options.DistroID)
 		}
 		providerSettings = d.ProviderSettings
-		(*providerSettings)["user_data"] = userData
+		(*providerSettings)["user_data"] = options.UserData
 	}
 
-	spawnOptions.ProviderSettings = providerSettings
+	spawnOptions := cloud.SpawnOptions{
+		DistroId:         options.DistroID,
+		ProviderSettings: providerSettings,
+		UserName:         user.Username(),
+		PublicKey:        keyVal,
+		TaskId:           options.TaskID,
+		Owner:            user,
+	}
 
 	intentHost, err := cloud.CreateSpawnHost(spawnOptions)
 	if err != nil {
@@ -192,10 +199,17 @@ func (hc *MockHostConnector) FindHostById(id string) (*host.Host, error) {
 
 // NewIntentHost is a method to mock "insert" an intent host given a distro and a public key
 // The public key can be the name of a saved key or the actual key string
-func (hc *MockHostConnector) NewIntentHost(spawnOptions cloud.SpawnOptions, userData string) (*host.Host, error) {
-	spawnOptions.PublicKey = strings.Join([]string{"ssh-rsa", base64.StdEncoding.EncodeToString([]byte("foo"))}, " ")
-	spawnOptions.ProviderSettings = &map[string]interface{}{"user_data": userData, "ami": "ami-123456"}
-	spawnOptions.UserName = spawnOptions.Owner.Username()
+func (hc *MockHostConnector) NewIntentHost(options *restmodel.HostPostRequest, user *user.DBUser) (*host.Host, error) {
+	keyVal := strings.Join([]string{"ssh-rsa", base64.StdEncoding.EncodeToString([]byte("foo"))}, " ")
+
+	spawnOptions := cloud.SpawnOptions{
+		DistroId:         options.DistroID,
+		UserName:         user.Username(),
+		ProviderSettings: &map[string]interface{}{"user_data": options.UserData, "ami": "ami-123456"},
+		PublicKey:        keyVal,
+		TaskId:           options.TaskID,
+		Owner:            user,
+	}
 
 	intentHost, err := cloud.CreateSpawnHost(spawnOptions)
 	if err != nil {

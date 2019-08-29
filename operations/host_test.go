@@ -117,40 +117,41 @@ func TestHostTeardownScript(t *testing.T) {
 }
 
 func TestMakeAWSTags(t *testing.T) {
-	assert := assert.New(t)
-
-	tagSlice := []string{"key1=value1", "key2=value2"}
-	tags, err := makeAWSTags(tagSlice)
-	assert.Equal(tags, map[string]string{
-		"key1": "value1",
-		"key2": "value2",
+	t.Run("OK", func(t *testing.T) {
+		tagSlice := []string{"key1=value1", "key2=value2"}
+		tags, err := makeAWSTags(tagSlice)
+		assert.Equal(t, tags, map[string]string{
+			"key1": "value1",
+			"key2": "value2",
+		})
+		assert.NoError(t, err)
 	})
-	assert.NoError(err)
-
-	// Problem parsing flag
-	tagSlice = []string{"key1=value1", "incorrect"}
-	tags, err = makeAWSTags(tagSlice)
-	assert.Nil(tags)
-	assert.EqualError(err, "problem parsing tag 'incorrect'")
-
-	// Key too long
-	badKey := strings.Repeat("a", 129)
-	tagSlice = []string{"key1=value", fmt.Sprintf("%s=value2", badKey)}
-	tags, err = makeAWSTags(tagSlice)
-	assert.Nil(tags)
-	assert.EqualError(err, fmt.Sprintf("key '%s' is longer than 128 characters", badKey))
-
-	// Value too long
-	badValue := strings.Repeat("a", 257)
-	tagSlice = []string{"key1=value2", fmt.Sprintf("key2=%s", badValue)}
-	tags, err = makeAWSTags(tagSlice)
-	assert.Nil(tags)
-	assert.EqualError(err, fmt.Sprintf("value '%s' is longer than 256 characters", badValue))
-
-	// Reserved prefix used
-	badPrefix := "aws:"
-	tagSlice = []string{"key1=value1", fmt.Sprintf("%skey2=value2", badPrefix)}
-	tags, err = makeAWSTags(tagSlice)
-	assert.Nil(tags)
-	assert.EqualError(err, fmt.Sprintf("illegal tag prefix '%s'", badPrefix))
+	t.Run("ParsingError", func(t *testing.T) {
+		badTag := "incorrect"
+		tagSlice := []string{"key1=value1", badTag}
+		tags, err := makeAWSTags(tagSlice)
+		assert.Nil(t, tags)
+		assert.EqualError(t, err, fmt.Sprintf("problem parsing tag '%s'", badTag))
+	})
+	t.Run("LongKey", func(t *testing.T) {
+		badKey := strings.Repeat("a", 129)
+		tagSlice := []string{"key1=value", fmt.Sprintf("%s=value2", badKey)}
+		tags, err := makeAWSTags(tagSlice)
+		assert.Nil(t, tags)
+		assert.EqualError(t, err, fmt.Sprintf("key '%s' is longer than 128 characters", badKey))
+	})
+	t.Run("LongValue", func(t *testing.T) {
+		badValue := strings.Repeat("a", 257)
+		tagSlice := []string{"key1=value2", fmt.Sprintf("key2=%s", badValue)}
+		tags, err := makeAWSTags(tagSlice)
+		assert.Nil(t, tags)
+		assert.EqualError(t, err, fmt.Sprintf("value '%s' is longer than 256 characters", badValue))
+	})
+	t.Run("BadPrefix", func(t *testing.T) {
+		badPrefix := "aws:"
+		tagSlice := []string{"key1=value1", fmt.Sprintf("%skey2=value2", badPrefix)}
+		tags, err := makeAWSTags(tagSlice)
+		assert.Nil(t, tags)
+		assert.EqualError(t, err, fmt.Sprintf("illegal tag prefix '%s'", badPrefix))
+	})
 }

@@ -126,14 +126,14 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Public key successfully saved."))
 	}
 	hc := &data.DBConnector{}
-	spawnOptions := cloud.SpawnOptions{
-		DistroId:     putParams.Distro,
-		PublicKey:    putParams.PublicKey,
-		TaskId:       putParams.Task,
-		Owner:        authedUser,
-		InstanceTags: nil,
+	options := &restModel.HostPostRequest{
+		DistroID:     putParams.Distro,
+		KeyName:      putParams.PublicKey,
+		TaskID:       putParams.Task,
+		UserData:     putParams.UserData,
+		InstanceTags: putParams.InstanceTags,
 	}
-	spawnHost, err := hc.NewIntentHost(spawnOptions, putParams.UserData)
+	spawnHost, err := hc.NewIntentHost(options, authedUser)
 
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error spawning host"))

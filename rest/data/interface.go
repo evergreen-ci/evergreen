@@ -136,7 +136,7 @@ type Connector interface {
 	FindHostByIdWithOwner(string, gimlet.User) (*host.Host, error)
 
 	// NewIntentHost is a method to insert an intent host given a distro and the name of a saved public key
-	NewIntentHost(cloud.SpawnOptions, string) (*host.Host, error)
+	NewIntentHost(*restModel.HostPostRequest, *user.DBUser) (*host.Host, error)
 
 	// FetchContext is a method to fetch a context given a series of identifiers.
 	FetchContext(string, string, string, string, string) (model.Context, error)

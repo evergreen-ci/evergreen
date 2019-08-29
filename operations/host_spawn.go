@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -20,7 +19,7 @@ const (
 // makeAWSTags creates and validates a map of supplied instance tags
 func makeAWSTags(tagSlice []string) (map[string]string, error) {
 	catcher := grip.NewBasicCatcher()
-	var tags = make(map[string]string)
+	tags := make(map[string]string)
 	for _, tagString := range tagSlice {
 		pair := strings.Split(tagString, "=")
 		if len(pair) != 2 {
@@ -115,13 +114,14 @@ func hostCreate() cli.Command {
 				return errors.Wrap(err, "problem generating tags")
 			}
 
-			spawnOptions := cloud.SpawnOptions{
-				DistroId:     distro,
-				PublicKey:    key,
+			spawnRequest := &model.HostPostRequest{
+				DistroID:     distro,
+				KeyName:      key,
+				UserData:     script,
 				InstanceTags: tags,
 			}
 
-			host, err := client.CreateSpawnHost(ctx, spawnOptions, script)
+			host, err := client.CreateSpawnHost(ctx, spawnRequest)
 			if host == nil {
 				return errors.New("Unable to create a spawn host. Double check that the params and .evergreen.yml are correct")
 			}
