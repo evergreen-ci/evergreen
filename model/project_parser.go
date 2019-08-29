@@ -625,7 +625,6 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 				}
 
 				var added []BuildVariantTaskUnit
-				// TODO: this might also be a mistake but unsure how to duplicate
 				pbv.Tasks = r.AddTasks
 				added, errs = evaluateBVTasks(tse, tgse, vse, pbv)
 				evalErrs = append(evalErrs, errs...)
