@@ -72,6 +72,12 @@ func (q *remoteSimpleOrdered) Next(ctx context.Context) amboy.Job {
 				continue
 			}
 
+			err := q.driver.Lock(ctx, job)
+			if err != nil {
+				grip.Warning(err)
+				continue
+			}
+
 			dep := job.Dependency()
 
 			// The final statement ensures that jobs are dispatched in "order," or at
@@ -88,6 +94,7 @@ func (q *remoteSimpleOrdered) Next(ctx context.Context) amboy.Job {
 				count++
 				return job
 			case dependency.Passed:
+				grip.Warning(q.driver.Unlock(ctx, job))
 				q.addBlocked(job.ID())
 				continue
 			case dependency.Unresolved:
@@ -97,6 +104,7 @@ func (q *remoteSimpleOrdered) Next(ctx context.Context) amboy.Job {
 						"edges": dep.Edges(),
 						"dep":   dep.Type(),
 					}))
+				grip.Warning(q.driver.Unlock(ctx, job))
 				q.addBlocked(job.ID())
 				continue
 			case dependency.Blocked:
@@ -104,6 +112,8 @@ func (q *remoteSimpleOrdered) Next(ctx context.Context) amboy.Job {
 				// to move that job *up* in the queue by submitting it here. there's a
 				// chance, however, that it's already in progress and we'll end up
 				// running it twice.
+				grip.Warning(q.driver.Unlock(ctx, job))
+
 				edges := dep.Edges()
 				grip.Debugf("job %s is blocked. eep! [%v]", id, edges)
 				if len(edges) == 1 {
@@ -124,6 +134,7 @@ func (q *remoteSimpleOrdered) Next(ctx context.Context) amboy.Job {
 
 				continue
 			default:
+				grip.Warning(q.driver.Unlock(ctx, job))
 				grip.Warning(message.MakeFieldsMessage("detected invalid dependency",
 					message.Fields{
 						"job":   id,

@@ -95,10 +95,9 @@ func (p *simpleRateLimited) Start(ctx context.Context) error {
 	return nil
 }
 
-func (p *simpleRateLimited) worker(bctx context.Context, jobs <-chan amboy.Job) {
+func (p *simpleRateLimited) worker(ctx context.Context, jobs <-chan workUnit) {
 	var (
 		err    error
-		ctx    context.Context
 		cancel context.CancelFunc
 		job    amboy.Job
 	)
@@ -114,10 +113,10 @@ func (p *simpleRateLimited) worker(bctx context.Context, jobs <-chan amboy.Job) 
 		if err != nil {
 			if job != nil {
 				job.AddError(err)
-				p.queue.Complete(bctx, job)
+				p.queue.Complete(ctx, job)
 			}
 			// start a replacement worker.
-			go p.worker(bctx, jobs)
+			go p.worker(ctx, jobs)
 		}
 		if cancel != nil {
 			cancel()
@@ -128,17 +127,19 @@ func (p *simpleRateLimited) worker(bctx context.Context, jobs <-chan amboy.Job) 
 	defer timer.Stop()
 	for {
 		select {
-		case <-bctx.Done():
+		case <-ctx.Done():
 			return
 		case <-timer.C:
 			select {
-			case <-bctx.Done():
+			case <-ctx.Done():
 				return
-			case job = <-jobs:
-				if job == nil {
+			case wu := <-jobs:
+				if wu.job == nil {
 					continue
 				}
-				ctx, cancel = context.WithCancel(bctx)
+				job = wu.job
+				cancel = wu.cancel
+
 				executeJob(ctx, "rate-limited-simple", job, p.queue)
 
 				cancel()

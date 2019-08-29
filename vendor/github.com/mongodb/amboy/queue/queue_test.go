@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -33,11 +32,9 @@ func init() {
 	grip.SetName("amboy.queue.tests")
 	grip.Error(grip.SetSender(send.MakeNative()))
 
-	if !testing.Verbose() {
-		lvl := grip.GetSender().Level()
-		lvl.Threshold = level.Error
-		_ = grip.GetSender().SetLevel(lvl)
-	}
+	lvl := grip.GetSender().Level()
+	lvl.Threshold = level.Error
+	_ = grip.GetSender().SetLevel(lvl)
 
 	job.RegisterDefaultJobs()
 }
@@ -93,6 +90,12 @@ type SizeTestCase struct {
 
 func DefaultQueueTestCases() []QueueTestCase {
 	return []QueueTestCase{
+		{
+			Name:                    "Local",
+			WaitUntilSupported:      true,
+			DispatchBeforeSupported: true,
+			Constructor:             func(ctx context.Context, size int) (amboy.Queue, error) { return NewLocalUnordered(size), nil },
+		},
 		{
 			Name:                    "AdaptiveOrdering",
 			OrderedSupported:        true,
@@ -681,10 +684,6 @@ func TestQueueSmoke(t *testing.T) {
 									continue
 								}
 
-								if size.Size > 8 && (runtime.GOOS == "windows" || runtime.GOOS == "darwin" || testing.Short()) {
-									continue
-								}
-
 								t.Run(size.Name, func(t *testing.T) {
 									if !test.SkipUnordered {
 										t.Run("Unordered", func(t *testing.T) {
@@ -728,53 +727,6 @@ func TestQueueSmoke(t *testing.T) {
 											})
 										}
 									}
-
-									t.Run("SaveLockingCheck", func(t *testing.T) {
-										if test.OrderedSupported && !test.OrderedStartsBefore {
-											t.Skip("test does not support queues where queues don't accept work after dispatching")
-										}
-										ctx, cancel := context.WithCancel(bctx)
-										defer cancel()
-
-										q, err := test.Constructor(ctx, size.Size)
-										require.NoError(t, err)
-										require.NoError(t, runner.SetPool(q, size.Size))
-
-										dcloser, err := driver.SetDriver(ctx, q, newDriverID())
-										require.NoError(t, err)
-										defer func() { require.NoError(t, dcloser(ctx)) }()
-										j := amboy.Job(job.NewShellJob("sleep 300", ""))
-										j.UpdateTimeInfo(amboy.JobTimeInfo{
-											WaitUntil: time.Now().Add(4 * amboy.LockTimeout),
-										})
-										require.NoError(t, q.Start(ctx))
-										require.NoError(t, q.Put(ctx, j))
-
-										require.NoError(t, j.Lock(q.ID()))
-										require.NoError(t, q.Save(ctx, j))
-
-										if test.IsRemote && driver.SupportsMulti {
-											// this errors because you can't save if you've double-locked,
-											// but only real remote drivers check locks.
-											require.NoError(t, j.Lock(q.ID()))
-											require.NoError(t, j.Lock(q.ID()))
-											require.Error(t, q.Save(ctx, j))
-										}
-
-										for i := 0; i < 25; i++ {
-											j, ok := q.Get(ctx, j.ID())
-											require.True(t, ok)
-											require.NoError(t, j.Lock(q.ID()))
-											require.NoError(t, q.Save(ctx, j))
-										}
-
-										j, ok := q.Get(ctx, j.ID())
-										require.True(t, ok)
-
-										require.NoError(t, j.Error())
-										q.Complete(ctx, j)
-										require.NoError(t, j.Error())
-									})
 								})
 							}
 						})
@@ -934,7 +886,9 @@ func WaitUntilTest(bctx context.Context, t *testing.T, test QueueTestCase, drive
 	} else if sz < 2 {
 		sz = 2
 	}
+
 	numJobs := sz * len(testNames)
+
 	wg := &sync.WaitGroup{}
 
 	for i := 0; i < sz; i++ {
@@ -964,6 +918,7 @@ func WaitUntilTest(bctx context.Context, t *testing.T, test QueueTestCase, drive
 		}(i)
 	}
 	wg.Wait()
+
 	// waitC for things to finish
 	const (
 		interval = 100 * time.Millisecond
@@ -993,7 +948,7 @@ waitLoop:
 	}
 
 	stats := q.Stats(ctx)
-	require.Equal(t, numJobs*2, stats.Total, "%+v", stats)
+	require.Equal(t, numJobs*2, stats.Total)
 	assert.Equal(t, numJobs, stats.Completed)
 
 	completed := 0

@@ -23,7 +23,7 @@ type queueGroupCloser func(context.Context) error
 type queueGroupConstructor func(context.Context, time.Duration) (amboy.QueueGroup, queueGroupCloser, error)
 
 func localConstructor(ctx context.Context) (amboy.Queue, error) {
-	return NewLocalLimitedSize(2, 128), nil
+	return NewLocalUnordered(1), nil
 }
 
 func TestQueueGroup(t *testing.T) {
@@ -385,7 +385,7 @@ func TestQueueGroup(t *testing.T) {
 		} {
 			t.Run(group.Name, func(t *testing.T) {
 				t.Run("Get", func(t *testing.T) {
-					ctx, cancel := context.WithTimeout(bctx, 20*time.Second)
+					ctx, cancel := context.WithCancel(context.Background())
 					defer cancel()
 
 					g, closer, err := group.Constructor(ctx, 0)
@@ -449,7 +449,7 @@ func TestQueueGroup(t *testing.T) {
 					require.Len(t, resultsQ2, 2)
 				})
 				t.Run("Put", func(t *testing.T) {
-					ctx, cancel := context.WithCancel(bctx)
+					ctx, cancel := context.WithCancel(context.Background())
 					defer cancel()
 
 					g, closer, err := group.Constructor(ctx, 0)
@@ -463,30 +463,22 @@ func TestQueueGroup(t *testing.T) {
 					q1, err := g.Get(ctx, "one")
 					require.NoError(t, err)
 					require.NotNil(t, q1)
-					if !q1.Started() {
-						require.NoError(t, q1.Start(ctx))
-					}
+					require.NoError(t, q1.Start(ctx))
 
 					q2, err := localConstructor(ctx)
 					require.NoError(t, err)
 					require.Error(t, g.Put(ctx, "one", q2), "cannot add queue to existing index")
-					if !q2.Started() {
-						require.NoError(t, q2.Start(ctx))
-					}
+					require.NoError(t, q2.Start(ctx))
 
 					q3, err := localConstructor(ctx)
 					require.NoError(t, err)
 					require.NoError(t, g.Put(ctx, "three", q3))
-					if !q3.Started() {
-						require.NoError(t, q3.Start(ctx))
-					}
+					require.NoError(t, q3.Start(ctx))
 
 					q4, err := localConstructor(ctx)
 					require.NoError(t, err)
 					require.NoError(t, g.Put(ctx, "four", q4))
-					if !q4.Started() {
-						require.NoError(t, q4.Start(ctx))
-					}
+					require.NoError(t, q4.Start(ctx))
 
 					j1 := job.NewShellJob("true", "")
 					j2 := job.NewShellJob("true", "")
@@ -537,7 +529,7 @@ func TestQueueGroup(t *testing.T) {
 						t.Skip("legacy implementation performs poorly on windows")
 					}
 
-					ctx, cancel := context.WithTimeout(bctx, 10*time.Second)
+					ctx, cancel := context.WithCancel(context.Background())
 					defer cancel()
 
 					g, closer, err := group.Constructor(ctx, time.Second)
@@ -580,7 +572,7 @@ func TestQueueGroup(t *testing.T) {
 					require.Equal(t, 0, g.Len())
 				})
 				t.Run("PruneWithTTL", func(t *testing.T) {
-					ctx, cancel := context.WithTimeout(bctx, 40*time.Second)
+					ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
 					defer cancel()
 
 					g, closer, err := group.Constructor(ctx, 3*time.Second)

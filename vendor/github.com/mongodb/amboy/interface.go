@@ -8,10 +8,6 @@ import (
 	"github.com/mongodb/grip"
 )
 
-// LockTimeout describes the period of time that a queue will respect
-// a stale lock from another queue before beginning work on a job.
-const LockTimeout = 10 * time.Minute
-
 // Job describes a unit of work. Implementations of Job instances are
 // the content of the Queue. The amboy/job package contains several
 // general purpose and example implementations. Jobs are responsible,
@@ -67,18 +63,6 @@ type Job interface {
 	// Error returns an error object if the task was an
 	// error. Typically if the job has not run, this is nil.
 	Error() error
-
-	// Lock and Unlock are responsible for handling the locking
-	// behavor for the job. Lock is responsible for setting the
-	// owner (its argument), incrementing the modification count
-	// and marking the job in progress, and returning an error if
-	// another worker has access to the job. Unlock is responsible
-	// for unsetting the owner and marking the job as
-	// not-in-progress, and should be a no-op if the job does not
-	// belong to the owner. In general the owner should be the value
-	// of queue.ID()
-	Lock(string) error
-	Unlock(string)
 }
 
 // JobType contains information about the type of a job, which queues
@@ -162,12 +146,8 @@ func (j JobTimeInfo) Validate() error {
 // organization properties.
 type Queue interface {
 	// Used to add a job to the queue. Should only error if the
-	// Queue cannot accept jobs if the job already exists in a
-	// queue.
+	// Queue cannot accept jobs.
 	Put(context.Context, Job) error
-
-	// Returns a unique identifier for the instance of the queue.
-	ID() string
 
 	// Given a job id, get that job. The second return value is a
 	// Boolean, which indicates if the named job had been
@@ -185,12 +165,6 @@ type Queue interface {
 	// Used to mark a Job complete and remove it from the pending
 	// work of the queue.
 	Complete(context.Context, Job)
-
-	// Saves the state of a current job to the underlying storage,
-	// generally in support of locking and incremental
-	// persistance. Should error if the job does not exist (use
-	// put,) or if the queue does not have ownership of the job.
-	Save(context.Context, Job) error
 
 	// Returns a channel that produces completed Job objects.
 	Results(context.Context) <-chan Job
