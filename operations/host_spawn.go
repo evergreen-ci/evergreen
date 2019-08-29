@@ -114,7 +114,7 @@ func hostCreate() cli.Command {
 				return errors.Wrap(err, "problem generating tags")
 			}
 
-			spawnRequest := &model.HostPostRequest{
+			spawnRequest := &model.HostRequestOptions{
 				DistroID:     distro,
 				KeyName:      key,
 				UserData:     script,

@@ -207,7 +207,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	})
 	s.NoError(testUser.Insert())
 
-	options := &restmodel.HostPostRequest{
+	options := &restmodel.HostRequestOptions{
 		DistroID:     testDistroID,
 		TaskID:       "",
 		KeyName:      testPublicKeyName,

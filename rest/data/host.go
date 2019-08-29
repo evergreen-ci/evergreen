@@ -61,7 +61,7 @@ func (dbc *DBConnector) FindHostByIdWithOwner(hostID string, user gimlet.User) (
 
 // NewIntentHost is a method to insert an intent host given a distro and a public key
 // The public key can be the name of a saved key or the actual key string
-func (hc *DBHostConnector) NewIntentHost(options *restmodel.HostPostRequest, user *user.DBUser) (*host.Host, error) {
+func (hc *DBHostConnector) NewIntentHost(options *restmodel.HostRequestOptions, user *user.DBUser) (*host.Host, error) {
 
 	// Get key value if PublicKey is a name
 	keyVal, err := user.GetPublicKey(options.KeyName)
@@ -199,7 +199,7 @@ func (hc *MockHostConnector) FindHostById(id string) (*host.Host, error) {
 
 // NewIntentHost is a method to mock "insert" an intent host given a distro and a public key
 // The public key can be the name of a saved key or the actual key string
-func (hc *MockHostConnector) NewIntentHost(options *restmodel.HostPostRequest, user *user.DBUser) (*host.Host, error) {
+func (hc *MockHostConnector) NewIntentHost(options *restmodel.HostRequestOptions, user *user.DBUser) (*host.Host, error) {
 	keyVal := strings.Join([]string{"ssh-rsa", base64.StdEncoding.EncodeToString([]byte("foo"))}, " ")
 
 	spawnOptions := cloud.SpawnOptions{

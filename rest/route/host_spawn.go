@@ -46,7 +46,7 @@ func (hph *hostPostHandler) Parse(ctx context.Context, r *http.Request) error {
 func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 
-	options := &model.HostPostRequest{
+	options := &model.HostRequestOptions{
 		DistroID:     hph.Distro,
 		TaskID:       hph.Task,
 		KeyName:      hph.KeyName,

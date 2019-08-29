@@ -126,7 +126,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Public key successfully saved."))
 	}
 	hc := &data.DBConnector{}
-	options := &restModel.HostPostRequest{
+	options := &restModel.HostRequestOptions{
 		DistroID:     putParams.Distro,
 		KeyName:      putParams.PublicKey,
 		TaskID:       putParams.Task,

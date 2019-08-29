@@ -335,7 +335,7 @@ func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData) (*patchmodel.Patch
 // GetHostsByUser will return an array with a single mock host
 func (c *Mock) GetHostsByUser(ctx context.Context, user string) ([]*model.APIHost, error) {
 	hosts := make([]*model.APIHost, 1)
-	spawnRequest := &model.HostPostRequest{
+	spawnRequest := &model.HostRequestOptions{
 		DistroID:     "mock_distro",
 		KeyName:      "mock_key",
 		UserData:     "",
@@ -347,7 +347,7 @@ func (c *Mock) GetHostsByUser(ctx context.Context, user string) ([]*model.APIHos
 }
 
 // CreateSpawnHost will return a mock host that would have been intended
-func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostPostRequest) (*model.APIHost, error) {
+func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostRequestOptions) (*model.APIHost, error) {
 	mockHost := &model.APIHost{
 		Id:      model.ToAPIString("mock_host_id"),
 		HostURL: model.ToAPIString("mock_url"),
@@ -380,7 +380,7 @@ func (*Mock) ExtendSpawnHostExpiration(context.Context, string, int) error {
 // GetHosts will return an array with a single mock host
 func (c *Mock) GetHosts(ctx context.Context, f func([]*model.APIHost) error) error {
 	hosts := make([]*model.APIHost, 1)
-	spawnRequest := &model.HostPostRequest{
+	spawnRequest := &model.HostRequestOptions{
 		DistroID:     "mock_distro",
 		KeyName:      "mock_key",
 		UserData:     "",

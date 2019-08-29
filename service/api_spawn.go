@@ -61,7 +61,7 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hc := &data.DBHostConnector{}
-	options := &model.HostPostRequest{
+	options := &model.HostRequestOptions{
 		DistroID:     hostRequest.Distro,
 		KeyName:      hostRequest.PublicKey,
 		TaskID:       "",
