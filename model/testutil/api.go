@@ -54,27 +54,18 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 
 	// Unmarshall the project configuration into a struct
 	project := &model.Project{}
-	if _, err = model.LoadProjectInto(projectConfig, "test", project); err != nil {
+	pp, err := model.LoadProjectInto(projectConfig, "test", project)
+	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal project config")
 	}
 
 	// create a build variant for this project
-	bv := model.BuildVariant{
-		Name: variant,
-		Tasks: []model.BuildVariantTaskUnit{{
-			Name: taskDisplayName,
-		}},
-	}
+	pp.AddBuildVariant(variant, []string{taskDisplayName})
 
-	project.BuildVariants = append(project.BuildVariants, bv)
 	// Marshall the project YAML for storage
-	projectYamlBytes, err := yaml.Marshal(project)
+	projectYamlBytes, err := yaml.Marshal(pp)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal project config")
-	}
-	intermediateProject, err := model.LoadProjectInto(projectYamlBytes, "test", project)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get new project")
 	}
 
 	// Create the ref for the project
@@ -166,7 +157,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	v := &model.Version{
 		Id:            taskOne.Version,
 		BuildIds:      []string{taskOne.BuildId},
-		ParserProject: intermediateProject,
+		ParserProject: pp,
 		Config:        string(projectYamlBytes),
 	}
 	if err = v.Insert(); err != nil {

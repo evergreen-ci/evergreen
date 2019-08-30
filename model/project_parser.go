@@ -523,6 +523,16 @@ func translateProject(pp *ParserProject) (*Project, error) {
 	return proj, errors.Wrap(catcher.Resolve(), LoadProjectError)
 }
 
+func (pp *ParserProject) AddBuildVariant(name string, tasks []string) {
+	bv := parserBV{
+		Name:  name,
+		Tasks: []parserBVTaskUnit{},
+	}
+	for _, taskName := range tasks {
+		bv.Tasks = append(bv.Tasks, parserBVTaskUnit{Name: taskName})
+	}
+}
+
 // sieveMatrixVariants takes a set of parserBVs and groups them into regular
 // buildvariant matrix definitions and matrix definitions.
 func sieveMatrixVariants(bvs []parserBV) (regular []parserBV, matrices []matrix) {
