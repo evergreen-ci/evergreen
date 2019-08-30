@@ -139,6 +139,9 @@ type Host struct {
 
 	// DockerOptions stores information for creating a container with a specific image and command
 	DockerOptions DockerOptions `bson:"docker_options,omitempty" json:"docker_options,omitempty"`
+
+	// InstanceTags stores user-specified tags for instances
+	InstanceTags map[string]string `bson:"instance_tags,omitempty" json:"instance_tags,omitempty"`
 }
 
 func (h *Host) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(h) }

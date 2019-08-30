@@ -22,6 +22,7 @@ type CreateOptions struct {
 	ContainerPoolSettings *evergreen.ContainerPool
 	SpawnOptions          SpawnOptions
 	DockerOptions         DockerOptions
+	InstanceTags          map[string]string
 }
 
 // NewIntent creates an IntentHost using the given host settings. An IntentHost is a host that
@@ -51,6 +52,7 @@ func NewIntent(d distro.Distro, instanceName, provider string, options CreateOpt
 		ContainerPoolSettings: options.ContainerPoolSettings,
 		SpawnOptions:          options.SpawnOptions,
 		DockerOptions:         options.DockerOptions,
+		InstanceTags:          options.InstanceTags,
 	}
 
 	if options.ExpirationDuration != nil {
