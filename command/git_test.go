@@ -215,6 +215,23 @@ func (s *GitGetProjectSuite) TestGitPlugin() {
 	}
 }
 
+func (s *GitGetProjectSuite) TestGitFetchRetries() {
+	c := gitFetchProject{Directory: "dir"}
+
+	conf := s.modelData1.TaskConfig
+	conf.Distro.CloneMethod = "this is not real!"
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	comm := client.NewMock("http://localhost.com")
+	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	s.NoError(err)
+
+	err = c.Execute(ctx, comm, logger, conf)
+	s.Error(err)
+	s.Contains(err.Error(), fmt.Sprintf("after %d retries, operation failed", GitFetchProjectRetries))
+}
+
 func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 	conf := s.modelData1.TaskConfig
 	conf.ProjectRef.Repo = "doesntexist"

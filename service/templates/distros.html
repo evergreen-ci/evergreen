@@ -515,15 +515,37 @@ Evergreen - Distros
               form.plannerSettingsAcceptableHostIdleTime.$modelValue % 1 != 0"> Acceptable Host Idle Time must a non-negative integer
             </div>
             <div>
-              <label class="distro-label">Patch Zipper Factor (0 to 100 inclusive):</label>
+              <label class="distro-label">Patch Factor (0 to 100 inclusive):</label>
               <input ng-readonly="readOnly" type="number" ng-required="activeDistro.planner_settings.version == 'tunable'"
-                name="plannerSettingsPatchZipperFactor" class="form-control" ng-model="activeDistro.planner_settings.patch_zipper_factor" placeholder="Set to 0 to use the its global default">
+                name="plannerSettingsPatchFactor" class="form-control" ng-model="activeDistro.planner_settings.patch_factor" placeholder="Set to 0 to use the its global default">
             </div>
-            <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsPatchZipperFactor.$dirty && form.plannerSettingsPatchZipperFactor.$error.required ||
-              form.plannerSettingsPatchZipperFactor.$invalid ||
-              form.plannerSettingsPatchZipperFactor.$modelValue > 100 ||
-              form.plannerSettingsPatchZipperFactor.$modelValue < 0 ||
-              form.plannerSettingsPatchZipperFactor.$modelValue % 1 != 0"> Patch Zipper Factor must be an integer between 0 and 100
+            <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsPatchFactor.$dirty && form.plannerSettingsPatchFactor.$error.required ||
+              form.plannerSettingsPatchFactor.$invalid ||
+              form.plannerSettingsPatchFactor.$modelValue > 100 ||
+              form.plannerSettingsPatchFactor.$modelValue < 0 ||
+              form.plannerSettingsPatchFactor.$modelValue % 1 != 0"> Patch Factor must be an integer between 0 and 100
+            </div>
+            <div>
+              <label class="distro-label">Time In Queue Factor (0 to 100 inclusive):</label>
+              <input ng-readonly="readOnly" type="number" ng-required="activeDistro.planner_settings.version == 'tunable'"
+                name="plannerSettingsTimeInQueueFactor" class="form-control" ng-model="activeDistro.planner_settings.time_in_queue_factor" placeholder="Set to 0 to use its global default">
+            </div>
+            <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsTimeInQueueFactor.$dirty && form.plannerSettingsTimeInQueueFactor.$error.required ||
+              form.plannerSettingsTimeInQueueFactor.$invalid ||
+              form.plannerSettingsTimeInQueueFactor.$modelValue > 100 ||
+              form.plannerSettingsTimeInQueueFactor.$modelValue < 0 ||
+              form.plannerSettingsTimeInQueueFactor.$modelValue % 1 != 0"> Time In Queue Factor must be an integer between 0 and 100
+            </div>
+            <div>
+              <label class="distro-label">Expected Runtime Factor (0 to 100 inclusive):</label>
+              <input ng-readonly="readOnly" type="number" ng-required="activeDistro.planner_settings.version == 'tunable'"
+                name="plannerSettingsExpectedRuntimeFactor" class="form-control" ng-model="activeDistro.planner_settings.expected_runtime_factor" placeholder="Set to 0 to use its global default">
+            </div>
+            <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsExpectedRuntimeFactor.$dirty && form.plannerSettingsExpectedRuntimeFactor.$error.required ||
+              form.plannerSettingsExpectedRuntimeFactor.$invalid ||
+              form.plannerSettingsExpectedRuntimeFactor.$modelValue > 100 ||
+              form.plannerSettingsExpectedRuntimeFactor.$modelValue < 0 ||
+              form.plannerSettingsExpectedRuntimeFactor.$modelValue % 1 != 0"> Time In Queue Factor must be an integer between 0 and 100
             </div>
             <br/>
             <div class="dropdown">
@@ -571,6 +593,56 @@ Evergreen - Distros
             </div>
           </div>
         </div>
+        <div class="panel-body panel panel-default">
+          <div class="dropdown">
+            <span class="distro-menu-title">Host Bootstrap Method:</span>
+              <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true" ng-disabled="readOnly">
+                <strong class="distro-menu-item">[[activeDistro.bootstrap_settings.method | bootstrapMethodDisplay:this]]<span class="fa fa-caret-down"></span></strong>
+              </button>
+              <ul class="dropdown-menu" style="margin-left: 125px" role="menu">
+                <li required name="bootstrapMethodForm" ng-click="form.$setDirty();activeDistro.bootstrap_settings.method = bootstrapMethod.id" ng-repeat="bootstrapMethod in bootstrapMethods"
+                  role="presentation"><a role="menuitem" tabindex="-1">[[bootstrapMethod.display]]</a></li>
+              </ul>
+          </div>
+          <br />
+          <div class="icon fa fa-warning distro-error" ng-show="form.bootstrapMethodForm.$dirty && form.bootstrapMethodForm.$invalid || bootstrapMethodForm.$error.required">Bootstrap method is required</div>
+          <div class="dropdown">
+            <span class="distro-menu-title">Host Communication Method:</span>
+              <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true" ng-disabled="readOnly">
+                <strong class="distro-menu-item">[[activeDistro.bootstrap_settings.communication | communicationMethodDisplay:this]]<span class="fa fa-caret-down"></span></strong>
+              </button>
+              <ul class="dropdown-menu" style="margin-left: 125px" role="menu">
+                <li required name="communicationMethodForm" ng-click="form.$setDirty();activeDistro.bootstrap_settings.communication = communicationMethod.id" ng-repeat="communicationMethod in communicationMethods"
+                  role="presentation"><a role="menuitem" tabindex="-1">[[communicationMethod.display]]</a></li>
+              </ul>
+          </div>
+          <div class="icon fa fa-warning distro-error" ng-show="!validBootstrapAndCommunication()"> Legacy and non-legacy bootstrapping and communication are incompatible</div>
+          <br />
+          <div ng-show="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'">
+            <label class="distro-label">Shell Path:</label>
+            <input type="text" ng-required="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'" ng-readonly="readOnly" name="shellPath"
+              class="form-control" ng-model="activeDistro.bootstrap_settings.shell_path" placeholder="Absolute native path to the shell binary file (bash)">
+            <div class="icon fa fa-warning distro-error" ng-show="form.shellPath.$invalid"> Shell path is required</div><br>
+          </div>
+          <div ng-show="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'">
+            <label class="distro-label">Jasper Binary Directory:</label>
+            <input type="text" ng-required="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'" ng-readonly="readOnly" name="jasperBinaryDir"
+              class="form-control" ng-model="activeDistro.bootstrap_settings.jasper_binary_dir" placeholder="Absolute native path to the directory of the Jasper binary">
+            <div class="icon fa fa-warning distro-error" ng-show="form.jasperBinaryDir.$invalid"> Jasper binary directory is required</div><br>
+          </div>
+          <div ng-show="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'">
+            <label class="distro-label">Client Directory:</label>
+            <input type="text" ng-required="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'" ng-readonly="readOnly" name="clientDir"
+              class="form-control" ng-model="activeDistro.bootstrap_settings.client_dir" placeholder="Absolute native path to the directory of the evergreen binary">
+            <div class="icon fa fa-warning distro-error" ng-show="form.clientDir.$invalid"> Client directory is required</div><br>
+          </div>
+          <div ng-show="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'">
+            <label class="distro-label">Jasper Credentials Path:</label>
+            <input type="text" ng-required="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'" ng-readonly="readOnly" name="jasperCredentialsPath"
+              class="form-control" ng-model="activeDistro.bootstrap_settings.jasper_credentials_path" placeholder="Absolute native path to the directory containing the Jasper credentials">
+            <div class="icon fa fa-warning distro-error" ng-show="form.jasperCredentialsPath.$invalid"> Jasper credentials path is required</div><br>
+          </div>
+        </div>
         <div>
           <label class="distro-label">User:</label>
           <input required ng-readonly="readOnly" name="userName" type="text" class="form-control" ng-model="activeDistro.user"
@@ -578,29 +650,6 @@ Evergreen - Distros
           <div class="icon fa fa-warning distro-error" ng-show="form.userName.$dirty && form.userName.$error.required || form.userName.$invalid">SSH
             user is required</div><br>
         </div>
-        <div class="dropdown">
-          <span class="distro-menu-title">Bootstrap Method:</span>
-            <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true" ng-disabled="readOnly">
-              <strong class="distro-menu-item">[[activeDistro.bootstrap_method | bootstrapMethodDisplay:this]]<span class="fa fa-caret-down"></span></strong>
-            </button>
-            <ul class="dropdown-menu" style="margin-left: 125px" role="menu">
-              <li required name="bootstrapMethodForm" ng-click="form.$setDirty();activeDistro.bootstrap_method = bootstrapMethod.id" ng-repeat="bootstrapMethod in bootstrapMethods"
-                role="presentation"><a role="menuitem" tabindex="-1">[[bootstrapMethod.display]]</a></li>
-            </ul>
-        </div>
-        <br />
-        <div class="icon fa fa-warning distro-error" ng-show="form.bootstrapMethodForm.$dirty && form.bootstrapMethodForm.$invalid || bootstrapMethodForm.$error.required">Bootstrap method is required</div>
-        <div class="dropdown">
-          <span class="distro-menu-title">Host Communication Method:</span>
-            <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true" ng-disabled="readOnly">
-              <strong class="distro-menu-item">[[activeDistro.communication_method | communicationMethodDisplay:this]]<span class="fa fa-caret-down"></span></strong>
-            </button>
-            <ul class="dropdown-menu" style="margin-left: 125px" role="menu">
-              <li required name="communicationMethodForm" ng-click="form.$setDirty();activeDistro.communication_method = communicationMethod.id" ng-repeat="communicationMethod in communicationMethods"
-                role="presentation"><a role="menuitem" tabindex="-1">[[communicationMethod.display]]</a></li>
-            </ul>
-        </div>
-        <br />
         <div class="icon fa fa-warning distro-error" ng-show="form.communicationMethodForm.$dirty && form.communicationMethodForm.$invalid || communicationMethodForm.$error.required">Communication method is required</div>
         <div class="dropdown">
           <span class="distro-menu-title">Project Cloning Method:</span>
@@ -648,26 +697,6 @@ Evergreen - Distros
             option can not be blank<br /></div>
           <button type="button" class="btn btn-primary" ng-hide="readOnly" ng-disabled="sshForm.opt.$dirty && sshForm.$invalid || sshForm.opt.$error.required"
             ng-click="form.$setDirty();addSSHOption()"><i class="fa fa-plus"></i>Add SSH Option</button>
-        </div>
-        <div>
-          <label class="distro-label">Shell Path:</label>
-          <input type="text" ng-readonly="readOnly" name="shellPath"
-            class="form-control" ng-model="activeDistro.shell_path" placeholder="Absolute native path to the shell binary file (bash)">
-        </div>
-        <div>
-          <label class="distro-label">Curator Directory:</label>
-          <input type="text" ng-readonly="readOnly" name="curatorDir"
-            class="form-control" ng-model="activeDistro.curator_dir" placeholder="Absolute native path to the directory of the curator binary">
-        </div>
-        <div>
-          <label class="distro-label">Client Directory:</label>
-          <input type="text" ng-readonly="readOnly" name="clientDir"
-            class="form-control" ng-model="activeDistro.client_dir" placeholder="Absolute native path to the directory of the evergreen binary">
-        </div>
-        <div>
-          <label class="distro-label">Jasper Credentials Path:</label>
-          <input type="text" ng-readonly="readOnly" name="jasperCredentialsPath"
-            class="form-control" ng-model="activeDistro.jasper_credentials_path" placeholder="Absolute native path to the directory containing the Jasper credentials">
         </div>
         <div>
           <div>

@@ -14,6 +14,11 @@ func PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.Di
 	startAt := time.Now()
 	taskQueue := make([]model.TaskQueueItem, 0, len(tasks))
 	for _, t := range tasks {
+		// Does this task have any dependencies?
+		dependencies := make([]string, 0, len(t.DependsOn))
+		for _, d := range t.DependsOn {
+			dependencies = append(dependencies, d.TaskId)
+		}
 		taskQueue = append(taskQueue, model.TaskQueueItem{
 			Id:                  t.Id,
 			DisplayName:         t.DisplayName,
@@ -26,7 +31,9 @@ func PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.Di
 			Priority:            t.Priority,
 			Group:               t.TaskGroup,
 			GroupMaxHosts:       t.TaskGroupMaxHosts,
+			GroupIndex:          t.TaskGroupOrder,
 			Version:             t.Version,
+			Dependencies:        dependencies,
 		})
 	}
 

@@ -70,7 +70,7 @@ func (staticMgr *staticManager) TerminateInstance(ctx context.Context, host *hos
 	return nil
 }
 
-func (_ *staticManager) GetSettings() ProviderSettings {
+func (staticMgr *staticManager) GetSettings() ProviderSettings {
 	return &StaticSettings{}
 }
 

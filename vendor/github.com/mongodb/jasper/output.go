@@ -71,14 +71,15 @@ const (
 //
 // By default, logger reads from both standard output and standard error.
 type LogOptions struct {
-	BufferOptions      BufferOptions             `json:"buffer_options"`
-	BuildloggerOptions send.BuildloggerConfig    `json:"buildlogger_options"`
-	DefaultPrefix      string                    `json:"default_prefix"`
-	FileName           string                    `json:"file_name"`
+	BufferOptions      BufferOptions             `json:"buffer_options,omitempty"`
+	BuildloggerOptions send.BuildloggerConfig    `json:"buildlogger_options,omitempty"`
+	DefaultPrefix      string                    `json:"default_prefix,omitempty"`
+	FileName           string                    `json:"file_name,omitempty"`
 	Format             LogFormat                 `json:"format"`
-	InMemoryCap        int                       `json:"in_memory_cap"`
-	SplunkOptions      send.SplunkConnectionInfo `json:"splunk_options"`
-	SumoEndpoint       string                    `json:"sumo_endpoint"`
+	InMemoryCap        int                       `json:"in_memory_cap,omitempty"`
+	Level              send.LevelInfo            `json:"level,omitempty"`
+	SplunkOptions      send.SplunkConnectionInfo `json:"splunk_options,omitempty"`
+	SumoEndpoint       string                    `json:"sumo_endpoint,omitempty"`
 }
 
 // Validate ensures that BufferOptions is valid.
@@ -92,6 +93,12 @@ func (opts BufferOptions) Validate() error {
 // Validate ensures that LogOptions is valid.
 func (opts LogOptions) Validate() error {
 	catcher := grip.NewBasicCatcher()
+	if opts.Level.Threshold == 0 && opts.Level.Default == 0 {
+		opts.Level = send.LevelInfo{Default: level.Trace, Threshold: level.Trace}
+	}
+	if !opts.Level.Valid() {
+		catcher.New("invalid log level")
+	}
 	catcher.Wrap(opts.BufferOptions.Validate(), "invalid buffering options")
 	catcher.Wrap(opts.Format.Validate(), "invalid log format")
 	return catcher.Resolve()
@@ -176,6 +183,11 @@ func (l *Logger) Configure() (send.Sender, error) {
 	var sender send.Sender
 	var err error
 
+	if l.Options.Level.Threshold == 0 && l.Options.Level.Default == 0 {
+		l.Options.Level.Threshold = level.Trace
+		l.Options.Level.Default = level.Trace
+	}
+
 	switch l.Type {
 	case LogBuildloggerV2, LogBuildloggerV3:
 		if l.Options.BuildloggerOptions.Local == nil {
@@ -184,7 +196,7 @@ func (l *Logger) Configure() (send.Sender, error) {
 		if l.Options.BuildloggerOptions.Local.Name() == "" {
 			l.Options.BuildloggerOptions.Local.SetName(DefaultLogName)
 		}
-		sender, err = send.MakeBuildlogger(DefaultLogName, &l.Options.BuildloggerOptions)
+		sender, err = send.NewBuildlogger(DefaultLogName, &l.Options.BuildloggerOptions, l.Options.Level)
 		if err != nil {
 			return nil, err
 		}
@@ -192,23 +204,25 @@ func (l *Logger) Configure() (send.Sender, error) {
 		if l.Options.DefaultPrefix == "" {
 			l.Options.DefaultPrefix = DefaultLogName
 		}
-		sender, err = send.NewNativeLogger(l.Options.DefaultPrefix, send.LevelInfo{Default: level.Trace, Threshold: level.Trace})
+		sender, err = send.NewNativeLogger(l.Options.DefaultPrefix, l.Options.Level)
 		if err != nil {
 			return nil, err
 		}
 	case LogFile:
-		sender, err = send.MakePlainFileLogger(l.Options.FileName)
+		sender, err = send.NewPlainFileLogger(DefaultLogName, l.Options.FileName, l.Options.Level)
 		if err != nil {
 			return nil, err
 		}
-		sender.SetName(DefaultLogName)
 	case LogInherit:
 		sender = grip.GetSender()
+		if err := sender.SetLevel(l.Options.Level); err != nil {
+			return nil, err
+		}
 	case LogSplunk:
 		if !l.Options.SplunkOptions.Populated() {
 			return nil, errors.New("missing connection info for output type splunk")
 		}
-		sender, err = send.NewSplunkLogger(DefaultLogName, l.Options.SplunkOptions, send.LevelInfo{Default: level.Trace, Threshold: level.Trace})
+		sender, err = send.NewSplunkLogger(DefaultLogName, l.Options.SplunkOptions, l.Options.Level)
 		if err != nil {
 			return nil, err
 		}
@@ -220,11 +234,14 @@ func (l *Logger) Configure() (send.Sender, error) {
 		if err != nil {
 			return nil, err
 		}
+		if err := sender.SetLevel(l.Options.Level); err != nil {
+			return nil, err
+		}
 	case LogInMemory:
 		if l.Options.InMemoryCap <= 0 {
 			return nil, errors.New("invalid inmemory capacity")
 		}
-		sender, err = send.NewInMemorySender(DefaultLogName, send.LevelInfo{Default: level.Trace, Threshold: level.Trace}, l.Options.InMemoryCap)
+		sender, err = send.NewInMemorySender(DefaultLogName, l.Options.Level, l.Options.InMemoryCap)
 		if err != nil {
 			return nil, err
 		}
@@ -345,7 +362,7 @@ func (o OutputOptions) errorIsNull() bool {
 
 // Validate ensures that the OutputOptions it is called on has reasonable
 // values.
-func (o OutputOptions) Validate() error {
+func (o *OutputOptions) Validate() error {
 	catcher := grip.NewBasicCatcher()
 
 	if o.SuppressOutput && (!o.outputIsNull() || o.outputLogging()) {

@@ -87,7 +87,7 @@ func (j *setupHostJob) Run(ctx context.Context) {
 			return
 		}
 	}
-	if j.host.Status == evergreen.HostRunning {
+	if j.host.Status == evergreen.HostRunning || j.host.Provisioned {
 		grip.Info(message.Fields{
 			"job":     j.ID(),
 			"host":    j.host.Id,
@@ -133,6 +133,16 @@ func (j *setupHostJob) setupHost(ctx context.Context, h *host.Host, settings *ev
 
 	if err := j.provisionHost(ctx, h, settings); err != nil {
 		event.LogHostProvisionError(h.Id)
+
+		if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodSSH {
+			grip.Error(message.WrapError(j.host.DeleteJasperCredentials(ctx), message.Fields{
+				"message":  "could not delete Jasper credentials after failed provision attempt",
+				"host":     j.host.Id,
+				"distro":   j.host.Distro.Id,
+				"attempts": h.ProvisionAttempts,
+				"job":      j.ID(),
+			}))
+		}
 
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":  "provisioning host encountered error",
@@ -223,23 +233,33 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 		return err
 	}
 
-	switch targetHost.Distro.BootstrapMethod {
+	switch targetHost.Distro.BootstrapSettings.Method {
 	case distro.BootstrapMethodUserData:
-		// The setup is done at this point for a host bootstrapped with user
-		// data, because this host only needs to perform operations that must be
-		// done after the host is already running (e.g. setting DNS name).
-		if err = targetHost.MarkAsProvisioned(); err != nil {
+		// Updating the host LCT prevents the agent monitor deploy job from
+		// running. The agent monitor should be started by the user data script.
+		grip.Error(message.WrapError(targetHost.UpdateLastCommunicated(), message.Fields{
+			"message": "failed to update host's last communication time",
+			"host":    targetHost.Id,
+			"distro":  targetHost.Distro.Id,
+			"job":     j.ID(),
+		}))
+
+		// Do not set the host to running - hosts bootstrapped with user data
+		// are not considered done provisioning until user data has finished
+		// running.
+		if err = targetHost.SetProvisionedNotRunning(); err != nil {
 			return errors.Wrapf(err, "error marking host %s as provisioned", targetHost.Id)
 		}
 
 		grip.Info(message.Fields{
+			"message":                 "host successfully provisioned by app server, awaiting host to finish provisioning itself",
 			"host":                    targetHost.Id,
 			"distro":                  targetHost.Distro.Id,
+			"bootstrap_method":        targetHost.Distro.BootstrapSettings.Method,
 			"provider":                targetHost.Provider,
 			"attempts":                targetHost.ProvisionAttempts,
 			"job":                     j.ID(),
-			"message":                 "host successfully provisioned",
-			"provision_duration_secs": targetHost.ProvisionTime.Sub(targetHost.CreationTime).Seconds(),
+			"provision_duration_secs": time.Now().Sub(targetHost.CreationTime).Seconds(),
 		})
 		return nil
 	case distro.BootstrapMethodSSH:
@@ -286,7 +306,7 @@ func (j *setupHostJob) setupJasper(ctx context.Context) error {
 		return errors.Wrapf(err, "error getting ssh options for host %s", j.host.Id)
 	}
 
-	if err := j.putJasperCredentials(ctx, j.host.Distro.JasperCredentialsPath, sshOptions); err != nil {
+	if err := j.putJasperCredentials(ctx, j.host.Distro.BootstrapSettings.JasperCredentialsPath, sshOptions); err != nil {
 		return errors.Wrap(err, "error putting Jasper credentials on remote host")
 	}
 
@@ -307,7 +327,7 @@ func (j *setupHostJob) setupJasper(ctx context.Context) error {
 // putJasperCredentials creates Jasper credentials for the host and puts the
 // credentials file on the host.
 func (j *setupHostJob) putJasperCredentials(ctx context.Context, fileName string, sshOptions []string) error {
-	creds, err := j.host.GenerateJasperCredentials(ctx, j.env)
+	creds, err := j.host.GenerateJasperCredentials(ctx)
 	if err != nil {
 		return errors.Wrap(err, "could not generate Jasper credentials for host")
 	}
@@ -375,7 +395,7 @@ func (j *setupHostJob) putJasperCredentials(ctx context.Context, fileName string
 		return errors.Wrap(err, "error copying credentials to remote machine")
 	}
 
-	if err := j.host.SaveJasperCredentials(ctx, j.env, creds); err != nil {
+	if err := j.host.SaveJasperCredentials(ctx, creds); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "problem saving host credentials",
 			"job":     j.ID(),
@@ -391,7 +411,7 @@ func (j *setupHostJob) putJasperCredentials(ctx context.Context, fileName string
 // doFetchAndReinstallJasper runs the SSH command over that downloads the latest
 // Jasper binary and restarts the service.
 func (j *setupHostJob) doFetchAndReinstallJasper(ctx context.Context, sshOptions []string) error {
-	cmd := j.host.FetchAndReinstallJasperCommand(j.env.Settings().HostJasper)
+	cmd := j.host.FetchAndReinstallJasperCommand(j.env.Settings())
 	if logs, err := j.host.RunSSHCommand(ctx, cmd, sshOptions); err != nil {
 		return errors.Wrapf(err, "error while fetching Jasper binary and installing service on remote host: command returned %s", logs)
 	}
@@ -550,7 +570,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 
 		return errors.Wrapf(err, "error initializing host %s", h.Id)
 	}
-	if h.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
+	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
 		return nil
 	}
 

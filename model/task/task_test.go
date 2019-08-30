@@ -26,11 +26,11 @@ var (
 )
 
 var depTaskIds = []Dependency{
-	{"td1", evergreen.TaskSucceeded},
-	{"td2", evergreen.TaskSucceeded},
-	{"td3", ""}, // Default == "success"
-	{"td4", evergreen.TaskFailed},
-	{"td5", AllStatuses},
+	{TaskId: "td1", Status: evergreen.TaskSucceeded},
+	{TaskId: "td2", Status: evergreen.TaskSucceeded},
+	{TaskId: "td3", Status: ""}, // Default == "success"
+	{TaskId: "td4", Status: evergreen.TaskFailed},
+	{TaskId: "td5", Status: AllStatuses},
 }
 
 // update statuses of test tasks in the db
@@ -296,7 +296,7 @@ func TestTaskSetPriority(t *testing.T) {
 		tasks := []Task{
 			{
 				Id:        "one",
-				DependsOn: []Dependency{{"two", ""}, {"three", ""}, {"four", ""}},
+				DependsOn: []Dependency{{TaskId: "two", Status: ""}, {TaskId: "three", Status: ""}, {TaskId: "four", Status: ""}},
 				Activated: true,
 			},
 			{
@@ -306,12 +306,12 @@ func TestTaskSetPriority(t *testing.T) {
 			},
 			{
 				Id:        "three",
-				DependsOn: []Dependency{{"five", ""}},
+				DependsOn: []Dependency{{TaskId: "five", Status: ""}},
 				Activated: true,
 			},
 			{
 				Id:        "four",
-				DependsOn: []Dependency{{"five", ""}},
+				DependsOn: []Dependency{{TaskId: "five", Status: ""}},
 				Activated: true,
 			},
 			{
@@ -1168,6 +1168,230 @@ func TestFindVariantsWithTask(t *testing.T) {
 	require.Len(t, bvs, 2)
 	assert.Equal(bvs[0], "bv2")
 	assert.Equal(bvs[1], "bv1")
+}
+
+func TestUpdateBlockedDependencies(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	tasks := []Task{
+		{
+			Id:     "t0",
+			Status: evergreen.TaskFailed,
+		},
+		{
+			Id: "t1",
+			DependsOn: []Dependency{
+				{
+					TaskId: "t0",
+					Status: evergreen.TaskSucceeded,
+				},
+			},
+			Status: evergreen.TaskUndispatched,
+		},
+		{
+			Id: "t2",
+			DependsOn: []Dependency{
+				{
+					TaskId: "t1",
+					Status: evergreen.TaskSucceeded,
+				},
+			},
+			Status: evergreen.TaskUndispatched,
+		},
+		{
+			Id: "t3",
+			DependsOn: []Dependency{
+				{
+					TaskId:       "t2",
+					Status:       evergreen.TaskSucceeded,
+					Unattainable: true,
+				},
+			},
+			Status: evergreen.TaskUndispatched,
+		},
+		{
+			Id: "t4",
+			DependsOn: []Dependency{
+				{
+					TaskId: "t3",
+					Status: evergreen.TaskSucceeded,
+				},
+			},
+		},
+	}
+	for _, task := range tasks {
+		assert.NoError(task.Insert())
+	}
+
+	assert.NoError(tasks[0].UpdateBlockedDependencies())
+	dbTask1, err := FindOneId(tasks[1].Id)
+	assert.NoError(err)
+	assert.True(dbTask1.DependsOn[0].Unattainable)
+	dbTask2, err := FindOneId(tasks[2].Id)
+	assert.NoError(err)
+	assert.True(dbTask2.DependsOn[0].Unattainable)
+	dbTask3, err := FindOneId(tasks[3].Id)
+	assert.NoError(err)
+	assert.True(dbTask3.DependsOn[0].Unattainable)
+	// We don't traverse past t3 which was already unattainable == true
+	dbTask4, err := FindOneId(tasks[4].Id)
+	assert.NoError(err)
+	assert.False(dbTask4.DependsOn[0].Unattainable)
+}
+
+func TestUpdateUnblockedDependencies(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	tasks := []Task{
+		{Id: "t0"},
+		{
+			Id: "t1",
+			DependsOn: []Dependency{
+				{
+					TaskId:       "t0",
+					Unattainable: true,
+				},
+			},
+			Status: evergreen.TaskUndispatched,
+		},
+		{
+			Id: "t2",
+			DependsOn: []Dependency{
+				{
+					TaskId:       "t1",
+					Unattainable: false,
+				},
+			},
+			Status: evergreen.TaskUndispatched,
+		},
+		{
+			Id: "t3",
+			DependsOn: []Dependency{
+				{
+					TaskId:       "t2",
+					Unattainable: true,
+				},
+			},
+			Status: evergreen.TaskUndispatched,
+		},
+	}
+
+	for _, task := range tasks {
+		assert.NoError(task.Insert())
+	}
+
+	assert.NoError(tasks[0].UpdateUnblockedDependencies())
+	dbTask1, err := FindOneId(tasks[1].Id)
+	assert.NoError(err)
+	assert.False(dbTask1.DependsOn[0].Unattainable)
+	dbTask2, err := FindOneId(tasks[2].Id)
+	assert.NoError(err)
+	assert.False(dbTask2.DependsOn[0].Unattainable)
+	// We don't traverse past the t2 which was already unattainable == false
+	dbTask3, err := FindOneId(tasks[3].Id)
+	assert.NoError(err)
+	assert.True(dbTask3.DependsOn[0].Unattainable)
+}
+
+func TestFindAllUnmarkedBlockedDependencies(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	t1 := &Task{
+		Id:     "t1",
+		Status: evergreen.TaskFailed,
+	}
+
+	tasks := []Task{
+		{
+			Id: "t2",
+			DependsOn: []Dependency{
+				{
+					TaskId: "t1",
+					Status: evergreen.TaskSucceeded,
+				},
+			},
+		},
+		{
+			Id: "t3",
+			DependsOn: []Dependency{
+				{
+					TaskId: "t1",
+					Status: evergreen.TaskFailed,
+				},
+			},
+		},
+		{
+			Id: "t4",
+			DependsOn: []Dependency{
+				{
+					TaskId:       "t1",
+					Status:       evergreen.TaskSucceeded,
+					Unattainable: true,
+				},
+			},
+		},
+		{
+			Id: "t5",
+			DependsOn: []Dependency{
+				{
+					TaskId: "t1",
+					Status: evergreen.TaskFailed,
+				},
+				{
+					TaskId: "t2",
+					Status: evergreen.TaskSucceeded,
+				},
+			},
+		},
+	}
+	for _, task := range tasks {
+		assert.NoError(task.Insert())
+	}
+
+	deps, err := t1.findAllUnmarkedBlockedDependencies()
+	assert.NoError(err)
+	assert.Len(deps, 1)
+}
+
+func TestFindAllMarkedUnattainableDependencies(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	t1 := &Task{Id: "t1"}
+	tasks := []Task{
+		{
+			Id: "t2",
+			DependsOn: []Dependency{
+				{
+					TaskId:       "t1",
+					Unattainable: true,
+				},
+			},
+		},
+		{
+			Id: "t3",
+			DependsOn: []Dependency{
+				{
+					TaskId: "t1",
+				},
+				{
+					TaskId:       "t2",
+					Unattainable: true,
+				},
+			},
+		},
+	}
+
+	for _, task := range tasks {
+		assert.NoError(task.Insert())
+	}
+
+	unattainableTasks, err := t1.findAllMarkedUnattainableDependencies()
+	assert.NoError(err)
+	assert.Len(unattainableTasks, 1)
 }
 
 func TestGetTimeSpent(t *testing.T) {

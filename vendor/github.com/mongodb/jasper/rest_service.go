@@ -84,6 +84,7 @@ func (s *Service) App(ctx context.Context) *gimlet.APIApp {
 	app.AddRoute("/process/{id}/signal/{signal}").Version(1).Patch().Handler(s.signalProcess)
 	app.AddRoute("/process/{id}/trigger/signal/{trigger-id}").Version(1).Patch().Handler(s.registerSignalTriggerID)
 	app.AddRoute("/signal/event/{name}").Version(1).Patch().Handler(s.signalEvent)
+	app.AddRoute("/file/write").Version(1).Put().Handler(s.writeFile)
 	app.AddRoute("/clear").Version(1).Post().Handler(s.clearManager)
 	app.AddRoute("/close").Version(1).Delete().Handler(s.closeManager)
 
@@ -521,7 +522,7 @@ func (s *Service) downloadFile(rw http.ResponseWriter, r *http.Request) {
 
 	if err := info.Download(); err != nil {
 		writeError(rw, gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
+			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "problem occurred during file download for URL %s", info.URL).Error(),
 		})
 		return
@@ -569,6 +570,59 @@ func (s *Service) getLogStream(rw http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(rw, stream)
 }
 
+func (s *Service) signalEvent(rw http.ResponseWriter, r *http.Request) {
+	vars := gimlet.GetVars(r)
+	name := vars["name"]
+	ctx := r.Context()
+
+	if err := SignalEvent(ctx, name); err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "problem signaling event named '%s'", name).Error(),
+		})
+		return
+	}
+
+	gimlet.WriteJSON(rw, struct{}{})
+}
+
+func (s *Service) writeFile(rw http.ResponseWriter, r *http.Request) {
+	var info WriteFileInfo
+	if err := gimlet.GetJSON(r.Body, &info); err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Wrap(err, "problem reading request").Error(),
+		})
+		return
+	}
+
+	if err := info.Validate(); err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Wrap(err, "problem validating file write info").Error(),
+		})
+		return
+	}
+
+	if err := info.DoWrite(); err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "problem occurred during file write to %s", info.Path).Error(),
+		})
+		return
+	}
+
+	if err := info.SetPerm(); err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "problem occurred while setting permissions on file %s", info.Path).Error(),
+		})
+		return
+	}
+
+	gimlet.WriteJSON(rw, struct{}{})
+}
+
 func (s *Service) clearManager(rw http.ResponseWriter, r *http.Request) {
 	s.manager.Clear(r.Context())
 	gimlet.WriteJSON(rw, struct{}{})
@@ -579,35 +633,6 @@ func (s *Service) closeManager(rw http.ResponseWriter, r *http.Request) {
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    err.Error(),
-		})
-		return
-	}
-
-	gimlet.WriteJSON(rw, struct{}{})
-}
-
-func (s *Service) downloadMongoDB(rw http.ResponseWriter, r *http.Request) {
-	opts := MongoDBDownloadOptions{}
-	if err := gimlet.GetJSON(r.Body, &opts); err != nil {
-		writeError(rw, gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    errors.Wrap(err, "problem reading request").Error(),
-		})
-		return
-	}
-
-	if err := opts.Validate(); err != nil {
-		writeError(rw, gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    errors.Wrap(err, "problem validating MongoDB download options").Error(),
-		})
-		return
-	}
-
-	if err := SetupDownloadMongoDBReleases(r.Context(), s.cache, opts); err != nil {
-		writeError(rw, gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "problem in download setup").Error(),
 		})
 		return
 	}
@@ -646,6 +671,35 @@ func (s *Service) configureCache(rw http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(rw, struct{}{})
 }
 
+func (s *Service) downloadMongoDB(rw http.ResponseWriter, r *http.Request) {
+	opts := MongoDBDownloadOptions{}
+	if err := gimlet.GetJSON(r.Body, &opts); err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Wrap(err, "problem reading request").Error(),
+		})
+		return
+	}
+
+	if err := opts.Validate(); err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Wrap(err, "problem validating MongoDB download options").Error(),
+		})
+		return
+	}
+
+	if err := SetupDownloadMongoDBReleases(r.Context(), s.cache, opts); err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "problem in download setup").Error(),
+		})
+		return
+	}
+
+	gimlet.WriteJSON(rw, struct{}{})
+}
+
 func (s *Service) registerSignalTriggerID(rw http.ResponseWriter, r *http.Request) {
 	vars := gimlet.GetVars(r)
 	id := vars["id"]
@@ -675,22 +729,6 @@ func (s *Service) registerSignalTriggerID(rw http.ResponseWriter, r *http.Reques
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "problem registering signal trigger with id '%s'", sigTriggerID).Error(),
-		})
-		return
-	}
-
-	gimlet.WriteJSON(rw, struct{}{})
-}
-
-func (s *Service) signalEvent(rw http.ResponseWriter, r *http.Request) {
-	vars := gimlet.GetVars(r)
-	name := vars["name"]
-	ctx := r.Context()
-
-	if err := SignalEvent(ctx, name); err != nil {
-		writeError(rw, gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "problem signaling event named '%s'", name).Error(),
 		})
 		return
 	}

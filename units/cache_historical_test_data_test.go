@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	_ "github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -84,10 +85,12 @@ func (s *cacheHistoryTestDataSuite) TestFindSyncDateOutsideOfAWeek() {
 
 func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStats() {
 	now := time.Now()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	callCountFn0 := 0
 
-	mockFn0 := func(p string, r string, h time.Time, ts []string, jobTime time.Time) error {
+	mockFn0 := func(ctx context.Context, p string, r string, h time.Time, ts []string, jobTime time.Time) error {
 		s.Equal(s.projectId, p)
 		s.Equal(s.requester, r)
 		s.Contains(s.hours, h)
@@ -100,7 +103,7 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStats() {
 
 	callCountFn1 := 0
 
-	mockFn1 := func(p string, r string, d time.Time, ts []string, jobTime time.Time) error {
+	mockFn1 := func(ctx context.Context, p string, r string, d time.Time, ts []string, jobTime time.Time) error {
 		s.Equal(s.projectId, p)
 		s.Equal(s.requester, r)
 		s.Contains(s.days, d)
@@ -124,20 +127,21 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStats() {
 	c := cacheHistoricalJobContext{
 		ProjectID: s.projectId,
 		JobTime:   now,
+		catcher:   grip.NewBasicCatcher(),
 	}
 
-	err := c.updateHourlyAndDailyStats(s.statsList, mockGenFns)
-	s.NoError(err)
+	_ = c.updateHourlyAndDailyStats(ctx, s.statsList, mockGenFns)
+	s.NoError(c.catcher.Resolve())
 	s.Equal(len(mockGenFns.HourlyFns)*3, callCountFn0)
 	s.Equal(len(mockGenFns.DailyFns)*2, callCountFn1)
 }
 
 func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStatsWithAnHourlyError() {
-	mockFn0 := func(p string, r string, h time.Time, ts []string, jobTime time.Time) error {
+	mockFn0 := func(ctx context.Context, p string, r string, h time.Time, ts []string, jobTime time.Time) error {
 		return fmt.Errorf("error message")
 	}
 
-	mockFn1 := func(p string, r string, d time.Time, ts []string, jobTime time.Time) error {
+	mockFn1 := func(ctx context.Context, p string, r string, d time.Time, ts []string, jobTime time.Time) error {
 		return nil
 	}
 
@@ -151,20 +155,23 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStatsWithAnHourlyErr
 		},
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	c := cacheHistoricalJobContext{
 		ProjectID: s.projectId,
 		JobTime:   time.Now(),
+		catcher:   grip.NewBasicCatcher(),
 	}
-	err := c.updateHourlyAndDailyStats(s.statsList, mockGenFns)
-	s.Error(err)
+	_ = c.updateHourlyAndDailyStats(ctx, s.statsList, mockGenFns)
+	s.Error(c.catcher.Resolve())
 }
 
 func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStatsWithADailyError() {
-	mockFn0 := func(p string, r string, h time.Time, ts []string, jobTime time.Time) error {
+	mockFn0 := func(ctx context.Context, p string, r string, h time.Time, ts []string, jobTime time.Time) error {
 		return nil
 	}
 
-	mockFn1 := func(p string, r string, d time.Time, ts []string, jobTime time.Time) error {
+	mockFn1 := func(ctx context.Context, p string, r string, d time.Time, ts []string, jobTime time.Time) error {
 		return fmt.Errorf("error message")
 	}
 
@@ -181,15 +188,21 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStatsWithADailyError
 	c := cacheHistoricalJobContext{
 		ProjectID: s.projectId,
 		JobTime:   time.Now(),
+		catcher:   grip.NewBasicCatcher(),
 	}
-	err := c.updateHourlyAndDailyStats(s.statsList, mockGenFns)
-	s.Error(err)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_ = c.updateHourlyAndDailyStats(ctx, s.statsList, mockGenFns)
+	s.Error(c.catcher.Resolve())
 }
 
 func (s *cacheHistoryTestDataSuite) TestIteratorOverHourlyStats() {
 	callCount := 0
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	mockHourlyGenerateFn := func(projId string, req string, h time.Time, tasks []string,
+	mockHourlyGenerateFn := func(ctx context.Context, projId string, req string, h time.Time, tasks []string,
 		jobTime time.Time) error {
 		callCount++
 		s.Equal(s.projectId, projId)
@@ -203,7 +216,7 @@ func (s *cacheHistoryTestDataSuite) TestIteratorOverHourlyStats() {
 		ProjectID: s.projectId,
 		JobTime:   time.Now(),
 	}
-	err := c.iteratorOverHourlyStats(s.statsList, mockHourlyGenerateFn, "hourly")
+	err := c.iteratorOverHourlyStats(ctx, s.statsList, mockHourlyGenerateFn, "hourly")
 	s.NoError(err)
 	s.Equal(len(s.statsList), callCount)
 }
@@ -220,7 +233,7 @@ func (s *cacheHistoryTestDataSuite) TestIteratorOverDailyStats() {
 
 	callCount := 0
 
-	mockDailyGenerateFn := func(projId string, req string, d time.Time, tasks []string,
+	mockDailyGenerateFn := func(ctx context.Context, projId string, req string, d time.Time, tasks []string,
 		jobTime time.Time) error {
 		callCount++
 		s.Equal(s.projectId, projId)
@@ -229,11 +242,13 @@ func (s *cacheHistoryTestDataSuite) TestIteratorOverDailyStats() {
 		return nil
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	c := cacheHistoricalJobContext{
 		ProjectID: s.projectId,
 		JobTime:   time.Now(),
 	}
-	err := c.iteratorOverDailyStats(statsRollup, mockDailyGenerateFn, "daily")
+	err := c.iteratorOverDailyStats(ctx, statsRollup, mockDailyGenerateFn, "daily")
 	s.NoError(err)
 	s.Equal(len(statsRollup), callCount)
 }

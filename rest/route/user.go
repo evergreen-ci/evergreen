@@ -90,6 +90,14 @@ func (h *userSettingsPostHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error saving user settings"))
 	}
 
+	if h.settings.SpruceFeedback != nil {
+		h.settings.SpruceFeedback.SubmittedAt = time.Now()
+		h.settings.SpruceFeedback.User = model.ToAPIString(u.Username())
+		if err = h.sc.SubmitFeedback(*h.settings.SpruceFeedback); err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
+		}
+	}
+
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
@@ -162,4 +170,33 @@ func (h *userAuthorGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(apiAuthor)
+}
+
+type getAllRolesHandler struct {
+	sc data.Connector
+}
+
+func makeGetAllRolesHandler(sc data.Connector) gimlet.RouteHandler {
+	return &getAllRolesHandler{
+		sc: sc,
+	}
+}
+
+func (h *getAllRolesHandler) Factory() gimlet.RouteHandler {
+	return &userAuthorGetHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *getAllRolesHandler) Parse(ctx context.Context, r *http.Request) error {
+	return nil
+}
+
+func (h *getAllRolesHandler) Run(ctx context.Context) gimlet.Responder {
+	roles, err := h.sc.GetAllRoles()
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+
+	return gimlet.NewJSONResponse(roles)
 }

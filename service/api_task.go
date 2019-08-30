@@ -25,7 +25,7 @@ import (
 
 // if a host encounters more than this number of system failures, then it should be disabled.
 const consecutiveSystemFailureThreshold = 3
-const taskQueueServiceTTL = time.Minute
+const taskDispatcherTTL = time.Minute
 
 // StartTask is the handler function that retrieves the task from the request
 // and acquires the global lock
@@ -142,18 +142,10 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 	details := &apimodels.TaskEndDetail{}
 	endTaskResp := &apimodels.EndTaskResponse{}
-	startPhaseAt := time.Now()
 	if err := util.ReadJSONInto(util.NewRequestReader(r), details); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	grip.NoticeWhen(time.Since(startPhaseAt) > slowThreshold, message.Fields{
-		"message":       "slow operation",
-		"function":      "EndTask",
-		"step":          "parse request",
-		"task":          t.Id,
-		"duration_secs": time.Since(startPhaseAt).Seconds(),
-	})
 
 	// Check that finishing status is a valid constant
 	if !validateTaskEndDetails(details) {
@@ -176,7 +168,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	startPhaseAt = time.Now()
 	// clear the running task on the host startPhaseAt that the task has finished
 	if err := currentHost.ClearRunningAndSetLastTask(t); err != nil {
 		err = errors.Wrapf(err, "error clearing running task %s for host %s", t.Id, currentHost.Id)
@@ -184,13 +175,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	grip.NoticeWhen(time.Since(startPhaseAt) > slowThreshold, message.Fields{
-		"message":       "slow operation",
-		"function":      "EndTask",
-		"step":          "ClearRunningAndSetLastTask",
-		"task":          t.Id,
-		"duration_secs": time.Since(startPhaseAt).Seconds(),
-	})
 
 	projectRef, err := model.FindOneProjectRef(t.Project)
 	if err != nil {
@@ -202,7 +186,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// mark task as finished
-	startPhaseAt = time.Now()
 	updates := model.StatusChanges{}
 	err = model.MarkEnd(t, APIServerLockTitle, finishTime, details, projectRef.DeactivatePrevious, &updates)
 	if err != nil {
@@ -210,13 +193,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	grip.NoticeWhen(time.Since(startPhaseAt) > slowThreshold, message.Fields{
-		"message":       "slow operation",
-		"function":      "EndTask",
-		"step":          "MarkEnd",
-		"task":          t.Id,
-		"duration_secs": time.Since(startPhaseAt).Seconds(),
-	})
 
 	// the task was aborted if it is still in undispatched.
 	// the active state should be inactive.
@@ -233,7 +209,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// For a single-host task group, if a task fails, block and dequeue later tasks in that group.
-	startPhaseAt = time.Now()
 	if t.TaskGroup != "" && t.TaskGroupMaxHosts == 1 && details.Status != evergreen.TaskSucceeded {
 		if err = model.BlockTaskGroupTasks(t.Id); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -246,49 +221,26 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 			"task_id": t.Id,
 		})
 	}
-	grip.NoticeWhen(time.Since(startPhaseAt) > slowThreshold, message.Fields{
-		"message":       "slow operation",
-		"function":      "EndTask",
-		"step":          "BlockTaskGroupTasks",
-		"task":          t.Id,
-		"duration_secs": time.Since(startPhaseAt).Seconds(),
-	})
 
-	startPhaseAt = time.Now()
 	job := units.NewCollectTaskEndDataJob(t, currentHost)
 	if err = as.queue.Put(r.Context(), job); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrap(err, "couldn't queue job to update task cost accounting"))
 		return
 	}
-	grip.NoticeWhen(time.Since(startPhaseAt) > slowThreshold, message.Fields{
-		"message":       "slow operation",
-		"function":      "EndTask",
-		"step":          "collect task data job",
-		"task":          t.Id,
-		"duration_secs": time.Since(startPhaseAt).Seconds(),
-	})
 
 	// update the bookkeeping entry for the task
-	startPhaseAt = time.Now()
 	err = task.UpdateExpectedDuration(t, t.TimeTaken)
-	grip.NoticeWhen(time.Since(startPhaseAt) > slowThreshold, message.Fields{
-		"message":       "slow operation",
-		"function":      "EndTask",
-		"step":          "UpdateExpectedDuration",
-		"task":          t.Id,
-		"duration_secs": time.Since(startPhaseAt).Seconds(),
-	})
 	if err != nil {
 		grip.Warning(message.WrapError(err, "problem updating expected duration"))
 	}
 
 	env := evergreen.GetEnvironment()
-	startPhaseAt = time.Now()
+	settings := env.Settings()
 	if checkHostHealth(currentHost) {
 		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 		defer cancel()
-		if err = currentHost.StopAgentMonitor(ctx, env); err != nil {
+		if err = currentHost.StopAgentMonitor(ctx, settings); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":   "problem stopping agent monitor",
 				"host":      currentHost.Id,
@@ -305,18 +257,10 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		}
 		endTaskResp.ShouldExit = true
 	}
-	grip.NoticeWhen(time.Since(startPhaseAt) > slowThreshold, message.Fields{
-		"message":       "slow operation",
-		"function":      "EndTask",
-		"step":          "check host health",
-		"task":          t.Id,
-		"duration_secs": time.Since(startPhaseAt).Seconds(),
-	})
 
 	// we should disable hosts and prevent them from performing
 	// more work if they appear to be in a bad state
 	// (e.g. encountered 5 consecutive system failures)
-	startPhaseAt = time.Now()
 	if event.AllRecentHostEventsMatchStatus(currentHost.Id, consecutiveSystemFailureThreshold, evergreen.TaskSystemFailed) {
 		msg := "host encountered consecutive system failures"
 		if currentHost.Provider != evergreen.ProviderNameStatic {
@@ -337,7 +281,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 		defer cancel()
-		if err = currentHost.StopAgentMonitor(ctx, env); err != nil {
+		if err = currentHost.StopAgentMonitor(ctx, settings); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":   "problem stopping agent monitor",
 				"host":      currentHost.Id,
@@ -349,13 +293,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		}
 		endTaskResp.ShouldExit = true
 	}
-	grip.NoticeWhen(time.Since(startPhaseAt) > slowThreshold, message.Fields{
-		"message":       "slow operation",
-		"function":      "EndTask",
-		"step":          "clean up poisoned hosts",
-		"task":          t.Id,
-		"duration_secs": time.Since(startPhaseAt).Seconds(),
-	})
 
 	grip.Info(message.Fields{
 		"message":   "Successfully marked task as finished",
@@ -369,7 +306,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 // assignNextAvailableTask gets the next task from the queue and sets the running task field
 // of currentHost.
-func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.TaskQueueService, currentHost *host.Host) (*task.Task, error) {
+func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, dispatcher model.TaskQueueItemDispatcher, currentHost *host.Host) (*task.Task, error) {
 	if currentHost.RunningTask != "" {
 		grip.Error(message.Fields{
 			"message":      "tried to assign task to a host already running task",
@@ -383,7 +320,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 		spec = model.TaskSpec{
 			Group:        currentHost.LastGroup,
 			BuildVariant: currentHost.LastBuildVariant,
-			ProjectID:    currentHost.LastProject,
+			Project:      currentHost.LastProject,
 			Version:      currentHost.LastVersion,
 		}
 	}
@@ -420,49 +357,21 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 	// continue must be preceded by dequeueing the current task from the
 	// queue to prevent an infinite loop.
 	for taskQueue.Length() != 0 {
+		if err = ctx.Err(); err != nil {
+			return nil, errors.WithStack(err)
+		}
+
 		var queueItem *model.TaskQueueItem
 		switch d.PlannerSettings.Version {
 		case evergreen.PlannerVersionTunable, evergreen.PlannerVersionRevised:
-			queueItem, err = taskQueueService.RefreshFindNextTask(d.Id, spec)
+			queueItem, err = dispatcher.RefreshFindNextTask(d.Id, spec)
 			if err != nil {
-				grip.Critical(message.WrapError(err, message.Fields{
-					"message":                  "problem getting next task for the given host",
-					"distro_id":                d.Id,
-					"host_id":                  currentHost.Id,
-					"host_last_task_id":        currentHost.LastTask,
-					"taskspec_group":           spec.Group,
-					"taskspec_build_variant":   spec.BuildVariant,
-					"taskspec_version":         spec.Version,
-					"taskspec_project_id":      spec.ProjectID,
-					"taskspec_group_max_hosts": spec.GroupMaxHosts,
-				}))
 				return nil, errors.Wrap(err, "problem getting next task")
 			}
 		default:
 			queueItem = taskQueue.FindNextTask(spec)
 		}
 		if queueItem == nil {
-			grip.DebugWhen(d.PlannerSettings.Version == evergreen.PlannerVersionRevised, message.Fields{
-				// "ticket":                        "EVG-6289",
-				"function":                      "assignNextAvailableTask",
-				"message":                       "taskQueueService.RefreshFindNextTask returned no task - returning nil",
-				"distro_id":                     d.Id,
-				"host_id":                       currentHost.Id,
-				"host_last_task_id":             currentHost.LastTask,
-				"host_last_group":               currentHost.LastGroup,
-				"host_last_build_variant":       currentHost.LastBuildVariant,
-				"host_last_version":             currentHost.LastVersion,
-				"host_last_project":             currentHost.LastProject,
-				"host_task_count":               currentHost.TaskCount,
-				"host_last_task_completed_time": currentHost.LastTaskCompletedTime,
-				"taskspec_group":                spec.Group,
-				"taskspec_build_variant":        spec.BuildVariant,
-				"taskspec_version":              spec.Version,
-				"taskspec_project_id":           spec.ProjectID,
-				"taskspec_group_max_hosts":      spec.GroupMaxHosts,
-				"task_queue_length":             taskQueue.Length(),
-			})
-
 			return nil, nil
 		}
 
@@ -477,46 +386,19 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 				"taskspec_group":           spec.Group,
 				"taskspec_build_variant":   spec.BuildVariant,
 				"taskspec_version":         spec.Version,
-				"taskspec_project_id":      spec.ProjectID,
+				"taskspec_project":         spec.Project,
 				"taskspec_group_max_hosts": spec.GroupMaxHosts,
 			}))
 			return nil, err
 		}
 
 		if nextTask == nil {
-			grip.Error(message.Fields{
-				"message":                  "cannot find a db.tasks document for the next task to be assigned to this host",
-				"distro_id":                d.Id,
-				"host_id":                  currentHost.Id,
-				"next_task_id":             queueItem.Id,
-				"last_task_id":             currentHost.LastTask,
-				"taskspec_group":           spec.Group,
-				"taskspec_build_variant":   spec.BuildVariant,
-				"taskspec_version":         spec.Version,
-				"taskspec_project_id":      spec.ProjectID,
-				"taskspec_group_max_hosts": spec.GroupMaxHosts,
-			})
-
 			// An error is not returned in this situation due to https://jira.mongodb.org/browse/EVG-6214
 			return nil, nil
 		}
 
 		// validate that the task can be run, if not fetch the next one in the queue.
 		if !nextTask.IsDispatchable() {
-			grip.Warning(message.Fields{
-				"message":                  "skipping un-dispatchable task",
-				"distro_id":                d.Id,
-				"task_id":                  nextTask.Id,
-				"status":                   nextTask.Status,
-				"activated":                nextTask.Activated,
-				"host_id":                  currentHost.Id,
-				"taskspec_group":           spec.Group,
-				"taskspec_build_variant":   spec.BuildVariant,
-				"taskspec_version":         spec.Version,
-				"taskspec_project_id":      spec.ProjectID,
-				"taskspec_group_max_hosts": spec.GroupMaxHosts,
-			})
-
 			// Dequeue the task so we don't get it on another iteration of the loop.
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
 				"message":                  "nextTask.IsDispatchable() is false, but there was an issue dequeuing the task",
@@ -526,7 +408,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 				"taskspec_group":           spec.Group,
 				"taskspec_build_variant":   spec.BuildVariant,
 				"taskspec_version":         spec.Version,
-				"taskspec_project_id":      spec.ProjectID,
+				"taskspec_project":         spec.Project,
 				"taskspec_group_max_hosts": spec.GroupMaxHosts,
 			}))
 
@@ -545,13 +427,6 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 		}
 
 		if !projectRef.Enabled {
-			grip.Warning(message.Fields{
-				"task_id": nextTask.Id,
-				"project": nextTask.Project,
-				"host_id": currentHost.Id,
-				"message": "skipping task because of disabled project",
-			})
-
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
 				"message":                  "projectRef.Enabled is false, but there was an issue dequeuing the task",
 				"distro_id":                nextTask.DistroId,
@@ -560,7 +435,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 				"taskspec_group":           spec.Group,
 				"taskspec_build_variant":   spec.BuildVariant,
 				"taskspec_version":         spec.Version,
-				"taskspec_project_id":      spec.ProjectID,
+				"taskspec_project":         spec.Project,
 				"taskspec_group_max_hosts": spec.GroupMaxHosts,
 			}))
 
@@ -581,7 +456,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 			"taskspec_group":           spec.Group,
 			"taskspec_build_variant":   spec.BuildVariant,
 			"taskspec_version":         spec.Version,
-			"taskspec_project_id":      spec.ProjectID,
+			"taskspec_project":         spec.Project,
 			"taskspec_group_max_hosts": spec.GroupMaxHosts,
 		}))
 
@@ -599,6 +474,33 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	begin := time.Now()
 	h := MustHaveHost(r)
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+
+	if h.AgentStartTime.IsZero() {
+		if err := h.SetAgentStartTime(); err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message": "could not set host's agent start time for first contact",
+				"host":    h.Id,
+				"distro":  h.Distro.Id,
+			}))
+		} else {
+			grip.Info(message.Fields{
+				"message":                   "agent initiated first contact with server",
+				"host":                      h.Id,
+				"distro":                    h.Distro.Id,
+				"agent_start_duration_secs": time.Since(h.CreationTime).Seconds(),
+			})
+		}
+	}
+
+	grip.Error(message.WrapError(h.SetUserDataHostProvisioned(), message.Fields{
+		"message":   "failed to mark host as done provisioning with user data",
+		"host":      h.Id,
+		"distro":    h.Distro.Id,
+		"bootstrap": h.Distro.BootstrapSettings.Method,
+		"operation": "next_task",
+	}))
 
 	// stopAgentMonitor is only used for debug log purposes.
 	var stopAgentMonitor bool
@@ -607,7 +509,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 			"message":            "slow next_task operation",
 			"host_id":            h.Id,
 			"distro":             h.Distro.Id,
-			"latency":            time.Since(begin),
+			"latency":            time.Since(begin).Seconds(),
 			"stop_agent_monitor": stopAgentMonitor,
 		})
 	}()
@@ -615,11 +517,11 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	var response apimodels.NextTaskResponse
 	var err error
 	if checkHostHealth(h) {
-		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+		ctx, cancel = context.WithTimeout(r.Context(), 30*time.Second)
 		defer cancel()
 		env := evergreen.GetEnvironment()
-		stopAgentMonitor = true
-		if err = h.StopAgentMonitor(ctx, env); err != nil {
+		stopAgentMonitor = !h.LegacyBootstrap()
+		if err = h.StopAgentMonitor(ctx, env.Settings()); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":   "problem stopping agent monitor",
 				"host":      h.Id,
@@ -670,6 +572,8 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var nextTask *task.Task
+
 	// retrieve the next task off the task queue and attempt to assign it to the host.
 	// If there is already a host that has the task, it will error
 	taskQueue, err := model.LoadTaskQueue(h.Distro.Id)
@@ -679,35 +583,53 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 		return
 	}
-	if taskQueue == nil {
-		grip.Info(message.Fields{
-			"message":   "nil task queue found",
-			"op":        "next_task",
-			"host_id":   h.Id,
-			"distro_id": h.Distro.Id,
-		})
-		gimlet.WriteJSON(w, response)
-		return
-	}
-	// assign the task to a host and retrieve the task
-	nextTask, err := assignNextAvailableTask(taskQueue, as.taskQueueService, h)
-	if err != nil {
-		err = errors.WithStack(err)
-		grip.Error(err)
-		gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(err))
-		return
-	}
-	if nextTask == nil {
-		// if the task is empty, still send it with an status ok and check it on the other side
-		grip.Info(message.Fields{
-			"op":      "next_task",
-			"message": "no task to assign to host",
-			"host_id": h.Id,
-		})
-		gimlet.WriteJSON(w, response)
-		return
+
+	// if the task queue exists, try to assign a task from it:
+	if taskQueue != nil {
+		// assign the task to a host and retrieve the task
+		nextTask, err = assignNextAvailableTask(ctx, taskQueue, as.taskDispatcher, h)
+		if err != nil {
+			err = errors.WithStack(err)
+			grip.Error(err)
+			gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(err))
+			return
+		}
 	}
 
+	// if we didn't find a task in the "primary" queue, then we
+	// try again from the alias queue. (this code runs if the
+	// primary queue doesn't exist or is empty)
+	if nextTask == nil {
+		// if we couldn't find a task in the task queue,
+		// check the alias queue...
+		aliasQueue, err := model.LoadDistroAliasTaskQueue(h.Distro.Id)
+		if err != nil {
+			gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(err))
+			return
+		}
+		if aliasQueue != nil {
+			nextTask, err = assignNextAvailableTask(ctx, aliasQueue, as.taskAliasDispatcher, h)
+			if err != nil {
+				gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(err))
+				return
+			}
+		}
+
+		// if we haven't assigned a task here, then we need to
+		// return early.
+		if nextTask == nil {
+			// if the task is empty, still send it with an status ok and check it on the other side
+			grip.Info(message.Fields{
+				"op":      "next_task",
+				"message": "no task to assign to host",
+				"host_id": h.Id,
+			})
+			gimlet.WriteJSON(w, response)
+			return
+		}
+	}
+
+	// otherwise we've dispatched a task, so we
 	// mark the task as dispatched
 	if err := model.MarkTaskDispatched(nextTask, h.Id, h.Distro.Id); err != nil {
 		err = errors.WithStack(err)

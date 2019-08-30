@@ -97,7 +97,6 @@ var projectSyntaxValidators = []projectValidator{
 var projectSemanticValidators = []projectValidator{
 	checkTaskCommands,
 	checkTaskGroups,
-	checkRunOnOnlyOneDistro,
 	checkLoggerConfig,
 }
 
@@ -580,44 +579,6 @@ func validateBVNames(project *model.Project) ValidationErrors {
 	return errs
 }
 
-// produce a deprecation warning for specifying more than one distro for a task or build variant.
-func checkRunOnOnlyOneDistro(project *model.Project) ValidationErrors {
-	errs := ValidationErrors{}
-
-	offendingBVs := []string{}
-	offendingTasks := []string{}
-
-	for _, bv := range project.BuildVariants {
-		if len(bv.RunOn) > 1 {
-			offendingBVs = append(offendingBVs, bv.Name)
-		}
-		for _, t := range bv.Tasks {
-			if len(t.Distros) > 1 {
-				offendingTasks = append(offendingTasks, fmt.Sprintf("%s.%s",
-					bv.Name, t.Name))
-			}
-		}
-	}
-
-	if len(offendingBVs) > 0 {
-		errs = append(errs, ValidationError{
-			Level: Error,
-			Message: fmt.Sprintf("multiple run-on distros for a single build variant. [%s]",
-				strings.Join(offendingBVs, ", ")),
-		})
-	}
-
-	if len(offendingTasks) > 0 {
-		errs = append(errs, ValidationError{
-			Level: Error,
-			Message: fmt.Sprintf("multiple distros specified for a single build variant task. [%s]",
-				strings.Join(offendingTasks, ", ")),
-		})
-	}
-
-	return errs
-}
-
 func checkLoggerConfig(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	if project.Loggers != nil {
@@ -1090,7 +1051,7 @@ func checkOrAddTask(task, variant string, tasksFound map[string]interface{}) *Va
 func validateCreateHosts(p *model.Project) ValidationErrors {
 	ts := p.TasksThatCallCommand(evergreen.CreateHostCommandName)
 	errs := validateTimesCalledPerTask(p, ts, evergreen.CreateHostCommandName, 3)
-	errs = append(errs, validateTimesCalledTotal(p, ts, evergreen.CreateHostCommandName, 30)...)
+	errs = append(errs, validateTimesCalledTotal(p, ts, evergreen.CreateHostCommandName, 35)...)
 	return errs
 }
 

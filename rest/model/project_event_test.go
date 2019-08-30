@@ -165,9 +165,13 @@ func checkAliases(suite *ProjectEventSuite, in []model.ProjectAlias, out []APIPr
 		suite.Equal(alias.Variant, FromAPIString(out[i].Variant))
 		suite.Equal(alias.Task, FromAPIString(out[i].Task))
 
-		suite.Require().Equal(len(alias.Tags), len(out[i].Tags))
-		for j, tag := range alias.Tags {
-			suite.Equal(tag, out[i].Tags[j])
+		suite.Require().Equal(len(alias.TaskTags), len(out[i].TaskTags))
+		suite.Require().Equal(len(alias.VariantTags), len(out[i].VariantTags))
+		for j, tag := range alias.TaskTags {
+			suite.Equal(tag, out[i].TaskTags[j])
+		}
+		for j, tag := range alias.VariantTags {
+			suite.Equal(tag, out[i].VariantTags[j])
 		}
 	}
 }

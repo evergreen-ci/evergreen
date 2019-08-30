@@ -30,6 +30,7 @@ type DBConnector struct {
 	NotificationConnector
 	DBCreateHostConnector
 	StatsConnector
+	TaskReliabilityConnector
 	DBCommitQueueConnector
 }
 
@@ -66,6 +67,7 @@ type MockConnector struct {
 	MockNotificationConnector
 	MockCreateHostConnector
 	MockStatsConnector
+	MockTaskReliabilityConnector
 	MockCommitQueueConnector
 }
 

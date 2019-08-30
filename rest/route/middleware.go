@@ -208,6 +208,14 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		return
 	}
 
+	if !projRef.CommitQueue.Enabled {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "Commit queue is not enabled for project",
+		}))
+		return
+	}
+
 	// A superuser or project admin is authorized
 	isSuperuser := util.StringSliceContains(m.sc.GetSuperUsers(), user.Username())
 	isAdmin := util.StringSliceContains(projRef.Admins, user.Username())

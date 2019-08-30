@@ -95,7 +95,6 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 	params := pushParams{
 		authorName:  restModel.FromAPIString(u.DisplayName),
 		authorEmail: restModel.FromAPIString(u.Email),
-		description: p.Description,
 		token:       projectToken,
 	}
 
@@ -129,12 +128,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		logger.Execution().Infof("Pushing patch for module %s", module.Name)
 		params.directory = filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory, moduleBase))
 		params.branch = module.Branch
-
-		// File list
-		params.files = make([]string, 0, len(modulePatch.PatchSet.Summary))
-		for _, summary := range modulePatch.PatchSet.Summary {
-			params.files = append(params.files, summary.Name)
-		}
+		params.commitMessage = modulePatch.Message
 
 		if err = c.pushPatch(ctx, logger, params); err != nil {
 			return errors.Wrap(err, "can't push module patch")
@@ -152,15 +146,10 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 			continue
 		}
 
-		// File list
-		params.files = make([]string, 0, len(modulePatch.PatchSet.Summary))
-		for _, summary := range modulePatch.PatchSet.Summary {
-			params.files = append(params.files, summary.Name)
-		}
-
 		logger.Execution().Info("Pushing patch")
 		params.directory = filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory))
 		params.branch = conf.ProjectRef.Branch
+		params.commitMessage = modulePatch.Message
 		if err = c.pushPatch(ctx, logger, params); err != nil {
 			return errors.Wrap(err, "can't push patch")
 		}
@@ -170,28 +159,16 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 }
 
 type pushParams struct {
-	token       string
-	directory   string
-	authorName  string
-	authorEmail string
-	description string
-	branch      string
-	files       []string
+	token         string
+	directory     string
+	authorName    string
+	authorEmail   string
+	commitMessage string
+	branch        string
 }
 
 func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p pushParams) error {
-	commands := []string{}
-	for _, file := range p.files {
-		commands = append(commands, fmt.Sprintf(`git add "%s"`, file))
-		logger.Execution().Debugf(`git add "%s"`, file)
-	}
-
 	jpm := c.JasperManager()
-	cmd := jpm.CreateCommand(ctx).Directory(p.directory).Append(commands...).
-		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
-	if err := cmd.Run(ctx); err != nil {
-		return errors.Wrap(err, "can't add files")
-	}
 
 	author := fmt.Sprintf("%s <%s>", p.authorName, p.authorEmail)
 	commitCommand := fmt.Sprintf("git "+
@@ -201,7 +178,7 @@ func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p
 		`--author="%s"`,
 		c.CommitterName, c.CommitterEmail, author)
 	logger.Execution().Debugf("git commit command: %s", commitCommand)
-	cmd = jpm.CreateCommand(ctx).Directory(p.directory).Append(commitCommand).SetInput(bytes.NewBufferString(p.description)).
+	cmd := jpm.CreateCommand(ctx).Directory(p.directory).Append(commitCommand).SetInput(bytes.NewBufferString(p.commitMessage)).
 		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
 	if err := cmd.Run(ctx); err != nil {
 		return errors.Wrap(err, "can't create commit from files")
@@ -214,7 +191,7 @@ func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p
 		cmd = jpm.CreateCommand(ctx).Directory(p.directory).Append(pushCommand).
 			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorWriter(stdErr)
 		if err := cmd.Run(ctx); err != nil {
-			return errors.Wrap(err, "can't add files")
+			return errors.Wrap(err, "can't push to remote")
 		}
 
 		errorOutput := stdErr.String()

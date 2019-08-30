@@ -29,7 +29,7 @@ var distroSyntaxValidators = []distroValidator{
 	ensureStaticHostsAreNotSpawnable,
 	ensureValidContainerPool,
 	ensureValidArch,
-	ensureValidBootstrapAndCommunicationMethods,
+	ensureValidBootstrapSettings,
 	ensureValidCloneMethod,
 	ensureHasNoUnauthorizedCharacters,
 	ensureHasValidPlannerSettings,
@@ -50,6 +50,7 @@ func CheckDistro(ctx context.Context, d *distro.Distro, s *evergreen.Settings, n
 		}
 	}
 	validationErrs = append(validationErrs, ensureUniqueId(d, distroIds)...)
+	validationErrs = append(validationErrs, ensureValidAliases(d, distroIds)...)
 
 	for _, v := range distroSyntaxValidators {
 		validationErrs = append(validationErrs, v(ctx, d, s)...)
@@ -154,6 +155,25 @@ func ensureUniqueId(d *distro.Distro, distroIds []string) ValidationErrors {
 	return nil
 }
 
+func ensureValidAliases(d *distro.Distro, distroIDs []string) ValidationErrors {
+	errs := ValidationErrors{}
+
+	for _, a := range d.Aliases {
+		if !util.StringSliceContains(distroIDs, a) {
+			errs = append(errs, ValidationError{
+				Level:   Error,
+				Message: fmt.Sprintf("'%s' is not a valid distro name", a),
+			})
+
+		}
+
+	}
+	if len(errs) == 0 {
+		return nil
+	}
+	return errs
+}
+
 // ensureValidExpansions checks that no expansion option key is blank.
 func ensureValidExpansions(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
 	for _, e := range d.Expansions {
@@ -183,11 +203,11 @@ func ensureValidArch(ctx context.Context, d *distro.Distro, s *evergreen.Setting
 	return nil
 }
 
-// ensureValidBootstrapAndCommunicationMethods checks that the bootstrap method
+// ensureValidBootstrapSettings checks that the bootstrap method
 // is one of the supported methods, the communication method is one of the
 // supported methods, and the two together form a valid combination.
-func ensureValidBootstrapAndCommunicationMethods(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
-	if err := distro.ValidateBootstrapAndCommunicationMethods(d.BootstrapMethod, d.CommunicationMethod); err != nil {
+func ensureValidBootstrapSettings(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
+	if err := d.BootstrapSettings.Validate(); err != nil {
 		return ValidationErrors{{Level: Error, Message: err.Error()}}
 	}
 	return nil
@@ -302,25 +322,24 @@ func ensureHasValidPlannerSettings(ctx context.Context, d *distro.Distro, s *eve
 			Level:   Error,
 		})
 	}
-	if ps.PatchZipperFactor < 0 || ps.PatchZipperFactor > 100 {
+	if ps.PatchFactor < 0 || ps.PatchFactor > 100 {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("invalid planner_settings.patch_zipper_factor value of %d for distro '%s' - its value must be a non-negative integer between 0 and 100, inclusive", ps.PatchZipperFactor, d.Id),
+			Message: fmt.Sprintf("invalid planner_settings.patch_factor value of %d for distro '%s' - its value must be a non-negative integer between 0 and 100, inclusive", ps.PatchFactor, d.Id),
 			Level:   Error,
 		})
 	}
-	if ps.ExpectedRuntimeFactor < 0 {
+	if ps.TimeInQueueFactor < 0 || ps.TimeInQueueFactor > 100 {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("invalid planner_settings.expected_runtime_factor value of %d for distro '%s' - its value must be a non-negative integer", ps.PatchZipperFactor, d.Id),
+			Message: fmt.Sprintf("invalid planner_settings.time_in_queue_factor value of %d for distro '%s' - its value must be a non-negative integer between 0 and 100, inclusive", ps.TimeInQueueFactor, d.Id),
 			Level:   Error,
 		})
 	}
-	if ps.TimeInQueueFactor < 0 {
+	if ps.ExpectedRuntimeFactor < 0 || ps.ExpectedRuntimeFactor > 100 {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("invalid planner_settings.time_in_queue value of %d for distro '%s' - its value must be a non-negative integer", ps.PatchZipperFactor, d.Id),
+			Message: fmt.Sprintf("invalid planner_settings.expected_runtime_factor value of %d for distro '%s' - its value must be a non-negative integer between 0 and 100, inclusive", ps.ExpectedRuntimeFactor, d.Id),
 			Level:   Error,
 		})
 	}
-
 	if !util.StringSliceContains(evergreen.ValidTaskOrderings, ps.TaskOrdering) {
 		errs = append(errs, ValidationError{
 			Message: fmt.Sprintf("invalid planner_settings.task_ordering '%s' for distro '%s'", ps.TaskOrdering, d.Id),

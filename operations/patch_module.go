@@ -104,7 +104,13 @@ func PatchSetModule() cli.Command {
 				}
 			}
 
-			err = ac.UpdatePatchModule(patchID, module, diffData.fullPatch, diffData.base)
+			params := UpdatePatchModuleParams{
+				patchID: patchID,
+				module:  module,
+				patch:   diffData.fullPatch,
+				base:    diffData.base,
+			}
+			err = ac.UpdatePatchModule(params)
 			if err != nil {
 				mods, err := ac.GetPatchModules(patchID, project)
 				var msg string

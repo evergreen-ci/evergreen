@@ -20,9 +20,9 @@ type APIPlannerSettings struct {
 	AcceptableHostIdleTime APIDuration `json:"acceptable_host_idle_time"`
 	GroupVersions          *bool       `json:"group_versions"`
 	TaskOrdering           APIString   `json:"task_ordering"`
-	PatchZipperFactor      int64       `json:"patch_zipper_factor"`
+	PatchFactor            int64       `json:"patch_factor"`
 	TimeInQueueFactor      int64       `json:"time_in_queue_factor"`
-	ExpectedRuntimeFactor  int64       `json:"expected_runtime_factor_factor"`
+	ExpectedRuntimeFactor  int64       `json:"expected_runtime_factor"`
 }
 
 // BuildFromService converts from service level distro.PlannerSetting to an APIPlannerSettings
@@ -34,7 +34,7 @@ func (s *APIPlannerSettings) BuildFromService(h interface{}) error {
 	case *distro.PlannerSettings:
 		settings = *v
 	default:
-		return errors.Errorf("%T is not an supported expansion type", h)
+		return errors.Errorf("%T is not a supported expansion type", h)
 	}
 
 	if settings.Version == "" {
@@ -48,7 +48,7 @@ func (s *APIPlannerSettings) BuildFromService(h interface{}) error {
 	s.AcceptableHostIdleTime = NewAPIDuration(settings.AcceptableHostIdleTime)
 	s.GroupVersions = settings.GroupVersions
 	s.TaskOrdering = ToAPIString(settings.TaskOrdering)
-	s.PatchZipperFactor = settings.PatchZipperFactor
+	s.PatchFactor = settings.PatchFactor
 	s.ExpectedRuntimeFactor = settings.ExpectedRuntimeFactor
 	s.TimeInQueueFactor = settings.TimeInQueueFactor
 
@@ -68,7 +68,7 @@ func (s *APIPlannerSettings) ToService() (interface{}, error) {
 	settings.AcceptableHostIdleTime = s.AcceptableHostIdleTime.ToDuration()
 	settings.GroupVersions = s.GroupVersions
 	settings.TaskOrdering = FromAPIString(s.TaskOrdering)
-	settings.PatchZipperFactor = s.PatchZipperFactor
+	settings.PatchFactor = s.PatchFactor
 	settings.TimeInQueueFactor = s.TimeInQueueFactor
 	settings.ExpectedRuntimeFactor = s.ExpectedRuntimeFactor
 
@@ -92,7 +92,7 @@ func (s *APIFinderSettings) BuildFromService(h interface{}) error {
 	case *distro.FinderSettings:
 		settings = *v
 	default:
-		return errors.Errorf("%T is not an supported expansion type", h)
+		return errors.Errorf("%T is not a supported expansion type", h)
 	}
 
 	if settings.Version == "" {
@@ -117,35 +117,93 @@ func (s *APIFinderSettings) ToService() (interface{}, error) {
 
 ////////////////////////////////////////////////////////////////////////////////
 //
+// APIBootstrapSettings is the model to be returned by the API whenever distro.BootstrapSettings are fetched
+
+type APIBootstrapSettings struct {
+	Method                APIString `json:"method"`
+	Communication         APIString `json:"communication"`
+	ShellPath             APIString `json:"shell_path"`
+	JasperBinaryDir       APIString `json:"jasper_binary_dir"`
+	ClientDir             APIString `json:"client_dir"`
+	JasperCredentialsPath APIString `json:"jasper_credentials_path"`
+}
+
+// BuildFromService converts from service level distro.BootstrapSettings to an
+// APIBootstrapSettings.
+func (s *APIBootstrapSettings) BuildFromService(h interface{}) error {
+	var settings distro.BootstrapSettings
+	switch v := h.(type) {
+	case distro.BootstrapSettings:
+		settings = v
+	case *distro.BootstrapSettings:
+		settings = *v
+	default:
+		return errors.Errorf("%T is not a supported expansion type", h)
+	}
+
+	s.Method = ToAPIString(settings.Method)
+	if FromAPIString(s.Method) == "" {
+		s.Method = ToAPIString(distro.BootstrapMethodLegacySSH)
+	}
+	s.Communication = ToAPIString(settings.Communication)
+	if FromAPIString(s.Communication) == "" {
+		s.Communication = ToAPIString(distro.CommunicationMethodLegacySSH)
+	}
+	s.ShellPath = ToAPIString(settings.ShellPath)
+	s.JasperBinaryDir = ToAPIString(settings.JasperBinaryDir)
+	s.ClientDir = ToAPIString(settings.ClientDir)
+	s.JasperCredentialsPath = ToAPIString(settings.JasperCredentialsPath)
+
+	return nil
+}
+
+// ToService returns a service layer distro.BootstrapSettings using the data
+// from APIBootstrapSettings.
+func (s *APIBootstrapSettings) ToService() (interface{}, error) {
+	settings := distro.BootstrapSettings{}
+	settings.Method = FromAPIString(s.Method)
+	if settings.Method == "" {
+		settings.Method = distro.BootstrapMethodLegacySSH
+	}
+	settings.Communication = FromAPIString(s.Communication)
+	if settings.Communication == "" {
+		settings.Communication = distro.CommunicationMethodLegacySSH
+	}
+	settings.ShellPath = FromAPIString(s.ShellPath)
+	settings.JasperBinaryDir = FromAPIString(s.JasperBinaryDir)
+	settings.ClientDir = FromAPIString(s.ClientDir)
+	settings.JasperCredentialsPath = FromAPIString(s.JasperCredentialsPath)
+
+	return settings, nil
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
 // APIDistro is the model to be returned by the API whenever distros are fetched
 
 type APIDistro struct {
-	Name                  APIString              `json:"name"`
-	UserSpawnAllowed      bool                   `json:"user_spawn_allowed"`
-	Provider              APIString              `json:"provider"`
-	ProviderSettings      map[string]interface{} `json:"settings"`
-	ImageID               APIString              `json:"image_id"`
-	Arch                  APIString              `json:"arch"`
-	WorkDir               APIString              `json:"work_dir"`
-	PoolSize              int                    `json:"pool_size"`
-	SetupAsSudo           bool                   `json:"setup_as_sudo"`
-	Setup                 APIString              `json:"setup"`
-	Teardown              APIString              `json:"teardown"`
-	User                  APIString              `json:"user"`
-	BootstrapMethod       APIString              `json:"bootstrap_method"`
-	CommunicationMethod   APIString              `json:"communication_method"`
-	CloneMethod           APIString              `json:"clone_method"`
-	ShellPath             APIString              `json:"shell_path"`
-	CuratorDir            APIString              `json:"curator_dir"`
-	ClientDir             APIString              `json:"client_dir"`
-	JasperCredentialsPath APIString              `json:"jasper_credentials_path"`
-	SSHKey                APIString              `json:"ssh_key"`
-	SSHOptions            []string               `json:"ssh_options"`
-	Expansions            []APIExpansion         `json:"expansions"`
-	Disabled              bool                   `json:"disabled"`
-	ContainerPool         APIString              `json:"container_pool"`
-	PlannerSettings       APIPlannerSettings     `json:"planner_settings"`
-	FinderSettings        APIFinderSettings      `json:"finder_settings"`
+	Name              APIString              `json:"name"`
+	Aliases           []string               `json:"aliases"`
+	UserSpawnAllowed  bool                   `json:"user_spawn_allowed"`
+	Provider          APIString              `json:"provider"`
+	ProviderSettings  map[string]interface{} `json:"settings"`
+	ImageID           APIString              `json:"image_id"`
+	Arch              APIString              `json:"arch"`
+	WorkDir           APIString              `json:"work_dir"`
+	PoolSize          int                    `json:"pool_size"`
+	SetupAsSudo       bool                   `json:"setup_as_sudo"`
+	Setup             APIString              `json:"setup"`
+	Teardown          APIString              `json:"teardown"`
+	User              APIString              `json:"user"`
+	BootstrapSettings APIBootstrapSettings   `json:"bootstrap_settings"`
+	CloneMethod       APIString              `json:"clone_method"`
+	SSHKey            APIString              `json:"ssh_key"`
+	SSHOptions        []string               `json:"ssh_options"`
+	Expansions        []APIExpansion         `json:"expansions"`
+	Disabled          bool                   `json:"disabled"`
+	ContainerPool     APIString              `json:"container_pool"`
+	PlannerSettings   APIPlannerSettings     `json:"planner_settings"`
+	FinderSettings    APIFinderSettings      `json:"finder_settings"`
 }
 
 // BuildFromService converts from service level distro.Distro to an APIDistro
@@ -157,13 +215,14 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	case *distro.Distro:
 		d = *v
 	default:
-		return errors.Errorf("%T is not an supported expansion type", h)
+		return errors.Errorf("%T is not a supported expansion type", h)
 	}
 
 	apiDistro.Name = ToAPIString(d.Id)
+	apiDistro.Aliases = d.Aliases
 	apiDistro.UserSpawnAllowed = d.SpawnAllowed
 	apiDistro.Provider = ToAPIString(d.Provider)
-	if d.ProviderSettings != nil && (d.Provider == evergreen.ProviderNameEc2Auto || d.Provider == evergreen.ProviderNameEc2OnDemand || d.Provider == evergreen.ProviderNameEc2Spot) {
+	if d.ProviderSettings != nil && cloud.IsEc2Provider(d.Provider) {
 		ec2Settings := &cloud.EC2ProviderSettings{}
 		err := mapstructure.Decode(d.ProviderSettings, ec2Settings)
 		if err != nil {
@@ -181,21 +240,15 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	apiDistro.Setup = ToAPIString(d.Setup)
 	apiDistro.Teardown = ToAPIString(d.Teardown)
 	apiDistro.User = ToAPIString(d.User)
-	if d.BootstrapMethod == "" {
-		d.BootstrapMethod = distro.BootstrapMethodLegacySSH
+	bootstrapSettings := APIBootstrapSettings{}
+	if err := bootstrapSettings.BuildFromService(d.BootstrapSettings); err != nil {
+		return errors.Wrap(err, "error converting from distro.BootstrapSettings to model.APIBootstrapSettings")
 	}
-	apiDistro.BootstrapMethod = ToAPIString(d.BootstrapMethod)
-	if d.CommunicationMethod == "" {
-		d.CommunicationMethod = distro.CommunicationMethodLegacySSH
-	}
-	apiDistro.CommunicationMethod = ToAPIString(d.CommunicationMethod)
+	apiDistro.BootstrapSettings = bootstrapSettings
 	if d.CloneMethod == "" {
 		d.CloneMethod = distro.CloneMethodLegacySSH
 	}
 	apiDistro.CloneMethod = ToAPIString(d.CloneMethod)
-	apiDistro.ShellPath = ToAPIString(d.ShellPath)
-	apiDistro.CuratorDir = ToAPIString(d.CuratorDir)
-	apiDistro.ClientDir = ToAPIString(d.ClientDir)
 	apiDistro.SSHKey = ToAPIString(d.SSHKey)
 	apiDistro.Disabled = d.Disabled
 	apiDistro.ContainerPool = ToAPIString(d.ContainerPool)
@@ -228,6 +281,7 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d := distro.Distro{}
 	d.Id = FromAPIString(apiDistro.Name)
+	d.Aliases = apiDistro.Aliases
 	d.Arch = FromAPIString(apiDistro.Arch)
 	d.WorkDir = FromAPIString(apiDistro.WorkDir)
 	d.PoolSize = apiDistro.PoolSize
@@ -239,31 +293,30 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d.Setup = FromAPIString(apiDistro.Setup)
 	d.Teardown = FromAPIString(apiDistro.Teardown)
 	d.User = FromAPIString(apiDistro.User)
-	d.BootstrapMethod = FromAPIString(apiDistro.BootstrapMethod)
-	if d.BootstrapMethod == "" {
-		d.BootstrapMethod = distro.BootstrapMethodLegacySSH
+	i, err := apiDistro.BootstrapSettings.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "error converting from model.APIBootstrapSettings to distro.BootstrapSettings")
 	}
-	d.CommunicationMethod = FromAPIString(apiDistro.CommunicationMethod)
-	if d.CommunicationMethod == "" {
-		d.CommunicationMethod = distro.CommunicationMethodLegacySSH
+	bootstrapSettings, ok := i.(distro.BootstrapSettings)
+	if !ok {
+		return nil, errors.Errorf("unexpected type %T for distro.BootstrapSettings", i)
 	}
+	d.BootstrapSettings = bootstrapSettings
 	d.CloneMethod = FromAPIString(apiDistro.CloneMethod)
 	if d.CloneMethod == "" {
 		d.CloneMethod = distro.CloneMethodLegacySSH
 	}
-	d.ShellPath = FromAPIString(apiDistro.ShellPath)
-	d.CuratorDir = FromAPIString(apiDistro.CuratorDir)
-	d.ClientDir = FromAPIString(apiDistro.ClientDir)
 	d.SSHKey = FromAPIString(apiDistro.SSHKey)
 	d.SSHOptions = apiDistro.SSHOptions
 	d.SpawnAllowed = apiDistro.UserSpawnAllowed
 	d.Expansions = []distro.Expansion{}
 	for _, e := range apiDistro.Expansions {
-		i, err := e.ToService()
+		i, err = e.ToService()
 		if err != nil {
 			return nil, errors.Wrap(err, "Error converting from model.APIExpansion to distro.Expansion")
 		}
-		expansion, ok := i.(distro.Expansion)
+		var expansion distro.Expansion
+		expansion, ok = i.(distro.Expansion)
 		if !ok {
 			return nil, errors.Errorf("Unexpected type %T for distro.Expansion", i)
 		}
@@ -271,7 +324,7 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	}
 	d.Disabled = apiDistro.Disabled
 	d.ContainerPool = FromAPIString(apiDistro.ContainerPool)
-	i, err := apiDistro.PlannerSettings.ToService()
+	i, err = apiDistro.PlannerSettings.ToService()
 	if err != nil {
 		return nil, errors.Wrap(err, "Error converting from model.APIPlannerSettings to distro.PlannerSetting")
 	}
@@ -306,7 +359,7 @@ func (e *APIExpansion) BuildFromService(h interface{}) error {
 		e.Key = ToAPIString(val.Key)
 		e.Value = ToAPIString(val.Value)
 	default:
-		return errors.Errorf("%T is not an supported expansion type", h)
+		return errors.Errorf("%T is not a supported expansion type", h)
 	}
 	return nil
 }

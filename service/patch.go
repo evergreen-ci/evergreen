@@ -83,6 +83,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 	commitQueuePosition := 0
 	if projCtx.Patch.Alias == evergreen.CommitQueueAlias {
 		cq, err := commitqueue.FindOneId(project.Identifier)
+		// still display patch page if problem finding commit queue
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error finding commit queue"))
 		}

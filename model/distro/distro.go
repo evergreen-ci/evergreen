@@ -15,31 +15,83 @@ import (
 )
 
 type Distro struct {
-	Id                    string                  `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
-	Arch                  string                  `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
-	WorkDir               string                  `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
-	PoolSize              int                     `bson:"pool_size,omitempty" json:"pool_size,omitempty" mapstructure:"pool_size,omitempty" yaml:"poolsize"`
-	Provider              string                  `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
-	ProviderSettings      *map[string]interface{} `bson:"settings" json:"settings,omitempty" mapstructure:"settings,omitempty"`
-	SetupAsSudo           bool                    `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`
-	Setup                 string                  `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
-	Teardown              string                  `bson:"teardown,omitempty" json:"teardown,omitempty" mapstructure:"teardown,omitempty"`
-	User                  string                  `bson:"user,omitempty" json:"user,omitempty" mapstructure:"user,omitempty"`
-	BootstrapMethod       string                  `bson:"bootstrap_method,omitempty" json:"bootstrap_method,omitempty" mapstructure:"bootstrap_method,omitempty"`
-	CommunicationMethod   string                  `bson:"communication_method,omitempty" json:"communication_method,omitempty" mapstructure:"communication_method,omitempty"`
-	CloneMethod           string                  `bson:"clone_method" json:"clone_method,omitempty" mapstructure:"clone_method,omitempty"`
-	ShellPath             string                  `bson:"shell_path" json:"shell_path" mapstructure:"shell_path,omitempty"`
-	CuratorDir            string                  `bson:"curator_dir" json:"curator_dir" mapstructure:"curator_dir,omitempty"`
-	ClientDir             string                  `bson:"client_dir" json:"client_dir" mapstructure:"client_dir,omitempty"`
-	JasperCredentialsPath string                  `json:"jasper_credentials_path" bson:"jasper_credentials_path" mapstructure:"jasper_credentials_path,omitempty"`
-	SSHKey                string                  `bson:"ssh_key,omitempty" json:"ssh_key,omitempty" mapstructure:"ssh_key,omitempty"`
-	SSHOptions            []string                `bson:"ssh_options,omitempty" json:"ssh_options,omitempty" mapstructure:"ssh_options,omitempty"`
-	SpawnAllowed          bool                    `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`
-	Expansions            []Expansion             `bson:"expansions,omitempty" json:"expansions,omitempty" mapstructure:"expansions,omitempty"`
-	Disabled              bool                    `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
-	ContainerPool         string                  `bson:"container_pool,omitempty" json:"container_pool,omitempty" mapstructure:"container_pool,omitempty"`
-	PlannerSettings       PlannerSettings         `bson:"planner_settings" json:"planner_settings,omitempty" mapstructure:"planner_settings,omitempty"`
-	FinderSettings        FinderSettings          `bson:"finder_settings" json:"finder_settings,omitempty" mapstructure:"finder_settings,omitempty"`
+	Id                string                  `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
+	Aliases           []string                `bson:"aliases,omitempty" json:"aliases,omitempty" mapstructure:"aliases,omitempty"`
+	Arch              string                  `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
+	WorkDir           string                  `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
+	PoolSize          int                     `bson:"pool_size,omitempty" json:"pool_size,omitempty" mapstructure:"pool_size,omitempty" yaml:"poolsize"`
+	Provider          string                  `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
+	ProviderSettings  *map[string]interface{} `bson:"settings" json:"settings,omitempty" mapstructure:"settings,omitempty"`
+	SetupAsSudo       bool                    `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`
+	Setup             string                  `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
+	Teardown          string                  `bson:"teardown,omitempty" json:"teardown,omitempty" mapstructure:"teardown,omitempty"`
+	User              string                  `bson:"user,omitempty" json:"user,omitempty" mapstructure:"user,omitempty"`
+	BootstrapSettings BootstrapSettings       `bson:"bootstrap_settings" json:"bootstrap_settings" mapstructure:"bootstrap_settings"`
+	CloneMethod       string                  `bson:"clone_method" json:"clone_method,omitempty" mapstructure:"clone_method,omitempty"`
+	SSHKey            string                  `bson:"ssh_key,omitempty" json:"ssh_key,omitempty" mapstructure:"ssh_key,omitempty"`
+	SSHOptions        []string                `bson:"ssh_options,omitempty" json:"ssh_options,omitempty" mapstructure:"ssh_options,omitempty"`
+	SpawnAllowed      bool                    `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`
+	Expansions        []Expansion             `bson:"expansions,omitempty" json:"expansions,omitempty" mapstructure:"expansions,omitempty"`
+	Disabled          bool                    `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
+	ContainerPool     string                  `bson:"container_pool,omitempty" json:"container_pool,omitempty" mapstructure:"container_pool,omitempty"`
+	PlannerSettings   PlannerSettings         `bson:"planner_settings" json:"planner_settings,omitempty" mapstructure:"planner_settings,omitempty"`
+	FinderSettings    FinderSettings          `bson:"finder_settings" json:"finder_settings,omitempty" mapstructure:"finder_settings,omitempty"`
+}
+
+// BootstrapSettings encapsulates all settings related to bootstrapping hosts.
+type BootstrapSettings struct {
+	Method                string `bson:"method" json:"method" mapstructure:"method"`
+	Communication         string `bson:"communcation,omitempty" json:"communication,omitempty" mapstructure:"communcation,omitempty"`
+	ClientDir             string `bson:"client_dir,omitempty" json:"client_dir,omitempty" mapstructure:"client_dir,omitempty"`
+	JasperBinaryDir       string `bson:"jasper_binary_dir,omitempty" json:"jasper_binary_dir,omitempty" mapstructure:"jasper_binary_dir,omitempty"`
+	JasperCredentialsPath string `json:"jasper_credentials_path,omitempty" bson:"jasper_credentials_path,omitempty" mapstructure:"jasper_credentials_path,omitempty"`
+	ShellPath             string `bson:"shell_path,omitempty" json:"shell_path,omitempty" mapstructure:"shell_path,omitempty"`
+}
+
+// Validate checks if all of the bootstrap settings are valid for legacy or
+// non-legacy bootstrapping.
+func (s *BootstrapSettings) Validate() error {
+	catcher := grip.NewBasicCatcher()
+	if !util.StringSliceContains(validBootstrapMethods, s.Method) {
+		catcher.Errorf("'%s' is not a valid bootstrap method", s.Method)
+	}
+
+	if !util.StringSliceContains(validCommunicationMethods, s.Communication) {
+		catcher.Errorf("'%s' is not a valid communication method", s.Communication)
+	}
+
+	switch s.Method {
+	case BootstrapMethodLegacySSH:
+		if s.Communication != CommunicationMethodLegacySSH {
+			catcher.New("bootstrapping hosts using legacy SSH is incompatible with non-legacy host communication")
+		}
+	default:
+		if s.Communication == CommunicationMethodLegacySSH {
+			catcher.New("communicating with hosts using legacy SSH is incompatible with non-legacy host bootstrapping")
+		}
+	}
+
+	if s.Method == BootstrapMethodLegacySSH || s.Communication == CommunicationMethodLegacySSH {
+		return catcher.Resolve()
+	}
+
+	if s.ClientDir == "" {
+		catcher.New("client directory cannot be empty for non-legacy bootstrapping")
+	}
+
+	if s.JasperBinaryDir == "" {
+		catcher.New("Jasper binary directory cannot be empty for non-legacy bootstrapping")
+	}
+
+	if s.JasperCredentialsPath == "" {
+		catcher.New("Jasper credentials path cannot be empty for non-legacy bootstrapping")
+	}
+
+	if s.ShellPath == "" {
+		catcher.New("shell path cannot be empty for non-legacy bootstrapping")
+	}
+
+	return catcher.Resolve()
 }
 
 type PlannerSettings struct {
@@ -50,7 +102,7 @@ type PlannerSettings struct {
 	AcceptableHostIdleTime time.Duration `bson:"acceptable_host_idle_time" json:"acceptable_host_idle_time" mapstructure:"acceptable_host_idle_time,omitempty"`
 	GroupVersions          *bool         `bson:"group_versions" json:"group_versions" mapstructure:"group_versions,omitempty"`
 	TaskOrdering           string        `bson:"task_ordering" json:"task_ordering" mapstructure:"task_ordering,omitempty"`
-	PatchZipperFactor      int64         `bson:"patch_zipper_factor" json:"patch_zipper_factor" mapstructure:"patch_zipper_factor"`
+	PatchFactor            int64         `bson:"patch_zipper_factor" json:"patch_factor" mapstructure:"patch_factor"`
 	TimeInQueueFactor      int64         `bson:"time_in_queue_factor" json:"time_in_queue_factor" mapstructure:"time_in_queue_factor"`
 	ExpectedRuntimeFactor  int64         `bson:"expected_runtime_factor" json:"expected_runtime_factor" mapstructure:"expected_runtime_factor"`
 
@@ -171,11 +223,11 @@ func (d *Distro) ShouldGroupVersions() bool {
 	return *d.PlannerSettings.GroupVersions
 }
 
-func (d *Distro) GetPatchZipperFactor() int64 {
-	if d.PlannerSettings.PatchZipperFactor <= 0 {
+func (d *Distro) GetPatchFactor() int64 {
+	if d.PlannerSettings.PatchFactor <= 0 {
 		return 1
 	}
-	return d.PlannerSettings.PatchZipperFactor
+	return d.PlannerSettings.PatchFactor
 }
 
 func (d *Distro) GetTimeInQueueFactor() int64 {
@@ -238,6 +290,9 @@ func (d *Distro) HomeDir() string {
 	if d.User == "root" {
 		return filepath.Join("/", d.User)
 	}
+	if d.Arch == ArchDarwinAmd64 {
+		return filepath.Join("/Users", d.User)
+	}
 	return filepath.Join("/home", d.User)
 }
 
@@ -268,6 +323,8 @@ func (d *Distro) GetImageID() (string, error) {
 		i = (*d.ProviderSettings)["ami"]
 	case evergreen.ProviderNameEc2Spot:
 		i = (*d.ProviderSettings)["ami"]
+	case evergreen.ProviderNameEc2Fleet:
+		i = (*d.ProviderSettings)["ami"]
 	case evergreen.ProviderNameDocker:
 		i = (*d.ProviderSettings)["image_url"]
 	case evergreen.ProviderNameDockerMock:
@@ -291,6 +348,25 @@ func (d *Distro) GetImageID() (string, error) {
 		return "", errors.New("cannot extract image ID from provider settings")
 	}
 	return s, nil
+}
+
+func (d *Distro) GetPoolSize() int {
+	switch d.Provider {
+	case evergreen.ProviderNameStatic:
+		if d.ProviderSettings == nil {
+			return 0
+		}
+
+		hosts, ok := (*d.ProviderSettings)["hosts"].([]interface{})
+		if !ok {
+			return 0
+		}
+
+		return len(hosts)
+	default:
+		return d.PoolSize + d.PlannerSettings.MaximumHosts
+	}
+
 }
 
 // ValidateContainerPoolDistros ensures that container pools have valid distros
@@ -321,44 +397,6 @@ func ValidateArch(arch string) error {
 		return errors.Errorf("'%s' is not a recognized architecture", arch)
 	}
 	return nil
-}
-
-// ValidateBootstrapMethod checks that the bootstrap mechanism is one of the
-// supported methods.
-func ValidateBootstrapMethod(method string) error {
-	if !util.StringSliceContains(validBootstrapMethods, method) {
-		return errors.Errorf("'%s' is not a valid bootstrap method", method)
-	}
-	return nil
-}
-
-// ValidateCommunicationMethod checks that the communication mechanism is one of
-// the supported methods.
-func ValidateCommunicationMethod(method string) error {
-	if !util.StringSliceContains(validCommunicationMethods, method) {
-		return errors.Errorf("'%s' is not a valid communication method", method)
-	}
-	return nil
-}
-
-// ValidateBootstrapAndCommunicationMethods checks that the bootstrap and
-// communication mechanisms are recognized, and that the combination of the two
-// is allowed.
-func ValidateBootstrapAndCommunicationMethods(bootstrap string, communication string) error {
-	catcher := grip.NewBasicCatcher()
-	catcher.Add(ValidateBootstrapMethod(bootstrap))
-	catcher.Add(ValidateCommunicationMethod(communication))
-	switch bootstrap {
-	case BootstrapMethodLegacySSH:
-		if communication != CommunicationMethodLegacySSH {
-			catcher.New("bootstrapping hosts using legacy SSH is incompatible with non-legacy host communication")
-		}
-	default:
-		if communication == CommunicationMethodLegacySSH {
-			catcher.New("communicating with hosts using legacy SSH is incompatible with non-legacy host bootstrapping")
-		}
-	}
-	return catcher.Resolve()
 }
 
 // ValidateCloneMethod checks that the clone mechanism is one of the supported
@@ -392,7 +430,7 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 		AcceptableHostIdleTime: ps.AcceptableHostIdleTime,
 		GroupVersions:          ps.GroupVersions,
 		TaskOrdering:           ps.TaskOrdering,
-		PatchZipperFactor:      ps.PatchZipperFactor,
+		PatchFactor:            ps.PatchFactor,
 		TimeInQueueFactor:      ps.TimeInQueueFactor,
 		ExpectedRuntimeFactor:  ps.ExpectedRuntimeFactor,
 		maxDurationPerHost:     evergreen.MaxDurationPerDistroHost,
@@ -434,8 +472,8 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	if resolved.GroupVersions == nil {
 		resolved.GroupVersions = &config.GroupVersions
 	}
-	if resolved.PatchZipperFactor == 0 {
-		resolved.PatchZipperFactor = config.PatchZipperFactor
+	if resolved.PatchFactor == 0 {
+		resolved.PatchFactor = config.PatchFactor
 	}
 	if resolved.TimeInQueueFactor == 0 {
 		resolved.TimeInQueueFactor = config.TimeInQueueFactor

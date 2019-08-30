@@ -60,6 +60,7 @@ var (
 	StartedByKey                 = bsonutil.MustHaveTag(Host{}, "StartedBy")
 	InstanceTypeKey              = bsonutil.MustHaveTag(Host{}, "InstanceType")
 	VolumeSizeKey                = bsonutil.MustHaveTag(Host{}, "VolumeTotalSize")
+	VolumeIDsKey                 = bsonutil.MustHaveTag(Host{}, "VolumeIDs")
 	NotificationsKey             = bsonutil.MustHaveTag(Host{}, "Notifications")
 	LastCommunicationTimeKey     = bsonutil.MustHaveTag(Host{}, "LastCommunicationTime")
 	UserHostKey                  = bsonutil.MustHaveTag(Host{}, "UserHost")
@@ -69,6 +70,7 @@ var (
 	ProvisionAttemptsKey         = bsonutil.MustHaveTag(Host{}, "ProvisionAttempts")
 	TaskCountKey                 = bsonutil.MustHaveTag(Host{}, "TaskCount")
 	StartTimeKey                 = bsonutil.MustHaveTag(Host{}, "StartTime")
+	AgentStartTimeKey            = bsonutil.MustHaveTag(Host{}, "AgentStartTime")
 	ComputeCostPerHourKey        = bsonutil.MustHaveTag(Host{}, "ComputeCostPerHour")
 	TotalCostKey                 = bsonutil.MustHaveTag(Host{}, "TotalCost")
 	TotalIdleTimeKey             = bsonutil.MustHaveTag(Host{}, "TotalIdleTime")
@@ -376,7 +378,7 @@ func FindByFirstProvisioningAttempt() ([]Host, error) {
 // credentials will expire within the given cutoff.
 func FindByExpiringJasperCredentials(cutoff time.Duration) ([]Host, error) {
 	deadline := time.Now().Add(cutoff)
-	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	credentialsKey := credentials.Collection
 	expirationKey := bsonutil.GetDottedKeyName(credentialsKey, credentials.TTLKey)
 
@@ -474,6 +476,16 @@ func ByIds(ids []string) db.Q {
 			},
 		},
 	})
+}
+
+// FindByJasperCredentialsID finds a host with the given Jasper credentials ID.
+func FindOneByJasperCredentialsID(id string) (*Host, error) {
+	h := &Host{}
+	query := bson.M{JasperCredentialsIDKey: id}
+	if err := db.FindOne(Collection, query, db.NoProjection, db.NoSort, h); err != nil {
+		return nil, errors.Wrapf(err, "could not find host with Jasper credentials ID '%s'", id)
+	}
+	return h, nil
 }
 
 // ByRunningTaskId returns a host running the task with the given id.
@@ -616,8 +628,36 @@ func FindStaleRunningTasks(cutoff time.Duration) ([]task.Task, error) {
 	return tasks, nil
 }
 
-// LastCommunicationTimeElapsed returns hosts which have never communicated or have not communicated in too long.
-func LastCommunicationTimeElapsed(currentTime time.Time) bson.M {
+// AgentLastCommunicationTimeElapsed finds legacy hosts which do not have an
+// agent or whose agents have not communicated recently.
+func AgentLastCommunicationTimeElapsed(currentTime time.Time) bson.M {
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
+	cutoffTime := currentTime.Add(-MaxLCTInterval)
+	return bson.M{
+		StatusKey:        evergreen.HostRunning,
+		StartedByKey:     evergreen.User,
+		HasContainersKey: bson.M{"$ne": true},
+		ParentIDKey:      bson.M{"$exists": false},
+		RunningTaskKey:   bson.M{"$exists": false},
+		"$and": []bson.M{
+			bson.M{"$or": []bson.M{
+				{LastCommunicationTimeKey: util.ZeroTime},
+				{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
+				{LastCommunicationTimeKey: bson.M{"$exists": false}},
+			}},
+			bson.M{"$or": []bson.M{
+				{bootstrapKey: bson.M{"$exists": false}},
+				{bootstrapKey: bson.M{"$in": []string{"", distro.BootstrapMethodLegacySSH}}},
+			}},
+		},
+	}
+}
+
+// AgentMonitorLastCommunicationTimeElapsed finds hosts which do not have an
+// agent monitor or which should have an agent monitor but their agent has not
+// communicated recently.
+func AgentMonitorLastCommunicationTimeElapsed(currentTime time.Time) bson.M {
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	cutoffTime := currentTime.Add(-MaxLCTInterval)
 	return bson.M{
 		StatusKey:        evergreen.HostRunning,
@@ -630,16 +670,21 @@ func LastCommunicationTimeElapsed(currentTime time.Time) bson.M {
 			{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
 			{LastCommunicationTimeKey: bson.M{"$exists": false}},
 		},
+		bootstrapKey: bson.M{"$in": []string{
+			distro.BootstrapMethodSSH,
+			distro.BootstrapMethodUserData,
+			distro.BootstrapMethodPreconfiguredImage,
+		}},
 	}
 }
 
 // NeedsNewAgentFlagSet returns legacy hosts with NeedsNewAgent set to true.
 func NeedsNewAgentFlagSet() db.Q {
-	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	return db.Query(bson.M{
 		"$or": []bson.M{
 			{bootstrapKey: bson.M{"$exists": false}},
-			{bootstrapKey: distro.BootstrapMethodLegacySSH},
+			{bootstrapKey: bson.M{"$in": []string{"", distro.BootstrapMethodLegacySSH}}},
 		},
 		StatusKey:        evergreen.HostRunning,
 		StartedByKey:     evergreen.User,
@@ -653,7 +698,7 @@ func NeedsNewAgentFlagSet() db.Q {
 // FindByNeedsNewAgentMonitor returns running hosts that need a new agent
 // monitor.
 func FindByNeedsNewAgentMonitor() ([]Host, error) {
-	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	hosts := []Host{}
 	query := bson.M{
 		bootstrapKey: bson.M{
@@ -674,6 +719,23 @@ func FindByNeedsNewAgentMonitor() ([]Host, error) {
 	}
 
 	return hosts, err
+}
+
+// FindUserDataSpawnHostsProvisioning finds all spawn hosts that have been
+// provisioned by the app server but are still being provisioned by user data.
+func FindUserDataSpawnHostsProvisioning() ([]Host, error) {
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
+
+	hosts, err := Find(db.Query(bson.M{
+		StatusKey:      evergreen.HostProvisioning,
+		ProvisionedKey: true,
+		StartedByKey:   bson.M{"$ne": evergreen.User},
+		bootstrapKey:   distro.BootstrapMethodUserData,
+	}))
+	if err != nil {
+		return nil, errors.Wrap(err, "could not find user data spawn hosts that are still provisioning themselves")
+	}
+	return hosts, nil
 }
 
 // Removes host intents that have been been uninitialized for more than 3
@@ -733,7 +795,7 @@ func FindOneByIdOrTag(id string) (*Host, error) {
 	})
 	host, err := FindOne(query) // try to find by tag
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding '%s' by _id or tag field")
+		return nil, errors.Wrapf(err, "error finding '%s' by _id or tag field", id)
 	}
 	return host, nil
 }

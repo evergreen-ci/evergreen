@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -221,6 +222,14 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	// remove the intent host to insert started host
 	intentHost, err := host.FindOneId(j.HostID)
 	if err != nil {
+		if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
+			grip.Error(message.WrapError(j.host.DeleteJasperCredentials(ctx), message.Fields{
+				"message": "problem cleaning up Jasper credentials",
+				"host":    j.host.Id,
+				"distro":  j.host.Distro.Id,
+				"job":     j.ID(),
+			}))
+		}
 		return errors.Wrapf(err, "problem retrieving intent host '%s'", j.HostID)
 	}
 	if intentHost == nil {
@@ -230,6 +239,14 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 			"host":    j.HostID,
 		})
 	} else if err := intentHost.Remove(); err != nil {
+		if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
+			grip.Error(message.WrapError(j.host.DeleteJasperCredentials(ctx), message.Fields{
+				"message": "problem cleaning up Jasper credentials",
+				"host":    j.host.Id,
+				"distro":  j.host.Distro.Id,
+				"job":     j.ID(),
+			}))
+		}
 		grip.Notice(message.WrapError(err, message.Fields{
 			"message": "problem removing intent host",
 			"job":     j.ID(),
@@ -249,6 +266,14 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	j.host.StartTime = j.start
 
 	if err := j.host.Insert(); err != nil {
+		if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
+			grip.Error(message.WrapError(j.host.DeleteJasperCredentials(ctx), message.Fields{
+				"message": "problem cleaning up Jasper credentials",
+				"host":    j.host.Id,
+				"distro":  j.host.Distro.Id,
+				"job":     j.ID(),
+			}))
+		}
 		return errors.Wrapf(err, "error updating host %v", j.host.Id)
 	}
 
@@ -270,9 +295,13 @@ func (j *createHostJob) tryRequeue(ctx context.Context) {
 		if j.host.ParentID != "" {
 			wait = 10 * time.Second
 		}
+		maxTime := j.TimeInfo().MaxTime - (time.Since(j.start)) - time.Minute
+		if maxTime < 0 {
+			maxTime = 0
+		}
 		job.UpdateTimeInfo(amboy.JobTimeInfo{
 			WaitUntil: j.start.Add(wait),
-			MaxTime:   j.TimeInfo().MaxTime - (time.Since(j.start)) - time.Minute,
+			MaxTime:   maxTime,
 		})
 		err := j.env.RemoteQueue().Put(ctx, job)
 		grip.Error(message.WrapError(err, message.Fields{

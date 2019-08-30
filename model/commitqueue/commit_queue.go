@@ -61,7 +61,7 @@ func (q *CommitQueue) Enqueue(item CommitQueueItem) (int, error) {
 }
 
 func (q *CommitQueue) Next() *CommitQueueItem {
-	if len(q.Queue) == 0 || q.Processing {
+	if len(q.Queue) == 0 {
 		return nil
 	}
 

@@ -115,6 +115,9 @@ func getStartTaskEndpoint(t *testing.T, as *APIServer, hostId, taskId string) *h
 }
 
 func TestAssignNextAvailableTaskWithPlannerSettingVersionLegacy(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	Convey("with a task queue and a host", t, func() {
 		settings := distro.PlannerSettings{
 			Version: evergreen.PlannerVersionLegacy,
@@ -176,7 +179,7 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionLegacy(t *testing.T) {
 		So(pref.Insert(), ShouldBeNil)
 
 		Convey("a host should get the task at the top of the queue", func() {
-			t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
+			t, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskDispatcherTTL), &theHostWhoCanBoastTheMostRoast)
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Id, ShouldEqual, "task1")
@@ -188,110 +191,120 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionLegacy(t *testing.T) {
 			h, err := host.FindOne(host.ById(theHostWhoCanBoastTheMostRoast.Id))
 			So(err, ShouldBeNil)
 			So(h.RunningTask, ShouldEqual, "task1")
+		})
 
-			Convey("a task that is not undispatched should not be updated in the host", func() {
-				taskQueue.Queue = []model.TaskQueueItem{
-					{Id: "undispatchedTask"},
-					{Id: "task2"},
-				}
-				So(taskQueue.Save(), ShouldBeNil)
-				undispatchedTask := task.Task{
-					Id:     "undispatchedTask",
-					Status: evergreen.TaskStarted,
-				}
-				So(undispatchedTask.Insert(), ShouldBeNil)
-				t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
-				So(err, ShouldBeNil)
-				So(t.Id, ShouldEqual, "task2")
+		Convey("a task that is not undispatched should not be updated in the host", func() {
+			taskQueue.Queue = []model.TaskQueueItem{
+				{Id: "undispatchedTask"},
+				{Id: "task2"},
+			}
+			So(taskQueue.Save(), ShouldBeNil)
+			undispatchedTask := task.Task{
+				Id:     "undispatchedTask",
+				Status: evergreen.TaskStarted,
+			}
+			So(undispatchedTask.Insert(), ShouldBeNil)
+			t, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskDispatcherTTL), &theHostWhoCanBoastTheMostRoast)
+			So(err, ShouldBeNil)
+			So(t.Id, ShouldEqual, "task2")
 
-				currentTq, err := model.LoadTaskQueue(distroID)
+			currentTq, err := model.LoadTaskQueue(distroID)
+			So(err, ShouldBeNil)
+			So(currentTq.Length(), ShouldEqual, 0)
+		})
+		Convey("an empty task queue should return a nil task", func() {
+			taskQueue.Queue = []model.TaskQueueItem{}
+			So(taskQueue.Save(), ShouldBeNil)
+			t, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskDispatcherTTL), &theHostWhoCanBoastTheMostRoast)
+			So(err, ShouldBeNil)
+			So(t, ShouldBeNil)
+		})
+		Convey("a tasks queue with a task that does not exist should continue", func() {
+			taskQueue.Queue = []model.TaskQueueItem{{Id: "notatask"}}
+			So(taskQueue.Save(), ShouldBeNil)
+			t, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskDispatcherTTL), &theHostWhoCanBoastTheMostRoast)
+			So(err, ShouldBeNil)
+			So(t, ShouldBeNil)
+		})
+		Convey("with a host with a running task", func() {
+			anotherHost := host.Host{
+				Id:          "ahost",
+				RunningTask: "sampleTask",
+				Distro: distro.Distro{
+					Id: distroID,
+				},
+				Secret: hostSecret,
+			}
+			So(anotherHost.Insert(), ShouldBeNil)
+			h2 := host.Host{
+				Id: "host2",
+				Distro: distro.Distro{
+					Id: distroID,
+				},
+				Secret: hostSecret,
+				Status: evergreen.HostRunning,
+			}
+			So(h2.Insert(), ShouldBeNil)
+
+			t1 := task.Task{
+				Id:        "sampleTask",
+				Status:    evergreen.TaskUndispatched,
+				Project:   "exists",
+				Activated: true,
+			}
+			So(t1.Insert(), ShouldBeNil)
+			t2 := task.Task{
+				Id:        "another",
+				Status:    evergreen.TaskUndispatched,
+				Project:   "exists",
+				Activated: true,
+			}
+			So(t2.Insert(), ShouldBeNil)
+
+			taskQueue.Queue = []model.TaskQueueItem{
+				{Id: t1.Id},
+				{Id: t2.Id},
+			}
+			So(taskQueue.Save(), ShouldBeNil)
+			Convey("the task that is in the other host should not be assigned to another host", func() {
+				t, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskDispatcherTTL), &h2)
 				So(err, ShouldBeNil)
-				So(currentTq.Length(), ShouldEqual, 0)
+				So(t, ShouldNotBeNil)
+				So(t.Id, ShouldEqual, t2.Id)
+				h, err := host.FindOne(host.ById(h2.Id))
+				So(err, ShouldBeNil)
+				So(h.RunningTask, ShouldEqual, t2.Id)
 			})
-			Convey("an empty task queue should return a nil task", func() {
-				taskQueue.Queue = []model.TaskQueueItem{}
-				So(taskQueue.Save(), ShouldBeNil)
-				t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
-				So(err, ShouldBeNil)
-				So(t, ShouldBeNil)
-			})
-			Convey("a tasks queue with a task that does not exist should continue", func() {
-				taskQueue.Queue = []model.TaskQueueItem{{Id: "notatask"}}
-				So(taskQueue.Save(), ShouldBeNil)
-				t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
-				So(err, ShouldBeNil)
-				So(t, ShouldBeNil)
-			})
-			Convey("with a host with a running task", func() {
-				anotherHost := host.Host{
-					Id:          "ahost",
-					RunningTask: "sampleTask",
-					Distro: distro.Distro{
-						Id: distroID,
-					},
-					Secret: hostSecret,
-				}
-				So(anotherHost.Insert(), ShouldBeNil)
-				h2 := host.Host{
-					Id: "host2",
-					Distro: distro.Distro{
-						Id: distroID,
-					},
-					Secret: hostSecret,
-					Status: evergreen.HostRunning,
-				}
-				So(h2.Insert(), ShouldBeNil)
-
-				t1 := task.Task{
-					Id:        "sampleTask",
-					Status:    evergreen.TaskUndispatched,
-					Project:   "exists",
-					Activated: true,
-				}
-				So(t1.Insert(), ShouldBeNil)
-				t2 := task.Task{
-					Id:        "another",
-					Status:    evergreen.TaskUndispatched,
-					Project:   "exists",
-					Activated: true,
-				}
-				So(t2.Insert(), ShouldBeNil)
-
-				taskQueue.Queue = []model.TaskQueueItem{
-					{Id: t1.Id},
-					{Id: t2.Id},
-				}
-				So(taskQueue.Save(), ShouldBeNil)
-				Convey("the task that is in the other host should not be assigned to another host", func() {
-					t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &h2)
-					So(err, ShouldBeNil)
-					So(t, ShouldNotBeNil)
-					So(t.Id, ShouldEqual, t2.Id)
-					h, err := host.FindOne(host.ById(h2.Id))
-					So(err, ShouldBeNil)
-					So(h.RunningTask, ShouldEqual, t2.Id)
-				})
-				Convey("a host with a running task should return an error", func() {
-					_, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &anotherHost)
-					So(err, ShouldNotBeNil)
-				})
+			Convey("a host with a running task should return an error", func() {
+				_, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskDispatcherTTL), &anotherHost)
+				So(err, ShouldNotBeNil)
 			})
 		})
 	})
 }
 
 func TestAssignNextAvailableTaskWithPlannerSettingVersionTunable(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	Convey("with a task queue and a host", t, func() {
 		settings := distro.PlannerSettings{
 			Version: evergreen.PlannerVersionTunable,
 		}
-		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection, model.ProjectRefCollection); err != nil {
+		if err := db.ClearCollections(distro.Collection, host.Collection, task.Collection, model.TaskQueuesCollection, model.ProjectRefCollection); err != nil {
 			t.Fatalf("clearing db: %v", err)
 		}
 		if err := modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey); err != nil {
 			t.Fatalf("adding test indexes %v", err)
 		}
-		distroID := "testDistro"
+
+		d := distro.Distro{
+			Id:              "testDistro",
+			PlannerSettings: settings,
+		}
+
+		So(d.Insert(), ShouldBeNil)
+
 		taskGroupInfo := model.TaskGroupInfo{
 			Name:  "",
 			Count: 2,
@@ -301,7 +314,7 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionTunable(t *testing.T) {
 			TaskGroupInfos: []model.TaskGroupInfo{taskGroupInfo},
 		}
 		taskQueue := &model.TaskQueue{
-			Distro: distroID,
+			Distro: d.Id,
 			Queue: []model.TaskQueueItem{
 				{Id: "task1"},
 				{Id: "task2"},
@@ -313,7 +326,7 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionTunable(t *testing.T) {
 		theHostWhoCanBoastTheMostRoast := host.Host{
 			Id: "h1",
 			Distro: distro.Distro{
-				Id:              distroID,
+				Id:              d.Id,
 				PlannerSettings: settings,
 			},
 			Secret: hostSecret,
@@ -342,105 +355,110 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionTunable(t *testing.T) {
 		So(pref.Insert(), ShouldBeNil)
 
 		Convey("a host should get the task at the top of the queue", func() {
-			t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
+			t, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskDispatcherTTL), &theHostWhoCanBoastTheMostRoast)
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Id, ShouldEqual, "task1")
 
-			currentTq, err := model.LoadTaskQueue(distroID)
+			currentTq, err := model.LoadTaskQueue(d.Id)
 			So(err, ShouldBeNil)
 			So(currentTq.Length(), ShouldEqual, 1)
 
 			h, err := host.FindOne(host.ById(theHostWhoCanBoastTheMostRoast.Id))
 			So(err, ShouldBeNil)
 			So(h.RunningTask, ShouldEqual, "task1")
+		})
 
-			Convey("a task that is not undispatched should not be updated in the host", func() {
-				taskQueue.Queue = []model.TaskQueueItem{
-					{Id: "undispatchedTask"},
-					{Id: "task2"},
-				}
-				So(taskQueue.Save(), ShouldBeNil)
-				undispatchedTask := task.Task{
-					Id:     "undispatchedTask",
-					Status: evergreen.TaskStarted,
-				}
-				So(undispatchedTask.Insert(), ShouldBeNil)
-				t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
-				So(err, ShouldBeNil)
-				So(t.Id, ShouldEqual, "task2")
+		Convey("a task that is not undispatched should not be updated in the host", func() {
+			taskQueue.Queue = []model.TaskQueueItem{
+				{Id: "undispatchedTask"},
+				{Id: "task2"},
+			}
+			So(taskQueue.Save(), ShouldBeNil)
+			undispatchedTask := task.Task{
+				Id:     "undispatchedTask",
+				Status: evergreen.TaskStarted,
+			}
+			So(undispatchedTask.Insert(), ShouldBeNil)
+			t, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskDispatcherTTL), &theHostWhoCanBoastTheMostRoast)
+			So(err, ShouldBeNil)
+			So(t.Id, ShouldEqual, "task2")
 
-				currentTq, err := model.LoadTaskQueue(distroID)
+			currentTq, err := model.LoadTaskQueue(d.Id)
+			So(err, ShouldBeNil)
+			So(currentTq.Length(), ShouldEqual, 0)
+		})
+		Convey("an empty task queue should return a nil task", func() {
+			taskQueue.Queue = []model.TaskQueueItem{}
+			So(taskQueue.Save(), ShouldBeNil)
+			t, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskDispatcherTTL), &theHostWhoCanBoastTheMostRoast)
+			So(err, ShouldBeNil)
+			So(t, ShouldBeNil)
+		})
+		Convey("a tasks queue with a task that does not exist should error", func() {
+			item := model.TaskQueueItem{
+				Id:           "notatask",
+				Dependencies: []string{},
+			}
+			// taskQueue.Queue = []model.TaskQueueItem{{Id: "notatask"}}
+			taskQueue.Queue = []model.TaskQueueItem{item}
+			So(taskQueue.Save(), ShouldBeNil)
+			t, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskDispatcherTTL), &theHostWhoCanBoastTheMostRoast)
+			So(err, ShouldBeNil)
+			So(t, ShouldBeNil)
+		})
+		Convey("with a host with a running task", func() {
+			anotherHost := host.Host{
+				Id:          "ahost",
+				RunningTask: "sampleTask",
+				Distro: distro.Distro{
+					Id: d.Id,
+				},
+				Secret: hostSecret,
+			}
+			So(anotherHost.Insert(), ShouldBeNil)
+			h2 := host.Host{
+				Id: "host2",
+				Distro: distro.Distro{
+					Id: d.Id,
+				},
+				Secret: hostSecret,
+				Status: evergreen.HostRunning,
+			}
+			So(h2.Insert(), ShouldBeNil)
+
+			t1 := task.Task{
+				Id:        "sampleTask",
+				Status:    evergreen.TaskUndispatched,
+				Project:   "exists",
+				Activated: true,
+			}
+			So(t1.Insert(), ShouldBeNil)
+			t2 := task.Task{
+				Id:        "another",
+				Status:    evergreen.TaskUndispatched,
+				Project:   "exists",
+				Activated: true,
+			}
+			So(t2.Insert(), ShouldBeNil)
+
+			taskQueue.Queue = []model.TaskQueueItem{
+				{Id: t1.Id},
+				{Id: t2.Id},
+			}
+			So(taskQueue.Save(), ShouldBeNil)
+			Convey("the task that is in the other host should not be assigned to another host", func() {
+				t, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskDispatcherTTL), &h2)
 				So(err, ShouldBeNil)
-				So(currentTq.Length(), ShouldEqual, 0)
+				So(t, ShouldNotBeNil)
+				So(t.Id, ShouldEqual, t2.Id)
+				h, err := host.FindOne(host.ById(h2.Id))
+				So(err, ShouldBeNil)
+				So(h.RunningTask, ShouldEqual, t2.Id)
 			})
-			Convey("an empty task queue should return a nil task", func() {
-				taskQueue.Queue = []model.TaskQueueItem{}
-				So(taskQueue.Save(), ShouldBeNil)
-				t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
-				So(err, ShouldBeNil)
-				So(t, ShouldBeNil)
-			})
-			Convey("a tasks queue with a task that does not exist should error", func() {
-				taskQueue.Queue = []model.TaskQueueItem{{Id: "notatask"}}
-				So(taskQueue.Save(), ShouldBeNil)
-				t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
-				So(err, ShouldBeNil)
-				So(t, ShouldBeNil)
-			})
-			Convey("with a host with a running task", func() {
-				anotherHost := host.Host{
-					Id:          "ahost",
-					RunningTask: "sampleTask",
-					Distro: distro.Distro{
-						Id: distroID,
-					},
-					Secret: hostSecret,
-				}
-				So(anotherHost.Insert(), ShouldBeNil)
-				h2 := host.Host{
-					Id: "host2",
-					Distro: distro.Distro{
-						Id: distroID,
-					},
-					Secret: hostSecret,
-					Status: evergreen.HostRunning,
-				}
-				So(h2.Insert(), ShouldBeNil)
-
-				t1 := task.Task{
-					Id:        "sampleTask",
-					Status:    evergreen.TaskUndispatched,
-					Project:   "exists",
-					Activated: true,
-				}
-				So(t1.Insert(), ShouldBeNil)
-				t2 := task.Task{
-					Id:        "another",
-					Status:    evergreen.TaskUndispatched,
-					Project:   "exists",
-					Activated: true,
-				}
-				So(t2.Insert(), ShouldBeNil)
-
-				taskQueue.Queue = []model.TaskQueueItem{
-					{Id: t1.Id},
-					{Id: t2.Id},
-				}
-				So(taskQueue.Save(), ShouldBeNil)
-				Convey("the task that is in the other host should not be assigned to another host", func() {
-					t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &h2)
-					So(err, ShouldBeNil)
-					So(t, ShouldNotBeNil)
-					So(t.Id, ShouldEqual, t2.Id)
-					h, err := host.FindOne(host.ById(h2.Id))
-					So(err, ShouldBeNil)
-					So(h.RunningTask, ShouldEqual, t2.Id)
-				})
-				Convey("a host with a running task should return an error", func() {
-					_, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &anotherHost)
-					So(err, ShouldNotBeNil)
-				})
+			Convey("a host with a running task should return an error", func() {
+				_, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskDispatcherTTL), &anotherHost)
+				So(err, ShouldNotBeNil)
 			})
 		})
 	})
@@ -545,6 +563,11 @@ func TestNextTask(t *testing.T) {
 					So(nextTask.Status, ShouldEqual, evergreen.TaskDispatched)
 				})
 			})
+			Convey("and should set the agent start time", func() {
+				dbHost, err := host.FindOneId(sampleHost.Id)
+				require.NoError(t, err)
+				So(dbHost.AgentStartTime.Second(), ShouldNotEqual, 0)
+			})
 			Convey("with degraded mode set", func() {
 				serviceFlags := evergreen.ServiceFlags{
 					TaskDispatchDisabled: true,
@@ -585,9 +608,12 @@ func TestNextTask(t *testing.T) {
 				nonLegacyHost := host.Host{
 					Id: "nonLegacyHost",
 					Distro: distro.Distro{
-						Id:                  distroID,
-						BootstrapMethod:     distro.BootstrapMethodUserData,
-						CommunicationMethod: distro.CommunicationMethodRPC,
+						Id: distroID,
+						BootstrapSettings: distro.BootstrapSettings{
+
+							Method:        distro.BootstrapMethodUserData,
+							Communication: distro.CommunicationMethodRPC,
+						},
 					},
 					Secret:        hostSecret,
 					Status:        evergreen.HostRunning,
@@ -764,7 +790,7 @@ func TestCheckHostHealth(t *testing.T) {
 }
 
 func localGroupConstructor(ctx context.Context) (amboy.Queue, error) {
-	return queue.NewLocalUnordered(1), nil
+	return queue.NewLocalLimitedSize(1, 1048), nil
 }
 
 func TestTaskLifecycleEndpoints(t *testing.T) {

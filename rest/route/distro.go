@@ -9,6 +9,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -257,6 +258,8 @@ func (h *distroIDPutHandler) Parse(ctx context.Context, r *http.Request) error {
 // (a) replaces an existing resource with the entity defined in the JSON payload, or
 // (b) creates a new resource based on the Request-URI and JSON payload
 func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
+	user := MustHaveUser(ctx)
+
 	original, err := h.sc.FindDistroById(h.distroID)
 	if err != nil && err.(gimlet.ErrorResponse).StatusCode != http.StatusNotFound {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
@@ -267,9 +270,11 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		PlannerSettings: model.APIPlannerSettings{
 			Version: model.ToAPIString(evergreen.PlannerVersionLegacy),
 		},
-		BootstrapMethod:     model.ToAPIString(distro.BootstrapMethodLegacySSH),
-		CommunicationMethod: model.ToAPIString(distro.CommunicationMethodLegacySSH),
-		CloneMethod:         model.ToAPIString(distro.CloneMethodLegacySSH),
+		BootstrapSettings: model.APIBootstrapSettings{
+			Method:        model.ToAPIString(distro.BootstrapMethodLegacySSH),
+			Communication: model.ToAPIString(distro.CommunicationMethodLegacySSH),
+		},
+		CloneMethod: model.ToAPIString(distro.CloneMethodLegacySSH),
 	}
 	if err = json.Unmarshal(h.body, apiDistro); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
@@ -285,6 +290,7 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		if err = h.sc.UpdateDistro(distro); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() distro with distro id '%s'", h.distroID))
 		}
+		event.LogDistroModified(h.distroID, user.Username(), distro)
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 	// New resource

@@ -55,11 +55,11 @@ type UserSettings struct {
 	GithubUser       GithubUser              `json:"github_user" bson:"github_user,omitempty"`
 	SlackUsername    string                  `bson:"slack_username,omitempty" json:"slack_username,omitempty"`
 	Notifications    NotificationPreferences `bson:"notifications,omitempty" json:"notifications,omitempty"`
-	UseSpruceOptions UseSpruceOptions        `json:"use_spruce_options,omitempty" bson:"use_spruce_options,omitempty"`
+	UseSpruceOptions UseSpruceOptions        `json:"use_spruce_options" bson:"use_spruce_options"`
 }
 
 type UseSpruceOptions struct {
-	PatchPage bool `json:"patch_page,omitempty" bson:"patch_page,omitempty"`
+	PatchPage bool `json:"patch_page" bson:"patch_page"`
 }
 
 type NotificationPreferences struct {

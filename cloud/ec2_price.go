@@ -336,14 +336,14 @@ func (m *ec2Manager) getProvider(ctx context.Context, h *host.Host, ec2settings 
 		onDemandPrice float64
 		spotPrice     float64
 		az            string
-		r             string
 	)
 	if h.UserHost || m.provider == onDemandProvider || m.provider == autoProvider {
-		r, err = getRegion(h)
+		ec2Settings := &EC2ProviderSettings{}
+		err := ec2Settings.fromDistroSettings(h.Distro)
 		if err != nil {
-			return 0, errors.Wrap(err, "problem getting region for host")
+			return 0, errors.Wrap(err, "problem getting settings from host")
 		}
-		onDemandPrice, err = pkgCachingPriceFetcher.getEC2OnDemandCost(ctx, m.client, getOsName(h), ec2settings.InstanceType, r)
+		onDemandPrice, err = pkgCachingPriceFetcher.getEC2OnDemandCost(ctx, m.client, getOsName(h), ec2settings.InstanceType, ec2settings.getRegion())
 		if err != nil {
 			return 0, errors.Wrap(err, "error getting ec2 on-demand cost")
 		}
@@ -444,31 +444,23 @@ func getVolumeSize(ctx context.Context, client AWSClient, h *host.Host) (int64, 
 	if h.VolumeTotalSize != 0 {
 		return h.VolumeTotalSize, nil
 	}
-	instanceID := h.Id
-	if h.ExternalIdentifier != "" {
-		instanceID = h.ExternalIdentifier
-	}
-	instance, err := client.GetInstanceInfo(ctx, instanceID)
+
+	volumeIDs, err := client.GetVolumeIDs(ctx, h)
 	if err != nil {
-		return 0, errors.Wrap(err, "error getting instance info")
+		return 0, errors.Wrapf(err, "can't get volume IDs for '%s'", h.Id)
 	}
-	devices := instance.BlockDeviceMappings
+	vols, err := client.DescribeVolumes(ctx, &ec2.DescribeVolumesInput{
+		VolumeIds: aws.StringSlice(volumeIDs),
+	})
+	if err != nil {
+		return 0, errors.Wrap(err, "error describing volumes")
+	}
+
 	var totalSize int64
-	if len(devices) > 0 {
-		volumeIds := []*string{}
-		for i := range devices {
-			volumeIds = append(volumeIds, devices[i].Ebs.VolumeId)
-		}
-		vols, err := client.DescribeVolumes(ctx, &ec2.DescribeVolumesInput{
-			VolumeIds: volumeIds,
-		})
-		if err != nil {
-			return 0, errors.Wrap(err, "error describing volumes")
-		}
-		for _, v := range vols.Volumes {
-			totalSize = totalSize + *v.Size
-		}
+	for _, v := range vols.Volumes {
+		totalSize += *v.Size
 	}
+
 	return totalSize, nil
 }
 

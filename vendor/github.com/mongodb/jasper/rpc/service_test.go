@@ -23,11 +23,14 @@ func TestRPCService(t *testing.T) {
 		"Blocking": jasper.NewLocalManagerBlockingProcesses,
 	} {
 		t.Run(managerName, func(t *testing.T) {
-			for testName, testCase := range map[string]func(context.Context, *testing.T, jasper.CreateOptions, internal.JasperProcessManagerClient, string, string){
-				"CreateWithLogFile": func(ctx context.Context, t *testing.T, opts jasper.CreateOptions, client internal.JasperProcessManagerClient, output string, buildDir string) {
-					file, err := ioutil.TempFile(buildDir, "out.txt")
+			for testName, testCase := range map[string]func(context.Context, *testing.T, internal.JasperProcessManagerClient){
+				"CreateWithLogFile": func(ctx context.Context, t *testing.T, client internal.JasperProcessManagerClient) {
+					file, err := ioutil.TempFile(buildDir(t), "out.txt")
 					require.NoError(t, err)
-					defer os.Remove(file.Name())
+					require.NoError(t, file.Close())
+					defer func() {
+						assert.NoError(t, os.RemoveAll(file.Name()))
+					}()
 
 					logger := jasper.Logger{
 						Type: jasper.LogFile,
@@ -36,7 +39,13 @@ func TestRPCService(t *testing.T) {
 							Format:   jasper.LogFormatPlain,
 						},
 					}
-					opts.Output.Loggers = []jasper.Logger{logger}
+					output := "foobar"
+					opts := jasper.CreateOptions{
+						Args: []string{"echo", output},
+						Output: jasper.OutputOptions{
+							Loggers: []jasper.Logger{logger},
+						},
+					}
 
 					procInfo, err := client.Create(ctx, internal.ConvertCreateOptions(&opts))
 					require.NoError(t, err)
@@ -54,10 +63,13 @@ func TestRPCService(t *testing.T) {
 					require.NoError(t, err)
 					assert.Contains(t, string(fileContents), output)
 				},
-				"DownloadFileCreatesResource": func(ctx context.Context, t *testing.T, opts jasper.CreateOptions, client internal.JasperProcessManagerClient, output string, buildDir string) {
-					file, err := ioutil.TempFile(buildDir, "out.txt")
+				"DownloadFileCreatesResource": func(ctx context.Context, t *testing.T, client internal.JasperProcessManagerClient) {
+					file, err := ioutil.TempFile(buildDir(t), "out.txt")
 					require.NoError(t, err)
-					defer os.Remove(file.Name())
+					require.NoError(t, file.Close())
+					defer func() {
+						assert.NoError(t, os.RemoveAll(file.Name()))
+					}()
 
 					info := jasper.DownloadInfo{
 						URL:  "http://example.com",
@@ -71,8 +83,8 @@ func TestRPCService(t *testing.T) {
 					require.NoError(t, err)
 					assert.NotZero(t, fileInfo.Size())
 				},
-				"DownloadFileFailsForInvalidArchiveFormat": func(ctx context.Context, t *testing.T, opts jasper.CreateOptions, client internal.JasperProcessManagerClient, output string, buildDir string) {
-					fileName := filepath.Join(buildDir, "out.txt")
+				"DownloadFileFailsForInvalidArchiveFormat": func(ctx context.Context, t *testing.T, client internal.JasperProcessManagerClient) {
+					fileName := filepath.Join(buildDir(t), "out.txt")
 
 					info := jasper.DownloadInfo{
 						URL:  "https://example.com",
@@ -86,8 +98,8 @@ func TestRPCService(t *testing.T) {
 					assert.NoError(t, err)
 					assert.False(t, outcome.Success)
 				},
-				"DownloadFileFailsForInvalidURL": func(ctx context.Context, t *testing.T, opts jasper.CreateOptions, client internal.JasperProcessManagerClient, output string, buildDir string) {
-					fileName := filepath.Join(buildDir, "out.txt")
+				"DownloadFileFailsForInvalidURL": func(ctx context.Context, t *testing.T, client internal.JasperProcessManagerClient) {
+					fileName := filepath.Join(buildDir(t), "out.txt")
 
 					info := jasper.DownloadInfo{
 						URL:  "://example.com",
@@ -97,8 +109,8 @@ func TestRPCService(t *testing.T) {
 					require.NoError(t, err)
 					assert.False(t, outcome.Success)
 				},
-				"DownloadFileFailsForNonexistentURL": func(ctx context.Context, t *testing.T, opts jasper.CreateOptions, client internal.JasperProcessManagerClient, output string, buildDir string) {
-					fileName := filepath.Join(buildDir, "out.txt")
+				"DownloadFileFailsForNonexistentURL": func(ctx context.Context, t *testing.T, client internal.JasperProcessManagerClient) {
+					fileName := filepath.Join(buildDir(t), "out.txt")
 
 					info := jasper.DownloadInfo{
 						URL:  "http://example.com/foo",
@@ -108,13 +120,22 @@ func TestRPCService(t *testing.T) {
 					require.NoError(t, err)
 					assert.False(t, outcome.Success)
 				},
-				"GetBuildloggerURLsFailsWithNonexistentProcess": func(ctx context.Context, t *testing.T, opts jasper.CreateOptions, client internal.JasperProcessManagerClient, output string, buildDir string) {
+				"GetBuildloggerURLsFailsWithNonexistentProcess": func(ctx context.Context, t *testing.T, client internal.JasperProcessManagerClient) {
 					urls, err := client.GetBuildloggerURLs(ctx, &internal.JasperProcessID{Value: "foo"})
 					assert.Error(t, err)
 					assert.Nil(t, urls)
 				},
-				"GetBuildloggerURLsFailsWithoutBuildlogger": func(ctx context.Context, t *testing.T, opts jasper.CreateOptions, client internal.JasperProcessManagerClient, output string, buildDir string) {
-					opts.Output.Loggers = []jasper.Logger{jasper.Logger{Type: jasper.LogDefault, Options: jasper.LogOptions{Format: jasper.LogFormatPlain}}}
+				"GetBuildloggerURLsFailsWithoutBuildlogger": func(ctx context.Context, t *testing.T, client internal.JasperProcessManagerClient) {
+					logger := jasper.Logger{
+						Type:    jasper.LogDefault,
+						Options: jasper.LogOptions{Format: jasper.LogFormatPlain},
+					}
+					opts := jasper.CreateOptions{
+						Args: []string{"echo", "foobar"},
+						Output: jasper.OutputOptions{
+							Loggers: []jasper.Logger{logger},
+						},
+					}
 
 					info, err := client.Create(ctx, internal.ConvertCreateOptions(&opts))
 					require.NoError(t, err)
@@ -123,14 +144,14 @@ func TestRPCService(t *testing.T) {
 					assert.Error(t, err)
 					assert.Nil(t, urls)
 				},
-				"RegisterSignalTriggerIDChecksForExistingProcess": func(ctx context.Context, t *testing.T, opts jasper.CreateOptions, client internal.JasperProcessManagerClient, output string, buildDir string) {
+				"RegisterSignalTriggerIDChecksForExistingProcess": func(ctx context.Context, t *testing.T, client internal.JasperProcessManagerClient) {
 					outcome, err := client.RegisterSignalTriggerID(ctx, internal.ConvertSignalTriggerParams("foo", jasper.CleanTerminationSignalTrigger))
 					require.NoError(t, err)
 					assert.False(t, outcome.Success)
 				},
-				"RegisterSignalTriggerIDFailsForInvalidTriggerID": func(ctx context.Context, t *testing.T, opts jasper.CreateOptions, client internal.JasperProcessManagerClient, output string, buildDir string) {
-					sleepOpts := sleepCreateOpts(10)
-					info, err := client.Create(ctx, internal.ConvertCreateOptions(sleepOpts))
+				"RegisterSignalTriggerIDFailsForInvalidTriggerID": func(ctx context.Context, t *testing.T, client internal.JasperProcessManagerClient) {
+					opts := sleepCreateOpts(10)
+					info, err := client.Create(ctx, internal.ConvertCreateOptions(opts))
 					require.NoError(t, err)
 
 					outcome, err := client.RegisterSignalTriggerID(ctx, internal.ConvertSignalTriggerParams(info.Id, jasper.SignalTriggerID("")))
@@ -141,9 +162,9 @@ func TestRPCService(t *testing.T) {
 					require.NoError(t, err)
 					assert.True(t, outcome.Success)
 				},
-				"RegisterSignalTriggerIDPassesWithValidArgs": func(ctx context.Context, t *testing.T, opts jasper.CreateOptions, client internal.JasperProcessManagerClient, output string, buildDir string) {
-					sleepOpts := sleepCreateOpts(10)
-					info, err := client.Create(ctx, internal.ConvertCreateOptions(sleepOpts))
+				"RegisterSignalTriggerIDPassesWithValidArgs": func(ctx context.Context, t *testing.T, client internal.JasperProcessManagerClient) {
+					opts := sleepCreateOpts(10)
+					info, err := client.Create(ctx, internal.ConvertCreateOptions(opts))
 					require.NoError(t, err)
 
 					outcome, err := client.RegisterSignalTriggerID(ctx, internal.ConvertSignalTriggerParams(info.Id, jasper.CleanTerminationSignalTrigger))
@@ -154,13 +175,11 @@ func TestRPCService(t *testing.T) {
 					require.NoError(t, err)
 					assert.True(t, outcome.Success)
 				},
-				//"": func(ctx context.Context, t *testing.T, opts jasper.CreateOptions, client internal.JasperProcessManagerClient, output string, buildDir string) {},
+				//"": func(ctx context.Context, t *testing.T, client internal.JasperProcessManagerClient) {},
 			} {
 				t.Run(testName, func(t *testing.T) {
 					ctx, cancel := context.WithTimeout(context.Background(), taskTimeout)
 					defer cancel()
-					output := "foobar"
-					opts := jasper.CreateOptions{Args: []string{"echo", output}}
 
 					manager, err := makeManager(false)
 					require.NoError(t, err)
@@ -177,13 +196,7 @@ func TestRPCService(t *testing.T) {
 						conn.Close()
 					}()
 
-					cwd, err := os.Getwd()
-					require.NoError(t, err)
-					buildDir := filepath.Join(filepath.Dir(cwd), "build")
-					absBuildDir, err := filepath.Abs(buildDir)
-					require.NoError(t, err)
-
-					testCase(ctx, t, opts, client, output, absBuildDir)
+					testCase(ctx, t, client)
 				})
 			}
 		})

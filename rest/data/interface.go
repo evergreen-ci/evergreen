@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/reliability"
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -59,8 +60,7 @@ type Connector interface {
 
 	// FindTasksByBuildId is a method to find a set of tasks which all have the same
 	// BuildId. It takes the buildId being queried for as its first parameter,
-	// as well as a taskId and limit for paginating through the results.
-	// It returns a list of tasks which match.
+	// as well as a taskId, status, and limit for paginating through the results.
 	FindTasksByBuildId(string, string, string, int, int) ([]task.Task, error)
 
 	// FindBuildById is a method to find the build matching the same BuildId.
@@ -100,7 +100,7 @@ type Connector interface {
 	// UpdateProjectRevision updates the given project's revision
 	UpdateProjectRevision(string, string) error
 	// FindProjects is a method to find projects as ordered by name
-	FindProjects(string, int, int, bool) ([]model.ProjectRef, error)
+	FindProjects(string, int, int) ([]model.ProjectRef, error)
 	// FindProjectByBranch is a method to find the projectref given a branch name.
 	FindProjectByBranch(string) (*model.ProjectRef, error)
 	GetProjectWithCommitQueueByOwnerRepoAndBranch(string, string, string) (*model.ProjectRef, error)
@@ -217,6 +217,8 @@ type Connector interface {
 	AddPublicKey(*user.DBUser, string, string) error
 	DeletePublicKey(*user.DBUser, string) error
 	UpdateSettings(*user.DBUser, user.UserSettings) error
+	SubmitFeedback(restModel.APIFeedbackSubmission) error
+	GetAllRoles() ([]restModel.APIRole, error)
 
 	AddPatchIntent(patch.Intent, amboy.Queue) error
 
@@ -268,6 +270,9 @@ type Connector interface {
 	GetTestStats(stats.StatsFilter) ([]restModel.APITestStats, error)
 	GetTaskStats(stats.StatsFilter) ([]restModel.APITaskStats, error)
 
+	// Get task reliability scores
+	GetTaskReliabilityScores(reliability.TaskReliabilityFilter) ([]restModel.APITaskReliability, error)
+
 	// Commit queue methods
 	// GetGithubPR takes the owner, repo, and PR number.
 	GetGitHubPR(context.Context, string, string, int) (*github.PullRequest, error)
@@ -275,6 +280,7 @@ type Connector interface {
 	FindCommitQueueByID(string) (*restModel.APICommitQueue, error)
 	EnableCommitQueue(*model.ProjectRef, model.CommitQueueParams) error
 	CommitQueueRemoveItem(string, string) (bool, error)
+	IsItemOnCommitQueue(string, string) (bool, error)
 	CommitQueueClearAll() (int, error)
 	IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error)
 

@@ -33,7 +33,7 @@ func (s *ProjectAliasSuite) SetupTest() {
 	}
 }
 
-func (s *ProjectAliasSuite) TestInsertTaskAndNoTags() {
+func (s *ProjectAliasSuite) TestInsertTaskAndVariantWithNoTags() {
 	for _, a := range s.aliases {
 		s.NoError(a.Upsert())
 	}
@@ -54,7 +54,7 @@ func (s *ProjectAliasSuite) TestInsertTagsAndNoTask() {
 	for _, alias := range s.aliases {
 		aliasCopy := alias
 		aliasCopy.Task = ""
-		aliasCopy.Tags = tags
+		aliasCopy.TaskTags = tags
 		s.NoError(aliasCopy.Upsert())
 	}
 
@@ -65,8 +65,31 @@ func (s *ProjectAliasSuite) TestInsertTagsAndNoTask() {
 		s.Equal(a.ProjectID, out.ProjectID)
 		s.Equal(a.Alias, out.Alias)
 		s.Equal(a.Variant, out.Variant)
+		s.Empty(out.VariantTags)
 		s.Equal("", out.Task)
-		s.Equal(tags, out.Tags)
+		s.Equal(tags, out.TaskTags)
+	}
+}
+
+func (s *ProjectAliasSuite) TestInsertTagsAndNoVariant() {
+	tags := []string{"tag1", "tag2"}
+	for _, alias := range s.aliases {
+		aliasCopy := alias
+		aliasCopy.Variant = ""
+		aliasCopy.VariantTags = tags
+		s.NoError(aliasCopy.Upsert())
+	}
+
+	var out ProjectAlias
+	for i, a := range s.aliases {
+		q := db.Query(bson.M{projectIDKey: fmt.Sprintf("project-%d", i)})
+		s.NoError(db.FindOneQ(ProjectAliasCollection, q, &out))
+		s.Equal(a.ProjectID, out.ProjectID)
+		s.Equal(a.Alias, out.Alias)
+		s.Equal(a.Task, out.Task)
+		s.Empty(out.TaskTags)
+		s.Equal("", out.Variant)
+		s.Equal(tags, out.VariantTags)
 	}
 }
 
@@ -156,49 +179,65 @@ func TestMatching(t *testing.T) {
 	assert := assert.New(t)
 	aliases := ProjectAliases{
 		{Alias: "one", Variant: "bv1", Task: "t1"},
-		{Alias: "two", Variant: "bv2", Task: "t2", Tags: []string{"tag2"}},
-		{Alias: "three", Variant: "bv3", Tags: []string{"tag3"}},
+		{Alias: "two", Variant: "bv2", Task: "t2"},
+		{Alias: "three", Variant: "bv3", TaskTags: []string{"tag3"}},
+		{Alias: "four", VariantTags: []string{"variantTag"}, TaskTags: []string{"tag4"}},
 	}
-	match, err := aliases.HasMatchingVariant("bv1")
+	match, err := aliases.HasMatchingVariant("bv1", nil)
 	assert.NoError(err)
 	assert.True(match)
-	match, err = aliases.HasMatchingVariant("bv5")
+	match, err = aliases.HasMatchingVariant("bv5", nil)
+	assert.NoError(err)
+	assert.False(match)
+	match, err = aliases.HasMatchingVariant("", []string{"variantTag"})
+	assert.NoError(err)
+	assert.True(match)
+
+	match, err = aliases.HasMatchingVariant("variantTag", nil)
+	assert.NoError(err)
+	assert.False(match)
+	match, err = aliases.HasMatchingVariant("", []string{"notATag"})
 	assert.NoError(err)
 	assert.False(match)
 
 	task := &ProjectTask{
 		Name: "t1",
 	}
-	match, err = aliases.HasMatchingTask("bv1", task)
+	match, err = aliases.HasMatchingTask("bv1", nil, task)
 	assert.NoError(err)
 	assert.True(match)
 	task = &ProjectTask{
 		Name: "t2",
 	}
-	match, err = aliases.HasMatchingTask("bv1", task)
+	match, err = aliases.HasMatchingTask("bv1", nil, task)
 	assert.NoError(err)
 	assert.False(match)
 	task = &ProjectTask{
 		Name: "t2",
 	}
-	match, err = aliases.HasMatchingTask("bv2", task)
-	assert.NoError(err)
-	assert.True(match)
-	task = &ProjectTask{
-		Tags: []string{"tag2"},
-	}
-	match, err = aliases.HasMatchingTask("bv2", task)
+	match, err = aliases.HasMatchingTask("bv2", nil, task)
 	assert.NoError(err)
 	assert.True(match)
 	task = &ProjectTask{
 		Tags: []string{"tag3"},
 		Name: "t3",
 	}
-	match, err = aliases.HasMatchingTask("bv3", task)
+	match, err = aliases.HasMatchingTask("bv3", nil, task)
 	assert.NoError(err)
 	assert.True(match)
 	task = &ProjectTask{}
-	match, err = aliases.HasMatchingTask("bv3", task)
+	match, err = aliases.HasMatchingTask("bv3", nil, task)
 	assert.NoError(err)
 	assert.False(match)
+
+	task = &ProjectTask{
+		Tags: []string{"tag4"},
+	}
+	match, err = aliases.HasMatchingTask("bv4", nil, task)
+	assert.NoError(err)
+	assert.False(match)
+
+	match, err = aliases.HasMatchingTask("", []string{"variantTag", "notATag"}, task)
+	assert.NoError(err)
+	assert.True(match)
 }

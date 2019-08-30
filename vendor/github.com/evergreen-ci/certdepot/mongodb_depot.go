@@ -93,7 +93,7 @@ func (m *mongoDepot) Check(tag *depot.Tag) bool {
 	u := &User{}
 
 	err := m.client.Database(m.databaseName).Collection(m.collectionName).FindOne(m.ctx, bson.D{{Key: userIDKey, Value: name}}).Decode(u)
-	grip.WarningWhen(errNotNotFound(err), message.Fields{
+	grip.WarningWhen(errNotNoDocuments(err), message.Fields{
 		"db":   m.databaseName,
 		"coll": m.collectionName,
 		"id":   name,
@@ -155,9 +155,13 @@ func (m *mongoDepot) Delete(tag *depot.Tag) error {
 		bson.D{{Key: userIDKey, Value: name}},
 		bson.M{"$unset": bson.M{key: ""}})
 
-	if errNotNotFound(err) {
+	if errNotNoDocuments(err) {
 		return errors.Wrapf(err, "problem deleting %s.%s from the database", name, key)
 	}
 
 	return nil
+}
+
+func errNotNoDocuments(err error) bool {
+	return err != nil && err != mongo.ErrNoDocuments
 }

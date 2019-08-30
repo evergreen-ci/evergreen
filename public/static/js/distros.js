@@ -9,26 +9,27 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   for (var i = 0; i < $scope.distros.length; i++) {
     $scope.distros[i].pool_size = $scope.distros[i].pool_size || 0;
     $scope.distros[i].planner_settings = $scope.distros[i].planner_settings || {};
-    $scope.distros[i].planner_settings.version = $scope.distros[i].planner_settings.version || "legacy";
+    $scope.distros[i].planner_settings.version = $scope.distros[i].planner_settings.version || 'legacy';
     $scope.distros[i].planner_settings.minimum_hosts = $scope.distros[i].planner_settings.minimum_hosts || 0;
     $scope.distros[i].planner_settings.maximum_hosts = $scope.distros[i].planner_settings.maximum_hosts || 0;
     $scope.distros[i].planner_settings.target_time = $scope.distros[i].planner_settings.target_time || 0;
     $scope.distros[i].planner_settings.acceptable_host_idle_time = $scope.distros[i].planner_settings.acceptable_host_idle_time || 0;
-    $scope.distros[i].planner_settings.patch_zipper_factor = $scope.distros[i].planner_settings.patch_zipper_factor || 0;
-    // Convert from nanoseconds (time.Duration) to seconds (UI display units)
+    $scope.distros[i].planner_settings.patch_factor = $scope.distros[i].planner_settings.patch_factor || 0;
+    $scope.distros[i].planner_settings.time_in_queue_factor = $scope.distros[i].planner_settings.time_in_queue_factor || 0;
+    $scope.distros[i].planner_settings.expected_runtime_factor = $scope.distros[i].planner_settings.expected_runtime_factor || 0;
+    // Convert from nanoseconds (time.Duration) to seconds (UI display units) for the relevant planner_settings' fields.
     if ($scope.distros[i].planner_settings.target_time > 0) {
       $scope.distros[i].planner_settings.target_time /= 1e9;
     }
-    // Convert from nanoseconds (time.Duration) to seconds (UI display units)
     if ($scope.distros[i].planner_settings.acceptable_host_idle_time > 0) {
       $scope.distros[i].planner_settings.acceptable_host_idle_time /= 1e9;
     }
     $scope.distros[i].planner_settings.group_versions = $scope.distros[i].planner_settings.group_versions;
-    $scope.distros[i].planner_settings.task_ordering = $scope.distros[i].planner_settings.task_ordering || "";
+    $scope.distros[i].planner_settings.task_ordering = $scope.distros[i].planner_settings.task_ordering || 'interleave';
     $scope.distros[i].finder_settings = $scope.distros[i].finder_settings || {};
-    $scope.distros[i].finder_settings.version = $scope.distros[i].finder_settings.version || "legacy";
-    $scope.distros[i].bootstrap_method = $scope.distros[i].bootstrap_method || 'legacy-ssh';
-    $scope.distros[i].communication_method = $scope.distros[i].communication_method || 'legacy-ssh';
+    $scope.distros[i].finder_settings.version = $scope.distros[i].finder_settings.version || 'legacy';
+    $scope.distros[i].bootstrap_settings.method = $scope.distros[i].bootstrap_settings.method || 'legacy-ssh';
+    $scope.distros[i].bootstrap_settings.communication = $scope.distros[i].bootstrap_settings.communication || 'legacy-ssh';
     $scope.distros[i].clone_method = $scope.distros[i].clone_method || 'legacy-ssh';
   }
 
@@ -66,6 +67,9 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   }, {
     'id': 'ec2-spot',
     'display': 'EC2 Spot'
+  }, {
+    'id': 'ec2-fleet',
+    'display': 'EC2 Fleet'
   }, {
     'id': 'static',
     'display': 'Static IP/VM'
@@ -311,11 +315,10 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   }
 
   $scope.saveConfiguration = function() {
-    // Convert from UI display units (sec) to nanoseconds
+    // Convert from UI display units (seconds) to nanoseconds (time.Duration) for relevant planner_settings' fields.
     if($scope.activeDistro.planner_settings.target_time > 0) {
       $scope.activeDistro.planner_settings.target_time *= 1e9
     }
-    // Convert from UI display units (sec) to nanoseconds
     if($scope.activeDistro.planner_settings.acceptable_host_idle_time > 0) {
       $scope.activeDistro.planner_settings.acceptable_host_idle_time *= 1e9
     }
@@ -373,8 +376,10 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
         '_id': 'new distro',
         'arch': 'linux_amd64',
         'provider': 'ec2',
-        'bootstrap_method': 'legacy-ssh',
-        'communication_method': 'legacy-ssh',
+        'bootstrap_settings': {
+            'method': 'legacy-ssh',
+            'communication': 'legacy-ssh'
+        },
         'clone_method': 'legacy-ssh',
         'settings': {},
         'planner_settings': {
@@ -413,8 +418,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
         'setup': $scope.activeDistro.user_data,
         'pool_size': $scope.activeDistro.pool_size,
         'setup_as_sudo' : $scope.activeDistro.setup_as_sudo,
-        'bootstrap_method': $scope.activeDistro.bootstrap_method,
-        'communication_method': $scope.activeDistro.communication_method,
+        'bootstrap_settings': $scope.activeDistro.bootstrap_settings,
         'clone_method': $scope.activeDistro.clone_method,
       };
       newDistro.settings = _.clone($scope.activeDistro.settings);
@@ -474,11 +478,23 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
 
   // checks that the form is valid for the given active distro
   $scope.validForm = function() {
+    if (!$scope.validBootstrapAndCommunication()) {
+      return false;
+    }
     if ($scope.activeDistro.provider.startsWith('ec2')) {
-      return $scope.validSecurityGroup() && $scope.validSubnetId;
+      return $scope.validSecurityGroup() && $scope.validSubnetId();
     }
     return true;
   }
+
+  $scope.validBootstrapAndCommunication = function() {
+    if ($scope.activeDistro) {
+      return ($scope.activeDistro.bootstrap_settings.method == 'legacy-ssh' && $scope.activeDistro.bootstrap_settings.communication == 'legacy-ssh') ||
+             ($scope.activeDistro.bootstrap_settings.method != 'legacy-ssh' && $scope.activeDistro.bootstrap_settings.communication != 'legacy-ssh');
+    }
+    return true;
+  };
+
 
   // if a security group is in a vpc it needs to be the id which starts with 'sg-'
   $scope.validSecurityGroup = function(){

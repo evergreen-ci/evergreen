@@ -58,6 +58,7 @@ package stats
 // }
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -77,9 +78,9 @@ import (
 const (
 	hourlyTestStatsCollection  = "hourly_test_stats"
 	dailyTestStatsCollection   = "daily_test_stats"
-	dailyTaskStatsCollection   = "daily_task_stats"
+	DailyTaskStatsCollection   = "daily_task_stats"
 	dailyStatsStatusCollection = "daily_stats_status"
-	bulkSize                   = 1000
+	bulkSize                   = 10000
 	nsInASecond                = time.Second / time.Nanosecond
 )
 
@@ -102,7 +103,7 @@ var (
 )
 
 // Convenient type to use for arrays in pipeline definitions.
-type array []interface{}
+type Array []interface{}
 
 //////////////////
 // Stats Status //
@@ -143,9 +144,9 @@ func (d *dbTestStats) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(
 var (
 	// BSON fields for the test stats id struct
 	dbTestStatsIdTestFileKey     = bsonutil.MustHaveTag(DbTestStatsId{}, "TestFile")
-	dbTestStatsIdTaskNameKey     = bsonutil.MustHaveTag(DbTestStatsId{}, "TaskName")
-	dbTestStatsIdBuildVariantKey = bsonutil.MustHaveTag(DbTestStatsId{}, "BuildVariant")
-	dbTestStatsIdDistroKey       = bsonutil.MustHaveTag(DbTestStatsId{}, "Distro")
+	DbTestStatsIdTaskNameKey     = bsonutil.MustHaveTag(DbTestStatsId{}, "TaskName")
+	DbTestStatsIdBuildVariantKey = bsonutil.MustHaveTag(DbTestStatsId{}, "BuildVariant")
+	DbTestStatsIdDistroKey       = bsonutil.MustHaveTag(DbTestStatsId{}, "Distro")
 	dbTestStatsIdProjectKey      = bsonutil.MustHaveTag(DbTestStatsId{}, "Project")
 	dbTestStatsIdRequesterKey    = bsonutil.MustHaveTag(DbTestStatsId{}, "Requester")
 	dbTestStatsIdDateKey         = bsonutil.MustHaveTag(DbTestStatsId{}, "Date")
@@ -158,13 +159,13 @@ var (
 	dbTestStatsLastUpdateKey      = bsonutil.MustHaveTag(dbTestStats{}, "LastUpdate")
 
 	// BSON dotted field names for test stats id elements
-	dbTestStatsIdTestFileKeyFull     = bsonutil.GetDottedKeyName(dbTestStatsIdKey, dbTestStatsIdTestFileKey)
-	dbTestStatsIdTaskNameKeyFull     = bsonutil.GetDottedKeyName(dbTestStatsIdKey, dbTestStatsIdTaskNameKey)
-	dbTestStatsIdBuildVariantKeyFull = bsonutil.GetDottedKeyName(dbTestStatsIdKey, dbTestStatsIdBuildVariantKey)
-	dbTestStatsIdDistroKeyFull       = bsonutil.GetDottedKeyName(dbTestStatsIdKey, dbTestStatsIdDistroKey)
-	dbTestStatsIdProjectKeyFull      = bsonutil.GetDottedKeyName(dbTestStatsIdKey, dbTestStatsIdProjectKey)
-	dbTestStatsIdRequesterKeyFull    = bsonutil.GetDottedKeyName(dbTestStatsIdKey, dbTestStatsIdRequesterKey)
-	dbTestStatsIdDateKeyFull         = bsonutil.GetDottedKeyName(dbTestStatsIdKey, dbTestStatsIdDateKey)
+	DbTestStatsIdTestFileKeyFull     = bsonutil.GetDottedKeyName(dbTestStatsIdKey, dbTestStatsIdTestFileKey)
+	DbTestStatsIdTaskNameKeyFull     = bsonutil.GetDottedKeyName(dbTestStatsIdKey, DbTestStatsIdTaskNameKey)
+	DbTestStatsIdBuildVariantKeyFull = bsonutil.GetDottedKeyName(dbTestStatsIdKey, DbTestStatsIdBuildVariantKey)
+	DbTestStatsIdDistroKeyFull       = bsonutil.GetDottedKeyName(dbTestStatsIdKey, DbTestStatsIdDistroKey)
+	DbTestStatsIdProjectKeyFull      = bsonutil.GetDottedKeyName(dbTestStatsIdKey, dbTestStatsIdProjectKey)
+	DbTestStatsIdRequesterKeyFull    = bsonutil.GetDottedKeyName(dbTestStatsIdKey, dbTestStatsIdRequesterKey)
+	DbTestStatsIdDateKeyFull         = bsonutil.GetDottedKeyName(dbTestStatsIdKey, dbTestStatsIdDateKey)
 )
 
 // hourlyTestStatsPipeline returns a pipeline aggregating task documents into hourly test stats.
@@ -190,11 +191,11 @@ func hourlyTestStatsForOldTasksPipeline(projectId string, requester string, star
 		}},
 		{"$project": bson.M{
 			"_id":                 1,
-			dbTestStatsNumPassKey: bson.M{"$add": array{"$" + dbTestStatsNumPassKey, "$existing." + dbTestStatsNumPassKey}},
-			dbTestStatsNumFailKey: bson.M{"$add": array{"$" + dbTestStatsNumFailKey, "$existing." + dbTestStatsNumFailKey}},
-			"total_duration_pass": bson.M{"$add": array{
-				bson.M{"$ifNull": array{bson.M{"$multiply": array{"$" + dbTestStatsNumPassKey, "$" + dbTestStatsAvgDurationPassKey}}, 0}},
-				bson.M{"$ifNull": array{bson.M{"$multiply": array{"$existing." + dbTestStatsNumPassKey, "$existing." + dbTestStatsAvgDurationPassKey}}, 0}},
+			dbTestStatsNumPassKey: bson.M{"$add": Array{"$" + dbTestStatsNumPassKey, "$existing." + dbTestStatsNumPassKey}},
+			dbTestStatsNumFailKey: bson.M{"$add": Array{"$" + dbTestStatsNumFailKey, "$existing." + dbTestStatsNumFailKey}},
+			"total_duration_pass": bson.M{"$add": Array{
+				bson.M{"$ifNull": Array{bson.M{"$multiply": Array{"$" + dbTestStatsNumPassKey, "$" + dbTestStatsAvgDurationPassKey}}, 0}},
+				bson.M{"$ifNull": Array{bson.M{"$multiply": Array{"$existing." + dbTestStatsNumPassKey, "$existing." + dbTestStatsAvgDurationPassKey}}, 0}},
 			}},
 			dbTestStatsLastUpdateKey: 1,
 		}},
@@ -202,8 +203,8 @@ func hourlyTestStatsForOldTasksPipeline(projectId string, requester string, star
 			"_id":                 1,
 			dbTestStatsNumPassKey: 1,
 			dbTestStatsNumFailKey: 1,
-			dbTestStatsAvgDurationPassKey: bson.M{"$cond": bson.M{"if": bson.M{"$ne": array{"$" + dbTestStatsNumPassKey, 0}},
-				"then": bson.M{"$divide": array{"$total_duration_pass", "$" + dbTestStatsNumPassKey}},
+			dbTestStatsAvgDurationPassKey: bson.M{"$cond": bson.M{"if": bson.M{"$ne": Array{"$" + dbTestStatsNumPassKey, 0}},
+				"then": bson.M{"$divide": Array{"$total_duration_pass", "$" + dbTestStatsNumPassKey}},
 				"else": nil}},
 			dbTestStatsLastUpdateKey: 1,
 		}},
@@ -235,9 +236,9 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 			"task_id":                    taskIdExpr,
 			"execution":                  taskExecutionKeyRef,
 			dbTestStatsIdProjectKey:      taskProjectKeyRef,
-			dbTestStatsIdTaskNameKey:     taskDisplayNameKeyRef,
-			dbTestStatsIdBuildVariantKey: taskBuildVariantKeyRef,
-			dbTestStatsIdDistroKey:       taskDistroIdKeyRef,
+			DbTestStatsIdTaskNameKey:     taskDisplayNameKeyRef,
+			DbTestStatsIdBuildVariantKey: taskBuildVariantKeyRef,
+			DbTestStatsIdDistroKey:       taskDistroIdKeyRef,
 			dbTestStatsIdRequesterKey:    taskRequesterKeyRef}},
 		{"$lookup": bson.M{
 			"from":         displayTaskLookupCollection,
@@ -252,8 +253,8 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 			"let":  bson.M{"task_id": "$task_id", "execution": "$execution"},
 			"pipeline": []bson.M{
 				{"$match": bson.M{"$expr": bson.M{"$and": []bson.M{
-					{"$eq": array{testResultTaskIdKeyRef, "$$task_id"}},
-					{"$eq": array{testResultExecutionRef, "$$execution"}}}}}},
+					{"$eq": Array{testResultTaskIdKeyRef, "$$task_id"}},
+					{"$eq": Array{testResultExecutionRef, "$$execution"}}}}}},
 				{"$project": bson.M{
 					testresult.IDKey:        0,
 					testresult.TestFileKey:  1,
@@ -265,27 +266,27 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 		{"$project": bson.M{
 			dbTestStatsIdTestFileKey: "$testresults." + testresult.TestFileKey,
 			// We use the name of the display task if there is one.
-			dbTestStatsIdTaskNameKey:     bson.M{"$ifNull": array{"$display_task." + task.DisplayNameKey, "$task_name"}},
-			dbTestStatsIdBuildVariantKey: 1,
-			dbTestStatsIdDistroKey:       1,
+			DbTestStatsIdTaskNameKey:     bson.M{"$ifNull": Array{"$display_task." + task.DisplayNameKey, "$task_name"}},
+			DbTestStatsIdBuildVariantKey: 1,
+			DbTestStatsIdDistroKey:       1,
 			dbTestStatsIdProjectKey:      1,
 			dbTestStatsIdRequesterKey:    1,
 			"status":                     "$testresults." + task.StatusKey,
-			"duration":                   bson.M{"$subtract": array{"$testresults." + testresult.EndTimeKey, "$testresults." + testresult.StartTimeKey}}}},
+			"duration":                   bson.M{"$subtract": Array{"$testresults." + testresult.EndTimeKey, "$testresults." + testresult.StartTimeKey}}}},
 		{"$group": bson.M{
 			"_id": bson.D{
 				{Key: dbTestStatsIdTestFileKey, Value: "$" + dbTestStatsIdTestFileKey},
-				{Key: dbTestStatsIdTaskNameKey, Value: "$" + dbTestStatsIdTaskNameKey},
-				{Key: dbTestStatsIdBuildVariantKey, Value: "$" + dbTestStatsIdBuildVariantKey},
-				{Key: dbTestStatsIdDistroKey, Value: "$" + dbTestStatsIdDistroKey},
+				{Key: DbTestStatsIdTaskNameKey, Value: "$" + DbTestStatsIdTaskNameKey},
+				{Key: DbTestStatsIdBuildVariantKey, Value: "$" + DbTestStatsIdBuildVariantKey},
+				{Key: DbTestStatsIdDistroKey, Value: "$" + DbTestStatsIdDistroKey},
 				{Key: dbTestStatsIdProjectKey, Value: "$" + dbTestStatsIdProjectKey},
 				{Key: dbTestStatsIdRequesterKey, Value: "$" + dbTestStatsIdRequesterKey},
 			},
-			dbTestStatsNumPassKey: makeSum(bson.M{"$eq": array{"$status", evergreen.TestSucceededStatus}}),
-			dbTestStatsNumFailKey: makeSum(bson.M{"$in": array{"$status", array{evergreen.TestFailedStatus, evergreen.TestSilentlyFailedStatus}}}),
+			dbTestStatsNumPassKey: makeSum(bson.M{"$eq": Array{"$status", evergreen.TestSucceededStatus}}),
+			dbTestStatsNumFailKey: makeSum(bson.M{"$in": Array{"$status", Array{evergreen.TestFailedStatus, evergreen.TestSilentlyFailedStatus}}}),
 			// "IGNORE" is not a special value, setting the value to something that is not a number will cause $avg to ignore it
 			dbTestStatsAvgDurationPassKey: bson.M{"$avg": bson.M{"$cond": bson.M{
-				"if":   bson.M{"$eq": array{"$status", evergreen.TestSucceededStatus}},
+				"if":   bson.M{"$eq": Array{"$status", evergreen.TestSucceededStatus}},
 				"then": "$duration",
 				"else": "IGNORE"}}}}},
 		{"$addFields": bson.M{
@@ -304,24 +305,24 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 func dailyTestStatsFromHourlyPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time) []bson.M {
 	pipeline := []bson.M{
 		{"$match": bson.M{
-			dbTestStatsIdProjectKeyFull:   projectId,
-			dbTestStatsIdRequesterKeyFull: requester,
-			dbTestStatsIdDateKeyFull:      bson.M{"$gte": start, "$lt": end},
-			dbTestStatsIdTaskNameKeyFull:  bson.M{"$in": tasks},
+			DbTestStatsIdProjectKeyFull:   projectId,
+			DbTestStatsIdRequesterKeyFull: requester,
+			DbTestStatsIdDateKeyFull:      bson.M{"$gte": start, "$lt": end},
+			DbTestStatsIdTaskNameKeyFull:  bson.M{"$in": tasks},
 		}},
 		{
 			"$group": bson.M{
 				"_id": bson.D{
-					{Key: dbTestStatsIdTestFileKey, Value: "$" + dbTestStatsIdTestFileKeyFull},
-					{Key: dbTestStatsIdTaskNameKey, Value: "$" + dbTestStatsIdTaskNameKeyFull},
-					{Key: dbTestStatsIdBuildVariantKey, Value: "$" + dbTestStatsIdBuildVariantKeyFull},
-					{Key: dbTestStatsIdDistroKey, Value: "$" + dbTestStatsIdDistroKeyFull},
-					{Key: dbTestStatsIdProjectKey, Value: "$" + dbTestStatsIdProjectKeyFull},
-					{Key: dbTestStatsIdRequesterKey, Value: "$" + dbTestStatsIdRequesterKeyFull},
+					{Key: dbTestStatsIdTestFileKey, Value: "$" + DbTestStatsIdTestFileKeyFull},
+					{Key: DbTestStatsIdTaskNameKey, Value: "$" + DbTestStatsIdTaskNameKeyFull},
+					{Key: DbTestStatsIdBuildVariantKey, Value: "$" + DbTestStatsIdBuildVariantKeyFull},
+					{Key: DbTestStatsIdDistroKey, Value: "$" + DbTestStatsIdDistroKeyFull},
+					{Key: dbTestStatsIdProjectKey, Value: "$" + DbTestStatsIdProjectKeyFull},
+					{Key: dbTestStatsIdRequesterKey, Value: "$" + DbTestStatsIdRequesterKeyFull},
 				},
 				dbTestStatsNumPassKey: bson.M{"$sum": "$" + dbTestStatsNumPassKey},
 				dbTestStatsNumFailKey: bson.M{"$sum": "$" + dbTestStatsNumFailKey},
-				"total_duration_pass": bson.M{"$sum": bson.M{"$multiply": array{"$num_pass", "$" + dbTestStatsAvgDurationPassKey}}},
+				"total_duration_pass": bson.M{"$sum": bson.M{"$multiply": Array{"$num_pass", "$" + dbTestStatsAvgDurationPassKey}}},
 			},
 		},
 		{
@@ -329,8 +330,8 @@ func dailyTestStatsFromHourlyPipeline(projectId string, requester string, start 
 				"_id":                 1,
 				dbTestStatsNumPassKey: 1,
 				dbTestStatsNumFailKey: 1,
-				dbTestStatsAvgDurationPassKey: bson.M{"$cond": bson.M{"if": bson.M{"$ne": array{"$" + dbTestStatsNumPassKey, 0}},
-					"then": bson.M{"$divide": array{"$total_duration_pass", "$" + dbTestStatsNumPassKey}},
+				dbTestStatsAvgDurationPassKey: bson.M{"$cond": bson.M{"if": bson.M{"$ne": Array{"$" + dbTestStatsNumPassKey, 0}},
+					"then": bson.M{"$divide": Array{"$total_duration_pass", "$" + dbTestStatsNumPassKey}},
 					"else": nil}},
 			},
 		},
@@ -356,8 +357,8 @@ type DbTaskStatsId struct {
 	Date         time.Time `bson:"date"`
 }
 
-// dbTaskStats represents the daily_task_stats documents.
-type dbTaskStats struct {
+// DbTaskStats represents the daily_task_stats documents.
+type DbTaskStats struct {
 	Id                 DbTaskStatsId `bson:"_id"`
 	NumSuccess         int           `bson:"num_success"`
 	NumFailed          int           `bson:"num_failed"`
@@ -369,34 +370,34 @@ type dbTaskStats struct {
 	LastUpdate         time.Time     `bson:"last_update"`
 }
 
-func (d *dbTaskStats) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(d) }
-func (d *dbTaskStats) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, d) }
+func (d *DbTaskStats) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(d) }
+func (d *DbTaskStats) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, d) }
 
 var (
 	// BSON fields for the task stats id struct
-	dbTaskStatsIdTaskNameKey     = bsonutil.MustHaveTag(DbTaskStatsId{}, "TaskName")
-	dbTaskStatsIdBuildVariantKey = bsonutil.MustHaveTag(DbTaskStatsId{}, "BuildVariant")
-	dbTaskStatsIdDistroKey       = bsonutil.MustHaveTag(DbTaskStatsId{}, "Distro")
-	dbTaskStatsIdProjectKey      = bsonutil.MustHaveTag(DbTaskStatsId{}, "Project")
-	dbTaskStatsIdRequesterKey    = bsonutil.MustHaveTag(DbTaskStatsId{}, "Requester")
-	dbTaskStatsIdDateKey         = bsonutil.MustHaveTag(DbTaskStatsId{}, "Date")
+	DbTaskStatsIdTaskNameKey     = bsonutil.MustHaveTag(DbTaskStatsId{}, "TaskName")
+	DbTaskStatsIdBuildVariantKey = bsonutil.MustHaveTag(DbTaskStatsId{}, "BuildVariant")
+	DbTaskStatsIdDistroKey       = bsonutil.MustHaveTag(DbTaskStatsId{}, "Distro")
+	DbTaskStatsIdProjectKey      = bsonutil.MustHaveTag(DbTaskStatsId{}, "Project")
+	DbTaskStatsIdRequesterKey    = bsonutil.MustHaveTag(DbTaskStatsId{}, "Requester")
+	DbTaskStatsIdDateKey         = bsonutil.MustHaveTag(DbTaskStatsId{}, "Date")
 
 	// BSON fields for the test stats struct
-	dbTaskStatsIdKey                 = bsonutil.MustHaveTag(dbTaskStats{}, "Id")
-	dbTaskStatsNumSuccessKey         = bsonutil.MustHaveTag(dbTaskStats{}, "NumSuccess")
-	dbTaskStatsNumFailedKey          = bsonutil.MustHaveTag(dbTaskStats{}, "NumFailed")
-	dbTaskStatsNumTestFailedKey      = bsonutil.MustHaveTag(dbTaskStats{}, "NumTestFailed")
-	dbTaskStatsNumSetupFailedKey     = bsonutil.MustHaveTag(dbTaskStats{}, "NumSetupFailed")
-	dbTaskStatsNumSystemFailedKey    = bsonutil.MustHaveTag(dbTaskStats{}, "NumSystemFailed")
-	dbTaskStatsNumTimeoutKey         = bsonutil.MustHaveTag(dbTaskStats{}, "NumTimeout")
-	dbTaskStatsAvgDurationSuccessKey = bsonutil.MustHaveTag(dbTaskStats{}, "AvgDurationSuccess")
-	dbTaskStatsLastUpdateKey         = bsonutil.MustHaveTag(dbTaskStats{}, "LastUpdate")
+	DbTaskStatsIdKey                 = bsonutil.MustHaveTag(DbTaskStats{}, "Id")
+	DbTaskStatsNumSuccessKey         = bsonutil.MustHaveTag(DbTaskStats{}, "NumSuccess")
+	DbTaskStatsNumFailedKey          = bsonutil.MustHaveTag(DbTaskStats{}, "NumFailed")
+	DbTaskStatsNumTestFailedKey      = bsonutil.MustHaveTag(DbTaskStats{}, "NumTestFailed")
+	DbTaskStatsNumSetupFailedKey     = bsonutil.MustHaveTag(DbTaskStats{}, "NumSetupFailed")
+	DbTaskStatsNumSystemFailedKey    = bsonutil.MustHaveTag(DbTaskStats{}, "NumSystemFailed")
+	DbTaskStatsNumTimeoutKey         = bsonutil.MustHaveTag(DbTaskStats{}, "NumTimeout")
+	DbTaskStatsAvgDurationSuccessKey = bsonutil.MustHaveTag(DbTaskStats{}, "AvgDurationSuccess")
+	DbTaskStatsLastUpdateKey         = bsonutil.MustHaveTag(DbTaskStats{}, "LastUpdate")
 
 	// BSON dotted field names for task stats id elements
-	dbTaskStatsIdTaskNameKeyFull     = bsonutil.GetDottedKeyName(dbTaskStatsIdKey, dbTaskStatsIdTaskNameKey)
-	dbTaskStatsIdBuildVariantKeyFull = bsonutil.GetDottedKeyName(dbTaskStatsIdKey, dbTaskStatsIdBuildVariantKey)
-	dbTaskStatsIdDistroKeyFull       = bsonutil.GetDottedKeyName(dbTaskStatsIdKey, dbTaskStatsIdDistroKey)
-	dbTaskStatsIdDateKeyFull         = bsonutil.GetDottedKeyName(dbTaskStatsIdKey, dbTaskStatsIdDateKey)
+	DbTaskStatsIdTaskNameKeyFull     = bsonutil.GetDottedKeyName(DbTaskStatsIdKey, DbTaskStatsIdTaskNameKey)
+	DbTaskStatsIdBuildVariantKeyFull = bsonutil.GetDottedKeyName(DbTaskStatsIdKey, DbTaskStatsIdBuildVariantKey)
+	DbTaskStatsIdDistroKeyFull       = bsonutil.GetDottedKeyName(DbTaskStatsIdKey, DbTaskStatsIdDistroKey)
+	DbTaskStatsIdDateKeyFull         = bsonutil.GetDottedKeyName(DbTaskStatsIdKey, DbTaskStatsIdDateKey)
 )
 
 // dailyTaskStatsPipeline returns a pipeline aggregating task documents into daily task stats.
@@ -411,9 +412,9 @@ func dailyTaskStatsForOldTasksPipeline(projectId string, requester string, start
 	// And the merge the documents with the existing ones.
 	mergePipeline := []bson.M{
 		{"$lookup": bson.M{
-			"from":         dailyTaskStatsCollection,
-			"localField":   dbTaskStatsIdKey,
-			"foreignField": dbTaskStatsIdKey,
+			"from":         DailyTaskStatsCollection,
+			"localField":   DbTaskStatsIdKey,
+			"foreignField": DbTaskStatsIdKey,
 			"as":           "existing",
 		}},
 		{"$unwind": bson.M{
@@ -422,30 +423,30 @@ func dailyTaskStatsForOldTasksPipeline(projectId string, requester string, start
 		}},
 		{"$project": bson.M{
 			"_id":                         1,
-			dbTaskStatsNumSuccessKey:      bson.M{"$add": array{"$" + dbTaskStatsNumSuccessKey, "$existing." + dbTaskStatsNumSuccessKey}},
-			dbTaskStatsNumFailedKey:       bson.M{"$add": array{"$" + dbTaskStatsNumFailedKey, "$existing." + dbTaskStatsNumFailedKey}},
-			dbTaskStatsNumTestFailedKey:   bson.M{"$add": array{"$" + dbTaskStatsNumTestFailedKey, "$existing." + dbTaskStatsNumTestFailedKey}},
-			dbTaskStatsNumSetupFailedKey:  bson.M{"$add": array{"$" + dbTaskStatsNumSetupFailedKey, "$existing." + dbTaskStatsNumSetupFailedKey}},
-			dbTaskStatsNumSystemFailedKey: bson.M{"$add": array{"$" + dbTaskStatsNumSystemFailedKey, "$existing." + dbTaskStatsNumSystemFailedKey}},
-			dbTaskStatsNumTimeoutKey:      bson.M{"$add": array{"$" + dbTaskStatsNumTimeoutKey, "$existing." + dbTaskStatsNumTimeoutKey}},
-			"total_duration_success": bson.M{"$add": array{
-				bson.M{"$ifNull": array{bson.M{"$multiply": array{"$" + dbTaskStatsNumSuccessKey, "$" + dbTaskStatsAvgDurationSuccessKey}}, 0}},
-				bson.M{"$ifNull": array{bson.M{"$multiply": array{"$existing." + dbTaskStatsNumSuccessKey, "$existing." + dbTaskStatsAvgDurationSuccessKey}}, 0}},
+			DbTaskStatsNumSuccessKey:      bson.M{"$add": Array{"$" + DbTaskStatsNumSuccessKey, "$existing." + DbTaskStatsNumSuccessKey}},
+			DbTaskStatsNumFailedKey:       bson.M{"$add": Array{"$" + DbTaskStatsNumFailedKey, "$existing." + DbTaskStatsNumFailedKey}},
+			DbTaskStatsNumTestFailedKey:   bson.M{"$add": Array{"$" + DbTaskStatsNumTestFailedKey, "$existing." + DbTaskStatsNumTestFailedKey}},
+			DbTaskStatsNumSetupFailedKey:  bson.M{"$add": Array{"$" + DbTaskStatsNumSetupFailedKey, "$existing." + DbTaskStatsNumSetupFailedKey}},
+			DbTaskStatsNumSystemFailedKey: bson.M{"$add": Array{"$" + DbTaskStatsNumSystemFailedKey, "$existing." + DbTaskStatsNumSystemFailedKey}},
+			DbTaskStatsNumTimeoutKey:      bson.M{"$add": Array{"$" + DbTaskStatsNumTimeoutKey, "$existing." + DbTaskStatsNumTimeoutKey}},
+			"total_duration_success": bson.M{"$add": Array{
+				bson.M{"$ifNull": Array{bson.M{"$multiply": Array{"$" + DbTaskStatsNumSuccessKey, "$" + DbTaskStatsAvgDurationSuccessKey}}, 0}},
+				bson.M{"$ifNull": Array{bson.M{"$multiply": Array{"$existing." + DbTaskStatsNumSuccessKey, "$existing." + DbTaskStatsAvgDurationSuccessKey}}, 0}},
 			}},
-			dbTaskStatsLastUpdateKey: 1,
+			DbTaskStatsLastUpdateKey: 1,
 		}},
 		{"$project": bson.M{
 			"_id":                         1,
-			dbTaskStatsNumSuccessKey:      1,
-			dbTaskStatsNumFailedKey:       1,
-			dbTaskStatsNumTestFailedKey:   1,
-			dbTaskStatsNumSetupFailedKey:  1,
-			dbTaskStatsNumSystemFailedKey: 1,
-			dbTaskStatsNumTimeoutKey:      1,
-			dbTaskStatsAvgDurationSuccessKey: bson.M{"$cond": bson.M{"if": bson.M{"$ne": array{"$" + dbTaskStatsNumSuccessKey, 0}},
-				"then": bson.M{"$divide": array{"$total_duration_success", "$" + dbTaskStatsNumSuccessKey}},
+			DbTaskStatsNumSuccessKey:      1,
+			DbTaskStatsNumFailedKey:       1,
+			DbTaskStatsNumTestFailedKey:   1,
+			DbTaskStatsNumSetupFailedKey:  1,
+			DbTaskStatsNumSystemFailedKey: 1,
+			DbTaskStatsNumTimeoutKey:      1,
+			DbTaskStatsAvgDurationSuccessKey: bson.M{"$cond": bson.M{"if": bson.M{"$ne": Array{"$" + DbTaskStatsNumSuccessKey, 0}},
+				"then": bson.M{"$divide": Array{"$total_duration_success", "$" + DbTaskStatsNumSuccessKey}},
 				"else": nil}},
-			dbTaskStatsLastUpdateKey: 1,
+			DbTaskStatsLastUpdateKey: 1,
 		}},
 	}
 	return append(basePipeline, mergePipeline...)
@@ -475,14 +476,14 @@ func getDailyTaskStatsPipeline(projectId string, requester string, start time.Ti
 			task.IdKey:                   0,
 			"task_id":                    taskIdExpr,
 			"execution":                  taskExecutionKeyRef,
-			dbTaskStatsIdProjectKey:      taskProjectKeyRef,
-			dbTaskStatsIdTaskNameKey:     taskDisplayNameKeyRef,
-			dbTaskStatsIdBuildVariantKey: taskBuildVariantKeyRef,
-			dbTaskStatsIdDistroKey:       taskDistroIdKeyRef,
-			dbTaskStatsIdRequesterKey:    taskRequesterKeyRef,
+			DbTaskStatsIdProjectKey:      taskProjectKeyRef,
+			DbTaskStatsIdTaskNameKey:     taskDisplayNameKeyRef,
+			DbTaskStatsIdBuildVariantKey: taskBuildVariantKeyRef,
+			DbTaskStatsIdDistroKey:       taskDistroIdKeyRef,
+			DbTaskStatsIdRequesterKey:    taskRequesterKeyRef,
 			task.StatusKey:               1,
 			task.DetailsKey:              1,
-			"time_taken":                 bson.M{"$divide": array{taskTimeTakenKeyRef, nsInASecond}},
+			"time_taken":                 bson.M{"$divide": Array{taskTimeTakenKeyRef, nsInASecond}},
 		}},
 		{"$lookup": bson.M{
 			"from":         displayTaskLookupCollection,
@@ -490,36 +491,36 @@ func getDailyTaskStatsPipeline(projectId string, requester string, start time.Ti
 			"foreignField": task.ExecutionTasksKey,
 			"as":           "display_task",
 		}},
-		{"$match": bson.M{"display_task": array{}}}, // Excluding the execution tasks
+		{"$match": bson.M{"display_task": Array{}}}, // Excluding the execution tasks
 		{"$group": bson.M{
 			"_id": bson.D{
-				{Key: dbTaskStatsIdTaskNameKey, Value: "$" + dbTaskStatsIdTaskNameKey},
-				{Key: dbTaskStatsIdBuildVariantKey, Value: "$" + dbTaskStatsIdBuildVariantKey},
-				{Key: dbTaskStatsIdDistroKey, Value: "$" + dbTaskStatsIdDistroKey},
-				{Key: dbTaskStatsIdProjectKey, Value: "$" + dbTaskStatsIdProjectKey},
-				{Key: dbTaskStatsIdRequesterKey, Value: "$" + dbTaskStatsIdRequesterKey}},
-			dbTaskStatsNumSuccessKey: makeSum(bson.M{"$eq": array{"$status", "success"}}),
-			dbTaskStatsNumFailedKey:  makeSum(bson.M{"$eq": array{"$status", "failed"}}),
-			dbTaskStatsNumTimeoutKey: makeSum(bson.M{"$and": array{
-				bson.M{"$eq": array{taskStatusKeyRef, "failed"}},
-				bson.M{"$eq": array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailTimedOut), true}}}}),
-			dbTaskStatsNumTestFailedKey: makeSum(bson.M{"$and": array{
-				bson.M{"$eq": array{taskStatusKeyRef, "failed"}},
-				bson.M{"$eq": array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailType), "test"}},
-				bson.M{"$ne": array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailTimedOut), true}}}}),
-			dbTaskStatsNumSystemFailedKey: makeSum(bson.M{"$and": array{
-				bson.M{"$eq": array{taskStatusKeyRef, "failed"}},
-				bson.M{"$eq": array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailType), "system"}},
-				bson.M{"$ne": array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailTimedOut), true}}}}),
-			dbTaskStatsNumSetupFailedKey: makeSum(bson.M{"$and": array{
-				bson.M{"$eq": array{taskStatusKeyRef, "failed"}},
-				bson.M{"$eq": array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailType), "setup"}},
-				bson.M{"$ne": array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailTimedOut), true}}}}),
-			dbTaskStatsAvgDurationSuccessKey: bson.M{"$avg": bson.M{"$cond": bson.M{"if": bson.M{"$eq": array{taskStatusKeyRef, "success"}},
+				{Key: DbTaskStatsIdTaskNameKey, Value: "$" + DbTaskStatsIdTaskNameKey},
+				{Key: DbTaskStatsIdBuildVariantKey, Value: "$" + DbTaskStatsIdBuildVariantKey},
+				{Key: DbTaskStatsIdDistroKey, Value: "$" + DbTaskStatsIdDistroKey},
+				{Key: DbTaskStatsIdProjectKey, Value: "$" + DbTaskStatsIdProjectKey},
+				{Key: DbTaskStatsIdRequesterKey, Value: "$" + DbTaskStatsIdRequesterKey}},
+			DbTaskStatsNumSuccessKey: makeSum(bson.M{"$eq": Array{"$status", "success"}}),
+			DbTaskStatsNumFailedKey:  makeSum(bson.M{"$eq": Array{"$status", "failed"}}),
+			DbTaskStatsNumTimeoutKey: makeSum(bson.M{"$and": Array{
+				bson.M{"$eq": Array{taskStatusKeyRef, "failed"}},
+				bson.M{"$eq": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailTimedOut), true}}}}),
+			DbTaskStatsNumTestFailedKey: makeSum(bson.M{"$and": Array{
+				bson.M{"$eq": Array{taskStatusKeyRef, "failed"}},
+				bson.M{"$eq": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailType), "test"}},
+				bson.M{"$ne": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailTimedOut), true}}}}),
+			DbTaskStatsNumSystemFailedKey: makeSum(bson.M{"$and": Array{
+				bson.M{"$eq": Array{taskStatusKeyRef, "failed"}},
+				bson.M{"$eq": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailType), "system"}},
+				bson.M{"$ne": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailTimedOut), true}}}}),
+			DbTaskStatsNumSetupFailedKey: makeSum(bson.M{"$and": Array{
+				bson.M{"$eq": Array{taskStatusKeyRef, "failed"}},
+				bson.M{"$eq": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailType), "setup"}},
+				bson.M{"$ne": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailTimedOut), true}}}}),
+			DbTaskStatsAvgDurationSuccessKey: bson.M{"$avg": bson.M{"$cond": bson.M{"if": bson.M{"$eq": Array{taskStatusKeyRef, "success"}},
 				"then": "$time_taken", "else": "IGNORE"}}}}},
 		{"$addFields": bson.M{
-			"_id." + dbTaskStatsIdDateKey: start,
-			dbTaskStatsLastUpdateKey:      lastUpdate,
+			"_id." + DbTaskStatsIdDateKey: start,
+			DbTaskStatsLastUpdateKey:      lastUpdate,
 		}},
 	}
 	return pipeline
@@ -620,12 +621,12 @@ func (filter StatsFilter) testStatsQueryPipeline() []bson.M {
 
 	return []bson.M{
 		matchExpr,
-		buildAddFieldsDateStage(TestStatsDateKey, dbTestStatsIdDateKeyFull, filter.AfterDate, filter.BeforeDate, filter.GroupNumDays),
+		buildAddFieldsDateStage(TestStatsDateKey, DbTestStatsIdDateKeyFull, filter.AfterDate, filter.BeforeDate, filter.GroupNumDays),
 		{"$group": bson.M{
 			"_id":                 buildGroupId(filter.GroupBy),
 			TestStatsNumPassKey:   bson.M{"$sum": "$" + dbTestStatsNumPassKey},
 			TestStatsNumFailKey:   bson.M{"$sum": "$" + dbTestStatsNumFailKey},
-			"total_duration_pass": bson.M{"$sum": bson.M{"$multiply": array{"$" + dbTestStatsNumPassKey, "$" + dbTestStatsAvgDurationPassKey}}},
+			"total_duration_pass": bson.M{"$sum": bson.M{"$multiply": Array{"$" + dbTestStatsNumPassKey, "$" + dbTestStatsAvgDurationPassKey}}},
 		}},
 		{"$project": bson.M{
 			TestStatsTestFileKey:     "$_id." + TestStatsTestFileKey,
@@ -635,12 +636,12 @@ func (filter StatsFilter) testStatsQueryPipeline() []bson.M {
 			TestStatsDateKey:         "$_id." + TestStatsDateKey,
 			TestStatsNumPassKey:      1,
 			TestStatsNumFailKey:      1,
-			TestStatsAvgDurationPassKey: bson.M{"$cond": bson.M{"if": bson.M{"$ne": array{"$" + TestStatsNumPassKey, 0}},
-				"then": bson.M{"$divide": array{"$total_duration_pass", "$" + TestStatsNumPassKey}},
+			TestStatsAvgDurationPassKey: bson.M{"$cond": bson.M{"if": bson.M{"$ne": Array{"$" + TestStatsNumPassKey, 0}},
+				"then": bson.M{"$divide": Array{"$total_duration_pass", "$" + TestStatsNumPassKey}},
 				"else": nil}},
 		}},
 		{"$sort": bson.D{
-			{Key: TestStatsDateKey, Value: sortDateOrder(filter.Sort)},
+			{Key: TestStatsDateKey, Value: SortDateOrder(filter.Sort)},
 			{Key: TestStatsBuildVariantKey, Value: 1},
 			{Key: TestStatsTaskNameKey, Value: 1},
 			{Key: TestStatsTestFileKey, Value: 1},
@@ -653,24 +654,24 @@ func (filter StatsFilter) testStatsQueryPipeline() []bson.M {
 // buildMatchStageForTest builds the match stage of the test query pipeline based on the filter options.
 func (filter StatsFilter) buildMatchStageForTest() bson.M {
 	match := bson.M{
-		dbTestStatsIdDateKeyFull: bson.M{
+		DbTestStatsIdDateKeyFull: bson.M{
 			"$gte": filter.AfterDate,
 			"$lt":  filter.BeforeDate,
 		},
-		dbTestStatsIdProjectKeyFull:   filter.Project,
-		dbTestStatsIdRequesterKeyFull: bson.M{"$in": filter.Requesters},
+		DbTestStatsIdProjectKeyFull:   filter.Project,
+		DbTestStatsIdRequesterKeyFull: bson.M{"$in": filter.Requesters},
 	}
 	if len(filter.Tests) > 0 {
-		match[dbTestStatsIdTestFileKeyFull] = buildMatchArrayExpression(filter.Tests)
+		match[DbTestStatsIdTestFileKeyFull] = BuildMatchArrayExpression(filter.Tests)
 	}
 	if len(filter.Tasks) > 0 {
-		match[dbTestStatsIdTaskNameKeyFull] = buildMatchArrayExpression(filter.Tasks)
+		match[DbTestStatsIdTaskNameKeyFull] = BuildMatchArrayExpression(filter.Tasks)
 	}
 	if len(filter.BuildVariants) > 0 {
-		match[dbTestStatsIdBuildVariantKeyFull] = buildMatchArrayExpression(filter.BuildVariants)
+		match[DbTestStatsIdBuildVariantKeyFull] = BuildMatchArrayExpression(filter.BuildVariants)
 	}
 	if len(filter.Distros) > 0 {
-		match[dbTestStatsIdDistroKeyFull] = buildMatchArrayExpression(filter.Distros)
+		match[DbTestStatsIdDistroKeyFull] = BuildMatchArrayExpression(filter.Distros)
 	}
 
 	if filter.StartAt != nil {
@@ -691,16 +692,16 @@ func buildAddFieldsDateStage(fieldName string, inputDateFieldName string, start 
 	branches := make([]bson.M, len(boundaries))
 	for i := 0; i < len(boundaries)-1; i++ {
 		branches[i] = bson.M{
-			"case": bson.M{"$and": array{
-				bson.M{"$gte": array{inputDateFieldRef, boundaries[i]}},
-				bson.M{"$lt": array{inputDateFieldRef, boundaries[i+1]}},
+			"case": bson.M{"$and": Array{
+				bson.M{"$gte": Array{inputDateFieldRef, boundaries[i]}},
+				bson.M{"$lt": Array{inputDateFieldRef, boundaries[i+1]}},
 			}},
 			"then": boundaries[i],
 		}
 	}
 	lastIndex := len(boundaries) - 1
 	branches[lastIndex] = bson.M{
-		"case": bson.M{"$gte": array{inputDateFieldRef, boundaries[lastIndex]}},
+		"case": bson.M{"$gte": Array{inputDateFieldRef, boundaries[lastIndex]}},
 		"then": boundaries[lastIndex],
 	}
 	return bson.M{"$addFields": bson.M{fieldName: bson.M{"$switch": bson.M{"branches": branches}}}}
@@ -711,22 +712,22 @@ func buildGroupId(groupBy GroupBy) bson.M {
 	id := bson.M{TestStatsDateKey: "$" + TestStatsDateKey}
 	switch groupBy {
 	case GroupByDistro:
-		id[TestStatsDistroKey] = "$" + dbTestStatsIdDistroKeyFull
+		id[TestStatsDistroKey] = "$" + DbTestStatsIdDistroKeyFull
 		fallthrough
 	case GroupByVariant:
-		id[TestStatsBuildVariantKey] = "$" + dbTestStatsIdBuildVariantKeyFull
+		id[TestStatsBuildVariantKey] = "$" + DbTestStatsIdBuildVariantKeyFull
 		fallthrough
 	case GroupByTask:
-		id[TestStatsTaskNameKey] = "$" + dbTestStatsIdTaskNameKeyFull
+		id[TestStatsTaskNameKey] = "$" + DbTestStatsIdTaskNameKeyFull
 		fallthrough
 	case GroupByTest:
-		id[TestStatsTestFileKey] = "$" + dbTestStatsIdTestFileKeyFull
+		id[TestStatsTestFileKey] = "$" + DbTestStatsIdTestFileKeyFull
 	}
 	return id
 }
 
-// buildMatchArrayExpression builds an expression to match any of the values in the array argument.
-func buildMatchArrayExpression(values []string) interface{} {
+// BuildMatchArrayExpression builds an expression to match any of the values in the array argument.
+func BuildMatchArrayExpression(values []string) interface{} {
 	if len(values) == 1 {
 		return values[0]
 	} else if len(values) > 1 {
@@ -754,101 +755,116 @@ func (filter StatsFilter) buildTestPaginationOrBranches() []bson.M {
 		nextDate = filter.getNextDate()
 	}
 
-	var fields []paginationField
+	var fields []PaginationField
 
 	switch filter.GroupBy {
 	case GroupByTest:
-		fields = []paginationField{
-			{Field: dbTestStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
-			{Field: dbTestStatsIdTestFileKeyFull, Strict: false, Value: filter.StartAt.Test},
+		fields = []PaginationField{
+			{Field: DbTestStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
+			{Field: DbTestStatsIdTestFileKeyFull, Strict: false, Value: filter.StartAt.Test},
 		}
 	case GroupByTask:
-		fields = []paginationField{
-			{Field: dbTestStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
-			{Field: dbTestStatsIdTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
-			{Field: dbTestStatsIdTestFileKeyFull, Strict: false, Value: filter.StartAt.Test},
+		fields = []PaginationField{
+			{Field: DbTestStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
+			{Field: DbTestStatsIdTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
+			{Field: DbTestStatsIdTestFileKeyFull, Strict: false, Value: filter.StartAt.Test},
 		}
 	case GroupByVariant:
-		fields = []paginationField{
-			{Field: dbTestStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
-			{Field: dbTestStatsIdBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
-			{Field: dbTestStatsIdTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
-			{Field: dbTestStatsIdTestFileKeyFull, Strict: false, Value: filter.StartAt.Test},
+		fields = []PaginationField{
+			{Field: DbTestStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
+			{Field: DbTestStatsIdBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
+			{Field: DbTestStatsIdTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
+			{Field: DbTestStatsIdTestFileKeyFull, Strict: false, Value: filter.StartAt.Test},
 		}
 	case GroupByDistro:
-		fields = []paginationField{
-			{Field: dbTestStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
-			{Field: dbTestStatsIdBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
-			{Field: dbTestStatsIdTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
-			{Field: dbTestStatsIdTestFileKeyFull, Strict: true, Value: filter.StartAt.Test},
-			{Field: dbTestStatsIdDistroKeyFull, Strict: false, Value: filter.StartAt.Distro},
+		fields = []PaginationField{
+			{Field: DbTestStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
+			{Field: DbTestStatsIdBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
+			{Field: DbTestStatsIdTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
+			{Field: DbTestStatsIdTestFileKeyFull, Strict: true, Value: filter.StartAt.Test},
+			{Field: DbTestStatsIdDistroKeyFull, Strict: false, Value: filter.StartAt.Distro},
 		}
 	}
 
-	return buildPaginationOrBranches(fields)
+	return BuildPaginationOrBranches(fields)
 }
 
-// taskStatsQueryPipeline creates an aggregation pipeline to query task statistics.
-func (filter StatsFilter) taskStatsQueryPipeline() []bson.M {
-	matchExpr := filter.buildMatchStageForTask()
+// TaskStatsQueryPipeline creates an aggregation pipeline to query task statistics.
+func (filter StatsFilter) BuildTaskStatsQueryGroupStage() bson.M {
+	return bson.M{
+		"$group": bson.M{
+			"_id":                       buildGroupId(filter.GroupBy),
+			TaskStatsNumSuccessKey:      bson.M{"$sum": "$" + DbTaskStatsNumSuccessKey},
+			TaskStatsNumFailedKey:       bson.M{"$sum": "$" + DbTaskStatsNumFailedKey},
+			TaskStatsNumTimeoutKey:      bson.M{"$sum": "$" + DbTaskStatsNumTimeoutKey},
+			TaskStatsNumTestFailedKey:   bson.M{"$sum": "$" + DbTaskStatsNumTestFailedKey},
+			TaskStatsNumSystemFailedKey: bson.M{"$sum": "$" + DbTaskStatsNumSystemFailedKey},
+			TaskStatsNumSetupFailedKey:  bson.M{"$sum": "$" + DbTaskStatsNumSetupFailedKey},
+			"total_duration_success":    bson.M{"$sum": bson.M{"$multiply": Array{"$" + DbTaskStatsNumSuccessKey, "$" + DbTaskStatsAvgDurationSuccessKey}}},
+		}}
+}
+
+// buildTaskStatsQuerySortStage creates an aggregation sort stage to query task statistics.
+func (filter StatsFilter) BuildTaskStatsQuerySortStage() bson.M {
+	return bson.M{"$sort": bson.D{
+		{Key: TaskStatsDateKey, Value: SortDateOrder(filter.Sort)},
+		{Key: TaskStatsBuildVariantKey, Value: 1},
+		{Key: TaskStatsTaskNameKey, Value: 1},
+		{Key: TaskStatsDistroKey, Value: 1},
+	}}
+}
+
+// buildTaskStatsQueryProjectStage creates an aggregation project stage to query task statistics.
+func (filter StatsFilter) BuildTaskStatsQueryProjectStage() bson.M {
+	return bson.M{"$project": bson.M{
+		TaskStatsTaskNameKey:        "$" + DbTaskStatsIdTaskNameKeyFull,
+		TaskStatsBuildVariantKey:    "$" + DbTaskStatsIdBuildVariantKeyFull,
+		TaskStatsDistroKey:          "$" + DbTaskStatsIdDistroKeyFull,
+		TaskStatsDateKey:            "$" + DbTaskStatsIdDateKeyFull,
+		TaskStatsNumSuccessKey:      1,
+		TaskStatsNumFailedKey:       1,
+		TaskStatsNumTotalKey:        bson.M{"$add": Array{"$" + TaskStatsNumSuccessKey, "$" + TaskStatsNumFailedKey}},
+		TaskStatsNumTimeoutKey:      1,
+		TaskStatsNumTestFailedKey:   1,
+		TaskStatsNumSystemFailedKey: 1,
+		TaskStatsNumSetupFailedKey:  1,
+		TaskStatsAvgDurationSuccessKey: bson.M{"$cond": bson.M{"if": bson.M{"$ne": Array{"$" + TaskStatsNumSuccessKey, 0}},
+			"then": bson.M{"$divide": Array{"$total_duration_success", "$" + TaskStatsNumSuccessKey}},
+			"else": nil}},
+	}}
+}
+
+// TaskStatsQueryPipeline creates an aggregation pipeline to query task statistics.
+func (filter StatsFilter) TaskStatsQueryPipeline() []bson.M {
 
 	return []bson.M{
-		matchExpr,
-		buildAddFieldsDateStage("date", dbTaskStatsIdDateKeyFull, filter.AfterDate, filter.BeforeDate, filter.GroupNumDays),
-		{"$group": bson.M{
-			"_id":                       buildGroupId(filter.GroupBy),
-			TaskStatsNumSuccessKey:      bson.M{"$sum": "$" + dbTaskStatsNumSuccessKey},
-			TaskStatsNumFailedKey:       bson.M{"$sum": "$" + dbTaskStatsNumFailedKey},
-			TaskStatsNumTimeoutKey:      bson.M{"$sum": "$" + dbTaskStatsNumTimeoutKey},
-			TaskStatsNumTestFailedKey:   bson.M{"$sum": "$" + dbTaskStatsNumTestFailedKey},
-			TaskStatsNumSystemFailedKey: bson.M{"$sum": "$" + dbTaskStatsNumSystemFailedKey},
-			TaskStatsNumSetupFailedKey:  bson.M{"$sum": "$" + dbTaskStatsNumSetupFailedKey},
-			"total_duration_success":    bson.M{"$sum": bson.M{"$multiply": array{"$" + dbTaskStatsNumSuccessKey, "$" + dbTaskStatsAvgDurationSuccessKey}}},
-		}},
-		{"$project": bson.M{
-			TaskStatsTaskNameKey:        "$" + dbTaskStatsIdTaskNameKeyFull,
-			TaskStatsBuildVariantKey:    "$" + dbTaskStatsIdBuildVariantKeyFull,
-			TaskStatsDistroKey:          "$" + dbTaskStatsIdDistroKeyFull,
-			TaskStatsDateKey:            "$" + dbTaskStatsIdDateKeyFull,
-			TaskStatsNumSuccessKey:      1,
-			TaskStatsNumFailedKey:       1,
-			TaskStatsNumTotalKey:        bson.M{"$add": array{"$" + TaskStatsNumSuccessKey, "$" + TaskStatsNumFailedKey}},
-			TaskStatsNumTimeoutKey:      1,
-			TaskStatsNumTestFailedKey:   1,
-			TaskStatsNumSystemFailedKey: 1,
-			TaskStatsNumSetupFailedKey:  1,
-			TaskStatsAvgDurationSuccessKey: bson.M{"$cond": bson.M{"if": bson.M{"$ne": array{"$" + TaskStatsNumSuccessKey, 0}},
-				"then": bson.M{"$divide": array{"$total_duration_success", "$" + TaskStatsNumSuccessKey}},
-				"else": nil}},
-		}},
-		{"$sort": bson.D{
-			{Key: TaskStatsDateKey, Value: sortDateOrder(filter.Sort)},
-			{Key: TaskStatsBuildVariantKey, Value: 1},
-			{Key: TaskStatsTaskNameKey, Value: 1},
-			{Key: TaskStatsDistroKey, Value: 1},
-		}},
+		filter.buildMatchStageForTask(),
+		buildAddFieldsDateStage("date", DbTaskStatsIdDateKeyFull, filter.AfterDate, filter.BeforeDate, filter.GroupNumDays),
+		filter.BuildTaskStatsQueryGroupStage(),
+		filter.BuildTaskStatsQueryProjectStage(),
+		filter.BuildTaskStatsQuerySortStage(),
 		{"$limit": filter.Limit},
 	}
 }
 
-// buildMatchStageForTask builds the match stage of the task query pipeline based on the filter options.
+// BuildMatchStageForTask builds the match stage of the task query pipeline based on the filter options.
 func (filter StatsFilter) buildMatchStageForTask() bson.M {
 	match := bson.M{
-		dbTaskStatsIdDateKeyFull: bson.M{
+		DbTaskStatsIdDateKeyFull: bson.M{
 			"$gte": filter.AfterDate,
 			"$lt":  filter.BeforeDate,
 		},
-		dbTestStatsIdProjectKeyFull:   filter.Project,
-		dbTestStatsIdRequesterKeyFull: bson.M{"$in": filter.Requesters},
+		DbTestStatsIdProjectKeyFull:   filter.Project,
+		DbTestStatsIdRequesterKeyFull: bson.M{"$in": filter.Requesters},
 	}
 	if len(filter.Tasks) > 0 {
-		match[dbTaskStatsIdTaskNameKeyFull] = buildMatchArrayExpression(filter.Tasks)
+		match[DbTaskStatsIdTaskNameKeyFull] = BuildMatchArrayExpression(filter.Tasks)
 	}
 	if len(filter.BuildVariants) > 0 {
-		match[dbTaskStatsIdBuildVariantKeyFull] = buildMatchArrayExpression(filter.BuildVariants)
+		match[DbTaskStatsIdBuildVariantKeyFull] = BuildMatchArrayExpression(filter.BuildVariants)
 	}
 	if len(filter.Distros) > 0 {
-		match[dbTaskStatsIdDistroKeyFull] = buildMatchArrayExpression(filter.Distros)
+		match[DbTaskStatsIdDistroKeyFull] = BuildMatchArrayExpression(filter.Distros)
 	}
 
 	if filter.StartAt != nil {
@@ -858,7 +874,7 @@ func (filter StatsFilter) buildMatchStageForTask() bson.M {
 	return bson.M{"$match": match}
 }
 
-// buildTaskPaginationOrBranches builds an expression for the conditions imposed by the filter StartAt field.
+// BuildTaskPaginationOrBranches builds an expression for the conditions imposed by the filter StartAt field.
 func (filter StatsFilter) buildTaskPaginationOrBranches() []bson.M {
 	var dateDescending = filter.Sort == SortLatestFirst
 	var nextDate interface{}
@@ -867,37 +883,38 @@ func (filter StatsFilter) buildTaskPaginationOrBranches() []bson.M {
 		nextDate = filter.getNextDate()
 	}
 
-	var fields []paginationField
+	var fields []PaginationField
 
 	switch filter.GroupBy {
 	case GroupByTask:
-		fields = []paginationField{
-			{Field: dbTaskStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
-			{Field: dbTaskStatsIdTaskNameKeyFull, Strict: false, Value: filter.StartAt.Task},
+		fields = []PaginationField{
+			{Field: DbTaskStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
+			{Field: DbTaskStatsIdTaskNameKeyFull, Strict: false, Value: filter.StartAt.Task},
 		}
 	case GroupByVariant:
-		fields = []paginationField{
-			{Field: dbTaskStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
-			{Field: dbTaskStatsIdBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
-			{Field: dbTaskStatsIdTaskNameKeyFull, Strict: false, Value: filter.StartAt.Task},
+		fields = []PaginationField{
+			{Field: DbTaskStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
+			{Field: DbTaskStatsIdBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
+			{Field: DbTaskStatsIdTaskNameKeyFull, Strict: false, Value: filter.StartAt.Task},
 		}
 	case GroupByDistro:
-		fields = []paginationField{
-			{Field: dbTaskStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
-			{Field: dbTaskStatsIdBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
-			{Field: dbTaskStatsIdTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
-			{Field: dbTaskStatsIdDistroKeyFull, Strict: false, Value: filter.StartAt.Distro},
+		fields = []PaginationField{
+			{Field: DbTaskStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
+			{Field: DbTaskStatsIdBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
+			{Field: DbTaskStatsIdTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
+			{Field: DbTaskStatsIdDistroKeyFull, Strict: false, Value: filter.StartAt.Distro},
 		}
 	}
 
-	return buildPaginationOrBranches(fields)
+	return BuildPaginationOrBranches(fields)
 }
 
-// buildPaginationOrBranches builds and returns the $or branches of the pagination constraints.
+// BuildPaginationOrBranches builds and returns the $or branches of the pagination constraints.
 // fields is an array of field names, they must be in the same order as the sort order.
 // operators is a list of MongoDB comparison operators ("$gte", "$gt", "$lte", "$lt") for the fields.
 // values is a list of values for the fields.
-func buildPaginationOrBranches(fields []paginationField) []bson.M {
+// func (filter StatsFilter) buildPaginationOrBranches(fields []PaginationField) []bson.M {
+func BuildPaginationOrBranches(fields []PaginationField) []bson.M {
 	baseConstraints := bson.M{}
 	branches := []bson.M{}
 
@@ -906,9 +923,9 @@ func buildPaginationOrBranches(fields []paginationField) []bson.M {
 		for k, v := range baseConstraints {
 			branch[k] = v
 		}
-		branch[field.Field] = field.getNextExpression()
+		branch[field.Field] = field.GetNextExpression()
 		branches = append(branches, branch)
-		baseConstraints[field.Field] = field.getEqExpression()
+		baseConstraints[field.Field] = field.GetEqExpression()
 	}
 	return branches
 }
@@ -933,8 +950,8 @@ func dateBoundaries(start time.Time, end time.Time, numDays int) []time.Time {
 	return boundaries
 }
 
-// sortDateOrder returns the sort order specification (1, -1) for the date field corresponding to the Sort value.
-func sortDateOrder(sort Sort) int {
+// SortDateOrder returns the sort order specification (1, -1) for the date field corresponding to the Sort value.
+func SortDateOrder(sort Sort) int {
 	if sort == SortLatestFirst {
 		return -1
 	} else {
@@ -942,8 +959,8 @@ func sortDateOrder(sort Sort) int {
 	}
 }
 
-// paginationField represents a statistics document field that is used to determine where to resume during pagination.
-type paginationField struct {
+// PaginationField represents a statistics document field that is used to determine where to resume during pagination.
+type PaginationField struct {
 	Field      string
 	Descending bool
 	Strict     bool
@@ -951,9 +968,9 @@ type paginationField struct {
 	NextValue  interface{}
 }
 
-// getEqExpression returns an expression that can be used to match the documents which have the same field value or
-// are in the same range as this paginationField.
-func (pf paginationField) getEqExpression() interface{} {
+// GetEqExpression returns an expression that can be used to match the documents which have the same field value or
+// are in the same range as this PaginationField.
+func (pf PaginationField) GetEqExpression() interface{} {
 	if pf.NextValue == nil {
 		return pf.Value
 	}
@@ -970,9 +987,9 @@ func (pf paginationField) getEqExpression() interface{} {
 	}
 }
 
-// getNextExpression returns an expression that can be used to match the documents which have a field value
-// greater or smaller than the this paginationField.
-func (pf paginationField) getNextExpression() bson.M {
+// GetNextExpression returns an expression that can be used to match the documents which have a field value
+// greater or smaller than the this PaginationField.
+func (pf PaginationField) GetNextExpression() bson.M {
 	var operator string
 	var value interface{}
 	var strict bool
@@ -1007,16 +1024,14 @@ func (pf paginationField) getNextExpression() bson.M {
 
 // aggregateIntoCollection runs an aggregation pipeline on a collection and bulk upserts all the documents
 // into the target collection.
-func aggregateIntoCollection(collection string, pipeline []bson.M, outputCollection string) error {
+func aggregateIntoCollection(ctx context.Context, collection string, pipeline []bson.M, outputCollection string) error {
 	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
 
 	opts := adb.BufferedWriteOptions{
 		DB:         env.Settings().Database.DB,
 		Collection: outputCollection,
 		Count:      bulkSize,
-		Duration:   10 * time.Second,
+		Duration:   time.Minute,
 	}
 
 	writer, err := adb.NewBufferedUpsertByID(ctx, env.Session().DB(opts.DB), opts)
@@ -1079,9 +1094,9 @@ func GetHourlyTestDoc(id DbTestStatsId) (*dbTestStats, error) {
 	return &doc, err
 }
 
-func GetDailyTaskDoc(id DbTaskStatsId) (*dbTaskStats, error) {
-	doc := dbTaskStats{}
-	err := db.FindOne(dailyTaskStatsCollection, bson.M{"_id": id}, db.NoProjection, db.NoSort, &doc)
+func GetDailyTaskDoc(id DbTaskStatsId) (*DbTaskStats, error) {
+	doc := DbTaskStats{}
+	err := db.FindOne(DailyTaskStatsCollection, bson.M{"_id": id}, db.NoProjection, db.NoSort, &doc)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

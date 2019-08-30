@@ -54,12 +54,12 @@ const (
 // Base handler with functionality common to test and stats handlers //
 ///////////////////////////////////////////////////////////////////////
 
-type statsHandler struct {
+type StatsHandler struct {
 	filter stats.StatsFilter
 }
 
-// parseStatsFilter parses the query parameter values and fills the struct's filter field.
-func (sh *statsHandler) parseStatsFilter(vals url.Values) error {
+// ParseCommonFilter parses the query parameter values and fills the struct filter field.
+func (sh *StatsHandler) ParseCommonFilter(vals url.Values) error {
 	var err error
 
 	// requesters
@@ -67,6 +67,61 @@ func (sh *statsHandler) parseStatsFilter(vals url.Values) error {
 	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    "Invalid requesters value",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	// variants
+	sh.filter.BuildVariants = sh.readStringList(vals["variants"])
+
+	// distros
+	sh.filter.Distros = sh.readStringList(vals["distros"])
+
+	// group_num_days
+	sh.filter.GroupNumDays, err = sh.readInt(vals.Get("group_num_days"), 1, statsAPIMaxGroupNumDays, 1)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			Message:    "Invalid group_num_days value",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	// group_by
+	sh.filter.GroupBy, err = sh.readGroupBy(vals.Get("group_by"))
+	if err != nil {
+		return err
+	}
+
+	// start_at
+	sh.filter.StartAt, err = sh.readStartAt(vals.Get("start_at"))
+	return err
+}
+
+// parseStatsFilter parses the query parameter values and fills the struct filter field.
+func (sh *StatsHandler) parseStatsFilter(vals url.Values) error {
+	var err error
+
+	err = sh.ParseCommonFilter(vals)
+	if err != nil {
+		return err
+	}
+
+	// limit
+	sh.filter.Limit, err = sh.readInt(vals.Get("limit"), 1, statsAPIMaxLimit, statsAPIMaxLimit)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			Message:    "Invalid limit value",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	// Add 1 for pagination
+	sh.filter.Limit++
+
+	// tasks
+	sh.filter.Tasks = sh.readStringList(vals["tasks"])
+	if len(sh.filter.Tasks) > statsAPIMaxNumTasks {
+		return gimlet.ErrorResponse{
+			Message:    "Too many tasks values",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -112,60 +167,17 @@ func (sh *statsHandler) parseStatsFilter(vals url.Values) error {
 		}
 	}
 
-	// tasks
-	sh.filter.Tasks = sh.readStringList(vals["tasks"])
-	if len(sh.filter.Tasks) > statsAPIMaxNumTasks {
-		return gimlet.ErrorResponse{
-			Message:    "Too many tasks values",
-			StatusCode: http.StatusBadRequest,
-		}
-	}
-
-	// variants
-	sh.filter.BuildVariants = sh.readStringList(vals["variants"])
-
-	// distros
-	sh.filter.Distros = sh.readStringList(vals["distros"])
-
-	// group_num_days
-	sh.filter.GroupNumDays, err = sh.readInt(vals.Get("group_num_days"), 1, statsAPIMaxGroupNumDays, 1)
-	if err != nil {
-		return gimlet.ErrorResponse{
-			Message:    "Invalid group_num_days value",
-			StatusCode: http.StatusBadRequest,
-		}
-	}
-
-	// limit
-	sh.filter.Limit, err = sh.readInt(vals.Get("limit"), 1, statsAPIMaxLimit, statsAPIMaxLimit)
-	if err != nil {
-		return gimlet.ErrorResponse{
-			Message:    "Invalid limit value",
-			StatusCode: http.StatusBadRequest,
-		}
-	}
-	// Add 1 for pagination
-	sh.filter.Limit += 1
-
 	// sort
 	sh.filter.Sort, err = sh.readSort(vals.Get("sort"))
 	if err != nil {
 		return err
 	}
 
-	// group_by
-	sh.filter.GroupBy, err = sh.readGroupBy(vals.Get("group_by"))
-	if err != nil {
-		return err
-	}
-
-	// start_at
-	sh.filter.StartAt, err = sh.readStartAt(vals.Get("start_at"))
 	return err
 }
 
 // readRequesters parses requesters parameter values and translates them into a list of internal Evergreen requester names.
-func (sh *statsHandler) readRequesters(requesters []string) ([]string, error) {
+func (sh *StatsHandler) readRequesters(requesters []string) ([]string, error) {
 	if len(requesters) == 0 {
 		requesters = []string{statsAPIRequesterMainline}
 	}
@@ -188,7 +200,7 @@ func (sh *statsHandler) readRequesters(requesters []string) ([]string, error) {
 }
 
 // readStringList parses a string list parameter value, the values can be comma separated or specified multiple times.
-func (sh *statsHandler) readStringList(values []string) []string {
+func (sh *StatsHandler) readStringList(values []string) []string {
 	var parsedValues []string
 	for _, val := range values {
 		elements := strings.Split(val, ",")
@@ -198,7 +210,7 @@ func (sh *statsHandler) readStringList(values []string) []string {
 }
 
 // readInt parses an integer parameter value, given minimum, maximum, and default values.
-func (sh *statsHandler) readInt(intString string, min, max, defaultValue int) (int, error) {
+func (sh *StatsHandler) readInt(intString string, min, max, defaultValue int) (int, error) {
 	if intString == "" {
 		return defaultValue, nil
 	}
@@ -214,7 +226,7 @@ func (sh *statsHandler) readInt(intString string, min, max, defaultValue int) (i
 }
 
 // readTestGroupBy parses a sort parameter value and returns the corresponding Sort struct.
-func (sh *statsHandler) readSort(sortValue string) (stats.Sort, error) {
+func (sh *StatsHandler) readSort(sortValue string) (stats.Sort, error) {
 	switch sortValue {
 	case statsAPISortEarliest:
 		return stats.SortEarliestFirst, nil
@@ -231,7 +243,7 @@ func (sh *statsHandler) readSort(sortValue string) (stats.Sort, error) {
 }
 
 // readGroupBy parses a group_by parameter value and returns the corresponding GroupBy struct.
-func (sh *statsHandler) readGroupBy(groupByValue string) (stats.GroupBy, error) {
+func (sh *StatsHandler) readGroupBy(groupByValue string) (stats.GroupBy, error) {
 	switch groupByValue {
 
 	// Task query parameters.
@@ -265,21 +277,21 @@ func (sh *statsHandler) readGroupBy(groupByValue string) (stats.GroupBy, error) 
 }
 
 // readStartAt parses a start_at key value and returns the corresponding StartAt struct.
-func (sh *statsHandler) readStartAt(startAtValue string) (*stats.StartAt, error) {
+func (sh *StatsHandler) readStartAt(startAtValue string) (*stats.StartAt, error) {
 	if startAtValue == "" {
 		return nil, nil
 	}
 	elements := strings.Split(startAtValue, "|")
 	if len(elements) != 5 {
 		return nil, gimlet.ErrorResponse{
-			Message:    "Invalid start_by value",
+			Message:    "Invalid start_at value",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
 	date, err := time.ParseInLocation(statsAPIDateFormat, elements[0], time.UTC)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
-			Message:    "Invalid start_by value",
+			Message:    "Invalid start_at value",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -298,7 +310,7 @@ func (sh *statsHandler) readStartAt(startAtValue string) (*stats.StartAt, error)
 
 type testStatsHandler struct {
 	sc data.Connector
-	statsHandler
+	StatsHandler
 }
 
 func (tsh *testStatsHandler) Factory() gimlet.RouteHandler {
@@ -308,7 +320,7 @@ func (tsh *testStatsHandler) Factory() gimlet.RouteHandler {
 func (tsh *testStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 	tsh.filter = stats.StatsFilter{Project: gimlet.GetVars(r)["project_id"]}
 
-	err := tsh.statsHandler.parseStatsFilter(r.URL.Query())
+	err := tsh.StatsHandler.parseStatsFilter(r.URL.Query())
 	if err != nil {
 		return errors.Wrap(err, "Invalid query parameters")
 	}
@@ -387,7 +399,7 @@ func makeGetProjectTestStats(sc data.Connector) gimlet.RouteHandler {
 
 type taskStatsHandler struct {
 	sc data.Connector
-	statsHandler
+	StatsHandler
 }
 
 func (tsh *taskStatsHandler) Factory() gimlet.RouteHandler {
@@ -397,7 +409,7 @@ func (tsh *taskStatsHandler) Factory() gimlet.RouteHandler {
 func (tsh *taskStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 	tsh.filter = stats.StatsFilter{Project: gimlet.GetVars(r)["project_id"]}
 
-	err := tsh.statsHandler.parseStatsFilter(r.URL.Query())
+	err := tsh.StatsHandler.parseStatsFilter(r.URL.Query())
 	if err != nil {
 		return errors.Wrap(err, "Invalid query parameters")
 	}

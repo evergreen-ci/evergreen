@@ -1,6 +1,7 @@
 package cloud
 
 import (
+	"context"
 	"math"
 	"os"
 	"os/user"
@@ -9,10 +10,13 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/ec2"
 	ec2aws "github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -215,6 +219,50 @@ func timeTilNextHourlyPayment(host *host.Host) time.Duration {
 	return nextPaymentTime.Sub(now)
 }
 
+func expandUserData(userData string, expansions map[string]string) (string, error) {
+	exp := util.NewExpansions(expansions)
+	expanded, err := exp.ExpandString(userData)
+	if err != nil {
+		return "", errors.Wrap(err, "error expanding userdata script")
+	}
+	return expanded, nil
+}
+
+func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, client AWSClient) error {
+	h.Zone = *instance.Placement.AvailabilityZone
+	h.StartTime = *instance.LaunchTime
+	h.Host = *instance.PublicDnsName
+
+	volumeIDs := []string{}
+	for _, device := range instance.BlockDeviceMappings {
+		volumeIDs = append(volumeIDs, *device.Ebs.VolumeId)
+	}
+	h.VolumeIDs = volumeIDs
+
+	var err error
+	h.VolumeTotalSize, err = getVolumeSize(ctx, client, h)
+	if err != nil {
+		return errors.Wrapf(err, "error getting volume size for host %s", h.Id)
+	}
+
+	if err = h.CacheHostData(); err != nil {
+		return errors.Wrap(err, "error updating host document in db")
+	}
+
+	// set IPv6 address, if applicable
+	for _, networkInterface := range instance.NetworkInterfaces {
+		if len(networkInterface.Ipv6Addresses) > 0 {
+			err = h.SetIPv6Address(*networkInterface.Ipv6Addresses[0].Ipv6Address)
+			if err != nil {
+				return errors.Wrap(err, "error setting ipv6 address")
+			}
+			break
+		}
+	}
+
+	return nil
+}
+
 // ebsRegex extracts EBS Price JSON data from Amazon's UI.
 var ebsRegex = regexp.MustCompile(`(?s)callback\((.*)\)`)
 
@@ -274,4 +322,153 @@ func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping,
 		mappings = append(mappings, m)
 	}
 	return mappings, nil
+}
+
+func makeBlockDeviceMappingsTemplate(mounts []MountPoint) ([]*ec2aws.LaunchTemplateBlockDeviceMappingRequest, error) {
+	if len(mounts) == 0 {
+		return nil, nil
+	}
+	mappings := []*ec2aws.LaunchTemplateBlockDeviceMappingRequest{}
+	for _, mount := range mounts {
+		if mount.DeviceName == "" {
+			return nil, errors.New("missing device name")
+		}
+		if mount.VirtualName == "" && mount.Size == 0 {
+			return nil, errors.New("must provide either a virtual name or an EBS size")
+		}
+
+		m := &ec2aws.LaunchTemplateBlockDeviceMappingRequest{
+			DeviceName: aws.String(mount.DeviceName),
+		}
+		// Without a virtual name, this is EBS
+		if mount.VirtualName == "" {
+			m.Ebs = &ec2aws.LaunchTemplateEbsBlockDeviceRequest{
+				DeleteOnTermination: aws.Bool(true),
+				VolumeSize:          aws.Int64(mount.Size),
+				VolumeType:          aws.String(ec2aws.VolumeTypeGp2),
+			}
+			if mount.Iops != 0 {
+				m.Ebs.Iops = aws.Int64(mount.Iops)
+			}
+			if mount.SnapshotID != "" {
+				m.Ebs.SnapshotId = aws.String(mount.SnapshotID)
+			}
+			if mount.VolumeType != "" {
+				m.Ebs.VolumeType = aws.String(mount.VolumeType)
+			}
+		} else { // With a virtual name, this is an instance store
+			m.VirtualName = aws.String(mount.VirtualName)
+		}
+		mappings = append(mappings, m)
+	}
+	return mappings, nil
+}
+
+func validateEc2CreateTemplateResponse(createTemplateResponse *ec2aws.CreateLaunchTemplateOutput) error {
+	if createTemplateResponse == nil || createTemplateResponse.LaunchTemplate == nil {
+		return errors.New("create template response launch template is nil")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	if createTemplateResponse.LaunchTemplate.LaunchTemplateId == nil || len(*createTemplateResponse.LaunchTemplate.LaunchTemplateId) == 0 {
+		catcher.Add(errors.New("create template response has no template identifier"))
+	}
+
+	if createTemplateResponse.LaunchTemplate.LatestVersionNumber == nil {
+		catcher.Add(errors.New("create template response has no latest version"))
+	}
+
+	return catcher.Resolve()
+}
+
+func validateEc2CreateFleetResponse(createFleetResponse *ec2aws.CreateFleetOutput) error {
+	if createFleetResponse == nil {
+		return errors.New("create fleet response is nil")
+	}
+
+	if len(createFleetResponse.Instances) == 0 || len(createFleetResponse.Instances[0].InstanceIds) == 0 {
+		return errors.New("no instance ID in create fleet response")
+	}
+
+	return nil
+}
+
+func validateEc2DescribeInstancesOutput(describeInstancesResponse *ec2aws.DescribeInstancesOutput) error {
+	catcher := grip.NewBasicCatcher()
+	for _, reservation := range describeInstancesResponse.Reservations {
+		if len(reservation.Instances) == 0 {
+			catcher.Add(errors.New("reservation missing instance"))
+		} else {
+			if reservation.Instances[0].InstanceId == nil {
+				catcher.Add(errors.New("instance missing instance id"))
+			}
+			if reservation.Instances[0].State == nil || reservation.Instances[0].State.Name == nil || len(*reservation.Instances[0].State.Name) == 0 {
+				catcher.Add(errors.New("instance missing state name"))
+			}
+		}
+
+	}
+
+	return catcher.Resolve()
+}
+
+func validateEc2InstanceInfoResponse(instance *ec2aws.Instance) error {
+	if instance == nil {
+		return errors.New("instance is nil")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	if instance.Placement == nil || instance.Placement.AvailabilityZone == nil || len(*instance.Placement.AvailabilityZone) == 0 {
+		catcher.Add(errors.New("AZ is missing"))
+	}
+	if instance.LaunchTime == nil {
+		catcher.Add(errors.New("launch time is nil"))
+	}
+	if instance.PublicDnsName == nil || len(*instance.PublicDnsName) == 0 {
+		catcher.Add(errors.New("dns name is missing"))
+	}
+	if instance.State == nil || instance.State.Name == nil || len(*instance.State.Name) == 0 {
+		catcher.Add(errors.New("state name is missing"))
+	}
+
+	return catcher.Resolve()
+}
+
+func validateEc2DescribeSubnetsOutput(describeSubnetsOutput *ec2aws.DescribeSubnetsOutput) error {
+	if describeSubnetsOutput == nil {
+		return errors.New("describe subnets response is nil")
+	}
+
+	if len(describeSubnetsOutput.Subnets) == 0 {
+		return errors.New("describe subnets response contains no subnets")
+	}
+
+	for _, subnet := range describeSubnetsOutput.Subnets {
+		if subnet.SubnetId == nil || *subnet.SubnetId == "" {
+			return errors.New("describe subnets response contains a subnet without an ID")
+		}
+	}
+
+	return nil
+}
+
+func validateEc2DescribeVpcsOutput(describeVpcsOutput *ec2aws.DescribeVpcsOutput) error {
+	if describeVpcsOutput == nil {
+		return errors.New("describe VPCs response is nil")
+	}
+	if len(describeVpcsOutput.Vpcs) == 0 {
+		return errors.New("describe VPCs response contains no VPCs")
+	}
+	if describeVpcsOutput.Vpcs[0].VpcId == nil || *describeVpcsOutput.Vpcs[0].VpcId == "" {
+		return errors.New("describe VPCs response contains a VPC with no VPC ID")
+	}
+
+	return nil
+}
+
+func IsEc2Provider(provider string) bool {
+	return provider == evergreen.ProviderNameEc2Auto ||
+		provider == evergreen.ProviderNameEc2OnDemand ||
+		provider == evergreen.ProviderNameEc2Spot ||
+		provider == evergreen.ProviderNameEc2Fleet
 }

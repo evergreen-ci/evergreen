@@ -342,13 +342,13 @@ func TestHostSetIPv6Address(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(host.IP, ipv6Address)
 
-	// if the host is already updated, no new updates should work
-	assert.Error(host.SetIPv6Address(ipv6Address2))
-	assert.Equal(host.IP, ipv6Address)
+	// if the host is already updated, new updates should work
+	assert.NoError(host.SetIPv6Address(ipv6Address2))
+	assert.Equal(host.IP, ipv6Address2)
 
 	host, err = FindOne(ById(host.Id))
 	assert.NoError(err)
-	assert.Equal(host.IP, ipv6Address)
+	assert.Equal(host.IP, ipv6Address2)
 }
 
 func TestMarkAsProvisioned(t *testing.T) {
@@ -416,6 +416,26 @@ func TestHostCreateSecret(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestHostSetAgentStartTime(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
+
+	h := &Host{
+		Id: "id",
+	}
+	require.NoError(t, h.Insert())
+
+	now := time.Now()
+	require.NoError(t, h.SetAgentStartTime())
+	assert.True(t, now.Sub(h.AgentStartTime) < time.Second)
+
+	dbHost, err := FindOneId(h.Id)
+	require.NoError(t, err)
+	assert.True(t, now.Sub(dbHost.AgentStartTime) < time.Second)
 }
 
 func TestHostSetExpirationTime(t *testing.T) {
@@ -575,9 +595,8 @@ func TestUpdateHostRunningTask(t *testing.T) {
 		oldTaskId := "oldId"
 		newTaskId := "newId"
 		h := Host{
-			Id:          "test",
-			RunningTask: oldTaskId,
-			Status:      evergreen.HostRunning,
+			Id:     "test",
+			Status: evergreen.HostRunning,
 		}
 		So(h.Insert(), ShouldBeNil)
 		Convey("updating the running task id should set proper fields", func() {
@@ -592,6 +611,12 @@ func TestUpdateHostRunningTask(t *testing.T) {
 		})
 		Convey("updating the running task to an empty string should error out", func() {
 			_, err := h.UpdateRunningTask(&task.Task{})
+			So(err, ShouldNotBeNil)
+		})
+		Convey("updating the running task when a task is already running should error", func() {
+			_, err := h.UpdateRunningTask(&task.Task{Id: oldTaskId})
+			So(err, ShouldBeNil)
+			_, err = h.UpdateRunningTask(&task.Task{Id: newTaskId})
 			So(err, ShouldNotBeNil)
 		})
 	})
@@ -751,7 +776,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				StartedBy: evergreen.User,
 			}
 			So(h.Insert(), ShouldBeNil)
-			hosts, err := Find(db.Query(LastCommunicationTimeElapsed(time.Now())))
+			hosts, err := Find(db.Query(AgentLastCommunicationTimeElapsed(time.Now())))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 1)
 			So(hosts[0].Id, ShouldEqual, "id")
@@ -764,7 +789,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				foundHost, err := FindOne(ById(h.Id))
 				So(err, ShouldBeNil)
 				So(foundHost, ShouldNotBeNil)
-				hosts, err := Find(db.Query(LastCommunicationTimeElapsed(time.Now())))
+				hosts, err := Find(db.Query(AgentLastCommunicationTimeElapsed(time.Now())))
 				So(err, ShouldBeNil)
 				So(len(hosts), ShouldEqual, 1)
 				So(hosts[0].Id, ShouldEqual, h.Id)
@@ -779,7 +804,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				StartedBy:             evergreen.User,
 			}
 			So(anotherHost.Insert(), ShouldBeNil)
-			hosts, err := Find(db.Query(LastCommunicationTimeElapsed(now)))
+			hosts, err := Find(db.Query(AgentLastCommunicationTimeElapsed(now)))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 1)
 			So(hosts[0].Id, ShouldEqual, anotherHost.Id)
@@ -793,13 +818,13 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				StartedBy:             evergreen.User,
 			}
 			So(anotherHost.Insert(), ShouldBeNil)
-			hosts, err := Find(db.Query(LastCommunicationTimeElapsed(now)))
+			hosts, err := Find(db.Query(AgentLastCommunicationTimeElapsed(now)))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 0)
 			Convey("after resetting the LCT", func() {
 				So(anotherHost.ResetLastCommunicated(), ShouldBeNil)
 				So(anotherHost.LastCommunicationTime, ShouldResemble, time.Unix(0, 0))
-				h, err := Find(db.Query(LastCommunicationTimeElapsed(now)))
+				h, err := Find(db.Query(AgentLastCommunicationTimeElapsed(now)))
 				So(err, ShouldBeNil)
 				So(len(h), ShouldEqual, 1)
 				So(h[0].Id, ShouldEqual, "testhost")
@@ -812,7 +837,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				StartedBy: evergreen.User,
 			}
 			So(h.Insert(), ShouldBeNil)
-			hosts, err := Find(db.Query(LastCommunicationTimeElapsed(now)))
+			hosts, err := Find(db.Query(AgentLastCommunicationTimeElapsed(now)))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 0)
 		})
@@ -823,7 +848,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				StartedBy: "anotherUser",
 			}
 			So(h.Insert(), ShouldBeNil)
-			hosts, err := Find(db.Query(LastCommunicationTimeElapsed(now)))
+			hosts, err := Find(db.Query(AgentLastCommunicationTimeElapsed(now)))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 0)
 		})
@@ -833,7 +858,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				Status:        evergreen.HostRunning,
 				StartedBy:     evergreen.User,
 				NeedsNewAgent: true,
-				Distro:        distro.Distro{BootstrapMethod: distro.BootstrapMethodLegacySSH},
+				Distro:        distro.Distro{BootstrapSettings: distro.BootstrapSettings{Method: distro.BootstrapMethodLegacySSH}},
 			}
 			So(h.Insert(), ShouldBeNil)
 
@@ -859,6 +884,103 @@ func TestFindNeedsNewAgent(t *testing.T) {
 	})
 }
 
+func TestSetNeedsNewAgent(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T, h *Host){
+		"SucceedsOnLegacyHosts": func(t *testing.T, h *Host) {
+			require.NoError(t, h.Insert())
+
+			require.NoError(t, h.SetNeedsNewAgent(true))
+			assert.True(t, h.NeedsNewAgent)
+
+			dbHost, err := FindOne(ById(h.Id))
+			require.NoError(t, err)
+			assert.True(t, dbHost.NeedsNewAgent)
+		},
+		"NoopsOnNonLegacyHosts": func(t *testing.T, h *Host) {
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodUserData
+			h.Distro.BootstrapSettings.Communication = distro.CommunicationMethodSSH
+			require.NoError(t, h.Insert())
+
+			require.NoError(t, h.SetNeedsNewAgent(true))
+			assert.False(t, h.NeedsNewAgent)
+
+			dbHost, err := FindOne(ById(h.Id))
+			require.NoError(t, err)
+			assert.False(t, dbHost.NeedsNewAgent)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			defer func() {
+				assert.NoError(t, db.Clear(Collection))
+			}()
+			testCase(t, &Host{Id: "id"})
+		})
+	}
+}
+
+func TestAgentMonitorLastCommunicationTimeElapsed(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T, h *Host){
+		"FindsNotRecentlyCommunicatedHosts": func(t *testing.T, h *Host) {
+			require.NoError(t, h.Insert())
+
+			hosts, err := Find(db.Query(AgentMonitorLastCommunicationTimeElapsed(time.Now())))
+			require.NoError(t, err)
+
+			require.Len(t, hosts, 1)
+			assert.Equal(t, h.Id, hosts[0].Id)
+		},
+		"DoesNotFindRecentlyCommunicatedHosts": func(t *testing.T, h *Host) {
+			h.LastCommunicationTime = time.Now()
+			require.NoError(t, h.Insert())
+
+			hosts, err := Find(db.Query(AgentMonitorLastCommunicationTimeElapsed(time.Now())))
+			require.NoError(t, err)
+
+			assert.Empty(t, hosts)
+		},
+		"DoesNotFindLegacyHosts": func(t *testing.T, h *Host) {
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodLegacySSH
+			h.Distro.BootstrapSettings.Communication = distro.CommunicationMethodLegacySSH
+			require.NoError(t, h.Insert())
+
+			hosts, err := Find(db.Query(AgentMonitorLastCommunicationTimeElapsed(time.Now())))
+			require.NoError(t, err)
+
+			assert.Empty(t, hosts)
+		},
+		"DoesNotFindHostsWithoutBootstrapMethod": func(t *testing.T, h *Host) {
+			h.Distro.BootstrapSettings.Method = ""
+			h.Distro.BootstrapSettings.Communication = ""
+			require.NoError(t, h.Insert())
+
+			hosts, err := Find(db.Query(AgentMonitorLastCommunicationTimeElapsed(time.Now())))
+			require.NoError(t, err)
+
+			assert.Empty(t, hosts)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection), "error clearing %s collection", Collection)
+			defer func() {
+				assert.NoError(t, db.Clear(Collection))
+			}()
+			h := Host{
+				Id: "id",
+				Distro: distro.Distro{
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodSSH,
+						Communication: distro.CommunicationMethodRPC,
+					},
+				},
+				Status:    evergreen.HostRunning,
+				StartedBy: evergreen.User,
+			}
+			testCase(t, &h)
+		})
+	}
+}
+
 func TestFindByNeedsNewAgentMonitor(t *testing.T) {
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"NotRunningHost": func(t *testing.T, h *Host) {
@@ -878,7 +1000,7 @@ func TestFindByNeedsNewAgentMonitor(t *testing.T) {
 			require.Len(t, hosts, 0)
 		},
 		"BootstrapLegacySSH": func(t *testing.T, h *Host) {
-			h.Distro.BootstrapMethod = distro.BootstrapMethodLegacySSH
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodLegacySSH
 			require.NoError(t, h.Insert())
 
 			hosts, err := FindByNeedsNewAgentMonitor()
@@ -886,7 +1008,7 @@ func TestFindByNeedsNewAgentMonitor(t *testing.T) {
 			require.Len(t, hosts, 0)
 		},
 		"BootstrapSSH": func(t *testing.T, h *Host) {
-			h.Distro.BootstrapMethod = distro.BootstrapMethodSSH
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
 			require.NoError(t, h.Insert())
 
 			hosts, err := FindByNeedsNewAgentMonitor()
@@ -895,7 +1017,7 @@ func TestFindByNeedsNewAgentMonitor(t *testing.T) {
 			assert.Equal(t, h.Id, hosts[0].Id)
 		},
 		"BootstrapUserData": func(t *testing.T, h *Host) {
-			h.Distro.BootstrapMethod = distro.BootstrapMethodUserData
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodUserData
 			require.NoError(t, h.Insert())
 
 			hosts, err := FindByNeedsNewAgentMonitor()
@@ -903,8 +1025,8 @@ func TestFindByNeedsNewAgentMonitor(t *testing.T) {
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0].Id)
 		},
-		"PreconfiguredImage": func(t *testing.T, h *Host) {
-			h.Distro.BootstrapMethod = distro.BootstrapMethodPreconfiguredImage
+		"BootstrapPreconfiguredImage": func(t *testing.T, h *Host) {
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodPreconfiguredImage
 			require.NoError(t, h.Insert())
 
 			hosts, err := FindByNeedsNewAgentMonitor()
@@ -914,7 +1036,10 @@ func TestFindByNeedsNewAgentMonitor(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			require.NoError(t, db.Clear(Collection), "error clearing %s collection", Collection)
+			require.NoError(t, db.Clear(Collection))
+			defer func() {
+				assert.NoError(t, db.Clear(Collection))
+			}()
 			h := Host{
 				Id:                   "h",
 				Status:               evergreen.HostRunning,
@@ -926,37 +1051,107 @@ func TestFindByNeedsNewAgentMonitor(t *testing.T) {
 	}
 }
 
+func TestFindUserDataSpawnHostsProvisioning(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T, h *Host){
+		"ReturnsHostsProvisionedButNotRunning": func(t *testing.T, h *Host) {
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindUserDataSpawnHostsProvisioning()
+			require.NoError(t, err)
+			require.Len(t, hosts, 1)
+			assert.Equal(t, h.Id, hosts[0].Id)
+		},
+		"IgnoresNonUserDataBootstrap": func(t *testing.T, h *Host) {
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindUserDataSpawnHostsProvisioning()
+			require.NoError(t, err)
+			assert.Empty(t, hosts)
+		},
+		"IgnoresUnprovisionedHosts": func(t *testing.T, h *Host) {
+			h.Provisioned = false
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindUserDataSpawnHostsProvisioning()
+			require.NoError(t, err)
+			assert.Empty(t, hosts)
+		},
+		"IgnoresHostsSpawnedByEvergreen": func(t *testing.T, h *Host) {
+			h.StartedBy = evergreen.User
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindUserDataSpawnHostsProvisioning()
+			require.NoError(t, err)
+			assert.Empty(t, hosts)
+		},
+		"IgnoresRunningSpawnHosts": func(t *testing.T, h *Host) {
+			h.Status = evergreen.HostRunning
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindUserDataSpawnHostsProvisioning()
+			require.NoError(t, err)
+			assert.Empty(t, hosts)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection), "error clearing %s collection", Collection)
+			defer func() {
+				assert.NoError(t, db.Clear(Collection))
+			}()
+			h := Host{
+				Id:          "host_id",
+				Status:      evergreen.HostProvisioning,
+				Provisioned: true,
+				StartedBy:   "user",
+				Distro: distro.Distro{
+					Id: "distro_id",
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodUserData,
+						Communication: distro.CommunicationMethodSSH,
+					},
+				},
+			}
+			testCase(t, &h)
+		})
+	}
+}
+
 func TestFindByExpiringJasperCredentials(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for testName, testCase := range map[string]func(t *testing.T, env evergreen.Environment){
-		"IgnoresLegacyHost": func(t *testing.T, env evergreen.Environment) {
+	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T){
+		"IgnoresLegacyHost": func(ctx context.Context, t *testing.T) {
 			h := &Host{
 				Id: "id",
 				Distro: distro.Distro{
-					BootstrapMethod:     distro.BootstrapMethodLegacySSH,
-					CommunicationMethod: distro.CommunicationMethodLegacySSH,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodLegacySSH,
+						Communication: distro.CommunicationMethodLegacySSH,
+					},
 				},
 				JasperCredentialsID: "cid",
 				Status:              evergreen.HostRunning,
 			}
 			require.NoError(t, h.Insert())
 
-			creds, err := h.GenerateJasperCredentials(ctx, env)
+			creds, err := h.GenerateJasperCredentials(ctx)
 			require.NoError(t, err)
-			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
+			require.NoError(t, h.SaveJasperCredentials(ctx, creds))
 
 			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
 			require.NoError(t, err)
 			assert.Empty(t, dbHosts)
 		},
-		"IgnoresWithoutCredentials": func(t *testing.T, env evergreen.Environment) {
+		"IgnoresWithoutCredentials": func(ctx context.Context, t *testing.T) {
 			h := &Host{
 				Id: "id",
 				Distro: distro.Distro{
-					BootstrapMethod:     distro.BootstrapMethodSSH,
-					CommunicationMethod: distro.CommunicationMethodSSH,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodSSH,
+						Communication: distro.CommunicationMethodSSH,
+					},
 				},
 				JasperCredentialsID: "cid",
 				Status:              evergreen.HostRunning,
@@ -967,73 +1162,81 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			require.NoError(t, err)
 			assert.Empty(t, dbHosts)
 		},
-		"IgnoresNonexpiringCredentials": func(t *testing.T, env evergreen.Environment) {
+		"IgnoresNonexpiringCredentials": func(ctx context.Context, t *testing.T) {
 			h := &Host{
 				Id: "id",
 				Distro: distro.Distro{
-					BootstrapMethod:     distro.BootstrapMethodSSH,
-					CommunicationMethod: distro.CommunicationMethodSSH,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodSSH,
+						Communication: distro.CommunicationMethodSSH,
+					},
 				},
 				JasperCredentialsID: "cid",
 				Status:              evergreen.HostRunning,
 			}
 			require.NoError(t, h.Insert())
 
-			creds, err := h.GenerateJasperCredentials(ctx, env)
+			creds, err := h.GenerateJasperCredentials(ctx)
 			require.NoError(t, err)
-			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
+			require.NoError(t, h.SaveJasperCredentials(ctx, creds))
 
 			dbHosts, err := FindByExpiringJasperCredentials(time.Second)
 			require.NoError(t, err)
 			assert.Empty(t, dbHosts)
 		},
-		"ReturnsWithExpiringCredentials": func(t *testing.T, env evergreen.Environment) {
+		"ReturnsWithExpiringCredentials": func(ctx context.Context, t *testing.T) {
 			h := &Host{
 				Id: "id",
 				Distro: distro.Distro{
-					BootstrapMethod:     distro.BootstrapMethodSSH,
-					CommunicationMethod: distro.CommunicationMethodSSH,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodSSH,
+						Communication: distro.CommunicationMethodSSH,
+					},
 				},
 				JasperCredentialsID: "cid",
 				Status:              evergreen.HostRunning,
 			}
 			require.NoError(t, h.Insert())
 
-			creds, err := h.GenerateJasperCredentials(ctx, env)
+			creds, err := h.GenerateJasperCredentials(ctx)
 			require.NoError(t, err)
-			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
+			require.NoError(t, h.SaveJasperCredentials(ctx, creds))
 
 			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
 			require.NoError(t, err)
 			require.Len(t, dbHosts, 1)
 			assert.Equal(t, h.Id, dbHosts[0].Id)
 		},
-		"IgnoresNotRunning": func(t *testing.T, env evergreen.Environment) {
+		"IgnoresNotRunning": func(ctx context.Context, t *testing.T) {
 			h := &Host{
 				Id: "id",
 				Distro: distro.Distro{
-					BootstrapMethod:     distro.BootstrapMethodSSH,
-					CommunicationMethod: distro.CommunicationMethodSSH,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodSSH,
+						Communication: distro.CommunicationMethodSSH,
+					},
 				},
 				JasperCredentialsID: "cid",
 				Status:              evergreen.HostTerminated,
 			}
 			require.NoError(t, h.Insert())
 
-			creds, err := h.GenerateJasperCredentials(ctx, env)
+			creds, err := h.GenerateJasperCredentials(ctx)
 			require.NoError(t, err)
-			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
+			require.NoError(t, h.SaveJasperCredentials(ctx, creds))
 
 			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
 			require.NoError(t, err)
 			assert.Empty(t, dbHosts)
 		},
-		"IgnoresContainers": func(t *testing.T, env evergreen.Environment) {
+		"IgnoresContainers": func(ctx context.Context, t *testing.T) {
 			h := &Host{
 				Id: "id",
 				Distro: distro.Distro{
-					BootstrapMethod:     distro.BootstrapMethodSSH,
-					CommunicationMethod: distro.CommunicationMethodSSH,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodSSH,
+						Communication: distro.CommunicationMethodSSH,
+					},
 				},
 				JasperCredentialsID: "cid",
 				Status:              evergreen.HostRunning,
@@ -1041,9 +1244,9 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			}
 			require.NoError(t, h.Insert())
 
-			creds, err := h.GenerateJasperCredentials(ctx, env)
+			creds, err := h.GenerateJasperCredentials(ctx)
 			require.NoError(t, err)
-			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
+			require.NoError(t, h.SaveJasperCredentials(ctx, creds))
 
 			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
 			require.NoError(t, err)
@@ -1059,7 +1262,7 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			env.EnvContext = tctx
 
 			require.NoError(t, setupCredentialsCollection(ctx, env))
-			testCase(t, env)
+			testCase(tctx, t)
 			assert.NoError(t, db.ClearCollections(credentials.Collection, Collection))
 		})
 	}
@@ -3369,4 +3572,31 @@ func TestGetNumNewParentsWithInitializingParentAndHost(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(2, parents)
 	assert.Equal(4, hosts)
+}
+
+func TestFindOneByJasperCredentialsID(t *testing.T) {
+	id := "id"
+	for testName, testCase := range map[string]func(t *testing.T, h *Host){
+		"FailsWithoutJasperCredentialsID": func(t *testing.T, h *Host) {
+			h.Id = id
+			dbHost, err := FindOneByJasperCredentialsID(id)
+			assert.Error(t, err)
+			assert.Nil(t, dbHost)
+		},
+		"FindsHostWithJasperCredentialsID": func(t *testing.T, h *Host) {
+			h.JasperCredentialsID = id
+			require.NoError(t, h.Insert())
+			dbHost, err := FindOneByJasperCredentialsID(id)
+			require.NoError(t, err)
+			assert.Equal(t, dbHost, h)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			defer func() {
+				assert.NoError(t, db.Clear(Collection))
+			}()
+			testCase(t, &Host{})
+		})
+	}
 }
