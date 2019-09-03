@@ -155,16 +155,10 @@ mciModule.factory('DrawPerfTrendChart', function (
     const bfsForLevel = [];
     _.each(visibleBFs, function (bf) {
       _.each(levelsMeta, function (level) {
-        // let allMatch = bfsForLevel.every(bfForLevel => bfForLevel.level === level && dbfForLevel.bf.first_failing_revision === bf.first_failing_revision)
-        // if (!allMatch) {
-        // TODO: reimplement this? Appears broken when discovered,
-        //  commented out a better form of what *seems* right
-        if (true) {
-          bfsForLevel.push({
-            level: level,
-            bf: bf,
-          })
-        }
+        bfsForLevel.push({
+          level: level,
+          bf: bf,
+        })
       })
     });
 
@@ -241,11 +235,7 @@ mciModule.factory('DrawPerfTrendChart', function (
           if (threadMode === MAXONLY) {
             // In maxonly mode levels contain single (max) item
             // Extract just one ops item
-            try {
-              return d.threadResults[maxLevelIdx(i)][cfg.valueAttr];
-            } catch (ex) {
-              throw ex
-            }
+            return d.threadResults[maxLevelIdx(i)][cfg.valueAttr];
           } else {
             return getOpsValues(d);
           }

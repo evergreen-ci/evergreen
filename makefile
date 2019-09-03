@@ -223,7 +223,7 @@ build-all:build-alltests build
 lint:$(foreach target,$(packages) $(lintOnlyPackages),$(buildDir)/output.$(target).lint)
 test:$(foreach target,$(packages),test-$(target))
 js-test:$(buildDir)/.npmSetup
-	cd $(nodeDir) && npm install && $(if $(NODE_BIN_PATH),export PATH=${PATH}:$(NODE_BIN_PATH) && ,)./node_modules/.bin/karma start static/js/tests/conf/karma.conf.js $(karmaFlags)
+	cd $(nodeDir) && $(if $(NODE_BIN_PATH),export PATH=${PATH}:$(NODE_BIN_PATH) && ,)./node_modules/.bin/karma start static/js/tests/conf/karma.conf.js $(karmaFlags)
 coverage:$(coverageOutput)
 coverage-html:$(coverageHtmlOutput)
 list-tests:
