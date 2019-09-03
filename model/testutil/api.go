@@ -52,7 +52,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 
 	modelData := &TestModelData{}
 
-	// Unmarshall the project configuration into a struct
+	// Unmarshal the project configuration into a struct
 	project := &model.Project{}
 	if err = model.LoadProjectInto(projectConfig, "test", project); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal project config")
