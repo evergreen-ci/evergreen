@@ -540,10 +540,12 @@ mciModule.controller('PerfController', function PerfController(
   }
 
   $scope.redrawGraphs = function(){
-    $scope.hideEmptyGraphs();
-    $scope.hideCanaries();
-    drawTrendGraph($scope);
-    drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id, $scope.metricSelect.value.key);
+      setTimeout(function(){
+        $scope.hideEmptyGraphs();
+        $scope.hideCanaries();
+        drawTrendGraph($scope);
+        drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id, $scope.metricSelect.value.key);
+      }, 0)
   }
 
   $scope.hideEmptyGraphs = function() {
@@ -589,22 +591,6 @@ mciModule.controller('PerfController', function PerfController(
     const promise = $q.all({
       points: pointsPromise,
       whitelist: whitelistPromise,
-    });
-    promise.then(function(results) {
-      const whitelist = results.whitelist;
-
-      const outliers = results.points;
-      let rejects = outliers.rejects;
-      if(rejects.length) {
-        rejects = _.filter(rejects, function(doc){
-          const matched = _.find(whitelist, _.pick(doc, 'revision', 'project', 'variant', 'task'));
-          return _.isUndefined(matched);
-        });
-        const filtered = _.reject($scope.trendResults, doc => _.contains(rejects, doc.task_id));
-        if (rejects.length != filtered.length) {
-          $scope.filteredTrendSamples = new TrendSamples(filtered);
-        }
-      }
     });
 
     // This code loads change points for current task from the mdb cloud
@@ -686,11 +672,26 @@ mciModule.controller('PerfController', function PerfController(
     });
 
     let trendDataSuccess = function(data) {
+      promise.then(function(results){
         $scope.trendResults = $scope.trendResults.concat(data);
+        const whitelist = results.whitelist;
+
+        const outliers = results.points;
+        let rejects = outliers.rejects;
+
         $scope.allTrendSamples = new TrendSamples($scope.trendResults);
         // Default filtered to all.
         $scope.filteredTrendSamples = $scope.allTrendSamples;
-
+        if(rejects.length) {
+          rejects = _.filter(rejects, function(doc){
+            const matched = _.find(whitelist, _.pick(doc, 'revision', 'project', 'variant', 'task'));
+            return _.isUndefined(matched);
+          });
+          const filtered = _.reject($scope.trendResults, doc => _.contains(rejects, doc.task_id));
+          if (rejects.length != filtered.length) {
+            $scope.filteredTrendSamples = new TrendSamples(filtered);
+          }
+        }
         $scope.metricSelect.options = $scope.metricSelect.options.concat(
           _.map(
             _.without($scope.allTrendSamples.metrics, $scope.metricSelect.default.key), d => ({key: d, name: d}))
@@ -711,12 +712,12 @@ mciModule.controller('PerfController', function PerfController(
             } catch (e) {}
           }
         }
+      })
     };
 
     // Populate the trend data
     let legacyHistoryPromise = $http.get("/plugin/json/history/" + $scope.task.id + "/perf").then(function(resp){
         trendDataSuccess(resp.data);
-        onHistoryRetrieved();
       }, function() {
         if (!$scope.allTrendSamples) {
           $scope.allTrendSamples = new TrendSamples([]);
@@ -732,16 +733,16 @@ mciModule.controller('PerfController', function PerfController(
       function(resp) {
         let converted = $filter("expandedHistoryConverter")(resp.data, $scope.task.execution);
         trendDataSuccess(converted);
-        onHistoryRetrieved();
       });
 
     // Once trend chart data and change points get loaded
     var onHistoryRetrieved = function() {
       $scope.hideEmptyGraphs();
       $scope.hideCanaries();
-      drawTrendGraph($scope);
+      setTimeout(drawTrendGraph, 0, $scope);
     };
-    $q.all([historyPromise, legacyHistoryPromise, changePointsQ.catch(), buildFailuresQ.catch()]);
+    $q.all([historyPromise, legacyHistoryPromise, changePointsQ.catch(), buildFailuresQ.catch()])
+      .then(onHistoryRetrieved, onHistoryRetrieved);
   }
 
   if ($scope.conf.enabled){
