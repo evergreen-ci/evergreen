@@ -178,7 +178,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		"max_attempts": j.MaxAttempts,
 	})
 
-	cloudManager, err = cloud.GetManager(ctx, j.host.Provider, j.env.Settings())
+	cloudManager, err = cloud.GetManager(ctx, j.host.Provider, j.host.Distro.ProviderSettings, j.env.Settings())
 	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "problem getting cloud provider for host",

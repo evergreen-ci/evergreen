@@ -81,7 +81,7 @@ type BatchManager interface {
 
 // GetManager returns an implementation of Manager for the given provider name.
 // It returns an error if the provider name doesn't have a known implementation.
-func GetManager(ctx context.Context, providerName string, settings *evergreen.Settings) (Manager, error) {
+func GetManager(ctx context.Context, providerName string, providerSettings *map[string]interface{}, settings *evergreen.Settings) (Manager, error) {
 	var provider Manager
 
 	switch providerName {
@@ -90,13 +90,13 @@ func GetManager(ctx context.Context, providerName string, settings *evergreen.Se
 	case evergreen.ProviderNameMock:
 		provider = makeMockManager()
 	case evergreen.ProviderNameEc2Legacy, evergreen.ProviderNameEc2OnDemand:
-		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: onDemandProvider})
+		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: onDemandProvider, region: GetEC2Region(providerSettings)})
 	case evergreen.ProviderNameEc2Spot:
-		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: spotProvider})
+		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: spotProvider, region: GetEC2Region(providerSettings)})
 	case evergreen.ProviderNameEc2Auto:
-		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: autoProvider})
+		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: autoProvider, region: GetEC2Region(providerSettings)})
 	case evergreen.ProviderNameEc2Fleet:
-		provider = &ec2FleetManager{client: &awsClientImpl{}}
+		provider = NewEC2FleetManager(&EC2FleetManagerOptions{client: &awsClientImpl{}, region: GetEC2Region(providerSettings)})
 	case evergreen.ProviderNameDocker:
 		provider = &dockerManager{}
 	case evergreen.ProviderNameDockerMock:

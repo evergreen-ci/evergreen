@@ -240,10 +240,10 @@ func (mockMgr *mockManager) TimeTilNextPayment(host *host.Host) time.Duration {
 }
 
 func (mockMgr *mockManager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) ([]CloudStatus, error) {
-	if len(hosts) != 2 {
-		return nil, errors.New("expecting 2 hosts")
+	if len(hosts) != 1 {
+		return nil, errors.New("expecting 1 hosts")
 	}
-	return []CloudStatus{StatusRunning, StatusRunning}, nil
+	return []CloudStatus{StatusRunning}, nil
 }
 
 // CostForDuration for the mock returns 1 dollar per minute up

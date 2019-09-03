@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/model/distro"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
@@ -23,11 +25,13 @@ func TestCloudStatusJob(t *testing.T) {
 			Id:       "host-1",
 			Provider: evergreen.ProviderNameMock,
 			Status:   evergreen.HostStarting,
+			Distro:   distro.Distro{ProviderSettings: &map[string]interface{}{"region": "region-1"}},
 		},
 		{
 			Id:       "host-2",
 			Provider: evergreen.ProviderNameMock,
 			Status:   evergreen.HostStarting,
+			Distro:   distro.Distro{ProviderSettings: &map[string]interface{}{"region": "region-2"}},
 		},
 		{
 			Id:       "host-3",

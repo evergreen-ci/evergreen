@@ -93,7 +93,7 @@ func (j *hostMonitorContainerStateJob) Run(ctx context.Context) {
 	}
 
 	// list containers using Docker provider
-	mgr, err := cloud.GetManager(ctx, j.Provider, j.settings)
+	mgr, err := cloud.GetManager(ctx, j.Provider, j.host.Distro.ProviderSettings, j.settings)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error getting Docker manager"))
 		return

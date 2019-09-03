@@ -25,14 +25,16 @@ var (
 
 type EC2Suite struct {
 	suite.Suite
-	onDemandOpts    *EC2ManagerOptions
-	onDemandManager Manager
-	spotOpts        *EC2ManagerOptions
-	spotManager     Manager
-	autoOpts        *EC2ManagerOptions
-	autoManager     Manager
-	impl            *ec2Manager
-	h               *host.Host
+	onDemandOpts              *EC2ManagerOptions
+	onDemandManager           Manager
+	onDemandWithRegionOpts    *EC2ManagerOptions
+	onDemandWithRegionManager Manager
+	spotOpts                  *EC2ManagerOptions
+	spotManager               Manager
+	autoOpts                  *EC2ManagerOptions
+	autoManager               Manager
+	impl                      *ec2Manager
+	h                         *host.Host
 }
 
 func TestEC2Suite(t *testing.T) {
@@ -46,6 +48,15 @@ func (s *EC2Suite) SetupTest() {
 		provider: onDemandProvider,
 	}
 	s.onDemandManager = NewEC2Manager(s.onDemandOpts)
+	_ = s.onDemandManager.Configure(context.Background(), &evergreen.Settings{
+		Expansions: map[string]string{"test": "expand"},
+	})
+	s.onDemandWithRegionOpts = &EC2ManagerOptions{
+		client:   &awsClientMock{},
+		provider: onDemandProvider,
+		region:   "test-region",
+	}
+	s.onDemandWithRegionManager = NewEC2Manager(s.onDemandWithRegionOpts)
 	_ = s.onDemandManager.Configure(context.Background(), &evergreen.Settings{
 		Expansions: map[string]string{"test": "expand"},
 	})
@@ -240,23 +251,64 @@ func (s *EC2Suite) TestConfigure() {
 	err := s.onDemandManager.Configure(ctx, settings)
 	s.Error(err)
 
-	settings.Providers.AWS.EC2Key = "id"
-	err = s.onDemandManager.Configure(ctx, settings)
-	s.Error(err)
-
-	settings.Providers.AWS.EC2Key = ""
-	settings.Providers.AWS.EC2Secret = "secret"
-	err = s.onDemandManager.Configure(ctx, settings)
-	s.Error(err)
-
-	settings.Providers.AWS.EC2Key = "id"
+	// No region specified
+	settings.Providers.AWS.EC2Keys = []evergreen.EC2Key{
+		{Region: evergreen.DefaultEC2Region, Key: "default-key", Secret: "default-secret"},
+	}
 	err = s.onDemandManager.Configure(ctx, settings)
 	s.NoError(err)
 	ec2m := s.onDemandManager.(*ec2Manager)
 	creds, err := ec2m.credentials.Get()
 	s.NoError(err)
-	s.Equal("id", creds.AccessKeyID)
-	s.Equal("secret", creds.SecretAccessKey)
+	s.Equal("default-key", creds.AccessKeyID)
+	s.Equal("default-secret", creds.SecretAccessKey)
+
+	// Region specified, does not exist in config
+	err = s.onDemandWithRegionManager.Configure(ctx, settings)
+	s.Error(err)
+
+	// Region specified, config missing key or secret
+	settings.Providers.AWS.EC2Keys = []evergreen.EC2Key{
+		{Region: evergreen.DefaultEC2Region, Key: "default-key", Secret: "default-secret"},
+		{Region: "test-region", Key: "test-key", Secret: ""},
+	}
+	err = s.onDemandWithRegionManager.Configure(ctx, settings)
+	s.Error(err)
+
+	// Region specified, key and secret in config
+	settings.Providers.AWS.EC2Keys = []evergreen.EC2Key{
+		{Region: evergreen.DefaultEC2Region, Key: "default-key", Secret: "default-secret"},
+		{Region: "test-region", Key: "test-key", Secret: "test-secret"},
+	}
+	err = s.onDemandWithRegionManager.Configure(ctx, settings)
+	s.NoError(err)
+	ec2m = s.onDemandWithRegionManager.(*ec2Manager)
+	creds, err = ec2m.credentials.Get()
+	s.NoError(err)
+	s.Equal("test-key", creds.AccessKeyID)
+	s.Equal("test-secret", creds.SecretAccessKey)
+
+	// LEGACY (delete when Evergreen only uses region-based EC2Keys struct)
+	settings.Providers.AWS.EC2Keys = nil
+	settings.Providers.AWS.EC2Key = "legacy-key"
+	err = s.onDemandManager.Configure(ctx, settings)
+	s.Error(err)
+
+	settings.Providers.AWS.EC2Key = ""
+	settings.Providers.AWS.EC2Secret = "legacy-secret"
+	err = s.onDemandManager.Configure(ctx, settings)
+	s.Error(err)
+
+	settings.Providers.AWS.EC2Key = "legacy-key"
+	err = s.onDemandManager.Configure(ctx, settings)
+	s.NoError(err)
+	ec2m = s.onDemandManager.(*ec2Manager)
+	creds, err = ec2m.credentials.Get()
+	s.NoError(err)
+	s.Equal("legacy-key", creds.AccessKeyID)
+	s.Equal("legacy-secret", creds.SecretAccessKey)
+	// END LEGACY
+
 }
 
 func (s *EC2Suite) TestSpawnHostInvalidInput() {
@@ -1010,4 +1062,49 @@ func (s *EC2Suite) TestFromDistroSettings() {
 	s.Len(ec2Settings.SecurityGroupIDs, 1)
 	s.Equal("abcdef", ec2Settings.SecurityGroupIDs[0])
 	s.Equal(float64(0.001), ec2Settings.BidPrice)
+}
+
+func (s *EC2Suite) TestGetEC2Region() {
+	d1 := distro.Distro{
+		ProviderSettings: &map[string]interface{}{
+			"region": "test-region",
+		},
+	}
+
+	d2 := distro.Distro{
+		ProviderSettings: &map[string]interface{}{},
+	}
+
+	s.Equal("test-region", GetEC2Region(d1.ProviderSettings))
+	s.Equal(evergreen.DefaultEC2Region, GetEC2Region(d2.ProviderSettings))
+}
+
+func (s *EC2Suite) TestGetEC2Key() {
+	settings := &evergreen.Settings{
+		Providers: evergreen.CloudProviders{
+			AWS: evergreen.AWSConfig{},
+		},
+	}
+	key, secret, err := GetEC2Key("test-region", settings)
+	s.Empty(key)
+	s.Empty(secret)
+	s.EqualError(err, "AWS ID and Secret must not be blank")
+
+	// LEGACY (delete block when Evergreen only uses region-based EC2Keys struct)
+	settings.Providers.AWS.EC2Key = "legacy-key"
+	settings.Providers.AWS.EC2Secret = "legacy-secret"
+	key, secret, err = GetEC2Key("test-region", settings)
+	s.Equal(key, "legacy-key")
+	s.Equal(secret, "legacy-secret")
+	s.NoError(err)
+
+	settings.Providers.AWS.EC2Keys = []evergreen.EC2Key{
+		{Region: "bogus-region", Key: "bogus-key", Secret: "bogus-secret"},
+		{Region: "test-region", Key: "test-key", Secret: "test-secret"},
+	}
+	key, secret, err = GetEC2Key("test-region", settings)
+	s.Equal(key, "test-key")
+	s.Equal(secret, "test-secret")
+	s.NoError(err)
+
 }

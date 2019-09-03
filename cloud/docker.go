@@ -309,7 +309,7 @@ func (m *dockerManager) CostForDuration(ctx context.Context, h *host.Host, start
 	}
 
 	// get cloud manager for parent
-	parentMgr, err := GetManager(ctx, parent.Provider, s)
+	parentMgr, err := GetManager(ctx, parent.Provider, parent.Distro.ProviderSettings, s)
 	if err != nil {
 		return 0, errors.Wrapf(err, "Error loading provider for parent host '%s'", parent.Id)
 	}

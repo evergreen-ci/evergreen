@@ -114,7 +114,10 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Notify.SMTP.From, FromAPIString(apiSettings.Notify.SMTP.From))
 	assert.EqualValues(testSettings.Notify.SMTP.Port, apiSettings.Notify.SMTP.Port)
 	assert.Equal(len(testSettings.Notify.SMTP.AdminEmail), len(apiSettings.Notify.SMTP.AdminEmail))
-	assert.EqualValues(testSettings.Providers.AWS.EC2Key, FromAPIString(apiSettings.Providers.AWS.EC2Key))
+	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Region, FromAPIString(apiSettings.Providers.AWS.EC2Keys[0].Region))
+	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Key, FromAPIString(apiSettings.Providers.AWS.EC2Keys[0].Key))
+	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Secret, FromAPIString(apiSettings.Providers.AWS.EC2Keys[0].Secret))
+	assert.EqualValues(testSettings.Providers.AWS.EC2Key, FromAPIString(apiSettings.Providers.AWS.EC2Key)) // Legacy
 	assert.EqualValues(testSettings.Providers.Docker.APIVersion, FromAPIString(apiSettings.Providers.Docker.APIVersion))
 	assert.EqualValues(testSettings.Providers.GCE.ClientEmail, FromAPIString(apiSettings.Providers.GCE.ClientEmail))
 	assert.EqualValues(testSettings.Providers.OpenStack.IdentityEndpoint, FromAPIString(apiSettings.Providers.OpenStack.IdentityEndpoint))
@@ -160,7 +163,10 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Notify.SMTP.From, dbSettings.Notify.SMTP.From)
 	assert.EqualValues(testSettings.Notify.SMTP.Port, dbSettings.Notify.SMTP.Port)
 	assert.Equal(len(testSettings.Notify.SMTP.AdminEmail), len(dbSettings.Notify.SMTP.AdminEmail))
-	assert.EqualValues(testSettings.Providers.AWS.EC2Key, dbSettings.Providers.AWS.EC2Key)
+	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Region, dbSettings.Providers.AWS.EC2Keys[0].Region)
+	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Key, dbSettings.Providers.AWS.EC2Keys[0].Key)
+	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Secret, dbSettings.Providers.AWS.EC2Keys[0].Secret)
+	assert.EqualValues(testSettings.Providers.AWS.EC2Key, dbSettings.Providers.AWS.EC2Key) // Legacy
 	assert.EqualValues(testSettings.Providers.Docker.APIVersion, dbSettings.Providers.Docker.APIVersion)
 	assert.EqualValues(testSettings.Providers.GCE.ClientEmail, dbSettings.Providers.GCE.ClientEmail)
 	assert.EqualValues(testSettings.Providers.OpenStack.IdentityEndpoint, dbSettings.Providers.OpenStack.IdentityEndpoint)

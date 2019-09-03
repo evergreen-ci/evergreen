@@ -61,8 +61,18 @@ func (c *CloudProviders) Set() error {
 
 func (c *CloudProviders) ValidateAndDefault() error { return nil }
 
+// EC2Key links a region with a corresponding key and secret
+type EC2Key struct {
+	Region string `bson:"region" json:"region" yaml:"region"`
+	Key    string `bson:"key" json:"key" yaml:"key"`
+	Secret string `bson:"secret" json:"secret" yaml:"secret"`
+}
+
 // AWSConfig stores auth info for Amazon Web Services.
 type AWSConfig struct {
+	EC2Keys []EC2Key `bson:"ec2_keys" json:"ec2_keys" yaml:"ec2_keys"`
+
+	// Legacy fields (to be removed when EC2Keys struct is set)
 	EC2Key    string `bson:"aws_id" json:"aws_id" yaml:"aws_id"`
 	EC2Secret string `bson:"aws_secret" json:"aws_secret" yaml:"aws_secret"`
 

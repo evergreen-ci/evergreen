@@ -20,10 +20,19 @@ import (
 	"github.com/pkg/errors"
 )
 
+type EC2FleetManagerOptions struct {
+	client AWSClient
+	region string
+}
+
 type ec2FleetManager struct {
-	client      AWSClient
+	*EC2FleetManagerOptions
 	credentials *credentials.Credentials
 	settings    *evergreen.Settings
+}
+
+func NewEC2FleetManager(opts *EC2FleetManagerOptions) Manager {
+	return &ec2FleetManager{EC2FleetManagerOptions: opts}
 }
 
 func (m *ec2FleetManager) GetSettings() ProviderSettings {
@@ -33,13 +42,14 @@ func (m *ec2FleetManager) GetSettings() ProviderSettings {
 func (m *ec2FleetManager) Configure(ctx context.Context, settings *evergreen.Settings) error {
 	m.settings = settings
 
-	if settings.Providers.AWS.EC2Key == "" || settings.Providers.AWS.EC2Secret == "" {
-		return errors.New("AWS ID and Secret must not be blank")
+	key, secret, err := GetEC2Key(m.EC2FleetManagerOptions.region, settings)
+	if err != nil {
+		return errors.Wrap(err, "Problem getting EC2 keys")
 	}
 
 	m.credentials = credentials.NewStaticCredentialsFromCreds(credentials.Value{
-		AccessKeyID:     settings.Providers.AWS.EC2Key,
-		SecretAccessKey: settings.Providers.AWS.EC2Secret,
+		AccessKeyID:     key,
+		SecretAccessKey: secret,
 	})
 
 	return nil
