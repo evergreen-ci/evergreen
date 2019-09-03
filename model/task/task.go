@@ -158,9 +158,9 @@ type Task struct {
 	// GeneratedBy, if present, is the ID of the task that generated this task.
 	GeneratedBy string `bson:"generated_by,omitempty" json:"generated_by,omitempty"`
 	// GeneratedJSON is the the configuration information to create new tasks from.
-	GeneratedJSON []json.RawMessage `bson:"generate_json" json:"generate_json"`
-	// GenerateAttempt is the current generate tasks attempt. Before EVG-6517 this field was not set.
-	GenerateAttempt int `bson:"generate_attempt,omitempty" json:"generate_attempt,omitempty"`
+	GeneratedJSON []json.RawMessage `bson:"generate_json,omitempty" json:"generate_json,omitempty"`
+	// GeneratedTasksError any encountered while generating tasks.
+	GenerateTasksError string `bson:"generate_error,omitempty" json:"generate_error,omitempty"`
 
 	// Fields set if triggered by an upstream build
 	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
@@ -596,12 +596,25 @@ func MarkGeneratedTasks(taskID string) error {
 	)
 }
 
+func GenerateNotRun() ([]Task, error) {
+	const maxGenerateTimeAgo = 2 * time.Hour
+	return FindAll(db.Query(bson.M{
+		StatusKey:         evergreen.TaskStarted,               // task is running
+		StartTimeKey:      time.Now().Add(-maxGenerateTimeAgo), // ignore older tasks, just in case
+		GenerateTaskKey:   true,                                // task contains generate.tasks command
+		GeneratedTasksKey: false,                               // generate.tasks has not yet run
+		GeneratedJSONKey:  bson.M{"$exists": true},             // config has been posted by generate.tasks command
+	}))
+}
+
 // SetGeneratedJSON sets JSON data to generate tasks from.
 func (t *Task) SetGeneratedJSON(json []json.RawMessage) error {
 	t.GeneratedJSON = json
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
+			// If this field already is set, something has gone wrong.
+			GeneratedJSONKey: bson.M{"$exists": false},
 		},
 		bson.M{
 			"$set": bson.M{
@@ -611,18 +624,24 @@ func (t *Task) SetGeneratedJSON(json []json.RawMessage) error {
 	)
 }
 
-// IncrementGenerateAttempt increments the attempt integer for generate.tasks.
-func (t *Task) IncrementGenerateAttempt() error {
-	err := UpdateOne(
+// SetGenerateTasksError sets any error encountered during generate tasks.
+func (t *Task) SetGenerateTasksError(err error) error {
+	if err == nil {
+		return nil
+	}
+	t.GenerateTasksError = err.Error()
+	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
+			// If this field already is set, something has gone wrong.
+			GenerateTasksErrorKey: bson.M{"$exists": false},
 		},
 		bson.M{
-			"$inc": bson.M{GenerateAttemptKey: 1},
+			"$set": bson.M{
+				GenerateTasksErrorKey: err.Error(),
+			},
 		},
 	)
-	t.GenerateAttempt++
-	return err
 }
 
 // SetTasksScheduledTime takes a list of tasks and a time, and then sets
