@@ -495,6 +495,10 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
           $scope.task.test_results.sort($scope.sortBy.compareFunc);
         };
 
+        $scope.resultRowClass = function() {
+          return $scope.wrapTestResults ? "test-result-name" : "test-result-name one-liner";
+        }
+
         // search box is initially empty, so filtered results = all test results
         $scope.task.filtered_results = $scope.task.test_results;
 
