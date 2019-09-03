@@ -157,7 +157,9 @@ LOOP:
 				return nil
 			}
 			// if the host's current task group is finished we teardown
-			needPostGroup = nextTask.ShouldTeardownGroup
+			if nextTask.ShouldTeardownGroup {
+				needPostGroup = nextTask.ShouldTeardownGroup
+			}
 			if nextTask.TaskId != "" {
 				if nextTask.TaskSecret == "" {
 					grip.Critical(message.WrapError(err, message.Fields{
@@ -255,6 +257,7 @@ func nextTaskHasDifferentTaskGroupOrBuild(nextTask *apimodels.NextTaskResponse, 
 	if tc.taskConfig == nil ||
 		nextTask.TaskGroup == "" ||
 		nextTask.TaskGroup != tc.taskGroup || // do we need this case anymore ? I wouldn't think so.
+		nextTask.Version != tc.taskConfig.Task.Version ||
 		nextTask.Build != tc.taskConfig.Task.BuildId {
 		return true
 	}
