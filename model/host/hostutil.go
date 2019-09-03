@@ -227,26 +227,33 @@ func initSystemCommand() string {
 
 // FetchAndReinstallJasperCommand returns the command to fetch Jasper and
 // restart the service with the latest version.
-func (h *Host) FetchAndReinstallJasperCommand(config evergreen.HostJasperConfig) string {
+func (h *Host) FetchAndReinstallJasperCommand(settings *evergreen.Settings) string {
 	return strings.Join([]string{
-		h.FetchJasperCommand(config),
-		h.ForceReinstallJasperCommand(config),
+		h.FetchJasperCommand(settings.HostJasper),
+		h.ForceReinstallJasperCommand(settings),
 	}, " && ")
 }
 
 // ForceReinstallJasperCommand returns the command to stop the Jasper service,
 // delete the current Jasper service configuration (if it exists), install the
 // new configuration, and restart the service.
-func (h *Host) ForceReinstallJasperCommand(config evergreen.HostJasperConfig) string {
-	params := []string{"--host=0.0.0.0", fmt.Sprintf("--port=%d", config.Port)}
+func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string {
+	params := []string{"--host=0.0.0.0", fmt.Sprintf("--port=%d", settings.HostJasper.Port)}
 	if h.Distro.BootstrapSettings.JasperCredentialsPath != "" {
 		params = append(params, fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
 	}
 	if h.Distro.User != "" {
 		params = append(params, fmt.Sprintf("--user=%s", h.Distro.User))
 	}
+	if settings.Splunk.Populated() {
+		params = append(params,
+			fmt.Sprintf("--splunk_url=%s", settings.Splunk.ServerURL),
+			fmt.Sprintf("--splunk_token=%s", settings.Splunk.Token),
+			fmt.Sprintf("--splunk_channel=%s", settings.Splunk.Channel),
+		)
+	}
 
-	return h.jasperServiceCommand(config, jaspercli.ForceReinstallCommand, params...)
+	return h.jasperServiceCommand(settings.HostJasper, jaspercli.ForceReinstallCommand, params...)
 }
 
 // RestartJasperCommand returns the command to restart the Jasper service with
@@ -315,7 +322,7 @@ func (h *Host) jasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 }
 
 // BootstrapScript creates the user data script to bootstrap the host.
-func (h *Host) BootstrapScript(config evergreen.HostJasperConfig, creds *rpc.Credentials, preJasperSetup, postJasperSetup []string) (string, error) {
+func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credentials, preJasperSetup, postJasperSetup []string) (string, error) {
 	bashCmds := append([]string{"set -o errexit"}, preJasperSetup...)
 
 	writeCredentialsCmd, err := h.WriteJasperCredentialsFileCommand(creds)
@@ -325,9 +332,9 @@ func (h *Host) BootstrapScript(config evergreen.HostJasperConfig, creds *rpc.Cre
 
 	if h.Distro.IsWindows() {
 		bashCmds = append(bashCmds,
-			h.FetchJasperCommandWithPath(config, "/bin"),
+			h.FetchJasperCommandWithPath(settings.HostJasper, "/bin"),
 			writeCredentialsCmd,
-			h.ForceReinstallJasperCommand(config),
+			h.ForceReinstallJasperCommand(settings),
 		)
 		bashCmds = append(bashCmds, postJasperSetup...)
 
@@ -342,7 +349,7 @@ func (h *Host) BootstrapScript(config evergreen.HostJasperConfig, creds *rpc.Cre
 		return strings.Join(powershellCmds, "\r\n"), nil
 	}
 
-	bashCmds = append(bashCmds, h.FetchJasperCommand(config), writeCredentialsCmd, h.ForceReinstallJasperCommand(config))
+	bashCmds = append(bashCmds, h.FetchJasperCommand(settings.HostJasper), writeCredentialsCmd, h.ForceReinstallJasperCommand(settings))
 	bashCmds = append(bashCmds, postJasperSetup...)
 
 	return strings.Join(append([]string{"#!/bin/bash"}, bashCmds...), "\n"), nil
@@ -371,7 +378,7 @@ func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, 
 	}, " "), nil
 }
 
-// WriteJasperCredentialsCommand builds the command to write the Jasper
+// WriteJasperCredentialsFileCommand builds the command to write the Jasper
 // credentials to a file.
 func (h *Host) WriteJasperCredentialsFileCommand(creds *rpc.Credentials) (string, error) {
 	if h.Distro.BootstrapSettings.JasperCredentialsPath == "" {
@@ -387,8 +394,8 @@ func (h *Host) WriteJasperCredentialsFileCommand(creds *rpc.Credentials) (string
 // RunJasperProcess makes a request to the host's Jasper service to create the
 // process with the given options, wait for its completion, and returns the
 // output from it.
-func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, opts *jasper.CreateOptions) (string, error) {
-	client, err := h.JasperClient(ctx, env)
+func (h *Host) RunJasperProcess(ctx context.Context, settings *evergreen.Settings, opts *jasper.CreateOptions) (string, error) {
+	client, err := h.JasperClient(ctx, settings)
 	if err != nil {
 		return "", errors.Wrap(err, "could not get a Jasper client")
 	}
@@ -417,8 +424,8 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 
 // StartJasperProcess makes a request to the host's Jasper service to start a
 // process with the given options without waiting for its completion.
-func (h *Host) StartJasperProcess(ctx context.Context, env evergreen.Environment, opts *jasper.CreateOptions) error {
-	client, err := h.JasperClient(ctx, env)
+func (h *Host) StartJasperProcess(ctx context.Context, settings *evergreen.Settings, opts *jasper.CreateOptions) error {
+	client, err := h.JasperClient(ctx, settings)
 	if err != nil {
 		return errors.Wrap(err, "could not get a Jasper client")
 	}
@@ -435,12 +442,10 @@ const jasperDialTimeout = 15 * time.Second
 
 // JasperClient returns a remote client that communicates with this host's
 // Jasper service.
-func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jasper.RemoteClient, error) {
+func (h *Host) JasperClient(ctx context.Context, settings *evergreen.Settings) (jasper.RemoteClient, error) {
 	if h.LegacyBootstrap() || h.LegacyCommunication() {
 		return nil, errors.New("legacy host does not support remote Jasper process management")
 	}
-
-	settings := env.Settings()
 
 	if h.JasperCommunication() {
 		switch h.Distro.BootstrapSettings.Communication {
@@ -468,7 +473,7 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jas
 
 			return jaspercli.NewSSHClient(remoteOpts, clientOpts, true)
 		case distro.CommunicationMethodRPC:
-			creds, err := h.JasperClientCredentials(ctx, env)
+			creds, err := h.JasperClientCredentials(ctx)
 			if err != nil {
 				return nil, errors.Wrap(err, "could not get client credentials to communicate with the host's Jasper service")
 			}
@@ -533,12 +538,12 @@ func (h *Host) StartAgentMonitorRequest(settings *evergreen.Settings) (string, e
 
 // StopAgentMonitor stops the agent monitor (if it is running) on the host via
 // its Jasper service . On legacy hosts, this is a no-op.
-func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) error {
+func (h *Host) StopAgentMonitor(ctx context.Context, settings *evergreen.Settings) error {
 	if h.LegacyBootstrap() {
 		return nil
 	}
 
-	client, err := h.JasperClient(ctx, env)
+	client, err := h.JasperClient(ctx, settings)
 	if err != nil {
 		return errors.Wrap(err, "could not get a Jasper client")
 	}

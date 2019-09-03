@@ -266,6 +266,12 @@ functions:
       params:
         working_dir: gopath/src/github.com/evergreen-ci/evergreen/
         command: make init-rs
+  setup_docker:
+    - command: shell.exec
+      params:
+        shell: bash
+        script: |
+            gopath/src/github.com/evergreen-ci/evergreen/scripts/setup-docker.sh
 #  setup-docker-host:
 #    - command: host.create
 #      type: setup
@@ -348,6 +354,9 @@ tasks:
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
     name: test-auth
+  - <<: *run-go-test-suite
+    tags: ["nodb", "test", "agent"]
+    name: test-thirdparty-docker
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-rest-route
@@ -459,6 +468,16 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-grid
+  - name: docker-cleanup
+    commands:
+      - func: get-project
+      - func: setup-credentials
+      - func: setup_docker
+      - func: run-make
+        vars:
+          target: revendor
+      - func: run-make
+        vars: { target: "test-thirdparty-docker" }
 
 
 buildvariants:
@@ -466,6 +485,7 @@ buildvariants:
     display_name: Ubuntu 16.04
     run_on:
       - ubuntu1604-test
+      - ubuntu1604-build
     expansions:
       disable_coverage: yes
       goos: linux
@@ -501,6 +521,7 @@ buildvariants:
     display_name: Race Detector
     run_on:
       - archlinux-test
+      - archlinux-build
     expansions:
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       race_detector: true
@@ -513,6 +534,7 @@ buildvariants:
     display_name: Lint
     run_on:
       - archlinux-test
+      - archlinux-build
     tasks:
       - name: generate-lint
 
@@ -520,6 +542,7 @@ buildvariants:
     display_name: Coverage
     run_on:
       - archlinux-test
+      - archlinux-build
     expansions:
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       test_timeout: 15m
@@ -532,6 +555,7 @@ buildvariants:
     batchtime: 2880
     run_on:
       - macos-1014
+      - macos-1014-i7
     expansions:
       disable_coverage: yes
       gobin: /opt/golang/go1.9/bin/go
@@ -545,6 +569,17 @@ buildvariants:
     display_name: Windows
     run_on:
       - windows-64-vs2015-small
+      - windows-64-vs2015-test
+      - windows-64-vs2015-small
+      - windows-64-vs2015-large
+      - windows-64-vs2015-compile
+      - windows-64-vs2013-test
+      - windows-64-vs2013-compile
+      - windows-64-vs2010-test
+      - windows-64-vs2010-compile
+      - windows-64-vs2017-test
+      - windows-64-vs2017-compile-m5
+      - windows-64-vs2017-compile
     expansions:
       disable_coverage: yes
       gobin: /cygdrive/c/golang/go1.9/bin/go
@@ -604,3 +639,12 @@ buildvariants:
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-arm64-enterprise-ubuntu1604-4.0.3.tgz
     tasks:
       - name: ".agent .test"
+  - name: linux-docker
+    display_name: ArchLinux (Docker)
+    run_on:
+      - archlinux-test
+    expansions:
+      goos: linux
+      goarch: amd64
+    tasks:
+      -  name: "docker-cleanup"

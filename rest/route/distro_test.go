@@ -390,6 +390,7 @@ func (s *DistroPutSuite) TestParse() {
 
 func (s *DistroPutSuite) TestRunNewWithValidEntity() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "SSH Key", "provider": "mock", "user": "tibor"}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro4"
@@ -402,6 +403,7 @@ func (s *DistroPutSuite) TestRunNewWithValidEntity() {
 
 func (s *DistroPutSuite) TestRunNewWithInvalidEntity() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	json := []byte(`
 	{
 		"arch": "linux_amd64",
@@ -431,6 +433,7 @@ func (s *DistroPutSuite) TestRunNewWithInvalidEntity() {
 
 func (s *DistroPutSuite) TestRunNewConflictingName() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	json := []byte(`{"name": "distro5", "arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "", "provider": "mock", "user": "tibor"}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro4"
@@ -445,6 +448,7 @@ func (s *DistroPutSuite) TestRunNewConflictingName() {
 
 func (s *DistroPutSuite) TestRunExistingWithValidEntity() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "SSH Key", "provider": "mock", "user": "tibor"}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro3"
@@ -457,6 +461,7 @@ func (s *DistroPutSuite) TestRunExistingWithValidEntity() {
 
 func (s *DistroPutSuite) TestRunExistingWithInvalidEntity() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	json := []byte(`{"arch": "", "work_dir": "/data/mci", "ssh_key": "SSH Key", "provider": "", "user": ""}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro3"
@@ -473,6 +478,7 @@ func (s *DistroPutSuite) TestRunExistingWithInvalidEntity() {
 
 func (s *DistroPutSuite) TestRunExistingConflictingName() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	json := []byte(`{"name": "distro5", "arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "", "provider": "mock", "user": "tibor"}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro3"

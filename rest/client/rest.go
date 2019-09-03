@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -63,12 +64,8 @@ func (*communicatorImpl) SetHostStatus()   {}
 func (*communicatorImpl) SetHostStatuses() {}
 
 // CreateSpawnHost will insert an intent host into the DB that will be spawned later by the runner
-func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, distroID, keyName, userData string) (*model.APIHost, error) {
-	spawnRequest := &model.HostPostRequest{
-		DistroID: distroID,
-		KeyName:  keyName,
-		UserData: userData,
-	}
+func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostRequestOptions) (*model.APIHost, error) {
+
 	info := requestInfo{
 		method:  post,
 		path:    "hosts",
@@ -81,6 +78,17 @@ func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, distroID, keyNam
 	}
 
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errMsg := gimlet.ErrorResponse{}
+		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+			return nil, errors.Wrap(err, "problem spawning host and parsing error message")
+		}
+		return nil, errors.Wrap(errMsg, "problem spawning host")
+	}
+
+	grip.Info(resp.Body)
+
 	spawnHostResp := model.APIHost{}
 	if err = util.ReadJSONInto(resp.Body, &spawnHostResp); err != nil {
 		return nil, fmt.Errorf("Error forming response body response: %v", err)

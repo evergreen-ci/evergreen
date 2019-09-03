@@ -101,13 +101,14 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	authedUser := MustHaveUser(r)
 
 	putParams := struct {
-		Task          string `json:"task_id"`
-		Distro        string `json:"distro"`
-		KeyName       string `json:"key_name"`
-		PublicKey     string `json:"public_key"`
-		SaveKey       bool   `json:"save_key"`
-		UserData      string `json:"userdata"`
-		UseTaskConfig bool   `json:"use_task_config"`
+		Task          string            `json:"task_id"`
+		Distro        string            `json:"distro"`
+		KeyName       string            `json:"key_name"`
+		PublicKey     string            `json:"public_key"`
+		SaveKey       bool              `json:"save_key"`
+		UserData      string            `json:"userdata"`
+		UseTaskConfig bool              `json:"use_task_config"`
+		InstanceTags  map[string]string `json:"instance_tags"`
 	}{}
 
 	err := util.ReadJSONInto(util.NewRequestReader(r), &putParams)
@@ -125,7 +126,14 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Public key successfully saved."))
 	}
 	hc := &data.DBConnector{}
-	spawnHost, err := hc.NewIntentHost(putParams.Distro, putParams.PublicKey, putParams.Task, putParams.UserData, authedUser)
+	options := &restModel.HostRequestOptions{
+		DistroID:     putParams.Distro,
+		KeyName:      putParams.PublicKey,
+		TaskID:       putParams.Task,
+		UserData:     putParams.UserData,
+		InstanceTags: putParams.InstanceTags,
+	}
+	spawnHost, err := hc.NewIntentHost(options, authedUser)
 
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error spawning host"))

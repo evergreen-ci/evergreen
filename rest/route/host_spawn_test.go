@@ -44,9 +44,24 @@ func TestHostPostHandler(t *testing.T) {
 	assert.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
 
-	assert.Len(h.sc.(*data.MockConnector).MockHostConnector.CachedHosts, 2)
-	d0 := h.sc.(*data.MockConnector).MockHostConnector.CachedHosts[0].Distro
+	h.InstanceTags = map[string]string{
+		"key": "value",
+	}
+	resp = h.Run(ctx)
+	assert.NotNil(resp)
+	assert.Equal(http.StatusOK, resp.Status())
+
+	assert.Len(h.sc.(*data.MockConnector).MockHostConnector.CachedHosts, 3)
+	h0 := h.sc.(*data.MockConnector).MockHostConnector.CachedHosts[0]
+	d0 := h0.Distro
 	assert.Empty((*d0.ProviderSettings)["user_data"])
-	d1 := h.sc.(*data.MockConnector).MockHostConnector.CachedHosts[1].Distro
+	assert.Empty(h0.InstanceTags)
+
+	h1 := h.sc.(*data.MockConnector).MockHostConnector.CachedHosts[1]
+	d1 := h1.Distro
 	assert.Equal("my script", (*d1.ProviderSettings)["user_data"].(string))
+	assert.Empty(h1.InstanceTags)
+
+	h2 := h.sc.(*data.MockConnector).MockHostConnector.CachedHosts[2]
+	assert.Equal(map[string]string{"key": "value"}, h2.InstanceTags)
 }

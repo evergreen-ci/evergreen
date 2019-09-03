@@ -125,18 +125,17 @@ func (p *ewmaRateLimiting) Start(ctx context.Context) error {
 
 	ctx, p.canceler = context.WithCancel(ctx)
 
-	jobs := startWorkerServer(ctx, p.queue, &p.wg)
-
 	for w := 1; w <= p.size; w++ {
-		go p.worker(ctx, jobs)
+		go p.worker(ctx)
 	}
 	return nil
 }
 
-func (p *ewmaRateLimiting) worker(ctx context.Context, jobs <-chan workUnit) {
+func (p *ewmaRateLimiting) worker(bctx context.Context) {
 	var (
 		err    error
 		job    amboy.Job
+		ctx    context.Context
 		cancel context.CancelFunc
 	)
 
@@ -152,7 +151,7 @@ func (p *ewmaRateLimiting) worker(ctx context.Context, jobs <-chan workUnit) {
 				job.AddError(err)
 			}
 			// start a replacement worker.
-			go p.worker(ctx, jobs)
+			go p.worker(bctx)
 		}
 		if cancel != nil {
 			cancel()
@@ -163,21 +162,20 @@ func (p *ewmaRateLimiting) worker(ctx context.Context, jobs <-chan workUnit) {
 	defer timer.Stop()
 	for {
 		select {
-		case <-ctx.Done():
+		case <-bctx.Done():
 			return
 		case <-timer.C:
-			select {
-			case <-ctx.Done():
-				return
-			case wu := <-jobs:
-				cancel = wu.cancel
-				job = wu.job
-
-				interval := p.runJob(ctx, job)
-				cancel()
-
-				timer.Reset(interval)
+			job := p.queue.Next(bctx)
+			if job == nil {
+				timer.Reset(jitterNilJobWait())
+				continue
 			}
+
+			ctx, cancel = context.WithCancel(bctx)
+			interval := p.runJob(ctx, job)
+			cancel()
+
+			timer.Reset(interval)
 		}
 	}
 }

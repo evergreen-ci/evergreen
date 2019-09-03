@@ -75,7 +75,7 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	/////////////////
 
 	planningPhaseBegins := time.Now()
-	prioritizedTasks, err := PrioritizeTasks(schedulerInstanceID, &distro, tasks)
+	prioritizedTasks, err := PrioritizeTasks(schedulerInstanceID, &distro, tasks, false)
 	if err != nil {
 		return errors.WithStack(err)
 	}

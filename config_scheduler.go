@@ -57,12 +57,15 @@ func (c *SchedulerConfig) Set() error {
 			"task_finder":                       c.TaskFinder,
 			"host_allocator":                    c.HostAllocator,
 			"free_host_fraction":                c.FreeHostFraction,
+			"cache_duration_seconds":            c.CacheDurationSeconds,
 			"planner":                           c.Planner,
+			"task_ordering":                     c.TaskOrdering,
 			"target_time_seconds":               c.TargetTimeSeconds,
 			"acceptable_host_idle_time_seconds": c.AcceptableHostIdleTimeSeconds,
 			"group_versions":                    c.GroupVersions,
 			"patch_zipper_factor":               c.PatchFactor,
-			"task_ordering":                     c.TaskOrdering,
+			"time_in_queue_factor":              c.TimeInQueueFactor,
+			"expected_runtime_factor":           c.ExpectedRuntimeFactor,
 		},
 	}, options.Update().SetUpsert(true))
 
@@ -73,10 +76,6 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 	if c.TaskFinder == "" {
 		// default to legacy
 		c.TaskFinder = FinderVersionLegacy
-	}
-
-	if c.CacheDurationSeconds == 0 || c.CacheDurationSeconds > 600 {
-		c.CacheDurationSeconds = 20
 	}
 
 	if !util.StringSliceContains(ValidFinderVersions, c.TaskFinder) {
@@ -90,7 +89,7 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 	}
 
 	if !util.StringSliceContains(ValidHostAllocators, c.HostAllocator) {
-		return errors.Errorf("supported allocators are %s; %s is not supported",
+		return errors.Errorf("supported host allocators are %s; %s is not supported",
 			ValidHostAllocators, c.HostAllocator)
 	}
 
@@ -98,14 +97,52 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 		return errors.New("free host fraction must be between 0 and 1")
 	}
 
+	if c.CacheDurationSeconds > 600 {
+		return errors.New("cache duration seconds cannot be greater that 600 seconds (10 minutes)")
+	}
+
+	if c.CacheDurationSeconds <= 0 {
+		c.CacheDurationSeconds = 20
+	}
+
 	if c.Planner == "" {
 		// default to 'legacy'
 		c.Planner = PlannerVersionLegacy
 	}
 
+	if !util.StringSliceContains(ValidPlannerVersions, c.Planner) {
+		return errors.Errorf("supported planners are %s; %s is not supported",
+			ValidPlannerVersions, c.Planner)
+	}
+
 	if c.TaskOrdering == "" {
 		// default to 'interleave'
 		c.TaskOrdering = TaskOrderingInterleave
+	}
+
+	if !util.StringSliceContains(ValidTaskOrderings, c.TaskOrdering) {
+		return errors.Errorf("supported task orderings are %s; %s is not supported",
+			ValidTaskOrderings, c.TaskOrdering)
+	}
+
+	if c.TargetTimeSeconds < 0 {
+		return errors.New("target time seconds cannot be a negative value")
+	}
+
+	if c.AcceptableHostIdleTimeSeconds < 0 {
+		return errors.New("acceptable host idle time seconds cannot be a negative value")
+	}
+
+	if c.PatchFactor < 0 || c.PatchFactor > 100 {
+		return errors.New("patch factor must be between 0 and 100")
+	}
+
+	if c.TimeInQueueFactor < 0 || c.TimeInQueueFactor > 100 {
+		return errors.New("time in queue factor must be between 0 and 100")
+	}
+
+	if c.ExpectedRuntimeFactor < 0 || c.ExpectedRuntimeFactor > 100 {
+		return errors.New("expected runtime factor must be between 0 and 100")
 	}
 
 	return nil

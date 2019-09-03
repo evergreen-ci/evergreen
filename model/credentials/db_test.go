@@ -5,31 +5,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/jasper/rpc"
-	"github.com/pkg/errors"
 	"github.com/square/certstrap/pkix"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func setupEnv(ctx context.Context) (*mock.Environment, error) {
-	env := &mock.Environment{}
-
-	if err := env.Configure(ctx, "", nil); err != nil {
-		return nil, errors.WithStack(err)
-	}
-	return env, nil
-}
-
-func withSetupAndTeardown(t *testing.T, env evergreen.Environment, fn func()) {
+func withSetupAndTeardown(ctx context.Context, t *testing.T, fn func()) {
 	require.NoError(t, db.ClearCollections(Collection))
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection))
 	}()
 
+	env := testutil.NewEnvironment(ctx, t)
+	env.Settings().DomainName = "test"
 	require.NoError(t, Bootstrap(env))
 
 	fn()
@@ -47,19 +38,19 @@ func TestDBOperations(t *testing.T) {
 		fn(ctx)
 	}
 
-	for opName, opTests := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment){
-		"SaveByID": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
+	for opName, opTests := range map[string]func(ctx context.Context, t *testing.T){
+		"SaveByID": func(ctx context.Context, t *testing.T) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, creds *rpc.Credentials){
 				"FailsForCancelledContext": func(ctx context.Context, t *testing.T, creds *rpc.Credentials) {
 					withCancelledContext(ctx, func(ctx context.Context) {
-						err := SaveByID(ctx, env, name, creds)
+						err := SaveByID(ctx, name, creds)
 						assert.Error(t, err)
 						assert.Contains(t, err.Error(), context.Canceled.Error())
 					})
 				},
 				"Succeeds": func(ctx context.Context, t *testing.T, creds *rpc.Credentials) {
-					assert.NoError(t, SaveByID(ctx, env, name, creds))
-					dbCreds, err := FindByID(ctx, env, name)
+					assert.NoError(t, SaveByID(ctx, name, creds))
+					dbCreds, err := FindByID(ctx, name)
 					require.NoError(t, err)
 					assert.Equal(t, creds.Cert, dbCreds.Cert)
 					assert.Equal(t, creds.Key, dbCreds.Key)
@@ -67,41 +58,41 @@ func TestDBOperations(t *testing.T) {
 					assert.Equal(t, name, dbCreds.ServerName)
 				},
 				"OverwritesExistingCredentials": func(ctx context.Context, t *testing.T, creds *rpc.Credentials) {
-					require.NoError(t, SaveByID(ctx, env, name, creds))
-					dbCreds, err := FindByID(ctx, env, name)
+					require.NoError(t, SaveByID(ctx, name, creds))
+					dbCreds, err := FindByID(ctx, name)
 					require.NoError(t, err)
 					assert.Equal(t, creds.Cert, dbCreds.Cert)
 					assert.Equal(t, creds.Key, dbCreds.Key)
 					assert.Equal(t, creds.CACert, dbCreds.CACert)
 					assert.Equal(t, name, dbCreds.ServerName)
 
-					ttl, err := FindExpirationByID(ctx, env, name)
+					ttl, err := FindExpirationByID(ctx, name)
 					require.NoError(t, err)
 
 					// We have to sleep in order to verify that the TTL is
 					// updated properly.
 					time.Sleep(time.Second)
 					newName := "new" + name
-					newCreds, err := GenerateInMemory(ctx, env, newName)
+					newCreds, err := GenerateInMemory(ctx, newName)
 					require.NoError(t, err)
-					require.NoError(t, SaveByID(ctx, env, name, newCreds))
+					require.NoError(t, SaveByID(ctx, name, newCreds))
 
-					dbCreds, err = FindByID(ctx, env, name)
+					dbCreds, err = FindByID(ctx, name)
 					require.NoError(t, err)
 					assert.Equal(t, newCreds.Cert, dbCreds.Cert)
 					assert.Equal(t, newCreds.Key, dbCreds.Key)
 					assert.Equal(t, newCreds.CACert, dbCreds.CACert)
 					assert.Equal(t, name, dbCreds.ServerName)
 
-					newTTL, err := FindExpirationByID(ctx, env, name)
+					newTTL, err := FindExpirationByID(ctx, name)
 					require.NoError(t, err)
 					assert.NotEqual(t, ttl, newTTL)
 					assert.WithinDuration(t, ttl, newTTL, 10*time.Second)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					withSetupAndTeardown(t, env, func() {
-						creds, err := GenerateInMemory(ctx, env, name)
+					withSetupAndTeardown(ctx, t, func() {
+						creds, err := GenerateInMemory(ctx, name)
 						require.NoError(t, err)
 
 						testCase(ctx, t, creds)
@@ -109,17 +100,17 @@ func TestDBOperations(t *testing.T) {
 				})
 			}
 		},
-		"GenerateInMemory": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
+		"GenerateInMemory": func(ctx context.Context, t *testing.T) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T){
 				"FailsForCancelledContext": func(ctx context.Context, t *testing.T) {
 					withCancelledContext(ctx, func(ctx context.Context) {
-						_, err := GenerateInMemory(ctx, env, name)
+						_, err := GenerateInMemory(ctx, name)
 						assert.Error(t, err)
 						assert.Contains(t, err.Error(), context.Canceled.Error())
 					})
 				},
 				"Succeeds": func(ctx context.Context, t *testing.T) {
-					creds, err := GenerateInMemory(ctx, env, name)
+					creds, err := GenerateInMemory(ctx, name)
 					require.NoError(t, err)
 					assert.NotEmpty(t, creds.Cert)
 					assert.NotEmpty(t, creds.Key)
@@ -127,13 +118,13 @@ func TestDBOperations(t *testing.T) {
 					assert.NotEmpty(t, creds.ServerName)
 					assert.Equal(t, name, creds.ServerName)
 
-					_, err = FindByID(ctx, env, name)
+					_, err = FindByID(ctx, name)
 					assert.Error(t, err)
 				},
 				"NotIdempotent": func(ctx context.Context, t *testing.T) {
-					creds, err := GenerateInMemory(ctx, env, name)
+					creds, err := GenerateInMemory(ctx, name)
 					require.NoError(t, err)
-					newCreds, err := GenerateInMemory(ctx, env, name)
+					newCreds, err := GenerateInMemory(ctx, name)
 					require.NoError(t, err)
 					assert.Equal(t, creds.CACert, newCreds.CACert)
 					assert.NotEqual(t, creds.Cert, newCreds.Cert)
@@ -142,31 +133,31 @@ func TestDBOperations(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					withSetupAndTeardown(t, env, func() {
+					withSetupAndTeardown(ctx, t, func() {
 						testCase(ctx, t)
 					})
 				})
 			}
 		},
-		"FindByID": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
+		"FindByID": func(ctx context.Context, t *testing.T) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T){
 				"FailsForCancelledContext": func(ctx context.Context, t *testing.T) {
 					withCancelledContext(ctx, func(ctx context.Context) {
-						_, err := FindByID(ctx, env, name)
+						_, err := FindByID(ctx, name)
 						assert.Error(t, err)
 						assert.Contains(t, err.Error(), context.Canceled.Error())
 					})
 				},
 				"FailsForNonexistent": func(ctx context.Context, t *testing.T) {
-					_, err := FindByID(ctx, env, name)
+					_, err := FindByID(ctx, name)
 					assert.Error(t, err)
 				},
 				"Succeeds": func(ctx context.Context, t *testing.T) {
-					creds, err := GenerateInMemory(ctx, env, name)
+					creds, err := GenerateInMemory(ctx, name)
 					require.NoError(t, err)
-					require.NoError(t, SaveByID(ctx, env, name, creds))
+					require.NoError(t, SaveByID(ctx, name, creds))
 
-					dbCreds, err := FindByID(ctx, env, name)
+					dbCreds, err := FindByID(ctx, name)
 					require.NoError(t, err)
 					assert.Equal(t, creds.Key, dbCreds.Key)
 					assert.Equal(t, creds.Cert, dbCreds.Cert)
@@ -176,52 +167,52 @@ func TestDBOperations(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					withSetupAndTeardown(t, env, func() {
+					withSetupAndTeardown(ctx, t, func() {
 						testCase(ctx, t)
 					})
 				})
 			}
 		},
-		"DeleteByID": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
+		"DeleteByID": func(ctx context.Context, t *testing.T) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T){
 				"NoopsWithNonexistent": func(ctx context.Context, t *testing.T) {
-					assert.NoError(t, DeleteByID(ctx, env, name))
+					assert.NoError(t, DeleteByID(ctx, name))
 				},
 				"DeletesWithExistingID": func(ctx context.Context, t *testing.T) {
-					creds, err := GenerateInMemory(ctx, env, name)
+					creds, err := GenerateInMemory(ctx, name)
 					require.NoError(t, err)
-					require.NoError(t, SaveByID(ctx, env, name, creds))
-					require.NoError(t, DeleteByID(ctx, env, name))
+					require.NoError(t, SaveByID(ctx, name, creds))
+					require.NoError(t, DeleteByID(ctx, name))
 
-					_, err = FindByID(ctx, env, name)
+					_, err = FindByID(ctx, name)
 					assert.Error(t, err)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					withSetupAndTeardown(t, env, func() {
+					withSetupAndTeardown(ctx, t, func() {
 						testCase(ctx, t)
 					})
 				})
 			}
 		},
-		"FindExpirationByID": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
+		"FindExpirationByID": func(ctx context.Context, t *testing.T) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T){
 				"FailsForCancelledContext": func(ctx context.Context, t *testing.T) {
 					withCancelledContext(ctx, func(ctx context.Context) {
-						_, err := FindExpirationByID(ctx, env, name)
+						_, err := FindExpirationByID(ctx, name)
 						require.Error(t, err)
 						assert.Contains(t, err.Error(), context.Canceled.Error())
 					})
 				},
 				"FailsForNonexistent": func(ctx context.Context, t *testing.T) {
-					_, err := FindExpirationByID(ctx, env, name)
+					_, err := FindExpirationByID(ctx, name)
 					assert.Error(t, err)
 				},
 				"Succeeds": func(ctx context.Context, t *testing.T) {
-					creds, err := GenerateInMemory(ctx, env, name)
+					creds, err := GenerateInMemory(ctx, name)
 					require.NoError(t, err)
-					require.NoError(t, SaveByID(ctx, env, name, creds))
-					expiration, err := FindExpirationByID(ctx, env, name)
+					require.NoError(t, SaveByID(ctx, name, creds))
+					expiration, err := FindExpirationByID(ctx, name)
 					require.NoError(t, err)
 					crt, err := pkix.NewCertificateFromPEM(creds.Cert)
 					require.NoError(t, err)
@@ -231,7 +222,7 @@ func TestDBOperations(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					withSetupAndTeardown(t, env, func() {
+					withSetupAndTeardown(ctx, t, func() {
 						testCase(ctx, t)
 					})
 				})
@@ -239,14 +230,10 @@ func TestDBOperations(t *testing.T) {
 		},
 	} {
 		t.Run(opName, func(t *testing.T) {
-			env, err := setupEnv(ctx)
-			require.NoError(t, err)
-
-			tctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			tctx, cancel := context.WithTimeout(ctx, defaultTestTimeout)
 			defer cancel()
 
-			env.Settings().DomainName = "test"
-			opTests(tctx, t, env)
+			opTests(tctx, t)
 		})
 	}
 }

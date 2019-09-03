@@ -24,8 +24,9 @@ type userDataDoneJob struct {
 	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
 	job.Base `bson:"base" json:"base" yaml:"base"`
 
-	host *host.Host
-	env  evergreen.Environment
+	env      evergreen.Environment
+	settings *evergreen.Settings
+	host     *host.Host
 }
 
 func init() {
@@ -85,7 +86,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 		return
 	}
 
-	if output, err := j.host.RunJasperProcess(ctx, j.env, &jasper.CreateOptions{Args: []string{"ls", path}}); err != nil {
+	if output, err := j.host.RunJasperProcess(ctx, j.settings, &jasper.CreateOptions{Args: []string{"ls", path}}); err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "host was checked but is not yet ready",
 			"output":  output,
@@ -123,6 +124,9 @@ func (j *userDataDoneJob) populateIfUnset() error {
 
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
+	}
+	if j.settings == nil {
+		j.settings = j.env.Settings()
 	}
 
 	return nil

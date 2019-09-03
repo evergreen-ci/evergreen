@@ -24,10 +24,11 @@ func makeSpawnHostCreateRoute(sc data.Connector) gimlet.RouteHandler {
 }
 
 type hostPostHandler struct {
-	Task     string `json:"task_id"`
-	Distro   string `json:"distro"`
-	KeyName  string `json:"keyname"`
-	UserData string `json:"userdata"`
+	Task         string            `json:"task_id"`
+	Distro       string            `json:"distro"`
+	KeyName      string            `json:"keyname"`
+	UserData     string            `json:"userdata"`
+	InstanceTags map[string]string `json:"instance_tags"`
 
 	sc data.Connector
 }
@@ -45,7 +46,15 @@ func (hph *hostPostHandler) Parse(ctx context.Context, r *http.Request) error {
 func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 
-	intentHost, err := hph.sc.NewIntentHost(hph.Distro, hph.KeyName, hph.Task, hph.UserData, user)
+	options := &model.HostRequestOptions{
+		DistroID:     hph.Distro,
+		TaskID:       hph.Task,
+		KeyName:      hph.KeyName,
+		UserData:     hph.UserData,
+		InstanceTags: hph.InstanceTags,
+	}
+
+	intentHost, err := hph.sc.NewIntentHost(options, user)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error spawning host"))
 	}

@@ -204,7 +204,7 @@ func TestProcessDownloadJobs(t *testing.T) {
 	job, err := recall.NewDownloadJob(fmt.Sprintf("%s/%s", baseURL, fileName), downloadDir, true)
 	require.NoError(t, err)
 
-	q := queue.NewLocalUnordered(2)
+	q := queue.NewLocalLimitedSize(2, 1048)
 	require.NoError(t, q.Start(ctx))
 	require.NoError(t, q.Put(ctx, job))
 

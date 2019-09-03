@@ -3,6 +3,7 @@ package pool
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -104,22 +105,21 @@ func (p *abortablePool) Start(ctx context.Context) error {
 
 	workerCtx, cancel := context.WithCancel(ctx)
 	p.canceler = cancel
-	jobs := startWorkerServer(workerCtx, p.queue, &p.wg)
-
 	p.started = true
 
 	for w := 1; w <= p.size; w++ {
-		go p.worker(workerCtx, jobs)
+		go p.worker(workerCtx)
 		grip.Debugf("started worker %d of %d waiting for jobs", w, p.size)
 	}
 
 	return nil
 }
 
-func (p *abortablePool) worker(ctx context.Context, jobs <-chan workUnit) {
+func (p *abortablePool) worker(bctx context.Context) {
 	var (
 		err    error
 		job    amboy.Job
+		ctx    context.Context
 		cancel context.CancelFunc
 	)
 
@@ -134,13 +134,11 @@ func (p *abortablePool) worker(ctx context.Context, jobs <-chan workUnit) {
 		if err != nil {
 			if job != nil {
 				job.AddError(err)
-				p.queue.Complete(ctx, job)
+				p.queue.Complete(bctx, job)
 			}
 
-			if ctx.Err() == nil {
-				// start a replacement worker.
-				go p.worker(ctx, jobs)
-			}
+			// start a replacement worker
+			go p.worker(bctx)
 		}
 
 		if cancel != nil {
@@ -148,19 +146,22 @@ func (p *abortablePool) worker(ctx context.Context, jobs <-chan workUnit) {
 		}
 	}()
 
+	timer := time.NewTimer(baseJobInterval)
 	for {
 		select {
-		case <-ctx.Done():
+		case <-bctx.Done():
 			return
-		case wu := <-jobs:
-			if wu.job == nil {
+		case <-timer.C:
+			job := p.queue.Next(bctx)
+			if job == nil {
+				timer.Reset(jitterNilJobWait())
 				continue
 			}
 
-			job = wu.job
-			cancel = wu.cancel
+			ctx, cancel = context.WithCancel(bctx)
 			p.runJob(ctx, job)
 			cancel()
+			timer.Reset(baseJobInterval)
 		}
 	}
 }
