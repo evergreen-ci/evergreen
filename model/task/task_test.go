@@ -1219,6 +1219,15 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 				},
 			},
 		},
+		{
+			Id: "t5",
+			DependsOn: []Dependency{
+				{
+					TaskId: "t0",
+					Status: evergreen.TaskSucceeded,
+				},
+			},
+		},
 	}
 	for _, task := range tasks {
 		assert.NoError(task.Insert())
@@ -1238,6 +1247,11 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 	dbTask4, err := FindOneId(tasks[4].Id)
 	assert.NoError(err)
 	assert.False(dbTask4.DependsOn[0].Unattainable)
+
+	// update more than one dependency (t1 and t5)
+	dbTask5, err := FindOneId(tasks[5].Id)
+	assert.NoError(err)
+	assert.True(dbTask5.DependsOn[0].Unattainable)
 }
 
 func TestUpdateUnblockedDependencies(t *testing.T) {
