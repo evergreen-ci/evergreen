@@ -42,7 +42,11 @@ func (gc *GenerateConnector) GeneratePoll(ctx context.Context, taskID string, gr
 		return false, nil, errors.Errorf("could not find task %s", taskID)
 	}
 
-	return t.GeneratedTasks, []string{t.GenerateTasksError}, nil
+	var errs []string
+	if t.GenerateTasksError != "" {
+		errs = []string{t.GenerateTasksError}
+	}
+	return t.GeneratedTasks, errs, nil
 }
 
 type MockGenerateConnector struct{}
