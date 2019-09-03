@@ -719,36 +719,36 @@ $http.get(templateUrl).success(function(template) {
       })
     };
 
+    // Set the samples and filtered samples.
+    $scope.allTrendSamples = new TrendSamples([]);
+    $scope.filteredTrendSamples = new TrendSamples([]);
+
     // Populate the trend data
-    let legacyHistoryPromise = $http.get("/plugin/json/history/" + $scope.task.id + "/perf").then(function (resp) {
-      trendDataSuccess(resp.data);
-    }, function () {
-      if (!$scope.allTrendSamples) {
-        $scope.allTrendSamples = new TrendSamples([]);
-      }
-      if (!$scope.filteredTrendSamples) {
-        $scope.filteredTrendSamples = new TrendSamples([]);
-      }
-    }
+    let legacyHistoryPromise = $http.get("/plugin/json/history/" + $scope.task.id + "/perf").then(
+      resp => trendDataSuccess(resp.data),
+      err => $log.warn('Failed to load historical data!', err)
     );
 
     let historyPromise = $http.get(cedarApp + "/rest/v1/perf/task_name/" + $scope.task.display_name +
       "?variant=" + $scope.task.build_variant + "&project=" + $scope.task.branch).then(
-        function (resp) {
+        resp => {
           let converted = $filter("expandedHistoryConverter")(resp.data, $scope.task.execution);
           trendDataSuccess(converted);
-        });
+        },
+        err => $log.warn('Failed to load cedar data!', err)
+      );
 
-    // Once trend chart data and change points get loaded
+    // Redraw the charts once all the data is loaded (trend, change points and Build Failures).
     var onHistoryRetrieved = function () {
       $scope.hideEmptyGraphs();
       $scope.hideCanaries();
       setTimeout(drawTrendGraph, 0, $scope);
     };
     $q.all([historyPromise, legacyHistoryPromise, changePointsQ.catch(), buildFailuresQ.catch()])
-      .then(onHistoryRetrieved, onHistoryRetrieved);
-  }
-
+      .then(
+        onHistoryRetrieved,
+        err => $log.error('Failed to load data!', err));
+  };
 
   if ($scope.conf.enabled) {
     if ($location.hash().length > 0) {
