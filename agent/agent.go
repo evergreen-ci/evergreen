@@ -512,7 +512,7 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 			logger.Infof("cleaning up processes for task: %s", tc.task.ID)
 			if err := util.KillSpawnedProcs(tc.task.ID, logger); err != nil {
 				msg := fmt.Sprintf("Error cleaning up spawned processes (agent-exit): %v", err)
-				grip.Critical(msg)
+				logger.Critical(msg)
 			}
 
 			logger.Infof("cleaned up processes for task: %s", tc.task.ID)
@@ -523,7 +523,7 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 		defer cancel()
 		if err := docker.Cleanup(ctx, logger); err != nil {
 			msg := fmt.Sprintf("Error cleaning up Docker artifacts (agent-exit): %s", err)
-			grip.Critical(msg)
+			logger.Critical(msg)
 		}
 		logger.Info("cleaned up Docker artifacts")
 	}
