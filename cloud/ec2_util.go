@@ -18,7 +18,6 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -491,12 +490,6 @@ func GetEC2Region(providerSettings *map[string]interface{}) string {
 
 // Get EC2 key and secret from the AWS configuration for the given region
 func GetEC2Key(region string, s *evergreen.Settings) (string, string, error) {
-
-	grip.Info(message.Fields{
-		"name":    "debug_append",
-		"message": "top of GetEC2Key",
-	})
-
 	// Get default region if field is blank
 	if region == "" {
 		region = evergreen.DefaultEC2Region
@@ -519,13 +512,6 @@ func GetEC2Key(region string, s *evergreen.Settings) (string, string, error) {
 		secret = s.Providers.AWS.EC2Secret
 
 		// Move default key and secret to new EC2Keys struct
-		grip.Info(message.Fields{
-			"name":    "debug_append",
-			"message": "adding key to EC2Keys",
-			"region":  evergreen.DefaultEC2Region,
-			"key":     key,
-			"secret":  secret,
-		})
 		s.Providers.AWS.EC2Keys = append(s.Providers.AWS.EC2Keys, evergreen.EC2Key{
 			Region: evergreen.DefaultEC2Region,
 			Key:    key,
