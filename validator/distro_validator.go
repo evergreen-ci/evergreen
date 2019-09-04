@@ -119,7 +119,11 @@ func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, s *evergreen
 		return errs
 	}
 
-	mgr, err := cloud.GetManager(ctx, d.Provider, d.ProviderSettings, s)
+	mgrOpts := cloud.ManagerOpts{
+		Provider: d.Provider,
+		Region:   cloud.GetRegion(d.Provider, d.ProviderSettings),
+	}
+	mgr, err := cloud.GetManager(ctx, mgrOpts, s)
 	if err != nil {
 		errs = append(errs, ValidationError{
 			Message: err.Error(),

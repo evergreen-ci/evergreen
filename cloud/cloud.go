@@ -79,29 +79,31 @@ type BatchManager interface {
 	GetInstanceStatuses(context.Context, []host.Host) ([]CloudStatus, error)
 }
 
+// ManagerOpts is a struct containing the fields needed to get a new cloud manager
+// of the proper type.
 type ManagerOpts struct {
 	Provider string
 	Region   string
 }
 
-// GetManager returns an implementation of Manager for the given provider name.
+// GetManager returns an implementation of Manager for the given manager options.
 // It returns an error if the provider name doesn't have a known implementation.
-func GetManager(ctx context.Context, providerName string, providerSettings *map[string]interface{}, settings *evergreen.Settings) (Manager, error) {
+func GetManager(ctx context.Context, mgrOpts ManagerOpts, settings *evergreen.Settings) (Manager, error) {
 	var provider Manager
 
-	switch providerName {
+	switch mgrOpts.Provider {
 	case evergreen.ProviderNameStatic:
 		provider = &staticManager{}
 	case evergreen.ProviderNameMock:
 		provider = makeMockManager()
 	case evergreen.ProviderNameEc2Legacy, evergreen.ProviderNameEc2OnDemand:
-		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: onDemandProvider, region: GetEC2Region(providerSettings)})
+		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: onDemandProvider, region: mgrOpts.Region})
 	case evergreen.ProviderNameEc2Spot:
-		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: spotProvider, region: GetEC2Region(providerSettings)})
+		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: spotProvider, region: mgrOpts.Region})
 	case evergreen.ProviderNameEc2Auto:
-		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: autoProvider, region: GetEC2Region(providerSettings)})
+		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: autoProvider, region: mgrOpts.Region})
 	case evergreen.ProviderNameEc2Fleet:
-		provider = NewEC2FleetManager(&EC2FleetManagerOptions{client: &awsClientImpl{}, region: GetEC2Region(providerSettings)})
+		provider = NewEC2FleetManager(&EC2FleetManagerOptions{client: &awsClientImpl{}, region: mgrOpts.Region})
 	case evergreen.ProviderNameDocker:
 		provider = &dockerManager{}
 	case evergreen.ProviderNameDockerMock:
@@ -113,7 +115,7 @@ func GetManager(ctx context.Context, providerName string, providerSettings *map[
 	case evergreen.ProviderNameVsphere:
 		provider = &vsphereManager{}
 	default:
-		return nil, errors.Errorf("No known provider for '%s'", providerName)
+		return nil, errors.Errorf("No known provider for '%s'", mgrOpts.Provider)
 	}
 
 	if err := provider.Configure(ctx, settings); err != nil {
@@ -123,7 +125,9 @@ func GetManager(ctx context.Context, providerName string, providerSettings *map[
 	return provider, nil
 }
 
-// GroupHostsByManager
+// GroupHostsByManager returns a map where the key represents the manager options
+// (provider name and region) and the value represents the hosts from the provided
+// slice that are reachable through that manager.
 func GroupHostsByManager(hosts []host.Host) map[ManagerOpts][]host.Host {
 	hostsByManager := make(map[ManagerOpts][]host.Host)
 	for _, h := range hosts {
@@ -134,6 +138,16 @@ func GroupHostsByManager(hosts []host.Host) map[ManagerOpts][]host.Host {
 		hostsByManager[key] = append(hostsByManager[key], h)
 	}
 	return hostsByManager
+}
+
+// GetRegion gets the region name from the provider settings object for a given
+// provider name.
+func GetRegion(providerName string, providerSettings *map[string]interface{}) string {
+	if IsEc2Provider(providerName) {
+		return GetEC2Region(providerSettings)
+	} else {
+		return ""
+	}
 }
 
 // ConvertContainerManager converts a regular manager into a container manager,

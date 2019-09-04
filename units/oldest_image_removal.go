@@ -86,7 +86,11 @@ func (j *oldestImageRemovalJob) Run(ctx context.Context) {
 	}
 
 	// get least recently used image from Docker provider
-	mgr, err := cloud.GetManager(ctx, j.Provider, j.host.Distro.ProviderSettings, j.settings)
+	mgrOpts := cloud.ManagerOpts{
+		Provider: j.Provider,
+		Region:   cloud.GetRegion(j.Provider, j.host.Distro.ProviderSettings),
+	}
+	mgr, err := cloud.GetManager(ctx, mgrOpts, j.settings)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error getting Docker manager"))
 		return

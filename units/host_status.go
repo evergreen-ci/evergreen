@@ -82,8 +82,7 @@ func (j *cloudHostReadyJob) Run(ctx context.Context) {
 		if len(hosts) == 0 {
 			continue
 		}
-
-		m, err := cloud.GetManager(ctx, mgrOpts.Provider, hosts[0].Distro.ProviderSettings, j.env.Settings())
+		m, err := cloud.GetManager(ctx, mgrOpts, j.env.Settings())
 		if err != nil {
 			j.AddError(errors.Wrap(err, "error getting cloud manager"))
 			return
