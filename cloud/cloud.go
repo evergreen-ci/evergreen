@@ -134,7 +134,7 @@ func GroupHostsByManager(hosts []host.Host) map[ManagerOpts][]host.Host {
 	for _, h := range hosts {
 		key := ManagerOpts{
 			Provider: h.Provider,
-			Region:   GetEC2Region(h.Distro.ProviderSettings),
+			Region:   GetRegion(h.Distro),
 		}
 		hostsByManager[key] = append(hostsByManager[key], h)
 	}
@@ -145,10 +145,9 @@ func GroupHostsByManager(hosts []host.Host) map[ManagerOpts][]host.Host {
 // provider name.
 func GetRegion(d distro.Distro) string {
 	if IsEc2Provider(d.Provider) {
-		return GetEC2Region(d.ProviderSettings)
-	} else {
-		return ""
+		return getEC2Region(d.ProviderSettings)
 	}
+	return ""
 }
 
 // ConvertContainerManager converts a regular manager into a container manager,

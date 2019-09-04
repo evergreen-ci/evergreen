@@ -475,7 +475,7 @@ func IsEc2Provider(provider string) bool {
 }
 
 // Get EC2 region from an EC2 ProviderSettings object
-func GetEC2Region(providerSettings *map[string]interface{}) string {
+func getEC2Region(providerSettings *map[string]interface{}) string {
 	s := &EC2ProviderSettings{}
 	if providerSettings != nil {
 		if err := mapstructure.Decode(providerSettings, s); err != nil {

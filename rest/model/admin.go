@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
@@ -761,13 +760,10 @@ func (a *APICloudProviders) ToService() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	grip.Info("before docker")
-	grip.Info(a)
 	docker, err := a.Docker.ToService()
 	if err != nil {
 		return nil, err
 	}
-	grip.Info("after docker")
 	gce, err := a.GCE.ToService()
 	if err != nil {
 		return nil, err
@@ -901,12 +897,8 @@ func (a *APIEC2Key) BuildFromService(h interface{}) error {
 }
 
 func (a *APIEC2Key) ToService() (interface{}, error) {
-	var err error
 	res := evergreen.EC2Key{}
 	res.Name = FromAPIString(a.Name)
-	if err != nil {
-		return nil, err
-	}
 	res.Region = FromAPIString(a.Region)
 	res.Key = FromAPIString(a.Key)
 	res.Secret = FromAPIString(a.Secret)
@@ -950,8 +942,6 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 }
 
 func (a *APIAWSConfig) ToService() (interface{}, error) {
-	grip.Info("to service aws")
-	grip.Info(a)
 	if a == nil {
 		return nil, nil
 	}
@@ -977,7 +967,6 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		}
 		config.EC2Keys = append(config.EC2Keys, key)
 	}
-	grip.Info(config)
 	return config, nil
 }
 
@@ -996,8 +985,6 @@ func (a *APIDockerConfig) BuildFromService(h interface{}) error {
 }
 
 func (a *APIDockerConfig) ToService() (interface{}, error) {
-	grip.Info("inside docker")
-	grip.Info(a)
 	return evergreen.DockerConfig{
 		APIVersion: FromAPIString(a.APIVersion),
 	}, nil
