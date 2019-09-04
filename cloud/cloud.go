@@ -79,6 +79,11 @@ type BatchManager interface {
 	GetInstanceStatuses(context.Context, []host.Host) ([]CloudStatus, error)
 }
 
+type ManagerOpts struct {
+	Provider string
+	Region   string
+}
+
 // GetManager returns an implementation of Manager for the given provider name.
 // It returns an error if the provider name doesn't have a known implementation.
 func GetManager(ctx context.Context, providerName string, providerSettings *map[string]interface{}, settings *evergreen.Settings) (Manager, error) {
@@ -116,6 +121,19 @@ func GetManager(ctx context.Context, providerName string, providerSettings *map[
 	}
 
 	return provider, nil
+}
+
+// GroupHostsByManager
+func GroupHostsByManager(hosts []host.Host) map[ManagerOpts][]host.Host {
+	hostsByManager := make(map[ManagerOpts][]host.Host)
+	for _, h := range hosts {
+		key := ManagerOpts{
+			Provider: h.Provider,
+			Region:   GetEC2Region(h.Distro.ProviderSettings),
+		}
+		hostsByManager[key] = append(hostsByManager[key], h)
+	}
+	return hostsByManager
 }
 
 // ConvertContainerManager converts a regular manager into a container manager,

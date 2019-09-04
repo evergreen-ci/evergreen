@@ -76,21 +76,14 @@ func (j *cloudHostReadyJob) Run(ctx context.Context) {
 	}
 
 	// Collect hosts by provider and region
-	providers := map[providerInfo][]host.Host{}
-	for _, h := range hostsToCheck {
-		key := providerInfo{
-			provider: h.Provider,
-			region:   cloud.GetEC2Region(h.Distro.ProviderSettings),
-		}
-		providers[key] = append(providers[key], h)
-	}
+	hostsByManager := cloud.GroupHostsByManager(hostsToCheck)
 
-	for p, hosts := range providers {
+	for mgrOpts, hosts := range hostsByManager {
 		if len(hosts) == 0 {
 			continue
 		}
 
-		m, err := cloud.GetManager(ctx, p.provider, hosts[0].Distro.ProviderSettings, j.env.Settings())
+		m, err := cloud.GetManager(ctx, mgrOpts.Provider, hosts[0].Distro.ProviderSettings, j.env.Settings())
 		if err != nil {
 			j.AddError(errors.Wrap(err, "error getting cloud manager"))
 			return
