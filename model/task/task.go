@@ -609,7 +609,7 @@ func GenerateNotRun() ([]Task, error) {
 
 // SetGeneratedJSON sets JSON data to generate tasks from.
 func (t *Task) SetGeneratedJSON(json []json.RawMessage) error {
-	if t.GeneratedJSON != "" {
+	if len(t.GeneratedJSON) > 0 {
 		return nil
 	}
 	t.GeneratedJSON = json
