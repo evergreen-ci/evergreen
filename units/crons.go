@@ -705,7 +705,7 @@ func PopulateGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
 		group := env.RemoteQueueGroup()
 		for _, t := range tasks {
 			if q, ok = versions[t.Version]; !ok {
-				q, err = group.Get(context.TODO(), t.Version)
+				q, err = group.Get(ctx, t.Version)
 				if err != nil {
 					return errors.Wrapf(err, "problem getting queue for version %s", t.Version)
 				}
