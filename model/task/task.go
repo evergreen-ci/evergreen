@@ -599,11 +599,11 @@ func MarkGeneratedTasks(taskID string) error {
 func GenerateNotRun() ([]Task, error) {
 	const maxGenerateTimeAgo = 2 * time.Hour
 	return FindAll(db.Query(bson.M{
-		StatusKey:         evergreen.TaskStarted,               // task is running
-		StartTimeKey:      time.Now().Add(-maxGenerateTimeAgo), // ignore older tasks, just in case
-		GenerateTaskKey:   true,                                // task contains generate.tasks command
-		GeneratedTasksKey: bson.M{"$exists": false},            // generate.tasks has not yet run
-		GeneratedJSONKey:  bson.M{"$exists": true},             // config has been posted by generate.tasks command
+		StatusKey:         evergreen.TaskStarted,                              // task is running
+		StartTimeKey:      bson.M{"$gt": time.Now().Add(-maxGenerateTimeAgo)}, // ignore older tasks, just in case
+		GenerateTaskKey:   true,                                               // task contains generate.tasks command
+		GeneratedTasksKey: bson.M{"$exists": false},                           // generate.tasks has not yet run
+		GeneratedJSONKey:  bson.M{"$exists": true},                            // config has been posted by generate.tasks command
 	}))
 }
 
