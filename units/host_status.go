@@ -28,6 +28,11 @@ type cloudHostReadyJob struct {
 	env      evergreen.Environment
 }
 
+type providerInfo struct {
+	provider string
+	region   string
+}
+
 // NewCloudHostReadyJob gets statuses for all jobs created by Cloud providers which the Cloud providers'
 // APIs have not yet returned all running. It marks the hosts running in the database.
 func NewCloudHostReadyJob(env evergreen.Environment, id string) amboy.Job {
@@ -70,16 +75,13 @@ func (j *cloudHostReadyJob) Run(ctx context.Context) {
 		return
 	}
 
-	type providerInfo struct {
-		Provider string
-		Region   string
-	}
-
 	// Collect hosts by provider and region
 	providers := map[providerInfo][]host.Host{}
 	for _, h := range hostsToCheck {
-		key := providerInfo{h.Provider, cloud.GetEC2Region(h.Distro.ProviderSettings)}
-		grip.Info(key)
+		key := providerInfo{
+			provider: h.Provider,
+			region:   cloud.GetEC2Region(h.Distro.ProviderSettings),
+		}
 		providers[key] = append(providers[key], h)
 	}
 
@@ -88,7 +90,7 @@ func (j *cloudHostReadyJob) Run(ctx context.Context) {
 			continue
 		}
 
-		m, err := cloud.GetManager(ctx, p.Provider, hosts[0].Distro.ProviderSettings, j.env.Settings())
+		m, err := cloud.GetManager(ctx, p.provider, hosts[0].Distro.ProviderSettings, j.env.Settings())
 		if err != nil {
 			j.AddError(errors.Wrap(err, "error getting cloud manager"))
 			return

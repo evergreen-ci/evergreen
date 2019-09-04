@@ -257,7 +257,8 @@ func (s *EC2Suite) TestConfigure() {
 	}
 	err = s.onDemandManager.Configure(ctx, settings)
 	s.NoError(err)
-	ec2m := s.onDemandManager.(*ec2Manager)
+	ec2m, ok := s.onDemandManager.(*ec2Manager)
+	s.True(ok)
 	creds, err := ec2m.credentials.Get()
 	s.NoError(err)
 	s.Equal("default-key", creds.AccessKeyID)
@@ -282,7 +283,8 @@ func (s *EC2Suite) TestConfigure() {
 	}
 	err = s.onDemandWithRegionManager.Configure(ctx, settings)
 	s.NoError(err)
-	ec2m = s.onDemandWithRegionManager.(*ec2Manager)
+	ec2m, ok = s.onDemandWithRegionManager.(*ec2Manager)
+	s.True(ok)
 	creds, err = ec2m.credentials.Get()
 	s.NoError(err)
 	s.Equal("test-key", creds.AccessKeyID)
@@ -302,7 +304,8 @@ func (s *EC2Suite) TestConfigure() {
 	settings.Providers.AWS.EC2Key = "legacy-key"
 	err = s.onDemandManager.Configure(ctx, settings)
 	s.NoError(err)
-	ec2m = s.onDemandManager.(*ec2Manager)
+	ec2m, ok = s.onDemandManager.(*ec2Manager)
+	s.True(ok)
 	creds, err = ec2m.credentials.Get()
 	s.NoError(err)
 	s.Equal("legacy-key", creds.AccessKeyID)
@@ -1093,9 +1096,9 @@ func (s *EC2Suite) TestGetEC2Key() {
 	// LEGACY (delete block when Evergreen only uses region-based EC2Keys struct)
 	settings.Providers.AWS.EC2Key = "legacy-key"
 	settings.Providers.AWS.EC2Secret = "legacy-secret"
-	key, secret, err = GetEC2Key("test-region", settings)
-	s.Equal(key, "legacy-key")
-	s.Equal(secret, "legacy-secret")
+	key, secret, err = GetEC2Key("", settings)
+	s.Equal("legacy-key", key)
+	s.Equal("legacy-secret", secret)
 	s.NoError(err)
 
 	settings.Providers.AWS.EC2Keys = []evergreen.EC2Key{
@@ -1103,8 +1106,8 @@ func (s *EC2Suite) TestGetEC2Key() {
 		{Region: "test-region", Key: "test-key", Secret: "test-secret"},
 	}
 	key, secret, err = GetEC2Key("test-region", settings)
-	s.Equal(key, "test-key")
-	s.Equal(secret, "test-secret")
+	s.Equal("test-key", key)
+	s.Equal("test-secret", secret)
 	s.NoError(err)
 
 }

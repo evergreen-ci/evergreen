@@ -958,7 +958,10 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		key := i.(evergreen.EC2Key)
+		key, ok := i.(evergreen.EC2Key)
+		if !ok {
+			return nil, errors.New("Unable to convert key to EC2Key")
+		}
 		config.EC2Keys = append(config.EC2Keys, key)
 	}
 	return config, nil

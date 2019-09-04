@@ -497,17 +497,21 @@ func GetEC2Key(region string, s *evergreen.Settings) (string, string, error) {
 
 	// Get key and secret for specified region
 	var key, secret string
-	found := false
 	for _, k := range s.Providers.AWS.EC2Keys {
 		if k.Region == region {
 			key = k.Key
 			secret = k.Secret
-			found = true
+
+			// Error if key or secret are blank
+			if key == "" || secret == "" {
+				return "", "", errors.New("AWS ID and Secret must not be blank")
+			}
+			break
 		}
 	}
 
 	// LEGACY (delete block when Evergreen only uses region-based EC2Keys struct)
-	if !found && (key == "" || secret == "") {
+	if key == "" || secret == "" {
 		key = s.Providers.AWS.EC2Key
 		secret = s.Providers.AWS.EC2Secret
 
@@ -522,18 +526,12 @@ func GetEC2Key(region string, s *evergreen.Settings) (string, string, error) {
 			if err != nil {
 				return "", "", errors.New("Failed to update settings with new default EC2 credentials from legacy EC2 credentials")
 			}
-			found = true
 		}
 	}
 
 	// Error if region specified but missing in config
-	if !found && region != "" {
-		return "", "", errors.Errorf("Unable to find region '%s' in config", region)
-	}
-
-	// Error if key or secret are blank
 	if key == "" || secret == "" {
-		return "", "", errors.New("AWS ID and Secret must not be blank")
+		return "", "", errors.Errorf("Unable to find region '%s' in config", region)
 	}
 
 	return key, secret, nil

@@ -152,6 +152,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     $scope.Settings.providers.aws.aws_secret = $scope.tempDefaultEC2Secret;
 
     $scope.Settings.providers.aws.ec2_keys = [
+      {"region": "us-east-1", "key": $scope.tempDefaultEC2Key, "secret": $scope.tempDefaultEC2Secret}
     ];
 
     mciAdminRestService.saveSettings($scope.Settings, { success: successHandler, error: errorHandler });
