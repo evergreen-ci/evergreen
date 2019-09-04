@@ -393,23 +393,23 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionTunable(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(h.RunningTask, ShouldEqual, "task1")
 		})
-		/*		Convey("a completed task group should return a nil task", func() {
-				currentTq, err := model.LoadTaskQueue(d.Id)
-				So(err, ShouldBeNil)
-				So(currentTq.Length(), ShouldEqual, 2)
+		Convey("a completed task group should return a nil task", func() {
+			currentTq, err := model.LoadTaskQueue(d.Id)
+			So(err, ShouldBeNil)
+			So(currentTq.Length(), ShouldEqual, 2)
 
-				details.TaskGroup = "my-task-group"
-				t, shouldTeardown, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchAliasService(taskDispatcherTTL), &theHostWhoCanBoastTheMostRoast, details)
-				So(err, ShouldBeNil)
-				So(t, ShouldBeNil)
-				So(shouldTeardown, ShouldBeTrue)
+			details.TaskGroup = "my-task-group"
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskDispatcherTTL), &theHostWhoCanBoastTheMostRoast, details)
+			So(err, ShouldBeNil)
+			So(t, ShouldBeNil)
+			So(shouldTeardown, ShouldBeTrue)
 
-				// task queue unmodified
-				currentTq, err = model.LoadTaskQueue(d.Id)
-				So(err, ShouldBeNil)
-				So(currentTq.Length(), ShouldEqual, 2)
-				details.TaskGroup = ""
-			})*/
+			// task queue unmodified
+			currentTq, err = model.LoadTaskQueue(d.Id)
+			So(err, ShouldBeNil)
+			So(currentTq.Length(), ShouldEqual, 2)
+			details.TaskGroup = ""
+		})
 		Convey("a task that is not undispatched should not be updated in the host", func() {
 			taskQueue.Queue = []model.TaskQueueItem{
 				{Id: "undispatchedTask"},
