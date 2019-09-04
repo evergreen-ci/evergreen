@@ -159,7 +159,7 @@ type Task struct {
 	GeneratedBy string `bson:"generated_by,omitempty" json:"generated_by,omitempty"`
 	// GeneratedJSON is the the configuration information to create new tasks from.
 	GeneratedJSON []json.RawMessage `bson:"generate_json,omitempty" json:"generate_json,omitempty"`
-	// GeneratedTasksError any encountered while generating tasks.
+	// GenerateTasksError any encountered while generating tasks.
 	GenerateTasksError string `bson:"generate_error,omitempty" json:"generate_error,omitempty"`
 
 	// Fields set if triggered by an upstream build
