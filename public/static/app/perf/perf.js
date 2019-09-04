@@ -720,8 +720,8 @@ $http.get(templateUrl).success(function(template) {
     };
 
     // Set the samples and filtered samples.
-    $scope.allTrendSamples = new TrendSamples([]);
-    $scope.filteredTrendSamples = new TrendSamples([]);
+    $scope.allTrendSamples = null;
+    $scope.filteredTrendSamples = null;
 
     // Populate the trend data
     let legacyHistoryPromise = $http.get("/plugin/json/history/" + $scope.task.id + "/perf").then(
