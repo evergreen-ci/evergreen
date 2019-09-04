@@ -43,12 +43,9 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
 
       // Support transiton to region-based EC2Keys struct -- TO BE DELETED
       var keys = resp.data.providers.aws.ec2_keys
-      console.log(keys)
       if (keys) {
-        console.log("checking ec2keys")
         for (var i = 0; i < keys.length; i++) {
           if (keys[i].region == "us-east-1") {
-            console.log("found key")
             $scope.tempDefaultEC2Key = keys[i].key;
             $scope.tempDefaultEC2Secret = keys[i].secret;
             break;
@@ -56,14 +53,9 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
         }
       }
       if (!$scope.tempDefaultEC2Key || !$scope.tempDefaultEC2Secret) {
-        console.log("retrieving from legacy settings")
         $scope.tempDefaultEC2Key = resp.data.providers.aws.aws_id;
         $scope.tempDefaultEC2Secret = resp.data.providers.aws.aws_secret;
       }
-      console.log("key to display")
-      console.log($scope.tempDefaultEC2Key)
-      console.log("secret to display")
-      console.log($scope.tempDefaultEC2Secret)
 
       $scope.Settings = resp.data;
       $scope.Settings.jira_notifications = $scope.Settings.jira_notifications;
