@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/credentials"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/gimlet"
@@ -43,6 +44,7 @@ func startWebService() cli.Command {
 				grip.EmergencyFatal(errors.Wrap(env.SaveConfig(), "problem saving config"))
 			}
 			grip.EmergencyFatal(errors.Wrap(env.RemoteQueue().Start(ctx), "problem starting remote queue"))
+			grip.EmergencyFatal(errors.Wrap(commitqueue.SetupEnv(env), "problem adding commit queue sender"))
 
 			settings := env.Settings()
 			sender, err := settings.GetSender(ctx, env)
