@@ -512,16 +512,18 @@ func GetEC2Key(region string, s *evergreen.Settings) (string, string, error) {
 		secret = s.Providers.AWS.EC2Secret
 
 		// Move default key and secret to new EC2Keys struct
-		s.Providers.AWS.EC2Keys = append(s.Providers.AWS.EC2Keys, evergreen.EC2Key{
-			Region: evergreen.DefaultEC2Region,
-			Key:    key,
-			Secret: secret,
-		})
-		err := s.Providers.Set()
-		if err != nil {
-			return "", "", errors.New("Failed to update settings with new default EC2 credentials from legacy EC2 credentials")
+		if key != "" && secret != "" {
+			s.Providers.AWS.EC2Keys = append(s.Providers.AWS.EC2Keys, evergreen.EC2Key{
+				Region: evergreen.DefaultEC2Region,
+				Key:    key,
+				Secret: secret,
+			})
+			err := s.Providers.Set()
+			if err != nil {
+				return "", "", errors.New("Failed to update settings with new default EC2 credentials from legacy EC2 credentials")
+			}
+			found = true
 		}
-		found = true
 	}
 
 	// Error if region specified but missing in config
