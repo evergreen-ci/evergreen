@@ -184,7 +184,7 @@ func TestGenerateTasks(t *testing.T) {
 		require.NoError(d.Insert())
 	}
 	require.NoError(sampleTask.Insert())
-	j := NewGenerateTasksJob("sample_task", 1)
+	j := NewGenerateTasksJob("sample_task", "1")
 	j.Run(context.Background())
 	assert.NoError(j.Error())
 	tasks := []task.Task{}
