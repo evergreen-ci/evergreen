@@ -125,7 +125,7 @@ func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 	if j.manager == nil {
 		mgrOpts := cloud.ManagerOpts{
 			Provider: j.host.Provider,
-			Region:   cloud.GetRegion(j.host.Provider, j.host.Distro.ProviderSettings),
+			Region:   cloud.GetRegion(j.host.Distro),
 		}
 		j.manager, err = cloud.GetManager(ctx, mgrOpts, j.settings)
 

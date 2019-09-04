@@ -121,7 +121,7 @@ func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, s *evergreen
 
 	mgrOpts := cloud.ManagerOpts{
 		Provider: d.Provider,
-		Region:   cloud.GetRegion(d.Provider, d.ProviderSettings),
+		Region:   cloud.GetRegion(*d),
 	}
 	mgr, err := cloud.GetManager(ctx, mgrOpts, s)
 	if err != nil {

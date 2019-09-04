@@ -120,7 +120,7 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 
 	mgrOpts := cloud.ManagerOpts{
 		Provider: j.host.Provider,
-		Region:   cloud.GetRegion(j.host.Provider, j.host.Distro.ProviderSettings),
+		Region:   cloud.GetRegion(j.host.Distro),
 	}
 	manager, err := cloud.GetManager(ctx, mgrOpts, settings)
 	if err != nil {

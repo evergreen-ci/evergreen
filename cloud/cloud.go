@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/pkg/errors"
 )
@@ -142,9 +143,9 @@ func GroupHostsByManager(hosts []host.Host) map[ManagerOpts][]host.Host {
 
 // GetRegion gets the region name from the provider settings object for a given
 // provider name.
-func GetRegion(providerName string, providerSettings *map[string]interface{}) string {
-	if IsEc2Provider(providerName) {
-		return GetEC2Region(providerSettings)
+func GetRegion(d distro.Distro) string {
+	if IsEc2Provider(d.Provider) {
+		return GetEC2Region(d.ProviderSettings)
 	} else {
 		return ""
 	}

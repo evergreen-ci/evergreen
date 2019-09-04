@@ -218,7 +218,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 	// fetch the appropriate cloud provider for the host
 	mgrOpts := cloud.ManagerOpts{
 		Provider: targetHost.Provider,
-		Region:   cloud.GetRegion(targetHost.Provider, targetHost.Distro.ProviderSettings),
+		Region:   cloud.GetRegion(targetHost.Distro),
 	}
 	cloudMgr, err := cloud.GetManager(ctx, mgrOpts, settings)
 	if err != nil {

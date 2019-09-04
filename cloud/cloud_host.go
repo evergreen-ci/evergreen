@@ -21,7 +21,7 @@ type CloudHost struct {
 func GetCloudHost(ctx context.Context, host *host.Host, settings *evergreen.Settings) (*CloudHost, error) {
 	mgrOpts := ManagerOpts{
 		Provider: host.Provider,
-		Region:   GetRegion(host.Provider, host.Distro.ProviderSettings),
+		Region:   GetRegion(host.Distro),
 	}
 	mgr, err := GetManager(ctx, mgrOpts, settings)
 	if err != nil {

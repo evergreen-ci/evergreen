@@ -180,7 +180,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 
 	mgrOpts := cloud.ManagerOpts{
 		Provider: j.host.Provider,
-		Region:   cloud.GetRegion(j.host.Provider, j.host.Distro.ProviderSettings),
+		Region:   cloud.GetRegion(j.host.Distro),
 	}
 	cloudManager, err = cloud.GetManager(ctx, mgrOpts, j.env.Settings())
 	if err != nil {

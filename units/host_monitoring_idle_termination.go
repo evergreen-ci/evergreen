@@ -117,7 +117,7 @@ func (j *idleHostJob) Run(ctx context.Context) {
 	// get a cloud manager for the host
 	mgrOpts := cloud.ManagerOpts{
 		Provider: j.host.Provider,
-		Region:   cloud.GetRegion(j.host.Provider, j.host.Distro.ProviderSettings),
+		Region:   cloud.GetRegion(j.host.Distro),
 	}
 	manager, err := cloud.GetManager(ctx, mgrOpts, j.settings)
 	if err != nil {

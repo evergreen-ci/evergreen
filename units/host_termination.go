@@ -339,7 +339,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		if j.host.SpawnOptions.SpawnedByTask {
 			mgrOpts := cloud.ManagerOpts{
 				Provider: j.host.Provider,
-				Region:   cloud.GetRegion(j.host.Provider, j.host.Distro.ProviderSettings),
+				Region:   cloud.GetRegion(j.host.Distro),
 			}
 			manager, err := cloud.GetManager(ctx, mgrOpts, settings)
 			if err != nil {
