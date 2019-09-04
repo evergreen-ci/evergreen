@@ -28,11 +28,6 @@ type cloudHostReadyJob struct {
 	env      evergreen.Environment
 }
 
-type providerInfo struct {
-	provider string
-	region   string
-}
-
 // NewCloudHostReadyJob gets statuses for all jobs created by Cloud providers which the Cloud providers'
 // APIs have not yet returned all running. It marks the hosts running in the database.
 func NewCloudHostReadyJob(env evergreen.Environment, id string) amboy.Job {
