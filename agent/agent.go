@@ -158,7 +158,11 @@ LOOP:
 			}
 			// if the host's current task group is finished we teardown
 			if nextTask.ShouldTeardownGroup {
-				needPostGroup = nextTask.ShouldTeardownGroup
+				a.runPostGroupCommands(ctx, tc)
+				needPostGroup = false
+				// Running the post group commands implies exiting the group, so
+				// destroy prior task information.
+				tc = &taskContext{}
 			}
 			if nextTask.TaskId != "" {
 				if nextTask.TaskSecret == "" {
@@ -256,8 +260,6 @@ func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTas
 func nextTaskHasDifferentTaskGroupOrBuild(nextTask *apimodels.NextTaskResponse, tc *taskContext) bool {
 	if tc.taskConfig == nil ||
 		nextTask.TaskGroup == "" ||
-		nextTask.TaskGroup != tc.taskGroup || // do we need this case anymore ? I wouldn't think so.
-		nextTask.Version != tc.taskConfig.Task.Version ||
 		nextTask.Build != tc.taskConfig.Task.BuildId {
 		return true
 	}
