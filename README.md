@@ -46,3 +46,10 @@ Possible Targets:
   system.
 * run `make dist` to compile binaries for all supported systems
   and create a *dist* tarball with all artifacts.
+
+## Local Development
+
+In order to run the front end tests:
+```
+$ make js-test
+```

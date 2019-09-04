@@ -1,7 +1,7 @@
 // Helper function
 // TODO Make it accept (d, i) and return function (FP)
 function d3Translate(x, y) {
-  if (y === undefined) y = x
+  if (y === undefined) y = x;
   return 'translate(' + x + ',' + y + ')';
 }
 
@@ -10,124 +10,121 @@ mciModule.factory('DrawPerfTrendChart', function (
   PerfChartService, PROCESSED_TYPE) {
   const MAXONLY = 'maxonly';
 
-  return function(params) {
+  return function (params) {
 
     // Extract params
-    var series = params.series,
-        changePoints = params.changePoints,
-        buildFailures = params.buildFailures,
-        key = params.key,
-        scope = params.scope,
-        containerId = params.containerId,
-        compareSamples = params.compareSamples,
-        threadMode = params.threadMode,
-        linearMode = params.linearMode,
-        originMode = params.originMode,
-        metric     = params.metric;
+    const series = params.series,
+      changePoints = params.changePoints,
+      buildFailures = params.buildFailures,
+      key = params.key,
+      scope = params.scope,
+      containerId = params.containerId,
+      compareSamples = params.compareSamples,
+      threadMode = params.threadMode,
+      linearMode = params.linearMode,
+      originMode = params.originMode,
+      metric = params.metric;
 
     function idxByRevision(series, revision) {
-      return _.findIndex(series, function(sample) {
-        return sample && sample.revision == revision
+      return _.findIndex(series, function (sample) {
+        return sample && sample.revision === revision
       })
     }
 
     function hydrateChangePoint(point) {
       // if idx == 0, shift it right for one point
-      var revIdx = idxByRevision(series, point.suspect_revision) || 1
+      const revIdx = idxByRevision(series, point.suspect_revision) || 1;
 
       point._meta = {
         firstRevIdx: revIdx - 1,
-        lastRevIdx:  revIdx,
+        lastRevIdx: revIdx,
       }
     }
 
     // Filter out change points which lays outside ot the chart
     let visibleChangePoints = (metric === "ops_per_sec") ? _.chain(changePoints)
-      .filter(function(d) {
+      .filter(function (d) {
         return _.findWhere(series, {revision: d.suspect_revision})
       })
       .each(hydrateChangePoint) // Add some useful meta data
       .value() : [];
 
-    var visibleBFs = _.filter(buildFailures, function(d) {
+    const visibleBFs = _.filter(buildFailures, function (d) {
       return _.findWhere(series, {revision: d.first_failing_revision})
-    })
+    });
 
-    var cfg = PerfChartService.cfg
+    const cfg = PerfChartService.cfg;
 
     // override default metric
-    cfg.valueAttr = metric
+    cfg.valueAttr = metric;
 
     document.getElementById(containerId).innerHTML = '';
 
-    var svg = d3.select('[id="' + containerId + '"]')
+    const svg = d3.select('[id="' + containerId + '"]')
       .append('svg')
       .attr({
         class: 'series',
         width: cfg.container.width,
         height: cfg.container.height,
-      })
+      });
 
-    var colors = d3.scale.category10();
+    const colors = d3.scale.category10();
     // FIXME Force color range 'initialization'. Might be a bug in d3 3.5.3
     // For some reason, d3 will not give you, let's say, the third color
     // unless you requested 0, 1 and 2 before.
     for (var i = 0; i < cfg.knownLevelsCount; i++) colors(i);
-
-    var ops = _.pluck(series, cfg.valueAttr);
-    var opsValues = _.pluck(series, cfg.valueAttr + "_values");
+    _.pluck(series, cfg.valueAttr);
+    const opsValues = _.pluck(series, cfg.valueAttr + "_values");
 
     // Currently selcted revision item index
-    var currentItemIdx = _.findIndex(series, function(d) {
-      return d.task_id == scope.task.id
-    })
+    const currentItemIdx = _.findIndex(series, function (d) {
+      return d.task_id === scope.task.id
+    });
 
-    function extractThreadLevels(series) {
-      return _.reduce(series, function(m, d) {
-        return _.union(
-          m, _.pluck(d.threadResults, 'threadLevel')
-        )
-      }, [])
+    const allLevelsByIndex = series.map(entry => entry.threadResults.map(result => result.threadLevel));
+    const allLevels = allLevelsByIndex.reduce((oneLevel, anotherLevel) => _.union(oneLevel, anotherLevel));
+
+    function maxLevelIdx(seriesIndex) {
+      let results = series[seriesIndex].threadResults.map(result => result.ops_per_sec)
+      let max = _.max(results)
+      return results.indexOf(max)
     }
 
-    var allLevels = extractThreadLevels(series)
-    const maxLevel = '' + _.max(allLevels, (d) => +d)
-    const maxLevelIdx = _.indexOf(allLevels, maxLevel)
+    maxIdx = _.max(allLevels);
 
-    var levelsMeta = threadMode == MAXONLY
-      ? [{name: 'MAX', idx: maxLevelIdx, color: '#484848', isActive: true}]
-      : _.map(allLevels, function(d, i) {
-        var data = {
+    const levelsMeta = threadMode === MAXONLY
+      ? [{name: 'MAX', idx: maxIdx, color: '#484848', isActive: true}]
+      : _.map(allLevels, function (d, i) {
+        const data = {
           name: d,
-          idx: _.indexOf(allLevels, d),
+          idx: i,
           isActive: true,
-        }
+        };
 
-        var match = cfg.knownLevels[d];
+        const match = cfg.knownLevels[d];
 
-        data.color = colors(match ? match.colorId : cfg.knownLevelsCount + i)
+        data.color = colors(match ? match.colorId : cfg.knownLevelsCount + i);
         return data
-      })
+      });
 
-    var activeLevels
-    var activeLevelNames
+    let activeLevels;
+    let activeLevelNames;
+
     function updateActiveLevels() {
-      activeLevels = _.where(levelsMeta, {isActive: true})
-      activeLevelNames = _.map(activeLevels, function(d) {
-        return '' + d.name
-      })
+      activeLevels = levelsMeta.filter(meta => meta.isActive);
+      activeLevelNames = activeLevels.map(level => level.name)
     }
 
-    updateActiveLevels()
+    updateActiveLevels();
 
     // Depend on threadMode, key, activeLevelNames, cfg
     function getCompValues(compSample) {
-      if (threadMode == MAXONLY) {
+      if (threadMode === MAXONLY) {
         return [compSample.maxThroughputForTest(key, cfg.valueAttr)]
       } else { // All thread levels mode
-        var testResult = compSample.resultForTest(key)
+        const testResult = compSample.resultForTest(key);
         if (testResult) {
-          return _.map(activeLevelNames, function(lvl) {
+          return _.map(activeLevelNames, function (lvl) {
             let results = testResult.results[lvl];
             if (!results) {
               return null;
@@ -143,52 +140,46 @@ mciModule.factory('DrawPerfTrendChart', function (
     // Type: [[num, ...], ...]
     // First level array contain values for each baseline
     // Each value represent baseline value for thread level(s)
-    let compSamplesValues = _.map(compareSamples, function(compSample) {
+    let compSamplesValues = _.map(compareSamples, function (compSample) {
       return _.filter(getCompValues(compSample))
-    })
+    });
 
 
     // For given `activeLevels` returns those which exists in the `sample`
     function threadLevelsForSample(sample, activeLevels) {
-      return _.filter(activeLevels, function(d) {
+      return _.filter(activeLevels, function (d) {
         return _.includes(_.pluck(sample.threadResults, 'threadLevel'), d.name)
       })
     }
 
-    var bfsForLevel = []
-    _.each(visibleBFs, function(bf) {
-      _.each(levelsMeta, function(level) {
-        if (_.find(bfsForLevel, function(d) {
-          d.level == level && d.bf.first_failing_revision == bf.first_failing_revision
-        })) {
-          return
-        }
-
+    const bfsForLevel = [];
+    _.each(visibleBFs, function (bf) {
+      _.each(levelsMeta, function (level) {
         bfsForLevel.push({
           level: level,
           bf: bf,
         })
       })
-    })
+    });
 
     // Array with combinations combinations of {level, changePoint}
-    var changePointForLevel
+    let changePointForLevel;
 
     function updateChangePointsForLevel() {
-      changePointForLevel = []
-      _.each(visibleChangePoints, function(point) {
+      changePointForLevel = [];
+      _.each(visibleChangePoints, function (point) {
         point.bfs = _.where(
           buildFailures, {first_failing_revision: point.suspect_revision}
-        ) || []
-        var level = _.findWhere(levelsMeta, {name: point.thread_level})
-        var levels = level ? [level] : levelsMeta
+        ) || [];
+        const level = _.findWhere(levelsMeta, {name: point.thread_level});
+        const levels = level ? [level] : levelsMeta;
 
-        _.each(levels, function(level) {
+        _.each(levels, function (level) {
           // Check if there is existing point for this revision/level
           // Mostly for MAXONLY mode
-          var existing = _.find(changePointForLevel, function(d) {
-            return d.level == level && d.changePoint.suspect_revision == point.suspect_revision
-          })
+          const existing = _.find(changePointForLevel, function (d) {
+            return d.level === level && d.changePoint.suspect_revision === point.suspect_revision
+          });
           // If the point already exists, increase count meta property
           if (existing) {
             existing.count++
@@ -204,74 +195,74 @@ mciModule.factory('DrawPerfTrendChart', function (
     }
 
     // Calculate legend x pos based on levels
-    cfg.legend.xPos = (cfg.container.width - levelsMeta.length * cfg.legend.step) / 2
+    cfg.legend.xPos = (cfg.container.width - levelsMeta.length * cfg.legend.step) / 2;
 
     // Obtains value extractor fn for given `level` and series `item`
     // The obtained function is curried, so you should call it as fn(level)(item)
-    var getValueFor = threadMode == MAXONLY
+    const getValueFor = threadMode === MAXONLY
       ? PerfChartService.getValueForMaxOnly
-      : PerfChartService.getValueForAllLevels
+      : PerfChartService.getValueForAllLevels;
 
     // When there are more than one value in opsValues item
-    var hasValues = _.all(opsValues, function(d) {
+    const hasValues = _.all(opsValues, function (d) {
       return d && d.length > 1
-    })
+    });
 
     // Calculate X Ticks values
-    var idxStep = (series.length / cfg.xAxis.maxTicks + 2) | 0
-    var xTicksData = _.filter(series, function(d, i) {
-      return i % idxStep == 0
-    })
+    const idxStep = (series.length / cfg.xAxis.maxTicks + 2) | 0;
+    const xTicksData = _.filter(series, function (d, i) {
+      return i % idxStep === 0
+    });
 
-    var xScale = d3.scale.linear()
+    const xScale = d3.scale.linear()
       .domain([0, series.length - 1])
-      .range([0, cfg.effectiveWidth])
+      .range([0, cfg.effectiveWidth]);
 
-    var yScale = linearMode ? d3.scale.linear() : d3.scale.log()
+    let yScale = linearMode ? d3.scale.linear() : d3.scale.log();
 
     function getOpsValues(sample) {
       // For each active thread level extract values
       // including undefined values for missing data
-      return _.map(activeLevelNames, function(d) {
-        var result = _.findWhere(sample.threadResults, {threadLevel: d})
+      return _.map(activeLevelNames, function (d) {
+        const result = _.findWhere(sample.threadResults, {threadLevel: d});
         return result && (result[cfg.valueAttr]);
       })
     }
 
     function calculateYScaleDomain() {
-      var flatOpsValues = _.flatten(
-        _.map(series, function(d) {
-          if (threadMode == MAXONLY) {
+      const flatOpsValues = _.flatten(
+        _.map(series, function (d, i) {
+          if (threadMode === MAXONLY) {
             // In maxonly mode levels contain single (max) item
             // Extract just one ops item
-            return d.threadResults[maxLevelIdx][cfg.valueAttr];
+            return d.threadResults[maxLevelIdx(i)][cfg.valueAttr];
           } else {
             return getOpsValues(d);
           }
         })
-      )
+      );
 
-      let flatCompValues = _.flatten(compSamplesValues)
-      let allValuesFlat = flatOpsValues.concat(flatCompValues)
+      let flatCompValues = _.flatten(compSamplesValues);
+      let allValuesFlat = flatOpsValues.concat(flatCompValues);
 
-      var multiSeriesAvg = d3.mean(allValuesFlat)
-      var multiSeriesMin = d3.min(allValuesFlat)
-      var multiSeriesMax = d3.max(allValuesFlat)
+      const multiSeriesAvg = d3.mean(allValuesFlat);
+      const multiSeriesMin = d3.min(allValuesFlat);
+      const multiSeriesMax = d3.max(allValuesFlat);
 
       // Zoomed mode / linear scale is default.
       // If the upper and lower y-axis values are very close to the average (within 10%)
       // add extra padding to the upper and lower bounds of the graph for display.
-      var yAxisUpperBound = d3.max([multiSeriesMax, multiSeriesAvg * 1.1]);
-      var yAxisLowerBound = originMode ? 0 : d3.min([multiSeriesMin, multiSeriesAvg * .9]);
+      let yAxisUpperBound = d3.max([multiSeriesMax, multiSeriesAvg * 1.1]);
+      let yAxisLowerBound = originMode ? 0 : d3.min([multiSeriesMin, multiSeriesAvg * .9]);
 
       // Create a log based scale, remove any 0 values (log(0) is infinity).
       if (!linearMode) {
-        if (yAxisUpperBound == 0) {
+        if (yAxisUpperBound === 0) {
           yAxisUpperBound = 1e-1;
         }
-        if (yAxisLowerBound == 0 ) {
+        if (yAxisLowerBound === 0) {
           yAxisLowerBound = multiSeriesMin;
-          if (yAxisLowerBound == 0) {
+          if (yAxisLowerBound === 0) {
             yAxisLowerBound = 1e-1;
           }
         }
@@ -292,43 +283,51 @@ mciModule.factory('DrawPerfTrendChart', function (
 
     yScale = yScale.clamp(true)
       .range([cfg.effectiveHeight, 0])
-      .nice(5)
+      .nice(5);
 
     function updateYScaleDomain() {
       yScale.domain(calculateYScaleDomain())
     }
 
-    updateYScaleDomain()
+    updateYScaleDomain();
 
-    var yAxis = d3.svg.axis()
-        .scale(yScale)
-        .orient('left')
-        .ticks(cfg.yAxis.ticks, function(value) {
-          return formatNumber(value)
-        })
+    const yAxis = d3.svg.axis()
+      .scale(yScale)
+      .orient('left')
+      .ticks(cfg.yAxis.ticks, function (value) {
+        return formatNumber(value)
+      });
 
     // ## CHART STRUCTURE ##
 
     // multi line
-    var mline = d3.svg.line()
+    const mline = d3.svg.line()
       .defined(_.identity)
-      .x(function(d, i) {
+      .x(function (d, i) {
         return xScale(i);
       })
-      .y(function(d) {
+      .y(function (d) {
         return yScale(d);
       });
 
     if (hasValues) {
       var maxline = d3.svg.line()
         .defined(_.identity)
-        .x(function(d, i) { return xScale(i) })
-        .y(function(d) { return yScale(d3.max(d[cfg.valueAttr + "_values"])) })
+        .x(function (d, i) {
+          return xScale(i)
+        })
+        .y(function (d) {
+          return yScale(d3.max(d[cfg.valueAttr + "_values"]))
+        });
 
       var minline = d3.svg.line()
         .defined(_.identity)
-        .x(function(d, i) { return xScale(i) })
-        .y(function(d) { return yScale(d3.min(d[cfg.valueAttr + "_values"])) })
+        .x(function (d, i) {
+          return xScale(i)
+        })
+        .y(function (d) {
+          return yScale(d3.min(d[cfg.valueAttr + "_values"]))
+        })
     }
 
     // Y Axis
@@ -336,7 +335,7 @@ mciModule.factory('DrawPerfTrendChart', function (
       .attr({
         class: 'y-axis',
         transform: d3Translate(cfg.margin.left - cfg.yAxis.gap, cfg.margin.top)
-      })
+      });
 
     function updateYAxis() {
       svg.select('g.y-axis')
@@ -344,11 +343,13 @@ mciModule.factory('DrawPerfTrendChart', function (
         .call(yAxis)
     }
 
-    updateYAxis()
+    updateYAxis();
 
-    var getIdx = function(d) { return _.findIndex(series, d) }
+    const getIdx = function (d) {
+      return _.findIndex(series, d)
+    };
 
-    var xTicks = svg.append('svg:g')
+    const xTicks = svg.append('svg:g')
       .attr({
         transform: d3Translate(cfg.margin.left, cfg.margin.top)
       })
@@ -357,8 +358,10 @@ mciModule.factory('DrawPerfTrendChart', function (
       .enter()
       .append('svg:g')
       .attr({
-        transform: function(d) { return d3Translate(xScale(getIdx(d)), 0) }
-      })
+        transform: function (d) {
+          return d3Translate(xScale(getIdx(d)), 0)
+        }
+      });
 
     // X Tick date text
     xTicks
@@ -368,7 +371,9 @@ mciModule.factory('DrawPerfTrendChart', function (
         class: 'x-tick-label',
         'text-anchor': 'middle'
       })
-      .text(function(d) { return moment(d.createTime).format(cfg.xAxis.format) })
+      .text(function (d) {
+        return moment(d.createTime).format(cfg.xAxis.format)
+      });
 
     // X Tick vertical line
     xTicks
@@ -379,40 +384,40 @@ mciModule.factory('DrawPerfTrendChart', function (
         x1: 0,
         y1: 0,
         y2: cfg.effectiveHeight
-      })
+      });
 
     // Show legend for 'all levels' mode only
-    if (threadMode != MAXONLY) {
-      var legendG = svg.append('svg:g')
+    if (threadMode !== MAXONLY) {
+      const legendG = svg.append('svg:g')
         .attr({
           class: 'legend',
           transform: d3Translate(cfg.legend.xPos, cfg.legend.yPos)
-        })
+        });
 
-      var legendIter = legendG.selectAll('g')
+      const legendIter = legendG.selectAll('g')
         .data(levelsMeta)
         .enter()
         .append('svg:g')
         .attr({
-          transform: function(d, i) {
+          transform: function (d, i) {
             return d3Translate(i * cfg.legend.step, 0)
           }
         })
         .style('cursor', 'pointer')
-        .on('click', function(d) {
-          d.isActive = !d.isActive
-          updateActiveLevels()
-          updateYScaleDomain()
-          updateYAxis()
-          redrawLines()
-          redrawLegend()
-          redrawRefLines()
-          redrawTooltip()
-          redrawChangePoints()
+        .on('click', function (d) {
+          d.isActive = !d.isActive;
+          updateActiveLevels();
+          updateYScaleDomain();
+          updateYAxis();
+          redrawLines();
+          redrawLegend();
+          redrawRefLines();
+          redrawTooltip();
+          redrawChangePoints();
           redrawBFs()
-        })
+        });
 
-      redrawLegend()
+      redrawLegend();
 
       function redrawLegend() {
         legendIter.append('svg:rect')
@@ -420,66 +425,74 @@ mciModule.factory('DrawPerfTrendChart', function (
             y: cfg.legend.textOverRectOffset,
             width: cfg.legend.itemWidth,
             height: cfg.legend.itemHeight,
-            fill: function(d) {
+            fill: function (d) {
               return d.isActive ? d.color : '#666'
             }
-          })
+          });
 
         legendIter.append('svg:text')
-          .text(function(d) { return d.name })
+          .text(function (d) {
+            return d.name
+          })
           .attr({
             x: cfg.legend.itemWidth / 2,
-            fill: function(d) { return d.isActive ? 'white' : '#DDD' },
+            fill: function (d) {
+              return d.isActive ? 'white' : '#DDD'
+            },
             'text-anchor': 'middle',
           })
       }
     }
 
     // Chart draw area group
-    var chartG = svg.append('svg:g')
-      .attr('transform', d3Translate(cfg.margin.left, cfg.margin.top))
+    const chartG = svg.append('svg:g')
+      .attr('transform', d3Translate(cfg.margin.left, cfg.margin.top));
 
-    var linesG = chartG.append('g').attr({class: 'lines-g'})
+    const linesG = chartG.append('g').attr({class: 'lines-g'});
 
     function redrawLines() {
-      var lines = linesG.selectAll('path')
-        .data(activeLevels)
+      const lines = linesG.selectAll('path')
+        .data(activeLevels);
 
       lines
         .transition()
         .attr({
-          d: function(level) {
+          d: function (level) {
             return mline(_.map(series, getValueFor(level)))
           }
         })
         .style({
-          stroke: function(d) { return d.color },
-        })
+          stroke: function (d) {
+            return d.color
+          },
+        });
 
       lines
         .enter()
         .append('path')
         .attr({
-          d: function(level) {
+          d: function (level) {
             return mline(_.map(series, getValueFor(level)))
           },
         })
         .style({
-          stroke: function(d) { return d.color },
-        })
+          stroke: function (d) {
+            return d.color
+          },
+        });
 
-      lines.exit().remove()
+      lines.exit().remove();
 
       // Only set the current revision marker if the current
       // revision is found
-      if (currentItemIdx != -1) {
+      if (currentItemIdx !== -1) {
         const commitCircle = chartG
-            .selectAll('circle.current')
-            .data(
-              threadMode == MAXONLY
-                ? activeLevels
-                : threadLevelsForSample(series[currentItemIdx], activeLevels)
-            )
+          .selectAll('circle.current')
+          .data(
+            threadMode === MAXONLY
+              ? activeLevels
+              : threadLevelsForSample(series[currentItemIdx], activeLevels)
+          );
 
         commitCircle
           .enter()
@@ -487,26 +500,28 @@ mciModule.factory('DrawPerfTrendChart', function (
           .attr({
             class: 'point current',
             cx: xScale(currentItemIdx),
-            cy: function(level) {
+            cy: function (level) {
               return yScale(getValueFor(level)(series[currentItemIdx]))
             },
             r: cfg.points.focusedR + 0.5,
-            stroke: function(d) { return d.color },
-          })
+            stroke: function (d) {
+              return d.color
+            },
+          });
 
         commitCircle
           .transition()
           .attr({
-            cy: function(level) {
+            cy: function (level) {
               return yScale(getValueFor(level)(series[currentItemIdx]))
             }
-          })
+          });
 
         commitCircle.exit().remove()
       }
     }
 
-    redrawLines()
+    redrawLines();
 
     if (hasValues) {
       chartG.append('path')
@@ -514,7 +529,7 @@ mciModule.factory('DrawPerfTrendChart', function (
         .attr({
           class: 'error-line',
           d: maxline
-        })
+        });
 
       chartG.append('path')
         .data([series])
@@ -529,7 +544,7 @@ mciModule.factory('DrawPerfTrendChart', function (
     function drawRefLines(values, idx) {
       let refLines = d3.select(this)
         .selectAll('line')
-        .data(values)
+        .data(values);
 
       // Create new elements (ref. lines)
       refLines
@@ -541,48 +556,52 @@ mciModule.factory('DrawPerfTrendChart', function (
           x2: cfg.effectiveWidth,
           'stroke-width': '2',
           'stroke-dasharray': '5,5'
-        })
+        });
 
       // Update existing elements (ref. lines)
       refLines
         .attr({
           y1: d => yScale(d),
-          y2: function() { return this.attributes.y1.value }, // Tricky way to  y2 = y1
-          stroke: function() { return d3.rgb(colors(idx + 1)).brighter() },
-        })
+          y2: function () {
+            return this.attributes.y1.value
+          }, // Tricky way to  y2 = y1
+          stroke: function () {
+            return d3.rgb(colors(idx + 1)).brighter()
+          },
+        });
 
       // Remove unused elements (ref. lines)
       refLines.exit().remove()
     }
 
-    const refLinesTopLevelG = chartG.append('g').attr('class', 'cmp-lines')
+    const refLinesTopLevelG = chartG.append('g').attr('class', 'cmp-lines');
 
     // top-level function which redraws reference lines
     // alias: baselines
     function redrawRefLines() {
       let refLinesG = refLinesTopLevelG.selectAll('g')
-        .data(compSamplesValues)
+        .data(compSamplesValues);
 
       refLinesG
         .enter()
-        .append('g')
+        .append('g');
 
       // Create new elements (ref. line groups)
       refLinesG
         .attr({class: (_, idx) => 'cmp-' + idx})
-        .each(drawRefLines)
+        .each(drawRefLines);
 
       // Remove unused elements (ref. line groups)
       refLinesG.exit().remove()
     }
 
-    redrawRefLines()
+    redrawRefLines();
 
     function redrawBFs() {
-      var bfs = bfsG.selectAll('g.bf')
-        .data(_.filter(bfsForLevel, function(d) {
+      const bfs = bfsG.selectAll('g.bf')
+        .data(_.filter(bfsForLevel, function (d) {
           return d.level.isActive
-        }))
+        }));
 
       bfs
         .enter()
@@ -598,159 +617,167 @@ mciModule.factory('DrawPerfTrendChart', function (
           stroke: 'green',
           fill: '#00FF00',
           'stroke-width': 2,
-        })
+        });
 
       bfs
         .transition()
         .attr({
-          transform: function(d) {
-            var idx = idxByRevision(series, d.bf.first_failing_revision)
+          transform: function (d) {
+            const idx = idxByRevision(series, d.bf.first_failing_revision);
             return d3Translate(xScale(idx), yScale(getValueFor(d.level)(series[idx])))
           },
-        })
+        });
 
       bfs.exit().remove()
     }
 
     function redrawChangePoints() {
       // Rebuild change points for level list before rendering
-      updateChangePointsForLevel()
+      updateChangePointsForLevel();
 
       // Render change points
-      var pointsAndSegments = _.chain(changePointForLevel)
-        .filter(function(d) { return d.level.isActive })
-        .partition(function(d) { // Separate points and segments
-          return d.changePoint._meta.firstRevIdx == d.changePoint._meta.lastRevIdx
+      const pointsAndSegments = _.chain(changePointForLevel)
+        .filter(function (d) {
+          return d.level.isActive
         })
-        .value()
+        .partition(function (d) { // Separate points and segments
+          return d.changePoint._meta.firstRevIdx === d.changePoint._meta.lastRevIdx
+        })
+        .value();
 
-      var changePointSegments = changePointsG.selectAll('g.change-point-segment')
-        .data(pointsAndSegments[1])
+      const changePointSegments = changePointsG.selectAll('g.change-point-segment')
+        .data(pointsAndSegments[1]);
 
       changePointSegments
         .enter()
         .append('g')
-          .attr({
-            class: 'point change-point-segment',
-          })
+        .attr({
+          class: 'point change-point-segment',
+        })
         .append('line')
         .style({
           'stroke-width': '4',
-        })
+        });
 
       changePointSegments.select('line')
         .transition()
         .attr({
-          x1: function(d) { return xScale(d.changePoint._meta.firstRevIdx) },
-          x2: function(d) { return xScale(d.changePoint._meta.lastRevIdx) },
-          y1: function(d) {
+          x1: function (d) {
+            return xScale(d.changePoint._meta.firstRevIdx)
+          },
+          x2: function (d) {
+            return xScale(d.changePoint._meta.lastRevIdx)
+          },
+          y1: function (d) {
             return yScale(getValueFor(d.level)(series[d.changePoint._meta.firstRevIdx]))
           },
-          y2: function(d) {
+          y2: function (d) {
             return yScale(getValueFor(d.level)(series[d.changePoint._meta.lastRevIdx]))
           },
         })
         .style({
           stroke: (d) =>
             d.changePoint.processed_type === PROCESSED_TYPE.NONE ? 'red' :
-            d.changePoint.processed_type === PROCESSED_TYPE.ACKNOWLEDGED ? 'green' :
-            d.changePoint.processed_type === PROCESSED_TYPE.HIDDEN ? 'darkblue' :
-            'cyan' // cyan for invalid processed_type
+              d.changePoint.processed_type === PROCESSED_TYPE.ACKNOWLEDGED ? 'green' :
+                d.changePoint.processed_type === PROCESSED_TYPE.HIDDEN ? 'darkblue' :
+                  'cyan' // cyan for invalid processed_type
           ,
-        })
+        });
 
-      changePointSegments.exit().remove()
+      changePointSegments.exit().remove();
 
-      var changePointPoints = changePointsG.selectAll('g.change-point')
-        .data(pointsAndSegments[0])
+      const changePointPoints = changePointsG.selectAll('g.change-point')
+        .data(pointsAndSegments[0]);
 
       changePointPoints
         .enter()
         .append('g')
-          .attr({
-            class: 'point change-point',
-          })
+        .attr({
+          class: 'point change-point',
+        })
         .append('path') // Plus sign image for change points
-          .attr({
-            // plus-sign stroke
-            class: 'change-point',
-            d: 'M-7,3.5h4v4h6v-4h4v-6h-4v-4h-6v4h-4z',
-          }).style({
-            fill: function(d) {
-              return d.count == 1 ? 'yellow' :
-                     d.count == 2 ? 'orange' :
-                     'red'
-            },
-          })
+        .attr({
+          // plus-sign stroke
+          class: 'change-point',
+          d: 'M-7,3.5h4v4h6v-4h4v-6h-4v-4h-6v4h-4z',
+        }).style({
+        fill: function (d) {
+          return d.count === 1 ? 'yellow' :
+            d.count === 2 ? 'orange' :
+              'red'
+        },
+      });
 
       changePointPoints
         .attr({
-          transform: function(d) {
-            var idx = _.findIndex(series, function(sample) {
-              return sample && sample.revision == d.changePoint.suspect_revision
-            })
+          transform: function (d) {
+            const idx = _.findIndex(series, function (sample) {
+              return sample && sample.revision === d.changePoint.suspect_revision
+            });
 
             return idx > -1 ? d3Translate(
               xScale(idx),
               yScale(getValueFor(d.level)(series[idx]))
             ) : undefined
           },
-        })
+        });
 
       changePointPoints.exit().remove()
     }
 
     var bfsG = chartG.append('g')
-      .attr('class', 'g-bfs')
+      .attr('class', 'g-bfs');
 
-    redrawBFs()
+    redrawBFs();
 
     var changePointsG = chartG.append('g')
-      .attr('class', 'g-change-points')
+      .attr('class', 'g-change-points');
 
-    redrawChangePoints()
+    redrawChangePoints();
 
     chartG.append('g')
-      .attr({class: 'change-point-info'})
+      .attr({class: 'change-point-info'});
 
     // -- REGULAR POINT HOVER --
     // Contains elements for hover behavior
-    var focusG = chartG.append('g')
-      .style('display', 'none')
+    const focusG = chartG.append('g')
+      .style('display', 'none');
 
-    var focusedLine = focusG.append('line')
+    const focusedLine = focusG.append('line')
       .attr({
         class: 'focus-line',
         x1: 0,
         x2: 0,
         y1: cfg.effectiveHeight,
-      })
+      });
 
-    var enableFocusGroup
-    var focusedPointsRef
-    var focusedTextRef
+    let enableFocusGroup;
+    let focusedPointsRef;
+    let focusedTextRef;
 
     function redrawTooltip() {
-      focusG.style('display', 'none')
+      focusG.style('display', 'none');
 
       // This function could be called just once
       enableFocusGroup = _.once(
-        function() {
+        function () {
           focusG.style('display', null)
         }
       )
     }
 
-    redrawTooltip()
+    redrawTooltip();
 
-    function updateToolitp(levels) {
-      var focusedPoints = focusG.selectAll('circle')
-        .data(levels)
+    function updateTooltip(levels) {
+      const focusedPoints = focusG.selectAll('circle')
+        .data(levels);
 
       focusedPointsRef = focusedPoints
         .attr({
-          fill: function(d) { return d3.rgb(d.color).darker() },
-        })
+          fill: function (d) {
+            return d3.rgb(d.color).darker()
+          },
+        });
 
       focusedPoints
         .enter()
@@ -758,18 +785,22 @@ mciModule.factory('DrawPerfTrendChart', function (
         .attr({
           class: 'focus-point',
           r: cfg.points.focusedR,
-          fill: function(d) { return d3.rgb(d.color).darker() },
-        })
+          fill: function (d) {
+            return d3.rgb(d.color).darker()
+          },
+        });
 
-      focusedPoints.exit().remove()
+      focusedPoints.exit().remove();
 
-      var focusedText = focusG.selectAll('text')
-        .data(levels)
+      const focusedText = focusG.selectAll('text')
+        .data(levels);
 
       focusedTextRef = focusedText
         .attr({
-          fill: function(d) { return d3.rgb(d.color).darker(2) },
-        })
+          fill: function (d) {
+            return d3.rgb(d.color).darker(2)
+          },
+        });
 
       focusedText
         .enter()
@@ -777,18 +808,20 @@ mciModule.factory('DrawPerfTrendChart', function (
         .attr({
           class: 'focus-text',
           x: cfg.focus.labelOffset.x,
-          fill: function(d) { return d3.rgb(d.color).darker(2) },
-        })
+          fill: function (d) {
+            return d3.rgb(d.color).darker(2)
+          },
+        });
 
       focusedText.exit().remove()
     }
 
     // -- CHANGE POINT HOVER --
-    var toolTipG = chartG.append('g')
+    const toolTipG = chartG.append('g')
       .attr({
         class: 'g-tool-tip',
       })
-      .style('opacity', 0)
+      .style('opacity', 0);
 
     const toolTipContentG = toolTipG.append('g')
       .attr({
@@ -796,7 +829,7 @@ mciModule.factory('DrawPerfTrendChart', function (
           -cfg.toolTip.xOffset + cfg.toolTip.margin,
           cfg.toolTip.yOffset + cfg.toolTip.margin
         ),
-      })
+      });
 
     toolTipContentG.append('rect')
       .attr({
@@ -811,7 +844,7 @@ mciModule.factory('DrawPerfTrendChart', function (
         fill: '#FFE',
         stroke: '#EED',
         'stroke-width': 2,
-      })
+      });
 
     toolTipContentG.append('line')
       .attr({
@@ -823,18 +856,18 @@ mciModule.factory('DrawPerfTrendChart', function (
       .style({
         stroke: 'black',
         'stroke-width': 1,
-      })
+      });
 
     function translateToolTipItem(d) {
       return d3Translate(0, cfg.toolTip.interlineSpace * (d.idx + .67))
     }
 
-    var toolTipItem = toolTipContentG
+    const toolTipItem = toolTipContentG
       .selectAll('g.stat')
       // Display all statistical items
       // Non-statistical items are handled separately
       .data(
-        _.filter(cfg.toolTip.labels, function(d) {
+        _.filter(cfg.toolTip.labels, function (d) {
             return d.nonStat !== true
           }
         )
@@ -844,9 +877,9 @@ mciModule.factory('DrawPerfTrendChart', function (
       .attr({
         class: 'stat',
         transform: translateToolTipItem,
-      })
+      });
 
-    var nonStatToolTipItem = toolTipContentG
+    const nonStatToolTipItem = toolTipContentG
       .selectAll('g.non-stat')
       .data(_.where(cfg.toolTip.labels, {nonStat: true}))
       .enter()
@@ -854,7 +887,7 @@ mciModule.factory('DrawPerfTrendChart', function (
       .attr({
         class: 'non-stat',
         transform: translateToolTipItem,
-      })
+      });
 
     function placeTitle(d) {
       return d
@@ -870,8 +903,8 @@ mciModule.factory('DrawPerfTrendChart', function (
         })
     }
 
-    toolTipItem.call(placeTitle)
-    nonStatToolTipItem.call(placeTitle)
+    toolTipItem.call(placeTitle);
+    nonStatToolTipItem.call(placeTitle);
 
     toolTipItem
       .append('text')
@@ -880,7 +913,7 @@ mciModule.factory('DrawPerfTrendChart', function (
         y: 0,
         'text-anchor': 'end',
         class: 'prev',
-      })
+      });
 
     toolTipItem
       .append('text')
@@ -888,7 +921,7 @@ mciModule.factory('DrawPerfTrendChart', function (
         x: cfg.toolTip.colOffset[2],
         y: 0,
       })
-      .text('➞')
+      .text('➞');
 
     toolTipItem
       .append('text')
@@ -896,7 +929,7 @@ mciModule.factory('DrawPerfTrendChart', function (
         x: cfg.toolTip.colOffset[3],
         y: 0,
         class: 'next',
-      })
+      });
 
     nonStatToolTipItem
       .append('text')
@@ -904,7 +937,7 @@ mciModule.factory('DrawPerfTrendChart', function (
         x: cfg.toolTip.colOffset[0] + 5,
         y: 0,
         class: 'value',
-      })
+      });
 
     // For given 1d directional segment with length `len` and offset `pos`
     // calculate new position, which fits `domain`
@@ -958,8 +991,8 @@ mciModule.factory('DrawPerfTrendChart', function (
       // Fit tool tip panel into chart container
       toolTipG
         .attr({
-          'transform': function() {
-            const mousePos = d3.mouse(chartG[0][0]) // [0][0] is required to get bare <g> element
+          'transform': function () {
+            const mousePos = d3.mouse(chartG[0][0]); // [0][0] is required to get bare <g> element
             return d3Translate.apply(
               null,
               fit(
@@ -978,28 +1011,30 @@ mciModule.factory('DrawPerfTrendChart', function (
     function changePointMouseOver(point) {
       function extractToolTipValue(item, obj) {
         // Get raw value of the stat item
-        var rawValue = _.isFunction(item.key)
+        const rawValue = _.isFunction(item.key)
           ? item.key(obj)
-          : obj[item.key]
+          : obj[item.key];
         // Apply formatting if defined
         return item.formatter ? item.formatter(rawValue) : rawValue
       }
 
       function statTextFor(statItemName) {
-        return function(d) {
-          var cpStat = point.statistics[statItemName]
+        return function (d) {
+          const cpStat = point.statistics[statItemName];
           return extractToolTipValue(d, cpStat)
         }
       }
 
       toolTipItem.select('text.prev')
-        .text(_.compose(formatNumber, statTextFor('previous')))
+        .text(_.compose(formatNumber, statTextFor('previous')));
 
       toolTipItem.select('text.next')
-        .text(_.compose(formatNumber, statTextFor('next')))
+        .text(_.compose(formatNumber, statTextFor('next')));
 
       nonStatToolTipItem.select('text.value')
-        .text(function(d) { return extractToolTipValue(d, point) })
+        .text(function (d) {
+          return extractToolTipValue(d, point)
+        });
 
       toolTipG
         .transition()
@@ -1023,103 +1058,107 @@ mciModule.factory('DrawPerfTrendChart', function (
         width: cfg.effectiveWidth,
         height: cfg.effectiveHeight
       })
-      .on('mouseover', function() {
+      .on('mouseover', function () {
         scope.currentHoverSeries = series;
       })
-      .on('click', function() {
-        scope.locked = !scope.locked
+      .on('click', function () {
+        scope.locked = !scope.locked;
         scope.$digest()
       })
-      .on('mousemove', overlayMouseMove)
+      .on('mousemove', overlayMouseMove);
 
-    var cpHover = false
+    let cpHover = false;
 
     function overlayMouseMove() {
       if (scope.locked) return;
-      var idx = Math.round(xScale.invert(d3.mouse(this)[0]))
-      var d = series[idx]
+      const idx = Math.round(xScale.invert(d3.mouse(this)[0]));
+      const d = series[idx];
 
       // Handle the case where there is no data (it may be rejected).
-      if(!d) {
+      if (!d) {
         return;
       }
-      var hash = d.revision
+      const hash = d.revision;
 
-      var hoveredChangePoint = _.filter(visibleChangePoints, function(d) {
+      const hoveredChangePoint = _.filter(visibleChangePoints, function (d) {
         return d._meta.firstRevIdx <= idx && idx <= d._meta.lastRevIdx
-      })[0]
+      })[0];
 
       if (hoveredChangePoint) {
         if (!cpHover) {
           changePointMouseOver(hoveredChangePoint)
         }
-        changePointMouseMove()
+        changePointMouseMove();
         cpHover = true
       } else if (cpHover) {
-        changePointMouseOut()
+        changePointMouseOut();
         cpHover = false
       }
 
       // Reduce number of calls if hash didn't changed
-      if (hash != scope.$parent.currentHash) {
+      if (hash !== scope.$parent.currentHash) {
         scope.$parent.currentHash = hash;
-        scope.$parent.currentHashDate = d.createTime
+        scope.$parent.currentHashDate = d.createTime;
         scope.$parent.bfs = _.pluck(
           _.where(visibleBFs, {first_failing_revision: hash}),
           'key'
-        )
-        scope.$parent.cps = _.filter(visibleChangePoints, function(d) {
-          return d._meta.firstRevIdx == idx || d._meta.lastRevIdx == idx
-        })
-        scope.$emit('hashChanged', hash)
+        );
+        scope.$parent.cps = _.filter(visibleChangePoints, function (d) {
+          return d._meta.firstRevIdx === idx || d._meta.lastRevIdx === idx
+        });
+        scope.$emit('hashChanged', hash);
         scope.$parent.$digest()
       }
     }
 
     function focusPoint(hash) {
-      var idx = _.findIndex(series, function(d) {
-        return d && d.revision == hash
-      })
-      if (idx == undefined) return;
-      var item = series[idx]
+      const idx = _.findIndex(series, function (d) {
+        return d && d.revision === hash
+      });
+      if (idx === undefined) return;
+      const item = series[idx];
       if (!item) return;
 
-      var x = xScale(idx)
+      let x = xScale(idx);
 
       // List of per thread level values for selected item
       let values = _.filter(
-        threadMode == MAXONLY
-          ? [item.threadResults[maxLevelIdx][cfg.valueAttr]]
+        threadMode === MAXONLY
+          ? [item.threadResults[maxLevelIdx(idx)][cfg.valueAttr]]
           : _.filter(getOpsValues(item))
-      )
+      );
 
       // If there are no values for current metric, skip
-      if (values.length == 0) return
+      if (values.length === 0) return;
 
-      var maxOps = _.max(values);
+      const maxOps = _.max(values);
 
       // List of dot Y positions
-      var yScaledValues = _.map(values, yScale)
-      var opsLabelsY = PerfChartService.getOpsLabelYPosition(yScaledValues, cfg);
+      const yScaledValues = _.map(values, yScale);
+      const opsLabelsY = PerfChartService.getOpsLabelYPosition(yScaledValues, cfg);
 
-      focusG.attr('transform', d3Translate(x, 0))
+      focusG.attr('transform', d3Translate(x, 0));
 
       // Add/Remove tooltip items (some data samples may not contain all thread levels)
-      updateToolitp(threadMode == MAXONLY
+      updateTooltip(threadMode === MAXONLY
         ? activeLevels
         : threadLevelsForSample(item, activeLevels)
-      )
+      );
 
       focusedPointsRef.attr({
-        cy: function(d, i) { return yScaledValues[i] },
-      })
+        cy: function (d, i) {
+          return yScaledValues[i]
+        },
+      });
 
       focusedTextRef
         .attr({
-          y: function(d, i) { return opsLabelsY[i] },
-          transform: function(d, i) {
+          y: function (d, i) {
+            return opsLabelsY[i]
+          },
+          transform: function (d, i) {
             // transform the hover text location based on the list index
-            var x = 0
+            let x = 0;
 
             // Catch NS_LOOKUP_ERROR. Checking `this` and `this.getBBox` don't work
             // FIXME Should be a better way. Probably, complete refactoring required
@@ -1136,7 +1175,7 @@ mciModule.factory('DrawPerfTrendChart', function (
             return d3Translate(-x, 0)
           }
         })
-        .text(function(d, i) {
+        .text(function (d, i) {
           return formatNumber(values[i])
         });
 
@@ -1146,26 +1185,26 @@ mciModule.factory('DrawPerfTrendChart', function (
     }
 
     // :ptype context: {pointRevs: Array<String>, processed_type: PROCESSED_TYPE}
-    scope.$parent.$on('changePointsUpdate', function(evt, context) {
+    scope.$parent.$on('changePointsUpdate', function (evt, context) {
       // Assign new processed_type to visible change points
-      _.each(visibleChangePoints, function(cp) {
+      _.each(visibleChangePoints, function (cp) {
         if (_.contains(context.pointRevs, cp.suspect_revision)) {
           cp.processed_type = context.processed_type
         }
-      })
+      });
 
-      redrawChangePoints()
+      redrawChangePoints();
       // Hide a tooltip
-      toolTipG.style('opacity', 0)
+      toolTipG.style('opacity', 0);
       // Unlock the pointer
       scope.locked = false
-    })
+    });
 
-    scope.$on('hashChanged', function(evt, hash) {
+    scope.$on('hashChanged', function (evt, hash) {
       // Make tool tip visible
       enableFocusGroup();
       // Apply new position to tool tip
       focusPoint(hash)
     })
   }
-})
+});

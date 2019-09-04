@@ -68,3 +68,5 @@ test-endpoints.pid
 source-patch-1*
 evergreen 
 !cmd/evergreen
+
+package-lock.json
