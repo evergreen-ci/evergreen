@@ -90,12 +90,12 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	// SIGTERM from a deploy. This should maybe be a context with timeout.
 	err = g.Save(context.TODO(), p, v, t, pm)
 
-	// If the version has changed return nil because there was a race. Another generator will try again.
+	// If the version has changed there was a race. Another generator will try again.
 	if err != nil && adb.ResultsNotFound(err) {
-		return nil
+		return err
 	}
 	if err != nil {
-		return errors.Wrap(err, "error updating config in `generate.tasks`")
+		return errors.Wrap(err, "error saving config in `generate.tasks`")
 	}
 	return nil
 }
@@ -113,12 +113,22 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	}
 
 	err = j.generate(ctx, t)
-	j.AddError(err)
-	j.AddError(t.SetGenerateTasksError(err))
-	j.AddError(task.MarkGeneratedTasks(j.TaskID))
+	if err != nil && !adb.ResultsNotFound(err) {
+		j.AddError(err)
+		j.AddError(t.SetGenerateTasksError(err))
+	}
+	if err == nil {
+		j.AddError(task.MarkGeneratedTasks(j.TaskID))
+	}
 
 	grip.InfoWhen(err == nil, message.Fields{
 		"message":       "generate.tasks finished",
+		"duration_secs": time.Since(start).Seconds(),
+		"task":          t.Id,
+		"version":       t.Version,
+	})
+	grip.DebugWhen(adb.ResultsNotFound(err), message.Fields{
+		"message":       "generate.tasks noop",
 		"duration_secs": time.Since(start).Seconds(),
 		"task":          t.Id,
 		"version":       t.Version,
