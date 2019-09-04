@@ -133,7 +133,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		"task":          t.Id,
 		"version":       t.Version,
 	})
-	grip.Error(!adb.ResultsNotFound(err), message.WrapError(err, message.Fields{
+	grip.ErrorWhen(!adb.ResultsNotFound(err), message.WrapError(err, message.Fields{
 		"message":       "generate.tasks finished",
 		"duration_secs": time.Since(start).Seconds(),
 		"task":          t.Id,
