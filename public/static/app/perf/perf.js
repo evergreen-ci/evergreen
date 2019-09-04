@@ -535,6 +535,15 @@ $http.get(templateUrl).success(function(template) {
     $scope.syncHash(-1)
   }
 
+  $scope.perfDiscoveryURL = function() {
+    let url = "/perfdiscovery/#?from=" + $scope.task.version_id;
+    if ($scope.comparePerfSamples && $scope.comparePerfSamples[0]) {
+      url = url + "&to=" + $scope.comparePerfSamples[0].sample.version_id;
+    }
+
+    return url;
+  }
+
   $scope.addComparisonHash = function (hash) {
     $scope.addComparisonForm({ hash: hash }, true)
   }
