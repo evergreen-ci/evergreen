@@ -709,6 +709,7 @@ func PopulateGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
 				if err != nil {
 					return errors.Wrapf(err, "problem getting queue for version %s", t.Version)
 				}
+				versions[t.Version] = q
 			}
 			catcher.Add(q.Put(ctx, NewGenerateTasksJob(t.Id, ts)))
 		}
