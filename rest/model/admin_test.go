@@ -115,7 +115,6 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Notify.SMTP.Port, apiSettings.Notify.SMTP.Port)
 	assert.Equal(len(testSettings.Notify.SMTP.AdminEmail), len(apiSettings.Notify.SMTP.AdminEmail))
 	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Name, FromAPIString(apiSettings.Providers.AWS.EC2Keys[0].Name))
-	assert.Zero(time.Time(apiSettings.Providers.AWS.EC2Keys[0].CreatedDate).Sub(testSettings.Providers.AWS.EC2Keys[0].CreatedDate))
 	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Region, FromAPIString(apiSettings.Providers.AWS.EC2Keys[0].Region))
 	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Key, FromAPIString(apiSettings.Providers.AWS.EC2Keys[0].Key))
 	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Secret, FromAPIString(apiSettings.Providers.AWS.EC2Keys[0].Secret))
