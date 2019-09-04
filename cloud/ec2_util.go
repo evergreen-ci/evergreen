@@ -506,7 +506,7 @@ func GetEC2Key(region string, s *evergreen.Settings) (string, string, error) {
 			if key == "" || secret == "" {
 				return "", "", errors.New("AWS ID and Secret must not be blank")
 			}
-			break
+			return key, secret, nil
 		}
 	}
 
