@@ -602,7 +602,7 @@ func GenerateNotRun() ([]Task, error) {
 		StatusKey:         evergreen.TaskStarted,               // task is running
 		StartTimeKey:      time.Now().Add(-maxGenerateTimeAgo), // ignore older tasks, just in case
 		GenerateTaskKey:   true,                                // task contains generate.tasks command
-		GeneratedTasksKey: false,                               // generate.tasks has not yet run
+		GeneratedTasksKey: bson.M{"$exists": false},            // generate.tasks has not yet run
 		GeneratedJSONKey:  bson.M{"$exists": true},             // config has been posted by generate.tasks command
 	}))
 }
