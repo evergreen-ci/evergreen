@@ -221,7 +221,7 @@
         </a>
       </div>
       <div ng-if="user">
-        <a href="/perfdiscovery/#?from=[[task.version_id]]">Performance Discovery</a>
+        <a ng-href="[[perfDiscoveryURL()]]">Performance Discovery</a>
       </div>
     </div>
     <div ng-show="comparePerfSamples.length > 0">
