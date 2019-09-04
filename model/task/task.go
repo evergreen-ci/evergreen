@@ -609,6 +609,9 @@ func GenerateNotRun() ([]Task, error) {
 
 // SetGeneratedJSON sets JSON data to generate tasks from.
 func (t *Task) SetGeneratedJSON(json []json.RawMessage) error {
+	if t.GeneratedJSON != "" {
+		return nil
+	}
 	t.GeneratedJSON = json
 	return UpdateOne(
 		bson.M{
