@@ -877,14 +877,18 @@ func (a *APIContainerPool) ToService() (interface{}, error) {
 }
 
 type APIEC2Key struct {
-	Region APIString `json:"region"`
-	Key    APIString `json:"key"`
-	Secret APIString `json:"secret"`
+	Name        APIString `json:"name"`
+	CreatedDate APITime   `json:"created_date"`
+	Region      APIString `json:"region"`
+	Key         APIString `json:"key"`
+	Secret      APIString `json:"secret"`
 }
 
 func (a *APIEC2Key) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.EC2Key:
+		a.Name = ToAPIString(v.Name)
+		a.CreatedDate = NewTime(v.CreatedDate)
 		a.Region = ToAPIString(v.Region)
 		a.Key = ToAPIString(v.Key)
 		a.Secret = ToAPIString(v.Secret)
@@ -895,11 +899,17 @@ func (a *APIEC2Key) BuildFromService(h interface{}) error {
 }
 
 func (a *APIEC2Key) ToService() (interface{}, error) {
-	return evergreen.EC2Key{
-		Region: FromAPIString(a.Region),
-		Key:    FromAPIString(a.Key),
-		Secret: FromAPIString(a.Secret),
-	}, nil
+	var err error
+	res := evergreen.EC2Key{}
+	res.Name = FromAPIString(a.Name)
+	res.CreatedDate, err = ParseTime(a.CreatedDate.String())
+	if err != nil {
+		return nil, err
+	}
+	res.Region = FromAPIString(a.Region)
+	res.Key = FromAPIString(a.Key)
+	res.Secret = FromAPIString(a.Secret)
+	return res, nil
 }
 
 type APIAWSConfig struct {

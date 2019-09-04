@@ -1,6 +1,8 @@
 package evergreen
 
 import (
+	"time"
+
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -63,9 +65,11 @@ func (c *CloudProviders) ValidateAndDefault() error { return nil }
 
 // EC2Key links a region with a corresponding key and secret
 type EC2Key struct {
-	Region string `bson:"region" json:"region" yaml:"region"`
-	Key    string `bson:"key" json:"key" yaml:"key"`
-	Secret string `bson:"secret" json:"secret" yaml:"secret"`
+	Name        string    `bson:"name" json:"name" yaml:"name"`
+	CreatedDate time.Time `bson:"created_date" json:"created_date" yaml:"created_date"`
+	Region      string    `bson:"region" json:"region" yaml:"region"`
+	Key         string    `bson:"key" json:"key" yaml:"key"`
+	Secret      string    `bson:"secret" json:"secret" yaml:"secret"`
 }
 
 // AWSConfig stores auth info for Amazon Web Services.
