@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
@@ -760,10 +761,13 @@ func (a *APICloudProviders) ToService() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	grip.Info("before docker")
+	grip.Info(a)
 	docker, err := a.Docker.ToService()
 	if err != nil {
 		return nil, err
 	}
+	grip.Info("after docker")
 	gce, err := a.GCE.ToService()
 	if err != nil {
 		return nil, err
@@ -877,18 +881,16 @@ func (a *APIContainerPool) ToService() (interface{}, error) {
 }
 
 type APIEC2Key struct {
-	Name        APIString `json:"name"`
-	CreatedDate APITime   `json:"created_date"`
-	Region      APIString `json:"region"`
-	Key         APIString `json:"key"`
-	Secret      APIString `json:"secret"`
+	Name   APIString `json:"name"`
+	Region APIString `json:"region"`
+	Key    APIString `json:"key"`
+	Secret APIString `json:"secret"`
 }
 
 func (a *APIEC2Key) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.EC2Key:
 		a.Name = ToAPIString(v.Name)
-		a.CreatedDate = NewTime(v.CreatedDate)
 		a.Region = ToAPIString(v.Region)
 		a.Key = ToAPIString(v.Key)
 		a.Secret = ToAPIString(v.Secret)
@@ -902,7 +904,6 @@ func (a *APIEC2Key) ToService() (interface{}, error) {
 	var err error
 	res := evergreen.EC2Key{}
 	res.Name = FromAPIString(a.Name)
-	res.CreatedDate, err = ParseTime(a.CreatedDate.String())
 	if err != nil {
 		return nil, err
 	}
@@ -949,6 +950,8 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 }
 
 func (a *APIAWSConfig) ToService() (interface{}, error) {
+	grip.Info("to service aws")
+	grip.Info(a)
 	if a == nil {
 		return nil, nil
 	}
@@ -974,6 +977,7 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		}
 		config.EC2Keys = append(config.EC2Keys, key)
 	}
+	grip.Info(config)
 	return config, nil
 }
 
@@ -992,6 +996,8 @@ func (a *APIDockerConfig) BuildFromService(h interface{}) error {
 }
 
 func (a *APIDockerConfig) ToService() (interface{}, error) {
+	grip.Info("inside docker")
+	grip.Info(a)
 	return evergreen.DockerConfig{
 		APIVersion: FromAPIString(a.APIVersion),
 	}, nil

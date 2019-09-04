@@ -5,7 +5,6 @@ import (
 	"flag"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip"
@@ -175,11 +174,10 @@ func MockConfig() *evergreen.Settings {
 			AWS: evergreen.AWSConfig{
 				EC2Keys: []evergreen.EC2Key{
 					{
-						Name:        "test",
-						CreatedDate: time.Now(),
-						Region:      "us-east-1",
-						Key:         "aws_key",
-						Secret:      "aws_secret",
+						Name:   "test",
+						Region: "us-east-1",
+						Key:    "aws_key",
+						Secret: "aws_secret",
 					},
 				},
 
