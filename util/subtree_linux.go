@@ -61,7 +61,7 @@ func cleanup(key string, logger grip.Journaler) error {
 			p := os.Process{}
 			p.Pid = pid
 			if err := p.Kill(); err != nil {
-				logger.Infof("Killing %d failed: %v", pid, err)
+				logger.Infof("killing %d failed: %v", pid, err)
 			} else {
 				logger.Infof("Killed process %d", pid)
 			}
