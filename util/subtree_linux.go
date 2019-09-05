@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 )
 
@@ -77,7 +78,7 @@ func cleanup(key string, logger grip.Journaler) error {
 			if err != nil {
 				return false, err
 			}
-			if len(pids == 0) {
+			if len(pids) == 0 {
 				return false, nil
 			}
 			return true, nil
