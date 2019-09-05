@@ -70,7 +70,8 @@ func cleanup(key string, logger grip.Journaler) error {
 	}
 
 	// Retry listing processes until all have successfully exited
-	ctx := context.WithTimeout(context.Background(), contextTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), contextTimeout)
+	defer cancel()
 	err = Retry(
 		ctx,
 		func() (bool, error) {
