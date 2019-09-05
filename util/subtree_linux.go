@@ -8,7 +8,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 )
 
@@ -71,7 +70,7 @@ func cleanup(key string, logger grip.Journaler) error {
 
 	// Retry listing processes until all have successfully exited
 	ctx := context.Background()
-	err = util.Retry(
+	err = Retry(
 		ctx,
 		func() (bool, error) {
 			pids, err = listProc()
