@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	processCleanupAttempts   = 5
+	processCleanupAttempts   = 10
 	processCleanupTimeoutMin = 100 * time.Millisecond
 	processCleanupTimeoutMax = 1 * time.Second
 	contextTimeout           = 10 * time.Second
