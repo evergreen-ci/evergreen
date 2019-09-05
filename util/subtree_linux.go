@@ -65,7 +65,6 @@ func cleanup(key string, logger grip.Journaler) error {
 			} else {
 				logger.Infof("Killed process %d", pid)
 			}
-			remainingPids[pid] = true
 		}
 	}
 
@@ -74,15 +73,9 @@ func cleanup(key string, logger grip.Journaler) error {
 	err = util.Retry(
 		ctx,
 		func() (bool, error) {
-			pids, err := listProc()
+			pids, err = listProc()
 			if err != nil {
 				return false, err
-			}
-			for _, pid := range pids {
-				if remainingPids[pid] {
-					delete(remainingPids, pid)
-					logger.Infof("Successfully cleaned up process %d", pid)
-				}
 			}
 			if len(remainingPids == 0) {
 				return false, nil
@@ -98,7 +91,7 @@ func cleanup(key string, logger grip.Journaler) error {
 	}
 
 	// Log each process that was not cleaned up
-	for pid := range remainingPids {
+	for pid := range pids {
 		logger.Infof("Failed to clean up process &d", pid)
 	}
 
