@@ -1861,7 +1861,7 @@ func (t *Task) UpdateDependencies(dependsOn []Dependency) error {
 			DependsOnKey: t.DependsOn,
 		},
 		bson.M{
-			"$set": bson.M{DependsOnKey: dependsOn},
+			"$push": bson.M{DependsOnKey: bson.M{"$each": dependsOn}},
 		},
 	)
 	if err != nil {
@@ -1871,7 +1871,7 @@ func (t *Task) UpdateDependencies(dependsOn []Dependency) error {
 		return errors.Wrap(err, "can't update dependencies")
 	}
 
-	t.DependsOn = dependsOn
+	t.DependsOn = append(t.DependsOn, dependsOn...)
 
 	return nil
 }

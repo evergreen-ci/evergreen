@@ -1447,27 +1447,20 @@ func TestUpdateDependencies(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	t1 := &Task{
 		Id:        "t1",
-		DependsOn: []Dependency{},
+		DependsOn: []Dependency{{TaskId: "t2"}},
 	}
 	assert.NoError(t, t1.Insert())
 
-	dependsOn := []Dependency{
-		{
-			TaskId: "t2",
-		},
-	}
+	dependsOn := []Dependency{{TaskId: "t3"}}
 	assert.NoError(t, t1.UpdateDependencies(dependsOn))
-	assert.Len(t, t1.DependsOn, 1)
+	assert.Len(t, t1.DependsOn, 2)
 	dbT1, err := FindOneId("t1")
 	assert.NoError(t, err)
-	assert.Len(t, dbT1.DependsOn, 1)
+	assert.Len(t, dbT1.DependsOn, 2)
 
 	// If the task is out of sync with the db the update fails
-	t1.DependsOn = []Dependency{
-		{TaskId: "t3"},
-	}
+	t1.DependsOn = []Dependency{{TaskId: "t4"}}
 	assert.Error(t, t1.UpdateDependencies(dependsOn))
-
 }
 
 func TestDisplayTaskCache(t *testing.T) {
