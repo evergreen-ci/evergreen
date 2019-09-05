@@ -12,9 +12,10 @@ import (
 )
 
 const (
-	processCleanupAttempts   = 10
-	processCleanupTimeoutMin = 1 * time.Second
-	processCleanupTimeoutMax = 10 * time.Minute
+	processCleanupAttempts   = 5
+	processCleanupTimeoutMin = 100 * time.Millisecond
+	processCleanupTimeoutMax = 1 * time.Second
+	contextTimeout           = 10 * time.Second
 )
 
 func TrackProcess(key string, pid int, logger grip.Journaler) {
@@ -69,7 +70,7 @@ func cleanup(key string, logger grip.Journaler) error {
 	}
 
 	// Retry listing processes until all have successfully exited
-	ctx := context.Background()
+	ctx := context.WithTimeout(context.Background(), contextTimeout)
 	err = Retry(
 		ctx,
 		func() (bool, error) {
