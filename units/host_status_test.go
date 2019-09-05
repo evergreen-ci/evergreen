@@ -24,13 +24,19 @@ func TestCloudStatusJob(t *testing.T) {
 			Id:       "host-1",
 			Provider: evergreen.ProviderNameMock,
 			Status:   evergreen.HostStarting,
-			Distro:   distro.Distro{ProviderSettings: &map[string]interface{}{"region": "region-1"}},
+			Distro: distro.Distro{
+				Provider:         evergreen.ProviderNameMock,
+				ProviderSettings: &map[string]interface{}{"region": "region-1"},
+			},
 		},
 		{
 			Id:       "host-2",
 			Provider: evergreen.ProviderNameMock,
 			Status:   evergreen.HostStarting,
-			Distro:   distro.Distro{ProviderSettings: &map[string]interface{}{"region": "region-2"}},
+			Distro: distro.Distro{
+				Provider:         evergreen.ProviderNameMock,
+				ProviderSettings: &map[string]interface{}{"region": "region-2"},
+			},
 		},
 		{
 			Id:       "host-3",

@@ -147,6 +147,9 @@ func GetRegion(d distro.Distro) string {
 	if IsEc2Provider(d.Provider) {
 		return getEC2Region(d.ProviderSettings)
 	}
+	if d.Provider == evergreen.ProviderNameMock {
+		return getMockRegion(d.ProviderSettings)
+	}
 	return ""
 }
 
