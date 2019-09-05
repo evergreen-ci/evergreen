@@ -108,25 +108,24 @@ func IncludePatchDependencies(project *Project, tvpairs []TVPair) []TVPair {
 }
 
 // GetPatchedProject creates and validates a project created by fetching latest commit information from GitHub
-// and applying the patch to the latest remote configuration. Also returns the condensed yaml string for storage.
-// The error returned can be a validation error.
-func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken string) (*Project, string, error) {
+// and applying the patch to the latest remote configuration. The error returned can be a validation error.
+func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken string) (*Project, error) {
 	if p.Version != "" {
-		return nil, "", errors.Errorf("Patch %v already finalized", p.Version)
+		return nil, errors.Errorf("Patch %v already finalized", p.Version)
 	}
 
 	projectRef, err := FindOneProjectRef(p.Project)
 	if err != nil {
-		return nil, "", errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
 	project := &Project{}
 	// if the patched config exists, use that as the project file bytes.
 	if p.PatchedConfig != "" {
 		if err = LoadProjectInto([]byte(p.PatchedConfig), projectRef.Identifier, project); err != nil {
-			return nil, "", errors.WithStack(err)
+			return nil, errors.WithStack(err)
 		}
-		return project, p.PatchedConfig, nil
+		return project, nil
 	}
 
 	var cancel context.CancelFunc
@@ -151,14 +150,14 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 		// we try to apply the diff and proceed.
 		if !(p.ConfigChanged(projectRef.RemotePath) && thirdparty.IsFileNotFound(err)) {
 			// return an error if the github error is network/auth-related or we aren't patching the config
-			return nil, "", errors.Wrapf(err, "Could not get github file at '%s/%s'@%s: %s", projectRef.Owner,
+			return nil, errors.Wrapf(err, "Could not get github file at '%s/%s'@%s: %s", projectRef.Owner,
 				projectRef.Repo, projectRef.RemotePath, hash)
 		}
 	} else {
 		// we successfully got the project file in base64, so we decode it
 		projectFileBytes, err = base64.StdEncoding.DecodeString(*githubFile.Content)
 		if err != nil {
-			return nil, "", errors.Wrapf(err, "Could not decode github file at '%s/%s'@%s: %s", projectRef.Owner,
+			return nil, errors.Wrapf(err, "Could not decode github file at '%s/%s'@%s: %s", projectRef.Owner,
 				projectRef.Repo, projectRef.RemotePath, hash)
 		}
 	}
@@ -167,15 +166,15 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	if !(p.IsGithubPRPatch() || p.IsPRMergePatch()) && p.ConfigChanged(projectRef.RemotePath) {
 		projectFileBytes, err = MakePatchedConfig(ctx, env, p, projectRef.RemotePath, string(projectFileBytes))
 		if err != nil {
-			return nil, "", errors.Wrapf(err, "Could not patch remote configuration file")
+			return nil, errors.Wrapf(err, "Could not patch remote configuration file")
 		}
 	}
 
 	if err := LoadProjectInto(projectFileBytes, projectRef.Identifier, project); err != nil {
-		return nil, "", errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
-	return project, string(projectFileBytes), nil
+	return project, nil
 }
 
 // MakePatchedConfig takes in the path to a remote configuration a stringified version

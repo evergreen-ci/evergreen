@@ -248,7 +248,7 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 		return
 	}
 
-	project, _, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
+	project, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
 	if err != nil {
 		j.logError(err, "can't get updated project config", nextItem)
 		j.dequeue(cq, nextItem)
@@ -387,12 +387,17 @@ func getPatchInfo(ctx context.Context, githubToken string, patchDoc *patch.Patch
 	}
 
 	// fetch the latest config file
-	config, projectYaml, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
+	config, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
 	if err != nil {
 		return "", nil, nil, errors.Wrap(err, "can't get remote config file")
 	}
 
-	patchDoc.PatchedConfig = projectYaml
+	yamlBytes, err := yaml.Marshal(config)
+	if err != nil {
+		return "", nil, nil, errors.Wrap(err, "can't marshall remote config file")
+	}
+	patchDoc.PatchedConfig = string(yamlBytes)
+
 	return patchContent, summaries, config, nil
 }
 

@@ -10,8 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 
@@ -791,64 +789,6 @@ tasks:
 	assert.NotNil(proj)
 	assert.Len(errs, 0)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 2)
-	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
-	assert.Len(proj.BuildVariants[0].DisplayTasks[1].ExecutionTasks, 2)
-	assert.Equal("execTask1", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
-	assert.Equal("execTask3", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[1])
-	assert.Equal("execTask2", proj.BuildVariants[0].DisplayTasks[1].ExecutionTasks[0])
-	assert.Equal("execTask4", proj.BuildVariants[0].DisplayTasks[1].ExecutionTasks[1])
-}
-
-func TestTranslateProjectDoesNotModifyParserProject(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-	// build variant display tasks
-	tagYml := `
-buildvariants:
-- name: "bv1"
-  tasks:
-  - name: execTask1
-  - name: execTask2
-  - name: execTask3
-  - name: execTask4
-  display_tasks:
-  - name: displayTaskOdd
-    execution_tasks:
-    - ".odd"
-  - name: displayTaskEven
-    execution_tasks:
-    - ".even"
-tasks:
-- name: execTask1
-  tags: [ "odd" ]
-- name: execTask2
-  tags: [ "even" ]
-- name: execTask3
-  tags: [ "odd" ]
-- name: execTask4
-  tags: [ "even" ]
-`
-	pp, errs := createIntermediateProject([]byte(tagYml))
-	assert.NotNil(pp)
-	assert.Len(errs, 0)
-	require.Len(pp.BuildVariants[0].DisplayTasks, 2)
-	assert.Len(pp.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 1)
-	assert.Equal(".odd", pp.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
-	assert.Len(pp.BuildVariants[0].DisplayTasks[1].ExecutionTasks, 1)
-	assert.Equal(".even", pp.BuildVariants[0].DisplayTasks[1].ExecutionTasks[0])
-
-	proj, errs := translateProject(pp)
-	assert.NotNil(proj)
-	assert.Len(errs, 0)
-	// assert parser project hasn't changed
-	require.Len(pp.BuildVariants[0].DisplayTasks, 2)
-	assert.Len(pp.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 1)
-	assert.Equal(".odd", pp.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
-	assert.Len(pp.BuildVariants[0].DisplayTasks[1].ExecutionTasks, 1)
-	assert.Equal(".even", pp.BuildVariants[0].DisplayTasks[1].ExecutionTasks[0])
-
-	//assert project is correct
-	require.Len(proj.BuildVariants[0].DisplayTasks, 2)
 	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
 	assert.Len(proj.BuildVariants[0].DisplayTasks[1].ExecutionTasks, 2)
 	assert.Equal("execTask1", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
