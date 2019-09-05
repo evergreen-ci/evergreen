@@ -1078,8 +1078,8 @@ func (s *EC2Suite) TestGetEC2Region() {
 		ProviderSettings: &map[string]interface{}{},
 	}
 
-	s.Equal("test-region", GetEC2Region(d1.ProviderSettings))
-	s.Equal(evergreen.DefaultEC2Region, GetEC2Region(d2.ProviderSettings))
+	s.Equal("test-region", getEC2Region(d1.ProviderSettings))
+	s.Equal(evergreen.DefaultEC2Region, getEC2Region(d2.ProviderSettings))
 }
 
 func (s *EC2Suite) TestGetEC2Key() {
