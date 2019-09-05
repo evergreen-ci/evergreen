@@ -163,6 +163,7 @@ LOOP:
 				// Running the post group commands implies exiting the group, so
 				// destroy prior task information.
 				tc = &taskContext{}
+				continue LOOP
 			}
 			if nextTask.TaskId != "" {
 				if nextTask.TaskSecret == "" {
