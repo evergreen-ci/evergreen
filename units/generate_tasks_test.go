@@ -165,12 +165,11 @@ func TestGenerateTasks(t *testing.T) {
 	}
 	require.NoError(sampleBuild.Insert())
 	sampleTask := task.Task{
-		Id:            "sample_task",
-		Version:       "sample_version",
-		BuildId:       "sample_build_id",
-		Project:       "mci",
-		DisplayName:   "sample_task",
-		GeneratedJSON: sampleGeneratedProject,
+		Id:          "sample_task",
+		Version:     "sample_version",
+		BuildId:     "sample_build_id",
+		Project:     "mci",
+		DisplayName: "sample_task",
 	}
 	sampleDistros := []distro.Distro{
 		distro.Distro{
@@ -184,7 +183,7 @@ func TestGenerateTasks(t *testing.T) {
 		require.NoError(d.Insert())
 	}
 	require.NoError(sampleTask.Insert())
-	j := NewGenerateTasksJob("sample_task", "1")
+	j := NewGenerateTasksJob("sample_task", sampleGeneratedProject)
 	j.Run(context.Background())
 	assert.NoError(j.Error())
 	tasks := []task.Task{}

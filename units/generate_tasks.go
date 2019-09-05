@@ -4,11 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -29,7 +32,8 @@ func init() {
 
 type generateTasksJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
-	TaskID   string `bson:"task_id" json:"task_id" yaml:"task_id"`
+	TaskID   string            `bson:"task_id" json:"task_id" yaml:"task_id"`
+	JSON     []json.RawMessage `bson:"json" json:"json" yaml:"json"`
 }
 
 func makeGenerateTaskJob() *generateTasksJob {
@@ -46,99 +50,75 @@ func makeGenerateTaskJob() *generateTasksJob {
 	return j
 }
 
-func NewGenerateTasksJob(id string, ts string) amboy.Job {
+func NewGenerateTasksJob(id string, json []json.RawMessage) amboy.Job {
 	j := makeGenerateTaskJob()
 	j.TaskID = id
+	j.JSON = json
 
-	j.SetID(fmt.Sprintf("%s-%s-%s", generateTasksJobName, id, ts))
+	j.SetID(fmt.Sprintf("%s-%s", generateTasksJobName, id))
 	return j
-}
-
-func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
-	t, err := task.FindOneId(j.TaskID)
-	if err != nil {
-		return errors.Wrapf(err, "problem finding task %s", j.TaskID)
-	}
-	if t == nil {
-		return errors.Errorf("task %s does not exist", j.TaskID)
-	}
-	if t.GeneratedTasks {
-		grip.Debug(message.Fields{
-			"message": "attempted to generate tasks, but generator already ran for this task",
-			"task":    t.Id,
-			"version": t.Version,
-		})
-		return nil
-	}
-
-	projects, err := parseProjects(t.GeneratedJSON)
-	if err != nil {
-		return errors.Wrap(err, "error parsing JSON from `generate.tasks`")
-	}
-	g := model.MergeGeneratedProjects(projects)
-	g.TaskID = j.TaskID
-
-	p, v, t, pm, err := g.NewVersion()
-	if err != nil {
-		return errors.Wrap(err, "problem creating new version")
-	}
-	if err = validator.CheckProjectConfigurationIsValid(p); err != nil {
-		return errors.Wrap(err, "project configuration was invalid")
-	}
-
-	// Don't use the job's context, because it's better to finish than to exit early after a
-	// SIGTERM from a deploy. This should maybe be a context with timeout.
-	err = g.Save(context.Background(), p, v, t, pm)
-
-	// If the version has changed there was a race. Another generator will try again.
-	if err != nil && adb.ResultsNotFound(err) {
-		return err
-	}
-	if err != nil {
-		return errors.Wrap(err, "error saving config in `generate.tasks`")
-	}
-	return nil
 }
 
 func (j *generateTasksJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 	start := time.Now()
 
-	t, err := task.FindOneId(j.TaskID)
+	projects, err := parseProjects(j.JSON)
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "problem finding task %s", j.TaskID))
+		j.AddError(errors.Wrap(err, "error parsing JSON from `generate.tasks`"))
+		return
 	}
-	if t == nil {
-		j.AddError(errors.Errorf("task %s does not exist", j.TaskID))
-	}
+	g := model.MergeGeneratedProjects(projects)
+	g.TaskID = j.TaskID
 
-	err = j.generate(ctx, t)
-	if err != nil && !adb.ResultsNotFound(err) {
-		j.AddError(err)
-		j.AddError(t.SetGenerateTasksError(err))
-	}
-	if err == nil {
-		j.AddError(task.MarkGeneratedTasks(j.TaskID))
-	}
+	var attempt int
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			attemptStart := time.Now()
+			attempt++
 
-	grip.InfoWhen(err == nil, message.Fields{
-		"message":       "generate.tasks finished",
-		"duration_secs": time.Since(start).Seconds(),
-		"task":          t.Id,
-		"version":       t.Version,
-	})
-	grip.DebugWhen(adb.ResultsNotFound(err), message.Fields{
-		"message":       "generate.tasks noop",
-		"duration_secs": time.Since(start).Seconds(),
-		"task":          t.Id,
-		"version":       t.Version,
-	})
-	grip.ErrorWhen(!adb.ResultsNotFound(err), message.WrapError(err, message.Fields{
-		"message":       "generate.tasks finished",
-		"duration_secs": time.Since(start).Seconds(),
-		"task":          t.Id,
-		"version":       t.Version,
-	}))
+			t, err := task.FindOneId(j.TaskID)
+			if err != nil {
+				return false, err
+			}
+			if t == nil {
+				return false, errors.Errorf("unable to find task %s", g.TaskID)
+			}
+			if t.GeneratedTasks {
+				return false, nil // already generated tasks, noop
+			}
+			p, v, t, pm, err := g.NewVersion() // nolint
+			if err != nil {
+				return false, err
+			}
+			if err = validator.CheckProjectConfigurationIsValid(p); err != nil {
+				return false, err
+			}
+			err = g.Save(ctx, p, v, t, pm)
+			if err != nil && adb.ResultsNotFound(err) {
+				return true, gimlet.ErrorResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    errors.Wrap(err, "error updating config in `generate.tasks`").Error(),
+				}
+			}
+			if err = t.MarkGeneratedTasks(); err != nil {
+				return true, gimlet.ErrorResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    errors.Wrapf(err, "problem marking task '%s' as having generated tasks", t.Id).Error(),
+				}
+			}
+			grip.Info(message.Fields{
+				"message":               "generate.tasks succeeded",
+				"attempt":               attempt,
+				"attempt_duration_secs": time.Since(attemptStart).Seconds(),
+				"total_duration_secs":   time.Since(start).Seconds(),
+				"task":                  t.Id,
+				"version":               t.Version,
+			})
+			return false, nil
+		}, 100, time.Second, 15*time.Second)
+	j.AddError(err)
 }
 
 func parseProjects(jsonBytes []json.RawMessage) ([]model.GeneratedProject, error) {

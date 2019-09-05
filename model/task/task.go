@@ -1,7 +1,6 @@
 package task
 
 import (
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -83,7 +82,7 @@ type Task struct {
 
 	// only relevant if the task is runnin.  the time of the last heartbeat
 	// sent back by the agent
-	LastHeartbeat time.Time `bson:"last_heartbeat" json:"last_heartbeat"`
+	LastHeartbeat time.Time `bson:"last_heartbeat"`
 
 	// used to indicate whether task should be scheduled to run
 	Activated            bool         `bson:"activated" json:"activated"`
@@ -157,10 +156,6 @@ type Task struct {
 	GeneratedTasks bool `bson:"generated_tasks,omitempty" json:"generated_tasks,omitempty"`
 	// GeneratedBy, if present, is the ID of the task that generated this task.
 	GeneratedBy string `bson:"generated_by,omitempty" json:"generated_by,omitempty"`
-	// GeneratedJSON is the the configuration information to create new tasks from.
-	GeneratedJSON []json.RawMessage `bson:"generate_json,omitempty" json:"generate_json,omitempty"`
-	// GenerateTasksError any encountered while generating tasks.
-	GenerateTasksError string `bson:"generate_error,omitempty" json:"generate_error,omitempty"`
 
 	// Fields set if triggered by an upstream build
 	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
@@ -583,65 +578,15 @@ func (t *Task) MarkAsUndispatched() error {
 }
 
 // MarkGeneratedTasks marks that the task has generated tasks.
-func MarkGeneratedTasks(taskID string) error {
+func (t *Task) MarkGeneratedTasks() error {
+	t.GeneratedTasks = true
 	return UpdateOne(
 		bson.M{
-			IdKey: taskID,
+			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": bson.M{
 				GeneratedTasksKey: true,
-			},
-		},
-	)
-}
-
-func GenerateNotRun() ([]Task, error) {
-	const maxGenerateTimeAgo = 2 * time.Hour
-	return FindAll(db.Query(bson.M{
-		StatusKey:         evergreen.TaskStarted,                              // task is running
-		StartTimeKey:      bson.M{"$gt": time.Now().Add(-maxGenerateTimeAgo)}, // ignore older tasks, just in case
-		GenerateTaskKey:   true,                                               // task contains generate.tasks command
-		GeneratedTasksKey: bson.M{"$exists": false},                           // generate.tasks has not yet run
-		GeneratedJSONKey:  bson.M{"$exists": true},                            // config has been posted by generate.tasks command
-	}))
-}
-
-// SetGeneratedJSON sets JSON data to generate tasks from.
-func (t *Task) SetGeneratedJSON(json []json.RawMessage) error {
-	if len(t.GeneratedJSON) > 0 {
-		return nil
-	}
-	t.GeneratedJSON = json
-	return UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-			// If this field already is set, something has gone wrong.
-			GeneratedJSONKey: bson.M{"$exists": false},
-		},
-		bson.M{
-			"$set": bson.M{
-				GeneratedJSONKey: json,
-			},
-		},
-	)
-}
-
-// SetGenerateTasksError sets any error encountered during generate tasks.
-func (t *Task) SetGenerateTasksError(err error) error {
-	if err == nil {
-		return nil
-	}
-	t.GenerateTasksError = err.Error()
-	return UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-			// If this field already is set, something has gone wrong.
-			GenerateTasksErrorKey: bson.M{"$exists": false},
-		},
-		bson.M{
-			"$set": bson.M{
-				GenerateTasksErrorKey: err.Error(),
 			},
 		},
 	)
