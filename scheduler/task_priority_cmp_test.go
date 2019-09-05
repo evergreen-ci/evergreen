@@ -238,6 +238,9 @@ func TestByTaskGroupOrder(t *testing.T) {
 	tasks[0].DisplayName = "first_task"
 	tasks[1].DisplayName = "another_task"
 	yml := `
+tasks: 
+- name: first_task
+- name: another_task
 task_groups:
 - name: example_task_group
   tasks:
@@ -260,6 +263,9 @@ task_groups:
 	// t2 is earlier
 	require.NoError(db.ClearCollections(model.VersionCollection))
 	yml = `
+tasks:
+- name: first_task
+- name: another_task
 task_groups:
 - name: example_task_group
   tasks:
@@ -281,6 +287,9 @@ func TestPrioritizeTasksWithSameTaskGroupsAndDifferentBuilds(t *testing.T) {
 	require := require.New(t)
 	require.NoError(db.ClearCollections(model.VersionCollection, task.Collection))
 	yml := `
+tasks: 
+- name: first_task
+- name: another_task
 task_groups:
 - name: example_task_group
   tasks:
@@ -349,6 +358,9 @@ func TestTaskGroupsNotOutOfOrderFromOtherComparators(t *testing.T) {
 	require := require.New(t)
 	require.NoError(db.ClearCollections(model.VersionCollection))
 	yml := `
+tasks:
+- name: earlier_task
+- name: later_task
 task_groups:
 - name: example_task_group
   tasks:
