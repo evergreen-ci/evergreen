@@ -77,7 +77,7 @@ func cleanup(key string, logger grip.Journaler) error {
 			if err != nil {
 				return false, err
 			}
-			if len(remainingPids == 0) {
+			if len(pids == 0) {
 				return false, nil
 			}
 			return true, nil
