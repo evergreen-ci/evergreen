@@ -118,7 +118,11 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 	ctx, cancel = context.WithCancel(ctx)
 	defer cancel()
 
-	manager, err := cloud.GetManager(ctx, j.host.Provider, settings)
+	mgrOpts := cloud.ManagerOpts{
+		Provider: j.host.Provider,
+		Region:   cloud.GetRegion(j.host.Distro),
+	}
+	manager, err := cloud.GetManager(ctx, mgrOpts, settings)
 	if err != nil {
 		j.AddError(err)
 		grip.Error(message.WrapErrorf(err, "Error loading provider for host %s cost calculation", j.task.HostId))

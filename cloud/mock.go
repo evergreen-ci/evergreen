@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
 
@@ -38,6 +39,10 @@ type MockProvider interface {
 	Set(string, MockInstance)
 	IterIDs() <-chan string
 	IterInstances() <-chan MockInstance
+}
+
+type MockProviderSettings struct {
+	Region string `mapstructure:"region" json:"region" bson:"region,omitempty"`
 }
 
 func GetMockProvider() MockProvider {
@@ -240,13 +245,26 @@ func (mockMgr *mockManager) TimeTilNextPayment(host *host.Host) time.Duration {
 }
 
 func (mockMgr *mockManager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) ([]CloudStatus, error) {
-	if len(hosts) != 2 {
-		return nil, errors.New("expecting 2 hosts")
+	if len(hosts) != 1 {
+		return nil, errors.New("expecting 1 hosts")
 	}
-	return []CloudStatus{StatusRunning, StatusRunning}, nil
+	return []CloudStatus{StatusRunning}, nil
 }
 
 // CostForDuration for the mock returns 1 dollar per minute up
 func (m *mockManager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time, s *evergreen.Settings) (float64, error) {
 	return end.Sub(start).Minutes(), nil
+}
+
+// Get mock region from ProviderSettings object
+func getMockRegion(providerSettings *map[string]interface{}) string {
+	s := &MockProviderSettings{}
+	if providerSettings != nil {
+		if err := mapstructure.Decode(providerSettings, s); err != nil {
+			return ""
+		} else {
+			return s.Region
+		}
+	}
+	return ""
 }

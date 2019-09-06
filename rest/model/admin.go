@@ -876,24 +876,65 @@ func (a *APIContainerPool) ToService() (interface{}, error) {
 	}, nil
 }
 
+type APIEC2Key struct {
+	Name   APIString `json:"name"`
+	Region APIString `json:"region"`
+	Key    APIString `json:"key"`
+	Secret APIString `json:"secret"`
+}
+
+func (a *APIEC2Key) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.EC2Key:
+		a.Name = ToAPIString(v.Name)
+		a.Region = ToAPIString(v.Region)
+		a.Key = ToAPIString(v.Key)
+		a.Secret = ToAPIString(v.Secret)
+	default:
+		return errors.Errorf("%T is not a supported type", h)
+	}
+	return nil
+}
+
+func (a *APIEC2Key) ToService() (interface{}, error) {
+	res := evergreen.EC2Key{}
+	res.Name = FromAPIString(a.Name)
+	res.Region = FromAPIString(a.Region)
+	res.Key = FromAPIString(a.Key)
+	res.Secret = FromAPIString(a.Secret)
+	return res, nil
+}
+
 type APIAWSConfig struct {
+	EC2Keys   []APIEC2Key `json:"ec2_keys"`
+	S3Key     APIString   `json:"s3_key"`
+	S3Secret  APIString   `json:"s3_secret"`
+	Bucket    APIString   `json:"bucket"`
+	S3BaseURL APIString   `json:"s3_base_url"`
+
+	// Legacy
 	EC2Secret APIString `json:"aws_secret"`
 	EC2Key    APIString `json:"aws_id"`
-	S3Key     APIString `json:"s3_key"`
-	S3Secret  APIString `json:"s3_secret"`
-	Bucket    APIString `json:"bucket"`
-	S3BaseURL APIString `json:"s3_base_url"`
 }
 
 func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.AWSConfig:
-		a.EC2Secret = ToAPIString(v.EC2Secret)
-		a.EC2Key = ToAPIString(v.EC2Key)
+		for _, key := range v.EC2Keys {
+			apiKey := APIEC2Key{}
+			if err := apiKey.BuildFromService(key); err != nil {
+				return err
+			}
+			a.EC2Keys = append(a.EC2Keys, apiKey)
+		}
 		a.S3Key = ToAPIString(v.S3Key)
 		a.S3Secret = ToAPIString(v.S3Secret)
 		a.Bucket = ToAPIString(v.Bucket)
 		a.S3BaseURL = ToAPIString(v.S3BaseURL)
+
+		// Legacy
+		a.EC2Secret = ToAPIString(v.EC2Secret)
+		a.EC2Key = ToAPIString(v.EC2Key)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -901,14 +942,32 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 }
 
 func (a *APIAWSConfig) ToService() (interface{}, error) {
-	return evergreen.AWSConfig{
-		EC2Key:    FromAPIString(a.EC2Key),
-		EC2Secret: FromAPIString(a.EC2Secret),
+	if a == nil {
+		return nil, nil
+	}
+	config := evergreen.AWSConfig{
 		S3Key:     FromAPIString(a.S3Key),
 		S3Secret:  FromAPIString(a.S3Secret),
 		Bucket:    FromAPIString(a.Bucket),
 		S3BaseURL: FromAPIString(a.S3BaseURL),
-	}, nil
+
+		// Legacy
+		EC2Key:    FromAPIString(a.EC2Key),
+		EC2Secret: FromAPIString(a.EC2Secret),
+	}
+
+	for _, k := range a.EC2Keys {
+		i, err := k.ToService()
+		if err != nil {
+			return nil, err
+		}
+		key, ok := i.(evergreen.EC2Key)
+		if !ok {
+			return nil, errors.New("Unable to convert key to EC2Key")
+		}
+		config.EC2Keys = append(config.EC2Keys, key)
+	}
+	return config, nil
 }
 
 type APIDockerConfig struct {

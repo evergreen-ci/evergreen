@@ -172,6 +172,16 @@ func MockConfig() *evergreen.Settings {
 		PprofPort: "port",
 		Providers: evergreen.CloudProviders{
 			AWS: evergreen.AWSConfig{
+				EC2Keys: []evergreen.EC2Key{
+					{
+						Name:   "test",
+						Region: "us-east-1",
+						Key:    "aws_key",
+						Secret: "aws_secret",
+					},
+				},
+
+				// Legacy
 				EC2Secret: "aws_secret",
 				EC2Key:    "aws",
 			},

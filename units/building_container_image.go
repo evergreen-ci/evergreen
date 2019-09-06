@@ -134,7 +134,11 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 	}
 
 	// Get cloud manager
-	mgr, err := cloud.GetManager(ctx, j.Provider, j.settings)
+	mgrOpts := cloud.ManagerOpts{
+		Provider: j.Provider,
+		Region:   cloud.GetRegion(j.parent.Distro),
+	}
+	mgr, err := cloud.GetManager(ctx, mgrOpts, j.settings)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error getting Docker manager"))
 		return
