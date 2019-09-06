@@ -157,6 +157,10 @@ func (m *gceManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	return h, nil
 }
 
+func (m *gceManager) ModifyHost(context.Context, *host.Host, host.HostModifyOptions) error {
+	return errors.New("can't modify instances with gce provider")
+}
+
 // GetInstanceStatus gets the current operational status of the provisioned host,
 func (m *gceManager) GetInstanceStatus(ctx context.Context, host *host.Host) (CloudStatus, error) {
 	instance, err := m.client.GetInstance(host)

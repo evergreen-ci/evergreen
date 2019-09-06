@@ -487,6 +487,55 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	return h, nil
 }
 
+func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, changes host.HostModifyOptions) error {
+	ec2Settings := &EC2ProviderSettings{}
+	err := ec2Settings.fromDistroSettings(h.Distro)
+	if err != nil {
+		return errors.Wrap(err, "error getting EC2 settings")
+	}
+	if err := m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+
+	// note: deal with spot instances?
+	instanceID := h.Id
+	volumeIDs, err := m.client.GetVolumeIDs(ctx, h)
+	if err != nil {
+		return errors.Wrapf(err, "can't get volume IDs for '%s'", h.Id)
+	}
+	resources := []string{instanceID}
+	resources = append(resources, volumeIDs...)
+
+	// Delete tags
+	deleteTagSlice := []*ec2.Tag{}
+	for _, key := range changes.DeleteInstanceTags {
+		deleteTagSlice = append(deleteTagSlice, &ec2.Tag{Key: &key})
+	}
+	_, err = m.client.DeleteTags(ctx, &ec2.DeleteTagsInput{
+		Resources: aws.StringSlice(resources),
+		Tags:      deleteTagSlice,
+	})
+	if err != nil {
+		return errors.Wrapf(err, "error deleting tags for '%s'", h.Id)
+	}
+
+	// Add tags
+	createTagSlice := []*ec2.Tag{}
+	for key, value := range changes.AddInstanceTags {
+		createTagSlice = append(createTagSlice, &ec2.Tag{Key: &key, Value: &value})
+	}
+	_, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
+		Resources: aws.StringSlice(resources),
+		Tags:      createTagSlice,
+	})
+	if err != nil {
+		return errors.Wrapf(err, "error creating tags for '%s'", h.Id)
+	}
+
+	return nil
+}
+
 // GetInstanceStatuses returns the current status of a slice of EC2 instances.
 func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) ([]CloudStatus, error) {
 	if err := m.client.Create(m.credentials, defaultRegion); err != nil {

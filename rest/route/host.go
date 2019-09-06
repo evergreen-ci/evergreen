@@ -8,9 +8,11 @@ import (
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -118,25 +120,27 @@ func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 //
 // PATCH /rest/v2/hosts/{host_id}
 
-type hostChangeStatusHandler struct {
-	Status string
+type hostModifyHandler struct {
 	hostID string
 	sc     data.Connector
+
+	AddInstanceTags    map[string]string
+	DeleteInstanceTags []string
 }
 
-func makeChangeHostStatus(sc data.Connector) gimlet.RouteHandler {
-	return &hostChangeStatusHandler{
+func makeHostModifyRouteManager(sc data.Connector) gimlet.RouteHandler {
+	return &hostModifyHandler{
 		sc: sc,
 	}
 }
 
-func (h *hostChangeStatusHandler) Factory() gimlet.RouteHandler {
-	return &hostChangeStatusHandler{
+func (h *hostModifyHandler) Factory() gimlet.RouteHandler {
+	return &hostModifyHandler{
 		sc: h.sc,
 	}
 }
 
-func (h *hostChangeStatusHandler) Parse(ctx context.Context, r *http.Request) error {
+func (h *hostModifyHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.hostID = gimlet.GetVars(r)["host_id"]
 	body := util.NewRequestReader(r)
 	defer body.Close()
@@ -145,20 +149,38 @@ func (h *hostChangeStatusHandler) Parse(ctx context.Context, r *http.Request) er
 		return errors.Wrap(err, "Argument read error")
 	}
 
-	if !util.StringSliceContains(evergreen.ValidUserSetStatus, h.Status) {
-		return fmt.Errorf("Invalid host status '%s' for host '%s'", h.Status, h.hostID)
-	}
-
 	return nil
 }
 
-func (h *hostChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
+func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
+	env := evergreen.GetEnvironment()
+	queue := env.RemoteQueue()
+
+	// Find host to be modified
 	foundHost, err := h.sc.FindHostByIdWithOwner(h.hostID, user)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.hostID))
 	}
 
+	changes := host.HostModifyOptions{
+		AddInstanceTags:    h.AddInstanceTags,
+		DeleteInstanceTags: h.DeleteInstanceTags,
+	}
+
+	// Create new spawnhost modify job
+	modifyJob := units.NewSpawnhostModifyJob(foundHost, changes)
+	err = queue.Put(ctx, modifyJob)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error creating spawnhost modify job"))
+	}
+
+	return gimlet.NewJSONResponse(struct{}{})
+}
+
+/*
+UNUSED HELPER METHOD -- this route previously modified the status of a single host
+func (h *hostModifyHandler) modifyHostStatus(ctx context.Context, foundHost *host.Host, user *user.DBUser) gimlet.Responder {
 	if foundHost.Status == evergreen.HostTerminated {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -167,29 +189,23 @@ func (h *hostChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if h.Status == evergreen.HostTerminated {
-		if err = h.sc.TerminateHost(ctx, foundHost, user.Id); err != nil {
+		if err := h.sc.TerminateHost(ctx, foundHost, user.Id); err != nil {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    err.Error(),
 			})
 		}
-
 	} else {
-		if err = h.sc.SetHostStatus(foundHost, h.Status, user.Id); err != nil {
+		if err := h.sc.SetHostStatus(foundHost, h.Status, user.Id); err != nil {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    err.Error(),
 			})
 		}
 	}
-
-	host := &model.APIHost{}
-	if err = host.BuildFromService(foundHost); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API Error converting from host.Host to model.APIHost"))
-	}
-
-	return gimlet.NewJSONResponse(host)
+	return nil
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////
 //

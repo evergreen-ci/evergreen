@@ -140,6 +140,10 @@ func (mockMgr *mockManager) SpawnHost(ctx context.Context, h *host.Host) (*host.
 	return h, nil
 }
 
+func (mockMgr *mockManager) ModifyHost(context.Context, *host.Host, host.HostModifyOptions) error {
+	return errors.New("can't modify instances for mock provider")
+}
+
 // get the status of an instance
 func (mockMgr *mockManager) GetInstanceStatus(ctx context.Context, host *host.Host) (CloudStatus, error) {
 	l := mockMgr.mutex

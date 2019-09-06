@@ -28,6 +28,9 @@ type Manager interface {
 	// provider's API.
 	SpawnHost(context.Context, *host.Host) (*host.Host, error)
 
+	// ModifyHost modifies an existing host
+	ModifyHost(context.Context, *host.Host, host.HostModifyOptions) error
+
 	// get the status of an instance
 	GetInstanceStatus(context.Context, *host.Host) (CloudStatus, error)
 

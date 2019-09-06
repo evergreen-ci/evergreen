@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -94,6 +95,30 @@ func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, spawnRequest *mo
 		return nil, fmt.Errorf("Error forming response body response: %v", err)
 	}
 	return &spawnHostResp, nil
+}
+
+func (c *communicatorImpl) ModifySpawnHost(ctx context.Context, hostID string, changes host.HostModifyOptions) error {
+	info := requestInfo{
+		method:  patch,
+		path:    fmt.Sprintf("hosts/%s", hostID),
+		version: apiVersion2,
+	}
+
+	resp, err := c.request(ctx, info, changes)
+	if err != nil {
+		return errors.Wrap(err, "error sending request to modify host")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errMsg := gimlet.ErrorResponse{}
+		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+			return errors.Wrap(err, "problem modifying host and parsing error message")
+		}
+		return errors.Wrap(errMsg, "problem modifying host")
+	}
+
+	return nil
 }
 
 func (c *communicatorImpl) TerminateSpawnHost(ctx context.Context, hostID string) error {

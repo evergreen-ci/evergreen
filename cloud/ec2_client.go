@@ -42,6 +42,9 @@ type AWSClient interface {
 	// CreateTags is a wrapper for ec2.CreateTags.
 	CreateTags(context.Context, *ec2.CreateTagsInput) (*ec2.CreateTagsOutput, error)
 
+	// DeleteTags is a wrapper for ec2.DeleteTags.
+	DeleteTags(context.Context, *ec2.DeleteTagsInput) (*ec2.DeleteTagsOutput, error)
+
 	// TerminateInstances is a wrapper for ec2.TerminateInstances.
 	TerminateInstances(context.Context, *ec2.TerminateInstancesInput) (*ec2.TerminateInstancesOutput, error)
 
@@ -204,6 +207,30 @@ func (c *awsClientImpl) CreateTags(ctx context.Context, input *ec2.CreateTagsInp
 		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.CreateTagsWithContext(ctx, input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+// DeleteTags is a wrapper for ec2.DeleteTags.
+func (c *awsClientImpl) DeleteTags(ctx context.Context, input *ec2.DeleteTagsInput) (*ec2.DeleteTagsOutput, error) {
+	var output *ec2.DeleteTagsOutput
+	var err error
+	msg := makeAWSLogMessage("DeleteTags", fmt.Sprintf("%T", c), input)
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			output, err = c.EC2.DeleteTagsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, msg))
@@ -785,6 +812,7 @@ type awsClientMock struct { //nolint
 	*ec2.RunInstancesInput
 	*ec2.DescribeInstancesInput
 	*ec2.CreateTagsInput
+	*ec2.DeleteTagsInput
 	*ec2.TerminateInstancesInput
 	*ec2.RequestSpotInstancesInput
 	*ec2.DescribeSpotInstanceRequestsInput
@@ -873,6 +901,12 @@ func (c *awsClientMock) DescribeInstances(ctx context.Context, input *ec2.Descri
 // CreateTags is a mock for ec2.CreateTags.
 func (c *awsClientMock) CreateTags(ctx context.Context, input *ec2.CreateTagsInput) (*ec2.CreateTagsOutput, error) {
 	c.CreateTagsInput = input
+	return nil, nil
+}
+
+// DeleteTags is a mock for ec2.DeleteTags.
+func (c *awsClientMock) DeleteTags(ctx context.Context, input *ec2.DeleteTagsInput) (*ec2.DeleteTagsOutput, error) {
+	c.DeleteTagsInput = input
 	return nil, nil
 }
 

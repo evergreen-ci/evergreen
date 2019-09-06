@@ -224,6 +224,11 @@ type ContainersOnParents struct {
 	NumContainers int
 }
 
+type HostModifyOptions struct {
+	AddInstanceTags    map[string]string
+	DeleteInstanceTags []string
+}
+
 const (
 	MaxLCTInterval = 5 * time.Minute
 
@@ -1653,4 +1658,30 @@ func StaleRunningTaskIDs(staleness time.Duration) ([]task.Task, error) {
 
 	err := db.Aggregate(task.Collection, pipeline, &out)
 	return out, err
+}
+
+// ModifySpawnHost updates a spawnhost with the changes described
+// in a HostModifyOptions struct.
+func (h *Host) ModifySpawnHost(opts HostModifyOptions) error {
+	// Delete instance tags
+	for _, key := range opts.DeleteInstanceTags {
+		delete(h.InstanceTags, key)
+	}
+
+	// Add instance tags
+	for key, value := range opts.AddInstanceTags {
+		h.InstanceTags[key] = value
+	}
+
+	// Update fields in database
+	return UpdateOne(
+		bson.M{
+			IdKey: h.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				InstanceTagsKey: h.InstanceTags,
+			},
+		},
+	)
 }

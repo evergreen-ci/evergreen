@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -135,6 +136,66 @@ func hostCreate() cli.Command {
 	}
 
 }
+
+type hostModifyOptions struct {
+	InstanceTags map[string]string
+}
+
+func hostModify() cli.Command {
+	const (
+		addTagFlagName    = "tag"
+		deleteTagFlagName = "delete-tag"
+	)
+
+	return cli.Command{
+		Name:  "modify",
+		Usage: "modify a stopped host",
+		Flags: addHostFlag(
+			cli.StringSliceFlag{
+				Name:  joinFlagNames(addTagFlagName, "t"),
+				Usage: "key=value pair representing an instance tag, with one pair per flag",
+			},
+			cli.StringSliceFlag{
+				Name:  joinFlagNames(deleteTagFlagName, "d"),
+				Usage: "key of a single tag to be deleted",
+			},
+		),
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			hostID := c.String(hostFlagName)
+			addTagSlice := c.StringSlice(addTagFlagName)
+			deleteTagSlice := c.StringSlice(deleteTagFlagName)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.GetRestCommunicator(ctx)
+			defer client.Close()
+
+			addTags, err := makeAWSTags(addTagSlice)
+			if err != nil {
+				return errors.Wrap(err, "problem generating tags to add")
+			}
+
+			hostChanges := host.HostModifyOptions{
+				AddInstanceTags:    addTags,
+				DeleteInstanceTags: deleteTagSlice,
+			}
+
+			err = client.ModifySpawnHost(ctx, hostID, hostChanges)
+			if err != nil {
+				return errors.Wrap(err, "problem modifying spawn host")
+			}
+
+			return nil
+		},
+	}
+}
+
 func hostlist() cli.Command {
 	const (
 		mineFlagName = "mine"

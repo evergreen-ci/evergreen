@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -363,6 +364,10 @@ func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostReques
 		InstanceTags: spawnRequest.InstanceTags,
 	}
 	return mockHost, nil
+}
+
+func (*Mock) ModifySpawnHost(ctx context.Context, hostID string, changes host.HostModifyOptions) error {
+	return errors.New("(*Mock) ModifySpawnHost is not implemented")
 }
 
 func (*Mock) TerminateSpawnHost(ctx context.Context, hostID string) error {

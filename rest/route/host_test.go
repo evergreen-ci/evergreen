@@ -176,7 +176,7 @@ func (s *HostsChangeStatusesSuite) TestRunWithInvalidHost() {
 ////////////////////////////////////////////////////////////////////////
 
 type HostChangeStatusSuite struct {
-	route *hostChangeStatusHandler
+	route *hostModifyHandler
 	sc    *data.MockConnector
 
 	suite.Suite
@@ -188,7 +188,7 @@ func TestHostChangeStatusSuite(t *testing.T) {
 
 func (s *HostChangeStatusSuite) SetupTest() {
 	s.sc = getMockHostsConnector()
-	s.route = makeChangeHostStatus(s.sc).(*hostChangeStatusHandler)
+	s.route = makeHostModifyRouteManager(s.sc).(*hostModifyHandler)
 }
 
 func (s *HostChangeStatusSuite) TestParseValidStatus() {
@@ -222,11 +222,11 @@ func (s *HostChangeStatusSuite) TestParseMissingStatus() {
 	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/hosts/host1", bytes.NewBuffer(json))
 	err := s.route.Parse(ctx, req)
 	s.Error(err)
-	s.EqualError(err, "Argument read error: error attempting to unmarshal into *route.hostChangeStatusHandler: unexpected end of JSON input")
+	s.EqualError(err, "Argument read error: error attempting to unmarshal into *route.hostModifyHandler: unexpected end of JSON input")
 }
 
 func (s *HostChangeStatusSuite) TestRunHostValidStatusChange() {
-	h := s.route.Factory().(*hostChangeStatusHandler)
+	h := s.route.Factory().(*hostModifyHandler)
 	h.hostID = "host4"
 	h.Status = evergreen.HostTerminated
 
@@ -237,7 +237,7 @@ func (s *HostChangeStatusSuite) TestRunHostValidStatusChange() {
 }
 
 func (s *HostChangeStatusSuite) TestRunHostNotStartedByUser() {
-	h := s.route.Factory().(*hostChangeStatusHandler)
+	h := s.route.Factory().(*hostModifyHandler)
 	h.hostID = "host4"
 	h.Status = evergreen.HostTerminated
 
@@ -248,7 +248,7 @@ func (s *HostChangeStatusSuite) TestRunHostNotStartedByUser() {
 }
 
 func (s *HostChangeStatusSuite) TestRunSuperUserSetStatusAnyHost() {
-	h := s.route.Factory().(*hostChangeStatusHandler)
+	h := s.route.Factory().(*hostModifyHandler)
 	h.hostID = "host4"
 	h.Status = evergreen.HostTerminated
 
@@ -259,7 +259,7 @@ func (s *HostChangeStatusSuite) TestRunSuperUserSetStatusAnyHost() {
 }
 
 func (s *HostChangeStatusSuite) TestRunTerminatedOnTerminatedHost() {
-	h := s.route.Factory().(*hostChangeStatusHandler)
+	h := s.route.Factory().(*hostModifyHandler)
 	h.hostID = "host1"
 	h.Status = evergreen.HostTerminated
 
@@ -270,7 +270,7 @@ func (s *HostChangeStatusSuite) TestRunTerminatedOnTerminatedHost() {
 }
 
 func (s *HostChangeStatusSuite) TestRunHostRunningOnTerminatedHost() {
-	h := s.route.Factory().(*hostChangeStatusHandler)
+	h := s.route.Factory().(*hostModifyHandler)
 	h.hostID = "host1"
 	h.Status = evergreen.HostRunning
 
@@ -281,7 +281,7 @@ func (s *HostChangeStatusSuite) TestRunHostRunningOnTerminatedHost() {
 }
 
 func (s *HostChangeStatusSuite) TestRunHostQuarantinedOnTerminatedHost() {
-	h := s.route.Factory().(*hostChangeStatusHandler)
+	h := s.route.Factory().(*hostModifyHandler)
 	h.hostID = "host1"
 	h.Status = evergreen.HostQuarantined
 
@@ -292,7 +292,7 @@ func (s *HostChangeStatusSuite) TestRunHostQuarantinedOnTerminatedHost() {
 }
 
 func (s *HostChangeStatusSuite) TestRunHostDecommissionedOnTerminatedHost() {
-	h := s.route.Factory().(*hostChangeStatusHandler)
+	h := s.route.Factory().(*hostModifyHandler)
 	h.hostID = "host1"
 	h.Status = evergreen.HostDecommissioned
 
@@ -303,7 +303,7 @@ func (s *HostChangeStatusSuite) TestRunHostDecommissionedOnTerminatedHost() {
 }
 
 func (s *HostChangeStatusSuite) TestRunWithInvalidHost() {
-	h := s.route.Factory().(*hostChangeStatusHandler)
+	h := s.route.Factory().(*hostModifyHandler)
 	h.hostID = "Doesn't exist"
 	h.Status = evergreen.HostDecommissioned
 

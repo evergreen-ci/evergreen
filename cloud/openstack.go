@@ -132,6 +132,10 @@ func (m *openStackManager) SpawnHost(ctx context.Context, h *host.Host) (*host.H
 	return h, nil
 }
 
+func (m *openStackManager) ModifyHost(context.Context, *host.Host, host.HostModifyOptions) error {
+	return errors.New("can't modify isntances with openstack provider")
+}
+
 // GetInstanceStatus gets the current operational status of the provisioned host,
 func (m *openStackManager) GetInstanceStatus(ctx context.Context, host *host.Host) (CloudStatus, error) {
 	server, err := m.client.GetInstance(host.Id)

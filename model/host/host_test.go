@@ -3600,3 +3600,22 @@ func TestFindOneByJasperCredentialsID(t *testing.T) {
 		})
 	}
 }
+
+func TestModifySpawnHost(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+
+	h := &Host{
+		Id: "id",
+		InstanceTags: map[string]string{"key1": "val1"}
+	}
+	assert.NoError(t, h.Insert())
+
+	changes := HostModifyOptions{
+		AddInstanceTags: map[string]string{"key2": "val2"},
+		DeleteInstanceTags: []string{"key1"},
+	}
+	assert.NoError(t, host.ModifySpawnHost(changes))
+	modifiedHost, err := FindOneId(h.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, map[string]string{"key2": "val2"}, modifiedHost.InstanceTags)
+}
