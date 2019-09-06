@@ -504,7 +504,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupCheck bool) {
 	logger := grip.NewJournaler("killProcs")
 	if tc.logger != nil && !tc.logger.Closed() {
-		logger = tc.logger.Task()
+		logger = tc.logger.Execution()
 	}
 
 	if a.shouldKill(tc, ignoreTaskGroupCheck) {
