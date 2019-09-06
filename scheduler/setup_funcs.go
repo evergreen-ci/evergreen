@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	yaml "gopkg.in/yaml.v2"
 )
 
 // Function run before sorting all the tasks.  Used to fetch and store
@@ -46,11 +45,11 @@ func PopulateCaches(id string, distroID string, tasks []task.Task) ([]task.Task,
 func cacheTaskGroups(comparator *CmpBasedTaskComparator) error {
 	comparator.projects = make(map[string]project)
 	for _, v := range comparator.versions {
-		p := project{}
-		if err := yaml.Unmarshal([]byte(v.Config), &p); err != nil {
-			return errors.Wrapf(err, "error unmarshalling task groups from version %s", v.Id)
+		fullP := &model.Project{}
+		if err := model.LoadProjectInto([]byte(v.Config), "", fullP); err != nil {
+			return errors.Wrapf(err, "error getting task groups from version %s", v.Id)
 		}
-		comparator.projects[v.Id] = p
+		comparator.projects[v.Id] = project{TaskGroups: fullP.TaskGroups}
 	}
 	return nil
 }
