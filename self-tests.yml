@@ -82,7 +82,7 @@ variables:
       - func: get-project
       - func: setup-credentials
       - func: setup-mongodb
-#      - func: setup-docker-host
+      - func: setup-docker-host
       - func: run-make
         vars:
           target: revendor
@@ -218,6 +218,7 @@ functions:
         GOOS: ${goos}
         GOPATH: ${workdir}/gopath
         GOROOT: ${goroot}
+        IS_DOCKER: ${is_docker}
         KARMA_REPORTER: junit
         NODE_BIN_PATH: ${nodebin}
         RACE_DETECTOR: ${race_detector}
@@ -272,33 +273,33 @@ functions:
         shell: bash
         script: |
             gopath/src/github.com/evergreen-ci/evergreen/scripts/setup-docker.sh
-#  setup-docker-host:
-#    - command: host.create
-#      type: setup
-#      params:
-#        distro: archlinux-parent
-#        provider: ec2
-#        retries: 3
-#        scope: build
-#        security_group_ids:
-#          - sg-097bff6dd0d1d31d0
-#    - command: host.list
-#      type: setup
-#      params:
-#        wait: true
-#        timeout_seconds: 900
-#        num_hosts: 1
-#        path: gopath/src/github.com/evergreen-ci/evergreen/spawned_hosts.json
-#   - command: subprocess.exec
-#     type: setup
-#     params:
-#       working_dir: gopath/src/github.com/evergreen-ci/evergreen
-#       command: make parse-host-file
-#       env:
-#         HOST_FILE: spawned_hosts.json
-#   - command: expansions.update
-#     params:
-#       file: gopath/src/github.com/evergreen-ci/evergreen/bin/expansions.yml
+  setup-docker-host:
+    - command: host.create
+      type: setup
+      params:
+        distro: archlinux-parent
+        provider: ec2
+        retries: 3
+        scope: build
+        security_group_ids:
+          - sg-097bff6dd0d1d31d0
+    - command: host.list
+      type: setup
+      params:
+        wait: true
+        timeout_seconds: 900
+        num_hosts: 1
+        path: gopath/src/github.com/evergreen-ci/evergreen/spawned_hosts.json
+    - command: subprocess.exec
+      type: setup
+      params:
+        working_dir: gopath/src/github.com/evergreen-ci/evergreen
+        command: make parse-host-file
+        env:
+          HOST_FILE: spawned_hosts.json
+    - command: expansions.update
+      params:
+        file: gopath/src/github.com/evergreen-ci/evergreen/bin/expansions.yml
 
   attach-test-results:
     - command: gotest.parse_files
@@ -511,11 +512,11 @@ buildvariants:
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       test_timeout: 15m
       nodebin: /opt/node/bin
+      is_docker: "true"
     tasks:
       - name: "dist"
       - name: ".smoke"
       - name: ".test"
-      - name: "js-test"
 
   - name: race-detector
     display_name: Race Detector
