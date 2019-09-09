@@ -115,27 +115,10 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	}
 
 	err = j.generate(ctx, t)
-	if err != nil && !adb.ResultsNotFound(err) {
-		t, err := task.FindOneId(j.TaskID)
-		if err != nil {
-			j.AddError(errors.Wrapf(err, "problem finding task %s", j.TaskID))
-			return
-		}
-		if t == nil {
-			j.AddError(errors.Errorf("task %s does not exist", j.TaskID))
-			return
-		}
-		if t.GeneratedTasks {
-			// Another job generated tasks.
-			return
-		}
+	if !adb.ResultsNotFound(err) {
 		j.AddError(err)
-		j.AddError(t.SetGenerateTasksError(err))
-		j.AddError(task.MarkGeneratedTasks(j.TaskID))
 	}
-	if err == nil {
-		j.AddError(task.MarkGeneratedTasks(j.TaskID))
-	}
+	j.AddError(task.MarkGeneratedTasks(taskID, err))
 
 	grip.InfoWhen(err == nil, message.Fields{
 		"message":       "generate.tasks finished",
