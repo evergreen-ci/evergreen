@@ -107,34 +107,36 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	t, err := task.FindOneId(j.TaskID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "problem finding task %s", j.TaskID))
+		return
 	}
 	if t == nil {
 		j.AddError(errors.Errorf("task %s does not exist", j.TaskID))
+		return
 	}
 
 	err = j.generate(ctx, t)
-	if err != nil && !adb.ResultsNotFound(err) {
+	if !adb.ResultsNotFound(err) {
 		j.AddError(err)
-		j.AddError(t.SetGenerateTasksError(err))
 	}
-	if err == nil {
-		j.AddError(task.MarkGeneratedTasks(j.TaskID))
-	}
+	j.AddError(task.MarkGeneratedTasks(j.TaskID, err))
 
 	grip.InfoWhen(err == nil, message.Fields{
 		"message":       "generate.tasks finished",
+		"operation":     "generate.tasks",
 		"duration_secs": time.Since(start).Seconds(),
 		"task":          t.Id,
 		"version":       t.Version,
 	})
 	grip.DebugWhen(adb.ResultsNotFound(err), message.Fields{
 		"message":       "generate.tasks noop",
+		"operation":     "generate.tasks",
 		"duration_secs": time.Since(start).Seconds(),
 		"task":          t.Id,
 		"version":       t.Version,
 	})
 	grip.ErrorWhen(!adb.ResultsNotFound(err), message.WrapError(err, message.Fields{
-		"message":       "generate.tasks finished",
+		"message":       "generate.tasks finished with errors",
+		"operation":     "generate.tasks",
 		"duration_secs": time.Since(start).Seconds(),
 		"task":          t.Id,
 		"version":       t.Version,

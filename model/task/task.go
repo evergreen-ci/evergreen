@@ -583,17 +583,24 @@ func (t *Task) MarkAsUndispatched() error {
 }
 
 // MarkGeneratedTasks marks that the task has generated tasks.
-func MarkGeneratedTasks(taskID string) error {
-	return UpdateOne(
-		bson.M{
-			IdKey: taskID,
+func MarkGeneratedTasks(taskID string, errorToSet error) error {
+	query := bson.M{
+		IdKey:             taskID,
+		GeneratedTasksKey: bson.M{"$exists": false},
+	}
+	update := bson.M{
+		"$set": bson.M{
+			GeneratedTasksKey: true,
 		},
-		bson.M{
-			"$set": bson.M{
-				GeneratedTasksKey: true,
-			},
-		},
-	)
+	}
+	if errorToSet != nil && !adb.ResultsNotFound(errorToSet) {
+		update[GenerateTasksErrorKey] = errorToSet.Error()
+	}
+	err := UpdateOne(query, update)
+	if adb.ResultsNotFound(err) {
+		return nil
+	}
+	return errors.Wrap(err, "problem marketing generate.tasks complete")
 }
 
 func GenerateNotRun() ([]Task, error) {
@@ -622,26 +629,6 @@ func (t *Task) SetGeneratedJSON(json []json.RawMessage) error {
 		bson.M{
 			"$set": bson.M{
 				GeneratedJSONKey: json,
-			},
-		},
-	)
-}
-
-// SetGenerateTasksError sets any error encountered during generate tasks.
-func (t *Task) SetGenerateTasksError(err error) error {
-	if err == nil {
-		return nil
-	}
-	t.GenerateTasksError = err.Error()
-	return UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-			// If this field already is set, something has gone wrong.
-			GenerateTasksErrorKey: bson.M{"$exists": false},
-		},
-		bson.M{
-			"$set": bson.M{
-				GenerateTasksErrorKey: err.Error(),
 			},
 		},
 	)
