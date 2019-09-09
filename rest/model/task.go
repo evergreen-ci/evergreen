@@ -55,6 +55,7 @@ type APITask struct {
 	Mainline           bool             `json:"mainline"`
 	TaskGroup          string           `json:"task_group,omitempty"`
 	TaskGroupMaxHosts  int              `json:"task_group_max_hosts,omitempty"`
+	Blocked            bool             `json:"blocked"`
 }
 
 type logLinks struct {
@@ -125,6 +126,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			Mainline:          (v.Requester == evergreen.RepotrackerVersionRequester),
 			TaskGroup:         v.TaskGroup,
 			TaskGroupMaxHosts: v.TaskGroupMaxHosts,
+			Blocked:           v.Blocked(),
 		}
 		if len(v.ExecutionTasks) > 0 {
 			ets := []APIString{}
