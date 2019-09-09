@@ -118,7 +118,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	if !adb.ResultsNotFound(err) {
 		j.AddError(err)
 	}
-	j.AddError(task.MarkGeneratedTasks(taskID, err))
+	j.AddError(task.MarkGeneratedTasks(j.TaskID, err))
 
 	grip.InfoWhen(err == nil, message.Fields{
 		"message":       "generate.tasks finished",

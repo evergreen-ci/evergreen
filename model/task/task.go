@@ -593,7 +593,7 @@ func MarkGeneratedTasks(taskID string, errorToSet error) error {
 			GeneratedTasksKey: true,
 		},
 	}
-	if errorToSet != nil && !adb.ResultsNotFound(err) {
+	if errorToSet != nil && !adb.ResultsNotFound(errorToSet) {
 		update[GenerateTasksErrorKey] = errorToSet.Error()
 	}
 	err := UpdateOne(query, update)
