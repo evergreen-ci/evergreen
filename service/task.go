@@ -456,12 +456,12 @@ func getTaskDependencies(t *task.Task) ([]uiDep, string, error) {
 	if err = t.CircularDependencies(); err != nil {
 		return nil, "", err
 	}
-	status, err := t.BlockedState(nil)
+	state, err := t.BlockedState()
 	if err != nil {
-		return nil, "", err
+		return nil, "", errors.Wrap(err, "can't get blocked state")
 	}
 
-	return uiDependencies, status, nil
+	return uiDependencies, state, nil
 }
 
 // async handler for polling the task log

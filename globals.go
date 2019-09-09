@@ -60,6 +60,9 @@ const (
 	TaskTestTimedOut = "test-timed-out"
 	TaskSetupFailed  = "setup-failed"
 
+	TaskStatusBlocked = "blocked"
+	TaskStatusPending = "pending"
+
 	// Task Command Types
 	CommandTypeTest   = "test"
 	CommandTypeSystem = "system"

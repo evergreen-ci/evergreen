@@ -472,8 +472,12 @@ func scheduleableTasksQuery() bson.M {
 	return bson.M{
 		ActivatedKey: true,
 		StatusKey:    evergreen.TaskUndispatched,
+
 		//Filter out blacklisted tasks
 		PriorityKey: bson.M{"$gte": 0},
+
+		//Filter tasks containing unattainable dependencies
+		bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey): bson.M{"$ne": true},
 	}
 }
 
