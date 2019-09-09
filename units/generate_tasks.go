@@ -114,8 +114,13 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 
 	err = j.generate(ctx, t)
 	if err != nil && !adb.ResultsNotFound(err) {
+		if t.GeneratedTasks {
+			// Another job generated tasks.
+			return
+		}
 		j.AddError(err)
 		j.AddError(t.SetGenerateTasksError(err))
+		j.AddError(task.MarkGeneratedTasks(j.TaskID))
 	}
 	if err == nil {
 		j.AddError(task.MarkGeneratedTasks(j.TaskID))
@@ -123,18 +128,21 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 
 	grip.InfoWhen(err == nil, message.Fields{
 		"message":       "generate.tasks finished",
+		"operation":     "generate.tasks",
 		"duration_secs": time.Since(start).Seconds(),
 		"task":          t.Id,
 		"version":       t.Version,
 	})
 	grip.DebugWhen(adb.ResultsNotFound(err), message.Fields{
 		"message":       "generate.tasks noop",
+		"operation":     "generate.tasks",
 		"duration_secs": time.Since(start).Seconds(),
 		"task":          t.Id,
 		"version":       t.Version,
 	})
 	grip.ErrorWhen(!adb.ResultsNotFound(err), message.WrapError(err, message.Fields{
-		"message":       "generate.tasks finished",
+		"message":       "generate.tasks finished with errors",
+		"operation":     "generate.tasks",
 		"duration_secs": time.Since(start).Seconds(),
 		"task":          t.Id,
 		"version":       t.Version,
