@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -129,7 +128,7 @@ func (t *basicCachedDAGDispatcherImpl) addEdge(from string, to string) error {
 			"node_id":    fromNodeID,
 		})
 
-		return fmt.Errorf("cannot add a self edge to task '%s'", from)
+		return errors.Errorf("cannot add a self edge to task '%s'", from)
 	}
 
 	edge := simple.Edge{
@@ -185,7 +184,6 @@ func (t *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 		}
 	}
 
-	// Sort the graph. Use a lexical sort to resolve ambiguities, because node order is the order that we received these in.
 	sorted, err := topo.SortStabilized(t.graph, nil)
 	if err != nil {
 		grip.Alert(message.WrapError(err, message.Fields{
@@ -269,14 +267,13 @@ func (t *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 
 			depsMet, err := nextTaskFromDB.DependenciesMet(dependencyCaches)
 			if err != nil {
-				grip.Warning(message.Fields{
+				grip.Warning(message.WrapError(err, message.Fields{
 					"dispatcher": "dependency-task-dispatcher",
 					"function":   "FindNextTask",
 					"message":    "error checking dependencies for task",
 					"outcome":    "skip and continue",
 					"task":       item.Id,
-					"error":      err.Error(),
-				})
+				}))
 				continue
 			}
 
@@ -346,16 +343,16 @@ func (t *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 		}
 
 		// Check if its dependencies have been met.
-		depsMet, err := nextTaskFromDB.DependenciesMet(make(map[string]task.Task))
+		dependencyCaches := make(map[string]task.Task)
+		depsMet, err := nextTaskFromDB.DependenciesMet(dependencyCaches)
 		if err != nil {
-			grip.Warning(message.Fields{
+			grip.Warning(message.WrapError(err, message.Fields{
 				"dispatcher": "dependency-task-dispatcher",
-				"function":   "FindNextTask",
+				"function":   "nextTaskGroupTask",
 				"message":    "error checking dependencies for task",
 				"outcome":    "skip and continue",
-				"task":       nextTaskFromDB.Id,
-				"error":      err.Error(),
-			})
+				"task":       nextTask.Id,
+			}))
 			continue
 		}
 
