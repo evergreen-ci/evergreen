@@ -175,142 +175,50 @@ func (s *HostsChangeStatusesSuite) TestRunWithInvalidHost() {
 
 ////////////////////////////////////////////////////////////////////////
 
-type HostChangeStatusSuite struct {
+type HostModifySuite struct {
 	route *hostModifyHandler
 	sc    *data.MockConnector
 
 	suite.Suite
 }
 
-func TestHostChangeStatusSuite(t *testing.T) {
-	suite.Run(t, new(HostChangeStatusSuite))
+func TestHostModifySuite(t *testing.T) {
+	suite.Run(t, new(HostModifySuite))
 }
 
-func (s *HostChangeStatusSuite) SetupTest() {
+func (s *HostModifySuite) SetupTest() {
 	s.sc = getMockHostsConnector()
 	s.route = makeHostModifyRouteManager(s.sc).(*hostModifyHandler)
 }
 
-func (s *HostChangeStatusSuite) TestParseValidStatus() {
-	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
-
-	json := []byte(`{"status": "terminated"}`)
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/hosts/host1", bytes.NewBuffer(json))
-	err := s.route.Parse(ctx, req)
-	s.NoError(err)
-	s.Equal("terminated", s.route.Status)
-}
-
-func (s *HostChangeStatusSuite) TestParseInValidStatus() {
-	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
-
-	json := []byte(`{"status": "This is an invalid state"}`)
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/hosts/host1", bytes.NewBuffer(json))
-	err := s.route.Parse(ctx, req)
-
-	s.Error(err)
-	s.EqualError(err, fmt.Sprintf("Invalid host status '%s' for host '%s'", s.route.Status, s.route.hostID))
-}
-
-func (s *HostChangeStatusSuite) TestParseMissingStatus() {
-	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
-
-	json := []byte(``)
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/hosts/host1", bytes.NewBuffer(json))
-	err := s.route.Parse(ctx, req)
-	s.Error(err)
-	s.EqualError(err, "Argument read error: error attempting to unmarshal into *route.hostModifyHandler: unexpected end of JSON input")
-}
-
-func (s *HostChangeStatusSuite) TestRunHostValidStatusChange() {
+func (s *HostModifySuite) TestRunHostNotFound() {
 	h := s.route.Factory().(*hostModifyHandler)
-	h.hostID = "host4"
-	h.Status = evergreen.HostTerminated
-
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+
+	h.hostID = "host-invalid"
 	res := h.Run(ctx)
-	s.Equal(http.StatusOK, res.Status())
+	s.Equal(http.StatusNotFound, res.Status())
 }
 
-func (s *HostChangeStatusSuite) TestRunHostNotStartedByUser() {
+func (s *HostModifySuite) TestRunHostNotStartedByUser() {
 	h := s.route.Factory().(*hostModifyHandler)
-	h.hostID = "host4"
-	h.Status = evergreen.HostTerminated
-
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user1"])
+
+	h.hostID = "host1"
 	res := h.Run(ctx)
 	s.Equal(http.StatusUnauthorized, res.Status())
 }
 
-func (s *HostChangeStatusSuite) TestRunSuperUserSetStatusAnyHost() {
+func (s *HostModifySuite) TestRunValidHost() {
 	h := s.route.Factory().(*hostModifyHandler)
-	h.hostID = "host4"
-	h.Status = evergreen.HostTerminated
-
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+
+	h.hostID = "host2"
 	res := h.Run(ctx)
 	s.Equal(http.StatusOK, res.Status())
-}
-
-func (s *HostChangeStatusSuite) TestRunTerminatedOnTerminatedHost() {
-	h := s.route.Factory().(*hostModifyHandler)
-	h.hostID = "host1"
-	h.Status = evergreen.HostTerminated
-
-	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
-	res := h.Run(ctx)
-	s.Equal(http.StatusBadRequest, res.Status())
-}
-
-func (s *HostChangeStatusSuite) TestRunHostRunningOnTerminatedHost() {
-	h := s.route.Factory().(*hostModifyHandler)
-	h.hostID = "host1"
-	h.Status = evergreen.HostRunning
-
-	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
-	res := h.Run(ctx)
-	s.Equal(http.StatusBadRequest, res.Status())
-}
-
-func (s *HostChangeStatusSuite) TestRunHostQuarantinedOnTerminatedHost() {
-	h := s.route.Factory().(*hostModifyHandler)
-	h.hostID = "host1"
-	h.Status = evergreen.HostQuarantined
-
-	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
-	res := h.Run(ctx)
-	s.Equal(http.StatusBadRequest, res.Status())
-}
-
-func (s *HostChangeStatusSuite) TestRunHostDecommissionedOnTerminatedHost() {
-	h := s.route.Factory().(*hostModifyHandler)
-	h.hostID = "host1"
-	h.Status = evergreen.HostDecommissioned
-
-	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
-	res := h.Run(ctx)
-	s.Equal(http.StatusBadRequest, res.Status())
-}
-
-func (s *HostChangeStatusSuite) TestRunWithInvalidHost() {
-	h := s.route.Factory().(*hostModifyHandler)
-	h.hostID = "Doesn't exist"
-	h.Status = evergreen.HostDecommissioned
-
-	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user1"])
-	res := s.route.Run(ctx)
-	s.Equal(http.StatusNotFound, res.Status())
 }
 
 ////////////////////////////////////////////////////////////////////////

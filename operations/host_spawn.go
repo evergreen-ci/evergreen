@@ -137,10 +137,6 @@ func hostCreate() cli.Command {
 
 }
 
-type hostModifyOptions struct {
-	InstanceTags map[string]string
-}
-
 func hostModify() cli.Command {
 	const (
 		addTagFlagName    = "tag"
@@ -149,7 +145,7 @@ func hostModify() cli.Command {
 
 	return cli.Command{
 		Name:  "modify",
-		Usage: "modify a stopped host",
+		Usage: "modify an existing host",
 		Flags: addHostFlag(
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(addTagFlagName, "t"),

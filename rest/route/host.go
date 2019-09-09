@@ -178,35 +178,6 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
-/*
-UNUSED HELPER METHOD -- this route previously modified the status of a single host
-func (h *hostModifyHandler) modifyHostStatus(ctx context.Context, foundHost *host.Host, user *user.DBUser) gimlet.Responder {
-	if foundHost.Status == evergreen.HostTerminated {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("Host '%s' is terminated; its status cannot be changed", foundHost.Id),
-		})
-	}
-
-	if h.Status == evergreen.HostTerminated {
-		if err := h.sc.TerminateHost(ctx, foundHost, user.Id); err != nil {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    err.Error(),
-			})
-		}
-	} else {
-		if err := h.sc.SetHostStatus(foundHost, h.Status, user.Id); err != nil {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    err.Error(),
-			})
-		}
-	}
-	return nil
-}
-*/
-
 ////////////////////////////////////////////////////////////////////////
 //
 // GET /rest/v2/hosts/{host_id}
