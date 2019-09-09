@@ -205,7 +205,7 @@ func TestByTaskGroupOrder(t *testing.T) {
 	tasks[0].TaskGroup = "example_task_group"
 	result, err = byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
 	assert.NoError(err)
-	assert.Equal(1, result)
+	assert.Equal(0, result)
 	tasks[0].TaskGroup = ""
 	tasks[1].TaskGroup = "example_task_group"
 	result, err = byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
@@ -237,46 +237,22 @@ func TestByTaskGroupOrder(t *testing.T) {
 	tasks[1].Version = "version_id"
 	tasks[0].DisplayName = "first_task"
 	tasks[1].DisplayName = "another_task"
-	yml := `
-tasks: 
-- name: first_task
-- name: another_task
-task_groups:
-- name: example_task_group
-  tasks:
-  - first_task
-  - another_task
-`
+	tasks[0].TaskGroupOrder = 1
+	tasks[1].TaskGroupOrder = 2
+
 	v := &model.Version{
-		Id:     "version_id",
-		Config: yml,
+		Id: "version_id",
 	}
 	require.NoError(v.Insert())
 	taskComparator.tasks = tasks
-	versionMap := map[string]model.Version{"version_id": *v}
-	taskComparator.versions = versionMap
-	assert.NoError(cacheTaskGroups(taskComparator))
+	taskComparator.versions = map[string]model.Version{"version_id": *v}
 	result, err = byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
 	assert.NoError(err)
 	assert.Equal(1, result)
 
 	// t2 is earlier
-	require.NoError(db.ClearCollections(model.VersionCollection))
-	yml = `
-tasks:
-- name: first_task
-- name: another_task
-task_groups:
-- name: example_task_group
-  tasks:
-  - another_task
-  - first_task
-`
-	v.Config = yml
-	require.NoError(v.Insert())
-	versionMap = map[string]model.Version{"version_id": *v}
-	taskComparator.versions = versionMap
-	assert.NoError(cacheTaskGroups(taskComparator))
+	tasks[0].TaskGroupOrder = 2
+	tasks[1].TaskGroupOrder = 1
 	result, err = byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
 	assert.NoError(err)
 	assert.Equal(-1, result)
@@ -286,60 +262,56 @@ func TestPrioritizeTasksWithSameTaskGroupsAndDifferentBuilds(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(model.VersionCollection, task.Collection))
-	yml := `
-tasks: 
-- name: first_task
-- name: another_task
-task_groups:
-- name: example_task_group
-  tasks:
-  - first_task
-  - another_task
-`
+	defer func() {
+		require.NoError(db.ClearCollections(model.VersionCollection, task.Collection))
+	}()
+
 	v := model.Version{
-		Id:     "version_1",
-		Config: yml,
+		Id: "version_1",
 	}
 	versions := map[string]model.Version{"version_1": v}
 	require.NoError(v.Insert())
 	v = model.Version{
-		Id:     "version_2",
-		Config: yml,
+		Id: "version_2",
 	}
 	versions["version_2"] = v
 	require.NoError(v.Insert())
 	tasks := task.Tasks{
 		{
-			Id:          "task_1",
-			BuildId:     "build_1",
-			DisplayName: "another_task",
-			Version:     "version_1",
-			Requester:   evergreen.PatchVersionRequester,
-			TaskGroup:   "example_task_group",
+			Id:             "task_1",
+			BuildId:        "build_1",
+			DisplayName:    "another_task",
+			Version:        "version_1",
+			Requester:      evergreen.PatchVersionRequester,
+			TaskGroup:      "example_task_group",
+			TaskGroupOrder: 2,
 		},
 		{
-			Id:          "task_2",
-			BuildId:     "build_2",
-			DisplayName: "first_task",
-			Version:     "version_1",
-			Requester:   evergreen.PatchVersionRequester,
-			TaskGroup:   "example_task_group",
+			Id:             "task_2",
+			BuildId:        "build_2",
+			DisplayName:    "first_task",
+			Version:        "version_1",
+			Requester:      evergreen.PatchVersionRequester,
+			TaskGroup:      "example_task_group",
+			TaskGroupOrder: 1,
 		},
 		{
-			Id:          "task_3",
-			BuildId:     "build_2",
-			DisplayName: "another_task",
-			Version:     "version_1",
-			Requester:   evergreen.PatchVersionRequester,
-			TaskGroup:   "example_task_group",
+			Id:             "task_3",
+			BuildId:        "build_2",
+			DisplayName:    "another_task",
+			Version:        "version_1",
+			Requester:      evergreen.PatchVersionRequester,
+			TaskGroup:      "example_task_group",
+			TaskGroupOrder: 2,
 		},
 		{
-			Id:          "task_4",
-			BuildId:     "build_1",
-			DisplayName: "first_task",
-			Version:     "version_1",
-			Requester:   evergreen.PatchVersionRequester,
-			TaskGroup:   "example_task_group",
+			Id:             "task_4",
+			BuildId:        "build_1",
+			DisplayName:    "first_task",
+			Version:        "version_1",
+			Requester:      evergreen.PatchVersionRequester,
+			TaskGroup:      "example_task_group",
+			TaskGroupOrder: 1,
 		},
 	}
 	require.NoError(tasks.Insert())
@@ -357,38 +329,31 @@ func TestTaskGroupsNotOutOfOrderFromOtherComparators(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(model.VersionCollection))
-	yml := `
-tasks:
-- name: earlier_task
-- name: later_task
-task_groups:
-- name: example_task_group
-  tasks:
-  - earlier_task
-  - later_task
-`
+	defer func() {
+		require.NoError(db.ClearCollections(model.VersionCollection))
+	}()
+
 	v := model.Version{
-		Id:     "version_1",
-		Config: yml,
+		Id: "version_1",
 	}
 	versions := map[string]model.Version{"version_1": v}
 	require.NoError(v.Insert())
 	v = model.Version{
-		Id:     "version_2",
-		Config: yml,
+		Id: "version_2",
 	}
 	versions["version_2"] = v
 	require.NoError(v.Insert())
 
 	tasks := []task.Task{
 		{
-			Id:          "task_1",
-			BuildId:     "build_1",
-			DisplayName: "later_task",
-			Version:     "version_1",
-			Requester:   evergreen.PatchVersionRequester,
-			TaskGroup:   "example_task_group",
-			Priority:    4,
+			Id:             "task_1",
+			BuildId:        "build_1",
+			DisplayName:    "later_task",
+			Version:        "version_1",
+			Requester:      evergreen.PatchVersionRequester,
+			TaskGroupOrder: 2,
+			TaskGroup:      "example_task_group",
+			Priority:       4,
 		},
 		{
 			Id:          "task_3",
@@ -399,13 +364,14 @@ task_groups:
 			Priority:    1,
 		},
 		{
-			Id:          "task_2",
-			BuildId:     "build_1",
-			DisplayName: "earlier_task",
-			Version:     "version_1",
-			Requester:   evergreen.PatchVersionRequester,
-			TaskGroup:   "example_task_group",
-			Priority:    0,
+			Id:             "task_2",
+			BuildId:        "build_1",
+			DisplayName:    "earlier_task",
+			Version:        "version_1",
+			Requester:      evergreen.PatchVersionRequester,
+			TaskGroup:      "example_task_group",
+			TaskGroupOrder: 1,
+			Priority:       0,
 		},
 	}
 
