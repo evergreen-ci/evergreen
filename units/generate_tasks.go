@@ -107,9 +107,11 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	t, err := task.FindOneId(j.TaskID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "problem finding task %s", j.TaskID))
+		return
 	}
 	if t == nil {
 		j.AddError(errors.Errorf("task %s does not exist", j.TaskID))
+		return
 	}
 
 	err = j.generate(ctx, t)
@@ -117,9 +119,11 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		t, err := task.FindOneId(j.TaskID)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "problem finding task %s", j.TaskID))
+			return
 		}
 		if t == nil {
 			j.AddError(errors.Errorf("task %s does not exist", j.TaskID))
+			return
 		}
 		if t.GeneratedTasks {
 			// Another job generated tasks.
