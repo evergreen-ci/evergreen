@@ -114,6 +114,7 @@ func (t *basicCachedDAGDispatcherImpl) getNodeByItemID(id string) graph.Node {
 	return nil
 }
 
+// Each node is a task and each edge definition represents a dependency; an edge (A, B) means that B depends on A.
 func (t *basicCachedDAGDispatcherImpl) addEdge(from string, to string) error {
 	fromNodeID := t.itemNodeMap[from].ID()
 	toNodeID := t.itemNodeMap[to].ID()
@@ -128,7 +129,7 @@ func (t *basicCachedDAGDispatcherImpl) addEdge(from string, to string) error {
 			"node_id":    fromNodeID,
 		})
 
-		return errors.New(fmt.Sprintf("cannot add a self edge to task '%s'", from))
+		return fmt.Errorf("cannot add a self edge to task '%s'", from)
 	}
 
 	edge := simple.Edge{
@@ -175,17 +176,17 @@ func (t *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 		sort.SliceStable(su.tasks, func(i, j int) bool { return su.tasks[i].GroupIndex < su.tasks[j].GroupIndex })
 	}
 
-	// Add edges for task dependencies
 	for _, item := range items {
 		for _, dependency := range item.Dependencies {
-			if err := t.addEdge(item.Id, dependency); err != nil {
+			// addEdge(A, B) means that B depends on A.
+			if err := t.addEdge(dependency, item.Id); err != nil {
 				return errors.Wrapf(err, "failed to create in-memory task queue of TaskQueueItems for distro '%s'; error defining a DirectedGraph incorporating task dependencies", t.distroID)
 			}
 		}
 	}
 
 	// Sort the graph. Use a lexical sort to resolve ambiguities, because node order is the order that we received these in.
-	sorted, err := topo.SortStabilized(t.graph, lexicalReversed)
+	sorted, err := topo.SortStabilized(t.graph, nil)
 	if err != nil {
 		grip.Alert(message.WrapError(err, message.Fields{
 			"dispatcher": "dependency-task-dispatcher",
@@ -200,15 +201,6 @@ func (t *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 	t.lastUpdated = time.Now()
 
 	return nil
-}
-
-type byIDReversed []graph.Node
-
-func (n byIDReversed) Len() int           { return len(n) }
-func (n byIDReversed) Less(i, j int) bool { return n[i].ID() > n[j].ID() }
-func (n byIDReversed) Swap(i, j int)      { n[i], n[j] = n[j], n[i] }
-func lexicalReversed(nodes []graph.Node) {
-	sort.Sort(byIDReversed(nodes))
 }
 
 // FindNextTask returns the next dispatchable task in the queue.
@@ -242,9 +234,8 @@ func (t *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 		})
 	}
 
-	// Iterate backwards through the graph, because dependencies are on the left.
 	dependencyCaches := make(map[string]task.Task)
-	for i := len(t.sorted) - 1; i >= 0; i-- {
+	for i := range t.sorted {
 		node := t.sorted[i]
 		item := t.getItemByNodeID(node.ID())
 		// TODO Consider checking if the state of any task has changed, which could unblock it.
@@ -352,6 +343,27 @@ func (t *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 				"task":    nextTask.Id,
 			})
 			return nil
+		}
+
+		// Check if its dependencies have been met.
+		depsMet, err := nextTaskFromDB.DependenciesMet(make(map[string]task.Task))
+		if err != nil {
+			grip.Warning(message.Fields{
+				"dispatcher": "dependency-task-dispatcher",
+				"function":   "FindNextTask",
+				"message":    "error checking dependencies for task",
+				"outcome":    "skip and continue",
+				"task":       nextTaskFromDB.Id,
+				"error":      err.Error(),
+			})
+			continue
+		}
+
+		if !depsMet {
+			// TO DO do we need to set both of theses?
+			t.taskGroups[unit.id].tasks[i].IsDispatched = true // type schedulableUnit
+			unit.tasks[i].IsDispatched = true                  // type TaskQueueItem
+			continue
 		}
 
 		if isBlockedSingleHostTaskGroup(unit, nextTaskFromDB) {
