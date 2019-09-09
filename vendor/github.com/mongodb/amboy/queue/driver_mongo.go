@@ -222,6 +222,31 @@ func (d *mongoDriver) Put(ctx context.Context, j amboy.Job) error {
 	return nil
 }
 
+func getAtomicQuery(owner, jobName string, modCount int) bson.M {
+	timeoutTs := time.Now().Add(-amboy.LockTimeout)
+
+	return bson.M{
+		"_id": jobName,
+		"$or": []bson.M{
+			// owner and modcount should match, which
+			// means there's an active lock but we own it.
+			//
+			// The modcount is +1 in the case that we're
+			// looking to update and update the modcount
+			// (rather than just save, as in the Complete
+			// case).
+			{
+				"status.owner":     owner,
+				"status.mod_count": bson.M{"$in": []int{modCount, modCount - 1}},
+				"status.mod_ts":    bson.M{"$gt": timeoutTs},
+			},
+			// modtime is older than the lock timeout,
+			// regardless of what the other data is,
+			{"status.mod_ts": bson.M{"$lte": timeoutTs}},
+		},
+	}
+}
+
 func isMongoDupKey(err error) bool {
 	wce, ok := err.(mongo.WriteConcernError)
 	if !ok {

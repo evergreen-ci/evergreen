@@ -24,7 +24,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	mgo "gopkg.in/mgo.v2"
 )
 
 const defaultLocalQueueCapcity = 10000
@@ -151,7 +150,7 @@ func DefaultQueueTestCases() []QueueTestCase {
 	}
 }
 
-func DefaultDriverTestCases(client *mongo.Client, session *mgo.Session) []DriverTestCase {
+func DefaultDriverTestCases(client *mongo.Client) []DriverTestCase {
 	return []DriverTestCase{
 		{
 			Name:          "No",
@@ -200,55 +199,6 @@ func DefaultDriverTestCases(client *mongo.Client, session *mgo.Session) []Driver
 				closer := func(ctx context.Context) error {
 					d.Close()
 					return nil
-				}
-
-				return closer, remote.SetDriver(d)
-			},
-		},
-		{
-			Name:               "Mgo",
-			WaitUntilSupported: true,
-			SupportsMulti:      true,
-			Constructor: func(ctx context.Context, name string, size int) ([]Driver, TestCloser, error) {
-				opts := DefaultMongoDBOptions()
-				opts.DB = "amboy_test"
-
-				var err error
-				out := make([]Driver, size)
-				catcher := grip.NewBasicCatcher()
-				for i := 0; i < size; i++ {
-					out[i], err = OpenNewMgoDriver(ctx, name, opts, session.Clone())
-					catcher.Add(err)
-				}
-				closer := func(ctx context.Context) error {
-					for _, d := range out {
-						if d != nil {
-							d.(*mgoDriver).Close()
-						}
-					}
-					return session.DB(opts.DB).C(addJobsSuffix(name)).DropCollection()
-				}
-
-				return out, closer, catcher.Resolve()
-			},
-			SetDriver: func(ctx context.Context, q amboy.Queue, name string) (TestCloser, error) {
-				remote, ok := q.(Remote)
-				if !ok {
-					return nil, errors.New("invalid queue type")
-				}
-
-				opts := DefaultMongoDBOptions()
-				opts.DB = "amboy_test"
-
-				driver, err := OpenNewMgoDriver(ctx, name, opts, session.Clone())
-				if err != nil {
-					return nil, err
-				}
-
-				d := driver.(*mgoDriver)
-				closer := func(ctx context.Context) error {
-					d.Close()
-					return session.DB(opts.DB).C(addJobsSuffix(name)).DropCollection()
 				}
 
 				return closer, remote.SetDriver(d)
@@ -354,58 +304,6 @@ func DefaultDriverTestCases(client *mongo.Client, session *mgo.Session) []Driver
 				closer := func(ctx context.Context) error {
 					d.Close()
 					return client.Database(opts.DB).Collection(addGroupSufix(name)).Drop(ctx)
-				}
-
-				return closer, remote.SetDriver(driver)
-			},
-		},
-		{
-			Name:               "MgoGroup",
-			WaitUntilSupported: true,
-			SupportsMulti:      true,
-			Constructor: func(ctx context.Context, name string, size int) ([]Driver, TestCloser, error) {
-				opts := DefaultMongoDBOptions()
-				opts.DB = "amboy_test"
-
-				out := []Driver{}
-				catcher := grip.NewBasicCatcher()
-				for i := 0; i < size; i++ {
-					driver, err := OpenNewMgoGroupDriver(ctx, name, opts, name+"four", session.Clone())
-					catcher.Add(err)
-					out = append(out, driver)
-					driver, err = OpenNewMgoGroupDriver(ctx, name, opts, name+"five", session.Clone())
-					catcher.Add(err)
-					out = append(out, driver)
-				}
-				closer := func(ctx context.Context) error {
-					for _, d := range out {
-						if d != nil {
-							d.(*mgoGroupDriver).Close()
-						}
-					}
-					return session.DB(opts.DB).C(addGroupSufix(name)).DropCollection()
-				}
-
-				return out, closer, catcher.Resolve()
-			},
-			SetDriver: func(ctx context.Context, q amboy.Queue, name string) (TestCloser, error) {
-				remote, ok := q.(Remote)
-				if !ok {
-					return nil, errors.New("invalid queue type")
-				}
-
-				opts := DefaultMongoDBOptions()
-				opts.DB = "amboy_test"
-
-				driver, err := OpenNewMgoGroupDriver(ctx, name, opts, name+"six", session.Clone())
-				if err != nil {
-					return nil, err
-				}
-
-				d := driver.(*mgoGroupDriver)
-				closer := func(ctx context.Context) error {
-					d.Close()
-					return session.DB(opts.DB).C(addGroupSufix(name)).DropCollection()
 				}
 
 				return closer, remote.SetDriver(driver)
@@ -633,10 +531,6 @@ func TestQueueSmoke(t *testing.T) {
 	bctx, bcancel := context.WithCancel(context.Background())
 	defer bcancel()
 
-	session, err := mgo.DialWithTimeout("mongodb://localhost:27017", time.Second)
-	require.NoError(t, err)
-	defer session.Close()
-
 	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(time.Second))
 	require.NoError(t, err)
 	require.NoError(t, client.Connect(bctx))
@@ -649,7 +543,7 @@ func TestQueueSmoke(t *testing.T) {
 		}
 
 		t.Run(test.Name, func(t *testing.T) {
-			for _, driver := range DefaultDriverTestCases(client, session) {
+			for _, driver := range DefaultDriverTestCases(client) {
 				if driver.Skip {
 					continue
 				}
@@ -1038,8 +932,22 @@ func DispatchBeforeTest(bctx context.Context, t *testing.T, test QueueTestCase, 
 		j.UpdateTimeInfo(ti)
 		require.NoError(t, q.Put(ctx, j))
 	}
+	ticker := time.NewTicker(5 * time.Millisecond)
+	defer ticker.Stop()
 
-	time.Sleep(100 * time.Millisecond)
+waitLoop:
+	for {
+		select {
+		case <-ctx.Done():
+			break waitLoop
+		case <-ticker.C:
+			stat := q.Stats(ctx)
+			if stat.Completed == size.Size {
+				break waitLoop
+			}
+		}
+	}
+
 	stats := q.Stats(ctx)
 	assert.Equal(t, 2*size.Size, stats.Total)
 	assert.Equal(t, size.Size, stats.Completed)
