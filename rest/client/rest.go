@@ -97,6 +97,8 @@ func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, spawnRequest *mo
 	return &spawnHostResp, nil
 }
 
+// ModifySpawnHost will start a job that updates the specified user-spawned host
+// with the modifications passed as a parameter.
 func (c *communicatorImpl) ModifySpawnHost(ctx context.Context, hostID string, changes host.HostModifyOptions) error {
 	info := requestInfo{
 		method:  patch,
