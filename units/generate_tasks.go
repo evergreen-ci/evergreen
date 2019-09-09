@@ -114,6 +114,13 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 
 	err = j.generate(ctx, t)
 	if err != nil && !adb.ResultsNotFound(err) {
+		t, err := task.FindOneId(j.TaskID)
+		if err != nil {
+			j.AddError(errors.Wrapf(err, "problem finding task %s", j.TaskID))
+		}
+		if t == nil {
+			j.AddError(errors.Errorf("task %s does not exist", j.TaskID))
+		}
 		if t.GeneratedTasks {
 			// Another job generated tasks.
 			return
