@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"sort"
 	"testing"
 	"time"
@@ -11,9 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -94,12 +91,6 @@ func TestUpdateMergeTaskDependencies(t *testing.T) {
 		Identifier: "evergreen",
 		BuildVariants: []BuildVariant{
 			{
-				Name: evergreen.MergeTaskVariant,
-				Tasks: []BuildVariantTaskUnit{
-					{Name: evergreen.MergeTaskName},
-				},
-			},
-			{
 				Name: "v1",
 				Tasks: []BuildVariantTaskUnit{
 					{Name: "t1"},
@@ -113,22 +104,12 @@ func TestUpdateMergeTaskDependencies(t *testing.T) {
 	}
 
 	version := &Version{
-		Id:         "v1",
-		Revision:   "abcdef",
-		Requester:  evergreen.MergeTestRequester,
-		CreateTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+		Id:        "v1",
+		Requester: evergreen.MergeTestRequester,
 	}
 
-	taskID := fmt.Sprintf("%s_%s_%s_%s_%s",
-		project.Identifier,
-		project.BuildVariants[0].Name,
-		evergreen.MergeTaskName,
-		fmt.Sprintf("patch_%s_%s", version.Revision, version.Id),
-		version.CreateTime.Format(build.IdTimeLayout))
-	taskID = util.CleanName(taskID)
-
 	mergeTask := task.Task{
-		Id: taskID,
+		Id: "merge-task",
 		DependsOn: []task.Dependency{
 			{
 				TaskId:       "t2",
@@ -136,6 +117,7 @@ func TestUpdateMergeTaskDependencies(t *testing.T) {
 				Unattainable: true,
 			},
 		},
+		CommitQueueMerge: true,
 	}
 	assert.NoError(t, mergeTask.Insert())
 
@@ -147,9 +129,9 @@ func TestUpdateMergeTaskDependencies(t *testing.T) {
 	}
 	assert.NoError(t, alias.Upsert())
 
-	assert.NoError(t, version.UpdateMergeTaskDependencies(project))
+	assert.NoError(t, version.UpdateMergeTaskDependencies(project, &mergeTask))
 
-	tDb, err := task.FindOneId(taskID)
+	tDb, err := task.FindOneId(mergeTask.Id)
 	assert.NoError(t, err)
 	require.Len(t, tDb.DependsOn, 2)
 	assert.True(t, tDb.DependsOn[0].Unattainable)

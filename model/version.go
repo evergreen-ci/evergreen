@@ -214,15 +214,9 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 	return versions, nil
 }
 
-func (v *Version) UpdateMergeTaskDependencies(p *Project) error {
-	execTaskIDTable := NewTaskIdTable(p, v, "", "").ExecutionTasks
-	t, err := task.FindOneId(execTaskIDTable.GetId(evergreen.MergeTaskVariant, evergreen.MergeTaskName))
-	if err != nil {
-		return errors.Wrap(err, "can't get merge task")
-	}
-
+func (v *Version) UpdateMergeTaskDependencies(p *Project, mergeTask *task.Task) error {
 	existingDependencies := make(map[string]bool)
-	for _, dep := range t.DependsOn {
+	for _, dep := range mergeTask.DependsOn {
 		existingDependencies[dep.TaskId] = true
 	}
 
@@ -232,6 +226,7 @@ func (v *Version) UpdateMergeTaskDependencies(p *Project) error {
 	}
 
 	mergeTaskDependencies := []task.Dependency{}
+	execTaskIDTable := NewTaskIdTable(p, v, "", "").ExecutionTasks
 	for _, pair := range execPairs {
 		taskID := execTaskIDTable.GetId(pair.Variant, pair.TaskName)
 		if !existingDependencies[taskID] {
@@ -245,7 +240,7 @@ func (v *Version) UpdateMergeTaskDependencies(p *Project) error {
 		}
 	}
 
-	return t.UpdateDependencies(mergeTaskDependencies)
+	return mergeTask.UpdateDependencies(mergeTaskDependencies)
 }
 
 type VersionsByOrder []Version
