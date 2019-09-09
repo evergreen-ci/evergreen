@@ -688,7 +688,8 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 
 // PopulateGenerateTasksJobs poulates generate.tasks jobs for tasks that have started running their generate.tasks command.
 func PopulateGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
-	return func(ctx context.Context, _ amboy.Queue) error {
+	return func(_ context.Context, _ amboy.Queue) error {
+		ctx := context.Background()
 		var q amboy.Queue
 		var ok bool
 		var err error
