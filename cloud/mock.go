@@ -141,7 +141,7 @@ func (mockMgr *mockManager) SpawnHost(ctx context.Context, h *host.Host) (*host.
 }
 
 func (mockMgr *mockManager) ModifyHost(context.Context, *host.Host, host.HostModifyOptions) error {
-	return errors.New("can't modify instances for mock provider")
+	return nil
 }
 
 // get the status of an instance
