@@ -600,7 +600,7 @@ func MarkGeneratedTasks(taskID string, errorToSet error) error {
 	if adb.ResultsNotFound(err) {
 		return nil
 	}
-	return err
+	return errors.Wrap(err, "problem marketing generate.tasks complete")
 }
 
 func GenerateNotRun() ([]Task, error) {
