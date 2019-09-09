@@ -13,7 +13,7 @@ mciModule.factory('DrawPerfTrendChart', function (
   return function (params) {
 
     // Extract params
-    const series = params.series,
+    const series = params.series || [],
       changePoints = params.changePoints,
       buildFailures = params.buildFailures,
       key = params.key,
@@ -25,15 +25,23 @@ mciModule.factory('DrawPerfTrendChart', function (
       originMode = params.originMode,
       metric = params.metric;
 
+    const nearestByOrder = (sample, point) => sample.order >= point.order;
+
     function idxByRevision(series, revision) {
-      return _.findIndex(series, function (sample) {
-        return sample && sample.revision === revision
-      })
+      return _.findIndex(series, sample => sample && sample.revision === revision)
+    }
+
+    function nearestIndex(series, point) {
+      const exact = idxByRevision(series, point);
+      if (exact != -1) {
+        return exact;
+      }
+      return _.findIndex(series, sample => nearestByOrder(sample, point))
     }
 
     function hydrateChangePoint(point) {
       // if idx == 0, shift it right for one point
-      const revIdx = idxByRevision(series, point.suspect_revision) || 1;
+      const revIdx = nearestIndex(series, point) || 1;
 
       point._meta = {
         firstRevIdx: revIdx - 1,
@@ -41,17 +49,26 @@ mciModule.factory('DrawPerfTrendChart', function (
       }
     }
 
-    // Filter out change points which lays outside ot the chart
-    let visibleChangePoints = (metric === "ops_per_sec") ? _.chain(changePoints)
-      .filter(function (d) {
-        return _.findWhere(series, { revision: d.suspect_revision })
-      })
+    // Return true if the bf revision matches a revision for this task.
+    const exactMatch = bf => bf.first_failing_revision in scope.lookups.taskRevisionsMap;
+    // Return true if any of the close bf revisions matches a revision for this task and the same test.
+    const closeMatchForTest = (bf, test) => bf.revisions in scope.lookups.allRevisionsMap && bf.tests === test;
+
+    const first = series.length ? series[0].order : -1;
+    const last = series.length ? series[series.length - 1].order : Number.MAX_SAFE_INTEGER;
+
+    // Filter change points outside of the chart.
+    const visibleChangePoints = (metric === "ops_per_sec") ? _.chain(changePoints)
+      // Exclude all change points outside the series range.
+      .filter(d => d.order >= first && d.order <= last)
       .each(hydrateChangePoint) // Add some useful meta data
       .value() : [];
 
-    const visibleBFs = _.filter(buildFailures, function (d) {
-      return _.findWhere(series, { revision: d.first_failing_revision })
-    });
+    // Filter build failures outside of the chart.
+    const visibleBFs = _.chain(buildFailures)
+      .filter(d => d.order >= first && d.order <= last)
+      .filter(bf => exactMatch(bf) || closeMatchForTest(bf, key) || bf.tests === key)
+      .value();
 
     const cfg = PerfChartService.cfg;
 
@@ -152,9 +169,23 @@ mciModule.factory('DrawPerfTrendChart', function (
       })
     }
 
+    const revisionsPerLevel = _.reduce(series, (revisionsPerLevel, sample) => {
+      _.chain(sample.threadResults).pluck("threadLevel").each(threadLevel => {
+        revisionsPerLevel[threadLevel] = revisionsPerLevel[threadLevel] || [];
+        revisionsPerLevel[threadLevel].push(sample.revision)
+      });
+      return revisionsPerLevel
+    }, {});
     const bfsForLevel = [];
     _.each(visibleBFs, function (bf) {
       _.each(levelsMeta, function (level) {
+
+        // skip levels that don't include this revision.
+        const revisions = revisionsPerLevel[level.name] || [];
+        if (!_.chain(bf.revisions).find((revision) => revisions.includes(revision)).value()) {
+          return
+        }
+
         bfsForLevel.push({
           level: level,
           bf: bf,
@@ -168,13 +199,18 @@ mciModule.factory('DrawPerfTrendChart', function (
     function updateChangePointsForLevel() {
       changePointForLevel = [];
       _.each(visibleChangePoints, function (point) {
-        point.bfs = _.where(
-          buildFailures, { first_failing_revision: point.suspect_revision }
-        ) || [];
+        point.bfs = _.chain(buildFailures).filter((bf) => bf.revisions.includes(point.suspect_revision)).value() || [];
         const level = _.findWhere(levelsMeta, { name: point.thread_level });
         const levels = level ? [level] : levelsMeta;
 
         _.each(levels, function (level) {
+
+          // skip levels that don't include this revision.
+          const revisions = revisionsPerLevel[level.name] || [];
+          if (!_.includes(revisions, point.suspect_revision)) {
+            return
+          }
+
           // Check if there is existing point for this revision/level
           // Mostly for MAXONLY mode
           const existing = _.find(changePointForLevel, function (d) {
@@ -623,7 +659,7 @@ mciModule.factory('DrawPerfTrendChart', function (
         .transition()
         .attr({
           transform: function (d) {
-            const idx = idxByRevision(series, d.bf.first_failing_revision);
+            const idx = nearestIndex(series, d.bf);
             return d3Translate(xScale(idx), yScale(getValueFor(d.level)(series[idx])))
           },
         });
@@ -1099,12 +1135,9 @@ mciModule.factory('DrawPerfTrendChart', function (
       if (hash !== scope.$parent.currentHash) {
         scope.$parent.currentHash = hash;
         scope.$parent.currentHashDate = d.createTime;
-        scope.$parent.bfs = _.pluck(
-          _.where(visibleBFs, { first_failing_revision: hash }),
-          'key'
-        );
+        scope.$parent.bfs = _.chain(visibleBFs).filter((bf) => bf.revisions.includes(hash)).pluck('key').value();
         scope.$parent.cps = _.filter(visibleChangePoints, function (d) {
-          return d._meta.firstRevIdx === idx || d._meta.lastRevIdx === idx
+          return d._meta.firstRevIdx === idx || d._meta.lastRevIdx === idx;
         });
         scope.$emit('hashChanged', hash);
         scope.$parent.$digest()

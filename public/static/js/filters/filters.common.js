@@ -47,6 +47,8 @@ var convertSingleTest = function(test, execution) {
     output.version_id = test.info.version;
     output.project_id = test.info.project;
     output.task_name = test.info.task_name;
+    output.variant = test.info.variant;
+    output.create_time = test.created_at;
     output.task_id = test.info.task_id;
     output.order = test.info.order;
 
