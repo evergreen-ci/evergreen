@@ -500,6 +500,15 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, changes host.
 
 	// note: deal with spot instances?
 	instanceID := h.Id
+	if isHostSpot(h) {
+		instanceID, err = m.client.GetSpotInstanceId(ctx, h)
+		if err != nil {
+			return errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
+		}
+		if instanceID == "" {
+			return errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
+		}
+	}
 	volumeIDs, err := m.client.GetVolumeIDs(ctx, h)
 	if err != nil {
 		return errors.Wrapf(err, "can't get volume IDs for '%s'", h.Id)
