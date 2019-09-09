@@ -53,6 +53,7 @@ func NewCmpBasedTaskComparator(id string) *CmpBasedTaskComparator {
 		runtimeID: id,
 		setupFuncs: []sortSetupFunc{
 			cacheExpectedDurations,
+			groupTaskGroups,
 		},
 		comparators: []taskPriorityCmp{
 			byTaskGroupOrder,

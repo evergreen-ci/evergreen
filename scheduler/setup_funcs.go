@@ -1,7 +1,9 @@
 package scheduler
 
 import (
+	"fmt"
 	"runtime"
+	"sort"
 	"sync"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -66,5 +68,25 @@ func cacheExpectedDurations(comparator *CmpBasedTaskComparator) error {
 
 	comparator.tasks = tasks
 
+	return nil
+}
+
+// groupTaskGroups puts tasks that have the same build and task group next to
+// each other in the queue. This ensures that, in a stable sort,
+// byTaskGroupOrder sorts task group members relative to each other.
+func groupTaskGroups(comparator *CmpBasedTaskComparator) error {
+	taskMap := make(map[string]task.Task)
+	taskKeys := []string{}
+	for _, t := range comparator.tasks {
+		k := fmt.Sprintf("%s-%s-%s", t.BuildId, t.TaskGroup, t.Id)
+		taskMap[k] = t
+		taskKeys = append(taskKeys, k)
+	}
+	// Reverse sort to sort task groups to the top, so that they are more
+	// quickly pinned to hosts.
+	sort.Sort(sort.Reverse(sort.StringSlice(taskKeys)))
+	for i, k := range taskKeys {
+		comparator.tasks[i] = taskMap[k]
+	}
 	return nil
 }
