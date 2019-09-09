@@ -131,6 +131,7 @@ func SetupEnv(env evergreen.Environment) error {
 	if env == nil {
 		return errors.New("no environment configured")
 	}
+
 	settings := env.Settings()
 	githubToken, err := settings.GetGithubOauthToken()
 	if err == nil && len(githubToken) > 0 {

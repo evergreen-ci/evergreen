@@ -41,6 +41,22 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       $scope.tempPlugins = resp.data.plugins ? jsyaml.safeDump(resp.data.plugins) : ""
       $scope.tempContainerPools = resp.data.container_pools.pools ? jsyaml.safeDump(resp.data.container_pools.pools) : ""
 
+      // Support transiton to region-based EC2Keys struct -- TO BE DELETED
+      var keys = resp.data.providers.aws.ec2_keys
+      if (keys) {
+        for (var i = 0; i < keys.length; i++) {
+          if (keys[i].region == "us-east-1") {
+            $scope.tempDefaultEC2Key = keys[i].key;
+            $scope.tempDefaultEC2Secret = keys[i].secret;
+            break;
+          }
+        }
+      }
+      if (!$scope.tempDefaultEC2Key || !$scope.tempDefaultEC2Secret) {
+        $scope.tempDefaultEC2Key = resp.data.providers.aws.aws_id;
+        $scope.tempDefaultEC2Secret = resp.data.providers.aws.aws_secret;
+      }
+
       $scope.Settings = resp.data;
       $scope.Settings.jira_notifications = $scope.Settings.jira_notifications;
       $scope.Settings.jira_notifications.custom_fields = $scope.Settings.jira_notifications.custom_fields || {};
@@ -130,6 +146,14 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     if (!$scope.tempExpansions || $scope.tempExpansions.length === 0) {
       $scope.Settings.expansions = {};
     }
+
+    // Support transition to region-based EC2Keys struct -- TO BE DELETED
+    $scope.Settings.providers.aws.aws_id = $scope.tempDefaultEC2Key;
+    $scope.Settings.providers.aws.aws_secret = $scope.tempDefaultEC2Secret;
+
+    $scope.Settings.providers.aws.ec2_keys = [
+      {"region": "us-east-1", "key": $scope.tempDefaultEC2Key, "secret": $scope.tempDefaultEC2Secret}
+    ];
 
     mciAdminRestService.saveSettings($scope.Settings, { success: successHandler, error: errorHandler });
   }

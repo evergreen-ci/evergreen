@@ -18,7 +18,10 @@ import (
 func TestFleet(t *testing.T) {
 	var h *host.Host
 	m := &ec2FleetManager{
-		client: &awsClientMock{},
+		EC2FleetManagerOptions: &EC2FleetManagerOptions{
+			client: &awsClientMock{},
+			region: "test-region",
+		},
 		credentials: credentials.NewStaticCredentialsFromCreds(credentials.Value{
 			AccessKeyID:     "key",
 			SecretAccessKey: "secret",

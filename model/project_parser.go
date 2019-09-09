@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const LoadProjectError = "load project error(s)"
@@ -325,16 +325,17 @@ func (pbv *parserBV) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // parserBVTaskUnit is a helper type storing intermediary variant task configurations.
 type parserBVTaskUnit struct {
-	Name            string             `yaml:"name,omitempty"`
-	Patchable       *bool              `yaml:"patchable,omitempty"`
-	PatchOnly       *bool              `yaml:"patch_only,omitempty"`
-	Priority        int64              `yaml:"priority,omitempty"`
-	DependsOn       parserDependencies `yaml:"depends_on,omitempty"`
-	Requires        taskSelectors      `yaml:"requires,omitempty"`
-	ExecTimeoutSecs int                `yaml:"exec_timeout_secs,omitempty"`
-	Stepback        *bool              `yaml:"stepback,omitempty"`
-	Distros         parserStringSlice  `yaml:"distros,omitempty"`
-	RunOn           parserStringSlice  `yaml:"run_on,omitempty"` // Alias for "Distros" TODO: deprecate Distros
+	Name             string             `yaml:"name,omitempty"`
+	Patchable        *bool              `yaml:"patchable,omitempty"`
+	PatchOnly        *bool              `yaml:"patch_only,omitempty"`
+	Priority         int64              `yaml:"priority,omitempty"`
+	DependsOn        parserDependencies `yaml:"depends_on,omitempty"`
+	Requires         taskSelectors      `yaml:"requires,omitempty"`
+	ExecTimeoutSecs  int                `yaml:"exec_timeout_secs,omitempty"`
+	Stepback         *bool              `yaml:"stepback,omitempty"`
+	Distros          parserStringSlice  `yaml:"distros,omitempty"`
+	RunOn            parserStringSlice  `yaml:"run_on,omitempty"` // Alias for "Distros" TODO: deprecate Distros
+	CommitQueueMerge bool               `yaml:"commit_queue_merge,omitempty"`
 }
 
 // UnmarshalYAML allows the YAML parser to read both a single selector string or
@@ -410,7 +411,7 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 }
 
 // LoadProjectInto loads the raw data from the config file into project
-// and sets the project's identifier field to identifier. Tags are evaluateed.
+// and sets the project's identifier field to identifier. Tags are evaluated.
 func LoadProjectInto(data []byte, identifier string, project *Project) error {
 	p, errs := projectFromYAML(data)
 	if len(errs) > 0 {
@@ -740,13 +741,14 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 			// create a new task by copying the task that selected it,
 			// so we can preserve the "Variant" and "Status" field.
 			t := BuildVariantTaskUnit{
-				Name:            name,
-				Patchable:       pt.Patchable,
-				PatchOnly:       pt.PatchOnly,
-				Priority:        pt.Priority,
-				ExecTimeoutSecs: pt.ExecTimeoutSecs,
-				Stepback:        pt.Stepback,
-				Distros:         pt.Distros,
+				Name:             name,
+				Patchable:        pt.Patchable,
+				PatchOnly:        pt.PatchOnly,
+				Priority:         pt.Priority,
+				ExecTimeoutSecs:  pt.ExecTimeoutSecs,
+				Stepback:         pt.Stepback,
+				Distros:          pt.Distros,
+				CommitQueueMerge: pt.CommitQueueMerge,
 			}
 
 			// Task-level dependencies in the variant override variant-level dependencies

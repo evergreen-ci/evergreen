@@ -309,6 +309,23 @@ buildvariants:
 			So(p, ShouldBeNil)
 			So(len(errs), ShouldEqual, 1)
 		})
+		Convey("a file with a commit queue merge task should parse", func() {
+			single := `
+buildvariants:
+- name: "v1"
+  tasks:
+  - name: "t1"
+    commit_queue_merge: true
+`
+			p, errs := createIntermediateProject([]byte(single))
+			So(p, ShouldNotBeNil)
+			So(len(errs), ShouldEqual, 0)
+			bv := p.BuildVariants[0]
+			So(bv.Name, ShouldEqual, "v1")
+			So(len(bv.Tasks), ShouldEqual, 1)
+			So(bv.Tasks[0].Name, ShouldEqual, "t1")
+			So(bv.Tasks[0].CommitQueueMerge, ShouldBeTrue)
+		})
 	})
 }
 
@@ -443,7 +460,7 @@ func TestTranslateBuildVariants(t *testing.T) {
 			pp.BuildVariants = []parserBV{{
 				Name: "v1",
 				Tasks: parserBVTaskUnits{
-					{Name: "t1"},
+					{Name: "t1", CommitQueueMerge: true},
 					{Name: ".z", DependsOn: parserDependencies{
 						{TaskSelector: taskSelector{Name: ".b"}}}},
 					{Name: "* !t1 !t2", Requires: taskSelectors{{Name: "!.a"}}},
@@ -457,6 +474,7 @@ func TestTranslateBuildVariants(t *testing.T) {
 			So(bvts[0].Name, ShouldEqual, "t1")
 			So(bvts[1].Name, ShouldEqual, "t2")
 			So(bvts[2].Name, ShouldEqual, "t3")
+			So(bvts[0].CommitQueueMerge, ShouldBeTrue)
 			So(bvts[1].DependsOn[0].Name, ShouldEqual, "t3")
 			So(bvts[2].Requires[0].Name, ShouldEqual, "t1")
 		})

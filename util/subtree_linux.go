@@ -2,11 +2,20 @@ package util
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"github.com/mongodb/grip"
+)
+
+const (
+	processCleanupAttempts   = 10
+	processCleanupTimeoutMin = 100 * time.Millisecond
+	processCleanupTimeoutMax = 1 * time.Second
+	contextTimeout           = 10 * time.Second
 )
 
 func TrackProcess(key string, pid int, logger grip.Journaler) {
@@ -43,6 +52,7 @@ func cleanup(key string, logger grip.Journaler) error {
 		return err
 	}
 
+	// Kill processes
 	for _, pid := range pids {
 		env, err := getEnv(pid)
 		if err != nil {
@@ -58,5 +68,34 @@ func cleanup(key string, logger grip.Journaler) error {
 			}
 		}
 	}
+
+	// Retry listing processes until all have successfully exited
+	ctx, cancel := context.WithTimeout(context.Background(), contextTimeout)
+	defer cancel()
+	err = Retry(
+		ctx,
+		func() (bool, error) {
+			pids, err = listProc()
+			if err != nil {
+				return false, err
+			}
+			if len(pids) == 0 {
+				return false, nil
+			}
+			return true, nil
+		},
+		processCleanupAttempts,
+		processCleanupTimeoutMin,
+		processCleanupTimeoutMax,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Log each process that was not cleaned up
+	for pid := range pids {
+		logger.Infof("Failed to clean up process &d", pid)
+	}
+
 	return nil
 }

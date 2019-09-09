@@ -129,6 +129,13 @@ func TestUpdateMergeTaskDependencies(t *testing.T) {
 
 	mergeTask := task.Task{
 		Id: taskID,
+		DependsOn: []task.Dependency{
+			{
+				TaskId:       "t2",
+				Status:       evergreen.TaskSucceeded,
+				Unattainable: true,
+			},
+		},
 	}
 	assert.NoError(t, mergeTask.Insert())
 
@@ -144,7 +151,8 @@ func TestUpdateMergeTaskDependencies(t *testing.T) {
 
 	tDb, err := task.FindOneId(taskID)
 	assert.NoError(t, err)
-	require.Len(t, tDb.DependsOn, 1)
+	require.Len(t, tDb.DependsOn, 2)
+	assert.True(t, tDb.DependsOn[0].Unattainable)
 }
 
 func TestFindLastPeriodicBuild(t *testing.T) {
