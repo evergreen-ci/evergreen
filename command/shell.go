@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -98,6 +99,10 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 		return errors.WithStack(err)
 	}
 
+	logger.Execution().WarningWhenf(filepath.IsAbs(c.WorkingDir),
+		"the working directory is an absolute path [%s], which isn't supported except when prefixed by '%s'",
+		c.WorkingDir, conf.WorkDir)
+
 	c.WorkingDir, err = conf.GetWorkingDirectory(c.WorkingDir)
 	if err != nil {
 		logger.Execution().Warning(err.Error())
@@ -114,6 +119,11 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 		util.MarkerAgentPID: strconv.Itoa(os.Getpid()),
 	}
 	addTempDirs(env, taskTmpDir)
+
+	logger.Execution().Debug(message.Fields{
+		"working_directory": c.WorkingDir,
+		"shell":             c.Shell,
+	})
 
 	cmd := c.JasperManager().CreateCommand(ctx).
 		Background(c.Background).Directory(c.WorkingDir).Environment(env).Append(c.Shell).

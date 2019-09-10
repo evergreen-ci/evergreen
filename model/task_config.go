@@ -3,6 +3,7 @@ package model
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/evergreen-ci/evergreen"
@@ -97,6 +98,8 @@ func NewTaskConfig(d *distro.Distro, v *Version, p *Project, t *task.Task, r *Pr
 func (c *TaskConfig) GetWorkingDirectory(dir string) (string, error) {
 	if dir == "" {
 		dir = c.WorkDir
+	} else if strings.HasPrefix(dir, c.WorkDir) {
+		// pass
 	} else {
 		dir = filepath.Join(c.WorkDir, dir)
 	}

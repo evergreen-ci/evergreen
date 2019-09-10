@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -206,6 +207,10 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 		return errors.WithStack(err)
 	}
 
+	logger.Execution().WarningWhenf(filepath.IsAbs(c.WorkingDir),
+		"the working directory is an absolute path [%s], which isn't supported except when prefixed by '%s'",
+		c.WorkingDir, conf.WorkDir)
+
 	c.WorkingDir, err = conf.GetWorkingDirectory(c.WorkingDir)
 	if err != nil {
 		logger.Execution().Warning(err.Error())
@@ -226,6 +231,12 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 			}
 		}
 	}
+
+	logger.Execution().Debug(message.Fields{
+		"working_directory": c.WorkingDir,
+		"background":        c.Background,
+		"binary":            c.Binary,
+	})
 
 	err = errors.WithStack(c.runCommand(ctx, conf.Task.Id, c.getProc(ctx, conf.Task.Id, logger), logger))
 
