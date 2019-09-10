@@ -170,8 +170,7 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// Create new spawnhost modify job
 	modifyJob := units.NewSpawnhostModifyJob(foundHost, changes)
-	err = queue.Put(ctx, modifyJob)
-	if err != nil {
+	if err = queue.Put(ctx, modifyJob); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error creating spawnhost modify job"))
 	}
 

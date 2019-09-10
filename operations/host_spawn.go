@@ -187,6 +187,7 @@ func hostModify() cli.Command {
 				return errors.Wrap(err, "problem modifying spawn host")
 			}
 
+			grip.Infof("Successfully queued changes to spawn host with ID '%s'.", hostID)
 			return nil
 		},
 	}

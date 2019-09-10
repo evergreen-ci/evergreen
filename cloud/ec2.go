@@ -487,10 +487,40 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	return h, nil
 }
 
+func (m *ec2Manager) getInstanceID(ctx context.Context, h *host.Host) (string, error) {
+	instanceID := h.Id
+	if isHostSpot(h) {
+		instanceID, err := m.client.GetSpotInstanceId(ctx, h)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":       "error getting spot request info",
+			"host":          h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
+		}))
+		if err != nil {
+			return "", errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
+		}
+		if instanceID == "" {
+			return "", errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
+		}
+	}
+	return instanceID, nil
+}
+
+func (m *ec2Manager) makeResources(ctx context.Context, h *host.Host) ([]string, error) {
+	instanceID, err := m.getInstanceID(ctx, h)
+	volumeIDs, err := m.client.GetVolumeIDs(ctx, h)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't get volume IDs for '%s'", h.Id)
+	}
+	resources := []string{instanceID}
+	resources = append(resources, volumeIDs...)
+	return resources, nil
+}
+
 func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, changes host.HostModifyOptions) error {
 	ec2Settings := &EC2ProviderSettings{}
-	err := ec2Settings.fromDistroSettings(h.Distro)
-	if err != nil {
+	if err := ec2Settings.fromDistroSettings(h.Distro); err != nil {
 		return errors.Wrap(err, "error getting EC2 settings")
 	}
 	if err := m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
@@ -498,23 +528,10 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, changes host.
 	}
 	defer m.client.Close()
 
-	// note: deal with spot instances?
-	instanceID := h.Id
-	if isHostSpot(h) {
-		instanceID, err = m.client.GetSpotInstanceId(ctx, h)
-		if err != nil {
-			return errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
-		}
-		if instanceID == "" {
-			return errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
-		}
-	}
-	volumeIDs, err := m.client.GetVolumeIDs(ctx, h)
+	resources, err := m.makeResources(ctx, h)
 	if err != nil {
-		return errors.Wrapf(err, "can't get volume IDs for '%s'", h.Id)
+		return err
 	}
-	resources := []string{instanceID}
-	resources = append(resources, volumeIDs...)
 
 	// Delete tags
 	deleteTagSlice := []*ec2.Tag{}
@@ -837,33 +854,15 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 	}
 	defer m.client.Close()
 
-	instanceID := h.Id
 	tags := makeTags(h)
+	resources, err := m.makeResources(ctx, h)
+	if err != nil {
+		return err
+	}
 
 	if isHostSpot(h) {
-		instanceID, err = m.client.GetSpotInstanceId(ctx, h)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":       "error getting spot request info",
-				"host":          h.Id,
-				"host_provider": h.Distro.Provider,
-				"distro":        h.Distro.Id,
-			}))
-			return errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
-		}
-		if instanceID == "" {
-			return errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
-		}
-
-		tags["spot"] = "true" // mark this as a spot instance
+		tags["spot"] = "true"
 	}
-
-	volumeIDs, err := m.client.GetVolumeIDs(ctx, h)
-	if err != nil {
-		return errors.Wrapf(err, "can't get volume IDs for '%s'", h.Id)
-	}
-	resources := []string{instanceID}
-	resources = append(resources, volumeIDs...)
 
 	tagSlice := []*ec2.Tag{}
 	for tag := range tags {

@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
-
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
