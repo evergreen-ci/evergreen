@@ -42,7 +42,7 @@ func perfDashGetTasksForVersion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	project, err := model.FindProjectFromVersionID(v.Revision)
+	project, err := model.FindProjectFromVersionID(v.Id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
