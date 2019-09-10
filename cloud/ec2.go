@@ -119,11 +119,11 @@ func (s *EC2ProviderSettings) getSecurityGroups(settings *evergreen.Settings) []
 		for _, group := range s.SecurityGroupIDs {
 			groups = append(groups, aws.String(group))
 		}
-	} else {
-		// Retrieve AWS security group from config if none specified in provider settings
-		groups = append(groups, aws.String(settings.Providers.AWS.DefaultSecurityGroup))
+		return groups
 	}
-	return groups
+
+	// Return default security group from config if none specified in provider settings
+	return []*string{aws.String(settings.Providers.AWS.DefaultSecurityGroup)}
 }
 
 func (s *EC2ProviderSettings) getRegion() string {
