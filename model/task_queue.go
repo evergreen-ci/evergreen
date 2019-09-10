@@ -23,7 +23,7 @@ const (
 	TaskAliasQueuesCollection = "task_alias_queues"
 )
 
-var useModernDequeueOp = true
+const useModernDequeueOp = true
 
 type TaskGroupInfo struct {
 	Name                  string        `bson:"name" json:"name"`
@@ -622,14 +622,6 @@ outer:
 }
 
 func dequeue(taskId, distroId string) error {
-	if useModernDequeueOp {
-		return dequeueUpdate(taskId, distroId)
-	} else {
-		return legacyDequeueUpdate(taskId, distroId)
-	}
-}
-
-func dequeueUpdate(taskId, distroId string) error {
 	itemKey := bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIdKey)
 
 	return errors.WithStack(db.Update(
@@ -641,22 +633,6 @@ func dequeueUpdate(taskId, distroId string) error {
 		bson.M{
 			"$set": bson.M{
 				taskQueueQueueKey + ".$." + taskQueueItemIsDispatchedKey: true,
-			},
-		},
-	))
-}
-
-func legacyDequeueUpdate(taskId, distroId string) error {
-	return errors.WithStack(db.Update(
-		TaskQueuesCollection,
-		bson.M{
-			taskQueueDistroKey: distroId,
-		},
-		bson.M{
-			"$pull": bson.M{
-				taskQueueQueueKey: bson.M{
-					taskQueueItemIdKey: taskId,
-				},
 			},
 		},
 	))
