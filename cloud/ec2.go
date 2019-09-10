@@ -113,13 +113,15 @@ func (s *EC2ProviderSettings) fromDistroSettings(d distro.Distro) error {
 	return nil
 }
 
-func (s *EC2ProviderSettings) getSecurityGroups() []*string {
+func (s *EC2ProviderSettings) getSecurityGroups(settings *evergreen.Settings) []*string {
 	groups := []*string{}
 	if len(s.SecurityGroupIDs) > 0 {
 		for _, group := range s.SecurityGroupIDs {
 			groups = append(groups, aws.String(group))
 		}
-		return groups
+	} else {
+		// Retrieve AWS security group from config if none specified in provider settings
+		groups = append(groups, aws.String(settings.Providers.AWS.DefaultSecurityGroup))
 	}
 	return groups
 }
@@ -210,7 +212,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 			&ec2.InstanceNetworkInterfaceSpecification{
 				AssociatePublicIpAddress: aws.Bool(true),
 				DeviceIndex:              aws.Int64(0),
-				Groups:                   ec2Settings.getSecurityGroups(),
+				Groups:                   ec2Settings.getSecurityGroups(m.settings),
 				SubnetId:                 &ec2Settings.SubnetId,
 			},
 		}
@@ -218,7 +220,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 			input.NetworkInterfaces[0].SetIpv6AddressCount(1).SetAssociatePublicIpAddress(false)
 		}
 	} else {
-		input.SecurityGroups = ec2Settings.getSecurityGroups()
+		input.SecurityGroups = ec2Settings.getSecurityGroups(m.settings)
 	}
 
 	if ec2Settings.UserData != "" {
@@ -322,7 +324,7 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 			&ec2.InstanceNetworkInterfaceSpecification{
 				AssociatePublicIpAddress: aws.Bool(true),
 				DeviceIndex:              aws.Int64(0),
-				Groups:                   ec2Settings.getSecurityGroups(),
+				Groups:                   ec2Settings.getSecurityGroups(m.settings),
 				SubnetId:                 &ec2Settings.SubnetId,
 			},
 		}
@@ -330,7 +332,7 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 			spotRequest.LaunchSpecification.NetworkInterfaces[0].SetIpv6AddressCount(1).SetAssociatePublicIpAddress(false)
 		}
 	} else {
-		spotRequest.LaunchSpecification.SecurityGroups = ec2Settings.getSecurityGroups()
+		spotRequest.LaunchSpecification.SecurityGroups = ec2Settings.getSecurityGroups(m.settings)
 	}
 
 	if ec2Settings.UserData != "" {
