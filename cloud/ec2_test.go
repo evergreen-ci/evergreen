@@ -983,7 +983,7 @@ func (s *EC2Suite) TestUserDataExpand() {
 	s.Equal("expand a thing", expanded)
 }
 
-func (s *EC2Suite) TestGetSecurityGroup() {
+func (s *EC2Suite) TestGetSecurityGroups() {
 	evgSettings := &evergreen.Settings{
 		Providers: evergreen.CloudProviders{
 			AWS: evergreen.AWSConfig{
