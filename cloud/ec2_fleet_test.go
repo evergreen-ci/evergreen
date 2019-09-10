@@ -26,6 +26,13 @@ func TestFleet(t *testing.T) {
 			AccessKeyID:     "key",
 			SecretAccessKey: "secret",
 		}),
+		settings: &evergreen.Settings{
+			Providers: evergreen.CloudProviders{
+				AWS: evergreen.AWSConfig{
+					DefaultSecurityGroup: "default-sg",
+				},
+			},
+		},
 	}
 
 	for name, test := range map[string]func(*testing.T){
