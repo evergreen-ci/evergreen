@@ -35,9 +35,9 @@ func newDistroTaskDAGDispatchService(taskQueue TaskQueue, ttl time.Duration) (*b
 		ttl:      ttl,
 	}
 	t.graph = simple.NewDirectedGraph()
-	t.itemNodeMap = map[string]graph.Node{}     // map[TaskQueueItem.Id]Node{}
-	t.nodeItemMap = map[int64]*TaskQueueItem{}  // map[node.ID()]*TaskQueueItem{}
-	t.taskGroups = map[string]schedulableUnit{} // map[compositeGroupId(TaskQueueItem.Group, TaskQueueItem.BuildVariant, TaskQueueItem.Project, TaskQueueItem.Version)]schedulableUnit{}
+	t.itemNodeMap = map[string]graph.Node{}     // map[TaskQueueItem.Id]Node
+	t.nodeItemMap = map[int64]*TaskQueueItem{}  // map[node.ID()]*TaskQueueItem
+	t.taskGroups = map[string]schedulableUnit{} // map[compositeGroupId(TaskQueueItem.Group, TaskQueueItem.BuildVariant, TaskQueueItem.Project, TaskQueueItem.Version)]schedulableUnit
 	if taskQueue.Length() != 0 {
 		if err := t.rebuild(taskQueue.Queue); err != nil {
 			return nil, errors.Wrapf(err, "error creating newDistroTaskDAGDispatchService for distro '%s'", taskQueue.Distro)
@@ -126,6 +126,7 @@ func (t *basicCachedDAGDispatcherImpl) addEdge(from string, to string) error {
 			"message":    "cannot add a self edge to a Node",
 			"task_id":    from,
 			"node_id":    fromNodeID,
+			"distro_id":  t.distroID,
 		})
 
 		return errors.Errorf("cannot add a self edge to task '%s'", from)
@@ -142,11 +143,11 @@ func (t *basicCachedDAGDispatcherImpl) addEdge(from string, to string) error {
 
 func (t *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 	for i := range items {
-		// Add each individual <TaskQueueItem> node to the graph
+		// Add each individual <TaskQueueItem> node to the graph.
 		t.addItem(&items[i])
 	}
 
-	// Save the task groups
+	// Save the task groups.
 	t.taskGroups = map[string]schedulableUnit{}
 	for _, item := range items {
 		if item.Group != "" {
@@ -189,10 +190,11 @@ func (t *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 		grip.Alert(message.WrapError(err, message.Fields{
 			"dispatcher": "dependency-task-dispatcher",
 			"function":   "rebuild",
-			"message":    "problem sorting tasks within the DirectedGraph",
+			"message":    "problem ordering the tasks and associated dependencies within the DirectedGraph",
+			"distro_id":  t.distroID,
 		}))
 
-		return errors.Wrapf(err, "failed to create in-memory task queue of TaskQueueItems for distro '%s'; error sorting a DirectedGraph incorporating task dependencies", t.distroID)
+		return errors.Wrapf(err, "failed to create in-memory task queue of TaskQueueItems for distro '%s'; error ordering a DirectedGraph incorporating task dependencies", t.distroID)
 	}
 
 	t.sorted = sorted
@@ -207,12 +209,15 @@ func (t *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 	defer t.mu.Unlock()
 	// If the host just ran a task group, give it one back.
 	if spec.Group != "" {
-		taskGroup, ok := t.taskGroups[compositeGroupId(spec.Group, spec.BuildVariant, spec.Project, spec.Version)]
+		taskGroupUnit, ok := t.taskGroups[compositeGroupId(spec.Group, spec.BuildVariant, spec.Project, spec.Version)] // taskGroupUnit is a schedulableUnit.
 		if ok {
-			if next := t.nextTaskGroupTask(taskGroup); next != nil {
+			if next := t.nextTaskGroupTask(taskGroupUnit); next != nil {
+				// next is a *TaskQueueItem, sourced for t.taskGroups (map[string]schedulableUnit) tasks' field, which in turn is a []TaskQueueItem.
+				// taskGroupTask is a *TaskQueueItem sourced from t.nodeItemMap, which is a map[node.ID()]*TaskQueueItem.
 				node := t.getNodeByItemID(next.Id)
-				item := t.getItemByNodeID(node.ID())
-				item.IsDispatched = true
+				taskGroupTask := t.getItemByNodeID(node.ID())
+				taskGroupTask.IsDispatched = true
+
 				return next
 			}
 		}
@@ -235,7 +240,8 @@ func (t *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 	dependencyCaches := make(map[string]task.Task)
 	for i := range t.sorted {
 		node := t.sorted[i]
-		item := t.getItemByNodeID(node.ID())
+		item := t.getItemByNodeID(node.ID()) // item is a *TaskQueueItem sourced from t.nodeItemMap, which is a map[node.ID()]*TaskQueueItem.
+
 		// TODO Consider checking if the state of any task has changed, which could unblock it.
 		// later tasks in the queue. Currently we just wait for the dispatcher to rerun.
 
@@ -252,15 +258,21 @@ func (t *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 			nextTaskFromDB, err := task.FindOneId(item.Id)
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
-					"message": "problem finding task in db",
-					"task_id": item.Id,
+					"dispatcher": "dependency-task-dispatcher",
+					"function":   "FindNextTask",
+					"message":    "problem finding task in db",
+					"task_id":    item.Id,
+					"distro_id":  t.distroID,
 				}))
 				return nil
 			}
 			if nextTaskFromDB == nil {
 				grip.Error(message.Fields{
-					"message": "task from db not found",
-					"task_id": item.Id,
+					"dispatcher": "dependency-task-dispatcher",
+					"function":   "FindNextTask",
+					"message":    "task from db not found",
+					"task_id":    item.Id,
+					"distro_id":  t.distroID,
 				})
 				return nil
 			}
@@ -273,6 +285,7 @@ func (t *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 					"message":    "error checking dependencies for task",
 					"outcome":    "skip and continue",
 					"task":       item.Id,
+					"distro_id":  t.distroID,
 				}))
 				continue
 			}
@@ -280,6 +293,7 @@ func (t *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 			if !depsMet {
 				continue
 			}
+
 			item.IsDispatched = true
 
 			return item
@@ -297,11 +311,13 @@ func (t *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"dispatcher": "dependency-task-dispatcher",
+					"function":   "FindNextTask",
 					"message":    "problem running NumHostsByTaskSpec query - returning nil",
 					"group":      item.Group,
 					"variant":    item.BuildVariant,
 					"project":    item.Project,
 					"version":    item.Version,
+					"distro_id":  t.distroID,
 				}))
 				return nil
 			}
@@ -310,7 +326,10 @@ func (t *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 			t.taskGroups[taskGroupID] = taskGroup
 			if taskGroup.runningHosts < taskGroup.maxHosts {
 				if next := t.nextTaskGroupTask(taskGroup); next != nil {
-					item.IsDispatched = true
+					node := t.getNodeByItemID(next.Id)
+					taskGroupTask := t.getItemByNodeID(node.ID()) // *TaskQueueItem
+					taskGroupTask.IsDispatched = true
+
 					return next
 				}
 			}
@@ -329,15 +348,21 @@ func (t *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 		nextTaskFromDB, err := task.FindOneId(nextTask.Id)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message": "problem finding task in db",
-				"task":    nextTask.Id,
+				"dispatcher": "dependency-task-dispatcher",
+				"function":   "nextTaskGroupTask",
+				"message":    "problem finding task in db",
+				"task":       nextTask.Id,
+				"distro_id":  t.distroID,
 			}))
 			return nil
 		}
 		if nextTaskFromDB == nil {
 			grip.Error(message.Fields{
-				"message": "task from db not found",
-				"task":    nextTask.Id,
+				"dispatcher": "dependency-task-dispatcher",
+				"function":   "nextTaskGroupTask",
+				"message":    "task from db not found",
+				"task":       nextTask.Id,
+				"distro_id":  t.distroID,
 			})
 			return nil
 		}
@@ -352,14 +377,14 @@ func (t *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 				"message":    "error checking dependencies for task",
 				"outcome":    "skip and continue",
 				"task":       nextTask.Id,
+				"distro_id":  t.distroID,
 			}))
 			continue
 		}
 
 		if !depsMet {
-			// TO DO do we need to set both of theses?
-			t.taskGroups[unit.id].tasks[i].IsDispatched = true // type schedulableUnit
-			unit.tasks[i].IsDispatched = true                  // type TaskQueueItem
+			// Regardless, set IsDispatch = true for this *TaskQueueItem, while awaiting the next refresh of the in-memory queue.
+			t.taskGroups[unit.id].tasks[i].IsDispatched = true
 			continue
 		}
 
@@ -370,12 +395,11 @@ func (t *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 
 		// Cache dispatched status.
 		t.taskGroups[unit.id].tasks[i].IsDispatched = true
-		unit.tasks[i].IsDispatched = true
 
 		if nextTaskFromDB.StartTime != util.ZeroTime {
 			continue
 		}
-		// Don't cache dispatched status when returning the next TaskQueueItem - in case the task fails to start.
+
 		// If this is the last task in the group, delete the task group.
 		if i == len(unit.tasks)-1 {
 			delete(t.taskGroups, unit.id)

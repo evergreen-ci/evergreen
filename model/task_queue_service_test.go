@@ -247,97 +247,6 @@ func (s *taskDAGDispatchServiceSuite) TestConstructor() {
 	}
 }
 
-func (s *taskDAGDispatchServiceSuite) TestTaskGroupWithExternalDependency() {
-	dependsOn := []task.Dependency{{TaskId: "95"}}
-	err := task.UpdateOne(
-		bson.M{
-			task.IdKey: "1",
-		},
-		bson.M{
-			"$set": bson.M{
-				task.DependsOnKey: dependsOn,
-			},
-		},
-	)
-	s.Require().NoError(err)
-
-	service, e := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
-	s.Require().NoError(e)
-	var spec TaskSpec
-	var next *TaskQueueItem
-
-	// task ids: ["1", "6", "11", "16", "21", "26", "31, "36", "41", "46", "51", "56", "61", "66", "71", "76", "81", "86", "91", "96"]
-	// Dispatch 5 tasks for the taskGroupTasks "group_1_variant_1_project_1_version_1".
-	// task "1" is dependent on task "95" having status evergreen.TaskSucceeded, so we cannot dispatch task "1".
-	expectedOrder := []string{
-		"6",
-		"11",
-		"16",
-		"21",
-		"26",
-	}
-
-	spec = TaskSpec{
-		Group:        "group_1",
-		BuildVariant: "variant_1",
-		Version:      "version_1",
-		Project:      "project_1",
-	}
-
-	for i := 0; i < 5; i++ {
-		next = service.FindNextTask(spec)
-		s.Require().NotNil(next)
-		s.Equal(expectedOrder[i], next.Id)
-	}
-
-	// Set task "95"'s status to evergreen.TaskSucceeded.
-	err = task.UpdateOne(
-		bson.M{
-			task.IdKey: "95",
-		},
-		bson.M{
-			"$set": bson.M{
-				task.StatusKey: evergreen.TaskSucceeded,
-			},
-		},
-	)
-	s.Require().NoError(err)
-
-	// Rebuild the dispatcher service's in-memory state.
-	err = service.rebuild(s.taskQueue.Queue)
-	s.Require().NoError(err)
-
-	// Now task "1" can be dispatched!
-	expectedOrder = []string{
-		"1",
-		"31",
-		"36",
-		"41",
-		"46",
-		"51",
-		"56",
-		"61",
-		"66",
-		"71",
-		"76",
-		"81",
-		"86",
-		"91",
-		"96",
-	}
-	for i := 0; i < 15; i++ {
-		next = service.FindNextTask(spec)
-		s.Require().NotNil(next)
-		s.Equal(expectedOrder[i], next.Id)
-	}
-
-	// All the tasks within taskGroup "group_1_variant_1_project_1_version_1" has now been dispatched.
-	next = service.FindNextTask(spec)
-	s.Require().NotNil(next)
-	s.Equal("0", next.Id)
-	s.Equal("", next.Group)
-}
-
 func (s *taskDAGDispatchServiceSuite) TestNextTaskForDefaultTaskSpec() {
 	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
 	spec := TaskSpec{}
@@ -414,6 +323,9 @@ func (s *taskDAGDispatchServiceSuite) TestNextTaskForDefaultTaskSpec() {
 	next = service.FindNextTask(spec)
 	s.NotNil(next)
 	s.Equal("7", next.Id)
+	next = service.FindNextTask(spec)
+	s.NotNil(next)
+	s.Equal("12", next.Id)
 	// .....
 }
 
@@ -681,6 +593,112 @@ func (s *taskDAGDispatchServiceSuite) TestTaskGroupTasksRunningHostsVersusMaxHos
 	s.Equal("variant_1", next.BuildVariant)
 	s.Equal("version_1", next.Version)
 	s.Equal("project_1", next.Project)
+}
+
+func (s *taskDAGDispatchServiceSuite) TestTaskGroupWithExternalDependency() {
+	dependsOn := []task.Dependency{{TaskId: "95"}}
+	err := task.UpdateOne(
+		bson.M{
+			task.IdKey: "1",
+		},
+		bson.M{
+			"$set": bson.M{
+				task.DependsOnKey: dependsOn,
+			},
+		},
+	)
+	s.Require().NoError(err)
+
+	service, e := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.Require().NoError(e)
+	var spec TaskSpec
+	var next *TaskQueueItem
+
+	// task ids: ["1", "6", "11", "16", "21", "26", "31, "36", "41", "46", "51", "56", "61", "66", "71", "76", "81", "86", "91", "96"]
+	// Dispatch 5 tasks for the taskGroupTasks "group_1_variant_1_project_1_version_1".
+	// task "1" is dependent on task "95" having status evergreen.TaskSucceeded, so we cannot dispatch task "1".
+	expectedOrder := []string{
+		"6",
+		"11",
+		"16",
+		"21",
+		"26",
+	}
+
+	spec = TaskSpec{
+		Group:        "group_1",
+		BuildVariant: "variant_1",
+		Version:      "version_1",
+		Project:      "project_1",
+	}
+
+	taskGroupID := compositeGroupId(spec.Group, spec.BuildVariant, spec.Project, spec.Version)
+	taskGroup := service.taskGroups[taskGroupID]
+
+	next = service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal(expectedOrder[0], next.Id)
+	s.Equal("1", taskGroup.tasks[0].Id)
+	s.Equal(true, taskGroup.tasks[0].IsDispatched) // Even though this task was not actually dispatched, we still set IsDispatched = true.
+	s.Equal("6", taskGroup.tasks[1].Id)
+	s.Equal(true, taskGroup.tasks[1].IsDispatched)
+	s.Equal("11", taskGroup.tasks[2].Id)
+	s.Equal(false, taskGroup.tasks[2].IsDispatched)
+
+	for i := 1; i < 5; i++ {
+		next = service.FindNextTask(spec)
+		s.Require().NotNil(next)
+		s.Equal(expectedOrder[i], next.Id)
+		s.Equal(expectedOrder[i], taskGroup.tasks[i+1].Id)
+		s.Equal(true, taskGroup.tasks[i+1].IsDispatched)
+	}
+
+	// Set task "95"'s status to evergreen.TaskSucceeded.
+	err = task.UpdateOne(
+		bson.M{
+			task.IdKey: "95",
+		},
+		bson.M{
+			"$set": bson.M{
+				task.StatusKey: evergreen.TaskSucceeded,
+			},
+		},
+	)
+	s.Require().NoError(err)
+
+	// Rebuild the dispatcher service's in-memory state.
+	err = service.rebuild(s.taskQueue.Queue)
+	s.Require().NoError(err)
+
+	// Now task "1" can be dispatched!
+	expectedOrder = []string{
+		"1",
+		"31",
+		"36",
+		"41",
+		"46",
+		"51",
+		"56",
+		"61",
+		"66",
+		"71",
+		"76",
+		"81",
+		"86",
+		"91",
+		"96",
+	}
+	for i := 0; i < 15; i++ {
+		next = service.FindNextTask(spec)
+		s.Require().NotNil(next)
+		s.Equal(expectedOrder[i], next.Id)
+	}
+
+	// All the tasks within taskGroup "group_1_variant_1_project_1_version_1" has now been dispatched.
+	next = service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal("0", next.Id)
+	s.Equal("", next.Group)
 }
 
 //////////////////////////////////////////////////////////////////////////////
