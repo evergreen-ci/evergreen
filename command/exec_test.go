@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -304,6 +305,39 @@ func (s *execCmdSuite) TestKeepEmptyArgs() {
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 	s.Len(cmd.Args, 2)
+}
+
+func (s *execCmdSuite) TestPathSetting() {
+	cmd := &subprocessExec{
+		// just set up enough so that we don't fail parse params
+		Env:        map[string]string{},
+		WorkingDir: testutil.GetDirectoryOfFile(),
+		Path:       []string{"foo", "bar"},
+	}
+	exp := util.NewExpansions(map[string]string{})
+	s.Len(cmd.Env, 0)
+	s.NoError(cmd.doExpansions(exp))
+	s.Len(cmd.Env, 1)
+
+	path, ok := cmd.Env["PATH"]
+	s.True(ok)
+	s.Len(filepath.SplitList(path), 2)
+}
+
+func (s *execCmdSuite) TestNoPathSetting() {
+	cmd := &subprocessExec{
+		// just set up enough so that we don't fail parse params
+		Env:        map[string]string{},
+		WorkingDir: testutil.GetDirectoryOfFile(),
+	}
+	exp := util.NewExpansions(map[string]string{})
+	s.Len(cmd.Env, 0)
+	s.NoError(cmd.doExpansions(exp))
+	s.Len(cmd.Env, 0)
+
+	path, ok := cmd.Env["PATH"]
+	s.False(ok)
+	s.Zero(path)
 }
 
 func TestAddTemp(t *testing.T) {

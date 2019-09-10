@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -22,6 +23,7 @@ type subprocessExec struct {
 	Args    []string          `mapstructure:"args"`
 	Env     map[string]string `mapstructure:"env"`
 	Command string            `mapstructure:"command"`
+	Path    []string          `mapstructure:"add_to_path"`
 
 	// Background, if set to true, prevents shell code/output from
 	// waiting for the script to complete and immediately returns
@@ -121,6 +123,17 @@ func (c *subprocessExec) doExpansions(exp *util.Expansions) error {
 	for k, v := range c.Env {
 		c.Env[k], err = exp.ExpandString(v)
 		catcher.Add(err)
+	}
+
+	if len(c.Path) > 0 {
+		path := make([]string, len(c.Path), len(c.Path)+1)
+		for idx := range c.Path {
+			path[idx], err = exp.ExpandString(c.Path[idx])
+			catcher.Add(err)
+		}
+		path = append(path, os.Getenv("PATH"))
+
+		c.Env["PATH"] = strings.Join(path, string(filepath.ListSeparator))
 	}
 
 	return errors.Wrap(catcher.Resolve(), "problem expanding strings")
