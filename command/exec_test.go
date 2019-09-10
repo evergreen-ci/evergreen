@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -321,7 +322,7 @@ func (s *execCmdSuite) TestPathSetting() {
 
 	path, ok := cmd.Env["PATH"]
 	s.True(ok)
-	s.Len(filepath.SplitList(path), 2)
+	s.Len(filepath.SplitList(path), len(filepath.SplitList(os.Getenv("PATH")))+2)
 }
 
 func (s *execCmdSuite) TestNoPathSetting() {
