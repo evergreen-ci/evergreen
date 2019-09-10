@@ -80,8 +80,7 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 	if ctx.Err() != nil {
 		j.AddError(errors.New("operation aborted"))
 	}
-	op := amboy.QueueOperation(PopulateHostCreationJobs(j.env, 0))
-	catcher.Add(op(hcctx, hcqueue))
+	catcher.Add(PopulateHostCreationJobs(j.env, 0)(hcctx, hcqueue))
 
 	j.ErrorCount = catcher.Len()
 
