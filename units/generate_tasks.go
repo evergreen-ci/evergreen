@@ -55,13 +55,6 @@ func NewGenerateTasksJob(id string, ts string) amboy.Job {
 }
 
 func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
-	t, err := task.FindOneId(j.TaskID)
-	if err != nil {
-		return errors.Wrapf(err, "problem finding task %s", j.TaskID)
-	}
-	if t == nil {
-		return errors.Errorf("task %s does not exist", j.TaskID)
-	}
 	if t.GeneratedTasks {
 		grip.Debug(message.Fields{
 			"message": "attempted to generate tasks, but generator already ran for this task",
