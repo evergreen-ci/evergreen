@@ -23,8 +23,6 @@ const (
 	TaskAliasQueuesCollection = "task_alias_queues"
 )
 
-const useModernDequeueOp = true
-
 type TaskGroupInfo struct {
 	Name                  string        `bson:"name" json:"name"`
 	Count                 int           `bson:"count" json:"count"`
