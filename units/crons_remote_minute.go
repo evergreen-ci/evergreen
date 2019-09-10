@@ -76,11 +76,9 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 	hcqueue, err := j.env.RemoteQueueGroup().Get(hcctx, "service.host.create")
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error getting host create queue"))
+		return
 	}
-	if ctx.Err() != nil {
-		j.AddError(errors.New("operation aborted"))
-	}
-	catcher.Add(PopulateHostCreationJobs(j.env, 0)(hcctx, hcqueue))
+	catcher.Add(PopulateHostCreationJobs(j.env, 0)(ctx, hcqueue))
 
 	j.ErrorCount = catcher.Len()
 
