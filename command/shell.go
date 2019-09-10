@@ -99,7 +99,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 		return errors.WithStack(err)
 	}
 
-	logger.Execution().WarningWhenf(filepath.IsAbs(c.WorkingDir),
+	logger.Execution().WarningWhenf(filepath.IsAbs(c.WorkingDir) && !strings.HasPrefix(c.WorkingDir, conf.WorkDir),
 		"the working directory is an absolute path [%s], which isn't supported except when prefixed by '%s'",
 		c.WorkingDir, conf.WorkDir)
 
