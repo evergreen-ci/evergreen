@@ -37,7 +37,6 @@ func (s *EnvironmentSuite) shouldSkip() {
 func (s *EnvironmentSuite) SetupTest() {
 	s.env = &envState{
 		senders: map[SenderKey]send.Sender{},
-		closers: map[string]func(context.Context) error{},
 	}
 }
 

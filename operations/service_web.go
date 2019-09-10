@@ -117,7 +117,7 @@ func startWebService() cli.Command {
 			<-gracefulWait
 
 			grip.Notice("waiting for background tasks to finish")
-			ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+			ctx, cancel = context.WithTimeout(ctx, 60*time.Second)
 			defer cancel()
 			catcher.Add(env.Close(ctx))
 
