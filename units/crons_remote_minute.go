@@ -61,16 +61,28 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 		PopulateCommitQueueJobs(j.env),
 	}
 
-	queue := j.env.RemoteQueue()
-
 	catcher := grip.NewBasicCatcher()
+
+	queue := j.env.RemoteQueue()
 	for _, op := range ops {
 		if ctx.Err() != nil {
 			j.AddError(errors.New("operation aborted"))
 		}
-
 		catcher.Add(op(ctx, queue))
 	}
+
+	// Create dedicated queue for host creation jobs
+	hcctx, _ := j.env.Context()
+	hcqueue, err := j.env.RemoteQueueGroup().Get(hcctx, "service.host.create")
+	if err != nil {
+		j.AddError(errors.Wrap(err, "error creating host create queue"))
+	}
+	if ctx.Err() != nil {
+		j.AddError(errors.New("operation aborted"))
+	}
+	op := amboy.QueueOperation(PopulateHostCreationJobs(j.env, 0))
+	catcher.Add(op(hcctx, hcqueue))
+
 	j.ErrorCount = catcher.Len()
 
 	grip.Debug(message.Fields{
