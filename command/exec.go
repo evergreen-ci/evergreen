@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -207,7 +208,7 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 		return errors.WithStack(err)
 	}
 
-	logger.Execution().WarningWhenf(filepath.IsAbs(c.WorkingDir),
+	logger.Execution().WarningWhenf(filepath.IsAbs(c.WorkingDir) && !strings.HasPrefix(c.WorkingDir, conf.WorkDir),
 		"the working directory is an absolute path [%s], which isn't supported except when prefixed by '%s'",
 		c.WorkingDir, conf.WorkDir)
 
