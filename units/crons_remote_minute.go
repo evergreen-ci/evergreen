@@ -75,7 +75,7 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 	hcctx, _ := j.env.Context()
 	hcqueue, err := j.env.RemoteQueueGroup().Get(hcctx, "service.host.create")
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error creating host create queue"))
+		j.AddError(errors.Wrap(err, "error getting host create queue"))
 	}
 	if ctx.Err() != nil {
 		j.AddError(errors.New("operation aborted"))
