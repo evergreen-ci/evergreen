@@ -278,6 +278,9 @@ func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 }
 
 func (s *GitGetProjectSuite) TestStdErrLogged() {
+	if os.Getenv("IS_DOCKER") == "true" {
+		s.T().Skip("TestStdErrLogged will not run on docker since it requires a SSH key")
+	}
 	conf := s.modelData5.TaskConfig
 	conf.Distro.CloneMethod = distro.CloneMethodLegacySSH
 	ctx, cancel := context.WithCancel(context.Background())
