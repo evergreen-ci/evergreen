@@ -60,6 +60,45 @@ func OpenNewMongoDriver(ctx context.Context, name string, opts MongoDBOptions, c
 	return d, nil
 }
 
+// NewMongoGroupDriver is similar to the MongoDriver, except it
+// prefixes job ids with a prefix and adds the group field to the
+// documents in the database which makes it possible to manage
+// distinct queues with a single MongoDB collection.
+func NewMongoGroupDriver(name string, opts MongoDBOptions, group string) Driver {
+	host, _ := os.Hostname() // nolint
+
+	if !opts.Format.IsValid() {
+		opts.Format = amboy.BSON
+	}
+	opts.UseGroups = true
+	opts.GroupName = group
+
+	return &mongoDriver{
+		name:       name,
+		opts:       opts,
+		instanceID: fmt.Sprintf("%s.%s.%s.%s", name, group, host, uuid.NewV4()),
+	}
+}
+
+// OpenNewMongoGroupDriver constructs and opens a new MongoDB driver instance
+// using the specified session. It is equivalent to calling
+// NewMongoGroupDriver() and calling driver.Open().
+func OpenNewMongoGroupDriver(ctx context.Context, name string, opts MongoDBOptions, group string, client *mongo.Client) (Driver, error) {
+	d, ok := NewMongoGroupDriver(name, opts, group).(*mongoDriver)
+	if !ok {
+		return nil, errors.New("amboy programmer error: incorrect constructor")
+	}
+
+	opts.UseGroups = true
+	opts.GroupName = group
+
+	if err := d.start(ctx, client); err != nil {
+		return nil, errors.Wrap(err, "problem starting driver")
+	}
+
+	return d, nil
+}
+
 func (d *mongoDriver) ID() string {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
@@ -92,11 +131,13 @@ func (d *mongoDriver) start(ctx context.Context, client *mongo.Client) error {
 	go func() {
 		<-dCtx.Done()
 		grip.Info(message.Fields{
-			"message": "closing session for mongodb driver",
-			"id":      d.instanceID,
-			"uptime":  time.Since(startAt),
-			"span":    time.Since(startAt).String(),
-			"service": "amboy.queue.mongodb",
+			"message":  "closing session for mongodb driver",
+			"id":       d.instanceID,
+			"uptime":   time.Since(startAt),
+			"span":     time.Since(startAt).String(),
+			"service":  "amboy.queue.mongodb",
+			"is_group": d.opts.UseGroups,
+			"group":    d.opts.GroupName,
 		})
 	}()
 
@@ -116,16 +157,34 @@ func (d *mongoDriver) setupDB(ctx context.Context) error {
 		return nil
 	}
 
-	keys := bsonx.Doc{
-		{
+	keys := bsonx.Doc{}
+	modKeys := bsonx.Doc{}
+
+	if d.opts.UseGroups {
+		keys = append(keys, bsonx.Elem{
+			Key:   "group",
+			Value: bsonx.Int32(1),
+		})
+		modKeys = append(modKeys, bsonx.Elem{
+			Key:   "group",
+			Value: bsonx.Int32(1),
+		})
+	}
+	keys = append(keys,
+		bsonx.Elem{
 			Key:   "status.completed",
 			Value: bsonx.Int32(1),
 		},
-		{
+		bsonx.Elem{
 			Key:   "status.in_prog",
 			Value: bsonx.Int32(1),
-		},
-	}
+		})
+
+	modKeys = append(modKeys, bsonx.Elem{
+		Key:   "status.mod_ts",
+		Value: bsonx.Int32(1),
+	})
+
 	if d.opts.CheckWaitUntil {
 		keys = append(keys, bsonx.Elem{
 			Key:   "time_info.wait_until",
@@ -153,12 +212,7 @@ func (d *mongoDriver) setupDB(ctx context.Context) error {
 			Keys: keys,
 		},
 		mongo.IndexModel{
-			Keys: bsonx.Doc{
-				{
-					Key:   "status.mod_ts",
-					Value: bsonx.Int32(1),
-				},
-			},
+			Keys: modKeys,
 		},
 	}
 	if d.opts.TTL > 0 {
@@ -186,10 +240,45 @@ func (d *mongoDriver) Close() {
 	}
 }
 
+func buildCompoundID(n, id string) string { return fmt.Sprintf("%s.%s", n, id) }
+
+func (d *mongoDriver) getIDFromName(name string) string {
+	if d.opts.UseGroups {
+		return buildCompoundID(d.opts.GroupName, name)
+	}
+
+	return name
+}
+
+func (d *mongoDriver) processNameForUsers(j *registry.JobInterchange) {
+	if !d.opts.UseGroups {
+		return
+	}
+
+	j.Name = j.Name[len(d.opts.GroupName)+1:]
+}
+
+func (d *mongoDriver) processJobForGroup(j *registry.JobInterchange) {
+	if !d.opts.UseGroups {
+		return
+	}
+
+	j.Group = d.opts.GroupName
+	j.Name = buildCompoundID(d.opts.GroupName, j.Name)
+}
+
+func (d *mongoDriver) modifyQueryForGroup(q bson.M) {
+	if !d.opts.UseGroups {
+		return
+	}
+
+	q["group"] = d.opts.GroupName
+}
+
 func (d *mongoDriver) Get(ctx context.Context, name string) (amboy.Job, error) {
 	j := &registry.JobInterchange{}
 
-	res := d.getCollection().FindOne(ctx, bson.M{"_id": name})
+	res := d.getCollection().FindOne(ctx, bson.M{"_id": d.getIDFromName(name)})
 	if err := res.Err(); err != nil {
 		return nil, errors.Wrapf(err, "GET problem fetching '%s'", name)
 	}
@@ -197,6 +286,8 @@ func (d *mongoDriver) Get(ctx context.Context, name string) (amboy.Job, error) {
 	if err := res.Decode(j); err != nil {
 		return nil, errors.Wrapf(err, "GET problem decoding '%s'", name)
 	}
+
+	d.processNameForUsers(j)
 
 	output, err := j.Resolve(d.opts.Format)
 	if err != nil {
@@ -213,10 +304,10 @@ func (d *mongoDriver) Put(ctx context.Context, j amboy.Job) error {
 		return errors.Wrap(err, "problem converting job to interchange format")
 	}
 
-	name := j.ID()
+	d.processJobForGroup(job)
 
 	if _, err = d.getCollection().InsertOne(ctx, job); err != nil {
-		return errors.Wrapf(err, "problem saving new job %s", name)
+		return errors.Wrapf(err, "problem saving new job %s", j.ID())
 	}
 
 	return nil
@@ -267,7 +358,8 @@ func (d *mongoDriver) Save(ctx context.Context, j amboy.Job) error {
 		return errors.Wrap(err, "problem converting job to interchange format")
 	}
 
-	query := getAtomicQuery(d.instanceID, name, stat.ModificationCount)
+	d.processJobForGroup(job)
+	query := getAtomicQuery(d.instanceID, job.Name, stat.ModificationCount)
 	res, err := d.getCollection().ReplaceOne(ctx, query, job)
 	if err != nil {
 		if isMongoDupKey(err) {
@@ -276,6 +368,8 @@ func (d *mongoDriver) Save(ctx context.Context, j amboy.Job) error {
 				"service":   "amboy.queue.mongo",
 				"operation": "save job",
 				"name":      name,
+				"is_group":  d.opts.UseGroups,
+				"group":     d.opts.GroupName,
 				"outcome":   "duplicate key error, ignoring stale job",
 			})
 			return nil
@@ -293,11 +387,16 @@ func (d *mongoDriver) Jobs(ctx context.Context) <-chan amboy.Job {
 	output := make(chan amboy.Job)
 	go func() {
 		defer close(output)
-		iter, err := d.getCollection().Find(ctx, struct{}{}, options.Find().SetSort(bson.M{"status.mod_ts": -1}))
+		q := bson.M{}
+		d.modifyQueryForGroup(q)
+
+		iter, err := d.getCollection().Find(ctx, q, options.Find().SetSort(bson.M{"status.mod_ts": -1}))
 		if err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
 				"id":        d.instanceID,
 				"service":   "amboy.queue.mongo",
+				"is_group":  d.opts.UseGroups,
+				"group":     d.opts.GroupName,
 				"operation": "job iterator",
 				"message":   "problem with query",
 			}))
@@ -310,6 +409,8 @@ func (d *mongoDriver) Jobs(ctx context.Context) <-chan amboy.Job {
 				grip.Warning(message.WrapError(err, message.Fields{
 					"id":        d.instanceID,
 					"service":   "amboy.queue.mongo",
+					"is_group":  d.opts.UseGroups,
+					"group":     d.opts.GroupName,
 					"operation": "job iterator",
 					"message":   "problem reading job from cursor",
 				}))
@@ -317,12 +418,16 @@ func (d *mongoDriver) Jobs(ctx context.Context) <-chan amboy.Job {
 				continue
 			}
 
+			d.processNameForUsers(j)
+
 			job, err = j.Resolve(d.opts.Format)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
 					"id":        d.instanceID,
 					"service":   "amboy.queue.mongo",
 					"operation": "job iterator",
+					"is_group":  d.opts.UseGroups,
+					"group":     d.opts.GroupName,
 					"message":   "problem converting job obj",
 				}))
 				continue
@@ -334,6 +439,8 @@ func (d *mongoDriver) Jobs(ctx context.Context) <-chan amboy.Job {
 		grip.Error(message.WrapError(iter.Err(), message.Fields{
 			"id":        d.instanceID,
 			"service":   "amboy.queue.mongo",
+			"is_group":  d.opts.UseGroups,
+			"group":     d.opts.GroupName,
 			"operation": "job iterator",
 			"message":   "database interface error",
 		}))
@@ -345,9 +452,11 @@ func (d *mongoDriver) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
 	output := make(chan amboy.JobStatusInfo)
 	go func() {
 		defer close(output)
+		q := bson.M{}
+		d.modifyQueryForGroup(q)
 
 		iter, err := d.getCollection().Find(ctx,
-			struct{}{},
+			q,
 			&options.FindOptions{
 				Sort: bson.M{"status.mod_ts": -1},
 				Projection: bson.M{
@@ -361,6 +470,8 @@ func (d *mongoDriver) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
 				"service":   "amboy.queue.mongo",
 				"operation": "job status iterator",
 				"message":   "problem with query",
+				"is_group":  d.opts.UseGroups,
+				"group":     d.opts.GroupName,
 			}))
 			return
 		}
@@ -373,10 +484,12 @@ func (d *mongoDriver) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
 					"service":   "amboy.queue.monto",
 					"operation": "job status iterator",
 					"message":   "problem converting job obj",
+					"is_group":  d.opts.UseGroups,
+					"group":     d.opts.GroupName,
 				}))
 				continue
 			}
-
+			d.processNameForUsers(j)
 			j.Status.ID = j.Name
 			select {
 			case <-ctx.Done():
@@ -406,6 +519,8 @@ func (d *mongoDriver) getNextQuery() bson.M {
 			},
 		},
 	}
+
+	d.modifyQueryForGroup(qd)
 
 	timeLimits := bson.M{}
 	if d.opts.CheckWaitUntil {
@@ -454,6 +569,8 @@ RETRY:
 					"service":   "amboy.queue.mongo",
 					"operation": "retrieving next job",
 					"message":   "problem generating query",
+					"is_group":  d.opts.UseGroups,
+					"group":     d.opts.GroupName,
 				}))
 				return nil
 			}
@@ -466,6 +583,8 @@ RETRY:
 						"service":   "amboy.queue.mongo",
 						"operation": "converting next job",
 						"message":   "problem reading document from cursor",
+						"is_group":  d.opts.UseGroups,
+						"group":     d.opts.GroupName,
 					}))
 					// try for the next thing in the iterator if we can
 					continue CURSOR
@@ -478,6 +597,8 @@ RETRY:
 						"service":   "amboy.queue.mongo",
 						"operation": "converting document",
 						"message":   "problem converting job from intermediate form",
+						"is_group":  d.opts.UseGroups,
+						"group":     d.opts.GroupName,
 					}))
 					// try for the next thing in the iterator if we can
 					continue CURSOR
@@ -495,6 +616,8 @@ RETRY:
 						"operation":   "job staleness check",
 						"job":         job.ID(),
 						"job_type":    job.Type().Name,
+						"is_group":    d.opts.UseGroups,
+						"group":       d.opts.GroupName,
 					}
 					grip.Warning(message.WrapError(err, msg))
 					grip.NoticeWhen(err == nil, msg)
@@ -510,6 +633,8 @@ RETRY:
 					"service":   "amboy.queue.mongo",
 					"message":   "problem reported by iterator",
 					"operation": "retrieving next job",
+					"is_group":  d.opts.UseGroups,
+					"group":     d.opts.GroupName,
 				}))
 				return nil
 			}
@@ -520,6 +645,8 @@ RETRY:
 					"service":   "amboy.queue.mongo",
 					"message":   "problem closing iterator",
 					"operation": "retrieving next job",
+					"is_group":  d.opts.UseGroups,
+					"group":     d.opts.GroupName,
 				}))
 				return nil
 			}
@@ -539,29 +666,46 @@ RETRY:
 func (d *mongoDriver) Stats(ctx context.Context) amboy.QueueStats {
 	coll := d.getCollection()
 
-	numJobs, err := coll.EstimatedDocumentCount(ctx)
+	var numJobs int64
+	var err error
+	if d.opts.UseGroups {
+		numJobs, err = coll.CountDocuments(ctx, bson.M{"group": d.opts.GroupName})
+	} else {
+		numJobs, err = coll.EstimatedDocumentCount(ctx)
+	}
+
 	grip.Warning(message.WrapError(err, message.Fields{
 		"id":         d.instanceID,
 		"service":    "amboy.queue.mongo",
 		"collection": coll.Name(),
 		"operation":  "queue stats",
+		"is_group":   d.opts.UseGroups,
+		"group":      d.opts.GroupName,
 		"message":    "problem counting all jobs",
 	}))
 
-	pending, err := coll.CountDocuments(ctx, bson.M{"status.completed": false})
+	pendingQuery := bson.M{"status.completed": false}
+	d.modifyQueryForGroup(pendingQuery)
+	pending, err := coll.CountDocuments(ctx, pendingQuery)
 	grip.Warning(message.WrapError(err, message.Fields{
 		"id":         d.instanceID,
 		"service":    "amboy.queue.mongo",
 		"collection": coll.Name(),
 		"operation":  "queue stats",
+		"is_group":   d.opts.UseGroups,
+		"group":      d.opts.GroupName,
 		"message":    "problem counting pending jobs",
 	}))
 
-	numLocked, err := coll.CountDocuments(ctx, bson.M{"status.completed": false, "status.in_prog": true})
+	lockedQuery := bson.M{"status.completed": false, "status.in_prog": true}
+	d.modifyQueryForGroup(lockedQuery)
+	numLocked, err := coll.CountDocuments(ctx, lockedQuery)
 	grip.Warning(message.WrapError(err, message.Fields{
 		"id":         d.instanceID,
 		"service":    "amboy.queue.mongo",
 		"collection": coll.Name(),
+		"is_group":   d.opts.UseGroups,
+		"group":      d.opts.GroupName,
 		"operation":  "queue stats",
 		"message":    "problem counting locked jobs",
 	}))
