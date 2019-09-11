@@ -297,6 +297,7 @@ functions:
         command: make parse-host-file
         env:
           HOST_FILE: spawned_hosts.json
+          GO_BIN_PATH: ${gobin}
     - command: expansions.update
       params:
         file: gopath/src/github.com/evergreen-ci/evergreen/bin/expansions.yml
