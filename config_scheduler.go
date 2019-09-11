@@ -79,7 +79,7 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 	}
 
 	if !util.StringSliceContains(ValidFinderVersions, c.TaskFinder) {
-		return errors.Errorf("supported finders are %s; %s is not supported",
+		return errors.Errorf("supported task finders are %s; %s is not supported",
 			ValidFinderVersions, c.TaskFinder)
 	}
 

@@ -88,7 +88,7 @@ type TaskQueueItem struct {
 	DisplayName         string        `bson:"display_name" json:"display_name"`
 	Group               string        `bson:"group_name" json:"group_name"`
 	GroupMaxHosts       int           `bson:"group_max_hosts,omitempty" json:"group_max_hosts,omitempty"`
-	GroupIndex          int           `bson:"group_index,omitempty" json:"group_indexa,omitempty"`
+	GroupIndex          int           `bson:"group_index,omitempty" json:"group_index,omitempty"`
 	Version             string        `bson:"version" json:"version"`
 	BuildVariant        string        `bson:"build_variant" json:"build_variant"`
 	RevisionOrderNumber int           `bson:"order" json:"order"`
