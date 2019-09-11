@@ -79,7 +79,7 @@ func (ctx *Context) GetProject() (*Project, error) {
 		return nil, errors.Wrap(err, "problem finding project")
 	}
 
-	ctx.project, err = FindProject("", pref)
+	ctx.project, err = FindLastKnownGoodProject(pref.Identifier)
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding project")
 	}

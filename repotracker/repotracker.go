@@ -359,11 +359,6 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 // project file. An erroneous project file may be returned along with an error.
 func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision string) (*model.Project, error) {
 	projectRef := repoTracker.ProjectRef
-	if projectRef.LocalConfig != "" {
-		// return the Local config from the project Ref.
-		p, err := model.FindProject("", projectRef)
-		return p, err
-	}
 	project, err := repoTracker.GetRemoteConfig(ctx, revision)
 	if err != nil {
 		// Only create a stub version on API request errors that pertain

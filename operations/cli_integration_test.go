@@ -77,17 +77,24 @@ func setupCLITestHarness() cliTestHarness {
 	So(err, ShouldBeNil)
 
 	projectRef := &model.ProjectRef{
-		Identifier:  "sample",
-		Owner:       "evergreen-ci",
-		Repo:        "sample",
-		RepoKind:    "github",
-		Branch:      "master",
-		RemotePath:  "evergreen.yml",
-		LocalConfig: string(localConfBytes),
-		Enabled:     true,
-		BatchTime:   180,
+		Identifier: "sample",
+		Owner:      "evergreen-ci",
+		Repo:       "sample",
+		RepoKind:   "github",
+		Branch:     "master",
+		RemotePath: "evergreen.yml",
+		Enabled:    true,
+		BatchTime:  180,
 	}
 	So(projectRef.Insert(), ShouldBeNil)
+
+	version := &model.Version{
+		Id:         "sample_version",
+		Identifier: "sample",
+		Config:     string(localConfBytes),
+		Requester:  evergreen.RepotrackerVersionRequester,
+	}
+	So(version.Insert(), ShouldBeNil)
 
 	d := distro.Distro{Id: "localtestdistro"}
 	So(d.Insert(), ShouldBeNil)

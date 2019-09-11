@@ -45,11 +45,10 @@ func TestProjectRoutes(t *testing.T) {
 
 		publicId := "pub"
 		public := &model.ProjectRef{
-			Identifier:  publicId,
-			Enabled:     true,
-			Repo:        "repo1",
-			LocalConfig: "buildvariants:\n - name: ubuntu",
-			Admins:      []string{},
+			Identifier: publicId,
+			Enabled:    true,
+			Repo:       "repo1",
+			Admins:     []string{},
 		}
 		So(public.Insert(), ShouldBeNil)
 
