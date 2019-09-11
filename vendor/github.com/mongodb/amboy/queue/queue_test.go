@@ -62,6 +62,8 @@ type DriverTestCase struct {
 	Name                    string
 	SetDriver               func(context.Context, amboy.Queue, string) (TestCloser, error)
 	Constructor             func(context.Context, string, int) ([]Driver, TestCloser, error)
+	MaxSize                 int
+	MinSize                 int
 	SupportsLocal           bool
 	SupportsMulti           bool
 	WaitUntilSupported      bool
@@ -98,6 +100,7 @@ func DefaultQueueTestCases() []QueueTestCase {
 			OrderedStartsBefore:     true,
 			WaitUntilSupported:      true,
 			DispatchBeforeSupported: true,
+			MaxSize:                 16,
 			Constructor: func(ctx context.Context, size int) (amboy.Queue, error) {
 				return NewAdaptiveOrderedLocalQueue(size, defaultLocalQueueCapcity), nil
 			},
@@ -169,6 +172,8 @@ func DefaultDriverTestCases(client *mongo.Client) []DriverTestCase {
 			},
 			SkipOrdered: true,
 			Skip:        true,
+			MinSize:     2,
+			MaxSize:     16,
 			SetDriver: func(ctx context.Context, q amboy.Queue, name string) (TestCloser, error) {
 				remote, ok := q.(Remote)
 				if !ok {
@@ -185,7 +190,8 @@ func DefaultDriverTestCases(client *mongo.Client) []DriverTestCase {
 			},
 		},
 		{
-			Name: "Priority",
+			Name:    "Priority",
+			MinSize: 2,
 			Constructor: func(ctx context.Context, name string, size int) ([]Driver, TestCloser, error) {
 				return nil, func(_ context.Context) error { return nil }, errors.New("not supported")
 			},
@@ -258,6 +264,7 @@ func DefaultDriverTestCases(client *mongo.Client) []DriverTestCase {
 		{
 			Name:               "MongoGroup",
 			WaitUntilSupported: true,
+			MaxSize:            32,
 			SupportsMulti:      true,
 			Constructor: func(ctx context.Context, name string, size int) ([]Driver, TestCloser, error) {
 				opts := DefaultMongoDBOptions()
@@ -277,7 +284,7 @@ func DefaultDriverTestCases(client *mongo.Client) []DriverTestCase {
 				closer := func(ctx context.Context) error {
 					for _, d := range out {
 						if d != nil {
-							d.(*mongoGroupDriver).Close()
+							d.(*mongoDriver).Close()
 						}
 					}
 					return client.Database(opts.DB).Collection(addGroupSufix(name)).Drop(ctx)
@@ -300,7 +307,7 @@ func DefaultDriverTestCases(client *mongo.Client) []DriverTestCase {
 					return nil, err
 				}
 
-				d := driver.(*mongoGroupDriver)
+				d := driver.(*mongoDriver)
 				closer := func(ctx context.Context) error {
 					d.Close()
 					return client.Database(opts.DB).Collection(addGroupSufix(name)).Drop(ctx)
@@ -313,6 +320,8 @@ func DefaultDriverTestCases(client *mongo.Client) []DriverTestCase {
 			Name:               "MongoMGOBSON",
 			WaitUntilSupported: true,
 			SupportsMulti:      true,
+			MinSize:            4,
+			MaxSize:            32,
 			Constructor: func(ctx context.Context, name string, size int) ([]Driver, TestCloser, error) {
 				opts := DefaultMongoDBOptions()
 				opts.DB = "amboy_test"
@@ -365,6 +374,8 @@ func DefaultDriverTestCases(client *mongo.Client) []DriverTestCase {
 			Name:               "MongoGroupMGOBSON",
 			WaitUntilSupported: true,
 			SupportsMulti:      true,
+			MinSize:            4,
+			MaxSize:            32,
 			Constructor: func(ctx context.Context, name string, size int) ([]Driver, TestCloser, error) {
 				opts := DefaultMongoDBOptions()
 				opts.DB = "amboy_test"
@@ -383,7 +394,7 @@ func DefaultDriverTestCases(client *mongo.Client) []DriverTestCase {
 				closer := func(ctx context.Context) error {
 					for _, d := range out {
 						if d != nil {
-							d.(*mongoGroupDriver).Close()
+							d.(*mongoDriver).Close()
 						}
 					}
 					return client.Database(opts.DB).Collection(addGroupSufix(name)).Drop(ctx)
@@ -407,7 +418,7 @@ func DefaultDriverTestCases(client *mongo.Client) []DriverTestCase {
 					return nil, err
 				}
 
-				d := driver.(*mongoGroupDriver)
+				d := driver.(*mongoDriver)
 				closer := func(ctx context.Context) error {
 					d.Close()
 					return client.Database(opts.DB).Collection(addGroupSufix(name)).Drop(ctx)
@@ -572,6 +583,13 @@ func TestQueueSmoke(t *testing.T) {
 								}
 
 								if runner.MaxSize > 0 && runner.MaxSize < size.Size {
+									continue
+								}
+								if driver.MinSize > 0 && driver.MinSize > size.Size {
+									continue
+								}
+
+								if driver.MaxSize > 0 && driver.MaxSize < size.Size {
 									continue
 								}
 
