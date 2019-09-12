@@ -602,7 +602,7 @@ func MarkGeneratedTasks(taskID string, errorToSet error) error {
 }
 
 func GenerateNotRun() ([]Task, error) {
-	const maxGenerateTimeAgo = 2 * time.Hour
+	const maxGenerateTimeAgo = 24 * time.Hour
 	return FindAll(db.Query(bson.M{
 		StatusKey:         evergreen.TaskStarted,                              // task is running
 		StartTimeKey:      bson.M{"$gt": time.Now().Add(-maxGenerateTimeAgo)}, // ignore older tasks, just in case

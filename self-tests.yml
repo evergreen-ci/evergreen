@@ -298,6 +298,7 @@ functions:
         env:
           HOST_FILE: spawned_hosts.json
           GO_BIN_PATH: ${gobin}
+          GOROOT: ${goroot}
     - command: expansions.update
       params:
         file: gopath/src/github.com/evergreen-ci/evergreen/bin/expansions.yml
