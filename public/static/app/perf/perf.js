@@ -1,11 +1,10 @@
-const cedarApp = "https://cedar.mongodb.com"; //TODO make a configuration option
 const numericFilter = function (x) {
   return !_.isNaN(parseInt(x))
 };
 
 // since we are using an older version of _.js that does not have this function
 const findIndex = function (list, predicate) {
-  for (const i = 0; i < list.length; i++) {
+  for (let i = 0; i < list.length; i++) {
     if (predicate(list[i])) {
       return i
     }
@@ -15,7 +14,7 @@ const findIndex = function (list, predicate) {
 mciModule.controller('PerfController', function PerfController(
   $scope, $window, $http, $location, $filter, ChangePointsService,
   DrawPerfTrendChart, PROCESSED_TYPE, Settings,
-  TestSample, CANARY_EXCLUSION_REGEX,
+  TestSample, CANARY_EXCLUSION_REGEX, ApiUtil,
   loadBuildFailures, loadChangePoints, loadTrendData,
   trendDataComplete, loadWhitelist,
 ) {
@@ -32,7 +31,6 @@ $http.get(templateUrl).success(function(template) {
     $compile($("#perfcontents").html(template).contents())($scope);
 }, function() {});
 */
-
   // set this to false if we want the display to happen after the plots are rendered
   $scope.showToolbar = true
   $scope.hiddenGraphs = {}
@@ -652,7 +650,7 @@ $http.get(templateUrl).success(function(template) {
       console.log(error);
       $scope.processAndDrawGraphs();
     }
-    $http.get(cedarApp + "/rest/v1/perf/task_id/" + $scope.task.id).then(
+    ApiUtil.cedarAPI("/rest/v1/perf/task_id/" + $scope.task.id).then(
       (resp) => {
         var formatted = $filter("expandedMetricConverter")(resp.data, $scope.task.execution);
         $scope.perfSample = new TestSample(formatted);
@@ -730,7 +728,7 @@ $http.get(templateUrl).success(function(template) {
     const whitelist= WhitelistDataService.getWhitelistQ({ project, variant, task });
     return $q.all({ points, whitelist });
   }
-}).factory('loadTrendData', function ($http, $filter, $q, $log) {
+}).factory('loadTrendData', function ($http, $filter, $q, $log, ApiUtil) {
   // Attempt to load historical performance data from both the following sources:
   //    ** cedar and / or
   //    ** evergreen
@@ -741,7 +739,7 @@ $http.get(templateUrl).success(function(template) {
       .then(resp => resp.data)
       .catch(err => $log.warn('error loading legacy data', err));
 
-    const cedar = $http.get(cedarApp + "/rest/v1/perf/task_name/" + task +
+    const cedar = ApiUtil.cedarAPI("/rest/v1/perf/task_name/" + task +
       "?variant=" + variant + "&project=" + project)
       .then(resp => $filter("expandedHistoryConverter")(resp.data, scope.task.execution))
       .catch(err => $log.warn('error loading cedar data', err));

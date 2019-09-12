@@ -2047,46 +2047,43 @@ describe('loadTrendData', () => {
   let loadTrendData;
   let $http;
   let getSpy;
+  let cedarSpy;
   let project = 'sys-perf';
   let variant = 'standalone-linux';
   let task_name = 'bestbuy_agg';
   let taskId = 'sys_perf_standalone_linux_bestbuy_agg_9129d4db52acea797f866a68d28de9f60c1206f6_18_07_28_03_10_45';
   let legacyUrl = '/plugin/json/history/' + taskId+ '/perf';
-  let cedarUrl = 'https://cedar.mongodb.com/rest/v1/perf/task_name/bestbuy_agg?variant=standalone-linux&project=sys-perf';
+  let cedarUrl = '/rest/v1/perf/task_name/bestbuy_agg?variant=standalone-linux&project=sys-perf';
   const scope= {task:{id:taskId}};
-  const cedarPromise = {
-    then: () => {
-      return cedarPromise
-    },
-    catch: () => {
-      return cedarPromise
-    },
+  const cedarPromise= {
+    then: () => cedarPromise,
+    catch: () => cedarPromise
   };
   const legacyPromise = {
-    then: () => {
-      return legacyPromise
-    },
-    catch: () => {
-      return legacyPromise
-    },
+    then: () => legacyPromise,
+    catch: () => legacyPromise
+  };
+  const ApiUtil = {
+    cedarAPI: () => cedarPromise
   };
 
   beforeEach(() => {
+    module($provide => {
+      $provide.value('ApiUtil', ApiUtil);
+    });
+
     inject(($injector, _$http_) => {
       loadTrendData = $injector.get('loadTrendData');
       $http = _$http_;
-      getSpy = spyOn($http, 'get').and.callFake(function(url){
-        if (url=== legacyUrl) return legacyPromise;
-        return cedarPromise;
-      });
+      getSpy = spyOn($http, 'get').and.returnValue(legacyPromise);
+      cedarSpy = spyOn(ApiUtil, 'cedarAPI').and.returnValue(cedarPromise);
     });
   });
 
   it('should get both urls', () => {
     loadTrendData(scope, project, variant, task_name);
-    expect(getSpy).toHaveBeenCalledTimes(2);
     expect(getSpy).toHaveBeenCalledWith(legacyUrl);
-    expect(getSpy).toHaveBeenCalledWith(cedarUrl);
+    expect(cedarSpy).toHaveBeenCalledWith(cedarUrl);
   });
 });
 
