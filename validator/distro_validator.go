@@ -40,7 +40,6 @@ var distroSyntaxValidators = []distroValidator{
 // a slice of any validation errors found.
 func CheckDistro(ctx context.Context, d *distro.Distro, s *evergreen.Settings, newDistro bool) (ValidationErrors, error) {
 	validationErrs := ValidationErrors{}
-	var err error
 	distroIds, err := getDistroIds()
 	if err != nil {
 		return nil, err
