@@ -31,8 +31,6 @@ type Driver interface {
 type MongoDBOptions struct {
 	URI             string
 	DB              string
-	GroupName       string
-	UseGroups       bool
 	Priority        bool
 	CheckWaitUntil  bool
 	CheckDispatchBy bool
@@ -53,7 +51,6 @@ func DefaultMongoDBOptions() MongoDBOptions {
 		URI:             "mongodb://localhost:27017",
 		DB:              "amboy",
 		Priority:        false,
-		UseGroups:       false,
 		CheckWaitUntil:  true,
 		SkipIndexBuilds: false,
 		WaitInterval:    time.Second,
