@@ -113,22 +113,15 @@ func (s *EC2ProviderSettings) fromDistroSettings(d distro.Distro) error {
 	return nil
 }
 
-func (s *EC2ProviderSettings) getSecurityGroups(settings *evergreen.Settings, useDefault bool) []*string {
+func (s *EC2ProviderSettings) getSecurityGroups() []*string {
+	groups := []*string{}
 	if len(s.SecurityGroupIDs) > 0 {
-		groups := []*string{}
 		for _, group := range s.SecurityGroupIDs {
 			groups = append(groups, aws.String(group))
 		}
 		return groups
 	}
-
-	// Return default security group if allowed and none is provided in provider settings
-	if useDefault {
-		return []*string{aws.String(settings.Providers.AWS.DefaultSecurityGroup)}
-	}
-
-	// Return empty otherwise
-	return []*string{}
+	return groups
 }
 
 func (s *EC2ProviderSettings) getRegion() string {
@@ -217,7 +210,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 			&ec2.InstanceNetworkInterfaceSpecification{
 				AssociatePublicIpAddress: aws.Bool(true),
 				DeviceIndex:              aws.Int64(0),
-				Groups:                   ec2Settings.getSecurityGroups(m.settings, h.SpawnOptions.SpawnedByTask),
+				Groups:                   ec2Settings.getSecurityGroups(),
 				SubnetId:                 &ec2Settings.SubnetId,
 			},
 		}
@@ -225,7 +218,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 			input.NetworkInterfaces[0].SetIpv6AddressCount(1).SetAssociatePublicIpAddress(false)
 		}
 	} else {
-		input.SecurityGroups = ec2Settings.getSecurityGroups(m.settings, h.SpawnOptions.SpawnedByTask)
+		input.SecurityGroups = ec2Settings.getSecurityGroups()
 	}
 
 	if ec2Settings.UserData != "" {
@@ -329,7 +322,7 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 			&ec2.InstanceNetworkInterfaceSpecification{
 				AssociatePublicIpAddress: aws.Bool(true),
 				DeviceIndex:              aws.Int64(0),
-				Groups:                   ec2Settings.getSecurityGroups(m.settings, h.SpawnOptions.SpawnedByTask),
+				Groups:                   ec2Settings.getSecurityGroups(),
 				SubnetId:                 &ec2Settings.SubnetId,
 			},
 		}
@@ -337,7 +330,7 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 			spotRequest.LaunchSpecification.NetworkInterfaces[0].SetIpv6AddressCount(1).SetAssociatePublicIpAddress(false)
 		}
 	} else {
-		spotRequest.LaunchSpecification.SecurityGroups = ec2Settings.getSecurityGroups(m.settings, h.SpawnOptions.SpawnedByTask)
+		spotRequest.LaunchSpecification.SecurityGroups = ec2Settings.getSecurityGroups()
 	}
 
 	if ec2Settings.UserData != "" {
@@ -423,6 +416,11 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 		return nil, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
+
+	// Get default security group if none provided for host spawned by task
+	if h.SpawnOptions.SpawnedByTask && len(ec2Settings.SecurityGroupIDs) == 0 {
+		ec2Settings.SecurityGroupIDs = []string{m.settings.Providers.AWS.DefaultSecurityGroup}
+	}
 
 	if ec2Settings.KeyName == "" && !h.UserHost {
 		if !h.SpawnOptions.SpawnedByTask {

@@ -262,15 +262,17 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 	if createHost.Region != "" {
 		ec2Settings.Region = createHost.Region
 	}
-	if len(createHost.SecurityGroups) > 0 {
-		ec2Settings.SecurityGroupIDs = createHost.SecurityGroups
-	}
 	if createHost.Subnet != "" {
 		ec2Settings.SubnetId = createHost.Subnet
 	}
 	if createHost.UserdataCommand != "" {
 		ec2Settings.UserData = createHost.UserdataCommand
 	}
+
+	// Always override distro security group with provided security group.
+	// If empty, EC2 manager will replace with default AWS group.
+	ec2Settings.SecurityGroupIDs = createHost.SecurityGroups
+
 	ec2Settings.IPv6 = createHost.IPv6
 	ec2Settings.IsVpc = true // task-spawned hosts do not support ec2 classic
 	if err = mapstructure.Decode(ec2Settings, &d.ProviderSettings); err != nil {

@@ -357,7 +357,7 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 			{
 				AssociatePublicIpAddress: aws.Bool(true),
 				DeviceIndex:              aws.Int64(0),
-				Groups:                   ec2Settings.getSecurityGroups(m.settings, h.SpawnOptions.SpawnedByTask),
+				Groups:                   ec2Settings.getSecurityGroups(),
 				SubnetId:                 aws.String(ec2Settings.SubnetId),
 			},
 		}
@@ -365,7 +365,7 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 			launchTemplate.NetworkInterfaces[0].SetIpv6AddressCount(1).SetAssociatePublicIpAddress(false)
 		}
 	} else {
-		launchTemplate.SecurityGroups = ec2Settings.getSecurityGroups(m.settings, h.SpawnOptions.SpawnedByTask)
+		launchTemplate.SecurityGroups = ec2Settings.getSecurityGroups()
 	}
 
 	userData, err := bootstrapUserData(ctx, m.settings, h, ec2Settings.UserData)

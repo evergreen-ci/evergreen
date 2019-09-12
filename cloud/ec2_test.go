@@ -984,32 +984,18 @@ func (s *EC2Suite) TestUserDataExpand() {
 }
 
 func (s *EC2Suite) TestGetSecurityGroups() {
-	evgSettings := &evergreen.Settings{
-		Providers: evergreen.CloudProviders{
-			AWS: evergreen.AWSConfig{
-				DefaultSecurityGroup: "sg-default",
-			},
-		},
-	}
-	h0 := host.Host{SpawnOptions: host.SpawnOptions{SpawnedByTask: false}}
-	h1 := host.Host{SpawnOptions: host.SpawnOptions{SpawnedByTask: true}}
 	settings := EC2ProviderSettings{
-		SecurityGroupIDs: []string{},
+		SecurityGroupIDs: []string{"sg-1"},
 	}
-	s.Equal([]*string{}, settings.getSecurityGroups(evgSettings, h0.SpawnOptions.SpawnedByTask))
-	s.Equal([]*string{aws.String("sg-default")}, settings.getSecurityGroups(evgSettings, h1.SpawnOptions.SpawnedByTask))
+	s.Equal([]*string{aws.String("sg-1")}, settings.getSecurityGroups())
 	settings = EC2ProviderSettings{
 		SecurityGroupIDs: []string{"sg-1"},
 	}
-	s.Equal([]*string{aws.String("sg-1")}, settings.getSecurityGroups(evgSettings, h1.SpawnOptions.SpawnedByTask))
-	settings = EC2ProviderSettings{
-		SecurityGroupIDs: []string{"sg-1"},
-	}
-	s.Equal([]*string{aws.String("sg-1")}, settings.getSecurityGroups(evgSettings, h1.SpawnOptions.SpawnedByTask))
+	s.Equal([]*string{aws.String("sg-1")}, settings.getSecurityGroups())
 	settings = EC2ProviderSettings{
 		SecurityGroupIDs: []string{"sg-1", "sg-2"},
 	}
-	s.Equal([]*string{aws.String("sg-1"), aws.String("sg-2")}, settings.getSecurityGroups(evgSettings, h1.SpawnOptions.SpawnedByTask))
+	s.Equal([]*string{aws.String("sg-1"), aws.String("sg-2")}, settings.getSecurityGroups())
 }
 
 func (s *EC2Suite) TestCacheHostData() {
