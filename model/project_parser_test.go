@@ -315,7 +315,7 @@ buildvariants:
 `
 			p, err := createIntermediateProject([]byte(single))
 			So(p, ShouldNotBeNil)
-			So(err, ShouldEqual, 0)
+			So(err, ShouldBeNil)
 			bv := p.BuildVariants[0]
 			So(bv.Name, ShouldEqual, "v1")
 			So(len(bv.Tasks), ShouldEqual, 1)
@@ -850,18 +850,18 @@ tasks:
 - name: execTask4
   tags: [ "even" ]
 `
-	pp, errs := createIntermediateProject([]byte(tagYml))
+	pp, err := createIntermediateProject([]byte(tagYml))
 	assert.NotNil(pp)
-	assert.Len(errs, 0)
+	assert.NoError(err)
 	require.Len(pp.BuildVariants[0].DisplayTasks, 2)
 	assert.Len(pp.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 1)
 	assert.Equal(".odd", pp.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
 	assert.Len(pp.BuildVariants[0].DisplayTasks[1].ExecutionTasks, 1)
 	assert.Equal(".even", pp.BuildVariants[0].DisplayTasks[1].ExecutionTasks[0])
 
-	proj, errs := translateProject(pp)
+	proj, err := translateProject(pp)
 	assert.NotNil(proj)
-	assert.Len(errs, 0)
+	assert.NoError(err)
 	// assert parser project hasn't changed
 	require.Len(pp.BuildVariants[0].DisplayTasks, 2)
 	assert.Len(pp.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 1)
