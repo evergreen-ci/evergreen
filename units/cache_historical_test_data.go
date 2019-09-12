@@ -145,7 +145,7 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 		},
 	}
 
-	timingMsg["update_hourly_daily"] = reportTiming(func() {
+	timingMsg["update_rollups"] = reportTiming(func() {
 		timingInfo := jobContext.updateHourlyAndDailyStats(ctx, statsToUpdate, generateMap)
 		for k, v := range timingInfo {
 			timingMsg[k] = v.Seconds()
