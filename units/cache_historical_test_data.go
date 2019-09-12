@@ -74,7 +74,7 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 	}
 	defer func() {
 		timingMsg["has_errors"] = j.HasErrors()
-		timingMsg["aborted"] = ctx.Done() != nil
+		timingMsg["aborted"] = ctx.Err() != nil
 		grip.Info(timingMsg)
 	}()
 
