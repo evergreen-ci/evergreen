@@ -370,7 +370,7 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 
 	userData, err := bootstrapUserData(ctx, m.settings, h, ec2Settings.UserData)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "could not add bootsgetSecurityGroupstrap script to user data")
+		return nil, nil, errors.Wrap(err, "could not add bootstrap script to user data")
 	}
 	ec2Settings.UserData = userData
 
