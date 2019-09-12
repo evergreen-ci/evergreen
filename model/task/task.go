@@ -1742,6 +1742,14 @@ func (t *Task) BlockedState() (string, error) {
 		if err != nil {
 			return "", errors.Wrapf(err, "can't get dependent task '%s'", dep.TaskId)
 		}
+		if depTask == nil {
+			grip.Error(message.Fields{
+				"message":        "could not find dependent task",
+				"task":           t.Id,
+				"dependent_task": dep.TaskId,
+			})
+			continue
+		}
 		if !t.satisfiesDependency(depTask) {
 			return evergreen.TaskStatusPending, nil
 		}
