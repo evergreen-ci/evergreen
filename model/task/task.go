@@ -580,17 +580,19 @@ func (t *Task) MarkAsUndispatched() error {
 
 // MarkGeneratedTasks marks that the task has generated tasks.
 func MarkGeneratedTasks(taskID string, errorToSet error) error {
+	if adb.ResultsNotFound(errorToSet) {
+		return nil
+	}
 	query := bson.M{
 		IdKey:             taskID,
 		GeneratedTasksKey: bson.M{"$exists": false},
 	}
-	update := bson.M{
-		"$set": bson.M{
-			GeneratedTasksKey: true,
-		},
+	set := bson.M{GeneratedTasksKey: true}
+	if errorToSet != nil {
+		set[GenerateTasksErrorKey] = errorToSet.Error()
 	}
-	if errorToSet != nil && !adb.ResultsNotFound(errorToSet) {
-		update[GenerateTasksErrorKey] = errorToSet.Error()
+	update := bson.M{
+		"$set": set,
 	}
 	err := UpdateOne(query, update)
 	if adb.ResultsNotFound(err) {
