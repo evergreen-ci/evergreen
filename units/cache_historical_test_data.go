@@ -72,9 +72,11 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 		"job_type": j.Type().Name,
 		"message":  "timing-info",
 	}
+	startAt := time.Now()
 	defer func() {
 		timingMsg["has_errors"] = j.HasErrors()
-		timingMsg["aborted"] = ctx.Done() != nil
+		timingMsg["aborted"] = ctx.Err() != nil
+		timingMsg["total"] = time.Since(startAt)
 		grip.Info(timingMsg)
 	}()
 
@@ -145,7 +147,7 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 		},
 	}
 
-	timingMsg["update_hourly_daily"] = reportTiming(func() {
+	timingMsg["update_rollups"] = reportTiming(func() {
 		timingInfo := jobContext.updateHourlyAndDailyStats(ctx, statsToUpdate, generateMap)
 		for k, v := range timingInfo {
 			timingMsg[k] = v.Seconds()
@@ -160,7 +162,7 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 		// update last sync
 		err = stats.UpdateStatsStatus(j.ProjectID, jobContext.JobTime, syncToTime)
 		j.AddError(errors.Wrap(err, "error updating last synced date"))
-	})
+	}).Seconds()
 	j.AddError(jobContext.catcher.Resolve())
 	if j.HasErrors() {
 		return
