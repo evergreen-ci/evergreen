@@ -65,32 +65,32 @@ type ParserProject struct {
 	TaskGroups        []parserTaskGroup          `yaml:"task_groups,omitempty" bson:"task_groups,omitempty"`
 	Tasks             []parserTask               `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
 	ExecTimeoutSecs   int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
-	Loggers           *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers:omitempty"`
+	Loggers           *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 
 	// Matrix code
 	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
 }
 
 type parserTaskGroup struct {
-	Name                  string             `yaml:"name,omitempty"`
-	Priority              int64              `yaml:"priority,omitempty"`
-	Patchable             *bool              `yaml:"patchable,omitempty"`
-	PatchOnly             *bool              `yaml:"patch_only,omitempty"`
-	ExecTimeoutSecs       int                `yaml:"exec_timeout_secs,omitempty"`
-	Stepback              *bool              `yaml:"stepback,omitempty"`
-	MaxHosts              int                `yaml:"max_hosts,omitempty"`
-	SetupGroupFailTask    bool               `yaml:"setup_group_can_fail_task,omitempty"`
-	SetupGroupTimeoutSecs int                `yaml:"setup_group_timeout_secs,omitempty"`
-	SetupGroup            *YAMLCommandSet    `yaml:"setup_group,omitempty"`
-	TeardownGroup         *YAMLCommandSet    `yaml:"teardown_group,omitempty"`
-	SetupTask             *YAMLCommandSet    `yaml:"setup_task,omitempty"`
-	TeardownTask          *YAMLCommandSet    `yaml:"teardown_task,omitempty"`
-	Timeout               *YAMLCommandSet    `yaml:"timeout,omitempty"`
-	Tasks                 []string           `yaml:"tasks,omitempty"`
-	DependsOn             parserDependencies `yaml:"depends_on,omitempty"`
-	Requires              taskSelectors      `yaml:"requires,omitempty"`
-	Tags                  parserStringSlice  `yaml:"tags,omitempty"`
-	ShareProcs            bool               `yaml:"share_processes,omitempty"`
+	Name                  string             `yaml:"name,omitempty" bson:"name,omitempty"`
+	Priority              int64              `yaml:"priority,omitempty" bson:"priority,omitempty"`
+	Patchable             *bool              `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	PatchOnly             *bool              `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	ExecTimeoutSecs       int                `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
+	Stepback              *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	MaxHosts              int                `yaml:"max_hosts,omitempty" bson:"max_hosts,omitempty"`
+	SetupGroupFailTask    bool               `yaml:"setup_group_can_fail_task,omitempty" bson:"setup_group_can_fail_task,omitempty"`
+	SetupGroupTimeoutSecs int                `yaml:"setup_group_timeout_secs,omitempty" bson:"setup_group_timeout_secs,omitempty"`
+	SetupGroup            *YAMLCommandSet    `yaml:"setup_group,omitempty" bson:"setup_group,omitempty"`
+	TeardownGroup         *YAMLCommandSet    `yaml:"teardown_group,omitempty" bson:"teardown_group,omitempty"`
+	SetupTask             *YAMLCommandSet    `yaml:"setup_task,omitempty" bson:"setup_task,omitempty"`
+	TeardownTask          *YAMLCommandSet    `yaml:"teardown_task,omitempty" bson:"teardown_task,omitempty"`
+	Timeout               *YAMLCommandSet    `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
+	Tasks                 []string           `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
+	DependsOn             parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
+	Requires              taskSelectors      `yaml:"requires,omitempty" bson:"requires,omitempty"`
+	Tags                  parserStringSlice  `yaml:"tags,omitempty" bson:"tags,omitempty"`
+	ShareProcs            bool               `yaml:"share_processes,omitempty" bson:"share_processes,omitempty"`
 }
 
 func (ptg *parserTaskGroup) name() string   { return ptg.Name }
@@ -98,16 +98,16 @@ func (ptg *parserTaskGroup) tags() []string { return ptg.Tags }
 
 // parserTask represents an intermediary state of task definitions.
 type parserTask struct {
-	Name            string              `yaml:"name,omitempty"`
-	Priority        int64               `yaml:"priority,omitempty"`
-	ExecTimeoutSecs int                 `yaml:"exec_timeout_secs,omitempty"`
-	DependsOn       parserDependencies  `yaml:"depends_on,omitempty"`
-	Requires        taskSelectors       `yaml:"requires,omitempty"`
-	Commands        []PluginCommandConf `yaml:"commands,omitempty"`
-	Tags            parserStringSlice   `yaml:"tags,omitempty"`
-	Patchable       *bool               `yaml:"patchable,omitempty"`
-	PatchOnly       *bool               `yaml:"patch_only,omitempty"`
-	Stepback        *bool               `yaml:"stepback,omitempty"`
+	Name            string              `yaml:"name,omitempty" bson:"name,omitempty"`
+	Priority        int64               `yaml:"priority,omitempty" bson:"priority,omitempty"`
+	ExecTimeoutSecs int                 `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
+	DependsOn       parserDependencies  `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
+	Requires        taskSelectors       `yaml:"requires,omitempty" bson:"requires,omitempty"`
+	Commands        []PluginCommandConf `yaml:"commands,omitempty" bson:"commands,omitempty"`
+	Tags            parserStringSlice   `yaml:"tags,omitempty" bson:"tags,omitempty"`
+	Patchable       *bool               `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	PatchOnly       *bool               `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	Stepback        *bool               `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 }
 
 func (pp *ParserProject) MarshalBSON() ([]byte, error) {
@@ -127,8 +127,8 @@ func (pp *ParserProject) MarshalYAML() (interface{}, error) {
 }
 
 type displayTask struct {
-	Name           string   `yaml:"name,omitempty"`
-	ExecutionTasks []string `yaml:"execution_tasks,omitempty"`
+	Name           string   `yaml:"name,omitempty" bson:"name,omitempty"`
+	ExecutionTasks []string `yaml:"execution_tasks,omitempty" bson:"execution_tasks,omitempty"`
 }
 
 // helper methods for task tag evaluations
@@ -138,8 +138,8 @@ func (pt *parserTask) tags() []string { return pt.Tags }
 // parserDependency represents the intermediary state for referencing dependencies.
 type parserDependency struct {
 	TaskSelector  taskSelector `yaml:",inline"`
-	Status        string       `yaml:"status,omitempty"`
-	PatchOptional bool         `yaml:"patch_optional,omitempty"`
+	Status        string       `yaml:"status,omitempty" bson:"status,omitempty"`
+	PatchOptional bool         `yaml:"patch_optional,omitempty" bson:"patch_optional,omitempty"`
 }
 
 // parserDependencies is a type defined for unmarshalling both a single
@@ -275,20 +275,20 @@ func (ts *taskSelector) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // parserBV is a helper type storing intermediary variant definitions.
 type parserBV struct {
-	Name         string             `yaml:"name,omitempty"`
-	DisplayName  string             `yaml:"display_name,omitempty"`
-	Expansions   util.Expansions    `yaml:"expansions,omitempty"`
-	Tags         parserStringSlice  `yaml:"tags,omitempty,omitempty"`
-	Modules      parserStringSlice  `yaml:"modules,omitempty"`
-	Disabled     bool               `yaml:"disabled,omitempty"`
-	Push         bool               `yaml:"push,omitempty"`
-	BatchTime    *int               `yaml:"batchtime,omitempty"`
-	Stepback     *bool              `yaml:"stepback,omitempty"`
-	RunOn        parserStringSlice  `yaml:"run_on,omitempty"`
-	Tasks        parserBVTaskUnits  `yaml:"tasks,omitempty"`
-	DisplayTasks []displayTask      `yaml:"display_tasks,omitempty"`
-	DependsOn    parserDependencies `yaml:"depends_on,omitempty"`
-	Requires     taskSelectors      `yaml:"requires,omitempty"`
+	Name         string             `yaml:"name,omitempty" bson:"name,omitempty"`
+	DisplayName  string             `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
+	Expansions   util.Expansions    `yaml:"expansions,omitempty" bson:"expansions,omitempty"`
+	Tags         parserStringSlice  `yaml:"tags,omitempty,omitempty" bson:"tags,omitempty"`
+	Modules      parserStringSlice  `yaml:"modules,omitempty" bson:"modules,omitempty"`
+	Disabled     bool               `yaml:"disabled,omitempty" bson:"disabled,omitempty"`
+	Push         bool               `yaml:"push,omitempty" bson:"push,omitempty"`
+	BatchTime    *int               `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
+	Stepback     *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	RunOn        parserStringSlice  `yaml:"run_on,omitempty" bson:"run_on,omitempty"`
+	Tasks        parserBVTaskUnits  `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
+	DisplayTasks []displayTask      `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
+	DependsOn    parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
+	Requires     taskSelectors      `yaml:"requires,omitempty" bson:"requires,omitempty"`
 
 	// internal matrix stuff
 	matrixId  string
@@ -332,17 +332,17 @@ func (pbv *parserBV) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // parserBVTaskUnit is a helper type storing intermediary variant task configurations.
 type parserBVTaskUnit struct {
-	Name             string             `yaml:"name,omitempty"`
-	Patchable        *bool              `yaml:"patchable,omitempty"`
-	PatchOnly        *bool              `yaml:"patch_only,omitempty"`
-	Priority         int64              `yaml:"priority,omitempty"`
-	DependsOn        parserDependencies `yaml:"depends_on,omitempty"`
-	Requires         taskSelectors      `yaml:"requires,omitempty"`
-	ExecTimeoutSecs  int                `yaml:"exec_timeout_secs,omitempty"`
-	Stepback         *bool              `yaml:"stepback,omitempty"`
-	Distros          parserStringSlice  `yaml:"distros,omitempty"`
-	RunOn            parserStringSlice  `yaml:"run_on,omitempty"` // Alias for "Distros" TODO: deprecate Distros
-	CommitQueueMerge bool               `yaml:"commit_queue_merge,omitempty"`
+	Name             string             `yaml:"name,omitempty" bson:"name,omitempty"`
+	Patchable        *bool              `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	PatchOnly        *bool              `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	Priority         int64              `yaml:"priority,omitempty" bson:"priority,omitempty"`
+	DependsOn        parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
+	Requires         taskSelectors      `yaml:"requires,omitempty" bson:"requires,omitempty"`
+	ExecTimeoutSecs  int                `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
+	Stepback         *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	Distros          parserStringSlice  `yaml:"distros,omitempty" bson:"distros,omitempty"`
+	RunOn            parserStringSlice  `yaml:"run_on,omitempty" bson:"run_on,omitempty"` // Alias for "Distros" TODO: deprecate Distros
+	CommitQueueMerge bool               `yaml:"commit_queue_merge,omitempty" bson:"commit_queue_merge,omitempty"`
 }
 
 // UnmarshalYAML allows the YAML parser to read both a single selector string or
