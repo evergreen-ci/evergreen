@@ -40,15 +40,20 @@ var distroSyntaxValidators = []distroValidator{
 // a slice of any validation errors found.
 func CheckDistro(ctx context.Context, d *distro.Distro, s *evergreen.Settings, newDistro bool) (ValidationErrors, error) {
 	validationErrs := ValidationErrors{}
-	distroIds, err := getDistroIds()
-	if err != nil {
-		return nil, err
+	distroIds := []string{}
+	var err error
+	if newDistro || len(d.Aliases) > 0 {
+		distroIds, err = getDistroIds()
+		if err != nil {
+			return nil, err
+		}
 	}
 	if newDistro {
 		validationErrs = append(validationErrs, ensureUniqueId(d, distroIds)...)
 	}
-
-	validationErrs = append(validationErrs, ensureValidAliases(d, distroIds)...)
+	if len(d.Aliases) > 0 {
+		validationErrs = append(validationErrs, ensureValidAliases(d, distroIds)...)
+	}
 
 	for _, v := range distroSyntaxValidators {
 		validationErrs = append(validationErrs, v(ctx, d, s)...)
