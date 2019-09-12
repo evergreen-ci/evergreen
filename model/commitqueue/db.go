@@ -42,7 +42,7 @@ func FindOneId(id string) (*CommitQueue, error) {
 
 func findOne(query db.Q) (*CommitQueue, error) {
 	queue := &CommitQueue{}
-	err := db.FindOneQ(Collection, query, &queue)
+	err := db.FindOneQ(Collection, query, queue)
 
 	return queue, err
 }

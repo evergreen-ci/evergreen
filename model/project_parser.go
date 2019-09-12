@@ -9,6 +9,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+
 	mgobson "gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )
@@ -331,16 +332,17 @@ func (pbv *parserBV) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // parserBVTaskUnit is a helper type storing intermediary variant task configurations.
 type parserBVTaskUnit struct {
-	Name            string             `yaml:"name,omitempty"`
-	Patchable       *bool              `yaml:"patchable,omitempty"`
-	PatchOnly       *bool              `yaml:"patch_only,omitempty"`
-	Priority        int64              `yaml:"priority,omitempty"`
-	DependsOn       parserDependencies `yaml:"depends_on,omitempty"`
-	Requires        taskSelectors      `yaml:"requires,omitempty"`
-	ExecTimeoutSecs int                `yaml:"exec_timeout_secs,omitempty"`
-	Stepback        *bool              `yaml:"stepback,omitempty"`
-	Distros         parserStringSlice  `yaml:"distros,omitempty"`
-	RunOn           parserStringSlice  `yaml:"run_on,omitempty"` // Alias for "Distros" TODO: deprecate Distros
+	Name             string             `yaml:"name,omitempty"`
+	Patchable        *bool              `yaml:"patchable,omitempty"`
+	PatchOnly        *bool              `yaml:"patch_only,omitempty"`
+	Priority         int64              `yaml:"priority,omitempty"`
+	DependsOn        parserDependencies `yaml:"depends_on,omitempty"`
+	Requires         taskSelectors      `yaml:"requires,omitempty"`
+	ExecTimeoutSecs  int                `yaml:"exec_timeout_secs,omitempty"`
+	Stepback         *bool              `yaml:"stepback,omitempty"`
+	Distros          parserStringSlice  `yaml:"distros,omitempty"`
+	RunOn            parserStringSlice  `yaml:"run_on,omitempty"` // Alias for "Distros" TODO: deprecate Distros
+	CommitQueueMerge bool               `yaml:"commit_queue_merge,omitempty"`
 }
 
 // UnmarshalYAML allows the YAML parser to read both a single selector string or
@@ -622,6 +624,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			Tags:        pbv.Tags,
 		}
 		bv.Tasks, errs = evaluateBVTasks(tse, tgse, vse, pbv)
+
 		// evaluate any rules passed in during matrix construction
 		for _, r := range pbv.matrixRules {
 			// remove_tasks removes all tasks with matching names
@@ -643,6 +646,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 				}
 				bv.Tasks = prunedTasks
 			}
+
 			// add_tasks adds the given BuildVariantTasks, returning errors for any collisions
 			if len(r.AddTasks) > 0 {
 				// cache existing tasks so we can check for duplicates
@@ -670,23 +674,11 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			}
 		}
 
-		//resolve tags for display tasks
 		tgMap := map[string]TaskGroup{}
 		for _, tg := range tgs {
 			tgMap[tg.Name] = tg
 		}
 		dtse := newDisplayTaskSelectorEvaluator(bv, tasks, tgs, tgMap)
-		for i, dt := range pbv.DisplayTasks {
-			tasks := []string{}
-			for _, et := range dt.ExecutionTasks {
-				results, err := dtse.evalSelector(ParseSelector(et))
-				if err != nil {
-					errs = append(errs, err)
-				}
-				tasks = append(tasks, results...)
-			}
-			pbv.DisplayTasks[i].ExecutionTasks = tasks
-		}
 
 		// check that display tasks contain real tasks that are not duplicated
 		bvTasks := make(map[string]struct{})        // map of all execution tasks
@@ -700,13 +692,26 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 				bvTasks[t.Name] = struct{}{}
 			}
 		}
+
+		// save display task if it contains valid execution tasks
 		for _, dt := range pbv.DisplayTasks {
 			projectDt := DisplayTask{Name: dt.Name}
 			if _, exists := bvTasks[dt.Name]; exists {
 				errs = append(errs, fmt.Errorf("display task %s cannot have the same name as an execution task", dt.Name))
 				continue
 			}
+
+			//resolve tags for display tasks
+			tasks := []string{}
 			for _, et := range dt.ExecutionTasks {
+				results, err := dtse.evalSelector(ParseSelector(et))
+				if err != nil {
+					errs = append(errs, err)
+				}
+				tasks = append(tasks, results...)
+			}
+
+			for _, et := range tasks {
 				if _, exists := bvTasks[et]; !exists {
 					errs = append(errs, fmt.Errorf("display task %s contains execution task %s which does not exist in build variant", dt.Name, et))
 				} else {
@@ -766,13 +771,14 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 			// create a new task by copying the task that selected it,
 			// so we can preserve the "Variant" and "Status" field.
 			t := BuildVariantTaskUnit{
-				Name:            name,
-				Patchable:       pt.Patchable,
-				PatchOnly:       pt.PatchOnly,
-				Priority:        pt.Priority,
-				ExecTimeoutSecs: pt.ExecTimeoutSecs,
-				Stepback:        pt.Stepback,
-				Distros:         pt.Distros,
+				Name:             name,
+				Patchable:        pt.Patchable,
+				PatchOnly:        pt.PatchOnly,
+				Priority:         pt.Priority,
+				ExecTimeoutSecs:  pt.ExecTimeoutSecs,
+				Stepback:         pt.Stepback,
+				Distros:          pt.Distros,
+				CommitQueueMerge: pt.CommitQueueMerge,
 			}
 
 			// Task-level dependencies in the variant override variant-level dependencies

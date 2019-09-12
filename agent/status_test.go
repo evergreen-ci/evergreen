@@ -2,6 +2,8 @@ package agent
 
 import (
 	"context"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"runtime"
@@ -141,6 +143,9 @@ func (s *StatusSuite) TestCheckOOMSucceeds() {
 	if runtime.GOOS == "darwin" {
 		s.T().Skip("OOM tests will not work on static mac hosts because logs are never cleared and will be too long to parse")
 	}
+	if os.Getenv("IS_DOCKER") == "true" {
+		s.T().Skip("OOM checker is not supported for docker")
+	}
 	agt, err := New(s.testOpts, client.NewMock("url"))
 	s.Require().NoError(err)
 	mockCommunicator := agt.comm.(*client.Mock)
@@ -174,7 +179,11 @@ func (s *StatusSuite) TestCheckOOMSucceeds() {
 	}
 
 	s.Require().NoError(err)
-	s.Equal(200, resp.StatusCode)
+	if resp.StatusCode != 200 {
+		b, err := ioutil.ReadAll(resp.Body)
+		grip.Error(err)
+		s.FailNow(fmt.Sprintf("received status code %d from OOM endpoint with body %s", resp.StatusCode, string(b)))
+	}
 
 	tracker := jasper.NewOOMTracker()
 	s.NoError(util.ReadJSONInto(resp.Body, tracker))

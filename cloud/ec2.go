@@ -156,6 +156,9 @@ type EC2ManagerOptions struct {
 
 	// provider is the type
 	provider ec2ProviderType
+
+	// region is the AWS region specified by distro
+	region string
 }
 
 // ec2Manager starts and configures instances in EC2.
@@ -179,13 +182,14 @@ func (m *ec2Manager) GetSettings() ProviderSettings {
 func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings) error {
 	m.settings = settings
 
-	if settings.Providers.AWS.EC2Key == "" || settings.Providers.AWS.EC2Secret == "" {
-		return errors.New("AWS ID and Secret must not be blank")
+	key, secret, err := GetEC2Key(m.region, settings)
+	if err != nil {
+		return errors.Wrap(err, "Problem getting EC2 keys")
 	}
 
 	m.credentials = credentials.NewStaticCredentialsFromCreds(credentials.Value{
-		AccessKeyID:     settings.Providers.AWS.EC2Key,
-		SecretAccessKey: settings.Providers.AWS.EC2Secret,
+		AccessKeyID:     key,
+		SecretAccessKey: secret,
 	})
 
 	return nil

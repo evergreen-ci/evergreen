@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/testutil"
 	_ "github.com/evergreen-ci/evergreen/plugin"
 	tu "github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
@@ -1402,31 +1401,6 @@ func TestValidatePluginCommands(t *testing.T) {
 	})
 }
 
-func TestCheckProjectSyntax(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.Clear(model.VersionCollection))
-
-	distros := []distro.Distro{
-		{Id: "test-distro-one"},
-		{Id: "test-distro-two"},
-	}
-	for _, d := range distros {
-		assert.NoError(d.Insert())
-	}
-
-	assert.NoError(testutil.CreateTestLocalConfig(projectValidatorConf, "project_test", ""))
-	projectRef, err := model.FindOneProjectRef("project_test")
-	assert.NoError(err)
-
-	project, err := model.FindProject("", projectRef)
-	assert.NoError(err)
-
-	verrs := CheckProjectSyntax(project)
-	assert.Equal(ValidationErrors{}, verrs)
-
-	assert.NoError(db.Clear(distro.Collection))
-}
-
 func TestCheckProjectSemantics(t *testing.T) {
 	Convey("When validating a project's semantics", t, func() {
 		Convey("if the project passes all of the validation funcs, no errors"+
@@ -1441,11 +1415,10 @@ func TestCheckProjectSemantics(t *testing.T) {
 			}
 
 			projectRef := &model.ProjectRef{
-				Identifier:  "project_test",
-				LocalConfig: "test: testing",
+				Identifier: "project_test",
 			}
 
-			project, err := model.FindProject("", projectRef)
+			project, err := model.FindLastKnownGoodProject(projectRef.Identifier)
 			So(err, ShouldBeNil)
 			So(CheckProjectSemantics(project), ShouldResemble, ValidationErrors{})
 		})

@@ -23,8 +23,6 @@ const (
 	TaskAliasQueuesCollection = "task_alias_queues"
 )
 
-var useModernDequeueOp = true
-
 type TaskGroupInfo struct {
 	Name                  string        `bson:"name" json:"name"`
 	Count                 int           `bson:"count" json:"count"`
@@ -90,7 +88,7 @@ type TaskQueueItem struct {
 	DisplayName         string        `bson:"display_name" json:"display_name"`
 	Group               string        `bson:"group_name" json:"group_name"`
 	GroupMaxHosts       int           `bson:"group_max_hosts,omitempty" json:"group_max_hosts,omitempty"`
-	GroupIndex          int           `bson:"group_index,omitempty" json:"group_indexa,omitempty"`
+	GroupIndex          int           `bson:"group_index,omitempty" json:"group_index,omitempty"`
 	Version             string        `bson:"version" json:"version"`
 	BuildVariant        string        `bson:"build_variant" json:"build_variant"`
 	RevisionOrderNumber int           `bson:"order" json:"order"`
@@ -228,7 +226,7 @@ func BlockTaskGroupTasks(taskID string) error {
 		return errors.Errorf("found nil task %s", taskID)
 	}
 
-	p, err := FindProjectFromTask(t)
+	p, err := FindProjectFromVersionID(t.Version)
 	if err != nil {
 		return errors.Wrapf(err, "problem getting project for task %s", t.Id)
 	}
@@ -265,13 +263,6 @@ func BlockTaskGroupTasks(taskID string) error {
 }
 
 func (self *TaskQueue) Save() error {
-	// avoid saving empty queues, because the
-	// DistroQueueInfo.AliasQueue (and therefore the collection we
-	// save the queue to) isn't populated properly unless there
-	// are tasks in the queue.
-	if len(self.Queue) == 0 {
-		return nil
-	}
 	if len(self.Queue) > 10000 {
 		self.Queue = self.Queue[:10000]
 	}
@@ -627,14 +618,6 @@ outer:
 }
 
 func dequeue(taskId, distroId string) error {
-	if useModernDequeueOp {
-		return dequeueUpdate(taskId, distroId)
-	} else {
-		return legacyDequeueUpdate(taskId, distroId)
-	}
-}
-
-func dequeueUpdate(taskId, distroId string) error {
 	itemKey := bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIdKey)
 
 	return errors.WithStack(db.Update(
@@ -646,22 +629,6 @@ func dequeueUpdate(taskId, distroId string) error {
 		bson.M{
 			"$set": bson.M{
 				taskQueueQueueKey + ".$." + taskQueueItemIsDispatchedKey: true,
-			},
-		},
-	))
-}
-
-func legacyDequeueUpdate(taskId, distroId string) error {
-	return errors.WithStack(db.Update(
-		TaskQueuesCollection,
-		bson.M{
-			taskQueueDistroKey: distroId,
-		},
-		bson.M{
-			"$pull": bson.M{
-				taskQueueQueueKey: bson.M{
-					taskQueueItemIdKey: taskId,
-				},
 			},
 		},
 	))

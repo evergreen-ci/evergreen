@@ -137,7 +137,7 @@ func (as *APIServer) checkProject(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		p, err := model.FindProject("", projectRef)
+		p, err := model.FindLastKnownGoodProject(projectRef.Identifier)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrap(err, "Error getting patch"))

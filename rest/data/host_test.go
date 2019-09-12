@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/suite"
 )
@@ -206,7 +207,15 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	})
 	s.NoError(testUser.Insert())
 
-	intentHost, err := (&DBHostConnector{}).NewIntentHost(testDistroID, testPublicKeyName, "", "", testUser)
+	options := &restmodel.HostRequestOptions{
+		DistroID:     testDistroID,
+		TaskID:       "",
+		KeyName:      testPublicKeyName,
+		UserData:     "",
+		InstanceTags: nil,
+	}
+
+	intentHost, err := (&DBHostConnector{}).NewIntentHost(options, testUser)
 	s.NotNil(intentHost)
 	s.NoError(err)
 	foundHost, err := host.FindOne(host.ById(intentHost.Id))

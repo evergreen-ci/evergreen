@@ -123,7 +123,11 @@ func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 
 	var cost float64
 	if j.manager == nil {
-		j.manager, err = cloud.GetManager(ctx, j.host.Provider, j.settings)
+		mgrOpts := cloud.ManagerOpts{
+			Provider: j.host.Provider,
+			Region:   cloud.GetRegion(j.host.Distro),
+		}
+		j.manager, err = cloud.GetManager(ctx, mgrOpts, j.settings)
 
 		if err != nil {
 			j.AddError(err)

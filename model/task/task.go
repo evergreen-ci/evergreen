@@ -1,6 +1,7 @@
 package task
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -23,8 +24,7 @@ import (
 )
 
 const (
-	edgesKey = "edges"
-	taskKey  = "task"
+	dependencyKey = "dependencies"
 
 	// tasks should be unscheduled after ~a week
 	UnschedulableThreshold = 7 * 24 * time.Hour
@@ -40,9 +40,6 @@ const (
 
 	// length of time to cache the expected duration in the task document
 	predictionTTL = 8 * time.Hour
-
-	taskBlocked = "blocked"
-	taskPending = "pending"
 )
 
 var (
@@ -82,7 +79,7 @@ type Task struct {
 
 	// only relevant if the task is runnin.  the time of the last heartbeat
 	// sent back by the agent
-	LastHeartbeat time.Time `bson:"last_heartbeat"`
+	LastHeartbeat time.Time `bson:"last_heartbeat" json:"last_heartbeat"`
 
 	// used to indicate whether task should be scheduled to run
 	Activated            bool         `bson:"activated" json:"activated"`
@@ -156,6 +153,10 @@ type Task struct {
 	GeneratedTasks bool `bson:"generated_tasks,omitempty" json:"generated_tasks,omitempty"`
 	// GeneratedBy, if present, is the ID of the task that generated this task.
 	GeneratedBy string `bson:"generated_by,omitempty" json:"generated_by,omitempty"`
+	// GeneratedJSON is the the configuration information to create new tasks from.
+	GeneratedJSON []json.RawMessage `bson:"generate_json,omitempty" json:"generate_json,omitempty"`
+	// GenerateTasksError any encountered while generating tasks.
+	GenerateTasksError string `bson:"generate_error,omitempty" json:"generate_error,omitempty"`
 
 	// Fields set if triggered by an upstream build
 	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
@@ -313,7 +314,7 @@ func (t *Task) satisfiesDependency(depTask *Task) bool {
 			case evergreen.TaskFailed:
 				return depTask.Status == evergreen.TaskFailed
 			case AllStatuses:
-				return depTask.Status == evergreen.TaskFailed || depTask.Status == evergreen.TaskSucceeded
+				return depTask.Status == evergreen.TaskFailed || depTask.Status == evergreen.TaskSucceeded || depTask.Blocked()
 			}
 		}
 	}
@@ -375,7 +376,7 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 	}
 
 	if len(depIdsToQueryFor) > 0 {
-		newDeps, err := Find(ByIds(depIdsToQueryFor).WithFields(StatusKey))
+		newDeps, err := Find(ByIds(depIdsToQueryFor).WithFields(StatusKey, DependsOnKey))
 		if err != nil {
 			return false, err
 		}
@@ -578,15 +579,54 @@ func (t *Task) MarkAsUndispatched() error {
 }
 
 // MarkGeneratedTasks marks that the task has generated tasks.
-func (t *Task) MarkGeneratedTasks() error {
-	t.GeneratedTasks = true
+func MarkGeneratedTasks(taskID string, errorToSet error) error {
+	if adb.ResultsNotFound(errorToSet) {
+		return nil
+	}
+	query := bson.M{
+		IdKey:             taskID,
+		GeneratedTasksKey: bson.M{"$exists": false},
+	}
+	set := bson.M{GeneratedTasksKey: true}
+	if errorToSet != nil {
+		set[GenerateTasksErrorKey] = errorToSet.Error()
+	}
+	update := bson.M{
+		"$set": set,
+	}
+	err := UpdateOne(query, update)
+	if adb.ResultsNotFound(err) {
+		return nil
+	}
+	return errors.Wrap(err, "problem marketing generate.tasks complete")
+}
+
+func GenerateNotRun() ([]Task, error) {
+	const maxGenerateTimeAgo = 2 * time.Hour
+	return FindAll(db.Query(bson.M{
+		StatusKey:         evergreen.TaskStarted,                              // task is running
+		StartTimeKey:      bson.M{"$gt": time.Now().Add(-maxGenerateTimeAgo)}, // ignore older tasks, just in case
+		GenerateTaskKey:   true,                                               // task contains generate.tasks command
+		GeneratedTasksKey: bson.M{"$exists": false},                           // generate.tasks has not yet run
+		GeneratedJSONKey:  bson.M{"$exists": true},                            // config has been posted by generate.tasks command
+	}))
+}
+
+// SetGeneratedJSON sets JSON data to generate tasks from.
+func (t *Task) SetGeneratedJSON(json []json.RawMessage) error {
+	if len(t.GeneratedJSON) > 0 {
+		return nil
+	}
+	t.GeneratedJSON = json
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
+			// If this field already is set, something has gone wrong.
+			GeneratedJSONKey: bson.M{"$exists": false},
 		},
 		bson.M{
 			"$set": bson.M{
-				GeneratedTasksKey: true,
+				GeneratedJSONKey: json,
 			},
 		},
 	)
@@ -1337,8 +1377,6 @@ func FindSchedulableForAlias(id string) ([]Task, error) {
 }
 
 func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
-	expectedStatuses := []string{evergreen.TaskSucceeded, evergreen.TaskFailed, ""}
-
 	match := scheduleableTasksQuery()
 	if distroID != "" {
 		match[DistroIdKey] = distroID
@@ -1362,48 +1400,74 @@ func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 			"startWith":        "$" + DependsOnKey + "." + IdKey,
 			"connectFromField": DependsOnKey + "." + IdKey,
 			"connectToField":   IdKey,
-			"as":               edgesKey,
+			"as":               dependencyKey,
 			// restrict graphLookup to only direct dependencies
 			"maxDepth": 0,
-			"restrictSearchWithMatch": bson.M{
-				StatusKey: bson.M{
-					"$in": expectedStatuses,
+		},
+	}
+
+	unwindDependencies := bson.M{
+		"$unwind": bson.M{
+			"path":                       "$" + dependencyKey,
+			"preserveNullAndEmptyArrays": true,
+		},
+	}
+
+	unwindDependsOn := bson.M{
+		"$unwind": bson.M{
+			"path":                       "$" + DependsOnKey,
+			"preserveNullAndEmptyArrays": true,
+		},
+	}
+
+	matchIds := bson.M{
+		"$match": bson.M{
+			"$expr": bson.M{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyTaskIdKey), "$" + bsonutil.GetDottedKeyName(dependencyKey, IdKey)}},
+		},
+	}
+
+	projectSatisfied := bson.M{
+		"$addFields": bson.M{
+			"satisfied_dependencies": bson.M{
+				"$cond": bson.A{
+					bson.M{
+						"$or": []bson.M{
+							{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyStatusKey), "$" + bsonutil.GetDottedKeyName(dependencyKey, StatusKey)}},
+							{"$and": []bson.M{
+								{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyStatusKey), "*"}},
+								{"$or": []bson.M{
+									{"$in": bson.A{"$" + bsonutil.GetDottedKeyName(dependencyKey, StatusKey), CompletedStatuses}},
+									{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(dependencyKey, DependsOnKey, DependencyUnattainableKey)},
+								}},
+							}},
+						},
+					},
+					true,
+					false,
 				},
 			},
 		},
 	}
 
-	reshapeTasksAndEdges := bson.M{
-		"$project": bson.M{
-			edgesKey + "." + IdKey:     1,
-			edgesKey + "." + StatusKey: 1,
-			taskKey:                    "$$ROOT",
+	regroupTasks := bson.M{
+		"$group": bson.M{
+			"_id":           "$_id",
+			"satisfied_set": bson.M{"$addToSet": "$satisfied_dependencies"},
+			"root":          bson.M{"$first": "$$ROOT"},
 		},
 	}
 
-	removeEdgesFromTask := bson.M{
-		"$project": bson.M{
-			taskKey + "." + edgesKey: 0,
-		},
-	}
-
-	redactUnrunnableTasks := bson.M{
+	redactUnsatisfiedDependencies := bson.M{
 		"$redact": bson.M{
-			"$cond": bson.M{
-				"if": bson.M{
-					"$setEquals": []string{"$" + taskKey + "." + DependsOnKey, "$" + edgesKey},
-				},
-				"then": "$$KEEP",
-				"else": "$$PRUNE",
+			"$cond": bson.A{
+				bson.M{"$allElementsTrue": "$satisfied_set"},
+				"$$KEEP",
+				"$$PRUNE",
 			},
 		},
 	}
 
-	replaceRoot := bson.M{
-		"$replaceRoot": bson.M{
-			"newRoot": "$" + taskKey,
-		},
-	}
+	replaceRoot := bson.M{"$replaceRoot": bson.M{"newRoot": "$root"}}
 
 	joinProjectRef := bson.M{
 		"$lookup": bson.M{
@@ -1414,7 +1478,7 @@ func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 		},
 	}
 
-	filterDisabledProejcts := bson.M{
+	filterDisabledProjects := bson.M{
 		"$match": bson.M{
 			"project_ref.0." + "enabled": true,
 		},
@@ -1445,16 +1509,19 @@ func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 
 	if removeDeps {
 		pipeline = append(pipeline,
-			reshapeTasksAndEdges,
-			removeEdgesFromTask,
-			redactUnrunnableTasks,
+			unwindDependencies,
+			unwindDependsOn,
+			matchIds,
+			projectSatisfied,
+			regroupTasks,
+			redactUnsatisfiedDependencies,
 			replaceRoot,
 		)
 	}
 
 	pipeline = append(pipeline,
 		joinProjectRef,
-		filterDisabledProejcts,
+		filterDisabledProjects,
 		filterPatchingDisabledProjects,
 		removeProjectRef,
 	)
@@ -1654,77 +1721,33 @@ func (t *Task) GetJQL(searchProjects []string) string {
 	return fmt.Sprintf(jqlBFQuery, strings.Join(searchProjects, ", "), jqlClause)
 }
 
-// BlockedState returns "blocked," "pending" (unsatisfied dependencies,
-// but unblocked), or "" (runnable) to represent the state of the task
-// with respect to its dependencies
-func (t *Task) BlockedState(tasksWithDeps []Task) (string, error) {
-	if t.DisplayOnly {
-		return t.blockedStateForDisplayTask(tasksWithDeps)
-	}
-
-	return t.blockedStatePrivate()
-}
-
-func (t *Task) blockedStatePrivate() (string, error) {
-	if len(t.DependsOn) == 0 {
-		return "", nil
-	}
-	dependencyIDs := []string{}
-	for _, d := range t.DependsOn {
-		dependencyIDs = append(dependencyIDs, d.TaskId)
-	}
-	dependentTasks, err := Find(ByIds(dependencyIDs).WithFields(DisplayNameKey, StatusKey,
-		ActivatedKey, BuildVariantKey, DetailsKey, DependsOnKey))
-	if err != nil {
-		return "", errors.Wrap(err, "error finding dependencies")
-	}
-	taskMap := map[string]*Task{}
-	for i := range dependentTasks {
-		taskMap[dependentTasks[i].Id] = &dependentTasks[i]
-	}
+// Blocked returns if a task cannot run given the state of the task
+func (t *Task) Blocked() bool {
 	for _, dependency := range t.DependsOn {
-		depTask := taskMap[dependency.TaskId]
-		if depTask == nil {
-			continue
-		}
-		state, err := depTask.blockedStatePrivate()
-		if err != nil {
-			return "", err
-		}
-		if state == taskBlocked {
-			return taskBlocked, nil
-		} else if depTask.Status == evergreen.TaskSucceeded || depTask.Status == evergreen.TaskFailed {
-			if depTask.Status != dependency.Status && dependency.Status != AllStatuses {
-				return taskBlocked, nil
-			}
-		} else {
-			return taskPending, nil
+		if dependency.Unattainable {
+			return true
 		}
 	}
-	return "", nil
+
+	return false
 }
 
-func (t *Task) blockedStateForDisplayTask(tasksWithDeps []Task) (string, error) {
-	execTasks, err := Find(ByIds(t.ExecutionTasks))
-	if err != nil {
-		return "", errors.Wrap(err, "error finding execution tasks")
+func (t *Task) BlockedState() (string, error) {
+	if t.Blocked() {
+		return evergreen.TaskStatusBlocked, nil
 	}
-	if len(execTasks) == 0 {
-		return "", nil
-	}
-	state := ""
-	for _, execTask := range execTasks {
-		etState, err := execTask.BlockedState(tasksWithDeps)
+
+	for _, dep := range t.DependsOn {
+		depTask, err := FindOne(ById(dep.TaskId).WithFields(StatusKey, DependsOnKey))
 		if err != nil {
-			return "", errors.Wrap(err, "error finding blocked state")
+			return "", errors.Wrapf(err, "can't get dependent task '%s'", dep.TaskId)
 		}
-		if etState == taskBlocked {
-			return taskBlocked, nil
-		} else if etState == taskPending {
-			state = taskPending
+		if !t.satisfiesDependency(depTask) {
+			return evergreen.TaskStatusPending, nil
 		}
 	}
-	return state, nil
+
+	return "", nil
 }
 
 func (t *Task) CircularDependencies() error {
@@ -1752,31 +1775,13 @@ func (t *Task) CircularDependencies() error {
 	return catcher.Resolve()
 }
 
-func (t *Task) IsBlockedDisplayTask() bool {
-	if !t.DisplayOnly {
-		return false
-	}
-
-	tasksWithDeps, err := FindAllTasksFromVersionWithDependencies(t.Version)
-	if err != nil {
-		grip.Error(message.WrapError(err, "error finding tasks with dependencies"))
-		return false
-	}
-	blockedState, err := t.BlockedState(tasksWithDeps)
-	if err != nil {
-		grip.Error(message.WrapError(err, "error determining blocked state"))
-		return false
-	}
-	return blockedState == taskBlocked
-}
-
 func (t *Task) findAllUnmarkedBlockedDependencies() ([]Task, error) {
 	okStatusSet := []string{AllStatuses, t.Status}
 	query := db.Query(bson.M{
 		DependsOnKey: bson.M{"$elemMatch": bson.M{
 			DependencyTaskIdKey:       t.Id,
 			DependencyStatusKey:       bson.M{"$nin": okStatusSet},
-			DependencyUnattainableKey: bson.M{"$ne": true},
+			DependencyUnattainableKey: false,
 		},
 		}})
 
@@ -1795,7 +1800,9 @@ func (t *Task) UpdateBlockedDependencies() error {
 		if err = dependentTask.MarkUnattainableDependency(t, true); err != nil {
 			return errors.Wrap(err, "error marking dependency unattainable")
 		}
-		return errors.WithStack(dependentTask.UpdateBlockedDependencies())
+		if err = dependentTask.UpdateBlockedDependencies(); err != nil {
+			return errors.WithStack(err)
+		}
 	}
 	return nil
 }
@@ -1859,7 +1866,7 @@ func (t *Task) UpdateDependencies(dependsOn []Dependency) error {
 			DependsOnKey: t.DependsOn,
 		},
 		bson.M{
-			"$set": bson.M{DependsOnKey: dependsOn},
+			"$push": bson.M{DependsOnKey: bson.M{"$each": dependsOn}},
 		},
 	)
 	if err != nil {
@@ -1869,7 +1876,7 @@ func (t *Task) UpdateDependencies(dependsOn []Dependency) error {
 		return errors.Wrap(err, "can't update dependencies")
 	}
 
-	t.DependsOn = dependsOn
+	t.DependsOn = append(t.DependsOn, dependsOn...)
 
 	return nil
 }

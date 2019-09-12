@@ -13,7 +13,6 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -59,45 +58,8 @@ func TestDequeueTask(t *testing.T) {
 			So(taskQueue.DequeueTask(taskIds[0]), ShouldBeNil)
 		})
 
-		Convey("with legacy dequeue, if the task is present in the queue, it should be removed"+
+		Convey("if the task is present in the queue, it should be removed"+
 			" from the in-memory and db versions of the queue", func() {
-			useModernDequeueOp = false
-			taskQueue.Queue = []TaskQueueItem{
-				{Id: taskIds[0]},
-				{Id: taskIds[1]},
-				{Id: taskIds[2]},
-			}
-			So(taskQueue.Save(), ShouldBeNil)
-			So(taskQueue.DequeueTask(taskIds[1]), ShouldBeNil)
-
-			// make sure the queue was updated in memory
-			So(taskQueue.Length(), ShouldEqual, 2)
-			So(taskQueue.Queue[0].Id, ShouldEqual, taskIds[0])
-			So(taskQueue.Queue[1].Id, ShouldEqual, taskIds[2])
-
-			var err error
-			// make sure the db representation was updated
-			taskQueue, err = LoadTaskQueue(distroId)
-			So(err, ShouldBeNil)
-			So(taskQueue.Length(), ShouldEqual, 2)
-			So(taskQueue.Queue[0].Id, ShouldEqual, taskIds[0])
-			So(taskQueue.Queue[1].Id, ShouldEqual, taskIds[2])
-
-			// should be safe to remove the last item
-			So(taskQueue.DequeueTask(taskIds[2]), ShouldBeNil)
-			So(taskQueue.Length(), ShouldEqual, 1)
-
-			So(taskQueue.DequeueTask(taskIds[0]), ShouldBeNil)
-			So(taskQueue.Length(), ShouldEqual, 0)
-
-			So(taskQueue.DequeueTask("foo"), ShouldBeNil)
-			So(taskQueue.Length(), ShouldEqual, 0)
-
-		})
-
-		Convey("with modern dequeue, if the task is present in the queue, it should be removed"+
-			" from the in-memory and db versions of the queue", func() {
-			useModernDequeueOp = true
 			taskQueue.Queue = []TaskQueueItem{
 				{Id: taskIds[0]},
 				{Id: taskIds[1]},
@@ -130,7 +92,6 @@ func TestDequeueTask(t *testing.T) {
 			So(taskQueue.Length(), ShouldEqual, 0)
 		})
 		Convey("modern: duplicate tasks shouldn't lead to anics", func() {
-			useModernDequeueOp = true
 			taskQueue.Queue = []TaskQueueItem{
 				{Id: taskIds[0]},
 				{Id: taskIds[1]},
@@ -138,17 +99,6 @@ func TestDequeueTask(t *testing.T) {
 			}
 			So(taskQueue.Save(), ShouldBeNil)
 
-			So(taskQueue.DequeueTask(taskIds[0]), ShouldBeNil)
-			So(taskQueue.Length(), ShouldEqual, 1)
-		})
-		Convey("legacy: duplicate tasks shouldn't lead to anics", func() {
-			useModernDequeueOp = false
-			taskQueue.Queue = []TaskQueueItem{
-				{Id: taskIds[0]},
-				{Id: taskIds[1]},
-				{Id: taskIds[0]},
-			}
-			So(taskQueue.Save(), ShouldBeNil)
 			So(taskQueue.DequeueTask(taskIds[0]), ShouldBeNil)
 			So(taskQueue.Length(), ShouldEqual, 1)
 		})
@@ -205,11 +155,9 @@ tasks:
 - name: one
 `
 	v := Version{
-		Id:         bson.NewObjectId().Hex(),
-		Identifier: "a",
-		Revision:   "b",
-		Requester:  evergreen.RepotrackerVersionRequester,
-		Config:     yml,
+		Id:        "b",
+		Requester: evergreen.RepotrackerVersionRequester,
+		Config:    yml,
 	}
 	require.NoError(v.Insert())
 	tasks := []task.Task{
@@ -250,16 +198,20 @@ tasks:
 			Length: 1,
 		},
 	))
+	queue, err := LoadTaskQueue("distro_1")
+	assert.NoError(err)
+	assert.Len(queue.Queue, 1)
+
 	assert.NoError(BlockTaskGroupTasks("task_id_1"))
 	found, err := task.FindOneId("one_1")
 	assert.NoError(err)
 	require.NotNil(found)
 	require.NotEmpty(found.DependsOn)
 	assert.Equal("task_id_1", found.DependsOn[0].TaskId)
-	queue, err := LoadTaskQueue("distro_1")
+
+	queue, err = LoadTaskQueue("distro_1")
 	assert.NoError(err)
-	require.NotNil(queue)
-	assert.Len(queue.Queue, 0)
+	assert.Nil(queue)
 }
 
 func TestBlockTaskGroupTasksFailsWithCircularDependencies(t *testing.T) {

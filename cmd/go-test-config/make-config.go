@@ -40,9 +40,9 @@ func makeTasks() *shrub.Configuration {
 	ubuntu1604.DisplayName("Ubuntu 16.04")
 	ubuntu1604.RunOn("ubuntu1604-test")
 	ubuntu1604.SetExpansions(map[string]interface{}{
-		"gobin":            "/opt/go1.8/go/bin/go",
+		"gobin":            "/opt/golang/go1.9/bin/go",
 		"disable_coverage": "yes",
-		"goroot":           "/opt/go1.8/go",
+		"goroot":           "/opt/golang/go1.9",
 		"mongodb_url":      "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz",
 	})
 	ubuntu1604.AddTasks(targets...)

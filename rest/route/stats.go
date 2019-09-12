@@ -36,9 +36,9 @@ const (
 	statsAPITestGroupByTest    = "test"
 
 	// GroupBy API values for tasks
-	statsAPITaskGroupByDistro  = "task_variant_distro"
-	statsAPITaskGroupByVariant = "task_variant"
-	statsAPITaskGroupByTask    = "task"
+	StatsAPITaskGroupByDistro  = "task_variant_distro"
+	StatsAPITaskGroupByVariant = "task_variant"
+	StatsAPITaskGroupByTask    = "task"
 
 	// API Limits
 	statsAPIMaxGroupNumDays = 26 * 7 // 26 weeks which is the maximum amount of data available
@@ -86,12 +86,6 @@ func (sh *StatsHandler) ParseCommonFilter(vals url.Values) error {
 		}
 	}
 
-	// group_by
-	sh.filter.GroupBy, err = sh.readGroupBy(vals.Get("group_by"))
-	if err != nil {
-		return err
-	}
-
 	// start_at
 	sh.filter.StartAt, err = sh.readStartAt(vals.Get("start_at"))
 	return err
@@ -102,6 +96,12 @@ func (sh *StatsHandler) parseStatsFilter(vals url.Values) error {
 	var err error
 
 	err = sh.ParseCommonFilter(vals)
+	if err != nil {
+		return err
+	}
+
+	// group_by
+	sh.filter.GroupBy, err = sh.readGroupBy(vals.Get("group_by"))
 	if err != nil {
 		return err
 	}
@@ -247,11 +247,11 @@ func (sh *StatsHandler) readGroupBy(groupByValue string) (stats.GroupBy, error) 
 	switch groupByValue {
 
 	// Task query parameters.
-	case statsAPITaskGroupByDistro:
+	case StatsAPITaskGroupByDistro:
 		return stats.GroupByDistro, nil
-	case statsAPITaskGroupByVariant:
+	case StatsAPITaskGroupByVariant:
 		return stats.GroupByVariant, nil
-	case statsAPITaskGroupByTask:
+	case StatsAPITaskGroupByTask:
 		return stats.GroupByTask, nil
 
 	// Test query parameters.

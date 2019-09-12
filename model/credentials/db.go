@@ -25,9 +25,6 @@ const (
 // Variables set during bootstrapping
 var (
 	serviceName string
-
-	// MongoDB connection information
-	mongoConfig certdepot.MongoDBOptions
 )
 
 // Constants for bson struct tags.
@@ -46,36 +43,31 @@ var (
 func Bootstrap(env evergreen.Environment) error {
 	settings := env.Settings()
 
-	mongoConfig = certdepot.MongoDBOptions{
-		MongoDBURI:     settings.Database.Url,
-		DatabaseName:   settings.Database.DB,
-		CollectionName: Collection,
-	}
-
 	if settings.DomainName == "" {
 		return errors.Errorf("bootstrapping %s collection requires domain name to be set in admin settings", settings.DomainName)
 	}
 
 	maxExpiration := time.Duration(math.MaxInt64)
-	serviceConfig := certdepot.CertificateOptions{
-		CA:         CAName,
-		CommonName: settings.DomainName,
-		Host:       settings.DomainName,
-		Expires:    maxExpiration,
-	}
-
-	caConfig := certdepot.CertificateOptions{
-		CA:         CAName,
-		CommonName: CAName,
-		Expires:    maxExpiration,
-	}
 
 	bootstrapConfig := certdepot.BootstrapDepotConfig{
-		MongoDepot:  &mongoConfig,
-		CAName:      CAName,
-		CAOpts:      &caConfig,
+		CAName: CAName,
+		MongoDepot: &certdepot.MongoDBOptions{
+			MongoDBURI:     settings.Database.Url,
+			DatabaseName:   settings.Database.DB,
+			CollectionName: Collection,
+		},
+		CAOpts: &certdepot.CertificateOptions{
+			CA:         CAName,
+			CommonName: CAName,
+			Expires:    maxExpiration,
+		},
 		ServiceName: settings.DomainName,
-		ServiceOpts: &serviceConfig,
+		ServiceOpts: &certdepot.CertificateOptions{
+			CA:         CAName,
+			CommonName: settings.DomainName,
+			Host:       settings.DomainName,
+			Expires:    maxExpiration,
+		},
 	}
 
 	ctx, cancel := env.Context()
@@ -92,7 +84,14 @@ func Bootstrap(env evergreen.Environment) error {
 
 // getDepot returns the certificate depot connected to the database.
 func getDepot(ctx context.Context) (certdepot.Depot, error) {
-	return certdepot.NewMongoDBCertDepot(ctx, &mongoConfig)
+	env := evergreen.GetEnvironment()
+	settings := env.Settings()
+
+	return certdepot.NewMongoDBCertDepotWithClient(ctx, env.Client(), &certdepot.MongoDBOptions{
+		MongoDBURI:     settings.Database.Url,
+		DatabaseName:   settings.Database.DB,
+		CollectionName: Collection,
+	})
 }
 
 func deleteIfExists(dpt certdepot.Depot, tags ...*depot.Tag) error {

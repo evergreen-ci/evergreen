@@ -398,12 +398,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 // project file. An erroneous project file may be returned along with an error.
 func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision string) (*model.Project, *model.ParserProject, error) {
 	projectRef := repoTracker.ProjectRef
-	if projectRef.LocalConfig != "" {
-		// return the Local config from the project Ref.
-		p, err := model.FindProject("", projectRef)
-		return p, nil, err
-	}
-	projectConfig, intermediateProj, err := repoTracker.GetRemoteConfig(ctx, revision)
+	project, intermediateProj, err := repoTracker.GetRemoteConfig(ctx, revision)
 	if err != nil {
 		// Only create a stub version on API request errors that pertain
 		// to actually fetching a config. Those errors currently include:
@@ -458,7 +453,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 
 		return nil, nil, err
 	}
-	return projectConfig, intermediateProj, nil
+	return project, intermediateProj, nil
 }
 
 // AddBuildBreakSubscriptions will subscribe admins of a project to a version if no one

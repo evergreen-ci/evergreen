@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -171,6 +172,11 @@ func makeTags(intentHost *host.Host) map[string]string {
 		"mode":              "production",
 		"start-time":        intentHost.CreationTime.Format(evergreen.NameTimeFormat),
 		"expire-on":         expireOn,
+	}
+
+	// add InstanceTags specified by user
+	for key, value := range intentHost.InstanceTags {
+		tags[key] = value
 	}
 
 	if intentHost.UserHost {
@@ -471,4 +477,67 @@ func IsEc2Provider(provider string) bool {
 		provider == evergreen.ProviderNameEc2OnDemand ||
 		provider == evergreen.ProviderNameEc2Spot ||
 		provider == evergreen.ProviderNameEc2Fleet
+}
+
+// Get EC2 region from an EC2 ProviderSettings object
+func getEC2Region(providerSettings *map[string]interface{}) string {
+	s := &EC2ProviderSettings{}
+	if providerSettings != nil {
+		if err := mapstructure.Decode(providerSettings, s); err != nil {
+			return evergreen.DefaultEC2Region
+		} else {
+			return s.getRegion()
+		}
+	}
+
+	return evergreen.DefaultEC2Region
+}
+
+// Get EC2 key and secret from the AWS configuration for the given region
+func GetEC2Key(region string, s *evergreen.Settings) (string, string, error) {
+	// Get default region if field is blank
+	if region == "" {
+		region = evergreen.DefaultEC2Region
+	}
+
+	// Get key and secret for specified region
+	var key, secret string
+	for _, k := range s.Providers.AWS.EC2Keys {
+		if k.Region == region {
+			key = k.Key
+			secret = k.Secret
+
+			// Error if key or secret are blank
+			if key == "" || secret == "" {
+				return "", "", errors.New("AWS ID and Secret must not be blank")
+			}
+			return key, secret, nil
+		}
+	}
+
+	// LEGACY (delete block when Evergreen only uses region-based EC2Keys struct)
+	if key == "" || secret == "" {
+		key = s.Providers.AWS.EC2Key
+		secret = s.Providers.AWS.EC2Secret
+
+		// Move default key and secret to new EC2Keys struct
+		if key != "" && secret != "" {
+			s.Providers.AWS.EC2Keys = append(s.Providers.AWS.EC2Keys, evergreen.EC2Key{
+				Region: evergreen.DefaultEC2Region,
+				Key:    key,
+				Secret: secret,
+			})
+			err := s.Providers.Set()
+			if err != nil {
+				return "", "", errors.New("Failed to update settings with new default EC2 credentials from legacy EC2 credentials")
+			}
+		}
+	}
+
+	// Error if region specified but missing in config
+	if key == "" || secret == "" {
+		return "", "", errors.Errorf("Unable to find region '%s' in config", region)
+	}
+
+	return key, secret, nil
 }

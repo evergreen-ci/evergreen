@@ -60,6 +60,9 @@ const (
 	TaskTestTimedOut = "test-timed-out"
 	TaskSetupFailed  = "setup-failed"
 
+	TaskStatusBlocked = "blocked"
+	TaskStatusPending = "pending"
+
 	// Task Command Types
 	CommandTypeTest   = "test"
 	CommandTypeSystem = "system"
@@ -234,6 +237,9 @@ const (
 	ProviderNameVsphere     = "vsphere"
 	ProviderNameMock        = "mock"
 
+	// Default EC2 region where hosts should be spawned
+	DefaultEC2Region = "us-east-1"
+
 	// TODO: This can be removed when no more hosts with provider ec2 are running.
 	ProviderNameEc2Legacy = "ec2"
 )
@@ -346,7 +352,7 @@ const (
 	defaultGroupTTLMinutes                       = 1
 	maxNotificationsPerSecond                    = 100
 
-	EnableAmboyRemoteReporting = false
+	EnableAmboyRemoteReporting = true
 )
 
 // NameTimeFormat is the format in which to log times like instance start time.

@@ -8,23 +8,26 @@ import (
 
 // APIHost is the model to be returned by the API whenever hosts are fetched.
 type APIHost struct {
-	Id          APIString  `json:"host_id"`
-	HostURL     APIString  `json:"host_url"`
-	Distro      DistroInfo `json:"distro"`
-	Provisioned bool       `json:"provisioned"`
-	StartedBy   APIString  `json:"started_by"`
-	Type        APIString  `json:"host_type"`
-	User        APIString  `json:"user"`
-	Status      APIString  `json:"status"`
-	RunningTask taskInfo   `json:"running_task"`
-	UserHost    bool       `json:"user_host"`
+	Id           APIString         `json:"host_id"`
+	HostURL      APIString         `json:"host_url"`
+	Distro       DistroInfo        `json:"distro"`
+	Provisioned  bool              `json:"provisioned"`
+	StartedBy    APIString         `json:"started_by"`
+	Type         APIString         `json:"host_type"`
+	User         APIString         `json:"user"`
+	Status       APIString         `json:"status"`
+	RunningTask  taskInfo          `json:"running_task"`
+	UserHost     bool              `json:"user_host"`
+	InstanceTags map[string]string `json:"instance_tags"`
 }
 
 // HostPostRequest is a struct that holds the format of a POST request to /hosts
-type HostPostRequest struct {
-	DistroID string `json:"distro"`
-	KeyName  string `json:"keyname"`
-	UserData string `json:"userdata"`
+type HostRequestOptions struct {
+	DistroID     string            `json:"distro"`
+	TaskID       string            `json:"task"`
+	KeyName      string            `json:"keyname"`
+	UserData     string            `json:"userdata"`
+	InstanceTags map[string]string `json:"instance_tags"`
 }
 
 type DistroInfo struct {
@@ -87,6 +90,7 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	apiHost.User = ToAPIString(v.User)
 	apiHost.Status = ToAPIString(v.Status)
 	apiHost.UserHost = v.UserHost
+	apiHost.InstanceTags = v.InstanceTags
 
 	imageId, err := v.Distro.GetImageID()
 	if err != nil {

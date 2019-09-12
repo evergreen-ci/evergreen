@@ -25,12 +25,14 @@ type Driver interface {
 	JobStats(context.Context) <-chan amboy.JobStatusInfo
 }
 
-// MongoDBOptions is a struct passed to the NewMgo constructor to
+// MongoDBOptions is a struct passed to the NewMongo constructor to
 // communicate mgoDriver specific settings about the driver's behavior
 // and operation.
 type MongoDBOptions struct {
 	URI             string
 	DB              string
+	GroupName       string
+	UseGroups       bool
 	Priority        bool
 	CheckWaitUntil  bool
 	CheckDispatchBy bool
@@ -51,6 +53,7 @@ func DefaultMongoDBOptions() MongoDBOptions {
 		URI:             "mongodb://localhost:27017",
 		DB:              "amboy",
 		Priority:        false,
+		UseGroups:       false,
 		CheckWaitUntil:  true,
 		SkipIndexBuilds: false,
 		WaitInterval:    time.Second,

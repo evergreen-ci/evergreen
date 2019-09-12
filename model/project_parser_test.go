@@ -15,6 +15,7 @@ import (
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 )
 
@@ -304,6 +305,23 @@ buildvariants:
 			So(p, ShouldBeNil)
 			So(err, ShouldNotBeNil)
 		})
+		Convey("a file with a commit queue merge task should parse", func() {
+			single := `
+buildvariants:
+- name: "v1"
+  tasks:
+  - name: "t1"
+    commit_queue_merge: true
+`
+			p, err := createIntermediateProject([]byte(single))
+			So(p, ShouldNotBeNil)
+			So(err, ShouldEqual, 0)
+			bv := p.BuildVariants[0]
+			So(bv.Name, ShouldEqual, "v1")
+			So(len(bv.Tasks), ShouldEqual, 1)
+			So(bv.Tasks[0].Name, ShouldEqual, "t1")
+			So(bv.Tasks[0].CommitQueueMerge, ShouldBeTrue)
+		})
 	})
 }
 
@@ -440,7 +458,7 @@ func TestTranslateBuildVariants(t *testing.T) {
 			pp.BuildVariants = []parserBV{{
 				Name: "v1",
 				Tasks: parserBVTaskUnits{
-					{Name: "t1"},
+					{Name: "t1", CommitQueueMerge: true},
 					{Name: ".z", DependsOn: parserDependencies{
 						{TaskSelector: taskSelector{Name: ".b"}}}},
 					{Name: "* !t1 !t2", Requires: taskSelectors{{Name: "!.a"}}},
@@ -454,6 +472,7 @@ func TestTranslateBuildVariants(t *testing.T) {
 			So(bvts[0].Name, ShouldEqual, "t1")
 			So(bvts[1].Name, ShouldEqual, "t2")
 			So(bvts[2].Name, ShouldEqual, "t3")
+			So(bvts[0].CommitQueueMerge, ShouldBeTrue)
 			So(bvts[1].DependsOn[0].Name, ShouldEqual, "t3")
 			So(bvts[2].Requires[0].Name, ShouldEqual, "t1")
 		})
@@ -794,6 +813,64 @@ tasks:
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 2)
+	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
+	assert.Len(proj.BuildVariants[0].DisplayTasks[1].ExecutionTasks, 2)
+	assert.Equal("execTask1", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
+	assert.Equal("execTask3", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[1])
+	assert.Equal("execTask2", proj.BuildVariants[0].DisplayTasks[1].ExecutionTasks[0])
+	assert.Equal("execTask4", proj.BuildVariants[0].DisplayTasks[1].ExecutionTasks[1])
+}
+
+func TestTranslateProjectDoesNotModifyParserProject(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	// build variant display tasks
+	tagYml := `
+buildvariants:
+- name: "bv1"
+  tasks:
+  - name: execTask1
+  - name: execTask2
+  - name: execTask3
+  - name: execTask4
+  display_tasks:
+  - name: displayTaskOdd
+    execution_tasks:
+    - ".odd"
+  - name: displayTaskEven
+    execution_tasks:
+    - ".even"
+tasks:
+- name: execTask1
+  tags: [ "odd" ]
+- name: execTask2
+  tags: [ "even" ]
+- name: execTask3
+  tags: [ "odd" ]
+- name: execTask4
+  tags: [ "even" ]
+`
+	pp, errs := createIntermediateProject([]byte(tagYml))
+	assert.NotNil(pp)
+	assert.Len(errs, 0)
+	require.Len(pp.BuildVariants[0].DisplayTasks, 2)
+	assert.Len(pp.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 1)
+	assert.Equal(".odd", pp.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
+	assert.Len(pp.BuildVariants[0].DisplayTasks[1].ExecutionTasks, 1)
+	assert.Equal(".even", pp.BuildVariants[0].DisplayTasks[1].ExecutionTasks[0])
+
+	proj, errs := translateProject(pp)
+	assert.NotNil(proj)
+	assert.Len(errs, 0)
+	// assert parser project hasn't changed
+	require.Len(pp.BuildVariants[0].DisplayTasks, 2)
+	assert.Len(pp.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 1)
+	assert.Equal(".odd", pp.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
+	assert.Len(pp.BuildVariants[0].DisplayTasks[1].ExecutionTasks, 1)
+	assert.Equal(".even", pp.BuildVariants[0].DisplayTasks[1].ExecutionTasks[0])
+
+	//assert project is correct
+	require.Len(proj.BuildVariants[0].DisplayTasks, 2)
 	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
 	assert.Len(proj.BuildVariants[0].DisplayTasks[1].ExecutionTasks, 2)
 	assert.Equal("execTask1", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])

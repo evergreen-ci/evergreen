@@ -3,6 +3,7 @@ package pool
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -13,9 +14,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-type workUnit struct {
-	job    amboy.Job
-	cancel context.CancelFunc
+const (
+	nilJobWaitIntervalMax = time.Second
+	baseJobInterval       = time.Millisecond
+)
+
+func jitterNilJobWait() time.Duration {
+	return time.Duration(rand.Int63n(int64(nilJobWaitIntervalMax)))
+
 }
 
 func executeJob(ctx context.Context, id string, job amboy.Job, q amboy.Queue) {
@@ -83,7 +89,7 @@ func runJob(ctx context.Context, job amboy.Job, q amboy.Queue, startAt time.Time
 	go func() {
 		defer recovery.LogStackTraceAndContinue("background lock ping", job.ID())
 		iters := 0
-		ticker := time.NewTicker(amboy.LockTimeout / 2)
+		ticker := time.NewTicker(amboy.LockTimeout / 4)
 		defer ticker.Stop()
 		for {
 			select {
@@ -100,6 +106,12 @@ func runJob(ctx context.Context, job amboy.Job, q amboy.Queue, startAt time.Time
 					jcancel()
 					return
 				}
+				grip.Debug(message.Fields{
+					"queue_id":  q.ID(),
+					"job_id":    job.ID(),
+					"ping_iter": iters,
+					"stat":      job.Status(),
+				})
 			}
 			iters++
 		}
@@ -121,11 +133,12 @@ func runJob(ctx context.Context, job amboy.Job, q amboy.Queue, startAt time.Time
 	return
 }
 
-func worker(ctx context.Context, id string, jobs <-chan workUnit, q amboy.Queue, wg *sync.WaitGroup) {
+func worker(bctx context.Context, id string, q amboy.Queue, wg *sync.WaitGroup) {
 	var (
 		err    error
 		job    amboy.Job
 		cancel context.CancelFunc
+		ctx    context.Context
 	)
 
 	wg.Add(1)
@@ -136,10 +149,10 @@ func worker(ctx context.Context, id string, jobs <-chan workUnit, q amboy.Queue,
 		if err != nil {
 			if job != nil {
 				job.AddError(err)
-				q.Complete(ctx, job)
+				q.Complete(bctx, job)
 			}
 			// start a replacement worker.
-			go worker(ctx, id, jobs, q, wg)
+			go worker(bctx, id, q, wg)
 		}
 
 		if cancel != nil {
@@ -147,54 +160,23 @@ func worker(ctx context.Context, id string, jobs <-chan workUnit, q amboy.Queue,
 		}
 	}()
 
+	timer := time.NewTimer(baseJobInterval)
+	defer timer.Stop()
 	for {
 		select {
-		case <-ctx.Done():
+		case <-bctx.Done():
 			return
-		case wu := <-jobs:
-			if wu.job == nil {
+		case <-timer.C:
+			job := q.Next(bctx)
+			if job == nil {
+				timer.Reset(jitterNilJobWait())
 				continue
 			}
 
-			job = wu.job
-			cancel = wu.cancel
+			ctx, cancel = context.WithCancel(bctx)
 			executeJob(ctx, id, job, q)
 			cancel()
+			timer.Reset(baseJobInterval)
 		}
 	}
-}
-
-func startWorkerServer(ctx context.Context, q amboy.Queue, wg *sync.WaitGroup) <-chan workUnit {
-	var nctx context.Context
-
-	output := make(chan workUnit)
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				wu := workUnit{}
-				nctx, wu.cancel = context.WithCancel(ctx)
-
-				job := q.Next(nctx)
-				if job == nil {
-					continue
-				}
-
-				if job.Status().Completed {
-					grip.Debugf("job '%s' was dispatched from the queue but was completed",
-						job.ID())
-					continue
-				}
-				wu.job = job
-				output <- wu
-			}
-		}
-	}()
-
-	return output
 }

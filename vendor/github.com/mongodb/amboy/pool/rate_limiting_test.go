@@ -141,10 +141,10 @@ func TestSimpleRateLimitingWorkerHandlesPanicingJobs(t *testing.T) {
 
 	p := &simpleRateLimited{}
 	p.queue = &QueueTester{
-		toProcess: make(chan amboy.Job),
+		toProcess: jobsChanWithPanicingJobs(ctx, 10),
 		storage:   make(map[string]amboy.Job),
 	}
-	assert.NotPanics(func() { p.worker(ctx, jobsChanWithPanicingJobs(ctx, 10)) })
+	assert.NotPanics(func() { p.worker(ctx) })
 }
 
 func TestEWMARateLimitingWorkerHandlesPanicingJobs(t *testing.T) {
@@ -154,10 +154,10 @@ func TestEWMARateLimitingWorkerHandlesPanicingJobs(t *testing.T) {
 
 	p := &ewmaRateLimiting{}
 	p.queue = &QueueTester{
-		toProcess: make(chan amboy.Job),
+		toProcess: jobsChanWithPanicingJobs(ctx, 10),
 		storage:   make(map[string]amboy.Job),
 	}
-	assert.NotPanics(func() { p.worker(ctx, jobsChanWithPanicingJobs(ctx, 10)) })
+	assert.NotPanics(func() { p.worker(ctx) })
 }
 
 func TestMultipleWorkers(t *testing.T) {

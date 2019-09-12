@@ -960,23 +960,6 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 	return tg, nil
 }
 
-func FindProjectFromTask(t *task.Task) (*Project, error) {
-	ref, err := FindOneProjectRef(t.Project)
-	if err != nil {
-		return nil, errors.Wrapf(err, "problem fetching project %s", t.Project)
-	}
-	if ref == nil {
-		return nil, errors.Errorf("problem finding project: %s", t.Project)
-	}
-
-	p, err := FindProject(t.Revision, ref)
-	if err != nil {
-		return nil, errors.Wrapf(err, "problem finding project config for %s", t.Project)
-	}
-
-	return p, nil
-}
-
 func FindProjectFromVersionID(versionStr string) (*Project, error) {
 	ver, err := VersionFindOne(VersionById(versionStr))
 	if err != nil {
@@ -1017,62 +1000,25 @@ func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
 	return distro, nil
 }
 
-func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
-	if projectRef == nil {
-		return nil, errors.New("projectRef given is nil")
+func FindLastKnownGoodProject(identifier string) (*Project, error) {
+	if identifier == "" {
+		return nil, errors.WithStack(errors.New("cannot pass empty identifier to FindLastKnownGoodProject"))
 	}
-	if projectRef.Identifier == "" {
-		return nil, errors.New("Invalid project with blank identifier")
+	project := &Project{
+		Identifier: identifier,
 	}
 
-	project := &Project{}
-	project.Identifier = projectRef.Identifier
-	// when the revision is empty we find the last known good configuration from the versions
-	// If the last known good configuration does not exist,
-	// load the configuration from the local config in the project ref.
-	if revision == "" {
-		lastGoodVersion, err := VersionFindOne(VersionByLastKnownGoodConfig(projectRef.Identifier))
+	lastGoodVersion, err := VersionFindOne(VersionByLastKnownGoodConfig(identifier))
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error finding recent valid version for '%s'", identifier)
+	}
+	if lastGoodVersion != nil {
+		project, err = LoadProjectFromVersion(lastGoodVersion, identifier, true)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Error finding recent valid version for '%s'", projectRef.Identifier)
-		}
-		if lastGoodVersion != nil {
-			// for new repositories, we don't want to error out when we don't have
-			// any versions stored in the database so we default to the skeletal
-			// information we already have from the project file on disk
-			project, err = LoadProjectFromVersion(lastGoodVersion, projectRef.Identifier, true)
-			if err != nil {
-				return nil, errors.Wrapf(err, "Error loading project from "+
-					"last good version for project '%s'", lastGoodVersion.Identifier)
-			}
-		} else {
-			// Check to see if there is a local configuration in the project ref
-			if projectRef.LocalConfig != "" {
-				_, err = LoadProjectInto([]byte(projectRef.LocalConfig), projectRef.Identifier, project)
-				if err != nil {
-					return nil, errors.Wrapf(err, "Error loading local config for project ref, %s", projectRef.Identifier)
-				}
-			}
+			return nil, errors.Wrapf(err, "Error loading project from "+
+				"last good version for project, %s", lastGoodVersion.Identifier)
 		}
 	}
-
-	if revision != "" {
-		// we immediately return an error if the repotracker version isn't found
-		// for the given project at the given revision
-		v, err := VersionFindOne(VersionByProjectIdAndRevision(projectRef.Identifier, revision))
-		if err != nil {
-			return nil, errors.Wrapf(err, "error fetching version for project %v revision %v", projectRef.Identifier, revision)
-		}
-		if v == nil {
-			// fall back to the skeletal project
-			return project, nil
-		}
-
-		project, err = LoadProjectFromVersion(v, projectRef.Identifier, true)
-		if err != nil {
-			return nil, errors.Wrap(err, "Error loading project from version")
-		}
-	}
-
 	return project, nil
 }
 

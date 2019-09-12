@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	mgo "gopkg.in/mgo.v2"
 )
 
 type ReportingSuite struct {
@@ -28,31 +27,35 @@ type ReportingSuite struct {
 }
 
 func TestReportingSuiteBackedByLegacyMongoDB(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s := new(ReportingSuite)
 	name := uuid.NewV4().String()
 	opts := queue.DefaultMongoDBOptions()
 	opts.DB = "amboy_test"
-	session, err := mgo.Dial(opts.URI)
-	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(time.Second))
+	require.NoError(t, err)
+	require.NoError(t, client.Connect(ctx))
+	defer func() { client.Disconnect(ctx) }()
 
 	s.factory = func() Reporter {
-		reporter, err := MakeLegacyDBQueueState(name, opts, session)
+		conf := DBQueueReporterOptions{Name: name, Options: opts}
+
+		reporter, err := MakeDBQueueState(ctx, conf, client)
 		s.Require().NoError(err)
 		return reporter
 	}
 
 	s.setup = func() {
 		remote := queue.NewRemoteUnordered(2)
-		driver := queue.NewMgoDriver(name, opts)
+		driver := queue.NewMongoDriver(name, opts)
 		s.NoError(remote.SetDriver(driver))
 		s.queue = remote
 	}
 
 	s.cleanup = func() error {
-		session.Close()
 		s.queue.Runner().Close(ctx)
 		return nil
 	}

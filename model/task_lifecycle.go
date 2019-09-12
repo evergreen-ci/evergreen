@@ -192,7 +192,7 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 	}
 
 	// only allow re-execution for failed or successful tasks
-	if !t.IsFinished() && !t.IsBlockedDisplayTask() {
+	if !t.IsFinished() {
 		// this is to disallow terminating running tasks via the UI
 		if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
 			grip.Debugf("Unsatisfiable '%s' reset request on '%s' (status: '%s')",
@@ -332,7 +332,7 @@ func getStepback(taskId string) (bool, error) {
 		return false, errors.Wrapf(err, "problem finding task %s", taskId)
 	}
 
-	project, err := FindProjectFromTask(t)
+	project, err := FindProjectFromVersionID(t.Version)
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
@@ -556,10 +556,6 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	tasksWithDeps, err := task.FindAllTasksFromVersionWithDependencies(t.Version)
-	if err != nil {
-		return errors.Wrap(err, "error finding tasks with dependencies")
-	}
 
 	failedTask := false
 	buildComplete := false
@@ -570,8 +566,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	// update the build's status based on tasks for this build
 	for _, t := range buildTasks {
 		if !t.IsFinished() {
-			state, _ := t.BlockedState(tasksWithDeps)
-			if state == "blocked" {
+			if t.Blocked() {
 				tasksToNotify++
 				if evergreen.IsFailedTaskStatus(t.Status) {
 					failedTask = true
@@ -849,18 +844,7 @@ func doRestartFailedTasks(tasks []task.Task, user string, results RestartResults
 	var tasksErrored []string
 
 	for _, t := range tasks {
-		projectRef, err := FindOneProjectRef(t.Project)
-		if err != nil {
-			tasksErrored = append(tasksErrored, t.Id)
-			grip.Error(message.Fields{
-				"task":    t.Id,
-				"status":  "failed",
-				"message": "error retrieving project ref",
-				"error":   err.Error(),
-			})
-			continue
-		}
-		p, err := FindProject(t.Revision, projectRef)
+		p, err := FindProjectFromVersionID(t.Version)
 		if err != nil || p == nil {
 			tasksErrored = append(tasksErrored, t.Id)
 			grip.Error(message.Fields{

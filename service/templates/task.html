@@ -344,16 +344,16 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
           </div>
           <div class="col-lg-5">
             <div class="row">
-              <div class="col-md-3">
+              <div class="col-lg-3">
                 <h3 class="section-heading"><i class="fa fa-flask"></i> Tests</h3>
               </div>
-              <div class="col-md-5">
+              <div class="col-lg-3">
                 <div ng-hide="!task.test_results || task.test_results.length === 0"
                 class="pull-right" style="margin-top:15px">
                       <input type="text" class="form-control" ng-change="filterTests()" ng-model="task.searchField" placeholder="Filter tests"/>
                 </div>
               </div>
-              <div class="col-md-4">
+              <div class="col-lg-4">
                 <div ng-hide="!task.test_results || task.test_results.length == 0"
                 class="dropdown pull-right" style="margin-top:15px">
                 <button class="btn btn-default" data-toggle="dropdown" href="#" id="dLabel">
@@ -375,6 +375,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                 </ul>
               </div>
             </div>
+            <div class="col-lg-2" id="wrapCheckbox"><input type="checkbox" ng-model="wrapTestResults"/><label style=>Wrap</label></div>
           </div>
           <div ng-show="!task.test_results || task.test_results.length == 0" class="mci-pod" style="margin-bottom:0">
             <h4 class="text-center text-muted">No test results to show</h4>
@@ -416,7 +417,8 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                             <div class="test-result-link-wrapper">
                               <i class="icon fa fa-link" style="cursor: pointer;" ng-click="linkToTest(test.test_result.display_name)"> </i>
                             </div>
-                            <div class="test-result-name one-liner">
+                            <div ng-class="resultRowClass()">
+                              <md-tooltip class="tooltip" md-direction="top"> [[test.test_result.display_name]]</md-tooltip>
                               <a ng-href="[[getTestHistoryUrl(project, task, test.test_result, test.task_name)]]">
                                 [[test.test_result.display_name]]
                               </a>
@@ -424,7 +426,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                             <div style="clear: both"></div>
                           </td>
                           <td class="col-lg-3">
-                            <md-tooltip style="margin:0;background-color:black;color:white;" md-direction="top"> [[test.test_result.time_taken * 1000 * 1000 * 1000 | stringifyNanoseconds]]</md-tooltip>
+                            <md-tooltip class="tooltip" md-direction="top"> [[test.test_result.time_taken * 1000 * 1000 * 1000 | stringifyNanoseconds]]</md-tooltip>
                             <div class="progress [[progressBarClass]]" test-result-bar="test.test_result" style="width: [[barWidth]]%"></div>
                           </td>
                           <td class="col-lg-3">

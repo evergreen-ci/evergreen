@@ -206,7 +206,6 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 	buildsWithAllActiveTasksComplete := 0
 	activeBuilds := 0
 	finished := true
-	tasksWithDeps, err := task.FindAllTasksFromVersionWithDependencies(versionId)
 	if err != nil {
 		return errors.Wrap(err, "error finding tasks with dependencies")
 	}
@@ -215,7 +214,7 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 		if b.Activated {
 			activeBuilds++
 		}
-		complete, buildStatus, err := b.AllUnblockedTasksFinished(tasksWithDeps)
+		complete, buildStatus, err := b.AllUnblockedTasksFinished()
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -499,39 +498,10 @@ func AddTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 	if err = tasks.InsertUnordered(ctx); err != nil {
 		return nil, errors.Wrapf(err, "error inserting tasks for build '%s'", b.Id)
 	}
-	if generatedBy != "" {
-		taskIds := []string{}
-		for _, t := range tasks {
-			taskIds = append(taskIds, t.Id)
-		}
-		grip.Debug(message.Fields{
-			"message":      "adding generated tasks to build",
-			"build":        b.Id,
-			"project":      v.Identifier,
-			"version":      v.Id,
-			"generated_by": generatedBy,
-			"tasks":        taskIds,
-		})
-	}
 
 	// update the build to hold the new tasks
 	if err := RefreshTasksCache(b.Id); err != nil {
 		return nil, errors.Wrapf(err, "error updating task cache for '%s'", b.Id)
-	}
-
-	if generatedBy != "" {
-		taskIds := []string{}
-		for _, t := range tasks {
-			taskIds = append(taskIds, t.Id)
-		}
-		grip.Debug(message.Fields{
-			"message":      "refreshing build cache with generated tasks",
-			"build":        b.Id,
-			"project":      v.Identifier,
-			"version":      v.Id,
-			"generated_by": generatedBy,
-			"cache":        b.Tasks,
-		})
 	}
 
 	return b, nil

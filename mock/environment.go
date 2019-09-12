@@ -165,7 +165,7 @@ func (e *Environment) SetSender(key evergreen.SenderKey, s send.Sender) error {
 	return nil
 }
 
-func (e *Environment) RegisterCloser(name string, closer func(context.Context) error) {
+func (e *Environment) RegisterCloser(name string, background bool, closer func(context.Context) error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 

@@ -73,10 +73,6 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	if err := initializeSenders(j.env); err != nil {
-		j.AddError(errors.Wrap(err, "can't initialize senders"))
-	}
-
 	// stop if degraded
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
@@ -252,7 +248,7 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 		return
 	}
 
-	project, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
+	project, _, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
 	if err != nil {
 		j.logError(err, "can't get updated project config", nextItem)
 		j.dequeue(cq, nextItem)
@@ -391,17 +387,12 @@ func getPatchInfo(ctx context.Context, githubToken string, patchDoc *patch.Patch
 	}
 
 	// fetch the latest config file
-	config, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
+	config, projectYaml, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
 	if err != nil {
 		return "", nil, nil, errors.Wrap(err, "can't get remote config file")
 	}
 
-	yamlBytes, err := yaml.Marshal(config)
-	if err != nil {
-		return "", nil, nil, errors.Wrap(err, "can't marshall remote config file")
-	}
-	patchDoc.PatchedConfig = string(yamlBytes)
-
+	patchDoc.PatchedConfig = projectYaml
 	return patchContent, summaries, config, nil
 }
 
@@ -588,15 +579,6 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 	patchDoc.Tasks = append(patchDoc.Tasks, "merge-patch")
 
 	return nil
-}
-
-func initializeSenders(env evergreen.Environment) error {
-	_, err := env.GetSender(evergreen.SenderCommitQueueDequeue)
-	if err == nil {
-		return nil
-	}
-
-	return errors.Wrap(commitqueue.SetupEnv(env), "can't setup commit queue senders")
 }
 
 func setDefaultNotification(username string) error {

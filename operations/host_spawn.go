@@ -3,6 +3,7 @@ package operations
 import (
 	"context"
 	"io/ioutil"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
@@ -10,11 +11,54 @@ import (
 	"github.com/urfave/cli"
 )
 
+const (
+	MaxTagKeyLength   = 128
+	MaxTagValueLength = 256
+)
+
+// makeAWSTags creates and validates a map of supplied instance tags
+func makeAWSTags(tagSlice []string) (map[string]string, error) {
+	catcher := grip.NewBasicCatcher()
+	tags := make(map[string]string)
+	for _, tagString := range tagSlice {
+		pair := strings.Split(tagString, "=")
+		if len(pair) != 2 {
+			catcher.Add(errors.Errorf("problem parsing tag '%s'", tagString))
+			continue
+		}
+
+		key := pair[0]
+		value := pair[1]
+
+		// AWS tag key must contain no more than 128 characters
+		if len(key) > MaxTagKeyLength {
+			catcher.Add(errors.Errorf("key '%s' is longer than 128 characters", key))
+		}
+		// AWS tag value must contain no more than 256 characters
+		if len(value) > MaxTagValueLength {
+			catcher.Add(errors.Errorf("value '%s' is longer than 256 characters", value))
+		}
+		// tag prefix aws: is reserved
+		if strings.HasPrefix(key, "aws:") || strings.HasPrefix(value, "aws:") {
+			catcher.Add(errors.Errorf("illegal tag prefix 'aws:'"))
+		}
+
+		tags[key] = value
+	}
+
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+
+	return tags, nil
+}
+
 func hostCreate() cli.Command {
 	const (
 		distroFlagName = "distro"
 		keyFlagName    = "key"
 		scriptFlagName = "script"
+		tagFlagName    = "tag"
 	)
 
 	return cli.Command{
@@ -33,12 +77,17 @@ func hostCreate() cli.Command {
 				Name:  joinFlagNames(scriptFlagName, "s"),
 				Usage: "path to userdata script to run",
 			},
+			cli.StringSliceFlag{
+				Name:  joinFlagNames(tagFlagName, "t"),
+				Usage: "key=value pair representing an instance tag, with one pair per flag",
+			},
 		},
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			distro := c.String(distroFlagName)
 			key := c.String(keyFlagName)
 			fn := c.String(scriptFlagName)
+			tagSlice := c.StringSlice(tagFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -60,12 +109,24 @@ func hostCreate() cli.Command {
 				script = string(out)
 			}
 
-			host, err := client.CreateSpawnHost(ctx, distro, key, script)
-			if host == nil {
-				return errors.New("Unable to create a spawn host. Double check that the params and .evergreen.yml are correct")
+			tags, err := makeAWSTags(tagSlice)
+			if err != nil {
+				return errors.Wrap(err, "problem generating tags")
 			}
+
+			spawnRequest := &model.HostRequestOptions{
+				DistroID:     distro,
+				KeyName:      key,
+				UserData:     script,
+				InstanceTags: tags,
+			}
+
+			host, err := client.CreateSpawnHost(ctx, spawnRequest)
 			if err != nil {
 				return errors.Wrap(err, "problem contacting evergreen service")
+			}
+			if host == nil {
+				return errors.New("Unable to create a spawn host. Double check that the params and .evergreen.yml are correct")
 			}
 
 			grip.Infof("Spawn host created with ID '%s'. Visit the hosts page in Evergreen to check on its status.", model.FromAPIString(host.Id))
