@@ -349,7 +349,8 @@ const (
 	defaultGroupTTLMinutes                       = 1
 	maxNotificationsPerSecond                    = 100
 
-	EnableAmboyRemoteReporting = true
+	EnableAmboyRemoteReporting                  = true
+	EnableAmboyRemoteReportingBackgroundCollect = false
 )
 
 // NameTimeFormat is the format in which to log times like instance start time.
