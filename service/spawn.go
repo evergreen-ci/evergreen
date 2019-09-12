@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -228,18 +227,17 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Host RDP password successfully updated."))
 		gimlet.WriteJSON(w, "Successfully updated host password")
 		return
 
 	case HostExpirationExtension:
-		addtHours, err := strconv.Atoi(restModel.FromAPIString(updateParams.AddHours))
-		if err != nil {
-			http.Error(w, "bad hours param", http.StatusBadRequest)
+		if updateParams.Expiration.Before(h.ExpirationTime) {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("expiration can only be extended"))
 			return
 		}
+		addtTime := updateParams.Expiration.Sub(h.ExpirationTime)
 		var futureExpiration time.Time
-		futureExpiration, err = cloud.MakeExtendedSpawnHostExpiration(h, time.Duration(addtHours)*time.Hour)
+		futureExpiration, err = cloud.MakeExtendedSpawnHostExpiration(h, addtTime)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusBadRequest, err)
 			return
@@ -248,9 +246,6 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error extending host expiration time"))
 			return
 		}
-		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("Host expiration "+
-			"extension successful; %v will expire on %v", hostId,
-			futureExpiration.Format(time.RFC850))))
 		gimlet.WriteJSON(w, "Successfully extended host expiration time")
 		return
 

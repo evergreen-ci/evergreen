@@ -11,9 +11,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     $scope.userKeys = [];
     $scope.selectedKey = {};
     $scope.spawnInfo = {};
-    $scope.extensionLength = {};
     $scope.curHostData;
-    $scope.hostExtensionLengths = {};
     $scope.maxHostsPerUser = $window.maxHostsPerUser;
     $scope.spawnReqSent = false;
     $scope.useTaskConfig = false;
@@ -37,23 +35,6 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     ];
 
     $scope.sortBy = $scope.sortOrders[0];
-
-    $scope.extensionLengths = [
-      {display: "1 hour", hours: 1},
-      {display: "2 hours", hours: 2},
-      {display: "4 hours", hours: 4},
-      {display: "6 hours", hours: 6},
-      {display: "8 hours", hours: 8},
-      {display: "10 hours", hours: 10},
-      {display: "12 hours", hours: 12},
-      {display: "1 day", hours: 24},
-      {display: "2 days", hours: 24*2},
-      {display: "3 days", hours: 24*3},
-      {display: "4 days", hours: 24*4},
-      {display: "5 days", hours: 24*5},
-      {display: "6 days", hours: 24*6},
-      {display: "7 days", hours: 24*7},
-    ];
 
     $scope.setSortBy = function(order) {
       $scope.sortBy = order;
@@ -198,10 +179,11 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     };
 
     $scope.updateHostExpiration = function() {
-      mciSpawnRestService.extendHostExpiration(
+        var new_expiration = combineDateTime($scope.date_for_expiration, $scope.time_for_expiration);
+
+        mciSpawnRestService.extendHostExpiration(
         'extendHostExpiration',
-        $scope.curHostData.id,
-        $scope.extensionLength.hours.toString(), {}, {
+        $scope.curHostData.id, new_expiration, {}, {
           success: function (resp) {
             window.location.href = "/spawn";
           },
@@ -257,10 +239,6 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
           }
         }
       };
-    };
-
-    $scope.setExtensionLength = function(extensionLength) {
-      $scope.extensionLength = extensionLength;
     };
 
     $scope.setUserKeys = function(publicKeys) {
@@ -348,29 +326,10 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       if (host.distro.arch.indexOf('win') != -1) {
         $scope.curHostData.isWinHost = true;
       }
-      $scope.updateExtensionOptions($scope.curHostData);
+
+      $scope.date_for_expiration = host.expiration_time;
+      $scope.time_for_expiration = host.expiration_time;
     };
-
-    $scope.updateExtensionOptions = function(host) {
-      $scope.hostExtensionLengths = [];
-      _.each($scope.extensionLengths, function(extensionLength) {
-        var remainingTimeSec = moment(host.expiration_time).diff(moment(), 'seconds');
-        var remainingTimeDur = moment.duration(remainingTimeSec, 'seconds');
-        remainingTimeDur.add(extensionLength.hours, 'hours');
-
-        // you should only be able to extend duration for a max of 7 days
-        if (remainingTimeDur.as('hours') < $scope.maxHoursToExpiration) {
-          $scope.hostExtensionLengths.push(extensionLength);
-        }
-      });
-      if ($scope.hostExtensionLengths.length > 0) {
-        $scope.setExtensionLength($scope.hostExtensionLengths[0]);
-      }
-    }
-
-    $scope.setExtensionLength = function(extensionLength) {
-      $scope.extensionLength = extensionLength;
-    }
 
     $scope.openSpawnModal = function(opt) {
       $scope.modalOption = opt;

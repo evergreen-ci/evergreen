@@ -28,14 +28,6 @@
     <div class="entry" ng-show="!curHostData.isTerminated">
       <strong>Work Directory</strong> <span class="mono">[[curHostData.distro.work_dir]]</span>
     </div>
-    <div class="entry" ng-show="true">
-      <strong>
-        Expires On:
-      </strong>
-      <span>
-        [[curHostData.expiration_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]
-      </span>
-    </div>
     <div class ="entry" ng-show="curHostData.userdata">
       <strong>User Data:</strong><br/>
       <pre>[[curHostData.userdata]]</pre>
@@ -50,30 +42,14 @@
     Set RDP Password
     </button>
   </div>
-  <div ng-show="hostExtensionLengths.length != 0" class="expire-row">
     <span>
-      <button class="btn btn-link btn-dropdown" data-toggle="dropdown" href="#" id="extLen">
-        <span class="semi-muted">
-         Extend expiration time by:
-        </span>
-        <strong>
-          [[extensionLength.display]]
-          <span class="fa fa-caret-down"></span>
-        </strong>
-      </button>
-      <ul class="dropdown-menu expire-dropdown" role="menu" aria-labelledby="extLen">
-        <li role="presentation" class="dropdown-header">Extension Durations</li>
-        <li role="presentation" ng-repeat="extensionLength in hostExtensionLengths">
-          <a role="menuitem" ng-click="setExtensionLength(extensionLength);">
-          [[extensionLength.display]]
-          </a>
-        </li>
-      </ul>
-    </span>
-    <span>
+      <td>Expires On:</td>
+      <td>
+		<md-datepicker ng-model="time_for_expiration" md-placeholder="Date"></md-datepicker>
+		<md-time-picker class="inline" ng-model="curHostData.expiration_time" message="message"></md-time-picker>
+      </td>
       <button type="button" class="btn btn-info expire-button" style="float: right;" ng-click="updateHostExpiration()">
-      Update Host Expiration
+      Update
       </button>
     </span>
-  </div>
 </div>
