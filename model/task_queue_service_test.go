@@ -623,7 +623,6 @@ func (s *taskDAGDispatchServiceSuite) TestTaskGroupWithExternalDependency() {
 		Version:      "version_1",
 		Project:      "project_1",
 	}
-
 	taskGroupID := compositeGroupId(spec.Group, spec.BuildVariant, spec.Project, spec.Version)
 	taskGroup := service.taskGroups[taskGroupID]
 
