@@ -86,6 +86,7 @@ func (c *ServiceFlags) Set() error {
 			taskLoggingDisabledKey:          c.TaskLoggingDisabled,
 			cacheStatsJobDisabledKey:        c.CacheStatsJobDisabled,
 			cacheStatsEndpointDisabledKey:   c.CacheStatsEndpointDisabled,
+			cacheStatsOldTasksDisabledKey:   c.CacheStatsOldTasksDisabled,
 			taskReliabilityDisabledKey:      c.TaskReliabilityDisabled,
 			commitQueueDisabledKey:          c.CommitQueueDisabled,
 			plannerDisabledKey:              c.PlannerDisabled,

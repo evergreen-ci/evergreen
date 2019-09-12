@@ -90,11 +90,11 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStats() {
 
 	callCountFn0 := 0
 
-	mockFn0 := func(ctx context.Context, p string, r string, h time.Time, ts []string, jobTime time.Time) error {
-		s.Equal(s.projectId, p)
-		s.Equal(s.requester, r)
-		s.Contains(s.hours, h)
-		s.Equal(now, jobTime)
+	mockFn0 := func(ctx context.Context, opts stats.GenerateOptions) error {
+		s.Equal(s.projectId, opts.ProjectID)
+		s.Equal(s.requester, opts.Requester)
+		s.Contains(s.hours, opts.Window)
+		s.Equal(now, opts.Runtime)
 
 		callCountFn0++
 
@@ -103,11 +103,11 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStats() {
 
 	callCountFn1 := 0
 
-	mockFn1 := func(ctx context.Context, p string, r string, d time.Time, ts []string, jobTime time.Time) error {
-		s.Equal(s.projectId, p)
-		s.Equal(s.requester, r)
-		s.Contains(s.days, d)
-		s.Equal(now, jobTime)
+	mockFn1 := func(ctx context.Context, opts stats.GenerateOptions) error {
+		s.Equal(s.projectId, opts.ProjectID)
+		s.Equal(s.requester, opts.Requester)
+		s.Contains(s.days, opts.Window)
+		s.Equal(now, opts.Runtime)
 
 		callCountFn1++
 
