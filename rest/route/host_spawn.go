@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -24,11 +25,11 @@ func makeSpawnHostCreateRoute(sc data.Connector) gimlet.RouteHandler {
 }
 
 type hostPostHandler struct {
-	Task         string            `json:"task_id"`
-	Distro       string            `json:"distro"`
-	KeyName      string            `json:"keyname"`
-	UserData     string            `json:"userdata"`
-	InstanceTags map[string]string `json:"instance_tags"`
+	Task         string     `json:"task_id"`
+	Distro       string     `json:"distro"`
+	KeyName      string     `json:"keyname"`
+	UserData     string     `json:"userdata"`
+	InstanceTags []host.Tag `json:"instance_tags"`
 
 	sc data.Connector
 }

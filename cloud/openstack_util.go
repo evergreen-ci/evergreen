@@ -39,6 +39,14 @@ func getSpawnOptions(h *host.Host, s *openStackSettings) servers.CreateOpts {
 		ImageName:      s.ImageName,
 		FlavorName:     s.FlavorName,
 		SecurityGroups: []string{s.SecurityGroup},
-		Metadata:       makeTags(h),
+		Metadata:       makeMapFromTags(makeTags(h)),
 	}
+}
+
+func makeMapFromTags(tags []host.Tag) map[string]string {
+	new := make(map[string]string)
+	for _, tag := range tags {
+		new[tag.Key] = tag.Value
+	}
+	return new
 }

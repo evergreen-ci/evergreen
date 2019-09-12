@@ -22,7 +22,7 @@ type CreateOptions struct {
 	ContainerPoolSettings *evergreen.ContainerPool
 	SpawnOptions          SpawnOptions
 	DockerOptions         DockerOptions
-	InstanceTags          map[string]string
+	InstanceTags          []Tag
 }
 
 // NewIntent creates an IntentHost using the given host settings. An IntentHost is a host that

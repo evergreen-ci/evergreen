@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -124,7 +125,7 @@ type hostModifyHandler struct {
 	hostID string
 	sc     data.Connector
 
-	AddInstanceTags    map[string]string
+	AddInstanceTags    []host.Tag
 	DeleteInstanceTags []string
 }
 
@@ -163,18 +164,44 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.hostID))
 	}
 
+	// Check if tags are valid
+	if err := validateTags(foundHost, h.AddInstanceTags, h.DeleteInstanceTags); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Invalid tag modifications"))
+	}
+
+	// Create new spawnhost modify job
 	changes := host.HostModifyOptions{
 		AddInstanceTags:    h.AddInstanceTags,
 		DeleteInstanceTags: h.DeleteInstanceTags,
 	}
-
-	// Create new spawnhost modify job
 	modifyJob := units.NewSpawnhostModifyJob(foundHost, changes)
 	if err = queue.Put(ctx, modifyJob); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error creating spawnhost modify job"))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
+}
+
+// validateTags checks whether the tags to be modified allow modifications.
+func validateTags(h *host.Host, toAdd []host.Tag, toDelete []string) error {
+	catcher := grip.NewBasicCatcher()
+	current := make(map[string]host.Tag)
+	for _, tag := range h.InstanceTags {
+		current[tag.Key] = tag
+	}
+	for _, key := range toDelete {
+		old, ok := current[key]
+		if ok && !old.CanBeModified {
+			catcher.Add(errors.Errorf("tag '%s' cannot be modified", key))
+		}
+	}
+	for _, tag := range toAdd {
+		old, ok := current[tag.Key]
+		if ok && !old.CanBeModified {
+			catcher.Add(errors.Errorf("tag '%s' cannot be modified", tag.Key))
+		}
+	}
+	return catcher.Resolve()
 }
 
 ////////////////////////////////////////////////////////////////////////

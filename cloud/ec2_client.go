@@ -719,12 +719,14 @@ func (c *awsClientImpl) makeNewKey(ctx context.Context, project string, h *host.
 	return name, nil
 }
 
+// SetTags creates the initial tags for an EC2 host and updates the database with the
+// host's Evergreen-generated tags.
 func (c *awsClientImpl) SetTags(ctx context.Context, resources []string, h *host.Host) error {
 	tags := makeTags(h)
 	tagSlice := []*ec2.Tag{}
-	for tag := range tags {
-		key := tag
-		val := tags[tag]
+	for _, tag := range tags {
+		key := tag.Key
+		val := tag.Value
 		tagSlice = append(tagSlice, &ec2.Tag{Key: &key, Value: &val})
 	}
 	if _, err := c.CreateTags(ctx, &ec2.CreateTagsInput{
@@ -738,6 +740,11 @@ func (c *awsClientImpl) SetTags(ctx context.Context, resources []string, h *host
 			"distro":        h.Distro.Id,
 		}))
 		return errors.Wrapf(err, "failed to attach tags for %s", h.Id)
+	}
+
+	// Push instance tag changes to database
+	if err := h.SetTags(); err != nil {
+		return errors.Wrap(err, "failed to update instance tags in database")
 	}
 
 	grip.Debug(message.Fields{

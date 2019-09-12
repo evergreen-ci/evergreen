@@ -19,15 +19,27 @@ func TestSpawnhostModifyJob(t *testing.T) {
 	assert.NoError(t, evergreen.UpdateConfig(config))
 	assert.NoError(t, db.ClearCollections(host.Collection))
 	h := host.Host{
-		Id:           "hostID",
-		Provider:     evergreen.ProviderNameMock,
-		InstanceTags: map[string]string{"key1": "value1"},
-		Distro:       distro.Distro{Provider: evergreen.ProviderNameMock},
+		Id:       "hostID",
+		Provider: evergreen.ProviderNameMock,
+		InstanceTags: []host.Tag{
+			host.Tag{
+				Key:           "key1",
+				Value:         "value1",
+				CanBeModified: true,
+			},
+		},
+		Distro: distro.Distro{Provider: evergreen.ProviderNameMock},
 	}
 	assert.NoError(t, h.Insert())
 
 	changes := host.HostModifyOptions{
-		AddInstanceTags:    map[string]string{"key2": "value2"},
+		AddInstanceTags: []host.Tag{
+			host.Tag{
+				Key:           "key2",
+				Value:         "value2",
+				CanBeModified: true,
+			},
+		},
 		DeleteInstanceTags: []string{"key1"},
 	}
 
@@ -46,5 +58,5 @@ func TestSpawnhostModifyJob(t *testing.T) {
 
 	modifiedHost, err := host.FindOneId(h.Id)
 	assert.NoError(t, err)
-	assert.Equal(t, map[string]string{"key2": "value2"}, modifiedHost.InstanceTags)
+	assert.Equal(t, []host.Tag{host.Tag{Key: "key2", Value: "value2", CanBeModified: true}}, modifiedHost.InstanceTags)
 }
