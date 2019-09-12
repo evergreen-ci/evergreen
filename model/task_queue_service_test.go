@@ -109,14 +109,6 @@ func (s *taskDAGDispatchServiceSuite) SetupTest() {
 	}
 }
 
-func (s *taskDAGDispatchServiceSuite) TestAddingSelfEdge() {
-	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
-	s.NoError(err)
-	err = service.addEdge("5", "5")
-	s.Error(err)
-	s.Contains(err.Error(), "cannot add a self edge to task")
-}
-
 func (s *taskDAGDispatchServiceSuite) TestConstructor() {
 	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
 	s.NoError(err)
@@ -699,6 +691,77 @@ func (s *taskDAGDispatchServiceSuite) TestTaskGroupWithExternalDependency() {
 	s.Require().NotNil(next)
 	s.Equal("0", next.Id)
 	s.Equal("", next.Group)
+}
+
+func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupOrdering() {
+	s.Require().NoError(db.ClearCollections(task.Collection))
+	items := []TaskQueueItem{}
+	groupIndexes := []int{2, 0, 4, 1, 3}
+
+	for i := 0; i < 5; i++ {
+		ID := fmt.Sprintf("%d", i)
+		items = append(items, TaskQueueItem{
+			Id:            ID,
+			Group:         "group_1",
+			BuildVariant:  "variant_1",
+			Version:       "version_1",
+			Project:       "project_1",
+			GroupMaxHosts: 1,
+			GroupIndex:    groupIndexes[i],
+		})
+		t := task.Task{
+			Id:                ID,
+			TaskGroup:         "group_1",
+			BuildVariant:      "variant_1",
+			Version:           "version_1",
+			TaskGroupMaxHosts: 1,
+			Project:           "project_1",
+			StartTime:         util.ZeroTime,
+			FinishTime:        util.ZeroTime,
+		}
+		s.Require().NoError(t.Insert())
+
+		s.taskQueue = TaskQueue{
+			Distro: "distro_1",
+			Queue:  items,
+		}
+	}
+
+	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.Require().NoError(err)
+
+	spec := TaskSpec{
+		Group:        "group_1",
+		BuildVariant: "variant_1",
+		Version:      "version_1",
+		Project:      "project_1",
+	}
+	expectedOrder := []string{"1", "3", "0", "4", "2"}
+
+	for i := 0; i < 5; i++ {
+		next := service.FindNextTask(spec)
+		s.Require().NotNil(next)
+		s.Equal(expectedOrder[i], next.Id)
+	}
+}
+
+func (s *taskDAGDispatchServiceSuite) TestAddingSelfEdge() {
+	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.NoError(err)
+	err = service.addEdge("5", "5")
+	s.Error(err)
+	s.Contains(err.Error(), "cannot add a self edge to task")
+}
+
+func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
+	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.NoError(err)
+	err = service.addEdge("-1", "-2")
+	s.Error(err)
+	s.Contains(err.Error(), "is not present in the DAG")
+	err = service.addEdge("1", "-2")
+	s.Error(err)
+	s.Contains(err.Error(), "is not present in the DAG")
 }
 
 //////////////////////////////////////////////////////////////////////////////

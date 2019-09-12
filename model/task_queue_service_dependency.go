@@ -21,7 +21,7 @@ type basicCachedDAGDispatcherImpl struct {
 	distroID    string
 	graph       *simple.DirectedGraph
 	sorted      []graph.Node
-	itemNodeMap map[string]graph.Node
+	itemNodeMap map[string]graph.Node // map[TaskQueueItem.Id]Node
 	nodeItemMap map[int64]*TaskQueueItem
 	taskGroups  map[string]schedulableUnit
 	ttl         time.Duration
@@ -115,17 +115,25 @@ func (t *basicCachedDAGDispatcherImpl) getNodeByItemID(id string) graph.Node {
 
 // Each node is a task and each edge definition represents a dependency; an edge (A, B) means that B depends on A.
 func (t *basicCachedDAGDispatcherImpl) addEdge(from string, to string) error {
-	fromNodeID := t.itemNodeMap[from].ID()
-	toNodeID := t.itemNodeMap[to].ID()
+	var fromNode, toNode graph.Node
+	fromNode = t.getNodeByItemID(from)
+	toNode = t.getNodeByItemID(to)
+
+	if fromNode == nil {
+		return errors.Errorf("a Node for taskQueueItem '%s' is not present in the DAG for distro '%s'", from, t.distroID)
+	}
+	if toNode == nil {
+		return errors.Errorf("a Node for taskQueueItem '%s' is not present in the DAG for distro '%s'", to, t.distroID)
+	}
 
 	// Cannot add a self edge!
-	if fromNodeID == toNodeID {
+	if fromNode.ID() == toNode.ID() {
 		grip.Alert(message.Fields{
 			"dispatcher": "dependency-task-dispatcher",
 			"function":   "addEdge",
 			"message":    "cannot add a self edge to a Node",
 			"task_id":    from,
-			"node_id":    fromNodeID,
+			"node_id":    fromNode.ID(),
 			"distro_id":  t.distroID,
 		})
 
@@ -133,8 +141,8 @@ func (t *basicCachedDAGDispatcherImpl) addEdge(from string, to string) error {
 	}
 
 	edge := simple.Edge{
-		F: simple.Node(fromNodeID),
-		T: simple.Node(toNodeID),
+		F: simple.Node(fromNode.ID()),
+		T: simple.Node(toNode.ID()),
 	}
 	t.graph.SetEdge(edge)
 
@@ -172,6 +180,8 @@ func (t *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 		}
 	}
 
+	// Reorder the schedulableUnit.tasks by taskQueueItem.GroupIndex.
+	// For a single host task group (MaxHosts: 1) this ensures that its tasks are dispatched in the desired order.
 	for _, su := range t.taskGroups {
 		sort.SliceStable(su.tasks, func(i, j int) bool { return su.tasks[i].GroupIndex < su.tasks[j].GroupIndex })
 	}
