@@ -21,7 +21,7 @@ type basicCachedDAGDispatcherImpl struct {
 	distroID    string
 	graph       *simple.DirectedGraph
 	sorted      []graph.Node
-	itemNodeMap map[string]graph.Node // map[TaskQueueItem.Id]Node
+	itemNodeMap map[string]graph.Node
 	nodeItemMap map[int64]*TaskQueueItem
 	taskGroups  map[string]schedulableUnit
 	ttl         time.Duration
@@ -115,9 +115,8 @@ func (t *basicCachedDAGDispatcherImpl) getNodeByItemID(id string) graph.Node {
 
 // Each node is a task and each edge definition represents a dependency; an edge (A, B) means that B depends on A.
 func (t *basicCachedDAGDispatcherImpl) addEdge(from string, to string) error {
-	var fromNode, toNode graph.Node
-	fromNode = t.getNodeByItemID(from)
-	toNode = t.getNodeByItemID(to)
+	fromNode := t.getNodeByItemID(from)
+	toNode := t.getNodeByItemID(to)
 
 	if fromNode == nil {
 		return errors.Errorf("a Node for taskQueueItem '%s' is not present in the DAG for distro '%s'", from, t.distroID)
