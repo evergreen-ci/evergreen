@@ -22,6 +22,7 @@ type ServiceFlags struct {
 	TaskLoggingDisabled        bool `bson:"task_logging_disabled" json:"task_logging_disabled"`
 	CacheStatsJobDisabled      bool `bson:"cache_stats_job_disabled" json:"cache_stats_job_disabled"`
 	CacheStatsEndpointDisabled bool `bson:"cache_stats_endpoint_disabled" json:"cache_stats_endpoint_disabled"`
+	CacheStatsOldTasksDisabled bool `bson:"cache_stats_old_tasks_disabled" json:"cache_stats_old_tasks_disabled"`
 	TaskReliabilityDisabled    bool `bson:"task_reliability_disabled" json:"task_reliability_disabled"`
 	CommitQueueDisabled        bool `bson:"commit_queue_disabled" json:"commit_queue_disabled"`
 	PlannerDisabled            bool `bson:"planner_disabled" json:"planner_disabled"`
