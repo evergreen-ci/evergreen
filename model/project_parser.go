@@ -433,7 +433,14 @@ func LoadProjectFromVersion(v *Version, identifier string, shouldSave bool) (*Pr
 	if err != nil {
 		return nil, errors.Wrap(err, "error loading project")
 	}
-	if shouldSave {
+	// NOTE: when we flip UseParserProject we don't need to check if ParserProject nil, because we would only be here if it was nil
+	if shouldSave && v.ParserProject == nil {
+		grip.Debug(message.Fields{
+			"message":       "updating version's project",
+			"project":       identifier,
+			"version":       v.Id,
+			"config_number": v.ConfigUpdateNumber,
+		})
 		if err = UpdateVersionProject(v.Id, v.ConfigUpdateNumber, pp); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"project":       identifier,

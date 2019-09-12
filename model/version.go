@@ -158,7 +158,7 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 				"$in": evergreen.SystemVersionRequesterTypes,
 			},
 			VersionIdentifierKey: v.Identifier,
-		}).WithoutFields(VersionConfigKey).Sort([]string{VersionRevisionOrderNumberKey}).Limit(2*N + 1))
+		}).WithoutFields(VersionConfigKey, VersionProjectKey).Sort([]string{VersionRevisionOrderNumberKey}).Limit(2*N + 1))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -184,7 +184,7 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 					"$in": evergreen.SystemVersionRequesterTypes,
 				},
 				VersionIdentifierKey: v.Identifier,
-			}).WithoutFields(VersionConfigKey).Sort([]string{VersionRevisionOrderNumberKey}).Limit(N - versionIndex))
+			}).WithoutFields(VersionConfigKey, VersionProjectKey).Sort([]string{VersionRevisionOrderNumberKey}).Limit(N - versionIndex))
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -204,7 +204,7 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 				"$in": evergreen.SystemVersionRequesterTypes,
 			},
 			VersionIdentifierKey: v.Identifier,
-		}).WithoutFields(VersionConfigKey).Sort([]string{fmt.Sprintf("-%v", VersionRevisionOrderNumberKey)}).Limit(N))
+		}).WithoutFields(VersionConfigKey, VersionProjectKey).Sort([]string{fmt.Sprintf("-%v", VersionRevisionOrderNumberKey)}).Limit(N))
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
