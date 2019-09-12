@@ -178,6 +178,10 @@ func makeTags(intentHost *host.Host) []host.Tag {
 		systemTags = append(systemTags, host.Tag{Key: "mode", Value: "testing", CanBeModified: false})
 	}
 
+	if isHostSpot(intentHost) {
+		systemTags = append(systemTags, host.Tag{Key: "spot", Value: "true", CanBeModified: false})
+	}
+
 	// Add Evergreen-generated tags to host object
 	intentHost.AddTags(systemTags)
 
