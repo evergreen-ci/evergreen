@@ -160,7 +160,7 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 		// update last sync
 		err = stats.UpdateStatsStatus(j.ProjectID, jobContext.JobTime, syncToTime)
 		j.AddError(errors.Wrap(err, "error updating last synced date"))
-	})
+	}).Seconds()
 	j.AddError(jobContext.catcher.Resolve())
 	if j.HasErrors() {
 		return
