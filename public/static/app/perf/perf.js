@@ -761,8 +761,8 @@ $http.get(templateUrl).success(function(template) {
     return $q.all({ processed, unprocessed }).then(function (points) {
       const { processed, unprocessed } = points;
       const docs = _.reduce(unprocessed, function (m, d) {
-        // If there are no processed change point with same revision
-        if (!_.findWhere(m, { suspect_revision: d.suspect_revision })) {
+        // If there are no processed change point with same revision and test
+        if (!_.findWhere(m, { suspect_revision: d.suspect_revision , test: d.test })) {
           return m.concat(d);
         }
         return m;

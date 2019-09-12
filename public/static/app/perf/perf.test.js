@@ -2227,6 +2227,10 @@ describe('loadChangePoints', function () {
         {
           "test" : "InsertRemove.Genny.Setup",
           "suspect_revision" : "b6147f664cc22c360611b05f79c0d8febf3c7692",
+        },
+        {
+          "test" : "InsertRemove.dummy_inserts",
+          "suspect_revision" : "b6147f664cc22c360611b05f79c0d8febf3c7692",
         }
       ];
       resp  = {processed, unprocessed};
@@ -2252,11 +2256,12 @@ describe('loadChangePoints', function () {
       const value = loadChangePoints(scope, project, variant, task);
 
       expect(value).toBe(scope.changePoints);
-      expect(Object.keys(scope.changePoints).length).toBe(3);
+      expect(Object.keys(scope.changePoints).length).toBe(4);
       expect(Object.keys(scope.changePoints)).toEqual([
         "InsertRemove.InsertRemoveTest.remove",
         "InsertRemove.dummy_inserts",
-        "InsertRemove.Genny.NotOverlapping"
+        "InsertRemove.Genny.NotOverlapping",
+        "InsertRemove.Genny.Setup"
       ]);
 
       expect(loadUnprocessedSpy).toHaveBeenCalledWith(project, variant, task);
