@@ -72,9 +72,11 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 		"job_type": j.Type().Name,
 		"message":  "timing-info",
 	}
+	startAt := time.Now()
 	defer func() {
 		timingMsg["has_errors"] = j.HasErrors()
 		timingMsg["aborted"] = ctx.Err() != nil
+		timingMsg["total"] = time.Since(startAt)
 		grip.Info(timingMsg)
 	}()
 
