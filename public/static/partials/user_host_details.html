@@ -41,15 +41,13 @@
     == 'running'" class="btn btn-info" style="float: right;" ng-click="openSpawnModal('updateRDPPassword')">
     Set RDP Password
     </button>
-  </div>
-    <span>
-      <td>Expires On:</td>
-      <td>
-		<md-datepicker ng-model="time_for_expiration" md-placeholder="Date"></md-datepicker>
-		<md-time-picker class="inline" ng-model="curHostData.expiration_time" message="message"></md-time-picker>
-      </td>
+    <div class="entry">
+      <strong>Expires On:</strong>
+      <md-datepicker ng-model="time_for_expiration" md-placeholder="Date"></md-datepicker>
+      <md-time-picker class="inline" ng-model="curHostData.expiration_time" message="message"></md-time-picker>
       <button type="button" class="btn btn-info expire-button" style="float: right;" ng-click="updateHostExpiration()">
-      Update
+        Update
       </button>
-    </span>
+    </div>
+  </div>
 </div>
