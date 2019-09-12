@@ -143,28 +143,28 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 	}
 
 	msg := message.Fields{
-		"activated_by":    j.task.ActivatedBy,
-		"build":           j.task.BuildId,
-		"display_task":    j.task.DisplayOnly,
-		"distro":          j.host.Distro.Id,
-		"execution":       j.task.Execution,
-		"generator":       j.task.GenerateTask,
-		"group":           j.task.TaskGroup,
-		"group_max_hosts": j.task.TaskGroupMaxHosts,
-		"host_id":         j.host.Id,
-		"priority":        j.task.Priority,
-		"project":         j.task.Project,
-		"provider":        j.host.Distro.Provider,
-		"requester":       j.task.Requester,
-		"stat":            "task-end-stats",
-		"status":          j.task.ResultStatus(),
-		"task":            j.task.DisplayName,
-		"task_id":         j.task.Id,
-		"variant":         j.task.BuildVariant,
-		"version":         j.task.Version,
+		"activated_by":         j.task.ActivatedBy,
+		"build":                j.task.BuildId,
+		"current_runtime_secs": j.task.FinishTime.Sub(j.task.StartTime).Seconds(),
+		"display_task":         j.task.DisplayOnly,
+		"distro":               j.host.Distro.Id,
+		"execution":            j.task.Execution,
+		"generator":            j.task.GenerateTask,
+		"group":                j.task.TaskGroup,
+		"group_max_hosts":      j.task.TaskGroupMaxHosts,
+		"host_id":              j.host.Id,
+		"priority":             j.task.Priority,
+		"project":              j.task.Project,
+		"provider":             j.host.Distro.Provider,
+		"requester":            j.task.Requester,
+		"stat":                 "task-end-stats",
+		"status":               j.task.ResultStatus(),
+		"task":                 j.task.DisplayName,
+		"task_id":              j.task.Id,
+		"total_wait_secs":      j.task.FinishTime.Sub(j.task.ActivatedTime).Seconds(),
+		"variant":              j.task.BuildVariant,
+		"version":              j.task.Version,
 	}
-	totalWaitSecs := j.task.FinishTime.Sub(j.task.ActivatedTime)
-	msg["total_wait_secs"] = totalWaitSecs.Seconds()
 
 	if cost != 0 {
 		msg["cost"] = cost
@@ -174,10 +174,8 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 	if err != nil {
 		msg[message.FieldsMsgName] = "problem computing historic runtime"
 		grip.Warning(message.WrapError(err, msg))
-		j.AddError(err)
 	} else {
 		msg["average_runtime_secs"] = historicRuntime.Seconds()
-		msg["current_runtime_secs"] = j.task.FinishTime.Sub(j.task.StartTime).Seconds()
 		grip.Info(msg)
 	}
 }
