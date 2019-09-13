@@ -403,22 +403,37 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 		var revision string
 		if conf.Task.Requester == evergreen.MergeTestRequester {
 			revision = module.Branch
+			c.logModuleRevision(logger, revision, moduleName, "commit queue merge")
 		} else {
 			if p != nil {
 				module := p.FindModule(moduleName)
 				if module != nil {
 					revision = module.Githash
+					if revision != "" {
+						c.logModuleRevision(logger, revision, moduleName, "specified in set-module")
+					}
 				}
 			}
 			if revision == "" {
 				revision = c.Revisions[moduleName]
+				if revision != "" {
+					c.logModuleRevision(logger, revision, moduleName, "specified as parameter to git.get_project")
+				}
+			}
+			if revision == "" {
+				revision = conf.Expansions.Get(moduleExpansionName(moduleName))
+				if revision != "" {
+					c.logModuleRevision(logger, revision, moduleName, "from manifest")
+				}
 			}
 			// if there is no revision, then use the revision from the module, then branch name
 			if revision == "" {
 				if module.Ref != "" {
 					revision = module.Ref
+					c.logModuleRevision(logger, revision, moduleName, "ref field in config file")
 				} else {
 					revision = module.Branch
+					c.logModuleRevision(logger, revision, moduleName, "branch field in config file")
 				}
 			}
 		}
@@ -499,6 +514,10 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 	}
 
 	return nil
+}
+
+func (c *gitFetchProject) logModuleRevision(logger client.LoggerProducer, revision, module, reason string) {
+	logger.Execution().Infof("Using revision/ref '%s' for module '%s' (reason: %s)", revision, module, reason)
 }
 
 // getPatchContents() dereferences any patch files that are stored externally, fetching them from
