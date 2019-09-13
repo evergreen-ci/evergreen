@@ -34,7 +34,7 @@ func (s *VSphereSuite) SetupTest() {
 	}
 	s.distro = distro.Distro{
 		Id:       "host",
-		Provider: "vsphere",
+		Provider: evergreen.ProviderNameVsphere,
 		ProviderSettings: &map[string]interface{}{
 			"template": "macos-1012",
 		},
@@ -228,21 +228,21 @@ func (s *VSphereSuite) TestSpawnInvalidSettings() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	dProviderName := distro.Distro{Provider: "ec2"}
+	dProviderName := distro.Distro{Provider: evergreen.ProviderNameEc2Auto}
 	h := host.NewIntent(dProviderName, dProviderName.GenerateName(), dProviderName.Provider, s.hostOpts)
 	s.NotNil(h)
 	h, err := s.manager.SpawnHost(ctx, h)
 	s.Error(err)
 	s.Nil(h)
 
-	dSettingsNone := distro.Distro{Provider: "vsphere"}
+	dSettingsNone := distro.Distro{Provider: evergreen.ProviderNameVsphere}
 	h = host.NewIntent(dSettingsNone, dSettingsNone.GenerateName(), dSettingsNone.Provider, s.hostOpts)
 	h, err = s.manager.SpawnHost(ctx, h)
 	s.Error(err)
 	s.Nil(h)
 
 	dSettingsInvalid := distro.Distro{
-		Provider:         "vsphere",
+		Provider:         evergreen.ProviderNameVsphere,
 		ProviderSettings: &map[string]interface{}{"template": ""},
 	}
 	h = host.NewIntent(dSettingsInvalid, dSettingsInvalid.GenerateName(), dSettingsInvalid.Provider, s.hostOpts)
