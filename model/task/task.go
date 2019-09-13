@@ -602,7 +602,7 @@ func MarkGeneratedTasks(taskID string, errorToSet error) error {
 }
 
 func GenerateNotRun() ([]Task, error) {
-	const maxGenerateTimeAgo = 2 * time.Hour
+	const maxGenerateTimeAgo = 24 * time.Hour
 	return FindAll(db.Query(bson.M{
 		StatusKey:         evergreen.TaskStarted,                              // task is running
 		StartTimeKey:      bson.M{"$gt": time.Now().Add(-maxGenerateTimeAgo)}, // ignore older tasks, just in case
@@ -1741,6 +1741,14 @@ func (t *Task) BlockedState() (string, error) {
 		depTask, err := FindOne(ById(dep.TaskId).WithFields(StatusKey, DependsOnKey))
 		if err != nil {
 			return "", errors.Wrapf(err, "can't get dependent task '%s'", dep.TaskId)
+		}
+		if depTask == nil {
+			grip.Error(message.Fields{
+				"message":        "could not find dependent task",
+				"task":           t.Id,
+				"dependent_task": dep.TaskId,
+			})
+			continue
 		}
 		if !t.satisfiesDependency(depTask) {
 			return evergreen.TaskStatusPending, nil

@@ -298,6 +298,7 @@ functions:
         env:
           HOST_FILE: spawned_hosts.json
           GO_BIN_PATH: ${gobin}
+          GOROOT: ${goroot}
     - command: expansions.update
       params:
         file: gopath/src/github.com/evergreen-ci/evergreen/bin/expansions.yml
@@ -428,6 +429,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-build
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-model-credentials
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-event

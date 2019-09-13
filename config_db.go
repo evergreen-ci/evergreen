@@ -73,6 +73,7 @@ var (
 	taskLoggingDisabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "TaskLoggingDisabled")
 	cacheStatsJobDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "CacheStatsJobDisabled")
 	cacheStatsEndpointDisabledKey   = bsonutil.MustHaveTag(ServiceFlags{}, "CacheStatsEndpointDisabled")
+	cacheStatsOldTasksDisabledKey   = bsonutil.MustHaveTag(ServiceFlags{}, "CacheStatsOldTasksDisabled")
 	taskReliabilityDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "TaskReliabilityDisabled")
 	commitQueueDisabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "CommitQueueDisabled")
 	plannerDisabledKey              = bsonutil.MustHaveTag(ServiceFlags{}, "PlannerDisabled")

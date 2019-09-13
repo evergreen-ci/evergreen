@@ -90,11 +90,11 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStats() {
 
 	callCountFn0 := 0
 
-	mockFn0 := func(ctx context.Context, p string, r string, h time.Time, ts []string, jobTime time.Time) error {
-		s.Equal(s.projectId, p)
-		s.Equal(s.requester, r)
-		s.Contains(s.hours, h)
-		s.Equal(now, jobTime)
+	mockFn0 := func(ctx context.Context, opts stats.GenerateOptions) error {
+		s.Equal(s.projectId, opts.ProjectID)
+		s.Equal(s.requester, opts.Requester)
+		s.Contains(s.hours, opts.Window)
+		s.Equal(now, opts.Runtime)
 
 		callCountFn0++
 
@@ -103,11 +103,11 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStats() {
 
 	callCountFn1 := 0
 
-	mockFn1 := func(ctx context.Context, p string, r string, d time.Time, ts []string, jobTime time.Time) error {
-		s.Equal(s.projectId, p)
-		s.Equal(s.requester, r)
-		s.Contains(s.days, d)
-		s.Equal(now, jobTime)
+	mockFn1 := func(ctx context.Context, opts stats.GenerateOptions) error {
+		s.Equal(s.projectId, opts.ProjectID)
+		s.Equal(s.requester, opts.Requester)
+		s.Contains(s.days, opts.Window)
+		s.Equal(now, opts.Runtime)
 
 		callCountFn1++
 
@@ -137,11 +137,11 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStats() {
 }
 
 func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStatsWithAnHourlyError() {
-	mockFn0 := func(ctx context.Context, p string, r string, h time.Time, ts []string, jobTime time.Time) error {
+	mockFn0 := func(ctx context.Context, opts stats.GenerateOptions) error {
 		return fmt.Errorf("error message")
 	}
 
-	mockFn1 := func(ctx context.Context, p string, r string, d time.Time, ts []string, jobTime time.Time) error {
+	mockFn1 := func(ctx context.Context, opts stats.GenerateOptions) error {
 		return nil
 	}
 
@@ -167,12 +167,12 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStatsWithAnHourlyErr
 }
 
 func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStatsWithADailyError() {
-	mockFn0 := func(ctx context.Context, p string, r string, h time.Time, ts []string, jobTime time.Time) error {
-		return nil
+	mockFn0 := func(ctx context.Context, opts stats.GenerateOptions) error {
+		return fmt.Errorf("error message")
 	}
 
-	mockFn1 := func(ctx context.Context, p string, r string, d time.Time, ts []string, jobTime time.Time) error {
-		return fmt.Errorf("error message")
+	mockFn1 := func(ctx context.Context, opts stats.GenerateOptions) error {
+		return nil
 	}
 
 	mockGenFns := generateFunctions{
@@ -202,12 +202,11 @@ func (s *cacheHistoryTestDataSuite) TestIteratorOverHourlyStats() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	mockHourlyGenerateFn := func(ctx context.Context, projId string, req string, h time.Time, tasks []string,
-		jobTime time.Time) error {
+	mockHourlyGenerateFn := func(ctx context.Context, opts stats.GenerateOptions) error {
 		callCount++
-		s.Equal(s.projectId, projId)
-		s.Equal(s.requester, req)
-		s.Contains(s.hours, h)
+		s.Equal(s.projectId, opts.ProjectID)
+		s.Equal(s.requester, opts.Requester)
+		s.Contains(s.hours, opts.Window)
 
 		return nil
 	}
@@ -233,11 +232,10 @@ func (s *cacheHistoryTestDataSuite) TestIteratorOverDailyStats() {
 
 	callCount := 0
 
-	mockDailyGenerateFn := func(ctx context.Context, projId string, req string, d time.Time, tasks []string,
-		jobTime time.Time) error {
+	mockDailyGenerateFn := func(ctx context.Context, opts stats.GenerateOptions) error {
 		callCount++
-		s.Equal(s.projectId, projId)
-		s.Equal(s.requester, req)
+		s.Equal(s.projectId, opts.ProjectID)
+		s.Equal(s.requester, opts.Requester)
 
 		return nil
 	}
