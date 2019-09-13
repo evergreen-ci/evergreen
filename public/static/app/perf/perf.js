@@ -14,7 +14,7 @@ const findIndex = function (list, predicate) {
 mciModule.controller('PerfController', function PerfController(
   $scope, $window, $http, $location, $filter, ChangePointsService,
   DrawPerfTrendChart, PROCESSED_TYPE, Settings,
-  TestSample, CANARY_EXCLUSION_REGEX, ApiUtil,
+  TestSample, CANARY_EXCLUSION_REGEX, ApiTaskdata,
   loadBuildFailures, loadChangePoints, loadTrendData,
   trendDataComplete, loadWhitelist,
 ) {
@@ -650,7 +650,7 @@ $http.get(templateUrl).success(function(template) {
       console.log(error);
       $scope.processAndDrawGraphs();
     }
-    ApiUtil.cedarAPI("/rest/v1/perf/task_id/" + $scope.task.id).then(
+    ApiTaskdata.cedarAPI("/rest/v1/perf/task_id/" + $scope.task.id).then(
       (resp) => {
         var formatted = $filter("expandedMetricConverter")(resp.data, $scope.task.execution);
         $scope.perfSample = new TestSample(formatted);
@@ -728,7 +728,7 @@ $http.get(templateUrl).success(function(template) {
     const whitelist= WhitelistDataService.getWhitelistQ({ project, variant, task });
     return $q.all({ points, whitelist });
   }
-}).factory('loadTrendData', function ($http, $filter, $q, $log, ApiUtil) {
+}).factory('loadTrendData', function ($http, $filter, $q, $log, ApiTaskdata) {
   // Attempt to load historical performance data from both the following sources:
   //    ** cedar and / or
   //    ** evergreen
@@ -739,7 +739,7 @@ $http.get(templateUrl).success(function(template) {
       .then(resp => resp.data)
       .catch(err => $log.warn('error loading legacy data', err));
 
-    const cedar = ApiUtil.cedarAPI("/rest/v1/perf/task_name/" + task +
+    const cedar = ApiTaskdata.cedarAPI("/rest/v1/perf/task_name/" + task +
       "?variant=" + variant + "&project=" + project)
       .then(resp => $filter("expandedHistoryConverter")(resp.data, scope.task.execution))
       .catch(err => $log.warn('error loading cedar data', err));

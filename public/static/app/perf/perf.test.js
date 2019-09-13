@@ -2063,20 +2063,20 @@ describe('loadTrendData', () => {
     then: () => legacyPromise,
     catch: () => legacyPromise
   };
-  const ApiUtil = {
+  const ApiTaskdata = {
     cedarAPI: () => cedarPromise
   };
 
   beforeEach(() => {
     module($provide => {
-      $provide.value('ApiUtil', ApiUtil);
+      $provide.value('ApiTaskdata', ApiTaskdata);
     });
 
     inject(($injector, _$http_) => {
       loadTrendData = $injector.get('loadTrendData');
       $http = _$http_;
       getSpy = spyOn($http, 'get').and.returnValue(legacyPromise);
-      cedarSpy = spyOn(ApiUtil, 'cedarAPI').and.returnValue(cedarPromise);
+      cedarSpy = spyOn(ApiTaskdata, 'cedarAPI').and.returnValue(cedarPromise);
     });
   });
 
