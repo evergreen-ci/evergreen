@@ -29,7 +29,7 @@ func TestFleet(t *testing.T) {
 		settings: &evergreen.Settings{
 			Providers: evergreen.CloudProviders{
 				AWS: evergreen.AWSConfig{
-					DefaultSecurityGroup: "default-sg",
+					DefaultSecurityGroup: "sg-default",
 				},
 			},
 		},
