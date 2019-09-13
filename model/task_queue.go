@@ -36,6 +36,7 @@ type DistroQueueInfo struct {
 	Length               int             `bson:"length" json:"length"`
 	ExpectedDuration     time.Duration   `bson:"expected_duration" json:"expected_duration"`
 	MaxDurationThreshold time.Duration   `bson:"max_duration_threshold" json:"max_duration_threshold"`
+	PlanCreatedAt        time.Time       `bson:"created_at" json:"created_at"`
 	CountOverThreshold   int             `bson:"count_over_threshold" json:"count_over_threshold"`
 	TaskGroupInfos       []TaskGroupInfo `bson:"task_group_infos" json:"task_group_infos"`
 	AliasQueue           bool            `bson:"alias_queue" json:"alias_queue"`
