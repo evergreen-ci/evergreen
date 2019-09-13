@@ -627,8 +627,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.Equal("git reset --hard 1234abcd", cmds[6])
 }
 
-func (s *GitGetProjectSuite) TestCorrectModuleRevision() {
-	// using set-module
+func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {
 	const correctHash = "b27779f856b211ffaf97cbc124b7082a20ea8bc0"
 	conf := s.modelData2.TaskConfig
 	ctx := context.WithValue(context.Background(), "patch", &patch.Patch{
@@ -677,8 +676,7 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevision() {
 	s.True(foundMsg)
 }
 
-func (s *GitGetProjectSuite) TestCorrectModuleRevision2() {
-	// using manifest
+func (s *GitGetProjectSuite) TestCorrectModuleRevisionManifest() {
 	const correctHash = "3585388b1591dfca47ac26a5b9a564ec8f138a5e"
 	conf := s.modelData2.TaskConfig
 	conf.Expansions.Put(moduleExpansionName("sample"), correctHash)
