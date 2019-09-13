@@ -433,7 +433,7 @@ func LoadProjectFromVersion(v *Version, identifier string, shouldSave bool) (*Pr
 	if err != nil {
 		return nil, errors.Wrap(err, "error loading project")
 	}
-	// NOTE: when we flip UseParserProject we don't need to check if ParserProject nil, because we would only be here if it was nil
+	// TODO (EVG-6270) when we flip UseParserProject we don't need to check if v.ParserProject is nil anymore
 	if shouldSave && v.ParserProject == nil {
 		if err = UpdateVersionProject(v.Id, v.ConfigUpdateNumber, pp); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
