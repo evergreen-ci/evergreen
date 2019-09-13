@@ -3617,5 +3617,5 @@ func TestModifySpawnHost(t *testing.T) {
 	assert.NoError(t, h.ModifySpawnHost(changes))
 	modifiedHost, err := FindOneId(h.Id)
 	assert.NoError(t, err)
-	assert.Equal(t, map[string]string{"key2": "val2"}, modifiedHost.InstanceTags)
+	assert.Equal(t, []Tag{Tag{Key: "key2", Value: "val2", CanBeModified: true}}, modifiedHost.InstanceTags)
 }
