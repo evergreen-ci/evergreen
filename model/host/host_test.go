@@ -3606,12 +3606,12 @@ func TestModifySpawnHost(t *testing.T) {
 
 	h := &Host{
 		Id:           "id",
-		InstanceTags: map[string]string{"key1": "val1"},
+		InstanceTags: []Tag{Tag{Key: "key1", Value: "val1", CanBeModified: true}},
 	}
 	assert.NoError(t, h.Insert())
 
 	changes := HostModifyOptions{
-		AddInstanceTags:    map[string]string{"key2": "val2"},
+		AddInstanceTags:    []Tag{Tag{Key: "key2", Value: "val2", CanBeModified: true}},
 		DeleteInstanceTags: []string{"key1"},
 	}
 	assert.NoError(t, h.ModifySpawnHost(changes))

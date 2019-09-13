@@ -1145,6 +1145,13 @@ func (c *awsClientMock) GetKey(ctx context.Context, h *host.Host) (string, error
 }
 
 func (c *awsClientMock) SetTags(ctx context.Context, resources []string, h *host.Host) error {
+	tagSlice := []*ec2.Tag{}
+	if _, err := c.CreateTags(ctx, &ec2.CreateTagsInput{
+		Resources: aws.StringSlice(resources),
+		Tags:      tagSlice,
+	}); err != nil {
+		return err
+	}
 	return nil
 }
 
