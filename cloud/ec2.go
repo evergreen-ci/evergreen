@@ -417,11 +417,6 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	}
 	defer m.client.Close()
 
-	// Get default security group if none provided for host spawned by task
-	if h.SpawnOptions.SpawnedByTask && len(ec2Settings.SecurityGroupIDs) == 0 {
-		ec2Settings.SecurityGroupIDs = []string{m.settings.Providers.AWS.DefaultSecurityGroup}
-	}
-
 	if ec2Settings.KeyName == "" && !h.UserHost {
 		if !h.SpawnOptions.SpawnedByTask {
 			return nil, errors.New("key name must not be empty")

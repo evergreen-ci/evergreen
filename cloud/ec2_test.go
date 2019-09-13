@@ -50,6 +50,11 @@ func (s *EC2Suite) SetupTest() {
 	s.onDemandManager = NewEC2Manager(s.onDemandOpts)
 	_ = s.onDemandManager.Configure(context.Background(), &evergreen.Settings{
 		Expansions: map[string]string{"test": "expand"},
+		Providers: evergreen.CloudProviders{
+			AWS: evergreen.AWSConfig{
+				DefaultSecurityGroup: "sg-default",
+			},
+		},
 	})
 	s.onDemandWithRegionOpts = &EC2ManagerOptions{
 		client:   &awsClientMock{},

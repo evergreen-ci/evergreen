@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/mitchellh/mapstructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -89,19 +90,31 @@ func TestListHostsForTask(t *testing.T) {
 }
 
 func TestCreateHostsFromTask(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, host.Collection))
-	t1 := task.Task{
-		Id:           "t1",
-		DisplayName:  "t1",
-		Version:      "v1",
-		DistroId:     "distro",
-		Project:      "p",
-		BuildVariant: "bv",
-		HostId:       "h1",
+	// Setup tests
+	assert.NoError(t, db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, host.Collection))
+	providerSettings := map[string]interface{}{
+		"ami":                "ami-1234",
+		"vpc_name":           "my_vpc",
+		"key_name":           "myKey",
+		"security_group_ids": []string{"sg-distro"},
 	}
-	assert.NoError(t1.Insert())
-	versionYaml := `
+	d := distro.Distro{
+		Id:               "distro",
+		ProviderSettings: &providerSettings,
+	}
+	assert.NoError(t, d.Insert())
+	p := model.ProjectRef{
+		Identifier: "p",
+	}
+	assert.NoError(t, p.Insert())
+	pvars := model.ProjectVars{
+		Id: "p",
+	}
+	assert.NoError(t, pvars.Insert())
+
+	// Run tests
+	t.Run("Classic", func(t *testing.T) {
+		versionYaml := `
 tasks:
 - name: t1
   commands:
@@ -110,63 +123,65 @@ tasks:
       distro: distro
       scope: task
       num_hosts: 3
+      security_group_ids: [sg-provided]
 buildvariants:
 - name: "bv"
   tasks:
   - name: t1
 `
-	v1 := model.Version{
-		Id:         "v1",
-		Config:     versionYaml,
-		Identifier: "p",
-	}
-	assert.NoError(v1.Insert())
-	h1 := host.Host{
-		Id:          "h1",
-		RunningTask: t1.Id,
-	}
-	assert.NoError(h1.Insert())
-	providerSettings := map[string]interface{}{
-		"ami":      "ami-1234",
-		"vpc_name": "my_vpc",
-		"key_name": "myKey",
-	}
-	d := distro.Distro{
-		Id:               "distro",
-		ProviderSettings: &providerSettings,
-	}
-	assert.NoError(d.Insert())
-	p := model.ProjectRef{
-		Identifier: "p",
-	}
-	assert.NoError(p.Insert())
-	pvars := model.ProjectVars{
-		Id: "p",
-	}
-	assert.NoError(pvars.Insert())
-	settings := &evergreen.Settings{
-		Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
-	}
-	assert.NoError(settings.Set())
-	dc := DBCreateHostConnector{}
+		v1 := model.Version{
+			Id:         "v1",
+			Config:     versionYaml,
+			Identifier: "p",
+		}
+		assert.NoError(t, v1.Insert())
+		t1 := task.Task{
+			Id:           "t1",
+			DisplayName:  "t1",
+			Version:      "v1",
+			DistroId:     "distro",
+			Project:      "p",
+			BuildVariant: "bv",
+			HostId:       "h1",
+		}
+		assert.NoError(t, t1.Insert())
+		h1 := host.Host{
+			Id:          "h1",
+			RunningTask: t1.Id,
+		}
+		assert.NoError(t, h1.Insert())
 
-	assert.NoError(dc.CreateHostsFromTask(&t1, user.DBUser{Id: "me"}, ""))
+		settings := &evergreen.Settings{
+			Providers: evergreen.CloudProviders{
+				AWS: evergreen.AWSConfig{
+					DefaultSecurityGroup: "sg-default",
+				},
+			},
+			Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
+		}
+		assert.NoError(t, evergreen.UpdateConfig(settings))
 
-	createdHosts, err := host.Find(host.IsUninitialized)
-	assert.NoError(err)
-	assert.Len(createdHosts, 3)
-	for _, h := range createdHosts {
-		assert.Equal("me", h.StartedBy)
-		assert.True(h.UserHost)
-		assert.Equal(t1.Id, h.ProvisionOptions.TaskId)
-		settings := *h.Distro.ProviderSettings
-		assert.NotEmpty(settings["key_name"])
-		assert.InDelta(time.Now().Add(cloud.DefaultSpawnHostExpiration).Unix(), h.ExpirationTime.Unix(), float64(1*time.Millisecond))
-	}
+		dc := DBCreateHostConnector{}
+		assert.NoError(t, dc.CreateHostsFromTask(&t1, user.DBUser{Id: "me"}, ""))
+		createdHosts, err := host.Find(host.IsUninitialized)
+		assert.NoError(t, err)
+		assert.Len(t, createdHosts, 3)
+		for _, h := range createdHosts {
+			assert.Equal(t, "me", h.StartedBy)
+			assert.True(t, h.UserHost)
+			assert.Equal(t, t1.Id, h.ProvisionOptions.TaskId)
+			ec2Settings := &cloud.EC2ProviderSettings{}
+			assert.NoError(t, mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings))
+			assert.NotEmpty(t, ec2Settings.KeyName)
+			assert.InDelta(t, time.Now().Add(cloud.DefaultSpawnHostExpiration).Unix(), h.ExpirationTime.Unix(), float64(1*time.Millisecond))
+			require.Len(t, ec2Settings.SecurityGroupIDs, 1)
+			assert.Equal(t, "sg-provided", ec2Settings.SecurityGroupIDs[0])
+		}
+	})
 
-	// test that a host.create in a function, expansions work
-	assert.NoError(db.ClearCollections(host.Collection))
-	versionYaml = `
+	t.Run("InsideFunctionWithExpansions", func(t *testing.T) {
+		assert.NoError(t, db.ClearCollections(host.Collection))
+		versionYaml := `
 functions:
   make-host:
     command: host.create
@@ -174,6 +189,7 @@ functions:
       distro: ${distro}
       scope: task
       num_hosts: 2
+      security_group_ids: [sg-provided]
 tasks:
 - name: t2
   commands:
@@ -185,40 +201,122 @@ buildvariants:
   tasks:
   - name: t2
 `
-	v2 := model.Version{
-		Id:         "v2",
-		Config:     versionYaml,
-		Identifier: "p",
-	}
-	assert.NoError(v2.Insert())
-	t2 := task.Task{
-		Id:           "t2",
-		DisplayName:  "t2",
-		Version:      "v2",
-		DistroId:     "distro",
-		Project:      "p",
-		BuildVariant: "bv",
-		HostId:       "h2",
-	}
-	assert.NoError(t2.Insert())
-	h2 := host.Host{
-		Id:          "h2",
-		RunningTask: t2.Id,
-	}
-	assert.NoError(h2.Insert())
-	err = dc.CreateHostsFromTask(&t2, user.DBUser{Id: "me"}, "")
-	assert.NoError(err)
-	createdHosts, err = host.Find(host.IsUninitialized)
-	assert.NoError(err)
-	assert.Len(createdHosts, 2)
-	for _, h := range createdHosts {
-		assert.Equal("me", h.StartedBy)
-		assert.True(h.UserHost)
-		assert.Equal(t2.Id, h.ProvisionOptions.TaskId)
-		settings := *h.Distro.ProviderSettings
-		assert.NotEmpty(settings["key_name"])
-		assert.InDelta(time.Now().Add(cloud.DefaultSpawnHostExpiration).Unix(), h.ExpirationTime.Unix(), float64(1*time.Millisecond))
-	}
+		v2 := model.Version{
+			Id:         "v2",
+			Config:     versionYaml,
+			Identifier: "p",
+		}
+		assert.NoError(t, v2.Insert())
+		t2 := task.Task{
+			Id:           "t2",
+			DisplayName:  "t2",
+			Version:      "v2",
+			DistroId:     "distro",
+			Project:      "p",
+			BuildVariant: "bv",
+			HostId:       "h2",
+		}
+		assert.NoError(t, t2.Insert())
+		h2 := host.Host{
+			Id:          "h2",
+			RunningTask: t2.Id,
+		}
+		assert.NoError(t, h2.Insert())
+
+		settings := &evergreen.Settings{
+			Providers: evergreen.CloudProviders{
+				AWS: evergreen.AWSConfig{
+					DefaultSecurityGroup: "sg-default",
+				},
+			},
+			Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
+		}
+		assert.NoError(t, evergreen.UpdateConfig(settings))
+
+		dc := DBCreateHostConnector{}
+		err := dc.CreateHostsFromTask(&t2, user.DBUser{Id: "me"}, "")
+		assert.NoError(t, err)
+		createdHosts, err := host.Find(host.IsUninitialized)
+		assert.NoError(t, err)
+		assert.Len(t, createdHosts, 2)
+		for _, h := range createdHosts {
+			assert.Equal(t, "me", h.StartedBy)
+			assert.True(t, h.UserHost)
+			assert.Equal(t, t2.Id, h.ProvisionOptions.TaskId)
+			ec2Settings := &cloud.EC2ProviderSettings{}
+			assert.NoError(t, mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings))
+			assert.NotEmpty(t, ec2Settings.KeyName)
+			assert.InDelta(t, time.Now().Add(cloud.DefaultSpawnHostExpiration).Unix(), h.ExpirationTime.Unix(), float64(1*time.Millisecond))
+			require.Len(t, ec2Settings.SecurityGroupIDs, 1)
+			assert.Equal(t, "sg-provided", ec2Settings.SecurityGroupIDs[0])
+		}
+	})
+
+	t.Run("SecurityGroupNotProvided", func(t *testing.T) {
+		assert.NoError(t, db.ClearCollections(host.Collection))
+		versionYaml := `
+tasks:
+- name: t3
+  commands:
+  - command: host.create
+    params:
+      distro: distro
+      scope: task
+      num_hosts: 3
+buildvariants:
+- name: "bv"
+  tasks:
+  - name: t3
+`
+		v3 := model.Version{
+			Id:         "v3",
+			Config:     versionYaml,
+			Identifier: "p",
+		}
+		assert.NoError(t, v3.Insert())
+		t3 := task.Task{
+			Id:           "t3",
+			DisplayName:  "t3",
+			Version:      "v3",
+			DistroId:     "distro",
+			Project:      "p",
+			BuildVariant: "bv",
+			HostId:       "h3",
+		}
+		assert.NoError(t, t3.Insert())
+		h3 := host.Host{
+			Id:          "h3",
+			RunningTask: t3.Id,
+		}
+		assert.NoError(t, h3.Insert())
+
+		settings := &evergreen.Settings{
+			Providers: evergreen.CloudProviders{
+				AWS: evergreen.AWSConfig{
+					DefaultSecurityGroup: "sg-default",
+				},
+			},
+			Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
+		}
+		assert.NoError(t, evergreen.UpdateConfig(settings))
+
+		dc := DBCreateHostConnector{}
+		assert.NoError(t, dc.CreateHostsFromTask(&t3, user.DBUser{Id: "me"}, ""))
+		createdHosts, err := host.Find(host.IsUninitialized)
+		assert.NoError(t, err)
+		assert.Len(t, createdHosts, 3)
+		for _, h := range createdHosts {
+			assert.Equal(t, "me", h.StartedBy)
+			assert.True(t, h.UserHost)
+			assert.Equal(t, t3.Id, h.ProvisionOptions.TaskId)
+			ec2Settings := &cloud.EC2ProviderSettings{}
+			assert.NoError(t, mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings))
+			assert.NotEmpty(t, ec2Settings.KeyName)
+			assert.InDelta(t, time.Now().Add(cloud.DefaultSpawnHostExpiration).Unix(), h.ExpirationTime.Unix(), float64(1*time.Millisecond))
+			require.Len(t, ec2Settings.SecurityGroupIDs, 1)
+			assert.Equal(t, "sg-default", ec2Settings.SecurityGroupIDs[0]) // none provided, should get default from config
+		}
+	})
 }
 
 func TestCreateContainerFromTask(t *testing.T) {

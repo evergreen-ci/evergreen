@@ -270,8 +270,16 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 	}
 
 	// Always override distro security group with provided security group.
-	// If empty, EC2 manager will replace with default AWS group.
-	ec2Settings.SecurityGroupIDs = createHost.SecurityGroups
+	// If empty, retrieve default security group from config.
+	if len(createHost.SecurityGroups) > 0 {
+		ec2Settings.SecurityGroupIDs = createHost.SecurityGroups
+	} else {
+		settings, err := evergreen.GetConfig()
+		if err != nil {
+			return nil, errors.Wrap(err, "error retrieving evergreen settings")
+		}
+		ec2Settings.SecurityGroupIDs = []string{settings.Providers.AWS.DefaultSecurityGroup}
+	}
 
 	ec2Settings.IPv6 = createHost.IPv6
 	ec2Settings.IsVpc = true // task-spawned hosts do not support ec2 classic
