@@ -200,6 +200,11 @@ func validateTags(h *host.Host, toAdd []host.Tag, toDelete []string) error {
 		if ok && !old.CanBeModified {
 			catcher.Add(errors.Errorf("tag '%s' cannot be modified", tag.Key))
 		}
+
+		// Ensure that new tags can be modified (theoretically should always be the case).
+		if !tag.CanBeModified {
+			catcher.Add(errors.Errorf("programmer error: new tag '%s=%s' should be able to be modified", tag.Key, tag.Value))
+		}
 	}
 	return catcher.Resolve()
 }
