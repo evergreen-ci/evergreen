@@ -42,6 +42,8 @@ func (pp *PerfPlugin) GetPanelConfig() (*PanelConfig, error) {
 				Includes: []template.HTML{
 					`<script type="text/javascript" src="/static/app/perf/trend_chart.js"></script>`,
 					`<script type="text/javascript" src="/static/app/perf/perf.js"></script>`,
+					`<script type="text/javascript" src="/static/app/common/ApiUtil.js"></script>`,
+					`<script type="text/javascript" src="/static/app/common/ApiTaskdata.js"></script>`,
 					`<script type="text/javascript" src="/static/app/perf/PerfChartService.js"></script>`,
 					`<script type="text/javascript" src="/static/app/perf/TrendSamples.js"></script>`,
 					`<script type="text/javascript" src="/static/app/perf/TestSample.js"></script>`,
