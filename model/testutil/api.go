@@ -14,7 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 type TestModelData struct {
@@ -60,9 +60,16 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	}
 
 	// create a build variant for this project
-	pp.AddBuildVariant(variant, []string{taskDisplayName})
+	bv := model.BuildVariant{
+		Name: variant,
+		Tasks: []model.BuildVariantTaskUnit{{
+			Name: taskDisplayName,
+		}},
+	}
+	project.BuildVariants = append(project.BuildVariants, bv)
 
-	// Marshal the project YAML for storage
+	// Marshal the parser project YAML for storage
+	pp.AddBuildVariant(variant, []string{taskDisplayName})
 	projectYamlBytes, err := yaml.Marshal(pp)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal project config")

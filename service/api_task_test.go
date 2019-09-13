@@ -871,8 +871,10 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 		So(testBuild.Insert(), ShouldBeNil)
 
 		testVersion := model.Version{
-			Id:     versionId,
-			Branch: projectId,
+			Id:            versionId,
+			Branch:        projectId,
+			ParserProject: &model.ParserProject{Identifier: projectId},
+			Config:        "identifier: " + projectId,
 		}
 		So(testVersion.Insert(), ShouldBeNil)
 

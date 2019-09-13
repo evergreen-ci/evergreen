@@ -534,6 +534,7 @@ func (pp *ParserProject) AddBuildVariant(name string, tasks []string) {
 	for _, taskName := range tasks {
 		bv.Tasks = append(bv.Tasks, parserBVTaskUnit{Name: taskName})
 	}
+	pp.BuildVariants = append(pp.BuildVariants, bv)
 }
 
 // sieveMatrixVariants takes a set of parserBVs and groups them into regular

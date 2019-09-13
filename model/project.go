@@ -18,8 +18,8 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	ignore "github.com/sabhiram/go-git-ignore"
-	yaml "gopkg.in/yaml.v2"
+	"github.com/sabhiram/go-git-ignore"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -849,11 +849,10 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	}
 	proj, err := LoadProjectFromVersion(v, t.Project, false)
 	if err != nil {
-		return nil, errors.Wrap(err, "error unmarshaling project")
+		return nil, errors.Wrap(err, "error unmarshalling project")
 	}
 	bv := proj.FindBuildVariant(t.BuildVariant)
 	expansions.Update(bv.Expansions)
-
 	return expansions, nil
 }
 
