@@ -139,6 +139,28 @@ func TestEnsureUniqueId(t *testing.T) {
 	})
 }
 
+func TestEnsureValidAliases(t *testing.T) {
+
+	Convey("When validating a distros' aliases...", t, func() {
+		d := distro.Distro{Id: "c", Aliases: []string{"c"}}
+		distroIds := []string{"a", "b", "c"}
+		Convey("if a distro is declared as an alias of itself, an error should be returned", func() {
+			vErrors := ensureValidAliases(&d, distroIds)
+			So(vErrors, ShouldNotResemble, ValidationErrors{})
+			So(len(vErrors), ShouldEqual, 1)
+			So(vErrors[0].Message, ShouldEqual, "'c' cannot be an distro alias of itself")
+		})
+
+		d.Aliases = []string{"d"}
+		Convey("if a distro alias is not iself a valid distro, an error should be returned", func() {
+			vErrors := ensureValidAliases(&d, distroIds)
+			So(vErrors, ShouldNotResemble, ValidationErrors{})
+			So(len(vErrors), ShouldEqual, 1)
+			So(vErrors[0].Message, ShouldEqual, "'d' is not a valid distro name")
+		})
+	})
+}
+
 func TestEnsureHasRequiredFields(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

@@ -63,7 +63,32 @@ Evergreen - Distros
               container pool, so it is cannot be spawned for tasks.</label>
           </div>
           <br>
-
+          <div class="panel-body panel panel-default">
+            <div ng-form name="aliasesForm">
+              <label class="distro-menu-title">Distro Aliases:</label>
+              <div id="distro-aliases-table" class="distro-table-scroll">
+                <table style="margin-left: -8px;" class="table distro-table">
+                  <tbody ng-repeat="alias_name in activeDistro.aliases track by $index">
+                    <tr>
+                      <td style="padding-left: 10px;"><input required ng-readonly="readOnly" name="alias_name" type="text"
+                          ng-model="activeDistro.aliases[$index]" class="form-control" placeholder="e.g. ubuntu1604">
+                      </td>
+                      <td ng-hide="readOnly">
+                        <a ng-click="form.$setDirty();removeDistroAlias(alias_name)">
+                          <i class="fa fa-trash distro-trash-icon"></i>
+                        </a>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="icon fa fa-warning distro-error" ng-show="aliasesForm.alias_name.$dirty && aliasesForm.alias_name.$error.required">Distro alias
+                cannot be an empty string<br /></div>
+              <button type="button" class="btn btn-primary" ng-hide="readOnly" ng-disabled="aliasesForm.alias_name.$dirty && aliasesForm.$invalid || aliasesForm.alias_name.$error.required"
+                ng-click="form.$setDirty();addDistroAlias()"><i class="fa fa-plus"></i> Add Distro Alias</button>
+            </div>
+          </div>
+          <br>
           <div class="panel-body panel panel-default">
             <div class="dropdown">
               <span class="distro-menu-title">Agent Architecture:</span>

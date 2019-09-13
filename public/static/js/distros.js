@@ -296,6 +296,19 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     $scope.scrollElement('#ssh-options-table');
   }
 
+  $scope.addDistroAlias = function() {
+    if ($scope.activeDistro.aliases == null) {
+      $scope.activeDistro.aliases = [];
+    }
+    $scope.activeDistro.aliases.push('');
+    $scope.scrollElement('#distro-aliases-table');
+  }
+
+  $scope.removeDistroAlias = function(alias_name) {
+    var index = $scope.activeDistro.aliases.indexOf(alias_name);
+    $scope.activeDistro.aliases.splice(index, 1);
+  }
+
   $scope.removeSSHOption = function(ssh_option) {
     var index = $scope.activeDistro.ssh_options.indexOf(ssh_option);
     $scope.activeDistro.ssh_options.splice(index, 1);
