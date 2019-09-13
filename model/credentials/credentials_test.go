@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const defaultTestTimeout = 5 * time.Second
+const defaultTestTimeout = 10 * time.Second
 
 func TestForJasperClient(t *testing.T) {
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T){
