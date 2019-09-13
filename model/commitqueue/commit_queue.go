@@ -54,11 +54,11 @@ func (q *CommitQueue) Enqueue(item CommitQueueItem) (int, error) {
 		return position + 1, errors.New("item already in queue")
 	}
 
+	item.EnqueueTime = time.Now()
 	if err := add(q.ProjectID, q.Queue, item); err != nil {
 		return 0, errors.Wrapf(err, "can't add '%s' to queue '%s'", item.Issue, q.ProjectID)
 	}
 
-	item.EnqueueTime = time.Now()
 	q.Queue = append(q.Queue, item)
 	return len(q.Queue), nil
 }

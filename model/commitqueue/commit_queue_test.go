@@ -3,6 +3,7 @@ package commitqueue
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -58,7 +59,11 @@ func (s *CommitQueueSuite) TestEnqueue() {
 	dbq, err := FindOneId("mci")
 	s.NoError(err)
 	s.Len(dbq.Queue, 1)
-	s.Equal(sampleCommitQueueItem, *dbq.Next())
+	s.Equal(sampleCommitQueueItem.Issue, dbq.Next().Issue)
+
+	// Ensure EnqueueTime set
+	s.WithinDuration(time.Now(), dbq.Next().EnqueueTime, 10*time.Minute)
+
 	s.NotEqual(-1, dbq.FindItem("c123"))
 }
 
@@ -76,7 +81,9 @@ func (s *CommitQueueSuite) TestUpdateVersion() {
 	dbq, err := FindOneId("mci")
 	s.NoError(err)
 	s.Len(dbq.Queue, 1)
-	s.Equal(item, dbq.Next())
+
+	s.Equal(item.Issue, dbq.Next().Issue)
+	s.Equal(item.Version, dbq.Next().Version)
 }
 
 func (s *CommitQueueSuite) TestNext() {
@@ -85,7 +92,7 @@ func (s *CommitQueueSuite) TestNext() {
 	s.Equal(1, pos)
 	s.Len(s.q.Queue, 1)
 	s.Require().NotNil(s.q.Next())
-	s.Equal(s.q.Next().Issue, "c123")
+	s.Equal("c123", s.q.Next().Issue)
 }
 
 func (s *CommitQueueSuite) TestRemoveOne() {
