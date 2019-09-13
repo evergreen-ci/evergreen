@@ -231,7 +231,9 @@ $http.get(templateUrl).success(function(template) {
     for (var i = 0; i < tests.length; i++) {
       var key = tests[i];
       var series = _.filter(trendSamples.seriesByName[key] || [], function (sample) {
-        return sample[scope.metricSelect.value.key];
+        return _.some(sample.threadResults, (singleResult) => {
+          return singleResult[scope.metricSelect.value.key];
+        });
       });
       var containerId = 'perf-trendchart-' + cleanId(taskId) + '-' + i;
       var cps = scope.changePoints || {};
