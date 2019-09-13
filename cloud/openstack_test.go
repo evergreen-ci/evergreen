@@ -33,7 +33,7 @@ func (s *OpenStackSuite) SetupTest() {
 
 	s.distro = distro.Distro{
 		Id:       "host",
-		Provider: "openstack",
+		Provider: evergreen.ProviderNameOpenstack,
 		ProviderSettings: &map[string]interface{}{
 			"image_name":     "image",
 			"flavor_name":    "flavor",
@@ -242,21 +242,21 @@ func (s *OpenStackSuite) TestSpawnInvalidSettings() {
 	defer cancel()
 
 	var err error
-	dProviderName := distro.Distro{Provider: "ec2"}
+	dProviderName := distro.Distro{Provider: evergreen.ProviderNameEc2Auto}
 	h := host.NewIntent(dProviderName, dProviderName.GenerateName(), dProviderName.Provider, s.hostOpts)
 	s.NotNil(h)
 	h, err = s.manager.SpawnHost(ctx, h)
 	s.Error(err)
 	s.Nil(h)
 
-	dSettingsNone := distro.Distro{Provider: "openstack"}
+	dSettingsNone := distro.Distro{Provider: evergreen.ProviderNameOpenstack}
 	h = host.NewIntent(dSettingsNone, dSettingsNone.GenerateName(), dSettingsNone.Provider, s.hostOpts)
 	h, err = s.manager.SpawnHost(ctx, h)
 	s.Error(err)
 	s.Nil(h)
 
 	dSettingsInvalid := distro.Distro{
-		Provider:         "openstack",
+		Provider:         evergreen.ProviderNameOpenstack,
 		ProviderSettings: &map[string]interface{}{"image_name": ""},
 	}
 	h = host.NewIntent(dSettingsInvalid, dSettingsInvalid.GenerateName(), dSettingsInvalid.Provider, s.hostOpts)
@@ -291,7 +291,7 @@ func (s *OpenStackSuite) TestSpawnDuplicateHostID() {
 func (s *OpenStackSuite) TestSpawnAPICall() {
 	dist := distro.Distro{
 		Id:       "id",
-		Provider: "openstack",
+		Provider: evergreen.ProviderNameOpenstack,
 		ProviderSettings: &map[string]interface{}{
 			"image_name":     "image",
 			"flavor_name":    "flavor",

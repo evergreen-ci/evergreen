@@ -322,7 +322,7 @@ func (s *GCESuite) TestSpawnInvalidSettings() {
 	defer cancel()
 
 	var err error
-	dProviderName := distro.Distro{Provider: "ec2"}
+	dProviderName := distro.Distro{Provider: evergreen.ProviderNameEc2Auto}
 	h := host.NewIntent(dProviderName, dProviderName.GenerateName(), dProviderName.Provider, s.hostOpts)
 	s.NotNil(h)
 	h, err = s.manager.SpawnHost(ctx, h)

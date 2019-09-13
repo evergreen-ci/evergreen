@@ -40,7 +40,7 @@ func (s *DockerSuite) SetupTest() {
 	}
 	s.distro = distro.Distro{
 		Id:       "d",
-		Provider: "docker",
+		Provider: evergreen.ProviderNameDocker,
 		ProviderSettings: &map[string]interface{}{
 			"pool_id": "pool_id",
 		},
@@ -191,7 +191,7 @@ func (s *DockerSuite) TestSpawnInvalidSettings() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	dProviderName := distro.Distro{Provider: "ec2"}
+	dProviderName := distro.Distro{Provider: evergreen.ProviderNameEc2Auto}
 	h := host.NewIntent(dProviderName, dProviderName.GenerateName(), dProviderName.Provider, s.hostOpts)
 	h, err := s.manager.SpawnHost(ctx, h)
 	s.Error(err)
