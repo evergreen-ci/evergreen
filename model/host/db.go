@@ -309,10 +309,13 @@ func allHostsSpawnedByFinishedBuilds() ([]Host, error) {
 // the given time.
 func ByUnprovisionedSince(threshold time.Time) db.Q {
 	return db.Query(bson.M{
-		ProvisionedKey: false,
-		CreateTimeKey:  bson.M{"$lte": threshold},
-		StatusKey:      bson.M{"$ne": evergreen.HostTerminated},
-		StartedByKey:   evergreen.User,
+		"$or": []bson.M{
+			bson.M{ProvisionedKey: false},
+			bson.M{StatusKey: evergreen.HostProvisioning},
+		},
+		CreateTimeKey: bson.M{"$lte": threshold},
+		StatusKey:     bson.M{"$ne": evergreen.HostTerminated},
+		StartedByKey:  evergreen.User,
 	})
 }
 

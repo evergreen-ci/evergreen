@@ -884,5 +884,5 @@ func (j *setupHostJob) tryRequeue(ctx context.Context) {
 }
 
 func shouldRetryProvisioning(h *host.Host) bool {
-	return h.ProvisionAttempts <= provisionRetryLimit && h.Status == evergreen.HostProvisioning
+	return h.ProvisionAttempts <= provisionRetryLimit && h.Status == evergreen.HostProvisioning && !h.Provisioned
 }
