@@ -1072,7 +1072,7 @@ func (h *Host) ClearRunningTeardownGroup() error {
 func FindHostsToTerminate() ([]Host, error) {
 	const (
 		// provisioningCutoff is the threshold to consider as too long for a host to take provisioning
-		provisioningCutoff = 10 * time.Minute
+		provisioningCutoff = 25 * time.Minute
 
 		// unreachableCutoff is the threshold to wait for an decommissioned host to become marked
 		// as reachable again before giving up and terminating it.
