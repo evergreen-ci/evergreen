@@ -178,7 +178,7 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 	catcher.Add(e.createLocalQueue(ctx))
 	catcher.Add(e.createApplicationQueue(ctx))
 	catcher.Add(e.createNotificationQueue(ctx))
-	catcher.Add(e.createGenerateTasksQueue(ctx))
+	catcher.Add(e.createRemoteQueueGroup(ctx))
 	catcher.Extend(e.initQueues(ctx))
 
 	if catcher.HasErrors() {
@@ -320,11 +320,11 @@ func (e *envState) createApplicationQueue(ctx context.Context) error {
 	return nil
 }
 
-func (e *envState) createGenerateTasksQueue(ctx context.Context) error {
+func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
 	opts := queue.DefaultMongoDBOptions()
 	opts.URI = e.settings.Database.Url
 	opts.DB = e.settings.Amboy.DB
-	opts.Priority = true
+	opts.Priority = false
 
 	remoteQueuGroupOpts := queue.RemoteQueueGroupOptions{
 		Prefix:                    e.settings.Amboy.Name,
@@ -340,7 +340,7 @@ func (e *envState) createGenerateTasksQueue(ctx context.Context) error {
 	}
 	e.remoteQueueGroup = remoteQueueGroup
 
-	e.RegisterCloser("generate-tasks", false, func(ctx context.Context) error {
+	e.RegisterCloser("remote-queue-group", false, func(ctx context.Context) error {
 		return errors.Wrap(e.remoteQueueGroup.Close(ctx), "problem waiting for remote queue group to close")
 	})
 
