@@ -1697,8 +1697,7 @@ func (h *Host) DeleteTags(keys []string) {
 	for _, key := range keys {
 		for i, tag := range h.InstanceTags {
 			if tag.Key == key && tag.CanBeModified {
-				h.InstanceTags[len(h.InstanceTags)-1], h.InstanceTags[i] = h.InstanceTags[i], h.InstanceTags[len(h.InstanceTags)-1]
-				h.InstanceTags = h.InstanceTags[:len(h.InstanceTags)-1]
+				h.InstanceTags = append(h.InstanceTags[:i], h.InstanceTags[i+1:]...)
 				break
 			}
 		}
