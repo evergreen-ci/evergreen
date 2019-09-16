@@ -6,36 +6,40 @@
       <a href="/host/[[curHostData.id]]"> View Event Log... </a>
   </div>
   <div class="panel-body" style="min-height: 233px">
-    <div class="entry">
-      <strong>ID</strong> 
-      <span>[[curHostData.id]] </span>
-    </div>
-    <div class="entry">
-      <strong>Started at</strong> <span>[[curHostData.creation_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</span>
-    </div>
-    <div class="entry" ng-show="curHostData.isTerminated">
-      <strong>Terminated at</strong> <span>[[curHostData.termination_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</span>
-    </div>
-    <div class="entry">
-      <strong>Status</strong> <span>[[curHostData.status]]</span>
-    </div>
-    <div class="entry" ng-show="!curHostData.isTerminated">
-      <strong>SSH User</strong> <span>[[curHostData.user]]</span>
-    </div>
-    <div class="entry" ng-show="!curHostData.isTerminated">
-      <strong>DNS Name</strong> <span>[[curHostData.host]]</span>
-    </div>
-    <div class="entry" ng-show="!curHostData.isTerminated">
-      <strong>Work Directory</strong> <span class="mono">[[curHostData.distro.work_dir]]</span>
-    </div>
-    <div class ="entry" ng-show="curHostData.userdata">
-      <strong>User Data:</strong><br/>
-      <pre>[[curHostData.userdata]]</pre>
-    </div>
-    <div class="entry" ng-show="!curHostData.isTerminated && curHostData.host.length > 0 && (curHostData.distro.bootstrap_method != 'user-data' || curHostData.status == 'running')">
-      <strong>Login Command:</strong>
-      <pre readonly>ssh [[curHostData.user]]@[[curHostData.host]]</pre>
-    </div>
+    <md-card style="width:99%">
+      <md-card-content>
+        <div class="entry">
+          <strong>ID</strong>
+          <span>[[curHostData.id]] </span>
+        </div>
+        <div class="entry">
+          <strong>Started at</strong> <span>[[curHostData.creation_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</span>
+        </div>
+        <div class="entry" ng-show="curHostData.isTerminated">
+          <strong>Terminated at</strong> <span>[[curHostData.termination_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</span>
+        </div>
+        <div class="entry">
+          <strong>Status</strong> <span>[[curHostData.status]]</span>
+        </div>
+        <div class="entry" ng-show="!curHostData.isTerminated">
+          <strong>SSH User</strong> <span>[[curHostData.user]]</span>
+        </div>
+        <div class="entry" ng-show="!curHostData.isTerminated">
+          <strong>DNS Name</strong> <span>[[curHostData.host]]</span>
+        </div>
+        <div class="entry" ng-show="!curHostData.isTerminated">
+          <strong>Work Directory</strong> <span class="mono">[[curHostData.distro.work_dir]]</span>
+        </div>
+        <div class ="entry" ng-show="curHostData.userdata">
+          <strong>User Data:</strong><br/>
+          <pre>[[curHostData.userdata]]</pre>
+        </div>
+        <div class="entry" ng-show="!curHostData.isTerminated && curHostData.host.length > 0 && (curHostData.distro.bootstrap_method != 'user-data' || curHostData.status == 'running')">
+          <strong>Login Command:</strong>
+          <pre readonly>ssh [[curHostData.user]]@[[curHostData.host]]</pre>
+        </div>
+      </md-card-content>
+    </md-card>
     <br>
     <button type="button" ng-show="curHostData.isWinHost && curHostData.status
     == 'running'" class="btn btn-info" style="float: right;" ng-click="openSpawnModal('updateRDPPassword')">
@@ -43,11 +47,11 @@
     </button>
     <div class="entry">
       <strong>Expires On:</strong>
-      <md-datepicker ng-model="time_for_expiration" md-placeholder="Date"></md-datepicker>
-      <md-time-picker class="inline" ng-model="curHostData.expiration_time" message="message"></md-time-picker>
-      <button type="button" class="btn btn-info expire-button" style="float: right;" ng-click="updateHostExpiration()">
+      <md-datepicker ng-model="date_for_expiration" md-placeholder="Date"></md-datepicker>
+      <md-time-picker class="inline" ng-model="time_for_expiration" message="message"></md-time-picker>
+      <md-button type="button" class="md-primary md-raised" style="float: right;" ng-click="updateHostExpiration()">
         Update
-      </button>
+      </md-button>
     </div>
   </div>
 </div>
