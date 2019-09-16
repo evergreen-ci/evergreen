@@ -197,6 +197,8 @@ func (c *s3copy) s3Copy(ctx context.Context,
 				logger.Execution().Errorf("file '%s' is optional, continuing",
 					s3CopyFile.DisplayName)
 				continue
+			} else {
+				return err
 			}
 
 		}
