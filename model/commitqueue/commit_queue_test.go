@@ -3,7 +3,6 @@ package commitqueue
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -62,7 +61,7 @@ func (s *CommitQueueSuite) TestEnqueue() {
 	s.Equal(sampleCommitQueueItem.Issue, dbq.Next().Issue)
 
 	// Ensure EnqueueTime set
-	s.WithinDuration(time.Now(), dbq.Next().EnqueueTime, 10*time.Minute)
+	s.False(dbq.Next().EnqueueTime.IsZero())
 
 	s.NotEqual(-1, dbq.FindItem("c123"))
 }

@@ -120,7 +120,8 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	grip.Info(message.Fields{
 		"source":       "commit queue",
 		"job_id":       j.ID(),
-		"item":         nextItem,
+		"item_id":      nextItem.Issue,
+		"project_id":   cq.ProjectID,
 		"time_waiting": timeWaiting.Seconds(),
 		"queue_length": len(cq.Queue),
 		"message":      "dequeued commit queue item",

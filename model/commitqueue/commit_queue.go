@@ -5,7 +5,9 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -58,6 +60,13 @@ func (q *CommitQueue) Enqueue(item CommitQueueItem) (int, error) {
 	if err := add(q.ProjectID, q.Queue, item); err != nil {
 		return 0, errors.Wrapf(err, "can't add '%s' to queue '%s'", item.Issue, q.ProjectID)
 	}
+	grip.Info(message.Fields{
+		"source":       "commit queue",
+		"item_id":      item.Issue,
+		"project_id":   q.ProjectID,
+		"queue_length": len(q.Queue),
+		"message":      "enqueued commit queue item",
+	})
 
 	q.Queue = append(q.Queue, item)
 	return len(q.Queue), nil
