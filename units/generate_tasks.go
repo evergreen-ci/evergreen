@@ -82,7 +82,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 			return errors.Wrapf(versionErr, "problem finding version %s", v.Id)
 		}
 		if versionFromDB == nil {
-			return errors.Wrap(versionErrors.Errorf("could not find version %s", v.Id))
+			return errors.Errorf("could not find version %s", v.Id)
 		}
 		// If the config update number has been updated, then another task has raced with us.
 		// The error is therefore not an actual configuration problem but instead a symptom
