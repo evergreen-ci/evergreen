@@ -1670,7 +1670,9 @@ func StaleRunningTaskIDs(staleness time.Duration) ([]task.Task, error) {
 // in a HostModifyOptions struct.
 func (h *Host) ModifySpawnHost(opts HostModifyOptions) error {
 	h.DeleteTags(opts.DeleteInstanceTags)
+	grip.Info(h.InstanceTags)
 	h.AddTags(opts.AddInstanceTags)
+	grip.Info(h.InstanceTags)
 	if err := h.SetTags(); err != nil {
 		return errors.Wrap(err, "error modifying spawn host")
 	}
@@ -1681,13 +1683,17 @@ func (h *Host) ModifySpawnHost(opts HostModifyOptions) error {
 // an existing tag if it can be modified.
 func (h *Host) AddTags(tags []Tag) {
 	for _, new := range tags {
+		found := false
 		for i, old := range h.InstanceTags {
 			if old.Key == new.Key && old.CanBeModified {
 				h.InstanceTags[i] = new
+				found = true
 				break
 			}
 		}
-		h.InstanceTags = append(h.InstanceTags, new)
+		if !found {
+			h.InstanceTags = append(h.InstanceTags, new)
+		}
 	}
 }
 

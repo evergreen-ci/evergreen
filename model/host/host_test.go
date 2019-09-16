@@ -3603,19 +3603,27 @@ func TestFindOneByJasperCredentialsID(t *testing.T) {
 
 func TestModifySpawnHost(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
-
 	h := &Host{
-		Id:           "id",
-		InstanceTags: []Tag{Tag{Key: "key1", Value: "val1", CanBeModified: true}},
+		Id: "id",
+		InstanceTags: []Tag{
+			Tag{Key: "key1", Value: "val1", CanBeModified: true},
+			Tag{Key: "key2", Value: "val2", CanBeModified: true},
+		},
 	}
 	assert.NoError(t, h.Insert())
 
 	changes := HostModifyOptions{
-		AddInstanceTags:    []Tag{Tag{Key: "key2", Value: "val2", CanBeModified: true}},
+		AddInstanceTags: []Tag{
+			Tag{Key: "key2", Value: "valNew", CanBeModified: true},
+			Tag{Key: "key3", Value: "val3", CanBeModified: true},
+		},
 		DeleteInstanceTags: []string{"key1"},
 	}
 	assert.NoError(t, h.ModifySpawnHost(changes))
 	modifiedHost, err := FindOneId(h.Id)
 	assert.NoError(t, err)
-	assert.Equal(t, []Tag{Tag{Key: "key2", Value: "val2", CanBeModified: true}}, modifiedHost.InstanceTags)
+	assert.Equal(t, []Tag{
+		Tag{Key: "key2", Value: "valNew", CanBeModified: true},
+		Tag{Key: "key3", Value: "val3", CanBeModified: true},
+	}, modifiedHost.InstanceTags)
 }

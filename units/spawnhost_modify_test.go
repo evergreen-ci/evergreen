@@ -2,15 +2,15 @@ package units
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -43,16 +43,10 @@ func TestSpawnhostModifyJob(t *testing.T) {
 		DeleteInstanceTags: []string{"key1"},
 	}
 
-	j := makeSpawnhostModifyJob()
-	j.host = &h
-	j.changes = changes
+	ts := util.GetUTCSecond(time.Now()).Format(tsFormat)
+	j := NewSpawnhostModifyJob(&h, changes, ts)
 
-	ctx := context.Background()
-	env := &mock.Environment{}
-	j.env = env
-	assert.NoError(t, env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
-
-	j.Run(ctx)
+	j.Run(context.Background())
 	assert.NoError(t, j.Error())
 	assert.True(t, j.Status().Completed)
 

@@ -752,6 +752,7 @@ func (c *awsClientImpl) SetTags(ctx context.Context, resources []string, h *host
 		"host":          h.Id,
 		"host_provider": h.Distro.Provider,
 		"distro":        h.Distro.Id,
+		"tags":          h.InstanceTags,
 	})
 
 	return nil

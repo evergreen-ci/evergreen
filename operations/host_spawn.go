@@ -162,6 +162,7 @@ func hostModify() cli.Command {
 				Usage: "key of a single tag to be deleted",
 			},
 		),
+		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag, requireAtLeastOneStringSlice(addTagFlagName, deleteTagFlagName)),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			hostID := c.String(hostFlagName)
@@ -187,10 +188,9 @@ func hostModify() cli.Command {
 				AddInstanceTags:    addTags,
 				DeleteInstanceTags: deleteTagSlice,
 			}
-
 			err = client.ModifySpawnHost(ctx, hostID, hostChanges)
 			if err != nil {
-				return errors.Wrap(err, "problem modifying spawn host")
+				return err
 			}
 
 			grip.Infof("Successfully queued changes to spawn host with ID '%s'.", hostID)

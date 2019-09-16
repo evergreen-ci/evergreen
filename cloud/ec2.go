@@ -531,29 +531,36 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, changes host.
 	}
 
 	// Delete tags
-	deleteTagSlice := []*ec2.Tag{}
-	for _, key := range changes.DeleteInstanceTags {
-		deleteTagSlice = append(deleteTagSlice, &ec2.Tag{Key: &key})
-	}
-	_, err = m.client.DeleteTags(ctx, &ec2.DeleteTagsInput{
-		Resources: aws.StringSlice(resources),
-		Tags:      deleteTagSlice,
-	})
-	if err != nil {
-		return errors.Wrapf(err, "error deleting tags for '%s'", h.Id)
+	if len(changes.DeleteInstanceTags) > 0 {
+		deleteTagSlice := []*ec2.Tag{}
+		for _, delKey := range changes.DeleteInstanceTags {
+			key := delKey
+			deleteTagSlice = append(deleteTagSlice, &ec2.Tag{Key: &key})
+		}
+		_, err = m.client.DeleteTags(ctx, &ec2.DeleteTagsInput{
+			Resources: aws.StringSlice(resources),
+			Tags:      deleteTagSlice,
+		})
+		if err != nil {
+			return errors.Wrapf(err, "error deleting tags for '%s'", h.Id)
+		}
 	}
 
 	// Add tags
-	createTagSlice := []*ec2.Tag{}
-	for _, tag := range changes.AddInstanceTags {
-		createTagSlice = append(createTagSlice, &ec2.Tag{Key: &tag.Key, Value: &tag.Value})
-	}
-	_, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
-		Resources: aws.StringSlice(resources),
-		Tags:      createTagSlice,
-	})
-	if err != nil {
-		return errors.Wrapf(err, "error creating tags for '%s'", h.Id)
+	if len(changes.AddInstanceTags) > 0 {
+		createTagSlice := []*ec2.Tag{}
+		for _, tag := range changes.AddInstanceTags {
+			key := tag.Key
+			value := tag.Value
+			createTagSlice = append(createTagSlice, &ec2.Tag{Key: &key, Value: &value})
+		}
+		_, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
+			Resources: aws.StringSlice(resources),
+			Tags:      createTagSlice,
+		})
+		if err != nil {
+			return errors.Wrapf(err, "error creating tags for '%s'", h.Id)
+		}
 	}
 
 	return nil
