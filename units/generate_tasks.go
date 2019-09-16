@@ -17,6 +17,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const (
@@ -76,6 +77,19 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		return errors.Wrap(err, "problem creating new version")
 	}
 	if err = validator.CheckProjectConfigurationIsValid(p); err != nil {
+		versionFromDB, versionErr := model.VersionFindOne(model.VersionById(v.Id).WithFields(model.VersionConfigNumberKey))
+		if versionErr != nil {
+			return errors.Wrapf(versionErr, "problem finding version %s", v.Id)
+		}
+		if versionFromDB == nil {
+			return errors.Wrap(versionErrors.Errorf("could not find version %s", v.Id))
+		}
+		// If the config update number has been updated, then another task has raced with us.
+		// The error is therefore not an actual configuration problem but instead a symptom
+		// of the race. Noop the job.
+		if v.ConfigUpdateNumber != versionFromDB.ConfigUpdateNumber {
+			return mongo.ErrNoDocuments
+		}
 		return errors.Wrap(err, "project configuration was invalid")
 	}
 
