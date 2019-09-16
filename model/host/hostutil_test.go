@@ -146,10 +146,14 @@ func TestJasperCommands(t *testing.T) {
 		"ForceReinstallJasperCommandWithSplunkLogging": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			settings.Splunk.ServerURL = "url"
 			settings.Splunk.Token = "token"
-			settings.Splunk.Channel = "channel"
 
 			cmd := h.ForceReinstallJasperCommand(settings)
-			assert.Equal(t, "sudo /foo/jasper_cli jasper service force-reinstall rpc --host=0.0.0.0 --port=12345 --creds_path=/bar/bat.txt --user=user --splunk_url=url --splunk_token=token --splunk_channel=channel", cmd)
+			expected := "sudo /foo/jasper_cli jasper service force-reinstall rpc --host=0.0.0.0 --port=12345 --creds_path=/bar/bat.txt --user=user --splunk_url=url --splunk_token=token"
+			assert.Equal(t, expected, cmd)
+
+			settings.Splunk.Channel = "channel"
+			cmd = h.ForceReinstallJasperCommand(settings)
+			assert.Equal(t, expected+" --splunk_channel=channel", cmd)
 		},
 	} {
 		t.Run(opName, func(t *testing.T) {

@@ -249,8 +249,10 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 		params = append(params,
 			fmt.Sprintf("--splunk_url=%s", settings.Splunk.ServerURL),
 			fmt.Sprintf("--splunk_token=%s", settings.Splunk.Token),
-			fmt.Sprintf("--splunk_channel=%s", settings.Splunk.Channel),
 		)
+		if settings.Splunk.Channel != "" {
+			params = append(params, fmt.Sprintf("--splunk_channel=%s", settings.Splunk.Channel))
+		}
 	}
 
 	return h.jasperServiceCommand(settings.HostJasper, jaspercli.ForceReinstallCommand, params...)
