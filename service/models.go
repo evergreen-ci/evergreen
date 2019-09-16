@@ -100,42 +100,6 @@ type uiTask struct {
 	ExpectedDuration time.Duration `json:"expected_duration"`
 }
 
-func PopulateUIVersion(version *model.Version) (*uiVersion, error) {
-	buildIds := version.BuildIds
-	dbBuilds, err := build.Find(build.ByIds(buildIds))
-	if err != nil {
-		return nil, err
-	}
-
-	buildsMap := make(map[string]build.Build)
-	for _, dbBuild := range dbBuilds {
-		buildsMap[dbBuild.Id] = dbBuild
-	}
-
-	uiBuilds := make([]uiBuild, len(dbBuilds))
-	for buildIdx, build := range dbBuilds {
-		b := buildsMap[build.Id]
-		buildAsUI := uiBuild{Build: b}
-
-		//Use the build's task cache, instead of querying for each individual task.
-		uiTasks := make([]uiTask, len(b.Tasks))
-		for i, t := range b.Tasks {
-			uiTasks[i] = uiTask{
-				Task: task.Task{
-					Id:          t.Id,
-					Status:      t.Status,
-					Details:     t.StatusDetails,
-					DisplayName: t.DisplayName,
-				},
-			}
-		}
-
-		buildAsUI.Tasks = uiTasks
-		uiBuilds[buildIdx] = buildAsUI
-	}
-	return &uiVersion{Version: (*version), Builds: uiBuilds}, nil
-}
-
 ///////////////////////////////////////////////////////////////////////////
 //// Functions to create and populate the models
 ///////////////////////////////////////////////////////////////////////////
