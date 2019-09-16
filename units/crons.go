@@ -702,7 +702,7 @@ func PopulateGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
 
 		versions := map[string]amboy.Queue{}
 
-		ts := util.RoundPartOfMinute(20).Format(tsFormat)
+		ts := util.RoundPartOfHour(1).Format(tsFormat)
 		group := env.RemoteQueueGroup()
 		for _, t := range tasks {
 			if q, ok = versions[t.Version]; !ok {
