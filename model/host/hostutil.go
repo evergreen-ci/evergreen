@@ -283,6 +283,7 @@ func (h *Host) fetchJasperCommands(config evergreen.HostJasperConfig) []string {
 	downloadedFile := h.jasperDownloadedFileName(config)
 	extractedFile := h.jasperBinaryFileName(config)
 	return []string{
+		fmt.Sprintf("mkdir -p \"%s\"", h.Distro.BootstrapSettings.JasperBinaryDir),
 		fmt.Sprintf("cd \"%s\"", h.Distro.BootstrapSettings.JasperBinaryDir),
 		fmt.Sprintf("curl -LO '%s/%s' %s", config.URL, downloadedFile, curlRetryArgs(CurlDefaultNumRetries, CurlDefaultMaxSecs)),
 		fmt.Sprintf("tar xzf '%s'", downloadedFile),
@@ -388,7 +389,7 @@ func (h *Host) WriteJasperCredentialsFileCommand(creds *rpc.Credentials) (string
 	if err != nil {
 		return "", errors.Wrap(err, "problem exporting credentials to file format")
 	}
-	return fmt.Sprintf("cat > '%s' <<EOF\n%s\nEOF", h.Distro.BootstrapSettings.JasperCredentialsPath, exportedCreds), nil
+	return fmt.Sprintf("mkdir -p \"%s\" && cat > '%s' <<EOF\n%s\nEOF", filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath), h.Distro.BootstrapSettings.JasperCredentialsPath, exportedCreds), nil
 }
 
 // RunJasperProcess makes a request to the host's Jasper service to create the
