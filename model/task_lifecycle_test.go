@@ -532,6 +532,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			Project:     "sample",
 			Status:      evergreen.TaskFailed,
 			StartTime:   time.Now().Add(-time.Hour),
+			Version:     b.Version,
 		}
 		anotherTask := task.Task{
 			Id:          "two",
@@ -541,6 +542,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			Project:     "sample",
 			Status:      evergreen.TaskFailed,
 			StartTime:   time.Now().Add(-time.Hour),
+			Version:     b.Version,
 		}
 
 		b.Tasks = []build.TaskCache{
@@ -1821,6 +1823,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 		Id:         "sample_version",
 		Identifier: "sample",
 		Requester:  evergreen.RepotrackerVersionRequester,
+		Status:     evergreen.VersionStarted,
 	}
 	require.NoError(v.Insert())
 
@@ -1889,7 +1892,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 		Id:        buildID,
 		Status:    evergreen.BuildStarted,
 		Activated: true,
-		Version:   "abc",
+		Version:   v.Id,
 		Tasks: []build.TaskCache{
 			{
 				Id:        testTask.Id,
@@ -1911,12 +1914,6 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	require.NoError(b.Insert())
 	assert.False(b.IsFinished())
 
-	v = &Version{
-		Id:     b.Version,
-		Status: evergreen.VersionStarted,
-	}
-	require.NoError(v.Insert())
-
 	details := &apimodels.TaskEndDetail{
 		Status: evergreen.TaskFailed,
 		Type:   "system",
@@ -1930,7 +1927,9 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.False(updates.VersionComplete)
 	b, err := build.FindOneId(buildID)
 	assert.NoError(err)
-	complete, _, err := b.AllUnblockedTasksFinished()
+	tasks, err := task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	require.NoError(err)
+	complete, _, err := b.AllUnblockedTasksFinished(tasks)
 	assert.NoError(err)
 	assert.False(complete)
 
@@ -1942,7 +1941,9 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.False(updates.VersionComplete)
 	b, err = build.FindOneId(buildID)
 	assert.NoError(err)
-	complete, _, err = b.AllUnblockedTasksFinished()
+	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	require.NoError(err)
+	complete, _, err = b.AllUnblockedTasksFinished(tasks)
 	assert.NoError(err)
 	assert.False(complete)
 
@@ -1954,7 +1955,9 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.False(updates.VersionComplete)
 	b, err = build.FindOneId(buildID)
 	assert.NoError(err)
-	complete, _, err = b.AllUnblockedTasksFinished()
+	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	require.NoError(err)
+	complete, _, err = b.AllUnblockedTasksFinished(tasks)
 	assert.NoError(err)
 	assert.False(complete)
 
@@ -1968,7 +1971,9 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.True(updates.VersionComplete)
 	b, err = build.FindOneId(buildID)
 	assert.NoError(err)
-	complete, _, err = b.AllUnblockedTasksFinished()
+	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	require.NoError(err)
+	complete, _, err = b.AllUnblockedTasksFinished(tasks)
 	assert.NoError(err)
 	assert.True(complete)
 
@@ -1985,6 +1990,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	v := &Version{
 		Id:        "sample_version",
 		Requester: evergreen.RepotrackerVersionRequester,
+		Status:    evergreen.VersionStarted,
 	}
 	require.NoError(v.Insert())
 
@@ -2022,7 +2028,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 		Id:        buildID,
 		Status:    evergreen.BuildStarted,
 		Activated: true,
-		Version:   "abc",
+		Version:   v.Id,
 		Tasks: []build.TaskCache{
 			{
 				Id:          testTask.Id,
@@ -2039,12 +2045,6 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	}
 	require.NoError(b.Insert())
 
-	v = &Version{
-		Id:     b.Version,
-		Status: evergreen.VersionStarted,
-	}
-	require.NoError(v.Insert())
-
 	details := &apimodels.TaskEndDetail{
 		Status: evergreen.TaskFailed,
 		Type:   "test",
@@ -2057,7 +2057,9 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	assert.True(updates.VersionComplete)
 	b, err := build.FindOneId(buildID)
 	assert.NoError(err)
-	complete, _, err := b.AllUnblockedTasksFinished()
+	tasks, err := task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	require.NoError(err)
+	complete, _, err := b.AllUnblockedTasksFinished(tasks)
 	assert.True(complete)
 	assert.NoError(err)
 	assert.True(b.IsFinished())
@@ -2076,6 +2078,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 	v := &Version{
 		Id:        "sample_version",
 		Requester: evergreen.RepotrackerVersionRequester,
+		Status:    evergreen.VersionStarted,
 	}
 	require.NoError(v.Insert())
 
@@ -2113,7 +2116,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 		Id:        buildID,
 		Status:    evergreen.BuildStarted,
 		Activated: true,
-		Version:   "abc",
+		Version:   v.Id,
 		Tasks: []build.TaskCache{
 			{
 				Id:        testTask.Id,
@@ -2129,12 +2132,6 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 	}
 	require.NoError(b.Insert())
 
-	v = &Version{
-		Id:     b.Version,
-		Status: evergreen.VersionStarted,
-	}
-	require.NoError(v.Insert())
-
 	details := &apimodels.TaskEndDetail{
 		Status: evergreen.TaskFailed,
 		Type:   "test",
@@ -2147,7 +2144,9 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 	assert.True(updates.VersionComplete)
 	b, err := build.FindOneId(buildID)
 	assert.NoError(err)
-	complete, _, err := b.AllUnblockedTasksFinished()
+	tasks, err := task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	require.NoError(err)
+	complete, _, err := b.AllUnblockedTasksFinished(tasks)
 	assert.True(complete)
 	assert.NoError(err)
 	assert.True(b.IsFinished())
