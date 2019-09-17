@@ -74,6 +74,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/distros/{distro_id}/setup").Version(2).Patch().Wrap(superUser).RouteHandler(makeChangeDistroSetup(sc))
 	app.AddRoute("/distros/{distro_id}/teardown").Version(2).Get().Wrap(superUser).RouteHandler(makeGetDistroTeardown(sc))
 	app.AddRoute("/distros/{distro_id}/teardown").Version(2).Patch().Wrap(superUser).RouteHandler(makeChangeDistroTeardown(sc))
+	app.AddRoute("/distros/{distro_id}/execute").Version(2).Patch().Wrap(superUser).RouteHandler(makeDistroExecuteHandler(sc, env))
 	app.AddRoute("/hooks/github").Version(2).Post().RouteHandler(makeGithubHooksRoute(sc, opts.APIQueue, opts.GithubSecret, settings))
 	app.AddRoute("/hosts").Version(2).Get().RouteHandler(makeFetchHosts(sc))
 	app.AddRoute("/hosts").Version(2).Post().Wrap(checkUser).RouteHandler(makeSpawnHostCreateRoute(sc))
