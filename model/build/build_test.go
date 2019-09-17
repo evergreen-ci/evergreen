@@ -576,22 +576,27 @@ func TestAllTasksFinished(t *testing.T) {
 	}
 
 	tasks, err := task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	require.NoError(t, err)
 	assert.False(b.AllUnblockedTasksFinished(tasks))
 
 	assert.NoError(tasks[0].MarkFailed())
 	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	require.NoError(t, err)
 	assert.False(b.AllUnblockedTasksFinished(tasks))
 
 	assert.NoError(tasks[1].MarkFailed())
 	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	require.NoError(t, err)
 	assert.False(b.AllUnblockedTasksFinished(tasks))
 
 	assert.NoError(tasks[2].MarkFailed())
 	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	require.NoError(t, err)
 	assert.False(b.AllUnblockedTasksFinished(tasks))
 
 	assert.NoError(tasks[3].MarkFailed())
 	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	require.NoError(t, err)
 	assert.True(b.AllUnblockedTasksFinished(tasks))
 
 	// Only one activated task
@@ -620,9 +625,11 @@ func TestAllTasksFinished(t *testing.T) {
 		assert.NoError(task.Insert())
 	}
 	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	require.NoError(t, err)
 	assert.False(b.AllUnblockedTasksFinished(tasks))
 	assert.NoError(tasks[0].MarkFailed())
 	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	require.NoError(t, err)
 	assert.True(b.AllUnblockedTasksFinished(tasks))
 
 	// Build is finished
@@ -635,6 +642,7 @@ func TestAllTasksFinished(t *testing.T) {
 	}
 	assert.NoError(task1.Insert())
 	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	require.NoError(t, err)
 	complete, status, err := b.AllUnblockedTasksFinished(tasks)
 	assert.NoError(err)
 	assert.True(complete)
@@ -692,6 +700,7 @@ func TestAllTasksFinished(t *testing.T) {
 	assert.NoError(e0.Insert())
 	assert.NoError(e1.Insert())
 	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	require.NoError(t, err)
 	complete, _, err = b.AllUnblockedTasksFinished(tasks)
 	assert.NoError(err)
 	assert.True(complete)
@@ -699,6 +708,7 @@ func TestAllTasksFinished(t *testing.T) {
 	// inactive build should not be complete
 	b.Activated = false
 	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	require.NoError(t, err)
 	complete, _, err = b.AllUnblockedTasksFinished(tasks)
 	assert.NoError(err)
 	assert.False(complete)
