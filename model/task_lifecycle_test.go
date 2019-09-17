@@ -532,6 +532,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			Project:     "sample",
 			Status:      evergreen.TaskFailed,
 			StartTime:   time.Now().Add(-time.Hour),
+			Version:     b.Version,
 		}
 		anotherTask := task.Task{
 			Id:          "two",
@@ -541,6 +542,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			Project:     "sample",
 			Status:      evergreen.TaskFailed,
 			StartTime:   time.Now().Add(-time.Hour),
+			Version:     b.Version,
 		}
 
 		b.Tasks = []build.TaskCache{
