@@ -198,7 +198,8 @@ func (c *s3copy) s3Copy(ctx context.Context,
 					s3CopyFile.DisplayName)
 				continue
 			} else {
-				return err
+				return errors.Wrapf(err, "failed to push %s to %s",
+					s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket)
 			}
 
 		}
