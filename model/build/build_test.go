@@ -575,19 +575,24 @@ func TestAllTasksFinished(t *testing.T) {
 		assert.NoError(task.Insert())
 	}
 
-	assert.False(b.AllUnblockedTasksFinished())
+	tasks, err := task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	assert.False(b.AllUnblockedTasksFinished(tasks))
 
 	assert.NoError(tasks[0].MarkFailed())
-	assert.False(b.AllUnblockedTasksFinished())
+	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	assert.False(b.AllUnblockedTasksFinished(tasks))
 
 	assert.NoError(tasks[1].MarkFailed())
-	assert.False(b.AllUnblockedTasksFinished())
+	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	assert.False(b.AllUnblockedTasksFinished(tasks))
 
 	assert.NoError(tasks[2].MarkFailed())
-	assert.False(b.AllUnblockedTasksFinished())
+	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	assert.False(b.AllUnblockedTasksFinished(tasks))
 
 	assert.NoError(tasks[3].MarkFailed())
-	assert.True(b.AllUnblockedTasksFinished())
+	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	assert.True(b.AllUnblockedTasksFinished(tasks))
 
 	// Only one activated task
 	require.NoError(t, db.ClearCollections(task.Collection), "error clearing collection")
@@ -614,9 +619,11 @@ func TestAllTasksFinished(t *testing.T) {
 	for _, task := range tasks {
 		assert.NoError(task.Insert())
 	}
-	assert.False(b.AllUnblockedTasksFinished())
+	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	assert.False(b.AllUnblockedTasksFinished(tasks))
 	assert.NoError(tasks[0].MarkFailed())
-	assert.True(b.AllUnblockedTasksFinished())
+	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	assert.True(b.AllUnblockedTasksFinished(tasks))
 
 	// Build is finished
 	require.NoError(t, db.ClearCollections(task.Collection), "error clearing collection")
@@ -627,7 +634,8 @@ func TestAllTasksFinished(t *testing.T) {
 		Activated: false,
 	}
 	assert.NoError(task1.Insert())
-	complete, status, err := b.AllUnblockedTasksFinished()
+	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	complete, status, err := b.AllUnblockedTasksFinished(tasks)
 	assert.NoError(err)
 	assert.True(complete)
 	assert.Equal(status, evergreen.BuildFailed)
@@ -683,13 +691,15 @@ func TestAllTasksFinished(t *testing.T) {
 	assert.NoError(d0.Insert())
 	assert.NoError(e0.Insert())
 	assert.NoError(e1.Insert())
-	complete, _, err = b.AllUnblockedTasksFinished()
+	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	complete, _, err = b.AllUnblockedTasksFinished(tasks)
 	assert.NoError(err)
 	assert.True(complete)
 
 	// inactive build should not be complete
 	b.Activated = false
-	complete, _, err = b.AllUnblockedTasksFinished()
+	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	complete, _, err = b.AllUnblockedTasksFinished(tasks)
 	assert.NoError(err)
 	assert.False(complete)
 }
