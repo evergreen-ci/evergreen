@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -59,6 +60,14 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	if t.GeneratedTasks {
 		grip.Debug(message.Fields{
 			"message": "attempted to generate tasks, but generator already ran for this task",
+			"task":    t.Id,
+			"version": t.Version,
+		})
+		return nil
+	}
+	if t.Status != evergreen.TaskStarted {
+		grip.Debug(message.Fields{
+			"message": "task is not running, not generating tasks",
 			"task":    t.Id,
 			"version": t.Version,
 		})
