@@ -48,7 +48,7 @@ func (j *cronsRemoteHourJob) Run(ctx context.Context) {
 	}
 
 	ops := []amboy.QueueOperation{
-		PopulateCacheHistoricalTestDataJob(6),
+		PopulateCacheHistoricalTestDataJob(2),
 		PopulateJasperDeployJobs(j.env),
 	}
 

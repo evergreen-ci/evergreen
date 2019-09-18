@@ -21,7 +21,7 @@ import (
 
 const (
 	cacheHistoricalTestDataName = "cache-historical-test-data"
-	maxSyncDuration             = time.Hour * 24 * 7 // one week
+	maxSyncDuration             = time.Hour * 24 // one day
 )
 
 func init() {
@@ -352,8 +352,9 @@ func buildDailyStatsRollup(hourlyStats []stats.StatsToUpdate) dailyStatsRollup {
 	return rollup
 }
 
-// We only want to sync a max of 1 week of data at a time. So, if the previous sync was more than
-// 1 week ago, only sync 1 week ahead. Otherwise, we can sync to now.
+// We only want to sync a max of 1 day of data at a time. So, if the
+// previous sync was more than 1 day ago, only sync 1 day
+// ahead. Otherwise, we can sync to now.
 func findTargetTimeForSync(previousSyncTime time.Time) time.Time {
 	now := time.Now()
 	maxSyncTime := previousSyncTime.Add(maxSyncDuration)
