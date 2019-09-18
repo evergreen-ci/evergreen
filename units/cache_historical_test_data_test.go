@@ -454,7 +454,7 @@ func (s *cacheHistoryTestDataSuite) TestCacheHistoricalTestDataJob() {
 	// Our sample data will be 30 minutes apart and the Job will aggregation 1 hours worth of data.
 	// So need to be sure the sample data does not cross an hour boundary or only part of it will
 	// be aggregated. So, truncate the base date to an hour.
-	baseTime := time.Now().Add(-4*7*24*time.Hour + 2*time.Hour).Truncate(time.Hour)
+	baseTime := time.Now().Add(-4 * 7 * 24 * time.Hour).Truncate(time.Hour)
 
 	ref := &model.ProjectRef{
 		Repo:       "evergreen",
