@@ -52,9 +52,13 @@ func (e *Environment) Configure(ctx context.Context, path string, db *evergreen.
 	e.DBSession = anserMock.NewSession()
 
 	e.Remote = queue.NewLocalLimitedSize(2, 1048)
-	e.Remote.Start(ctx)
+	if err := e.Remote.Start(ctx); err != nil {
+		return errors.WithStack(err)
+	}
 	e.Local = queue.NewLocalLimitedSize(2, 1048)
-	e.Local.Start(ctx)
+	if err := e.Local.Start(ctx); err != nil {
+		return errors.WithStack(err)
+	}
 
 	e.InternalSender = send.MakeInternalLogger()
 
