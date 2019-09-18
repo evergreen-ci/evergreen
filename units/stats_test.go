@@ -57,8 +57,6 @@ func (s *StatUnitsSuite) TestAmboyStatsCollector() {
 	// When we run with started queues, it should log both
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	s.NoError(s.env.Local.Start(ctx))
-	s.NoError(s.env.Remote.Start(ctx))
 
 	j = makeAmboyStatsCollector()
 	s.False(j.Status().Completed)
