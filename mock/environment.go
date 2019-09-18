@@ -27,7 +27,6 @@ var _ evergreen.Environment = &Environment{}
 
 type Environment struct {
 	Remote               amboy.Queue
-	Driver               queue.Driver
 	Local                amboy.Queue
 	JasperProcessManager jasper.Manager
 	RemoteGroup          amboy.QueueGroup
@@ -51,18 +50,11 @@ func (e *Environment) Configure(ctx context.Context, path string, db *evergreen.
 		e.EvergreenSettings.Database = *db
 	}
 	e.DBSession = anserMock.NewSession()
-	e.Driver = queue.NewPriorityDriver()
 
-	if err := e.Driver.Open(ctx); err != nil {
-		return err
-	}
-
-	rq := queue.NewRemoteUnordered(2)
-	if err := rq.SetDriver(e.Driver); err != nil {
-		return err
-	}
-	e.Remote = rq
+	e.Remote = queue.NewLocalLimitedSize(2, 1048)
+	e.Remote.Start(ctx)
 	e.Local = queue.NewLocalLimitedSize(2, 1048)
+	e.Local.Start(ctx)
 
 	e.InternalSender = send.MakeInternalLogger()
 
