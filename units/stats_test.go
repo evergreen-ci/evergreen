@@ -54,10 +54,6 @@ func (s *StatUnitsSuite) TestAmboyStatsCollector() {
 	s.True(j.Status().Completed)
 	s.False(j.HasErrors())
 
-	// When we run with started queues, it should log both
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	j = makeAmboyStatsCollector()
 	s.False(j.Status().Completed)
 	j.env = s.env
