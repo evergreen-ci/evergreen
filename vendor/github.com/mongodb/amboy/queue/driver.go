@@ -7,9 +7,9 @@ import (
 	"github.com/mongodb/amboy"
 )
 
-// Driver describes the interface between a queue and an out of
+// remoteQueueDriver describes the interface between a queue and an out of
 // process persistence layer, like a database.
-type Driver interface {
+type remoteQueueDriver interface {
 	ID() string
 	Open(context.Context) error
 	Close()
@@ -31,6 +31,8 @@ type Driver interface {
 type MongoDBOptions struct {
 	URI             string
 	DB              string
+	GroupName       string
+	UseGroups       bool
 	Priority        bool
 	CheckWaitUntil  bool
 	CheckDispatchBy bool
@@ -51,6 +53,7 @@ func DefaultMongoDBOptions() MongoDBOptions {
 		URI:             "mongodb://localhost:27017",
 		DB:              "amboy",
 		Priority:        false,
+		UseGroups:       false,
 		CheckWaitUntil:  true,
 		SkipIndexBuilds: false,
 		WaitInterval:    time.Second,

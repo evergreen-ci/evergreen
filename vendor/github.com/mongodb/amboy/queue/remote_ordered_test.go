@@ -22,10 +22,10 @@ func init() {
 }
 
 type SimpleRemoteOrderedSuite struct {
-	queue             Remote
+	queue             remoteQueue
 	tearDown          func() error
-	driver            Driver
-	driverConstructor func() Driver
+	driver            remoteQueueDriver
+	driverConstructor func() remoteQueueDriver
 	canceler          context.CancelFunc
 	suite.Suite
 }
@@ -38,8 +38,8 @@ func (s *SimpleRemoteOrderedSuite) SetupSuite() {
 	name := "test-" + uuid.NewV4().String()
 	opts := DefaultMongoDBOptions()
 	opts.DB = "amboy_test"
-	s.driverConstructor = func() Driver {
-		return NewMongoDriver(name, opts)
+	s.driverConstructor = func() remoteQueueDriver {
+		return newMongoDriver(name, opts)
 	}
 
 	s.tearDown = func() error {
@@ -65,7 +65,7 @@ func (s *SimpleRemoteOrderedSuite) SetupTest() {
 	s.driver = s.driverConstructor()
 	s.canceler = canceler
 	s.NoError(s.driver.Open(ctx))
-	queue := NewSimpleRemoteOrdered(2)
+	queue := newSimpleRemoteOrdered(2)
 	s.NoError(queue.SetDriver(s.driver))
 	s.queue = queue
 }
