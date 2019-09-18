@@ -2,106 +2,81 @@ package queue
 
 import (
 	"context"
-	"time"
 
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
-const dispatchWarningThreshold = time.Second
-
-// Remote queues extend the queue interface to allow a
-// pluggable-storage backend, or "driver"
-type Remote interface {
-	amboy.Queue
-	SetDriver(Driver) error
-	Driver() Driver
+// MongoDBQueueCreationOptions describes the options passed to the remote
+// queue, that store jobs in a remote persistence layer to support
+// distributed systems of workers.
+type MongoDBQueueCreationOptions struct {
+	Size    int
+	Name    string
+	Ordered bool
+	MDB     MongoDBOptions
+	Client  *mongo.Client
 }
 
-// RemoteUnordered are queues that use a Driver as backend for job
-// storage and processing and do not impose any additional ordering
-// beyond what's provided by the driver.
-type remoteUnordered struct {
-	*remoteBase
-}
-
-// NewRemoteUnordered returns a queue that has been initialized with a
-// local worker pool Runner instance of the specified size.
-func NewRemoteUnordered(size int) Remote {
-	q := &remoteUnordered{
-		remoteBase: newRemoteBase(),
+// NewMongoDBQueue builds a new queue that persists jobs to a MongoDB
+// instance. These queues allow workers running in multiple processes
+// to service shared workloads in multiple processes.
+func NewMongoDBQueue(ctx context.Context, opts MongoDBQueueCreationOptions) (amboy.Queue, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, errors.WithStack(err)
 	}
 
-	grip.Error(q.SetRunner(pool.NewLocalWorkers(size, q)))
-	grip.Infof("creating new remote job queue with %d workers", size)
-
-	return q
+	return opts.build(ctx)
 }
 
-// Next returns a Job from the queue. Returns a nil Job object if the
-// context is canceled. The operation is blocking until an
-// undispatched, unlocked job is available. This operation takes a job
-// lock.
-func (q *remoteUnordered) Next(ctx context.Context) amboy.Job {
+// Validate ensure that the arguments defined are valid.
+func (opts *MongoDBQueueCreationOptions) Validate() error {
+	catcher := grip.NewBasicCatcher()
+
+	catcher.NewWhen(opts.Name == "", "must specify a name")
+
+	catcher.NewWhen(opts.Client == nil && (opts.MDB.URI == "" && opts.MDB.DB == ""),
+		"must specify database options")
+
+	return catcher.Resolve()
+}
+
+func (opts *MongoDBQueueCreationOptions) build(ctx context.Context) (amboy.Queue, error) {
+	var driver remoteQueueDriver
 	var err error
 
-	start := time.Now()
-	count := 0
-	getErrors := 0
-	dispatchableErrors := 0
-	for {
-		count++
-		select {
-		case <-ctx.Done():
-			return nil
-		case job := <-q.channel:
-			if job == nil {
-				continue
-			}
+	if opts.Client == nil {
+		if opts.MDB.UseGroups {
+			driver = newMongoGroupDriver(opts.Name, opts.MDB, opts.MDB.GroupName)
+		} else {
+			driver = newMongoDriver(opts.Name, opts.MDB)
+		}
 
-			job, err = q.driver.Get(ctx, job.ID())
-			if job == nil {
-				getErrors++
-				continue
-			}
-
-			if err != nil {
-				grip.Debug(message.WrapError(err, message.Fields{
-					"id":        job.ID(),
-					"operation": "problem refreshing job in dispatching from remote queue",
-				}))
-
-				getErrors++
-				continue
-			}
-
-			status := job.Status()
-			if !isDispatchable(status) {
-				dispatchableErrors++
-				continue
-			}
-
-			ti := amboy.JobTimeInfo{
-				Start: time.Now(),
-			}
-			job.UpdateTimeInfo(ti)
-
-			dispatchSecs := time.Since(start).Seconds()
-			grip.DebugWhen(dispatchSecs > dispatchWarningThreshold.Seconds() || count > 3,
-				message.Fields{
-					"message":             "returning job from remote source",
-					"threshold_secs":      dispatchWarningThreshold.Seconds(),
-					"dispatch_secs":       dispatchSecs,
-					"attempts":            count,
-					"stat":                status,
-					"job":                 job.ID(),
-					"get_errors":          getErrors,
-					"dispatchable_errors": dispatchableErrors,
-				})
-
-			return job
+		err = driver.Open(ctx)
+	} else {
+		if opts.MDB.UseGroups {
+			driver, err = openNewMongoGroupDriver(ctx, opts.Name, opts.MDB, opts.MDB.GroupName, opts.Client)
+		} else {
+			driver, err = openNewMongoDriver(ctx, opts.Name, opts.MDB, opts.Client)
 		}
 	}
+
+	if err != nil {
+		return nil, errors.Wrap(err, "problem building driver")
+	}
+
+	var q remoteQueue
+	if opts.Ordered {
+		q = newSimpleRemoteOrdered(opts.Size)
+	} else {
+		q = newRemoteUnordered(opts.Size)
+	}
+
+	if err = q.SetDriver(driver); err != nil {
+		return nil, errors.Wrap(err, "problem configuring queue")
+	}
+
+	return q, nil
 }

@@ -45,7 +45,7 @@ func (c *ManagementClient) ListJobs(ctx context.Context) ([]string, error) {
 	}
 	defer resp.Body.Close()
 	out := []string{}
-	if err = gimlet.GetJSON(resp.Body, out); err != nil {
+	if err = gimlet.GetJSON(resp.Body, &out); err != nil {
 		return nil, errors.Wrap(err, "problem reading response")
 	}
 
