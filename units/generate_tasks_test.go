@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -171,6 +172,7 @@ func TestGenerateTasks(t *testing.T) {
 		Project:       "mci",
 		DisplayName:   "sample_task",
 		GeneratedJSON: sampleGeneratedProject,
+		Status:        evergreen.TaskStarted,
 	}
 	sampleDistros := []distro.Distro{
 		distro.Distro{
