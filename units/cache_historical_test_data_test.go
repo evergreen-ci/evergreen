@@ -70,14 +70,14 @@ func (s *cacheHistoryTestDataSuite) SetupTest() {
 	}
 }
 
-func (s *cacheHistoryTestDataSuite) TestFindSyncDateWithAWeek() {
-	prevSyncDate := time.Now().Add(time.Hour * 24 * -3)
+func (s *cacheHistoryTestDataSuite) TestFindSyncDate() {
+	prevSyncDate := time.Now().Add(time.Hour * 24 * -1)
 	syncDate := findTargetTimeForSync(prevSyncDate)
 	s.WithinDuration(time.Now(), syncDate, time.Minute)
 }
 
-func (s *cacheHistoryTestDataSuite) TestFindSyncDateOutsideOfAWeek() {
-	prevSyncDate := time.Now().Add(time.Hour * 24 * -10)
+func (s *cacheHistoryTestDataSuite) TestFindSyncDateOutsideOfWindow() {
+	prevSyncDate := time.Now().Add(time.Hour * 24 * -2)
 	expectedSyncDate := prevSyncDate.Add(maxSyncDuration)
 	syncDate := findTargetTimeForSync(prevSyncDate)
 	s.WithinDuration(expectedSyncDate, syncDate, time.Minute)

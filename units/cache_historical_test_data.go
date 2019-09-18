@@ -21,7 +21,7 @@ import (
 
 const (
 	cacheHistoricalTestDataName = "cache-historical-test-data"
-	maxSyncDuration             = time.Hour * 24 * 7 // one week
+	maxSyncDuration             = time.Hour * 24 // one day
 )
 
 func init() {
