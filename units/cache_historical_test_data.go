@@ -172,7 +172,7 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 
 	timingMsg["save_stats_status"] = reportTiming(func() {
 		// update last sync
-		err = stats.UpdateStatsStatus(j.ProjectID, jobContext.JobTime, syncToTime)
+		err = stats.UpdateStatsStatus(j.ProjectID, jobContext.JobTime, syncToTime, time.Since(startAt))
 		j.AddError(errors.Wrap(err, "error updating last synced date"))
 	}).Seconds()
 	j.AddError(jobContext.catcher.Resolve())
