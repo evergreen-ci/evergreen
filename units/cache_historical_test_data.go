@@ -68,16 +68,18 @@ func makeCacheHistoricalTestDataJob() *cacheHistoricalTestDataJob {
 func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 	timingMsg := message.Fields{
-		"job_id":   j.ID(),
-		"project":  j.ProjectID,
-		"job_type": j.Type().Name,
-		"message":  "timing-info",
+		"job_id":       j.ID(),
+		"project":      j.ProjectID,
+		"job_type":     j.Type().Name,
+		"message":      "timing-info",
+		"run_start_at": time.Now(),
 	}
 	startAt := time.Now()
 	defer func() {
 		timingMsg["has_errors"] = j.HasErrors()
 		timingMsg["aborted"] = ctx.Err() != nil
 		timingMsg["total"] = time.Since(startAt).Seconds()
+		timingMsg["run_end_at"] = time.Now()
 		grip.Info(timingMsg)
 	}()
 
@@ -170,7 +172,7 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 
 	timingMsg["save_stats_status"] = reportTiming(func() {
 		// update last sync
-		err = stats.UpdateStatsStatus(j.ProjectID, jobContext.JobTime, syncToTime)
+		err = stats.UpdateStatsStatus(j.ProjectID, jobContext.JobTime, syncToTime, time.Since(startAt))
 		j.AddError(errors.Wrap(err, "error updating last synced date"))
 	}).Seconds()
 	j.AddError(jobContext.catcher.Resolve())
