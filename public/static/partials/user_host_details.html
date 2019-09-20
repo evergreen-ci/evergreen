@@ -39,19 +39,27 @@
           <pre readonly>ssh [[curHostData.user]]@[[curHostData.host]]</pre>
         </div>
       </md-card-content>
+
     </md-card>
-    <br>
-    <button type="button" ng-show="curHostData.isWinHost && curHostData.status
-    == 'running'" class="btn btn-info" style="float: right;" ng-click="openSpawnModal('updateRDPPassword')">
-    Set RDP Password
-    </button>
-    <div class="entry">
-      <strong>Expires On:</strong>
-      <md-datepicker ng-model="date_for_expiration" md-placeholder="Date"></md-datepicker>
-      <md-time-picker class="inline" ng-model="time_for_expiration" message="message"></md-time-picker>
-      <md-button type="button" class="md-primary md-raised" style="float: right;" ng-click="updateHostExpiration()">
-        Update
-      </md-button>
-    </div>
+      <section layout="row" flex ng-show="curHostData.isWinHost && curHostData.status == 'running'">
+        <div flex="85"></div>
+        <div class="entry" flex="15">
+          <md-button type="button" class="btn-info md-raised" style="top: 8px; float: right;" ng-click="openSpawnModal('updateRDPPassword')">
+            Set RDP Password
+          </md-button>
+        </div>
+      </section>
+      <section layout="row" flex style="white-space: nowrap">
+          <div flex="85">
+            <strong>Expires On:</strong>
+            <md-datepicker ng-model="date_for_expiration" md-placeholder="Date"></md-datepicker>
+            <md-time-picker class="inline" ng-model="time_for_expiration" message="message"></md-time-picker>
+          </div>
+          <div flex="15">
+            <md-button type="button" class="btn-info md-raised" style="top: 8px; float: right" ng-click="updateHostExpiration()">
+              Update
+            </md-button>
+        </div>
+      </section>
   </div>
 </div>
