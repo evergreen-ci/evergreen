@@ -55,6 +55,13 @@ func NewHostExecuteJob(env evergreen.Environment, h host.Host, script string, id
 }
 
 func (j *hostExecuteJob) Run(ctx context.Context) {
+	grip.Info(message.Fields{
+		"message": "kim: running job to execute script",
+		"host":    j.host.Id,
+		"distro":  j.host.Distro.Id,
+		"script":  j.Script,
+		"job":     j.ID(),
+	})
 	defer j.MarkComplete()
 
 	if err := j.populateIfUnset(); err != nil {
@@ -88,6 +95,13 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 		j.AddError(err)
 		return
 	}
+	grip.Info(message.Fields{
+		"message": "kim: about to run SSH command to run script",
+		"host":    j.host.Id,
+		"distro":  j.host.Distro.Id,
+		"script":  j.Script,
+		"job":     j.ID(),
+	})
 	logs, err := j.host.RunSSHCommand(ctx, fmt.Sprintf("bash -s <<'EOF'%sEOF", j.Script), sshOptions)
 	if err != nil {
 		event.LogHostScriptExecuteFailed(j.host.Id, err)
