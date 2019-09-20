@@ -485,7 +485,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 				"distro":  h.Distro.Id,
 			}))
 		} else {
-			grip.InfoWhen(h.Provider != evergreen.ProviderStatic, message.Fields{
+			grip.InfoWhen(h.Provider != evergreen.ProviderNameStatic, message.Fields{
 				"message":                   "agent initiated first contact with server",
 				"host":                      h.Id,
 				"distro":                    h.Distro.Id,
