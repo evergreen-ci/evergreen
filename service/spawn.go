@@ -101,14 +101,14 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	authedUser := MustHaveUser(r)
 
 	putParams := struct {
-		Task          string            `json:"task_id"`
-		Distro        string            `json:"distro"`
-		KeyName       string            `json:"key_name"`
-		PublicKey     string            `json:"public_key"`
-		SaveKey       bool              `json:"save_key"`
-		UserData      string            `json:"userdata"`
-		UseTaskConfig bool              `json:"use_task_config"`
-		InstanceTags  map[string]string `json:"instance_tags"`
+		Task          string     `json:"task_id"`
+		Distro        string     `json:"distro"`
+		KeyName       string     `json:"key_name"`
+		PublicKey     string     `json:"public_key"`
+		SaveKey       bool       `json:"save_key"`
+		UserData      string     `json:"userdata"`
+		UseTaskConfig bool       `json:"use_task_config"`
+		InstanceTags  []host.Tag `json:"instance_tags"`
 	}{}
 
 	err := util.ReadJSONInto(util.NewRequestReader(r), &putParams)

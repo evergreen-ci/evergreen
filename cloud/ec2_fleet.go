@@ -116,6 +116,10 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 	return h, nil
 }
 
+func (m *ec2FleetManager) ModifyHost(context.Context, *host.Host, host.HostModifyOptions) error {
+	return errors.New("can't modify instances for ec2 fleet provider")
+}
+
 func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) ([]CloudStatus, error) {
 	instanceIDs := make([]*string, 0, len(hosts))
 	for _, h := range hosts {

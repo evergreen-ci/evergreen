@@ -487,6 +487,85 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	return h, nil
 }
 
+// getResources returns a slice of the AWS resources for the given host
+func (m *ec2Manager) getResources(ctx context.Context, h *host.Host) ([]string, error) {
+	instanceID := h.Id
+	if isHostSpot(h) {
+		instanceID, err := m.client.GetSpotInstanceId(ctx, h)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":       "error getting spot request info",
+			"host":          h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
+		}))
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
+		}
+		if instanceID == "" {
+			return nil, errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
+		}
+	}
+	volumeIDs, err := m.client.GetVolumeIDs(ctx, h)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't get volume IDs for '%s'", h.Id)
+	}
+	resources := []string{instanceID}
+	resources = append(resources, volumeIDs...)
+	return resources, nil
+}
+
+// ModifyHost modifies a host according to the changes specified by a HostModifyOptions struct.
+func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, changes host.HostModifyOptions) error {
+	ec2Settings := &EC2ProviderSettings{}
+	if err := ec2Settings.fromDistroSettings(h.Distro); err != nil {
+		return errors.Wrap(err, "error getting EC2 settings")
+	}
+	if err := m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+
+	resources, err := m.getResources(ctx, h)
+	if err != nil {
+		return err
+	}
+
+	// Delete tags
+	if len(changes.DeleteInstanceTags) > 0 {
+		deleteTagSlice := []*ec2.Tag{}
+		for _, delKey := range changes.DeleteInstanceTags {
+			key := delKey
+			deleteTagSlice = append(deleteTagSlice, &ec2.Tag{Key: &key})
+		}
+		_, err = m.client.DeleteTags(ctx, &ec2.DeleteTagsInput{
+			Resources: aws.StringSlice(resources),
+			Tags:      deleteTagSlice,
+		})
+		if err != nil {
+			return errors.Wrapf(err, "error deleting tags for '%s'", h.Id)
+		}
+	}
+
+	// Add tags
+	if len(changes.AddInstanceTags) > 0 {
+		createTagSlice := []*ec2.Tag{}
+		for _, tag := range changes.AddInstanceTags {
+			key := tag.Key
+			value := tag.Value
+			createTagSlice = append(createTagSlice, &ec2.Tag{Key: &key, Value: &value})
+		}
+		_, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
+			Resources: aws.StringSlice(resources),
+			Tags:      createTagSlice,
+		})
+		if err != nil {
+			return errors.Wrapf(err, "error creating tags for '%s'", h.Id)
+		}
+	}
+
+	return nil
+}
+
 // GetInstanceStatuses returns the current status of a slice of EC2 instances.
 func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) ([]CloudStatus, error) {
 	if err := m.client.Create(m.credentials, defaultRegion); err != nil {
@@ -779,54 +858,15 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 	}
 	defer m.client.Close()
 
-	instanceID := h.Id
-	tags := makeTags(h)
-
-	if isHostSpot(h) {
-		instanceID, err = m.client.GetSpotInstanceId(ctx, h)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":       "error getting spot request info",
-				"host":          h.Id,
-				"host_provider": h.Distro.Provider,
-				"distro":        h.Distro.Id,
-			}))
-			return errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
-		}
-		if instanceID == "" {
-			return errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
-		}
-
-		tags["spot"] = "true" // mark this as a spot instance
-	}
-
-	volumeIDs, err := m.client.GetVolumeIDs(ctx, h)
+	resources, err := m.getResources(ctx, h)
 	if err != nil {
-		return errors.Wrapf(err, "can't get volume IDs for '%s'", h.Id)
-	}
-	resources := []string{instanceID}
-	resources = append(resources, volumeIDs...)
-
-	tagSlice := []*ec2.Tag{}
-	for tag := range tags {
-		key := tag
-		val := tags[tag]
-		tagSlice = append(tagSlice, &ec2.Tag{Key: &key, Value: &val})
+		return errors.Wrap(err, "error getting resources")
 	}
 
-	if _, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
-		Resources: aws.StringSlice(resources),
-		Tags:      tagSlice,
-	}); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":       "error attaching tags",
-			"host":          h.Id,
-			"host_provider": h.Distro.Provider,
-			"distro":        h.Distro.Id,
-		}))
-		err = errors.Wrapf(err, "failed to attach tags for %s", h.Id)
-		return err
+	if err = m.client.SetTags(ctx, resources, h); err != nil {
+		return errors.Wrap(err, "error settings tags")
 	}
+
 	return nil
 }
 
