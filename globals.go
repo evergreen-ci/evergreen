@@ -21,6 +21,7 @@ const (
 	HostProvisionFailed = "provision failed"
 	HostQuarantined     = "quarantined"
 	HostDecommissioned  = "decommissioned"
+	HostStopped         = "stopped"
 
 	HostExternalUserName = "external"
 

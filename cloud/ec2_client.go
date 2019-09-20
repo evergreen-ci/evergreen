@@ -48,6 +48,12 @@ type AWSClient interface {
 	// TerminateInstances is a wrapper for ec2.TerminateInstances.
 	TerminateInstances(context.Context, *ec2.TerminateInstancesInput) (*ec2.TerminateInstancesOutput, error)
 
+	// StopInstances is a wrapper for ec2.StopInstances.
+	StopInstances(context.Context, *ec2.StopInstancesInput) (*ec2.StopInstancesOutput, error)
+
+	// StartInstances is a wrapper for ec2.StartInstances.
+	StartInstances(context.Context, *ec2.StartInstancesInput) (*ec2.StartInstancesOutput, error)
+
 	// RequestSpotInstances is a wrapper for ec2.RequestSpotInstances.
 	RequestSpotInstances(context.Context, *ec2.RequestSpotInstancesInput) (*ec2.RequestSpotInstancesOutput, error)
 
@@ -268,6 +274,54 @@ func (c *awsClientImpl) TerminateInstances(ctx context.Context, input *ec2.Termi
 						return false, nil
 					}
 
+					grip.Error(message.WrapError(ec2err, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+// StopInstances is a wrapper for ec2.StopInstances.
+func (c *awsClientImpl) StopInstances(ctx context.Context, input *ec2.StopInstancesInput) (*ec2.StopInstancesOutput, error) {
+	var output *ec2.StopInstancesOutput
+	var err error
+	msg := makeAWSLogMessage("StopInstances", fmt.Sprintf("%T", c), input)
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			output, err = c.EC2.StopInstancesWithContext(ctx, input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+// StartInstances is a wrapper for ec2.StartInstances.
+func (c *awsClientImpl) StartInstances(ctx context.Context, input *ec2.StartInstancesInput) (*ec2.StartInstancesOutput, error) {
+	var output *ec2.StartInstancesOutput
+	var err error
+	msg := makeAWSLogMessage("StartInstances", fmt.Sprintf("%T", c), input)
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			output, err = c.EC2.StartInstancesWithContext(ctx, input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, msg))
 				}
 				return true, err
@@ -822,6 +876,8 @@ type awsClientMock struct { //nolint
 	*ec2.CreateTagsInput
 	*ec2.DeleteTagsInput
 	*ec2.TerminateInstancesInput
+	*ec2.StopInstancesInput
+	*ec2.StartInstancesInput
 	*ec2.RequestSpotInstancesInput
 	*ec2.DescribeSpotInstanceRequestsInput
 	*ec2.CancelSpotInstanceRequestsInput
@@ -922,6 +978,18 @@ func (c *awsClientMock) DeleteTags(ctx context.Context, input *ec2.DeleteTagsInp
 func (c *awsClientMock) TerminateInstances(ctx context.Context, input *ec2.TerminateInstancesInput) (*ec2.TerminateInstancesOutput, error) {
 	c.TerminateInstancesInput = input
 	return &ec2.TerminateInstancesOutput{}, nil
+}
+
+// StopInstances is a mock for ec2.StopInstances.
+func (c *awsClientMock) StopInstances(ctx context.Context, input *ec2.StopInstancesInput) (*ec2.StopInstancesOutput, error) {
+	c.StopInstancesInput = input
+	return &ec2.StopInstancesOutput{}, nil
+}
+
+// StartInstances is a mock for ec2.StartInstances.
+func (c *awsClientMock) StartInstances(ctx context.Context, input *ec2.StartInstancesInput) (*ec2.StartInstancesOutput, error) {
+	c.StartInstancesInput = input
+	return &ec2.StartInstancesOutput{}, nil
 }
 
 // RequestSpotInstances is a mock for ec2.RequestSpotInstances.

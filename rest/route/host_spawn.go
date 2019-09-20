@@ -18,6 +18,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+////////////////////////////////////////////////////////////////////////
+//
+// POST /rest/v2/hosts/{host_id}
+
 func makeSpawnHostCreateRoute(sc data.Connector) gimlet.RouteHandler {
 	return &hostPostHandler{
 		sc: sc,
@@ -67,6 +71,121 @@ func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(hostModel)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// POST /rest/v2/hosts/{host_id}/stop
+
+type hostStopHandler struct {
+	hostID string
+	sc     data.Connector
+}
+
+func makeHostStopManager(sc data.Connector) gimlet.RouteHandler {
+	return &hostStopHandler{
+		sc: sc,
+	}
+}
+
+func (h *hostStopHandler) Factory() gimlet.RouteHandler {
+	return &hostStopHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *hostStopHandler) Parse(ctx context.Context, r *http.Request) error {
+	var err error
+	h.hostID, err = validateHostID(gimlet.GetVars(r)["host_id"])
+	return err
+}
+
+func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
+	user := MustHaveUser(ctx)
+
+	// Find host to be stopped
+	host, err := h.sc.FindHostByIdWithOwner(h.hostID, user)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.hostID))
+	}
+
+	// Error if host is not able to be stopped
+	if host.Status == evergreen.HostStopped {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("Host %s is already stopped", host.Id),
+		})
+	} else if host.Status != evergreen.HostRunning {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("Host %s is not running", host.Id),
+		})
+	}
+
+	// Stop the host
+	if err := h.sc.StopHost(ctx, host, user.Id); err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		})
+	}
+
+	return gimlet.NewJSONResponse(struct{}{})
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// POST /rest/v2/hosts/{host_id}/start
+
+type hostStartHandler struct {
+	hostID string
+	sc     data.Connector
+}
+
+func makeHostStartManager(sc data.Connector) gimlet.RouteHandler {
+	return &hostStartHandler{
+		sc: sc,
+	}
+}
+
+func (h *hostStartHandler) Factory() gimlet.RouteHandler {
+	return &hostStartHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *hostStartHandler) Parse(ctx context.Context, r *http.Request) error {
+	var err error
+	h.hostID, err = validateHostID(gimlet.GetVars(r)["host_id"])
+	return err
+}
+
+func (h *hostStartHandler) Run(ctx context.Context) gimlet.Responder {
+	user := MustHaveUser(ctx)
+
+	// Find host to be started
+	host, err := h.sc.FindHostByIdWithOwner(h.hostID, user)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.hostID))
+	}
+
+	// Error if host is not able to be started
+	if host.Status != evergreen.HostStopped {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("Host %s is not stoppedj", host.Id),
+		})
+	}
+
+	// Start the host
+	if err := h.sc.StartHost(ctx, host, user.Id); err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		})
+	}
+
+	return gimlet.NewJSONResponse(struct{}{})
 }
 
 ////////////////////////////////////////////////////////////////////////

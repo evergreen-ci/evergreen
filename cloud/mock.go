@@ -196,6 +196,14 @@ func (mockMgr *mockManager) TerminateInstance(ctx context.Context, host *host.Ho
 	return errors.WithStack(host.Terminate(user))
 }
 
+func (mockMgr *mockManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
+	return nil
+}
+
+func (mockMgr *mockManager) StartInstance(ctx context.Context, host *host.Host, user string) error {
+	return nil
+}
+
 func (mockMgr *mockManager) Configure(ctx context.Context, settings *evergreen.Settings) error {
 	//no-op. maybe will need to load something from settings in the future.
 	return nil

@@ -187,6 +187,14 @@ func (m *gceManager) TerminateInstance(ctx context.Context, host *host.Host, use
 	return host.Terminate(user)
 }
 
+func (m *gceManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
+	return nil
+}
+
+func (m *gceManager) StartInstance(ctx context.Context, host *host.Host, user string) error {
+	return nil
+}
+
 // IsUp checks whether the provisioned host is running.
 func (m *gceManager) IsUp(ctx context.Context, host *host.Host) (bool, error) {
 	status, err := m.GetInstanceStatus(ctx, host)

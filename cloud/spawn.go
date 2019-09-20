@@ -230,6 +230,28 @@ func TerminateSpawnHost(ctx context.Context, host *host.Host, settings *evergree
 	return nil
 }
 
+func StopSpawnHost(ctx context.Context, host *host.Host, settings *evergreen.Settings, user string) error {
+	cloudHost, err := GetCloudHost(ctx, host, settings)
+	if err != nil {
+		return err
+	}
+	if err = cloudHost.StopInstance(ctx, user); err != nil {
+		return err
+	}
+	return nil
+}
+
+func StartSpawnHost(ctx context.Context, host *host.Host, settings *evergreen.Settings, user string) error {
+	cloudHost, err := GetCloudHost(ctx, host, settings)
+	if err != nil {
+		return err
+	}
+	if err = cloudHost.StartInstance(ctx, user); err != nil {
+		return err
+	}
+	return nil
+}
+
 func MakeExtendedSpawnHostExpiration(host *host.Host, extendBy time.Duration) (time.Time, error) {
 	newExp := host.ExpirationTime.Add(extendBy)
 	remainingDuration := newExp.Sub(time.Now()) //nolint

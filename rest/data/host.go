@@ -124,6 +124,14 @@ func (hc *DBHostConnector) TerminateHost(ctx context.Context, host *host.Host, u
 	return errors.WithStack(cloud.TerminateSpawnHost(ctx, host, evergreen.GetEnvironment().Settings(), user))
 }
 
+func (hc *DBHostConnector) StopHost(ctx context.Context, host *host.Host, user string) error {
+	return errors.WithStack(cloud.StopSpawnHost(ctx, host, evergreen.GetEnvironment().Settings(), user))
+}
+
+func (hc *DBHostConnector) StartHost(ctx context.Context, host *host.Host, user string) error {
+	return errors.WithStack(cloud.StartSpawnHost(ctx, host, evergreen.GetEnvironment().Settings(), user))
+}
+
 func (hc *DBHostConnector) CheckHostSecret(r *http.Request) (int, error) {
 	_, code, err := model.ValidateHost("", r)
 	return code, errors.WithStack(err)
@@ -262,6 +270,26 @@ func (hc *MockHostConnector) SetHostExpirationTime(host *host.Host, newExp time.
 }
 
 func (hc *MockHostConnector) TerminateHost(ctx context.Context, host *host.Host, user string) error {
+	for _, h := range hc.CachedHosts {
+		if h.Id == host.Id {
+			return nil
+		}
+	}
+
+	return errors.New("can't find host")
+}
+
+func (hc *MockHostConnector) StopHost(ctx context.Context, host *host.Host, user string) error {
+	for _, h := range hc.CachedHosts {
+		if h.Id == host.Id {
+			return nil
+		}
+	}
+
+	return errors.New("can't find host")
+}
+
+func (hc *MockHostConnector) StartHost(ctx context.Context, host *host.Host, user string) error {
 	for _, h := range hc.CachedHosts {
 		if h.Id == host.Id {
 			return nil

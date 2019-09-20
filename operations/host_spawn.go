@@ -199,7 +199,69 @@ func hostModify() cli.Command {
 	}
 }
 
-func hostlist() cli.Command {
+func hostStop() cli.Command {
+	return cli.Command{
+		Name:   "stop",
+		Usage:  "stop a running spawn host",
+		Flags:  addHostFlag(),
+		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			hostID := c.String(hostFlagName)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.GetRestCommunicator(ctx)
+			defer client.Close()
+
+			err = client.StopSpawnHost(ctx, hostID)
+			if err != nil {
+				return err
+			}
+
+			grip.Infof("Stopped host '%s'", hostID)
+			return nil
+		},
+	}
+}
+
+func hostStart() cli.Command {
+	return cli.Command{
+		Name:   "start",
+		Usage:  "start a stopped spawn host",
+		Flags:  addHostFlag(),
+		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			hostID := c.String(hostFlagName)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.GetRestCommunicator(ctx)
+			defer client.Close()
+
+			err = client.StartSpawnHost(ctx, hostID)
+			if err != nil {
+				return err
+			}
+
+			grip.Infof("Started host '%s'", hostID)
+			return nil
+		},
+	}
+}
+
+func hostList() cli.Command {
 	const (
 		mineFlagName = "mine"
 		allFlagName  = "all"

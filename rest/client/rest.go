@@ -123,6 +123,54 @@ func (c *communicatorImpl) ModifySpawnHost(ctx context.Context, hostID string, c
 	return nil
 }
 
+func (c *communicatorImpl) StopSpawnHost(ctx context.Context, hostID string) error {
+	info := requestInfo{
+		method:  post,
+		path:    fmt.Sprintf("hosts/%s/stop", hostID),
+		version: apiVersion2,
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return errors.Wrapf(err, "error sending request to stop host")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errMsg := gimlet.ErrorResponse{}
+		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+			return errors.Wrap(err, "problem stopping host and parsing error message")
+		}
+		return errors.Wrap(errMsg, "problem stopping host")
+	}
+
+	return nil
+}
+
+func (c *communicatorImpl) StartSpawnHost(ctx context.Context, hostID string) error {
+	info := requestInfo{
+		method:  post,
+		path:    fmt.Sprintf("hosts/%s/start", hostID),
+		version: apiVersion2,
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return errors.Wrapf(err, "error sending request to start host")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errMsg := gimlet.ErrorResponse{}
+		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+			return errors.Wrap(err, "problem starting host and parsing error message")
+		}
+		return errors.Wrap(errMsg, "problem starting host")
+	}
+
+	return nil
+}
+
 func (c *communicatorImpl) TerminateSpawnHost(ctx context.Context, hostID string) error {
 	info := requestInfo{
 		method:  post,

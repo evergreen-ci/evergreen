@@ -229,6 +229,12 @@ type Connector interface {
 	// TerminateHost terminates the given host via the cloud provider's API
 	TerminateHost(context.Context, *host.Host, string) error
 
+	// StopHost stops the given running host.
+	StopHost(context.Context, *host.Host, string) error
+
+	// StartHost starts the given stopped host.
+	StartHost(context.Context, *host.Host, string) error
+
 	CheckHostSecret(*http.Request) (int, error)
 
 	// FindProjectAliases queries the database to find all aliases.

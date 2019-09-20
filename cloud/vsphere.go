@@ -158,6 +158,14 @@ func (m *vsphereManager) TerminateInstance(ctx context.Context, host *host.Host,
 	return nil
 }
 
+func (m *vsphereManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
+	return nil
+}
+
+func (m *vsphereManager) StartInstance(ctx context.Context, host *host.Host, user string) error {
+	return nil
+}
+
 // IsUp checks whether the provisioned host is running.
 func (m *vsphereManager) IsUp(ctx context.Context, host *host.Host) (bool, error) {
 	status, err := m.GetInstanceStatus(ctx, host)

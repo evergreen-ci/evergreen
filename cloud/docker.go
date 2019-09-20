@@ -167,6 +167,14 @@ func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, use
 	return h.Terminate(user)
 }
 
+func (m *dockerManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
+	return nil
+}
+
+func (m *dockerManager) StartInstance(ctx context.Context, host *host.Host, user string) error {
+	return nil
+}
+
 //Configure populates a dockerManager by reading relevant settings from the
 //config object.
 func (m *dockerManager) Configure(ctx context.Context, s *evergreen.Settings) error {

@@ -162,6 +162,14 @@ func (m *openStackManager) TerminateInstance(ctx context.Context, host *host.Hos
 	return errors.WithStack(host.Terminate(user))
 }
 
+func (m *openStackManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
+	return nil
+}
+
+func (m *openStackManager) StartInstance(ctx context.Context, host *host.Host, user string) error {
+	return nil
+}
+
 // IsUp checks whether the provisioned host is running.
 func (m *openStackManager) IsUp(ctx context.Context, host *host.Host) (bool, error) {
 	status, err := m.GetInstanceStatus(ctx, host)
