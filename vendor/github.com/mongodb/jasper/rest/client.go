@@ -1,4 +1,4 @@
-package jasper
+package rest
 
 import (
 	"bytes"
@@ -14,15 +14,18 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
+	"github.com/tychoish/bond"
 )
 
-// NewRESTClient creates a REST client that connecst to the given address
+// NewClient creates a REST client that connecst to the given address
 // running the Jasper REST service.
-func NewRESTClient(addr net.Addr) RemoteClient {
+func NewClient(addr net.Addr) jasper.RemoteClient {
 	return &restClient{
 		prefix: fmt.Sprintf("http://%s/jasper/v1", addr.String()),
-		client: GetHTTPClient(),
+		client: bond.GetHTTPClient(),
 	}
 }
 
@@ -32,7 +35,7 @@ type restClient struct {
 }
 
 func (c *restClient) CloseConnection() error {
-	PutHTTPClient(c.client)
+	bond.PutHTTPClient(c.client)
 	return nil
 }
 
@@ -105,7 +108,7 @@ func (c *restClient) ID() string {
 	return id
 }
 
-func (c *restClient) CreateProcess(ctx context.Context, opts *CreateOptions) (Process, error) {
+func (c *restClient) CreateProcess(ctx context.Context, opts *options.Create) (jasper.Process, error) {
 	body, err := makeBody(opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem building request for job create")
@@ -117,7 +120,7 @@ func (c *restClient) CreateProcess(ctx context.Context, opts *CreateOptions) (Pr
 	}
 	defer resp.Body.Close()
 
-	var info ProcessInfo
+	var info jasper.ProcessInfo
 	if err := gimlet.GetJSON(resp.Body, &info); err != nil {
 		return nil, errors.Wrap(err, "problem reading process info from response")
 	}
@@ -128,21 +131,21 @@ func (c *restClient) CreateProcess(ctx context.Context, opts *CreateOptions) (Pr
 	}, nil
 }
 
-func (c *restClient) CreateCommand(ctx context.Context) *Command {
-	return NewCommand().ProcConstructor(c.CreateProcess)
+func (c *restClient) CreateCommand(ctx context.Context) *jasper.Command {
+	return jasper.NewCommand().ProcConstructor(c.CreateProcess)
 }
 
-func (c *restClient) Register(ctx context.Context, proc Process) error {
+func (c *restClient) Register(ctx context.Context, proc jasper.Process) error {
 	return errors.New("cannot register a local process on a remote service")
 }
 
-func (c *restClient) getListOfProcesses(resp *http.Response) ([]Process, error) {
-	payload := []ProcessInfo{}
+func (c *restClient) getListOfProcesses(resp *http.Response) ([]jasper.Process, error) {
+	payload := []jasper.ProcessInfo{}
 	if err := gimlet.GetJSON(resp.Body, &payload); err != nil {
 		return nil, errors.Wrap(err, "problem reading process info from response")
 	}
 
-	output := []Process{}
+	output := []jasper.Process{}
 	for _, info := range payload {
 		output = append(output, &restProcess{
 			id:     info.ID,
@@ -153,7 +156,7 @@ func (c *restClient) getListOfProcesses(resp *http.Response) ([]Process, error) 
 	return output, nil
 }
 
-func (c *restClient) List(ctx context.Context, f Filter) ([]Process, error) {
+func (c *restClient) List(ctx context.Context, f options.Filter) ([]jasper.Process, error) {
 	if err := f.Validate(); err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -169,7 +172,7 @@ func (c *restClient) List(ctx context.Context, f Filter) ([]Process, error) {
 	return out, errors.WithStack(err)
 }
 
-func (c *restClient) Group(ctx context.Context, name string) ([]Process, error) {
+func (c *restClient) Group(ctx context.Context, name string) ([]jasper.Process, error) {
 	resp, err := c.doRequest(ctx, http.MethodGet, c.getURL("/list/group/%s", name), nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "request returned error")
@@ -190,22 +193,22 @@ func (c *restClient) getProcess(ctx context.Context, id string) (*http.Response,
 	return resp, nil
 }
 
-func (c *restClient) getProcessInfo(ctx context.Context, id string) (ProcessInfo, error) {
+func (c *restClient) getProcessInfo(ctx context.Context, id string) (jasper.ProcessInfo, error) {
 	resp, err := c.getProcess(ctx, id)
 	if err != nil {
-		return ProcessInfo{}, errors.WithStack(err)
+		return jasper.ProcessInfo{}, errors.WithStack(err)
 	}
 	defer resp.Body.Close()
 
-	out := ProcessInfo{}
+	out := jasper.ProcessInfo{}
 	if err = gimlet.GetJSON(resp.Body, &out); err != nil {
-		return ProcessInfo{}, errors.WithStack(err)
+		return jasper.ProcessInfo{}, errors.WithStack(err)
 	}
 
 	return out, nil
 }
 
-func (c *restClient) Get(ctx context.Context, id string) (Process, error) {
+func (c *restClient) Get(ctx context.Context, id string) (jasper.Process, error) {
 	resp, err := c.getProcess(ctx, id)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -255,22 +258,22 @@ func (c *restClient) GetBuildloggerURLs(ctx context.Context, id string) ([]strin
 	return urls, nil
 }
 
-func (c *restClient) GetLogStream(ctx context.Context, id string, count int) (LogStream, error) {
+func (c *restClient) GetLogStream(ctx context.Context, id string, count int) (jasper.LogStream, error) {
 	resp, err := c.doRequest(ctx, http.MethodGet, c.getURL("/process/%s/logs/%d", id, count), nil)
 	if err != nil {
-		return LogStream{}, err
+		return jasper.LogStream{}, err
 	}
 	defer resp.Body.Close()
 
-	stream := LogStream{}
+	stream := jasper.LogStream{}
 	if err = gimlet.GetJSON(resp.Body, &stream); err != nil {
-		return LogStream{}, errors.Wrap(err, "problem reading logs from response")
+		return jasper.LogStream{}, errors.Wrap(err, "problem reading logs from response")
 	}
 
 	return stream, nil
 }
 
-func (c *restClient) DownloadFile(ctx context.Context, info DownloadInfo) error {
+func (c *restClient) DownloadFile(ctx context.Context, info options.Download) error {
 	body, err := makeBody(info)
 	if err != nil {
 		return errors.Wrap(err, "problem building request")
@@ -286,7 +289,7 @@ func (c *restClient) DownloadFile(ctx context.Context, info DownloadInfo) error 
 }
 
 // DownloadMongoDB downloads the desired version of MongoDB.
-func (c *restClient) DownloadMongoDB(ctx context.Context, opts MongoDBDownloadOptions) error {
+func (c *restClient) DownloadMongoDB(ctx context.Context, opts options.MongoDBDownload) error {
 	body, err := makeBody(opts)
 	if err != nil {
 		return err
@@ -302,7 +305,7 @@ func (c *restClient) DownloadMongoDB(ctx context.Context, opts MongoDBDownloadOp
 }
 
 // ConfigureCache changes the cache configurations.
-func (c *restClient) ConfigureCache(ctx context.Context, opts CacheOptions) error {
+func (c *restClient) ConfigureCache(ctx context.Context, opts options.Cache) error {
 	body, err := makeBody(opts)
 	if err != nil {
 		return err
@@ -327,8 +330,8 @@ func (c *restClient) SignalEvent(ctx context.Context, name string) error {
 	return nil
 }
 
-func (c *restClient) WriteFile(ctx context.Context, info WriteFileInfo) error {
-	sendInfo := func(info WriteFileInfo) error {
+func (c *restClient) WriteFile(ctx context.Context, info options.WriteFile) error {
+	sendInfo := func(info options.WriteFile) error {
 		body, err := makeBody(info)
 		if err != nil {
 			return errors.Wrap(err, "problem building request")
@@ -350,7 +353,7 @@ type restProcess struct {
 
 func (p *restProcess) ID() string { return p.id }
 
-func (p *restProcess) Info(ctx context.Context) ProcessInfo {
+func (p *restProcess) Info(ctx context.Context) jasper.ProcessInfo {
 	info, err := p.client.getProcessInfo(ctx, p.id)
 	grip.Debug(message.WrapError(err, message.Fields{"process": p.id}))
 	return info
@@ -395,14 +398,14 @@ func (p *restProcess) Wait(ctx context.Context) (int, error) {
 	return exitCode, nil
 }
 
-func (p *restProcess) Respawn(ctx context.Context) (Process, error) {
+func (p *restProcess) Respawn(ctx context.Context) (jasper.Process, error) {
 	resp, err := p.client.doRequest(ctx, http.MethodGet, p.client.getURL("/process/%s/respawn", p.id), nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "request returned error")
 	}
 	defer resp.Body.Close()
 
-	info := ProcessInfo{}
+	info := jasper.ProcessInfo{}
 	if err = gimlet.GetJSON(resp.Body, &info); err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -413,15 +416,15 @@ func (p *restProcess) Respawn(ctx context.Context) (Process, error) {
 	}, nil
 }
 
-func (p *restProcess) RegisterTrigger(_ context.Context, _ ProcessTrigger) error {
+func (p *restProcess) RegisterTrigger(_ context.Context, _ jasper.ProcessTrigger) error {
 	return errors.New("cannot register triggers on remote processes")
 }
 
-func (p *restProcess) RegisterSignalTrigger(_ context.Context, _ SignalTrigger) error {
+func (p *restProcess) RegisterSignalTrigger(_ context.Context, _ jasper.SignalTrigger) error {
 	return errors.New("cannot register signal trigger on remote processes")
 }
 
-func (p *restProcess) RegisterSignalTriggerID(ctx context.Context, triggerID SignalTriggerID) error {
+func (p *restProcess) RegisterSignalTriggerID(ctx context.Context, triggerID jasper.SignalTriggerID) error {
 	resp, err := p.client.doRequest(ctx, http.MethodPatch, p.client.getURL("/process/%s/trigger/signal/%s", p.id, triggerID), nil)
 	if err != nil {
 		return errors.Wrap(err, "request returned error")

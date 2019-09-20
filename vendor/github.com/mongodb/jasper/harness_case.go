@@ -1,3 +1,5 @@
+// +build none
+
 package jasper
 
 import (
@@ -7,6 +9,7 @@ import (
 	"time"
 
 	"github.com/mongodb/grip"
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
 
@@ -15,7 +18,7 @@ type caseDefinition struct {
 	bench              func(context.Context, *caseDefinition) result
 	requiredIterations int
 	timeout            time.Duration
-	procMaker          func(context.Context, *CreateOptions) (Process, error)
+	procMaker          func(context.Context, *options.Create) (Process, error)
 }
 
 func (c *caseDefinition) run(ctx context.Context) *benchResult {

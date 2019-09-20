@@ -1,4 +1,4 @@
-package jasper
+package options
 
 import (
 	"bytes"
@@ -50,7 +50,7 @@ func TestCreateConstructor(t *testing.T) {
 		},
 	} {
 		t.Run(test.id, func(t *testing.T) {
-			opt, err := MakeCreationOptions(test.cmd)
+			opt, err := MakeCreation(test.cmd)
 			if test.shouldFail {
 				assert.Error(t, err)
 				assert.Nil(t, opt)
@@ -64,32 +64,32 @@ func TestCreateConstructor(t *testing.T) {
 	}
 }
 
-func TestCreateOptions(t *testing.T) {
+func TestCreate(t *testing.T) {
 	t.Parallel()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	for name, test := range map[string]func(t *testing.T, opts *CreateOptions){
-		"DefaultConfigForTestsValidate": func(t *testing.T, opts *CreateOptions) {
+	for name, test := range map[string]func(t *testing.T, opts *Create){
+		"DefaultConfigForTestsValidate": func(t *testing.T, opts *Create) {
 			assert.NoError(t, opts.Validate())
 		},
-		"EmptyArgsShouldNotValidate": func(t *testing.T, opts *CreateOptions) {
+		"EmptyArgsShouldNotValidate": func(t *testing.T, opts *Create) {
 			opts.Args = []string{}
 			assert.Error(t, opts.Validate())
 		},
-		"ZeroTimeoutShouldNotError": func(t *testing.T, opts *CreateOptions) {
+		"ZeroTimeoutShouldNotError": func(t *testing.T, opts *Create) {
 			opts.Timeout = 0
 			assert.NoError(t, opts.Validate())
 		},
-		"SmallTimeoutShouldNotValidate": func(t *testing.T, opts *CreateOptions) {
+		"SmallTimeoutShouldNotValidate": func(t *testing.T, opts *Create) {
 			opts.Timeout = time.Millisecond
 			assert.Error(t, opts.Validate())
 		},
-		"LargeTimeoutShouldValidate": func(t *testing.T, opts *CreateOptions) {
+		"LargeTimeoutShouldValidate": func(t *testing.T, opts *Create) {
 			opts.Timeout = time.Hour
 			assert.NoError(t, opts.Validate())
 		},
-		"StandardInputBytesSetsStandardInput": func(t *testing.T, opts *CreateOptions) {
+		"StandardInputBytesSetsStandardInput": func(t *testing.T, opts *Create) {
 			stdinBytesStr := "foo"
 			opts.StandardInputBytes = []byte(stdinBytesStr)
 
@@ -99,7 +99,7 @@ func TestCreateOptions(t *testing.T) {
 			require.NoError(t, err)
 			assert.EqualValues(t, stdinBytesStr, out)
 		},
-		"StandardInputBytesTakePrecedenceOverStandardInput": func(t *testing.T, opts *CreateOptions) {
+		"StandardInputBytesTakePrecedenceOverStandardInput": func(t *testing.T, opts *Create) {
 			stdinStr := "foo"
 			opts.StandardInput = bytes.NewBufferString(stdinStr)
 
@@ -112,11 +112,11 @@ func TestCreateOptions(t *testing.T) {
 			require.NoError(t, err)
 			assert.EqualValues(t, stdinBytesStr, out)
 		},
-		"NonExistingWorkingDirectoryShouldNotValidate": func(t *testing.T, opts *CreateOptions) {
+		"NonExistingWorkingDirectoryShouldNotValidate": func(t *testing.T, opts *Create) {
 			opts.WorkingDirectory = "foo"
 			assert.Error(t, opts.Validate())
 		},
-		"ExtantWorkingDirectoryShouldPass": func(t *testing.T, opts *CreateOptions) {
+		"ExtantWorkingDirectoryShouldPass": func(t *testing.T, opts *Create) {
 			wd, err := os.Getwd()
 			assert.NoError(t, err)
 			assert.NotZero(t, wd)
@@ -124,7 +124,7 @@ func TestCreateOptions(t *testing.T) {
 			opts.WorkingDirectory = wd
 			assert.NoError(t, opts.Validate())
 		},
-		"WorkingDirectoryShouldErrorForFiles": func(t *testing.T, opts *CreateOptions) {
+		"WorkingDirectoryShouldErrorForFiles": func(t *testing.T, opts *Create) {
 			gobin, err := exec.LookPath("go")
 			assert.NoError(t, err)
 			assert.NotZero(t, gobin)
@@ -132,36 +132,36 @@ func TestCreateOptions(t *testing.T) {
 			opts.WorkingDirectory = gobin
 			assert.Error(t, opts.Validate())
 		},
-		"MustSpecifyValidOutputOptions": func(t *testing.T, opts *CreateOptions) {
+		"MustSpecifyValidOutput": func(t *testing.T, opts *Create) {
 			opts.Output.SendErrorToOutput = true
 			opts.Output.SendOutputToError = true
 			assert.Error(t, opts.Validate())
 		},
-		"WorkingDirectoryUnresolveableShouldNotError": func(t *testing.T, opts *CreateOptions) {
+		"WorkingDirectoryUnresolveableShouldNotError": func(t *testing.T, opts *Create) {
 			cmd, _, err := opts.Resolve(ctx)
 			require.NoError(t, err)
 			assert.NotNil(t, cmd)
 			assert.NotZero(t, cmd.Dir)
 			assert.Equal(t, opts.WorkingDirectory, cmd.Dir)
 		},
-		"ResolveFailsIfOptionsAreFatal": func(t *testing.T, opts *CreateOptions) {
+		"ResolveFailsIfOptionsAreFatal": func(t *testing.T, opts *Create) {
 			opts.Args = []string{}
 			cmd, _, err := opts.Resolve(ctx)
 			assert.Error(t, err)
 			assert.Nil(t, cmd)
 		},
-		"WithoutOverrideEnvironmentEnvIsPopulated": func(t *testing.T, opts *CreateOptions) {
+		"WithoutOverrideEnvironmentEnvIsPopulated": func(t *testing.T, opts *Create) {
 			cmd, _, err := opts.Resolve(ctx)
 			assert.NoError(t, err)
 			assert.NotZero(t, cmd.Env)
 		},
-		"WithOverrideEnvironmentEnvIsEmpty": func(t *testing.T, opts *CreateOptions) {
+		"WithOverrideEnvironmentEnvIsEmpty": func(t *testing.T, opts *Create) {
 			opts.OverrideEnviron = true
 			cmd, _, err := opts.Resolve(ctx)
 			assert.NoError(t, err)
 			assert.Zero(t, cmd.Env)
 		},
-		"EnvironmentVariablesArePropagated": func(t *testing.T, opts *CreateOptions) {
+		"EnvironmentVariablesArePropagated": func(t *testing.T, opts *Create) {
 			opts.Environment = map[string]string{
 				"foo": "bar",
 			}
@@ -171,21 +171,21 @@ func TestCreateOptions(t *testing.T) {
 			assert.Contains(t, cmd.Env, "foo=bar")
 			assert.NotContains(t, cmd.Env, "bar=foo")
 		},
-		"MultipleArgsArePropagated": func(t *testing.T, opts *CreateOptions) {
+		"MultipleArgsArePropagated": func(t *testing.T, opts *Create) {
 			opts.Args = append(opts.Args, "-lha")
 			cmd, _, err := opts.Resolve(ctx)
 			assert.NoError(t, err)
 			assert.Contains(t, cmd.Path, "ls")
 			assert.Len(t, cmd.Args, 2)
 		},
-		"WithOnlyCommandsArgsHasOneVal": func(t *testing.T, opts *CreateOptions) {
+		"WithOnlyCommandsArgsHasOneVal": func(t *testing.T, opts *Create) {
 			cmd, _, err := opts.Resolve(ctx)
 			assert.NoError(t, err)
 			assert.Contains(t, cmd.Path, "ls")
 			assert.Len(t, cmd.Args, 1)
 			assert.Equal(t, "ls", cmd.Args[0])
 		},
-		"WithTimeout": func(t *testing.T, opts *CreateOptions) {
+		"WithTimeout": func(t *testing.T, opts *Create) {
 			opts.Timeout = time.Second
 			opts.Args = []string{"sleep", "2"}
 
@@ -195,8 +195,8 @@ func TestCreateOptions(t *testing.T) {
 			assert.Error(t, cmd.Run())
 			assert.True(t, time.Now().After(deadline))
 		},
-		"ReturnedContextWrapsResolveContext": func(t *testing.T, opts *CreateOptions) {
-			opts = sleepCreateOpts(10)
+		"ReturnedContextWrapsResolveContext": func(t *testing.T, opts *Create) {
+			opts.Args = []string{"sleep", "10"}
 			opts.Timeout = 2 * time.Second
 			tctx, tcancel := context.WithTimeout(ctx, time.Millisecond)
 			defer tcancel()
@@ -207,8 +207,8 @@ func TestCreateOptions(t *testing.T) {
 			assert.Equal(t, context.DeadlineExceeded, tctx.Err())
 			assert.True(t, time.Now().After(deadline))
 		},
-		"ReturnedContextErrorsOnTimeout": func(t *testing.T, opts *CreateOptions) {
-			opts = sleepCreateOpts(10)
+		"ReturnedContextErrorsOnTimeout": func(t *testing.T, opts *Create) {
+			opts.Args = []string{"sleep", "10"}
 			opts.Timeout = time.Second
 			tctx, tcancel := context.WithTimeout(ctx, 5*time.Second)
 			defer tcancel()
@@ -222,7 +222,7 @@ func TestCreateOptions(t *testing.T) {
 			assert.NoError(t, tctx.Err())
 			assert.True(t, time.Now().After(deadline))
 		},
-		"ClosersAreAlwaysCalled": func(t *testing.T, opts *CreateOptions) {
+		"ClosersAreAlwaysCalled": func(t *testing.T, opts *Create) {
 			var counter int
 			opts.closers = append(opts.closers,
 				func() (_ error) { counter++; return },
@@ -232,34 +232,34 @@ func TestCreateOptions(t *testing.T) {
 			assert.Equal(t, counter, 3)
 
 		},
-		"ConflictingTimeoutOptions": func(t *testing.T, opts *CreateOptions) {
+		"ConflictingTimeoutOptions": func(t *testing.T, opts *Create) {
 			opts.TimeoutSecs = 100
 			opts.Timeout = time.Hour
 
 			assert.Error(t, opts.Validate())
 		},
-		"ValidationOverrideDefaultsForSecond": func(t *testing.T, opts *CreateOptions) {
+		"ValidationOverrideDefaultsForSecond": func(t *testing.T, opts *Create) {
 			opts.TimeoutSecs = 100
 			opts.Timeout = 0
 
 			assert.NoError(t, opts.Validate())
 			assert.Equal(t, 100*time.Second, opts.Timeout)
 		},
-		"ValidationOverrideDefaultsForDuration": func(t *testing.T, opts *CreateOptions) {
+		"ValidationOverrideDefaultsForDuration": func(t *testing.T, opts *Create) {
 			opts.TimeoutSecs = 0
 			opts.Timeout = time.Second
 
 			assert.NoError(t, opts.Validate())
 			assert.Equal(t, 1, opts.TimeoutSecs)
 		},
-		"ResolveFailsWithInvalidLoggingConfiguration": func(t *testing.T, opts *CreateOptions) {
-			opts.Output.Loggers = []Logger{Logger{Type: LogSumologic, Options: LogOptions{Format: LogFormatPlain}}}
+		"ResolveFailsWithInvalidLoggingConfiguration": func(t *testing.T, opts *Create) {
+			opts.Output.Loggers = []Logger{Logger{Type: LogSumologic, Options: Log{Format: LogFormatPlain}}}
 			cmd, _, err := opts.Resolve(ctx)
 			assert.Error(t, err)
 			assert.Nil(t, cmd)
 		},
-		"ResolveFailsWithInvalidErrorLoggingConfiguration": func(t *testing.T, opts *CreateOptions) {
-			opts.Output.Loggers = []Logger{Logger{Type: LogSumologic, Options: LogOptions{Format: LogFormatPlain}}}
+		"ResolveFailsWithInvalidErrorLoggingConfiguration": func(t *testing.T, opts *Create) {
+			opts.Output.Loggers = []Logger{Logger{Type: LogSumologic, Options: Log{Format: LogFormatPlain}}}
 			opts.Output.SuppressOutput = true
 			cmd, _, err := opts.Resolve(ctx)
 			assert.Error(t, err)
@@ -267,7 +267,7 @@ func TestCreateOptions(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			opts := &CreateOptions{Args: []string{"ls"}}
+			opts := &Create{Args: []string{"ls"}}
 			test(t, opts)
 		})
 	}
@@ -288,7 +288,7 @@ func TestFileLogging(t *testing.T) {
 	errorSize := int64(len(catErrorMessage) + 1)
 
 	// Ensure good file exists and has data
-	goodFile, err := ioutil.TempFile("build", "this_file_exists")
+	goodFile, err := ioutil.TempFile("", "this_file_exists")
 	require.NoError(t, err)
 	defer func() {
 		assert.NoError(t, goodFile.Close())
@@ -328,77 +328,77 @@ func TestFileLogging(t *testing.T) {
 		command          Command
 		numBytesExpected int64
 		numLogs          int
-		outOpts          OutputOptions
+		outOpts          Output
 	}{
 		{
 			id:               "LoggerWritesOutputToOneFileEndpoint",
 			command:          commands["Output"],
 			numBytesExpected: outputSize,
 			numLogs:          1,
-			outOpts:          OutputOptions{SuppressOutput: false, SuppressError: false},
+			outOpts:          Output{SuppressOutput: false, SuppressError: false},
 		},
 		{
 			id:               "LoggerWritesOutputToMultipleFileEndpoints",
 			command:          commands["Output"],
 			numBytesExpected: outputSize,
 			numLogs:          2,
-			outOpts:          OutputOptions{SuppressOutput: false, SuppressError: false},
+			outOpts:          Output{SuppressOutput: false, SuppressError: false},
 		},
 		{
 			id:               "LoggerWritesErrorToFileEndpoint",
 			command:          commands["Error"],
 			numBytesExpected: errorSize,
 			numLogs:          1,
-			outOpts:          OutputOptions{SuppressOutput: true, SuppressError: false},
+			outOpts:          Output{SuppressOutput: true, SuppressError: false},
 		},
 		{
 			id:               "LoggerReadsFromBothStandardOutputAndStandardError",
 			command:          commands["OutputAndError"],
 			numBytesExpected: outputSize + errorSize,
 			numLogs:          1,
-			outOpts:          OutputOptions{SuppressOutput: false, SuppressError: false},
+			outOpts:          Output{SuppressOutput: false, SuppressError: false},
 		},
 		{
 			id:               "LoggerIgnoresOutputWhenSuppressed",
 			command:          commands["Output"],
 			numBytesExpected: 0,
 			numLogs:          1,
-			outOpts:          OutputOptions{SuppressOutput: true, SuppressError: false},
+			outOpts:          Output{SuppressOutput: true, SuppressError: false},
 		},
 		{
 			id:               "LoggerIgnoresErrorWhenSuppressed",
 			command:          commands["Error"],
 			numBytesExpected: 0,
 			numLogs:          1,
-			outOpts:          OutputOptions{SuppressOutput: false, SuppressError: true},
+			outOpts:          Output{SuppressOutput: false, SuppressError: true},
 		},
 		{
 			id:               "LoggerIgnoresOutputAndErrorWhenSuppressed",
 			command:          commands["OutputAndError"],
 			numBytesExpected: 0,
 			numLogs:          1,
-			outOpts:          OutputOptions{SuppressOutput: true, SuppressError: true},
+			outOpts:          Output{SuppressOutput: true, SuppressError: true},
 		},
 		{
 			id:               "LoggerReadsFromRedirectedOutput",
 			command:          commands["Output"],
 			numBytesExpected: outputSize,
 			numLogs:          1,
-			outOpts:          OutputOptions{SuppressOutput: false, SuppressError: false, SendOutputToError: true},
+			outOpts:          Output{SuppressOutput: false, SuppressError: false, SendOutputToError: true},
 		},
 		{
 			id:               "LoggerReadsFromRedirectedError",
 			command:          commands["Error"],
 			numBytesExpected: errorSize,
 			numLogs:          1,
-			outOpts:          OutputOptions{SuppressOutput: false, SuppressError: false, SendErrorToOutput: true},
+			outOpts:          Output{SuppressOutput: false, SuppressError: false, SendErrorToOutput: true},
 		},
 	} {
 		t.Run(testParams.id, func(t *testing.T) {
 
 			files := []*os.File{}
 			for i := 0; i < testParams.numLogs; i++ {
-				file, err := ioutil.TempFile("build", "out.txt")
+				file, err := ioutil.TempFile("", "out.txt")
 				require.NoError(t, err)
 				defer func() {
 					assert.NoError(t, file.Close())
@@ -410,11 +410,11 @@ func TestFileLogging(t *testing.T) {
 				files = append(files, file)
 			}
 
-			opts := CreateOptions{Output: testParams.outOpts}
+			opts := Create{Output: testParams.outOpts}
 			for _, file := range files {
 				logger := Logger{
 					Type: LogFile,
-					Options: LogOptions{
+					Options: Log{
 						FileName: file.Name(),
 						Format:   LogFormatPlain,
 					},

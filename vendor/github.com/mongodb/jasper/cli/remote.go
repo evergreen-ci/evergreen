@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/options"
 	"github.com/urfave/cli"
 )
 
@@ -43,7 +44,7 @@ func remoteConfigureCache() cli.Command {
 		Flags:  clientFlags(),
 		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
-			input := jasper.CacheOptions{}
+			input := options.Cache{}
 			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client jasper.RemoteClient) interface{} {
 				return makeOutcomeResponse(client.ConfigureCache(ctx, input))
 			})
@@ -57,7 +58,7 @@ func remoteWriteFile() cli.Command {
 		Flags:  clientFlags(),
 		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
-			input := jasper.WriteFileInfo{}
+			input := options.WriteFile{}
 			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client jasper.RemoteClient) interface{} {
 				return makeOutcomeResponse(client.WriteFile(ctx, input))
 			})
@@ -71,7 +72,7 @@ func remoteDownloadFile() cli.Command {
 		Flags:  clientFlags(),
 		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
-			input := jasper.DownloadInfo{}
+			input := options.Download{}
 			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client jasper.RemoteClient) interface{} {
 				return makeOutcomeResponse(client.DownloadFile(ctx, input))
 			})
@@ -85,7 +86,7 @@ func remoteDownloadMongoDB() cli.Command {
 		Flags:  clientFlags(),
 		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
-			input := jasper.MongoDBDownloadOptions{}
+			input := options.MongoDBDownload{}
 			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client jasper.RemoteClient) interface{} {
 				return makeOutcomeResponse(client.DownloadMongoDB(ctx, input))
 			})

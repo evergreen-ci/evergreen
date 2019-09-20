@@ -8,6 +8,8 @@ import (
 	"syscall"
 	"testing"
 
+	"github.com/mongodb/jasper/options"
+	"github.com/mongodb/jasper/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -29,15 +31,15 @@ func TestBasicManagerWithTrackedProcesses(t *testing.T) {
 		},
 	} {
 		t.Run(managerName, func(t *testing.T) {
-			for testName, testCase := range map[string]func(context.Context, *testing.T, *basicProcessManager, *windowsProcessTracker, *CreateOptions){
-				"ProcessTrackerCreatedEmpty": func(_ context.Context, t *testing.T, m *basicProcessManager, tracker *windowsProcessTracker, _ *CreateOptions) {
+			for testName, testCase := range map[string]func(context.Context, *testing.T, *basicProcessManager, *windowsProcessTracker, *options.Create){
+				"ProcessTrackerCreatedEmpty": func(_ context.Context, t *testing.T, m *basicProcessManager, tracker *windowsProcessTracker, _ *options.Create) {
 					require.NotNil(t, tracker.job)
 
 					info, err := QueryInformationJobObjectProcessIdList(tracker.job.handle)
 					assert.NoError(t, err)
 					assert.Zero(t, info.NumberOfAssignedProcesses)
 				},
-				"CreateAddsProcess": func(ctx context.Context, t *testing.T, m *basicProcessManager, tracker *windowsProcessTracker, opts *CreateOptions) {
+				"CreateAddsProcess": func(ctx context.Context, t *testing.T, m *basicProcessManager, tracker *windowsProcessTracker, opts *options.Create) {
 					proc, err := m.CreateProcess(ctx, opts)
 					require.NoError(t, err)
 
@@ -47,7 +49,7 @@ func TestBasicManagerWithTrackedProcesses(t *testing.T) {
 					assert.Equal(t, proc.Info(ctx).PID, int(info.ProcessIdList[0]))
 					assert.NoError(t, m.Close(ctx))
 				},
-				"RegisterAddsProcess": func(ctx context.Context, t *testing.T, m *basicProcessManager, tracker *windowsProcessTracker, opts *CreateOptions) {
+				"RegisterAddsProcess": func(ctx context.Context, t *testing.T, m *basicProcessManager, tracker *windowsProcessTracker, opts *options.Create) {
 					proc, err := newBasicProcess(ctx, opts)
 					require.NoError(t, err)
 					assert.NoError(t, m.Register(ctx, proc))
@@ -58,7 +60,7 @@ func TestBasicManagerWithTrackedProcesses(t *testing.T) {
 					assert.Equal(t, proc.Info(ctx).PID, int(info.ProcessIdList[0]))
 					assert.NoError(t, m.Close(ctx))
 				},
-				"ClosePerformsProcessTrackingCleanup": func(ctx context.Context, t *testing.T, m *basicProcessManager, tracker *windowsProcessTracker, opts *CreateOptions) {
+				"ClosePerformsProcessTrackingCleanup": func(ctx context.Context, t *testing.T, m *basicProcessManager, tracker *windowsProcessTracker, opts *options.Create) {
 					proc, err := m.CreateProcess(ctx, opts)
 					require.NoError(t, err)
 
@@ -74,7 +76,7 @@ func TestBasicManagerWithTrackedProcesses(t *testing.T) {
 					assert.False(t, proc.Running(ctx))
 					assert.True(t, proc.Complete(ctx))
 				},
-				"CloseOnTerminatedProcessSucceeds": func(ctx context.Context, t *testing.T, m *basicProcessManager, tracker *windowsProcessTracker, opts *CreateOptions) {
+				"CloseOnTerminatedProcessSucceeds": func(ctx context.Context, t *testing.T, m *basicProcessManager, tracker *windowsProcessTracker, opts *options.Create) {
 					proc, err := m.CreateProcess(ctx, opts)
 					require.NoError(t, err)
 
@@ -92,13 +94,12 @@ func TestBasicManagerWithTrackedProcesses(t *testing.T) {
 						t.Skip("Evergreen makes its own job object, so these will not pass in Evergreen tests ",
 							"(although they will pass if locally run).")
 					}
-					tctx, cancel := context.WithTimeout(ctx, longTaskTimeout)
+					tctx, cancel := context.WithTimeout(ctx, testutil.LongTestTimeout)
 					defer cancel()
 					manager := makeManager(tctx, t)
 					tracker, ok := manager.tracker.(*windowsProcessTracker)
 					require.True(t, ok)
-					opts := yesCreateOpts(0)
-					testCase(tctx, t, manager, tracker, &opts)
+					testCase(tctx, t, manager, tracker, testutil.YesCreateOpts(0))
 				})
 			}
 		})

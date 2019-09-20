@@ -1,4 +1,4 @@
-package jasper
+package options
 
 import (
 	"testing"

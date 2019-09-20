@@ -9,6 +9,7 @@ import (
 	empty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/options"
 	internal "github.com/mongodb/jasper/rpc/internal"
 	"github.com/pkg/errors"
 	grpc "google.golang.org/grpc"
@@ -81,7 +82,7 @@ func (c *rpcClient) ID() string {
 	return resp.Value
 }
 
-func (c *rpcClient) CreateProcess(ctx context.Context, opts *jasper.CreateOptions) (jasper.Process, error) {
+func (c *rpcClient) CreateProcess(ctx context.Context, opts *options.Create) (jasper.Process, error) {
 	proc, err := c.client.Create(ctx, internal.ConvertCreateOptions(opts))
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -98,7 +99,7 @@ func (c *rpcClient) Register(ctx context.Context, proc jasper.Process) error {
 	return errors.New("cannot register extant processes on remote process managers")
 }
 
-func (c *rpcClient) List(ctx context.Context, f jasper.Filter) ([]jasper.Process, error) {
+func (c *rpcClient) List(ctx context.Context, f options.Filter) ([]jasper.Process, error) {
 	procs, err := c.client.List(ctx, internal.ConvertFilter(f))
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting streaming client")
@@ -183,7 +184,7 @@ func (c *rpcClient) CloseConnection() error {
 	return c.clientCloser()
 }
 
-func (c *rpcClient) ConfigureCache(ctx context.Context, opts jasper.CacheOptions) error {
+func (c *rpcClient) ConfigureCache(ctx context.Context, opts options.Cache) error {
 	resp, err := c.client.ConfigureCache(ctx, internal.ConvertCacheOptions(opts))
 	if err != nil {
 		return errors.WithStack(err)
@@ -195,7 +196,7 @@ func (c *rpcClient) ConfigureCache(ctx context.Context, opts jasper.CacheOptions
 	return errors.New(resp.Text)
 }
 
-func (c *rpcClient) DownloadFile(ctx context.Context, info jasper.DownloadInfo) error {
+func (c *rpcClient) DownloadFile(ctx context.Context, info options.Download) error {
 	resp, err := c.client.DownloadFile(ctx, internal.ConvertDownloadInfo(info))
 	if err != nil {
 		return errors.WithStack(err)
@@ -207,7 +208,7 @@ func (c *rpcClient) DownloadFile(ctx context.Context, info jasper.DownloadInfo) 
 	return errors.New(resp.Text)
 }
 
-func (c *rpcClient) DownloadMongoDB(ctx context.Context, opts jasper.MongoDBDownloadOptions) error {
+func (c *rpcClient) DownloadMongoDB(ctx context.Context, opts options.MongoDBDownload) error {
 	resp, err := c.client.DownloadMongoDB(ctx, internal.ConvertMongoDBDownloadOptions(opts))
 	if err != nil {
 		return errors.WithStack(err)
@@ -250,13 +251,13 @@ func (c *rpcClient) SignalEvent(ctx context.Context, name string) error {
 	return errors.New(resp.Text)
 }
 
-func (c *rpcClient) WriteFile(ctx context.Context, jinfo jasper.WriteFileInfo) error {
+func (c *rpcClient) WriteFile(ctx context.Context, jinfo options.WriteFile) error {
 	stream, err := c.client.WriteFile(ctx)
 	if err != nil {
 		return errors.Wrap(err, "error getting client stream to write file")
 	}
 
-	sendInfo := func(jinfo jasper.WriteFileInfo) error {
+	sendInfo := func(jinfo options.WriteFile) error {
 		info := internal.ConvertWriteFileInfo(jinfo)
 		return stream.Send(info)
 	}

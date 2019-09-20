@@ -10,23 +10,26 @@ import (
 	"testing"
 
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/mock"
+	"github.com/mongodb/jasper/options"
+	"github.com/mongodb/jasper/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewSSHClient(t *testing.T) {
-	for testName, testCase := range map[string]func(t *testing.T, remoteOpts jasper.RemoteOptions, clientOpts ClientOptions){
-		"NewSSHClientFailsWithEmptyRemoteOptions": func(t *testing.T, remoteOpts jasper.RemoteOptions, clientOpts ClientOptions) {
-			remoteOpts = jasper.RemoteOptions{}
+	for testName, testCase := range map[string]func(t *testing.T, remoteOpts options.Remote, clientOpts ClientOptions){
+		"NewSSHClientFailsWithEmptyRemoteOptions": func(t *testing.T, remoteOpts options.Remote, clientOpts ClientOptions) {
+			remoteOpts = options.Remote{}
 			_, err := NewSSHClient(remoteOpts, clientOpts, false)
 			assert.Error(t, err)
 		},
-		"NewSSHClientFailsWithEmptyClientOptions": func(t *testing.T, remoteOpts jasper.RemoteOptions, clientOpts ClientOptions) {
+		"NewSSHClientFailsWithEmptyClientOptions": func(t *testing.T, remoteOpts options.Remote, clientOpts ClientOptions) {
 			clientOpts = ClientOptions{}
 			_, err := NewSSHClient(remoteOpts, clientOpts, false)
 			assert.Error(t, err)
 		},
-		"NewSSHClientSucceedsWithPopulatedOptions": func(t *testing.T, remoteOpts jasper.RemoteOptions, clientOpts ClientOptions) {
+		"NewSSHClientSucceedsWithPopulatedOptions": func(t *testing.T, remoteOpts options.Remote, clientOpts ClientOptions) {
 			client, err := NewSSHClient(remoteOpts, clientOpts, false)
 			require.NoError(t, err)
 			assert.NotNil(t, client)
@@ -42,17 +45,17 @@ func TestSSHClient(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager){
-		"VerifyBaseFixtureFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
-			opts := jasper.CreateOptions{
+	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager){
+		"VerifyBaseFixtureFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
+			opts := options.Create{
 				Args: []string{"foo", "bar"},
 			}
 			proc, err := client.CreateProcess(ctx, &opts)
 			assert.Error(t, err)
 			assert.Nil(t, proc)
 		},
-		"CreateProcessPassesWithValidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
-			opts := jasper.CreateOptions{
+		"CreateProcessPassesWithValidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
+			opts := options.Create{
 				Args: []string{"foo", "bar"},
 			}
 			info := jasper.ProcessInfo{
@@ -61,7 +64,7 @@ func TestSSHClient(t *testing.T) {
 				Options:   opts,
 			}
 
-			inputChecker := jasper.CreateOptions{}
+			inputChecker := options.Create{}
 			baseManager.Create = makeCreateFunc(
 				t, client,
 				[]string{ManagerCommand, CreateProcessCommand},
@@ -82,29 +85,57 @@ func TestSSHClient(t *testing.T) {
 
 			assert.Equal(t, info, sshProc.info)
 		},
-		"CreateProcessFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"CreateProcessFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.FailCreate = true
-			opts := jasper.CreateOptions{Args: []string{"foo", "bar"}}
+			opts := options.Create{Args: []string{"foo", "bar"}}
 			_, err := client.CreateProcess(ctx, &opts)
 			assert.Error(t, err)
 		},
-		"CreateProcessFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"CreateProcessFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.Create = makeCreateFunc(
 				t, client,
 				[]string{ManagerCommand, CreateProcessCommand},
 				nil,
 				invalidResponse(),
 			)
-			opts := jasper.CreateOptions{
+			opts := options.Create{
 				Args: []string{"foo", "bar"},
 			}
 			_, err := client.CreateProcess(ctx, &opts)
 			assert.Error(t, err)
 		},
-		"RegisterFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
-			assert.Error(t, client.Register(ctx, &jasper.MockProcess{}))
+		"RunCommandPassesWithValidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
+			inputChecker := options.Command{}
+
+			baseManager.Create = makeCreateFunc(
+				t, client,
+				[]string{ManagerCommand, CreateCommand},
+				&inputChecker,
+				makeOutcomeResponse(nil),
+			)
+			cmd := []string{"echo", "foo"}
+			require.NoError(t, client.CreateCommand(ctx).Add(cmd).Run(ctx))
+
+			require.Len(t, inputChecker.Commands, 1)
+			assert.Equal(t, cmd, inputChecker.Commands[0])
 		},
-		"ListPassesWithValidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"RunCommandFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
+			baseManager.FailCreate = true
+			assert.Error(t, client.CreateCommand(ctx).Add([]string{"echo", "foo"}).Run(ctx))
+		},
+		"RunCommandFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
+			baseManager.Create = makeCreateFunc(
+				t, client,
+				[]string{ManagerCommand, CreateCommand},
+				nil,
+				invalidResponse(),
+			)
+			assert.Error(t, client.CreateCommand(ctx).Add([]string{"echo", "foo"}).Run(ctx))
+		},
+		"RegisterFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
+			assert.Error(t, client.Register(ctx, &mock.Process{}))
+		},
+		"ListPassesWithValidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			runningInfo := jasper.ProcessInfo{
 				ID:        "running",
 				IsRunning: true,
@@ -125,7 +156,7 @@ func TestSSHClient(t *testing.T) {
 					Infos:           []jasper.ProcessInfo{runningInfo, successfulInfo},
 				},
 			)
-			filter := jasper.All
+			filter := options.All
 			procs, err := client.List(ctx, filter)
 			require.NoError(t, err)
 			assert.Equal(t, filter, inputChecker.Filter)
@@ -145,22 +176,22 @@ func TestSSHClient(t *testing.T) {
 			assert.True(t, runningFound)
 			assert.True(t, successfulFound)
 		},
-		"ListFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"ListFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.FailCreate = true
-			_, err := client.List(ctx, jasper.All)
+			_, err := client.List(ctx, options.All)
 			assert.Error(t, err)
 		},
-		"ListFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"ListFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.Create = makeCreateFunc(
 				t, client,
 				[]string{ManagerCommand, ListCommand},
 				nil,
 				invalidResponse(),
 			)
-			_, err := client.List(ctx, jasper.All)
+			_, err := client.List(ctx, options.All)
 			assert.Error(t, err)
 		},
-		"GroupPassesWithValidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"GroupPassesWithValidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			info := jasper.ProcessInfo{
 				ID:        "running",
 				IsRunning: true,
@@ -186,12 +217,12 @@ func TestSSHClient(t *testing.T) {
 			require.True(t, ok)
 			assert.Equal(t, info, sshProc.info)
 		},
-		"GroupFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"GroupFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.FailCreate = true
 			_, err := client.Group(ctx, "foo")
 			assert.Error(t, err)
 		},
-		"GroupFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"GroupFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.Create = makeCreateFunc(
 				t, client,
 				[]string{ManagerCommand, GroupCommand},
@@ -201,7 +232,7 @@ func TestSSHClient(t *testing.T) {
 			_, err := client.Group(ctx, "foo")
 			assert.Error(t, err)
 		},
-		"GetPassesWithValidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"GetPassesWithValidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			id := "foo"
 			info := jasper.ProcessInfo{
 				ID: id,
@@ -224,12 +255,12 @@ func TestSSHClient(t *testing.T) {
 			require.True(t, ok)
 			assert.Equal(t, info, sshProc.info)
 		},
-		"GetFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"GetFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.FailCreate = true
 			_, err := client.Get(ctx, "foo")
 			assert.Error(t, err)
 		},
-		"GetFailsWIthInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"GetFailsWIthInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.Create = makeCreateFunc(
 				t, client,
 				[]string{ManagerCommand, GetCommand},
@@ -239,7 +270,7 @@ func TestSSHClient(t *testing.T) {
 			_, err := client.Get(ctx, "foo")
 			assert.Error(t, err)
 		},
-		"ClearPasses": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"ClearPasses": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.Create = makeCreateFunc(
 				t, client,
 				[]string{ManagerCommand, ClearCommand},
@@ -248,7 +279,7 @@ func TestSSHClient(t *testing.T) {
 			)
 			client.Clear(ctx)
 		},
-		"ClosePassesWithValidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"ClosePassesWithValidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.Create = makeCreateFunc(
 				t, client,
 				[]string{ManagerCommand, CloseCommand},
@@ -257,11 +288,11 @@ func TestSSHClient(t *testing.T) {
 			)
 			require.NoError(t, client.Close(ctx))
 		},
-		"CloseFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"CloseFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.FailCreate = true
 			assert.Error(t, client.Close(ctx))
 		},
-		"CloseFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"CloseFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.Create = makeCreateFunc(
 				t, client,
 				[]string{ManagerCommand, CloseCommand},
@@ -270,95 +301,95 @@ func TestSSHClient(t *testing.T) {
 			)
 			assert.Error(t, client.Close(ctx))
 		},
-		"CloseConnectionPasses": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"CloseConnectionPasses": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			assert.NoError(t, client.CloseConnection())
 		},
-		"ConfigureCachePassesWithValidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
-			inputChecker := jasper.CacheOptions{}
+		"ConfigureCachePassesWithValidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
+			inputChecker := options.Cache{}
 			baseManager.Create = makeCreateFunc(
 				t, client,
 				[]string{RemoteCommand, ConfigureCacheCommand},
 				&inputChecker,
 				makeOutcomeResponse(nil),
 			)
-			opts := jasper.CacheOptions{PruneDelay: 10, MaxSize: 100}
+			opts := options.Cache{PruneDelay: 10, MaxSize: 100}
 			require.NoError(t, client.ConfigureCache(ctx, opts))
 
 			assert.Equal(t, opts, inputChecker)
 		},
-		"ConfigureCacheFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"ConfigureCacheFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.Create = makeCreateFunc(
 				t, client,
 				[]string{RemoteCommand, ConfigureCacheCommand},
 				nil,
 				invalidResponse(),
 			)
-			assert.Error(t, client.ConfigureCache(ctx, jasper.CacheOptions{}))
+			assert.Error(t, client.ConfigureCache(ctx, options.Cache{}))
 		},
-		"ConfigureCacheFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"ConfigureCacheFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.FailCreate = true
-			assert.Error(t, client.ConfigureCache(ctx, jasper.CacheOptions{}))
+			assert.Error(t, client.ConfigureCache(ctx, options.Cache{}))
 		},
-		"DownloadFilePassesWithValidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
-			inputChecker := jasper.DownloadInfo{}
+		"DownloadFilePassesWithValidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
+			inputChecker := options.Download{}
 			baseManager.Create = makeCreateFunc(
 				t, client,
 				[]string{RemoteCommand, DownloadFileCommand},
 				&inputChecker,
 				makeOutcomeResponse(nil),
 			)
-			opts := jasper.DownloadInfo{URL: "https://example.com", Path: "/foo"}
+			opts := options.Download{URL: "https://example.com", Path: "/foo"}
 			require.NoError(t, client.DownloadFile(ctx, opts))
 
 			assert.Equal(t, opts, inputChecker)
 		},
-		"DownloadFileFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"DownloadFileFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.Create = makeCreateFunc(
 				t, client,
 				[]string{RemoteCommand, DownloadFileCommand},
 				nil,
 				invalidResponse(),
 			)
-			opts := jasper.DownloadInfo{URL: "https://example.com", Path: "/foo"}
+			opts := options.Download{URL: "https://example.com", Path: "/foo"}
 			assert.Error(t, client.DownloadFile(ctx, opts))
 		},
-		"DownloadFileFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"DownloadFileFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.FailCreate = true
-			opts := jasper.DownloadInfo{URL: "https://example.com", Path: "/foo"}
+			opts := options.Download{URL: "https://example.com", Path: "/foo"}
 			assert.Error(t, client.DownloadFile(ctx, opts))
 		},
-		"DownloadMongoDBPassesWithValidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
-			inputChecker := jasper.MongoDBDownloadOptions{}
+		"DownloadMongoDBPassesWithValidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
+			inputChecker := options.MongoDBDownload{}
 			baseManager.Create = makeCreateFunc(
 				t, client,
 				[]string{RemoteCommand, DownloadMongoDBCommand},
 				&inputChecker,
 				makeOutcomeResponse(nil),
 			)
-			opts := validMongoDBDownloadOptions()
+			opts := testutil.ValidMongoDBDownloadOptions()
 			opts.Path = "/foo"
 			require.NoError(t, client.DownloadMongoDB(ctx, opts))
 
 			assert.Equal(t, opts, inputChecker)
 		},
-		"DownloadMongoDBFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"DownloadMongoDBFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.Create = makeCreateFunc(
 				t, client,
 				[]string{RemoteCommand, DownloadMongoDBCommand},
 				nil,
 				invalidResponse(),
 			)
-			opts := validMongoDBDownloadOptions()
+			opts := testutil.ValidMongoDBDownloadOptions()
 			opts.Path = "/foo"
 			assert.Error(t, client.DownloadMongoDB(ctx, opts))
 		},
-		"DownloadMongoDBFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"DownloadMongoDBFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.FailCreate = true
-			opts := validMongoDBDownloadOptions()
+			opts := testutil.ValidMongoDBDownloadOptions()
 			opts.Path = "/foo"
 			assert.Error(t, client.DownloadMongoDB(ctx, opts))
 		},
-		"GetLogStreamPassesWithValidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"GetLogStreamPassesWithValidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			inputChecker := LogStreamInput{}
 			resp := &LogStreamResponse{
 				LogStream:       jasper.LogStream{Logs: []string{"foo"}, Done: true},
@@ -380,7 +411,7 @@ func TestSSHClient(t *testing.T) {
 
 			assert.Equal(t, logs, resp.LogStream)
 		},
-		"GetLogStreamFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"GetLogStreamFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.Create = makeCreateFunc(
 				t, client,
 				[]string{RemoteCommand, GetLogStreamCommand},
@@ -390,12 +421,12 @@ func TestSSHClient(t *testing.T) {
 			_, err := client.GetLogStream(ctx, "foo", 10)
 			assert.Error(t, err)
 		},
-		"GetLogStreamFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"GetLogStreamFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.FailCreate = true
 			_, err := client.GetLogStream(ctx, "foo", 10)
 			assert.Error(t, err)
 		},
-		"GetBuildloggerURLsPassesWithValidInput": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"GetBuildloggerURLsPassesWithValidInput": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			inputChecker := &IDInput{}
 			resp := &BuildloggerURLsResponse{URLs: []string{"bar"}, OutcomeResponse: *makeOutcomeResponse(nil)}
 			baseManager.Create = makeCreateFunc(
@@ -412,7 +443,7 @@ func TestSSHClient(t *testing.T) {
 
 			assert.Equal(t, resp.URLs, urls)
 		},
-		"GetBuildloggerURLsFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"GetBuildloggerURLsFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.Create = makeCreateFunc(
 				t, client,
 				[]string{RemoteCommand, GetBuildloggerURLsCommand},
@@ -422,12 +453,12 @@ func TestSSHClient(t *testing.T) {
 			_, err := client.GetBuildloggerURLs(ctx, "foo")
 			assert.Error(t, err)
 		},
-		"GetBuildloggerURLsFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"GetBuildloggerURLsFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.FailCreate = true
 			_, err := client.GetBuildloggerURLs(ctx, "foo")
 			assert.Error(t, err)
 		},
-		"SignalEventPassesWithValidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"SignalEventPassesWithValidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			inputChecker := EventInput{}
 			baseManager.Create = makeCreateFunc(
 				t, client,
@@ -439,7 +470,7 @@ func TestSSHClient(t *testing.T) {
 			require.NoError(t, client.SignalEvent(ctx, name))
 			assert.Equal(t, name, inputChecker.Name)
 		},
-		"SignalEventFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"SignalEventFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.Create = makeCreateFunc(
 				t, client,
 				[]string{RemoteCommand, SignalEventCommand},
@@ -448,12 +479,12 @@ func TestSSHClient(t *testing.T) {
 			)
 			assert.Error(t, client.SignalEvent(ctx, "foo"))
 		},
-		"SignalEventFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"SignalEventFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.FailCreate = true
 			assert.Error(t, client.SignalEvent(ctx, "foo"))
 		},
-		"WriteFileSucceeds": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
-			inputChecker := jasper.WriteFileInfo{}
+		"WriteFileSucceeds": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
+			inputChecker := options.WriteFile{}
 			baseManager.Create = makeCreateFunc(
 				t, client,
 				[]string{RemoteCommand, WriteFileCommand},
@@ -461,25 +492,25 @@ func TestSSHClient(t *testing.T) {
 				makeOutcomeResponse(nil),
 			)
 
-			info := jasper.WriteFileInfo{Path: filepath.Join(buildDir(t), "write_file"), Content: []byte("foo")}
+			info := options.WriteFile{Path: filepath.Join(buildDir(t), "write_file"), Content: []byte("foo")}
 			require.NoError(t, client.WriteFile(ctx, info))
 		},
-		"WriteFileFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"WriteFileFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.Create = makeCreateFunc(
 				t, client,
 				[]string{RemoteCommand, WriteFileCommand},
 				nil,
 				invalidResponse(),
 			)
-			info := jasper.WriteFileInfo{Path: filepath.Join(buildDir(t), "write_file"), Content: []byte("foo")}
+			info := options.WriteFile{Path: filepath.Join(buildDir(t), "write_file"), Content: []byte("foo")}
 			assert.Error(t, client.WriteFile(ctx, info))
 		},
-		"WriteFileFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+		"WriteFileFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.FailCreate = true
-			info := jasper.WriteFileInfo{Path: filepath.Join(buildDir(t), "write_file"), Content: []byte("foo")}
+			info := options.WriteFile{Path: filepath.Join(buildDir(t), "write_file"), Content: []byte("foo")}
 			assert.Error(t, client.WriteFile(ctx, info))
 		},
-		// "": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {},
+		// "": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {},
 	} {
 		t.Run(testName, func(t *testing.T) {
 			client, err := NewSSHClient(mockRemoteOptions(), mockClientOptions(), false)
@@ -487,10 +518,10 @@ func TestSSHClient(t *testing.T) {
 			sshClient, ok := client.(*sshClient)
 			require.True(t, ok)
 
-			mockManager := &jasper.MockManager{}
+			mockManager := &mock.Manager{}
 			sshClient.manager = jasper.Manager(mockManager)
 
-			tctx, cancel := context.WithTimeout(ctx, testTimeout)
+			tctx, cancel := context.WithTimeout(ctx, testutil.TestTimeout)
 			defer cancel()
 
 			testCase(tctx, t, sshClient, mockManager)
@@ -504,8 +535,8 @@ func TestSSHClient(t *testing.T) {
 // inputChecker for verification by the caller, verifies that the
 // expectedClientSubcommand is the CLI command that is being run, and writes the
 // expectedResponse back to the user.
-func makeCreateFunc(t *testing.T, client *sshClient, expectedClientSubcommand []string, inputChecker interface{}, expectedResponse interface{}) func(*jasper.CreateOptions) jasper.MockProcess {
-	return func(opts *jasper.CreateOptions) jasper.MockProcess {
+func makeCreateFunc(t *testing.T, client *sshClient, expectedClientSubcommand []string, inputChecker interface{}, expectedResponse interface{}) func(*options.Create) mock.Process {
+	return func(opts *options.Create) mock.Process {
 		if opts.StandardInputBytes != nil && inputChecker != nil {
 			input, err := ioutil.ReadAll(bytes.NewBuffer(opts.StandardInputBytes))
 			require.NoError(t, err)
@@ -513,18 +544,10 @@ func makeCreateFunc(t *testing.T, client *sshClient, expectedClientSubcommand []
 		}
 
 		cliCommand := strings.Join(client.opts.buildCommand(expectedClientSubcommand...), " ")
-		cliCommandFound := false
-		for _, arg := range opts.Args {
-			if noWhitespace(arg) == noWhitespace(cliCommand) {
-				cliCommandFound = true
-				break
-			}
-		}
-		assert.True(t, cliCommandFound)
-
-		require.True(t, expectedResponse != nil)
+		assert.Equal(t, cliCommand, strings.Join(opts.Args, " "))
+		require.NotNil(t, expectedResponse)
 		require.NoError(t, writeOutput(opts.Output.Output, expectedResponse))
-		return jasper.MockProcess{}
+		return mock.Process{}
 	}
 }
 
@@ -532,8 +555,8 @@ func invalidResponse() interface{} {
 	return &struct{}{}
 }
 
-func mockRemoteOptions() jasper.RemoteOptions {
-	return jasper.RemoteOptions{
+func mockRemoteOptions() options.Remote {
+	return options.Remote{
 		User: "user",
 		Host: "localhost",
 	}

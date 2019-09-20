@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 
 	"github.com/kardianos/service"
@@ -13,7 +14,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/grip/send"
-	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -40,7 +41,8 @@ const (
 
 // Constants representing service flags.
 const (
-	userFlagName = "user"
+	quietFlagName = "quiet"
+	userFlagName  = "user"
 
 	logNameFlagName = "log_name"
 	defaultLogName  = "jasper"
@@ -91,8 +93,16 @@ func handleDaemonSignals(ctx context.Context, cancel context.CancelFunc, exit ch
 	}
 }
 
-func serviceLoggingFlags() []cli.Flag {
+func serviceFlags() []cli.Flag {
 	return []cli.Flag{
+		cli.BoolFlag{
+			Name:  quietFlagName,
+			Usage: "quiet mode - suppress errors when running the command",
+		},
+		cli.StringFlag{
+			Name:  userFlagName,
+			Usage: "the user who running the service",
+		},
 		cli.StringFlag{
 			Name:  logNameFlagName,
 			Value: defaultLogName,
@@ -120,13 +130,6 @@ func serviceLoggingFlags() []cli.Flag {
 	}
 }
 
-func serviceBefore() func(*cli.Context) error {
-	return mergeBeforeFuncs(
-		validatePort(portFlagName),
-		validateLogLevel(logLevelFlagName),
-	)
-}
-
 func validateLogLevel(flagName string) func(*cli.Context) error {
 	return func(c *cli.Context) error {
 		l := c.String(logLevelFlagName)
@@ -140,7 +143,7 @@ func validateLogLevel(flagName string) func(*cli.Context) error {
 
 // makeLogger creates a splunk logger. It may return nil if the splunk flags are
 // not populated.
-func makeLogger(c *cli.Context) *jasper.Logger {
+func makeLogger(c *cli.Context) *options.Logger {
 	info := send.SplunkConnectionInfo{
 		ServerURL: c.String(splunkURLFlagName),
 		Token:     c.String(splunkTokenFlagName),
@@ -156,10 +159,10 @@ func makeLogger(c *cli.Context) *jasper.Logger {
 		return nil
 	}
 
-	return &jasper.Logger{
-		Type: jasper.LogSplunk,
-		Options: jasper.LogOptions{
-			Format:        jasper.LogFormatDefault,
+	return &options.Logger{
+		Type: options.LogSplunk,
+		Options: options.Log{
+			Format:        options.LogFormatDefault,
 			Level:         send.LevelInfo{Default: priority, Threshold: priority},
 			SplunkOptions: info,
 		},
@@ -174,24 +177,34 @@ func buildRunCommand(c *cli.Context, serviceType string) []string {
 	return append(subCmd, args...)
 }
 
-// serviceOptions returns all options specific to particular service management
-// systems.
-func serviceOptions() service.KeyValue {
-	return service.KeyValue{
-		// launchd-specific options
-		"RunAtLoad": true,
-	}
-}
-
 // serviceConfig returns the daemon service configuration.
-func serviceConfig(serviceType string, args []string) *service.Config {
-	return &service.Config{
+func serviceConfig(serviceType string, args []string, user string) *service.Config {
+	config := &service.Config{
 		Name:        fmt.Sprintf("%s_jasperd", serviceType),
 		DisplayName: fmt.Sprintf("Jasper %s service", serviceType),
 		Description: "Jasper is a service for process management",
 		Executable:  "", // No executable refers to the current executable.
 		Arguments:   args,
-		Option:      serviceOptions(),
+		Option:      service.KeyValue{},
+	}
+
+	configOptions(config, user)
+
+	return config
+}
+
+func configOptions(config *service.Config, user string) {
+	if runtime.GOOS == "darwin" {
+		config.Option["RunAtLoad"] = true
+	}
+
+	if user == "" {
+		return
+	}
+
+	config.UserName = user
+	if user != "root" && runtime.GOOS == "darwin" {
+		config.Option["UserService"] = true
 	}
 }
 

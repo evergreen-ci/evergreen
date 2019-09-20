@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
 )
@@ -18,7 +19,7 @@ type basicProcess struct {
 	cmd            *exec.Cmd
 	err            error
 	id             string
-	opts           CreateOptions
+	opts           options.Create
 	tags           map[string]struct{}
 	triggers       ProcessTriggerSequence
 	signalTriggers SignalTriggerSequence
@@ -26,7 +27,7 @@ type basicProcess struct {
 	sync.RWMutex
 }
 
-func newBasicProcess(ctx context.Context, opts *CreateOptions) (Process, error) {
+func newBasicProcess(ctx context.Context, opts *options.Create) (Process, error) {
 	id := uuid.Must(uuid.NewV4()).String()
 	opts.AddEnvVar(EnvironID, id)
 
@@ -55,6 +56,7 @@ func newBasicProcess(ctx context.Context, opts *CreateOptions) (Process, error) 
 		return nil, errors.Wrap(err, "problem starting command")
 	}
 
+	p.info.StartAt = time.Now()
 	p.info.ID = p.id
 	p.info.Options = p.opts
 	p.info.Host, _ = os.Hostname()
@@ -80,6 +82,7 @@ func (p *basicProcess) transition(ctx context.Context, deadline time.Time, cmd *
 		defer close(p.waitProcessed)
 		finishTime := time.Now()
 		p.err = err
+		p.info.EndAt = finishTime
 		p.info.IsRunning = false
 		p.info.Complete = true
 		procWaitStatus := p.cmd.ProcessState.Sys().(syscall.WaitStatus)

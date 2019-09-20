@@ -12,6 +12,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/rpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -43,7 +44,7 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 			assert.NotZero(t, fileInfo.Size())
 		},
 		"WaitUntilCompleteWaitsForProcessTermination": func(ctx context.Context, t *testing.T, m *monitor) {
-			opts := &jasper.CreateOptions{Args: []string{"sleep", "1"}}
+			opts := &options.Create{Args: []string{"sleep", "1"}}
 			proc, err := m.jasperClient.CreateProcess(ctx, opts)
 			require.NoError(t, err)
 			exitCode, err := waitUntilComplete(ctx, proc, time.Second)

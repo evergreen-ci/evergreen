@@ -8,7 +8,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/satori/go.uuid"
+	"github.com/mongodb/jasper/options"
+	"github.com/mongodb/jasper/testutil"
+	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,14 +29,14 @@ func makeTracker() (*windowsProcessTracker, error) {
 }
 
 func TestWindowsProcessTracker(t *testing.T) {
-	for testName, testCase := range map[string]func(context.Context, *testing.T, *windowsProcessTracker, *CreateOptions){
-		"NewWindowsProcessTrackerCreatesJob": func(_ context.Context, t *testing.T, tracker *windowsProcessTracker, opts *CreateOptions) {
+	for testName, testCase := range map[string]func(context.Context, *testing.T, *windowsProcessTracker, *options.Create){
+		"NewWindowsProcessTrackerCreatesJob": func(_ context.Context, t *testing.T, tracker *windowsProcessTracker, opts *options.Create) {
 			require.NotNil(t, tracker.job)
 			info, err := QueryInformationJobObjectProcessIdList(tracker.job.handle)
 			assert.NoError(t, err)
 			assert.Equal(t, 0, int(info.NumberOfAssignedProcesses))
 		},
-		"AddProcessToTrackerAssignsPID": func(ctx context.Context, t *testing.T, tracker *windowsProcessTracker, opts *CreateOptions) {
+		"AddProcessToTrackerAssignsPID": func(ctx context.Context, t *testing.T, tracker *windowsProcessTracker, opts *options.Create) {
 			opts1, opts2 := opts, opts.Copy()
 			proc1, err := newBasicProcess(ctx, opts1)
 			require.NoError(t, err)
@@ -50,7 +52,7 @@ func TestWindowsProcessTracker(t *testing.T) {
 			assert.Contains(t, info.ProcessIdList, uint64(proc1.Info(ctx).PID))
 			assert.Contains(t, info.ProcessIdList, uint64(proc2.Info(ctx).PID))
 		},
-		"AddedProcessIsTerminatedOnCleanup": func(ctx context.Context, t *testing.T, tracker *windowsProcessTracker, opts *CreateOptions) {
+		"AddedProcessIsTerminatedOnCleanup": func(ctx context.Context, t *testing.T, tracker *windowsProcessTracker, opts *options.Create) {
 			proc, err := newBasicProcess(ctx, opts)
 			require.NoError(t, err)
 
@@ -69,10 +71,10 @@ func TestWindowsProcessTracker(t *testing.T) {
 			assert.Nil(t, ctx.Err())
 			assert.True(t, proc.Complete(ctx))
 		},
-		"CleanupWithNoProcessesDoesNotError": func(ctx context.Context, t *testing.T, tracker *windowsProcessTracker, opts *CreateOptions) {
+		"CleanupWithNoProcessesDoesNotError": func(ctx context.Context, t *testing.T, tracker *windowsProcessTracker, opts *options.Create) {
 			assert.NoError(t, tracker.Cleanup())
 		},
-		"DoubleCleanupDoesNotError": func(ctx context.Context, t *testing.T, tracker *windowsProcessTracker, opts *CreateOptions) {
+		"DoubleCleanupDoesNotError": func(ctx context.Context, t *testing.T, tracker *windowsProcessTracker, opts *options.Create) {
 			proc, err := newBasicProcess(ctx, opts)
 			require.NoError(t, err)
 
@@ -92,7 +94,7 @@ func TestWindowsProcessTracker(t *testing.T) {
 			assert.Nil(t, ctx.Err())
 			assert.True(t, proc.Complete(ctx))
 		},
-		"CanAddProcessAfterCleanup": func(ctx context.Context, t *testing.T, tracker *windowsProcessTracker, opts *CreateOptions) {
+		"CanAddProcessAfterCleanup": func(ctx context.Context, t *testing.T, tracker *windowsProcessTracker, opts *options.Create) {
 			assert.NoError(t, tracker.Cleanup())
 
 			proc, err := newBasicProcess(ctx, opts)
@@ -110,7 +112,7 @@ func TestWindowsProcessTracker(t *testing.T) {
 				t.Skip("Evergreen makes its own job object, so these will not pass in Evergreen tests ",
 					"(although they will pass if locally run).")
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), taskTimeout)
+			ctx, cancel := context.WithTimeout(context.Background(), testutil.TestTimeout)
 			defer cancel()
 
 			tracker, err := makeTracker()
@@ -119,9 +121,8 @@ func TestWindowsProcessTracker(t *testing.T) {
 			}()
 			require.NoError(t, err)
 			require.NotNil(t, tracker)
-			opts := yesCreateOpts(taskTimeout)
 
-			testCase(ctx, t, tracker, &opts)
+			testCase(ctx, t, tracker, testutil.YesCreateOpts(testutil.TestTimeout))
 		})
 	}
 }
