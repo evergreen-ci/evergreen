@@ -62,10 +62,11 @@ func makeAWSTags(tagSlice []string) ([]host.Tag, error) {
 
 func hostCreate() cli.Command {
 	const (
-		distroFlagName = "distro"
-		keyFlagName    = "key"
-		scriptFlagName = "script"
-		tagFlagName    = "tag"
+		distroFlagName       = "distro"
+		keyFlagName          = "key"
+		scriptFlagName       = "script"
+		tagFlagName          = "tag"
+		instanceTypeFlagName = "type"
 	)
 
 	return cli.Command{
@@ -84,6 +85,10 @@ func hostCreate() cli.Command {
 				Name:  joinFlagNames(scriptFlagName, "s"),
 				Usage: "path to userdata script to run",
 			},
+			cli.StringFlag{
+				Name:  joinFlagNames(instanceTypeFlagName, "i"),
+				Usage: "name of an instance type",
+			},
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(tagFlagName, "t"),
 				Usage: "key=value pair representing an instance tag, with one pair per flag",
@@ -95,6 +100,7 @@ func hostCreate() cli.Command {
 			key := c.String(keyFlagName)
 			fn := c.String(scriptFlagName)
 			tagSlice := c.StringSlice(tagFlagName)
+			instanceType := c.String(instanceTypeFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -126,6 +132,7 @@ func hostCreate() cli.Command {
 				KeyName:      key,
 				UserData:     script,
 				InstanceTags: tags,
+				InstanceType: instanceType,
 			}
 
 			host, err := client.CreateSpawnHost(ctx, spawnRequest)

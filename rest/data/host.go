@@ -95,6 +95,7 @@ func (hc *DBHostConnector) NewIntentHost(options *restmodel.HostRequestOptions, 
 		TaskId:           options.TaskID,
 		Owner:            user,
 		InstanceTags:     options.InstanceTags,
+		InstanceType:     options.InstanceType,
 	}
 
 	intentHost, err := cloud.CreateSpawnHost(spawnOptions)

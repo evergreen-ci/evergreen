@@ -35,6 +35,7 @@ type hostPostHandler struct {
 	KeyName      string     `json:"keyname"`
 	UserData     string     `json:"userdata"`
 	InstanceTags []host.Tag `json:"instance_tags"`
+	InstanceType string     `json:"instance_type"`
 
 	sc data.Connector
 }
@@ -58,6 +59,7 @@ func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 		KeyName:      hph.KeyName,
 		UserData:     hph.UserData,
 		InstanceTags: hph.InstanceTags,
+		InstanceType: hph.InstanceType,
 	}
 
 	intentHost, err := hph.sc.NewIntentHost(options, user)

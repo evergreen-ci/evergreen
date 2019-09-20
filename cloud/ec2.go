@@ -211,6 +211,10 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		BlockDeviceMappings: blockDevices,
 	}
 
+	if h.InstanceType != "" {
+		input.InstanceType = aws.String(h.InstanceType)
+	}
+
 	if ec2Settings.IsVpc {
 		input.NetworkInterfaces = []*ec2.InstanceNetworkInterfaceSpecification{
 			&ec2.InstanceNetworkInterfaceSpecification{

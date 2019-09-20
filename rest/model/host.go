@@ -30,6 +30,7 @@ type HostRequestOptions struct {
 	KeyName      string     `json:"keyname"`
 	UserData     string     `json:"userdata"`
 	InstanceTags []host.Tag `json:"instance_tags"`
+	InstanceType string     `json:"instance_type"`
 }
 
 type DistroInfo struct {
