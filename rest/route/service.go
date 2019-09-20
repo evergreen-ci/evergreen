@@ -2,8 +2,10 @@ package route
 
 import (
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/gimlet/acl"
 	"github.com/mongodb/amboy"
 )
 
@@ -110,7 +112,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/projects/{project_id}/test_stats").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetProjectTestStats(sc))
 	app.AddRoute("/projects/{project_id}/task_stats").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetProjectTaskStats(sc))
 	app.AddRoute("/projects/{project_id}/task_reliability").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetProjectTaskReliability(sc))
-	app.AddRoute("/roles").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetAllRolesHandler(sc))
+	app.AddRoute("/roles").Version(2).Get().Wrap(checkUser).RouteHandler(acl.NewGetAllRolesHandler(user.GetRoleManager()))
 	app.AddRoute("/status/cli_version").Version(2).Get().RouteHandler(makeFetchCLIVersionRoute(sc))
 	app.AddRoute("/status/hosts/distros").Version(2).Get().Wrap(checkUser).RouteHandler(makeHostStatusByDistroRoute(sc))
 	app.AddRoute("/status/notifications").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchNotifcationStatusRoute(sc))

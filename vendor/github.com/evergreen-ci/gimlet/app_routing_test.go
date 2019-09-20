@@ -139,6 +139,20 @@ func (s *RoutingSuite) TestHandlerMethod() {
 	s.Equal(fmt.Sprint(r.handler), fmt.Sprint(htwo))
 }
 
+func (s *RoutingSuite) TestHandlerType() {
+	s.Len(s.app.routes, 0)
+	r := s.app.AddRoute("/foo")
+	s.Len(s.app.routes, 1)
+	s.NotNil(r)
+	s.Nil(r.handler)
+	r.Handler(nil)
+	s.Nil(r.handler)
+
+	hone := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) { grip.Debug("dummy route") })
+	r.HandlerType(hone)
+	s.NotNil(r.handler)
+}
+
 func (s *RoutingSuite) TestRouteValidation() {
 	r := &APIRoute{}
 	s.False(r.IsValid())

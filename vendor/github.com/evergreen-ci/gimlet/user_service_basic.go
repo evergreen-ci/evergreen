@@ -69,9 +69,31 @@ func (*BasicUserManager) GetLoginHandler(string) http.HandlerFunc   { return nil
 func (*BasicUserManager) GetLoginCallbackHandler() http.HandlerFunc { return nil }
 func (*BasicUserManager) IsRedirect() bool                          { return false }
 
+func (um *BasicUserManager) IsInvalid(username string) bool {
+	for _, user := range um.users {
+		if user.ID == username {
+			return user.Invalid
+		}
+	}
+
+	return true
+}
+
+func (um *BasicUserManager) SetInvalid(username string, invalid bool) {
+	for i := range um.users {
+		if um.users[i].ID == username {
+			um.users[i].Invalid = invalid
+			return
+		}
+	}
+}
+
 func (um *BasicUserManager) GetUserByID(id string) (User, error) {
 	for _, user := range um.users {
 		if user.ID == id {
+			if user.Invalid {
+				return nil, errors.Errorf("user %s not authorized!", id)
+			}
 			return &user, nil
 		}
 	}
@@ -84,14 +106,24 @@ func (um *BasicUserManager) GetOrCreateUser(u User) (User, error) {
 		return existingUser, nil
 	}
 
-	newUser := basicUser{
+	newUser := &basicUser{
 		ID:           u.Username(),
 		EmailAddress: u.Email(),
 	}
-	um.users = append(um.users, newUser)
-	return &newUser, nil
+	um.users = append(um.users, *newUser)
+	return newUser, nil
 }
 
 func (b *BasicUserManager) ClearUser(u User, all bool) error {
 	return errors.New("Naive Authentication does not support Clear User")
+}
+
+func (b *BasicUserManager) GetGroupsForUser(userId string) ([]string, error) {
+	for _, user := range b.users {
+		if user.ID == userId {
+			return user.AccessRoles, nil
+		}
+	}
+
+	return nil, errors.Errorf("user %s not found", userId)
 }

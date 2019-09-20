@@ -32,7 +32,8 @@ func (s *LDAPSuite) SetupTest() {
 		Port:          "port",
 		UserPath:      "path",
 		ServicePath:   "bots",
-		UserGroup:     "10gen",
+		UserGroup:     "cn=10gen,ou=groups,dc=mongodb,dc=com",
+		GroupOuName:   "groups",
 		PutCache:      mockPutSuccess,
 		GetCache:      mockGetValid,
 		ClearCache:    mockClearCache,
@@ -49,7 +50,8 @@ func (s *LDAPSuite) SetupTest() {
 		UserPath:      "path",
 		ServicePath:   "bots",
 		UserGroup:     "badgroup",
-		ServiceGroup:  "10gen",
+		ServiceGroup:  "cn=10gen,ou=groups,dc=mongodb,dc=com",
+		GroupOuName:   "groups",
 		PutCache:      mockPutSuccess,
 		GetCache:      mockGetValid,
 		ClearCache:    mockClearCache,
@@ -66,6 +68,7 @@ func (s *LDAPSuite) SetupTest() {
 		UserPath:      "path",
 		ServicePath:   "bots",
 		UserGroup:     "badgroup",
+		GroupOuName:   "groups",
 		PutCache:      mockPutSuccess,
 		GetCache:      mockGetValid,
 		ClearCache:    mockClearCache,
@@ -82,6 +85,7 @@ func (s *LDAPSuite) SetupTest() {
 		UserPath:      "path",
 		ServicePath:   "bots",
 		UserGroup:     "badgroup",
+		GroupOuName:   "groups",
 		PutCache:      mockPutSuccess,
 		GetCache:      mockGetValid,
 		ClearCache:    mockClearCache,
@@ -110,10 +114,11 @@ type mockConnErr struct {
 
 type mockConn struct{}
 
-func (m *mockConn) Start()                            { return }
-func (m *mockConn) StartTLS(config *tls.Config) error { return nil }
-func (m *mockConn) Close()                            { return }
-func (m *mockConn) SetTimeout(time.Duration)          { return }
+func (m *mockConn) Start()                               { return }
+func (m *mockConn) StartTLS(config *tls.Config) error    { return nil }
+func (m *mockConn) Close()                               { return }
+func (m *mockConn) SetTimeout(time.Duration)             { return }
+func (m *mockConn) ModifyDN(*ldap.ModifyDNRequest) error { return nil }
 func (m *mockConn) Bind(username, password string) error {
 	if username == "uid=foo,path" && password == "hunter2" {
 		return nil
@@ -140,7 +145,7 @@ func (m *mockConnSuccess) Search(searchRequest *ldap.SearchRequest) (*ldap.Searc
 			&ldap.Entry{
 				Attributes: []*ldap.EntryAttribute{
 					&ldap.EntryAttribute{
-						Values: []string{"10gen"},
+						Values: []string{"cn=10gen,ou=groups,dc=mongodb,dc=com"},
 					},
 					&ldap.EntryAttribute{
 						Name:   "uid",
@@ -175,6 +180,9 @@ func (u *mockUser) Email() string       { return "" }
 func (u *mockUser) Username() string    { return u.name }
 func (u *mockUser) GetAPIKey() string   { return "" }
 func (u *mockUser) Roles() []string     { return []string{} }
+func (u *mockUser) HasPermission(string, string, int) (bool, error) {
+	return true, nil
+}
 
 // TODO
 var mockPutUser gimlet.User
@@ -212,12 +220,12 @@ func mockClearCache(u gimlet.User, all bool) error {
 }
 
 func mockGetUserByID(id string) (gimlet.User, bool, error) {
-	u := gimlet.NewBasicUser(id, "", "", "", []string{})
+	u := gimlet.NewBasicUser(id, "", "", "", "", []string{}, false, nil)
 	return u, true, nil
 }
 
 func mockGetOrCreateUser(user gimlet.User) (gimlet.User, error) {
-	u := gimlet.NewBasicUser(user.Username(), user.DisplayName(), user.Email(), user.GetAPIKey(), []string{})
+	u := gimlet.NewBasicUser(user.Username(), user.DisplayName(), user.Email(), "", user.GetAPIKey(), []string{}, false, nil)
 	return u, nil
 }
 
@@ -520,7 +528,7 @@ func (s *LDAPSuite) TestGetUser() {
 }
 
 func (s *LDAPSuite) TestGetOrCreateUser() {
-	basicUser := gimlet.NewBasicUser("foo", "", "", "", []string{})
+	basicUser := gimlet.NewBasicUser("foo", "", "", "", "", []string{}, false, nil)
 	user, err := s.um.GetOrCreateUser(basicUser)
 	s.NoError(err)
 	s.Equal("foo", user.Username())
@@ -536,10 +544,16 @@ func (s *LDAPSuite) TestLoginUsesBothPaths() {
 }
 
 func (s *LDAPSuite) TestClearCache() {
-	basicUser := gimlet.NewBasicUser("foo", "", "", "", []string{})
+	basicUser := gimlet.NewBasicUser("foo", "", "", "", "", []string{}, false, nil)
 	user, err := s.um.GetOrCreateUser(basicUser)
 	s.Require().NoError(err)
 
 	err = s.um.ClearUser(user, false)
+	s.NoError(err)
+}
+
+func (s *LDAPSuite) TestGetGroupsForUser() {
+	groups, err := s.um.GetGroupsForUser("foo")
+	s.Equal("10gen", groups[0])
 	s.NoError(err)
 }
