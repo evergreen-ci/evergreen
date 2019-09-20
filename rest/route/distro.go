@@ -595,7 +595,6 @@ func (h *distroIDExecuteHandler) Parse(ctx context.Context, r *http.Request) err
 
 // Run enqueues a job to run a script on all hosts (excluding spawn hosts) that
 // are not down for the given given distro ID.
-// kim: TODO: should this also attempt to run on quarantined hosts?
 func (h *distroIDExecuteHandler) Run(ctx context.Context) gimlet.Responder {
 	// enqueue job - per host, per distro?
 	hosts, err := h.sc.FindHostsByDistroID(h.distroID)
@@ -605,7 +604,6 @@ func (h *distroIDExecuteHandler) Run(ctx context.Context) gimlet.Responder {
 
 	catcher := grip.NewBasicCatcher()
 	for _, host := range hosts {
-		// kim: TODO: figure out when this context is cancelled
 		const tsFormat = "2006-01-02.15-04-05"
 		ts := util.RoundPartOfMinute(0).Format(tsFormat)
 		catcher.Wrapf(h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, h.Script, ts)), "problem enqueueing job to run script on host %s", host.Id)

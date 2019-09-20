@@ -42,6 +42,7 @@ func makeHostExecuteJob() *hostExecuteJob {
 	return j
 }
 
+// NewHostExecuteJob creates a job that executes a script on the host.
 func NewHostExecuteJob(env evergreen.Environment, h host.Host, script string, id string) amboy.Job {
 	j := makeHostExecuteJob()
 	j.env = env
@@ -67,8 +68,6 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 		return
 	}
 
-	// kim: TODO: figure out if this should be able to run on all non-terminated
-	// hosts
 	if util.StringSliceContains(evergreen.DownHostStatus, j.host.Status) {
 		grip.Debug(message.Fields{
 			"message": "host is down, not attempting to run script",
@@ -89,7 +88,7 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 		j.AddError(err)
 		return
 	}
-	logs, err := j.host.RunSSHCommand(ctx, j.Script, sshOptions)
+	logs, err := j.host.RunSSHCommand(ctx, fmt.Sprintf("bash -s <<'EOF'%sEOF", j.Script), sshOptions)
 	if err != nil {
 		event.LogHostScriptExecuteFailed(j.host.Id, err)
 		grip.Error(message.WrapError(err, message.Fields{
