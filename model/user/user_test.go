@@ -411,6 +411,7 @@ func (s *UserTestSuite) TestHasPermission() {
 	s.NoError(err)
 	s.True(hasPermission)
 	hasPermission, err = u.HasPermission("resource1", "permission", 0)
+	s.NoError(err)
 	s.True(hasPermission)
 
 	// role with insufficient permission but the right resource
