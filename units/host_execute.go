@@ -7,10 +7,10 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
+	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -19,6 +19,10 @@ import (
 const (
 	hostExecuteJobName = "host-execute"
 )
+
+func init() {
+	registry.AddJobType(hostExecuteJobName, func() amboy.Job { return makeHostExecuteJob() })
+}
 
 type hostExecuteJob struct {
 	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
@@ -75,7 +79,7 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 		return
 	}
 
-	if util.StringSliceContains(evergreen.DownHostStatus, j.host.Status) {
+	if j.host.Status != evergreen.HostRunning {
 		grip.Debug(message.Fields{
 			"message": "host is down, not attempting to run script",
 			"host":    j.host.Id,

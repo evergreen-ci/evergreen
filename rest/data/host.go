@@ -60,7 +60,7 @@ func (dbc *DBConnector) FindHostByIdWithOwner(hostID string, user gimlet.User) (
 }
 
 func (hc *DBHostConnector) FindHostsByDistroID(distroID string) ([]host.Host, error) {
-	return host.Find(host.ByDistroId(distroID))
+	return host.Find(host.ByDistroIDRunning(distroID))
 }
 
 // NewIntentHost is a method to insert an intent host given a distro and a public key
