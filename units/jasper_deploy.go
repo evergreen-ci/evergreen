@@ -16,7 +16,7 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	jaspercli "github.com/mongodb/jasper/cli"
+	jcli "github.com/mongodb/jasper/cli"
 	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
@@ -186,7 +186,7 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 		restartJasperOpts := &options.Create{
 			Args: []string{
 				"bash", "-c",
-				fmt.Sprintf("pgrep -f '%s' | xargs kill", strings.Join(jaspercli.BuildServiceCommand(j.settings.HostJasper.BinaryName), " ")),
+				fmt.Sprintf("pgrep -f '%s' | xargs kill", strings.Join(jcli.BuildServiceCommand(j.settings.HostJasper.BinaryName), " ")),
 			},
 		}
 

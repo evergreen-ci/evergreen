@@ -84,7 +84,7 @@ func TestGitPush(t *testing.T) {
 
 			require.Len(t, manager.Procs, len(commands))
 			for i, proc := range manager.Procs {
-				args := proc.(*jasper.MockProcess).ProcInfo.Options.Args
+				args := proc.(*mock.Process).ProcInfo.Options.Args
 				splitCommand, err = shlex.Split(commands[i])
 				assert.NoError(t, err)
 				assert.Equal(t, splitCommand, args)
