@@ -1,7 +1,6 @@
 package host
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -20,9 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service/testutil"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	jmock "github.com/mongodb/jasper/mock"
@@ -954,39 +951,4 @@ func withJasperServiceSetupAndTeardown(ctx context.Context, env *mock.Environmen
 	fn()
 
 	return errors.Wrap(teardownJasperService(ctx, closeService), "problem tearing down test")
-}
-
-func TestSSHCommandOutput(t *testing.T) {
-	script := `#!/usr/bin/env bash
-	set -o verbose
-	echo "hello world"
-	echo "foo bar"
-	false
-	true
-	`
-	env := evergreen.GetEnvironment()
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	output := &util.CappedWriter{
-		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024,
-	}
-
-	if err := env.JasperManager().CreateCommand(ctx).Host("localhost").User("kim").
-		ExtendRemoteArgs("-p", "22", "-t", "-t", "-i", "~/.ssh/id_rsa").
-		SetOutputWriter(output).RedirectErrorToOutput(true).
-		Append(script).Run(ctx); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "error running script",
-			"script":  script,
-			"output":  output.String(),
-		}))
-		return
-	}
-	grip.Info(message.Fields{
-		"message": "successfully ran script",
-		"script":  script,
-		"output":  output.String(),
-	})
 }

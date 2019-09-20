@@ -8,7 +8,9 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -1299,4 +1301,87 @@ func getMockDistrosConnector() *data.MockConnector {
 	}
 
 	return &connector
+}
+
+///////////////////////////////////////////////////////////////////////
+//
+// Tests for POST /rest/v2/distro/{distro_id}/execute
+
+type DistroIDExecuteSuite struct {
+	sc     *data.MockConnector
+	data   data.MockHostConnector
+	rh     *distroIDExecuteHandler
+	env    evergreen.Environment
+	cancel context.CancelFunc
+
+	suite.Suite
+}
+
+func TestDistroIDExecuteSuite(t *testing.T) {
+	suite.Run(t, new(DistroIDExecuteSuite))
+}
+
+func (s *DistroIDExecuteSuite) SetupTest() {
+	s.data = data.MockHostConnector{
+		CachedHosts: []host.Host{
+			{
+				Id: "host1",
+				Distro: distro.Distro{
+					Id: "distro1",
+				},
+			},
+		},
+	}
+	s.sc = &data.MockConnector{
+		MockHostConnector: s.data,
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	s.cancel = cancel
+	env := &mock.Environment{}
+	s.env = env
+	s.Require().NoError(env.Configure(ctx, "", nil))
+	h := makeDistroExecute(s.sc, s.env)
+	rh, ok := h.(*distroIDExecuteHandler)
+	s.Require().True(ok)
+	s.rh = rh
+}
+
+func (s *DistroIDExecuteSuite) TeardownTest() {
+	s.cancel()
+}
+
+func (s *DistroIDExecuteSuite) TestParse() {
+	ctx, _ := s.env.Context()
+
+	body := []byte(`
+  	{"script": "echo foobar"}`,
+	)
+	req, err := http.NewRequest("POST", "http://example.com/api/rest/v2/distros/distro1/execute", bytes.NewBuffer(body))
+	s.Require().NoError(err)
+	s.NoError(s.rh.Parse(ctx, req))
+
+	emptyBody := []byte(`{"script": ""}`)
+	req, err = http.NewRequest("POST", "http://example.com/api/rest/v2/distros/distro1/execute", bytes.NewBuffer(emptyBody))
+	s.Require().NoError(err)
+	s.Error(s.rh.Parse(ctx, req))
+}
+
+func (s *DistroIDExecuteSuite) TestRun() {
+	s.rh.distroID = "distro1"
+	s.rh.Script = "echo foobar"
+
+	ctx, _ := s.env.Context()
+	resp := s.rh.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(http.StatusOK, resp.Status())
+}
+
+func (s *DistroIDExecuteSuite) TestRunNonexistentDistro() {
+	ctx := context.Background()
+	s.rh.distroID = "nonexistent"
+	s.rh.Script = "echo foobar"
+
+	resp := s.rh.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(http.StatusOK, resp.Status())
 }

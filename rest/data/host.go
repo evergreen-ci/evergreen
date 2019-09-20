@@ -59,6 +59,10 @@ func (dbc *DBConnector) FindHostByIdWithOwner(hostID string, user gimlet.User) (
 	return findHostByIdWithOwner(dbc, hostID, user)
 }
 
+func (hc *DBHostConnector) FindHostsByDistroID(distroID string) ([]host.Host, error) {
+	return host.Find(host.ByDistroId(distroID))
+}
+
 // NewIntentHost is a method to insert an intent host given a distro and a public key
 // The public key can be the name of a saved key or the actual key string
 func (hc *DBHostConnector) NewIntentHost(options *restmodel.HostRequestOptions, user *user.DBUser) (*host.Host, error) {
@@ -196,6 +200,16 @@ func (hc *MockHostConnector) FindHostById(id string) (*host.Host, error) {
 		StatusCode: http.StatusNotFound,
 		Message:    fmt.Sprintf("host with id %s not found", id),
 	}
+}
+
+func (hc *MockHostConnector) FindHostsByDistroID(distroID string) ([]host.Host, error) {
+	hosts := []host.Host{}
+	for _, h := range hc.CachedHosts {
+		if h.Distro.Id == distroID {
+			hosts = append(hosts, h)
+		}
+	}
+	return hosts, nil
 }
 
 // NewIntentHost is a method to mock "insert" an intent host given a distro and a public key

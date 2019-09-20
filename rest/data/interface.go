@@ -135,6 +135,8 @@ type Connector interface {
 	// started by
 	FindHostByIdWithOwner(string, gimlet.User) (*host.Host, error)
 
+	FindHostsByDistroID(string) ([]host.Host, error)
+
 	// NewIntentHost is a method to insert an intent host given a distro and the name of a saved public key
 	NewIntentHost(*restModel.HostRequestOptions, *user.DBUser) (*host.Host, error)
 

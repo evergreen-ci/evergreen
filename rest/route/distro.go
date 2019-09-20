@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
@@ -554,16 +553,16 @@ func validateDistro(ctx context.Context, apiDistro *model.APIDistro, resourceID 
 
 ///////////////////////////////////////////////////////////////////////
 //
-// PATCH /rest/v2/distros/{distro_id}/execute
+// POST /rest/v2/distros/{distro_id}/execute
 
 type distroIDExecuteHandler struct {
+	Script   string
 	distroID string
-	script   string
 	sc       data.Connector
 	env      evergreen.Environment
 }
 
-func makeDistroExecuteHandler(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+func makeDistroExecute(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
 	return &distroIDExecuteHandler{
 		sc:  sc,
 		env: env,
@@ -572,7 +571,8 @@ func makeDistroExecuteHandler(sc data.Connector, env evergreen.Environment) giml
 
 func (h *distroIDExecuteHandler) Factory() gimlet.RouteHandler {
 	return &distroIDExecuteHandler{
-		sc: h.sc,
+		sc:  h.sc,
+		env: h.env,
 	}
 }
 
@@ -586,6 +586,10 @@ func (h *distroIDExecuteHandler) Parse(ctx context.Context, r *http.Request) err
 		return errors.Wrap(err, "Argument read error")
 	}
 
+	if h.Script == "" {
+		return errors.New("cannot execute an empty script")
+	}
+
 	return nil
 }
 
@@ -593,23 +597,18 @@ func (h *distroIDExecuteHandler) Parse(ctx context.Context, r *http.Request) err
 // are not down for the given given distro ID.
 // kim: TODO: should this also attempt to run on quarantined hosts?
 func (h *distroIDExecuteHandler) Run(ctx context.Context) gimlet.Responder {
-	// d, err := h.sc.FindDistroById(h.distroID)
-	// if err != nil {
-	//     return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
-	// }
-	//
 	// enqueue job - per host, per distro?
-	hosts, err := host.Find(host.ByDistroId(h.distroID))
+	hosts, err := h.sc.FindHostsByDistroID(h.distroID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "could not find hosts for the distro %s", h.distroID))
 	}
-	// kim: TODO: enqueue job here.
+
 	catcher := grip.NewBasicCatcher()
 	for _, host := range hosts {
 		// kim: TODO: figure out when this context is cancelled
 		const tsFormat = "2006-01-02.15-04-05"
 		ts := util.RoundPartOfMinute(0).Format(tsFormat)
-		catcher.Wrapf(h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, h.script, ts)), "problem enqueueing job to run script on host %s", host.Id)
+		catcher.Wrapf(h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, h.Script, ts)), "problem enqueueing job to run script on host %s", host.Id)
 	}
 	if catcher.HasErrors() {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "problem enqueueing jobs to run script on hosts"))
