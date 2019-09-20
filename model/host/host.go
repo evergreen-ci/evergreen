@@ -1670,9 +1670,7 @@ func StaleRunningTaskIDs(staleness time.Duration) ([]task.Task, error) {
 // in a HostModifyOptions struct.
 func (h *Host) ModifySpawnHost(opts HostModifyOptions) error {
 	h.DeleteTags(opts.DeleteInstanceTags)
-	grip.Info(h.InstanceTags)
 	h.AddTags(opts.AddInstanceTags)
-	grip.Info(h.InstanceTags)
 	if err := h.SetTags(); err != nil {
 		return errors.Wrap(err, "error modifying spawn host")
 	}

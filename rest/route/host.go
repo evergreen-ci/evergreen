@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -17,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -166,8 +164,6 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.hostID))
 	}
 
-	grip.Info(message.Fields{"message": "found host", "host": foundHost})
-
 	// Check if tags are valid
 	if err := validateTags(foundHost, h.AddInstanceTags, h.DeleteInstanceTags); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Invalid tag modifications"))
@@ -178,7 +174,7 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 		AddInstanceTags:    h.AddInstanceTags,
 		DeleteInstanceTags: h.DeleteInstanceTags,
 	}
-	ts := util.GetUTCSecond(time.Now()).Format(tsFormat)
+	ts := util.RoundPartOfMinute(1).Format(tsFormat)
 	modifyJob := units.NewSpawnhostModifyJob(foundHost, changes, ts)
 	if err = queue.Put(ctx, modifyJob); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error creating spawnhost modify job"))

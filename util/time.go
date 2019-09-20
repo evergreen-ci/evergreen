@@ -130,14 +130,3 @@ func GetUTCHour(date time.Time) time.Time {
 	hour := date.Hour()
 	return time.Date(year, month, day, hour, 0, 0, 0, time.UTC)
 }
-
-func GetUTCSecond(date time.Time) time.Time {
-	// Convert to UTC.
-	date = date.In(time.UTC)
-	// Create a new time.Time for the beginning of the second.
-	year, month, day := date.Date()
-	hour := date.Hour()
-	minute := date.Minute()
-	second := date.Second()
-	return time.Date(year, month, day, hour, minute, second, 0, time.UTC)
-}
