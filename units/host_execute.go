@@ -106,7 +106,7 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 		"script":  j.Script,
 		"job":     j.ID(),
 	})
-	logs, err := j.host.RunSSHCommand(ctx, fmt.Sprintf("bash -s <<'EOF'%sEOF", j.Script), sshOptions)
+	logs, err := j.host.RunSSHCommand(ctx, fmt.Sprintf("bash -s <<'EOF'\n%s\nEOF", j.Script), sshOptions)
 	if err != nil {
 		event.LogHostScriptExecuteFailed(j.host.Id, err)
 		grip.Error(message.WrapError(err, message.Fields{

@@ -20,14 +20,14 @@
     <span ng-switch-when="HOST_DNS_NAME_SET">DNS Name set to <b>[[eventLogObj.data.hostname]]</b></span>
 	<span ng-switch-when="HOST_SCRIPT_EXECUTED">
 	  <div>Executed script on host</div>
-      <div class="toggle pointer" ng-click="showlogs = !showlogs"><i class="fa" ng-class="showlogs | conditional:'fa-caret-down':'fa-caret-right'"></i> [[showlogs | conditional:'hide':'show']] provisioning logs</div>
+      <div class="toggle pointer" ng-click="showlogs = !showlogs"><i class="fa" ng-class="showlogs | conditional:'fa-caret-down':'fa-caret-right'"></i> [[showlogs | conditional:'hide':'show']] script logs</div>
       <div ng-show="showlogs">
         <pre>[[eventLogObj.data.logs]]</pre>
       </div>
 	</span>
 	<span ng-switch-when="HOST_SCRIPT_EXECUTE_FAILED">
 	  <div>Failed to execute script on host</div>
-      <div class="toggle pointer" ng-click="showlogs = !showlogs"><i class="fa" ng-class="showlogs | conditional:'fa-caret-down':'fa-caret-right'"></i> [[showlogs | conditional:'hide':'show']] provisioning logs</div>
+      <div class="toggle pointer" ng-click="showlogs = !showlogs"><i class="fa" ng-class="showlogs | conditional:'fa-caret-down':'fa-caret-right'"></i> [[showlogs | conditional:'hide':'show']] script logs</div>
       <div ng-show="showlogs">
         <pre>[[eventLogObj.data.logs]]</pre>
       </div>
