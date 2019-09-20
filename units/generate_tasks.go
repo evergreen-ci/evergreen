@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -17,6 +18,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const (
@@ -55,16 +57,17 @@ func NewGenerateTasksJob(id string, ts string) amboy.Job {
 }
 
 func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
-	t, err := task.FindOneId(j.TaskID)
-	if err != nil {
-		return errors.Wrapf(err, "problem finding task %s", j.TaskID)
-	}
-	if t == nil {
-		return errors.Errorf("task %s does not exist", j.TaskID)
-	}
 	if t.GeneratedTasks {
 		grip.Debug(message.Fields{
 			"message": "attempted to generate tasks, but generator already ran for this task",
+			"task":    t.Id,
+			"version": t.Version,
+		})
+		return nil
+	}
+	if t.Status != evergreen.TaskStarted {
+		grip.Debug(message.Fields{
+			"message": "task is not running, not generating tasks",
 			"task":    t.Id,
 			"version": t.Version,
 		})
@@ -83,6 +86,19 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		return errors.Wrap(err, "problem creating new version")
 	}
 	if err = validator.CheckProjectConfigurationIsValid(p); err != nil {
+		versionFromDB, versionErr := model.VersionFindOne(model.VersionById(v.Id).WithFields(model.VersionConfigNumberKey))
+		if versionErr != nil {
+			return errors.Wrapf(versionErr, "problem finding version %s", v.Id)
+		}
+		if versionFromDB == nil {
+			return errors.Errorf("could not find version %s", v.Id)
+		}
+		// If the config update number has been updated, then another task has raced with us.
+		// The error is therefore not an actual configuration problem but instead a symptom
+		// of the race. Noop the job.
+		if v.ConfigUpdateNumber != versionFromDB.ConfigUpdateNumber {
+			return mongo.ErrNoDocuments
+		}
 		return errors.Wrap(err, "project configuration was invalid")
 	}
 

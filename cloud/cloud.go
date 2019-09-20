@@ -97,7 +97,7 @@ func GetManager(ctx context.Context, mgrOpts ManagerOpts, settings *evergreen.Se
 		provider = &staticManager{}
 	case evergreen.ProviderNameMock:
 		provider = makeMockManager()
-	case evergreen.ProviderNameEc2Legacy, evergreen.ProviderNameEc2OnDemand:
+	case evergreen.ProviderNameEc2OnDemand:
 		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: onDemandProvider, region: mgrOpts.Region})
 	case evergreen.ProviderNameEc2Spot:
 		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: spotProvider, region: mgrOpts.Region})

@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -22,7 +23,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 		" determining the number of new hosts to spin up...", t, func() {
 		runningTaskIds = []string{"t1", "t2", "t3", "t4", "t5"}
 		hostIds = []string{"h1", "h2", "h3", "h4", "h5"}
-		dist = distro.Distro{Provider: "ec2"}
+		dist = distro.Distro{Provider: evergreen.ProviderNameEc2Auto}
 
 		Convey("if there are no tasks to run, no new hosts should be needed",
 			func() {
@@ -205,7 +206,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				{Id: hostIds[0]},
 			}
 			dist.PoolSize = 20
-			dist.Provider = "static"
+			dist.Provider = evergreen.ProviderNameStatic
 
 			distroQueueInfo := model.DistroQueueInfo{
 				Length: 3,

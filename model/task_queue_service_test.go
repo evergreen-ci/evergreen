@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type taskDAGDispatchServiceSuite struct {
@@ -57,7 +58,6 @@ func (s *taskDAGDispatchServiceSuite) SetupTest() {
 				// Adding dependency to task.Id 80 from task.Id 75
 				dependencies = append(dependencies, strconv.Itoa(i+5))
 			}
-
 		} else if i%5 == 1 { // "group_1_variant_1_project_1_version_1"
 			group = "group_1"
 			variant = "variant_1"
@@ -109,14 +109,6 @@ func (s *taskDAGDispatchServiceSuite) SetupTest() {
 	}
 }
 
-func (s *taskDAGDispatchServiceSuite) TestAddingSelfEdge() {
-	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
-	s.NoError(err)
-	err = service.addEdge("5", "5")
-	s.Error(err)
-	s.Contains(err.Error(), "cannot add a self edge to task")
-}
-
 func (s *taskDAGDispatchServiceSuite) TestConstructor() {
 	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
 	s.NoError(err)
@@ -139,107 +131,108 @@ func (s *taskDAGDispatchServiceSuite) TestConstructor() {
 	s.Equal(len(service.taskGroups[compositeGroupId("group_1", "variant_1", "project_1", "version_2")].tasks), 20)
 
 	expectedOrder := []string{
-		"99", // "group_1_variant_1_project_1_version_2"
-		"98", // "group_1_variant_2_project_1_version_1"
-		"97", // "group_2_variant_1_project_1_version_1"
-		"96", // "group_1_variant_1_project_1_version_1"
-		"95", // standalone
-		"94", // "group_1_variant_1_project_1_version_2"
-		"93", // "group_1_variant_2_project_1_version_1"
-		"92", // "group_2_variant_1_project_1_version_1"
-		"91", // "group_1_variant_1_project_1_version_1"
-		"90", // standalone
-		"89", // "group_1_variant_1_project_1_version_2"
-		"88", // "group_1_variant_2_project_1_version_1"
-		"87", // "group_2_variant_1_project_1_version_1"
-		"86", // "group_1_variant_1_project_1_version_1"
-		"85", // standalone
-		"84", // "group_1_variant_1_project_1_version_2"
-		"83", // "group_1_variant_2_project_1_version_1"
-		"82", // "group_2_variant_1_project_1_version_1"
-		"81", // "group_1_variant_1_project_1_version_1"
-		"79", // "group_1_variant_1_project_1_version_2"
-		"78", // "group_1_variant_2_project_1_version_1"
-		"77", // "group_2_variant_1_project_1_version_1"
-		"76", // "group_1_variant_1_project_1_version_1"
-		"74", // "group_1_variant_1_project_1_version_2"
-		"73", // "group_1_variant_2_project_1_version_1"
-		"72", // "group_2_variant_1_project_1_version_1"
-		"71", // "group_1_variant_1_project_1_version_1"
-		"69", // "group_1_variant_1_project_1_version_2"
-		"68", // "group_1_variant_2_project_1_version_1"
-		"67", // "group_2_variant_1_project_1_version_1"
-		"66", // "group_1_variant_1_project_1_version_1"
-		"65", // standalone
-		"70", // standalone
-		"75", // standalone
-		"80", // standalone
-		"64", // "group_1_variant_1_project_1_version_2"
-		"63", // "group_1_variant_2_project_1_version_1"
-		"62", // "group_2_variant_1_project_1_version_1"
-		"61", // "group_1_variant_1_project_1_version_1"
-		"60", // standalone
-		"59", // "group_1_variant_1_project_1_version_2"
-		"58", // "group_1_variant_2_project_1_version_1"
-		"57", // "group_2_variant_1_project_1_version_1"
-		"56", // "group_1_variant_1_project_1_version_1"
-		"55", // ""
-		"54", // "group_1_variant_1_project_1_version_2"
-		"53", // "group_1_variant_2_project_1_version_1"
-		"52", // "group_2_variant_1_project_1_version_1"
-		"51", // "group_1_variant_1_project_1_version_1"
-		"49", // "group_1_variant_1_project_1_version_2"
-		"48", // "group_1_variant_2_project_1_version_1"
-		"47", // "group_2_variant_1_project_1_version_1"
-		"46", // "group_1_variant_1_project_1_version_1"
-		"44", // "group_1_variant_1_project_1_version_2"
-		"43", // "group_1_variant_2_project_1_version_1"
-		"42", // "group_2_variant_1_project_1_version_1"
-		"41", // "group_1_variant_1_project_1_version_1"
-		"39", // "group_1_variant_1_project_1_version_2"
-		"38", // "group_1_variant_2_project_1_version_1"
-		"37", // "group_2_variant_1_project_1_version_1"
-		"36", // "group_1_variant_1_project_1_version_1"
-		"35", // standalone
-		"40", // standalone
-		"45", // standalone
-		"50", // standalone
-		"34", // "group_1_variant_1_project_1_version_2"
-		"33", // "group_1_variant_2_project_1_version_1"
-		"32", // "group_2_variant_1_project_1_version_1"
-		"31", // "group_1_variant_1_project_1_version_1"
-		"30", // standalone
-		"29", // "group_1_variant_2_project_1_version_1"
-		"28", // "group_1_variant_2_project_1_version_1"
-		"27", // "group_2_variant_1_project_1_version_1"
-		"26", // "group_1_variant_1_project_1_version_1"
-		"25", // standalone
-		"24", // "group_1_variant_2_project_1_version_1"
-		"23", // "group_1_variant_2_project_1_version_1"
-		"22", // "group_2_variant_1_project_1_version_1"
-		"21", // "group_1_variant_1_project_1_version_1"
-		"20", // standalone
-		"19", // "group_1_variant_1_project_1_version_2"
-		"18", // "group_1_variant_2_project_1_version_1"
-		"17", // "group_2_variant_1_project_1_version_1"
-		"16", // "group_1_variant_1_project_1_version_1"
-		"15", // standalone
-		"14", // "group_1_variant_1_project_1_version_2"
-		"13", // "group_1_variant_2_project_1_version_1"
-		"12", // "group_2_variant_1_project_1_version_1"
-		"11", // "group_1_variant_1_project_1_version_1"
-		"10", // standalone
-		"9",  // "group_1_variant_1_project_1_version_2"
-		"8",  // "group_1_variant_2_project_1_version_1"
-		"7",  // "group_2_variant_1_project_1_version_1"
-		"6",  // "group_1_variant_1_project_1_version_1"
-		"5",  // standalone
-		"4",  // "group_1_variant_1_project_1_version_2"
-		"3",  // "group_1_variant_2_project_1_version_1"
-		"2",  // "group_2_variant_1_project_1_version_1"
-		"1",  // "group_1_variant_1_project_1_version_1"
-		"0",  // standalone
+		"0",  // ''
+		"1",  // 'group_1_variant_1_project_1_version_1'
+		"2",  // 'group_2_variant_1_project_1_version_1'
+		"3",  // 'group_1_variant_2_project_1_version_1'
+		"4",  // 'group_1_variant_1_project_1_version_2'
+		"5",  // ''
+		"6",  // 'group_1_variant_1_project_1_version_1'
+		"7",  // 'group_2_variant_1_project_1_version_1'
+		"8",  // 'group_1_variant_2_project_1_version_1'
+		"9",  // 'group_1_variant_1_project_1_version_2'
+		"10", // ''
+		"11", // 'group_1_variant_1_project_1_version_1'
+		"12", // 'group_2_variant_1_project_1_version_1'
+		"13", // 'group_1_variant_2_project_1_version_1'
+		"14", // 'group_1_variant_1_project_1_version_2'
+		"15", // ''
+		"16", // 'group_1_variant_1_project_1_version_1'
+		"17", // 'group_2_variant_1_project_1_version_1'
+		"18", // 'group_1_variant_2_project_1_version_1'
+		"19", // 'group_1_variant_1_project_1_version_2'
+		"20", // ''
+		"21", // 'group_1_variant_1_project_1_version_1'
+		"22", // 'group_2_variant_1_project_1_version_1'
+		"23", // 'group_1_variant_2_project_1_version_1'
+		"24", // 'group_1_variant_1_project_1_version_2'
+		"25", // ''
+		"26", // 'group_1_variant_1_project_1_version_1'
+		"27", // 'group_2_variant_1_project_1_version_1'
+		"28", // 'group_1_variant_2_project_1_version_1'
+		"29", // 'group_1_variant_1_project_1_version_2'
+		"30", // ''
+		"31", // 'group_1_variant_1_project_1_version_1'
+		"32", // 'group_2_variant_1_project_1_version_1'
+		"33", // 'group_1_variant_2_project_1_version_1'
+		"34", // 'group_1_variant_1_project_1_version_2'
+		"36", // 'group_1_variant_1_project_1_version_1'
+		"37", // 'group_2_variant_1_project_1_version_1'
+		"38", // 'group_1_variant_2_project_1_version_1'
+		"39", // 'group_1_variant_1_project_1_version_2'
+		"41", // 'group_1_variant_1_project_1_version_1'
+		"42", // 'group_2_variant_1_project_1_version_1'
+		"43", // 'group_1_variant_2_project_1_version_1'
+		"44", // 'group_1_variant_1_project_1_version_2'
+		"46", // 'group_1_variant_1_project_1_version_1'
+		"47", // 'group_2_variant_1_project_1_version_1'
+		"48", // 'group_1_variant_2_project_1_version_1'
+		"49", // 'group_1_variant_1_project_1_version_2'
+		"50", // ''
+		"45", // ''
+		"40", // ''
+		"35", // ''
+		"51", // 'group_1_variant_1_project_1_version_1'
+		"52", // 'group_2_variant_1_project_1_version_1'
+		"53", // 'group_1_variant_2_project_1_version_1'
+		"54", // 'group_1_variant_1_project_1_version_2'
+		"55", // ''
+		"56", // 'group_1_variant_1_project_1_version_1'
+		"57", // 'group_2_variant_1_project_1_version_1'
+		"58", // 'group_1_variant_2_project_1_version_1'
+		"59", // 'group_1_variant_1_project_1_version_2'
+		"60", // ''
+		"61", // 'group_1_variant_1_project_1_version_1'
+		"62", // 'group_2_variant_1_project_1_version_1'
+		"63", // 'group_1_variant_2_project_1_version_1'
+		"64", // 'group_1_variant_1_project_1_version_2'
+		"66", // 'group_1_variant_1_project_1_version_1'
+		"67", // 'group_2_variant_1_project_1_version_1'
+		"68", // 'group_1_variant_2_project_1_version_1'
+		"69", // 'group_1_variant_1_project_1_version_2'
+		"71", // 'group_1_variant_1_project_1_version_1'
+		"72", // 'group_2_variant_1_project_1_version_1'
+		"73", // 'group_1_variant_2_project_1_version_1'
+		"74", // 'group_1_variant_1_project_1_version_2'
+		"76", // 'group_1_variant_1_project_1_version_1'
+		"77", // 'group_2_variant_1_project_1_version_1'
+		"78", // 'group_1_variant_2_project_1_version_1'
+		"79", // 'group_1_variant_1_project_1_version_2'
+		"80", // ''
+		"75", // '
+		"70", // ''
+		"65", // ''
+		"81", // 'group_1_variant_1_project_1_version_1'
+		"82", // 'group_2_variant_1_project_1_version_1'
+		"83", // 'group_1_variant_2_project_1_version_1'
+		"84", // 'group_1_variant_1_project_1_version_2'
+		"85", // ''
+		"86", // 'group_1_variant_1_project_1_version_1'
+		"87", // 'group_2_variant_1_project_1_version_1'
+		"88", // 'group_1_variant_2_project_1_version_1'
+		"89", // 'group_1_variant_1_project_1_version_2'
+		"90", // ''
+		"91", // 'group_1_variant_1_project_1_version_1'
+		"92", // 'group_2_variant_1_project_1_version_1'
+		"93", // 'group_1_variant_2_project_1_version_1'
+		"94", // 'group_1_variant_1_project_1_version_2'
+		"95", // ''
+		"96", // 'group_1_variant_1_project_1_version_1'
+		"97", // 'group_2_variant_1_project_1_version_1'
+		"98", // 'group_1_variant_2_project_1_version_1'
+		"99", // 'group_1_variant_1_project_1_version_2'
 	}
+
 	for i, node := range service.sorted {
 		taskQueueItem := service.nodeItemMap[node.ID()]
 		s.Equal(taskQueueItem.Id, expectedOrder[i])
@@ -322,6 +315,9 @@ func (s *taskDAGDispatchServiceSuite) TestNextTaskForDefaultTaskSpec() {
 	next = service.FindNextTask(spec)
 	s.NotNil(next)
 	s.Equal("7", next.Id)
+	next = service.FindNextTask(spec)
+	s.NotNil(next)
+	s.Equal("12", next.Id)
 	// .....
 }
 
@@ -589,6 +585,182 @@ func (s *taskDAGDispatchServiceSuite) TestTaskGroupTasksRunningHostsVersusMaxHos
 	s.Equal("variant_1", next.BuildVariant)
 	s.Equal("version_1", next.Version)
 	s.Equal("project_1", next.Project)
+}
+
+func (s *taskDAGDispatchServiceSuite) TestTaskGroupWithExternalDependency() {
+	dependsOn := []task.Dependency{{TaskId: "95"}}
+	err := task.UpdateOne(
+		bson.M{
+			task.IdKey: "1",
+		},
+		bson.M{
+			"$set": bson.M{
+				task.DependsOnKey: dependsOn,
+			},
+		},
+	)
+	s.Require().NoError(err)
+
+	service, e := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.Require().NoError(e)
+	var spec TaskSpec
+	var next *TaskQueueItem
+
+	// task ids: ["1", "6", "11", "16", "21", "26", "31, "36", "41", "46", "51", "56", "61", "66", "71", "76", "81", "86", "91", "96"]
+	// Dispatch 5 tasks for the taskGroupTasks "group_1_variant_1_project_1_version_1".
+	// task "1" is dependent on task "95" having status evergreen.TaskSucceeded, so we cannot dispatch task "1".
+	expectedOrder := []string{
+		"6",
+		"11",
+		"16",
+		"21",
+		"26",
+	}
+
+	spec = TaskSpec{
+		Group:        "group_1",
+		BuildVariant: "variant_1",
+		Version:      "version_1",
+		Project:      "project_1",
+	}
+	taskGroupID := compositeGroupId(spec.Group, spec.BuildVariant, spec.Project, spec.Version)
+	taskGroup := service.taskGroups[taskGroupID]
+
+	next = service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal(expectedOrder[0], next.Id)
+	s.Equal("1", taskGroup.tasks[0].Id)
+	s.Equal(true, taskGroup.tasks[0].IsDispatched) // Even though this task was not actually dispatched, we still set IsDispatched = true.
+	s.Equal("6", taskGroup.tasks[1].Id)
+	s.Equal(true, taskGroup.tasks[1].IsDispatched)
+	s.Equal("11", taskGroup.tasks[2].Id)
+	s.Equal(false, taskGroup.tasks[2].IsDispatched)
+
+	for i := 1; i < 5; i++ {
+		next = service.FindNextTask(spec)
+		s.Require().NotNil(next)
+		s.Equal(expectedOrder[i], next.Id)
+		s.Equal(expectedOrder[i], taskGroup.tasks[i+1].Id)
+		s.Equal(true, taskGroup.tasks[i+1].IsDispatched)
+	}
+
+	// Set task "95"'s status to evergreen.TaskSucceeded.
+	err = task.UpdateOne(
+		bson.M{
+			task.IdKey: "95",
+		},
+		bson.M{
+			"$set": bson.M{
+				task.StatusKey: evergreen.TaskSucceeded,
+			},
+		},
+	)
+	s.Require().NoError(err)
+
+	// Rebuild the dispatcher service's in-memory state.
+	err = service.rebuild(s.taskQueue.Queue)
+	s.Require().NoError(err)
+
+	// Now task "1" can be dispatched!
+	expectedOrder = []string{
+		"1",
+		"31",
+		"36",
+		"41",
+		"46",
+		"51",
+		"56",
+		"61",
+		"66",
+		"71",
+		"76",
+		"81",
+		"86",
+		"91",
+		"96",
+	}
+	for i := 0; i < 15; i++ {
+		next = service.FindNextTask(spec)
+		s.Require().NotNil(next)
+		s.Equal(expectedOrder[i], next.Id)
+	}
+
+	// All the tasks within taskGroup "group_1_variant_1_project_1_version_1" has now been dispatched.
+	next = service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal("0", next.Id)
+	s.Equal("", next.Group)
+}
+
+func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupOrdering() {
+	s.Require().NoError(db.ClearCollections(task.Collection))
+	items := []TaskQueueItem{}
+	groupIndexes := []int{2, 0, 4, 1, 3}
+
+	for i := 0; i < 5; i++ {
+		ID := fmt.Sprintf("%d", i)
+		items = append(items, TaskQueueItem{
+			Id:            ID,
+			Group:         "group_1",
+			BuildVariant:  "variant_1",
+			Version:       "version_1",
+			Project:       "project_1",
+			GroupMaxHosts: 1,
+			GroupIndex:    groupIndexes[i],
+		})
+		t := task.Task{
+			Id:                ID,
+			TaskGroup:         "group_1",
+			BuildVariant:      "variant_1",
+			Version:           "version_1",
+			TaskGroupMaxHosts: 1,
+			Project:           "project_1",
+			StartTime:         util.ZeroTime,
+			FinishTime:        util.ZeroTime,
+		}
+		s.Require().NoError(t.Insert())
+
+		s.taskQueue = TaskQueue{
+			Distro: "distro_1",
+			Queue:  items,
+		}
+	}
+
+	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.Require().NoError(err)
+
+	spec := TaskSpec{
+		Group:        "group_1",
+		BuildVariant: "variant_1",
+		Version:      "version_1",
+		Project:      "project_1",
+	}
+	expectedOrder := []string{"1", "3", "0", "4", "2"}
+
+	for i := 0; i < 5; i++ {
+		next := service.FindNextTask(spec)
+		s.Require().NotNil(next)
+		s.Equal(expectedOrder[i], next.Id)
+	}
+}
+
+func (s *taskDAGDispatchServiceSuite) TestAddingSelfEdge() {
+	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.NoError(err)
+	err = service.addEdge("5", "5")
+	s.Error(err)
+	s.Contains(err.Error(), "cannot add a self edge to task")
+}
+
+func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
+	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.NoError(err)
+	err = service.addEdge("-1", "-2")
+	s.Error(err)
+	s.Contains(err.Error(), "is not present in the DAG")
+	err = service.addEdge("1", "-2")
+	s.Error(err)
+	s.Contains(err.Error(), "is not present in the DAG")
 }
 
 //////////////////////////////////////////////////////////////////////////////

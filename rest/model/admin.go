@@ -906,11 +906,12 @@ func (a *APIEC2Key) ToService() (interface{}, error) {
 }
 
 type APIAWSConfig struct {
-	EC2Keys   []APIEC2Key `json:"ec2_keys"`
-	S3Key     APIString   `json:"s3_key"`
-	S3Secret  APIString   `json:"s3_secret"`
-	Bucket    APIString   `json:"bucket"`
-	S3BaseURL APIString   `json:"s3_base_url"`
+	EC2Keys              []APIEC2Key `json:"ec2_keys"`
+	S3Key                APIString   `json:"s3_key"`
+	S3Secret             APIString   `json:"s3_secret"`
+	Bucket               APIString   `json:"bucket"`
+	S3BaseURL            APIString   `json:"s3_base_url"`
+	DefaultSecurityGroup APIString   `json:"default_security_group"`
 
 	// Legacy
 	EC2Secret APIString `json:"aws_secret"`
@@ -931,6 +932,7 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 		a.S3Secret = ToAPIString(v.S3Secret)
 		a.Bucket = ToAPIString(v.Bucket)
 		a.S3BaseURL = ToAPIString(v.S3BaseURL)
+		a.DefaultSecurityGroup = ToAPIString(v.DefaultSecurityGroup)
 
 		// Legacy
 		a.EC2Secret = ToAPIString(v.EC2Secret)
@@ -946,10 +948,11 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		return nil, nil
 	}
 	config := evergreen.AWSConfig{
-		S3Key:     FromAPIString(a.S3Key),
-		S3Secret:  FromAPIString(a.S3Secret),
-		Bucket:    FromAPIString(a.Bucket),
-		S3BaseURL: FromAPIString(a.S3BaseURL),
+		S3Key:                FromAPIString(a.S3Key),
+		S3Secret:             FromAPIString(a.S3Secret),
+		Bucket:               FromAPIString(a.Bucket),
+		S3BaseURL:            FromAPIString(a.S3BaseURL),
+		DefaultSecurityGroup: FromAPIString(a.DefaultSecurityGroup),
 
 		// Legacy
 		EC2Key:    FromAPIString(a.EC2Key),
@@ -1180,6 +1183,7 @@ type APIServiceFlags struct {
 	TaskLoggingDisabled        bool `json:"task_logging_disabled"`
 	CacheStatsJobDisabled      bool `json:"cache_stats_job_disabled"`
 	CacheStatsEndpointDisabled bool `json:"cache_stats_endpoint_disabled"`
+	CacheStatsOldTasksDisabled bool `json:"cache_stats_old_tasks_disabled"`
 	TaskReliabilityDisabled    bool `json:"task_reliability_disabled"`
 	CommitQueueDisabled        bool `json:"commit_queue_disabled"`
 	PlannerDisabled            bool `json:"planner_disabled"`
@@ -1393,6 +1397,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.TaskLoggingDisabled = v.TaskLoggingDisabled
 		as.CacheStatsJobDisabled = v.CacheStatsJobDisabled
 		as.CacheStatsEndpointDisabled = v.CacheStatsEndpointDisabled
+		as.CacheStatsOldTasksDisabled = v.CacheStatsOldTasksDisabled
 		as.TaskReliabilityDisabled = v.TaskReliabilityDisabled
 		as.CommitQueueDisabled = v.CommitQueueDisabled
 		as.PlannerDisabled = v.PlannerDisabled
@@ -1425,6 +1430,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		TaskLoggingDisabled:          as.TaskLoggingDisabled,
 		CacheStatsJobDisabled:        as.CacheStatsJobDisabled,
 		CacheStatsEndpointDisabled:   as.CacheStatsEndpointDisabled,
+		CacheStatsOldTasksDisabled:   as.CacheStatsOldTasksDisabled,
 		TaskReliabilityDisabled:      as.TaskReliabilityDisabled,
 		CommitQueueDisabled:          as.CommitQueueDisabled,
 		PlannerDisabled:              as.PlannerDisabled,

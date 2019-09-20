@@ -236,16 +236,12 @@ const (
 
 	// Default EC2 region where hosts should be spawned
 	DefaultEC2Region = "us-east-1"
-
-	// TODO: This can be removed when no more hosts with provider ec2 are running.
-	ProviderNameEc2Legacy = "ec2"
 )
 
 var (
 	// Providers where hosts can be created and terminated automatically.
 	ProviderSpawnable = []string{
 		ProviderNameDocker,
-		ProviderNameEc2Legacy,
 		ProviderNameEc2OnDemand,
 		ProviderNameEc2Spot,
 		ProviderNameEc2Auto,

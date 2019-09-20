@@ -15,50 +15,44 @@ import (
 	"github.com/pkg/errors"
 )
 
-const cronsRemoteFifteenSecondJobName = "crons-remote-fifteen-second"
+const cronsRemoteHourJobName = "crons-remote-hour"
 
 func init() {
-	registry.AddJobType(cronsRemoteFifteenSecondJobName, NewCronRemoteFifteenSecondJob)
+	registry.AddJobType(cronsRemoteHourJobName, NewCronRemoteHourJob)
 }
 
-type cronsRemoteFifteenSecondJob struct {
+type cronsRemoteHourJob struct {
 	job.Base   `bson:"job_base" json:"job_base" yaml:"job_base"`
 	ErrorCount int `bson:"error_count" json:"error_count" yaml:"error_count"`
 	env        evergreen.Environment
 }
 
-func NewCronRemoteFifteenSecondJob() amboy.Job {
-	j := &cronsRemoteFifteenSecondJob{
+func NewCronRemoteHourJob() amboy.Job {
+	j := &cronsRemoteHourJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    cronsRemoteFifteenSecondJobName,
+				Name:    cronsRemoteHourJobName,
 				Version: 0,
 			},
 		},
 	}
 	j.SetDependency(dependency.NewAlways())
-	j.SetID(fmt.Sprintf("%s.%s", cronsRemoteFifteenSecondJobName, util.RoundPartOfMinute(15).Format(tsFormat)))
+	j.SetID(fmt.Sprintf("%s.%s", cronsRemoteHourJobName, util.RoundPartOfHour(0).Format(tsFormat)))
 	return j
 }
 
-func (j *cronsRemoteFifteenSecondJob) Run(ctx context.Context) {
+func (j *cronsRemoteHourJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
 
 	ops := []amboy.QueueOperation{
-		PopulateHostSetupJobs(j.env),
-		PopulateSchedulerJobs(j.env),
-		PopulateAliasSchedulerJobs(j.env),
-		PopulateHostAllocatorJobs(j.env),
-		PopulateAgentDeployJobs(j.env),
-		PopulateAgentMonitorDeployJobs(j.env),
-		PopulateUserDataDoneJobs(j.env),
+		PopulateCacheHistoricalTestDataJob(2),
+		PopulateJasperDeployJobs(j.env),
 	}
 
 	queue := j.env.RemoteQueue()
-
 	catcher := grip.NewBasicCatcher()
 	for _, op := range ops {
 		if ctx.Err() != nil {
@@ -70,9 +64,9 @@ func (j *cronsRemoteFifteenSecondJob) Run(ctx context.Context) {
 	j.ErrorCount = catcher.Len()
 
 	grip.Debug(message.Fields{
+		"queue": "service",
 		"id":    j.ID(),
 		"type":  j.Type().Name,
-		"queue": "service",
 		"num":   len(ops),
 		"errs":  j.ErrorCount,
 	})

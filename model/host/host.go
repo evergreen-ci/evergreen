@@ -1094,11 +1094,14 @@ func FindHostsToTerminate() ([]Host, error) {
 			{ // host.IsProvisioningFailure
 				StatusKey: evergreen.HostProvisionFailed,
 			},
-			{ // host.ByUnprovisonedSince
-				ProvisionedKey: false,
-				CreateTimeKey:  bson.M{"$lte": now.Add(-provisioningCutoff)},
-				StatusKey:      bson.M{"$ne": evergreen.HostTerminated},
-				StartedByKey:   evergreen.User,
+			{ // host.ByUnprovisionedSince
+				"$or": []bson.M{
+					bson.M{ProvisionedKey: false},
+					bson.M{StatusKey: evergreen.HostProvisioning},
+				},
+				CreateTimeKey: bson.M{"$lte": now.Add(-provisioningCutoff)},
+				StatusKey:     bson.M{"$ne": evergreen.HostTerminated},
+				StartedByKey:  evergreen.User,
 			},
 			{ // host.IsDecommissioned
 				RunningTaskKey: bson.M{"$exists": false},

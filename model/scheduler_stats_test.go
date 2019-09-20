@@ -133,31 +133,31 @@ func TestCreateHostBuckets(t *testing.T) {
 		bucketSize := time.Duration(10) * time.Second
 
 		// -20 -> 20
-		beforeStartHost := host.Host{Id: "beforeStartHost", CreationTime: now.Add(time.Duration(-20) * time.Second), TerminationTime: now.Add(time.Duration(20) * time.Second), Provider: "ec2"}
+		beforeStartHost := host.Host{Id: "beforeStartHost", CreationTime: now.Add(time.Duration(-20) * time.Second), TerminationTime: now.Add(time.Duration(20) * time.Second), Provider: evergreen.ProviderNameEc2Auto}
 		So(beforeStartHost.Insert(), ShouldBeNil)
 
 		// 80 -> 120
-		afterEndHost := host.Host{Id: "afterEndHost", CreationTime: now.Add(time.Duration(80) * time.Second), TerminationTime: now.Add(time.Duration(120) * time.Second), Provider: "ec2"}
+		afterEndHost := host.Host{Id: "afterEndHost", CreationTime: now.Add(time.Duration(80) * time.Second), TerminationTime: now.Add(time.Duration(120) * time.Second), Provider: evergreen.ProviderNameEc2Auto}
 		So(afterEndHost.Insert(), ShouldBeNil)
 
 		// 20 -> 40
-		h1 := host.Host{Id: "h1", CreationTime: now.Add(time.Duration(20) * time.Second), TerminationTime: now.Add(time.Duration(40) * time.Second), Provider: "ec2"}
+		h1 := host.Host{Id: "h1", CreationTime: now.Add(time.Duration(20) * time.Second), TerminationTime: now.Add(time.Duration(40) * time.Second), Provider: evergreen.ProviderNameEc2Auto}
 		So(h1.Insert(), ShouldBeNil)
 
 		// 10 -> 80
-		h2 := host.Host{Id: "h2", CreationTime: now.Add(time.Duration(10) * time.Second), TerminationTime: now.Add(time.Duration(80) * time.Second), Provider: "ec2"}
+		h2 := host.Host{Id: "h2", CreationTime: now.Add(time.Duration(10) * time.Second), TerminationTime: now.Add(time.Duration(80) * time.Second), Provider: evergreen.ProviderNameEc2Auto}
 		So(h2.Insert(), ShouldBeNil)
 
 		// 20 ->
-		h3 := host.Host{Id: "h3", CreationTime: now.Add(time.Duration(20) * time.Second), TerminationTime: util.ZeroTime, Provider: "ec2", Status: evergreen.HostRunning}
+		h3 := host.Host{Id: "h3", CreationTime: now.Add(time.Duration(20) * time.Second), TerminationTime: util.ZeroTime, Provider: evergreen.ProviderNameEc2Auto, Status: evergreen.HostRunning}
 		So(h3.Insert(), ShouldBeNil)
 
 		// 5 -> 7
-		sameBucket := host.Host{Id: "sameBucket", CreationTime: now.Add(time.Duration(5) * time.Second), TerminationTime: now.Add(time.Duration(7) * time.Second), Provider: "ec2"}
+		sameBucket := host.Host{Id: "sameBucket", CreationTime: now.Add(time.Duration(5) * time.Second), TerminationTime: now.Add(time.Duration(7) * time.Second), Provider: evergreen.ProviderNameEc2Auto}
 		So(sameBucket.Insert(), ShouldBeNil)
 
 		// 5 -> 30
-		h4 := host.Host{Id: "h4", CreationTime: now.Add(time.Duration(5) * time.Second), TerminationTime: now.Add(time.Duration(30) * time.Second), Provider: "ec2"}
+		h4 := host.Host{Id: "h4", CreationTime: now.Add(time.Duration(5) * time.Second), TerminationTime: now.Add(time.Duration(30) * time.Second), Provider: evergreen.ProviderNameEc2Auto}
 		So(h4.Insert(), ShouldBeNil)
 
 		Convey("for three buckets of 10 seconds, should only retrieve pertinent host docs", func() {

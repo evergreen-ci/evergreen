@@ -23,8 +23,6 @@ const (
 	TaskAliasQueuesCollection = "task_alias_queues"
 )
 
-var useModernDequeueOp = true
-
 type TaskGroupInfo struct {
 	Name                  string        `bson:"name" json:"name"`
 	Count                 int           `bson:"count" json:"count"`
@@ -38,6 +36,7 @@ type DistroQueueInfo struct {
 	Length               int             `bson:"length" json:"length"`
 	ExpectedDuration     time.Duration   `bson:"expected_duration" json:"expected_duration"`
 	MaxDurationThreshold time.Duration   `bson:"max_duration_threshold" json:"max_duration_threshold"`
+	PlanCreatedAt        time.Time       `bson:"created_at" json:"created_at"`
 	CountOverThreshold   int             `bson:"count_over_threshold" json:"count_over_threshold"`
 	TaskGroupInfos       []TaskGroupInfo `bson:"task_group_infos" json:"task_group_infos"`
 	AliasQueue           bool            `bson:"alias_queue" json:"alias_queue"`
@@ -90,7 +89,7 @@ type TaskQueueItem struct {
 	DisplayName         string        `bson:"display_name" json:"display_name"`
 	Group               string        `bson:"group_name" json:"group_name"`
 	GroupMaxHosts       int           `bson:"group_max_hosts,omitempty" json:"group_max_hosts,omitempty"`
-	GroupIndex          int           `bson:"group_index,omitempty" json:"group_indexa,omitempty"`
+	GroupIndex          int           `bson:"group_index,omitempty" json:"group_index,omitempty"`
 	Version             string        `bson:"version" json:"version"`
 	BuildVariant        string        `bson:"build_variant" json:"build_variant"`
 	RevisionOrderNumber int           `bson:"order" json:"order"`
@@ -228,7 +227,7 @@ func BlockTaskGroupTasks(taskID string) error {
 		return errors.Errorf("found nil task %s", taskID)
 	}
 
-	p, err := FindProjectFromTask(t)
+	p, err := FindProjectFromVersionID(t.Version)
 	if err != nil {
 		return errors.Wrapf(err, "problem getting project for task %s", t.Id)
 	}
@@ -622,14 +621,6 @@ outer:
 }
 
 func dequeue(taskId, distroId string) error {
-	if useModernDequeueOp {
-		return dequeueUpdate(taskId, distroId)
-	} else {
-		return legacyDequeueUpdate(taskId, distroId)
-	}
-}
-
-func dequeueUpdate(taskId, distroId string) error {
 	itemKey := bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIdKey)
 
 	return errors.WithStack(db.Update(
@@ -641,22 +632,6 @@ func dequeueUpdate(taskId, distroId string) error {
 		bson.M{
 			"$set": bson.M{
 				taskQueueQueueKey + ".$." + taskQueueItemIsDispatchedKey: true,
-			},
-		},
-	))
-}
-
-func legacyDequeueUpdate(taskId, distroId string) error {
-	return errors.WithStack(db.Update(
-		TaskQueuesCollection,
-		bson.M{
-			taskQueueDistroKey: distroId,
-		},
-		bson.M{
-			"$pull": bson.M{
-				taskQueueQueueKey: bson.M{
-					taskQueueItemIdKey: taskId,
-				},
 			},
 		},
 	))

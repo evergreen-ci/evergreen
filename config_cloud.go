@@ -77,10 +77,11 @@ type AWSConfig struct {
 	EC2Key    string `bson:"aws_id" json:"aws_id" yaml:"aws_id"`
 	EC2Secret string `bson:"aws_secret" json:"aws_secret" yaml:"aws_secret"`
 
-	S3Key     string `bson:"s3_key" json:"s3_key" yaml:"s3_key"`
-	S3Secret  string `bson:"s3_secret" json:"s3_secret" yaml:"s3_secret"`
-	Bucket    string `bson:"bucket" json:"bucket" yaml:"bucket"`
-	S3BaseURL string `bson:"s3_base_url" json:"s3_base_url" yaml:"s3_base_url"`
+	S3Key                string `bson:"s3_key" json:"s3_key" yaml:"s3_key"`
+	S3Secret             string `bson:"s3_secret" json:"s3_secret" yaml:"s3_secret"`
+	Bucket               string `bson:"bucket" json:"bucket" yaml:"bucket"`
+	S3BaseURL            string `bson:"s3_base_url" json:"s3_base_url" yaml:"s3_base_url"`
+	DefaultSecurityGroup string `bson:"default_security_group" json:"default_security_group" yaml:"default_security_group"`
 }
 
 // DockerConfig stores auth info for Docker.

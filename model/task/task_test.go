@@ -13,10 +13,12 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	adb "github.com/mongodb/anser/db"
+	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
@@ -1614,4 +1616,46 @@ func TestFindMergeTaskForVersion(t *testing.T) {
 	t2Db, err := FindMergeTaskForVersion("abcdef123456")
 	assert.NoError(t, err)
 	assert.Equal(t, "t2", t2Db.Id)
+}
+
+func TestMarkGeneratedTasks(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	t1 := &Task{
+		Id: "t1",
+	}
+	require.NoError(t, t1.Insert())
+
+	mockError := errors.New("mock error")
+
+	require.NoError(t, MarkGeneratedTasks(t1.Id, nil))
+	found, err := FindOneId(t1.Id)
+	require.NoError(t, err)
+	require.Equal(t, true, found.GeneratedTasks)
+	require.Equal(t, "", found.GenerateTasksError)
+
+	require.NoError(t, MarkGeneratedTasks(t1.Id, mockError))
+	found, err = FindOneId(t1.Id)
+	require.NoError(t, err)
+	require.Equal(t, true, found.GeneratedTasks)
+	require.Equal(t, "", found.GenerateTasksError, "calling after GeneratedTasks is set should not set an error")
+
+	t2 := &Task{
+		Id: "t2",
+	}
+	require.NoError(t, t2.Insert())
+	require.NoError(t, MarkGeneratedTasks(t2.Id, mockError))
+	found, err = FindOneId(t2.Id)
+	require.NoError(t, err)
+	require.Equal(t, true, found.GeneratedTasks)
+	require.Equal(t, mockError.Error(), found.GenerateTasksError)
+
+	t3 := &Task{
+		Id: "t3",
+	}
+	require.NoError(t, t3.Insert())
+	require.NoError(t, MarkGeneratedTasks(t3.Id, mongo.ErrNoDocuments))
+	found, err = FindOneId(t3.Id)
+	require.NoError(t, err)
+	require.Equal(t, false, found.GeneratedTasks, "document not found should not set generated tasks, since this was a race and did not generate.tasks")
+	require.Equal(t, "", found.GenerateTasksError)
 }

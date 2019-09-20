@@ -310,7 +310,7 @@ func (j *setupHostJob) setupJasper(ctx context.Context) error {
 		return errors.Wrapf(err, "error getting ssh options for host %s", j.host.Id)
 	}
 
-	if err := j.putJasperCredentials(ctx, j.host.Distro.BootstrapSettings.JasperCredentialsPath, sshOptions); err != nil {
+	if err := j.putJasperCredentials(ctx, sshOptions); err != nil {
 		return errors.Wrap(err, "error putting Jasper credentials on remote host")
 	}
 
@@ -330,49 +330,16 @@ func (j *setupHostJob) setupJasper(ctx context.Context) error {
 
 // putJasperCredentials creates Jasper credentials for the host and puts the
 // credentials file on the host.
-func (j *setupHostJob) putJasperCredentials(ctx context.Context, fileName string, sshOptions []string) error {
+func (j *setupHostJob) putJasperCredentials(ctx context.Context, sshOptions []string) error {
 	creds, err := j.host.GenerateJasperCredentials(ctx)
 	if err != nil {
 		return errors.Wrap(err, "could not generate Jasper credentials for host")
 	}
 
-	hostInfo, err := j.host.GetSSHInfo()
+	writeCmd, err := j.host.WriteJasperCredentialsFileCommand(creds)
 	if err != nil {
-		return errors.Wrap(err, "could not get SSH info for host")
+		return errors.Wrap(err, "could not get command to write Jasper credentials file")
 	}
-	exportedCreds, err := creds.Export()
-	if err != nil {
-		return errors.Wrap(err, "could not export Jasper credentials")
-	}
-
-	file, err := ioutil.TempFile("", filepath.Base(fileName))
-	if err != nil {
-		return errors.Wrap(err, "error creating temporary script file")
-	}
-	if err = os.Chmod(file.Name(), 0644); err != nil {
-		return errors.Wrap(err, "error setting file permissions")
-	}
-	defer func() {
-		errMsg := message.Fields{
-			"job":       j.ID(),
-			"operation": "cleaning up after copying credentials",
-			"file":      file.Name(),
-			"distro":    j.host.Distro.Id,
-			"host":      j.host.Id,
-		}
-		grip.Error(message.WrapError(file.Close(), errMsg))
-		grip.Error(message.WrapError(os.Remove(file.Name()), errMsg))
-	}()
-
-	if _, err = io.WriteString(file, string(exportedCreds)); err != nil {
-		return errors.Wrap(err, "error writing local credentials")
-	}
-
-	scpCmdOut := &util.CappedWriter{
-		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024,
-	}
-	scpArgs := buildScpCommand(file.Name(), fileName, hostInfo, hostInfo.User, sshOptions)
 
 	grip.Info(message.Fields{
 		"message": "putting Jasper credentials on host",
@@ -381,20 +348,16 @@ func (j *setupHostJob) putJasperCredentials(ctx context.Context, fileName string
 		"job":     j.ID(),
 	})
 
-	scpCmd := j.env.JasperManager().CreateCommand(ctx).Add(scpArgs).
-		RedirectErrorToOutput(true).SetOutputWriter(scpCmdOut)
-
 	ctx, cancel := context.WithTimeout(ctx, scpTimeout)
 	defer cancel()
 
-	if err = scpCmd.Run(ctx); err != nil {
+	if logs, err := j.host.RunSSHCommand(ctx, writeCmd, sshOptions); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "problem copying credentials to host",
 			"job":     j.ID(),
-			"command": strings.Join(scpArgs, " "),
 			"distro":  j.host.Distro.Id,
 			"host":    j.host.Id,
-			"output":  scpCmdOut.String(),
+			"output":  logs,
 		}))
 		return errors.Wrap(err, "error copying credentials to remote machine")
 	}
@@ -884,5 +847,5 @@ func (j *setupHostJob) tryRequeue(ctx context.Context) {
 }
 
 func shouldRetryProvisioning(h *host.Host) bool {
-	return h.ProvisionAttempts <= provisionRetryLimit && h.Status == evergreen.HostProvisioning
+	return h.ProvisionAttempts <= provisionRetryLimit && h.Status == evergreen.HostProvisioning && !h.Provisioned
 }

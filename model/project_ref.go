@@ -30,7 +30,6 @@ type ProjectRef struct {
 	RemotePath         string `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
 	Identifier         string `bson:"identifier" json:"identifier" yaml:"identifier"`
 	DisplayName        string `bson:"display_name" json:"display_name" yaml:"display_name"`
-	LocalConfig        string `bson:"local_config" json:"local_config" yaml:"local_config"`
 	DeactivatePrevious bool   `bson:"deactivate_previous" json:"deactivate_previous" yaml:"deactivate_previous"`
 
 	// TracksPushEvents, if true indicates that Repotracker is triggered by
@@ -137,7 +136,6 @@ var (
 	ProjectRefDeactivatePreviousKey = bsonutil.MustHaveTag(ProjectRef{}, "DeactivatePrevious")
 	ProjectRefRemotePathKey         = bsonutil.MustHaveTag(ProjectRef{}, "RemotePath")
 	ProjectRefTrackedKey            = bsonutil.MustHaveTag(ProjectRef{}, "Tracked")
-	ProjectRefLocalConfig           = bsonutil.MustHaveTag(ProjectRef{}, "LocalConfig")
 	ProjectRefRepotrackerError      = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
 	ProjectRefFilesIgnoredFromCache = bsonutil.MustHaveTag(ProjectRef{}, "FilesIgnoredFromCache")
 	ProjectRefDisabledStatsCache    = bsonutil.MustHaveTag(ProjectRef{}, "DisabledStatsCache")
@@ -470,7 +468,6 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefTrackedKey:            projectRef.Tracked,
 				ProjectRefRemotePathKey:         projectRef.RemotePath,
 				ProjectRefTrackedKey:            projectRef.Tracked,
-				ProjectRefLocalConfig:           projectRef.LocalConfig,
 				ProjectRefRepotrackerError:      projectRef.RepotrackerError,
 				ProjectRefFilesIgnoredFromCache: projectRef.FilesIgnoredFromCache,
 				ProjectRefDisabledStatsCache:    projectRef.DisabledStatsCache,

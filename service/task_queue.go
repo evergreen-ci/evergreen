@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -58,8 +59,14 @@ type uiHostStatistics struct {
 }
 
 func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
-
+	begin := time.Now()
 	taskQueues, err := model.FindAllTaskQueues()
+	grip.DebugWhen(time.Since(begin) > 100*time.Millisecond, message.Fields{
+		"operation":     "task queue page",
+		"message":       "found all task queues",
+		"duration_secs": time.Since(begin).Seconds(),
+	})
+	begin = time.Now()
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrap(err, "Error finding task queues"))
@@ -73,6 +80,12 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, message, http.StatusInternalServerError)
 		return
 	}
+	grip.DebugWhen(time.Since(begin) > 100*time.Millisecond, message.Fields{
+		"operation":     "task queue page",
+		"message":       "found all distros",
+		"duration_secs": time.Since(begin).Seconds(),
+	})
+	begin = time.Now()
 	distroIds := []string{}
 	for _, d := range allDistros {
 		distroIds = append(distroIds, d.Id)
@@ -178,6 +191,12 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 		uiTaskQueues = append(uiTaskQueues, asUI)
 
 	}
+	grip.DebugWhen(time.Since(begin) > 100*time.Millisecond, message.Fields{
+		"operation":     "task queue page",
+		"message":       "converted task queues to UI versions",
+		"duration_secs": time.Since(begin).Seconds(),
+	})
+	begin = time.Now()
 
 	// add other useful statistics to view alongside queue
 	idleHosts, err := host.Find(host.IsIdle)
@@ -187,6 +206,12 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, msg, http.StatusInternalServerError)
 		return
 	}
+	grip.DebugWhen(time.Since(begin) > 100*time.Millisecond, message.Fields{
+		"operation":     "task queue page",
+		"message":       "found idle hosts",
+		"duration_secs": time.Since(begin).Seconds(),
+	})
+	begin = time.Now()
 	activeHosts, err := host.Find(db.Query(host.IsLive()))
 	if err != nil {
 		msg := fmt.Sprintf("Error finding active hosts: %v", err)
@@ -194,6 +219,11 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, msg, http.StatusInternalServerError)
 		return
 	}
+	grip.DebugWhen(time.Since(begin) > 100*time.Millisecond, message.Fields{
+		"operation":     "task queue page",
+		"message":       "found live hosts",
+		"duration_secs": time.Since(begin).Seconds(),
+	})
 	idleStaticHostsCount := 0
 	for _, host := range idleHosts {
 		if host.Provider == evergreen.HostTypeStatic {

@@ -403,22 +403,37 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 		var revision string
 		if conf.Task.Requester == evergreen.MergeTestRequester {
 			revision = module.Branch
+			c.logModuleRevision(logger, revision, moduleName, "commit queue merge")
 		} else {
 			if p != nil {
 				module := p.FindModule(moduleName)
 				if module != nil {
 					revision = module.Githash
+					if revision != "" {
+						c.logModuleRevision(logger, revision, moduleName, "specified in set-module")
+					}
 				}
 			}
 			if revision == "" {
 				revision = c.Revisions[moduleName]
+				if revision != "" {
+					c.logModuleRevision(logger, revision, moduleName, "specified as parameter to git.get_project")
+				}
+			}
+			if revision == "" {
+				revision = conf.Expansions.Get(moduleExpansionName(moduleName))
+				if revision != "" {
+					c.logModuleRevision(logger, revision, moduleName, "from manifest")
+				}
 			}
 			// if there is no revision, then use the revision from the module, then branch name
 			if revision == "" {
 				if module.Ref != "" {
 					revision = module.Ref
+					c.logModuleRevision(logger, revision, moduleName, "ref field in config file")
 				} else {
 					revision = module.Branch
+					c.logModuleRevision(logger, revision, moduleName, "branch field in config file")
 				}
 			}
 		}
@@ -501,6 +516,10 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 	return nil
 }
 
+func (c *gitFetchProject) logModuleRevision(logger client.LoggerProducer, revision, module, reason string) {
+	logger.Execution().Infof("Using revision/ref '%s' for module '%s' (reason: %s)", revision, module, reason)
+}
+
 // getPatchContents() dereferences any patch files that are stored externally, fetching them from
 // the API server, and setting them into the patch object.
 func (c *gitFetchProject) getPatchContents(ctx context.Context, comm client.Communicator,
@@ -576,20 +595,21 @@ func getApplyCommand(patchFile string) (string, error) {
 
 // getPatchCommands, given a module patch of a patch, will return the appropriate list of commands that
 // need to be executed, except for apply. If the patch is empty it will not apply the patch.
-func getPatchCommands(modulePatch patch.ModulePatch, dir, patchPath string) []string {
+func getPatchCommands(modulePatch patch.ModulePatch, conf *model.TaskConfig, dir, patchPath string) []string {
 	patchCommands := []string{
 		fmt.Sprintf("set -o xtrace"),
 		fmt.Sprintf("set -o errexit"),
 		fmt.Sprintf("ls"),
 		fmt.Sprintf("cd '%s'", dir),
-		fmt.Sprintf("git reset --hard '%s'", modulePatch.Githash),
 	}
+	if conf.Task.Requester != evergreen.MergeTestRequester {
+		patchCommands = append(patchCommands, fmt.Sprintf("git reset --hard '%s'", modulePatch.Githash))
+	}
+
 	if modulePatch.PatchSet.Patch == "" {
 		return patchCommands
 	}
-	return append(patchCommands, []string{
-		fmt.Sprintf("git apply --stat '%v' || true", patchPath),
-	}...)
+	return append(patchCommands, fmt.Sprintf("git apply --stat '%v' || true", patchPath))
 }
 
 // applyPatch is used by the agent to copy patch data onto disk
@@ -656,7 +676,7 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 		tempAbsPath := tempFile.Name()
 
 		// this applies the patch using the patch files in the temp directory
-		patchCommandStrings := getPatchCommands(patchPart, dir, tempAbsPath)
+		patchCommandStrings := getPatchCommands(patchPart, conf, dir, tempAbsPath)
 		applyCommand, err := getApplyCommand(tempAbsPath)
 		if err != nil {
 			logger.Execution().Error("Could not to determine patch type")

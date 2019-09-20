@@ -3,7 +3,6 @@ package queue
 import (
 	"context"
 	"fmt"
-	"runtime"
 	"testing"
 	"time"
 
@@ -23,40 +22,12 @@ func init() {
 
 type RemoteUnorderedSuite struct {
 	queue             *remoteUnordered
-	driver            Driver
-	driverConstructor func() Driver
+	driver            remoteQueueDriver
+	driverConstructor func() remoteQueueDriver
 	tearDown          func()
 	require           *require.Assertions
 	canceler          context.CancelFunc
 	suite.Suite
-}
-
-func TestRemoteUnorderedInternalDriverSuite(t *testing.T) {
-	if runtime.Compiler == "gccgo" {
-		t.Skip("gccgo not supported.")
-	}
-
-	tests := new(RemoteUnorderedSuite)
-	tests.driverConstructor = func() Driver {
-		return NewInternalDriver()
-	}
-	tests.tearDown = func() {}
-
-	suite.Run(t, tests)
-}
-
-func TestRemoteUnorderedPriorityDriverSuite(t *testing.T) {
-	if runtime.Compiler == "gccgo" {
-		t.Skip("gccgo not supported.")
-	}
-
-	tests := new(RemoteUnorderedSuite)
-	tests.driverConstructor = func() Driver {
-		return NewPriorityDriver()
-	}
-	tests.tearDown = func() {}
-
-	suite.Run(t, tests)
 }
 
 func TestRemoteUnorderedMongoSuite(t *testing.T) {
@@ -77,8 +48,8 @@ func TestRemoteUnorderedMongoSuite(t *testing.T) {
 
 	require.NoError(t, client.Database(opts.DB).Drop(ctx))
 
-	tests.driverConstructor = func() Driver {
-		d, err := OpenNewMongoDriver(ctx, name, opts, client)
+	tests.driverConstructor = func() remoteQueueDriver {
+		d, err := openNewMongoDriver(ctx, name, opts, client)
 		require.NoError(t, err)
 		return d
 	}
@@ -103,7 +74,7 @@ func (s *RemoteUnorderedSuite) SetupTest() {
 	s.driver = s.driverConstructor()
 	s.canceler = canceler
 	s.NoError(s.driver.Open(ctx))
-	s.queue = NewRemoteUnordered(2).(*remoteUnordered)
+	s.queue = newRemoteUnordered(2).(*remoteUnordered)
 }
 
 func (s *RemoteUnorderedSuite) TearDownTest() {

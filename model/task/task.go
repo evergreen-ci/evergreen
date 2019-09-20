@@ -580,17 +580,19 @@ func (t *Task) MarkAsUndispatched() error {
 
 // MarkGeneratedTasks marks that the task has generated tasks.
 func MarkGeneratedTasks(taskID string, errorToSet error) error {
+	if adb.ResultsNotFound(errorToSet) {
+		return nil
+	}
 	query := bson.M{
 		IdKey:             taskID,
 		GeneratedTasksKey: bson.M{"$exists": false},
 	}
-	update := bson.M{
-		"$set": bson.M{
-			GeneratedTasksKey: true,
-		},
+	set := bson.M{GeneratedTasksKey: true}
+	if errorToSet != nil {
+		set[GenerateTasksErrorKey] = errorToSet.Error()
 	}
-	if errorToSet != nil && !adb.ResultsNotFound(errorToSet) {
-		update[GenerateTasksErrorKey] = errorToSet.Error()
+	update := bson.M{
+		"$set": set,
 	}
 	err := UpdateOne(query, update)
 	if adb.ResultsNotFound(err) {
@@ -600,7 +602,7 @@ func MarkGeneratedTasks(taskID string, errorToSet error) error {
 }
 
 func GenerateNotRun() ([]Task, error) {
-	const maxGenerateTimeAgo = 2 * time.Hour
+	const maxGenerateTimeAgo = 24 * time.Hour
 	return FindAll(db.Query(bson.M{
 		StatusKey:         evergreen.TaskStarted,                              // task is running
 		StartTimeKey:      bson.M{"$gt": time.Now().Add(-maxGenerateTimeAgo)}, // ignore older tasks, just in case
@@ -1739,6 +1741,14 @@ func (t *Task) BlockedState() (string, error) {
 		depTask, err := FindOne(ById(dep.TaskId).WithFields(StatusKey, DependsOnKey))
 		if err != nil {
 			return "", errors.Wrapf(err, "can't get dependent task '%s'", dep.TaskId)
+		}
+		if depTask == nil {
+			grip.Error(message.Fields{
+				"message":        "could not find dependent task",
+				"task":           t.Id,
+				"dependent_task": dep.TaskId,
+			})
+			continue
 		}
 		if !t.satisfiesDependency(depTask) {
 			return evergreen.TaskStatusPending, nil
