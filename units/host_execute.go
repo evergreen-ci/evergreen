@@ -59,13 +59,6 @@ func NewHostExecuteJob(env evergreen.Environment, h host.Host, script string, id
 }
 
 func (j *hostExecuteJob) Run(ctx context.Context) {
-	grip.Info(message.Fields{
-		"message": "kim: running job to execute script",
-		"host":    j.host.Id,
-		"distro":  j.host.Distro.Id,
-		"script":  j.Script,
-		"job":     j.ID(),
-	})
 	defer j.MarkComplete()
 
 	if err := j.populateIfUnset(); err != nil {
@@ -78,6 +71,13 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 		j.AddError(err)
 		return
 	}
+	grip.Info(message.Fields{
+		"message": "kim: running job to execute script",
+		"host":    j.host.Id,
+		"distro":  j.host.Distro.Id,
+		"script":  j.Script,
+		"job":     j.ID(),
+	})
 
 	if j.host.Status != evergreen.HostRunning {
 		grip.Debug(message.Fields{
@@ -120,6 +120,14 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 	}
 
 	event.LogHostScriptExecuted(j.host.Id, logs)
+
+	grip.Info(message.Fields{
+		"message": "host executed script successfully",
+		"host":    j.host.Id,
+		"distro":  j.host.Distro.Id,
+		"logs":    logs,
+		"job":     j.ID(),
+	})
 }
 
 // populateIfUnset populates the unset job fields.
