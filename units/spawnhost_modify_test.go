@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -43,7 +42,7 @@ func TestSpawnhostModifyJob(t *testing.T) {
 		DeleteInstanceTags: []string{"key1"},
 	}
 
-	ts := util.GetUTCSecond(time.Now()).Format(tsFormat)
+	ts := util.RoundPartOfMinute(1).Format(tsFormat)
 	j := NewSpawnhostModifyJob(&h, changes, ts)
 
 	j.Run(context.Background())
