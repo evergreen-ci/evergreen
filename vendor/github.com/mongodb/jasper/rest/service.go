@@ -1,4 +1,4 @@
-package jasper
+package rest
 
 import (
 	"context"
@@ -14,6 +14,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
+	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 	"github.com/tychoish/lru"
 )
@@ -22,9 +24,9 @@ import (
 // gimlet to publish routes.
 type Service struct {
 	hostID     string
-	manager    Manager
+	manager    jasper.Manager
 	cache      *lru.Cache
-	cacheOpts  CacheOptions
+	cacheOpts  options.Cache
 	cacheMutex sync.RWMutex
 }
 
@@ -32,22 +34,11 @@ type Service struct {
 // manager. You must access the application and routes via the App()
 // method separately. The constructor wraps basic managers with a
 // manager implementation that does locking.
-func NewManagerService(m Manager) *Service {
-	if bpm, ok := m.(*basicProcessManager); ok {
-		m = &localProcessManager{manager: bpm}
-	}
-
+func NewManagerService(m jasper.Manager) *Service {
 	return &Service{
 		manager: m,
 	}
 }
-
-const (
-	// DefaultCachePruneDelay is the duration between LRU cache prunes.
-	DefaultCachePruneDelay = 10 * time.Second
-	// DefaultMaxCacheSize is the maximum allowed size of the LRU cache.
-	DefaultMaxCacheSize = 1024 * 1024 * 1024
-)
 
 // App constructs and returns a gimlet application for this
 // service. It attaches no middleware and does not start the service.
@@ -56,8 +47,8 @@ func (s *Service) App(ctx context.Context) *gimlet.APIApp {
 	s.cache = lru.NewCache()
 	s.cacheMutex.Lock()
 	defer s.cacheMutex.Unlock()
-	s.cacheOpts.PruneDelay = DefaultCachePruneDelay
-	s.cacheOpts.MaxSize = DefaultMaxCacheSize
+	s.cacheOpts.PruneDelay = jasper.DefaultCachePruneDelay
+	s.cacheOpts.MaxSize = jasper.DefaultMaxCacheSize
 	s.cacheOpts.Disabled = false
 
 	app := gimlet.NewApp()
@@ -144,7 +135,7 @@ func (s *Service) backgroundPrune(ctx context.Context) {
 	}
 }
 
-func getProcInfoNoHang(ctx context.Context, p Process) ProcessInfo {
+func getProcInfoNoHang(ctx context.Context, p jasper.Process) jasper.ProcessInfo {
 	ctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
 	defer cancel()
 	return p.Info(ctx)
@@ -169,7 +160,7 @@ func (s *Service) id(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) createProcess(rw http.ResponseWriter, r *http.Request) {
-	opts := &CreateOptions{}
+	opts := &options.Create{}
 	if err := gimlet.GetJSON(r.Body, opts); err != nil {
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -199,7 +190,7 @@ func (s *Service) createProcess(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := proc.RegisterTrigger(ctx, func(_ ProcessInfo) {
+	if err := proc.RegisterTrigger(ctx, func(_ jasper.ProcessInfo) {
 		cancel()
 	}); err != nil {
 		// If we get an error registering a trigger, then we should make sure that
@@ -234,7 +225,7 @@ func (s *Service) getBuildloggerURLs(rw http.ResponseWriter, r *http.Request) {
 	info := getProcInfoNoHang(ctx, proc)
 	urls := []string{}
 	for _, logger := range info.Options.Output.Loggers {
-		if logger.Type == LogBuildloggerV2 || logger.Type == LogBuildloggerV3 {
+		if logger.Type == options.LogBuildloggerV2 || logger.Type == options.LogBuildloggerV3 {
 			urls = append(urls, logger.Options.BuildloggerOptions.GetGlobalLogURL())
 		}
 	}
@@ -251,7 +242,7 @@ func (s *Service) getBuildloggerURLs(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) listProcesses(rw http.ResponseWriter, r *http.Request) {
-	filter := Filter(gimlet.GetVars(r)["filter"])
+	filter := options.Filter(gimlet.GetVars(r)["filter"])
 	if err := filter.Validate(); err != nil {
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -271,7 +262,7 @@ func (s *Service) listProcesses(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out := []ProcessInfo{}
+	out := []jasper.ProcessInfo{}
 	for _, proc := range procs {
 		out = append(out, getProcInfoNoHang(ctx, proc))
 	}
@@ -293,7 +284,7 @@ func (s *Service) listGroupMembers(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out := []ProcessInfo{}
+	out := []jasper.ProcessInfo{}
 	for _, proc := range procs {
 		out = append(out, getProcInfoNoHang(ctx, proc))
 	}
@@ -451,7 +442,7 @@ func (s *Service) respawnProcess(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := newProc.RegisterTrigger(ctx, func(_ ProcessInfo) {
+	if err := newProc.RegisterTrigger(ctx, func(_ jasper.ProcessInfo) {
 		cancel()
 	}); err != nil {
 		if !getProcInfoNoHang(ctx, newProc).Complete {
@@ -503,7 +494,7 @@ func (s *Service) signalProcess(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) downloadFile(rw http.ResponseWriter, r *http.Request) {
-	var info DownloadInfo
+	var info options.Download
 	if err := gimlet.GetJSON(r.Body, &info); err != nil {
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -554,8 +545,8 @@ func (s *Service) getLogStream(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stream := LogStream{}
-	stream.Logs, err = GetInMemoryLogStream(ctx, proc, count)
+	stream := jasper.LogStream{}
+	stream.Logs, err = jasper.GetInMemoryLogStream(ctx, proc, count)
 
 	if err == io.EOF {
 		stream.Done = true
@@ -575,7 +566,7 @@ func (s *Service) signalEvent(rw http.ResponseWriter, r *http.Request) {
 	name := vars["name"]
 	ctx := r.Context()
 
-	if err := SignalEvent(ctx, name); err != nil {
+	if err := jasper.SignalEvent(ctx, name); err != nil {
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "problem signaling event named '%s'", name).Error(),
@@ -587,7 +578,7 @@ func (s *Service) signalEvent(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) writeFile(rw http.ResponseWriter, r *http.Request) {
-	var info WriteFileInfo
+	var info options.WriteFile
 	if err := gimlet.GetJSON(r.Body, &info); err != nil {
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -641,7 +632,7 @@ func (s *Service) closeManager(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) configureCache(rw http.ResponseWriter, r *http.Request) {
-	opts := CacheOptions{}
+	opts := options.Cache{}
 	if err := gimlet.GetJSON(r.Body, &opts); err != nil {
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -672,7 +663,7 @@ func (s *Service) configureCache(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) downloadMongoDB(rw http.ResponseWriter, r *http.Request) {
-	opts := MongoDBDownloadOptions{}
+	opts := options.MongoDBDownload{}
 	if err := gimlet.GetJSON(r.Body, &opts); err != nil {
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -689,7 +680,7 @@ func (s *Service) downloadMongoDB(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := SetupDownloadMongoDBReleases(r.Context(), s.cache, opts); err != nil {
+	if err := jasper.SetupDownloadMongoDBReleases(r.Context(), s.cache, opts); err != nil {
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "problem in download setup").Error(),
@@ -715,8 +706,8 @@ func (s *Service) registerSignalTriggerID(rw http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	sigTriggerID := SignalTriggerID(triggerID)
-	makeTrigger, ok := GetSignalTriggerFactory(sigTriggerID)
+	sigTriggerID := jasper.SignalTriggerID(triggerID)
+	makeTrigger, ok := jasper.GetSignalTriggerFactory(sigTriggerID)
 	if !ok {
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -737,7 +728,7 @@ func (s *Service) registerSignalTriggerID(rw http.ResponseWriter, r *http.Reques
 }
 
 func (s *Service) oomTrackerClear(rw http.ResponseWriter, r *http.Request) {
-	resp := &oomTrackerImpl{}
+	resp := jasper.NewOOMTracker()
 
 	if err := resp.Clear(r.Context()); err != nil {
 		gimlet.WriteJSONInternalError(rw, err.Error())
@@ -748,7 +739,7 @@ func (s *Service) oomTrackerClear(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) oomTrackerList(rw http.ResponseWriter, r *http.Request) {
-	resp := &oomTrackerImpl{}
+	resp := jasper.NewOOMTracker()
 
 	if err := resp.Check(r.Context()); err != nil {
 		gimlet.WriteJSONInternalError(rw, err.Error())

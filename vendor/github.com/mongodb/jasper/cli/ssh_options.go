@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mongodb/grip"
-	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/options"
 )
 
 // ClientOptions represents the options to connect the CLI client to the Jasper
@@ -33,7 +33,7 @@ func (opts *ClientOptions) Validate() error {
 // sshClientOptions represents the options necessary to run a Jasper CLI
 // command over SSH.
 type sshClientOptions struct {
-	Machine jasper.RemoteOptions
+	Machine options.Remote
 	Client  ClientOptions
 }
 

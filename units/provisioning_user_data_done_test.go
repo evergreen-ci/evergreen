@@ -9,7 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/mongodb/jasper"
+	jmock "github.com/mongodb/jasper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,8 +18,8 @@ func TestUserDataDoneJob(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jasper.MockManager, h *host.Host){
-		"NewUserDataSpawnHostReadyJobPopulatesFields": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jasper.MockManager, h *host.Host) {
+	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host){
+		"NewUserDataSpawnHostReadyJobPopulatesFields": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
 			_, err := h.Upsert()
 			require.NoError(t, err)
 
@@ -29,7 +29,7 @@ func TestUserDataDoneJob(t *testing.T) {
 
 			assert.Equal(t, h.Id, readyJob.HostID)
 		},
-		"RunNoopsIfHostNotProvisioning": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jasper.MockManager, h *host.Host) {
+		"RunNoopsIfHostNotProvisioning": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
 			require.NoError(t, h.SetRunning(evergreen.User))
 
 			j := NewUserDataDoneJob(env, *h, "id")
@@ -38,7 +38,7 @@ func TestUserDataDoneJob(t *testing.T) {
 
 			assert.Empty(t, mngr.Procs)
 		},
-		"RunFailsWithoutPathToFile": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jasper.MockManager, h *host.Host) {
+		"RunFailsWithoutPathToFile": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
 			h.Distro.BootstrapSettings.ClientDir = ""
 			_, err := h.Upsert()
 			require.NoError(t, err)
@@ -47,7 +47,7 @@ func TestUserDataDoneJob(t *testing.T) {
 			j.Run(ctx)
 			assert.Error(t, j.Error())
 		},
-		"RunChecksForPathToFile": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jasper.MockManager, h *host.Host) {
+		"RunChecksForPathToFile": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
 			j := NewUserDataDoneJob(env, *h, "id")
 			j.Run(ctx)
 			require.NoError(t, j.Error())
@@ -78,7 +78,7 @@ func TestUserDataDoneJob(t *testing.T) {
 			require.NoError(t, env.Configure(tctx, "", nil))
 			env.Settings().HostJasper = evergreen.HostJasperConfig{}
 
-			mngr := &jasper.MockManager{}
+			mngr := &jmock.Manager{}
 
 			h := &host.Host{
 				Id:   "host_id",

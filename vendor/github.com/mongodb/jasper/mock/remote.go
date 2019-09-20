@@ -1,13 +1,16 @@
-package jasper
+package mock
 
 import (
 	"context"
+
+	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/options"
 )
 
-// MockRemoteClient implements the RemoteClient interface with exported fields
+// RemoteClient implements the RemoteClient interface with exported fields
 // to configure and introspect the mock's behavior.
-type MockRemoteClient struct {
-	MockManager
+type RemoteClient struct {
+	Manager
 	FailCloseConnection    bool
 	FailConfigureCache     bool
 	FailDownloadFile       bool
@@ -18,21 +21,21 @@ type MockRemoteClient struct {
 	FailWriteFile          bool
 
 	// ConfigureCache input
-	CacheOptions CacheOptions
+	CacheOptions options.Cache
 
 	// DownloadFile input
-	DownloadInfo DownloadInfo
+	DownloadInfo options.Download
 
 	// WriteFile input
-	WriteFileInfo WriteFileInfo
+	WriteFileInfo options.WriteFile
 
 	// DownloadMongoDB input
-	MongoDBDownloadOptions MongoDBDownloadOptions
+	MongoDBDownloadOptions options.MongoDBDownload
 
 	// LogStream input/output
 	LogStreamID    string
 	LogStreamCount int
-	LogStream
+	jasper.LogStream
 
 	// GetBuildloggerURLs output
 	BuildloggerURLs []string
@@ -40,14 +43,14 @@ type MockRemoteClient struct {
 	EventName string
 }
 
-func (c *MockRemoteClient) CloseConnection() error {
+func (c *RemoteClient) CloseConnection() error {
 	if c.FailCloseConnection {
 		return mockFail()
 	}
 	return nil
 }
 
-func (c *MockRemoteClient) ConfigureCache(ctx context.Context, opts CacheOptions) error {
+func (c *RemoteClient) ConfigureCache(ctx context.Context, opts options.Cache) error {
 	if c.FailConfigureCache {
 		return mockFail()
 	}
@@ -57,7 +60,7 @@ func (c *MockRemoteClient) ConfigureCache(ctx context.Context, opts CacheOptions
 	return nil
 }
 
-func (c *MockRemoteClient) DownloadFile(ctx context.Context, info DownloadInfo) error {
+func (c *RemoteClient) DownloadFile(ctx context.Context, info options.Download) error {
 	if c.FailDownloadFile {
 		return mockFail()
 	}
@@ -67,7 +70,7 @@ func (c *MockRemoteClient) DownloadFile(ctx context.Context, info DownloadInfo) 
 	return nil
 }
 
-func (c *MockRemoteClient) DownloadMongoDB(ctx context.Context, opts MongoDBDownloadOptions) error {
+func (c *RemoteClient) DownloadMongoDB(ctx context.Context, opts options.MongoDBDownload) error {
 	if c.FailDownloadMongoDB {
 		return mockFail()
 	}
@@ -77,7 +80,7 @@ func (c *MockRemoteClient) DownloadMongoDB(ctx context.Context, opts MongoDBDown
 	return nil
 }
 
-func (c *MockRemoteClient) GetBuildloggerURLs(ctx context.Context, id string) ([]string, error) {
+func (c *RemoteClient) GetBuildloggerURLs(ctx context.Context, id string) ([]string, error) {
 	if c.FailGetBuildloggerURLs {
 		return nil, mockFail()
 	}
@@ -85,17 +88,17 @@ func (c *MockRemoteClient) GetBuildloggerURLs(ctx context.Context, id string) ([
 	return c.BuildloggerURLs, nil
 }
 
-func (c *MockRemoteClient) GetLogStream(ctx context.Context, id string, count int) (LogStream, error) {
+func (c *RemoteClient) GetLogStream(ctx context.Context, id string, count int) (jasper.LogStream, error) {
 	if c.FailGetLogStream {
-		return LogStream{Done: true}, mockFail()
+		return jasper.LogStream{Done: true}, mockFail()
 	}
 	c.LogStreamID = id
 	c.LogStreamCount = count
 
-	return LogStream{Done: true}, nil
+	return jasper.LogStream{Done: true}, nil
 }
 
-func (c *MockRemoteClient) SignalEvent(ctx context.Context, name string) error {
+func (c *RemoteClient) SignalEvent(ctx context.Context, name string) error {
 	if c.FailSignalEvent {
 		return mockFail()
 	}
@@ -105,7 +108,7 @@ func (c *MockRemoteClient) SignalEvent(ctx context.Context, name string) error {
 	return nil
 }
 
-func (c *MockRemoteClient) WriteFile(ctx context.Context, info WriteFileInfo) error {
+func (c *RemoteClient) WriteFile(ctx context.Context, info options.WriteFile) error {
 	if c.FailWriteFile {
 		return mockFail()
 	}

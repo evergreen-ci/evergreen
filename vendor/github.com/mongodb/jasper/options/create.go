@@ -1,4 +1,4 @@
-package jasper
+package options
 
 import (
 	"bytes"
@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/shlex"
@@ -19,35 +20,36 @@ import (
 	"github.com/pkg/errors"
 )
 
-// CreateOptions contains options related to starting a process. This includes
+// Create contains options related to starting a process. This includes
 // execution configuration, post-execution triggers, and output configuration.
 // It is not safe for concurrent access.
-type CreateOptions struct {
+type Create struct {
 	Args             []string          `bson:"args" json:"args" yaml:"args"`
 	Environment      map[string]string `bson:"env,omitempty" json:"env,omitempty" yaml:"env,omitempty"`
-	WorkingDirectory string            `bson:"working_directory,omitempty" json:"working_directory,omitempty" yaml:"working_directory,omitempty"`
-	Output           OutputOptions     `bson:"output" json:"output" yaml:"output"`
 	OverrideEnviron  bool              `bson:"override_env,omitempty" json:"override_env,omitempty" yaml:"override_env,omitempty"`
+	WorkingDirectory string            `bson:"working_directory,omitempty" json:"working_directory,omitempty" yaml:"working_directory,omitempty"`
+	Output           Output            `bson:"output" json:"output" yaml:"output"`
+	RemoteInfo       *Remote           `bson:"remote,omitempty" json:"remote,omitempty" yaml:"remote,omitempty"`
 	// TimeoutSecs takes precedence over Timeout. On remote interfaces,
 	// TimeoutSecs should be set instead of Timeout.
-	TimeoutSecs   int              `bson:"timeout_secs,omitempty" json:"timeout_secs,omitempty" yaml:"timeout_secs,omitempty"`
-	Timeout       time.Duration    `bson:"timeout" json:"-" yaml:"-"`
-	Tags          []string         `bson:"tags" json:"tags,omitempty" yaml:"tags"`
-	OnSuccess     []*CreateOptions `bson:"on_success" json:"on_success,omitempty" yaml:"on_success"`
-	OnFailure     []*CreateOptions `bson:"on_failure" json:"on_failure,omitempty" yaml:"on_failure"`
-	OnTimeout     []*CreateOptions `bson:"on_timeout" json:"on_timeout,omitempty" yaml:"on_timeout"`
-	StandardInput io.Reader        `bson:"-" json:"-" yaml:"-"`
+	TimeoutSecs int           `bson:"timeout_secs,omitempty" json:"timeout_secs,omitempty" yaml:"timeout_secs,omitempty"`
+	Timeout     time.Duration `bson:"timeout" json:"-" yaml:"-"`
+	Tags        []string      `bson:"tags" json:"tags,omitempty" yaml:"tags"`
+	OnSuccess   []*Create     `bson:"on_success" json:"on_success,omitempty" yaml:"on_success"`
+	OnFailure   []*Create     `bson:"on_failure" json:"on_failure,omitempty" yaml:"on_failure"`
+	OnTimeout   []*Create     `bson:"on_timeout" json:"on_timeout,omitempty" yaml:"on_timeout"`
 	// StandardInputBytes takes precedence over StandardInput. On remote
 	// interfaces, StandardInputBytes should be set instead of StandardInput.
-	StandardInputBytes []byte `bson:"stdin_bytes" json:"stdin_bytes" yaml:"stdin_bytes"`
+	StandardInput      io.Reader `bson:"-" json:"-" yaml:"-"`
+	StandardInputBytes []byte    `bson:"stdin_bytes" json:"stdin_bytes" yaml:"stdin_bytes"`
 
 	closers []func() error
 }
 
-// MakeCreationOptions takes a command string and returns an equivalent
-// CreateOptions struct that would spawn a process corresponding to the given
+// MakeCreation takes a command string and returns an equivalent
+// Create struct that would spawn a process corresponding to the given
 // command string.
-func MakeCreationOptions(cmdStr string) (*CreateOptions, error) {
+func MakeCreation(cmdStr string) (*Create, error) {
 	args, err := shlex.Split(cmdStr)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem parsing shell command")
@@ -57,17 +59,17 @@ func MakeCreationOptions(cmdStr string) (*CreateOptions, error) {
 		return nil, errors.Errorf("'%s' did not parse to valid args array", cmdStr)
 	}
 
-	return &CreateOptions{
+	return &Create{
 		Args: args,
-		Output: OutputOptions{
+		Output: Output{
 			Output: send.MakeWriterSender(grip.GetSender(), level.Info),
 			Error:  send.MakeWriterSender(grip.GetSender(), level.Error),
 		},
 	}, nil
 }
 
-// Validate ensures that CreateOptions is valid for non-remote interfaces.
-func (opts *CreateOptions) Validate() error {
+// Validate ensures that Create is valid for non-remote interfaces.
+func (opts *Create) Validate() error {
 	if len(opts.Args) == 0 {
 		return errors.New("invalid command, must specify at least one argument")
 	}
@@ -93,7 +95,7 @@ func (opts *CreateOptions) Validate() error {
 		return errors.Wrap(err, "cannot create command with invalid output")
 	}
 
-	if opts.WorkingDirectory != "" {
+	if opts.WorkingDirectory != "" && opts.RemoteInfo == nil {
 		info, err := os.Stat(opts.WorkingDirectory)
 
 		if os.IsNotExist(err) {
@@ -112,7 +114,7 @@ func (opts *CreateOptions) Validate() error {
 	return nil
 }
 
-func (opts *CreateOptions) hash() hash.Hash {
+func (opts *Create) Hash() hash.Hash {
 	hash := sha1.New()
 
 	_, _ = io.WriteString(hash, opts.WorkingDirectory)
@@ -137,10 +139,30 @@ func (opts *CreateOptions) hash() hash.Hash {
 	return hash
 }
 
+func (opts *Create) resolveRemote(env []string) {
+	if opts.RemoteInfo == nil {
+		return
+	}
+
+	var remoteCmd string
+
+	if opts.WorkingDirectory != "" {
+		remoteCmd += fmt.Sprintf("cd '%s' && ", opts.WorkingDirectory)
+	}
+
+	if len(env) != 0 {
+		remoteCmd += strings.Join(env, " ") + " "
+	}
+
+	remoteCmd += strings.Join(opts.Args, " ")
+
+	opts.Args = append(append([]string{"ssh"}, opts.RemoteInfo.Args...), opts.RemoteInfo.String(), remoteCmd)
+}
+
 // Resolve creates the command object according to the create options. It
 // returns the resolved command and the deadline when the command will be
 // terminated by timeout. If there is no deadline, it returns the zero time.
-func (opts *CreateOptions) Resolve(ctx context.Context) (*exec.Cmd, time.Time, error) {
+func (opts *Create) Resolve(ctx context.Context) (*exec.Cmd, time.Time, error) {
 	var err error
 	if ctx.Err() != nil {
 		return nil, time.Time{}, errors.New("cannot resolve command with canceled context")
@@ -150,16 +172,18 @@ func (opts *CreateOptions) Resolve(ctx context.Context) (*exec.Cmd, time.Time, e
 		return nil, time.Time{}, errors.WithStack(err)
 	}
 
-	if opts.WorkingDirectory == "" {
+	if opts.WorkingDirectory == "" && opts.RemoteInfo == nil {
 		opts.WorkingDirectory, _ = os.Getwd()
 	}
 
 	var env []string
-	if !opts.OverrideEnviron {
+	if !opts.OverrideEnviron && opts.RemoteInfo == nil {
 		env = os.Environ()
 	}
 
-	env = append(env, opts.getEnvSlice()...)
+	env = append(env, opts.ResolveEnvironment()...)
+
+	opts.resolveRemote(env)
 
 	var args []string
 	if len(opts.Args) > 1 {
@@ -175,7 +199,9 @@ func (opts *CreateOptions) Resolve(ctx context.Context) (*exec.Cmd, time.Time, e
 	}
 
 	cmd := exec.CommandContext(ctx, opts.Args[0], args...) // nolint
-	cmd.Dir = opts.WorkingDirectory
+	if opts.RemoteInfo == nil {
+		cmd.Dir = opts.WorkingDirectory
+	}
 
 	cmd.Stdout, err = opts.Output.GetOutput()
 	if err != nil {
@@ -185,7 +211,9 @@ func (opts *CreateOptions) Resolve(ctx context.Context) (*exec.Cmd, time.Time, e
 	if err != nil {
 		return nil, time.Time{}, errors.WithStack(err)
 	}
-	cmd.Env = env
+	if opts.RemoteInfo == nil {
+		cmd.Env = env
+	}
 
 	if opts.StandardInput != nil {
 		cmd.Stdin = opts.StandardInput
@@ -193,30 +221,15 @@ func (opts *CreateOptions) Resolve(ctx context.Context) (*exec.Cmd, time.Time, e
 
 	// Senders require Close() or else command output is not guaranteed to log.
 	opts.closers = append(opts.closers, func() error {
-		catcher := grip.NewBasicCatcher()
-		if opts.Output.outputSender != nil {
-			catcher.Add(opts.Output.outputSender.Close())
-		}
-		if opts.Output.errorSender != nil {
-			catcher.Add(opts.Output.errorSender.Close())
-		}
-		if opts.Output.outputSender != nil {
-			catcher.Add(opts.Output.outputSender.Sender.Close())
-		}
-		// Since senders are shared, only close error's senders if output hasn't already closed them.
-		if opts.Output.errorSender != nil && (opts.Output.SuppressOutput || opts.Output.SendOutputToError) {
-			catcher.Add(opts.Output.errorSender.Sender.Close())
-		}
-
-		return errors.WithStack(catcher.Resolve())
+		return errors.WithStack(opts.Output.Close())
 	})
 
 	return cmd, deadline, nil
 }
 
-// getEnvSlice returns the (CreateOptions).Environment as a slice of environment
+// ResolveEnvironment returns the (Create).Environment as a slice of environment
 // variables in the form "key=value".
-func (opts *CreateOptions) getEnvSlice() []string {
+func (opts *Create) ResolveEnvironment() []string {
 	env := []string{}
 	for k, v := range opts.Environment {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
@@ -224,10 +237,10 @@ func (opts *CreateOptions) getEnvSlice() []string {
 	return env
 }
 
-// AddEnvVar adds an environment variable to the CreateOptions struct on which
+// AddEnvVar adds an environment variable to the Create struct on which
 // this method is called. If the Environment map is nil, this method will
 // instantiate one.
-func (opts *CreateOptions) AddEnvVar(k, v string) {
+func (opts *Create) AddEnvVar(k, v string) {
 	if opts.Environment == nil {
 		opts.Environment = make(map[string]string)
 	}
@@ -235,10 +248,10 @@ func (opts *CreateOptions) AddEnvVar(k, v string) {
 	opts.Environment[k] = v
 }
 
-// Close will execute the closer functions assigned to the CreateOptions. This
+// Close will execute the closer functions assigned to the Create. This
 // function is often called as a trigger at the end of a process' lifetime in
 // Jasper.
-func (opts *CreateOptions) Close() error {
+func (opts *Create) Close() error {
 	catcher := grip.NewBasicCatcher()
 	for _, c := range opts.closers {
 		catcher.Add(c())
@@ -246,9 +259,21 @@ func (opts *CreateOptions) Close() error {
 	return catcher.Resolve()
 }
 
+func (opts *Create) RegisterCloser(fn func() error) {
+	if fn == nil {
+		return
+	}
+
+	if opts.closers == nil {
+		opts.closers = []func() error{}
+	}
+
+	opts.closers = append(opts.closers, fn)
+}
+
 // Copy returns a copy of the options for only the exported fields. Unexported
 // fields are cleared.
-func (opts *CreateOptions) Copy() *CreateOptions {
+func (opts *Create) Copy() *Create {
 	optsCopy := *opts
 
 	if opts.Args != nil {
@@ -269,17 +294,17 @@ func (opts *CreateOptions) Copy() *CreateOptions {
 	}
 
 	if opts.OnSuccess != nil {
-		optsCopy.OnSuccess = make([]*CreateOptions, len(opts.OnSuccess))
+		optsCopy.OnSuccess = make([]*Create, len(opts.OnSuccess))
 		_ = copy(optsCopy.OnSuccess, opts.OnSuccess)
 	}
 
 	if opts.OnFailure != nil {
-		optsCopy.OnFailure = make([]*CreateOptions, len(opts.OnFailure))
+		optsCopy.OnFailure = make([]*Create, len(opts.OnFailure))
 		_ = copy(optsCopy.OnFailure, opts.OnFailure)
 	}
 
 	if opts.OnTimeout != nil {
-		optsCopy.OnTimeout = make([]*CreateOptions, len(opts.OnTimeout))
+		optsCopy.OnTimeout = make([]*Create, len(opts.OnTimeout))
 		_ = copy(optsCopy.OnTimeout, opts.OnTimeout)
 	}
 

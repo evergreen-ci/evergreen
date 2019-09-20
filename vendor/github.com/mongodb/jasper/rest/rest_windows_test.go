@@ -1,4 +1,4 @@
-package jasper
+package rest
 
 import (
 	"context"
@@ -6,13 +6,15 @@ import (
 	"syscall"
 	"testing"
 
+	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestWindowsRESTService(t *testing.T) {
-	httpClient := GetHTTPClient()
-	defer PutHTTPClient(httpClient)
+	httpClient := testutil.GetHTTPClient()
+	defer testutil.PutHTTPClient(httpClient)
 
 	for testName, testCase := range map[string]func(context.Context, *testing.T, *Service, *restClient){
 		"SignalEventWithNonexistentEvent": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
@@ -23,16 +25,16 @@ func TestWindowsRESTService(t *testing.T) {
 			utf16EventName, err := syscall.UTF16PtrFromString(eventName)
 			require.NoError(t, err)
 
-			event, err := CreateEvent(utf16EventName)
+			event, err := jasper.CreateEvent(utf16EventName)
 			require.NoError(t, err)
-			defer CloseHandle(event)
+			defer jasper.CloseHandle(event)
 
 			assert.NoError(t, client.SignalEvent(ctx, eventName))
 		},
 		// "": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), longTaskTimeout)
+			ctx, cancel := context.WithTimeout(context.Background(), testutil.LongTestTimeout)
 			defer cancel()
 
 			srv, port, err := startRESTService(ctx, httpClient)

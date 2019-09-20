@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
 
@@ -39,7 +40,7 @@ func (m *localProcessManager) ID() string {
 	return m.manager.ID()
 }
 
-func (m *localProcessManager) CreateProcess(ctx context.Context, opts *CreateOptions) (Process, error) {
+func (m *localProcessManager) CreateProcess(ctx context.Context, opts *options.Create) (Process, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -68,7 +69,7 @@ func (m *localProcessManager) Register(ctx context.Context, proc Process) error 
 	return errors.WithStack(m.manager.Register(ctx, proc))
 }
 
-func (m *localProcessManager) List(ctx context.Context, f Filter) ([]Process, error) {
+func (m *localProcessManager) List(ctx context.Context, f options.Filter) ([]Process, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 

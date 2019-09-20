@@ -15,6 +15,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
 
@@ -128,7 +129,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 	cmd := c.JasperManager().CreateCommand(ctx).
 		Background(c.Background).Directory(c.WorkingDir).Environment(env).Append(c.Shell).
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
-		ProcConstructor(func(lctx context.Context, opts *jasper.CreateOptions) (jasper.Process, error) {
+		ProcConstructor(func(lctx context.Context, opts *options.Create) (jasper.Process, error) {
 			opts.StandardInput = strings.NewReader(c.Script)
 
 			var cancel context.CancelFunc

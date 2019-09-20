@@ -7,6 +7,7 @@ import (
 
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
 
@@ -64,7 +65,7 @@ func makeOptionsCloseTrigger() ProcessTrigger {
 	}
 }
 
-func makeDefaultTrigger(ctx context.Context, m Manager, opts *CreateOptions, parentID string) ProcessTrigger {
+func makeDefaultTrigger(ctx context.Context, m Manager, opts *options.Create, parentID string) ProcessTrigger {
 	deadline, hasDeadline := ctx.Deadline()
 	timeout := time.Until(deadline)
 
