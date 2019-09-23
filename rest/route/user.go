@@ -171,32 +171,3 @@ func (h *userAuthorGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	return gimlet.NewJSONResponse(apiAuthor)
 }
-
-type getAllRolesHandler struct {
-	sc data.Connector
-}
-
-func makeGetAllRolesHandler(sc data.Connector) gimlet.RouteHandler {
-	return &getAllRolesHandler{
-		sc: sc,
-	}
-}
-
-func (h *getAllRolesHandler) Factory() gimlet.RouteHandler {
-	return &userAuthorGetHandler{
-		sc: h.sc,
-	}
-}
-
-func (h *getAllRolesHandler) Parse(ctx context.Context, r *http.Request) error {
-	return nil
-}
-
-func (h *getAllRolesHandler) Run(ctx context.Context) gimlet.Responder {
-	roles, err := h.sc.GetAllRoles()
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
-	}
-
-	return gimlet.NewJSONResponse(roles)
-}

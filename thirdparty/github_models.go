@@ -1,5 +1,7 @@
 package thirdparty
 
+import "github.com/pkg/errors"
+
 type GithubLoginUser struct {
 	Login            string
 	Id               int
@@ -15,6 +17,10 @@ func (u *GithubLoginUser) Username() string    { return u.Login }
 func (u *GithubLoginUser) IsNil() bool         { return u == nil }
 func (u *GithubLoginUser) GetAPIKey() string   { return "" }
 func (u *GithubLoginUser) Roles() []string     { return []string{} }
+
+func (u *GithubLoginUser) HasPermission(string, string, int) (bool, error) {
+	return false, errors.New("HasPermission has not been implemented for GithubLoginUser")
+}
 
 type GithubAuthParameters struct {
 	ClientId     string `json:"client_id"`
