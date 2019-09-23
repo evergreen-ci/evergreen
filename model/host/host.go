@@ -233,6 +233,7 @@ type ContainersOnParents struct {
 type HostModifyOptions struct {
 	AddInstanceTags    []Tag
 	DeleteInstanceTags []string
+	InstanceType       string
 }
 
 const (
@@ -1677,10 +1678,16 @@ func StaleRunningTaskIDs(staleness time.Duration) ([]task.Task, error) {
 // ModifySpawnHost updates a spawnhost with the changes described
 // in a HostModifyOptions struct.
 func (h *Host) ModifySpawnHost(opts HostModifyOptions) error {
+	// Modify instance type
+	if err := h.SetInstanceType(opts.InstanceType); err != nil {
+		return errors.Wrap(err, "error modifying spawn host instance type")
+	}
+
+	// Modify instance tags
 	h.DeleteTags(opts.DeleteInstanceTags)
 	h.AddTags(opts.AddInstanceTags)
 	if err := h.SetTags(); err != nil {
-		return errors.Wrap(err, "error modifying spawn host")
+		return errors.Wrap(err, "error modifying spawn host tags")
 	}
 	return nil
 }
@@ -1730,7 +1737,7 @@ func (h *Host) SetTags() error {
 	)
 }
 
-// SetInstanceType
+// SetInstanceType updates the host's instance type in the database.
 func (h *Host) SetInstanceType(instanceType string) error {
 	err := UpdateOne(bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{InstanceTypeKey: instanceType}})

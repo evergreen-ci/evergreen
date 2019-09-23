@@ -152,14 +152,19 @@ func hostCreate() cli.Command {
 
 func hostModify() cli.Command {
 	const (
-		addTagFlagName    = "tag"
-		deleteTagFlagName = "delete-tag"
+		addTagFlagName       = "tag"
+		deleteTagFlagName    = "delete-tag"
+		instanceTypeFlagName = "type"
 	)
 
 	return cli.Command{
 		Name:  "modify",
 		Usage: "modify an existing host",
 		Flags: addHostFlag(
+			cli.StringFlag{
+				Name:  joinFlagNames(instanceTypeFlagName, "i"),
+				Usage: "name of an instance type",
+			},
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(addTagFlagName, "t"),
 				Usage: "key=value pair representing an instance tag, with one pair per flag",
@@ -175,6 +180,7 @@ func hostModify() cli.Command {
 			hostID := c.String(hostFlagName)
 			addTagSlice := c.StringSlice(addTagFlagName)
 			deleteTagSlice := c.StringSlice(deleteTagFlagName)
+			instanceType := c.String(instanceTypeFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -194,6 +200,7 @@ func hostModify() cli.Command {
 			hostChanges := host.HostModifyOptions{
 				AddInstanceTags:    addTags,
 				DeleteInstanceTags: deleteTagSlice,
+				InstanceType:       instanceType,
 			}
 			err = client.ModifySpawnHost(ctx, hostID, hostChanges)
 			if err != nil {

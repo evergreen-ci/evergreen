@@ -542,6 +542,19 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, changes host.
 		return err
 	}
 
+	// Change instance type
+	if changes.InstanceType != "" {
+		_, err = m.client.ModifyInstanceAttribute(ctx, &ec2.ModifyInstanceAttributeInput{
+			InstanceId: aws.String(h.Id),
+			InstanceType: &ec2.AttributeValue{
+				Value: aws.String(changes.InstanceType),
+			},
+		})
+		if err != nil {
+			return errors.Wrapf(err, "error changing instance type for '%s'", h.Id)
+		}
+	}
+
 	// Delete tags
 	if len(changes.DeleteInstanceTags) > 0 {
 		deleteTagSlice := []*ec2.Tag{}
