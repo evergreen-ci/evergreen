@@ -161,10 +161,6 @@ func hostModify() cli.Command {
 		Name:  "modify",
 		Usage: "modify an existing host",
 		Flags: addHostFlag(
-			cli.StringFlag{
-				Name:  joinFlagNames(instanceTypeFlagName, "i"),
-				Usage: "name of an instance type",
-			},
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(addTagFlagName, "t"),
 				Usage: "key=value pair representing an instance tag, with one pair per flag",
@@ -173,8 +169,12 @@ func hostModify() cli.Command {
 				Name:  joinFlagNames(deleteTagFlagName, "d"),
 				Usage: "key of a single tag to be deleted",
 			},
+			cli.StringFlag{
+				Name:  joinFlagNames(instanceTypeFlagName, "i"),
+				Usage: "name of an instance type",
+			},
 		),
-		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag, requireAtLeastOneStringSlice(addTagFlagName, deleteTagFlagName)),
+		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag, requireAtLeastOneFlag(addTagFlagName, deleteTagFlagName, instanceTypeFlagName)),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			hostID := c.String(hostFlagName)

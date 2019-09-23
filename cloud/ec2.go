@@ -211,12 +211,6 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		BlockDeviceMappings: blockDevices,
 	}
 
-	if h.InstanceType != "" {
-		input.InstanceType = aws.String(h.InstanceType)
-	} else {
-		h.SetInstanceType(ec2Settings.InstanceType)
-	}
-
 	if ec2Settings.IsVpc {
 		input.NetworkInterfaces = []*ec2.InstanceNetworkInterfaceSpecification{
 			&ec2.InstanceNetworkInterfaceSpecification{
@@ -444,8 +438,12 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	if err != nil {
 		return nil, errors.Wrap(err, "error making block device mappings")
 	}
-	h.InstanceType = ec2Settings.InstanceType
 
+	if h.InstanceType != "" {
+		ec2Settings.InstanceType = h.InstanceType
+	} else {
+		h.SetInstanceType(ec2Settings.InstanceType)
+	}
 	provider, err := m.getProvider(ctx, h, ec2Settings)
 	if err != nil {
 		msg := "error getting provider"
