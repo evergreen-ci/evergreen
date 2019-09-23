@@ -13,10 +13,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -104,6 +103,8 @@ func (h *hostStopHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
+	env := evergreen.GetEnvironment()
+	queue := env.RemoteQueue()
 
 	// Find host to be stopped
 	host, err := h.sc.FindHostByIdWithOwner(h.hostID, user)
@@ -125,7 +126,12 @@ func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// Stop the host
-	if err := h.sc.StopHost(ctx, host, user.Id); err != nil {
+	ts := util.RoundPartOfMinute(1).Format(tsFormat)
+	stopJob := units.NewSpawnhostStopJob(host, user.Id, ts)
+	if err = queue.Put(ctx, stopJob); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error creating spawnhost stop job"))
+	}
+	/* if err := h.sc.StopHost(ctx, host, user.Id); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error stopping instance",
 			"user":          user.Id,
@@ -138,6 +144,7 @@ func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    err.Error(),
 		})
 	}
+	*/
 
 	return gimlet.NewJSONResponse(struct{}{})
 }
@@ -171,6 +178,8 @@ func (h *hostStartHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *hostStartHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
+	env := evergreen.GetEnvironment()
+	queue := env.RemoteQueue()
 
 	// Find host to be started
 	host, err := h.sc.FindHostByIdWithOwner(h.hostID, user)
@@ -187,7 +196,12 @@ func (h *hostStartHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// Start the host
-	if err := h.sc.StartHost(ctx, host, user.Id); err != nil {
+	ts := util.RoundPartOfMinute(1).Format(tsFormat)
+	startJob := units.NewSpawnhostStartJob(host, user.Id, ts)
+	if err = queue.Put(ctx, startJob); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error creating spawnhost start job"))
+	}
+	/* if err := h.sc.StartHost(ctx, host, user.Id); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error starting instance",
 			"user":          user.Id,
@@ -199,7 +213,7 @@ func (h *hostStartHandler) Run(ctx context.Context) gimlet.Responder {
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
 		})
-	}
+	} */
 
 	return gimlet.NewJSONResponse(struct{}{})
 }

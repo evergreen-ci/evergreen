@@ -224,7 +224,7 @@ func hostStop() cli.Command {
 				return err
 			}
 
-			grip.Infof("Stopped host '%s'", hostID)
+			grip.Infof("Started host '%s'. Visit the hosts page in Evergreen to check on its status.", hostID)
 			return nil
 		},
 	}
@@ -255,7 +255,7 @@ func hostStart() cli.Command {
 				return err
 			}
 
-			grip.Infof("Started host '%s'", hostID)
+			grip.Infof("Started host '%s'. Visit the hosts page in Evergreen to check on its status.", hostID)
 			return nil
 		},
 	}

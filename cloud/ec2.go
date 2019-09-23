@@ -149,6 +149,11 @@ const (
 	EC2ErrorSpotRequestNotFound = "InvalidSpotInstanceRequestID.NotFound"
 )
 
+const (
+	checkSuccessRetries    = 10
+	checkSuccessInitPeriod = time.Second
+)
+
 // EC2ManagerOptions are used to construct a new ec2Manager.
 type EC2ManagerOptions struct {
 	// client is the client library for communicating with AWS.
@@ -810,9 +815,27 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 		return errors.Wrapf(err, "error stopping EC2 instance '%s'", h.Id)
 	}
 
+	// Check whether instance is stopped
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			instance, err := m.client.GetInstanceInfo(ctx, h.Id)
+			if err != nil {
+				return true, errors.Wrap(err, "error getting instance info")
+			}
+			if ec2StatusToEvergreenStatus(*instance.State.Name) == StatusStopped {
+				return true, nil
+			}
+			return false, nil
+		}, checkSuccessRetries, checkSuccessInitPeriod, 0)
+
+	if err != nil {
+		return errors.Wrap(err, "error checking if spawnhost stopped")
+	}
+
 	for _, stateChange := range resp.StoppingInstances {
 		grip.Info(message.Fields{
-			"message":       "stopping instance",
+			"message":       "stopped instance",
 			"user":          user,
 			"host_provider": h.Distro.Provider,
 			"instance_id":   *stateChange.InstanceId,
@@ -826,7 +849,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 
 // StartInstance starts a stopped EC2 instance.
 func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user string) error {
-	// Ensure that target host is stopped
+	// Check that target instance is stopped
 	if h.Status != evergreen.HostStopped {
 		return errors.Errorf("cannot start '%s' - host is not stopped", h.Id)
 	}
@@ -841,6 +864,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 	}
 	defer m.client.Close()
 
+	// Make request to start the instance
 	resp, err := m.client.StartInstances(ctx, &ec2.StartInstancesInput{
 		InstanceIds: []*string{aws.String(h.Id)},
 	})
@@ -848,9 +872,27 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		return errors.Wrapf(err, "error starting EC2 instance '%s'", h.Id)
 	}
 
+	// Check whether instance is running
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			instance, err := m.client.GetInstanceInfo(ctx, h.Id)
+			if err != nil {
+				return true, errors.Wrap(err, "error getting instance info")
+			}
+			if ec2StatusToEvergreenStatus(*instance.State.Name) == StatusRunning {
+				return true, nil
+			}
+			return false, nil
+		}, checkSuccessRetries, checkSuccessInitPeriod, 0)
+
+	if err != nil {
+		return errors.Wrap(err, "error checking if spawnhost started")
+	}
+
 	for _, stateChange := range resp.StartingInstances {
 		grip.Info(message.Fields{
-			"message":       "starting instance",
+			"message":       "started instance",
 			"user":          user,
 			"host_provider": h.Distro.Provider,
 			"instance_id":   *stateChange.InstanceId,

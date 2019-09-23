@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -87,8 +86,6 @@ func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, spawnRequest *mo
 		}
 		return nil, errors.Wrap(errMsg, "problem spawning host")
 	}
-
-	grip.Info(resp.Body)
 
 	spawnHostResp := model.APIHost{}
 	if err = util.ReadJSONInto(resp.Body, &spawnHostResp); err != nil {
