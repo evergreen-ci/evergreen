@@ -130,7 +130,7 @@ func (c *communicatorImpl) StopSpawnHost(ctx context.Context, hostID string) err
 		version: apiVersion2,
 	}
 
-	resp, err := c.request(ctx, info, nil)
+	resp, err := c.request(ctx, info, "")
 	if err != nil {
 		return errors.Wrapf(err, "error sending request to stop host")
 	}
@@ -154,7 +154,7 @@ func (c *communicatorImpl) StartSpawnHost(ctx context.Context, hostID string) er
 		version: apiVersion2,
 	}
 
-	resp, err := c.request(ctx, info, nil)
+	resp, err := c.request(ctx, info, "")
 	if err != nil {
 		return errors.Wrapf(err, "error sending request to start host")
 	}
