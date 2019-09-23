@@ -79,6 +79,7 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 			"message": "host is down, not attempting to run script",
 			"host":    j.host.Id,
 			"distro":  j.host.Distro.Id,
+			"job":     j.ID(),
 		})
 		return
 	}
@@ -109,29 +110,31 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 		Buffer:   &bytes.Buffer{},
 		MaxBytes: 1024 * 1024, // 1MB
 	}
-	if err := j.env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
+	err = j.env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
 		ExtendRemoteArgs("-p", hostInfo.Port, "-t", "-t").ExtendRemoteArgs(sshOptions...).
 		SetCombinedWriter(output).
-		AppendArgs("bash", "-s", fmt.Sprintf("<<'EOF'\n%s\nEOF", j.Script)).Run(ctx); err != nil {
+		ShellScript("bash", j.Script).Run(ctx)
+	logs := output.String()
+	if err != nil {
 		event.LogHostScriptExecuteFailed(j.host.Id, err)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "script failed during execution",
 			"host":    j.host.Id,
 			"distro":  j.host.Distro.Id,
-			"logs":    output.String(),
+			"logs":    logs,
 			"job":     j.ID(),
 		}))
 		j.AddError(err)
 		return
 	}
 
-	event.LogHostScriptExecuted(j.host.Id, output.String())
+	event.LogHostScriptExecuted(j.host.Id, logs)
 
 	grip.Info(message.Fields{
 		"message": "host executed script successfully",
 		"host":    j.host.Id,
 		"distro":  j.host.Distro.Id,
-		"logs":    output.String(),
+		"logs":    logs,
 		"job":     j.ID(),
 	})
 }
