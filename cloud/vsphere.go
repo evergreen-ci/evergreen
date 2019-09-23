@@ -159,11 +159,11 @@ func (m *vsphereManager) TerminateInstance(ctx context.Context, host *host.Host,
 }
 
 func (m *vsphereManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
-	return nil
+	return errors.New("(m *vsphereManager) StopInstance is not supported")
 }
 
 func (m *vsphereManager) StartInstance(ctx context.Context, host *host.Host, user string) error {
-	return nil
+	return errors.New("(m *vsphereManager) StartInstance is not supported")
 }
 
 // IsUp checks whether the provisioned host is running.
