@@ -226,6 +226,7 @@ func (hc *MockHostConnector) NewIntentHost(options *restmodel.HostRequestOptions
 		TaskId:           options.TaskID,
 		Owner:            user,
 		InstanceTags:     options.InstanceTags,
+		InstanceType:     options.InstanceType,
 	}
 
 	intentHost, err := cloud.CreateSpawnHost(spawnOptions)

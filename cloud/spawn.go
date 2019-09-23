@@ -139,6 +139,7 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 		ExpirationDuration: &expiration,
 		UserHost:           true,
 		InstanceTags:       so.InstanceTags,
+		InstanceType:       so.InstanceType,
 	}
 
 	intentHost := host.NewIntent(d, d.GenerateName(), d.Provider, hostOptions)

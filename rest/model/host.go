@@ -21,6 +21,7 @@ type APIHost struct {
 	RunningTask  taskInfo   `json:"running_task"`
 	UserHost     bool       `json:"user_host"`
 	InstanceTags []host.Tag `json:"instance_tags"`
+	InstanceType APIString  `json:"instance_type"`
 }
 
 // HostPostRequest is a struct that holds the format of a POST request to /hosts
@@ -94,6 +95,7 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	apiHost.Status = ToAPIString(v.Status)
 	apiHost.UserHost = v.UserHost
 	apiHost.InstanceTags = v.InstanceTags
+	apiHost.InstanceType = ToAPIString(v.InstanceType)
 
 	imageId, err := v.Distro.GetImageID()
 	if err != nil {

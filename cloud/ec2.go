@@ -213,6 +213,8 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 
 	if h.InstanceType != "" {
 		input.InstanceType = aws.String(h.InstanceType)
+	} else {
+		h.SetInstanceType(ec2Settings.InstanceType)
 	}
 
 	if ec2Settings.IsVpc {

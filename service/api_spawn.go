@@ -67,6 +67,7 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 		TaskID:       "",
 		UserData:     "",
 		InstanceTags: nil,
+		InstanceType: "",
 	}
 	spawnHost, err := hc.NewIntentHost(options, user)
 	if err != nil {

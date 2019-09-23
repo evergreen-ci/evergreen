@@ -1729,3 +1729,14 @@ func (h *Host) SetTags() error {
 		},
 	)
 }
+
+// SetInstanceType
+func (h *Host) SetInstanceType(instanceType string) error {
+	err := UpdateOne(bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{InstanceTypeKey: instanceType}})
+	if err != nil {
+		return err
+	}
+	h.InstanceType = instanceType
+	return nil
+}
