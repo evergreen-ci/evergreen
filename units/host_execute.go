@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -72,13 +73,6 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 		j.AddError(err)
 		return
 	}
-	grip.Info(message.Fields{
-		"message": "kim: running job to execute script",
-		"host":    j.host.Id,
-		"distro":  j.host.Distro.Id,
-		"script":  j.Script,
-		"job":     j.ID(),
-	})
 
 	if j.host.Status != evergreen.HostRunning {
 		grip.Debug(message.Fields{
@@ -100,26 +94,44 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 		j.AddError(err)
 		return
 	}
-	logs, err := j.host.RunSSHCommandWithStdin(ctx, "bash -s", bytes.NewBufferString(j.Script), sshOptions)
+
+	hostInfo, err := j.host.GetSSHInfo()
 	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "failed to get host information",
+			"host":    j.host.Id,
+			"distro":  j.host.Distro.Id,
+			"job":     j.ID(),
+		}))
+		j.AddError(err)
+	}
+	output := &util.CappedWriter{
+		Buffer:   &bytes.Buffer{},
+		MaxBytes: 1024 * 1024, // 1MB
+	}
+	if err := j.env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
+		ExtendRemoteArgs("-p", hostInfo.Port, "-t", "-t").ExtendRemoteArgs(sshOptions...).
+		SetCombinedWriter(output).
+		AppendArgs("bash", "-s", fmt.Sprintf("<<'EOF'\n%s\nEOF", j.Script)).Run(ctx); err != nil {
 		event.LogHostScriptExecuteFailed(j.host.Id, err)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "script failed during execution",
 			"host":    j.host.Id,
 			"distro":  j.host.Distro.Id,
+			"logs":    output.String(),
 			"job":     j.ID(),
 		}))
 		j.AddError(err)
 		return
 	}
 
-	event.LogHostScriptExecuted(j.host.Id, logs)
+	event.LogHostScriptExecuted(j.host.Id, output.String())
 
 	grip.Info(message.Fields{
 		"message": "host executed script successfully",
 		"host":    j.host.Id,
 		"distro":  j.host.Distro.Id,
-		"logs":    logs,
+		"logs":    output.String(),
 		"job":     j.ID(),
 	})
 }

@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net"
 	"os/exec"
 	"path/filepath"
@@ -175,31 +174,6 @@ func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []strin
 	err = env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
 		ExtendRemoteArgs("-p", hostInfo.Port, "-t", "-t").ExtendRemoteArgs(sshOptions...).
 		SetCombinedWriter(output).
-		Append(cmd).Run(ctx)
-
-	return output.String(), errors.Wrap(err, "error running shell cmd")
-}
-
-// RunSSHCommandWithStdin runs an SSH command on a remote host.
-func (h *Host) RunSSHCommandWithStdin(ctx context.Context, cmd string, stdin io.Reader, sshOptions []string) (string, error) {
-	env := evergreen.GetEnvironment()
-	hostInfo, err := h.GetSSHInfo()
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-
-	output := &util.CappedWriter{
-		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024, // 1MB
-	}
-
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, sshTimeout)
-	defer cancel()
-
-	err = env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
-		ExtendRemoteArgs("-p", hostInfo.Port, "-t", "-t").ExtendRemoteArgs(sshOptions...).
-		SetInput(stdin).SetCombinedWriter(output).
 		Append(cmd).Run(ctx)
 
 	return output.String(), errors.Wrap(err, "error running shell cmd")

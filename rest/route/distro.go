@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -580,10 +579,6 @@ func (h *distroIDExecuteHandler) Factory() gimlet.RouteHandler {
 // Parse fetches the distroId and JSON payload from the http request.
 func (h *distroIDExecuteHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.distroID = gimlet.GetVars(r)["distro_id"]
-	grip.Info(message.Fields{
-		"message": "kim: parsing script to execute",
-		"distro":  h.distroID,
-	})
 	body := util.NewRequestReader(r)
 	defer body.Close()
 
@@ -594,11 +589,6 @@ func (h *distroIDExecuteHandler) Parse(ctx context.Context, r *http.Request) err
 	if h.Script == "" {
 		return errors.New("cannot execute an empty script")
 	}
-	grip.Info(message.Fields{
-		"message": "kim: parsed script to execute",
-		"distro":  h.distroID,
-		"script":  h.Script,
-	})
 
 	return nil
 }
@@ -613,12 +603,6 @@ func (h *distroIDExecuteHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	catcher := grip.NewBasicCatcher()
-	grip.Info(message.Fields{
-		"message":   "kim: enqueueing jobs to execute script on all hosts in the distro",
-		"distro":    h.distroID,
-		"script":    h.Script,
-		"num_hosts": len(hosts),
-	})
 	for _, host := range hosts {
 		const tsFormat = "2006-01-02.15-04-05"
 		ts := util.RoundPartOfMinute(0).Format(tsFormat)
