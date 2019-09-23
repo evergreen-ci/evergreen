@@ -367,6 +367,7 @@ var (
 		HostStarting,
 		HostProvisioning,
 		HostProvisionFailed,
+		HostStopped,
 	}
 
 	// DownHostStatus is a list of all host statuses that are considered down.
@@ -391,6 +392,7 @@ var (
 		HostStarting,
 		HostProvisioning,
 		HostProvisionFailed,
+		HostStopped,
 	}
 
 	// Set of host status values that can be user set via the API

@@ -814,7 +814,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		}))
-		return err
+		return errors.Wrap(err, "error stopping instance")
 	}
 
 	for _, stateChange := range resp.StoppingInstances {
@@ -859,7 +859,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		}))
-		return err
+		return errors.Wrap(err, "error starting instance")
 	}
 
 	for _, stateChange := range resp.StartingInstances {
