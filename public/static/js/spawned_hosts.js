@@ -179,7 +179,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     };
 
     $scope.updateHostExpiration = function() {
-        var new_expiration = new Date($scope.date_for_expiration);
+        let new_expiration = new Date($scope.date_for_expiration);
         new_expiration.setHours($scope.time_for_expiration.getHours());
         new_expiration.setMinutes($scope.time_for_expiration.getMinutes());
 
