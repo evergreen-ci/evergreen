@@ -807,14 +807,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 		InstanceIds: []*string{aws.String(h.Id)},
 	})
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":       "error stopping instance",
-			"user":          user,
-			"host":          h.Id,
-			"host_provider": h.Distro.Provider,
-			"distro":        h.Distro.Id,
-		}))
-		return errors.Wrap(err, "error stopping instance")
+		return errors.Wrapf(err, "error stopping EC2 instance '%s'", h.Id)
 	}
 
 	for _, stateChange := range resp.StoppingInstances {
@@ -852,14 +845,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		InstanceIds: []*string{aws.String(h.Id)},
 	})
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":       "error starting instance",
-			"user":          user,
-			"host":          h.Id,
-			"host_provider": h.Distro.Provider,
-			"distro":        h.Distro.Id,
-		}))
-		return errors.Wrap(err, "error starting instance")
+		return errors.Wrapf(err, "error starting EC2 instance '%s'", h.Id)
 	}
 
 	for _, stateChange := range resp.StartingInstances {

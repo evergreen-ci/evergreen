@@ -15,6 +15,8 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -124,6 +126,13 @@ func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// Stop the host
 	if err := h.sc.StopHost(ctx, host, user.Id); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":       "error stopping instance",
+			"user":          user.Id,
+			"host":          host.Id,
+			"host_provider": host.Distro.Provider,
+			"distro":        host.Distro.Id,
+		}))
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
@@ -173,12 +182,19 @@ func (h *hostStartHandler) Run(ctx context.Context) gimlet.Responder {
 	if host.Status != evergreen.HostStopped {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("Host %s is not stoppedj", host.Id),
+			Message:    fmt.Sprintf("Host %s is not stopped", host.Id),
 		})
 	}
 
 	// Start the host
 	if err := h.sc.StartHost(ctx, host, user.Id); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":       "error starting instance",
+			"user":          user.Id,
+			"host":          host.Id,
+			"host_provider": host.Distro.Provider,
+			"distro":        host.Distro.Id,
+		}))
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
