@@ -470,8 +470,9 @@ func ById(id string) db.Q {
 func ByDistroIDRunning(distroID string) db.Q {
 	distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
 	return db.Query(bson.M{
-		StatusKey:   evergreen.HostRunning,
-		distroIDKey: distroID,
+		distroIDKey:  distroID,
+		StatusKey:    evergreen.HostRunning,
+		StartedByKey: evergreen.User,
 	})
 }
 
