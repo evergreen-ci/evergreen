@@ -1346,7 +1346,7 @@ func (s *DistroIDExecuteSuite) SetupTest() {
 	s.rh = rh
 }
 
-func (s *DistroIDExecuteSuite) TeardownTest() {
+func (s *DistroIDExecuteSuite) TearDownTest() {
 	s.cancel()
 }
 
