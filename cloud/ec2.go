@@ -552,7 +552,10 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, changes host.
 			Tags:      deleteTagSlice,
 		})
 		if err != nil {
-			return errors.Wrapf(err, "error deleting tags for '%s'", h.Id)
+			return errors.Wrapf(err, "error deleting tags using client for '%s'", h.Id)
+		}
+		if err = h.DeleteTags(changes.DeleteInstanceTags); err != nil {
+			return errors.Wrapf(err, "error deleting tags in db for '%s'", h.Id)
 		}
 	}
 
@@ -569,7 +572,10 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, changes host.
 			Tags:      createTagSlice,
 		})
 		if err != nil {
-			return errors.Wrapf(err, "error creating tags for '%s'", h.Id)
+			return errors.Wrapf(err, "error creating tags using client for '%s'", h.Id)
+		}
+		if err = h.AddTags(changes.AddInstanceTags); err != nil {
+			return errors.Wrapf(err, "error creating tags in db for '%s'", h.Id)
 		}
 	}
 
@@ -582,7 +588,10 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, changes host.
 			},
 		})
 		if err != nil {
-			return errors.Wrapf(err, "error changing instance type for '%s'", h.Id)
+			return errors.Wrapf(err, "error changing instance type using client for '%s'", h.Id)
+		}
+		if err = h.SetInstanceType(changes.InstanceType); err != nil {
+			return errors.Wrapf(err, "error changing instance type in db for '%s'", h.Id)
 		}
 	}
 

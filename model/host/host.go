@@ -1675,26 +1675,9 @@ func StaleRunningTaskIDs(staleness time.Duration) ([]task.Task, error) {
 	return out, err
 }
 
-// ModifySpawnHost updates a spawnhost with the changes described
-// in a HostModifyOptions struct.
-func (h *Host) ModifySpawnHost(opts HostModifyOptions) error {
-	// Modify instance type
-	if err := h.SetInstanceType(opts.InstanceType); err != nil {
-		return errors.Wrap(err, "error modifying spawn host instance type")
-	}
-
-	// Modify instance tags
-	h.DeleteTags(opts.DeleteInstanceTags)
-	h.AddTags(opts.AddInstanceTags)
-	if err := h.SetTags(); err != nil {
-		return errors.Wrap(err, "error modifying spawn host tags")
-	}
-	return nil
-}
-
 // AddTags adds the specified tags to the host document, or modifies
 // an existing tag if it can be modified.
-func (h *Host) AddTags(tags []Tag) {
+func (h *Host) AddTags(tags []Tag) error {
 	for _, new := range tags {
 		found := false
 		for i, old := range h.InstanceTags {
@@ -1708,11 +1691,12 @@ func (h *Host) AddTags(tags []Tag) {
 			h.InstanceTags = append(h.InstanceTags, new)
 		}
 	}
+	return h.SetTags()
 }
 
 // DeleteTags removes tags specified by their keys, only if those
 // keys are allowed to be deleted.
-func (h *Host) DeleteTags(keys []string) {
+func (h *Host) DeleteTags(keys []string) error {
 	for _, key := range keys {
 		for i, tag := range h.InstanceTags {
 			if tag.Key == key && tag.CanBeModified {
@@ -1721,6 +1705,7 @@ func (h *Host) DeleteTags(keys []string) {
 			}
 		}
 	}
+	return h.SetTags()
 }
 
 // SetTags updates the host's instance tags in the database.

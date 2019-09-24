@@ -30,6 +30,8 @@ type MockInstance struct {
 	TimeTilNextPayment time.Duration
 	DNSName            string
 	OnUpRan            bool
+	Tags               []host.Tag
+	Type               string
 }
 
 type MockProvider interface {
@@ -140,7 +142,33 @@ func (mockMgr *mockManager) SpawnHost(ctx context.Context, h *host.Host) (*host.
 	return h, nil
 }
 
-func (mockMgr *mockManager) ModifyHost(context.Context, *host.Host, host.HostModifyOptions) error {
+func (mockMgr *mockManager) ModifyHost(ctx context.Context, host *host.Host, changes host.HostModifyOptions) error {
+	l := mockMgr.mutex
+	l.Lock()
+	defer l.Unlock()
+	var err error
+	instance, ok := mockMgr.Instances[host.Id]
+	if !ok {
+		return errors.Errorf("unable to fetch host: %s", host.Id)
+	}
+	if err = host.AddTags(changes.AddInstanceTags); err != nil {
+		return errors.Errorf("error ")
+	}
+	instance.Tags = host.InstanceTags
+	mockMgr.Instances[host.Id] = instance
+
+	if err = host.DeleteTags(changes.DeleteInstanceTags); err != nil {
+		return errors.Errorf("error ")
+	}
+	instance.Tags = host.InstanceTags
+	mockMgr.Instances[host.Id] = instance
+
+	if err = host.SetInstanceType(changes.InstanceType); err != nil {
+		return errors.Errorf("error ")
+	}
+	instance.Type = host.InstanceType
+	mockMgr.Instances[host.Id] = instance
+
 	return nil
 }
 

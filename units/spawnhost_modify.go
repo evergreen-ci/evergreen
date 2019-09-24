@@ -98,11 +98,5 @@ func (j *spawnhostModifyJob) Run(ctx context.Context) {
 		return
 	}
 
-	// Push changes to the database
-	if err := j.host.ModifySpawnHost(j.ModifyOptions); err != nil {
-		j.AddError(errors.Wrap(err, "error updating spawnhost in database after modify"))
-		return
-	}
-
 	return
 }
