@@ -36,6 +36,9 @@ func NewMongoDBSingleQueueGroup(ctx context.Context, opts MongoDBQueueGroupOptio
 		return nil, errors.New("no mongodb uri specified")
 	}
 
+	mdbopts.UseGroups = true
+	mdbopts.GroupName = opts.Prefix
+
 	ctx, cancel := context.WithCancel(ctx)
 	g := &remoteMongoQueueGroupSingle{
 		canceler: cancel,
