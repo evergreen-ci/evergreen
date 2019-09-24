@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/mongodb/grip/send"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -503,7 +501,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	return nil
 }
 
-func TryDequeueAndAbortCommitQueueVersion(versionId, projectId string, requester string, sender send.Sender) error {
+func TryDequeueAndAbortCommitQueueVersion(versionId, projectId string, requester string) error {
 	p, err := patch.FindOne(patch.ByVersion(versionId))
 	if err != nil {
 		return errors.Wrapf(err, "error finding patch")
@@ -532,17 +530,28 @@ func TryDequeueAndAbortCommitQueueVersion(versionId, projectId string, requester
 	if !removed {
 		return nil
 	}
-	if p.IsGithubPRPatch() && sender != nil {
-		status := message.GithubStatus{
-			Context:     commitqueue.Context,
-			Description: "removed from queue because task failed",
-			State:       message.GithubStateFailure,
-			Ref:         p.GithubPatchData.HeadHash,
-			Repo:        p.GithubPatchData.HeadRepo,
-			Owner:       p.GithubPatchData.Author,
+	if p.IsGithubPRPatch() {
+		env := evergreen.GetEnvironment()
+		sender, err := env.GetSender(evergreen.SenderGithubStatus)
+		if err != nil {
+			grip.Debug(message.WrapError(err, message.Fields{
+				"message":      "error getting sender for github status",
+				"patch_id":     p.Id,
+				"project":      p.Project,
+				"pull_request": issue,
+			}))
+		} else {
+			status := message.GithubStatus{
+				Context:     commitqueue.Context,
+				Description: "removed from queue because task failed",
+				State:       message.GithubStateFailure,
+				Ref:         p.GithubPatchData.HeadHash,
+				Repo:        p.GithubPatchData.HeadRepo,
+				Owner:       p.GithubPatchData.Author,
+			}
+			c := message.MakeGithubStatusMessageWithRepo(status)
+			sender.Send(c)
 		}
-		c := message.MakeGithubStatusMessageWithRepo(status)
-		sender.Send(c)
 	}
 	event.LogCommitQueueConcludeTest(p.Id.Hex(), evergreen.MergeTestFailed)
 	return errors.Wrapf(CancelPatch(p, requester), "Error aborting failed commit queue patch")

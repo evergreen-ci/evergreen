@@ -195,13 +195,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if projectRef.CommitQueue.Enabled && details.Status != evergreen.TaskSucceeded {
-		env := evergreen.GetEnvironment()
-		githubStatusSender, err := env.GetSender(evergreen.SenderGithubStatus)
-		if err != nil {
-			err = errors.Wrapf(err, "error getting github status sender")
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
-		}
-		if err = model.TryDequeueAndAbortCommitQueueVersion(t.Version, t.Project, APIServerLockTitle, githubStatusSender); err != nil {
+		if err = model.TryDequeueAndAbortCommitQueueVersion(t.Version, t.Project, APIServerLockTitle); err != nil {
 			err = errors.Wrapf(err, "Error dequeueing and aborting failed commit queue version")
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
