@@ -44,6 +44,13 @@ func TestDistroAliases(t *testing.T) {
 		})
 	})
 	t.Run("AliasLookupTable", func(t *testing.T) {
+		t.Run("Builder", func(t *testing.T) {
+			lt := buildCache([]Distro{{Id: "name", Aliases: []string{"al0", "al2"}}})
+			assert.Len(t, lt, 3)
+			assert.Contains(t, lt, "al0")
+			assert.Contains(t, lt, "al2")
+			assert.Equal(t, []string{"name"}, lt["al0"])
+		})
 		t.Run("Constructor", func(t *testing.T) {
 			require.NoError(t, db.Clear(Collection))
 			t.Run("Empty", func(t *testing.T) {
@@ -60,6 +67,7 @@ func TestDistroAliases(t *testing.T) {
 
 				// three unique plus two distros:
 				assert.Len(t, lt, 5)
+				assert.Len(t, lt["bar"], 2)
 			})
 		})
 		t.Run("Expansion", func(t *testing.T) {
@@ -68,7 +76,6 @@ func TestDistroAliases(t *testing.T) {
 				"aliasTwo":  []string{"baz", "bar"},
 				"distroOne": []string{},
 			}
-
 			t.Run("SimpleExpansion", func(t *testing.T) {
 				out := lt.Expand([]string{"aliasOne", "distroOne"})
 				assert.Equal(t, []string{"foo", "bar", "distroOne"}, out)
@@ -76,6 +83,10 @@ func TestDistroAliases(t *testing.T) {
 			t.Run("RemovesDuplicates", func(t *testing.T) {
 				out := lt.Expand([]string{"aliasOne", "aliasTwo"})
 				assert.Equal(t, []string{"foo", "bar", "baz"}, out)
+			})
+			t.Run("Missing", func(t *testing.T) {
+				assert.Equal(t, []string{}, lt.Expand([]string{"distroOne"}))
+				assert.Equal(t, []string{}, lt.Expand([]string{".DOES-NOT-EXIST"}))
 			})
 		})
 	})

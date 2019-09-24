@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -289,6 +290,11 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			p.Githash)
 	}
 
+	distroAliases, err := distro.NewDistroAliasesLookupTable()
+	if err != nil {
+		return nil, errors.Wrap(err, "problem resolving distro alias table for patch")
+	}
+
 	projectRef, err := FindOneProjectRef(p.Project)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -353,13 +359,14 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		}
 		taskNames := tasks.ExecTasks.TaskNames(vt.Variant)
 		buildArgs := BuildCreateArgs{
-			Project:      *project,
-			Version:      *patchVersion,
-			TaskIDs:      taskIds,
-			BuildName:    vt.Variant,
-			Activated:    true,
-			TaskNames:    taskNames,
-			DisplayNames: displayNames,
+			Project:       *project,
+			Version:       *patchVersion,
+			TaskIDs:       taskIds,
+			BuildName:     vt.Variant,
+			Activated:     true,
+			TaskNames:     taskNames,
+			DisplayNames:  displayNames,
+			DistroAliases: distroAliases,
 		}
 		buildId, err = CreateBuildFromVersion(buildArgs)
 		if err != nil {

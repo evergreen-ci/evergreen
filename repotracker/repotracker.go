@@ -715,7 +715,7 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 
 	distroAliases, err := distro.NewDistroAliasesLookupTable()
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	txFunc := func(sessCtx mongo.SessionContext) (bool, error) {
