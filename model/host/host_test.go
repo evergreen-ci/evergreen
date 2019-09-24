@@ -3601,7 +3601,7 @@ func TestFindOneByJasperCredentialsID(t *testing.T) {
 	}
 }
 
-func TestModifySpawnHost(t *testing.T) {
+func TestAddTags(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	h := &Host{
 		Id: "id",
@@ -3612,18 +3612,54 @@ func TestModifySpawnHost(t *testing.T) {
 	}
 	assert.NoError(t, h.Insert())
 
-	changes := HostModifyOptions{
-		AddInstanceTags: []Tag{
-			Tag{Key: "key2", Value: "valNew", CanBeModified: true},
-			Tag{Key: "key3", Value: "val3", CanBeModified: true},
-		},
-		DeleteInstanceTags: []string{"key1"},
-	}
-	assert.NoError(t, h.ModifySpawnHost(changes))
-	modifiedHost, err := FindOneId(h.Id)
-	assert.NoError(t, err)
-	assert.Equal(t, []Tag{
+	tagsToAdd := []Tag{
 		Tag{Key: "key2", Value: "valNew", CanBeModified: true},
 		Tag{Key: "key3", Value: "val3", CanBeModified: true},
-	}, modifiedHost.InstanceTags)
+	}
+
+	assert.NoError(t, h.AddTags(tagsToAdd))
+	foundHost, err := FindOneId(h.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, []Tag{
+		Tag{Key: "key1", Value: "val1", CanBeModified: true},
+		Tag{Key: "key2", Value: "valNew", CanBeModified: true},
+		Tag{Key: "key3", Value: "val3", CanBeModified: true},
+	}, foundHost.InstanceTags)
+}
+
+func TestDeleteTags(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	h := &Host{
+		Id: "id",
+		InstanceTags: []Tag{
+			Tag{Key: "key1", Value: "val1", CanBeModified: true},
+			Tag{Key: "key2", Value: "val2", CanBeModified: true},
+		},
+	}
+	assert.NoError(t, h.Insert())
+
+	tagsToDelete := []string{"key1"}
+
+	assert.NoError(t, h.DeleteTags(tagsToDelete))
+	foundHost, err := FindOneId(h.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, []Tag{
+		Tag{Key: "key2", Value: "val2", CanBeModified: true},
+	}, foundHost.InstanceTags)
+}
+
+func TestSetInstanceType(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	h := &Host{
+		Id:           "id",
+		InstanceType: "old-instance-type",
+	}
+	assert.NoError(t, h.Insert())
+
+	newInstanceType := "new-instance-type"
+
+	assert.NoError(t, h.SetInstanceType(newInstanceType))
+	foundHost, err := FindOneId(h.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, newInstanceType, foundHost.InstanceType)
 }
