@@ -299,6 +299,7 @@ func (e *envState) createApplicationQueue(ctx context.Context) error {
 	opts.URI = e.settings.Database.Url
 	opts.DB = e.settings.Amboy.DB
 	opts.Priority = true
+	opts.SkipIndexBuilds = true
 
 	args := queue.MongoDBQueueCreationOptions{
 		Size:    e.settings.Amboy.PoolSizeRemote,
@@ -330,6 +331,7 @@ func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
 	opts.URI = e.settings.Database.Url
 	opts.DB = e.settings.Amboy.DB
 	opts.Priority = false
+	opts.SkipIndexBuilds = true
 
 	remoteQueueGroupOpts := queue.MongoDBQueueGroupOptions{
 		Prefix:                    e.settings.Amboy.Name,
