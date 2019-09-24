@@ -821,12 +821,12 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 		func() (bool, error) {
 			instance, err := m.client.GetInstanceInfo(ctx, h.Id)
 			if err != nil {
-				return true, errors.Wrap(err, "error getting instance info")
+				return false, errors.Wrap(err, "error getting instance info")
 			}
 			if ec2StatusToEvergreenStatus(*instance.State.Name) == StatusStopped {
-				return true, nil
+				return false, nil
 			}
-			return false, nil
+			return true, nil
 		}, checkSuccessRetries, checkSuccessInitPeriod, 0)
 
 	if err != nil {
@@ -878,12 +878,12 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		func() (bool, error) {
 			instance, err := m.client.GetInstanceInfo(ctx, h.Id)
 			if err != nil {
-				return true, errors.Wrap(err, "error getting instance info")
+				return false, errors.Wrap(err, "error getting instance info")
 			}
 			if ec2StatusToEvergreenStatus(*instance.State.Name) == StatusRunning {
-				return true, nil
+				return false, nil
 			}
-			return false, nil
+			return true, nil
 		}, checkSuccessRetries, checkSuccessInitPeriod, 0)
 
 	if err != nil {
