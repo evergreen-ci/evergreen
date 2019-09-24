@@ -197,11 +197,38 @@ func (mockMgr *mockManager) TerminateInstance(ctx context.Context, host *host.Ho
 }
 
 func (mockMgr *mockManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
-	return nil
+	l := mockMgr.mutex
+	l.Lock()
+	defer l.Unlock()
+	instance, ok := mockMgr.Instances[host.Id]
+	if !ok {
+		return errors.Errorf("unable to fetch host: %s", host.Id)
+	}
+	if host.Status != evergreen.HostRunning {
+		return errors.Errorf("cannot stop %s; instance not running", host.Id)
+	}
+	instance.Status = StatusStopped
+	mockMgr.Instances[host.Id] = instance
+
+	return errors.WithStack(host.SetStopped(user))
+
 }
 
 func (mockMgr *mockManager) StartInstance(ctx context.Context, host *host.Host, user string) error {
-	return nil
+	l := mockMgr.mutex
+	l.Lock()
+	defer l.Unlock()
+	instance, ok := mockMgr.Instances[host.Id]
+	if !ok {
+		return errors.Errorf("unable to fetch host: %s", host.Id)
+	}
+	if host.Status != evergreen.HostStopped {
+		return errors.Errorf("cannot start %s; instance not stopped", host.Id)
+	}
+	instance.Status = StatusRunning
+	mockMgr.Instances[host.Id] = instance
+
+	return errors.WithStack(host.SetRunning(user))
 }
 
 func (mockMgr *mockManager) Configure(ctx context.Context, settings *evergreen.Settings) error {
