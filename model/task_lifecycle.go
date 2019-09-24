@@ -3,11 +3,13 @@ package model
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -497,6 +499,38 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	}
 
 	return nil
+}
+
+func TryDequeueAndAbortCommitQueueVersion(versionId, projectId, requester string) error {
+	p, err := patch.FindOne(patch.ByVersion(versionId))
+	if err != nil {
+		return errors.Wrapf(err, "error finding patch")
+	}
+	if p == nil {
+		return errors.Errorf("No patch for task")
+	}
+
+	if p.Alias != evergreen.CommitQueueAlias {
+		return nil
+	}
+
+	// if task is part of a commit queue, dequeue and abort version
+	cq, err := commitqueue.FindOneId(projectId)
+	if err != nil {
+		return errors.Wrapf(err, "can't get commit queue for id '%s'", projectId)
+	}
+	issue := p.Id.Hex()
+	if p.IsGithubPRPatch() {
+		issue = strconv.Itoa(p.GithubPatchData.PRNumber)
+	}
+	removed, err := cq.Remove(issue)
+	if err != nil {
+		return errors.Wrapf(err, "can't remove item '%s' from queue '%s'", versionId, projectId)
+	}
+	if !removed {
+		return errors.Errorf("Item not on queue")
+	}
+	return errors.Wrapf(CancelPatch(p, requester), "Error aborting failed commit queue patch")
 }
 
 func evalStepback(t *task.Task, caller, status string, deactivatePrevious bool) error {
