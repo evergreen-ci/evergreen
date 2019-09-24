@@ -85,8 +85,8 @@ func TestDistroAliases(t *testing.T) {
 				assert.Equal(t, []string{"foo", "bar", "baz"}, out)
 			})
 			t.Run("Missing", func(t *testing.T) {
-				assert.Equal(t, []string{}, lt.Expand([]string{"distroOne"}))
-				assert.Equal(t, []string{}, lt.Expand([]string{".DOES-NOT-EXIST"}))
+				assert.Equal(t, []string{"distroOne"}, lt.Expand([]string{"distroOne"}))
+				assert.Equal(t, []string{".DOES-NOT-EXIST"}, lt.Expand([]string{".DOES-NOT-EXIST"}))
 			})
 		})
 	})
