@@ -21,7 +21,9 @@ const (
 	HostProvisionFailed = "provision failed"
 	HostQuarantined     = "quarantined"
 	HostDecommissioned  = "decommissioned"
-	HostStopped         = "stopped"
+
+	HostStopping = "stopping"
+	HostStopped  = "stopped"
 
 	HostExternalUserName = "external"
 
@@ -367,6 +369,7 @@ var (
 		HostStarting,
 		HostProvisioning,
 		HostProvisionFailed,
+		HostStopping,
 		HostStopped,
 	}
 
@@ -392,6 +395,7 @@ var (
 		HostStarting,
 		HostProvisioning,
 		HostProvisionFailed,
+		HostStopping,
 		HostStopped,
 	}
 

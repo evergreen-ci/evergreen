@@ -178,8 +178,8 @@ func (c *communicatorImpl) StartSpawnHost(ctx context.Context, hostID string, wa
 
 func (c *communicatorImpl) waitForStatus(ctx context.Context, hostID, status string) error {
 	const (
-		contextTimeout = 2 * time.Minute
-		retryInterval  = 5 * time.Second
+		contextTimeout = 10 * time.Minute
+		retryInterval  = 10 * time.Second
 	)
 
 	info := requestInfo{

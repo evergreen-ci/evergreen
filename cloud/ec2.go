@@ -150,6 +150,7 @@ const (
 )
 
 const (
+	checkSuccessDelay      = 5 * time.Second
 	checkSuccessRetries    = 10
 	checkSuccessInitPeriod = time.Second
 )
@@ -808,6 +809,10 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 	}
 	defer m.client.Close()
 
+	if err = h.SetStopping(user); err != nil {
+		return errors.Wrap(err, "failed to mark instance as stopping in db")
+	}
+
 	resp, err := m.client.StopInstances(ctx, &ec2.StopInstancesInput{
 		InstanceIds: []*string{aws.String(h.Id)},
 	})
@@ -815,7 +820,10 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 		return errors.Wrapf(err, "error stopping EC2 instance '%s'", h.Id)
 	}
 
-	// Check whether instance is stopped
+	// Delay exponential backoff
+	time.Sleep(checkSuccessDelay)
+
+	// Check whether instance stopped
 	err = util.Retry(
 		ctx,
 		func() (bool, error) {
@@ -826,7 +834,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 			if ec2StatusToEvergreenStatus(*instance.State.Name) == StatusStopped {
 				return false, nil
 			}
-			return true, nil
+			return true, errors.New("host is not stopped")
 		}, checkSuccessRetries, checkSuccessInitPeriod, 0)
 
 	if err != nil {
@@ -883,7 +891,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 			if ec2StatusToEvergreenStatus(*instance.State.Name) == StatusRunning {
 				return false, nil
 			}
-			return true, nil
+			return true, errors.New("host is not started")
 		}, checkSuccessRetries, checkSuccessInitPeriod, 0)
 
 	if err != nil {

@@ -207,7 +207,7 @@ func hostStop() cli.Command {
 		Flags: addHostFlag(
 			cli.BoolFlag{
 				Name:  waitFlagName,
-				Usage: "command will block until host started",
+				Usage: "command will block until host stopped",
 			},
 		),
 		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
@@ -225,6 +225,10 @@ func hostStop() cli.Command {
 			}
 			client := conf.GetRestCommunicator(ctx)
 			defer client.Close()
+
+			if wait {
+				grip.Infof("Stopping host '%s'. This may take a few minutes...", hostID)
+			}
 
 			err = client.StopSpawnHost(ctx, hostID, wait)
 			if err != nil {
@@ -266,6 +270,10 @@ func hostStart() cli.Command {
 			}
 			client := conf.GetRestCommunicator(ctx)
 			defer client.Close()
+
+			if wait {
+				grip.Infof("Starting host '%s'. This may take a few minutes...", hostID)
+			}
 
 			err = client.StartSpawnHost(ctx, hostID, wait)
 			if err != nil {
