@@ -1466,11 +1466,11 @@ func TestUnattainableScheduleableTasksQuery(t *testing.T) {
 			DependsOn: []Dependency{
 				{
 					TaskId:       "t10",
-					Unattainable: true,
+					Unattainable: false,
 				},
 				{
 					TaskId:       "t11",
-					Unattainable: false,
+					Unattainable: true,
 				},
 			},
 			Priority: 0,
@@ -1498,9 +1498,11 @@ func TestUnattainableScheduleableTasksQuery(t *testing.T) {
 			Priority:  0,
 			DependsOn: []Dependency{
 				{
-					TaskId: "t10",
+					TaskId:       "t10",
+					Unattainable: true,
 				},
 			},
+			OverrideDependencies: true,
 		},
 	}
 	for _, task := range tasks {
