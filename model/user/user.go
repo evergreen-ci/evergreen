@@ -8,12 +8,18 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	mgobson "gopkg.in/mgo.v2/bson"
+)
+
+const (
+	RoleCollection  = "roles"
+	ScopeCollection = "scopes"
 )
 
 type DBUser struct {
@@ -29,6 +35,8 @@ type DBUser struct {
 	APIKey       string       `bson:"apikey"`
 	SystemRoles  []string     `bson:"roles"`
 	LoginCache   LoginCache   `bson:"login_cache,omitempty"`
+
+	roleManager gimlet.RoleManager
 }
 
 func (u *DBUser) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(u) }
@@ -83,11 +91,17 @@ const (
 )
 
 func (u *DBUser) Username() string     { return u.Id }
-func (u *DBUser) Roles() []string      { return u.SystemRoles }
 func (u *DBUser) PublicKeys() []PubKey { return u.PubKeys }
 func (u *DBUser) Email() string        { return u.EmailAddress }
 func (u *DBUser) GetAPIKey() string    { return u.APIKey }
 func (u *DBUser) IsNil() bool          { return u == nil }
+
+func (u *DBUser) Roles() []string {
+	if u.SystemRoles == nil {
+		return []string{}
+	}
+	return u.SystemRoles
+}
 
 func (u *DBUser) DisplayName() string {
 	if u.DispName != "" {
@@ -217,6 +231,37 @@ func (u *DBUser) RemoveRole(role string) error {
 	}
 
 	return nil
+}
+
+func (u *DBUser) HasPermission(resource, permission string, requiredLevel int) (bool, error) {
+	if u.roleManager == nil {
+		u.roleManager = GetRoleManager()
+	}
+	roles, err := u.roleManager.GetRoles(u.Roles())
+	if err != nil {
+		return false, errors.Wrap(err, "error getting roles")
+	}
+	roles, err = u.roleManager.FilterForResource(roles, resource)
+	if err != nil {
+		return false, errors.Wrap(err, "error filtering resources")
+	}
+	for _, role := range roles {
+		level, hasPermission := role.Permissions[permission]
+		if hasPermission && level >= requiredLevel {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func GetRoleManager() gimlet.RoleManager {
+	opts := rolemanager.MongoBackedRoleManagerOpts{
+		Client:          evergreen.GetEnvironment().Client(),
+		DBName:          evergreen.GetEnvironment().DB().Name(),
+		RoleCollection:  RoleCollection,
+		ScopeCollection: ScopeCollection,
+	}
+	return rolemanager.NewMongoBackedRoleManager(opts)
 }
 
 func GetPatchUser(gitHubUID int) (*DBUser, error) {

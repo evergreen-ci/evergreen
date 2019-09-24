@@ -99,11 +99,11 @@ var (
 	procWaitForSingleObject       = modkernel32.NewProc("WaitForSingleObject")
 )
 
-type Job struct {
+type JobObject struct {
 	handle syscall.Handle
 }
 
-func NewWindowsJobObject(name string) (*Job, error) {
+func NewWindowsJobObject(name string) (*JobObject, error) {
 	utf16Name, err := syscall.UTF16PtrFromString(name)
 	if err != nil {
 		return nil, NewWindowsError("UTF16PtrFromString", err)
@@ -121,10 +121,10 @@ func NewWindowsJobObject(name string) (*Job, error) {
 		return nil, NewWindowsError("SetInformationJobObject", err)
 	}
 
-	return &Job{handle: hJob}, nil
+	return &JobObject{handle: hJob}, nil
 }
 
-func (j *Job) AssignProcess(pid uint) error {
+func (j *JobObject) AssignProcess(pid uint) error {
 	hProcess, err := OpenProcess(PROCESS_ALL_ACCESS, false, uint32(pid))
 	if err != nil {
 		return NewWindowsError("OpenProcess", err)
@@ -136,14 +136,14 @@ func (j *Job) AssignProcess(pid uint) error {
 	return nil
 }
 
-func (j *Job) Terminate(exitCode uint) error {
+func (j *JobObject) Terminate(exitCode uint) error {
 	if err := TerminateJobObject(j.handle, uint32(exitCode)); err != nil {
 		return NewWindowsError("TerminateJobObject", err)
 	}
 	return nil
 }
 
-func (j *Job) Close() error {
+func (j *JobObject) Close() error {
 	if j.handle != 0 {
 		if err := CloseHandle(j.handle); err != nil {
 			return NewWindowsError("CloseHandle", err)

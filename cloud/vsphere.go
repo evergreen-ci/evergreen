@@ -123,6 +123,10 @@ func (m *vsphereManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Hos
 	return h, nil
 }
 
+func (m *vsphereManager) ModifyHost(context.Context, *host.Host, host.HostModifyOptions) error {
+	return errors.New("can't modify instances for vsphere provider")
+}
+
 // GetInstanceStatus gets the current operational status of the provisioned host,
 func (m *vsphereManager) GetInstanceStatus(ctx context.Context, host *host.Host) (CloudStatus, error) {
 	state, err := m.client.GetPowerState(ctx, host)

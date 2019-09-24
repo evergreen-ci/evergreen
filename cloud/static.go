@@ -44,6 +44,10 @@ func (staticMgr *staticManager) SpawnHost(context.Context, *host.Host) (*host.Ho
 	return nil, errors.New("cannot start new instances with static provider")
 }
 
+func (staticMgr *staticManager) ModifyHost(context.Context, *host.Host, host.HostModifyOptions) error {
+	return errors.New("cannot modify instances with static provider")
+}
+
 // get the status of an instance
 func (staticMgr *staticManager) GetInstanceStatus(ctx context.Context, host *host.Host) (CloudStatus, error) {
 	return StatusRunning, nil

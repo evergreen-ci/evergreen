@@ -32,7 +32,7 @@ var (
 	imageURLKey = bsonutil.MustHaveTag(dockerSettings{}, "ImageURL")
 )
 
-//Validate checks that the settings from the config file are sane.
+// Validate checks that the settings from the config file are sane.
 func (settings *dockerSettings) Validate() error {
 	if settings.ImageURL == "" {
 		return errors.New("Image must not be empty")
@@ -112,6 +112,10 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	event.LogHostStarted(h.Id)
 
 	return h, nil
+}
+
+func (m *dockerManager) ModifyHost(context.Context, *host.Host, host.HostModifyOptions) error {
+	return errors.New("can't modify instances with docker provider")
 }
 
 // GetInstanceStatus returns a universal status code representing the state

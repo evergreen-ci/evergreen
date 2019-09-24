@@ -116,13 +116,13 @@ imports:
   - name: github.com/mongodb/amboy
     version: c2a61d8464831268249a58f6f670fd9aa88e064cb
   - name: github.com/evergreen-ci/gimlet
-    version: 2174a9b1266e1b45c99cc80e00ccc8444c84ad38
+    version: 96a0a82e7418db89a4264f819200437c4073b7a9
   - name: github.com/evergreen-ci/shrub
     version: 32e668cd99410328bf6659e55671c11a6c727d9a
   - name: github.com/evergreen-ci/pail
     version: 7b2f8e0b2d972ca621cad3777d68276a54da13d0
   - name: github.com/mongodb/jasper
-    version: ad34978fb062f62e785cd841f60057bcece857c1
+    version: 1eea3c0c40ac21b72af1d643f3d3e76ed4686961
   - name: go.mongodb.org/mongo-driver
     version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86
 

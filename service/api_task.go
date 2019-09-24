@@ -485,21 +485,22 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 				"distro":  h.Distro.Id,
 			}))
 		} else {
-			grip.Info(message.Fields{
+			grip.InfoWhen(h.Provider != evergreen.ProviderNameStatic, message.Fields{
 				"message":                   "agent initiated first contact with server",
 				"host":                      h.Id,
 				"distro":                    h.Distro.Id,
+				"provisioning":              h.Distro.BootstrapSettings.Method,
 				"agent_start_duration_secs": time.Since(h.CreationTime).Seconds(),
 			})
 		}
 	}
 
 	grip.Error(message.WrapError(h.SetUserDataHostProvisioned(), message.Fields{
-		"message":   "failed to mark host as done provisioning with user data",
-		"host":      h.Id,
-		"distro":    h.Distro.Id,
-		"bootstrap": h.Distro.BootstrapSettings.Method,
-		"operation": "next_task",
+		"message":      "failed to mark host as done provisioning with user data",
+		"host":         h.Id,
+		"distro":       h.Distro.Id,
+		"provisioning": h.Distro.BootstrapSettings.Method,
+		"operation":    "next_task",
 	}))
 
 	// stopAgentMonitor is only used for debug log purposes.

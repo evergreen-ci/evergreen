@@ -151,12 +151,28 @@ func (r *APIRoute) Version(version int) *APIRoute {
 func (r *APIRoute) Handler(h http.HandlerFunc) *APIRoute {
 	if r.handler != nil {
 		grip.Warningf("called Handler more than once for route %s", r.route)
-	} else if h == nil {
+	}
+	if h == nil {
 		grip.Alertf("adding nil route handler will prorobably result in runtime panics for '%s'", r.route)
 	}
 
 	r.handler = h
 
+	return r
+}
+
+// HandlerType is equivalent to Handler, but allows you to use a type
+// that implements http.Handler rather than a function object.
+func (r *APIRoute) HandlerType(h http.Handler) *APIRoute {
+	if r.handler != nil {
+		grip.Warningf("called Handler more than once for route %s", r.route)
+	}
+
+	if h == nil {
+		grip.Alertf("adding nil route handler will prorobably result in runtime panics for '%s'", r.route)
+	}
+
+	r.handler = h.ServeHTTP
 	return r
 }
 
@@ -167,7 +183,9 @@ func (r *APIRoute) Handler(h http.HandlerFunc) *APIRoute {
 func (r *APIRoute) RouteHandler(h RouteHandler) *APIRoute {
 	if r.handler != nil {
 		grip.Warningf("called Handler more than once for route %s", r.route)
-	} else if h == nil {
+	}
+
+	if h == nil {
 		grip.Alertf("adding nil route handler will prorobably result in runtime panics for '%s'", r.route)
 	}
 
@@ -215,6 +233,11 @@ func (r *APIRoute) Patch() *APIRoute {
 // to the current route. Routes may specify multiple methods.
 func (r *APIRoute) Head() *APIRoute {
 	r.methods = append(r.methods, head)
+	return r
+}
+
+func (r *APIRoute) Options() *APIRoute {
+	r.methods = append(r.methods, options)
 	return r
 }
 

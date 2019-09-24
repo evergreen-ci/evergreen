@@ -155,3 +155,6 @@ func (*GithubUserManager) GetOrCreateUser(u gimlet.User) (gimlet.User, error) {
 func (*GithubUserManager) ClearUser(u gimlet.User, all bool) error {
 	return errors.New("Github Authentication does not support Clear User")
 }
+func (*GithubUserManager) GetGroupsForUser(string) ([]string, error) {
+	return nil, errors.New("GetGroupsForUser has not yet been implemented for the Github user manager")
+}

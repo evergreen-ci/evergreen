@@ -1836,7 +1836,9 @@ func (t *Task) UpdateUnblockedDependencies() error {
 		if err = blockedTask.MarkUnattainableDependency(t, false); err != nil {
 			return errors.Wrap(err, "error marking dependency attainable")
 		}
-		return errors.WithStack(blockedTask.UpdateUnblockedDependencies())
+		if err = blockedTask.UpdateUnblockedDependencies(); err != nil {
+			return errors.WithStack(err)
+		}
 	}
 
 	return nil

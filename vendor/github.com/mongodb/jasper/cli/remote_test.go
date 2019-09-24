@@ -5,37 +5,15 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
-	"runtime"
 	"testing"
 
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/options"
+	"github.com/mongodb/jasper/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tychoish/bond"
 	"github.com/urfave/cli"
 )
-
-func validMongoDBDownloadOptions() jasper.MongoDBDownloadOptions {
-	target := runtime.GOOS
-	if target == "darwin" {
-		target = "osx"
-	}
-
-	edition := "enterprise"
-	if target == "linux" {
-		edition = "base"
-	}
-
-	return jasper.MongoDBDownloadOptions{
-		BuildOpts: bond.BuildOptions{
-			Target:  target,
-			Arch:    bond.MongoDBArch("x86_64"),
-			Edition: bond.MongoDBEdition(edition),
-			Debug:   false,
-		},
-		Releases: []string{"4.0-current"},
-	}
-}
 
 func TestCLIRemote(t *testing.T) {
 	for remoteType, makeService := range map[string]func(ctx context.Context, t *testing.T, port int, manager jasper.Manager) jasper.CloseFunc{
@@ -45,7 +23,7 @@ func TestCLIRemote(t *testing.T) {
 		t.Run(remoteType, func(t *testing.T) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, c *cli.Context){
 				"ConfigureCacheSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context) {
-					input, err := json.Marshal(jasper.CacheOptions{})
+					input, err := json.Marshal(options.Cache{})
 					require.NoError(t, err)
 					resp := &OutcomeResponse{}
 					require.NoError(t, execCLICommandInputOutput(t, c, remoteConfigureCache(), input, resp))
@@ -59,7 +37,7 @@ func TestCLIRemote(t *testing.T) {
 						assert.NoError(t, os.RemoveAll(tmpFile.Name()))
 					}()
 
-					input, err := json.Marshal(jasper.DownloadInfo{
+					input, err := json.Marshal(options.Download{
 						URL:  "https://example.com",
 						Path: tmpFile.Name(),
 					})
@@ -79,7 +57,7 @@ func TestCLIRemote(t *testing.T) {
 						assert.NoError(t, os.RemoveAll(tmpDir))
 					}()
 
-					opts := validMongoDBDownloadOptions()
+					opts := testutil.ValidMongoDBDownloadOptions()
 					opts.Path = tmpDir
 					input, err := json.Marshal(opts)
 					require.NoError(t, err)
@@ -94,8 +72,8 @@ func TestCLIRemote(t *testing.T) {
 					assert.False(t, resp.Successful())
 				},
 				"GetLogStreamSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context) {
-					opts := trueCreateOpts()
-					opts.Output.Loggers = []jasper.Logger{jasper.NewInMemoryLogger(10)}
+					opts := testutil.TrueCreateOpts()
+					opts.Output.Loggers = []options.Logger{jasper.NewInMemoryLogger(10)}
 					createInput, err := json.Marshal(opts)
 					require.NoError(t, err)
 					createResp := &InfoResponse{}
@@ -116,7 +94,7 @@ func TestCLIRemote(t *testing.T) {
 						assert.NoError(t, os.RemoveAll(tmpFile.Name()))
 					}()
 
-					info := jasper.WriteFileInfo{Path: tmpFile.Name(), Content: []byte("foo")}
+					info := options.WriteFile{Path: tmpFile.Name(), Content: []byte("foo")}
 					input, err := json.Marshal(info)
 					require.NoError(t, err)
 					resp := &OutcomeResponse{}
@@ -131,10 +109,10 @@ func TestCLIRemote(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+					ctx, cancel := context.WithTimeout(context.Background(), testutil.TestTimeout)
 					defer cancel()
 
-					port := getNextPort()
+					port := testutil.GetPortNumber()
 					c := mockCLIContext(remoteType, port)
 					manager, err := jasper.NewLocalManager(false)
 					require.NoError(t, err)

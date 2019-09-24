@@ -7,6 +7,7 @@ import (
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/jasper/options"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -45,8 +46,8 @@ func TestAmboyJob(t *testing.T) {
 			t.Run(strings.ToUpper(frm.String()), func(t *testing.T) {
 				for _, j := range []amboy.Job{
 					NewJob(newBasicProcess, "ls"),
-					NewJobOptions(newBasicProcess, &CreateOptions{}),
-					NewJobForeground(newBasicProcess, &CreateOptions{}),
+					NewJobOptions(newBasicProcess, &options.Create{}),
+					NewJobForeground(newBasicProcess, &options.Create{}),
 				} {
 					ic, err := registry.MakeJobInterchange(j, frm)
 					require.NoError(t, err)
@@ -71,17 +72,17 @@ func TestAmboyJob(t *testing.T) {
 			assert.NotNil(t, job)
 		})
 		t.Run("Simple", func(t *testing.T) {
-			job, ok := NewJobOptions(newBasicProcess, &CreateOptions{}).(*amboySimpleCapturedOutputJob)
+			job, ok := NewJobOptions(newBasicProcess, &options.Create{}).(*amboySimpleCapturedOutputJob)
 			assert.True(t, ok)
 			assert.NotNil(t, job)
 		})
 		t.Run("Foreground", func(t *testing.T) {
-			job, ok := NewJobForeground(newBasicProcess, &CreateOptions{}).(*amboyForegroundOutputJob)
+			job, ok := NewJobForeground(newBasicProcess, &options.Create{}).(*amboyForegroundOutputJob)
 			assert.True(t, ok)
 			assert.NotNil(t, job)
 		})
 		t.Run("ForegroundBasic", func(t *testing.T) {
-			job, ok := NewJobBasicForeground(&CreateOptions{}).(*amboyForegroundOutputJob)
+			job, ok := NewJobBasicForeground(&options.Create{}).(*amboyForegroundOutputJob)
 			assert.True(t, ok)
 			assert.NotNil(t, job)
 		})
@@ -98,12 +99,12 @@ func TestAmboyJob(t *testing.T) {
 			require.NoError(t, job.Error())
 		})
 		t.Run("Simple", func(t *testing.T) {
-			job := NewJobOptions(newBasicProcess, &CreateOptions{Args: []string{"echo", "hi"}})
+			job := NewJobOptions(newBasicProcess, &options.Create{Args: []string{"echo", "hi"}})
 			job.Run(ctx)
 			require.NoError(t, job.Error())
 		})
 		t.Run("Foreground", func(t *testing.T) {
-			job := NewJobForeground(newBasicProcess, &CreateOptions{Args: []string{"echo", "hi"}})
+			job := NewJobForeground(newBasicProcess, &options.Create{Args: []string{"echo", "hi"}})
 			job.Run(ctx)
 			require.NoError(t, job.Error())
 		})
@@ -117,14 +118,14 @@ func TestAmboyJob(t *testing.T) {
 			require.Error(t, job.Error())
 		})
 		t.Run("Simple", func(t *testing.T) {
-			job := NewJobOptions(newBasicProcess, &CreateOptions{Args: []string{"echo", "hi"}})
+			job := NewJobOptions(newBasicProcess, &options.Create{Args: []string{"echo", "hi"}})
 			job.Run(ctx)
 			require.NoError(t, job.Error())
 			job.Run(ctx)
 			require.Error(t, job.Error())
 		})
 		t.Run("Foreground", func(t *testing.T) {
-			job := NewJobForeground(newBasicProcess, &CreateOptions{Args: []string{"echo", "hi"}})
+			job := NewJobForeground(newBasicProcess, &options.Create{Args: []string{"echo", "hi"}})
 			job.Run(ctx)
 			require.NoError(t, job.Error())
 			job.Run(ctx)

@@ -2,74 +2,17 @@ package rpc
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
-
-var intSource <-chan int
-
-func init() {
-	intSource = func() <-chan int {
-		out := make(chan int, 25)
-		go func() {
-			id := 5000
-			for {
-				id++
-				out <- id
-			}
-		}()
-		return out
-	}()
-}
-
-const (
-	taskTimeout = 30 * time.Second
-)
-
-func getPortNumber() int {
-	return <-intSource
-}
-
-func trueCreateOpts() *jasper.CreateOptions {
-	return &jasper.CreateOptions{
-		Args: []string{"true"},
-	}
-}
-
-func falseCreateOpts() *jasper.CreateOptions {
-	return &jasper.CreateOptions{
-		Args: []string{"false"},
-	}
-}
-
-func sleepCreateOpts(num int) *jasper.CreateOptions {
-	return &jasper.CreateOptions{
-		Args: []string{"sleep", fmt.Sprint(num)},
-	}
-}
-
-func createProcs(ctx context.Context, opts *jasper.CreateOptions, manager jasper.Manager, num int) ([]jasper.Process, error) {
-	catcher := grip.NewBasicCatcher()
-	out := []jasper.Process{}
-	for i := 0; i < num; i++ {
-		proc, err := manager.CreateProcess(ctx, opts)
-		catcher.Add(err)
-		if proc != nil {
-			out = append(out, proc)
-		}
-	}
-
-	return out, catcher.Resolve()
-}
 
 // startTestService creates a server for testing purposes that terminates when
 // the context is done.
@@ -108,4 +51,20 @@ func buildDir(t *testing.T) string {
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 	return filepath.Join(filepath.Dir(cwd), "build")
+}
+
+func createProcs(ctx context.Context, opts *options.Create, manager jasper.Manager, num int) ([]jasper.Process, error) {
+	catcher := grip.NewBasicCatcher()
+	out := []jasper.Process{}
+	for i := 0; i < num; i++ {
+		optsCopy := *opts
+
+		proc, err := manager.CreateProcess(ctx, &optsCopy)
+		catcher.Add(err)
+		if proc != nil {
+			out = append(out, proc)
+		}
+	}
+
+	return out, catcher.Resolve()
 }
