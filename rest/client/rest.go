@@ -177,41 +177,46 @@ func (c *communicatorImpl) StartSpawnHost(ctx context.Context, hostID string, wa
 }
 
 func (c *communicatorImpl) waitForStatus(ctx context.Context, hostID, status string) error {
+	const (
+		contextTimeout = 2 * time.Minute
+		retryInterval  = 5 * time.Second
+	)
+
 	info := requestInfo{
 		method:  get,
 		path:    fmt.Sprintf("hosts/%s", hostID),
 		version: apiVersion2,
 	}
 
-	err := util.Retry(
-		ctx,
-		func() (bool, error) {
+	timerCtx, cancel := context.WithTimeout(ctx, contextTimeout)
+	defer cancel()
+	timer := time.NewTimer(0)
+	for {
+		select {
+		case <-timerCtx.Done():
+			return errors.New("timer context canceled")
+		case <-timer.C:
 			resp, err := c.request(ctx, info, "")
 			if err != nil {
-				return true, errors.Wrap(err, "error sending request to get host info")
+				return errors.Wrap(err, "error sending request to get host info")
 			}
 			if resp.StatusCode != http.StatusOK {
 				errMsg := gimlet.ErrorResponse{}
 				if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
-					return true, errors.Wrap(err, "problem getting host and parsing error message")
+					return errors.Wrap(err, "problem getting host and parsing error message")
 				}
-				return true, errors.Wrap(errMsg, "problem getting host")
+				return errors.Wrap(errMsg, "problem getting host")
 			}
 			hostResp := model.APIHost{}
 			if err = util.ReadJSONInto(resp.Body, &hostResp); err != nil {
-				return true, fmt.Errorf("Error forming response body response: %v", err)
+				return fmt.Errorf("Error forming response body response: %v", err)
 			}
 			if model.FromAPIString(hostResp.Status) == status {
-				return true, nil
+				return nil
 			}
-			return false, nil
-		}, 10, time.Second, 0)
-
-	if err != nil {
-		return err
+			timer.Reset(retryInterval)
+		}
 	}
-
-	return nil
 }
 
 func (c *communicatorImpl) TerminateSpawnHost(ctx context.Context, hostID string) error {
