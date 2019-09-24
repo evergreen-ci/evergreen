@@ -195,7 +195,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if projectRef.CommitQueue.Enabled && details.Status != evergreen.TaskSucceeded {
-		if err := model.TryDequeueAndAbortCommitQueueVersion(t.Version, t.Project, APIServerLockTitle); err != nil {
+		if err = model.TryDequeueAndAbortCommitQueueVersion(t.Version, t.Project, APIServerLockTitle); err != nil {
 			err = errors.Wrapf(err, "Error dequeueing and aborting failed commit queue version")
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
