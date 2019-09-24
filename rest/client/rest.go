@@ -120,7 +120,7 @@ func (c *communicatorImpl) ModifySpawnHost(ctx context.Context, hostID string, c
 	return nil
 }
 
-func (c *communicatorImpl) StopSpawnHost(ctx context.Context, hostID string) error {
+func (c *communicatorImpl) StopSpawnHost(ctx context.Context, hostID string, wait bool) error {
 	info := requestInfo{
 		method:  post,
 		path:    fmt.Sprintf("hosts/%s/stop", hostID),
@@ -141,10 +141,14 @@ func (c *communicatorImpl) StopSpawnHost(ctx context.Context, hostID string) err
 		return errors.Wrap(errMsg, "problem stopping host")
 	}
 
+	if wait {
+		return errors.Wrap(c.waitForStatus(ctx, hostID, evergreen.HostStopped), "problem waiting for host stop to complete")
+	}
+
 	return nil
 }
 
-func (c *communicatorImpl) StartSpawnHost(ctx context.Context, hostID string) error {
+func (c *communicatorImpl) StartSpawnHost(ctx context.Context, hostID string, wait bool) error {
 	info := requestInfo{
 		method:  post,
 		path:    fmt.Sprintf("hosts/%s/start", hostID),
@@ -163,6 +167,48 @@ func (c *communicatorImpl) StartSpawnHost(ctx context.Context, hostID string) er
 			return errors.Wrap(err, "problem starting host and parsing error message")
 		}
 		return errors.Wrap(errMsg, "problem starting host")
+	}
+
+	if wait {
+		return errors.Wrap(c.waitForStatus(ctx, hostID, evergreen.HostRunning), "problem waiting for host start to complete")
+	}
+
+	return nil
+}
+
+func (c *communicatorImpl) waitForStatus(ctx context.Context, hostID, status string) error {
+	info := requestInfo{
+		method:  get,
+		path:    fmt.Sprintf("hosts/%s", hostID),
+		version: apiVersion2,
+	}
+
+	err := util.Retry(
+		ctx,
+		func() (bool, error) {
+			resp, err := c.request(ctx, info, "")
+			if err != nil {
+				return true, errors.Wrap(err, "error sending request to get host info")
+			}
+			if resp.StatusCode != http.StatusOK {
+				errMsg := gimlet.ErrorResponse{}
+				if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+					return true, errors.Wrap(err, "problem getting host and parsing error message")
+				}
+				return true, errors.Wrap(errMsg, "problem getting host")
+			}
+			hostResp := model.APIHost{}
+			if err = util.ReadJSONInto(resp.Body, &hostResp); err != nil {
+				return true, fmt.Errorf("Error forming response body response: %v", err)
+			}
+			if model.FromAPIString(hostResp.Status) == status {
+				return true, nil
+			}
+			return false, nil
+		}, 10, time.Second, 0)
+
+	if err != nil {
+		return err
 	}
 
 	return nil

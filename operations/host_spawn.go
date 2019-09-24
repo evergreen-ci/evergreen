@@ -200,14 +200,21 @@ func hostModify() cli.Command {
 }
 
 func hostStop() cli.Command {
+	const waitFlagName = "wait"
 	return cli.Command{
-		Name:   "stop",
-		Usage:  "stop a running spawn host",
-		Flags:  addHostFlag(),
+		Name:  "stop",
+		Usage: "stop a running spawn host",
+		Flags: addHostFlag(
+			cli.BoolFlag{
+				Name:  waitFlagName,
+				Usage: "command will block until host started",
+			},
+		),
 		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			hostID := c.String(hostFlagName)
+			wait := c.Bool(waitFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -219,26 +226,36 @@ func hostStop() cli.Command {
 			client := conf.GetRestCommunicator(ctx)
 			defer client.Close()
 
-			err = client.StopSpawnHost(ctx, hostID)
+			err = client.StopSpawnHost(ctx, hostID, wait)
 			if err != nil {
 				return err
 			}
 
-			grip.Infof("Started host '%s'. Visit the hosts page in Evergreen to check on its status.", hostID)
+			if wait {
+				grip.Infof("Stopped host '%s'", hostID)
+			} else {
+				grip.Infof("Stopping host '%s'. Visit the hosts page in Evergreen to check on its status.", hostID)
+			}
 			return nil
 		},
 	}
 }
 
 func hostStart() cli.Command {
+	const waitFlagName = "wait"
 	return cli.Command{
-		Name:   "start",
-		Usage:  "start a stopped spawn host",
-		Flags:  addHostFlag(),
+		Name:  "start",
+		Usage: "start a stopped spawn host",
+		Flags: addHostFlag(
+			cli.BoolFlag{
+				Name:  waitFlagName,
+				Usage: "command will block until host started",
+			}),
 		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			hostID := c.String(hostFlagName)
+			wait := c.Bool(waitFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -250,12 +267,17 @@ func hostStart() cli.Command {
 			client := conf.GetRestCommunicator(ctx)
 			defer client.Close()
 
-			err = client.StartSpawnHost(ctx, hostID)
+			err = client.StartSpawnHost(ctx, hostID, wait)
 			if err != nil {
 				return err
 			}
 
-			grip.Infof("Started host '%s'. Visit the hosts page in Evergreen to check on its status.", hostID)
+			if wait {
+				grip.Infof("Started host '%s'", hostID)
+			} else {
+				grip.Infof("Starting host '%s'. Visit the hosts page in Evergreen to check on its status.", hostID)
+			}
+
 			return nil
 		},
 	}

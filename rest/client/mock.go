@@ -374,11 +374,11 @@ func (*Mock) TerminateSpawnHost(ctx context.Context, hostID string) error {
 	return errors.New("(*Mock) TerminateSpawnHost is not implemented")
 }
 
-func (*Mock) StopSpawnHost(ctx context.Context, hostID string) error {
+func (*Mock) StopSpawnHost(context.Context, string, bool) error {
 	return errors.New("(*Mock) StopSpawnHost is not implemented")
 }
 
-func (*Mock) StartSpawnHost(ctx context.Context, hostID string) error {
+func (*Mock) StartSpawnHost(context.Context, string, bool) error {
 	return errors.New("(*Mock) StartSpawnHost is not implemented")
 }
 
