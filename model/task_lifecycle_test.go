@@ -1242,7 +1242,7 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 	assert.NoError(t, t4.Insert())
 	assert.NoError(t, commitqueue.InsertQueue(cq))
 
-	assert.NoError(t, TryDequeueAndAbortCommitQueueVersion(v.Id, cq.ProjectID, t1.Requester))
+	assert.NoError(t, TryDequeueAndAbortCommitQueueVersion(v.Id, cq.ProjectID, t1.Requester, nil))
 	cq, err := commitqueue.FindOneId("my-project")
 	assert.NoError(t, err)
 	assert.Equal(t, cq.FindItem("12"), -1)
