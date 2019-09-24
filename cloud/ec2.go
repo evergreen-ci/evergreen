@@ -629,7 +629,14 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 			reservationsMap[*out.Reservations[i].Instances[0].InstanceId] = out.Reservations[i].Instances[0]
 		}
 		for i := range hostsToCheck {
-			status := ec2StatusToEvergreenStatus(*reservationsMap[*hostsToCheck[i]].State.Name)
+			instance, ok := reservationsMap[*hostsToCheck[i]]
+			if !ok {
+				return nil, errors.Errorf("host '%s' not included in DescribeInstances response", *hostsToCheck[i])
+			}
+			if instance.State == nil {
+				return nil, errors.Errorf("host '%s' has no state in DescribeInstances response", *hostsToCheck[i])
+			}
+			status := ec2StatusToEvergreenStatus(*instance.State.Name)
 			if status == StatusRunning {
 				// cache instance information so we can make fewer calls to AWS's API
 				if err = cacheHostData(ctx, instanceIdToHostMap[*hostsToCheck[i]], reservationsMap[*hostsToCheck[i]], m.client); err != nil {
