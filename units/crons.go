@@ -514,7 +514,10 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 
 		catcher := grip.NewBasicCatcher()
 
-		lastPlanned, err := model.FindTaskQueueGenerationTimes()
+		lastPlanned, err := model.FindTaskQueueLastGenerationTimes()
+		catcher.Add(err)
+
+		lastRuntime, err := model.FindTaskQueueGenerationRuntime()
 		catcher.Add(err)
 
 		// find all active distros
@@ -534,7 +537,7 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 			"operation": "background task creation",
 		}))
 
-		ts := util.RoundPartOfMinute(20)
+		ts := util.RoundPartOfMinute(0)
 		settings := env.Settings()
 
 		for _, d := range distros {
@@ -544,7 +547,11 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 			}
 
 			lastRun, ok := lastPlanned[d.Id]
-			if ok && time.Since(lastRun) < 40*time.Second {
+			if ok && time.Since(lastRun) < 2*time.Minute {
+				continue
+			}
+
+			if ok && time.Since(lastRun)+10*time.Second < lastRuntime[d.Id] {
 				continue
 			}
 
@@ -573,15 +580,18 @@ func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation 
 
 		catcher := grip.NewBasicCatcher()
 
-		lastPlanned, err := model.FindTaskAliasQueueGenerationTimes()
+		lastPlanned, err := model.FindTaskAliasQueueLastGenerationTimes()
 		catcher.Add(err)
 
 		// find all active distros
 		distros, err := distro.Find(distro.ByActiveOrStatic())
 		catcher.Add(err)
 
+		lastRuntime, err := model.FindTaskQueueGenerationRuntime()
+		catcher.Add(err)
+
 		settings := env.Settings()
-		ts := util.RoundPartOfMinute(30)
+		ts := util.RoundPartOfMinute(0)
 
 		for _, d := range distros {
 			// do not create scheduler jobs for parent distros
@@ -590,7 +600,10 @@ func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation 
 			}
 
 			lastRun, ok := lastPlanned[d.Id]
-			if ok && time.Since(lastRun) < time.Minute {
+			if ok && time.Since(lastRun) < 2*time.Minute {
+				continue
+			}
+			if ok && time.Since(lastRun)+10*time.Second < lastRuntime[d.Id] {
 				continue
 			}
 
