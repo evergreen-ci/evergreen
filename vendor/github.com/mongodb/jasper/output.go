@@ -66,7 +66,7 @@ func GetInMemoryLogStream(ctx context.Context, proc Process, count int) ([]strin
 
 		strs := make([]string, 0, len(msgs))
 		for _, msg := range msgs {
-			str, err := inMemorySender.Formatter(msg)
+			str, err := inMemorySender.Formatter()(msg)
 			if err != nil {
 				return nil, err
 			}

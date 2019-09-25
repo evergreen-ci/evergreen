@@ -110,7 +110,7 @@ imports:
     version: 23f6a9d8e774f597faabae8b58b8c6020b3f79ef
 
   - name: github.com/mongodb/grip
-    version: 0e6bc551430dcc6e74a79ba8937a4f8ff185e907
+    version: b1dabf523db900adb1bce209a0df2a459eae1f7f
   - name: github.com/mongodb/anser
     version: c7518f4c967d32231c92683c8c967307d5de5e5c
   - name: github.com/mongodb/amboy
@@ -122,7 +122,7 @@ imports:
   - name: github.com/evergreen-ci/pail
     version: 7b2f8e0b2d972ca621cad3777d68276a54da13d0
   - name: github.com/mongodb/jasper
-    version: 1eea3c0c40ac21b72af1d643f3d3e76ed4686961
+    version: ce1141cc55da34810602787dd426960a0d4285af
   - name: go.mongodb.org/mongo-driver
     version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86
 

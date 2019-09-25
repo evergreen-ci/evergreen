@@ -70,7 +70,7 @@ func (j *jiraCommentJournal) Send(m message.Composer) {
 			j.errHandler(fmt.Errorf("jira authentication error: %v", err), message.NewFormattedMessage(m.Priority(), m.String()))
 		}
 		if err := j.opts.client.PostComment(issue, m.String()); err != nil {
-			j.ErrorHandler(err, m)
+			j.ErrorHandler()(err, m)
 		}
 	}
 }

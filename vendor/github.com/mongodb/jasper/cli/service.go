@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"runtime"
 	"syscall"
 
 	"github.com/kardianos/service"
@@ -177,34 +176,24 @@ func buildRunCommand(c *cli.Context, serviceType string) []string {
 	return append(subCmd, args...)
 }
 
+// serviceOptions returns all options specific to particular service management
+// systems.
+func serviceOptions() service.KeyValue {
+	return service.KeyValue{
+		// launchd-specific options
+		"RunAtLoad": true,
+	}
+}
+
 // serviceConfig returns the daemon service configuration.
-func serviceConfig(serviceType string, args []string, user string) *service.Config {
-	config := &service.Config{
+func serviceConfig(serviceType string, args []string) *service.Config {
+	return &service.Config{
 		Name:        fmt.Sprintf("%s_jasperd", serviceType),
 		DisplayName: fmt.Sprintf("Jasper %s service", serviceType),
 		Description: "Jasper is a service for process management",
 		Executable:  "", // No executable refers to the current executable.
 		Arguments:   args,
-		Option:      service.KeyValue{},
-	}
-
-	configOptions(config, user)
-
-	return config
-}
-
-func configOptions(config *service.Config, user string) {
-	if runtime.GOOS == "darwin" {
-		config.Option["RunAtLoad"] = true
-	}
-
-	if user == "" {
-		return
-	}
-
-	config.UserName = user
-	if user != "root" && runtime.GOOS == "darwin" {
-		config.Option["UserService"] = true
+		Option:      serviceOptions(),
 	}
 }
 

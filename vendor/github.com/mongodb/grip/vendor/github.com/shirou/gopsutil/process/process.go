@@ -18,7 +18,7 @@ var (
 )
 
 type Process struct {
-	Pid            int32 `json:"pid" bson:"pid"`
+	Pid            int32 `json:"pid" bson:"pid,omitempty"`
 	name           string
 	status         string
 	parent         int32
@@ -36,44 +36,52 @@ type Process struct {
 }
 
 type OpenFilesStat struct {
-	Path string `json:"path" bson:"path"`
-	Fd   uint64 `json:"fd" bson:"fd"`
+	Path string `json:"path" bson:"path,omitempty"`
+	Fd   uint64 `json:"fd" bson:"fd,omitempty"`
 }
 
 type MemoryInfoStat struct {
-	RSS    uint64 `json:"rss" bson:"rss"`       // bytes
-	VMS    uint64 `json:"vms" bson:"vms"`       // bytes
-	Data   uint64 `json:"data" bson:"data"`     // bytes
-	Stack  uint64 `json:"stack" bson:"stack"`   // bytes
-	Locked uint64 `json:"locked" bson:"locked"` // bytes
-	Swap   uint64 `json:"swap" bson:"swap"`     // bytes
+	RSS    uint64 `json:"rss" bson:"rss,omitempty"`       // bytes
+	VMS    uint64 `json:"vms" bson:"vms,omitempty"`       // bytes
+	HWM    uint64 `json:"hwm" bson:"hwm,omitempty"`       // bytes
+	Data   uint64 `json:"data" bson:"data,omitempty"`     // bytes
+	Stack  uint64 `json:"stack" bson:"stack,omitempty"`   // bytes
+	Locked uint64 `json:"locked" bson:"locked,omitempty"` // bytes
+	Swap   uint64 `json:"swap" bson:"swap,omitempty"`     // bytes
 }
 
 type SignalInfoStat struct {
-	PendingProcess uint64 `json:"pending_process" bson:"pending_process"`
-	PendingThread  uint64 `json:"pending_thread" bson:"pending_thread"`
-	Blocked        uint64 `json:"blocked" bson:"blocked"`
-	Ignored        uint64 `json:"ignored" bson:"ignored"`
-	Caught         uint64 `json:"caught" bson:"caught"`
+	PendingProcess uint64 `json:"pending_process" bson:"pending_process,omitempty"`
+	PendingThread  uint64 `json:"pending_thread" bson:"pending_thread,omitempty"`
+	Blocked        uint64 `json:"blocked" bson:"blocked,omitempty"`
+	Ignored        uint64 `json:"ignored" bson:"ignored,omitempty"`
+	Caught         uint64 `json:"caught" bson:"caught,omitempty"`
 }
 
 type RlimitStat struct {
-	Resource int32  `json:"resource" bson:"resource"`
-	Soft     int32  `json:"soft" bson:"soft"` //TODO too small. needs to be uint64
-	Hard     int32  `json:"hard" bson:"hard"` //TODO too small. needs to be uint64
-	Used     uint64 `json:"used" bson:"used"`
+	Resource int32  `json:"resource" bson:"resource,omitempty"`
+	Soft     int32  `json:"soft" bson:"soft,omitempty"` //TODO too small. needs to be uint64
+	Hard     int32  `json:"hard" bson:"hard,omitempty"` //TODO too small. needs to be uint64
+	Used     uint64 `json:"used" bson:"used,omitempty"`
 }
 
 type IOCountersStat struct {
-	ReadCount  uint64 `json:"readCount" bson:"readCount"`
-	WriteCount uint64 `json:"writeCount" bson:"writeCount"`
-	ReadBytes  uint64 `json:"readBytes" bson:"readBytes"`
-	WriteBytes uint64 `json:"writeBytes" bson:"writeBytes"`
+	ReadCount  uint64 `json:"readCount" bson:"readCount,omitempty"`
+	WriteCount uint64 `json:"writeCount" bson:"writeCount,omitempty"`
+	ReadBytes  uint64 `json:"readBytes" bson:"readBytes,omitempty"`
+	WriteBytes uint64 `json:"writeBytes" bson:"writeBytes,omitempty"`
 }
 
 type NumCtxSwitchesStat struct {
-	Voluntary   int64 `json:"voluntary" bson:"voluntary"`
-	Involuntary int64 `json:"involuntary" bson:"involuntary"`
+	Voluntary   int64 `json:"voluntary" bson:"voluntary,omitempty"`
+	Involuntary int64 `json:"involuntary" bson:"involuntary,omitempty"`
+}
+
+type PageFaultsStat struct {
+	MinorFaults      uint64 `json:"minorFaults" bson:"minorFaults,omitempty"`
+	MajorFaults      uint64 `json:"majorFaults" bson:"majorFaults,omitempty"`
+	ChildMinorFaults uint64 `json:"childMinorFaults" bson:"childMinorFaults,omitempty"`
+	ChildMajorFaults uint64 `json:"childMajorFaults" bson:"childMajorFaults,omitempty"`
 }
 
 // Resource limit constants are from /usr/include/x86_64-linux-gnu/bits/resource.h
@@ -144,6 +152,19 @@ func PidExistsWithContext(ctx context.Context, pid int32) (bool, error) {
 	}
 
 	return false, err
+}
+
+// Background returns true if the process is in background, false otherwise.
+func (p *Process) Background() (bool, error) {
+	return p.BackgroundWithContext(context.Background())
+}
+
+func (p *Process) BackgroundWithContext(ctx context.Context) (bool, error) {
+	fg, err := p.ForegroundWithContext(ctx)
+	if err != nil {
+		return false, err
+	}
+	return !fg, err
 }
 
 // If interval is 0, return difference from last call(non-blocking).

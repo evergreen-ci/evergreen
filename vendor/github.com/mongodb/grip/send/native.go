@@ -121,7 +121,7 @@ func (s *nativeLogger) Send(m message.Composer) {
 	if s.Level().ShouldLog(m) {
 		out, err := s.formatter(m)
 		if err != nil {
-			s.ErrorHandler(err, m)
+			s.ErrorHandler()(err, m)
 			return
 		}
 
