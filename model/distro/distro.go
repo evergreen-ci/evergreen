@@ -45,12 +45,13 @@ type BootstrapSettings struct {
 	ClientDir             string `bson:"client_dir,omitempty" json:"client_dir,omitempty" mapstructure:"client_dir,omitempty"`
 	JasperBinaryDir       string `bson:"jasper_binary_dir,omitempty" json:"jasper_binary_dir,omitempty" mapstructure:"jasper_binary_dir,omitempty"`
 	JasperCredentialsPath string `json:"jasper_credentials_path,omitempty" bson:"jasper_credentials_path,omitempty" mapstructure:"jasper_credentials_path,omitempty"`
+	ServiceUser           string `bson:"service_user,omitempty" json:"service_user,omitempty" mapstructure:"service_user,omitempty"`
 	ShellPath             string `bson:"shell_path,omitempty" json:"shell_path,omitempty" mapstructure:"shell_path,omitempty"`
 }
 
 // Validate checks if all of the bootstrap settings are valid for legacy or
 // non-legacy bootstrapping.
-func (s *BootstrapSettings) Validate() error {
+func (s *BootstrapSettings) Validate(isWindows bool) error {
 	catcher := grip.NewBasicCatcher()
 	if !util.StringSliceContains(validBootstrapMethods, s.Method) {
 		catcher.Errorf("'%s' is not a valid bootstrap method", s.Method)
@@ -87,8 +88,12 @@ func (s *BootstrapSettings) Validate() error {
 		catcher.New("Jasper credentials path cannot be empty for non-legacy bootstrapping")
 	}
 
-	if s.ShellPath == "" {
-		catcher.New("shell path cannot be empty for non-legacy bootstrapping")
+	if isWindows && s.ServiceUser == "" {
+		catcher.New("service user cannot be empty for non-legacy Windows bootstrapping")
+	}
+
+	if isWindows && s.ShellPath == "" {
+		catcher.New("shell path cannot be empty for non-legacy Windows bootstrapping")
 	}
 
 	return catcher.Resolve()

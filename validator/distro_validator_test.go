@@ -398,6 +398,7 @@ func nonLegacyBootstrapSettings() distro.BootstrapSettings {
 		ClientDir:             "/client_dir",
 		JasperBinaryDir:       "/jasper_binary_dir",
 		JasperCredentialsPath: "/jasper_credentials_path",
+		ServiceUser:           "service_user",
 		ShellPath:             "/shell_path",
 	}
 }

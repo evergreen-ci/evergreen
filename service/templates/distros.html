@@ -647,29 +647,38 @@ Evergreen - Distros
           </div>
           <div class="icon fa fa-warning distro-error" ng-show="!validBootstrapAndCommunication()"> Legacy and non-legacy bootstrapping and communication are incompatible</div>
           <br />
-          <div ng-show="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'">
-            <label class="distro-label">Shell Path:</label>
-            <input type="text" ng-required="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'" ng-readonly="readOnly" name="shellPath"
-              class="form-control" ng-model="activeDistro.bootstrap_settings.shell_path" placeholder="Absolute native path to the shell binary file (bash)">
-            <div class="icon fa fa-warning distro-error" ng-show="form.shellPath.$invalid"> Shell path is required</div><br>
-          </div>
-          <div ng-show="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'">
+          <div ng-show="isNonLegacyProvisioning()">
             <label class="distro-label">Jasper Binary Directory:</label>
-            <input type="text" ng-required="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'" ng-readonly="readOnly" name="jasperBinaryDir"
+            <input type="text" ng-required="isNonLegacyProvisioning()" ng-readonly="readOnly" name="jasperBinaryDir"
               class="form-control" ng-model="activeDistro.bootstrap_settings.jasper_binary_dir" placeholder="Absolute native path to the directory of the Jasper binary">
-            <div class="icon fa fa-warning distro-error" ng-show="form.jasperBinaryDir.$invalid"> Jasper binary directory is required</div><br>
+            <div class="icon fa fa-warning distro-error" ng-show="form.jasperBinaryDir.$invalid"> Jasper binary directory is required</div><br />
           </div>
-          <div ng-show="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'">
-            <label class="distro-label">Client Directory:</label>
-            <input type="text" ng-required="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'" ng-readonly="readOnly" name="clientDir"
-              class="form-control" ng-model="activeDistro.bootstrap_settings.client_dir" placeholder="Absolute native path to the directory of the evergreen binary">
-            <div class="icon fa fa-warning distro-error" ng-show="form.clientDir.$invalid"> Client directory is required</div><br>
-          </div>
-          <div ng-show="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'">
+          <div ng-show="isNonLegacyProvisioning()">
             <label class="distro-label">Jasper Credentials Path:</label>
-            <input type="text" ng-required="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'" ng-readonly="readOnly" name="jasperCredentialsPath"
+            <input type="text" ng-required="isNonLegacyProvisioning()" ng-readonly="readOnly" name="jasperCredentialsPath"
               class="form-control" ng-model="activeDistro.bootstrap_settings.jasper_credentials_path" placeholder="Absolute native path to the directory containing the Jasper credentials">
-            <div class="icon fa fa-warning distro-error" ng-show="form.jasperCredentialsPath.$invalid"> Jasper credentials path is required</div><br>
+            <div class="icon fa fa-warning distro-error" ng-show="form.jasperCredentialsPath.$invalid"> Jasper credentials path is required</div><br />
+          </div>
+          <div ng-show="isNonLegacyProvisioning()">
+            <label class="distro-label">Client Directory:</label>
+            <input type="text" ng-required="isNonLegacyProvisioning(0)" ng-readonly="readOnly" name="clientDir"
+              class="form-control" ng-model="activeDistro.bootstrap_settings.client_dir" placeholder="Absolute native path to the directory of the evergreen binary">
+            <div class="icon fa fa-warning distro-error" ng-show="form.clientDir.$invalid"> Client directory is required</div><br />
+          </div>
+          <div ng-show="isWindows() && isNonLegacyProvisioning()">
+            <label class="distro-label">Service User:</label>
+            <input type="text" ng-required="isWindows() && isNonLegacyProvisioning()"
+              ng-readonly="readOnly" name="serviceUser"
+              class="form-control" ng-model="activeDistro.bootstrap_settings.service_user" placeholder="Username for setting up Evergreen services">
+            <div class="icon fa fa-warning distro-error" ng-show="form.serviceUser.$invalid"> Service user is required</div><br />
+          </div>
+          <div ng-show="isWindows() && isNonLegacyProvisioning()">
+            <label class="distro-label">Shell Path:</label>
+            <input type="text" ng-required="isWindows() && isNonLegacyProvisioning()"
+              ng-readonly="readOnly" name="shellPath"
+              class="form-control" ng-model="activeDistro.bootstrap_settings.shell_path" placeholder="Absolute native
+              path used to locate command binaries">
+            <div class="icon fa fa-warning distro-error" ng-show="form.shellPath.$invalid"> Shell path is required</div><br />
           </div>
         </div>
         <div>

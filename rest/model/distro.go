@@ -122,10 +122,11 @@ func (s *APIFinderSettings) ToService() (interface{}, error) {
 type APIBootstrapSettings struct {
 	Method                APIString `json:"method"`
 	Communication         APIString `json:"communication"`
-	ShellPath             APIString `json:"shell_path"`
-	JasperBinaryDir       APIString `json:"jasper_binary_dir"`
 	ClientDir             APIString `json:"client_dir"`
+	JasperBinaryDir       APIString `json:"jasper_binary_dir"`
 	JasperCredentialsPath APIString `json:"jasper_credentials_path"`
+	ServiceUser           APIString `json:"service_user"`
+	ShellPath             APIString `json:"shell_path"`
 }
 
 // BuildFromService converts from service level distro.BootstrapSettings to an
@@ -149,10 +150,11 @@ func (s *APIBootstrapSettings) BuildFromService(h interface{}) error {
 	if FromAPIString(s.Communication) == "" {
 		s.Communication = ToAPIString(distro.CommunicationMethodLegacySSH)
 	}
-	s.ShellPath = ToAPIString(settings.ShellPath)
-	s.JasperBinaryDir = ToAPIString(settings.JasperBinaryDir)
 	s.ClientDir = ToAPIString(settings.ClientDir)
+	s.JasperBinaryDir = ToAPIString(settings.JasperBinaryDir)
 	s.JasperCredentialsPath = ToAPIString(settings.JasperCredentialsPath)
+	s.ServiceUser = ToAPIString(settings.ServiceUser)
+	s.ShellPath = ToAPIString(settings.ShellPath)
 
 	return nil
 }
@@ -169,10 +171,11 @@ func (s *APIBootstrapSettings) ToService() (interface{}, error) {
 	if settings.Communication == "" {
 		settings.Communication = distro.CommunicationMethodLegacySSH
 	}
-	settings.ShellPath = FromAPIString(s.ShellPath)
-	settings.JasperBinaryDir = FromAPIString(s.JasperBinaryDir)
 	settings.ClientDir = FromAPIString(s.ClientDir)
+	settings.JasperBinaryDir = FromAPIString(s.JasperBinaryDir)
 	settings.JasperCredentialsPath = FromAPIString(s.JasperCredentialsPath)
+	settings.ServiceUser = FromAPIString(s.ServiceUser)
+	settings.ShellPath = FromAPIString(s.ShellPath)
 
 	return settings, nil
 }

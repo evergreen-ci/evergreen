@@ -310,6 +310,10 @@ func (j *setupHostJob) setupJasper(ctx context.Context) error {
 		return errors.Wrapf(err, "error getting ssh options for host %s", j.host.Id)
 	}
 
+	if err := j.setupServiceUser(ctx, sshOptions); err != nil {
+		return errors.Wrap(err, "error setting up service user")
+	}
+
 	if err := j.putJasperCredentials(ctx, sshOptions); err != nil {
 		return errors.Wrap(err, "error putting Jasper credentials on remote host")
 	}
@@ -375,7 +379,24 @@ func (j *setupHostJob) putJasperCredentials(ctx context.Context, sshOptions []st
 	return nil
 }
 
-// doFetchAndReinstallJasper runs the SSH command over that downloads the latest
+// setupServiceUser runs the SSH command on the host that sets up the service
+// user on the host.
+func (j *setupHostJob) setupServiceUser(ctx context.Context, sshOptions []string) error {
+	if !j.host.Distro.IsWindows() {
+		return nil
+	}
+
+	cmd, err := j.host.SetupServiceUserCommands()
+	if err != nil {
+		return errors.Wrap(err, "could not get command to set up service user")
+	}
+	if logs, err := j.host.RunSSHCommand(ctx, cmd, sshOptions); err != nil {
+		return errors.Wrapf(err, "error while setting up service user: command returned %s", logs)
+	}
+	return nil
+}
+
+// doFetchAndReinstallJasper runs the SSH command that downloads the latest
 // Jasper binary and restarts the service.
 func (j *setupHostJob) doFetchAndReinstallJasper(ctx context.Context, sshOptions []string) error {
 	cmd := j.host.FetchAndReinstallJasperCommand(j.env.Settings())

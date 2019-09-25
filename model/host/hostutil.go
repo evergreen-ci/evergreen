@@ -23,6 +23,7 @@ import (
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/rpc"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func (h *Host) SetupCommand() string {
@@ -243,9 +244,16 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 	if h.Distro.BootstrapSettings.JasperCredentialsPath != "" {
 		params = append(params, fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
 	}
-	if h.Distro.User != "" {
+
+	if h.Distro.BootstrapSettings.ServiceUser != "" {
+		params = append(params, fmt.Sprintf("--user=%s", h.Distro.BootstrapSettings.ServiceUser))
+		if h.ServicePassword != "" {
+			params = append(params, fmt.Sprintf("--password=%s", h.ServicePassword))
+		}
+	} else if h.Distro.User != "" {
 		params = append(params, fmt.Sprintf("--user=%s", h.Distro.User))
 	}
+
 	if settings.Splunk.Populated() {
 		params = append(params,
 			fmt.Sprintf("--splunk_url=%s", settings.Splunk.ServerURL),
@@ -331,13 +339,18 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credenti
 
 	writeCredentialsCmd, err := h.WriteJasperCredentialsFileCommand(creds)
 	if err != nil {
-		return "", errors.Wrap(err, "could not build command to write Jasper credentials file")
+		return "", errors.Wrap(err, "could not get command to write Jasper credentials file")
 	}
 
 	if h.Distro.IsWindows() {
+		setupUserCmd, err := h.SetupServiceUserCommands()
+		if err != nil {
+			return "", errors.Wrap(err, "could not get command to set up service user")
+		}
 		bashCmds = append(bashCmds,
-			h.FetchJasperCommandWithPath(settings.HostJasper, "/bin"),
+			setupUserCmd,
 			writeCredentialsCmd,
+			h.FetchJasperCommandWithPath(settings.HostJasper, "/bin"),
 			h.ForceReinstallJasperCommand(settings),
 		)
 		bashCmds = append(bashCmds, postJasperSetup...)
@@ -357,6 +370,51 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credenti
 	bashCmds = append(bashCmds, postJasperSetup...)
 
 	return strings.Join(append([]string{"#!/bin/bash"}, bashCmds...), "\n"), nil
+}
+
+// SetupServiceUserCommands returns the commands to create a passwordless
+// service user in the Administrator group in Windows.
+func (h *Host) SetupServiceUserCommands() (string, error) {
+	if !h.Distro.IsWindows() {
+		return "", nil
+	}
+	if h.Distro.BootstrapSettings.ServiceUser == "" {
+		return "", errors.New("distro is missing service user name")
+	}
+	if h.ServicePassword == "" {
+		// kim: TODO: generate service password
+		if err := h.GenerateServicePassword(); err != nil {
+			return "", errors.Wrap(err, "could not generate service user's password")
+		}
+	}
+
+	cmd := func(cmd string) string {
+		return fmt.Sprintf("cmd.exe /C '%s'", cmd)
+	}
+
+	return strings.Join(
+		[]string{
+			// Create new passwordless user.
+			cmd(fmt.Sprintf("net user %s %s /add", h.Distro.BootstrapSettings.ServiceUser, h.ServicePassword)),
+			// Add the user to the Administrators group.
+			cmd(fmt.Sprintf("net localgroup Administrators %s /add", h.Distro.BootstrapSettings.ServiceUser)),
+			// kim: TODO: give the user the "Log on as a service" right
+		},
+		"\r\n"), nil
+}
+
+// GenerateServicePassword creates the password for the host's service user.
+func (h *Host) GenerateServicePassword() error {
+	password := util.RandomString()
+	err := UpdateOne(
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{ServicePasswordKey: password}},
+	)
+	if err != nil {
+		return err
+	}
+	h.ServicePassword = password
+	return nil
 }
 
 // buildLocalJasperClientRequest builds the command string to a Jasper CLI to

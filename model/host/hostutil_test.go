@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service/testutil"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
@@ -218,21 +219,24 @@ func TestJasperCommandsWindows(t *testing.T) {
 			}
 		},
 		"BootstrapScript": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			expectedCmds := h.fetchJasperCommands(settings.HostJasper)
 			expectedPreCmds := []string{"foo", "bar"}
 			expectedPostCmds := []string{"bat", "baz"}
-			path := "/bin"
 
-			for i := range expectedCmds {
-				expectedCmds[i] = fmt.Sprintf("PATH=%s %s", path, expectedCmds[i])
-			}
+			require.NoError(t, h.Insert())
 
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
 			writeCredentialsCmd, err := h.WriteJasperCredentialsFileCommand(creds)
 			require.NoError(t, err)
+			setupUserCmd, err := h.SetupServiceUserCommands()
+			require.NoError(t, err)
 
-			expectedCmds = append(expectedCmds, writeCredentialsCmd, h.ForceReinstallJasperCommand(settings))
+			expectedCmds := []string{
+				setupUserCmd,
+				writeCredentialsCmd,
+				h.FetchJasperCommandWithPath(settings.HostJasper, "/bin"),
+				h.ForceReinstallJasperCommand(settings),
+			}
 
 			script, err := h.BootstrapScript(settings, creds, expectedPreCmds, expectedPostCmds)
 			require.NoError(t, err)
@@ -258,10 +262,11 @@ func TestJasperCommandsWindows(t *testing.T) {
 				require.NotEqual(t, -1, offset)
 				currPos += offset + len(expectedCmd)
 			}
+			pp.Println("whole script:", script)
 		},
 		"ForceReinstallJasperCommand": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			cmd := h.ForceReinstallJasperCommand(settings)
-			assert.Equal(t, "/foo/jasper_cli.exe jasper service force-reinstall rpc --host=0.0.0.0 --port=12345 --creds_path=/bar/bat.txt --user=user", cmd)
+			assert.Equal(t, "/foo/jasper_cli.exe jasper service force-reinstall rpc --host=0.0.0.0 --port=12345 --creds_path=/bar/bat.txt --user=service-user", cmd)
 		},
 		"WriteJasperCredentialsFileCommand": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			creds, err := newMockCredentials()
@@ -299,6 +304,8 @@ func TestJasperCommandsWindows(t *testing.T) {
 				BootstrapSettings: distro.BootstrapSettings{
 					JasperBinaryDir:       "/foo",
 					JasperCredentialsPath: "/bar/bat.txt",
+					ShellPath:             "/bin/bash",
+					ServiceUser:           "service-user",
 				},
 				User: "user",
 			}}
