@@ -238,6 +238,15 @@ func expandUserData(userData string, expansions map[string]string) (string, erro
 }
 
 func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, client AWSClient) error {
+	if instance.Placement == nil || instance.Placement.AvailabilityZone == nil {
+		return errors.New("instance missing availability zone")
+	}
+	if instance.LaunchTime == nil {
+		return errors.New("instance missing launch time")
+	}
+	if instance.PublicDnsName == nil {
+		return errors.New("instance missing public dns name")
+	}
 	h.Zone = *instance.Placement.AvailabilityZone
 	h.StartTime = *instance.LaunchTime
 	h.Host = *instance.PublicDnsName
@@ -411,9 +420,6 @@ func validateEc2DescribeInstancesOutput(describeInstancesResponse *ec2aws.Descri
 			instance := reservation.Instances[0]
 			catcher.NewWhen(instance.InstanceId == nil, "instance missing instance id")
 			catcher.NewWhen(instance.State == nil || instance.State.Name == nil || len(*instance.State.Name) == 0, "instance missing state name")
-			catcher.NewWhen(instance.Placement == nil || instance.Placement.AvailabilityZone == nil, "instance missing availability zone")
-			catcher.NewWhen(instance.LaunchTime == nil, "instance missing launch time")
-			catcher.NewWhen(instance.PublicDnsName == nil, "instance missing dns name")
 		}
 	}
 
