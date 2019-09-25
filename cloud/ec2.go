@@ -624,15 +624,22 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 		if err != nil {
 			return nil, errors.Wrap(err, "error describing instances")
 		}
+		if err = validateEc2DescribeInstancesOutput(out); err != nil {
+			return nil, errors.Wrap(err, "invalid describe instances response")
+		}
 		reservationsMap := map[string]*ec2.Instance{}
 		for i := range out.Reservations {
 			reservationsMap[*out.Reservations[i].Instances[0].InstanceId] = out.Reservations[i].Instances[0]
 		}
 		for i := range hostsToCheck {
-			status := ec2StatusToEvergreenStatus(*reservationsMap[*hostsToCheck[i]].State.Name)
+			instance, ok := reservationsMap[*hostsToCheck[i]]
+			if !ok {
+				return nil, errors.Errorf("host '%s' not included in DescribeInstances response", *hostsToCheck[i])
+			}
+			status := ec2StatusToEvergreenStatus(*instance.State.Name)
 			if status == StatusRunning {
 				// cache instance information so we can make fewer calls to AWS's API
-				if err = cacheHostData(ctx, instanceIdToHostMap[*hostsToCheck[i]], reservationsMap[*hostsToCheck[i]], m.client); err != nil {
+				if err = cacheHostData(ctx, instanceIdToHostMap[*hostsToCheck[i]], instance, m.client); err != nil {
 					return nil, errors.Wrapf(err, "can't cache host data for '%s'", *hostsToCheck[i])
 				}
 			}
