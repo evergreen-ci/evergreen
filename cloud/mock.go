@@ -151,20 +151,22 @@ func (mockMgr *mockManager) ModifyHost(ctx context.Context, host *host.Host, cha
 	if !ok {
 		return errors.Errorf("unable to fetch host: %s", host.Id)
 	}
-	if err = host.AddTags(changes.AddInstanceTags); err != nil {
-		return errors.Errorf("error ")
+	host.AddTags(changes.AddInstanceTags)
+	if err := host.SetTags(); err != nil {
+		return errors.Errorf("error adding tags in db")
 	}
 	instance.Tags = host.InstanceTags
 	mockMgr.Instances[host.Id] = instance
 
-	if err = host.DeleteTags(changes.DeleteInstanceTags); err != nil {
-		return errors.Errorf("error ")
+	host.DeleteTags(changes.DeleteInstanceTags)
+	if err := host.SetTags(); err != nil {
+		return errors.Errorf("error deleting tags in db")
 	}
 	instance.Tags = host.InstanceTags
 	mockMgr.Instances[host.Id] = instance
 
 	if err = host.SetInstanceType(changes.InstanceType); err != nil {
-		return errors.Errorf("error ")
+		return errors.Errorf("error setting instance type in db")
 	}
 	instance.Type = host.InstanceType
 	mockMgr.Instances[host.Id] = instance

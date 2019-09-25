@@ -3602,50 +3602,57 @@ func TestFindOneByJasperCredentialsID(t *testing.T) {
 }
 
 func TestAddTags(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
-	h := &Host{
+	h := Host{
 		Id: "id",
 		InstanceTags: []Tag{
-			Tag{Key: "key1", Value: "val1", CanBeModified: true},
-			Tag{Key: "key2", Value: "val2", CanBeModified: true},
+			Tag{Key: "key-1", Value: "val-1", CanBeModified: true},
+			Tag{Key: "key-2", Value: "val-2", CanBeModified: true},
 		},
 	}
-	assert.NoError(t, h.Insert())
-
 	tagsToAdd := []Tag{
-		Tag{Key: "key2", Value: "valNew", CanBeModified: true},
-		Tag{Key: "key3", Value: "val3", CanBeModified: true},
+		Tag{Key: "key-2", Value: "val-new", CanBeModified: true},
+		Tag{Key: "key-3", Value: "val-3", CanBeModified: true},
 	}
-
-	assert.NoError(t, h.AddTags(tagsToAdd))
-	foundHost, err := FindOneId(h.Id)
-	assert.NoError(t, err)
+	h.AddTags(tagsToAdd)
 	assert.Equal(t, []Tag{
-		Tag{Key: "key1", Value: "val1", CanBeModified: true},
-		Tag{Key: "key2", Value: "valNew", CanBeModified: true},
-		Tag{Key: "key3", Value: "val3", CanBeModified: true},
-	}, foundHost.InstanceTags)
+		Tag{Key: "key-1", Value: "val-1", CanBeModified: true},
+		Tag{Key: "key-2", Value: "val-new", CanBeModified: true},
+		Tag{Key: "key-3", Value: "val-3", CanBeModified: true},
+	}, h.InstanceTags)
 }
 
 func TestDeleteTags(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
-	h := &Host{
+	h := Host{
 		Id: "id",
 		InstanceTags: []Tag{
-			Tag{Key: "key1", Value: "val1", CanBeModified: true},
-			Tag{Key: "key2", Value: "val2", CanBeModified: true},
+			Tag{Key: "key-1", Value: "val-1", CanBeModified: true},
+			Tag{Key: "key-2", Value: "val-2", CanBeModified: true},
+		},
+	}
+	tagsToDelete := []string{"key-1"}
+	h.DeleteTags(tagsToDelete)
+	assert.Equal(t, []Tag{
+		Tag{Key: "key-2", Value: "val-2", CanBeModified: true},
+	}, h.InstanceTags)
+}
+
+func TestSetTags(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	h := Host{
+		Id: "id",
+		InstanceTags: []Tag{
+			Tag{Key: "key-1", Value: "val-1", CanBeModified: true},
+			Tag{Key: "key-2", Value: "val-2", CanBeModified: true},
 		},
 	}
 	assert.NoError(t, h.Insert())
-
-	tagsToDelete := []string{"key1"}
-
-	assert.NoError(t, h.DeleteTags(tagsToDelete))
+	h.InstanceTags = []Tag{
+		Tag{Key: "key-3", Value: "val-3", CanBeModified: true},
+	}
+	assert.NoError(t, h.SetTags())
 	foundHost, err := FindOneId(h.Id)
 	assert.NoError(t, err)
-	assert.Equal(t, []Tag{
-		Tag{Key: "key2", Value: "val2", CanBeModified: true},
-	}, foundHost.InstanceTags)
+	assert.Equal(t, h.InstanceTags, foundHost.InstanceTags)
 }
 
 func TestSetInstanceType(t *testing.T) {
@@ -3655,9 +3662,7 @@ func TestSetInstanceType(t *testing.T) {
 		InstanceType: "old-instance-type",
 	}
 	assert.NoError(t, h.Insert())
-
 	newInstanceType := "new-instance-type"
-
 	assert.NoError(t, h.SetInstanceType(newInstanceType))
 	foundHost, err := FindOneId(h.Id)
 	assert.NoError(t, err)

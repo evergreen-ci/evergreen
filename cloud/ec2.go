@@ -442,7 +442,9 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	if h.InstanceType != "" {
 		ec2Settings.InstanceType = h.InstanceType
 	} else {
-		h.SetInstanceType(ec2Settings.InstanceType)
+		if err = h.SetInstanceType(ec2Settings.InstanceType); err != nil {
+			return nil, errors.Wrap(err, "error setting instance type")
+		}
 	}
 	provider, err := m.getProvider(ctx, h, ec2Settings)
 	if err != nil {
@@ -554,7 +556,8 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, changes host.
 		if err != nil {
 			return errors.Wrapf(err, "error deleting tags using client for '%s'", h.Id)
 		}
-		if err = h.DeleteTags(changes.DeleteInstanceTags); err != nil {
+		h.DeleteTags(changes.DeleteInstanceTags)
+		if err = h.SetTags(); err != nil {
 			return errors.Wrapf(err, "error deleting tags in db for '%s'", h.Id)
 		}
 	}
@@ -574,7 +577,8 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, changes host.
 		if err != nil {
 			return errors.Wrapf(err, "error creating tags using client for '%s'", h.Id)
 		}
-		if err = h.AddTags(changes.AddInstanceTags); err != nil {
+		h.AddTags(changes.AddInstanceTags)
+		if err = h.SetTags(); err != nil {
 			return errors.Wrapf(err, "error creating tags in db for '%s'", h.Id)
 		}
 	}
