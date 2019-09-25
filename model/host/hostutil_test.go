@@ -19,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service/testutil"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
@@ -219,20 +218,20 @@ func TestJasperCommandsWindows(t *testing.T) {
 			}
 		},
 		"BootstrapScript": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			expectedPreCmds := []string{"foo", "bar"}
-			expectedPostCmds := []string{"bat", "baz"}
-
 			require.NoError(t, h.Insert())
+
+			setupUserCmds, err := h.SetupServiceUserCommands()
+			require.NoError(t, err)
+
+			expectedPreCmds := []string{"foo", "bar", setupUserCmds}
+			expectedPostCmds := []string{"bat", "baz"}
 
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
 			writeCredentialsCmd, err := h.WriteJasperCredentialsFileCommand(creds)
 			require.NoError(t, err)
-			setupUserCmd, err := h.SetupServiceUserCommands()
-			require.NoError(t, err)
 
 			expectedCmds := []string{
-				setupUserCmd,
 				writeCredentialsCmd,
 				h.FetchJasperCommandWithPath(settings.HostJasper, "/bin"),
 				h.ForceReinstallJasperCommand(settings),
@@ -262,7 +261,6 @@ func TestJasperCommandsWindows(t *testing.T) {
 				require.NotEqual(t, -1, offset)
 				currPos += offset + len(expectedCmd)
 			}
-			pp.Println("whole script:", script)
 		},
 		"ForceReinstallJasperCommand": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			cmd := h.ForceReinstallJasperCommand(settings)
@@ -885,6 +883,61 @@ func TestSetUserDataHostProvisioned(t *testing.T) {
 			}
 			require.NoError(t, h.Insert())
 			testCase(t, h)
+		})
+	}
+}
+
+func TestGenerateServicePassword(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
+	h := &Host{Distro: distro.Distro{
+		Arch: distro.ArchWindowsAmd64,
+	}}
+	require.NoError(t, h.Insert())
+	require.NoError(t, h.GenerateServicePassword())
+	password := h.ServicePassword
+	assert.NotEmpty(t, password)
+	dbHost, err := FindOneId(h.Id)
+	require.NoError(t, err)
+	assert.Equal(t, password, dbHost.ServicePassword)
+}
+
+func TestSetupServiceUserCommands(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T, h *Host){
+		"GeneratesCommandsAndPassword": func(t *testing.T, h *Host) {
+			require.NoError(t, h.Insert())
+			cmds, err := h.SetupServiceUserCommands()
+			require.NoError(t, err)
+			assert.NotEmpty(t, cmds)
+			assert.NotEmpty(t, h.ServicePassword)
+		},
+		"FailsWithoutServiceUser": func(t *testing.T, h *Host) {
+			h.Distro.BootstrapSettings.ServiceUser = ""
+			require.NoError(t, h.Insert())
+			_, err := h.SetupServiceUserCommands()
+			assert.Error(t, err)
+		},
+		"NoopsIfNotWindows": func(t *testing.T, h *Host) {
+			h.Distro.Arch = distro.ArchLinuxAmd64
+			require.NoError(t, h.Insert())
+			cmds, err := h.SetupServiceUserCommands()
+			assert.NoError(t, err)
+			assert.Empty(t, cmds)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			defer func() {
+				assert.NoError(t, db.Clear(Collection))
+			}()
+			testCase(t, &Host{Distro: distro.Distro{
+				Arch: distro.ArchWindowsAmd64,
+				BootstrapSettings: distro.BootstrapSettings{
+					ServiceUser: "service-user",
+				},
+			}})
 		})
 	}
 }
