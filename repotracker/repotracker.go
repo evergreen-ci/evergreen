@@ -799,9 +799,6 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 			var buildId string
 			buildId, err = model.CreateBuildFromVersion(args)
 			if err != nil {
-				if isTransientTxErr(err, v) {
-					return true, nil
-				}
 				abortErr := sessCtx.AbortTransaction(sessCtx)
 				grip.Notice(message.Fields{
 					"message":    "aborting transaction",
@@ -811,6 +808,9 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 					"insert_err": err.Error(),
 					"abort_err":  abortErr.Error(),
 				})
+				if isTransientTxErr(err, v) {
+					return true, nil
+				}
 				return false, errors.Wrapf(err, "error inserting build %s", buildId)
 			}
 
@@ -859,9 +859,6 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 
 		_, err = evergreen.GetEnvironment().DB().Collection(model.VersionCollection).InsertOne(sessCtx, v)
 		if err != nil {
-			if isTransientTxErr(err, v) {
-				return true, nil
-			}
 			abortErr := sessCtx.AbortTransaction(sessCtx)
 			grip.Notice(message.Fields{
 				"message":    "aborting transaction",
@@ -870,6 +867,9 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 				"insert_err": err.Error(),
 				"abort_err":  abortErr.Error(),
 			})
+			if isTransientTxErr(err, v) {
+				return true, nil
+			}
 			return false, errors.Wrapf(err, "error inserting version %s", v.Id)
 		}
 		err = sessCtx.CommitTransaction(sessCtx)
