@@ -199,6 +199,19 @@ func TestSetActiveState(t *testing.T) {
 			})
 
 		})
+
+		Convey("activating a task with override dependencies set should not activate the tasks it depends on", func() {
+			So(testTask.SetOverrideDependencies(userName), ShouldBeNil)
+
+			So(SetActiveState(testTask.Id, userName, true), ShouldBeNil)
+			depTask, err := task.FindOne(task.ById(dep1.Id))
+			So(err, ShouldBeNil)
+			So(depTask.Activated, ShouldBeFalse)
+
+			depTask, err = task.FindOne(task.ById(dep2.Id))
+			So(err, ShouldBeNil)
+			So(depTask.Activated, ShouldBeFalse)
+		})
 	})
 
 	Convey("with a task that is part of a display task", t, func() {
