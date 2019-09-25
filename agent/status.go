@@ -12,7 +12,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/rest"
 	"github.com/pkg/errors"
 )
 
@@ -37,7 +37,7 @@ func (agt *Agent) startStatusServer(ctx context.Context, port int) error {
 	app.AddRoute("/oom/clear").Handler(http.RedirectHandler("/jasper/v1/list/oom", http.StatusMovedPermanently).ServeHTTP).Delete()
 	app.AddRoute("/oom/check").Handler(http.RedirectHandler("/jasper/v1/list/oom", http.StatusMovedPermanently).ServeHTTP).Get()
 
-	jpmapp := jasper.NewManagerService(agt.jasper).App(ctx)
+	jpmapp := rest.NewManagerService(agt.jasper).App(ctx)
 	jpmapp.SetPrefix("jasper")
 
 	handler, err := gimlet.MergeApplications(app, jpmapp, gimlet.GetPProfApp())

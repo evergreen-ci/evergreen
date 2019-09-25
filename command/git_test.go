@@ -627,13 +627,14 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.Equal("git reset --hard 1234abcd", cmds[6])
 }
 
-func (s *GitGetProjectSuite) TestCorrectModuleRevision() {
+func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {
+	const correctHash = "b27779f856b211ffaf97cbc124b7082a20ea8bc0"
 	conf := s.modelData2.TaskConfig
 	ctx := context.WithValue(context.Background(), "patch", &patch.Patch{
 		Patches: []patch.ModulePatch{
 			{
 				ModuleName: "sample",
-				Githash:    "b27779f856b211ffaf97cbc124b7082a20ea8bc0",
+				Githash:    correctHash,
 			},
 		},
 	})
@@ -661,7 +662,61 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevision() {
 	err = cmd.Run()
 	s.NoError(err)
 	ref := strings.Trim(out.String(), "\n")
-	s.Equal("b27779f856b211ffaf97cbc124b7082a20ea8bc0", ref) // this revision is defined in the patch, returned by GetTaskPatch
+	s.Equal(correctHash, ref) // this revision is defined in the patch, returned by GetTaskPatch
+	s.NoError(logger.Close())
+	toCheck := `Using revision/ref 'b27779f856b211ffaf97cbc124b7082a20ea8bc0' for module 'sample' (reason: specified in set-module)`
+	foundMsg := false
+	for _, task := range comm.GetMockMessages() {
+		for _, msg := range task {
+			if msg.Message == toCheck {
+				foundMsg = true
+			}
+		}
+	}
+	s.True(foundMsg)
+}
+
+func (s *GitGetProjectSuite) TestCorrectModuleRevisionManifest() {
+	const correctHash = "3585388b1591dfca47ac26a5b9a564ec8f138a5e"
+	conf := s.modelData2.TaskConfig
+	conf.Expansions.Put(moduleExpansionName("sample"), correctHash)
+	ctx := context.Background()
+	comm := client.NewMock("http://localhost.com")
+	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	s.NoError(err)
+
+	for _, task := range conf.Project.Tasks {
+		s.NotEqual(len(task.Commands), 0)
+		for _, command := range task.Commands {
+			var pluginCmds []Command
+			pluginCmds, err = Render(command, conf.Project.Functions)
+			s.NoError(err)
+			s.NotNil(pluginCmds)
+			pluginCmds[0].SetJasperManager(s.jasper)
+			err = pluginCmds[0].Execute(ctx, comm, logger, conf)
+			s.NoError(err)
+		}
+	}
+
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = conf.WorkDir + "/src/module/sample/"
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err = cmd.Run()
+	s.NoError(err)
+	ref := strings.Trim(out.String(), "\n")
+	s.Equal(correctHash, ref)
+	s.NoError(logger.Close())
+	toCheck := `Using revision/ref '3585388b1591dfca47ac26a5b9a564ec8f138a5e' for module 'sample' (reason: from manifest)`
+	foundMsg := false
+	for _, task := range comm.GetMockMessages() {
+		for _, msg := range task {
+			if msg.Message == toCheck {
+				foundMsg = true
+			}
+		}
+	}
+	s.True(foundMsg)
 }
 
 func (s *GitGetProjectSuite) TestIsMailboxPatch() {

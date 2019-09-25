@@ -15,7 +15,7 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
 
@@ -203,7 +203,7 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, settings *everg
 		"job":           j.ID(),
 	})
 
-	opts := &jasper.CreateOptions{
+	opts := &options.Create{
 		Args:             []string{"bash", "-c", j.host.CurlCommand(settings)},
 		WorkingDirectory: j.host.Distro.HomeDir(),
 	}
@@ -234,7 +234,7 @@ func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context, settings *ev
 		"job":           j.ID(),
 	})
 
-	opts := &jasper.CreateOptions{
+	opts := &options.Create{
 		Args:             []string{"bash", "-c", j.host.SetupCommand()},
 		WorkingDirectory: j.host.Distro.HomeDir(),
 	}

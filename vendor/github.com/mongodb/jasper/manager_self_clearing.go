@@ -3,6 +3,7 @@ package jasper
 import (
 	"context"
 
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
 
@@ -71,7 +72,7 @@ func (m *selfClearingProcessManager) checkProcCapacity(ctx context.Context) erro
 	return nil
 }
 
-func (m *selfClearingProcessManager) CreateProcess(ctx context.Context, opts *CreateOptions) (Process, error) {
+func (m *selfClearingProcessManager) CreateProcess(ctx context.Context, opts *options.Create) (Process, error) {
 	if err := m.checkProcCapacity(ctx); err != nil {
 		return nil, err
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -113,6 +114,18 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 	j.AddError(errors.Wrap(cq.SetProcessing(true), "can't set processing to true"))
+
+	// log time waiting in queue
+	timeWaiting := time.Now().Sub(nextItem.EnqueueTime)
+	grip.Info(message.Fields{
+		"source":       "commit queue",
+		"job_id":       j.ID(),
+		"item_id":      nextItem.Issue,
+		"project_id":   cq.ProjectID,
+		"time_waiting": timeWaiting.Seconds(),
+		"queue_length": len(cq.Queue),
+		"message":      "dequeued commit queue item",
+	})
 
 	conf := j.env.Settings()
 	githubToken, err := conf.GetGithubOauthToken()

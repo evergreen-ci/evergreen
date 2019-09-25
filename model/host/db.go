@@ -309,10 +309,13 @@ func allHostsSpawnedByFinishedBuilds() ([]Host, error) {
 // the given time.
 func ByUnprovisionedSince(threshold time.Time) db.Q {
 	return db.Query(bson.M{
-		ProvisionedKey: false,
-		CreateTimeKey:  bson.M{"$lte": threshold},
-		StatusKey:      bson.M{"$ne": evergreen.HostTerminated},
-		StartedByKey:   evergreen.User,
+		"$or": []bson.M{
+			bson.M{ProvisionedKey: false},
+			bson.M{StatusKey: evergreen.HostProvisioning},
+		},
+		CreateTimeKey: bson.M{"$lte": threshold},
+		StatusKey:     bson.M{"$ne": evergreen.HostTerminated},
+		StartedByKey:  evergreen.User,
 	})
 }
 
@@ -462,6 +465,15 @@ func ByDistroId(distroId string) db.Q {
 // ById produces a query that returns a host with the given id.
 func ById(id string) db.Q {
 	return db.Query(bson.D{{Key: IdKey, Value: id}})
+}
+
+func ByDistroIDRunning(distroID string) db.Q {
+	distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
+	return db.Query(bson.M{
+		distroIDKey:  distroID,
+		StatusKey:    evergreen.HostRunning,
+		StartedByKey: evergreen.User,
+	})
 }
 
 // ByIds produces a query that returns all hosts in the given list of ids.

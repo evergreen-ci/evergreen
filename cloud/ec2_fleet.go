@@ -116,6 +116,10 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 	return h, nil
 }
 
+func (m *ec2FleetManager) ModifyHost(context.Context, *host.Host, host.HostModifyOptions) error {
+	return errors.New("can't modify instances for ec2 fleet provider")
+}
+
 func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) ([]CloudStatus, error) {
 	instanceIDs := make([]*string, 0, len(hosts))
 	for _, h := range hosts {
@@ -433,6 +437,11 @@ func (m *ec2FleetManager) requestFleet(ctx context.Context, ec2Settings *EC2Prov
 	}
 	err = validateEc2CreateFleetResponse(createFleetResponse)
 	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":  "invalid create fleet response",
+			"request":  createFleetInput,
+			"response": createFleetResponse,
+		}))
 		return nil, errors.Wrap(err, "invalid create fleet response")
 	}
 

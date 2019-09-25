@@ -49,25 +49,24 @@ func (s *StatUnitsSuite) TestAmboyStatsCollector() {
 	j.logger = logging.MakeGrip(s.sender)
 	s.False(s.sender.HasMessage())
 
+	s.False(j.ExcludeLocal)
+	s.False(j.ExcludeRemote)
+	s.True(j.env.LocalQueue().Started())
+	s.True(j.env.RemoteQueue().Started())
+
 	j.Run(context.Background())
-	s.False(s.sender.HasMessage())
+	s.True(s.sender.HasMessage())
 	s.True(j.Status().Completed)
 	s.False(j.HasErrors())
-
-	// When we run with started queues, it should log both
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	s.NoError(s.env.Local.Start(ctx))
-	s.NoError(s.env.Remote.Start(ctx))
 
 	j = makeAmboyStatsCollector()
 	s.False(j.Status().Completed)
 	j.env = s.env
 	j.logger = logging.MakeGrip(s.sender)
-	s.False(s.sender.HasMessage())
+	orig := s.sender.Len()
 
 	j.Run(context.Background())
-	s.True(s.sender.HasMessage())
+	s.True(orig < s.sender.Len())
 	s.True(j.Status().Completed)
 	s.False(j.HasErrors())
 

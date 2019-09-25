@@ -83,7 +83,7 @@ func (t *basicCachedDAGDispatcherImpl) Refresh() error {
 		"message":                    "refresh was successful",
 		"distro_id":                  t.distroID,
 		"num_task_groups":            len(t.taskGroups),
-		"initial_num_taskqueueitems": taskQueueItems,
+		"initial_num_taskqueueitems": len(taskQueueItems),
 		"sorted_num_taskqueueitems":  len(t.sorted),
 	})
 

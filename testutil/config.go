@@ -180,6 +180,7 @@ func MockConfig() *evergreen.Settings {
 						Secret: "aws_secret",
 					},
 				},
+				DefaultSecurityGroup: "test_security_group",
 
 				// Legacy
 				EC2Secret: "aws_secret",

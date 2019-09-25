@@ -13,11 +13,12 @@ const Collection = "commit_queue"
 
 var (
 	// bson fields for the CommitQueue struct
-	IdKey         = bsonutil.MustHaveTag(CommitQueue{}, "ProjectID")
-	QueueKey      = bsonutil.MustHaveTag(CommitQueue{}, "Queue")
-	ProcessingKey = bsonutil.MustHaveTag(CommitQueue{}, "Processing")
-	IssueKey      = bsonutil.MustHaveTag(CommitQueueItem{}, "Issue")
-	VersionKey    = bsonutil.MustHaveTag(CommitQueueItem{}, "Version")
+	IdKey          = bsonutil.MustHaveTag(CommitQueue{}, "ProjectID")
+	QueueKey       = bsonutil.MustHaveTag(CommitQueue{}, "Queue")
+	ProcessingKey  = bsonutil.MustHaveTag(CommitQueue{}, "Processing")
+	IssueKey       = bsonutil.MustHaveTag(CommitQueueItem{}, "Issue")
+	VersionKey     = bsonutil.MustHaveTag(CommitQueueItem{}, "Version")
+	EnqueueTimeKey = bsonutil.MustHaveTag(CommitQueueItem{}, "EnqueueTime")
 )
 
 func updateOne(query interface{}, update interface{}) error {

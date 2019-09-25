@@ -42,15 +42,18 @@ func CheckDistro(ctx context.Context, d *distro.Distro, s *evergreen.Settings, n
 	validationErrs := ValidationErrors{}
 	distroIds := []string{}
 	var err error
-	if newDistro {
-		// check ensureUniqueId separately and pass in distroIds list
+	if newDistro || len(d.Aliases) > 0 {
 		distroIds, err = getDistroIds()
 		if err != nil {
 			return nil, err
 		}
 	}
-	validationErrs = append(validationErrs, ensureUniqueId(d, distroIds)...)
-	validationErrs = append(validationErrs, ensureValidAliases(d, distroIds)...)
+	if newDistro {
+		validationErrs = append(validationErrs, ensureUniqueId(d, distroIds)...)
+	}
+	if len(d.Aliases) > 0 {
+		validationErrs = append(validationErrs, ensureValidAliases(d, distroIds)...)
+	}
 
 	for _, v := range distroSyntaxValidators {
 		validationErrs = append(validationErrs, v(ctx, d, s)...)
@@ -168,9 +171,13 @@ func ensureValidAliases(d *distro.Distro, distroIDs []string) ValidationErrors {
 				Level:   Error,
 				Message: fmt.Sprintf("'%s' is not a valid distro name", a),
 			})
-
 		}
-
+		if d.Id == a {
+			errs = append(errs, ValidationError{
+				Level:   Error,
+				Message: fmt.Sprintf("'%s' cannot be an distro alias of itself", a),
+			})
+		}
 	}
 	if len(errs) == 0 {
 		return nil

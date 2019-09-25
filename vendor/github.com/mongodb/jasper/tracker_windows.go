@@ -7,7 +7,7 @@ import (
 
 type windowsProcessTracker struct {
 	*processTrackerBase
-	job *Job
+	job *JobObject
 }
 
 func (t *windowsProcessTracker) setJobIfInvalid() error {

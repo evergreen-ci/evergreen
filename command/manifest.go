@@ -9,6 +9,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+func moduleExpansionName(module string) string { return fmt.Sprintf("%s_rev", module) }
+
 // manifestLoad
 type manifestLoad struct{ base }
 
@@ -37,7 +39,7 @@ func (c *manifestLoad) Load(ctx context.Context,
 		}
 
 		// put the url for the module in the expansions
-		conf.Expansions.Put(fmt.Sprintf("%v_rev", moduleName), manifest.Modules[moduleName].Revision)
+		conf.Expansions.Put(moduleExpansionName(moduleName), manifest.Modules[moduleName].Revision)
 	}
 
 	logger.Execution().Info("manifest loaded successfully")

@@ -134,9 +134,9 @@ func expireInDays(numDays int) string {
 	return time.Now().AddDate(0, 0, numDays).Format("2006-01-02")
 }
 
-//makeTags populates a map of tags based on a host object, which contain keys
-//for the user, owner, hostname, and if it's a spawnhost or not.
-func makeTags(intentHost *host.Host) map[string]string {
+// makeTags populates a slice of tags based on a host object, which contain keys
+// for the user, owner, hostname, and if it's a spawnhost or not.
+func makeTags(intentHost *host.Host) []host.Tag {
 	// get requester host name
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -163,26 +163,29 @@ func makeTags(intentHost *host.Host) map[string]string {
 		expireOn = expireInDays(spawnHostExpireDays)
 	}
 
-	tags := map[string]string{
-		"name":              intentHost.Id,
-		"distro":            intentHost.Distro.Id,
-		"evergreen-service": hostname,
-		"username":          username,
-		"owner":             intentHost.StartedBy,
-		"mode":              "production",
-		"start-time":        intentHost.CreationTime.Format(evergreen.NameTimeFormat),
-		"expire-on":         expireOn,
-	}
-
-	// add InstanceTags specified by user
-	for key, value := range intentHost.InstanceTags {
-		tags[key] = value
+	systemTags := []host.Tag{
+		host.Tag{Key: "name", Value: intentHost.Id, CanBeModified: false},
+		host.Tag{Key: "distro", Value: intentHost.Distro.Id, CanBeModified: false},
+		host.Tag{Key: "evergreen-service", Value: hostname, CanBeModified: false},
+		host.Tag{Key: "username", Value: username, CanBeModified: false},
+		host.Tag{Key: "owner", Value: intentHost.StartedBy, CanBeModified: false},
+		host.Tag{Key: "mode", Value: "production", CanBeModified: false},
+		host.Tag{Key: "start-time", Value: intentHost.CreationTime.Format(evergreen.NameTimeFormat), CanBeModified: false},
+		host.Tag{Key: "expire-in", Value: expireOn, CanBeModified: false},
 	}
 
 	if intentHost.UserHost {
-		tags["mode"] = "testing"
+		systemTags = append(systemTags, host.Tag{Key: "mode", Value: "testing", CanBeModified: false})
 	}
-	return tags
+
+	if isHostSpot(intentHost) {
+		systemTags = append(systemTags, host.Tag{Key: "spot", Value: "true", CanBeModified: false})
+	}
+
+	// Add Evergreen-generated tags to host object
+	intentHost.AddTags(systemTags)
+
+	return intentHost.InstanceTags
 }
 
 func timeTilNextEC2Payment(h *host.Host) time.Duration {

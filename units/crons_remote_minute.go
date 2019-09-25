@@ -59,6 +59,7 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 		PopulateContainerStateJobs(j.env),
 		PopulateOldestImageRemovalJobs(),
 		PopulateCommitQueueJobs(j.env),
+		PopulateGenerateTasksJobs(j.env),
 	}
 
 	catcher := grip.NewBasicCatcher()

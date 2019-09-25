@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -17,9 +18,9 @@ const (
 )
 
 // makeAWSTags creates and validates a map of supplied instance tags
-func makeAWSTags(tagSlice []string) (map[string]string, error) {
+func makeAWSTags(tagSlice []string) ([]host.Tag, error) {
 	catcher := grip.NewBasicCatcher()
-	tags := make(map[string]string)
+	tagsMap := make(map[string]string)
 	for _, tagString := range tagSlice {
 		pair := strings.Split(tagString, "=")
 		if len(pair) != 2 {
@@ -43,7 +44,13 @@ func makeAWSTags(tagSlice []string) (map[string]string, error) {
 			catcher.Add(errors.Errorf("illegal tag prefix 'aws:'"))
 		}
 
-		tags[key] = value
+		tagsMap[key] = value
+	}
+
+	// Make slice of host.Tag structs from map
+	tags := []host.Tag{}
+	for key, value := range tagsMap {
+		tags = append(tags, host.Tag{Key: key, Value: value, CanBeModified: true})
 	}
 
 	if catcher.HasErrors() {
@@ -135,6 +142,63 @@ func hostCreate() cli.Command {
 	}
 
 }
+
+func hostModify() cli.Command {
+	const (
+		addTagFlagName    = "tag"
+		deleteTagFlagName = "delete-tag"
+	)
+
+	return cli.Command{
+		Name:  "modify",
+		Usage: "modify an existing host",
+		Flags: addHostFlag(
+			cli.StringSliceFlag{
+				Name:  joinFlagNames(addTagFlagName, "t"),
+				Usage: "key=value pair representing an instance tag, with one pair per flag",
+			},
+			cli.StringSliceFlag{
+				Name:  joinFlagNames(deleteTagFlagName, "d"),
+				Usage: "key of a single tag to be deleted",
+			},
+		),
+		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag, requireAtLeastOneStringSlice(addTagFlagName, deleteTagFlagName)),
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			hostID := c.String(hostFlagName)
+			addTagSlice := c.StringSlice(addTagFlagName)
+			deleteTagSlice := c.StringSlice(deleteTagFlagName)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.GetRestCommunicator(ctx)
+			defer client.Close()
+
+			addTags, err := makeAWSTags(addTagSlice)
+			if err != nil {
+				return errors.Wrap(err, "problem generating tags to add")
+			}
+
+			hostChanges := host.HostModifyOptions{
+				AddInstanceTags:    addTags,
+				DeleteInstanceTags: deleteTagSlice,
+			}
+			err = client.ModifySpawnHost(ctx, hostID, hostChanges)
+			if err != nil {
+				return err
+			}
+
+			grip.Infof("Successfully queued changes to spawn host with ID '%s'.", hostID)
+			return nil
+		},
+	}
+}
+
 func hostlist() cli.Command {
 	const (
 		mineFlagName = "mine"

@@ -8,6 +8,7 @@ func Host() cli.Command {
 		Usage: "manage evergreen spawn and build hosts",
 		Subcommands: []cli.Command{
 			hostCreate(),
+			hostModify(),
 			hostlist(),
 			hostTerminate(),
 			hostSetup(),

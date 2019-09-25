@@ -36,7 +36,6 @@ func TestTerminateHosts(t *testing.T) {
 
 	env := &mock.Environment{}
 	assert.NoError(env.Configure(ctx, "", nil))
-	assert.NoError(env.Local.Start(ctx))
 
 	hostID := "i-12345"
 	mcp := cloud.GetMockProvider()

@@ -64,7 +64,7 @@ func (s *statsSuite) TestStatsStatus() {
 	require.WithinDuration(expected, status.ProcessedTasksUntil, oneDayOneMinute)
 
 	// Check that we can update the status and read the new values.
-	err = UpdateStatsStatus("p1", baseHour, baseDay)
+	err = UpdateStatsStatus("p1", baseHour, baseDay, time.Hour)
 	require.NoError(err)
 
 	status, err = GetStatsStatus("p1")

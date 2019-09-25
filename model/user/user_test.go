@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -24,7 +25,7 @@ func TestDBUser(t *testing.T) {
 }
 
 func (s *UserTestSuite) SetupTest() {
-	s.NoError(db.ClearCollections(Collection))
+	s.NoError(db.ClearCollections(Collection, ScopeCollection, RoleCollection))
 	s.users = []*DBUser{
 		&DBUser{
 			Id:     "Test1",
@@ -78,6 +79,75 @@ func (s *UserTestSuite) SetupTest() {
 	for _, user := range s.users {
 		s.NoError(user.Insert())
 	}
+
+	rm := GetRoleManager()
+	scope1 := gimlet.Scope{
+		ID:          "1",
+		Resources:   []string{"resource1", "resource2"},
+		ParentScope: "3",
+	}
+	s.NoError(rm.AddScope(scope1))
+	scope2 := gimlet.Scope{
+		ID:          "2",
+		Resources:   []string{"resource3"},
+		ParentScope: "3",
+	}
+	s.NoError(rm.AddScope(scope2))
+	scope3 := gimlet.Scope{
+		ID:          "3",
+		ParentScope: "root",
+	}
+	s.NoError(rm.AddScope(scope3))
+	scope4 := gimlet.Scope{
+		ID:          "4",
+		Resources:   []string{"resource4"},
+		ParentScope: "root",
+	}
+	s.NoError(rm.AddScope(scope4))
+	root := gimlet.Scope{
+		ID: "root",
+	}
+	s.NoError(rm.AddScope(root))
+	r1p1 := gimlet.Role{
+		ID:    "r1p1",
+		Scope: "1",
+		Permissions: map[string]int{
+			"permission": 1,
+		},
+	}
+	s.NoError(rm.UpdateRole(r1p1))
+	r2p2 := gimlet.Role{
+		ID:    "r2p2",
+		Scope: "2",
+		Permissions: map[string]int{
+			"permission": 2,
+		},
+	}
+	s.NoError(rm.UpdateRole(r2p2))
+	r12p1 := gimlet.Role{
+		ID:    "r12p1",
+		Scope: "3",
+		Permissions: map[string]int{
+			"permission": 1,
+		},
+	}
+	s.NoError(rm.UpdateRole(r12p1))
+	r4p1 := gimlet.Role{
+		ID:    "r4p1",
+		Scope: "4",
+		Permissions: map[string]int{
+			"permission": 1,
+		},
+	}
+	s.NoError(rm.UpdateRole(r4p1))
+	r1234p2 := gimlet.Role{
+		ID:    "r1234p2",
+		Scope: "root",
+		Permissions: map[string]int{
+			"permission": 2,
+		},
+	}
+	s.NoError(rm.UpdateRole(r1234p2))
 }
 
 func (s *UserTestSuite) TearDownTest() {
@@ -325,4 +395,46 @@ func (s *UserTestSuite) TestRoles() {
 	dbUser, err = FindOneById(u.Id)
 	s.NoError(err)
 	s.EqualValues(dbUser.SystemRoles, u.SystemRoles)
+}
+
+func (s *UserTestSuite) TestHasPermission() {
+	u := s.users[0]
+
+	// no roles - no permission
+	hasPermission, err := u.HasPermission("resource1", "permission", 1)
+	s.NoError(err)
+	s.False(hasPermission)
+
+	// has a role with explicit permission to the resource
+	s.NoError(u.AddRole("r1p1"))
+	hasPermission, err = u.HasPermission("resource1", "permission", 1)
+	s.NoError(err)
+	s.True(hasPermission)
+	hasPermission, err = u.HasPermission("resource1", "permission", 0)
+	s.NoError(err)
+	s.True(hasPermission)
+
+	// role with insufficient permission but the right resource
+	hasPermission, err = u.HasPermission("resource1", "permission", 2)
+	s.NoError(err)
+	s.False(hasPermission)
+
+	// role with a parent scope
+	s.NoError(u.AddRole("r12p1"))
+	hasPermission, err = u.HasPermission("resource2", "permission", 1)
+	s.NoError(err)
+	s.True(hasPermission)
+
+	// role with no permission to the specified resource
+	hasPermission, err = u.HasPermission("resource4", "permission", 1)
+	s.NoError(err)
+	s.False(hasPermission)
+
+	// permission to everything
+	s.NoError(u.RemoveRole("r1p1"))
+	s.NoError(u.RemoveRole("r12p1"))
+	s.NoError(u.AddRole("r1234p2"))
+	hasPermission, err = u.HasPermission("resource4", "permission", 2)
+	s.NoError(err)
+	s.True(hasPermission)
 }

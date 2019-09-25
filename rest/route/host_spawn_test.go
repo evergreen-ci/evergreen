@@ -44,8 +44,12 @@ func TestHostPostHandler(t *testing.T) {
 	assert.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
 
-	h.InstanceTags = map[string]string{
-		"key": "value",
+	h.InstanceTags = []host.Tag{
+		host.Tag{
+			Key:           "key",
+			Value:         "value",
+			CanBeModified: true,
+		},
 	}
 	resp = h.Run(ctx)
 	assert.NotNil(resp)
@@ -63,5 +67,5 @@ func TestHostPostHandler(t *testing.T) {
 	assert.Empty(h1.InstanceTags)
 
 	h2 := h.sc.(*data.MockConnector).MockHostConnector.CachedHosts[2]
-	assert.Equal(map[string]string{"key": "value"}, h2.InstanceTags)
+	assert.Equal([]host.Tag{host.Tag{Key: "key", Value: "value", CanBeModified: true}}, h2.InstanceTags)
 }

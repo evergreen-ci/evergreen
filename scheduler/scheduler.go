@@ -27,6 +27,7 @@ func PrioritizeTasks(id string, d *distro.Distro, tasks []task.Task, isSecondary
 }
 
 func runTunablePlanner(id string, d *distro.Distro, tasks []task.Task, isSecondaryQueue bool) ([]task.Task, error) {
+	startAt := time.Now()
 	var err error
 
 	tasks, err = PopulateCaches(id, d.Id, tasks)
@@ -38,6 +39,7 @@ func runTunablePlanner(id string, d *distro.Distro, tasks []task.Task, isSeconda
 
 	info := GetDistroQueueInfo(d.Id, plan, d.MaxDurationPerHost())
 	info.AliasQueue = isSecondaryQueue
+	info.PlanCreatedAt = startAt
 
 	if err = PersistTaskQueue(d.Id, plan, info); err != nil {
 		return nil, errors.WithStack(err)
@@ -51,6 +53,7 @@ func runTunablePlanner(id string, d *distro.Distro, tasks []task.Task, isSeconda
 // Legacy Scheduler Implementation
 
 func runLegacyPlanner(id string, d *distro.Distro, tasks []task.Task, isSecondaryQueue bool) ([]task.Task, error) {
+	startAt := time.Now()
 	runnableTasks, versions, err := filterTasksWithVersionCache(tasks)
 	if err != nil {
 		return nil, errors.Wrap(err, "error while filtering tasks against the versions' cache")
@@ -61,6 +64,7 @@ func runLegacyPlanner(id string, d *distro.Distro, tasks []task.Task, isSecondar
 			runtimeID: id,
 		},
 		runtimeID: id,
+		startedAt: startAt,
 	}
 
 	prioritizedTasks, err := ds.scheduleDistro(d.Id, runnableTasks, versions, d.MaxDurationPerHost(), isSecondaryQueue)
@@ -87,12 +91,12 @@ const (
 )
 
 type distroScheduler struct {
+	startedAt time.Time
 	runtimeID string
 	TaskPrioritizer
 }
 
 func (s *distroScheduler) scheduleDistro(distroID string, runnableTasks []task.Task, versions map[string]model.Version, maxThreshold time.Duration, isSecondaryQueue bool) ([]task.Task, error) {
-
 	grip.Info(message.Fields{
 		"runner":    RunnerName,
 		"distro":    distroID,
@@ -108,6 +112,7 @@ func (s *distroScheduler) scheduleDistro(distroID string, runnableTasks []task.T
 
 	distroQueueInfo := GetDistroQueueInfo(distroID, prioritizedTasks, maxThreshold)
 	distroQueueInfo.AliasQueue = isSecondaryQueue
+	distroQueueInfo.PlanCreatedAt = s.startedAt
 
 	grip.Debug(message.Fields{
 		"runner":    RunnerName,

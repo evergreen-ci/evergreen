@@ -18,8 +18,8 @@ import (
 
 type DriverSuite struct {
 	uuid              string
-	driver            Driver
-	driverConstructor func() Driver
+	driver            remoteQueueDriver
+	driverConstructor func() remoteQueueDriver
 	tearDown          func()
 	ctx               context.Context
 	cancel            context.CancelFunc
@@ -28,39 +28,19 @@ type DriverSuite struct {
 
 // Each driver should invoke this suite:
 
-func TestDriverSuiteWithLocalInstance(t *testing.T) {
-	tests := new(DriverSuite)
-	tests.uuid = uuid.NewV4().String()
-	tests.driverConstructor = func() Driver {
-		return NewInternalDriver()
-	}
-
-	suite.Run(t, tests)
-}
-
-func TestDriverSuiteWithPriorityInstance(t *testing.T) {
-	tests := new(DriverSuite)
-	tests.uuid = uuid.NewV4().String()
-	tests.driverConstructor = func() Driver {
-		return NewPriorityDriver()
-	}
-
-	suite.Run(t, tests)
-}
-
 func TestDriverSuiteWithMongoDBInstance(t *testing.T) {
 	tests := new(DriverSuite)
 	tests.uuid = uuid.NewV4().String()
 	opts := DefaultMongoDBOptions()
 	opts.DB = "amboy_test"
-	mDriver := NewMongoDriver(
+	mDriver := newMongoDriver(
 		"test-"+tests.uuid,
 		opts).(*mongoDriver)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	tests.driverConstructor = func() Driver {
+	tests.driverConstructor = func() remoteQueueDriver {
 		return mDriver
 	}
 

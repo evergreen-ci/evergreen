@@ -3,6 +3,9 @@ package jasper
 import (
 	"context"
 	"syscall"
+	"time"
+
+	"github.com/mongodb/jasper/options"
 )
 
 const (
@@ -14,6 +17,11 @@ const (
 	// all managed process that always identifies the process'
 	// manager. Used for process tracking and forensics.
 	ManagerEnvironID = "JASPER_MANAGER"
+
+	// DefaultCachePruneDelay is the duration between LRU cache prunes.
+	DefaultCachePruneDelay = 10 * time.Second
+	// DefaultMaxCacheSize is the maximum allowed size of the LRU cache.
+	DefaultMaxCacheSize = 1024 * 1024 * 1024
 )
 
 // Manager provides a basic, high level process management interface
@@ -22,11 +30,11 @@ const (
 // of this interface.
 type Manager interface {
 	ID() string
-	CreateProcess(context.Context, *CreateOptions) (Process, error)
+	CreateProcess(context.Context, *options.Create) (Process, error)
 	CreateCommand(context.Context) *Command
 	Register(context.Context, Process) error
 
-	List(context.Context, Filter) ([]Process, error)
+	List(context.Context, options.Filter) ([]Process, error)
 	Group(context.Context, string) ([]Process, error)
 	Get(context.Context, string) (Process, error)
 	Clear(context.Context)
@@ -77,9 +85,9 @@ type Process interface {
 	// options and return the new, "respawned" process.
 	//
 	// However, it is not guaranteed to read the same bytes from
-	// (CreateOptions).StandardInput as the original process; if
+	// (options.Create).StandardInput as the original process; if
 	// standard input must be duplicated,
-	// (CreateOptions).StandardInputBytes should be set.
+	// (options.Create).StandardInputBytes should be set.
 	Respawn(context.Context) (Process, error)
 
 	// RegisterSignalTrigger associates triggers with a process,
@@ -106,20 +114,22 @@ type Process interface {
 }
 
 // ProcessConstructor is a function type that, given a context.Context and a
-// CreateOptions struct, returns a Process and an error.
-type ProcessConstructor func(context.Context, *CreateOptions) (Process, error)
+// options.Create struct, returns a Process and an error.
+type ProcessConstructor func(context.Context, *options.Create) (Process, error)
 
 // ProcessInfo reports on the current state of a process. It is always
 // returned and passed by value, and reflects the state of the process
 // when it was created.
 type ProcessInfo struct {
-	ID         string        `json:"id"`
-	Host       string        `json:"host"`
-	PID        int           `json:"pid"`
-	ExitCode   int           `json:"exit_code"`
-	IsRunning  bool          `json:"is_running"`
-	Successful bool          `json:"successful"`
-	Complete   bool          `json:"complete"`
-	Timeout    bool          `json:"timeout"`
-	Options    CreateOptions `json:"options"`
+	ID         string         `json:"id"`
+	Host       string         `json:"host"`
+	PID        int            `json:"pid"`
+	ExitCode   int            `json:"exit_code"`
+	IsRunning  bool           `json:"is_running"`
+	Successful bool           `json:"successful"`
+	Complete   bool           `json:"complete"`
+	Timeout    bool           `json:"timeout"`
+	Options    options.Create `json:"options"`
+	StartAt    time.Time      `json:"start_at"`
+	EndAt      time.Time      `json:"end_at"`
 }

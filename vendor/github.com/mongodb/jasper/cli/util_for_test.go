@@ -6,67 +6,22 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"testing"
-	"time"
-	"unicode"
 
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli"
 )
-
-const testTimeout = 2 * time.Second
-
-var nextPort <-chan int
-
-func init() {
-	nextPort = func() <-chan int {
-		out := make(chan int, 25)
-		go func() {
-			id := 4000
-			for {
-				id++
-				out <- id
-			}
-		}()
-		return out
-	}()
-}
-
-// noWhitespace returns the string str without whitespace.
-func noWhitespace(str string) string {
-	return strings.Map(func(r rune) rune {
-		if unicode.IsSpace(r) {
-			return -1
-		}
-		return r
-	}, str)
-}
-
-// getNextPort returns a new port.
-func getNextPort() int {
-	return <-nextPort
-}
 
 // buildDir gets the Jasper build directory.
 func buildDir(t *testing.T) string {
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 	return filepath.Join(filepath.Dir(cwd), "build")
-}
-
-func trueCreateOpts() *jasper.CreateOptions {
-	return &jasper.CreateOptions{Args: []string{"true"}}
-}
-
-func sleepCreateOpts(timeoutSecs int) *jasper.CreateOptions {
-	return &jasper.CreateOptions{Args: []string{"sleep", strconv.Itoa(timeoutSecs)}}
 }
 
 // mockCLIContext creates a *cli.Context on localhost with the given service
@@ -140,41 +95,6 @@ func withMockStdout(t *testing.T, operation func(*os.File) error) error {
 	return operation(os.Stdout)
 }
 
-// waitForRESTService waits until the REST service becomes available to serve
-// requests or the context times out.
-func waitForRESTService(ctx context.Context, t *testing.T, url string) {
-	client := jasper.GetHTTPClient()
-	defer jasper.PutHTTPClient(client)
-
-	// Block until the service comes up
-	timeoutInterval := 10 * time.Millisecond
-	timer := time.NewTimer(timeoutInterval)
-	for {
-		select {
-		case <-ctx.Done():
-			require.Fail(t, "test timed out before REST service was available")
-			return
-		case <-timer.C:
-			req, err := http.NewRequest(http.MethodGet, url, nil)
-			if err != nil {
-				timer.Reset(timeoutInterval)
-				continue
-			}
-			req = req.WithContext(ctx)
-			resp, err := client.Do(req)
-			if err != nil {
-				timer.Reset(timeoutInterval)
-				continue
-			}
-			if resp.StatusCode != http.StatusOK {
-				timer.Reset(timeoutInterval)
-				continue
-			}
-			return
-		}
-	}
-}
-
 // execCLICommandInputOutput runs the CLI command with the given input to stdin
 // and writes the result from stdout to output.
 func execCLICommandInputOutput(t *testing.T, c *cli.Context, cmd cli.Command, input []byte, output interface{}) error {
@@ -206,7 +126,7 @@ func execCLICommandOutput(t *testing.T, c *cli.Context, cmd cli.Command, output 
 func makeTestRESTService(ctx context.Context, t *testing.T, port int, manager jasper.Manager) jasper.CloseFunc {
 	closeService, err := newRESTService(ctx, "localhost", port, manager)
 	require.NoError(t, err)
-	waitForRESTService(ctx, t, fmt.Sprintf("http://localhost:%d/jasper/v1", port))
+	require.NoError(t, testutil.WaitForRESTService(ctx, fmt.Sprintf("http://localhost:%d/jasper/v1", port)))
 	return closeService
 }
 

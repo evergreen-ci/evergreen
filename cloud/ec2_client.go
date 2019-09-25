@@ -42,6 +42,9 @@ type AWSClient interface {
 	// CreateTags is a wrapper for ec2.CreateTags.
 	CreateTags(context.Context, *ec2.CreateTagsInput) (*ec2.CreateTagsOutput, error)
 
+	// DeleteTags is a wrapper for ec2.DeleteTags.
+	DeleteTags(context.Context, *ec2.DeleteTagsInput) (*ec2.DeleteTagsOutput, error)
+
 	// TerminateInstances is a wrapper for ec2.TerminateInstances.
 	TerminateInstances(context.Context, *ec2.TerminateInstancesInput) (*ec2.TerminateInstancesOutput, error)
 
@@ -204,6 +207,30 @@ func (c *awsClientImpl) CreateTags(ctx context.Context, input *ec2.CreateTagsInp
 		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.CreateTagsWithContext(ctx, input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+// DeleteTags is a wrapper for ec2.DeleteTags.
+func (c *awsClientImpl) DeleteTags(ctx context.Context, input *ec2.DeleteTagsInput) (*ec2.DeleteTagsOutput, error) {
+	var output *ec2.DeleteTagsOutput
+	var err error
+	msg := makeAWSLogMessage("DeleteTags", fmt.Sprintf("%T", c), input)
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			output, err = c.EC2.DeleteTagsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, msg))
@@ -692,12 +719,14 @@ func (c *awsClientImpl) makeNewKey(ctx context.Context, project string, h *host.
 	return name, nil
 }
 
+// SetTags creates the initial tags for an EC2 host and updates the database with the
+// host's Evergreen-generated tags.
 func (c *awsClientImpl) SetTags(ctx context.Context, resources []string, h *host.Host) error {
 	tags := makeTags(h)
 	tagSlice := []*ec2.Tag{}
-	for tag := range tags {
-		key := tag
-		val := tags[tag]
+	for _, tag := range tags {
+		key := tag.Key
+		val := tag.Value
 		tagSlice = append(tagSlice, &ec2.Tag{Key: &key, Value: &val})
 	}
 	if _, err := c.CreateTags(ctx, &ec2.CreateTagsInput{
@@ -713,11 +742,17 @@ func (c *awsClientImpl) SetTags(ctx context.Context, resources []string, h *host
 		return errors.Wrapf(err, "failed to attach tags for %s", h.Id)
 	}
 
+	// Push instance tag changes to database
+	if err := h.SetTags(); err != nil {
+		return errors.Wrap(err, "failed to update instance tags in database")
+	}
+
 	grip.Debug(message.Fields{
 		"message":       "attached tags for host",
 		"host":          h.Id,
 		"host_provider": h.Distro.Provider,
 		"distro":        h.Distro.Id,
+		"tags":          h.InstanceTags,
 	})
 
 	return nil
@@ -785,6 +820,7 @@ type awsClientMock struct { //nolint
 	*ec2.RunInstancesInput
 	*ec2.DescribeInstancesInput
 	*ec2.CreateTagsInput
+	*ec2.DeleteTagsInput
 	*ec2.TerminateInstancesInput
 	*ec2.RequestSpotInstancesInput
 	*ec2.DescribeSpotInstanceRequestsInput
@@ -873,6 +909,12 @@ func (c *awsClientMock) DescribeInstances(ctx context.Context, input *ec2.Descri
 // CreateTags is a mock for ec2.CreateTags.
 func (c *awsClientMock) CreateTags(ctx context.Context, input *ec2.CreateTagsInput) (*ec2.CreateTagsOutput, error) {
 	c.CreateTagsInput = input
+	return nil, nil
+}
+
+// DeleteTags is a mock for ec2.DeleteTags.
+func (c *awsClientMock) DeleteTags(ctx context.Context, input *ec2.DeleteTagsInput) (*ec2.DeleteTagsOutput, error) {
+	c.DeleteTagsInput = input
 	return nil, nil
 }
 
@@ -1104,6 +1146,13 @@ func (c *awsClientMock) GetKey(ctx context.Context, h *host.Host) (string, error
 }
 
 func (c *awsClientMock) SetTags(ctx context.Context, resources []string, h *host.Host) error {
+	tagSlice := []*ec2.Tag{}
+	if _, err := c.CreateTags(ctx, &ec2.CreateTagsInput{
+		Resources: aws.StringSlice(resources),
+		Tags:      tagSlice,
+	}); err != nil {
+		return err
+	}
 	return nil
 }
 

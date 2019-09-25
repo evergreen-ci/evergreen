@@ -16,6 +16,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
 
@@ -147,7 +148,7 @@ func (c *subprocessExec) getProc(ctx context.Context, taskID string, logger clie
 	cmd := c.JasperManager().CreateCommand(ctx).Add(append([]string{c.Binary}, c.Args...)).
 		Background(c.Background).Environment(c.Env).Directory(c.WorkingDir).
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
-		ProcConstructor(func(lctx context.Context, opts *jasper.CreateOptions) (jasper.Process, error) {
+		ProcConstructor(func(lctx context.Context, opts *options.Create) (jasper.Process, error) {
 			var cancel context.CancelFunc
 			var ictx context.Context
 			if c.Background {
