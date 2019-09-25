@@ -414,8 +414,16 @@ func validateEc2DescribeInstancesOutput(describeInstancesResponse *ec2aws.Descri
 			if reservation.Instances[0].State == nil || reservation.Instances[0].State.Name == nil || len(*reservation.Instances[0].State.Name) == 0 {
 				catcher.Add(errors.New("instance missing state name"))
 			}
+			if reservation.Instances[0].Placement == nil || reservation.Instances[0].Placement.AvailabilityZone == nil {
+				catcher.Add(errors.New("instance missing availability zone"))
+			}
+			if reservation.Instances[0].LaunchTime == nil {
+				catcher.Add(errors.New("instance missing launch time"))
+			}
+			if reservation.Instances[0].PublicDnsName == nil {
+				catcher.Add(errors.New("instance missing dns name"))
+			}
 		}
-
 	}
 
 	return catcher.Resolve()
