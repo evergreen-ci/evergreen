@@ -171,7 +171,7 @@ func makeTags(intentHost *host.Host) []host.Tag {
 		host.Tag{Key: "owner", Value: intentHost.StartedBy, CanBeModified: false},
 		host.Tag{Key: "mode", Value: "production", CanBeModified: false},
 		host.Tag{Key: "start-time", Value: intentHost.CreationTime.Format(evergreen.NameTimeFormat), CanBeModified: false},
-		host.Tag{Key: "expire-in", Value: expireOn, CanBeModified: false},
+		host.Tag{Key: "expire-on", Value: expireOn, CanBeModified: false},
 	}
 
 	if intentHost.UserHost {
