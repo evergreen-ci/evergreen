@@ -408,21 +408,12 @@ func validateEc2DescribeInstancesOutput(describeInstancesResponse *ec2aws.Descri
 		if len(reservation.Instances) == 0 {
 			catcher.Add(errors.New("reservation missing instance"))
 		} else {
-			if reservation.Instances[0].InstanceId == nil {
-				catcher.Add(errors.New("instance missing instance id"))
-			}
-			if reservation.Instances[0].State == nil || reservation.Instances[0].State.Name == nil || len(*reservation.Instances[0].State.Name) == 0 {
-				catcher.Add(errors.New("instance missing state name"))
-			}
-			if reservation.Instances[0].Placement == nil || reservation.Instances[0].Placement.AvailabilityZone == nil {
-				catcher.Add(errors.New("instance missing availability zone"))
-			}
-			if reservation.Instances[0].LaunchTime == nil {
-				catcher.Add(errors.New("instance missing launch time"))
-			}
-			if reservation.Instances[0].PublicDnsName == nil {
-				catcher.Add(errors.New("instance missing dns name"))
-			}
+			instance := reservation.Instances[0]
+			catcher.NewWhen(instance.InstanceId == nil, "instance missing instance id")
+			catcher.NewWhen(instance.State == nil || instance.State.Name == nil || len(*instance.State.Name) == 0, "instance missing state name")
+			catcher.NewWhen(instance.Placement == nil || instance.Placement.AvailabilityZone == nil, "instance missing availability zone")
+			catcher.NewWhen(instance.LaunchTime == nil, "instance missing launch time")
+			catcher.NewWhen(instance.PublicDnsName == nil, "instance missing dns name")
 		}
 	}
 
