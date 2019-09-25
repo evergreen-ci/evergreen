@@ -800,20 +800,19 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 	}
 
 	ec2Settings := &EC2ProviderSettings{}
-	err := ec2Settings.fromDistroSettings(h.Distro)
-	if err != nil {
+	if err := ec2Settings.fromDistroSettings(h.Distro); err != nil {
 		return errors.Wrap(err, "problem getting settings from host")
 	}
-	if err = m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
+	if err := m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
 		return errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
 
-	if err = h.SetStopping(user); err != nil {
+	if err := h.SetStopping(user); err != nil {
 		return errors.Wrap(err, "failed to mark instance as stopping in db")
 	}
 
-	resp, err := m.client.StopInstances(ctx, &ec2.StopInstancesInput{
+	_, err := m.client.StopInstances(ctx, &ec2.StopInstancesInput{
 		InstanceIds: []*string{aws.String(h.Id)},
 	})
 	if err != nil {
@@ -841,16 +840,13 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 		return errors.Wrap(err, "error checking if spawnhost stopped")
 	}
 
-	for _, stateChange := range resp.StoppingInstances {
-		grip.Info(message.Fields{
-			"message":       "stopped instance",
-			"user":          user,
-			"host_provider": h.Distro.Provider,
-			"instance_id":   *stateChange.InstanceId,
-			"host":          h.Id,
-			"distro":        h.Distro.Id,
-		})
-	}
+	grip.Info(message.Fields{
+		"message":       "stopped instance",
+		"user":          user,
+		"host_provider": h.Distro.Provider,
+		"host":          h.Id,
+		"distro":        h.Distro.Id,
+	})
 
 	return errors.Wrap(h.SetStopped(user), "failed to mark instance as stopped in db")
 }
@@ -863,17 +859,16 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 	}
 
 	ec2Settings := &EC2ProviderSettings{}
-	err := ec2Settings.fromDistroSettings(h.Distro)
-	if err != nil {
+	if err := ec2Settings.fromDistroSettings(h.Distro); err != nil {
 		return errors.Wrap(err, "problem getting settings from host")
 	}
-	if err = m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
+	if err := m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
 		return errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
 
 	// Make request to start the instance
-	resp, err := m.client.StartInstances(ctx, &ec2.StartInstancesInput{
+	_, err := m.client.StartInstances(ctx, &ec2.StartInstancesInput{
 		InstanceIds: []*string{aws.String(h.Id)},
 	})
 	if err != nil {
@@ -898,16 +893,13 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		return errors.Wrap(err, "error checking if spawnhost started")
 	}
 
-	for _, stateChange := range resp.StartingInstances {
-		grip.Info(message.Fields{
-			"message":       "started instance",
-			"user":          user,
-			"host_provider": h.Distro.Provider,
-			"instance_id":   *stateChange.InstanceId,
-			"host":          h.Id,
-			"distro":        h.Distro.Id,
-		})
-	}
+	grip.Info(message.Fields{
+		"message":       "started instance",
+		"user":          user,
+		"host_provider": h.Distro.Provider,
+		"host":          h.Id,
+		"distro":        h.Distro.Id,
+	})
 
 	return errors.Wrap(h.SetRunning(user), "failed to mark instance as running in db")
 }

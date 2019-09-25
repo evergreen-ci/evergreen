@@ -163,11 +163,11 @@ func (m *openStackManager) TerminateInstance(ctx context.Context, host *host.Hos
 }
 
 func (m *openStackManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
-	return errors.New("(m *openStackManager) StopInstance is not supported")
+	return errors.New("StopInstance is not supported for openstack provider")
 }
 
 func (m *openStackManager) StartInstance(ctx context.Context, host *host.Host, user string) error {
-	return errors.New("(m *openStackManager) StartInstance is not supported")
+	return errors.New("StartInstance is not supported for openstack provider")
 }
 
 // IsUp checks whether the provisioned host is running.

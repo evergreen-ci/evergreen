@@ -109,14 +109,14 @@ func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
 	// Find host to be stopped
 	host, err := h.sc.FindHostByIdWithOwner(h.hostID, user)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.hostID))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by host id '%s'", h.hostID))
 	}
 
 	// Error if host is not able to be stopped
-	if host.Status == evergreen.HostStopped {
+	if host.Status == evergreen.HostStopped || host.Status == evergreen.HostStopping {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("Host %s is already stopped", host.Id),
+			Message:    fmt.Sprintf("Host '%s' is already stopping or stopped", host.Id),
 		})
 	} else if host.Status != evergreen.HostRunning {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -131,20 +131,6 @@ func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = queue.Put(ctx, stopJob); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error creating spawnhost stop job"))
 	}
-	/* if err := h.sc.StopHost(ctx, host, user.Id); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":       "error stopping instance",
-			"user":          user.Id,
-			"host":          host.Id,
-			"host_provider": host.Distro.Provider,
-			"distro":        host.Distro.Id,
-		}))
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    err.Error(),
-		})
-	}
-	*/
 
 	return gimlet.NewJSONResponse(struct{}{})
 }
@@ -201,19 +187,6 @@ func (h *hostStartHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = queue.Put(ctx, startJob); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error creating spawnhost start job"))
 	}
-	/* if err := h.sc.StartHost(ctx, host, user.Id); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":       "error starting instance",
-			"user":          user.Id,
-			"host":          host.Id,
-			"host_provider": host.Distro.Provider,
-			"distro":        host.Distro.Id,
-		}))
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    err.Error(),
-		})
-	} */
 
 	return gimlet.NewJSONResponse(struct{}{})
 }

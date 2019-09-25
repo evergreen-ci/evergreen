@@ -206,7 +206,7 @@ func hostStop() cli.Command {
 		Usage: "stop a running spawn host",
 		Flags: addHostFlag(
 			cli.BoolFlag{
-				Name:  waitFlagName,
+				Name:  joinFlagNames(waitFlagName, "w"),
 				Usage: "command will block until host stopped",
 			},
 		),
@@ -252,7 +252,7 @@ func hostStart() cli.Command {
 		Usage: "start a stopped spawn host",
 		Flags: addHostFlag(
 			cli.BoolFlag{
-				Name:  waitFlagName,
+				Name:  joinFlagNames(waitFlagName, "w"),
 				Usage: "command will block until host started",
 			}),
 		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),

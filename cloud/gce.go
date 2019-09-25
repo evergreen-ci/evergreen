@@ -188,11 +188,11 @@ func (m *gceManager) TerminateInstance(ctx context.Context, host *host.Host, use
 }
 
 func (m *gceManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
-	return errors.New("(m *gceManager) StopInstance is not supported")
+	return errors.New("StopInstance is not supported for gce provider")
 }
 
 func (m *gceManager) StartInstance(ctx context.Context, host *host.Host, user string) error {
-	return errors.New("(m *gceManager) StartInstance is not supported")
+	return errors.New("StartInstance is not supported for gce provider")
 }
 
 // IsUp checks whether the provisioned host is running.

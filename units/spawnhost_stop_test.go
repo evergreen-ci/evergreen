@@ -4,9 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/cloud"
-
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
