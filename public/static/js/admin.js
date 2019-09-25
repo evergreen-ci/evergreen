@@ -41,20 +41,24 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       $scope.tempPlugins = resp.data.plugins ? jsyaml.safeDump(resp.data.plugins) : ""
       $scope.tempContainerPools = resp.data.container_pools.pools ? jsyaml.safeDump(resp.data.container_pools.pools) : ""
 
-      // Support transiton to region-based EC2Keys struct -- TO BE DELETED
-      var keys = resp.data.providers.aws.ec2_keys
-      if (keys) {
-        for (var i = 0; i < keys.length; i++) {
-          if (keys[i].region == "us-east-1") {
-            $scope.tempDefaultEC2Key = keys[i].key;
-            $scope.tempDefaultEC2Secret = keys[i].secret;
-            break;
+      // Support transition to region-based EC2Keys struct -- TO BE DELETED
+      let default_exists = false;
+      if (resp.data.providers.aws.aws_id && resp.data.providers.aws.aws_secret) {
+          if (resp.data.providers.aws.ec2_keys) {
+              for (var i = 0; i < resp.data.providers.aws.ec2_keys.length; i++) {
+                  if (resp.data.providers.aws.ec2_keys[i].region == "us-east-1") { // we already have this region
+                    default_exists = true;
+                    break;
+                  }
+              }
+          } else {
+            resp.data.providers.aws.ec2_keys = [];
           }
-        }
-      }
-      if (!$scope.tempDefaultEC2Key || !$scope.tempDefaultEC2Secret) {
-        $scope.tempDefaultEC2Key = resp.data.providers.aws.aws_id;
-        $scope.tempDefaultEC2Secret = resp.data.providers.aws.aws_secret;
+          if (!default_exists) {
+              resp.data.providers.aws.ec2_keys.push({"region": "us-east-1", "key": resp.data.providers.aws.aws_id, "secret": resp.data.providers.aws.aws_secret})
+          }
+          resp.data.providers.aws.aws_id = "";
+          resp.data.providers.aws.aws_secret = "";
       }
 
       $scope.Settings = resp.data;
@@ -147,15 +151,36 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       $scope.Settings.expansions = {};
     }
 
-    // Support transition to region-based EC2Keys struct -- TO BE DELETED
-    $scope.Settings.providers.aws.aws_id = $scope.tempDefaultEC2Key;
-    $scope.Settings.providers.aws.aws_secret = $scope.tempDefaultEC2Secret;
-
-    $scope.Settings.providers.aws.ec2_keys = [
-      {"region": "us-east-1", "key": $scope.tempDefaultEC2Key, "secret": $scope.tempDefaultEC2Secret}
-    ];
-
     mciAdminRestService.saveSettings($scope.Settings, { success: successHandler, error: errorHandler });
+  }
+
+  $scope.validEC2Credentials = function(item){
+    return item && item.region && item.key && item.secret;
+  }
+
+  $scope.addEC2Credential = function(){
+    if ($scope.Settings.providers == null || $scope.Settings.providers == undefined) {
+      $scope.Settings.providers = {
+        "aws": {"ec2_keys": []}
+      };
+    }
+    for (let i = 0; i < $scope.Settings.providers.aws.ec2_keys.length; i++) {
+      if ($scope.Settings.providers.aws.ec2_keys[i].region === $scope.new_item.region) {
+        $scope.invalidCredential = "Only one key/secret per region.";
+          return
+      }
+    }
+      if (!$scope.validEC2Credentials($scope.new_item)){
+          $scope.invalidCredential = "EC2 Region, Key, and Secret required.";
+          return
+      }
+      $scope.Settings.providers.aws.ec2_keys.push($scope.new_item);
+      $scope.new_item = {};
+      $scope.invalidCredential = "";
+  }
+
+  $scope.deleteEC2Credential = function(index){
+    $scope.Settings.providers.aws.ec2_keys.splice(index, 1);
   }
 
   $scope.clearAllUserTokens = function(){
