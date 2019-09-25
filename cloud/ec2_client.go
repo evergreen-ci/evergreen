@@ -892,6 +892,7 @@ type awsClientMock struct { //nolint
 	*ec2.DeleteLaunchTemplateInput
 	*ec2.CreateFleetInput
 
+	*ec2.Instance
 	*ec2.DescribeSpotInstanceRequestsOutput
 	*ec2.DescribeInstancesOutput
 	*ec2.CreateLaunchTemplateOutput
@@ -1125,6 +1126,10 @@ func (c *awsClientMock) DescribeVpcs(ctx context.Context, input *ec2.DescribeVpc
 }
 
 func (c *awsClientMock) GetInstanceInfo(ctx context.Context, id string) (*ec2.Instance, error) {
+	if c.Instance != nil {
+		return c.Instance, nil
+	}
+
 	instance := &ec2.Instance{}
 	instance.Placement = &ec2.Placement{}
 	instance.Placement.AvailabilityZone = aws.String("us-east-1a")

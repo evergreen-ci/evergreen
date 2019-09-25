@@ -685,7 +685,19 @@ func (s *EC2Suite) TestStopInstance() {
 
 	s.Error(s.onDemandManager.StopInstance(ctx, hosts[0], evergreen.User))
 	s.Error(s.onDemandManager.StopInstance(ctx, hosts[1], evergreen.User))
+
+	manager, ok := s.onDemandManager.(*ec2Manager)
+	s.True(ok)
+	mock, ok := manager.client.(*awsClientMock)
+	s.True(ok)
+	mock.Instance = &ec2.Instance{
+		InstanceId: aws.String("host-running"),
+		State: &ec2.InstanceState{
+			Name: aws.String("stopped"),
+		},
+	}
 	s.NoError(s.onDemandManager.StopInstance(ctx, hosts[2], evergreen.User))
+	mock.Instance = nil
 	found, err := host.FindOne(host.ById("host-running"))
 	s.NoError(err)
 	s.Equal(evergreen.HostStopped, found.Status)
