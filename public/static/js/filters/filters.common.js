@@ -496,7 +496,7 @@ filters.common.filter('conditional', function() {
     _.each(data, function(test) {
       const converted = convertSingleTest(test, execution);
       if (converted) {
-        output.push();
+        output.push(converted);
       }
     })
 
