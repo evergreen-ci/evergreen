@@ -27,6 +27,10 @@ type subprocessExec struct {
 	Command string            `mapstructure:"command"`
 	Path    []string          `mapstructure:"add_to_path"`
 
+	// Add defined expansions to the environment of the process
+	// that's launched.
+	AddExpansionsToEnv bool `mapstructure:"add_expansions_to_env"`
+
 	// Background, if set to true, prevents shell code/output from
 	// waiting for the script to complete and immediately returns
 	// to the caller
@@ -136,6 +140,12 @@ func (c *subprocessExec) doExpansions(exp *util.Expansions) error {
 		path = append(path, os.Getenv("PATH"))
 
 		c.Env["PATH"] = strings.Join(path, string(filepath.ListSeparator))
+	}
+
+	if c.AddExpansionsToEnv {
+		for k, v := range exp.Map() {
+			c.Env[k] = v
+		}
 	}
 
 	return errors.Wrap(catcher.Resolve(), "problem expanding strings")
