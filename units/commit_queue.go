@@ -183,7 +183,13 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	}
 
 	errs := validator.CheckProjectSyntax(projectConfig)
-	if len(errs) != 0 {
+	catcher := grip.NewBasicCatcher()
+	for _, validationError := range errs {
+		if validationError.Level == validator.Error {
+			catcher.Add(validationError)
+		}
+	}
+	if catcher.HasErrors() {
 		update := NewGithubStatusUpdateJobForProcessingError(
 			commitqueue.Context,
 			pr.Base.User.GetLogin(),
@@ -193,7 +199,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		)
 		update.Run(ctx)
 		j.AddError(update.Error())
-		j.logError(errors.New(errs.String()), "invalid config file", nextItem)
+		j.logError(catcher.Resolve(), "invalid config file", nextItem)
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
 		j.dequeue(cq, nextItem)
 		return
@@ -578,8 +584,14 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 	project.TaskGroups = append(project.TaskGroups, mergeTaskGroup)
 
 	validationErrors := validator.CheckProjectSyntax(project)
-	if len(validationErrors) != 0 {
-		return errors.Errorf("project validation failed: %s", validationErrors)
+	catcher := grip.NewBasicCatcher()
+	for _, validationError := range validationErrors {
+		if validationError.Level == validator.Error {
+			catcher.Add(validationError)
+		}
+	}
+	if catcher.HasErrors() {
+		return errors.Errorf("project validation failed: %s", catcher.Resolve())
 	}
 
 	yamlBytes, err := yaml.Marshal(project)
