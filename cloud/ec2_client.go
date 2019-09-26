@@ -996,6 +996,12 @@ func (c *awsClientMock) StopInstances(ctx context.Context, input *ec2.StopInstan
 // StartInstances is a mock for ec2.StartInstances.
 func (c *awsClientMock) StartInstances(ctx context.Context, input *ec2.StartInstancesInput) (*ec2.StartInstancesOutput, error) {
 	c.StartInstancesInput = input
+	c.Instance = &ec2.Instance{
+		InstanceId: aws.String("id"),
+		State: &ec2.InstanceState{
+			Name: aws.String(ec2.InstanceStateNameRunning),
+		},
+	}
 	return &ec2.StartInstancesOutput{}, nil
 }
 

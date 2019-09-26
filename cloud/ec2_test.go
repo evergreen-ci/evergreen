@@ -34,6 +34,7 @@ type EC2Suite struct {
 	autoOpts                  *EC2ManagerOptions
 	autoManager               Manager
 	impl                      *ec2Manager
+	mock                      *awsClientMock
 	h                         *host.Host
 	distro                    distro.Distro
 }
@@ -85,6 +86,11 @@ func (s *EC2Suite) SetupTest() {
 	var ok bool
 	s.impl, ok = s.onDemandManager.(*ec2Manager)
 	s.Require().True(ok)
+
+	// Clear mock
+	s.mock, ok = s.impl.client.(*awsClientMock)
+	s.Require().True(ok)
+	s.mock.Instance = nil
 
 	s.distro = distro.Distro{
 		ProviderSettings: &map[string]interface{}{
@@ -685,13 +691,7 @@ func (s *EC2Suite) TestStopInstance() {
 
 	s.Error(s.onDemandManager.StopInstance(ctx, hosts[0], evergreen.User))
 	s.Error(s.onDemandManager.StopInstance(ctx, hosts[1], evergreen.User))
-
-	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.True(ok)
-	mock, ok := manager.client.(*awsClientMock)
-	s.True(ok)
 	s.NoError(s.onDemandManager.StopInstance(ctx, hosts[2], evergreen.User))
-	mock.Instance = nil
 	found, err := host.FindOne(host.ById("host-running"))
 	s.NoError(err)
 	s.Equal(evergreen.HostStopped, found.Status)
