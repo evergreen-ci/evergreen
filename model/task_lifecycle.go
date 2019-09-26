@@ -501,7 +501,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	return nil
 }
 
-func TryDequeueAndAbortCommitQueueVersion(versionId, projectId string, requester string) error {
+func TryDequeueAndAbortCommitQueueVersion(projectRef *ProjectRef, versionId, requester string) error {
 	p, err := patch.FindOne(patch.ByVersion(versionId))
 	if err != nil {
 		return errors.Wrapf(err, "error finding patch")
@@ -515,9 +515,9 @@ func TryDequeueAndAbortCommitQueueVersion(versionId, projectId string, requester
 	}
 
 	// if task is part of a commit queue, dequeue and abort version
-	cq, err := commitqueue.FindOneId(projectId)
+	cq, err := commitqueue.FindOneId(projectRef.Identifier)
 	if err != nil {
-		return errors.Wrapf(err, "can't get commit queue for id '%s'", projectId)
+		return errors.Wrapf(err, "can't get commit queue for id '%s'", projectRef.Identifier)
 	}
 	issue := p.Id.Hex()
 	if p.IsGithubPRPatch() {
@@ -525,32 +525,19 @@ func TryDequeueAndAbortCommitQueueVersion(versionId, projectId string, requester
 	}
 	removed, err := cq.Remove(issue)
 	if err != nil {
-		return errors.Wrapf(err, "can't remove item '%s' from queue '%s'", versionId, projectId)
+		return errors.Wrapf(err, "can't remove item '%s' from queue '%s'", versionId, projectRef.Identifier)
 	}
 	if !removed {
 		return nil
 	}
 	if p.IsGithubPRPatch() {
-		env := evergreen.GetEnvironment()
-		sender, err := env.GetSender(evergreen.SenderGithubStatus)
-		if err != nil {
+		if err := commitqueue.SendFailedMessageToPR(projectRef.Owner, projectRef.Repo, p.GithubPatchData.PRNumber); err != nil {
 			grip.Debug(message.WrapError(err, message.Fields{
-				"message":      "error getting sender for github status",
+				"message":      "error sending failed message to PR",
 				"patch_id":     p.Id,
 				"project":      p.Project,
 				"pull_request": issue,
 			}))
-		} else {
-			status := message.GithubStatus{
-				Context:     commitqueue.Context,
-				Description: "removed from queue because task failed",
-				State:       message.GithubStateFailure,
-				Ref:         p.GithubPatchData.HeadHash,
-				Repo:        p.GithubPatchData.HeadRepo,
-				Owner:       p.GithubPatchData.Author,
-			}
-			c := message.MakeGithubStatusMessageWithRepo(status)
-			sender.Send(c)
 		}
 	}
 	event.LogCommitQueueConcludeTest(p.Id.Hex(), evergreen.MergeTestFailed)
