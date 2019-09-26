@@ -96,7 +96,9 @@ db.old_tasks.ensureIndex({ "branch": 1, "r" : 1, "status" : 1})
 db.old_tasks.ensureIndex({ "branch": 1, "r" : 1, "build_variant" : 1})
 db.old_tasks.ensureIndex({ "old_task_id": 1})
 db.old_tasks.ensureIndex({ "branch": 1, "finish_time": 1})
-db.old_tasks.createIndex({ "execution_tasks": 1})0
+db.old_tasks.createIndex({ "execution_tasks": 1})
+
+//======versions======//
 db.versions.ensureIndex({ "order" : 1 })
 db.versions.ensureIndex({ "builds" : 1 })
 db.versions.ensureIndex({ "identifier" : 1, "r" : 1, "order" : 1 })
@@ -104,6 +106,7 @@ db.versions.ensureIndex({ "branch" : 1, "gitspec" : 1 })
 db.versions.ensureIndex({ "versions.build_variant_status.build_variant" : 1, "versions.build_variant_status.activated" : 1, "r": 1 })
 db.versions.ensureIndex({ "identifier" : 1, "r" : 1, "create_time" : 1 })
 db.versions.createIndex({ "project": 1, "periodic_build_id": 1, "create_time": -1 }, {"partialFilterExpression": { "periodic_build_id": { "$exists": true}}})
+db.versions.createIndex({ "identifier": 1, "order": 1 })
 
 //======alerts=======//
 db.alerts.ensureIndex({ "queue_status" : 1 })
