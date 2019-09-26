@@ -438,7 +438,6 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	if err != nil {
 		return nil, errors.Wrap(err, "error making block device mappings")
 	}
-
 	if h.InstanceType != "" {
 		ec2Settings.InstanceType = h.InstanceType
 	} else {
