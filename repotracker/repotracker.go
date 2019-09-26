@@ -730,6 +730,9 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 	buildsToCreate := []interface{}{}
 	tasksToCreate := task.Tasks{}
 	for _, buildvariant := range project.BuildVariants {
+		if ctx.Err() != nil {
+			return errors.Wrapf(err, "aborting version creation for version %s", v.Id)
+		}
 		if buildvariant.Disabled {
 			continue
 		}
@@ -737,7 +740,10 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 		if len(aliases) > 0 {
 			match, err = aliases.HasMatchingVariant(buildvariant.Name, buildvariant.Tags)
 			if err != nil {
-				grip.Error(err)
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": "error checking project aliases",
+					"version": v.Id,
+				}))
 				continue
 			}
 			if !match {
@@ -759,6 +765,7 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "error creating build",
+				"version": v.Id,
 			}))
 			continue
 		}
