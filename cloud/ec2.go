@@ -441,9 +441,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	if h.InstanceType != "" {
 		ec2Settings.InstanceType = h.InstanceType
 	} else {
-		if err = h.SetInstanceType(ec2Settings.InstanceType); err != nil {
-			return nil, errors.Wrap(err, "error setting instance type")
-		}
+		h.InstanceType = ec2Settings.InstanceType
 	}
 	provider, err := m.getProvider(ctx, h, ec2Settings)
 	if err != nil {
