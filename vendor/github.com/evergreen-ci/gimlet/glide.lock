@@ -19,3 +19,7 @@ imports:
   version: 379148ca0225df7a432012b8df0355c2a2063ac0
 - name: github.com/pkg/errors
   version: ff09b135c25aae272398c51a07235b90a75aa4f0
+- name: github.com/rs/cors
+  version: db0fe48135e83b5812a5a31be0eea66984b1b521
+- name: go.mongodb.org/mongo-driver
+  version: 0622dc2fbb426411e5ee2675962ca80811bb2c37

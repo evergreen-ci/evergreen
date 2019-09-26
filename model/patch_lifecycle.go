@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -123,7 +124,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	project := &Project{}
 	// if the patched config exists, use that as the project file bytes.
 	if p.PatchedConfig != "" {
-		if err = LoadProjectInto([]byte(p.PatchedConfig), projectRef.Identifier, project); err != nil {
+		if _, err = LoadProjectInto([]byte(p.PatchedConfig), projectRef.Identifier, project); err != nil {
 			return nil, "", errors.WithStack(err)
 		}
 		return project, p.PatchedConfig, nil
@@ -171,7 +172,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 		}
 	}
 
-	if err := LoadProjectInto(projectFileBytes, projectRef.Identifier, project); err != nil {
+	if _, err := LoadProjectInto(projectFileBytes, projectRef.Identifier, project); err != nil {
 		return nil, "", errors.WithStack(err)
 	}
 
@@ -282,11 +283,16 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, githubOauthToken string) (*Version, error) {
 	// unmarshal the project YAML for storage
 	project := &Project{}
-	err := LoadProjectInto([]byte(p.PatchedConfig), p.Project, project)
+	intermediateProject, err := LoadProjectInto([]byte(p.PatchedConfig), p.Project, project)
 	if err != nil {
 		return nil, errors.Wrapf(err,
 			"Error marshaling patched project config from repository revision “%v”",
 			p.Githash)
+	}
+
+	distroAliases, err := distro.NewDistroAliasesLookupTable()
+	if err != nil {
+		return nil, errors.Wrap(err, "problem resolving distro alias table for patch")
 	}
 
 	projectRef, err := FindOneProjectRef(p.Project)
@@ -311,6 +317,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		Message:             p.Description,
 		BuildIds:            []string{},
 		BuildVariants:       []VersionBuildStatus{},
+		ParserProject:       intermediateProject,
 		Config:              p.PatchedConfig,
 		Status:              evergreen.PatchCreated,
 		Requester:           requester,
@@ -353,13 +360,14 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		}
 		taskNames := tasks.ExecTasks.TaskNames(vt.Variant)
 		buildArgs := BuildCreateArgs{
-			Project:      *project,
-			Version:      *patchVersion,
-			TaskIDs:      taskIds,
-			BuildName:    vt.Variant,
-			Activated:    true,
-			TaskNames:    taskNames,
-			DisplayNames: displayNames,
+			Project:       *project,
+			Version:       *patchVersion,
+			TaskIDs:       taskIds,
+			BuildName:     vt.Variant,
+			Activated:     true,
+			TaskNames:     taskNames,
+			DisplayNames:  displayNames,
+			DistroAliases: distroAliases,
 		}
 		buildId, err = CreateBuildFromVersion(buildArgs)
 		if err != nil {

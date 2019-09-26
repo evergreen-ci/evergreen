@@ -55,11 +55,20 @@ func TestHostConnectorSuite(t *testing.T) {
 			Status:         evergreen.HostTerminated,
 			ExpirationTime: time.Now().Add(time.Hour),
 		}
+		host5 := &host.Host{
+			Id:        "host5",
+			StartedBy: evergreen.User,
+			Status:    evergreen.HostRunning,
+			Distro: distro.Distro{
+				Id: "distro5",
+			},
+		}
 
 		s.NoError(host1.Insert())
 		s.NoError(host2.Insert())
 		s.NoError(host3.Insert())
 		s.NoError(host4.Insert())
+		s.NoError(host5.Insert())
 
 		users := []string{testUser, "user2", "user3", "user4", "root"}
 
@@ -85,7 +94,8 @@ func TestMockHostConnectorSuite(t *testing.T) {
 					{Id: "host1", StartedBy: testUser, Status: evergreen.HostRunning, ExpirationTime: time.Now().Add(time.Hour), Secret: "abcdef"},
 					{Id: "host2", StartedBy: "user2", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)},
 					{Id: "host3", StartedBy: "user3", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)},
-					{Id: "host4", StartedBy: "user4", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)}},
+					{Id: "host4", StartedBy: "user4", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)},
+					{Id: "host5", StartedBy: evergreen.User, Status: evergreen.HostRunning, Distro: distro.Distro{Id: "distro5"}}},
 			},
 			MockUserConnector: MockUserConnector{
 				CachedUsers: map[string]*user.DBUser{
@@ -142,9 +152,16 @@ func (s *HostConnectorSuite) TestFindByIdLast() {
 }
 
 func (s *HostConnectorSuite) TestFindByIdFail() {
-	h, ok := s.ctx.FindHostById("host5")
+	h, ok := s.ctx.FindHostById("nonexistent")
 	s.Error(ok)
 	s.Nil(h)
+}
+
+func (s *HostConnectorSuite) TestFindHostsByDistroID() {
+	hosts, err := s.ctx.FindHostsByDistroID("distro5")
+	s.Require().NoError(err)
+	s.Require().Len(hosts, 1)
+	s.Equal("host5", hosts[0].Id)
 }
 
 func (s *HostConnectorSuite) TestFindByUser() {

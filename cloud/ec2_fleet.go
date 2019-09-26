@@ -437,6 +437,11 @@ func (m *ec2FleetManager) requestFleet(ctx context.Context, ec2Settings *EC2Prov
 	}
 	err = validateEc2CreateFleetResponse(createFleetResponse)
 	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":  "invalid create fleet response",
+			"request":  createFleetInput,
+			"response": createFleetResponse,
+		}))
 		return nil, errors.Wrap(err, "invalid create fleet response")
 	}
 

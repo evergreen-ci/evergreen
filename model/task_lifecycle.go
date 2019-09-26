@@ -39,12 +39,14 @@ func SetActiveState(taskId string, caller string, active bool) error {
 		return errors.Errorf("task '%s' not found", taskId)
 	}
 	if active {
-		// if the task is being activated, make sure to activate all of the task's
-		// dependencies as well
-		for _, dep := range t.DependsOn {
-			if err = SetActiveState(dep.TaskId, caller, true); err != nil {
-				return errors.Wrapf(err, "error activating dependency for %v with id %v",
-					taskId, dep.TaskId)
+		// if the task is being activated and it doesn't override its dependencies
+		// activate the task's dependencies as well
+		if !t.OverrideDependencies {
+			for _, dep := range t.DependsOn {
+				if err = SetActiveState(dep.TaskId, caller, true); err != nil {
+					return errors.Wrapf(err, "error activating dependency for %v with id %v",
+						taskId, dep.TaskId)
+				}
 			}
 		}
 

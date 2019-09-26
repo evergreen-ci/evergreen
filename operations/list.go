@@ -285,11 +285,12 @@ func listDistros(ctx context.Context, confPath string, onlyUserSpawnable bool) e
 		aliases := map[string][]string{}
 		for _, d := range distros {
 			for _, a := range d.Aliases {
-				aliases[a] = append(aliases[a], d.Aliases...)
+				aliases[a] = append(aliases[a], restmodel.FromAPIString(d.Name))
 			}
 		}
+
 		if len(aliases) > 0 {
-			fmt.Println("\n", len(aliases), "distro aliases:")
+			fmt.Printf("\n%d distro aliases:", len(aliases))
 			for a, names := range aliases {
 				fmt.Println(a, "=>", names)
 			}
@@ -307,8 +308,7 @@ func loadLocalConfig(filepath string) (*model.Project, error) {
 	}
 
 	project := &model.Project{}
-	err = model.LoadProjectInto(configBytes, "", project)
-	if err != nil {
+	if _, err = model.LoadProjectInto(configBytes, "", project); err != nil {
 		return nil, errors.Wrap(err, "error loading project")
 	}
 

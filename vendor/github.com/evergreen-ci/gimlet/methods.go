@@ -12,6 +12,7 @@ const (
 	delete
 	patch
 	head
+	options
 )
 
 func (m httpMethod) String() string {
@@ -28,6 +29,8 @@ func (m httpMethod) String() string {
 		return http.MethodPost
 	case head:
 		return http.MethodHead
+	case options:
+		return http.MethodOptions
 	default:
 		return ""
 	}

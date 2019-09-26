@@ -25,6 +25,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	. "github.com/smartystreets/goconvey/convey"
@@ -566,7 +567,7 @@ func TestNextTask(t *testing.T) {
 			Convey("and should set the agent start time", func() {
 				dbHost, err := host.FindOneId(sampleHost.Id)
 				require.NoError(t, err)
-				So(dbHost.AgentStartTime.Second(), ShouldNotEqual, 0)
+				So(util.IsZeroTime(dbHost.AgentStartTime), ShouldBeFalse)
 			})
 			Convey("with degraded mode set", func() {
 				serviceFlags := evergreen.ServiceFlags{
@@ -871,8 +872,10 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 		So(testBuild.Insert(), ShouldBeNil)
 
 		testVersion := model.Version{
-			Id:     versionId,
-			Branch: projectId,
+			Id:            versionId,
+			Branch:        projectId,
+			ParserProject: &model.ParserProject{Identifier: projectId},
+			Config:        "identifier: " + projectId,
 		}
 		So(testVersion.Insert(), ShouldBeNil)
 

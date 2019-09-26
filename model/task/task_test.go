@@ -1308,8 +1308,8 @@ func TestUpdateUnblockedDependencies(t *testing.T) {
 			Id: "t2",
 			DependsOn: []Dependency{
 				{
-					TaskId:       "t1",
-					Unattainable: false,
+					TaskId:       "t0",
+					Unattainable: true,
 				},
 			},
 			Status: evergreen.TaskUndispatched,
@@ -1319,6 +1319,16 @@ func TestUpdateUnblockedDependencies(t *testing.T) {
 			DependsOn: []Dependency{
 				{
 					TaskId:       "t2",
+					Unattainable: false,
+				},
+			},
+			Status: evergreen.TaskUndispatched,
+		},
+		{
+			Id: "t4",
+			DependsOn: []Dependency{
+				{
+					TaskId:       "t3",
 					Unattainable: true,
 				},
 			},
@@ -1337,10 +1347,13 @@ func TestUpdateUnblockedDependencies(t *testing.T) {
 	dbTask2, err := FindOneId(tasks[2].Id)
 	assert.NoError(err)
 	assert.False(dbTask2.DependsOn[0].Unattainable)
-	// We don't traverse past the t2 which was already unattainable == false
 	dbTask3, err := FindOneId(tasks[3].Id)
 	assert.NoError(err)
-	assert.True(dbTask3.DependsOn[0].Unattainable)
+	assert.False(dbTask3.DependsOn[0].Unattainable)
+	// We don't traverse past the t3 which was already unattainable == false
+	dbTask4, err := FindOneId(tasks[4].Id)
+	assert.NoError(err)
+	assert.True(dbTask4.DependsOn[0].Unattainable)
 }
 
 func TestFindAllUnmarkedBlockedDependencies(t *testing.T) {
@@ -1453,11 +1466,11 @@ func TestUnattainableScheduleableTasksQuery(t *testing.T) {
 			DependsOn: []Dependency{
 				{
 					TaskId:       "t10",
-					Unattainable: true,
+					Unattainable: false,
 				},
 				{
 					TaskId:       "t11",
-					Unattainable: false,
+					Unattainable: true,
 				},
 			},
 			Priority: 0,
@@ -1485,9 +1498,11 @@ func TestUnattainableScheduleableTasksQuery(t *testing.T) {
 			Priority:  0,
 			DependsOn: []Dependency{
 				{
-					TaskId: "t10",
+					TaskId:       "t10",
+					Unattainable: true,
 				},
 			},
+			OverrideDependencies: true,
 		},
 	}
 	for _, task := range tasks {
