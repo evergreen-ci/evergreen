@@ -1,6 +1,8 @@
 package model
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
@@ -119,8 +121,9 @@ func (apiHost *APIHost) ToService() (interface{}, error) {
 }
 
 type APISpawnHostModify struct {
-	Action   APIString `json:"action"`
-	HostID   APIString `json:"host_id"`
-	RDPPwd   APIString `json:"rdp_pwd"`
-	AddHours APIString `json:"add_hours"`
+	Action     APIString `json:"action"`
+	HostID     APIString `json:"host_id"`
+	RDPPwd     APIString `json:"rdp_pwd"`
+	AddHours   APIString `json:"add_hours"`
+	Expiration time.Time `json:"expiration"`
 }
