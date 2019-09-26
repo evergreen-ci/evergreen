@@ -20,7 +20,7 @@ const (
 // makeAWSTags creates and validates a map of supplied instance tags
 func makeAWSTags(tagSlice []string) ([]host.Tag, error) {
 	catcher := grip.NewBasicCatcher()
-	tagsMap := make(map[string]string)
+	tags := []host.Tag{}
 	for _, tagString := range tagSlice {
 		pair := strings.Split(tagString, "=")
 		if len(pair) != 2 {
@@ -44,13 +44,20 @@ func makeAWSTags(tagSlice []string) ([]host.Tag, error) {
 			catcher.Add(errors.Errorf("illegal tag prefix 'aws:'"))
 		}
 
-		tagsMap[key] = value
-	}
+		// Update tag if already set
+		found := false
+		for i, tag := range tags {
+			if tag.Key == key {
+				tags[i].Value = value
+				found = true
+				break
+			}
+		}
 
-	// Make slice of host.Tag structs from map
-	tags := []host.Tag{}
-	for key, value := range tagsMap {
-		tags = append(tags, host.Tag{Key: key, Value: value, CanBeModified: true})
+		// Add new tags
+		if !found {
+			tags = append(tags, host.Tag{Key: key, Value: value, CanBeModified: true})
+		}
 	}
 
 	if catcher.HasErrors() {

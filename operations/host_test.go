@@ -118,12 +118,12 @@ func TestHostTeardownScript(t *testing.T) {
 
 func TestMakeAWSTags(t *testing.T) {
 	t.Run("OK", func(t *testing.T) {
-		tagSlice := []string{"key1=value1", "key2=value2"}
+		tagSlice := []string{"key1=value1", "key2=value2", "key1=value3"}
 		tags, err := makeAWSTags(tagSlice)
 		assert.Equal(t, tags, []host.Tag{
 			host.Tag{
 				Key:           "key1",
-				Value:         "value1",
+				Value:         "value3",
 				CanBeModified: true,
 			},
 			host.Tag{
