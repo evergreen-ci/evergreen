@@ -530,16 +530,36 @@ func TryDequeueAndAbortCommitQueueVersion(projectRef *ProjectRef, versionId, req
 	if !removed {
 		return nil
 	}
-	if p.IsGithubPRPatch() {
-		if err := commitqueue.SendFailedMessageToPR(projectRef.Owner, projectRef.Repo, p.GithubPatchData.PRNumber); err != nil {
+	if p.IsPRMergePatch() {
+		env := evergreen.GetEnvironment()
+		sender, err := env.GetSender(evergreen.SenderGithubStatus)
+		if err != nil {
 			grip.Debug(message.WrapError(err, message.Fields{
-				"message":      "error sending failed message to PR",
+				"message":      "error getting environment",
 				"patch_id":     p.Id,
 				"project":      p.Project,
 				"pull_request": issue,
 			}))
+		} else {
+			var url string
+			uiConfig := evergreen.UIConfig{}
+			if err := uiConfig.Get(env); err == nil {
+				url = fmt.Sprintf("%s/version/%s", uiConfig.Url, versionId)
+			}
+			status := message.GithubStatus{
+				Context:     commitqueue.Context,
+				Description: "merge test failed",
+				State:       message.GithubStateFailure,
+				Owner:       p.GithubPatchData.BaseOwner,
+				Repo:        p.GithubPatchData.BaseRepo,
+				Ref:         p.GithubPatchData.HeadHash,
+				URL:         url,
+			}
+			c := message.MakeGithubStatusMessageWithRepo(status)
+			sender.Send(c)
 		}
 	}
+
 	event.LogCommitQueueConcludeTest(p.Id.Hex(), evergreen.MergeTestFailed)
 	return errors.Wrapf(CancelPatch(p, requester), "Error aborting failed commit queue patch")
 }

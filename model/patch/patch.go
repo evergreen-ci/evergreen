@@ -404,6 +404,7 @@ func MakeMergePatch(pr *github.PullRequest, projectID, alias string) (*Patch, er
 			BaseOwner:      pr.Base.User.GetLogin(),
 			BaseRepo:       pr.Base.Repo.GetName(),
 			BaseBranch:     pr.Base.GetRef(),
+			HeadHash:       pr.Head.GetSHA(),
 		},
 	}
 

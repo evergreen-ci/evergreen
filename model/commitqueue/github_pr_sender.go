@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/thirdparty"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
@@ -164,37 +162,6 @@ func (s *githubPRLogger) sendPatchResult(msg *GithubMergePR, pr event.PRInfo) {
 	c := message.NewGithubStatusMessageWithRepo(level.Notice, status)
 
 	s.statusSender.Send(c)
-}
-
-func SendFailedMessageToPR(owner, repo string, prNumber int) error {
-	env := evergreen.GetEnvironment()
-	sender, err := env.GetSender(evergreen.SenderGithubStatus)
-	if err != nil {
-		return errors.Wrap(err, "error getting environment")
-	}
-	ghToken, err := env.Settings().GetGithubOauthToken()
-	if err != nil {
-		return errors.Wrap(err, "error getting github oauth token")
-	}
-
-	ctxWithCancel, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	pr, err := thirdparty.GetGithubPullRequest(ctxWithCancel, ghToken, owner, repo, prNumber)
-	if err != nil {
-		return errors.Wrapf(err, "error getting pull request %d", prNumber)
-	}
-	status := message.GithubStatus{
-		Context:     Context,
-		Description: "merge test failed",
-		State:       message.GithubStateFailure,
-		Owner:       *pr.Base.Repo.Owner.Login,
-		Repo:        *pr.Base.Repo.Name,
-		Ref:         *pr.Head.SHA,
-	}
-	c := message.MakeGithubStatusMessageWithRepo(status)
-	sender.Send(c)
-	return nil
 }
 
 func dequeueFromCommitQueue(projectID string, item string) error {
