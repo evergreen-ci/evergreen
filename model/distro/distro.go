@@ -51,50 +51,46 @@ type BootstrapSettings struct {
 
 // Validate checks if all of the bootstrap settings are valid for legacy or
 // non-legacy bootstrapping.
-func (s *BootstrapSettings) Validate(isWindows bool) error {
+func (d *Distro) ValidateBootstrapSettings() error {
 	catcher := grip.NewBasicCatcher()
-	if !util.StringSliceContains(validBootstrapMethods, s.Method) {
-		catcher.Errorf("'%s' is not a valid bootstrap method", s.Method)
+	if !util.StringSliceContains(validBootstrapMethods, d.BootstrapSettings.Method) {
+		catcher.Errorf("'%s' is not a valid bootstrap method", d.BootstrapSettings.Method)
 	}
 
-	if !util.StringSliceContains(validCommunicationMethods, s.Communication) {
-		catcher.Errorf("'%s' is not a valid communication method", s.Communication)
+	if !util.StringSliceContains(validCommunicationMethods, d.BootstrapSettings.Communication) {
+		catcher.Errorf("'%s' is not a valid communication method", d.BootstrapSettings.Communication)
 	}
 
-	switch s.Method {
+	switch d.BootstrapSettings.Method {
 	case BootstrapMethodLegacySSH:
-		if s.Communication != CommunicationMethodLegacySSH {
+		if d.BootstrapSettings.Communication != CommunicationMethodLegacySSH {
 			catcher.New("bootstrapping hosts using legacy SSH is incompatible with non-legacy host communication")
 		}
 	default:
-		if s.Communication == CommunicationMethodLegacySSH {
+		if d.BootstrapSettings.Communication == CommunicationMethodLegacySSH {
 			catcher.New("communicating with hosts using legacy SSH is incompatible with non-legacy host bootstrapping")
 		}
 	}
 
-	if s.Method == BootstrapMethodLegacySSH || s.Communication == CommunicationMethodLegacySSH {
+	if d.BootstrapSettings.Method == BootstrapMethodLegacySSH || d.BootstrapSettings.Communication == CommunicationMethodLegacySSH {
 		return catcher.Resolve()
 	}
 
-	if s.ClientDir == "" {
+	if d.BootstrapSettings.ClientDir == "" {
 		catcher.New("client directory cannot be empty for non-legacy bootstrapping")
 	}
 
-	if s.JasperBinaryDir == "" {
+	if d.BootstrapSettings.JasperBinaryDir == "" {
 		catcher.New("Jasper binary directory cannot be empty for non-legacy bootstrapping")
 	}
 
-	if s.JasperCredentialsPath == "" {
+	if d.BootstrapSettings.JasperCredentialsPath == "" {
 		catcher.New("Jasper credentials path cannot be empty for non-legacy bootstrapping")
 	}
 
-	if isWindows && s.ServiceUser == "" {
-		catcher.New("service user cannot be empty for non-legacy Windows bootstrapping")
-	}
+	catcher.NewWhen(d.IsWindows() && d.BootstrapSettings.ServiceUser == "", "service user cannot be empty for non-legacy Windows bootstrapping")
 
-	if isWindows && s.ShellPath == "" {
-		catcher.New("shell path cannot be empty for non-legacy Windows bootstrapping")
-	}
+	catcher.NewWhen(d.IsWindows() && d.BootstrapSettings.ShellPath == "", "shell path cannot be empty for non-legacy Windows bootstrapping")
 
 	return catcher.Resolve()
 }
