@@ -194,6 +194,13 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if projectRef.CommitQueue.Enabled && details.Status != evergreen.TaskSucceeded {
+		if err = model.TryDequeueAndAbortCommitQueueVersion(projectRef, t.Version, APIServerLockTitle); err != nil {
+			err = errors.Wrapf(err, "Error dequeueing and aborting failed commit queue version")
+			as.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+	}
 	// the task was aborted if it is still in undispatched.
 	// the active state should be inactive.
 	if details.Status == evergreen.TaskUndispatched {

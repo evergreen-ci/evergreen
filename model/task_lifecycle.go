@@ -3,11 +3,13 @@ package model
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -499,6 +501,69 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	}
 
 	return nil
+}
+
+func TryDequeueAndAbortCommitQueueVersion(projectRef *ProjectRef, versionId, requester string) error {
+	p, err := patch.FindOne(patch.ByVersion(versionId))
+	if err != nil {
+		return errors.Wrapf(err, "error finding patch")
+	}
+	if p == nil {
+		return errors.Errorf("No patch for task")
+	}
+
+	if p.Alias != evergreen.CommitQueueAlias {
+		return nil
+	}
+
+	// if task is part of a commit queue, dequeue and abort version
+	cq, err := commitqueue.FindOneId(projectRef.Identifier)
+	if err != nil {
+		return errors.Wrapf(err, "can't get commit queue for id '%s'", projectRef.Identifier)
+	}
+	issue := p.Id.Hex()
+	if p.IsGithubPRPatch() {
+		issue = strconv.Itoa(p.GithubPatchData.PRNumber)
+	}
+	removed, err := cq.Remove(issue)
+	if err != nil {
+		return errors.Wrapf(err, "can't remove item '%s' from queue '%s'", versionId, projectRef.Identifier)
+	}
+	if !removed {
+		return nil
+	}
+	if p.IsPRMergePatch() {
+		env := evergreen.GetEnvironment()
+		sender, err := env.GetSender(evergreen.SenderGithubStatus)
+		if err != nil {
+			grip.Debug(message.WrapError(err, message.Fields{
+				"message":      "error getting environment",
+				"patch_id":     p.Id,
+				"project":      p.Project,
+				"pull_request": issue,
+			}))
+		} else {
+			var url string
+			uiConfig := evergreen.UIConfig{}
+			if err := uiConfig.Get(env); err == nil {
+				url = fmt.Sprintf("%s/version/%s", uiConfig.Url, versionId)
+			}
+			status := message.GithubStatus{
+				Context:     commitqueue.Context,
+				Description: "merge test failed",
+				State:       message.GithubStateFailure,
+				Owner:       p.GithubPatchData.BaseOwner,
+				Repo:        p.GithubPatchData.BaseRepo,
+				Ref:         p.GithubPatchData.HeadHash,
+				URL:         url,
+			}
+			c := message.MakeGithubStatusMessageWithRepo(status)
+			sender.Send(c)
+		}
+	}
+
+	event.LogCommitQueueConcludeTest(p.Id.Hex(), evergreen.MergeTestFailed)
+	return errors.Wrapf(CancelPatch(p, requester), "Error aborting failed commit queue patch")
 }
 
 func evalStepback(t *task.Task, caller, status string, deactivatePrevious bool) error {

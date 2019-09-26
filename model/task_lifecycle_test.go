@@ -10,9 +10,11 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
@@ -1188,6 +1190,103 @@ func TestAbortTask(t *testing.T) {
 	})
 
 }
+
+func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, task.Collection, build.Collection, commitqueue.Collection))
+
+	v := &Version{
+		Id:     "my-version",
+		Status: evergreen.VersionStarted,
+	}
+	p := &patch.Patch{
+		Version: v.Id,
+		GithubPatchData: patch.GithubPatch{
+			PRNumber:  12,
+			HeadOwner: "evergreen-ci",
+			BaseRepo:  "evergreen",
+			Author:    "octocat",
+		},
+		Alias:  evergreen.CommitQueueAlias,
+		Status: evergreen.PatchStarted,
+	}
+	b := build.Build{
+		Id:      "my-build",
+		Version: v.Id,
+	}
+	t1 := &task.Task{
+		Id:        "t1",
+		Activated: true,
+		Status:    evergreen.TaskFailed,
+		Version:   v.Id,
+		BuildId:   b.Id,
+	}
+	t2 := &task.Task{
+		Id:        "t2",
+		Activated: true,
+		Status:    evergreen.TaskUndispatched,
+		Version:   v.Id,
+		BuildId:   b.Id,
+	}
+	t3 := &task.Task{
+		Id:        "t3",
+		Activated: true,
+		Status:    evergreen.TaskStarted,
+		Version:   v.Id,
+		BuildId:   b.Id,
+	}
+	t4 := task.Task{
+		Id:        "t4",
+		Activated: true,
+		Status:    evergreen.TaskDispatched,
+		Version:   v.Id,
+		BuildId:   b.Id,
+	}
+	q := []commitqueue.CommitQueueItem{
+		commitqueue.CommitQueueItem{Issue: "12"},
+		commitqueue.CommitQueueItem{Issue: "42"},
+	}
+	cq := &commitqueue.CommitQueue{ProjectID: "my-project", Processing: true, Queue: q}
+	assert.NoError(t, v.Insert())
+	assert.NoError(t, p.Insert())
+	assert.NoError(t, b.Insert())
+	assert.NoError(t, t1.Insert())
+	assert.NoError(t, t2.Insert())
+	assert.NoError(t, t3.Insert())
+	assert.NoError(t, t4.Insert())
+	assert.NoError(t, commitqueue.InsertQueue(cq))
+
+	pRef := &ProjectRef{Identifier: cq.ProjectID}
+
+	assert.NoError(t, TryDequeueAndAbortCommitQueueVersion(pRef, v.Id, t1.Requester))
+	cq, err := commitqueue.FindOneId("my-project")
+	assert.NoError(t, err)
+	assert.Equal(t, cq.FindItem("12"), -1)
+	assert.Len(t, cq.Queue, 1)
+	assert.False(t, cq.Processing)
+
+	// check that all tasks are now in the correct state
+	tasks, err := task.FindAll(db.Q{})
+	assert.NoError(t, err)
+	aborted := 0
+	finished := 0
+	for _, thisTask := range tasks {
+		if thisTask.Aborted {
+			aborted++
+		}
+		if thisTask.Status == evergreen.TaskFailed {
+			finished++
+		}
+		if thisTask.Status == evergreen.TaskUndispatched {
+			assert.False(t, thisTask.Activated)
+		}
+	}
+	assert.Equal(t, 2, aborted)
+	assert.Equal(t, 1, finished)
+	p, err = patch.FindOne(patch.ByVersion("my-version"))
+	assert.NoError(t, err)
+	assert.NotNil(t, p)
+}
+
 func TestMarkStart(t *testing.T) {
 	Convey("With a task, build and version", t, func() {
 		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection),
