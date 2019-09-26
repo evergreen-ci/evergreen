@@ -984,6 +984,12 @@ func (c *awsClientMock) TerminateInstances(ctx context.Context, input *ec2.Termi
 // StopInstances is a mock for ec2.StopInstances.
 func (c *awsClientMock) StopInstances(ctx context.Context, input *ec2.StopInstancesInput) (*ec2.StopInstancesOutput, error) {
 	c.StopInstancesInput = input
+	c.Instance = &ec2.Instance{
+		InstanceId: aws.String("id"),
+		State: &ec2.InstanceState{
+			Name: aws.String(ec2.InstanceStateNameStopped),
+		},
+	}
 	return &ec2.StopInstancesOutput{}, nil
 }
 
