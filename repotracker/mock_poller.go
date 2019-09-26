@@ -42,17 +42,17 @@ func (d *mockRepoPoller) GetChangedFiles(_ context.Context, commitRevision strin
 	return nil, nil
 }
 
-func (d *mockRepoPoller) GetRemoteConfig(_ context.Context, revision string) (*model.Project, *model.ParserProject, error) {
+func (d *mockRepoPoller) GetRemoteConfig(_ context.Context, revision string) (*model.Project, error) {
 	d.ConfigGets++
 	if d.nextError != nil {
-		return nil, nil, d.clearError()
+		return nil, d.clearError()
 	}
 	if d.badDistro != "" {
 		// change the target distros if we've called addBadDistro, creating a validation warning
 		d.project.BuildVariants[0].RunOn = append(d.project.BuildVariants[0].RunOn, d.badDistro)
 		d.badDistro = ""
 	}
-	return d.project, nil, nil
+	return d.project, nil
 }
 
 func (d *mockRepoPoller) GetRevisionsSince(revision string, maxRevisionsToSearch int) ([]model.Revision, error) {

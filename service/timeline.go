@@ -118,7 +118,7 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 		patch.Patches = nil
 		uiPatches = append(uiPatches, uiPatch{Patch: patch, BaseVersionId: baseVersionId})
 	}
-	versions, err := model.VersionFind(model.VersionByIds(versionIds).WithoutFields(model.VersionConfigKey, model.VersionProjectKey))
+	versions, err := model.VersionFind(model.VersionByIds(versionIds).WithoutFields(model.VersionConfigKey))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error fetching versions for patches"))
 		return

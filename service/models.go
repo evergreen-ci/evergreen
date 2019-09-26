@@ -150,7 +150,7 @@ func getTimelineData(projectName string, versionsToSkip, versionsPerPage int) (*
 	}
 	data.TotalVersions = totalVersions
 
-	q := model.VersionByMostRecentSystemRequester(projectName).WithoutFields(model.VersionConfigKey, model.VersionProjectKey).
+	q := model.VersionByMostRecentSystemRequester(projectName).WithoutFields(model.VersionConfigKey).
 		Skip(versionsToSkip * versionsPerPage).Limit(versionsPerPage)
 
 	// get the most recent versions, to display in their entirety on the page

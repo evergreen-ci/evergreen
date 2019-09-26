@@ -18,8 +18,8 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"github.com/sabhiram/go-git-ignore"
-	"gopkg.in/yaml.v2"
+	ignore "github.com/sabhiram/go-git-ignore"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -241,35 +241,36 @@ type TestSuite struct {
 }
 
 type PluginCommandConf struct {
-	Function string `yaml:"func,omitempty" bson:"func,omitempty"`
+	Function string `yaml:"func,omitempty" bson:"func"`
 	// Type is used to differentiate between setup related commands and actual
 	// testing commands.
-	Type string `yaml:"type,omitempty" bson:"type,omitempty"`
+	Type string `yaml:"type,omitempty" bson:"type"`
 
 	// DisplayName is a human readable description of the function of a given
 	// command.
-	DisplayName string `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
+	DisplayName string `yaml:"display_name,omitempty" bson:"display_name"`
 
 	// Command is a unique identifier for the command configuration. It consists of a
 	// plugin name and a command name.
-	Command string `yaml:"command,omitempty" bson:"command,omitempty"`
+	Command string `yaml:"command,omitempty" bson:"command"`
 
 	// Variants is used to enumerate the particular sets of buildvariants to run
 	// this command configuration on. If it is empty, it is run on all defined
 	// variants.
-	Variants []string `yaml:"variants,omitempty" bson:"variants,omitempty"`
+	Variants []string `yaml:"variants,omitempty" bson:"variants"`
 
 	// TimeoutSecs indicates the maximum duration the command is allowed to run for.
-	TimeoutSecs int `yaml:"timeout_secs,omitempty" bson:"timeout_secs,omitempty"`
+	TimeoutSecs int `yaml:"timeout_secs,omitempty" bson:"timeout_secs"`
 
 	// Params are used to supply configuration specific information.
-	Params map[string]interface{} `yaml:"params,omitempty" bson:"params,omitempty"`
+	// map[string]interface{} is stored as a JSON string.
+	Params map[string]interface{} `yaml:"params,omitempty" bson:"params"`
 
 	// YAML string of Params to store in database
-	ParamsYAML string `yaml:"params_yaml,omitempty" bson:"params_yaml,omitempty"`
+	ParamsYAML string `yaml:"params_yaml,omitempty" bson:"params_yaml"`
 
 	// Vars defines variables that can be used within commands.
-	Vars map[string]string `yaml:"vars,omitempty" bson:"vars,omitempty"`
+	Vars map[string]string `yaml:"vars,omitempty" bson:"vars"`
 
 	Loggers *LoggerConfig `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 }
@@ -290,15 +291,15 @@ func (c *PluginCommandConf) resolveParams() error {
 
 func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	temp := struct {
-		Function    string                 `yaml:"func,omitempty" bson:"func,omitempty"`
-		Type        string                 `yaml:"type,omitempty" bson:"type,omitempty"`
-		DisplayName string                 `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
-		Command     string                 `yaml:"command,omitempty" bson:"command,omitempty"`
-		Variants    []string               `yaml:"variants,omitempty" bson:"variants,omitempty"`
-		TimeoutSecs int                    `yaml:"timeout_secs,omitempty" bson:"timeout_secs,omitempty"`
-		Params      map[string]interface{} `yaml:"params,omitempty" bson:"params,omitempty"`
-		ParamsYAML  string                 `yaml:"params_yaml,omitempty" bson:"params_yaml,omitempty"`
-		Vars        map[string]string      `yaml:"vars,omitempty" bson:"vars,omitempty"`
+		Function    string                 `yaml:"func,omitempty" bson:"func"`
+		Type        string                 `yaml:"type,omitempty" bson:"type"`
+		DisplayName string                 `yaml:"display_name,omitempty" bson:"display_name"`
+		Command     string                 `yaml:"command,omitempty" bson:"command"`
+		Variants    []string               `yaml:"variants,omitempty" bson:"variants"`
+		TimeoutSecs int                    `yaml:"timeout_secs,omitempty" bson:"timeout_secs"`
+		Params      map[string]interface{} `yaml:"params,omitempty" bson:"params"`
+		ParamsYAML  string                 `yaml:"params_yaml,omitempty" bson:"params_yaml"`
+		Vars        map[string]string      `yaml:"vars,omitempty" bson:"vars"`
 		Loggers     *LoggerConfig          `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 	}{}
 
@@ -345,8 +346,8 @@ type ArtifactInstructions struct {
 }
 
 type YAMLCommandSet struct {
-	SingleCommand *PluginCommandConf  `bson:"single_command,omitempty"`
-	MultiCommand  []PluginCommandConf `bson:"multi_command,omitempty"`
+	SingleCommand *PluginCommandConf  `bson:"single_command"`
+	MultiCommand  []PluginCommandConf `bson:"multi_command"`
 }
 
 func (c *YAMLCommandSet) List() []PluginCommandConf {
@@ -847,12 +848,14 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	for _, e := range h.Distro.Expansions {
 		expansions.Put(e.Key, e.Value)
 	}
-	proj, err := LoadProjectFromVersion(v, t.Project, false)
+	proj := &Project{}
+	err = LoadProjectInto([]byte(v.Config), t.Project, proj)
 	if err != nil {
-		return nil, errors.Wrap(err, "error unmarshalling project")
+		return nil, errors.Wrap(err, "error unmarshaling project")
 	}
 	bv := proj.FindBuildVariant(t.BuildVariant)
 	expansions.Update(bv.Expansions)
+
 	return expansions, nil
 }
 
@@ -925,7 +928,6 @@ func (p *Project) FindTaskGroup(name string) *TaskGroup {
 }
 
 // GetTaskGroup returns the task group for a given task from its project
-// Only called by agent so we don't save project to database
 func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 	if tc == nil {
 		return nil, errors.New("unable to get task group: TaskConfig is nil")
@@ -939,8 +941,8 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 	if tc.Version == nil {
 		return nil, errors.New("version is nil")
 	}
-	p, err := LoadProjectFromVersion(tc.Version, tc.Task.Project, false)
-	if err != nil {
+	var p Project
+	if err := LoadProjectInto([]byte(tc.Version.Config), tc.Task.Project, &p); err != nil {
 		return nil, errors.Wrap(err, "error retrieving project for task group")
 	}
 	if taskGroup == "" {
@@ -968,7 +970,8 @@ func FindProjectFromVersionID(versionStr string) (*Project, error) {
 		return nil, errors.Errorf("nil version returned for version '%s'", versionStr)
 	}
 
-	project, err := LoadProjectFromVersion(ver, ver.Identifier, true)
+	project := &Project{}
+	err = LoadProjectInto([]byte(ver.Config), ver.Identifier, project)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to load project config for version %s", versionStr)
 	}
@@ -1012,7 +1015,7 @@ func FindLastKnownGoodProject(identifier string) (*Project, error) {
 		return nil, errors.Wrapf(err, "Error finding recent valid version for '%s'", identifier)
 	}
 	if lastGoodVersion != nil {
-		project, err = LoadProjectFromVersion(lastGoodVersion, identifier, true)
+		err = LoadProjectInto([]byte(lastGoodVersion.Config), identifier, project)
 		if err != nil {
 			return nil, errors.Wrapf(err, "Error loading project from "+
 				"last good version for project, %s", lastGoodVersion.Identifier)

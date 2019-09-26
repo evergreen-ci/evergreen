@@ -205,8 +205,6 @@ tasks:
 	assert.NoError(BlockTaskGroupTasks("task_id_1"))
 	found, err := task.FindOneId("one_1")
 	assert.NoError(err)
-	require.NotNil(found)
-	require.NotEmpty(found.DependsOn)
 	assert.Equal("task_id_1", found.DependsOn[0].TaskId)
 
 	queue, err = LoadTaskQueue("distro_1")

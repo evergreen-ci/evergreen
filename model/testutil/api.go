@@ -14,7 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 type TestModelData struct {
@@ -52,10 +52,9 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 
 	modelData := &TestModelData{}
 
-	// Unmarshal the project configuration into a struct
+	// Unmarshall the project configuration into a struct
 	project := &model.Project{}
-	pp, err := model.LoadProjectInto(projectConfig, "test", project)
-	if err != nil {
+	if err = model.LoadProjectInto(projectConfig, "test", project); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal project config")
 	}
 
@@ -66,11 +65,10 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 			Name: taskDisplayName,
 		}},
 	}
-	project.BuildVariants = append(project.BuildVariants, bv)
 
-	// Marshal the parser project YAML for storage
-	pp.AddBuildVariant(variant, []string{taskDisplayName})
-	projectYamlBytes, err := yaml.Marshal(pp)
+	project.BuildVariants = append(project.BuildVariants, bv)
+	// Marshall the project YAML for storage
+	projectYamlBytes, err := yaml.Marshal(project)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal project config")
 	}
@@ -171,13 +169,12 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 
 	// Insert the version document
 	v := &model.Version{
-		Id:            taskOne.Version,
-		BuildIds:      []string{taskOne.BuildId},
-		ParserProject: pp,
-		Config:        string(projectYamlBytes),
+		Id:       taskOne.Version,
+		BuildIds: []string{taskOne.BuildId},
+		Config:   string(projectYamlBytes),
 	}
 	if err = v.Insert(); err != nil {
-		return nil, errors.Wrap(err, "failed to insert version")
+		return nil, errors.Wrap(err, "failed to insert version: ")
 	}
 
 	// Insert the build that contains the tasks

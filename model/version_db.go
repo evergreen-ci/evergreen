@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
-	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -286,27 +285,6 @@ func VersionUpdateOne(query interface{}, update interface{}) error {
 		query,
 		update,
 	)
-}
-
-// UpdateVersionProject updates the ParserProject field for the version.
-// Note this does not increment the config update number, as we are not changing the used config, simply updating a new field.
-func UpdateVersionProject(versionID string, versionNumber int, pp *ParserProject) error {
-	if versionID == "" {
-		return errors.New("no version ID given")
-	}
-	return errors.Wrap(VersionUpdateOne(
-		bson.M{
-			VersionIdKey: versionID,
-			"$or": []bson.M{
-				bson.M{VersionConfigNumberKey: bson.M{"$exists": false}},
-				bson.M{VersionConfigNumberKey: versionNumber},
-			},
-		},
-		bson.M{
-			"$set": bson.M{
-				VersionProjectKey: pp,
-			},
-		}), "error updating version")
 }
 
 func AddSatisfiedTrigger(versionID, definitionID string) error {
