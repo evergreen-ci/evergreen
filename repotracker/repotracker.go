@@ -7,9 +7,11 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/manifest"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
@@ -717,122 +719,143 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 	if err != nil {
 		return errors.WithStack(err)
 	}
+	// generate all task Ids so that we can easily reference them for dependencies
+	sourceRev := ""
+	if metadata.SourceVersion != nil {
+		sourceRev = metadata.SourceVersion.Revision
+	}
+	taskIds := model.NewTaskIdTable(project, v, sourceRev, metadata.TriggerDefinitionID)
+
+	// create all builds for the version
+	buildsToCreate := []interface{}{}
+	tasksToCreate := task.Tasks{}
+	for _, buildvariant := range project.BuildVariants {
+		if buildvariant.Disabled {
+			continue
+		}
+		var match bool
+		if len(aliases) > 0 {
+			match, err = aliases.HasMatchingVariant(buildvariant.Name, buildvariant.Tags)
+			if err != nil {
+				grip.Error(err)
+				continue
+			}
+			if !match {
+				continue
+			}
+		}
+		args := model.BuildCreateArgs{
+			Project:       *project,
+			Version:       *v,
+			TaskIDs:       taskIds,
+			BuildName:     buildvariant.Name,
+			Activated:     false,
+			SourceRev:     sourceRev,
+			DefinitionID:  metadata.TriggerDefinitionID,
+			Aliases:       aliases,
+			DistroAliases: distroAliases,
+		}
+		b, tasks, err := model.CreateBuildFromVersionNoInsert(args)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "error creating build",
+			}))
+			continue
+		}
+		buildsToCreate = append(buildsToCreate, *b)
+		for _, t := range tasks {
+			tasksToCreate = append(tasksToCreate, t)
+		}
+
+		var lastActivated *model.Version
+		activateAt := time.Now()
+		if metadata.TriggerID == "" && v.Requester != evergreen.AdHocRequester {
+			lastActivated, err = model.VersionFindOne(model.VersionByLastVariantActivation(ref.Identifier, buildvariant.Name))
+			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": "error finding last activated",
+					"version": v.Id,
+				}))
+			}
+
+			var lastActivation *time.Time
+			if lastActivated != nil {
+				for _, buildStatus := range lastActivated.BuildVariants {
+					if buildStatus.BuildVariant == buildvariant.Name && buildStatus.Activated {
+						lastActivation = &buildStatus.ActivateAt
+						break
+					}
+				}
+			}
+
+			if lastActivation != nil {
+				activateAt = lastActivation.Add(time.Minute * time.Duration(ref.GetBatchTime(&buildvariant)))
+			}
+		}
+
+		grip.Debug(message.Fields{
+			"message": "activating build",
+			"name":    buildvariant.Name,
+			"project": ref.Identifier,
+			"version": v.Id,
+			"time":    activateAt,
+			"runner":  RunnerName,
+		})
+		v.BuildIds = append(v.BuildIds, b.Id)
+		v.BuildVariants = append(v.BuildVariants, model.VersionBuildStatus{
+			BuildVariant: buildvariant.Name,
+			Activated:    false,
+			ActivateAt:   activateAt,
+			BuildId:      b.Id,
+		})
+	}
 
 	txFunc := func(sessCtx mongo.SessionContext) (bool, error) {
-		// generate all task Ids so that we can easily reference them for dependencies
-		sourceRev := ""
-		if metadata.SourceVersion != nil {
-			sourceRev = metadata.SourceVersion.Revision
-		}
-		taskIds := model.NewTaskIdTable(project, v, sourceRev, metadata.TriggerDefinitionID)
-
 		err := sessCtx.StartTransaction()
 		if err != nil {
 			return false, errors.Wrap(err, "error starting transaction")
 		}
-		// create all builds for the version
-		for _, buildvariant := range project.BuildVariants {
-			if buildvariant.Disabled {
-				continue
-			}
-			var match bool
-			if len(aliases) > 0 {
-				match, err = aliases.HasMatchingVariant(buildvariant.Name, buildvariant.Tags)
-				if err != nil {
-					grip.Error(err)
-					continue
-				}
-				if !match {
-					continue
-				}
-			}
-			args := model.BuildCreateArgs{
-				Project:       *project,
-				Version:       *v,
-				TaskIDs:       taskIds,
-				BuildName:     buildvariant.Name,
-				Activated:     false,
-				SourceRev:     sourceRev,
-				DefinitionID:  metadata.TriggerDefinitionID,
-				Aliases:       aliases,
-				Session:       sessCtx,
-				DistroAliases: distroAliases,
-			}
-			var buildId string
-			buildId, err = model.CreateBuildFromVersion(args)
-			if err != nil {
-				abortErr := sessCtx.AbortTransaction(sessCtx)
-				grip.Notice(message.Fields{
-					"message":    "aborting transaction",
-					"cause":      "can't insert build items",
-					"variant":    buildvariant.Name,
-					"version":    v.Id,
-					"insert_err": err.Error(),
-					"abort_err":  abortErr.Error(),
-				})
-				if isTransientTxErr(err, v) {
-					return true, nil
-				}
-				return false, errors.Wrapf(err, "error inserting build %s", buildId)
-			}
-
-			var lastActivated *model.Version
-			activateAt := time.Now()
-			if metadata.TriggerID == "" && v.Requester != evergreen.AdHocRequester {
-				lastActivated, err = model.VersionFindOne(model.VersionByLastVariantActivation(ref.Identifier, buildvariant.Name))
-				if err != nil {
-					grip.Error(message.WrapError(err, message.Fields{
-						"message": "error finding last activated",
-						"version": v.Id,
-					}))
-				}
-
-				var lastActivation *time.Time
-				if lastActivated != nil {
-					for _, buildStatus := range lastActivated.BuildVariants {
-						if buildStatus.BuildVariant == buildvariant.Name && buildStatus.Activated {
-							lastActivation = &buildStatus.ActivateAt
-							break
-						}
-					}
-				}
-
-				if lastActivation != nil {
-					activateAt = lastActivation.Add(time.Minute * time.Duration(ref.GetBatchTime(&buildvariant)))
-				}
-			}
-
-			grip.Debug(message.Fields{
-				"message": "activating build",
-				"name":    buildvariant.Name,
-				"project": ref.Identifier,
-				"version": v.Id,
-				"time":    activateAt,
-				"runner":  RunnerName,
-			})
-			v.BuildIds = append(v.BuildIds, buildId)
-			v.BuildVariants = append(v.BuildVariants, model.VersionBuildStatus{
-				BuildVariant: buildvariant.Name,
-				Activated:    false,
-				ActivateAt:   activateAt,
-				BuildId:      buildId,
-			})
-		}
-
 		_, err = evergreen.GetEnvironment().DB().Collection(model.VersionCollection).InsertOne(sessCtx, v)
 		if err != nil {
-			abortErr := sessCtx.AbortTransaction(sessCtx)
+			_ = sessCtx.AbortTransaction(sessCtx)
 			grip.Notice(message.Fields{
 				"message":    "aborting transaction",
 				"cause":      "can't insert version",
 				"version":    v.Id,
 				"insert_err": err.Error(),
-				"abort_err":  abortErr.Error(),
 			})
 			if isTransientTxErr(err, v) {
 				return true, nil
 			}
 			return false, errors.Wrapf(err, "error inserting version %s", v.Id)
+		}
+		_, err = evergreen.GetEnvironment().DB().Collection(build.Collection).InsertMany(sessCtx, buildsToCreate)
+		if err != nil {
+			_ = sessCtx.AbortTransaction(sessCtx)
+			grip.Error(message.Fields{
+				"message":    "aborting transaction",
+				"cause":      "can't insert builds",
+				"version":    v.Id,
+				"insert_err": err.Error(),
+			})
+			if isTransientTxErr(err, v) {
+				return true, nil
+			}
+			return false, errors.Wrap(err, "error inserting builds")
+		}
+		err = tasksToCreate.InsertUnordered(sessCtx)
+		if err != nil {
+			_ = sessCtx.AbortTransaction(sessCtx)
+			grip.Error(message.Fields{
+				"message":    "aborting transaction",
+				"cause":      "can't insert tasks",
+				"version":    v.Id,
+				"insert_err": err.Error(),
+			})
+			if isTransientTxErr(err, v) {
+				return true, nil
+			}
+			return false, errors.Wrap(err, "error inserting tasks")
 		}
 		err = sessCtx.CommitTransaction(sessCtx)
 		if err != nil {
