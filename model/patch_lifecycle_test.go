@@ -307,8 +307,7 @@ func TestMakePatchedConfig(t *testing.T) {
 			So(projectData, ShouldNotBeNil)
 
 			project := &Project{}
-			_, err = LoadProjectInto(projectData, "", project)
-			So(err, ShouldBeNil)
+			So(LoadProjectInto(projectData, "", project), ShouldBeNil)
 			So(len(project.Tasks), ShouldEqual, 2)
 		})
 		Convey("an empty base config should be patched correctly", func() {
@@ -329,8 +328,7 @@ func TestMakePatchedConfig(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			project := &Project{}
-			_, err = LoadProjectInto(projectData, "", project)
-			So(err, ShouldBeNil)
+			So(LoadProjectInto(projectData, "", project), ShouldBeNil)
 			So(project, ShouldNotBeNil)
 
 			So(len(project.Tasks), ShouldEqual, 1)

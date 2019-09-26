@@ -11,7 +11,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
-	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -314,13 +313,20 @@ func (s *GenerateSuite) TestParseProjectFromJSON() {
 	s.Len(g.Functions, 2)
 	s.Contains(g.Functions, "echo-hi")
 	s.Equal("shell.exec", g.Functions["echo-hi"].List()[0].Command)
+
+	s.Require().NoError(g.Functions["echo-hi"].List()[0].resolveParams())
 	s.Equal("echo hi", g.Functions["echo-hi"].List()[0].Params["script"])
+
+	s.Require().NoError(g.Functions["echo-bye"].List()[0].resolveParams())
 	s.Equal("echo bye", g.Functions["echo-bye"].List()[0].Params["script"])
+
+	s.Require().NoError(g.Functions["echo-bye"].List()[1].resolveParams())
 	s.Equal("echo bye again", g.Functions["echo-bye"].List()[1].Params["script"])
 
 	s.Len(g.Tasks, 1)
 	s.Equal("git.get_project", g.Tasks[0].Commands[0].Command)
 
+	s.Require().NoError(g.Tasks[0].Commands[0].resolveParams())
 	s.Equal("src", g.Tasks[0].Commands[0].Params["directory"])
 	s.Equal("echo-hi", g.Tasks[0].Commands[1].Function)
 	s.Equal("test", g.Tasks[0].Name)
@@ -513,67 +519,31 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 
 func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	p := &Project{}
-	pp, err := LoadProjectInto([]byte(sampleProjYml), "", p)
+	err := LoadProjectInto([]byte(sampleProjYml), "", p)
 	s.NoError(err)
 	cachedProject := cacheProjectData(p)
 	g := sampleGeneratedProject
-	newPP, newConfig, err := g.addGeneratedProjectToConfig(pp, "", cachedProject)
+	config, err := g.addGeneratedProjectToConfig(sampleProjYml, cachedProject)
 	s.NoError(err)
-	s.NotEmpty(newPP)
-	s.NotNil(newConfig)
-	s.Require().Len(newPP.Tasks, 6)
-	s.Require().Len(newPP.BuildVariants, 3)
-	s.Require().Len(newPP.Functions, 2)
-	s.Equal(newPP.Tasks[0].Name, "say-hi")
-	s.Equal(newPP.Tasks[1].Name, "say-bye")
-	s.Equal(newPP.Tasks[2].Name, "a-depended-on-task")
-	s.Equal(newPP.Tasks[3].Name, "task_that_has_dependencies")
-	s.Equal(newPP.Tasks[4].Name, "new_task")
-	s.Equal(newPP.Tasks[5].Name, "another_task")
+	s.Contains(config, "say-hi")
+	s.Contains(config, "new_task")
+	s.Contains(config, "a_variant")
+	s.Contains(config, "new_buildvariant")
+	s.Contains(config, "a_function")
+	s.Contains(config, "new_function")
+	s.Contains(config, "say-bye")
+	s.Contains(config, "my_display_task_new_variant")
+	s.Contains(config, "my_display_task_old_variant")
 
-	newPP2, newConfig2, err := g.addGeneratedProjectToConfig(nil, sampleProjYml, cachedProject)
+	config, err = g.addGeneratedProjectToConfig(sampleProjYmlNoFunctions, cachedProject)
 	s.NoError(err)
-	s.NotEmpty(newPP2)
-	s.Equal(newConfig, newConfig2)
-
-	s.Equal(newPP.BuildVariants[0].Name, "a_variant")
-	s.Require().Len(newPP.BuildVariants[0].DisplayTasks, 1)
-	s.Equal(newPP.BuildVariants[0].DisplayTasks[0].Name, "my_display_task_old_variant")
-
-	s.Equal(newPP.BuildVariants[1].Name, "new_buildvariant")
-	s.Len(newPP.BuildVariants[1].DisplayTasks, 0)
-
-	s.Equal(newPP.BuildVariants[2].Name, "another_variant")
-	s.Require().Len(newPP.BuildVariants[2].DisplayTasks, 1)
-	s.Equal(newPP.BuildVariants[2].DisplayTasks[0].Name, "my_display_task_new_variant")
-
-	_, ok := newPP.Functions["a_function"]
-	s.True(ok)
-	_, ok = newPP.Functions["new_function"]
-	s.True(ok)
-
-	// verify addGeneratedProjectToConfig returned the updated config
-	ppConfig, err := yaml.Marshal(newPP)
-	s.NoError(err)
-	s.Equal(newConfig, string(ppConfig))
-
-	pp, err = LoadProjectInto([]byte(sampleProjYmlNoFunctions), "", p)
-	s.NoError(err)
-	newPP, newConfig, err = g.addGeneratedProjectToConfig(pp, "", cachedProject)
-	s.NoError(err)
-	s.NotEmpty(newConfig)
-	s.NotNil(newPP)
-	s.Require().Len(newPP.Tasks, 5)
-	s.Require().Len(newPP.BuildVariants, 3)
-	s.Len(newPP.Functions, 1)
-	s.Equal(newPP.Tasks[0].Name, "say-hi")
-	s.Equal(newPP.Tasks[1].Name, "say-bye")
-	s.Equal(newPP.Tasks[3].Name, "new_task")
-
-	newPP2, newConfig2, err = g.addGeneratedProjectToConfig(nil, sampleProjYmlNoFunctions, cachedProject)
-	s.NoError(err)
-	s.NotEmpty(newPP2)
-	s.Equal(newConfig, newConfig2)
+	s.Contains(config, "say-hi")
+	s.Contains(config, "new_task")
+	s.Contains(config, "a_variant")
+	s.Contains(config, "new_buildvariant")
+	s.Contains(config, "say-bye")
+	s.Contains(config, "my_display_task_new_variant")
+	s.Contains(config, "my_display_task_old_variant")
 }
 
 func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
@@ -600,7 +570,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	g := sampleGeneratedProject
 	g.TaskID = "task_that_called_generate_task"
 	p, v, t, pm, err := g.NewVersion()
-	s.Require().NoError(err)
+	s.NoError(err)
 	s.NoError(g.Save(context.Background(), p, v, t, pm))
 	s.Equal(5, v.ConfigUpdateNumber)
 	builds, err := build.Find(db.Query(bson.M{}))

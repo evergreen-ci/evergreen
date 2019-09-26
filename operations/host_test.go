@@ -132,7 +132,6 @@ func TestMakeAWSTags(t *testing.T) {
 				CanBeModified: true,
 			},
 		})
-		assert.NoError(t, err)
 	})
 	t.Run("ParsingError", func(t *testing.T) {
 		badTag := "incorrect"

@@ -35,15 +35,14 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 	metadata.Alias = args.Alias
 
 	// get the downstream config
-	var proj *model.Project
-	var pp *model.ParserProject
+	var config *model.Project
 	if args.ConfigFile != "" {
-		proj, pp, err = makeDownstreamConfigFromFile(args.DownstreamProject, args.ConfigFile)
+		config, err = makeDownstreamConfigFromFile(args.DownstreamProject, args.ConfigFile)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
 	} else if args.Command != "" {
-		proj, err = makeDownstreamConfigFromCommand(args.DownstreamProject, args.Command, args.GenerateFile)
+		config, err = makeDownstreamConfigFromCommand(args.DownstreamProject, args.Command, args.GenerateFile)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -52,12 +51,7 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 	}
 
 	// create version
-	projectInfo := &repotracker.ProjectInfo{
-		Ref:                 &args.DownstreamProject,
-		Project:             proj,
-		IntermediateProject: pp,
-	}
-	v, err := repotracker.CreateVersionFromConfig(context.Background(), projectInfo, metadata, false, nil)
+	v, err := repotracker.CreateVersionFromConfig(context.Background(), &args.DownstreamProject, config, metadata, false, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating version")
 	}
@@ -107,33 +101,33 @@ func metadataFromVersion(source model.Version, ref model.ProjectRef) (repotracke
 	return metadata, nil
 }
 
-func makeDownstreamConfigFromFile(ref model.ProjectRef, file string) (*model.Project, *model.ParserProject, error) {
+func makeDownstreamConfigFromFile(ref model.ProjectRef, file string) (*model.Project, error) {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error getting evergreen settings")
+		return nil, errors.Wrap(err, "error getting evergreen settings")
 	}
 	token, err := settings.GetGithubOauthToken()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 	configFile, err := thirdparty.GetGithubFile(ctx, token, ref.Owner, ref.Repo, file, "")
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "error fetching project file for '%s'", ref.Identifier)
+		return nil, errors.Wrapf(err, "error fetching project file for '%s'", ref.Identifier)
 	}
 	fileContents, err := base64.StdEncoding.DecodeString(*configFile.Content)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "unable to decode config file for '%s'", ref.Identifier)
+		return nil, errors.Wrapf(err, "unable to decode config file for '%s'", ref.Identifier)
 	}
 
 	config := model.Project{}
-	pp, err := model.LoadProjectInto(fileContents, ref.Identifier, &config)
+	err = model.LoadProjectInto(fileContents, ref.Identifier, &config)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "error parsing config file for '%s'", ref.Identifier)
+		return nil, errors.Wrapf(err, "error parsing config file for '%s'", ref.Identifier)
 	}
-	return &config, pp, nil
+	return &config, nil
 }
 
 func makeDownstreamConfigFromCommand(ref model.ProjectRef, command, generateFile string) (*model.Project, error) {

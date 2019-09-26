@@ -156,7 +156,7 @@ func (s *StatUnitsSuite) TestSysInfoCollector() {
 	m1, ok1 := s.sender.GetMessageSafe()
 	if s.True(ok1) {
 		s.True(m1.Logged)
-		s.True(strings.Contains(m1.Message.String(), "cpu-total"), m1.Message.String())
+		s.True(strings.Contains(m1.Message.String(), "cpu"), m1.Message.String())
 	}
 
 	m2, ok2 := s.sender.GetMessageSafe()

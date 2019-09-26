@@ -8,7 +8,7 @@ imports:
   - name: github.com/stretchr/testify
     version: 890a5c3458b43e6104ff5da8dfa139d013d77544
   - name: github.com/mongodb/grip
-    version: a5082d343c8f1cf463072df3f65c664c18bdfcaf
+    version: b1dabf523db900adb1bce209a0df2a459eae1f7f
   - name: github.com/evergreen-ci/gimlet
     version: 8a317d725d0315a97c5d0c08ec04921f3ba498d5
   - name: github.com/tychoish/bond

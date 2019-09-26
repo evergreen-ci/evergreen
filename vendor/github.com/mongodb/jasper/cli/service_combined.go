@@ -68,7 +68,9 @@ func serviceCommandCombined(cmd string, operation serviceOperation) cli.Command 
 				newRESTDaemon(c.String(restHostFlagName), c.Int(restPortFlagName), manager, makeLogger(c)),
 				newRPCDaemon(c.String(rpcHostFlagName), c.Int(rpcPortFlagName), manager, c.String(rpcCredsFilePathFlagName), makeLogger(c)),
 			)
-			config := serviceConfig(CombinedService, buildRunCommand(c, CombinedService), c.String(userFlagName))
+
+			config := serviceConfig(CombinedService, buildRunCommand(c, CombinedService))
+			config.UserName = c.String(userFlagName)
 
 			if err := operation(daemon, config); !c.Bool(quietFlagName) {
 				return err
