@@ -120,19 +120,19 @@ func TestMakeAWSTags(t *testing.T) {
 	t.Run("OK", func(t *testing.T) {
 		tagSlice := []string{"key1=value1", "key2=value2"}
 		tags, err := makeAWSTags(tagSlice)
-		assert.Equal(t, tags, []host.Tag{
-			host.Tag{
-				Key:           "key1",
-				Value:         "value1",
-				CanBeModified: true,
-			},
-			host.Tag{
-				Key:           "key2",
-				Value:         "value2",
-				CanBeModified: true,
-			},
+		require.NoError(t, err)
+
+		assert.Contains(t, tags, host.Tag{
+			Key:           "key1",
+			Value:         "value1",
+			CanBeModified: true,
 		})
-		assert.NoError(t, err)
+
+		assert.Contains(t, tags, host.Tag{
+			Key:           "key2",
+			Value:         "value2",
+			CanBeModified: true,
+		})
 	})
 	t.Run("ParsingError", func(t *testing.T) {
 		badTag := "incorrect"
