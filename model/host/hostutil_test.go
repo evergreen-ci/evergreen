@@ -264,7 +264,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 		},
 		"ForceReinstallJasperCommand": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			cmd := h.ForceReinstallJasperCommand(settings)
-			assert.Equal(t, "/foo/jasper_cli.exe jasper service force-reinstall rpc --host=0.0.0.0 --port=12345 --creds_path=/bar/bat.txt --user=service-user", cmd)
+			assert.Equal(t, `/foo/jasper_cli.exe jasper service force-reinstall rpc --host=0.0.0.0 --port=12345 --creds_path=/bar/bat.txt --user=.\\\\service-user`, cmd)
 		},
 		"WriteJasperCredentialsFileCommand": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			creds, err := newMockCredentials()
@@ -887,7 +887,7 @@ func TestSetUserDataHostProvisioned(t *testing.T) {
 	}
 }
 
-func TestGenerateServicePassword(t *testing.T) {
+func TestCreateServicePassword(t *testing.T) {
 	require.NoError(t, db.Clear(Collection))
 	defer func() {
 		assert.NoError(t, db.Clear(Collection))
@@ -896,7 +896,7 @@ func TestGenerateServicePassword(t *testing.T) {
 		Arch: distro.ArchWindowsAmd64,
 	}}
 	require.NoError(t, h.Insert())
-	require.NoError(t, h.GenerateServicePassword())
+	require.NoError(t, h.CreateServicePassword())
 	password := h.ServicePassword
 	assert.NotEmpty(t, password)
 	dbHost, err := FindOneId(h.Id)

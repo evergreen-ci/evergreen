@@ -24,11 +24,10 @@ import (
 )
 
 type Host struct {
-	Id     string `bson:"_id" json:"id"`
-	Host   string `bson:"host_id" json:"host"`
-	User   string `bson:"user" json:"user"`
-	Secret string `bson:"secret" json:"secret"`
-	// The password for the service account.
+	Id              string        `bson:"_id" json:"id"`
+	Host            string        `bson:"host_id" json:"host"`
+	User            string        `bson:"user" json:"user"`
+	Secret          string        `bson:"secret" json:"secret"`
 	ServicePassword string        `bson:"service_password,omitempty" json:"service_password,omitempty" mapstructure:"service_password,omitempty"`
 	Tag             string        `bson:"tag" json:"tag"`
 	Distro          distro.Distro `bson:"distro" json:"distro"`

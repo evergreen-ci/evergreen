@@ -267,7 +267,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 		})
 		return nil
 	case distro.BootstrapMethodSSH:
-		if err = j.setupJasper(ctx); err != nil {
+		if err = j.setupJasper(ctx, settings); err != nil {
 			return errors.Wrapf(err, "error putting Jasper on host '%s'", targetHost.Id)
 		}
 	}
@@ -299,7 +299,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 // setupJasper sets up the Jasper service on the host by putting the credentials
 // on the host, downloading the latest version of Jasper, and restarting the
 // Jasper service.
-func (j *setupHostJob) setupJasper(ctx context.Context) error {
+func (j *setupHostJob) setupJasper(ctx context.Context, settings *evergreen.Settings) error {
 	cloudHost, err := cloud.GetCloudHost(ctx, j.host, j.env.Settings())
 	if err != nil {
 		return errors.Wrapf(err, "failed to get cloud host for %s", j.host.Id)
@@ -310,7 +310,7 @@ func (j *setupHostJob) setupJasper(ctx context.Context) error {
 		return errors.Wrapf(err, "error getting ssh options for host %s", j.host.Id)
 	}
 
-	if err := j.setupServiceUser(ctx, sshOptions); err != nil {
+	if err := j.setupServiceUser(ctx, settings, sshOptions); err != nil {
 		return errors.Wrap(err, "error setting up service user")
 	}
 
@@ -379,20 +379,27 @@ func (j *setupHostJob) putJasperCredentials(ctx context.Context, sshOptions []st
 	return nil
 }
 
-// setupServiceUser runs the SSH command on the host that sets up the service
+// setupServiceUser runs the SSH commands on the host that sets up the service
 // user on the host.
-func (j *setupHostJob) setupServiceUser(ctx context.Context, sshOptions []string) error {
+func (j *setupHostJob) setupServiceUser(ctx context.Context, settings *evergreen.Settings, sshOptions []string) error {
 	if !j.host.Distro.IsWindows() {
 		return nil
 	}
 
-	cmd, err := j.host.SetupServiceUserCommands()
+	cmds, err := j.host.SetupServiceUserCommands()
 	if err != nil {
 		return errors.Wrap(err, "could not get command to set up service user")
 	}
-	if logs, err := j.host.RunSSHCommand(ctx, cmd, sshOptions); err != nil {
+
+	path := filepath.Join(j.host.Distro.HomeDir(), "setup-user.ps1")
+	if err := j.copyScript(ctx, settings, j.host, path, cmds); err != nil {
+		return errors.Wrap(err, "error copying script to set up service user")
+	}
+
+	if logs, err := j.host.RunSSHCommand(ctx, fmt.Sprintf("powershell ./%s && rm -f ./%s", filepath.Base(path), filepath.Base(path)), sshOptions); err != nil {
 		return errors.Wrapf(err, "error while setting up service user: command returned %s", logs)
 	}
+
 	return nil
 }
 

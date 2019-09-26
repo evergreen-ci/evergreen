@@ -245,8 +245,11 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 		params = append(params, fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
 	}
 
-	if h.Distro.BootstrapSettings.ServiceUser != "" {
-		params = append(params, fmt.Sprintf("--user=%s", h.Distro.BootstrapSettings.ServiceUser))
+	if user := h.Distro.BootstrapSettings.ServiceUser; user != "" {
+		if h.Distro.IsWindows() {
+			user = `.\\\\` + user
+		}
+		params = append(params, fmt.Sprintf("--user=%s", user))
 		if h.ServicePassword != "" {
 			params = append(params, fmt.Sprintf("--password=%s", h.ServicePassword))
 		}
@@ -382,7 +385,7 @@ func (h *Host) SetupServiceUserCommands() (string, error) {
 		return "", errors.New("distro is missing service user name")
 	}
 	if h.ServicePassword == "" {
-		if err := h.GenerateServicePassword(); err != nil {
+		if err := h.CreateServicePassword(); err != nil {
 			return "", errors.Wrap(err, "could not generate service user's password")
 		}
 	}
@@ -393,12 +396,13 @@ func (h *Host) SetupServiceUserCommands() (string, error) {
 
 	return strings.Join(
 		[]string{
-			// Create new passwordless user.
+			// Create new user.
 			cmd(fmt.Sprintf("net user %s %s /add", h.Distro.BootstrapSettings.ServiceUser, h.ServicePassword)),
 			// Add the user to the Administrators group.
 			cmd(fmt.Sprintf("net localgroup Administrators %s /add", h.Distro.BootstrapSettings.ServiceUser)),
-			// PowerShell script
-			// source: https://gallery.technet.microsoft.com/scriptcenter/Grant-Log-on-as-a-service-11a50893"
+			// Allow the user to run the service by granting the "Log on as a
+			// service" right.
+			// source: https://gallery.technet.microsoft.com/scriptcenter/Grant-Log-on-as-a-service-11a50893
 			fmt.Sprintf(`
 $accountToAdd = "%s"
 $sidstr = $null
@@ -455,8 +459,8 @@ SeServiceLogonRight = $($currentSetting)
 `}, "\r\n"), nil
 }
 
-// GenerateServicePassword creates the password for the host's service user.
-func (h *Host) GenerateServicePassword() error {
+// CreateServicePassword creates the password for the host's service user.
+func (h *Host) CreateServicePassword() error {
 	password := util.RandomString()
 	err := UpdateOne(
 		bson.M{IdKey: h.Id},
