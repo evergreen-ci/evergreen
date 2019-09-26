@@ -77,13 +77,15 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 
 	d := fetchTestDistro()
 	d.Provider = evergreen.ProviderNameEc2OnDemand
-	h := host.NewIntent(d, d.GenerateName(), d.Provider, host.CreateOptions{
+	intent := host.NewIntent(d, d.GenerateName(), d.Provider, host.CreateOptions{
 		UserName: evergreen.User,
 		UserHost: false,
 	})
-	assert.NoError(h.Insert())
-	h, err := m.SpawnHost(ctx, h)
+	assert.NoError(intent.Insert())
+	h, err := m.SpawnHost(ctx, intent)
 	assert.NoError(err)
+	assert.NoError(intent.Remove())
+	assert.NoError(h.Insert())
 	foundHosts, err := host.Find(host.IsUninitialized)
 	assert.NoError(err)
 	assert.Len(foundHosts, 1)
@@ -121,13 +123,15 @@ func TestSpawnEC2InstanceSpot(t *testing.T) {
 	require.NoError(m.client.Create(m.credentials, defaultRegion))
 	d := fetchTestDistro()
 	d.Provider = evergreen.ProviderNameEc2Spot
-	h := host.NewIntent(d, d.GenerateName(), d.Provider, host.CreateOptions{
+	intent := host.NewIntent(d, d.GenerateName(), d.Provider, host.CreateOptions{
 		UserName: evergreen.User,
 		UserHost: false,
 	})
-	assert.NoError(h.Insert())
-	h, err := m.SpawnHost(ctx, h)
+	assert.NoError(intent.Insert())
+	h, err := m.SpawnHost(ctx, intent)
 	assert.NoError(err)
+	assert.NoError(intent.Remove())
+	assert.NoError(h.Insert())
 	foundHosts, err := host.Find(host.IsUninitialized)
 	assert.NoError(err)
 	assert.Len(foundHosts, 1)
