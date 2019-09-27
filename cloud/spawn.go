@@ -119,7 +119,7 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 	}
 
 	// modify the setup script to add the user's public key
-	d.Setup += fmt.Sprintf("\necho \"\n%v\" >> ~%v/.ssh/authorized_keys\n", so.PublicKey, d.User)
+	d.Setup += fmt.Sprintf("\necho \"\n%s\" >> %s/.ssh/authorized_keys\n", so.PublicKey, d.HomeDir())
 
 	// fake out replacing spot instances with on-demand equivalents
 	if d.Provider == evergreen.ProviderNameEc2Spot || d.Provider == evergreen.ProviderNameEc2Fleet {

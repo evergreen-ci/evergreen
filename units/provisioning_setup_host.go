@@ -627,25 +627,25 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 		// run the setup script with the agent
 		if logs, err := h.RunSSHCommand(ctx, h.SetupCommand(), sshOptions); err != nil {
 			// kim: TODO: remove this once testing is done
-			// grip.Error(message.WrapError(err, message.Fields{
-			//     "message": "kim: failed to run setup script on host",
-			//     "host":    h.Id,
-			//     "distro":  h.Distro.Id,
-			//     "logs":    logs,
-			//     "job":     j.ID(),
-			// }))
-			// if err := h.MarkAsProvisioned(); err != nil {
-			//     return errors.Wrapf(err, "error marking host %s as provisioned", h.Id)
-			// }
-			// return nil
-			grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
-				"operation": "setting host unprovisioned",
-				"host":      h.Id,
-				"distro":    h.Distro.Id,
-				"job":       j.ID(),
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "kim: failed to run setup script on host",
+				"host":    h.Id,
+				"distro":  h.Distro.Id,
+				"logs":    logs,
+				"job":     j.ID(),
 			}))
-			event.LogProvisionFailed(h.Id, logs)
-			return errors.Wrapf(err, "error running setup script on remote host: %s", logs)
+			if err := h.MarkAsProvisioned(); err != nil {
+				return errors.Wrapf(err, "error marking host %s as provisioned", h.Id)
+			}
+			return nil
+			// grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
+			//     "operation": "setting host unprovisioned",
+			//     "host":      h.Id,
+			//     "distro":    h.Distro.Id,
+			//     "job":       j.ID(),
+			// }))
+			// event.LogProvisionFailed(h.Id, logs)
+			// return errors.Wrapf(err, "error running setup script on remote host: %s", logs)
 		}
 
 		if h.ProvisionOptions.OwnerId != "" && len(h.ProvisionOptions.TaskId) > 0 {
