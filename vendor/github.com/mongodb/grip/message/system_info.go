@@ -18,6 +18,7 @@ import (
 type SystemInfo struct {
 	Message    string                `json:"message" bson:"message"`
 	CPU        StatCPUTimes          `json:"cpu" bson:"cpu"`
+	CPUPercent float64               `json:"cpu_percent" bson:"cpu_percent"`
 	NumCPU     int                   `json:"num_cpus" bson:"num_cpus"`
 	VMStat     mem.VirtualMemoryStat `json:"vmstat" bson:"vmstat"`
 	NetStat    net.IOCountersStat    `json:"netstat" bson:"netstat"`
@@ -94,6 +95,12 @@ func NewSystemInfo(priority level.Priority, message string) Composer {
 		// since we're not storing per-core information,
 		// there's only one thing we care about in this struct
 		s.CPU = convertCPUTimes(times[0])
+	}
+	percent, err := cpu.Percent(0, false)
+	if err != nil {
+		s.saveError("cpu_times", err)
+	} else {
+		s.CPUPercent = percent[0]
 	}
 
 	vmstat, err := mem.VirtualMemory()
