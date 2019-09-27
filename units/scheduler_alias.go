@@ -85,7 +85,11 @@ func (j *distroAliasSchedulerJob) Run(ctx context.Context) {
 	if d == nil {
 		return
 	}
-	plan, err := scheduler.PrioritizeTasks(j.ID(), d, tasks, true)
+	plan, err := scheduler.PrioritizeTasks(d, tasks, TaskPlannerOptions{
+		StartedAt:        startAt,
+		ID:               j.ID(),
+		IsSecondaryQueue: true,
+	})
 	if err != nil {
 		j.AddError(err)
 		return

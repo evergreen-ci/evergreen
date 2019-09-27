@@ -574,10 +574,13 @@ func taskQueueGenerationRuntimePipeline() []bson.M {
 				"_id": 0,
 				"distroQueue": bson.M{"$push": bson.M{
 					"k": "$" + taskQueueDistroKey,
-					"v": bson.M{"$subtract": []interface{}{
-						"$" + bsonutil.GetDottedKeyName(taskQueueDistroQueueInfoKey, taskQueueInfoPlanCreatedAtKey),
-						"$" + taskQueueGeneratedAtKey}},
-				}}},
+					"v": bson.M{"$multiply": []interface{}{
+						1000000,
+						bson.M{"$subtract": []interface{}{
+							"$" + taskQueueGeneratedAtKey,
+							"$" + bsonutil.GetDottedKeyName(taskQueueDistroQueueInfoKey, taskQueueInfoPlanCreatedAtKey),
+						}},
+					}}}}},
 		},
 		{
 			"$project": bson.M{
