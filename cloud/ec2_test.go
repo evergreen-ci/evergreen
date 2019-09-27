@@ -615,7 +615,6 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 }
 
 func (s *EC2Suite) TestModifyHost() {
-	s.Require().NoError(s.h.Insert())
 	changes := host.HostModifyOptions{
 		AddInstanceTags: []host.Tag{
 			host.Tag{
@@ -631,6 +630,13 @@ func (s *EC2Suite) TestModifyHost() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	s.h.Status = evergreen.HostRunning
+	s.Require().NoError(s.h.Insert())
+	s.Error(s.onDemandManager.ModifyHost(ctx, s.h, changes))
+	s.Require().NoError(s.h.Remove())
+
+	s.h.Status = evergreen.HostStopped
+	s.Require().NoError(s.h.Insert())
 	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
 	found, err := host.FindOne(host.ById(s.h.Id))
 	s.NoError(err)

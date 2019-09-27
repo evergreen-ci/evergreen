@@ -170,6 +170,11 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Invalid tag modifications"))
 	}
 
+	// Ensure instance type changes only requested for stopped hosts
+	if h.InstanceType != "" && foundHost.Status != evergreen.HostStopped {
+		return gimlet.MakeJSONErrorResponder(errors.New("Host must be stopped to modify instance type"))
+	}
+
 	// Create new spawnhost modify job
 	changes := host.HostModifyOptions{
 		AddInstanceTags:    h.AddInstanceTags,
