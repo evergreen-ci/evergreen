@@ -583,10 +583,6 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, changes host.
 
 	// Add tags
 	if len(changes.AddInstanceTags) > 0 {
-		if h.Status != evergreen.HostStopped {
-			return errors.Errorf("cannot modify instance type - host '%s' is not stopped", h.Id)
-		}
-
 		createTagSlice := []*ec2.Tag{}
 		for _, tag := range changes.AddInstanceTags {
 			key := tag.Key
