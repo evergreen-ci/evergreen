@@ -626,6 +626,18 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 		grip.Infof("Running setup script for spawn host %s", h.Id)
 		// run the setup script with the agent
 		if logs, err := h.RunSSHCommand(ctx, h.SetupCommand(), sshOptions); err != nil {
+			// kim: TODO: remove this once testing is done
+			// grip.Error(message.WrapError(err, message.Fields{
+			//     "message": "kim: failed to run setup script on host",
+			//     "host":    h.Id,
+			//     "distro":  h.Distro.Id,
+			//     "logs":    logs,
+			//     "job":     j.ID(),
+			// }))
+			// if err := h.MarkAsProvisioned(); err != nil {
+			//     return errors.Wrapf(err, "error marking host %s as provisioned", h.Id)
+			// }
+			// return nil
 			grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
 				"operation": "setting host unprovisioned",
 				"host":      h.Id,
