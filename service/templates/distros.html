@@ -676,8 +676,7 @@ Evergreen - Distros
             <label class="distro-label">Shell Path:</label>
             <input type="text" ng-required="isWindows() && isNonLegacyProvisioning()"
               ng-readonly="readOnly" name="shellPath"
-              class="form-control" ng-model="activeDistro.bootstrap_settings.shell_path" placeholder="Absolute native
-              path used to locate command binaries">
+              class="form-control" ng-model="activeDistro.bootstrap_settings.shell_path" placeholder="Absolute native path to the shell binary file (bash)">
             <div class="icon fa fa-warning distro-error" ng-show="form.shellPath.$invalid"> Shell path is required</div><br />
           </div>
         </div>
