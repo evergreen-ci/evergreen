@@ -212,6 +212,34 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       );
     };
 
+    $scope.stopHost = function() {
+      mciSpawnRestService.terminateHost(
+        'terminate',
+        $scope.curHostData.id, {}, {
+          success: function(resp) {
+            window.location.href = "/spawn";
+          },
+          error: function(jqXHR, status, errorThrown) {
+            notificationService.pushNotification('Error stopping host: ' + resp.data.error,'errorHeader');
+          }
+        }
+      );
+    };
+
+    $scope.startHost = function() {
+      mciSpawnRestService.terminateHost(
+        'terminate',
+        $scope.curHostData.id, {}, {
+          success: function(resp) {
+            window.location.href = "/spawn";
+          },
+          error: function(jqXHR, status, errorThrown) {
+            notificationService.pushNotification('Error starting host: ' + resp.data.error,'errorHeader');
+          }
+        }
+      );
+    };
+
     // API helper methods
     $scope.setSpawnableDistros = function(distros, selectDistroId) {
       if (distros.length == 0) {
@@ -363,6 +391,29 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
           $scope.modalOpen = false;
           $scope.$apply();
         });
+      } else if ($scope.modalOption === 'stopHost') {
+        $scope.modalTitle = 'Stop Host';
+        modal.on('shown.bs.modal', function() {
+          $scope.modalOpen = true;
+          $scope.$apply();
+        });
+
+        modal.on('hide.bs.modal', function() {
+          $scope.modalOpen = false;
+          $scope.$apply();
+        });
+      } else if ($scope.modalOption === 'startHost') {
+        $scope.modalTitle = 'Start Host';
+        modal.on('shown.bs.modal', function() {
+          $scope.modalOpen = true;
+          $scope.$apply();
+        });
+
+        modal.on('hide.bs.modal', function() {
+          $scope.modalOpen = false;
+          $scope.$apply();
+        });
+
       } else if ($scope.modalOption === 'updateRDPPassword') {
         $scope.modalTitle = 'Set RDP Password';
         modal.on('shown.bs.modal', function () {
@@ -383,6 +434,12 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       if ($scope.modalOpen && ev.keyCode === 13) {
         if ($scope.modalOption === 'terminateHost') {
           $scope.terminateHost();
+          $('#spawn-modal').modal('hide');
+        } else if ($scope.modalOption === 'stopHost') {
+          $scope.stopHost();
+          $('#spawn-modal').modal('hide');
+        } else if ($scope.modalOption === 'startHost') {
+          $scope.startHost();
           $('#spawn-modal').modal('hide');
         }
       }

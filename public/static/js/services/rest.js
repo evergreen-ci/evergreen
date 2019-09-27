@@ -272,6 +272,25 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function(
         baseSvc.postResource(resource, [], config, callbacks);
     };
 
+    service.stopHost = function(action, hostId, data, callbacks) {
+        var config = {
+            data: data
+        };
+        config.data['action'] = action;
+        config.data['host_id'] = hostId;
+        baseSvc.postResource(resource, [], config, callbacks);
+    };
+
+
+    service.startHost = function(action, hostId, data, callbacks) {
+        var config = {
+            data: data
+        };
+        config.data['action'] = action;
+        config.data['host_id'] = hostId;
+        baseSvc.postResource(resource, [], config, callbacks);
+    };
+
     service.updateRDPPassword = function(action, hostId, rdpPassword, data, callbacks) {
         var config = {
             data: data

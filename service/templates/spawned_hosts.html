@@ -89,6 +89,8 @@ Evergreen - My Hosts
               </td>
               <td class="col-lg-2 no-word-wrap">
                 [[host.uptime]]
+                <i class="fa fa-play" ng-show="host.status=='running'" style="float: right" ng-click="openSpawnModal('stopHost')"></i>
+                <i class="fa fa-pause" ng-show="host.status=='stopped'" style="float: right" ng-click="openSpawnModal('startHost')"></i>
                 <i class="fa fa-trash pointer" ng-show="host.status!='terminated'" style="float: right" ng-click="openSpawnModal('terminateHost')"></i>
               </td>
             </tr>
