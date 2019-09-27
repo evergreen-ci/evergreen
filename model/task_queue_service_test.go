@@ -18,6 +18,534 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
+	s.Require().NoError(db.ClearCollections(task.Collection))
+	items := []TaskQueueItem{}
+
+	t1 := task.Task{
+		Id:                  "1",
+		BuildId:             "ops_manager_kubernetes_init_test_run_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
+		TaskGroup:           "",
+		StartTime:           time.Unix(0, 0),
+		BuildVariant:        "init_test_run",
+		Version:             "5d88953e2a60ed61eefe9561",
+		Project:             "ops-manager-kubernetes",
+		Activated:           false,
+		ActivatedBy:         "",
+		DistroId:            "archlinux-test",
+		Requester:           "patch_request",
+		Status:              "undispatched",
+		Revision:            "1a53e026e05561c3efbb626185e155a7d1e4865d",
+		RevisionOrderNumber: 1846,
+	}
+	item1 := TaskQueueItem{
+		Id:            "1",
+		Group:         "",
+		BuildVariant:  "init_test_run",
+		Version:       "5d88953e2a60ed61eefe9561",
+		Project:       "ops-manager-kubernetes",
+		Requester:     "patch_request",
+		GroupMaxHosts: 0,
+		IsDispatched:  false,
+	}
+
+	t2 := task.Task{
+		Id:                  "2",
+		BuildId:             "ops_manager_kubernetes_e2e_openshift_cloud_qa_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
+		TaskGroup:           "e2e_core_task_group",
+		TaskGroupMaxHosts:   5,
+		TaskGroupOrder:      2,
+		StartTime:           time.Unix(0, 0),
+		BuildVariant:        "e2e_openshift_cloud_qa",
+		Version:             "5d88953e2a60ed61eefe9561",
+		Project:             "ops-manager-kubernetes",
+		Activated:           false,
+		ActivatedBy:         "",
+		DistroId:            "archlinux-test",
+		Requester:           "patch_request",
+		Status:              "undispatched",
+		Revision:            "1a53e026e05561c3efbb626185e155a7d1e4865d",
+		RevisionOrderNumber: 1846,
+		DependsOn: []task.Dependency{{
+			TaskId:       "1",
+			Status:       "success",
+			Unattainable: false,
+		}},
+	}
+	item2 := TaskQueueItem{
+		Id:            "2",
+		Group:         "e2e_core_task_group",
+		GroupIndex:    2,
+		BuildVariant:  "e2e_openshift_cloud_qa",
+		Version:       "5d88953e2a60ed61eefe9561",
+		Project:       "ops-manager-kubernetes",
+		GroupMaxHosts: 5,
+		Requester:     "patch_request",
+		Dependencies:  []string{"1"},
+		IsDispatched:  false,
+	}
+
+	t3 := task.Task{
+		Id:                  "3",
+		BuildId:             "ops_manager_kubernetes_e2e_openshift_cloud_qa_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
+		TaskGroup:           "e2e_core_task_group",
+		TaskGroupMaxHosts:   5,
+		TaskGroupOrder:      1,
+		StartTime:           time.Unix(0, 0),
+		BuildVariant:        "e2e_openshift_cloud_qa",
+		Version:             "5d88953e2a60ed61eefe9561",
+		Project:             "ops-manager-kubernetes",
+		Activated:           false,
+		ActivatedBy:         "",
+		DistroId:            "archlinux-test",
+		Requester:           "patch_request",
+		Status:              "undispatched",
+		Revision:            "1a53e026e05561c3efbb626185e155a7d1e4865d",
+		RevisionOrderNumber: 1846,
+		DependsOn: []task.Dependency{{
+			TaskId:       "1",
+			Status:       "success",
+			Unattainable: false,
+		}},
+	}
+	item3 := TaskQueueItem{
+		Id:            "3",
+		Group:         "e2e_core_task_group",
+		GroupIndex:    1,
+		BuildVariant:  "e2e_openshift_cloud_qa",
+		Version:       "5d88953e2a60ed61eefe9561",
+		Project:       "ops-manager-kubernetes",
+		GroupMaxHosts: 5,
+		Requester:     "patch_request",
+		Dependencies:  []string{"1"},
+		IsDispatched:  false,
+	}
+
+	s.Require().NoError(t1.Insert())
+	s.Require().NoError(t2.Insert())
+	s.Require().NoError(t3.Insert())
+	items = append(items, item1)
+	items = append(items, item2)
+	items = append(items, item3)
+
+	s.taskQueue = TaskQueue{
+		Distro: "archlinux-test",
+		Queue:  items,
+	}
+
+	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.NoError(err)
+	err = service.addEdge("1", "2", nil)
+	s.NoError(err)
+	err = service.addEdge("1", "3", nil)
+	s.NoError(err)
+
+	spec := TaskSpec{}
+
+	next := service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal("1", next.Id)
+
+	// Scenario:
+	//
+	// (1) Task.Id "1" completes successful and some tasks that depend_on it are still enqueued behind it.
+	// (2) Some time passes (determined by a ttl value) and a new task_queue is created.
+	// (3) As Task.Id "1" is "status": "success" it will not be in the new task_queue.  However, other taskQueueItems in the latest task_queue may depend_on it.
+	// (4) If we add an edge to Task.Id "1" from another task, there is no Node for Task.Id "1" in the DAG. Oops.
+	// (5) Go to the database to check if Task.Id "1" exists and if it does what status it is in.
+
+	t1.Status = evergreen.TaskSucceeded
+
+	s.Require().NoError(db.ClearCollections(task.Collection))
+	s.Require().NoError(t1.Insert())
+	s.Require().NoError(t2.Insert())
+	s.Require().NoError(t3.Insert())
+
+	items = []TaskQueueItem{}
+	items = append(items, item2)
+	items = append(items, item3)
+
+	s.taskQueue = TaskQueue{
+		Distro: "archlinux-test",
+		Queue:  items,
+	}
+
+	service, err = newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.NoError(err)
+
+	err = service.rebuild(s.taskQueue.Queue)
+	s.Require().NoError(err)
+
+	next = service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal("3", next.Id)
+
+	next = service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal("2", next.Id)
+
+	next = service.FindNextTask(spec)
+	s.Require().Nil(next)
+
+	//
+
+	s.Require().NoError(db.ClearCollections(task.Collection))
+	s.Require().NoError(t1.Insert())
+	s.Require().NoError(t2.Insert())
+	s.Require().NoError(t3.Insert())
+
+	items = []TaskQueueItem{}
+	items = append(items, item1)
+	items = append(items, item2)
+	items = append(items, item3)
+
+	s.taskQueue = TaskQueue{
+		Distro: "archlinux-test",
+		Queue:  items,
+	}
+
+	service, err = newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.NoError(err)
+	err = service.addEdge("-1", "-2", nil)
+	s.Contains(err.Error(), "does not exist in the database")
+	err = service.addEdge("1", "-2", nil)
+	s.Error(err)
+	s.Contains(err.Error(), "is not present in the DAG", nil)
+}
+
+func (s *taskDAGDispatchServiceSuite) TestWhyOhWhy2() {
+	s.Require().NoError(db.ClearCollections(task.Collection))
+	s.Require().NoError(db.ClearCollections(host.Collection))
+	items := []TaskQueueItem{}
+
+	t1 := task.Task{
+		Id:           "ops_manager_kubernetes_init_test_run_build_images_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
+		BuildId:      "ops_manager_kubernetes_init_test_run_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
+		TaskGroup:    "",
+		StartTime:    time.Unix(0, 0),
+		BuildVariant: "init_test_run",
+		Version:      "5d88953e2a60ed61eefe9561",
+		Project:      "ops-manager-kubernetes",
+		Activated:    false,
+		ActivatedBy:  "",
+		DistroId:     "archlinux-test",
+		Requester:    "patch_request",
+		Status:       "undispatched",
+		// Status:              "success",
+		Revision:            "1a53e026e05561c3efbb626185e155a7d1e4865d",
+		RevisionOrderNumber: 1846,
+	}
+	item1 := TaskQueueItem{
+		Id:            "ops_manager_kubernetes_init_test_run_build_images_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
+		Group:         "",
+		BuildVariant:  "init_test_run",
+		Version:       "5d88953e2a60ed61eefe9561",
+		Project:       "ops-manager-kubernetes",
+		Requester:     "patch_request",
+		GroupMaxHosts: 0,
+		IsDispatched:  false,
+	}
+
+	t2 := task.Task{
+		Id:                  "ops_manager_kubernetes_e2e_openshift_cloud_qa_e2e_standalone_config_map_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
+		BuildId:             "ops_manager_kubernetes_e2e_openshift_cloud_qa_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
+		TaskGroupMaxHosts:   5,
+		TaskGroupOrder:      2,
+		StartTime:           time.Unix(0, 0),
+		BuildVariant:        "e2e_openshift_cloud_qa",
+		Version:             "5d88953e2a60ed61eefe9561",
+		Project:             "ops-manager-kubernetes",
+		Activated:           false,
+		ActivatedBy:         "",
+		DistroId:            "archlinux-test",
+		Requester:           "patch_request",
+		Status:              "undispatched",
+		Revision:            "1a53e026e05561c3efbb626185e155a7d1e4865d",
+		RevisionOrderNumber: 1846,
+		DependsOn: []task.Dependency{{
+			TaskId:       "ops_manager_kubernetes_init_test_run_build_images_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
+			Status:       "success",
+			Unattainable: false,
+		}},
+	}
+	item2 := TaskQueueItem{
+		Id:            "ops_manager_kubernetes_e2e_openshift_cloud_qa_e2e_standalone_config_map_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
+		Group:         "e2e_core_task_group",
+		GroupIndex:    2,
+		BuildVariant:  "e2e_openshift_cloud_qa",
+		Version:       "5d88953e2a60ed61eefe9561",
+		Project:       "ops-manager-kubernetes",
+		GroupMaxHosts: 5,
+		Requester:     "patch_request",
+		Dependencies:  []string{"ops_manager_kubernetes_init_test_run_build_images_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51"},
+		IsDispatched:  false,
+	}
+
+	t3 := task.Task{
+		Id:                  "ops_manager_kubernetes_e2e_openshift_cloud_qa_e2e_all_mongodb_resources_parallel_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
+		BuildId:             "ops_manager_kubernetes_e2e_openshift_cloud_qa_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
+		TaskGroup:           "e2e_core_task_group",
+		TaskGroupMaxHosts:   5,
+		TaskGroupOrder:      1,
+		StartTime:           time.Unix(0, 0),
+		BuildVariant:        "e2e_openshift_cloud_qa",
+		Version:             "5d88953e2a60ed61eefe9561",
+		Project:             "ops-manager-kubernetes",
+		Activated:           false,
+		ActivatedBy:         "",
+		DistroId:            "archlinux-test",
+		Requester:           "patch_request",
+		Status:              "undispatched",
+		Revision:            "1a53e026e05561c3efbb626185e155a7d1e4865d",
+		RevisionOrderNumber: 1846,
+		DependsOn: []task.Dependency{{
+			TaskId:       "ops_manager_kubernetes_init_test_run_build_images_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
+			Status:       "success",
+			Unattainable: false,
+		}},
+	}
+	item3 := TaskQueueItem{
+		Id:            "ops_manager_kubernetes_e2e_openshift_cloud_qa_e2e_all_mongodb_resources_parallel_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
+		Group:         "e2e_core_task_group",
+		GroupIndex:    1,
+		BuildVariant:  "e2e_openshift_cloud_qa",
+		Version:       "5d88953e2a60ed61eefe9561",
+		Project:       "ops-manager-kubernetes",
+		GroupMaxHosts: 5,
+		Requester:     "patch_request",
+		Dependencies:  []string{"ops_manager_kubernetes_init_test_run_build_images_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51"},
+		IsDispatched:  false,
+	}
+
+	s.Require().NoError(t1.Insert())
+	s.Require().NoError(t2.Insert())
+	s.Require().NoError(t3.Insert())
+	items = append(items, item1)
+	items = append(items, item2)
+	items = append(items, item3)
+
+	s.taskQueue = TaskQueue{
+		Distro: "archlinux-test",
+		Queue:  items,
+	}
+
+	spec := TaskSpec{
+		Group:        "e2e_core_task_group",
+		BuildVariant: "e2e_openshift_cloud_qa",
+		Version:      "5d88953e2a60ed61eefe9561",
+		Project:      "ops-manager-kubernetes",
+	}
+
+	// All other tasks are dependent on t1 - so only it can be dispatched...
+
+	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.NoError(err)
+	s.Equal(3, len(service.sorted))
+
+	next := service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal("ops_manager_kubernetes_init_test_run_build_images_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51", next.Id)
+
+	next = service.FindNextTask(spec)
+	s.Require().Nil(next)
+	next = service.FindNextTask(spec)
+	s.Require().Nil(next)
+
+	// All other tasks are dependent on t1, which is now "status": "success" - so, they can now be dispatched! Woo hoo!
+	// Sending an "empty" taskSpec{}
+
+	s.Require().NoError(db.ClearCollections(task.Collection))
+	s.Require().NoError(db.ClearCollections(host.Collection))
+
+	items = []TaskQueueItem{}
+	t1.Status = "success"
+	item1.IsDispatched = true
+
+	s.Require().NoError(t1.Insert())
+	s.Require().NoError(t2.Insert())
+	s.Require().NoError(t3.Insert())
+
+	items = append(items, item1)
+	items = append(items, item2)
+	items = append(items, item3)
+
+	s.taskQueue = TaskQueue{
+		Distro: "archlinux-test",
+		Queue:  items,
+	}
+
+	spec = TaskSpec{}
+	service, err = newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.NoError(err)
+
+	next = service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal("ops_manager_kubernetes_e2e_openshift_cloud_qa_e2e_all_mongodb_resources_parallel_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51", next.Id)
+	s.Equal(1, next.GroupIndex)
+
+	next = service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal("ops_manager_kubernetes_e2e_openshift_cloud_qa_e2e_standalone_config_map_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51", next.Id)
+	s.Equal(2, next.GroupIndex)
+
+	next = service.FindNextTask(spec)
+	s.Require().Nil(next)
+
+	// All other tasks are dependent on t1, which is now "status": "success" - so, they can now be dispatched! Woo hoo!
+	// Sending a taskSpec{} matching the existing task group
+
+	s.Require().NoError(db.ClearCollections(task.Collection))
+	s.Require().NoError(db.ClearCollections(host.Collection))
+
+	items = []TaskQueueItem{}
+	t1.Status = "success"
+	item1.IsDispatched = true
+
+	s.Require().NoError(t1.Insert())
+	s.Require().NoError(t2.Insert())
+	s.Require().NoError(t3.Insert())
+
+	items = append(items, item1)
+	items = append(items, item2)
+	items = append(items, item3)
+
+	s.taskQueue = TaskQueue{
+		Distro: "archlinux-test",
+		Queue:  items,
+	}
+	spec = TaskSpec{
+		Group:        "e2e_core_task_group",
+		BuildVariant: "e2e_openshift_cloud_qa",
+		Version:      "5d88953e2a60ed61eefe9561",
+		Project:      "ops-manager-kubernetes",
+	}
+
+	service, err = newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.NoError(err)
+
+	next = service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal("ops_manager_kubernetes_e2e_openshift_cloud_qa_e2e_all_mongodb_resources_parallel_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51", next.Id)
+	s.Equal(1, next.GroupIndex)
+
+	next = service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal("ops_manager_kubernetes_e2e_openshift_cloud_qa_e2e_standalone_config_map_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51", next.Id)
+	s.Equal(2, next.GroupIndex)
+
+	next = service.FindNextTask(spec)
+	s.Require().Nil(next)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+func (s *taskDAGDispatchServiceSuite) TestWhyOhWhy() {
+	s.Require().NoError(db.ClearCollections(task.Collection))
+	s.Require().NoError(db.ClearCollections(host.Collection))
+	items := []TaskQueueItem{}
+
+	t1 := task.Task{
+		Id:           "ops_manager_kubernetes_init_test_run_build_images_rhel_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88fafa1e2d17134bb84a31_19_09_23_17_03_55",
+		BuildId:      "ops_manager_kubernetes_init_test_run_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88fafa1e2d17134bb84a31_19_09_23_17_03_55",
+		TaskGroup:    "",
+		StartTime:    time.Unix(0, 0),
+		BuildVariant: "init_test_run",
+		Version:      "5d88fafa1e2d17134bb84a31",
+		Project:      "ops-manager-kubernetes",
+		Activated:    false,
+		ActivatedBy:  "",
+		DistroId:     "archlinux-test",
+		Requester:    "patch_request",
+		Status:       "undispatched",
+		// Status:   "success",
+		Revision: "1a53e026e05561c3efbb626185e155a7d1e4865d",
+	}
+	item1 := TaskQueueItem{
+		Id:           "ops_manager_kubernetes_init_test_run_build_images_rhel_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88fafa1e2d17134bb84a31_19_09_23_17_03_55",
+		Group:        "",
+		BuildVariant: "init_test_run",
+		Version:      "5d88fafa1e2d17134bb84a31",
+		Project:      "ops-manager-kubernetes",
+		Requester:    "patch_request",
+	}
+	s.Require().NoError(t1.Insert())
+
+	t2 := task.Task{
+		Id:                  "ops_manager_kubernetes_e2e_openshift_cloud_qa_e2e_replica_set_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88fafa1e2d17134bb84a31_19_09_23_17_03_55",
+		BuildId:             "ops_manager_kubernetes_e2e_openshift_cloud_qa_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88fafa1e2d17134bb84a31_19_09_23_17_03_55",
+		TaskGroup:           "e2e_core_task_group",
+		StartTime:           time.Unix(0, 0),
+		BuildVariant:        "e2e_openshift_cloud_qa",
+		Version:             "5d88fafa1e2d17134bb84a31",
+		Project:             "ops-manager-kubernetes",
+		Activated:           false,
+		ActivatedBy:         "",
+		DistroId:            "archlinux-test",
+		Requester:           "patch_request",
+		Status:              "undispatched",
+		TaskGroupMaxHosts:   5,
+		TaskGroupOrder:      10,
+		Revision:            "1a53e026e05561c3efbb626185e155a7d1e4865d",
+		RevisionOrderNumber: 1855,
+		DependsOn: []task.Dependency{{
+			TaskId:       "ops_manager_kubernetes_init_test_run_build_images_rhel_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88fafa1e2d17134bb84a31_19_09_23_17_03_55",
+			Status:       "success",
+			Unattainable: false,
+		}},
+	}
+	item2 := TaskQueueItem{
+		Id:            "ops_manager_kubernetes_e2e_openshift_cloud_qa_e2e_replica_set_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88fafa1e2d17134bb84a31_19_09_23_17_03_55",
+		Group:         "e2e_core_task_group",
+		GroupMaxHosts: 5,
+		BuildVariant:  "e2e_openshift_cloud_qa",
+		Version:       "5d88fafa1e2d17134bb84a31",
+		Project:       "ops-manager-kubernetes",
+		Requester:     "patch_request",
+		Dependencies:  []string{"ops_manager_kubernetes_init_test_run_build_images_rhel_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88fafa1e2d17134bb84a31_19_09_23_17_03_55"},
+	}
+	s.Require().NoError(t2.Insert())
+
+	items = append(items, item1)
+	items = append(items, item2)
+
+	s.taskQueue = TaskQueue{
+		Distro: "archlinux-test",
+		Queue:  items,
+	}
+
+	// spec := TaskSpec{}
+	spec := TaskSpec{
+		Group:        "e2e_core_task_group",
+		BuildVariant: "e2e_openshift_cloud_qa",
+		Version:      "5d88fafa1e2d17134bb84a31",
+		Project:      "ops-manager-kubernetes",
+	}
+
+	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.NoError(err)
+	// s.Equal("ops_manager_kubernetes_init_test_run_build_images_rhel_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88fafa1e2d17134bb84a31_19_09_23_17_03_55", service.nodeItemMap[service.sorted[0].ID()].Id)
+	// s.Equal("ops_manager_kubernetes_e2e_openshift_cloud_qa_e2e_replica_set_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88fafa1e2d17134bb84a31_19_09_23_17_03_55", service.nodeItemMap[service.sorted[1].ID()].Id)
+
+	next := service.FindNextTask(spec)
+	s.Require().NotNil(next)
+
+	// fmt.Println("************************************************************")
+	// fmt.Println(fmt.Sprintf("I'm going to return the task: '%s'", next.Id))
+	// fmt.Println("************************************************************")
+	//
+	// next = service.FindNextTask(spec)
+	// s.Require().NotNil(next)
+	//
+	// fmt.Println("************************************************************")
+	// fmt.Println(fmt.Sprintf("I'm going to return the task: '%s'", next.Id))
+	// fmt.Println("************************************************************")
+	//
+	// next = service.FindNextTask(spec)
+	// s.Require().Nil(next)
+}
+
 type taskDAGDispatchServiceSuite struct {
 	suite.Suite
 
@@ -209,7 +737,7 @@ func (s *taskDAGDispatchServiceSuite) TestConstructor() {
 		"78", // 'group_1_variant_2_project_1_version_1'
 		"79", // 'group_1_variant_1_project_1_version_2'
 		"80", // ''
-		"75", // '
+		"75", // ''
 		"70", // ''
 		"65", // ''
 		"81", // 'group_1_variant_1_project_1_version_1'
@@ -606,7 +1134,7 @@ func (s *taskDAGDispatchServiceSuite) TestTaskGroupWithExternalDependency() {
 	var spec TaskSpec
 	var next *TaskQueueItem
 
-	// task ids: ["1", "6", "11", "16", "21", "26", "31, "36", "41", "46", "51", "56", "61", "66", "71", "76", "81", "86", "91", "96"]
+	// task ids: ["1", "6", "11", "16", "21", "26", "31", "36", "41", "46", "51", "56", "61", "66", "71", "76", "81", "86", "91", "96"]
 	// Dispatch 5 tasks for the taskGroupTasks "group_1_variant_1_project_1_version_1".
 	// task "1" is dependent on task "95" having status evergreen.TaskSucceeded, so we cannot dispatch task "1".
 	expectedOrder := []string{
@@ -747,20 +1275,9 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupOrdering() {
 func (s *taskDAGDispatchServiceSuite) TestAddingSelfEdge() {
 	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
 	s.NoError(err)
-	err = service.addEdge("5", "5")
+	err = service.addEdge("5", "5", nil)
 	s.Error(err)
 	s.Contains(err.Error(), "cannot add a self edge to task")
-}
-
-func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
-	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
-	s.NoError(err)
-	err = service.addEdge("-1", "-2")
-	s.Error(err)
-	s.Contains(err.Error(), "is not present in the DAG")
-	err = service.addEdge("1", "-2")
-	s.Error(err)
-	s.Contains(err.Error(), "is not present in the DAG")
 }
 
 //////////////////////////////////////////////////////////////////////////////
