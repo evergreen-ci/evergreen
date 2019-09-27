@@ -28,7 +28,7 @@ Evergreen - Patches
       Error loading data from server: [[patchesError]]
     </div>
 
-    <div  ng-if="uiPatches.length > 0"
+    <div  ng-if="patches.length > 0"
           class="btn-group btn-group-sm pagination-fixed">
       <span ng-if="currentPage > 0">
         <a  class="btn btn-default"
@@ -47,41 +47,41 @@ Evergreen - Patches
     </div>
   </header>
 
-  <div ng-repeat="patch in uiPatches">
-    <span ng-if="patch.Patch.Version">
-      <a ng-href="/version/[[patch.Patch.Version]]">Activated</a>
+  <div ng-repeat="patch in patches">
+    <span ng-if="patch.version">
+      <a ng-href="/version/[[patch.version]]">Activated</a>
         <span ng-show="patch.canEdit">
         [&nbsp;
-        <a ng-href="/patch/[[patch.Patch.Id]]" class="semi-muted">
+        <a ng-href="/patch/[[patch.id]]" class="semi-muted">
           Reconfigure
         </a>
         &nbsp;]
       </span>
     </span>
-    <span ng-if="!patch.Patch.Version">
-      <a ng-href="/patch/[[patch.Patch.Id]]" class="btn btn-info btn-sm">
+    <span ng-if="!patch.version">
+      <a ng-href="/patch/[[patch.id]]" class="btn btn-info btn-sm">
         Configure
       </a>
     </span>
 
     <span>
       Patch from
-      <b><a ng-href="/patches/user/[[patch.Patch.Author]]">[[patch.Patch.Author]]</a></b>
-      at [[patch.Patch.CreateTime | convertDateToUserTimezone:userTz:"MM/DD/YY h:mma"]]
-      on [[patch.Patch.Project]] applied to
-      <a ng-href="/version/[[patch.BaseVersionId]]">
-        [[patch.Patch.Githash | limitTo:7]]
+      <b><a ng-href="/patches/user/[[patch.author]]">[[patch.author]]</a></b>
+      at [[patch.create_time | convertDateToUserTimezone:userTz:"MM/DD/YY h:mma"]]
+      on [[patch.project]] applied to
+      <a ng-href="/version/[[patch.base_version_id]]">
+        [[patch.githash | limitTo:7]]
       </a>
     </span>
 
-    <div ng-if="patch.Patch.Description">
-      <strong>[[patch.Patch.Description | limitTo:140]]</strong>
+    <div ng-if="patch.description">
+      <strong>[[patch.description | limitTo:140]]</strong>
     </div>
 
-    <ul ng-if="patch.Patch.Version">
-      <li ng-repeat="build in versionsMap[patch.Patch.Version].Builds | orderBy:'Build.display_name'" class="timeline-build">
-        <a id="[[build.Build._id]]" class="build-link" ng-class="build.Build.tasks | buildStatus" ng-href="/build/[[build.Build._id]]">
-          [[build.Build.display_name]]
+    <ul ng-if="patch.version">
+      <li ng-repeat="build in buildsMap[patch.version] | orderBy:'display_name'" class="timeline-build">
+        <a id="[[build.id]]" class="build-link" ng-class="build.tasks | buildStatus" ng-href="/build/[[build.id]]">
+          [[build.display_name]]
         </a>
         <div class="tasks-list patches" results-bar="build.taskResults">
         </div>
@@ -89,7 +89,7 @@ Evergreen - Patches
     </ul>
   </div>
 
-  <div ng-if="(!uiPatches || uiPatches.length === 0) && !loading">
+  <div ng-if="(!patches || patches.length === 0) && !loading">
     <p>There are no patches on this project</p>
   </div>
 </div>
