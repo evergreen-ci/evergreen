@@ -121,7 +121,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 		return nil, "", errors.WithStack(err)
 	}
 	if projectRef == nil {
-		return nil, "", errors.Errorf("no project exists with identifier '%s")
+		return nil, "", errors.Errorf("no project exists with identifier '%s", p.Project)
 	}
 
 	project := &Project{}
