@@ -299,7 +299,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 // setupJasper sets up the Jasper service on the host by putting the credentials
 // on the host, downloading the latest version of Jasper, and restarting the
 // Jasper service.
-func (j *setupHostJob) setupJasper(ctx context.Context) error {
+func (j *setupHostJob) setupJasper(ctx context.Context, settings *evergreen.Settings) error {
 	cloudHost, err := cloud.GetCloudHost(ctx, j.host, j.env.Settings())
 	if err != nil {
 		return errors.Wrapf(err, "failed to get cloud host for %s", j.host.Id)
@@ -310,7 +310,7 @@ func (j *setupHostJob) setupJasper(ctx context.Context) error {
 		return errors.Wrapf(err, "error getting ssh options for host %s", j.host.Id)
 	}
 
-	if err := j.putJasperCredentials(ctx, sshOptions); err != nil {
+	if err := j.putJasperCredentials(ctx, settings, sshOptions); err != nil {
 		return errors.Wrap(err, "error putting Jasper credentials on remote host")
 	}
 
@@ -330,13 +330,13 @@ func (j *setupHostJob) setupJasper(ctx context.Context) error {
 
 // putJasperCredentials creates Jasper credentials for the host and puts the
 // credentials file on the host.
-func (j *setupHostJob) putJasperCredentials(ctx context.Context, sshOptions []string) error {
+func (j *setupHostJob) putJasperCredentials(ctx context.Context, settings *evergreen.Settings, sshOptions []string) error {
 	creds, err := j.host.GenerateJasperCredentials(ctx)
 	if err != nil {
 		return errors.Wrap(err, "could not generate Jasper credentials for host")
 	}
 
-	writeCmd, err := j.host.WriteJasperCredentialsFileCommand(creds)
+	writeCmd, err := j.host.WriteJasperCredentialsFilesCommands(creds, settings)
 	if err != nil {
 		return errors.Wrap(err, "could not get command to write Jasper credentials file")
 	}

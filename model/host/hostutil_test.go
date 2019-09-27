@@ -229,7 +229,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
-			writeCredentialsCmd, err := h.WriteJasperCredentialsFileCommand(creds)
+			writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommands(settings, creds)
 			require.NoError(t, err)
 
 			expectedCmds = append(expectedCmds, writeCredentialsCmd, h.ForceReinstallJasperCommand(settings))
@@ -267,20 +267,29 @@ func TestJasperCommandsWindows(t *testing.T) {
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
 
-			for testName, testCase := range map[string]func(t *testing.T){
-				"WithoutJasperCredentialsPath": func(t *testing.T) {
+			for testName, testCase := range map[string]func(t *testing.T, h *Host, settings *evergreen.Settings){
+				"WithoutJasperCredentialsPath": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 					h.Distro.BootstrapSettings.JasperCredentialsPath = ""
-					_, err := h.WriteJasperCredentialsFileCommand(creds)
+					_, err := h.WriteJasperCredentialsFilesCommands(settings, creds)
 					assert.Error(t, err)
 				},
-				"WithJasperCredentialsPath": func(t *testing.T) {
-					h.Distro.BootstrapSettings.JasperCredentialsPath = "/foo/bar.txt"
-					cmd, err := h.WriteJasperCredentialsFileCommand(creds)
+				"WithJasperCredentialsPath": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+					cmd, err := h.WriteJasperCredentialsFilesCommands(settings, creds)
 					require.NoError(t, err)
 
 					expectedCreds, err := creds.Export()
 					require.NoError(t, err)
-					assert.Equal(t, fmt.Sprintf("mkdir -m 777 -p \"/foo\" && cat > '/foo/bar.txt' <<EOF\n%s\nEOF", expectedCreds), cmd)
+					assert.Equal(t, fmt.Sprintf("mkdir -m 777 -p \"/bar\" && echo '%s' > '/bar/bat.txt'", expectedCreds), cmd)
+				},
+				"WithSplunkCredentials": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+					settings.Splunk.Token = "token"
+					settings.Splunk.ServerURL = "splunk_url"
+					cmd, err := h.WriteJasperCredentialsFilesCommands(settings, creds)
+					require.NoError(t, err)
+
+					expectedCreds, err := creds.Export()
+					require.NoError(t, err)
+					assert.Equal(t, fmt.Sprintf("mkdir -m 777 -p \"/bar\" && echo '%s' > '/bar/bat.txt' && echo '%s' > '/bar/splunk.txt'", expectedCreds, settings.Splunk.Token), cmd)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
@@ -288,7 +297,9 @@ func TestJasperCommandsWindows(t *testing.T) {
 					defer func() {
 						assert.NoError(t, db.ClearCollections(credentials.Collection))
 					}()
-					testCase(t)
+					hostCopy := *h
+					settingsCopy := *settings
+					testCase(t, &hostCopy, &settingsCopy)
 				})
 			}
 		},
