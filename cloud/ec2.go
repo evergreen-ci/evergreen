@@ -149,6 +149,12 @@ const (
 	EC2ErrorSpotRequestNotFound = "InvalidSpotInstanceRequestID.NotFound"
 )
 
+const (
+	checkSuccessDelay      = 5 * time.Second
+	checkSuccessRetries    = 10
+	checkSuccessInitPeriod = time.Second
+)
+
 // EC2ManagerOptions are used to construct a new ec2Manager.
 type EC2ManagerOptions struct {
 	// client is the client library for communicating with AWS.
@@ -789,6 +795,120 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user s
 	}
 
 	return errors.Wrap(h.Terminate(user), "failed to terminate instance in db")
+}
+
+// StopInstance stops a running EC2 instance.
+func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string) error {
+	// Check if already stopped or not running
+	if h.Status == evergreen.HostStopped {
+		return errors.Errorf("cannot stop '%s' - already marked as stopped", h.Id)
+	} else if h.Status != evergreen.HostRunning {
+		return errors.Errorf("cannot stop '%s' - host is not running", h.Id)
+	}
+
+	ec2Settings := &EC2ProviderSettings{}
+	if err := ec2Settings.fromDistroSettings(h.Distro); err != nil {
+		return errors.Wrap(err, "problem getting settings from host")
+	}
+	if err := m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+
+	if err := h.SetStopping(user); err != nil {
+		return errors.Wrap(err, "failed to mark instance as stopping in db")
+	}
+
+	_, err := m.client.StopInstances(ctx, &ec2.StopInstancesInput{
+		InstanceIds: []*string{aws.String(h.Id)},
+	})
+	if err != nil {
+		return errors.Wrapf(err, "error stopping EC2 instance '%s'", h.Id)
+	}
+
+	// Delay exponential backoff
+	time.Sleep(checkSuccessDelay)
+
+	// Check whether instance stopped
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			instance, err := m.client.GetInstanceInfo(ctx, h.Id)
+			if err != nil {
+				return false, errors.Wrap(err, "error getting instance info")
+			}
+			if ec2StatusToEvergreenStatus(*instance.State.Name) == StatusStopped {
+				return false, nil
+			}
+			return true, errors.New("host is not stopped")
+		}, checkSuccessRetries, checkSuccessInitPeriod, 0)
+
+	if err != nil {
+		return errors.Wrap(err, "error checking if spawnhost stopped")
+	}
+
+	grip.Info(message.Fields{
+		"message":       "stopped instance",
+		"user":          user,
+		"host_provider": h.Distro.Provider,
+		"host":          h.Id,
+		"distro":        h.Distro.Id,
+	})
+
+	return errors.Wrap(h.SetStopped(user), "failed to mark instance as stopped in db")
+}
+
+// StartInstance starts a stopped EC2 instance.
+func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user string) error {
+	// Check that target instance is stopped
+	if h.Status != evergreen.HostStopped {
+		return errors.Errorf("cannot start '%s' - host is not stopped", h.Id)
+	}
+
+	ec2Settings := &EC2ProviderSettings{}
+	if err := ec2Settings.fromDistroSettings(h.Distro); err != nil {
+		return errors.Wrap(err, "problem getting settings from host")
+	}
+	if err := m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+
+	// Make request to start the instance
+	_, err := m.client.StartInstances(ctx, &ec2.StartInstancesInput{
+		InstanceIds: []*string{aws.String(h.Id)},
+	})
+	if err != nil {
+		return errors.Wrapf(err, "error starting EC2 instance '%s'", h.Id)
+	}
+
+	// Check whether instance is running
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			instance, err := m.client.GetInstanceInfo(ctx, h.Id)
+			if err != nil {
+				return false, errors.Wrap(err, "error getting instance info")
+			}
+			if ec2StatusToEvergreenStatus(*instance.State.Name) == StatusRunning {
+				return false, nil
+			}
+			return true, errors.New("host is not started")
+		}, checkSuccessRetries, checkSuccessInitPeriod, 0)
+
+	if err != nil {
+		return errors.Wrap(err, "error checking if spawnhost started")
+	}
+
+	grip.Info(message.Fields{
+		"message":       "started instance",
+		"user":          user,
+		"host_provider": h.Distro.Provider,
+		"host":          h.Id,
+		"distro":        h.Distro.Id,
+	})
+
+	return errors.Wrap(h.SetRunning(user), "failed to mark instance as running in db")
 }
 
 func (m *ec2Manager) cancelSpotRequest(ctx context.Context, h *host.Host) (string, error) {

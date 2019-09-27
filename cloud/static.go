@@ -74,6 +74,14 @@ func (staticMgr *staticManager) TerminateInstance(ctx context.Context, host *hos
 	return nil
 }
 
+func (staticMgr *staticManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
+	return errors.New("StopInstance is not supported for static provider")
+}
+
+func (staticMgr *staticManager) StartInstance(ctx context.Context, host *host.Host, user string) error {
+	return errors.New("StartInstance is not supported for static provider")
+}
+
 func (staticMgr *staticManager) GetSettings() ProviderSettings {
 	return &StaticSettings{}
 }

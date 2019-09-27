@@ -327,6 +327,14 @@ func (h *Host) SetTerminated(user string) error {
 	return h.SetStatus(evergreen.HostTerminated, user, "")
 }
 
+func (h *Host) SetStopping(user string) error {
+	return h.SetStatus(evergreen.HostStopping, user, "")
+}
+
+func (h *Host) SetStopped(user string) error {
+	return h.SetStatus(evergreen.HostStopped, user, "")
+}
+
 func (h *Host) SetUnprovisioned() error {
 	return UpdateOne(
 		bson.M{

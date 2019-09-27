@@ -167,6 +167,14 @@ func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, use
 	return h.Terminate(user)
 }
 
+func (m *dockerManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
+	return errors.New("StopInstance is not supported for docker provider")
+}
+
+func (m *dockerManager) StartInstance(ctx context.Context, host *host.Host, user string) error {
+	return errors.New("StartInstance is not supported for docker provider")
+}
+
 //Configure populates a dockerManager by reading relevant settings from the
 //config object.
 func (m *dockerManager) Configure(ctx context.Context, s *evergreen.Settings) error {

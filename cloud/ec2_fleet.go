@@ -237,6 +237,16 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 	return errors.Wrap(h.Terminate(user), "failed to terminate instance in db")
 }
 
+// StopInstance should do nothing for EC2 Fleet.
+func (m *ec2FleetManager) StopInstance(context.Context, *host.Host, string) error {
+	return errors.New("can't stop instances for ec2 fleet provider")
+}
+
+// StartInstance should do nothing for EC2 Fleet.
+func (m *ec2FleetManager) StartInstance(context.Context, *host.Host, string) error {
+	return errors.New("can't start instances for ec2 fleet provider")
+}
+
 func (m *ec2FleetManager) IsUp(ctx context.Context, h *host.Host) (bool, error) {
 	status, err := m.GetInstanceStatus(ctx, h)
 	if err != nil {
