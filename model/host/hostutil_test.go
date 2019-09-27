@@ -150,7 +150,7 @@ func TestJasperCommands(t *testing.T) {
 			settings.Splunk.Token = "token"
 
 			cmd := h.ForceReinstallJasperCommand(settings)
-			expected := "sudo /foo/jasper_cli jasper service force-reinstall rpc --host=0.0.0.0 --port=12345 --creds_path=/bar/bat.txt --user=user --splunk_url=url --splunk_token=token"
+			expected := "sudo /foo/jasper_cli jasper service force-reinstall rpc --host=0.0.0.0 --port=12345 --creds_path=/bar/bat.txt --user=user --splunk_url=url --splunk_token_path=/bar/splunk.txt"
 			assert.Equal(t, expected, cmd)
 
 			settings.Splunk.Channel = "channel"

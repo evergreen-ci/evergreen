@@ -267,7 +267,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 		})
 		return nil
 	case distro.BootstrapMethodSSH:
-		if err = j.setupJasper(ctx); err != nil {
+		if err = j.setupJasper(ctx, settings); err != nil {
 			return errors.Wrapf(err, "error putting Jasper on host '%s'", targetHost.Id)
 		}
 	}
@@ -336,7 +336,7 @@ func (j *setupHostJob) putJasperCredentials(ctx context.Context, settings *everg
 		return errors.Wrap(err, "could not generate Jasper credentials for host")
 	}
 
-	writeCmd, err := j.host.WriteJasperCredentialsFilesCommands(creds, settings)
+	writeCmd, err := j.host.WriteJasperCredentialsFilesCommands(settings, creds)
 	if err != nil {
 		return errors.Wrap(err, "could not get command to write Jasper credentials file")
 	}

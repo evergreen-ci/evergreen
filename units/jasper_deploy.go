@@ -131,7 +131,7 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 		return
 	}
 
-	writeCredentialsCmd, err := j.host.WriteJasperCredentialsFileCommand(creds)
+	writeCredentialsCmd, err := j.host.WriteJasperCredentialsFilesCommands(j.settings, creds)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not build command to write Jasper credentials file",
