@@ -82,15 +82,17 @@ func (b *Base) SetFormatter(mf MessageFormatter) error {
 
 // Formatter returns the formatter, defaulting to using the string
 // form of the message if no formatter is configured.
-func (b *Base) Formatter(m message.Composer) (string, error) {
-	b.mutex.RLock()
-	defer b.mutex.RUnlock()
+func (b *Base) Formatter() MessageFormatter {
+	return func(m message.Composer) (string, error) {
+		b.mutex.RLock()
+		defer b.mutex.RUnlock()
 
-	if b.formatter == nil {
-		return m.String(), nil
+		if b.formatter == nil {
+			return m.String(), nil
+		}
+
+		return b.formatter(m)
 	}
-
-	return b.formatter(m)
 }
 
 // SetErrorHandler configures the error handling function for this Sender.
@@ -106,13 +108,19 @@ func (b *Base) SetErrorHandler(eh ErrorHandler) error {
 	return nil
 }
 
-// ErrorHandler calls the error handler, and is a wrapper around the
-// embedded ErrorHandler function. It is not part of the Sender interface.
-func (b *Base) ErrorHandler(err error, m message.Composer) {
-	b.mutex.RLock()
-	defer b.mutex.RUnlock()
+// ErrorHandler returns an error handling functioncalls the error handler, and is a wrapper around the
+// embedded ErrorHandler function.
+func (b *Base) ErrorHandler() ErrorHandler {
+	return func(err error, m message.Composer) {
+		if err == nil {
+			return
+		}
 
-	b.errHandler(err, m)
+		b.mutex.RLock()
+		defer b.mutex.RUnlock()
+
+		b.errHandler(err, m)
+	}
 }
 
 // SetLevel configures the level (default levels and threshold levels)

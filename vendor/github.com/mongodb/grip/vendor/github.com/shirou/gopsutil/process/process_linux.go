@@ -16,7 +16,6 @@ import (
 	"strings"
 
 	"github.com/shirou/gopsutil/cpu"
-	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/internal/common"
 	"github.com/shirou/gopsutil/net"
 	"golang.org/x/sys/unix"
@@ -31,13 +30,13 @@ const (
 
 // MemoryInfoExStat is different between OSes
 type MemoryInfoExStat struct {
-	RSS    uint64 `json:"rss" bson:"rss"`       // bytes
-	VMS    uint64 `json:"vms" bson:"vms"`       // bytes
-	Shared uint64 `json:"shared" bson:"shared"` // bytes
-	Text   uint64 `json:"text" bson:"text"`     // bytes
-	Lib    uint64 `json:"lib" bson:"lib"`       // bytes
-	Data   uint64 `json:"data" bson:"data"`     // bytes
-	Dirty  uint64 `json:"dirty" bson:"dirty"`   // bytes
+	RSS    uint64 `json:"rss" bson:"rss,omitempty"`       // bytes
+	VMS    uint64 `json:"vms" bson:"vms,omitempty"`       // bytes
+	Shared uint64 `json:"shared" bson:"shared,omitempty"` // bytes
+	Text   uint64 `json:"text" bson:"text,omitempty"`     // bytes
+	Lib    uint64 `json:"lib" bson:"lib,omitempty"`       // bytes
+	Data   uint64 `json:"data" bson:"data,omitempty"`     // bytes
+	Dirty  uint64 `json:"dirty" bson:"dirty,omitempty"`   // bytes
 }
 
 func (m MemoryInfoExStat) String() string {
@@ -46,17 +45,17 @@ func (m MemoryInfoExStat) String() string {
 }
 
 type MemoryMapsStat struct {
-	Path         string `json:"path" bson:"path"`
-	Rss          uint64 `json:"rss" bson:"rss"`
-	Size         uint64 `json:"size" bson:"size"`
-	Pss          uint64 `json:"pss" bson:"pss"`
-	SharedClean  uint64 `json:"sharedClean" bson:"sharedClean"`
-	SharedDirty  uint64 `json:"sharedDirty" bson:"sharedDirty"`
-	PrivateClean uint64 `json:"privateClean" bson:"privateClean"`
-	PrivateDirty uint64 `json:"privateDirty" bson:"privateDirty"`
-	Referenced   uint64 `json:"referenced" bson:"referenced"`
-	Anonymous    uint64 `json:"anonymous" bson:"anonymous"`
-	Swap         uint64 `json:"swap" bson:"swap"`
+	Path         string `json:"path" bson:"path,omitempty"`
+	Rss          uint64 `json:"rss" bson:"rss,omitempty"`
+	Size         uint64 `json:"size" bson:"size,omitempty"`
+	Pss          uint64 `json:"pss" bson:"pss,omitempty"`
+	SharedClean  uint64 `json:"sharedClean" bson:"sharedClean,omitempty"`
+	SharedDirty  uint64 `json:"sharedDirty" bson:"sharedDirty,omitempty"`
+	PrivateClean uint64 `json:"privateClean" bson:"privateClean,omitempty"`
+	PrivateDirty uint64 `json:"privateDirty" bson:"privateDirty,omitempty"`
+	Referenced   uint64 `json:"referenced" bson:"referenced,omitempty"`
+	Anonymous    uint64 `json:"anonymous" bson:"anonymous,omitempty"`
+	Swap         uint64 `json:"swap" bson:"swap,omitempty"`
 }
 
 // String returns JSON value of the process.
@@ -84,7 +83,7 @@ func (p *Process) Ppid() (int32, error) {
 }
 
 func (p *Process) PpidWithContext(ctx context.Context) (int32, error) {
-	_, ppid, _, _, _, _, err := p.fillFromStat()
+	_, ppid, _, _, _, _, _, err := p.fillFromStat()
 	if err != nil {
 		return -1, err
 	}
@@ -150,7 +149,7 @@ func (p *Process) CreateTime() (int64, error) {
 }
 
 func (p *Process) CreateTimeWithContext(ctx context.Context) (int64, error) {
-	_, _, _, createTime, _, _, err := p.fillFromStat()
+	_, _, _, createTime, _, _, _, err := p.fillFromStat()
 	if err != nil {
 		return 0, err
 	}
@@ -186,7 +185,7 @@ func (p *Process) ParentWithContext(ctx context.Context) (*Process, error) {
 // Return value could be one of these.
 // R: Running S: Sleep T: Stop I: Idle
 // Z: Zombie W: Wait L: Lock
-// The charactor is same within all supported platforms.
+// The character is same within all supported platforms.
 func (p *Process) Status() (string, error) {
 	return p.StatusWithContext(context.Background())
 }
@@ -197,6 +196,28 @@ func (p *Process) StatusWithContext(ctx context.Context) (string, error) {
 		return "", err
 	}
 	return p.status, nil
+}
+
+// Foreground returns true if the process is in foreground, false otherwise.
+func (p *Process) Foreground() (bool, error) {
+	return p.ForegroundWithContext(context.Background())
+}
+
+func (p *Process) ForegroundWithContext(ctx context.Context) (bool, error) {
+	// see https://github.com/shirou/gopsutil/issues/596#issuecomment-432707831 for implementation details
+	pid := p.Pid
+	statPath := common.HostProc(strconv.Itoa(int(pid)), "stat")
+	contents, err := ioutil.ReadFile(statPath)
+	if err != nil {
+		return false, err
+	}
+	fields := strings.Fields(string(contents))
+	if len(fields) < 8 {
+		return false, fmt.Errorf("insufficient data in %s", statPath)
+	}
+	pgid := fields[4]
+	tpgid := fields[7]
+	return pgid == tpgid, nil
 }
 
 // Uids returns user ids of the process as a slice of the int
@@ -231,7 +252,7 @@ func (p *Process) Terminal() (string, error) {
 }
 
 func (p *Process) TerminalWithContext(ctx context.Context) (string, error) {
-	t, _, _, _, _, _, err := p.fillFromStat()
+	t, _, _, _, _, _, _, err := p.fillFromStat()
 	if err != nil {
 		return "", err
 	}
@@ -250,7 +271,7 @@ func (p *Process) Nice() (int32, error) {
 }
 
 func (p *Process) NiceWithContext(ctx context.Context) (int32, error) {
-	_, _, _, _, _, nice, err := p.fillFromStat()
+	_, _, _, _, _, nice, _, err := p.fillFromStat()
 	if err != nil {
 		return 0, err
 	}
@@ -288,7 +309,7 @@ func (p *Process) RlimitUsageWithContext(ctx context.Context, gatherUsed bool) (
 		return rlimits, err
 	}
 
-	_, _, _, _, rtprio, nice, err := p.fillFromStat()
+	_, _, _, _, rtprio, nice, _, err := p.fillFromStat()
 	if err != nil {
 		return nil, err
 	}
@@ -396,7 +417,7 @@ func (p *Process) ThreadsWithContext(ctx context.Context) (map[int32]*cpu.TimesS
 	}
 
 	for _, tid := range tids {
-		_, _, cpuTimes, _, _, _, err := p.fillFromTIDStat(tid)
+		_, _, cpuTimes, _, _, _, _, err := p.fillFromTIDStat(tid)
 		if err != nil {
 			return nil, err
 		}
@@ -412,7 +433,7 @@ func (p *Process) Times() (*cpu.TimesStat, error) {
 }
 
 func (p *Process) TimesWithContext(ctx context.Context) (*cpu.TimesStat, error) {
-	_, _, cpuTimes, _, _, _, err := p.fillFromStat()
+	_, _, cpuTimes, _, _, _, _, err := p.fillFromStat()
 	if err != nil {
 		return nil, err
 	}
@@ -454,6 +475,20 @@ func (p *Process) MemoryInfoExWithContext(ctx context.Context) (*MemoryInfoExSta
 		return nil, err
 	}
 	return memInfoEx, nil
+}
+
+// PageFaultsInfo returns the process's page fault counters
+func (p *Process) PageFaults() (*PageFaultsStat, error) {
+	return p.PageFaultsWithContext(context.Background())
+}
+
+func (p *Process) PageFaultsWithContext(ctx context.Context) (*PageFaultsStat, error) {
+	_, _, _, _, _, _, pageFaults, err := p.fillFromStat()
+	if err != nil {
+		return nil, err
+	}
+	return pageFaults, nil
+
 }
 
 // Children returns a slice of Process of the process.
@@ -509,6 +544,15 @@ func (p *Process) ConnectionsWithContext(ctx context.Context) ([]net.ConnectionS
 	return net.ConnectionsPid("all", p.Pid)
 }
 
+// Connections returns a slice of net.ConnectionStat used by the process at most `max`
+func (p *Process) ConnectionsMax(max int) ([]net.ConnectionStat, error) {
+	return p.ConnectionsMaxWithContext(context.Background(), max)
+}
+
+func (p *Process) ConnectionsMaxWithContext(ctx context.Context, max int) ([]net.ConnectionStat, error) {
+	return net.ConnectionsPidMax("all", p.Pid, max)
+}
+
 // NetIOCounters returns NetIOCounters of the process.
 func (p *Process) NetIOCounters(pernic bool) ([]net.IOCountersStat, error) {
 	return p.NetIOCountersWithContext(context.Background(), pernic)
@@ -537,6 +581,9 @@ func (p *Process) MemoryMaps(grouped bool) (*[]MemoryMapsStat, error) {
 func (p *Process) MemoryMapsWithContext(ctx context.Context, grouped bool) (*[]MemoryMapsStat, error) {
 	pid := p.Pid
 	var ret []MemoryMapsStat
+	if grouped {
+		ret = make([]MemoryMapsStat, 1)
+	}
 	smapsPath := common.HostProc(strconv.Itoa(int(pid)), "smaps")
 	contents, err := ioutil.ReadFile(smapsPath)
 	if err != nil {
@@ -599,7 +646,20 @@ func (p *Process) MemoryMapsWithContext(ctx context.Context, grouped bool) (*[]M
 				if err != nil {
 					return &ret, err
 				}
-				ret = append(ret, g)
+				if grouped {
+					ret[0].Size += g.Size
+					ret[0].Rss += g.Rss
+					ret[0].Pss += g.Pss
+					ret[0].SharedClean += g.SharedClean
+					ret[0].SharedDirty += g.SharedDirty
+					ret[0].PrivateClean += g.PrivateClean
+					ret[0].PrivateDirty += g.PrivateDirty
+					ret[0].Referenced += g.Referenced
+					ret[0].Anonymous += g.Anonymous
+					ret[0].Swap += g.Swap
+				} else {
+					ret = append(ret, g)
+				}
 			}
 			// starts new block
 			blocks = make([]string, 16)
@@ -1061,6 +1121,13 @@ func (p *Process) fillFromStatusWithContext(ctx context.Context) error {
 				return err
 			}
 			p.memInfo.Swap = v * 1024
+		case "VmHWM":
+			value := strings.Trim(value, " kB") // remove last "kB"
+			v, err := strconv.ParseUint(value, 10, 64)
+			if err != nil {
+				return err
+			}
+			p.memInfo.HWM = v * 1024
 		case "VmData":
 			value := strings.Trim(value, " kB") // remove last "kB"
 			v, err := strconv.ParseUint(value, 10, 64)
@@ -1118,11 +1185,11 @@ func (p *Process) fillFromStatusWithContext(ctx context.Context) error {
 	return nil
 }
 
-func (p *Process) fillFromTIDStat(tid int32) (uint64, int32, *cpu.TimesStat, int64, uint32, int32, error) {
+func (p *Process) fillFromTIDStat(tid int32) (uint64, int32, *cpu.TimesStat, int64, uint32, int32, *PageFaultsStat, error) {
 	return p.fillFromTIDStatWithContext(context.Background(), tid)
 }
 
-func (p *Process) fillFromTIDStatWithContext(ctx context.Context, tid int32) (uint64, int32, *cpu.TimesStat, int64, uint32, int32, error) {
+func (p *Process) fillFromTIDStatWithContext(ctx context.Context, tid int32) (uint64, int32, *cpu.TimesStat, int64, uint32, int32, *PageFaultsStat, error) {
 	pid := p.Pid
 	var statPath string
 
@@ -1134,7 +1201,7 @@ func (p *Process) fillFromTIDStatWithContext(ctx context.Context, tid int32) (ui
 
 	contents, err := ioutil.ReadFile(statPath)
 	if err != nil {
-		return 0, 0, nil, 0, 0, 0, err
+		return 0, 0, nil, 0, 0, 0, nil, err
 	}
 	fields := strings.Fields(string(contents))
 
@@ -1145,21 +1212,21 @@ func (p *Process) fillFromTIDStatWithContext(ctx context.Context, tid int32) (ui
 
 	terminal, err := strconv.ParseUint(fields[i+5], 10, 64)
 	if err != nil {
-		return 0, 0, nil, 0, 0, 0, err
+		return 0, 0, nil, 0, 0, 0, nil, err
 	}
 
 	ppid, err := strconv.ParseInt(fields[i+2], 10, 32)
 	if err != nil {
-		return 0, 0, nil, 0, 0, 0, err
+		return 0, 0, nil, 0, 0, 0, nil, err
 	}
 	utime, err := strconv.ParseFloat(fields[i+12], 64)
 	if err != nil {
-		return 0, 0, nil, 0, 0, 0, err
+		return 0, 0, nil, 0, 0, 0, nil, err
 	}
 
 	stime, err := strconv.ParseFloat(fields[i+13], 64)
 	if err != nil {
-		return 0, 0, nil, 0, 0, 0, err
+		return 0, 0, nil, 0, 0, 0, nil, err
 	}
 
 	cpuTimes := &cpu.TimesStat{
@@ -1168,17 +1235,17 @@ func (p *Process) fillFromTIDStatWithContext(ctx context.Context, tid int32) (ui
 		System: float64(stime / ClockTicks),
 	}
 
-	bootTime, _ := host.BootTime()
+	bootTime, _ := common.BootTimeWithContext(ctx)
 	t, err := strconv.ParseUint(fields[i+20], 10, 64)
 	if err != nil {
-		return 0, 0, nil, 0, 0, 0, err
+		return 0, 0, nil, 0, 0, 0, nil, err
 	}
 	ctime := (t / uint64(ClockTicks)) + uint64(bootTime)
 	createTime := int64(ctime * 1000)
 
 	rtpriority, err := strconv.ParseInt(fields[i+16], 10, 32)
 	if err != nil {
-		return 0, 0, nil, 0, 0, 0, err
+		return 0, 0, nil, 0, 0, 0, nil, err
 	}
 	if rtpriority < 0 {
 		rtpriority = rtpriority*-1 - 1
@@ -1191,14 +1258,38 @@ func (p *Process) fillFromTIDStatWithContext(ctx context.Context, tid int32) (ui
 	snice, _ := unix.Getpriority(PrioProcess, int(pid))
 	nice := int32(snice) // FIXME: is this true?
 
-	return terminal, int32(ppid), cpuTimes, createTime, uint32(rtpriority), nice, nil
+	minFault, err := strconv.ParseUint(fields[i+8], 10, 64)
+	if err != nil {
+		return 0, 0, nil, 0, 0, 0, nil, err
+	}
+	cMinFault, err := strconv.ParseUint(fields[i+9], 10, 64)
+	if err != nil {
+		return 0, 0, nil, 0, 0, 0, nil, err
+	}
+	majFault, err := strconv.ParseUint(fields[i+10], 10, 64)
+	if err != nil {
+		return 0, 0, nil, 0, 0, 0, nil, err
+	}
+	cMajFault, err := strconv.ParseUint(fields[i+11], 10, 64)
+	if err != nil {
+		return 0, 0, nil, 0, 0, 0, nil, err
+	}
+
+	faults := &PageFaultsStat{
+		MinorFaults:      minFault,
+		MajorFaults:      majFault,
+		ChildMinorFaults: cMinFault,
+		ChildMajorFaults: cMajFault,
+	}
+
+	return terminal, int32(ppid), cpuTimes, createTime, uint32(rtpriority), nice, faults, nil
 }
 
-func (p *Process) fillFromStat() (uint64, int32, *cpu.TimesStat, int64, uint32, int32, error) {
+func (p *Process) fillFromStat() (uint64, int32, *cpu.TimesStat, int64, uint32, int32, *PageFaultsStat, error) {
 	return p.fillFromStatWithContext(context.Background())
 }
 
-func (p *Process) fillFromStatWithContext(ctx context.Context) (uint64, int32, *cpu.TimesStat, int64, uint32, int32, error) {
+func (p *Process) fillFromStatWithContext(ctx context.Context) (uint64, int32, *cpu.TimesStat, int64, uint32, int32, *PageFaultsStat, error) {
 	return p.fillFromTIDStat(-1)
 }
 

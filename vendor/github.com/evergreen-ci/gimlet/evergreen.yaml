@@ -18,6 +18,7 @@ variables:
         type: system
         params:
           directory: gopath/src/github.com/evergreen-ci/gimlet
+      - func: setup-mongodb
       - func: run-make
         vars: { target: "${task_name}" }
 
@@ -41,6 +42,26 @@ functions:
         GOROOT: ${goroot}
         RACE_ENABLED: ${race_enabed}
         TEST_TIMEOUT: ${test_timeout}
+  setup-mongodb:
+  - command: subprocess.exec
+    type: setup
+    params:
+      env:
+        MONGODB_URL: ${mongodb_url}
+        DECOMPRESS: ${decompress}
+      working_dir: gopath/src/github.com/evergreen-ci/gimlet
+      command: make get-mongodb
+  - command: subprocess.exec
+    type: setup
+    params:
+      background: true
+      working_dir: gopath/src/github.com/evergreen-ci/gimlet
+      command: make start-mongod
+  - command: subprocess.exec
+    type: setup
+    params:
+      working_dir: gopath/src/github.com/evergreen-ci/gimlet
+      command: make check-mongod
 
 
 #######################################
@@ -95,6 +116,7 @@ tasks:
       - command: git.get_project
         params:
           directory: gopath/src/github.com/evergreen-ci/gimlet
+      - func: setup-mongodb
       - func: run-make
         vars:
           target: "coverage-html"
@@ -118,6 +140,7 @@ buildvariants:
       race_enabed: true
       test_timeout: 15m
       disable_coverage: yes
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz
     run_on:
       - archlinux-test
     tasks:
@@ -129,8 +152,9 @@ buildvariants:
       - ubuntu1604-test
     expansions:
       test_timeout: 15m
-      gobin: /opt/go1.8/go/bin/go
-      goroot: /opt/go1.8/go
+      gobin: /opt/golang/go1.9/bin/go
+      goroot: /opt/golang/go1.9
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz
     tasks:
       - name: ".report"
         stepback: false
@@ -138,9 +162,10 @@ buildvariants:
   - name: ubuntu1604
     display_name: Ubuntu 16.04
     expansions:
-      gobin: /opt/go1.8/go/bin/go
+      gobin: /opt/golang/go1.9/bin/go
       disable_coverage: yes
-      goroot: /opt/go1.8/go
+      goroot: /opt/golang/go1.9
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz
     run_on:
       - ubuntu1604-test
     tasks:
@@ -152,6 +177,7 @@ buildvariants:
       disable_coverage: yes
       gobin: /usr/local/go1.8/go/bin/go
       goroot: /usr/local/go1.8/go
+      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.3.tgz
     run_on:
       - macos-1012
     tasks:

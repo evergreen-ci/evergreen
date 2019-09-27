@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
 
@@ -19,7 +20,7 @@ type sshClient struct {
 
 // NewSSHClient creates a new Jasper manager that connects to a remote
 // machine's Jasper service over SSH using the remote machine's Jasper CLI.
-func NewSSHClient(remoteOpts jasper.RemoteOptions, clientOpts ClientOptions, trackProcs bool) (jasper.RemoteClient, error) {
+func NewSSHClient(remoteOpts options.Remote, clientOpts ClientOptions, trackProcs bool) (jasper.RemoteClient, error) {
 	if err := remoteOpts.Validate(); err != nil {
 		return nil, errors.Wrap(err, "problem validating remote options")
 	}
@@ -60,7 +61,7 @@ func (c *sshClient) ID() string {
 	return resp.ID
 }
 
-func (c *sshClient) CreateProcess(ctx context.Context, opts *jasper.CreateOptions) (jasper.Process, error) {
+func (c *sshClient) CreateProcess(ctx context.Context, opts *options.Create) (jasper.Process, error) {
 	output, err := c.runManagerCommand(ctx, CreateProcessCommand, opts)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -74,20 +75,29 @@ func (c *sshClient) CreateProcess(ctx context.Context, opts *jasper.CreateOption
 	return newSSHProcess(c.runClientCommand, resp.Info)
 }
 
-// CreateCommand creates an in-memory command whose subcommands run over SSH.
-// However, the desired semantics would be to actually send CommandInput to the
-// Jasper CLI over SSH.
-// TODO: this can likely be fixed by serializing the command inputs, which
-// requires MAKE-841.
+// CreateCommand creates a command that logically will execute via the remote
+// CLI. Users should not use (*jasper.Command).SetRunFunc().
 func (c *sshClient) CreateCommand(ctx context.Context) *jasper.Command {
-	return c.manager.CreateCommand(ctx).ProcConstructor(c.CreateProcess)
+	return c.manager.CreateCommand(ctx).SetRunFunc(func(opts options.Command) error {
+		opts.Remote = &options.Remote{}
+		output, err := c.runManagerCommand(ctx, CreateCommand, &opts)
+		if err != nil {
+			return errors.Wrap(err, "could not run command from given input")
+		}
+
+		if _, err := ExtractOutcomeResponse(output); err != nil {
+			return errors.WithStack(err)
+		}
+
+		return nil
+	})
 }
 
 func (c *sshClient) Register(ctx context.Context, proc jasper.Process) error {
 	return errors.New("cannot register existing processes on remote manager")
 }
 
-func (c *sshClient) List(ctx context.Context, f jasper.Filter) ([]jasper.Process, error) {
+func (c *sshClient) List(ctx context.Context, f options.Filter) ([]jasper.Process, error) {
 	output, err := c.runManagerCommand(ctx, ListCommand, &FilterInput{Filter: f})
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -164,7 +174,7 @@ func (c *sshClient) CloseConnection() error {
 	return nil
 }
 
-func (c *sshClient) ConfigureCache(ctx context.Context, opts jasper.CacheOptions) error {
+func (c *sshClient) ConfigureCache(ctx context.Context, opts options.Cache) error {
 	output, err := c.runRemoteCommand(ctx, ConfigureCacheCommand, &opts)
 	if err != nil {
 		return errors.WithStack(err)
@@ -177,7 +187,7 @@ func (c *sshClient) ConfigureCache(ctx context.Context, opts jasper.CacheOptions
 	return nil
 }
 
-func (c *sshClient) DownloadFile(ctx context.Context, info jasper.DownloadInfo) error {
+func (c *sshClient) DownloadFile(ctx context.Context, info options.Download) error {
 	output, err := c.runRemoteCommand(ctx, DownloadFileCommand, &info)
 	if err != nil {
 		return errors.WithStack(err)
@@ -190,8 +200,8 @@ func (c *sshClient) DownloadFile(ctx context.Context, info jasper.DownloadInfo) 
 	return nil
 }
 
-func (c *sshClient) WriteFile(ctx context.Context, info jasper.WriteFileInfo) error {
-	sendInfo := func(info jasper.WriteFileInfo) error {
+func (c *sshClient) WriteFile(ctx context.Context, info options.WriteFile) error {
+	sendInfo := func(info options.WriteFile) error {
 		output, err := c.runRemoteCommand(ctx, WriteFileCommand, &info)
 		if err != nil {
 			return errors.WithStack(err)
@@ -206,7 +216,7 @@ func (c *sshClient) WriteFile(ctx context.Context, info jasper.WriteFileInfo) er
 	return info.WriteBufferedContent(sendInfo)
 }
 
-func (c *sshClient) DownloadMongoDB(ctx context.Context, opts jasper.MongoDBDownloadOptions) error {
+func (c *sshClient) DownloadMongoDB(ctx context.Context, opts options.MongoDBDownload) error {
 	output, err := c.runRemoteCommand(ctx, DownloadMongoDBCommand, &opts)
 	if err != nil {
 		return errors.WithStack(err)

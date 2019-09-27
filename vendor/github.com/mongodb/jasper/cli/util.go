@@ -17,6 +17,7 @@ import (
 	"github.com/kardianos/service"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/rest"
 	"github.com/mongodb/jasper/rpc"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -109,7 +110,7 @@ func newRemoteClient(ctx context.Context, service, host string, port int, credsF
 	}
 
 	if service == RESTService {
-		return jasper.NewRESTClient(addr), nil
+		return rest.NewClient(addr), nil
 	} else if service == RPCService {
 		return rpc.NewClientWithFile(ctx, addr, credsFilePath)
 	}

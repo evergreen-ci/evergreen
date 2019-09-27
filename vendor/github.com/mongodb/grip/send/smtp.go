@@ -71,7 +71,7 @@ func MakeSMTPLogger(opts *SMTPOptions) (Sender, error) {
 func (s *smtpLogger) Send(m message.Composer) {
 	if s.Level().ShouldLog(m) {
 		if err := s.opts.sendMail(m); err != nil {
-			s.ErrorHandler(err, m)
+			s.ErrorHandler()(err, m)
 		}
 	}
 }

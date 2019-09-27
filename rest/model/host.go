@@ -1,6 +1,8 @@
 package model
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
@@ -8,26 +10,26 @@ import (
 
 // APIHost is the model to be returned by the API whenever hosts are fetched.
 type APIHost struct {
-	Id           APIString         `json:"host_id"`
-	HostURL      APIString         `json:"host_url"`
-	Distro       DistroInfo        `json:"distro"`
-	Provisioned  bool              `json:"provisioned"`
-	StartedBy    APIString         `json:"started_by"`
-	Type         APIString         `json:"host_type"`
-	User         APIString         `json:"user"`
-	Status       APIString         `json:"status"`
-	RunningTask  taskInfo          `json:"running_task"`
-	UserHost     bool              `json:"user_host"`
-	InstanceTags map[string]string `json:"instance_tags"`
+	Id           APIString  `json:"host_id"`
+	HostURL      APIString  `json:"host_url"`
+	Distro       DistroInfo `json:"distro"`
+	Provisioned  bool       `json:"provisioned"`
+	StartedBy    APIString  `json:"started_by"`
+	Type         APIString  `json:"host_type"`
+	User         APIString  `json:"user"`
+	Status       APIString  `json:"status"`
+	RunningTask  taskInfo   `json:"running_task"`
+	UserHost     bool       `json:"user_host"`
+	InstanceTags []host.Tag `json:"instance_tags"`
 }
 
 // HostPostRequest is a struct that holds the format of a POST request to /hosts
 type HostRequestOptions struct {
-	DistroID     string            `json:"distro"`
-	TaskID       string            `json:"task"`
-	KeyName      string            `json:"keyname"`
-	UserData     string            `json:"userdata"`
-	InstanceTags map[string]string `json:"instance_tags"`
+	DistroID     string     `json:"distro"`
+	TaskID       string     `json:"task"`
+	KeyName      string     `json:"keyname"`
+	UserData     string     `json:"userdata"`
+	InstanceTags []host.Tag `json:"instance_tags"`
 }
 
 type DistroInfo struct {
@@ -119,8 +121,9 @@ func (apiHost *APIHost) ToService() (interface{}, error) {
 }
 
 type APISpawnHostModify struct {
-	Action   APIString `json:"action"`
-	HostID   APIString `json:"host_id"`
-	RDPPwd   APIString `json:"rdp_pwd"`
-	AddHours APIString `json:"add_hours"`
+	Action     APIString `json:"action"`
+	HostID     APIString `json:"host_id"`
+	RDPPwd     APIString `json:"rdp_pwd"`
+	AddHours   APIString `json:"add_hours"`
+	Expiration time.Time `json:"expiration"`
 }

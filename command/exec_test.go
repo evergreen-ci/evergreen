@@ -341,6 +341,38 @@ func (s *execCmdSuite) TestNoPathSetting() {
 	s.Zero(path)
 }
 
+func (s *execCmdSuite) TestExpansionsEnvOptionDisabled() {
+	cmd := &subprocessExec{
+		Env:        map[string]string{},
+		WorkingDir: testutil.GetDirectoryOfFile(),
+	}
+
+	s.NoError(cmd.doExpansions(util.NewExpansions(map[string]string{})))
+	s.Len(cmd.Env, 0)
+	cmd.Env["one"] = "one"
+	s.NoError(cmd.doExpansions(util.NewExpansions(map[string]string{"two": "two"})))
+	s.Len(cmd.Env, 1)
+	s.NotEqual("two", cmd.Env["two"])
+	s.Equal("one", cmd.Env["one"])
+}
+
+func (s *execCmdSuite) TestExpansionsEnvOptionEnabled() {
+	cmd := &subprocessExec{
+		Env:                map[string]string{},
+		WorkingDir:         testutil.GetDirectoryOfFile(),
+		AddExpansionsToEnv: true,
+	}
+
+	s.NoError(cmd.doExpansions(util.NewExpansions(map[string]string{})))
+	s.Len(cmd.Env, 0)
+	cmd.Env["one"] = "one"
+	s.Equal("one", cmd.Env["one"])
+	s.NoError(cmd.doExpansions(util.NewExpansions(map[string]string{"two": "two", "one": "1"})))
+	s.Len(cmd.Env, 2)
+	s.Equal("two", cmd.Env["two"])
+	s.Equal("1", cmd.Env["one"])
+}
+
 func TestAddTemp(t *testing.T) {
 	for name, test := range map[string]func(*testing.T, map[string]string){
 		"Empty": func(t *testing.T, env map[string]string) {

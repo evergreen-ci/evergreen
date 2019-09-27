@@ -23,7 +23,7 @@ func serviceCommandCombined(cmd string, operation serviceOperation) cli.Command 
 	return cli.Command{
 		Name:  CombinedService,
 		Usage: fmt.Sprintf("%s a combined service", cmd),
-		Flags: append(serviceLoggingFlags(),
+		Flags: append(serviceFlags(),
 			cli.StringFlag{
 				Name:   restHostFlagName,
 				EnvVar: restHostEnvVar,
@@ -52,14 +52,11 @@ func serviceCommandCombined(cmd string, operation serviceOperation) cli.Command 
 				Name:  rpcCredsFilePathFlagName,
 				Usage: "the path to the RPC service credentials file",
 			},
-			cli.StringFlag{
-				Name:  userFlagName,
-				Usage: "the user who will run the services",
-			},
 		),
 		Before: mergeBeforeFuncs(
 			validatePort(restPortFlagName),
 			validatePort(rpcPortFlagName),
+			validateLogLevel(logLevelFlagName),
 		),
 		Action: func(c *cli.Context) error {
 			manager, err := jasper.NewLocalManager(false)
@@ -75,7 +72,10 @@ func serviceCommandCombined(cmd string, operation serviceOperation) cli.Command 
 			config := serviceConfig(CombinedService, buildRunCommand(c, CombinedService))
 			config.UserName = c.String(userFlagName)
 
-			return operation(daemon, config)
+			if err := operation(daemon, config); !c.Bool(quietFlagName) {
+				return err
+			}
+			return nil
 		},
 	}
 }

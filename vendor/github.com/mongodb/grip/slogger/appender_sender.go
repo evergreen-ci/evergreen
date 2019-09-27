@@ -51,7 +51,9 @@ func (a *appenderSender) Name() string                             { return a.na
 func (a *appenderSender) SetName(n string)                         { a.name = n }
 func (a *appenderSender) Level() send.LevelInfo                    { return a.level }
 func (a *appenderSender) SetErrorHandler(send.ErrorHandler) error  { return nil }
+func (a *appenderSender) ErrorHandler() send.ErrorHandler          { return nil }
 func (a *appenderSender) SetFormatter(send.MessageFormatter) error { return nil }
+func (a *appenderSender) Formatter() send.MessageFormatter         { return nil }
 func (a *appenderSender) SetLevel(l send.LevelInfo) error {
 	if !l.Valid() {
 		return fmt.Errorf("level settings are not valid: %+v", l)

@@ -173,7 +173,7 @@ func FindOne(collection string, query interface{},
 	}
 	defer session.Close()
 
-	q := db.C(collection).Find(query).Select(projection)
+	q := db.C(collection).Find(query).Select(projection).Limit(1)
 	if len(sort) != 0 {
 		q = q.Sort(sort...)
 	}

@@ -9,40 +9,40 @@ import (
 var invoke common.Invoker = common.Invoke{}
 
 type UsageStat struct {
-	Path              string  `json:"path" bson:"path"`
-	Fstype            string  `json:"fstype" bson:"fstype"`
-	Total             uint64  `json:"total" bson:"total"`
-	Free              uint64  `json:"free" bson:"free"`
-	Used              uint64  `json:"used" bson:"used"`
-	UsedPercent       float64 `json:"usedPercent" bson:"usedPercent"`
-	InodesTotal       uint64  `json:"inodesTotal" bson:"inodesTotal"`
-	InodesUsed        uint64  `json:"inodesUsed" bson:"inodesUsed"`
-	InodesFree        uint64  `json:"inodesFree" bson:"inodesFree"`
-	InodesUsedPercent float64 `json:"inodesUsedPercent" bson:"inodesUsedPercent"`
+	Path              string  `json:"path" bson:"path,omitempty"`
+	Fstype            string  `json:"fstype" bson:"fstype,omitempty"`
+	Total             uint64  `json:"total" bson:"total,omitempty"`
+	Free              uint64  `json:"free" bson:"free,omitempty"`
+	Used              uint64  `json:"used" bson:"used,omitempty"`
+	UsedPercent       float64 `json:"usedPercent,omitempty" bson:"usedPercent,omitempty"`
+	InodesTotal       uint64  `json:"inodesTotal" bson:"inodesTotal,omitempty"`
+	InodesUsed        uint64  `json:"inodesUsed" bson:"inodesUsed,omitempty"`
+	InodesFree        uint64  `json:"inodesFree" bson:"inodesFree,omitempty"`
+	InodesUsedPercent float64 `json:"inodesUsedPercent,omitempty" bson:"inodesUsedPercent,omitempty"`
 }
 
 type PartitionStat struct {
-	Device     string `json:"device" bson:"device"`
-	Mountpoint string `json:"mountpoint" bson:"mountpoint"`
-	Fstype     string `json:"fstype" bson:"fstype"`
-	Opts       string `json:"opts" bson:"opts"`
+	Device     string `json:"device" bson:"device,omitempty"`
+	Mountpoint string `json:"mountpoint" bson:"mountpoint,omitempty"`
+	Fstype     string `json:"fstype" bson:"fstype,omitempty"`
+	Opts       string `json:"opts" bson:"opts,omitempty"`
 }
 
 type IOCountersStat struct {
-	ReadCount        uint64 `json:"readCount" bson:"readCount"`
-	MergedReadCount  uint64 `json:"mergedReadCount" bson:"mergedReadCount"`
-	WriteCount       uint64 `json:"writeCount" bson:"writeCount"`
-	MergedWriteCount uint64 `json:"mergedWriteCount" bson:"mergedWriteCount"`
-	ReadBytes        uint64 `json:"readBytes" bson:"readBytes"`
-	WriteBytes       uint64 `json:"writeBytes" bson:"writeBytes"`
-	ReadTime         uint64 `json:"readTime" bson:"readTime"`
-	WriteTime        uint64 `json:"writeTime" bson:"writeTime"`
-	IopsInProgress   uint64 `json:"iopsInProgress" bson:"iopsInProgress"`
-	IoTime           uint64 `json:"ioTime" bson:"ioTime"`
-	WeightedIO       uint64 `json:"weightedIO" bson:"weightedIO"`
-	Name             string `json:"name" bson:"name"`
-	SerialNumber     string `json:"serialNumber" bson:"serialNumber"`
-	Label            string `json:"label" bson:"label"`
+	ReadCount        uint64 `json:"readCount" bson:"readCount,omitempty"`
+	MergedReadCount  uint64 `json:"mergedReadCount" bson:"mergedReadCount,omitempty"`
+	WriteCount       uint64 `json:"writeCount" bson:"writeCount,omitempty"`
+	MergedWriteCount uint64 `json:"mergedWriteCount" bson:"mergedWriteCount,omitempty"`
+	ReadBytes        uint64 `json:"readBytes" bson:"readBytes,omitempty"`
+	WriteBytes       uint64 `json:"writeBytes" bson:"writeBytes,omitempty"`
+	ReadTime         uint64 `json:"readTime" bson:"readTime,omitempty"`
+	WriteTime        uint64 `json:"writeTime" bson:"writeTime,omitempty"`
+	IopsInProgress   uint64 `json:"iopsInProgress" bson:"iopsInProgress,omitempty"`
+	IoTime           uint64 `json:"ioTime" bson:"ioTime,omitempty"`
+	WeightedIO       uint64 `json:"weightedIO" bson:"weightedIO,omitempty"`
+	Name             string `json:"name" bson:"name,omitempty"`
+	SerialNumber     string `json:"serialNumber" bson:"serialNumber,omitempty"`
+	Label            string `json:"label" bson:"label,omitempty"`
 }
 
 func (d UsageStat) String() string {

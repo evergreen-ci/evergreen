@@ -448,7 +448,7 @@ func TestTaskQueueGenerationTimes(t *testing.T) {
 
 	assert.NoError(db.Insert(TaskQueuesCollection, taskQueue))
 
-	times, err := FindTaskQueueGenerationTimes()
+	times, err := FindTaskQueueLastGenerationTimes()
 	assert.NoError(err)
 	assert.NotNil(times)
 	assert.Len(times, 1)

@@ -149,7 +149,12 @@ func (d *mongoDriver) start(ctx context.Context, client *mongo.Client) error {
 }
 
 func (d *mongoDriver) getCollection() *mongo.Collection {
-	return d.client.Database(d.opts.DB).Collection(addJobsSuffix(d.name))
+	db := d.client.Database(d.opts.DB)
+	if d.opts.UseGroups {
+		return db.Collection(addGroupSufix(d.name))
+	}
+
+	return db.Collection(addJobsSuffix(d.name))
 }
 
 func (d *mongoDriver) setupDB(ctx context.Context) error {
@@ -224,9 +229,7 @@ func (d *mongoDriver) setupDB(ctx context.Context) error {
 					Value: bsonx.Int32(1),
 				},
 			},
-			Options: &options.IndexOptions{
-				ExpireAfterSeconds: &ttl,
-			},
+			Options: options.Index().SetExpireAfterSeconds(ttl),
 		})
 	}
 	_, err := d.getCollection().Indexes().CreateMany(ctx, indexes)

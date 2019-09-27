@@ -194,6 +194,19 @@ func requireAtLeastOneBool(flags ...string) cli.BeforeFunc {
 	}
 }
 
+func requireAtLeastOneStringSlice(flags ...string) cli.BeforeFunc {
+	return func(c *cli.Context) error {
+		for idx := range flags {
+			if len(c.StringSlice(flags[idx])) > 0 {
+				return nil
+			}
+		}
+
+		return errors.Errorf("must specify at least one of the following options: %s",
+			strings.Join(flags, ", "))
+	}
+}
+
 func mergeBeforeFuncs(ops ...func(c *cli.Context) error) cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		catcher := grip.NewBasicCatcher()

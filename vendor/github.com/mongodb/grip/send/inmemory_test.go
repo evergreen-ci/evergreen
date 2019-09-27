@@ -20,7 +20,7 @@ type InMemorySuite struct {
 func (s *InMemorySuite) msgsToString(msgs []message.Composer) []string {
 	strs := make([]string, 0, len(msgs))
 	for _, msg := range msgs {
-		str, err := s.sender.Formatter(msg)
+		str, err := s.sender.Formatter()(msg)
 		s.Require().NoError(err)
 		strs = append(strs, str)
 	}

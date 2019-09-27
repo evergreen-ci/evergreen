@@ -141,7 +141,13 @@ type Host struct {
 	DockerOptions DockerOptions `bson:"docker_options,omitempty" json:"docker_options,omitempty"`
 
 	// InstanceTags stores user-specified tags for instances
-	InstanceTags map[string]string `bson:"instance_tags,omitempty" json:"instance_tags,omitempty"`
+	InstanceTags []Tag `bson:"instance_tags,omitempty" json:"instance_tags,omitempty"`
+}
+
+type Tag struct {
+	Key           string `bson:"key" json:"key"`
+	Value         string `bson:"value" json:"value"`
+	CanBeModified bool   `bson:"can_be_modified" json:"can_be_modified"`
 }
 
 func (h *Host) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(h) }
@@ -222,6 +228,11 @@ type newParentsNeededParams struct {
 type ContainersOnParents struct {
 	ParentHost    Host
 	NumContainers int
+}
+
+type HostModifyOptions struct {
+	AddInstanceTags    []Tag
+	DeleteInstanceTags []string
 }
 
 const (
@@ -314,6 +325,14 @@ func (h *Host) SetRunning(user string) error {
 
 func (h *Host) SetTerminated(user string) error {
 	return h.SetStatus(evergreen.HostTerminated, user, "")
+}
+
+func (h *Host) SetStopping(user string) error {
+	return h.SetStatus(evergreen.HostStopping, user, "")
+}
+
+func (h *Host) SetStopped(user string) error {
+	return h.SetStatus(evergreen.HostStopped, user, "")
 }
 
 func (h *Host) SetUnprovisioned() error {
@@ -1653,4 +1672,60 @@ func StaleRunningTaskIDs(staleness time.Duration) ([]task.Task, error) {
 
 	err := db.Aggregate(task.Collection, pipeline, &out)
 	return out, err
+}
+
+// ModifySpawnHost updates a spawnhost with the changes described
+// in a HostModifyOptions struct.
+func (h *Host) ModifySpawnHost(opts HostModifyOptions) error {
+	h.DeleteTags(opts.DeleteInstanceTags)
+	h.AddTags(opts.AddInstanceTags)
+	if err := h.SetTags(); err != nil {
+		return errors.Wrap(err, "error modifying spawn host")
+	}
+	return nil
+}
+
+// AddTags adds the specified tags to the host document, or modifies
+// an existing tag if it can be modified.
+func (h *Host) AddTags(tags []Tag) {
+	for _, new := range tags {
+		found := false
+		for i, old := range h.InstanceTags {
+			if old.Key == new.Key && old.CanBeModified {
+				h.InstanceTags[i] = new
+				found = true
+				break
+			}
+		}
+		if !found {
+			h.InstanceTags = append(h.InstanceTags, new)
+		}
+	}
+}
+
+// DeleteTags removes tags specified by their keys, only if those
+// keys are allowed to be deleted.
+func (h *Host) DeleteTags(keys []string) {
+	for _, key := range keys {
+		for i, tag := range h.InstanceTags {
+			if tag.Key == key && tag.CanBeModified {
+				h.InstanceTags = append(h.InstanceTags[:i], h.InstanceTags[i+1:]...)
+				break
+			}
+		}
+	}
+}
+
+// SetTags updates the host's instance tags in the database.
+func (h *Host) SetTags() error {
+	return UpdateOne(
+		bson.M{
+			IdKey: h.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				InstanceTagsKey: h.InstanceTags,
+			},
+		},
+	)
 }

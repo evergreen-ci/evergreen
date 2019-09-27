@@ -272,7 +272,7 @@ func (b *buildlogger) Send(m message.Composer) {
 		}
 
 		if err := b.postLines(bytes.NewBuffer(out)); err != nil {
-			b.ErrorHandler(err, message.NewBytesMessage(b.level.Default, out))
+			b.ErrorHandler()(err, message.NewBytesMessage(b.level.Default, out))
 		}
 	}
 }

@@ -173,6 +173,14 @@ func (s *SenderSuite) SetupTest() {
 	}
 	s.NoError(s.senders["gh-status-mocked"].SetFormatter(MakeDefaultFormatter()))
 
+	annotatingBase, err := NewNativeLogger("async-one", l)
+	s.Require().NoError(err)
+	s.senders["annotating"] = NewAnnotatingSender(annotatingBase, map[string]interface{}{
+		"one":    1,
+		"true":   true,
+		"string": "string",
+	})
+
 	for _, size := range []int{1, 100, 10000, 1000000} {
 		name := fmt.Sprintf("inmemory-%d", size)
 		s.senders[name], err = NewInMemorySender(name, l, size)
@@ -303,7 +311,7 @@ func TestBaseConstructor(t *testing.T) {
 			assert.Error(s.SetFormatter(nil))
 			assert.Error(s.SetErrorHandler(nil))
 			assert.NoError(s.SetErrorHandler(handler))
-			s.ErrorHandler(errors.New("failed"), message.NewString("fated"))
+			s.ErrorHandler()(errors.New("failed"), message.NewString("fated"))
 		}
 	}
 

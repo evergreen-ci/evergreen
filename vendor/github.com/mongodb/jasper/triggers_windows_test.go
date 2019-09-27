@@ -5,6 +5,8 @@ import (
 	"syscall"
 	"testing"
 
+	"github.com/mongodb/jasper/options"
+	"github.com/mongodb/jasper/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -15,8 +17,8 @@ func TestCleanTerminationSignalTrigger(t *testing.T) {
 		"Blocking": newBlockingProcess,
 	} {
 		t.Run(procName, func(t *testing.T) {
-			for testName, testCase := range map[string]func(context.Context, *CreateOptions, ProcessConstructor){
-				"CleanTerminationRunsForSIGTERM": func(ctx context.Context, opts *CreateOptions, makep ProcessConstructor) {
+			for testName, testCase := range map[string]func(context.Context, *options.Create, ProcessConstructor){
+				"CleanTerminationRunsForSIGTERM": func(ctx context.Context, opts *options.Create, makep ProcessConstructor) {
 					proc, err := makep(ctx, opts)
 					require.NoError(t, err)
 					trigger := makeCleanTerminationSignalTrigger()
@@ -30,7 +32,7 @@ func TestCleanTerminationSignalTrigger(t *testing.T) {
 					// Subsequent executions of trigger should fail.
 					assert.False(t, trigger(proc.Info(ctx), syscall.SIGTERM))
 				},
-				"CleanTerminationIgnoresNonSIGTERM": func(ctx context.Context, opts *CreateOptions, makep ProcessConstructor) {
+				"CleanTerminationIgnoresNonSIGTERM": func(ctx context.Context, opts *options.Create, makep ProcessConstructor) {
 					proc, err := makep(ctx, opts)
 					require.NoError(t, err)
 					trigger := makeCleanTerminationSignalTrigger()
@@ -40,8 +42,8 @@ func TestCleanTerminationSignalTrigger(t *testing.T) {
 
 					assert.NoError(t, proc.Signal(ctx, syscall.SIGKILL))
 				},
-				"CleanTerminationFailsForExitedProcess": func(ctx context.Context, opts *CreateOptions, makep ProcessConstructor) {
-					opts = trueCreateOpts()
+				"CleanTerminationFailsForExitedProcess": func(ctx context.Context, opts *options.Create, makep ProcessConstructor) {
+					opts = testutil.TrueCreateOpts()
 					proc, err := makep(ctx, opts)
 					require.NoError(t, err)
 
@@ -57,8 +59,7 @@ func TestCleanTerminationSignalTrigger(t *testing.T) {
 					ctx, cancel := context.WithCancel(context.Background())
 					defer cancel()
 
-					opts := yesCreateOpts(0)
-					testCase(ctx, &opts, makeProc)
+					testCase(ctx, testutil.YesCreateOpts(0), makeProc)
 				})
 			}
 		})

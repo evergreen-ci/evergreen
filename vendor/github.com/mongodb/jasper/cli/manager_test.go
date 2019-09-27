@@ -6,6 +6,9 @@ import (
 	"testing"
 
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/mock"
+	"github.com/mongodb/jasper/options"
+	"github.com/mongodb/jasper/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli"
@@ -25,7 +28,7 @@ func TestCLIManager(t *testing.T) {
 					assert.NotEmpty(t, resp.ID)
 				},
 				"CommandsWithInputFailWithInvalidInput": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
-					input, err := json.Marshal(jasper.MockProcess{})
+					input, err := json.Marshal(mock.Process{})
 					require.NoError(t, err)
 					assert.Error(t, execCLICommandInputOutput(t, c, managerCreateProcess(), input, &InfoResponse{}))
 					assert.Error(t, execCLICommandInputOutput(t, c, managerCreateCommand(), input, &OutcomeResponse{}))
@@ -34,14 +37,14 @@ func TestCLIManager(t *testing.T) {
 					assert.Error(t, execCLICommandInputOutput(t, c, managerGroup(), input, &InfosResponse{}))
 				},
 				"CommandsWithoutInputPassWithInvalidInput": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
-					input, err := json.Marshal(jasper.MockProcess{})
+					input, err := json.Marshal(mock.Process{})
 					require.NoError(t, err)
 					resp := &OutcomeResponse{}
 					assert.NoError(t, execCLICommandInputOutput(t, c, managerClear(), input, resp))
 					assert.NoError(t, execCLICommandInputOutput(t, c, managerClose(), input, resp))
 				},
 				"CreateProcessPasses": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
-					input, err := json.Marshal(jasper.CreateOptions{
+					input, err := json.Marshal(options.Create{
 						Args: []string{"echo", "hello", "world"},
 					})
 					require.NoError(t, err)
@@ -50,8 +53,8 @@ func TestCLIManager(t *testing.T) {
 					require.True(t, resp.Successful())
 				},
 				"CreateCommandPasses": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
-					input, err := json.Marshal(CommandInput{
-						Commands: [][]string{[]string{"echo", "hello", "world"}},
+					input, err := json.Marshal(options.Command{
+						Commands: [][]string{[]string{"true"}},
 					})
 					require.NoError(t, err)
 					resp := &OutcomeResponse{}
@@ -80,7 +83,7 @@ func TestCLIManager(t *testing.T) {
 					assert.Error(t, execCLICommandInputOutput(t, c, managerGet(), input, &InfoResponse{}))
 				},
 				"ListValidFilterPasses": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
-					input, err := json.Marshal(FilterInput{jasper.All})
+					input, err := json.Marshal(FilterInput{options.All})
 					require.NoError(t, err)
 					resp := &InfosResponse{}
 					require.NoError(t, execCLICommandInputOutput(t, c, managerList(), input, resp))
@@ -89,7 +92,7 @@ func TestCLIManager(t *testing.T) {
 					assert.Equal(t, jasperProcID, resp.Infos[0].ID)
 				},
 				"ListInvalidFilterFails": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
-					input, err := json.Marshal(FilterInput{jasper.Filter("foo")})
+					input, err := json.Marshal(FilterInput{options.Filter("foo")})
 					require.NoError(t, err)
 					assert.Error(t, execCLICommandInputOutput(t, c, managerList(), input, &InfosResponse{}))
 				},
@@ -130,9 +133,9 @@ func TestCLIManager(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+					ctx, cancel := context.WithTimeout(context.Background(), testutil.TestTimeout)
 					defer cancel()
-					port := getNextPort()
+					port := testutil.GetPortNumber()
 					c := mockCLIContext(remoteType, port)
 					manager, err := jasper.NewLocalManager(false)
 					require.NoError(t, err)
@@ -143,7 +146,7 @@ func TestCLIManager(t *testing.T) {
 					}()
 
 					resp := &InfoResponse{}
-					input, err := json.Marshal(trueCreateOpts())
+					input, err := json.Marshal(testutil.TrueCreateOpts())
 					require.NoError(t, err)
 					require.NoError(t, execCLICommandInputOutput(t, c, managerCreateProcess(), input, resp))
 					require.True(t, resp.Successful())

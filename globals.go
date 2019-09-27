@@ -22,6 +22,9 @@ const (
 	HostQuarantined     = "quarantined"
 	HostDecommissioned  = "decommissioned"
 
+	HostStopping = "stopping"
+	HostStopped  = "stopped"
+
 	HostExternalUserName = "external"
 
 	HostStatusSuccess = "success"
@@ -366,6 +369,8 @@ var (
 		HostStarting,
 		HostProvisioning,
 		HostProvisionFailed,
+		HostStopping,
+		HostStopped,
 	}
 
 	// DownHostStatus is a list of all host statuses that are considered down.
@@ -390,6 +395,8 @@ var (
 		HostStarting,
 		HostProvisioning,
 		HostProvisionFailed,
+		HostStopping,
+		HostStopped,
 	}
 
 	// Set of host status values that can be user set via the API

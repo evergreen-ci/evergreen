@@ -13,13 +13,14 @@ import (
 
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
 )
 
 type blockingProcess struct {
 	id       string
-	opts     CreateOptions
+	opts     options.Create
 	ops      chan func(*exec.Cmd)
 	complete chan struct{}
 	err      error
@@ -31,7 +32,7 @@ type blockingProcess struct {
 	info           ProcessInfo
 }
 
-func newBlockingProcess(ctx context.Context, opts *CreateOptions) (Process, error) {
+func newBlockingProcess(ctx context.Context, opts *options.Create) (Process, error) {
 	id := uuid.Must(uuid.NewV4()).String()
 	opts.AddEnvVar(EnvironID, id)
 
@@ -65,6 +66,7 @@ func newBlockingProcess(ctx context.Context, opts *CreateOptions) (Process, erro
 		PID:       cmd.Process.Pid,
 		Options:   *opts,
 		IsRunning: true,
+		StartAt:   time.Now(),
 	}
 	p.info.Host, _ = os.Hostname()
 
@@ -123,6 +125,7 @@ func (p *blockingProcess) reactor(ctx context.Context, deadline time.Time, cmd *
 			func() {
 				p.mu.RLock()
 				defer p.mu.RUnlock()
+				p.info.EndAt = finishTime
 
 				info = p.info
 				info.Complete = true
@@ -167,6 +170,7 @@ func (p *blockingProcess) reactor(ctx context.Context, deadline time.Time, cmd *
 			info.Complete = true
 			info.IsRunning = false
 			info.Successful = false
+			info.EndAt = time.Now()
 
 			p.mu.RLock()
 			p.triggers.Run(info)

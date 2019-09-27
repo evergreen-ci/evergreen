@@ -135,6 +135,8 @@ type Connector interface {
 	// started by
 	FindHostByIdWithOwner(string, gimlet.User) (*host.Host, error)
 
+	FindHostsByDistroID(string) ([]host.Host, error)
+
 	// NewIntentHost is a method to insert an intent host given a distro and the name of a saved public key
 	NewIntentHost(*restModel.HostRequestOptions, *user.DBUser) (*host.Host, error)
 
@@ -218,7 +220,6 @@ type Connector interface {
 	DeletePublicKey(*user.DBUser, string) error
 	UpdateSettings(*user.DBUser, user.UserSettings) error
 	SubmitFeedback(restModel.APIFeedbackSubmission) error
-	GetAllRoles() ([]restModel.APIRole, error)
 
 	AddPatchIntent(patch.Intent, amboy.Queue) error
 
