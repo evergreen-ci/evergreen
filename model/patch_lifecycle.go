@@ -120,6 +120,9 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	if err != nil {
 		return nil, "", errors.WithStack(err)
 	}
+	if projectRef == nil {
+		return nil, "", errors.Errorf("no project exists with identifier '%s", p.Project)
+	}
 
 	project := &Project{}
 	// if the patched config exists, use that as the project file bytes.
