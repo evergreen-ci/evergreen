@@ -213,8 +213,8 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     };
 
     $scope.stopHost = function() {
-      mciSpawnRestService.terminateHost(
-        'terminate',
+      mciSpawnRestService.stopHost(
+        'stop',
         $scope.curHostData.id, {}, {
           success: function(resp) {
             window.location.href = "/spawn";
@@ -227,8 +227,8 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     };
 
     $scope.startHost = function() {
-      mciSpawnRestService.terminateHost(
-        'terminate',
+      mciSpawnRestService.startHost(
+        'start',
         $scope.curHostData.id, {}, {
           success: function(resp) {
             window.location.href = "/spawn";

@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
@@ -25,6 +26,8 @@ var (
 	HostPasswordUpdate         = "updateRDPPassword"
 	HostExpirationExtension    = "extendHostExpiration"
 	HostTerminate              = "terminate"
+	HostStop                   = "stop"
+	HostStart                  = "start"
 	MaxExpirationDurationHours = 24 * 7 // 7 days
 )
 
@@ -212,7 +215,45 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		gimlet.WriteJSON(w, "host terminated")
+		gimlet.WriteJSON(w, "Host terminated")
+		return
+
+	case HostStop:
+		if h.Status == evergreen.HostStopped || h.Status == evergreen.HostStopping {
+			gimlet.WriteJSONError(w, fmt.Sprintf("Host %v is already stopping or stopped", h.Id))
+			return
+		}
+		if h.Status != evergreen.HostRunning {
+			gimlet.WriteJSONError(w, fmt.Sprintf("Host %v is not running", h.Id))
+			return
+		}
+
+		// Stop the host
+		queue := env.RemoteQueue()
+		ts := util.RoundPartOfMinute(1).Format(tsFormat)
+		stopJob := units.NewSpawnhostStopJob(h, u.Id, ts)
+		if err = queue.Put(ctx, stopJob); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+		gimlet.WriteJSON(w, "Host stopping")
+		return
+
+	case HostStart:
+		if h.Status != evergreen.HostStopped {
+			gimlet.WriteJSONError(w, fmt.Sprintf("Host %v is not stopped", h.Id))
+			return
+		}
+
+		// Start the host
+		queue := env.RemoteQueue()
+		ts := util.RoundPartOfMinute(1).Format(tsFormat)
+		startJob := units.NewSpawnhostStartJob(h, u.Id, ts)
+		if err = queue.Put(ctx, startJob); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+		gimlet.WriteJSON(w, "Host starting")
 		return
 
 	case HostPasswordUpdate:

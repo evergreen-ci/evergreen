@@ -281,7 +281,6 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function(
         baseSvc.postResource(resource, [], config, callbacks);
     };
 
-
     service.startHost = function(action, hostId, data, callbacks) {
         var config = {
             data: data
