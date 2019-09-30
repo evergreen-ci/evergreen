@@ -17,7 +17,7 @@ projectPath := $(orgPath)/$(name)
 ifneq (,$(GO_BIN_PATH))
 gobin := $(GO_BIN_PATH)
 else
-gobin := $(shell if [ -x /opt/golang/go1.9/bin/go ]; then /opt/golang/go1.9/bin/go ; elif [ -x $$(which go) ]; then which go; else echo go; fi)
+gobin := $(shell if [ -x /opt/golang/go1.9/bin/go ]; then /opt/golang/go1.9/bin/go; else echo go; fi)
 endif
 
 # start evergreen specific configuration
