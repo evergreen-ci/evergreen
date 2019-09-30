@@ -19,7 +19,7 @@ mciModule.controller('PatchesController', function($scope, $filter, $http, $wind
 
   $scope.loadCurrentPage = function() {
     $scope.loading = true;
-    $scope.uiPatches = [];
+    $scope.patches = [];
     $scope.patchesError = null;
 
     var params = {
@@ -31,21 +31,21 @@ mciModule.controller('PatchesController', function($scope, $filter, $http, $wind
     function(resp) {
       var data = resp.data;
       $scope.loading = false;
-      $scope.versionsMap = data['VersionsMap'];
-      $scope.uiPatches = data['UIPatches'];
+      $scope.buildsMap = data['BuildsMap'];
+      $scope.patches = data['UIPatches'];
 
-      _.each($scope.uiPatches, function(patch) {
-          patch.canEdit = ($window.user.Id === patch.Patch.Author ) || $window.isSuperUser
+      _.each($scope.patches, function(patch) {
+          patch.canEdit = ($window.user.Id === patch.Author ) || $window.isSuperUser
       });
 
-      _.each($scope.versionsMap, function(version) {
-        _.each(version.Builds, function(build) {
+      _.each($scope.buildsMap, function(buildArray) {
+        _.each(buildArray, function(build) {
           build.taskResults = [];
-          _.each(build.Tasks, function(task) {
+          _.each(build.tasks, function(task) {
             build.taskResults.push({
-              link: '/task/' + task.Task.id,
-              tooltip: task.Task.display_name,
-              'class': $filter('statusFilter')(task.Task),
+              link: '/task/' + task.id,
+              tooltip: task.display_name,
+              'class': $filter('statusFilter')(task),
             });
           });
         });

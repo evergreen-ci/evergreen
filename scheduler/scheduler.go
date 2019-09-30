@@ -15,22 +15,27 @@ import (
 	"github.com/pkg/errors"
 )
 
-type TaskPlanner func(string, *distro.Distro, []task.Task, bool) ([]task.Task, error)
+type TaskPlannerOptions struct {
+	ID               string
+	IsSecondaryQueue bool
+	StartedAt        time.Time
+}
 
-func PrioritizeTasks(id string, d *distro.Distro, tasks []task.Task, isSecondaryQueue bool) ([]task.Task, error) {
+type TaskPlanner func(*distro.Distro, []task.Task, TaskPlannerOptions) ([]task.Task, error)
+
+func PrioritizeTasks(d *distro.Distro, tasks []task.Task, opts TaskPlannerOptions) ([]task.Task, error) {
 	switch d.PlannerSettings.TaskOrdering {
 	case evergreen.PlannerVersionTunable:
-		return runTunablePlanner(id, d, tasks, isSecondaryQueue)
+		return runTunablePlanner(d, tasks, opts)
 	default:
-		return runLegacyPlanner(id, d, tasks, isSecondaryQueue)
+		return runLegacyPlanner(d, tasks, opts)
 	}
 }
 
-func runTunablePlanner(id string, d *distro.Distro, tasks []task.Task, isSecondaryQueue bool) ([]task.Task, error) {
-	startAt := time.Now()
+func runTunablePlanner(d *distro.Distro, tasks []task.Task, opts TaskPlannerOptions) ([]task.Task, error) {
 	var err error
 
-	tasks, err = PopulateCaches(id, d.Id, tasks)
+	tasks, err = PopulateCaches(opts.ID, d.Id, tasks)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -38,8 +43,8 @@ func runTunablePlanner(id string, d *distro.Distro, tasks []task.Task, isSeconda
 	plan := PrepareTasksForPlanning(d, tasks).Export()
 
 	info := GetDistroQueueInfo(d.Id, plan, d.MaxDurationPerHost())
-	info.AliasQueue = isSecondaryQueue
-	info.PlanCreatedAt = startAt
+	info.AliasQueue = opts.IsSecondaryQueue
+	info.PlanCreatedAt = opts.StartedAt
 
 	if err = PersistTaskQueue(d.Id, plan, info); err != nil {
 		return nil, errors.WithStack(err)
@@ -52,8 +57,7 @@ func runTunablePlanner(id string, d *distro.Distro, tasks []task.Task, isSeconda
 //
 // Legacy Scheduler Implementation
 
-func runLegacyPlanner(id string, d *distro.Distro, tasks []task.Task, isSecondaryQueue bool) ([]task.Task, error) {
-	startAt := time.Now()
+func runLegacyPlanner(d *distro.Distro, tasks []task.Task, opts TaskPlannerOptions) ([]task.Task, error) {
 	runnableTasks, versions, err := filterTasksWithVersionCache(tasks)
 	if err != nil {
 		return nil, errors.Wrap(err, "error while filtering tasks against the versions' cache")
@@ -61,13 +65,13 @@ func runLegacyPlanner(id string, d *distro.Distro, tasks []task.Task, isSecondar
 
 	ds := &distroScheduler{
 		TaskPrioritizer: &CmpBasedTaskPrioritizer{
-			runtimeID: id,
+			runtimeID: opts.ID,
 		},
-		runtimeID: id,
-		startedAt: startAt,
+		runtimeID: opts.ID,
+		startedAt: opts.StartedAt,
 	}
 
-	prioritizedTasks, err := ds.scheduleDistro(d.Id, runnableTasks, versions, d.MaxDurationPerHost(), isSecondaryQueue)
+	prioritizedTasks, err := ds.scheduleDistro(d.Id, runnableTasks, versions, d.MaxDurationPerHost(), opts.IsSecondaryQueue)
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem calculating distro plan for distro '%s'", d.Id)
 	}

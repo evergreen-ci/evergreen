@@ -560,7 +560,7 @@ buildvariants:
     display_name: OSX
     batchtime: 2880
     run_on:
-      - macos-1014-i7
+      - macos-1014
     expansions:
       disable_coverage: yes
       gobin: /opt/golang/go1.9/bin/go

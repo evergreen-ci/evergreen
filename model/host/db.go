@@ -29,6 +29,7 @@ var (
 	DNSKey                       = bsonutil.MustHaveTag(Host{}, "Host")
 	SecretKey                    = bsonutil.MustHaveTag(Host{}, "Secret")
 	UserKey                      = bsonutil.MustHaveTag(Host{}, "User")
+	ServicePasswordKey           = bsonutil.MustHaveTag(Host{}, "ServicePassword")
 	TagKey                       = bsonutil.MustHaveTag(Host{}, "Tag")
 	DistroKey                    = bsonutil.MustHaveTag(Host{}, "Distro")
 	ProviderKey                  = bsonutil.MustHaveTag(Host{}, "Provider")
