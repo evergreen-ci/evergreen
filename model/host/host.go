@@ -300,6 +300,36 @@ func (h *Host) SetStatus(status, user string, logs string) error {
 	)
 }
 
+// SetStatusAtomically is the same as SetStatus but only updates the host if its
+// status in the database matches currentStatus.
+func (h *Host) SetStatusAtomically(newStatus, currentStatus, user string, logs string) error {
+	if h.Status == evergreen.HostTerminated {
+		msg := fmt.Sprintf("refusing to mark host %s as %s because it is already terminated", h.Id, newStatus)
+		grip.Warning(msg)
+		return errors.New(msg)
+	}
+
+	err := UpdateOne(
+		bson.M{
+			IdKey:     h.Id,
+			StatusKey: currentStatus,
+		},
+		bson.M{
+			"$set": bson.M{
+				StatusKey: newStatus,
+			},
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	h.Status = newStatus
+	event.LogHostStatusChanged(h.Id, h.Status, newStatus, user, logs)
+
+	return nil
+}
+
 // SetProvisioning marks the host as initializing. Only allow this
 // if the host is uninitialized.
 func (h *Host) SetProvisioning() error {
@@ -996,45 +1026,6 @@ func DecommissionHostsWithDistroId(distroId string) error {
 		},
 	)
 	return err
-}
-
-// UpdateDocumentID updates the host document corresponding to the current host to have
-// a new ID by finding, deleting, and replacing the document with a new one.
-func (h *Host) UpdateDocumentID(newID string) (*Host, error) {
-	oldID := h.Id
-
-	// Find the host document in the database with the old ID.
-	host, err := FindOneId(oldID)
-	if host == nil {
-		err = errors.Errorf("Could not locate record inserted for host '%s'", oldID)
-		grip.Error(err)
-		return nil, err
-	}
-
-	if err != nil {
-		err = errors.Wrapf(err, "Could not locate record inserted for host '%s' due to error", oldID)
-		grip.Error(err)
-		return nil, err
-	}
-
-	// Insert the new document.
-	host.Id = newID
-	if err := host.Insert(); err != nil {
-		err = errors.Wrapf(err, "Could not insert updated host information for '%s' with '%s'",
-			h.Id, host.Id)
-		grip.Error(err)
-		return nil, err
-	}
-
-	// Remove the old document.
-	if err := h.Remove(); err != nil {
-		err = errors.Wrapf(err, "Could not remove insert host '%s' (replaced by '%s')",
-			h.Id, host.Id)
-		grip.Error(err)
-		return nil, err
-	}
-
-	return host, nil
 }
 
 func (h *Host) DisablePoisonedHost(logs string) error {

@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -55,7 +54,7 @@ func makeCreateHostJob() *createHostJob {
 	return j
 }
 
-func NewHostCreateJob(env evergreen.Environment, h host.Host, id string, CurrentAttempt int, MaxAttempts int, buildImageStarted bool) amboy.Job {
+func NewHostCreateJob(env evergreen.Environment, h host.Host, id string, currentAttempt int, maxAttempts int, buildImageStarted bool) amboy.Job {
 	j := makeCreateHostJob()
 	j.host = &h
 	j.HostID = h.Id
@@ -63,9 +62,9 @@ func NewHostCreateJob(env evergreen.Environment, h host.Host, id string, Current
 	j.SetPriority(1)
 	j.SetID(fmt.Sprintf("%s.%s.%s", createHostJobName, j.HostID, id))
 	j.BuildImageStarted = buildImageStarted
-	j.CurrentAttempt = CurrentAttempt
-	if MaxAttempts > 0 {
-		j.MaxAttempts = MaxAttempts
+	j.CurrentAttempt = currentAttempt
+	if maxAttempts > 0 {
+		j.MaxAttempts = maxAttempts
 	} else if j.host.SpawnOptions.Retries > 0 {
 		j.MaxAttempts = j.host.SpawnOptions.Retries
 	} else {
@@ -99,7 +98,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 	}
 
 	if j.host == nil {
-		j.host, err = host.FindOneByIdOrTag(j.HostID)
+		j.host, err = host.FindOneId(j.HostID)
 		if err != nil {
 			j.AddError(err)
 			return
@@ -192,17 +191,23 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		return errors.Wrapf(errIgnorableCreateHost, "problem getting cloud provider for host '%s' [%s]", j.host.Id, err.Error())
 	}
 
-	defer j.tryRequeue(ctx)
-
 	// Set status temporarily to HostBuilding. Conventional hosts only stay in
 	// SpawnHost for a short period of time. Containers stay in SpawnHost for
 	// longer, since they may need to download container images and build them
 	// with the agent. This state allows intent documents to stay around until
-	// SpawnHost returns, but NOT as as initializing hosts that could still be
+	// SpawnHost returns, but NOT as initializing hosts that could still be
 	// spawned by Evergreen.
-	if err = j.host.SetStatus(evergreen.HostBuilding, evergreen.User, ""); err != nil {
-		return errors.Wrapf(err, "problem setting host %s status to building", j.host.Id)
+	if err = j.host.SetStatusAtomically(evergreen.HostBuilding, evergreen.HostUninitialized, evergreen.User, ""); err != nil {
+		grip.Info(message.WrapError(err, message.Fields{
+			"message": "host could not be transitioned from initializing to building, so it may already be building",
+			"host":    j.host.Id,
+			"distro":  j.host.Distro.Id,
+			"job":     j.ID(),
+		}))
+		return nil
 	}
+
+	defer j.tryRequeue(ctx)
 
 	// Containers should wait on image builds, checking to see if the parent
 	// already has the image. If it does not, it should download it and wait
@@ -226,31 +231,35 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	// remove the intent host to insert started host
 	intentHost, err := host.FindOneId(j.HostID)
 	if err != nil {
-		if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
-			grip.Error(message.WrapError(j.host.DeleteJasperCredentials(ctx), message.Fields{
-				"message": "problem cleaning up Jasper credentials",
-				"host":    j.host.Id,
-				"distro":  j.host.Distro.Id,
-				"job":     j.ID(),
-			}))
-		}
+		terminateCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		grip.Error(message.WrapError(cloudManager.TerminateInstance(terminateCtx, j.host, evergreen.User), message.Fields{
+			"message":     "problem terminating instance after cloud host was spawned",
+			"intent_host": j.HostID,
+			"host":        j.host.Id,
+			"distro":      j.host.Distro.Id,
+			"job":         j.ID(),
+		}))
+
 		return errors.Wrapf(err, "problem retrieving intent host '%s'", j.HostID)
 	}
 	if intentHost == nil {
 		grip.Warning(message.Fields{
-			"message": "no intent host found",
-			"job":     j.ID(),
-			"host":    j.HostID,
+			"message":     "no intent host found",
+			"job":         j.ID(),
+			"host":        j.HostID,
+			"intent_host": j.HostID,
 		})
 	} else if err := intentHost.Remove(); err != nil {
-		if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
-			grip.Error(message.WrapError(j.host.DeleteJasperCredentials(ctx), message.Fields{
-				"message": "problem cleaning up Jasper credentials",
-				"host":    j.host.Id,
-				"distro":  j.host.Distro.Id,
-				"job":     j.ID(),
-			}))
-		}
+		terminateCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		grip.Error(message.WrapError(cloudManager.TerminateInstance(terminateCtx, j.host, evergreen.User), message.Fields{
+			"message":     "problem terminating instance after cloud host was spawned",
+			"host":        j.host.Id,
+			"intent_host": j.HostID,
+			"distro":      j.host.Distro.Id,
+			"job":         j.ID(),
+		}))
 		grip.Notice(message.WrapError(err, message.Fields{
 			"message": "problem removing intent host",
 			"job":     j.ID(),
@@ -270,22 +279,21 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	j.host.StartTime = j.start
 
 	if err := j.host.Insert(); err != nil {
-		if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
-			grip.Error(message.WrapError(j.host.DeleteJasperCredentials(ctx), message.Fields{
-				"message": "problem cleaning up Jasper credentials",
-				"host":    j.host.Id,
-				"distro":  j.host.Distro.Id,
-				"job":     j.ID(),
-			}))
-		}
-		return errors.Wrapf(err, "error updating host %v", j.host.Id)
+		terminateCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		grip.Error(message.WrapError(cloudManager.TerminateInstance(terminateCtx, j.host, evergreen.User), message.Fields{
+			"message": "problem terminating instance after cloud host was spawned",
+			"host":    j.host.Id,
+			"distro":  j.host.Distro.Id,
+			"job":     j.ID(),
+		}))
+		return errors.Wrapf(err, "error updating host %s", j.host.Id)
 	}
 
 	grip.Info(message.Fields{
 		"message": "successfully started host",
 		"hostid":  j.host.Id,
 		"job":     j.ID(),
-		"DNS":     j.host.Host,
 		"runtime": time.Since(hostStartTime),
 	})
 
@@ -313,7 +321,7 @@ func (j *createHostJob) tryRequeue(ctx context.Context) {
 			"host":     j.host.Id,
 			"job":      j.ID(),
 			"distro":   j.host.Distro.Id,
-			"attempts": j.host.ProvisionAttempts,
+			"attempts": j.CurrentAttempt,
 		}))
 		j.AddError(err)
 	}
