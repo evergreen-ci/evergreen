@@ -575,6 +575,8 @@ func taskQueueGenerationRuntimePipeline() []bson.M {
 				"distroQueue": bson.M{"$push": bson.M{
 					"k": "$" + taskQueueDistroKey,
 					"v": bson.M{"$multiply": []interface{}{
+						// convert ms to ns
+						// for duration value
 						1000000,
 						bson.M{"$subtract": []interface{}{
 							"$" + taskQueueGeneratedAtKey,
