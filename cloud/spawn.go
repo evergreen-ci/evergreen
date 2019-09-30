@@ -44,7 +44,7 @@ type SpawnOptions struct {
 	PublicKey        string
 	TaskId           string
 	Owner            *user.DBUser
-	InstanceTags     map[string]string
+	InstanceTags     []host.Tag
 }
 
 // Validate returns an instance of BadOptionsErr if the SpawnOptions object contains invalid

@@ -38,6 +38,9 @@ func (u *MockUser) Username() string    { return u.ID }
 func (u *MockUser) IsNil() bool         { return u.ReportNil }
 func (u *MockUser) GetAPIKey() string   { return u.APIKey }
 func (u *MockUser) Roles() []string     { return u.RoleNames }
+func (u *MockUser) HasPermission(string, string, int) (bool, error) {
+	return true, nil
+}
 
 type MockAuthenticator struct {
 	ResourceUserMapping     map[string]string
@@ -124,4 +127,8 @@ func (m *MockUserManager) GetOrCreateUser(u User) (User, error) {
 
 func (m *MockUserManager) ClearUser(u User, all bool) error {
 	return errors.New("MockUserManager does not support Clear User")
+}
+
+func (m *MockUserManager) GetGroupsForUser(username string) ([]string, error) {
+	return nil, errors.New("not implemented")
 }

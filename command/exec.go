@@ -16,6 +16,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
 
@@ -25,6 +26,10 @@ type subprocessExec struct {
 	Env     map[string]string `mapstructure:"env"`
 	Command string            `mapstructure:"command"`
 	Path    []string          `mapstructure:"add_to_path"`
+
+	// Add defined expansions to the environment of the process
+	// that's launched.
+	AddExpansionsToEnv bool `mapstructure:"add_expansions_to_env"`
 
 	// Background, if set to true, prevents shell code/output from
 	// waiting for the script to complete and immediately returns
@@ -137,6 +142,12 @@ func (c *subprocessExec) doExpansions(exp *util.Expansions) error {
 		c.Env["PATH"] = strings.Join(path, string(filepath.ListSeparator))
 	}
 
+	if c.AddExpansionsToEnv {
+		for k, v := range exp.Map() {
+			c.Env[k] = v
+		}
+	}
+
 	return errors.Wrap(catcher.Resolve(), "problem expanding strings")
 }
 
@@ -147,7 +158,7 @@ func (c *subprocessExec) getProc(ctx context.Context, taskID string, logger clie
 	cmd := c.JasperManager().CreateCommand(ctx).Add(append([]string{c.Binary}, c.Args...)).
 		Background(c.Background).Environment(c.Env).Directory(c.WorkingDir).
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
-		ProcConstructor(func(lctx context.Context, opts *jasper.CreateOptions) (jasper.Process, error) {
+		ProcConstructor(func(lctx context.Context, opts *options.Create) (jasper.Process, error) {
 			var cancel context.CancelFunc
 			var ictx context.Context
 			if c.Background {

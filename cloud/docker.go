@@ -32,7 +32,7 @@ var (
 	imageURLKey = bsonutil.MustHaveTag(dockerSettings{}, "ImageURL")
 )
 
-//Validate checks that the settings from the config file are sane.
+// Validate checks that the settings from the config file are sane.
 func (settings *dockerSettings) Validate() error {
 	if settings.ImageURL == "" {
 		return errors.New("Image must not be empty")
@@ -114,6 +114,10 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	return h, nil
 }
 
+func (m *dockerManager) ModifyHost(context.Context, *host.Host, host.HostModifyOptions) error {
+	return errors.New("can't modify instances with docker provider")
+}
+
 // GetInstanceStatus returns a universal status code representing the state
 // of a container.
 func (m *dockerManager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
@@ -161,6 +165,14 @@ func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, use
 
 	// Set the host status as terminated and update its termination time
 	return h.Terminate(user)
+}
+
+func (m *dockerManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
+	return errors.New("StopInstance is not supported for docker provider")
+}
+
+func (m *dockerManager) StartInstance(ctx context.Context, host *host.Host, user string) error {
+	return errors.New("StartInstance is not supported for docker provider")
 }
 
 //Configure populates a dockerManager by reading relevant settings from the

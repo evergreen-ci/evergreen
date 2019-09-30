@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mongodb/jasper/options"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -29,7 +30,7 @@ func TestMongodShutdownEvent(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			var opts CreateOptions
+			var opts options.Create
 			dir, mongodPath := downloadMongoDB(t)
 			defer os.RemoveAll(dir)
 
@@ -39,7 +40,7 @@ func TestMongodShutdownEvent(t *testing.T) {
 			require.Equal(t, 1, len(optslist))
 
 			opts = optslist[0]
-			opts.Output.Loggers = []Logger{Logger{Type: LogDefault, Options: LogOptions{Format: LogFormatPlain}}}
+			opts.Output.Loggers = []options.Logger{options.Logger{Type: options.LogDefault, Options: options.Log{Format: options.LogFormatPlain}}}
 
 			proc, err := makeProc(ctx, &opts)
 			require.NoError(t, err)

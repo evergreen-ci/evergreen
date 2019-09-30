@@ -70,14 +70,14 @@ func (s *cacheHistoryTestDataSuite) SetupTest() {
 	}
 }
 
-func (s *cacheHistoryTestDataSuite) TestFindSyncDateWithAWeek() {
-	prevSyncDate := time.Now().Add(time.Hour * 24 * -3)
+func (s *cacheHistoryTestDataSuite) TestFindSyncDate() {
+	prevSyncDate := time.Now().Add(time.Hour * 24 * -1)
 	syncDate := findTargetTimeForSync(prevSyncDate)
 	s.WithinDuration(time.Now(), syncDate, time.Minute)
 }
 
-func (s *cacheHistoryTestDataSuite) TestFindSyncDateOutsideOfAWeek() {
-	prevSyncDate := time.Now().Add(time.Hour * 24 * -10)
+func (s *cacheHistoryTestDataSuite) TestFindSyncDateOutsideOfWindow() {
+	prevSyncDate := time.Now().Add(time.Hour * 24 * -2)
 	expectedSyncDate := prevSyncDate.Add(maxSyncDuration)
 	syncDate := findTargetTimeForSync(prevSyncDate)
 	s.WithinDuration(expectedSyncDate, syncDate, time.Minute)
@@ -454,7 +454,7 @@ func (s *cacheHistoryTestDataSuite) TestCacheHistoricalTestDataJob() {
 	// Our sample data will be 30 minutes apart and the Job will aggregation 1 hours worth of data.
 	// So need to be sure the sample data does not cross an hour boundary or only part of it will
 	// be aggregated. So, truncate the base date to an hour.
-	baseTime := time.Now().Add(-4*7*24*time.Hour + 2*time.Hour).Truncate(time.Hour)
+	baseTime := time.Now().Add(-4 * 7 * 24 * time.Hour).Truncate(time.Hour)
 
 	ref := &model.ProjectRef{
 		Repo:       "evergreen",

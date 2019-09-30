@@ -74,7 +74,7 @@ func FindByID(id string) (*Distro, error) {
 }
 
 func FindAll() ([]Distro, error) {
-	return Find(All)
+	return Find(db.Query(nil))
 }
 
 // Insert writes the distro to the database.

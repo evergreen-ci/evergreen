@@ -477,7 +477,10 @@ func scheduleableTasksQuery() bson.M {
 		PriorityKey: bson.M{"$gte": 0},
 
 		//Filter tasks containing unattainable dependencies
-		bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey): bson.M{"$ne": true},
+		"$or": []bson.M{
+			{bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey): bson.M{"$ne": true}},
+			{OverrideDependenciesKey: true},
+		},
 	}
 }
 

@@ -25,9 +25,9 @@ type remoteSimpleOrdered struct {
 	*remoteBase
 }
 
-// NewSimpleRemoteOrdered returns a queue with a configured local
+// newSimpleRemoteOrdered returns a queue with a configured local
 // runner with the specified number of workers.
-func NewSimpleRemoteOrdered(size int) Remote {
+func newSimpleRemoteOrdered(size int) remoteQueue {
 	q := &remoteSimpleOrdered{remoteBase: newRemoteBase()}
 	grip.Error(q.SetRunner(pool.NewLocalWorkers(size, q)))
 	grip.Infof("creating new remote job queue with %d workers", size)

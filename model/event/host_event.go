@@ -45,6 +45,8 @@ const (
 	EventHostTeardown                 = "HOST_TEARDOWN"
 	EventHostTerminatedExternally     = "HOST_TERMINATED_EXTERNALLY"
 	EventHostExpirationWarningSent    = "HOST_EXPIRATION_WARNING_SENT"
+	EventHostScriptExecuted           = "HOST_SCRIPT_EXECUTED"
+	EventHostScriptExecuteFailed      = "HOST_SCRIPT_EXECUTE_FAILED"
 )
 
 // implements EventData
@@ -189,7 +191,7 @@ func UpdateExecutions(hostId, taskId string, execution int) error {
 	taskIdKey := bsonutil.MustHaveTag(HostEventData{}, "TaskId")
 	executionKey := bsonutil.MustHaveTag(HostEventData{}, "Execution")
 	query := bson.M{
-		"r_id":                    hostId,
+		"r_id": hostId,
 		DataKey + "." + taskIdKey: taskId,
 	}
 	update := bson.M{
@@ -199,4 +201,12 @@ func UpdateExecutions(hostId, taskId string, execution int) error {
 	}
 	_, err := db.UpdateAll(AllLogCollection, query, update)
 	return err
+}
+
+func LogHostScriptExecuted(hostID string, logs string) {
+	LogHostEvent(hostID, EventHostScriptExecuted, HostEventData{Logs: logs})
+}
+
+func LogHostScriptExecuteFailed(hostID string, err error) {
+	LogHostEvent(hostID, EventHostScriptExecuteFailed, HostEventData{Logs: err.Error()})
 }

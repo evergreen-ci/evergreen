@@ -157,6 +157,10 @@ func (m *gceManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	return h, nil
 }
 
+func (m *gceManager) ModifyHost(context.Context, *host.Host, host.HostModifyOptions) error {
+	return errors.New("can't modify instances with gce provider")
+}
+
 // GetInstanceStatus gets the current operational status of the provisioned host,
 func (m *gceManager) GetInstanceStatus(ctx context.Context, host *host.Host) (CloudStatus, error) {
 	instance, err := m.client.GetInstance(host)
@@ -181,6 +185,14 @@ func (m *gceManager) TerminateInstance(ctx context.Context, host *host.Host, use
 
 	// Set the host status as terminated and update its termination time
 	return host.Terminate(user)
+}
+
+func (m *gceManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
+	return errors.New("StopInstance is not supported for gce provider")
+}
+
+func (m *gceManager) StartInstance(ctx context.Context, host *host.Host, user string) error {
+	return errors.New("StartInstance is not supported for gce provider")
 }
 
 // IsUp checks whether the provisioned host is running.

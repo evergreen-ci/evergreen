@@ -96,9 +96,9 @@ Evergreen - My Hosts
         </table>
       </div>
     </div>
-    <button type="button" class="btn btn-info" ng-click="openSpawnModal('spawnHost')" ng-disabled="!availableHosts()" ng-cloak>
+    <md-button type="button" class="btn-info md-raised" ng-click="openSpawnModal('spawnHost')" ng-disabled="!availableHosts()" ng-cloak>
       Spawn Host
-    </button>
+    </md-button>
     <em ng-class="{'text-muted': availableHosts(), 'text-error': !availableHosts()}" style="margin-left: 5px;" ng-cloak>
       Limit [[maxHostsPerUser]] [[maxHostsPerUser | pluralize:'Host']]
     </em>

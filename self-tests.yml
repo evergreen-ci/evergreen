@@ -560,7 +560,6 @@ buildvariants:
     display_name: OSX
     batchtime: 2880
     run_on:
-      - macos-1014
       - macos-1014-i7
     expansions:
       disable_coverage: yes

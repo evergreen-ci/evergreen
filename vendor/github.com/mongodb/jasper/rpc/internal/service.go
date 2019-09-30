@@ -11,6 +11,7 @@ import (
 	empty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 	"github.com/tychoish/lru"
 	context "golang.org/x/net/context"
@@ -30,7 +31,7 @@ func AttachService(manager jasper.Manager, s *grpc.Server) error {
 		hostID:  hn,
 		manager: manager,
 		cache:   lru.NewCache(),
-		cacheOpts: jasper.CacheOptions{
+		cacheOpts: options.Cache{
 			PruneDelay: jasper.DefaultCachePruneDelay,
 			MaxSize:    jasper.DefaultMaxCacheSize,
 		},
@@ -71,7 +72,7 @@ type jasperService struct {
 	hostID     string
 	manager    jasper.Manager
 	cache      *lru.Cache
-	cacheOpts  jasper.CacheOptions
+	cacheOpts  options.Cache
 	cacheMutex sync.RWMutex
 }
 
@@ -113,7 +114,7 @@ func (s *jasperService) Create(ctx context.Context, opts *CreateOptions) (*Proce
 
 func (s *jasperService) List(f *Filter, stream JasperProcessManager_ListServer) error {
 	ctx := stream.Context()
-	procs, err := s.manager.List(ctx, jasper.Filter(strings.ToLower(f.GetName().String())))
+	procs, err := s.manager.List(ctx, options.Filter(strings.ToLower(f.GetName().String())))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -398,7 +399,7 @@ func (s *jasperService) GetBuildloggerURLs(ctx context.Context, id *JasperProces
 
 	urls := []string{}
 	for _, logger := range getProcInfoNoHang(ctx, proc).Export().Options.Output.Loggers {
-		if logger.Type == jasper.LogBuildloggerV2 || logger.Type == jasper.LogBuildloggerV3 {
+		if logger.Type == options.LogBuildloggerV2 || logger.Type == options.LogBuildloggerV3 {
 			urls = append(urls, logger.Options.BuildloggerOptions.GetGlobalLogURL())
 		}
 	}
@@ -466,7 +467,7 @@ func (s *jasperService) SignalEvent(ctx context.Context, name *EventName) (*Oper
 }
 
 func (s *jasperService) WriteFile(stream JasperProcessManager_WriteFileServer) error {
-	var jinfo jasper.WriteFileInfo
+	var jinfo options.WriteFile
 
 	numRecvs := 0
 	for info, err := stream.Recv(); err == nil; info, err = stream.Recv() {

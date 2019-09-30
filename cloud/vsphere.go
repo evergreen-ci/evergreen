@@ -123,6 +123,10 @@ func (m *vsphereManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Hos
 	return h, nil
 }
 
+func (m *vsphereManager) ModifyHost(context.Context, *host.Host, host.HostModifyOptions) error {
+	return errors.New("can't modify instances for vsphere provider")
+}
+
 // GetInstanceStatus gets the current operational status of the provisioned host,
 func (m *vsphereManager) GetInstanceStatus(ctx context.Context, host *host.Host) (CloudStatus, error) {
 	state, err := m.client.GetPowerState(ctx, host)
@@ -152,6 +156,14 @@ func (m *vsphereManager) TerminateInstance(ctx context.Context, host *host.Host,
 	}
 
 	return nil
+}
+
+func (m *vsphereManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
+	return errors.New("StopInstance is not supported for vsphere provider")
+}
+
+func (m *vsphereManager) StartInstance(ctx context.Context, host *host.Host, user string) error {
+	return errors.New("StartInstance is not supported for vsphere provider")
 }
 
 // IsUp checks whether the provisioned host is running.

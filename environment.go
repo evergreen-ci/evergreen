@@ -299,15 +299,22 @@ func (e *envState) createApplicationQueue(ctx context.Context) error {
 	opts.URI = e.settings.Database.Url
 	opts.DB = e.settings.Amboy.DB
 	opts.Priority = true
+	opts.SkipIndexBuilds = true
+	opts.UseGroups = false
 
-	qmdb, err := queue.OpenNewMongoDriver(ctx, e.settings.Amboy.Name, opts, e.client)
+	args := queue.MongoDBQueueCreationOptions{
+		Size:    e.settings.Amboy.PoolSizeRemote,
+		Name:    e.settings.Amboy.Name,
+		Ordered: false,
+		Client:  e.client,
+		MDB:     opts,
+	}
+
+	rq, err := queue.NewMongoDBQueue(ctx, args)
 	if err != nil {
 		return errors.Wrap(err, "problem setting main queue backend")
 	}
-	rq := queue.NewRemoteUnordered(e.settings.Amboy.PoolSizeRemote)
-	if err = rq.SetDriver(qmdb); err != nil {
-		return errors.WithStack(err)
-	}
+
 	if err = rq.SetRunner(pool.NewAbortablePool(e.settings.Amboy.PoolSizeRemote, rq)); err != nil {
 		return errors.Wrap(err, "problem configuring worker pool for main remote queue")
 	}
@@ -325,8 +332,11 @@ func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
 	opts.URI = e.settings.Database.Url
 	opts.DB = e.settings.Amboy.DB
 	opts.Priority = false
+	opts.SkipIndexBuilds = true
+	opts.UseGroups = true
+	opts.GroupName = e.settings.Amboy.Name
 
-	remoteQueuGroupOpts := queue.RemoteQueueGroupOptions{
+	remoteQueueGroupOpts := queue.MongoDBQueueGroupOptions{
 		Prefix:                    e.settings.Amboy.Name,
 		DefaultWorkers:            e.settings.Amboy.GroupDefaultWorkers,
 		Ordered:                   false,
@@ -334,7 +344,8 @@ func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
 		PruneFrequency:            time.Duration(e.settings.Amboy.GroupPruneFrequencyMinutes) * time.Minute,
 		TTL:                       time.Duration(e.settings.Amboy.GroupTTLMinutes) * time.Minute,
 	}
-	remoteQueueGroup, err := queue.NewMongoRemoteSingleQueueGroup(ctx, remoteQueuGroupOpts, e.client, opts)
+
+	remoteQueueGroup, err := queue.NewMongoDBSingleQueueGroup(ctx, remoteQueueGroupOpts, e.client, opts)
 	if err != nil {
 		return errors.Wrap(err, "problem constructing remote queue group")
 	}

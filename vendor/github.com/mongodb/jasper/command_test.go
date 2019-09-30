@@ -13,6 +13,8 @@ import (
 
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
+	"github.com/mongodb/jasper/options"
+	"github.com/mongodb/jasper/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -63,8 +65,7 @@ func verifyCommandAndGetOutput(ctx context.Context, t *testing.T, cmd *Command, 
 
 func checkOutput(t *testing.T, exists bool, output string, expectedOutputs ...string) {
 	for _, expected := range expectedOutputs {
-		// TODO: Maybe don't try to be so cheeky with an XOR...
-		assert.True(t, exists == strings.Contains(output, expected))
+		assert.True(t, exists == strings.Contains(output, expected), "out='%s' and expected='%s'", output, expected)
 	}
 }
 
@@ -100,6 +101,29 @@ func TestCommandImplementation(t *testing.T) {
 							assert.Error(t, err)
 							assert.True(t, strings.Contains(err.Error(), "exit status"))
 						},
+						"WaitErrorsIfNeverStarted": func(ctx context.Context, t *testing.T, cmd Command) {
+							_, err := cmd.Wait(ctx)
+							assert.Error(t, err)
+						},
+						"WaitErrorsIfProcessErrors": func(ctx context.Context, t *testing.T, cmd Command) {
+							cmd.Append("false")
+							assert.Error(t, runFunc(&cmd, ctx))
+							exitCode, err := cmd.Wait(ctx)
+							assert.Error(t, err)
+							assert.NotZero(t, exitCode)
+						},
+						"WaitOnBackgroundRunWaitsForProcessCompletion": func(ctx context.Context, t *testing.T, cmd Command) {
+							cmd.Append("sleep 1", "sleep 1").Background(true)
+							require.NoError(t, runFunc(&cmd, ctx))
+							exitCode, err := cmd.Wait(ctx)
+							assert.NoError(t, err)
+							assert.Zero(t, exitCode)
+
+							for _, proc := range cmd.procs {
+								assert.True(t, proc.Info(ctx).Complete)
+								assert.True(t, proc.Info(ctx).Successful)
+							}
+						},
 						"SudoFunctions": func(ctx context.Context, t *testing.T, cmd Command) {
 							user := "user"
 							sudoUser := "root"
@@ -127,7 +151,7 @@ func TestCommandImplementation(t *testing.T) {
 										"NoSudo": func(ctx context.Context, t *testing.T, cmd Command) {
 											cmd.Append(cmd1)
 
-											allOpts, err := cmd.getCreateOpts(ctx)
+											allOpts, err := cmd.getCreateOpts()
 											require.NoError(t, err)
 											require.Len(t, allOpts, 1)
 											args := strings.Join(allOpts[0].Args, " ")
@@ -143,13 +167,13 @@ func TestCommandImplementation(t *testing.T) {
 											}
 											cmd.Sudo(true).Append(cmd1)
 
-											allOpts, err := cmd.getCreateOpts(ctx)
+											allOpts, err := cmd.getCreateOpts()
 											require.NoError(t, err)
 											require.Len(t, allOpts, 1)
 											checkArgs(allOpts[0].Args, cmd1)
 
 											cmd.Append(cmd2)
-											allOpts, err = cmd.getCreateOpts(ctx)
+											allOpts, err = cmd.getCreateOpts()
 											require.NoError(t, err)
 											require.Len(t, allOpts, 2)
 
@@ -164,13 +188,13 @@ func TestCommandImplementation(t *testing.T) {
 												assert.Contains(t, argsStr, expected)
 											}
 
-											allOpts, err := cmd.getCreateOpts(ctx)
+											allOpts, err := cmd.getCreateOpts()
 											require.NoError(t, err)
 											require.Len(t, allOpts, 1)
 											checkArgs(allOpts[0].Args, cmd1)
 
 											cmd.Add([]string{echo, arg2})
-											allOpts, err = cmd.getCreateOpts(ctx)
+											allOpts, err = cmd.getCreateOpts()
 											require.NoError(t, err)
 											require.Len(t, allOpts, 2)
 											checkArgs(allOpts[0].Args, cmd1)
@@ -178,7 +202,7 @@ func TestCommandImplementation(t *testing.T) {
 										},
 									} {
 										t.Run(subTestName, func(t *testing.T) {
-											cmd = *NewCommand().ProcConstructor(cmd.makep)
+											cmd = *NewCommand().ProcConstructor(makep)
 											if isRemote {
 												cmd.User(user).Host("localhost")
 											}
@@ -226,7 +250,7 @@ func TestCommandImplementation(t *testing.T) {
 							for i := 0; i < numCombinations; i++ {
 								continueOnError, ignoreError, includeBadCmd := i&1 == 1, i&2 == 2, i&4 == 4
 
-								cmd := NewCommand().Add([]string{echo, arg1}).ProcConstructor(cmd.makep)
+								cmd := NewCommand().Add([]string{echo, arg1}).ProcConstructor(makep)
 								if includeBadCmd {
 									cmd.Add([]string{ls, arg3})
 								}
@@ -274,6 +298,7 @@ func TestCommandImplementation(t *testing.T) {
 								},
 							} {
 								t.Run(subName, func(t *testing.T) {
+									cmd = *NewCommand().ProcConstructor(makep)
 									subTestCase(ctx, t, cmd, runFunc)
 								})
 							}
@@ -299,7 +324,7 @@ func TestCommandImplementation(t *testing.T) {
 								},
 							} {
 								t.Run(subName, func(t *testing.T) {
-									cmd.Extend([][]string{
+									cmd = *NewCommand().ProcConstructor(makep).Extend([][]string{
 										[]string{echo, arg1},
 										[]string{echo, arg2},
 										[]string{ls, arg3},
@@ -315,7 +340,7 @@ func TestCommandImplementation(t *testing.T) {
 						"SenderOutputAndErrorIsSettable": func(ctx context.Context, t *testing.T, cmd Command) {
 							for subName, subTestCase := range map[string]func(context.Context, *testing.T, Command, *send.InMemorySender){
 								"StdOutOnly": func(ctx context.Context, t *testing.T, cmd Command, sender *send.InMemorySender) {
-									cmd.SetOutputSender(cmd.priority, sender)
+									cmd.SetOutputSender(cmd.opts.Priority, sender)
 									require.NoError(t, runFunc(&cmd, ctx))
 									out, err := sender.GetString()
 									require.NoError(t, err)
@@ -323,7 +348,7 @@ func TestCommandImplementation(t *testing.T) {
 									checkOutput(t, false, strings.Join(out, "\n"), lsErrorMsg)
 								},
 								"StdErrOnly": func(ctx context.Context, t *testing.T, cmd Command, sender *send.InMemorySender) {
-									cmd.SetErrorSender(cmd.priority, sender)
+									cmd.SetErrorSender(cmd.opts.Priority, sender)
 									require.NoError(t, runFunc(&cmd, ctx))
 									out, err := sender.GetString()
 									require.NoError(t, err)
@@ -331,7 +356,7 @@ func TestCommandImplementation(t *testing.T) {
 									checkOutput(t, false, strings.Join(out, "\n"), arg1, arg2)
 								},
 								"StdOutAndStdErr": func(ctx context.Context, t *testing.T, cmd Command, sender *send.InMemorySender) {
-									cmd.SetCombinedSender(cmd.priority, sender)
+									cmd.SetCombinedSender(cmd.opts.Priority, sender)
 									require.NoError(t, runFunc(&cmd, ctx))
 									out, err := sender.GetString()
 									require.NoError(t, err)
@@ -339,13 +364,13 @@ func TestCommandImplementation(t *testing.T) {
 								},
 							} {
 								t.Run(subName, func(t *testing.T) {
-									cmd.Extend([][]string{
+									cmd = *NewCommand().ProcConstructor(makep).Extend([][]string{
 										[]string{echo, arg1},
 										[]string{echo, arg2},
 										[]string{ls, arg3},
 									}).ContinueOnError(true).IgnoreError(true).Priority(level.Info)
 
-									levelInfo := send.LevelInfo{Default: cmd.priority, Threshold: cmd.priority}
+									levelInfo := send.LevelInfo{Default: cmd.opts.Priority, Threshold: cmd.opts.Priority}
 									sender, err := send.NewInMemorySender(t.Name(), levelInfo, 100)
 									require.NoError(t, err)
 
@@ -363,7 +388,7 @@ func TestCommandImplementation(t *testing.T) {
 							assert.Len(t, cmd.GetProcIDs(), len(subCmds))
 						},
 						"ApplyFromOptsUpdatesCmdCorrectly": func(ctx context.Context, t *testing.T, cmd Command) {
-							opts := &CreateOptions{
+							opts := &options.Create{
 								WorkingDirectory: cwd,
 							}
 							cmd.ApplyFromOpts(opts).Add([]string{ls, cwd})
@@ -371,87 +396,41 @@ func TestCommandImplementation(t *testing.T) {
 							checkOutput(t, true, output, "makefile")
 						},
 						"SetOutputOptions": func(ctx context.Context, t *testing.T, cmd Command) {
-							opts := OutputOptions{
+							opts := options.Output{
 								SendOutputToError: true,
 							}
 
-							assert.False(t, cmd.opts.Output.SendOutputToError)
+							assert.False(t, cmd.opts.Process.Output.SendOutputToError)
 							cmd.SetOutputOptions(opts)
-							assert.True(t, cmd.opts.Output.SendOutputToError)
+							assert.True(t, cmd.opts.Process.Output.SendOutputToError)
 						},
 						"ApplyFromOptsOverridesExistingOptions": func(ctx context.Context, t *testing.T, cmd Command) {
 							_ = cmd.Add([]string{echo, arg1}).Directory("bar")
-							genOpts, err := cmd.getCreateOpts(ctx)
+							genOpts, err := cmd.getCreateOpts()
 							require.NoError(t, err)
 							require.Len(t, genOpts, 1)
 							assert.Equal(t, "bar", genOpts[0].WorkingDirectory)
 
-							opts := &CreateOptions{WorkingDirectory: "foo"}
+							opts := &options.Create{WorkingDirectory: "foo"}
 							_ = cmd.ApplyFromOpts(opts)
-							genOpts, err = cmd.getCreateOpts(ctx)
+							genOpts, err = cmd.getCreateOpts()
 							require.NoError(t, err)
 							require.Len(t, genOpts, 1)
 							assert.Equal(t, opts.WorkingDirectory, genOpts[0].WorkingDirectory)
 						},
 						"CreateOptionsAppliedInGetCreateOptionsForLocalCommand": func(ctx context.Context, t *testing.T, cmd Command) {
-							opts := &CreateOptions{
+							opts := &options.Create{
 								WorkingDirectory: "foo",
 								Environment:      map[string]string{"foo": "bar"},
 							}
 							args := []string{echo, arg1}
-							cmd.cmds = [][]string{}
+							cmd.opts.Commands = [][]string{}
 							_ = cmd.ApplyFromOpts(opts).Add(args)
-							genOpts, err := cmd.getCreateOpts(ctx)
+							genOpts, err := cmd.getCreateOpts()
 							require.NoError(t, err)
 							require.Len(t, genOpts, 1)
 							assert.Equal(t, opts.WorkingDirectory, genOpts[0].WorkingDirectory)
 							assert.Equal(t, opts.Environment, genOpts[0].Environment)
-						},
-						"DirectoryIsSetInRemoteCommand": func(ctx context.Context, t *testing.T, cmd Command) {
-							args := []string{echo, arg1}
-							dir := "foo"
-							_ = cmd.Host("localhost").Directory(dir).Add(args)
-							genOpts, err := cmd.getCreateOpts(ctx)
-							require.NoError(t, err)
-							require.Len(t, genOpts, 1)
-
-							// The remote command should run with the working
-							// directory set, not the local command.
-							assert.NotEqual(t, dir, genOpts[0].WorkingDirectory)
-							setsDir := false
-							for _, args := range genOpts[0].Args {
-								if strings.Contains(args, dir) {
-									setsDir = true
-									break
-								}
-							}
-							assert.True(t, setsDir)
-						},
-						"EnvironmentIsSetInRemoteCommand": func(ctx context.Context, t *testing.T, cmd Command) {
-							opts := &CreateOptions{
-								Environment: map[string]string{"foo": "bar"},
-							}
-							args := []string{echo, arg1}
-							_ = cmd.Host("localhost").ApplyFromOpts(opts).Add(args)
-							genOpts, err := cmd.getCreateOpts(ctx)
-							require.NoError(t, err)
-							require.Len(t, genOpts, 1)
-
-							// The remote command should run with the environment
-							// set, not the local command.
-							assert.Empty(t, genOpts[0].Environment)
-							setsEnv := false
-							envSlice := opts.getEnvSlice()
-							for _, args := range genOpts[0].Args {
-								for _, envVarAndValue := range envSlice {
-									if !strings.Contains(args, envVarAndValue) {
-										continue
-									}
-								}
-								setsEnv = true
-								break
-							}
-							assert.True(t, setsEnv)
 						},
 						"GetJobs": func(ctx context.Context, t *testing.T, cmd Command) {
 							jobs, err := cmd.Append("ls", "echo hi", "ls -lha").Jobs(ctx)
@@ -505,7 +484,7 @@ func TestCommandImplementation(t *testing.T) {
 								},
 							} {
 								t.Run(subTestName, func(t *testing.T) {
-									cmd = *NewCommand().ProcConstructor(cmd.makep)
+									cmd = *NewCommand().ProcConstructor(makep)
 									subTestCase(ctx, t, cmd)
 								})
 							}
@@ -517,7 +496,7 @@ func TestCommandImplementation(t *testing.T) {
 								[]string{"echo 'hello\"world\"'"},
 							})
 
-							optslist, err := cmd.Export(ctx)
+							optslist, err := cmd.Export()
 							require.NoError(t, err)
 
 							require.Len(t, optslist, 3)
@@ -525,10 +504,31 @@ func TestCommandImplementation(t *testing.T) {
 							assert.Equal(t, []string{"echo", "hello world"}, optslist[1].Args)
 							assert.Equal(t, []string{"echo", "hello\"world\""}, optslist[2].Args)
 						},
+						"RunFuncReceivesPopulatedOptions": func(ctx context.Context, t *testing.T, cmd Command) {
+							prio := level.Warning
+							user := "user"
+							runFuncCalled := false
+							cmd.Add([]string{echo, arg1}).
+								ContinueOnError(true).IgnoreError(true).
+								Priority(prio).Background(true).
+								Sudo(true).SudoAs(user).
+								SetRunFunc(func(opts options.Command) error {
+									runFuncCalled = true
+									assert.True(t, opts.ContinueOnError)
+									assert.True(t, opts.IgnoreError)
+									assert.True(t, opts.RunBackground)
+									assert.True(t, opts.Sudo)
+									assert.Equal(t, user, opts.SudoUser)
+									assert.Equal(t, prio, opts.Priority)
+									return nil
+								})
+							require.NoError(t, cmd.Run(ctx))
+							assert.True(t, runFuncCalled)
+						},
 						// "": func(ctx context.Context, t *testing.T, cmd Command) {},
 					} {
 						t.Run(name, func(t *testing.T) {
-							ctx, cancel := context.WithTimeout(context.Background(), taskTimeout)
+							ctx, cancel := context.WithTimeout(context.Background(), testutil.TestTimeout)
 							defer cancel()
 
 							cmd := NewCommand().ProcConstructor(makep)

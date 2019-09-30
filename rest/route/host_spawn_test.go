@@ -44,8 +44,12 @@ func TestHostPostHandler(t *testing.T) {
 	assert.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
 
-	h.InstanceTags = map[string]string{
-		"key": "value",
+	h.InstanceTags = []host.Tag{
+		host.Tag{
+			Key:           "key",
+			Value:         "value",
+			CanBeModified: true,
+		},
 	}
 	resp = h.Run(ctx)
 	assert.NotNil(resp)
@@ -63,5 +67,66 @@ func TestHostPostHandler(t *testing.T) {
 	assert.Empty(h1.InstanceTags)
 
 	h2 := h.sc.(*data.MockConnector).MockHostConnector.CachedHosts[2]
-	assert.Equal(map[string]string{"key": "value"}, h2.InstanceTags)
+	assert.Equal([]host.Tag{host.Tag{Key: "key", Value: "value", CanBeModified: true}}, h2.InstanceTags)
+}
+
+func TestHostStopHandler(t *testing.T) {
+	h := &hostStopHandler{sc: &data.MockConnector{}}
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
+
+	h.sc.(*data.MockConnector).MockHostConnector.CachedHosts = []host.Host{
+		host.Host{
+			Id:     "host-stopped",
+			Status: evergreen.HostStopped,
+		},
+		host.Host{
+			Id:     "host-provisioning",
+			Status: evergreen.HostProvisioning,
+		},
+		host.Host{
+			Id:     "host-running",
+			Status: evergreen.HostRunning,
+		},
+	}
+
+	h.hostID = "host-stopped"
+	resp := h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusBadRequest, resp.Status())
+
+	h.hostID = "host-provisioning"
+	resp = h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusBadRequest, resp.Status())
+
+	h.hostID = "host-running"
+	resp = h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+}
+
+func TestHostStartHandler(t *testing.T) {
+	h := &hostStartHandler{sc: &data.MockConnector{}}
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
+
+	h.sc.(*data.MockConnector).MockHostConnector.CachedHosts = []host.Host{
+		host.Host{
+			Id:     "host-running",
+			Status: evergreen.HostRunning,
+		},
+		host.Host{
+			Id:     "host-stopped",
+			Status: evergreen.HostStopped,
+		},
+	}
+
+	h.hostID = "host-running"
+	resp := h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusBadRequest, resp.Status())
+
+	h.hostID = "host-stopped"
+	resp = h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
 }

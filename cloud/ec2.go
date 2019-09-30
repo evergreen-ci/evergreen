@@ -149,6 +149,12 @@ const (
 	EC2ErrorSpotRequestNotFound = "InvalidSpotInstanceRequestID.NotFound"
 )
 
+const (
+	checkSuccessDelay      = 5 * time.Second
+	checkSuccessRetries    = 10
+	checkSuccessInitPeriod = time.Second
+)
+
 // EC2ManagerOptions are used to construct a new ec2Manager.
 type EC2ManagerOptions struct {
 	// client is the client library for communicating with AWS.
@@ -487,6 +493,85 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	return h, nil
 }
 
+// getResources returns a slice of the AWS resources for the given host
+func (m *ec2Manager) getResources(ctx context.Context, h *host.Host) ([]string, error) {
+	instanceID := h.Id
+	if isHostSpot(h) {
+		instanceID, err := m.client.GetSpotInstanceId(ctx, h)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":       "error getting spot request info",
+			"host":          h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
+		}))
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
+		}
+		if instanceID == "" {
+			return nil, errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
+		}
+	}
+	volumeIDs, err := m.client.GetVolumeIDs(ctx, h)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't get volume IDs for '%s'", h.Id)
+	}
+	resources := []string{instanceID}
+	resources = append(resources, volumeIDs...)
+	return resources, nil
+}
+
+// ModifyHost modifies a host according to the changes specified by a HostModifyOptions struct.
+func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, changes host.HostModifyOptions) error {
+	ec2Settings := &EC2ProviderSettings{}
+	if err := ec2Settings.fromDistroSettings(h.Distro); err != nil {
+		return errors.Wrap(err, "error getting EC2 settings")
+	}
+	if err := m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+
+	resources, err := m.getResources(ctx, h)
+	if err != nil {
+		return err
+	}
+
+	// Delete tags
+	if len(changes.DeleteInstanceTags) > 0 {
+		deleteTagSlice := []*ec2.Tag{}
+		for _, delKey := range changes.DeleteInstanceTags {
+			key := delKey
+			deleteTagSlice = append(deleteTagSlice, &ec2.Tag{Key: &key})
+		}
+		_, err = m.client.DeleteTags(ctx, &ec2.DeleteTagsInput{
+			Resources: aws.StringSlice(resources),
+			Tags:      deleteTagSlice,
+		})
+		if err != nil {
+			return errors.Wrapf(err, "error deleting tags for '%s'", h.Id)
+		}
+	}
+
+	// Add tags
+	if len(changes.AddInstanceTags) > 0 {
+		createTagSlice := []*ec2.Tag{}
+		for _, tag := range changes.AddInstanceTags {
+			key := tag.Key
+			value := tag.Value
+			createTagSlice = append(createTagSlice, &ec2.Tag{Key: &key, Value: &value})
+		}
+		_, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
+			Resources: aws.StringSlice(resources),
+			Tags:      createTagSlice,
+		})
+		if err != nil {
+			return errors.Wrapf(err, "error creating tags for '%s'", h.Id)
+		}
+	}
+
+	return nil
+}
+
 // GetInstanceStatuses returns the current status of a slice of EC2 instances.
 func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) ([]CloudStatus, error) {
 	if err := m.client.Create(m.credentials, defaultRegion); err != nil {
@@ -545,15 +630,22 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 		if err != nil {
 			return nil, errors.Wrap(err, "error describing instances")
 		}
+		if err = validateEc2DescribeInstancesOutput(out); err != nil {
+			return nil, errors.Wrap(err, "invalid describe instances response")
+		}
 		reservationsMap := map[string]*ec2.Instance{}
 		for i := range out.Reservations {
 			reservationsMap[*out.Reservations[i].Instances[0].InstanceId] = out.Reservations[i].Instances[0]
 		}
 		for i := range hostsToCheck {
-			status := ec2StatusToEvergreenStatus(*reservationsMap[*hostsToCheck[i]].State.Name)
+			instance, ok := reservationsMap[*hostsToCheck[i]]
+			if !ok {
+				return nil, errors.Errorf("host '%s' not included in DescribeInstances response", *hostsToCheck[i])
+			}
+			status := ec2StatusToEvergreenStatus(*instance.State.Name)
 			if status == StatusRunning {
 				// cache instance information so we can make fewer calls to AWS's API
-				if err = cacheHostData(ctx, instanceIdToHostMap[*hostsToCheck[i]], reservationsMap[*hostsToCheck[i]], m.client); err != nil {
+				if err = cacheHostData(ctx, instanceIdToHostMap[*hostsToCheck[i]], instance, m.client); err != nil {
 					return nil, errors.Wrapf(err, "can't cache host data for '%s'", *hostsToCheck[i])
 				}
 			}
@@ -705,6 +797,120 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user s
 	return errors.Wrap(h.Terminate(user), "failed to terminate instance in db")
 }
 
+// StopInstance stops a running EC2 instance.
+func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string) error {
+	// Check if already stopped or not running
+	if h.Status == evergreen.HostStopped {
+		return errors.Errorf("cannot stop '%s' - already marked as stopped", h.Id)
+	} else if h.Status != evergreen.HostRunning {
+		return errors.Errorf("cannot stop '%s' - host is not running", h.Id)
+	}
+
+	ec2Settings := &EC2ProviderSettings{}
+	if err := ec2Settings.fromDistroSettings(h.Distro); err != nil {
+		return errors.Wrap(err, "problem getting settings from host")
+	}
+	if err := m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+
+	if err := h.SetStopping(user); err != nil {
+		return errors.Wrap(err, "failed to mark instance as stopping in db")
+	}
+
+	_, err := m.client.StopInstances(ctx, &ec2.StopInstancesInput{
+		InstanceIds: []*string{aws.String(h.Id)},
+	})
+	if err != nil {
+		return errors.Wrapf(err, "error stopping EC2 instance '%s'", h.Id)
+	}
+
+	// Delay exponential backoff
+	time.Sleep(checkSuccessDelay)
+
+	// Check whether instance stopped
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			instance, err := m.client.GetInstanceInfo(ctx, h.Id)
+			if err != nil {
+				return false, errors.Wrap(err, "error getting instance info")
+			}
+			if ec2StatusToEvergreenStatus(*instance.State.Name) == StatusStopped {
+				return false, nil
+			}
+			return true, errors.New("host is not stopped")
+		}, checkSuccessRetries, checkSuccessInitPeriod, 0)
+
+	if err != nil {
+		return errors.Wrap(err, "error checking if spawnhost stopped")
+	}
+
+	grip.Info(message.Fields{
+		"message":       "stopped instance",
+		"user":          user,
+		"host_provider": h.Distro.Provider,
+		"host":          h.Id,
+		"distro":        h.Distro.Id,
+	})
+
+	return errors.Wrap(h.SetStopped(user), "failed to mark instance as stopped in db")
+}
+
+// StartInstance starts a stopped EC2 instance.
+func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user string) error {
+	// Check that target instance is stopped
+	if h.Status != evergreen.HostStopped {
+		return errors.Errorf("cannot start '%s' - host is not stopped", h.Id)
+	}
+
+	ec2Settings := &EC2ProviderSettings{}
+	if err := ec2Settings.fromDistroSettings(h.Distro); err != nil {
+		return errors.Wrap(err, "problem getting settings from host")
+	}
+	if err := m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+
+	// Make request to start the instance
+	_, err := m.client.StartInstances(ctx, &ec2.StartInstancesInput{
+		InstanceIds: []*string{aws.String(h.Id)},
+	})
+	if err != nil {
+		return errors.Wrapf(err, "error starting EC2 instance '%s'", h.Id)
+	}
+
+	// Check whether instance is running
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			instance, err := m.client.GetInstanceInfo(ctx, h.Id)
+			if err != nil {
+				return false, errors.Wrap(err, "error getting instance info")
+			}
+			if ec2StatusToEvergreenStatus(*instance.State.Name) == StatusRunning {
+				return false, nil
+			}
+			return true, errors.New("host is not started")
+		}, checkSuccessRetries, checkSuccessInitPeriod, 0)
+
+	if err != nil {
+		return errors.Wrap(err, "error checking if spawnhost started")
+	}
+
+	grip.Info(message.Fields{
+		"message":       "started instance",
+		"user":          user,
+		"host_provider": h.Distro.Provider,
+		"host":          h.Id,
+		"distro":        h.Distro.Id,
+	})
+
+	return errors.Wrap(h.SetRunning(user), "failed to mark instance as running in db")
+}
+
 func (m *ec2Manager) cancelSpotRequest(ctx context.Context, h *host.Host) (string, error) {
 	instanceId, err := m.client.GetSpotInstanceId(ctx, h)
 	if err != nil {
@@ -779,54 +985,15 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 	}
 	defer m.client.Close()
 
-	instanceID := h.Id
-	tags := makeTags(h)
-
-	if isHostSpot(h) {
-		instanceID, err = m.client.GetSpotInstanceId(ctx, h)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":       "error getting spot request info",
-				"host":          h.Id,
-				"host_provider": h.Distro.Provider,
-				"distro":        h.Distro.Id,
-			}))
-			return errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
-		}
-		if instanceID == "" {
-			return errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
-		}
-
-		tags["spot"] = "true" // mark this as a spot instance
-	}
-
-	volumeIDs, err := m.client.GetVolumeIDs(ctx, h)
+	resources, err := m.getResources(ctx, h)
 	if err != nil {
-		return errors.Wrapf(err, "can't get volume IDs for '%s'", h.Id)
-	}
-	resources := []string{instanceID}
-	resources = append(resources, volumeIDs...)
-
-	tagSlice := []*ec2.Tag{}
-	for tag := range tags {
-		key := tag
-		val := tags[tag]
-		tagSlice = append(tagSlice, &ec2.Tag{Key: &key, Value: &val})
+		return errors.Wrap(err, "error getting resources")
 	}
 
-	if _, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
-		Resources: aws.StringSlice(resources),
-		Tags:      tagSlice,
-	}); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":       "error attaching tags",
-			"host":          h.Id,
-			"host_provider": h.Distro.Provider,
-			"distro":        h.Distro.Id,
-		}))
-		err = errors.Wrapf(err, "failed to attach tags for %s", h.Id)
-		return err
+	if err = m.client.SetTags(ctx, resources, h); err != nil {
+		return errors.Wrap(err, "error settings tags")
 	}
+
 	return nil
 }
 

@@ -184,6 +184,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     name: test-queue
     tags: ["test"]
+  - <<: *run-go-test-suite-with-mongodb
+    name: test-reporting
+    tags: ["test"]
     
   # run the suites with the race detector (one variant only)
   - <<: *run-go-test-suite
@@ -206,6 +209,9 @@ tasks:
     tags: ["race"]
   - <<: *run-go-test-suite-with-mongodb
     name: race-queue
+    tags: ["race"]
+  - <<: *run-go-test-suite-with-mongodb
+    name: race-reporting
     tags: ["race"]
 
 post:
@@ -292,7 +298,6 @@ buildvariants:
       test_timeout: 15m
     run_on:
       - macos-1014
-      - macos-1014-i7
     tasks:
       - ".dist"
       - ".test"

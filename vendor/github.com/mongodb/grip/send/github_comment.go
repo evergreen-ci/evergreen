@@ -57,7 +57,7 @@ func (s *githubCommentLogger) Send(m message.Composer) {
 	if s.Level().ShouldLog(m) {
 		text, err := s.formatter(m)
 		if err != nil {
-			s.ErrorHandler(err, m)
+			s.ErrorHandler()(err, m)
 			return
 		}
 
@@ -66,7 +66,7 @@ func (s *githubCommentLogger) Send(m message.Composer) {
 		ctx := context.TODO()
 		_, _, err = s.gh.CreateComment(ctx, s.opts.Account, s.opts.Repo, s.issue, comment)
 		if err != nil {
-			s.ErrorHandler(err, m)
+			s.ErrorHandler()(err, m)
 		}
 	}
 }

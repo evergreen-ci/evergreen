@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -17,34 +16,33 @@ import (
 // kinds of work. Time units are in USER_HZ or Jiffies (typically hundredths of
 // a second). It is based on linux /proc/stat file.
 type TimesStat struct {
-	CPU       string  `json:"cpu" bson:"cpu"`
-	User      float64 `json:"user" bson:"user"`
-	System    float64 `json:"system" bson:"system"`
-	Idle      float64 `json:"idle" bson:"idle"`
-	Nice      float64 `json:"nice" bson:"nice"`
-	Iowait    float64 `json:"iowait" bson:"iowait"`
-	Irq       float64 `json:"irq" bson:"irq"`
-	Softirq   float64 `json:"softirq" bson:"softirq"`
-	Steal     float64 `json:"steal" bson:"steal"`
-	Guest     float64 `json:"guest" bson:"guest"`
-	GuestNice float64 `json:"guestNice" bson:"guestNice"`
-	Stolen    float64 `json:"stolen" bson:"stolen"`
+	CPU       string  `json:"cpu" bson:"cpu,omitempty"`
+	User      float64 `json:"user" bson:"user,omitempty"`
+	System    float64 `json:"system" bson:"system,omitempty"`
+	Idle      float64 `json:"idle" bson:"idle,omitempty"`
+	Nice      float64 `json:"nice" bson:"nice,omitempty"`
+	Iowait    float64 `json:"iowait" bson:"iowait,omitempty"`
+	Irq       float64 `json:"irq" bson:"irq,omitempty"`
+	Softirq   float64 `json:"softirq" bson:"softirq,omitempty"`
+	Steal     float64 `json:"steal" bson:"steal,omitempty"`
+	Guest     float64 `json:"guest" bson:"guest,omitempty"`
+	GuestNice float64 `json:"guestNice" bson:"guestNice,omitempty"`
 }
 
 type InfoStat struct {
-	CPU        int32    `json:"cpu" bson:"cpu"`
-	VendorID   string   `json:"vendorId" bson:"vendorId"`
-	Family     string   `json:"family" bson:"family"`
-	Model      string   `json:"model" bson:"model"`
-	Stepping   int32    `json:"stepping" bson:"stepping"`
-	PhysicalID string   `json:"physicalId" bson:"physicalId"`
-	CoreID     string   `json:"coreId" bson:"coreId"`
-	Cores      int32    `json:"cores" bson:"cores"`
-	ModelName  string   `json:"modelName" bson:"modelName"`
-	Mhz        float64  `json:"mhz" bson:"mhz"`
-	CacheSize  int32    `json:"cacheSize" bson:"cacheSize"`
-	Flags      []string `json:"flags" bson:"flags"`
-	Microcode  string   `json:"microcode" bson:"microcode"`
+	CPU        int32    `json:"cpu" bson:"cpu,omitempty"`
+	VendorID   string   `json:"vendorId" bson:"vendorId,omitempty"`
+	Family     string   `json:"family" bson:"family,omitempty"`
+	Model      string   `json:"model" bson:"model,omitempty"`
+	Stepping   int32    `json:"stepping" bson:"stepping,omitempty"`
+	PhysicalID string   `json:"physicalId" bson:"physicalId,omitempty"`
+	CoreID     string   `json:"coreId" bson:"coreId,omitempty"`
+	Cores      int32    `json:"cores" bson:"cores,omitempty"`
+	ModelName  string   `json:"modelName" bson:"modelName,omitempty"`
+	Mhz        float64  `json:"mhz" bson:"mhz,omitempty"`
+	CacheSize  int32    `json:"cacheSize" bson:"cacheSize,omitempty"`
+	Flags      []string `json:"flags" bson:"flags,omitempty"`
+	Microcode  string   `json:"microcode" bson:"microcode,omitempty"`
 }
 
 type lastPercent struct {
@@ -63,12 +61,9 @@ func init() {
 	lastCPUPercent.Unlock()
 }
 
+// Counts returns the number of physical or logical cores in the system
 func Counts(logical bool) (int, error) {
 	return CountsWithContext(context.Background(), logical)
-}
-
-func CountsWithContext(ctx context.Context, logical bool) (int, error) {
-	return runtime.NumCPU(), nil
 }
 
 func (c TimesStat) String() string {
@@ -84,7 +79,6 @@ func (c TimesStat) String() string {
 		`"steal":` + strconv.FormatFloat(c.Steal, 'f', 1, 64),
 		`"guest":` + strconv.FormatFloat(c.Guest, 'f', 1, 64),
 		`"guestNice":` + strconv.FormatFloat(c.GuestNice, 'f', 1, 64),
-		`"stolen":` + strconv.FormatFloat(c.Stolen, 'f', 1, 64),
 	}
 
 	return `{` + strings.Join(v, ",") + `}`
@@ -93,7 +87,7 @@ func (c TimesStat) String() string {
 // Total returns the total number of seconds in a CPUTimesStat
 func (c TimesStat) Total() float64 {
 	total := c.User + c.System + c.Nice + c.Iowait + c.Irq + c.Softirq + c.Steal +
-		c.Guest + c.GuestNice + c.Idle + c.Stolen
+		c.Guest + c.GuestNice + c.Idle
 	return total
 }
 
@@ -104,7 +98,7 @@ func (c InfoStat) String() string {
 
 func getAllBusy(t TimesStat) (float64, float64) {
 	busy := t.User + t.System + t.Nice + t.Iowait + t.Irq +
-		t.Softirq + t.Steal + t.Guest + t.GuestNice + t.Stolen
+		t.Softirq + t.Steal + t.Guest + t.GuestNice
 	return busy + t.Idle, busy
 }
 

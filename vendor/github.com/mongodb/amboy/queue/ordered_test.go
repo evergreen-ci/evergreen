@@ -38,58 +38,6 @@ func TestLocalOrderedQueueSuiteThreeWorker(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func TestRemotePriorityOrderedQueueSuite(t *testing.T) {
-	s := &OrderedQueueSuite{}
-	ctx, cancel := context.WithCancel(context.Background())
-
-	s.size = 4
-
-	s.reset = func() {
-		d := NewPriorityDriver()
-		remote := NewSimpleRemoteOrdered(s.size).(*remoteSimpleOrdered)
-		s.Require().NotNil(remote.remoteBase)
-		s.Require().NoError(d.Open(ctx))
-		s.Require().NoError(remote.SetDriver(d))
-		s.queue = remote
-	}
-
-	s.setup = func() {
-		s.reset()
-	}
-
-	s.tearDown = func() {
-		cancel()
-	}
-
-	suite.Run(t, s)
-}
-
-func TestRemoteInternalOrderedQueueSuite(t *testing.T) {
-	s := &OrderedQueueSuite{}
-	ctx, cancel := context.WithCancel(context.Background())
-
-	s.size = 4
-
-	s.reset = func() {
-		d := NewInternalDriver()
-		remote := NewSimpleRemoteOrdered(s.size).(*remoteSimpleOrdered)
-		s.Require().NotNil(remote.remoteBase)
-		s.Require().NoError(d.Open(ctx))
-		s.Require().NoError(remote.SetDriver(d))
-		s.queue = remote
-	}
-
-	s.setup = func() {
-		s.reset()
-	}
-
-	s.tearDown = func() {
-		cancel()
-	}
-
-	suite.Run(t, s)
-}
-
 func (s *OrderedQueueSuite) SetupTest() {
 	if s.setup != nil {
 		s.setup()

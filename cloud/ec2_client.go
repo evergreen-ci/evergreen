@@ -42,8 +42,17 @@ type AWSClient interface {
 	// CreateTags is a wrapper for ec2.CreateTags.
 	CreateTags(context.Context, *ec2.CreateTagsInput) (*ec2.CreateTagsOutput, error)
 
+	// DeleteTags is a wrapper for ec2.DeleteTags.
+	DeleteTags(context.Context, *ec2.DeleteTagsInput) (*ec2.DeleteTagsOutput, error)
+
 	// TerminateInstances is a wrapper for ec2.TerminateInstances.
 	TerminateInstances(context.Context, *ec2.TerminateInstancesInput) (*ec2.TerminateInstancesOutput, error)
+
+	// StopInstances is a wrapper for ec2.StopInstances.
+	StopInstances(context.Context, *ec2.StopInstancesInput) (*ec2.StopInstancesOutput, error)
+
+	// StartInstances is a wrapper for ec2.StartInstances.
+	StartInstances(context.Context, *ec2.StartInstancesInput) (*ec2.StartInstancesOutput, error)
 
 	// RequestSpotInstances is a wrapper for ec2.RequestSpotInstances.
 	RequestSpotInstances(context.Context, *ec2.RequestSpotInstancesInput) (*ec2.RequestSpotInstancesOutput, error)
@@ -219,6 +228,30 @@ func (c *awsClientImpl) CreateTags(ctx context.Context, input *ec2.CreateTagsInp
 	return output, nil
 }
 
+// DeleteTags is a wrapper for ec2.DeleteTags.
+func (c *awsClientImpl) DeleteTags(ctx context.Context, input *ec2.DeleteTagsInput) (*ec2.DeleteTagsOutput, error) {
+	var output *ec2.DeleteTagsOutput
+	var err error
+	msg := makeAWSLogMessage("DeleteTags", fmt.Sprintf("%T", c), input)
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			output, err = c.EC2.DeleteTagsWithContext(ctx, input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
 // TerminateInstances is a wrapper for ec2.TerminateInstances.
 func (c *awsClientImpl) TerminateInstances(ctx context.Context, input *ec2.TerminateInstancesInput) (*ec2.TerminateInstancesOutput, error) {
 	var output *ec2.TerminateInstancesOutput
@@ -241,6 +274,54 @@ func (c *awsClientImpl) TerminateInstances(ctx context.Context, input *ec2.Termi
 						return false, nil
 					}
 
+					grip.Error(message.WrapError(ec2err, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+// StopInstances is a wrapper for ec2.StopInstances.
+func (c *awsClientImpl) StopInstances(ctx context.Context, input *ec2.StopInstancesInput) (*ec2.StopInstancesOutput, error) {
+	var output *ec2.StopInstancesOutput
+	var err error
+	msg := makeAWSLogMessage("StopInstances", fmt.Sprintf("%T", c), input)
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			output, err = c.EC2.StopInstancesWithContext(ctx, input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+// StartInstances is a wrapper for ec2.StartInstances.
+func (c *awsClientImpl) StartInstances(ctx context.Context, input *ec2.StartInstancesInput) (*ec2.StartInstancesOutput, error) {
+	var output *ec2.StartInstancesOutput
+	var err error
+	msg := makeAWSLogMessage("StartInstances", fmt.Sprintf("%T", c), input)
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			output, err = c.EC2.StartInstancesWithContext(ctx, input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, msg))
 				}
 				return true, err
@@ -692,12 +773,14 @@ func (c *awsClientImpl) makeNewKey(ctx context.Context, project string, h *host.
 	return name, nil
 }
 
+// SetTags creates the initial tags for an EC2 host and updates the database with the
+// host's Evergreen-generated tags.
 func (c *awsClientImpl) SetTags(ctx context.Context, resources []string, h *host.Host) error {
 	tags := makeTags(h)
 	tagSlice := []*ec2.Tag{}
-	for tag := range tags {
-		key := tag
-		val := tags[tag]
+	for _, tag := range tags {
+		key := tag.Key
+		val := tag.Value
 		tagSlice = append(tagSlice, &ec2.Tag{Key: &key, Value: &val})
 	}
 	if _, err := c.CreateTags(ctx, &ec2.CreateTagsInput{
@@ -713,11 +796,17 @@ func (c *awsClientImpl) SetTags(ctx context.Context, resources []string, h *host
 		return errors.Wrapf(err, "failed to attach tags for %s", h.Id)
 	}
 
+	// Push instance tag changes to database
+	if err := h.SetTags(); err != nil {
+		return errors.Wrap(err, "failed to update instance tags in database")
+	}
+
 	grip.Debug(message.Fields{
 		"message":       "attached tags for host",
 		"host":          h.Id,
 		"host_provider": h.Distro.Provider,
 		"distro":        h.Distro.Id,
+		"tags":          h.InstanceTags,
 	})
 
 	return nil
@@ -785,7 +874,10 @@ type awsClientMock struct { //nolint
 	*ec2.RunInstancesInput
 	*ec2.DescribeInstancesInput
 	*ec2.CreateTagsInput
+	*ec2.DeleteTagsInput
 	*ec2.TerminateInstancesInput
+	*ec2.StopInstancesInput
+	*ec2.StartInstancesInput
 	*ec2.RequestSpotInstancesInput
 	*ec2.DescribeSpotInstanceRequestsInput
 	*ec2.CancelSpotInstanceRequestsInput
@@ -800,6 +892,7 @@ type awsClientMock struct { //nolint
 	*ec2.DeleteLaunchTemplateInput
 	*ec2.CreateFleetInput
 
+	*ec2.Instance
 	*ec2.DescribeSpotInstanceRequestsOutput
 	*ec2.DescribeInstancesOutput
 	*ec2.CreateLaunchTemplateOutput
@@ -876,10 +969,40 @@ func (c *awsClientMock) CreateTags(ctx context.Context, input *ec2.CreateTagsInp
 	return nil, nil
 }
 
+// DeleteTags is a mock for ec2.DeleteTags.
+func (c *awsClientMock) DeleteTags(ctx context.Context, input *ec2.DeleteTagsInput) (*ec2.DeleteTagsOutput, error) {
+	c.DeleteTagsInput = input
+	return nil, nil
+}
+
 // TerminateInstances is a mock for ec2.TerminateInstances.
 func (c *awsClientMock) TerminateInstances(ctx context.Context, input *ec2.TerminateInstancesInput) (*ec2.TerminateInstancesOutput, error) {
 	c.TerminateInstancesInput = input
 	return &ec2.TerminateInstancesOutput{}, nil
+}
+
+// StopInstances is a mock for ec2.StopInstances.
+func (c *awsClientMock) StopInstances(ctx context.Context, input *ec2.StopInstancesInput) (*ec2.StopInstancesOutput, error) {
+	c.StopInstancesInput = input
+	c.Instance = &ec2.Instance{
+		InstanceId: aws.String("id"),
+		State: &ec2.InstanceState{
+			Name: aws.String(ec2.InstanceStateNameStopped),
+		},
+	}
+	return &ec2.StopInstancesOutput{}, nil
+}
+
+// StartInstances is a mock for ec2.StartInstances.
+func (c *awsClientMock) StartInstances(ctx context.Context, input *ec2.StartInstancesInput) (*ec2.StartInstancesOutput, error) {
+	c.StartInstancesInput = input
+	c.Instance = &ec2.Instance{
+		InstanceId: aws.String("id"),
+		State: &ec2.InstanceState{
+			Name: aws.String(ec2.InstanceStateNameRunning),
+		},
+	}
+	return &ec2.StartInstancesOutput{}, nil
 }
 
 // RequestSpotInstances is a mock for ec2.RequestSpotInstances.
@@ -1015,6 +1138,10 @@ func (c *awsClientMock) DescribeVpcs(ctx context.Context, input *ec2.DescribeVpc
 }
 
 func (c *awsClientMock) GetInstanceInfo(ctx context.Context, id string) (*ec2.Instance, error) {
+	if c.Instance != nil {
+		return c.Instance, nil
+	}
+
 	instance := &ec2.Instance{}
 	instance.Placement = &ec2.Placement{}
 	instance.Placement.AvailabilityZone = aws.String("us-east-1a")
@@ -1104,6 +1231,13 @@ func (c *awsClientMock) GetKey(ctx context.Context, h *host.Host) (string, error
 }
 
 func (c *awsClientMock) SetTags(ctx context.Context, resources []string, h *host.Host) error {
+	tagSlice := []*ec2.Tag{}
+	if _, err := c.CreateTags(ctx, &ec2.CreateTagsInput{
+		Resources: aws.StringSlice(resources),
+		Tags:      tagSlice,
+	}); err != nil {
+		return err
+	}
 	return nil
 }
 

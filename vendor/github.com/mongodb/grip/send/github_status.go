@@ -57,13 +57,13 @@ func (s *githubStatusMessageLogger) Send(m message.Composer) {
 			owner = s.ref
 		}
 		if status == nil {
-			s.ErrorHandler(errors.New("composer cannot be converted to github status"), m)
+			s.ErrorHandler()(errors.New("composer cannot be converted to github status"), m)
 			return
 		}
 
 		_, _, err := s.gh.CreateStatus(context.TODO(), owner, repo, ref, status)
 		if err != nil {
-			s.ErrorHandler(err, m)
+			s.ErrorHandler()(err, m)
 		}
 	}
 }
@@ -152,9 +152,11 @@ func githubStatusMessagePayloadToRepoStatus(c *message.GithubStatus) *github.Rep
 	}
 
 	s := &github.RepoStatus{
-		Context:   github.String(c.Context),
-		State:     github.String(string(c.State)),
-		TargetURL: github.String(c.URL),
+		Context: github.String(c.Context),
+		State:   github.String(string(c.State)),
+	}
+	if len(c.URL) > 0 {
+		s.TargetURL = github.String(c.URL)
 	}
 	if len(c.Description) > 0 {
 		s.Description = github.String(c.Description)

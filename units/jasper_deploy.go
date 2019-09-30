@@ -16,8 +16,8 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/jasper"
-	jaspercli "github.com/mongodb/jasper/cli"
+	jcli "github.com/mongodb/jasper/cli"
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
 
@@ -162,7 +162,7 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 		// is a new Jasper service.
 		serviceID := client.ID()
 
-		writeCredentialsOpts := &jasper.CreateOptions{
+		writeCredentialsOpts := &options.Create{
 			Args: []string{
 				"bash", "-c", writeCredentialsCmd,
 			},
@@ -183,10 +183,10 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 		// We have to kill the Jasper service from within a process that it
 		// creates so that the system restarts the service with the new
 		// credentials file. This will not work on Windows.
-		restartJasperOpts := &jasper.CreateOptions{
+		restartJasperOpts := &options.Create{
 			Args: []string{
 				"bash", "-c",
-				fmt.Sprintf("pgrep -f '%s' | xargs kill", strings.Join(jaspercli.BuildServiceCommand(j.settings.HostJasper.BinaryName), " ")),
+				fmt.Sprintf("pgrep -f '%s' | xargs kill", strings.Join(jcli.BuildServiceCommand(j.settings.HostJasper.BinaryName), " ")),
 			},
 		}
 

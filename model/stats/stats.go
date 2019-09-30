@@ -27,9 +27,10 @@ const (
 // ProcessedTasksUntil is the date before which all finished tasks have been processed. It is usually
 // the same as LastJobRun unless a previous job has failed and the stats computation has not caught up yet.
 type StatsStatus struct {
-	ProjectId           string    `bson:"_id"`
-	LastJobRun          time.Time `bson:"last_job_run"`
-	ProcessedTasksUntil time.Time `bson:"processed_tasks_until"`
+	ProjectId           string        `bson:"_id"`
+	LastJobRun          time.Time     `bson:"last_job_run"`
+	ProcessedTasksUntil time.Time     `bson:"processed_tasks_until"`
+	Runtime             time.Duration `bson:"runtime"`
 }
 
 // createDefaultStatsStatus creates a StatsStatus for projects that don't have a status in the DB yet.
@@ -61,11 +62,12 @@ func GetStatsStatus(projectId string) (StatsStatus, error) {
 }
 
 // UpdateStatsStatus updates the status of the stats pre-computations for a project.
-func UpdateStatsStatus(projectId string, lastJobRun time.Time, processedTasksUntil time.Time) error {
+func UpdateStatsStatus(projectId string, lastJobRun time.Time, processedTasksUntil time.Time, runtime time.Duration) error {
 	status := StatsStatus{
 		ProjectId:           projectId,
 		LastJobRun:          lastJobRun,
 		ProcessedTasksUntil: processedTasksUntil,
+		Runtime:             runtime,
 	}
 	_, err := db.Upsert(dailyStatsStatusCollection, bson.M{"_id": projectId}, status)
 	if err != nil {

@@ -59,7 +59,7 @@ func NewQueueMultiSender(ctx context.Context, workers, capacity int, senders ...
 }
 
 func (s *multiQueueSender) Send(m message.Composer) {
-	s.ErrorHandler(s.queue.Put(s.ctx, NewMultiSendMessageJob(m, s.senders)), m)
+	s.ErrorHandler()(s.queue.Put(s.ctx, NewMultiSendMessageJob(m, s.senders)), m)
 }
 
 func (s *multiQueueSender) Close() error {

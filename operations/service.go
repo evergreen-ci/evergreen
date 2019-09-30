@@ -86,12 +86,12 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) error {
 	amboy.IntervalQueueOperation(ctx, populateQueue, 5*time.Minute, util.RoundPartOfHour(5), opts, func(ctx context.Context, queue amboy.Queue) error {
 		return errors.WithStack(queue.Put(ctx, units.NewCronRemoteFiveMinuteJob()))
 	})
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, util.RoundPartOfHour(15), opts, func(ctx context.Context, queue amboy.Queue) error {
+	amboy.IntervalQueueOperation(ctx, populateQueue, 15*time.Minute, util.RoundPartOfHour(15), opts, func(ctx context.Context, queue amboy.Queue) error {
 		return errors.WithStack(queue.Put(ctx, units.NewCronRemoteFifteenMinuteJob()))
 	})
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 24*time.Hour, util.RoundPartOfDay(0), opts, units.PopulateJasperDeployJobs(env))
-
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 3*time.Hour, util.RoundPartOfHour(0), opts, units.PopulateCacheHistoricalTestDataJob(6))
+	amboy.IntervalQueueOperation(ctx, populateQueue, time.Hour, util.RoundPartOfDay(1), opts, func(ctx context.Context, queue amboy.Queue) error {
+		return errors.WithStack(queue.Put(ctx, units.NewCronRemoteHourJob()))
+	})
 
 	////////////////////////////////////////////////////////////////////////
 	//

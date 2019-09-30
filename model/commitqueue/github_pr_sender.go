@@ -73,7 +73,7 @@ func (s *githubPRLogger) Send(m message.Composer) {
 
 	msg, ok := m.Raw().(*GithubMergePR)
 	if !ok {
-		s.ErrorHandler(errors.New("message of type githubPRLogger does not contain a GithubMergePR"), m)
+		s.ErrorHandler()(errors.New("message of type githubPRLogger does not contain a GithubMergePR"), m)
 		return
 	}
 
@@ -82,9 +82,9 @@ func (s *githubPRLogger) Send(m message.Composer) {
 	}
 
 	if !(msg.Status == evergreen.PatchSucceeded) {
-		s.ErrorHandler(errors.New("not proceeding with merge for failed patch"), m)
+		s.ErrorHandler()(errors.New("not proceeding with merge for failed patch"), m)
 		event.LogCommitQueueConcludeTest(msg.PatchID, evergreen.MergeTestFailed)
-		s.ErrorHandler(dequeueFromCommitQueue(msg.ProjectID, msg.Item), m)
+		s.ErrorHandler()(dequeueFromCommitQueue(msg.ProjectID, msg.Item), m)
 
 		return
 	}
@@ -102,23 +102,23 @@ func (s *githubPRLogger) Send(m message.Composer) {
 		res, _, err := s.prService.Merge(ctx, pr.Owner, pr.Repo, pr.PRNum, "", mergeOpts)
 
 		if err != nil {
-			s.ErrorHandler(errors.Wrap(err, "can't access GitHub merge API"), m)
+			s.ErrorHandler()(errors.Wrap(err, "can't access GitHub merge API"), m)
 			// don't send status to GitHub since we can't access their API anyway...
 		}
 
 		if !res.GetMerged() {
-			s.ErrorHandler(s.sendMergeFailedStatus(res.GetMessage(), pr), m)
+			s.ErrorHandler()(s.sendMergeFailedStatus(res.GetMessage(), pr), m)
 			for j := i + 1; j < len(msg.PRs); j++ {
-				s.ErrorHandler(s.sendMergeFailedStatus("aborted", msg.PRs[j]), m)
+				s.ErrorHandler()(s.sendMergeFailedStatus("aborted", msg.PRs[j]), m)
 			}
 			event.LogCommitQueueConcludeTest(msg.PatchID, evergreen.MergeTestFailed)
-			s.ErrorHandler(dequeueFromCommitQueue(msg.ProjectID, msg.Item), m)
+			s.ErrorHandler()(dequeueFromCommitQueue(msg.ProjectID, msg.Item), m)
 			return
 		}
 	}
 
 	event.LogCommitQueueConcludeTest(msg.PatchID, evergreen.MergeTestSucceeded)
-	s.ErrorHandler(dequeueFromCommitQueue(msg.ProjectID, msg.Item), m)
+	s.ErrorHandler()(dequeueFromCommitQueue(msg.ProjectID, msg.Item), m)
 }
 
 func (s *githubPRLogger) sendMergeFailedStatus(githubMessage string, pr event.PRInfo) error {

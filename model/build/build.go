@@ -81,17 +81,16 @@ func (b *Build) IsFinished() bool {
 //
 // returns boolean to indicate if tasks are complete, string with either BuildFailed or
 // BuildSucceded. The string is only valid when the boolean is true
-func (b *Build) AllUnblockedTasksFinished() (bool, string, error) {
+func (b *Build) AllUnblockedTasksFinished(tasks []task.Task) (bool, string, error) {
 	if !b.Activated {
 		return false, b.Status, nil
 	}
 	allFinished := true
 	status := evergreen.BuildSucceeded
-	tasks, err := task.Find(task.ByBuildId(b.Id))
-	if err != nil {
-		return false, "", errors.Wrapf(err, "can't get tasks for build '%s'", b.Id)
-	}
 	for _, t := range tasks {
+		if t.BuildId != b.Id {
+			continue
+		}
 		if evergreen.IsFailedTaskStatus(t.Status) {
 			status = evergreen.BuildFailed
 		}

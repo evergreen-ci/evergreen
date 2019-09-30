@@ -252,6 +252,7 @@ vendor-clean:
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/pkg/errors/
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/gopkg.in/yaml.v2/
+	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/go.mongodb.org/
 	rm -rf vendor/github.com/evergreen-ci/go-test2json/vendor
 	rm -rf vendor/github.com/evergreen-ci/pail/vendor/github.com/aws/aws-sdk-go/
 	rm -rf vendor/github.com/evergreen-ci/pail/vendor/github.com/mitchellh/go-homedir/
