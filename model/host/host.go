@@ -1681,9 +1681,11 @@ func (h *Host) AddTags(tags []Tag) {
 	for _, new := range tags {
 		found := false
 		for i, old := range h.InstanceTags {
-			if old.Key == new.Key && old.CanBeModified {
-				h.InstanceTags[i] = new
+			if old.Key == new.Key {
 				found = true
+				if old.CanBeModified {
+					h.InstanceTags[i] = new
+				}
 				break
 			}
 		}
@@ -1722,8 +1724,16 @@ func (h *Host) SetTags() error {
 
 // SetInstanceType updates the host's instance type in the database.
 func (h *Host) SetInstanceType(instanceType string) error {
-	err := UpdateOne(bson.M{IdKey: h.Id},
-		bson.M{"$set": bson.M{InstanceTypeKey: instanceType}})
+	err := UpdateOne(
+		bson.M{
+			IdKey: h.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				InstanceTypeKey: instanceType,
+			},
+		},
+	)
 	if err != nil {
 		return err
 	}

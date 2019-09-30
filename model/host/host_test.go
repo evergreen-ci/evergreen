@@ -3605,16 +3605,19 @@ func TestAddTags(t *testing.T) {
 	h := Host{
 		Id: "id",
 		InstanceTags: []Tag{
+			Tag{Key: "key-fixed", Value: "val-fixed", CanBeModified: false},
 			Tag{Key: "key-1", Value: "val-1", CanBeModified: true},
 			Tag{Key: "key-2", Value: "val-2", CanBeModified: true},
 		},
 	}
 	tagsToAdd := []Tag{
+		Tag{Key: "key-fixed", Value: "val-new", CanBeModified: false},
 		Tag{Key: "key-2", Value: "val-new", CanBeModified: true},
 		Tag{Key: "key-3", Value: "val-3", CanBeModified: true},
 	}
 	h.AddTags(tagsToAdd)
 	assert.Equal(t, []Tag{
+		Tag{Key: "key-fixed", Value: "val-fixed", CanBeModified: false},
 		Tag{Key: "key-1", Value: "val-1", CanBeModified: true},
 		Tag{Key: "key-2", Value: "val-new", CanBeModified: true},
 		Tag{Key: "key-3", Value: "val-3", CanBeModified: true},
@@ -3625,13 +3628,15 @@ func TestDeleteTags(t *testing.T) {
 	h := Host{
 		Id: "id",
 		InstanceTags: []Tag{
+			Tag{Key: "key-fixed", Value: "val-fixed", CanBeModified: false},
 			Tag{Key: "key-1", Value: "val-1", CanBeModified: true},
 			Tag{Key: "key-2", Value: "val-2", CanBeModified: true},
 		},
 	}
-	tagsToDelete := []string{"key-1"}
+	tagsToDelete := []string{"key-fixed", "key-1"}
 	h.DeleteTags(tagsToDelete)
 	assert.Equal(t, []Tag{
+		Tag{Key: "key-fixed", Value: "val-fixed", CanBeModified: false},
 		Tag{Key: "key-2", Value: "val-2", CanBeModified: true},
 	}, h.InstanceTags)
 }
