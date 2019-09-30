@@ -603,8 +603,9 @@ func (h *Host) UpdateProvisioningToRunning() error {
 
 	if err := UpdateOne(
 		bson.M{
-			IdKey:     h.Id,
-			StatusKey: evergreen.HostProvisioning,
+			IdKey:          h.Id,
+			StatusKey:      evergreen.HostProvisioning,
+			ProvisionedKey: true,
 		},
 		bson.M{"$set": bson.M{StatusKey: evergreen.HostRunning}},
 	); err != nil {
