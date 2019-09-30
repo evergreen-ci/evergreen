@@ -107,6 +107,13 @@ func (s *EC2Suite) SetupTest() {
 	s.h = &host.Host{
 		Id:     "h1",
 		Distro: s.distro,
+		InstanceTags: []host.Tag{
+			host.Tag{
+				Key:           "key-1",
+				Value:         "val-1",
+				CanBeModified: true,
+			},
+		},
 	}
 }
 
@@ -362,6 +369,7 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 		"subnet_id":          "subnet-123456",
 		"user_data":          someUserData,
 	}
+	s.Require().NoError(s.h.Insert())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -408,6 +416,7 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 		"is_vpc":             true,
 		"user_data":          someUserData,
 	}
+	s.Require().NoError(h.Insert())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -450,6 +459,7 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 		"subnet_id":          "subnet-123456",
 		"user_data":          someUserData,
 	}
+	s.Require().NoError(h.Insert())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -493,6 +503,7 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 		"is_vpc":             true,
 		"user_data":          someUserData,
 	}
+	s.Require().NoError(h.Insert())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -535,6 +546,7 @@ func (s *EC2Suite) TestNoKeyAndNotSpawnHostForTaskShouldFail() {
 		"is_vpc":             true,
 		"user_data":          someUserData,
 	}
+	s.Require().NoError(h.Insert())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -568,6 +580,7 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 	h.SpawnOptions.TaskID = "task_1"
 	h.StartedBy = "task_1"
 	h.SpawnOptions.SpawnedByTask = true
+	s.Require().NoError(h.Insert())
 	s.Require().NoError(t.Insert())
 	newVars := &model.ProjectVars{
 		Id: project,
@@ -600,6 +613,37 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 	s.Nil(runInput.SubnetId)
 	s.Equal(base64OfSomeUserData, *runInput.UserData)
 }
+
+func (s *EC2Suite) TestModifyHost() {
+	changes := host.HostModifyOptions{
+		AddInstanceTags: []host.Tag{
+			host.Tag{
+				Key:           "key-2",
+				Value:         "val-2",
+				CanBeModified: true,
+			},
+		},
+		DeleteInstanceTags: []string{"key-1"},
+		InstanceType:       "instance-type-2",
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.h.Status = evergreen.HostRunning
+	s.Require().NoError(s.h.Insert())
+	s.Error(s.onDemandManager.ModifyHost(ctx, s.h, changes))
+	s.Require().NoError(s.h.Remove())
+
+	s.h.Status = evergreen.HostStopped
+	s.Require().NoError(s.h.Insert())
+	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
+	found, err := host.FindOne(host.ById(s.h.Id))
+	s.NoError(err)
+	s.Equal([]host.Tag{host.Tag{Key: "key-2", Value: "val-2", CanBeModified: true}}, found.InstanceTags)
+	s.Equal(changes.InstanceType, found.InstanceType)
+}
+
 func (s *EC2Suite) TestGetInstanceStatus() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

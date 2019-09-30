@@ -39,6 +39,9 @@ type AWSClient interface {
 	// DescribeInstances is a wrapper for ec2.DescribeInstances.
 	DescribeInstances(context.Context, *ec2.DescribeInstancesInput) (*ec2.DescribeInstancesOutput, error)
 
+	// ModifyInstanceAttribute is a wrapper for ec2.ModifyInstanceAttribute
+	ModifyInstanceAttribute(context.Context, *ec2.ModifyInstanceAttributeInput) (*ec2.ModifyInstanceAttributeOutput, error)
+
 	// CreateTags is a wrapper for ec2.CreateTags.
 	CreateTags(context.Context, *ec2.CreateTagsInput) (*ec2.CreateTagsOutput, error)
 
@@ -189,6 +192,29 @@ func (c *awsClientImpl) DescribeInstances(ctx context.Context, input *ec2.Descri
 		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.DescribeInstancesWithContext(ctx, input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+func (c *awsClientImpl) ModifyInstanceAttribute(ctx context.Context, input *ec2.ModifyInstanceAttributeInput) (*ec2.ModifyInstanceAttributeOutput, error) {
+	var output *ec2.ModifyInstanceAttributeOutput
+	var err error
+	msg := makeAWSLogMessage("ModifyInstanceAttribute", fmt.Sprintf("%T", c), input)
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			output, err = c.EC2.ModifyInstanceAttributeWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, msg))
@@ -875,6 +901,7 @@ type awsClientMock struct { //nolint
 	*ec2.DescribeInstancesInput
 	*ec2.CreateTagsInput
 	*ec2.DeleteTagsInput
+	*ec2.ModifyInstanceAttributeInput
 	*ec2.TerminateInstancesInput
 	*ec2.StopInstancesInput
 	*ec2.StartInstancesInput
@@ -972,6 +999,11 @@ func (c *awsClientMock) CreateTags(ctx context.Context, input *ec2.CreateTagsInp
 // DeleteTags is a mock for ec2.DeleteTags.
 func (c *awsClientMock) DeleteTags(ctx context.Context, input *ec2.DeleteTagsInput) (*ec2.DeleteTagsOutput, error) {
 	c.DeleteTagsInput = input
+	return nil, nil
+}
+
+func (c *awsClientMock) ModifyInstanceAttribute(ctx context.Context, input *ec2.ModifyInstanceAttributeInput) (*ec2.ModifyInstanceAttributeOutput, error) {
+	c.ModifyInstanceAttributeInput = input
 	return nil, nil
 }
 

@@ -108,6 +108,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		UserData      string     `json:"userdata"`
 		UseTaskConfig bool       `json:"use_task_config"`
 		InstanceTags  []host.Tag `json:"instance_tags"`
+		InstanceType  string     `json:"instance_type"`
 	}{}
 
 	err := util.ReadJSONInto(util.NewRequestReader(r), &putParams)
@@ -131,6 +132,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		TaskID:       putParams.Task,
 		UserData:     putParams.UserData,
 		InstanceTags: putParams.InstanceTags,
+		InstanceType: putParams.InstanceType,
 	}
 	spawnHost, err := hc.NewIntentHost(options, authedUser)
 

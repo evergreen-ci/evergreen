@@ -341,6 +341,7 @@ func (c *Mock) GetHostsByUser(ctx context.Context, user string) ([]*model.APIHos
 		KeyName:      "mock_key",
 		UserData:     "",
 		InstanceTags: nil,
+		InstanceType: "mock_type",
 	}
 	host, _ := c.CreateSpawnHost(ctx, spawnRequest)
 	hosts = append(hosts, host)
@@ -362,6 +363,7 @@ func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostReques
 		UserHost:     true,
 		Provisioned:  false,
 		InstanceTags: spawnRequest.InstanceTags,
+		InstanceType: model.ToAPIString(spawnRequest.InstanceType),
 	}
 	return mockHost, nil
 }
@@ -398,6 +400,7 @@ func (c *Mock) GetHosts(ctx context.Context, f func([]*model.APIHost) error) err
 		KeyName:      "mock_key",
 		UserData:     "",
 		InstanceTags: nil,
+		InstanceType: "mock_type",
 	}
 	host, _ := c.CreateSpawnHost(ctx, spawnRequest)
 	hosts = append(hosts, host)

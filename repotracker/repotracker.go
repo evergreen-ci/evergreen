@@ -769,6 +769,9 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 			}))
 			continue
 		}
+		if len(tasks) == 0 {
+			continue
+		}
 		buildsToCreate = append(buildsToCreate, *b)
 		for _, t := range tasks {
 			tasksToCreate = append(tasksToCreate, t)
