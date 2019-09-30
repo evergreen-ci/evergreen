@@ -1151,10 +1151,11 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 				"bootstrap_settings": {
 					"method": "legacy-ssh",
 					"communication": "legacy-ssh",
-					"shell_path": "/usr/bin/bash",
 					"jasper_binary_dir": "/usr/local/bin",
+					"jasper_credentials_path": "/etc/credentials",
 					"client_dir": "/usr/bin",
-					"jasper_credentials_path": "/etc/credentials"
+					"service_user": "service_user",
+					"shell_path": "/usr/bin/bash"
 				},
 				"clone_method": "legacy-ssh",
 				"ssh_key" : "~SSH string",
@@ -1216,10 +1217,11 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), apiDistro.BootstrapSettings.Method)
 	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), apiDistro.BootstrapSettings.Communication)
 	s.Equal(model.ToAPIString(distro.CloneMethodLegacySSH), apiDistro.CloneMethod)
-	s.Equal(model.ToAPIString("/usr/bin/bash"), apiDistro.BootstrapSettings.ShellPath)
+	s.Equal(model.ToAPIString("/usr/bin"), apiDistro.BootstrapSettings.ClientDir)
 	s.Equal(model.ToAPIString("/usr/local/bin"), apiDistro.BootstrapSettings.JasperBinaryDir)
 	s.Equal(model.ToAPIString("/etc/credentials"), apiDistro.BootstrapSettings.JasperCredentialsPath)
-	s.Equal(model.ToAPIString("/usr/bin"), apiDistro.BootstrapSettings.ClientDir)
+	s.Equal(model.ToAPIString("service_user"), apiDistro.BootstrapSettings.ServiceUser)
+	s.Equal(model.ToAPIString("/usr/bin/bash"), apiDistro.BootstrapSettings.ShellPath)
 	s.Equal(apiDistro.User, model.ToAPIString("~root"))
 	s.Equal(apiDistro.SSHKey, model.ToAPIString("~SSH string"))
 	s.Equal(apiDistro.SSHOptions, []string{"~StrictHostKeyChecking=no", "~BatchMode=no", "~ConnectTimeout=10"})

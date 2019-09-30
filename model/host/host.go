@@ -24,14 +24,15 @@ import (
 )
 
 type Host struct {
-	Id       string        `bson:"_id" json:"id"`
-	Host     string        `bson:"host_id" json:"host"`
-	User     string        `bson:"user" json:"user"`
-	Secret   string        `bson:"secret" json:"secret"`
-	Tag      string        `bson:"tag" json:"tag"`
-	Distro   distro.Distro `bson:"distro" json:"distro"`
-	Provider string        `bson:"host_type" json:"host_type"`
-	IP       string        `bson:"ip_address" json:"ip_address"`
+	Id              string        `bson:"_id" json:"id"`
+	Host            string        `bson:"host_id" json:"host"`
+	User            string        `bson:"user" json:"user"`
+	Secret          string        `bson:"secret" json:"secret"`
+	ServicePassword string        `bson:"service_password,omitempty" json:"service_password,omitempty" mapstructure:"service_password,omitempty"`
+	Tag             string        `bson:"tag" json:"tag"`
+	Distro          distro.Distro `bson:"distro" json:"distro"`
+	Provider        string        `bson:"host_type" json:"host_type"`
+	IP              string        `bson:"ip_address" json:"ip_address"`
 
 	// secondary (external) identifier for the host
 	ExternalIdentifier string `bson:"ext_identifier" json:"ext_identifier"`
@@ -325,6 +326,14 @@ func (h *Host) SetRunning(user string) error {
 
 func (h *Host) SetTerminated(user string) error {
 	return h.SetStatus(evergreen.HostTerminated, user, "")
+}
+
+func (h *Host) SetStopping(user string) error {
+	return h.SetStatus(evergreen.HostStopping, user, "")
+}
+
+func (h *Host) SetStopped(user string) error {
+	return h.SetStatus(evergreen.HostStopped, user, "")
 }
 
 func (h *Host) SetUnprovisioned() error {

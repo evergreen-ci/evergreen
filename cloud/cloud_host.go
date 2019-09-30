@@ -43,6 +43,14 @@ func (cloudHost *CloudHost) TerminateInstance(ctx context.Context, user string) 
 	return cloudHost.CloudMgr.TerminateInstance(ctx, cloudHost.Host, user)
 }
 
+func (cloudHost *CloudHost) StopInstance(ctx context.Context, user string) error {
+	return cloudHost.CloudMgr.StopInstance(ctx, cloudHost.Host, user)
+}
+
+func (cloudHost *CloudHost) StartInstance(ctx context.Context, user string) error {
+	return cloudHost.CloudMgr.StartInstance(ctx, cloudHost.Host, user)
+}
+
 func (cloudHost *CloudHost) GetInstanceStatus(ctx context.Context) (CloudStatus, error) {
 	return cloudHost.CloudMgr.GetInstanceStatus(ctx, cloudHost.Host)
 }

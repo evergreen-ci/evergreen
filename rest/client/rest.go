@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -88,8 +87,6 @@ func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, spawnRequest *mo
 		return nil, errors.Wrap(errMsg, "problem spawning host")
 	}
 
-	grip.Info(resp.Body)
-
 	spawnHostResp := model.APIHost{}
 	if err = util.ReadJSONInto(resp.Body, &spawnHostResp); err != nil {
 		return nil, fmt.Errorf("Error forming response body response: %v", err)
@@ -121,6 +118,105 @@ func (c *communicatorImpl) ModifySpawnHost(ctx context.Context, hostID string, c
 	}
 
 	return nil
+}
+
+func (c *communicatorImpl) StopSpawnHost(ctx context.Context, hostID string, wait bool) error {
+	info := requestInfo{
+		method:  post,
+		path:    fmt.Sprintf("hosts/%s/stop", hostID),
+		version: apiVersion2,
+	}
+
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return errors.Wrapf(err, "error sending request to stop host")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errMsg := gimlet.ErrorResponse{}
+		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+			return errors.Wrap(err, "problem stopping host and parsing error message")
+		}
+		return errors.Wrap(errMsg, "problem stopping host")
+	}
+
+	if wait {
+		return errors.Wrap(c.waitForStatus(ctx, hostID, evergreen.HostStopped), "problem waiting for host stop to complete")
+	}
+
+	return nil
+}
+
+func (c *communicatorImpl) StartSpawnHost(ctx context.Context, hostID string, wait bool) error {
+	info := requestInfo{
+		method:  post,
+		path:    fmt.Sprintf("hosts/%s/start", hostID),
+		version: apiVersion2,
+	}
+
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return errors.Wrapf(err, "error sending request to start host")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errMsg := gimlet.ErrorResponse{}
+		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+			return errors.Wrap(err, "problem starting host and parsing error message")
+		}
+		return errors.Wrap(errMsg, "problem starting host")
+	}
+
+	if wait {
+		return errors.Wrap(c.waitForStatus(ctx, hostID, evergreen.HostRunning), "problem waiting for host start to complete")
+	}
+
+	return nil
+}
+
+func (c *communicatorImpl) waitForStatus(ctx context.Context, hostID, status string) error {
+	const (
+		contextTimeout = 10 * time.Minute
+		retryInterval  = 10 * time.Second
+	)
+
+	info := requestInfo{
+		method:  get,
+		path:    fmt.Sprintf("hosts/%s", hostID),
+		version: apiVersion2,
+	}
+
+	timerCtx, cancel := context.WithTimeout(ctx, contextTimeout)
+	defer cancel()
+	timer := time.NewTimer(0)
+	for {
+		select {
+		case <-timerCtx.Done():
+			return errors.New("timer context canceled")
+		case <-timer.C:
+			resp, err := c.request(ctx, info, "")
+			if err != nil {
+				return errors.Wrap(err, "error sending request to get host info")
+			}
+			if resp.StatusCode != http.StatusOK {
+				errMsg := gimlet.ErrorResponse{}
+				if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+					return errors.Wrap(err, "problem getting host and parsing error message")
+				}
+				return errors.Wrap(errMsg, "problem getting host")
+			}
+			hostResp := model.APIHost{}
+			if err = util.ReadJSONInto(resp.Body, &hostResp); err != nil {
+				return fmt.Errorf("Error forming response body response: %v", err)
+			}
+			if model.FromAPIString(hostResp.Status) == status {
+				return nil
+			}
+			timer.Reset(retryInterval)
+		}
+	}
 }
 
 func (c *communicatorImpl) TerminateSpawnHost(ctx context.Context, hostID string) error {

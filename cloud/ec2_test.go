@@ -34,7 +34,9 @@ type EC2Suite struct {
 	autoOpts                  *EC2ManagerOptions
 	autoManager               Manager
 	impl                      *ec2Manager
+	mock                      *awsClientMock
 	h                         *host.Host
+	distro                    distro.Distro
 }
 
 func TestEC2Suite(t *testing.T) {
@@ -85,19 +87,26 @@ func (s *EC2Suite) SetupTest() {
 	s.impl, ok = s.onDemandManager.(*ec2Manager)
 	s.Require().True(ok)
 
-	s.h = &host.Host{
-		Id: "h1",
-		Distro: distro.Distro{
-			ProviderSettings: &map[string]interface{}{
-				"key_name":           "key",
-				"aws_access_key_id":  "key_id",
-				"ami":                "ami",
-				"instance_type":      "instance",
-				"security_group_ids": []string{"abcdef"},
-				"bid_price":          float64(0.001),
-			},
-			Provider: evergreen.ProviderNameEc2OnDemand,
+	// Clear mock
+	s.mock, ok = s.impl.client.(*awsClientMock)
+	s.Require().True(ok)
+	s.mock.Instance = nil
+
+	s.distro = distro.Distro{
+		ProviderSettings: &map[string]interface{}{
+			"key_name":           "key",
+			"aws_access_key_id":  "key_id",
+			"ami":                "ami",
+			"instance_type":      "instance",
+			"security_group_ids": []string{"abcdef"},
+			"bid_price":          float64(0.001),
 		},
+		Provider: evergreen.ProviderNameEc2OnDemand,
+	}
+
+	s.h = &host.Host{
+		Id:     "h1",
+		Distro: s.distro,
 	}
 }
 
@@ -655,6 +664,63 @@ func (s *EC2Suite) TestTerminateInstanceWithUserDataBootstrappedHost() {
 		_, err = s.h.JasperCredentials(ctx)
 		s.Error(err)
 	})
+}
+
+func (s *EC2Suite) TestStopInstance() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	hosts := []*host.Host{
+		&host.Host{
+			Id:     "host-stopped",
+			Status: evergreen.HostStopped,
+		},
+		&host.Host{
+			Id:     "host-provisioning",
+			Status: evergreen.HostProvisioning,
+		},
+		&host.Host{
+			Id:     "host-running",
+			Status: evergreen.HostRunning,
+		},
+	}
+	for _, h := range hosts {
+		h.Distro = s.distro
+		s.NoError(h.Insert())
+	}
+
+	s.Error(s.onDemandManager.StopInstance(ctx, hosts[0], evergreen.User))
+	s.Error(s.onDemandManager.StopInstance(ctx, hosts[1], evergreen.User))
+	s.NoError(s.onDemandManager.StopInstance(ctx, hosts[2], evergreen.User))
+	found, err := host.FindOne(host.ById("host-running"))
+	s.NoError(err)
+	s.Equal(evergreen.HostStopped, found.Status)
+}
+
+func (s *EC2Suite) TestStartInstance() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	hosts := []*host.Host{
+		&host.Host{
+			Id:     "host-running",
+			Status: evergreen.HostRunning,
+		},
+		&host.Host{
+			Id:     "host-stopped",
+			Status: evergreen.HostStopped,
+		},
+	}
+	for _, h := range hosts {
+		h.Distro = s.distro
+		s.NoError(h.Insert())
+	}
+
+	s.Error(s.onDemandManager.StartInstance(ctx, hosts[0], evergreen.User))
+	s.NoError(s.onDemandManager.StartInstance(ctx, hosts[1], evergreen.User))
+	found, err := host.FindOne(host.ById("host-stopped"))
+	s.NoError(err)
+	s.Equal(evergreen.HostRunning, found.Status)
 }
 
 func (s *EC2Suite) TestIsUp() {

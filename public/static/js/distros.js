@@ -500,6 +500,15 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     return true;
   }
 
+  $scope.isWindows = function() {
+    return $scope.activeDistro.arch.includes('windows')
+  }
+
+  $scope.isNonLegacyProvisioning = function() {
+      return $scope.activeDistro.bootstrap_settings.method != 'legacy-ssh' ||
+      $scope.activeDistro.bootstrap_settings.communication != 'legacy-ssh'
+  }
+
   $scope.validBootstrapAndCommunication = function() {
     if ($scope.activeDistro) {
       return ($scope.activeDistro.bootstrap_settings.method == 'legacy-ssh' && $scope.activeDistro.bootstrap_settings.communication == 'legacy-ssh') ||

@@ -199,7 +199,99 @@ func hostModify() cli.Command {
 	}
 }
 
-func hostlist() cli.Command {
+func hostStop() cli.Command {
+	const waitFlagName = "wait"
+	return cli.Command{
+		Name:  "stop",
+		Usage: "stop a running spawn host",
+		Flags: addHostFlag(
+			cli.BoolFlag{
+				Name:  joinFlagNames(waitFlagName, "w"),
+				Usage: "command will block until host stopped",
+			},
+		),
+		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			hostID := c.String(hostFlagName)
+			wait := c.Bool(waitFlagName)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.GetRestCommunicator(ctx)
+			defer client.Close()
+
+			if wait {
+				grip.Infof("Stopping host '%s'. This may take a few minutes...", hostID)
+			}
+
+			err = client.StopSpawnHost(ctx, hostID, wait)
+			if err != nil {
+				return err
+			}
+
+			if wait {
+				grip.Infof("Stopped host '%s'", hostID)
+			} else {
+				grip.Infof("Stopping host '%s'. Visit the hosts page in Evergreen to check on its status.", hostID)
+			}
+			return nil
+		},
+	}
+}
+
+func hostStart() cli.Command {
+	const waitFlagName = "wait"
+	return cli.Command{
+		Name:  "start",
+		Usage: "start a stopped spawn host",
+		Flags: addHostFlag(
+			cli.BoolFlag{
+				Name:  joinFlagNames(waitFlagName, "w"),
+				Usage: "command will block until host started",
+			}),
+		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			hostID := c.String(hostFlagName)
+			wait := c.Bool(waitFlagName)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.GetRestCommunicator(ctx)
+			defer client.Close()
+
+			if wait {
+				grip.Infof("Starting host '%s'. This may take a few minutes...", hostID)
+			}
+
+			err = client.StartSpawnHost(ctx, hostID, wait)
+			if err != nil {
+				return err
+			}
+
+			if wait {
+				grip.Infof("Started host '%s'", hostID)
+			} else {
+				grip.Infof("Starting host '%s'. Visit the hosts page in Evergreen to check on its status.", hostID)
+			}
+
+			return nil
+		},
+	}
+}
+
+func hostList() cli.Command {
 	const (
 		mineFlagName = "mine"
 		allFlagName  = "all"

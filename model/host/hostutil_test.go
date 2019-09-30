@@ -218,21 +218,24 @@ func TestJasperCommandsWindows(t *testing.T) {
 			}
 		},
 		"BootstrapScript": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			expectedCmds := h.fetchJasperCommands(settings.HostJasper)
-			expectedPreCmds := []string{"foo", "bar"}
-			expectedPostCmds := []string{"bat", "baz"}
-			path := "/bin"
+			require.NoError(t, h.Insert())
 
-			for i := range expectedCmds {
-				expectedCmds[i] = fmt.Sprintf("PATH=%s %s", path, expectedCmds[i])
-			}
+			setupUserCmds, err := h.SetupServiceUserCommands()
+			require.NoError(t, err)
+
+			expectedPreCmds := []string{"foo", "bar", setupUserCmds}
+			expectedPostCmds := []string{"bat", "baz"}
 
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
 			writeCredentialsCmd, err := h.WriteJasperCredentialsFileCommand(creds)
 			require.NoError(t, err)
 
-			expectedCmds = append(expectedCmds, writeCredentialsCmd, h.ForceReinstallJasperCommand(settings))
+			expectedCmds := []string{
+				writeCredentialsCmd,
+				h.FetchJasperCommandWithPath(settings.HostJasper, "/bin"),
+				h.ForceReinstallJasperCommand(settings),
+			}
 
 			script, err := h.BootstrapScript(settings, creds, expectedPreCmds, expectedPostCmds)
 			require.NoError(t, err)
@@ -261,7 +264,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 		},
 		"ForceReinstallJasperCommand": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			cmd := h.ForceReinstallJasperCommand(settings)
-			assert.Equal(t, "/foo/jasper_cli.exe jasper service force-reinstall rpc --host=0.0.0.0 --port=12345 --creds_path=/bar/bat.txt --user=user", cmd)
+			assert.Equal(t, `/foo/jasper_cli.exe jasper service force-reinstall rpc --host=0.0.0.0 --port=12345 --creds_path=/bar/bat.txt --user=.\\\\service-user`, cmd)
 		},
 		"WriteJasperCredentialsFileCommand": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			creds, err := newMockCredentials()
@@ -299,6 +302,8 @@ func TestJasperCommandsWindows(t *testing.T) {
 				BootstrapSettings: distro.BootstrapSettings{
 					JasperBinaryDir:       "/foo",
 					JasperCredentialsPath: "/bar/bat.txt",
+					ShellPath:             "/bin/bash",
+					ServiceUser:           "service-user",
 				},
 				User: "user",
 			}}
@@ -878,6 +883,61 @@ func TestSetUserDataHostProvisioned(t *testing.T) {
 			}
 			require.NoError(t, h.Insert())
 			testCase(t, h)
+		})
+	}
+}
+
+func TestCreateServicePassword(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
+	h := &Host{Distro: distro.Distro{
+		Arch: distro.ArchWindowsAmd64,
+	}}
+	require.NoError(t, h.Insert())
+	require.NoError(t, h.CreateServicePassword())
+	password := h.ServicePassword
+	assert.NotEmpty(t, password)
+	dbHost, err := FindOneId(h.Id)
+	require.NoError(t, err)
+	assert.Equal(t, password, dbHost.ServicePassword)
+}
+
+func TestSetupServiceUserCommands(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T, h *Host){
+		"GeneratesCommandsAndPassword": func(t *testing.T, h *Host) {
+			require.NoError(t, h.Insert())
+			cmds, err := h.SetupServiceUserCommands()
+			require.NoError(t, err)
+			assert.NotEmpty(t, cmds)
+			assert.NotEmpty(t, h.ServicePassword)
+		},
+		"FailsWithoutServiceUser": func(t *testing.T, h *Host) {
+			h.Distro.BootstrapSettings.ServiceUser = ""
+			require.NoError(t, h.Insert())
+			_, err := h.SetupServiceUserCommands()
+			assert.Error(t, err)
+		},
+		"NoopsIfNotWindows": func(t *testing.T, h *Host) {
+			h.Distro.Arch = distro.ArchLinuxAmd64
+			require.NoError(t, h.Insert())
+			cmds, err := h.SetupServiceUserCommands()
+			assert.NoError(t, err)
+			assert.Empty(t, cmds)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			defer func() {
+				assert.NoError(t, db.Clear(Collection))
+			}()
+			testCase(t, &Host{Distro: distro.Distro{
+				Arch: distro.ArchWindowsAmd64,
+				BootstrapSettings: distro.BootstrapSettings{
+					ServiceUser: "service-user",
+				},
+			}})
 		})
 	}
 }
