@@ -438,8 +438,11 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	if err != nil {
 		return nil, errors.Wrap(err, "error making block device mappings")
 	}
-	h.InstanceType = ec2Settings.InstanceType
-
+	if h.InstanceType != "" {
+		ec2Settings.InstanceType = h.InstanceType
+	} else {
+		h.InstanceType = ec2Settings.InstanceType
+	}
 	provider, err := m.getProvider(ctx, h, ec2Settings)
 	if err != nil {
 		msg := "error getting provider"
@@ -536,6 +539,28 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, changes host.
 		return err
 	}
 
+	// Change instance type
+	if changes.InstanceType != "" {
+
+		// Check that host is stopped
+		if h.Status != evergreen.HostStopped {
+			return errors.Errorf("cannot modify instance type - host '%s' is not stopped", h.Id)
+		}
+
+		_, err = m.client.ModifyInstanceAttribute(ctx, &ec2.ModifyInstanceAttributeInput{
+			InstanceId: aws.String(h.Id),
+			InstanceType: &ec2.AttributeValue{
+				Value: aws.String(changes.InstanceType),
+			},
+		})
+		if err != nil {
+			return errors.Wrapf(err, "error changing instance type using client for '%s'", h.Id)
+		}
+		if err = h.SetInstanceType(changes.InstanceType); err != nil {
+			return errors.Wrapf(err, "error changing instance type in db for '%s'", h.Id)
+		}
+	}
+
 	// Delete tags
 	if len(changes.DeleteInstanceTags) > 0 {
 		deleteTagSlice := []*ec2.Tag{}
@@ -548,7 +573,11 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, changes host.
 			Tags:      deleteTagSlice,
 		})
 		if err != nil {
-			return errors.Wrapf(err, "error deleting tags for '%s'", h.Id)
+			return errors.Wrapf(err, "error deleting tags using client for '%s'", h.Id)
+		}
+		h.DeleteTags(changes.DeleteInstanceTags)
+		if err = h.SetTags(); err != nil {
+			return errors.Wrapf(err, "error deleting tags in db for '%s'", h.Id)
 		}
 	}
 
@@ -565,7 +594,11 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, changes host.
 			Tags:      createTagSlice,
 		})
 		if err != nil {
-			return errors.Wrapf(err, "error creating tags for '%s'", h.Id)
+			return errors.Wrapf(err, "error creating tags using client for '%s'", h.Id)
+		}
+		h.AddTags(changes.AddInstanceTags)
+		if err = h.SetTags(); err != nil {
+			return errors.Wrapf(err, "error creating tags in db for '%s'", h.Id)
 		}
 	}
 

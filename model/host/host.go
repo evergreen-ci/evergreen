@@ -234,6 +234,7 @@ type ContainersOnParents struct {
 type HostModifyOptions struct {
 	AddInstanceTags    []Tag
 	DeleteInstanceTags []string
+	InstanceType       string
 }
 
 const (
@@ -1667,26 +1668,17 @@ func StaleRunningTaskIDs(staleness time.Duration) ([]task.Task, error) {
 	return out, err
 }
 
-// ModifySpawnHost updates a spawnhost with the changes described
-// in a HostModifyOptions struct.
-func (h *Host) ModifySpawnHost(opts HostModifyOptions) error {
-	h.DeleteTags(opts.DeleteInstanceTags)
-	h.AddTags(opts.AddInstanceTags)
-	if err := h.SetTags(); err != nil {
-		return errors.Wrap(err, "error modifying spawn host")
-	}
-	return nil
-}
-
 // AddTags adds the specified tags to the host document, or modifies
 // an existing tag if it can be modified.
 func (h *Host) AddTags(tags []Tag) {
 	for _, new := range tags {
 		found := false
 		for i, old := range h.InstanceTags {
-			if old.Key == new.Key && old.CanBeModified {
-				h.InstanceTags[i] = new
+			if old.Key == new.Key {
 				found = true
+				if old.CanBeModified {
+					h.InstanceTags[i] = new
+				}
 				break
 			}
 		}
@@ -1721,4 +1713,23 @@ func (h *Host) SetTags() error {
 			},
 		},
 	)
+}
+
+// SetInstanceType updates the host's instance type in the database.
+func (h *Host) SetInstanceType(instanceType string) error {
+	err := UpdateOne(
+		bson.M{
+			IdKey: h.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				InstanceTypeKey: instanceType,
+			},
+		},
+	)
+	if err != nil {
+		return err
+	}
+	h.InstanceType = instanceType
+	return nil
 }
