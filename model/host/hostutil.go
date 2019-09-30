@@ -828,6 +828,10 @@ func (h *Host) SetUserDataHostProvisioned() error {
 		return nil
 	}
 
+	if !h.Provisioned {
+		return nil
+	}
+
 	if err := h.UpdateProvisioningToRunning(); err != nil {
 		return errors.Wrapf(err, "could not mark host %s as done provisioning itself and now running", h.Id)
 	}
