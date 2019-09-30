@@ -194,10 +194,10 @@ func requireAtLeastOneBool(flags ...string) cli.BeforeFunc {
 	}
 }
 
-func requireAtLeastOneStringSlice(flags ...string) cli.BeforeFunc {
+func requireAtLeastOneFlag(flags ...string) cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		for idx := range flags {
-			if len(c.StringSlice(flags[idx])) > 0 {
+			if c.IsSet(flags[idx]) {
 				return nil
 			}
 		}

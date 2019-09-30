@@ -127,6 +127,7 @@ type hostModifyHandler struct {
 
 	AddInstanceTags    []host.Tag
 	DeleteInstanceTags []string
+	InstanceType       string
 }
 
 func makeHostModifyRouteManager(sc data.Connector) gimlet.RouteHandler {
@@ -169,10 +170,16 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Invalid tag modifications"))
 	}
 
+	// Ensure instance type changes only requested for stopped hosts
+	if h.InstanceType != "" && foundHost.Status != evergreen.HostStopped {
+		return gimlet.MakeJSONErrorResponder(errors.New("Host must be stopped to modify instance type"))
+	}
+
 	// Create new spawnhost modify job
 	changes := host.HostModifyOptions{
 		AddInstanceTags:    h.AddInstanceTags,
 		DeleteInstanceTags: h.DeleteInstanceTags,
+		InstanceType:       h.InstanceType,
 	}
 	ts := util.RoundPartOfMinute(1).Format(tsFormat)
 	modifyJob := units.NewSpawnhostModifyJob(foundHost, changes, ts)

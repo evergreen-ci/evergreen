@@ -858,6 +858,16 @@ func TestSetUserDataHostProvisioned(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostProvisioning, dbHost.Status)
 		},
+		"IgnoresHostsNeverProvisioned": func(t *testing.T, h *Host) {
+			h.Provisioned = false
+
+			require.NoError(t, h.SetUserDataHostProvisioned())
+			assert.Equal(t, evergreen.HostProvisioning, h.Status)
+
+			dbHost, err := FindOneId(h.Id)
+			require.NoError(t, err)
+			assert.Equal(t, evergreen.HostProvisioning, dbHost.Status)
+		},
 		"IgnoresNonProvisioningHosts": func(t *testing.T, h *Host) {
 			require.NoError(t, h.SetDecommissioned(evergreen.User, ""))
 
@@ -879,7 +889,8 @@ func TestSetUserDataHostProvisioned(t *testing.T) {
 				Distro: distro.Distro{BootstrapSettings: distro.BootstrapSettings{
 					Method: distro.BootstrapMethodUserData,
 				}},
-				Status: evergreen.HostProvisioning,
+				Status:      evergreen.HostProvisioning,
+				Provisioned: true,
 			}
 			require.NoError(t, h.Insert())
 			testCase(t, h)
