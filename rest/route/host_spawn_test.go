@@ -55,19 +55,30 @@ func TestHostPostHandler(t *testing.T) {
 	assert.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
 
-	assert.Len(h.sc.(*data.MockConnector).MockHostConnector.CachedHosts, 3)
+	h.InstanceType = "test_instance_type"
+	resp = h.Run(ctx)
+	assert.NotNil(resp)
+	assert.Equal(http.StatusOK, resp.Status())
+
+	assert.Len(h.sc.(*data.MockConnector).MockHostConnector.CachedHosts, 4)
 	h0 := h.sc.(*data.MockConnector).MockHostConnector.CachedHosts[0]
 	d0 := h0.Distro
 	assert.Empty((*d0.ProviderSettings)["user_data"])
 	assert.Empty(h0.InstanceTags)
+	assert.Empty(h0.InstanceType)
 
 	h1 := h.sc.(*data.MockConnector).MockHostConnector.CachedHosts[1]
 	d1 := h1.Distro
 	assert.Equal("my script", (*d1.ProviderSettings)["user_data"].(string))
 	assert.Empty(h1.InstanceTags)
+	assert.Empty(h1.InstanceType)
 
 	h2 := h.sc.(*data.MockConnector).MockHostConnector.CachedHosts[2]
 	assert.Equal([]host.Tag{host.Tag{Key: "key", Value: "value", CanBeModified: true}}, h2.InstanceTags)
+	assert.Empty(h2.InstanceType)
+
+	h3 := h.sc.(*data.MockConnector).MockHostConnector.CachedHosts[3]
+	assert.Equal("test_instance_type", h3.InstanceType)
 }
 
 func TestHostStopHandler(t *testing.T) {

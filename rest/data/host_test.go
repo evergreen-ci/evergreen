@@ -208,6 +208,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	const testPublicKeyName = "testPubKey"
 	const testUserID = "TestSpawnHostUser"
 	const testUserAPIKey = "testApiKey"
+	const testInstanceType = "testInstanceType"
 
 	distro := &distro.Distro{
 		Id:           testDistroID,
@@ -230,6 +231,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 		KeyName:      testPublicKeyName,
 		UserData:     "",
 		InstanceTags: nil,
+		InstanceType: testInstanceType,
 	}
 
 	intentHost, err := (&DBHostConnector{}).NewIntentHost(options, testUser)
