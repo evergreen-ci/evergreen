@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	jcli "github.com/mongodb/jasper/cli"
 	"github.com/mongodb/jasper/options"
@@ -329,7 +330,7 @@ func (h *Host) jasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credentials, preJasperSetup, postJasperSetup []string) (string, error) {
 	bashCmds := append([]string{"set -o errexit"}, preJasperSetup...)
 
-	writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommands(settings, creds)
+	writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 	if err != nil {
 		return "", errors.Wrap(err, "could not build command to write Jasper credentials file")
 	}
@@ -384,7 +385,7 @@ func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, 
 
 // WriteJasperCredentialsFileCommand builds the command to write the Jasper
 // credentials and Splunk credentials to files.
-func (h *Host) WriteJasperCredentialsFilesCommands(settings *evergreen.Settings, creds *rpc.Credentials) (string, error) {
+func (h *Host) WriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionInfo, creds *rpc.Credentials) (string, error) {
 	if h.Distro.BootstrapSettings.JasperCredentialsPath == "" {
 		return "", errors.New("cannot write Jasper credentials without a credentials file path")
 	}
@@ -402,8 +403,8 @@ func (h *Host) WriteJasperCredentialsFilesCommands(settings *evergreen.Settings,
 		writeFileContentCmd(h.Distro.BootstrapSettings.JasperCredentialsPath, string(exportedCreds)),
 	}
 
-	if settings.Splunk.Populated() {
-		cmds = append(cmds, writeFileContentCmd(h.splunkTokenFilePath(), settings.Splunk.Token))
+	if splunk.Populated() {
+		cmds = append(cmds, writeFileContentCmd(h.splunkTokenFilePath(), splunk.Token))
 	}
 
 	return strings.Join(cmds, " && "), nil

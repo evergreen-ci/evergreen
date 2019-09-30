@@ -229,7 +229,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
-			writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommands(settings, creds)
+			writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 			require.NoError(t, err)
 
 			expectedCmds = append(expectedCmds, writeCredentialsCmd, h.ForceReinstallJasperCommand(settings))
@@ -270,11 +270,11 @@ func TestJasperCommandsWindows(t *testing.T) {
 			for testName, testCase := range map[string]func(t *testing.T, h *Host, settings *evergreen.Settings){
 				"WithoutJasperCredentialsPath": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 					h.Distro.BootstrapSettings.JasperCredentialsPath = ""
-					_, err := h.WriteJasperCredentialsFilesCommands(settings, creds)
+					_, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 					assert.Error(t, err)
 				},
 				"WithJasperCredentialsPath": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-					cmd, err := h.WriteJasperCredentialsFilesCommands(settings, creds)
+					cmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 					require.NoError(t, err)
 
 					expectedCreds, err := creds.Export()
@@ -284,7 +284,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 				"WithSplunkCredentials": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 					settings.Splunk.Token = "token"
 					settings.Splunk.ServerURL = "splunk_url"
-					cmd, err := h.WriteJasperCredentialsFilesCommands(settings, creds)
+					cmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 					require.NoError(t, err)
 
 					expectedCreds, err := creds.Export()

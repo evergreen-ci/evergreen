@@ -336,7 +336,7 @@ func (j *setupHostJob) putJasperCredentials(ctx context.Context, settings *everg
 		return errors.Wrap(err, "could not generate Jasper credentials for host")
 	}
 
-	writeCmd, err := j.host.WriteJasperCredentialsFilesCommands(settings, creds)
+	writeCmd, err := j.host.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 	if err != nil {
 		return errors.Wrap(err, "could not get command to write Jasper credentials file")
 	}
