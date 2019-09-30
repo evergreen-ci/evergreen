@@ -54,7 +54,7 @@ func newDistroTaskDAGDispatchService(taskQueue TaskQueue, ttl time.Duration) (*b
 		"last_updated":               t.lastUpdated,
 		"num_task_groups":            len(t.taskGroups),
 		"initial_num_taskqueueitems": taskQueue.Length(),
-		"sorted_num_taskqueueitems":  len(t.sorted), // STU: Why is this so huge in number?
+		"sorted_num_taskqueueitems":  len(t.sorted),
 	})
 
 	return t, nil
