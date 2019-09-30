@@ -116,7 +116,7 @@ func (t *basicCachedDAGDispatcherImpl) getNodeByItemID(id string) graph.Node {
 
 // Each node is a task and each edge definition represents a dependency: an edge (A, B) means that B depends on A.
 // Or, in other words, there is a dependency from A to B.
-func (t *basicCachedDAGDispatcherImpl) addEdge(from string, to string, dependsOnCache map[string]bool) error {
+func (t *basicCachedDAGDispatcherImpl) addEdge(from string, to string, dependsOnCache map[string]struct{}) error {
 	fromNode := t.getNodeByItemID(from)
 	toNode := t.getNodeByItemID(to)
 	if fromNode == nil {
@@ -127,51 +127,52 @@ func (t *basicCachedDAGDispatcherImpl) addEdge(from string, to string, dependsOn
 		// (3) As Task A completed successfully, it won't be in the new task_queue.  However, other taskQueueItems in the latest task_queue may depend_on it.
 		// (4) A Node for Task A doesn't exists in the DAG so we cannot add an edge from it.
 		// (5) So, go to the cache and/or database to check if Task A actually exists. If it does - what is its status?
+		// (6) It's redundant to addEdge(A, B) if task A is "status: "success" -- the dependency is already satisfied.
 		////////////////////////////////////////////////////////////////////////////
-
 		if _, ok := dependsOnCache[from]; ok {
-			// It's redundant to addEdge(A, B) - A was successful and the dependency is satisfied.
 			return nil
 		}
+
+		dependsOnTask, err := task.FindOneId(from)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"dispatcher": "dependency-task-dispatcher",
+				"function":   "addEdge",
+				"message":    "problem finding task in db",
+				"task_id":    from,
+				"distro_id":  t.distroID,
+			}))
+
+			return errors.Wrapf(err, "error adding edge from '%s' to '%s'", from, to)
+		}
+		if dependsOnTask == nil {
+			grip.Error(message.Fields{
+				"dispatcher": "dependency-task-dispatcher",
+				"function":   "addEdge",
+				"message":    "task from db not found",
+				"task_id":    from,
+				"distro_id":  t.distroID,
+			})
+
+			return errors.Errorf("error adding edge from '%s' to '%s' - task '%s' does not exist in the database", from, to, from)
+		}
+
+		if dependsOnTask.Status != evergreen.TaskSucceeded {
+			grip.Error(message.Fields{
+				"dispatcher": "dependency-task-dispatcher",
+				"function":   "addEdge",
+				"message":    "a Node for the given task is not present in the DAG and its status is not evergreen.TaskSucceeded in the database",
+				"task_id":    from,
+				"distro_id":  t.distroID,
+			})
+
+			return errors.Errorf("a Node for the task '%s' is not present in the DAG for distro '%s' and its status is not evergreen.TaskSucceeded in the database", from, t.distroID)
+		}
+
+		dependsOnCache[from] = struct{}{}
+
+		return nil
 	}
-
-	dependsOnTask, err := task.FindOneId(from)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"dispatcher": "dependency-task-dispatcher",
-			"function":   "addEdge",
-			"message":    "problem finding task in db",
-			"task_id":    from,
-			"distro_id":  t.distroID,
-		}))
-
-		return errors.Wrapf(err, "error adding edge from '%s' to '%s'", from, to)
-	}
-	if dependsOnTask == nil {
-		grip.Error(message.Fields{
-			"dispatcher": "dependency-task-dispatcher",
-			"function":   "addEdge",
-			"message":    "task from db not found",
-			"task_id":    from,
-			"distro_id":  t.distroID,
-		})
-
-		return errors.Errorf("error adding edge from '%s' to '%s' - task '%s' does not exist in the database", from, to, from)
-	}
-
-	if dependsOnTask.Status != evergreen.TaskSucceeded {
-		grip.Error(message.Fields{
-			"dispatcher": "dependency-task-dispatcher",
-			"function":   "addEdge",
-			"message":    "a Node for the given task is not present in the DAG and its status is not evergreen.TaskSucceeded in the database",
-			"task_id":    from,
-			"distro_id":  t.distroID,
-		})
-
-		return errors.Errorf("a Node for the task '%s' is not present in the DAG for distro '%s' and its status is not evergreen.TaskSucceeded in the database", from, t.distroID)
-	}
-
-	dependsOnCache[from] = true
 
 	if toNode == nil {
 		return errors.Errorf("a Node for taskQueueItem '%s' is not present in the DAG for distro '%s'", to, t.distroID)
@@ -237,7 +238,7 @@ func (t *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 		sort.SliceStable(su.tasks, func(i, j int) bool { return su.tasks[i].GroupIndex < su.tasks[j].GroupIndex })
 	}
 
-	dependsOnCache := make(map[string]bool)
+	dependsOnCache := make(map[string]struct{})
 	for _, item := range items {
 		for _, dependency := range item.Dependencies {
 			// addEdge(A, B) means that B depends on A.
