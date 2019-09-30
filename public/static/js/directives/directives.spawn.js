@@ -31,6 +31,20 @@ directives.spawn.directive('userHostTerminate', function() {
   }
 });
 
+directives.spawn.directive('userHostStop', function() {
+  return {
+    restrict: 'E',
+    templateUrl: '/static/partials/user_host_stop.html'
+  }
+});
+
+directives.spawn.directive('userHostStart', function() {
+  return {
+    restrict: 'E',
+    templateUrl: '/static/partials/user_host_start.html'
+  }
+});
+
 directives.spawn.directive('userHostUpdate', function() {
   return {
     restrict: 'E',
