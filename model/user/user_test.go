@@ -24,8 +24,13 @@ func TestDBUser(t *testing.T) {
 	suite.Run(t, s)
 }
 
+func (s *UserTestSuite) SetupSuite() {
+	rm := evergreen.GetEnvironment().RoleManager()
+	s.NoError(rm.RegisterPermissions([]string{"permission"}))
+}
+
 func (s *UserTestSuite) SetupTest() {
-	s.NoError(db.ClearCollections(Collection, ScopeCollection, RoleCollection))
+	s.NoError(db.ClearCollections(Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	s.users = []*DBUser{
 		&DBUser{
 			Id:     "Test1",
@@ -80,7 +85,7 @@ func (s *UserTestSuite) SetupTest() {
 		s.NoError(user.Insert())
 	}
 
-	rm := GetRoleManager()
+	rm := evergreen.GetEnvironment().RoleManager()
 	scope1 := gimlet.Scope{
 		ID:          "1",
 		Resources:   []string{"resource1", "resource2"},

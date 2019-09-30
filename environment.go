@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/logger"
@@ -36,6 +38,9 @@ const (
 	// duration of wait time during queue chut down.
 	queueShutdownWaitInterval = 10 * time.Millisecond
 	queueShutdownWaitTimeout  = 10 * time.Second
+
+	RoleCollection  = "roles"
+	ScopeCollection = "scopes"
 )
 
 func init() { globalEnvLock = &sync.RWMutex{} }
@@ -124,6 +129,9 @@ type Environment interface {
 	RegisterCloser(string, bool, func(context.Context) error)
 	// Close calls all registered closers in the environment.
 	Close(context.Context) error
+
+	// RoleManager returns an interface that can be used to interact with roles and permissions
+	RoleManager() gimlet.RoleManager
 }
 
 // NewEnvironment constructs an Environment instance, establishing a
@@ -179,6 +187,7 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 	catcher.Add(e.createApplicationQueue(ctx))
 	catcher.Add(e.createNotificationQueue(ctx))
 	catcher.Add(e.createRemoteQueueGroup(ctx))
+	catcher.Add(e.setupRoleManager())
 	catcher.Extend(e.initQueues(ctx))
 
 	if catcher.HasErrors() {
@@ -202,6 +211,7 @@ type envState struct {
 	clientConfig       *ClientConfig
 	closers            []closerOp
 	senders            map[SenderKey]send.Sender
+	roleManager        gimlet.RoleManager
 }
 
 type closerOp struct {
@@ -582,6 +592,17 @@ func (e *envState) initJasper() error {
 	return nil
 }
 
+func (e *envState) setupRoleManager() error {
+	e.roleManager = rolemanager.NewMongoBackedRoleManager(rolemanager.MongoBackedRoleManagerOpts{
+		Client:          e.client,
+		DBName:          e.dbName,
+		RoleCollection:  RoleCollection,
+		ScopeCollection: ScopeCollection,
+	})
+
+	return nil
+}
+
 func (e *envState) Settings() *Settings {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
@@ -833,4 +854,11 @@ func (e *envState) JasperManager() jasper.Manager {
 	defer e.mu.RUnlock()
 
 	return e.jasperManager
+}
+
+func (e *envState) RoleManager() gimlet.RoleManager {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.roleManager
 }

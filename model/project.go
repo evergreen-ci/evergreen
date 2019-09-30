@@ -26,7 +26,31 @@ const (
 	// DefaultCommandType is a system configuration option that is used to
 	// differentiate between setup related commands and actual testing commands.
 	DefaultCommandType = evergreen.CommandTypeTest
+
+	// Project permissions
+	PermissionProjectSettings  = "project_settings"
+	PermissionProjectVariables = "project_variables"
+	PermissionTasks            = "project_tasks"
+	PermissionPatches          = "project_patches"
+	PermissionLogs             = "project_logs"
 )
+
+var projectPermissions = []string{
+	PermissionProjectSettings,
+	PermissionProjectVariables,
+	PermissionTasks,
+	PermissionPatches,
+	PermissionLogs,
+}
+
+func init() {
+	rm := evergreen.GetEnvironment().RoleManager()
+	if rm == nil {
+		grip.Critical("role manager not available")
+		return
+	}
+	grip.Critical(rm.RegisterPermissions(projectPermissions))
+}
 
 type Project struct {
 	Enabled           bool                       `yaml:"enabled,omitempty" bson:"enabled"`

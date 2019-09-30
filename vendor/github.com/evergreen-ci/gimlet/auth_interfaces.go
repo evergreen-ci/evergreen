@@ -84,4 +84,8 @@ type RoleManager interface {
 
 	// DeleteScope removes a scope from the manager
 	DeleteScope(string) error
+
+	// RegisterPermissions adds a list of strings to the role manager as valid permission keys. Returns an
+	// error if the same permission is registered more than once
+	RegisterPermissions([]string) error
 }
