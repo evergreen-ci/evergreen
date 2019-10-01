@@ -44,19 +44,20 @@ func hostSetup() cli.Command {
 func runSetupScript(ctx context.Context, wd string, setupAsSudo bool) error {
 	grip.Warning(os.MkdirAll(wd, 0777))
 
-	if _, err := os.Stat(evergreen.SetupScriptName); os.IsNotExist(err) {
-		return nil
+	_, err := os.Stat(evergreen.SetupScriptName)
+	if err == nil {
+		return runScript(ctx, wd, evergreen.SetupScriptName, evergreen.TempSetupScriptName, setupAsSudo)
+	} else if _, err = os.Stat(evergreen.PowerShellSetupScriptName); err == nil {
+		return runScript(ctx, wd, evergreen.PowerShellSetupScriptName, evergreen.TempPowerShellSetupScriptName, setupAsSudo)
 	}
-	if err := os.Rename(evergreen.SetupScriptName, evergreen.TempSetupScriptName); os.IsNotExist(err) {
-		return nil
-	}
+	return nil
 }
 
-func runShellScript(ctx context.Context, wd, scriptFile, tempFile string, sudo bool) error {
-	if err := os.Rename(scriptFile, tempFile); os.IsNotExist(err) {
+func runScript(ctx context.Context, wd, scriptFileName, tempFileName string, sudo bool) error {
+	if err := os.Rename(scriptFileName, tempFileName); os.IsNotExist(err) {
 		return nil
 	}
-	chmod := host.ChmodCommandWithSudo(ctx, tempFile, sudo)
+	chmod := host.ChmodCommandWithSudo(ctx, tempFileName, sudo)
 	out, err := chmod.CombinedOutput()
 	if err != nil {
 		return errors.Wrap(err, string(out))
@@ -64,33 +65,16 @@ func runShellScript(ctx context.Context, wd, scriptFile, tempFile string, sudo b
 
 	catcher := grip.NewSimpleCatcher()
 
-	cmd := host.ShCommandWithSudo(ctx, scriptFile, sudo)
+	var cmd *exec.Cmd
+	if sudo {
+		cmd = exec.CommandContext(ctx, "sudo", "./"+tempFileName)
+	} else {
+		cmd = exec.CommandContext(ctx, "./"+tempFileName)
+	}
 	out, err = cmd.CombinedOutput()
 
 	catcher.Add(err)
-	// catcher.Add(os.Remove(tempFile))
-
-	grip.Warning(os.MkdirAll(wd, 0777))
-
-	return errors.Wrap(catcher.Resolve(), string(out))
-}
-
-func runPowerShellScript(ctx context.Context, wd, scriptFile, tempFile string) error {
-	if err := os.Rename(scriptFile, tempFile); os.IsNotExist(err) {
-		return nil
-	}
-	chmod := host.ChmodCommandWithSudo(ctx, tempFile, false)
-	out, err := chmod.CombinedOutput()
-	if err != nil {
-		return errors.Wrap(err, string(out))
-	}
-
-	catcher := grip.NewSimpleCatcher()
-
-	cmd := exec.CommandContext(ctx, "powershell", "./"+scriptFile)
-	out, err = cmd.CombinedOutput()
-
-	catcher.Add(err)
+	// kim: TODO: uncomment this line when the script works 100%.
 	// catcher.Add(os.Remove(tempFile))
 
 	grip.Warning(os.MkdirAll(wd, 0777))
