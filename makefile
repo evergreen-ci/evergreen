@@ -49,7 +49,9 @@ karmaFlags := $(if $(KARMA_REPORTER),--reporters $(KARMA_REPORTER),)
 
 gopath := $(GOPATH)
 ifeq ($(OS),Windows_NT)
+ifneq (,$(gopath))
 gopath := $(shell cygpath -m $(gopath))
+endif
 endif
 
 # start linting configuration
