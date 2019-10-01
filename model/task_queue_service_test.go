@@ -257,7 +257,7 @@ func (s *taskDAGDispatchServiceSuite) TestAddingSelfEdge() {
 		ActivatedBy:         "",
 		DistroId:            "archlinux-test",
 		Requester:           "patch_request",
-		Status:              "undispatched",
+		Status:              evergreen.TaskUndispatched,
 		Revision:            "1a53e026e05561c3efbb626185e155a7d1e4865d",
 		RevisionOrderNumber: 1846,
 	}
@@ -303,7 +303,7 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 		ActivatedBy:         "",
 		DistroId:            "archlinux-test",
 		Requester:           "patch_request",
-		Status:              "undispatched",
+		Status:              evergreen.TaskUndispatched,
 		Revision:            "1a53e026e05561c3efbb626185e155a7d1e4865d",
 		RevisionOrderNumber: 1846,
 	}
@@ -332,12 +332,12 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 		ActivatedBy:         "",
 		DistroId:            "archlinux-test",
 		Requester:           "patch_request",
-		Status:              "undispatched",
+		Status:              evergreen.TaskUndispatched,
 		Revision:            "1a53e026e05561c3efbb626185e155a7d1e4865d",
 		RevisionOrderNumber: 1846,
 		DependsOn: []task.Dependency{{
 			TaskId:       "1",
-			Status:       "success",
+			Status:       evergreen.TaskSucceeded,
 			Unattainable: false,
 		}},
 	}
@@ -368,12 +368,12 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 		ActivatedBy:         "",
 		DistroId:            "archlinux-test",
 		Requester:           "patch_request",
-		Status:              "undispatched",
+		Status:              evergreen.TaskUndispatched,
 		Revision:            "1a53e026e05561c3efbb626185e155a7d1e4865d",
 		RevisionOrderNumber: 1846,
 		DependsOn: []task.Dependency{{
 			TaskId:       "1",
-			Status:       "success",
+			Status:       evergreen.TaskSucceeded,
 			Unattainable: false,
 		}},
 	}
@@ -393,6 +393,7 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 	s.Require().NoError(t1.Insert())
 	s.Require().NoError(t2.Insert())
 	s.Require().NoError(t3.Insert())
+
 	items = append(items, item1)
 	items = append(items, item2)
 	items = append(items, item3)
@@ -403,10 +404,6 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 	}
 
 	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
-	s.NoError(err)
-	err = service.addEdge("1", "2", nil)
-	s.NoError(err)
-	err = service.addEdge("1", "3", nil)
 	s.NoError(err)
 
 	spec := TaskSpec{}
@@ -422,6 +419,13 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 	// (3) As Task.Id "1" is "status": "success" it will not be in the new task_queue.  However, other taskQueueItems in the latest task_queue may depend_on it.
 	// (4) If we add an edge to Task.Id "1" from another task, there is no Node for Task.Id "1" in the DAG. Oops.
 	// (5) Go to the database to check if Task.Id "1" exists and if it does what status it is in.
+
+	next = service.FindNextTask(spec)
+	s.Require().Nil(next)
+	next = service.FindNextTask(spec)
+	s.Require().Nil(next)
+	next = service.FindNextTask(spec)
+	s.Require().Nil(next)
 
 	t1.Status = evergreen.TaskSucceeded
 
@@ -480,6 +484,43 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 	err = service.addEdge("1", "-2", nil)
 	s.Error(err)
 	s.Contains(err.Error(), "is not present in the DAG", nil)
+
+	//
+
+	t1.Status = evergreen.TaskFailed
+	t3.DependsOn = []task.Dependency{{
+		TaskId:       "1",
+		Status:       evergreen.TaskFailed,
+		Unattainable: false,
+	}}
+
+	s.Require().NoError(db.ClearCollections(task.Collection))
+	s.Require().NoError(t1.Insert())
+	s.Require().NoError(t2.Insert())
+	s.Require().NoError(t3.Insert())
+
+	items = []TaskQueueItem{}
+	items = append(items, item1)
+	items = append(items, item2)
+	items = append(items, item3)
+
+	s.taskQueue = TaskQueue{
+		Distro: "archlinux-test",
+		Queue:  items,
+	}
+
+	spec = TaskSpec{}
+
+	service, err = newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.NoError(err)
+
+	next = service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal("1", next.Id)
+
+	next = service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal("3", next.Id)
 }
 
 func (s *taskDAGDispatchServiceSuite) TestNextTaskForDefaultTaskSpec() {
