@@ -166,12 +166,6 @@ func ensureValidAliases(d *distro.Distro, distroIDs []string) ValidationErrors {
 	errs := ValidationErrors{}
 
 	for _, a := range d.Aliases {
-		if !util.StringSliceContains(distroIDs, a) {
-			errs = append(errs, ValidationError{
-				Level:   Error,
-				Message: fmt.Sprintf("'%s' is not a valid distro name", a),
-			})
-		}
 		if d.Id == a {
 			errs = append(errs, ValidationError{
 				Level:   Error,
