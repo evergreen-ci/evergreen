@@ -1020,6 +1020,13 @@ func PopulateCacheHistoricalTestDataJob(part int) amboy.QueueOperation {
 	}
 }
 
+func PopulateSpawnhostExpirationCheckJob() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		ts := util.RoundPartOfHour(0).Format(tsFormat)
+		return queue.Put(ctx, NewSpawnhostExpirationCheckJob(ts))
+	}
+}
+
 func PopulateLocalQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()

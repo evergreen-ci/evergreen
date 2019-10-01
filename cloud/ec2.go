@@ -523,8 +523,89 @@ func (m *ec2Manager) getResources(ctx context.Context, h *host.Host) ([]string, 
 	return resources, nil
 }
 
-// ModifyHost modifies a host according to the changes specified by a HostModifyOptions struct.
-func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, changes host.HostModifyOptions) error {
+// addTags adds or updates the specified tags in the client and db
+func (m *ec2Manager) addTags(ctx context.Context, h *host.Host, tags []host.Tag, resources []string) error {
+	createTagSlice := []*ec2.Tag{}
+	for _, tag := range tags {
+		key := tag.Key
+		value := tag.Value
+		createTagSlice = append(createTagSlice, &ec2.Tag{Key: &key, Value: &value})
+	}
+	_, err := m.client.CreateTags(ctx, &ec2.CreateTagsInput{
+		Resources: aws.StringSlice(resources),
+		Tags:      createTagSlice,
+	})
+	if err != nil {
+		return errors.Wrapf(err, "error creating tags using client for '%s'", h.Id)
+	}
+	h.AddTags(tags)
+
+	return errors.Wrapf(h.SetTags(), "error creating tags in db for '%s'", h.Id)
+}
+
+// deleteTags removes the specified tags by their keys in the client and db
+func (m *ec2Manager) deleteTags(ctx context.Context, h *host.Host, keys, resources []string) error {
+	deleteTagSlice := []*ec2.Tag{}
+	for _, delKey := range keys {
+		key := delKey
+		deleteTagSlice = append(deleteTagSlice, &ec2.Tag{Key: &key})
+	}
+	_, err := m.client.DeleteTags(ctx, &ec2.DeleteTagsInput{
+		Resources: aws.StringSlice(resources),
+		Tags:      deleteTagSlice,
+	})
+	if err != nil {
+		return errors.Wrapf(err, "error deleting tags using client for '%s'", h.Id)
+	}
+	h.DeleteTags(keys)
+
+	return errors.Wrapf(h.SetTags(), "error deleting tags in db for '%s'", h.Id)
+}
+
+// setInstanceType changes the instance type in the client and db
+func (m *ec2Manager) setInstanceType(ctx context.Context, h *host.Host, instanceType string) error {
+	_, err := m.client.ModifyInstanceAttribute(ctx, &ec2.ModifyInstanceAttributeInput{
+		InstanceId: aws.String(h.Id),
+		InstanceType: &ec2.AttributeValue{
+			Value: aws.String(instanceType),
+		},
+	})
+	if err != nil {
+		return errors.Wrapf(err, "error changing instance type using client for '%s'", h.Id)
+	}
+
+	return errors.Wrapf(h.SetInstanceType(instanceType), "error changing instance type in db for '%s'", h.Id)
+}
+
+// setNoExpiration changes whether a host should expire
+func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpiration bool, resources []string) error {
+	expireOnValue := expireInDays(spawnHostExpireDays)
+	_, err := m.client.CreateTags(ctx, &ec2.CreateTagsInput{
+		Resources: aws.StringSlice(resources),
+		Tags: []*ec2.Tag{
+			&ec2.Tag{
+				Key:   aws.String("expire-on"),
+				Value: aws.String(expireOnValue),
+			},
+		},
+	})
+	if err != nil {
+		return errors.Wrapf(err, "error creating changing expire-on tag using client for '%s", h.Id)
+	}
+
+	if noExpiration {
+		return errors.Wrapf(h.MarkShouldNotExpire(expireOnValue), "error marking host should not expire in db for '%s'", h.Id)
+	}
+	return errors.Wrapf(h.MarkShouldExpire(expireOnValue), "error marking host should in db for '%s'", h.Id)
+}
+
+// extendExpiration extends a host's expiration time by the number of hours specified
+func (m *ec2Manager) extendExpiration(ctx context.Context, h *host.Host, hours int) error {
+	return errors.Wrapf(h.SetExpirationTime(h.ExpirationTime.Add(time.Duration(hours)*time.Hour)), "error extending expiration time in db for '%s'", h.Id)
+}
+
+// ModifyHost modifies a spawn host according to the changes specified by a HostModifyOptions struct.
+func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.HostModifyOptions) error {
 	ec2Settings := &EC2ProviderSettings{}
 	if err := ec2Settings.fromDistroSettings(h.Distro); err != nil {
 		return errors.Wrap(err, "error getting EC2 settings")
@@ -536,73 +617,33 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, changes host.
 
 	resources, err := m.getResources(ctx, h)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "error getting resources for host '%s'", h.Id)
 	}
 
-	// Change instance type
-	if changes.InstanceType != "" {
-
-		// Check that host is stopped
-		if h.Status != evergreen.HostStopped {
-			return errors.Errorf("cannot modify instance type - host '%s' is not stopped", h.Id)
-		}
-
-		_, err = m.client.ModifyInstanceAttribute(ctx, &ec2.ModifyInstanceAttributeInput{
-			InstanceId: aws.String(h.Id),
-			InstanceType: &ec2.AttributeValue{
-				Value: aws.String(changes.InstanceType),
-			},
-		})
-		if err != nil {
-			return errors.Wrapf(err, "error changing instance type using client for '%s'", h.Id)
-		}
-		if err = h.SetInstanceType(changes.InstanceType); err != nil {
-			return errors.Wrapf(err, "error changing instance type in db for '%s'", h.Id)
-		}
+	// Validate modify options for user errors that should prevent all modifications
+	if err := validateEC2HostModifyOptions(h, opts); err != nil {
+		return errors.Wrap(err, "error validating EC2 host modify options")
 	}
 
-	// Delete tags
-	if len(changes.DeleteInstanceTags) > 0 {
-		deleteTagSlice := []*ec2.Tag{}
-		for _, delKey := range changes.DeleteInstanceTags {
-			key := delKey
-			deleteTagSlice = append(deleteTagSlice, &ec2.Tag{Key: &key})
-		}
-		_, err = m.client.DeleteTags(ctx, &ec2.DeleteTagsInput{
-			Resources: aws.StringSlice(resources),
-			Tags:      deleteTagSlice,
-		})
-		if err != nil {
-			return errors.Wrapf(err, "error deleting tags using client for '%s'", h.Id)
-		}
-		h.DeleteTags(changes.DeleteInstanceTags)
-		if err = h.SetTags(); err != nil {
-			return errors.Wrapf(err, "error deleting tags in db for '%s'", h.Id)
-		}
+	// Attempt all requested modifications and catch errors from client or db
+	catcher := grip.NewBasicCatcher()
+	if opts.InstanceType != "" {
+		catcher.Add(m.setInstanceType(ctx, h, opts.InstanceType))
+	}
+	if len(opts.DeleteInstanceTags) > 0 {
+		catcher.Add(m.deleteTags(ctx, h, opts.DeleteInstanceTags, resources))
+	}
+	if len(opts.AddInstanceTags) > 0 {
+		catcher.Add(m.addTags(ctx, h, opts.AddInstanceTags, resources))
+	}
+	if opts.NoExpiration != nil {
+		catcher.Add(m.setNoExpiration(ctx, h, *opts.NoExpiration, resources))
+	}
+	if opts.ExpirationExtension != 0 {
+		catcher.Add(m.extendExpiration(ctx, h, opts.ExpirationExtension))
 	}
 
-	// Add tags
-	if len(changes.AddInstanceTags) > 0 {
-		createTagSlice := []*ec2.Tag{}
-		for _, tag := range changes.AddInstanceTags {
-			key := tag.Key
-			value := tag.Value
-			createTagSlice = append(createTagSlice, &ec2.Tag{Key: &key, Value: &value})
-		}
-		_, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
-			Resources: aws.StringSlice(resources),
-			Tags:      createTagSlice,
-		})
-		if err != nil {
-			return errors.Wrapf(err, "error creating tags using client for '%s'", h.Id)
-		}
-		h.AddTags(changes.AddInstanceTags)
-		if err = h.SetTags(); err != nil {
-			return errors.Wrapf(err, "error creating tags in db for '%s'", h.Id)
-		}
-	}
-
-	return nil
+	return catcher.Resolve()
 }
 
 // GetInstanceStatuses returns the current status of a slice of EC2 instances.

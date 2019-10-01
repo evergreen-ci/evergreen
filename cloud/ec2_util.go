@@ -549,3 +549,10 @@ func GetEC2Key(region string, s *evergreen.Settings) (string, string, error) {
 
 	return key, secret, nil
 }
+
+func validateEC2HostModifyOptions(h *host.Host, opts host.HostModifyOptions) error {
+	if opts.InstanceType != "" && h.Status != evergreen.HostStopped {
+		return errors.New("host must be stopped to modify instance typed")
+	}
+	return nil
+}

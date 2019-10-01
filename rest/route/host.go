@@ -125,9 +125,11 @@ type hostModifyHandler struct {
 	hostID string
 	sc     data.Connector
 
-	AddInstanceTags    []host.Tag
-	DeleteInstanceTags []string
-	InstanceType       string
+	AddInstanceTags     []host.Tag
+	DeleteInstanceTags  []string
+	InstanceType        string
+	NoExpiration        *bool
+	ExpirationExtension int
 }
 
 func makeHostModifyRouteManager(sc data.Connector) gimlet.RouteHandler {
@@ -177,9 +179,11 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// Create new spawnhost modify job
 	changes := host.HostModifyOptions{
-		AddInstanceTags:    h.AddInstanceTags,
-		DeleteInstanceTags: h.DeleteInstanceTags,
-		InstanceType:       h.InstanceType,
+		AddInstanceTags:     h.AddInstanceTags,
+		DeleteInstanceTags:  h.DeleteInstanceTags,
+		InstanceType:        h.InstanceType,
+		NoExpiration:        h.NoExpiration,
+		ExpirationExtension: h.ExpirationExtension,
 	}
 	ts := util.RoundPartOfMinute(1).Format(tsFormat)
 	modifyJob := units.NewSpawnhostModifyJob(foundHost, changes, ts)
