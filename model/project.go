@@ -44,6 +44,11 @@ var projectPermissions = []string{
 }
 
 func init() {
+	env := evergreen.GetEnvironment()
+	if env == nil {
+		grip.Critical("environment not available")
+		return
+	}
 	rm := evergreen.GetEnvironment().RoleManager()
 	if rm == nil {
 		grip.Critical("role manager not available")
