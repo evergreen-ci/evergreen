@@ -1,6 +1,8 @@
 package model
 
-import "github.com/mongodb/grip"
+import (
+	"github.com/mongodb/grip"
+)
 
 type dependencyIncluder struct {
 	Project  *Project
@@ -36,6 +38,17 @@ func (di *dependencyIncluder) handle(pair TVPair) bool {
 	if included, ok := di.included[pair]; ok {
 		// we've been here before, so don't redo work
 		return included
+	}
+
+	// if the given task is a task group, recurse on each task
+	if tg := di.Project.FindTaskGroup(pair.TaskName); tg != nil {
+		for _, t := range tg.Tasks {
+			if ok := di.handle(TVPair{TaskName: t, Variant: pair.Variant}); !ok {
+				di.included[pair] = false
+				return false // task depends on an unpatchable task, so skip it
+			}
+		}
+		return true
 	}
 
 	// we must load the BuildVariantTaskUnit for the task/variant pair,
