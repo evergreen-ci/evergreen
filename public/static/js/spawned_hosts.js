@@ -338,12 +338,10 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       $scope.modalTitle = title;
         modal.on('shown.bs.modal', function() {
           $scope.modalOpen = true;
-          $scope.$apply();
         });
 
         modal.on('hide.bs.modal', function() {
           $scope.modalOpen = false;
-          $scope.$apply();
         });
     }
 
