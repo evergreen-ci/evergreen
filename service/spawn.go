@@ -215,6 +215,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
+		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Host terminated"))
 		gimlet.WriteJSON(w, "Host terminated")
 		return
 
@@ -235,6 +236,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
+		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Host stopping"))
 		gimlet.WriteJSON(w, "Host stopping")
 		return
 
@@ -251,6 +253,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
+		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Host starting"))
 		gimlet.WriteJSON(w, "Host starting")
 		return
 
