@@ -229,10 +229,9 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Stop the host
-		queue := env.RemoteQueue()
 		ts := util.RoundPartOfMinute(1).Format(tsFormat)
 		stopJob := units.NewSpawnhostStopJob(h, u.Id, ts)
-		if err = queue.Put(ctx, stopJob); err != nil {
+		if err = uis.queue.Put(ctx, stopJob); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
@@ -246,10 +245,9 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Start the host
-		queue := env.RemoteQueue()
 		ts := util.RoundPartOfMinute(1).Format(tsFormat)
 		startJob := units.NewSpawnhostStartJob(h, u.Id, ts)
-		if err = queue.Put(ctx, startJob); err != nil {
+		if err = uis.queue.Put(ctx, startJob); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
