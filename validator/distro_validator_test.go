@@ -151,13 +151,6 @@ func TestEnsureValidAliases(t *testing.T) {
 			So(vErrors[0].Message, ShouldEqual, "'c' cannot be an distro alias of itself")
 		})
 
-		d.Aliases = []string{"d"}
-		Convey("if a distro alias is not iself a valid distro, an error should be returned", func() {
-			vErrors := ensureValidAliases(&d, distroIds)
-			So(vErrors, ShouldNotResemble, ValidationErrors{})
-			So(len(vErrors), ShouldEqual, 1)
-			So(vErrors[0].Message, ShouldEqual, "'d' is not a valid distro name")
-		})
 	})
 }
 
