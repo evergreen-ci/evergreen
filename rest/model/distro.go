@@ -252,7 +252,7 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	}
 	apiDistro.Arch = ToAPIString(d.Arch)
 	apiDistro.WorkDir = ToAPIString(d.WorkDir)
-	apiDistro.RooDir = ToAPIString(d.RootDir)
+	apiDistro.RootDir = ToAPIString(d.RootDir)
 	apiDistro.PoolSize = d.PoolSize
 	apiDistro.SetupAsSudo = d.SetupAsSudo
 	apiDistro.Setup = ToAPIString(d.Setup)

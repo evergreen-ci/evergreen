@@ -103,7 +103,7 @@ func (so *SpawnOptions) validate() error {
 	return nil
 }
 
-// CreateHost spawns a host with the given options.
+// CreateSpawnHost spawns a host with the given options.
 func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 	if err := so.validate(); err != nil {
 		return nil, errors.WithStack(err)
