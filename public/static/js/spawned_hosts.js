@@ -324,6 +324,8 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
         case 'initializing':
         case 'provisioning':
         case 'starting':
+        case 'stopping':
+        case 'stopped':
           return 'label block-status-started';
           break;
         case 'decommissioned':
