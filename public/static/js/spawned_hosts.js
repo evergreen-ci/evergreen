@@ -334,15 +334,15 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       }
     };
 
-    initializeModal = function(modal, title) {
+    initializeModal = function(modal, title, action) {
       $scope.modalTitle = title;
-        modal.on('shown.bs.modal', function() {
-          $scope.modalOpen = true;
-        });
+      modal.on('shown.bs.modal', function() {
+        $scope.modalOpen = true;
+      });
 
-        modal.on('hide.bs.modal', function() {
-          $scope.modalOpen = false;
-        });
+      modal.on('hide.bs.modal', function() {
+        $scope.modalOpen = false;
+      });
     }
 
     onEnterPressed = function(action) {
