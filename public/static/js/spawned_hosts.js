@@ -198,43 +198,15 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       );
     };
 
-    $scope.terminateHost = function() {
-      mciSpawnRestService.terminateHost(
-        'terminate',
+    $scope.updateHostStatus = function(action) {
+      mciSpawnRestService.updateHostStatus(
+        action,
         $scope.curHostData.id, {}, {
           success: function(resp) {
             window.location.href = "/spawn";
           },
           error: function(jqXHR, status, errorThrown) {
-            notificationService.pushNotification('Error terminating host: ' + resp.data.error,'errorHeader');
-          }
-        }
-      );
-    };
-
-    $scope.stopHost = function() {
-      mciSpawnRestService.stopHost(
-        'stop',
-        $scope.curHostData.id, {}, {
-          success: function(resp) {
-            window.location.href = "/spawn";
-          },
-          error: function(jqXHR, status, errorThrown) {
-            notificationService.pushNotification('Error stopping host: ' + resp.data.error,'errorHeader');
-          }
-        }
-      );
-    };
-
-    $scope.startHost = function() {
-      mciSpawnRestService.startHost(
-        'start',
-        $scope.curHostData.id, {}, {
-          success: function(resp) {
-            window.location.href = "/spawn";
-          },
-          error: function(jqXHR, status, errorThrown) {
-            notificationService.pushNotification('Error starting host: ' + resp.data.error,'errorHeader');
+            notificationService.pushNotification('Error changing host status: ' + resp.data.error,'errorHeader');
           }
         }
       );
@@ -362,90 +334,61 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       }
     };
 
+    initializeModal = function(modal, title) {
+      $scope.modalTitle = title;
+        modal.on('shown.bs.modal', function() {
+          $scope.modalOpen = true;
+          $scope.$apply();
+        });
+
+        modal.on('hide.bs.modal', function() {
+          $scope.modalOpen = false;
+          $scope.$apply();
+        });
+    }
+
+    onEnterPressed = function(action) {
+      $(document).keyup(function(ev) {
+        if ($scope.modalOpen && ev.keyCode === 13) {
+          $scope.updateHostStatus(action);
+          $('#spawn-modal').modal('hide');
+        }
+      });
+    }
+
     $scope.openSpawnModal = function(opt) {
       $scope.modalOption = opt;
       $scope.modalOpen = true;
 
       var modal = $('#spawn-modal').modal('show');
-      if ($scope.modalOption === 'spawnHost') {
-        $scope.fetchUserKeys();
-        if ($scope.spawnableDistros.length == 0) {
-          $scope.fetchSpawnableDistros();
-        }
-        $scope.modalTitle = 'Spawn Host';
-        modal.on('shown.bs.modal', function() {
-          $scope.modalOpen = true;
-          $scope.$apply();
-        });
-
-        modal.on('hide.bs.modal', function() {
-          $scope.modalOpen = false;
-          $scope.$apply();
-        });
-      } else if ($scope.modalOption === 'terminateHost') {
-        $scope.modalTitle = 'Terminate Host';
-        modal.on('shown.bs.modal', function() {
-          $scope.modalOpen = true;
-          $scope.$apply();
-        });
-
-        modal.on('hide.bs.modal', function() {
-          $scope.modalOpen = false;
-          $scope.$apply();
-        });
-      } else if ($scope.modalOption === 'stopHost') {
-        $scope.modalTitle = 'Stop Host';
-        modal.on('shown.bs.modal', function() {
-          $scope.modalOpen = true;
-          $scope.$apply();
-        });
-
-        modal.on('hide.bs.modal', function() {
-          $scope.modalOpen = false;
-          $scope.$apply();
-        });
-      } else if ($scope.modalOption === 'startHost') {
-        $scope.modalTitle = 'Start Host';
-        modal.on('shown.bs.modal', function() {
-          $scope.modalOpen = true;
-          $scope.$apply();
-        });
-
-        modal.on('hide.bs.modal', function() {
-          $scope.modalOpen = false;
-          $scope.$apply();
-        });
-
-      } else if ($scope.modalOption === 'updateRDPPassword') {
-        $scope.modalTitle = 'Set RDP Password';
-        modal.on('shown.bs.modal', function () {
-          $('#password-input').focus();
-          $scope.modalOpen = true;
-          $scope.$apply();
-        });
-
-        modal.on('hide.bs.modal', function () {
-          $scope.modalOpen = false;
-          $scope.$apply();
-        });
+      switch ($scope.modalOption) {
+        case 'spawnHost':
+          $scope.fetchUserKeys();
+          if ($scope.spawnableDistros.length == 0) {
+            $scope.fetchSpawnableDistros();
+          }
+          initializeModal(modal, 'Spawn Host');
+          break;
+        case 'terminateHost':
+          initializeModal(modal, 'Terminate Host');
+          onEnterPressed('terminate');
+          break;
+        case 'stopHost':
+          initializeModal(modal, 'Stop Host');
+          onEnterPressed('stop');
+          break;
+        case 'startHost':
+          initializeModal(modal, 'Start Host');
+          onEnterPressed('start');
+          break;
+        case 'updateRDPPassword':
+          initializeModal(modal, 'Set RDP Password')
+          modal.on('shown.bs.modal', function() {
+            $('#password-input').focus(); 
+          })
+          break;
       }
-
     };
-
-    $(document).keyup(function(ev) {
-      if ($scope.modalOpen && ev.keyCode === 13) {
-        if ($scope.modalOption === 'terminateHost') {
-          $scope.terminateHost();
-          $('#spawn-modal').modal('hide');
-        } else if ($scope.modalOption === 'stopHost') {
-          $scope.stopHost();
-          $('#spawn-modal').modal('hide');
-        } else if ($scope.modalOption === 'startHost') {
-          $scope.startHost();
-          $('#spawn-modal').modal('hide');
-        }
-      }
-    });
 
     if($scope.spawnTask && $scope.spawnDistro){
       // find the spawn distro in the spawnable distros list, if it's there,

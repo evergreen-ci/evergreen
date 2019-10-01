@@ -263,25 +263,7 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function(
         baseSvc.putResource(resource, [], config, callbacks);
     };
 
-    service.terminateHost = function(action, hostId, data, callbacks) {
-        var config = {
-            data: data
-        };
-        config.data['action'] = action;
-        config.data['host_id'] = hostId;
-        baseSvc.postResource(resource, [], config, callbacks);
-    };
-
-    service.stopHost = function(action, hostId, data, callbacks) {
-        var config = {
-            data: data
-        };
-        config.data['action'] = action;
-        config.data['host_id'] = hostId;
-        baseSvc.postResource(resource, [], config, callbacks);
-    };
-
-    service.startHost = function(action, hostId, data, callbacks) {
+    service.updateHostStatus = function(action, hostId, data, callbacks) {
         var config = {
             data: data
         };
