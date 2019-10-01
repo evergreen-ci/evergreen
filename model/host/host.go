@@ -278,34 +278,11 @@ func (h *Host) IsEphemeral() bool {
 	return util.StringSliceContains(evergreen.ProviderSpawnable, h.Provider)
 }
 
-func (h *Host) SetStatus(status, user string, logs string) error {
+// SetStatus updates the host status to newStatus as long as the current
+// database host's status matches the in-memory host's status.
+func (h *Host) SetStatus(newStatus, user string, logs string) error {
 	if h.Status == evergreen.HostTerminated {
-		msg := fmt.Sprintf("Refusing to mark host %v as"+
-			" %v because it is already terminated", h.Id, status)
-		grip.Warning(msg)
-		return errors.New(msg)
-	}
-
-	event.LogHostStatusChanged(h.Id, h.Status, status, user, logs)
-
-	h.Status = status
-	return UpdateOne(
-		bson.M{
-			IdKey: h.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				StatusKey: status,
-			},
-		},
-	)
-}
-
-// SetStatusAtomically is the same as SetStatus but only updates the host if its
-// status in the database matches currentStatus.
-func (h *Host) SetStatusAtomically(newStatus, currentStatus, user string, logs string) error {
-	if h.Status == evergreen.HostTerminated {
-		msg := fmt.Sprintf("refusing to mark host %s as %s because it is already terminated", h.Id, newStatus)
+		msg := fmt.Sprintf("not changing the status of terminated host %s to %s", h.Id, newStatus)
 		grip.Warning(msg)
 		return errors.New(msg)
 	}
@@ -313,7 +290,7 @@ func (h *Host) SetStatusAtomically(newStatus, currentStatus, user string, logs s
 	err := UpdateOne(
 		bson.M{
 			IdKey:     h.Id,
-			StatusKey: currentStatus,
+			StatusKey: h.Status,
 		},
 		bson.M{
 			"$set": bson.M{
