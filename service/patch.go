@@ -193,7 +193,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err := model.AddNewBuildsForPatch(r.Context(), projCtx.Patch, projCtx.Version, project, tasks)
+		err := model.AddNewBuildsForPatch(projCtx.Patch, projCtx.Version, project, tasks)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrapf(err, "Error creating new builds for version `%s`", projCtx.Version.Id))

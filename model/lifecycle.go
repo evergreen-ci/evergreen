@@ -509,7 +509,7 @@ func AddTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 	return b, nil
 }
 
-// BuildCreateArgs is the set of parameters used in CreateBuildFromVersionNoInsert
+// BuildCreateArgs is the set of parameters used in CreateBuildFromVersion
 type BuildCreateArgs struct {
 	Project       Project                 // project to create the build for
 	Version       Version                 // the version the build belong to
@@ -523,6 +523,24 @@ type BuildCreateArgs struct {
 	DefinitionID  string                  // definition ID of the trigger used to create this build
 	Aliases       ProjectAliases          // project aliases to use to filter tasks created
 	DistroAliases distro.AliasLookupTable // map of distro aliases to names of distros
+}
+
+// CreateBuildFromVersion creates a build given all of the necessary information
+// from the corresponding version and project and a list of tasks.
+func CreateBuildFromVersion(args BuildCreateArgs) (string, error) {
+	b, tasks, err := CreateBuildFromVersionNoInsert(args)
+	if err != nil {
+		return "", err
+	}
+	if err = b.Insert(); err != nil {
+		return "", errors.Wrapf(err, "error inserting build %s", b.Id)
+	}
+	if err = tasks.InsertUnordered(context.Background()); err != nil {
+		return "", errors.Wrapf(err, "error inserting tasks for build %s", b.Id)
+	}
+
+	// success!
+	return b.Id, nil
 }
 
 // CreateBuildFromVersionNoInsert creates a build given all of the necessary information
@@ -1202,7 +1220,7 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch).
-func AddNewBuilds(ctx context.Context, activated bool, v *Version, p *Project, tasks TaskVariantPairs, generatedBy string) error {
+func AddNewBuilds(activated bool, v *Version, p *Project, tasks TaskVariantPairs, generatedBy string) error {
 	taskIds := NewPatchTaskIdTable(p, v, tasks)
 
 	newBuildIds := make([]string, 0)
@@ -1235,39 +1253,22 @@ func AddNewBuilds(ctx context.Context, activated bool, v *Version, p *Project, t
 			DisplayNames: displayNames,
 			GeneratedBy:  generatedBy,
 		}
-
+		buildId, err := CreateBuildFromVersion(buildArgs)
 		grip.Info(message.Fields{
 			"op":        "creating build for version",
 			"variant":   pair.Variant,
 			"activated": activated,
 			"version":   v.Id,
 		})
-		build, tasks, err := CreateBuildFromVersionNoInsert(buildArgs)
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		if len(tasks) == 0 {
-			grip.Info(message.Fields{
-				"op":        "skipping empty build for version",
-				"variant":   pair.Variant,
-				"activated": activated,
-				"version":   v.Id,
-			})
-			continue
-		}
 
-		if err = build.Insert(); err != nil {
-			return errors.Wrapf(err, "error inserting build %s", build.Id)
-		}
-		if err = tasks.InsertUnordered(ctx); err != nil {
-			return errors.Wrapf(err, "error inserting tasks for build %s", build.Id)
-		}
-
-		newBuildIds = append(newBuildIds, build.Id)
+		newBuildIds = append(newBuildIds, buildId)
 		newBuildStatuses = append(newBuildStatuses,
 			VersionBuildStatus{
 				BuildVariant: pair.Variant,
-				BuildId:      build.Id,
+				BuildId:      buildId,
 				Activated:    activated,
 			},
 		)

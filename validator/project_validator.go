@@ -84,7 +84,6 @@ var projectSyntaxValidators = []projectValidator{
 	validateBVNames,
 	validateDisplayTaskNames,
 	validateBVTaskNames,
-	validateBVsContainTasks,
 	checkAllDependenciesSpec,
 	validateProjectTaskNames,
 	validateProjectTaskIdsAndTags,
@@ -640,22 +639,6 @@ func validateBVTaskNames(project *model.Project) ValidationErrors {
 				)
 			}
 			buildVariantTasks[task.Name] = true
-		}
-	}
-	return errs
-}
-
-// Ensure there are no buildvariants without tasks
-func validateBVsContainTasks(project *model.Project) ValidationErrors {
-	errs := ValidationErrors{}
-	for _, buildVariant := range project.BuildVariants {
-		if len(buildVariant.Tasks) == 0 {
-			errs = append(errs,
-				ValidationError{
-					Message: fmt.Sprintf("buildvariant '%s' contains no tasks", buildVariant.Name),
-					Level:   Warning,
-				},
-			)
 		}
 	}
 	return errs

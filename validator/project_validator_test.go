@@ -799,48 +799,6 @@ func TestValidateBVTaskNames(t *testing.T) {
 	})
 }
 
-func TestValidateBVsContainTasks(t *testing.T) {
-	Convey("When validating a project's build variants", t, func() {
-		Convey("if any build variant contains no tasks an error should be returned", func() {
-			project := &model.Project{
-				BuildVariants: []model.BuildVariant{
-					{
-						Name: "linux",
-						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"},
-						},
-					},
-					{
-						Name:  "windows",
-						Tasks: []model.BuildVariantTaskUnit{},
-					},
-				},
-			}
-			So(len(validateBVsContainTasks(project)), ShouldEqual, 1)
-		})
-
-		Convey("if all build variants contain tasks no errors should be returned", func() {
-			project := &model.Project{
-				BuildVariants: []model.BuildVariant{
-					{
-						Name: "linux",
-						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"},
-						},
-					},
-					{
-						Name: "windows",
-						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"},
-						},
-					},
-				},
-			}
-			So(len(validateBVsContainTasks(project)), ShouldEqual, 0)
-		})
-	})
-}
-
 func TestCheckAllDependenciesSpec(t *testing.T) {
 	Convey("When validating a project", t, func() {
 		Convey("if a task references all dependencies, no other dependency "+

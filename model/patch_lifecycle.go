@@ -89,8 +89,8 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch).
-func AddNewBuildsForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project, tasks TaskVariantPairs) error {
-	return AddNewBuilds(ctx, p.Activated, patchVersion, project, tasks, "")
+func AddNewBuildsForPatch(p *patch.Patch, patchVersion *Version, project *Project, tasks TaskVariantPairs) error {
+	return AddNewBuilds(p.Activated, patchVersion, project, tasks, "")
 }
 
 // Given a patch version and set of variant/task pairs, creates any tasks that don't exist yet,
@@ -355,6 +355,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		}
 		variantsProcessed[vt.Variant] = true
 
+		var buildId string
 		var displayNames []string
 		for _, dt := range vt.DisplayTasks {
 			displayNames = append(displayNames, dt.Name)
@@ -370,32 +371,16 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			DisplayNames:  displayNames,
 			DistroAliases: distroAliases,
 		}
-		build, tasks, err := CreateBuildFromVersionNoInsert(buildArgs)
+		buildId, err = CreateBuildFromVersion(buildArgs)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-		if len(tasks) == 0 {
-			grip.Info(message.Fields{
-				"op":      "skipping empty build for patch version",
-				"variant": vt.Variant,
-				"version": patchVersion.Id,
-			})
-			continue
-		}
-
-		if err = build.Insert(); err != nil {
-			return nil, errors.Wrapf(err, "error inserting build %s", build.Id)
-		}
-		if err = tasks.InsertUnordered(ctx); err != nil {
-			return nil, errors.Wrapf(err, "error inserting tasks for build %s", build.Id)
-		}
-
-		patchVersion.BuildIds = append(patchVersion.BuildIds, build.Id)
+		patchVersion.BuildIds = append(patchVersion.BuildIds, buildId)
 		patchVersion.BuildVariants = append(patchVersion.BuildVariants,
 			VersionBuildStatus{
 				BuildVariant: vt.Variant,
 				Activated:    true,
-				BuildId:      build.Id,
+				BuildId:      buildId,
 			},
 		)
 	}
