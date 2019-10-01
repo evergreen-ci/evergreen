@@ -1,6 +1,7 @@
 package distro
 
 import (
+	"bytes"
 	"fmt"
 	"math/rand"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -19,6 +21,7 @@ type Distro struct {
 	Aliases           []string                `bson:"aliases,omitempty" json:"aliases,omitempty" mapstructure:"aliases,omitempty"`
 	Arch              string                  `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
 	WorkDir           string                  `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
+	RootDir           string                  `bson:"root_dir,omitempty" json:"root_dir,omitempty" mapstructure:"root_dir,omitempty"`
 	Provider          string                  `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
 	ProviderSettings  *map[string]interface{} `bson:"settings" json:"settings,omitempty" mapstructure:"settings,omitempty"`
 	SetupAsSudo       bool                    `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`
@@ -272,6 +275,18 @@ func (d *Distro) MaxDurationPerHost() time.Duration {
 	}
 
 	return evergreen.MaxDurationPerDistroHost
+}
+
+// PowerShellSetup returns whether or not the setup script is a powershell
+// script.
+func (d *Distro) PowerShellSetup() bool {
+	script := bytes.NewBufferString(d.Setup)
+	header, err := script.ReadString('\n')
+	grip.WarningWhen(err != nil, message.WrapError(err, message.Fields{
+		"message": "setup script does not specify which shell should execute the script",
+		"distro":  d.Id,
+	}))
+	return strings.Contains(header, "powershell")
 }
 
 func (d *Distro) IsWindows() bool {

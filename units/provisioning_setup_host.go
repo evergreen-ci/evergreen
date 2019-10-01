@@ -279,14 +279,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 
 	if targetHost.Distro.Setup != "" {
 		scriptName := evergreen.SetupScriptName
-		script := bytes.NewBufferString(targetHost.Distro.Setup)
-		header, err := script.ReadString('\n')
-		grip.WarningWhen(err != nil, message.WrapError(err, message.Fields{
-			"message": "setup script does not specify which shell should execute the script",
-			"distro":  targetHost.Distro.Id,
-			"job":     j.ID(),
-		}))
-		if strings.Contains(header, "powershell") {
+		if targetHost.Distro.PowerShellSetup() {
 			scriptName = evergreen.PowerShellSetupScriptName
 		}
 		err = j.copyScript(ctx, settings, targetHost, filepath.Join("~", scriptName), targetHost.Distro.Setup)

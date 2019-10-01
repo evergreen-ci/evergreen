@@ -583,6 +583,7 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 				Id:       "fedora8",
 				Arch:     "linux_amd64",
 				WorkDir:  "/data/mci",
+				RootDir:  "/root/dir",
 				PoolSize: 30,
 				Provider: "mock",
 				ProviderSettings: &map[string]interface{}{
@@ -728,6 +729,22 @@ func (s *DistroPatchByIDSuite) TestRunValidWorkDir() {
 	apiDistro, ok := (resp.Data()).(*model.APIDistro)
 	s.Require().True(ok)
 	s.Equal(apiDistro.WorkDir, model.ToAPIString("/tmp"))
+}
+
+func (s *DistroPatchByIDSuite) TestRunValidRootDir() {
+	ctx := context.Background()
+	json := []byte(`{"root_dir": "/new/root/dir"}`)
+	h := s.rm.(*distroIDPatchHandler)
+	h.distroID = "fedora8"
+	h.body = json
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
+	s.Equal(apiDistro.RootDir, model.ToAPIString("/new/root/dir"))
 }
 
 func (s *DistroPatchByIDSuite) TestRunValidPoolSize() {
@@ -1131,6 +1148,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 		`{
 				"arch" : "linux_amd64",
 				"work_dir" : "~/data/mci",
+				"root_dir" : "/new/root/dir",
 				"pool_size" : 20,
 				"provider" : "mock",
 				"settings" : {
@@ -1205,6 +1223,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(apiDistro.Disabled, false)
 	s.Equal(apiDistro.Name, model.ToAPIString("fedora8"))
 	s.Equal(apiDistro.WorkDir, model.ToAPIString("~/data/mci"))
+	s.Equal(apiDistro.RootDir, model.ToAPIString("/new/root/dir"))
 	s.Equal(apiDistro.PoolSize, 20)
 	s.Equal(apiDistro.Provider, model.ToAPIString("mock"))
 
@@ -1269,6 +1288,7 @@ func getMockDistrosConnector() *data.MockConnector {
 					Id:       "fedora8",
 					Arch:     "linux_amd64",
 					WorkDir:  "/data/mci",
+					RootDir:  "/root/dir",
 					PoolSize: 30,
 					Provider: "mock",
 					ProviderSettings: &map[string]interface{}{

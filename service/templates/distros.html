@@ -110,6 +110,11 @@ Evergreen - Distros
               <div class="icon fa fa-warning distro-error" ng-show="form.workDir.$dirty && form.workDir.$error.required || form.workDir.$invalid">Working
                 Directory is required</div>
             </div>
+            <div>
+              <label class="distro-label">Root Directory:</label>
+              <input required name="rootDir" type="text" class="form-control" ng-model="activeDistro.root_dir"
+                placeholder="Native path to file system root directory" ng-readonly="readOnly">
+            </div>
           </div>
           <br>
           <div class="panel-body panel panel-default">
