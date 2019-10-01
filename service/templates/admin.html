@@ -1060,14 +1060,48 @@ Admin Settings
 									</md-button>
 								</md-card-title>
 								<md-card-content>
-									<md-input-container class="control" style="width:45%;">
-										<label>EC2 Key</label>
-										<input type="text" ng-model="tempDefaultEC2Key">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
-										<label>EC2 Secret</label>
-										<input type="text" ng-model="tempDefaultEC2Secret">
-									</md-input-container>
+									<md-card style="margin-bottom:20px;">
+										<md-card-content>
+											<div id="ec2-list" class="form-group" ng-repeat="(index, item) in Settings.providers.aws.ec2_keys">
+												<section layout="row" flex>
+													<md-input-container class="control" flex=25>
+														<input class="control" type="text" ng-model="item.region" placeholder="EC2 Region">
+													</md-input-container>
+
+													<md-input-container class="control" flex=50>
+														<input class="control" type="text" ng-model="item.key" placeholder="EC2 Key">
+													</md-input-container>
+													<md-input-container class="control" flex=50 style="margin-right: 15px;">
+														<input class="control" type="text" ng-model="item.secret" placeholder="EC2 Secret">
+													</md-input-container>
+													<div style="margin-top: 1%;">
+														<button class="btn btn-default btn-danger" type="button" style="float: left" ng-click="deleteEC2Credential(index)">
+															<i class="fa fa-trash"></i>
+														</button>
+													</div>
+												</section>
+											</div>
+											<section layout="row" flex>
+												<md-input-container class="control" flex=25>
+													<input class="control" type="text" ng-model="new_item.region" placeholder="EC2 Region">
+												</md-input-container>
+
+												<md-input-container class="control" flex=50>
+													<input class="control" type="text" ng-model="new_item.key" placeholder="EC2 Key">
+												</md-input-container>
+												<md-input-container class="control" flex=75 style="margin-right: 15px;">
+													<input class="control" type="text" ng-model="new_item.secret" placeholder="EC2 Secret">
+												</md-input-container>
+												<div style="margin-top: 1%;">
+													<button class="plus-button btn btn-primary" ng-disabled="!validEC2Credentials(new_item)" type="button" style="float: left" ng-click="addEC2Credential()">
+														<i class="fa fa-plus"></i>
+													</button>
+													<label class="control">[[invalidCredential]]</label>
+												</div>
+											</section>
+										</md-card-content>
+									</md-card>
+
 									<md-input-container class="control" style="width:45%;">
 										<label>S3 Key</label>
 										<input type="text" ng-model="Settings.providers.aws.s3_key">
