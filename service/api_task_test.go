@@ -30,6 +30,7 @@ import (
 	"github.com/mongodb/amboy/queue"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 var (
@@ -503,6 +504,7 @@ func TestNextTask(t *testing.T) {
 				Id: distroID,
 			},
 			Secret:        hostSecret,
+			Provisioned:   true,
 			Status:        evergreen.HostRunning,
 			AgentRevision: evergreen.BuildRevision,
 		}
@@ -617,11 +619,36 @@ func TestNextTask(t *testing.T) {
 						},
 					},
 					Secret:        hostSecret,
+					Provisioned:   true,
 					Status:        evergreen.HostRunning,
 					AgentRevision: "out-of-date",
 				}
 				So(nonLegacyHost.Insert(), ShouldBeNil)
 
+				Convey("should be marked running when it has been provisioned by the app server but not marked as running yet", func() {
+					So(nonLegacyHost.SetProvisionedNotRunning(), ShouldBeNil)
+					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.BuildRevision}
+					resp := getNextTaskEndpoint(t, as, nonLegacyHost.Id, reqDetails)
+					respDetails := &apimodels.NextTaskResponse{}
+					So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
+					So(respDetails.ShouldExit, ShouldBeFalse)
+					dbHost, err := host.FindOneId(nonLegacyHost.Id)
+					So(err, ShouldBeNil)
+					So(dbHost.Status, ShouldEqual, evergreen.HostRunning)
+				})
+				Convey("should no-op when it has not yet been provisioned by the app server", func() {
+					So(nonLegacyHost.SetStatus(evergreen.HostProvisioning, evergreen.User, ""), ShouldBeNil)
+					So(db.Update(host.Collection, bson.M{host.IdKey: nonLegacyHost.Id}, bson.M{"$set": bson.M{host.ProvisionedKey: false}}), ShouldBeNil)
+					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.BuildRevision}
+					resp := getNextTaskEndpoint(t, as, nonLegacyHost.Id, reqDetails)
+					respDetails := &apimodels.NextTaskResponse{}
+					So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
+					So(respDetails.ShouldExit, ShouldBeFalse)
+					So(respDetails.TaskId, ShouldBeEmpty)
+					dbHost, err := host.FindOneId(nonLegacyHost.Id)
+					So(err, ShouldBeNil)
+					So(dbHost.Status, ShouldEqual, evergreen.HostProvisioning)
+				})
 				Convey("with the latest agent revision in the next task details", func() {
 					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.BuildRevision}
 					resp := getNextTaskEndpoint(t, as, nonLegacyHost.Id, reqDetails)
@@ -645,6 +672,7 @@ func TestNextTask(t *testing.T) {
 					Secret:        hostSecret,
 					RunningTask:   "existingTask",
 					AgentRevision: evergreen.BuildRevision,
+					Provisioned:   true,
 					Status:        evergreen.HostRunning,
 				}
 				So(h2.Insert(), ShouldBeNil)
@@ -683,6 +711,7 @@ func TestNextTask(t *testing.T) {
 						Secret:        hostSecret,
 						RunningTask:   t1.Id,
 						AgentRevision: evergreen.BuildRevision,
+						Provisioned:   true,
 						Status:        evergreen.HostRunning,
 					}
 					anotherBuild := build.Build{
@@ -721,6 +750,7 @@ func TestNextTask(t *testing.T) {
 							Id:            "inactive",
 							Secret:        hostSecret,
 							RunningTask:   inactiveTask.Id,
+							Provisioned:   true,
 							Status:        evergreen.HostRunning,
 							AgentRevision: evergreen.BuildRevision,
 						}
@@ -772,6 +802,7 @@ func TestCheckHostHealth(t *testing.T) {
 	currentRevision := "abc"
 	Convey("With a host that has different statuses", t, func() {
 		h := &host.Host{
+			Provisioned:   true,
 			Status:        evergreen.HostRunning,
 			AgentRevision: currentRevision,
 		}

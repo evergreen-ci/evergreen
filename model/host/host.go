@@ -24,14 +24,15 @@ import (
 )
 
 type Host struct {
-	Id       string        `bson:"_id" json:"id"`
-	Host     string        `bson:"host_id" json:"host"`
-	User     string        `bson:"user" json:"user"`
-	Secret   string        `bson:"secret" json:"secret"`
-	Tag      string        `bson:"tag" json:"tag"`
-	Distro   distro.Distro `bson:"distro" json:"distro"`
-	Provider string        `bson:"host_type" json:"host_type"`
-	IP       string        `bson:"ip_address" json:"ip_address"`
+	Id              string        `bson:"_id" json:"id"`
+	Host            string        `bson:"host_id" json:"host"`
+	User            string        `bson:"user" json:"user"`
+	Secret          string        `bson:"secret" json:"secret"`
+	ServicePassword string        `bson:"service_password,omitempty" json:"service_password,omitempty" mapstructure:"service_password,omitempty"`
+	Tag             string        `bson:"tag" json:"tag"`
+	Distro          distro.Distro `bson:"distro" json:"distro"`
+	Provider        string        `bson:"host_type" json:"host_type"`
+	IP              string        `bson:"ip_address" json:"ip_address"`
 
 	// secondary (external) identifier for the host
 	ExternalIdentifier string `bson:"ext_identifier" json:"ext_identifier"`
@@ -233,6 +234,7 @@ type ContainersOnParents struct {
 type HostModifyOptions struct {
 	AddInstanceTags    []Tag
 	DeleteInstanceTags []string
+	InstanceType       string
 }
 
 const (
@@ -278,8 +280,7 @@ func (h *Host) IsEphemeral() bool {
 
 func (h *Host) SetStatus(status, user string, logs string) error {
 	if h.Status == evergreen.HostTerminated {
-		msg := fmt.Sprintf("Refusing to mark host %v as"+
-			" %v because it is already terminated", h.Id, status)
+		msg := fmt.Sprintf("not changing the status of terminate host %s to %s", h.Id, status)
 		grip.Warning(msg)
 		return errors.New(msg)
 	}
@@ -297,6 +298,36 @@ func (h *Host) SetStatus(status, user string, logs string) error {
 			},
 		},
 	)
+}
+
+// SetStatusAtomically is the same as SetStatus but only updates the host if its
+// status in the database matches currentStatus.
+func (h *Host) SetStatusAtomically(newStatus, user string, logs string) error {
+	if h.Status == evergreen.HostTerminated {
+		msg := fmt.Sprintf("not changing the status of terminate host %s to %s", h.Id, newStatus)
+		grip.Warning(msg)
+		return errors.New(msg)
+	}
+
+	err := UpdateOne(
+		bson.M{
+			IdKey:     h.Id,
+			StatusKey: h.Status,
+		},
+		bson.M{
+			"$set": bson.M{
+				StatusKey: newStatus,
+			},
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	h.Status = newStatus
+	event.LogHostStatusChanged(h.Id, h.Status, newStatus, user, logs)
+
+	return nil
 }
 
 // SetProvisioning marks the host as initializing. Only allow this
@@ -602,8 +633,9 @@ func (h *Host) UpdateProvisioningToRunning() error {
 
 	if err := UpdateOne(
 		bson.M{
-			IdKey:     h.Id,
-			StatusKey: evergreen.HostProvisioning,
+			IdKey:          h.Id,
+			StatusKey:      evergreen.HostProvisioning,
+			ProvisionedKey: true,
 		},
 		bson.M{"$set": bson.M{StatusKey: evergreen.HostRunning}},
 	); err != nil {
@@ -994,45 +1026,6 @@ func DecommissionHostsWithDistroId(distroId string) error {
 		},
 	)
 	return err
-}
-
-// UpdateDocumentID updates the host document corresponding to the current host to have
-// a new ID by finding, deleting, and replacing the document with a new one.
-func (h *Host) UpdateDocumentID(newID string) (*Host, error) {
-	oldID := h.Id
-
-	// Find the host document in the database with the old ID.
-	host, err := FindOneId(oldID)
-	if host == nil {
-		err = errors.Errorf("Could not locate record inserted for host '%s'", oldID)
-		grip.Error(err)
-		return nil, err
-	}
-
-	if err != nil {
-		err = errors.Wrapf(err, "Could not locate record inserted for host '%s' due to error", oldID)
-		grip.Error(err)
-		return nil, err
-	}
-
-	// Insert the new document.
-	host.Id = newID
-	if err := host.Insert(); err != nil {
-		err = errors.Wrapf(err, "Could not insert updated host information for '%s' with '%s'",
-			h.Id, host.Id)
-		grip.Error(err)
-		return nil, err
-	}
-
-	// Remove the old document.
-	if err := h.Remove(); err != nil {
-		err = errors.Wrapf(err, "Could not remove insert host '%s' (replaced by '%s')",
-			h.Id, host.Id)
-		grip.Error(err)
-		return nil, err
-	}
-
-	return host, nil
 }
 
 func (h *Host) DisablePoisonedHost(logs string) error {
@@ -1674,26 +1667,17 @@ func StaleRunningTaskIDs(staleness time.Duration) ([]task.Task, error) {
 	return out, err
 }
 
-// ModifySpawnHost updates a spawnhost with the changes described
-// in a HostModifyOptions struct.
-func (h *Host) ModifySpawnHost(opts HostModifyOptions) error {
-	h.DeleteTags(opts.DeleteInstanceTags)
-	h.AddTags(opts.AddInstanceTags)
-	if err := h.SetTags(); err != nil {
-		return errors.Wrap(err, "error modifying spawn host")
-	}
-	return nil
-}
-
 // AddTags adds the specified tags to the host document, or modifies
 // an existing tag if it can be modified.
 func (h *Host) AddTags(tags []Tag) {
 	for _, new := range tags {
 		found := false
 		for i, old := range h.InstanceTags {
-			if old.Key == new.Key && old.CanBeModified {
-				h.InstanceTags[i] = new
+			if old.Key == new.Key {
 				found = true
+				if old.CanBeModified {
+					h.InstanceTags[i] = new
+				}
 				break
 			}
 		}
@@ -1728,4 +1712,23 @@ func (h *Host) SetTags() error {
 			},
 		},
 	)
+}
+
+// SetInstanceType updates the host's instance type in the database.
+func (h *Host) SetInstanceType(instanceType string) error {
+	err := UpdateOne(
+		bson.M{
+			IdKey: h.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				InstanceTypeKey: instanceType,
+			},
+		},
+	)
+	if err != nil {
+		return err
+	}
+	h.InstanceType = instanceType
+	return nil
 }

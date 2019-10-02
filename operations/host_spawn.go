@@ -62,10 +62,11 @@ func makeAWSTags(tagSlice []string) ([]host.Tag, error) {
 
 func hostCreate() cli.Command {
 	const (
-		distroFlagName = "distro"
-		keyFlagName    = "key"
-		scriptFlagName = "script"
-		tagFlagName    = "tag"
+		distroFlagName       = "distro"
+		keyFlagName          = "key"
+		scriptFlagName       = "script"
+		tagFlagName          = "tag"
+		instanceTypeFlagName = "type"
 	)
 
 	return cli.Command{
@@ -84,6 +85,10 @@ func hostCreate() cli.Command {
 				Name:  joinFlagNames(scriptFlagName, "s"),
 				Usage: "path to userdata script to run",
 			},
+			cli.StringFlag{
+				Name:  joinFlagNames(instanceTypeFlagName, "i"),
+				Usage: "name of an instance type",
+			},
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(tagFlagName, "t"),
 				Usage: "key=value pair representing an instance tag, with one pair per flag",
@@ -95,6 +100,7 @@ func hostCreate() cli.Command {
 			key := c.String(keyFlagName)
 			fn := c.String(scriptFlagName)
 			tagSlice := c.StringSlice(tagFlagName)
+			instanceType := c.String(instanceTypeFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -126,6 +132,7 @@ func hostCreate() cli.Command {
 				KeyName:      key,
 				UserData:     script,
 				InstanceTags: tags,
+				InstanceType: instanceType,
 			}
 
 			host, err := client.CreateSpawnHost(ctx, spawnRequest)
@@ -145,8 +152,9 @@ func hostCreate() cli.Command {
 
 func hostModify() cli.Command {
 	const (
-		addTagFlagName    = "tag"
-		deleteTagFlagName = "delete-tag"
+		addTagFlagName       = "tag"
+		deleteTagFlagName    = "delete-tag"
+		instanceTypeFlagName = "type"
 	)
 
 	return cli.Command{
@@ -161,13 +169,18 @@ func hostModify() cli.Command {
 				Name:  joinFlagNames(deleteTagFlagName, "d"),
 				Usage: "key of a single tag to be deleted",
 			},
+			cli.StringFlag{
+				Name:  joinFlagNames(instanceTypeFlagName, "i"),
+				Usage: "name of an instance type",
+			},
 		),
-		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag, requireAtLeastOneStringSlice(addTagFlagName, deleteTagFlagName)),
+		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag, requireAtLeastOneFlag(addTagFlagName, deleteTagFlagName, instanceTypeFlagName)),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			hostID := c.String(hostFlagName)
 			addTagSlice := c.StringSlice(addTagFlagName)
 			deleteTagSlice := c.StringSlice(deleteTagFlagName)
+			instanceType := c.String(instanceTypeFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -187,6 +200,7 @@ func hostModify() cli.Command {
 			hostChanges := host.HostModifyOptions{
 				AddInstanceTags:    addTags,
 				DeleteInstanceTags: deleteTagSlice,
+				InstanceType:       instanceType,
 			}
 			err = client.ModifySpawnHost(ctx, hostID, hostChanges)
 			if err != nil {

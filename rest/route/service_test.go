@@ -81,10 +81,11 @@ func TestHostPaginator(t *testing.T) {
 							Provider: model.ToAPIString(evergreen.ProviderNameMock),
 							ImageId:  model.ToAPIString(""),
 						},
-						StartedBy: model.ToAPIString(""),
-						Type:      model.ToAPIString(""),
-						User:      model.ToAPIString(""),
-						Status:    model.ToAPIString(""),
+						StartedBy:    model.ToAPIString(""),
+						Type:         model.ToAPIString(""),
+						User:         model.ToAPIString(""),
+						Status:       model.ToAPIString(""),
+						InstanceType: model.ToAPIString(""),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
@@ -119,10 +120,11 @@ func TestHostPaginator(t *testing.T) {
 							Provider: model.ToAPIString(evergreen.ProviderNameMock),
 							ImageId:  model.ToAPIString(""),
 						},
-						StartedBy: model.ToAPIString(""),
-						Type:      model.ToAPIString(""),
-						User:      model.ToAPIString(""),
-						Status:    model.ToAPIString(""),
+						StartedBy:    model.ToAPIString(""),
+						Type:         model.ToAPIString(""),
+						User:         model.ToAPIString(""),
+						Status:       model.ToAPIString(""),
+						InstanceType: model.ToAPIString(""),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
@@ -158,10 +160,11 @@ func TestHostPaginator(t *testing.T) {
 							Provider: model.ToAPIString(evergreen.ProviderNameMock),
 							ImageId:  model.ToAPIString(""),
 						},
-						StartedBy: model.ToAPIString(""),
-						Type:      model.ToAPIString(""),
-						User:      model.ToAPIString(""),
-						Status:    model.ToAPIString(""),
+						StartedBy:    model.ToAPIString(""),
+						Type:         model.ToAPIString(""),
+						User:         model.ToAPIString(""),
+						Status:       model.ToAPIString(""),
+						InstanceType: model.ToAPIString(""),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
@@ -196,10 +199,11 @@ func TestHostPaginator(t *testing.T) {
 							Provider: model.ToAPIString(evergreen.ProviderNameMock),
 							ImageId:  model.ToAPIString(""),
 						},
-						StartedBy: model.ToAPIString(""),
-						Type:      model.ToAPIString(""),
-						User:      model.ToAPIString(""),
-						Status:    model.ToAPIString(""),
+						StartedBy:    model.ToAPIString(""),
+						Type:         model.ToAPIString(""),
+						User:         model.ToAPIString(""),
+						Status:       model.ToAPIString(""),
+						InstanceType: model.ToAPIString(""),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}

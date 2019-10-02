@@ -243,33 +243,30 @@ func (s *commitQueueSuite) TestSetDefaultNotification() {
 	s.Equal("", u2.Settings.Notifications.CommitQueueID)
 }
 
-func (s *commitQueueSuite) TestUpdateGithashes() {
+func (s *commitQueueSuite) TestUpdatePatch() {
 	githubToken, err := s.settings.GetGithubOauthToken()
 	s.NoError(err)
 
 	projectRef := &model.ProjectRef{
-		Owner:  "evergreen-ci",
-		Repo:   "evergreen",
-		Branch: "master",
+		Identifier: "evergreen",
+		Owner:      "evergreen-ci",
+		Repo:       "evergreen",
+		Branch:     "master",
+		RemotePath: "self-tests.yml",
 	}
-
-	project := &model.Project{
-		Modules: model.ModuleList{
-			{Name: "evergreen-module", Repo: "git@github.com:evergreen-ci/evergreen.git", Branch: "master"},
-		},
-	}
+	s.NoError(projectRef.Insert())
 
 	patchDoc := &patch.Patch{
 		Patches: []patch.ModulePatch{
 			{ModuleName: "", Githash: "abcdef"},
-			{ModuleName: "evergreen-module", Githash: "abcdef"},
 		},
+		PatchedConfig: "asdf",
+		Project:       "evergreen",
 	}
 
-	err = updateGithashes(context.Background(), githubToken, projectRef, project, patchDoc)
+	projectConfig, err := updatePatch(context.Background(), githubToken, projectRef, patchDoc)
 	s.NoError(err)
-
-	for _, mod := range patchDoc.Patches {
-		s.NotEqual("abcdef", mod.Githash)
-	}
+	s.NotEqual("abcdef", patchDoc.Patches[0].Githash)
+	s.NotEqual(model.Project{}, projectConfig)
+	s.NotEqual("asdf", patchDoc.PatchedConfig)
 }

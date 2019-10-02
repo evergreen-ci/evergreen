@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -17,6 +18,7 @@ func TestSpawnhostModifyJob(t *testing.T) {
 	config := testutil.TestConfig()
 	assert.NoError(t, evergreen.UpdateConfig(config))
 	assert.NoError(t, db.ClearCollections(host.Collection))
+	mock := cloud.GetMockProvider()
 	h := host.Host{
 		Id:       "hostID",
 		Provider: evergreen.ProviderNameMock,
@@ -27,9 +29,21 @@ func TestSpawnhostModifyJob(t *testing.T) {
 				CanBeModified: true,
 			},
 		},
-		Distro: distro.Distro{Provider: evergreen.ProviderNameMock},
+		InstanceType: "instance-type-1",
+		Distro:       distro.Distro{Provider: evergreen.ProviderNameMock},
 	}
 	assert.NoError(t, h.Insert())
+	mock.Set(h.Id, cloud.MockInstance{
+		Status: cloud.StatusRunning,
+		Tags: []host.Tag{
+			host.Tag{
+				Key:           "key1",
+				Value:         "value1",
+				CanBeModified: true,
+			},
+		},
+		Type: "instance-type-1",
+	})
 
 	changes := host.HostModifyOptions{
 		AddInstanceTags: []host.Tag{
@@ -40,6 +54,7 @@ func TestSpawnhostModifyJob(t *testing.T) {
 			},
 		},
 		DeleteInstanceTags: []string{"key1"},
+		InstanceType:       "instance-type-2",
 	}
 
 	ts := util.RoundPartOfMinute(1).Format(tsFormat)
@@ -52,4 +67,5 @@ func TestSpawnhostModifyJob(t *testing.T) {
 	modifiedHost, err := host.FindOneId(h.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, []host.Tag{host.Tag{Key: "key2", Value: "value2", CanBeModified: true}}, modifiedHost.InstanceTags)
+	assert.Equal(t, "instance-type-2", modifiedHost.InstanceType)
 }

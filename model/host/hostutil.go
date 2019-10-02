@@ -23,6 +23,7 @@ import (
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/rpc"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func (h *Host) SetupCommand() string {
@@ -243,9 +244,19 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 	if h.Distro.BootstrapSettings.JasperCredentialsPath != "" {
 		params = append(params, fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
 	}
-	if h.Distro.User != "" {
+
+	if user := h.Distro.BootstrapSettings.ServiceUser; user != "" {
+		if h.Distro.IsWindows() {
+			user = `.\\\\` + user
+		}
+		params = append(params, fmt.Sprintf("--user=%s", user))
+		if h.ServicePassword != "" {
+			params = append(params, fmt.Sprintf("--password=%s", h.ServicePassword))
+		}
+	} else if h.Distro.User != "" {
 		params = append(params, fmt.Sprintf("--user=%s", h.Distro.User))
 	}
+
 	if settings.Splunk.Populated() {
 		params = append(params,
 			fmt.Sprintf("--splunk_url=%s", settings.Splunk.ServerURL),
@@ -331,21 +342,26 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credenti
 
 	writeCredentialsCmd, err := h.WriteJasperCredentialsFileCommand(creds)
 	if err != nil {
-		return "", errors.Wrap(err, "could not build command to write Jasper credentials file")
+		return "", errors.Wrap(err, "could not get command to write Jasper credentials file")
 	}
 
 	if h.Distro.IsWindows() {
 		bashCmds = append(bashCmds,
-			h.FetchJasperCommandWithPath(settings.HostJasper, "/bin"),
 			writeCredentialsCmd,
+			h.FetchJasperCommandWithPath(settings.HostJasper, "/bin"),
 			h.ForceReinstallJasperCommand(settings),
 		)
 		bashCmds = append(bashCmds, postJasperSetup...)
 
 		bashCmdsLiteral := util.PowershellQuotedString(strings.Join(bashCmds, "\r\n"))
 
+		setupUserCmds, err := h.SetupServiceUserCommands()
+		if err != nil {
+			return "", errors.Wrap(err, "could not get command to set up service user")
+		}
 		powershellCmds := []string{
 			"<powershell>",
+			setupUserCmds,
 			fmt.Sprintf("%s -c %s", h.Distro.BootstrapSettings.ShellPath, bashCmdsLiteral),
 			"</powershell>",
 		}
@@ -357,6 +373,104 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credenti
 	bashCmds = append(bashCmds, postJasperSetup...)
 
 	return strings.Join(append([]string{"#!/bin/bash"}, bashCmds...), "\n"), nil
+}
+
+// SetupServiceUserCommands returns the commands to create a passwordless
+// service user in the Administrator group in Windows.
+func (h *Host) SetupServiceUserCommands() (string, error) {
+	if !h.Distro.IsWindows() {
+		return "", nil
+	}
+	if h.Distro.BootstrapSettings.ServiceUser == "" {
+		return "", errors.New("distro is missing service user name")
+	}
+	if h.ServicePassword == "" {
+		if err := h.CreateServicePassword(); err != nil {
+			return "", errors.Wrap(err, "could not generate service user's password")
+		}
+	}
+
+	cmd := func(cmd string) string {
+		return fmt.Sprintf("cmd.exe /C '%s'", cmd)
+	}
+
+	return strings.Join(
+		[]string{
+			// Create new user.
+			cmd(fmt.Sprintf("net user %s %s /add", h.Distro.BootstrapSettings.ServiceUser, h.ServicePassword)),
+			// Add the user to the Administrators group.
+			cmd(fmt.Sprintf("net localgroup Administrators %s /add", h.Distro.BootstrapSettings.ServiceUser)),
+			// Allow the user to run the service by granting the "Log on as a
+			// service" right.
+			// source: https://gallery.technet.microsoft.com/scriptcenter/Grant-Log-on-as-a-service-11a50893
+			fmt.Sprintf(`
+$accountToAdd = "%s"
+$sidstr = $null
+try {
+	$ntprincipal = new-object System.Security.Principal.NTAccount "$accountToAdd"
+    $sid = $ntprincipal.Translate([System.Security.Principal.SecurityIdentifier])
+    $sidstr = $sid.Value.ToString()
+} catch {
+    $sidstr = $null
+}
+$tmp = [System.IO.Path]::GetTempFileName()
+secedit.exe /export /cfg "$($tmp)"
+
+$c = Get-Content -Path $tmp
+
+$currentSetting = ""
+
+foreach($s in $c) {
+    if( $s -like "SeServiceLogonRight*") {
+        $x = $s.split("=",[System.StringSplitOptions]::RemoveEmptyEntries)
+        $currentSetting = $x[1].Trim()
+    }
+}
+
+if( $currentSetting -notlike "*$($sidstr)*" ) {
+    if( [string]::IsNullOrEmpty($currentSetting) ) {
+        $currentSetting = "*$($sidstr)"
+    } else {
+        $currentSetting = "*$($sidstr),$($currentSetting)"
+    }
+
+    $outfile = @"
+[Unicode]
+Unicode=yes
+[Version]
+signature=`, h.Distro.BootstrapSettings.ServiceUser) + "`$Windows NT$" + `
+Revision=1
+[Privilege Rights]
+SeServiceLogonRight = $($currentSetting)
+"@
+
+    $tmp2 = [System.IO.Path]::GetTempFileName()
+
+    $outfile | Set-Content -Path $tmp2 -Encoding Unicode -Force
+
+    Push-Location (Split-Path $tmp2)
+
+    try {
+        secedit.exe /configure /db "secedit.sdb" /cfg "$($tmp2)" /areas USER_RIGHTS
+    } finally {
+        Pop-Location
+    }
+}
+`}, "\r\n"), nil
+}
+
+// CreateServicePassword creates the password for the host's service user.
+func (h *Host) CreateServicePassword() error {
+	password := util.RandomString()
+	err := UpdateOne(
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{ServicePasswordKey: password}},
+	)
+	if err != nil {
+		return err
+	}
+	h.ServicePassword = password
+	return nil
 }
 
 // buildLocalJasperClientRequest builds the command string to a Jasper CLI to
@@ -711,6 +825,10 @@ func (h *Host) SetUserDataHostProvisioned() error {
 	}
 
 	if h.Status != evergreen.HostProvisioning {
+		return nil
+	}
+
+	if !h.Provisioned {
 		return nil
 	}
 

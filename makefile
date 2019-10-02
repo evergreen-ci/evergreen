@@ -17,7 +17,10 @@ projectPath := $(orgPath)/$(name)
 ifneq (,$(GO_BIN_PATH))
 gobin := $(GO_BIN_PATH)
 else
+gobin := $(shell if [ -x /opt/golang/go1.9/bin/go ]; then /opt/golang/go1.9/bin/go; fi)
+ifeq (,$(gobin))
 gobin := go
+endif
 endif
 
 # start evergreen specific configuration
@@ -46,7 +49,9 @@ karmaFlags := $(if $(KARMA_REPORTER),--reporters $(KARMA_REPORTER),)
 
 gopath := $(GOPATH)
 ifeq ($(OS),Windows_NT)
+ifneq (,$(gopath))
 gopath := $(shell cygpath -m $(gopath))
+endif
 endif
 
 # start linting configuration

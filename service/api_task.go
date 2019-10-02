@@ -484,6 +484,13 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
+	// The agent may start before the host has been fully provisioned by the app
+	// server, so no-op until the app server is done provisioning.
+	if !h.Provisioned {
+		gimlet.WriteJSON(w, apimodels.NextTaskResponse{})
+		return
+	}
+
 	if h.AgentStartTime.IsZero() {
 		if err := h.SetAgentStartTime(); err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{

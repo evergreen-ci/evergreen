@@ -10,15 +10,13 @@ import (
 )
 
 type updateRoleHandler struct {
-	manager      gimlet.RoleManager
-	role         *gimlet.Role
-	validateFunc func(gimlet.Role) error
+	manager gimlet.RoleManager
+	role    *gimlet.Role
 }
 
-func NewUpdateRoleHandler(m gimlet.RoleManager, validateFunc func(gimlet.Role) error) gimlet.RouteHandler {
+func NewUpdateRoleHandler(m gimlet.RoleManager) gimlet.RouteHandler {
 	return &updateRoleHandler{
-		manager:      m,
-		validateFunc: validateFunc,
+		manager: m,
 	}
 }
 
@@ -36,7 +34,7 @@ func (h *updateRoleHandler) Parse(ctx context.Context, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	return h.validateFunc(*h.role)
+	return nil
 }
 
 func (h *updateRoleHandler) Run(ctx context.Context) gimlet.Responder {
