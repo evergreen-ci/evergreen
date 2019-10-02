@@ -468,3 +468,20 @@ func IsPatchRequester(requester string) bool {
 func IsGitHubPatchRequester(requester string) bool {
 	return requester == GithubPRRequester || requester == MergeTestRequester
 }
+
+// Registered permissions
+const (
+	PermissionProjectSettings  = "project_settings"
+	PermissionProjectVariables = "project_variables"
+	PermissionTasks            = "project_tasks"
+	PermissionPatches          = "project_patches"
+	PermissionLogs             = "project_logs"
+)
+
+var projectPermissions = []string{
+	PermissionProjectSettings,
+	PermissionProjectVariables,
+	PermissionTasks,
+	PermissionPatches,
+	PermissionLogs,
+}

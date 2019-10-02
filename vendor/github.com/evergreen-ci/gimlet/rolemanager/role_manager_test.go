@@ -79,6 +79,10 @@ func (s *RoleManagerSuite) SetupSuite() {
 		ID: "root",
 	}
 	s.NoError(s.m.AddScope(root))
+
+	permissions := []string{"edit", "read"}
+	s.NoError(s.m.RegisterPermissions(permissions))
+	s.Error(s.m.RegisterPermissions(permissions))
 }
 
 func (s *RoleManagerSuite) SetupTest() {

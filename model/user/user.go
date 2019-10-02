@@ -8,18 +8,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	mgobson "gopkg.in/mgo.v2/bson"
-)
-
-const (
-	RoleCollection  = "roles"
-	ScopeCollection = "scopes"
 )
 
 type DBUser struct {
@@ -35,8 +29,6 @@ type DBUser struct {
 	APIKey       string       `bson:"apikey"`
 	SystemRoles  []string     `bson:"roles"`
 	LoginCache   LoginCache   `bson:"login_cache,omitempty"`
-
-	roleManager gimlet.RoleManager
 }
 
 func (u *DBUser) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(u) }
@@ -234,14 +226,12 @@ func (u *DBUser) RemoveRole(role string) error {
 }
 
 func (u *DBUser) HasPermission(resource, permission string, requiredLevel int) (bool, error) {
-	if u.roleManager == nil {
-		u.roleManager = GetRoleManager()
-	}
-	roles, err := u.roleManager.GetRoles(u.Roles())
+	roleManager := evergreen.GetEnvironment().RoleManager()
+	roles, err := roleManager.GetRoles(u.Roles())
 	if err != nil {
 		return false, errors.Wrap(err, "error getting roles")
 	}
-	roles, err = u.roleManager.FilterForResource(roles, resource)
+	roles, err = roleManager.FilterForResource(roles, resource)
 	if err != nil {
 		return false, errors.Wrap(err, "error filtering resources")
 	}
@@ -252,16 +242,6 @@ func (u *DBUser) HasPermission(resource, permission string, requiredLevel int) (
 		}
 	}
 	return false, nil
-}
-
-func GetRoleManager() gimlet.RoleManager {
-	opts := rolemanager.MongoBackedRoleManagerOpts{
-		Client:          evergreen.GetEnvironment().Client(),
-		DBName:          evergreen.GetEnvironment().DB().Name(),
-		RoleCollection:  RoleCollection,
-		ScopeCollection: ScopeCollection,
-	}
-	return rolemanager.NewMongoBackedRoleManager(opts)
 }
 
 func GetPatchUser(gitHubUID int) (*DBUser, error) {
