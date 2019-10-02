@@ -600,7 +600,7 @@ func (e *envState) setupRoleManager() error {
 		ScopeCollection: ScopeCollection,
 	})
 
-	return nil
+	return e.roleManager.RegisterPermissions(projectPermissions)
 }
 
 func (e *envState) Settings() *Settings {
