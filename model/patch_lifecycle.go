@@ -303,10 +303,10 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		return nil, errors.WithStack(err)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	githubCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	_, err = thirdparty.GetCommitEvent(ctx, githubOauthToken, projectRef.Owner, projectRef.Repo, p.Githash)
+	_, err = thirdparty.GetCommitEvent(githubCtx, githubOauthToken, projectRef.Owner, projectRef.Repo, p.Githash)
 	if err != nil {
 		return nil, errors.Wrap(err, "Couldn't fetch commit information")
 	}
