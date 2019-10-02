@@ -303,7 +303,7 @@ func (h *Host) SetStatus(status, user string, logs string) error {
 
 // SetStatusAtomically is the same as SetStatus but only updates the host if its
 // status in the database matches currentStatus.
-func (h *Host) SetStatusAtomically(newStatus, currentStatus, user string, logs string) error {
+func (h *Host) SetStatusAtomically(newStatus, user string, logs string) error {
 	if h.Status == evergreen.HostTerminated {
 		msg := fmt.Sprintf("refusing to mark host %s as %s because it is already terminated", h.Id, newStatus)
 		grip.Warning(msg)
@@ -313,7 +313,7 @@ func (h *Host) SetStatusAtomically(newStatus, currentStatus, user string, logs s
 	err := UpdateOne(
 		bson.M{
 			IdKey:     h.Id,
-			StatusKey: currentStatus,
+			StatusKey: h.Status,
 		},
 		bson.M{
 			"$set": bson.M{
