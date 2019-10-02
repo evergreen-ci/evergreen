@@ -98,8 +98,8 @@ var (
 	taskDetailsKeyRef      = "$" + task.DetailsKey
 	taskTimeTakenKeyRef    = "$" + task.TimeTakenKey
 	taskOldTaskIdKeyRef    = "$" + task.OldTaskIdKey
-	testResultTaskIdKeyRef = "$" + testresult.TaskIDKey
-	testResultExecutionRef = "$" + testresult.ExecutionKey
+	// testResultTaskIdKeyRef = "$" + testresult.TaskIDKey
+	// testResultExecutionRef = "$" + testresult.ExecutionKey
 )
 
 // Convenient type to use for arrays in pipeline definitions.
