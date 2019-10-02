@@ -345,7 +345,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       });
     }
 
-    onEnterPressed = function(action) {
+    attachEnterHandler = function(action) {
       $(document).keyup(function(ev) {
         if ($scope.modalOpen && ev.keyCode === 13) {
           $scope.updateHostStatus(action);
@@ -369,15 +369,15 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
           break;
         case 'terminateHost':
           initializeModal(modal, 'Terminate Host');
-          onEnterPressed('terminate');
+          attachEnterHandler('terminate');
           break;
         case 'stopHost':
           initializeModal(modal, 'Stop Host');
-          onEnterPressed('stop');
+          attachEnterHandler('stop');
           break;
         case 'startHost':
           initializeModal(modal, 'Start Host');
-          onEnterPressed('start');
+          attachEnterHandler('start');
           break;
         case 'updateRDPPassword':
           initializeModal(modal, 'Set RDP Password')
