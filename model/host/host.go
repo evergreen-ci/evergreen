@@ -280,8 +280,7 @@ func (h *Host) IsEphemeral() bool {
 
 func (h *Host) SetStatus(status, user string, logs string) error {
 	if h.Status == evergreen.HostTerminated {
-		msg := fmt.Sprintf("Refusing to mark host %v as"+
-			" %v because it is already terminated", h.Id, status)
+		msg := fmt.Sprintf("not changing the status of terminate host %s to %s", h.Id, status)
 		grip.Warning(msg)
 		return errors.New(msg)
 	}
@@ -305,7 +304,7 @@ func (h *Host) SetStatus(status, user string, logs string) error {
 // status in the database matches currentStatus.
 func (h *Host) SetStatusAtomically(newStatus, user string, logs string) error {
 	if h.Status == evergreen.HostTerminated {
-		msg := fmt.Sprintf("refusing to mark host %s as %s because it is already terminated", h.Id, newStatus)
+		msg := fmt.Sprintf("not changing the status of terminate host %s to %s", h.Id, newStatus)
 		grip.Warning(msg)
 		return errors.New(msg)
 	}
