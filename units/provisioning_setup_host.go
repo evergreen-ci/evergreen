@@ -228,7 +228,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 	}
 
 	if err = j.setDNSName(ctx, targetHost, cloudMgr, settings); err != nil {
-		return errors.Wrap(err, "error settings DNS name")
+		return errors.Wrap(err, "error setting DNS name")
 	}
 
 	// run the function scheduled for when the host is up
@@ -553,7 +553,6 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 		}
 
 		event.LogProvisionFailed(h.Id, "")
-
 		// mark the host's provisioning as failed
 		grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
 			"operation": "setting host unprovisioned",
