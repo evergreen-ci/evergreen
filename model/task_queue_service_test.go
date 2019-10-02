@@ -28,6 +28,137 @@ func TestTaskDAGDispatchServiceSuite(t *testing.T) {
 	suite.Run(t, new(taskDAGDispatchServiceSuite))
 }
 
+// func (s *taskDAGDispatchServiceSuite) TestRealWorldExample() {
+// 	s.Require().NoError(db.ClearCollections(task.Collection))
+// 	s.Require().NoError(db.ClearCollections(host.Collection))
+//
+// 	// db.tasks.find({"build_id": "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10"}).pretty()
+//
+// 	t1 := task.Task{
+// 		Id:                  "genny_archlinux_t_cmake_test_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+// 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+// 		TaskGroup:           "tg_compile_and_test",
+// 		TaskGroupMaxHosts:   1,
+// 		TaskGroupOrder:      4,
+// 		StartTime:           time.Unix(0, 0),
+// 		BuildVariant:        "archlinux",
+// 		Version:             "5d8cd23da4cf4747f4210333",
+// 		Project:             "genny",
+// 		Activated:           false,
+// 		ActivatedBy:         "",
+// 		DistroId:            "archlinux-test",
+// 		Requester:           "github_pull_request",
+// 		Status:              evergreen.TaskUndispatched,
+// 		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+// 		RevisionOrderNumber: 261,
+// 		DisplayName:         "t_cmake_test",
+// 		DependsOn: []task.Dependency{
+// 			task.Dependency{
+// 				TaskId:       "genny_archlinux_t_compile_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+// 				Status:       "success",
+// 				Unattainable: false,
+// 			},
+// 			task.Dependency{
+// 				TaskId:       "genny_archlinux_t_python_test_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+// 				Status:       "success",
+// 				Unattainable: false,
+// 			},
+// 			task.Dependency{
+// 				TaskId:       "genny_archlinux_t_lint_workloads_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+// 				Status:       "success",
+// 				Unattainable: false,
+// 			},
+// 		},
+// 	}
+//
+// 	t2 := task.Task{
+// 		Id:                  "genny_archlinux_t_compile_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+// 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+// 		TaskGroup:           "tg_compile_and_test",
+// 		TaskGroupMaxHosts:   1,
+// 		TaskGroupOrder:      1,
+// 		StartTime:           time.Unix(0, 0),
+// 		BuildVariant:        "archlinux",
+// 		Version:             "5d8cd23da4cf4747f4210333",
+// 		Project:             "genny",
+// 		Activated:           false,
+// 		ActivatedBy:         "",
+// 		DistroId:            "archlinux-test",
+// 		Requester:           "github_pull_request",
+// 		Status:              evergreen.TaskUndispatched,
+// 		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+// 		RevisionOrderNumber: 261,
+// 		DisplayName:         "t_compile",
+// 		DependsOn:           []task.Dependency{},
+// 	}
+//
+// 	t3 := task.Task{
+// 		Id:                  "genny_archlinux_t_lint_workloads_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+// 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+// 		TaskGroup:           "tg_compile_and_test",
+// 		TaskGroupMaxHosts:   1,
+// 		TaskGroupOrder:      3,
+// 		StartTime:           time.Unix(0, 0),
+// 		BuildVariant:        "archlinux",
+// 		Version:             "5d8cd23da4cf4747f4210333",
+// 		Project:             "genny",
+// 		Activated:           false,
+// 		ActivatedBy:         "",
+// 		DistroId:            "archlinux-test",
+// 		Requester:           "github_pull_request",
+// 		Status:              evergreen.TaskUndispatched,
+// 		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+// 		RevisionOrderNumber: 261,
+// 		DisplayName:         "t_lint_workloads",
+// 		DependsOn: []task.Dependency{
+// 			task.Dependency{
+// 				TaskId:       "genny_archlinux_t_compile_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+// 				Status:       "success",
+// 				Unattainable: false,
+// 			},
+// 			task.Dependency{
+// 				TaskId:       "genny_archlinux_t_python_test_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+// 				Status:       "success",
+// 				Unattainable: false,
+// 			},
+// 		},
+// 	}
+//
+// 	t4 := task.Task{
+// 		Id:                  "genny_archlinux_t_python_test_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+// 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+// 		TaskGroup:           "tg_compile_and_test",
+// 		TaskGroupMaxHosts:   1,
+// 		TaskGroupOrder:      2,
+// 		StartTime:           time.Unix(0, 0),
+// 		BuildVariant:        "archlinux",
+// 		Version:             "5d8cd23da4cf4747f4210333",
+// 		Project:             "genny",
+// 		Activated:           false,
+// 		ActivatedBy:         "",
+// 		DistroId:            "archlinux-test",
+// 		Requester:           "github_pull_request",
+// 		Status:              evergreen.TaskUndispatched,
+// 		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+// 		RevisionOrderNumber: 261,
+// 		DisplayName:         "",
+// 		DependsOn: []task.Dependency{
+// 			task.Dependency{
+// 				TaskId:       "genny_archlinux_t_compile_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+// 				Status:       "success",
+// 				Unattainable: false,
+// 			},
+// 		},
+// 	}
+//
+// 	s.Require().NoError(t1.Insert())
+// 	s.Require().NoError(t2.Insert())
+// 	s.Require().NoError(t3.Insert())
+// 	s.Require().NoError(t4.Insert())
+//
+// 	// 	> db.tasks.find({"build_id": "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10"},{"task_group": 1, "task_group_order": 1, "depends_on": 1}).pretty()
+// }
+
 func (s *taskDAGDispatchServiceSuite) SetupTest() {
 	s.Require().NoError(db.ClearCollections(task.Collection))
 	s.Require().NoError(db.ClearCollections(host.Collection))
@@ -91,6 +222,17 @@ func (s *taskDAGDispatchServiceSuite) SetupTest() {
 			Project:       project,
 			Dependencies:  dependencies,
 		})
+
+		dependsOn := []task.Dependency{}
+		for i := range dependencies {
+			d := task.Dependency{
+				TaskId:       dependencies[i],
+				Status:       "success",
+				Unattainable: false,
+			}
+			dependsOn = append(dependsOn, d)
+		}
+
 		t := task.Task{
 			Id:                ID,
 			DistroId:          distroID,
@@ -100,6 +242,7 @@ func (s *taskDAGDispatchServiceSuite) SetupTest() {
 			Version:           version,
 			TaskGroupMaxHosts: maxHosts,
 			Project:           project,
+			DependsOn:         dependsOn,
 		}
 		s.Require().NoError(t.Insert())
 	}
@@ -242,7 +385,6 @@ func (s *taskDAGDispatchServiceSuite) TestConstructor() {
 
 func (s *taskDAGDispatchServiceSuite) TestAddingSelfEdge() {
 	s.Require().NoError(db.ClearCollections(task.Collection))
-
 	items := []TaskQueueItem{}
 
 	t1 := task.Task{
@@ -260,6 +402,13 @@ func (s *taskDAGDispatchServiceSuite) TestAddingSelfEdge() {
 		Status:              evergreen.TaskUndispatched,
 		Revision:            "1a53e026e05561c3efbb626185e155a7d1e4865d",
 		RevisionOrderNumber: 1846,
+		DependsOn: []task.Dependency{
+			task.Dependency{
+				TaskId:       "1",
+				Status:       "success",
+				Unattainable: false,
+			},
+		},
 	}
 	item1 := TaskQueueItem{
 		Id:            "1",
@@ -270,6 +419,7 @@ func (s *taskDAGDispatchServiceSuite) TestAddingSelfEdge() {
 		Requester:     "patch_request",
 		GroupMaxHosts: 0,
 		IsDispatched:  false,
+		Dependencies:  []string{"1"},
 	}
 
 	s.Require().NoError(t1.Insert())
@@ -280,9 +430,7 @@ func (s *taskDAGDispatchServiceSuite) TestAddingSelfEdge() {
 		Queue:  items,
 	}
 
-	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
-	s.NoError(err)
-	err = service.addEdge("1", "1", nil)
+	_, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
 	s.Error(err)
 	s.Contains(err.Error(), "cannot add a self edge to task")
 }
@@ -412,14 +560,6 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 	s.Require().NotNil(next)
 	s.Equal("1", next.Id)
 
-	// Scenario:
-	//
-	// (1) Task.Id "1" completes successful and some tasks that depend_on it are still enqueued behind it.
-	// (2) Some time passes (determined by a ttl value) and a new task_queue is created.
-	// (3) As Task.Id "1" is "status": "success" it will not be in the new task_queue.  However, other taskQueueItems in the latest task_queue may depend_on it.
-	// (4) If we add an edge to Task.Id "1" from another task, there is no Node for Task.Id "1" in the DAG. Oops.
-	// (5) Go to the database to check if Task.Id "1" exists and if it does what status it is in.
-
 	next = service.FindNextTask(spec)
 	s.Require().Nil(next)
 	next = service.FindNextTask(spec)
@@ -462,13 +602,21 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 
 	//
 
+	t2.DependsOn = []task.Dependency{
+		task.Dependency{
+			TaskId:       "1", // A Task.Id that will not be in the task_queue.
+			Status:       evergreen.TaskSucceeded,
+			Unattainable: false,
+		},
+	}
+
 	s.Require().NoError(db.ClearCollections(task.Collection))
-	s.Require().NoError(t1.Insert())
+	// s.Require().NoError(t1.Insert())
 	s.Require().NoError(t2.Insert())
 	s.Require().NoError(t3.Insert())
 
 	items = []TaskQueueItem{}
-	items = append(items, item1)
+	// items = append(items, item1)
 	items = append(items, item2)
 	items = append(items, item3)
 
@@ -479,9 +627,7 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 
 	service, err = newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
 	s.NoError(err)
-	err = service.addEdge("-1", "-2", nil)
-	s.Contains(err.Error(), "does not exist in the database")
-	err = service.addEdge("1", "-2", nil)
+	err = service.addEdge("2", "5", nil) // There is no Node for the <to> task.Id: "5" in the task_queue.
 	s.Error(err)
 	s.Contains(err.Error(), "is not present in the DAG", nil)
 
@@ -660,6 +806,19 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 	s.Require().Nil(next)
 }
 
+func setTaskStatus(taskID string, status string) error {
+	return task.UpdateOne(
+		bson.M{
+			task.IdKey: taskID,
+		},
+		bson.M{
+			"$set": bson.M{
+				task.StatusKey: status,
+			},
+		},
+	)
+}
+
 func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 	service, e := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
 	s.NoError(e)
@@ -678,6 +837,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		next = service.FindNextTask(spec)
 		s.Require().NotNil(next)
 		s.Equal(fmt.Sprintf("%d", 5*i+1), next.Id)
+		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
 	}
 
 	// Dispatch the first 5 tasks for taskGroupTasks "group_2_variant_1_project_1_version_1", which represents a task group that initially contains 20 tasks.
@@ -691,6 +851,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		}
 		next = service.FindNextTask(spec)
 		s.Equal(fmt.Sprintf("%d", 5*i+2), next.Id)
+		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
 	}
 
 	// Dispatch the first 5 tasks for taskGroupTasks "group_1_variant_2_project_1_version_1", which represents a task group that initially contains 20 tasks.
@@ -704,6 +865,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		}
 		next = service.FindNextTask(spec)
 		s.Equal(fmt.Sprintf("%d", 5*i+3), next.Id)
+		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
 	}
 
 	// Dispatch the first 5 tasks for taskGroupTasks "group_1_variant_1_project_1_version_2", which represents a task group that initially contains 20 tasks.
@@ -717,6 +879,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		}
 		next = service.FindNextTask(spec)
 		s.Equal(fmt.Sprintf("%d", 5*i+4), next.Id)
+		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
 	}
 
 	// The taskGroupTasks "group_1_variant_1_project_1_version_1" now contains 15 tasks; dispatch another 5 of them.
@@ -730,6 +893,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		}
 		next = service.FindNextTask(spec)
 		s.Equal(fmt.Sprintf("%d", 5*i+26), next.Id)
+		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
 	}
 
 	//////////////////////////////////////////////////////////////////////////////
@@ -766,6 +930,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		s.Equal("project_1", next.Project)
 		s.Equal("version_1", next.Version)
 		s.Equal("project_1", next.Project)
+		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
 	}
 
 	// Make another 15 requests for a task, passing an "empty" TaskSpec{} - all 15 dispatched tasks should come from the "group_2_variant_1_project_1_version_1" taskGroupTasks.
@@ -783,6 +948,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		s.Equal("project_1", next.Project)
 		s.Equal("version_1", next.Version)
 		s.Equal("project_1", next.Project)
+		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
 	}
 
 	// Make another 15 requests for a task, passing an "empty" TaskSpec{} - all 15 dispatched tasks should come from the "group_1_variant_2_project_1_version_1" taskGroupTasks.
@@ -800,6 +966,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		s.Equal("project_1", next.Project)
 		s.Equal("version_1", next.Version)
 		s.Equal("project_1", next.Project)
+		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
 	}
 
 	// Make another 15 requests for a task, passing an "empty" TaskSpec{} - all 15 dispatched tasks should come from the "group_1_variant_1_project_1_version_2" taskGroupTasks.
@@ -817,6 +984,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		s.Equal("project_1", next.Project)
 		s.Equal("version_2", next.Version)
 		s.Equal("project_1", next.Project)
+		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
 	}
 
 	// Make another 19 requests for a task, passing an "empty" TaskSpec{} - all 19 dispatched tasks should be standalone tasks.
@@ -826,6 +994,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		next = service.FindNextTask(spec)
 		s.Equal(expectedStandaloneTaskOrder[i], next.Id)
 		s.Equal("", next.Group)
+		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
 	}
 }
 

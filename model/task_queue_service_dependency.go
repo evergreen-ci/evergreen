@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
@@ -120,100 +119,45 @@ func (d *basicCachedDAGDispatcherImpl) addEdge(fromID string, toID string, depen
 	fromNode := d.getNodeByItemID(fromID)
 	toNode := d.getNodeByItemID(toID)
 
-	// Scenario:
-	//
-	// (1) Task A completes successful and some tasks that depend_on it are still enqueued behind it.
-	// (2) Some time passes (determined by a ttl value) and a new task_queue is created.
-	// (3) As Task A completed successfully, it won't be in the new task_queue.  However, other taskQueueItems in the latest task_queue may depend_on it.
-	// (4) A Node for Task A doesn't exists in the DAG so we cannot add an edge from it.
-	// (5) Go to the cache or database and check if Task A is there?
-	// (6) If it is: has it been satisfied or overridden for Task A, making it redundant to addEdge(<from>, <to>)?
-
-	// A Node for the depends_on <from> task to be satisfied is not present in the DAG - why?
 	if fromNode == nil {
-		if _, ok := dependsOnCache[fromID]; ok {
-			return nil
-		}
+		// A Node for the "depends_on" <from> task to be satisfied is not present in the DAG - why?
+		//
+		// Maybe...
+		//
+		//	(1)	Task A completes (evergreen.TaskSucceeded, evergreen.TaskFailed) and some tasks that "depend_on" it are still enqueued behind it.
+		//			- Some time passes (determined by a ttl value) and a new task_queue is created.
+		//			- However, other taskQueueItems in the latest task_queue may "depend_on" it and it is not in the latest queue_task.
+		//			- [TBC] But, shouldn't something be settings the dependsOn._id.Unattainable = true for all tasks that "depend_on" a failed task? Is there a race condition?
+		// 	(2)	[TBC] The "dependent" <to> task is explicitly set to override its dependencies via task.OverrideDependencies
+		//	(3)	The "depends_on" <from> task is itself a "dependent" task with its own set of "depends_on" tasks to satisfy
+		// 		 	- [TBC] There is a recursion depth of 0 when generating the set of tasks ("dependent" plus "depends_on") that will comprise the task_queue to be dispatched
+		//
+		// Regardless, for now we will assume the task_finder has done the right thing and continue debugging
 
-		// Get the "dependent" <to> task from the database.
-		toTask, err := task.FindOneId(toID)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"dispatcher": "dependency-task-dispatcher",
-				"function":   "addEdge",
-				"message":    "problem finding task in db",
-				"task_id":    toID,
-				"distro_id":  d.distroID,
-			}))
-
-			return errors.Wrapf(err, "error adding edge from '%s' to '%s' - database problem while finding task '%s'", fromID, toID, toID)
-		}
-		if toTask == nil {
-			grip.Error(message.Fields{
-				"dispatcher": "dependency-task-dispatcher",
-				"function":   "addEdge",
-				"message":    "task from db not found",
-				"task_id":    toID,
-				"distro_id":  d.distroID,
-			})
-
-			return errors.Errorf("error adding edge from '%s' to '%s' - task '%s' does not exist in the database", fromID, toID, toID)
-		}
-		// Is the "dependent" <to> task explicitly ignoring its "depends_on" <from> task?
-		if toTask.OverrideDependencies {
-			return nil
-		}
-
-		// Get the "depends_on" <from> task to be satisfied from the database.
-		fromTask, err := task.FindOneId(fromID)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"dispatcher": "dependency-task-dispatcher",
-				"function":   "addEdge",
-				"message":    "problem finding task in db",
-				"task_id":    fromID,
-				"distro_id":  d.distroID,
-			}))
-
-			return errors.Wrapf(err, "error adding edge from '%s' to '%s' - database problem while finding task '%s'", fromID, toID, fromID)
-		}
-		if fromTask == nil {
-			grip.Error(message.Fields{
-				"dispatcher": "dependency-task-dispatcher",
-				"function":   "addEdge",
-				"message":    "task from db not found",
-				"task_id":    fromID,
-				"distro_id":  d.distroID,
-			})
-
-			return errors.Errorf("error adding edge from '%s' to '%s' - task '%s' does not exist in the database", fromID, toID, fromID)
-		}
-
-		if fromTask.Status == evergreen.TaskSucceeded {
-			dependsOnCache[fromID] = struct{}{}
-			return nil
-		}
-
-		// Has the "depends_on" <from> task for the "dependent" <to> task been satisfied?  If it hasn't, there is a problem.
-		if !toTask.SatisfiesDependency(fromTask) {
-			grip.Error(message.Fields{
-				"dispatcher":   "dependency-task-dispatcher",
-				"function":     "addEdge",
-				"message":      "the depends_on/from task has not be satisfied",
-				"from_task_id": fromID,
-				"to_task_id":   toID,
-				"distro_id":    d.distroID,
-			})
-
-			return errors.Errorf("error adding edge from '%s' to '%s'; a Node for taskQueueItem '%s' is not present in the DAG for distro '%s' and it's a depends_on task that has not been satisfied", fromID, toID, fromID, d.distroID)
-		}
+		grip.Info(message.Fields{
+			"dispatcher":         "dependency-task-dispatcher",
+			"function":           "addEdge",
+			"message":            "a Node for the depends_on taskQueueItem is not present in the DAG",
+			"depends_on_task_id": fromID,
+			"dependent_task_id":  toID,
+			"distro_id":          d.distroID,
+		})
 
 		return nil
 	}
 
 	// A Node for the "dependent" <to> task is not present in the DAG.
 	if toNode == nil {
-		return errors.Errorf("a Node for taskQueueItem '%s' is not present in the DAG for distro '%s'", toID, d.distroID)
+		grip.Alert(message.Fields{
+			"dispatcher":         "dependency-task-dispatcher",
+			"function":           "addEdge",
+			"message":            "a Node for the a dependent taskQueueItem is not present in the DAG",
+			"depends_on_task_id": fromID,
+			"dependent_task_id":  toID,
+			"distro_id":          d.distroID,
+		})
+
+		return errors.Errorf("a Node for the dependent taskQueueItem '%s' is not present in the DAG for distro '%s'", toID, d.distroID)
 	}
 
 	// Cannot add a self edge within the DAG!
