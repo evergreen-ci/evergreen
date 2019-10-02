@@ -627,7 +627,7 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 
 	service, err = newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
 	s.NoError(err)
-	err = service.addEdge("2", "5", nil) // There is no Node for the <to> task.Id: "5" in the task_queue.
+	err = service.addEdge("2", "5") // There is no Node for the <to> task.Id: "5" in the task_queue.
 	s.Error(err)
 	s.Contains(err.Error(), "is not present in the DAG", nil)
 

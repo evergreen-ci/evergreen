@@ -305,7 +305,7 @@ func (t *Task) IsDispatchable() bool {
 // satisfiesDependency checks a task the receiver task depends on
 // to see if its status satisfies a dependency. If the "Status" field is
 // unset, default to checking that is succeeded.
-func (t *Task) SatisfiesDependency(depTask *Task) bool {
+func (t *Task) satisfiesDependency(depTask *Task) bool {
 	for _, dep := range t.DependsOn {
 		if dep.TaskId == depTask.Id {
 			switch dep.Status {
@@ -389,7 +389,7 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 	}
 
 	for _, depTask := range deps {
-		if !t.SatisfiesDependency(&depTask) {
+		if !t.satisfiesDependency(&depTask) {
 			return false, nil
 		}
 	}
@@ -424,7 +424,7 @@ func (t *Task) AllDependenciesSatisfied(cache map[string]Task) (bool, error) {
 	}
 
 	for _, depTask := range deps {
-		if !t.SatisfiesDependency(&depTask) {
+		if !t.satisfiesDependency(&depTask) {
 			return false, nil
 		}
 	}
@@ -1750,7 +1750,7 @@ func (t *Task) BlockedState() (string, error) {
 			})
 			continue
 		}
-		if !t.SatisfiesDependency(depTask) {
+		if !t.satisfiesDependency(depTask) {
 			return evergreen.TaskStatusPending, nil
 		}
 	}

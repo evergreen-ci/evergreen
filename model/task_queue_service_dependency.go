@@ -115,7 +115,7 @@ func (d *basicCachedDAGDispatcherImpl) getNodeByItemID(id string) graph.Node {
 
 // Each node is a task and each edge definition represents a dependency: an edge (A, B) means that B depends on A.
 // There is a dependency <from> A <to> B.
-func (d *basicCachedDAGDispatcherImpl) addEdge(fromID string, toID string, dependsOnCache map[string]struct{}) error {
+func (d *basicCachedDAGDispatcherImpl) addEdge(fromID string, toID string) error {
 	fromNode := d.getNodeByItemID(fromID)
 	toNode := d.getNodeByItemID(toID)
 
@@ -220,11 +220,10 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 		sort.SliceStable(su.tasks, func(i, j int) bool { return su.tasks[i].GroupIndex < su.tasks[j].GroupIndex })
 	}
 
-	dependsOnCache := make(map[string]struct{})
 	for _, item := range items {
 		for _, dependency := range item.Dependencies {
 			// addEdge(A, B) means that B depends on A.
-			if err := d.addEdge(dependency, item.Id, dependsOnCache); err != nil {
+			if err := d.addEdge(dependency, item.Id); err != nil {
 				return errors.Wrapf(err, "failed to create in-memory task queue of TaskQueueItems for distro '%s'; error defining a DirectedGraph incorporating task dependencies", d.distroID)
 			}
 		}
