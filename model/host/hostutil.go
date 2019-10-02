@@ -8,6 +8,7 @@ import (
 	"net"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -24,6 +25,7 @@ import (
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/rpc"
 	"github.com/pkg/errors"
+	"github.com/sethvargo/go-password/password"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -273,7 +275,7 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 		}
 		params = append(params, fmt.Sprintf("--user=%s", user))
 		if h.ServicePassword != "" {
-			params = append(params, fmt.Sprintf("--password=%s", h.ServicePassword))
+			params = append(params, fmt.Sprintf("--password='%s'", h.ServicePassword))
 		}
 	} else if h.Distro.User != "" {
 		params = append(params, fmt.Sprintf("--user=%s", h.Distro.User))
@@ -523,13 +525,44 @@ func (h *Host) CreateServicePassword() error {
 	}
 	err = UpdateOne(
 		bson.M{IdKey: h.Id},
-		bson.M{"$set": bson.M{ServicePasswordKey: password}},
+		bson.M{"$set": bson.M{ServicePasswordKey: pwd}},
 	)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "could not update service password")
 	}
-	h.ServicePassword = password
+	h.ServicePassword = pwd
 	return nil
+}
+
+// each regex matches one of the 5 categories listed here:
+// https://technet.microsoft.com/en-us/library/cc786468(v=ws.10).aspx
+var passwordRegexps = []*regexp.Regexp{
+	regexp.MustCompile(`[\p{Ll}]`), // lowercase letter
+	regexp.MustCompile(`[\p{Lu}]`), // uppercase letter
+	regexp.MustCompile(`[0-9]`),
+	regexp.MustCompile(`[~!@#$%^&*_\-+=|\\\(\){}\[\]:;"'<>,.?/` + "`]"),
+	regexp.MustCompile(`[\p{Lo}]`), // letters without upper/lower variants (ex: Japanese)
+}
+
+// XXX: if modifying any of the password validation logic, you changes must
+// also be ported into public/static/js/directives/directives.spawn.js
+func ValidateRDPPassword(password string) bool {
+	// Golang regex doesn't support lookarounds, so we can't use
+	// the regex as found in public/static/js/directives/directives.spawn.js
+	if len([]rune(password)) < 6 || len([]rune(password)) > 255 {
+		return false
+	}
+
+	// valid passwords need to match 3 of 5 categories listed on:
+	// https://technet.microsoft.com/en-us/library/cc786468(v=ws.10).aspx
+	matchedCategories := 0
+	for _, regex := range passwordRegexps {
+		if regex.MatchString(password) {
+			matchedCategories++
+		}
+	}
+
+	return matchedCategories >= 3
 }
 
 // buildLocalJasperClientRequest builds the command string to a Jasper CLI to

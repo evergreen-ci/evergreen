@@ -251,9 +251,9 @@ func TestJasperCommandsWindows(t *testing.T) {
 			require.NoError(t, err)
 
 			expectedCmds := []string{
-				util.PowerShellQuotedString(writeCredentialsCmd),
-				util.PowerShellQuotedString(h.FetchJasperCommandWithPath(settings.HostJasper, "/bin")),
-				util.PowerShellQuotedString(h.ForceReinstallJasperCommand(settings)),
+				writeCredentialsCmd),
+				h.FetchJasperCommandWithPath(settings.HostJasper, "/bin"),
+				h.ForceReinstallJasperCommand(settings),
 			}
 
 			script, err := h.BootstrapScript(settings, creds, expectedPreCmds, expectedPostCmds)
