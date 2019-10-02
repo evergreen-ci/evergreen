@@ -263,7 +263,7 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function(
         baseSvc.putResource(resource, [], config, callbacks);
     };
 
-    service.terminateHost = function(action, hostId, data, callbacks) {
+    service.updateHostStatus = function(action, hostId, data, callbacks) {
         var config = {
             data: data
         };
