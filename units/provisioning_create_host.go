@@ -191,16 +191,13 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		return errors.Wrapf(errIgnorableCreateHost, "problem getting cloud provider for host '%s' [%s]", j.host.Id, err.Error())
 	}
 
-	if j.host.Status != evergreen.HostUninitialized {
-		return nil
-	}
 	// Set status temporarily to HostBuilding. Conventional hosts only stay in
 	// SpawnHost for a short period of time. Containers stay in SpawnHost for
 	// longer, since they may need to download container images and build them
 	// with the agent. This state allows intent documents to stay around until
 	// SpawnHost returns, but NOT as initializing hosts that could still be
 	// spawned by Evergreen.
-	if err = j.host.SetStatus(evergreen.HostBuilding, evergreen.User, ""); err != nil {
+	if err = j.host.SetStatusAtomically(evergreen.HostBuilding, evergreen.HostUninitialized, evergreen.User, ""); err != nil {
 		grip.Info(message.WrapError(err, message.Fields{
 			"message": "host could not be transitioned from initializing to building, so it may already be building",
 			"host":    j.host.Id,
