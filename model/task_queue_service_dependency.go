@@ -45,7 +45,7 @@ func newDistroTaskDAGDispatchService(taskQueue TaskQueue, ttl time.Duration) (*b
 	}
 
 	grip.Debug(message.Fields{
-		"dispatcher":                 "dependency-task-dispatcher",
+		"dispatcher":                 "DAG-task-dispatcher",
 		"function":                   "newDistroTaskDAGDispatchService",
 		"message":                    "initializing new basicCachedDAGDispatcherImpl for a distro",
 		"distro_id":                  d.distroID,
@@ -78,7 +78,7 @@ func (d *basicCachedDAGDispatcherImpl) Refresh() error {
 	}
 
 	grip.Debug(message.Fields{
-		"dispatcher":                 "dependency-task-dispatcher",
+		"dispatcher":                 "DAG-task-dispatcher",
 		"function":                   "Refresh",
 		"message":                    "refresh was successful",
 		"distro_id":                  d.distroID,
@@ -139,7 +139,7 @@ func (d *basicCachedDAGDispatcherImpl) addEdge(fromID string, toID string) error
 		toTask, err := task.FindOneId(toID)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"dispatcher": "dependency-task-dispatcher",
+				"dispatcher": "DAG-task-dispatcher",
 				"function":   "addEdge",
 				"message":    "problem finding task in db",
 				"task_id":    toID,
@@ -150,7 +150,7 @@ func (d *basicCachedDAGDispatcherImpl) addEdge(fromID string, toID string) error
 		}
 		if toTask == nil {
 			grip.Error(message.Fields{
-				"dispatcher": "dependency-task-dispatcher",
+				"dispatcher": "DAG-task-dispatcher",
 				"function":   "addEdge",
 				"message":    "task from db not found",
 				"task_id":    toID,
@@ -164,7 +164,7 @@ func (d *basicCachedDAGDispatcherImpl) addEdge(fromID string, toID string) error
 		fromTask, err := task.FindOneId(fromID)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"dispatcher": "dependency-task-dispatcher",
+				"dispatcher": "DAG-task-dispatcher",
 				"function":   "addEdge",
 				"message":    "problem finding task in db",
 				"task_id":    fromID,
@@ -175,7 +175,7 @@ func (d *basicCachedDAGDispatcherImpl) addEdge(fromID string, toID string) error
 		}
 		if fromTask == nil {
 			grip.Error(message.Fields{
-				"dispatcher": "dependency-task-dispatcher",
+				"dispatcher": "DAG-task-dispatcher",
 				"function":   "addEdge",
 				"message":    "task from db not found",
 				"task_id":    fromID,
@@ -186,7 +186,7 @@ func (d *basicCachedDAGDispatcherImpl) addEdge(fromID string, toID string) error
 		}
 
 		grip.Debug(message.Fields{
-			"dispatcher":                            "dependency-task-dispatcher",
+			"dispatcher":                            "DAG-task-dispatcher",
 			"function":                              "addEdge",
 			"message":                               "a Node for a depends_on taskQueueItem is not present in the DAG",
 			"dependent_task_id":                     toID,
@@ -205,7 +205,7 @@ func (d *basicCachedDAGDispatcherImpl) addEdge(fromID string, toID string) error
 	// A Node for the "dependent" <to> task is not present in the DAG.
 	if toNode == nil {
 		grip.Alert(message.Fields{
-			"dispatcher":         "dependency-task-dispatcher",
+			"dispatcher":         "DAG-task-dispatcher",
 			"function":           "addEdge",
 			"message":            "a Node for a dependent taskQueueItem is not present in the DAG",
 			"depends_on_task_id": fromID,
@@ -219,7 +219,7 @@ func (d *basicCachedDAGDispatcherImpl) addEdge(fromID string, toID string) error
 	// Cannot add a self edge within the DAG!
 	if fromNode.ID() == toNode.ID() {
 		grip.Alert(message.Fields{
-			"dispatcher": "dependency-task-dispatcher",
+			"dispatcher": "DAG-task-dispatcher",
 			"function":   "addEdge",
 			"message":    "cannot add a self edge to a Node",
 			"task_id":    fromID,
@@ -288,7 +288,7 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 	sorted, err := topo.SortStabilized(d.graph, nil)
 	if err != nil {
 		grip.Alert(message.WrapError(err, message.Fields{
-			"dispatcher":                 "dependency-task-dispatcher",
+			"dispatcher":                 "DAG-task-dispatcher",
 			"function":                   "rebuild",
 			"message":                    "problem ordering the tasks and associated dependencies within the DirectedGraph",
 			"distro_id":                  d.distroID,
@@ -327,7 +327,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 		// If the task group is not present in the task group map, it has been dispatched.
 		// Fall through to get a task that's not in that task group.
 		grip.Debug(message.Fields{
-			"dispatcher":               "dependency-task-dispatcher",
+			"dispatcher":               "DAG-task-dispatcher",
 			"function":                 "FindNextTask",
 			"message":                  "basicCachedDAGDispatcherImpl.taskGroupTasks[key] was not found - assuming it has been dispatched; falling through to try and get a task not in the current task group",
 			"key":                      taskGroupID,
@@ -361,7 +361,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 			nextTaskFromDB, err := task.FindOneId(item.Id)
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
-					"dispatcher": "dependency-task-dispatcher",
+					"dispatcher": "DAG-task-dispatcher",
 					"function":   "FindNextTask",
 					"message":    "problem finding task in db",
 					"task_id":    item.Id,
@@ -371,7 +371,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 			}
 			if nextTaskFromDB == nil {
 				grip.Error(message.Fields{
-					"dispatcher": "dependency-task-dispatcher",
+					"dispatcher": "DAG-task-dispatcher",
 					"function":   "FindNextTask",
 					"message":    "task from db not found",
 					"task_id":    item.Id,
@@ -383,7 +383,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 			dependenciesMet, err := nextTaskFromDB.DependenciesMet(dependencyCaches)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
-					"dispatcher": "dependency-task-dispatcher",
+					"dispatcher": "DAG-task-dispatcher",
 					"function":   "FindNextTask",
 					"message":    "error checking dependencies for task",
 					"outcome":    "skip and continue",
@@ -413,7 +413,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 			numHosts, err := host.NumHostsByTaskSpec(item.Group, item.BuildVariant, item.Project, item.Version)
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
-					"dispatcher": "dependency-task-dispatcher",
+					"dispatcher": "DAG-task-dispatcher",
 					"function":   "FindNextTask",
 					"message":    "problem running NumHostsByTaskSpec query - returning nil",
 					"group":      item.Group,
@@ -451,7 +451,7 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 		nextTaskFromDB, err := task.FindOneId(nextTask.Id)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"dispatcher": "dependency-task-dispatcher",
+				"dispatcher": "DAG-task-dispatcher",
 				"function":   "nextTaskGroupTask",
 				"message":    "problem finding task in db",
 				"task":       nextTask.Id,
@@ -461,7 +461,7 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 		}
 		if nextTaskFromDB == nil {
 			grip.Error(message.Fields{
-				"dispatcher": "dependency-task-dispatcher",
+				"dispatcher": "DAG-task-dispatcher",
 				"function":   "nextTaskGroupTask",
 				"message":    "task from db not found",
 				"task":       nextTask.Id,
@@ -475,7 +475,7 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 		dependenciesMet, err := nextTaskFromDB.DependenciesMet(dependencyCaches)
 		if err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
-				"dispatcher": "dependency-task-dispatcher",
+				"dispatcher": "DAG-task-dispatcher",
 				"function":   "nextTaskGroupTask",
 				"message":    "error checking dependencies for task",
 				"outcome":    "skip and continue",
