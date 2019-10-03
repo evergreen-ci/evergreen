@@ -67,6 +67,7 @@ func hostCreate() cli.Command {
 		scriptFlagName       = "script"
 		tagFlagName          = "tag"
 		instanceTypeFlagName = "type"
+		noExpireFlagName     = "no-expire"
 	)
 
 	return cli.Command{
@@ -93,6 +94,10 @@ func hostCreate() cli.Command {
 				Name:  joinFlagNames(tagFlagName, "t"),
 				Usage: "key=value pair representing an instance tag, with one pair per flag",
 			},
+			cli.BoolFlag{
+				Name:  noExpireFlagName,
+				Usage: "make host never expire",
+			},
 		},
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
@@ -101,6 +106,7 @@ func hostCreate() cli.Command {
 			fn := c.String(scriptFlagName)
 			tagSlice := c.StringSlice(tagFlagName)
 			instanceType := c.String(instanceTypeFlagName)
+			noExpire := c.Bool(noExpireFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -133,6 +139,7 @@ func hostCreate() cli.Command {
 				UserData:     script,
 				InstanceTags: tags,
 				InstanceType: instanceType,
+				NoExpiration: noExpire,
 			}
 
 			host, err := client.CreateSpawnHost(ctx, spawnRequest)

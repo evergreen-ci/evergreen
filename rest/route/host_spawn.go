@@ -36,6 +36,7 @@ type hostPostHandler struct {
 	UserData     string     `json:"userdata"`
 	InstanceTags []host.Tag `json:"instance_tags"`
 	InstanceType string     `json:"instance_type"`
+	NoExpiration bool       `json:"no_expiration"`
 
 	sc data.Connector
 }
@@ -60,6 +61,7 @@ func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 		UserData:     hph.UserData,
 		InstanceTags: hph.InstanceTags,
 		InstanceType: hph.InstanceType,
+		NoExpiration: hph.NoExpiration,
 	}
 
 	intentHost, err := hph.sc.NewIntentHost(options, user)

@@ -46,6 +46,7 @@ type SpawnOptions struct {
 	Owner            *user.DBUser
 	InstanceTags     []host.Tag
 	InstanceType     string
+	NoExpiration     bool
 }
 
 // Validate returns an instance of BadOptionsErr if the SpawnOptions object contains invalid
@@ -140,6 +141,7 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 		UserHost:           true,
 		InstanceTags:       so.InstanceTags,
 		InstanceType:       so.InstanceType,
+		NoExpiration:       so.NoExpiration,
 	}
 
 	intentHost := host.NewIntent(d, d.GenerateName(), d.Provider, hostOptions)
