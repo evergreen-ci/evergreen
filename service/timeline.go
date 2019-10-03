@@ -93,10 +93,16 @@ func (uis *UIServer) patchTimelineWrapper(author string, w http.ResponseWriter, 
 
 func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
+	projRef, err := projCtx.GetProjectRef()
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err,
+			"Error fetching project ref from context"))
+		return
+	}
 	project, err := projCtx.GetProject()
 	if err != nil || project == nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err,
-			"Error fetching project for %v", project.Identifier))
+			"Error fetching project for %v", projRef.Identifier))
 		return
 	}
 
