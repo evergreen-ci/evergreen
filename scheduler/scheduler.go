@@ -24,7 +24,7 @@ type TaskPlannerOptions struct {
 type TaskPlanner func(*distro.Distro, []task.Task, TaskPlannerOptions) ([]task.Task, error)
 
 func PrioritizeTasks(d *distro.Distro, tasks []task.Task, opts TaskPlannerOptions) ([]task.Task, error) {
-	switch d.PlannerSettings.TaskOrdering {
+	switch d.PlannerSettings.Version {
 	case evergreen.PlannerVersionTunable:
 		return runTunablePlanner(d, tasks, opts)
 	default:
