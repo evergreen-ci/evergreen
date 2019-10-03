@@ -293,8 +293,12 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error extending host expiration time"))
 			return
 		}
+		loc, err := time.LoadLocation(u.Settings.Timezone)
+		if err != nil || loc == nil {
+			loc = time.UTC
+		}
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("Host expiration successfully set to %s",
-			futureExpiration.Format(time.RFC822))))
+			futureExpiration.In(loc).Format(time.RFC822))))
 		gimlet.WriteJSON(w, "Successfully extended host expiration time")
 		return
 
