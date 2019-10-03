@@ -31,7 +31,11 @@ func LoadUserManager(authConfig evergreen.AuthConfig) (gimlet.UserManager, bool,
 		return manager, false, nil
 	}
 	if authConfig.Github != nil {
-		domain := evergreen.GetEnvironment().Settings().Ui.LoginDomain
+		var domain string
+		env := evergreen.GetEnvironment()
+		if env != nil {
+			domain = env.Settings().Ui.LoginDomain
+		}
 		manager, err = NewGithubUserManager(authConfig.Github, domain)
 		if err != nil {
 			return nil, false, errors.Wrap(err, "problem setting up github authentication")
