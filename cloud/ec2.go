@@ -600,8 +600,8 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 }
 
 // extendExpiration extends a host's expiration time by the number of hours specified
-func (m *ec2Manager) extendExpiration(ctx context.Context, h *host.Host, hours int) error {
-	return errors.Wrapf(h.SetExpirationTime(h.ExpirationTime.Add(time.Duration(hours)*time.Hour)), "error extending expiration time in db for '%s'", h.Id)
+func (m *ec2Manager) extendExpiration(ctx context.Context, h *host.Host, extension time.Duration) error {
+	return errors.Wrapf(h.SetExpirationTime(h.ExpirationTime.Add(extension), "error extending expiration time in db for '%s'", h.Id)
 }
 
 // ModifyHost modifies a spawn host according to the changes specified by a HostModifyOptions struct.
@@ -639,8 +639,8 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 	if opts.NoExpiration != nil {
 		catcher.Add(m.setNoExpiration(ctx, h, *opts.NoExpiration, resources))
 	}
-	if opts.ExpirationExtension != 0 {
-		catcher.Add(m.extendExpiration(ctx, h, opts.ExpirationExtension))
+	if opts.AddHours > 0 {
+		catcher.Add(m.extendExpiration(ctx, h, opts.AddHours))
 	}
 
 	return catcher.Resolve()

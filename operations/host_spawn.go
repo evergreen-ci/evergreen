@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/ioutil"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -224,10 +225,10 @@ func hostModify() cli.Command {
 			}
 
 			hostChanges := host.HostModifyOptions{
-				AddInstanceTags:     addTags,
-				DeleteInstanceTags:  deleteTagSlice,
-				InstanceType:        instanceType,
-				ExpirationExtension: extension,
+				AddInstanceTags:    addTags,
+				DeleteInstanceTags: deleteTagSlice,
+				InstanceType:       instanceType,
+				AddHours:           time.Duration(extension) * time.Hour,
 			}
 
 			if noExpire {

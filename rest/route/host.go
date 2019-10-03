@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -125,11 +126,11 @@ type hostModifyHandler struct {
 	hostID string
 	sc     data.Connector
 
-	AddInstanceTags     []host.Tag
-	DeleteInstanceTags  []string
-	InstanceType        string
-	NoExpiration        *bool
-	ExpirationExtension int
+	AddInstanceTags    []host.Tag
+	DeleteInstanceTags []string
+	InstanceType       string
+	NoExpiration       *bool
+	AddHours           time.Duration
 }
 
 func makeHostModifyRouteManager(sc data.Connector) gimlet.RouteHandler {
@@ -188,11 +189,11 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// Create new spawnhost modify job
 	changes := host.HostModifyOptions{
-		AddInstanceTags:     h.AddInstanceTags,
-		DeleteInstanceTags:  h.DeleteInstanceTags,
-		InstanceType:        h.InstanceType,
-		NoExpiration:        h.NoExpiration,
-		ExpirationExtension: h.ExpirationExtension,
+		AddInstanceTags:    h.AddInstanceTags,
+		DeleteInstanceTags: h.DeleteInstanceTags,
+		InstanceType:       h.InstanceType,
+		NoExpiration:       h.NoExpiration,
+		AddHours:           h.AddHours,
 	}
 	ts := util.RoundPartOfMinute(1).Format(tsFormat)
 	modifyJob := units.NewSpawnhostModifyJob(foundHost, changes, ts)

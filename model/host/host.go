@@ -233,11 +233,11 @@ type ContainersOnParents struct {
 }
 
 type HostModifyOptions struct {
-	AddInstanceTags     []Tag    // tags to add
-	DeleteInstanceTags  []string // tags to remove
-	InstanceType        string   // new instance type
-	NoExpiration        *bool    // whether host should never expire
-	ExpirationExtension int      // duration to extend expiration
+	AddInstanceTags    []Tag         // tags to add
+	DeleteInstanceTags []string      // tags to remove
+	InstanceType       string        // new instance type
+	NoExpiration       *bool         // whether host should never expire
+	AddHours           time.Duration // duration to extend expiration
 }
 
 const (
