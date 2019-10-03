@@ -611,7 +611,7 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 	}
 
 	s.Require().NoError(db.ClearCollections(task.Collection))
-	// s.Require().NoError(t1.Insert())
+	s.Require().NoError(t1.Insert())
 	s.Require().NoError(t2.Insert())
 	s.Require().NoError(t3.Insert())
 
