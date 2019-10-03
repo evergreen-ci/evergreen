@@ -1155,7 +1155,13 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 					"jasper_credentials_path": "/etc/credentials",
 					"client_dir": "/usr/bin",
 					"service_user": "service_user",
-					"shell_path": "/usr/bin/bash"
+					"shell_path": "/usr/bin/bash",
+					"resource_limits": {
+						"num_files": 1,
+						"num_processes": 2,
+						"locked_memory": 3,
+						"virtual_memory": 4
+					}
 				},
 				"clone_method": "legacy-ssh",
 				"ssh_key" : "~SSH string",
@@ -1222,6 +1228,10 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(model.ToAPIString("/etc/credentials"), apiDistro.BootstrapSettings.JasperCredentialsPath)
 	s.Equal(model.ToAPIString("service_user"), apiDistro.BootstrapSettings.ServiceUser)
 	s.Equal(model.ToAPIString("/usr/bin/bash"), apiDistro.BootstrapSettings.ShellPath)
+	s.Equal(1, apiDistro.BootstrapSettings.ResourceLimits.NumFiles)
+	s.Equal(2, apiDistro.BootstrapSettings.ResourceLimits.NumProcesses)
+	s.Equal(3, apiDistro.BootstrapSettings.ResourceLimits.LockedMemoryKB)
+	s.Equal(4, apiDistro.BootstrapSettings.ResourceLimits.VirtualMemoryKB)
 	s.Equal(apiDistro.User, model.ToAPIString("~root"))
 	s.Equal(apiDistro.SSHKey, model.ToAPIString("~SSH string"))
 	s.Equal(apiDistro.SSHOptions, []string{"~StrictHostKeyChecking=no", "~BatchMode=no", "~ConnectTimeout=10"})

@@ -317,7 +317,7 @@ func (m *monitor) createAgentProcess(ctx context.Context, retry util.RetryArgs) 
 
 	if err = util.RetryWithArgs(ctx, func() (bool, error) {
 		cmd := m.jasperClient.CreateCommand(ctx).
-			Add(agentCmdArgs).
+			Add([]string{"bash", "-l", "-c", strings.Join(agentCmdArgs, " ")}).
 			SetOutputSender(level.Info, grip.GetSender()).
 			SetErrorSender(level.Error, grip.GetSender()).
 			Environment(env).

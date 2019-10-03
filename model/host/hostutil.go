@@ -268,6 +268,21 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 		}
 	}
 
+	if os, _ := h.Distro.Platform(); os == "linux" {
+		if numProcs := h.Distro.BootstrapSettings.ResourceLimits.NumProcesses; numProcs != 0 {
+			params = append(params, fmt.Sprintf("--limit_num_procs=%d", numProcs))
+		}
+		if numFiles := h.Distro.BootstrapSettings.ResourceLimits.NumFiles; numFiles != 0 {
+			params = append(params, fmt.Sprintf("--limit_num_files=%d", numFiles))
+		}
+		if lockedMem := h.Distro.BootstrapSettings.ResourceLimits.LockedMemoryKB; lockedMem != 0 {
+			params = append(params, fmt.Sprintf("--limit_locked_memory=%d", lockedMem))
+		}
+		if virtualMem := h.Distro.BootstrapSettings.ResourceLimits.VirtualMemoryKB; virtualMem != 0 {
+			params = append(params, fmt.Sprintf("--limit_virtual_memory=%d", virtualMem))
+		}
+	}
+
 	return h.jasperServiceCommand(settings.HostJasper, jcli.ForceReinstallCommand, params...)
 }
 

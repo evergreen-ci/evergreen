@@ -42,17 +42,26 @@ type Distro struct {
 
 // BootstrapSettings encapsulates all settings related to bootstrapping hosts.
 type BootstrapSettings struct {
-	Method                string `bson:"method" json:"method" mapstructure:"method"`
-	Communication         string `bson:"communication,omitempty" json:"communication,omitempty" mapstructure:"communication,omitempty"`
-	ClientDir             string `bson:"client_dir,omitempty" json:"client_dir,omitempty" mapstructure:"client_dir,omitempty"`
-	JasperBinaryDir       string `bson:"jasper_binary_dir,omitempty" json:"jasper_binary_dir,omitempty" mapstructure:"jasper_binary_dir,omitempty"`
-	JasperCredentialsPath string `json:"jasper_credentials_path,omitempty" bson:"jasper_credentials_path,omitempty" mapstructure:"jasper_credentials_path,omitempty"`
-	ServiceUser           string `bson:"service_user,omitempty" json:"service_user,omitempty" mapstructure:"service_user,omitempty"`
-	ShellPath             string `bson:"shell_path,omitempty" json:"shell_path,omitempty" mapstructure:"shell_path,omitempty"`
+	Method                string         `bson:"method" json:"method" mapstructure:"method"`
+	Communication         string         `bson:"communication,omitempty" json:"communication,omitempty" mapstructure:"communication,omitempty"`
+	ClientDir             string         `bson:"client_dir,omitempty" json:"client_dir,omitempty" mapstructure:"client_dir,omitempty"`
+	JasperBinaryDir       string         `bson:"jasper_binary_dir,omitempty" json:"jasper_binary_dir,omitempty" mapstructure:"jasper_binary_dir,omitempty"`
+	JasperCredentialsPath string         `json:"jasper_credentials_path,omitempty" bson:"jasper_credentials_path,omitempty" mapstructure:"jasper_credentials_path,omitempty"`
+	ServiceUser           string         `bson:"service_user,omitempty" json:"service_user,omitempty" mapstructure:"service_user,omitempty"`
+	ShellPath             string         `bson:"shell_path,omitempty" json:"shell_path,omitempty" mapstructure:"shell_path,omitempty"`
+	ResourceLimits        ResourceLimits `bson:"resource_limits,omitempty" json:"resource_limits,omitempty" mapstructure:"resource_limits,omitempty"`
 }
 
-// Validate checks if all of the bootstrap settings are valid for legacy or
-// non-legacy bootstrapping.
+// ResourceLimits represents resource limits in Linux.
+type ResourceLimits struct {
+	NumFiles        int `bson:"num_files,omitempty" json:"num_files,omitempty" mapstructure:"num_files,omitempty"`
+	NumProcesses    int `bson:"num_processes,omitempty" json:"num_processes,omitempty" mapstructure:"num_processes,omitempty"`
+	LockedMemoryKB  int `bson:"locked_memory,omitempty" json:"locked_memory,omitempty" mapstructure:"locked_memory,omitempty"`
+	VirtualMemoryKB int `bson:"virtual_memory,omitempty" json:"virtual_memory,omitempty" mapstructure:"virtual_memory,omitempty"`
+}
+
+// ValidateBootstrapSettings checks if all of the bootstrap settings are valid
+// for legacy or non-legacy bootstrapping.
 func (d *Distro) ValidateBootstrapSettings() error {
 	catcher := grip.NewBasicCatcher()
 	if !util.StringSliceContains(validBootstrapMethods, d.BootstrapSettings.Method) {
@@ -93,6 +102,11 @@ func (d *Distro) ValidateBootstrapSettings() error {
 	catcher.NewWhen(d.IsWindows() && d.BootstrapSettings.ServiceUser == "", "service user cannot be empty for non-legacy Windows bootstrapping")
 
 	catcher.NewWhen(d.IsWindows() && d.BootstrapSettings.ShellPath == "", "shell path cannot be empty for non-legacy Windows bootstrapping")
+
+	catcher.NewWhen(d.IsLinux() && d.BootstrapSettings.ResourceLimits.NumFiles < -1, "max number of files should be a positive number or -1")
+	catcher.NewWhen(d.IsLinux() && d.BootstrapSettings.ResourceLimits.NumProcesses < -1, "max number of files should be a positive number or -1")
+	catcher.NewWhen(d.IsLinux() && d.BootstrapSettings.ResourceLimits.LockedMemoryKB < -1, "max locked memory should be a positive number or -1")
+	catcher.NewWhen(d.IsLinux() && d.BootstrapSettings.ResourceLimits.VirtualMemoryKB < -1, "max virtual memory should be a positive number or -1")
 
 	return catcher.Resolve()
 }
@@ -264,6 +278,10 @@ func (d *Distro) IsWindows() bool {
 	// XXX: if this is-windows check is updated, make sure to also update
 	// public/static/js/spawned_hosts.js as well
 	return strings.Contains(d.Arch, "windows")
+}
+
+func (d *Distro) IsLinux() bool {
+	return strings.Contains(d.Arch, "linux")
 }
 
 func (d *Distro) Platform() (string, string) {
