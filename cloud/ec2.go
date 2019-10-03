@@ -525,11 +525,9 @@ func (m *ec2Manager) getResources(ctx context.Context, h *host.Host) ([]string, 
 
 // addTags adds or updates the specified tags in the client and db
 func (m *ec2Manager) addTags(ctx context.Context, h *host.Host, tags []host.Tag, resources []string) error {
-	createTagSlice := []*ec2.Tag{}
-	for _, tag := range tags {
-		key := tag.Key
-		value := tag.Value
-		createTagSlice = append(createTagSlice, &ec2.Tag{Key: &key, Value: &value})
+	createTagSlice := make([]*ec2.Tag, len(tags))
+	for i := range tags {
+		createTagSlice[i] = &ec2.Tag{Key: &tags[i].Key, Value: &tags[i].Value})
 	}
 	_, err := m.client.CreateTags(ctx, &ec2.CreateTagsInput{
 		Resources: aws.StringSlice(resources),
@@ -545,10 +543,9 @@ func (m *ec2Manager) addTags(ctx context.Context, h *host.Host, tags []host.Tag,
 
 // deleteTags removes the specified tags by their keys in the client and db
 func (m *ec2Manager) deleteTags(ctx context.Context, h *host.Host, keys, resources []string) error {
-	deleteTagSlice := []*ec2.Tag{}
-	for _, delKey := range keys {
-		key := delKey
-		deleteTagSlice = append(deleteTagSlice, &ec2.Tag{Key: &key})
+	deleteTagSlice := make([]*ec2.Tag, len(keys))
+	for i := range keys {
+		deleteTagSlice[i] = &ec2.Tag{Key: &keys[i]}
 	}
 	_, err := m.client.DeleteTags(ctx, &ec2.DeleteTagsInput{
 		Resources: aws.StringSlice(resources),
@@ -583,7 +580,7 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 	_, err := m.client.CreateTags(ctx, &ec2.CreateTagsInput{
 		Resources: aws.StringSlice(resources),
 		Tags: []*ec2.Tag{
-			&ec2.Tag{
+			{
 				Key:   aws.String("expire-on"),
 				Value: aws.String(expireOnValue),
 			},

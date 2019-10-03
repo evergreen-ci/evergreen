@@ -3677,31 +3677,31 @@ func TestSetInstanceType(t *testing.T) {
 func TestCountHostsWithNoExpirationByUser(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	hosts := []Host{
-		Host{
+		{
 			Id:           "host-1",
 			Status:       evergreen.HostRunning,
 			User:         "user-1",
 			NoExpiration: true,
 		},
-		Host{
+		{
 			Id:           "host-2",
 			Status:       evergreen.HostRunning,
 			User:         "user-1",
 			NoExpiration: false,
 		},
-		Host{
+		{
 			Id:           "host-3",
 			Status:       evergreen.HostTerminated,
 			User:         "user-1",
 			NoExpiration: true,
 		},
-		Host{
+		{
 			Id:           "host-4",
 			Status:       evergreen.HostRunning,
 			User:         "user-2",
 			NoExpiration: true,
 		},
-		Host{
+		{
 			Id:           "host-5",
 			Status:       evergreen.HostStarting,
 			User:         "user-2",
@@ -3725,25 +3725,25 @@ func TestCountHostsWithNoExpirationByUser(t *testing.T) {
 func TestFindHostsWithNoExpirationToExtend(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	hosts := []Host{
-		Host{
+		{
 			Id:             "host-1",
 			Status:         evergreen.HostRunning,
 			NoExpiration:   true,
 			ExpirationTime: time.Now(),
 		},
-		Host{
+		{
 			Id:             "host-2",
 			Status:         evergreen.HostRunning,
 			NoExpiration:   false,
 			ExpirationTime: time.Now(),
 		},
-		Host{
+		{
 			Id:             "host-3",
 			Status:         evergreen.HostTerminated,
 			NoExpiration:   true,
 			ExpirationTime: time.Now(),
 		},
-		Host{
+		{
 			Id:             "host-4",
 			Status:         evergreen.HostRunning,
 			NoExpiration:   true,
