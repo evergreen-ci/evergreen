@@ -1317,6 +1317,7 @@ type APIUIConfig struct {
 	CacheTemplates bool      `json:"cache_templates"`
 	CsrfKey        APIString `json:"csrf_key"`
 	CORSOrigins    []string  `json:"cors_origins"`
+	LoginDomain    APIString `json:"login_domain"`
 }
 
 func (a *APIUIConfig) BuildFromService(h interface{}) error {
@@ -1331,6 +1332,7 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 		a.CacheTemplates = v.CacheTemplates
 		a.CsrfKey = ToAPIString(v.CsrfKey)
 		a.CORSOrigins = v.CORSOrigins
+		a.LoginDomain = ToAPIString(v.LoginDomain)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1348,6 +1350,7 @@ func (a *APIUIConfig) ToService() (interface{}, error) {
 		CacheTemplates: a.CacheTemplates,
 		CsrfKey:        FromAPIString(a.CsrfKey),
 		CORSOrigins:    a.CORSOrigins,
+		LoginDomain:    FromAPIString(a.LoginDomain),
 	}, nil
 }
 
