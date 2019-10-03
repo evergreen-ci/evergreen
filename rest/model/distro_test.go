@@ -62,6 +62,12 @@ func TestDistroToService(t *testing.T) {
 			JasperCredentialsPath: ToAPIString("/jasper_credentials_path"),
 			ServiceUser:           ToAPIString("service_user"),
 			ShellPath:             ToAPIString("/shell_path"),
+			ResourceLimits: APIResourceLimits{
+				NumFiles:        1,
+				NumProcesses:    2,
+				LockedMemoryKB:  3,
+				VirtualMemoryKB: 4,
+			},
 		},
 	}
 
@@ -79,6 +85,10 @@ func TestDistroToService(t *testing.T) {
 	assert.Equal(t, apiDistro.BootstrapSettings.JasperCredentialsPath, ToAPIString(d.BootstrapSettings.JasperCredentialsPath))
 	assert.Equal(t, apiDistro.BootstrapSettings.ServiceUser, ToAPIString(d.BootstrapSettings.ServiceUser))
 	assert.Equal(t, apiDistro.BootstrapSettings.ShellPath, ToAPIString(d.BootstrapSettings.ShellPath))
+	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.NumFiles, d.BootstrapSettings.ResourceLimits.NumFiles)
+	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.NumProcesses, d.BootstrapSettings.ResourceLimits.NumProcesses)
+	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.LockedMemoryKB, d.BootstrapSettings.ResourceLimits.LockedMemoryKB)
+	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.VirtualMemoryKB, d.BootstrapSettings.ResourceLimits.VirtualMemoryKB)
 }
 
 func TestDistroToServiceDefaults(t *testing.T) {
