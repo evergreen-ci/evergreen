@@ -115,14 +115,9 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 	} else {
 		projectID := gimlet.GetVars(r)["project_id"]
 		project, err := projCtx.GetProject()
-		if err != nil {
+		if err != nil || project == nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err,
 				"Error fetching project %v", projectID))
-			return
-		}
-		if project == nil {
-			uis.LoggedError(w, r, http.StatusNotFound, errors.Wrapf(err,
-				"Could not find project %v", projectID))
 			return
 		}
 		patches, err = patch.Find(patch.ByProject(project.Identifier).
