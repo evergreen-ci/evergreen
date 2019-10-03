@@ -194,7 +194,7 @@ func (d *basicCachedDAGDispatcherImpl) addEdge(fromID string, toID string) error
 
 	// A Node for the "dependent" <to> task is not present in the DAG.
 	if toNode == nil {
-		grip.Alert(message.Fields{
+		grip.Warning(message.Fields{
 			"dispatcher":         DAGDispatcher,
 			"function":           "addEdge",
 			"message":            "a Node for a dependent taskQueueItem is not present in the DAG",
@@ -334,8 +334,8 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 		node := d.sorted[i]
 		item := d.getItemByNodeID(node.ID()) // item is a *TaskQueueItem sourced from d.nodeItemMap, which is a map[node.ID()]*TaskQueueItem.
 
-		// TODO Consider checking if the state of any task has changed, which could unblock it.
-		// later tasks in the queue. Currently we just wait for the dispatcher to rerun.
+		// TODO Consider checking if the state of any task has changed, which could unblock later tasks in the queue.
+		// Currently, we just wait for the dispatcher's in-memory queue to refresh.
 
 		// If maxHosts is not set, this is not a task group.
 		if item.GroupMaxHosts == 0 {
