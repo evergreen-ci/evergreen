@@ -49,6 +49,16 @@ type BootstrapSettings struct {
 	JasperCredentialsPath string `json:"jasper_credentials_path,omitempty" bson:"jasper_credentials_path,omitempty" mapstructure:"jasper_credentials_path,omitempty"`
 	ServiceUser           string `bson:"service_user,omitempty" json:"service_user,omitempty" mapstructure:"service_user,omitempty"`
 	ShellPath             string `bson:"shell_path,omitempty" json:"shell_path,omitempty" mapstructure:"shell_path,omitempty"`
+	// kim: TODO: distro UI settings
+	ResourceLimits ResourceLimits `bson:"resource_limits,omitempty" json:"resource_limits,omitempty" mapstructure:"resource_limits,omitempty"`
+}
+
+// ResourceLimits represents resource limits in Linux.
+type ResourceLimits struct {
+	NumProcs        int
+	NumOpenFiles    int
+	VirtualMemoryKB int
+	MemoryLockedKB  int
 }
 
 // Validate checks if all of the bootstrap settings are valid for legacy or
