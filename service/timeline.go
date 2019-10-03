@@ -93,12 +93,6 @@ func (uis *UIServer) patchTimelineWrapper(author string, w http.ResponseWriter, 
 
 func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	project, err := projCtx.GetProject()
-	if err != nil || project == nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err,
-			"Error fetching project for %v", project.Identifier))
-		return
-	}
 
 	pageNum, err := strconv.Atoi(r.FormValue("page"))
 	if err != nil {
@@ -113,16 +107,28 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 			Project(patch.ExcludePatchDiff).
 			Sort([]string{"-" + patch.CreateTimeKey}).
 			Skip(skip).Limit(DefaultLimit))
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err,
+				"Error fetching patches for user %v", user))
+			return
+		}
 	} else {
+		projectID := gimlet.GetVars(r)["project_id"]
+		project, err := projCtx.GetProject()
+		if err != nil || project == nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err,
+				"Error fetching project %v", projectID))
+			return
+		}
 		patches, err = patch.Find(patch.ByProject(project.Identifier).
 			Sort([]string{"-" + patch.CreateTimeKey}).
 			Project(patch.ExcludePatchDiff).
 			Skip(skip).Limit(DefaultLimit))
-	}
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err,
-			"Error fetching patches for %v", project.Identifier))
-		return
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err,
+				"Error fetching patches for project %v", project.Identifier))
+			return
+		}
 	}
 
 	versionIds := make([]string, 0, len(patches))
