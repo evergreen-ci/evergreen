@@ -527,7 +527,7 @@ func (m *ec2Manager) getResources(ctx context.Context, h *host.Host) ([]string, 
 func (m *ec2Manager) addTags(ctx context.Context, h *host.Host, tags []host.Tag, resources []string) error {
 	createTagSlice := make([]*ec2.Tag, len(tags))
 	for i := range tags {
-		createTagSlice[i] = &ec2.Tag{Key: &tags[i].Key, Value: &tags[i].Value})
+		createTagSlice[i] = &ec2.Tag{Key: &tags[i].Key, Value: &tags[i].Value}
 	}
 	_, err := m.client.CreateTags(ctx, &ec2.CreateTagsInput{
 		Resources: aws.StringSlice(resources),
