@@ -21,6 +21,7 @@ type UIConfig struct {
 	CacheTemplates bool     `bson:"cache_templates" json:"cache_templates" yaml:"cachetemplates"` // Cache results of template compilation
 	CsrfKey        string   `bson:"csrf_key" json:"csrf_key" yaml:"csrfkey"`                      // 32-byte key used to generate tokens that validate UI requests
 	CORSOrigins    []string `bson:"cors_origins" json:"cors_origins" yaml:"cors_origins"`         // allowed request origins for some UI Routes
+	LoginDomain    string   `bson:"login_domain" json:"login_domain" yaml:"login_domain"`         // domain for the login cookie (defaults to domain of app)
 }
 
 func (c *UIConfig) SectionId() string { return "ui" }
@@ -62,6 +63,7 @@ func (c *UIConfig) Set() error {
 			"cache_templates":  c.CacheTemplates,
 			"csrf_key":         c.CsrfKey,
 			"cors_origins":     c.CORSOrigins,
+			"login_domain":     c.LoginDomain,
 		},
 	}, options.Update().SetUpsert(true))
 
