@@ -247,6 +247,9 @@ const (
 	InitSystemSystemd = "systemd"
 	InitSystemSysV    = "sysv"
 	InitSystemUpstart = "upstart"
+
+	// Max number of spawn hosts with no expiration for user
+	MaxSpawnhostsWithNoExpirationPerUser = 1
 )
 
 func (h *Host) GetTaskGroupString() string {

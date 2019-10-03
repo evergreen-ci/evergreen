@@ -33,6 +33,7 @@ var passwordRegexps = []*regexp.Regexp{
 const (
 	MaxSpawnHostsPerUser                = 3
 	DefaultSpawnHostExpiration          = 24 * time.Hour
+	SpawnHostNoExpirationDuration       = 7 * 24 * time.Hour
 	MaxSpawnHostExpirationDurationHours = 24 * time.Hour * 14
 )
 
@@ -134,6 +135,9 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 		OwnerId: so.Owner.Id,
 	}
 	expiration := DefaultSpawnHostExpiration
+	if so.NoExpiration {
+		expiration = SpawnHostNoExpirationDuration
+	}
 	hostOptions := host.CreateOptions{
 		ProvisionOptions:   provisionOptions,
 		UserName:           so.UserName,
