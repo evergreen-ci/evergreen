@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	jcli "github.com/mongodb/jasper/cli"
 	"github.com/mongodb/jasper/options"
@@ -260,7 +261,7 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 	if settings.Splunk.Populated() {
 		params = append(params,
 			fmt.Sprintf("--splunk_url=%s", settings.Splunk.ServerURL),
-			fmt.Sprintf("--splunk_token=%s", settings.Splunk.Token),
+			fmt.Sprintf("--splunk_token_path=%s", h.splunkTokenFilePath()),
 		)
 		if settings.Splunk.Channel != "" {
 			params = append(params, fmt.Sprintf("--splunk_channel=%s", settings.Splunk.Channel))
@@ -340,7 +341,7 @@ func (h *Host) jasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credentials, preJasperSetup, postJasperSetup []string) (string, error) {
 	bashCmds := append([]string{"set -o errexit"}, preJasperSetup...)
 
-	writeCredentialsCmd, err := h.WriteJasperCredentialsFileCommand(creds)
+	writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 	if err != nil {
 		return "", errors.Wrap(err, "could not get command to write Jasper credentials file")
 	}
@@ -497,16 +498,37 @@ func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, 
 }
 
 // WriteJasperCredentialsFileCommand builds the command to write the Jasper
-// credentials to a file.
-func (h *Host) WriteJasperCredentialsFileCommand(creds *rpc.Credentials) (string, error) {
+// credentials and Splunk credentials to files.
+func (h *Host) WriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionInfo, creds *rpc.Credentials) (string, error) {
 	if h.Distro.BootstrapSettings.JasperCredentialsPath == "" {
 		return "", errors.New("cannot write Jasper credentials without a credentials file path")
 	}
+
 	exportedCreds, err := creds.Export()
 	if err != nil {
 		return "", errors.Wrap(err, "problem exporting credentials to file format")
 	}
-	return fmt.Sprintf("mkdir -m 777 -p \"%s\" && cat > '%s' <<EOF\n%s\nEOF", filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath), h.Distro.BootstrapSettings.JasperCredentialsPath, exportedCreds), nil
+	writeFileContentCmd := func(path, content string) string {
+		return fmt.Sprintf("echo '%s' > '%s'", content, path)
+	}
+
+	cmds := []string{
+		fmt.Sprintf("mkdir -m 777 -p \"%s\"", filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath)),
+		writeFileContentCmd(h.Distro.BootstrapSettings.JasperCredentialsPath, string(exportedCreds)),
+	}
+
+	if splunk.Populated() {
+		cmds = append(cmds, writeFileContentCmd(h.splunkTokenFilePath(), splunk.Token))
+	}
+
+	return strings.Join(cmds, " && "), nil
+}
+
+func (h *Host) splunkTokenFilePath() string {
+	if h.Distro.BootstrapSettings.JasperCredentialsPath == "" {
+		return ""
+	}
+	return filepath.Join(filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath), "splunk.txt")
 }
 
 // RunJasperProcess makes a request to the host's Jasper service to create the

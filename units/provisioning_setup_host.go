@@ -314,7 +314,7 @@ func (j *setupHostJob) setupJasper(ctx context.Context, settings *evergreen.Sett
 		return errors.Wrap(err, "error setting up service user")
 	}
 
-	if err := j.putJasperCredentials(ctx, sshOptions); err != nil {
+	if err := j.putJasperCredentials(ctx, settings, sshOptions); err != nil {
 		return errors.Wrap(err, "error putting Jasper credentials on remote host")
 	}
 
@@ -334,13 +334,13 @@ func (j *setupHostJob) setupJasper(ctx context.Context, settings *evergreen.Sett
 
 // putJasperCredentials creates Jasper credentials for the host and puts the
 // credentials file on the host.
-func (j *setupHostJob) putJasperCredentials(ctx context.Context, sshOptions []string) error {
+func (j *setupHostJob) putJasperCredentials(ctx context.Context, settings *evergreen.Settings, sshOptions []string) error {
 	creds, err := j.host.GenerateJasperCredentials(ctx)
 	if err != nil {
 		return errors.Wrap(err, "could not generate Jasper credentials for host")
 	}
 
-	writeCmd, err := j.host.WriteJasperCredentialsFileCommand(creds)
+	writeCmd, err := j.host.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 	if err != nil {
 		return errors.Wrap(err, "could not get command to write Jasper credentials file")
 	}
