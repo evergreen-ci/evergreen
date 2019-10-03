@@ -28,136 +28,136 @@ func TestTaskDAGDispatchServiceSuite(t *testing.T) {
 	suite.Run(t, new(taskDAGDispatchServiceSuite))
 }
 
-// func (s *taskDAGDispatchServiceSuite) TestRealWorldExample() {
-// 	s.Require().NoError(db.ClearCollections(task.Collection))
-// 	s.Require().NoError(db.ClearCollections(host.Collection))
-//
-// 	// db.tasks.find({"build_id": "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10"}).pretty()
-//
-// 	t1 := task.Task{
-// 		Id:                  "genny_archlinux_t_cmake_test_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
-// 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
-// 		TaskGroup:           "tg_compile_and_test",
-// 		TaskGroupMaxHosts:   1,
-// 		TaskGroupOrder:      4,
-// 		StartTime:           time.Unix(0, 0),
-// 		BuildVariant:        "archlinux",
-// 		Version:             "5d8cd23da4cf4747f4210333",
-// 		Project:             "genny",
-// 		Activated:           false,
-// 		ActivatedBy:         "",
-// 		DistroId:            "archlinux-test",
-// 		Requester:           "github_pull_request",
-// 		Status:              evergreen.TaskUndispatched,
-// 		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
-// 		RevisionOrderNumber: 261,
-// 		DisplayName:         "t_cmake_test",
-// 		DependsOn: []task.Dependency{
-// 			task.Dependency{
-// 				TaskId:       "genny_archlinux_t_compile_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
-// 				Status:       "success",
-// 				Unattainable: false,
-// 			},
-// 			task.Dependency{
-// 				TaskId:       "genny_archlinux_t_python_test_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
-// 				Status:       "success",
-// 				Unattainable: false,
-// 			},
-// 			task.Dependency{
-// 				TaskId:       "genny_archlinux_t_lint_workloads_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
-// 				Status:       "success",
-// 				Unattainable: false,
-// 			},
-// 		},
-// 	}
-//
-// 	t2 := task.Task{
-// 		Id:                  "genny_archlinux_t_compile_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
-// 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
-// 		TaskGroup:           "tg_compile_and_test",
-// 		TaskGroupMaxHosts:   1,
-// 		TaskGroupOrder:      1,
-// 		StartTime:           time.Unix(0, 0),
-// 		BuildVariant:        "archlinux",
-// 		Version:             "5d8cd23da4cf4747f4210333",
-// 		Project:             "genny",
-// 		Activated:           false,
-// 		ActivatedBy:         "",
-// 		DistroId:            "archlinux-test",
-// 		Requester:           "github_pull_request",
-// 		Status:              evergreen.TaskUndispatched,
-// 		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
-// 		RevisionOrderNumber: 261,
-// 		DisplayName:         "t_compile",
-// 		DependsOn:           []task.Dependency{},
-// 	}
-//
-// 	t3 := task.Task{
-// 		Id:                  "genny_archlinux_t_lint_workloads_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
-// 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
-// 		TaskGroup:           "tg_compile_and_test",
-// 		TaskGroupMaxHosts:   1,
-// 		TaskGroupOrder:      3,
-// 		StartTime:           time.Unix(0, 0),
-// 		BuildVariant:        "archlinux",
-// 		Version:             "5d8cd23da4cf4747f4210333",
-// 		Project:             "genny",
-// 		Activated:           false,
-// 		ActivatedBy:         "",
-// 		DistroId:            "archlinux-test",
-// 		Requester:           "github_pull_request",
-// 		Status:              evergreen.TaskUndispatched,
-// 		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
-// 		RevisionOrderNumber: 261,
-// 		DisplayName:         "t_lint_workloads",
-// 		DependsOn: []task.Dependency{
-// 			task.Dependency{
-// 				TaskId:       "genny_archlinux_t_compile_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
-// 				Status:       "success",
-// 				Unattainable: false,
-// 			},
-// 			task.Dependency{
-// 				TaskId:       "genny_archlinux_t_python_test_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
-// 				Status:       "success",
-// 				Unattainable: false,
-// 			},
-// 		},
-// 	}
-//
-// 	t4 := task.Task{
-// 		Id:                  "genny_archlinux_t_python_test_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
-// 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
-// 		TaskGroup:           "tg_compile_and_test",
-// 		TaskGroupMaxHosts:   1,
-// 		TaskGroupOrder:      2,
-// 		StartTime:           time.Unix(0, 0),
-// 		BuildVariant:        "archlinux",
-// 		Version:             "5d8cd23da4cf4747f4210333",
-// 		Project:             "genny",
-// 		Activated:           false,
-// 		ActivatedBy:         "",
-// 		DistroId:            "archlinux-test",
-// 		Requester:           "github_pull_request",
-// 		Status:              evergreen.TaskUndispatched,
-// 		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
-// 		RevisionOrderNumber: 261,
-// 		DisplayName:         "",
-// 		DependsOn: []task.Dependency{
-// 			task.Dependency{
-// 				TaskId:       "genny_archlinux_t_compile_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
-// 				Status:       "success",
-// 				Unattainable: false,
-// 			},
-// 		},
-// 	}
-//
-// 	s.Require().NoError(t1.Insert())
-// 	s.Require().NoError(t2.Insert())
-// 	s.Require().NoError(t3.Insert())
-// 	s.Require().NoError(t4.Insert())
-//
-// 	// 	> db.tasks.find({"build_id": "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10"},{"task_group": 1, "task_group_order": 1, "depends_on": 1}).pretty()
-// }
+func (s *taskDAGDispatchServiceSuite) TestRealWorldExample() {
+	s.Require().NoError(db.ClearCollections(task.Collection))
+	s.Require().NoError(db.ClearCollections(host.Collection))
+
+	// db.tasks.find({"build_id": "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10"}).pretty()
+
+	t1 := task.Task{
+		Id:                  "genny_archlinux_t_cmake_test_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+		TaskGroup:           "tg_compile_and_test",
+		TaskGroupMaxHosts:   1,
+		TaskGroupOrder:      4,
+		StartTime:           time.Unix(0, 0),
+		BuildVariant:        "archlinux",
+		Version:             "5d8cd23da4cf4747f4210333",
+		Project:             "genny",
+		Activated:           false,
+		ActivatedBy:         "",
+		DistroId:            "archlinux-test",
+		Requester:           "github_pull_request",
+		Status:              evergreen.TaskUndispatched,
+		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		RevisionOrderNumber: 261,
+		DisplayName:         "t_cmake_test",
+		DependsOn: []task.Dependency{
+			task.Dependency{
+				TaskId:       "genny_archlinux_t_compile_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+				Status:       "success",
+				Unattainable: false,
+			},
+			task.Dependency{
+				TaskId:       "genny_archlinux_t_python_test_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+				Status:       "success",
+				Unattainable: false,
+			},
+			task.Dependency{
+				TaskId:       "genny_archlinux_t_lint_workloads_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+				Status:       "success",
+				Unattainable: false,
+			},
+		},
+	}
+
+	t2 := task.Task{
+		Id:                  "genny_archlinux_t_compile_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+		TaskGroup:           "tg_compile_and_test",
+		TaskGroupMaxHosts:   1,
+		TaskGroupOrder:      1,
+		StartTime:           time.Unix(0, 0),
+		BuildVariant:        "archlinux",
+		Version:             "5d8cd23da4cf4747f4210333",
+		Project:             "genny",
+		Activated:           false,
+		ActivatedBy:         "",
+		DistroId:            "archlinux-test",
+		Requester:           "github_pull_request",
+		Status:              evergreen.TaskUndispatched,
+		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		RevisionOrderNumber: 261,
+		DisplayName:         "t_compile",
+		DependsOn:           []task.Dependency{},
+	}
+
+	t3 := task.Task{
+		Id:                  "genny_archlinux_t_lint_workloads_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+		TaskGroup:           "tg_compile_and_test",
+		TaskGroupMaxHosts:   1,
+		TaskGroupOrder:      3,
+		StartTime:           time.Unix(0, 0),
+		BuildVariant:        "archlinux",
+		Version:             "5d8cd23da4cf4747f4210333",
+		Project:             "genny",
+		Activated:           false,
+		ActivatedBy:         "",
+		DistroId:            "archlinux-test",
+		Requester:           "github_pull_request",
+		Status:              evergreen.TaskUndispatched,
+		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		RevisionOrderNumber: 261,
+		DisplayName:         "t_lint_workloads",
+		DependsOn: []task.Dependency{
+			task.Dependency{
+				TaskId:       "genny_archlinux_t_compile_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+				Status:       "success",
+				Unattainable: false,
+			},
+			task.Dependency{
+				TaskId:       "genny_archlinux_t_python_test_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+				Status:       "success",
+				Unattainable: false,
+			},
+		},
+	}
+
+	t4 := task.Task{
+		Id:                  "genny_archlinux_t_python_test_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+		TaskGroup:           "tg_compile_and_test",
+		TaskGroupMaxHosts:   1,
+		TaskGroupOrder:      2,
+		StartTime:           time.Unix(0, 0),
+		BuildVariant:        "archlinux",
+		Version:             "5d8cd23da4cf4747f4210333",
+		Project:             "genny",
+		Activated:           false,
+		ActivatedBy:         "",
+		DistroId:            "archlinux-test",
+		Requester:           "github_pull_request",
+		Status:              evergreen.TaskUndispatched,
+		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		RevisionOrderNumber: 261,
+		DisplayName:         "",
+		DependsOn: []task.Dependency{
+			task.Dependency{
+				TaskId:       "genny_archlinux_t_compile_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+				Status:       "success",
+				Unattainable: false,
+			},
+		},
+	}
+
+	s.Require().NoError(t1.Insert())
+	s.Require().NoError(t2.Insert())
+	s.Require().NoError(t3.Insert())
+	s.Require().NoError(t4.Insert())
+
+	// 	> db.tasks.find({"build_id": "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10"},{"task_group": 1, "task_group_order": 1, "depends_on": 1}).pretty()
+}
 
 func (s *taskDAGDispatchServiceSuite) SetupTest() {
 	s.Require().NoError(db.ClearCollections(task.Collection))
