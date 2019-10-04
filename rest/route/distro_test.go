@@ -1090,7 +1090,7 @@ func (s *DistroPatchByIDSuite) TestRunValidNonLegacyBootstrapSettings() {
 			"jasper_binary_dir": "/jasper_binary_dir",
 			"jasper_credentials_path": "/jasper_credentials_path",
 			"shell_path": "/shell_path",
-			"root_dir": "/root_dir",
+			"root_dir": "/root_dir"
 		}}`,
 		distro.BootstrapMethodUserData, distro.CommunicationMethodSSH))
 	h := s.rm.(*distroIDPatchHandler)
