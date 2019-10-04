@@ -202,56 +202,6 @@ func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*ja
 	return output.String(), errors.Wrap(err, "error running SSH command")
 }
 
-// RunSSHShellScript runs a shell script on a remote host over SSH.
-func (h *Host) RunSSHShellScript(ctx context.Context, script string, sshOptions []string) (string, error) {
-	env := evergreen.GetEnvironment()
-	hostInfo, err := h.GetSSHInfo()
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-
-	output := &util.CappedWriter{
-		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024, // 1MB
-	}
-
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, sshTimeout)
-	defer cancel()
-
-	err = env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
-		ExtendRemoteArgs("-p", hostInfo.Port, "-t", "-t").ExtendRemoteArgs(sshOptions...).
-		SetCombinedWriter(output).
-		ShellScript("bash", script).Run(ctx)
-
-	return output.String(), errors.Wrap(err, "error running shell script")
-}
-
-// RunSSHShellScript runs a shell script on a remote host over SSH.
-func (h *Host) RunSSHShellScript(ctx context.Context, script string, sshOptions []string) (string, error) {
-	env := evergreen.GetEnvironment()
-	hostInfo, err := h.GetSSHInfo()
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-
-	output := &util.CappedWriter{
-		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024, // 1MB
-	}
-
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, sshTimeout)
-	defer cancel()
-
-	err = env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
-		ExtendRemoteArgs("-p", hostInfo.Port, "-t", "-t").ExtendRemoteArgs(sshOptions...).
-		SetCombinedWriter(output).
-		ShellScript("bash", script).Run(ctx)
-
-	return output.String(), errors.Wrap(err, "error running shell script")
-}
-
 // InitSystem determines the current Linux init system used by this host.
 func (h *Host) InitSystem(ctx context.Context, sshOptions []string) (string, error) {
 	logs, err := h.RunSSHCommand(ctx, initSystemCommand(), sshOptions)
@@ -314,7 +264,7 @@ func (h *Host) FetchAndReinstallJasperCommand(settings *evergreen.Settings) stri
 func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string {
 	params := []string{"--host=0.0.0.0", fmt.Sprintf("--port=%d", settings.HostJasper.Port)}
 	if h.Distro.BootstrapSettings.JasperCredentialsPath != "" {
-		params = append(params, fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
+		params = append(params, fmt.Sprintf("--creds_path=%s", filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.JasperCredentialsPath)))
 	}
 
 	if user := h.Distro.BootstrapSettings.ServiceUser; user != "" {
