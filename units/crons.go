@@ -1022,7 +1022,7 @@ func PopulateCacheHistoricalTestDataJob(part int) amboy.QueueOperation {
 
 func PopulateSpawnhostExpirationCheckJob() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		hosts, err := host.FindHostsWithNoExpirationToExtend()
+		hosts, err := host.FindSpawnhostsWithNoExpirationToExtend()
 		if err != nil {
 			return err
 		}

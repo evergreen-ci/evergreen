@@ -524,12 +524,16 @@ func (m *ec2Manager) getResources(ctx context.Context, h *host.Host) ([]string, 
 }
 
 // addTags adds or updates the specified tags in the client and db
-func (m *ec2Manager) addTags(ctx context.Context, h *host.Host, tags []host.Tag, resources []string) error {
+func (m *ec2Manager) addTags(ctx context.Context, h *host.Host, tags []host.Tag) error {
+	resources, err := m.getResources(ctx, h)
+	if err != nil {
+		return errors.Wrap(err, "error getting host resources")
+	}
 	createTagSlice := make([]*ec2.Tag, len(tags))
 	for i := range tags {
 		createTagSlice[i] = &ec2.Tag{Key: &tags[i].Key, Value: &tags[i].Value}
 	}
-	_, err := m.client.CreateTags(ctx, &ec2.CreateTagsInput{
+	_, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
 		Resources: aws.StringSlice(resources),
 		Tags:      createTagSlice,
 	})
@@ -542,12 +546,16 @@ func (m *ec2Manager) addTags(ctx context.Context, h *host.Host, tags []host.Tag,
 }
 
 // deleteTags removes the specified tags by their keys in the client and db
-func (m *ec2Manager) deleteTags(ctx context.Context, h *host.Host, keys, resources []string) error {
+func (m *ec2Manager) deleteTags(ctx context.Context, h *host.Host, keys []string) error {
+	resources, err := m.getResources(ctx, h)
+	if err != nil {
+		return errors.Wrap(err, "error getting host resources")
+	}
 	deleteTagSlice := make([]*ec2.Tag, len(keys))
 	for i := range keys {
 		deleteTagSlice[i] = &ec2.Tag{Key: &keys[i]}
 	}
-	_, err := m.client.DeleteTags(ctx, &ec2.DeleteTagsInput{
+	_, err = m.client.DeleteTags(ctx, &ec2.DeleteTagsInput{
 		Resources: aws.StringSlice(resources),
 		Tags:      deleteTagSlice,
 	})
@@ -575,9 +583,13 @@ func (m *ec2Manager) setInstanceType(ctx context.Context, h *host.Host, instance
 }
 
 // setNoExpiration changes whether a host should expire
-func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpiration bool, resources []string) error {
+func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpiration bool) error {
+	resources, err := m.getResources(ctx, h)
+	if err != nil {
+		return errors.Wrap(err, "error getting host resources")
+	}
 	expireOnValue := expireInDays(spawnHostExpireDays)
-	_, err := m.client.CreateTags(ctx, &ec2.CreateTagsInput{
+	_, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
 		Resources: aws.StringSlice(resources),
 		Tags: []*ec2.Tag{
 			{
@@ -612,11 +624,6 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 	}
 	defer m.client.Close()
 
-	resources, err := m.getResources(ctx, h)
-	if err != nil {
-		return errors.Wrapf(err, "error getting resources for host '%s'", h.Id)
-	}
-
 	// Validate modify options for user errors that should prevent all modifications
 	if err := validateEC2HostModifyOptions(h, opts); err != nil {
 		return errors.Wrap(err, "error validating EC2 host modify options")
@@ -628,13 +635,13 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 		catcher.Add(m.setInstanceType(ctx, h, opts.InstanceType))
 	}
 	if len(opts.DeleteInstanceTags) > 0 {
-		catcher.Add(m.deleteTags(ctx, h, opts.DeleteInstanceTags, resources))
+		catcher.Add(m.deleteTags(ctx, h, opts.DeleteInstanceTags))
 	}
 	if len(opts.AddInstanceTags) > 0 {
-		catcher.Add(m.addTags(ctx, h, opts.AddInstanceTags, resources))
+		catcher.Add(m.addTags(ctx, h, opts.AddInstanceTags))
 	}
 	if opts.NoExpiration != nil {
-		catcher.Add(m.setNoExpiration(ctx, h, *opts.NoExpiration, resources))
+		catcher.Add(m.setNoExpiration(ctx, h, *opts.NoExpiration))
 	}
 	if opts.AddHours > 0 {
 		catcher.Add(m.extendExpiration(ctx, h, opts.AddHours))

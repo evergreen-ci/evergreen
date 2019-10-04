@@ -58,7 +58,7 @@ func (hph *hostPostHandler) Parse(ctx context.Context, r *http.Request) error {
 func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 
-	count, err := host.CountHostsWithNoExpirationByUser(user.Id)
+	count, err := host.CountSpawnhostsWithNoExpirationByUser(user.Id)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error counting number of existing non-expiring hosts for '%s'", user.Id))
 	}

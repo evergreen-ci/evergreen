@@ -1759,21 +1759,22 @@ func (h *Host) SetInstanceType(instanceType string) error {
 	return nil
 }
 
-// CountHostsWithNoExpirationByUser returns a count of all hosts associated
+// CountSpawnhostsWithNoExpirationByUser returns a count of all hosts associated
 // with a given users that are considered up and should never expire.
-func CountHostsWithNoExpirationByUser(user string) (int, error) {
+func CountSpawnhostsWithNoExpirationByUser(user string) (int, error) {
 	query := db.Query(bson.M{
-		UserKey:         user,
+		StartedByKey:    user,
 		NoExpirationKey: true,
 		StatusKey:       bson.M{"$in": evergreen.UpHostStatus},
 	})
 	return Count(query)
 }
 
-// FindHostsWithNoExpirationToExtend returns all hosts that are set to never
+// FindSpawnhostsWithNoExpirationToExtend returns all hosts that are set to never
 // expire but have their expiration time within the next day and are still up.
-func FindHostsWithNoExpirationToExtend() ([]Host, error) {
+func FindSpawnhostsWithNoExpirationToExtend() ([]Host, error) {
 	query := db.Query(bson.M{
+		UserHostKey:       true,
 		NoExpirationKey:   true,
 		StatusKey:         bson.M{"$in": evergreen.UpHostStatus},
 		ExpirationTimeKey: bson.M{"$lte": time.Now().Add(24 * time.Hour)},

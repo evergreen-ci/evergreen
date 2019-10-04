@@ -179,7 +179,7 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// Limit number of spawn hosts allowed with no expiration
-	count, err := host.CountHostsWithNoExpirationByUser(user.Id)
+	count, err := host.CountSpawnhostsWithNoExpirationByUser(user.Id)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error counting number of existing non-expiring hosts for '%s'", user.Id))
 	}
