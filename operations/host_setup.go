@@ -70,6 +70,7 @@ func runScript(ctx context.Context, wd, scriptFileName, tempFileName string, run
 
 	out, err = runScript.CombinedOutput()
 	catcher.Add(err)
+	catcher.Add(os.Remove(tempFileName))
 
 	grip.Warning(os.MkdirAll(wd, 0777))
 

@@ -166,10 +166,10 @@ func (s *APIBootstrapSettings) BuildFromService(h interface{}) error {
 	s.ShellPath = ToAPIString(settings.ShellPath)
 	s.RootDir = ToAPIString(settings.RootDir)
 
-	s.ResourceLimits.NumFiles = s.ResourceLimits.NumFiles
-	s.ResourceLimits.NumProcesses = s.ResourceLimits.NumProcesses
-	s.ResourceLimits.LockedMemoryKB = s.ResourceLimits.LockedMemoryKB
-	s.ResourceLimits.VirtualMemoryKB = s.ResourceLimits.VirtualMemoryKB
+	s.ResourceLimits.NumFiles = settings.ResourceLimits.NumFiles
+	s.ResourceLimits.NumProcesses = settings.ResourceLimits.NumProcesses
+	s.ResourceLimits.LockedMemoryKB = settings.ResourceLimits.LockedMemoryKB
+	s.ResourceLimits.VirtualMemoryKB = settings.ResourceLimits.VirtualMemoryKB
 
 	return nil
 }
