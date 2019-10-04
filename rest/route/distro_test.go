@@ -1091,8 +1091,8 @@ func (s *DistroPatchByIDSuite) TestRunValidNonLegacyBootstrapSettings() {
 			"jasper_credentials_path": "/jasper_credentials_path",
 			"shell_path": "/shell_path",
 			"root_dir": "/root_dir"
-		}}`,
-		distro.BootstrapMethodUserData, distro.CommunicationMethodSSH))
+		}
+	}`, distro.BootstrapMethodUserData, distro.CommunicationMethodSSH))
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
 	h.body = json
@@ -1102,13 +1102,13 @@ func (s *DistroPatchByIDSuite) TestRunValidNonLegacyBootstrapSettings() {
 	s.Equal(http.StatusOK, resp.Status())
 	apiDistro, ok := (resp.Data()).(*model.APIDistro)
 	s.Require().True(ok)
-	s.Equal(distro.BootstrapMethodUserData, apiDistro.BootstrapSettings.Method)
-	s.Equal(distro.CommunicationMethodSSH, apiDistro.BootstrapSettings.Communication)
-	s.Equal("/client_dir", apiDistro.BootstrapSettings.ClientDir)
-	s.Equal("/jasper_binary_dir", apiDistro.BootstrapSettings.JasperBinaryDir)
-	s.Equal("/jasper_credentials_path", apiDistro.BootstrapSettings.JasperCredentialsPath)
-	s.Equal("/shell_path", apiDistro.BootstrapSettings.ShellPath)
-	s.Equal("/root_dir", apiDistro.BootstrapSettings.RootDir)
+	s.Equal(model.ToAPIString(distro.BootstrapMethodUserData), apiDistro.BootstrapSettings.Method)
+	s.Equal(model.ToAPIString(distro.CommunicationMethodSSH), apiDistro.BootstrapSettings.Communication)
+	s.Equal(model.ToAPIString("/client_dir"), apiDistro.BootstrapSettings.ClientDir)
+	s.Equal(model.ToAPIString("/jasper_binary_dir"), apiDistro.BootstrapSettings.JasperBinaryDir)
+	s.Equal(model.ToAPIString("/jasper_credentials_path"), apiDistro.BootstrapSettings.JasperCredentialsPath)
+	s.Equal(model.ToAPIString("/shell_path"), apiDistro.BootstrapSettings.ShellPath)
+	s.Equal(model.ToAPIString("/root_dir"), apiDistro.BootstrapSettings.RootDir)
 }
 
 func (s *DistroPatchByIDSuite) TestRunValidCloneMethod() {
