@@ -25,6 +25,7 @@ func init() {
 
 type spawnhostExpirationCheckJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
+	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
 
 	host *host.Host
 	env  evergreen.Environment
@@ -43,40 +44,43 @@ func makeSpawnhostExpirationCheckJob() *spawnhostExpirationCheckJob {
 	return j
 }
 
-func NewSpawnhostExpirationCheckJob(ts string) amboy.Job {
+func NewSpawnhostExpirationCheckJob(ts string, h *host.Host) amboy.Job {
 	j := makeSpawnhostExpirationCheckJob()
 	j.SetID(fmt.Sprintf("%s.%s", spawnhostExpirationCheckName, ts))
+	j.HostID = h.Id
 	return j
 }
 
 func (j *spawnhostExpirationCheckJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
+	var err error
 
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	hostsToExtend, err := host.FindHostsWithNoExpirationToExtend()
-	if err != nil {
-		j.AddError(err)
-		return
-	}
-
-	hostsByManager := cloud.GroupHostsByManager(hostsToExtend)
-	for mgrOpts, hosts := range hostsByManager {
-		cloudManager, err := cloud.GetManager(ctx, mgrOpts, j.env.Settings())
+	if j.host == nil {
+		j.host, err = host.FindOneId(j.HostID)
 		if err != nil {
-			j.AddError(errors.Wrap(err, "error getting cloud manager for spawnhost expiration check job"))
+			j.AddError(errors.Wrapf(err, "error getting host '%s' in spawnhost expiration check job", j.HostID))
 			return
 		}
-		for _, h := range hosts {
-			noExpiration := true
-			if err := cloudManager.ModifyHost(ctx, &h, host.HostModifyOptions{NoExpiration: &noExpiration}); err != nil {
-				j.AddError(errors.Wrap(err, "error extending spawnhost expiration using cloud manager"))
-				return
-			}
-		}
+	}
 
+	mgrOpts := cloud.ManagerOpts{
+		Provider: j.host.Provider,
+		Region:   cloud.GetRegion(j.host.Distro),
+	}
+
+	cloudManager, err := cloud.GetManager(ctx, mgrOpts, j.env.Settings())
+	if err != nil {
+		j.AddError(errors.Wrapf(err, "error getting cloud manager for host '%s' in spawnhost expiration check job", j.HostID))
+		return
+	}
+	noExpiration := true
+	if err := cloudManager.ModifyHost(ctx, j.host, host.HostModifyOptions{NoExpiration: &noExpiration}); err != nil {
+		j.AddError(errors.Wrapf(err, "error extending expiration for spawn host '%s' using cloud manager", j.HostID))
+		return
 	}
 
 	return

@@ -1022,8 +1022,18 @@ func PopulateCacheHistoricalTestDataJob(part int) amboy.QueueOperation {
 
 func PopulateSpawnhostExpirationCheckJob() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		ts := util.RoundPartOfHour(0).Format(tsFormat)
-		return queue.Put(ctx, NewSpawnhostExpirationCheckJob(ts))
+		hosts, err := host.FindHostsWithNoExpirationToExtend()
+		if err != nil {
+			return err
+		}
+
+		catcher := grip.NewBasicCatcher()
+		for _, h := range hosts {
+			ts := util.RoundPartOfHour(0).Format(tsFormat)
+			catcher.Add(queue.Put(ctx, NewSpawnhostExpirationCheckJob(ts, &h)))
+		}
+
+		return catcher.Resolve()
 	}
 }
 
