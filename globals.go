@@ -146,9 +146,11 @@ const (
 
 	DegradedLoggingPercent = 10
 
-	SetupScriptName     = "setup.sh"
-	TempSetupScriptName = "setup-temp.sh"
-	TeardownScriptName  = "teardown.sh"
+	SetupScriptName               = "setup.sh"
+	TempSetupScriptName           = "setup-temp.sh"
+	PowerShellSetupScriptName     = "setup.ps1"
+	PowerShellTempSetupScriptName = "setup-temp.ps1"
+	TeardownScriptName            = "teardown.sh"
 
 	RoutePaginatorNextPageHeaderKey = "Link"
 

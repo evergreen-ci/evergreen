@@ -277,9 +277,9 @@ func (d *Distro) MaxDurationPerHost() time.Duration {
 	return evergreen.MaxDurationPerDistroHost
 }
 
-// PowerShellSetup returns whether or not the setup script is a powershell
+// IsPowerShellSetup returns whether or not the setup script is a powershell
 // script.
-func (d *Distro) PowerShellSetup() bool {
+func (d *Distro) IsPowerShellSetup() bool {
 	script := bytes.NewBufferString(d.Setup)
 	header, err := script.ReadString('\n')
 	grip.WarningWhen(err != nil, message.WrapError(err, message.Fields{
