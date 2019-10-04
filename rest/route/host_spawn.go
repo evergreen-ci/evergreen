@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -52,6 +53,15 @@ func (hph *hostPostHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
+	env := evergreen.GetEnvironment()
+
+	d, err := distro.FindOne(distro.ById(hph.Distro))
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error finding distro '%s'", hph.Distro))
+	}
+	if err = checkInstanceTypeValid(d.Provider, hph.InstanceType, env.Settings()); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Invalid host create request"))
+	}
 
 	options := &model.HostRequestOptions{
 		DistroID:     hph.Distro,

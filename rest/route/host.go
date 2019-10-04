@@ -121,6 +121,9 @@ func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 //
 // PATCH /rest/v2/hosts/{host_id}
 
+// ***NOTE*** hostModifyHandler should be moved to rest/route/host_spawn.go to
+// 			  be with the other handlers that only deal with spawn hosts.
+
 type hostModifyHandler struct {
 	hostID string
 	sc     data.Connector
@@ -165,14 +168,17 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.hostID))
 	}
 
-	// Check if tags are valid
-	if err := validateTags(foundHost, h.AddInstanceTags, h.DeleteInstanceTags); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Invalid tag modifications"))
+	// Validate host modify request
+	catcher := grip.NewBasicCatcher()
+	if len(h.AddInstanceTags) > 0 || len(h.DeleteInstanceTags) > 0 {
+		catcher.Add(checkInstanceTagsCanBeModified(foundHost, h.AddInstanceTags, h.DeleteInstanceTags))
 	}
-
-	// Ensure instance type changes only requested for stopped hosts
-	if h.InstanceType != "" && foundHost.Status != evergreen.HostStopped {
-		return gimlet.MakeJSONErrorResponder(errors.New("Host must be stopped to modify instance type"))
+	if h.InstanceType != "" {
+		catcher.Add(checkInstanceTypeHostStopped(foundHost))
+		catcher.Add(checkInstanceTypeValid(foundHost.Provider, h.InstanceType, env.Settings()))
+	}
+	if catcher.HasErrors() {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "Invalid host modify request"))
 	}
 
 	// Create new spawnhost modify job
@@ -190,8 +196,8 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
-// validateTags checks whether the tags to be modified allow modifications.
-func validateTags(h *host.Host, toAdd []host.Tag, toDelete []string) error {
+// checkInstanceTagsCanBeModified checks whether the tags to be modified allow modifications.
+func checkInstanceTagsCanBeModified(h *host.Host, toAdd []host.Tag, toDelete []string) error {
 	catcher := grip.NewBasicCatcher()
 	current := make(map[string]host.Tag)
 	for _, tag := range h.InstanceTags {
@@ -215,6 +221,27 @@ func validateTags(h *host.Host, toAdd []host.Tag, toDelete []string) error {
 		}
 	}
 	return catcher.Resolve()
+}
+
+// checkInstanceTypeValid checks whether the instance type is allowed by provider config
+func checkInstanceTypeValid(providerName, instanceType string, s *evergreen.Settings) error {
+	switch providerName {
+	case evergreen.ProviderNameEc2OnDemand:
+		for _, allowedType := range s.Providers.AWS.AllowedInstanceTypes {
+			if instanceType == allowedType {
+				return nil
+			}
+		}
+	}
+	return errors.Errorf("'%s' is not a valid instance type for provider '%s'", instanceType, providerName)
+}
+
+// checkInstanceTypeHostStopped checks whether a host is stopped before modifying an instance type
+func checkInstanceTypeHostStopped(h *host.Host) error {
+	if h.Status != evergreen.HostStopped {
+		return errors.New("cannot modify instance type for non-stopped host")
+	}
+	return nil
 }
 
 ////////////////////////////////////////////////////////////////////////
