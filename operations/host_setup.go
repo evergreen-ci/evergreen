@@ -50,7 +50,7 @@ func runSetupScript(ctx context.Context, wd string, setupAsSudo bool) error {
 		return runScript(ctx, wd, evergreen.SetupScriptName, evergreen.TempSetupScriptName, cmd, setupAsSudo)
 	} else if _, err = os.Stat(evergreen.PowerShellSetupScriptName); err == nil {
 		cmd := exec.CommandContext(ctx, "powershell", "./"+evergreen.PowerShellTempSetupScriptName)
-		return runScript(ctx, wd, evergreen.PowerShellSetupScriptName, evergreen.PowerShellTempSetupScriptName, cmd, sudo)
+		return runScript(ctx, wd, evergreen.PowerShellSetupScriptName, evergreen.PowerShellTempSetupScriptName, cmd, setupAsSudo)
 	}
 	return nil
 }
@@ -59,6 +59,7 @@ func runScript(ctx context.Context, wd, scriptFileName, tempFileName string, run
 	if err := os.Rename(scriptFileName, tempFileName); os.IsNotExist(err) {
 		return nil
 	}
+
 	chmod := host.ChmodCommandWithSudo(ctx, tempFileName, sudo)
 	out, err := chmod.CombinedOutput()
 	if err != nil {
