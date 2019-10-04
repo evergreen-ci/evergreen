@@ -35,11 +35,13 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	dbUser := MustHaveUser(r)
 
 	data := struct {
-		Description string   `json:"desc"`
-		Project     string   `json:"project"`
-		Patch       string   `json:"patch"`
-		Githash     string   `json:"githash"`
-		Variants    string   `json:"buildvariants"`
+		Description string `json:"desc"`
+		Project     string `json:"project"`
+		Patch       string `json:"patch"`
+		Githash     string `json:"githash"`
+		// kim: TODO: remove
+		// Variants    string `json:"buildvariants"`
+		Variants    []string `json:"buildvariants"`
 		Tasks       []string `json:"tasks"`
 		Finalize    bool     `json:"finalize"`
 		Alias       string   `json:"alias"`
@@ -53,7 +55,8 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("Patch is too large"))
 		return
 	}
-	variants := strings.Split(data.Variants, ",")
+	// kim: TODO: remove
+	// variants := strings.Split(data.Variants, ",")
 
 	pref, err := model.FindOneProjectRef(data.Project)
 	if err != nil {
@@ -74,7 +77,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	intent, err := patch.NewCliIntent(dbUser.Id, data.Project, data.Githash, r.FormValue("module"), data.Patch, data.Description, data.Finalize, variants, data.Tasks, data.Alias)
+	intent, err := patch.NewCliIntent(dbUser.Id, data.Project, data.Githash, r.FormValue("module"), data.Patch, data.Description, data.Finalize, data.Variants, data.Tasks, data.Alias)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
