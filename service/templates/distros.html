@@ -110,11 +110,6 @@ Evergreen - Distros
               <div class="icon fa fa-warning distro-error" ng-show="form.workDir.$dirty && form.workDir.$error.required || form.workDir.$invalid">Working
                 Directory is required</div>
             </div>
-            <div>
-              <label class="distro-label">Root Directory:</label>
-              <input required name="rootDir" type="text" class="form-control" ng-model="activeDistro.root_dir"
-                placeholder="Native path to file system root directory" ng-readonly="readOnly">
-            </div>
           </div>
           <br>
           <div class="panel-body panel panel-default">
@@ -676,13 +671,15 @@ Evergreen - Distros
               ng-readonly="readOnly" name="serviceUser"
               class="form-control" ng-model="activeDistro.bootstrap_settings.service_user" placeholder="Username for setting up Evergreen services">
             <div class="icon fa fa-warning distro-error" ng-show="form.serviceUser.$invalid"> Service user is required</div><br />
-          </div>
-          <div ng-show="isWindows() && isNonLegacyProvisioning()">
             <label class="distro-label">Shell Path:</label>
             <input type="text" ng-required="isWindows() && isNonLegacyProvisioning()"
               ng-readonly="readOnly" name="shellPath"
               class="form-control" ng-model="activeDistro.bootstrap_settings.shell_path" placeholder="Absolute native path to the shell binary file (bash)">
             <div class="icon fa fa-warning distro-error" ng-show="form.shellPath.$invalid"> Shell path is required</div><br />
+            <label class="distro-label">Root Directory:</label>
+            <input required name="rootDir" type="text" class="form-control" ng-model="activeDistro.bootstrap_settings.root_dir"
+              placeholder="Native path to root directory" ng-readonly="readOnly">
+            <div class="icon fa fa-warning distro-error" ng-show="form.rootDir.$invalid"> Shell path is required</div><br />
           </div>
           <div ng-show="isLinux() && isNonLegacyProvisioning()">
 			<label class="distro-label">Resource Limits:</label><br />

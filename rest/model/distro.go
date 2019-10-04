@@ -127,6 +127,7 @@ type APIBootstrapSettings struct {
 	JasperCredentialsPath APIString         `json:"jasper_credentials_path"`
 	ServiceUser           APIString         `json:"service_user"`
 	ShellPath             APIString         `json:"shell_path"`
+	RootDir               APIString         `json:"root_dir"`
 	ResourceLimits        APIResourceLimits `json:"resource_limits"`
 }
 
@@ -163,6 +164,12 @@ func (s *APIBootstrapSettings) BuildFromService(h interface{}) error {
 	s.JasperCredentialsPath = ToAPIString(settings.JasperCredentialsPath)
 	s.ServiceUser = ToAPIString(settings.ServiceUser)
 	s.ShellPath = ToAPIString(settings.ShellPath)
+	s.RootDir = ToAPIString(settings.RootDir)
+
+	s.ResourceLimits.NumFiles = s.ResourceLimits.NumFiles
+	s.ResourceLimits.NumProcesses = s.ResourceLimits.NumProcesses
+	s.ResourceLimits.LockedMemoryKB = s.ResourceLimits.LockedMemoryKB
+	s.ResourceLimits.VirtualMemoryKB = s.ResourceLimits.VirtualMemoryKB
 
 	return nil
 }
@@ -184,6 +191,7 @@ func (s *APIBootstrapSettings) ToService() (interface{}, error) {
 	settings.JasperCredentialsPath = FromAPIString(s.JasperCredentialsPath)
 	settings.ServiceUser = FromAPIString(s.ServiceUser)
 	settings.ShellPath = FromAPIString(s.ShellPath)
+	settings.RootDir = FromAPIString(s.RootDir)
 
 	settings.ResourceLimits.NumFiles = s.ResourceLimits.NumFiles
 	settings.ResourceLimits.NumProcesses = s.ResourceLimits.NumProcesses
@@ -206,7 +214,6 @@ type APIDistro struct {
 	ImageID           APIString              `json:"image_id"`
 	Arch              APIString              `json:"arch"`
 	WorkDir           APIString              `json:"work_dir"`
-	RootDir           APIString              `json:"root_dir"`
 	PoolSize          int                    `json:"pool_size"`
 	SetupAsSudo       bool                   `json:"setup_as_sudo"`
 	Setup             APIString              `json:"setup"`
@@ -252,7 +259,6 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	}
 	apiDistro.Arch = ToAPIString(d.Arch)
 	apiDistro.WorkDir = ToAPIString(d.WorkDir)
-	apiDistro.RootDir = ToAPIString(d.RootDir)
 	apiDistro.PoolSize = d.PoolSize
 	apiDistro.SetupAsSudo = d.SetupAsSudo
 	apiDistro.Setup = ToAPIString(d.Setup)
@@ -302,7 +308,6 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d.Aliases = apiDistro.Aliases
 	d.Arch = FromAPIString(apiDistro.Arch)
 	d.WorkDir = FromAPIString(apiDistro.WorkDir)
-	d.RootDir = FromAPIString(apiDistro.RootDir)
 	d.PoolSize = apiDistro.PoolSize
 	d.Provider = FromAPIString(apiDistro.Provider)
 	if apiDistro.ProviderSettings != nil {

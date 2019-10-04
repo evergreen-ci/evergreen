@@ -583,7 +583,6 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 				Id:       "fedora8",
 				Arch:     "linux_amd64",
 				WorkDir:  "/data/mci",
-				RootDir:  "/root/dir",
 				PoolSize: 30,
 				Provider: "mock",
 				ProviderSettings: &map[string]interface{}{
@@ -729,22 +728,6 @@ func (s *DistroPatchByIDSuite) TestRunValidWorkDir() {
 	apiDistro, ok := (resp.Data()).(*model.APIDistro)
 	s.Require().True(ok)
 	s.Equal(apiDistro.WorkDir, model.ToAPIString("/tmp"))
-}
-
-func (s *DistroPatchByIDSuite) TestRunValidRootDir() {
-	ctx := context.Background()
-	json := []byte(`{"root_dir": "/new/root/dir"}`)
-	h := s.rm.(*distroIDPatchHandler)
-	h.distroID = "fedora8"
-	h.body = json
-
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
-
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
-	s.Require().True(ok)
-	s.Equal(apiDistro.RootDir, model.ToAPIString("/new/root/dir"))
 }
 
 func (s *DistroPatchByIDSuite) TestRunValidPoolSize() {
@@ -1100,10 +1083,15 @@ func (s *DistroPatchByIDSuite) TestRunMissingNonLegacyBootstrapSettings() {
 func (s *DistroPatchByIDSuite) TestRunValidNonLegacyBootstrapSettings() {
 	ctx := context.Background()
 	json := []byte(fmt.Sprintf(
-		`{"bootstrap_settings": {"method": "%s", "communication": "%s",
-		  "client_dir": "/client_dir", "jasper_binary_dir": "/jasper_binary_dir",
-		  "jasper_credentials_path": "/jasper_credentials_path", "shell_path": "/shell_path"}
-	     }`,
+		`{"bootstrap_settings": {
+			"method": "%s",
+			"communication": "%s",
+			"client_dir": "/client_dir",
+			"jasper_binary_dir": "/jasper_binary_dir",
+			"jasper_credentials_path": "/jasper_credentials_path",
+			"shell_path": "/shell_path",
+			"root_dir": "/root_dir",
+		}}`,
 		distro.BootstrapMethodUserData, distro.CommunicationMethodSSH))
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -1112,6 +1100,15 @@ func (s *DistroPatchByIDSuite) TestRunValidNonLegacyBootstrapSettings() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(http.StatusOK, resp.Status())
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
+	s.Equal(distro.BootstrapMethodUserData, apiDistro.BootstrapSettings.Method)
+	s.Equal(distro.CommunicationMethodSSH, apiDistro.BootstrapSettings.Communication)
+	s.Equal("/client_dir", apiDistro.BootstrapSettings.ClientDir)
+	s.Equal("/jasper_binary_dir", apiDistro.BootstrapSettings.JasperBinaryDir)
+	s.Equal("/jasper_credentials_path", apiDistro.BootstrapSettings.JasperCredentialsPath)
+	s.Equal("/shell_path", apiDistro.BootstrapSettings.ShellPath)
+	s.Equal("/root_dir", apiDistro.BootstrapSettings.RootDir)
 }
 
 func (s *DistroPatchByIDSuite) TestRunValidCloneMethod() {
@@ -1148,7 +1145,6 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 		`{
 				"arch" : "linux_amd64",
 				"work_dir" : "~/data/mci",
-				"root_dir" : "/new/root/dir",
 				"pool_size" : 20,
 				"provider" : "mock",
 				"settings" : {
@@ -1174,6 +1170,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 					"client_dir": "/usr/bin",
 					"service_user": "service_user",
 					"shell_path": "/usr/bin/bash",
+					"root_dir" : "/new/root/dir",
 					"resource_limits": {
 						"num_files": 1,
 						"num_processes": 2,
@@ -1223,7 +1220,6 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(apiDistro.Disabled, false)
 	s.Equal(apiDistro.Name, model.ToAPIString("fedora8"))
 	s.Equal(apiDistro.WorkDir, model.ToAPIString("~/data/mci"))
-	s.Equal(apiDistro.RootDir, model.ToAPIString("/new/root/dir"))
 	s.Equal(apiDistro.PoolSize, 20)
 	s.Equal(apiDistro.Provider, model.ToAPIString("mock"))
 
@@ -1247,6 +1243,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(model.ToAPIString("/etc/credentials"), apiDistro.BootstrapSettings.JasperCredentialsPath)
 	s.Equal(model.ToAPIString("service_user"), apiDistro.BootstrapSettings.ServiceUser)
 	s.Equal(model.ToAPIString("/usr/bin/bash"), apiDistro.BootstrapSettings.ShellPath)
+	s.Equal(model.ToAPIString("/new/root/dir"), apiDistro.BootstrapSettings.RootDir)
 	s.Equal(1, apiDistro.BootstrapSettings.ResourceLimits.NumFiles)
 	s.Equal(2, apiDistro.BootstrapSettings.ResourceLimits.NumProcesses)
 	s.Equal(3, apiDistro.BootstrapSettings.ResourceLimits.LockedMemoryKB)
@@ -1288,7 +1285,6 @@ func getMockDistrosConnector() *data.MockConnector {
 					Id:       "fedora8",
 					Arch:     "linux_amd64",
 					WorkDir:  "/data/mci",
-					RootDir:  "/root/dir",
 					PoolSize: 30,
 					Provider: "mock",
 					ProviderSettings: &map[string]interface{}{

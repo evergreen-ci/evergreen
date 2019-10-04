@@ -21,7 +21,6 @@ type Distro struct {
 	Aliases           []string                `bson:"aliases,omitempty" json:"aliases,omitempty" mapstructure:"aliases,omitempty"`
 	Arch              string                  `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
 	WorkDir           string                  `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
-	RootDir           string                  `bson:"root_dir,omitempty" json:"root_dir,omitempty" mapstructure:"root_dir,omitempty"`
 	Provider          string                  `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
 	ProviderSettings  *map[string]interface{} `bson:"settings" json:"settings,omitempty" mapstructure:"settings,omitempty"`
 	SetupAsSudo       bool                    `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`
@@ -45,14 +44,22 @@ type Distro struct {
 
 // BootstrapSettings encapsulates all settings related to bootstrapping hosts.
 type BootstrapSettings struct {
-	Method                string         `bson:"method" json:"method" mapstructure:"method"`
-	Communication         string         `bson:"communication,omitempty" json:"communication,omitempty" mapstructure:"communication,omitempty"`
-	ClientDir             string         `bson:"client_dir,omitempty" json:"client_dir,omitempty" mapstructure:"client_dir,omitempty"`
-	JasperBinaryDir       string         `bson:"jasper_binary_dir,omitempty" json:"jasper_binary_dir,omitempty" mapstructure:"jasper_binary_dir,omitempty"`
-	JasperCredentialsPath string         `json:"jasper_credentials_path,omitempty" bson:"jasper_credentials_path,omitempty" mapstructure:"jasper_credentials_path,omitempty"`
-	ServiceUser           string         `bson:"service_user,omitempty" json:"service_user,omitempty" mapstructure:"service_user,omitempty"`
-	ShellPath             string         `bson:"shell_path,omitempty" json:"shell_path,omitempty" mapstructure:"shell_path,omitempty"`
-	ResourceLimits        ResourceLimits `bson:"resource_limits,omitempty" json:"resource_limits,omitempty" mapstructure:"resource_limits,omitempty"`
+	// Required
+	Method        string `bson:"method" json:"method" mapstructure:"method"`
+	Communication string `bson:"communication,omitempty" json:"communication,omitempty" mapstructure:"communication,omitempty"`
+
+	// Required for new provisioning
+	ClientDir             string `bson:"client_dir,omitempty" json:"client_dir,omitempty" mapstructure:"client_dir,omitempty"`
+	JasperBinaryDir       string `bson:"jasper_binary_dir,omitempty" json:"jasper_binary_dir,omitempty" mapstructure:"jasper_binary_dir,omitempty"`
+	JasperCredentialsPath string `json:"jasper_credentials_path,omitempty" bson:"jasper_credentials_path,omitempty" mapstructure:"jasper_credentials_path,omitempty"`
+
+	// Windows-specific
+	ServiceUser string `bson:"service_user,omitempty" json:"service_user,omitempty" mapstructure:"service_user,omitempty"`
+	ShellPath   string `bson:"shell_path,omitempty" json:"shell_path,omitempty" mapstructure:"shell_path,omitempty"`
+	RootDir     string `bson:"root_dir,omitempty" json:"root_dir,omitempty" mapstructure:"root_dir,omitempty"`
+
+	// Linux-specific
+	ResourceLimits ResourceLimits `bson:"resource_limits,omitempty" json:"resource_limits,omitempty" mapstructure:"resource_limits,omitempty"`
 }
 
 // ResourceLimits represents resource limits in Linux.

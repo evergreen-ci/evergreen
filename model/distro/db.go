@@ -25,7 +25,6 @@ var (
 	BootstrapSettingsKey = bsonutil.MustHaveTag(Distro{}, "BootstrapSettings")
 	CloneMethodKey       = bsonutil.MustHaveTag(Distro{}, "CloneMethod")
 	WorkDirKey           = bsonutil.MustHaveTag(Distro{}, "WorkDir")
-	RootDirKey           = bsonutil.MustHaveTag(Distro{}, "RootDir")
 	SpawnAllowedKey      = bsonutil.MustHaveTag(Distro{}, "SpawnAllowed")
 	ExpansionsKey        = bsonutil.MustHaveTag(Distro{}, "Expansions")
 	DisabledKey          = bsonutil.MustHaveTag(Distro{}, "Disabled")
@@ -43,6 +42,7 @@ var (
 	BootstrapSettingsJasperCredentialsPathKey = bsonutil.MustHaveTag(BootstrapSettings{}, "JasperCredentialsPath")
 	BootstrapSettingsServiceUserKey           = bsonutil.MustHaveTag(BootstrapSettings{}, "ServiceUser")
 	BootstrapSettingsShellPathKey             = bsonutil.MustHaveTag(BootstrapSettings{}, "ShellPath")
+	BootstrapSettingsRootDirKey               = bsonutil.MustHaveTag(BootstrapSettings{}, "RootDir")
 	BootstrapSettingsResourceLimitsKey        = bsonutil.MustHaveTag(BootstrapSettings{}, "ResourceLimits")
 
 	ResourceLimitsNumFilesKey        = bsonutil.MustHaveTag(ResourceLimits{}, "NumFiles")
