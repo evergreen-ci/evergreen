@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
@@ -250,9 +251,9 @@ func TestJasperCommandsWindows(t *testing.T) {
 			require.NoError(t, err)
 
 			expectedCmds := []string{
-				writeCredentialsCmd,
-				h.FetchJasperCommandWithPath(settings.HostJasper, "/bin"),
-				h.ForceReinstallJasperCommand(settings),
+				util.PowerShellQuotedString(writeCredentialsCmd),
+				util.PowerShellQuotedString(h.FetchJasperCommandWithPath(settings.HostJasper, "/bin")),
+				util.PowerShellQuotedString(h.ForceReinstallJasperCommand(settings)),
 			}
 
 			script, err := h.BootstrapScript(settings, creds, expectedPreCmds, expectedPostCmds)

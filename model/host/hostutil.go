@@ -202,6 +202,56 @@ func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*ja
 	return output.String(), errors.Wrap(err, "error running SSH command")
 }
 
+// RunSSHShellScript runs a shell script on a remote host over SSH.
+func (h *Host) RunSSHShellScript(ctx context.Context, script string, sshOptions []string) (string, error) {
+	env := evergreen.GetEnvironment()
+	hostInfo, err := h.GetSSHInfo()
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	output := &util.CappedWriter{
+		Buffer:   &bytes.Buffer{},
+		MaxBytes: 1024 * 1024, // 1MB
+	}
+
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, sshTimeout)
+	defer cancel()
+
+	err = env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
+		ExtendRemoteArgs("-p", hostInfo.Port, "-t", "-t").ExtendRemoteArgs(sshOptions...).
+		SetCombinedWriter(output).
+		ShellScript("bash", script).Run(ctx)
+
+	return output.String(), errors.Wrap(err, "error running shell script")
+}
+
+// RunSSHShellScript runs a shell script on a remote host over SSH.
+func (h *Host) RunSSHShellScript(ctx context.Context, script string, sshOptions []string) (string, error) {
+	env := evergreen.GetEnvironment()
+	hostInfo, err := h.GetSSHInfo()
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	output := &util.CappedWriter{
+		Buffer:   &bytes.Buffer{},
+		MaxBytes: 1024 * 1024, // 1MB
+	}
+
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, sshTimeout)
+	defer cancel()
+
+	err = env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
+		ExtendRemoteArgs("-p", hostInfo.Port, "-t", "-t").ExtendRemoteArgs(sshOptions...).
+		SetCombinedWriter(output).
+		ShellScript("bash", script).Run(ctx)
+
+	return output.String(), errors.Wrap(err, "error running shell script")
+}
+
 // InitSystem determines the current Linux init system used by this host.
 func (h *Host) InitSystem(ctx context.Context, sshOptions []string) (string, error) {
 	logs, err := h.RunSSHCommand(ctx, initSystemCommand(), sshOptions)
@@ -500,8 +550,28 @@ SeServiceLogonRight = $($currentSetting)
 
 // CreateServicePassword creates the password for the host's service user.
 func (h *Host) CreateServicePassword() error {
-	password := util.RandomString()
-	err := UpdateOne(
+	var pwd string
+	var err error
+	var valid bool
+	for i := 0; i < 10; i++ {
+		generator, err := password.NewGenerator(&password.GeneratorInput{
+			Symbols: "~!@#$%^&*",
+		})
+		if err != nil {
+			return errors.Wrap(err, "could not initialize password generator")
+		}
+		pwd, err = generator.Generate(12, 3, 3, false, false)
+		if err != nil {
+			return errors.Wrap(err, "problem generating password")
+		}
+		if valid = ValidateRDPPassword(pwd); valid {
+			break
+		}
+	}
+	if !valid {
+		return errors.New("could not generate valid service password")
+	}
+	err = UpdateOne(
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{ServicePasswordKey: password}},
 	)

@@ -16,6 +16,7 @@ import (
 	"github.com/google/shlex"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
@@ -157,6 +158,10 @@ func (opts *Create) resolveRemote(env []string) {
 	remoteCmd += strings.Join(opts.Args, " ")
 
 	opts.Args = append(append([]string{"ssh"}, opts.RemoteInfo.Args...), opts.RemoteInfo.String(), remoteCmd)
+	grip.Info(message.Fields{
+		"message": "kim: resolve SSH command to run",
+		"args":    opts.Args,
+	})
 }
 
 // Resolve creates the command object according to the create options. It

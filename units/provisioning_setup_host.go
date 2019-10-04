@@ -356,6 +356,14 @@ func (j *setupHostJob) putJasperCredentials(ctx context.Context, settings *everg
 		"job":     j.ID(),
 	})
 
+	grip.Info(message.Fields{
+		"message": "kim: made cmds to write credentials",
+		"host":    j.host.Id,
+		"distro":  j.host.Distro.Id,
+		"job":     j.ID(),
+		"cmds":    writeCmds,
+	})
+
 	ctx, cancel := context.WithTimeout(ctx, scpTimeout)
 	defer cancel()
 
