@@ -1,7 +1,6 @@
 package distro
 
 import (
-	"bytes"
 	"fmt"
 	"math/rand"
 	"path/filepath"
@@ -12,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -285,15 +283,18 @@ func (d *Distro) MaxDurationPerHost() time.Duration {
 }
 
 // IsPowerShellSetup returns whether or not the setup script is a powershell
-// script.
+// script based on the header shebang line.
 func (d *Distro) IsPowerShellSetup() bool {
-	script := bytes.NewBufferString(d.Setup)
-	header, err := script.ReadString('\n')
-	grip.WarningWhen(err != nil, message.WrapError(err, message.Fields{
-		"message": "setup script does not specify which shell should execute the script",
-		"distro":  d.Id,
-	}))
-	return strings.Contains(header, "powershell")
+	start := strings.Index(d.Setup, "#!")
+	if start == -1 {
+		return false
+	}
+	end := strings.IndexByte(d.Setup[start:], '\n')
+	if end == -1 {
+		return false
+	}
+	end += start
+	return strings.Contains(d.Setup[start:end], "powershell")
 }
 
 func (d *Distro) IsWindows() bool {
