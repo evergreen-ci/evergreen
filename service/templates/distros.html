@@ -679,7 +679,7 @@ Evergreen - Distros
             <label class="distro-label">Root Directory:</label>
             <input required name="rootDir" type="text" class="form-control" ng-model="activeDistro.bootstrap_settings.root_dir"
               placeholder="Native path to root directory" ng-readonly="readOnly">
-            <div class="icon fa fa-warning distro-error" ng-show="form.rootDir.$invalid"> Shell path is required</div><br />
+            <div class="icon fa fa-warning distro-error" ng-show="form.rootDir.$invalid"> Root directory is required</div><br />
           </div>
           <div ng-show="isLinux() && isNonLegacyProvisioning()">
 			<label class="distro-label">Resource Limits:</label><br />
