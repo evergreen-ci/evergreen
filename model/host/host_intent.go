@@ -24,6 +24,7 @@ type CreateOptions struct {
 	DockerOptions         DockerOptions
 	InstanceTags          []Tag
 	InstanceType          string
+	NoExpiration          bool
 }
 
 // NewIntent creates an IntentHost using the given host settings. An IntentHost is a host that

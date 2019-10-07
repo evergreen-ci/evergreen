@@ -34,6 +34,7 @@ var passwordRegexps = []*regexp.Regexp{
 const (
 	MaxSpawnHostsPerUser                = 3
 	DefaultSpawnHostExpiration          = 24 * time.Hour
+	SpawnHostNoExpirationDuration       = 7 * 24 * time.Hour
 	MaxSpawnHostExpirationDurationHours = 24 * time.Hour * 14
 )
 
@@ -47,6 +48,7 @@ type SpawnOptions struct {
 	Owner            *user.DBUser
 	InstanceTags     []host.Tag
 	InstanceType     string
+	NoExpiration     bool
 }
 
 // Validate returns an instance of BadOptionsErr if the SpawnOptions object contains invalid
@@ -134,6 +136,9 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 		OwnerId: so.Owner.Id,
 	}
 	expiration := DefaultSpawnHostExpiration
+	if so.NoExpiration {
+		expiration = SpawnHostNoExpirationDuration
+	}
 	hostOptions := host.CreateOptions{
 		ProvisionOptions:   provisionOptions,
 		UserName:           so.UserName,
@@ -141,6 +146,7 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 		UserHost:           true,
 		InstanceTags:       so.InstanceTags,
 		InstanceType:       so.InstanceType,
+		NoExpiration:       so.NoExpiration,
 	}
 
 	intentHost := host.NewIntent(d, d.GenerateName(), d.Provider, hostOptions)

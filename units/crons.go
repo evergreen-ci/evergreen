@@ -838,10 +838,11 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 				// frequently, lets not start too many all at
 				// once.
 
-				break
+				continue
 			}
 
 			catcher.Add(queue.Put(ctx, NewHostCreateJob(env, h, ts, 1, 0, false)))
+			submitted++
 		}
 
 		return catcher.Resolve()
@@ -1014,6 +1015,23 @@ func PopulateCacheHistoricalTestDataJob(part int) amboy.QueueOperation {
 			}
 
 			catcher.Add(queue.Put(ctx, NewCacheHistoricalTestDataJob(project.Identifier, ts)))
+		}
+
+		return catcher.Resolve()
+	}
+}
+
+func PopulateSpawnhostExpirationCheckJob() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		hosts, err := host.FindSpawnhostsWithNoExpirationToExtend()
+		if err != nil {
+			return err
+		}
+
+		catcher := grip.NewBasicCatcher()
+		for _, h := range hosts {
+			ts := util.RoundPartOfHour(0).Format(tsFormat)
+			catcher.Add(queue.Put(ctx, NewSpawnhostExpirationCheckJob(ts, &h)))
 		}
 
 		return catcher.Resolve()

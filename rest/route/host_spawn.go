@@ -31,6 +31,10 @@ func makeSpawnHostCreateRoute(sc data.Connector) gimlet.RouteHandler {
 	}
 }
 
+const (
+	MaxSpawnhostsWithNoExpiration = 1
+)
+
 type hostPostHandler struct {
 	Task         string     `json:"task_id"`
 	Distro       string     `json:"distro"`
@@ -38,6 +42,7 @@ type hostPostHandler struct {
 	UserData     string     `json:"userdata"`
 	InstanceTags []host.Tag `json:"instance_tags"`
 	InstanceType string     `json:"instance_type"`
+	NoExpiration bool       `json:"no_expiration"`
 
 	sc data.Connector
 }
@@ -67,6 +72,14 @@ func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
+	count, err := host.CountSpawnhostsWithNoExpirationByUser(user.Id)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error counting number of existing non-expiring hosts for '%s'", user.Id))
+	}
+	if hph.NoExpiration && count >= host.MaxSpawnhostsWithNoExpirationPerUser {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "cannot create any more non-expiring spawn hosts for '%s'", user.Id))
+	}
+
 	options := &model.HostRequestOptions{
 		DistroID:     hph.Distro,
 		TaskID:       hph.Task,
@@ -74,6 +87,7 @@ func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 		UserData:     hph.UserData,
 		InstanceTags: hph.InstanceTags,
 		InstanceType: hph.InstanceType,
+		NoExpiration: hph.NoExpiration,
 	}
 
 	intentHost, err := hph.sc.NewIntentHost(options, user)
