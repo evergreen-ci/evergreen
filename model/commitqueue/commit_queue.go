@@ -38,9 +38,10 @@ func (i *CommitQueueItem) MarshalBSON() ([]byte, error)  { return mgobson.Marsha
 func (i *CommitQueueItem) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, i) }
 
 type CommitQueue struct {
-	ProjectID  string            `bson:"_id"`
-	Processing bool              `bson:"processing"`
-	Queue      []CommitQueueItem `bson:"queue,omitempty"`
+	ProjectID             string            `bson:"_id"`
+	Processing            bool              `bson:"processing"`
+	ProcessingUpdatedTime time.Time         `bson:"processing_updated_time"`
+	Queue                 []CommitQueueItem `bson:"queue,omitempty"`
 }
 
 func (q *CommitQueue) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(q) }
