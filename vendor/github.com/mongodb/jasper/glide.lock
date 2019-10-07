@@ -25,8 +25,8 @@ imports:
     version: 6f45313302b9c56850fc17f99e40caebce98c716
   - name: github.com/urfave/cli
     version: 693af58b4d51b8fcc7f9d89576da170765980581
-  - name: github.com/kardianos/service
-    version: fffe6c52ed0fd8653543bbe72432dbf6ea02f300
+  - name: github.com/evergreen-ci/service
+    version: 82d35dc013454d62290efe84c5df82378f4a68ec
   - name: github.com/cheynewallace/tabby
     version: b7224f6123093cc04ce961170a360e1d22e214a5
   - name: github.com/evergreen-ci/aviation
@@ -35,6 +35,8 @@ imports:
     version: 8e1b763add73034cb803b88f1fdd17438e2b7891
   - name: github.com/tychoish/mongorpc
     version: 3c204a3ee0bd5ba72fdcd8ab0baa779adf879951
+  - name: github.com/evergreen-ci/timber
+    version: d8ccb7cbe151e1466a7be084342653363a1be500
 
   # cgroup requirements
   - name: github.com/containerd/cgroups
@@ -63,3 +65,7 @@ imports:
     version: 082222b4a5c572e33e82ee9162d1352c7cf38682
   - name: github.com/golang/protobuf
     version: c823c79ea1570fb5ff454033735a8e68575d1d0f
+
+  # vendoring mongo-go-driver because many dependencies use it
+  - name: go.mongodb.org/mongo-driver
+    version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86

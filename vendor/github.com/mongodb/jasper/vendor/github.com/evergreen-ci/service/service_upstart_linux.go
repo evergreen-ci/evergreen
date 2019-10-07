@@ -247,6 +247,11 @@ stop on runlevel [!2345]
 
 {{if and .UserName .HasSetUIDStanza}}setuid {{.UserName}}{{end}}
 
+{{if .Option.LimitLockedMemory }}limit memlock {{.Option.LimitLockedMemory}} {{.Option.LimitLockedMemory}}{{end}}
+{{if .Option.LimitNumFiles }}limit nofile {{.Option.LimitNumFiles}} {{.Option.LimitNumFiles}}{{end}}
+{{if .Option.LimitNumProcs }}limit nproc {{.Option.LimitNumProcs}} {{.Option.LimitNumProcs}}{{end}}
+{{if .Option.LimitVirtualMemory }}limit as {{.Option.LimitVirtualMemory}} {{.Option.LimitVirtualMemory}}{{end}}
+
 respawn
 respawn limit 10 5
 umask 022

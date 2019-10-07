@@ -158,6 +158,28 @@ func (h *Host) GetSSHOptions(keyPath string) ([]string, error) {
 
 // RunSSHCommand runs an SSH command on a remote host.
 func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []string) (string, error) {
+	return h.runSSHCommandWithOutput(ctx, func(c *jasper.Command) *jasper.Command {
+		return c.Append(cmd)
+	}, sshOptions)
+}
+
+// RunSSHCommandLiterally is the same as RunSSHCommand but passes the given
+// arguments to the SSH process without performing any premature shell parsing
+// on cmd.
+func (h *Host) RunSSHCommandLiterally(ctx context.Context, cmd string, sshOptions []string) (string, error) {
+	return h.runSSHCommandWithOutput(ctx, func(c *jasper.Command) *jasper.Command {
+		return c.Add([]string{cmd})
+	}, sshOptions)
+}
+
+// RunSSHShellScript runs a shell script on a remote host over SSH.
+func (h *Host) RunSSHShellScript(ctx context.Context, script string, sshOptions []string) (string, error) {
+	return h.runSSHCommandWithOutput(ctx, func(c *jasper.Command) *jasper.Command {
+		return c.ShellScript("bash", script)
+	}, sshOptions)
+}
+
+func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*jasper.Command) *jasper.Command, sshOptions []string) (string, error) {
 	env := evergreen.GetEnvironment()
 	hostInfo, err := h.GetSSHInfo()
 	if err != nil {
@@ -173,12 +195,11 @@ func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []strin
 	ctx, cancel = context.WithTimeout(ctx, sshTimeout)
 	defer cancel()
 
-	err = env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
+	err = addCommands(env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
 		ExtendRemoteArgs("-p", hostInfo.Port, "-t", "-t").ExtendRemoteArgs(sshOptions...).
-		SetCombinedWriter(output).
-		Append(cmd).Run(ctx)
+		SetCombinedWriter(output)).Run(ctx)
 
-	return output.String(), errors.Wrap(err, "error running shell cmd")
+	return output.String(), errors.Wrap(err, "error running SSH command")
 }
 
 // InitSystem determines the current Linux init system used by this host.

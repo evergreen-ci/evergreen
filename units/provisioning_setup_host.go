@@ -340,7 +340,7 @@ func (j *setupHostJob) putJasperCredentials(ctx context.Context, settings *everg
 		return errors.Wrap(err, "could not generate Jasper credentials for host")
 	}
 
-	writeCmd, err := j.host.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
+	writeCmds, err := j.host.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 	if err != nil {
 		return errors.Wrap(err, "could not get command to write Jasper credentials file")
 	}
@@ -355,7 +355,7 @@ func (j *setupHostJob) putJasperCredentials(ctx context.Context, settings *everg
 	ctx, cancel := context.WithTimeout(ctx, scpTimeout)
 	defer cancel()
 
-	if logs, err := j.host.RunSSHCommand(ctx, writeCmd, sshOptions); err != nil {
+	if logs, err := j.host.RunSSHCommandLiterally(ctx, writeCmds, sshOptions); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "problem copying credentials to host",
 			"job":     j.ID(),
