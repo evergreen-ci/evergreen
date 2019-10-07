@@ -19,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service/testutil"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
@@ -251,7 +250,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			require.NoError(t, err)
 
 			expectedCmds := []string{
-				writeCredentialsCmd),
+				writeCredentialsCmd,
 				h.FetchJasperCommandWithPath(settings.HostJasper, "/bin"),
 				h.ForceReinstallJasperCommand(settings),
 			}
@@ -281,7 +280,8 @@ func TestJasperCommandsWindows(t *testing.T) {
 				currPos += offset + len(expectedCmd)
 			}
 		},
-		"ForceReinstallJasperCommand": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+		"ForceReinstallJasperCommandSSH": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
 			require.NoError(t, h.Insert())
 			require.NoError(t, h.CreateServicePassword())
 			cmd := h.ForceReinstallJasperCommand(settings)
@@ -289,8 +289,8 @@ func TestJasperCommandsWindows(t *testing.T) {
 			assert.Contains(t, cmd, "--host=0.0.0.0")
 			assert.Contains(t, cmd, fmt.Sprintf("--port=%d", settings.HostJasper.Port))
 			assert.Contains(t, cmd, fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
-			assert.Contains(t, cmd, fmt.Sprintf(`--user=.\\\\%s`, h.Distro.BootstrapSettings.ServiceUser))
-			assert.Contains(t, cmd, fmt.Sprintf("--password=%s", h.ServicePassword))
+			assert.Contains(t, cmd, fmt.Sprintf(`--user=.\\%s`, h.Distro.BootstrapSettings.ServiceUser))
+			assert.Contains(t, cmd, fmt.Sprintf("--password='%s'", h.ServicePassword))
 		},
 		"WriteJasperCredentialsFileCommand": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			creds, err := newMockCredentials()
@@ -341,6 +341,8 @@ func TestJasperCommandsWindows(t *testing.T) {
 			h := &Host{Distro: distro.Distro{
 				Arch: distro.ArchWindowsAmd64,
 				BootstrapSettings: distro.BootstrapSettings{
+					Method:                distro.BootstrapMethodUserData,
+					Communication:         distro.CommunicationMethodRPC,
 					JasperBinaryDir:       "/foo",
 					JasperCredentialsPath: "/bar/bat.txt",
 					ShellPath:             "/bin/bash",

@@ -251,9 +251,9 @@ func initSystemCommand() string {
 	`
 }
 
-// FetchAndReinstallJasperCommand returns the command to fetch Jasper and
+// FetchAndReinstallJasperCommands returns the command to fetch Jasper and
 // restart the service with the latest version.
-func (h *Host) FetchAndReinstallJasperCommand(settings *evergreen.Settings) string {
+func (h *Host) FetchAndReinstallJasperCommands(settings *evergreen.Settings) string {
 	return strings.Join([]string{
 		h.FetchJasperCommand(settings.HostJasper),
 		h.ForceReinstallJasperCommand(settings),
@@ -271,7 +271,9 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 
 	if user := h.Distro.BootstrapSettings.ServiceUser; user != "" {
 		if h.Distro.IsWindows() {
-			user = `.\\\\` + user
+			if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodSSH {
+				user = `.\\` + user
+			}
 		}
 		params = append(params, fmt.Sprintf("--user=%s", user))
 		if h.ServicePassword != "" {
@@ -507,7 +509,9 @@ func (h *Host) CreateServicePassword() error {
 	var valid bool
 	for i := 0; i < 10; i++ {
 		generator, err := password.NewGenerator(&password.GeneratorInput{
-			Symbols: "~!@#$%^&*",
+			// We have to limit the symbol set to avoid unintentional special
+			// character interpretation by bash or PowerShell.
+			Symbols: "~!@#$%^*",
 		})
 		if err != nil {
 			return errors.Wrap(err, "could not initialize password generator")

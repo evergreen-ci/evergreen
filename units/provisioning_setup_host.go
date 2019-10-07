@@ -323,11 +323,11 @@ func (j *setupHostJob) setupJasper(ctx context.Context, settings *evergreen.Sett
 	}
 
 	if err := j.doFetchAndReinstallJasper(ctx, sshOptions); err != nil {
-		return errors.Wrap(err, "error fetching Jasper binary on remote host")
+		return errors.Wrap(err, "error starting Jasper service on remote host")
 	}
 
 	grip.Info(message.Fields{
-		"message": "successfully fetched Jasper binary",
+		"message": "successfully fetched Jasper binary and started service",
 		"host":    j.host.Id,
 		"job":     j.ID(),
 		"distro":  j.host.Distro.Id,
@@ -354,14 +354,6 @@ func (j *setupHostJob) putJasperCredentials(ctx context.Context, settings *everg
 		"host":    j.host.Id,
 		"distro":  j.host.Distro.Id,
 		"job":     j.ID(),
-	})
-
-	grip.Info(message.Fields{
-		"message": "kim: made cmds to write credentials",
-		"host":    j.host.Id,
-		"distro":  j.host.Distro.Id,
-		"job":     j.ID(),
-		"cmds":    writeCmds,
 	})
 
 	ctx, cancel := context.WithTimeout(ctx, scpTimeout)
@@ -408,7 +400,9 @@ func (j *setupHostJob) setupServiceUser(ctx context.Context, settings *evergreen
 		return errors.Wrap(err, "error copying script to set up service user")
 	}
 
-	if logs, err := j.host.RunSSHCommand(ctx, fmt.Sprintf("powershell ./%s && rm -f ./%s", filepath.Base(path), filepath.Base(path)), sshOptions); err != nil {
+	// kim: TODO: uncomment after debug
+	// if logs, err := j.host.RunSSHCommand(ctx, fmt.Sprintf("powershell ./%s && rm -f ./%s", filepath.Base(path), filepath.Base(path)), sshOptions); err != nil {
+	if logs, err := j.host.RunSSHCommand(ctx, fmt.Sprintf("powershell ./%s", filepath.Base(path)), sshOptions); err != nil {
 		return errors.Wrapf(err, "error while setting up service user: command returned %s", logs)
 	}
 
@@ -418,8 +412,15 @@ func (j *setupHostJob) setupServiceUser(ctx context.Context, settings *evergreen
 // doFetchAndReinstallJasper runs the SSH command that downloads the latest
 // Jasper binary and restarts the service.
 func (j *setupHostJob) doFetchAndReinstallJasper(ctx context.Context, sshOptions []string) error {
-	cmd := j.host.FetchAndReinstallJasperCommand(j.env.Settings())
-	if logs, err := j.host.RunSSHCommand(ctx, cmd, sshOptions); err != nil {
+	cmds := j.host.FetchAndReinstallJasperCommands(j.env.Settings())
+	grip.Info(message.Fields{
+		"message": "kim: about to fetch Jasper binary and reinstall Jasper service",
+		"host":    j.host.Id,
+		"distro":  j.host.Distro.Id,
+		"cmds":    cmds,
+		"job":     j.ID(),
+	})
+	if logs, err := j.host.RunSSHCommandLiterally(ctx, cmds, sshOptions); err != nil {
 		return errors.Wrapf(err, "error while fetching Jasper binary and installing service on remote host: command returned %s", logs)
 	}
 	return nil
