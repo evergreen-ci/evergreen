@@ -274,7 +274,7 @@ func TestSetHostTerminated(t *testing.T) {
 			" termination time in both the in-memory and database copies of"+
 			" the host", func() {
 
-			So(host.Terminate(evergreen.User), ShouldBeNil)
+			So(host.Terminate(evergreen.User, ""), ShouldBeNil)
 			So(host.Status, ShouldEqual, evergreen.HostTerminated)
 			So(host.TerminationTime.IsZero(), ShouldBeFalse)
 

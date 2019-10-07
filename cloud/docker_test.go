@@ -165,7 +165,7 @@ func (s *DockerSuite) TestTerminateInstanceDB() {
 	s.NoError(err)
 
 	// Terminate again - check we cannot remove twice.
-	err = s.manager.TerminateInstance(ctx, myHost, evergreen.User)
+	err = s.manager.TerminateInstance(ctx, myHost, evergreen.User, "")
 	s.Error(err)
 }
 
