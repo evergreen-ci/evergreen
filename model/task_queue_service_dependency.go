@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
@@ -57,6 +58,14 @@ func newDistroTaskDAGDispatchService(taskQueue TaskQueue, ttl time.Duration) (*b
 	})
 
 	return t, nil
+}
+
+func (t *basicCachedDAGDispatcherImpl) Type() string { return evergreen.PlannerVersionTunable }
+
+func (t *basicCachedDAGDispatcherImpl) CreatedAt() time.Time {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return t.lastUpdated
 }
 
 func (t *basicCachedDAGDispatcherImpl) Refresh() error {
