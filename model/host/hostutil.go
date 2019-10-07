@@ -375,7 +375,7 @@ func (h *Host) jasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 
 // BootstrapScript creates the user data script to bootstrap the host.
 func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credentials, preJasperSetup, postJasperSetup []string) (string, error) {
-	bashCmds := append([]string{"set -o errexit"}, preJasperSetup...)
+	bashCmds := append([]string{"set -o errexit", "set -o verbose"})
 
 	writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 	if err != nil {
@@ -396,16 +396,18 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credenti
 		if err != nil {
 			return "", errors.Wrap(err, "could not get command to set up service user")
 		}
-		powershellCmds := []string{
+		powershellCmds := append(append([]string{
 			"<powershell>",
-			setupUserCmds,
+			setupUserCmds},
+			preJasperSetup...),
 			fmt.Sprintf("%s -c %s", h.Distro.BootstrapSettings.ShellPath, bashCmdsLiteral),
 			"</powershell>",
-		}
+		)
 
 		return strings.Join(powershellCmds, "\r\n"), nil
 	}
 
+	bashCmds = append(bashCmds, preJasperSetup...)
 	bashCmds = append(bashCmds, h.FetchJasperCommand(settings.HostJasper), writeCredentialsCmd, h.ForceReinstallJasperCommand(settings))
 	bashCmds = append(bashCmds, postJasperSetup...)
 

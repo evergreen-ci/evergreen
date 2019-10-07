@@ -263,7 +263,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 			"provider":                targetHost.Provider,
 			"attempts":                targetHost.ProvisionAttempts,
 			"job":                     j.ID(),
-			"provision_duration_secs": time.Now().Sub(targetHost.CreationTime).Seconds(),
+			"provision_duration_secs": time.Since(targetHost.CreationTime).Seconds(),
 		})
 		return nil
 	case distro.BootstrapMethodSSH:
@@ -278,7 +278,11 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 	}
 
 	if targetHost.Distro.Setup != "" {
-		err = j.copyScript(ctx, settings, targetHost, filepath.Join("~", evergreen.SetupScriptName), targetHost.Distro.Setup)
+		scriptName := evergreen.SetupScriptName
+		if targetHost.Distro.IsPowerShellSetup() {
+			scriptName = evergreen.PowerShellSetupScriptName
+		}
+		err = j.copyScript(ctx, settings, targetHost, filepath.Join("~", scriptName), targetHost.Distro.Setup)
 		if err != nil {
 			return errors.Wrapf(err, "error copying setup script %v to host %v",
 				evergreen.SetupScriptName, targetHost.Id)

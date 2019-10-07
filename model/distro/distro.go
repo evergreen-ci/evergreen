@@ -42,14 +42,22 @@ type Distro struct {
 
 // BootstrapSettings encapsulates all settings related to bootstrapping hosts.
 type BootstrapSettings struct {
-	Method                string         `bson:"method" json:"method" mapstructure:"method"`
-	Communication         string         `bson:"communication,omitempty" json:"communication,omitempty" mapstructure:"communication,omitempty"`
-	ClientDir             string         `bson:"client_dir,omitempty" json:"client_dir,omitempty" mapstructure:"client_dir,omitempty"`
-	JasperBinaryDir       string         `bson:"jasper_binary_dir,omitempty" json:"jasper_binary_dir,omitempty" mapstructure:"jasper_binary_dir,omitempty"`
-	JasperCredentialsPath string         `json:"jasper_credentials_path,omitempty" bson:"jasper_credentials_path,omitempty" mapstructure:"jasper_credentials_path,omitempty"`
-	ServiceUser           string         `bson:"service_user,omitempty" json:"service_user,omitempty" mapstructure:"service_user,omitempty"`
-	ShellPath             string         `bson:"shell_path,omitempty" json:"shell_path,omitempty" mapstructure:"shell_path,omitempty"`
-	ResourceLimits        ResourceLimits `bson:"resource_limits,omitempty" json:"resource_limits,omitempty" mapstructure:"resource_limits,omitempty"`
+	// Required
+	Method        string `bson:"method" json:"method" mapstructure:"method"`
+	Communication string `bson:"communication,omitempty" json:"communication,omitempty" mapstructure:"communication,omitempty"`
+
+	// Required for new provisioning
+	ClientDir             string `bson:"client_dir,omitempty" json:"client_dir,omitempty" mapstructure:"client_dir,omitempty"`
+	JasperBinaryDir       string `bson:"jasper_binary_dir,omitempty" json:"jasper_binary_dir,omitempty" mapstructure:"jasper_binary_dir,omitempty"`
+	JasperCredentialsPath string `json:"jasper_credentials_path,omitempty" bson:"jasper_credentials_path,omitempty" mapstructure:"jasper_credentials_path,omitempty"`
+
+	// Windows-specific
+	ServiceUser string `bson:"service_user,omitempty" json:"service_user,omitempty" mapstructure:"service_user,omitempty"`
+	ShellPath   string `bson:"shell_path,omitempty" json:"shell_path,omitempty" mapstructure:"shell_path,omitempty"`
+	RootDir     string `bson:"root_dir,omitempty" json:"root_dir,omitempty" mapstructure:"root_dir,omitempty"`
+
+	// Linux-specific
+	ResourceLimits ResourceLimits `bson:"resource_limits,omitempty" json:"resource_limits,omitempty" mapstructure:"resource_limits,omitempty"`
 }
 
 // ResourceLimits represents resource limits in Linux.
@@ -100,8 +108,8 @@ func (d *Distro) ValidateBootstrapSettings() error {
 	}
 
 	catcher.NewWhen(d.IsWindows() && d.BootstrapSettings.ServiceUser == "", "service user cannot be empty for non-legacy Windows bootstrapping")
-
 	catcher.NewWhen(d.IsWindows() && d.BootstrapSettings.ShellPath == "", "shell path cannot be empty for non-legacy Windows bootstrapping")
+	catcher.NewWhen(d.IsWindows() && d.BootstrapSettings.RootDir == "", "root directory cannot be empty for non-legacy Windows bootstrapping")
 
 	catcher.NewWhen(d.IsLinux() && d.BootstrapSettings.ResourceLimits.NumFiles < -1, "max number of files should be a positive number or -1")
 	catcher.NewWhen(d.IsLinux() && d.BootstrapSettings.ResourceLimits.NumProcesses < -1, "max number of files should be a positive number or -1")
@@ -272,6 +280,21 @@ func (d *Distro) MaxDurationPerHost() time.Duration {
 	}
 
 	return evergreen.MaxDurationPerDistroHost
+}
+
+// IsPowerShellSetup returns whether or not the setup script is a powershell
+// script based on the header shebang line.
+func (d *Distro) IsPowerShellSetup() bool {
+	start := strings.Index(d.Setup, "#!")
+	if start == -1 {
+		return false
+	}
+	end := strings.IndexByte(d.Setup[start:], '\n')
+	if end == -1 {
+		return false
+	}
+	end += start
+	return strings.Contains(d.Setup[start:end], "powershell")
 }
 
 func (d *Distro) IsWindows() bool {
