@@ -49,15 +49,15 @@ func newDistroTaskDAGDispatchService(taskQueue TaskQueue, ttl time.Duration) (*b
 	}
 
 	grip.Debug(message.Fields{
-		"dispatcher":                 DAGDispatcher,
-		"function":                   "newDistroTaskDAGDispatchService",
-		"message":                    "initializing new basicCachedDAGDispatcherImpl for a distro",
-		"distro_id":                  d.distroID,
-		"ttl":                        d.ttl,
-		"last_updated":               d.lastUpdated,
-		"num_task_groups":            len(d.taskGroups),
-		"initial_num_taskqueueitems": taskQueue.Length(),
-		"sorted_num_taskqueueitems":  len(d.sorted),
+		"dispatcher":                DAGDispatcher,
+		"function":                  "newDistroTaskDAGDispatchService",
+		"message":                   "initializing new basicCachedDAGDispatcherImpl for a distro",
+		"distro_id":                 d.distroID,
+		"ttl":                       d.ttl,
+		"last_updated":              d.lastUpdated,
+		"num_task_groups":           len(d.taskGroups),
+		"num_taskqueueitems":        taskQueue.Length(),
+		"sorted_num_taskqueueitems": len(d.sorted),
 	})
 
 	return d, nil
@@ -433,18 +433,18 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 }
 
 func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *TaskQueueItem {
-	for i, nextTask := range unit.tasks {
-		if nextTask.IsDispatched == true {
+	for i, nextTaskQueueItem := range unit.tasks {
+		if nextTaskQueueItem.IsDispatched == true {
 			continue
 		}
 
-		nextTaskFromDB, err := task.FindOneId(nextTask.Id)
+		nextTaskFromDB, err := task.FindOneId(nextTaskQueueItem.Id)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"dispatcher": DAGDispatcher,
 				"function":   "nextTaskGroupTask",
 				"message":    "problem finding task in db",
-				"task":       nextTask.Id,
+				"task_id":    nextTaskQueueItem.Id,
 				"distro_id":  d.distroID,
 			}))
 			return nil
@@ -454,7 +454,7 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 				"dispatcher": DAGDispatcher,
 				"function":   "nextTaskGroupTask",
 				"message":    "task from db not found",
-				"task":       nextTask.Id,
+				"task_id":    nextTaskQueueItem.Id,
 				"distro_id":  d.distroID,
 			})
 			return nil
@@ -469,7 +469,7 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 				"function":   "nextTaskGroupTask",
 				"message":    "error checking dependencies for task",
 				"outcome":    "skip and continue",
-				"task":       nextTask.Id,
+				"task_id":    nextTaskQueueItem.Id,
 				"distro_id":  d.distroID,
 			}))
 			continue
@@ -489,6 +489,7 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 		// Cache dispatched status.
 		d.taskGroups[unit.id].tasks[i].IsDispatched = true
 
+		// It's running (or already ran) on another host.
 		if nextTaskFromDB.StartTime != util.ZeroTime {
 			continue
 		}
@@ -498,7 +499,7 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 			delete(d.taskGroups, unit.id)
 		}
 
-		return &nextTask
+		return &nextTaskQueueItem
 	}
 
 	return nil
