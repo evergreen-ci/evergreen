@@ -60,7 +60,6 @@ func (s *taskDispatchService) FindNextTask(distroID string, spec TaskSpec) (*Tas
 }
 
 func (s *taskDispatchService) RefreshFindNextTask(distroID string, spec TaskSpec) (*TaskQueueItem, error) {
-
 	distroDispatchService, err := s.ensureQueue(distroID)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -107,10 +106,8 @@ func (s *taskDispatchService) ensureQueue(distroID string) (CachedDispatcher, er
 	defer s.mu.Unlock()
 
 	distroDispatchService, ok := s.cachedDispatchers[distroID]
-	if ok {
-		if time.Since(distroDispatchService.CreatedAt()) < s.ttl && distroDispatchService.Type() == plannerSettings.Version {
-			return distroDispatchService, nil
-		}
+	if ok && distroDispatchService.Type() == plannerSettings.Version {
+		return distroDispatchService, nil
 	}
 
 	var taskQueue TaskQueue
