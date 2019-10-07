@@ -156,7 +156,7 @@ func (s *taskDAGDispatchServiceSuite) TestRealWorldExample() {
 	s.Require().NoError(t3.Insert())
 	s.Require().NoError(t4.Insert())
 
-	// 	> db.tasks.find({"build_id": "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10"},{"task_group": 1, "task_group_order": 1, "depends_on": 1}).pretty()
+	//	> db.tasks.find({"build_id": "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10"},{"task_group": 1, "task_group_order": 1, "depends_on": 1}).pretty()
 }
 
 func (s *taskDAGDispatchServiceSuite) SetupTest() {
@@ -1277,7 +1277,7 @@ func (s *taskDispatchServiceSuite) SetupTest() {
 }
 
 func (s *taskDispatchServiceSuite) TestConstructor() {
-	service := newDistroTaskDispatchService(s.taskQueue, time.Minute)
+	service := newDistroTaskDispatchService(s.taskQueue, "", time.Minute)
 	//////////////////////////////////////////////////////////////////////////////
 	// basicCachedDispatcherImpl.order[0] = "0"
 	// basicCachedDispatcherImpl.order[1] = "group_1_variant_1_project_1_version_1"
@@ -1380,7 +1380,7 @@ func (s *taskDispatchServiceSuite) TestEmptyService() {
 			Group: "",
 		},
 	}
-	service := newDistroTaskDispatchService(s.taskQueue, time.Minute)
+	service := newDistroTaskDispatchService(s.taskQueue, "", time.Minute)
 	next := service.FindNextTask(TaskSpec{})
 	s.Require().NotNil(next)
 	s.Equal("a-standalone-task", next.Id)
@@ -1432,7 +1432,7 @@ func (s *taskDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 	}
 
 	s.taskQueue.Queue = items
-	service := newDistroTaskDispatchService(s.taskQueue, time.Minute)
+	service := newDistroTaskDispatchService(s.taskQueue, "", time.Minute)
 	spec := TaskSpec{
 		Group:        "group_1",
 		BuildVariant: "variant_1",
@@ -1445,7 +1445,7 @@ func (s *taskDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 }
 
 func (s *taskDispatchServiceSuite) TestFindNextTask() {
-	service := newDistroTaskDispatchService(s.taskQueue, time.Minute)
+	service := newDistroTaskDispatchService(s.taskQueue, "", time.Minute)
 	var spec TaskSpec
 	var next *TaskQueueItem
 	//////////////////////////////////////////////////////////////////////////////
@@ -1678,7 +1678,7 @@ func (s *taskDispatchServiceSuite) TestSchedulableUnitsRunningHostsVersusMaxHost
 	}
 	s.Require().NoError(h1.Insert())
 
-	service := newDistroTaskDispatchService(s.taskQueue, time.Minute)
+	service := newDistroTaskDispatchService(s.taskQueue, "", time.Minute)
 	//////////////////////////////////////////////////////////////////////////////
 	// basicCachedDispatcherImpl.order[0] = "0"
 	// basicCachedDispatcherImpl.order[1] = "group_1_variant_1_project_1_version_1"
@@ -1687,7 +1687,7 @@ func (s *taskDispatchServiceSuite) TestSchedulableUnitsRunningHostsVersusMaxHost
 	// basicCachedDispatcherImpl.units["0"].len(tasks) = 1
 	//	[0]
 	// basicCachedDispatcherImpl.units["group_1_variant_1_project_1_version_1"].len(tasks) = 20
-	// 	[1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76, 81, 86, 91, 96]
+	//	[1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76, 81, 86, 91, 96]
 	// basicCachedDispatcherImpl.units[group_1_variant_1_project_1_version_1].maxHosts = 1
 	// basicCachedDispatcherImpl.units["group_2_variant_1_project_1_version_1"].len(tasks) = 20
 	//	[2, 7, 12, 17, 22, 27, 32, 37, 42, 47, 52, 57, 62, 67, 72, 77, 82, 87, 92, 97]
