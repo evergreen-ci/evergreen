@@ -24,7 +24,7 @@ func TestHostPostHandler(t *testing.T) {
 	d := &distro.Distro{
 		Id:           "distro",
 		SpawnAllowed: true,
-		Provider:     evergreen.ProviderNameEc2Auto,
+		Provider:     evergreen.ProviderNameEc2OnDemand,
 	}
 	require.NoError(d.Insert())
 	h := &hostPostHandler{

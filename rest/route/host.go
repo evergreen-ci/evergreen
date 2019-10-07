@@ -8,14 +8,11 @@ import (
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -115,133 +112,6 @@ func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return resp
-}
-
-////////////////////////////////////////////////////////////////////////
-//
-// PATCH /rest/v2/hosts/{host_id}
-
-// ***NOTE*** hostModifyHandler should be moved to rest/route/host_spawn.go to
-// 			  be with the other handlers that only deal with spawn hosts.
-
-type hostModifyHandler struct {
-	hostID string
-	sc     data.Connector
-
-	AddInstanceTags    []host.Tag
-	DeleteInstanceTags []string
-	InstanceType       string
-}
-
-func makeHostModifyRouteManager(sc data.Connector) gimlet.RouteHandler {
-	return &hostModifyHandler{
-		sc: sc,
-	}
-}
-
-func (h *hostModifyHandler) Factory() gimlet.RouteHandler {
-	return &hostModifyHandler{
-		sc: h.sc,
-	}
-}
-
-func (h *hostModifyHandler) Parse(ctx context.Context, r *http.Request) error {
-	h.hostID = gimlet.GetVars(r)["host_id"]
-	body := util.NewRequestReader(r)
-	defer body.Close()
-
-	if err := util.ReadJSONInto(body, h); err != nil {
-		return errors.Wrap(err, "Argument read error")
-	}
-
-	return nil
-}
-
-func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
-	user := MustHaveUser(ctx)
-	env := evergreen.GetEnvironment()
-	queue := env.RemoteQueue()
-
-	// Find host to be modified
-	foundHost, err := h.sc.FindHostByIdWithOwner(h.hostID, user)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.hostID))
-	}
-
-	// Validate host modify request
-	catcher := grip.NewBasicCatcher()
-	if len(h.AddInstanceTags) > 0 || len(h.DeleteInstanceTags) > 0 {
-		catcher.Add(checkInstanceTagsCanBeModified(foundHost, h.AddInstanceTags, h.DeleteInstanceTags))
-	}
-	if h.InstanceType != "" {
-		catcher.Add(checkInstanceTypeHostStopped(foundHost))
-		catcher.Add(checkInstanceTypeValid(foundHost.Provider, h.InstanceType, env.Settings()))
-	}
-	if catcher.HasErrors() {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "Invalid host modify request"))
-	}
-
-	// Create new spawnhost modify job
-	changes := host.HostModifyOptions{
-		AddInstanceTags:    h.AddInstanceTags,
-		DeleteInstanceTags: h.DeleteInstanceTags,
-		InstanceType:       h.InstanceType,
-	}
-	ts := util.RoundPartOfMinute(1).Format(tsFormat)
-	modifyJob := units.NewSpawnhostModifyJob(foundHost, changes, ts)
-	if err = queue.Put(ctx, modifyJob); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error creating spawnhost modify job"))
-	}
-
-	return gimlet.NewJSONResponse(struct{}{})
-}
-
-// checkInstanceTagsCanBeModified checks whether the tags to be modified allow modifications.
-func checkInstanceTagsCanBeModified(h *host.Host, toAdd []host.Tag, toDelete []string) error {
-	catcher := grip.NewBasicCatcher()
-	current := make(map[string]host.Tag)
-	for _, tag := range h.InstanceTags {
-		current[tag.Key] = tag
-	}
-	for _, key := range toDelete {
-		old, ok := current[key]
-		if ok && !old.CanBeModified {
-			catcher.Add(errors.Errorf("tag '%s' cannot be modified", key))
-		}
-	}
-	for _, tag := range toAdd {
-		old, ok := current[tag.Key]
-		if ok && !old.CanBeModified {
-			catcher.Add(errors.Errorf("tag '%s' cannot be modified", tag.Key))
-		}
-
-		// Ensure that new tags can be modified (theoretically should always be the case).
-		if !tag.CanBeModified {
-			catcher.Add(errors.Errorf("programmer error: new tag '%s=%s' should be able to be modified", tag.Key, tag.Value))
-		}
-	}
-	return catcher.Resolve()
-}
-
-// checkInstanceTypeValid checks whether the instance type is allowed by provider config
-func checkInstanceTypeValid(providerName, instanceType string, s *evergreen.Settings) error {
-	switch providerName {
-	case evergreen.ProviderNameEc2OnDemand:
-		for _, allowedType := range s.Providers.AWS.AllowedInstanceTypes {
-			if instanceType == allowedType {
-				return nil
-			}
-		}
-	}
-	return errors.Errorf("'%s' is not a valid instance type for provider '%s'", instanceType, providerName)
-}
-
-// checkInstanceTypeHostStopped checks whether a host is stopped before modifying an instance type
-func checkInstanceTypeHostStopped(h *host.Host) error {
-	if h.Status != evergreen.HostStopped {
-		return errors.New("cannot modify instance type for non-stopped host")
-	}
-	return nil
 }
 
 ////////////////////////////////////////////////////////////////////////

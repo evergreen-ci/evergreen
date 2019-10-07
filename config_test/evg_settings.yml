@@ -22,6 +22,8 @@ providers:
     aws:
         aws_secret: "aws secret"
         aws_id: "aws id"
+        allowed_instance_types:
+        - "test_instance_type"
     docker:
         api_version: 1.32
         
