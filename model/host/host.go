@@ -354,8 +354,8 @@ func (h *Host) SetRunning(user string) error {
 	return h.SetStatus(evergreen.HostRunning, user, "")
 }
 
-func (h *Host) SetTerminated(user string) error {
-	return h.SetStatus(evergreen.HostTerminated, user, "")
+func (h *Host) SetTerminated(user, reason string) error {
+	return h.SetStatus(evergreen.HostTerminated, user, reason)
 }
 
 func (h *Host) SetStopping(user string) error {
@@ -508,8 +508,8 @@ func (h *Host) ResetLastCommunicated() error {
 	return nil
 }
 
-func (h *Host) Terminate(user string) error {
-	err := h.SetTerminated(user)
+func (h *Host) Terminate(user, reason string) error {
+	err := h.SetTerminated(user, reason)
 	if err != nil {
 		return err
 	}

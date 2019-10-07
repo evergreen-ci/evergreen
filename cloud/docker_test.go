@@ -133,10 +133,10 @@ func (s *DockerSuite) TestTerminateInstanceAPICall() {
 	s.True(ok)
 	s.False(mock.failRemove)
 
-	s.NoError(s.manager.TerminateInstance(ctx, hostA, evergreen.User))
+	s.NoError(s.manager.TerminateInstance(ctx, hostA, evergreen.User, ""))
 
 	mock.failRemove = true
-	s.Error(s.manager.TerminateInstance(ctx, hostB, evergreen.User))
+	s.Error(s.manager.TerminateInstance(ctx, hostB, evergreen.User, ""))
 }
 
 func (s *DockerSuite) TestTerminateInstanceDB() {
@@ -157,7 +157,7 @@ func (s *DockerSuite) TestTerminateInstanceDB() {
 	s.NoError(err)
 
 	// Terminate the instance - check the host is terminated in DB.
-	err = s.manager.TerminateInstance(ctx, myHost, evergreen.User)
+	err = s.manager.TerminateInstance(ctx, myHost, evergreen.User, "")
 	s.NoError(err)
 
 	dbHost, err = host.FindOne(host.ById(myHost.Id))

@@ -153,7 +153,7 @@ func (j *idleHostJob) Run(ctx context.Context) {
 	// if we haven't heard from the host or it's been idle for longer than the cutoff, we should terminate
 	if communicationTime >= idleThreshold || idleTime >= idleThreshold {
 		j.Terminated = true
-		tjob := NewHostTerminationJob(j.env, *j.host, false)
+		tjob := NewHostTerminationJob(j.env, *j.host, false, "host is idle or unreachable")
 		queue := j.env.RemoteQueue()
 		j.AddError(queue.Put(ctx, tjob))
 	}

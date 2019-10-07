@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
@@ -30,7 +31,7 @@ func init() {
 func TestTerminateHosts(t *testing.T) {
 	assert := assert.New(t)
 
-	require.NoError(t, db.Clear(host.Collection), "error clearing host collection")
+	require.NoError(t, db.ClearCollections(host.Collection, event.AllLogCollection), "error clearing host collection")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -52,7 +53,7 @@ func TestTerminateHosts(t *testing.T) {
 		Provisioned: true,
 	}
 	assert.NoError(h.Insert())
-	j := NewHostTerminationJob(env, *h, true)
+	j := NewHostTerminationJob(env, *h, true, "foo")
 	j.Run(ctx)
 
 	assert.NoError(j.Error())
@@ -60,6 +61,11 @@ func TestTerminateHosts(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(dbHost)
 	assert.Equal(evergreen.HostTerminated, dbHost.Status)
+	events, err := event.Find(event.AllLogCollection, event.HostEventsInOrder(hostID))
+	assert.NoError(err)
+	data, valid := events[len(events)-1].Data.(*event.HostEventData)
+	assert.True(valid)
+	assert.Equal("foo", data.Logs)
 }
 
 func TestHostCosts(t *testing.T) {
@@ -97,7 +103,7 @@ func TestHostCosts(t *testing.T) {
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx, "", nil))
-	j := NewHostTerminationJob(env, *h, true)
+	j := NewHostTerminationJob(env, *h, true, "")
 	j.Run(ctx)
 	assert.NoError(j.Error())
 	dbHost, err := host.FindOne(host.ById(h.Id))

@@ -215,7 +215,7 @@ func (_ *mockManager) Validate() error {
 }
 
 // terminate an instance
-func (mockMgr *mockManager) TerminateInstance(ctx context.Context, host *host.Host, user string) error {
+func (mockMgr *mockManager) TerminateInstance(ctx context.Context, host *host.Host, user, reason string) error {
 	l := mockMgr.mutex
 	l.Lock()
 	defer l.Unlock()
@@ -230,7 +230,7 @@ func (mockMgr *mockManager) TerminateInstance(ctx context.Context, host *host.Ho
 	instance.Status = StatusTerminated
 	mockMgr.Instances[host.Id] = instance
 
-	return errors.WithStack(host.Terminate(user))
+	return errors.WithStack(host.Terminate(user, reason))
 }
 
 func (mockMgr *mockManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
