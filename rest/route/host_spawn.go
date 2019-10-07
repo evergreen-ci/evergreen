@@ -195,8 +195,7 @@ func checkInstanceTagsCanBeModified(h *host.Host, toAdd []host.Tag, toDelete []s
 
 // checkInstanceTypeValid checks whether the instance type is allowed by provider config
 func checkInstanceTypeValid(providerName, instanceType string, s *evergreen.Settings) error {
-	switch providerName {
-	case evergreen.ProviderNameEc2OnDemand:
+	if cloud.IsEc2Provider(providerName) {
 		for _, allowedType := range s.Providers.AWS.AllowedInstanceTypes {
 			if instanceType == allowedType {
 				return nil
