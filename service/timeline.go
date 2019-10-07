@@ -23,6 +23,7 @@ type PatchInfo struct {
 	Description   string    `json:"description"`
 	Githash       string    `json:"githash"`
 	BaseVersionId string    `json:"base_version_id"`
+	Alias         string    `json:"alias"`
 }
 
 type BuildInfo struct {
@@ -157,6 +158,7 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 			Description:   patch.Description,
 			Githash:       patch.Githash,
 			BaseVersionId: baseVersionId,
+			Alias:         patch.Alias,
 		})
 	}
 	versions, err := model.VersionFind(model.VersionByIds(versionIds).WithoutFields(model.VersionConfigKey))
