@@ -2,6 +2,7 @@ package command
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 	"time"
@@ -15,7 +16,6 @@ const (
 	maxS3OpAttempts   = 10
 	s3OpSleep         = 2 * time.Second
 	s3OpRetryMaxSleep = 20 * time.Second
-	s3baseURL         = "https://s3.amazonaws.com/"
 )
 
 var (
@@ -72,4 +72,8 @@ func getS3OpBackoff() *backoff.Backoff {
 		Factor: 2,
 		Jitter: true,
 	}
+}
+
+func s3BaseURL(bucketName string) string {
+	return fmt.Sprintf("https://%s.s3.amazonaws.com", bucketName)
 }

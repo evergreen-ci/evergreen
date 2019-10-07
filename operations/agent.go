@@ -2,6 +2,7 @@ package operations
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -67,7 +68,7 @@ func Agent() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  s3BaseURLFlagName,
-				Usage: "base URL for S3 uploads (defaults to 'https://s3.amazonaws.com'",
+				Usage: "base URL for S3 uploads (defaults to 'https://<bucket_name>.s3.amazonaws.com'",
 			},
 			cli.IntFlag{
 				Name:  statusPortFlagName,
@@ -92,7 +93,7 @@ func Agent() cli.Command {
 		Action: func(c *cli.Context) error {
 			s3Base := c.String(s3BaseURLFlagName)
 			if s3Base == "" {
-				s3Base = "https://s3.amazonaws.com"
+				s3Base = fmt.Sprintf("https://%s.s3.amazonaws.com", os.Getenv("S3_BUCKET"))
 			}
 			opts := agent.Options{
 				HostID:           c.String(hostIDFlagName),

@@ -208,7 +208,7 @@ functions:
       env:
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}
-        CLIENT_URL: https://s3.amazonaws.com/mciuploads/evergreen/${task_id}/evergreen-ci/evergreen/clients/${goos}_${goarch}/evergreen
+        CLIENT_URL: https://mciuploads.s3.amazonaws.com/evergreen/${task_id}/evergreen-ci/evergreen/clients/${goos}_${goarch}/evergreen
         DEBUG_ENABLED: ${debug}
         DISABLE_COVERAGE: ${disable_coverage}
         DOCKER_HOST: ${docker_host}

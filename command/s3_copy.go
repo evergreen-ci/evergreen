@@ -218,7 +218,7 @@ func (c *s3copy) attachFiles(ctx context.Context, comm client.Communicator,
 	logger client.LoggerProducer, td client.TaskData, request apimodels.S3CopyRequest) error {
 
 	remotePath := filepath.ToSlash(request.S3DestinationPath)
-	fileLink := s3baseURL + request.S3DestinationBucket + "/" + remotePath
+	fileLink := s3BaseURL(request.S3DestinationBucket) + "/" + remotePath
 
 	displayName := request.S3DisplayName
 
