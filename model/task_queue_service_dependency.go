@@ -350,7 +350,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 
 			nextTaskFromDB, err := task.FindOneId(item.Id)
 			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Warning(message.WrapError(err, message.Fields{
 					"dispatcher": DAGDispatcher,
 					"function":   "FindNextTask",
 					"message":    "problem finding task in db",
@@ -360,7 +360,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 				return nil
 			}
 			if nextTaskFromDB == nil {
-				grip.Error(message.Fields{
+				grip.Warning(message.Fields{
 					"dispatcher": DAGDispatcher,
 					"function":   "FindNextTask",
 					"message":    "task from db not found",
@@ -402,7 +402,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 		if taskGroupUnit.runningHosts < taskGroupUnit.maxHosts {
 			numHosts, err := host.NumHostsByTaskSpec(item.Group, item.BuildVariant, item.Project, item.Version)
 			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Warning(message.WrapError(err, message.Fields{
 					"dispatcher": DAGDispatcher,
 					"function":   "FindNextTask",
 					"message":    "problem running NumHostsByTaskSpec query - returning nil",
@@ -440,7 +440,7 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 
 		nextTaskFromDB, err := task.FindOneId(nextTaskQueueItem.Id)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Warning(message.WrapError(err, message.Fields{
 				"dispatcher": DAGDispatcher,
 				"function":   "nextTaskGroupTask",
 				"message":    "problem finding task in db",
@@ -450,7 +450,7 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 			return nil
 		}
 		if nextTaskFromDB == nil {
-			grip.Error(message.Fields{
+			grip.Warning(message.Fields{
 				"dispatcher": DAGDispatcher,
 				"function":   "nextTaskGroupTask",
 				"message":    "task from db not found",

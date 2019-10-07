@@ -338,7 +338,7 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 
 			nextTaskFromDB, err := task.FindOneId(item.Id)
 			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Warning(message.WrapError(err, message.Fields{
 					"dispatcher": SchedulableUnitDispatcher,
 					"function":   "FindNextTask",
 					"message":    "problem finding task in db",
@@ -348,7 +348,7 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 				return nil
 			}
 			if nextTaskFromDB == nil {
-				grip.Error(message.Fields{
+				grip.Warning(message.Fields{
 					"dispatcher": SchedulableUnitDispatcher,
 					"function":   "FindNextTask",
 					"message":    "task from db not found",
@@ -389,7 +389,7 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 			// function.
 			numHosts, err = host.NumHostsByTaskSpec(unit.group, unit.variant, unit.project, unit.version)
 			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Warning(message.WrapError(err, message.Fields{
 					"dispatcher":                    SchedulableUnitDispatcher,
 					"function":                      "FindNextTask",
 					"message":                       "problem running NumHostsByTaskSpec query - returning nil",
@@ -435,7 +435,7 @@ func (d *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *Tas
 
 		nextTaskFromDB, err := task.FindOneId(nextTaskQueueItem.Id)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Warning(message.WrapError(err, message.Fields{
 				"dispatcher": SchedulableUnitDispatcher,
 				"function":   "nextTaskGroupTask",
 				"message":    "task from db not found",
@@ -445,7 +445,7 @@ func (d *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *Tas
 			return nil
 		}
 		if nextTaskFromDB == nil {
-			grip.Error(message.Fields{
+			grip.Warning(message.Fields{
 				"dispatcher": SchedulableUnitDispatcher,
 				"function":   "nextTaskGroupTask",
 				"message":    "task from db not found",
