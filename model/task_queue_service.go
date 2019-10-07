@@ -58,7 +58,6 @@ func (s *taskDispatchService) FindNextTask(distroID string, spec TaskSpec) (*Tas
 }
 
 func (s *taskDispatchService) RefreshFindNextTask(distroID string, spec TaskSpec) (*TaskQueueItem, error) {
-
 	distroDispatchService, err := s.ensureQueue(distroID)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -376,8 +375,6 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 				continue
 			}
 
-			item.IsDispatched = true
-
 			return &unit.tasks[0]
 		}
 
@@ -476,7 +473,6 @@ func (d *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *Tas
 		if !dependenciesMet {
 			// Regardless, set IsDispatch = true for this *TaskQueueItem, while awaiting the next refresh of the in-memory queue.
 			d.units[unit.id].tasks[i].IsDispatched = true
-			unit.tasks[i].IsDispatched = true
 			continue
 		}
 
@@ -487,7 +483,6 @@ func (d *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *Tas
 
 		// Cache dispatched status.
 		d.units[unit.id].tasks[i].IsDispatched = true
-		unit.tasks[i].IsDispatched = true
 
 		// It's running (or already ran) on another host.
 		if nextTaskFromDB.StartTime != util.ZeroTime {
