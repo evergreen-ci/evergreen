@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
@@ -25,6 +26,8 @@ var (
 	HostPasswordUpdate         = "updateRDPPassword"
 	HostExpirationExtension    = "extendHostExpiration"
 	HostTerminate              = "terminate"
+	HostStop                   = "stop"
+	HostStart                  = "start"
 	MaxExpirationDurationHours = 24 * 7 // 7 days
 )
 
@@ -212,7 +215,46 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		gimlet.WriteJSON(w, "host terminated")
+		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Host terminated"))
+		gimlet.WriteJSON(w, "Host terminated")
+		return
+
+	case HostStop:
+		if h.Status == evergreen.HostStopped || h.Status == evergreen.HostStopping {
+			gimlet.WriteJSONError(w, fmt.Sprintf("Host %v is already stopping or stopped", h.Id))
+			return
+		}
+		if h.Status != evergreen.HostRunning {
+			gimlet.WriteJSONError(w, fmt.Sprintf("Host %v is not running", h.Id))
+			return
+		}
+
+		// Stop the host
+		ts := util.RoundPartOfMinute(1).Format(tsFormat)
+		stopJob := units.NewSpawnhostStopJob(h, u.Id, ts)
+		if err = uis.queue.Put(ctx, stopJob); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Host stopping"))
+		gimlet.WriteJSON(w, "Host stopping")
+		return
+
+	case HostStart:
+		if h.Status != evergreen.HostStopped {
+			gimlet.WriteJSONError(w, fmt.Sprintf("Host %v is not stopped", h.Id))
+			return
+		}
+
+		// Start the host
+		ts := util.RoundPartOfMinute(1).Format(tsFormat)
+		startJob := units.NewSpawnhostStartJob(h, u.Id, ts)
+		if err = uis.queue.Put(ctx, startJob); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Host starting"))
+		gimlet.WriteJSON(w, "Host starting")
 		return
 
 	case HostPasswordUpdate:
@@ -251,8 +293,12 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error extending host expiration time"))
 			return
 		}
+		loc, err := time.LoadLocation(u.Settings.Timezone)
+		if err != nil || loc == nil {
+			loc = time.UTC
+		}
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("Host expiration successfully set to %s",
-			futureExpiration.Format(time.RFC822))))
+			futureExpiration.In(loc).Format(time.RFC822))))
 		gimlet.WriteJSON(w, "Successfully extended host expiration time")
 		return
 

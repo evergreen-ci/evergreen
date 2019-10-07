@@ -280,8 +280,7 @@ func (h *Host) IsEphemeral() bool {
 
 func (h *Host) SetStatus(status, user string, logs string) error {
 	if h.Status == evergreen.HostTerminated {
-		msg := fmt.Sprintf("Refusing to mark host %v as"+
-			" %v because it is already terminated", h.Id, status)
+		msg := fmt.Sprintf("not changing the status of terminate host %s to %s", h.Id, status)
 		grip.Warning(msg)
 		return errors.New(msg)
 	}
@@ -299,6 +298,36 @@ func (h *Host) SetStatus(status, user string, logs string) error {
 			},
 		},
 	)
+}
+
+// SetStatusAtomically is the same as SetStatus but only updates the host if its
+// status in the database matches currentStatus.
+func (h *Host) SetStatusAtomically(newStatus, user string, logs string) error {
+	if h.Status == evergreen.HostTerminated {
+		msg := fmt.Sprintf("not changing the status of terminate host %s to %s", h.Id, newStatus)
+		grip.Warning(msg)
+		return errors.New(msg)
+	}
+
+	err := UpdateOne(
+		bson.M{
+			IdKey:     h.Id,
+			StatusKey: h.Status,
+		},
+		bson.M{
+			"$set": bson.M{
+				StatusKey: newStatus,
+			},
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	h.Status = newStatus
+	event.LogHostStatusChanged(h.Id, h.Status, newStatus, user, logs)
+
+	return nil
 }
 
 // SetProvisioning marks the host as initializing. Only allow this
@@ -997,45 +1026,6 @@ func DecommissionHostsWithDistroId(distroId string) error {
 		},
 	)
 	return err
-}
-
-// UpdateDocumentID updates the host document corresponding to the current host to have
-// a new ID by finding, deleting, and replacing the document with a new one.
-func (h *Host) UpdateDocumentID(newID string) (*Host, error) {
-	oldID := h.Id
-
-	// Find the host document in the database with the old ID.
-	host, err := FindOneId(oldID)
-	if host == nil {
-		err = errors.Errorf("Could not locate record inserted for host '%s'", oldID)
-		grip.Error(err)
-		return nil, err
-	}
-
-	if err != nil {
-		err = errors.Wrapf(err, "Could not locate record inserted for host '%s' due to error", oldID)
-		grip.Error(err)
-		return nil, err
-	}
-
-	// Insert the new document.
-	host.Id = newID
-	if err := host.Insert(); err != nil {
-		err = errors.Wrapf(err, "Could not insert updated host information for '%s' with '%s'",
-			h.Id, host.Id)
-		grip.Error(err)
-		return nil, err
-	}
-
-	// Remove the old document.
-	if err := h.Remove(); err != nil {
-		err = errors.Wrapf(err, "Could not remove insert host '%s' (replaced by '%s')",
-			h.Id, host.Id)
-		grip.Error(err)
-		return nil, err
-	}
-
-	return host, nil
 }
 
 func (h *Host) DisablePoisonedHost(logs string) error {

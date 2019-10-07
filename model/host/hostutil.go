@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	jcli "github.com/mongodb/jasper/cli"
 	"github.com/mongodb/jasper/options"
@@ -157,6 +158,28 @@ func (h *Host) GetSSHOptions(keyPath string) ([]string, error) {
 
 // RunSSHCommand runs an SSH command on a remote host.
 func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []string) (string, error) {
+	return h.runSSHCommandWithOutput(ctx, func(c *jasper.Command) *jasper.Command {
+		return c.Append(cmd)
+	}, sshOptions)
+}
+
+// RunSSHCommandLiterally is the same as RunSSHCommand but passes the given
+// arguments to the SSH process without performing any premature shell parsing
+// on cmd.
+func (h *Host) RunSSHCommandLiterally(ctx context.Context, cmd string, sshOptions []string) (string, error) {
+	return h.runSSHCommandWithOutput(ctx, func(c *jasper.Command) *jasper.Command {
+		return c.Add([]string{cmd})
+	}, sshOptions)
+}
+
+// RunSSHShellScript runs a shell script on a remote host over SSH.
+func (h *Host) RunSSHShellScript(ctx context.Context, script string, sshOptions []string) (string, error) {
+	return h.runSSHCommandWithOutput(ctx, func(c *jasper.Command) *jasper.Command {
+		return c.ShellScript("bash", script)
+	}, sshOptions)
+}
+
+func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*jasper.Command) *jasper.Command, sshOptions []string) (string, error) {
 	env := evergreen.GetEnvironment()
 	hostInfo, err := h.GetSSHInfo()
 	if err != nil {
@@ -172,12 +195,11 @@ func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []strin
 	ctx, cancel = context.WithTimeout(ctx, sshTimeout)
 	defer cancel()
 
-	err = env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
+	err = addCommands(env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
 		ExtendRemoteArgs("-p", hostInfo.Port, "-t", "-t").ExtendRemoteArgs(sshOptions...).
-		SetCombinedWriter(output).
-		Append(cmd).Run(ctx)
+		SetCombinedWriter(output)).Run(ctx)
 
-	return output.String(), errors.Wrap(err, "error running shell cmd")
+	return output.String(), errors.Wrap(err, "error running SSH command")
 }
 
 // InitSystem determines the current Linux init system used by this host.
@@ -260,10 +282,25 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 	if settings.Splunk.Populated() {
 		params = append(params,
 			fmt.Sprintf("--splunk_url=%s", settings.Splunk.ServerURL),
-			fmt.Sprintf("--splunk_token=%s", settings.Splunk.Token),
+			fmt.Sprintf("--splunk_token_path=%s", h.splunkTokenFilePath()),
 		)
 		if settings.Splunk.Channel != "" {
 			params = append(params, fmt.Sprintf("--splunk_channel=%s", settings.Splunk.Channel))
+		}
+	}
+
+	if os, _ := h.Distro.Platform(); os == "linux" {
+		if numProcs := h.Distro.BootstrapSettings.ResourceLimits.NumProcesses; numProcs != 0 {
+			params = append(params, fmt.Sprintf("--limit_num_procs=%d", numProcs))
+		}
+		if numFiles := h.Distro.BootstrapSettings.ResourceLimits.NumFiles; numFiles != 0 {
+			params = append(params, fmt.Sprintf("--limit_num_files=%d", numFiles))
+		}
+		if lockedMem := h.Distro.BootstrapSettings.ResourceLimits.LockedMemoryKB; lockedMem != 0 {
+			params = append(params, fmt.Sprintf("--limit_locked_memory=%d", lockedMem))
+		}
+		if virtualMem := h.Distro.BootstrapSettings.ResourceLimits.VirtualMemoryKB; virtualMem != 0 {
+			params = append(params, fmt.Sprintf("--limit_virtual_memory=%d", virtualMem))
 		}
 	}
 
@@ -338,9 +375,9 @@ func (h *Host) jasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 
 // BootstrapScript creates the user data script to bootstrap the host.
 func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credentials, preJasperSetup, postJasperSetup []string) (string, error) {
-	bashCmds := append([]string{"set -o errexit"}, preJasperSetup...)
+	bashCmds := append([]string{"set -o errexit", "set -o verbose"})
 
-	writeCredentialsCmd, err := h.WriteJasperCredentialsFileCommand(creds)
+	writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 	if err != nil {
 		return "", errors.Wrap(err, "could not get command to write Jasper credentials file")
 	}
@@ -359,16 +396,18 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credenti
 		if err != nil {
 			return "", errors.Wrap(err, "could not get command to set up service user")
 		}
-		powershellCmds := []string{
+		powershellCmds := append(append([]string{
 			"<powershell>",
-			setupUserCmds,
+			setupUserCmds},
+			preJasperSetup...),
 			fmt.Sprintf("%s -c %s", h.Distro.BootstrapSettings.ShellPath, bashCmdsLiteral),
 			"</powershell>",
-		}
+		)
 
 		return strings.Join(powershellCmds, "\r\n"), nil
 	}
 
+	bashCmds = append(bashCmds, preJasperSetup...)
 	bashCmds = append(bashCmds, h.FetchJasperCommand(settings.HostJasper), writeCredentialsCmd, h.ForceReinstallJasperCommand(settings))
 	bashCmds = append(bashCmds, postJasperSetup...)
 
@@ -497,16 +536,37 @@ func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, 
 }
 
 // WriteJasperCredentialsFileCommand builds the command to write the Jasper
-// credentials to a file.
-func (h *Host) WriteJasperCredentialsFileCommand(creds *rpc.Credentials) (string, error) {
+// credentials and Splunk credentials to files.
+func (h *Host) WriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionInfo, creds *rpc.Credentials) (string, error) {
 	if h.Distro.BootstrapSettings.JasperCredentialsPath == "" {
 		return "", errors.New("cannot write Jasper credentials without a credentials file path")
 	}
+
 	exportedCreds, err := creds.Export()
 	if err != nil {
 		return "", errors.Wrap(err, "problem exporting credentials to file format")
 	}
-	return fmt.Sprintf("mkdir -m 777 -p \"%s\" && cat > '%s' <<EOF\n%s\nEOF", filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath), h.Distro.BootstrapSettings.JasperCredentialsPath, exportedCreds), nil
+	writeFileContentCmd := func(path, content string) string {
+		return fmt.Sprintf("echo '%s' > '%s'", content, path)
+	}
+
+	cmds := []string{
+		fmt.Sprintf("mkdir -m 777 -p \"%s\"", filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath)),
+		writeFileContentCmd(h.Distro.BootstrapSettings.JasperCredentialsPath, string(exportedCreds)),
+	}
+
+	if splunk.Populated() {
+		cmds = append(cmds, writeFileContentCmd(h.splunkTokenFilePath(), splunk.Token))
+	}
+
+	return strings.Join(cmds, " && "), nil
+}
+
+func (h *Host) splunkTokenFilePath() string {
+	if h.Distro.BootstrapSettings.JasperCredentialsPath == "" {
+		return ""
+	}
+	return filepath.Join(filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath), "splunk.txt")
 }
 
 // RunJasperProcess makes a request to the host's Jasper service to create the

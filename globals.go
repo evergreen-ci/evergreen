@@ -146,9 +146,11 @@ const (
 
 	DegradedLoggingPercent = 10
 
-	SetupScriptName     = "setup.sh"
-	TempSetupScriptName = "setup-temp.sh"
-	TeardownScriptName  = "teardown.sh"
+	SetupScriptName               = "setup.sh"
+	TempSetupScriptName           = "setup-temp.sh"
+	PowerShellSetupScriptName     = "setup.ps1"
+	PowerShellTempSetupScriptName = "setup-temp.ps1"
+	TeardownScriptName            = "teardown.sh"
 
 	RoutePaginatorNextPageHeaderKey = "Link"
 
@@ -467,4 +469,21 @@ func IsPatchRequester(requester string) bool {
 
 func IsGitHubPatchRequester(requester string) bool {
 	return requester == GithubPRRequester || requester == MergeTestRequester
+}
+
+// Registered permissions
+const (
+	PermissionProjectSettings  = "project_settings"
+	PermissionProjectVariables = "project_variables"
+	PermissionTasks            = "project_tasks"
+	PermissionPatches          = "project_patches"
+	PermissionLogs             = "project_logs"
+)
+
+var projectPermissions = []string{
+	PermissionProjectSettings,
+	PermissionProjectVariables,
+	PermissionTasks,
+	PermissionPatches,
+	PermissionLogs,
 }

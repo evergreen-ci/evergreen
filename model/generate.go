@@ -249,7 +249,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 	}
 	dependencies = IncludePatchDependencies(p, newTVPairsForNewVariants.ExecTasks)
 	newTVPairsForNewVariants.ExecTasks = append(newTVPairsForNewVariants.ExecTasks, dependencies...)
-	if err := AddNewBuilds(true, v, p, newTVPairsForNewVariants, g.TaskID); err != nil {
+	if err := AddNewBuilds(ctx, true, v, p, newTVPairsForNewVariants, g.TaskID); err != nil {
 		return errors.Wrap(err, "errors adding new builds")
 	}
 	return nil

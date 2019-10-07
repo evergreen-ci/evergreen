@@ -120,13 +120,22 @@ func (s *APIFinderSettings) ToService() (interface{}, error) {
 // APIBootstrapSettings is the model to be returned by the API whenever distro.BootstrapSettings are fetched
 
 type APIBootstrapSettings struct {
-	Method                APIString `json:"method"`
-	Communication         APIString `json:"communication"`
-	ClientDir             APIString `json:"client_dir"`
-	JasperBinaryDir       APIString `json:"jasper_binary_dir"`
-	JasperCredentialsPath APIString `json:"jasper_credentials_path"`
-	ServiceUser           APIString `json:"service_user"`
-	ShellPath             APIString `json:"shell_path"`
+	Method                APIString         `json:"method"`
+	Communication         APIString         `json:"communication"`
+	ClientDir             APIString         `json:"client_dir"`
+	JasperBinaryDir       APIString         `json:"jasper_binary_dir"`
+	JasperCredentialsPath APIString         `json:"jasper_credentials_path"`
+	ServiceUser           APIString         `json:"service_user"`
+	ShellPath             APIString         `json:"shell_path"`
+	RootDir               APIString         `json:"root_dir"`
+	ResourceLimits        APIResourceLimits `json:"resource_limits"`
+}
+
+type APIResourceLimits struct {
+	NumFiles        int `json:"num_files"`
+	NumProcesses    int `json:"num_processes"`
+	LockedMemoryKB  int `json:"locked_memory"`
+	VirtualMemoryKB int `json:"virtual_memory"`
 }
 
 // BuildFromService converts from service level distro.BootstrapSettings to an
@@ -155,6 +164,12 @@ func (s *APIBootstrapSettings) BuildFromService(h interface{}) error {
 	s.JasperCredentialsPath = ToAPIString(settings.JasperCredentialsPath)
 	s.ServiceUser = ToAPIString(settings.ServiceUser)
 	s.ShellPath = ToAPIString(settings.ShellPath)
+	s.RootDir = ToAPIString(settings.RootDir)
+
+	s.ResourceLimits.NumFiles = settings.ResourceLimits.NumFiles
+	s.ResourceLimits.NumProcesses = settings.ResourceLimits.NumProcesses
+	s.ResourceLimits.LockedMemoryKB = settings.ResourceLimits.LockedMemoryKB
+	s.ResourceLimits.VirtualMemoryKB = settings.ResourceLimits.VirtualMemoryKB
 
 	return nil
 }
@@ -176,6 +191,12 @@ func (s *APIBootstrapSettings) ToService() (interface{}, error) {
 	settings.JasperCredentialsPath = FromAPIString(s.JasperCredentialsPath)
 	settings.ServiceUser = FromAPIString(s.ServiceUser)
 	settings.ShellPath = FromAPIString(s.ShellPath)
+	settings.RootDir = FromAPIString(s.RootDir)
+
+	settings.ResourceLimits.NumFiles = s.ResourceLimits.NumFiles
+	settings.ResourceLimits.NumProcesses = s.ResourceLimits.NumProcesses
+	settings.ResourceLimits.LockedMemoryKB = s.ResourceLimits.LockedMemoryKB
+	settings.ResourceLimits.VirtualMemoryKB = s.ResourceLimits.VirtualMemoryKB
 
 	return settings, nil
 }

@@ -228,7 +228,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 	}
 
 	if err = j.setDNSName(ctx, targetHost, cloudMgr, settings); err != nil {
-		return errors.Wrap(err, "error settings DNS name")
+		return errors.Wrap(err, "error setting DNS name")
 	}
 
 	// run the function scheduled for when the host is up
@@ -263,7 +263,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 			"provider":                targetHost.Provider,
 			"attempts":                targetHost.ProvisionAttempts,
 			"job":                     j.ID(),
-			"provision_duration_secs": time.Now().Sub(targetHost.CreationTime).Seconds(),
+			"provision_duration_secs": time.Since(targetHost.CreationTime).Seconds(),
 		})
 		return nil
 	case distro.BootstrapMethodSSH:
@@ -278,7 +278,11 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 	}
 
 	if targetHost.Distro.Setup != "" {
-		err = j.copyScript(ctx, settings, targetHost, filepath.Join("~", evergreen.SetupScriptName), targetHost.Distro.Setup)
+		scriptName := evergreen.SetupScriptName
+		if targetHost.Distro.IsPowerShellSetup() {
+			scriptName = evergreen.PowerShellSetupScriptName
+		}
+		err = j.copyScript(ctx, settings, targetHost, filepath.Join("~", scriptName), targetHost.Distro.Setup)
 		if err != nil {
 			return errors.Wrapf(err, "error copying setup script %v to host %v",
 				evergreen.SetupScriptName, targetHost.Id)
@@ -314,7 +318,7 @@ func (j *setupHostJob) setupJasper(ctx context.Context, settings *evergreen.Sett
 		return errors.Wrap(err, "error setting up service user")
 	}
 
-	if err := j.putJasperCredentials(ctx, sshOptions); err != nil {
+	if err := j.putJasperCredentials(ctx, settings, sshOptions); err != nil {
 		return errors.Wrap(err, "error putting Jasper credentials on remote host")
 	}
 
@@ -334,13 +338,13 @@ func (j *setupHostJob) setupJasper(ctx context.Context, settings *evergreen.Sett
 
 // putJasperCredentials creates Jasper credentials for the host and puts the
 // credentials file on the host.
-func (j *setupHostJob) putJasperCredentials(ctx context.Context, sshOptions []string) error {
+func (j *setupHostJob) putJasperCredentials(ctx context.Context, settings *evergreen.Settings, sshOptions []string) error {
 	creds, err := j.host.GenerateJasperCredentials(ctx)
 	if err != nil {
 		return errors.Wrap(err, "could not generate Jasper credentials for host")
 	}
 
-	writeCmd, err := j.host.WriteJasperCredentialsFileCommand(creds)
+	writeCmds, err := j.host.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 	if err != nil {
 		return errors.Wrap(err, "could not get command to write Jasper credentials file")
 	}
@@ -355,7 +359,7 @@ func (j *setupHostJob) putJasperCredentials(ctx context.Context, sshOptions []st
 	ctx, cancel := context.WithTimeout(ctx, scpTimeout)
 	defer cancel()
 
-	if logs, err := j.host.RunSSHCommand(ctx, writeCmd, sshOptions); err != nil {
+	if logs, err := j.host.RunSSHCommandLiterally(ctx, writeCmds, sshOptions); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "problem copying credentials to host",
 			"job":     j.ID(),
@@ -553,7 +557,6 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 		}
 
 		event.LogProvisionFailed(h.Id, "")
-
 		// mark the host's provisioning as failed
 		grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
 			"operation": "setting host unprovisioned",

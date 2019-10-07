@@ -171,8 +171,3 @@ func (h *userAuthorGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	return gimlet.NewJSONResponse(apiAuthor)
 }
-
-// validateRole is a stub for now, but will eventually hold validation code to run when updating a role
-func validateRole(role gimlet.Role) error {
-	return nil
-}

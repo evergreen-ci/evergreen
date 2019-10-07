@@ -501,7 +501,11 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   }
 
   $scope.isWindows = function() {
-    return $scope.activeDistro.arch.includes('windows')
+    return $scope.activeDistro.arch.includes('windows');
+  }
+
+  $scope.isLinux = function() {
+    return $scope.activeDistro.arch.includes('linux');
   }
 
   $scope.isNonLegacyProvisioning = function() {

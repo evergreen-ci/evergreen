@@ -3,6 +3,8 @@ package rolemanager
 import (
 	"context"
 	"errors"
+	"fmt"
+	"sync"
 
 	"go.mongodb.org/mongo-driver/mongo/options"
 
@@ -16,6 +18,8 @@ type mongoBackedRoleManager struct {
 	db        string
 	roleColl  string
 	scopeColl string
+
+	base
 }
 
 type MongoBackedRoleManagerOpts struct {
@@ -67,12 +71,20 @@ func (m *mongoBackedRoleManager) GetRoles(ids []string) ([]gimlet.Role, error) {
 }
 
 func (m *mongoBackedRoleManager) UpdateRole(role gimlet.Role) error {
+	for permission := range role.Permissions {
+		if !m.isValidPermission(permission) {
+			return fmt.Errorf("'%s' is not a valid permission for role '%s'", permission, role.ID)
+		}
+	}
 	ctx := context.Background()
 	coll := m.client.Database(m.db).Collection(m.roleColl)
 	upsert := true
 	result := coll.FindOneAndReplace(ctx, bson.M{"_id": role.ID}, role, &options.FindOneAndReplaceOptions{Upsert: &upsert})
 	if result == nil {
 		return errors.New("did not receive a response from MongoDB")
+	}
+	if result.Err() == mongo.ErrNoDocuments {
+		return nil
 	}
 	return result.Err()
 }
@@ -162,6 +174,8 @@ func (m *mongoBackedRoleManager) DeleteScope(id string) error {
 type inMemoryRoleManager struct {
 	roles  map[string]gimlet.Role
 	scopes map[string]gimlet.Scope
+
+	base
 }
 
 func NewInMemoryRoleManager() gimlet.RoleManager {
@@ -191,6 +205,11 @@ func (m *inMemoryRoleManager) GetRoles(ids []string) ([]gimlet.Role, error) {
 }
 
 func (m *inMemoryRoleManager) UpdateRole(role gimlet.Role) error {
+	for permission := range role.Permissions {
+		if !m.isValidPermission(permission) {
+			return fmt.Errorf("'%s' is not a valid permission for role '%s'", permission, role.ID)
+		}
+	}
 	m.roles[role.ID] = role
 	return nil
 }
@@ -246,4 +265,32 @@ func stringSliceContains(slice []string, toFind string) bool {
 		}
 	}
 	return false
+}
+
+type base struct {
+	permissionsMux        sync.RWMutex
+	registeredPermissions map[string]interface{}
+}
+
+func (b *base) RegisterPermissions(permissions []string) error {
+	b.permissionsMux.Lock()
+	defer b.permissionsMux.Unlock()
+	if b.registeredPermissions == nil {
+		b.registeredPermissions = map[string]interface{}{}
+	}
+	for _, permission := range permissions {
+		_, exists := b.registeredPermissions[permission]
+		if exists {
+			return fmt.Errorf("permission '%s' has already been registered", permission)
+		}
+		b.registeredPermissions[permission] = nil
+	}
+	return nil
+}
+
+func (b *base) isValidPermission(permission string) bool {
+	b.permissionsMux.RLock()
+	defer b.permissionsMux.RUnlock()
+	_, valid := b.registeredPermissions[permission]
+	return valid
 }
