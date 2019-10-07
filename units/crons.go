@@ -838,10 +838,11 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 				// frequently, lets not start too many all at
 				// once.
 
-				break
+				continue
 			}
 
 			catcher.Add(queue.Put(ctx, NewHostCreateJob(env, h, ts, 1, 0, false)))
+			submitted++
 		}
 
 		return catcher.Resolve()
