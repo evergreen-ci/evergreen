@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -128,6 +129,8 @@ type hostModifyHandler struct {
 	AddInstanceTags    []host.Tag
 	DeleteInstanceTags []string
 	InstanceType       string
+	NoExpiration       *bool
+	AddHours           time.Duration
 }
 
 func makeHostModifyRouteManager(sc data.Connector) gimlet.RouteHandler {
@@ -175,11 +178,22 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.New("Host must be stopped to modify instance type"))
 	}
 
+	// Limit number of spawn hosts allowed with no expiration
+	count, err := host.CountSpawnhostsWithNoExpirationByUser(user.Id)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error counting number of existing non-expiring hosts for '%s'", user.Id))
+	}
+	if h.NoExpiration != nil && *h.NoExpiration && count >= host.MaxSpawnhostsWithNoExpirationPerUser {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "cannot create any more non-expiring spawn hosts for '%s'", user.Id))
+	}
+
 	// Create new spawnhost modify job
 	changes := host.HostModifyOptions{
 		AddInstanceTags:    h.AddInstanceTags,
 		DeleteInstanceTags: h.DeleteInstanceTags,
 		InstanceType:       h.InstanceType,
+		NoExpiration:       h.NoExpiration,
+		AddHours:           h.AddHours,
 	}
 	ts := util.RoundPartOfMinute(1).Format(tsFormat)
 	modifyJob := units.NewSpawnhostModifyJob(foundHost, changes, ts)

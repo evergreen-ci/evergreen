@@ -45,6 +45,7 @@ var (
 	TaskDispatchTimeKey          = bsonutil.MustHaveTag(Host{}, "TaskDispatchTime")
 	CreateTimeKey                = bsonutil.MustHaveTag(Host{}, "CreationTime")
 	ExpirationTimeKey            = bsonutil.MustHaveTag(Host{}, "ExpirationTime")
+	NoExpirationKey              = bsonutil.MustHaveTag(Host{}, "NoExpiration")
 	TerminationTimeKey           = bsonutil.MustHaveTag(Host{}, "TerminationTime")
 	LTCTimeKey                   = bsonutil.MustHaveTag(Host{}, "LastTaskCompletedTime")
 	LTCTaskKey                   = bsonutil.MustHaveTag(Host{}, "LastTask")

@@ -857,6 +857,7 @@ func (c *awsClientImpl) GetVolumeIDs(ctx context.Context, h *host.Host) ([]strin
 	for _, device := range instance.BlockDeviceMappings {
 		volumeIDs = append(volumeIDs, *device.Ebs.VolumeId)
 	}
+	h.VolumeIDs = volumeIDs
 
 	return volumeIDs, nil
 }
