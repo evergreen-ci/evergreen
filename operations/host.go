@@ -15,6 +15,8 @@ func Host() cli.Command {
 			hostTerminate(),
 			hostSetup(),
 			hostTeardown(),
+			hostCreateVolume(),
+			hostDeleteVolume(),
 		},
 	}
 }

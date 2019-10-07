@@ -69,6 +69,7 @@ func hostCreate() cli.Command {
 		tagFlagName          = "tag"
 		instanceTypeFlagName = "type"
 		noExpireFlagName     = "no-expire"
+		attachFlagName       = "attach"
 	)
 
 	return cli.Command{
@@ -98,6 +99,10 @@ func hostCreate() cli.Command {
 			cli.BoolFlag{
 				Name:  noExpireFlagName,
 				Usage: "make host never expire",
+			},
+			cli.StringSliceFlag{
+				Name:  joinFlagNames(attachFlagName, "v"),
+				Usage: "name of an EBS volume",
 			},
 		},
 		Action: func(c *cli.Context) error {
@@ -155,7 +160,6 @@ func hostCreate() cli.Command {
 			return nil
 		},
 	}
-
 }
 
 func hostModify() cli.Command {
@@ -166,6 +170,8 @@ func hostModify() cli.Command {
 		noExpireFlagName     = "no-expire"
 		expireFlagName       = "expire"
 		extendFlagName       = "extend"
+		attachFlagName       = "attach"
+		detachFlagName       = "detach"
 	)
 
 	return cli.Command{
@@ -183,6 +189,14 @@ func hostModify() cli.Command {
 			cli.StringFlag{
 				Name:  joinFlagNames(instanceTypeFlagName, "i"),
 				Usage: "change instance type to `TYPE`",
+			},
+			cli.StringFlag{
+				Name:  joinFlagNames(attachFlagName),
+				Usage: "attach `VOLUME` to host",
+			},
+			cli.StringFlag{
+				Name:  joinFlagNames(detachFlagName),
+				Usage: "detach `VOLUME` from host",
 			},
 			cli.IntFlag{
 				Name:  extendFlagName,
@@ -208,6 +222,8 @@ func hostModify() cli.Command {
 			noExpire := c.Bool(noExpireFlagName)
 			expire := c.Bool(expireFlagName)
 			extension := c.Int(extendFlagName)
+			attachVolume := c.String(attachFlagName)
+			detachVolume := c.String(detachFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -229,6 +245,8 @@ func hostModify() cli.Command {
 				DeleteInstanceTags: deleteTagSlice,
 				InstanceType:       instanceType,
 				AddHours:           time.Duration(extension) * time.Hour,
+				AttachVolume:       attachVolume,
+				DetachVolume:       detachVolume,
 			}
 
 			if noExpire {
@@ -338,6 +356,103 @@ func hostStart() cli.Command {
 			} else {
 				grip.Infof("Starting host '%s'. Visit the hosts page in Evergreen to check on its status.", hostID)
 			}
+
+			return nil
+		},
+	}
+}
+
+func hostCreateVolume() cli.Command {
+	const (
+		zoneFlag = "zone"
+		sizeFlag = "size"
+		typeFlag = "type"
+	)
+
+	return cli.Command{
+		Name:  "create-volume",
+		Usage: "create a volume for spawn hosts",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  joinFlagNames(zoneFlag, "z"),
+				Usage: "create in availability zone `NAME`",
+			},
+			cli.StringFlag{
+				Name:  joinFlagNames(sizeFlag, "s"),
+				Usage: "create with `SIZE` in GiB",
+			},
+			cli.StringFlag{
+				Name:  joinFlagNames(typeFlag, "t"),
+				Usage: "",
+			},
+		},
+		Before: mergeBeforeFuncs(setPlainLogger, requireStringFlag(sizeFlag), requireStringFlag(typeFlag)),
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			volumeType := c.String(typeFlag)
+			volumeSize := c.Int(sizeFlag)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.GetRestCommunicator(ctx)
+			defer client.Close()
+
+			volumeRequest := &model.VolumePostRequest{
+				Type: volumeType,
+				Size: volumeSize,
+			}
+
+			volume, err := client.CreateVolume(ctx, volumeRequest)
+			if err != nil {
+				return err
+			}
+
+			grip.Infof("Created volume '%s'.", model.FromAPIString(volume.ID))
+
+			return nil
+		},
+	}
+}
+
+func hostDeleteVolume() cli.Command {
+	const (
+		idFlagName = "id"
+	)
+
+	return cli.Command{
+		Name:  "delete-volume",
+		Usage: "delete a volume for spawn hosts",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  idFlagName,
+				Usage: "`ID` of volume to delete",
+			},
+		},
+		Before: mergeBeforeFuncs(setPlainLogger, requireStringFlag(idFlagName)),
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			volumeID := c.String(idFlagName)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.GetRestCommunicator(ctx)
+			defer client.Close()
+
+			if err = client.DeleteVolume(ctx, volumeID); err != nil {
+				return err
+			}
+
+			grip.Infof("Deleted volume '%s'", volumeID)
 
 			return nil
 		},

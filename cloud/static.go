@@ -99,6 +99,14 @@ func (staticMgr *staticManager) OnUp(context.Context, *host.Host) error {
 	return nil
 }
 
+func (staticMgr *staticManager) CreateVolume(context.Context, *host.Volume) (*host.Volume, error) {
+	return nil, errors.New("can't create volume with static provider")
+}
+
+func (staticMgr *staticManager) DeleteVolume(context.Context, *host.Volume) error {
+	return errors.New("can't delete volume with static provider")
+}
+
 func (staticMgr *staticManager) GetSSHOptions(h *host.Host, keyPath string) (opts []string, err error) {
 	if keyPath != "" {
 		opts = append(opts, "-i", keyPath)

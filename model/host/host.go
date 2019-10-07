@@ -233,11 +233,13 @@ type ContainersOnParents struct {
 }
 
 type HostModifyOptions struct {
-	AddInstanceTags    []Tag         // tags to add
-	DeleteInstanceTags []string      // tags to remove
-	InstanceType       string        // new instance type
+	AddInstanceTags    []Tag
+	DeleteInstanceTags []string
+	InstanceType       string
 	NoExpiration       *bool         // whether host should never expire
 	AddHours           time.Duration // duration to extend expiration
+	AttachVolume       string
+	DetachVolume       string
 }
 
 const (
@@ -983,11 +985,11 @@ func (h *Host) CacheHostData() error {
 		},
 		bson.M{
 			"$set": bson.M{
-				ZoneKey:       h.Zone,
-				StartTimeKey:  h.StartTime,
-				VolumeSizeKey: h.VolumeTotalSize,
-				VolumeIDsKey:  h.VolumeIDs,
-				DNSKey:        h.Host,
+				ZoneKey:            h.Zone,
+				StartTimeKey:       h.StartTime,
+				VolumeTotalSizeKey: h.VolumeTotalSize,
+				VolumeIDsKey:       h.VolumeIDs,
+				DNSKey:             h.Host,
 			},
 		},
 	)
@@ -1816,6 +1818,47 @@ func (h *Host) MarkShouldExpire(expireOnValue string) error {
 				NoExpirationKey:   h.NoExpiration,
 				ExpirationTimeKey: h.ExpirationTime,
 				InstanceTagsKey:   h.InstanceTags,
+			},
+		},
+	)
+}
+
+// AttachVolume adds a volume to a host's VolumeIDs field.
+func (h *Host) AttachVolume(volumeID string) error {
+	h.VolumeIDs = append(h.VolumeIDs, volumeID)
+	return UpdateOne(
+		bson.M{
+			IdKey: h.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				VolumeIDsKey: h.VolumeIDs,
+			},
+		},
+	)
+}
+
+// DetachVolume removes a volume from a host's VolumeIDs field.
+func (h *Host) DetachVolume(volumeID string) error {
+	found := false
+	for i := range h.VolumeIDs {
+		if volumeID == h.VolumeIDs[i] {
+			h.VolumeIDs = append(h.VolumeIDs[:i], h.VolumeIDs[i+1:]...)
+			break
+		}
+	}
+
+	if !found {
+		return nil
+	}
+
+	return UpdateOne(
+		bson.M{
+			IdKey: h.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				VolumeIDsKey: h.VolumeIDs,
 			},
 		},
 	)

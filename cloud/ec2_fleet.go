@@ -291,6 +291,14 @@ func (m *ec2FleetManager) OnUp(ctx context.Context, h *host.Host) error {
 	return nil
 }
 
+func (m *ec2FleetManager) CreateVolume(context.Context, *host.Volume) (*host.Volume, error) {
+	return nil, errors.New("can't create volume with ec2 fleet provider")
+}
+
+func (m *ec2FleetManager) DeleteVolume(context.Context, *host.Volume) error {
+	return errors.New("can't delete volume with ec2 fleet provider")
+}
+
 func (m *ec2FleetManager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
 	if err := m.configureClient(h); err != nil {
 		return "", errors.Wrapf(err, "can't configure client for '%s'", h.Id)

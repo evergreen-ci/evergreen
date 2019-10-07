@@ -148,6 +148,58 @@ func (c *communicatorImpl) StopSpawnHost(ctx context.Context, hostID string, wai
 	return nil
 }
 
+func (c *communicatorImpl) CreateVolume(ctx context.Context, volumeRequest *model.VolumePostRequest) (*model.APIVolume, error) {
+	info := requestInfo{
+		method:  post,
+		path:    "volumes",
+		version: apiVersion2,
+	}
+
+	resp, err := c.request(ctx, info, volumeRequest)
+	if err != nil {
+		return nil, errors.Wrap(err, "error sending request to create volume")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errMsg := gimlet.ErrorResponse{}
+		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+			return nil, errors.Wrap(err, "problem creating volume and parsing error message")
+		}
+		return nil, errors.Wrap(errMsg, "problem creating volume")
+	}
+
+	createVolumeResp := model.APIVolume{}
+	if err = util.ReadJSONInto(resp.Body, &createVolumeResp); err != nil {
+		return nil, fmt.Errorf("Error forming response body response: %v", err)
+	}
+	return &createVolumeResp, nil
+}
+
+func (c *communicatorImpl) DeleteVolume(ctx context.Context, volumeID string) error {
+	info := requestInfo{
+		method:  delete,
+		path:    fmt.Sprintf("volumes/%s", volumeID),
+		version: apiVersion2,
+	}
+
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return errors.Wrap(err, "error sending request to delete volume")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errMsg := gimlet.ErrorResponse{}
+		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+			return errors.Wrap(err, "problem deleting volume and parsing error message")
+		}
+		return errors.Wrap(errMsg, "problem deleting volume")
+	}
+
+	return nil
+}
+
 func (c *communicatorImpl) StartSpawnHost(ctx context.Context, hostID string, wait bool) error {
 	info := requestInfo{
 		method:  post,

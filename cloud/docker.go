@@ -206,6 +206,14 @@ func (m *dockerManager) OnUp(context.Context, *host.Host) error {
 	return nil
 }
 
+func (m *dockerManager) CreateVolume(context.Context, *host.Volume) (*host.Volume, error) {
+	return nil, errors.New("can't create volume with docker provider")
+}
+
+func (m *dockerManager) DeleteVolume(context.Context, *host.Volume) error {
+	return errors.New("can't delete volume with docker provider")
+}
+
 //GetSSHOptions returns an array of default SSH options for connecting to a
 //container.
 func (m *dockerManager) GetSSHOptions(h *host.Host, keyPath string) ([]string, error) {

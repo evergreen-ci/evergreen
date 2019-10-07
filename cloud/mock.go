@@ -332,6 +332,14 @@ func (mockMgr *mockManager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return instance.TimeTilNextPayment
 }
 
+func (mockMgr *mockManager) CreateVolume(context.Context, *host.Volume) (*host.Volume, error) {
+	return nil, errors.New("can't create volume with mock provider")
+}
+
+func (mockMgr *mockManager) DeleteVolume(context.Context, *host.Volume) error {
+	return errors.New("can't delete volume with mock provider")
+}
+
 func (mockMgr *mockManager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) ([]CloudStatus, error) {
 	if len(hosts) != 1 {
 		return nil, errors.New("expecting 1 hosts")
