@@ -795,12 +795,12 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		}
 		// the spot request wasn't fulfilled, so don't attempt to terminate in ec2
 		if instanceId == "" {
-			return errors.Wrap(h.Terminate(user, ""), "failed to terminate instance in db")
+			return errors.Wrap(h.Terminate(user, "spot request was not fulfilled"), "failed to terminate instance in db")
 		}
 	}
 
 	if !strings.HasPrefix(instanceId, "i-") {
-		return errors.Wrap(h.Terminate(user, ""), "failed to terminate instance in db")
+		return errors.Wrap(h.Terminate(user, fmt.Sprintf("detected invalid instance ID %s", instanceId)), "failed to terminate instance in db")
 	}
 	resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
 		InstanceIds: []*string{aws.String(instanceId)},
