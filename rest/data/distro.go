@@ -56,7 +56,7 @@ func (dc *DBDistroConnector) UpdateDistro(old, new *distro.Distro) error {
 	}
 
 	if old.PlannerSettings.Version == evergreen.PlannerVersionTunable && new.PlannerSettings.Version != evergreen.PlannerVersionTunable {
-		if err := model.RemvoeTaskQueues(new.Id); err != nil {
+		if err := model.RemoveTaskQueues(new.Id); err != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    fmt.Sprintf("could not clear invalid task queues for %s", new.Id),

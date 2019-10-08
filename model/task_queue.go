@@ -59,7 +59,7 @@ func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
 	return taskQueue.DistroQueueInfo, nil
 }
 
-func RemvoeTaskQueues(distroID string) error {
+func RemoveTaskQueues(distroID string) error {
 	query := db.Query(bson.M{"_id": distroID})
 	catcher := grip.NewBasicCatcher()
 	err := db.RemoveAllQ(TaskQueuesCollection, query)
