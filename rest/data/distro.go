@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -45,12 +46,29 @@ func (dc *DBDistroConnector) FindAllDistros() ([]distro.Distro, error) {
 }
 
 // UpdateDistro updates the given distro.Distro.
-func (dc *DBDistroConnector) UpdateDistro(distro *distro.Distro) error {
-	err := distro.Update()
+func (dc *DBDistroConnector) UpdateDistro(old, new *distro.Distro) error {
+	if old.Id != new.Id {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    fmt.Sprintf("programmer error updating distro %s [%s]", new.Id, old.Id),
+		}
+
+	}
+
+	if old.PlannerSettings.Version == evergreen.PlannerVersionTunable && new.PlannerSettings.Version != evergreen.PlannerVersionTunable {
+		if err := model.RemvoeTaskQueues(new.Id); err != nil {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    fmt.Sprintf("could not clear invalid task queues for %s", new.Id),
+			}
+		}
+	}
+
+	err := new.Update()
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("distro with id '%s' was not updated", distro.Id),
+			Message:    fmt.Sprintf("distro with id '%s' was not updated", new.Id),
 		}
 	}
 	return nil
@@ -157,15 +175,15 @@ func (mdc *MockDistroConnector) FindAllDistros() ([]distro.Distro, error) {
 	return out, nil
 }
 
-func (mdc *MockDistroConnector) UpdateDistro(distro *distro.Distro) error {
+func (mdc *MockDistroConnector) UpdateDistro(old, new *distro.Distro) error {
 	for _, d := range mdc.CachedDistros {
-		if d.Id == distro.Id {
+		if d.Id == new.Id {
 			return nil
 		}
 	}
 	return gimlet.ErrorResponse{
 		StatusCode: http.StatusInternalServerError,
-		Message:    fmt.Sprintf("distro with id '%s' was not updated", distro.Id),
+		Message:    fmt.Sprintf("distro with id '%s' was not updated", new.Id),
 	}
 }
 

@@ -106,7 +106,7 @@ func (h *distroIDChangeSetupHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	d.Setup = h.Setup
-	if err = h.sc.UpdateDistro(d); err != nil {
+	if err = h.sc.UpdateDistro(d, d); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() by distro id '%s'", h.distroID))
 	}
 
@@ -204,7 +204,7 @@ func (h *distroIDChangeTeardownHandler) Run(ctx context.Context) gimlet.Responde
 	}
 
 	d.Teardown = h.Teardown
-	if err = h.sc.UpdateDistro(d); err != nil {
+	if err = h.sc.UpdateDistro(d, d); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() by distro id '%s'", h.distroID))
 	}
 
@@ -289,7 +289,7 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// Existing resource
 	if original != nil {
-		if err = h.sc.UpdateDistro(distro); err != nil {
+		if err = h.sc.UpdateDistro(original, distro); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() distro with distro id '%s'", h.distroID))
 		}
 		event.LogDistroModified(h.distroID, user.Username(), distro)
@@ -392,13 +392,13 @@ func (h *distroIDPatchHandler) Parse(ctx context.Context, r *http.Request) error
 
 // Run updates a distro by id.
 func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
-	d, err := h.sc.FindDistroById(h.distroID)
+	old, err := h.sc.FindDistroById(h.distroID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
 
 	apiDistro := &model.APIDistro{}
-	if err = apiDistro.BuildFromService(d); err != nil {
+	if err = apiDistro.BuildFromService(old); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
 	}
 
@@ -411,7 +411,7 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return error
 	}
 
-	if err = h.sc.UpdateDistro(d); err != nil {
+	if err = h.sc.UpdateDistro(old, d); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() by distro id '%s'", h.distroID))
 	}
 

@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -148,6 +149,12 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		}
 		for _, h := range hosts {
 			event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostDecommissioned, u.Username(), "distro page")
+		}
+	}
+
+	if oldDistro.PlannerSettings.Version == evergreen.PlannerVersionTunable && newDistro.PlannerSettings.Version != evergreen.PlannerVersionTunable {
+		if err := model.RemvoeTaskQueues(id); err != nil {
+			PushFlash(uis.CookieStore, r, w, NewWarningFlash(err.Error()))
 		}
 	}
 
