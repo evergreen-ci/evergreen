@@ -284,15 +284,15 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 		}
 		err = j.copyScript(ctx, settings, targetHost, filepath.Join("~", scriptName), targetHost.Distro.Setup)
 		if err != nil {
-			return errors.Wrapf(err, "error copying setup script %v to host %v",
-				evergreen.SetupScriptName, targetHost.Id)
+			return errors.Wrapf(err, "error copying setup script %s to host %s",
+				scriptName, targetHost.Id)
 		}
 	}
 
 	if targetHost.Distro.Teardown != "" {
 		err = j.copyScript(ctx, settings, targetHost, filepath.Join("~", evergreen.TeardownScriptName), targetHost.Distro.Teardown)
 		if err != nil {
-			return errors.Wrapf(err, "error copying teardown script %v to host %v",
+			return errors.Wrapf(err, "error copying teardown script %s to host %s",
 				evergreen.TeardownScriptName, targetHost.Id)
 		}
 	}
