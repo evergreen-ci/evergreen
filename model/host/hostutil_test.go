@@ -98,13 +98,9 @@ func TestJasperCommands(t *testing.T) {
 				assert.Contains(t, cmds, expectedCmd)
 			}
 		},
-		"FetchJasperCommandWithPath": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			path := "/bar"
+		"FetchJasperCommandWithJasperPath": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			expectedCmds := h.fetchJasperCommands(settings.HostJasper)
-			for i := range expectedCmds {
-				expectedCmds[i] = fmt.Sprintf("PATH=%s ", path) + expectedCmds[i]
-			}
-			cmds := h.FetchJasperCommandWithPath(settings.HostJasper, path)
+			cmds := h.FetchJasperCommandWithJasperPath(settings.HostJasper)
 			for _, expectedCmd := range expectedCmds {
 				assert.Contains(t, cmds, expectedCmd)
 			}
@@ -224,13 +220,12 @@ func TestJasperCommandsWindows(t *testing.T) {
 				assert.Contains(t, cmds, expectedCmd)
 			}
 		},
-		"FetchJasperCommandWithPath": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			path := "/bar"
+		"FetchJasperCommandWithJasperPath": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			expectedCmds := h.fetchJasperCommands(settings.HostJasper)
 			for i := range expectedCmds {
-				expectedCmds[i] = fmt.Sprintf("PATH=%s ", path) + expectedCmds[i]
+				expectedCmds[i] = fmt.Sprintf("PATH=%s %s", "/bin", expectedCmds[i])
 			}
-			cmds := h.FetchJasperCommandWithPath(settings.HostJasper, path)
+			cmds := h.FetchJasperCommandWithJasperPath(settings.HostJasper)
 			for _, expectedCmd := range expectedCmds {
 				assert.Contains(t, cmds, expectedCmd)
 			}
@@ -251,7 +246,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 
 			expectedCmds := []string{
 				writeCredentialsCmd,
-				h.FetchJasperCommandWithPath(settings.HostJasper, "/bin"),
+				h.FetchJasperCommandWithJasperPath(settings.HostJasper),
 				h.ForceReinstallJasperCommand(settings),
 			}
 
@@ -853,13 +848,13 @@ func TestSetupSpawnHostCommand(t *testing.T) {
 	assert.Equal(t, expected, cmd)
 }
 
-func TestMarkUserDataDoneCommand(t *testing.T) {
+func TestMarkUserDataDoneCommands(t *testing.T) {
 	for testName, testCase := range map[string]func(t *testing.T){
 		"FailsWithoutPathToDoneFile": func(t *testing.T) {
 			h := &Host{
 				Id: "id",
 			}
-			cmd, err := h.MarkUserDataDoneCommand()
+			cmd, err := h.MarkUserDataDoneCommands()
 			assert.Error(t, err)
 			assert.Empty(t, cmd)
 		},
@@ -868,7 +863,7 @@ func TestMarkUserDataDoneCommand(t *testing.T) {
 				Id:     "id",
 				Distro: distro.Distro{BootstrapSettings: distro.BootstrapSettings{ClientDir: "/client_dir"}},
 			}
-			cmd, err := h.MarkUserDataDoneCommand()
+			cmd, err := h.MarkUserDataDoneCommands()
 			require.NoError(t, err)
 			assert.Equal(t, "mkdir -m 777 -p /client_dir && touch /client_dir/user_data_done", cmd)
 		},

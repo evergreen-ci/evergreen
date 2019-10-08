@@ -204,9 +204,13 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, settings *everg
 	})
 
 	opts := &options.Create{
-		Args:             []string{"bash", "-c", j.host.CurlCommand(settings)},
-		WorkingDirectory: j.host.Distro.HomeDir(),
+		Args: []string{j.host.Distro.BootstrapSettings.ShellPath, "-c", j.host.CurlCommandWithPath(settings, "/bin")},
+		// kim: TODO: see if this can be removed.
+		// WorkingDirectory: j.host.Distro.HomeDir(),
 	}
+	// if j.host.Distro.IsWindows() {
+	//     opts.WorkingDirectory = filepath.Join(j.host.Distro.BootstrapSettings.RootDir, opts.WorkingDirectory)
+	// }
 	output, err := j.host.RunJasperProcess(ctx, settings, opts)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
@@ -235,9 +239,12 @@ func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context, settings *ev
 	})
 
 	opts := &options.Create{
-		Args:             []string{"bash", "-c", j.host.SetupCommand()},
-		WorkingDirectory: j.host.Distro.HomeDir(),
+		Args: []string{j.host.Distro.BootstrapSettings.ShellPath, "-c", j.host.SetupCommand()},
+		// WorkingDirectory: j.host.Distro.HomeDir(),
 	}
+	// if j.host.Distro.IsWindows() {
+	//     opts.WorkingDirectory = filepath.Join(j.host.Distro.BootstrapSettings.RootDir, opts.WorkingDirectory)
+	// }
 	output, err := j.host.RunJasperProcess(ctx, settings, opts)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
