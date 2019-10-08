@@ -281,6 +281,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			}
 		},
 		"ForceReinstallJasperCommand": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			require.NoError(t, h.Insert())
 			require.NoError(t, h.CreateServicePassword())
 			cmd := h.ForceReinstallJasperCommand(settings)
 			assert.True(t, strings.HasPrefix(cmd, "/foo/jasper_cli.exe jasper service force-reinstall rpc"))
@@ -332,6 +333,10 @@ func TestJasperCommandsWindows(t *testing.T) {
 		},
 	} {
 		t.Run(opName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			defer func() {
+				assert.NoError(t, db.Clear(Collection))
+			}()
 			h := &Host{Distro: distro.Distro{
 				Arch: distro.ArchWindowsAmd64,
 				BootstrapSettings: distro.BootstrapSettings{

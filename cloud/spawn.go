@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -33,6 +34,7 @@ var passwordRegexps = []*regexp.Regexp{
 const (
 	MaxSpawnHostsPerUser                = 3
 	DefaultSpawnHostExpiration          = 24 * time.Hour
+	SpawnHostNoExpirationDuration       = 7 * 24 * time.Hour
 	MaxSpawnHostExpirationDurationHours = 24 * time.Hour * 14
 )
 
@@ -46,6 +48,7 @@ type SpawnOptions struct {
 	Owner            *user.DBUser
 	InstanceTags     []host.Tag
 	InstanceType     string
+	NoExpiration     bool
 }
 
 // Validate returns an instance of BadOptionsErr if the SpawnOptions object contains invalid
@@ -102,7 +105,7 @@ func (so *SpawnOptions) validate() error {
 	return nil
 }
 
-// CreateHost spawns a host with the given options.
+// CreateSpawnHost spawns a host with the given options.
 func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 	if err := so.validate(); err != nil {
 		return nil, errors.WithStack(err)
@@ -119,7 +122,7 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 	}
 
 	// modify the setup script to add the user's public key
-	d.Setup += fmt.Sprintf("\necho \"\n%v\" >> ~%v/.ssh/authorized_keys\n", so.PublicKey, d.User)
+	d.Setup += fmt.Sprintf("\necho \"\n%s\" >> %s\n", so.PublicKey, filepath.Join(d.BootstrapSettings.RootDir, d.HomeDir(), ".ssh", "authorized_keys"))
 
 	// fake out replacing spot instances with on-demand equivalents
 	if d.Provider == evergreen.ProviderNameEc2Spot || d.Provider == evergreen.ProviderNameEc2Fleet {
@@ -133,6 +136,9 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 		OwnerId: so.Owner.Id,
 	}
 	expiration := DefaultSpawnHostExpiration
+	if so.NoExpiration {
+		expiration = SpawnHostNoExpirationDuration
+	}
 	hostOptions := host.CreateOptions{
 		ProvisionOptions:   provisionOptions,
 		UserName:           so.UserName,
@@ -140,6 +146,7 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 		UserHost:           true,
 		InstanceTags:       so.InstanceTags,
 		InstanceType:       so.InstanceType,
+		NoExpiration:       so.NoExpiration,
 	}
 
 	intentHost := host.NewIntent(d, d.GenerateName(), d.Provider, hostOptions)

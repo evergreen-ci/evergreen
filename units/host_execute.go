@@ -1,14 +1,12 @@
 package units
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -96,25 +94,7 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 		return
 	}
 
-	hostInfo, err := j.host.GetSSHInfo()
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "failed to get host information",
-			"host":    j.host.Id,
-			"distro":  j.host.Distro.Id,
-			"job":     j.ID(),
-		}))
-		j.AddError(err)
-	}
-	output := &util.CappedWriter{
-		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024, // 1MB
-	}
-	err = j.env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
-		ExtendRemoteArgs("-p", hostInfo.Port, "-t", "-t").ExtendRemoteArgs(sshOptions...).
-		SetCombinedWriter(output).
-		ShellScript("bash", j.Script).Run(ctx)
-	logs := output.String()
+	logs, err := j.host.RunSSHShellScript(ctx, j.Script, sshOptions)
 	if err != nil {
 		event.LogHostScriptExecuteFailed(j.host.Id, err)
 		grip.Error(message.WrapError(err, message.Fields{

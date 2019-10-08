@@ -141,7 +141,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                       <li>
                         <a tabindex="-1" href="#" ng-click="addSubscription()">Add Notification</a>
                       </li>
-                      <li ng-show="isAdmin && task.depends_on && task.depends_on.length > 0">
+                      <li ng-show="isAdmin && !task.override_dependencies && task.depends_on && task.depends_on.length > 0">
                         <a tabindex="-1" href="#" ng-click="overrideDependencies()">Override Dependencies</a>
                       </li>
                     </ul>

@@ -127,6 +127,7 @@ type APIBootstrapSettings struct {
 	JasperCredentialsPath APIString         `json:"jasper_credentials_path"`
 	ServiceUser           APIString         `json:"service_user"`
 	ShellPath             APIString         `json:"shell_path"`
+	RootDir               APIString         `json:"root_dir"`
 	ResourceLimits        APIResourceLimits `json:"resource_limits"`
 }
 
@@ -163,6 +164,12 @@ func (s *APIBootstrapSettings) BuildFromService(h interface{}) error {
 	s.JasperCredentialsPath = ToAPIString(settings.JasperCredentialsPath)
 	s.ServiceUser = ToAPIString(settings.ServiceUser)
 	s.ShellPath = ToAPIString(settings.ShellPath)
+	s.RootDir = ToAPIString(settings.RootDir)
+
+	s.ResourceLimits.NumFiles = settings.ResourceLimits.NumFiles
+	s.ResourceLimits.NumProcesses = settings.ResourceLimits.NumProcesses
+	s.ResourceLimits.LockedMemoryKB = settings.ResourceLimits.LockedMemoryKB
+	s.ResourceLimits.VirtualMemoryKB = settings.ResourceLimits.VirtualMemoryKB
 
 	return nil
 }
@@ -184,6 +191,7 @@ func (s *APIBootstrapSettings) ToService() (interface{}, error) {
 	settings.JasperCredentialsPath = FromAPIString(s.JasperCredentialsPath)
 	settings.ServiceUser = FromAPIString(s.ServiceUser)
 	settings.ShellPath = FromAPIString(s.ShellPath)
+	settings.RootDir = FromAPIString(s.RootDir)
 
 	settings.ResourceLimits.NumFiles = s.ResourceLimits.NumFiles
 	settings.ResourceLimits.NumProcesses = s.ResourceLimits.NumProcesses

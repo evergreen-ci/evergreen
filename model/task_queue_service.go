@@ -24,6 +24,8 @@ type TaskQueueItemDispatcher interface {
 type CachedDispatcher interface {
 	Refresh() error
 	FindNextTask(TaskSpec) *TaskQueueItem
+	Type() string
+	CreatedAt() time.Time
 }
 
 type taskDispatchService struct {
@@ -84,37 +86,6 @@ func (s *taskDispatchService) Refresh(distroID string) error {
 }
 
 func (s *taskDispatchService) ensureQueue(distroID string) (CachedDispatcher, error) {
-	// If there is a "distro": *basicCachedDispatcherImpl in the cachedDispatchers map, return that.
-	// Otherwise, get the "distro"'s taskQueue from the database; seed its cachedDispatcher; put that in the map and return it.
-	s.mu.RLock()
-
-	distroDispatchService, ok := s.cachedDispatchers[distroID]
-	s.mu.RUnlock()
-	if ok {
-		return distroDispatchService, nil
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	distroDispatchService, ok = s.cachedDispatchers[distroID]
-	if ok {
-		return distroDispatchService, nil
-	}
-
-	var (
-		taskQueue TaskQueue
-		err       error
-	)
-	if s.useAliases {
-		taskQueue, err = FindDistroAliasTaskQueue(distroID)
-	} else {
-		taskQueue, err = FindDistroTaskQueue(distroID)
-	}
-
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
 	d, err := distro.FindOne(distro.ById(distroID))
 	if err != nil {
 		return nil, errors.Wrapf(err, "Database error for find() by distro id '%s'", distroID)
@@ -129,19 +100,39 @@ func (s *taskDispatchService) ensureQueue(distroID string) (CachedDispatcher, er
 		return nil, errors.Wrapf(err, "error resolving the PlannerSettings for distro '%s'", d.Id)
 	}
 
+	// If there is a "distro": *basicCachedDispatcherImpl in the cachedDispatchers map, return that.
+	// Otherwise, get the "distro"'s taskQueue from the database; seed its cachedDispatcher; put that in the map and return it.
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	distroDispatchService, ok := s.cachedDispatchers[distroID]
+	if ok && distroDispatchService.Type() == plannerSettings.Version {
+		return distroDispatchService, nil
+	}
+
+	var taskQueue TaskQueue
+	if s.useAliases {
+		taskQueue, err = FindDistroAliasTaskQueue(distroID)
+	} else {
+		taskQueue, err = FindDistroTaskQueue(distroID)
+	}
+
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
 	switch plannerSettings.Version {
 	case evergreen.PlannerVersionTunable:
-		distroDispatchService, err := newDistroTaskDAGDispatchService(taskQueue, s.ttl)
+		distroDispatchService, err = newDistroTaskDAGDispatchService(taskQueue, s.ttl)
 		if err != nil {
 			return nil, err
 		}
-		s.cachedDispatchers[distroID] = distroDispatchService
-		return distroDispatchService, nil
 	default:
-		distroDispatchService = newDistroTaskDispatchService(taskQueue, s.ttl)
-		s.cachedDispatchers[distroID] = distroDispatchService
-		return distroDispatchService, nil
+		distroDispatchService = newDistroTaskDispatchService(taskQueue, plannerSettings.Version, s.ttl)
 	}
+
+	s.cachedDispatchers[distroID] = distroDispatchService
+	return distroDispatchService, nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -161,6 +152,7 @@ type basicCachedDispatcherImpl struct {
 	order       []string
 	units       map[string]schedulableUnit
 	ttl         time.Duration
+	typeName    string
 	lastUpdated time.Time
 }
 
@@ -179,10 +171,11 @@ type schedulableUnit struct {
 }
 
 // newDistroTaskDispatchService creates a basicCachedDispatcherImpl from a slice of TaskQueueItems.
-func newDistroTaskDispatchService(taskQueue TaskQueue, ttl time.Duration) *basicCachedDispatcherImpl {
+func newDistroTaskDispatchService(taskQueue TaskQueue, typeName string, ttl time.Duration) *basicCachedDispatcherImpl {
 	d := &basicCachedDispatcherImpl{
 		distroID: taskQueue.Distro,
 		ttl:      ttl,
+		typeName: typeName,
 	}
 
 	if taskQueue.Length() != 0 {
@@ -202,6 +195,19 @@ func newDistroTaskDispatchService(taskQueue TaskQueue, ttl time.Duration) *basic
 	})
 
 	return d
+}
+
+func (d *basicCachedDispatcherImpl) Type() string {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return d.typeName
+}
+
+func (d *basicCachedDispatcherImpl) CreatedAt() time.Time {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	return d.lastUpdated
 }
 
 func (d *basicCachedDispatcherImpl) Refresh() error {

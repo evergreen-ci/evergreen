@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/kardianos/service"
+	"github.com/evergreen-ci/service"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
@@ -45,6 +45,7 @@ func serviceCommandRPC(cmd string, operation serviceOperation) cli.Command {
 		Before: mergeBeforeFuncs(
 			validatePort(portFlagName),
 			validateLogLevel(logLevelFlagName),
+			validateLimits(limitNumFilesFlagName, limitNumProcsFlagName, limitLockedMemoryFlagName, limitVirtualMemoryFlagName),
 		),
 		Action: func(c *cli.Context) error {
 			manager, err := jasper.NewLocalManager(false)
@@ -54,8 +55,7 @@ func serviceCommandRPC(cmd string, operation serviceOperation) cli.Command {
 
 			daemon := newRPCDaemon(c.String(hostFlagName), c.Int(portFlagName), manager, c.String(credsFilePathFlagName), makeLogger(c))
 
-			config := serviceConfig(RPCService, buildRunCommand(c, RPCService))
-			config.UserName = c.String(userFlagName)
+			config := serviceConfig(RPCService, c, buildRunCommand(c, RPCService))
 
 			if err := operation(daemon, config); !c.Bool(quietFlagName) {
 				return err

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kardianos/service"
+	"github.com/evergreen-ci/service"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/testutil"
 	"github.com/pkg/errors"

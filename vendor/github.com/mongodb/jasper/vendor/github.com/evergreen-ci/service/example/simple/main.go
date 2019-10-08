@@ -7,10 +7,8 @@ package main
 
 import (
 	"log"
-	"os"
-	"time"
 
-	"github.com/kardianos/service"
+	"github.com/evergreen-ci/service"
 )
 
 var logger service.Logger
@@ -27,15 +25,14 @@ func (p *program) run() {
 }
 func (p *program) Stop(s service.Service) error {
 	// Stop should not block. Return with a few seconds.
-	<-time.After(time.Second * 13)
 	return nil
 }
 
 func main() {
 	svcConfig := &service.Config{
-		Name:        "GoServiceExampleStopPause",
-		DisplayName: "Go Service Example: Stop Pause",
-		Description: "This is an example Go service that pauses on stop.",
+		Name:        "GoServiceExampleSimple",
+		DisplayName: "Go Service Example",
+		Description: "This is an example Go service.",
 	}
 
 	prg := &program{}
@@ -43,14 +40,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if len(os.Args) > 1 {
-		err = service.Control(s, os.Args[1])
-		if err != nil {
-			log.Fatal(err)
-		}
-		return
-	}
-
 	logger, err = s.Logger(nil)
 	if err != nil {
 		log.Fatal(err)
