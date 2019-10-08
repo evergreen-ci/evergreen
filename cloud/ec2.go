@@ -799,7 +799,7 @@ func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cloud
 }
 
 // TerminateInstance terminates the EC2 instance.
-func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user string) error {
+func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, reason string) error {
 	// terminate the instance
 	if h.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %s - already marked as "+
@@ -840,12 +840,12 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user s
 		}
 		// the spot request wasn't fulfilled, so don't attempt to terminate in ec2
 		if instanceId == "" {
-			return errors.Wrap(h.Terminate(user), "failed to terminate instance in db")
+			return errors.Wrap(h.Terminate(user, "spot request was not fulfilled"), "failed to terminate instance in db")
 		}
 	}
 
 	if !strings.HasPrefix(instanceId, "i-") {
-		return errors.Wrap(h.Terminate(user), "failed to terminate instance in db")
+		return errors.Wrap(h.Terminate(user, fmt.Sprintf("detected invalid instance ID %s", instanceId)), "failed to terminate instance in db")
 	}
 	resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
 		InstanceIds: []*string{aws.String(instanceId)},
@@ -872,7 +872,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user s
 		})
 	}
 
-	return errors.Wrap(h.Terminate(user), "failed to terminate instance in db")
+	return errors.Wrap(h.Terminate(user, reason), "failed to terminate instance in db")
 }
 
 // StopInstance stops a running EC2 instance.
@@ -994,7 +994,7 @@ func (m *ec2Manager) cancelSpotRequest(ctx context.Context, h *host.Host) (strin
 	if err != nil {
 		if ec2err, ok := err.(awserr.Error); ok {
 			if ec2err.Code() == EC2ErrorSpotRequestNotFound {
-				return "", h.Terminate(evergreen.User)
+				return "", h.Terminate(evergreen.User, "unable to find spot request")
 			}
 		}
 		grip.Error(message.WrapError(err, message.Fields{
@@ -1010,7 +1010,7 @@ func (m *ec2Manager) cancelSpotRequest(ctx context.Context, h *host.Host) (strin
 	}); err != nil {
 		if ec2err, ok := err.(awserr.Error); ok {
 			if ec2err.Code() == EC2ErrorSpotRequestNotFound {
-				return "", h.Terminate(evergreen.User)
+				return "", h.Terminate(evergreen.User, "unable to find spot request")
 			}
 		}
 		grip.Error(message.Fields{

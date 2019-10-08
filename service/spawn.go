@@ -211,7 +211,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel = context.WithCancel(r.Context())
 		defer cancel()
 
-		if err := cloud.TerminateSpawnHost(ctx, h, env.Settings(), u.Id); err != nil {
+		if err := cloud.TerminateSpawnHost(ctx, h, env.Settings(), u.Id, fmt.Sprintf("terminated via UI by %s", u.Username())); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}

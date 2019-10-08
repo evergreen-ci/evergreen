@@ -682,7 +682,7 @@ func (s *EC2Suite) TestTerminateInstance() {
 	defer cancel()
 
 	s.NoError(s.h.Insert())
-	s.NoError(s.onDemandManager.TerminateInstance(ctx, s.h, evergreen.User))
+	s.NoError(s.onDemandManager.TerminateInstance(ctx, s.h, evergreen.User, ""))
 	found, err := host.FindOne(host.ById("h1"))
 	s.Equal(evergreen.HostTerminated, found.Status)
 	s.NoError(err)
@@ -703,7 +703,7 @@ func (s *EC2Suite) TestTerminateInstanceWithUserDataBootstrappedHost() {
 		_, err = s.h.JasperCredentials(ctx)
 		s.Require().NoError(err)
 
-		s.NoError(s.onDemandManager.TerminateInstance(ctx, s.h, evergreen.User))
+		s.NoError(s.onDemandManager.TerminateInstance(ctx, s.h, evergreen.User, ""))
 
 		_, err = s.h.JasperCredentials(ctx)
 		s.Error(err)

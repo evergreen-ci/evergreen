@@ -138,7 +138,7 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 
 		// the instance was terminated from outside our control
 		catcher := grip.NewBasicCatcher()
-		err = h.SetTerminated(evergreen.HostExternalUserName)
+		err = h.SetTerminated(evergreen.HostExternalUserName, "terminated externally")
 		catcher.Add(err)
 		grip.Error(message.WrapError(err, message.Fields{
 			"op_id":   id,

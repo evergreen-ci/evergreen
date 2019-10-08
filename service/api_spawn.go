@@ -150,7 +150,7 @@ func (as *APIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		if err = cloudHost.TerminateInstance(ctx, user.Username()); err != nil {
+		if err = cloudHost.TerminateInstance(ctx, user.Username(), fmt.Sprintf("terminated via API by %s", user.Username())); err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Failed to terminate spawn host"))
 			return
 		}

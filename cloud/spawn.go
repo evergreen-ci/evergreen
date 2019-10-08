@@ -222,18 +222,18 @@ func constructPwdUpdateCommand(ctx context.Context, env evergreen.Environment, h
 		Append(fmt.Sprintf("echo -e \"%s\" | passwd", password)), nil
 }
 
-func TerminateSpawnHost(ctx context.Context, host *host.Host, settings *evergreen.Settings, user string) error {
+func TerminateSpawnHost(ctx context.Context, host *host.Host, settings *evergreen.Settings, user, reason string) error {
 	if host.Status == evergreen.HostTerminated {
 		return errors.New("Host is already terminated")
 	}
 	if host.Status == evergreen.HostUninitialized {
-		return host.SetTerminated(user)
+		return host.SetTerminated(user, "host never started")
 	}
 	cloudHost, err := GetCloudHost(ctx, host, settings)
 	if err != nil {
 		return err
 	}
-	if err = cloudHost.TerminateInstance(ctx, user); err != nil {
+	if err = cloudHost.TerminateInstance(ctx, user, reason); err != nil {
 		return err
 	}
 	return nil

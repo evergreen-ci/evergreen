@@ -236,7 +236,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	if err != nil {
 		terminateCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		grip.Error(message.WrapError(cloudManager.TerminateInstance(terminateCtx, j.host, evergreen.User), message.Fields{
+		grip.Error(message.WrapError(cloudManager.TerminateInstance(terminateCtx, j.host, evergreen.User, "hit database error trying to create host"), message.Fields{
 			"message":     "problem terminating instance after cloud host was spawned",
 			"intent_host": j.HostID,
 			"host":        j.host.Id,
@@ -256,7 +256,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	} else if err := intentHost.Remove(); err != nil {
 		terminateCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		grip.Error(message.WrapError(cloudManager.TerminateInstance(terminateCtx, j.host, evergreen.User), message.Fields{
+		grip.Error(message.WrapError(cloudManager.TerminateInstance(terminateCtx, j.host, evergreen.User, "hit database error trying to update host"), message.Fields{
 			"message":     "problem terminating instance after cloud host was spawned",
 			"host":        j.host.Id,
 			"intent_host": j.HostID,
@@ -284,7 +284,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	if err := j.host.Insert(); err != nil {
 		terminateCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		grip.Error(message.WrapError(cloudManager.TerminateInstance(terminateCtx, j.host, evergreen.User), message.Fields{
+		grip.Error(message.WrapError(cloudManager.TerminateInstance(terminateCtx, j.host, evergreen.User, "hit database error trying to update host"), message.Fields{
 			"message": "problem terminating instance after cloud host was spawned",
 			"host":    j.host.Id,
 			"distro":  j.host.Distro.Id,
