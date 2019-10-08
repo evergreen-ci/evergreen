@@ -1126,6 +1126,10 @@ Admin Settings
 										<label>Default Security Group</label>
 										<input type="text" ng-model="Settings.providers.aws.default_security_group">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px">
+										<label>Allowed Instance Types</label>
+										<textarea ng-model="Settings.providers.aws.allowed_instance_types" ng-list="&#10;" ng-trim="false" rows="3" md-select-on-focus></textarea>
+									</md-input-container>
 								</md-card-content>
 							</md-card>
 
