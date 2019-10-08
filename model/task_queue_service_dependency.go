@@ -38,7 +38,6 @@ func newDistroTaskDAGDispatchService(taskQueue TaskQueue, ttl time.Duration) (*b
 	d := &basicCachedDAGDispatcherImpl{
 		distroID: taskQueue.Distro,
 		ttl:      ttl,
-		graph:    simple.NewDirectedGraph(),
 	}
 
 	if taskQueue.Length() != 0 {
