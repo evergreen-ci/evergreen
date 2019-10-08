@@ -26,9 +26,9 @@ type basicCachedDAGDispatcherImpl struct {
 	distroID    string
 	graph       *simple.DirectedGraph
 	sorted      []graph.Node
-	itemNodeMap map[string]graph.Node
-	nodeItemMap map[int64]*TaskQueueItem
-	taskGroups  map[string]schedulableUnit
+	itemNodeMap map[string]graph.Node      // map[TaskQueueItem.Id]Node
+	nodeItemMap map[int64]*TaskQueueItem   // map[node.ID()]*TaskQueueItem
+	taskGroups  map[string]schedulableUnit // map[compositeGroupId(TaskQueueItem.Group, TaskQueueItem.BuildVariant, TaskQueueItem.Project, TaskQueueItem.Version)]schedulableUnit
 	ttl         time.Duration
 	lastUpdated time.Time
 }
@@ -38,11 +38,9 @@ func newDistroTaskDAGDispatchService(taskQueue TaskQueue, ttl time.Duration) (*b
 	d := &basicCachedDAGDispatcherImpl{
 		distroID: taskQueue.Distro,
 		ttl:      ttl,
+		graph:    simple.NewDirectedGraph(),
 	}
-	d.graph = simple.NewDirectedGraph()
-	d.itemNodeMap = map[string]graph.Node{}     // map[TaskQueueItem.Id]Node
-	d.nodeItemMap = map[int64]*TaskQueueItem{}  // map[node.ID()]*TaskQueueItem
-	d.taskGroups = map[string]schedulableUnit{} // map[compositeGroupId(TaskQueueItem.Group, TaskQueueItem.BuildVariant, TaskQueueItem.Project, TaskQueueItem.Version)]schedulableUnit
+
 	if taskQueue.Length() != 0 {
 		if err := d.rebuild(taskQueue.Queue); err != nil {
 			return nil, errors.Wrapf(err, "error creating newDistroTaskDAGDispatchService for distro '%s'", taskQueue.Distro)
@@ -239,13 +237,18 @@ func (d *basicCachedDAGDispatcherImpl) addEdge(fromID string, toID string) error
 }
 
 func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
+	d.graph = simple.NewDirectedGraph()
+	d.sorted = []graph.Node{}
+	d.itemNodeMap = map[string]graph.Node{}     // map[TaskQueueItem.Id]Node
+	d.nodeItemMap = map[int64]*TaskQueueItem{}  // map[node.ID()]*TaskQueueItem
+	d.taskGroups = map[string]schedulableUnit{} // map[compositeGroupId(TaskQueueItem.Group, TaskQueueItem.BuildVariant, TaskQueueItem.Project, TaskQueueItem.Version)]schedulableUnit
+
 	for i := range items {
 		// Add each individual <TaskQueueItem> node to the graph.
 		d.addItem(&items[i])
 	}
 
 	// Save the task groups.
-	d.taskGroups = map[string]schedulableUnit{}
 	for _, item := range items {
 		if item.Group != "" {
 			// If it's the first time encountering the task group create an entry for it in the taskGroups map.
