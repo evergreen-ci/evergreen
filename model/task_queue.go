@@ -59,6 +59,16 @@ func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
 	return taskQueue.DistroQueueInfo, nil
 }
 
+func RemoveTaskQueues(distroID string) error {
+	query := db.Query(bson.M{"_id": distroID})
+	catcher := grip.NewBasicCatcher()
+	err := db.RemoveAllQ(TaskQueuesCollection, query)
+	catcher.AddWhen(!adb.ResultsNotFound(err), errors.Wrapf(err, "problem removing task queue for '%s'", distroID))
+	err = db.RemoveAllQ(TaskAliasQueuesCollection, query)
+	catcher.AddWhen(!adb.ResultsNotFound(err), errors.Wrapf(err, "problem removing task queue for '%s'", distroID))
+	return catcher.Resolve()
+}
+
 func (q *DistroQueueInfo) GetQueueCollection() string {
 	if q.AliasQueue {
 		return TaskAliasQueuesCollection
