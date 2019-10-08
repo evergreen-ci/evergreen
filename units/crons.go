@@ -829,7 +829,7 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 		submitted := 0
 
 		for _, h := range hosts {
-			if h.UserHost {
+			if h.UserHost || h.SpawnOptions.SpawnedByTask {
 				// pass:
 				//    always start spawn hosts asap
 			} else if submitted > 16 {
