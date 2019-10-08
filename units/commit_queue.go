@@ -114,16 +114,14 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 	if cq.Processing {
-		if time.Since(cq.ProcessingUpdatedTime) > time.Hour {
-			grip.Info(message.Fields{
-				"source":               "commit queue",
-				"job_id":               j.ID(),
-				"item_id":              nextItem.Issue,
-				"project_id":           cq.ProjectID,
-				"message":              "commit queue may be stuck",
-				"head_processing_time": time.Since(cq.ProcessingUpdatedTime).Seconds(),
-			})
-		}
+		grip.Info(message.Fields{
+			"source":               "commit queue",
+			"job_id":               j.ID(),
+			"item_id":              nextItem.Issue,
+			"project_id":           cq.ProjectID,
+			"message":              "commit queue may be stuck",
+			"head_processing_time": time.Since(cq.ProcessingUpdatedTime).Seconds(),
+		})
 		return
 	}
 	j.AddError(errors.Wrap(cq.SetProcessing(true), "can't set processing to true"))
