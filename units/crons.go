@@ -839,10 +839,14 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 				// once.
 
 				continue
+			} else {
+				// only increment for task hosts, since otherwise
+				// spawn hosts and hosts spawned by tasks could
+				// starve task hosts
+				submitted++
 			}
 
 			catcher.Add(queue.Put(ctx, NewHostCreateJob(env, h, ts, 1, 0, false)))
-			submitted++
 		}
 
 		return catcher.Resolve()
