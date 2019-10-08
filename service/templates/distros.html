@@ -669,16 +669,19 @@ Evergreen - Distros
               class="form-control" ng-model="activeDistro.bootstrap_settings.shell_path" placeholder="Absolute native path to the shell binary file (bash)">
             <div class="icon fa fa-warning distro-error" ng-show="form.shellPath.$invalid"> Shell path is required</div><br />
 
-            <label class="distro-label">Service User:</label>
-            <input type="text" ng-required="isWindows() && isNonLegacyProvisioning()"
-              ng-readonly="readOnly" name="serviceUser"
-              class="form-control" ng-model="activeDistro.bootstrap_settings.service_user" placeholder="Username for setting up Evergreen services">
-            <div class="icon fa fa-warning distro-error" ng-show="form.serviceUser.$invalid"> Service user is required</div><br />
+			<div ng-show="isWindows()">
+              <label class="distro-label">Service User:</label>
+              <input type="text" ng-required="isWindows() && isNonLegacyProvisioning()"
+                ng-readonly="readOnly" name="serviceUser"
+                class="form-control" ng-model="activeDistro.bootstrap_settings.service_user" placeholder="Username for setting up Evergreen services">
+              <div class="icon fa fa-warning distro-error" ng-show="form.serviceUser.$invalid"> Service user is required</div><br />
 
-            <label class="distro-label">Root Directory:</label>
-            <input type="text" ng-required="isWindows() && isNonLegacyProvisioning()" name="rootDir" class="form-control" ng-model="activeDistro.bootstrap_settings.root_dir"
-              placeholder="Native path to root directory" ng-readonly="readOnly">
-            <div class="icon fa fa-warning distro-error" ng-show="form.rootDir.$invalid"> Root directory is required</div><br />
+              <label class="distro-label">Root Directory:</label>
+              <input type="text" ng-required="isWindows() && isNonLegacyProvisioning()" name="rootDir" class="form-control" ng-model="activeDistro.bootstrap_settings.root_dir"
+                placeholder="Native path to root directory" ng-readonly="readOnly">
+              <div class="icon fa fa-warning distro-error" ng-show="form.rootDir.$invalid"> Root directory is required</div><br />
+			</div>
+
             <div ng-show="isLinux()">
 			  <label class="distro-label">Resource Limits:</label><br />
 			  <label class="muted">Number of Files:</label>
@@ -687,18 +690,21 @@ Evergreen - Distros
 			    placeholder="Max number of open file handles. Set -1 for unlimited"
 			    min="-1">
               <div class="icon fa fa-warning distro-error" ng-show="form.numFiles.$invalid"> Invalid max open files</div><br />
+
 			  <label class="muted">Number of Processes:</label>
               <input type="number" ng-readonly="readOnly" name="numProcesses"
                 class="form-control" ng-model="activeDistro.bootstrap_settings.resource_limits.num_processes"
 			    placeholder="Max number of processes. Set -1 for unlimited"
 			    min="-1">
               <div class="icon fa fa-warning distro-error" ng-show="form.numProcesses.$invalid"> Invalid max processes</div><br />
+
 			  <label class="muted">Locked Memory:</label>
               <input type="number" ng-readonly="readOnly" name="lockedMemoryKB"
                 class="form-control" ng-model="activeDistro.bootstrap_settings.resource_limits.locked_memory"
 			    placeholder="Max size (in KB) that can be locked into memory. Set -1 for unlimited"
 			    min="-1">
               <div class="icon fa fa-warning distro-error" ng-show="form.lockedMemoryKB.$invalid"> Invalid max locked memory</div><br />
+
 			  <label class="muted">Virtual Memory:</label>
               <input type="number" ng-readonly="readOnly" name="virtualMemoryKB"
                 class="form-control" ng-model="activeDistro.bootstrap_settings.resource_limits.virtual_memory"

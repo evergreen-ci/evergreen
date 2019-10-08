@@ -30,7 +30,7 @@ import (
 )
 
 func (h *Host) SetupCommand() string {
-	cmd := fmt.Sprintf("%s host setup", filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()))
+	cmd := fmt.Sprintf("cd %s && ./%s host setup", h.Distro.HomeDir(), h.Distro.BinaryName())
 
 	if h.Distro.SetupAsSudo {
 		cmd += " --setup_as_sudo"
@@ -43,7 +43,7 @@ func (h *Host) SetupCommand() string {
 
 // TearDownCommand returns a command for running a teardown script on a host.
 func (h *Host) TearDownCommand() string {
-	return fmt.Sprintf("%s host teardown", filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()))
+	return fmt.Sprintf("cd %s && ./%s host teardown", h.Distro.HomeDir(), h.Distro.BinaryName())
 }
 
 // TearDownCommandOverSSH returns a command for running a teardown script on a host. This command
@@ -834,14 +834,10 @@ func (h *Host) StopAgentMonitor(ctx context.Context, settings *evergreen.Setting
 // AgentMonitorOptions  assembles the input to a Jasper request to start the
 // agent monitor.
 func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create {
-	binary := filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())
-	if h.Distro.IsWindows() {
-		binary = filepath.Join(h.Distro.BootstrapSettings.RootDir, binary)
-	}
-	clientPath := filepath.Join(h.Distro.BootstrapSettings.ClientDir, h.Distro.BinaryName())
-	if h.Distro.IsWindows() {
-		clientPath = filepath.Join(h.Distro.BootstrapSettings.RootDir, clientPath)
-	}
+	binary := filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.HomeDir(), h.Distro.BinaryName())
+	clientPath := filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.ClientDir, h.Distro.BinaryName())
+	credsPath := filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.JasperCredentialsPath)
+	shellPath := filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.ShellPath)
 
 	args := []string{
 		binary,
@@ -857,8 +853,9 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 		fmt.Sprintf("--log_prefix=%s", filepath.Join(h.Distro.WorkDir, "agent.monitor")),
 		fmt.Sprintf("--client_url=%s", h.ClientURL(settings)),
 		fmt.Sprintf("--client_path=%s", clientPath),
+		fmt.Sprintf("--shell_path=%s", shellPath),
 		fmt.Sprintf("--jasper_port=%d", settings.HostJasper.Port),
-		fmt.Sprintf("--credentials=%s", filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.JasperCredentialsPath)),
+		fmt.Sprintf("--credentials=%s", credsPath),
 	}
 
 	return &options.Create{
