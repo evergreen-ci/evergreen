@@ -115,12 +115,11 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	}
 	if cq.Processing {
 		grip.Info(message.Fields{
-			"source":               "commit queue",
-			"job_id":               j.ID(),
-			"item_id":              nextItem.Issue,
-			"project_id":           cq.ProjectID,
-			"message":              "commit queue may be stuck",
-			"head_processing_time": time.Since(cq.ProcessingUpdatedTime).Seconds(),
+			"source":             "commit queue",
+			"job_id":             j.ID(),
+			"item_id":            nextItem.Issue,
+			"project_id":         cq.ProjectID,
+			"processing_seconds": time.Since(cq.ProcessingUpdatedTime).Seconds(),
 		})
 		return
 	}
