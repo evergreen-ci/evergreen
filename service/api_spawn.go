@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -60,7 +61,15 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hc := &data.DBHostConnector{}
-	spawnHost, err := hc.NewIntentHost(hostRequest.Distro, hostRequest.PublicKey, "", "", user)
+	options := &model.HostRequestOptions{
+		DistroID:     hostRequest.Distro,
+		KeyName:      hostRequest.PublicKey,
+		TaskID:       "",
+		UserData:     "",
+		InstanceTags: nil,
+		InstanceType: "",
+	}
+	spawnHost, err := hc.NewIntentHost(options, user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -141,7 +150,7 @@ func (as *APIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		if err = cloudHost.TerminateInstance(ctx, user.Username()); err != nil {
+		if err = cloudHost.TerminateInstance(ctx, user.Username(), fmt.Sprintf("terminated via API by %s", user.Username())); err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Failed to terminate spawn host"))
 			return
 		}

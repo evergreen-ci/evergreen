@@ -132,6 +132,10 @@ func (m *openStackManager) SpawnHost(ctx context.Context, h *host.Host) (*host.H
 	return h, nil
 }
 
+func (m *openStackManager) ModifyHost(context.Context, *host.Host, host.HostModifyOptions) error {
+	return errors.New("can't modify instances with openstack provider")
+}
+
 // GetInstanceStatus gets the current operational status of the provisioned host,
 func (m *openStackManager) GetInstanceStatus(ctx context.Context, host *host.Host) (CloudStatus, error) {
 	server, err := m.client.GetInstance(host.Id)
@@ -143,7 +147,7 @@ func (m *openStackManager) GetInstanceStatus(ctx context.Context, host *host.Hos
 }
 
 // TerminateInstance requests a server previously provisioned to be removed.
-func (m *openStackManager) TerminateInstance(ctx context.Context, host *host.Host, user string) error {
+func (m *openStackManager) TerminateInstance(ctx context.Context, host *host.Host, user, reason string) error {
 	if host.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %s - already marked as terminated!", host.Id)
 		grip.Error(err)
@@ -155,7 +159,15 @@ func (m *openStackManager) TerminateInstance(ctx context.Context, host *host.Hos
 	}
 
 	// Set the host status as terminated and update its termination time
-	return errors.WithStack(host.Terminate(user))
+	return errors.WithStack(host.Terminate(user, reason))
+}
+
+func (m *openStackManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
+	return errors.New("StopInstance is not supported for openstack provider")
+}
+
+func (m *openStackManager) StartInstance(ctx context.Context, host *host.Host, user string) error {
+	return errors.New("StartInstance is not supported for openstack provider")
 }
 
 // IsUp checks whether the provisioned host is running.

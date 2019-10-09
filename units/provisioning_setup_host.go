@@ -216,7 +216,11 @@ func (j *setupHostJob) setDNSName(ctx context.Context, host *host.Host, cloudMgr
 // non-nil.
 func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, settings *evergreen.Settings) error {
 	// fetch the appropriate cloud provider for the host
-	cloudMgr, err := cloud.GetManager(ctx, targetHost.Provider, settings)
+	mgrOpts := cloud.ManagerOpts{
+		Provider: targetHost.Provider,
+		Region:   cloud.GetRegion(targetHost.Distro),
+	}
+	cloudMgr, err := cloud.GetManager(ctx, mgrOpts, settings)
 	if err != nil {
 		return errors.Wrapf(err,
 			"failed to get cloud manager for host %s with provider %s",
@@ -224,7 +228,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 	}
 
 	if err = j.setDNSName(ctx, targetHost, cloudMgr, settings); err != nil {
-		return errors.Wrap(err, "error settings DNS name")
+		return errors.Wrap(err, "error setting DNS name")
 	}
 
 	// run the function scheduled for when the host is up
@@ -255,15 +259,15 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 			"message":                 "host successfully provisioned by app server, awaiting host to finish provisioning itself",
 			"host":                    targetHost.Id,
 			"distro":                  targetHost.Distro.Id,
-			"bootstrap_method":        targetHost.Distro.BootstrapSettings.Method,
+			"provisioning":            targetHost.Distro.BootstrapSettings.Method,
 			"provider":                targetHost.Provider,
 			"attempts":                targetHost.ProvisionAttempts,
 			"job":                     j.ID(),
-			"provision_duration_secs": time.Now().Sub(targetHost.CreationTime).Seconds(),
+			"provision_duration_secs": time.Since(targetHost.CreationTime).Seconds(),
 		})
 		return nil
 	case distro.BootstrapMethodSSH:
-		if err = j.setupJasper(ctx); err != nil {
+		if err = j.setupJasper(ctx, settings); err != nil {
 			return errors.Wrapf(err, "error putting Jasper on host '%s'", targetHost.Id)
 		}
 	}
@@ -274,17 +278,21 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 	}
 
 	if targetHost.Distro.Setup != "" {
-		err = j.copyScript(ctx, settings, targetHost, filepath.Join("~", evergreen.SetupScriptName), targetHost.Distro.Setup)
+		scriptName := evergreen.SetupScriptName
+		if targetHost.Distro.IsPowerShellSetup() {
+			scriptName = evergreen.PowerShellSetupScriptName
+		}
+		err = j.copyScript(ctx, settings, targetHost, filepath.Join("~", scriptName), targetHost.Distro.Setup)
 		if err != nil {
-			return errors.Wrapf(err, "error copying setup script %v to host %v",
-				evergreen.SetupScriptName, targetHost.Id)
+			return errors.Wrapf(err, "error copying setup script %s to host %s",
+				scriptName, targetHost.Id)
 		}
 	}
 
 	if targetHost.Distro.Teardown != "" {
 		err = j.copyScript(ctx, settings, targetHost, filepath.Join("~", evergreen.TeardownScriptName), targetHost.Distro.Teardown)
 		if err != nil {
-			return errors.Wrapf(err, "error copying teardown script %v to host %v",
+			return errors.Wrapf(err, "error copying teardown script %s to host %s",
 				evergreen.TeardownScriptName, targetHost.Id)
 		}
 	}
@@ -295,7 +303,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 // setupJasper sets up the Jasper service on the host by putting the credentials
 // on the host, downloading the latest version of Jasper, and restarting the
 // Jasper service.
-func (j *setupHostJob) setupJasper(ctx context.Context) error {
+func (j *setupHostJob) setupJasper(ctx context.Context, settings *evergreen.Settings) error {
 	cloudHost, err := cloud.GetCloudHost(ctx, j.host, j.env.Settings())
 	if err != nil {
 		return errors.Wrapf(err, "failed to get cloud host for %s", j.host.Id)
@@ -306,7 +314,11 @@ func (j *setupHostJob) setupJasper(ctx context.Context) error {
 		return errors.Wrapf(err, "error getting ssh options for host %s", j.host.Id)
 	}
 
-	if err := j.putJasperCredentials(ctx, j.host.Distro.BootstrapSettings.JasperCredentialsPath, sshOptions); err != nil {
+	if err := j.setupServiceUser(ctx, settings, sshOptions); err != nil {
+		return errors.Wrap(err, "error setting up service user")
+	}
+
+	if err := j.putJasperCredentials(ctx, settings, sshOptions); err != nil {
 		return errors.Wrap(err, "error putting Jasper credentials on remote host")
 	}
 
@@ -326,49 +338,16 @@ func (j *setupHostJob) setupJasper(ctx context.Context) error {
 
 // putJasperCredentials creates Jasper credentials for the host and puts the
 // credentials file on the host.
-func (j *setupHostJob) putJasperCredentials(ctx context.Context, fileName string, sshOptions []string) error {
+func (j *setupHostJob) putJasperCredentials(ctx context.Context, settings *evergreen.Settings, sshOptions []string) error {
 	creds, err := j.host.GenerateJasperCredentials(ctx)
 	if err != nil {
 		return errors.Wrap(err, "could not generate Jasper credentials for host")
 	}
 
-	hostInfo, err := j.host.GetSSHInfo()
+	writeCmds, err := j.host.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 	if err != nil {
-		return errors.Wrap(err, "could not get SSH info for host")
+		return errors.Wrap(err, "could not get command to write Jasper credentials file")
 	}
-	exportedCreds, err := creds.Export()
-	if err != nil {
-		return errors.Wrap(err, "could not export Jasper credentials")
-	}
-
-	file, err := ioutil.TempFile("", filepath.Base(fileName))
-	if err != nil {
-		return errors.Wrap(err, "error creating temporary script file")
-	}
-	if err = os.Chmod(file.Name(), 0644); err != nil {
-		return errors.Wrap(err, "error setting file permissions")
-	}
-	defer func() {
-		errMsg := message.Fields{
-			"job":       j.ID(),
-			"operation": "cleaning up after copying credentials",
-			"file":      file.Name(),
-			"distro":    j.host.Distro.Id,
-			"host":      j.host.Id,
-		}
-		grip.Error(message.WrapError(file.Close(), errMsg))
-		grip.Error(message.WrapError(os.Remove(file.Name()), errMsg))
-	}()
-
-	if _, err = io.WriteString(file, string(exportedCreds)); err != nil {
-		return errors.Wrap(err, "error writing local credentials")
-	}
-
-	scpCmdOut := &util.CappedWriter{
-		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024,
-	}
-	scpArgs := buildScpCommand(file.Name(), fileName, hostInfo, hostInfo.User, sshOptions)
 
 	grip.Info(message.Fields{
 		"message": "putting Jasper credentials on host",
@@ -377,20 +356,16 @@ func (j *setupHostJob) putJasperCredentials(ctx context.Context, fileName string
 		"job":     j.ID(),
 	})
 
-	scpCmd := j.env.JasperManager().CreateCommand(ctx).Add(scpArgs).
-		RedirectErrorToOutput(true).SetOutputWriter(scpCmdOut)
-
 	ctx, cancel := context.WithTimeout(ctx, scpTimeout)
 	defer cancel()
 
-	if err = scpCmd.Run(ctx); err != nil {
+	if logs, err := j.host.RunSSHCommandLiterally(ctx, writeCmds, sshOptions); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "problem copying credentials to host",
 			"job":     j.ID(),
-			"command": strings.Join(scpArgs, " "),
 			"distro":  j.host.Distro.Id,
 			"host":    j.host.Id,
-			"output":  scpCmdOut.String(),
+			"output":  logs,
 		}))
 		return errors.Wrap(err, "error copying credentials to remote machine")
 	}
@@ -408,7 +383,31 @@ func (j *setupHostJob) putJasperCredentials(ctx context.Context, fileName string
 	return nil
 }
 
-// doFetchAndReinstallJasper runs the SSH command over that downloads the latest
+// setupServiceUser runs the SSH commands on the host that sets up the service
+// user on the host.
+func (j *setupHostJob) setupServiceUser(ctx context.Context, settings *evergreen.Settings, sshOptions []string) error {
+	if !j.host.Distro.IsWindows() {
+		return nil
+	}
+
+	cmds, err := j.host.SetupServiceUserCommands()
+	if err != nil {
+		return errors.Wrap(err, "could not get command to set up service user")
+	}
+
+	path := filepath.Join(j.host.Distro.HomeDir(), "setup-user.ps1")
+	if err := j.copyScript(ctx, settings, j.host, path, cmds); err != nil {
+		return errors.Wrap(err, "error copying script to set up service user")
+	}
+
+	if logs, err := j.host.RunSSHCommand(ctx, fmt.Sprintf("powershell ./%s && rm -f ./%s", filepath.Base(path), filepath.Base(path)), sshOptions); err != nil {
+		return errors.Wrapf(err, "error while setting up service user: command returned %s", logs)
+	}
+
+	return nil
+}
+
+// doFetchAndReinstallJasper runs the SSH command that downloads the latest
 // Jasper binary and restarts the service.
 func (j *setupHostJob) doFetchAndReinstallJasper(ctx context.Context, sshOptions []string) error {
 	cmd := j.host.FetchAndReinstallJasperCommand(j.env.Settings())
@@ -558,7 +557,6 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 		}
 
 		event.LogProvisionFailed(h.Id, "")
-
 		// mark the host's provisioning as failed
 		grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
 			"operation": "setting host unprovisioned",
@@ -880,5 +878,5 @@ func (j *setupHostJob) tryRequeue(ctx context.Context) {
 }
 
 func shouldRetryProvisioning(h *host.Host) bool {
-	return h.ProvisionAttempts <= provisionRetryLimit && h.Status == evergreen.HostProvisioning
+	return h.ProvisionAttempts <= provisionRetryLimit && h.Status == evergreen.HostProvisioning && !h.Provisioned
 }

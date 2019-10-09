@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -173,9 +174,16 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, v *Version, t *
 		return errors.Wrapf(err, "error updating version %s", v.Id)
 	}
 
-	if t.CommitQueueMerge {
-		if err = v.UpdateMergeTaskDependencies(p); err != nil {
-			return errors.Wrap(err, "error updating merge task")
+	if v.Requester == evergreen.MergeTestRequester {
+		mergeTask, err := task.FindMergeTaskForVersion(v.Id)
+		if err != nil && !adb.ResultsNotFound(err) {
+			return errors.Wrap(err, "error finding merge task")
+		}
+		// if a merge task exists then update its dependencies
+		if !adb.ResultsNotFound(err) {
+			if err = v.UpdateMergeTaskDependencies(p, mergeTask); err != nil {
+				return errors.Wrap(err, "error updating merge task")
+			}
 		}
 	}
 
@@ -241,7 +249,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 	}
 	dependencies = IncludePatchDependencies(p, newTVPairsForNewVariants.ExecTasks)
 	newTVPairsForNewVariants.ExecTasks = append(newTVPairsForNewVariants.ExecTasks, dependencies...)
-	if err := AddNewBuilds(true, v, p, newTVPairsForNewVariants, g.TaskID); err != nil {
+	if err := AddNewBuilds(ctx, true, v, p, newTVPairsForNewVariants, g.TaskID); err != nil {
 		return errors.Wrap(err, "errors adding new builds")
 	}
 	return nil

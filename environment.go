@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/logger"
@@ -36,6 +38,9 @@ const (
 	// duration of wait time during queue chut down.
 	queueShutdownWaitInterval = 10 * time.Millisecond
 	queueShutdownWaitTimeout  = 10 * time.Second
+
+	RoleCollection  = "roles"
+	ScopeCollection = "scopes"
 )
 
 func init() { globalEnvLock = &sync.RWMutex{} }
@@ -121,9 +126,12 @@ type Environment interface {
 	// termination. The ID is used in reporting, but must be
 	// unique or a new closer could overwrite an existing closer
 	// in some implementations.
-	RegisterCloser(string, func(context.Context) error)
+	RegisterCloser(string, bool, func(context.Context) error)
 	// Close calls all registered closers in the environment.
 	Close(context.Context) error
+
+	// RoleManager returns an interface that can be used to interact with roles and permissions
+	RoleManager() gimlet.RoleManager
 }
 
 // NewEnvironment constructs an Environment instance, establishing a
@@ -142,13 +150,13 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 	e := &envState{
 		ctx:     ctx,
 		senders: map[SenderKey]send.Sender{},
-		closers: map[string]func(context.Context) error{
-			"root-context": func(_ context.Context) error {
-				cancel()
-				return nil
-			},
-		},
 	}
+	defer func() {
+		e.RegisterCloser("root-context", false, func(_ context.Context) error {
+			cancel()
+			return nil
+		})
+	}()
 
 	if db != nil && confPath == "" {
 
@@ -178,7 +186,8 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 	catcher.Add(e.createLocalQueue(ctx))
 	catcher.Add(e.createApplicationQueue(ctx))
 	catcher.Add(e.createNotificationQueue(ctx))
-	catcher.Add(e.createGenerateTasksQueue(ctx))
+	catcher.Add(e.createRemoteQueueGroup(ctx))
+	catcher.Add(e.setupRoleManager())
 	catcher.Extend(e.initQueues(ctx))
 
 	if catcher.HasErrors() {
@@ -186,17 +195,6 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 
 	}
 	return e, nil
-}
-
-type ClientBinary struct {
-	Arch string `yaml:"arch" json:"arch"`
-	OS   string `yaml:"os" json:"os"`
-	URL  string `yaml:"url" json:"url"`
-}
-
-type ClientConfig struct {
-	ClientBinaries []ClientBinary `yaml:"client_binaries" json:"ClientBinaries"`
-	LatestRevision string         `yaml:"latest_revision" json:"LatestRevision"`
 }
 
 type envState struct {
@@ -211,8 +209,15 @@ type envState struct {
 	client             *mongo.Client
 	mu                 sync.RWMutex
 	clientConfig       *ClientConfig
-	closers            map[string]func(context.Context) error
+	closers            []closerOp
 	senders            map[SenderKey]send.Sender
+	roleManager        gimlet.RoleManager
+}
+
+type closerOp struct {
+	name       string
+	background bool
+	closerFn   func(context.Context) error
 }
 
 func (e *envState) initSettings(path string) error {
@@ -289,10 +294,10 @@ func (e *envState) createLocalQueue(ctx context.Context) error {
 		return errors.Wrap(err, "problem configuring worker pool for local queue")
 	}
 
-	e.closers["background-local-queue"] = func(ctx context.Context) error {
+	e.RegisterCloser("background-local-queue", true, func(ctx context.Context) error {
 		e.localQueue.Runner().Close(ctx)
 		return nil
-	}
+	})
 
 	return nil
 }
@@ -304,34 +309,44 @@ func (e *envState) createApplicationQueue(ctx context.Context) error {
 	opts.URI = e.settings.Database.Url
 	opts.DB = e.settings.Amboy.DB
 	opts.Priority = true
+	opts.SkipIndexBuilds = true
+	opts.UseGroups = false
 
-	qmdb, err := queue.OpenNewMongoDriver(ctx, e.settings.Amboy.Name, opts, e.client)
+	args := queue.MongoDBQueueCreationOptions{
+		Size:    e.settings.Amboy.PoolSizeRemote,
+		Name:    e.settings.Amboy.Name,
+		Ordered: false,
+		Client:  e.client,
+		MDB:     opts,
+	}
+
+	rq, err := queue.NewMongoDBQueue(ctx, args)
 	if err != nil {
 		return errors.Wrap(err, "problem setting main queue backend")
 	}
-	rq := queue.NewRemoteUnordered(e.settings.Amboy.PoolSizeRemote)
-	if err = rq.SetDriver(qmdb); err != nil {
-		return errors.WithStack(err)
-	}
+
 	if err = rq.SetRunner(pool.NewAbortablePool(e.settings.Amboy.PoolSizeRemote, rq)); err != nil {
 		return errors.Wrap(err, "problem configuring worker pool for main remote queue")
 	}
 	e.remoteQueue = rq
-	e.closers["application-queue"] = func(ctx context.Context) error {
+	e.RegisterCloser("application-queue", false, func(ctx context.Context) error {
 		e.remoteQueue.Runner().Close(ctx)
 		return nil
-	}
+	})
 
 	return nil
 }
 
-func (e *envState) createGenerateTasksQueue(ctx context.Context) error {
+func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
 	opts := queue.DefaultMongoDBOptions()
 	opts.URI = e.settings.Database.Url
 	opts.DB = e.settings.Amboy.DB
-	opts.Priority = true
+	opts.Priority = false
+	opts.SkipIndexBuilds = true
+	opts.UseGroups = true
+	opts.GroupName = e.settings.Amboy.Name
 
-	remoteQueuGroupOpts := queue.RemoteQueueGroupOptions{
+	remoteQueueGroupOpts := queue.MongoDBQueueGroupOptions{
 		Prefix:                    e.settings.Amboy.Name,
 		DefaultWorkers:            e.settings.Amboy.GroupDefaultWorkers,
 		Ordered:                   false,
@@ -339,15 +354,16 @@ func (e *envState) createGenerateTasksQueue(ctx context.Context) error {
 		PruneFrequency:            time.Duration(e.settings.Amboy.GroupPruneFrequencyMinutes) * time.Minute,
 		TTL:                       time.Duration(e.settings.Amboy.GroupTTLMinutes) * time.Minute,
 	}
-	remoteQueueGroup, err := queue.NewMongoRemoteSingleQueueGroup(ctx, remoteQueuGroupOpts, e.client, opts)
+
+	remoteQueueGroup, err := queue.NewMongoDBSingleQueueGroup(ctx, remoteQueueGroupOpts, e.client, opts)
 	if err != nil {
 		return errors.Wrap(err, "problem constructing remote queue group")
 	}
 	e.remoteQueueGroup = remoteQueueGroup
 
-	e.closers["generate-tasks"] = func(ctx context.Context) error {
+	e.RegisterCloser("remote-queue-group", false, func(ctx context.Context) error {
 		return errors.Wrap(e.remoteQueueGroup.Close(ctx), "problem waiting for remote queue group to close")
-	}
+	})
 
 	return nil
 }
@@ -371,7 +387,7 @@ func (e *envState) createNotificationQueue(ctx context.Context) error {
 		rootSenders = append(rootSenders, s)
 	}
 
-	e.closers["notification-queue"] = func(ctx context.Context) error {
+	e.RegisterCloser("notification-queue", false, func(ctx context.Context) error {
 		var cancel context.CancelFunc
 		catcher := grip.NewBasicCatcher()
 		ctx, cancel = context.WithTimeout(ctx, queueShutdownWaitTimeout)
@@ -403,7 +419,7 @@ func (e *envState) createNotificationQueue(ctx context.Context) error {
 		})
 
 		return catcher.Resolve()
-	}
+	})
 
 	for k := range e.senders {
 		e.senders[k] = logger.MakeQueueSender(ctx, e.notificationsQueue, e.senders[k])
@@ -569,11 +585,22 @@ func (e *envState) initJasper() error {
 
 	e.jasperManager = jpm
 
-	e.closers["jasper-manager"] = func(ctx context.Context) error {
+	e.RegisterCloser("jasper-manager", true, func(ctx context.Context) error {
 		return errors.WithStack(jpm.Close(ctx))
-	}
+	})
 
 	return nil
+}
+
+func (e *envState) setupRoleManager() error {
+	e.roleManager = rolemanager.NewMongoBackedRoleManager(rolemanager.MongoBackedRoleManagerOpts{
+		Client:          e.client,
+		DBName:          e.dbName,
+		RoleCollection:  RoleCollection,
+		ScopeCollection: ScopeCollection,
+	})
+
+	return e.roleManager.RegisterPermissions(projectPermissions)
 }
 
 func (e *envState) Settings() *Settings {
@@ -713,18 +740,11 @@ func (e *envState) SetSender(key SenderKey, impl send.Sender) error {
 	return nil
 }
 
-func (e *envState) RegisterCloser(name string, closer func(context.Context) error) {
+func (e *envState) RegisterCloser(name string, background bool, closer func(context.Context) error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	if _, ok := e.closers[name]; ok {
-		grip.Critical(message.Fields{
-			"closer":  name,
-			"message": "duplicate closer registered",
-			"cause":   "programmer error",
-		})
-	}
-	e.closers[name] = closer
+	e.closers = append(e.closers, closerOp{name: name, background: background, closerFn: closer})
 }
 
 func (e *envState) Close(ctx context.Context) error {
@@ -738,21 +758,46 @@ func (e *envState) Close(ctx context.Context) error {
 	catcher := grip.NewBasicCatcher()
 	wg := &sync.WaitGroup{}
 	for n, closer := range e.closers {
-		if closer == nil {
+		if !closer.background {
+			continue
+		}
+
+		if closer.closerFn == nil {
 			continue
 		}
 
 		wg.Add(1)
-		go func(name string, close func(context.Context) error) {
+		go func(idx int, name string, clfn func(context.Context) error) {
 			defer wg.Done()
 			grip.Info(message.Fields{
 				"message":      "calling closer",
+				"index":        idx,
 				"closer":       name,
 				"timeout_secs": time.Until(deadline),
 				"deadline":     deadline,
+				"background":   true,
 			})
-			catcher.Add(close(ctx))
-		}(n, closer)
+			catcher.Add(clfn(ctx))
+		}(n, closer.name, closer.closerFn)
+	}
+
+	for idx, closer := range e.closers {
+		if closer.background {
+			continue
+		}
+		if closer.closerFn == nil {
+			continue
+		}
+
+		grip.Info(message.Fields{
+			"message":      "calling closer",
+			"index":        idx,
+			"closer":       closer.name,
+			"timeout_secs": time.Until(deadline),
+			"deadline":     deadline,
+			"background":   false,
+		})
+		catcher.Add(closer.closerFn(ctx))
 	}
 
 	wg.Wait()
@@ -809,4 +854,11 @@ func (e *envState) JasperManager() jasper.Manager {
 	defer e.mu.RUnlock()
 
 	return e.jasperManager
+}
+
+func (e *envState) RoleManager() gimlet.RoleManager {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.roleManager
 }

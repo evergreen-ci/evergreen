@@ -39,7 +39,7 @@ func (cq *commitQueueDequeueLogger) Send(m message.Composer) {
 	}
 
 	if err := cq.doSend(m); err != nil {
-		cq.ErrorHandler(errors.Wrap(err, "can't process dequeue message"), m)
+		cq.ErrorHandler()(errors.Wrap(err, "can't process dequeue message"), m)
 	}
 }
 

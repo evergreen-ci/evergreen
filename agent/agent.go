@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/thirdparty/docker"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
@@ -331,7 +332,7 @@ func (a *Agent) runTask(ctx context.Context, cancel context.CancelFunc, tc *task
 		"task_secret": tc.task.Secret,
 	})
 
-	defer a.killProcs(tc, false)
+	defer a.killProcs(ctx, tc, false)
 	defer cancel()
 
 	// If the heartbeat aborts the task immediately, we should report that
@@ -430,7 +431,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) 
 		tc.logger.Task().Errorf("Programmer error: Invalid task status %s", detail.Status)
 	}
 
-	a.killProcs(tc, false)
+	a.killProcs(ctx, tc, false)
 
 	tc.logger.Execution().Infof("Sending final status as: %v", detail.Status)
 	if err = tc.logger.Close(); err != nil {
@@ -458,8 +459,8 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string) *apimodels.TaskE
 
 func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 	start := time.Now()
-	a.killProcs(tc, false)
-	defer a.killProcs(tc, false)
+	a.killProcs(ctx, tc, false)
+	defer a.killProcs(ctx, tc, false)
 	tc.logger.Task().Info("Running post-task commands.")
 	var cancel context.CancelFunc
 	ctx, cancel = a.withCallbackTimeout(ctx, tc)
@@ -479,7 +480,7 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 
 func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	defer a.removeTaskDirectory(tc)
-	defer a.killProcs(tc, true)
+	defer a.killProcs(ctx, tc, true)
 	if tc.taskConfig == nil {
 		return
 	}
@@ -496,7 +497,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	}
 	if taskGroup.TeardownGroup != nil {
 		grip.Info("Running post-group commands")
-		a.killProcs(tc, true)
+		a.killProcs(ctx, tc, true)
 		var cancel context.CancelFunc
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()
@@ -506,25 +507,31 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	}
 }
 
-func (a *Agent) killProcs(tc *taskContext, ignoreTaskGroupCheck bool) {
+func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupCheck bool) {
+	logger := grip.NewJournaler("killProcs")
+	if tc.logger != nil && !tc.logger.Closed() {
+		logger = tc.logger.Execution()
+	}
+
 	if a.shouldKill(tc, ignoreTaskGroupCheck) {
 		if tc.task.ID != "" {
-			if tc.logger != nil && !tc.logger.Closed() {
-				tc.logger.Task().Infof("cleaning up processes for task: %s", tc.task.ID)
-			} else {
-				grip.Infof("cleaning up processes for task: %s", tc.task.ID)
-			}
-			if err := util.KillSpawnedProcs(tc.task.ID, tc.logger.Task()); err != nil {
+			logger.Infof("cleaning up processes for task: %s", tc.task.ID)
+			if err := util.KillSpawnedProcs(tc.task.ID, logger); err != nil {
 				msg := fmt.Sprintf("Error cleaning up spawned processes (agent-exit): %v", err)
-				grip.Critical(msg)
+				logger.Critical(msg)
 			}
+
+			logger.Infof("cleaned up processes for task: %s", tc.task.ID)
 		}
 
-		if tc.logger != nil && !tc.logger.Closed() {
-			tc.logger.Task().Infof("cleaned up processes for task: %s", tc.task.ID)
-		} else {
-			grip.Infof("cleaned up processes for task: %s", tc.task.ID)
+		logger.Info("cleaning up Docker artifacts")
+		ctx, cancel := context.WithTimeout(ctx, dockerTimeout)
+		defer cancel()
+		if err := docker.Cleanup(ctx, logger); err != nil {
+			msg := fmt.Sprintf("Error cleaning up Docker artifacts (agent-exit): %s", err)
+			logger.Critical(msg)
 		}
+		logger.Info("cleaned up Docker artifacts")
 	}
 }
 

@@ -3,13 +3,9 @@ package data
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/units"
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -21,19 +17,19 @@ func (gc *GenerateConnector) GenerateTasks(ctx context.Context, taskID string, j
 	if err != nil {
 		return errors.Wrapf(err, "problem finding task %s", taskID)
 	}
-
-	// in the future this operation should receive a context tied
-	// to the lifetime of the application (e.g. env.Context())
-	// rather than a context tied to the lifetime of the request
-	// (e.g. ctx above.)
-	q, err := group.Get(context.TODO(), t.Version)
-	if err != nil {
-		return errors.Wrapf(err, "problem getting queue for version %s", t.Version)
+	if t == nil {
+		return errors.Errorf("could not find task %s", taskID)
 	}
-	err = q.Put(ctx, units.NewGenerateTasksJob(taskID, jsonBytes))
-	grip.Debug(message.WrapError(err, message.Fields{
-		"message": "problem saving new generate tasks job for task",
-		"task_id": taskID}))
+
+	// If a generator has already run, noop.
+	if t.GeneratedTasks {
+		return nil
+	}
+
+	if err = t.SetGeneratedJSON(jsonBytes); err != nil {
+		return errors.Wrapf(err, "problem setting generated json in task document for %s", t.Id)
+	}
+
 	return nil
 }
 
@@ -42,21 +38,15 @@ func (gc *GenerateConnector) GeneratePoll(ctx context.Context, taskID string, gr
 	if err != nil {
 		return false, nil, errors.Wrapf(err, "problem finding task %s", taskID)
 	}
+	if t == nil {
+		return false, nil, errors.Errorf("could not find task %s", taskID)
+	}
 
-	// in the future this operation should receive a context tied
-	// to the lifetime of the application (e.g. env.Context())
-	// rather than a context tied to the lifetime of the request
-	// (e.g. ctx above.)
-	q, err := group.Get(context.TODO(), t.Version)
-	if err != nil {
-		return false, nil, errors.Wrapf(err, "problem getting queue for version %s", t.Version)
+	var errs []string
+	if t.GenerateTasksError != "" {
+		errs = []string{t.GenerateTasksError}
 	}
-	jobID := fmt.Sprintf("generate-tasks-%s", taskID)
-	j, exists := q.Get(ctx, jobID)
-	if !exists {
-		return false, nil, errors.Errorf("task %s not in queue", taskID)
-	}
-	return j.Status().Completed, j.Status().Errors, nil
+	return t.GeneratedTasks, errs, nil
 }
 
 type MockGenerateConnector struct{}

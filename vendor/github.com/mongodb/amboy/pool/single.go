@@ -67,12 +67,10 @@ func (r *single) Start(ctx context.Context) error {
 	workerCtx, cancel := context.WithCancel(ctx)
 	r.canceler = cancel
 
-	jobs := startWorkerServer(workerCtx, r.queue, &r.wg)
-
 	waiter := make(chan struct{})
 	go func(wg *sync.WaitGroup) {
 		close(waiter)
-		worker(workerCtx, "single", jobs, r.queue, wg)
+		worker(workerCtx, "single", r.queue, wg)
 		grip.Info("worker process complete")
 	}(&r.wg)
 

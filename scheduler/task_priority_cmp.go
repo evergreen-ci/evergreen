@@ -1,12 +1,9 @@
 package scheduler
 
 import (
-	"fmt"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/pkg/errors"
 )
 
 // Comparator (-1 if second is more important, 1 if first is, 0 if equal)
@@ -118,59 +115,39 @@ func tasksAreCommitBuilds(t1, t2 task.Task) bool {
 // list. This is to ensure that task groups are dispatched in the order that
 // they are defined.
 func byTaskGroupOrder(t1, t2 task.Task, comparator *CmpBasedTaskComparator) (int, error) {
-	if ret, value := compareTasksWithTaskGroups(t1, t2); ret {
-		return value, nil
+	if t1.Version != t2.Version {
+		return 0, nil
 	}
 
-	// find earlier task
-	for _, tg := range comparator.projects[t1.Version].TaskGroups {
-		if tg.Name == t1.TaskGroup {
-			for _, t := range tg.Tasks {
-				if t == t1.DisplayName {
-					return 1, nil
-				}
-				if t == t2.DisplayName {
-					return -1, nil
-				}
-			}
-		}
-	}
-	return 0, errors.Errorf("did not find tasks %s or %s in task group %s", t1.DisplayName, t2.DisplayName, t1.TaskGroup)
-}
-
-// compareTasksWithTaskGroups returns true to return early (do not apply byTaskGroupOrder), false
-// otherwise. If it returns true, its second value is 1 if the first task should sort higher than
-// the second task, -1 if the second task should sort higher than the first task, and 0 to try other
-// comparators.
-func compareTasksWithTaskGroups(t1, t2 task.Task) (bool, int) {
-	// Try other comparators if both tasks are not in task groups.
 	if t1.TaskGroup == "" && t2.TaskGroup == "" {
-		return true, 0
+		return 0, nil
 	}
 
-	// If one task is in a task group, sort that one higher, which keeps the pre-task order,
-	// because task groups have already been sorted to the top.
-	if t1.TaskGroup != "" && t2.TaskGroup == "" {
-		return true, 1
+	if t2.TaskGroup == "" && t1.TaskGroup != "" {
+		return 0, nil
 	}
+
 	if t1.TaskGroup == "" && t2.TaskGroup != "" {
-		return true, -1
+		return -1, nil
 	}
 
-	// If tasks are in the same task group and build, apply the task group comparator so that
-	// tasks within the same task group are sorted according to their order in the project's
-	// configuration file.
-	if t1.TaskGroup == t2.TaskGroup && t1.BuildId == t2.BuildId {
-		return false, 0
+	if t1.TaskGroup != t2.TaskGroup {
+		return 1, nil
 	}
 
-	// Otherwise, both tasks are in task groups but in different task groups or builds, so keep
-	// the order from the pre-sort step. Since returning 0 would cause other comparators to run,
-	// sort them using the same rules as the pre-sort step.
-	if fmt.Sprintf("%s-%s", t1.BuildId, t1.TaskGroup) > fmt.Sprintf("%s-%s", t2.BuildId, t2.TaskGroup) {
-		return true, 1
+	if t1.BuildId != t2.BuildId {
+		return 1, nil
 	}
-	return true, -1
+
+	if t1.TaskGroupOrder > t2.TaskGroupOrder {
+		return -1, nil
+	}
+
+	if t2.TaskGroupOrder > t1.TaskGroupOrder {
+		return 1, nil
+	}
+
+	return 0, nil
 }
 
 // byGenerateTasks schedules tasks that generate tasks ahead of tasks that do not.

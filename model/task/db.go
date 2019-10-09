@@ -68,6 +68,8 @@ var (
 	GenerateTaskKey         = bsonutil.MustHaveTag(Task{}, "GenerateTask")
 	GeneratedTasksKey       = bsonutil.MustHaveTag(Task{}, "GeneratedTasks")
 	GeneratedByKey          = bsonutil.MustHaveTag(Task{}, "GeneratedBy")
+	GeneratedJSONKey        = bsonutil.MustHaveTag(Task{}, "GeneratedJSON")
+	GenerateTasksErrorKey   = bsonutil.MustHaveTag(Task{}, "GenerateTasksError")
 	ResetWhenFinishedKey    = bsonutil.MustHaveTag(Task{}, "ResetWhenFinished")
 	LogsKey                 = bsonutil.MustHaveTag(Task{}, "Logs")
 	CommitQueueMergeKey     = bsonutil.MustHaveTag(Task{}, "CommitQueueMerge")
@@ -470,8 +472,15 @@ func scheduleableTasksQuery() bson.M {
 	return bson.M{
 		ActivatedKey: true,
 		StatusKey:    evergreen.TaskUndispatched,
+
 		//Filter out blacklisted tasks
 		PriorityKey: bson.M{"$gte": 0},
+
+		//Filter tasks containing unattainable dependencies
+		"$or": []bson.M{
+			{bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey): bson.M{"$ne": true}},
+			{OverrideDependenciesKey: true},
+		},
 	}
 }
 

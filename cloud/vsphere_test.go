@@ -34,7 +34,7 @@ func (s *VSphereSuite) SetupTest() {
 	}
 	s.distro = distro.Distro{
 		Id:       "host",
-		Provider: "vsphere",
+		Provider: evergreen.ProviderNameVsphere,
 		ProviderSettings: &map[string]interface{}{
 			"template": "macos-1012",
 		},
@@ -157,10 +157,10 @@ func (s *VSphereSuite) TestTerminateInstanceAPICall() {
 	s.True(ok)
 	s.False(mock.failDelete)
 
-	s.NoError(s.manager.TerminateInstance(ctx, hostA, evergreen.User))
+	s.NoError(s.manager.TerminateInstance(ctx, hostA, evergreen.User, ""))
 
 	mock.failDelete = true
-	s.Error(s.manager.TerminateInstance(ctx, hostB, evergreen.User))
+	s.Error(s.manager.TerminateInstance(ctx, hostB, evergreen.User, ""))
 }
 
 func (s *VSphereSuite) TestTerminateInstanceDB() {
@@ -180,7 +180,7 @@ func (s *VSphereSuite) TestTerminateInstanceDB() {
 	s.NoError(err)
 
 	// Terminate the instance - check the host is terminated in DB.
-	err = s.manager.TerminateInstance(ctx, myHost, evergreen.User)
+	err = s.manager.TerminateInstance(ctx, myHost, evergreen.User, "")
 	s.NoError(err)
 
 	dbHost, err = host.FindOne(host.ById(myHost.Id))
@@ -188,7 +188,7 @@ func (s *VSphereSuite) TestTerminateInstanceDB() {
 	s.NoError(err)
 
 	// Terminate again - check we cannot remove twice.
-	err = s.manager.TerminateInstance(ctx, myHost, evergreen.User)
+	err = s.manager.TerminateInstance(ctx, myHost, evergreen.User, "")
 	s.Error(err)
 }
 
@@ -228,21 +228,21 @@ func (s *VSphereSuite) TestSpawnInvalidSettings() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	dProviderName := distro.Distro{Provider: "ec2"}
+	dProviderName := distro.Distro{Provider: evergreen.ProviderNameEc2Auto}
 	h := host.NewIntent(dProviderName, dProviderName.GenerateName(), dProviderName.Provider, s.hostOpts)
 	s.NotNil(h)
 	h, err := s.manager.SpawnHost(ctx, h)
 	s.Error(err)
 	s.Nil(h)
 
-	dSettingsNone := distro.Distro{Provider: "vsphere"}
+	dSettingsNone := distro.Distro{Provider: evergreen.ProviderNameVsphere}
 	h = host.NewIntent(dSettingsNone, dSettingsNone.GenerateName(), dSettingsNone.Provider, s.hostOpts)
 	h, err = s.manager.SpawnHost(ctx, h)
 	s.Error(err)
 	s.Nil(h)
 
 	dSettingsInvalid := distro.Distro{
-		Provider:         "vsphere",
+		Provider:         evergreen.ProviderNameVsphere,
 		ProviderSettings: &map[string]interface{}{"template": ""},
 	}
 	h = host.NewIntent(dSettingsInvalid, dSettingsInvalid.GenerateName(), dSettingsInvalid.Provider, s.hostOpts)

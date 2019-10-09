@@ -9,8 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kardianos/service"
+	"github.com/evergreen-ci/service"
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/testutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -64,7 +65,7 @@ func TestWriteOutput(t *testing.T) {
 	inputString := inputBuf.String()
 	output := &bytes.Buffer{}
 	require.NoError(t, writeOutput(output, input))
-	assert.Equal(t, noWhitespace(inputString), noWhitespace(output.String()))
+	assert.Equal(t, testutil.RemoveWhitespace(inputString), testutil.RemoveWhitespace(output.String()))
 }
 
 func TestWriteOutputInvalidInput(t *testing.T) {
@@ -85,7 +86,7 @@ func TestWriteOutputInvalidOutput(t *testing.T) {
 
 func TestMakeRemoteClientInvalidService(t *testing.T) {
 	ctx := context.Background()
-	client, err := newRemoteClient(ctx, "invalid", "localhost", getNextPort(), "")
+	client, err := newRemoteClient(ctx, "invalid", "localhost", testutil.GetPortNumber(), "")
 	require.Error(t, err)
 	require.Nil(t, client)
 }
@@ -96,11 +97,11 @@ func TestMakeRemoteClient(t *testing.T) {
 		RPCService:  makeTestRPCServiceAndClient,
 	} {
 		t.Run(remoteType, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+			ctx, cancel := context.WithTimeout(context.Background(), testutil.TestTimeout)
 			defer cancel()
 			manager, err := jasper.NewLocalManager(false)
 			require.NoError(t, err)
-			closeService, client := makeServiceAndClient(ctx, t, getNextPort(), manager)
+			closeService, client := makeServiceAndClient(ctx, t, testutil.GetPortNumber(), manager)
 			assert.NoError(t, closeService())
 			assert.NoError(t, client.CloseConnection())
 		})
@@ -116,7 +117,7 @@ func TestCLICommon(t *testing.T) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient){
 				"CreateProcessWithConnection": func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient) {
 					withConnection(ctx, c, func(client jasper.RemoteClient) error {
-						proc, err := client.CreateProcess(ctx, trueCreateOpts())
+						proc, err := client.CreateProcess(ctx, testutil.TrueCreateOpts())
 						require.NoError(t, err)
 						require.NotNil(t, proc)
 						assert.NotZero(t, proc.Info(ctx).PID)
@@ -161,7 +162,7 @@ func TestCLICommon(t *testing.T) {
 							require.NoError(t, err)
 							output, err := ioutil.ReadAll(stdout)
 							require.NoError(t, err)
-							assert.Equal(t, noWhitespace(expectedOutput), noWhitespace(string(output)))
+							assert.Equal(t, testutil.RemoveWhitespace(expectedOutput), testutil.RemoveWhitespace(string(output)))
 							return nil
 						})
 					})
@@ -189,16 +190,16 @@ func TestCLICommon(t *testing.T) {
 						require.NoError(t, err)
 						output, err := ioutil.ReadAll(stdout)
 						require.NoError(t, err)
-						assert.Equal(t, noWhitespace(expectedOutput), noWhitespace(string(output)))
+						assert.Equal(t, testutil.RemoveWhitespace(expectedOutput), testutil.RemoveWhitespace(string(output)))
 						return nil
 					})
 				},
 				// "": func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient) {},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+					ctx, cancel := context.WithTimeout(context.Background(), testutil.TestTimeout)
 					defer cancel()
-					port := getNextPort()
+					port := testutil.GetPortNumber()
 					c := mockCLIContext(remoteType, port)
 					manager, err := jasper.NewLocalManager(false)
 					require.NoError(t, err)

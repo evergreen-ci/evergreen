@@ -1,7 +1,3 @@
-// Copyright 2014 The Go Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-//
 // File contains Compare functionality
 //
 // https://tools.ietf.org/html/rfc4511
@@ -81,5 +77,5 @@ func (l *Conn) Compare(dn, attribute, value string) (bool, error) {
 			return false, NewError(resultCode, errors.New(resultDescription))
 		}
 	}
-	return false, fmt.Errorf("Unexpected Response: %d", packet.Children[1].Tag)
+	return false, fmt.Errorf("unexpected Response: %d", packet.Children[1].Tag)
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -133,9 +134,9 @@ func expireInDays(numDays int) string {
 	return time.Now().AddDate(0, 0, numDays).Format("2006-01-02")
 }
 
-//makeTags populates a map of tags based on a host object, which contain keys
-//for the user, owner, hostname, and if it's a spawnhost or not.
-func makeTags(intentHost *host.Host) map[string]string {
+// makeTags populates a slice of tags based on a host object, which contain keys
+// for the user, owner, hostname, and if it's a spawnhost or not.
+func makeTags(intentHost *host.Host) []host.Tag {
 	// get requester host name
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -162,21 +163,29 @@ func makeTags(intentHost *host.Host) map[string]string {
 		expireOn = expireInDays(spawnHostExpireDays)
 	}
 
-	tags := map[string]string{
-		"name":              intentHost.Id,
-		"distro":            intentHost.Distro.Id,
-		"evergreen-service": hostname,
-		"username":          username,
-		"owner":             intentHost.StartedBy,
-		"mode":              "production",
-		"start-time":        intentHost.CreationTime.Format(evergreen.NameTimeFormat),
-		"expire-on":         expireOn,
+	systemTags := []host.Tag{
+		host.Tag{Key: "name", Value: intentHost.Id, CanBeModified: false},
+		host.Tag{Key: "distro", Value: intentHost.Distro.Id, CanBeModified: false},
+		host.Tag{Key: "evergreen-service", Value: hostname, CanBeModified: false},
+		host.Tag{Key: "username", Value: username, CanBeModified: false},
+		host.Tag{Key: "owner", Value: intentHost.StartedBy, CanBeModified: false},
+		host.Tag{Key: "mode", Value: "production", CanBeModified: false},
+		host.Tag{Key: "start-time", Value: intentHost.CreationTime.Format(evergreen.NameTimeFormat), CanBeModified: false},
+		host.Tag{Key: "expire-on", Value: expireOn, CanBeModified: false},
 	}
 
 	if intentHost.UserHost {
-		tags["mode"] = "testing"
+		systemTags = append(systemTags, host.Tag{Key: "mode", Value: "testing", CanBeModified: false})
 	}
-	return tags
+
+	if isHostSpot(intentHost) {
+		systemTags = append(systemTags, host.Tag{Key: "spot", Value: "true", CanBeModified: false})
+	}
+
+	// Add Evergreen-generated tags to host object
+	intentHost.AddTags(systemTags)
+
+	return intentHost.InstanceTags
 }
 
 func timeTilNextEC2Payment(h *host.Host) time.Duration {
@@ -229,6 +238,15 @@ func expandUserData(userData string, expansions map[string]string) (string, erro
 }
 
 func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, client AWSClient) error {
+	if instance.Placement == nil || instance.Placement.AvailabilityZone == nil {
+		return errors.New("instance missing availability zone")
+	}
+	if instance.LaunchTime == nil {
+		return errors.New("instance missing launch time")
+	}
+	if instance.PublicDnsName == nil {
+		return errors.New("instance missing public dns name")
+	}
 	h.Zone = *instance.Placement.AvailabilityZone
 	h.StartTime = *instance.LaunchTime
 	h.Host = *instance.PublicDnsName
@@ -399,14 +417,10 @@ func validateEc2DescribeInstancesOutput(describeInstancesResponse *ec2aws.Descri
 		if len(reservation.Instances) == 0 {
 			catcher.Add(errors.New("reservation missing instance"))
 		} else {
-			if reservation.Instances[0].InstanceId == nil {
-				catcher.Add(errors.New("instance missing instance id"))
-			}
-			if reservation.Instances[0].State == nil || reservation.Instances[0].State.Name == nil || len(*reservation.Instances[0].State.Name) == 0 {
-				catcher.Add(errors.New("instance missing state name"))
-			}
+			instance := reservation.Instances[0]
+			catcher.NewWhen(instance.InstanceId == nil, "instance missing instance id")
+			catcher.NewWhen(instance.State == nil || instance.State.Name == nil || len(*instance.State.Name) == 0, "instance missing state name")
 		}
-
 	}
 
 	return catcher.Resolve()
@@ -471,4 +485,78 @@ func IsEc2Provider(provider string) bool {
 		provider == evergreen.ProviderNameEc2OnDemand ||
 		provider == evergreen.ProviderNameEc2Spot ||
 		provider == evergreen.ProviderNameEc2Fleet
+}
+
+// Get EC2 region from an EC2 ProviderSettings object
+func getEC2Region(providerSettings *map[string]interface{}) string {
+	s := &EC2ProviderSettings{}
+	if providerSettings != nil {
+		if err := mapstructure.Decode(providerSettings, s); err != nil {
+			return evergreen.DefaultEC2Region
+		} else {
+			return s.getRegion()
+		}
+	}
+
+	return evergreen.DefaultEC2Region
+}
+
+// Get EC2 key and secret from the AWS configuration for the given region
+func GetEC2Key(region string, s *evergreen.Settings) (string, string, error) {
+	// Get default region if field is blank
+	if region == "" {
+		region = evergreen.DefaultEC2Region
+	}
+
+	// Get key and secret for specified region
+	var key, secret string
+	for _, k := range s.Providers.AWS.EC2Keys {
+		if k.Region == region {
+			key = k.Key
+			secret = k.Secret
+
+			// Error if key or secret are blank
+			if key == "" || secret == "" {
+				return "", "", errors.New("AWS ID and Secret must not be blank")
+			}
+			return key, secret, nil
+		}
+	}
+
+	// LEGACY (delete block when Evergreen only uses region-based EC2Keys struct)
+	if key == "" || secret == "" {
+		key = s.Providers.AWS.EC2Key
+		secret = s.Providers.AWS.EC2Secret
+
+		// Move default key and secret to new EC2Keys struct
+		if key != "" && secret != "" {
+			s.Providers.AWS.EC2Keys = append(s.Providers.AWS.EC2Keys, evergreen.EC2Key{
+				Region: evergreen.DefaultEC2Region,
+				Key:    key,
+				Secret: secret,
+			})
+			err := s.Providers.Set()
+			if err != nil {
+				return "", "", errors.New("Failed to update settings with new default EC2 credentials from legacy EC2 credentials")
+			}
+		}
+	}
+
+	// Error if region specified but missing in config
+	if key == "" || secret == "" {
+		return "", "", errors.Errorf("Unable to find region '%s' in config", region)
+	}
+
+	return key, secret, nil
+}
+
+func validateEC2HostModifyOptions(h *host.Host, opts host.HostModifyOptions) error {
+	if opts.InstanceType != "" && h.Status != evergreen.HostStopped {
+		return errors.New("host must be stopped to modify instance typed")
+	}
+	if h.ExpirationTime.Add(opts.AddHours).Sub(time.Now()) > MaxSpawnHostExpirationDurationHours {
+		return errors.Errorf("cannot extend host '%s' expiration by '%s' -- maximum host duration is limited to %s", h.Id, opts.AddHours.String(), MaxSpawnHostExpirationDurationHours.String())
+	}
+
+	return nil
 }

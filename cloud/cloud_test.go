@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -15,42 +16,48 @@ func TestGetManager(t *testing.T) {
 	Convey("GetManager() should return non-nil for all valid provider names", t, func() {
 
 		Convey("EC2Auto should be returned for ec2-auto provider name", func() {
-			cloudMgr, err := GetManager(ctx, "ec2-auto", testutil.TestConfig())
+			mgrOpts := ManagerOpts{Provider: evergreen.ProviderNameEc2Auto, Region: ""}
+			cloudMgr, err := GetManager(ctx, mgrOpts, testutil.TestConfig())
 			So(cloudMgr, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(cloudMgr, ShouldHaveSameTypeAs, &ec2Manager{})
 		})
 
 		Convey("EC2Spot should be returned for ec2-spot provider name", func() {
-			cloudMgr, err := GetManager(ctx, "ec2-spot", testutil.TestConfig())
+			mgrOpts := ManagerOpts{Provider: evergreen.ProviderNameEc2Spot, Region: ""}
+			cloudMgr, err := GetManager(ctx, mgrOpts, testutil.TestConfig())
 			So(cloudMgr, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(cloudMgr, ShouldHaveSameTypeAs, &ec2Manager{})
 		})
 
-		Convey("EC2 should be returned for ec2 provider name", func() {
-			cloudMgr, err := GetManager(ctx, "ec2-ondemand", testutil.TestConfig())
+		Convey("EC2OnDemand should be returned for ec2-ondemand provider name", func() {
+			mgrOpts := ManagerOpts{Provider: evergreen.ProviderNameEc2OnDemand, Region: ""}
+			cloudMgr, err := GetManager(ctx, mgrOpts, testutil.TestConfig())
 			So(cloudMgr, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(cloudMgr, ShouldHaveSameTypeAs, &ec2Manager{})
 		})
 
 		Convey("Static should be returned for static provider name", func() {
-			cloudMgr, err := GetManager(ctx, "static", testutil.TestConfig())
+			mgrOpts := ManagerOpts{Provider: evergreen.ProviderNameStatic, Region: ""}
+			cloudMgr, err := GetManager(ctx, mgrOpts, testutil.TestConfig())
 			So(cloudMgr, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(cloudMgr, ShouldHaveSameTypeAs, &staticManager{})
 		})
 
 		Convey("Mock should be returned for mock provider name", func() {
-			cloudMgr, err := GetManager(ctx, "mock", testutil.TestConfig())
+			mgrOpts := ManagerOpts{Provider: evergreen.ProviderNameMock, Region: ""}
+			cloudMgr, err := GetManager(ctx, mgrOpts, testutil.TestConfig())
 			So(cloudMgr, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(cloudMgr, ShouldHaveSameTypeAs, &mockManager{})
 		})
 
 		Convey("Invalid provider names should return nil with err", func() {
-			cloudMgr, err := GetManager(ctx, "bogus", testutil.TestConfig())
+			mgrOpts := ManagerOpts{Provider: "bogus", Region: ""}
+			cloudMgr, err := GetManager(ctx, mgrOpts, testutil.TestConfig())
 			So(cloudMgr, ShouldBeNil)
 			So(err, ShouldNotBeNil)
 		})

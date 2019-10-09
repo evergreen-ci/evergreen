@@ -79,12 +79,14 @@ func (s *TaskFinderSuite) TearDownSuite() {
 }
 
 func (s *TaskFinderSuite) SetupTest() {
-	taskIds := []string{"t1", "t2", "t3", "t4", "t5"}
+	taskIds := []string{"t0", "t1", "t2", "t3", "t4", "t5"}
 	s.tasks = []task.Task{
 		{Id: taskIds[0], Status: evergreen.TaskUndispatched, Activated: true, Project: "exists", CreateTime: time.Now()},
 		{Id: taskIds[1], Status: evergreen.TaskUndispatched, Activated: true, Project: "exists", CreateTime: time.Now()},
 		{Id: taskIds[2], Status: evergreen.TaskUndispatched, Activated: true, Project: "exists", CreateTime: time.Now()},
-		{Id: taskIds[3], Status: evergreen.TaskUndispatched, Activated: true, Priority: -1, Project: "exists", CreateTime: time.Now()},
+		{Id: taskIds[3], Status: evergreen.TaskUndispatched, Activated: true, Project: "exists", CreateTime: time.Now()},
+		{Id: taskIds[4], Status: evergreen.TaskUndispatched, Activated: true, Project: "exists", CreateTime: time.Now()},
+		{Id: taskIds[5], Status: evergreen.TaskUndispatched, Activated: true, Priority: -1, Project: "exists", CreateTime: time.Now()},
 	}
 
 	depTaskIds := []string{"td1", "td2"}
@@ -118,35 +120,47 @@ func (s *TaskFinderSuite) TestNoRunnableTasksReturnsEmptySlice() {
 
 func (s *TaskFinderSuite) TestInactiveTasksNeverReturned() {
 	// insert the tasks, setting one to inactive
-	s.tasks[2].Activated = false
+	s.tasks[4].Activated = false
 	s.insertTasks()
 
-	// finding the runnable tasks should return two tasks
+	// finding the runnable tasks should return four tasks
 	runnableTasks, err := s.FindRunnableTasks(s.distro)
 	s.NoError(err)
-	s.Len(runnableTasks, 2)
+	s.Len(runnableTasks, 4)
 }
 
 func (s *TaskFinderSuite) TestTasksWithUnsatisfiedDependenciesNeverReturned() {
-	// edit the dependency tasks, setting one to have finished
-	// successfully and one to have finished unsuccessfully
+	// edit the dependency tasks, setting one to have not finished
+	// and one to have failed
 	s.depTasks[0].Status = evergreen.TaskFailed
-	s.depTasks[1].Status = evergreen.TaskSucceeded
+	s.depTasks[1].Status = evergreen.TaskUndispatched
+	s.depTasks[1].DependsOn = []task.Dependency{
+		{
+			TaskId:       "none",
+			Status:       "*",
+			Unattainable: true,
+		},
+	}
 
-	// edit the tasks, setting one to have unmet dependencies, one to
-	// have no dependencies, and one to have successfully met
-	// dependencies
-	s.tasks[0].DependsOn = []task.Dependency{}
+	// Matching dependency - runnable
+	s.tasks[0].DependsOn = []task.Dependency{{TaskId: s.depTasks[0].Id, Status: evergreen.TaskFailed}}
+	// Not matching - not runnable
 	s.tasks[1].DependsOn = []task.Dependency{{TaskId: s.depTasks[0].Id, Status: evergreen.TaskSucceeded}}
-	s.tasks[2].DependsOn = []task.Dependency{{TaskId: s.depTasks[1].Id, Status: evergreen.TaskSucceeded}}
+	// Dependent task 1 is blocked and status is "*" - runnable.
+	// Also demonstrates two satisfied dependencies
+	s.tasks[2].DependsOn = []task.Dependency{{TaskId: s.depTasks[1].Id, Status: "*"}, {TaskId: s.depTasks[0].Id, Status: "*"}}
+	// * status matches any finished status - runnable
+	s.tasks[3].DependsOn = []task.Dependency{{TaskId: s.depTasks[0].Id, Status: "*"}}
 
 	s.insertTasks()
 
-	// finding the runnable tasks should return two tasks (the one with
-	// no dependencies and the one with successfully met dependencies
 	runnableTasks, err := s.FindRunnableTasks(s.distro)
 	s.NoError(err)
-	s.Len(runnableTasks, 2)
+	s.Len(runnableTasks, 4)
+	expectedRunnableTasks := []string{"t0", "t2", "t3", "t4"}
+	for _, t := range runnableTasks {
+		s.Contains(expectedRunnableTasks, t.Id)
+	}
 }
 
 type TaskFinderComparisonSuite struct {
@@ -494,7 +508,7 @@ func makeRandomSubTasks(statuses []string, parentTasks *[]task.Task) []task.Task
 		dependsOn := []task.Dependency{
 			task.Dependency{
 				TaskId: parentTask.Id,
-				Status: parentTask.Status,
+				Status: getRandomDependsOnStatus(),
 			},
 		}
 
@@ -504,7 +518,7 @@ func makeRandomSubTasks(statuses []string, parentTasks *[]task.Task) []task.Task
 			dependsOn = append(dependsOn,
 				task.Dependency{
 					TaskId: (*parentTasks)[anotherParent].Id,
-					Status: (*parentTasks)[anotherParent].Status,
+					Status: getRandomDependsOnStatus(),
 				},
 			)
 		}
@@ -525,6 +539,11 @@ func makeRandomSubTasks(statuses []string, parentTasks *[]task.Task) []task.Task
 	}
 
 	return depTasks
+}
+
+func getRandomDependsOnStatus() string {
+	dependsOnStatuses := []string{evergreen.TaskSucceeded, evergreen.TaskFailed, task.AllStatuses}
+	return dependsOnStatuses[rand.Intn(len(dependsOnStatuses))]
 }
 
 func hugeString(suffix string) string {

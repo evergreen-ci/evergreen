@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/mongodb/grip/level"
-	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/net"
 	"github.com/shirou/gopsutil/process"
 )
@@ -20,7 +19,7 @@ type ProcessInfo struct {
 	Parent         int32                    `json:"parentPid" bson:"parentPid"`
 	Threads        int                      `json:"numThreads" bson:"numThreads"`
 	Command        string                   `json:"command" bson:"command"`
-	CPU            cpu.TimesStat            `json:"cpu" bson:"cpu"`
+	CPU            StatCPUTimes             `json:"cpu" bson:"cpu"`
 	IoStat         process.IOCountersStat   `json:"io" bson:"io"`
 	NetStat        []net.IOCountersStat     `json:"net" bson:"net"`
 	Memory         process.MemoryInfoStat   `json:"mem" bson:"mem"`
@@ -231,7 +230,7 @@ func (p *ProcessInfo) populate(proc *process.Process) {
 	cpuTimes, err := proc.Times()
 	p.saveError("cpu_times", err)
 	if err == nil && cpuTimes != nil {
-		p.CPU = *cpuTimes
+		p.CPU = convertCPUTimes(*cpuTimes)
 	}
 
 	ioStat, err := proc.IOCounters()

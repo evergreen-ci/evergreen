@@ -40,7 +40,7 @@ func (s *DockerSuite) SetupTest() {
 	}
 	s.distro = distro.Distro{
 		Id:       "d",
-		Provider: "docker",
+		Provider: evergreen.ProviderNameDocker,
 		ProviderSettings: &map[string]interface{}{
 			"pool_id": "pool_id",
 		},
@@ -133,10 +133,10 @@ func (s *DockerSuite) TestTerminateInstanceAPICall() {
 	s.True(ok)
 	s.False(mock.failRemove)
 
-	s.NoError(s.manager.TerminateInstance(ctx, hostA, evergreen.User))
+	s.NoError(s.manager.TerminateInstance(ctx, hostA, evergreen.User, ""))
 
 	mock.failRemove = true
-	s.Error(s.manager.TerminateInstance(ctx, hostB, evergreen.User))
+	s.Error(s.manager.TerminateInstance(ctx, hostB, evergreen.User, ""))
 }
 
 func (s *DockerSuite) TestTerminateInstanceDB() {
@@ -157,7 +157,7 @@ func (s *DockerSuite) TestTerminateInstanceDB() {
 	s.NoError(err)
 
 	// Terminate the instance - check the host is terminated in DB.
-	err = s.manager.TerminateInstance(ctx, myHost, evergreen.User)
+	err = s.manager.TerminateInstance(ctx, myHost, evergreen.User, "")
 	s.NoError(err)
 
 	dbHost, err = host.FindOne(host.ById(myHost.Id))
@@ -165,7 +165,7 @@ func (s *DockerSuite) TestTerminateInstanceDB() {
 	s.NoError(err)
 
 	// Terminate again - check we cannot remove twice.
-	err = s.manager.TerminateInstance(ctx, myHost, evergreen.User)
+	err = s.manager.TerminateInstance(ctx, myHost, evergreen.User, "")
 	s.Error(err)
 }
 
@@ -191,7 +191,7 @@ func (s *DockerSuite) TestSpawnInvalidSettings() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	dProviderName := distro.Distro{Provider: "ec2"}
+	dProviderName := distro.Distro{Provider: evergreen.ProviderNameEc2Auto}
 	h := host.NewIntent(dProviderName, dProviderName.GenerateName(), dProviderName.Provider, s.hostOpts)
 	h, err := s.manager.SpawnHost(ctx, h)
 	s.Error(err)

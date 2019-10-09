@@ -83,11 +83,17 @@ const (
 )
 
 func (u *DBUser) Username() string     { return u.Id }
-func (u *DBUser) Roles() []string      { return u.SystemRoles }
 func (u *DBUser) PublicKeys() []PubKey { return u.PubKeys }
 func (u *DBUser) Email() string        { return u.EmailAddress }
 func (u *DBUser) GetAPIKey() string    { return u.APIKey }
 func (u *DBUser) IsNil() bool          { return u == nil }
+
+func (u *DBUser) Roles() []string {
+	if u.SystemRoles == nil {
+		return []string{}
+	}
+	return u.SystemRoles
+}
 
 func (u *DBUser) DisplayName() string {
 	if u.DispName != "" {
@@ -217,6 +223,25 @@ func (u *DBUser) RemoveRole(role string) error {
 	}
 
 	return nil
+}
+
+func (u *DBUser) HasPermission(resource, permission string, requiredLevel int) (bool, error) {
+	roleManager := evergreen.GetEnvironment().RoleManager()
+	roles, err := roleManager.GetRoles(u.Roles())
+	if err != nil {
+		return false, errors.Wrap(err, "error getting roles")
+	}
+	roles, err = roleManager.FilterForResource(roles, resource)
+	if err != nil {
+		return false, errors.Wrap(err, "error filtering resources")
+	}
+	for _, role := range roles {
+		level, hasPermission := role.Permissions[permission]
+		if hasPermission && level >= requiredLevel {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func GetPatchUser(gitHubUID int) (*DBUser, error) {

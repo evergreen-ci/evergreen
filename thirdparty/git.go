@@ -76,7 +76,7 @@ func ParseGitSummary(gitOutput fmt.Stringer) (summaries []patch.Summary, err err
 		// we expect to get the number of additions,
 		// the number of deletions, and the filename
 		if len(details) != 3 {
-			grip.Error(message.Fields{
+			grip.Debug(message.Fields{
 				"message": "file stat details has unexpected length",
 				"details": details,
 				"length":  len(details),

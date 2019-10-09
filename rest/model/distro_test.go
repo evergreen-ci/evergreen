@@ -16,9 +16,12 @@ func TestDistroBuildFromService(t *testing.T) {
 		CloneMethod: distro.CloneMethodLegacySSH,
 		BootstrapSettings: distro.BootstrapSettings{
 			Method:                distro.BootstrapMethodUserData,
+			ClientDir:             "/client_dir",
 			Communication:         distro.CommunicationMethodRPC,
 			JasperBinaryDir:       "/jasper_binary_dir",
 			JasperCredentialsPath: "/jasper_credentials_path",
+			ServiceUser:           "service_user",
+			ShellPath:             "/shell_path",
 		},
 	}
 	apiDistro := &APIDistro{}
@@ -27,9 +30,11 @@ func TestDistroBuildFromService(t *testing.T) {
 	assert.Equal(t, FromAPIString(apiDistro.Name), d.Id)
 	assert.Equal(t, d.BootstrapSettings.Method, FromAPIString(apiDistro.BootstrapSettings.Method))
 	assert.Equal(t, d.BootstrapSettings.Communication, FromAPIString(apiDistro.BootstrapSettings.Communication))
-	assert.Equal(t, d.BootstrapSettings.ShellPath, FromAPIString(apiDistro.BootstrapSettings.ShellPath))
+	assert.Equal(t, d.BootstrapSettings.ClientDir, FromAPIString(apiDistro.BootstrapSettings.ClientDir))
 	assert.Equal(t, d.BootstrapSettings.JasperBinaryDir, FromAPIString(apiDistro.BootstrapSettings.JasperBinaryDir))
 	assert.Equal(t, d.BootstrapSettings.JasperCredentialsPath, FromAPIString(apiDistro.BootstrapSettings.JasperCredentialsPath))
+	assert.Equal(t, d.BootstrapSettings.ServiceUser, FromAPIString(apiDistro.BootstrapSettings.ServiceUser))
+	assert.Equal(t, d.BootstrapSettings.ShellPath, FromAPIString(apiDistro.BootstrapSettings.ShellPath))
 }
 
 func TestDistroBuildFromServiceDefaults(t *testing.T) {
@@ -52,9 +57,17 @@ func TestDistroToService(t *testing.T) {
 		BootstrapSettings: APIBootstrapSettings{
 			Method:                ToAPIString(distro.BootstrapMethodSSH),
 			Communication:         ToAPIString(distro.CommunicationMethodSSH),
-			ShellPath:             ToAPIString("/shell_path"),
+			ClientDir:             ToAPIString("/client_dir"),
 			JasperBinaryDir:       ToAPIString("/jasper_binary_dir"),
 			JasperCredentialsPath: ToAPIString("/jasper_credentials_path"),
+			ServiceUser:           ToAPIString("service_user"),
+			ShellPath:             ToAPIString("/shell_path"),
+			ResourceLimits: APIResourceLimits{
+				NumFiles:        1,
+				NumProcesses:    2,
+				LockedMemoryKB:  3,
+				VirtualMemoryKB: 4,
+			},
 		},
 	}
 
@@ -67,9 +80,15 @@ func TestDistroToService(t *testing.T) {
 	assert.Equal(t, apiDistro.CloneMethod, ToAPIString(d.CloneMethod))
 	assert.Equal(t, apiDistro.BootstrapSettings.Method, ToAPIString(d.BootstrapSettings.Method))
 	assert.Equal(t, apiDistro.BootstrapSettings.Communication, ToAPIString(d.BootstrapSettings.Communication))
-	assert.Equal(t, apiDistro.BootstrapSettings.ShellPath, ToAPIString(d.BootstrapSettings.ShellPath))
+	assert.Equal(t, apiDistro.BootstrapSettings.ClientDir, ToAPIString(d.BootstrapSettings.ClientDir))
 	assert.Equal(t, apiDistro.BootstrapSettings.JasperBinaryDir, ToAPIString(d.BootstrapSettings.JasperBinaryDir))
 	assert.Equal(t, apiDistro.BootstrapSettings.JasperCredentialsPath, ToAPIString(d.BootstrapSettings.JasperCredentialsPath))
+	assert.Equal(t, apiDistro.BootstrapSettings.ServiceUser, ToAPIString(d.BootstrapSettings.ServiceUser))
+	assert.Equal(t, apiDistro.BootstrapSettings.ShellPath, ToAPIString(d.BootstrapSettings.ShellPath))
+	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.NumFiles, d.BootstrapSettings.ResourceLimits.NumFiles)
+	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.NumProcesses, d.BootstrapSettings.ResourceLimits.NumProcesses)
+	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.LockedMemoryKB, d.BootstrapSettings.ResourceLimits.LockedMemoryKB)
+	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.VirtualMemoryKB, d.BootstrapSettings.ResourceLimits.VirtualMemoryKB)
 }
 
 func TestDistroToServiceDefaults(t *testing.T) {

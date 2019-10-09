@@ -11,6 +11,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
 	"github.com/urfave/cli"
@@ -231,15 +232,15 @@ func ListCMD() cli.Command {
 				if c.String(groupFlagName) != "" {
 					return nil
 				}
-				filter := jasper.Filter(c.String(filterFlagName))
+				filter := options.Filter(c.String(filterFlagName))
 				if filter == "" {
-					filter = jasper.All
+					filter = options.All
 					return errors.Wrap(c.Set(filterFlagName, string(filter)), "problem setting default filter")
 				}
 				return errors.Wrapf(filter.Validate(), "invalid filter '%s'", filter)
 			}),
 		Action: func(c *cli.Context) error {
-			filter := jasper.Filter(c.String(filterFlagName))
+			filter := options.Filter(c.String(filterFlagName))
 			group := c.String(groupFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -432,15 +433,15 @@ func DownloadCMD() cli.Command {
 				return nil
 			}),
 		Action: func(c *cli.Context) error {
-			info := jasper.DownloadInfo{
+			info := options.Download{
 				URL:  c.String(urlFlagName),
 				Path: c.String(pathFlagName),
 			}
 
 			if path := c.String(extractPathFlagName); path != "" {
-				info.ArchiveOpts = jasper.ArchiveOptions{
+				info.ArchiveOpts = options.Archive{
 					ShouldExtract: true,
-					Format:        jasper.ArchiveAuto,
+					Format:        options.ArchiveAuto,
 					TargetPath:    path,
 				}
 			}

@@ -126,7 +126,6 @@ type APIProjectRef struct {
 	RemotePath           APIString            `json:"remote_path"`
 	Identifier           APIString            `json:"identifier"`
 	DisplayName          APIString            `json:"display_name"`
-	LocalConfig          APIString            `json:"local_config"`
 	DeactivatePrevious   bool                 `json:"deactivate_previous"`
 	TracksPushEvents     bool                 `json:"tracks_push_events"`
 	PRTestingEnabled     bool                 `json:"pr_testing_enabled"`
@@ -164,7 +163,6 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		RemotePath:           FromAPIString(p.RemotePath),
 		Identifier:           FromAPIString(p.Identifier),
 		DisplayName:          FromAPIString(p.DisplayName),
-		LocalConfig:          FromAPIString(p.LocalConfig),
 		DeactivatePrevious:   p.DeactivatePrevious,
 		TracksPushEvents:     p.TracksPushEvents,
 		PRTestingEnabled:     p.PRTestingEnabled,
@@ -230,7 +228,6 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.RemotePath = ToAPIString(projectRef.RemotePath)
 	p.Identifier = ToAPIString(projectRef.Identifier)
 	p.DisplayName = ToAPIString(projectRef.DisplayName)
-	p.LocalConfig = ToAPIString(projectRef.LocalConfig)
 	p.DeactivatePrevious = projectRef.DeactivatePrevious
 	p.TracksPushEvents = projectRef.TracksPushEvents
 	p.PRTestingEnabled = projectRef.PRTestingEnabled

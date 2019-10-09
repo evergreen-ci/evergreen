@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -33,6 +34,7 @@ var passwordRegexps = []*regexp.Regexp{
 const (
 	MaxSpawnHostsPerUser                = 3
 	DefaultSpawnHostExpiration          = 24 * time.Hour
+	SpawnHostNoExpirationDuration       = 7 * 24 * time.Hour
 	MaxSpawnHostExpirationDurationHours = 24 * time.Hour * 14
 )
 
@@ -44,6 +46,9 @@ type SpawnOptions struct {
 	PublicKey        string
 	TaskId           string
 	Owner            *user.DBUser
+	InstanceTags     []host.Tag
+	InstanceType     string
+	NoExpiration     bool
 }
 
 // Validate returns an instance of BadOptionsErr if the SpawnOptions object contains invalid
@@ -100,7 +105,7 @@ func (so *SpawnOptions) validate() error {
 	return nil
 }
 
-// CreateHost spawns a host with the given options.
+// CreateSpawnHost spawns a host with the given options.
 func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 	if err := so.validate(); err != nil {
 		return nil, errors.WithStack(err)
@@ -117,7 +122,7 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 	}
 
 	// modify the setup script to add the user's public key
-	d.Setup += fmt.Sprintf("\necho \"\n%v\" >> ~%v/.ssh/authorized_keys\n", so.PublicKey, d.User)
+	d.Setup += fmt.Sprintf("\necho \"\n%s\" >> %s\n", so.PublicKey, filepath.Join(d.BootstrapSettings.RootDir, d.HomeDir(), ".ssh", "authorized_keys"))
 
 	// fake out replacing spot instances with on-demand equivalents
 	if d.Provider == evergreen.ProviderNameEc2Spot || d.Provider == evergreen.ProviderNameEc2Fleet {
@@ -131,11 +136,17 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 		OwnerId: so.Owner.Id,
 	}
 	expiration := DefaultSpawnHostExpiration
+	if so.NoExpiration {
+		expiration = SpawnHostNoExpirationDuration
+	}
 	hostOptions := host.CreateOptions{
 		ProvisionOptions:   provisionOptions,
 		UserName:           so.UserName,
 		ExpirationDuration: &expiration,
 		UserHost:           true,
+		InstanceTags:       so.InstanceTags,
+		InstanceType:       so.InstanceType,
+		NoExpiration:       so.NoExpiration,
 	}
 
 	intentHost := host.NewIntent(d, d.GenerateName(), d.Provider, hostOptions)
@@ -211,18 +222,18 @@ func constructPwdUpdateCommand(ctx context.Context, env evergreen.Environment, h
 		Append(fmt.Sprintf("echo -e \"%s\" | passwd", password)), nil
 }
 
-func TerminateSpawnHost(ctx context.Context, host *host.Host, settings *evergreen.Settings, user string) error {
+func TerminateSpawnHost(ctx context.Context, host *host.Host, settings *evergreen.Settings, user, reason string) error {
 	if host.Status == evergreen.HostTerminated {
 		return errors.New("Host is already terminated")
 	}
 	if host.Status == evergreen.HostUninitialized {
-		return host.SetTerminated(user)
+		return host.SetTerminated(user, "host never started")
 	}
 	cloudHost, err := GetCloudHost(ctx, host, settings)
 	if err != nil {
 		return err
 	}
-	if err = cloudHost.TerminateInstance(ctx, user); err != nil {
+	if err = cloudHost.TerminateInstance(ctx, user, reason); err != nil {
 		return err
 	}
 	return nil

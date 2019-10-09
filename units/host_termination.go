@@ -32,6 +32,7 @@ func init() {
 
 type hostTerminationJob struct {
 	HostID          string `bson:"host_id" json:"host_id"`
+	Reason          string `bson:"reason,omitempty" json:"reason,omitempty"`
 	TerminateIfBusy bool   `bson:"terminate_if_busy" json:"terminate_if_busy"`
 	job.Base        `bson:"metadata" json:"metadata"`
 
@@ -53,12 +54,13 @@ func makeHostTerminationJob() *hostTerminationJob {
 	return j
 }
 
-func NewHostTerminationJob(env evergreen.Environment, h host.Host, terminateIfBusy bool) amboy.Job {
+func NewHostTerminationJob(env evergreen.Environment, h host.Host, terminateIfBusy bool, reason string) amboy.Job {
 	j := makeHostTerminationJob()
 	j.host = &h
 	j.HostID = h.Id
 	j.env = env
 	j.TerminateIfBusy = terminateIfBusy
+	j.Reason = reason
 	j.SetPriority(2)
 	ts := util.RoundPartOfHour(2).Format(tsFormat)
 	j.SetID(fmt.Sprintf("%s.%s.%s", hostTerminationJobName, j.HostID, ts))
@@ -124,7 +126,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 
 	// host may still be an intent host
 	if j.host.Status == evergreen.HostUninitialized {
-		if err = j.host.Terminate(evergreen.User); err != nil {
+		if err = j.host.Terminate(evergreen.User, j.Reason); err != nil {
 			j.AddError(errors.Wrap(err, "problem terminating intent host in db"))
 			grip.Error(message.WrapError(err, message.Fields{
 				"host":     j.host.Id,
@@ -203,7 +205,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			return
 		}
 		if parent.Status == evergreen.HostTerminated {
-			if err = j.host.Terminate(evergreen.User); err != nil {
+			if err = j.host.Terminate(evergreen.User, "parent was already terminated"); err != nil {
 				j.AddError(errors.Wrap(err, "problem terminating container in db"))
 				grip.Error(message.WrapError(err, message.Fields{
 					"host":     j.host.Id,
@@ -218,7 +220,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	} else if prevStatus == evergreen.HostBuilding {
 		// If the host is not a container and is building, this means the host is an intent
 		// host, and should be terminated in the database, and not in the cloud manager.
-		if err = j.host.Terminate(evergreen.User); err != nil {
+		if err = j.host.Terminate(evergreen.User, "host was never started"); err != nil {
 			// It is possible that the provisioning-create-host job has removed the
 			// intent host from the database before this job got to it. If so, there is
 			// nothing to terminate with a cloud manager, since if there is a
@@ -273,7 +275,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		}))
 
 		if !util.StringSliceContains(evergreen.UpHostStatus, prevStatus) {
-			if err := j.host.Terminate(evergreen.User); err != nil {
+			if err := j.host.Terminate(evergreen.User, "unable to get cloud status for host"); err != nil {
 				j.AddError(err)
 			}
 			return
@@ -291,7 +293,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"message":  "attempted to terminated an already terminated host",
 			"theory":   "external termination",
 		})
-		if err := j.host.Terminate(evergreen.User); err != nil {
+		if err := j.host.Terminate(evergreen.User, "cloud provider indicated host was terminated"); err != nil {
 			j.AddError(errors.Wrap(err, "problem terminating host in db"))
 			grip.Error(message.WrapError(err, message.Fields{
 				"host":     j.host.Id,
@@ -313,7 +315,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		}))
 	}
 
-	if err := cloudHost.TerminateInstance(ctx, evergreen.User); err != nil {
+	if err := cloudHost.TerminateInstance(ctx, evergreen.User, j.Reason); err != nil {
 		j.AddError(err)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":  "problem terminating host",
@@ -337,7 +339,11 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		j.AddError(idleJob.Error())
 
 		if j.host.SpawnOptions.SpawnedByTask {
-			manager, err := cloud.GetManager(ctx, j.host.Provider, settings)
+			mgrOpts := cloud.ManagerOpts{
+				Provider: j.host.Provider,
+				Region:   cloud.GetRegion(j.host.Distro),
+			}
+			manager, err := cloud.GetManager(ctx, mgrOpts, settings)
 			if err != nil {
 				j.AddError(err)
 				return

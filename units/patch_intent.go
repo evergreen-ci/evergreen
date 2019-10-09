@@ -26,7 +26,6 @@ import (
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	mgobson "gopkg.in/mgo.v2/bson"
-	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -215,7 +214,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	// Get and validate patched config
-	project, err := model.GetPatchedProject(ctx, patchDoc, githubOauthToken)
+	project, projectYaml, err := model.GetPatchedProject(ctx, patchDoc, githubOauthToken)
 	if err != nil {
 		if strings.Contains(err.Error(), thirdparty.Github502Error) {
 			j.gitHubError = GitHubInternalError
@@ -234,12 +233,8 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			}
 		}
 	}
-	yamlBytes, err := yaml.Marshal(project)
-	if err != nil {
-		return errors.Wrap(err, "can't marshal patched config")
-	}
-	patchDoc.PatchedConfig = string(yamlBytes)
 
+	patchDoc.PatchedConfig = projectYaml
 	if patchDoc.Patches[0].ModuleName != "" {
 		// is there a module? validate it.
 		var module *model.Module
@@ -267,6 +262,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 
 	if j.intent.ShouldFinalizePatch() && len(patchDoc.Tasks) == 0 &&
 		len(patchDoc.BuildVariants) == 0 {
+		j.gitHubError = NoTasksOrVariants
 		return errors.New("patch has no build variants or tasks")
 	}
 

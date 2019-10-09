@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -335,31 +336,52 @@ func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData) (*patchmodel.Patch
 // GetHostsByUser will return an array with a single mock host
 func (c *Mock) GetHostsByUser(ctx context.Context, user string) ([]*model.APIHost, error) {
 	hosts := make([]*model.APIHost, 1)
-	host, _ := c.CreateSpawnHost(ctx, "mock_distro", "mock_key", "")
+	spawnRequest := &model.HostRequestOptions{
+		DistroID:     "mock_distro",
+		KeyName:      "mock_key",
+		UserData:     "",
+		InstanceTags: nil,
+		InstanceType: "mock_type",
+	}
+	host, _ := c.CreateSpawnHost(ctx, spawnRequest)
 	hosts = append(hosts, host)
 	return hosts, nil
 }
 
 // CreateSpawnHost will return a mock host that would have been intended
-func (*Mock) CreateSpawnHost(ctx context.Context, distroID, keyName, userData string) (*model.APIHost, error) {
+func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostRequestOptions) (*model.APIHost, error) {
 	mockHost := &model.APIHost{
 		Id:      model.ToAPIString("mock_host_id"),
 		HostURL: model.ToAPIString("mock_url"),
 		Distro: model.DistroInfo{
-			Id:       model.ToAPIString(distroID),
+			Id:       model.ToAPIString(spawnRequest.DistroID),
 			Provider: model.ToAPIString(evergreen.ProviderNameMock),
 		},
-		Type:        model.ToAPIString("mock_type"),
-		Status:      model.ToAPIString(evergreen.HostUninitialized),
-		StartedBy:   model.ToAPIString("mock_user"),
-		UserHost:    true,
-		Provisioned: false,
+		Type:         model.ToAPIString("mock_type"),
+		Status:       model.ToAPIString(evergreen.HostUninitialized),
+		StartedBy:    model.ToAPIString("mock_user"),
+		UserHost:     true,
+		Provisioned:  false,
+		InstanceTags: spawnRequest.InstanceTags,
+		InstanceType: model.ToAPIString(spawnRequest.InstanceType),
 	}
 	return mockHost, nil
 }
 
+func (*Mock) ModifySpawnHost(ctx context.Context, hostID string, changes host.HostModifyOptions) error {
+	return errors.New("(*Mock) ModifySpawnHost is not implemented")
+}
+
 func (*Mock) TerminateSpawnHost(ctx context.Context, hostID string) error {
 	return errors.New("(*Mock) TerminateSpawnHost is not implemented")
+}
+
+func (*Mock) StopSpawnHost(context.Context, string, bool) error {
+	return errors.New("(*Mock) StopSpawnHost is not implemented")
+}
+
+func (*Mock) StartSpawnHost(context.Context, string, bool) error {
+	return errors.New("(*Mock) StartSpawnHost is not implemented")
 }
 
 func (*Mock) ChangeSpawnHostPassword(context.Context, string, string) error {
@@ -373,7 +395,14 @@ func (*Mock) ExtendSpawnHostExpiration(context.Context, string, int) error {
 // GetHosts will return an array with a single mock host
 func (c *Mock) GetHosts(ctx context.Context, f func([]*model.APIHost) error) error {
 	hosts := make([]*model.APIHost, 1)
-	host, _ := c.CreateSpawnHost(ctx, "mock_distro", "mock_key", "")
+	spawnRequest := &model.HostRequestOptions{
+		DistroID:     "mock_distro",
+		KeyName:      "mock_key",
+		UserData:     "",
+		InstanceTags: nil,
+		InstanceType: "mock_type",
+	}
+	host, _ := c.CreateSpawnHost(ctx, spawnRequest)
 	hosts = append(hosts, host)
 	err := f(hosts)
 	return err

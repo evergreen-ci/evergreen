@@ -16,7 +16,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	mgo "gopkg.in/mgo.v2"
 )
 
 type queueGroupCloser func(context.Context) error
@@ -35,10 +34,6 @@ func TestQueueGroup(t *testing.T) {
 	require.NoError(t, cerr)
 	require.NoError(t, client.Connect(bctx))
 	defer func() { require.NoError(t, client.Disconnect(bctx)) }()
-
-	session, merr := mgo.DialWithTimeout(mdburl, 2*time.Second)
-	require.NoError(t, merr)
-	defer session.Close()
 
 	t.Run("Constructor", func(t *testing.T) {
 		for _, test := range []struct {
@@ -185,7 +180,7 @@ func TestQueueGroup(t *testing.T) {
 								WaitInterval: time.Millisecond,
 							}
 
-							remoteOpts := RemoteQueueGroupOptions{
+							remoteOpts := MongoDBQueueGroupOptions{
 								DefaultWorkers: remoteTest.workers,
 								WorkerPoolSize: remoteTest.workerFunc,
 								Prefix:         remoteTest.prefix,
@@ -193,7 +188,7 @@ func TestQueueGroup(t *testing.T) {
 								PruneFrequency: test.ttl,
 							}
 
-							g, err := NewMongoRemoteQueueGroup(ctx, remoteOpts, client, mopts) // nolint
+							g, err := NewMongoDBQueueGroup(ctx, remoteOpts, client, mopts) // nolint
 							if test.valid && remoteTest.valid {
 								require.NoError(t, err)
 								require.NotNil(t, g)
@@ -215,7 +210,7 @@ func TestQueueGroup(t *testing.T) {
 								URI:          remoteTest.uri,
 							}
 
-							remoteOpts := RemoteQueueGroupOptions{
+							remoteOpts := MongoDBQueueGroupOptions{
 								DefaultWorkers: remoteTest.workers,
 								WorkerPoolSize: remoteTest.workerFunc,
 								Prefix:         remoteTest.prefix,
@@ -223,36 +218,7 @@ func TestQueueGroup(t *testing.T) {
 								PruneFrequency: test.ttl,
 							}
 
-							g, err := NewMongoRemoteSingleQueueGroup(ctx, remoteOpts, client, mopts) // nolint
-							if test.valid && remoteTest.valid {
-								require.NoError(t, err)
-								require.NotNil(t, g)
-							} else {
-								require.Error(t, err)
-								require.Nil(t, g)
-							}
-						})
-					}
-				})
-				t.Run("LegacyMgoMerged", func(t *testing.T) {
-					for _, remoteTest := range remoteTests {
-						t.Run(remoteTest.name, func(t *testing.T) {
-							ctx, cancel := context.WithCancel(bctx)
-							defer cancel()
-							mopts := MongoDBOptions{
-								WaitInterval: time.Millisecond,
-								DB:           remoteTest.db,
-								URI:          remoteTest.uri,
-							}
-
-							remoteOpts := RemoteQueueGroupOptions{
-								DefaultWorkers: remoteTest.workers,
-								WorkerPoolSize: remoteTest.workerFunc,
-								Prefix:         remoteTest.prefix,
-								TTL:            test.ttl,
-								PruneFrequency: test.ttl,
-							}
-							g, err := NewMgoRemoteSingleQueueGroup(ctx, remoteOpts, session, mopts) // nolint
+							g, err := NewMongoDBSingleQueueGroup(ctx, remoteOpts, client, mopts) // nolint
 							if test.valid && remoteTest.valid {
 								require.NoError(t, err)
 								require.NotNil(t, g)
@@ -294,7 +260,7 @@ func TestQueueGroup(t *testing.T) {
 						return catcher.Resolve()
 					}
 
-					opts := RemoteQueueGroupOptions{
+					opts := MongoDBQueueGroupOptions{
 						DefaultWorkers: 1,
 						Prefix:         "prefix",
 						TTL:            ttl,
@@ -309,7 +275,7 @@ func TestQueueGroup(t *testing.T) {
 						return nil, closer, errors.Wrap(err, "server not pingable")
 					}
 
-					qg, err := NewMongoRemoteQueueGroup(ctx, opts, client, mopts)
+					qg, err := NewMongoDBQueueGroup(ctx, opts, client, mopts)
 					return qg, closer, err
 				},
 			},
@@ -331,7 +297,7 @@ func TestQueueGroup(t *testing.T) {
 						ttl = time.Hour
 					}
 
-					opts := RemoteQueueGroupOptions{
+					opts := MongoDBQueueGroupOptions{
 						DefaultWorkers: 1,
 						Prefix:         "prefix",
 						TTL:            ttl,
@@ -346,39 +312,7 @@ func TestQueueGroup(t *testing.T) {
 						return nil, closer, errors.Wrap(err, "server not pingable")
 					}
 
-					qg, err := NewMongoRemoteSingleQueueGroup(ctx, opts, client, mopts)
-					return qg, closer, err
-				},
-			},
-			{
-				Name: "MgoMerged",
-				Constructor: func(ctx context.Context, ttl time.Duration) (amboy.QueueGroup, queueGroupCloser, error) {
-					mopts := MongoDBOptions{
-						WaitInterval: time.Millisecond,
-						DB:           "amboy_group_test",
-						URI:          "mongodb://localhost:27017",
-					}
-
-					closer := func(cctx context.Context) error {
-						return session.DB(mopts.DB).DropDatabase()
-					}
-
-					if ttl == 0 {
-						ttl = time.Hour
-					}
-
-					opts := RemoteQueueGroupOptions{
-						DefaultWorkers: 2,
-						Prefix:         "prefix",
-						TTL:            ttl,
-						PruneFrequency: ttl / 2,
-					}
-
-					if err := session.DB(mopts.DB).DropDatabase(); err != nil {
-						return nil, closer, err
-					}
-
-					qg, err := NewMgoRemoteSingleQueueGroup(ctx, opts, session, mopts)
+					qg, err := NewMongoDBSingleQueueGroup(ctx, opts, client, mopts)
 					return qg, closer, err
 				},
 			},
@@ -679,13 +613,13 @@ func TestQueueGroup(t *testing.T) {
 				_, err := client.Database("amboy_group_test").Collection(fmt.Sprintf("gen-%d.jobs", i)).InsertOne(ctx, bson.M{"foo": "bar"})
 				require.NoError(t, err)
 			}
-			remoteOpts := RemoteQueueGroupOptions{
+			remoteOpts := MongoDBQueueGroupOptions{
 				Prefix:         "gen",
 				DefaultWorkers: 1,
 				TTL:            time.Second,
 				PruneFrequency: time.Second,
 			}
-			_, err := NewMongoRemoteQueueGroup(ctx, remoteOpts, client, mopts)
+			_, err := NewMongoDBQueueGroup(ctx, remoteOpts, client, mopts)
 			require.NoError(t, err)
 			time.Sleep(time.Second)
 			for i := 0; i < 10; i++ {

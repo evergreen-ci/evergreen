@@ -12,9 +12,15 @@ import (
 	"github.com/pkg/errors"
 )
 
+type remoteQueue interface {
+	amboy.Queue
+	SetDriver(remoteQueueDriver) error
+	Driver() remoteQueueDriver
+}
+
 type remoteBase struct {
 	started    bool
-	driver     Driver
+	driver     remoteQueueDriver
 	driverType string
 	channel    chan amboy.Job
 	blocked    map[string]struct{}
@@ -123,6 +129,7 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 	id := j.ID()
 	count := 0
 
+	var err error
 	for {
 		count++
 		select {
@@ -139,7 +146,8 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 				End:   time.Now(),
 			})
 
-			if err := q.driver.Save(ctx, j); err != nil {
+			err = q.driver.Save(ctx, j)
+			if err != nil {
 				if time.Since(startAt) > time.Minute+amboy.LockTimeout {
 					grip.Error(message.WrapError(err, message.Fields{
 						"job_id":      id,
@@ -163,6 +171,8 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 					continue
 				}
 			}
+
+			j.AddError(err)
 
 			q.mutex.Lock()
 			defer q.mutex.Unlock()
@@ -234,14 +244,14 @@ func (q *remoteBase) SetRunner(r amboy.Runner) error {
 // Driver provides access to the embedded driver instance which
 // provides access to the Queue's persistence layer. This method is
 // not part of the amboy.Queue interface.
-func (q *remoteBase) Driver() Driver {
+func (q *remoteBase) Driver() remoteQueueDriver {
 	return q.driver
 }
 
 // SetDriver allows callers to inject at runtime alternate driver
 // instances. It is an error to change Driver instances after starting
 // a queue. This method is not part of the amboy.Queue interface.
-func (q *remoteBase) SetDriver(d Driver) error {
+func (q *remoteBase) SetDriver(d remoteQueueDriver) error {
 	if q.Started() {
 		return errors.New("cannot change drivers after starting queue")
 	}

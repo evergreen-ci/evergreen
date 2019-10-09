@@ -21,6 +21,7 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/rpc"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -260,10 +261,10 @@ func handleMonitorSignals(ctx context.Context, serviceCancel context.CancelFunc)
 
 // fetchClient downloads the evergreen client.
 func (m *monitor) fetchClient(ctx context.Context, retry util.RetryArgs) error {
-	info := jasper.DownloadInfo{
+	info := options.Download{
 		URL:         m.clientURL,
 		Path:        m.clientPath,
-		ArchiveOpts: jasper.ArchiveOptions{ShouldExtract: false},
+		ArchiveOpts: options.Archive{ShouldExtract: false},
 	}
 
 	if err := util.RetryWithArgs(ctx, func() (bool, error) {
@@ -316,7 +317,7 @@ func (m *monitor) createAgentProcess(ctx context.Context, retry util.RetryArgs) 
 
 	if err = util.RetryWithArgs(ctx, func() (bool, error) {
 		cmd := m.jasperClient.CreateCommand(ctx).
-			Add(agentCmdArgs).
+			Add([]string{"bash", "-l", "-c", strings.Join(agentCmdArgs, " ")}).
 			SetOutputSender(level.Info, grip.GetSender()).
 			SetErrorSender(level.Error, grip.GetSender()).
 			Environment(env).

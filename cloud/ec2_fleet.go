@@ -20,10 +20,19 @@ import (
 	"github.com/pkg/errors"
 )
 
+type EC2FleetManagerOptions struct {
+	client AWSClient
+	region string
+}
+
 type ec2FleetManager struct {
-	client      AWSClient
+	*EC2FleetManagerOptions
 	credentials *credentials.Credentials
 	settings    *evergreen.Settings
+}
+
+func NewEC2FleetManager(opts *EC2FleetManagerOptions) Manager {
+	return &ec2FleetManager{EC2FleetManagerOptions: opts}
 }
 
 func (m *ec2FleetManager) GetSettings() ProviderSettings {
@@ -33,13 +42,14 @@ func (m *ec2FleetManager) GetSettings() ProviderSettings {
 func (m *ec2FleetManager) Configure(ctx context.Context, settings *evergreen.Settings) error {
 	m.settings = settings
 
-	if settings.Providers.AWS.EC2Key == "" || settings.Providers.AWS.EC2Secret == "" {
-		return errors.New("AWS ID and Secret must not be blank")
+	key, secret, err := GetEC2Key(m.EC2FleetManagerOptions.region, settings)
+	if err != nil {
+		return errors.Wrap(err, "Problem getting EC2 keys")
 	}
 
 	m.credentials = credentials.NewStaticCredentialsFromCreds(credentials.Value{
-		AccessKeyID:     settings.Providers.AWS.EC2Key,
-		SecretAccessKey: settings.Providers.AWS.EC2Secret,
+		AccessKeyID:     key,
+		SecretAccessKey: secret,
 	})
 
 	return nil
@@ -104,6 +114,10 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 
 	event.LogHostStarted(h.Id)
 	return h, nil
+}
+
+func (m *ec2FleetManager) ModifyHost(context.Context, *host.Host, host.HostModifyOptions) error {
+	return errors.New("can't modify instances for ec2 fleet provider")
 }
 
 func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) ([]CloudStatus, error) {
@@ -176,7 +190,7 @@ func (m *ec2FleetManager) GetInstanceStatus(ctx context.Context, h *host.Host) (
 	return status, nil
 }
 
-func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, user string) error {
+func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, user, reason string) error {
 	if h.Status == evergreen.HostTerminated {
 		return errors.Errorf("Can not terminate %s - already marked as terminated!", h.Id)
 	}
@@ -220,7 +234,17 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 		})
 	}
 
-	return errors.Wrap(h.Terminate(user), "failed to terminate instance in db")
+	return errors.Wrap(h.Terminate(user, reason), "failed to terminate instance in db")
+}
+
+// StopInstance should do nothing for EC2 Fleet.
+func (m *ec2FleetManager) StopInstance(context.Context, *host.Host, string) error {
+	return errors.New("can't stop instances for ec2 fleet provider")
+}
+
+// StartInstance should do nothing for EC2 Fleet.
+func (m *ec2FleetManager) StartInstance(context.Context, *host.Host, string) error {
+	return errors.New("can't start instances for ec2 fleet provider")
 }
 
 func (m *ec2FleetManager) IsUp(ctx context.Context, h *host.Host) (bool, error) {
@@ -423,6 +447,11 @@ func (m *ec2FleetManager) requestFleet(ctx context.Context, ec2Settings *EC2Prov
 	}
 	err = validateEc2CreateFleetResponse(createFleetResponse)
 	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":  "invalid create fleet response",
+			"request":  createFleetInput,
+			"response": createFleetResponse,
+		}))
 		return nil, errors.Wrap(err, "invalid create fleet response")
 	}
 

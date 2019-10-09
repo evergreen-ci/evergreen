@@ -11,46 +11,58 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
-	"github.com/mongodb/amboy/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGeneratePoll(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	require.NoError(t, db.ClearCollections(task.Collection))
 	env := evergreen.GetEnvironment()
 	require.NotNil(t, env)
 	q := env.RemoteQueueGroup()
 	require.NotNil(t, q)
 
-	require.NoError(t, (&task.Task{
-		Id:      "task-1",
-		Version: "version-1",
-	}).Insert())
 	gc := &GenerateConnector{}
-	finished, errs, err := gc.GeneratePoll(context.Background(), "task-1", q)
-	assert.Empty(t, errs)
+	finished, errs, err := gc.GeneratePoll(context.Background(), "task-0", q)
 	assert.False(t, finished)
+	assert.Empty(t, errs)
 	assert.Error(t, err)
 
-	registry.AddJobType("mock", func() amboy.Job { return newMockJob() })
-	j := newMockJob()
-	j.SetID("generate-tasks-task-1")
+	require.NoError(t, (&task.Task{
+		Id:             "task-1",
+		Version:        "version-1",
+		GenerateTask:   true,
+		GeneratedTasks: false,
+	}).Insert())
 
-	taskQueue, err := q.Get(ctx, "version-1")
-	require.NoError(t, err)
-	require.NotNil(t, taskQueue)
-	require.NoError(t, taskQueue.Put(ctx, j))
 	finished, errs, err = gc.GeneratePoll(context.Background(), "task-1", q)
 	assert.False(t, finished)
 	assert.Empty(t, errs)
 	assert.NoError(t, err)
-	time.Sleep(time.Second)
-	finished, errs, err = gc.GeneratePoll(context.Background(), "task-1", q)
+
+	require.NoError(t, (&task.Task{
+		Id:             "task-2",
+		Version:        "version-1",
+		GenerateTask:   true,
+		GeneratedTasks: true,
+	}).Insert())
+
+	finished, errs, err = gc.GeneratePoll(context.Background(), "task-2", q)
 	assert.True(t, finished)
 	assert.Empty(t, errs)
+	assert.NoError(t, err)
+
+	require.NoError(t, (&task.Task{
+		Id:                 "task-3",
+		Version:            "version-1",
+		GenerateTask:       true,
+		GeneratedTasks:     true,
+		GenerateTasksError: "this is an error",
+	}).Insert())
+
+	finished, errs, err = gc.GeneratePoll(context.Background(), "task-3", q)
+	assert.True(t, finished)
+	assert.Equal(t, []string{"this is an error"}, errs)
 	assert.NoError(t, err)
 }
 

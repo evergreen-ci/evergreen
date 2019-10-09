@@ -18,6 +18,8 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/shlex"
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/mock"
+	"github.com/mongodb/jasper/options"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -43,12 +45,12 @@ func TestGitPush(t *testing.T) {
 	var splitCommand []string
 	for name, test := range map[string]func(*testing.T){
 		"Execute": func(*testing.T) {
-			manager := &jasper.MockManager{}
+			manager := &mock.Manager{}
 			c.base.jasper = manager
-			manager.Create = func(opts *jasper.CreateOptions) jasper.MockProcess {
+			manager.Create = func(opts *options.Create) mock.Process {
 				_, err = opts.Output.Output.Write([]byte("abcdef01345"))
 				assert.NoError(t, err)
-				proc := jasper.MockProcess{}
+				proc := mock.Process{}
 				proc.ProcInfo.Options = *opts
 				return proc
 			}
@@ -82,18 +84,18 @@ func TestGitPush(t *testing.T) {
 
 			require.Len(t, manager.Procs, len(commands))
 			for i, proc := range manager.Procs {
-				args := proc.(*jasper.MockProcess).ProcInfo.Options.Args
+				args := proc.(*mock.Process).ProcInfo.Options.Args
 				splitCommand, err = shlex.Split(commands[i])
 				assert.NoError(t, err)
 				assert.Equal(t, splitCommand, args)
 			}
 		},
 		"PushPatchMock": func(*testing.T) {
-			manager := &jasper.MockManager{}
-			manager.Create = func(opts *jasper.CreateOptions) jasper.MockProcess {
+			manager := &mock.Manager{}
+			manager.Create = func(opts *options.Create) mock.Process {
 				_, err = opts.Output.Error.Write([]byte(fmt.Sprintf("The key: %s", token)))
 				assert.NoError(t, err)
-				proc := jasper.MockProcess{}
+				proc := mock.Process{}
 				proc.ProcInfo.Options = *opts
 				return proc
 			}
@@ -114,7 +116,7 @@ func TestGitPush(t *testing.T) {
 			}
 			require.Len(t, manager.Procs, len(commands))
 			for i, proc := range manager.Procs {
-				args := proc.(*jasper.MockProcess).ProcInfo.Options.Args
+				args := proc.(*mock.Process).ProcInfo.Options.Args
 				splitCommand, err = shlex.Split(commands[i])
 				assert.NoError(t, err)
 				assert.Equal(t, splitCommand, args)
@@ -175,7 +177,7 @@ func TestGitPush(t *testing.T) {
 			assert.NoError(t, os.RemoveAll(repoDir))
 		},
 		"RevParse": func(*testing.T) {
-			manager := &jasper.MockManager{}
+			manager := &mock.Manager{}
 			c.base.jasper = manager
 			_, err = c.revParse(context.Background(), conf, logger, "HEAD")
 			assert.NoError(t, err)
@@ -183,7 +185,7 @@ func TestGitPush(t *testing.T) {
 
 			require.Len(t, manager.Procs, len(commands))
 			for i, proc := range manager.Procs {
-				args := proc.(*jasper.MockProcess).ProcInfo.Options.Args
+				args := proc.(*mock.Process).ProcInfo.Options.Args
 				splitCommand, err = shlex.Split(commands[i])
 				assert.NoError(t, err)
 				assert.Equal(t, splitCommand, args)

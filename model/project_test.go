@@ -23,18 +23,11 @@ import (
 func TestFindProject(t *testing.T) {
 
 	Convey("When finding a project", t, func() {
-
-		Convey("an error should be thrown if the project ref is nil", func() {
-			project, err := FindProject("", nil)
-			So(err, ShouldNotBeNil)
-			So(project, ShouldBeNil)
-		})
-
 		Convey("an error should be thrown if the project ref's identifier is nil", func() {
 			projRef := &ProjectRef{
 				Identifier: "",
 			}
-			project, err := FindProject("", projRef)
+			project, err := FindLastKnownGoodProject(projRef.Identifier)
 			So(err, ShouldNotBeNil)
 			So(project, ShouldBeNil)
 		})
@@ -56,7 +49,7 @@ func TestFindProject(t *testing.T) {
 				Branch:     "fakebranch",
 			}
 			require.NoError(t, v.Insert(), "failed to insert test version: %v", v)
-			_, err := FindProject("", p)
+			_, err := FindLastKnownGoodProject(p.Identifier)
 			So(err, ShouldBeNil)
 
 		})

@@ -22,6 +22,9 @@ const (
 	HostQuarantined     = "quarantined"
 	HostDecommissioned  = "decommissioned"
 
+	HostStopping = "stopping"
+	HostStopped  = "stopped"
+
 	HostExternalUserName = "external"
 
 	HostStatusSuccess = "success"
@@ -59,6 +62,9 @@ const (
 	TaskSystemFailed = "system-failed"
 	TaskTestTimedOut = "test-timed-out"
 	TaskSetupFailed  = "setup-failed"
+
+	TaskStatusBlocked = "blocked"
+	TaskStatusPending = "pending"
 
 	// Task Command Types
 	CommandTypeTest   = "test"
@@ -140,9 +146,11 @@ const (
 
 	DegradedLoggingPercent = 10
 
-	SetupScriptName     = "setup.sh"
-	TempSetupScriptName = "setup-temp.sh"
-	TeardownScriptName  = "teardown.sh"
+	SetupScriptName               = "setup.sh"
+	TempSetupScriptName           = "setup-temp.sh"
+	PowerShellSetupScriptName     = "setup.ps1"
+	PowerShellTempSetupScriptName = "setup-temp.ps1"
+	TeardownScriptName            = "teardown.sh"
 
 	RoutePaginatorNextPageHeaderKey = "Link"
 
@@ -231,15 +239,14 @@ const (
 	ProviderNameVsphere     = "vsphere"
 	ProviderNameMock        = "mock"
 
-	// TODO: This can be removed when no more hosts with provider ec2 are running.
-	ProviderNameEc2Legacy = "ec2"
+	// Default EC2 region where hosts should be spawned
+	DefaultEC2Region = "us-east-1"
 )
 
 var (
 	// Providers where hosts can be created and terminated automatically.
 	ProviderSpawnable = []string{
 		ProviderNameDocker,
-		ProviderNameEc2Legacy,
 		ProviderNameEc2OnDemand,
 		ProviderNameEc2Spot,
 		ProviderNameEc2Auto,
@@ -364,6 +371,8 @@ var (
 		HostStarting,
 		HostProvisioning,
 		HostProvisionFailed,
+		HostStopping,
+		HostStopped,
 	}
 
 	// DownHostStatus is a list of all host statuses that are considered down.
@@ -388,6 +397,8 @@ var (
 		HostStarting,
 		HostProvisioning,
 		HostProvisionFailed,
+		HostStopping,
+		HostStopped,
 	}
 
 	// Set of host status values that can be user set via the API
@@ -458,4 +469,21 @@ func IsPatchRequester(requester string) bool {
 
 func IsGitHubPatchRequester(requester string) bool {
 	return requester == GithubPRRequester || requester == MergeTestRequester
+}
+
+// Registered permissions
+const (
+	PermissionProjectSettings  = "project_settings"
+	PermissionProjectVariables = "project_variables"
+	PermissionTasks            = "project_tasks"
+	PermissionPatches          = "project_patches"
+	PermissionLogs             = "project_logs"
+)
+
+var projectPermissions = []string{
+	PermissionProjectSettings,
+	PermissionProjectVariables,
+	PermissionTasks,
+	PermissionPatches,
+	PermissionLogs,
 }

@@ -214,31 +214,33 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 	return versions, nil
 }
 
-func (v *Version) UpdateMergeTaskDependencies(p *Project) error {
+func (v *Version) UpdateMergeTaskDependencies(p *Project, mergeTask *task.Task) error {
+	existingDependencies := make(map[string]bool)
+	for _, dep := range mergeTask.DependsOn {
+		existingDependencies[dep.TaskId] = true
+	}
+
 	execPairs, _, err := p.BuildProjectTVPairsWithAlias(evergreen.CommitQueueAlias)
 	if err != nil {
 		return errors.Wrap(err, "can't get alias pairs")
 	}
 
+	mergeTaskDependencies := []task.Dependency{}
 	execTaskIDTable := NewTaskIdTable(p, v, "", "").ExecutionTasks
-	mergeTaskDependencies := make([]task.Dependency, 0, len(execPairs))
 	for _, pair := range execPairs {
-		mergeTaskDependencies = append(
-			mergeTaskDependencies,
-			task.Dependency{
-				TaskId: execTaskIDTable.GetId(pair.Variant, pair.TaskName),
-				Status: evergreen.TaskSucceeded,
-			},
-		)
+		taskID := execTaskIDTable.GetId(pair.Variant, pair.TaskName)
+		if !existingDependencies[taskID] {
+			mergeTaskDependencies = append(
+				mergeTaskDependencies,
+				task.Dependency{
+					TaskId: taskID,
+					Status: evergreen.TaskSucceeded,
+				},
+			)
+		}
 	}
 
-	// update task in the database
-	t, err := task.FindOneId(execTaskIDTable.GetId(evergreen.MergeTaskVariant, evergreen.MergeTaskName))
-	if err != nil {
-		return errors.Wrap(err, "can't get merge task")
-	}
-
-	return t.UpdateDependencies(mergeTaskDependencies)
+	return mergeTask.UpdateDependencies(mergeTaskDependencies)
 }
 
 type VersionsByOrder []Version

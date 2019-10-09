@@ -48,7 +48,6 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 	}
 
 	ops := []amboy.QueueOperation{
-		PopulateHostCreationJobs(j.env, 0),
 		PopulateIdleHostJobs(j.env),
 		PopulateHostTerminationJobs(j.env),
 		PopulateHostMonitoring(j.env),
@@ -60,18 +59,35 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 		PopulateContainerStateJobs(j.env),
 		PopulateOldestImageRemovalJobs(),
 		PopulateCommitQueueJobs(j.env),
+		PopulateGenerateTasksJobs(j.env),
 	}
 
-	queue := j.env.RemoteQueue()
-
 	catcher := grip.NewBasicCatcher()
+
+	queue := j.env.RemoteQueue()
 	for _, op := range ops {
 		if ctx.Err() != nil {
 			j.AddError(errors.New("operation aborted"))
 		}
-
 		catcher.Add(op(ctx, queue))
 	}
+
+	// Create dedicated queues for host creation and commit queue jobs
+	appCtx, _ := j.env.Context()
+	hcqueue, err := j.env.RemoteQueueGroup().Get(appCtx, "service.host.create")
+	if err != nil {
+		catcher.Add(errors.Wrap(err, "error getting host create queue"))
+	} else {
+		catcher.Add(PopulateHostCreationJobs(j.env, 0)(ctx, hcqueue))
+	}
+
+	commitQueueQueue, err := j.env.RemoteQueueGroup().Get(appCtx, "service.commitqueue")
+	if err != nil {
+		catcher.Add(errors.Wrap(err, "error getting commit queue queue"))
+	} else {
+		catcher.Add(PopulateCommitQueueJobs(j.env)(ctx, commitQueueQueue))
+	}
+
 	j.ErrorCount = catcher.Len()
 
 	grip.Debug(message.Fields{

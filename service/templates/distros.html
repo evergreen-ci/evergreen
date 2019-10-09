@@ -63,7 +63,32 @@ Evergreen - Distros
               container pool, so it is cannot be spawned for tasks.</label>
           </div>
           <br>
-
+          <div class="panel-body panel panel-default">
+            <div ng-form name="aliasesForm">
+              <label class="distro-menu-title">Distro Aliases:</label>
+              <div id="distro-aliases-table" class="distro-table-scroll">
+                <table style="margin-left: -8px;" class="table distro-table">
+                  <tbody ng-repeat="alias_name in activeDistro.aliases track by $index">
+                    <tr>
+                      <td style="padding-left: 10px;"><input required ng-readonly="readOnly" name="alias_name" type="text"
+                          ng-model="activeDistro.aliases[$index]" class="form-control" placeholder="e.g. ubuntu1604">
+                      </td>
+                      <td ng-hide="readOnly">
+                        <a ng-click="form.$setDirty();removeDistroAlias(alias_name)">
+                          <i class="fa fa-trash distro-trash-icon"></i>
+                        </a>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="icon fa fa-warning distro-error" ng-show="aliasesForm.alias_name.$dirty && aliasesForm.alias_name.$error.required">Distro alias
+                cannot be an empty string<br /></div>
+              <button type="button" class="btn btn-primary" ng-hide="readOnly" ng-disabled="aliasesForm.alias_name.$dirty && aliasesForm.$invalid || aliasesForm.alias_name.$error.required"
+                ng-click="form.$setDirty();addDistroAlias()"><i class="fa fa-plus"></i> Add Distro Alias</button>
+            </div>
+          </div>
+          <br>
           <div class="panel-body panel panel-default">
             <div class="dropdown">
               <span class="distro-menu-title">Agent Architecture:</span>
@@ -476,24 +501,28 @@ Evergreen - Distros
             form.plannerSettingsVersion.$invalid">Planner Version is required
           </div>
           <div ng-show="activeDistro.provider != 'static' && activeDistro.provider != 'docker'">
-              <label class="distro-label">Maximum number of hosts allowed:</label>
+            <div>
+              <label class="distro-label">Maximum Number of Hosts Allowed:</label>
               <input ng-readonly="readOnly" type="number" ng-required="activeDistro.provider != 'static' && activeDistro.provider != 'docker'"
                 name="poolSize" class="form-control" ng-model="activeDistro.pool_size" ng-change="activeDistro.planner_settings.maximum_hosts=activeDistro.pool_size" placeholder="Max pool size e.g. 10">
-              <div class="icon fa fa-warning distro-error" ng-show="form.poolSize.$dirty && form.poolSize.$error.required || form.poolSize.$invalid">Numeric
-                pool size is required
+              <div class="icon fa fa-warning distro-error" ng-show="form.poolSize.$dirty && form.poolSize.$error.required ||
+                form.poolSize.$invalid ||
+                form.poolSize.$modelValue < 0 ||
+                form.poolSize.$modelValue % 1 != 0"> A non-negative integer value for Maximum Hosts (a.k.a. Pool Size) is required
               </div>
+            </div>
+            <div>
+              <label class="distro-label">Minimum Number of Hosts Allowed:</label>
+              <input ng-readonly="readOnly" type="number"
+                name="plannerSettingsMinimumHosts" class="form-control" ng-model="activeDistro.planner_settings.minimum_hosts" placeholder="Min pool size e.g. 0">
+              <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsMinimumHosts.$dirty && form.plannerSettingsMinimumHosts.$error.required ||
+                form.plannerSettingsMinimumHosts.$invalid ||
+                form.plannerSettingsMinimumHosts.$modelValue < 0 ||
+                form.plannerSettingsMinimumHosts.$modelValue % 1 != 0"> A non-negative integer value for Minimum Hosts is required
+              </div>
+            </div>
           </div>
           <div ng-show="activeDistro.provider != 'static' && activeDistro.provider != 'docker' && activeDistro.planner_settings.version == 'tunable'">
-            <div>
-              <label class="distro-label">Minimum Hosts of host allowed:</label>
-              <input ng-readonly="readOnly" type="number" ng-required="activeDistro.planner_settings.version == 'tunable'"
-                name="plannerSettingsMinimumHosts" class="form-control" ng-model="activeDistro.planner_settings.minimum_hosts" placeholder="Min pool size e.g. 0">
-            </div>
-            <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsMinimumHosts.$dirty && form.plannerSettingsMinimumHosts.$error.required ||
-              form.plannerSettingsMinimumHosts.$invalid ||
-              form.plannerSettingsMinimumHosts.$modelValue < 0 ||
-              form.plannerSettingsMinimumHosts.$modelValue % 1 != 0"> A non-negative integer value for Minimum Hosts is required
-            </div>
             <div>
               <label class="distro-label">Target Time (sec):</label>
               <input ng-readonly="readOnly" type="number" ng-required="activeDistro.planner_settings.version == 'tunable'"
@@ -618,29 +647,66 @@ Evergreen - Distros
           </div>
           <div class="icon fa fa-warning distro-error" ng-show="!validBootstrapAndCommunication()"> Legacy and non-legacy bootstrapping and communication are incompatible</div>
           <br />
-          <div ng-show="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'">
-            <label class="distro-label">Shell Path:</label>
-            <input type="text" ng-required="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'" ng-readonly="readOnly" name="shellPath"
-              class="form-control" ng-model="activeDistro.bootstrap_settings.shell_path" placeholder="Absolute native path to the shell binary file (bash)">
-            <div class="icon fa fa-warning distro-error" ng-show="form.shellPath.$invalid"> Shell path is required</div><br>
-          </div>
-          <div ng-show="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'">
+          <div ng-show="isNonLegacyProvisioning()">
             <label class="distro-label">Jasper Binary Directory:</label>
-            <input type="text" ng-required="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'" ng-readonly="readOnly" name="jasperBinaryDir"
+            <input type="text" ng-required="isNonLegacyProvisioning()" ng-readonly="readOnly" name="jasperBinaryDir"
               class="form-control" ng-model="activeDistro.bootstrap_settings.jasper_binary_dir" placeholder="Absolute native path to the directory of the Jasper binary">
-            <div class="icon fa fa-warning distro-error" ng-show="form.jasperBinaryDir.$invalid"> Jasper binary directory is required</div><br>
+            <div class="icon fa fa-warning distro-error" ng-show="form.jasperBinaryDir.$invalid"> Jasper binary directory is required</div><br />
           </div>
-          <div ng-show="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'">
-            <label class="distro-label">Client Directory:</label>
-            <input type="text" ng-required="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'" ng-readonly="readOnly" name="clientDir"
-              class="form-control" ng-model="activeDistro.bootstrap_settings.client_dir" placeholder="Absolute native path to the directory of the evergreen binary">
-            <div class="icon fa fa-warning distro-error" ng-show="form.clientDir.$invalid"> Client directory is required</div><br>
-          </div>
-          <div ng-show="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'">
+          <div ng-show="isNonLegacyProvisioning()">
             <label class="distro-label">Jasper Credentials Path:</label>
-            <input type="text" ng-required="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'" ng-readonly="readOnly" name="jasperCredentialsPath"
+            <input type="text" ng-required="isNonLegacyProvisioning()" ng-readonly="readOnly" name="jasperCredentialsPath"
               class="form-control" ng-model="activeDistro.bootstrap_settings.jasper_credentials_path" placeholder="Absolute native path to the directory containing the Jasper credentials">
-            <div class="icon fa fa-warning distro-error" ng-show="form.jasperCredentialsPath.$invalid"> Jasper credentials path is required</div><br>
+            <div class="icon fa fa-warning distro-error" ng-show="form.jasperCredentialsPath.$invalid"> Jasper credentials path is required</div><br />
+          </div>
+          <div ng-show="isNonLegacyProvisioning()">
+            <label class="distro-label">Client Directory:</label>
+            <input type="text" ng-required="isNonLegacyProvisioning(0)" ng-readonly="readOnly" name="clientDir"
+              class="form-control" ng-model="activeDistro.bootstrap_settings.client_dir" placeholder="Absolute native path to the directory of the evergreen binary">
+            <div class="icon fa fa-warning distro-error" ng-show="form.clientDir.$invalid"> Client directory is required</div><br />
+          </div>
+          <div ng-show="isWindows() && isNonLegacyProvisioning()">
+            <label class="distro-label">Service User:</label>
+            <input type="text" ng-required="isWindows() && isNonLegacyProvisioning()"
+              ng-readonly="readOnly" name="serviceUser"
+              class="form-control" ng-model="activeDistro.bootstrap_settings.service_user" placeholder="Username for setting up Evergreen services">
+            <div class="icon fa fa-warning distro-error" ng-show="form.serviceUser.$invalid"> Service user is required</div><br />
+            <label class="distro-label">Shell Path:</label>
+            <input type="text" ng-required="isWindows() && isNonLegacyProvisioning()"
+              ng-readonly="readOnly" name="shellPath"
+              class="form-control" ng-model="activeDistro.bootstrap_settings.shell_path" placeholder="Absolute native path to the shell binary file (bash)">
+            <div class="icon fa fa-warning distro-error" ng-show="form.shellPath.$invalid"> Shell path is required</div><br />
+            <label class="distro-label">Root Directory:</label>
+            <input type="text" ng-required="isWindows() && isNonLegacyProvisioning()" name="rootDir" class="form-control" ng-model="activeDistro.bootstrap_settings.root_dir"
+              placeholder="Native path to root directory" ng-readonly="readOnly">
+            <div class="icon fa fa-warning distro-error" ng-show="form.rootDir.$invalid"> Root directory is required</div><br />
+          </div>
+          <div ng-show="isLinux() && isNonLegacyProvisioning()">
+			<label class="distro-label">Resource Limits:</label><br />
+			<label class="muted">Number of Files:</label>
+            <input type="number" ng-readonly="readOnly" name="numFiles"
+              class="form-control" ng-model="activeDistro.bootstrap_settings.resource_limits.num_files"
+			  placeholder="Max number of open file handles. Set -1 for unlimited"
+			  min="-1">
+            <div class="icon fa fa-warning distro-error" ng-show="form.numFiles.$invalid"> Invalid max open files</div><br />
+			<label class="muted">Number of Processes:</label>
+            <input type="number" ng-readonly="readOnly" name="numProcesses"
+              class="form-control" ng-model="activeDistro.bootstrap_settings.resource_limits.num_processes"
+			  placeholder="Max number of processes. Set -1 for unlimited"
+			  min="-1">
+            <div class="icon fa fa-warning distro-error" ng-show="form.numProcesses.$invalid"> Invalid max processes</div><br />
+			<label class="muted">Locked Memory:</label>
+            <input type="number" ng-readonly="readOnly" name="lockedMemoryKB"
+              class="form-control" ng-model="activeDistro.bootstrap_settings.resource_limits.locked_memory"
+			  placeholder="Max size (in KB) that can be locked into memory. Set -1 for unlimited"
+			  min="-1">
+            <div class="icon fa fa-warning distro-error" ng-show="form.lockedMemoryKB.$invalid"> Invalid max locked memory</div><br />
+			<label class="muted">Virtual Memory:</label>
+            <input type="number" ng-readonly="readOnly" name="virtualMemoryKB"
+              class="form-control" ng-model="activeDistro.bootstrap_settings.resource_limits.virtual_memory"
+			  placeholder="Max size (in KB) of available virtual memory. Set -1 for unlimited"
+			  min="-1">
+            <div class="icon fa fa-warning distro-error" ng-show="form.virtualMemory.$invalid"> Invalid max virtual memory</div><br />
           </div>
         </div>
         <div>

@@ -142,7 +142,7 @@ func AlternateTaskFinder(d distro.Distro) ([]task.Task, error) {
 		taskIds = append(taskIds, t)
 	}
 
-	tasksToCache, err := task.Find(task.ByIds(taskIds).WithFields(task.StatusKey))
+	tasksToCache, err := task.Find(task.ByIds(taskIds).WithFields(task.StatusKey, task.DependsOnKey))
 	if err != nil {
 		return nil, errors.Wrap(err, "problem finding task dependencies")
 	}
@@ -243,7 +243,7 @@ func ParallelTaskFinder(d distro.Distro) ([]task.Task, error) {
 		go func() {
 			defer wg.Done()
 			for id := range toLookup {
-				nt, err := task.FindOneIdWithFields(id, task.StatusKey)
+				nt, err := task.FindOneIdWithFields(id, task.StatusKey, task.DependsOnKey)
 				catcher.Add(err)
 				if nt == nil {
 					continue

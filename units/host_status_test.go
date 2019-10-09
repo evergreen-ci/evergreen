@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,11 +24,19 @@ func TestCloudStatusJob(t *testing.T) {
 			Id:       "host-1",
 			Provider: evergreen.ProviderNameMock,
 			Status:   evergreen.HostStarting,
+			Distro: distro.Distro{
+				Provider:         evergreen.ProviderNameMock,
+				ProviderSettings: &map[string]interface{}{"region": "region-1"},
+			},
 		},
 		{
 			Id:       "host-2",
 			Provider: evergreen.ProviderNameMock,
 			Status:   evergreen.HostStarting,
+			Distro: distro.Distro{
+				Provider:         evergreen.ProviderNameMock,
+				ProviderSettings: &map[string]interface{}{"region": "region-2"},
+			},
 		},
 		{
 			Id:       "host-3",

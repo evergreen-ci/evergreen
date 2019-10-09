@@ -18,10 +18,13 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
-	jaspercli "github.com/mongodb/jasper/cli"
+	jcli "github.com/mongodb/jasper/cli"
+	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/rpc"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func (h *Host) SetupCommand() string {
@@ -155,6 +158,28 @@ func (h *Host) GetSSHOptions(keyPath string) ([]string, error) {
 
 // RunSSHCommand runs an SSH command on a remote host.
 func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []string) (string, error) {
+	return h.runSSHCommandWithOutput(ctx, func(c *jasper.Command) *jasper.Command {
+		return c.Append(cmd)
+	}, sshOptions)
+}
+
+// RunSSHCommandLiterally is the same as RunSSHCommand but passes the given
+// arguments to the SSH process without performing any premature shell parsing
+// on cmd.
+func (h *Host) RunSSHCommandLiterally(ctx context.Context, cmd string, sshOptions []string) (string, error) {
+	return h.runSSHCommandWithOutput(ctx, func(c *jasper.Command) *jasper.Command {
+		return c.Add([]string{cmd})
+	}, sshOptions)
+}
+
+// RunSSHShellScript runs a shell script on a remote host over SSH.
+func (h *Host) RunSSHShellScript(ctx context.Context, script string, sshOptions []string) (string, error) {
+	return h.runSSHCommandWithOutput(ctx, func(c *jasper.Command) *jasper.Command {
+		return c.ShellScript("bash", script)
+	}, sshOptions)
+}
+
+func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*jasper.Command) *jasper.Command, sshOptions []string) (string, error) {
 	env := evergreen.GetEnvironment()
 	hostInfo, err := h.GetSSHInfo()
 	if err != nil {
@@ -170,12 +195,11 @@ func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []strin
 	ctx, cancel = context.WithTimeout(ctx, sshTimeout)
 	defer cancel()
 
-	err = env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
+	err = addCommands(env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
 		ExtendRemoteArgs("-p", hostInfo.Port, "-t", "-t").ExtendRemoteArgs(sshOptions...).
-		SetOutputWriter(output).RedirectErrorToOutput(true).
-		Append(cmd).Run(ctx)
+		SetCombinedWriter(output)).Run(ctx)
 
-	return output.String(), errors.Wrap(err, "error running shell cmd")
+	return output.String(), errors.Wrap(err, "error running SSH command")
 }
 
 // InitSystem determines the current Linux init system used by this host.
@@ -242,28 +266,55 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 	if h.Distro.BootstrapSettings.JasperCredentialsPath != "" {
 		params = append(params, fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
 	}
-	if h.Distro.User != "" {
+
+	if user := h.Distro.BootstrapSettings.ServiceUser; user != "" {
+		if h.Distro.IsWindows() {
+			user = `.\\\\` + user
+		}
+		params = append(params, fmt.Sprintf("--user=%s", user))
+		if h.ServicePassword != "" {
+			params = append(params, fmt.Sprintf("--password=%s", h.ServicePassword))
+		}
+	} else if h.Distro.User != "" {
 		params = append(params, fmt.Sprintf("--user=%s", h.Distro.User))
 	}
+
 	if settings.Splunk.Populated() {
 		params = append(params,
 			fmt.Sprintf("--splunk_url=%s", settings.Splunk.ServerURL),
-			fmt.Sprintf("--splunk_token=%s", settings.Splunk.Token),
-			fmt.Sprintf("--splunk_channel=%s", settings.Splunk.Channel),
+			fmt.Sprintf("--splunk_token_path=%s", h.splunkTokenFilePath()),
 		)
+		if settings.Splunk.Channel != "" {
+			params = append(params, fmt.Sprintf("--splunk_channel=%s", settings.Splunk.Channel))
+		}
 	}
 
-	return h.jasperServiceCommand(settings.HostJasper, jaspercli.ForceReinstallCommand, params...)
+	if os, _ := h.Distro.Platform(); os == "linux" {
+		if numProcs := h.Distro.BootstrapSettings.ResourceLimits.NumProcesses; numProcs != 0 {
+			params = append(params, fmt.Sprintf("--limit_num_procs=%d", numProcs))
+		}
+		if numFiles := h.Distro.BootstrapSettings.ResourceLimits.NumFiles; numFiles != 0 {
+			params = append(params, fmt.Sprintf("--limit_num_files=%d", numFiles))
+		}
+		if lockedMem := h.Distro.BootstrapSettings.ResourceLimits.LockedMemoryKB; lockedMem != 0 {
+			params = append(params, fmt.Sprintf("--limit_locked_memory=%d", lockedMem))
+		}
+		if virtualMem := h.Distro.BootstrapSettings.ResourceLimits.VirtualMemoryKB; virtualMem != 0 {
+			params = append(params, fmt.Sprintf("--limit_virtual_memory=%d", virtualMem))
+		}
+	}
+
+	return h.jasperServiceCommand(settings.HostJasper, jcli.ForceReinstallCommand, params...)
 }
 
 // RestartJasperCommand returns the command to restart the Jasper service with
 // the existing configuration.
 func (h *Host) RestartJasperCommand(config evergreen.HostJasperConfig) string {
-	return h.jasperServiceCommand(config, jaspercli.RestartCommand)
+	return h.jasperServiceCommand(config, jcli.RestartCommand)
 }
 
 func (h *Host) jasperServiceCommand(config evergreen.HostJasperConfig, subCmd string, args ...string) string {
-	cmd := append(jaspercli.BuildServiceCommand(h.jasperBinaryFilePath(config)), subCmd, jaspercli.RPCService)
+	cmd := append(jcli.BuildServiceCommand(h.jasperBinaryFilePath(config)), subCmd, jcli.RPCService)
 	cmd = append(cmd, args...)
 	// Jasper service commands need elevated privileges to execute. On Windows,
 	// this is assuming that the command is already being run by Administrator.
@@ -283,6 +334,7 @@ func (h *Host) fetchJasperCommands(config evergreen.HostJasperConfig) []string {
 	downloadedFile := h.jasperDownloadedFileName(config)
 	extractedFile := h.jasperBinaryFileName(config)
 	return []string{
+		fmt.Sprintf("mkdir -m 777 -p \"%s\"", h.Distro.BootstrapSettings.JasperBinaryDir),
 		fmt.Sprintf("cd \"%s\"", h.Distro.BootstrapSettings.JasperBinaryDir),
 		fmt.Sprintf("curl -LO '%s/%s' %s", config.URL, downloadedFile, curlRetryArgs(CurlDefaultNumRetries, CurlDefaultMaxSecs)),
 		fmt.Sprintf("tar xzf '%s'", downloadedFile),
@@ -323,36 +375,141 @@ func (h *Host) jasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 
 // BootstrapScript creates the user data script to bootstrap the host.
 func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credentials, preJasperSetup, postJasperSetup []string) (string, error) {
-	bashCmds := append([]string{"set -o errexit"}, preJasperSetup...)
+	bashCmds := append([]string{"set -o errexit", "set -o verbose"})
 
-	writeCredentialsCmd, err := h.WriteJasperCredentialsFileCommand(creds)
+	writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 	if err != nil {
-		return "", errors.Wrap(err, "could not build command to write Jasper credentials file")
+		return "", errors.Wrap(err, "could not get command to write Jasper credentials file")
 	}
 
 	if h.Distro.IsWindows() {
 		bashCmds = append(bashCmds,
-			h.FetchJasperCommandWithPath(settings.HostJasper, "/bin"),
 			writeCredentialsCmd,
+			h.FetchJasperCommandWithPath(settings.HostJasper, "/bin"),
 			h.ForceReinstallJasperCommand(settings),
 		)
 		bashCmds = append(bashCmds, postJasperSetup...)
 
 		bashCmdsLiteral := util.PowershellQuotedString(strings.Join(bashCmds, "\r\n"))
 
-		powershellCmds := []string{
+		setupUserCmds, err := h.SetupServiceUserCommands()
+		if err != nil {
+			return "", errors.Wrap(err, "could not get command to set up service user")
+		}
+		powershellCmds := append(append([]string{
 			"<powershell>",
+			setupUserCmds},
+			preJasperSetup...),
 			fmt.Sprintf("%s -c %s", h.Distro.BootstrapSettings.ShellPath, bashCmdsLiteral),
 			"</powershell>",
-		}
+		)
 
 		return strings.Join(powershellCmds, "\r\n"), nil
 	}
 
+	bashCmds = append(bashCmds, preJasperSetup...)
 	bashCmds = append(bashCmds, h.FetchJasperCommand(settings.HostJasper), writeCredentialsCmd, h.ForceReinstallJasperCommand(settings))
 	bashCmds = append(bashCmds, postJasperSetup...)
 
 	return strings.Join(append([]string{"#!/bin/bash"}, bashCmds...), "\n"), nil
+}
+
+// SetupServiceUserCommands returns the commands to create a passwordless
+// service user in the Administrator group in Windows.
+func (h *Host) SetupServiceUserCommands() (string, error) {
+	if !h.Distro.IsWindows() {
+		return "", nil
+	}
+	if h.Distro.BootstrapSettings.ServiceUser == "" {
+		return "", errors.New("distro is missing service user name")
+	}
+	if h.ServicePassword == "" {
+		if err := h.CreateServicePassword(); err != nil {
+			return "", errors.Wrap(err, "could not generate service user's password")
+		}
+	}
+
+	cmd := func(cmd string) string {
+		return fmt.Sprintf("cmd.exe /C '%s'", cmd)
+	}
+
+	return strings.Join(
+		[]string{
+			// Create new user.
+			cmd(fmt.Sprintf("net user %s %s /add", h.Distro.BootstrapSettings.ServiceUser, h.ServicePassword)),
+			// Add the user to the Administrators group.
+			cmd(fmt.Sprintf("net localgroup Administrators %s /add", h.Distro.BootstrapSettings.ServiceUser)),
+			// Allow the user to run the service by granting the "Log on as a
+			// service" right.
+			// source: https://gallery.technet.microsoft.com/scriptcenter/Grant-Log-on-as-a-service-11a50893
+			fmt.Sprintf(`
+$accountToAdd = "%s"
+$sidstr = $null
+try {
+	$ntprincipal = new-object System.Security.Principal.NTAccount "$accountToAdd"
+    $sid = $ntprincipal.Translate([System.Security.Principal.SecurityIdentifier])
+    $sidstr = $sid.Value.ToString()
+} catch {
+    $sidstr = $null
+}
+$tmp = [System.IO.Path]::GetTempFileName()
+secedit.exe /export /cfg "$($tmp)"
+
+$c = Get-Content -Path $tmp
+
+$currentSetting = ""
+
+foreach($s in $c) {
+    if( $s -like "SeServiceLogonRight*") {
+        $x = $s.split("=",[System.StringSplitOptions]::RemoveEmptyEntries)
+        $currentSetting = $x[1].Trim()
+    }
+}
+
+if( $currentSetting -notlike "*$($sidstr)*" ) {
+    if( [string]::IsNullOrEmpty($currentSetting) ) {
+        $currentSetting = "*$($sidstr)"
+    } else {
+        $currentSetting = "*$($sidstr),$($currentSetting)"
+    }
+
+    $outfile = @"
+[Unicode]
+Unicode=yes
+[Version]
+signature=`, h.Distro.BootstrapSettings.ServiceUser) + "`$Windows NT$" + `
+Revision=1
+[Privilege Rights]
+SeServiceLogonRight = $($currentSetting)
+"@
+
+    $tmp2 = [System.IO.Path]::GetTempFileName()
+
+    $outfile | Set-Content -Path $tmp2 -Encoding Unicode -Force
+
+    Push-Location (Split-Path $tmp2)
+
+    try {
+        secedit.exe /configure /db "secedit.sdb" /cfg "$($tmp2)" /areas USER_RIGHTS
+    } finally {
+        Pop-Location
+    }
+}
+`}, "\r\n"), nil
+}
+
+// CreateServicePassword creates the password for the host's service user.
+func (h *Host) CreateServicePassword() error {
+	password := util.RandomString()
+	err := UpdateOne(
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{ServicePasswordKey: password}},
+	)
+	if err != nil {
+		return err
+	}
+	h.ServicePassword = password
+	return nil
 }
 
 // buildLocalJasperClientRequest builds the command string to a Jasper CLI to
@@ -366,12 +523,12 @@ func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, 
 		return "", errors.Wrap(err, "could not marshal input")
 	}
 
-	flags := fmt.Sprintf("--service=%s --port=%d --creds_path=%s", jaspercli.RPCService, config.Port, h.Distro.BootstrapSettings.JasperCredentialsPath)
+	flags := fmt.Sprintf("--service=%s --port=%d --creds_path=%s", jcli.RPCService, config.Port, h.Distro.BootstrapSettings.JasperCredentialsPath)
 
 	clientInput := fmt.Sprintf("<<EOF\n%s\nEOF", inputBytes)
 
 	return strings.Join([]string{
-		strings.Join(jaspercli.BuildClientCommand(h.jasperBinaryFilePath(config)), " "),
+		strings.Join(jcli.BuildClientCommand(h.jasperBinaryFilePath(config)), " "),
 		subCmd,
 		flags,
 		clientInput,
@@ -379,22 +536,43 @@ func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, 
 }
 
 // WriteJasperCredentialsFileCommand builds the command to write the Jasper
-// credentials to a file.
-func (h *Host) WriteJasperCredentialsFileCommand(creds *rpc.Credentials) (string, error) {
+// credentials and Splunk credentials to files.
+func (h *Host) WriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionInfo, creds *rpc.Credentials) (string, error) {
 	if h.Distro.BootstrapSettings.JasperCredentialsPath == "" {
 		return "", errors.New("cannot write Jasper credentials without a credentials file path")
 	}
+
 	exportedCreds, err := creds.Export()
 	if err != nil {
 		return "", errors.Wrap(err, "problem exporting credentials to file format")
 	}
-	return fmt.Sprintf("cat > '%s' <<EOF\n%s\nEOF", h.Distro.BootstrapSettings.JasperCredentialsPath, exportedCreds), nil
+	writeFileContentCmd := func(path, content string) string {
+		return fmt.Sprintf("echo '%s' > '%s'", content, path)
+	}
+
+	cmds := []string{
+		fmt.Sprintf("mkdir -m 777 -p \"%s\"", filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath)),
+		writeFileContentCmd(h.Distro.BootstrapSettings.JasperCredentialsPath, string(exportedCreds)),
+	}
+
+	if splunk.Populated() {
+		cmds = append(cmds, writeFileContentCmd(h.splunkTokenFilePath(), splunk.Token))
+	}
+
+	return strings.Join(cmds, " && "), nil
+}
+
+func (h *Host) splunkTokenFilePath() string {
+	if h.Distro.BootstrapSettings.JasperCredentialsPath == "" {
+		return ""
+	}
+	return filepath.Join(filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath), "splunk.txt")
 }
 
 // RunJasperProcess makes a request to the host's Jasper service to create the
 // process with the given options, wait for its completion, and returns the
 // output from it.
-func (h *Host) RunJasperProcess(ctx context.Context, settings *evergreen.Settings, opts *jasper.CreateOptions) (string, error) {
+func (h *Host) RunJasperProcess(ctx context.Context, settings *evergreen.Settings, opts *options.Create) (string, error) {
 	client, err := h.JasperClient(ctx, settings)
 	if err != nil {
 		return "", errors.Wrap(err, "could not get a Jasper client")
@@ -424,7 +602,7 @@ func (h *Host) RunJasperProcess(ctx context.Context, settings *evergreen.Setting
 
 // StartJasperProcess makes a request to the host's Jasper service to start a
 // process with the given options without waiting for its completion.
-func (h *Host) StartJasperProcess(ctx context.Context, settings *evergreen.Settings, opts *jasper.CreateOptions) error {
+func (h *Host) StartJasperProcess(ctx context.Context, settings *evergreen.Settings, opts *options.Create) error {
 	client, err := h.JasperClient(ctx, settings)
 	if err != nil {
 		return errors.Wrap(err, "could not get a Jasper client")
@@ -459,21 +637,21 @@ func (h *Host) JasperClient(ctx context.Context, settings *evergreen.Settings) (
 				return nil, errors.Wrap(err, "could not get host's SSH options")
 			}
 
-			remoteOpts := jasper.RemoteOptions{
+			remoteOpts := options.Remote{
 				Host: hostInfo.Hostname,
 				User: hostInfo.User,
 				Args: sshOpts,
 			}
-			clientOpts := jaspercli.ClientOptions{
+			clientOpts := jcli.ClientOptions{
 				BinaryPath:          h.jasperBinaryFilePath(settings.HostJasper),
-				Type:                jaspercli.RPCService,
+				Type:                jcli.RPCService,
 				Port:                settings.HostJasper.Port,
 				CredentialsFilePath: h.Distro.BootstrapSettings.JasperCredentialsPath,
 			}
 
-			return jaspercli.NewSSHClient(remoteOpts, clientOpts, true)
+			return jcli.NewSSHClient(remoteOpts, clientOpts, true)
 		case distro.CommunicationMethodRPC:
-			creds, err := h.JasperClientCredentials(ctx)
+			creds, err := h.GenerateJasperCredentials(ctx)
 			if err != nil {
 				return nil, errors.Wrap(err, "could not get client credentials to communicate with the host's Jasper service")
 			}
@@ -531,7 +709,7 @@ func (h *Host) StartAgentMonitorRequest(settings *evergreen.Settings) (string, e
 
 	return h.buildLocalJasperClientRequest(
 		settings.HostJasper,
-		strings.Join([]string{jaspercli.ManagerCommand, jaspercli.CreateProcessCommand}, " "),
+		strings.Join([]string{jcli.ManagerCommand, jcli.CreateProcessCommand}, " "),
 		h.AgentMonitorOptions(settings),
 	)
 }
@@ -572,7 +750,7 @@ func (h *Host) StopAgentMonitor(ctx context.Context, settings *evergreen.Setting
 
 // AgentMonitorOptions  assembles the input to a Jasper request to start the
 // agent monitor.
-func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *jasper.CreateOptions {
+func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create {
 	binary := filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())
 	clientPath := filepath.Join(h.Distro.BootstrapSettings.ClientDir, h.Distro.BinaryName())
 
@@ -594,7 +772,7 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *jasper.CreateO
 		fmt.Sprintf("--credentials=%s", h.Distro.BootstrapSettings.JasperCredentialsPath),
 	}
 
-	return &jasper.CreateOptions{
+	return &options.Create{
 		Args:        args,
 		Environment: buildAgentEnv(settings),
 		Tags:        []string{evergreen.AgentMonitorTag},
@@ -696,7 +874,7 @@ func (h *Host) MarkUserDataDoneCommand() (string, error) {
 		return "", errors.Wrap(err, "could not get path to user data done file")
 	}
 
-	return fmt.Sprintf("mkdir -p %s && touch %s", h.Distro.BootstrapSettings.ClientDir, path), nil
+	return fmt.Sprintf("mkdir -m 777 -p %s && touch %s", h.Distro.BootstrapSettings.ClientDir, path), nil
 }
 
 // SetUserDataHostProvisioned sets the host to running if it was bootstrapped
@@ -707,6 +885,10 @@ func (h *Host) SetUserDataHostProvisioned() error {
 	}
 
 	if h.Status != evergreen.HostProvisioning {
+		return nil
+	}
+
+	if !h.Provisioned {
 		return nil
 	}
 

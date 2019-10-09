@@ -135,6 +135,15 @@ func TestTaskBuildFromService(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(false, ShouldEqual, apiTask.Mainline)
 
+				tc.st.DependsOn = []task.Dependency{
+					{Unattainable: false},
+					{Unattainable: true},
+				}
+				apiTask = &APITask{}
+				err = apiTask.BuildFromService(&tc.st)
+				So(err, ShouldBeNil)
+				So(apiTask.Blocked, ShouldBeTrue)
+
 				err = apiTask.BuildFromService("url")
 				So(err, ShouldBeNil)
 				So(FromAPIString(apiTask.Id), ShouldEqual, FromAPIString(tc.at.Id))

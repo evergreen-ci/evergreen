@@ -47,6 +47,7 @@ var convertSingleTest = function(test, execution) {
     output.version_id = test.info.version;
     output.project_id = test.info.project;
     output.task_name = test.info.task_name;
+    output.variant = test.info.variant;
     output.task_id = test.info.task_id;
     output.order = test.info.order;
 
@@ -493,7 +494,10 @@ filters.common.filter('conditional', function() {
     let output = [];
 
     _.each(data, function(test) {
-      output.push(convertSingleTest(test, execution));
+      const converted = convertSingleTest(test, execution);
+      if (converted) {
+        output.push(converted);
+      }
     })
 
     return output;

@@ -1831,7 +1831,7 @@ func init() {
 	proto.RegisterType((*CacheOptions)(nil), "jasper.CacheOptions")
 	proto.RegisterType((*ArchiveOptions)(nil), "jasper.ArchiveOptions")
 	proto.RegisterType((*DownloadInfo)(nil), "jasper.DownloadInfo")
-	proto.RegisterType((*WriteFileInfo)(nil), "jasper.WriteFileInfo")
+	proto.RegisterType((*WriteFileInfo)(nil), "options.WriteFile")
 	proto.RegisterType((*BuildloggerURLs)(nil), "jasper.BuildloggerURLs")
 	proto.RegisterType((*LogRequest)(nil), "jasper.LogRequest")
 	proto.RegisterType((*LogStream)(nil), "jasper.LogStream")

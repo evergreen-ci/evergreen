@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli"
@@ -171,9 +172,9 @@ func TestCLIProcess(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+					ctx, cancel := context.WithTimeout(context.Background(), testutil.TestTimeout)
 					defer cancel()
-					port := getNextPort()
+					port := testutil.GetPortNumber()
 					c := mockCLIContext(remoteType, port)
 					manager, err := jasper.NewLocalManager(false)
 					require.NoError(t, err)
@@ -184,7 +185,7 @@ func TestCLIProcess(t *testing.T) {
 					}()
 
 					resp := &InfoResponse{}
-					input, err := json.Marshal(sleepCreateOpts(int(testTimeout.Seconds()) - 1))
+					input, err := json.Marshal(testutil.SleepCreateOpts(1))
 					require.NoError(t, err)
 					require.NoError(t, execCLICommandInputOutput(t, c, managerCreateProcess(), input, resp))
 					require.True(t, resp.Successful())

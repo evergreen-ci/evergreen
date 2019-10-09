@@ -32,7 +32,7 @@ var (
 	imageURLKey = bsonutil.MustHaveTag(dockerSettings{}, "ImageURL")
 )
 
-//Validate checks that the settings from the config file are sane.
+// Validate checks that the settings from the config file are sane.
 func (settings *dockerSettings) Validate() error {
 	if settings.ImageURL == "" {
 		return errors.New("Image must not be empty")
@@ -114,6 +114,10 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	return h, nil
 }
 
+func (m *dockerManager) ModifyHost(context.Context, *host.Host, host.HostModifyOptions) error {
+	return errors.New("can't modify instances with docker provider")
+}
+
 // GetInstanceStatus returns a universal status code representing the state
 // of a container.
 func (m *dockerManager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
@@ -137,7 +141,7 @@ func (m *dockerManager) GetDNSName(ctx context.Context, h *host.Host) (string, e
 }
 
 //TerminateInstance destroys a container.
-func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, user string) error {
+func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, user, reason string) error {
 	if h.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %s - already marked as terminated!", h.Id)
 		grip.Error(err)
@@ -160,7 +164,15 @@ func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, use
 	})
 
 	// Set the host status as terminated and update its termination time
-	return h.Terminate(user)
+	return h.Terminate(user, reason)
+}
+
+func (m *dockerManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
+	return errors.New("StopInstance is not supported for docker provider")
+}
+
+func (m *dockerManager) StartInstance(ctx context.Context, host *host.Host, user string) error {
+	return errors.New("StartInstance is not supported for docker provider")
 }
 
 //Configure populates a dockerManager by reading relevant settings from the
@@ -309,7 +321,11 @@ func (m *dockerManager) CostForDuration(ctx context.Context, h *host.Host, start
 	}
 
 	// get cloud manager for parent
-	parentMgr, err := GetManager(ctx, parent.Provider, s)
+	mgrOpts := ManagerOpts{
+		Provider: parent.Provider,
+		Region:   GetRegion(parent.Distro),
+	}
+	parentMgr, err := GetManager(ctx, mgrOpts, s)
 	if err != nil {
 		return 0, errors.Wrapf(err, "Error loading provider for parent host '%s'", parent.Id)
 	}

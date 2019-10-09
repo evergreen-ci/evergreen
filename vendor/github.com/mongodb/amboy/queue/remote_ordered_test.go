@@ -13,7 +13,8 @@ import (
 	"github.com/mongodb/grip"
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/suite"
-	mgo "gopkg.in/mgo.v2"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func init() {
@@ -21,10 +22,10 @@ func init() {
 }
 
 type SimpleRemoteOrderedSuite struct {
-	queue             Remote
+	queue             remoteQueue
 	tearDown          func() error
-	driver            Driver
-	driverConstructor func() Driver
+	driver            remoteQueueDriver
+	driverConstructor func() remoteQueueDriver
 	canceler          context.CancelFunc
 	suite.Suite
 }
@@ -35,22 +36,27 @@ func TestSimpleRemoteOrderedSuiteMongoDB(t *testing.T) {
 
 func (s *SimpleRemoteOrderedSuite) SetupSuite() {
 	name := "test-" + uuid.NewV4().String()
-	uri := "mongodb://localhost"
 	opts := DefaultMongoDBOptions()
 	opts.DB = "amboy_test"
-	s.driverConstructor = func() Driver {
-		return NewMgoDriver(name, opts)
+	s.driverConstructor = func() remoteQueueDriver {
+		return newMongoDriver(name, opts)
 	}
 
 	s.tearDown = func() error {
-		session, err := mgo.Dial(uri)
-		defer session.Close()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 
+		client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(time.Second))
 		if err != nil {
 			return err
 		}
 
-		return session.DB("amboy_test").C(addJobsSuffix(name)).DropCollection()
+		if err := client.Connect(ctx); err != nil {
+			return err
+		}
+		defer client.Disconnect(ctx)
+
+		return client.Database("amboy_test").Collection(addJobsSuffix(name)).Drop(ctx)
 	}
 }
 
@@ -59,7 +65,7 @@ func (s *SimpleRemoteOrderedSuite) SetupTest() {
 	s.driver = s.driverConstructor()
 	s.canceler = canceler
 	s.NoError(s.driver.Open(ctx))
-	queue := NewSimpleRemoteOrdered(2)
+	queue := newSimpleRemoteOrdered(2)
 	s.NoError(queue.SetDriver(s.driver))
 	s.queue = queue
 }

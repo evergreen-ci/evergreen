@@ -17,7 +17,8 @@ import (
 	"github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
-	jaspercli "github.com/mongodb/jasper/cli"
+	jcli "github.com/mongodb/jasper/cli"
+	jmock "github.com/mongodb/jasper/mock"
 	"github.com/mongodb/jasper/rpc"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -25,7 +26,7 @@ import (
 )
 
 // setupJasperService creates a Jasper service with credentials for testing.
-func setupJasperService(ctx context.Context, env *mock.Environment, mngr *jasper.MockManager, h *host.Host) (jasper.CloseFunc, error) {
+func setupJasperService(ctx context.Context, env *mock.Environment, mngr *jmock.Manager, h *host.Host) (jasper.CloseFunc, error) {
 	if _, err := h.Upsert(); err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -63,7 +64,7 @@ func setupCredentialsCollection(ctx context.Context, env *mock.Environment) erro
 
 func teardownJasperService(closeService jasper.CloseFunc) error {
 	catcher := grip.NewBasicCatcher()
-	catcher.Add(db.ClearCollections(credentials.Collection, host.Collection))
+	// catcher.Add(db.ClearCollections(credentials.Collection, host.Collection))
 	if closeService != nil {
 		catcher.Add(closeService())
 	}
@@ -80,7 +81,7 @@ func getJasperDeployJobName(hostID string, deployThroughJasper bool, jobID strin
 
 // withJasperServiceSetupAndTeardown performs necessary setup to start a
 // Jasper RPC service, executes the given test function, and cleans up.
-func withJasperServiceSetupAndTeardown(ctx context.Context, env *mock.Environment, manager *jasper.MockManager, h *host.Host, fn func(evergreen.Environment)) error {
+func withJasperServiceSetupAndTeardown(ctx context.Context, env *mock.Environment, manager *jmock.Manager, h *host.Host, fn func(evergreen.Environment)) error {
 	if err := setupCredentialsCollection(ctx, env); err != nil {
 		grip.Error(errors.Wrap(teardownJasperService(nil), "problem tearing down test"))
 		return errors.Wrap(err, "problem setting up credentials collection")
@@ -101,8 +102,8 @@ func TestJasperDeployJob(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jasper.MockManager, h *host.Host){
-		"NewJasperDeployJobPopulatesFields": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jasper.MockManager, h *host.Host) {
+	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host){
+		"NewJasperDeployJobPopulatesFields": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
 			expiration := time.Now()
 
 			j := NewJasperDeployJob(env, h, expiration, true, "attempt-0")
@@ -114,7 +115,7 @@ func TestJasperDeployJob(t *testing.T) {
 			assert.Equal(t, expiration, deployJob.CredentialsExpiration)
 			assert.Equal(t, getJasperDeployJobName(h.Id, true, "attempt-0"), deployJob.ID())
 		},
-		"RequeueJobRedeploysThroughJasperIfAttemptsRemainingAndCredentialsNotExpiring": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jasper.MockManager, h *host.Host) {
+		"RequeueJobRedeploysThroughJasperIfAttemptsRemainingAndCredentialsNotExpiring": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
 			expiration := time.Now().Add(24 * time.Hour)
 
 			j := NewJasperDeployJob(env, h, expiration, true, "attempt-0")
@@ -132,7 +133,7 @@ func TestJasperDeployJob(t *testing.T) {
 
 			assert.True(t, newDeployJob.DeployThroughJasper)
 		},
-		"RequeueJobDoesNotDeployThroughJasperIfCredentialsExpiring": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jasper.MockManager, h *host.Host) {
+		"RequeueJobDoesNotDeployThroughJasperIfCredentialsExpiring": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
 			expiration := time.Now()
 
 			j := NewJasperDeployJob(env, h, expiration, true, "attempt-0")
@@ -150,7 +151,7 @@ func TestJasperDeployJob(t *testing.T) {
 
 			assert.False(t, newDeployJob.DeployThroughJasper)
 		},
-		"ChecksAttemptsBeforeRequeueingWithJasperDeploy": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jasper.MockManager, h *host.Host) {
+		"ChecksAttemptsBeforeRequeueingWithJasperDeploy": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
 			expiration := time.Now().Add(24 * time.Hour)
 
 			h.JasperDeployAttempts = jasperDeployRetryLimit
@@ -174,7 +175,7 @@ func TestJasperDeployJob(t *testing.T) {
 
 			assert.False(t, newDeployJob.DeployThroughJasper)
 		},
-		"DoesNotRequeueIfNoAttemptsRemainingAndNotDeployingThroughJasper": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jasper.MockManager, h *host.Host) {
+		"DoesNotRequeueIfNoAttemptsRemainingAndNotDeployingThroughJasper": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
 			expiration := time.Now()
 
 			h.JasperDeployAttempts = jasperDeployRetryLimit
@@ -187,7 +188,7 @@ func TestJasperDeployJob(t *testing.T) {
 
 			assert.Error(t, deployJob.tryRequeueDeploy(ctx))
 		},
-		"RunPerformsExpectedOperationsWhenDeployingThroughJasper": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jasper.MockManager, h *host.Host) {
+		"RunPerformsExpectedOperationsWhenDeployingThroughJasper": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
 			clientCreds, err := credentials.ForJasperClient(ctx)
 			require.NoError(t, err)
 
@@ -221,19 +222,18 @@ func TestJasperDeployJob(t *testing.T) {
 
 			require.Len(t, mngr.Procs, 2)
 
-			writeCredsCmd := fmt.Sprintf("cat > '%s'", h.Distro.BootstrapSettings.JasperCredentialsPath)
 			writeCredentialsProc := mngr.Procs[0]
 
 			var writeCredsCmdFound bool
 			for _, arg := range writeCredentialsProc.Info(ctx).Options.Args {
-				if strings.Contains(arg, writeCredsCmd) {
+				if strings.Contains(arg, "echo") && strings.Contains(arg, fmt.Sprintf("> '%s'", h.Distro.BootstrapSettings.JasperCredentialsPath)) {
 					writeCredsCmdFound = true
 					break
 				}
 			}
 			assert.True(t, writeCredsCmdFound)
 
-			killJasperCmd := fmt.Sprintf("pgrep -f '%s' | xargs kill", strings.Join(jaspercli.BuildServiceCommand(env.Settings().HostJasper.BinaryName), " "))
+			killJasperCmd := fmt.Sprintf("pgrep -f '%s' | xargs kill", strings.Join(jcli.BuildServiceCommand(env.Settings().HostJasper.BinaryName), " "))
 			killJasperProc := mngr.Procs[1]
 			var killJasperCmdFound bool
 			for _, arg := range killJasperProc.Info(ctx).Options.Args {
@@ -249,7 +249,7 @@ func TestJasperDeployJob(t *testing.T) {
 			tctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 			defer cancel()
 
-			mngr := &jasper.MockManager{}
+			mngr := &jmock.Manager{}
 			mngr.ManagerID = "mock-manager-id"
 
 			h := &host.Host{

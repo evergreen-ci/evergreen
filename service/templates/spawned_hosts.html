@@ -89,16 +89,20 @@ Evergreen - My Hosts
               </td>
               <td class="col-lg-2 no-word-wrap">
                 [[host.uptime]]
+              </td>
+              <td class="col-sm-2 no-word-wrap">
                 <i class="fa fa-trash pointer" ng-show="host.status!='terminated'" style="float: right" ng-click="openSpawnModal('terminateHost')"></i>
+                <i class="fa fa-play pointer" ng-show="host.status=='stopped'" style="float: right" ng-click="openSpawnModal('startHost')"></i>
+                <i class="fa fa-pause pointer" ng-show="host.status=='running'" style="float: right" ng-click="openSpawnModal('stopHost')"></i>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
-    <button type="button" class="btn btn-info" ng-click="openSpawnModal('spawnHost')" ng-disabled="!availableHosts()" ng-cloak>
+    <md-button type="button" class="btn-info md-raised" ng-click="openSpawnModal('spawnHost')" ng-disabled="!availableHosts()" ng-cloak>
       Spawn Host
-    </button>
+    </md-button>
     <em ng-class="{'text-muted': availableHosts(), 'text-error': !availableHosts()}" style="margin-left: 5px;" ng-cloak>
       Limit [[maxHostsPerUser]] [[maxHostsPerUser | pluralize:'Host']]
     </em>
@@ -108,6 +112,8 @@ Evergreen - My Hosts
     <user-spawn-modal>
       <user-host-options ng-show="modalOption=='spawnHost'"></user-host-options>
       <user-host-terminate ng-show="modalOption=='terminateHost'"></user-host-terminate>
+      <user-host-stop ng-show="modalOption=='stopHost'"></user-host-stop>
+      <user-host-start ng-show="modalOption=='startHost'"></user-host-start>
       <user-host-update ng-show="modalOption=='updateRDPPassword'"></user-host-update>
     </user-spawn-modal>
   </div>

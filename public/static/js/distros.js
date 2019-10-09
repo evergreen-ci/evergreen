@@ -296,6 +296,19 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     $scope.scrollElement('#ssh-options-table');
   }
 
+  $scope.addDistroAlias = function() {
+    if ($scope.activeDistro.aliases == null) {
+      $scope.activeDistro.aliases = [];
+    }
+    $scope.activeDistro.aliases.push('');
+    $scope.scrollElement('#distro-aliases-table');
+  }
+
+  $scope.removeDistroAlias = function(alias_name) {
+    var index = $scope.activeDistro.aliases.indexOf(alias_name);
+    $scope.activeDistro.aliases.splice(index, 1);
+  }
+
   $scope.removeSSHOption = function(ssh_option) {
     var index = $scope.activeDistro.ssh_options.indexOf(ssh_option);
     $scope.activeDistro.ssh_options.splice(index, 1);
@@ -485,6 +498,19 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
       return $scope.validSecurityGroup() && $scope.validSubnetId();
     }
     return true;
+  }
+
+  $scope.isWindows = function() {
+    return $scope.activeDistro.arch.includes('windows');
+  }
+
+  $scope.isLinux = function() {
+    return $scope.activeDistro.arch.includes('linux');
+  }
+
+  $scope.isNonLegacyProvisioning = function() {
+      return $scope.activeDistro.bootstrap_settings.method != 'legacy-ssh' ||
+      $scope.activeDistro.bootstrap_settings.communication != 'legacy-ssh'
   }
 
   $scope.validBootstrapAndCommunication = function() {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/rpc/internal"
+	"github.com/mongodb/jasper/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	grpc "google.golang.org/grpc"
@@ -42,12 +43,12 @@ func TestWindowsRPCService(t *testing.T) {
 				// "": func(ctx context.Context, t *testing.T, client internal.JasperProcessManagerClient) {},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					ctx, cancel := context.WithTimeout(context.Background(), taskTimeout)
+					ctx, cancel := context.WithTimeout(context.Background(), testutil.TestTimeout)
 					defer cancel()
 
 					manager, err := makeManager(false)
 					require.NoError(t, err)
-					addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", getPortNumber()))
+					addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", testutil.GetPortNumber()))
 					require.NoError(t, err)
 					require.NoError(t, startTestService(ctx, manager, addr, nil))
 

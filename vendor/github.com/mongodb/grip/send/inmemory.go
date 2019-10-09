@@ -148,7 +148,7 @@ func (s *InMemorySender) GetString() ([]string, error) {
 	msgs := s.Get()
 	strs := make([]string, 0, len(msgs))
 	for _, msg := range msgs {
-		str, err := s.Formatter(msg)
+		str, err := s.Formatter()(msg)
 		if err != nil {
 			return nil, err
 		}

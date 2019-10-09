@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/credentials"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/gimlet"
@@ -20,7 +21,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
-	"github.com/mongodb/jasper"
+	jrest "github.com/mongodb/jasper/rest"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -43,6 +44,7 @@ func startWebService() cli.Command {
 				grip.EmergencyFatal(errors.Wrap(env.SaveConfig(), "problem saving config"))
 			}
 			grip.EmergencyFatal(errors.Wrap(env.RemoteQueue().Start(ctx), "problem starting remote queue"))
+			grip.EmergencyFatal(errors.Wrap(commitqueue.SetupEnv(env), "problem adding commit queue sender"))
 
 			settings := env.Settings()
 			sender, err := settings.GetSender(ctx, env)
@@ -115,7 +117,7 @@ func startWebService() cli.Command {
 			<-gracefulWait
 
 			grip.Notice("waiting for background tasks to finish")
-			ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+			ctx, cancel = context.WithTimeout(ctx, 60*time.Second)
 			defer cancel()
 			catcher.Add(env.Close(ctx))
 
@@ -226,7 +228,7 @@ func getAdminService(ctx context.Context, env evergreen.Environment, settings *e
 		apps = append(apps, remoteReporting)
 	}
 
-	jpm := jasper.NewManagerService(env.JasperManager())
+	jpm := jrest.NewManagerService(env.JasperManager())
 	jpmapp := jpm.App(ctx)
 	jpmapp.SetPrefix("jasper")
 	jpm.SetDisableCachePruning(true)

@@ -3,7 +3,7 @@ package cli
 import (
 	"fmt"
 
-	"github.com/kardianos/service"
+	"github.com/evergreen-ci/service"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
@@ -23,7 +23,7 @@ func serviceCommandCombined(cmd string, operation serviceOperation) cli.Command 
 	return cli.Command{
 		Name:  CombinedService,
 		Usage: fmt.Sprintf("%s a combined service", cmd),
-		Flags: append(serviceLoggingFlags(),
+		Flags: append(serviceFlags(),
 			cli.StringFlag{
 				Name:   restHostFlagName,
 				EnvVar: restHostEnvVar,
@@ -52,14 +52,12 @@ func serviceCommandCombined(cmd string, operation serviceOperation) cli.Command 
 				Name:  rpcCredsFilePathFlagName,
 				Usage: "the path to the RPC service credentials file",
 			},
-			cli.StringFlag{
-				Name:  userFlagName,
-				Usage: "the user who will run the services",
-			},
 		),
 		Before: mergeBeforeFuncs(
 			validatePort(restPortFlagName),
 			validatePort(rpcPortFlagName),
+			validateLogLevel(logLevelFlagName),
+			validateLimits(limitNumFilesFlagName, limitNumProcsFlagName, limitLockedMemoryFlagName, limitVirtualMemoryFlagName),
 		),
 		Action: func(c *cli.Context) error {
 			manager, err := jasper.NewLocalManager(false)
@@ -72,10 +70,13 @@ func serviceCommandCombined(cmd string, operation serviceOperation) cli.Command 
 				newRPCDaemon(c.String(rpcHostFlagName), c.Int(rpcPortFlagName), manager, c.String(rpcCredsFilePathFlagName), makeLogger(c)),
 			)
 
-			config := serviceConfig(CombinedService, buildRunCommand(c, CombinedService))
+			config := serviceConfig(CombinedService, c, buildRunCommand(c, CombinedService))
 			config.UserName = c.String(userFlagName)
 
-			return operation(daemon, config)
+			if err := operation(daemon, config); !c.Bool(quietFlagName) {
+				return err
+			}
+			return nil
 		},
 	}
 }

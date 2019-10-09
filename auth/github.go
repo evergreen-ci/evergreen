@@ -37,18 +37,26 @@ type GithubUserManager struct {
 	AuthorizedUsers        []string
 	AuthorizedOrganization string
 	Salt                   string
+	LoginDomain            string
 }
 
 // NewGithubUserManager initializes a GithubUserManager with a Salt as randomly generated string used in Github
 // authentication
-func NewGithubUserManager(g *evergreen.GithubAuthConfig) (gimlet.UserManager, error) {
+func NewGithubUserManager(g *evergreen.GithubAuthConfig, loginDomain string) (gimlet.UserManager, error) {
 	if g.ClientId == "" {
 		return nil, errors.New("no client id for config")
 	}
 	if g.ClientSecret == "" {
 		return nil, errors.New("no client secret for config given")
 	}
-	return &GithubUserManager{g.ClientId, g.ClientSecret, g.Users, g.Organization, util.RandomString()}, nil
+	return &GithubUserManager{
+		ClientId:               g.ClientId,
+		ClientSecret:           g.ClientSecret,
+		AuthorizedUsers:        g.Users,
+		AuthorizedOrganization: g.Organization,
+		Salt:                   util.RandomString(),
+		LoginDomain:            loginDomain,
+	}, nil
 }
 
 // GetUserByToken sends the token to Github and gets back a user and optionally an organization.
@@ -142,7 +150,7 @@ func (gum *GithubUserManager) GetLoginCallbackHandler() http.HandlerFunc {
 			grip.Errorf("Error sending code and authentication info to Github: %+v", err)
 			return
 		}
-		SetLoginToken(githubResponse.AccessToken, w)
+		SetLoginToken(githubResponse.AccessToken, gum.LoginDomain, w)
 		http.Redirect(w, r, redirect, http.StatusFound)
 	}
 }
@@ -154,4 +162,7 @@ func (*GithubUserManager) GetOrCreateUser(u gimlet.User) (gimlet.User, error) {
 }
 func (*GithubUserManager) ClearUser(u gimlet.User, all bool) error {
 	return errors.New("Github Authentication does not support Clear User")
+}
+func (*GithubUserManager) GetGroupsForUser(string) ([]string, error) {
+	return nil, errors.New("GetGroupsForUser has not yet been implemented for the Github user manager")
 }

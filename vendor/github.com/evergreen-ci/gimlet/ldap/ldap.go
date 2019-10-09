@@ -22,6 +22,7 @@ type userService struct {
 	servicePath  string
 	userGroup    string
 	serviceGroup string
+	groupOuName  string
 	cache        UserCache
 	connect      connectFunc
 	conn         ldap.Client
@@ -35,6 +36,7 @@ type CreationOpts struct {
 	ServicePath  string // Path to service users LDAP OU
 	UserGroup    string // LDAP userGroup to authorize users
 	ServiceGroup string // LDAP serviceGroup to authorize services
+	GroupOuName  string // name of the OU that lists a user's groups
 
 	UserCache UserCache
 	// Functions to produce a UserCache
@@ -86,6 +88,7 @@ func NewUserService(opts CreationOpts) (gimlet.UserManager, error) {
 		servicePath:  opts.ServicePath,
 		userGroup:    opts.UserGroup,
 		serviceGroup: opts.ServiceGroup,
+		groupOuName:  opts.GroupOuName,
 	}
 
 	// override, typically, for testing
@@ -274,6 +277,69 @@ func (u *userService) login(username, password string) error {
 	return errors.Wrapf(err, "could not validate user '%s'", username)
 }
 
+// GetGroupsForUser returns the groups to which a user belongs, defined by a given cn and search path
+func (u *userService) GetGroupsForUser(username string) ([]string, error) {
+	groups := []string{}
+	for _, path := range []string{u.userPath, u.servicePath} {
+		if path == "" {
+			return nil, errors.New("path is not specified")
+		}
+
+		searchResults, err := u.search(
+			ldap.NewSearchRequest(
+				path,
+				ldap.ScopeWholeSubtree,
+				ldap.NeverDerefAliases,
+				0,
+				0,
+				false,
+				fmt.Sprintf("(uid=%s)", username),
+				[]string{"ismemberof"},
+				nil))
+		if err != nil {
+			return nil, errors.Wrap(err, "problem searching ldap")
+		}
+
+		for _, result := range searchResults.Entries {
+			for _, attr := range result.Attributes {
+				for _, dnString := range attr.Values {
+					groups = append(groups, findCnsWithGroup(dnString, u.groupOuName)...)
+				}
+			}
+		}
+	}
+
+	return groups, nil
+}
+
+func findCnsWithGroup(dnString, ouName string) []string {
+	cns := []string{}
+	dn, err := ldap.ParseDN(dnString)
+	if err != nil {
+		grip.Error(errors.Wrapf(err, "error parsing %s as a valid distinguished name", dnString))
+		return cns
+	}
+	foundGroupOu := false
+	for _, v := range dn.RDNs {
+		for _, field := range v.Attributes {
+			if field.Type == "ou" && field.Value == ouName {
+				foundGroupOu = true
+			}
+		}
+	}
+	if foundGroupOu {
+		for _, v := range dn.RDNs {
+			for _, field := range v.Attributes {
+				if field.Type == "cn" {
+					cns = append(cns, field.Value)
+				}
+			}
+		}
+	}
+
+	return cns
+}
+
 func (u *userService) validateGroup(username string) error {
 	var (
 		errs   [2]error
@@ -394,5 +460,5 @@ func makeUser(result *ldap.SearchResult) gimlet.User {
 			groups = append(groups, entry.Values...)
 		}
 	}
-	return gimlet.NewBasicUser(id, name, email, "", groups)
+	return gimlet.NewBasicUser(id, name, email, "", "", groups, false, nil)
 }

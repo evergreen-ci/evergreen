@@ -42,15 +42,18 @@ func CheckDistro(ctx context.Context, d *distro.Distro, s *evergreen.Settings, n
 	validationErrs := ValidationErrors{}
 	distroIds := []string{}
 	var err error
-	if newDistro {
-		// check ensureUniqueId separately and pass in distroIds list
+	if newDistro || len(d.Aliases) > 0 {
 		distroIds, err = getDistroIds()
 		if err != nil {
 			return nil, err
 		}
 	}
-	validationErrs = append(validationErrs, ensureUniqueId(d, distroIds)...)
-	validationErrs = append(validationErrs, ensureValidAliases(d, distroIds)...)
+	if newDistro {
+		validationErrs = append(validationErrs, ensureUniqueId(d, distroIds)...)
+	}
+	if len(d.Aliases) > 0 {
+		validationErrs = append(validationErrs, ensureValidAliases(d, distroIds)...)
+	}
 
 	for _, v := range distroSyntaxValidators {
 		validationErrs = append(validationErrs, v(ctx, d, s)...)
@@ -119,7 +122,11 @@ func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, s *evergreen
 		return errs
 	}
 
-	mgr, err := cloud.GetManager(ctx, d.Provider, s)
+	mgrOpts := cloud.ManagerOpts{
+		Provider: d.Provider,
+		Region:   cloud.GetRegion(*d),
+	}
+	mgr, err := cloud.GetManager(ctx, mgrOpts, s)
 	if err != nil {
 		errs = append(errs, ValidationError{
 			Message: err.Error(),
@@ -159,14 +166,12 @@ func ensureValidAliases(d *distro.Distro, distroIDs []string) ValidationErrors {
 	errs := ValidationErrors{}
 
 	for _, a := range d.Aliases {
-		if !util.StringSliceContains(distroIDs, a) {
+		if d.Id == a {
 			errs = append(errs, ValidationError{
 				Level:   Error,
-				Message: fmt.Sprintf("'%s' is not a valid distro name", a),
+				Message: fmt.Sprintf("'%s' cannot be an distro alias of itself", a),
 			})
-
 		}
-
 	}
 	if len(errs) == 0 {
 		return nil
@@ -207,7 +212,7 @@ func ensureValidArch(ctx context.Context, d *distro.Distro, s *evergreen.Setting
 // is one of the supported methods, the communication method is one of the
 // supported methods, and the two together form a valid combination.
 func ensureValidBootstrapSettings(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
-	if err := d.BootstrapSettings.Validate(); err != nil {
+	if err := d.ValidateBootstrapSettings(); err != nil {
 		return ValidationErrors{{Level: Error, Message: err.Error()}}
 	}
 	return nil

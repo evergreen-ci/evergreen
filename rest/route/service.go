@@ -4,6 +4,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/gimlet/acl"
 	"github.com/mongodb/amboy"
 )
 
@@ -74,12 +75,15 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/distros/{distro_id}/setup").Version(2).Patch().Wrap(superUser).RouteHandler(makeChangeDistroSetup(sc))
 	app.AddRoute("/distros/{distro_id}/teardown").Version(2).Get().Wrap(superUser).RouteHandler(makeGetDistroTeardown(sc))
 	app.AddRoute("/distros/{distro_id}/teardown").Version(2).Patch().Wrap(superUser).RouteHandler(makeChangeDistroTeardown(sc))
+	app.AddRoute("/distros/{distro_id}/execute").Version(2).Post().Wrap(superUser).RouteHandler(makeDistroExecute(sc, env))
 	app.AddRoute("/hooks/github").Version(2).Post().RouteHandler(makeGithubHooksRoute(sc, opts.APIQueue, opts.GithubSecret, settings))
 	app.AddRoute("/hosts").Version(2).Get().RouteHandler(makeFetchHosts(sc))
 	app.AddRoute("/hosts").Version(2).Post().Wrap(checkUser).RouteHandler(makeSpawnHostCreateRoute(sc))
 	app.AddRoute("/hosts").Version(2).Patch().Wrap(superUser).RouteHandler(makeChangeHostsStatuses(sc))
 	app.AddRoute("/hosts/{host_id}").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetHostByID(sc))
-	app.AddRoute("/hosts/{host_id}").Version(2).Patch().Wrap(checkUser).RouteHandler(makeChangeHostStatus(sc))
+	app.AddRoute("/hosts/{host_id}").Version(2).Patch().Wrap(checkUser).RouteHandler(makeHostModifyRouteManager(sc))
+	app.AddRoute("/hosts/{host_id}/stop").Version(2).Post().Wrap(checkUser).RouteHandler(makeHostStopManager(sc))
+	app.AddRoute("/hosts/{host_id}/start").Version(2).Post().Wrap(checkUser).RouteHandler(makeHostStartManager(sc))
 	app.AddRoute("/hosts/{host_id}/change_password").Version(2).Post().Wrap(checkUser).RouteHandler(makeHostChangePassword(sc, env))
 	app.AddRoute("/hosts/{host_id}/extend_expiration").Version(2).Post().Wrap(checkUser).RouteHandler(makeExtendHostExpiration(sc))
 	app.AddRoute("/hosts/{host_id}/terminate").Version(2).Post().Wrap(checkUser).RouteHandler(makeTerminateHostRoute(sc))
@@ -110,7 +114,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/projects/{project_id}/test_stats").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetProjectTestStats(sc))
 	app.AddRoute("/projects/{project_id}/task_stats").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetProjectTaskStats(sc))
 	app.AddRoute("/projects/{project_id}/task_reliability").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetProjectTaskReliability(sc))
-	app.AddRoute("/roles").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetAllRolesHandler(sc))
+	app.AddRoute("/roles").Version(2).Get().Wrap(checkUser).RouteHandler(acl.NewGetAllRolesHandler(env.RoleManager()))
+	app.AddRoute("/roles").Version(2).Post().Wrap(checkUser).RouteHandler(acl.NewUpdateRoleHandler(env.RoleManager()))
 	app.AddRoute("/status/cli_version").Version(2).Get().RouteHandler(makeFetchCLIVersionRoute(sc))
 	app.AddRoute("/status/hosts/distros").Version(2).Get().Wrap(checkUser).RouteHandler(makeHostStatusByDistroRoute(sc))
 	app.AddRoute("/status/notifications").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchNotifcationStatusRoute(sc))

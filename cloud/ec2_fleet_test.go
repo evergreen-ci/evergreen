@@ -18,11 +18,21 @@ import (
 func TestFleet(t *testing.T) {
 	var h *host.Host
 	m := &ec2FleetManager{
-		client: &awsClientMock{},
+		EC2FleetManagerOptions: &EC2FleetManagerOptions{
+			client: &awsClientMock{},
+			region: "test-region",
+		},
 		credentials: credentials.NewStaticCredentialsFromCreds(credentials.Value{
 			AccessKeyID:     "key",
 			SecretAccessKey: "secret",
 		}),
+		settings: &evergreen.Settings{
+			Providers: evergreen.CloudProviders{
+				AWS: evergreen.AWSConfig{
+					DefaultSecurityGroup: "sg-default",
+				},
+			},
+		},
 	}
 
 	for name, test := range map[string]func(*testing.T){
@@ -59,7 +69,7 @@ func TestFleet(t *testing.T) {
 			assert.Equal(t, "us-east-1a", hDb.Zone)
 		},
 		"TerminateInstance": func(*testing.T) {
-			assert.NoError(t, m.TerminateInstance(context.Background(), h, "evergreen"))
+			assert.NoError(t, m.TerminateInstance(context.Background(), h, "evergreen", ""))
 
 			mockClient := m.client.(*awsClientMock)
 			assert.Len(t, mockClient.TerminateInstancesInput.InstanceIds, 1)

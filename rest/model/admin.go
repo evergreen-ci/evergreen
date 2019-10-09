@@ -876,24 +876,71 @@ func (a *APIContainerPool) ToService() (interface{}, error) {
 	}, nil
 }
 
+type APIEC2Key struct {
+	Name   APIString `json:"name"`
+	Region APIString `json:"region"`
+	Key    APIString `json:"key"`
+	Secret APIString `json:"secret"`
+}
+
+func (a *APIEC2Key) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.EC2Key:
+		a.Name = ToAPIString(v.Name)
+		a.Region = ToAPIString(v.Region)
+		a.Key = ToAPIString(v.Key)
+		a.Secret = ToAPIString(v.Secret)
+	default:
+		return errors.Errorf("%T is not a supported type", h)
+	}
+	return nil
+}
+
+func (a *APIEC2Key) ToService() (interface{}, error) {
+	res := evergreen.EC2Key{}
+	res.Name = FromAPIString(a.Name)
+	res.Region = FromAPIString(a.Region)
+	res.Key = FromAPIString(a.Key)
+	res.Secret = FromAPIString(a.Secret)
+	return res, nil
+}
+
 type APIAWSConfig struct {
+	EC2Keys              []APIEC2Key `json:"ec2_keys"`
+	S3Key                APIString   `json:"s3_key"`
+	S3Secret             APIString   `json:"s3_secret"`
+	Bucket               APIString   `json:"bucket"`
+	S3BaseURL            APIString   `json:"s3_base_url"`
+	DefaultSecurityGroup APIString   `json:"default_security_group"`
+	AllowedInstanceTypes []APIString `json:"allowed_instance_types"`
+
+	// Legacy
 	EC2Secret APIString `json:"aws_secret"`
 	EC2Key    APIString `json:"aws_id"`
-	S3Key     APIString `json:"s3_key"`
-	S3Secret  APIString `json:"s3_secret"`
-	Bucket    APIString `json:"bucket"`
-	S3BaseURL APIString `json:"s3_base_url"`
 }
 
 func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.AWSConfig:
-		a.EC2Secret = ToAPIString(v.EC2Secret)
-		a.EC2Key = ToAPIString(v.EC2Key)
+		for _, key := range v.EC2Keys {
+			apiKey := APIEC2Key{}
+			if err := apiKey.BuildFromService(key); err != nil {
+				return err
+			}
+			a.EC2Keys = append(a.EC2Keys, apiKey)
+		}
 		a.S3Key = ToAPIString(v.S3Key)
 		a.S3Secret = ToAPIString(v.S3Secret)
 		a.Bucket = ToAPIString(v.Bucket)
 		a.S3BaseURL = ToAPIString(v.S3BaseURL)
+		a.DefaultSecurityGroup = ToAPIString(v.DefaultSecurityGroup)
+		for _, t := range v.AllowedInstanceTypes {
+			a.AllowedInstanceTypes = append(a.AllowedInstanceTypes, ToAPIString(t))
+		}
+
+		// Legacy
+		a.EC2Secret = ToAPIString(v.EC2Secret)
+		a.EC2Key = ToAPIString(v.EC2Key)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -901,14 +948,38 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 }
 
 func (a *APIAWSConfig) ToService() (interface{}, error) {
-	return evergreen.AWSConfig{
+	if a == nil {
+		return nil, nil
+	}
+	config := evergreen.AWSConfig{
+		S3Key:                FromAPIString(a.S3Key),
+		S3Secret:             FromAPIString(a.S3Secret),
+		Bucket:               FromAPIString(a.Bucket),
+		S3BaseURL:            FromAPIString(a.S3BaseURL),
+		DefaultSecurityGroup: FromAPIString(a.DefaultSecurityGroup),
+
+		// Legacy
 		EC2Key:    FromAPIString(a.EC2Key),
 		EC2Secret: FromAPIString(a.EC2Secret),
-		S3Key:     FromAPIString(a.S3Key),
-		S3Secret:  FromAPIString(a.S3Secret),
-		Bucket:    FromAPIString(a.Bucket),
-		S3BaseURL: FromAPIString(a.S3BaseURL),
-	}, nil
+	}
+
+	for _, k := range a.EC2Keys {
+		i, err := k.ToService()
+		if err != nil {
+			return nil, err
+		}
+		key, ok := i.(evergreen.EC2Key)
+		if !ok {
+			return nil, errors.New("Unable to convert key to EC2Key")
+		}
+		config.EC2Keys = append(config.EC2Keys, key)
+	}
+
+	for _, t := range a.AllowedInstanceTypes {
+		config.AllowedInstanceTypes = append(config.AllowedInstanceTypes, FromAPIString(t))
+	}
+
+	return config, nil
 }
 
 type APIDockerConfig struct {
@@ -1121,6 +1192,7 @@ type APIServiceFlags struct {
 	TaskLoggingDisabled        bool `json:"task_logging_disabled"`
 	CacheStatsJobDisabled      bool `json:"cache_stats_job_disabled"`
 	CacheStatsEndpointDisabled bool `json:"cache_stats_endpoint_disabled"`
+	CacheStatsOldTasksDisabled bool `json:"cache_stats_old_tasks_disabled"`
 	TaskReliabilityDisabled    bool `json:"task_reliability_disabled"`
 	CommitQueueDisabled        bool `json:"commit_queue_disabled"`
 	PlannerDisabled            bool `json:"planner_disabled"`
@@ -1254,6 +1326,7 @@ type APIUIConfig struct {
 	CacheTemplates bool      `json:"cache_templates"`
 	CsrfKey        APIString `json:"csrf_key"`
 	CORSOrigins    []string  `json:"cors_origins"`
+	LoginDomain    APIString `json:"login_domain"`
 }
 
 func (a *APIUIConfig) BuildFromService(h interface{}) error {
@@ -1268,6 +1341,7 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 		a.CacheTemplates = v.CacheTemplates
 		a.CsrfKey = ToAPIString(v.CsrfKey)
 		a.CORSOrigins = v.CORSOrigins
+		a.LoginDomain = ToAPIString(v.LoginDomain)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1285,6 +1359,7 @@ func (a *APIUIConfig) ToService() (interface{}, error) {
 		CacheTemplates: a.CacheTemplates,
 		CsrfKey:        FromAPIString(a.CsrfKey),
 		CORSOrigins:    a.CORSOrigins,
+		LoginDomain:    FromAPIString(a.LoginDomain),
 	}, nil
 }
 
@@ -1334,6 +1409,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.TaskLoggingDisabled = v.TaskLoggingDisabled
 		as.CacheStatsJobDisabled = v.CacheStatsJobDisabled
 		as.CacheStatsEndpointDisabled = v.CacheStatsEndpointDisabled
+		as.CacheStatsOldTasksDisabled = v.CacheStatsOldTasksDisabled
 		as.TaskReliabilityDisabled = v.TaskReliabilityDisabled
 		as.CommitQueueDisabled = v.CommitQueueDisabled
 		as.PlannerDisabled = v.PlannerDisabled
@@ -1366,6 +1442,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		TaskLoggingDisabled:          as.TaskLoggingDisabled,
 		CacheStatsJobDisabled:        as.CacheStatsJobDisabled,
 		CacheStatsEndpointDisabled:   as.CacheStatsEndpointDisabled,
+		CacheStatsOldTasksDisabled:   as.CacheStatsOldTasksDisabled,
 		TaskReliabilityDisabled:      as.TaskReliabilityDisabled,
 		CommitQueueDisabled:          as.CommitQueueDisabled,
 		PlannerDisabled:              as.PlannerDisabled,

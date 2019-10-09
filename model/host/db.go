@@ -29,6 +29,7 @@ var (
 	DNSKey                       = bsonutil.MustHaveTag(Host{}, "Host")
 	SecretKey                    = bsonutil.MustHaveTag(Host{}, "Secret")
 	UserKey                      = bsonutil.MustHaveTag(Host{}, "User")
+	ServicePasswordKey           = bsonutil.MustHaveTag(Host{}, "ServicePassword")
 	TagKey                       = bsonutil.MustHaveTag(Host{}, "Tag")
 	DistroKey                    = bsonutil.MustHaveTag(Host{}, "Distro")
 	ProviderKey                  = bsonutil.MustHaveTag(Host{}, "Provider")
@@ -44,6 +45,7 @@ var (
 	TaskDispatchTimeKey          = bsonutil.MustHaveTag(Host{}, "TaskDispatchTime")
 	CreateTimeKey                = bsonutil.MustHaveTag(Host{}, "CreationTime")
 	ExpirationTimeKey            = bsonutil.MustHaveTag(Host{}, "ExpirationTime")
+	NoExpirationKey              = bsonutil.MustHaveTag(Host{}, "NoExpiration")
 	TerminationTimeKey           = bsonutil.MustHaveTag(Host{}, "TerminationTime")
 	LTCTimeKey                   = bsonutil.MustHaveTag(Host{}, "LastTaskCompletedTime")
 	LTCTaskKey                   = bsonutil.MustHaveTag(Host{}, "LastTask")
@@ -83,6 +85,7 @@ var (
 	ContainerPoolSettingsKey     = bsonutil.MustHaveTag(Host{}, "ContainerPoolSettings")
 	RunningTeardownForTaskKey    = bsonutil.MustHaveTag(Host{}, "RunningTeardownForTask")
 	RunningTeardownSinceKey      = bsonutil.MustHaveTag(Host{}, "RunningTeardownSince")
+	InstanceTagsKey              = bsonutil.MustHaveTag(Host{}, "InstanceTags")
 	SpawnOptionsTaskIDKey        = bsonutil.MustHaveTag(SpawnOptions{}, "TaskID")
 	SpawnOptionsBuildIDKey       = bsonutil.MustHaveTag(SpawnOptions{}, "BuildID")
 	SpawnOptionsTimeoutKey       = bsonutil.MustHaveTag(SpawnOptions{}, "TimeoutTeardown")
@@ -308,10 +311,13 @@ func allHostsSpawnedByFinishedBuilds() ([]Host, error) {
 // the given time.
 func ByUnprovisionedSince(threshold time.Time) db.Q {
 	return db.Query(bson.M{
-		ProvisionedKey: false,
-		CreateTimeKey:  bson.M{"$lte": threshold},
-		StatusKey:      bson.M{"$ne": evergreen.HostTerminated},
-		StartedByKey:   evergreen.User,
+		"$or": []bson.M{
+			bson.M{ProvisionedKey: false},
+			bson.M{StatusKey: evergreen.HostProvisioning},
+		},
+		CreateTimeKey: bson.M{"$lte": threshold},
+		StatusKey:     bson.M{"$ne": evergreen.HostTerminated},
+		StartedByKey:  evergreen.User,
 	})
 }
 
@@ -461,6 +467,15 @@ func ByDistroId(distroId string) db.Q {
 // ById produces a query that returns a host with the given id.
 func ById(id string) db.Q {
 	return db.Query(bson.D{{Key: IdKey, Value: id}})
+}
+
+func ByDistroIDRunning(distroID string) db.Q {
+	distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
+	return db.Query(bson.M{
+		distroIDKey:  distroID,
+		StatusKey:    evergreen.HostRunning,
+		StartedByKey: evergreen.User,
+	})
 }
 
 // ByIds produces a query that returns all hosts in the given list of ids.

@@ -21,6 +21,12 @@ type Base struct {
 	Context  Fields         `bson:"context,omitempty" json:"context,omitempty" yaml:"context,omitempty"`
 }
 
+// IsZero returns true when Base is nil or it is non-nil and none of
+// its fields are set.
+func (b *Base) IsZero() bool {
+	return b == nil || b.Level == level.Invalid && b.Hostname == "" && b.Time.IsZero() && b.Process == "" && b.Pid == 0 && b.Context == nil
+}
+
 // Collect records the time, process name, and hostname. Useful in the
 // context of a Raw() method.
 func (b *Base) Collect() error {

@@ -8,7 +8,9 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -1081,11 +1083,16 @@ func (s *DistroPatchByIDSuite) TestRunMissingNonLegacyBootstrapSettings() {
 func (s *DistroPatchByIDSuite) TestRunValidNonLegacyBootstrapSettings() {
 	ctx := context.Background()
 	json := []byte(fmt.Sprintf(
-		`{"bootstrap_settings": {"method": "%s", "communication": "%s",
-		  "client_dir": "/client_dir", "jasper_binary_dir": "/jasper_binary_dir",
-		  "jasper_credentials_path": "/jasper_credentials_path", "shell_path": "/shell_path"}
-	     }`,
-		distro.BootstrapMethodUserData, distro.CommunicationMethodSSH))
+		`{"bootstrap_settings": {
+			"method": "%s",
+			"communication": "%s",
+			"client_dir": "/client_dir",
+			"jasper_binary_dir": "/jasper_binary_dir",
+			"jasper_credentials_path": "/jasper_credentials_path",
+			"shell_path": "/shell_path",
+			"root_dir": "/root_dir"
+		}
+	}`, distro.BootstrapMethodUserData, distro.CommunicationMethodSSH))
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
 	h.body = json
@@ -1093,6 +1100,15 @@ func (s *DistroPatchByIDSuite) TestRunValidNonLegacyBootstrapSettings() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(http.StatusOK, resp.Status())
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
+	s.Equal(model.ToAPIString(distro.BootstrapMethodUserData), apiDistro.BootstrapSettings.Method)
+	s.Equal(model.ToAPIString(distro.CommunicationMethodSSH), apiDistro.BootstrapSettings.Communication)
+	s.Equal(model.ToAPIString("/client_dir"), apiDistro.BootstrapSettings.ClientDir)
+	s.Equal(model.ToAPIString("/jasper_binary_dir"), apiDistro.BootstrapSettings.JasperBinaryDir)
+	s.Equal(model.ToAPIString("/jasper_credentials_path"), apiDistro.BootstrapSettings.JasperCredentialsPath)
+	s.Equal(model.ToAPIString("/shell_path"), apiDistro.BootstrapSettings.ShellPath)
+	s.Equal(model.ToAPIString("/root_dir"), apiDistro.BootstrapSettings.RootDir)
 }
 
 func (s *DistroPatchByIDSuite) TestRunValidCloneMethod() {
@@ -1149,10 +1165,18 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 				"bootstrap_settings": {
 					"method": "legacy-ssh",
 					"communication": "legacy-ssh",
-					"shell_path": "/usr/bin/bash",
 					"jasper_binary_dir": "/usr/local/bin",
+					"jasper_credentials_path": "/etc/credentials",
 					"client_dir": "/usr/bin",
-					"jasper_credentials_path": "/etc/credentials"
+					"service_user": "service_user",
+					"shell_path": "/usr/bin/bash",
+					"root_dir" : "/new/root/dir",
+					"resource_limits": {
+						"num_files": 1,
+						"num_processes": 2,
+						"locked_memory": 3,
+						"virtual_memory": 4
+					}
 				},
 				"clone_method": "legacy-ssh",
 				"ssh_key" : "~SSH string",
@@ -1214,10 +1238,16 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), apiDistro.BootstrapSettings.Method)
 	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), apiDistro.BootstrapSettings.Communication)
 	s.Equal(model.ToAPIString(distro.CloneMethodLegacySSH), apiDistro.CloneMethod)
-	s.Equal(model.ToAPIString("/usr/bin/bash"), apiDistro.BootstrapSettings.ShellPath)
+	s.Equal(model.ToAPIString("/usr/bin"), apiDistro.BootstrapSettings.ClientDir)
 	s.Equal(model.ToAPIString("/usr/local/bin"), apiDistro.BootstrapSettings.JasperBinaryDir)
 	s.Equal(model.ToAPIString("/etc/credentials"), apiDistro.BootstrapSettings.JasperCredentialsPath)
-	s.Equal(model.ToAPIString("/usr/bin"), apiDistro.BootstrapSettings.ClientDir)
+	s.Equal(model.ToAPIString("service_user"), apiDistro.BootstrapSettings.ServiceUser)
+	s.Equal(model.ToAPIString("/usr/bin/bash"), apiDistro.BootstrapSettings.ShellPath)
+	s.Equal(model.ToAPIString("/new/root/dir"), apiDistro.BootstrapSettings.RootDir)
+	s.Equal(1, apiDistro.BootstrapSettings.ResourceLimits.NumFiles)
+	s.Equal(2, apiDistro.BootstrapSettings.ResourceLimits.NumProcesses)
+	s.Equal(3, apiDistro.BootstrapSettings.ResourceLimits.LockedMemoryKB)
+	s.Equal(4, apiDistro.BootstrapSettings.ResourceLimits.VirtualMemoryKB)
 	s.Equal(apiDistro.User, model.ToAPIString("~root"))
 	s.Equal(apiDistro.SSHKey, model.ToAPIString("~SSH string"))
 	s.Equal(apiDistro.SSHOptions, []string{"~StrictHostKeyChecking=no", "~BatchMode=no", "~ConnectTimeout=10"})
@@ -1299,4 +1329,87 @@ func getMockDistrosConnector() *data.MockConnector {
 	}
 
 	return &connector
+}
+
+///////////////////////////////////////////////////////////////////////
+//
+// Tests for POST /rest/v2/distro/{distro_id}/execute
+
+type DistroIDExecuteSuite struct {
+	sc     *data.MockConnector
+	data   data.MockHostConnector
+	rh     *distroIDExecuteHandler
+	env    evergreen.Environment
+	cancel context.CancelFunc
+
+	suite.Suite
+}
+
+func TestDistroIDExecuteSuite(t *testing.T) {
+	suite.Run(t, new(DistroIDExecuteSuite))
+}
+
+func (s *DistroIDExecuteSuite) SetupTest() {
+	s.data = data.MockHostConnector{
+		CachedHosts: []host.Host{
+			{
+				Id: "host1",
+				Distro: distro.Distro{
+					Id: "distro1",
+				},
+			},
+		},
+	}
+	s.sc = &data.MockConnector{
+		MockHostConnector: s.data,
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	s.cancel = cancel
+	env := &mock.Environment{}
+	s.env = env
+	s.Require().NoError(env.Configure(ctx, "", nil))
+	h := makeDistroExecute(s.sc, s.env)
+	rh, ok := h.(*distroIDExecuteHandler)
+	s.Require().True(ok)
+	s.rh = rh
+}
+
+func (s *DistroIDExecuteSuite) TearDownTest() {
+	s.cancel()
+}
+
+func (s *DistroIDExecuteSuite) TestParse() {
+	ctx, _ := s.env.Context()
+
+	body := []byte(`
+  	{"script": "echo foobar"}`,
+	)
+	req, err := http.NewRequest("POST", "http://example.com/api/rest/v2/distros/distro1/execute", bytes.NewBuffer(body))
+	s.Require().NoError(err)
+	s.NoError(s.rh.Parse(ctx, req))
+
+	emptyBody := []byte(`{"script": ""}`)
+	req, err = http.NewRequest("POST", "http://example.com/api/rest/v2/distros/distro1/execute", bytes.NewBuffer(emptyBody))
+	s.Require().NoError(err)
+	s.Error(s.rh.Parse(ctx, req))
+}
+
+func (s *DistroIDExecuteSuite) TestRun() {
+	s.rh.distroID = "distro1"
+	s.rh.Script = "echo foobar"
+
+	ctx, _ := s.env.Context()
+	resp := s.rh.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(http.StatusOK, resp.Status())
+}
+
+func (s *DistroIDExecuteSuite) TestRunNonexistentDistro() {
+	ctx := context.Background()
+	s.rh.distroID = "nonexistent"
+	s.rh.Script = "echo foobar"
+
+	resp := s.rh.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(http.StatusOK, resp.Status())
 }

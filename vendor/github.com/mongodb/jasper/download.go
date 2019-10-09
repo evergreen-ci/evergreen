@@ -2,191 +2,35 @@ package jasper
 
 import (
 	"context"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/mholt/archiver"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 	"github.com/tychoish/bond"
 	"github.com/tychoish/bond/recall"
 	"github.com/tychoish/lru"
 )
 
-// DownloadInfo represents the URL to download and the file path where it should be downloaded.
-type DownloadInfo struct {
-	URL         string         `json:"url"`
-	Path        string         `json:"path"`
-	ArchiveOpts ArchiveOptions `json:"archive_opts"`
-}
-
-// Validate checks the download options.
-func (info DownloadInfo) Validate() error {
-	catcher := grip.NewBasicCatcher()
-
-	if info.URL == "" {
-		catcher.New("download url cannot be empty")
-	}
-
-	if !filepath.IsAbs(info.Path) {
-		catcher.New("download path must be an absolute path")
-	}
-
-	catcher.Add(info.ArchiveOpts.Validate())
-
-	return catcher.Resolve()
-}
-
-// Download executes the download operation.
-func (info DownloadInfo) Download() error {
-	req, err := http.NewRequest(http.MethodGet, info.URL, nil)
-	if err != nil {
-		return errors.Wrap(err, "problem building request")
-	}
-
-	client := bond.GetHTTPClient()
-	defer bond.PutHTTPClient(client)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return errors.Wrapf(err, "problem downloading file for url %s", info.URL)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return errors.Errorf("%s: could not download %s to path %s", resp.Status, info.URL, info.Path)
-	}
-
-	if err = writeFile(resp.Body, info.Path); err != nil {
-		return err
-	}
-
-	if info.ArchiveOpts.ShouldExtract {
-		if err = doExtract(info); err != nil {
-			return errors.Wrapf(err, "problem extracting file %s to path %s", info.Path, info.ArchiveOpts.TargetPath)
+func makeEnclosingDirectories(path string) error {
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		if err = os.MkdirAll(path, os.ModeDir|os.ModePerm); err != nil {
+			return err
 		}
+	} else if !info.IsDir() {
+		return errors.Errorf("'%s' already exists and is not a directory", path)
 	}
-
-	return nil
-}
-
-// ArchiveFormat represents an archive file type.
-type ArchiveFormat string
-
-const (
-	// ArchiveAuto is an ArchiveFormat that does not force any particular type of
-	// archive format.
-	ArchiveAuto  ArchiveFormat = "auto"
-	ArchiveTarGz               = "targz" // nolint
-	ArchiveZip                 = "zip"   // nolint
-)
-
-// Validate checks that the ArchiveFormat is a recognized format.
-func (f ArchiveFormat) Validate() error {
-	switch f {
-	case ArchiveTarGz, ArchiveZip, ArchiveAuto:
-		return nil
-	default:
-		return errors.Errorf("unknown archive format %s", f)
-	}
-}
-
-// ArchiveOptions encapsulates options related to management of archive files.
-type ArchiveOptions struct {
-	ShouldExtract bool
-	Format        ArchiveFormat
-	TargetPath    string
-}
-
-// Validate checks the archive file options.
-func (opts ArchiveOptions) Validate() error {
-	if !opts.ShouldExtract {
-		return nil
-	}
-
-	catcher := grip.NewBasicCatcher()
-
-	if !filepath.IsAbs(opts.TargetPath) {
-		catcher.Add(errors.New("download path must be an absolute path"))
-	}
-
-	catcher.Add(opts.Format.Validate())
-
-	return catcher.Resolve()
-}
-
-// MongoDBDownloadOptions represent one build variant of MongoDB.
-type MongoDBDownloadOptions struct {
-	BuildOpts bond.BuildOptions `json:"build_opts"`
-	Path      string            `json:"path"`
-	Releases  []string          `json:"releases"`
-}
-
-// Validate checks for valid MongoDB download options.
-func (opts MongoDBDownloadOptions) Validate() error {
-	catcher := grip.NewBasicCatcher()
-
-	if !filepath.IsAbs(opts.Path) {
-		catcher.Add(errors.New("download path must be an absolute path"))
-	}
-
-	catcher.Add(opts.BuildOpts.Validate())
-
-	return catcher.Resolve()
-}
-
-// CacheOptions represent the configuration options for the LRU cache.
-type CacheOptions struct {
-	Disabled   bool          `json:"disabled"`
-	PruneDelay time.Duration `json:"prune_delay"`
-	MaxSize    int           `json:"max_size"`
-}
-
-// Validate checks for valid cache options.
-func (opts CacheOptions) Validate() error {
-	catcher := grip.NewBasicCatcher()
-
-	if opts.MaxSize < 0 {
-		catcher.Add(errors.New("max size cannot be negative"))
-	}
-
-	if opts.PruneDelay < 0 {
-		catcher.Add(errors.New("prune delay cannot be negative"))
-	}
-
-	return catcher.Resolve()
-}
-
-func doExtract(info DownloadInfo) error {
-	var archiveHandler archiver.Archiver
-	switch info.ArchiveOpts.Format {
-	case ArchiveAuto:
-		unzipper := archiver.MatchingFormat(info.Path)
-		if unzipper == nil {
-			return errors.Errorf("could not detect archive format for %s", info.Path)
-		}
-		archiveHandler = unzipper
-	case ArchiveTarGz:
-		archiveHandler = archiver.TarGz
-	case ArchiveZip:
-		archiveHandler = archiver.Zip
-	default:
-		return errors.Errorf("unrecognized archive format %s", info.ArchiveOpts.Format)
-	}
-
-	if err := archiveHandler.Open(info.Path, info.ArchiveOpts.TargetPath); err != nil {
-		return errors.Wrapf(err, "problem extracting archive %s to %s", info.Path, info.ArchiveOpts.TargetPath)
-	}
-
 	return nil
 }
 
 // SetupDownloadMongoDBReleases performs necessary setup to download MongoDB with the given options.
-func SetupDownloadMongoDBReleases(ctx context.Context, cache *lru.Cache, opts MongoDBDownloadOptions) error {
+func SetupDownloadMongoDBReleases(ctx context.Context, cache *lru.Cache, opts options.MongoDBDownload) error {
 	if err := makeEnclosingDirectories(opts.Path); err != nil {
 		return errors.Wrap(err, "problem creating enclosing directories")
 	}

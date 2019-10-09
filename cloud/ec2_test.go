@@ -25,14 +25,18 @@ var (
 
 type EC2Suite struct {
 	suite.Suite
-	onDemandOpts    *EC2ManagerOptions
-	onDemandManager Manager
-	spotOpts        *EC2ManagerOptions
-	spotManager     Manager
-	autoOpts        *EC2ManagerOptions
-	autoManager     Manager
-	impl            *ec2Manager
-	h               *host.Host
+	onDemandOpts              *EC2ManagerOptions
+	onDemandManager           Manager
+	onDemandWithRegionOpts    *EC2ManagerOptions
+	onDemandWithRegionManager Manager
+	spotOpts                  *EC2ManagerOptions
+	spotManager               Manager
+	autoOpts                  *EC2ManagerOptions
+	autoManager               Manager
+	impl                      *ec2Manager
+	mock                      *awsClientMock
+	h                         *host.Host
+	distro                    distro.Distro
 }
 
 func TestEC2Suite(t *testing.T) {
@@ -46,6 +50,20 @@ func (s *EC2Suite) SetupTest() {
 		provider: onDemandProvider,
 	}
 	s.onDemandManager = NewEC2Manager(s.onDemandOpts)
+	_ = s.onDemandManager.Configure(context.Background(), &evergreen.Settings{
+		Expansions: map[string]string{"test": "expand"},
+		Providers: evergreen.CloudProviders{
+			AWS: evergreen.AWSConfig{
+				DefaultSecurityGroup: "sg-default",
+			},
+		},
+	})
+	s.onDemandWithRegionOpts = &EC2ManagerOptions{
+		client:   &awsClientMock{},
+		provider: onDemandProvider,
+		region:   "test-region",
+	}
+	s.onDemandWithRegionManager = NewEC2Manager(s.onDemandWithRegionOpts)
 	_ = s.onDemandManager.Configure(context.Background(), &evergreen.Settings{
 		Expansions: map[string]string{"test": "expand"},
 	})
@@ -69,18 +87,32 @@ func (s *EC2Suite) SetupTest() {
 	s.impl, ok = s.onDemandManager.(*ec2Manager)
 	s.Require().True(ok)
 
+	// Clear mock
+	s.mock, ok = s.impl.client.(*awsClientMock)
+	s.Require().True(ok)
+	s.mock.Instance = nil
+
+	s.distro = distro.Distro{
+		ProviderSettings: &map[string]interface{}{
+			"key_name":           "key",
+			"aws_access_key_id":  "key_id",
+			"ami":                "ami",
+			"instance_type":      "instance",
+			"security_group_ids": []string{"abcdef"},
+			"bid_price":          float64(0.001),
+		},
+		Provider: evergreen.ProviderNameEc2OnDemand,
+	}
+
 	s.h = &host.Host{
-		Id: "h1",
-		Distro: distro.Distro{
-			ProviderSettings: &map[string]interface{}{
-				"key_name":           "key",
-				"aws_access_key_id":  "key_id",
-				"ami":                "ami",
-				"instance_type":      "instance",
-				"security_group_ids": []string{"abcdef"},
-				"bid_price":          float64(0.001),
+		Id:     "h1",
+		Distro: s.distro,
+		InstanceTags: []host.Tag{
+			host.Tag{
+				Key:           "key-1",
+				Value:         "val-1",
+				CanBeModified: true,
 			},
-			Provider: evergreen.ProviderNameEc2OnDemand,
 		},
 	}
 }
@@ -240,23 +272,67 @@ func (s *EC2Suite) TestConfigure() {
 	err := s.onDemandManager.Configure(ctx, settings)
 	s.Error(err)
 
-	settings.Providers.AWS.EC2Key = "id"
+	// No region specified
+	settings.Providers.AWS.EC2Keys = []evergreen.EC2Key{
+		{Region: evergreen.DefaultEC2Region, Key: "default-key", Secret: "default-secret"},
+	}
+	err = s.onDemandManager.Configure(ctx, settings)
+	s.NoError(err)
+	ec2m, ok := s.onDemandManager.(*ec2Manager)
+	s.True(ok)
+	creds, err := ec2m.credentials.Get()
+	s.NoError(err)
+	s.Equal("default-key", creds.AccessKeyID)
+	s.Equal("default-secret", creds.SecretAccessKey)
+
+	// Region specified, does not exist in config
+	err = s.onDemandWithRegionManager.Configure(ctx, settings)
+	s.Error(err)
+
+	// Region specified, config missing key or secret
+	settings.Providers.AWS.EC2Keys = []evergreen.EC2Key{
+		{Region: evergreen.DefaultEC2Region, Key: "default-key", Secret: "default-secret"},
+		{Region: "test-region", Key: "test-key", Secret: ""},
+	}
+	err = s.onDemandWithRegionManager.Configure(ctx, settings)
+	s.Error(err)
+
+	// Region specified, key and secret in config
+	settings.Providers.AWS.EC2Keys = []evergreen.EC2Key{
+		{Region: evergreen.DefaultEC2Region, Key: "default-key", Secret: "default-secret"},
+		{Region: "test-region", Key: "test-key", Secret: "test-secret"},
+	}
+	err = s.onDemandWithRegionManager.Configure(ctx, settings)
+	s.NoError(err)
+	ec2m, ok = s.onDemandWithRegionManager.(*ec2Manager)
+	s.True(ok)
+	creds, err = ec2m.credentials.Get()
+	s.NoError(err)
+	s.Equal("test-key", creds.AccessKeyID)
+	s.Equal("test-secret", creds.SecretAccessKey)
+
+	// LEGACY (delete when Evergreen only uses region-based EC2Keys struct)
+	settings.Providers.AWS.EC2Keys = nil
+	settings.Providers.AWS.EC2Key = "legacy-key"
 	err = s.onDemandManager.Configure(ctx, settings)
 	s.Error(err)
 
 	settings.Providers.AWS.EC2Key = ""
-	settings.Providers.AWS.EC2Secret = "secret"
+	settings.Providers.AWS.EC2Secret = "legacy-secret"
 	err = s.onDemandManager.Configure(ctx, settings)
 	s.Error(err)
 
-	settings.Providers.AWS.EC2Key = "id"
+	settings.Providers.AWS.EC2Key = "legacy-key"
 	err = s.onDemandManager.Configure(ctx, settings)
 	s.NoError(err)
-	ec2m := s.onDemandManager.(*ec2Manager)
-	creds, err := ec2m.credentials.Get()
+	ec2m, ok = s.onDemandManager.(*ec2Manager)
+	s.True(ok)
+	creds, err = ec2m.credentials.Get()
 	s.NoError(err)
-	s.Equal("id", creds.AccessKeyID)
-	s.Equal("secret", creds.SecretAccessKey)
+	s.Equal("legacy-key", creds.AccessKeyID)
+	s.Equal("legacy-secret", creds.SecretAccessKey)
+	// END LEGACY
+
 }
 
 func (s *EC2Suite) TestSpawnHostInvalidInput() {
@@ -293,6 +369,7 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 		"subnet_id":          "subnet-123456",
 		"user_data":          someUserData,
 	}
+	s.Require().NoError(s.h.Insert())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -339,6 +416,7 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 		"is_vpc":             true,
 		"user_data":          someUserData,
 	}
+	s.Require().NoError(h.Insert())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -381,6 +459,7 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 		"subnet_id":          "subnet-123456",
 		"user_data":          someUserData,
 	}
+	s.Require().NoError(h.Insert())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -424,6 +503,7 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 		"is_vpc":             true,
 		"user_data":          someUserData,
 	}
+	s.Require().NoError(h.Insert())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -466,6 +546,7 @@ func (s *EC2Suite) TestNoKeyAndNotSpawnHostForTaskShouldFail() {
 		"is_vpc":             true,
 		"user_data":          someUserData,
 	}
+	s.Require().NoError(h.Insert())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -499,6 +580,7 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 	h.SpawnOptions.TaskID = "task_1"
 	h.StartedBy = "task_1"
 	h.SpawnOptions.SpawnedByTask = true
+	s.Require().NoError(h.Insert())
 	s.Require().NoError(t.Insert())
 	newVars := &model.ProjectVars{
 		Id: project,
@@ -531,6 +613,37 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 	s.Nil(runInput.SubnetId)
 	s.Equal(base64OfSomeUserData, *runInput.UserData)
 }
+
+func (s *EC2Suite) TestModifyHost() {
+	changes := host.HostModifyOptions{
+		AddInstanceTags: []host.Tag{
+			host.Tag{
+				Key:           "key-2",
+				Value:         "val-2",
+				CanBeModified: true,
+			},
+		},
+		DeleteInstanceTags: []string{"key-1"},
+		InstanceType:       "instance-type-2",
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.h.Status = evergreen.HostRunning
+	s.Require().NoError(s.h.Insert())
+	s.Error(s.onDemandManager.ModifyHost(ctx, s.h, changes))
+	s.Require().NoError(s.h.Remove())
+
+	s.h.Status = evergreen.HostStopped
+	s.Require().NoError(s.h.Insert())
+	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
+	found, err := host.FindOne(host.ById(s.h.Id))
+	s.NoError(err)
+	s.Equal([]host.Tag{host.Tag{Key: "key-2", Value: "val-2", CanBeModified: true}}, found.InstanceTags)
+	s.Equal(changes.InstanceType, found.InstanceType)
+}
+
 func (s *EC2Suite) TestGetInstanceStatus() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -569,7 +682,7 @@ func (s *EC2Suite) TestTerminateInstance() {
 	defer cancel()
 
 	s.NoError(s.h.Insert())
-	s.NoError(s.onDemandManager.TerminateInstance(ctx, s.h, evergreen.User))
+	s.NoError(s.onDemandManager.TerminateInstance(ctx, s.h, evergreen.User, ""))
 	found, err := host.FindOne(host.ById("h1"))
 	s.Equal(evergreen.HostTerminated, found.Status)
 	s.NoError(err)
@@ -590,11 +703,68 @@ func (s *EC2Suite) TestTerminateInstanceWithUserDataBootstrappedHost() {
 		_, err = s.h.JasperCredentials(ctx)
 		s.Require().NoError(err)
 
-		s.NoError(s.onDemandManager.TerminateInstance(ctx, s.h, evergreen.User))
+		s.NoError(s.onDemandManager.TerminateInstance(ctx, s.h, evergreen.User, ""))
 
 		_, err = s.h.JasperCredentials(ctx)
 		s.Error(err)
 	})
+}
+
+func (s *EC2Suite) TestStopInstance() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	hosts := []*host.Host{
+		&host.Host{
+			Id:     "host-stopped",
+			Status: evergreen.HostStopped,
+		},
+		&host.Host{
+			Id:     "host-provisioning",
+			Status: evergreen.HostProvisioning,
+		},
+		&host.Host{
+			Id:     "host-running",
+			Status: evergreen.HostRunning,
+		},
+	}
+	for _, h := range hosts {
+		h.Distro = s.distro
+		s.NoError(h.Insert())
+	}
+
+	s.Error(s.onDemandManager.StopInstance(ctx, hosts[0], evergreen.User))
+	s.Error(s.onDemandManager.StopInstance(ctx, hosts[1], evergreen.User))
+	s.NoError(s.onDemandManager.StopInstance(ctx, hosts[2], evergreen.User))
+	found, err := host.FindOne(host.ById("host-running"))
+	s.NoError(err)
+	s.Equal(evergreen.HostStopped, found.Status)
+}
+
+func (s *EC2Suite) TestStartInstance() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	hosts := []*host.Host{
+		&host.Host{
+			Id:     "host-running",
+			Status: evergreen.HostRunning,
+		},
+		&host.Host{
+			Id:     "host-stopped",
+			Status: evergreen.HostStopped,
+		},
+	}
+	for _, h := range hosts {
+		h.Distro = s.distro
+		s.NoError(h.Insert())
+	}
+
+	s.Error(s.onDemandManager.StartInstance(ctx, hosts[0], evergreen.User))
+	s.NoError(s.onDemandManager.StartInstance(ctx, hosts[1], evergreen.User))
+	found, err := host.FindOne(host.ById("host-stopped"))
+	s.NoError(err)
+	s.Equal(evergreen.HostRunning, found.Status)
 }
 
 func (s *EC2Suite) TestIsUp() {
@@ -928,7 +1098,7 @@ func (s *EC2Suite) TestUserDataExpand() {
 	s.Equal("expand a thing", expanded)
 }
 
-func (s *EC2Suite) TestGetSecurityGroup() {
+func (s *EC2Suite) TestGetSecurityGroups() {
 	settings := EC2ProviderSettings{
 		SecurityGroupIDs: []string{"sg-1"},
 	}
@@ -1010,4 +1180,49 @@ func (s *EC2Suite) TestFromDistroSettings() {
 	s.Len(ec2Settings.SecurityGroupIDs, 1)
 	s.Equal("abcdef", ec2Settings.SecurityGroupIDs[0])
 	s.Equal(float64(0.001), ec2Settings.BidPrice)
+}
+
+func (s *EC2Suite) TestGetEC2Region() {
+	d1 := distro.Distro{
+		ProviderSettings: &map[string]interface{}{
+			"region": "test-region",
+		},
+	}
+
+	d2 := distro.Distro{
+		ProviderSettings: &map[string]interface{}{},
+	}
+
+	s.Equal("test-region", getEC2Region(d1.ProviderSettings))
+	s.Equal(evergreen.DefaultEC2Region, getEC2Region(d2.ProviderSettings))
+}
+
+func (s *EC2Suite) TestGetEC2Key() {
+	settings := &evergreen.Settings{
+		Providers: evergreen.CloudProviders{
+			AWS: evergreen.AWSConfig{},
+		},
+	}
+	key, secret, err := GetEC2Key("test-region", settings)
+	s.Empty(key)
+	s.Empty(secret)
+	s.EqualError(err, "Unable to find region 'test-region' in config")
+
+	// LEGACY (delete block when Evergreen only uses region-based EC2Keys struct)
+	settings.Providers.AWS.EC2Key = "legacy-key"
+	settings.Providers.AWS.EC2Secret = "legacy-secret"
+	key, secret, err = GetEC2Key("", settings)
+	s.Equal("legacy-key", key)
+	s.Equal("legacy-secret", secret)
+	s.NoError(err)
+
+	settings.Providers.AWS.EC2Keys = []evergreen.EC2Key{
+		{Region: "bogus-region", Key: "bogus-key", Secret: "bogus-secret"},
+		{Region: "test-region", Key: "test-key", Secret: "test-secret"},
+	}
+	key, secret, err = GetEC2Key("test-region", settings)
+	s.Equal("test-key", key)
+	s.Equal("test-secret", secret)
+	s.NoError(err)
+
 }

@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	mgo "gopkg.in/mgo.v2"
 )
 
 type ReportingSuite struct {
@@ -25,39 +24,6 @@ type ReportingSuite struct {
 	setup   func()
 	cleanup func() error
 	suite.Suite
-}
-
-func TestReportingSuiteBackedByLegacyMongoDB(t *testing.T) {
-	s := new(ReportingSuite)
-	name := uuid.NewV4().String()
-	opts := queue.DefaultMongoDBOptions()
-	opts.DB = "amboy_test"
-	session, err := mgo.Dial(opts.URI)
-	require.NoError(t, err)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	s.factory = func() Reporter {
-		reporter, err := MakeLegacyDBQueueState(name, opts, session)
-		s.Require().NoError(err)
-		return reporter
-	}
-
-	s.setup = func() {
-		remote := queue.NewRemoteUnordered(2)
-		driver := queue.NewMgoDriver(name, opts)
-		s.NoError(remote.SetDriver(driver))
-		s.queue = remote
-	}
-
-	s.cleanup = func() error {
-		session.Close()
-		s.queue.Runner().Close(ctx)
-		return nil
-	}
-
-	suite.Run(t, s)
 }
 
 func TestReportingSuiteBackedByMongoDB(t *testing.T) {
@@ -79,10 +45,15 @@ func TestReportingSuiteBackedByMongoDB(t *testing.T) {
 	}
 
 	s.setup = func() {
-		remote := queue.NewRemoteUnordered(2)
-		driver, err := queue.OpenNewMongoDriver(ctx, name, opts, client)
+		args := queue.MongoDBQueueCreationOptions{
+			Size:   2,
+			Name:   name,
+			MDB:    opts,
+			Client: client,
+		}
+
+		remote, err := queue.NewMongoDBQueue(ctx, args)
 		require.NoError(t, err)
-		require.NoError(t, remote.SetDriver(driver))
 		s.queue = remote
 	}
 
@@ -115,11 +86,19 @@ func TestReportingSuiteBackedByMongoDBSingleGroup(t *testing.T) {
 		return reporter
 	}
 
+	opts.UseGroups = true
+	opts.GroupName = "foo"
+
 	s.setup = func() {
-		remote := queue.NewRemoteUnordered(2)
-		driver, err := queue.OpenNewMongoGroupDriver(ctx, name, opts, "foo", client)
+		args := queue.MongoDBQueueCreationOptions{
+			Size:   2,
+			Name:   name,
+			MDB:    opts,
+			Client: client,
+		}
+
+		remote, err := queue.NewMongoDBQueue(ctx, args)
 		require.NoError(t, err)
-		require.NoError(t, remote.SetDriver(driver))
 		s.queue = remote
 	}
 
@@ -151,11 +130,19 @@ func TestReportingSuiteBackedByMongoDBMultiGroup(t *testing.T) {
 		return reporter
 	}
 
+	opts.UseGroups = true
+	opts.GroupName = "foo"
+
 	s.setup = func() {
-		remote := queue.NewRemoteUnordered(2)
-		driver, err := queue.OpenNewMongoGroupDriver(ctx, name, opts, "foo", client)
+		args := queue.MongoDBQueueCreationOptions{
+			Size:   2,
+			Name:   name,
+			MDB:    opts,
+			Client: client,
+		}
+
+		remote, err := queue.NewMongoDBQueue(ctx, args)
 		require.NoError(t, err)
-		require.NoError(t, remote.SetDriver(driver))
 		s.queue = remote
 	}
 

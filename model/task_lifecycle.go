@@ -3,11 +3,13 @@ package model
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -37,12 +39,14 @@ func SetActiveState(taskId string, caller string, active bool) error {
 		return errors.Errorf("task '%s' not found", taskId)
 	}
 	if active {
-		// if the task is being activated, make sure to activate all of the task's
-		// dependencies as well
-		for _, dep := range t.DependsOn {
-			if err = SetActiveState(dep.TaskId, caller, true); err != nil {
-				return errors.Wrapf(err, "error activating dependency for %v with id %v",
-					taskId, dep.TaskId)
+		// if the task is being activated and it doesn't override its dependencies
+		// activate the task's dependencies as well
+		if !t.OverrideDependencies {
+			for _, dep := range t.DependsOn {
+				if err = SetActiveState(dep.TaskId, caller, true); err != nil {
+					return errors.Wrapf(err, "error activating dependency for %v with id %v",
+						taskId, dep.TaskId)
+				}
 			}
 		}
 
@@ -192,7 +196,7 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 	}
 
 	// only allow re-execution for failed or successful tasks
-	if !t.IsFinished() && !t.IsBlockedDisplayTask() {
+	if !t.IsFinished() {
 		// this is to disallow terminating running tasks via the UI
 		if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
 			grip.Debugf("Unsatisfiable '%s' reset request on '%s' (status: '%s')",
@@ -332,7 +336,7 @@ func getStepback(taskId string) (bool, error) {
 		return false, errors.Wrapf(err, "problem finding task %s", taskId)
 	}
 
-	project, err := FindProjectFromTask(t)
+	project, err := FindProjectFromVersionID(t.Version)
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
@@ -499,6 +503,69 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	return nil
 }
 
+func TryDequeueAndAbortCommitQueueVersion(projectRef *ProjectRef, versionId, requester string) error {
+	p, err := patch.FindOne(patch.ByVersion(versionId))
+	if err != nil {
+		return errors.Wrapf(err, "error finding patch")
+	}
+	if p == nil {
+		return errors.Errorf("No patch for task")
+	}
+
+	if p.Alias != evergreen.CommitQueueAlias {
+		return nil
+	}
+
+	// if task is part of a commit queue, dequeue and abort version
+	cq, err := commitqueue.FindOneId(projectRef.Identifier)
+	if err != nil {
+		return errors.Wrapf(err, "can't get commit queue for id '%s'", projectRef.Identifier)
+	}
+	issue := p.Id.Hex()
+	if p.IsGithubPRPatch() {
+		issue = strconv.Itoa(p.GithubPatchData.PRNumber)
+	}
+	removed, err := cq.Remove(issue)
+	if err != nil {
+		return errors.Wrapf(err, "can't remove item '%s' from queue '%s'", versionId, projectRef.Identifier)
+	}
+	if !removed {
+		return nil
+	}
+	if p.IsPRMergePatch() {
+		env := evergreen.GetEnvironment()
+		sender, err := env.GetSender(evergreen.SenderGithubStatus)
+		if err != nil {
+			grip.Debug(message.WrapError(err, message.Fields{
+				"message":      "error getting environment",
+				"patch_id":     p.Id,
+				"project":      p.Project,
+				"pull_request": issue,
+			}))
+		} else {
+			var url string
+			uiConfig := evergreen.UIConfig{}
+			if err := uiConfig.Get(env); err == nil {
+				url = fmt.Sprintf("%s/version/%s", uiConfig.Url, versionId)
+			}
+			status := message.GithubStatus{
+				Context:     commitqueue.Context,
+				Description: "merge test failed",
+				State:       message.GithubStateFailure,
+				Owner:       p.GithubPatchData.BaseOwner,
+				Repo:        p.GithubPatchData.BaseRepo,
+				Ref:         p.GithubPatchData.HeadHash,
+				URL:         url,
+			}
+			c := message.MakeGithubStatusMessageWithRepo(status)
+			sender.Send(c)
+		}
+	}
+
+	event.LogCommitQueueConcludeTest(p.Id.Hex(), evergreen.MergeTestFailed)
+	return errors.Wrapf(CancelPatch(p, requester), "Error aborting failed commit queue patch")
+}
+
 func evalStepback(t *task.Task, caller, status string, deactivatePrevious bool) error {
 	if status == evergreen.TaskFailed {
 		var shouldStepBack bool
@@ -556,10 +623,6 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	tasksWithDeps, err := task.FindAllTasksFromVersionWithDependencies(t.Version)
-	if err != nil {
-		return errors.Wrap(err, "error finding tasks with dependencies")
-	}
 
 	failedTask := false
 	buildComplete := false
@@ -570,8 +633,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	// update the build's status based on tasks for this build
 	for _, t := range buildTasks {
 		if !t.IsFinished() {
-			state, _ := t.BlockedState(tasksWithDeps)
-			if state == "blocked" {
+			if t.Blocked() {
 				tasksToNotify++
 				if evergreen.IsFailedTaskStatus(t.Status) {
 					failedTask = true
@@ -592,7 +654,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		}
 
 		// update the build's status when a test task isn't successful
-		if t.Status != evergreen.TaskSucceeded {
+		if evergreen.IsFailedTaskStatus(t.Status) {
 			err = b.UpdateStatus(evergreen.BuildFailed)
 			if err != nil {
 				err = errors.Wrap(err, "Error updating build status")
@@ -849,18 +911,7 @@ func doRestartFailedTasks(tasks []task.Task, user string, results RestartResults
 	var tasksErrored []string
 
 	for _, t := range tasks {
-		projectRef, err := FindOneProjectRef(t.Project)
-		if err != nil {
-			tasksErrored = append(tasksErrored, t.Id)
-			grip.Error(message.Fields{
-				"task":    t.Id,
-				"status":  "failed",
-				"message": "error retrieving project ref",
-				"error":   err.Error(),
-			})
-			continue
-		}
-		p, err := FindProject(t.Revision, projectRef)
+		p, err := FindProjectFromVersionID(t.Version)
 		if err != nil || p == nil {
 			tasksErrored = append(tasksErrored, t.Id)
 			grip.Error(message.Fields{

@@ -31,7 +31,12 @@ func LoadUserManager(authConfig evergreen.AuthConfig) (gimlet.UserManager, bool,
 		return manager, false, nil
 	}
 	if authConfig.Github != nil {
-		manager, err = NewGithubUserManager(authConfig.Github)
+		var domain string
+		env := evergreen.GetEnvironment()
+		if env != nil {
+			domain = env.Settings().Ui.LoginDomain
+		}
+		manager, err = NewGithubUserManager(authConfig.Github, domain)
 		if err != nil {
 			return nil, false, errors.Wrap(err, "problem setting up github authentication")
 		}
@@ -41,12 +46,13 @@ func LoadUserManager(authConfig evergreen.AuthConfig) (gimlet.UserManager, bool,
 }
 
 // SetLoginToken sets the token in the session cookie for authentication.
-func SetLoginToken(token string, w http.ResponseWriter) {
+func SetLoginToken(token, domain string, w http.ResponseWriter) {
 	authTokenCookie := &http.Cookie{
 		Name:     evergreen.AuthTokenCookie,
 		Value:    token,
 		HttpOnly: true,
 		Path:     "/",
+		Domain:   domain,
 		Expires:  time.Now().Add(365 * 24 * time.Hour),
 	}
 	http.SetCookie(w, authTokenCookie)

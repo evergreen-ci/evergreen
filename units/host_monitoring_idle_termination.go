@@ -115,7 +115,11 @@ func (j *idleHostJob) Run(ctx context.Context) {
 	communicationTime := j.host.GetElapsedCommunicationTime()
 
 	// get a cloud manager for the host
-	manager, err := cloud.GetManager(ctx, j.host.Provider, j.settings)
+	mgrOpts := cloud.ManagerOpts{
+		Provider: j.host.Provider,
+		Region:   cloud.GetRegion(j.host.Distro),
+	}
+	manager, err := cloud.GetManager(ctx, mgrOpts, j.settings)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "error getting cloud manager for host %v", j.host.Id))
 		return
@@ -149,7 +153,7 @@ func (j *idleHostJob) Run(ctx context.Context) {
 	// if we haven't heard from the host or it's been idle for longer than the cutoff, we should terminate
 	if communicationTime >= idleThreshold || idleTime >= idleThreshold {
 		j.Terminated = true
-		tjob := NewHostTerminationJob(j.env, *j.host, false)
+		tjob := NewHostTerminationJob(j.env, *j.host, false, "host is idle or unreachable")
 		queue := j.env.RemoteQueue()
 		j.AddError(queue.Put(ctx, tjob))
 	}

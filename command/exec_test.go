@@ -2,6 +2,8 @@ package command
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -304,6 +306,71 @@ func (s *execCmdSuite) TestKeepEmptyArgs() {
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 	s.Len(cmd.Args, 2)
+}
+
+func (s *execCmdSuite) TestPathSetting() {
+	cmd := &subprocessExec{
+		// just set up enough so that we don't fail parse params
+		Env:        map[string]string{},
+		WorkingDir: testutil.GetDirectoryOfFile(),
+		Path:       []string{"foo", "bar"},
+	}
+	exp := util.NewExpansions(map[string]string{})
+	s.Len(cmd.Env, 0)
+	s.NoError(cmd.doExpansions(exp))
+	s.Len(cmd.Env, 1)
+
+	path, ok := cmd.Env["PATH"]
+	s.True(ok)
+	s.Len(filepath.SplitList(path), len(filepath.SplitList(os.Getenv("PATH")))+2)
+}
+
+func (s *execCmdSuite) TestNoPathSetting() {
+	cmd := &subprocessExec{
+		// just set up enough so that we don't fail parse params
+		Env:        map[string]string{},
+		WorkingDir: testutil.GetDirectoryOfFile(),
+	}
+	exp := util.NewExpansions(map[string]string{})
+	s.Len(cmd.Env, 0)
+	s.NoError(cmd.doExpansions(exp))
+	s.Len(cmd.Env, 0)
+
+	path, ok := cmd.Env["PATH"]
+	s.False(ok)
+	s.Zero(path)
+}
+
+func (s *execCmdSuite) TestExpansionsEnvOptionDisabled() {
+	cmd := &subprocessExec{
+		Env:        map[string]string{},
+		WorkingDir: testutil.GetDirectoryOfFile(),
+	}
+
+	s.NoError(cmd.doExpansions(util.NewExpansions(map[string]string{})))
+	s.Len(cmd.Env, 0)
+	cmd.Env["one"] = "one"
+	s.NoError(cmd.doExpansions(util.NewExpansions(map[string]string{"two": "two"})))
+	s.Len(cmd.Env, 1)
+	s.NotEqual("two", cmd.Env["two"])
+	s.Equal("one", cmd.Env["one"])
+}
+
+func (s *execCmdSuite) TestExpansionsEnvOptionEnabled() {
+	cmd := &subprocessExec{
+		Env:                map[string]string{},
+		WorkingDir:         testutil.GetDirectoryOfFile(),
+		AddExpansionsToEnv: true,
+	}
+
+	s.NoError(cmd.doExpansions(util.NewExpansions(map[string]string{})))
+	s.Len(cmd.Env, 0)
+	cmd.Env["one"] = "one"
+	s.Equal("one", cmd.Env["one"])
+	s.NoError(cmd.doExpansions(util.NewExpansions(map[string]string{"two": "two", "one": "1"})))
+	s.Len(cmd.Env, 2)
+	s.Equal("two", cmd.Env["two"])
+	s.Equal("1", cmd.Env["one"])
 }
 
 func TestAddTemp(t *testing.T) {

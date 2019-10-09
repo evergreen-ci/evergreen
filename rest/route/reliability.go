@@ -51,13 +51,6 @@ func getDefaultBeforeDate() string {
 	return before.Format(statsAPIDateFormat)
 }
 
-// Get the default after_date.
-func getDefaultAfterDate() string {
-	after := time.Now().UTC()
-	after = after.Add(-20 * dayInHours).Truncate(dayInHours)
-	return after.Format(statsAPIDateFormat)
-}
-
 // ParseCommonFilter wraps StatsHandler.ParseCommonFilter and copies the Statshandler
 // struct contents into the TaskReliabilityHandler filter fields.
 func (trh *taskReliabilityHandler) ParseCommonFilter(vals url.Values) error {
@@ -67,11 +60,34 @@ func (trh *taskReliabilityHandler) ParseCommonFilter(vals url.Values) error {
 		trh.filter.BuildVariants = trh.StatsHandler.filter.BuildVariants
 		trh.filter.Distros = trh.StatsHandler.filter.Distros
 		trh.filter.GroupNumDays = trh.StatsHandler.filter.GroupNumDays
-		trh.filter.GroupBy = trh.StatsHandler.filter.GroupBy
 		trh.filter.StartAt = trh.StatsHandler.filter.StartAt
 		trh.filter.Sort = trh.StatsHandler.filter.Sort
 	}
 	return err
+}
+
+// readGroupBy parses a group_by parameter value and returns the corresponding GroupBy struct.
+func (trh *taskReliabilityHandler) readGroupBy(groupByValue string) (stats.GroupBy, error) {
+	switch groupByValue {
+
+	// Task query parameters.
+	case StatsAPITaskGroupByDistro:
+		return stats.GroupByDistro, nil
+	case StatsAPITaskGroupByVariant:
+		return stats.GroupByVariant, nil
+	case StatsAPITaskGroupByTask:
+		return stats.GroupByTask, nil
+
+	// Default value.
+	case "":
+		return stats.GroupByTask, nil
+
+	default:
+		return stats.GroupBy(""), gimlet.ErrorResponse{
+			Message:    "Invalid group_by value",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
 }
 
 // parseStatsFilter parses the query parameter values and fills the struct filter field.
@@ -82,6 +98,13 @@ func (trh *taskReliabilityHandler) parseTaskReliabilityFilter(vals url.Values) e
 	if err != nil {
 		return err
 	}
+
+	// group_by
+	trh.filter.GroupBy, err = trh.readGroupBy(vals.Get("group_by"))
+	if err != nil {
+		return err
+	}
+
 	// limit
 	trh.filter.Limit, err = trh.readInt(vals.Get("limit"), 1, reliabilityAPIMaxNumTasksLimit, reliabilityAPIMaxNumTasksLimit)
 	if err != nil {
@@ -117,7 +140,7 @@ func (trh *taskReliabilityHandler) parseTaskReliabilityFilter(vals url.Values) e
 	}
 
 	// after_date
-	afterDate := trh.readString(vals.Get("after_date"), getDefaultAfterDate())
+	afterDate := trh.readString(vals.Get("after_date"), beforeDate)
 	trh.filter.AfterDate, err = time.ParseInLocation(statsAPIDateFormat, afterDate, time.UTC)
 	if err != nil {
 		return gimlet.ErrorResponse{

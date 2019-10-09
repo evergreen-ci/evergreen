@@ -16,6 +16,7 @@ type User interface {
 	Username() string
 	GetAPIKey() string
 	Roles() []string
+	HasPermission(string, string, int) (bool, error)
 }
 
 // Authenticator represents a service that answers specific
@@ -54,4 +55,37 @@ type UserManager interface {
 
 	// Log out user or all users
 	ClearUser(user User, all bool) error
+
+	// Returns the groups or roles to which a user belongs
+	GetGroupsForUser(string) ([]string, error)
+}
+
+// RoleManager provides methods to get and set role data and is often used
+// along with Users to check permissions
+type RoleManager interface {
+	// GetAllRoles returns all roles known by the manager
+	GetAllRoles() ([]Role, error)
+
+	// GetAllRoles returns roles matching the specified IDs
+	GetRoles([]string) ([]Role, error)
+
+	// DeleteRole deletes a single role
+	DeleteRole(string) error
+
+	// UpdateRole adds the given role to the manager if it does not exist, or updates the role
+	// with the same ID
+	UpdateRole(Role) error
+
+	// FilterForResource takes a list of roles and returns the subset of those applicable for a certain resource
+	FilterForResource([]Role, string) ([]Role, error)
+
+	// AddScope adds a scope to the manager
+	AddScope(Scope) error
+
+	// DeleteScope removes a scope from the manager
+	DeleteScope(string) error
+
+	// RegisterPermissions adds a list of strings to the role manager as valid permission keys. Returns an
+	// error if the same permission is registered more than once
+	RegisterPermissions([]string) error
 }

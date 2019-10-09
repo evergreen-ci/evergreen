@@ -263,7 +263,7 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function(
         baseSvc.putResource(resource, [], config, callbacks);
     };
 
-    service.terminateHost = function(action, hostId, data, callbacks) {
+    service.updateHostStatus = function(action, hostId, data, callbacks) {
         var config = {
             data: data
         };
@@ -282,13 +282,13 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function(
         baseSvc.postResource(resource, [], config, callbacks);
     };
 
-    service.extendHostExpiration = function(action, hostId, addHours, data, callbacks) {
+    service.extendHostExpiration = function(action, hostId, newExpiration, data, callbacks) {
         var config = {
             data: data
         };
         config.data['action'] = action;
         config.data['host_id'] = hostId;
-        config.data['add_hours'] = addHours;
+        config.data['expiration'] = newExpiration;
         baseSvc.postResource(resource, [], config, callbacks);
     };
 

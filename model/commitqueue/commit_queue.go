@@ -2,9 +2,12 @@ package commitqueue
 
 import (
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -25,18 +28,20 @@ func (m *Module) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(m) }
 func (m *Module) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, m) }
 
 type CommitQueueItem struct {
-	Issue   string   `bson:"issue"`
-	Version string   `bson:"version,omitempty"`
-	Modules []Module `bson:"modules"`
+	Issue       string    `bson:"issue"`
+	Version     string    `bson:"version,omitempty"`
+	EnqueueTime time.Time `bson:"enqueue_time"`
+	Modules     []Module  `bson:"modules"`
 }
 
 func (i *CommitQueueItem) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(i) }
 func (i *CommitQueueItem) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, i) }
 
 type CommitQueue struct {
-	ProjectID  string            `bson:"_id"`
-	Processing bool              `bson:"processing"`
-	Queue      []CommitQueueItem `bson:"queue,omitempty"`
+	ProjectID             string            `bson:"_id"`
+	Processing            bool              `bson:"processing"`
+	ProcessingUpdatedTime time.Time         `bson:"processing_updated_time"`
+	Queue                 []CommitQueueItem `bson:"queue,omitempty"`
 }
 
 func (q *CommitQueue) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(q) }
@@ -52,9 +57,17 @@ func (q *CommitQueue) Enqueue(item CommitQueueItem) (int, error) {
 		return position + 1, errors.New("item already in queue")
 	}
 
+	item.EnqueueTime = time.Now()
 	if err := add(q.ProjectID, q.Queue, item); err != nil {
 		return 0, errors.Wrapf(err, "can't add '%s' to queue '%s'", item.Issue, q.ProjectID)
 	}
+	grip.Info(message.Fields{
+		"source":       "commit queue",
+		"item_id":      item.Issue,
+		"project_id":   q.ProjectID,
+		"queue_length": len(q.Queue),
+		"message":      "enqueued commit queue item",
+	})
 
 	q.Queue = append(q.Queue, item)
 	return len(q.Queue), nil
@@ -131,6 +144,7 @@ func SetupEnv(env evergreen.Environment) error {
 	if env == nil {
 		return errors.New("no environment configured")
 	}
+
 	settings := env.Settings()
 	githubToken, err := settings.GetGithubOauthToken()
 	if err == nil && len(githubToken) > 0 {

@@ -135,8 +135,10 @@ type Connector interface {
 	// started by
 	FindHostByIdWithOwner(string, gimlet.User) (*host.Host, error)
 
+	FindHostsByDistroID(string) ([]host.Host, error)
+
 	// NewIntentHost is a method to insert an intent host given a distro and the name of a saved public key
-	NewIntentHost(string, string, string, string, *user.DBUser) (*host.Host, error)
+	NewIntentHost(*restModel.HostRequestOptions, *user.DBUser) (*host.Host, error)
 
 	// FetchContext is a method to fetch a context given a series of identifiers.
 	FetchContext(string, string, string, string, string) (model.Context, error)
@@ -146,7 +148,7 @@ type Connector interface {
 	// FindAllDistros is a method to find a sorted list of all distros.
 	FindAllDistros() ([]distro.Distro, error)
 	// UpdateDistro is a method that updates a given distro
-	UpdateDistro(distro *distro.Distro) error
+	UpdateDistro(*distro.Distro, *distro.Distro) error
 	// FindDistroById is a method to delete the distro matching the given distroId.
 	DeleteDistroById(string) error
 	// CreateDistro is a method to insert a given distro.
@@ -218,7 +220,6 @@ type Connector interface {
 	DeletePublicKey(*user.DBUser, string) error
 	UpdateSettings(*user.DBUser, user.UserSettings) error
 	SubmitFeedback(restModel.APIFeedbackSubmission) error
-	GetAllRoles() ([]restModel.APIRole, error)
 
 	AddPatchIntent(patch.Intent, amboy.Queue) error
 

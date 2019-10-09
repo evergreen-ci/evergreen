@@ -12,9 +12,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -104,7 +106,7 @@ func (h *distroIDChangeSetupHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	d.Setup = h.Setup
-	if err = h.sc.UpdateDistro(d); err != nil {
+	if err = h.sc.UpdateDistro(d, d); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() by distro id '%s'", h.distroID))
 	}
 
@@ -202,7 +204,7 @@ func (h *distroIDChangeTeardownHandler) Run(ctx context.Context) gimlet.Responde
 	}
 
 	d.Teardown = h.Teardown
-	if err = h.sc.UpdateDistro(d); err != nil {
+	if err = h.sc.UpdateDistro(d, d); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() by distro id '%s'", h.distroID))
 	}
 
@@ -287,7 +289,7 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// Existing resource
 	if original != nil {
-		if err = h.sc.UpdateDistro(distro); err != nil {
+		if err = h.sc.UpdateDistro(original, distro); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() distro with distro id '%s'", h.distroID))
 		}
 		event.LogDistroModified(h.distroID, user.Username(), distro)
@@ -390,13 +392,13 @@ func (h *distroIDPatchHandler) Parse(ctx context.Context, r *http.Request) error
 
 // Run updates a distro by id.
 func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
-	d, err := h.sc.FindDistroById(h.distroID)
+	old, err := h.sc.FindDistroById(h.distroID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
 
 	apiDistro := &model.APIDistro{}
-	if err = apiDistro.BuildFromService(d); err != nil {
+	if err = apiDistro.BuildFromService(old); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
 	}
 
@@ -409,7 +411,7 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return error
 	}
 
-	if err = h.sc.UpdateDistro(d); err != nil {
+	if err = h.sc.UpdateDistro(old, d); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() by distro id '%s'", h.distroID))
 	}
 
@@ -547,4 +549,68 @@ func validateDistro(ctx context.Context, apiDistro *model.APIDistro, resourceID 
 	}
 
 	return d, nil
+}
+
+///////////////////////////////////////////////////////////////////////
+//
+// POST /rest/v2/distros/{distro_id}/execute
+
+type distroIDExecuteHandler struct {
+	Script   string
+	distroID string
+	sc       data.Connector
+	env      evergreen.Environment
+}
+
+func makeDistroExecute(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+	return &distroIDExecuteHandler{
+		sc:  sc,
+		env: env,
+	}
+}
+
+func (h *distroIDExecuteHandler) Factory() gimlet.RouteHandler {
+	return &distroIDExecuteHandler{
+		sc:  h.sc,
+		env: h.env,
+	}
+}
+
+// Parse fetches the distroId and JSON payload from the http request.
+func (h *distroIDExecuteHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.distroID = gimlet.GetVars(r)["distro_id"]
+	body := util.NewRequestReader(r)
+	defer body.Close()
+
+	if err := util.ReadJSONInto(body, h); err != nil {
+		return errors.Wrap(err, "Argument read error")
+	}
+
+	if h.Script == "" {
+		return errors.New("cannot execute an empty script")
+	}
+
+	return nil
+}
+
+// Run enqueues a job to run a script on all hosts (excluding spawn hosts) that
+// are not down for the given given distro ID.
+func (h *distroIDExecuteHandler) Run(ctx context.Context) gimlet.Responder {
+	// enqueue job - per host, per distro?
+	hosts, err := h.sc.FindHostsByDistroID(h.distroID)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "could not find hosts for the distro %s", h.distroID))
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for _, host := range hosts {
+		const tsFormat = "2006-01-02.15-04-05"
+		ts := util.RoundPartOfMinute(0).Format(tsFormat)
+		catcher.Wrapf(h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, h.Script, ts)), "problem enqueueing job to run script on host %s", host.Id)
+	}
+	if catcher.HasErrors() {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "problem enqueueing jobs to run script on hosts"))
+	}
+
+	return gimlet.NewJSONResponse(struct{}{})
 }
