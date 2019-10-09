@@ -98,13 +98,6 @@ func TestJasperCommands(t *testing.T) {
 				assert.Contains(t, cmds, expectedCmd)
 			}
 		},
-		"FetchJasperCommandWithJasperPath": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			expectedCmds := h.fetchJasperCommands(settings.HostJasper)
-			cmds := h.FetchJasperCommandWithJasperPath(settings.HostJasper)
-			for _, expectedCmd := range expectedCmds {
-				assert.Contains(t, cmds, expectedCmd)
-			}
-		},
 		"BootstrapScript": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			expectedCmds := []string{h.FetchJasperCommand(settings.HostJasper), h.ForceReinstallJasperCommand(settings)}
 			expectedPreCmds := []string{"foo", "bar"}
@@ -220,16 +213,6 @@ func TestJasperCommandsWindows(t *testing.T) {
 				assert.Contains(t, cmds, expectedCmd)
 			}
 		},
-		"FetchJasperCommandWithJasperPath": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			expectedCmds := h.fetchJasperCommands(settings.HostJasper)
-			for i := range expectedCmds {
-				expectedCmds[i] = fmt.Sprintf("PATH=%s %s", "/bin", expectedCmds[i])
-			}
-			cmds := h.FetchJasperCommandWithJasperPath(settings.HostJasper)
-			for _, expectedCmd := range expectedCmds {
-				assert.Contains(t, cmds, expectedCmd)
-			}
-		},
 		"BootstrapScript": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			require.NoError(t, h.Insert())
 
@@ -246,7 +229,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 
 			expectedCmds := []string{
 				writeCredentialsCmd,
-				h.FetchJasperCommandWithJasperPath(settings.HostJasper),
+				h.FetchJasperCommand(settings.HostJasper),
 				h.ForceReinstallJasperCommand(settings),
 			}
 

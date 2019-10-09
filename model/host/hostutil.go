@@ -80,28 +80,6 @@ func (h *Host) CurlCommand(settings *evergreen.Settings) string {
 	return strings.Join(h.curlCommands(settings, ""), " && ")
 }
 
-// commandsWithJasperPath returns the shell commands with the required path for
-// Jasper to find the executables.
-func (h *Host) commandsWithJasperPath(cmds []string) []string {
-	if !h.Distro.IsWindows() {
-		return cmds
-	}
-
-	path := "/bin"
-	cmdsWithPath := make([]string, len(cmds))
-	for i := 0; i < len(cmds); i++ {
-		cmdsWithPath[i] = fmt.Sprintf("PATH=%s %s", path, cmds[i])
-	}
-	return cmdsWithPath
-}
-
-// CurlCommandWithPath is the same as CurlCommand but uses the given path to
-// find executables.
-func (h *Host) CurlCommandWithJasperPath(settings *evergreen.Settings) string {
-	cmds := h.curlCommands(settings, "")
-	return strings.Join(h.commandsWithJasperPath(cmds), " && ")
-}
-
 // CurlCommandWithRetry is the same as CurlCommand but retries the request.
 func (h *Host) CurlCommandWithRetry(settings *evergreen.Settings, numRetries, maxRetrySecs int) string {
 	var retryArgs string
@@ -358,13 +336,6 @@ func (h *Host) FetchJasperCommand(config evergreen.HostJasperConfig) string {
 	return strings.Join(h.fetchJasperCommands(config), " && ")
 }
 
-// FetchJasperCommandWithPath is the same as FetchJasperCommand but sets the
-// PATH variable to path for each command.
-func (h *Host) FetchJasperCommandWithJasperPath(config evergreen.HostJasperConfig) string {
-	cmds := h.fetchJasperCommands(config)
-	return strings.Join(h.commandsWithJasperPath(cmds), " && ")
-}
-
 func (h *Host) fetchJasperCommands(config evergreen.HostJasperConfig) []string {
 	downloadedFile := h.jasperDownloadedFileName(config)
 	extractedFile := h.jasperBinaryFileName(config)
@@ -410,7 +381,7 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credenti
 	if h.Distro.IsWindows() {
 		bashCmds = append(bashCmds,
 			writeCredentialsCmd,
-			h.FetchJasperCommandWithJasperPath(settings.HostJasper),
+			h.FetchJasperCommand(settings.HostJasper),
 			h.ForceReinstallJasperCommand(settings),
 		)
 		bashCmds = append(bashCmds, postJasperSetup...)
@@ -425,7 +396,7 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credenti
 			"<powershell>",
 			setupUserCmds},
 			preJasperSetup...),
-			fmt.Sprintf("%s -c %s", h.Distro.BootstrapSettings.ShellPath, bashCmdsLiteral),
+			fmt.Sprintf("%s -l -c %s", h.Distro.BootstrapSettings.ShellPath, bashCmdsLiteral),
 			"</powershell>",
 		)
 

@@ -205,13 +205,8 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, settings *everg
 	})
 
 	opts := &options.Create{
-		Args: []string{filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath), "-l", "-c", j.host.CurlCommandWithJasperPath(settings)},
-		// kim: TODO: see if this can be removed.
-		// WorkingDirectory: j.host.Distro.HomeDir(),
+		Args: []string{filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath), "-l", "-c", j.host.CurlCommand(settings)},
 	}
-	// if j.host.Distro.IsWindows() {
-	//     opts.WorkingDirectory = filepath.Join(j.host.Distro.BootstrapSettings.RootDir, opts.WorkingDirectory)
-	// }
 	output, err := j.host.RunJasperProcess(ctx, settings, opts)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
