@@ -157,6 +157,15 @@ LOOP:
 				grip.Notice("Next task response indicates agent should exit")
 				return nil
 			}
+			// if the host's current task group is finished we teardown
+			if nextTask.ShouldTeardownGroup {
+				a.runPostGroupCommands(ctx, tc)
+				needPostGroup = false
+				// Running the post group commands implies exiting the group, so
+				// destroy prior task information.
+				tc = &taskContext{}
+				continue LOOP
+			}
 			if nextTask.TaskId != "" {
 				if nextTask.TaskSecret == "" {
 					grip.Critical(message.WrapError(err, message.Fields{
@@ -253,9 +262,6 @@ func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTas
 func nextTaskHasDifferentTaskGroupOrBuild(nextTask *apimodels.NextTaskResponse, tc *taskContext) bool {
 	if tc.taskConfig == nil ||
 		nextTask.TaskGroup == "" ||
-		nextTask.TaskGroup != tc.taskGroup ||
-		// TODO The Version case is redundant, and can be removed after agents roll over after a deploy.
-		nextTask.Version != tc.taskConfig.Task.Version ||
 		nextTask.Build != tc.taskConfig.Task.BuildId {
 		return true
 	}
