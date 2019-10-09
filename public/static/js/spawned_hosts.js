@@ -8,6 +8,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     // variables for spawning a new host
     $scope.spawnableDistros = [];
     $scope.selectedDistro = {};
+    $scope.selectedInstanceType = "";
     $scope.userKeys = [];
     $scope.selectedKey = {};
     $scope.spawnInfo = {};
@@ -15,6 +16,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     $scope.maxHostsPerUser = $window.maxHostsPerUser;
     $scope.spawnReqSent = false;
     $scope.useTaskConfig = false;
+    $scope.allowedInstanceTypes = [];
 
     // max of 7 days time to expiration
     $scope.maxHoursToExpiration = 24*7;
@@ -134,6 +136,19 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       );
     };
 
+    $scope.fetchAllowedInstanceTypes = function() {
+      mciSpawnRestService.getAllowedInstanceTypes(
+        'types', $scope.curHostData.host_type, {}, {
+          success: function(resp) {
+            $scope.allowedInstanceTypes = resp.data;
+          },
+          error: function(resp) {
+            notificationService.pushNotification('Error fetching allowed instance types: ' + resp.data.error, 'errorHeader')
+          }
+        }
+      )
+    }
+
     $scope.fetchUserKeys = function() {
       mciSpawnRestService.getUserKeys(
         'keys', {}, {
@@ -201,6 +216,29 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
         }
       );
     };
+
+    $scope.updateInstanceType = function() {
+      // Do nothing if no instance type selected
+      if ($scope.selectedInstanceType.length == 0) {
+        return
+      }
+      // Do nothing if host is not stopped
+      if ($scope.curHostData.status != "stopped") {
+        notificationService.pushNotification('Host must be stopped before modifying instance type', 'errorHeader');
+        return
+      }
+      mciSpawnRestService.updateInstanceType(
+        'updateInstanceType',
+        $scope.curHostData.id, $scope.selectedInstanceType, {}, {
+          success: function(resp) {
+            window.location.href = "/spawn";
+          },
+          error: function(resp) {
+            notificationService.pushNotification('Error setting new instance type: ' + resp.data.error, 'errorHeader')
+          }
+        }
+      )
+    }
 
     $scope.updateHostStatus = function(action) {
       mciSpawnRestService.updateHostStatus(
@@ -279,6 +317,11 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       $scope.spawnInfo.distroId = spawnableDistro.name;
     };
 
+    // set the spawn host update instance type based on user selection
+    $scope.setInstanceType = function(instanceType) {
+      $scope.selectedInstanceType = instanceType
+    }
+
     // toggle spawn key based on user selection
     $scope.updateSelectedKey = function(selectedKey) {
       $scope.selectedKey.name = selectedKey.name;
@@ -336,6 +379,8 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       if (host.distro.arch.indexOf('win') != -1) {
         $scope.curHostData.isWinHost = true;
       }
+      $scope.selectedInstanceType = $scope.curHostData.instance_type
+      $scope.fetchAllowedInstanceTypes();
     };
 
     initializeModal = function(modal, title, action) {

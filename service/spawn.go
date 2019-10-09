@@ -24,6 +24,7 @@ import (
 
 var (
 	HostPasswordUpdate         = "updateRDPPassword"
+	HostInstanceTypeUpdate     = "updateInstanceType"
 	HostExpirationExtension    = "extendHostExpiration"
 	HostTerminate              = "terminate"
 	HostStop                   = "stop"
@@ -77,6 +78,17 @@ func (uis *UIServer) getSpawnedHosts(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) getUserPublicKeys(w http.ResponseWriter, r *http.Request) {
 	user := MustHaveUser(r)
 	gimlet.WriteJSON(w, user.PublicKeys())
+}
+
+func (uis *UIServer) getAllowedInstanceTypes(w http.ResponseWriter, r *http.Request) {
+	provider := r.FormValue("provider")
+	if len(provider) > 0 {
+		if cloud.IsEc2Provider(provider) {
+			gimlet.WriteJSON(w, uis.Settings.Providers.AWS.AllowedInstanceTypes)
+			return
+		}
+	}
+	gimlet.WriteJSON(w, []string{})
 }
 
 func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request) {
@@ -272,6 +284,18 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		gimlet.WriteJSON(w, "Successfully updated host password")
+		return
+
+	case HostInstanceTypeUpdate:
+		instanceType := restModel.FromAPIString(updateParams.InstanceType)
+		if err := cloud.ModifySpawnHost(ctx, h, host.HostModifyOptions{
+			InstanceType: instanceType,
+		}, env.Settings()); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+		gimlet.WriteJSON(w, "Successfully update host instance type")
+		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("Instance type successfully set to '%s'", instanceType)))
 		return
 
 	case HostExpirationExtension:
