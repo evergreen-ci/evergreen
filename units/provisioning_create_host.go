@@ -118,7 +118,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 		return
 	}
 
-	if j.host.ParentID == "" && !j.host.SpawnOptions.SpawnedByTask {
+	if j.host.ParentID == "" && !j.host.SpawnOptions.SpawnedByTask && !j.host.UserHost {
 		var numHosts int
 		numHosts, err = host.CountRunningHosts(j.host.Distro.Id)
 		if err != nil {
