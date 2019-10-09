@@ -61,7 +61,7 @@
             </md-button>
         </div>
       </section>
-      <section layout="row" flex style="white-space: nowrap">
+      <section layout="row" flex ng-show="curHostData.host_type == 'ec2-ondemand' && curHostData.instance_type != ''" style="white-space: nowrap">
         <div flex="85">
           <strong>Instance Type:</strong>
           <span class="dropdown">
