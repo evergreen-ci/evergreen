@@ -236,7 +236,6 @@ func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context, settings *ev
 
 	opts := &options.Create{
 		Args: []string{filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath), "-l", "-c", j.host.SetupCommand()},
-		// WorkingDirectory: j.host.Distro.HomeDir(),
 	}
 	output, err := j.host.RunJasperProcess(ctx, settings, opts)
 	if err != nil {

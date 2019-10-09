@@ -925,15 +925,15 @@ func TestCreateServicePassword(t *testing.T) {
 		assert.NoError(t, db.Clear(Collection))
 	}()
 	h := &Host{Distro: distro.Distro{
-		Arch: distro.ArchWindowsAmd64,
+		Id: "foo",
 	}}
 	require.NoError(t, h.Insert())
 	require.NoError(t, h.CreateServicePassword())
-	password := h.ServicePassword
-	assert.NotEmpty(t, password)
+	assert.True(t, ValidateRDPPassword(h.ServicePassword))
+	assert.NotEmpty(t, h.ServicePassword)
 	dbHost, err := FindOneId(h.Id)
 	require.NoError(t, err)
-	assert.Equal(t, password, dbHost.ServicePassword)
+	assert.Equal(t, h.ServicePassword, dbHost.ServicePassword)
 }
 
 func TestSetupServiceUserCommands(t *testing.T) {

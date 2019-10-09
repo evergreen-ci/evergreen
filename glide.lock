@@ -108,8 +108,6 @@ imports:
     version: 11cf6ea5d3e9afda34846e1db511aa218049471c
   - name: github.com/Masterminds/glide
     version: 23f6a9d8e774f597faabae8b58b8c6020b3f79ef
-  - name: github.com/sethvargo/go-password
-    version: 68ac5879751a7105834296859f8c1bf70b064675
 
   - name: github.com/mongodb/grip
     version: 1108173df60c955f82a84cd1ef932af1ed6882a4

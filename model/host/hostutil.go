@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net"
 	"os/exec"
 	"path/filepath"
@@ -25,10 +26,14 @@ import (
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/rpc"
 	"github.com/pkg/errors"
-	"github.com/sethvargo/go-password/password"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+// SetupCommand returns the command to run the host setup script.
 func (h *Host) SetupCommand() string {
 	cmd := fmt.Sprintf("cd %s && ./%s host setup", h.Distro.HomeDir(), h.Distro.BinaryName())
 
@@ -495,28 +500,26 @@ SeServiceLogonRight = $($currentSetting)
 `}, "\r\n"), nil
 }
 
+const passwordCharset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
+
+func generatePassword(length int) string {
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = passwordCharset[rand.Int()%len(passwordCharset)]
+	}
+	return string(b)
+}
+
 // CreateServicePassword creates the password for the host's service user.
 func (h *Host) CreateServicePassword() error {
-	var pwd string
-	var err error
+	var password string
 	var valid bool
 	for i := 0; i < 1000; i++ {
-		if err != nil {
-			return errors.Wrap(err, "could not initialize password generator")
-		}
-		// The password must be <14 characters to avoid an cmd.exe input prompt.
-		// It no special symbols to avoid shell interpretation by either
-		// PowerShell and cmd.exe.
-		pwd, err = password.Generate(12, 3, 0, false, false)
-		if err != nil {
-			return errors.Wrap(err, "problem generating password")
-		}
-		// The password must have at least one uppercase letter, one lowercase
-		// letter, and one number to meet Windows password requirements.
-		if strings.ToLower(pwd) == pwd {
+		password = generatePassword(12)
+		if strings.ToLower(password) == password {
 			continue
 		}
-		if valid = ValidateRDPPassword(pwd); valid {
+		if valid = ValidateRDPPassword(password); valid {
 			break
 		}
 	}
@@ -524,14 +527,14 @@ func (h *Host) CreateServicePassword() error {
 		return errors.New("could not generate valid service password")
 	}
 
-	err = UpdateOne(
+	err := UpdateOne(
 		bson.M{IdKey: h.Id},
-		bson.M{"$set": bson.M{ServicePasswordKey: pwd}},
+		bson.M{"$set": bson.M{ServicePasswordKey: password}},
 	)
 	if err != nil {
 		return errors.Wrap(err, "could not update service password")
 	}
-	h.ServicePassword = pwd
+	h.ServicePassword = password
 	return nil
 }
 
