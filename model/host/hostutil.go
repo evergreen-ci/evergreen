@@ -29,10 +29,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
-
 // SetupCommand returns the command to run the host setup script.
 func (h *Host) SetupCommand() string {
 	cmd := fmt.Sprintf("cd %s && ./%s host setup", h.Distro.HomeDir(), h.Distro.BinaryName())
