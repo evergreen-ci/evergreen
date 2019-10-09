@@ -8,6 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
@@ -279,6 +281,105 @@ func TestBuildMarkAborted(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestPreventMergeForItemPR(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection, commitqueue.Collection, ProjectRefCollection))
+	projectRef := &ProjectRef{
+		Identifier: "mci",
+		Owner:      "evergreen-ci",
+		Repo:       "evergreen",
+		Branch:     "master",
+		CommitQueue: CommitQueueParams{
+			Enabled:   true,
+			PatchType: commitqueue.PRPatchType,
+		},
+	}
+	require.NoError(t, projectRef.Insert())
+	cq := &commitqueue.CommitQueue{ProjectID: "mci"}
+	require.NoError(t, commitqueue.InsertQueue(cq))
+
+	patchID := "abcdef012345"
+	patchSub := event.NewPatchOutcomeSubscription(patchID, event.NewGithubMergeSubscriber(event.GithubMergeSubscriber{}))
+	require.NoError(t, patchSub.Upsert())
+
+	item := commitqueue.CommitQueueItem{
+		Issue:   "1234",
+		Version: patchID,
+	}
+	_, err := cq.Enqueue(item)
+	require.NoError(t, err)
+
+	assert.NoError(t, preventMergeForItem(projectRef.Identifier, &item))
+	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: item.Version}})
+	assert.NoError(t, err)
+	assert.Empty(t, subscriptions)
+}
+
+func TestPreventMergeForItemCLI(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection, task.Collection, VersionCollection, commitqueue.Collection, ProjectRefCollection))
+	projectRef := &ProjectRef{
+		Identifier: "mci",
+		Owner:      "evergreen-ci",
+		Repo:       "evergreen",
+		Branch:     "master",
+		CommitQueue: CommitQueueParams{
+			Enabled:   true,
+			PatchType: commitqueue.CLIPatchType,
+		},
+	}
+	require.NoError(t, projectRef.Insert())
+	cq := &commitqueue.CommitQueue{ProjectID: "mci"}
+	require.NoError(t, commitqueue.InsertQueue(cq))
+
+	patchID := "abcdef012345"
+	patchSub := event.NewPatchOutcomeSubscription(patchID, event.NewCommitQueueDequeueSubscriber())
+	require.NoError(t, patchSub.Upsert())
+
+	item := commitqueue.CommitQueueItem{
+		Issue: patchID,
+	}
+	_, err := cq.Enqueue(item)
+	require.NoError(t, err)
+
+	mergeTask := &task.Task{Id: "t1", CommitQueueMerge: true, Version: patchID}
+	require.NoError(t, mergeTask.Insert())
+
+	// Without a corresponding version
+	assert.NoError(t, preventMergeForItem(projectRef.Identifier, &item))
+	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
+	assert.NoError(t, err)
+	assert.NotEmpty(t, subscriptions)
+
+	mergeTask, err = task.FindOneId("t1")
+	assert.NoError(t, err)
+	assert.Equal(t, int64(0), mergeTask.Priority)
+
+	// With a corresponding version
+	version := Version{Id: patchID}
+	require.NoError(t, version.Insert())
+
+	assert.NoError(t, preventMergeForItem(projectRef.Identifier, &item))
+	subscriptions, err = event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
+	assert.NoError(t, err)
+	assert.Empty(t, subscriptions)
+
+	mergeTask, err = task.FindOneId("t1")
+	assert.NoError(t, err)
+	assert.Equal(t, int64(-1), mergeTask.Priority)
+}
+
+func TestClearVersionPatchSubscriber(t *testing.T) {
+	require.NoError(t, db.Clear(event.SubscriptionsCollection))
+
+	patchID := "abcdef012345"
+	patchSub := event.NewPatchOutcomeSubscription(patchID, event.NewCommitQueueDequeueSubscriber())
+	assert.NoError(t, patchSub.Upsert())
+
+	assert.NoError(t, clearVersionPatchSubscriber(patchID, event.CommitQueueDequeueSubscriberType))
+	subs, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
+	assert.NoError(t, err)
+	assert.Empty(t, subs)
 }
 
 func TestBuildSetActivated(t *testing.T) {

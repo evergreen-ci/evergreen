@@ -252,6 +252,12 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+			if projCtx.ProjectRef.CommitQueue.Enabled {
+				_, err := model.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier, projCtx.Version.Id)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+				}
+			}
 		}
 		if err = model.SetVersionActivation(projCtx.Version.Id, jsonMap.Active, user.Id); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
