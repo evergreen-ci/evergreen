@@ -76,8 +76,10 @@ mciModule.controller('AdminOptionsCtrl', [
                     $scope.closeAdminModal()
                     $rootScope.$broadcast("version_updated", data)
                     notifier.pushNotification(
-                      "Version " + (active ? "scheduled." : "unscheduled.") +
-                      (abort ? "\n In progress tasks will be aborted." : ""),
+                      "Version " + (active ? "scheduled." : "unscheduled") +
+                      (!active && $scope.version.Version.requester === "merge_test" ? " and removed from commit queue." : ".") +
+                      (abort ? "\n In progress tasks will be aborted." : "")
+                      ,
                       'notifyHeader', 'success');
                 },
                 error: function(jqXHR, status, errorThrown) {
