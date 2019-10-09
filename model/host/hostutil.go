@@ -516,9 +516,6 @@ func (h *Host) CreateServicePassword() error {
 	var valid bool
 	for i := 0; i < 1000; i++ {
 		password = generatePassword(12)
-		if strings.ToLower(password) == password {
-			continue
-		}
 		if valid = ValidateRDPPassword(password); valid {
 			break
 		}
