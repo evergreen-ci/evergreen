@@ -2028,7 +2028,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 
 	details := &apimodels.TaskEndDetail{
 		Status: evergreen.TaskFailed,
-		Type:   "system",
+		Type:   evergreen.CommandTypeSystem,
 	}
 
 	updates := StatusChanges{}

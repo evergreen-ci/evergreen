@@ -421,7 +421,7 @@ func TestCustomFields(t *testing.T) {
 				BuildVariant: "build12",
 				DisplayName:  taskName,
 				Details: apimodels.TaskEndDetail{
-					Type: "system",
+					Type: evergreen.CommandTypeSystem,
 				},
 				Project:  projectId,
 				Revision: versionRevision,

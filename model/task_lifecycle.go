@@ -964,7 +964,7 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 	t.Details = apimodels.TaskEndDetail{
 		Description: evergreen.TaskDescriptionStranded,
 		Status:      evergreen.TaskFailed,
-		Type:        "system",
+		Type:        evergreen.CommandTypeSystem,
 	}
 
 	if err = t.MarkSystemFailed(); err != nil {
