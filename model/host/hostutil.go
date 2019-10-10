@@ -370,7 +370,7 @@ func (h *Host) jasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 
 // BootstrapScript creates the user data script to bootstrap the host.
 func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credentials, preJasperSetup, postJasperSetup []string) (string, error) {
-	bashCmds := append([]string{"set -o errexit", "set -o verbose"}, preJasperSetup...)
+	bashPrefix := []string{"set -o errexit", "set -o verbose"}
 
 	writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 	if err != nil {
@@ -383,25 +383,36 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credenti
 			return "", errors.Wrap(err, "could not get command to set up service user")
 		}
 
-		bashCmds = append(bashCmds,
+		setupJasperCmds := []string{
 			writeCredentialsCmd,
 			h.FetchJasperCommand(settings.HostJasper),
 			h.ForceReinstallJasperCommand(settings),
-		)
+		}
+
+		bashCmds := append(preJasperSetup, strings.Join(setupJasperCmds, "\n"))
 		bashCmds = append(bashCmds, postJasperSetup...)
 
-		bashCmdsLiteral := util.PowerShellQuotedString(strings.Join(bashCmds, "\n"))
+		for i := range bashCmds {
+			bashCmds[i] = strings.Join(append(bashPrefix, bashCmds[i]), "\n")
+			bashCmds[i] = fmt.Sprintf("%s -l -c %s", filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.ShellPath), util.PowerShellQuotedString(bashCmds[i]))
+		}
 
-		powershellCmds := append([]string{
+		// bashCmdsLiteral := util.PowerShellQuotedString(strings.Join(bashCmds, "\n"))
+
+		powershellCmds := append(append([]string{
 			"<powershell>",
+			// kim: TODO: remove sleep
+			"Start-Sleep -Seconds 60",
 			setupUserCmds},
-			fmt.Sprintf("%s -l -c %s", filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.ShellPath), bashCmdsLiteral),
+			bashCmds...),
+			// fmt.Sprintf("%s -l -c %s", filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.ShellPath), bashCmdsLiteral),
 			"</powershell>",
 		)
 
 		return strings.Join(powershellCmds, "\n"), nil
 	}
 
+	bashCmds := append(bashPrefix, preJasperSetup...)
 	bashCmds = append(bashCmds, h.FetchJasperCommand(settings.HostJasper), writeCredentialsCmd, h.ForceReinstallJasperCommand(settings))
 	bashCmds = append(bashCmds, postJasperSetup...)
 
