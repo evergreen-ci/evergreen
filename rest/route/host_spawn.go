@@ -442,8 +442,9 @@ func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 // DELETE /rest/v2/volumes/{volume_id}
 
 type deleteVolumeHandler struct {
-	volumeID string
-	sc       data.Connector
+	sc data.Connector
+
+	VolumeID string
 }
 
 func makeDeleteVolume(sc data.Connector) gimlet.RouteHandler {
@@ -461,7 +462,7 @@ func (h *deleteVolumeHandler) Factory() gimlet.RouteHandler {
 func (h *deleteVolumeHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 
-	h.volumeID, err = validateID(gimlet.GetVars(r)["volume_id"])
+	h.VolumeID, err = validateID(gimlet.GetVars(r)["volume_id"])
 
 	return err
 }
@@ -469,16 +470,24 @@ func (h *deleteVolumeHandler) Parse(ctx context.Context, r *http.Request) error 
 func (h *deleteVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 
-	volume, err := host.FindVolumeByID(h.volumeID)
+	volume, err := host.FindVolumeByID(h.VolumeID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	// Volume does not exist
+	if volume == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("volume '%s' does not exist", h.VolumeID),
+		})
 	}
 
 	// Only allow users to delete their own volumes
 	if u.Id != volume.CreatedBy {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
-			Message:    errors.Errorf("not authorized to delete volume '%s'", volume.ID).Error(),
+			Message:    fmt.Sprintf("not authorized to delete volume '%s'", volume.ID),
 		})
 	}
 	// TODO: Allow different providers/regions

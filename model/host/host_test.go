@@ -3770,3 +3770,46 @@ func TestFindSpawnhostsWithNoExpirationToExtend(t *testing.T) {
 	assert.Len(t, foundHosts, 1)
 	assert.Equal(t, "host-1", foundHosts[0].Id)
 }
+
+func TestAttachVolume(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	h := Host{
+		Id:        "host-1",
+		VolumeIDs: []string{"volume-1"},
+	}
+	assert.NoError(t, h.Insert())
+	assert.NoError(t, h.AttachVolume("volume-2"))
+	assert.Equal(t, []string{"volume-1", "volume-2"}, h.VolumeIDs)
+	foundHost, err := FindOneId("host-1")
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"volume-1", "volume-2"}, foundHost.VolumeIDs)
+}
+
+func TestDetachVolume(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	h := Host{
+		Id:        "host-1",
+		VolumeIDs: []string{"volume-1", "volume-2"},
+	}
+	assert.NoError(t, h.Insert())
+	assert.NoError(t, h.DetachVolume("volume-2"))
+	assert.Equal(t, []string{"volume-1"}, h.VolumeIDs)
+	foundHost, err := FindOneId("host-1")
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"volume-1"}, foundHost.VolumeIDs)
+}
+
+func TestFindHostWithVolume(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	h := Host{
+		Id:        "host-1",
+		VolumeIDs: []string{"volume-1"},
+	}
+	assert.NoError(t, h.Insert())
+	foundHost, err := FindHostWithVolume("volume-1")
+	assert.NoError(t, err)
+	assert.NotNil(t, foundHost)
+	foundHost, err = FindHostWithVolume("volume-2")
+	assert.NoError(t, err)
+	assert.Nil(t, foundHost)
+}

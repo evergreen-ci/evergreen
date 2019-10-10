@@ -1832,7 +1832,7 @@ func (h *Host) AttachVolume(volumeID string) error {
 			IdKey: h.Id,
 		},
 		bson.M{
-			"$set": bson.M{
+			"$push": bson.M{
 				VolumeIDsKey: h.VolumeIDs,
 			},
 		},
@@ -1844,6 +1844,7 @@ func (h *Host) DetachVolume(volumeID string) error {
 	found := false
 	for i := range h.VolumeIDs {
 		if volumeID == h.VolumeIDs[i] {
+			found = true
 			h.VolumeIDs = append(h.VolumeIDs[:i], h.VolumeIDs[i+1:]...)
 		}
 	}
@@ -1858,7 +1859,7 @@ func (h *Host) DetachVolume(volumeID string) error {
 		},
 		bson.M{
 			"$pull": bson.M{
-				VolumeIDsKey: h.VolumeIDs,
+				VolumeIDsKey: volumeID,
 			},
 		},
 	)
