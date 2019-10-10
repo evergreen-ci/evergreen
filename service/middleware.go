@@ -174,6 +174,10 @@ func (uis *UIServer) isSuperUser(u gimlet.User) bool {
 
 func (uis *UIServer) setCORSHeaders(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		grip.Info(message.Fields{
+			"foo": "bar",
+			"h":   r.Header,
+		})
 		if r.Method == http.MethodGet && len(uis.Settings.Ui.CORSOrigins) > 0 {
 			requester := r.Header.Get("Origin")
 			if util.StringSliceContains(uis.Settings.Ui.CORSOrigins, requester) {

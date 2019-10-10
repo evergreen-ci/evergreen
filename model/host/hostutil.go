@@ -372,7 +372,7 @@ func (h *Host) jasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 
 // BootstrapScript creates the user data script to bootstrap the host.
 func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credentials, preJasperSetup, postJasperSetup []string) (string, error) {
-	bashCmds := append([]string{"set -o errexit", "set -o verbose"})
+	bashCmds := append([]string{"set -o errexit", "set -o verbose"}, preJasperSetup...)
 
 	writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 	if err != nil {
@@ -387,24 +387,22 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credenti
 		)
 		bashCmds = append(bashCmds, postJasperSetup...)
 
-		bashCmdsLiteral := util.PowershellQuotedString(strings.Join(bashCmds, "\r\n"))
+		bashCmdsLiteral := util.PowerShellQuotedString(strings.Join(bashCmds, "\n"))
 
 		setupUserCmds, err := h.SetupServiceUserCommands()
 		if err != nil {
 			return "", errors.Wrap(err, "could not get command to set up service user")
 		}
-		powershellCmds := append(append([]string{
+		powershellCmds := append([]string{
 			"<powershell>",
 			setupUserCmds},
-			preJasperSetup...),
 			fmt.Sprintf("%s -l -c %s", h.Distro.BootstrapSettings.ShellPath, bashCmdsLiteral),
 			"</powershell>",
 		)
 
-		return strings.Join(powershellCmds, "\r\n"), nil
+		return strings.Join(powershellCmds, "\n"), nil
 	}
 
-	bashCmds = append(bashCmds, preJasperSetup...)
 	bashCmds = append(bashCmds, h.FetchJasperCommand(settings.HostJasper), writeCredentialsCmd, h.ForceReinstallJasperCommand(settings))
 	bashCmds = append(bashCmds, postJasperSetup...)
 
@@ -436,64 +434,11 @@ func (h *Host) SetupServiceUserCommands() (string, error) {
 			cmd(fmt.Sprintf("net user %s %s /add", h.Distro.BootstrapSettings.ServiceUser, h.ServicePassword)),
 			// Add the user to the Administrators group.
 			cmd(fmt.Sprintf("net localgroup Administrators %s /add", h.Distro.BootstrapSettings.ServiceUser)),
-			cmd(fmt.Sprintf("wmic useraccount where name='%s' set passwordexpires=false", h.Distro.BootstrapSettings.ServiceUser)),
+			cmd(fmt.Sprintf(`wmic useraccount where name="%s" set passwordexpires=false`, h.Distro.BootstrapSettings.ServiceUser)),
 			// Allow the user to run the service by granting the "Log on as a
 			// service" right.
-			// source: https://gallery.technet.microsoft.com/scriptcenter/Grant-Log-on-as-a-service-11a50893
-			fmt.Sprintf(`
-$accountToAdd = "%s"
-$sidstr = $null
-try {
-	$ntprincipal = new-object System.Security.Principal.NTAccount "$accountToAdd"
-    $sid = $ntprincipal.Translate([System.Security.Principal.SecurityIdentifier])
-    $sidstr = $sid.Value.ToString()
-} catch {
-    $sidstr = $null
-}
-$tmp = [System.IO.Path]::GetTempFileName()
-secedit.exe /export /cfg "$($tmp)"
-
-$c = Get-Content -Path $tmp
-
-$currentSetting = ""
-
-foreach($s in $c) {
-    if( $s -like "SeServiceLogonRight*") {
-        $x = $s.split("=",[System.StringSplitOptions]::RemoveEmptyEntries)
-        $currentSetting = $x[1].Trim()
-    }
-}
-
-if( $currentSetting -notlike "*$($sidstr)*" ) {
-    if( [string]::IsNullOrEmpty($currentSetting) ) {
-        $currentSetting = "*$($sidstr)"
-    } else {
-        $currentSetting = "*$($sidstr),$($currentSetting)"
-    }
-
-    $outfile = @"
-[Unicode]
-Unicode=yes
-[Version]
-signature=`, h.Distro.BootstrapSettings.ServiceUser) + "`$Windows NT$" + `
-Revision=1
-[Privilege Rights]
-SeServiceLogonRight = $($currentSetting)
-"@
-
-    $tmp2 = [System.IO.Path]::GetTempFileName()
-
-    $outfile | Set-Content -Path $tmp2 -Encoding Unicode -Force
-
-    Push-Location (Split-Path $tmp2)
-
-    try {
-        secedit.exe /configure /db "secedit.sdb" /cfg "$($tmp2)" /areas USER_RIGHTS
-    } finally {
-        Pop-Location
-    }
-}
-`}, "\r\n"), nil
+			fmt.Sprintf(`editrights -u %s -a SeServiceLogonRight`, h.Distro.BootstrapSettings.ServiceUser)
+		}, "\n"), nil
 }
 
 const passwordCharset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
