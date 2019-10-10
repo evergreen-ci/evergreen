@@ -217,6 +217,7 @@ func (j *collectHostIdleDataJob) getTaskStartStatsMessage() message.Composer {
 		"host_id":                j.host.Id,
 		"project":                j.task.Project,
 		"provider":               j.host.Distro.Provider,
+		"provisioning":           j.host.Distro.BootstrapSettings.Method,
 		"requester":              j.task.Requester,
 		"scheduled_latency_secs": j.task.StartTime.Sub(j.task.ScheduledTime).Seconds(),
 		"stat":                   "task-start-stats",
