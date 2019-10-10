@@ -216,7 +216,7 @@ func MakeLoggerWithContext(ctx context.Context, name string, opts *LoggerOptions
 			rpcOpts = append(rpcOpts, grpc.WithInsecure())
 		} else {
 			var tlsConf *tls.Config
-			tlsConf, err = aviation.GetClientTLSConfig(opts.CAFile, opts.CertFile, opts.KeyFile)
+			tlsConf, err = aviation.GetClientTLSConfigFromFiles(opts.CAFile, opts.CertFile, opts.KeyFile)
 			if err != nil {
 				return nil, errors.Wrap(err, "problem getting client TLS config")
 			}

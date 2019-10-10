@@ -41,7 +41,7 @@ func TestGetClientTLSConfig(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			conf, err := GetClientTLSConfig(test.ca, test.usrCrt, test.usrKey)
+			conf, err := GetClientTLSConfigFromFiles(test.ca, test.usrCrt, test.usrKey)
 			if test.hasErr {
 				assert.Error(t, err)
 				assert.Nil(t, conf)

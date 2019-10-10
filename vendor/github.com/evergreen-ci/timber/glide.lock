@@ -4,7 +4,7 @@ imports:
 - name: github.com/mongodb/grip
   version: 8b8accd7a3ec9b31a2d3eea610d5bf906bddfd11
 - name: github.com/evergreen-ci/aviation
-  version: b5b1a9f93a1d0bd95769b3106971aaeca615a7b2
+  version: d74791c0d819b6f7908cced0dd37e6ab3fb9eeae
 - name: go.mongodb.org/mongo-driver
   version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86
 
