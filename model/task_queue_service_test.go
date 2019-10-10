@@ -1374,6 +1374,13 @@ func (s *taskDispatchServiceSuite) TestConstructor() {
 }
 
 func (s *taskDispatchServiceSuite) TestEmptyService() {
+	s.Require().NoError(db.ClearCollections(task.Collection))
+	t := task.Task{
+		Id:        "a-standalone-task",
+		TaskGroup: "",
+	}
+	s.Require().NoError(t.Insert())
+
 	s.taskQueue.Queue = []TaskQueueItem{
 		{
 			Id:    "a-standalone-task",
