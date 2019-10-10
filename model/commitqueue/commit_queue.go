@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -176,6 +178,69 @@ func SetupEnv(env evergreen.Environment) error {
 		}
 
 		evergreen.SetEnvironment(env)
+	}
+
+	return nil
+}
+
+func RemoveCommitQueueItem(projectId, patchType, item string, versionExists bool) (bool, error) {
+	cq, err := FindOneId(projectId)
+	if err != nil {
+		return false, errors.Wrapf(err, "can't get commit queue for id '%s'", projectId)
+	}
+
+	head := cq.Next()
+	removed, err := cq.Remove(item)
+	if err != nil {
+		return removed, errors.Wrapf(err, "can't remove item '%s' from queue '%s'", item, projectId)
+	}
+
+	if removed && head.Issue == item {
+		if err = preventMergeForItem(patchType, versionExists, head); err != nil {
+			return removed, errors.Wrapf(err, "can't prevent merge for item '%s' on queue '%s'", item, projectId)
+		}
+	}
+	return removed, nil
+}
+
+func preventMergeForItem(patchType string, versionExists bool, item *CommitQueueItem) error {
+	if patchType == PRPatchType && item.Version != "" {
+		if err := clearVersionPatchSubscriber(item.Version, event.GithubMergeSubscriberType); err != nil {
+			return errors.Wrap(err, "can't clear subscriptions")
+		}
+	}
+
+	if patchType == CLIPatchType && versionExists {
+		if err := clearVersionPatchSubscriber(item.Issue, event.CommitQueueDequeueSubscriberType); err != nil {
+			return errors.Wrap(err, "can't clear subscriptions")
+		}
+
+		// Blacklist the merge task
+		mergeTask, err := task.FindMergeTaskForVersion(item.Issue)
+		if err != nil {
+			return errors.Wrapf(err, "can't find merge task for '%s'", item.Issue)
+		}
+		err = mergeTask.SetPriority(-1, evergreen.User)
+		if err != nil {
+			return errors.Wrap(err, "can't blacklist merge task")
+		}
+	}
+
+	return nil
+}
+
+func clearVersionPatchSubscriber(versionID, subscriberType string) error {
+	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: versionID}})
+	if err != nil {
+		return errors.Wrapf(err, "can't find subscription to patch '%s'", versionID)
+	}
+	for _, subscription := range subscriptions {
+		if subscription.Subscriber.Type == subscriberType {
+			err = event.RemoveSubscription(subscription.ID)
+			if err != nil {
+				return errors.Wrapf(err, "can't remove subscription for '%s', type '%s'", versionID, subscriberType)
+			}
+		}
 	}
 
 	return nil

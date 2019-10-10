@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
@@ -252,16 +253,17 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			if projCtx.ProjectRef.CommitQueue.Enabled {
-				_, err := model.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier, projCtx.Version.Id)
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-				}
-			}
 		}
 		if err = model.SetVersionActivation(projCtx.Version.Id, jsonMap.Active, user.Id); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
+		}
+		if !jsonMap.Active && projCtx.ProjectRef.CommitQueue.Enabled {
+			_, err := commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
+				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Version.Id, true)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
 		}
 	case "set_priority":
 		if jsonMap.Priority > evergreen.MaxTaskPriority {

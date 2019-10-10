@@ -4,8 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -71,7 +72,23 @@ func (pc *DBCommitQueueConnector) FindCommitQueueByID(id string) (*restModel.API
 }
 
 func (pc *DBCommitQueueConnector) CommitQueueRemoveItem(id, item string) (bool, error) {
-	return model.RemoveCommitQueueItem(id, item)
+	projectRef, err := model.FindOneProjectRef(id)
+	if err != nil {
+		return false, errors.Wrapf(err, "can't find projectRef for '%s'", id)
+	}
+	if projectRef == nil {
+		return false, errors.Errorf("can't find project ref for '%s'", id)
+	}
+
+	v, err := model.VersionFindOneId(item)
+	if err != nil {
+		return false, errors.Wrap(err, "error querying for version")
+	}
+	versionExists := false
+	if v != nil {
+		versionExists = true
+	}
+	return commitqueue.RemoveCommitQueueItem(id, projectRef.CommitQueue.PatchType, item, versionExists)
 }
 
 func (pc *DBCommitQueueConnector) IsItemOnCommitQueue(id, item string) (bool, error) {
