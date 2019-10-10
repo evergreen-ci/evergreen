@@ -482,7 +482,9 @@ func (c *LoggerConfig) IsValid() error {
 		if opts.Type == FileLogSender {
 			catcher.New("file logger is disallowed for system logs; will use Evergreen logger")
 		} else if opts.Type == LogkeeperLogSender {
-			catcher.New("logkeepr is disallowed for system logs; will use Evergreen logger")
+			catcher.New("logkeeper is disallowed for system logs; will use Evergreen logger")
+		} else if opts.Type == BuildloggerV3LogSender {
+			catcher.New("buildlogger v3 is disallowed for system logs; will use Evergreen logger")
 		}
 	}
 	for _, opts := range c.Task {
@@ -508,10 +510,11 @@ func (o *LogOpts) IsValid() error {
 }
 
 const (
-	EvergreenLogSender = "evergreen"
-	FileLogSender      = "file"
-	LogkeeperLogSender = "logkeeper"
-	SplunkLogSender    = "splunk"
+	EvergreenLogSender     = "evergreen"
+	FileLogSender          = "file"
+	LogkeeperLogSender     = "logkeeper"
+	BuildloggerV3LogSender = "buildloggerv3"
+	SplunkLogSender        = "splunk"
 )
 
 var ValidLogSenders = []string{
@@ -519,6 +522,7 @@ var ValidLogSenders = []string{
 	FileLogSender,
 	LogkeeperLogSender,
 	SplunkLogSender,
+	BuildloggerV3LogSender,
 }
 
 // TaskIdTable is a map of [variant, task display name]->[task id].

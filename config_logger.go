@@ -10,10 +10,14 @@ import (
 )
 
 type LoggerConfig struct {
-	Buffer         LogBuffering `bson:"buffer" json:"buffer" yaml:"buffer"`
-	DefaultLevel   string       `bson:"default_level" json:"default_level" yaml:"default_level"`
-	ThresholdLevel string       `bson:"threshold_level" json:"threshold_level" yaml:"threshold_level"`
-	LogkeeperURL   string       `bson:"logkeeper_url" json:"logkeeper_url" yaml:"logkeeper_url"`
+	Buffer                LogBuffering `bson:"buffer" json:"buffer" yaml:"buffer"`
+	DefaultLevel          string       `bson:"default_level" json:"default_level" yaml:"default_level"`
+	ThresholdLevel        string       `bson:"threshold_level" json:"threshold_level" yaml:"threshold_level"`
+	LogkeeperURL          string       `bson:"logkeeper_url" json:"logkeeper_url" yaml:"logkeeper_url"`
+	BuildloggerV3BaseURL  string       `bson:"buildloggerv3_base_url" json:"buildloggerv3_base_url" yaml:"buildloggerv3_base_url"`
+	BuildloggerV3RPCPort  string       `bson:"buildloggerv3_rpc_port" json:"buildloggerv3_rpc_port" yaml:"buildloggerv3_rpc_port"`
+	BuildloggerV3User     string       `bson:"buildloggerv3_user" json:"buildloggerv3_user" yaml:"buildloggerv3_user"`
+	BuildloggerV3Password string       `bson:"buildloggerv3_password" json:"buildloggerv3_password" yaml:"buildloggerv3_password"`
 }
 
 func (c LoggerConfig) Info() send.LevelInfo {
@@ -53,10 +57,15 @@ func (c *LoggerConfig) Set() error {
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			"buffer":          c.Buffer,
-			"default_level":   c.DefaultLevel,
-			"threshold_level": c.ThresholdLevel,
-			"logkeeper_url":   c.LogkeeperURL,
+			"buffer":                 c.Buffer,
+			"default_level":          c.DefaultLevel,
+			"threshold_level":        c.ThresholdLevel,
+			"logkeeper_url":          c.LogkeeperURL,
+			"buildloggerv3_base_url": c.BuildloggerV3BaseURL,
+			"buildloggerv3_rpc_port": c.BuildloggerV3RPCPort,
+			// TODO: do we want this sensitive info here?
+			"buildloggerv3_user":     c.BuildloggerV3User,
+			"buildloggerv3_password": c.BuildloggerV3Password,
 		},
 	}, options.Update().SetUpsert(true))
 

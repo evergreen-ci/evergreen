@@ -38,6 +38,10 @@ type Options struct {
 	StatusPort            int
 	LogPrefix             string
 	LogkeeperURL          string
+	BuildloggerV3BaseURL  string
+	BuildloggerV3RPCPort  string
+	BuildloggerV3User     string
+	BuildloggerV3Password string
 	S3BaseURL             string
 	WorkingDirectory      string
 	HeartbeatInterval     time.Duration
@@ -314,7 +318,7 @@ func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
 	if tc.project != nil && tc.project.Loggers != nil {
 		tc.logger, err = a.makeLoggerProducer(ctx, tc, tc.project.Loggers, "")
 	} else {
-		tc.logger, err = a.comm.GetLoggerProducer(ctx, tc.task, nil)
+		tc.logger, err = a.comm.GetLoggerProducer(ctx, tc.taskModel, nil)
 	}
 	if err != nil {
 		return err

@@ -290,7 +290,11 @@ func (c *Mock) GetMockMessages() map[string][]apimodels.LogMessage {
 }
 
 // GetLoggerProducer constructs a single channel log producer.
-func (c *Mock) GetLoggerProducer(ctx context.Context, td TaskData, config *LoggerConfig) (LoggerProducer, error) {
+func (c *Mock) GetLoggerProducer(ctx context.Context, tk *task.Task, config *LoggerConfig) (LoggerProducer, error) {
+	td := TaskData{
+		ID:     tk.Id,
+		Secret: tk.Secret,
+	}
 	return NewSingleChannelLogHarness(td.ID, newEvergreenLogSender(ctx, c, apimodels.AgentLogPrefix, td, defaultLogBufferSize, defaultLogBufferTime)), nil
 }
 func (c *Mock) GetLoggerMetadata() LoggerMetadata {

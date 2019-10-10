@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/suite"
@@ -62,8 +63,8 @@ func (s *CommandSuite) TestShellExec() {
 	taskID := "shellexec"
 	taskSecret := "mock_task_secret"
 	tc := &taskContext{
-		task: client.TaskData{
-			ID:     taskID,
+		taskModel: &task.Task{
+			Id:     taskID,
 			Secret: taskSecret,
 		},
 		runGroupSetup: true,
@@ -110,8 +111,8 @@ func (s *CommandSuite) TestS3Copy() {
 	taskID := "s3copy"
 	taskSecret := "mock_task_secret"
 	tc := &taskContext{
-		task: client.TaskData{
-			ID:     taskID,
+		taskModel: &task.Task{
+			Id:     taskID,
 			Secret: taskSecret,
 		},
 	}

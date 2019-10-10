@@ -91,7 +91,7 @@ func GetSender(ctx context.Context, prefix, taskId string) (send.Sender, error) 
 func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, c *model.LoggerConfig, commandName string) (client.LoggerProducer, error) {
 	config := a.prepLogger(tc, c, commandName)
 
-	logger, err := a.comm.GetLoggerProducer(ctx, tc.task, &config)
+	logger, err := a.comm.GetLoggerProducer(ctx, tc.taskModel, &config)
 	if err != nil {
 		return nil, err
 	}
@@ -158,13 +158,18 @@ func (a *Agent) prepSingleLogger(tc *taskContext, in model.LogOpts, logDir, file
 	}
 	tc.logDirectories[logDir] = nil
 	return client.LogOpts{
-		LogkeeperURL:      a.opts.LogkeeperURL,
-		LogkeeperBuilder:  tc.taskModel.Id,
-		LogkeeperBuildNum: tc.taskModel.Execution,
-		Sender:            in.Type,
-		SplunkServerURL:   splunkServer,
-		SplunkToken:       splunkToken,
-		Filepath:          filepath.Join(logDir, fileName),
+		LogkeeperURL:          a.opts.LogkeeperURL,
+		BuildloggerV3BaseURL:  a.opts.BuildloggerV3BaseURL,
+		BuildloggerV3RPCPort:  a.opts.BuildloggerV3RPCPort,
+		BuildloggerV3User:     a.opts.BuildloggerV3User,
+		BuildloggerV3Password: a.opts.BuildloggerV3Password,
+		LogkeeperBuilder:      tc.taskModel.Id,
+		LogkeeperBuildNum:     tc.taskModel.Execution,
+		BuildloggerV3Builder:  tc.taskModel.Id,
+		Sender:                in.Type,
+		SplunkServerURL:       splunkServer,
+		SplunkToken:           splunkToken,
+		Filepath:              filepath.Join(logDir, fileName),
 	}
 }
 
