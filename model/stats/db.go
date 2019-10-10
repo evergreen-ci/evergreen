@@ -98,8 +98,8 @@ var (
 	taskDetailsKeyRef      = "$" + task.DetailsKey
 	taskTimeTakenKeyRef    = "$" + task.TimeTakenKey
 	taskOldTaskIdKeyRef    = "$" + task.OldTaskIdKey
-	// testResultTaskIdKeyRef = "$" + testresult.TaskIDKey
-	// testResultExecutionRef = "$" + testresult.ExecutionKey
+	testResultTaskIdKeyRef = "$" + testresult.TaskIDKey
+	testResultExecutionRef = "$" + testresult.ExecutionKey
 )
 
 // Convenient type to use for arrays in pipeline definitions.
@@ -249,40 +249,19 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 			"path":                       "$display_task",
 			"preserveNullAndEmptyArrays": true}},
 		{"$lookup": bson.M{
-			"as":           "testresults",
-			"from":         testresult.Collection,
-			"foreignField": "task_id",
-			"localField":   "task_id"}},
-		{"$project": bson.M{
-			"task_id":                             1,
-			"execution":                           1,
-			dbTestStatsIdProjectKey:               1,
-			DbTestStatsIdTaskNameKey:              1,
-			DbTestStatsIdBuildVariantKey:          1,
-			DbTestStatsIdDistroKey:                1,
-			dbTestStatsIdRequesterKey:             1,
-			"display_task." + task.DisplayNameKey: 1,
-			"testresults": bson.M{
-				"$filter": bson.M{
-					"input": "$testresults",
-					"as":    "testresult",
-					"cond":  bson.M{"$eq": Array{"$$testresult.task_execution", "$$ROOT.execution"}}}},
-		}},
-		{"$project": bson.M{
-			"task_id":                             1,
-			"execution":                           1,
-			dbTestStatsIdProjectKey:               1,
-			DbTestStatsIdTaskNameKey:              1,
-			DbTestStatsIdBuildVariantKey:          1,
-			DbTestStatsIdDistroKey:                1,
-			dbTestStatsIdRequesterKey:             1,
-			"display_task." + task.DisplayNameKey: 1,
-			"testresults": bson.M{
-				testresult.TestFileKey:  1,
-				testresult.StatusKey:    1,
-				testresult.StartTimeKey: 1,
-				testresult.EndTimeKey:   1},
-		}},
+			"from": testresult.Collection,
+			"let":  bson.M{"task_id": "$task_id", "execution": "$execution"},
+			"pipeline": []bson.M{
+				{"$match": bson.M{"$expr": bson.M{"$and": []bson.M{
+					{"$eq": Array{testResultTaskIdKeyRef, "$$task_id"}},
+					{"$eq": Array{testResultExecutionRef, "$$execution"}}}}}},
+				{"$project": bson.M{
+					testresult.IDKey:        0,
+					testresult.TestFileKey:  1,
+					testresult.StatusKey:    1,
+					testresult.StartTimeKey: 1,
+					testresult.EndTimeKey:   1}}},
+			"as": "testresults"}},
 		{"$unwind": "$testresults"},
 		{"$project": bson.M{
 			dbTestStatsIdTestFileKey: "$testresults." + testresult.TestFileKey,
