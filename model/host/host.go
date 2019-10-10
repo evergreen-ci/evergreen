@@ -1844,12 +1844,11 @@ func (h *Host) DetachVolume(volumeID string) error {
 	for i := range h.VolumeIDs {
 		if volumeID == h.VolumeIDs[i] {
 			h.VolumeIDs = append(h.VolumeIDs[:i], h.VolumeIDs[i+1:]...)
-			break
 		}
 	}
 
 	if !found {
-		return nil
+		return errors.Errorf("volume '%s' is not attached to host '%s'", volumeID, h.Id)
 	}
 
 	return UpdateOne(
@@ -1857,9 +1856,15 @@ func (h *Host) DetachVolume(volumeID string) error {
 			IdKey: h.Id,
 		},
 		bson.M{
-			"$set": bson.M{
+			"$pull": bson.M{
 				VolumeIDsKey: h.VolumeIDs,
 			},
 		},
 	)
+}
+
+// FindHostWithVolume finds the host associated with the
+// specified volume ID.
+func FindHostWithVolume(volumeID string) (*Host, error) {
+	return FindOne(db.Query(bson.M{VolumeIDsKey: volumeID}))
 }

@@ -165,6 +165,9 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 		catcher.Add(checkInstanceTypeHostStopped(foundHost))
 		catcher.Add(checkInstanceTypeValid(foundHost.Provider, h.InstanceType, env.Settings()))
 	}
+	if h.AttachVolume != "" {
+		catcher.Add(checkVolumeNotAttached(h.AttachVolume))
+	}
 	if catcher.HasErrors() {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "Invalid host modify request"))
 	}
@@ -231,6 +234,18 @@ func checkInstanceTypeValid(providerName, instanceType string, s *evergreen.Sett
 func checkInstanceTypeHostStopped(h *host.Host) error {
 	if h.Status != evergreen.HostStopped {
 		return errors.New("cannot modify instance type for non-stopped host")
+	}
+	return nil
+}
+
+// checkVolumeNotAttached checks whether a volume is not attached to any hosts
+func checkVolumeNotAttached(volumeID string) error {
+	h, err := host.FindHostWithVolume(volumeID)
+	if err != nil {
+		return errors.Wrapf(err, "error checking whether volume '%s' is already attached to host", volumeID)
+	}
+	if h != nil {
+		return errors.Errorf("volume '%s' is already attached to a host", volumeID)
 	}
 	return nil
 }

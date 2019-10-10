@@ -364,7 +364,6 @@ func hostStart() cli.Command {
 
 func hostCreateVolume() cli.Command {
 	const (
-		zoneFlag = "zone"
 		sizeFlag = "size"
 		typeFlag = "type"
 	)
@@ -374,16 +373,12 @@ func hostCreateVolume() cli.Command {
 		Usage: "create a volume for spawn hosts",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:  joinFlagNames(zoneFlag, "z"),
-				Usage: "create in availability zone `NAME`",
-			},
-			cli.StringFlag{
 				Name:  joinFlagNames(sizeFlag, "s"),
-				Usage: "create with `SIZE` in GiB",
+				Usage: "set volume `SIZE` in GiB",
 			},
 			cli.StringFlag{
 				Name:  joinFlagNames(typeFlag, "t"),
-				Usage: "",
+				Usage: "set volume `TYPE`",
 			},
 		},
 		Before: mergeBeforeFuncs(setPlainLogger, requireStringFlag(sizeFlag), requireStringFlag(typeFlag)),

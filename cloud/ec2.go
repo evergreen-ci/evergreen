@@ -658,13 +658,27 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 
 	// Attempt all requested modifications and catch errors from client or db
 	catcher := grip.NewBasicCatcher()
-	catcher.AddWhen(opts.InstanceType != "", m.setInstanceType(ctx, h, opts.InstanceType))
-	catcher.AddWhen(opts.AttachVolume != "", m.attachVolume(ctx, h, opts.AttachVolume))
-	catcher.AddWhen(opts.DetachVolume != "", m.detachVolume(ctx, h, opts.DetachVolume))
-	catcher.AddWhen(len(opts.DeleteInstanceTags) > 0, m.deleteTags(ctx, h, opts.DeleteInstanceTags))
-	catcher.AddWhen(len(opts.AddInstanceTags) > 0, m.addTags(ctx, h, opts.AddInstanceTags))
-	catcher.AddWhen(opts.NoExpiration != nil, m.setNoExpiration(ctx, h, *opts.NoExpiration))
-	catcher.AddWhen(opts.AddHours > 0, m.extendExpiration(ctx, h, opts.AddHours))
+	if opts.InstanceType != "" {
+		catcher.Add(m.setInstanceType(ctx, h, opts.InstanceType))
+	}
+	if opts.AttachVolume != "" {
+		catcher.Add(m.attachVolume(ctx, h, opts.AttachVolume))
+	}
+	if opts.DetachVolume != "" {
+		catcher.Add(m.detachVolume(ctx, h, opts.DetachVolume))
+	}
+	if len(opts.DeleteInstanceTags) > 0 {
+		catcher.Add(m.deleteTags(ctx, h, opts.DeleteInstanceTags))
+	}
+	if len(opts.AddInstanceTags) > 0 {
+		catcher.Add(m.addTags(ctx, h, opts.AddInstanceTags))
+	}
+	if opts.NoExpiration != nil {
+		catcher.Add(m.setNoExpiration(ctx, h, *opts.NoExpiration))
+	}
+	if opts.AddHours > 0 {
+		catcher.Add(m.extendExpiration(ctx, h, opts.AddHours))
+	}
 
 	return catcher.Resolve()
 }
