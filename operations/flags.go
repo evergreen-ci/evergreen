@@ -86,7 +86,7 @@ func addLargeFlag(flags ...cli.Flag) []cli.Flag {
 func addTasksFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringSliceFlag{
 		Name:  joinFlagNames(tasksFlagName, "t"),
-		Usage: "task name",
+		Usage: "task name(s)",
 	})
 }
 
