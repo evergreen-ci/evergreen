@@ -296,6 +296,9 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/pkg/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/go.mongodb.org/mongo-driver/
+	rm -rf vendor/github.com/mongodb/jasper/vendor/golang.org/x/net/
+	rm -rf vendor/github.com/mongodb/jasper/vendor/golang.org/x/sys/
+	rm -rf vendor/github.com/mongodb/jasper/vendor/golang.org/x/text/
 	rm -rf vendor/github.com/smartystreets/goconvey/web/
 	rm -rf vendor/github.com/square/certstrap/vendor/github.com/urfave/cli/
 	rm -rf vendor/github.com/square/certstrap/vendor/golang.org/x/sys/windows/
