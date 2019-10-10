@@ -143,7 +143,7 @@ const (
 	SchedulableUnitDispatcher = "schedulableunit-task-dispatcher"
 )
 
-// cachedDispatcher is an in-memory representation of schedulable tasks for a distro.
+// basicCachedDispatcherImpl is an in-memory representation of schedulable tasks for a distro.
 //
 // TODO Pass all task group tasks, not just dispatchable ones, to the constructor.
 type basicCachedDispatcherImpl struct {

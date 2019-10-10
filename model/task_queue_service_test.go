@@ -41,7 +41,7 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
 		TaskGroup:           "tg_compile_and_test",
 		TaskGroupMaxHosts:   1,
-		StartTime:           time.Unix(0, 0),
+		StartTime:           util.ZeroTime,
 		BuildVariant:        "archlinux",
 		Version:             "5d8cd23da4cf4747f4210333",
 		Project:             "genny",
@@ -99,7 +99,7 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
 		TaskGroup:           "tg_compile_and_test",
 		TaskGroupMaxHosts:   1,
-		StartTime:           time.Unix(0, 0),
+		StartTime:           util.ZeroTime,
 		BuildVariant:        "archlinux",
 		Version:             "5d8cd23da4cf4747f4210333",
 		Project:             "genny",
@@ -137,7 +137,7 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
 		TaskGroup:           "tg_compile_and_test",
 		TaskGroupMaxHosts:   1,
-		StartTime:           time.Unix(0, 0),
+		StartTime:           util.ZeroTime,
 		BuildVariant:        "archlinux",
 		Version:             "5d8cd23da4cf4747f4210333",
 		Project:             "genny",
@@ -189,7 +189,7 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
 		TaskGroup:           "tg_compile_and_test",
 		TaskGroupMaxHosts:   1,
-		StartTime:           time.Unix(0, 0),
+		StartTime:           util.ZeroTime,
 		BuildVariant:        "archlinux",
 		Version:             "5d8cd23da4cf4747f4210333",
 		Project:             "genny",
@@ -395,7 +395,7 @@ func (s *taskDAGDispatchServiceSuite) SetupTest() {
 		t := task.Task{
 			Id:                ID,
 			DistroId:          distroID,
-			StartTime:         time.Unix(0, 0),
+			StartTime:         util.ZeroTime,
 			TaskGroup:         group,
 			BuildVariant:      variant,
 			Version:           version,
@@ -550,7 +550,7 @@ func (s *taskDAGDispatchServiceSuite) TestAddingSelfEdge() {
 		Id:                  "1",
 		BuildId:             "ops_manager_kubernetes_init_test_run_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
 		TaskGroup:           "",
-		StartTime:           time.Unix(0, 0),
+		StartTime:           util.ZeroTime,
 		BuildVariant:        "init_test_run",
 		Version:             "5d88953e2a60ed61eefe9561",
 		Project:             "ops-manager-kubernetes",
@@ -602,7 +602,7 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 		Id:                  "1",
 		BuildId:             "ops_manager_kubernetes_init_test_run_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
 		TaskGroup:           "",
-		StartTime:           time.Unix(0, 0),
+		StartTime:           util.ZeroTime,
 		BuildVariant:        "init_test_run",
 		Version:             "5d88953e2a60ed61eefe9561",
 		Project:             "ops-manager-kubernetes",
@@ -631,7 +631,7 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 		TaskGroup:           "e2e_core_task_group",
 		TaskGroupMaxHosts:   5,
 		TaskGroupOrder:      2,
-		StartTime:           time.Unix(0, 0),
+		StartTime:           util.ZeroTime,
 		BuildVariant:        "e2e_openshift_cloud_qa",
 		Version:             "5d88953e2a60ed61eefe9561",
 		Project:             "ops-manager-kubernetes",
@@ -667,7 +667,7 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 		TaskGroup:           "e2e_core_task_group",
 		TaskGroupMaxHosts:   5,
 		TaskGroupOrder:      1,
-		StartTime:           time.Unix(0, 0),
+		StartTime:           util.ZeroTime,
 		BuildVariant:        "e2e_openshift_cloud_qa",
 		Version:             "5d88953e2a60ed61eefe9561",
 		Project:             "ops-manager-kubernetes",
@@ -1538,7 +1538,7 @@ func (s *taskDispatchServiceSuite) TestEmptyService() {
 	t := task.Task{
 		Id:        "a-standalone-task",
 		TaskGroup: "",
-		StartTime: time.Unix(0, 0),
+		StartTime: util.ZeroTime,
 	}
 	s.Require().NoError(t.Insert())
 
@@ -1559,6 +1559,7 @@ func (s *taskDispatchServiceSuite) TestEmptyService() {
 
 func (s *taskDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 	s.Require().NoError(db.ClearCollections(task.Collection))
+	s.Require().NoError(db.ClearCollections(host.Collection))
 	items := []TaskQueueItem{}
 	var startTime time.Time
 	var endTime time.Time

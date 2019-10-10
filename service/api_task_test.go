@@ -364,12 +364,14 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionTunable(t *testing.T) {
 			Status:    evergreen.TaskUndispatched,
 			Activated: true,
 			Project:   "exists",
+			StartTime: util.ZeroTime,
 		}
 		task2 := task.Task{
 			Id:        "task2",
 			Status:    evergreen.TaskUndispatched,
 			Activated: true,
 			Project:   "exists",
+			StartTime: util.ZeroTime,
 		}
 		pref := &model.ProjectRef{
 			Identifier: "exists",
@@ -418,9 +420,11 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionTunable(t *testing.T) {
 				{Id: "task2"},
 			}
 			So(taskQueue.Save(), ShouldBeNil)
+			// STU: this task should never get into the queue in the first place?
 			undispatchedTask := task.Task{
-				Id:     "undispatchedTask",
-				Status: evergreen.TaskStarted,
+				Id:        "undispatchedTask",
+				Status:    evergreen.TaskStarted,
+				StartTime: util.ZeroTime,
 			}
 			So(undispatchedTask.Insert(), ShouldBeNil)
 			t, shouldTeardown, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskDispatcherTTL), &theHostWhoCanBoastTheMostRoast, details)
@@ -468,8 +472,9 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionTunable(t *testing.T) {
 				Distro: distro.Distro{
 					Id: d.Id,
 				},
-				Secret: hostSecret,
-				Status: evergreen.HostRunning,
+				Secret:    hostSecret,
+				Status:    evergreen.HostRunning,
+				StartTime: util.ZeroTime,
 			}
 			So(h2.Insert(), ShouldBeNil)
 
@@ -478,6 +483,7 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionTunable(t *testing.T) {
 				Status:    evergreen.TaskUndispatched,
 				Project:   "exists",
 				Activated: true,
+				StartTime: util.ZeroTime,
 			}
 			So(t1.Insert(), ShouldBeNil)
 			t2 := task.Task{
@@ -485,6 +491,7 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionTunable(t *testing.T) {
 				Status:    evergreen.TaskUndispatched,
 				Project:   "exists",
 				Activated: true,
+				StartTime: util.ZeroTime,
 			}
 			So(t2.Insert(), ShouldBeNil)
 
@@ -561,6 +568,7 @@ func TestNextTask(t *testing.T) {
 			Activated: true,
 			BuildId:   buildID,
 			Project:   "exists",
+			StartTime: util.ZeroTime,
 		}
 		So(task1.Insert(), ShouldBeNil)
 
@@ -570,6 +578,7 @@ func TestNextTask(t *testing.T) {
 			Activated: true,
 			Project:   "exists",
 			BuildId:   buildID,
+			StartTime: util.ZeroTime,
 		}
 		So(task2.Insert(), ShouldBeNil)
 
@@ -586,6 +595,7 @@ func TestNextTask(t *testing.T) {
 			Id:        "another",
 			Status:    evergreen.TaskUndispatched,
 			Activated: true,
+			StartTime: util.ZeroTime,
 		}
 		So(task3.Insert(), ShouldBeNil)
 
