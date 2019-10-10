@@ -81,3 +81,16 @@ func GetSetDifference(a, b []string) []string {
 
 	return d
 }
+
+func CoalesceString(in ...string) string {
+	for _, str := range in {
+		if str != "" {
+			return str
+		}
+	}
+	return ""
+}
+
+func CoalesceStrings(inArray []string, inStrs ...string) string {
+	return CoalesceString(CoalesceString(inArray...), CoalesceString(inStrs...))
+}

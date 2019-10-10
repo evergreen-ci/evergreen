@@ -472,12 +472,29 @@ func IsGitHubPatchRequester(requester string) bool {
 }
 
 // Registered permissions
+const AclCheckingIsEnabled = false
+
 const (
 	PermissionProjectSettings  = "project_settings"
 	PermissionProjectVariables = "project_variables"
 	PermissionTasks            = "project_tasks"
 	PermissionPatches          = "project_patches"
 	PermissionLogs             = "project_logs"
+
+	ProjectSettingsEdit  = 20
+	ProjectSettingsView  = 10
+	ProjectSettingsNone  = 0
+	ProjectVariablesEdit = 20
+	ProjectVariablesView = 10
+	ProjectVariablesNone = 0
+	TasksAdmin           = 30
+	TasksBasic           = 20
+	TasksView            = 10
+	TasksNone            = 0
+	PatchSubmit          = 10
+	PatchNone            = 0
+	LogsView             = 10
+	LogsNone             = 0
 )
 
 var projectPermissions = []string{
