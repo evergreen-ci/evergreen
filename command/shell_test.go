@@ -166,6 +166,7 @@ func (s *shellExecuteCommandSuite) TestCancellingContextShouldCancelCommand() {
 	defer cancel()
 
 	err := cmd.Execute(ctx, s.comm, s.logger, s.conf)
-	s.Contains("shell command interrupted", err.Error())
-	s.NotContains("error while stopping process", err.Error())
+	s.Require().NotNil(err)
+	s.Contains(err.Error(), "shell command interrupted")
+	s.NotContains(err.Error(), "error while stopping process")
 }

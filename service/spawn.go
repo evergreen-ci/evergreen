@@ -263,7 +263,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("rdp password can only be set on Windows hosts"))
 			return
 		}
-		if !cloud.ValidateRDPPassword(pwd) {
+		if !host.ValidateRDPPassword(pwd) {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Invalid password"))
 			return
 		}

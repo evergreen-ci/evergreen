@@ -82,33 +82,21 @@ func (d *Distro) ValidateBootstrapSettings() error {
 
 	switch d.BootstrapSettings.Method {
 	case BootstrapMethodLegacySSH:
-		if d.BootstrapSettings.Communication != CommunicationMethodLegacySSH {
-			catcher.New("bootstrapping hosts using legacy SSH is incompatible with non-legacy host communication")
-		}
+		catcher.NewWhen(d.BootstrapSettings.Communication != CommunicationMethodLegacySSH, "bootstrapping hosts using legacy SSH is incompatible with non-legacy host communication")
 	default:
-		if d.BootstrapSettings.Communication == CommunicationMethodLegacySSH {
-			catcher.New("communicating with hosts using legacy SSH is incompatible with non-legacy host bootstrapping")
-		}
+		catcher.NewWhen(d.BootstrapSettings.Communication == CommunicationMethodLegacySSH, "communicating with hosts using legacy SSH is incompatible with non-legacy host bootstrapping")
 	}
 
 	if d.BootstrapSettings.Method == BootstrapMethodLegacySSH || d.BootstrapSettings.Communication == CommunicationMethodLegacySSH {
 		return catcher.Resolve()
 	}
 
-	if d.BootstrapSettings.ClientDir == "" {
-		catcher.New("client directory cannot be empty for non-legacy bootstrapping")
-	}
-
-	if d.BootstrapSettings.JasperBinaryDir == "" {
-		catcher.New("Jasper binary directory cannot be empty for non-legacy bootstrapping")
-	}
-
-	if d.BootstrapSettings.JasperCredentialsPath == "" {
-		catcher.New("Jasper credentials path cannot be empty for non-legacy bootstrapping")
-	}
+	catcher.NewWhen(d.BootstrapSettings.ClientDir == "", "client directory cannot be empty for non-legacy bootstrapping")
+	catcher.NewWhen(d.BootstrapSettings.JasperBinaryDir == "", "Jasper binary directory cannot be empty for non-legacy bootstrapping")
+	catcher.NewWhen(d.BootstrapSettings.JasperCredentialsPath == "", "Jasper credentials path cannot be empty for non-legacy bootstrapping")
+	catcher.NewWhen(d.BootstrapSettings.ShellPath == "", "shell path cannot be empty for non-legacy Windows bootstrapping")
 
 	catcher.NewWhen(d.IsWindows() && d.BootstrapSettings.ServiceUser == "", "service user cannot be empty for non-legacy Windows bootstrapping")
-	catcher.NewWhen(d.IsWindows() && d.BootstrapSettings.ShellPath == "", "shell path cannot be empty for non-legacy Windows bootstrapping")
 	catcher.NewWhen(d.IsWindows() && d.BootstrapSettings.RootDir == "", "root directory cannot be empty for non-legacy Windows bootstrapping")
 
 	catcher.NewWhen(d.IsLinux() && d.BootstrapSettings.ResourceLimits.NumFiles < -1, "max number of files should be a positive number or -1")

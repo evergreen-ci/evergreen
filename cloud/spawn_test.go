@@ -19,11 +19,11 @@ func TestRDPPasswordValidation(t *testing.T) {
 	badPasswords := []string{"", "weak", "stilltooweak1", "火火火1"}
 
 	for _, password := range goodPasswords {
-		assert.True(ValidateRDPPassword(password), password)
+		assert.True(host.ValidateRDPPassword(password), password)
 	}
 
 	for _, password := range badPasswords {
-		assert.False(ValidateRDPPassword(password), password)
+		assert.False(host.ValidateRDPPassword(password), password)
 	}
 }
 
