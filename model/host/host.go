@@ -529,6 +529,7 @@ func (h *Host) Terminate(user, reason string) error {
 		bson.M{
 			"$set": bson.M{
 				TerminationTimeKey: h.TerminationTime,
+				VolumeIDsKey:       []string{},
 			},
 		},
 	)
@@ -1866,5 +1867,10 @@ func (h *Host) DetachVolume(volumeID string) error {
 // FindHostWithVolume finds the host associated with the
 // specified volume ID.
 func FindHostWithVolume(volumeID string) (*Host, error) {
-	return FindOne(db.Query(bson.M{VolumeIDsKey: volumeID}))
+	q := db.Query(
+		bson.M{
+			VolumeIDsKey: volumeID,
+		},
+	)
+	return FindOne(q)
 }
