@@ -228,6 +228,17 @@ func TerminateSpawnHost(ctx context.Context, host *host.Host, settings *evergree
 	return nil
 }
 
+func ModifySpawnHost(ctx context.Context, host *host.Host, opts host.HostModifyOptions, settings *evergreen.Settings) error {
+	cloudHost, err := GetCloudHost(ctx, host, settings)
+	if err != nil {
+		return err
+	}
+	if err = cloudHost.ModifyHost(ctx, opts); err != nil {
+		return err
+	}
+	return nil
+}
+
 func MakeExtendedSpawnHostExpiration(host *host.Host, extendBy time.Duration) (time.Time, error) {
 	newExp := host.ExpirationTime.Add(extendBy)
 	remainingDuration := newExp.Sub(time.Now()) //nolint

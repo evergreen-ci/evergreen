@@ -61,5 +61,31 @@
             </md-button>
         </div>
       </section>
+      <section layout="row" flex ng-show="curHostData.host_type == 'ec2-ondemand' && curHostData.instance_type != ''" style="white-space: nowrap">
+        <div flex="85">
+          <strong>Instance Type:</strong>
+          <span class="dropdown">
+            <button class="btn btn-link btn-dropdown" data-toggle="dropdown" href="#" id="distro">
+              <strong>
+                [[selectedInstanceType]]
+                <span class="fa fa-caret-down"></span>
+              </strong>
+          </button>
+          <ul class="dropdown-menu" role="menu" aria-labelledby="distro">
+            <li role="presentation" class="dropdown-header">Instance types</li>
+            <li role="presentation" ng-repeat="instanceType in allowedInstanceTypes">
+              <a role="menuitem" ng-click="setInstanceType(instanceType)">
+                [[instanceType]]
+              </a>
+            </li>
+          </ul>
+          </span>
+        </div>
+        <div flex="15">
+          <md-button type="button" class="btn-info md-raised" style="top: 8px; float: right" ng-click="updateInstanceType()">
+            Update
+          </md-button>
+      </div>
+    </section>
   </div>
 </div>

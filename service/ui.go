@@ -345,6 +345,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/spawn/hosts").Wrap(needsLogin, needsContext).Handler(uis.getSpawnedHosts).Get()
 	app.AddRoute("/spawn/distros").Wrap(needsLogin, needsContext).Handler(uis.listSpawnableDistros).Get()
 	app.AddRoute("/spawn/keys").Wrap(needsLogin, needsContext).Handler(uis.getUserPublicKeys).Get()
+	app.AddRoute("/spawn/types").Wrap(needsLogin, needsContext).Handler(uis.getAllowedInstanceTypes).Get()
 
 	// User settings
 	app.AddRoute("/settings").Wrap(needsLogin, needsContext).Handler(uis.userSettingsPage).Get()
