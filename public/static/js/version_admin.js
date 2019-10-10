@@ -76,7 +76,7 @@ mciModule.controller('AdminOptionsCtrl', [
                     $scope.closeAdminModal()
                     $rootScope.$broadcast("version_updated", data)
                     notifier.pushNotification(
-                      "Version " + (active ? "scheduled." : "unscheduled") +
+                      "Version " + (active ? "scheduled" : "unscheduled") +
                       (!active && $scope.version.Version.requester === "merge_test" ? " and removed from commit queue." : ".") +
                       (abort ? "\n In progress tasks will be aborted." : "")
                       ,
@@ -195,7 +195,8 @@ mciModule.directive('adminUnscheduleAll', function() {
         '<div>' +
           'Unschedule all tasks?' +
             '<div ng-show="version.requester === "merge_test">' +
-            'This will remove version from the commit queue.' +
+                'This will remove version from the commit queue.' +
+            '</div>' +
         '</div>' +
           '<div style="float:right">' +
             '<button type="button" class="btn btn-danger" style="float: right;" data-dismiss="modal">Cancel</button>' +

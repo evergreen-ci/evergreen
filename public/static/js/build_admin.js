@@ -33,9 +33,11 @@ mciModule.controller('AdminOptionsCtrl', [
             {
                 success: function(resp) {
                     var data = resp.data;
+                    var message = "Build aborted" +
+                        ($scope.build.requester === "merge_test" ? " and version removed from commit queue." : ".");
                     $scope.closeAdminModal();
                     $rootScope.$broadcast("build_updated", data);
-                    notifier.pushNotification("Build aborted.", 'notifyHeader', 'success');
+                    notifier.pushNotification(message, 'notifyHeader', 'success');
                 },
                 error: function(resp) {
                     notifier.pushNotification('Error aborting build: ' + resp.data,'errorModal');
@@ -96,7 +98,9 @@ mciModule.controller('AdminOptionsCtrl', [
                     var data = resp.data;
                     $scope.closeAdminModal();
                     $rootScope.$broadcast("build_updated", data);
-                    var notifyString = "Build marked as " + (active ? "scheduled." : "unscheduled.");
+                    var notifyString = "Build marked as " + (active ? "scheduled" : "unscheduled") +
+                        (!active && $scope.build.requester === "merge_test" ? " and version removed from commit queue." : ".") +
+                        (abort ? "\n In progress tasks will be aborted." : "");
                     notifier.pushNotification(notifyString, 'notifyHeader', 'success');
                 },
                 error: function(resp) {
@@ -189,6 +193,9 @@ mciModule.directive('adminUnscheduleBuild', function() {
     '<div class="row">' +
       '<div class="col-lg-12">' +
         'Unschedule current build?' +
+        '<div ng-show="build.requester === "merge_test">' +
+            'This will remove the version from the commit queue.' +
+        '</div>' +
         '<button type="button" class="btn btn-danger" style="float: right;" data-dismiss="modal">Cancel</button>' +
         '<button type="button" class="btn btn-primary" style="float: right; margin-right: 10px;" ng-click="setActive(false)">Yes</button>' +
         '<div style="margin-top: 6px;">' +

@@ -258,7 +258,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		if !jsonMap.Active && projCtx.ProjectRef.CommitQueue.Enabled {
+		if !jsonMap.Active && projCtx.Version.Requester == evergreen.MergeTestRequester {
 			_, err := commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
 				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Version.Id, true)
 			if err != nil {

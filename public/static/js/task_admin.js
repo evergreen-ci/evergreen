@@ -50,7 +50,9 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$window', '$rootScope', 'mc
             {},
             {
                 success: function(resp) {
-                    doModalSuccess("Task aborted.", resp.data, $scope.task.display_only);
+                    var message = "Task aborted" +
+                        ($scope.task.requester === "merge_test" ? " and version removed from commit queue." : ".")
+                    doModalSuccess(message, resp.data, $scope.task.display_only);
                 },
                 error: function(resp) {
                     notifier.pushNotification('Error aborting: ' + resp.data.error,'errorModal');
@@ -102,7 +104,10 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$window', '$rootScope', 'mc
             {
                 success: function(resp) {
                     var data = resp.data;
-                    doModalSuccess("Task marked as " + (active ? "scheduled." : "unscheduled."), data, $scope.task.display_only);
+                    var message = "Task marked as " + (active ? "scheduled" : "unscheduled") +
+                        (!active && $scope.task.requester === "merge_test" ? " and version removed from commit queue." : ".") +
+
+                        doModalSuccess(message, data, $scope.task.display_only);
                 },
                 error: function(resp) {
                     notifier.pushNotification('Error setting active = ' + active + ': ' + resp.data,'errorModal');
@@ -169,6 +174,9 @@ mciModule.directive('adminAbortTask', function() {
     '<div class="row">' +
       '<div class="col-lg-12">' +
         'Abort current task?' +
+        '<div ng-show="task.requester === "merge_test">' +
+            'This will remove version from the commit queue.' +
+        '</div>' +
         '<button type="button" class="btn btn-danger" style="float: right;" data-dismiss="modal">Cancel</button>' +
         '<button type="button" class="btn btn-primary" style="float: right; margin-right: 10px;" ng-click="abort()">Yes</button>' +
       '</div>' +
@@ -197,6 +205,9 @@ mciModule.directive('adminUnscheduleTask', function() {
     '<div class="row">' +
       '<div class="col-lg-12">' +
         'Unschedule current task?' +
+        '<div ng-show="task.requester === "merge_test">' +
+            'This will remove version from the commit queue.' +
+        '</div>' +
         '<button type="button" class="btn btn-danger" style="float: right;" data-dismiss="modal">Cancel</button>' +
         '<button type="button" class="btn btn-primary" style="float: right; margin-right: 10px;" ng-click="setActive(false)">Yes</button>' +
       '</div>' +
