@@ -27,16 +27,16 @@ func (t *Task) ResultStatus() string {
 		status = evergreen.TaskSucceeded
 	} else if t.Status == evergreen.TaskFailed {
 		status = evergreen.TaskFailed
-		if t.Details.Type == "system" {
+		if t.Details.Type == evergreen.CommandTypeSystem {
 			status = evergreen.TaskSystemFailed
 			if t.Details.TimedOut {
-				if t.Details.Description == "heartbeat" {
+				if t.Details.Description == evergreen.TaskDescriptionHeartbeat {
 					status = evergreen.TaskSystemUnresponse
 				} else {
 					status = evergreen.TaskSystemTimedOut
 				}
 			}
-		} else if t.Details.Type == "setup" {
+		} else if t.Details.Type == evergreen.CommandTypeSetup {
 			status = evergreen.TaskSetupFailed
 		} else if t.Details.TimedOut {
 			status = evergreen.TaskTestTimedOut

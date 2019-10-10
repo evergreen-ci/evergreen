@@ -855,7 +855,7 @@ func TestTaskStatusCount(t *testing.T) {
 	counts := TaskStatusCount{}
 	details := apimodels.TaskEndDetail{
 		TimedOut:    true,
-		Description: "heartbeat",
+		Description: evergreen.TaskDescriptionHeartbeat,
 	}
 	counts.IncrementStatus(evergreen.TaskSetupFailed, details)
 	counts.IncrementStatus(evergreen.TaskFailed, apimodels.TaskEndDetail{})

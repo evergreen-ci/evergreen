@@ -1138,18 +1138,25 @@ func (s *taskSuite) TestBuildBreak() {
 
 	// successful task should not trigger
 	s.task.Status = evergreen.TaskSucceeded
-	n, err := s.t.buildBreak(&s.subs[5])
+	n, err := s.t.buildBreak(&s.subs[6])
+	s.NoError(err)
+	s.Nil(n)
+
+	// system unresponsive shouldn't trigger
+	s.task.Status = evergreen.TaskFailed
+	s.task.Details.Description = evergreen.TaskDescriptionHeartbeat
+	n, err = s.t.buildBreak(&s.subs[6])
 	s.NoError(err)
 	s.Nil(n)
 
 	// task regression should trigger
-	s.task.Status = evergreen.TaskFailed
-	n, err = s.t.buildBreak(&s.subs[5])
+	s.task.Details.Description = ""
+	n, err = s.t.buildBreak(&s.subs[6])
 	s.NoError(err)
 	s.NotNil(n)
 
 	// another regression in the same version should not trigger
-	n, err = s.t.buildBreak(&s.subs[5])
+	n, err = s.t.buildBreak(&s.subs[6])
 	s.NoError(err)
 	s.Nil(n)
 }

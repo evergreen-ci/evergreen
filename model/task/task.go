@@ -43,8 +43,6 @@ const (
 )
 
 var (
-	AgentHeartbeat = "heartbeat"
-
 	// A regex that matches either / or \ for splitting directory paths
 	// on either windows or linux paths.
 	eitherSlash *regexp.Regexp = regexp.MustCompile(`[/\\]`)
@@ -1682,7 +1680,7 @@ func (tsc *TaskStatusCount) IncrementStatus(status string, statusDetails apimode
 	case evergreen.TaskSucceeded:
 		tsc.Succeeded++
 	case evergreen.TaskFailed, evergreen.TaskSetupFailed:
-		if statusDetails.TimedOut && statusDetails.Description == "heartbeat" {
+		if statusDetails.TimedOut && statusDetails.Description == evergreen.TaskDescriptionHeartbeat {
 			tsc.TimedOut++
 		} else {
 			tsc.Failed++
