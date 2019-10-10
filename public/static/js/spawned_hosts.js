@@ -219,7 +219,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
 
     $scope.updateInstanceType = function() {
       // Do nothing if no instance type selected
-      if ($scope.selectedInstanceType.length == 0) {
+      if (!$scope.selectedInstanceType) {
         return
       }
       // Do nothing if host is not stopped
