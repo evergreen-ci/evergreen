@@ -8,7 +8,7 @@ imports:
     subpackages:
       - ssh
   - name: golang.org/x/net
-    version: 1358eff22f0dd0c54fc521042cc607f6ff4b531a
+    version: 3a22650c66bd7f4fb6d1e8072ffd7b75c8a27898
     subpackages:
       - context
   - name: github.com/vaughan0/go-ini
