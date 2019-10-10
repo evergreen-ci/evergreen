@@ -143,7 +143,6 @@ func (apiVolume *APIVolume) BuildFromService(volume interface{}) error {
 	default:
 		return errors.Errorf("%T is not a supported type", volume)
 	}
-	return nil
 }
 
 func (apiVolume *APIVolume) buildFromVolumeStruct(volume interface{}) error {
