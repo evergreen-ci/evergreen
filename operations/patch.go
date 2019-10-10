@@ -55,7 +55,7 @@ func Patch() cli.Command {
 			params := &patchParams{
 				Project:     c.String(projectFlagName),
 				Variants:    splitCommas(c.StringSlice(variantsFlagName)),
-				Tasks:       splitSlices(c.StringSlice(tasksFlagName)),
+				Tasks:       splitCommas(c.StringSlice(tasksFlagName)),
 				SkipConfirm: c.Bool(yesFlagName),
 				Description: c.String(patchDescriptionFlagName),
 				Finalize:    c.Bool(patchFinalizeFlagName),

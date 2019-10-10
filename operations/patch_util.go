@@ -70,11 +70,9 @@ type patchSubmission struct {
 	description string
 	base        string
 	alias       string
-	// kim: TODO: remove
-	// variants    string
-	variants []string
-	tasks    []string
-	finalize bool
+	variants    []string
+	tasks       []string
+	finalize    bool
 }
 
 func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffData *localDiff) (*patch.Patch, error) {
@@ -96,19 +94,15 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 		}
 	}
 
-	// kim: TODO: remove
-	// variantsStr := strings.Join(p.Variants, ",")
 	patchSub := patchSubmission{
 		projectId:   p.Project,
 		patchData:   diffData.fullPatch,
 		description: p.Description,
 		base:        diffData.base,
-		// kim: TODO: remove
-		// variants:    variantsStr,
-		variants: p.Variants,
-		tasks:    p.Tasks,
-		finalize: p.Finalize,
-		alias:    p.Alias,
+		variants:    p.Variants,
+		tasks:       p.Tasks,
+		finalize:    p.Finalize,
+		alias:       p.Alias,
 	}
 
 	newPatch, err := ac.PutPatch(patchSub)

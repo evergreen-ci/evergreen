@@ -35,12 +35,10 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	dbUser := MustHaveUser(r)
 
 	data := struct {
-		Description string `json:"desc"`
-		Project     string `json:"project"`
-		Patch       string `json:"patch"`
-		Githash     string `json:"githash"`
-		// kim: TODO: remove
-		// Variants    string `json:"buildvariants"`
+		Description string   `json:"desc"`
+		Project     string   `json:"project"`
+		Patch       string   `json:"patch"`
+		Githash     string   `json:"githash"`
 		Variants    []string `json:"buildvariants"`
 		Tasks       []string `json:"tasks"`
 		Finalize    bool     `json:"finalize"`
@@ -55,8 +53,6 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("Patch is too large"))
 		return
 	}
-	// kim: TODO: remove
-	// variants := strings.Split(data.Variants, ",")
 
 	pref, err := model.FindOneProjectRef(data.Project)
 	if err != nil {

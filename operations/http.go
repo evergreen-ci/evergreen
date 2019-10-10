@@ -391,15 +391,14 @@ func (ac *legacyClient) ListDistros() ([]distro.Distro, error) {
 // the patch object itself.
 func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, error) {
 	data := struct {
-		Description string `json:"desc"`
-		Project     string `json:"project"`
-		Patch       string `json:"patch"`
-		Githash     string `json:"githash"`
-		// kim: TODO: do the below TODO
-		Variants []string `json:"buildvariants"` //TODO make this an array
-		Tasks    []string `json:"tasks"`
-		Finalize bool     `json:"finalize"`
-		Alias    string   `json:"alias"`
+		Description string   `json:"desc"`
+		Project     string   `json:"project"`
+		Patch       string   `json:"patch"`
+		Githash     string   `json:"githash"`
+		Variants    []string `json:"buildvariants"`
+		Tasks       []string `json:"tasks"`
+		Finalize    bool     `json:"finalize"`
+		Alias       string   `json:"alias"`
 	}{
 		incomingPatch.description,
 		incomingPatch.projectId,
