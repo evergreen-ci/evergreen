@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -136,25 +137,31 @@ func bootstrapUserData(ctx context.Context, settings *evergreen.Settings, h *hos
 		return customScript, nil
 	}
 
-	setupScript, err := h.SetupScriptCommands(settings)
-	if err != nil {
-		return "", errors.Wrap(err, "error creating setup script for user data")
-	}
+	// setupScript, err := h.SetupScriptCommands(settings)
+	// if err != nil {
+	//     return "", errors.Wrap(err, "error creating setup script for user data")
+	// }
 
-	fetchClient := h.CurlCommandWithRetry(settings, host.CurlDefaultNumRetries, host.CurlDefaultMaxSecs)
+	// kim: TODO: uncomment
+	// fetchClient := h.CurlCommandWithRetry(settings, host.CurlDefaultNumRetries, host.CurlDefaultMaxSecs)
+	// kim: TODO: remove
+	// fetchClient := ""
 
-	var postFetchClient string
-	if h.StartedBy == evergreen.User {
-		// Start the host with an agent monitor to run tasks.
-		if postFetchClient, err = h.StartAgentMonitorRequest(settings); err != nil {
-			return "", errors.Wrap(err, "error creating command to start agent monitor")
-		}
-	} else if h.ProvisionOptions != nil && h.ProvisionOptions.LoadCLI {
-		// Set up a spawn host.
-		if postFetchClient, err = h.SetupSpawnHostCommand(settings); err != nil {
-			return "", errors.Wrap(err, "error creating commands to load task data")
-		}
-	}
+	// var postFetchClient string
+	// if h.StartedBy == evergreen.User {
+	//     // kim: TODO: uncomment
+	//     // Start the host with an agent monitor to run tasks.
+	//     if postFetchClient, err = h.StartAgentMonitorRequest(settings); err != nil {
+	//         return "", errors.Wrap(err, "error creating command to start agent monitor")
+	//     }
+	// } else if h.ProvisionOptions != nil && h.ProvisionOptions.LoadCLI {
+	//     // Set up a spawn host.
+	//     if postFetchClient, err = h.SetupSpawnHostCommand(settings); err != nil {
+	//         return "", errors.Wrap(err, "error creating commands to load task data")
+	//     }
+	// }
+	// kim: TODO: remove
+	// postFetchClient = ""
 
 	markDone, err := h.MarkUserDataDoneCommands()
 	if err != nil {
@@ -165,14 +172,20 @@ func bootstrapUserData(ctx context.Context, settings *evergreen.Settings, h *hos
 	if err != nil {
 		return customScript, errors.Wrap(err, "problem generating Jasper credentials for host")
 	}
+	// var creds *rpc.Credentials
 
 	bootstrapScript, err := h.BootstrapScript(settings, creds,
-		[]string{setupScript},
-		[]string{fetchClient, postFetchClient, markDone},
+		[]string{ /*setupScript*/ },
+		[]string{ /*fetchClient, postFetchClient,*/ markDone},
 	)
 	if err != nil {
 		return customScript, errors.Wrap(err, "could not generate user data bootstrap script")
 	}
+	grip.Info(message.Fields{
+		"kim":    "generated bootstrap script",
+		"host":   h.Id,
+		"script": bootstrapScript,
+	})
 
 	multipartUserData, err := makeMultipartUserData(map[string]string{
 		"bootstrap.txt": bootstrapScript,

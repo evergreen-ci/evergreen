@@ -372,7 +372,7 @@ func (h *Host) jasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credentials, preJasperSetup, postJasperSetup []string) (string, error) {
 	bashPrefix := []string{"set -o errexit", "set -o verbose"}
 
-	writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
+	writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommandsSplit(settings.Splunk, creds)
 	if err != nil {
 		return "", errors.Wrap(err, "could not get command to write Jasper credentials file")
 	}
@@ -383,37 +383,32 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credenti
 			return "", errors.Wrap(err, "could not get command to set up service user")
 		}
 
-		setupJasperCmds := []string{
-			writeCredentialsCmd,
-			h.FetchJasperCommand(settings.HostJasper),
-			h.ForceReinstallJasperCommand(settings),
-		}
+		setupJasperCmds := writeCredentialsCmd
+		// // kim: TODO: uncomment
+		// h.FetchJasperCommand(settings.HostJasper),
+		// h.ForceReinstallJasperCommand(settings),
+		// }
 
-		bashCmds := append(preJasperSetup, strings.Join(setupJasperCmds, "\n"))
+		bashCmds := append(preJasperSetup, setupJasperCmds...)
 		bashCmds = append(bashCmds, postJasperSetup...)
 
 		for i := range bashCmds {
-			bashCmds[i] = strings.Join(append(bashPrefix, bashCmds[i]), "\n")
+			// bashCmds[i] = strings.Join(append(bashPrefix, bashCmds[i]), "\n")
 			bashCmds[i] = fmt.Sprintf("%s -l -c %s", filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.ShellPath), util.PowerShellQuotedString(bashCmds[i]))
 		}
 
-		// bashCmdsLiteral := util.PowerShellQuotedString(strings.Join(bashCmds, "\n"))
-
 		powershellCmds := append(append([]string{
 			"<powershell>",
-			// kim: TODO: remove sleep
-			"Start-Sleep -Seconds 60",
 			setupUserCmds},
 			bashCmds...),
-			// fmt.Sprintf("%s -l -c %s", filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.ShellPath), bashCmdsLiteral),
 			"</powershell>",
 		)
 
-		return strings.Join(powershellCmds, "\n"), nil
+		return strings.Join(powershellCmds, "\r\n"), nil
 	}
 
 	bashCmds := append(bashPrefix, preJasperSetup...)
-	bashCmds = append(bashCmds, h.FetchJasperCommand(settings.HostJasper), writeCredentialsCmd, h.ForceReinstallJasperCommand(settings))
+	bashCmds = append(bashCmds, h.FetchJasperCommand(settings.HostJasper) /*writeCredentialsCmd,*/, h.ForceReinstallJasperCommand(settings))
 	bashCmds = append(bashCmds, postJasperSetup...)
 
 	return strings.Join(append([]string{"#!/bin/bash"}, bashCmds...), "\n"), nil
@@ -565,6 +560,42 @@ func (h *Host) WriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionI
 	}
 
 	return strings.Join(cmds, " && "), nil
+}
+
+// WriteJasperCredentialsFilesCommands builds multiple commands to write the
+// Jasper crednetials and Splunk credentials to a file.
+func (h *Host) WriteJasperCredentialsFilesCommandsSplit(splunk send.SplunkConnectionInfo, creds *rpc.Credentials) ([]string, error) {
+	if h.Distro.BootstrapSettings.JasperCredentialsPath == "" {
+		return nil, errors.New("cannot write Jasper credentials without a credentials file path")
+	}
+
+	exportedCreds, err := creds.Export()
+	if err != nil {
+		return nil, errors.Wrap(err, "problem exporting credentials to file format")
+	}
+	writeFileContentCmd := func(path, content string) string {
+		// kim: TODO: see if we can remove single quotes
+		return fmt.Sprintf("echo -n '%s' >> '%s'", content, path)
+	}
+
+	cmds := []string{
+		fmt.Sprintf("mkdir -m 777 -p \"%s\"", filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath)),
+	}
+
+	n := 2048
+	for start := 0; start < len(exportedCreds); start += n {
+		end := start + n
+		if end > len(exportedCreds) {
+			end = len(exportedCreds)
+		}
+		cmds = append(cmds, writeFileContentCmd(h.Distro.BootstrapSettings.JasperCredentialsPath, string(exportedCreds[start:end])))
+	}
+
+	if splunk.Populated() {
+		cmds = append(cmds, writeFileContentCmd(h.splunkTokenFilePath(), splunk.Token))
+	}
+
+	return cmds, nil
 }
 
 func (h *Host) splunkTokenFilePath() string {
