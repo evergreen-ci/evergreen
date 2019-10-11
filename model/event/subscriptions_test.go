@@ -175,6 +175,15 @@ func (s *subscriptionsSuite) TestFind() {
 	s.NoError(err)
 	s.Empty(subs)
 
+	subs, err = FindSubscriptions("type1", []Selector{
+		{
+			Type: "data",
+			Data: "nothing_matches",
+		},
+	})
+	s.NoError(err)
+	s.Empty(subs)
+
 	subs, err = FindSubscriptions("type2", []Selector{
 		{
 			Type: "data",
