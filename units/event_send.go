@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -96,6 +97,11 @@ func (j *eventNotificationJob) Run(_ context.Context) {
 
 	if err = j.checkDegradedMode(n); err != nil {
 		j.AddError(n.MarkError(err))
+		return
+	}
+
+	if !util.IsZeroTime(n.SentAt) {
+		j.AddError(errors.Errorf("notification '%s' has already been processed", n.ID))
 		return
 	}
 
