@@ -1,7 +1,5 @@
 package model
 
-// TODO Test for dependencies for task(s) within a task group
-
 import (
 	"fmt"
 	"strconv"
@@ -26,6 +24,250 @@ type taskDAGDispatchServiceSuite struct {
 
 func TestTaskDAGDispatchServiceSuite(t *testing.T) {
 	suite.Run(t, new(taskDAGDispatchServiceSuite))
+}
+
+func (s *taskDAGDispatchServiceSuite) TestOutsideTasksWithTaskGroupDependencies() {
+	s.Require().NoError(db.ClearCollections(task.Collection))
+	s.Require().NoError(db.ClearCollections(host.Collection))
+	distroID := "distro_1"
+	items := []TaskQueueItem{}
+
+	t1 := task.Task{
+		Id:                "taskgroup_task1",
+		BuildId:           "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+		TaskGroup:         "tg_compile_and_test",
+		TaskGroupMaxHosts: 1,
+		StartTime:         util.ZeroTime,
+		BuildVariant:      "archlinux",
+		Version:           "5d8cd23da4cf4747f4210333",
+		Project:           "genny",
+		Activated:         true,
+		ActivatedBy:       "",
+		DistroId:          "archlinux-test",
+		Requester:         "github_pull_request",
+		Status:            evergreen.TaskUndispatched,
+		Revision:          "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		TaskGroupOrder:    4,
+	}
+	item1 := TaskQueueItem{
+		Id:                  "taskgroup_task1",
+		IsDispatched:        false,
+		Group:               "tg_compile_and_test",
+		GroupMaxHosts:       1,
+		Version:             "5d8cd23da4cf4747f4210333",
+		BuildVariant:        "archlinux",
+		RevisionOrderNumber: 261,
+		Requester:           "github_pull_request",
+		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		Project:             "genny",
+		GroupIndex:          4,
+	}
+
+	//////////////////////////////////////////////////////////////////////////////
+
+	t2 := task.Task{
+		Id:                  "taskgroup_task2",
+		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+		TaskGroup:           "tg_compile_and_test",
+		TaskGroupMaxHosts:   1,
+		StartTime:           util.ZeroTime,
+		BuildVariant:        "archlinux",
+		Version:             "5d8cd23da4cf4747f4210333",
+		Project:             "genny",
+		Activated:           true,
+		ActivatedBy:         "",
+		DistroId:            "archlinux-test",
+		Requester:           "github_pull_request",
+		Status:              evergreen.TaskUndispatched,
+		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		RevisionOrderNumber: 261,
+		DependsOn:           []task.Dependency{},
+		TaskGroupOrder:      1,
+	}
+	item2 := TaskQueueItem{
+		Id:                  "taskgroup_task2",
+		IsDispatched:        false,
+		Group:               "tg_compile_and_test",
+		GroupMaxHosts:       1,
+		Version:             "5d8cd23da4cf4747f4210333",
+		BuildVariant:        "archlinux",
+		RevisionOrderNumber: 261,
+		Requester:           "github_pull_request",
+		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		Project:             "genny",
+		Dependencies:        []string{},
+		GroupIndex:          1,
+	}
+
+	//////////////////////////////////////////////////////////////////////////////
+
+	t3 := task.Task{
+		Id:                  "taskgroup_task3",
+		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+		TaskGroup:           "tg_compile_and_test",
+		TaskGroupMaxHosts:   1,
+		StartTime:           util.ZeroTime,
+		BuildVariant:        "archlinux",
+		Version:             "5d8cd23da4cf4747f4210333",
+		Project:             "genny",
+		Activated:           true,
+		ActivatedBy:         "",
+		DistroId:            "archlinux-test",
+		Requester:           "github_pull_request",
+		Status:              evergreen.TaskUndispatched,
+		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		RevisionOrderNumber: 261,
+		TaskGroupOrder:      3,
+	}
+	item3 := TaskQueueItem{
+		Id:                  "taskgroup_task3",
+		IsDispatched:        false,
+		Group:               "tg_compile_and_test",
+		GroupMaxHosts:       1,
+		Version:             "5d8cd23da4cf4747f4210333",
+		BuildVariant:        "archlinux",
+		RevisionOrderNumber: 261,
+		Requester:           "github_pull_request",
+		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		Project:             "genny",
+		GroupIndex:          3,
+	}
+
+	//////////////////////////////////////////////////////////////////////////////
+
+	t4 := task.Task{
+		Id:                  "taskgroup_task4",
+		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+		TaskGroup:           "tg_compile_and_test",
+		TaskGroupMaxHosts:   1,
+		StartTime:           util.ZeroTime,
+		BuildVariant:        "archlinux",
+		Version:             "5d8cd23da4cf4747f4210333",
+		Project:             "genny",
+		Activated:           true,
+		ActivatedBy:         "",
+		DistroId:            "archlinux-test",
+		Requester:           "github_pull_request",
+		Status:              evergreen.TaskUndispatched,
+		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		RevisionOrderNumber: 261,
+		TaskGroupOrder:      2,
+	}
+	item4 := TaskQueueItem{
+		Id:                  "taskgroup_task4",
+		IsDispatched:        false,
+		Group:               "tg_compile_and_test",
+		GroupMaxHosts:       1,
+		Version:             "5d8cd23da4cf4747f4210333",
+		BuildVariant:        "archlinux",
+		RevisionOrderNumber: 261,
+		Requester:           "github_pull_request",
+		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		Project:             "genny",
+		GroupIndex:          2,
+	}
+
+	//////////////////////////////////////////////////////////////////////////////
+
+	t5 := task.Task{
+		Id:                  "external_task5",
+		BuildId:             "build_1",
+		TaskGroup:           "",
+		TaskGroupMaxHosts:   0,
+		StartTime:           util.ZeroTime,
+		BuildVariant:        "archlinux",
+		Version:             "version_1",
+		Project:             "project_1",
+		Activated:           true,
+		ActivatedBy:         "",
+		DistroId:            "archlinux-test",
+		Requester:           "github_pull_request",
+		Status:              evergreen.TaskUndispatched,
+		Revision:            "revision_1",
+		RevisionOrderNumber: 262,
+		DependsOn: []task.Dependency{
+			task.Dependency{
+				TaskId:       "taskgroup_task3",
+				Status:       "success",
+				Unattainable: false,
+			},
+		},
+	}
+	item5 := TaskQueueItem{
+		Id:                  "external_task5",
+		IsDispatched:        false,
+		Group:               "",
+		GroupMaxHosts:       0,
+		Version:             "version_1",
+		BuildVariant:        "archlinux",
+		RevisionOrderNumber: 262,
+		Requester:           "github_pull_request",
+		Revision:            "revision_1",
+		Project:             "project_1",
+		Dependencies:        []string{"taskgroup_task3"},
+	}
+
+	s.Require().NoError(t1.Insert())
+	s.Require().NoError(t2.Insert())
+	s.Require().NoError(t3.Insert())
+	s.Require().NoError(t4.Insert())
+	s.Require().NoError(t5.Insert())
+	// items = append(items, item1, item2, item3, item4, item5)
+	items = append(items, item5, item1, item2, item3, item4)
+
+	s.taskQueue = TaskQueue{
+		Distro: distroID,
+		Queue:  items,
+	}
+
+	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.NoError(err)
+	s.Equal("distro_1", service.distroID)
+	s.Equal(60*time.Second, service.ttl)
+	s.NotEqual(util.ZeroTime, service.lastUpdated)
+
+	spec := TaskSpec{}
+
+	// 3 successive calls (regardless of the TaskSpec passed) will dispatch 3 task group tasks, per TaskGroupOrder.
+	next := service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal("taskgroup_task2", next.Id) // TaskGroupOrder: 1
+	next = service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal("taskgroup_task4", next.Id) // TaskGroupOrder: 2
+	next = service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal("taskgroup_task3", next.Id) // TaskGroupOrder: 3
+
+	// "taskgroup_task3" completes with "status": evergreen.TaskSucceeded.
+	err = setTaskStatus("taskgroup_task3", evergreen.TaskSucceeded)
+	s.Require().NoError(err)
+
+	// Fake a refresh of the in-memory queue.
+	items = []TaskQueueItem{}
+	items = append(items, item5, item1)
+	s.taskQueue.Queue = items
+
+	err = service.rebuild(s.taskQueue.Queue)
+	s.Require().NoError(err)
+
+	// "external_task5" can now be dispatched as its dependency "taskgroup_task3" has completed successfully.
+	next = service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal("external_task5", next.Id)
+
+	// The final task group task "taskgroup_task1" is dispatched
+	next = service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal("taskgroup_task1", next.Id)
+
+	// There are no more tasks to dispatch.
+	next = service.FindNextTask(spec)
+	s.Require().Nil(next)
+	next = service.FindNextTask(spec)
+	s.Require().Nil(next)
+	next = service.FindNextTask(spec)
+	s.Require().Nil(next)
 }
 
 func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
