@@ -106,7 +106,8 @@ type Host struct {
 	// for ec2 dynamic hosts, the total size of the volumes requested, in GiB
 	VolumeTotalSize int64 `bson:"volume_total_size" json:"volume_total_size,omitempty"`
 
-	VolumeIDs []string `bson:"volume_ids,omitempty" json:"volume_ids,omitempty"`
+	VolumeIDs []string           `bson:"volume_ids,omitempty" json:"volume_ids,omitempty"`
+	Volumes   []VolumeAttachment `bson:"volumes" json:"volumes"`
 
 	// stores information on expiration notifications for spawn hosts
 	Notifications map[string]bool `bson:"notifications,omitempty" json:"notifications,omitempty"`
@@ -165,6 +166,11 @@ func (h *IdleHostsByDistroID) MarshalBSON() ([]byte, error)  { return mgobson.Ma
 func (h *IdleHostsByDistroID) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, h) }
 
 type HostGroup []Host
+
+type VolumeAttachment struct {
+	VolumeID   string `bson:"volume_id"`
+	DeviceName string `bson:"device_name"`
+}
 
 // DockerOptions contains options for starting a container
 type DockerOptions struct {
@@ -989,7 +995,7 @@ func (h *Host) CacheHostData() error {
 				ZoneKey:            h.Zone,
 				StartTimeKey:       h.StartTime,
 				VolumeTotalSizeKey: h.VolumeTotalSize,
-				VolumeIDsKey:       h.VolumeIDs,
+				VolumesKey:         h.Volumes,
 				DNSKey:             h.Host,
 			},
 		},
@@ -1825,15 +1831,15 @@ func (h *Host) MarkShouldExpire(expireOnValue string) error {
 }
 
 // AttachVolume adds a volume to a host's VolumeIDs field.
-func (h *Host) AttachVolume(volumeID string) error {
-	h.VolumeIDs = append(h.VolumeIDs, volumeID)
+func (h *Host) AttachVolume(v VolumeAttachment) error {
+	h.Volumes = append(h.Volumes, v)
 	return UpdateOne(
 		bson.M{
 			IdKey: h.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				VolumeIDsKey: h.VolumeIDs,
+				VolumesKey: h.Volumes,
 			},
 		},
 	)
@@ -1842,10 +1848,10 @@ func (h *Host) AttachVolume(volumeID string) error {
 // DetachVolume removes a volume from a host's VolumeIDs field.
 func (h *Host) DetachVolume(volumeID string) error {
 	found := false
-	for i := range h.VolumeIDs {
-		if volumeID == h.VolumeIDs[i] {
+	for i := range h.Volumes {
+		if volumeID == h.Volumes[i].VolumeID {
 			found = true
-			h.VolumeIDs = append(h.VolumeIDs[:i], h.VolumeIDs[i+1:]...)
+			h.Volumes = append(h.Volumes[:i], h.Volumes[i+1:]...)
 		}
 	}
 
@@ -1859,7 +1865,7 @@ func (h *Host) DetachVolume(volumeID string) error {
 		},
 		bson.M{
 			"$set": bson.M{
-				VolumeIDsKey: h.VolumeIDs,
+				VolumesKey: h.Volumes,
 			},
 		},
 	)
@@ -1870,7 +1876,7 @@ func (h *Host) DetachVolume(volumeID string) error {
 func FindHostWithVolume(volumeID string) (*Host, error) {
 	q := db.Query(
 		bson.M{
-			VolumeIDsKey: volumeID,
+			bsonutil.GetDottedKeyName(VolumesKey, VolumeAttachmentIDKey): volumeID,
 		},
 	)
 	return FindOne(q)

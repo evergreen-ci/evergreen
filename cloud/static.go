@@ -99,7 +99,7 @@ func (staticMgr *staticManager) OnUp(context.Context, *host.Host) error {
 	return nil
 }
 
-func (staticMgr *staticManager) AttachVolume(context.Context, *host.Host, string) error {
+func (staticMgr *staticManager) AttachVolume(context.Context, *host.Host, host.VolumeAttachment) error {
 	return errors.New("can't attach volume with static provider")
 }
 

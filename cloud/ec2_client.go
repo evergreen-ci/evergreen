@@ -121,6 +121,8 @@ type AWSClient interface {
 
 	SetTags(context.Context, []string, *host.Host) error
 
+	GetInstanceBlockDevices(context.Context, *host.Host) ([]*ec2.InstanceBlockDeviceMapping, error)
+
 	GetVolumeIDs(context.Context, *host.Host) ([]string, error)
 
 	GetPublicDNSName(ctx context.Context, h *host.Host) (string, error)
@@ -951,11 +953,7 @@ func (c *awsClientImpl) SetTags(ctx context.Context, resources []string, h *host
 	return nil
 }
 
-func (c *awsClientImpl) GetVolumeIDs(ctx context.Context, h *host.Host) ([]string, error) {
-	if h.VolumeIDs != nil {
-		return h.VolumeIDs, nil
-	}
-
+func (c *awsClientImpl) GetInstanceBlockDevices(ctx context.Context, h *host.Host) ([]*ec2.InstanceBlockDeviceMapping, error) {
 	id, err := c.getHostInstanceID(ctx, h)
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't get instance ID for '%s'", h.Id)
@@ -966,11 +964,23 @@ func (c *awsClientImpl) GetVolumeIDs(ctx context.Context, h *host.Host) ([]strin
 		return nil, errors.Wrap(err, "error getting instance info")
 	}
 
-	volumeIDs := []string{}
-	for _, device := range instance.BlockDeviceMappings {
-		volumeIDs = append(volumeIDs, *device.Ebs.VolumeId)
+	return instance.BlockDeviceMappings, nil
+}
+
+func (c *awsClientImpl) GetVolumeIDs(ctx context.Context, h *host.Host) ([]string, error) {
+	if h.Volumes == nil {
+		devices, err := c.GetInstanceBlockDevices(ctx, h)
+		if err != nil {
+			return nil, errors.Wrap(err, "error getting devices")
+		}
+		h.Volumes = makeVolumeAttachments(devices)
 	}
-	h.VolumeIDs = volumeIDs
+
+	// Get string slice of volume IDs
+	volumeIDs := []string{}
+	for _, attachment := range h.Volumes {
+		volumeIDs = append(volumeIDs, attachment.VolumeID)
+	}
 
 	return volumeIDs, nil
 }
@@ -1419,9 +1429,24 @@ func (c *awsClientMock) SetTags(ctx context.Context, resources []string, h *host
 	return nil
 }
 
+func (c *awsClientMock) GetInstanceBlockDevices(ctx context.Context, h *host.Host) ([]*ec2.InstanceBlockDeviceMapping, error) {
+	return []*ec2.InstanceBlockDeviceMapping{
+		&ec2.InstanceBlockDeviceMapping{
+			DeviceName: aws.String("device_name"),
+			Ebs: &ec2.EbsInstanceBlockDevice{
+				VolumeId: aws.String("volume_id"),
+			},
+		},
+	}, nil
+}
+
 func (c *awsClientMock) GetVolumeIDs(ctx context.Context, h *host.Host) ([]string, error) {
-	if len(h.VolumeIDs) != 0 {
-		return h.VolumeIDs, nil
+	if len(h.Volumes) == 0 {
+		volumeIDs := []string{}
+		for _, attachment := range h.Volumes {
+			volumeIDs = append(volumeIDs, attachment.VolumeID)
+		}
+		return volumeIDs, nil
 	}
 
 	return []string{"volume_id"}, nil

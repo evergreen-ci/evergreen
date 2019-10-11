@@ -341,7 +341,7 @@ func (mockMgr *mockManager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return instance.TimeTilNextPayment
 }
 
-func (mockMgr *mockManager) AttachVolume(ctx context.Context, host *host.Host, volumeID string) error {
+func (mockMgr *mockManager) AttachVolume(ctx context.Context, host *host.Host, attachment host.VolumeAttachment) error {
 	l := mockMgr.mutex
 	l.Lock()
 	defer l.Unlock()
@@ -349,10 +349,10 @@ func (mockMgr *mockManager) AttachVolume(ctx context.Context, host *host.Host, v
 	if !ok {
 		return errors.Errorf("unable to fetch host: %s", host.Id)
 	}
-	instance.BlockDevices = append(instance.BlockDevices, volumeID)
+	instance.BlockDevices = append(instance.BlockDevices, attachment.VolumeID)
 	mockMgr.Instances[host.Id] = instance
 
-	return errors.WithStack(host.AttachVolume(volumeID))
+	return errors.WithStack(host.AttachVolume(attachment))
 }
 
 func (mockMgr *mockManager) DetachVolume(ctx context.Context, host *host.Host, volumeID string) error {

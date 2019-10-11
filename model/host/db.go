@@ -64,6 +64,7 @@ var (
 	InstanceTypeKey              = bsonutil.MustHaveTag(Host{}, "InstanceType")
 	VolumeTotalSizeKey           = bsonutil.MustHaveTag(Host{}, "VolumeTotalSize")
 	VolumeIDsKey                 = bsonutil.MustHaveTag(Host{}, "VolumeIDs")
+	VolumesKey                   = bsonutil.MustHaveTag(Host{}, "Volumes")
 	NotificationsKey             = bsonutil.MustHaveTag(Host{}, "Notifications")
 	LastCommunicationTimeKey     = bsonutil.MustHaveTag(Host{}, "LastCommunicationTime")
 	UserHostKey                  = bsonutil.MustHaveTag(Host{}, "UserHost")
@@ -95,6 +96,7 @@ var (
 	VolumeCreatedByKey           = bsonutil.MustHaveTag(Volume{}, "CreatedBy")
 	VolumeTypeKey                = bsonutil.MustHaveTag(Volume{}, "Type")
 	VolumeSizeKey                = bsonutil.MustHaveTag(Volume{}, "Size")
+	VolumeAttachmentIDKey        = bsonutil.MustHaveTag(VolumeAttachment{}, "VolumeID")
 )
 
 var (

@@ -425,7 +425,12 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if mgr.AttachVolume(ctx, targetHost, h.VolumeID); err != nil {
+	// Create new attachment on host
+	newAttachment := host.VolumeAttachment{
+		VolumeID:   h.VolumeID,
+		DeviceName: h.DeviceName,
+	}
+	if mgr.AttachVolume(ctx, targetHost, newAttachment); err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
@@ -484,8 +489,8 @@ func (h *detachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	found := false
-	for _, id := range host.VolumeIDs {
-		if id == h.VolumeID {
+	for _, attachment := range host.Volumes {
+		if attachment.VolumeID == h.VolumeID {
 			found = true
 			break
 		}

@@ -56,7 +56,7 @@ type Manager interface {
 	GetDNSName(context.Context, *host.Host) (string, error)
 
 	// AttachVolume attaches a volume to a host.
-	AttachVolume(context.Context, *host.Host, string) error
+	AttachVolume(context.Context, *host.Host, host.VolumeAttachment) error
 
 	// DetachVolume detaches a volume from a host.
 	DetachVolume(context.Context, *host.Host, string) error

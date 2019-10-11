@@ -210,7 +210,7 @@ func (m *gceManager) OnUp(context.Context, *host.Host) error {
 	return nil
 }
 
-func (m *gceManager) AttachVolume(context.Context, *host.Host, string) error {
+func (m *gceManager) AttachVolume(context.Context, *host.Host, host.VolumeAttachment) error {
 	return errors.New("can't attach volume with gce provider")
 }
 

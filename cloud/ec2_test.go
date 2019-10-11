@@ -791,7 +791,7 @@ func (s *EC2Suite) TestIsUp() {
 }
 
 func (s *EC2Suite) TestOnUp() {
-	s.h.VolumeIDs = []string{"volume_id"}
+	s.NoError(s.h.Insert())
 
 	s.NoError(s.onDemandManager.OnUp(context.Background(), s.h))
 	manager, ok := s.onDemandManager.(*ec2Manager)
@@ -803,6 +803,16 @@ func (s *EC2Suite) TestOnUp() {
 	s.Len(mock.CreateTagsInput.Resources, 2)
 	s.Equal(s.h.Id, *mock.CreateTagsInput.Resources[0])
 	s.Equal("volume_id", *mock.CreateTagsInput.Resources[1])
+
+	foundHost, err := host.FindOneId(s.h.Id)
+	s.NoError(err)
+	s.NotNil(foundHost)
+	s.Equal([]host.VolumeAttachment{
+		{
+			VolumeID:   "volume_id",
+			DeviceName: "device_name",
+		},
+	}, foundHost.Volumes)
 }
 
 func (s *EC2Suite) TestGetDNSName() {
@@ -1143,6 +1153,7 @@ func (s *EC2Suite) TestCacheHostData() {
 	}
 	instance.BlockDeviceMappings = []*ec2.InstanceBlockDeviceMapping{
 		&ec2.InstanceBlockDeviceMapping{
+			DeviceName: aws.String("device_name"),
 			Ebs: &ec2.EbsInstanceBlockDevice{
 				VolumeId: aws.String("volume_id"),
 			},
@@ -1155,7 +1166,12 @@ func (s *EC2Suite) TestCacheHostData() {
 	s.Equal(*instance.Placement.AvailabilityZone, h.Zone)
 	s.True(instance.LaunchTime.Equal(h.StartTime))
 	s.Equal("2001:0db8:85a3:0000:0000:8a2e:0370:7334", h.IP)
-	s.Equal([]string{"volume_id"}, h.VolumeIDs)
+	s.Equal([]host.VolumeAttachment{
+		{
+			VolumeID:   "volume_id",
+			DeviceName: "device_name",
+		},
+	}, h.Volumes)
 	s.Equal(int64(10), h.VolumeTotalSize)
 
 	h, err := host.FindOneId("h1")
@@ -1164,7 +1180,12 @@ func (s *EC2Suite) TestCacheHostData() {
 	s.Equal(*instance.Placement.AvailabilityZone, h.Zone)
 	s.True(instance.LaunchTime.Equal(h.StartTime))
 	s.Equal("2001:0db8:85a3:0000:0000:8a2e:0370:7334", h.IP)
-	s.Equal([]string{"volume_id"}, h.VolumeIDs)
+	s.Equal([]host.VolumeAttachment{
+		{
+			VolumeID:   "volume_id",
+			DeviceName: "device_name",
+		},
+	}, h.Volumes)
 	s.Equal(int64(10), h.VolumeTotalSize)
 }
 
@@ -1280,7 +1301,11 @@ func (s *EC2Suite) TestAttachVolume() {
 	defer cancel()
 
 	s.Require().NoError(s.h.Insert())
-	s.NoError(s.onDemandManager.AttachVolume(ctx, s.h, "test-volume"))
+	newAttachment := host.VolumeAttachment{
+		VolumeID:   "test-volume",
+		DeviceName: "test-device-name",
+	}
+	s.NoError(s.onDemandManager.AttachVolume(ctx, s.h, newAttachment))
 
 	manager, ok := s.onDemandManager.(*ec2Manager)
 	s.True(ok)
@@ -1290,18 +1315,23 @@ func (s *EC2Suite) TestAttachVolume() {
 	input := *mock.AttachVolumeInput
 	s.Equal("h1", *input.InstanceId)
 	s.Equal("test-volume", *input.VolumeId)
+	s.Equal("test-device-name", *input.Device)
 
 	host, err := host.FindOneId(s.h.Id)
 	s.NotNil(host)
 	s.NoError(err)
-	s.Contains(host.VolumeIDs, "test-volume")
+	s.Contains(host.Volumes, newAttachment)
 }
 
 func (s *EC2Suite) TestDetachVolume() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s.h.VolumeIDs = []string{"test-volume"}
+	oldAttachment := host.VolumeAttachment{
+		VolumeID:   "test-volume",
+		DeviceName: "test-device-name",
+	}
+	s.h.Volumes = []host.VolumeAttachment{oldAttachment}
 	s.Require().NoError(s.h.Insert())
 	s.NoError(s.onDemandManager.DetachVolume(ctx, s.h, "test-volume"))
 
@@ -1317,5 +1347,5 @@ func (s *EC2Suite) TestDetachVolume() {
 	host, err := host.FindOneId(s.h.Id)
 	s.NotNil(host)
 	s.NoError(err)
-	s.NotContains(host.VolumeIDs, "test-volume")
+	s.NotContains(host.Volumes, oldAttachment)
 }

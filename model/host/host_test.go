@@ -3774,36 +3774,88 @@ func TestFindSpawnhostsWithNoExpirationToExtend(t *testing.T) {
 func TestAttachVolume(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	h := Host{
-		Id:        "host-1",
-		VolumeIDs: []string{"volume-1"},
+		Id: "host-1",
+		Volumes: []VolumeAttachment{
+			{
+				VolumeID:   "volume-1",
+				DeviceName: "device-1",
+			},
+		},
 	}
 	assert.NoError(t, h.Insert())
-	assert.NoError(t, h.AttachVolume("volume-2"))
-	assert.Equal(t, []string{"volume-1", "volume-2"}, h.VolumeIDs)
+
+	newAttachment := VolumeAttachment{
+		VolumeID:   "volume-2",
+		DeviceName: "device-2",
+	}
+	assert.NoError(t, h.AttachVolume(newAttachment))
+	assert.Equal(t, []VolumeAttachment{
+		{
+			VolumeID:   "volume-1",
+			DeviceName: "device-1",
+		},
+		{
+			VolumeID:   "volume-2",
+			DeviceName: "device-2",
+		},
+	}, h.Volumes)
 	foundHost, err := FindOneId("host-1")
 	assert.NoError(t, err)
-	assert.Equal(t, []string{"volume-1", "volume-2"}, foundHost.VolumeIDs)
+	assert.Equal(t, []VolumeAttachment{
+		{
+			VolumeID:   "volume-1",
+			DeviceName: "device-1",
+		},
+		{
+			VolumeID:   "volume-2",
+			DeviceName: "device-2",
+		},
+	}, foundHost.Volumes)
 }
 
 func TestDetachVolume(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	h := Host{
-		Id:        "host-1",
-		VolumeIDs: []string{"volume-1", "volume-2"},
+		Id: "host-1",
+		Volumes: []VolumeAttachment{
+			{
+				VolumeID:   "volume-1",
+				DeviceName: "device-1",
+			},
+			{
+				VolumeID:   "volume-2",
+				DeviceName: "device-2",
+			},
+		},
 	}
 	assert.NoError(t, h.Insert())
 	assert.NoError(t, h.DetachVolume("volume-2"))
-	assert.Equal(t, []string{"volume-1"}, h.VolumeIDs)
+	assert.Equal(t, []VolumeAttachment{
+		{
+			VolumeID:   "volume-1",
+			DeviceName: "device-1",
+		},
+	}, h.Volumes)
 	foundHost, err := FindOneId("host-1")
 	assert.NoError(t, err)
-	assert.Equal(t, []string{"volume-1"}, foundHost.VolumeIDs)
+	assert.Equal(t, []VolumeAttachment{
+		{
+			VolumeID:   "volume-1",
+			DeviceName: "device-1",
+		},
+	}, foundHost.Volumes)
 }
 
 func TestFindHostWithVolume(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	h := Host{
-		Id:        "host-1",
-		VolumeIDs: []string{"volume-1"},
+		Id: "host-1",
+		Volumes: []VolumeAttachment{
+			{
+				VolumeID:   "volume-1",
+				DeviceName: "device-1",
+			},
+		},
 	}
 	assert.NoError(t, h.Insert())
 	foundHost, err := FindHostWithVolume("volume-1")

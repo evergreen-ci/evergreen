@@ -441,6 +441,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	if err != nil {
 		return nil, errors.Wrap(err, "error making block device mappings")
 	}
+
 	if h.InstanceType != "" {
 		ec2Settings.InstanceType = h.InstanceType
 	} else {
@@ -1066,6 +1067,18 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 	}
 	defer m.client.Close()
 
+	// Add instance stores and volumes to host document
+	devices, err := m.client.GetInstanceBlockDevices(ctx, h)
+	if err != nil {
+		return errors.Wrap(err, "error getting devices")
+	}
+	attachments := makeVolumeAttachments(devices)
+	for _, attachment := range attachments {
+		if err = h.AttachVolume(attachment); err != nil {
+			return errors.Wrap(err, "error attaching volume")
+		}
+	}
+
 	resources, err := m.getResources(ctx, h)
 	if err != nil {
 		return errors.Wrap(err, "error getting resources")
@@ -1078,20 +1091,21 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 	return nil
 }
 
-func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, volumeID string) error {
+func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment host.VolumeAttachment) error {
 	if err := m.client.Create(m.credentials, evergreen.DefaultEC2Region); err != nil {
 		return errors.Wrap(err, "error creating client")
 	}
 
 	_, err := m.client.AttachVolume(ctx, &ec2.AttachVolumeInput{
 		InstanceId: aws.String(h.Id),
-		VolumeId:   aws.String(volumeID),
+		Device:     aws.String(attachment.DeviceName),
+		VolumeId:   aws.String(attachment.VolumeID),
 	})
 	if err != nil {
-		return errors.Wrapf(err, "error attaching volume '%s' to host '%s'", volumeID, h.Id)
+		return errors.Wrapf(err, "error attaching volume '%s' to host '%s'", attachment.VolumeID, h.Id)
 	}
 
-	return errors.Wrapf(h.AttachVolume(volumeID), "error attaching volume '%s' to host '%s' in db", volumeID, h.Id)
+	return errors.Wrapf(h.AttachVolume(attachment), "error attaching volume '%s' to host '%s' in db", attachment.VolumeID, h.Id)
 }
 
 func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID string) error {

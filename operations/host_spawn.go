@@ -69,7 +69,6 @@ func hostCreate() cli.Command {
 		tagFlagName          = "tag"
 		instanceTypeFlagName = "type"
 		noExpireFlagName     = "no-expire"
-		attachFlagName       = "attach"
 	)
 
 	return cli.Command{
@@ -99,10 +98,6 @@ func hostCreate() cli.Command {
 			cli.BoolFlag{
 				Name:  noExpireFlagName,
 				Usage: "make host never expire",
-			},
-			cli.StringSliceFlag{
-				Name:  joinFlagNames(attachFlagName, "v"),
-				Usage: "name of an EBS volume",
 			},
 		},
 		Action: func(c *cli.Context) error {
@@ -351,7 +346,7 @@ func hostStart() cli.Command {
 func hostAttach() cli.Command {
 	const (
 		volumeFlagName = "volume"
-		nameFlagName   = "name"
+		deviceFlagName = "device"
 	)
 
 	return cli.Command{
@@ -363,7 +358,7 @@ func hostAttach() cli.Command {
 				Usage: "`ID` of volume to attach",
 			},
 			cli.StringFlag{
-				Name:  joinFlagNames(nameFlagName, "n"),
+				Name:  joinFlagNames(deviceFlagName, "n"),
 				Usage: "device `NAME` for attached volume",
 			},
 		),
@@ -372,7 +367,7 @@ func hostAttach() cli.Command {
 			confPath := c.Parent().Parent().String(confFlagName)
 			hostID := c.String(hostFlagName)
 			volumeID := c.String(volumeFlagName)
-			deviceName := c.String(nameFlagName)
+			deviceName := c.String(deviceFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
