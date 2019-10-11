@@ -165,6 +165,9 @@ mciModule.directive('adminAbortBuild', function() {
     '<div class="row">' +
       '<div class="col-lg-12">' +
         'Abort all tasks for current build?' +
+        '<div ng-show="build.r === merge_test">' +
+            'This will remove the version from the commit queue.' +
+        '</div>' +
         '<button type="button" class="btn btn-danger" style="float: right;" data-dismiss="modal">Cancel</button>' +
         '<button type="button" class="btn btn-primary" style="float: right; margin-right: 10px;" ng-click="abort()">Yes</button>' +
       '</div>' +
@@ -193,7 +196,7 @@ mciModule.directive('adminUnscheduleBuild', function() {
     '<div class="row">' +
       '<div class="col-lg-12">' +
         'Unschedule current build?' +
-        '<div ng-show="build.r === "merge_test">' +
+        '<div ng-show="build.r === merge_test">' +
             'This will remove the version from the commit queue.' +
         '</div>' +
         '<button type="button" class="btn btn-danger" style="float: right;" data-dismiss="modal">Cancel</button>' +

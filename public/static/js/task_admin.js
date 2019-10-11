@@ -173,7 +173,7 @@ mciModule.directive('adminAbortTask', function() {
     '<div class="row">' +
       '<div class="col-lg-12">' +
         'Abort current task?' +
-        '<div ng-show="task.r === "merge_test">' +
+        '<div ng-show="task.r === merge_test">' +
             'This will remove version from the commit queue.' +
         '</div>' +
         '<button type="button" class="btn btn-danger" style="float: right;" data-dismiss="modal">Cancel</button>' +
@@ -204,7 +204,7 @@ mciModule.directive('adminUnscheduleTask', function() {
     '<div class="row">' +
       '<div class="col-lg-12">' +
         'Unschedule current task?' +
-        '<div ng-show="task.r=== "merge_test">' +
+        '<div ng-show="task.r === merge_test">' +
             'This will remove version from the commit queue.' +
         '</div>' +
         '<button type="button" class="btn btn-danger" style="float: right;" data-dismiss="modal">Cancel</button>' +
