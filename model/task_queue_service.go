@@ -143,7 +143,7 @@ const (
 	SchedulableUnitDispatcher = "schedulableunit-task-dispatcher"
 )
 
-// basicCachedDispatcherImpl is an in-memory representation of schedulable tasks for a distro.
+// basicCachedDispatcherImpl is an in-memory representation of schedulableUnits of tasks for a distro.
 //
 // TODO Pass all task group tasks, not just dispatchable ones, to the constructor.
 type basicCachedDispatcherImpl struct {
@@ -295,7 +295,7 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	var unit schedulableUnit
 	var ok bool
 	var next *TaskQueueItem
-	// If the host just ran a task group, give it one back.
+	// If the host just ran a task from a task group, give it another back.
 	if spec.Group != "" {
 		unit, ok = d.units[compositeGroupID(spec.Group, spec.BuildVariant, spec.Project, spec.Version)]
 		if ok {
@@ -303,8 +303,8 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 				return next
 			}
 		}
-		// If the task group is not present in the task group map, it has been dispatched.
-		// Fall through to get a task that's not in that task group.
+		// If the task group is not present in the schedulableUnit map, then all its tasks are considered dispatched.
+		// Fall through to get a task that's not in this task group.
 	}
 
 	var numHosts int
@@ -324,7 +324,7 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 				grip.Critical(message.Fields{
 					"dispatcher":                    SchedulableUnitDispatcher,
 					"function":                      "FindNextTask",
-					"message":                       "schedulableUnit.maxHosts == 0 - this is not a task group; but schedulableUnit.tasks is empty - returning nil",
+					"message":                       "schedulableUnit.maxHosts == 0 - so this is not a task group; but schedulableUnit.tasks is empty - returning nil",
 					"distro_id":                     d.distroID,
 					"schedulableunit_id":            unit.id,
 					"schedulableunit_group":         unit.group,
@@ -339,14 +339,15 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 				return nil
 			}
 
-			// A non-task group schedulableUnit's tasks ([]TaskQueueItem) only contain a single element.
+			// A non-task group schedulableUnit's tasks ([]TaskQueueItem) only contains a single element.
+			item := unit.tasks[0]
 			nextTaskFromDB, err := task.FindOneId(unit.tasks[0].Id)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
 					"dispatcher": SchedulableUnitDispatcher,
 					"function":   "FindNextTask",
 					"message":    "problem finding task in db",
-					"task_id":    unit.tasks[0].Id,
+					"task_id":    item.Id,
 					"distro_id":  d.distroID,
 				}))
 				return nil
@@ -356,7 +357,7 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 					"dispatcher": SchedulableUnitDispatcher,
 					"function":   "FindNextTask",
 					"message":    "task from db not found",
-					"task_id":    unit.tasks[0].Id,
+					"task_id":    item.Id,
 					"distro_id":  d.distroID,
 				})
 				return nil
@@ -369,7 +370,7 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 					"function":   "FindNextTask",
 					"message":    "error checking dependencies for task",
 					"outcome":    "skip and continue",
-					"task":       unit.tasks[0].Id,
+					"task":       item.Id,
 					"distro_id":  d.distroID,
 				}))
 				continue
@@ -436,7 +437,7 @@ func (d *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *Tas
 		// Dispatch this task if all of the following are true:
 		// (a) it's not marked as dispatched in the in-memory queue.
 		// (b) a record of the task exists in the database.
-		// (c) if it belongs to a TaskGroup bound to a single host - it's not blocked by a previous task within the TaskGroup that failed.
+		// (c) if it belongs to a task group bound to a single host - it's not blocked by a task within the task group that has finished, but did not succeed.
 		// (d) it never previously ran on another host.
 		// (e) all of its dependencies are satisfied.
 		if nextTaskQueueItem.IsDispatched == true {
@@ -467,9 +468,7 @@ func (d *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *Tas
 
 		// Cache the task as dispatched from the in-memory queue's point of view.
 		// However, it won't actually be dispatched to a host if it doesn't satisfy all constraints.
-
 		d.units[unit.id].tasks[i].IsDispatched = true
-		// unit.tasks[i].IsDispatched = true
 
 		if isBlockedSingleHostTaskGroup(unit, nextTaskFromDB) {
 			delete(d.units, unit.id)
@@ -498,11 +497,13 @@ func (d *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *Tas
 			continue
 		}
 
+		// If this is the last task in the schedulableUnit.tasks, delete the task group.
+		if i == len(unit.tasks)-1 {
+			delete(d.units, unit.id)
+		}
+
 		return &nextTaskQueueItem
 	}
-
-	// The in-memory queue considers all tasks dispatched - delete the schedulableUnit.
-	delete(d.units, unit.id)
 
 	return nil
 }

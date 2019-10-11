@@ -325,8 +325,9 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 				return next
 			}
 		}
-		// If the task group is not present in the task group map, it has been dispatched.
-		// Fall through to get a task that's not in that task group.
+		// If the task group is not present in the TaskGroups map, then all its tasks are considered dispatched.
+		// Fall through to get a task that's not in this task group.
+
 		grip.Debug(message.Fields{
 			"dispatcher":               DAGDispatcher,
 			"function":                 "FindNextTask",
@@ -517,11 +518,13 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 			continue
 		}
 
+		// If this is the last task in the schedulableUnit.tasks, delete the task group.
+		if i == len(unit.tasks)-1 {
+			delete(d.taskGroups, unit.id)
+		}
+
 		return &nextTaskQueueItem
 	}
-
-	// The in-memory queue considers all tasks dispatched - delete the TaskGroup.
-	delete(d.taskGroups, unit.id)
 
 	return nil
 }

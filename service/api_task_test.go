@@ -472,9 +472,8 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionTunable(t *testing.T) {
 				Distro: distro.Distro{
 					Id: d.Id,
 				},
-				Secret:    hostSecret,
-				Status:    evergreen.HostRunning,
-				StartTime: util.ZeroTime,
+				Secret: hostSecret,
+				Status: evergreen.HostRunning,
 			}
 			So(h2.Insert(), ShouldBeNil)
 
