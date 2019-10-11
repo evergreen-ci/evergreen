@@ -407,7 +407,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		incomingPatch.patchData,
 		incomingPatch.base,
 		strings.Join(incomingPatch.variants, ","),
-		incomingPatch.variantsNew,
+		incomingPatch.variants,
 		incomingPatch.tasks,
 		incomingPatch.finalize,
 		incomingPatch.alias,
