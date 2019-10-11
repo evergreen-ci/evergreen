@@ -19,7 +19,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 type (
@@ -294,7 +293,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 	next(rw, r)
 }
 
-func RequiresProjectPermission(permission string, level int) gimlet.Middleware {
+func RequiresProjectPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
 	if !evergreen.AclCheckingIsEnabled {
 		return &noopMiddleware{}
 	}
@@ -303,7 +302,7 @@ func RequiresProjectPermission(permission string, level int) gimlet.Middleware {
 		RM:            evergreen.GetEnvironment().RoleManager(),
 		PermissionKey: permission,
 		ResourceType:  "project",
-		RequiredLevel: level,
+		RequiredLevel: level.Value(),
 		ResourceFunc:  urlVarsToScopes,
 	}
 	return gimlet.RequiresPermission(opts)
@@ -326,7 +325,7 @@ func urlVarsToScopes(r *http.Request) string {
 
 	versionID := util.CoalesceStrings(append(query["version_id"], query["versionId"]...), vars["version_id"], vars["versionId"])
 	if versionID != "" {
-		v, err := model.VersionFindOne(model.VersionById(versionID).Project(bson.M{model.VersionIdentifierKey: 1}))
+		proj, err := model.FindProjectForVersion(versionID)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "error finding version",
@@ -334,12 +333,12 @@ func urlVarsToScopes(r *http.Request) string {
 			}))
 			return ""
 		}
-		return v.Identifier
+		return proj
 	}
 
 	patchID := util.CoalesceStrings(append(query["patch_id"], query["patchId"]...), vars["patch_id"], vars["patchId"])
 	if patchID != "" && patch.IsValidId(patchID) {
-		p, err := patch.FindOne(patch.ById(patch.NewId(patchID)).Project(bson.M{patch.ProjectKey: 1}))
+		proj, err := patch.FindProjectForPatch(patch.NewId(patchID))
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "error finding patch",
@@ -347,12 +346,12 @@ func urlVarsToScopes(r *http.Request) string {
 			}))
 			return ""
 		}
-		return p.Project
+		return proj
 	}
 
 	buildID := util.CoalesceStrings(append(query["build_id"], query["buildId"]...), vars["build_id"], vars["buildId"])
 	if buildID != "" {
-		b, err := build.FindOne(build.ById(buildID).Project(bson.M{build.ProjectKey: 1}))
+		proj, err := build.FindProjectForBuild(buildID)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "error finding build",
@@ -360,13 +359,13 @@ func urlVarsToScopes(r *http.Request) string {
 			}))
 			return ""
 		}
-		return b.Project
+		return proj
 	}
 
 	// retrieve all possible naming conventions for task ID
 	taskID := util.CoalesceStrings(append(query["task_id"], query["taskId"]...), vars["task_id"], vars["taskId"])
 	if taskID != "" {
-		t, err := task.FindOneNoMerge(task.ById(taskID).Project(bson.M{task.ProjectKey: 1}))
+		proj, err := task.FindProjectForTask(taskID)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "error finding task",
@@ -374,7 +373,7 @@ func urlVarsToScopes(r *http.Request) string {
 			}))
 			return ""
 		}
-		return t.Project
+		return proj
 	}
 
 	return ""
