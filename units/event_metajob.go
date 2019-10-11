@@ -246,9 +246,6 @@ func (j *eventMetaJob) dispatchUnprocessedNotifications(ctx context.Context) err
 	if err != nil {
 		return errors.Wrap(err, "can't find unprocessed notifications")
 	}
-	if unprocessedNotifications == nil {
-		return nil
-	}
 
 	return j.dispatch(ctx, unprocessedNotifications)
 }

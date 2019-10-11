@@ -155,14 +155,8 @@ func FindByEventID(id string) ([]Notification, error) {
 func FindUnprocessed() ([]Notification, error) {
 	notifications := []Notification{}
 	err := db.FindAllQ(Collection, db.Query(bson.M{sentAtKey: bson.M{"$exists": false}}), &notifications)
-	if err != nil {
-		if adb.ResultsNotFound(err) {
-			return nil, nil
-		}
-		return nil, errors.Wrap(err, "can't query for unprocessed notifications")
-	}
 
-	return notifications, nil
+	return notifications, errors.Wrap(err, "can't query for unprocessed notifications")
 }
 
 func byID(id string) db.Q {
