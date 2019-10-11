@@ -152,6 +152,12 @@ func FindByEventID(id string) ([]Notification, error) {
 	return notifications, err
 }
 
+func FindUnprocessed() ([]Notification, error) {
+	notifications := []Notification{}
+	err := db.FindAllQ(Collection, db.Query(bson.M{sentAtKey: bson.M{"$exists": false}}), &notifications)
+	return notifications, err
+}
+
 func byID(id string) db.Q {
 	return db.Query(bson.M{
 		idKey: id,

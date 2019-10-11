@@ -406,3 +406,16 @@ func (s *notificationSuite) TestCollectUnsentNotificationStats() {
 		s.Equal(1, int(f.Int()))
 	}
 }
+
+func (s *notificationSuite) TestFindUnprocessed() {
+	s.n.ID = "unsent"
+	s.NoError(db.Insert(Collection, s.n))
+	s.n.ID = "sent"
+	s.n.SentAt = time.Now()
+	s.NoError(db.Insert(Collection, s.n))
+
+	unprocessedNotifications, err := FindUnprocessed()
+	s.NoError(err)
+	s.Len(unprocessedNotifications, 1)
+	s.Equal("unsent", unprocessedNotifications[0].ID)
+}
