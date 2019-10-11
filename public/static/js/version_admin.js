@@ -194,7 +194,7 @@ mciModule.directive('adminUnscheduleAll', function() {
       '<div class="col-lg-12">' +
         '<div>' +
           'Unschedule all tasks?' +
-            '<div ng-show="version.requester === "merge_test">' +
+            '<div ng-show="version.requester === merge_test">' +
                 'This will remove version from the commit queue.' +
             '</div>' +
         '</div>' +

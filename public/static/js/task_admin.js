@@ -51,7 +51,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$window', '$rootScope', 'mc
             {
                 success: function(resp) {
                     var message = "Task aborted" +
-                        ($scope.task.Task.r === "merge_test" ? " and version removed from commit queue." : ".")
+                        ($scope.task.r === "merge_test" ? " and version removed from commit queue." : ".")
                     doModalSuccess(message, resp.data, $scope.task.display_only);
                 },
                 error: function(resp) {
@@ -105,9 +105,8 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$window', '$rootScope', 'mc
                 success: function(resp) {
                     var data = resp.data;
                     var message = "Task marked as " + (active ? "scheduled" : "unscheduled") +
-                        (!active && $scope.task.r  === "merge_test" ? " and version removed from commit queue." : ".") +
-
-                        doModalSuccess(message, data, $scope.task.display_only);
+                        (!active && $scope.task.r  === "merge_test" ? " and version removed from commit queue." : ".");
+                    doModalSuccess(message, data, $scope.task.display_only);
                 },
                 error: function(resp) {
                     notifier.pushNotification('Error setting active = ' + active + ': ' + resp.data,'errorModal');
@@ -174,7 +173,7 @@ mciModule.directive('adminAbortTask', function() {
     '<div class="row">' +
       '<div class="col-lg-12">' +
         'Abort current task?' +
-        '<div ng-show="task.requester === "merge_test">' +
+        '<div ng-show="task.r === "merge_test">' +
             'This will remove version from the commit queue.' +
         '</div>' +
         '<button type="button" class="btn btn-danger" style="float: right;" data-dismiss="modal">Cancel</button>' +
@@ -205,7 +204,7 @@ mciModule.directive('adminUnscheduleTask', function() {
     '<div class="row">' +
       '<div class="col-lg-12">' +
         'Unschedule current task?' +
-        '<div ng-show="task.requester === "merge_test">' +
+        '<div ng-show="task.r=== "merge_test">' +
             'This will remove version from the commit queue.' +
         '</div>' +
         '<button type="button" class="btn btn-danger" style="float: right;" data-dismiss="modal">Cancel</button>' +

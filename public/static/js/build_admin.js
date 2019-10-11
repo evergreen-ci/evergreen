@@ -34,7 +34,7 @@ mciModule.controller('AdminOptionsCtrl', [
                 success: function(resp) {
                     var data = resp.data;
                     var message = "Build aborted" +
-                        ($scope.build.Build.r === "merge_test" ? " and version removed from commit queue." : ".");
+                        ($scope.build.r === "merge_test" ? " and version removed from commit queue." : ".");
                     $scope.closeAdminModal();
                     $rootScope.$broadcast("build_updated", data);
                     notifier.pushNotification(message, 'notifyHeader', 'success');
@@ -193,7 +193,7 @@ mciModule.directive('adminUnscheduleBuild', function() {
     '<div class="row">' +
       '<div class="col-lg-12">' +
         'Unschedule current build?' +
-        '<div ng-show="build.requester === "merge_test">' +
+        '<div ng-show="build.r === "merge_test">' +
             'This will remove the version from the commit queue.' +
         '</div>' +
         '<button type="button" class="btn btn-danger" style="float: right;" data-dismiss="modal">Cancel</button>' +
