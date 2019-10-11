@@ -29,5 +29,5 @@ func (v *Volume) Remove() error {
 
 // FindVolumeByID finds a volume by its ID field.
 func FindVolumeByID(id string) (*Volume, error) {
-	return FindOneVolume(db.Query(bson.M{VolumeIDKey: id}))
+	return FindOneVolume(bson.M{VolumeIDKey: id})
 }

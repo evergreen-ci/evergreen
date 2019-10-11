@@ -210,6 +210,14 @@ func (m *gceManager) OnUp(context.Context, *host.Host) error {
 	return nil
 }
 
+func (m *gceManager) AttachVolume(context.Context, *host.Host, string) error {
+	return errors.New("can't attach volume with gce provider")
+}
+
+func (m *gceManager) DetachVolume(context.Context, *host.Host, string) error {
+	return errors.New("can't detach volume with gce provider")
+}
+
 func (m *gceManager) CreateVolume(context.Context, *host.Volume) (*host.Volume, error) {
 	return nil, errors.New("can't create volume with gce provider")
 }

@@ -206,6 +206,14 @@ func (m *dockerManager) OnUp(context.Context, *host.Host) error {
 	return nil
 }
 
+func (m *dockerManager) AttachVolume(context.Context, *host.Host, string) error {
+	return errors.New("can't attach volume with docker provider")
+}
+
+func (m *dockerManager) DetachVolume(context.Context, *host.Host, string) error {
+	return errors.New("can't detach volume with docker provider")
+}
+
 func (m *dockerManager) CreateVolume(context.Context, *host.Volume) (*host.Volume, error) {
 	return nil, errors.New("can't create volume with docker provider")
 }

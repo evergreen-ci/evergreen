@@ -1832,7 +1832,7 @@ func (h *Host) AttachVolume(volumeID string) error {
 			IdKey: h.Id,
 		},
 		bson.M{
-			"$push": bson.M{
+			"$set": bson.M{
 				VolumeIDsKey: h.VolumeIDs,
 			},
 		},
@@ -1858,8 +1858,8 @@ func (h *Host) DetachVolume(volumeID string) error {
 			IdKey: h.Id,
 		},
 		bson.M{
-			"$pull": bson.M{
-				VolumeIDsKey: volumeID,
+			"$set": bson.M{
+				VolumeIDsKey: h.VolumeIDs,
 			},
 		},
 	)

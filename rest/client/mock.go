@@ -392,6 +392,14 @@ func (*Mock) ExtendSpawnHostExpiration(context.Context, string, int) error {
 	return errors.New("(*Mock) ExtendSpawnHostExpiration is not implemented")
 }
 
+func (*Mock) AttachVolume(context.Context, string, *model.HostAttachRequest) error {
+	return errors.New("(*Mock) AttachVolume is not implemented")
+}
+
+func (*Mock) DetachVolume(context.Context, string, string) error {
+	return errors.New("(*Mock) DetachVolume is not implemented")
+}
+
 func (*Mock) CreateVolume(context.Context, *model.VolumePostRequest) (*model.APIVolume, error) {
 	return nil, errors.New("(*Mock) CreateVolume is not implemented")
 }

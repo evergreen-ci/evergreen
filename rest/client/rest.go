@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -148,10 +149,60 @@ func (c *communicatorImpl) StopSpawnHost(ctx context.Context, hostID string, wai
 	return nil
 }
 
+func (c *communicatorImpl) AttachVolume(ctx context.Context, hostID string, opts *restmodel.HostAttachRequest) error {
+	info := requestInfo{
+		method:  post,
+		path:    fmt.Sprintf("hosts/%s/attach"),
+		version: apiVersion2,
+	}
+
+	resp, err := c.request(ctx, info, opts)
+	if err != nil {
+		return errors.Wrap(err, "error sending request to attach volume")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errMsg := gimlet.ErrorResponse{}
+		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+			return errors.Wrap(err, "problem attaching volume and parsing error message")
+		}
+		return errors.Wrap(errMsg, "problem attaching volume")
+	}
+
+	return nil
+}
+
+func (c *communicatorImpl) DetachVolume(ctx context.Context, hostID, volumeID string) error {
+	info := requestInfo{
+		method:  post,
+		path:    fmt.Sprintf("hosts/%s/detach", hostID),
+		version: apiVersion2,
+	}
+	body := model.APISpawnHostModify{
+		VolumeID: model.ToAPIString(volumeID),
+	}
+
+	resp, err := c.request(ctx, info, body)
+	if err != nil {
+		return errors.Wrap(err, "error sending request to detach volume")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errMsg := gimlet.ErrorResponse{}
+		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+			return errors.Wrap(err, "problem detaching volume and parsing error message")
+		}
+		return errors.Wrap(errMsg, "problem detaching volume")
+	}
+
+	return nil
+}
 func (c *communicatorImpl) CreateVolume(ctx context.Context, volumeRequest *model.VolumePostRequest) (*model.APIVolume, error) {
 	info := requestInfo{
 		method:  post,
-		path:    "volumes",
+		path:    "hosts/volumes",
 		version: apiVersion2,
 	}
 
@@ -179,7 +230,7 @@ func (c *communicatorImpl) CreateVolume(ctx context.Context, volumeRequest *mode
 func (c *communicatorImpl) DeleteVolume(ctx context.Context, volumeID string) error {
 	info := requestInfo{
 		method:  delete,
-		path:    fmt.Sprintf("volumes/%s", volumeID),
+		path:    fmt.Sprintf("hosts/volumes/%s", volumeID),
 		version: apiVersion2,
 	}
 

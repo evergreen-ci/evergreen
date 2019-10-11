@@ -147,6 +147,8 @@ type Communicator interface {
 	ChangeSpawnHostPassword(context.Context, string, string) error
 	ExtendSpawnHostExpiration(context.Context, string, int) error
 	GetHosts(context.Context, func([]*restmodel.APIHost) error) error
+	AttachVolume(context.Context, string, *restmodel.HostAttachRequest) error
+	DetachVolume(context.Context, string, string) error
 	CreateVolume(context.Context, *restmodel.VolumePostRequest) (*restmodel.APIVolume, error)
 	DeleteVolume(context.Context, string) error
 

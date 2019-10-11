@@ -37,6 +37,7 @@ type EC2Suite struct {
 	mock                      *awsClientMock
 	h                         *host.Host
 	distro                    distro.Distro
+	volume                    *host.Volume
 }
 
 func TestEC2Suite(t *testing.T) {
@@ -44,7 +45,7 @@ func TestEC2Suite(t *testing.T) {
 }
 
 func (s *EC2Suite) SetupTest() {
-	s.Require().NoError(db.ClearCollections(host.Collection, task.Collection, model.ProjectVarsCollection))
+	s.Require().NoError(db.ClearCollections(host.Collection, host.VolumesCollection, task.Collection, model.ProjectVarsCollection))
 	s.onDemandOpts = &EC2ManagerOptions{
 		client:   &awsClientMock{},
 		provider: onDemandProvider,
@@ -114,6 +115,13 @@ func (s *EC2Suite) SetupTest() {
 				CanBeModified: true,
 			},
 		},
+	}
+
+	s.volume = &host.Volume{
+		ID:        "test-volume",
+		CreatedBy: "test-user",
+		Type:      "standard",
+		Size:      32,
 	}
 }
 
@@ -1225,4 +1233,89 @@ func (s *EC2Suite) TestGetEC2Key() {
 	s.Equal("test-secret", secret)
 	s.NoError(err)
 
+}
+
+func (s *EC2Suite) TestCreateVolume() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	volume, err := s.onDemandManager.CreateVolume(ctx, s.volume)
+	s.NoError(err)
+
+	manager, ok := s.onDemandManager.(*ec2Manager)
+	s.True(ok)
+	mock, ok := manager.client.(*awsClientMock)
+	s.True(ok)
+
+	input := *mock.CreateVolumeInput
+	s.Equal("standard", *input.VolumeType)
+
+	foundVolume, err := host.FindVolumeByID(volume.ID)
+	s.NotNil(foundVolume)
+	s.NoError(err)
+}
+
+func (s *EC2Suite) TestDeleteVolume() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.NoError(s.volume.Insert())
+	s.NoError(s.onDemandManager.DeleteVolume(ctx, s.volume))
+
+	manager, ok := s.onDemandManager.(*ec2Manager)
+	s.True(ok)
+	mock, ok := manager.client.(*awsClientMock)
+	s.True(ok)
+
+	input := *mock.DeleteVolumeInput
+	s.Equal("test-volume", *input.VolumeId)
+
+	foundVolume, err := host.FindVolumeByID(s.volume.ID)
+	s.Nil(foundVolume)
+	s.NoError(err)
+}
+
+func (s *EC2Suite) TestAttachVolume() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.Require().NoError(s.h.Insert())
+	s.NoError(s.onDemandManager.AttachVolume(ctx, s.h, "test-volume"))
+
+	manager, ok := s.onDemandManager.(*ec2Manager)
+	s.True(ok)
+	mock, ok := manager.client.(*awsClientMock)
+	s.True(ok)
+
+	input := *mock.AttachVolumeInput
+	s.Equal("h1", *input.InstanceId)
+	s.Equal("test-volume", *input.VolumeId)
+
+	host, err := host.FindOneId(s.h.Id)
+	s.NotNil(host)
+	s.NoError(err)
+	s.Contains(host.VolumeIDs, "test-volume")
+}
+
+func (s *EC2Suite) TestDetachVolume() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.h.VolumeIDs = []string{"test-volume"}
+	s.Require().NoError(s.h.Insert())
+	s.NoError(s.onDemandManager.DetachVolume(ctx, s.h, "test-volume"))
+
+	manager, ok := s.onDemandManager.(*ec2Manager)
+	s.True(ok)
+	mock, ok := manager.client.(*awsClientMock)
+	s.True(ok)
+
+	input := *mock.DetachVolumeInput
+	s.Equal("h1", *input.InstanceId)
+	s.Equal("test-volume", *input.VolumeId)
+
+	host, err := host.FindOneId(s.h.Id)
+	s.NotNil(host)
+	s.NoError(err)
+	s.NotContains(host.VolumeIDs, "test-volume")
 }

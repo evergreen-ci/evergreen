@@ -616,30 +616,6 @@ func (m *ec2Manager) extendExpiration(ctx context.Context, h *host.Host, extensi
 	return errors.Wrapf(h.SetExpirationTime(h.ExpirationTime.Add(extension)), "error extending expiration time in db for '%s'", h.Id)
 }
 
-func (m *ec2Manager) attachVolume(ctx context.Context, h *host.Host, volume string) error {
-	_, err := m.client.AttachVolume(ctx, &ec2.AttachVolumeInput{
-		InstanceId: aws.String(h.Id),
-		VolumeId:   aws.String(volume),
-	})
-	if err != nil {
-		return errors.Wrapf(err, "error attaching volume '%s' to host '%s'", volume, h.Id)
-	}
-
-	return errors.Wrapf(h.AttachVolume(volume), "error attaching volume '%s' to host '%s' in db", volume, h.Id)
-}
-
-func (m *ec2Manager) detachVolume(ctx context.Context, h *host.Host, volume string) error {
-	_, err := m.client.DetachVolume(ctx, &ec2.DetachVolumeInput{
-		InstanceId: aws.String(h.Id),
-		VolumeId:   aws.String(volume),
-	})
-	if err != nil {
-		return errors.Wrapf(err, "error attaching volume '%s' to host '%s' in client", volume, h.Id)
-	}
-
-	return errors.Wrapf(h.DetachVolume(volume), "error detaching volume '%s' from host '%s' in db", volume, h.Id)
-}
-
 // ModifyHost modifies a spawn host according to the changes specified by a HostModifyOptions struct.
 func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.HostModifyOptions) error {
 	ec2Settings := &EC2ProviderSettings{}
@@ -660,12 +636,6 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 	catcher := grip.NewBasicCatcher()
 	if opts.InstanceType != "" {
 		catcher.Add(m.setInstanceType(ctx, h, opts.InstanceType))
-	}
-	if opts.AttachVolume != "" {
-		catcher.Add(m.attachVolume(ctx, h, opts.AttachVolume))
-	}
-	if opts.DetachVolume != "" {
-		catcher.Add(m.detachVolume(ctx, h, opts.DetachVolume))
 	}
 	if len(opts.DeleteInstanceTags) > 0 {
 		catcher.Add(m.deleteTags(ctx, h, opts.DeleteInstanceTags))
@@ -1106,6 +1076,38 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 	}
 
 	return nil
+}
+
+func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, volumeID string) error {
+	if err := m.client.Create(m.credentials, evergreen.DefaultEC2Region); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+
+	_, err := m.client.AttachVolume(ctx, &ec2.AttachVolumeInput{
+		InstanceId: aws.String(h.Id),
+		VolumeId:   aws.String(volumeID),
+	})
+	if err != nil {
+		return errors.Wrapf(err, "error attaching volume '%s' to host '%s'", volumeID, h.Id)
+	}
+
+	return errors.Wrapf(h.AttachVolume(volumeID), "error attaching volume '%s' to host '%s' in db", volumeID, h.Id)
+}
+
+func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID string) error {
+	if err := m.client.Create(m.credentials, evergreen.DefaultEC2Region); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+
+	_, err := m.client.DetachVolume(ctx, &ec2.DetachVolumeInput{
+		InstanceId: aws.String(h.Id),
+		VolumeId:   aws.String(volumeID),
+	})
+	if err != nil {
+		return errors.Wrapf(err, "error attaching volume '%s' to host '%s' in client", volumeID, h.Id)
+	}
+
+	return errors.Wrapf(h.DetachVolume(volumeID), "error detaching volume '%s' from host '%s' in db", volumeID, h.Id)
 }
 
 func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*host.Volume, error) {

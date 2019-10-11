@@ -291,6 +291,14 @@ func (m *ec2FleetManager) OnUp(ctx context.Context, h *host.Host) error {
 	return nil
 }
 
+func (m *ec2FleetManager) AttachVolume(context.Context, *host.Host, string) error {
+	return errors.New("can't attach volume with ec2 fleet provider")
+}
+
+func (m *ec2FleetManager) DetachVolume(context.Context, *host.Host, string) error {
+	return errors.New("can't detach volume with ec2 fleet provider")
+}
+
 func (m *ec2FleetManager) CreateVolume(context.Context, *host.Volume) (*host.Volume, error) {
 	return nil, errors.New("can't create volume with ec2 fleet provider")
 }

@@ -170,8 +170,6 @@ func hostModify() cli.Command {
 		noExpireFlagName     = "no-expire"
 		expireFlagName       = "expire"
 		extendFlagName       = "extend"
-		attachFlagName       = "attach"
-		detachFlagName       = "detach"
 	)
 
 	return cli.Command{
@@ -190,14 +188,6 @@ func hostModify() cli.Command {
 				Name:  joinFlagNames(instanceTypeFlagName, "i"),
 				Usage: "change instance type to `TYPE`",
 			},
-			cli.StringFlag{
-				Name:  joinFlagNames(attachFlagName),
-				Usage: "attach `VOLUME` to host",
-			},
-			cli.StringFlag{
-				Name:  joinFlagNames(detachFlagName),
-				Usage: "detach `VOLUME` from host",
-			},
 			cli.IntFlag{
 				Name:  extendFlagName,
 				Usage: "extend the expiration of a spawn host by `HOURS`",
@@ -212,7 +202,7 @@ func hostModify() cli.Command {
 			},
 		),
 		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag, requireAtLeastOneFlag(
-			addTagFlagName, deleteTagFlagName, instanceTypeFlagName, expireFlagName, noExpireFlagName, extendFlagName, attachFlagName, detachFlagName)),
+			addTagFlagName, deleteTagFlagName, instanceTypeFlagName, expireFlagName, noExpireFlagName, extendFlagName)),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			hostID := c.String(hostFlagName)
@@ -222,8 +212,6 @@ func hostModify() cli.Command {
 			noExpire := c.Bool(noExpireFlagName)
 			expire := c.Bool(expireFlagName)
 			extension := c.Int(extendFlagName)
-			attachVolume := c.String(attachFlagName)
-			detachVolume := c.String(detachFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -245,8 +233,6 @@ func hostModify() cli.Command {
 				DeleteInstanceTags: deleteTagSlice,
 				InstanceType:       instanceType,
 				AddHours:           time.Duration(extension) * time.Hour,
-				AttachVolume:       attachVolume,
-				DetachVolume:       detachVolume,
 			}
 
 			if noExpire {
@@ -356,6 +342,101 @@ func hostStart() cli.Command {
 			} else {
 				grip.Infof("Starting host '%s'. Visit the hosts page in Evergreen to check on its status.", hostID)
 			}
+
+			return nil
+		},
+	}
+}
+
+func hostAttach() cli.Command {
+	const (
+		volumeFlagName = "volume"
+		nameFlagName   = "name"
+	)
+
+	return cli.Command{
+		Name:  "attach",
+		Usage: "attach a volume to a spawn host",
+		Flags: addHostFlag(
+			cli.StringFlag{
+				Name:  joinFlagNames(volumeFlagName, "v"),
+				Usage: "`ID` of volume to attach",
+			},
+			cli.StringFlag{
+				Name:  joinFlagNames(nameFlagName, "n"),
+				Usage: "device `NAME` for attached volume",
+			},
+		),
+		Before: mergeBeforeFuncs(setPlainLogger, requireStringFlag(volumeFlagName)),
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			hostID := c.String(hostFlagName)
+			volumeID := c.String(volumeFlagName)
+			deviceName := c.String(nameFlagName)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.GetRestCommunicator(ctx)
+			defer client.Close()
+
+			opts := &model.HostAttachRequest{
+				VolumeID:   volumeID,
+				DeviceName: deviceName,
+			}
+
+			err = client.AttachVolume(ctx, hostID, opts)
+			if err != nil {
+				return err
+			}
+
+			grip.Infof("Attached volume '%s'.", volumeID)
+
+			return nil
+		},
+	}
+}
+
+func hostDetach() cli.Command {
+	const (
+		volumeFlagName = "volume"
+	)
+
+	return cli.Command{
+		Name:  "detach",
+		Usage: "detach a volume from a spawn host",
+		Flags: addHostFlag(
+			cli.StringFlag{
+				Name:  joinFlagNames(volumeFlagName, "v"),
+				Usage: "`ID` of volume to detach",
+			},
+		),
+		Before: mergeBeforeFuncs(setPlainLogger, requireStringFlag(volumeFlagName)),
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			hostID := c.String(hostFlagName)
+			volumeID := c.String(volumeFlagName)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.GetRestCommunicator(ctx)
+			defer client.Close()
+
+			err = client.DetachVolume(ctx, hostID, volumeID)
+			if err != nil {
+				return err
+			}
+
+			grip.Infof("Detached volume '%s'.", volumeID)
 
 			return nil
 		},

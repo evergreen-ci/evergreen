@@ -117,8 +117,6 @@ type hostModifyHandler struct {
 	InstanceType       string
 	NoExpiration       *bool
 	AddHours           time.Duration
-	AttachVolume       string
-	DetachVolume       string
 }
 
 func makeHostModifyRouteManager(sc data.Connector) gimlet.RouteHandler {
@@ -165,9 +163,6 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 		catcher.Add(checkInstanceTypeHostStopped(foundHost))
 		catcher.Add(checkInstanceTypeValid(foundHost.Provider, h.InstanceType, env.Settings()))
 	}
-	if h.AttachVolume != "" {
-		catcher.Add(checkVolumeNotAttached(h.AttachVolume))
-	}
 	if catcher.HasErrors() {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "Invalid host modify request"))
 	}
@@ -179,8 +174,6 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 		InstanceType:       h.InstanceType,
 		NoExpiration:       h.NoExpiration,
 		AddHours:           h.AddHours,
-		AttachVolume:       h.AttachVolume,
-		DetachVolume:       h.DetachVolume,
 	}
 	ts := util.RoundPartOfMinute(1).Format(tsFormat)
 	modifyJob := units.NewSpawnhostModifyJob(foundHost, changes, ts)
@@ -369,29 +362,184 @@ func (h *hostStartHandler) Run(ctx context.Context) gimlet.Responder {
 
 ////////////////////////////////////////////////////////////////////////
 //
+// POST /rest/v2/hosts/{host_id}/attach
+
+type attachVolumeHandler struct {
+	sc       data.Connector
+	settings *evergreen.Settings
+	hostID   string
+
+	VolumeID   string `json:"volume_id"`
+	DeviceName string `json:"device_name"`
+}
+
+func makeAttachVolume(sc data.Connector, settings *evergreen.Settings) gimlet.RouteHandler {
+	return &attachVolumeHandler{
+		sc:       sc,
+		settings: settings,
+	}
+}
+
+func (h *attachVolumeHandler) Factory() gimlet.RouteHandler {
+	return &attachVolumeHandler{
+		sc:       h.sc,
+		settings: h.settings,
+	}
+}
+
+func (h *attachVolumeHandler) Parse(ctx context.Context, r *http.Request) error {
+	if err := errors.WithStack(util.ReadJSONInto(r.Body, h)); err != nil {
+		return err
+	}
+
+	var err error
+	h.hostID, err = validateID(gimlet.GetVars(r)["host_id"])
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
+	user := MustHaveUser(ctx)
+
+	host, err := h.sc.FindHostByIdWithOwner(h.hostID, user)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting host '%s'", h.hostID))
+	}
+
+	// TODO: Allow different providers/regions
+	mgrOpts := cloud.ManagerOpts{
+		Provider: evergreen.ProviderNameEc2OnDemand,
+		Region:   evergreen.DefaultEC2Region,
+	}
+	mgr, err := cloud.GetManager(ctx, mgrOpts, h.settings)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		})
+	}
+
+	if mgr.AttachVolume(ctx, host, h.VolumeID); err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		})
+	}
+
+	return gimlet.NewJSONResponse(struct{}{})
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// POST /rest/v2/hosts/{host_id}/detach
+
+type detachVolumeHandler struct {
+	sc       data.Connector
+	settings *evergreen.Settings
+	hostID   string
+
+	VolumeID string `json:"volume_id"`
+}
+
+func makeDetachVolume(sc data.Connector, settings *evergreen.Settings) gimlet.RouteHandler {
+	return &detachVolumeHandler{
+		sc:       sc,
+		settings: settings,
+	}
+}
+
+func (h *detachVolumeHandler) Factory() gimlet.RouteHandler {
+	return &detachVolumeHandler{
+		sc:       h.sc,
+		settings: h.settings,
+	}
+}
+
+func (h *detachVolumeHandler) Parse(ctx context.Context, r *http.Request) error {
+	if err := errors.WithStack(util.ReadJSONInto(r.Body, h)); err != nil {
+		return err
+	}
+
+	var err error
+	h.hostID, err = validateID(gimlet.GetVars(r)["host_id"])
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (h *detachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
+	user := MustHaveUser(ctx)
+
+	host, err := h.sc.FindHostByIdWithOwner(h.hostID, user)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting host '%s'", h.hostID))
+	}
+
+	found := false
+	for _, id := range host.VolumeIDs {
+		if id == h.VolumeID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("volume '%s' is not attached to host '%s", h.VolumeID, h.hostID),
+		})
+	}
+
+	// TODO: Allow different providers/regions
+	mgrOpts := cloud.ManagerOpts{
+		Provider: evergreen.ProviderNameEc2OnDemand,
+		Region:   evergreen.DefaultEC2Region,
+	}
+	mgr, err := cloud.GetManager(ctx, mgrOpts, h.settings)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		})
+	}
+
+	if err = mgr.DetachVolume(ctx, host, h.VolumeID); err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		})
+	}
+
+	return gimlet.NewJSONResponse(struct{}{})
+}
+
+////////////////////////////////////////////////////////////////////////
+//
 // POST /rest/v2/volumes
 
-const (
-	volumeDefaultProvider = evergreen.ProviderNameEc2OnDemand
-	volumeDefaultRegion   = evergreen.DefaultEC2Region
-)
-
 type createVolumeHandler struct {
-	sc data.Connector
+	sc       data.Connector
+	settings *evergreen.Settings
 
 	Type string `json:"type"`
 	Size int    `json:"size"`
 }
 
-func makeCreateVolume(sc data.Connector) gimlet.RouteHandler {
+func makeCreateVolume(sc data.Connector, settings *evergreen.Settings) gimlet.RouteHandler {
 	return &createVolumeHandler{
-		sc: sc,
+		sc:       sc,
+		settings: settings,
 	}
 }
 
 func (h *createVolumeHandler) Factory() gimlet.RouteHandler {
 	return &createVolumeHandler{
-		sc: h.sc,
+		sc:       h.sc,
+		settings: h.settings,
 	}
 }
 
@@ -410,10 +558,10 @@ func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// TODO: Allow different providers/regions
 	mgrOpts := cloud.ManagerOpts{
-		Provider: volumeDefaultProvider,
-		Region:   volumeDefaultRegion,
+		Provider: evergreen.ProviderNameEc2OnDemand,
+		Region:   evergreen.DefaultEC2Region,
 	}
-	mgr, err := cloud.GetManager(ctx, mgrOpts, evergreen.GetEnvironment().Settings())
+	mgr, err := cloud.GetManager(ctx, mgrOpts, h.settings)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -442,20 +590,23 @@ func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 // DELETE /rest/v2/volumes/{volume_id}
 
 type deleteVolumeHandler struct {
-	sc data.Connector
+	sc       data.Connector
+	settings *evergreen.Settings
 
 	VolumeID string
 }
 
-func makeDeleteVolume(sc data.Connector) gimlet.RouteHandler {
+func makeDeleteVolume(sc data.Connector, settings *evergreen.Settings) gimlet.RouteHandler {
 	return &deleteVolumeHandler{
-		sc: sc,
+		sc:       sc,
+		settings: settings,
 	}
 }
 
 func (h *deleteVolumeHandler) Factory() gimlet.RouteHandler {
 	return &deleteVolumeHandler{
-		sc: h.sc,
+		sc:       h.sc,
+		settings: h.settings,
 	}
 }
 
@@ -492,10 +643,10 @@ func (h *deleteVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	// TODO: Allow different providers/regions
 	mgrOpts := cloud.ManagerOpts{
-		Provider: volumeDefaultProvider,
-		Region:   volumeDefaultRegion,
+		Provider: evergreen.ProviderNameEc2OnDemand,
+		Region:   evergreen.DefaultEC2Region,
 	}
-	mgr, err := cloud.GetManager(ctx, mgrOpts, evergreen.GetEnvironment().Settings())
+	mgr, err := cloud.GetManager(ctx, mgrOpts, h.settings)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

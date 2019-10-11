@@ -983,11 +983,11 @@ func AggregateLastContainerFinishTimes() ([]FinishTime, error) {
 }
 
 // FindOne gets one Volume for the given query.
-func FindOneVolume(query db.Q) (*Volume, error) {
-	volume := &Volume{}
-	err := db.FindOneQ(VolumesCollection, query, volume)
+func FindOneVolume(query interface{}) (*Volume, error) {
+	v := &Volume{}
+	err := db.FindOne(VolumesCollection, query, db.NoProjection, db.NoSort, v)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
-	return volume, err
+	return v, err
 }

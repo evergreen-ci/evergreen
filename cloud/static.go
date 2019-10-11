@@ -99,6 +99,14 @@ func (staticMgr *staticManager) OnUp(context.Context, *host.Host) error {
 	return nil
 }
 
+func (staticMgr *staticManager) AttachVolume(context.Context, *host.Host, string) error {
+	return errors.New("can't attach volume with static provider")
+}
+
+func (staticMgr *staticManager) DetachVolume(context.Context, *host.Host, string) error {
+	return errors.New("can't detach volume with static provider")
+}
+
 func (staticMgr *staticManager) CreateVolume(context.Context, *host.Volume) (*host.Volume, error) {
 	return nil, errors.New("can't create volume with static provider")
 }

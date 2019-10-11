@@ -1238,7 +1238,11 @@ func (c *awsClientMock) CancelSpotInstanceRequests(ctx context.Context, input *e
 // CreateVolume is a mock for ec2.CreateVolume.
 func (c *awsClientMock) CreateVolume(ctx context.Context, input *ec2.CreateVolumeInput) (*ec2.Volume, error) {
 	c.CreateVolumeInput = input
-	return nil, nil
+	return &ec2.Volume{
+		VolumeId:   aws.String("test-volume"),
+		VolumeType: input.VolumeType,
+		Size:       input.Size,
+	}, nil
 }
 
 // DeleteVolume is a mock for ec2.DeleteVolume.
