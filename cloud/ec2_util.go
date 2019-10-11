@@ -171,7 +171,7 @@ func makeTags(intentHost *host.Host) []host.Tag {
 		host.Tag{Key: "owner", Value: intentHost.StartedBy, CanBeModified: false},
 		host.Tag{Key: "mode", Value: "production", CanBeModified: false},
 		host.Tag{Key: "start-time", Value: intentHost.CreationTime.Format(evergreen.NameTimeFormat), CanBeModified: false},
-		host.Tag{Key: "expire-in", Value: expireOn, CanBeModified: false},
+		host.Tag{Key: "expire-on", Value: expireOn, CanBeModified: false},
 	}
 
 	if intentHost.UserHost {
@@ -238,6 +238,15 @@ func expandUserData(userData string, expansions map[string]string) (string, erro
 }
 
 func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, client AWSClient) error {
+	if instance.Placement == nil || instance.Placement.AvailabilityZone == nil {
+		return errors.New("instance missing availability zone")
+	}
+	if instance.LaunchTime == nil {
+		return errors.New("instance missing launch time")
+	}
+	if instance.PublicDnsName == nil {
+		return errors.New("instance missing public dns name")
+	}
 	h.Zone = *instance.Placement.AvailabilityZone
 	h.StartTime = *instance.LaunchTime
 	h.Host = *instance.PublicDnsName
@@ -408,14 +417,10 @@ func validateEc2DescribeInstancesOutput(describeInstancesResponse *ec2aws.Descri
 		if len(reservation.Instances) == 0 {
 			catcher.Add(errors.New("reservation missing instance"))
 		} else {
-			if reservation.Instances[0].InstanceId == nil {
-				catcher.Add(errors.New("instance missing instance id"))
-			}
-			if reservation.Instances[0].State == nil || reservation.Instances[0].State.Name == nil || len(*reservation.Instances[0].State.Name) == 0 {
-				catcher.Add(errors.New("instance missing state name"))
-			}
+			instance := reservation.Instances[0]
+			catcher.NewWhen(instance.InstanceId == nil, "instance missing instance id")
+			catcher.NewWhen(instance.State == nil || instance.State.Name == nil || len(*instance.State.Name) == 0, "instance missing state name")
 		}
-
 	}
 
 	return catcher.Resolve()
@@ -543,4 +548,15 @@ func GetEC2Key(region string, s *evergreen.Settings) (string, string, error) {
 	}
 
 	return key, secret, nil
+}
+
+func validateEC2HostModifyOptions(h *host.Host, opts host.HostModifyOptions) error {
+	if opts.InstanceType != "" && h.Status != evergreen.HostStopped {
+		return errors.New("host must be stopped to modify instance typed")
+	}
+	if h.ExpirationTime.Add(opts.AddHours).Sub(time.Now()) > MaxSpawnHostExpirationDurationHours {
+		return errors.Errorf("cannot extend host '%s' expiration by '%s' -- maximum host duration is limited to %s", h.Id, opts.AddHours.String(), MaxSpawnHostExpirationDurationHours.String())
+	}
+
+	return nil
 }

@@ -103,7 +103,7 @@ func NewEvergreenWebhookLogger() (send.Sender, error) {
 func (w *evergreenWebhookLogger) Send(m message.Composer) {
 	if w.Level().ShouldLog(m) {
 		if err := w.send(m); err != nil {
-			w.ErrorHandler(err, m)
+			w.ErrorHandler()(err, m)
 		}
 	}
 }

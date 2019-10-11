@@ -141,7 +141,7 @@ func (m *dockerManager) GetDNSName(ctx context.Context, h *host.Host) (string, e
 }
 
 //TerminateInstance destroys a container.
-func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, user string) error {
+func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, user, reason string) error {
 	if h.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %s - already marked as terminated!", h.Id)
 		grip.Error(err)
@@ -164,7 +164,15 @@ func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, use
 	})
 
 	// Set the host status as terminated and update its termination time
-	return h.Terminate(user)
+	return h.Terminate(user, reason)
+}
+
+func (m *dockerManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
+	return errors.New("StopInstance is not supported for docker provider")
+}
+
+func (m *dockerManager) StartInstance(ctx context.Context, host *host.Host, user string) error {
+	return errors.New("StartInstance is not supported for docker provider")
 }
 
 //Configure populates a dockerManager by reading relevant settings from the

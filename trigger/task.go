@@ -453,6 +453,12 @@ func isTaskRegression(sub *event.Subscription, t *task.Task) (bool, *alertrecord
 	if t.Status != evergreen.TaskFailed || !util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) {
 		return false, nil, nil
 	}
+
+	// Regressions are not actionable if they're caused by a host that was terminated or an agent that died
+	if t.Details.Description == evergreen.TaskDescriptionStranded || t.Details.Description == evergreen.TaskDescriptionHeartbeat {
+		return false, nil, nil
+	}
+
 	if !matchingFailureType(sub.TriggerData[keyFailureType], t.Details.Type) {
 		return false, nil, nil
 	}
@@ -851,6 +857,12 @@ func (t *taskTriggers) buildBreak(sub *event.Subscription) (*notification.Notifi
 	if t.task.Status != evergreen.TaskFailed || !util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.task.Requester) {
 		return nil, nil
 	}
+
+	// Regressions are not actionable if they're caused by a host that was terminated or an agent that died
+	if t.task.Details.Description == evergreen.TaskDescriptionStranded || t.task.Details.Description == evergreen.TaskDescriptionHeartbeat {
+		return nil, nil
+	}
+
 	if t.task.TriggerID != "" && sub.Owner != "" { // don't notify committer for a triggered build
 		return nil, nil
 	}

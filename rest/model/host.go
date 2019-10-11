@@ -1,6 +1,8 @@
 package model
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
@@ -19,6 +21,7 @@ type APIHost struct {
 	RunningTask  taskInfo   `json:"running_task"`
 	UserHost     bool       `json:"user_host"`
 	InstanceTags []host.Tag `json:"instance_tags"`
+	InstanceType APIString  `json:"instance_type"`
 }
 
 // HostPostRequest is a struct that holds the format of a POST request to /hosts
@@ -28,6 +31,8 @@ type HostRequestOptions struct {
 	KeyName      string     `json:"keyname"`
 	UserData     string     `json:"userdata"`
 	InstanceTags []host.Tag `json:"instance_tags"`
+	InstanceType string     `json:"instance_type"`
+	NoExpiration bool       `json:"no_expiration"`
 }
 
 type DistroInfo struct {
@@ -91,6 +96,7 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	apiHost.Status = ToAPIString(v.Status)
 	apiHost.UserHost = v.UserHost
 	apiHost.InstanceTags = v.InstanceTags
+	apiHost.InstanceType = ToAPIString(v.InstanceType)
 
 	imageId, err := v.Distro.GetImageID()
 	if err != nil {
@@ -119,8 +125,10 @@ func (apiHost *APIHost) ToService() (interface{}, error) {
 }
 
 type APISpawnHostModify struct {
-	Action   APIString `json:"action"`
-	HostID   APIString `json:"host_id"`
-	RDPPwd   APIString `json:"rdp_pwd"`
-	AddHours APIString `json:"add_hours"`
+	Action       APIString `json:"action"`
+	HostID       APIString `json:"host_id"`
+	RDPPwd       APIString `json:"rdp_pwd"`
+	AddHours     APIString `json:"add_hours"`
+	Expiration   time.Time `json:"expiration"`
+	InstanceType APIString `json:"instance_type"`
 }

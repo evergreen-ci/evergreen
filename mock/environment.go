@@ -8,6 +8,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser/db"
@@ -38,6 +40,7 @@ type Environment struct {
 	DatabaseName         string
 	EnvContext           context.Context
 	InternalSender       *send.InternalSender
+	roleManager          gimlet.RoleManager
 }
 
 func (e *Environment) Configure(ctx context.Context, path string, db *evergreen.DBSettings) error {
@@ -74,6 +77,12 @@ func (e *Environment) Configure(ctx context.Context, path string, db *evergreen.
 		return errors.WithStack(err)
 	}
 	e.DatabaseName = e.EvergreenSettings.Database.DB
+	e.roleManager = rolemanager.NewMongoBackedRoleManager(rolemanager.MongoBackedRoleManagerOpts{
+		Client:          e.MongoClient,
+		DBName:          e.DatabaseName,
+		RoleCollection:  evergreen.RoleCollection,
+		ScopeCollection: evergreen.ScopeCollection,
+	})
 
 	return nil
 }
@@ -192,4 +201,11 @@ func (e *Environment) Close(ctx context.Context) error {
 	}
 
 	return catcher.Resolve()
+}
+
+func (e *Environment) RoleManager() gimlet.RoleManager {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.roleManager
 }

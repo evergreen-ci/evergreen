@@ -24,6 +24,8 @@ type TaskQueueItemDispatcher interface {
 type CachedDispatcher interface {
 	Refresh() error
 	FindNextTask(TaskSpec) *TaskQueueItem
+	Type() string
+	CreatedAt() time.Time
 }
 
 type taskDispatchService struct {
@@ -58,7 +60,6 @@ func (s *taskDispatchService) FindNextTask(distroID string, spec TaskSpec) (*Tas
 }
 
 func (s *taskDispatchService) RefreshFindNextTask(distroID string, spec TaskSpec) (*TaskQueueItem, error) {
-
 	distroDispatchService, err := s.ensureQueue(distroID)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -85,37 +86,6 @@ func (s *taskDispatchService) Refresh(distroID string) error {
 }
 
 func (s *taskDispatchService) ensureQueue(distroID string) (CachedDispatcher, error) {
-	// If there is a "distro": *basicCachedDispatcherImpl in the cachedDispatchers map, return that.
-	// Otherwise, get the "distro"'s taskQueue from the database; seed its cachedDispatcher; put that in the map and return it.
-	s.mu.RLock()
-
-	distroDispatchService, ok := s.cachedDispatchers[distroID]
-	s.mu.RUnlock()
-	if ok {
-		return distroDispatchService, nil
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	distroDispatchService, ok = s.cachedDispatchers[distroID]
-	if ok {
-		return distroDispatchService, nil
-	}
-
-	var (
-		taskQueue TaskQueue
-		err       error
-	)
-	if s.useAliases {
-		taskQueue, err = FindDistroAliasTaskQueue(distroID)
-	} else {
-		taskQueue, err = FindDistroTaskQueue(distroID)
-	}
-
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
 	d, err := distro.FindOne(distro.ById(distroID))
 	if err != nil {
 		return nil, errors.Wrapf(err, "Database error for find() by distro id '%s'", distroID)
@@ -130,20 +100,48 @@ func (s *taskDispatchService) ensureQueue(distroID string) (CachedDispatcher, er
 		return nil, errors.Wrapf(err, "error resolving the PlannerSettings for distro '%s'", d.Id)
 	}
 
+	// If there is a "distro": *basicCachedDispatcherImpl in the cachedDispatchers map, return that.
+	// Otherwise, get the "distro"'s taskQueue from the database; seed its cachedDispatcher; put that in the map and return it.
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	distroDispatchService, ok := s.cachedDispatchers[distroID]
+	if ok && distroDispatchService.Type() == plannerSettings.Version {
+		return distroDispatchService, nil
+	}
+
+	var taskQueue TaskQueue
+	if s.useAliases {
+		taskQueue, err = FindDistroAliasTaskQueue(distroID)
+	} else {
+		taskQueue, err = FindDistroTaskQueue(distroID)
+	}
+
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
 	switch plannerSettings.Version {
 	case evergreen.PlannerVersionTunable:
-		distroDispatchService, err := newDistroTaskDAGDispatchService(taskQueue, s.ttl)
+		distroDispatchService, err = newDistroTaskDAGDispatchService(taskQueue, s.ttl)
 		if err != nil {
 			return nil, err
 		}
-		s.cachedDispatchers[distroID] = distroDispatchService
-		return distroDispatchService, nil
 	default:
-		distroDispatchService = newDistroTaskDispatchService(taskQueue, s.ttl)
-		s.cachedDispatchers[distroID] = distroDispatchService
-		return distroDispatchService, nil
+		distroDispatchService = newDistroTaskDispatchService(taskQueue, plannerSettings.Version, s.ttl)
 	}
+
+	s.cachedDispatchers[distroID] = distroDispatchService
+	return distroDispatchService, nil
 }
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+const (
+	SchedulableUnitDispatcher = "schedulableunit-task-dispatcher"
+)
 
 // cachedDispatcher is an in-memory representation of schedulable tasks for a distro.
 //
@@ -154,6 +152,7 @@ type basicCachedDispatcherImpl struct {
 	order       []string
 	units       map[string]schedulableUnit
 	ttl         time.Duration
+	typeName    string
 	lastUpdated time.Time
 }
 
@@ -172,34 +171,60 @@ type schedulableUnit struct {
 }
 
 // newDistroTaskDispatchService creates a basicCachedDispatcherImpl from a slice of TaskQueueItems.
-func newDistroTaskDispatchService(taskQueue TaskQueue, ttl time.Duration) *basicCachedDispatcherImpl {
-	t := &basicCachedDispatcherImpl{
+func newDistroTaskDispatchService(taskQueue TaskQueue, typeName string, ttl time.Duration) *basicCachedDispatcherImpl {
+	d := &basicCachedDispatcherImpl{
 		distroID: taskQueue.Distro,
 		ttl:      ttl,
+		typeName: typeName,
 	}
 
 	if taskQueue.Length() != 0 {
-		t.rebuild(taskQueue.Queue)
+		d.rebuild(taskQueue.Queue)
 	}
 
-	return t
+	grip.Debug(message.Fields{
+		"dispatcher":           SchedulableUnitDispatcher,
+		"function":             "newDistroTaskDispatchService",
+		"message":              "initializing basicCachedDispatcherImpl for a distro",
+		"distro_id":            d.distroID,
+		"ttl":                  d.ttl,
+		"last_updated":         d.lastUpdated,
+		"num_schedulableunits": len(d.units),
+		"num_orders":           len(d.order),
+		"num_taskqueueitems":   taskQueue.Length(),
+	})
+
+	return d
 }
 
-func (t *basicCachedDispatcherImpl) Refresh() error {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+func (d *basicCachedDispatcherImpl) Type() string {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return d.typeName
+}
 
-	if !shouldRefreshCached(t.ttl, t.lastUpdated, t.distroID) {
+func (d *basicCachedDispatcherImpl) CreatedAt() time.Time {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	return d.lastUpdated
+}
+
+func (d *basicCachedDispatcherImpl) Refresh() error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if !shouldRefreshCached(d.ttl, d.lastUpdated, d.distroID) {
 		return nil
 	}
 
-	taskQueue, err := FindDistroTaskQueue(t.distroID)
+	taskQueue, err := FindDistroTaskQueue(d.distroID)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
 	taskQueueItems := taskQueue.Queue
-	t.rebuild(taskQueueItems)
+	d.rebuild(taskQueueItems)
 
 	return nil
 }
@@ -208,7 +233,7 @@ func shouldRefreshCached(ttl time.Duration, lastUpdated time.Time, distroID stri
 	return lastUpdated.IsZero() || time.Since(lastUpdated) > ttl
 }
 
-func (t *basicCachedDispatcherImpl) rebuild(items []TaskQueueItem) {
+func (d *basicCachedDispatcherImpl) rebuild(items []TaskQueueItem) {
 	// This slice likely has too much capacity, but it helps append performance.
 	order := make([]string, 0, len(items))
 	units := map[string]schedulableUnit{}
@@ -252,18 +277,18 @@ func (t *basicCachedDispatcherImpl) rebuild(items []TaskQueueItem) {
 		}
 	}
 
-	t.order = order
-	t.units = units
-	t.lastUpdated = time.Now()
+	d.order = order
+	d.units = units
+	d.lastUpdated = time.Now()
 }
 
 // FindNextTask returns the next dispatchable task in the queue.
-func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
-	if len(t.units) == 0 && len(t.order) > 0 {
-		t.order = []string{}
+	if len(d.units) == 0 && len(d.order) > 0 {
+		d.order = []string{}
 		return nil
 	}
 
@@ -272,9 +297,9 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	var next *TaskQueueItem
 	// If the host just ran a task group, give it one back.
 	if spec.Group != "" {
-		unit, ok = t.units[compositeGroupId(spec.Group, spec.BuildVariant, spec.Project, spec.Version)]
+		unit, ok = d.units[compositeGroupId(spec.Group, spec.BuildVariant, spec.Project, spec.Version)]
 		if ok {
-			if next = t.nextTaskGroupTask(unit); next != nil {
+			if next = d.nextTaskGroupTask(unit); next != nil {
 				return next
 			}
 		}
@@ -285,21 +310,22 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	var numHosts int
 	var err error
 
-	for _, schedulableUnitID := range t.order {
-		unit, ok = t.units[schedulableUnitID]
+	dependencyCaches := make(map[string]task.Task)
+	for _, schedulableUnitID := range d.order {
+		unit, ok = d.units[schedulableUnitID]
 		if !ok {
 			continue
 		}
 
 		// If maxHosts is not set, this is not a task group.
 		if unit.maxHosts == 0 {
-			delete(t.units, schedulableUnitID)
+			delete(d.units, schedulableUnitID)
 			if len(unit.tasks) == 0 {
 				grip.Critical(message.Fields{
-					"dispatcher":                    "schedulableunit-task-dispatcher",
+					"dispatcher":                    SchedulableUnitDispatcher,
 					"function":                      "FindNextTask",
 					"message":                       "schedulableUnit.maxHosts == 0 - this is not a task group; but schedulableUnit.tasks is empty - returning nil",
-					"distro_id":                     t.distroID,
+					"distro_id":                     d.distroID,
 					"schedulableunit_id":            unit.id,
 					"schedulableunit_group":         unit.group,
 					"schedulableunit_project":       unit.project,
@@ -308,13 +334,53 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 					"schedulableunit_running_hosts": unit.runningHosts,
 					"schedulableunit_max_hosts":     unit.maxHosts,
 					"schedulableunit_num_tasks":     len(unit.tasks),
-					"task_id_returned":              "",
 				})
 
 				return nil
 			}
 
 			// A non-task group schedulableUnit's tasks ([]TaskQueueItem) only contain a single element.
+			item := unit.tasks[0]
+
+			nextTaskFromDB, err := task.FindOneId(item.Id)
+			if err != nil {
+				grip.Warning(message.WrapError(err, message.Fields{
+					"dispatcher": SchedulableUnitDispatcher,
+					"function":   "FindNextTask",
+					"message":    "problem finding task in db",
+					"task_id":    item.Id,
+					"distro_id":  d.distroID,
+				}))
+				return nil
+			}
+			if nextTaskFromDB == nil {
+				grip.Warning(message.Fields{
+					"dispatcher": SchedulableUnitDispatcher,
+					"function":   "FindNextTask",
+					"message":    "task from db not found",
+					"task_id":    item.Id,
+					"distro_id":  d.distroID,
+				})
+				return nil
+			}
+
+			dependenciesMet, err := nextTaskFromDB.DependenciesMet(dependencyCaches)
+			if err != nil {
+				grip.Warning(message.WrapError(err, message.Fields{
+					"dispatcher": SchedulableUnitDispatcher,
+					"function":   "FindNextTask",
+					"message":    "error checking dependencies for task",
+					"outcome":    "skip and continue",
+					"task":       item.Id,
+					"distro_id":  d.distroID,
+				}))
+				continue
+			}
+
+			if !dependenciesMet {
+				continue
+			}
+
 			return &unit.tasks[0]
 		}
 
@@ -329,11 +395,11 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 			// function.
 			numHosts, err = host.NumHostsByTaskSpec(unit.group, unit.variant, unit.project, unit.version)
 			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"dispatcher":                    "schedulableunit-task-dispatcher",
+				grip.Warning(message.WrapError(err, message.Fields{
+					"dispatcher":                    SchedulableUnitDispatcher,
 					"function":                      "FindNextTask",
 					"message":                       "problem running NumHostsByTaskSpec query - returning nil",
-					"distro_id":                     t.distroID,
+					"distro_id":                     d.distroID,
 					"schedulableunit_id":            unit.id,
 					"schedulableunit_group":         unit.group,
 					"schedulableunit_project":       unit.project,
@@ -350,10 +416,10 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 				return nil
 			}
 			unit.runningHosts = numHosts
-			t.units[schedulableUnitID] = unit
+			d.units[schedulableUnitID] = unit
 
 			if unit.runningHosts < unit.maxHosts {
-				if next = t.nextTaskGroupTask(unit); next != nil {
+				if next = d.nextTaskGroupTask(unit); next != nil {
 					return next
 				}
 			}
@@ -367,7 +433,7 @@ func compositeGroupId(group, variant, project, version string) string {
 	return fmt.Sprintf("%s_%s_%s_%s", group, variant, project, version)
 }
 
-func (t *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *TaskQueueItem {
+func (d *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *TaskQueueItem {
 	for i, nextTaskQueueItem := range unit.tasks {
 		if nextTaskQueueItem.IsDispatched == true {
 			continue
@@ -375,28 +441,54 @@ func (t *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *Tas
 
 		nextTaskFromDB, err := task.FindOneId(nextTaskQueueItem.Id)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "problem finding task in db",
-				"task_id": nextTaskQueueItem.Id,
+			grip.Warning(message.WrapError(err, message.Fields{
+				"dispatcher": SchedulableUnitDispatcher,
+				"function":   "nextTaskGroupTask",
+				"message":    "task from db not found",
+				"task_id":    nextTaskQueueItem.Id,
+				"distro_id":  d.distroID,
 			}))
 			return nil
 		}
 		if nextTaskFromDB == nil {
-			grip.Error(message.Fields{
-				"message": "task from db not found",
-				"task_id": nextTaskQueueItem.Id,
+			grip.Warning(message.Fields{
+				"dispatcher": SchedulableUnitDispatcher,
+				"function":   "nextTaskGroupTask",
+				"message":    "task from db not found",
+				"task_id":    nextTaskQueueItem.Id,
+				"distro_id":  d.distroID,
 			})
 			return nil
 		}
 
+		// Check if its dependencies have been met.
+		dependencyCaches := make(map[string]task.Task)
+		dependenciesMet, err := nextTaskFromDB.DependenciesMet(dependencyCaches)
+		if err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"dispatcher": SchedulableUnitDispatcher,
+				"function":   "nextTaskGroupTask",
+				"message":    "error checking dependencies for task",
+				"outcome":    "skip and continue",
+				"task_id":    nextTaskQueueItem.Id,
+				"distro_id":  d.distroID,
+			}))
+			continue
+		}
+
+		if !dependenciesMet {
+			// Regardless, set IsDispatch = true for this *TaskQueueItem, while awaiting the next refresh of the in-memory queue.
+			d.units[unit.id].tasks[i].IsDispatched = true
+			continue
+		}
+
 		if isBlockedSingleHostTaskGroup(unit, nextTaskFromDB) {
-			delete(t.units, unit.id)
+			delete(d.units, unit.id)
 			return nil
 		}
 
 		// Cache dispatched status.
-		t.units[unit.id].tasks[i].IsDispatched = true
-		unit.tasks[i].IsDispatched = true
+		d.units[unit.id].tasks[i].IsDispatched = true
 
 		// It's running (or already ran) on another host.
 		if nextTaskFromDB.StartTime != util.ZeroTime {
@@ -406,7 +498,7 @@ func (t *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *Tas
 		return &nextTaskQueueItem
 	}
 	// If all the tasks have been dispatched, remove the unit.
-	delete(t.units, unit.id)
+	delete(d.units, unit.id)
 
 	return nil
 }

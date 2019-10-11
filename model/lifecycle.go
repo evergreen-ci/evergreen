@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"go.mongodb.org/mongo-driver/mongo"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -511,7 +509,7 @@ func AddTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 	return b, nil
 }
 
-// BuildCreateArgs is the set of parameters used in CreateBuildFromVersion
+// BuildCreateArgs is the set of parameters used in CreateBuildFromVersionNoInsert
 type BuildCreateArgs struct {
 	Project       Project                 // project to create the build for
 	Version       Version                 // the version the build belong to
@@ -524,17 +522,17 @@ type BuildCreateArgs struct {
 	SourceRev     string                  // githash of the revision that triggered this build
 	DefinitionID  string                  // definition ID of the trigger used to create this build
 	Aliases       ProjectAliases          // project aliases to use to filter tasks created
-	Session       mongo.SessionContext    // session context to use for transactions
 	DistroAliases distro.AliasLookupTable // map of distro aliases to names of distros
 }
 
-// CreateBuildFromVersion creates a build given all of the necessary information
-// from the corresponding version and project and a list of tasks.
-func CreateBuildFromVersion(args BuildCreateArgs) (string, error) {
+// CreateBuildFromVersionNoInsert creates a build given all of the necessary information
+// from the corresponding version and project and a list of tasks. Note that the caller
+// is responsible for inserting the created build and task documents
+func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Tasks, error) {
 	// find the build variant for this project/build
 	buildVariant := args.Project.FindBuildVariant(args.BuildName)
 	if buildVariant == nil {
-		return "", errors.Errorf("could not find build %v in %v project file", args.BuildName, args.Project.Identifier)
+		return nil, nil, errors.Errorf("could not find build %v in %v project file", args.BuildName, args.Project.Identifier)
 	}
 
 	rev := args.Version.Revision
@@ -580,7 +578,7 @@ func CreateBuildFromVersion(args BuildCreateArgs) (string, error) {
 	// get a new build number for the build
 	buildNumber, err := db.GetNewBuildVariantBuildNumber(args.BuildName)
 	if err != nil {
-		return "", errors.Wrapf(err, "could not get build number for build variant"+
+		return nil, nil, errors.Wrapf(err, "could not get build number for build variant"+
 			" %v in %v project file", args.BuildName, args.Project.Identifier)
 	}
 	b.BuildNumber = strconv.FormatUint(buildNumber, 10)
@@ -588,11 +586,7 @@ func CreateBuildFromVersion(args BuildCreateArgs) (string, error) {
 	// create all of the necessary tasks for the build
 	tasksForBuild, err := createTasksForBuild(&args.Project, buildVariant, b, &args.Version, args.TaskIDs, args.TaskNames, args.DisplayNames, args.GeneratedBy, args.Aliases, nil, args.DistroAliases)
 	if err != nil {
-		return "", errors.Wrapf(err, "error creating tasks for build %s", b.Id)
-	}
-
-	if err = tasksForBuild.InsertUnordered(args.Session); err != nil {
-		return "", errors.Wrapf(err, "error inserting task for build '%s'", buildId)
+		return nil, nil, errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
 
 	// create task caches for all of the tasks, and place them into the build
@@ -605,14 +599,7 @@ func CreateBuildFromVersion(args BuildCreateArgs) (string, error) {
 	}
 	b.Tasks = CreateTasksCache(tasks)
 
-	// insert the build
-	_, err = evergreen.GetEnvironment().DB().Collection(build.Collection).InsertOne(args.Session, b)
-	if err != nil {
-		return "", errors.Wrapf(err, "error inserting build %v", b.Id)
-	}
-
-	// success!
-	return b.Id, nil
+	return b, tasksForBuild, nil
 }
 
 func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariantTaskUnit {
@@ -1215,7 +1202,7 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch).
-func AddNewBuilds(activated bool, v *Version, p *Project, tasks TaskVariantPairs, generatedBy string) error {
+func AddNewBuilds(ctx context.Context, activated bool, v *Version, p *Project, tasks TaskVariantPairs, generatedBy string) error {
 	taskIds := NewPatchTaskIdTable(p, v, tasks)
 
 	newBuildIds := make([]string, 0)
@@ -1248,22 +1235,39 @@ func AddNewBuilds(activated bool, v *Version, p *Project, tasks TaskVariantPairs
 			DisplayNames: displayNames,
 			GeneratedBy:  generatedBy,
 		}
-		buildId, err := CreateBuildFromVersion(buildArgs)
+
 		grip.Info(message.Fields{
 			"op":        "creating build for version",
 			"variant":   pair.Variant,
 			"activated": activated,
 			"version":   v.Id,
 		})
+		build, tasks, err := CreateBuildFromVersionNoInsert(buildArgs)
 		if err != nil {
 			return errors.WithStack(err)
 		}
+		if len(tasks) == 0 {
+			grip.Info(message.Fields{
+				"op":        "skipping empty build for version",
+				"variant":   pair.Variant,
+				"activated": activated,
+				"version":   v.Id,
+			})
+			continue
+		}
 
-		newBuildIds = append(newBuildIds, buildId)
+		if err = build.Insert(); err != nil {
+			return errors.Wrapf(err, "error inserting build %s", build.Id)
+		}
+		if err = tasks.InsertUnordered(ctx); err != nil {
+			return errors.Wrapf(err, "error inserting tasks for build %s", build.Id)
+		}
+
+		newBuildIds = append(newBuildIds, build.Id)
 		newBuildStatuses = append(newBuildStatuses,
 			VersionBuildStatus{
 				BuildVariant: pair.Variant,
-				BuildId:      buildId,
+				BuildId:      build.Id,
 				Activated:    activated,
 			},
 		)

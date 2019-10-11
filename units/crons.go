@@ -262,7 +262,7 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 		catcher.Add(err)
 
 		for _, h := range hosts {
-			catcher.Add(queue.Put(ctx, NewHostTerminationJob(env, h, true)))
+			catcher.Add(queue.Put(ctx, NewHostTerminationJob(env, h, true, "host is expired, decommissioned, or failed to provision")))
 		}
 
 		hosts, err = host.AllHostsSpawnedByTasksToTerminate()
@@ -274,7 +274,7 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 		catcher.Add(err)
 
 		for _, h := range hosts {
-			catcher.Add(queue.Put(ctx, NewHostTerminationJob(env, h, true)))
+			catcher.Add(queue.Put(ctx, NewHostTerminationJob(env, h, true, "host spawned by task has gone out of scope")))
 		}
 
 		return catcher.Resolve()
@@ -514,7 +514,10 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 
 		catcher := grip.NewBasicCatcher()
 
-		lastPlanned, err := model.FindTaskQueueGenerationTimes()
+		lastPlanned, err := model.FindTaskQueueLastGenerationTimes()
+		catcher.Add(err)
+
+		lastRuntime, err := model.FindTaskQueueGenerationRuntime()
 		catcher.Add(err)
 
 		// find all active distros
@@ -534,7 +537,7 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 			"operation": "background task creation",
 		}))
 
-		ts := util.RoundPartOfMinute(20)
+		ts := util.RoundPartOfMinute(0)
 		settings := env.Settings()
 
 		for _, d := range distros {
@@ -544,7 +547,11 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 			}
 
 			lastRun, ok := lastPlanned[d.Id]
-			if ok && time.Since(lastRun) < 40*time.Second {
+			if ok && time.Since(lastRun) < 2*time.Minute {
+				continue
+			}
+
+			if ok && time.Since(lastRun)+10*time.Second < lastRuntime[d.Id] {
 				continue
 			}
 
@@ -573,15 +580,18 @@ func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation 
 
 		catcher := grip.NewBasicCatcher()
 
-		lastPlanned, err := model.FindTaskAliasQueueGenerationTimes()
+		lastPlanned, err := model.FindTaskAliasQueueLastGenerationTimes()
 		catcher.Add(err)
 
 		// find all active distros
 		distros, err := distro.Find(distro.ByActiveOrStatic())
 		catcher.Add(err)
 
+		lastRuntime, err := model.FindTaskQueueGenerationRuntime()
+		catcher.Add(err)
+
 		settings := env.Settings()
-		ts := util.RoundPartOfMinute(30)
+		ts := util.RoundPartOfMinute(0)
 
 		for _, d := range distros {
 			// do not create scheduler jobs for parent distros
@@ -590,7 +600,10 @@ func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation 
 			}
 
 			lastRun, ok := lastPlanned[d.Id]
-			if ok && time.Since(lastRun) < time.Minute {
+			if ok && time.Since(lastRun) < 2*time.Minute {
+				continue
+			}
+			if ok && time.Since(lastRun)+10*time.Second < lastRuntime[d.Id] {
 				continue
 			}
 
@@ -816,16 +829,21 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 		submitted := 0
 
 		for _, h := range hosts {
-			if h.UserHost {
+			if h.UserHost || h.SpawnOptions.SpawnedByTask {
 				// pass:
 				//    always start spawn hosts asap
-			} else if submitted > 16 {
+			} else if submitted > 32 {
 				// throttle hosts, so that we're starting very
 				// few hosts on every pass. Hostinit runs very
 				// frequently, lets not start too many all at
 				// once.
 
-				break
+				continue
+			} else {
+				// only increment for task hosts, since otherwise
+				// spawn hosts and hosts spawned by tasks could
+				// starve task hosts
+				submitted++
 			}
 
 			catcher.Add(queue.Put(ctx, NewHostCreateJob(env, h, ts, 1, 0, false)))
@@ -1001,6 +1019,23 @@ func PopulateCacheHistoricalTestDataJob(part int) amboy.QueueOperation {
 			}
 
 			catcher.Add(queue.Put(ctx, NewCacheHistoricalTestDataJob(project.Identifier, ts)))
+		}
+
+		return catcher.Resolve()
+	}
+}
+
+func PopulateSpawnhostExpirationCheckJob() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		hosts, err := host.FindSpawnhostsWithNoExpirationToExtend()
+		if err != nil {
+			return err
+		}
+
+		catcher := grip.NewBasicCatcher()
+		for _, h := range hosts {
+			ts := util.RoundPartOfHour(0).Format(tsFormat)
+			catcher.Add(queue.Put(ctx, NewSpawnhostExpirationCheckJob(ts, &h)))
 		}
 
 		return catcher.Resolve()

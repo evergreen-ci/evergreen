@@ -376,17 +376,18 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 	networkConf := &network.NetworkingConfig{}
 	hostConf := &container.HostConfig{}
 
-	msg := makeDockerLogMessage("ContainerCreate", parentHost.Id, message.Fields{
-		"image": containerConf.Image,
-	})
+	grip.Info(makeDockerLogMessage("ContainerCreate", parentHost.Id, message.Fields{"image": containerConf.Image}))
 
 	// Build container
 	if _, err := dockerClient.ContainerCreate(ctx, containerConf, hostConf, networkConf, containerHost.Id); err != nil {
-		err = errors.Wrapf(err, "Docker create API call failed for container '%s'", containerHost.Id)
-		grip.Error(err)
-		return err
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":   "Docker create API call failed",
+			"container": containerHost.Id,
+			"parent":    parentHost.Id,
+			"image":     provisionedImage,
+		}))
+		return errors.Wrapf(err, "Docker create API call failed for container '%s' on parent '%s'", containerHost.Id, parentHost.Id)
 	}
-	grip.Info(msg)
 
 	return nil
 }

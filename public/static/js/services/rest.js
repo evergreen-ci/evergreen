@@ -249,6 +249,14 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function(
         baseSvc.getResource(resource, action, config, callbacks);
     };
 
+    service.getAllowedInstanceTypes = function(action, provider, params, callbacks) {
+        var config = {
+            params: params
+        }
+        config.params['provider'] = provider
+        baseSvc.getResource(resource, action, config, callbacks);
+    }
+
     service.spawnHost = function(spawnInfo, data, callbacks) {
         var config = {
             data: data
@@ -263,7 +271,7 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function(
         baseSvc.putResource(resource, [], config, callbacks);
     };
 
-    service.terminateHost = function(action, hostId, data, callbacks) {
+    service.updateHostStatus = function(action, hostId, data, callbacks) {
         var config = {
             data: data
         };
@@ -282,15 +290,25 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function(
         baseSvc.postResource(resource, [], config, callbacks);
     };
 
-    service.extendHostExpiration = function(action, hostId, addHours, data, callbacks) {
+    service.extendHostExpiration = function(action, hostId, newExpiration, data, callbacks) {
         var config = {
             data: data
         };
         config.data['action'] = action;
         config.data['host_id'] = hostId;
-        config.data['add_hours'] = addHours;
+        config.data['expiration'] = newExpiration;
         baseSvc.postResource(resource, [], config, callbacks);
     };
+
+    service.updateInstanceType = function(action, hostId, newInstanceType, data, callbacks) {
+        var config = {
+            data: data
+        };
+        config.data['action'] = action;
+        config.data['host_id'] = hostId;
+        config.data['instance_type'] = newInstanceType;
+        baseSvc.postResource(resource, [], config, callbacks);
+    }
 
     return service;
 }]);

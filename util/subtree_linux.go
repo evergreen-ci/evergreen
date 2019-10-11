@@ -93,8 +93,8 @@ func cleanup(key string, logger grip.Journaler) error {
 	}
 
 	// Log each process that was not cleaned up
-	for pid := range pids {
-		logger.Infof("Failed to clean up process &d", pid)
+	for _, pid := range pids {
+		logger.Infof("Failed to clean up process %d", pid)
 	}
 
 	return nil

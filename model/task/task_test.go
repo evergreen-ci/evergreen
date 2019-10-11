@@ -625,16 +625,16 @@ func TestTaskResultOutcome(t *testing.T) {
 	assert := assert.New(t)
 
 	tasks := []Task{
-		{Status: evergreen.TaskUndispatched, Activated: false},                                                                     // 0
-		{Status: evergreen.TaskUndispatched, Activated: true},                                                                      // 1
-		{Status: evergreen.TaskStarted},                                                                                            // 2
-		{Status: evergreen.TaskSucceeded},                                                                                          // 3
-		{Status: evergreen.TaskFailed},                                                                                             // 4
-		{Status: evergreen.TaskFailed, Details: apimodels.TaskEndDetail{Type: "system"}},                                           // 5
-		{Status: evergreen.TaskFailed, Details: apimodels.TaskEndDetail{Type: "system", TimedOut: true}},                           // 6
-		{Status: evergreen.TaskFailed, Details: apimodels.TaskEndDetail{Type: "system", TimedOut: true, Description: "heartbeat"}}, // 7
-		{Status: evergreen.TaskFailed, Details: apimodels.TaskEndDetail{TimedOut: true, Description: "heartbeat"}},                 // 8
-		{Status: evergreen.TaskSetupFailed, Details: apimodels.TaskEndDetail{Type: "setup"}},                                       // 5
+		{Status: evergreen.TaskUndispatched, Activated: false}, // 0
+		{Status: evergreen.TaskUndispatched, Activated: true},  // 1
+		{Status: evergreen.TaskStarted},                        // 2
+		{Status: evergreen.TaskSucceeded},                      // 3
+		{Status: evergreen.TaskFailed},                         // 4
+		{Status: evergreen.TaskFailed, Details: apimodels.TaskEndDetail{Type: evergreen.CommandTypeSystem}},                                                                  // 5
+		{Status: evergreen.TaskFailed, Details: apimodels.TaskEndDetail{Type: evergreen.CommandTypeSystem, TimedOut: true}},                                                  // 6
+		{Status: evergreen.TaskFailed, Details: apimodels.TaskEndDetail{Type: evergreen.CommandTypeSystem, TimedOut: true, Description: evergreen.TaskDescriptionHeartbeat}}, // 7
+		{Status: evergreen.TaskFailed, Details: apimodels.TaskEndDetail{TimedOut: true, Description: evergreen.TaskDescriptionHeartbeat}},                                    // 8
+		{Status: evergreen.TaskSetupFailed, Details: apimodels.TaskEndDetail{Type: evergreen.CommandTypeSetup}},                                                              // 5
 	}
 
 	out := GetResultCounts(tasks)
@@ -855,7 +855,7 @@ func TestTaskStatusCount(t *testing.T) {
 	counts := TaskStatusCount{}
 	details := apimodels.TaskEndDetail{
 		TimedOut:    true,
-		Description: "heartbeat",
+		Description: evergreen.TaskDescriptionHeartbeat,
 	}
 	counts.IncrementStatus(evergreen.TaskSetupFailed, details)
 	counts.IncrementStatus(evergreen.TaskFailed, apimodels.TaskEndDetail{})
@@ -1466,11 +1466,11 @@ func TestUnattainableScheduleableTasksQuery(t *testing.T) {
 			DependsOn: []Dependency{
 				{
 					TaskId:       "t10",
-					Unattainable: true,
+					Unattainable: false,
 				},
 				{
 					TaskId:       "t11",
-					Unattainable: false,
+					Unattainable: true,
 				},
 			},
 			Priority: 0,
@@ -1498,9 +1498,11 @@ func TestUnattainableScheduleableTasksQuery(t *testing.T) {
 			Priority:  0,
 			DependsOn: []Dependency{
 				{
-					TaskId: "t10",
+					TaskId:       "t10",
+					Unattainable: true,
 				},
 			},
+			OverrideDependencies: true,
 		},
 	}
 	for _, task := range tasks {

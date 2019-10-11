@@ -30,6 +30,8 @@ type MockInstance struct {
 	TimeTilNextPayment time.Duration
 	DNSName            string
 	OnUpRan            bool
+	Tags               []host.Tag
+	Type               string
 }
 
 type MockProvider interface {
@@ -140,7 +142,54 @@ func (mockMgr *mockManager) SpawnHost(ctx context.Context, h *host.Host) (*host.
 	return h, nil
 }
 
-func (mockMgr *mockManager) ModifyHost(context.Context, *host.Host, host.HostModifyOptions) error {
+func (mockMgr *mockManager) ModifyHost(ctx context.Context, host *host.Host, changes host.HostModifyOptions) error {
+	l := mockMgr.mutex
+	l.Lock()
+	defer l.Unlock()
+	var err error
+	instance, ok := mockMgr.Instances[host.Id]
+	if !ok {
+		return errors.Errorf("unable to fetch host: %s", host.Id)
+	}
+
+	if len(changes.AddInstanceTags) > 0 {
+		host.AddTags(changes.AddInstanceTags)
+		instance.Tags = host.InstanceTags
+		mockMgr.Instances[host.Id] = instance
+		if err := host.SetTags(); err != nil {
+			return errors.Errorf("error adding tags in db")
+		}
+	}
+
+	if len(changes.DeleteInstanceTags) > 0 {
+		instance.Tags = host.InstanceTags
+		mockMgr.Instances[host.Id] = instance
+		host.DeleteTags(changes.DeleteInstanceTags)
+		if err := host.SetTags(); err != nil {
+			return errors.Errorf("error deleting tags in db")
+		}
+	}
+
+	if changes.InstanceType != "" {
+		instance.Type = host.InstanceType
+		mockMgr.Instances[host.Id] = instance
+		if err = host.SetInstanceType(changes.InstanceType); err != nil {
+			return errors.Errorf("error setting instance type in db")
+		}
+	}
+
+	if changes.NoExpiration != nil {
+		expireOnValue := expireInDays(30)
+		if *changes.NoExpiration {
+			if err = host.MarkShouldNotExpire(expireOnValue); err != nil {
+				return errors.Errorf("error setting no expiration in db")
+			}
+		}
+		if err = host.MarkShouldExpire(expireOnValue); err != nil {
+			return errors.Errorf("error setting expiration in db")
+		}
+	}
+
 	return nil
 }
 
@@ -178,7 +227,7 @@ func (_ *mockManager) Validate() error {
 }
 
 // terminate an instance
-func (mockMgr *mockManager) TerminateInstance(ctx context.Context, host *host.Host, user string) error {
+func (mockMgr *mockManager) TerminateInstance(ctx context.Context, host *host.Host, user, reason string) error {
 	l := mockMgr.mutex
 	l.Lock()
 	defer l.Unlock()
@@ -193,7 +242,42 @@ func (mockMgr *mockManager) TerminateInstance(ctx context.Context, host *host.Ho
 	instance.Status = StatusTerminated
 	mockMgr.Instances[host.Id] = instance
 
-	return errors.WithStack(host.Terminate(user))
+	return errors.WithStack(host.Terminate(user, reason))
+}
+
+func (mockMgr *mockManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
+	l := mockMgr.mutex
+	l.Lock()
+	defer l.Unlock()
+	instance, ok := mockMgr.Instances[host.Id]
+	if !ok {
+		return errors.Errorf("unable to fetch host: %s", host.Id)
+	}
+	if host.Status != evergreen.HostRunning {
+		return errors.Errorf("cannot stop %s; instance not running", host.Id)
+	}
+	instance.Status = StatusStopped
+	mockMgr.Instances[host.Id] = instance
+
+	return errors.WithStack(host.SetStopped(user))
+
+}
+
+func (mockMgr *mockManager) StartInstance(ctx context.Context, host *host.Host, user string) error {
+	l := mockMgr.mutex
+	l.Lock()
+	defer l.Unlock()
+	instance, ok := mockMgr.Instances[host.Id]
+	if !ok {
+		return errors.Errorf("unable to fetch host: %s", host.Id)
+	}
+	if host.Status != evergreen.HostStopped {
+		return errors.Errorf("cannot start %s; instance not stopped", host.Id)
+	}
+	instance.Status = StatusRunning
+	mockMgr.Instances[host.Id] = instance
+
+	return errors.WithStack(host.SetRunning(user))
 }
 
 func (mockMgr *mockManager) Configure(ctx context.Context, settings *evergreen.Settings) error {

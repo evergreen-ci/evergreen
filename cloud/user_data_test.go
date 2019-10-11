@@ -156,7 +156,7 @@ func TestBootstrapUserData(t *testing.T) {
 			require.NoError(t, err)
 			assert.NotContains(t, userData, cmd)
 
-			cmd, err = h.MarkUserDataDoneCommand()
+			cmd, err = h.MarkUserDataDoneCommands()
 			require.NoError(t, err)
 			assert.Contains(t, userData, cmd)
 		},
@@ -181,7 +181,7 @@ func TestBootstrapUserData(t *testing.T) {
 			require.NoError(t, err)
 			assert.Contains(t, userData, cmd)
 
-			cmd, err = h.MarkUserDataDoneCommand()
+			cmd, err = h.MarkUserDataDoneCommands()
 			require.NoError(t, err)
 			assert.Contains(t, userData, cmd)
 		},

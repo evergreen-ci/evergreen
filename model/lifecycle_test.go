@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -746,10 +747,10 @@ buildvariants:
 				Activated: false,
 				TaskNames: []string{},
 			}
-			buildId, err := CreateBuildFromVersion(args)
+			build, tasks, err := CreateBuildFromVersionNoInsert(args)
 			So(err, ShouldNotBeNil)
-			So(buildId, ShouldEqual, "")
-
+			So(build, ShouldBeNil)
+			So(tasks, ShouldBeNil)
 		})
 
 		Convey("if no task names are passed in to be used, all of the default"+
@@ -763,20 +764,19 @@ buildvariants:
 				Activated: false,
 				TaskNames: []string{},
 			}
-			buildId, err := CreateBuildFromVersion(args)
+			build, tasks, err := CreateBuildFromVersionNoInsert(args)
 			So(err, ShouldBeNil)
-			So(buildId, ShouldNotEqual, "")
+			So(build, ShouldNotBeNil)
+			So(build.Id, ShouldNotEqual, "")
+			So(len(tasks), ShouldEqual, 6)
+
 			args.BuildName = buildVar2.Name
-			buildId2, err := CreateBuildFromVersion(args)
+			build, tasks, err = CreateBuildFromVersionNoInsert(args)
 			So(err, ShouldBeNil)
-			So(buildId2, ShouldNotEqual, "")
-
-			// find the tasks, make sure they were all created
-			tasks, err := task.Find(task.All)
-			So(err, ShouldBeNil)
-			So(len(tasks), ShouldEqual, 8)
+			So(build, ShouldNotBeNil)
+			So(build.Id, ShouldNotEqual, "")
+			So(len(tasks), ShouldEqual, 4)
 			So(len(tasks[0].Tags), ShouldEqual, 2)
-
 		})
 
 		Convey("if a non-empty list of task names is passed in, only the"+
@@ -790,15 +790,10 @@ buildvariants:
 				Activated: false,
 				TaskNames: []string{"taskA", "taskB"},
 			}
-			buildId, err := CreateBuildFromVersion(args)
+			build, tasks, err := CreateBuildFromVersionNoInsert(args)
 			So(err, ShouldBeNil)
-			So(buildId, ShouldNotEqual, "")
-
-			// find the tasks, make sure they were all created
-			tasks, err := task.Find(task.All)
-			So(err, ShouldBeNil)
+			So(build.Id, ShouldNotEqual, "")
 			So(len(tasks), ShouldEqual, 2)
-
 		})
 
 		Convey("ensure distro is populated to tasks", func() {
@@ -811,14 +806,9 @@ buildvariants:
 				Activated: false,
 				TaskNames: []string{"taskA", "taskB"},
 			}
-			buildId, err := CreateBuildFromVersion(args)
+			build, tasks, err := CreateBuildFromVersionNoInsert(args)
 			So(err, ShouldBeNil)
-			So(buildId, ShouldNotEqual, "")
-
-			// find the tasks, make sure they were all created
-			tasks, err := task.Find(task.All)
-			So(err, ShouldBeNil)
-
+			So(build.Id, ShouldNotEqual, "")
 			for _, t := range tasks {
 				So(t.DistroId, ShouldEqual, "arch")
 			}
@@ -836,34 +826,26 @@ buildvariants:
 				Activated: false,
 				TaskNames: []string{},
 			}
-			buildId, err := CreateBuildFromVersion(args)
+			build, tasks, err := CreateBuildFromVersionNoInsert(args)
 			So(err, ShouldBeNil)
-			So(buildId, ShouldNotEqual, "")
-
-			// find the tasks, make sure they were all created
-			tasks, err := task.Find(task.All)
-			So(err, ShouldBeNil)
+			So(build.Id, ShouldNotEqual, "")
 			So(len(tasks), ShouldEqual, 4)
-
-			// find the build from the db
-			b, err := build.FindOne(build.ById(buildId))
-			So(err, ShouldBeNil)
-			So(len(b.Tasks), ShouldEqual, 4)
+			So(len(build.Tasks), ShouldEqual, 4)
 
 			// make sure the task caches are correct.  they should also appear
 			// in the same order that they appear in the project file
-			So(b.Tasks[0].Id, ShouldNotEqual, "")
-			So(b.Tasks[0].DisplayName, ShouldEqual, "taskA")
-			So(b.Tasks[0].Status, ShouldEqual, evergreen.TaskUndispatched)
-			So(b.Tasks[1].Id, ShouldNotEqual, "")
-			So(b.Tasks[1].DisplayName, ShouldEqual, "taskB")
-			So(b.Tasks[1].Status, ShouldEqual, evergreen.TaskUndispatched)
-			So(b.Tasks[2].Id, ShouldNotEqual, "")
-			So(b.Tasks[2].DisplayName, ShouldEqual, "taskC")
-			So(b.Tasks[2].Status, ShouldEqual, evergreen.TaskUndispatched)
-			So(b.Tasks[3].Id, ShouldNotEqual, "")
-			So(b.Tasks[3].DisplayName, ShouldEqual, "taskE")
-			So(b.Tasks[3].Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(build.Tasks[0].Id, ShouldNotEqual, "")
+			So(build.Tasks[0].DisplayName, ShouldEqual, "taskA")
+			So(build.Tasks[0].Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(build.Tasks[1].Id, ShouldNotEqual, "")
+			So(build.Tasks[1].DisplayName, ShouldEqual, "taskB")
+			So(build.Tasks[1].Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(build.Tasks[2].Id, ShouldNotEqual, "")
+			So(build.Tasks[2].DisplayName, ShouldEqual, "taskC")
+			So(build.Tasks[2].Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(build.Tasks[3].Id, ShouldNotEqual, "")
+			So(build.Tasks[3].DisplayName, ShouldEqual, "taskE")
+			So(build.Tasks[3].Status, ShouldEqual, evergreen.TaskUndispatched)
 		})
 
 		Convey("a task cache should not contain execution tasks that are part of a display task", func() {
@@ -876,31 +858,20 @@ buildvariants:
 				Activated: false,
 				TaskNames: []string{},
 			}
-			buildId, err := CreateBuildFromVersion(args)
+			build, tasks, err := CreateBuildFromVersionNoInsert(args)
 			So(err, ShouldBeNil)
-			So(buildId, ShouldNotEqual, "")
-
-			// find the execution tasks, make sure they were all created
-			tasks, err := task.Find(task.All)
-			So(err, ShouldBeNil)
-			So(len(tasks), ShouldEqual, 4)
-
-			// find the build from the db
-			b, err := build.FindOne(build.ById(buildId))
-			So(err, ShouldBeNil)
-			So(len(b.Tasks), ShouldEqual, 2)
+			So(build.Id, ShouldNotEqual, "")
+			So(len(build.Tasks), ShouldEqual, 2)
 
 			// make sure the task caches are correct
-			So(b.Tasks[0].Id, ShouldNotEqual, "")
-			So(b.Tasks[0].DisplayName, ShouldEqual, buildVar1.DisplayTasks[0].Name)
-			So(b.Tasks[0].Status, ShouldEqual, evergreen.TaskUndispatched)
-			So(b.Tasks[1].Id, ShouldNotEqual, "")
-			So(b.Tasks[1].DisplayName, ShouldEqual, buildVar1.DisplayTasks[1].Name)
-			So(b.Tasks[1].Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(build.Tasks[0].Id, ShouldNotEqual, "")
+			So(build.Tasks[0].DisplayName, ShouldEqual, buildVar1.DisplayTasks[0].Name)
+			So(build.Tasks[0].Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(build.Tasks[1].Id, ShouldNotEqual, "")
+			So(build.Tasks[1].DisplayName, ShouldEqual, buildVar1.DisplayTasks[1].Name)
+			So(build.Tasks[1].Status, ShouldEqual, evergreen.TaskUndispatched)
 
 			// check the display tasks too
-			tasks, err = task.FindWithDisplayTasks(task.ByBuildId(buildId))
-			So(err, ShouldBeNil)
 			So(len(tasks), ShouldEqual, 6)
 			So(tasks[0].DisplayName, ShouldEqual, buildVar1.DisplayTasks[0].Name)
 			So(tasks[0].DisplayOnly, ShouldBeTrue)
@@ -920,56 +891,60 @@ buildvariants:
 				Activated: false,
 				TaskNames: []string{},
 			}
-			buildId, err := CreateBuildFromVersion(args)
+			build, tasks1, err := CreateBuildFromVersionNoInsert(args)
 			So(err, ShouldBeNil)
-			So(buildId, ShouldNotEqual, "")
+			So(build.Id, ShouldNotEqual, "")
+
 			args.BuildName = buildVar2.Name
-			buildId2, err := CreateBuildFromVersion(args)
+			build, tasks2, err := CreateBuildFromVersionNoInsert(args)
 			So(err, ShouldBeNil)
-			So(buildId2, ShouldNotEqual, "")
+			So(build.Id, ShouldNotEqual, "")
 			args.BuildName = buildVar3.Name
-			buildId3, err := CreateBuildFromVersion(args)
+			build, tasks3, err := CreateBuildFromVersionNoInsert(args)
 			So(err, ShouldBeNil)
-			So(buildId3, ShouldNotEqual, "")
+			So(build.Id, ShouldNotEqual, "")
 
 			// find the tasks, make sure they were all created
-			tasks, err := task.Find(task.All.Sort([]string{task.DisplayNameKey, task.BuildVariantKey}))
+			So(tasks1.InsertUnordered(context.Background()), ShouldBeNil)
+			So(tasks2.InsertUnordered(context.Background()), ShouldBeNil)
+			So(tasks3.InsertUnordered(context.Background()), ShouldBeNil)
+			dbTasks, err := task.Find(task.All.Sort([]string{task.DisplayNameKey, task.BuildVariantKey}))
 			So(err, ShouldBeNil)
-			So(len(tasks), ShouldEqual, 9)
+			So(len(dbTasks), ShouldEqual, 9)
 
 			// taskA
-			So(len(tasks[0].DependsOn), ShouldEqual, 0)
-			So(len(tasks[1].DependsOn), ShouldEqual, 0)
-			So(len(tasks[2].DependsOn), ShouldEqual, 1)
-			So(tasks[0].Priority, ShouldEqual, 5)
-			So(tasks[1].Priority, ShouldEqual, 5)
-			So(tasks[2].DependsOn, ShouldResemble,
-				[]task.Dependency{{TaskId: tasks[0].Id, Status: evergreen.TaskSucceeded}})
+			So(len(dbTasks[0].DependsOn), ShouldEqual, 0)
+			So(len(dbTasks[1].DependsOn), ShouldEqual, 0)
+			So(len(dbTasks[2].DependsOn), ShouldEqual, 1)
+			So(dbTasks[0].Priority, ShouldEqual, 5)
+			So(dbTasks[1].Priority, ShouldEqual, 5)
+			So(dbTasks[2].DependsOn, ShouldResemble,
+				[]task.Dependency{{TaskId: dbTasks[0].Id, Status: evergreen.TaskSucceeded}})
 
 			// taskB
-			So(tasks[3].DependsOn, ShouldResemble,
-				[]task.Dependency{{TaskId: tasks[0].Id, Status: evergreen.TaskSucceeded}})
-			So(tasks[4].DependsOn, ShouldResemble,
-				[]task.Dependency{{TaskId: tasks[0].Id, Status: evergreen.TaskSucceeded}}) //cross-variant
-			So(tasks[3].Priority, ShouldEqual, 0)
-			So(tasks[4].Priority, ShouldEqual, 0) //default priority
+			So(dbTasks[3].DependsOn, ShouldResemble,
+				[]task.Dependency{{TaskId: dbTasks[0].Id, Status: evergreen.TaskSucceeded}})
+			So(dbTasks[4].DependsOn, ShouldResemble,
+				[]task.Dependency{{TaskId: dbTasks[0].Id, Status: evergreen.TaskSucceeded}}) //cross-variant
+			So(dbTasks[3].Priority, ShouldEqual, 0)
+			So(dbTasks[4].Priority, ShouldEqual, 0) //default priority
 
 			// taskC
-			So(tasks[5].DependsOn, ShouldResemble,
+			So(dbTasks[5].DependsOn, ShouldResemble,
 				[]task.Dependency{
-					{TaskId: tasks[0].Id, Status: evergreen.TaskSucceeded},
-					{TaskId: tasks[3].Id, Status: evergreen.TaskSucceeded}})
-			So(tasks[6].DependsOn, ShouldResemble,
+					{TaskId: dbTasks[0].Id, Status: evergreen.TaskSucceeded},
+					{TaskId: dbTasks[3].Id, Status: evergreen.TaskSucceeded}})
+			So(dbTasks[6].DependsOn, ShouldResemble,
 				[]task.Dependency{
-					{TaskId: tasks[1].Id, Status: evergreen.TaskSucceeded},
-					{TaskId: tasks[4].Id, Status: evergreen.TaskSucceeded}})
-			So(tasks[7].DependsOn, ShouldResemble,
+					{TaskId: dbTasks[1].Id, Status: evergreen.TaskSucceeded},
+					{TaskId: dbTasks[4].Id, Status: evergreen.TaskSucceeded}})
+			So(dbTasks[7].DependsOn, ShouldResemble,
 				[]task.Dependency{
-					{TaskId: tasks[0].Id, Status: evergreen.TaskSucceeded},
-					{TaskId: tasks[3].Id, Status: evergreen.TaskSucceeded},
-					{TaskId: tasks[5].Id, Status: evergreen.TaskSucceeded}})
-			So(tasks[8].DisplayName, ShouldEqual, "taskE")
-			So(len(tasks[8].DependsOn), ShouldEqual, 8)
+					{TaskId: dbTasks[0].Id, Status: evergreen.TaskSucceeded},
+					{TaskId: dbTasks[3].Id, Status: evergreen.TaskSucceeded},
+					{TaskId: dbTasks[5].Id, Status: evergreen.TaskSucceeded}})
+			So(dbTasks[8].DisplayName, ShouldEqual, "taskE")
+			So(len(dbTasks[8].DependsOn), ShouldEqual, 8)
 		})
 
 		Convey("all of the build's essential fields should be set correctly", func() {
@@ -982,28 +957,24 @@ buildvariants:
 				Activated: false,
 				TaskNames: []string{},
 			}
-			buildId, err := CreateBuildFromVersion(args)
+			build, _, err := CreateBuildFromVersionNoInsert(args)
 			So(err, ShouldBeNil)
-			So(buildId, ShouldNotEqual, "")
-
-			// find the build from the db
-			b, err := build.FindOne(build.ById(buildId))
-			So(err, ShouldBeNil)
+			So(build.Id, ShouldNotEqual, "")
 
 			// verify all the fields are set appropriately
-			So(len(b.Tasks), ShouldEqual, 2)
-			So(b.CreateTime.Truncate(time.Second), ShouldResemble,
+			So(len(build.Tasks), ShouldEqual, 2)
+			So(build.CreateTime.Truncate(time.Second), ShouldResemble,
 				v.CreateTime.Truncate(time.Second))
-			So(b.Activated, ShouldBeFalse)
-			So(b.ActivatedTime.Equal(util.ZeroTime), ShouldBeTrue)
-			So(b.Project, ShouldEqual, project.Identifier)
-			So(b.Revision, ShouldEqual, v.Revision)
-			So(b.Status, ShouldEqual, evergreen.BuildCreated)
-			So(b.BuildVariant, ShouldEqual, buildVar1.Name)
-			So(b.Version, ShouldEqual, v.Id)
-			So(b.DisplayName, ShouldEqual, buildVar1.DisplayName)
-			So(b.RevisionOrderNumber, ShouldEqual, v.RevisionOrderNumber)
-			So(b.Requester, ShouldEqual, v.Requester)
+			So(build.Activated, ShouldBeFalse)
+			So(build.ActivatedTime.Equal(util.ZeroTime), ShouldBeTrue)
+			So(build.Project, ShouldEqual, project.Identifier)
+			So(build.Revision, ShouldEqual, v.Revision)
+			So(build.Status, ShouldEqual, evergreen.BuildCreated)
+			So(build.BuildVariant, ShouldEqual, buildVar1.Name)
+			So(build.Version, ShouldEqual, v.Id)
+			So(build.DisplayName, ShouldEqual, buildVar1.DisplayName)
+			So(build.RevisionOrderNumber, ShouldEqual, v.RevisionOrderNumber)
+			So(build.Requester, ShouldEqual, v.Requester)
 		})
 
 		Convey("all of the tasks' essential fields should be set correctly", func() {
@@ -1016,86 +987,78 @@ buildvariants:
 				Activated: false,
 				TaskNames: []string{},
 			}
-			buildId, err := CreateBuildFromVersion(args)
+			build, tasks, err := CreateBuildFromVersionNoInsert(args)
 			So(err, ShouldBeNil)
-			So(buildId, ShouldNotEqual, "")
+			So(build.Id, ShouldNotEqual, "")
 
-			// find the build from the db
-			b, err := build.FindOne(build.ById(buildId))
-			So(err, ShouldBeNil)
-
-			// find the tasks, make sure they were all created
-			tasks, err := task.Find(task.All.Sort([]string{task.DisplayNameKey}))
-			So(err, ShouldBeNil)
-			So(len(tasks), ShouldEqual, 4)
-
-			So(tasks[0].Id, ShouldNotEqual, "")
-			So(tasks[0].Secret, ShouldNotEqual, "")
-			So(tasks[0].DisplayName, ShouldEqual, "taskA")
-			So(tasks[0].BuildId, ShouldEqual, buildId)
-			So(tasks[0].DistroId, ShouldEqual, "arch")
-			So(tasks[0].BuildVariant, ShouldEqual, buildVar1.Name)
-			So(tasks[0].CreateTime.Truncate(time.Second), ShouldResemble,
-				b.CreateTime.Truncate(time.Second))
-			So(tasks[0].Status, ShouldEqual, evergreen.TaskUndispatched)
-			So(tasks[0].Activated, ShouldBeFalse)
-			So(tasks[0].ActivatedTime.Equal(util.ZeroTime), ShouldBeTrue)
-			So(tasks[0].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
-			So(tasks[0].Requester, ShouldEqual, b.Requester)
-			So(tasks[0].Version, ShouldEqual, v.Id)
-			So(tasks[0].Revision, ShouldEqual, v.Revision)
-			So(tasks[0].Project, ShouldEqual, project.Identifier)
-
-			So(tasks[1].Id, ShouldNotEqual, "")
-			So(tasks[1].Secret, ShouldNotEqual, "")
-			So(tasks[1].DisplayName, ShouldEqual, "taskB")
-			So(tasks[1].BuildId, ShouldEqual, buildId)
-			So(tasks[1].DistroId, ShouldEqual, "arch")
-			So(tasks[1].BuildVariant, ShouldEqual, buildVar1.Name)
-			So(tasks[1].CreateTime.Truncate(time.Second), ShouldResemble,
-				b.CreateTime.Truncate(time.Second))
-			So(tasks[1].Status, ShouldEqual, evergreen.TaskUndispatched)
-			So(tasks[1].Activated, ShouldBeFalse)
-			So(tasks[1].ActivatedTime.Equal(util.ZeroTime), ShouldBeTrue)
-			So(tasks[1].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
-			So(tasks[1].Requester, ShouldEqual, b.Requester)
-			So(tasks[1].Version, ShouldEqual, v.Id)
-			So(tasks[1].Revision, ShouldEqual, v.Revision)
-			So(tasks[1].Project, ShouldEqual, project.Identifier)
-
+			So(len(tasks), ShouldEqual, 6)
 			So(tasks[2].Id, ShouldNotEqual, "")
 			So(tasks[2].Secret, ShouldNotEqual, "")
-			So(tasks[2].DisplayName, ShouldEqual, "taskC")
-			So(tasks[2].BuildId, ShouldEqual, buildId)
+			So(tasks[2].DisplayName, ShouldEqual, "taskA")
+			So(tasks[2].BuildId, ShouldEqual, build.Id)
 			So(tasks[2].DistroId, ShouldEqual, "arch")
 			So(tasks[2].BuildVariant, ShouldEqual, buildVar1.Name)
 			So(tasks[2].CreateTime.Truncate(time.Second), ShouldResemble,
-				b.CreateTime.Truncate(time.Second))
+				build.CreateTime.Truncate(time.Second))
 			So(tasks[2].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(tasks[2].Activated, ShouldBeFalse)
 			So(tasks[2].ActivatedTime.Equal(util.ZeroTime), ShouldBeTrue)
-			So(tasks[2].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
-			So(tasks[2].Requester, ShouldEqual, b.Requester)
+			So(tasks[2].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
+			So(tasks[2].Requester, ShouldEqual, build.Requester)
 			So(tasks[2].Version, ShouldEqual, v.Id)
 			So(tasks[2].Revision, ShouldEqual, v.Revision)
 			So(tasks[2].Project, ShouldEqual, project.Identifier)
 
 			So(tasks[3].Id, ShouldNotEqual, "")
 			So(tasks[3].Secret, ShouldNotEqual, "")
-			So(tasks[3].DisplayName, ShouldEqual, "taskD")
-			So(tasks[3].BuildId, ShouldEqual, buildId)
+			So(tasks[3].DisplayName, ShouldEqual, "taskB")
+			So(tasks[3].BuildId, ShouldEqual, build.Id)
 			So(tasks[3].DistroId, ShouldEqual, "arch")
 			So(tasks[3].BuildVariant, ShouldEqual, buildVar1.Name)
 			So(tasks[3].CreateTime.Truncate(time.Second), ShouldResemble,
-				b.CreateTime.Truncate(time.Second))
+				build.CreateTime.Truncate(time.Second))
 			So(tasks[3].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(tasks[3].Activated, ShouldBeFalse)
 			So(tasks[3].ActivatedTime.Equal(util.ZeroTime), ShouldBeTrue)
-			So(tasks[3].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
-			So(tasks[3].Requester, ShouldEqual, b.Requester)
+			So(tasks[3].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
+			So(tasks[3].Requester, ShouldEqual, build.Requester)
 			So(tasks[3].Version, ShouldEqual, v.Id)
 			So(tasks[3].Revision, ShouldEqual, v.Revision)
 			So(tasks[3].Project, ShouldEqual, project.Identifier)
+
+			So(tasks[4].Id, ShouldNotEqual, "")
+			So(tasks[4].Secret, ShouldNotEqual, "")
+			So(tasks[4].DisplayName, ShouldEqual, "taskC")
+			So(tasks[4].BuildId, ShouldEqual, build.Id)
+			So(tasks[4].DistroId, ShouldEqual, "arch")
+			So(tasks[4].BuildVariant, ShouldEqual, buildVar1.Name)
+			So(tasks[4].CreateTime.Truncate(time.Second), ShouldResemble,
+				build.CreateTime.Truncate(time.Second))
+			So(tasks[4].Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(tasks[4].Activated, ShouldBeFalse)
+			So(tasks[4].ActivatedTime.Equal(util.ZeroTime), ShouldBeTrue)
+			So(tasks[4].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
+			So(tasks[4].Requester, ShouldEqual, build.Requester)
+			So(tasks[4].Version, ShouldEqual, v.Id)
+			So(tasks[4].Revision, ShouldEqual, v.Revision)
+			So(tasks[4].Project, ShouldEqual, project.Identifier)
+
+			So(tasks[5].Id, ShouldNotEqual, "")
+			So(tasks[5].Secret, ShouldNotEqual, "")
+			So(tasks[5].DisplayName, ShouldEqual, "taskD")
+			So(tasks[5].BuildId, ShouldEqual, build.Id)
+			So(tasks[5].DistroId, ShouldEqual, "arch")
+			So(tasks[5].BuildVariant, ShouldEqual, buildVar1.Name)
+			So(tasks[5].CreateTime.Truncate(time.Second), ShouldResemble,
+				build.CreateTime.Truncate(time.Second))
+			So(tasks[5].Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(tasks[5].Activated, ShouldBeFalse)
+			So(tasks[5].ActivatedTime.Equal(util.ZeroTime), ShouldBeTrue)
+			So(tasks[5].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
+			So(tasks[5].Requester, ShouldEqual, build.Requester)
+			So(tasks[5].Version, ShouldEqual, v.Id)
+			So(tasks[5].Revision, ShouldEqual, v.Revision)
+			So(tasks[5].Project, ShouldEqual, project.Identifier)
 		})
 
 		Convey("if the activated flag is set, the build and all its tasks should be activated",
@@ -1109,88 +1072,80 @@ buildvariants:
 					Activated: true,
 					TaskNames: []string{},
 				}
-				buildId, err := CreateBuildFromVersion(args)
+				build, tasks, err := CreateBuildFromVersionNoInsert(args)
 				So(err, ShouldBeNil)
-				So(buildId, ShouldNotEqual, "")
+				So(build.Id, ShouldNotEqual, "")
+				So(build.Activated, ShouldBeTrue)
+				So(build.ActivatedTime.Equal(util.ZeroTime), ShouldBeFalse)
 
-				// find the build from the db
-				b, err := build.FindOne(build.ById(buildId))
-				So(err, ShouldBeNil)
-				So(b.Activated, ShouldBeTrue)
-				So(b.ActivatedTime.Equal(util.ZeroTime), ShouldBeFalse)
-
-				// find the tasks, make sure they were all created
-				tasks, err := task.Find(task.All.Sort([]string{task.DisplayNameKey}))
-				So(err, ShouldBeNil)
-				So(len(tasks), ShouldEqual, 4)
-
-				So(tasks[0].Id, ShouldNotEqual, "")
-				So(tasks[0].Secret, ShouldNotEqual, "")
-				So(tasks[0].DisplayName, ShouldEqual, "taskA")
-				So(tasks[0].BuildId, ShouldEqual, buildId)
-				So(tasks[0].DistroId, ShouldEqual, "arch")
-				So(tasks[0].BuildVariant, ShouldEqual, buildVar1.Name)
-				So(tasks[0].CreateTime.Truncate(time.Second), ShouldResemble,
-					b.CreateTime.Truncate(time.Second))
-				So(tasks[0].Status, ShouldEqual, evergreen.TaskUndispatched)
-				So(tasks[0].Activated, ShouldBeTrue)
-				So(tasks[0].ActivatedTime.Equal(util.ZeroTime), ShouldBeFalse)
-				So(tasks[0].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
-				So(tasks[0].Requester, ShouldEqual, b.Requester)
-				So(tasks[0].Version, ShouldEqual, v.Id)
-				So(tasks[0].Revision, ShouldEqual, v.Revision)
-				So(tasks[0].Project, ShouldEqual, project.Identifier)
-
-				So(tasks[1].Id, ShouldNotEqual, "")
-				So(tasks[1].Secret, ShouldNotEqual, "")
-				So(tasks[1].DisplayName, ShouldEqual, "taskB")
-				So(tasks[1].BuildId, ShouldEqual, buildId)
-				So(tasks[1].DistroId, ShouldEqual, "arch")
-				So(tasks[1].BuildVariant, ShouldEqual, buildVar1.Name)
-				So(tasks[1].CreateTime.Truncate(time.Second), ShouldResemble,
-					b.CreateTime.Truncate(time.Second))
-				So(tasks[1].Status, ShouldEqual, evergreen.TaskUndispatched)
-				So(tasks[1].Activated, ShouldBeTrue)
-				So(tasks[1].ActivatedTime.Equal(util.ZeroTime), ShouldBeFalse)
-				So(tasks[1].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
-				So(tasks[1].Requester, ShouldEqual, b.Requester)
-				So(tasks[1].Version, ShouldEqual, v.Id)
-				So(tasks[1].Revision, ShouldEqual, v.Revision)
-				So(tasks[1].Project, ShouldEqual, project.Identifier)
-
+				So(len(tasks), ShouldEqual, 6)
 				So(tasks[2].Id, ShouldNotEqual, "")
 				So(tasks[2].Secret, ShouldNotEqual, "")
-				So(tasks[2].DisplayName, ShouldEqual, "taskC")
-				So(tasks[2].BuildId, ShouldEqual, buildId)
+				So(tasks[2].DisplayName, ShouldEqual, "taskA")
+				So(tasks[2].BuildId, ShouldEqual, build.Id)
 				So(tasks[2].DistroId, ShouldEqual, "arch")
 				So(tasks[2].BuildVariant, ShouldEqual, buildVar1.Name)
 				So(tasks[2].CreateTime.Truncate(time.Second), ShouldResemble,
-					b.CreateTime.Truncate(time.Second))
+					build.CreateTime.Truncate(time.Second))
 				So(tasks[2].Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(tasks[2].Activated, ShouldBeTrue)
 				So(tasks[2].ActivatedTime.Equal(util.ZeroTime), ShouldBeFalse)
-				So(tasks[2].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
-				So(tasks[2].Requester, ShouldEqual, b.Requester)
+				So(tasks[2].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
+				So(tasks[2].Requester, ShouldEqual, build.Requester)
 				So(tasks[2].Version, ShouldEqual, v.Id)
 				So(tasks[2].Revision, ShouldEqual, v.Revision)
 				So(tasks[2].Project, ShouldEqual, project.Identifier)
 
 				So(tasks[3].Id, ShouldNotEqual, "")
 				So(tasks[3].Secret, ShouldNotEqual, "")
-				So(tasks[3].DisplayName, ShouldEqual, "taskD")
-				So(tasks[3].BuildId, ShouldEqual, buildId)
+				So(tasks[3].DisplayName, ShouldEqual, "taskB")
+				So(tasks[3].BuildId, ShouldEqual, build.Id)
 				So(tasks[3].DistroId, ShouldEqual, "arch")
 				So(tasks[3].BuildVariant, ShouldEqual, buildVar1.Name)
 				So(tasks[3].CreateTime.Truncate(time.Second), ShouldResemble,
-					b.CreateTime.Truncate(time.Second))
+					build.CreateTime.Truncate(time.Second))
 				So(tasks[3].Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(tasks[3].Activated, ShouldBeTrue)
 				So(tasks[3].ActivatedTime.Equal(util.ZeroTime), ShouldBeFalse)
-				So(tasks[3].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
-				So(tasks[3].Requester, ShouldEqual, b.Requester)
+				So(tasks[3].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
+				So(tasks[3].Requester, ShouldEqual, build.Requester)
 				So(tasks[3].Version, ShouldEqual, v.Id)
 				So(tasks[3].Revision, ShouldEqual, v.Revision)
 				So(tasks[3].Project, ShouldEqual, project.Identifier)
+
+				So(tasks[4].Id, ShouldNotEqual, "")
+				So(tasks[4].Secret, ShouldNotEqual, "")
+				So(tasks[4].DisplayName, ShouldEqual, "taskC")
+				So(tasks[4].BuildId, ShouldEqual, build.Id)
+				So(tasks[4].DistroId, ShouldEqual, "arch")
+				So(tasks[4].BuildVariant, ShouldEqual, buildVar1.Name)
+				So(tasks[4].CreateTime.Truncate(time.Second), ShouldResemble,
+					build.CreateTime.Truncate(time.Second))
+				So(tasks[4].Status, ShouldEqual, evergreen.TaskUndispatched)
+				So(tasks[4].Activated, ShouldBeTrue)
+				So(tasks[4].ActivatedTime.Equal(util.ZeroTime), ShouldBeFalse)
+				So(tasks[4].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
+				So(tasks[4].Requester, ShouldEqual, build.Requester)
+				So(tasks[4].Version, ShouldEqual, v.Id)
+				So(tasks[4].Revision, ShouldEqual, v.Revision)
+				So(tasks[4].Project, ShouldEqual, project.Identifier)
+
+				So(tasks[5].Id, ShouldNotEqual, "")
+				So(tasks[5].Secret, ShouldNotEqual, "")
+				So(tasks[5].DisplayName, ShouldEqual, "taskD")
+				So(tasks[5].BuildId, ShouldEqual, build.Id)
+				So(tasks[5].DistroId, ShouldEqual, "arch")
+				So(tasks[5].BuildVariant, ShouldEqual, buildVar1.Name)
+				So(tasks[5].CreateTime.Truncate(time.Second), ShouldResemble,
+					build.CreateTime.Truncate(time.Second))
+				So(tasks[5].Status, ShouldEqual, evergreen.TaskUndispatched)
+				So(tasks[5].Activated, ShouldBeTrue)
+				So(tasks[5].ActivatedTime.Equal(util.ZeroTime), ShouldBeFalse)
+				So(tasks[5].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
+				So(tasks[5].Requester, ShouldEqual, build.Requester)
+				So(tasks[5].Version, ShouldEqual, v.Id)
+				So(tasks[5].Revision, ShouldEqual, v.Revision)
+				So(tasks[5].Project, ShouldEqual, project.Identifier)
 			})
 
 	})
@@ -1265,29 +1220,21 @@ func TestCreateTaskGroup(t *testing.T) {
 		BuildName: "bv",
 		Activated: true,
 	}
-	buildId, err := CreateBuildFromVersion(args)
+	build, tasks, err := CreateBuildFromVersionNoInsert(args)
 	assert.NoError(err)
-	dbBuild, err := build.FindOne(build.ById(buildId))
-	assert.NoError(err)
-	assert.NotNil(dbBuild)
-	assert.Len(dbBuild.Tasks, 3)
-	dbTasks, err := task.Find(task.ByBuildId(buildId))
-	assert.NoError(err)
-	assert.Len(dbTasks, 3)
-	for _, t := range dbTasks {
-		if t.DisplayName == "example_task_1" {
-			assert.Equal("example_task_group", t.TaskGroup)
-		}
-		if t.DisplayName == "example_task_2" {
-			assert.Contains(t.DependsOn[0].TaskId, "example_task_1")
-			assert.Equal("example_task_group", t.TaskGroup)
-		}
-		if t.DisplayName == "example_task_3" {
-			assert.Empty(t.TaskGroup)
-			assert.NotContains(t.TaskGroup, "example_task_group")
-			assert.Contains(t.DependsOn[0].TaskId, "example_task_2")
-		}
-	}
+	assert.Len(build.Tasks, 3)
+	assert.Len(tasks, 3)
+	assert.Equal("example_task_1", tasks[0].DisplayName)
+	assert.Equal("example_task_group", tasks[0].TaskGroup)
+
+	assert.Equal("example_task_2", tasks[1].DisplayName)
+	assert.Contains(tasks[1].DependsOn[0].TaskId, "example_task_1")
+	assert.Equal("example_task_group", tasks[1].TaskGroup)
+
+	assert.Equal("example_task_3", tasks[2].DisplayName)
+	assert.Empty(tasks[2].TaskGroup)
+	assert.NotContains(tasks[2].TaskGroup, "example_task_group")
+	assert.Contains(tasks[2].DependsOn[0].TaskId, "example_task_2")
 }
 
 func TestDeletingBuild(t *testing.T) {

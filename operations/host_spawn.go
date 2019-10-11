@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/ioutil"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -62,10 +63,12 @@ func makeAWSTags(tagSlice []string) ([]host.Tag, error) {
 
 func hostCreate() cli.Command {
 	const (
-		distroFlagName = "distro"
-		keyFlagName    = "key"
-		scriptFlagName = "script"
-		tagFlagName    = "tag"
+		distroFlagName       = "distro"
+		keyFlagName          = "key"
+		scriptFlagName       = "script"
+		tagFlagName          = "tag"
+		instanceTypeFlagName = "type"
+		noExpireFlagName     = "no-expire"
 	)
 
 	return cli.Command{
@@ -84,9 +87,17 @@ func hostCreate() cli.Command {
 				Name:  joinFlagNames(scriptFlagName, "s"),
 				Usage: "path to userdata script to run",
 			},
+			cli.StringFlag{
+				Name:  joinFlagNames(instanceTypeFlagName, "i"),
+				Usage: "name of an instance type",
+			},
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(tagFlagName, "t"),
 				Usage: "key=value pair representing an instance tag, with one pair per flag",
+			},
+			cli.BoolFlag{
+				Name:  noExpireFlagName,
+				Usage: "make host never expire",
 			},
 		},
 		Action: func(c *cli.Context) error {
@@ -95,6 +106,8 @@ func hostCreate() cli.Command {
 			key := c.String(keyFlagName)
 			fn := c.String(scriptFlagName)
 			tagSlice := c.StringSlice(tagFlagName)
+			instanceType := c.String(instanceTypeFlagName)
+			noExpire := c.Bool(noExpireFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -126,6 +139,8 @@ func hostCreate() cli.Command {
 				KeyName:      key,
 				UserData:     script,
 				InstanceTags: tags,
+				InstanceType: instanceType,
+				NoExpiration: noExpire,
 			}
 
 			host, err := client.CreateSpawnHost(ctx, spawnRequest)
@@ -145,8 +160,12 @@ func hostCreate() cli.Command {
 
 func hostModify() cli.Command {
 	const (
-		addTagFlagName    = "tag"
-		deleteTagFlagName = "delete-tag"
+		addTagFlagName       = "tag"
+		deleteTagFlagName    = "delete-tag"
+		instanceTypeFlagName = "type"
+		noExpireFlagName     = "no-expire"
+		expireFlagName       = "expire"
+		extendFlagName       = "extend"
 	)
 
 	return cli.Command{
@@ -155,19 +174,40 @@ func hostModify() cli.Command {
 		Flags: addHostFlag(
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(addTagFlagName, "t"),
-				Usage: "key=value pair representing an instance tag, with one pair per flag",
+				Usage: "add instance tag `KEY=VALUE`, one tag per flag",
 			},
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(deleteTagFlagName, "d"),
-				Usage: "key of a single tag to be deleted",
+				Usage: "delete instance tag `KEY`, one tag per flag",
+			},
+			cli.StringFlag{
+				Name:  joinFlagNames(instanceTypeFlagName, "i"),
+				Usage: "change instance type to `TYPE`",
+			},
+			cli.IntFlag{
+				Name:  extendFlagName,
+				Usage: "extend the expiration of a spawn host by `HOURS`",
+			},
+			cli.BoolFlag{
+				Name:  noExpireFlagName,
+				Usage: "make host never expire",
+			},
+			cli.BoolFlag{
+				Name:  expireFlagName,
+				Usage: "make host expire like a normal spawn host, in 24 hours",
 			},
 		),
-		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag, requireAtLeastOneStringSlice(addTagFlagName, deleteTagFlagName)),
+		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag, requireAtLeastOneFlag(
+			addTagFlagName, deleteTagFlagName, instanceTypeFlagName, expireFlagName, noExpireFlagName, extendFlagName)),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			hostID := c.String(hostFlagName)
 			addTagSlice := c.StringSlice(addTagFlagName)
 			deleteTagSlice := c.StringSlice(deleteTagFlagName)
+			instanceType := c.String(instanceTypeFlagName)
+			noExpire := c.Bool(noExpireFlagName)
+			expire := c.Bool(expireFlagName)
+			extension := c.Int(extendFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -187,7 +227,20 @@ func hostModify() cli.Command {
 			hostChanges := host.HostModifyOptions{
 				AddInstanceTags:    addTags,
 				DeleteInstanceTags: deleteTagSlice,
+				InstanceType:       instanceType,
+				AddHours:           time.Duration(extension) * time.Hour,
 			}
+
+			if noExpire {
+				noExpirationValue := true
+				hostChanges.NoExpiration = &noExpirationValue
+			} else if expire {
+				noExpirationValue := false
+				hostChanges.NoExpiration = &noExpirationValue
+			} else {
+				hostChanges.NoExpiration = nil
+			}
+
 			err = client.ModifySpawnHost(ctx, hostID, hostChanges)
 			if err != nil {
 				return err
@@ -199,7 +252,99 @@ func hostModify() cli.Command {
 	}
 }
 
-func hostlist() cli.Command {
+func hostStop() cli.Command {
+	const waitFlagName = "wait"
+	return cli.Command{
+		Name:  "stop",
+		Usage: "stop a running spawn host",
+		Flags: addHostFlag(
+			cli.BoolFlag{
+				Name:  joinFlagNames(waitFlagName, "w"),
+				Usage: "command will block until host stopped",
+			},
+		),
+		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			hostID := c.String(hostFlagName)
+			wait := c.Bool(waitFlagName)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.GetRestCommunicator(ctx)
+			defer client.Close()
+
+			if wait {
+				grip.Infof("Stopping host '%s'. This may take a few minutes...", hostID)
+			}
+
+			err = client.StopSpawnHost(ctx, hostID, wait)
+			if err != nil {
+				return err
+			}
+
+			if wait {
+				grip.Infof("Stopped host '%s'", hostID)
+			} else {
+				grip.Infof("Stopping host '%s'. Visit the hosts page in Evergreen to check on its status.", hostID)
+			}
+			return nil
+		},
+	}
+}
+
+func hostStart() cli.Command {
+	const waitFlagName = "wait"
+	return cli.Command{
+		Name:  "start",
+		Usage: "start a stopped spawn host",
+		Flags: addHostFlag(
+			cli.BoolFlag{
+				Name:  joinFlagNames(waitFlagName, "w"),
+				Usage: "command will block until host started",
+			}),
+		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			hostID := c.String(hostFlagName)
+			wait := c.Bool(waitFlagName)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.GetRestCommunicator(ctx)
+			defer client.Close()
+
+			if wait {
+				grip.Infof("Starting host '%s'. This may take a few minutes...", hostID)
+			}
+
+			err = client.StartSpawnHost(ctx, hostID, wait)
+			if err != nil {
+				return err
+			}
+
+			if wait {
+				grip.Infof("Started host '%s'", hostID)
+			} else {
+				grip.Infof("Starting host '%s'. Visit the hosts page in Evergreen to check on its status.", hostID)
+			}
+
+			return nil
+		},
+	}
+}
+
+func hostList() cli.Command {
 	const (
 		mineFlagName = "mine"
 		allFlagName  = "all"

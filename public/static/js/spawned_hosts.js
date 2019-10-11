@@ -8,15 +8,15 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     // variables for spawning a new host
     $scope.spawnableDistros = [];
     $scope.selectedDistro = {};
+    $scope.selectedInstanceType = "";
     $scope.userKeys = [];
     $scope.selectedKey = {};
     $scope.spawnInfo = {};
-    $scope.extensionLength = {};
     $scope.curHostData;
-    $scope.hostExtensionLengths = {};
     $scope.maxHostsPerUser = $window.maxHostsPerUser;
     $scope.spawnReqSent = false;
     $scope.useTaskConfig = false;
+    $scope.allowedInstanceTypes = [];
 
     // max of 7 days time to expiration
     $scope.maxHoursToExpiration = 24*7;
@@ -38,23 +38,6 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
 
     $scope.sortBy = $scope.sortOrders[0];
 
-    $scope.extensionLengths = [
-      {display: "1 hour", hours: 1},
-      {display: "2 hours", hours: 2},
-      {display: "4 hours", hours: 4},
-      {display: "6 hours", hours: 6},
-      {display: "8 hours", hours: 8},
-      {display: "10 hours", hours: 10},
-      {display: "12 hours", hours: 12},
-      {display: "1 day", hours: 24},
-      {display: "2 days", hours: 24*2},
-      {display: "3 days", hours: 24*3},
-      {display: "4 days", hours: 24*4},
-      {display: "5 days", hours: 24*5},
-      {display: "6 days", hours: 24*6},
-      {display: "7 days", hours: 24*7},
-    ];
-
     $scope.setSortBy = function(order) {
       $scope.sortBy = order;
     };
@@ -75,9 +58,15 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
               } else {
                 var uptime = moment().diff(host.creation_time, 'seconds');
                 host.uptime = moment.duration(uptime, 'seconds').humanize();
-                var expiretime = moment().diff(host.expiration_time, 'seconds');
                 if(+new Date(host.expiration_time) > +new Date("0001-01-01T00:00:00Z")){
-                  host.expires_in = moment.duration(expiretime, 'seconds').humanize();
+                  if (host.no_expiration) {
+                    host.expires_in = "never"
+                  } else {
+                    var expiretime = moment().diff(host.expiration_time, 'seconds');
+                    host.expires_in = moment.duration(expiretime, 'seconds').humanize();
+                  }
+                  host.date_for_expiration = new Date(host.expiration_time);
+                  host.time_for_expiration = new Date(host.expiration_time);
                 }
               }
               if ($scope.lastSelected && $scope.lastSelected.id == host.id) {
@@ -147,6 +136,19 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       );
     };
 
+    $scope.fetchAllowedInstanceTypes = function() {
+      mciSpawnRestService.getAllowedInstanceTypes(
+        'types', $scope.curHostData.host_type, {}, {
+          success: function(resp) {
+            $scope.allowedInstanceTypes = resp.data;
+          },
+          error: function(resp) {
+            notificationService.pushNotification('Error fetching allowed instance types: ' + resp.data.error, 'errorHeader')
+          }
+        }
+      )
+    }
+
     $scope.fetchUserKeys = function() {
       mciSpawnRestService.getUserKeys(
         'keys', {}, {
@@ -198,29 +200,55 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     };
 
     $scope.updateHostExpiration = function() {
-      mciSpawnRestService.extendHostExpiration(
+        let new_expiration = new Date($scope.curHostData.date_for_expiration);
+        new_expiration.setHours($scope.curHostData.time_for_expiration.getHours());
+        new_expiration.setMinutes($scope.curHostData.time_for_expiration.getMinutes());
+
+        mciSpawnRestService.extendHostExpiration(
         'extendHostExpiration',
-        $scope.curHostData.id,
-        $scope.extensionLength.hours.toString(), {}, {
+        $scope.curHostData.id, new_expiration, {}, {
           success: function (resp) {
             window.location.href = "/spawn";
           },
-          error: function (jqXHR, status, errorThrown) {
+          error: function (resp) {
             notificationService.pushNotification('Error extending host expiration: ' + resp.data.error,'errorHeader');
           }
         }
       );
     };
 
-    $scope.terminateHost = function() {
-      mciSpawnRestService.terminateHost(
-        'terminate',
+    $scope.updateInstanceType = function() {
+      // Do nothing if no instance type selected
+      if (!$scope.selectedInstanceType) {
+        return
+      }
+      // Do nothing if host is not stopped
+      if ($scope.curHostData.status != "stopped") {
+        notificationService.pushNotification('Host must be stopped before modifying instance type', 'errorHeader');
+        return
+      }
+      mciSpawnRestService.updateInstanceType(
+        'updateInstanceType',
+        $scope.curHostData.id, $scope.selectedInstanceType, {}, {
+          success: function(resp) {
+            window.location.href = "/spawn";
+          },
+          error: function(resp) {
+            notificationService.pushNotification('Error setting new instance type: ' + resp.data.error, 'errorHeader')
+          }
+        }
+      )
+    }
+
+    $scope.updateHostStatus = function(action) {
+      mciSpawnRestService.updateHostStatus(
+        action,
         $scope.curHostData.id, {}, {
           success: function(resp) {
             window.location.href = "/spawn";
           },
           error: function(jqXHR, status, errorThrown) {
-            notificationService.pushNotification('Error terminating host: ' + resp.data.error,'errorHeader');
+            notificationService.pushNotification('Error changing host status: ' + resp.data.error,'errorHeader');
           }
         }
       );
@@ -259,10 +287,6 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       };
     };
 
-    $scope.setExtensionLength = function(extensionLength) {
-      $scope.extensionLength = extensionLength;
-    };
-
     $scope.setUserKeys = function(publicKeys) {
       if (publicKeys == 'null') {
         publicKeys = [];
@@ -293,6 +317,11 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       $scope.spawnInfo.distroId = spawnableDistro.name;
     };
 
+    // set the spawn host update instance type based on user selection
+    $scope.setInstanceType = function(instanceType) {
+      $scope.selectedInstanceType = instanceType
+    }
+
     // toggle spawn key based on user selection
     $scope.updateSelectedKey = function(selectedKey) {
       $scope.selectedKey.name = selectedKey.name;
@@ -314,6 +343,8 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
         case 'initializing':
         case 'provisioning':
         case 'starting':
+        case 'stopping':
+        case 'stopped':
           return 'label block-status-started';
           break;
         case 'decommissioned':
@@ -348,28 +379,28 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       if (host.distro.arch.indexOf('win') != -1) {
         $scope.curHostData.isWinHost = true;
       }
-      $scope.updateExtensionOptions($scope.curHostData);
+      $scope.selectedInstanceType = $scope.curHostData.instance_type
+      $scope.fetchAllowedInstanceTypes();
     };
 
-    $scope.updateExtensionOptions = function(host) {
-      $scope.hostExtensionLengths = [];
-      _.each($scope.extensionLengths, function(extensionLength) {
-        var remainingTimeSec = moment(host.expiration_time).diff(moment(), 'seconds');
-        var remainingTimeDur = moment.duration(remainingTimeSec, 'seconds');
-        remainingTimeDur.add(extensionLength.hours, 'hours');
-
-        // you should only be able to extend duration for a max of 7 days
-        if (remainingTimeDur.as('hours') < $scope.maxHoursToExpiration) {
-          $scope.hostExtensionLengths.push(extensionLength);
-        }
+    initializeModal = function(modal, title, action) {
+      $scope.modalTitle = title;
+      modal.on('shown.bs.modal', function() {
+        $scope.modalOpen = true;
       });
-      if ($scope.hostExtensionLengths.length > 0) {
-        $scope.setExtensionLength($scope.hostExtensionLengths[0]);
-      }
+
+      modal.on('hide.bs.modal', function() {
+        $scope.modalOpen = false;
+      });
     }
 
-    $scope.setExtensionLength = function(extensionLength) {
-      $scope.extensionLength = extensionLength;
+    attachEnterHandler = function(action) {
+      $(document).keyup(function(ev) {
+        if ($scope.modalOpen && ev.keyCode === 13) {
+          $scope.updateHostStatus(action);
+          $('#spawn-modal').modal('hide');
+        }
+      });
     }
 
     $scope.openSpawnModal = function(opt) {
@@ -377,56 +408,34 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       $scope.modalOpen = true;
 
       var modal = $('#spawn-modal').modal('show');
-      if ($scope.modalOption === 'spawnHost') {
-        $scope.fetchUserKeys();
-        if ($scope.spawnableDistros.length == 0) {
-          $scope.fetchSpawnableDistros();
-        }
-        $scope.modalTitle = 'Spawn Host';
-        modal.on('shown.bs.modal', function() {
-          $scope.modalOpen = true;
-          $scope.$apply();
-        });
-
-        modal.on('hide.bs.modal', function() {
-          $scope.modalOpen = false;
-          $scope.$apply();
-        });
-      } else if ($scope.modalOption === 'terminateHost') {
-        $scope.modalTitle = 'Terminate Host';
-        modal.on('shown.bs.modal', function() {
-          $scope.modalOpen = true;
-          $scope.$apply();
-        });
-
-        modal.on('hide.bs.modal', function() {
-          $scope.modalOpen = false;
-          $scope.$apply();
-        });
-      } else if ($scope.modalOption === 'updateRDPPassword') {
-        $scope.modalTitle = 'Set RDP Password';
-        modal.on('shown.bs.modal', function () {
-          $('#password-input').focus();
-          $scope.modalOpen = true;
-          $scope.$apply();
-        });
-
-        modal.on('hide.bs.modal', function () {
-          $scope.modalOpen = false;
-          $scope.$apply();
-        });
+      switch ($scope.modalOption) {
+        case 'spawnHost':
+          $scope.fetchUserKeys();
+          if ($scope.spawnableDistros.length == 0) {
+            $scope.fetchSpawnableDistros();
+          }
+          initializeModal(modal, 'Spawn Host');
+          break;
+        case 'terminateHost':
+          initializeModal(modal, 'Terminate Host');
+          attachEnterHandler('terminate');
+          break;
+        case 'stopHost':
+          initializeModal(modal, 'Stop Host');
+          attachEnterHandler('stop');
+          break;
+        case 'startHost':
+          initializeModal(modal, 'Start Host');
+          attachEnterHandler('start');
+          break;
+        case 'updateRDPPassword':
+          initializeModal(modal, 'Set RDP Password')
+          modal.on('shown.bs.modal', function() {
+            $('#password-input').focus(); 
+          })
+          break;
       }
-
     };
-
-    $(document).keyup(function(ev) {
-      if ($scope.modalOpen && ev.keyCode === 13) {
-        if ($scope.modalOption === 'terminateHost') {
-          $scope.terminateHost();
-          $('#spawn-modal').modal('hide');
-        }
-      }
-    });
 
     if($scope.spawnTask && $scope.spawnDistro){
       // find the spawn distro in the spawnable distros list, if it's there,

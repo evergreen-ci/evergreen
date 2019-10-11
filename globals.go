@@ -22,6 +22,9 @@ const (
 	HostQuarantined     = "quarantined"
 	HostDecommissioned  = "decommissioned"
 
+	HostStopping = "stopping"
+	HostStopped  = "stopped"
+
 	HostExternalUserName = "external"
 
 	HostStatusSuccess = "success"
@@ -67,6 +70,10 @@ const (
 	CommandTypeTest   = "test"
 	CommandTypeSystem = "system"
 	CommandTypeSetup  = "setup"
+
+	// Task descriptions
+	TaskDescriptionHeartbeat = "heartbeat"
+	TaskDescriptionStranded = "stranded"
 
 	// Task Statuses that are currently used only by the UI, and in tests
 	// (these may be used in old tasks)
@@ -143,9 +150,11 @@ const (
 
 	DegradedLoggingPercent = 10
 
-	SetupScriptName     = "setup.sh"
-	TempSetupScriptName = "setup-temp.sh"
-	TeardownScriptName  = "teardown.sh"
+	SetupScriptName               = "setup.sh"
+	TempSetupScriptName           = "setup-temp.sh"
+	PowerShellSetupScriptName     = "setup.ps1"
+	PowerShellTempSetupScriptName = "setup-temp.ps1"
+	TeardownScriptName            = "teardown.sh"
 
 	RoutePaginatorNextPageHeaderKey = "Link"
 
@@ -369,6 +378,8 @@ var (
 		HostStarting,
 		HostProvisioning,
 		HostProvisionFailed,
+		HostStopping,
+		HostStopped,
 	}
 
 	// DownHostStatus is a list of all host statuses that are considered down.
@@ -393,6 +404,8 @@ var (
 		HostStarting,
 		HostProvisioning,
 		HostProvisionFailed,
+		HostStopping,
+		HostStopped,
 	}
 
 	// Set of host status values that can be user set via the API
@@ -463,4 +476,21 @@ func IsPatchRequester(requester string) bool {
 
 func IsGitHubPatchRequester(requester string) bool {
 	return requester == GithubPRRequester || requester == MergeTestRequester
+}
+
+// Registered permissions
+const (
+	PermissionProjectSettings  = "project_settings"
+	PermissionProjectVariables = "project_variables"
+	PermissionTasks            = "project_tasks"
+	PermissionPatches          = "project_patches"
+	PermissionLogs             = "project_logs"
+)
+
+var projectPermissions = []string{
+	PermissionProjectSettings,
+	PermissionProjectVariables,
+	PermissionTasks,
+	PermissionPatches,
+	PermissionLogs,
 }

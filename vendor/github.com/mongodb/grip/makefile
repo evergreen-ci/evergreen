@@ -109,9 +109,9 @@ benchmark-send:
 	@mkdir -p build
 	go test -v -bench=$(if $(RUN_BENCH),$(RUN_BENCH),BenchmarkAllSenders) ./send/ ./send/benchmark/ -run=^^$$
 coverage-%:$(buildDir)/output.%.coverage
-	@grep -s -q -e "^PASS" $<
+	@grep -s -q -e "^PASS" $(buildDir)/output.$*.test
 html-coverage-%:$(buildDir)/output.%.coverage $(buildDir)/output.%.coverage.html
-	@grep -s -q -e "^PASS" $<
+	@grep -s -q -e "^PASS" $(buildDir)/output.$*.test
 lint-%:$(buildDir)/output.%.lint
 	@grep -v -s -q "^--- FAIL" $<
 # end convienence targets
@@ -135,28 +135,31 @@ coverDeps := $(addprefix $(gopath)/src/,$(coverDeps))
 #    and save test output.
 $(buildDir)/test.%:$(testSrcFiles) $(coverDeps)
 	go test $(if $(DISABLE_COVERAGE),,-covermode=count) -c -o $@ ./$(subst -,/,$*)
-$(buildDir)/race.%:$(testSrcFiles)
-	go test -race -c -o $@ ./$(subst -,/,$*)
-#  targets to run any tests in the top-level package
-$(buildDir)/test.$(name):$(testSrcFiles) $(coverDeps)
-	go test $(if $(DISABLE_COVERAGE),,-covermode=count) -c -o $@ ./
-$(buildDir)/race.$(name):$(testSrcFiles)
-	go test -race -c -o $@ ./
-#  targets to run the tests and report the output
-$(buildDir)/output.%.test:$(buildDir)/test.% .FORCE
-	$(testRunEnv) ./$< $(testArgs) 2>&1 | tee $@
-$(buildDir)/output.%.race:$(buildDir)/race.% .FORCE
-	$(testRunEnv) ./$< $(testArgs) 2>&1 | tee $@
+$(buildDir)/output.%.test: .FORCE
+	@mkdir -p $(buildDir)
+	go test $(if $(DISABLE_COVERAGE),,-covermode=count) $(testArgs) ./$(subst -,/,$*) | tee $@
+$(buildDir)/output.$(name).test: .FORCE
+	@mkdir -p $(buildDir)
+	go test $(testArgs) ./ | tee $@
+
+$(buildDir)/output.%.race: .FORCE
+	@mkdir -p $(buildDir)
+	go test -race $(testArgs) ./$(subst -,/,$*) 2>&1 | tee $@
+$(buildDir)/output.$(name).race: .FORCE
+	@mkdir -p $(buildDir)
+	go test -race $(testArgs) ./ 2>&1 | tee $@
 #  targets to generate gotest output from the linter.
 $(buildDir)/output.%.lint:$(buildDir)/run-linter $(testSrcFiles) .FORCE
 	@./$< --output=$@ --lintArgs='$(lintArgs)' --packages='$*'
 $(buildDir)/output.lint:$(buildDir)/run-linter .FORCE
 	@./$< --output="$@" --lintArgs='$(lintArgs)' --packages="$(packages)"
 #  targets to process and generate coverage reports
-$(buildDir)/output.%.coverage:$(buildDir)/test.% .FORCE $(coverDeps)
-	$(testRunEnv) ./$< $(testArgs) -test.coverprofile=$@ | tee $(subst coverage,test,$@)
+$(buildDir)/output.%.coverage: .FORCE $(coverDeps)
+	@mkdir -p $(buildDir)
+	go test $(testArgs) -test.coverprofile=$@ | tee $(subst coverage,test,$@)
 	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage $(coverDeps)
+	@mkdir -p $(buildDir)
 	go tool cover -html=$< -o $@
 # end test and coverage artifacts
 

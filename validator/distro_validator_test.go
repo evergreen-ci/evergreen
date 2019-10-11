@@ -151,13 +151,6 @@ func TestEnsureValidAliases(t *testing.T) {
 			So(vErrors[0].Message, ShouldEqual, "'c' cannot be an distro alias of itself")
 		})
 
-		d.Aliases = []string{"d"}
-		Convey("if a distro alias is not iself a valid distro, an error should be returned", func() {
-			vErrors := ensureValidAliases(&d, distroIds)
-			So(vErrors, ShouldNotResemble, ValidationErrors{})
-			So(len(vErrors), ShouldEqual, 1)
-			So(vErrors[0].Message, ShouldEqual, "'d' is not a valid distro name")
-		})
 	})
 }
 
@@ -398,6 +391,7 @@ func nonLegacyBootstrapSettings() distro.BootstrapSettings {
 		ClientDir:             "/client_dir",
 		JasperBinaryDir:       "/jasper_binary_dir",
 		JasperCredentialsPath: "/jasper_credentials_path",
+		ServiceUser:           "service_user",
 		ShellPath:             "/shell_path",
 	}
 }
@@ -435,32 +429,92 @@ func TestEnsureValidBootstrapSettings(t *testing.T) {
 		}
 	}
 
-	s := nonLegacyBootstrapSettings()
-	s.Method = "foobar"
-	s.Communication = distro.CommunicationMethodLegacySSH
-	assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{BootstrapSettings: s}, &evergreen.Settings{}))
-
-	s.Method = distro.BootstrapMethodLegacySSH
-	s.Communication = "foobar"
-	assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{BootstrapSettings: s}, &evergreen.Settings{}))
-
-	s.Method = distro.BootstrapMethodLegacySSH
-	s.Communication = ""
-	assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{BootstrapSettings: s}, &evergreen.Settings{}))
-
-	s.Method = ""
-	s.Communication = distro.CommunicationMethodLegacySSH
-	assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{BootstrapSettings: s}, &evergreen.Settings{}))
-
-	s.Method = distro.BootstrapMethodSSH
-	s.Communication = ""
-	assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{BootstrapSettings: s}, &evergreen.Settings{}))
-
-	s.Method = ""
-	s.Communication = distro.CommunicationMethodSSH
-	assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{BootstrapSettings: s}, &evergreen.Settings{}))
-
-	assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{BootstrapSettings: distro.BootstrapSettings{Method: distro.BootstrapMethodSSH, Communication: distro.CommunicationMethodSSH}}, &evergreen.Settings{}))
+	for testName, testCase := range map[string]func(t *testing.T, s distro.BootstrapSettings){
+		"InvalidBootstrapMethod": func(t *testing.T, s distro.BootstrapSettings) {
+			s.Method = "foobar"
+			s.Communication = distro.CommunicationMethodLegacySSH
+			assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{BootstrapSettings: s}, &evergreen.Settings{}))
+		},
+		"InvalidCommunication": func(t *testing.T, s distro.BootstrapSettings) {
+			s.Method = distro.BootstrapMethodLegacySSH
+			s.Communication = "foobar"
+			assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{BootstrapSettings: s}, &evergreen.Settings{}))
+		},
+		"UnspecifiedBootstrapMethodLegacyCommunication": func(t *testing.T, s distro.BootstrapSettings) {
+			s.Method = ""
+			s.Communication = distro.CommunicationMethodLegacySSH
+			assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{BootstrapSettings: s}, &evergreen.Settings{}))
+		},
+		"UnspecifiedCommunicationLegacyBootstrapMethod": func(t *testing.T, s distro.BootstrapSettings) {
+			s.Method = distro.BootstrapMethodLegacySSH
+			s.Communication = ""
+			assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{BootstrapSettings: s}, &evergreen.Settings{}))
+		},
+		"UnspecifiedCommunicationNonLegacyBootstrapMethod": func(t *testing.T, s distro.BootstrapSettings) {
+			s.Method = distro.BootstrapMethodSSH
+			s.Communication = ""
+			assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{BootstrapSettings: s}, &evergreen.Settings{}))
+		},
+		"UnspecifiedBootstrapMethodNonLegacyCommunication": func(t *testing.T, s distro.BootstrapSettings) {
+			s.Method = ""
+			s.Communication = distro.CommunicationMethodSSH
+			assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{BootstrapSettings: s}, &evergreen.Settings{}))
+		},
+		"UnspecifiedShellPath": func(t *testing.T, s distro.BootstrapSettings) {
+			s.Method = distro.BootstrapMethodSSH
+			s.Communication = distro.CommunicationMethodSSH
+			s.ShellPath = ""
+			assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{BootstrapSettings: s}, &evergreen.Settings{}))
+		},
+		"WindowsNoServiceUser": func(t *testing.T, s distro.BootstrapSettings) {
+			s.Method = distro.BootstrapMethodSSH
+			s.Communication = distro.CommunicationMethodSSH
+			s.ServiceUser = ""
+			assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{Arch: distro.ArchWindowsAmd64, BootstrapSettings: s}, &evergreen.Settings{}))
+		},
+		"ResourceLimits": func(t *testing.T, s distro.BootstrapSettings) {
+			for resourceTestName, resourceTestCase := range map[string]func(t *testing.T, s distro.BootstrapSettings){
+				"PositiveValues": func(t *testing.T, s distro.BootstrapSettings) {
+					s.ResourceLimits.NumFiles = 1
+					s.ResourceLimits.NumProcesses = 2
+					s.ResourceLimits.LockedMemoryKB = 3
+					s.ResourceLimits.VirtualMemoryKB = 4
+					assert.Nil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{Arch: distro.ArchLinuxAmd64, BootstrapSettings: s}, &evergreen.Settings{}))
+				},
+				"ZeroValues": func(t *testing.T, s distro.BootstrapSettings) {
+					s.ResourceLimits.NumFiles = 0
+					s.ResourceLimits.NumProcesses = 0
+					s.ResourceLimits.LockedMemoryKB = 0
+					s.ResourceLimits.VirtualMemoryKB = 0
+					assert.Nil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{Arch: distro.ArchLinuxAmd64, BootstrapSettings: s}, &evergreen.Settings{}))
+				},
+				"UnlimitedResources": func(t *testing.T, s distro.BootstrapSettings) {
+					s.ResourceLimits.NumFiles = -1
+					s.ResourceLimits.NumProcesses = -1
+					s.ResourceLimits.LockedMemoryKB = -1
+					s.ResourceLimits.VirtualMemoryKB = -1
+					assert.Nil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{Arch: distro.ArchLinuxAmd64, BootstrapSettings: s}, &evergreen.Settings{}))
+				},
+				"InvalidResourceLimits": func(t *testing.T, s distro.BootstrapSettings) {
+					s.ResourceLimits.NumFiles = -50
+					s.ResourceLimits.NumProcesses = -50
+					s.ResourceLimits.LockedMemoryKB = -50
+					s.ResourceLimits.VirtualMemoryKB = -50
+					assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{Arch: distro.ArchLinuxAmd64, BootstrapSettings: s}, &evergreen.Settings{}))
+				},
+			} {
+				t.Run(resourceTestName, func(t *testing.T) {
+					s.Method = distro.BootstrapMethodSSH
+					s.Communication = distro.CommunicationMethodSSH
+					resourceTestCase(t, s)
+				})
+			}
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			testCase(t, nonLegacyBootstrapSettings())
+		})
+	}
 }
 
 func TestEnsureValidCloneMethod(t *testing.T) {

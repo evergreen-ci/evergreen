@@ -56,7 +56,7 @@ func (s *streamLogger) Send(m message.Composer) {
 		}
 
 		if _, err := s.fobj.WriteString(msg); err != nil {
-			s.ErrorHandler(err, m)
+			s.ErrorHandler()(err, m)
 		}
 	}
 }

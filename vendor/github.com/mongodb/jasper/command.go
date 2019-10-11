@@ -601,7 +601,7 @@ func (c *Command) getCreateOpt(args []string) (*options.Create, error) {
 	case 0:
 		return nil, errors.New("cannot have empty args")
 	case 1:
-		if strings.ContainsAny(args[0], " \"'") {
+		if c.opts.Remote == nil && strings.ContainsAny(args[0], " \"'") {
 			spl, err := shlex.Split(args[0])
 			if err != nil {
 				return nil, errors.Wrap(err, "problem splitting argstring")
@@ -630,7 +630,7 @@ func (c *Command) getCreateOpts() ([]*options.Create, error) {
 			continue
 		}
 
-		if c.opts.Remote != nil && c.opts.Remote.Host != "" {
+		if c.opts.Remote != nil {
 			cmd.RemoteInfo = c.opts.Remote
 		}
 

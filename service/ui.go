@@ -95,6 +95,7 @@ func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string, f
 			CookieName:     evergreen.AuthTokenCookie,
 			CookieTTL:      365 * 24 * time.Hour,
 			CookiePath:     "/",
+			CookieDomain:   settings.Ui.LoginDomain,
 		},
 	}
 
@@ -246,9 +247,9 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	app.AddRoute("/timeline/{project_id}").Wrap(needsContext).Handler(uis.timeline).Get()
 	app.AddRoute("/timeline").Wrap(needsContext).Handler(uis.timeline).Get()
-	app.AddRoute("/json/timeline/{project_id}").Wrap(needsContext, allowsCORS).Handler(uis.timelineJson).Get()
-	app.AddRoute("/json/patches/project/{project_id}").Wrap(needsContext, allowsCORS).Handler(uis.patchTimelineJson).Get()
-	app.AddRoute("/json/patches/user/{user_id}").Wrap(needsContext, allowsCORS).Handler(uis.patchTimelineJson).Get()
+	app.AddRoute("/json/timeline/{project_id}").Wrap(needsContext, allowsCORS, needsLogin).Handler(uis.timelineJson).Get()
+	app.AddRoute("/json/patches/project/{project_id}").Wrap(needsContext, allowsCORS, needsLogin).Handler(uis.patchTimelineJson).Get()
+	app.AddRoute("/json/patches/user/{user_id}").Wrap(needsContext, allowsCORS, needsLogin).Handler(uis.patchTimelineJson).Get()
 
 	// Grid page
 	app.AddRoute("/grid").Wrap(needsContext).Handler(uis.grid).Get()
@@ -344,6 +345,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/spawn/hosts").Wrap(needsLogin, needsContext).Handler(uis.getSpawnedHosts).Get()
 	app.AddRoute("/spawn/distros").Wrap(needsLogin, needsContext).Handler(uis.listSpawnableDistros).Get()
 	app.AddRoute("/spawn/keys").Wrap(needsLogin, needsContext).Handler(uis.getUserPublicKeys).Get()
+	app.AddRoute("/spawn/types").Wrap(needsLogin, needsContext).Handler(uis.getAllowedInstanceTypes).Get()
 
 	// User settings
 	app.AddRoute("/settings").Wrap(needsLogin, needsContext).Handler(uis.userSettingsPage).Get()

@@ -59,6 +59,16 @@ func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
 	return taskQueue.DistroQueueInfo, nil
 }
 
+func RemoveTaskQueues(distroID string) error {
+	query := db.Query(bson.M{"_id": distroID})
+	catcher := grip.NewBasicCatcher()
+	err := db.RemoveAllQ(TaskQueuesCollection, query)
+	catcher.AddWhen(!adb.ResultsNotFound(err), errors.Wrapf(err, "problem removing task queue for '%s'", distroID))
+	err = db.RemoveAllQ(TaskAliasQueuesCollection, query)
+	catcher.AddWhen(!adb.ResultsNotFound(err), errors.Wrapf(err, "problem removing task queue for '%s'", distroID))
+	return catcher.Resolve()
+}
+
 func (q *DistroQueueInfo) GetQueueCollection() string {
 	if q.AliasQueue {
 		return TaskAliasQueuesCollection
@@ -125,6 +135,21 @@ var (
 	taskQueueItemProjectKey       = bsonutil.MustHaveTag(TaskQueueItem{}, "Project")
 	taskQueueItemExpDurationKey   = bsonutil.MustHaveTag(TaskQueueItem{}, "ExpectedDuration")
 	taskQueueItemPriorityKey      = bsonutil.MustHaveTag(TaskQueueItem{}, "Priority")
+
+	// taskQueueInfoLengthKey             = bsonutil.MustHaveTag(DistroQueueInfo{}, "Length")
+	// taskQueueInfoExpectedDurationKey   = bsonutil.MustHaveTag(DistroQueueInfo{}, "ExpectedDuration")
+	// taskQueueInfoMaxDurationKey        = bsonutil.MustHaveTag(DistroQueueInfo{}, "MaxDurationThreshold")
+	taskQueueInfoPlanCreatedAtKey = bsonutil.MustHaveTag(DistroQueueInfo{}, "PlanCreatedAt")
+	// taskQueueInfoCountOverThresholdKey = bsonutil.MustHaveTag(DistroQueueInfo{}, "CountOverThreshold")
+	// taskQueueInfoTaskGroupInfosKey     = bsonutil.MustHaveTag(DistroQueueInfo{}, "TaskGroupInfos")
+	// taskQueueInfoAliasQueueKey         = bsonutil.MustHaveTag(DistroQueueInfo{}, "AliasQueue")
+
+	// taskQueueInfoGroupNameKey                  = bsonutil.MustHaveTag(TaskGroupInfo{}, "Name")
+	// taskQueueInfoGroupCountKey                 = bsonutil.MustHaveTag(TaskGroupInfo{}, "Count")
+	// taskQueueInfoGroupMaxHostsKey              = bsonutil.MustHaveTag(TaskGroupInfo{}, "MaxHosts")
+	// taskQueueInfoGroupExpectedDuratioKey       = bsonutil.MustHaveTag(TaskGroupInfo{}, "ExpectedDuration")
+	// taskQueueInfoGroupCountOverThresholdKey    = bsonutil.MustHaveTag(TaskGroupInfo{}, "CountOverThreshold")
+	// taskQueueInfoGroupDurationOverThresholdKey = bsonutil.MustHaveTag(TaskGroupInfo{}, "DurationOverThreshold")
 )
 
 // TaskSpec is an argument structure to formalize the way that callers
@@ -548,16 +573,43 @@ func taskQueueGenerationTimesPipeline() []bson.M {
 			"$replaceRoot": bson.M{"newRoot": "$root"},
 		},
 	}
-
 }
 
-func FindTaskQueueGenerationTimes() (map[string]time.Time, error) {
+func taskQueueGenerationRuntimePipeline() []bson.M {
+	return []bson.M{
+		{
+			"$group": bson.M{
+				"_id": 0,
+				"distroQueue": bson.M{"$push": bson.M{
+					"k": "$" + taskQueueDistroKey,
+					"v": bson.M{"$multiply": []interface{}{
+						// convert ms to ns
+						// for duration value
+						1000000,
+						bson.M{"$subtract": []interface{}{
+							"$" + taskQueueGeneratedAtKey,
+							"$" + bsonutil.GetDottedKeyName(taskQueueDistroQueueInfoKey, taskQueueInfoPlanCreatedAtKey),
+						}},
+					}}}}},
+		},
+		{
+			"$project": bson.M{
+				"root": bson.M{"$arrayToObject": "$distroQueue"},
+			},
+		},
+		{
+			"$replaceRoot": bson.M{"newRoot": "$root"},
+		},
+	}
+}
+
+func runTimeMapAggregation(collection string, pipe []bson.M) (map[string]time.Time, error) {
 	out := []map[string]time.Time{}
 
-	err := db.Aggregate(TaskQueuesCollection, taskQueueGenerationTimesPipeline(), &out)
+	err := db.Aggregate(collection, pipe, &out)
 
 	if err != nil {
-		return map[string]time.Time{}, errors.WithStack(err)
+		return map[string]time.Time{}, errors.Wrapf(err, "problem running aggregation for %s", collection)
 	}
 
 	switch len(out) {
@@ -566,27 +618,45 @@ func FindTaskQueueGenerationTimes() (map[string]time.Time, error) {
 	case 1:
 		return out[0], nil
 	default:
-		return map[string]time.Time{}, errors.Errorf("produced invalid main queue results: [%d]", len(out))
+		return map[string]time.Time{}, errors.Errorf("produced invalid results with too many elements: [%s:%d]", collection, len(out))
 	}
+
 }
 
-func FindTaskAliasQueueGenerationTimes() (map[string]time.Time, error) {
-	out := []map[string]time.Time{}
+func runDurationMapAggregation(collection string, pipe []bson.M) (map[string]time.Duration, error) {
+	out := []map[string]time.Duration{}
 
-	err := db.Aggregate(TaskAliasQueuesCollection, taskQueueGenerationTimesPipeline(), &out)
+	err := db.Aggregate(collection, pipe, &out)
 
 	if err != nil {
-		return map[string]time.Time{}, errors.WithStack(err)
+		return map[string]time.Duration{}, errors.Wrapf(err, "problem running aggregation for %s", collection)
 	}
 
 	switch len(out) {
 	case 0:
-		return map[string]time.Time{}, nil
+		return map[string]time.Duration{}, nil
 	case 1:
 		return out[0], nil
 	default:
-		return map[string]time.Time{}, errors.Errorf("produced invalid alias queue results: [%d]", len(out))
+		return map[string]time.Duration{}, errors.Errorf("produced invalid results with too many elements: [%s:%d]", collection, len(out))
 	}
+
+}
+
+func FindTaskQueueGenerationRuntime() (map[string]time.Duration, error) {
+	return runDurationMapAggregation(TaskQueuesCollection, taskQueueGenerationRuntimePipeline())
+}
+
+func FindTaskAliasQueueGenerationRuntime() (map[string]time.Duration, error) {
+	return runDurationMapAggregation(TaskAliasQueuesCollection, taskQueueGenerationRuntimePipeline())
+}
+
+func FindTaskQueueLastGenerationTimes() (map[string]time.Time, error) {
+	return runTimeMapAggregation(TaskQueuesCollection, taskQueueGenerationTimesPipeline())
+}
+
+func FindTaskAliasQueueLastGenerationTimes() (map[string]time.Time, error) {
+	return runTimeMapAggregation(TaskAliasQueuesCollection, taskQueueGenerationTimesPipeline())
 }
 
 // pull out the task with the specified id from both the in-memory and db

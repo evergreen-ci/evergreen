@@ -64,7 +64,7 @@ func setupCredentialsCollection(ctx context.Context, env *mock.Environment) erro
 
 func teardownJasperService(closeService jasper.CloseFunc) error {
 	catcher := grip.NewBasicCatcher()
-	catcher.Add(db.ClearCollections(credentials.Collection, host.Collection))
+	// catcher.Add(db.ClearCollections(credentials.Collection, host.Collection))
 	if closeService != nil {
 		catcher.Add(closeService())
 	}
@@ -222,12 +222,11 @@ func TestJasperDeployJob(t *testing.T) {
 
 			require.Len(t, mngr.Procs, 2)
 
-			writeCredsCmd := fmt.Sprintf("cat > '%s'", h.Distro.BootstrapSettings.JasperCredentialsPath)
 			writeCredentialsProc := mngr.Procs[0]
 
 			var writeCredsCmdFound bool
 			for _, arg := range writeCredentialsProc.Info(ctx).Options.Args {
-				if strings.Contains(arg, writeCredsCmd) {
+				if strings.Contains(arg, "echo") && strings.Contains(arg, fmt.Sprintf("> '%s'", h.Distro.BootstrapSettings.JasperCredentialsPath)) {
 					writeCredsCmdFound = true
 					break
 				}

@@ -739,7 +739,7 @@ func TestBuildSetCachedTaskFinished(t *testing.T) {
 
 	detail := apimodels.TaskEndDetail{
 		Status: evergreen.TaskFailed,
-		Type:   "system",
+		Type:   evergreen.CommandTypeSystem,
 	}
 	timeTaken := 10 * time.Minute
 

@@ -21,6 +21,7 @@ type UserMiddlewareConfiguration struct {
 	CookieName      string
 	CookiePath      string
 	CookieTTL       time.Duration
+	CookieDomain    string
 }
 
 // Validate ensures that the UserMiddlewareConfiguration is correct
@@ -66,6 +67,7 @@ func (umc UserMiddlewareConfiguration) AttachCookie(token string, rw http.Respon
 		Value:    token,
 		HttpOnly: true,
 		Expires:  time.Now().Add(umc.CookieTTL),
+		Domain:   umc.CookieDomain,
 	})
 }
 

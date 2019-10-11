@@ -126,10 +126,12 @@ func addYesFlag(flags ...cli.Flag) []cli.Flag {
 }
 
 func addHostFlag(flags ...cli.Flag) []cli.Flag {
-	return append(flags, cli.StringFlag{
-		Name:  hostFlagName,
-		Usage: "specify the name of an evergreen host",
-	})
+	return append([]cli.Flag{
+		cli.StringFlag{
+			Name:  hostFlagName,
+			Usage: "specify `ID` of an evergreen host",
+		},
+	}, flags...)
 
 }
 

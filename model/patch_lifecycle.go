@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -88,8 +89,8 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch).
-func AddNewBuildsForPatch(p *patch.Patch, patchVersion *Version, project *Project, tasks TaskVariantPairs) error {
-	return AddNewBuilds(p.Activated, patchVersion, project, tasks, "")
+func AddNewBuildsForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project, tasks TaskVariantPairs) error {
+	return AddNewBuilds(ctx, p.Activated, patchVersion, project, tasks, "")
 }
 
 // Given a patch version and set of variant/task pairs, creates any tasks that don't exist yet,
@@ -118,6 +119,9 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	projectRef, err := FindOneProjectRef(p.Project)
 	if err != nil {
 		return nil, "", errors.WithStack(err)
+	}
+	if projectRef == nil {
+		return nil, "", errors.Errorf("no project exists with identifier '%s", p.Project)
 	}
 
 	project := &Project{}
@@ -289,15 +293,20 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			p.Githash)
 	}
 
+	distroAliases, err := distro.NewDistroAliasesLookupTable()
+	if err != nil {
+		return nil, errors.Wrap(err, "problem resolving distro alias table for patch")
+	}
+
 	projectRef, err := FindOneProjectRef(p.Project)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	githubCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	_, err = thirdparty.GetCommitEvent(ctx, githubOauthToken, projectRef.Owner, projectRef.Repo, p.Githash)
+	_, err = thirdparty.GetCommitEvent(githubCtx, githubOauthToken, projectRef.Owner, projectRef.Repo, p.Githash)
 	if err != nil {
 		return nil, errors.Wrap(err, "Couldn't fetch commit information")
 	}
@@ -347,31 +356,47 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		}
 		variantsProcessed[vt.Variant] = true
 
-		var buildId string
 		var displayNames []string
 		for _, dt := range vt.DisplayTasks {
 			displayNames = append(displayNames, dt.Name)
 		}
 		taskNames := tasks.ExecTasks.TaskNames(vt.Variant)
 		buildArgs := BuildCreateArgs{
-			Project:      *project,
-			Version:      *patchVersion,
-			TaskIDs:      taskIds,
-			BuildName:    vt.Variant,
-			Activated:    true,
-			TaskNames:    taskNames,
-			DisplayNames: displayNames,
+			Project:       *project,
+			Version:       *patchVersion,
+			TaskIDs:       taskIds,
+			BuildName:     vt.Variant,
+			Activated:     true,
+			TaskNames:     taskNames,
+			DisplayNames:  displayNames,
+			DistroAliases: distroAliases,
 		}
-		buildId, err = CreateBuildFromVersion(buildArgs)
+		build, tasks, err := CreateBuildFromVersionNoInsert(buildArgs)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-		patchVersion.BuildIds = append(patchVersion.BuildIds, buildId)
+		if len(tasks) == 0 {
+			grip.Info(message.Fields{
+				"op":      "skipping empty build for patch version",
+				"variant": vt.Variant,
+				"version": patchVersion.Id,
+			})
+			continue
+		}
+
+		if err = build.Insert(); err != nil {
+			return nil, errors.Wrapf(err, "error inserting build %s", build.Id)
+		}
+		if err = tasks.InsertUnordered(ctx); err != nil {
+			return nil, errors.Wrapf(err, "error inserting tasks for build %s", build.Id)
+		}
+
+		patchVersion.BuildIds = append(patchVersion.BuildIds, build.Id)
 		patchVersion.BuildVariants = append(patchVersion.BuildVariants,
 			VersionBuildStatus{
 				BuildVariant: vt.Variant,
 				Activated:    true,
-				BuildId:      buildId,
+				BuildId:      build.Id,
 			},
 		)
 	}

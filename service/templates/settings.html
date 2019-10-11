@@ -92,7 +92,7 @@ ui_server_host: "[[userConf.ui_server_host]]"</pre>
             <div class="form-group">
               <a class="col-sm-4 control-label" href="/notifications"> Notification Settings </a>
             </div>
-            <div class="form-group">
+            <div class="form-group" ng-hide="true">
               <div class="col-sm-4" style="text-align: right; margin-right:14px">Opt In to New Patch Page</div>
               <md-checkbox id="optOutCheck" ng-model="use_spruce_options.patch_page" ng-change="onOptOutChange()" aria-label="Opt Out of New Patch Page"/>
             </div>

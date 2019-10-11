@@ -17,7 +17,10 @@ projectPath := $(orgPath)/$(name)
 ifneq (,$(GO_BIN_PATH))
 gobin := $(GO_BIN_PATH)
 else
+gobin := $(shell if [ -x /opt/golang/go1.9/bin/go ]; then /opt/golang/go1.9/bin/go; fi)
+ifeq (,$(gobin))
 gobin := go
+endif
 endif
 
 # start evergreen specific configuration
@@ -46,7 +49,9 @@ karmaFlags := $(if $(KARMA_REPORTER),--reporters $(KARMA_REPORTER),)
 
 gopath := $(GOPATH)
 ifeq ($(OS),Windows_NT)
+ifneq (,$(gopath))
 gopath := $(shell cygpath -m $(gopath))
+endif
 endif
 
 # start linting configuration
@@ -284,11 +289,13 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/oauth2/
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/sys/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/evergreen-ci/gimlet/
+	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/evergreen-ci/timber/vendor/gopkg.in/yaml.v2/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/mholt/archiver/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/mongodb/amboy/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/pkg/
-	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/stretchr/
+	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/stretchr/testify/
+	rm -rf vendor/github.com/mongodb/jasper/vendor/go.mongodb.org/mongo-driver/
 	rm -rf vendor/github.com/smartystreets/goconvey/web/
 	rm -rf vendor/github.com/square/certstrap/vendor/github.com/urfave/cli/
 	rm -rf vendor/github.com/square/certstrap/vendor/golang.org/x/sys/windows/

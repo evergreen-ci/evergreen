@@ -19,7 +19,6 @@ type Distro struct {
 	Aliases           []string                `bson:"aliases,omitempty" json:"aliases,omitempty" mapstructure:"aliases,omitempty"`
 	Arch              string                  `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
 	WorkDir           string                  `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
-	PoolSize          int                     `bson:"pool_size,omitempty" json:"pool_size,omitempty" mapstructure:"pool_size,omitempty" yaml:"poolsize"`
 	Provider          string                  `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
 	ProviderSettings  *map[string]interface{} `bson:"settings" json:"settings,omitempty" mapstructure:"settings,omitempty"`
 	SetupAsSudo       bool                    `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`
@@ -36,60 +35,74 @@ type Distro struct {
 	ContainerPool     string                  `bson:"container_pool,omitempty" json:"container_pool,omitempty" mapstructure:"container_pool,omitempty"`
 	PlannerSettings   PlannerSettings         `bson:"planner_settings" json:"planner_settings,omitempty" mapstructure:"planner_settings,omitempty"`
 	FinderSettings    FinderSettings          `bson:"finder_settings" json:"finder_settings,omitempty" mapstructure:"finder_settings,omitempty"`
+
+	// PoolSize is the maximum allowed number of hosts running this distro
+	PoolSize int `bson:"pool_size,omitempty" json:"pool_size,omitempty" mapstructure:"pool_size,omitempty" yaml:"poolsize"`
 }
 
 // BootstrapSettings encapsulates all settings related to bootstrapping hosts.
 type BootstrapSettings struct {
-	Method                string `bson:"method" json:"method" mapstructure:"method"`
-	Communication         string `bson:"communication,omitempty" json:"communication,omitempty" mapstructure:"communication,omitempty"`
+	// Required
+	Method        string `bson:"method" json:"method" mapstructure:"method"`
+	Communication string `bson:"communication,omitempty" json:"communication,omitempty" mapstructure:"communication,omitempty"`
+
+	// Required for new provisioning
 	ClientDir             string `bson:"client_dir,omitempty" json:"client_dir,omitempty" mapstructure:"client_dir,omitempty"`
 	JasperBinaryDir       string `bson:"jasper_binary_dir,omitempty" json:"jasper_binary_dir,omitempty" mapstructure:"jasper_binary_dir,omitempty"`
 	JasperCredentialsPath string `json:"jasper_credentials_path,omitempty" bson:"jasper_credentials_path,omitempty" mapstructure:"jasper_credentials_path,omitempty"`
-	ShellPath             string `bson:"shell_path,omitempty" json:"shell_path,omitempty" mapstructure:"shell_path,omitempty"`
+
+	// Windows-specific
+	ServiceUser string `bson:"service_user,omitempty" json:"service_user,omitempty" mapstructure:"service_user,omitempty"`
+	ShellPath   string `bson:"shell_path,omitempty" json:"shell_path,omitempty" mapstructure:"shell_path,omitempty"`
+	RootDir     string `bson:"root_dir,omitempty" json:"root_dir,omitempty" mapstructure:"root_dir,omitempty"`
+
+	// Linux-specific
+	ResourceLimits ResourceLimits `bson:"resource_limits,omitempty" json:"resource_limits,omitempty" mapstructure:"resource_limits,omitempty"`
 }
 
-// Validate checks if all of the bootstrap settings are valid for legacy or
-// non-legacy bootstrapping.
-func (s *BootstrapSettings) Validate() error {
+// ResourceLimits represents resource limits in Linux.
+type ResourceLimits struct {
+	NumFiles        int `bson:"num_files,omitempty" json:"num_files,omitempty" mapstructure:"num_files,omitempty"`
+	NumProcesses    int `bson:"num_processes,omitempty" json:"num_processes,omitempty" mapstructure:"num_processes,omitempty"`
+	LockedMemoryKB  int `bson:"locked_memory,omitempty" json:"locked_memory,omitempty" mapstructure:"locked_memory,omitempty"`
+	VirtualMemoryKB int `bson:"virtual_memory,omitempty" json:"virtual_memory,omitempty" mapstructure:"virtual_memory,omitempty"`
+}
+
+// ValidateBootstrapSettings checks if all of the bootstrap settings are valid
+// for legacy or non-legacy bootstrapping.
+func (d *Distro) ValidateBootstrapSettings() error {
 	catcher := grip.NewBasicCatcher()
-	if !util.StringSliceContains(validBootstrapMethods, s.Method) {
-		catcher.Errorf("'%s' is not a valid bootstrap method", s.Method)
+	if !util.StringSliceContains(validBootstrapMethods, d.BootstrapSettings.Method) {
+		catcher.Errorf("'%s' is not a valid bootstrap method", d.BootstrapSettings.Method)
 	}
 
-	if !util.StringSliceContains(validCommunicationMethods, s.Communication) {
-		catcher.Errorf("'%s' is not a valid communication method", s.Communication)
+	if !util.StringSliceContains(validCommunicationMethods, d.BootstrapSettings.Communication) {
+		catcher.Errorf("'%s' is not a valid communication method", d.BootstrapSettings.Communication)
 	}
 
-	switch s.Method {
+	switch d.BootstrapSettings.Method {
 	case BootstrapMethodLegacySSH:
-		if s.Communication != CommunicationMethodLegacySSH {
-			catcher.New("bootstrapping hosts using legacy SSH is incompatible with non-legacy host communication")
-		}
+		catcher.NewWhen(d.BootstrapSettings.Communication != CommunicationMethodLegacySSH, "bootstrapping hosts using legacy SSH is incompatible with non-legacy host communication")
 	default:
-		if s.Communication == CommunicationMethodLegacySSH {
-			catcher.New("communicating with hosts using legacy SSH is incompatible with non-legacy host bootstrapping")
-		}
+		catcher.NewWhen(d.BootstrapSettings.Communication == CommunicationMethodLegacySSH, "communicating with hosts using legacy SSH is incompatible with non-legacy host bootstrapping")
 	}
 
-	if s.Method == BootstrapMethodLegacySSH || s.Communication == CommunicationMethodLegacySSH {
+	if d.BootstrapSettings.Method == BootstrapMethodLegacySSH || d.BootstrapSettings.Communication == CommunicationMethodLegacySSH {
 		return catcher.Resolve()
 	}
 
-	if s.ClientDir == "" {
-		catcher.New("client directory cannot be empty for non-legacy bootstrapping")
-	}
+	catcher.NewWhen(d.BootstrapSettings.ClientDir == "", "client directory cannot be empty for non-legacy bootstrapping")
+	catcher.NewWhen(d.BootstrapSettings.JasperBinaryDir == "", "Jasper binary directory cannot be empty for non-legacy bootstrapping")
+	catcher.NewWhen(d.BootstrapSettings.JasperCredentialsPath == "", "Jasper credentials path cannot be empty for non-legacy bootstrapping")
+	catcher.NewWhen(d.BootstrapSettings.ShellPath == "", "shell path cannot be empty for non-legacy Windows bootstrapping")
 
-	if s.JasperBinaryDir == "" {
-		catcher.New("Jasper binary directory cannot be empty for non-legacy bootstrapping")
-	}
+	catcher.NewWhen(d.IsWindows() && d.BootstrapSettings.ServiceUser == "", "service user cannot be empty for non-legacy Windows bootstrapping")
+	catcher.NewWhen(d.IsWindows() && d.BootstrapSettings.RootDir == "", "root directory cannot be empty for non-legacy Windows bootstrapping")
 
-	if s.JasperCredentialsPath == "" {
-		catcher.New("Jasper credentials path cannot be empty for non-legacy bootstrapping")
-	}
-
-	if s.ShellPath == "" {
-		catcher.New("shell path cannot be empty for non-legacy bootstrapping")
-	}
+	catcher.NewWhen(d.IsLinux() && d.BootstrapSettings.ResourceLimits.NumFiles < -1, "max number of files should be a positive number or -1")
+	catcher.NewWhen(d.IsLinux() && d.BootstrapSettings.ResourceLimits.NumProcesses < -1, "max number of files should be a positive number or -1")
+	catcher.NewWhen(d.IsLinux() && d.BootstrapSettings.ResourceLimits.LockedMemoryKB < -1, "max locked memory should be a positive number or -1")
+	catcher.NewWhen(d.IsLinux() && d.BootstrapSettings.ResourceLimits.VirtualMemoryKB < -1, "max virtual memory should be a positive number or -1")
 
 	return catcher.Resolve()
 }
@@ -257,10 +270,29 @@ func (d *Distro) MaxDurationPerHost() time.Duration {
 	return evergreen.MaxDurationPerDistroHost
 }
 
+// IsPowerShellSetup returns whether or not the setup script is a powershell
+// script based on the header shebang line.
+func (d *Distro) IsPowerShellSetup() bool {
+	start := strings.Index(d.Setup, "#!")
+	if start == -1 {
+		return false
+	}
+	end := strings.IndexByte(d.Setup[start:], '\n')
+	if end == -1 {
+		return false
+	}
+	end += start
+	return strings.Contains(d.Setup[start:end], "powershell")
+}
+
 func (d *Distro) IsWindows() bool {
 	// XXX: if this is-windows check is updated, make sure to also update
 	// public/static/js/spawned_hosts.js as well
 	return strings.Contains(d.Arch, "windows")
+}
+
+func (d *Distro) IsLinux() bool {
+	return strings.Contains(d.Arch, "linux")
 }
 
 func (d *Distro) Platform() (string, string) {

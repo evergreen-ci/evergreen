@@ -6,74 +6,86 @@
       <a href="/host/[[curHostData.id]]"> View Event Log... </a>
   </div>
   <div class="panel-body" style="min-height: 233px">
-    <div class="entry">
-      <strong>ID</strong> 
-      <span>[[curHostData.id]] </span>
-    </div>
-    <div class="entry">
-      <strong>Started at</strong> <span>[[curHostData.creation_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</span>
-    </div>
-    <div class="entry" ng-show="curHostData.isTerminated">
-      <strong>Terminated at</strong> <span>[[curHostData.termination_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</span>
-    </div>
-    <div class="entry">
-      <strong>Status</strong> <span>[[curHostData.status]]</span>
-    </div>
-    <div class="entry" ng-show="!curHostData.isTerminated">
-      <strong>SSH User</strong> <span>[[curHostData.user]]</span>
-    </div>
-    <div class="entry" ng-show="!curHostData.isTerminated">
-      <strong>DNS Name</strong> <span>[[curHostData.host]]</span>
-    </div>
-    <div class="entry" ng-show="!curHostData.isTerminated">
-      <strong>Work Directory</strong> <span class="mono">[[curHostData.distro.work_dir]]</span>
-    </div>
-    <div class="entry" ng-show="true">
-      <strong>
-        Expires On:
-      </strong>
-      <span>
-        [[curHostData.expiration_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]
-      </span>
-    </div>
-    <div class ="entry" ng-show="curHostData.userdata">
-      <strong>User Data:</strong><br/>
-      <pre>[[curHostData.userdata]]</pre>
-    </div>
-    <div class="entry" ng-show="!curHostData.isTerminated && curHostData.host.length > 0 && (curHostData.distro.bootstrap_method != 'user-data' || curHostData.status == 'running')">
-      <strong>Login Command:</strong>
-      <pre readonly>ssh [[curHostData.user]]@[[curHostData.host]]</pre>
-    </div>
-    <br>
-    <button type="button" ng-show="curHostData.isWinHost && curHostData.status
-    == 'running'" class="btn btn-info" style="float: right;" ng-click="openSpawnModal('updateRDPPassword')">
-    Set RDP Password
-    </button>
-  </div>
-  <div ng-show="hostExtensionLengths.length != 0" class="expire-row">
-    <span>
-      <button class="btn btn-link btn-dropdown" data-toggle="dropdown" href="#" id="extLen">
-        <span class="semi-muted">
-         Extend expiration time by:
-        </span>
-        <strong>
-          [[extensionLength.display]]
-          <span class="fa fa-caret-down"></span>
-        </strong>
-      </button>
-      <ul class="dropdown-menu expire-dropdown" role="menu" aria-labelledby="extLen">
-        <li role="presentation" class="dropdown-header">Extension Durations</li>
-        <li role="presentation" ng-repeat="extensionLength in hostExtensionLengths">
-          <a role="menuitem" ng-click="setExtensionLength(extensionLength);">
-          [[extensionLength.display]]
-          </a>
-        </li>
-      </ul>
-    </span>
-    <span>
-      <button type="button" class="btn btn-info expire-button" style="float: right;" ng-click="updateHostExpiration()">
-      Update Host Expiration
-      </button>
-    </span>
+    <md-card style="width:99%">
+      <md-card-content>
+        <div class="entry">
+          <strong>ID</strong>
+          <span>[[curHostData.id]] </span>
+        </div>
+        <div class="entry">
+          <strong>Started at</strong> <span>[[curHostData.creation_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</span>
+        </div>
+        <div class="entry" ng-show="curHostData.isTerminated">
+          <strong>Terminated at</strong> <span>[[curHostData.termination_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</span>
+        </div>
+        <div class="entry">
+          <strong>Status</strong> <span>[[curHostData.status]]</span>
+        </div>
+        <div class="entry" ng-show="!curHostData.isTerminated">
+          <strong>SSH User</strong> <span>[[curHostData.user]]</span>
+        </div>
+        <div class="entry" ng-show="!curHostData.isTerminated">
+          <strong>DNS Name</strong> <span>[[curHostData.host]]</span>
+        </div>
+        <div class="entry" ng-show="!curHostData.isTerminated">
+          <strong>Work Directory</strong> <span class="mono">[[curHostData.distro.work_dir]]</span>
+        </div>
+        <div class ="entry" ng-show="curHostData.userdata">
+          <strong>User Data:</strong><br/>
+          <pre>[[curHostData.userdata]]</pre>
+        </div>
+        <div class="entry" ng-show="!curHostData.isTerminated && curHostData.host.length > 0 && (curHostData.distro.bootstrap_method != 'user-data' || curHostData.status == 'running')">
+          <strong>Login Command:</strong>
+          <pre readonly>ssh [[curHostData.user]]@[[curHostData.host]]</pre>
+        </div>
+      </md-card-content>
+
+    </md-card>
+      <section layout="row" flex ng-show="curHostData.isWinHost && curHostData.status == 'running'">
+        <div flex="85"></div>
+        <div class="entry" flex="15">
+          <md-button type="button" class="btn-info md-raised" style="top: 8px; float: right;" ng-click="openSpawnModal('updateRDPPassword')">
+            Set RDP Password
+          </md-button>
+        </div>
+      </section>
+      <section layout="row" flex style="white-space: nowrap">
+          <div flex="85">
+            <strong>Expires On:</strong>
+            <md-datepicker ng-model="curHostData.date_for_expiration" md-min-date="curHostData.time_for_expiration" md-placeholder="Date"></md-datepicker>
+            <md-time-picker class="inline" ng-model="curHostData.time_for_expiration" message="message"></md-time-picker>
+          </div>
+          <div flex="15">
+            <md-button type="button" class="btn-info md-raised" style="top: 8px; float: right" ng-click="updateHostExpiration()">
+              Update
+            </md-button>
+        </div>
+      </section>
+      <section layout="row" flex ng-show="curHostData.host_type == 'ec2-ondemand' && curHostData.instance_type != ''" style="white-space: nowrap">
+        <div flex="85">
+          <strong>Instance Type:</strong>
+          <span class="dropdown">
+            <button class="btn btn-link btn-dropdown" data-toggle="dropdown" href="#" id="distro">
+              <strong>
+                [[selectedInstanceType]]
+                <span class="fa fa-caret-down"></span>
+              </strong>
+          </button>
+          <ul class="dropdown-menu" role="menu" aria-labelledby="distro">
+            <li role="presentation" class="dropdown-header">Instance types</li>
+            <li role="presentation" ng-repeat="instanceType in allowedInstanceTypes">
+              <a role="menuitem" ng-click="setInstanceType(instanceType)">
+                [[instanceType]]
+              </a>
+            </li>
+          </ul>
+          </span>
+        </div>
+        <div flex="15">
+          <md-button type="button" class="btn-info md-raised" style="top: 8px; float: right" ng-click="updateInstanceType()">
+            Update
+          </md-button>
+      </div>
+    </section>
   </div>
 </div>

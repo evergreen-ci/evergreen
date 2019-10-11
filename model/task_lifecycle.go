@@ -3,11 +3,13 @@ package model
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -37,12 +39,14 @@ func SetActiveState(taskId string, caller string, active bool) error {
 		return errors.Errorf("task '%s' not found", taskId)
 	}
 	if active {
-		// if the task is being activated, make sure to activate all of the task's
-		// dependencies as well
-		for _, dep := range t.DependsOn {
-			if err = SetActiveState(dep.TaskId, caller, true); err != nil {
-				return errors.Wrapf(err, "error activating dependency for %v with id %v",
-					taskId, dep.TaskId)
+		// if the task is being activated and it doesn't override its dependencies
+		// activate the task's dependencies as well
+		if !t.OverrideDependencies {
+			for _, dep := range t.DependsOn {
+				if err = SetActiveState(dep.TaskId, caller, true); err != nil {
+					return errors.Wrapf(err, "error activating dependency for %v with id %v",
+						taskId, dep.TaskId)
+				}
 			}
 		}
 
@@ -499,6 +503,69 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	return nil
 }
 
+func TryDequeueAndAbortCommitQueueVersion(projectRef *ProjectRef, versionId, requester string) error {
+	p, err := patch.FindOne(patch.ByVersion(versionId))
+	if err != nil {
+		return errors.Wrapf(err, "error finding patch")
+	}
+	if p == nil {
+		return errors.Errorf("No patch for task")
+	}
+
+	if p.Alias != evergreen.CommitQueueAlias {
+		return nil
+	}
+
+	// if task is part of a commit queue, dequeue and abort version
+	cq, err := commitqueue.FindOneId(projectRef.Identifier)
+	if err != nil {
+		return errors.Wrapf(err, "can't get commit queue for id '%s'", projectRef.Identifier)
+	}
+	issue := p.Id.Hex()
+	if p.IsGithubPRPatch() {
+		issue = strconv.Itoa(p.GithubPatchData.PRNumber)
+	}
+	removed, err := cq.Remove(issue)
+	if err != nil {
+		return errors.Wrapf(err, "can't remove item '%s' from queue '%s'", versionId, projectRef.Identifier)
+	}
+	if !removed {
+		return nil
+	}
+	if p.IsPRMergePatch() {
+		env := evergreen.GetEnvironment()
+		sender, err := env.GetSender(evergreen.SenderGithubStatus)
+		if err != nil {
+			grip.Debug(message.WrapError(err, message.Fields{
+				"message":      "error getting environment",
+				"patch_id":     p.Id,
+				"project":      p.Project,
+				"pull_request": issue,
+			}))
+		} else {
+			var url string
+			uiConfig := evergreen.UIConfig{}
+			if err := uiConfig.Get(env); err == nil {
+				url = fmt.Sprintf("%s/version/%s", uiConfig.Url, versionId)
+			}
+			status := message.GithubStatus{
+				Context:     commitqueue.Context,
+				Description: "merge test failed",
+				State:       message.GithubStateFailure,
+				Owner:       p.GithubPatchData.BaseOwner,
+				Repo:        p.GithubPatchData.BaseRepo,
+				Ref:         p.GithubPatchData.HeadHash,
+				URL:         url,
+			}
+			c := message.MakeGithubStatusMessageWithRepo(status)
+			sender.Send(c)
+		}
+	}
+
+	event.LogCommitQueueConcludeTest(p.Id.Hex(), evergreen.MergeTestFailed)
+	return errors.Wrapf(CancelPatch(p, requester), "Error aborting failed commit queue patch")
+}
+
 func evalStepback(t *task.Task, caller, status string, deactivatePrevious bool) error {
 	if status == evergreen.TaskFailed {
 		var shouldStepBack bool
@@ -587,7 +654,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		}
 
 		// update the build's status when a test task isn't successful
-		if t.Status != evergreen.TaskSucceeded {
+		if evergreen.IsFailedTaskStatus(t.Status) {
 			err = b.UpdateStatus(evergreen.BuildFailed)
 			if err != nil {
 				err = errors.Wrap(err, "Error updating build status")
@@ -894,6 +961,12 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 		return nil
 	}
 
+	t.Details = apimodels.TaskEndDetail{
+		Description: evergreen.TaskDescriptionStranded,
+		Status:      evergreen.TaskFailed,
+		Type:        evergreen.CommandTypeSystem,
+	}
+
 	if err = t.MarkSystemFailed(); err != nil {
 		return errors.Wrap(err, "problem marking task failed")
 	}
@@ -901,10 +974,6 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 		return errors.Wrap(err, "problem resetting cached task")
 	}
 
-	detail := &apimodels.TaskEndDetail{
-		Status: evergreen.TaskFailed,
-		Type:   "system",
-	}
 	if time.Since(t.ActivatedTime) > task.UnschedulableThreshold {
 		updates := StatusChanges{}
 		if t.DisplayOnly {
@@ -913,19 +982,19 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 				if err != nil {
 					return errors.Wrap(err, "error finding execution task")
 				}
-				if err = MarkEnd(execTask, evergreen.MonitorPackage, time.Now(), detail, false, &updates); err != nil {
+				if err = MarkEnd(execTask, evergreen.MonitorPackage, time.Now(), &t.Details, false, &updates); err != nil {
 					return errors.Wrap(err, "error marking execution task as ended")
 				}
 			}
 		}
-		return errors.WithStack(MarkEnd(t, evergreen.MonitorPackage, time.Now(), detail, false, &updates))
+		return errors.WithStack(MarkEnd(t, evergreen.MonitorPackage, time.Now(), &t.Details, false, &updates))
 	}
 
 	if t.IsPartOfDisplay() {
 		return t.DisplayTask.SetResetWhenFinished()
 	}
 
-	return errors.Wrap(TryResetTask(t.Id, "mci", evergreen.MonitorPackage, detail), "problem resetting task")
+	return errors.Wrap(TryResetTask(t.Id, "mci", evergreen.MonitorPackage, &t.Details), "problem resetting task")
 }
 
 func UpdateDisplayTask(t *task.Task) error {

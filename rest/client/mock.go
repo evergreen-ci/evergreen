@@ -341,6 +341,7 @@ func (c *Mock) GetHostsByUser(ctx context.Context, user string) ([]*model.APIHos
 		KeyName:      "mock_key",
 		UserData:     "",
 		InstanceTags: nil,
+		InstanceType: "mock_type",
 	}
 	host, _ := c.CreateSpawnHost(ctx, spawnRequest)
 	hosts = append(hosts, host)
@@ -362,6 +363,7 @@ func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostReques
 		UserHost:     true,
 		Provisioned:  false,
 		InstanceTags: spawnRequest.InstanceTags,
+		InstanceType: model.ToAPIString(spawnRequest.InstanceType),
 	}
 	return mockHost, nil
 }
@@ -372,6 +374,14 @@ func (*Mock) ModifySpawnHost(ctx context.Context, hostID string, changes host.Ho
 
 func (*Mock) TerminateSpawnHost(ctx context.Context, hostID string) error {
 	return errors.New("(*Mock) TerminateSpawnHost is not implemented")
+}
+
+func (*Mock) StopSpawnHost(context.Context, string, bool) error {
+	return errors.New("(*Mock) StopSpawnHost is not implemented")
+}
+
+func (*Mock) StartSpawnHost(context.Context, string, bool) error {
+	return errors.New("(*Mock) StartSpawnHost is not implemented")
 }
 
 func (*Mock) ChangeSpawnHostPassword(context.Context, string, string) error {
@@ -390,6 +400,7 @@ func (c *Mock) GetHosts(ctx context.Context, f func([]*model.APIHost) error) err
 		KeyName:      "mock_key",
 		UserData:     "",
 		InstanceTags: nil,
+		InstanceType: "mock_type",
 	}
 	host, _ := c.CreateSpawnHost(ctx, spawnRequest)
 	hosts = append(hosts, host)

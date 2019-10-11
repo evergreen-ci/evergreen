@@ -98,17 +98,6 @@ func TestJasperCommands(t *testing.T) {
 				assert.Contains(t, cmds, expectedCmd)
 			}
 		},
-		"FetchJasperCommandWithPath": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			path := "/bar"
-			expectedCmds := h.fetchJasperCommands(settings.HostJasper)
-			for i := range expectedCmds {
-				expectedCmds[i] = fmt.Sprintf("PATH=%s ", path) + expectedCmds[i]
-			}
-			cmds := h.FetchJasperCommandWithPath(settings.HostJasper, path)
-			for _, expectedCmd := range expectedCmds {
-				assert.Contains(t, cmds, expectedCmd)
-			}
-		},
 		"BootstrapScript": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			expectedCmds := []string{h.FetchJasperCommand(settings.HostJasper), h.ForceReinstallJasperCommand(settings)}
 			expectedPreCmds := []string{"foo", "bar"}
@@ -143,19 +132,31 @@ func TestJasperCommands(t *testing.T) {
 		},
 		"ForceReinstallJasperCommand": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			cmd := h.ForceReinstallJasperCommand(settings)
-			assert.Equal(t, "sudo /foo/jasper_cli jasper service force-reinstall rpc --host=0.0.0.0 --port=12345 --creds_path=/bar/bat.txt --user=user", cmd)
+			assert.True(t, strings.HasPrefix(cmd, "sudo /foo/jasper_cli jasper service force-reinstall rpc"))
+			assert.Contains(t, cmd, "--host=0.0.0.0")
+			assert.Contains(t, cmd, fmt.Sprintf("--port=%d", settings.HostJasper.Port))
+			assert.Contains(t, cmd, fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
+			assert.Contains(t, cmd, fmt.Sprintf("--user=%s", h.Distro.User), cmd)
+			assert.Contains(t, cmd, fmt.Sprintf("--limit_num_procs=%d", h.Distro.BootstrapSettings.ResourceLimits.NumProcesses))
+			assert.Contains(t, cmd, fmt.Sprintf("--limit_num_files=%d", h.Distro.BootstrapSettings.ResourceLimits.NumFiles))
+			assert.Contains(t, cmd, fmt.Sprintf("--limit_virtual_memory=%d", h.Distro.BootstrapSettings.ResourceLimits.VirtualMemoryKB))
+			assert.Contains(t, cmd, fmt.Sprintf("--limit_locked_memory=%d", h.Distro.BootstrapSettings.ResourceLimits.LockedMemoryKB))
 		},
 		"ForceReinstallJasperCommandWithSplunkLogging": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			settings.Splunk.ServerURL = "url"
 			settings.Splunk.Token = "token"
+			settings.Splunk.Channel = "channel"
 
 			cmd := h.ForceReinstallJasperCommand(settings)
-			expected := "sudo /foo/jasper_cli jasper service force-reinstall rpc --host=0.0.0.0 --port=12345 --creds_path=/bar/bat.txt --user=user --splunk_url=url --splunk_token=token"
-			assert.Equal(t, expected, cmd)
+			assert.True(t, strings.HasPrefix(cmd, "sudo /foo/jasper_cli jasper service force-reinstall rpc"))
 
-			settings.Splunk.Channel = "channel"
-			cmd = h.ForceReinstallJasperCommand(settings)
-			assert.Equal(t, expected+" --splunk_channel=channel", cmd)
+			assert.Contains(t, cmd, "--host=0.0.0.0")
+			assert.Contains(t, cmd, fmt.Sprintf("--port=%d", settings.HostJasper.Port))
+			assert.Contains(t, cmd, fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
+			assert.Contains(t, cmd, fmt.Sprintf("--user=%s", h.Distro.User))
+			assert.Contains(t, cmd, fmt.Sprintf("--splunk_url=%s", settings.Splunk.ServerURL))
+			assert.Contains(t, cmd, fmt.Sprintf("--splunk_token_path=%s", h.splunkTokenFilePath()))
+			assert.Contains(t, cmd, fmt.Sprintf("--splunk_channel=%s", settings.Splunk.Channel))
 		},
 	} {
 		t.Run(opName, func(t *testing.T) {
@@ -165,6 +166,12 @@ func TestJasperCommands(t *testing.T) {
 					BootstrapSettings: distro.BootstrapSettings{
 						JasperBinaryDir:       "/foo",
 						JasperCredentialsPath: "/bar/bat.txt",
+						ResourceLimits: distro.ResourceLimits{
+							NumProcesses:    1,
+							NumFiles:        2,
+							LockedMemoryKB:  3,
+							VirtualMemoryKB: 4,
+						},
 					},
 					User: "user",
 				}}
@@ -206,33 +213,25 @@ func TestJasperCommandsWindows(t *testing.T) {
 				assert.Contains(t, cmds, expectedCmd)
 			}
 		},
-		"FetchJasperCommandWithPath": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			path := "/bar"
-			expectedCmds := h.fetchJasperCommands(settings.HostJasper)
-			for i := range expectedCmds {
-				expectedCmds[i] = fmt.Sprintf("PATH=%s ", path) + expectedCmds[i]
-			}
-			cmds := h.FetchJasperCommandWithPath(settings.HostJasper, path)
-			for _, expectedCmd := range expectedCmds {
-				assert.Contains(t, cmds, expectedCmd)
-			}
-		},
 		"BootstrapScript": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			expectedCmds := h.fetchJasperCommands(settings.HostJasper)
-			expectedPreCmds := []string{"foo", "bar"}
-			expectedPostCmds := []string{"bat", "baz"}
-			path := "/bin"
+			require.NoError(t, h.Insert())
 
-			for i := range expectedCmds {
-				expectedCmds[i] = fmt.Sprintf("PATH=%s %s", path, expectedCmds[i])
-			}
+			setupUserCmds, err := h.SetupServiceUserCommands()
+			require.NoError(t, err)
+
+			expectedPreCmds := []string{"foo", "bar", setupUserCmds}
+			expectedPostCmds := []string{"bat", "baz"}
 
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
-			writeCredentialsCmd, err := h.WriteJasperCredentialsFileCommand(creds)
+			writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 			require.NoError(t, err)
 
-			expectedCmds = append(expectedCmds, writeCredentialsCmd, h.ForceReinstallJasperCommand(settings))
+			expectedCmds := []string{
+				writeCredentialsCmd,
+				h.FetchJasperCommand(settings.HostJasper),
+				h.ForceReinstallJasperCommand(settings),
+			}
 
 			script, err := h.BootstrapScript(settings, creds, expectedPreCmds, expectedPostCmds)
 			require.NoError(t, err)
@@ -259,28 +258,45 @@ func TestJasperCommandsWindows(t *testing.T) {
 				currPos += offset + len(expectedCmd)
 			}
 		},
-		"ForceReinstallJasperCommand": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+		"ForceReinstallJasperCommandSSH": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
+			require.NoError(t, h.Insert())
+			require.NoError(t, h.CreateServicePassword())
 			cmd := h.ForceReinstallJasperCommand(settings)
-			assert.Equal(t, "/foo/jasper_cli.exe jasper service force-reinstall rpc --host=0.0.0.0 --port=12345 --creds_path=/bar/bat.txt --user=user", cmd)
+			assert.True(t, strings.HasPrefix(cmd, "/foo/jasper_cli.exe jasper service force-reinstall rpc"))
+			assert.Contains(t, cmd, "--host=0.0.0.0")
+			assert.Contains(t, cmd, fmt.Sprintf("--port=%d", settings.HostJasper.Port))
+			assert.Contains(t, cmd, fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
+			assert.Contains(t, cmd, fmt.Sprintf(`--user=.\\%s`, h.Distro.BootstrapSettings.ServiceUser))
+			assert.Contains(t, cmd, fmt.Sprintf("--password='%s'", h.ServicePassword))
 		},
 		"WriteJasperCredentialsFileCommand": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
 
-			for testName, testCase := range map[string]func(t *testing.T){
-				"WithoutJasperCredentialsPath": func(t *testing.T) {
+			for testName, testCase := range map[string]func(t *testing.T, h *Host, settings *evergreen.Settings){
+				"WithoutJasperCredentialsPath": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 					h.Distro.BootstrapSettings.JasperCredentialsPath = ""
-					_, err := h.WriteJasperCredentialsFileCommand(creds)
+					_, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 					assert.Error(t, err)
 				},
-				"WithJasperCredentialsPath": func(t *testing.T) {
-					h.Distro.BootstrapSettings.JasperCredentialsPath = "/foo/bar.txt"
-					cmd, err := h.WriteJasperCredentialsFileCommand(creds)
+				"WithJasperCredentialsPath": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+					cmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 					require.NoError(t, err)
 
 					expectedCreds, err := creds.Export()
 					require.NoError(t, err)
-					assert.Equal(t, fmt.Sprintf("mkdir -m 777 -p \"/foo\" && cat > '/foo/bar.txt' <<EOF\n%s\nEOF", expectedCreds), cmd)
+					assert.Equal(t, fmt.Sprintf("mkdir -m 777 -p \"/bar\" && echo '%s' > '/bar/bat.txt'", expectedCreds), cmd)
+				},
+				"WithSplunkCredentials": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+					settings.Splunk.Token = "token"
+					settings.Splunk.ServerURL = "splunk_url"
+					cmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
+					require.NoError(t, err)
+
+					expectedCreds, err := creds.Export()
+					require.NoError(t, err)
+					assert.Equal(t, fmt.Sprintf("mkdir -m 777 -p \"/bar\" && echo '%s' > '/bar/bat.txt' && echo '%s' > '/bar/splunk.txt'", expectedCreds, settings.Splunk.Token), cmd)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
@@ -288,17 +304,27 @@ func TestJasperCommandsWindows(t *testing.T) {
 					defer func() {
 						assert.NoError(t, db.ClearCollections(credentials.Collection))
 					}()
-					testCase(t)
+					hostCopy := *h
+					settingsCopy := *settings
+					testCase(t, &hostCopy, &settingsCopy)
 				})
 			}
 		},
 	} {
 		t.Run(opName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			defer func() {
+				assert.NoError(t, db.Clear(Collection))
+			}()
 			h := &Host{Distro: distro.Distro{
 				Arch: distro.ArchWindowsAmd64,
 				BootstrapSettings: distro.BootstrapSettings{
+					Method:                distro.BootstrapMethodUserData,
+					Communication:         distro.CommunicationMethodRPC,
 					JasperBinaryDir:       "/foo",
 					JasperCredentialsPath: "/bar/bat.txt",
+					ShellPath:             "/bin/bash",
+					ServiceUser:           "service-user",
 				},
 				User: "user",
 			}}
@@ -567,8 +593,8 @@ func TestBuildLocalJasperClientRequest(t *testing.T) {
 	index += offset + len(expectedSubCmd)
 
 	assert.Contains(t, cmd[index:], "--service=rpc")
-	assert.Contains(t, cmd[index:], "--port=12345")
-	assert.Contains(t, cmd[index:], "--creds_path=/jasper/credentials.txt")
+	assert.Contains(t, cmd[index:], fmt.Sprintf("--port=%d", config.Port))
+	assert.Contains(t, cmd[index:], fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
 }
 
 func TestSetupScriptCommands(t *testing.T) {
@@ -805,13 +831,13 @@ func TestSetupSpawnHostCommand(t *testing.T) {
 	assert.Equal(t, expected, cmd)
 }
 
-func TestMarkUserDataDoneCommand(t *testing.T) {
+func TestMarkUserDataDoneCommands(t *testing.T) {
 	for testName, testCase := range map[string]func(t *testing.T){
 		"FailsWithoutPathToDoneFile": func(t *testing.T) {
 			h := &Host{
 				Id: "id",
 			}
-			cmd, err := h.MarkUserDataDoneCommand()
+			cmd, err := h.MarkUserDataDoneCommands()
 			assert.Error(t, err)
 			assert.Empty(t, cmd)
 		},
@@ -820,7 +846,7 @@ func TestMarkUserDataDoneCommand(t *testing.T) {
 				Id:     "id",
 				Distro: distro.Distro{BootstrapSettings: distro.BootstrapSettings{ClientDir: "/client_dir"}},
 			}
-			cmd, err := h.MarkUserDataDoneCommand()
+			cmd, err := h.MarkUserDataDoneCommands()
 			require.NoError(t, err)
 			assert.Equal(t, "mkdir -m 777 -p /client_dir && touch /client_dir/user_data_done", cmd)
 		},
@@ -853,6 +879,16 @@ func TestSetUserDataHostProvisioned(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostProvisioning, dbHost.Status)
 		},
+		"IgnoresHostsNeverProvisioned": func(t *testing.T, h *Host) {
+			h.Provisioned = false
+
+			require.NoError(t, h.SetUserDataHostProvisioned())
+			assert.Equal(t, evergreen.HostProvisioning, h.Status)
+
+			dbHost, err := FindOneId(h.Id)
+			require.NoError(t, err)
+			assert.Equal(t, evergreen.HostProvisioning, dbHost.Status)
+		},
 		"IgnoresNonProvisioningHosts": func(t *testing.T, h *Host) {
 			require.NoError(t, h.SetDecommissioned(evergreen.User, ""))
 
@@ -874,10 +910,66 @@ func TestSetUserDataHostProvisioned(t *testing.T) {
 				Distro: distro.Distro{BootstrapSettings: distro.BootstrapSettings{
 					Method: distro.BootstrapMethodUserData,
 				}},
-				Status: evergreen.HostProvisioning,
+				Status:      evergreen.HostProvisioning,
+				Provisioned: true,
 			}
 			require.NoError(t, h.Insert())
 			testCase(t, h)
+		})
+	}
+}
+
+func TestCreateServicePassword(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
+	h := &Host{Distro: distro.Distro{
+		Id: "foo",
+	}}
+	require.NoError(t, h.Insert())
+	require.NoError(t, h.CreateServicePassword())
+	assert.True(t, ValidateRDPPassword(h.ServicePassword))
+	assert.NotEmpty(t, h.ServicePassword)
+	dbHost, err := FindOneId(h.Id)
+	require.NoError(t, err)
+	assert.Equal(t, h.ServicePassword, dbHost.ServicePassword)
+}
+
+func TestSetupServiceUserCommands(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T, h *Host){
+		"GeneratesCommandsAndPassword": func(t *testing.T, h *Host) {
+			require.NoError(t, h.Insert())
+			cmds, err := h.SetupServiceUserCommands()
+			require.NoError(t, err)
+			assert.NotEmpty(t, cmds)
+			assert.NotEmpty(t, h.ServicePassword)
+		},
+		"FailsWithoutServiceUser": func(t *testing.T, h *Host) {
+			h.Distro.BootstrapSettings.ServiceUser = ""
+			require.NoError(t, h.Insert())
+			_, err := h.SetupServiceUserCommands()
+			assert.Error(t, err)
+		},
+		"NoopsIfNotWindows": func(t *testing.T, h *Host) {
+			h.Distro.Arch = distro.ArchLinuxAmd64
+			require.NoError(t, h.Insert())
+			cmds, err := h.SetupServiceUserCommands()
+			assert.NoError(t, err)
+			assert.Empty(t, cmds)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			defer func() {
+				assert.NoError(t, db.Clear(Collection))
+			}()
+			testCase(t, &Host{Distro: distro.Distro{
+				Arch: distro.ArchWindowsAmd64,
+				BootstrapSettings: distro.BootstrapSettings{
+					ServiceUser: "service-user",
+				},
+			}})
 		})
 	}
 }

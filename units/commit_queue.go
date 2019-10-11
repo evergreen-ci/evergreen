@@ -110,7 +110,17 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 	nextItem := cq.Next()
-	if nextItem == nil || cq.Processing {
+	if nextItem == nil {
+		return
+	}
+	if cq.Processing {
+		grip.Info(message.Fields{
+			"source":             "commit queue",
+			"job_id":             j.ID(),
+			"item_id":            nextItem.Issue,
+			"project_id":         cq.ProjectID,
+			"processing_seconds": time.Since(cq.ProcessingUpdatedTime).Seconds(),
+		})
 		return
 	}
 	j.AddError(errors.Wrap(cq.SetProcessing(true), "can't set processing to true"))
@@ -183,7 +193,13 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	}
 
 	errs := validator.CheckProjectSyntax(projectConfig)
-	if len(errs) != 0 {
+	catcher := grip.NewBasicCatcher()
+	for _, validationError := range errs {
+		if validationError.Level == validator.Error {
+			catcher.Add(validationError)
+		}
+	}
+	if catcher.HasErrors() {
 		update := NewGithubStatusUpdateJobForProcessingError(
 			commitqueue.Context,
 			pr.Base.User.GetLogin(),
@@ -193,7 +209,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		)
 		update.Run(ctx)
 		j.AddError(update.Error())
-		j.logError(errors.New(errs.String()), "invalid config file", nextItem)
+		j.logError(catcher.Resolve(), "invalid config file", nextItem)
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
 		j.dequeue(cq, nextItem)
 		return
@@ -261,16 +277,9 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 		return
 	}
 
-	project, _, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
+	project, err := updatePatch(ctx, githubToken, projectRef, patchDoc)
 	if err != nil {
-		j.logError(err, "can't get updated project config", nextItem)
-		j.dequeue(cq, nextItem)
-		return
-	}
-
-	err = updateGithashes(ctx, githubToken, projectRef, project, patchDoc)
-	if err != nil {
-		j.logError(err, "can't update githashes", nextItem)
+		j.logError(err, "can't update patch", nextItem)
 		j.dequeue(cq, nextItem)
 		return
 	}
@@ -578,8 +587,14 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 	project.TaskGroups = append(project.TaskGroups, mergeTaskGroup)
 
 	validationErrors := validator.CheckProjectSyntax(project)
-	if len(validationErrors) != 0 {
-		return errors.Errorf("project validation failed: %s", validationErrors)
+	catcher := grip.NewBasicCatcher()
+	for _, validationError := range validationErrors {
+		if validationError.Level == validator.Error {
+			catcher.Add(validationError)
+		}
+	}
+	if catcher.HasErrors() {
+		return errors.Errorf("project validation failed: %s", catcher.Resolve())
 	}
 
 	yamlBytes, err := yaml.Marshal(project)
@@ -620,17 +635,25 @@ func setDefaultNotification(username string) error {
 	return nil
 }
 
-func updateGithashes(ctx context.Context, githubToken string, projectRef *model.ProjectRef, project *model.Project, patchDoc *patch.Patch) error {
+func updatePatch(ctx context.Context, githubToken string, projectRef *model.ProjectRef, patchDoc *patch.Patch) (*model.Project, error) {
 	branch, err := thirdparty.GetBranchEvent(ctx, githubToken, projectRef.Owner, projectRef.Repo, projectRef.Branch)
 	if err != nil {
-		return errors.Wrap(err, "can't get branch")
+		return nil, errors.Wrap(err, "can't get branch")
 	}
 	if err = validateBranch(branch); err != nil {
-		return errors.Wrap(err, "GitHub returned invalid branch")
+		return nil, errors.Wrap(err, "GitHub returned invalid branch")
 	}
 
 	sha := *branch.Commit.SHA
 	patchDoc.Githash = sha
+
+	// Refresh the cached project config
+	patchDoc.PatchedConfig = ""
+	project, projectYaml, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get updated project config")
+	}
+	patchDoc.PatchedConfig = projectYaml
 
 	// Update module githashes
 	for i, mod := range patchDoc.Patches {
@@ -641,23 +664,23 @@ func updateGithashes(ctx context.Context, githubToken string, projectRef *model.
 
 		module, err := project.GetModuleByName(mod.ModuleName)
 		if err != nil {
-			return errors.Wrapf(err, "can't get module for module name '%s'", mod.ModuleName)
+			return nil, errors.Wrapf(err, "can't get module for module name '%s'", mod.ModuleName)
 		}
 		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
 		if err != nil {
-			return errors.Wrapf(err, "module '%s' misconfigured (malformed URL)", mod.ModuleName)
+			return nil, errors.Wrapf(err, "module '%s' misconfigured (malformed URL)", mod.ModuleName)
 		}
 
 		branch, err = thirdparty.GetBranchEvent(ctx, githubToken, owner, repo, module.Branch)
 		if err != nil {
-			return errors.Wrap(err, "can't get branch")
+			return nil, errors.Wrap(err, "can't get branch")
 		}
 		if err = validateBranch(branch); err != nil {
-			return errors.Wrap(err, "GitHub returned invalid branch")
+			return nil, errors.Wrap(err, "GitHub returned invalid branch")
 		}
 
 		patchDoc.Patches[i].Githash = *branch.Commit.SHA
 	}
 
-	return nil
+	return project, nil
 }

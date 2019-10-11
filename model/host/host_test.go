@@ -274,7 +274,7 @@ func TestSetHostTerminated(t *testing.T) {
 			" termination time in both the in-memory and database copies of"+
 			" the host", func() {
 
-			So(host.Terminate(evergreen.User), ShouldBeNil)
+			So(host.Terminate(evergreen.User, ""), ShouldBeNil)
 			So(host.Status, ShouldEqual, evergreen.HostTerminated)
 			So(host.TerminationTime.IsZero(), ShouldBeFalse)
 
@@ -3601,29 +3601,172 @@ func TestFindOneByJasperCredentialsID(t *testing.T) {
 	}
 }
 
-func TestModifySpawnHost(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
-	h := &Host{
+func TestAddTags(t *testing.T) {
+	h := Host{
 		Id: "id",
 		InstanceTags: []Tag{
-			Tag{Key: "key1", Value: "val1", CanBeModified: true},
-			Tag{Key: "key2", Value: "val2", CanBeModified: true},
+			Tag{Key: "key-fixed", Value: "val-fixed", CanBeModified: false},
+			Tag{Key: "key-1", Value: "val-1", CanBeModified: true},
+			Tag{Key: "key-2", Value: "val-2", CanBeModified: true},
+		},
+	}
+	tagsToAdd := []Tag{
+		Tag{Key: "key-fixed", Value: "val-new", CanBeModified: false},
+		Tag{Key: "key-2", Value: "val-new", CanBeModified: true},
+		Tag{Key: "key-3", Value: "val-3", CanBeModified: true},
+	}
+	h.AddTags(tagsToAdd)
+	assert.Equal(t, []Tag{
+		Tag{Key: "key-fixed", Value: "val-fixed", CanBeModified: false},
+		Tag{Key: "key-1", Value: "val-1", CanBeModified: true},
+		Tag{Key: "key-2", Value: "val-new", CanBeModified: true},
+		Tag{Key: "key-3", Value: "val-3", CanBeModified: true},
+	}, h.InstanceTags)
+}
+
+func TestDeleteTags(t *testing.T) {
+	h := Host{
+		Id: "id",
+		InstanceTags: []Tag{
+			Tag{Key: "key-fixed", Value: "val-fixed", CanBeModified: false},
+			Tag{Key: "key-1", Value: "val-1", CanBeModified: true},
+			Tag{Key: "key-2", Value: "val-2", CanBeModified: true},
+		},
+	}
+	tagsToDelete := []string{"key-fixed", "key-1"}
+	h.DeleteTags(tagsToDelete)
+	assert.Equal(t, []Tag{
+		Tag{Key: "key-fixed", Value: "val-fixed", CanBeModified: false},
+		Tag{Key: "key-2", Value: "val-2", CanBeModified: true},
+	}, h.InstanceTags)
+}
+
+func TestSetTags(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	h := Host{
+		Id: "id",
+		InstanceTags: []Tag{
+			Tag{Key: "key-1", Value: "val-1", CanBeModified: true},
+			Tag{Key: "key-2", Value: "val-2", CanBeModified: true},
 		},
 	}
 	assert.NoError(t, h.Insert())
-
-	changes := HostModifyOptions{
-		AddInstanceTags: []Tag{
-			Tag{Key: "key2", Value: "valNew", CanBeModified: true},
-			Tag{Key: "key3", Value: "val3", CanBeModified: true},
-		},
-		DeleteInstanceTags: []string{"key1"},
+	h.InstanceTags = []Tag{
+		Tag{Key: "key-3", Value: "val-3", CanBeModified: true},
 	}
-	assert.NoError(t, h.ModifySpawnHost(changes))
-	modifiedHost, err := FindOneId(h.Id)
+	assert.NoError(t, h.SetTags())
+	foundHost, err := FindOneId(h.Id)
 	assert.NoError(t, err)
-	assert.Equal(t, []Tag{
-		Tag{Key: "key2", Value: "valNew", CanBeModified: true},
-		Tag{Key: "key3", Value: "val3", CanBeModified: true},
-	}, modifiedHost.InstanceTags)
+	assert.Equal(t, h.InstanceTags, foundHost.InstanceTags)
+}
+
+func TestSetInstanceType(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	h := &Host{
+		Id:           "id",
+		InstanceType: "old-instance-type",
+	}
+	assert.NoError(t, h.Insert())
+	newInstanceType := "new-instance-type"
+	assert.NoError(t, h.SetInstanceType(newInstanceType))
+	foundHost, err := FindOneId(h.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, newInstanceType, foundHost.InstanceType)
+}
+
+func TestCountSpawnhostsWithNoExpirationByUser(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	hosts := []Host{
+		{
+			Id:           "host-1",
+			Status:       evergreen.HostRunning,
+			StartedBy:    "user-1",
+			NoExpiration: true,
+		},
+		{
+			Id:           "host-2",
+			Status:       evergreen.HostRunning,
+			StartedBy:    "user-1",
+			NoExpiration: false,
+		},
+		{
+			Id:           "host-3",
+			Status:       evergreen.HostTerminated,
+			StartedBy:    "user-1",
+			NoExpiration: true,
+		},
+		{
+			Id:           "host-4",
+			Status:       evergreen.HostRunning,
+			StartedBy:    "user-2",
+			NoExpiration: true,
+		},
+		{
+			Id:           "host-5",
+			Status:       evergreen.HostStarting,
+			StartedBy:    "user-2",
+			NoExpiration: true,
+		},
+	}
+	for _, h := range hosts {
+		assert.NoError(t, h.Insert())
+	}
+	count, err := CountSpawnhostsWithNoExpirationByUser("user-1")
+	assert.NoError(t, err)
+	assert.Equal(t, 1, count)
+	count, err = CountSpawnhostsWithNoExpirationByUser("user-2")
+	assert.NoError(t, err)
+	assert.Equal(t, 2, count)
+	count, err = CountSpawnhostsWithNoExpirationByUser("user-3")
+	assert.NoError(t, err)
+	assert.Equal(t, 0, count)
+}
+
+func TestFindSpawnhostsWithNoExpirationToExtend(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	hosts := []Host{
+		{
+			Id:             "host-1",
+			UserHost:       true,
+			Status:         evergreen.HostRunning,
+			NoExpiration:   true,
+			ExpirationTime: time.Now(),
+		},
+		{
+			Id:             "host-2",
+			UserHost:       true,
+			Status:         evergreen.HostRunning,
+			NoExpiration:   false,
+			ExpirationTime: time.Now(),
+		},
+		{
+			Id:             "host-3",
+			UserHost:       true,
+			Status:         evergreen.HostTerminated,
+			NoExpiration:   true,
+			ExpirationTime: time.Now(),
+		},
+		{
+			Id:             "host-4",
+			UserHost:       true,
+			Status:         evergreen.HostRunning,
+			NoExpiration:   true,
+			ExpirationTime: time.Now().AddDate(1, 0, 0),
+		},
+		{
+			Id:             "host-5",
+			UserHost:       false,
+			Status:         evergreen.HostRunning,
+			NoExpiration:   true,
+			ExpirationTime: time.Now(),
+		},
+	}
+	for _, h := range hosts {
+		assert.NoError(t, h.Insert())
+	}
+
+	foundHosts, err := FindSpawnhostsWithNoExpirationToExtend()
+	assert.NoError(t, err)
+	assert.Len(t, foundHosts, 1)
+	assert.Equal(t, "host-1", foundHosts[0].Id)
 }

@@ -124,9 +124,9 @@ func (j *hostMonitorContainerStateJob) Run(ctx context.Context) {
 	for _, container := range containersFromDB {
 		if container.Status == evergreen.HostRunning || container.Status == evergreen.HostDecommissioned {
 			if !container.SpawnOptions.SpawnedByTask && !isRunningInDocker[container.Id] {
-				if err := containerMgr.TerminateInstance(ctx, &container, evergreen.User); err != nil {
+				if err := containerMgr.TerminateInstance(ctx, &container, evergreen.User, "container not actually running"); err != nil {
 					j.AddError(errors.Wrap(err, "error terminating instance on Docker"))
-					j.AddError(container.SetTerminated(evergreen.User))
+					j.AddError(container.SetTerminated(evergreen.User, "container not actually running"))
 				}
 			}
 		}

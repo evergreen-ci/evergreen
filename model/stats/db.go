@@ -510,11 +510,11 @@ func getDailyTaskStatsPipeline(projectId string, requester string, start time.Ti
 				bson.M{"$ne": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailTimedOut), true}}}}),
 			DbTaskStatsNumSystemFailedKey: makeSum(bson.M{"$and": Array{
 				bson.M{"$eq": Array{taskStatusKeyRef, "failed"}},
-				bson.M{"$eq": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailType), "system"}},
+				bson.M{"$eq": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailType), evergreen.CommandTypeSystem}},
 				bson.M{"$ne": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailTimedOut), true}}}}),
 			DbTaskStatsNumSetupFailedKey: makeSum(bson.M{"$and": Array{
 				bson.M{"$eq": Array{taskStatusKeyRef, "failed"}},
-				bson.M{"$eq": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailType), "setup"}},
+				bson.M{"$eq": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailType), evergreen.CommandTypeSetup}},
 				bson.M{"$ne": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailTimedOut), true}}}}),
 			DbTaskStatsAvgDurationSuccessKey: bson.M{"$avg": bson.M{"$cond": bson.M{"if": bson.M{"$eq": Array{taskStatusKeyRef, "success"}},
 				"then": "$time_taken", "else": "IGNORE"}}}}},

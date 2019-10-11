@@ -656,7 +656,7 @@ func TestAddNewPatch(t *testing.T) {
 		},
 	})
 
-	assert.NoError(AddNewBuildsForPatch(p, v, proj, tasks))
+	assert.NoError(AddNewBuildsForPatch(context.Background(), p, v, proj, tasks))
 	dbBuild, err := build.FindOne(db.Q{})
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
@@ -726,7 +726,7 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 		},
 	})
 
-	assert.NoError(AddNewBuildsForPatch(p, v, proj, tasks))
+	assert.NoError(AddNewBuildsForPatch(context.Background(), p, v, proj, tasks))
 	dbBuild, err := build.FindOne(db.Q{})
 	assert.NoError(err)
 	assert.NotNil(dbBuild)

@@ -122,7 +122,7 @@ func setCloudHostStatus(ctx context.Context, m cloud.Manager, h host.Host, hostS
 			"host":       h,
 			"hostStatus": hostStatus.String(),
 		})
-		return errors.Wrap(m.TerminateInstance(ctx, &h, evergreen.User), "error terminating instance")
+		return errors.Wrap(m.TerminateInstance(ctx, &h, evergreen.User, "cloud provider reported host failed to start"), "error terminating instance")
 	case cloud.StatusRunning:
 		return errors.Wrap(h.SetProvisioning(), "error setting host to provisioning")
 	}
