@@ -391,11 +391,13 @@ func (ac *legacyClient) ListDistros() ([]distro.Distro, error) {
 // the patch object itself.
 func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, error) {
 	data := struct {
-		Description string   `json:"desc"`
-		Project     string   `json:"project"`
-		Patch       string   `json:"patch"`
-		Githash     string   `json:"githash"`
-		Variants    []string `json:"buildvariants"`
+		Description string `json:"desc"`
+		Project     string `json:"project"`
+		Patch       string `json:"patch"`
+		Githash     string `json:"githash"`
+		// TODO: remove this once users have been given enough time to update their binary versions.
+		Variants    string   `json:"buildvariants"`
+		VariantsNew []string `json:"buildvariants_new"`
 		Tasks       []string `json:"tasks"`
 		Finalize    bool     `json:"finalize"`
 		Alias       string   `json:"alias"`
@@ -404,7 +406,8 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		incomingPatch.projectId,
 		incomingPatch.patchData,
 		incomingPatch.base,
-		incomingPatch.variants,
+		strings.Join(incomingPatch.variants, ","),
+		incomingPatch.variantsNew,
 		incomingPatch.tasks,
 		incomingPatch.finalize,
 		incomingPatch.alias,
