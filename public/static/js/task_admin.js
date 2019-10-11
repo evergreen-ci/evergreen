@@ -51,7 +51,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$window', '$rootScope', 'mc
             {
                 success: function(resp) {
                     var message = "Task aborted" +
-                        ($scope.task.requester === "merge_test" ? " and version removed from commit queue." : ".")
+                        ($scope.task.Task.r === "merge_test" ? " and version removed from commit queue." : ".")
                     doModalSuccess(message, resp.data, $scope.task.display_only);
                 },
                 error: function(resp) {
@@ -105,7 +105,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$window', '$rootScope', 'mc
                 success: function(resp) {
                     var data = resp.data;
                     var message = "Task marked as " + (active ? "scheduled" : "unscheduled") +
-                        (!active && $scope.task.requester === "merge_test" ? " and version removed from commit queue." : ".") +
+                        (!active && $scope.task.r  === "merge_test" ? " and version removed from commit queue." : ".") +
 
                         doModalSuccess(message, data, $scope.task.display_only);
                 },

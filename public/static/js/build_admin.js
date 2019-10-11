@@ -34,7 +34,7 @@ mciModule.controller('AdminOptionsCtrl', [
                 success: function(resp) {
                     var data = resp.data;
                     var message = "Build aborted" +
-                        ($scope.build.requester === "merge_test" ? " and version removed from commit queue." : ".");
+                        ($scope.build.Build.r === "merge_test" ? " and version removed from commit queue." : ".");
                     $scope.closeAdminModal();
                     $rootScope.$broadcast("build_updated", data);
                     notifier.pushNotification(message, 'notifyHeader', 'success');
@@ -99,7 +99,7 @@ mciModule.controller('AdminOptionsCtrl', [
                     $scope.closeAdminModal();
                     $rootScope.$broadcast("build_updated", data);
                     var notifyString = "Build marked as " + (active ? "scheduled" : "unscheduled") +
-                        (!active && $scope.build.requester === "merge_test" ? " and version removed from commit queue." : ".") +
+                        (!active && $scope.build.r === "merge_test" ? " and version removed from commit queue." : ".") +
                         (abort ? "\n In progress tasks will be aborted." : "");
                     notifier.pushNotification(notifyString, 'notifyHeader', 'success');
                 },
