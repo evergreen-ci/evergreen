@@ -598,19 +598,22 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 			BuildId: "generate_build",
 		},
 		{
-			Id:      "say-hi-task-id",
-			Version: "version_that_called_generate_task",
-			BuildId: "sample_build",
+			Id:          "say-hi-task-id",
+			Version:     "version_that_called_generate_task",
+			BuildId:     "sample_build",
+			DisplayName: "say-hi",
 		},
 		{
-			Id:      "say-bye-task-id",
-			Version: "version_that_called_generate_task",
-			BuildId: "sample_build",
+			Id:          "say-bye-task-id",
+			Version:     "version_that_called_generate_task",
+			BuildId:     "sample_build",
+			DisplayName: "say-bye",
 		},
 		{
-			Id:      "say_something_else",
-			Version: "version_that_called_generate_task",
-			BuildId: "sample_build",
+			Id:          "say_something_else",
+			Version:     "version_that_called_generate_task",
+			BuildId:     "sample_build",
+			DisplayName: "say_something_else",
 		},
 	}
 	for _, t := range tasksThatExist {
