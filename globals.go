@@ -71,6 +71,10 @@ const (
 	CommandTypeSystem = "system"
 	CommandTypeSetup  = "setup"
 
+	// Task descriptions
+	TaskDescriptionHeartbeat = "heartbeat"
+	TaskDescriptionStranded = "stranded"
+
 	// Task Statuses that are currently used only by the UI, and in tests
 	// (these may be used in old tasks)
 	TaskSystemUnresponse = "system-unresponsive"

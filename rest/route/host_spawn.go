@@ -452,7 +452,7 @@ func (h *hostChangeRDPPasswordHandler) Parse(ctx context.Context, r *http.Reques
 	}
 
 	h.rdpPassword = model.FromAPIString(hostModify.RDPPwd)
-	if !cloud.ValidateRDPPassword(h.rdpPassword) {
+	if !host.ValidateRDPPassword(h.rdpPassword) {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "invalid password",

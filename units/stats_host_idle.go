@@ -172,12 +172,13 @@ func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 func (j *collectHostIdleDataJob) getHostStatsMessage(cost float64, idleTime time.Duration) message.Composer {
 	// post host idle time message
 	msg := message.Fields{
-		"stat":      "host-idle",
-		"distro":    j.host.Distro.Id,
-		"provider":  j.host.Distro.Provider,
-		"host":      j.host.Id,
-		"status":    j.host.Status,
-		"idle_secs": idleTime.Seconds(),
+		"stat":         "host-idle",
+		"distro":       j.host.Distro.Id,
+		"provider":     j.host.Distro.Provider,
+		"provisioning": j.host.Distro.BootstrapSettings.Method,
+		"host":         j.host.Id,
+		"status":       j.host.Status,
+		"idle_secs":    idleTime.Seconds(),
 	}
 
 	if strings.HasPrefix(j.host.Distro.Provider, "ec2") {
@@ -217,6 +218,7 @@ func (j *collectHostIdleDataJob) getTaskStartStatsMessage() message.Composer {
 		"host_id":                j.host.Id,
 		"project":                j.task.Project,
 		"provider":               j.host.Distro.Provider,
+		"provisioning":           j.host.Distro.BootstrapSettings.Method,
 		"requester":              j.task.Requester,
 		"scheduled_latency_secs": j.task.StartTime.Sub(j.task.ScheduledTime).Seconds(),
 		"stat":                   "task-start-stats",

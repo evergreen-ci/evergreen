@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
@@ -20,16 +19,6 @@ import (
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 )
-
-// each regex matches one of the 5 categories listed here:
-// https://technet.microsoft.com/en-us/library/cc786468(v=ws.10).aspx
-var passwordRegexps = []*regexp.Regexp{
-	regexp.MustCompile(`[\p{Ll}]`), // lowercase letter
-	regexp.MustCompile(`[\p{Lu}]`), // uppercase letter
-	regexp.MustCompile(`[0-9]`),
-	regexp.MustCompile(`[~!@#$%^&*_\-+=|\\\(\){}\[\]:;"'<>,.?/` + "`]"),
-	regexp.MustCompile(`[\p{Lo}]`), // letters without upper/lower variants (ex: Japanese)
-}
 
 const (
 	MaxSpawnHostsPerUser                = 3
@@ -239,6 +228,17 @@ func TerminateSpawnHost(ctx context.Context, host *host.Host, settings *evergree
 	return nil
 }
 
+func ModifySpawnHost(ctx context.Context, host *host.Host, opts host.HostModifyOptions, settings *evergreen.Settings) error {
+	cloudHost, err := GetCloudHost(ctx, host, settings)
+	if err != nil {
+		return err
+	}
+	if err = cloudHost.ModifyHost(ctx, opts); err != nil {
+		return err
+	}
+	return nil
+}
+
 func MakeExtendedSpawnHostExpiration(host *host.Host, extendBy time.Duration) (time.Time, error) {
 	newExp := host.ExpirationTime.Add(extendBy)
 	remainingDuration := newExp.Sub(time.Now()) //nolint
@@ -247,25 +247,4 @@ func MakeExtendedSpawnHostExpiration(host *host.Host, extendBy time.Duration) (t
 	}
 
 	return newExp, nil
-}
-
-// XXX: if modifying any of the password validation logic, you changes must
-// also be ported into public/static/js/directives/directives.spawn.js
-func ValidateRDPPassword(password string) bool {
-	// Golang regex doesn't support lookarounds, so we can't use
-	// the regex as found in public/static/js/directives/directives.spawn.js
-	if len([]rune(password)) < 6 || len([]rune(password)) > 255 {
-		return false
-	}
-
-	// valid passwords need to match 3 of 5 categories listed on:
-	// https://technet.microsoft.com/en-us/library/cc786468(v=ws.10).aspx
-	matchedCategories := 0
-	for _, regex := range passwordRegexps {
-		if regex.MatchString(password) {
-			matchedCategories++
-		}
-	}
-
-	return matchedCategories >= 3
 }

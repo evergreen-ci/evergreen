@@ -249,6 +249,14 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function(
         baseSvc.getResource(resource, action, config, callbacks);
     };
 
+    service.getAllowedInstanceTypes = function(action, provider, params, callbacks) {
+        var config = {
+            params: params
+        }
+        config.params['provider'] = provider
+        baseSvc.getResource(resource, action, config, callbacks);
+    }
+
     service.spawnHost = function(spawnInfo, data, callbacks) {
         var config = {
             data: data
@@ -291,6 +299,16 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function(
         config.data['expiration'] = newExpiration;
         baseSvc.postResource(resource, [], config, callbacks);
     };
+
+    service.updateInstanceType = function(action, hostId, newInstanceType, data, callbacks) {
+        var config = {
+            data: data
+        };
+        config.data['action'] = action;
+        config.data['host_id'] = hostId;
+        config.data['instance_type'] = newInstanceType;
+        baseSvc.postResource(resource, [], config, callbacks);
+    }
 
     return service;
 }]);
