@@ -3,8 +3,8 @@ package operations
 import (
 	"context"
 	"io/ioutil"
-	"strings"
 
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -54,8 +54,8 @@ func Patch() cli.Command {
 			args := c.Args()
 			params := &patchParams{
 				Project:     c.String(projectFlagName),
-				Variants:    splitCommas(c.StringSlice(variantsFlagName)),
-				Tasks:       splitCommas(c.StringSlice(tasksFlagName)),
+				Variants:    util.SplitCommas(c.StringSlice(variantsFlagName)),
+				Tasks:       util.SplitCommas(c.StringSlice(tasksFlagName)),
 				SkipConfirm: c.Bool(yesFlagName),
 				Description: c.String(patchDescriptionFlagName),
 				Finalize:    c.Bool(patchFinalizeFlagName),
@@ -132,8 +132,8 @@ func PatchFile() cli.Command {
 			confPath := c.Parent().String(confFlagName)
 			params := &patchParams{
 				Project:     c.String(projectFlagName),
-				Variants:    splitCommas(c.StringSlice(variantsFlagName)),
-				Tasks:       splitCommas(c.StringSlice(tasksFlagName)),
+				Variants:    util.SplitCommas(c.StringSlice(variantsFlagName)),
+				Tasks:       util.SplitCommas(c.StringSlice(tasksFlagName)),
 				Alias:       c.String(patchAliasFlagName),
 				SkipConfirm: c.Bool(yesFlagName),
 				Description: c.String(patchDescriptionFlagName),
@@ -175,12 +175,4 @@ func PatchFile() cli.Command {
 			return err
 		},
 	}
-}
-
-func splitCommas(originals []string) []string {
-	splitted := []string{}
-	for _, original := range originals {
-		splitted = append(splitted, strings.Split(original, ",")...)
-	}
-	return splitted
 }
