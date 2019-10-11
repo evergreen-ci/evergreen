@@ -88,7 +88,7 @@ func (s *taskDispatchService) Refresh(distroID string) error {
 func (s *taskDispatchService) ensureQueue(distroID string) (CachedDispatcher, error) {
 	d, err := distro.FindOne(distro.ById(distroID))
 	if err != nil {
-		return nil, errors.Wrapf(err, "Database error for find() by distro id '%s'", distroID)
+		return nil, errors.Wrapf(err, "database error for find() by distro id '%s'", distroID)
 	}
 
 	config, err := evergreen.GetConfig()
@@ -143,7 +143,7 @@ const (
 	SchedulableUnitDispatcher = "schedulableunit-task-dispatcher"
 )
 
-// cachedDispatcher is an in-memory representation of schedulable tasks for a distro.
+// basicCachedDispatcherImpl is an in-memory representation of schedulableUnits of tasks for a distro.
 //
 // TODO Pass all task group tasks, not just dispatchable ones, to the constructor.
 type basicCachedDispatcherImpl struct {
@@ -257,7 +257,7 @@ func (d *basicCachedDispatcherImpl) rebuild(items []TaskQueueItem) {
 			// If it's the first time encountering the task group, save it to the order
 			// and create an entry for it in the map. Otherwise, append to the
 			// TaskQueueItem array in the map.
-			id = compositeGroupId(item.Group, item.BuildVariant, item.Project, item.Version)
+			id = compositeGroupID(item.Group, item.BuildVariant, item.Project, item.Version)
 			if _, ok = units[id]; !ok {
 				order = append(order, id)
 				units[id] = schedulableUnit{
@@ -295,16 +295,16 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	var unit schedulableUnit
 	var ok bool
 	var next *TaskQueueItem
-	// If the host just ran a task group, give it one back.
+	// If the host just ran a task from a task group, give it another back.
 	if spec.Group != "" {
-		unit, ok = d.units[compositeGroupId(spec.Group, spec.BuildVariant, spec.Project, spec.Version)]
+		unit, ok = d.units[compositeGroupID(spec.Group, spec.BuildVariant, spec.Project, spec.Version)]
 		if ok {
 			if next = d.nextTaskGroupTask(unit); next != nil {
 				return next
 			}
 		}
-		// If the task group is not present in the task group map, it has been dispatched.
-		// Fall through to get a task that's not in that task group.
+		// If the task group is not present in the schedulableUnit map, then all its tasks are considered dispatched.
+		// Fall through to get a task that's not in this task group.
 	}
 
 	var numHosts int
@@ -324,7 +324,7 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 				grip.Critical(message.Fields{
 					"dispatcher":                    SchedulableUnitDispatcher,
 					"function":                      "FindNextTask",
-					"message":                       "schedulableUnit.maxHosts == 0 - this is not a task group; but schedulableUnit.tasks is empty - returning nil",
+					"message":                       "schedulableUnit.maxHosts == 0 - so this is not a task group; but schedulableUnit.tasks is empty - returning nil",
 					"distro_id":                     d.distroID,
 					"schedulableunit_id":            unit.id,
 					"schedulableunit_group":         unit.group,
@@ -339,10 +339,9 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 				return nil
 			}
 
-			// A non-task group schedulableUnit's tasks ([]TaskQueueItem) only contain a single element.
+			// A non-task group schedulableUnit's tasks ([]TaskQueueItem) only contains a single element.
 			item := unit.tasks[0]
-
-			nextTaskFromDB, err := task.FindOneId(item.Id)
+			nextTaskFromDB, err := task.FindOneId(unit.tasks[0].Id)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
 					"dispatcher": SchedulableUnitDispatcher,
@@ -429,12 +428,18 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	return nil
 }
 
-func compositeGroupId(group, variant, project, version string) string {
+func compositeGroupID(group, variant, project, version string) string {
 	return fmt.Sprintf("%s_%s_%s_%s", group, variant, project, version)
 }
 
 func (d *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *TaskQueueItem {
 	for i, nextTaskQueueItem := range unit.tasks {
+		// Dispatch this task if all of the following are true:
+		// (a) it's not marked as dispatched in the in-memory queue.
+		// (b) a record of the task exists in the database.
+		// (c) if it belongs to a task group bound to a single host - it's not blocked by a task within the task group that has finished, but did not succeed.
+		// (d) it never previously ran on another host.
+		// (e) all of its dependencies are satisfied.
 		if nextTaskQueueItem.IsDispatched == true {
 			continue
 		}
@@ -461,7 +466,19 @@ func (d *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *Tas
 			return nil
 		}
 
-		// Check if its dependencies have been met.
+		// Cache the task as dispatched from the in-memory queue's point of view.
+		// However, it won't actually be dispatched to a host if it doesn't satisfy all constraints.
+		d.units[unit.id].tasks[i].IsDispatched = true
+
+		if isBlockedSingleHostTaskGroup(unit, nextTaskFromDB) {
+			delete(d.units, unit.id)
+			return nil
+		}
+
+		if nextTaskFromDB.StartTime != util.ZeroTime {
+			continue
+		}
+
 		dependencyCaches := make(map[string]task.Task)
 		dependenciesMet, err := nextTaskFromDB.DependenciesMet(dependencyCaches)
 		if err != nil {
@@ -477,28 +494,16 @@ func (d *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *Tas
 		}
 
 		if !dependenciesMet {
-			// Regardless, set IsDispatch = true for this *TaskQueueItem, while awaiting the next refresh of the in-memory queue.
-			d.units[unit.id].tasks[i].IsDispatched = true
 			continue
 		}
 
-		if isBlockedSingleHostTaskGroup(unit, nextTaskFromDB) {
+		// If this is the last task in the schedulableUnit.tasks, delete the task group.
+		if i == len(unit.tasks)-1 {
 			delete(d.units, unit.id)
-			return nil
-		}
-
-		// Cache dispatched status.
-		d.units[unit.id].tasks[i].IsDispatched = true
-
-		// It's running (or already ran) on another host.
-		if nextTaskFromDB.StartTime != util.ZeroTime {
-			continue
 		}
 
 		return &nextTaskQueueItem
 	}
-	// If all the tasks have been dispatched, remove the unit.
-	delete(d.units, unit.id)
 
 	return nil
 }
