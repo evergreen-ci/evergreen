@@ -231,18 +231,6 @@ func checkInstanceTypeHostStopped(h *host.Host) error {
 	return nil
 }
 
-// checkVolumeNotAttached checks whether a volume is not attached to any hosts
-func checkVolumeNotAttached(volumeID string) error {
-	h, err := host.FindHostWithVolume(volumeID)
-	if err != nil {
-		return errors.Wrapf(err, "error checking whether volume '%s' is already attached to host", volumeID)
-	}
-	if h != nil {
-		return errors.Errorf("volume '%s' is already attached to a host", volumeID)
-	}
-	return nil
-}
-
 ////////////////////////////////////////////////////////////////////////
 //
 // POST /rest/v2/hosts/{host_id}/stop
@@ -404,9 +392,24 @@ func (h *attachVolumeHandler) Parse(ctx context.Context, r *http.Request) error 
 func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 
-	host, err := h.sc.FindHostByIdWithOwner(h.hostID, user)
+	targetHost, err := h.sc.FindHostByIdWithOwner(h.hostID, user)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting host '%s'", h.hostID))
+	}
+
+	// Check whether volume already attached to a host
+	attachedHost, err := host.FindHostWithVolume(h.VolumeID)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "error checking whether volume '%s' is already attached to host", h.VolumeID).Error(),
+		})
+	}
+	if attachedHost != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Errorf("volume '%s' is already attached to a host", h.VolumeID).Error(),
+		})
 	}
 
 	// TODO: Allow different providers/regions
@@ -422,7 +425,7 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if mgr.AttachVolume(ctx, host, h.VolumeID); err != nil {
+	if mgr.AttachVolume(ctx, targetHost, h.VolumeID); err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
