@@ -267,13 +267,14 @@ func (n *Notification) SetTaskMetadata(ID string, execution int) {
 }
 
 type NotificationStats struct {
-	GithubPullRequest int `json:"github_pull_request" bson:"github_pull_request" yaml:"github_pull_request"`
-	JIRAIssue         int `json:"jira_issue" bson:"jira_issue" yaml:"jira_issue"`
-	JIRAComment       int `json:"jira_comment" bson:"jira_comment" yaml:"jira_comment"`
-	EvergreenWebhook  int `json:"evergreen_webhook" bson:"evergreen_webhook" yaml:"evergreen_webhook"`
-	Email             int `json:"email" bson:"email" yaml:"email"`
-	Slack             int `json:"slack" bson:"slack" yaml:"slack"`
-	GithubMerge       int `json:"github_merge" bson:"github_merge" yaml:"github_merge"`
+	GithubPullRequest  int `json:"github_pull_request" bson:"github_pull_request" yaml:"github_pull_request"`
+	JIRAIssue          int `json:"jira_issue" bson:"jira_issue" yaml:"jira_issue"`
+	JIRAComment        int `json:"jira_comment" bson:"jira_comment" yaml:"jira_comment"`
+	EvergreenWebhook   int `json:"evergreen_webhook" bson:"evergreen_webhook" yaml:"evergreen_webhook"`
+	Email              int `json:"email" bson:"email" yaml:"email"`
+	Slack              int `json:"slack" bson:"slack" yaml:"slack"`
+	GithubMerge        int `json:"github_merge" bson:"github_merge" yaml:"github_merge"`
+	CommitQueueDequeue int `json:"commit_queue_dequeue" bson:"commit_queue_dequeue" yaml:"commit_queue_dequeue"`
 }
 
 func CollectUnsentNotificationStats() (*NotificationStats, error) {
@@ -329,6 +330,9 @@ func CollectUnsentNotificationStats() (*NotificationStats, error) {
 
 		case event.GithubMergeSubscriberType:
 			nStats.GithubMerge = data.Count
+
+		case event.CommitQueueDequeueSubscriberType:
+			nStats.CommitQueueDequeue = data.Count
 
 		default:
 			grip.Error(message.Fields{
