@@ -134,7 +134,7 @@ func TestCLIFetchSource(t *testing.T) {
 			patchData:   testPatch,
 			description: "sample patch",
 			base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
-			variants:    "all",
+			variants:    []string{"all"},
 			tasks:       []string{"all"},
 			finalize:    false,
 		}
@@ -370,7 +370,7 @@ func TestCLIFunctions(t *testing.T) {
 					patchData:   testPatch,
 					description: "sample patch",
 					base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
-					variants:    "all",
+					variants:    []string{"all"},
 					tasks:       []string{"all"},
 					finalize:    false,
 				}
@@ -434,7 +434,7 @@ func TestCLIFunctions(t *testing.T) {
 					patchData:   testPatch,
 					description: "sample patch",
 					base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
-					variants:    "all",
+					variants:    []string{"all"},
 					tasks:       []string{},
 					finalize:    false,
 				}
@@ -448,7 +448,7 @@ func TestCLIFunctions(t *testing.T) {
 					patchData:   testPatch,
 					description: "sample patch #2",
 					base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
-					variants:    "osx-108",
+					variants:    []string{"osx-108"},
 					tasks:       []string{"failing_test"},
 					finalize:    false,
 				}
@@ -491,7 +491,7 @@ func TestCLIFunctions(t *testing.T) {
 					patchData:   emptyPatch,
 					description: "sample patch",
 					base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
-					variants:    "all",
+					variants:    []string{"all"},
 					tasks:       []string{"all"},
 					finalize:    false}
 
@@ -561,7 +561,7 @@ func TestCLIFunctions(t *testing.T) {
 					patchData:   testPatch,
 					description: "sample patch #2",
 					base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
-					variants:    "all",
+					variants:    []string{"all"},
 					tasks:       []string{"failing_test"},
 					finalize:    false,
 				}
@@ -590,7 +590,7 @@ func TestCLIFunctions(t *testing.T) {
 					patchData:   testPatch,
 					description: "sample patch #2",
 					base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
-					variants:    "osx-108",
+					variants:    []string{"osx-108"},
 					tasks:       []string{"all"},
 					finalize:    false,
 				}

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestStringSliceIntersection(t *testing.T) {
@@ -32,4 +33,22 @@ func TestUniqueStrings(t *testing.T) {
 			So(out, ShouldResemble, []string{"a", "b", "c"})
 		})
 	})
+}
+
+func TestSplitCommas(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T){
+		"ReturnsUnmodifiedStringsWithoutCommas": func(t *testing.T) {
+			input := []string{"foo", "bar", "bat"}
+			assert.Equal(t, input, SplitCommas(input))
+		},
+		"ReturnsSplitCommaStrings": func(t *testing.T) {
+			input := []string{"foo,bar", "bat", "baz,qux,quux"}
+			expected := []string{"foo", "bar", "bat", "baz", "qux", "quux"}
+			assert.Equal(t, expected, SplitCommas(input))
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			testCase(t)
+		})
+	}
 }
