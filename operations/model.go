@@ -60,7 +60,7 @@ func findConfigFilePath(fn string) (string, error) {
 		return path, nil
 	}
 
-	return "", errors.New("could not evergreen cli client configuration on the local system")
+	return "", errors.New("could not find client configuration file on the local system")
 }
 
 // Client represents the data stored in the user's config file, by default
@@ -80,7 +80,7 @@ type ClientSettings struct {
 func NewClientSettings(fn string) (*ClientSettings, error) {
 	path, err := findConfigFilePath(fn)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could find file %s", fn)
+		return nil, errors.Wrapf(err, "could not find file %s", fn)
 	}
 
 	data, err := ioutil.ReadFile(path)
