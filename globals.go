@@ -73,7 +73,7 @@ const (
 
 	// Task descriptions
 	TaskDescriptionHeartbeat = "heartbeat"
-	TaskDescriptionStranded = "stranded"
+	TaskDescriptionStranded  = "stranded"
 
 	// Task Statuses that are currently used only by the UI, and in tests
 	// (these may be used in old tasks)
@@ -476,7 +476,7 @@ func IsGitHubPatchRequester(requester string) bool {
 }
 
 // Permissions-related constants
-var AclCheckingIsEnabled = false
+var AclCheckingIsEnabled = (os.Getenv("ACL_ENABLED") == "true")
 
 type PermissionLevel interface {
 	String() string
