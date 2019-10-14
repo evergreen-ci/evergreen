@@ -225,19 +225,19 @@ func (u *DBUser) RemoveRole(role string) error {
 	return nil
 }
 
-func (u *DBUser) HasPermission(resource, permission string, requiredLevel int) (bool, error) {
+func (u *DBUser) HasPermission(opts gimlet.PermissionOpts) (bool, error) {
 	roleManager := evergreen.GetEnvironment().RoleManager()
 	roles, err := roleManager.GetRoles(u.Roles())
 	if err != nil {
 		return false, errors.Wrap(err, "error getting roles")
 	}
-	roles, err = roleManager.FilterForResource(roles, resource)
+	roles, err = roleManager.FilterForResource(roles, opts.Resource, opts.ResourceType)
 	if err != nil {
 		return false, errors.Wrap(err, "error filtering resources")
 	}
 	for _, role := range roles {
-		level, hasPermission := role.Permissions[permission]
-		if hasPermission && level >= requiredLevel {
+		level, hasPermission := role.Permissions[opts.Permission]
+		if hasPermission && level >= opts.RequiredLevel {
 			return true, nil
 		}
 	}

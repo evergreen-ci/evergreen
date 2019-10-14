@@ -14,11 +14,12 @@ import (
 // BasicUsers which is passed into the constructor.
 type BasicUserManager struct {
 	users []basicUser
+	rm    RoleManager
 }
 
 // NewBasicUserManager is a constructor to create a BasicUserManager from
 // a list of basic users. It requires a user created by NewBasicUser.
-func NewBasicUserManager(users []User) (UserManager, error) {
+func NewBasicUserManager(users []User, rm RoleManager) (UserManager, error) {
 	catcher := grip.NewBasicCatcher()
 	basicUsers := []basicUser{}
 	var bu *basicUser
@@ -33,7 +34,7 @@ func NewBasicUserManager(users []User) (UserManager, error) {
 	if catcher.HasErrors() {
 		return nil, catcher.Resolve()
 	}
-	return &BasicUserManager{basicUsers}, nil
+	return &BasicUserManager{users: basicUsers, rm: rm}, nil
 }
 
 // GetUserByToken does a find by creating a temporary token from the index of
@@ -109,6 +110,8 @@ func (um *BasicUserManager) GetOrCreateUser(u User) (User, error) {
 	newUser := &basicUser{
 		ID:           u.Username(),
 		EmailAddress: u.Email(),
+		AccessRoles:  u.Roles(),
+		roleManager:  um.rm,
 	}
 	um.users = append(um.users, *newUser)
 	return newUser, nil

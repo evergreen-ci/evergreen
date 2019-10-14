@@ -14,6 +14,7 @@ import (
 
 func TestRoleRouteHandlers(t *testing.T) {
 	m := rolemanager.NewInMemoryRoleManager()
+	assert.NoError(t, m.RegisterPermissions([]string{"p1"}))
 	t.Run("TestRoleUpdate", testRoleUpdate(t, m))
 	t.Run("TestRoleRead", testRoleRead(t, m))
 }

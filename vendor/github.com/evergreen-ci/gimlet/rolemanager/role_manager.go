@@ -96,13 +96,14 @@ func (m *mongoBackedRoleManager) DeleteRole(id string) error {
 	return err
 }
 
-func (m *mongoBackedRoleManager) FilterForResource(roles []gimlet.Role, resource string) ([]gimlet.Role, error) {
+func (m *mongoBackedRoleManager) FilterForResource(roles []gimlet.Role, resource, resourceType string) ([]gimlet.Role, error) {
 	coll := m.client.Database(m.db).Collection(m.scopeColl)
 	ctx := context.Background()
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{
 				"resources": resource,
+				"type":      resourceType,
 			},
 		},
 		{
@@ -219,9 +220,12 @@ func (m *inMemoryRoleManager) DeleteRole(id string) error {
 	return nil
 }
 
-func (m *inMemoryRoleManager) FilterForResource(roles []gimlet.Role, resource string) ([]gimlet.Role, error) {
+func (m *inMemoryRoleManager) FilterForResource(roles []gimlet.Role, resource, resourceType string) ([]gimlet.Role, error) {
 	scopes := map[string]bool{}
 	for _, scope := range m.scopes {
+		if scope.Type != resourceType {
+			continue
+		}
 		if stringSliceContains(scope.Resources, resource) {
 			toAdd := m.findScopesRecursive(scope)
 			for _, scopeID := range toAdd {
