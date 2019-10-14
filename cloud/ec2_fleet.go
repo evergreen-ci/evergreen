@@ -190,7 +190,7 @@ func (m *ec2FleetManager) GetInstanceStatus(ctx context.Context, h *host.Host) (
 	return status, nil
 }
 
-func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, user string) error {
+func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, user, reason string) error {
 	if h.Status == evergreen.HostTerminated {
 		return errors.Errorf("Can not terminate %s - already marked as terminated!", h.Id)
 	}
@@ -234,7 +234,7 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 		})
 	}
 
-	return errors.Wrap(h.Terminate(user), "failed to terminate instance in db")
+	return errors.Wrap(h.Terminate(user, reason), "failed to terminate instance in db")
 }
 
 // StopInstance should do nothing for EC2 Fleet.

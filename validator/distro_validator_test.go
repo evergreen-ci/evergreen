@@ -460,11 +460,11 @@ func TestEnsureValidBootstrapSettings(t *testing.T) {
 			s.Communication = distro.CommunicationMethodSSH
 			assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{BootstrapSettings: s}, &evergreen.Settings{}))
 		},
-		"WindowsNoShellPath": func(t *testing.T, s distro.BootstrapSettings) {
+		"UnspecifiedShellPath": func(t *testing.T, s distro.BootstrapSettings) {
 			s.Method = distro.BootstrapMethodSSH
 			s.Communication = distro.CommunicationMethodSSH
 			s.ShellPath = ""
-			assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{Arch: distro.ArchWindowsAmd64, BootstrapSettings: s}, &evergreen.Settings{}))
+			assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{BootstrapSettings: s}, &evergreen.Settings{}))
 		},
 		"WindowsNoServiceUser": func(t *testing.T, s distro.BootstrapSettings) {
 			s.Method = distro.BootstrapMethodSSH

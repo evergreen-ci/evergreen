@@ -654,7 +654,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		}
 
 		// update the build's status when a test task isn't successful
-		if t.Status != evergreen.TaskSucceeded {
+		if evergreen.IsFailedTaskStatus(t.Status) {
 			err = b.UpdateStatus(evergreen.BuildFailed)
 			if err != nil {
 				err = errors.Wrap(err, "Error updating build status")
@@ -961,6 +961,12 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 		return nil
 	}
 
+	t.Details = apimodels.TaskEndDetail{
+		Description: evergreen.TaskDescriptionStranded,
+		Status:      evergreen.TaskFailed,
+		Type:        evergreen.CommandTypeSystem,
+	}
+
 	if err = t.MarkSystemFailed(); err != nil {
 		return errors.Wrap(err, "problem marking task failed")
 	}
@@ -968,10 +974,6 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 		return errors.Wrap(err, "problem resetting cached task")
 	}
 
-	detail := &apimodels.TaskEndDetail{
-		Status: evergreen.TaskFailed,
-		Type:   "system",
-	}
 	if time.Since(t.ActivatedTime) > task.UnschedulableThreshold {
 		updates := StatusChanges{}
 		if t.DisplayOnly {
@@ -980,19 +982,19 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 				if err != nil {
 					return errors.Wrap(err, "error finding execution task")
 				}
-				if err = MarkEnd(execTask, evergreen.MonitorPackage, time.Now(), detail, false, &updates); err != nil {
+				if err = MarkEnd(execTask, evergreen.MonitorPackage, time.Now(), &t.Details, false, &updates); err != nil {
 					return errors.Wrap(err, "error marking execution task as ended")
 				}
 			}
 		}
-		return errors.WithStack(MarkEnd(t, evergreen.MonitorPackage, time.Now(), detail, false, &updates))
+		return errors.WithStack(MarkEnd(t, evergreen.MonitorPackage, time.Now(), &t.Details, false, &updates))
 	}
 
 	if t.IsPartOfDisplay() {
 		return t.DisplayTask.SetResetWhenFinished()
 	}
 
-	return errors.Wrap(TryResetTask(t.Id, "mci", evergreen.MonitorPackage, detail), "problem resetting task")
+	return errors.Wrap(TryResetTask(t.Id, "mci", evergreen.MonitorPackage, &t.Details), "problem resetting task")
 }
 
 func UpdateDisplayTask(t *task.Task) error {

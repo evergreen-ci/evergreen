@@ -35,7 +35,7 @@ type Manager interface {
 	GetInstanceStatus(context.Context, *host.Host) (CloudStatus, error)
 
 	// TerminateInstance destroys the host in the underlying provider
-	TerminateInstance(context.Context, *host.Host, string) error
+	TerminateInstance(context.Context, *host.Host, string, string) error
 
 	// StopInstance stops an instance.
 	StopInstance(context.Context, *host.Host, string) error

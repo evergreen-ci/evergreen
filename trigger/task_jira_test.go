@@ -421,7 +421,7 @@ func TestCustomFields(t *testing.T) {
 				BuildVariant: "build12",
 				DisplayName:  taskName,
 				Details: apimodels.TaskEndDetail{
-					Type: "system",
+					Type: evergreen.CommandTypeSystem,
 				},
 				Project:  projectId,
 				Revision: versionRevision,
@@ -495,7 +495,7 @@ func TestMakeSpecificTaskStatus(t *testing.T) {
 	doc.Details.TimedOut = true
 	assert.Equal(evergreen.TaskSystemTimedOut, makeSpecificTaskStatus(doc))
 
-	doc.Details.Description = "heartbeat"
+	doc.Details.Description = evergreen.TaskDescriptionHeartbeat
 	assert.Equal(evergreen.TaskSystemUnresponse, makeSpecificTaskStatus(doc))
 }
 
@@ -521,7 +521,7 @@ func TestMakeSummaryPrefix(t *testing.T) {
 	doc.Details.Type = evergreen.CommandTypeSystem
 	assert.Equal("System Timed Out: ", makeSummaryPrefix(doc, 0))
 
-	doc.Details.Description = "heartbeat"
+	doc.Details.Description = evergreen.TaskDescriptionHeartbeat
 	assert.Equal("System Unresponsive: ", makeSummaryPrefix(doc, 0))
 
 	doc.Details.TimedOut = false

@@ -52,6 +52,7 @@ type monitor struct {
 	credentialsPath string
 	clientURL       string
 	clientPath      string
+	shellPath       string
 	logPrefix       string
 	jasperPort      int
 	port            int
@@ -84,6 +85,7 @@ func agentMonitor() cli.Command {
 		credentialsPathFlagName = "credentials"
 		clientURLFlagName       = "client_url"
 		clientPathFlagName      = "client_path"
+		shellPathFlagName       = "shell_path"
 		logPrefixFlagName       = "log_prefix"
 		jasperPortFlagName      = "jasper_port"
 		portFlagName            = "port"
@@ -111,6 +113,11 @@ func agentMonitor() cli.Command {
 				Usage: "the name of the agent's evergreen binary",
 			},
 			cli.StringFlag{
+				Name:  shellPathFlagName,
+				Value: "bash",
+				Usage: "the path to the shell for starting the agent",
+			},
+			cli.StringFlag{
 				Name:  logPrefixFlagName,
 				Value: monitorLoggerName,
 				Usage: "the prefix for the monitor's log name",
@@ -129,6 +136,7 @@ func agentMonitor() cli.Command {
 		Before: mergeBeforeFuncs(
 			requireStringFlag(clientURLFlagName),
 			requireStringFlag(clientPathFlagName),
+			requireStringFlag(shellPathFlagName),
 			requireIntValueBetween(jasperPortFlagName, minPort, maxPort),
 			requireIntValueBetween(portFlagName, minPort, maxPort),
 			func(*cli.Context) error {
@@ -141,6 +149,7 @@ func agentMonitor() cli.Command {
 				credentialsPath: c.String(credentialsPathFlagName),
 				clientURL:       c.String(clientURLFlagName),
 				clientPath:      c.String(clientPathFlagName),
+				shellPath:       c.String(shellPathFlagName),
 				jasperPort:      c.Int(jasperPortFlagName),
 				port:            c.Int(portFlagName),
 				logPrefix:       c.String(logPrefixFlagName),
@@ -317,7 +326,7 @@ func (m *monitor) createAgentProcess(ctx context.Context, retry util.RetryArgs) 
 
 	if err = util.RetryWithArgs(ctx, func() (bool, error) {
 		cmd := m.jasperClient.CreateCommand(ctx).
-			Add([]string{"bash", "-l", "-c", strings.Join(agentCmdArgs, " ")}).
+			Add([]string{m.shellPath, "-l", "-c", strings.Join(agentCmdArgs, " ")}).
 			SetOutputSender(level.Info, grip.GetSender()).
 			SetErrorSender(level.Error, grip.GetSender()).
 			Environment(env).

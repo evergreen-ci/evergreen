@@ -156,7 +156,7 @@ func bootstrapUserData(ctx context.Context, settings *evergreen.Settings, h *hos
 		}
 	}
 
-	markDone, err := h.MarkUserDataDoneCommand()
+	markDone, err := h.MarkUserDataDoneCommands()
 	if err != nil {
 		return "", errors.Wrap(err, "error creating command to mark when user data is done")
 	}

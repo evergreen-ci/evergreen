@@ -1,6 +1,8 @@
 package commitqueue
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -13,12 +15,13 @@ const Collection = "commit_queue"
 
 var (
 	// bson fields for the CommitQueue struct
-	IdKey          = bsonutil.MustHaveTag(CommitQueue{}, "ProjectID")
-	QueueKey       = bsonutil.MustHaveTag(CommitQueue{}, "Queue")
-	ProcessingKey  = bsonutil.MustHaveTag(CommitQueue{}, "Processing")
-	IssueKey       = bsonutil.MustHaveTag(CommitQueueItem{}, "Issue")
-	VersionKey     = bsonutil.MustHaveTag(CommitQueueItem{}, "Version")
-	EnqueueTimeKey = bsonutil.MustHaveTag(CommitQueueItem{}, "EnqueueTime")
+	IdKey                    = bsonutil.MustHaveTag(CommitQueue{}, "ProjectID")
+	QueueKey                 = bsonutil.MustHaveTag(CommitQueue{}, "Queue")
+	ProcessingKey            = bsonutil.MustHaveTag(CommitQueue{}, "Processing")
+	ProcessingUpdatedTimeKey = bsonutil.MustHaveTag(CommitQueue{}, "ProcessingUpdatedTime")
+	IssueKey                 = bsonutil.MustHaveTag(CommitQueueItem{}, "Issue")
+	VersionKey               = bsonutil.MustHaveTag(CommitQueueItem{}, "Version")
+	EnqueueTimeKey           = bsonutil.MustHaveTag(CommitQueueItem{}, "EnqueueTime")
 )
 
 func updateOne(query interface{}, update interface{}) error {
@@ -89,7 +92,12 @@ func remove(id, issue string) error {
 func setProcessing(id string, status bool) error {
 	return updateOne(
 		bson.M{IdKey: id},
-		bson.M{"$set": bson.M{ProcessingKey: status}},
+		bson.M{
+			"$set": bson.M{
+				ProcessingKey:            status,
+				ProcessingUpdatedTimeKey: time.Now(),
+			},
+		},
 	)
 }
 

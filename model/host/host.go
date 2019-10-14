@@ -71,6 +71,7 @@ type Host struct {
 	// duplicate of the DispatchTime field in the above task
 	TaskDispatchTime time.Time `bson:"task_dispatch_time" json:"task_dispatch_time"`
 	ExpirationTime   time.Time `bson:"expiration_time,omitempty" json:"expiration_time"`
+	NoExpiration     bool      `bson:"no_expiration" json:"no_expiration"`
 
 	// creation is when the host document was inserted to the DB, start is when it was started on the cloud provider
 	CreationTime time.Time `bson:"creation_time" json:"creation_time"`
@@ -232,9 +233,11 @@ type ContainersOnParents struct {
 }
 
 type HostModifyOptions struct {
-	AddInstanceTags    []Tag
-	DeleteInstanceTags []string
-	InstanceType       string
+	AddInstanceTags    []Tag         // tags to add
+	DeleteInstanceTags []string      // tags to remove
+	InstanceType       string        // new instance type
+	NoExpiration       *bool         // whether host should never expire
+	AddHours           time.Duration // duration to extend expiration
 }
 
 const (
@@ -244,6 +247,9 @@ const (
 	InitSystemSystemd = "systemd"
 	InitSystemSysV    = "sysv"
 	InitSystemUpstart = "upstart"
+
+	// Max number of spawn hosts with no expiration for user
+	MaxSpawnhostsWithNoExpirationPerUser = 1
 )
 
 func (h *Host) GetTaskGroupString() string {
@@ -354,8 +360,8 @@ func (h *Host) SetRunning(user string) error {
 	return h.SetStatus(evergreen.HostRunning, user, "")
 }
 
-func (h *Host) SetTerminated(user string) error {
-	return h.SetStatus(evergreen.HostTerminated, user, "")
+func (h *Host) SetTerminated(user, reason string) error {
+	return h.SetStatus(evergreen.HostTerminated, user, reason)
 }
 
 func (h *Host) SetStopping(user string) error {
@@ -508,8 +514,8 @@ func (h *Host) ResetLastCommunicated() error {
 	return nil
 }
 
-func (h *Host) Terminate(user string) error {
-	err := h.SetTerminated(user)
+func (h *Host) Terminate(user, reason string) error {
+	err := h.SetTerminated(user, reason)
 	if err != nil {
 		return err
 	}
@@ -1667,36 +1673,46 @@ func StaleRunningTaskIDs(staleness time.Duration) ([]task.Task, error) {
 	return out, err
 }
 
-// AddTags adds the specified tags to the host document, or modifies
-// an existing tag if it can be modified.
-func (h *Host) AddTags(tags []Tag) {
-	for _, new := range tags {
-		found := false
-		for i, old := range h.InstanceTags {
-			if old.Key == new.Key {
-				found = true
-				if old.CanBeModified {
-					h.InstanceTags[i] = new
-				}
-				break
+func (h *Host) addTag(new Tag, hasPermissions bool) {
+	for i, old := range h.InstanceTags {
+		if old.Key == new.Key {
+			if old.CanBeModified || hasPermissions {
+				h.InstanceTags[i] = new
 			}
+			return
 		}
-		if !found {
-			h.InstanceTags = append(h.InstanceTags, new)
+	}
+	h.InstanceTags = append(h.InstanceTags, new)
+	return
+}
+
+func (h *Host) deleteTag(key string, hasPermissions bool) {
+	for i, old := range h.InstanceTags {
+		if old.Key == key {
+			if old.CanBeModified || hasPermissions {
+				h.InstanceTags = append(h.InstanceTags[:i], h.InstanceTags[i+1:]...)
+			}
+			return
 		}
+	}
+	return
+}
+
+// AddTags adds the specified tags to the host document, or modifies
+// an existing tag if it can be modified. Does not allow changes to
+// tags set by Evergreen.
+func (h *Host) AddTags(tags []Tag) {
+	for _, tag := range tags {
+		h.addTag(tag, false)
 	}
 }
 
 // DeleteTags removes tags specified by their keys, only if those
-// keys are allowed to be deleted.
+// keys are allowed to be deleted. Does not allow changes to tags
+// set by Evergreen.
 func (h *Host) DeleteTags(keys []string) {
 	for _, key := range keys {
-		for i, tag := range h.InstanceTags {
-			if tag.Key == key && tag.CanBeModified {
-				h.InstanceTags = append(h.InstanceTags[:i], h.InstanceTags[i+1:]...)
-				break
-			}
-		}
+		h.deleteTag(key, false)
 	}
 }
 
@@ -1731,4 +1747,76 @@ func (h *Host) SetInstanceType(instanceType string) error {
 	}
 	h.InstanceType = instanceType
 	return nil
+}
+
+// CountSpawnhostsWithNoExpirationByUser returns a count of all hosts associated
+// with a given users that are considered up and should never expire.
+func CountSpawnhostsWithNoExpirationByUser(user string) (int, error) {
+	query := db.Query(bson.M{
+		StartedByKey:    user,
+		NoExpirationKey: true,
+		StatusKey:       bson.M{"$in": evergreen.UpHostStatus},
+	})
+	return Count(query)
+}
+
+// FindSpawnhostsWithNoExpirationToExtend returns all hosts that are set to never
+// expire but have their expiration time within the next day and are still up.
+func FindSpawnhostsWithNoExpirationToExtend() ([]Host, error) {
+	query := db.Query(bson.M{
+		UserHostKey:       true,
+		NoExpirationKey:   true,
+		StatusKey:         bson.M{"$in": evergreen.UpHostStatus},
+		ExpirationTimeKey: bson.M{"$lte": time.Now().Add(24 * time.Hour)},
+	})
+
+	return Find(query)
+}
+
+func makeExpireOnTag(expireOnValue string) Tag {
+	const expireOnKey = "expire-on"
+	return Tag{
+		Key:           expireOnKey,
+		Value:         expireOnValue,
+		CanBeModified: false,
+	}
+}
+
+// MarkShouldNotExpire marks a host as one that should not expire
+// and updates its expiration time to avoid early reaping.
+func (h *Host) MarkShouldNotExpire(expireOnValue string) error {
+	h.NoExpiration = true
+	h.ExpirationTime = time.Now().AddDate(0, 0, 7)
+	h.addTag(makeExpireOnTag(expireOnValue), true)
+	return UpdateOne(
+		bson.M{
+			IdKey: h.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				NoExpirationKey:   h.NoExpiration,
+				ExpirationTimeKey: h.ExpirationTime,
+				InstanceTagsKey:   h.InstanceTags,
+			},
+		},
+	)
+}
+
+// MarkShouldExpire resets a host's expiration to expire like
+// a normal spawn host, after 24 hours.
+func (h *Host) MarkShouldExpire(expireOnValue string) error {
+	h.NoExpiration = false
+	h.ExpirationTime = time.Now().Add(24 * time.Hour)
+	h.addTag(makeExpireOnTag(expireOnValue), true)
+	return UpdateOne(bson.M{
+		IdKey: h.Id,
+	},
+		bson.M{
+			"$set": bson.M{
+				NoExpirationKey:   h.NoExpiration,
+				ExpirationTimeKey: h.ExpirationTime,
+				InstanceTagsKey:   h.InstanceTags,
+			},
+		},
+	)
 }

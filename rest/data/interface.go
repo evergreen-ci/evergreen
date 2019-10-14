@@ -148,7 +148,7 @@ type Connector interface {
 	// FindAllDistros is a method to find a sorted list of all distros.
 	FindAllDistros() ([]distro.Distro, error)
 	// UpdateDistro is a method that updates a given distro
-	UpdateDistro(distro *distro.Distro) error
+	UpdateDistro(*distro.Distro, *distro.Distro) error
 	// FindDistroById is a method to delete the distro matching the given distroId.
 	DeleteDistroById(string) error
 	// CreateDistro is a method to insert a given distro.

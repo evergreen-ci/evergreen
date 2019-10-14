@@ -274,7 +274,7 @@ func TestSetHostTerminated(t *testing.T) {
 			" termination time in both the in-memory and database copies of"+
 			" the host", func() {
 
-			So(host.Terminate(evergreen.User), ShouldBeNil)
+			So(host.Terminate(evergreen.User, ""), ShouldBeNil)
 			So(host.Status, ShouldEqual, evergreen.HostTerminated)
 			So(host.TerminationTime.IsZero(), ShouldBeFalse)
 
@@ -3672,4 +3672,101 @@ func TestSetInstanceType(t *testing.T) {
 	foundHost, err := FindOneId(h.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, newInstanceType, foundHost.InstanceType)
+}
+
+func TestCountSpawnhostsWithNoExpirationByUser(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	hosts := []Host{
+		{
+			Id:           "host-1",
+			Status:       evergreen.HostRunning,
+			StartedBy:    "user-1",
+			NoExpiration: true,
+		},
+		{
+			Id:           "host-2",
+			Status:       evergreen.HostRunning,
+			StartedBy:    "user-1",
+			NoExpiration: false,
+		},
+		{
+			Id:           "host-3",
+			Status:       evergreen.HostTerminated,
+			StartedBy:    "user-1",
+			NoExpiration: true,
+		},
+		{
+			Id:           "host-4",
+			Status:       evergreen.HostRunning,
+			StartedBy:    "user-2",
+			NoExpiration: true,
+		},
+		{
+			Id:           "host-5",
+			Status:       evergreen.HostStarting,
+			StartedBy:    "user-2",
+			NoExpiration: true,
+		},
+	}
+	for _, h := range hosts {
+		assert.NoError(t, h.Insert())
+	}
+	count, err := CountSpawnhostsWithNoExpirationByUser("user-1")
+	assert.NoError(t, err)
+	assert.Equal(t, 1, count)
+	count, err = CountSpawnhostsWithNoExpirationByUser("user-2")
+	assert.NoError(t, err)
+	assert.Equal(t, 2, count)
+	count, err = CountSpawnhostsWithNoExpirationByUser("user-3")
+	assert.NoError(t, err)
+	assert.Equal(t, 0, count)
+}
+
+func TestFindSpawnhostsWithNoExpirationToExtend(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	hosts := []Host{
+		{
+			Id:             "host-1",
+			UserHost:       true,
+			Status:         evergreen.HostRunning,
+			NoExpiration:   true,
+			ExpirationTime: time.Now(),
+		},
+		{
+			Id:             "host-2",
+			UserHost:       true,
+			Status:         evergreen.HostRunning,
+			NoExpiration:   false,
+			ExpirationTime: time.Now(),
+		},
+		{
+			Id:             "host-3",
+			UserHost:       true,
+			Status:         evergreen.HostTerminated,
+			NoExpiration:   true,
+			ExpirationTime: time.Now(),
+		},
+		{
+			Id:             "host-4",
+			UserHost:       true,
+			Status:         evergreen.HostRunning,
+			NoExpiration:   true,
+			ExpirationTime: time.Now().AddDate(1, 0, 0),
+		},
+		{
+			Id:             "host-5",
+			UserHost:       false,
+			Status:         evergreen.HostRunning,
+			NoExpiration:   true,
+			ExpirationTime: time.Now(),
+		},
+	}
+	for _, h := range hosts {
+		assert.NoError(t, h.Insert())
+	}
+
+	foundHosts, err := FindSpawnhostsWithNoExpirationToExtend()
+	assert.NoError(t, err)
+	assert.Len(t, foundHosts, 1)
+	assert.Equal(t, "host-1", foundHosts[0].Id)
 }

@@ -572,9 +572,28 @@ func TestIncludePatchDependencies(t *testing.T) {
 			So(len(pairs), ShouldEqual, 0)
 		})
 	})
+	Convey("With a task that depends on task groups", t, func() {
+		p := &Project{
+			Tasks: []ProjectTask{
+				{Name: "a", DependsOn: []TaskUnitDependency{{Name: "*", Variant: "*"}}},
+				{Name: "b"},
+			},
+			TaskGroups: []TaskGroup{
+				{Name: "task-group", Tasks: []string{"b"}},
+			},
+			BuildVariants: []BuildVariant{
+				{Name: "variant-with-group", Tasks: []BuildVariantTaskUnit{{Name: "task-group"}}},
+				{Name: "initial-variant", Tasks: []BuildVariantTaskUnit{{Name: "a"}}},
+			},
+		}
+
+		initDep := TVPair{TaskName: "a", Variant: "initial-variant"}
+		pairs := IncludePatchDependencies(p, []TVPair{initDep})
+		So(pairs, ShouldHaveLength, 2)
+		So(initDep, ShouldBeIn, pairs)
+	})
 
 }
-
 func TestVariantTasksToTVPairs(t *testing.T) {
 	assert := assert.New(t)
 

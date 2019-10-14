@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/csrf"
@@ -241,7 +242,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	// Waterfall pages
 	app.AddRoute("/").Wrap(needsContext).Handler(uis.waterfallPage).Get()
 	app.AddRoute("/waterfall").Wrap(needsContext).Handler(uis.waterfallPage).Get()
-	app.AddRoute("/waterfall/{project_id}").Wrap(needsContext).Handler(uis.waterfallPage).Get()
+	app.AddRoute("/waterfall/{project_id}").Wrap(needsContext, route.RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksView)).Handler(uis.waterfallPage).Get()
 
 	// Timeline page
 
@@ -345,6 +346,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/spawn/hosts").Wrap(needsLogin, needsContext).Handler(uis.getSpawnedHosts).Get()
 	app.AddRoute("/spawn/distros").Wrap(needsLogin, needsContext).Handler(uis.listSpawnableDistros).Get()
 	app.AddRoute("/spawn/keys").Wrap(needsLogin, needsContext).Handler(uis.getUserPublicKeys).Get()
+	app.AddRoute("/spawn/types").Wrap(needsLogin, needsContext).Handler(uis.getAllowedInstanceTypes).Get()
 
 	// User settings
 	app.AddRoute("/settings").Wrap(needsLogin, needsContext).Handler(uis.userSettingsPage).Get()

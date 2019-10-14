@@ -912,6 +912,7 @@ type APIAWSConfig struct {
 	Bucket               APIString   `json:"bucket"`
 	S3BaseURL            APIString   `json:"s3_base_url"`
 	DefaultSecurityGroup APIString   `json:"default_security_group"`
+	AllowedInstanceTypes []APIString `json:"allowed_instance_types"`
 
 	// Legacy
 	EC2Secret APIString `json:"aws_secret"`
@@ -933,6 +934,9 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 		a.Bucket = ToAPIString(v.Bucket)
 		a.S3BaseURL = ToAPIString(v.S3BaseURL)
 		a.DefaultSecurityGroup = ToAPIString(v.DefaultSecurityGroup)
+		for _, t := range v.AllowedInstanceTypes {
+			a.AllowedInstanceTypes = append(a.AllowedInstanceTypes, ToAPIString(t))
+		}
 
 		// Legacy
 		a.EC2Secret = ToAPIString(v.EC2Secret)
@@ -970,6 +974,11 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		}
 		config.EC2Keys = append(config.EC2Keys, key)
 	}
+
+	for _, t := range a.AllowedInstanceTypes {
+		config.AllowedInstanceTypes = append(config.AllowedInstanceTypes, FromAPIString(t))
+	}
+
 	return config, nil
 }
 

@@ -45,6 +45,7 @@ var (
 	TaskDispatchTimeKey          = bsonutil.MustHaveTag(Host{}, "TaskDispatchTime")
 	CreateTimeKey                = bsonutil.MustHaveTag(Host{}, "CreationTime")
 	ExpirationTimeKey            = bsonutil.MustHaveTag(Host{}, "ExpirationTime")
+	NoExpirationKey              = bsonutil.MustHaveTag(Host{}, "NoExpiration")
 	TerminationTimeKey           = bsonutil.MustHaveTag(Host{}, "TerminationTime")
 	LTCTimeKey                   = bsonutil.MustHaveTag(Host{}, "LastTaskCompletedTime")
 	LTCTaskKey                   = bsonutil.MustHaveTag(Host{}, "LastTask")
@@ -116,7 +117,7 @@ func ByUserWithRunningStatus(user string) db.Q {
 func IsLive() bson.M {
 	return bson.M{
 		StartedByKey: evergreen.User,
-		StatusKey:    bson.M{"$in": evergreen.UpHostStatus},
+		StatusKey:    bson.M{"$in": evergreen.ActiveStatus},
 	}
 }
 
@@ -194,15 +195,6 @@ func runningHostsQuery(distroID string) bson.M {
 func CountRunningHosts(distroID string) (int, error) {
 	num, err := Count(db.Query(runningHostsQuery(distroID)))
 	return num, errors.Wrap(err, "problem finding running hosts")
-}
-
-func AllRunningHosts(distroID string) (HostGroup, error) {
-	allHosts, err := Find(db.Query(runningHostsQuery(distroID)))
-	if err != nil {
-		return nil, errors.Wrap(err, "Error finding live hosts")
-	}
-
-	return allHosts, nil
 }
 
 // AllActiveHosts produces a HostGroup for all hosts with UpHost

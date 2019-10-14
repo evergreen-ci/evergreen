@@ -39,8 +39,12 @@ func (cloudHost *CloudHost) IsUp(ctx context.Context) (bool, error) {
 	return cloudHost.CloudMgr.IsUp(ctx, cloudHost.Host)
 }
 
-func (cloudHost *CloudHost) TerminateInstance(ctx context.Context, user string) error {
-	return cloudHost.CloudMgr.TerminateInstance(ctx, cloudHost.Host, user)
+func (cloudHost *CloudHost) ModifyHost(ctx context.Context, opts host.HostModifyOptions) error {
+	return cloudHost.CloudMgr.ModifyHost(ctx, cloudHost.Host, opts)
+}
+
+func (cloudHost *CloudHost) TerminateInstance(ctx context.Context, user, reason string) error {
+	return cloudHost.CloudMgr.TerminateInstance(ctx, cloudHost.Host, user, reason)
 }
 
 func (cloudHost *CloudHost) StopInstance(ctx context.Context, user string) error {

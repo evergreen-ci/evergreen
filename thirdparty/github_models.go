@@ -1,6 +1,9 @@
 package thirdparty
 
-import "github.com/pkg/errors"
+import (
+	"github.com/evergreen-ci/gimlet"
+	"github.com/pkg/errors"
+)
 
 type GithubLoginUser struct {
 	Login            string
@@ -18,7 +21,7 @@ func (u *GithubLoginUser) IsNil() bool         { return u == nil }
 func (u *GithubLoginUser) GetAPIKey() string   { return "" }
 func (u *GithubLoginUser) Roles() []string     { return []string{} }
 
-func (u *GithubLoginUser) HasPermission(string, string, int) (bool, error) {
+func (u *GithubLoginUser) HasPermission(gimlet.PermissionOpts) (bool, error) {
 	return false, errors.New("HasPermission has not been implemented for GithubLoginUser")
 }
 

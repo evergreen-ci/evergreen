@@ -110,7 +110,17 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 	nextItem := cq.Next()
-	if nextItem == nil || cq.Processing {
+	if nextItem == nil {
+		return
+	}
+	if cq.Processing {
+		grip.Info(message.Fields{
+			"source":             "commit queue",
+			"job_id":             j.ID(),
+			"item_id":            nextItem.Issue,
+			"project_id":         cq.ProjectID,
+			"processing_seconds": time.Since(cq.ProcessingUpdatedTime).Seconds(),
+		})
 		return
 	}
 	j.AddError(errors.Wrap(cq.SetProcessing(true), "can't set processing to true"))

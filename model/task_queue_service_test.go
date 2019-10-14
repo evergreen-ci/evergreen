@@ -1,7 +1,5 @@
 package model
 
-// TODO Test for dependencies for task(s) within a task group
-
 import (
 	"fmt"
 	"strconv"
@@ -28,23 +26,268 @@ func TestTaskDAGDispatchServiceSuite(t *testing.T) {
 	suite.Run(t, new(taskDAGDispatchServiceSuite))
 }
 
-func (s *taskDAGDispatchServiceSuite) TestRealWorldExample() {
+func (s *taskDAGDispatchServiceSuite) TestOutsideTasksWithTaskGroupDependencies() {
 	s.Require().NoError(db.ClearCollections(task.Collection))
 	s.Require().NoError(db.ClearCollections(host.Collection))
+	distroID := "distro_1"
+	items := []TaskQueueItem{}
+
+	t1 := task.Task{
+		Id:                "taskgroup_task1",
+		BuildId:           "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+		TaskGroup:         "tg_compile_and_test",
+		TaskGroupMaxHosts: 1,
+		StartTime:         util.ZeroTime,
+		BuildVariant:      "archlinux",
+		Version:           "5d8cd23da4cf4747f4210333",
+		Project:           "genny",
+		Activated:         true,
+		ActivatedBy:       "",
+		DistroId:          "archlinux-test",
+		Requester:         "github_pull_request",
+		Status:            evergreen.TaskUndispatched,
+		Revision:          "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		TaskGroupOrder:    4,
+	}
+	item1 := TaskQueueItem{
+		Id:                  "taskgroup_task1",
+		IsDispatched:        false,
+		Group:               "tg_compile_and_test",
+		GroupMaxHosts:       1,
+		Version:             "5d8cd23da4cf4747f4210333",
+		BuildVariant:        "archlinux",
+		RevisionOrderNumber: 261,
+		Requester:           "github_pull_request",
+		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		Project:             "genny",
+		GroupIndex:          4,
+	}
+
+	//////////////////////////////////////////////////////////////////////////////
+
+	t2 := task.Task{
+		Id:                  "taskgroup_task2",
+		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+		TaskGroup:           "tg_compile_and_test",
+		TaskGroupMaxHosts:   1,
+		StartTime:           util.ZeroTime,
+		BuildVariant:        "archlinux",
+		Version:             "5d8cd23da4cf4747f4210333",
+		Project:             "genny",
+		Activated:           true,
+		ActivatedBy:         "",
+		DistroId:            "archlinux-test",
+		Requester:           "github_pull_request",
+		Status:              evergreen.TaskUndispatched,
+		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		RevisionOrderNumber: 261,
+		DependsOn:           []task.Dependency{},
+		TaskGroupOrder:      1,
+	}
+	item2 := TaskQueueItem{
+		Id:                  "taskgroup_task2",
+		IsDispatched:        false,
+		Group:               "tg_compile_and_test",
+		GroupMaxHosts:       1,
+		Version:             "5d8cd23da4cf4747f4210333",
+		BuildVariant:        "archlinux",
+		RevisionOrderNumber: 261,
+		Requester:           "github_pull_request",
+		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		Project:             "genny",
+		Dependencies:        []string{},
+		GroupIndex:          1,
+	}
+
+	//////////////////////////////////////////////////////////////////////////////
+
+	t3 := task.Task{
+		Id:                  "taskgroup_task3",
+		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+		TaskGroup:           "tg_compile_and_test",
+		TaskGroupMaxHosts:   1,
+		StartTime:           util.ZeroTime,
+		BuildVariant:        "archlinux",
+		Version:             "5d8cd23da4cf4747f4210333",
+		Project:             "genny",
+		Activated:           true,
+		ActivatedBy:         "",
+		DistroId:            "archlinux-test",
+		Requester:           "github_pull_request",
+		Status:              evergreen.TaskUndispatched,
+		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		RevisionOrderNumber: 261,
+		TaskGroupOrder:      3,
+	}
+	item3 := TaskQueueItem{
+		Id:                  "taskgroup_task3",
+		IsDispatched:        false,
+		Group:               "tg_compile_and_test",
+		GroupMaxHosts:       1,
+		Version:             "5d8cd23da4cf4747f4210333",
+		BuildVariant:        "archlinux",
+		RevisionOrderNumber: 261,
+		Requester:           "github_pull_request",
+		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		Project:             "genny",
+		GroupIndex:          3,
+	}
+
+	//////////////////////////////////////////////////////////////////////////////
+
+	t4 := task.Task{
+		Id:                  "taskgroup_task4",
+		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+		TaskGroup:           "tg_compile_and_test",
+		TaskGroupMaxHosts:   1,
+		StartTime:           util.ZeroTime,
+		BuildVariant:        "archlinux",
+		Version:             "5d8cd23da4cf4747f4210333",
+		Project:             "genny",
+		Activated:           true,
+		ActivatedBy:         "",
+		DistroId:            "archlinux-test",
+		Requester:           "github_pull_request",
+		Status:              evergreen.TaskUndispatched,
+		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		RevisionOrderNumber: 261,
+		TaskGroupOrder:      2,
+	}
+	item4 := TaskQueueItem{
+		Id:                  "taskgroup_task4",
+		IsDispatched:        false,
+		Group:               "tg_compile_and_test",
+		GroupMaxHosts:       1,
+		Version:             "5d8cd23da4cf4747f4210333",
+		BuildVariant:        "archlinux",
+		RevisionOrderNumber: 261,
+		Requester:           "github_pull_request",
+		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		Project:             "genny",
+		GroupIndex:          2,
+	}
+
+	//////////////////////////////////////////////////////////////////////////////
+
+	t5 := task.Task{
+		Id:                  "external_task5",
+		BuildId:             "build_1",
+		TaskGroup:           "",
+		TaskGroupMaxHosts:   0,
+		StartTime:           util.ZeroTime,
+		BuildVariant:        "archlinux",
+		Version:             "version_1",
+		Project:             "project_1",
+		Activated:           true,
+		ActivatedBy:         "",
+		DistroId:            "archlinux-test",
+		Requester:           "github_pull_request",
+		Status:              evergreen.TaskUndispatched,
+		Revision:            "revision_1",
+		RevisionOrderNumber: 262,
+		DependsOn: []task.Dependency{
+			task.Dependency{
+				TaskId:       "taskgroup_task3",
+				Status:       "success",
+				Unattainable: false,
+			},
+		},
+	}
+	item5 := TaskQueueItem{
+		Id:                  "external_task5",
+		IsDispatched:        false,
+		Group:               "",
+		GroupMaxHosts:       0,
+		Version:             "version_1",
+		BuildVariant:        "archlinux",
+		RevisionOrderNumber: 262,
+		Requester:           "github_pull_request",
+		Revision:            "revision_1",
+		Project:             "project_1",
+		Dependencies:        []string{"taskgroup_task3"},
+	}
+
+	s.Require().NoError(t1.Insert())
+	s.Require().NoError(t2.Insert())
+	s.Require().NoError(t3.Insert())
+	s.Require().NoError(t4.Insert())
+	s.Require().NoError(t5.Insert())
+	// items = append(items, item1, item2, item3, item4, item5)
+	items = append(items, item5, item1, item2, item3, item4)
+
+	s.taskQueue = TaskQueue{
+		Distro: distroID,
+		Queue:  items,
+	}
+
+	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.NoError(err)
+	s.Equal("distro_1", service.distroID)
+	s.Equal(60*time.Second, service.ttl)
+	s.NotEqual(util.ZeroTime, service.lastUpdated)
+
+	spec := TaskSpec{}
+
+	// 3 successive calls (regardless of the TaskSpec passed) will dispatch 3 task group tasks, per TaskGroupOrder.
+	next := service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal("taskgroup_task2", next.Id) // TaskGroupOrder: 1
+	next = service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal("taskgroup_task4", next.Id) // TaskGroupOrder: 2
+	next = service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal("taskgroup_task3", next.Id) // TaskGroupOrder: 3
+
+	// "taskgroup_task3" completes with "status": evergreen.TaskSucceeded.
+	err = setTaskStatus("taskgroup_task3", evergreen.TaskSucceeded)
+	s.Require().NoError(err)
+
+	// Fake a refresh of the in-memory queue.
+	items = []TaskQueueItem{}
+	items = append(items, item5, item1)
+	s.taskQueue.Queue = items
+
+	err = service.rebuild(s.taskQueue.Queue)
+	s.Require().NoError(err)
+
+	// "external_task5" can now be dispatched as its dependency "taskgroup_task3" has completed successfully.
+	next = service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal("external_task5", next.Id)
+
+	// The final task group task "taskgroup_task1" is dispatched
+	next = service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal("taskgroup_task1", next.Id)
+
+	// There are no more tasks to dispatch.
+	next = service.FindNextTask(spec)
+	s.Require().Nil(next)
+	next = service.FindNextTask(spec)
+	s.Require().Nil(next)
+	next = service.FindNextTask(spec)
+	s.Require().Nil(next)
+}
+
+func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
+	s.Require().NoError(db.ClearCollections(task.Collection))
+	s.Require().NoError(db.ClearCollections(host.Collection))
+	distroID := "distro_1"
+	items := []TaskQueueItem{}
 
 	// db.tasks.find({"build_id": "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10"}).pretty()
 
 	t1 := task.Task{
-		Id:                  "genny_archlinux_t_cmake_test_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+		Id:                  "task1",
 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
 		TaskGroup:           "tg_compile_and_test",
 		TaskGroupMaxHosts:   1,
-		TaskGroupOrder:      4,
-		StartTime:           time.Unix(0, 0),
+		StartTime:           util.ZeroTime,
 		BuildVariant:        "archlinux",
 		Version:             "5d8cd23da4cf4747f4210333",
 		Project:             "genny",
-		Activated:           false,
+		Activated:           true,
 		ActivatedBy:         "",
 		DistroId:            "archlinux-test",
 		Requester:           "github_pull_request",
@@ -54,34 +297,55 @@ func (s *taskDAGDispatchServiceSuite) TestRealWorldExample() {
 		DisplayName:         "t_cmake_test",
 		DependsOn: []task.Dependency{
 			task.Dependency{
-				TaskId:       "genny_archlinux_t_compile_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+				TaskId:       "task2",
 				Status:       "success",
 				Unattainable: false,
 			},
 			task.Dependency{
-				TaskId:       "genny_archlinux_t_python_test_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+				TaskId:       "task4",
 				Status:       "success",
 				Unattainable: false,
 			},
 			task.Dependency{
-				TaskId:       "genny_archlinux_t_lint_workloads_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+				TaskId:       "task3",
 				Status:       "success",
 				Unattainable: false,
 			},
 		},
+		// TaskGroupOrder:      4,
+	}
+	item1 := TaskQueueItem{
+		Id:                  "task1",
+		IsDispatched:        false,
+		DisplayName:         "t_cmake_test",
+		Group:               "tg_compile_and_test",
+		GroupMaxHosts:       1,
+		Version:             "5d8cd23da4cf4747f4210333",
+		BuildVariant:        "archlinux",
+		RevisionOrderNumber: 261,
+		Requester:           "github_pull_request",
+		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		Project:             "genny",
+		Dependencies: []string{
+			"task2",
+			"task4",
+			"task3",
+		},
+		// GroupIndex:          4,
 	}
 
+	//////////////////////////////////////////////////////////////////////////////
+
 	t2 := task.Task{
-		Id:                  "genny_archlinux_t_compile_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+		Id:                  "task2",
 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
 		TaskGroup:           "tg_compile_and_test",
 		TaskGroupMaxHosts:   1,
-		TaskGroupOrder:      1,
-		StartTime:           time.Unix(0, 0),
+		StartTime:           util.ZeroTime,
 		BuildVariant:        "archlinux",
 		Version:             "5d8cd23da4cf4747f4210333",
 		Project:             "genny",
-		Activated:           false,
+		Activated:           true,
 		ActivatedBy:         "",
 		DistroId:            "archlinux-test",
 		Requester:           "github_pull_request",
@@ -90,19 +354,36 @@ func (s *taskDAGDispatchServiceSuite) TestRealWorldExample() {
 		RevisionOrderNumber: 261,
 		DisplayName:         "t_compile",
 		DependsOn:           []task.Dependency{},
+		// TaskGroupOrder:      1,
+	}
+	item2 := TaskQueueItem{
+		Id:                  "task2",
+		IsDispatched:        false,
+		DisplayName:         "t_compile",
+		Group:               "tg_compile_and_test",
+		GroupMaxHosts:       1,
+		Version:             "5d8cd23da4cf4747f4210333",
+		BuildVariant:        "archlinux",
+		RevisionOrderNumber: 261,
+		Requester:           "github_pull_request",
+		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		Project:             "genny",
+		Dependencies:        []string{},
+		// GroupIndex:          1,
 	}
 
+	//////////////////////////////////////////////////////////////////////////////
+
 	t3 := task.Task{
-		Id:                  "genny_archlinux_t_lint_workloads_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+		Id:                  "task3",
 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
 		TaskGroup:           "tg_compile_and_test",
 		TaskGroupMaxHosts:   1,
-		TaskGroupOrder:      3,
-		StartTime:           time.Unix(0, 0),
+		StartTime:           util.ZeroTime,
 		BuildVariant:        "archlinux",
 		Version:             "5d8cd23da4cf4747f4210333",
 		Project:             "genny",
-		Activated:           false,
+		Activated:           true,
 		ActivatedBy:         "",
 		DistroId:            "archlinux-test",
 		Requester:           "github_pull_request",
@@ -112,51 +393,171 @@ func (s *taskDAGDispatchServiceSuite) TestRealWorldExample() {
 		DisplayName:         "t_lint_workloads",
 		DependsOn: []task.Dependency{
 			task.Dependency{
-				TaskId:       "genny_archlinux_t_compile_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+				TaskId:       "task2",
 				Status:       "success",
 				Unattainable: false,
 			},
 			task.Dependency{
-				TaskId:       "genny_archlinux_t_python_test_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+				TaskId:       "task4",
 				Status:       "success",
 				Unattainable: false,
 			},
 		},
+		// TaskGroupOrder:      3,
+	}
+	item3 := TaskQueueItem{
+		Id:                  "task3",
+		IsDispatched:        false,
+		DisplayName:         "t_lint_workloads",
+		Group:               "tg_compile_and_test",
+		GroupMaxHosts:       1,
+		Version:             "5d8cd23da4cf4747f4210333",
+		BuildVariant:        "archlinux",
+		RevisionOrderNumber: 261,
+		Requester:           "github_pull_request",
+		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		Project:             "genny",
+		Dependencies: []string{
+			"task2",
+			"task4",
+		},
+		// GroupIndex:          3,
 	}
 
+	//////////////////////////////////////////////////////////////////////////////
+
 	t4 := task.Task{
-		Id:                  "genny_archlinux_t_python_test_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+		Id:                  "task4",
 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
 		TaskGroup:           "tg_compile_and_test",
 		TaskGroupMaxHosts:   1,
-		TaskGroupOrder:      2,
-		StartTime:           time.Unix(0, 0),
+		StartTime:           util.ZeroTime,
 		BuildVariant:        "archlinux",
 		Version:             "5d8cd23da4cf4747f4210333",
 		Project:             "genny",
-		Activated:           false,
+		Activated:           true,
 		ActivatedBy:         "",
 		DistroId:            "archlinux-test",
 		Requester:           "github_pull_request",
 		Status:              evergreen.TaskUndispatched,
 		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
 		RevisionOrderNumber: 261,
-		DisplayName:         "",
+		DisplayName:         "t_python_test",
 		DependsOn: []task.Dependency{
 			task.Dependency{
-				TaskId:       "genny_archlinux_t_compile_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
+				TaskId:       "task2",
 				Status:       "success",
 				Unattainable: false,
 			},
 		},
+		// TaskGroupOrder:      2,
+	}
+	item4 := TaskQueueItem{
+		Id:                  "task4",
+		IsDispatched:        false,
+		DisplayName:         "t_python_test",
+		Group:               "tg_compile_and_test",
+		GroupMaxHosts:       1,
+		Version:             "5d8cd23da4cf4747f4210333",
+		BuildVariant:        "archlinux",
+		RevisionOrderNumber: 261,
+		Requester:           "github_pull_request",
+		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		Project:             "genny",
+		Dependencies: []string{
+			"task2",
+		},
+		// GroupIndex:          2,
 	}
 
 	s.Require().NoError(t1.Insert())
 	s.Require().NoError(t2.Insert())
 	s.Require().NoError(t3.Insert())
 	s.Require().NoError(t4.Insert())
+	items = append(items, item1, item2, item3, item4)
 
-	// 	> db.tasks.find({"build_id": "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10"},{"task_group": 1, "task_group_order": 1, "depends_on": 1}).pretty()
+	s.taskQueue = TaskQueue{
+		Distro: distroID,
+		Queue:  items,
+	}
+
+	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.NoError(err)
+	s.Equal("distro_1", service.distroID)
+	s.Equal(60*time.Second, service.ttl)
+	s.NotEqual(util.ZeroTime, service.lastUpdated)
+
+	spec := TaskSpec{}
+
+	// Only "task2" can be dispatched - the other 3 tasks cannot be dispatched as they all have unmet dependencies.
+	next := service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal("task2", next.Id)
+	next = service.FindNextTask(spec)
+	s.Require().Nil(next)
+	next = service.FindNextTask(spec)
+	s.Require().Nil(next)
+	next = service.FindNextTask(spec)
+	s.Require().Nil(next)
+
+	// "task2" completes with "status": evergreen.TaskSucceeded.
+	err = setTaskStatus("task2", evergreen.TaskSucceeded)
+	s.Require().NoError(err)
+
+	// Fake a refresh of the in-memory queue.
+	items = []TaskQueueItem{}
+	items = append(items, item1, item3, item4)
+	s.taskQueue.Queue = items
+
+	err = service.rebuild(s.taskQueue.Queue)
+	s.Require().NoError(err)
+
+	// Only "task4" can be dispatched - the other 2 tasks cannot be dispatched as they have unmet dependencies.
+	next = service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal("task4", next.Id)
+	next = service.FindNextTask(spec)
+	s.Require().Nil(next)
+	next = service.FindNextTask(spec)
+	s.Require().Nil(next)
+
+	// "task4" completes with "status": evergreen.TaskSucceeded
+	err = setTaskStatus("task4", evergreen.TaskSucceeded)
+	s.Require().NoError(err)
+
+	// Fake a refresh of the in-memory queue.
+	items = []TaskQueueItem{}
+	items = append(items, item1, item3)
+	s.taskQueue.Queue = items
+
+	err = service.rebuild(s.taskQueue.Queue)
+	s.Require().NoError(err)
+
+	// Only "task3" can be dispatched - the remaining task cannot be dispatched as it has an unmet dependency.
+	next = service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal("task3", next.Id)
+	next = service.FindNextTask(spec)
+	s.Require().Nil(next)
+
+	// "task4" completes with "status": evergreen.TaskSucceeded
+	err = setTaskStatus("task3", evergreen.TaskSucceeded)
+	s.Require().NoError(err)
+
+	// Fake a refresh of the in-memory queue.
+	items = []TaskQueueItem{}
+	items = append(items, item1)
+	s.taskQueue.Queue = items
+
+	err = service.rebuild(s.taskQueue.Queue)
+	s.Require().NoError(err)
+
+	// Finally, "task1" can be dispatched - all 3 of its dependencies have been satisfied.
+	next = service.FindNextTask(spec)
+	s.Require().NotNil(next)
+	s.Equal("task1", next.Id)
+	next = service.FindNextTask(spec)
+	s.Require().Nil(next)
 }
 
 func (s *taskDAGDispatchServiceSuite) SetupTest() {
@@ -236,7 +637,7 @@ func (s *taskDAGDispatchServiceSuite) SetupTest() {
 		t := task.Task{
 			Id:                ID,
 			DistroId:          distroID,
-			StartTime:         time.Unix(0, 0),
+			StartTime:         util.ZeroTime,
 			TaskGroup:         group,
 			BuildVariant:      variant,
 			Version:           version,
@@ -265,14 +666,14 @@ func (s *taskDAGDispatchServiceSuite) TestConstructor() {
 	s.Len(service.sorted, 100)
 
 	s.Len(service.taskGroups, 4, "")
-	s.Contains(service.taskGroups, compositeGroupId("group_1", "variant_1", "project_1", "version_1"))
-	s.Contains(service.taskGroups, compositeGroupId("group_2", "variant_1", "project_1", "version_1"))
-	s.Contains(service.taskGroups, compositeGroupId("group_1", "variant_2", "project_1", "version_1"))
-	s.Contains(service.taskGroups, compositeGroupId("group_1", "variant_1", "project_1", "version_2"))
-	s.Equal(len(service.taskGroups[compositeGroupId("group_1", "variant_1", "project_1", "version_1")].tasks), 20)
-	s.Equal(len(service.taskGroups[compositeGroupId("group_2", "variant_1", "project_1", "version_1")].tasks), 20)
-	s.Equal(len(service.taskGroups[compositeGroupId("group_1", "variant_2", "project_1", "version_1")].tasks), 20)
-	s.Equal(len(service.taskGroups[compositeGroupId("group_1", "variant_1", "project_1", "version_2")].tasks), 20)
+	s.Contains(service.taskGroups, compositeGroupID("group_1", "variant_1", "project_1", "version_1"))
+	s.Contains(service.taskGroups, compositeGroupID("group_2", "variant_1", "project_1", "version_1"))
+	s.Contains(service.taskGroups, compositeGroupID("group_1", "variant_2", "project_1", "version_1"))
+	s.Contains(service.taskGroups, compositeGroupID("group_1", "variant_1", "project_1", "version_2"))
+	s.Equal(len(service.taskGroups[compositeGroupID("group_1", "variant_1", "project_1", "version_1")].tasks), 20)
+	s.Equal(len(service.taskGroups[compositeGroupID("group_2", "variant_1", "project_1", "version_1")].tasks), 20)
+	s.Equal(len(service.taskGroups[compositeGroupID("group_1", "variant_2", "project_1", "version_1")].tasks), 20)
+	s.Equal(len(service.taskGroups[compositeGroupID("group_1", "variant_1", "project_1", "version_2")].tasks), 20)
 
 	expectedOrder := []string{
 		"0",  // ''
@@ -391,11 +792,11 @@ func (s *taskDAGDispatchServiceSuite) TestAddingSelfEdge() {
 		Id:                  "1",
 		BuildId:             "ops_manager_kubernetes_init_test_run_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
 		TaskGroup:           "",
-		StartTime:           time.Unix(0, 0),
+		StartTime:           util.ZeroTime,
 		BuildVariant:        "init_test_run",
 		Version:             "5d88953e2a60ed61eefe9561",
 		Project:             "ops-manager-kubernetes",
-		Activated:           false,
+		Activated:           true,
 		ActivatedBy:         "",
 		DistroId:            "archlinux-test",
 		Requester:           "patch_request",
@@ -443,11 +844,11 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 		Id:                  "1",
 		BuildId:             "ops_manager_kubernetes_init_test_run_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
 		TaskGroup:           "",
-		StartTime:           time.Unix(0, 0),
+		StartTime:           util.ZeroTime,
 		BuildVariant:        "init_test_run",
 		Version:             "5d88953e2a60ed61eefe9561",
 		Project:             "ops-manager-kubernetes",
-		Activated:           false,
+		Activated:           true,
 		ActivatedBy:         "",
 		DistroId:            "archlinux-test",
 		Requester:           "patch_request",
@@ -472,11 +873,11 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 		TaskGroup:           "e2e_core_task_group",
 		TaskGroupMaxHosts:   5,
 		TaskGroupOrder:      2,
-		StartTime:           time.Unix(0, 0),
+		StartTime:           util.ZeroTime,
 		BuildVariant:        "e2e_openshift_cloud_qa",
 		Version:             "5d88953e2a60ed61eefe9561",
 		Project:             "ops-manager-kubernetes",
-		Activated:           false,
+		Activated:           true,
 		ActivatedBy:         "",
 		DistroId:            "archlinux-test",
 		Requester:           "patch_request",
@@ -508,11 +909,11 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 		TaskGroup:           "e2e_core_task_group",
 		TaskGroupMaxHosts:   5,
 		TaskGroupOrder:      1,
-		StartTime:           time.Unix(0, 0),
+		StartTime:           util.ZeroTime,
 		BuildVariant:        "e2e_openshift_cloud_qa",
 		Version:             "5d88953e2a60ed61eefe9561",
 		Project:             "ops-manager-kubernetes",
-		Activated:           false,
+		Activated:           true,
 		ActivatedBy:         "",
 		DistroId:            "archlinux-test",
 		Requester:           "patch_request",
@@ -813,6 +1214,7 @@ func setTaskStatus(taskID string, status string) error {
 		},
 		bson.M{
 			"$set": bson.M{
+				// task.DispatchTimeKey: time.Now().Add(-1 * time.Minute),
 				task.StatusKey: status,
 			},
 		},
@@ -1076,7 +1478,7 @@ func (s *taskDAGDispatchServiceSuite) TestTaskGroupWithExternalDependency() {
 		Version:      "version_1",
 		Project:      "project_1",
 	}
-	taskGroupID := compositeGroupId(spec.Group, spec.BuildVariant, spec.Project, spec.Version)
+	taskGroupID := compositeGroupID(spec.Group, spec.BuildVariant, spec.Project, spec.Version)
 	taskGroup := service.taskGroups[taskGroupID]
 
 	next = service.FindNextTask(spec)
@@ -1277,7 +1679,7 @@ func (s *taskDispatchServiceSuite) SetupTest() {
 }
 
 func (s *taskDispatchServiceSuite) TestConstructor() {
-	service := newDistroTaskDispatchService(s.taskQueue, time.Minute)
+	service := newDistroTaskDispatchService(s.taskQueue, "", time.Minute)
 	//////////////////////////////////////////////////////////////////////////////
 	// basicCachedDispatcherImpl.order[0] = "0"
 	// basicCachedDispatcherImpl.order[1] = "group_1_variant_1_project_1_version_1"
@@ -1343,25 +1745,25 @@ func (s *taskDispatchServiceSuite) TestConstructor() {
 	s.Equal(60*time.Second, service.ttl)
 	s.NotEqual(util.ZeroTime, service.lastUpdated)
 
-	s.Contains(service.order, compositeGroupId("group_1", "variant_1", "project_1", "version_1"))
-	s.Contains(service.units, compositeGroupId("group_1", "variant_1", "project_1", "version_1"))
-	s.Len(service.units[compositeGroupId("group_1", "variant_1", "project_1", "version_1")].tasks, 20)
-	s.Equal(1, service.units[compositeGroupId("group_1", "variant_1", "project_1", "version_1")].maxHosts)
+	s.Contains(service.order, compositeGroupID("group_1", "variant_1", "project_1", "version_1"))
+	s.Contains(service.units, compositeGroupID("group_1", "variant_1", "project_1", "version_1"))
+	s.Len(service.units[compositeGroupID("group_1", "variant_1", "project_1", "version_1")].tasks, 20)
+	s.Equal(1, service.units[compositeGroupID("group_1", "variant_1", "project_1", "version_1")].maxHosts)
 
-	s.Contains(service.order, compositeGroupId("group_2", "variant_1", "project_1", "version_1"))
-	s.Contains(service.units, compositeGroupId("group_2", "variant_1", "project_1", "version_1"))
-	s.Len(service.units[compositeGroupId("group_2", "variant_1", "project_1", "version_1")].tasks, 20)
-	s.Equal(2, service.units[compositeGroupId("group_2", "variant_1", "project_1", "version_1")].maxHosts)
+	s.Contains(service.order, compositeGroupID("group_2", "variant_1", "project_1", "version_1"))
+	s.Contains(service.units, compositeGroupID("group_2", "variant_1", "project_1", "version_1"))
+	s.Len(service.units[compositeGroupID("group_2", "variant_1", "project_1", "version_1")].tasks, 20)
+	s.Equal(2, service.units[compositeGroupID("group_2", "variant_1", "project_1", "version_1")].maxHosts)
 
-	s.Contains(service.order, compositeGroupId("group_1", "variant_2", "project_1", "version_1"))
-	s.Contains(service.units, compositeGroupId("group_1", "variant_2", "project_1", "version_1"))
-	s.Len(service.units[compositeGroupId("group_1", "variant_2", "project_1", "version_1")].tasks, 20)
-	s.Equal(2, service.units[compositeGroupId("group_1", "variant_2", "project_1", "version_1")].maxHosts)
+	s.Contains(service.order, compositeGroupID("group_1", "variant_2", "project_1", "version_1"))
+	s.Contains(service.units, compositeGroupID("group_1", "variant_2", "project_1", "version_1"))
+	s.Len(service.units[compositeGroupID("group_1", "variant_2", "project_1", "version_1")].tasks, 20)
+	s.Equal(2, service.units[compositeGroupID("group_1", "variant_2", "project_1", "version_1")].maxHosts)
 
-	s.Contains(service.order, compositeGroupId("group_1", "variant_1", "project_1", "version_2"))
-	s.Contains(service.units, compositeGroupId("group_1", "variant_1", "project_1", "version_2"))
-	s.Len(service.units[compositeGroupId("group_1", "variant_1", "project_1", "version_2")].tasks, 20)
-	s.Equal(2, service.units[compositeGroupId("group_1", "variant_1", "project_1", "version_2")].maxHosts)
+	s.Contains(service.order, compositeGroupID("group_1", "variant_1", "project_1", "version_2"))
+	s.Contains(service.units, compositeGroupID("group_1", "variant_1", "project_1", "version_2"))
+	s.Len(service.units[compositeGroupID("group_1", "variant_1", "project_1", "version_2")].tasks, 20)
+	s.Equal(2, service.units[compositeGroupID("group_1", "variant_1", "project_1", "version_2")].maxHosts)
 
 	for i := 0; i < 100; i = i + 5 {
 		s.Contains(service.order, fmt.Sprintf("%d", i))
@@ -1374,13 +1776,21 @@ func (s *taskDispatchServiceSuite) TestConstructor() {
 }
 
 func (s *taskDispatchServiceSuite) TestEmptyService() {
+	s.Require().NoError(db.ClearCollections(task.Collection))
+	t := task.Task{
+		Id:        "a-standalone-task",
+		TaskGroup: "",
+		StartTime: util.ZeroTime,
+	}
+	s.Require().NoError(t.Insert())
+
 	s.taskQueue.Queue = []TaskQueueItem{
 		{
 			Id:    "a-standalone-task",
 			Group: "",
 		},
 	}
-	service := newDistroTaskDispatchService(s.taskQueue, time.Minute)
+	service := newDistroTaskDispatchService(s.taskQueue, "", time.Minute)
 	next := service.FindNextTask(TaskSpec{})
 	s.Require().NotNil(next)
 	s.Equal("a-standalone-task", next.Id)
@@ -1391,6 +1801,7 @@ func (s *taskDispatchServiceSuite) TestEmptyService() {
 
 func (s *taskDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 	s.Require().NoError(db.ClearCollections(task.Collection))
+	s.Require().NoError(db.ClearCollections(host.Collection))
 	items := []TaskQueueItem{}
 	var startTime time.Time
 	var endTime time.Time
@@ -1432,7 +1843,7 @@ func (s *taskDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 	}
 
 	s.taskQueue.Queue = items
-	service := newDistroTaskDispatchService(s.taskQueue, time.Minute)
+	service := newDistroTaskDispatchService(s.taskQueue, "", time.Minute)
 	spec := TaskSpec{
 		Group:        "group_1",
 		BuildVariant: "variant_1",
@@ -1445,7 +1856,7 @@ func (s *taskDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 }
 
 func (s *taskDispatchServiceSuite) TestFindNextTask() {
-	service := newDistroTaskDispatchService(s.taskQueue, time.Minute)
+	service := newDistroTaskDispatchService(s.taskQueue, "", time.Minute)
 	var spec TaskSpec
 	var next *TaskQueueItem
 	//////////////////////////////////////////////////////////////////////////////
@@ -1678,7 +2089,7 @@ func (s *taskDispatchServiceSuite) TestSchedulableUnitsRunningHostsVersusMaxHost
 	}
 	s.Require().NoError(h1.Insert())
 
-	service := newDistroTaskDispatchService(s.taskQueue, time.Minute)
+	service := newDistroTaskDispatchService(s.taskQueue, "", time.Minute)
 	//////////////////////////////////////////////////////////////////////////////
 	// basicCachedDispatcherImpl.order[0] = "0"
 	// basicCachedDispatcherImpl.order[1] = "group_1_variant_1_project_1_version_1"
@@ -1687,7 +2098,7 @@ func (s *taskDispatchServiceSuite) TestSchedulableUnitsRunningHostsVersusMaxHost
 	// basicCachedDispatcherImpl.units["0"].len(tasks) = 1
 	//	[0]
 	// basicCachedDispatcherImpl.units["group_1_variant_1_project_1_version_1"].len(tasks) = 20
-	// 	[1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76, 81, 86, 91, 96]
+	//	[1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76, 81, 86, 91, 96]
 	// basicCachedDispatcherImpl.units[group_1_variant_1_project_1_version_1].maxHosts = 1
 	// basicCachedDispatcherImpl.units["group_2_variant_1_project_1_version_1"].len(tasks) = 20
 	//	[2, 7, 12, 17, 22, 27, 32, 37, 42, 47, 52, 57, 62, 67, 72, 77, 82, 87, 92, 97]

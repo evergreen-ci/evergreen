@@ -1031,3 +1031,14 @@ func Aggregate(pipeline []bson.M, results interface{}) error {
 func Count(query db.Q) (int, error) {
 	return db.CountQ(Collection, query)
 }
+
+func FindProjectForTask(taskID string) (string, error) {
+	t, err := FindOneNoMerge(ById(taskID).Project(bson.M{ProjectKey: 1}))
+	if err != nil {
+		return "", err
+	}
+	if t == nil {
+		return "", errors.New("task not found")
+	}
+	return t.Project, nil
+}

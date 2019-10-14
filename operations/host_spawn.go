@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/ioutil"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -67,6 +68,7 @@ func hostCreate() cli.Command {
 		scriptFlagName       = "script"
 		tagFlagName          = "tag"
 		instanceTypeFlagName = "type"
+		noExpireFlagName     = "no-expire"
 	)
 
 	return cli.Command{
@@ -93,6 +95,10 @@ func hostCreate() cli.Command {
 				Name:  joinFlagNames(tagFlagName, "t"),
 				Usage: "key=value pair representing an instance tag, with one pair per flag",
 			},
+			cli.BoolFlag{
+				Name:  noExpireFlagName,
+				Usage: "make host never expire",
+			},
 		},
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
@@ -101,6 +107,7 @@ func hostCreate() cli.Command {
 			fn := c.String(scriptFlagName)
 			tagSlice := c.StringSlice(tagFlagName)
 			instanceType := c.String(instanceTypeFlagName)
+			noExpire := c.Bool(noExpireFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -133,6 +140,7 @@ func hostCreate() cli.Command {
 				UserData:     script,
 				InstanceTags: tags,
 				InstanceType: instanceType,
+				NoExpiration: noExpire,
 			}
 
 			host, err := client.CreateSpawnHost(ctx, spawnRequest)
@@ -155,6 +163,9 @@ func hostModify() cli.Command {
 		addTagFlagName       = "tag"
 		deleteTagFlagName    = "delete-tag"
 		instanceTypeFlagName = "type"
+		noExpireFlagName     = "no-expire"
+		expireFlagName       = "expire"
+		extendFlagName       = "extend"
 	)
 
 	return cli.Command{
@@ -163,24 +174,40 @@ func hostModify() cli.Command {
 		Flags: addHostFlag(
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(addTagFlagName, "t"),
-				Usage: "key=value pair representing an instance tag, with one pair per flag",
+				Usage: "add instance tag `KEY=VALUE`, one tag per flag",
 			},
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(deleteTagFlagName, "d"),
-				Usage: "key of a single tag to be deleted",
+				Usage: "delete instance tag `KEY`, one tag per flag",
 			},
 			cli.StringFlag{
 				Name:  joinFlagNames(instanceTypeFlagName, "i"),
-				Usage: "name of an instance type",
+				Usage: "change instance type to `TYPE`",
+			},
+			cli.IntFlag{
+				Name:  extendFlagName,
+				Usage: "extend the expiration of a spawn host by `HOURS`",
+			},
+			cli.BoolFlag{
+				Name:  noExpireFlagName,
+				Usage: "make host never expire",
+			},
+			cli.BoolFlag{
+				Name:  expireFlagName,
+				Usage: "make host expire like a normal spawn host, in 24 hours",
 			},
 		),
-		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag, requireAtLeastOneFlag(addTagFlagName, deleteTagFlagName, instanceTypeFlagName)),
+		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag, requireAtLeastOneFlag(
+			addTagFlagName, deleteTagFlagName, instanceTypeFlagName, expireFlagName, noExpireFlagName, extendFlagName)),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			hostID := c.String(hostFlagName)
 			addTagSlice := c.StringSlice(addTagFlagName)
 			deleteTagSlice := c.StringSlice(deleteTagFlagName)
 			instanceType := c.String(instanceTypeFlagName)
+			noExpire := c.Bool(noExpireFlagName)
+			expire := c.Bool(expireFlagName)
+			extension := c.Int(extendFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -201,7 +228,19 @@ func hostModify() cli.Command {
 				AddInstanceTags:    addTags,
 				DeleteInstanceTags: deleteTagSlice,
 				InstanceType:       instanceType,
+				AddHours:           time.Duration(extension) * time.Hour,
 			}
+
+			if noExpire {
+				noExpirationValue := true
+				hostChanges.NoExpiration = &noExpirationValue
+			} else if expire {
+				noExpirationValue := false
+				hostChanges.NoExpiration = &noExpirationValue
+			} else {
+				hostChanges.NoExpiration = nil
+			}
+
 			err = client.ModifySpawnHost(ctx, hostID, hostChanges)
 			if err != nil {
 				return err

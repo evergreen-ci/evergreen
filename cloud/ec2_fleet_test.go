@@ -69,7 +69,7 @@ func TestFleet(t *testing.T) {
 			assert.Equal(t, "us-east-1a", hDb.Zone)
 		},
 		"TerminateInstance": func(*testing.T) {
-			assert.NoError(t, m.TerminateInstance(context.Background(), h, "evergreen"))
+			assert.NoError(t, m.TerminateInstance(context.Background(), h, "evergreen", ""))
 
 			mockClient := m.client.(*awsClientMock)
 			assert.Len(t, mockClient.TerminateInstancesInput.InstanceIds, 1)

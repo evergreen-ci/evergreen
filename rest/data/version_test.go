@@ -287,9 +287,9 @@ func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
 				Status:    evergreen.TaskFailed,
 				StatusDetails: apimodels.TaskEndDetail{
 					Status:      evergreen.TaskFailed,
-					Type:        "system",
+					Type:        evergreen.CommandTypeSystem,
 					TimedOut:    true,
-					Description: "heartbeat",
+					Description: evergreen.TaskDescriptionHeartbeat,
 				},
 			},
 			{

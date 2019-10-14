@@ -54,7 +54,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/admin/task_queue").Version(2).Delete().Wrap(superUser).RouteHandler(makeClearTaskQueueHandler(sc))
 	app.AddRoute("/admin/commit_queues").Version(2).Delete().Wrap(superUser).RouteHandler(makeClearCommitQueuesHandler(sc))
 	app.AddRoute("/alias/{name}").Version(2).Get().RouteHandler(makeFetchAliases(sc))
-	app.AddRoute("/builds/{build_id}").Version(2).Get().RouteHandler(makeGetBuildByID(sc))
+	app.AddRoute("/builds/{build_id}").Version(2).Get().Wrap(RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksView)).RouteHandler(makeGetBuildByID(sc))
 	app.AddRoute("/builds/{build_id}").Version(2).Patch().Wrap(checkUser).RouteHandler(makeChangeStatusForBuild(sc))
 	app.AddRoute("/builds/{build_id}/abort").Version(2).Post().Wrap(checkUser).RouteHandler(makeAbortBuild(sc))
 	app.AddRoute("/builds/{build_id}/restart").Version(2).Post().Wrap(checkUser).RouteHandler(makeRestartBuild(sc))

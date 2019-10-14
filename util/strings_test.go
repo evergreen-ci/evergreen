@@ -29,3 +29,12 @@ func TestGetSetDifference(t *testing.T) {
 	assert.Equal("one", difference[1])
 	assert.Equal("three", difference[2])
 }
+
+func TestCoalesce(t *testing.T) {
+	assert := assert.New(t)
+	assert.Equal("one", CoalesceString("", "one", "two"))
+	assert.Equal("one", CoalesceStrings([]string{"", ""}, "", "one", "two"))
+	assert.Equal("a", CoalesceStrings([]string{"", "a"}, "", "one", "two"))
+	assert.Equal("one", CoalesceStrings(nil, "", "one", "two"))
+	assert.Equal("", CoalesceStrings(nil, "", ""))
+}

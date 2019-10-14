@@ -178,6 +178,18 @@ func (mockMgr *mockManager) ModifyHost(ctx context.Context, host *host.Host, cha
 		}
 	}
 
+	if changes.NoExpiration != nil {
+		expireOnValue := expireInDays(30)
+		if *changes.NoExpiration {
+			if err = host.MarkShouldNotExpire(expireOnValue); err != nil {
+				return errors.Errorf("error setting no expiration in db")
+			}
+		}
+		if err = host.MarkShouldExpire(expireOnValue); err != nil {
+			return errors.Errorf("error setting expiration in db")
+		}
+	}
+
 	return nil
 }
 
@@ -215,7 +227,7 @@ func (_ *mockManager) Validate() error {
 }
 
 // terminate an instance
-func (mockMgr *mockManager) TerminateInstance(ctx context.Context, host *host.Host, user string) error {
+func (mockMgr *mockManager) TerminateInstance(ctx context.Context, host *host.Host, user, reason string) error {
 	l := mockMgr.mutex
 	l.Lock()
 	defer l.Unlock()
@@ -230,7 +242,7 @@ func (mockMgr *mockManager) TerminateInstance(ctx context.Context, host *host.Ho
 	instance.Status = StatusTerminated
 	mockMgr.Instances[host.Id] = instance
 
-	return errors.WithStack(host.Terminate(user))
+	return errors.WithStack(host.Terminate(user, reason))
 }
 
 func (mockMgr *mockManager) StopInstance(ctx context.Context, host *host.Host, user string) error {

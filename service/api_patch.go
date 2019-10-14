@@ -35,11 +35,14 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	dbUser := MustHaveUser(r)
 
 	data := struct {
-		Description string   `json:"desc"`
-		Project     string   `json:"project"`
-		Patch       string   `json:"patch"`
-		Githash     string   `json:"githash"`
+		Description string `json:"desc"`
+		Project     string `json:"project"`
+		Patch       string `json:"patch"`
+		Githash     string `json:"githash"`
+		// TODO: remove this once users have been given enough time to update
+		// their binary versions.
 		Variants    string   `json:"buildvariants"`
+		VariantsNew []string `json:"buildvariants_new"`
 		Tasks       []string `json:"tasks"`
 		Finalize    bool     `json:"finalize"`
 		Alias       string   `json:"alias"`
@@ -54,6 +57,9 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	variants := strings.Split(data.Variants, ",")
+	if len(data.VariantsNew) != 0 {
+		variants = data.VariantsNew
+	}
 
 	pref, err := model.FindOneProjectRef(data.Project)
 	if err != nil {

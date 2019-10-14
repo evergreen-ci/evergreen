@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -208,4 +209,15 @@ func ByGithubPRAndCreatedBefore(t time.Time, owner, repo string, prNumber int) d
 		bsonutil.GetDottedKeyName(githubPatchDataKey, githubPatchBaseRepoKey):  repo,
 		bsonutil.GetDottedKeyName(githubPatchDataKey, githubPatchPRNumberKey):  prNumber,
 	})
+}
+
+func FindProjectForPatch(patchID mgobson.ObjectId) (string, error) {
+	p, err := FindOne(ById(patchID).Project(bson.M{ProjectKey: 1}))
+	if err != nil {
+		return "", err
+	}
+	if p == nil {
+		return "", errors.New("patch not found")
+	}
+	return p.Project, nil
 }

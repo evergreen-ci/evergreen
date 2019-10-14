@@ -82,6 +82,9 @@ type AWSConfig struct {
 	Bucket               string `bson:"bucket" json:"bucket" yaml:"bucket"`
 	S3BaseURL            string `bson:"s3_base_url" json:"s3_base_url" yaml:"s3_base_url"`
 	DefaultSecurityGroup string `bson:"default_security_group" json:"default_security_group" yaml:"default_security_group"`
+
+	// EC2 instance types for spawn hosts
+	AllowedInstanceTypes []string `bson:"allowed_instance_types" json:"allowed_instance_types" yaml:"allowed_instance_types"`
 }
 
 // DockerConfig stores auth info for Docker.

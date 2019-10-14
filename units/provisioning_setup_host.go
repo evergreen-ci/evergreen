@@ -263,7 +263,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 			"provider":                targetHost.Provider,
 			"attempts":                targetHost.ProvisionAttempts,
 			"job":                     j.ID(),
-			"provision_duration_secs": time.Now().Sub(targetHost.CreationTime).Seconds(),
+			"provision_duration_secs": time.Since(targetHost.CreationTime).Seconds(),
 		})
 		return nil
 	case distro.BootstrapMethodSSH:
@@ -278,17 +278,21 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 	}
 
 	if targetHost.Distro.Setup != "" {
-		err = j.copyScript(ctx, settings, targetHost, filepath.Join("~", evergreen.SetupScriptName), targetHost.Distro.Setup)
+		scriptName := evergreen.SetupScriptName
+		if targetHost.Distro.IsPowerShellSetup() {
+			scriptName = evergreen.PowerShellSetupScriptName
+		}
+		err = j.copyScript(ctx, settings, targetHost, filepath.Join("~", scriptName), targetHost.Distro.Setup)
 		if err != nil {
-			return errors.Wrapf(err, "error copying setup script %v to host %v",
-				evergreen.SetupScriptName, targetHost.Id)
+			return errors.Wrapf(err, "error copying setup script %s to host %s",
+				scriptName, targetHost.Id)
 		}
 	}
 
 	if targetHost.Distro.Teardown != "" {
 		err = j.copyScript(ctx, settings, targetHost, filepath.Join("~", evergreen.TeardownScriptName), targetHost.Distro.Teardown)
 		if err != nil {
-			return errors.Wrapf(err, "error copying teardown script %v to host %v",
+			return errors.Wrapf(err, "error copying teardown script %s to host %s",
 				evergreen.TeardownScriptName, targetHost.Id)
 		}
 	}
@@ -319,11 +323,11 @@ func (j *setupHostJob) setupJasper(ctx context.Context, settings *evergreen.Sett
 	}
 
 	if err := j.doFetchAndReinstallJasper(ctx, sshOptions); err != nil {
-		return errors.Wrap(err, "error fetching Jasper binary on remote host")
+		return errors.Wrap(err, "error starting Jasper service on remote host")
 	}
 
 	grip.Info(message.Fields{
-		"message": "successfully fetched Jasper binary",
+		"message": "successfully fetched Jasper binary and started service",
 		"host":    j.host.Id,
 		"job":     j.ID(),
 		"distro":  j.host.Distro.Id,
@@ -340,7 +344,7 @@ func (j *setupHostJob) putJasperCredentials(ctx context.Context, settings *everg
 		return errors.Wrap(err, "could not generate Jasper credentials for host")
 	}
 
-	writeCmd, err := j.host.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
+	writeCmds, err := j.host.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 	if err != nil {
 		return errors.Wrap(err, "could not get command to write Jasper credentials file")
 	}
@@ -355,7 +359,7 @@ func (j *setupHostJob) putJasperCredentials(ctx context.Context, settings *everg
 	ctx, cancel := context.WithTimeout(ctx, scpTimeout)
 	defer cancel()
 
-	if logs, err := j.host.RunSSHCommand(ctx, writeCmd, sshOptions); err != nil {
+	if logs, err := j.host.RunSSHCommandLiterally(ctx, writeCmds, sshOptions); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "problem copying credentials to host",
 			"job":     j.ID(),
@@ -406,8 +410,8 @@ func (j *setupHostJob) setupServiceUser(ctx context.Context, settings *evergreen
 // doFetchAndReinstallJasper runs the SSH command that downloads the latest
 // Jasper binary and restarts the service.
 func (j *setupHostJob) doFetchAndReinstallJasper(ctx context.Context, sshOptions []string) error {
-	cmd := j.host.FetchAndReinstallJasperCommand(j.env.Settings())
-	if logs, err := j.host.RunSSHCommand(ctx, cmd, sshOptions); err != nil {
+	cmds := j.host.FetchAndReinstallJasperCommands(j.env.Settings())
+	if logs, err := j.host.RunSSHCommandLiterally(ctx, cmds, sshOptions); err != nil {
 		return errors.Wrapf(err, "error while fetching Jasper binary and installing service on remote host: command returned %s", logs)
 	}
 	return nil

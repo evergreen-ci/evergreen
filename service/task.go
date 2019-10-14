@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -615,6 +616,14 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("Error aborting task %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
 			return
 		}
+		if projCtx.Task.Requester == evergreen.MergeTestRequester {
+			_, err := commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
+				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Task.Version, true)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		}
+
 		// Reload the task from db, send it back
 		projCtx.Task, err = task.FindOne(task.ById(projCtx.Task.Id))
 
@@ -631,6 +640,13 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		if !active && projCtx.Task.Requester == evergreen.MergeTestRequester {
+			_, err := commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
+				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Task.Version, true)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		}
 		// Reload the task from db, send it back
 		projCtx.Task, err = task.FindOne(task.ById(projCtx.Task.Id))
 		if err != nil {

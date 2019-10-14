@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
@@ -170,6 +171,13 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("problem refreshing tasks cache %v", projCtx.Build.Id), http.StatusInternalServerError)
 			return
 		}
+		if projCtx.Build.Requester == evergreen.MergeTestRequester {
+			_, err := commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
+				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Build.Version, true)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		}
 	case "set_priority":
 		var priority int64
 		priority, err = strconv.ParseInt(putParams.Priority, 10, 64)
@@ -201,6 +209,13 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 			if err = task.AbortBuild(projCtx.Build.Id, user.Id); err != nil {
 				http.Error(w, "Error unscheduling tasks", http.StatusInternalServerError)
 				return
+			}
+		}
+		if !putParams.Active && projCtx.Build.Requester == evergreen.MergeTestRequester {
+			_, err := commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
+				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Build.Version, true)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
 		}
 	case "restart":

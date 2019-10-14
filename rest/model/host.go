@@ -32,6 +32,7 @@ type HostRequestOptions struct {
 	UserData     string     `json:"userdata"`
 	InstanceTags []host.Tag `json:"instance_tags"`
 	InstanceType string     `json:"instance_type"`
+	NoExpiration bool       `json:"no_expiration"`
 }
 
 type DistroInfo struct {
@@ -124,9 +125,10 @@ func (apiHost *APIHost) ToService() (interface{}, error) {
 }
 
 type APISpawnHostModify struct {
-	Action     APIString `json:"action"`
-	HostID     APIString `json:"host_id"`
-	RDPPwd     APIString `json:"rdp_pwd"`
-	AddHours   APIString `json:"add_hours"`
-	Expiration time.Time `json:"expiration"`
+	Action       APIString `json:"action"`
+	HostID       APIString `json:"host_id"`
+	RDPPwd       APIString `json:"rdp_pwd"`
+	AddHours     APIString `json:"add_hours"`
+	Expiration   time.Time `json:"expiration"`
+	InstanceType APIString `json:"instance_type"`
 }

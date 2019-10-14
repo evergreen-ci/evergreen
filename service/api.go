@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
@@ -505,7 +506,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.PrefixRoute("/patches").Route("/").Wrap(checkUser).Handler(as.submitPatch).Put()
 	app.PrefixRoute("/patches").Route("/mine").Wrap(checkUser).Handler(as.listPatches).Get()
 	app.PrefixRoute("/patches").Route("/{patchId:\\w+}").Wrap(checkUser).Handler(as.summarizePatch).Get()
-	app.PrefixRoute("/patches").Route("/{patchId:\\w+}").Wrap(checkUser).Handler(as.existingPatchRequest).Post()
+	app.PrefixRoute("/patches").Route("/{patchId:\\w+}").Wrap(checkUser, route.RequiresProjectPermission(evergreen.PermissionPatches, evergreen.PatchSubmit)).Handler(as.existingPatchRequest).Post()
 	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/{projectId}/modules").Wrap(checkUser, checkProject).Handler(as.listPatchModules).Get()
 	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/modules").Wrap(checkUser).Handler(as.deletePatchModule).Delete()
 	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/modules").Wrap(checkUser).Handler(as.updatePatchModule).Post()

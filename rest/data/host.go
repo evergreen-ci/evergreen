@@ -96,6 +96,7 @@ func (hc *DBHostConnector) NewIntentHost(options *restmodel.HostRequestOptions, 
 		Owner:            user,
 		InstanceTags:     options.InstanceTags,
 		InstanceType:     options.InstanceType,
+		NoExpiration:     options.NoExpiration,
 	}
 
 	intentHost, err := cloud.CreateSpawnHost(spawnOptions)
@@ -122,7 +123,7 @@ func (hc *DBHostConnector) SetHostExpirationTime(host *host.Host, newExp time.Ti
 }
 
 func (hc *DBHostConnector) TerminateHost(ctx context.Context, host *host.Host, user string) error {
-	return errors.WithStack(cloud.TerminateSpawnHost(ctx, host, evergreen.GetEnvironment().Settings(), user))
+	return errors.WithStack(cloud.TerminateSpawnHost(ctx, host, evergreen.GetEnvironment().Settings(), user, "terminated via REST API"))
 }
 
 func (hc *DBHostConnector) CheckHostSecret(r *http.Request) (int, error) {
