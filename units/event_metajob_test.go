@@ -290,6 +290,20 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 	s.Empty(out[0].Error)
 }
 
+func (s *eventMetaJobSuite) TestDispatchUnprocessedNotifications() {
+	s.NoError(notification.InsertMany(s.n...))
+	job := NewEventMetaJob(evergreen.GetEnvironment().LocalQueue(), "1").(*eventMetaJob)
+	flags, err := evergreen.GetServiceFlags()
+	s.NoError(err)
+	job.flags = flags
+	origStats := evergreen.GetEnvironment().LocalQueue().Stats(s.ctx)
+
+	s.NoError(job.dispatchUnprocessedNotifications(s.ctx))
+
+	stats := evergreen.GetEnvironment().LocalQueue().Stats(s.ctx)
+	s.Equal(origStats.Total+6, stats.Total)
+}
+
 func httpServer(ln net.Listener, handler *mockWebhookHandler) {
 	err := http.Serve(ln, handler)
 	grip.Error(err)

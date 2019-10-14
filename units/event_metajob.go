@@ -239,6 +239,17 @@ func (j *eventMetaJob) dispatch(ctx context.Context, notifications []notificatio
 	return catcher.Resolve()
 }
 
+// dispatchUnprocessedNotifications gets unprocessed notifications
+// leftover by previous runs and dispatches them
+func (j *eventMetaJob) dispatchUnprocessedNotifications(ctx context.Context) error {
+	unprocessedNotifications, err := notification.FindUnprocessed()
+	if err != nil {
+		return errors.Wrap(err, "can't find unprocessed notifications")
+	}
+
+	return j.dispatch(ctx, unprocessedNotifications)
+}
+
 func (j *eventMetaJob) Run(ctx context.Context) {
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithCancel(ctx)
@@ -267,6 +278,8 @@ func (j *eventMetaJob) Run(ctx context.Context) {
 		})
 		return
 	}
+
+	j.AddError(j.dispatchUnprocessedNotifications(ctx))
 
 	j.events, err = event.FindUnprocessedEvents()
 	if err != nil {
