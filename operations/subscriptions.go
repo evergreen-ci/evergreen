@@ -34,6 +34,7 @@ func subscriptionsList() cli.Command {
 			}
 
 			comm := conf.GetRestCommunicator(ctx)
+			printUserMessages(ctx, comm)
 			defer comm.Close()
 			subs, err := comm.GetSubscriptions(ctx)
 			if err != nil {

@@ -31,6 +31,7 @@ func Validate() cli.Command {
 			}
 
 			client := conf.GetRestCommunicator(ctx)
+			printUserMessages(ctx, client)
 			defer client.Close()
 
 			ac, _, err := conf.getLegacyClients()

@@ -96,6 +96,7 @@ func adminSetBanner() cli.Command {
 			}
 
 			client := conf.GetRestCommunicator(ctx)
+			printUserMessages(ctx, client)
 			defer client.Close()
 
 			return errors.Wrap(client.SetBannerMessage(ctx, msgContent, theme),
@@ -136,6 +137,7 @@ func adminServiceChange(disable bool) cli.ActionFunc {
 			return errors.Wrap(err, "problem loading configuration")
 		}
 		client := conf.GetRestCommunicator(ctx)
+		printUserMessages(ctx, client)
 		defer client.Close()
 
 		flags, err := client.GetServiceFlags(ctx)
@@ -202,6 +204,7 @@ func doViewSettings() cli.ActionFunc {
 			return errors.Wrap(err, "problem loading configuration")
 		}
 		client := conf.GetRestCommunicator(ctx)
+		printUserMessages(ctx, client)
 		defer client.Close()
 
 		settings, err := client.GetSettings(ctx)
@@ -251,6 +254,7 @@ func updateSettings() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 			client := conf.GetRestCommunicator(ctx)
+			printUserMessages(ctx, client)
 			defer client.Close()
 
 			settings, err := client.UpdateSettings(ctx, updateSettings)
@@ -298,6 +302,7 @@ func listEvents() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 			client := conf.GetRestCommunicator(ctx)
+			printUserMessages(ctx, client)
 			defer client.Close()
 
 			events, err := client.GetEvents(ctx, ts, limit)
@@ -335,6 +340,7 @@ func revert() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 			client := conf.GetRestCommunicator(ctx)
+			printUserMessages(ctx, client)
 			defer client.Close()
 
 			err = client.RevertSettings(ctx, guid)

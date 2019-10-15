@@ -36,6 +36,7 @@ func CreateVersion() cli.Command {
 			}
 			ctx := context.Background()
 			client := conf.GetRestCommunicator(ctx)
+			printUserMessages(ctx, client)
 			defer client.Close()
 
 			filePath := c.String(pathFlagName)

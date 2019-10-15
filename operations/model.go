@@ -136,6 +136,10 @@ func (s *ClientSettings) GetRestCommunicator(ctx context.Context) client.Communi
 	c.SetAPIUser(s.User)
 	c.SetAPIKey(s.APIKey)
 
+	return c
+}
+
+func printUserMessages(ctx context.Context, c client.Communicator) {
 	banner, err := c.GetBannerMessage(ctx)
 	if err != nil {
 		grip.Debug(err)
@@ -155,8 +159,6 @@ func (s *ClientSettings) GetRestCommunicator(ctx context.Context) client.Communi
 			fmt.Fprintf(os.Stderr, "A new version is available. Run '%s get-update --install' to download and install it.\n", os.Args[0])
 		}
 	}
-
-	return c
 }
 
 func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error) {

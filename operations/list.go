@@ -87,6 +87,7 @@ func listProjects(ctx context.Context, confPath string) error {
 		return errors.Wrap(err, "problem loading configuration")
 	}
 	client := conf.GetRestCommunicator(ctx)
+	printUserMessages(ctx, client)
 	defer client.Close()
 
 	ac, _, err := conf.getLegacyClients()
@@ -128,6 +129,7 @@ func listVariants(ctx context.Context, confPath, project, filename string) error
 		return errors.Wrap(err, "problem loading configuration")
 	}
 	client := conf.GetRestCommunicator(ctx)
+	printUserMessages(ctx, client)
 	defer client.Close()
 
 	var variants []model.BuildVariant
@@ -179,6 +181,7 @@ func listTasks(ctx context.Context, confPath, project, filename string) error {
 		return errors.Wrap(err, "problem loading configuration")
 	}
 	client := conf.GetRestCommunicator(ctx)
+	printUserMessages(ctx, client)
 	defer client.Close()
 
 	var tasks []model.ProjectTask
@@ -218,6 +221,7 @@ func listAliases(ctx context.Context, confPath, project, filename string) error 
 		return errors.Wrap(err, "problem loading configuration")
 	}
 	comm := conf.GetRestCommunicator(ctx)
+	printUserMessages(ctx, comm)
 	defer comm.Close()
 
 	var aliases []model.ProjectAlias
@@ -256,6 +260,7 @@ func listDistros(ctx context.Context, confPath string, onlyUserSpawnable bool) e
 		return errors.Wrap(err, "problem loading configuration")
 	}
 	client := conf.GetRestCommunicator(ctx)
+	printUserMessages(ctx, client)
 	defer client.Close()
 
 	distros, err := client.GetDistrosList(ctx)

@@ -53,6 +53,7 @@ func PatchSetModule() cli.Command {
 			}
 
 			client := conf.GetRestCommunicator(ctx)
+			printUserMessages(ctx, client)
 			defer client.Close()
 
 			ac, rc, err := conf.getLegacyClients()
@@ -156,6 +157,7 @@ func PatchRemoveModule() cli.Command {
 			}
 
 			client := conf.GetRestCommunicator(ctx)
+			printUserMessages(ctx, client)
 			defer client.Close()
 
 			ac, _, err := conf.getLegacyClients()

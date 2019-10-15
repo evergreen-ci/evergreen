@@ -85,6 +85,7 @@ func Patch() cli.Command {
 			}
 
 			comm := conf.GetRestCommunicator(ctx)
+			printUserMessages(ctx, comm)
 			defer comm.Close()
 
 			ac, _, err := conf.getLegacyClients()
@@ -153,6 +154,7 @@ func PatchFile() cli.Command {
 			}
 
 			comm := conf.GetRestCommunicator(ctx)
+			printUserMessages(ctx, comm)
 			defer comm.Close()
 
 			ac, _, err := conf.getLegacyClients()

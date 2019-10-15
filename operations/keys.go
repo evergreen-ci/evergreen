@@ -67,6 +67,7 @@ func keysAdd() cli.Command {
 			}
 
 			client := conf.GetRestCommunicator(ctx)
+			printUserMessages(ctx, client)
 			defer client.Close()
 
 			keyFileContents, err := ioutil.ReadFile(keyFile)
@@ -106,6 +107,7 @@ func keysList() cli.Command {
 			}
 
 			client := conf.GetRestCommunicator(ctx)
+			printUserMessages(ctx, client)
 			defer client.Close()
 
 			keys, err := client.GetCurrentUsersKeys(ctx)
@@ -154,6 +156,7 @@ func keysDelete() cli.Command {
 			}
 
 			client := conf.GetRestCommunicator(ctx)
+			printUserMessages(ctx, client)
 			defer client.Close()
 
 			keyName := c.Args().Get(0)
