@@ -9,8 +9,8 @@ import (
 )
 
 type Credentials struct {
-	Username string "username"
-	Password string "password"
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 func (as *APIServer) BuildloggerV3Credentials(w http.ResponseWriter, r *http.Request) {
