@@ -272,6 +272,19 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 		grip.Infof("adding BuildVariant %s", buildStatus.BuildVariant)
 	}
 
+	if evergreen.UseParserProject && destVersion.Config == "" {
+		var err error
+		pp, err := model.ParserProjectFindOneById(projCtx.Version.Id)
+		if err != nil {
+			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
+		}
+		config, err := yaml.Marshal(pp)
+		if err != nil {
+			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project"})
+		}
+		destVersion.Config = string(config)
+	}
+
 	gimlet.WriteJSON(w, destVersion)
 }
 

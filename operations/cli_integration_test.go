@@ -65,6 +65,7 @@ func setupCLITestHarness() cliTestHarness {
 			user.Collection,
 			patch.Collection,
 			model.ProjectRefCollection,
+			model.ParserProjectCollection,
 			artifact.Collection,
 			model.VersionCollection,
 			distro.Collection,

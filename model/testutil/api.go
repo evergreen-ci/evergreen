@@ -30,7 +30,7 @@ func CleanupAPITestData() error {
 		task.Collection, build.Collection, host.Collection,
 		distro.Collection, model.VersionCollection, patch.Collection,
 		model.PushlogCollection, model.ProjectVarsCollection, model.TaskQueuesCollection,
-		manifest.Collection, model.ProjectRefCollection}
+		manifest.Collection, model.ProjectRefCollection, model.ParserProjectCollection}
 
 	if err := db.ClearCollections(testCollections...); err != nil {
 		return errors.Wrap(err, "Failed to clear test data collection")

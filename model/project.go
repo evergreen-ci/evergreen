@@ -925,7 +925,7 @@ func (p *Project) FindTaskGroup(name string) *TaskGroup {
 }
 
 // GetTaskGroup returns the task group for a given task from its project
-// Only called by agent so we don't save project to database
+// Only called by agent so we don't retrieve project from database
 func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 	if tc == nil {
 		return nil, errors.New("unable to get task group: TaskConfig is nil")
@@ -939,10 +939,13 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 	if tc.Version == nil {
 		return nil, errors.New("version is nil")
 	}
-	p, _, err := LoadProjectForVersion(tc.Version, tc.Task.Project, false)
-	if err != nil {
-		return nil, errors.Wrap(err, "error retrieving project for task group")
+	p := tc.Project
+	if p == nil {
+		if _, err := LoadProjectInto([]byte(tc.Version.Config), tc.Task.Project, p); err != nil {
+			return nil, errors.Wrap(err, "error retrieving project for task group")
+		}
 	}
+
 	if taskGroup == "" {
 		// if there is no named task group, fall back to project definitions
 		return &TaskGroup{
@@ -968,7 +971,7 @@ func FindProjectFromVersionID(versionStr string) (*Project, error) {
 		return nil, errors.Errorf("nil version returned for version '%s'", versionStr)
 	}
 
-	project, _, err := LoadProjectForVersion(ver, ver.Identifier, true)
+	project, _, err := LoadProjectForVersion(ver, ver.Identifier, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to load project config for version %s", versionStr)
 	}

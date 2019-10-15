@@ -168,6 +168,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$window', '$rootScope', 'mc
 
 mciModule.directive('adminAbortTask', function() {
     return {
+
         restrict: 'E',
         template:
     '<div class="row">' +

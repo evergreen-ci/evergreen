@@ -190,6 +190,10 @@ func (as *APIServer) GetVersion(w http.ResponseWriter, r *http.Request) {
 	// safety check
 	if v.Config == "" {
 		pp, err := model.ParserProjectFindOneById(t.Version)
+		if err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
 		config, err := yaml.Marshal(pp)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)

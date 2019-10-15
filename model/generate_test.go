@@ -303,7 +303,7 @@ func TestGenerateSuite(t *testing.T) {
 }
 
 func (s *GenerateSuite) SetupTest() {
-	s.Require().NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection))
+	s.Require().NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, ParserProjectCollection))
 }
 
 func (s *GenerateSuite) TestParseProjectFromJSON() {

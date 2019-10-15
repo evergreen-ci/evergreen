@@ -615,7 +615,7 @@ func TestCreateVersionFromConfigSuite(t *testing.T) {
 }
 
 func (s *CreateVersionFromConfigSuite) SetupTest() {
-	s.NoError(db.ClearCollections(model.VersionCollection, build.Collection, task.Collection, distro.Collection))
+	s.NoError(db.ClearCollections(model.VersionCollection, model.ParserProjectCollection, build.Collection, task.Collection, distro.Collection))
 	s.ref = &model.ProjectRef{
 		Repo:       "evergreen",
 		Owner:      "evergreen-ci",
