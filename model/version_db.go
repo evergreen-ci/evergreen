@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
-	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -30,7 +29,6 @@ var (
 	VersionBuildVariantsKey       = bsonutil.MustHaveTag(Version{}, "BuildVariants")
 	VersionRevisionOrderNumberKey = bsonutil.MustHaveTag(Version{}, "RevisionOrderNumber")
 	VersionRequesterKey           = bsonutil.MustHaveTag(Version{}, "Requester")
-	VersionProjectKey             = bsonutil.MustHaveTag(Version{}, "ParserProject")
 	VersionConfigKey              = bsonutil.MustHaveTag(Version{}, "Config")
 	VersionConfigNumberKey        = bsonutil.MustHaveTag(Version{}, "ConfigUpdateNumber")
 	VersionIgnoredKey             = bsonutil.MustHaveTag(Version{}, "Ignored")
@@ -288,25 +286,19 @@ func VersionUpdateOne(query interface{}, update interface{}) error {
 	)
 }
 
-// UpdateVersionProject updates the ParserProject field for the version.
-// Note this does not increment the config update number, as we are not changing the used config, simply updating a new field.
-func UpdateVersionProject(versionID string, versionNumber int, pp *ParserProject) error {
-	if versionID == "" {
-		return errors.New("no version ID given")
+func VersionUpdateConfig(id, config string, configUpdateNumber int) error {
+	query := bson.M{
+		VersionIdKey:           id,
+		VersionConfigNumberKey: configUpdateNumber,
 	}
-	return errors.Wrap(VersionUpdateOne(
-		bson.M{
-			VersionIdKey: versionID,
-			"$or": []bson.M{
-				bson.M{VersionConfigNumberKey: bson.M{"$exists": false}},
-				bson.M{VersionConfigNumberKey: versionNumber},
-			},
+	update := bson.M{
+		"$set": bson.M{
+			VersionConfigKey: config,
 		},
-		bson.M{
-			"$set": bson.M{
-				VersionProjectKey: pp,
-			},
-		}), "error updating version")
+		"$inc": bson.M{VersionConfigNumberKey: 1},
+	}
+
+	return VersionUpdateOne(query, update)
 }
 
 func AddSatisfiedTrigger(versionID, definitionID string) error {

@@ -847,7 +847,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	for _, e := range h.Distro.Expansions {
 		expansions.Put(e.Key, e.Value)
 	}
-	proj, err := LoadProjectFromVersion(v, t.Project, false)
+	proj, _, err := LoadProjectForVersion(v, t.Project, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "error unmarshalling project")
 	}
@@ -939,7 +939,7 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 	if tc.Version == nil {
 		return nil, errors.New("version is nil")
 	}
-	p, err := LoadProjectFromVersion(tc.Version, tc.Task.Project, false)
+	p, _, err := LoadProjectForVersion(tc.Version, tc.Task.Project, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving project for task group")
 	}
@@ -968,7 +968,7 @@ func FindProjectFromVersionID(versionStr string) (*Project, error) {
 		return nil, errors.Errorf("nil version returned for version '%s'", versionStr)
 	}
 
-	project, err := LoadProjectFromVersion(ver, ver.Identifier, true)
+	project, _, err := LoadProjectForVersion(ver, ver.Identifier, true)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to load project config for version %s", versionStr)
 	}
@@ -1012,7 +1012,7 @@ func FindLastKnownGoodProject(identifier string) (*Project, error) {
 		return nil, errors.Wrapf(err, "Error finding recent valid version for '%s'", identifier)
 	}
 	if lastGoodVersion != nil {
-		project, err = LoadProjectFromVersion(lastGoodVersion, identifier, true)
+		project, _, err = LoadProjectForVersion(lastGoodVersion, identifier, true)
 		if err != nil {
 			return nil, errors.Wrapf(err, "Error loading project from "+
 				"last good version for project, %s", lastGoodVersion.Identifier)

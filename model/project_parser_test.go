@@ -1335,7 +1335,7 @@ functions:
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			assert.NoError(t, db.ClearCollections(VersionCollection))
+			assert.NoError(t, db.ClearCollections(ParserProjectCollection))
 			test(t)
 		})
 	}
@@ -1343,6 +1343,9 @@ functions:
 
 func checkProjectPersists(yml []byte) error {
 	pp, err := createIntermediateProject(yml)
+	pp.Id = "my-project"
+	pp.Identifier = "old-project-identifier"
+	pp.ConfigUpdateNumber = 1
 	if err != nil {
 		return errors.Wrapf(err, "error creating project")
 	}
@@ -1351,18 +1354,14 @@ func checkProjectPersists(yml []byte) error {
 		return errors.Wrapf(err, "error marshalling original project")
 	}
 
-	v := Version{
-		Id:            "my-version",
-		ParserProject: pp,
+	if err = pp.UpsertWithConfigNumber(1); err != nil {
+		return errors.Wrapf(err, "error inserting parser project")
 	}
-	if err = v.Insert(); err != nil {
-		return errors.Wrapf(err, "error inserting version")
-	}
-	newV, err := VersionFindOneId(v.Id)
+	newPP, err := ParserProjectFindOneById(pp.Id)
 	if err != nil {
 		return errors.Wrapf(err, "error finding version")
 	}
-	newYaml, err := yaml.Marshal(newV.ParserProject)
+	newYaml, err := yaml.Marshal(newPP)
 	if err != nil {
 		return errors.Wrapf(err, "error marshalling database project")
 	}
@@ -1371,21 +1370,27 @@ func checkProjectPersists(yml []byte) error {
 	}
 
 	// ensure that updating with the re-parsed project doesn't error
-	pp, err = createIntermediateProject([]byte(newV.Config))
+	pp, err = createIntermediateProject([]byte(newYaml))
+	pp.Id = "my-project"
 	pp.Identifier = "new-project-identifier"
 	if err != nil {
 		return errors.Wrap(err, "error creating intermediate project from stored config")
 	}
-	if err = UpdateVersionProject(v.Id, v.ConfigUpdateNumber, pp); err != nil {
+	if err = pp.UpsertWithConfigNumber(2); err != nil {
 		return errors.Wrap(err, "error updating version's project")
 	}
 
-	newV, err = VersionFindOneId(v.Id)
+	newPP, err = ParserProjectFindOneById(pp.Id)
 	if err != nil {
 		return errors.Wrapf(err, "error finding updated project")
 	}
-	if newV.ParserProject.Identifier != pp.Identifier {
+	if newPP.Identifier != pp.Identifier {
+		fmt.Println("new identifier: ", newPP.Identifier)
+		fmt.Println("old identifier: ", pp.Identifier)
 		return errors.New("version project not updated")
+	}
+	if newPP.ConfigUpdateNumber != 2 {
+		return errors.New("Config update number wrong")
 	}
 
 	return nil

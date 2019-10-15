@@ -599,9 +599,9 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 
 	g := sampleGeneratedProject
 	g.TaskID = "task_that_called_generate_task"
-	p, v, t, pm, err := g.NewVersion()
+	p, pp, v, t, pm, err := g.NewVersion()
 	s.Require().NoError(err)
-	s.NoError(g.Save(context.Background(), p, v, t, pm))
+	s.NoError(g.Save(context.Background(), p, pp, v, t, pm))
 	s.Equal(5, v.ConfigUpdateNumber)
 	builds, err := build.Find(db.Query(bson.M{}))
 	s.NoError(err)
@@ -665,9 +665,9 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 
 	g := sampleGeneratedProjectAddToBVOnly
 	g.TaskID = "task_that_called_generate_task"
-	p, v, t, pm, err := g.NewVersion()
+	p, pp, v, t, pm, err := g.NewVersion()
 	s.NoError(err)
-	s.NoError(g.Save(context.Background(), p, v, t, pm))
+	s.NoError(g.Save(context.Background(), p, pp, v, t, pm))
 	s.Equal(1, v.ConfigUpdateNumber)
 	tasks := []task.Task{}
 	err = db.FindAllQ(task.Collection, db.Query(bson.M{}), &tasks)
@@ -711,9 +711,9 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 
 	g := smallGeneratedProject
 	g.TaskID = "task_that_called_generate_task"
-	p, v, t, pm, err := g.NewVersion()
+	p, pp, v, t, pm, err := g.NewVersion()
 	s.Require().NoError(err)
-	s.NoError(g.Save(context.Background(), p, v, t, pm))
+	s.NoError(g.Save(context.Background(), p, pp, v, t, pm))
 	s.Equal(1, v.ConfigUpdateNumber)
 
 	tasks := []task.Task{}

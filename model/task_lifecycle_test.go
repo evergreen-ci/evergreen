@@ -620,10 +620,9 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 				},
 			}
 			v = &Version{
-				Id:            b.Version,
-				Status:        evergreen.VersionStarted,
-				ParserProject: &ParserProject{Identifier: "sample"},
-				Config:        "identifier: sample",
+				Id:     b.Version,
+				Status: evergreen.VersionStarted,
+				Config: "identifier: sample",
 			}
 			testTask = &task.Task{
 				Id:          "testone",
@@ -813,10 +812,9 @@ func TestMarkEnd(t *testing.T) {
 		Version: "abc",
 	}
 	v := &Version{
-		Id:            b.Version,
-		Status:        evergreen.VersionStarted,
-		ParserProject: &ParserProject{Identifier: "sample"},
-		Config:        "identifier: sample",
+		Id:     b.Version,
+		Status: evergreen.VersionStarted,
+		Config: "identifier: sample",
 	}
 	testTask := task.Task{
 		Id:          "testone",
@@ -910,10 +908,9 @@ func TestTryResetTask(t *testing.T) {
 				Version: "abc",
 			}
 			v := &Version{
-				Id:            b.Version,
-				Status:        evergreen.VersionStarted,
-				ParserProject: &ParserProject{Identifier: "sample"},
-				Config:        "identifier: sample",
+				Id:     b.Version,
+				Status: evergreen.VersionStarted,
+				Config: "identifier: sample",
 			}
 			testTask := &task.Task{
 				Id:          "testone",
@@ -991,10 +988,9 @@ func TestTryResetTask(t *testing.T) {
 				Version: "abc",
 			}
 			v := &Version{
-				Id:            b.Version,
-				Status:        evergreen.VersionStarted,
-				ParserProject: &ParserProject{Identifier: "sample"},
-				Config:        "identifier: sample",
+				Id:     b.Version,
+				Status: evergreen.VersionStarted,
+				Config: "identifier: sample",
 			}
 			testTask := &task.Task{
 				Id:          "testone",
@@ -1064,10 +1060,9 @@ func TestTryResetTask(t *testing.T) {
 		}
 		So(b.Insert(), ShouldBeNil)
 		v := &Version{
-			Id:            b.Version,
-			Status:        evergreen.VersionStarted,
-			ParserProject: &ParserProject{Identifier: "sample"},
-			Config:        "identifier: sample",
+			Id:     b.Version,
+			Status: evergreen.VersionStarted,
+			Config: "identifier: sample",
 		}
 		So(v.Insert(), ShouldBeNil)
 		dt := &task.Task{
@@ -1294,10 +1289,9 @@ func TestMarkStart(t *testing.T) {
 			Version: "abc",
 		}
 		v := &Version{
-			Id:            b.Version,
-			Status:        evergreen.VersionCreated,
-			ParserProject: &ParserProject{Identifier: "sample"},
-			Config:        "identifier: sample",
+			Id:     b.Version,
+			Status: evergreen.VersionCreated,
+			Config: "identifier: sample",
 		}
 		testTask := &task.Task{
 			Id:          "testTask",
@@ -1351,10 +1345,9 @@ func TestMarkStart(t *testing.T) {
 		}
 		So(b.Insert(), ShouldBeNil)
 		v := &Version{
-			Id:            b.Version,
-			Status:        evergreen.VersionStarted,
-			ParserProject: &ParserProject{Identifier: "sample"},
-			Config:        "identifier: sample",
+			Id:     b.Version,
+			Status: evergreen.VersionStarted,
+			Config: "identifier: sample",
 		}
 		So(v.Insert(), ShouldBeNil)
 		dt := &task.Task{
@@ -1400,10 +1393,9 @@ func TestMarkUndispatched(t *testing.T) {
 			Version: "abc",
 		}
 		v := &Version{
-			Id:            b.Version,
-			Status:        evergreen.VersionStarted,
-			ParserProject: &ParserProject{Identifier: "sample"},
-			Config:        "identifier: sample",
+			Id:     b.Version,
+			Status: evergreen.VersionStarted,
+			Config: "identifier: sample",
 		}
 		testTask := &task.Task{
 			Id:          "testTask",
@@ -1583,10 +1575,9 @@ func TestFailedTaskRestart(t *testing.T) {
 		Version: "abc",
 	}
 	v := &Version{
-		Id:            b.Version,
-		Status:        evergreen.VersionStarted,
-		ParserProject: &ParserProject{Identifier: "sample"},
-		Config:        "identifier: sample",
+		Id:     b.Version,
+		Status: evergreen.VersionStarted,
+		Config: "identifier: sample",
 	}
 	testTask1 := &task.Task{
 		Id:        "taskToRestart",
@@ -1922,12 +1913,11 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	require.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection))
 
 	v := &Version{
-		Id:            "sample_version",
-		Identifier:    "sample",
-		Requester:     evergreen.RepotrackerVersionRequester,
-		ParserProject: &ParserProject{Identifier: "sample"},
-		Config:        "identifier: sample",
-		Status:        evergreen.VersionStarted,
+		Id:         "sample_version",
+		Identifier: "sample",
+		Requester:  evergreen.RepotrackerVersionRequester,
+		Config:     "identifier: sample",
+		Status:     evergreen.VersionStarted,
 	}
 	require.NoError(v.Insert())
 
@@ -2092,11 +2082,10 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 
 	require.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection))
 	v := &Version{
-		Id:            "sample_version",
-		Requester:     evergreen.RepotrackerVersionRequester,
-		ParserProject: &ParserProject{Identifier: "sample"},
-		Config:        "identifier: sample",
-		Status:        evergreen.VersionStarted,
+		Id:        "sample_version",
+		Requester: evergreen.RepotrackerVersionRequester,
+		Config:    "identifier: sample",
+		Status:    evergreen.VersionStarted,
 	}
 	require.NoError(v.Insert())
 
@@ -2182,11 +2171,10 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 	require.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection))
 
 	v := &Version{
-		Id:            "sample_version",
-		Requester:     evergreen.RepotrackerVersionRequester,
-		ParserProject: &ParserProject{Identifier: "sample"},
-		Config:        "identifier: sample",
-		Status:        evergreen.VersionStarted,
+		Id:        "sample_version",
+		Requester: evergreen.RepotrackerVersionRequester,
+		Config:    "identifier: sample",
+		Status:    evergreen.VersionStarted,
 	}
 	require.NoError(v.Insert())
 

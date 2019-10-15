@@ -1193,7 +1193,7 @@ func TestCreateTaskGroup(t *testing.T) {
     - name: example_task_3
   `
 	proj := &Project{}
-	pp, err := LoadProjectInto([]byte(projYml), "test", proj)
+	_, err := LoadProjectInto([]byte(projYml), "test", proj)
 	assert.NotNil(proj)
 	assert.NoError(err)
 	v := &Version{
@@ -1208,8 +1208,7 @@ func TestCreateTaskGroup(t *testing.T) {
 				Activated:    false,
 			},
 		},
-		ParserProject: pp,
-		Config:        projYml,
+		Config: projYml,
 	}
 	table := NewTaskIdTable(proj, v, "", "")
 

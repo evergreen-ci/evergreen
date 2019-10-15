@@ -360,7 +360,6 @@ func (s *PatchIntentUnitsSuite) verifyVersionDoc(patchDoc *patch.Patch, expected
 	s.Zero(versionDoc.FinishTime)
 	s.Equal(s.hash, versionDoc.Revision)
 	s.Equal(patchDoc.Description, versionDoc.Message)
-	s.NotEmpty(versionDoc.ParserProject)
 	s.Equal(s.user, versionDoc.Author)
 	s.Len(versionDoc.BuildIds, 4)
 

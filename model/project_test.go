@@ -261,14 +261,9 @@ task_groups:
   - example_task_1
   - example_task_2
 `
-	proj := &Project{}
-	pp, err := LoadProjectInto([]byte(projYml), "id", proj)
-	assert.NotNil(proj)
-	assert.NoError(err)
 	v := Version{
-		Id:            "v1",
-		ParserProject: pp,
-		Config:        projYml,
+		Id:     "v1",
+		Config: projYml,
 	}
 	t1 := task.Task{
 		Id:        "t1",

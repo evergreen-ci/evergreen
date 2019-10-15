@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/evergreen-ci/evergreen/db"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
@@ -42,30 +44,32 @@ const LoadProjectError = "load project error(s)"
 // configuration YAML. It implements the Unmarshaler interface
 // to allow for flexible handling.
 type ParserProject struct {
-	Enabled           bool                       `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
-	Stepback          bool                       `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	PreErrorFailsTask bool                       `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
-	BatchTime         int                        `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
-	Owner             string                     `yaml:"owner,omitempty" bson:"owner,omitempty"`
-	Repo              string                     `yaml:"repo,omitempty" bson:"repo,omitempty"`
-	RemotePath        string                     `yaml:"remote_path,omitempty" bson:"remote_path,omitempty"`
-	RepoKind          string                     `yaml:"repokind,omitempty" bson:"repokind,omitempty"`
-	Branch            string                     `yaml:"branch,omitempty" bson:"branch,omitempty"`
-	Identifier        string                     `yaml:"identifier,omitempty" bson:"identifier,omitempty"`
-	DisplayName       string                     `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
-	CommandType       string                     `yaml:"command_type,omitempty" bson:"command_type,omitempty"`
-	Ignore            parserStringSlice          `yaml:"ignore,omitempty" bson:"ignore,omitempty"`
-	Pre               *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre,omitempty"`
-	Post              *YAMLCommandSet            `yaml:"post,omitempty" bson:"post,omitempty"`
-	Timeout           *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
-	CallbackTimeout   int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
-	Modules           []Module                   `yaml:"modules,omitempty" bson:"modules,omitempty"`
-	BuildVariants     []parserBV                 `yaml:"buildvariants,omitempty" bson:"buildvariants,omitempty"`
-	Functions         map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions,omitempty"`
-	TaskGroups        []parserTaskGroup          `yaml:"task_groups,omitempty" bson:"task_groups,omitempty"`
-	Tasks             []parserTask               `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
-	ExecTimeoutSecs   int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
-	Loggers           *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+	Id                 string                     `yaml:"_id" bson:"_id"` // should be the same as the version's ID
+	ConfigUpdateNumber int                        `yaml:"config_number,omitempty" bson:"config_number,omitempty"`
+	Enabled            bool                       `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
+	Stepback           bool                       `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	PreErrorFailsTask  bool                       `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
+	BatchTime          int                        `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
+	Owner              string                     `yaml:"owner,omitempty" bson:"owner,omitempty"`
+	Repo               string                     `yaml:"repo,omitempty" bson:"repo,omitempty"`
+	RemotePath         string                     `yaml:"remote_path,omitempty" bson:"remote_path,omitempty"`
+	RepoKind           string                     `yaml:"repokind,omitempty" bson:"repokind,omitempty"`
+	Branch             string                     `yaml:"branch,omitempty" bson:"branch,omitempty"`
+	Identifier         string                     `yaml:"identifier,omitempty" bson:"identifier,omitempty"`
+	DisplayName        string                     `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
+	CommandType        string                     `yaml:"command_type,omitempty" bson:"command_type,omitempty"`
+	Ignore             parserStringSlice          `yaml:"ignore,omitempty" bson:"ignore,omitempty"`
+	Pre                *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre,omitempty"`
+	Post               *YAMLCommandSet            `yaml:"post,omitempty" bson:"post,omitempty"`
+	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
+	CallbackTimeout    int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
+	Modules            []Module                   `yaml:"modules,omitempty" bson:"modules,omitempty"`
+	BuildVariants      []parserBV                 `yaml:"buildvariants,omitempty" bson:"buildvariants,omitempty"`
+	Functions          map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions,omitempty"`
+	TaskGroups         []parserTaskGroup          `yaml:"task_groups,omitempty" bson:"task_groups,omitempty"`
+	Tasks              []parserTask               `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
+	ExecTimeoutSecs    int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
+	Loggers            *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 
 	// Matrix code
 	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
@@ -108,6 +112,10 @@ type parserTask struct {
 	Patchable       *bool               `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
 	PatchOnly       *bool               `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
 	Stepback        *bool               `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+}
+
+func (pp *ParserProject) Insert() error {
+	return db.Insert(ParserProjectCollection, pp)
 }
 
 func (pp *ParserProject) MarshalBSON() ([]byte, error) {
@@ -417,41 +425,49 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 	return nil
 }
 
-// LoadProjectFromVersion returns the project for a version, either from the parser project or the config string.
+// LoadProjectForVersion returns the project for a version, either from the parser project or the config string.
 // If read from the config string and shouldSave is set, the resulting parser project will be saved.
-func LoadProjectFromVersion(v *Version, identifier string, shouldSave bool) (*Project, error) {
-	if evergreen.UseParserProject && v.ParserProject != nil {
-		v.ParserProject.Identifier = identifier
-		return translateProject(v.ParserProject)
+func LoadProjectForVersion(v *Version, identifier string, shouldSave bool) (*Project, *ParserProject, error) {
+	ppFromDB, err := ParserProjectFindOneById(v.Id)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error finding parser project")
+	}
+	if evergreen.UseParserProject && ppFromDB != nil {
+		ppFromDB.Identifier = identifier
+		p, err := translateProject(ppFromDB)
+		return p, ppFromDB, err
 	}
 
 	if v.Config == "" {
-		return nil, errors.New("version has no config")
+		return nil, nil, errors.New("version has no config")
 	}
 	p := &Project{}
 	pp, err := LoadProjectInto([]byte(v.Config), identifier, p)
 	if err != nil {
-		return nil, errors.Wrap(err, "error loading project")
+		return nil, nil, errors.Wrap(err, "error loading project")
 	}
-	// TODO (EVG-6270) when we flip UseParserProject we don't need to check if v.ParserProject is nil anymore
-	if shouldSave && v.ParserProject == nil {
-		if err = UpdateVersionProject(v.Id, v.ConfigUpdateNumber, pp); err != nil {
+	pp.Id = v.Id
+	pp.Identifier = identifier
+	pp.ConfigUpdateNumber = v.ConfigUpdateNumber
+
+	// TODO: don't need separate ppFromDB variable once UseParserProject = true
+	if shouldSave && ppFromDB == nil {
+		if err = pp.Insert(); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"project":       identifier,
 				"version":       v.Id,
 				"config_number": v.ConfigUpdateNumber,
-				"message":       "error updating version's project",
+				"message":       "error inserting parser project for version",
 			}))
-			return nil, errors.Wrap(err, "error updating version with project")
+			return nil, nil, errors.Wrap(err, "error updating version with project")
 		}
-		v.ParserProject = pp
 	}
-	return p, nil
+	return p, pp, nil
 }
 
 // LoadProjectInto loads the raw data from the config file into project
 // and sets the project's identifier field to identifier. Tags are evaluated. Returns the intermediate step.
-// If reading from a version config, LoadProjectFromVersion should be used to persist the resulting parser project.
+// If reading from a version config, LoadProjectForVersion should be used to persist the resulting parser project.
 func LoadProjectInto(data []byte, identifier string, project *Project) (*ParserProject, error) {
 	intermediateProject, err := createIntermediateProject(data)
 	if err != nil {

@@ -12,7 +12,6 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
 	"gopkg.in/yaml.v2"
 )
 
@@ -107,29 +106,29 @@ func ParseProjectFromJSON(data []byte) (GeneratedProject, error) {
 
 // NewVersion adds the buildvariants, tasks, and functions
 // from a generated project config to a project, and returns the previous config number.
-func (g *GeneratedProject) NewVersion() (*Project, *Version, *task.Task, *projectMaps, error) {
+func (g *GeneratedProject) NewVersion() (*Project, *ParserProject, *Version, *task.Task, *projectMaps, error) {
 	// Get task, version, and project.
 	t, err := task.FindOneId(g.TaskID)
 	if err != nil {
-		return nil, nil, nil, nil,
+		return nil, nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: errors.Wrapf(err, "error finding task %s", g.TaskID).Error()}
 	}
 	if t == nil {
-		return nil, nil, nil, nil,
+		return nil, nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: fmt.Sprintf("unable to find task %s", g.TaskID)}
 	}
 	v, err := VersionFindOneId(t.Version)
 	if err != nil {
-		return nil, nil, nil, nil,
+		return nil, nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: errors.Wrapf(err, "error finding version %s", t.Version).Error()}
 	}
 	if v == nil {
-		return nil, nil, nil, nil,
+		return nil, nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: fmt.Sprintf("unable to find version %s", t.Version)}
 	}
-	p, err := LoadProjectFromVersion(v, t.Project, false)
+	p, pp, err := LoadProjectForVersion(v, t.Project, false)
 	if err != nil {
-		return nil, nil, nil, nil,
+		return nil, nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "error getting project for version %s", t.Version).Error()}
 	}
 
@@ -138,44 +137,33 @@ func (g *GeneratedProject) NewVersion() (*Project, *Version, *task.Task, *projec
 
 	// Validate generated project against original project.
 	if err = g.validateGeneratedProject(p, cachedProject); err != nil {
-		return nil, nil, nil, nil,
+		return nil, nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "generated project is invalid").Error()}
 	}
 
-	newPP, newConfig, err := g.addGeneratedProjectToConfig(v.ParserProject, v.Config, cachedProject)
+	newPP, newConfig, err := g.addGeneratedProjectToConfig(pp, v.Config, cachedProject)
 	if err != nil {
-		return nil, nil, nil, nil,
+		return nil, nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error creating config from generated config").Error()}
 	}
-
+	newPP.Id = v.Id
 	v.Config = newConfig
-	v.ParserProject = newPP
-	p, err = LoadProjectFromVersion(v, t.Project, false)
+	p, err = translateProject(newPP)
 	if err != nil {
-		return nil, nil, nil, nil,
+		return nil, nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error translating project").Error()}
 	}
-	return p, v, t, &cachedProject, nil
+	return p, newPP, v, t, &cachedProject, nil
 }
 
-func (g *GeneratedProject) Save(ctx context.Context, p *Project, v *Version, t *task.Task, pm *projectMaps) error {
-	query := bson.M{
-		VersionIdKey:           v.Id,
-		VersionConfigNumberKey: v.ConfigUpdateNumber,
-	}
-	update := bson.M{
-		"$set": bson.M{
-			VersionConfigKey:  v.Config,
-			VersionProjectKey: v.ParserProject,
-		},
-		"$inc": bson.M{VersionConfigNumberKey: 1},
-	}
-
-	err := VersionUpdateOne(query, update)
-	if err != nil {
+func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProject, v *Version, t *task.Task, pm *projectMaps) error {
+	if err := VersionUpdateConfig(v.Id, v.Config, v.ConfigUpdateNumber); err != nil {
 		return errors.Wrapf(err, "error updating version %s", v.Id)
 	}
 	v.ConfigUpdateNumber += 1
+	if err := pp.UpsertWithConfigNumber(v.ConfigUpdateNumber); err != nil {
+		return errors.Wrapf(err, "error updating parser project %s", pp.Id)
+	}
 
 	if v.Requester == evergreen.MergeTestRequester {
 		mergeTask, err := task.FindMergeTaskForVersion(v.Id)

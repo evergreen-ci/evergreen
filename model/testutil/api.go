@@ -171,13 +171,16 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 
 	// Insert the version document
 	v := &model.Version{
-		Id:            taskOne.Version,
-		BuildIds:      []string{taskOne.BuildId},
-		ParserProject: pp,
-		Config:        string(projectYamlBytes),
+		Id:       taskOne.Version,
+		BuildIds: []string{taskOne.BuildId},
+		Config:   string(projectYamlBytes),
 	}
+	pp.Id = taskOne.Version
 	if err = v.Insert(); err != nil {
 		return nil, errors.Wrap(err, "failed to insert version")
+	}
+	if err = pp.Insert(); err != nil {
+		return nil, errors.Wrap(err, "failed to insert parser project")
 	}
 
 	// Insert the build that contains the tasks

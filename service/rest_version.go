@@ -289,8 +289,12 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 
 	var config []byte
 	var err error
-	if evergreen.UseParserProject && projCtx.Version.ParserProject != nil {
-		config, err = yaml.Marshal(projCtx.Version.ParserProject)
+	pp, err := model.ParserProjectFindOneById(projCtx.Version.Id)
+	if err != nil {
+		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
+	}
+	if evergreen.UseParserProject && pp != nil {
+		config, err = yaml.Marshal(pp)
 		if err != nil {
 			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project"})
 		}
