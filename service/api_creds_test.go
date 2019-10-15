@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,6 +21,18 @@ func TestBuildloggerV3Credentials(t *testing.T) {
 	as, err := NewAPIServer(conf, queue, remoteQueue)
 	require.NoError(t, err)
 
+	sampleHost := host.Host{
+		Id: "h1",
+		Distro: distro.Distro{
+			Id: "d1",
+		},
+		Secret:        "secret",
+		Provisioned:   true,
+		Status:        evergreen.HostRunning,
+		AgentRevision: evergreen.BuildRevision,
+	}
+	require.NoError(t, sampleHost.Insert())
+
 	env := evergreen.GetEnvironment()
 	settings := &evergreen.Settings{}
 	require.NoError(t, settings.Get(env))
@@ -28,6 +42,7 @@ func TestBuildloggerV3Credentials(t *testing.T) {
 
 	url := "/api/2/agent/buildloggerv3_creds"
 	request, err := http.NewRequest("GET", url, nil)
+	request.Header.Add(evergreen.HostHeader, sampleHost.Id)
 	require.NoError(t, err)
 	w := httptest.NewRecorder()
 
