@@ -52,8 +52,8 @@ func (s *AgentSuite) SetupTest() {
 	s.Require().NoError(err)
 
 	s.tc = &taskContext{
-		taskModel: &task.Task{
-			Id:     "task_id",
+		task: client.TaskData{
+			ID:     "task_id",
 			Secret: "task_secret",
 		},
 		taskConfig: &model.TaskConfig{
@@ -64,7 +64,7 @@ func (s *AgentSuite) SetupTest() {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	s.canceler = cancel
-	s.tc.logger, err = s.a.comm.GetLoggerProducer(ctx, s.tc.taskModel, nil)
+	s.tc.logger, err = s.a.comm.GetLoggerProducer(ctx, s.tc.task, nil)
 	s.NoError(err)
 
 	factory, ok := command.GetCommandFactory("setup.initial")
@@ -459,8 +459,8 @@ func (s *AgentSuite) TestWaitHeartbeatTimeout() {
 func (s *AgentSuite) TestWaitIdleTimeout() {
 	var err error
 	s.tc = &taskContext{
-		taskModel: &task.Task{
-			Id:     "task_id",
+		task: client.TaskData{
+			ID:     "task_id",
 			Secret: "task_secret",
 		},
 		taskConfig: &model.TaskConfig{
@@ -485,7 +485,7 @@ func (s *AgentSuite) TestWaitIdleTimeout() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s.tc.logger, err = s.a.comm.GetLoggerProducer(ctx, s.tc.taskModel, nil)
+	s.tc.logger, err = s.a.comm.GetLoggerProducer(ctx, s.tc.task, nil)
 	s.NoError(err)
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
@@ -504,10 +504,8 @@ func (s *AgentSuite) TestWaitIdleTimeout() {
 func (s *AgentSuite) TestPrepareNextTask() {
 	var err error
 	nextTask := &apimodels.NextTaskResponse{}
-	tc := &taskContext{
-		taskModel: &task.Task{},
-	}
-	tc.logger, err = s.a.comm.GetLoggerProducer(context.Background(), s.tc.taskModel, nil)
+	tc := &taskContext{}
+	tc.logger, err = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task, nil)
 	s.NoError(err)
 	tc.taskConfig = &model.TaskConfig{
 		Task: &task.Task{
@@ -528,7 +526,7 @@ func (s *AgentSuite) TestPrepareNextTask() {
 			Version: "version_name",
 		},
 	}
-	tc.logger, err = s.a.comm.GetLoggerProducer(context.Background(), s.tc.taskModel, nil)
+	tc.logger, err = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task, nil)
 	s.NoError(err)
 	tc.taskDirectory = "task_directory"
 	tc = s.a.prepareNextTask(context.Background(), nextTask, tc)
@@ -536,44 +534,13 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	s.Equal("foo", tc.taskGroup)
 	s.Equal("task_directory", tc.taskDirectory)
 
-	nextTask.TaskGroup = "foo"
-	tc.taskGroup = "foo"
-	nextTask.Version = "version_name"
-	tc.taskConfig = &model.TaskConfig{
-		Task: &task.Task{
-			Version: "a_different_version",
-		},
-	}
-	tc.logger, err = s.a.comm.GetLoggerProducer(context.Background(), s.tc.taskModel, nil)
-	s.NoError(err)
-	tc.taskDirectory = "task_directory"
-	tc = s.a.prepareNextTask(context.Background(), nextTask, tc)
-	s.True(tc.runGroupSetup, "if the next task is a different group from the previous task, runGroupSetup should be true")
-	s.Equal("foo", tc.taskGroup)
-	s.Empty(tc.taskDirectory)
-
-	tc.taskConfig = &model.TaskConfig{
-		Task: &task.Task{
-			Version: versionId,
-		},
-	}
-	tc.logger, err = s.a.comm.GetLoggerProducer(context.Background(), s.tc.taskModel, nil)
-	s.NoError(err)
-	nextTask.TaskGroup = "bar"
-	tc.taskGroup = "foo"
-	tc.taskDirectory = "task_directory"
-	tc = s.a.prepareNextTask(context.Background(), nextTask, tc)
-	s.True(tc.runGroupSetup, "if the next task is in a different group from the previous task, runGroupSetup should be true")
-	s.Equal("bar", tc.taskGroup)
-	s.Empty(tc.taskDirectory)
-
 	tc.taskConfig = &model.TaskConfig{
 		Task: &task.Task{
 			Version: versionId,
 			BuildId: "build_id_1",
 		},
 	}
-	tc.logger, err = s.a.comm.GetLoggerProducer(context.Background(), s.tc.taskModel, nil)
+	tc.logger, err = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task, nil)
 	s.NoError(err)
 	nextTask.TaskGroup = "bar"
 	nextTask.Version = versionId
@@ -818,8 +785,8 @@ task_groups:
 }
 
 func (s *AgentSuite) TestGroupTimeoutCommands() {
-	s.tc.taskModel = &task.Task{
-		Id:     "task_id",
+	s.tc.task = client.TaskData{
+		ID:     "task_id",
 		Secret: "task_secret",
 	}
 	s.tc.taskConfig = &model.TaskConfig{
@@ -858,8 +825,8 @@ task_groups:
 }
 
 func (s *AgentSuite) TestTimeoutDoesNotWaitForChildProcs() {
-	s.tc.taskModel = &task.Task{
-		Id:     "task_id",
+	s.tc.task = client.TaskData{
+		ID:     "task_id",
 		Secret: "task_secret",
 	}
 	s.tc.taskConfig = &model.TaskConfig{
@@ -876,7 +843,6 @@ func (s *AgentSuite) TestTimeoutDoesNotWaitForChildProcs() {
 		WorkDir: s.tc.taskDirectory,
 	}
 	projYml := `
-
 timeout:
   - command: shell.exec
     params:

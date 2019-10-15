@@ -91,7 +91,7 @@ func GetSender(ctx context.Context, prefix, taskId string) (send.Sender, error) 
 func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, c *model.LoggerConfig, commandName string) (client.LoggerProducer, error) {
 	config := a.prepLogger(tc, c, commandName)
 
-	logger, err := a.comm.GetLoggerProducer(ctx, tc.taskModel, &config)
+	logger, err := a.comm.GetLoggerProducer(ctx, tc.task, &config)
 	if err != nil {
 		return nil, err
 	}

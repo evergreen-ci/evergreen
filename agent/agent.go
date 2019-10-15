@@ -318,7 +318,7 @@ func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
 	if tc.project != nil && tc.project.Loggers != nil {
 		tc.logger, err = a.makeLoggerProducer(ctx, tc, tc.project.Loggers, "")
 	} else {
-		tc.logger, err = a.comm.GetLoggerProducer(ctx, tc.taskModel, nil)
+		tc.logger, err = a.comm.GetLoggerProducer(ctx, tc.task, nil)
 	}
 	if err != nil {
 		return err
