@@ -63,7 +63,6 @@ func (c *LoggerConfig) Set() error {
 			"logkeeper_url":          c.LogkeeperURL,
 			"buildloggerv3_base_url": c.BuildloggerV3BaseURL,
 			"buildloggerv3_rpc_port": c.BuildloggerV3RPCPort,
-			// TODO: do we want this sensitive info here?
 			"buildloggerv3_user":     c.BuildloggerV3User,
 			"buildloggerv3_password": c.BuildloggerV3Password,
 		},
