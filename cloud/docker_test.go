@@ -20,6 +20,7 @@ type DockerSuite struct {
 	distro     distro.Distro
 	hostOpts   host.CreateOptions
 	parentHost host.Host
+	env        evergreen.Environment
 	suite.Suite
 }
 
@@ -28,6 +29,7 @@ func TestDockerSuite(t *testing.T) {
 }
 
 func (s *DockerSuite) SetupSuite() {
+	s.env = evergreen.GetEnvironment()
 	s.NoError(db.Clear(host.Collection))
 }
 
@@ -37,6 +39,7 @@ func (s *DockerSuite) SetupTest() {
 	}
 	s.manager = &dockerManager{
 		client: s.client,
+		env:    s.env,
 	}
 	s.distro = distro.Distro{
 		Id:       "d",
@@ -70,8 +73,8 @@ func (s *DockerSuite) TestConfigureAPICall() {
 	s.False(mock.failInit)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	settings := s.env.Settings()
 
-	settings := &evergreen.Settings{}
 	s.NoError(s.manager.Configure(ctx, settings))
 
 	mock.failInit = true

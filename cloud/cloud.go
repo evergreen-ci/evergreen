@@ -117,7 +117,7 @@ func GetManager(ctx context.Context, env evergreen.Environment, mgrOpts ManagerO
 	case evergreen.ProviderNameDocker:
 		provider = &dockerManager{env: env}
 	case evergreen.ProviderNameDockerMock:
-		provider = &dockerManager{client: &dockerClientMock{}}
+		provider = &dockerManager{env: env, client: &dockerClientMock{}}
 	case evergreen.ProviderNameOpenstack:
 		provider = &openStackManager{}
 	case evergreen.ProviderNameGce:

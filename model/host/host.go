@@ -427,7 +427,7 @@ func (h *Host) JasperCredentials(ctx context.Context, env evergreen.Environment)
 // credentials will expire.
 func (h *Host) JasperCredentialsExpiration(ctx context.Context, env evergreen.Environment) (time.Time, error) {
 	user := &certdepot.User{}
-	if err := env.Client().Database(env.Settings().Database.DB).Collection(evergreen.CredentialsCollection).FindOne(ctx, bson.M{"_id": h.JasperCredentialsID}).Decode(user); err != nil {
+	if err := env.DB().Collection(evergreen.CredentialsCollection).FindOne(ctx, bson.M{"_id": h.JasperCredentialsID}).Decode(user); err != nil {
 		return time.Time{}, errors.Wrap(err, "problem finding credentials in the database")
 	}
 
@@ -476,7 +476,7 @@ func (h *Host) SaveJasperCredentials(ctx context.Context, env evergreen.Environm
 // DeleteJasperCredentials deletes the Jasper credentials for the host and
 // updates the host both in memory and in the database.
 func (h *Host) DeleteJasperCredentials(ctx context.Context, env evergreen.Environment) error {
-	_, err := env.Client().Database(env.Settings().Database.DB).Collection(evergreen.CredentialsCollection).DeleteOne(ctx, bson.M{"_id": h.JasperCredentialsID})
+	_, err := env.DB().Collection(evergreen.CredentialsCollection).DeleteOne(ctx, bson.M{"_id": h.JasperCredentialsID})
 	return errors.WithStack(err)
 }
 

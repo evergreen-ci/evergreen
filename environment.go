@@ -609,6 +609,10 @@ func (e *envState) initDepot(ctx context.Context) error {
 			MongoDBURI:     e.settings.Database.Url,
 			DatabaseName:   e.settings.Database.DB,
 			CollectionName: CredentialsCollection,
+			DepotOptions: certdepot.DepotOptions{
+				CA:                CAName,
+				DefaultExpiration: 365 * 24 * time.Hour,
+			},
 		},
 		CAOpts: &certdepot.CertificateOptions{
 			CA:         CAName,
@@ -624,7 +628,8 @@ func (e *envState) initDepot(ctx context.Context) error {
 		},
 	}
 
-	if _, err := certdepot.BootstrapDepotWithMongoClient(ctx, e.client, bootstrapConfig); err != nil {
+	var err error
+	if e.depot, err = certdepot.BootstrapDepotWithMongoClient(ctx, e.client, bootstrapConfig); err != nil {
 		return errors.Wrapf(err, "could not bootstrap %s collection", CredentialsCollection)
 	}
 

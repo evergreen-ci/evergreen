@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -37,10 +38,20 @@ type EC2Suite struct {
 	mock                      *awsClientMock
 	h                         *host.Host
 	distro                    distro.Distro
+
+	env evergreen.Environment
+	ctx context.Context
 }
 
 func TestEC2Suite(t *testing.T) {
-	suite.Run(t, new(EC2Suite))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s := &EC2Suite{
+		env: testutil.NewEnvironment(ctx, t),
+		ctx: ctx,
+	}
+	suite.Run(t, s)
 }
 
 func (s *EC2Suite) SetupTest() {
@@ -49,8 +60,8 @@ func (s *EC2Suite) SetupTest() {
 		client:   &awsClientMock{},
 		provider: onDemandProvider,
 	}
-	s.onDemandManager = NewEC2Manager(s.onDemandOpts)
-	_ = s.onDemandManager.Configure(context.Background(), &evergreen.Settings{
+	s.onDemandManager = &ec2Manager{env: s.env, EC2ManagerOptions: s.onDemandOpts}
+	_ = s.onDemandManager.Configure(s.ctx, &evergreen.Settings{
 		Expansions: map[string]string{"test": "expand"},
 		Providers: evergreen.CloudProviders{
 			AWS: evergreen.AWSConfig{
@@ -63,24 +74,24 @@ func (s *EC2Suite) SetupTest() {
 		provider: onDemandProvider,
 		region:   "test-region",
 	}
-	s.onDemandWithRegionManager = NewEC2Manager(s.onDemandWithRegionOpts)
-	_ = s.onDemandManager.Configure(context.Background(), &evergreen.Settings{
+	s.onDemandWithRegionManager = &ec2Manager{env: s.env, EC2ManagerOptions: s.onDemandWithRegionOpts}
+	_ = s.onDemandManager.Configure(s.ctx, &evergreen.Settings{
 		Expansions: map[string]string{"test": "expand"},
 	})
 	s.spotOpts = &EC2ManagerOptions{
 		client:   &awsClientMock{},
 		provider: spotProvider,
 	}
-	s.spotManager = NewEC2Manager(s.spotOpts)
-	_ = s.spotManager.Configure(context.Background(), &evergreen.Settings{
+	s.spotManager = &ec2Manager{env: s.env, EC2ManagerOptions: s.spotOpts}
+	_ = s.spotManager.Configure(s.ctx, &evergreen.Settings{
 		Expansions: map[string]string{"test": "expand"},
 	})
 	s.autoOpts = &EC2ManagerOptions{
 		client:   &awsClientMock{},
 		provider: autoProvider,
 	}
-	s.autoManager = NewEC2Manager(s.autoOpts)
-	_ = s.autoManager.Configure(context.Background(), &evergreen.Settings{
+	s.autoManager = &ec2Manager{env: s.env, EC2ManagerOptions: s.autoOpts}
+	_ = s.autoManager.Configure(s.ctx, &evergreen.Settings{
 		Expansions: map[string]string{"test": "expand"},
 	})
 	var ok bool
@@ -118,8 +129,8 @@ func (s *EC2Suite) SetupTest() {
 }
 
 func (s *EC2Suite) TestConstructor() {
-	s.Implements((*Manager)(nil), NewEC2Manager(s.onDemandOpts))
-	s.Implements((*BatchManager)(nil), NewEC2Manager(s.onDemandOpts))
+	s.Implements((*Manager)(nil), &ec2Manager{env: s.env, EC2ManagerOptions: s.onDemandOpts})
+	s.Implements((*BatchManager)(nil), &ec2Manager{env: s.env, EC2ManagerOptions: s.onDemandOpts})
 }
 
 func (s *EC2Suite) TestValidateProviderSettings() {
@@ -266,7 +277,7 @@ func (s *EC2Suite) TestGetSettings() {
 
 func (s *EC2Suite) TestConfigure() {
 	settings := &evergreen.Settings{}
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
 	err := s.onDemandManager.Configure(ctx, settings)
@@ -343,7 +354,7 @@ func (s *EC2Suite) TestSpawnHostInvalidInput() {
 		},
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
 	spawned, err := s.onDemandManager.SpawnHost(ctx, h)
@@ -371,7 +382,7 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 	}
 	s.Require().NoError(s.h.Insert())
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
 	_, err := s.onDemandManager.SpawnHost(ctx, s.h)
@@ -418,7 +429,7 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 	}
 	s.Require().NoError(h.Insert())
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
 	_, err := s.onDemandManager.SpawnHost(ctx, h)
@@ -461,7 +472,7 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 	}
 	s.Require().NoError(h.Insert())
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
 	_, err := s.spotManager.SpawnHost(ctx, h)
@@ -505,7 +516,7 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 	}
 	s.Require().NoError(h.Insert())
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 	_, err := s.spotManager.SpawnHost(ctx, h)
 	s.NoError(err)
@@ -548,7 +559,7 @@ func (s *EC2Suite) TestNoKeyAndNotSpawnHostForTaskShouldFail() {
 	}
 	s.Require().NoError(h.Insert())
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
 	_, err := s.onDemandManager.SpawnHost(ctx, h)
@@ -591,7 +602,7 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 	}
 	s.Require().NoError(newVars.Insert())
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
 	_, err := s.onDemandManager.SpawnHost(ctx, h)
@@ -627,7 +638,7 @@ func (s *EC2Suite) TestModifyHost() {
 		InstanceType:       "instance-type-2",
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
 	s.h.Status = evergreen.HostRunning
@@ -645,7 +656,7 @@ func (s *EC2Suite) TestModifyHost() {
 }
 
 func (s *EC2Suite) TestGetInstanceStatus() {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 	s.Require().NoError(s.h.Insert())
 
@@ -678,7 +689,7 @@ func (s *EC2Suite) TestGetInstanceStatus() {
 }
 
 func (s *EC2Suite) TestTerminateInstance() {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
 	s.NoError(s.h.Insert())
@@ -689,29 +700,29 @@ func (s *EC2Suite) TestTerminateInstance() {
 }
 
 func (s *EC2Suite) TestTerminateInstanceWithUserDataBootstrappedHost() {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
 	withCredentialsBootstrap(s.T(), func(*evergreen.Settings) {
 		s.h.Distro.BootstrapSettings.Method = distro.BootstrapMethodUserData
 		s.NoError(s.h.Insert())
 
-		creds, err := s.h.GenerateJasperCredentials(ctx)
+		creds, err := s.h.GenerateJasperCredentials(ctx, s.env)
 		s.Require().NoError(err)
-		s.Require().NoError(s.h.SaveJasperCredentials(ctx, creds))
+		s.Require().NoError(s.h.SaveJasperCredentials(ctx, s.env, creds))
 
-		_, err = s.h.JasperCredentials(ctx)
+		_, err = s.h.JasperCredentials(ctx, s.env)
 		s.Require().NoError(err)
 
 		s.NoError(s.onDemandManager.TerminateInstance(ctx, s.h, evergreen.User, ""))
 
-		_, err = s.h.JasperCredentials(ctx)
+		_, err = s.h.JasperCredentials(ctx, s.env)
 		s.Error(err)
 	})
 }
 
 func (s *EC2Suite) TestStopInstance() {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
 	hosts := []*host.Host{
@@ -742,7 +753,7 @@ func (s *EC2Suite) TestStopInstance() {
 }
 
 func (s *EC2Suite) TestStartInstance() {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
 	hosts := []*host.Host{
@@ -768,7 +779,7 @@ func (s *EC2Suite) TestStartInstance() {
 }
 
 func (s *EC2Suite) TestIsUp() {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
 	s.h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
@@ -785,7 +796,7 @@ func (s *EC2Suite) TestIsUp() {
 func (s *EC2Suite) TestOnUp() {
 	s.h.VolumeIDs = []string{"volume_id"}
 
-	s.NoError(s.onDemandManager.OnUp(context.Background(), s.h))
+	s.NoError(s.onDemandManager.OnUp(s.ctx, s.h))
 	manager, ok := s.onDemandManager.(*ec2Manager)
 	s.True(ok)
 	mock, ok := manager.client.(*awsClientMock)
@@ -799,7 +810,7 @@ func (s *EC2Suite) TestOnUp() {
 
 func (s *EC2Suite) TestGetDNSName() {
 	s.h.Host = "public_dns_name"
-	dns, err := s.onDemandManager.GetDNSName(context.Background(), s.h)
+	dns, err := s.onDemandManager.GetDNSName(s.ctx, s.h)
 	s.Equal("public_dns_name", dns)
 	s.NoError(err)
 
@@ -854,7 +865,7 @@ func (s *EC2Suite) TestGetProvider() {
 		VpcName:      "vpc_name",
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
 	manager, ok := s.autoManager.(*ec2Manager)
@@ -878,7 +889,7 @@ func (s *EC2Suite) TestPersistInstanceId() {
 	s.Require().NoError(s.h.Insert())
 	manager, ok := s.onDemandManager.(*ec2Manager)
 	s.True(ok)
-	instanceID, err := manager.client.GetSpotInstanceId(context.Background(), s.h)
+	instanceID, err := manager.client.GetSpotInstanceId(s.ctx, s.h)
 	s.Equal("instance_id", instanceID)
 	s.NoError(err)
 	s.Equal("instance_id", s.h.ExternalIdentifier)
@@ -923,7 +934,7 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 			},
 		},
 	}
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 	manager, ok := s.onDemandManager.(*ec2Manager)
 	s.True(ok)
@@ -1142,7 +1153,7 @@ func (s *EC2Suite) TestCacheHostData() {
 	}
 	instance.PublicDnsName = aws.String("public_dns_name")
 
-	s.NoError(cacheHostData(context.Background(), h, instance, ec2m.client))
+	s.NoError(cacheHostData(s.ctx, h, instance, ec2m.client))
 
 	s.Equal(*instance.Placement.AvailabilityZone, h.Zone)
 	s.True(instance.LaunchTime.Equal(h.StartTime))
