@@ -828,6 +828,18 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 		expansions.Put("revision_order_id", fmt.Sprintf("%s_%d", v.Author, v.RevisionOrderNumber))
 		if v.Requester == evergreen.MergeTestRequester {
 			expansions.Put("is_commit_queue", "true")
+			patch, err := patch.FindOne(patch.ByVersion(t.Version))
+			if err != nil {
+				return nil, errors.Wrapf(err, "error finding patch for version %s", t.Version)
+			}
+			if patch == nil {
+				return nil, errors.Errorf("no patch found for version %s", t.Version)
+			}
+			for _, p := range patch.Patches {
+				if p.ModuleName == "" {
+					expansions.Put("commit_message", p.Message)
+				}
+			}
 		}
 
 		p, err = patch.FindOne(patch.ByVersion(t.Version))

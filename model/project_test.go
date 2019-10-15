@@ -375,11 +375,26 @@ buildvariants:
 	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.MergeTestRequester},
 	}))
+	p := patch.Patch{
+		Version: v.Id,
+		Patches: []patch.ModulePatch{
+			{
+				ModuleName: "module",
+				Message:    "moduleMessage",
+			},
+			{
+				Message: "commit queue message",
+			},
+		},
+	}
+	require.NoError(t, p.Insert())
 	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 19)
+	assert.Len(map[string]string(expansions), 20)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("true", expansions.Get("is_commit_queue"))
+	assert.Equal("commit queue message", expansions.Get("commit_message"))
+	db.ClearCollections(patch.Collection)
 
 	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.GithubPRRequester},
