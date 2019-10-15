@@ -57,7 +57,6 @@ func (s *CommitQueueSuite) SetupSuite() {
 	s.conf, err = NewClientSettings(settingsFile.Name())
 	s.Require().NoError(err)
 	s.client = s.conf.GetRestCommunicator(s.ctx)
-	printUserMessages(ctx, client)
 }
 
 func (s *CommitQueueSuite) TearDownSuite() {
