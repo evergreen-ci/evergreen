@@ -73,7 +73,7 @@ const (
 
 	// Task descriptions
 	TaskDescriptionHeartbeat = "heartbeat"
-	TaskDescriptionStranded = "stranded"
+	TaskDescriptionStranded  = "stranded"
 
 	// Task Statuses that are currently used only by the UI, and in tests
 	// (these may be used in old tasks)
@@ -227,6 +227,11 @@ const (
 	ContentLengthHeader = "Content-Length"
 	APIUserHeader       = "Api-User"
 	APIKeyHeader        = "Api-Key"
+)
+
+const (
+	CredentialsCollection = "credentials"
+	CAName                = "evergreen"
 )
 
 // cloud provider related constants

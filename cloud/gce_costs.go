@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
@@ -95,7 +94,7 @@ func (m *gceManager) TimeTilNextPayment(h *host.Host) time.Duration {
 // platforms (e.g. Skylake VMs), premium images (e.g. SUSE), networks, etc.
 //
 // Source: https://cloud.google.com/compute/pricing
-func (m *gceManager) CostForDuration(h *host.Host, start, end time.Time, s *evergreen.Settings) (float64, error) {
+func (m *gceManager) CostForDuration(h *host.Host, start, end time.Time) (float64, error) {
 	// Sanity check.
 	if end.Before(start) || util.IsZeroTime(start) || util.IsZeroTime(end) {
 		return 0, errors.New("task timing data is malformed")

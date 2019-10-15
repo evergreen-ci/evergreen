@@ -86,7 +86,7 @@ func (j *spawnhostModifyJob) Run(ctx context.Context) {
 		Provider: j.host.Provider,
 		Region:   cloud.GetRegion(j.host.Distro),
 	}
-	cloudManager, err := cloud.GetManager(ctx, mgrOpts, j.env.Settings())
+	cloudManager, err := cloud.GetManager(ctx, j.env, mgrOpts)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error getting cloud manager for spawnhost modify job"))
 		return

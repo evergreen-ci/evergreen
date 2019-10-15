@@ -1,4 +1,4 @@
-package rpc
+package certdepot
 
 import (
 	"crypto/tls"
@@ -11,21 +11,22 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Credentials represents RPC credentials using TLS.
+// Credentials represent a bundle of assets for doing TLS
+// authentication.
 type Credentials struct {
 	// CACert is the PEM-encoded client CA certificate. If the credentials are
 	// used by a client, this should be the certificate of the root CA to verify
 	// the server certificate. If the credentials are used by a server, this
 	// should be the certificate of the root CA to verify the client
 	// certificate.
-	CACert []byte `bson:"ca_cert" json:"ca_cert"`
+	CACert []byte `bson:"ca_cert" json:"ca_cert" yaml:"ca_cert"`
 	// Cert is the PEM-encoded certificate.
-	Cert []byte `bson:"cert" json:"cert"`
+	Cert []byte `bson:"cert" json:"cert" yaml:"cert"`
 	// Key is the PEM-encoded private key.
-	Key []byte `bson:"key" json:"key"`
+	Key []byte `bson:"key" json:"key" yaml:"key"`
 
 	// ServerName is the name of the service being contacted.
-	ServerName string `bson:"server_name" json:"server_name"`
+	ServerName string `bson:"server_name" json:"server_name" yaml:"server_name"`
 }
 
 // NewCredentials initializes a new Credential struct.
@@ -72,15 +73,11 @@ func NewCredentialsFromFile(path string) (*Credentials, error) {
 // Validate checks that the Credentials are all set to non-empty values.
 func (c *Credentials) Validate() error {
 	catcher := grip.NewBasicCatcher()
-	if len(c.CACert) == 0 {
-		catcher.New("CA certificate should not be empty")
-	}
-	if len(c.Cert) == 0 {
-		catcher.New("certificate should not be empty")
-	}
-	if len(c.Key) == 0 {
-		catcher.New("key should not be empty")
-	}
+
+	catcher.NewWhen(len(c.CACert) == 0, "CA certificate should not be empty")
+	catcher.NewWhen(len(c.Cert) == 0, "certificate should not be empty")
+	catcher.NewWhen(len(c.Key) == 0, "key should not be empty")
+
 	return catcher.Resolve()
 }
 

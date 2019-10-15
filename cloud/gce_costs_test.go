@@ -131,12 +131,12 @@ func (s *GCESuite) TestCostForDuration() {
 	settings := &evergreen.Settings{}
 
 	// end before start
-	cost, err := s.manager.CostForDuration(h, end, start, settings)
+	cost, err := s.manager.CostForDuration(h, end, start)
 	s.Error(err)
 	s.Zero(cost)
 
 	// valid input
-	cost, err = s.manager.CostForDuration(h, start, end, settings)
+	cost, err = s.manager.CostForDuration(h, start, end)
 	s.NoError(err)
 	s.NotZero(cost)
 }

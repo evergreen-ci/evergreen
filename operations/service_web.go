@@ -11,7 +11,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
-	"github.com/evergreen-ci/evergreen/model/credentials"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
@@ -39,7 +38,6 @@ func startWebService() cli.Command {
 			env, err := evergreen.NewEnvironment(ctx, confPath, db)
 			grip.EmergencyFatal(errors.Wrap(err, "problem configuring application environment"))
 			evergreen.SetEnvironment(env)
-			grip.Warning(errors.Wrap(credentials.Bootstrap(env), "problem bootstrapping host credentials"))
 			if c.Bool(overwriteConfFlagName) {
 				grip.EmergencyFatal(errors.Wrap(env.SaveConfig(), "problem saving config"))
 			}
@@ -67,7 +65,7 @@ func startWebService() cli.Command {
 				uiServer  *http.Server
 			)
 
-			serviceHandler, err := getServiceRouter(settings, queue, remoteQueueGroup)
+			serviceHandler, err := getServiceRouter(env, queue, remoteQueueGroup)
 			if err != nil {
 				return errors.WithStack(err)
 			}
@@ -161,7 +159,7 @@ func gracefulShutdownForSIGTERM(ctx context.Context, servers []*http.Server, wai
 	close(wait)
 }
 
-func getServiceRouter(settings *evergreen.Settings, queue amboy.Queue, remoteQueueGroup amboy.QueueGroup) (http.Handler, error) {
+func getServiceRouter(env evergreen.Environment, queue amboy.Queue, remoteQueueGroup amboy.QueueGroup) (http.Handler, error) {
 	home := evergreen.FindEvergreenHome()
 	if home == "" {
 		return nil, errors.New("EVGHOME environment variable must be set to run UI server")
@@ -169,15 +167,15 @@ func getServiceRouter(settings *evergreen.Settings, queue amboy.Queue, remoteQue
 
 	functionOptions := service.TemplateFunctionOptions{
 		WebHome:  filepath.Join(home, "public"),
-		HelpHome: settings.Ui.HelpUrl,
+		HelpHome: env.Settings().Ui.HelpUrl,
 	}
 
-	uis, err := service.NewUIServer(settings, queue, home, functionOptions)
+	uis, err := service.NewUIServer(env, queue, home, functionOptions)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create UI server")
 	}
 
-	as, err := service.NewAPIServer(settings, queue, remoteQueueGroup)
+	as, err := service.NewAPIServer(env, queue)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create API server")
 	}

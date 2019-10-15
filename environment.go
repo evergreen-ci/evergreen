@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/gob"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
@@ -107,6 +109,7 @@ type Environment interface {
 	// Jasper is a process manager for running external
 	// commands. Every process has a manager service.
 	JasperManager() jasper.Manager
+	CertificateDepot() certdepot.Depot
 
 	// ClientConfig provides access to a list of the latest evergreen
 	// clients, that this server can serve to users
@@ -159,7 +162,6 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 	}()
 
 	if db != nil && confPath == "" {
-
 		if err := e.initDB(ctx, *db); err != nil {
 			return nil, errors.Wrap(err, "error configuring db")
 		}
@@ -182,6 +184,7 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 	}
 
 	catcher.Add(e.initJasper())
+	catcher.Add(e.initDepot(ctx))
 	catcher.Add(e.initSenders(ctx))
 	catcher.Add(e.createLocalQueue(ctx))
 	catcher.Add(e.createApplicationQueue(ctx))
@@ -204,6 +207,7 @@ type envState struct {
 	notificationsQueue amboy.Queue
 	ctx                context.Context
 	jasperManager      jasper.Manager
+	depot              certdepot.Depot
 	settings           *Settings
 	dbName             string
 	client             *mongo.Client
@@ -592,6 +596,41 @@ func (e *envState) initJasper() error {
 	return nil
 }
 
+func (e *envState) initDepot(ctx context.Context) error {
+	if e.settings.DomainName == "" {
+		return errors.Errorf("bootstrapping %s collection requires domain name to be set in admin settings", e.settings.DomainName)
+	}
+
+	maxExpiration := time.Duration(math.MaxInt64)
+
+	bootstrapConfig := certdepot.BootstrapDepotConfig{
+		CAName: CAName,
+		MongoDepot: &certdepot.MongoDBOptions{
+			MongoDBURI:     e.settings.Database.Url,
+			DatabaseName:   e.settings.Database.DB,
+			CollectionName: CredentialsCollection,
+		},
+		CAOpts: &certdepot.CertificateOptions{
+			CA:         CAName,
+			CommonName: CAName,
+			Expires:    maxExpiration,
+		},
+		ServiceName: e.settings.DomainName,
+		ServiceOpts: &certdepot.CertificateOptions{
+			CA:         CAName,
+			CommonName: e.settings.DomainName,
+			Host:       e.settings.DomainName,
+			Expires:    maxExpiration,
+		},
+	}
+
+	if _, err := certdepot.BootstrapDepotWithMongoClient(ctx, e.client, bootstrapConfig); err != nil {
+		return errors.Wrapf(err, "could not bootstrap %s collection", CredentialsCollection)
+	}
+
+	return nil
+}
+
 func (e *envState) setupRoleManager() error {
 	e.roleManager = rolemanager.NewMongoBackedRoleManager(rolemanager.MongoBackedRoleManagerOpts{
 		Client:          e.client,
@@ -854,6 +893,13 @@ func (e *envState) JasperManager() jasper.Manager {
 	defer e.mu.RUnlock()
 
 	return e.jasperManager
+}
+
+func (e *envState) CertificateDepot() certdepot.Depot {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.depot
 }
 
 func (e *envState) RoleManager() gimlet.RoleManager {
