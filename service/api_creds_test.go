@@ -16,6 +16,8 @@ import (
 
 func TestBuildloggerV3Credentials(t *testing.T) {
 	conf := testutil.TestConfig()
+	conf.LoggerConfig.BuildloggerV3User = "user"
+	conf.LoggerConfig.BuildloggerV3Password = "pass"
 	queue := evergreen.GetEnvironment().LocalQueue()
 	remoteQueue := evergreen.GetEnvironment().RemoteQueueGroup()
 	as, err := NewAPIServer(conf, queue, remoteQueue)
@@ -32,13 +34,6 @@ func TestBuildloggerV3Credentials(t *testing.T) {
 		AgentRevision: evergreen.BuildRevision,
 	}
 	require.NoError(t, sampleHost.Insert())
-
-	env := evergreen.GetEnvironment()
-	settings := &evergreen.Settings{}
-	require.NoError(t, settings.Get(env))
-	settings.LoggerConfig.BuildloggerV3User = "user"
-	settings.LoggerConfig.BuildloggerV3Password = "pass"
-	require.NoError(t, settings.Set())
 
 	url := "/api/2/agent/buildloggerv3_creds"
 	request, err := http.NewRequest("GET", url, nil)
