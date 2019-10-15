@@ -394,7 +394,7 @@ buildvariants:
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("true", expansions.Get("is_commit_queue"))
 	assert.Equal("commit queue message", expansions.Get("commit_message"))
-	require.NoError(db.ClearCollections(patch.Collection))
+	require.NoError(t, db.ClearCollections(patch.Collection))
 
 	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.GithubPRRequester},
