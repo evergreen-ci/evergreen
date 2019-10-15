@@ -1,6 +1,7 @@
 package build
 
 import (
+	"errors"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -272,4 +273,15 @@ func Remove(id string) error {
 		Collection,
 		bson.M{IdKey: id},
 	)
+}
+
+func FindProjectForBuild(buildID string) (string, error) {
+	b, err := FindOne(ById(buildID).Project(bson.M{ProjectKey: 1}))
+	if err != nil {
+		return "", err
+	}
+	if b == nil {
+		return "", errors.New("build not found")
+	}
+	return b.Project, nil
 }

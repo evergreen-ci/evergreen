@@ -236,3 +236,83 @@ func (ra *restrictedAccessHandler) ServeHTTP(rw http.ResponseWriter, r *http.Req
 
 	rw.WriteHeader(http.StatusUnauthorized)
 }
+
+type requiresPermissionHandler struct {
+	opts RequiresPermissionMiddlewareOpts
+}
+
+type FindResourceFunc func(*http.Request) string
+
+// RequiresPermissionMiddlewareOpts defines what permissions the middleware shoud check and how. The ResourceFunc parameter
+// can be used to specify custom behavior to extract a valid resource name from request variables
+type RequiresPermissionMiddlewareOpts struct {
+	RM             RoleManager
+	PermissionKey  string
+	ResourceType   string
+	RequiredLevel  int
+	ResourceLevels []string
+	ResourceFunc   FindResourceFunc
+}
+
+// RequiresPermission allows a route to specify that access to a given resource in the route requires a certain permission
+// at a certain level. The resource ID must be defined somewhere in the URL as mux.Vars. The specific URL params to check
+// need to be sent in the last parameter of this function, in order of most to least specific
+func RequiresPermission(opts RequiresPermissionMiddlewareOpts) Middleware {
+	return &requiresPermissionHandler{
+		opts: opts,
+	}
+}
+
+func (rp *requiresPermissionHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	ctx := r.Context()
+
+	user := GetUser(ctx)
+	if user == nil {
+		rw.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	authenticator := GetAuthenticator(ctx)
+	if authenticator == nil {
+		rw.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	if !authenticator.CheckAuthenticated(user) {
+		rw.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	vars := GetVars(r)
+	var resource string
+	if rp.opts.ResourceFunc != nil {
+		resource = rp.opts.ResourceFunc(r)
+	} else {
+		for _, level := range rp.opts.ResourceLevels {
+			if resourceVal, exists := vars[level]; exists {
+				resource = resourceVal
+				break
+			}
+		}
+	}
+
+	opts := PermissionOpts{
+		Resource:      resource,
+		ResourceType:  rp.opts.ResourceType,
+		Permission:    rp.opts.PermissionKey,
+		RequiredLevel: rp.opts.RequiredLevel,
+	}
+	hasPermission, err := user.HasPermission(opts)
+	grip.Error(message.WrapError(err, message.Fields{
+		"message":    "error checking permissions",
+		"user":       user.Username(),
+		"permission": rp.opts.PermissionKey,
+	}))
+
+	if !hasPermission {
+		rw.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	next(rw, r)
+}

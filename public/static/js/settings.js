@@ -117,11 +117,11 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
   }
 
   $scope.updateUserSettings = function(new_tz, use_spruce_options, spruce_feedback) {
-    if ($scope.opt_in_initially_checked && !use_spruce_options.patch_page &&
-      (spruce_feedback.usability_score === undefined || spruce_feedback.information_score === undefined)) {
-      notifier.pushNotification("Please fill out all required fields before submitting",'errorHeader');
-      return;
-    }
+    // if ($scope.opt_in_initially_checked && !use_spruce_options.patch_page &&
+    //   (spruce_feedback.usability_score === undefined || spruce_feedback.information_score === undefined)) {
+    //   notifier.pushNotification("Please fill out all required fields before submitting",'errorHeader');
+    //   return;
+    // }
     data = {
         timezone: new_tz,
         use_spruce_options: use_spruce_options,
@@ -129,9 +129,9 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
             last_known_as: $scope.github_user,
         }
     };
-    if ($scope.opt_in_initially_checked && !use_spruce_options.patch_page) {
-      data.spruce_feedback = formatFeedback(spruce_feedback);
-    }
+    // if ($scope.opt_in_initially_checked && !use_spruce_options.patch_page) {
+    //   data.spruce_feedback = formatFeedback(spruce_feedback);
+    // }
     var success = function() {
       window.location.reload();
     };

@@ -70,7 +70,7 @@ type patchSubmission struct {
 	description string
 	base        string
 	alias       string
-	variants    string
+	variants    []string
 	tasks       []string
 	finalize    bool
 }
@@ -94,13 +94,12 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 		}
 	}
 
-	variantsStr := strings.Join(p.Variants, ",")
 	patchSub := patchSubmission{
 		projectId:   p.Project,
 		patchData:   diffData.fullPatch,
 		description: p.Description,
 		base:        diffData.base,
-		variants:    variantsStr,
+		variants:    p.Variants,
 		tasks:       p.Tasks,
 		finalize:    p.Finalize,
 		alias:       p.Alias,

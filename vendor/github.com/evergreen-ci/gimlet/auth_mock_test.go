@@ -38,7 +38,7 @@ func (u *MockUser) Username() string    { return u.ID }
 func (u *MockUser) IsNil() bool         { return u.ReportNil }
 func (u *MockUser) GetAPIKey() string   { return u.APIKey }
 func (u *MockUser) Roles() []string     { return u.RoleNames }
-func (u *MockUser) HasPermission(string, string, int) (bool, error) {
+func (u *MockUser) HasPermission(PermissionOpts) (bool, error) {
 	return true, nil
 }
 

@@ -478,14 +478,110 @@ func IsGitHubPatchRequester(requester string) bool {
 	return requester == GithubPRRequester || requester == MergeTestRequester
 }
 
-// Registered permissions
+// Permissions-related constants
+var AclCheckingIsEnabled = false
+
+type PermissionLevel interface {
+	String() string
+	Value() int
+}
+type ProjectSettingsPermission int
+type ProjectVariablesPermission int
+type TasksPermission int
+type PatchPermission int
+type LogsPermission int
+
 const (
 	PermissionProjectSettings  = "project_settings"
 	PermissionProjectVariables = "project_variables"
 	PermissionTasks            = "project_tasks"
 	PermissionPatches          = "project_patches"
 	PermissionLogs             = "project_logs"
+
+	ProjectSettingsEdit  ProjectSettingsPermission  = 20
+	ProjectSettingsView  ProjectSettingsPermission  = 10
+	ProjectSettingsNone  ProjectSettingsPermission  = 0
+	ProjectVariablesEdit ProjectVariablesPermission = 20
+	ProjectVariablesView ProjectVariablesPermission = 10
+	ProjectVariablesNone ProjectVariablesPermission = 0
+	TasksAdmin           TasksPermission            = 30
+	TasksBasic           TasksPermission            = 20
+	TasksView            TasksPermission            = 10
+	TasksNone            TasksPermission            = 0
+	PatchSubmit          PatchPermission            = 10
+	PatchNone            PatchPermission            = 0
+	LogsView             LogsPermission             = 10
+	LogsNone             LogsPermission             = 0
 )
+
+func (p ProjectSettingsPermission) String() string {
+	switch p {
+	case ProjectSettingsEdit:
+		return "Edit project settings"
+	case ProjectSettingsView:
+		return "View project settings"
+	case ProjectSettingsNone:
+		return "No project settings permissions"
+	}
+	return ""
+}
+func (p ProjectSettingsPermission) Value() int {
+	return int(p)
+}
+func (p ProjectVariablesPermission) String() string {
+	switch p {
+	case ProjectVariablesEdit:
+		return "Edit project variables"
+	case ProjectVariablesView:
+		return "View project variables"
+	case ProjectVariablesNone:
+		return "No project variables permissions"
+	}
+	return ""
+}
+func (p ProjectVariablesPermission) Value() int {
+	return int(p)
+}
+func (p TasksPermission) String() string {
+	switch p {
+	case TasksAdmin:
+		return "Full tasks permissions"
+	case TasksBasic:
+		return "Basic modifications to tasks"
+	case TasksView:
+		return "View tasks"
+	case TasksNone:
+		return "Not able to view or edit tasks"
+	}
+	return ""
+}
+func (p TasksPermission) Value() int {
+	return int(p)
+}
+func (p PatchPermission) String() string {
+	switch p {
+	case PatchSubmit:
+		return "Submit and edit patches"
+	case PatchNone:
+		return "Not able to view or submit patches"
+	}
+	return ""
+}
+func (p PatchPermission) Value() int {
+	return int(p)
+}
+func (p LogsPermission) String() string {
+	switch p {
+	case LogsView:
+		return "View logs"
+	case LogsNone:
+		return "Not able to view logs"
+	}
+	return ""
+}
+func (p LogsPermission) Value() int {
+	return int(p)
+}
 
 var projectPermissions = []string{
 	PermissionProjectSettings,

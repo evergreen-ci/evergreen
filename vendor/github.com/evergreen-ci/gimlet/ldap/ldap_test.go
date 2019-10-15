@@ -180,7 +180,7 @@ func (u *mockUser) Email() string       { return "" }
 func (u *mockUser) Username() string    { return u.name }
 func (u *mockUser) GetAPIKey() string   { return "" }
 func (u *mockUser) Roles() []string     { return []string{} }
-func (u *mockUser) HasPermission(string, string, int) (bool, error) {
+func (u *mockUser) HasPermission(gimlet.PermissionOpts) (bool, error) {
 	return true, nil
 }
 

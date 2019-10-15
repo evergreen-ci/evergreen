@@ -8,11 +8,16 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -286,4 +291,90 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 	}
 
 	next(rw, r)
+}
+
+func RequiresProjectPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
+	if !evergreen.AclCheckingIsEnabled {
+		return &noopMiddleware{}
+	}
+
+	opts := gimlet.RequiresPermissionMiddlewareOpts{
+		RM:            evergreen.GetEnvironment().RoleManager(),
+		PermissionKey: permission,
+		ResourceType:  "project",
+		RequiredLevel: level.Value(),
+		ResourceFunc:  urlVarsToScopes,
+	}
+	return gimlet.RequiresPermission(opts)
+}
+
+type noopMiddleware struct{}
+
+func (n *noopMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	next(rw, r)
+}
+
+func urlVarsToScopes(r *http.Request) string {
+	vars := gimlet.GetVars(r)
+	query := r.URL.Query()
+
+	projectID := util.CoalesceStrings(append(query["project_id"], query["projectId"]...), vars["project_id"], vars["projectId"])
+	if projectID != "" {
+		return projectID
+	}
+
+	versionID := util.CoalesceStrings(append(query["version_id"], query["versionId"]...), vars["version_id"], vars["versionId"])
+	if versionID != "" {
+		proj, err := model.FindProjectForVersion(versionID)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "error finding version",
+				"version": versionID,
+			}))
+			return ""
+		}
+		return proj
+	}
+
+	patchID := util.CoalesceStrings(append(query["patch_id"], query["patchId"]...), vars["patch_id"], vars["patchId"])
+	if patchID != "" && patch.IsValidId(patchID) {
+		proj, err := patch.FindProjectForPatch(patch.NewId(patchID))
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "error finding patch",
+				"patch":   patchID,
+			}))
+			return ""
+		}
+		return proj
+	}
+
+	buildID := util.CoalesceStrings(append(query["build_id"], query["buildId"]...), vars["build_id"], vars["buildId"])
+	if buildID != "" {
+		proj, err := build.FindProjectForBuild(buildID)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "error finding build",
+				"build":   buildID,
+			}))
+			return ""
+		}
+		return proj
+	}
+
+	// retrieve all possible naming conventions for task ID
+	taskID := util.CoalesceStrings(append(query["task_id"], query["taskId"]...), vars["task_id"], vars["taskId"])
+	if taskID != "" {
+		proj, err := task.FindProjectForTask(taskID)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "error finding task",
+				"build":   taskID,
+			}))
+			return ""
+		}
+		return proj
+	}
+
+	return ""
 }

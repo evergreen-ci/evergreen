@@ -164,6 +164,8 @@ LOOP:
 				// Running the post group commands implies exiting the group, so
 				// destroy prior task information.
 				tc = &taskContext{}
+				timer.Reset(0)
+				agentSleepInterval = minAgentSleepInterval
 				continue LOOP
 			}
 			if nextTask.TaskId != "" {
@@ -193,12 +195,16 @@ LOOP:
 					resp, err := a.comm.EndTask(ctx, detail, tc.task)
 					if err != nil {
 						grip.Critical(errors.Wrap(err, "error calling EndTask"))
+						timer.Reset(0)
+						agentSleepInterval = minAgentSleepInterval
 						continue LOOP
 					}
 					if resp.ShouldExit {
 						grip.Notice("Next task response indicates agent should exit")
 						return nil
 					}
+					timer.Reset(0)
+					agentSleepInterval = minAgentSleepInterval
 					continue LOOP
 				}
 				tskCtx, tskCancel := context.WithCancel(ctx)

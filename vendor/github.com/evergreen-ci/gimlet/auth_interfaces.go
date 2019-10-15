@@ -16,7 +16,15 @@ type User interface {
 	Username() string
 	GetAPIKey() string
 	Roles() []string
-	HasPermission(string, string, int) (bool, error)
+	HasPermission(PermissionOpts) (bool, error)
+}
+
+// PermissionOpts is the required data to be provided when asking if a user has permission for a resource
+type PermissionOpts struct {
+	Resource      string
+	ResourceType  string
+	Permission    string
+	RequiredLevel int
 }
 
 // Authenticator represents a service that answers specific
@@ -77,7 +85,7 @@ type RoleManager interface {
 	UpdateRole(Role) error
 
 	// FilterForResource takes a list of roles and returns the subset of those applicable for a certain resource
-	FilterForResource([]Role, string) ([]Role, error)
+	FilterForResource([]Role, string, string) ([]Role, error)
 
 	// AddScope adds a scope to the manager
 	AddScope(Scope) error

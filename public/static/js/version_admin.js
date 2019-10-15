@@ -76,12 +76,14 @@ mciModule.controller('AdminOptionsCtrl', [
                     $scope.closeAdminModal()
                     $rootScope.$broadcast("version_updated", data)
                     notifier.pushNotification(
-                      "Version " + (active ? "scheduled." : "unscheduled.") +
-                      (abort ? "\n In progress tasks will be aborted." : ""),
+                      "Version " + (active ? "scheduled" : "unscheduled") +
+                      (!active && $scope.version.Version.requester === "merge_test" ? " and removed from commit queue." : ".") +
+                      (abort ? "\n In progress tasks will be aborted." : "")
+                      ,
                       'notifyHeader', 'success');
                 },
-                error: function(jqXHR, status, errorThrown) {
-                    notifier.pushNotification('Error setting version activation: ' + resp.data.error,'errorModal');
+                error: function(resp) {
+                    notifier.pushNotification('Error setting version activation: ' + resp.data,'errorModal');
                 }
             }
         );
@@ -99,8 +101,8 @@ mciModule.controller('AdminOptionsCtrl', [
                     var msg = "Priority for version set to " + newPriority + "."
                     notifier.pushNotification(msg, 'notifyHeader', 'success');
                 },
-                error: function(jqXHR, status, errorThrown) {
-                    notifier.pushNotification('Error changing priority: ' + resp.data.error,'errorModal');
+                error: function(resp) {
+                    notifier.pushNotification('Error changing priority: ' + resp.data,'errorModal');
                 }
             }
         );
@@ -192,14 +194,16 @@ mciModule.directive('adminUnscheduleAll', function() {
       '<div class="col-lg-12">' +
         '<div>' +
           'Unschedule all tasks?' +
-          '<div style="float:right">' +
+            '<div ng-show="version.requester === merge_test">' +
+                'This will remove version from the commit queue.' +
+            '</div>' +
             '<button type="button" class="btn btn-danger" style="float: right;" data-dismiss="modal">Cancel</button>' +
             '<button type="button" class="btn btn-primary" style="float: right; margin-right: 10px;" ng-click="updateScheduled(false)">Yes</button>' +
+            '<div style="margin-top: 6px;">' +
+                '<input type="checkbox" id="passed" name="passed" ng-model="adminOptionVals.abort" class="ng-valid ng-dirty"> ' +
+                '<label for="passed" style="font-weight:normal;">Abort tasks that have already started</label>' +
+            '</div>' +
         '</div>' +
-      '</div>' +
-      '<div styl="float:right">' +
-        '<input type="checkbox" id="passed" name="passed" ng-model="adminOptionVals.abort" class="ng-valid ng-dirty"> ' +
-        '<label for="passed" style="font-weight:normal;font-size:.8em;">  Abort tasks that have already started</label>' +
       '</div>' +
     '</div>'
   }

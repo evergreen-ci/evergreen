@@ -1,5 +1,7 @@
 package util
 
+import "strings"
+
 // StringSliceContains determines if a string is in a slice
 func StringSliceContains(slice []string, item string) bool {
 	if len(slice) == 0 {
@@ -43,4 +45,14 @@ func UniqueStrings(slice []string) []string {
 		out = append(out, s)
 	}
 	return out
+}
+
+// SplitCommas returns the slice of strings after splitting each string by
+// commas.
+func SplitCommas(originals []string) []string {
+	splitted := []string{}
+	for _, original := range originals {
+		splitted = append(splitted, strings.Split(original, ",")...)
+	}
+	return splitted
 }

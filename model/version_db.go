@@ -332,3 +332,14 @@ func FindLastPeriodicBuild(projectID, definitionID string) (*Version, error) {
 
 	return &versions[0], nil
 }
+
+func FindProjectForVersion(versionID string) (string, error) {
+	v, err := VersionFindOne(VersionById(versionID).Project(bson.M{VersionIdentifierKey: 1}))
+	if err != nil {
+		return "", err
+	}
+	if v == nil {
+		return "", errors.New("version not found")
+	}
+	return v.Identifier, nil
+}

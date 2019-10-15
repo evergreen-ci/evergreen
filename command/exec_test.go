@@ -174,7 +174,7 @@ func (s *execCmdSuite) TestGetProcEnvSetting() {
 
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	exec := cmd.getProc(s.ctx, "foo", s.logger)
-	s.Len(cmd.Env, 2)
+	s.Len(cmd.Env, 3)
 	s.NotNil(exec)
 }
 

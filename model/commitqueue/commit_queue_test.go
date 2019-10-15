@@ -4,6 +4,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -241,4 +246,70 @@ func (s *CommitQueueSuite) TestSetupEnv() {
 	sender, err = env.GetSender(evergreen.SenderGithubMerge)
 	s.NotNil(sender)
 	s.NoError(err)
+}
+
+func TestPreventMergeForItemPR(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection))
+
+	patchID := "abcdef012345"
+	patchSub := event.NewPatchOutcomeSubscription(patchID, event.NewGithubMergeSubscriber(event.GithubMergeSubscriber{}))
+	require.NoError(t, patchSub.Upsert())
+
+	item := CommitQueueItem{
+		Issue:   "1234",
+		Version: patchID,
+	}
+
+	assert.NoError(t, preventMergeForItem(PRPatchType, false, &item))
+	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: item.Version}})
+	assert.NoError(t, err)
+	assert.Empty(t, subscriptions)
+}
+
+func TestPreventMergeForItemCLI(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection, task.Collection))
+
+	patchID := "abcdef012345"
+	patchSub := event.NewPatchOutcomeSubscription(patchID, event.NewCommitQueueDequeueSubscriber())
+	require.NoError(t, patchSub.Upsert())
+
+	item := CommitQueueItem{
+		Issue: patchID,
+	}
+
+	mergeTask := &task.Task{Id: "t1", CommitQueueMerge: true, Version: patchID}
+	require.NoError(t, mergeTask.Insert())
+
+	// Without a corresponding version
+	assert.NoError(t, preventMergeForItem(CLIPatchType, false, &item))
+	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
+	assert.NoError(t, err)
+	assert.NotEmpty(t, subscriptions)
+
+	mergeTask, err = task.FindOneId("t1")
+	assert.NoError(t, err)
+	assert.Equal(t, int64(0), mergeTask.Priority)
+
+	// With a corresponding version
+	assert.NoError(t, preventMergeForItem(CLIPatchType, true, &item))
+	subscriptions, err = event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
+	assert.NoError(t, err)
+	assert.Empty(t, subscriptions)
+
+	mergeTask, err = task.FindOneId("t1")
+	assert.NoError(t, err)
+	assert.Equal(t, int64(-1), mergeTask.Priority)
+}
+
+func TestClearVersionPatchSubscriber(t *testing.T) {
+	require.NoError(t, db.Clear(event.SubscriptionsCollection))
+
+	patchID := "abcdef012345"
+	patchSub := event.NewPatchOutcomeSubscription(patchID, event.NewCommitQueueDequeueSubscriber())
+	assert.NoError(t, patchSub.Upsert())
+
+	assert.NoError(t, clearVersionPatchSubscriber(patchID, event.CommitQueueDequeueSubscriberType))
+	subs, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
+	assert.NoError(t, err)
+	assert.Empty(t, subs)
 }
