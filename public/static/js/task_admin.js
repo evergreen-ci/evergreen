@@ -167,6 +167,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$window', '$rootScope', 'mc
 }]);
 
 mciModule.directive('adminAbortTask', function() {
+    let merge_test = "merge_test"
     return {
         restrict: 'E',
         template:
@@ -198,6 +199,7 @@ mciModule.directive('adminScheduleTask', function() {
 });
 
 mciModule.directive('adminUnscheduleTask', function() {
+    let merge_test = "merge_test"
     return {
         restrict: 'E',
         template:
