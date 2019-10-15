@@ -43,6 +43,7 @@ func TestBuildloggerV3Credentials(t *testing.T) {
 	url := "/api/2/agent/buildloggerv3_creds"
 	request, err := http.NewRequest("GET", url, nil)
 	request.Header.Add(evergreen.HostHeader, sampleHost.Id)
+	request.Header.Add(evergreen.HostSecretHeader, sampleHost.Secret)
 	require.NoError(t, err)
 	w := httptest.NewRecorder()
 
