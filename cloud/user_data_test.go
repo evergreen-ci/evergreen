@@ -224,9 +224,9 @@ func TestBootstrapUserData(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(evergreen.CredentialsCollection, host.Collection, user.Collection))
+			require.NoError(t, db.ClearCollections(host.Collection, user.Collection))
 			defer func() {
-				assert.NoError(t, db.ClearCollections(evergreen.CredentialsCollection, host.Collection, user.Collection))
+				assert.NoError(t, db.ClearCollections(host.Collection, user.Collection))
 			}()
 
 			userID := "user"
