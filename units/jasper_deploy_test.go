@@ -220,7 +220,7 @@ func TestJasperDeployJob(t *testing.T) {
 			assert.Error(t, deployJob.tryRequeueDeploy(ctx))
 		},
 		"RunPerformsExpectedOperationsWhenDeployingThroughJasper": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
-			clientCreds, err := env.CertificateDepot().Find(evergreen.CAName)
+			clientCreds, err := env.CertificateDepot().Find(env.Settings().DomainName)
 			require.NoError(t, err)
 
 			creds, err := h.JasperClientCredentials(ctx, env)

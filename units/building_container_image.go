@@ -145,7 +145,7 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 	}
 	containerMgr, err := cloud.ConvertContainerManager(mgr)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error getting Docker manager"))
+		j.AddError(errors.Wrap(err, "error converting Docker manager"))
 		return
 	}
 
