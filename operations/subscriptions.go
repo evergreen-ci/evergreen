@@ -33,8 +33,7 @@ func subscriptionsList() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
-			comm := conf.GetRestCommunicator(ctx)
-			printUserMessages(ctx, comm)
+			comm := conf.setupRestCommunicator(ctx)
 			defer comm.Close()
 			subs, err := comm.GetSubscriptions(ctx)
 			if err != nil {

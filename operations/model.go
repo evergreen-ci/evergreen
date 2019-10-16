@@ -128,9 +128,21 @@ func (s *ClientSettings) Write(fn string) error {
 	return errors.Wrap(ioutil.WriteFile(fn, yamlData, 0644), "could not write file")
 }
 
-// GetRestCommunicator returns a client for communicating with the API server.
+// setupRestCommunicator returns the rest communicator and prints any available info messages.
 // Callers are responsible for calling (Communicator).Close() when finished with the client.
-func (s *ClientSettings) GetRestCommunicator(ctx context.Context) client.Communicator {
+//
+// To avoid printing these messages, call getRestCommunicator instead.
+func (s *ClientSettings) setupRestCommunicator(ctx context.Context) client.Communicator {
+	c := s.getRestCommunicator(ctx)
+	printUserMessages(ctx, c)
+	return c
+}
+
+// getRestCommunicator returns a client for communicating with the API server.
+// Callers are responsible for calling (Communicator).Close() when finished with the client.
+//
+// Most callers should use setupRestCommunicator instead, which prints available info messages.
+func (s *ClientSettings) getRestCommunicator(ctx context.Context) client.Communicator {
 	c := client.NewCommunicator(s.APIServerHost)
 
 	c.SetAPIUser(s.User)
@@ -139,6 +151,7 @@ func (s *ClientSettings) GetRestCommunicator(ctx context.Context) client.Communi
 	return c
 }
 
+// printUserMessages prints any available info messages.
 func printUserMessages(ctx context.Context, c client.Communicator) {
 	banner, err := c.GetBannerMessage(ctx)
 	if err != nil {

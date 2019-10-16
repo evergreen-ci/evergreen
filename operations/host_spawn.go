@@ -116,8 +116,7 @@ func hostCreate() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-			client := conf.GetRestCommunicator(ctx)
-			printUserMessages(ctx, client)
+			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
 			var script string
@@ -217,8 +216,7 @@ func hostModify() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-			client := conf.GetRestCommunicator(ctx)
-			printUserMessages(ctx, client)
+			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
 			addTags, err := makeAWSTags(addTagSlice)
@@ -278,8 +276,7 @@ func hostStop() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-			client := conf.GetRestCommunicator(ctx)
-			printUserMessages(ctx, client)
+			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
 			if wait {
@@ -324,8 +321,7 @@ func hostStart() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-			client := conf.GetRestCommunicator(ctx)
-			printUserMessages(ctx, client)
+			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
 			if wait {
@@ -380,8 +376,7 @@ func hostList() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-			client := conf.GetRestCommunicator(ctx)
-			printUserMessages(ctx, client)
+			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
 			switch {
@@ -438,8 +433,7 @@ func hostTerminate() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-			client := conf.GetRestCommunicator(ctx)
-			printUserMessages(ctx, client)
+			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
 			err = client.TerminateSpawnHost(ctx, hostID)

@@ -54,8 +54,7 @@ func listQueue() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-			client := conf.GetRestCommunicator(ctx)
-			printUserMessages(ctx, client)
+			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
 			ac, _, err := conf.getLegacyClients()
@@ -92,8 +91,7 @@ func deleteItem() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-			client := conf.GetRestCommunicator(ctx)
-			printUserMessages(ctx, client)
+			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
 			return deleteCommitQueueItem(ctx, client, projectID, item)
@@ -143,8 +141,7 @@ func mergeCommand() cli.Command {
 				return errors.Wrap(err, "problem accessing legacy evergreen client")
 			}
 
-			client := conf.GetRestCommunicator(ctx)
-			printUserMessages(ctx, client)
+			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
 			return params.mergeBranch(ctx, conf, client, ac)

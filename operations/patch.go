@@ -84,8 +84,7 @@ func Patch() cli.Command {
 				grip.Infof("Uncommitted changes are omitted from patches by default.\nUse the '--%s, -u' flag or set 'patch_uncommitted_changes: true' in your ~/.evergreen.yml file to include uncommitted changes.", uncommittedChangesFlag)
 			}
 
-			comm := conf.GetRestCommunicator(ctx)
-			printUserMessages(ctx, comm)
+			comm := conf.setupRestCommunicator(ctx)
 			defer comm.Close()
 
 			ac, _, err := conf.getLegacyClients()
@@ -153,8 +152,7 @@ func PatchFile() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
-			comm := conf.GetRestCommunicator(ctx)
-			printUserMessages(ctx, comm)
+			comm := conf.setupRestCommunicator(ctx)
 			defer comm.Close()
 
 			ac, _, err := conf.getLegacyClients()

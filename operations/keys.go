@@ -66,8 +66,7 @@ func keysAdd() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
-			client := conf.GetRestCommunicator(ctx)
-			printUserMessages(ctx, client)
+			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
 			keyFileContents, err := ioutil.ReadFile(keyFile)
@@ -106,8 +105,7 @@ func keysList() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
-			client := conf.GetRestCommunicator(ctx)
-			printUserMessages(ctx, client)
+			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
 			keys, err := client.GetCurrentUsersKeys(ctx)
@@ -155,8 +153,7 @@ func keysDelete() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
-			client := conf.GetRestCommunicator(ctx)
-			printUserMessages(ctx, client)
+			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
 			keyName := c.Args().Get(0)

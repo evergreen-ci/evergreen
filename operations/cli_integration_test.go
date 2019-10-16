@@ -143,7 +143,7 @@ func TestCLIFetchSource(t *testing.T) {
 
 		client, err := NewClientSettings(testSetup.settingsFilePath)
 		So(err, ShouldBeNil)
-		comm := client.GetRestCommunicator(ctx)
+		comm := client.setupRestCommunicator(ctx)
 		defer comm.Close()
 		ac, rc, err := client.getLegacyClients()
 		So(err, ShouldBeNil)

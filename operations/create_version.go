@@ -35,8 +35,7 @@ func CreateVersion() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 			ctx := context.Background()
-			client := conf.GetRestCommunicator(ctx)
-			printUserMessages(ctx, client)
+			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
 			filePath := c.String(pathFlagName)
