@@ -125,8 +125,9 @@ variables:
         vars:
           target: set-smoke-vars
       - func: run-make
-        vars: { target: "${task_name}" }
-        acl_enabled: "true"
+        vars: 
+          target: "${task_name}"
+          acl_enabled: "true"
   - &run-smoke-test-with-client-url
     name: smoke
     commands:
