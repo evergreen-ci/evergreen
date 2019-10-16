@@ -82,11 +82,12 @@ func (m *mongoDepot) Put(tag *depot.Tag, data []byte) error {
 		return errors.Wrap(err, "problem adding data to the database")
 	}
 	grip.Debug(message.Fields{
-		"db":     m.databaseName,
-		"coll":   m.collectionName,
-		"id":     name,
-		"change": res,
-		"op":     "put",
+		"db":       m.databaseName,
+		"coll":     m.collectionName,
+		"id":       name,
+		"matched":  res.MatchedCount,
+		"modified": res.ModifiedCount,
+		"op":       "put",
 	})
 
 	return nil
@@ -101,15 +102,13 @@ func (m *mongoDepot) Check(tag *depot.Tag) bool {
 
 	u := &User{}
 
-	if err = m.client.Database(m.databaseName).Collection(m.collectionName).FindOne(m.ctx, bson.D{{Key: userIDKey, Value: name}}).Decode(u); errNotNoDocuments(err) {
-		grip.Warning(message.Fields{
-			"db":   m.databaseName,
-			"coll": m.collectionName,
-			"id":   name,
-			"err":  err,
-			"op":   "check",
-		})
-	}
+	err = m.client.Database(m.databaseName).Collection(m.collectionName).FindOne(m.ctx, bson.D{{Key: userIDKey, Value: name}}).Decode(u)
+	grip.WarningWhen(errNotNoDocuments(err), message.WrapError(err, message.Fields{
+		"db":   m.databaseName,
+		"coll": m.collectionName,
+		"id":   name,
+		"op":   "check",
+	}))
 
 	switch key {
 	case userCertKey:

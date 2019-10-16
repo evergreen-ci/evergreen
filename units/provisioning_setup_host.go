@@ -159,7 +159,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, h *host.Host, settings *ev
 	//
 	// In these cases, ProvisionHost returns a nil error but
 	// does not change the host status.
-	if h.Status == evergreen.HostProvisioning {
+	if h.Status == evergreen.HostProvisioning && !h.Provisioned {
 		grip.Info(message.Fields{
 			"attempts": h.ProvisionAttempts,
 			"host_id":  h.Id,

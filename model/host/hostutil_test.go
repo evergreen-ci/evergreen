@@ -19,7 +19,8 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/user"
-	srvtestutil "github.com/evergreen-ci/evergreen/service/testutil"
+	"github.com/evergreen-ci/evergreen/service/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
@@ -220,22 +221,27 @@ func TestJasperCommandsWindows(t *testing.T) {
 			setupUserCmds, err := h.SetupServiceUserCommands()
 			require.NoError(t, err)
 
-			expectedPreCmds := []string{"foo", "bar", setupUserCmds}
-			expectedPostCmds := []string{"bat", "baz"}
+			expectedPreCmds := []string{"preCmd1", "preCmd2"}
+			expectedPostCmds := []string{"postCmd1", "postCmd2"}
 
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
-			writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
+			writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommandsBuffered(settings.Splunk, creds)
 			require.NoError(t, err)
 
-			expectedCmds := []string{
-				writeCredentialsCmd,
+			expectedCmds := append(writeCredentialsCmd,
 				h.FetchJasperCommand(settings.HostJasper),
 				h.ForceReinstallJasperCommand(settings),
+			)
+
+			for i := range expectedCmds {
+				expectedCmds[i] = util.PowerShellQuotedString(expectedCmds[i])
 			}
 
 			script, err := h.BootstrapScript(settings, creds, expectedPreCmds, expectedPostCmds)
 			require.NoError(t, err)
+
+			expectedPreCmds = append([]string{setupUserCmds}, expectedPreCmds...)
 
 			assert.True(t, strings.HasPrefix(script, "<powershell>"))
 			assert.True(t, strings.HasSuffix(script, "</powershell>"))
@@ -1026,7 +1032,7 @@ func setupJasperService(ctx context.Context, env *mock.Environment, manager *jmo
 	if err := h.Insert(); err != nil {
 		return nil, errors.WithStack(err)
 	}
-	port := srvtestutil.NextPort()
+	port := testutil.NextPort()
 	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", port))
 	if err != nil {
 		return nil, errors.WithStack(err)

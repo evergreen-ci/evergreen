@@ -53,7 +53,7 @@ func Update() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
-			client := conf.GetRestCommunicator(ctx)
+			client := conf.getRestCommunicator(ctx)
 			defer client.Close()
 
 			update, err := checkUpdate(client, false, forceUpdate)
