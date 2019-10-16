@@ -383,17 +383,15 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credenti
 			return "", errors.Wrap(err, "could not get command to set up service user")
 		}
 
-		setupJasperCmds := writeCredentialsCmd
-		// // kim: TODO: uncomment
-		// h.FetchJasperCommand(settings.HostJasper),
-		// h.ForceReinstallJasperCommand(settings),
-		// }
+		setupJasperCmds := append(writeCredentialsCmd,
+			h.FetchJasperCommand(settings.HostJasper),
+			h.ForceReinstallJasperCommand(settings),
+		)
 
 		bashCmds := append(preJasperSetup, setupJasperCmds...)
 		bashCmds = append(bashCmds, postJasperSetup...)
 
 		for i := range bashCmds {
-			// bashCmds[i] = strings.Join(append(bashPrefix, bashCmds[i]), "\n")
 			bashCmds[i] = fmt.Sprintf("%s -l -c %s", filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.ShellPath), util.PowerShellQuotedString(bashCmds[i]))
 		}
 
@@ -574,7 +572,6 @@ func (h *Host) WriteJasperCredentialsFilesCommandsSplit(splunk send.SplunkConnec
 		return nil, errors.Wrap(err, "problem exporting credentials to file format")
 	}
 	writeFileContentCmd := func(path, content string) string {
-		// kim: TODO: see if we can remove single quotes
 		return fmt.Sprintf("echo -n '%s' >> '%s'", content, path)
 	}
 
