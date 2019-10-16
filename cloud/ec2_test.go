@@ -704,9 +704,9 @@ func (s *EC2Suite) TestTerminateInstanceWithUserDataBootstrappedHost() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
-	s.Require().NoError(db.ClearCollections(evergreen.CredentialsCollection, host.Collection, user.Collection))
+	s.Require().NoError(db.ClearCollections(host.Collection, user.Collection))
 	defer func() {
-		s.NoError(db.ClearCollections(evergreen.CredentialsCollection, host.Collection, user.Collection))
+		s.NoError(db.ClearCollections(host.Collection, user.Collection))
 	}()
 
 	s.h.Distro.BootstrapSettings.Method = distro.BootstrapMethodUserData
