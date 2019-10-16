@@ -94,6 +94,7 @@ func Agent() cli.Command {
 			if s3Base == "" {
 				s3Base = "https://s3.amazonaws.com"
 			}
+			// get LDAP username and pass from env variables for buildlogger
 			opts := agent.Options{
 				HostID:           c.String(hostIDFlagName),
 				HostSecret:       c.String(hostSecretFlagName),

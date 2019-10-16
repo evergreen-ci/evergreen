@@ -40,8 +40,6 @@ type Options struct {
 	LogkeeperURL          string
 	BuildloggerV3BaseURL  string
 	BuildloggerV3RPCPort  string
-	BuildloggerV3User     string
-	BuildloggerV3Password string
 	S3BaseURL             string
 	WorkingDirectory      string
 	HeartbeatInterval     time.Duration

@@ -72,20 +72,18 @@ type LoggerConfig struct {
 }
 
 type LogOpts struct {
-	Sender                string
-	SplunkServerURL       string
-	SplunkToken           string
-	Filepath              string
-	LogkeeperURL          string
-	LogkeeperBuilder      string
-	LogkeeperBuildNum     int
-	BuildloggerV3BaseURL  string
-	BuildloggerV3RPCPort  string
-	BuildloggerV3Builder  string
-	BuildloggerV3User     string
-	BuildloggerV3Password string
-	BufferDuration        time.Duration
-	BufferSize            int
+	Sender               string
+	SplunkServerURL      string
+	SplunkToken          string
+	Filepath             string
+	LogkeeperURL         string
+	LogkeeperBuilder     string
+	LogkeeperBuildNum    int
+	BuildloggerV3BaseURL string
+	BuildloggerV3RPCPort string
+	BuildloggerV3Builder string
+	BufferDuration       time.Duration
+	BufferSize           int
 }
 
 // NewCommunicator returns a Communicator capable of making HTTP REST requests against
@@ -275,50 +273,44 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 		case model.BuildloggerV3LogSender:
 			tk, err := c.GetTask(ctx, td)
 			if err != nil {
-				return nil, errors.Wrap(err, "error getting task model")
+				return nil, errors.Wrap(err, "error setting up buildloggerv3 sender")
 			}
 
+			client := util.GetHTTPClient()
+			defer util.PutHTTPClient(client)
+			username, password, err := c.GetBuildloggerV3Credentials(ctx)
+			if err != nil {
+				return nil, errors.Wrap(err, "error setting up buildloggerv3 sender")
+			}
 			dialOpts := timber.DialCedarOptions{
 				BaseAddress: opt.BuildloggerV3BaseURL,
 				RPCPort:     opt.BuildloggerV3RPCPort,
-				Username:    opt.BuildloggerV3User,
-				Password:    opt.BuildloggerV3Password,
+				Username:    username,
+				Password:    password,
 			}
-			// TODO: how to return this http client to the pool?
-			grpcConn, err := timber.DialCedar(ctx, util.GetHTTPClient(), dialOpts)
+			grpcConn, err := timber.DialCedar(ctx, client, dialOpts)
 			if err != nil {
 				return nil, errors.Wrap(err, "error creating cedar grpc client connection")
 			}
 
-			// TODO: should we use timber's default buffer size and buffer duration?
-			opts := &timber.LoggerOptions{
-				Project:    tk.Project,
-				Version:    tk.Version,
-				Variant:    tk.BuildVariant,
-				TaskName:   tk.DisplayName,
-				TaskID:     tk.Id,
-				Execution:  int32(tk.Execution),
-				Tags:       tk.Tags,
-				Mainline:   evergreen.IsPatchRequester(tk.Requester),
-				Storage:    timber.LogStorageS3,
-				ClientConn: grpcConn,
+			timberOpts := &timber.LoggerOptions{
+				Project:       tk.Project,
+				Version:       tk.Version,
+				Variant:       tk.BuildVariant,
+				TaskName:      tk.DisplayName,
+				TaskID:        tk.Id,
+				Execution:     int32(tk.Execution),
+				Tags:          tk.Tags,
+				Mainline:      evergreen.IsPatchRequester(tk.Requester),
+				Storage:       timber.LogStorageS3,
+				MaxBufferSize: opt.BufferSize,
+				FlushInterval: opt.BufferDuration,
+				ClientConn:    grpcConn,
 			}
-			sender, err = timber.NewLogger(opt.BuildloggerV3Builder, levelInfo, opts)
+			sender, err = timber.NewLogger(opt.BuildloggerV3Builder, levelInfo, timberOpts)
 			if err != nil {
 				return nil, errors.Wrap(err, "error creating buildloggerV3 logger")
 			}
-
-			// TODO: do we need this?
-			/*
-				switch prefix {
-				case apimodels.AgentLogPrefix:
-					c.loggerInfo.Agent = append(c.loggerInfo.Agent, metadata)
-				case apimodels.SystemLogPrefix:
-					c.loggerInfo.System = append(c.loggerInfo.System, metadata)
-				case apimodels.TaskLogPrefix:
-					c.loggerInfo.Task = append(c.loggerInfo.Task, metadata)
-				}
-			*/
 		default:
 			sender = newEvergreenLogSender(ctx, c, prefix, td, bufferSize, bufferDuration)
 		}

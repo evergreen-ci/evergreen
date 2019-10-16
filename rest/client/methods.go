@@ -294,6 +294,34 @@ func (c *communicatorImpl) GetNextTask(ctx context.Context, details *apimodels.G
 	return nextTask, nil
 }
 
+// GetBuildloggerV3Credentials returns the LDAP credentials for fetching the
+// cedar certificates required when establishing an RPC connection to cedar.
+func (c *communicatorImpl) GetBuildloggerV3Credentials(ctx context.Context) (string, string, error) {
+	creds := &struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}{}
+
+	info := requestInfo{
+		method:  get,
+		version: apiVersion1,
+		path:    "agent/buildloggerv3_creds",
+	}
+
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return "", "", errors.Wrap(err, "failed to get buildloggerv3 credentials")
+	}
+	defer resp.Body.Close()
+
+	if err = util.ReadJSONInto(resp.Body, creds); err != nil {
+		err = errors.Wrap(err, "failed to read next task from response")
+		return "", "", err
+	}
+
+	return creds.Username, creds.Password, nil
+}
+
 // SendLogMessages posts a group of log messages for a task.
 func (c *communicatorImpl) SendLogMessages(ctx context.Context, taskData TaskData, msgs []apimodels.LogMessage) error {
 	if len(msgs) == 0 {
