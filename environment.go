@@ -598,7 +598,7 @@ func (e *envState) initJasper() error {
 
 func (e *envState) initDepot(ctx context.Context) error {
 	if e.settings.DomainName == "" {
-		return errors.Errorf("bootstrapping %s collection requires domain name to be set in admin settings", e.settings.DomainName)
+		return errors.Errorf("bootstrapping '%s' collection requires domain name to be set in admin settings", e.settings.DomainName)
 	}
 
 	maxExpiration := time.Duration(math.MaxInt64)

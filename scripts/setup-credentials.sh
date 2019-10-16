@@ -11,6 +11,7 @@ database:
   write_concern:
     wmode: majority
 
+domain_name: evergreen.local
 configdir: "config_test"
 client_binaries_dir: "clients"
 credentials: {
@@ -48,8 +49,8 @@ auth:
     naive:
       users:
       - username: "mci-nonprod"
-        password: "change me"
-        display_name: "MCI Nonprod"
+	password: "change me"
+	display_name: "MCI Nonprod"
 
 plugins:
   manifest:
