@@ -456,16 +456,16 @@ type ProjectTask struct {
 }
 
 type LoggerConfig struct {
-	Agent  []LogOpts `yaml:"agent" bson:"agent"`
-	System []LogOpts `yaml:"system" bson:"system"`
-	Task   []LogOpts `yaml:"task" bson:"task"`
+	Agent  []LogOpts `yaml:"agent,omitempty" bson:"agent,omitempty"`
+	System []LogOpts `yaml:"system,omitempty" bson:"system,omitempty"`
+	Task   []LogOpts `yaml:"task,omitempty" bson:"task,omitempty"`
 }
 
 type LogOpts struct {
-	Type         string `yaml:"type" bson:"type"`
+	Type         string `yaml:"type,omitempty" bson:"type,omitempty"`
 	SplunkServer string `yaml:"splunk_server,omitempty" bson:"splunk_server,omitempty"`
 	SplunkToken  string `yaml:"splunk_token,omitempty" bson:"splunk_token,omitempty"`
-	LogDirectory string `yaml:"log_directory" bson:"log_directory"`
+	LogDirectory string `yaml:"log_directory,omitempty" bson:"log_directory,omitempty"`
 }
 
 func (c *LoggerConfig) IsValid() error {
@@ -944,11 +944,10 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 	if tc.Version == nil {
 		return nil, errors.New("version is nil")
 	}
-	p := tc.Project
-	if p == nil {
-		if _, err := LoadProjectInto([]byte(tc.Version.Config), tc.Task.Project, p); err != nil {
-			return nil, errors.Wrap(err, "error retrieving project for task group")
-		}
+
+	var p Project
+	if _, err := LoadProjectInto([]byte(tc.Version.Config), tc.Task.Project, &p); err != nil {
+		return nil, errors.Wrap(err, "error retrieving project for task group")
 	}
 
 	if taskGroup == "" {

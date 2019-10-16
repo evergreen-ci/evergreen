@@ -1,8 +1,6 @@
 package model
 
 import (
-	"fmt"
-
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -74,13 +72,10 @@ func (pp *ParserProject) UpsertWithConfigNumber(num int) error {
 		return errors.Wrapf(err, "error finding parser project '%s'", pp.Id)
 	}
 	if found == nil {
-		fmt.Println("Inserting")
 		pp.ConfigUpdateNumber = num
 		return errors.Wrap(pp.Insert(), "error inserting parser project")
 	}
 
-	fmt.Println("Upserting")
-	fmt.Println("Does config number exist?", pp.ConfigUpdateNumber)
 	return errors.Wrapf(ParserProjectUpdateOne(
 		bson.M{
 			ParserProjectIdKey: pp.Id,
