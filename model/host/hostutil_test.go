@@ -20,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/user"
 	srvtestutil "github.com/evergreen-ci/evergreen/service/testutil"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
@@ -697,10 +696,8 @@ func TestStopAgentMonitor(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	env := testutil.NewEnvironment(ctx, t)
-
-	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, settings *evergreen.Settings, manager *jmock.Manager, h *Host){
-		"SendsKillToTaggedRunningProcesses": func(ctx context.Context, t *testing.T, settings *evergreen.Settings, manager *jmock.Manager, h *Host) {
+	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, manager *jmock.Manager, h *Host){
+		"SendsKillToTaggedRunningProcesses": func(ctx context.Context, t *testing.T, env evergreen.Environment, manager *jmock.Manager, h *Host) {
 			proc, err := manager.CreateProcess(ctx, &options.Create{
 				Args: []string{"agent", "monitor", "command"},
 			})
@@ -717,7 +714,7 @@ func TestStopAgentMonitor(t *testing.T) {
 			assert.Equal(t, syscall.SIGTERM, mockProc.Signals[0])
 
 		},
-		"DoesNotKillProcessesWithoutCorrectTag": func(ctx context.Context, t *testing.T, settings *evergreen.Settings, manager *jmock.Manager, h *Host) {
+		"DoesNotKillProcessesWithoutCorrectTag": func(ctx context.Context, t *testing.T, env evergreen.Environment, manager *jmock.Manager, h *Host) {
 			proc, err := manager.CreateProcess(ctx, &options.Create{
 				Args: []string{"some", "other", "command"}},
 			)
@@ -731,7 +728,7 @@ func TestStopAgentMonitor(t *testing.T) {
 
 			assert.Empty(t, mockProc.Signals)
 		},
-		"DoesNotKillFinishedAgentMonitors": func(ctx context.Context, t *testing.T, settings *evergreen.Settings, manager *jmock.Manager, h *Host) {
+		"DoesNotKillFinishedAgentMonitors": func(ctx context.Context, t *testing.T, env evergreen.Environment, manager *jmock.Manager, h *Host) {
 			proc, err := manager.CreateProcess(ctx, &options.Create{
 				Args: []string{"agent", "monitor", "command"},
 			})
@@ -744,7 +741,7 @@ func TestStopAgentMonitor(t *testing.T) {
 			require.True(t, ok)
 			assert.Empty(t, mockProc.Signals)
 		},
-		"NoopsOnLegacyHost": func(ctx context.Context, t *testing.T, settings *evergreen.Settings, manager *jmock.Manager, h *Host) {
+		"NoopsOnLegacyHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, manager *jmock.Manager, h *Host) {
 			h.Distro = distro.Distro{
 				BootstrapSettings: distro.BootstrapSettings{
 					Method:        distro.BootstrapMethodLegacySSH,
@@ -773,7 +770,6 @@ func TestStopAgentMonitor(t *testing.T) {
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(tctx, "", nil))
-
 			manager := &jmock.Manager{}
 
 			h := &Host{
@@ -788,7 +784,7 @@ func TestStopAgentMonitor(t *testing.T) {
 			}
 
 			assert.NoError(t, withJasperServiceSetupAndTeardown(tctx, env, manager, h, func() {
-				testCase(tctx, t, env.Settings(), manager, h)
+				testCase(tctx, t, env, manager, h)
 			}))
 		})
 	}
