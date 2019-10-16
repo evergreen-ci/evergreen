@@ -443,9 +443,10 @@ func (h *Host) JasperCredentialsExpiration(ctx context.Context, env evergreen.En
 // communicate with the host's running Jasper service. These credentials should
 // be used only to connect to the host's Jasper service.
 func (h *Host) JasperClientCredentials(ctx context.Context, env evergreen.Environment) (*certdepot.Credentials, error) {
-	creds, err := env.CertificateDepot().Find(env.Settings().DomainName)
+	id := env.Settings().DomainName
+	creds, err := env.CertificateDepot().Find(id)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.Wrapf(err, "problem finding '%s' for '%s [%s]'", id, h.Id, h.JasperCredentialsID)
 	}
 	creds.ServerName = h.JasperCredentialsID
 	return creds, nil

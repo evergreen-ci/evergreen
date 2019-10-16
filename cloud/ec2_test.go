@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
@@ -703,22 +704,25 @@ func (s *EC2Suite) TestTerminateInstanceWithUserDataBootstrappedHost() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
-	withCredentialsBootstrap(s.T(), func(evergreen.Environment, *evergreen.Settings) {
-		s.h.Distro.BootstrapSettings.Method = distro.BootstrapMethodUserData
-		s.NoError(s.h.Insert())
+	s.Require().NoError(db.ClearCollections(evergreen.CredentialsCollection, host.Collection, user.Collection))
+	defer func() {
+		s.NoError(db.ClearCollections(evergreen.CredentialsCollection, host.Collection, user.Collection))
+	}()
 
-		creds, err := s.h.GenerateJasperCredentials(ctx, s.env)
-		s.Require().NoError(err)
-		s.Require().NoError(s.h.SaveJasperCredentials(ctx, s.env, creds))
+	s.h.Distro.BootstrapSettings.Method = distro.BootstrapMethodUserData
+	s.NoError(s.h.Insert())
 
-		_, err = s.h.JasperCredentials(ctx, s.env)
-		s.Require().NoError(err)
+	creds, err := s.h.GenerateJasperCredentials(ctx, s.env)
+	s.Require().NoError(err)
+	s.Require().NoError(s.h.SaveJasperCredentials(ctx, s.env, creds))
 
-		s.NoError(s.onDemandManager.TerminateInstance(ctx, s.h, evergreen.User, ""))
+	_, err = s.h.JasperCredentials(ctx, s.env)
+	s.Require().NoError(err)
 
-		_, err = s.h.JasperCredentials(ctx, s.env)
-		s.Error(err)
-	})
+	s.NoError(s.onDemandManager.TerminateInstance(ctx, s.h, evergreen.User, ""))
+
+	_, err = s.h.JasperCredentials(ctx, s.env)
+	s.Error(err)
 }
 
 func (s *EC2Suite) TestStopInstance() {
