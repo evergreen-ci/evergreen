@@ -50,8 +50,8 @@ auth:
     naive:
       users:
       - username: "mci-nonprod"
-	password: "change me"
-	display_name: "MCI Nonprod"
+        password: "change me"
+        display_name: "MCI Nonprod"
 
 plugins:
   manifest:
