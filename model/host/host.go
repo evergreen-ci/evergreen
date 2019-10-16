@@ -420,7 +420,12 @@ func (h *Host) SetAgentStartTime() error {
 // service from the database. These credentials should not be used to connect to
 // the Jasper service - use JasperClientCredentials for this purpose.
 func (h *Host) JasperCredentials(ctx context.Context, env evergreen.Environment) (*certdepot.Credentials, error) {
-	return env.CertificateDepot().Find(h.JasperCredentialsID)
+	creds, err := env.CertificateDepot().Find(h.JasperCredentialsID)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem finding creds in depot")
+	}
+
+	return creds, nil
 }
 
 // JasperCredentialsExpiration returns the time at which the host's Jasper
@@ -461,7 +466,12 @@ func (h *Host) GenerateJasperCredentials(ctx context.Context, env evergreen.Envi
 		return nil, errors.Wrap(err, "problem deleting existing Jasper credentials")
 	}
 
-	return env.CertificateDepot().Generate(h.JasperCredentialsID)
+	creds, err := env.CertificateDepot().Generate(h.JasperCredentialsID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "credential generation issue for host '%s'", h.JasperCredentialsID)
+	}
+
+	return creds, nil
 }
 
 // SaveJasperCredentials saves the given Jasper credentials in the database for
@@ -470,14 +480,14 @@ func (h *Host) SaveJasperCredentials(ctx context.Context, env evergreen.Environm
 	if h.JasperCredentialsID == "" {
 		return errors.New("Jasper credentials ID is empty")
 	}
-	return env.CertificateDepot().Save(h.JasperCredentialsID, creds)
+	return errors.Wrapf(env.CertificateDepot().Save(h.JasperCredentialsID, creds), "problem finding '%s'", h.JasperCredentialsID)
 }
 
 // DeleteJasperCredentials deletes the Jasper credentials for the host and
 // updates the host both in memory and in the database.
 func (h *Host) DeleteJasperCredentials(ctx context.Context, env evergreen.Environment) error {
 	_, err := env.DB().Collection(evergreen.CredentialsCollection).DeleteOne(ctx, bson.M{"_id": h.JasperCredentialsID})
-	return errors.WithStack(err)
+	return errors.Wrapf(err, "problem deleting credentials for '%s'", h.JasperCredentialsID)
 }
 
 // UpdateJasperCredentialsID sets the ID of the host's Jasper credentials.

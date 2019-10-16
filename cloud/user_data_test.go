@@ -11,7 +11,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -117,27 +116,23 @@ func TestMakeMultipartUserData(t *testing.T) {
 	assert.Contains(t, res, userData)
 }
 
-func withCredentialsBootstrap(t *testing.T, fn func(settings *evergreen.Settings)) {
-	env := &mock.Environment{}
-	var cancel context.CancelFunc
-	env.EnvContext, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+func withCredentialsBootstrap(t *testing.T, fn func(evergreen.Environment, *evergreen.Settings)) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
-	require.NoError(t, env.Configure(env.EnvContext, "", nil))
-	env.Settings().DomainName = "test"
+	env := testutil.NewEnvironment(ctx, t)
+	defer env.Close(ctx)
 
 	require.NoError(t, db.ClearCollections(evergreen.CredentialsCollection, host.Collection))
 	defer func() {
 		assert.NoError(t, db.ClearCollections(evergreen.CredentialsCollection, host.Collection))
 	}()
 
-	fn(env.Settings())
+	fn(env, env.Settings())
 }
 
 func TestBootstrapUserData(t *testing.T) {
 	tctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	tenv := testutil.NewEnvironment(tctx, t)
 
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host, userID string){
 		"ContainsCommandsToSetupHostForRunningTasks": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host, userID string) {
@@ -242,7 +237,7 @@ func TestBootstrapUserData(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			withCredentialsBootstrap(t, func(settings *evergreen.Settings) {
+			withCredentialsBootstrap(t, func(env evergreen.Environment, settings *evergreen.Settings) {
 				require.NoError(t, db.ClearCollections(user.Collection))
 				defer func() {
 					assert.NoError(t, db.ClearCollections(user.Collection))
@@ -252,14 +247,16 @@ func TestBootstrapUserData(t *testing.T) {
 				user := &user.DBUser{Id: userID}
 				require.NoError(t, user.Insert())
 
-				h := &host.Host{Id: "host", Distro: distro.Distro{
-					Arch: distro.ArchLinuxAmd64,
-					BootstrapSettings: distro.BootstrapSettings{
-						Method:                distro.BootstrapMethodUserData,
-						JasperCredentialsPath: "/bar",
-						ClientDir:             "/client_dir",
+				h := &host.Host{
+					Id: "ud-host",
+					Distro: distro.Distro{
+						Arch: distro.ArchLinuxAmd64,
+						BootstrapSettings: distro.BootstrapSettings{
+							Method:                distro.BootstrapMethodUserData,
+							JasperCredentialsPath: "/bar",
+							ClientDir:             "/client_dir",
+						},
 					},
-				},
 					StartedBy:        evergreen.User,
 					ProvisionOptions: &host.ProvisionOptions{LoadCLI: true, OwnerId: userID},
 				}
@@ -267,7 +264,7 @@ func TestBootstrapUserData(t *testing.T) {
 				ctx, ccancel := context.WithTimeout(tctx, 5*time.Second)
 				defer ccancel()
 
-				testCase(ctx, t, tenv, h, userID)
+				testCase(ctx, t, env, h, userID)
 			})
 		})
 	}

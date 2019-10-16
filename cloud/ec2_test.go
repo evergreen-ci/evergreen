@@ -703,7 +703,7 @@ func (s *EC2Suite) TestTerminateInstanceWithUserDataBootstrappedHost() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
-	withCredentialsBootstrap(s.T(), func(*evergreen.Settings) {
+	withCredentialsBootstrap(s.T(), func(evergreen.Environment, *evergreen.Settings) {
 		s.h.Distro.BootstrapSettings.Method = distro.BootstrapMethodUserData
 		s.NoError(s.h.Insert())
 
