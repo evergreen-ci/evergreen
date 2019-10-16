@@ -181,7 +181,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		Provider: j.host.Provider,
 		Region:   cloud.GetRegion(j.host.Distro),
 	}
-	cloudManager, err = cloud.GetManager(ctx, mgrOpts, j.env.Settings())
+	cloudManager, err = cloud.GetManager(ctx, j.env, mgrOpts)
 	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "problem getting cloud provider for host",

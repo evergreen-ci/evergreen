@@ -207,7 +207,7 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, settings *everg
 	opts := &options.Create{
 		Args: []string{filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath), "-l", "-c", j.host.CurlCommand(settings)},
 	}
-	output, err := j.host.RunJasperProcess(ctx, settings, opts)
+	output, err := j.host.RunJasperProcess(ctx, j.env, opts)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error fetching agent monitor binary on host",
@@ -237,7 +237,7 @@ func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context, settings *ev
 	opts := &options.Create{
 		Args: []string{filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath), "-l", "-c", j.host.SetupCommand()},
 	}
-	output, err := j.host.RunJasperProcess(ctx, settings, opts)
+	output, err := j.host.RunJasperProcess(ctx, j.env, opts)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error running setup script on host",
@@ -265,7 +265,7 @@ func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, settings 
 	}
 
 	grip.Info(j.deployMessage())
-	if err := j.host.StartJasperProcess(ctx, settings, j.host.AgentMonitorOptions(settings)); err != nil {
+	if err := j.host.StartJasperProcess(ctx, j.env, j.host.AgentMonitorOptions(settings)); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "failed to start agent monitor on host",
 			"host":    j.host.Id,

@@ -135,7 +135,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, h *host.Host, settings *ev
 		event.LogHostProvisionError(h.Id)
 
 		if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodSSH {
-			grip.Error(message.WrapError(j.host.DeleteJasperCredentials(ctx), message.Fields{
+			grip.Error(message.WrapError(j.host.DeleteJasperCredentials(ctx, j.env), message.Fields{
 				"message":  "could not delete Jasper credentials after failed provision attempt",
 				"host":     j.host.Id,
 				"distro":   j.host.Distro.Id,
@@ -220,7 +220,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 		Provider: targetHost.Provider,
 		Region:   cloud.GetRegion(targetHost.Distro),
 	}
-	cloudMgr, err := cloud.GetManager(ctx, mgrOpts, settings)
+	cloudMgr, err := cloud.GetManager(ctx, j.env, mgrOpts)
 	if err != nil {
 		return errors.Wrapf(err,
 			"failed to get cloud manager for host %s with provider %s",
@@ -304,7 +304,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 // on the host, downloading the latest version of Jasper, and restarting the
 // Jasper service.
 func (j *setupHostJob) setupJasper(ctx context.Context, settings *evergreen.Settings) error {
-	cloudHost, err := cloud.GetCloudHost(ctx, j.host, j.env.Settings())
+	cloudHost, err := cloud.GetCloudHost(ctx, j.host, j.env)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get cloud host for %s", j.host.Id)
 	}
@@ -339,7 +339,7 @@ func (j *setupHostJob) setupJasper(ctx context.Context, settings *evergreen.Sett
 // putJasperCredentials creates Jasper credentials for the host and puts the
 // credentials file on the host.
 func (j *setupHostJob) putJasperCredentials(ctx context.Context, settings *evergreen.Settings, sshOptions []string) error {
-	creds, err := j.host.GenerateJasperCredentials(ctx)
+	creds, err := j.host.GenerateJasperCredentials(ctx, j.env)
 	if err != nil {
 		return errors.Wrap(err, "could not generate Jasper credentials for host")
 	}
@@ -370,7 +370,7 @@ func (j *setupHostJob) putJasperCredentials(ctx context.Context, settings *everg
 		return errors.Wrap(err, "error copying credentials to remote machine")
 	}
 
-	if err := j.host.SaveJasperCredentials(ctx, creds); err != nil {
+	if err := j.host.SaveJasperCredentials(ctx, j.env, creds); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "problem saving host credentials",
 			"job":     j.ID(),
@@ -472,7 +472,7 @@ func (j *setupHostJob) copyScript(ctx context.Context, settings *evergreen.Setti
 		return errors.Wrap(err, "error writing local script")
 	}
 
-	cloudHost, err := cloud.GetCloudHost(ctx, target, settings)
+	cloudHost, err := cloud.GetCloudHost(ctx, target, j.env)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get cloud host for %s", target.Id)
 	}
@@ -593,7 +593,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 			return errors.Wrapf(err, "Failed to load client binary onto host %s: %+v", h.Id, err)
 		}
 
-		cloudHost, err := cloud.GetCloudHost(ctx, h, settings)
+		cloudHost, err := cloud.GetCloudHost(ctx, h, j.env)
 		if err != nil {
 			grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
 				"operation": "setting host unprovisioned",
@@ -717,7 +717,7 @@ func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settin
 		return nil, errors.Wrapf(err, "error parsing ssh info %s", target.Host)
 	}
 
-	cloudHost, err := cloud.GetCloudHost(ctx, target, settings)
+	cloudHost, err := cloud.GetCloudHost(ctx, target, j.env)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to get cloud host for %s", target.Id)
 	}
@@ -820,7 +820,7 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, taskId, cliPath,
 		return errors.Wrapf(err, "error parsing ssh info %s", target.Host)
 	}
 
-	cloudHost, err := cloud.GetCloudHost(ctx, target, settings)
+	cloudHost, err := cloud.GetCloudHost(ctx, target, j.env)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to get cloud host for %v", target.Id)
 	}

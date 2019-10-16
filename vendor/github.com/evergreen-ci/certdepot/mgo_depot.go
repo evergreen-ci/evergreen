@@ -13,6 +13,7 @@ type mgoCertDepot struct {
 	session        *mgo.Session
 	databaseName   string
 	collectionName string
+	opts           DepotOptions
 }
 
 // NewMgoCertDepot creates a new cert depot using the legacy mgo driver.
@@ -41,6 +42,7 @@ func NewMgoCertDepotWithSession(s *mgo.Session, opts *MongoDBOptions) (Depot, er
 		session:        s,
 		databaseName:   opts.DatabaseName,
 		collectionName: opts.CollectionName,
+		opts:           opts.DepotOptions,
 	}, nil
 }
 
@@ -50,7 +52,10 @@ func (m *mgoCertDepot) Put(tag *depot.Tag, data []byte) error {
 		return errors.New("data is nil")
 	}
 
-	name, key := getNameAndKey(tag)
+	name, key, err := getNameAndKey(tag)
+	if err != nil {
+		return errors.Wrapf(err, "could not format name %s", name)
+	}
 	session := m.session.Clone()
 	defer session.Close()
 
@@ -72,19 +77,23 @@ func (m *mgoCertDepot) Put(tag *depot.Tag, data []byte) error {
 
 // Check returns whether the user and data specified by the tag exists.
 func (m *mgoCertDepot) Check(tag *depot.Tag) bool {
-	name, key := getNameAndKey(tag)
+	name, key, err := getNameAndKey(tag)
+	if err != nil {
+		return false
+	}
 	session := m.session.Clone()
 	defer session.Close()
 
 	u := &User{}
-	err := session.DB(m.databaseName).C(m.collectionName).FindId(name).One(u)
-	grip.WarningWhen(errNotNotFound(err), message.Fields{
-		"db":   m.databaseName,
-		"coll": m.collectionName,
-		"id":   name,
-		"err":  err,
-		"op":   "check",
-	})
+	if err = session.DB(m.databaseName).C(m.collectionName).FindId(name).One(u); errNotNotFound(err) {
+		grip.Warning(message.Fields{
+			"db":   m.databaseName,
+			"coll": m.collectionName,
+			"id":   name,
+			"err":  err,
+			"op":   "check",
+		})
+	}
 
 	switch key {
 	case userCertKey:
@@ -103,16 +112,18 @@ func (m *mgoCertDepot) Check(tag *depot.Tag) bool {
 // Get reads the data for the user specified by tag. Returns an error if the
 // user does not exist or if the data is empty.
 func (m *mgoCertDepot) Get(tag *depot.Tag) ([]byte, error) {
-	name, key := getNameAndKey(tag)
+	name, key, err := getNameAndKey(tag)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not format name %s", name)
+	}
 	session := m.session.Clone()
 	defer session.Close()
 
 	u := &User{}
-	err := session.DB(m.databaseName).C(m.collectionName).FindId(name).One(u)
-	if err == mgo.ErrNotFound {
-		return nil, errors.Errorf("could not find %s in the database", name)
-	}
-	if err != nil {
+	if err = session.DB(m.databaseName).C(m.collectionName).FindId(name).One(u); err != nil {
+		if err == mgo.ErrNotFound {
+			return nil, errors.Errorf("could not find %s in the database", name)
+		}
 		return nil, errors.Wrapf(err, "problem looking up %s in the database", name)
 	}
 
@@ -136,17 +147,25 @@ func (m *mgoCertDepot) Get(tag *depot.Tag) ([]byte, error) {
 
 // Delete removes the data from a user specified by the tag.
 func (m *mgoCertDepot) Delete(tag *depot.Tag) error {
-	name, key := getNameAndKey(tag)
+	name, key, err := getNameAndKey(tag)
+	if err != nil {
+		return errors.Wrapf(err, "could not format name %s", name)
+	}
 	session := m.session.Clone()
 	defer session.Close()
 
 	update := bson.M{"$unset": bson.M{key: ""}}
-	err := m.session.DB(m.databaseName).C(m.collectionName).UpdateId(name, update)
-	if errNotNotFound(err) {
+	if err = m.session.DB(m.databaseName).C(m.collectionName).UpdateId(name, update); errNotNotFound(err) {
 		return errors.Wrapf(err, "problem deleting %s.%s from the database", name, key)
 	}
 
 	return nil
+}
+
+func (m *mgoCertDepot) Save(name string, creds *Credentials) error { return depotSave(m, name, creds) }
+func (m *mgoCertDepot) Find(name string) (*Credentials, error)     { return depotFind(m, name, m.opts) }
+func (m *mgoCertDepot) Generate(name string) (*Credentials, error) {
+	return depotGenerate(m, name, m.opts)
 }
 
 func errNotNotFound(err error) bool {

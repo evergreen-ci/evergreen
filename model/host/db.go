@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/credentials"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
@@ -96,6 +96,16 @@ var (
 	HostsByDistroDistroIDKey          = bsonutil.MustHaveTag(IdleHostsByDistroID{}, "DistroID")
 	HostsByDistroIdleHostsKey         = bsonutil.MustHaveTag(IdleHostsByDistroID{}, "IdleHosts")
 	HostsByDistroRunningHostsCountKey = bsonutil.MustHaveTag(IdleHostsByDistroID{}, "RunningHostsCount")
+)
+
+// Constants for bson struct tags.
+var (
+	CertUserIDKey            = bsonutil.MustHaveTag(certdepot.User{}, "ID")
+	CertUserCertKey          = bsonutil.MustHaveTag(certdepot.User{}, "Cert")
+	CertUserPrivateKeyKey    = bsonutil.MustHaveTag(certdepot.User{}, "PrivateKey")
+	CertUserCertReqKey       = bsonutil.MustHaveTag(certdepot.User{}, "CertReq")
+	CertUserCertRevocListKey = bsonutil.MustHaveTag(certdepot.User{}, "CertRevocList")
+	CertUserTTLKey           = bsonutil.MustHaveTag(certdepot.User{}, "TTL")
 )
 
 // === Queries ===
@@ -376,8 +386,8 @@ func FindByFirstProvisioningAttempt() ([]Host, error) {
 func FindByExpiringJasperCredentials(cutoff time.Duration) ([]Host, error) {
 	deadline := time.Now().Add(cutoff)
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
-	credentialsKey := credentials.Collection
-	expirationKey := bsonutil.GetDottedKeyName(credentialsKey, credentials.TTLKey)
+	credentialsKey := evergreen.CredentialsCollection
+	expirationKey := bsonutil.GetDottedKeyName(credentialsKey, CertUserTTLKey)
 
 	var hosts []Host
 
@@ -392,9 +402,9 @@ func FindByExpiringJasperCredentials(cutoff time.Duration) ([]Host, error) {
 			ParentIDKey:      bson.M{"$exists": false},
 		}},
 		bson.M{"$lookup": bson.M{
-			"from":         credentials.Collection,
+			"from":         evergreen.CredentialsCollection,
 			"localField":   JasperCredentialsIDKey,
-			"foreignField": credentials.IDKey,
+			"foreignField": CertUserIDKey,
 			"as":           credentialsKey,
 		}},
 		bson.M{"$match": bson.M{

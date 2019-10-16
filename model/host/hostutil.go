@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -369,8 +370,8 @@ func (h *Host) jasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 }
 
 // BootstrapScript creates the user data script to bootstrap the host.
-func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credentials, preJasperSetup, postJasperSetup []string) (string, error) {
-	bashPrefix := []string{"set -o errexit", "set -o verbose"}
+func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Credentials, preJasperSetup, postJasperSetup []string) (string, error) {
+	bashPrefix := append([]string{"set -o errexit", "set -o verbose"})
 
 	if h.Distro.IsWindows() {
 		writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommandsBuffered(settings.Splunk, creds)
@@ -540,7 +541,7 @@ func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, 
 
 // WriteJasperCredentialsFilesCommands builds the command to write the Jasper
 // credentials and Splunk credentials to files.
-func (h *Host) WriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionInfo, creds *rpc.Credentials) (string, error) {
+func (h *Host) WriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionInfo, creds *certdepot.Credentials) (string, error) {
 	if h.Distro.BootstrapSettings.JasperCredentialsPath == "" {
 		return "", errors.New("cannot write Jasper credentials without a credentials file path")
 	}
@@ -567,7 +568,7 @@ func (h *Host) WriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionI
 
 // WriteJasperCredentialsFilesCommands is the same as
 // WriteJasperCredentialsFilesCommands but writes with multiple commands.
-func (h *Host) WriteJasperCredentialsFilesCommandsBuffered(splunk send.SplunkConnectionInfo, creds *rpc.Credentials) ([]string, error) {
+func (h *Host) WriteJasperCredentialsFilesCommandsBuffered(splunk send.SplunkConnectionInfo, creds *certdepot.Credentials) ([]string, error) {
 	if h.Distro.BootstrapSettings.JasperCredentialsPath == "" {
 		return nil, errors.New("cannot write Jasper credentials without a credentials file path")
 	}
@@ -610,8 +611,8 @@ func (h *Host) splunkTokenFilePath() string {
 // RunJasperProcess makes a request to the host's Jasper service to create the
 // process with the given options, wait for its completion, and returns the
 // output from it.
-func (h *Host) RunJasperProcess(ctx context.Context, settings *evergreen.Settings, opts *options.Create) (string, error) {
-	client, err := h.JasperClient(ctx, settings)
+func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, opts *options.Create) (string, error) {
+	client, err := h.JasperClient(ctx, env)
 	if err != nil {
 		return "", errors.Wrap(err, "could not get a Jasper client")
 	}
@@ -640,8 +641,8 @@ func (h *Host) RunJasperProcess(ctx context.Context, settings *evergreen.Setting
 
 // StartJasperProcess makes a request to the host's Jasper service to start a
 // process with the given options without waiting for its completion.
-func (h *Host) StartJasperProcess(ctx context.Context, settings *evergreen.Settings, opts *options.Create) error {
-	client, err := h.JasperClient(ctx, settings)
+func (h *Host) StartJasperProcess(ctx context.Context, env evergreen.Environment, opts *options.Create) error {
+	client, err := h.JasperClient(ctx, env)
 	if err != nil {
 		return errors.Wrap(err, "could not get a Jasper client")
 	}
@@ -658,11 +659,12 @@ const jasperDialTimeout = 15 * time.Second
 
 // JasperClient returns a remote client that communicates with this host's
 // Jasper service.
-func (h *Host) JasperClient(ctx context.Context, settings *evergreen.Settings) (jasper.RemoteClient, error) {
+func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jasper.RemoteClient, error) {
 	if h.LegacyBootstrap() || h.LegacyCommunication() {
 		return nil, errors.New("legacy host does not support remote Jasper process management")
 	}
 
+	settings := env.Settings()
 	if h.JasperCommunication() {
 		switch h.Distro.BootstrapSettings.Communication {
 		case distro.CommunicationMethodSSH:
@@ -689,7 +691,7 @@ func (h *Host) JasperClient(ctx context.Context, settings *evergreen.Settings) (
 
 			return jcli.NewSSHClient(remoteOpts, clientOpts, true)
 		case distro.CommunicationMethodRPC:
-			creds, err := h.GenerateJasperCredentials(ctx)
+			creds, err := h.GenerateJasperCredentials(ctx, env)
 			if err != nil {
 				return nil, errors.Wrap(err, "could not get client credentials to communicate with the host's Jasper service")
 			}
@@ -754,12 +756,12 @@ func (h *Host) StartAgentMonitorRequest(settings *evergreen.Settings) (string, e
 
 // StopAgentMonitor stops the agent monitor (if it is running) on the host via
 // its Jasper service . On legacy hosts, this is a no-op.
-func (h *Host) StopAgentMonitor(ctx context.Context, settings *evergreen.Settings) error {
+func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) error {
 	if h.LegacyBootstrap() {
 		return nil
 	}
 
-	client, err := h.JasperClient(ctx, settings)
+	client, err := h.JasperClient(ctx, env)
 	if err != nil {
 		return errors.Wrap(err, "could not get a Jasper client")
 	}

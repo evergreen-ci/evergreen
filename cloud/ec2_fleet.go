@@ -29,10 +29,7 @@ type ec2FleetManager struct {
 	*EC2FleetManagerOptions
 	credentials *credentials.Credentials
 	settings    *evergreen.Settings
-}
-
-func NewEC2FleetManager(opts *EC2FleetManagerOptions) Manager {
-	return &ec2FleetManager{EC2FleetManagerOptions: opts}
+	env         evergreen.Environment
 }
 
 func (m *ec2FleetManager) GetSettings() ProviderSettings {
@@ -382,7 +379,7 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 		launchTemplate.SecurityGroups = ec2Settings.getSecurityGroups()
 	}
 
-	userData, err := bootstrapUserData(ctx, m.settings, h, ec2Settings.UserData)
+	userData, err := bootstrapUserData(ctx, m.env, h, ec2Settings.UserData)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "could not add bootstrap script to user data")
 	}

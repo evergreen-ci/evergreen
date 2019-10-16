@@ -80,7 +80,7 @@ type ContainerManager interface {
 // CostCalculator is an interface for cloud providers that can estimate what a span of time on a
 // given host costs.
 type CostCalculator interface {
-	CostForDuration(context.Context, *host.Host, time.Time, time.Time, *evergreen.Settings) (float64, error)
+	CostForDuration(context.Context, *host.Host, time.Time, time.Time) (float64, error)
 }
 
 // BatchManager is an interface for cloud providers that support batch operations.
@@ -98,7 +98,7 @@ type ManagerOpts struct {
 
 // GetManager returns an implementation of Manager for the given manager options.
 // It returns an error if the provider name doesn't have a known implementation.
-func GetManager(ctx context.Context, mgrOpts ManagerOpts, settings *evergreen.Settings) (Manager, error) {
+func GetManager(ctx context.Context, env evergreen.Environment, mgrOpts ManagerOpts) (Manager, error) {
 	var provider Manager
 
 	switch mgrOpts.Provider {
@@ -107,17 +107,17 @@ func GetManager(ctx context.Context, mgrOpts ManagerOpts, settings *evergreen.Se
 	case evergreen.ProviderNameMock:
 		provider = makeMockManager()
 	case evergreen.ProviderNameEc2OnDemand:
-		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: onDemandProvider, region: mgrOpts.Region})
+		provider = &ec2Manager{env: env, EC2ManagerOptions: &EC2ManagerOptions{client: &awsClientImpl{}, provider: onDemandProvider, region: mgrOpts.Region}}
 	case evergreen.ProviderNameEc2Spot:
-		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: spotProvider, region: mgrOpts.Region})
+		provider = &ec2Manager{env: env, EC2ManagerOptions: &EC2ManagerOptions{client: &awsClientImpl{}, provider: spotProvider, region: mgrOpts.Region}}
 	case evergreen.ProviderNameEc2Auto:
-		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: autoProvider, region: mgrOpts.Region})
+		provider = &ec2Manager{env: env, EC2ManagerOptions: &EC2ManagerOptions{client: &awsClientImpl{}, provider: autoProvider, region: mgrOpts.Region}}
 	case evergreen.ProviderNameEc2Fleet:
-		provider = NewEC2FleetManager(&EC2FleetManagerOptions{client: &awsClientImpl{}, region: mgrOpts.Region})
+		provider = &ec2FleetManager{env: env, EC2FleetManagerOptions: &EC2FleetManagerOptions{client: &awsClientImpl{}, region: mgrOpts.Region}}
 	case evergreen.ProviderNameDocker:
-		provider = &dockerManager{}
+		provider = &dockerManager{env: env}
 	case evergreen.ProviderNameDockerMock:
-		provider = &dockerManager{client: &dockerClientMock{}}
+		provider = &dockerManager{env: env, client: &dockerClientMock{}}
 	case evergreen.ProviderNameOpenstack:
 		provider = &openStackManager{}
 	case evergreen.ProviderNameGce:
@@ -128,7 +128,7 @@ func GetManager(ctx context.Context, mgrOpts ManagerOpts, settings *evergreen.Se
 		return nil, errors.Errorf("No known provider for '%s'", mgrOpts.Provider)
 	}
 
-	if err := provider.Configure(ctx, settings); err != nil {
+	if err := provider.Configure(ctx, env.Settings()); err != nil {
 		return nil, errors.Wrap(err, "Failed to configure cloud provider")
 	}
 

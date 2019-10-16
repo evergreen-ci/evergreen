@@ -145,7 +145,7 @@ func (as *APIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		cloudHost, err := cloud.GetCloudHost(ctx, h, &as.Settings)
+		cloudHost, err := cloud.GetCloudHost(ctx, h, as.env)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

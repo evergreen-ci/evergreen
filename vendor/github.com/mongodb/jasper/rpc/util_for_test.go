@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/evergreen-ci/certdepot"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
@@ -16,7 +17,7 @@ import (
 
 // startTestService creates a server for testing purposes that terminates when
 // the context is done.
-func startTestService(ctx context.Context, mngr jasper.Manager, addr net.Addr, creds *Credentials) error {
+func startTestService(ctx context.Context, mngr jasper.Manager, addr net.Addr, creds *certdepot.Credentials) error {
 	closeService, err := StartService(ctx, mngr, addr, creds)
 	if err != nil {
 		return errors.Wrap(err, "could not start server")
@@ -32,7 +33,7 @@ func startTestService(ctx context.Context, mngr jasper.Manager, addr net.Addr, c
 
 // newTestClient establishes a client for testing purposes that closes when
 // the context is done.
-func newTestClient(ctx context.Context, addr net.Addr, creds *Credentials) (jasper.RemoteClient, error) {
+func newTestClient(ctx context.Context, addr net.Addr, creds *certdepot.Credentials) (jasper.RemoteClient, error) {
 	client, err := NewClient(ctx, addr, creds)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get client")

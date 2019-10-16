@@ -46,6 +46,7 @@ type UIServer struct {
 	buildBaronProjects map[string]evergreen.BuildBaronProject
 
 	queue amboy.Queue
+	env   evergreen.Environment
 
 	plugin.PanelManager
 }
@@ -63,7 +64,8 @@ type ViewData struct {
 	Bugsnag     string
 }
 
-func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string, fo TemplateFunctionOptions) (*UIServer, error) {
+func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo TemplateFunctionOptions) (*UIServer, error) {
+	settings := env.Settings()
 	userManager, isLDAP, err := auth.LoadUserManager(settings.AuthConfig)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -77,6 +79,7 @@ func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string, f
 
 	uis := &UIServer{
 		Settings:           *settings,
+		env:                env,
 		queue:              queue,
 		Home:               home,
 		UserManager:        userManager,

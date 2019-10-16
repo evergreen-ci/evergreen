@@ -86,7 +86,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 		return
 	}
 
-	if output, err := j.host.RunJasperProcess(ctx, j.settings, &options.Create{Args: []string{"ls", path}}); err != nil {
+	if output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{Args: []string{"ls", path}}); err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "host was checked but is not yet ready",
 			"output":  output,

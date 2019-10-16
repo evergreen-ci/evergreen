@@ -33,14 +33,15 @@ const (
 type APIServer struct {
 	UserManager         gimlet.UserManager
 	Settings            evergreen.Settings
+	env                 evergreen.Environment
 	queue               amboy.Queue
-	queueGroup          amboy.QueueGroup
 	taskDispatcher      model.TaskQueueItemDispatcher
 	taskAliasDispatcher model.TaskQueueItemDispatcher
 }
 
 // NewAPIServer returns an APIServer initialized with the given settings and plugins.
-func NewAPIServer(settings *evergreen.Settings, queue amboy.Queue, queueGroup amboy.QueueGroup) (*APIServer, error) {
+func NewAPIServer(env evergreen.Environment, queue amboy.Queue) (*APIServer, error) {
+	settings := env.Settings()
 	authManager, _, err := auth.LoadUserManager(settings.AuthConfig)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -53,8 +54,8 @@ func NewAPIServer(settings *evergreen.Settings, queue amboy.Queue, queueGroup am
 	as := &APIServer{
 		UserManager:         authManager,
 		Settings:            *settings,
+		env:                 env,
 		queue:               queue,
-		queueGroup:          queueGroup,
 		taskDispatcher:      model.NewTaskDispatchService(taskDispatcherTTL),
 		taskAliasDispatcher: model.NewTaskDispatchAliasService(taskDispatcherTTL),
 	}

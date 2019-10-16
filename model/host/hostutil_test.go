@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net"
 	"os/exec"
 	"runtime"
@@ -12,10 +13,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
-	"github.com/evergreen-ci/evergreen/model/credentials"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service/testutil"
@@ -306,9 +307,9 @@ func TestJasperCommandsWindows(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					require.NoError(t, db.ClearCollections(credentials.Collection))
+					require.NoError(t, db.ClearCollections(evergreen.CredentialsCollection))
 					defer func() {
-						assert.NoError(t, db.ClearCollections(credentials.Collection))
+						assert.NoError(t, db.ClearCollections(evergreen.CredentialsCollection))
 					}()
 					hostCopy := *h
 					settingsCopy := *settings
@@ -473,7 +474,7 @@ func TestJasperClient(t *testing.T) {
 			env.Settings().Keys = map[string]string{sshKeyName: sshKeyValue}
 
 			doTest := func() {
-				client, err := testCase.h.JasperClient(tctx, env.Settings())
+				client, err := testCase.h.JasperClient(tctx, env)
 				defer func() {
 					if client != nil {
 						assert.NoError(t, client.CloseConnection())
@@ -503,20 +504,20 @@ func TestJasperProcess(t *testing.T) {
 
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create){
 		"RunJasperProcessErrorsWithoutJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
-			assert.Error(t, h.StartJasperProcess(ctx, env.Settings(), opts))
+			assert.Error(t, h.StartJasperProcess(ctx, env, opts))
 		},
 		"StartJasperProcessErrorsWithoutJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
-			assert.Error(t, h.StartJasperProcess(ctx, env.Settings(), opts))
+			assert.Error(t, h.StartJasperProcess(ctx, env, opts))
 		},
 		"RunJasperProcessPassesWithJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
 			assert.NoError(t, withJasperServiceSetupAndTeardown(ctx, env, manager, h, func() {
-				_, err := h.RunJasperProcess(ctx, env.Settings(), opts)
+				_, err := h.RunJasperProcess(ctx, env, opts)
 				assert.NoError(t, err)
 			}))
 		},
 		"StartJasperProcessPassesWithJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
 			assert.NoError(t, withJasperServiceSetupAndTeardown(ctx, env, manager, h, func() {
-				assert.NoError(t, h.StartJasperProcess(ctx, env.Settings(), opts))
+				assert.NoError(t, h.StartJasperProcess(ctx, env, opts))
 			}))
 		},
 	} {
@@ -701,8 +702,8 @@ func TestStopAgentMonitor(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, settings *evergreen.Settings, manager *jmock.Manager, h *Host){
-		"SendsKillToTaggedRunningProcesses": func(ctx context.Context, t *testing.T, settings *evergreen.Settings, manager *jmock.Manager, h *Host) {
+	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, manager *jmock.Manager, h *Host){
+		"SendsKillToTaggedRunningProcesses": func(ctx context.Context, t *testing.T, env evergreen.Environment, manager *jmock.Manager, h *Host) {
 			proc, err := manager.CreateProcess(ctx, &options.Create{
 				Args: []string{"agent", "monitor", "command"},
 			})
@@ -713,13 +714,13 @@ func TestStopAgentMonitor(t *testing.T) {
 			require.True(t, ok)
 			mockProc.ProcInfo.IsRunning = true
 
-			require.NoError(t, h.StopAgentMonitor(ctx, settings))
+			require.NoError(t, h.StopAgentMonitor(ctx, env))
 
 			require.Len(t, mockProc.Signals, 1)
 			assert.Equal(t, syscall.SIGTERM, mockProc.Signals[0])
 
 		},
-		"DoesNotKillProcessesWithoutCorrectTag": func(ctx context.Context, t *testing.T, settings *evergreen.Settings, manager *jmock.Manager, h *Host) {
+		"DoesNotKillProcessesWithoutCorrectTag": func(ctx context.Context, t *testing.T, env evergreen.Environment, manager *jmock.Manager, h *Host) {
 			proc, err := manager.CreateProcess(ctx, &options.Create{
 				Args: []string{"some", "other", "command"}},
 			)
@@ -729,24 +730,24 @@ func TestStopAgentMonitor(t *testing.T) {
 			require.True(t, ok)
 			mockProc.ProcInfo.IsRunning = true
 
-			require.NoError(t, h.StopAgentMonitor(ctx, settings))
+			require.NoError(t, h.StopAgentMonitor(ctx, env))
 
 			assert.Empty(t, mockProc.Signals)
 		},
-		"DoesNotKillFinishedAgentMonitors": func(ctx context.Context, t *testing.T, settings *evergreen.Settings, manager *jmock.Manager, h *Host) {
+		"DoesNotKillFinishedAgentMonitors": func(ctx context.Context, t *testing.T, env evergreen.Environment, manager *jmock.Manager, h *Host) {
 			proc, err := manager.CreateProcess(ctx, &options.Create{
 				Args: []string{"agent", "monitor", "command"},
 			})
 			require.NoError(t, err)
 			proc.Tag(evergreen.AgentMonitorTag)
 
-			require.NoError(t, h.StopAgentMonitor(ctx, settings))
+			require.NoError(t, h.StopAgentMonitor(ctx, env))
 
 			mockProc, ok := proc.(*jmock.Process)
 			require.True(t, ok)
 			assert.Empty(t, mockProc.Signals)
 		},
-		"NoopsOnLegacyHost": func(ctx context.Context, t *testing.T, settings *evergreen.Settings, manager *jmock.Manager, h *Host) {
+		"NoopsOnLegacyHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, manager *jmock.Manager, h *Host) {
 			h.Distro = distro.Distro{
 				BootstrapSettings: distro.BootstrapSettings{
 					Method:        distro.BootstrapMethodLegacySSH,
@@ -764,7 +765,7 @@ func TestStopAgentMonitor(t *testing.T) {
 			require.True(t, ok)
 			mockProc.ProcInfo.IsRunning = true
 
-			require.NoError(t, h.StopAgentMonitor(ctx, settings))
+			require.NoError(t, h.StopAgentMonitor(ctx, env))
 
 			assert.Empty(t, mockProc.Signals)
 		},
@@ -775,7 +776,6 @@ func TestStopAgentMonitor(t *testing.T) {
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(tctx, "", nil))
-
 			manager := &jmock.Manager{}
 
 			h := &Host{
@@ -790,7 +790,7 @@ func TestStopAgentMonitor(t *testing.T) {
 			}
 
 			assert.NoError(t, withJasperServiceSetupAndTeardown(tctx, env, manager, h, func() {
-				testCase(tctx, t, env.Settings(), manager, h)
+				testCase(tctx, t, env, manager, h)
 			}))
 		})
 	}
@@ -980,20 +980,50 @@ func TestSetupServiceUserCommands(t *testing.T) {
 	}
 }
 
-func newMockCredentials() (*rpc.Credentials, error) {
-	return rpc.NewCredentials([]byte("foo"), []byte("bar"), []byte("bat"))
+func newMockCredentials() (*certdepot.Credentials, error) {
+	return certdepot.NewCredentials([]byte("foo"), []byte("bar"), []byte("bat"))
 }
 
 // setupCredentialsCollection sets up the credentials collection in the
 // database.
 func setupCredentialsCollection(ctx context.Context, env *mock.Environment) error {
-	env.Settings().DomainName = "test-service"
+	settings := env.Settings()
+	settings.DomainName = "test-service"
 
-	if err := db.ClearCollections(credentials.Collection, Collection); err != nil {
+	if err := db.ClearCollections(evergreen.CredentialsCollection, Collection); err != nil {
 		return errors.WithStack(err)
 	}
 
-	return errors.WithStack(credentials.Bootstrap(env))
+	maxExpiration := time.Duration(math.MaxInt64)
+
+	bootstrapConfig := certdepot.BootstrapDepotConfig{
+		CAName: evergreen.CAName,
+		MongoDepot: &certdepot.MongoDBOptions{
+			DatabaseName:   settings.Database.DB,
+			CollectionName: evergreen.CredentialsCollection,
+			DepotOptions: certdepot.DepotOptions{
+				CA:                evergreen.CAName,
+				DefaultExpiration: 365 * 24 * time.Hour,
+			},
+		},
+		CAOpts: &certdepot.CertificateOptions{
+			CA:         evergreen.CAName,
+			CommonName: evergreen.CAName,
+			Expires:    maxExpiration,
+		},
+		ServiceName: settings.DomainName,
+		ServiceOpts: &certdepot.CertificateOptions{
+			CA:         evergreen.CAName,
+			CommonName: settings.DomainName,
+			Host:       settings.DomainName,
+			Expires:    maxExpiration,
+		},
+	}
+
+	var err error
+	env.Depot, err = certdepot.BootstrapDepotWithMongoClient(ctx, env.Client(), bootstrapConfig)
+
+	return errors.WithStack(err)
 }
 
 // setupJasperService performs the necessary setup to start a local Jasper
@@ -1009,7 +1039,7 @@ func setupJasperService(ctx context.Context, env *mock.Environment, manager *jmo
 	}
 	env.Settings().HostJasper.Port = port
 
-	creds, err := h.GenerateJasperCredentials(ctx)
+	creds, err := h.GenerateJasperCredentials(ctx, env)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -1018,14 +1048,14 @@ func setupJasperService(ctx context.Context, env *mock.Environment, manager *jmo
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	return closeService, errors.WithStack(h.SaveJasperCredentials(ctx, creds))
+	return closeService, errors.WithStack(h.SaveJasperCredentials(ctx, env, creds))
 }
 
 // teardownJasperService cleans up after a Jasper service has been set up for a
 // host.
 func teardownJasperService(ctx context.Context, closeService jasper.CloseFunc) error {
 	catcher := grip.NewBasicCatcher()
-	catcher.Add(db.ClearCollections(credentials.Collection, Collection))
+	catcher.Add(db.ClearCollections(evergreen.CredentialsCollection, Collection))
 	if closeService != nil {
 		catcher.Add(closeService())
 	}
