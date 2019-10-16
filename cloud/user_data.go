@@ -165,7 +165,6 @@ func bootstrapUserData(ctx context.Context, settings *evergreen.Settings, h *hos
 	if err != nil {
 		return customScript, errors.Wrap(err, "problem generating Jasper credentials for host")
 	}
-	// var creds *rpc.Credentials
 
 	bootstrapScript, err := h.BootstrapScript(settings, creds,
 		[]string{setupScript},

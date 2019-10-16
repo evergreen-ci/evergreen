@@ -372,12 +372,12 @@ func (h *Host) jasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credentials, preJasperSetup, postJasperSetup []string) (string, error) {
 	bashPrefix := []string{"set -o errexit", "set -o verbose"}
 
-	writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommandsSplit(settings.Splunk, creds)
-	if err != nil {
-		return "", errors.Wrap(err, "could not get command to write Jasper credentials file")
-	}
-
 	if h.Distro.IsWindows() {
+		writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommandsBuffered(settings.Splunk, creds)
+		if err != nil {
+			return "", errors.Wrap(err, "could not get command to write Jasper credentials file")
+		}
+
 		setupUserCmds, err := h.SetupServiceUserCommands()
 		if err != nil {
 			return "", errors.Wrap(err, "could not get command to set up service user")
@@ -405,8 +405,13 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credenti
 		return strings.Join(powershellCmds, "\r\n"), nil
 	}
 
+	writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
+	if err != nil {
+		return "", errors.Wrap(err, "could not get command to write Jasper credentials file")
+	}
+
 	bashCmds := append(bashPrefix, preJasperSetup...)
-	bashCmds = append(bashCmds, h.FetchJasperCommand(settings.HostJasper) /*writeCredentialsCmd,*/, h.ForceReinstallJasperCommand(settings))
+	bashCmds = append(bashCmds, writeCredentialsCmd, h.FetchJasperCommand(settings.HostJasper), h.ForceReinstallJasperCommand(settings))
 	bashCmds = append(bashCmds, postJasperSetup...)
 
 	return strings.Join(append([]string{"#!/bin/bash"}, bashCmds...), "\n"), nil
@@ -560,9 +565,9 @@ func (h *Host) WriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionI
 	return strings.Join(cmds, " && "), nil
 }
 
-// WriteJasperCredentialsFilesCommands builds multiple commands to write the
-// Jasper crednetials and Splunk credentials to a file.
-func (h *Host) WriteJasperCredentialsFilesCommandsSplit(splunk send.SplunkConnectionInfo, creds *rpc.Credentials) ([]string, error) {
+// WriteJasperCredentialsFilesCommands is the same as
+// WriteJasperCredentialsFilesCommands but writes with multiple commands.
+func (h *Host) WriteJasperCredentialsFilesCommandsBuffered(splunk send.SplunkConnectionInfo, creds *rpc.Credentials) ([]string, error) {
 	if h.Distro.BootstrapSettings.JasperCredentialsPath == "" {
 		return nil, errors.New("cannot write Jasper credentials without a credentials file path")
 	}
