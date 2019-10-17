@@ -293,7 +293,6 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 					Username:    bi.Username,
 					Password:    bi.Password,
 				}
-
 				c.cedarGRPCClient, err = timber.DialCedar(ctx, httpClient, dialOpts)
 				if err != nil {
 					return nil, errors.Wrap(err, "error creating cedar grpc client connection")
