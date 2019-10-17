@@ -75,7 +75,7 @@ type Communicator interface {
 	GetNextTask(context.Context, *apimodels.GetNextTaskDetails) (*apimodels.NextTaskResponse, error)
 	// GetBuildloggerInfo returns buildlogger service information including
 	// the base URL, RPC port, and LDAP credentials.
-	GetBuildloggerInfo(context.Context) (*BuildloggerInfo, error)
+	GetBuildloggerInfo(context.Context) (*apimodels.BuildloggerInfo, error)
 
 	// Constructs a new LogProducer instance for use by tasks.
 	GetLoggerProducer(context.Context, TaskData, *LoggerConfig) (LoggerProducer, error)

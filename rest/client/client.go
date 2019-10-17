@@ -60,13 +60,6 @@ type LogkeeperMetadata struct {
 	Test  string
 }
 
-type BuildloggerInfo struct {
-	BaseURL  string `json:"base_url"`
-	RPCPort  string `json:"rpc_port"`
-	Username string `json:"username"`
-	Password string `json:"username"`
-}
-
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for some client methods.
 type TaskData struct {
 	ID                 string
@@ -81,16 +74,15 @@ type LoggerConfig struct {
 }
 
 type LogOpts struct {
-	Sender             string
-	SplunkServerURL    string
-	SplunkToken        string
-	Filepath           string
-	LogkeeperURL       string
-	LogkeeperBuilder   string
-	LogkeeperBuildNum  int
-	BuildloggerBuilder string
-	BufferDuration     time.Duration
-	BufferSize         int
+	Sender            string
+	SplunkServerURL   string
+	SplunkToken       string
+	Filepath          string
+	LogkeeperURL      string
+	LogkeeperBuildNum int
+	BuilderID         string
+	BufferDuration    time.Duration
+	BufferSize        int
 }
 
 // NewCommunicator returns a Communicator capable of making HTTP REST requests against
@@ -260,7 +252,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 				Test:       prefix,
 				CreateTest: true,
 			}
-			sender, err = send.NewBuildlogger(opt.LogkeeperBuilder, &config, levelInfo)
+			sender, err = send.NewBuildlogger(opt.BuilderID, &config, levelInfo)
 			if err != nil {
 				return nil, errors.Wrap(err, "error creating logkeeper logger")
 			}
@@ -322,7 +314,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 				FlushInterval: opt.BufferDuration,
 				ClientConn:    c.cedarGRPCClient,
 			}
-			sender, err = timber.NewLogger(opt.BuildloggerBuilder, levelInfo, timberOpts)
+			sender, err = timber.NewLogger(opt.BuilderID, levelInfo, timberOpts)
 			if err != nil {
 				return nil, errors.Wrap(err, "error creating buildlogger logger")
 			}

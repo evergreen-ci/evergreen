@@ -296,8 +296,8 @@ func (c *communicatorImpl) GetNextTask(ctx context.Context, details *apimodels.G
 
 // GetBuildloggerInfo returns buildlogger service information including the
 // base URL, RPC port, and LDAP credentials.
-func (c *communicatorImpl) GetBuildloggerInfo(ctx context.Context) (*BuildloggerInfo, error) {
-	bi := &BuildloggerInfo{}
+func (c *communicatorImpl) GetBuildloggerInfo(ctx context.Context) (*apimodels.BuildloggerInfo, error) {
+	bi := &apimodels.BuildloggerInfo{}
 
 	info := requestInfo{
 		method:  get,

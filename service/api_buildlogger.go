@@ -3,18 +3,12 @@ package service
 import (
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/gimlet"
 )
 
-type buildlogger struct {
-	BaseURL  string `json:"base_url"`
-	RPCPort  string `json:"rpc_port"`
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
 func (as *APIServer) Buildlogger(w http.ResponseWriter, r *http.Request) {
-	gimlet.WriteJSON(w, &buildlogger{
+	gimlet.WriteJSON(w, &apimodels.BuildloggerInfo{
 		BaseURL:  as.Settings.LoggerConfig.BuildloggerBaseURL,
 		RPCPort:  as.Settings.LoggerConfig.BuildloggerRPCPort,
 		Username: as.Settings.LoggerConfig.BuildloggerUser,

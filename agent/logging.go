@@ -158,14 +158,13 @@ func (a *Agent) prepSingleLogger(tc *taskContext, in model.LogOpts, logDir, file
 	}
 	tc.logDirectories[logDir] = nil
 	return client.LogOpts{
-		LogkeeperURL:       a.opts.LogkeeperURL,
-		LogkeeperBuilder:   tc.taskModel.Id,
-		LogkeeperBuildNum:  tc.taskModel.Execution,
-		BuildloggerBuilder: tc.taskModel.Id,
-		Sender:             in.Type,
-		SplunkServerURL:    splunkServer,
-		SplunkToken:        splunkToken,
-		Filepath:           filepath.Join(logDir, fileName),
+		LogkeeperURL:      a.opts.LogkeeperURL,
+		LogkeeperBuildNum: tc.taskModel.Execution,
+		BuilderID:         tc.taskModel.Id,
+		Sender:            in.Type,
+		SplunkServerURL:   splunkServer,
+		SplunkToken:       splunkToken,
+		Filepath:          filepath.Join(logDir, fileName),
 	}
 }
 

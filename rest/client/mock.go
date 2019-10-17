@@ -253,8 +253,8 @@ func (c *Mock) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDe
 }
 
 // GetBuildloggerInfo returns mock buildlogger service information.
-func (c *Mock) GetBuildloggerInfo(ctx context.Context) (*BuildloggerInfo, error) {
-	return &BuildloggerInfo{
+func (c *Mock) GetBuildloggerInfo(ctx context.Context) (*apimodels.BuildloggerInfo, error) {
+	return &apimodels.BuildloggerInfo{
 		BaseURL:  "base_url",
 		RPCPort:  "1000",
 		Username: "user",

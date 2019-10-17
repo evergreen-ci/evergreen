@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -50,7 +51,7 @@ func TestBuildlogger(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, w.Code)
 	creds := &Credentials{}
-	bl := &buildlogger{}
+	bl := &apimodels.BuildloggerInfo{}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), creds))
 	assert.Equal(t, "cedar.mongodb.com", bl.BaseURL)
 	assert.Equal(t, "7070", bl.RPCPort)
