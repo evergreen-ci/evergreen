@@ -79,21 +79,22 @@ func ChmodCommandWithSudo(ctx context.Context, script string, sudo bool) *exec.C
 
 // CurlCommand returns the command to curl the evergreen client.
 func (h *Host) CurlCommand(settings *evergreen.Settings) string {
-	return strings.Join(h.curlCommands(settings, ""), " && ")
+	return strings.Join(h.curlCommands(settings, h.Distro.HomeDir(), ""), " && ")
 }
 
 // CurlCommandWithRetry is the same as CurlCommand but retries the request.
-func (h *Host) CurlCommandWithRetry(settings *evergreen.Settings, numRetries, maxRetrySecs int) string {
+// kim: TODO: remove dir parameter when done testing in staging.
+func (h *Host) CurlCommandWithRetry(settings *evergreen.Settings, dir string, numRetries, maxRetrySecs int) string {
 	var retryArgs string
 	if numRetries != 0 && maxRetrySecs != 0 {
 		retryArgs = " " + curlRetryArgs(numRetries, maxRetrySecs)
 	}
-	return strings.Join(h.curlCommands(settings, retryArgs), " && ")
+	return strings.Join(h.curlCommands(settings, dir, retryArgs), " && ")
 }
 
-func (h *Host) curlCommands(settings *evergreen.Settings, curlArgs string) []string {
+func (h *Host) curlCommands(settings *evergreen.Settings, dir string, curlArgs string) []string {
 	return []string{
-		fmt.Sprintf("cd %s", h.Distro.HomeDir()),
+		fmt.Sprintf("cd %s", dir),
 		fmt.Sprintf("curl -LO '%s'%s", h.ClientURL(settings), curlArgs),
 		fmt.Sprintf("chmod +x %s", h.Distro.BinaryName()),
 	}
@@ -340,8 +341,8 @@ func (h *Host) fetchJasperCommands(config evergreen.HostJasperConfig) []string {
 	downloadedFile := h.jasperDownloadedFileName(config)
 	extractedFile := h.jasperBinaryFileName(config)
 	return []string{
-		fmt.Sprintf("mkdir -m 777 -p \"%s\"", h.Distro.BootstrapSettings.JasperBinaryDir),
-		fmt.Sprintf("cd \"%s\"", h.Distro.BootstrapSettings.JasperBinaryDir),
+		fmt.Sprintf("mkdir -m 777 -p %s", h.Distro.BootstrapSettings.JasperBinaryDir),
+		fmt.Sprintf("cd %s", h.Distro.BootstrapSettings.JasperBinaryDir),
 		fmt.Sprintf("curl -LO '%s/%s' %s", config.URL, downloadedFile, curlRetryArgs(CurlDefaultNumRetries, CurlDefaultMaxSecs)),
 		fmt.Sprintf("tar xzf '%s'", downloadedFile),
 		fmt.Sprintf("chmod +x '%s'", extractedFile),
@@ -370,26 +371,31 @@ func (h *Host) jasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 }
 
 // BootstrapScript creates the user data script to bootstrap the host.
-func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Credentials, preJasperSetup, postJasperSetup []string) (string, error) {
-	bashPrefix := append([]string{"set -o errexit", "set -o verbose"})
+func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credentials, postJasperSetup []string) (string, error) {
+	bashPrefix := []string{"set -o errexit", "set -o verbose"}
 
 	if h.Distro.IsWindows() {
-		writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommandsBuffered(settings.Splunk, creds)
+		setupScriptCmds, err := h.fileSetupScriptCommands(settings)
 		if err != nil {
-			return "", errors.Wrap(err, "could not get command to write Jasper credentials file")
+			return "", errors.Wrap(err, "could not get commands to run setup script")
+		}
+
+		writeCredentialsCmds, err := h.bufferedWriteJasperCredentialsFilesCommands(settings.Splunk, creds)
+		if err != nil {
+			return "", errors.Wrap(err, "could not get commands to write Jasper credentials file")
 		}
 
 		setupUserCmds, err := h.SetupServiceUserCommands()
 		if err != nil {
-			return "", errors.Wrap(err, "could not get command to set up service user")
+			return "", errors.Wrap(err, "could not get commands to set up service user")
 		}
 
-		setupJasperCmds := append(writeCredentialsCmd,
+		setupJasperCmds := append(writeCredentialsCmds,
 			h.FetchJasperCommand(settings.HostJasper),
 			h.ForceReinstallJasperCommand(settings),
 		)
 
-		bashCmds := append(preJasperSetup, setupJasperCmds...)
+		bashCmds := append(setupScriptCmds, setupJasperCmds...)
 		bashCmds = append(bashCmds, postJasperSetup...)
 
 		for i := range bashCmds {
@@ -406,13 +412,18 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 		return strings.Join(powershellCmds, "\r\n"), nil
 	}
 
-	writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
+	setupScriptCmds, err := h.setupScriptCommands(settings)
 	if err != nil {
-		return "", errors.Wrap(err, "could not get command to write Jasper credentials file")
+		return "", errors.Wrap(err, "could not get commands to run setup script")
 	}
 
-	bashCmds := append(bashPrefix, preJasperSetup...)
-	bashCmds = append(bashCmds, writeCredentialsCmd, h.FetchJasperCommand(settings.HostJasper), h.ForceReinstallJasperCommand(settings))
+	writeCredentialsCmds, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
+	if err != nil {
+		return "", errors.Wrap(err, "could not get commands to write Jasper credentials file")
+	}
+
+	bashCmds := append(bashPrefix, setupScriptCmds)
+	bashCmds = append(bashCmds, writeCredentialsCmds, h.FetchJasperCommand(settings.HostJasper), h.ForceReinstallJasperCommand(settings))
 	bashCmds = append(bashCmds, postJasperSetup...)
 
 	return strings.Join(append([]string{"#!/bin/bash"}, bashCmds...), "\n"), nil
@@ -555,7 +566,7 @@ func (h *Host) WriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionI
 	}
 
 	cmds := []string{
-		fmt.Sprintf("mkdir -m 777 -p \"%s\"", filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath)),
+		fmt.Sprintf("mkdir -m 777 -p %s", filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath)),
 		writeFileContentCmd(h.Distro.BootstrapSettings.JasperCredentialsPath, string(exportedCreds)),
 	}
 
@@ -566,9 +577,26 @@ func (h *Host) WriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionI
 	return strings.Join(cmds, " && "), nil
 }
 
-// WriteJasperCredentialsFilesCommands is the same as
+func bufferedWriteFileCommands(path, content string) []string {
+	cmds := []string{fmt.Sprintf("mkdir -m 777 -p %s", filepath.Dir(path))}
+	n := 2018
+	for start := 0; start < len(content); start += n {
+		end := start + n
+		if end > len(content) {
+			end = len(content)
+		}
+		cmds = append(cmds, appendToFileCommand(path, content[start:end]))
+	}
+	return cmds
+}
+
+func appendToFileCommand(path, content string) string {
+	return fmt.Sprintf("echo -n '%s' >> '%s'", content, path)
+}
+
+// bufferedWriteJasperCredentialsFilesCommandsBuffered is the same as
 // WriteJasperCredentialsFilesCommands but writes with multiple commands.
-func (h *Host) WriteJasperCredentialsFilesCommandsBuffered(splunk send.SplunkConnectionInfo, creds *certdepot.Credentials) ([]string, error) {
+func (h *Host) bufferedWriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionInfo, creds *rpc.Credentials) ([]string, error) {
 	if h.Distro.BootstrapSettings.JasperCredentialsPath == "" {
 		return nil, errors.New("cannot write Jasper credentials without a credentials file path")
 	}
@@ -577,25 +605,11 @@ func (h *Host) WriteJasperCredentialsFilesCommandsBuffered(splunk send.SplunkCon
 	if err != nil {
 		return nil, errors.Wrap(err, "problem exporting credentials to file format")
 	}
-	writeFileContentCmd := func(path, content string) string {
-		return fmt.Sprintf("echo -n '%s' >> '%s'", content, path)
-	}
 
-	cmds := []string{
-		fmt.Sprintf("mkdir -m 777 -p \"%s\"", filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath)),
-	}
-
-	n := 2048
-	for start := 0; start < len(exportedCreds); start += n {
-		end := start + n
-		if end > len(exportedCreds) {
-			end = len(exportedCreds)
-		}
-		cmds = append(cmds, writeFileContentCmd(h.Distro.BootstrapSettings.JasperCredentialsPath, string(exportedCreds[start:end])))
-	}
+	cmds := bufferedWriteFileCommands(h.Distro.BootstrapSettings.JasperCredentialsPath, string(exportedCreds))
 
 	if splunk.Populated() {
-		cmds = append(cmds, writeFileContentCmd(h.splunkTokenFilePath(), splunk.Token))
+		cmds = append(cmds, appendToFileCommand(h.splunkTokenFilePath(), splunk.Token))
 	}
 
 	return cmds, nil
@@ -722,9 +736,9 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jas
 	return nil, errors.Errorf("host does not have recognized communication method '%s'", h.Distro.BootstrapSettings.Communication)
 }
 
-// SetupScriptCommands returns the commands contained in the setup script with
+// setupScriptCommands returns the commands contained in the setup script with
 // the expansions applied from the settings.
-func (h *Host) SetupScriptCommands(settings *evergreen.Settings) (string, error) {
+func (h *Host) setupScriptCommands(settings *evergreen.Settings) (string, error) {
 	if h.SpawnOptions.SpawnedByTask || h.Distro.Setup == "" {
 		return "", nil
 	}
@@ -735,6 +749,22 @@ func (h *Host) SetupScriptCommands(settings *evergreen.Settings) (string, error)
 		return "", errors.Wrap(err, "error expanding setup script variables")
 	}
 	return setupScript, nil
+}
+
+// fileSetupScriptCommands is the same as setupScriptCommands but writes the
+// setup script commands to a file in multiple commands and executes the script
+// file.
+func (h *Host) fileSetupScriptCommands(settings *evergreen.Settings) ([]string, error) {
+	script, err := h.setupScriptCommands(settings)
+	if err != nil {
+		return nil, err
+	}
+
+	path := filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, evergreen.SetupScriptName)
+	cmds := bufferedWriteFileCommands(path, script)
+	cmds = append(cmds, fmt.Sprintf("%s %s", h.Distro.BootstrapSettings.ShellPath, path))
+
+	return cmds, nil
 }
 
 // StartAgentMonitorRequest builds the Jasper client request that starts the
