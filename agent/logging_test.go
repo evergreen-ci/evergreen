@@ -276,13 +276,11 @@ func TestTimberSender(t *testing.T) {
 
 	agt := &Agent{
 		opts: Options{
-			HostID:               "host",
-			HostSecret:           "secret",
-			StatusPort:           2286,
-			LogPrefix:            evergreen.LocalLoggingOverride,
-			LogkeeperURL:         "logkeeper",
-			BuildloggerV3BaseURL: "cedar.mongodb.com",
-			BuildloggerV3RPCPort: "7070",
+			HostID:       "host",
+			HostSecret:   "secret",
+			StatusPort:   2286,
+			LogPrefix:    evergreen.LocalLoggingOverride,
+			LogkeeperURL: "logkeeper",
 		},
 		comm: client.NewMock("mock"),
 	}
@@ -301,9 +299,9 @@ func TestTimberSender(t *testing.T) {
 		},
 		project: &model.Project{
 			Loggers: &model.LoggerConfig{
-				Agent:  []model.LogOpts{{Type: model.BuildloggerV3LogSender}},
-				System: []model.LogOpts{{Type: model.BuildloggerV3LogSender}},
-				Task:   []model.LogOpts{{Type: model.BuildloggerV3LogSender}},
+				Agent:  []model.LogOpts{{Type: model.BuildloggerLogSender}},
+				System: []model.LogOpts{{Type: model.BuildloggerLogSender}},
+				Task:   []model.LogOpts{{Type: model.BuildloggerLogSender}},
 			},
 		},
 		taskConfig: &model.TaskConfig{

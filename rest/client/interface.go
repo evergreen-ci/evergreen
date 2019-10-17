@@ -73,10 +73,9 @@ type Communicator interface {
 	FetchExpansionVars(context.Context, TaskData) (*apimodels.ExpansionVars, error)
 	// GetNextTask returns a next task response by getting the next task for a given host.
 	GetNextTask(context.Context, *apimodels.GetNextTaskDetails) (*apimodels.NextTaskResponse, error)
-	// GetBuildloggerV3Credentials returns the LDAP credentials for
-	// fetching the cedar certificates required when establishing an RPC
-	// connection to cedar.
-	GetBuildloggerV3Credentials(context.Context) (string, string, error)
+	// GetBuildloggerInfo returns buildlogger service information including
+	// the base URL, RPC port, and LDAP credentials.
+	GetBuildloggerInfo(context.Context) (*BuildloggerInfo, error)
 
 	// Constructs a new LogProducer instance for use by tasks.
 	GetLoggerProducer(context.Context, TaskData, *LoggerConfig) (LoggerProducer, error)

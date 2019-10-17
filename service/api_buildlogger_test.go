@@ -14,10 +14,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBuildloggerV3Credentials(t *testing.T) {
+func TestBuildlogger(t *testing.T) {
 	conf := testutil.TestConfig()
-	conf.LoggerConfig.BuildloggerV3User = "user"
-	conf.LoggerConfig.BuildloggerV3Password = "pass"
+	conf.LoggerConfig.BuildloggerBaseURL = "cedar.mongodb.com"
+	conf.LoggerConfig.BuildloggerRPCPort = "7070"
+	conf.LoggerConfig.BuildloggerUser = "user"
+	conf.LoggerConfig.BuildloggerPassword = "pass"
 	queue := evergreen.GetEnvironment().LocalQueue()
 	remoteQueue := evergreen.GetEnvironment().RemoteQueueGroup()
 	as, err := NewAPIServer(conf, queue, remoteQueue)
@@ -35,7 +37,7 @@ func TestBuildloggerV3Credentials(t *testing.T) {
 	}
 	require.NoError(t, sampleHost.Insert())
 
-	url := "/api/2/agent/buildloggerv3_creds"
+	url := "/api/2/agent/buildlogger_creds"
 	request, err := http.NewRequest("GET", url, nil)
 	request.Header.Add(evergreen.HostHeader, sampleHost.Id)
 	request.Header.Add(evergreen.HostSecretHeader, sampleHost.Secret)
@@ -48,7 +50,10 @@ func TestBuildloggerV3Credentials(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, w.Code)
 	creds := &Credentials{}
+	bl := &buildlogger{}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), creds))
-	assert.Equal(t, "user", creds.Username)
-	assert.Equal(t, "pass", creds.Password)
+	assert.Equal(t, "cedar.mongodb.com", bl.BaseURL)
+	assert.Equal(t, "7070", bl.RPCPort)
+	assert.Equal(t, "user", bl.Username)
+	assert.Equal(t, "pass", bl.Password)
 }

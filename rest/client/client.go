@@ -58,6 +58,13 @@ type LogkeeperMetadata struct {
 	Test  string
 }
 
+type BuildloggerInfo struct {
+	BaseURL  string `json:"base_url"`
+	RPCPort  string `json:"rpc_port"`
+	Username string `json:"username"`
+	Password string `json:"username"`
+}
+
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for some client methods.
 type TaskData struct {
 	ID                 string
@@ -72,18 +79,16 @@ type LoggerConfig struct {
 }
 
 type LogOpts struct {
-	Sender               string
-	SplunkServerURL      string
-	SplunkToken          string
-	Filepath             string
-	LogkeeperURL         string
-	LogkeeperBuilder     string
-	LogkeeperBuildNum    int
-	BuildloggerV3BaseURL string
-	BuildloggerV3RPCPort string
-	BuildloggerV3Builder string
-	BufferDuration       time.Duration
-	BufferSize           int
+	Sender             string
+	SplunkServerURL    string
+	SplunkToken        string
+	Filepath           string
+	LogkeeperURL       string
+	LogkeeperBuilder   string
+	LogkeeperBuildNum  int
+	BuildloggerBuilder string
+	BufferDuration     time.Duration
+	BufferSize         int
 }
 
 // NewCommunicator returns a Communicator capable of making HTTP REST requests against
@@ -270,23 +275,23 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 			case apimodels.TaskLogPrefix:
 				c.loggerInfo.Task = append(c.loggerInfo.Task, metadata)
 			}
-		case model.BuildloggerV3LogSender:
+		case model.BuildloggerLogSender:
 			tk, err := c.GetTask(ctx, td)
 			if err != nil {
-				return nil, errors.Wrap(err, "error setting up buildloggerv3 sender")
+				return nil, errors.Wrap(err, "error setting up buildlogger sender")
 			}
 
 			client := util.GetHTTPClient()
 			defer util.PutHTTPClient(client)
-			username, password, err := c.GetBuildloggerV3Credentials(ctx)
+			bi, err := c.GetBuildloggerInfo(ctx)
 			if err != nil {
-				return nil, errors.Wrap(err, "error setting up buildloggerv3 sender")
+				return nil, errors.Wrap(err, "error setting up buildlogger sender")
 			}
 			dialOpts := timber.DialCedarOptions{
-				BaseAddress: opt.BuildloggerV3BaseURL,
-				RPCPort:     opt.BuildloggerV3RPCPort,
-				Username:    username,
-				Password:    password,
+				BaseAddress: bi.BaseURL,
+				RPCPort:     bi.RPCPort,
+				Username:    bi.Username,
+				Password:    bi.Password,
 			}
 			grpcConn, err := timber.DialCedar(ctx, client, dialOpts)
 			if err != nil {
@@ -307,9 +312,9 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 				FlushInterval: opt.BufferDuration,
 				ClientConn:    grpcConn,
 			}
-			sender, err = timber.NewLogger(opt.BuildloggerV3Builder, levelInfo, timberOpts)
+			sender, err = timber.NewLogger(opt.BuildloggerBuilder, levelInfo, timberOpts)
 			if err != nil {
-				return nil, errors.Wrap(err, "error creating buildloggerV3 logger")
+				return nil, errors.Wrap(err, "error creating buildlogger logger")
 			}
 		default:
 			sender = newEvergreenLogSender(ctx, c, prefix, td, bufferSize, bufferDuration)

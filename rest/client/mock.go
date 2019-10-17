@@ -252,9 +252,14 @@ func (c *Mock) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDe
 	}, nil
 }
 
-// GetBuildloggerV3Credentials returns mock LDAP credentials.
-func (c *Mock) GetBuildloggerV3Credentials(ctx context.Context) (string, string, error) {
-	return "username", "password", nil
+// GetBuildloggerInfo returns mock buildlogger service information.
+func (c *Mock) GetBuildloggerInfo(ctx context.Context) (*BuildloggerInfo, error) {
+	return &BuildloggerInfo{
+		BaseURL:  "base_url",
+		RPCPort:  "1000",
+		Username: "user",
+		Password: "password",
+	}, nil
 }
 
 // SendTaskLogMessages posts tasks messages to the api server

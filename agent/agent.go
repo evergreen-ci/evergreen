@@ -38,8 +38,6 @@ type Options struct {
 	StatusPort            int
 	LogPrefix             string
 	LogkeeperURL          string
-	BuildloggerV3BaseURL  string
-	BuildloggerV3RPCPort  string
 	S3BaseURL             string
 	WorkingDirectory      string
 	HeartbeatInterval     time.Duration
