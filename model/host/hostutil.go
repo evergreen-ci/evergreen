@@ -580,18 +580,26 @@ func (h *Host) WriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionI
 func bufferedWriteFileCommands(path, content string) []string {
 	cmds := []string{fmt.Sprintf("mkdir -m 777 -p %s", filepath.Dir(path))}
 	n := 2018
+	firstWrite := true
 	for start := 0; start < len(content); start += n {
 		end := start + n
 		if end > len(content) {
 			end = len(content)
 		}
-		cmds = append(cmds, appendToFileCommand(path, content[start:end]))
+		cmds = append(cmds, writeToFileCommand(path, content[start:end], firstWrite))
+		firstWrite = false
 	}
 	return cmds
 }
 
-func appendToFileCommand(path, content string) string {
-	return fmt.Sprintf("echo -n '%s' >> '%s'", content, path)
+func writeToFileCommand(path, content string, overwrite bool) string {
+	var redirect string
+	if overwrite {
+		redirect = ">"
+	} else {
+		redirect = ">>"
+	}
+	return fmt.Sprintf("echo -n '%s' %s '%s'", content, redirect, path)
 }
 
 // bufferedWriteJasperCredentialsFilesCommandsBuffered is the same as
@@ -609,7 +617,7 @@ func (h *Host) bufferedWriteJasperCredentialsFilesCommands(splunk send.SplunkCon
 	cmds := bufferedWriteFileCommands(h.Distro.BootstrapSettings.JasperCredentialsPath, string(exportedCreds))
 
 	if splunk.Populated() {
-		cmds = append(cmds, appendToFileCommand(h.splunkTokenFilePath(), splunk.Token))
+		cmds = append(cmds, writeToFileCommand(h.splunkTokenFilePath(), splunk.Token, true))
 	}
 
 	return cmds, nil
