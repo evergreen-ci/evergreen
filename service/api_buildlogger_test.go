@@ -23,8 +23,8 @@ func TestBuildlogger(t *testing.T) {
 	conf.LoggerConfig.BuildloggerPassword = "pass"
 	queue := evergreen.GetEnvironment().LocalQueue()
 	as, err := NewAPIServer(evergreen.GetEnvironment(), queue)
-	as.Settings = *conf
 	require.NoError(t, err)
+	as.Settings = *conf
 
 	sampleHost := host.Host{
 		Id: "h1",
