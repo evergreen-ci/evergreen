@@ -16,6 +16,7 @@ import (
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc"
 )
 
 const (
@@ -30,12 +31,13 @@ const (
 
 // communicatorImpl implements Communicator and makes requests to API endpoints for the agent.
 type communicatorImpl struct {
-	serverURL    string
-	maxAttempts  int
-	timeoutStart time.Duration
-	timeoutMax   time.Duration
-	httpClient   *http.Client
-	loggerInfo   LoggerMetadata
+	serverURL       string
+	maxAttempts     int
+	timeoutStart    time.Duration
+	timeoutMax      time.Duration
+	httpClient      *http.Client
+	cedarGRPCClient *grpc.ClientConn
+	loggerInfo      LoggerMetadata
 
 	// these fields have setters
 	hostID     string
@@ -281,21 +283,29 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 				return nil, errors.Wrap(err, "error setting up buildlogger sender")
 			}
 
-			client := util.GetHTTPClient()
-			defer util.PutHTTPClient(client)
-			bi, err := c.GetBuildloggerInfo(ctx)
-			if err != nil {
-				return nil, errors.Wrap(err, "error setting up buildlogger sender")
-			}
-			dialOpts := timber.DialCedarOptions{
-				BaseAddress: bi.BaseURL,
-				RPCPort:     bi.RPCPort,
-				Username:    bi.Username,
-				Password:    bi.Password,
-			}
-			grpcConn, err := timber.DialCedar(ctx, client, dialOpts)
-			if err != nil {
-				return nil, errors.Wrap(err, "error creating cedar grpc client connection")
+			if c.cedarGRPCClient == nil {
+				httpClient := c.httpClient
+				if httpClient == nil {
+					httpClient = util.GetHTTPClient()
+					defer util.PutHTTPClient(httpClient)
+				}
+
+				bi, err := c.GetBuildloggerInfo(ctx)
+				if err != nil {
+					return nil, errors.Wrap(err, "error setting up buildlogger sender")
+				}
+
+				dialOpts := timber.DialCedarOptions{
+					BaseAddress: bi.BaseURL,
+					RPCPort:     bi.RPCPort,
+					Username:    bi.Username,
+					Password:    bi.Password,
+				}
+
+				c.cedarGRPCClient, err = timber.DialCedar(ctx, httpClient, dialOpts)
+				if err != nil {
+					return nil, errors.Wrap(err, "error creating cedar grpc client connection")
+				}
 			}
 
 			timberOpts := &timber.LoggerOptions{
@@ -310,7 +320,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 				Storage:       timber.LogStorageS3,
 				MaxBufferSize: opt.BufferSize,
 				FlushInterval: opt.BufferDuration,
-				ClientConn:    grpcConn,
+				ClientConn:    c.cedarGRPCClient,
 			}
 			sender, err = timber.NewLogger(opt.BuildloggerBuilder, levelInfo, timberOpts)
 			if err != nil {
