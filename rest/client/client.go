@@ -276,12 +276,6 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 			}
 
 			if c.cedarGRPCClient == nil {
-				httpClient := c.httpClient
-				if httpClient == nil {
-					httpClient = util.GetHTTPClient()
-					defer util.PutHTTPClient(httpClient)
-				}
-
 				bi, err := c.GetBuildloggerInfo(ctx)
 				if err != nil {
 					return nil, errors.Wrap(err, "error setting up buildlogger sender")
@@ -293,7 +287,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 					Username:    bi.Username,
 					Password:    bi.Password,
 				}
-				c.cedarGRPCClient, err = timber.DialCedar(ctx, httpClient, dialOpts)
+				c.cedarGRPCClient, err = timber.DialCedar(ctx, c.httpClient, dialOpts)
 				if err != nil {
 					return nil, errors.Wrap(err, "error creating cedar grpc client connection")
 				}
