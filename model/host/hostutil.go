@@ -289,7 +289,7 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 	if settings.Splunk.Populated() {
 		params = append(params,
 			fmt.Sprintf("--splunk_url=%s", settings.Splunk.ServerURL),
-			fmt.Sprintf("--splunk_token_path=%s", h.splunkTokenFilePath()),
+			fmt.Sprintf("--splunk_token_path=%s", filepath.Join(h.Distro.BootstrapSettings.RootDir, h.splunkTokenFilePath())),
 		)
 		if settings.Splunk.Channel != "" {
 			params = append(params, fmt.Sprintf("--splunk_channel=%s", settings.Splunk.Channel))
@@ -619,7 +619,7 @@ func (h *Host) splunkTokenFilePath() string {
 	if h.Distro.BootstrapSettings.JasperCredentialsPath == "" {
 		return ""
 	}
-	return filepath.Join(h.Distro.BootstrapSettings.RootDir, filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath), "splunk.txt")
+	return filepath.Join(filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath), "splunk.txt")
 }
 
 // RunJasperProcess makes a request to the host's Jasper service to create the
