@@ -200,9 +200,12 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     };
 
     $scope.updateHostExpiration = function() {
-        let new_expiration = new Date($scope.curHostData.date_for_expiration);
-        new_expiration.setHours($scope.curHostData.time_for_expiration.getHours());
-        new_expiration.setMinutes($scope.curHostData.time_for_expiration.getMinutes());
+        let new_expiration = null;
+        if (!$scope.curHostData.no_expiration) {
+            new_expiration = new Date($scope.curHostData.date_for_expiration);
+            new_expiration.setHours($scope.curHostData.time_for_expiration.getHours());
+            new_expiration.setMinutes($scope.curHostData.time_for_expiration.getMinutes());
+        }
 
         mciSpawnRestService.extendHostExpiration(
         'extendHostExpiration',

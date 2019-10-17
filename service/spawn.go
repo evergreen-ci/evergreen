@@ -299,11 +299,33 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case HostExpirationExtension:
+		if updateParams.Expiration.IsZero() { // set expiration to never expire
+			count, err := host.CountSpawnhostsWithNoExpirationByUser(u.Id)
+			if err != nil {
+				PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error retrieving user spawn host data"))
+				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error retrieving user spawn host data"))
+				return
+			}
+			if count >= host.MaxSpawnhostsWithNoExpirationPerUser {
+				msg := fmt.Sprintf("Can only have %d non-expirable spawn hosts", host.MaxSpawnhostsWithNoExpirationPerUser)
+				PushFlash(uis.CookieStore, r, w, NewErrorFlash(msg))
+				uis.LoggedError(w, r, http.StatusBadRequest, errors.New(msg))
+				return
+			}
+			noExpiration := true
+			if err = cloud.ModifySpawnHost(ctx, h, host.HostModifyOptions{NoExpiration: &noExpiration}, env.Settings()); err != nil {
+				PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error updating host expiration"))
+				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error extending host expiration"))
+				return
+			}
+			return
+		}
 		if updateParams.Expiration.Before(h.ExpirationTime) {
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash("Expiration can only be extended."))
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("expiration can only be extended"))
 			return
 		}
+
 		addtTime := updateParams.Expiration.Sub(h.ExpirationTime)
 		var futureExpiration time.Time
 		futureExpiration, err = cloud.MakeExtendedSpawnHostExpiration(h, addtTime)
@@ -317,6 +339,16 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error extending host expiration time"))
 			return
 		}
+		// make host expirable
+		if h.NoExpiration {
+			noExpiration := false
+			if err = cloud.ModifySpawnHost(ctx, h, host.HostModifyOptions{NoExpiration: &noExpiration}, env.Settings()); err != nil {
+				PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error making host expirable"))
+				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error making host expirable"))
+				return
+			}
+		}
+
 		loc, err := time.LoadLocation(u.Settings.Timezone)
 		if err != nil || loc == nil {
 			loc = time.UTC

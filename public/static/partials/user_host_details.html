@@ -51,9 +51,10 @@
       </section>
       <section layout="row" flex style="white-space: nowrap">
           <div flex="85">
-            <strong>Expires On:</strong>
-            <md-datepicker ng-model="curHostData.date_for_expiration" md-min-date="curHostData.time_for_expiration" md-placeholder="Date"></md-datepicker>
-            <md-time-picker class="inline" ng-model="curHostData.time_for_expiration" message="message"></md-time-picker>
+            <strong>Expiration:</strong>
+            <md-datepicker ng-show="!curHostData.no_expiration" md-hide-icons="calendar" ng-model="curHostData.date_for_expiration" md-min-date="curHostData.time_for_expiration" md-placeholder="Date"></md-datepicker>
+            <md-time-picker ng-show="!curHostData.no_expiration" md-hide-icons="all" class="inline" ng-model="curHostData.time_for_expiration" message="message" style=""></md-time-picker>
+            <md-checkbox id="no-expiration" class="inline" ng-model="curHostData.no_expiration" style="margin-left:25px">Never</md-checkbox>
           </div>
           <div flex="15">
             <md-button type="button" class="btn-info md-raised" style="top: 8px; float: right" ng-click="updateHostExpiration()">
