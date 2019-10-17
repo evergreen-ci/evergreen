@@ -581,7 +581,6 @@ buildvariants:
       - windows-64-vs2010-test
       - windows-64-vs2010-compile
       - windows-64-vs2017-test
-      - windows-64-vs2017-compile-m5
       - windows-64-vs2017-compile
     expansions:
       disable_coverage: yes
