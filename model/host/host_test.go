@@ -3771,3 +3771,98 @@ func TestFindSpawnhostsWithNoExpirationToExtend(t *testing.T) {
 	assert.Len(t, foundHosts, 1)
 	assert.Equal(t, "host-1", foundHosts[0].Id)
 }
+
+func TestAttachVolume(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	h := Host{
+		Id: "host-1",
+		Volumes: []VolumeAttachment{
+			{
+				VolumeID:   "volume-1",
+				DeviceName: "device-1",
+			},
+		},
+	}
+	assert.NoError(t, h.Insert())
+
+	newAttachment := VolumeAttachment{
+		VolumeID:   "volume-2",
+		DeviceName: "device-2",
+	}
+	assert.NoError(t, h.AttachVolume(newAttachment))
+	assert.Equal(t, []VolumeAttachment{
+		{
+			VolumeID:   "volume-1",
+			DeviceName: "device-1",
+		},
+		{
+			VolumeID:   "volume-2",
+			DeviceName: "device-2",
+		},
+	}, h.Volumes)
+	foundHost, err := FindOneId("host-1")
+	assert.NoError(t, err)
+	assert.Equal(t, []VolumeAttachment{
+		{
+			VolumeID:   "volume-1",
+			DeviceName: "device-1",
+		},
+		{
+			VolumeID:   "volume-2",
+			DeviceName: "device-2",
+		},
+	}, foundHost.Volumes)
+}
+
+func TestDetachVolume(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	h := Host{
+		Id: "host-1",
+		Volumes: []VolumeAttachment{
+			{
+				VolumeID:   "volume-1",
+				DeviceName: "device-1",
+			},
+			{
+				VolumeID:   "volume-2",
+				DeviceName: "device-2",
+			},
+		},
+	}
+	assert.NoError(t, h.Insert())
+	assert.NoError(t, h.DetachVolume("volume-2"))
+	assert.Equal(t, []VolumeAttachment{
+		{
+			VolumeID:   "volume-1",
+			DeviceName: "device-1",
+		},
+	}, h.Volumes)
+	foundHost, err := FindOneId("host-1")
+	assert.NoError(t, err)
+	assert.Equal(t, []VolumeAttachment{
+		{
+			VolumeID:   "volume-1",
+			DeviceName: "device-1",
+		},
+	}, foundHost.Volumes)
+}
+
+func TestFindHostWithVolume(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	h := Host{
+		Id: "host-1",
+		Volumes: []VolumeAttachment{
+			{
+				VolumeID:   "volume-1",
+				DeviceName: "device-1",
+			},
+		},
+	}
+	assert.NoError(t, h.Insert())
+	foundHost, err := FindHostWithVolume("volume-1")
+	assert.NoError(t, err)
+	assert.NotNil(t, foundHost)
+	foundHost, err = FindHostWithVolume("volume-2")
+	assert.NoError(t, err)
+	assert.Nil(t, foundHost)
+}

@@ -124,9 +124,63 @@ func (apiHost *APIHost) ToService() (interface{}, error) {
 	return interface{}(h), nil
 }
 
+type APIVolume struct {
+	ID        APIString `json:"volume_id"`
+	CreatedBy APIString `json:"created_by"`
+	Type      APIString `json:"type"`
+	Size      int       `json:"size"`
+}
+
+type VolumePostRequest struct {
+	Type string `json:"type"`
+	Size int    `json:"size"`
+}
+
+type HostAttachRequest struct {
+	VolumeID   string `json:"volume_id"`
+	DeviceName string `json:"device_name"`
+}
+
+func (apiVolume *APIVolume) BuildFromService(volume interface{}) error {
+	switch volume.(type) {
+	case host.Volume, *host.Volume:
+		return apiVolume.buildFromVolumeStruct(volume)
+	default:
+		return errors.Errorf("%T is not a supported type", volume)
+	}
+}
+
+func (apiVolume *APIVolume) buildFromVolumeStruct(volume interface{}) error {
+	var v *host.Volume
+	switch volume.(type) {
+	case host.Volume:
+		t := volume.(host.Volume)
+		v = &t
+	case *host.Volume:
+		v = volume.(*host.Volume)
+	default:
+		return errors.New("incorrect type when converting volume type")
+	}
+	apiVolume.ID = ToAPIString(v.ID)
+	apiVolume.CreatedBy = ToAPIString(v.CreatedBy)
+	apiVolume.Type = ToAPIString(v.Type)
+	apiVolume.Size = v.Size
+	return nil
+}
+
+func (apiVolume *APIVolume) ToService() (interface{}, error) {
+	return host.Volume{
+		ID:        FromAPIString(apiVolume.ID),
+		CreatedBy: FromAPIString(apiVolume.CreatedBy),
+		Type:      FromAPIString(apiVolume.Type),
+		Size:      apiVolume.Size,
+	}, nil
+}
+
 type APISpawnHostModify struct {
 	Action       APIString `json:"action"`
 	HostID       APIString `json:"host_id"`
+	VolumeID     APIString `json:"volume_id"`
 	RDPPwd       APIString `json:"rdp_pwd"`
 	AddHours     APIString `json:"add_hours"`
 	Expiration   time.Time `json:"expiration"`

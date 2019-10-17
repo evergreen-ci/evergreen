@@ -155,6 +155,9 @@ const (
 	checkSuccessInitPeriod = time.Second
 )
 
+// Temporary default for EBS volumes
+const defaultEBSAvailabilityZone = "us-east-1a"
+
 // EC2ManagerOptions are used to construct a new ec2Manager.
 type EC2ManagerOptions struct {
 	// client is the client library for communicating with AWS.
@@ -434,6 +437,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	if err != nil {
 		return nil, errors.Wrap(err, "error making block device mappings")
 	}
+
 	if h.InstanceType != "" {
 		ec2Settings.InstanceType = h.InstanceType
 	} else {
@@ -1059,6 +1063,18 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 	}
 	defer m.client.Close()
 
+	// Add instance stores and volumes to host document
+	devices, err := m.client.GetInstanceBlockDevices(ctx, h)
+	if err != nil {
+		return errors.Wrap(err, "error getting devices")
+	}
+	attachments := makeVolumeAttachments(devices)
+	for _, attachment := range attachments {
+		if err = h.AttachVolume(attachment); err != nil {
+			return errors.Wrap(err, "error attaching volume")
+		}
+	}
+
 	resources, err := m.getResources(ctx, h)
 	if err != nil {
 		return errors.Wrap(err, "error getting resources")
@@ -1069,6 +1085,80 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 	}
 
 	return nil
+}
+
+func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment host.VolumeAttachment) error {
+	if err := m.client.Create(m.credentials, evergreen.DefaultEC2Region); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+
+	_, err := m.client.AttachVolume(ctx, &ec2.AttachVolumeInput{
+		InstanceId: aws.String(h.Id),
+		Device:     aws.String(attachment.DeviceName),
+		VolumeId:   aws.String(attachment.VolumeID),
+	})
+	if err != nil {
+		return errors.Wrapf(err, "error attaching volume '%s' to host '%s'", attachment.VolumeID, h.Id)
+	}
+
+	return errors.Wrapf(h.AttachVolume(attachment), "error attaching volume '%s' to host '%s' in db", attachment.VolumeID, h.Id)
+}
+
+func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID string) error {
+	if err := m.client.Create(m.credentials, evergreen.DefaultEC2Region); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+
+	_, err := m.client.DetachVolume(ctx, &ec2.DetachVolumeInput{
+		InstanceId: aws.String(h.Id),
+		VolumeId:   aws.String(volumeID),
+	})
+	if err != nil {
+		return errors.Wrapf(err, "error attaching volume '%s' to host '%s' in client", volumeID, h.Id)
+	}
+
+	return errors.Wrapf(h.DetachVolume(volumeID), "error detaching volume '%s' from host '%s' in db", volumeID, h.Id)
+}
+
+func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*host.Volume, error) {
+	if err := m.client.Create(m.credentials, evergreen.DefaultEC2Region); err != nil {
+		return nil, errors.Wrap(err, "error creating client")
+	}
+
+	resp, err := m.client.CreateVolume(ctx, &ec2.CreateVolumeInput{
+		AvailabilityZone: aws.String(defaultEBSAvailabilityZone),
+		VolumeType:       aws.String(volume.Type),
+		Size:             aws.Int64(int64(volume.Size)),
+	})
+
+	if err != nil {
+		return nil, errors.Wrap(err, "error creating volume in client")
+	}
+	if resp.VolumeId == nil {
+		return nil, errors.New("new volume returned by EC2 does not have an ID")
+	}
+
+	volume.ID = *resp.VolumeId
+	if err = volume.Insert(); err != nil {
+		return nil, errors.Wrap(err, "error creating volume in db")
+	}
+
+	return volume, nil
+}
+
+func (m *ec2Manager) DeleteVolume(ctx context.Context, volume *host.Volume) error {
+	if err := m.client.Create(m.credentials, evergreen.DefaultEC2Region); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+
+	_, err := m.client.DeleteVolume(ctx, &ec2.DeleteVolumeInput{
+		VolumeId: aws.String(volume.ID),
+	})
+	if err != nil {
+		return errors.Wrapf(err, "error deleting volume '%s' in client", volume.ID)
+	}
+
+	return errors.Wrapf(volume.Remove(), "error deleting volume '%s' in db", volume.ID)
 }
 
 // GetDNSName returns the DNS name for the host.

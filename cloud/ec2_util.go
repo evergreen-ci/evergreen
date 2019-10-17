@@ -250,12 +250,7 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, cl
 	h.Zone = *instance.Placement.AvailabilityZone
 	h.StartTime = *instance.LaunchTime
 	h.Host = *instance.PublicDnsName
-
-	volumeIDs := []string{}
-	for _, device := range instance.BlockDeviceMappings {
-		volumeIDs = append(volumeIDs, *device.Ebs.VolumeId)
-	}
-	h.VolumeIDs = volumeIDs
+	h.Volumes = makeVolumeAttachments(instance.BlockDeviceMappings)
 
 	var err error
 	h.VolumeTotalSize, err = getVolumeSize(ctx, client, h)
@@ -380,6 +375,17 @@ func makeBlockDeviceMappingsTemplate(mounts []MountPoint) ([]*ec2aws.LaunchTempl
 		mappings = append(mappings, m)
 	}
 	return mappings, nil
+}
+
+func makeVolumeAttachments(devices []*ec2.InstanceBlockDeviceMapping) []host.VolumeAttachment {
+	attachments := []host.VolumeAttachment{}
+	for _, device := range devices {
+		attachments = append(attachments, host.VolumeAttachment{
+			VolumeID:   *device.Ebs.VolumeId,
+			DeviceName: *device.DeviceName,
+		})
+	}
+	return attachments
 }
 
 func validateEc2CreateTemplateResponse(createTemplateResponse *ec2aws.CreateLaunchTemplateOutput) error {

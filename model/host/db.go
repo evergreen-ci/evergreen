@@ -21,7 +21,8 @@ import (
 
 const (
 	// Collection is the name of the MongoDB collection that stores hosts.
-	Collection = "hosts"
+	Collection        = "hosts"
+	VolumesCollection = "volumes"
 )
 
 var (
@@ -61,8 +62,9 @@ var (
 	JasperDeployAttemptsKey      = bsonutil.MustHaveTag(Host{}, "JasperDeployAttempts")
 	StartedByKey                 = bsonutil.MustHaveTag(Host{}, "StartedBy")
 	InstanceTypeKey              = bsonutil.MustHaveTag(Host{}, "InstanceType")
-	VolumeSizeKey                = bsonutil.MustHaveTag(Host{}, "VolumeTotalSize")
+	VolumeTotalSizeKey           = bsonutil.MustHaveTag(Host{}, "VolumeTotalSize")
 	VolumeIDsKey                 = bsonutil.MustHaveTag(Host{}, "VolumeIDs")
+	VolumesKey                   = bsonutil.MustHaveTag(Host{}, "Volumes")
 	NotificationsKey             = bsonutil.MustHaveTag(Host{}, "Notifications")
 	LastCommunicationTimeKey     = bsonutil.MustHaveTag(Host{}, "LastCommunicationTime")
 	UserHostKey                  = bsonutil.MustHaveTag(Host{}, "UserHost")
@@ -90,6 +92,11 @@ var (
 	SpawnOptionsBuildIDKey       = bsonutil.MustHaveTag(SpawnOptions{}, "BuildID")
 	SpawnOptionsTimeoutKey       = bsonutil.MustHaveTag(SpawnOptions{}, "TimeoutTeardown")
 	SpawnOptionsSpawnedByTaskKey = bsonutil.MustHaveTag(SpawnOptions{}, "SpawnedByTask")
+	VolumeIDKey                  = bsonutil.MustHaveTag(Volume{}, "ID")
+	VolumeCreatedByKey           = bsonutil.MustHaveTag(Volume{}, "CreatedBy")
+	VolumeTypeKey                = bsonutil.MustHaveTag(Volume{}, "Type")
+	VolumeSizeKey                = bsonutil.MustHaveTag(Volume{}, "Size")
+	VolumeAttachmentIDKey        = bsonutil.MustHaveTag(VolumeAttachment{}, "VolumeID")
 )
 
 var (
@@ -976,4 +983,14 @@ func AggregateLastContainerFinishTimes() ([]FinishTime, error) {
 	}
 	return times, nil
 
+}
+
+// FindOne gets one Volume for the given query.
+func FindOneVolume(query interface{}) (*Volume, error) {
+	v := &Volume{}
+	err := db.FindOne(VolumesCollection, query, db.NoProjection, db.NoSort, v)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	return v, err
 }
