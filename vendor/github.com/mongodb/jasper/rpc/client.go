@@ -6,6 +6,7 @@ import (
 	"net"
 	"syscall"
 
+	"github.com/evergreen-ci/certdepot"
 	empty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
@@ -26,7 +27,7 @@ type rpcClient struct {
 // TLS connection with the service; otherwise, it will establish an insecure
 // connection. The caller is responsible for closing the connection using the
 // returned jasper.CloseFunc.
-func NewClient(ctx context.Context, addr net.Addr, creds *Credentials) (jasper.RemoteClient, error) {
+func NewClient(ctx context.Context, addr net.Addr, creds *certdepot.Credentials) (jasper.RemoteClient, error) {
 	opts := []grpc.DialOption{
 		grpc.WithBlock(),
 		grpc.WithDefaultCallOptions(grpc.WaitForReady(true)),
@@ -54,10 +55,10 @@ func NewClient(ctx context.Context, addr net.Addr, creds *Credentials) (jasper.R
 // credentials file should contain the JSON-encoded bytes from
 // (*Credentials).Export().
 func NewClientWithFile(ctx context.Context, addr net.Addr, filePath string) (jasper.RemoteClient, error) {
-	var creds *Credentials
+	var creds *certdepot.Credentials
 	if filePath != "" {
 		var err error
-		creds, err = NewCredentialsFromFile(filePath)
+		creds, err = certdepot.NewCredentialsFromFile(filePath)
 		if err != nil {
 			return nil, errors.Wrap(err, "error getting credentials from file")
 		}

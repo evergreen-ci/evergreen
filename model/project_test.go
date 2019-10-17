@@ -362,6 +362,10 @@ buildvariants:
 	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.PatchVersionRequester},
 	}))
+	p := patch.Patch{
+		Version: v.Id,
+	}
+	require.NoError(t, p.Insert())
 
 	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
@@ -371,27 +375,40 @@ buildvariants:
 	assert.False(expansions.Exists("github_repo"))
 	assert.False(expansions.Exists("github_author"))
 	assert.False(expansions.Exists("github_pr_number"))
+	require.NoError(t, db.ClearCollections(patch.Collection))
 
 	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.MergeTestRequester},
 	}))
+	p = patch.Patch{
+		Version:     v.Id,
+		Description: "commit queue message",
+	}
+	require.NoError(t, p.Insert())
 	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 19)
+	assert.Len(map[string]string(expansions), 20)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("true", expansions.Get("is_commit_queue"))
+	assert.Equal("commit queue message", expansions.Get("commit_message"))
+	require.NoError(t, db.ClearCollections(patch.Collection))
 
 	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.GithubPRRequester},
 	}))
+	p = patch.Patch{
+		Version: v.Id,
+	}
+	require.NoError(t, p.Insert())
 	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 18)
+	assert.Len(map[string]string(expansions), 21)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.False(expansions.Exists("is_commit_queue"))
-	assert.False(expansions.Exists("github_repo"))
-	assert.False(expansions.Exists("github_author"))
-	assert.False(expansions.Exists("github_pr_number"))
+	assert.True(expansions.Exists("github_repo"))
+	assert.True(expansions.Exists("github_author"))
+	assert.True(expansions.Exists("github_pr_number"))
+	require.NoError(t, db.ClearCollections(patch.Collection))
 
 	patchDoc := &patch.Patch{
 		Version: v.Id,

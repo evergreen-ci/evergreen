@@ -1,6 +1,7 @@
 dburl: ""
 db: "mci_test"
 configdir: "config_test"
+domain_name: "evergreen.local"
 aws_secret: ""
 aws_id: "AWS ID VALUE"
 github_oauth: "token GITHUB OAUTH TOKEN"

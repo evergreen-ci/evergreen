@@ -159,6 +159,7 @@ mciModule.controller('AdminOptionsCtrl', [
 }]);
 
 mciModule.directive('adminAbortBuild', function() {
+    let merge_test = "merge_test"
     return {
         restrict: 'E',
         template:
@@ -190,6 +191,7 @@ mciModule.directive('adminScheduleBuild', function() {
 });
 
 mciModule.directive('adminUnscheduleBuild', function() {
+    let merge_test = "merge_test"
     return {
         restrict: 'E',
         template:

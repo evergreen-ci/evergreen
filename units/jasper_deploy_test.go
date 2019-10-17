@@ -3,15 +3,16 @@ package units
 import (
 	"context"
 	"fmt"
+	"math"
 	"net"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
-	"github.com/evergreen-ci/evergreen/model/credentials"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/service/testutil"
@@ -37,7 +38,7 @@ func setupJasperService(ctx context.Context, env *mock.Environment, mngr *jmock.
 	}
 	env.Settings().HostJasper.Port = port
 
-	creds, err := h.GenerateJasperCredentials(ctx)
+	creds, err := h.GenerateJasperCredentials(ctx, env)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -47,19 +48,49 @@ func setupJasperService(ctx context.Context, env *mock.Environment, mngr *jmock.
 		return nil, errors.WithStack(err)
 	}
 
-	return closeService, errors.WithStack(h.SaveJasperCredentials(ctx, creds))
+	return closeService, errors.WithStack(h.SaveJasperCredentials(ctx, env, creds))
 }
 
 // setupCredentialsCollection is used to bootstrap the credentials collection
 // for testing.
 func setupCredentialsCollection(ctx context.Context, env *mock.Environment) error {
-	env.Settings().DomainName = "test-service"
+	settings := env.Settings()
+	settings.DomainName = "test-service"
 
-	if err := db.ClearCollections(credentials.Collection, host.Collection); err != nil {
+	if err := db.ClearCollections(evergreen.CredentialsCollection, host.Collection); err != nil {
 		return errors.WithStack(err)
 	}
 
-	return errors.WithStack(credentials.Bootstrap(env))
+	maxExpiration := time.Duration(math.MaxInt64)
+
+	bootstrapConfig := certdepot.BootstrapDepotConfig{
+		CAName: evergreen.CAName,
+		MongoDepot: &certdepot.MongoDBOptions{
+			DatabaseName:   settings.Database.DB,
+			CollectionName: evergreen.CredentialsCollection,
+			DepotOptions: certdepot.DepotOptions{
+				CA:                evergreen.CAName,
+				DefaultExpiration: 365 * 24 * time.Hour,
+			},
+		},
+		CAOpts: &certdepot.CertificateOptions{
+			CA:         evergreen.CAName,
+			CommonName: evergreen.CAName,
+			Expires:    maxExpiration,
+		},
+		ServiceName: settings.DomainName,
+		ServiceOpts: &certdepot.CertificateOptions{
+			CA:         evergreen.CAName,
+			CommonName: settings.DomainName,
+			Host:       settings.DomainName,
+			Expires:    maxExpiration,
+		},
+	}
+
+	var err error
+	env.Depot, err = certdepot.BootstrapDepotWithMongoClient(ctx, env.Client(), bootstrapConfig)
+
+	return errors.WithStack(err)
 }
 
 func teardownJasperService(closeService jasper.CloseFunc) error {
@@ -189,10 +220,10 @@ func TestJasperDeployJob(t *testing.T) {
 			assert.Error(t, deployJob.tryRequeueDeploy(ctx))
 		},
 		"RunPerformsExpectedOperationsWhenDeployingThroughJasper": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
-			clientCreds, err := credentials.ForJasperClient(ctx)
+			clientCreds, err := env.CertificateDepot().Find(env.Settings().DomainName)
 			require.NoError(t, err)
 
-			creds, err := h.JasperClientCredentials(ctx)
+			creds, err := h.JasperClientCredentials(ctx, env)
 			require.NoError(t, err)
 
 			assert.Equal(t, clientCreds.Cert, creds.Cert)

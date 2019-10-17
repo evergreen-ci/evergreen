@@ -828,18 +828,23 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 
 	if evergreen.IsPatchRequester(v.Requester) {
 		var p *patch.Patch
-		expansions.Put("is_patch", "true")
-		expansions.Put("revision_order_id", fmt.Sprintf("%s_%d", v.Author, v.RevisionOrderNumber))
-		if v.Requester == evergreen.MergeTestRequester {
-			expansions.Put("is_commit_queue", "true")
-		}
-
 		p, err = patch.FindOne(patch.ByVersion(t.Version))
 		if err != nil {
-			return nil, errors.Wrap(err, "error finding patch")
+			return nil, errors.Wrapf(err, "error finding patch for version %s", t.Version)
+		}
+		if p == nil {
+			return nil, errors.Errorf("no patch found for version %s", t.Version)
 		}
 
-		if v.Requester == evergreen.GithubPRRequester && p != nil {
+		expansions.Put("is_patch", "true")
+		expansions.Put("revision_order_id", fmt.Sprintf("%s_%d", v.Author, v.RevisionOrderNumber))
+
+		if v.Requester == evergreen.MergeTestRequester {
+			expansions.Put("is_commit_queue", "true")
+			expansions.Put("commit_message", p.Description)
+		}
+
+		if v.Requester == evergreen.GithubPRRequester {
 			expansions.Put("github_pr_number", fmt.Sprintf("%d", p.GithubPatchData.PRNumber))
 			expansions.Put("github_org", p.GithubPatchData.BaseOwner)
 			expansions.Put("github_repo", p.GithubPatchData.BaseRepo)

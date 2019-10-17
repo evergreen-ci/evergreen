@@ -1,12 +1,23 @@
 package certdepot
 
-import "github.com/square/certstrap/depot"
+import (
+	"time"
 
-// Depot is a wrapper around certrstap's depot.Depot interface so users only
+	"github.com/square/certstrap/depot"
+)
+
+// Depot is a superset wrapper around certrstap's depot.Depot interface so users only
 // need to vendor certdepot.
-type Depot depot.Depot
+type Depot interface {
+	depot.Depot
+	Save(string, *Credentials) error
+	Find(string) (*Credentials, error)
+	Generate(string) (*Credentials, error)
+}
 
-// NewFileDepot creates a FileDepot wrapped with certdepot.Depot.
-func NewFileDepot(dir string) (Depot, error) {
-	return depot.NewFileDepot(dir)
+// DepotOptions capture default options used during certificate
+// generation and creation used by depots.
+type DepotOptions struct {
+	CA                string        `bson:"ca" json:"ca" yaml:"ca"`
+	DefaultExpiration time.Duration `bson:"default_expiration" json:"default_expiration" yaml:"default_expiration"`
 }

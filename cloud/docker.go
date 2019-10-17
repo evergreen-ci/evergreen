@@ -18,6 +18,7 @@ import (
 // dockerManager implements the Manager interface for Docker.
 type dockerManager struct {
 	client DockerClient
+	env    evergreen.Environment
 }
 
 // ProviderSettings specifies the settings used to configure a host instance.
@@ -188,6 +189,10 @@ func (m *dockerManager) Configure(ctx context.Context, s *evergreen.Settings) er
 		return errors.Wrap(err, "Failed to initialize client connection")
 	}
 
+	if m.env == nil {
+		return errors.New("docker manager requires access to the evergreen environment")
+	}
+
 	return nil
 }
 
@@ -304,7 +309,7 @@ func (m *dockerManager) CalculateImageSpaceUsage(ctx context.Context, h *host.Ho
 // CostForDuration estimates the cost for a span of time on the given container
 // host. The method divides the cost of that span on the parent host by an
 // estimate of the number of containers running during the same interval.
-func (m *dockerManager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time, s *evergreen.Settings) (float64, error) {
+func (m *dockerManager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time) (float64, error) {
 	parent, err := h.GetParent()
 	if err != nil {
 		return 0, errors.Wrapf(err, "Error retrieving parent for host '%s'", h.Id)
@@ -325,7 +330,7 @@ func (m *dockerManager) CostForDuration(ctx context.Context, h *host.Host, start
 		Provider: parent.Provider,
 		Region:   GetRegion(parent.Distro),
 	}
-	parentMgr, err := GetManager(ctx, mgrOpts, s)
+	parentMgr, err := GetManager(ctx, m.env, mgrOpts)
 	if err != nil {
 		return 0, errors.Wrapf(err, "Error loading provider for parent host '%s'", parent.Id)
 	}
@@ -335,7 +340,7 @@ func (m *dockerManager) CostForDuration(ctx context.Context, h *host.Host, start
 	if !ok {
 		return 0, errors.Errorf("Type assertion failed: type %T does not hold a CostCaluclator", parentMgr)
 	}
-	cost, err := calc.CostForDuration(ctx, parent, start, end, s)
+	cost, err := calc.CostForDuration(ctx, parent, start, end)
 	if err != nil {
 		return 0, errors.Wrapf(err, "Error calculating cost for parent host '%s'", parent.Id)
 	}

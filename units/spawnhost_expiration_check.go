@@ -72,7 +72,7 @@ func (j *spawnhostExpirationCheckJob) Run(ctx context.Context) {
 		Region:   cloud.GetRegion(j.host.Distro),
 	}
 
-	cloudManager, err := cloud.GetManager(ctx, mgrOpts, j.env.Settings())
+	cloudManager, err := cloud.GetManager(ctx, j.env, mgrOpts)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "error getting cloud manager for host '%s' in spawnhost expiration check job", j.HostID))
 		return

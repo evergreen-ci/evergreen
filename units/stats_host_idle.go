@@ -127,7 +127,7 @@ func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 			Provider: j.host.Provider,
 			Region:   cloud.GetRegion(j.host.Distro),
 		}
-		j.manager, err = cloud.GetManager(ctx, mgrOpts, j.settings)
+		j.manager, err = cloud.GetManager(ctx, j.env, mgrOpts)
 
 		if err != nil {
 			j.AddError(err)
@@ -136,7 +136,7 @@ func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 	}
 
 	if calc, ok := j.manager.(cloud.CostCalculator); ok {
-		cost, err = calc.CostForDuration(ctx, j.host, j.StartTime, j.FinishTime, j.settings)
+		cost, err = calc.CostForDuration(ctx, j.host, j.StartTime, j.FinishTime)
 		if err != nil {
 			j.AddError(err)
 		}

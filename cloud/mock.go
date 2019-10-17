@@ -340,7 +340,7 @@ func (mockMgr *mockManager) GetInstanceStatuses(ctx context.Context, hosts []hos
 }
 
 // CostForDuration for the mock returns 1 dollar per minute up
-func (m *mockManager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time, s *evergreen.Settings) (float64, error) {
+func (m *mockManager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time) (float64, error) {
 	return end.Sub(start).Minutes(), nil
 }
 

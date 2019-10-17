@@ -136,7 +136,8 @@ func TestDepot(t *testing.T) {
 				}
 			},
 			check: func(t *testing.T, tag *depot.Tag, data []byte) {
-				name, key := getNameAndKey(tag)
+				name, key, err := getNameAndKey(tag)
+				require.NoError(t, err)
 
 				u := &User{}
 				require.NoError(t, session.DB(databaseName).C(collectionName).FindId(name).One(u))
@@ -282,7 +283,8 @@ func TestDepot(t *testing.T) {
 				}
 			},
 			check: func(t *testing.T, tag *depot.Tag, data []byte) {
-				name, key := getNameAndKey(tag)
+				name, key, err := getNameAndKey(tag)
+				require.NoError(t, err)
 
 				u := &User{}
 				coll := client.Database(databaseName).Collection(collectionName)

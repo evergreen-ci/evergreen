@@ -126,7 +126,7 @@ func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, s *evergreen
 		Provider: d.Provider,
 		Region:   cloud.GetRegion(*d),
 	}
-	mgr, err := cloud.GetManager(ctx, mgrOpts, s)
+	mgr, err := cloud.GetManager(ctx, evergreen.GetEnvironment(), mgrOpts)
 	if err != nil {
 		errs = append(errs, ValidationError{
 			Message: err.Error(),
