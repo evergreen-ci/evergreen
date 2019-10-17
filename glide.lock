@@ -96,6 +96,8 @@ imports:
     - compute
   - name: google.golang.org/grpc
     version: 77ce7bc228475a8f28dc50a9d74ac4994fc019e7
+  - name: google.golang.org/genproto
+    version: 082222b4a5c572e33e82ee9162d1352c7cf38682
   - name: github.com/golang/protobuf
     version: c823c79ea1570fb5ff454033735a8e68575d1d0f
   - name: github.com/vmware/govmomi
