@@ -22,8 +22,8 @@ func TestBuildlogger(t *testing.T) {
 	conf.LoggerConfig.BuildloggerUser = "user"
 	conf.LoggerConfig.BuildloggerPassword = "pass"
 	queue := evergreen.GetEnvironment().LocalQueue()
-	remoteQueue := evergreen.GetEnvironment().RemoteQueueGroup()
-	as, err := NewAPIServer(conf, queue, remoteQueue)
+	as, err := NewAPIServer(evergreen.GetEnvironment(), queue)
+	as.Settings = *conf
 	require.NoError(t, err)
 
 	sampleHost := host.Host{
@@ -50,11 +50,10 @@ func TestBuildlogger(t *testing.T) {
 	handler.ServeHTTP(w, request)
 
 	require.Equal(t, http.StatusOK, w.Code)
-	creds := &Credentials{}
-	bl := &apimodels.BuildloggerInfo{}
-	require.NoError(t, json.Unmarshal(w.Body.Bytes(), creds))
-	assert.Equal(t, "cedar.mongodb.com", bl.BaseURL)
-	assert.Equal(t, "7070", bl.RPCPort)
-	assert.Equal(t, "user", bl.Username)
-	assert.Equal(t, "pass", bl.Password)
+	bi := &apimodels.BuildloggerInfo{}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), bi))
+	assert.Equal(t, "cedar.mongodb.com", bi.BaseURL)
+	assert.Equal(t, "7070", bi.RPCPort)
+	assert.Equal(t, "user", bi.Username)
+	assert.Equal(t, "pass", bi.Password)
 }
