@@ -370,7 +370,7 @@ func (h *Host) jasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 }
 
 // BootstrapScript creates the user data script to bootstrap the host.
-func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credentials, postJasperSetup []string) (string, error) {
+func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Credentials, postJasperSetup []string) (string, error) {
 	bashPrefix := []string{"set -o errexit", "set -o verbose"}
 
 	if h.Distro.IsWindows() {
@@ -603,7 +603,7 @@ func writeToFileCommand(path, content string, overwrite bool) string {
 
 // bufferedWriteJasperCredentialsFilesCommandsBuffered is the same as
 // WriteJasperCredentialsFilesCommands but writes with multiple commands.
-func (h *Host) bufferedWriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionInfo, creds *rpc.Credentials) ([]string, error) {
+func (h *Host) bufferedWriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionInfo, creds *certdepot.Credentials) ([]string, error) {
 	if h.Distro.BootstrapSettings.JasperCredentialsPath == "" {
 		return nil, errors.New("cannot write Jasper credentials without a credentials file path")
 	}

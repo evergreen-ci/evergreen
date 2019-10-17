@@ -220,7 +220,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 		"BootstrapScript": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			require.NoError(t, h.Insert())
 
-			setupScriptCmds, err := h.fileSetupScriptCommands(settings)
+			writeSetupScriptCmds, err := h.writeSetupScriptCommands(settings)
 			require.NoError(t, err)
 
 			setupUserCmds, err := h.SetupServiceUserCommands()
@@ -245,7 +245,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			script, err := h.BootstrapScript(settings, creds, expectedPostCmds)
 			require.NoError(t, err)
 
-			expectedPreCmds := append([]string{setupUserCmds}, setupScriptCmds...)
+			expectedPreCmds := append([]string{setupUserCmds}, writeSetupScriptCmds...)
 
 			assert.True(t, strings.HasPrefix(script, "<powershell>"))
 			assert.True(t, strings.HasSuffix(script, "</powershell>"))
