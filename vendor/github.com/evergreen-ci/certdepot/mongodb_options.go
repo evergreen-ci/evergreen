@@ -34,6 +34,7 @@ type MongoDBOptions struct {
 	CollectionName       string        `bson:"coll_name" json:"coll_name" yaml:"coll_name"`
 	MongoDBDialTimeout   time.Duration `bson:"dial_timeout,omitempty" json:"dial_timeout,omitempty" yaml:"dial_timeout,omitempty"`
 	MongoDBSocketTimeout time.Duration `bson:"socket_timeout,omitempty" json:"socket_timeout,omitempty" yaml:"socket_timeout,omitempty"`
+	DepotOptions         DepotOptions  `bson:"depot_options" json:"depot_options" yaml:"depot_options"`
 }
 
 // IsZero returns whether the given MongoDBOptions struct holds the "zero"

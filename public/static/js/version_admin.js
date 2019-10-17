@@ -187,6 +187,7 @@ mciModule.directive('adminScheduleAll', function() {
 });
 
 mciModule.directive('adminUnscheduleAll', function() {
+    let merge_test = "merge_test"
     return {
         restrict: 'E',
         template:
@@ -194,7 +195,7 @@ mciModule.directive('adminUnscheduleAll', function() {
       '<div class="col-lg-12">' +
         '<div>' +
           'Unschedule all tasks?' +
-            '<div ng-show="version.requester === merge_test">' +
+            '<div ng-show="version.Version.requester === merge_test">' +
                 'This will remove version from the commit queue.' +
             '</div>' +
             '<button type="button" class="btn btn-danger" style="float: right;" data-dismiss="modal">Cancel</button>' +

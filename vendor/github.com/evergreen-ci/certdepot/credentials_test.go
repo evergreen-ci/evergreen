@@ -1,4 +1,4 @@
-package rpc
+package certdepot
 
 import (
 	"bytes"
@@ -65,7 +65,7 @@ EKTcWGekdmdDPsHloRNtsiCa697B2O9IFA==
 	require.NoError(t, err)
 
 	makeFile := func(t *testing.T) *os.File {
-		file, err := ioutil.TempFile(buildDir(t), "creds")
+		file, err := ioutil.TempFile("", "creds")
 		require.NoError(t, err)
 		return file
 	}

@@ -71,7 +71,7 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 		provider: onDemandProvider,
 	}
 
-	m := NewEC2Manager(opts).(*ec2Manager)
+	m := &ec2Manager{env: env, EC2ManagerOptions: opts}
 	require.NoError(m.Configure(ctx, testConfig))
 	require.NoError(m.client.Create(m.credentials, defaultRegion))
 
@@ -116,7 +116,7 @@ func TestSpawnEC2InstanceSpot(t *testing.T) {
 		provider: spotProvider,
 	}
 
-	m := NewEC2Manager(opts).(*ec2Manager)
+	m := &ec2Manager{env: env, EC2ManagerOptions: opts}
 	require.NoError(m.Configure(ctx, testConfig))
 	require.NoError(m.client.Create(m.credentials, defaultRegion))
 	d := fetchTestDistro()
@@ -142,7 +142,7 @@ func (s *EC2Suite) TestGetInstanceInfoFailsEarlyForSpotInstanceRequests() {
 		client:   &awsClientImpl{},
 		provider: spotProvider,
 	}
-	m := NewEC2Manager(opts).(*ec2Manager)
+	m := &ec2Manager{env: s.env, EC2ManagerOptions: opts}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

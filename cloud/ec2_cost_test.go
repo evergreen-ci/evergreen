@@ -171,6 +171,8 @@ type CostIntegrationSuite struct {
 	m      *ec2Manager
 	client AWSClient
 	h      *host.Host
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func TestCostIntegrationSuite(t *testing.T) {
@@ -178,14 +180,19 @@ func TestCostIntegrationSuite(t *testing.T) {
 }
 
 func (s *CostIntegrationSuite) SetupSuite() {
-	settings := testutil.TestConfig()
+	s.ctx, s.cancel = context.WithCancel(context.Background())
+	env := testutil.NewEnvironment(s.ctx, s.T())
+	settings := env.Settings()
 	testutil.ConfigureIntegrationTest(s.T(), settings, "CostIntegrationSuite")
 
-	m := NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}})
-	s.m = m.(*ec2Manager)
-	s.NoError(s.m.Configure(context.TODO(), settings))
+	s.m = &ec2Manager{env: env, EC2ManagerOptions: &EC2ManagerOptions{client: &awsClientImpl{}}}
+	s.NoError(s.m.Configure(s.ctx, settings))
 	s.NoError(s.m.client.Create(s.m.credentials, defaultRegion))
 	s.client = s.m.client
+}
+
+func (s *CostIntegrationSuite) TearDownSuite() {
+	s.cancel()
 }
 
 func (s *CostIntegrationSuite) SetupTest() {

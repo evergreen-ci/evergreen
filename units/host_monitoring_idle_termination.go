@@ -119,7 +119,7 @@ func (j *idleHostJob) Run(ctx context.Context) {
 		Provider: j.host.Provider,
 		Region:   cloud.GetRegion(j.host.Distro),
 	}
-	manager, err := cloud.GetManager(ctx, mgrOpts, j.settings)
+	manager, err := cloud.GetManager(ctx, j.env, mgrOpts)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "error getting cloud manager for host %v", j.host.Id))
 		return

@@ -290,6 +290,7 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/sys/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/evergreen-ci/gimlet/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/evergreen-ci/timber/
+	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/evergreen-ci/certdepot
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/mholt/archiver/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/mongodb/amboy/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/mongodb/grip/
