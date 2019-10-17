@@ -79,22 +79,21 @@ func ChmodCommandWithSudo(ctx context.Context, script string, sudo bool) *exec.C
 
 // CurlCommand returns the command to curl the evergreen client.
 func (h *Host) CurlCommand(settings *evergreen.Settings) string {
-	return strings.Join(h.curlCommands(settings, h.Distro.HomeDir(), ""), " && ")
+	return strings.Join(h.curlCommands(settings, ""), " && ")
 }
 
 // CurlCommandWithRetry is the same as CurlCommand but retries the request.
-// kim: TODO: remove dir parameter when done testing in staging.
-func (h *Host) CurlCommandWithRetry(settings *evergreen.Settings, dir string, numRetries, maxRetrySecs int) string {
+func (h *Host) CurlCommandWithRetry(settings *evergreen.Settings, numRetries, maxRetrySecs int) string {
 	var retryArgs string
 	if numRetries != 0 && maxRetrySecs != 0 {
 		retryArgs = " " + curlRetryArgs(numRetries, maxRetrySecs)
 	}
-	return strings.Join(h.curlCommands(settings, dir, retryArgs), " && ")
+	return strings.Join(h.curlCommands(settings, retryArgs), " && ")
 }
 
-func (h *Host) curlCommands(settings *evergreen.Settings, dir string, curlArgs string) []string {
+func (h *Host) curlCommands(settings *evergreen.Settings, curlArgs string) []string {
 	return []string{
-		fmt.Sprintf("cd %s", dir),
+		fmt.Sprintf("cd %s", h.Distro.HomeDir()),
 		fmt.Sprintf("curl -LO '%s'%s", h.ClientURL(settings), curlArgs),
 		fmt.Sprintf("chmod +x %s", h.Distro.BinaryName()),
 	}
@@ -375,7 +374,7 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credenti
 	bashPrefix := []string{"set -o errexit", "set -o verbose"}
 
 	if h.Distro.IsWindows() {
-		setupScriptCmds, err := h.fileSetupScriptCommands(settings)
+		writeSetupScriptCmds, err := h.writeSetupScriptCommands(settings)
 		if err != nil {
 			return "", errors.Wrap(err, "could not get commands to run setup script")
 		}
@@ -395,7 +394,7 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credenti
 			h.ForceReinstallJasperCommand(settings),
 		)
 
-		bashCmds := append(setupScriptCmds, setupJasperCmds...)
+		bashCmds := append(writeSetupScriptCmds, setupJasperCmds...)
 		bashCmds = append(bashCmds, postJasperSetup...)
 
 		for i := range bashCmds {
@@ -759,20 +758,16 @@ func (h *Host) setupScriptCommands(settings *evergreen.Settings) (string, error)
 	return setupScript, nil
 }
 
-// fileSetupScriptCommands is the same as setupScriptCommands but writes the
-// setup script commands to a file in multiple commands and executes the script
-// file.
-func (h *Host) fileSetupScriptCommands(settings *evergreen.Settings) ([]string, error) {
+// writeSetupScriptCommands is the same as setupScriptCommands but writes the
+// setup script commands to a file in multiple commands.
+func (h *Host) writeSetupScriptCommands(settings *evergreen.Settings) ([]string, error) {
 	script, err := h.setupScriptCommands(settings)
 	if err != nil {
 		return nil, err
 	}
 
-	path := filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, evergreen.SetupScriptName)
-	cmds := bufferedWriteFileCommands(path, script)
-	cmds = append(cmds, fmt.Sprintf("%s %s", h.Distro.BootstrapSettings.ShellPath, path))
-
-	return cmds, nil
+	path := filepath.Join(h.Distro.HomeDir(), evergreen.SetupScriptName)
+	return bufferedWriteFileCommands(path, script), nil
 }
 
 // StartAgentMonitorRequest builds the Jasper client request that starts the

@@ -54,11 +54,11 @@ func TestCurlCommandWithRetry(t *testing.T) {
 		ClientBinariesDir: "clients",
 	}
 	expected := "cd /home/user && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10 && chmod +x evergreen.exe"
-	assert.Equal(t, expected, h.CurlCommandWithRetry(settings, h.Distro.HomeDir(), 5, 10))
+	assert.Equal(t, expected, h.CurlCommandWithRetry(settings, 5, 10))
 
 	h = &Host{Distro: distro.Distro{Arch: distro.ArchLinuxAmd64, User: "user"}}
 	expected = "cd /home/user && curl -LO 'www.example.com/clients/linux_amd64/evergreen' --retry 5 --retry-max-time 10 && chmod +x evergreen"
-	assert.Equal(t, expected, h.CurlCommandWithRetry(settings, h.Distro.HomeDir(), 5, 10))
+	assert.Equal(t, expected, h.CurlCommandWithRetry(settings, 5, 10))
 }
 
 func TestClientURL(t *testing.T) {

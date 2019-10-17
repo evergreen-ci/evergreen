@@ -137,7 +137,7 @@ func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.H
 	}
 	settings := env.Settings()
 
-	fetchClient := h.CurlCommandWithRetry(settings, h.Distro.BootstrapSettings.JasperBinaryDir, host.CurlDefaultNumRetries, host.CurlDefaultMaxSecs)
+	fetchClient := h.CurlCommandWithRetry(settings, host.CurlDefaultNumRetries, host.CurlDefaultMaxSecs)
 
 	var postFetchClient string
 	var err error
@@ -164,7 +164,7 @@ func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.H
 	}
 
 	bootstrapScript, err := h.BootstrapScript(settings, creds,
-		[]string{fetchClient, postFetchClient, markDone},
+		[]string{fetchClient, h.SetupCommand(), postFetchClient, markDone},
 	)
 	if err != nil {
 		return customScript, errors.Wrap(err, "could not generate user data bootstrap script")
