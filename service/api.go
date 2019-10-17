@@ -522,7 +522,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Agent routes
 	app.Route().Version(2).Route("/agent/next_task").Wrap(checkHost).Handler(as.NextTask).Get()
-	app.Route().Version(2).Route("/agent/buildlogger").Wrap(checkHost).Handler(as.Buildlogger).Get()
+	app.Route().Version(2).Route("/agent/buildlogger_info").Wrap(checkHost).Handler(as.Buildlogger).Get()
 	app.Route().Version(2).Route("/task/{taskId}/end").Wrap(checkTaskSecret, checkHost).Handler(as.EndTask).Post()
 	app.Route().Version(2).Route("/task/{taskId}/start").Wrap(checkTaskSecret, checkHost).Handler(as.StartTask).Post()
 	app.Route().Version(2).Route("/task/{taskId}/log").Wrap(checkTaskSecret, checkHost).Handler(as.AppendTaskLog).Post()

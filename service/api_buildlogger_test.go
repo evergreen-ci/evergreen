@@ -38,7 +38,7 @@ func TestBuildlogger(t *testing.T) {
 	}
 	require.NoError(t, sampleHost.Insert())
 
-	url := "/api/2/agent/buildlogger_creds"
+	url := "/api/2/agent/buildlogger_info"
 	request, err := http.NewRequest("GET", url, nil)
 	request.Header.Add(evergreen.HostHeader, sampleHost.Id)
 	request.Header.Add(evergreen.HostSecretHeader, sampleHost.Secret)

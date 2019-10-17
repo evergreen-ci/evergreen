@@ -302,7 +302,7 @@ func (c *communicatorImpl) GetBuildloggerInfo(ctx context.Context) (*apimodels.B
 	info := requestInfo{
 		method:  get,
 		version: apiVersion1,
-		path:    "agent/buildlogger",
+		path:    "agent/buildlogger_info",
 	}
 
 	resp, err := c.retryRequest(ctx, info, nil)
