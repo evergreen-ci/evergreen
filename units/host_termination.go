@@ -100,7 +100,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err = j.host.DeleteJasperCredentials(ctx); err != nil {
+	if err = j.host.DeleteJasperCredentials(ctx, j.env); err != nil {
 		j.AddError(err)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":  "problem deleting Jasper credentials",
@@ -248,7 +248,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	}
 
 	// convert the host to a cloud host
-	cloudHost, err := cloud.GetCloudHost(ctx, j.host, settings)
+	cloudHost, err := cloud.GetCloudHost(ctx, j.host, j.env)
 	if err != nil {
 		err = errors.Wrapf(err, "error getting cloud host for %s", j.HostID)
 		j.AddError(err)
@@ -343,13 +343,13 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				Provider: j.host.Provider,
 				Region:   cloud.GetRegion(j.host.Distro),
 			}
-			manager, err := cloud.GetManager(ctx, mgrOpts, settings)
+			manager, err := cloud.GetManager(ctx, j.env, mgrOpts)
 			if err != nil {
 				j.AddError(err)
 				return
 			}
 			if calc, ok := manager.(cloud.CostCalculator); ok {
-				cost, err := calc.CostForDuration(ctx, j.host, j.host.StartTime, hostBillingEnds, settings)
+				cost, err := calc.CostForDuration(ctx, j.host, j.host.StartTime, hostBillingEnds)
 				if err != nil {
 					j.AddError(err)
 					return

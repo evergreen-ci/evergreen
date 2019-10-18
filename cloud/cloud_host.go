@@ -18,19 +18,19 @@ type CloudHost struct {
 
 // GetCloudHost returns an instance of CloudHost wrapping the given model.Host,
 // giving access to the provider-specific methods to manipulate on the host.
-func GetCloudHost(ctx context.Context, host *host.Host, settings *evergreen.Settings) (*CloudHost, error) {
+func GetCloudHost(ctx context.Context, host *host.Host, env evergreen.Environment) (*CloudHost, error) {
 	mgrOpts := ManagerOpts{
 		Provider: host.Provider,
 		Region:   GetRegion(host.Distro),
 	}
-	mgr, err := GetManager(ctx, mgrOpts, settings)
+	mgr, err := GetManager(ctx, env, mgrOpts)
 	if err != nil {
 		return nil, err
 	}
 
 	keyPath := ""
 	if host.Distro.SSHKey != "" {
-		keyPath = settings.Keys[host.Distro.SSHKey]
+		keyPath = env.Settings().Keys[host.Distro.SSHKey]
 	}
 	return &CloudHost{host, keyPath, mgr}, nil
 }

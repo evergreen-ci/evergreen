@@ -34,14 +34,15 @@ const (
 type APIServer struct {
 	UserManager         gimlet.UserManager
 	Settings            evergreen.Settings
+	env                 evergreen.Environment
 	queue               amboy.Queue
-	queueGroup          amboy.QueueGroup
 	taskDispatcher      model.TaskQueueItemDispatcher
 	taskAliasDispatcher model.TaskQueueItemDispatcher
 }
 
 // NewAPIServer returns an APIServer initialized with the given settings and plugins.
-func NewAPIServer(settings *evergreen.Settings, queue amboy.Queue, queueGroup amboy.QueueGroup) (*APIServer, error) {
+func NewAPIServer(env evergreen.Environment, queue amboy.Queue) (*APIServer, error) {
+	settings := env.Settings()
 	authManager, _, err := auth.LoadUserManager(settings.AuthConfig)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -54,8 +55,8 @@ func NewAPIServer(settings *evergreen.Settings, queue amboy.Queue, queueGroup am
 	as := &APIServer{
 		UserManager:         authManager,
 		Settings:            *settings,
+		env:                 env,
 		queue:               queue,
-		queueGroup:          queueGroup,
 		taskDispatcher:      model.NewTaskDispatchService(taskDispatcherTTL),
 		taskAliasDispatcher: model.NewTaskDispatchAliasService(taskDispatcherTTL),
 	}
@@ -535,6 +536,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Agent routes
 	app.Route().Version(2).Route("/agent/next_task").Wrap(checkHost).Handler(as.NextTask).Get()
+	app.Route().Version(2).Route("/agent/buildlogger_info").Wrap(checkHost).Handler(as.Buildlogger).Get()
 	app.Route().Version(2).Route("/task/{taskId}/end").Wrap(checkTaskSecret, checkHost).Handler(as.EndTask).Post()
 	app.Route().Version(2).Route("/task/{taskId}/start").Wrap(checkTaskSecret, checkHost).Handler(as.StartTask).Post()
 	app.Route().Version(2).Route("/task/{taskId}/log").Wrap(checkTaskSecret, checkHost).Handler(as.AppendTaskLog).Post()

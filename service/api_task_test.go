@@ -24,7 +24,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
@@ -518,9 +517,8 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionTunable(t *testing.T) {
 }
 
 func TestNextTask(t *testing.T) {
-	conf := testutil.TestConfig()
-	queue := evergreen.GetEnvironment().LocalQueue()
-	remoteQueue := evergreen.GetEnvironment().RemoteQueueGroup()
+	env := evergreen.GetEnvironment()
+	queue := env.LocalQueue()
 
 	Convey("with tasks, a host, a build, and a task queue", t, func() {
 		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, evergreen.ConfigCollection); err != nil {
@@ -533,7 +531,7 @@ func TestNextTask(t *testing.T) {
 			t.Fatalf("unable to create admin settings: %v", err)
 		}
 
-		as, err := NewAPIServer(conf, queue, remoteQueue)
+		as, err := NewAPIServer(env, queue)
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}
@@ -880,7 +878,7 @@ func localGroupConstructor(ctx context.Context) (amboy.Queue, error) {
 }
 
 func TestTaskLifecycleEndpoints(t *testing.T) {
-	conf := testutil.TestConfig()
+	env := evergreen.GetEnvironment()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -894,11 +892,8 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 		if err := q.Start(ctx); err != nil {
 			t.Fatalf("failed to start queue %s", err)
 		}
-		opts := queue.LocalQueueGroupOptions{Constructor: localGroupConstructor}
-		group, err := queue.NewLocalQueueGroup(ctx, opts)
-		So(err, ShouldBeNil)
 
-		as, err := NewAPIServer(conf, q, group)
+		as, err := NewAPIServer(env, q)
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}

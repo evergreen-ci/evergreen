@@ -209,7 +209,7 @@ func (j *agentDeployJob) getHostMessage(h host.Host) message.Fields {
 func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergreen.Settings, hostObj host.Host) error {
 
 	// get the host's SSH options
-	cloudHost, err := cloud.GetCloudHost(ctx, &hostObj, settings)
+	cloudHost, err := cloud.GetCloudHost(ctx, &hostObj, j.env)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to get cloud host for %s", hostObj.Id)
 	}

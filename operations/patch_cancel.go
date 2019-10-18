@@ -26,7 +26,7 @@ func PatchCancel() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
-			client := conf.GetRestCommunicator(ctx)
+			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
 			ac, _, err := conf.getLegacyClients()

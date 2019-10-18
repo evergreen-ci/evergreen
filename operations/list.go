@@ -86,7 +86,7 @@ func listProjects(ctx context.Context, confPath string) error {
 	if err != nil {
 		return errors.Wrap(err, "problem loading configuration")
 	}
-	client := conf.GetRestCommunicator(ctx)
+	client := conf.setupRestCommunicator(ctx)
 	defer client.Close()
 
 	ac, _, err := conf.getLegacyClients()
@@ -127,7 +127,7 @@ func listVariants(ctx context.Context, confPath, project, filename string) error
 	if err != nil {
 		return errors.Wrap(err, "problem loading configuration")
 	}
-	client := conf.GetRestCommunicator(ctx)
+	client := conf.setupRestCommunicator(ctx)
 	defer client.Close()
 
 	var variants []model.BuildVariant
@@ -178,7 +178,7 @@ func listTasks(ctx context.Context, confPath, project, filename string) error {
 	if err != nil {
 		return errors.Wrap(err, "problem loading configuration")
 	}
-	client := conf.GetRestCommunicator(ctx)
+	client := conf.setupRestCommunicator(ctx)
 	defer client.Close()
 
 	var tasks []model.ProjectTask
@@ -217,7 +217,7 @@ func listAliases(ctx context.Context, confPath, project, filename string) error 
 	if err != nil {
 		return errors.Wrap(err, "problem loading configuration")
 	}
-	comm := conf.GetRestCommunicator(ctx)
+	comm := conf.setupRestCommunicator(ctx)
 	defer comm.Close()
 
 	var aliases []model.ProjectAlias
@@ -255,7 +255,7 @@ func listDistros(ctx context.Context, confPath string, onlyUserSpawnable bool) e
 	if err != nil {
 		return errors.Wrap(err, "problem loading configuration")
 	}
-	client := conf.GetRestCommunicator(ctx)
+	client := conf.setupRestCommunicator(ctx)
 	defer client.Close()
 
 	distros, err := client.GetDistrosList(ctx)

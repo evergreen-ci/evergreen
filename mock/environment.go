@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
@@ -32,6 +33,7 @@ type Environment struct {
 	Local                amboy.Queue
 	JasperProcessManager jasper.Manager
 	RemoteGroup          amboy.QueueGroup
+	Depot                certdepot.Depot
 	Closers              map[string]func(context.Context) error
 	DBSession            *anserMock.Session
 	EvergreenSettings    *evergreen.Settings
@@ -135,6 +137,13 @@ func (e *Environment) JasperManager() jasper.Manager {
 	defer e.mu.RUnlock()
 
 	return e.JasperProcessManager
+}
+
+func (e *Environment) CertificateDepot() certdepot.Depot {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.Depot
 }
 
 func (e *Environment) Settings() *evergreen.Settings {

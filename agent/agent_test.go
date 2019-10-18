@@ -843,7 +843,6 @@ func (s *AgentSuite) TestTimeoutDoesNotWaitForChildProcs() {
 		WorkDir: s.tc.taskDirectory,
 	}
 	projYml := `
-
 timeout:
   - command: shell.exec
     params:

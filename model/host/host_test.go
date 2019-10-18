@@ -11,10 +11,9 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/credentials"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
-	_ "github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -1121,6 +1120,8 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	env := testutil.NewEnvironment(ctx, t)
+
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T){
 		"IgnoresLegacyHost": func(ctx context.Context, t *testing.T) {
 			h := &Host{
@@ -1136,9 +1137,9 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			}
 			require.NoError(t, h.Insert())
 
-			creds, err := h.GenerateJasperCredentials(ctx)
+			creds, err := h.GenerateJasperCredentials(ctx, env)
 			require.NoError(t, err)
-			require.NoError(t, h.SaveJasperCredentials(ctx, creds))
+			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
 
 			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
 			require.NoError(t, err)
@@ -1176,9 +1177,9 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			}
 			require.NoError(t, h.Insert())
 
-			creds, err := h.GenerateJasperCredentials(ctx)
+			creds, err := h.GenerateJasperCredentials(ctx, env)
 			require.NoError(t, err)
-			require.NoError(t, h.SaveJasperCredentials(ctx, creds))
+			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
 
 			dbHosts, err := FindByExpiringJasperCredentials(time.Second)
 			require.NoError(t, err)
@@ -1198,9 +1199,9 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			}
 			require.NoError(t, h.Insert())
 
-			creds, err := h.GenerateJasperCredentials(ctx)
+			creds, err := h.GenerateJasperCredentials(ctx, env)
 			require.NoError(t, err)
-			require.NoError(t, h.SaveJasperCredentials(ctx, creds))
+			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
 
 			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
 			require.NoError(t, err)
@@ -1221,9 +1222,9 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			}
 			require.NoError(t, h.Insert())
 
-			creds, err := h.GenerateJasperCredentials(ctx)
+			creds, err := h.GenerateJasperCredentials(ctx, env)
 			require.NoError(t, err)
-			require.NoError(t, h.SaveJasperCredentials(ctx, creds))
+			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
 
 			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
 			require.NoError(t, err)
@@ -1244,9 +1245,9 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			}
 			require.NoError(t, h.Insert())
 
-			creds, err := h.GenerateJasperCredentials(ctx)
+			creds, err := h.GenerateJasperCredentials(ctx, env)
 			require.NoError(t, err)
-			require.NoError(t, h.SaveJasperCredentials(ctx, creds))
+			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
 
 			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
 			require.NoError(t, err)
@@ -1263,7 +1264,7 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 
 			require.NoError(t, setupCredentialsCollection(ctx, env))
 			testCase(tctx, t)
-			assert.NoError(t, db.ClearCollections(credentials.Collection, Collection))
+			assert.NoError(t, db.ClearCollections(evergreen.CredentialsCollection, Collection))
 		})
 	}
 }
