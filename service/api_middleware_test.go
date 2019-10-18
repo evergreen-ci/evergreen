@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -28,17 +27,15 @@ func TestCheckHostWrapper(t *testing.T) {
 		HostId: "h1",
 	}
 
-	conf := testutil.TestConfig()
-
-	queue := evergreen.GetEnvironment().LocalQueue()
-	remoteQueue := evergreen.GetEnvironment().RemoteQueueGroup()
+	env := evergreen.GetEnvironment()
+	queue := env.LocalQueue()
 
 	Convey("With a simple checkTask and checkHost-wrapped route", t, func() {
 		if err := db.ClearCollections(host.Collection, task.Collection); err != nil {
 			t.Fatalf("clearing db: %v", err)
 		}
 
-		as, err := NewAPIServer(conf, queue, remoteQueue)
+		as, err := NewAPIServer(env, queue)
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}
@@ -163,7 +160,7 @@ func TestCheckHostWrapper(t *testing.T) {
 			t.Fatalf("clearing db: %v", err)
 		}
 
-		as, err := NewAPIServer(conf, queue, remoteQueue)
+		as, err := NewAPIServer(env, queue)
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}

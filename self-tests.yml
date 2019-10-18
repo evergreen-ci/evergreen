@@ -431,9 +431,6 @@ tasks:
     name: test-model-build
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-model-credentials
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
     name: test-model-event
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -584,7 +581,6 @@ buildvariants:
       - windows-64-vs2010-test
       - windows-64-vs2010-compile
       - windows-64-vs2017-test
-      - windows-64-vs2017-compile-m5
       - windows-64-vs2017-compile
     expansions:
       disable_coverage: yes

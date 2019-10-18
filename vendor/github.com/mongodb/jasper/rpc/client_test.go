@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/certdepot"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/testutil"
@@ -64,7 +65,7 @@ func makeTLSServiceAndClient(ctx context.Context, mngr jasper.Manager) (jasper.R
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read key file")
 	}
-	serverCreds, err := NewCredentials(caCert, serverCert, serverKey)
+	serverCreds, err := certdepot.NewCredentials(caCert, serverCert, serverKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to initialize test server credentials")
 	}
@@ -81,7 +82,7 @@ func makeTLSServiceAndClient(ctx context.Context, mngr jasper.Manager) (jasper.R
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read key file")
 	}
-	clientCreds, err := NewCredentials(caCert, clientCert, clientKey)
+	clientCreds, err := certdepot.NewCredentials(caCert, clientCert, clientKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to initialize test client credentials")
 	}

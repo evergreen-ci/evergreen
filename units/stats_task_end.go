@@ -111,8 +111,6 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	settings := j.env.Settings()
-
 	var cost float64
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithCancel(ctx)
@@ -122,13 +120,13 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		Provider: j.host.Provider,
 		Region:   cloud.GetRegion(j.host.Distro),
 	}
-	manager, err := cloud.GetManager(ctx, mgrOpts, settings)
+	manager, err := cloud.GetManager(ctx, j.env, mgrOpts)
 	if err != nil {
 		j.AddError(err)
 		grip.Error(message.WrapErrorf(err, "Error loading provider for host %s cost calculation", j.task.HostId))
 	} else {
 		if calc, ok := manager.(cloud.CostCalculator); ok {
-			cost, err = calc.CostForDuration(ctx, j.host, j.task.StartTime, j.task.FinishTime, settings)
+			cost, err = calc.CostForDuration(ctx, j.host, j.task.StartTime, j.task.FinishTime)
 			if err != nil {
 				j.AddError(err)
 			} else {

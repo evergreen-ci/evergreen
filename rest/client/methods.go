@@ -294,6 +294,31 @@ func (c *communicatorImpl) GetNextTask(ctx context.Context, details *apimodels.G
 	return nextTask, nil
 }
 
+// GetBuildloggerInfo returns buildlogger service information including the
+// base URL, RPC port, and LDAP credentials.
+func (c *communicatorImpl) GetBuildloggerInfo(ctx context.Context) (*apimodels.BuildloggerInfo, error) {
+	bi := &apimodels.BuildloggerInfo{}
+
+	info := requestInfo{
+		method:  get,
+		version: apiVersion1,
+		path:    "agent/buildlogger_info",
+	}
+
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get buildlogger service info")
+	}
+	defer resp.Body.Close()
+
+	if err = util.ReadJSONInto(resp.Body, bi); err != nil {
+		err = errors.Wrap(err, "failed to read next task from response")
+		return nil, err
+	}
+
+	return bi, nil
+}
+
 // SendLogMessages posts a group of log messages for a task.
 func (c *communicatorImpl) SendLogMessages(ctx context.Context, taskData TaskData, msgs []apimodels.LogMessage) error {
 	if len(msgs) == 0 {

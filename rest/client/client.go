@@ -6,14 +6,17 @@ import (
 	"sync"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/timber"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc"
 )
 
 const (
@@ -28,12 +31,13 @@ const (
 
 // communicatorImpl implements Communicator and makes requests to API endpoints for the agent.
 type communicatorImpl struct {
-	serverURL    string
-	maxAttempts  int
-	timeoutStart time.Duration
-	timeoutMax   time.Duration
-	httpClient   *http.Client
-	loggerInfo   LoggerMetadata
+	serverURL       string
+	maxAttempts     int
+	timeoutStart    time.Duration
+	timeoutMax      time.Duration
+	httpClient      *http.Client
+	cedarGRPCClient *grpc.ClientConn
+	loggerInfo      LoggerMetadata
 
 	// these fields have setters
 	hostID     string
@@ -75,8 +79,8 @@ type LogOpts struct {
 	SplunkToken       string
 	Filepath          string
 	LogkeeperURL      string
-	LogkeeperBuilder  string
 	LogkeeperBuildNum int
+	BuilderID         string
 	BufferDuration    time.Duration
 	BufferSize        int
 }
@@ -174,8 +178,7 @@ func (c *communicatorImpl) GetLoggerMetadata() LoggerMetadata {
 }
 
 // GetLogProducer
-func (c *communicatorImpl) GetLoggerProducer(ctx context.Context, taskData TaskData, config *LoggerConfig) (LoggerProducer, error) {
-
+func (c *communicatorImpl) GetLoggerProducer(ctx context.Context, td TaskData, config *LoggerConfig) (LoggerProducer, error) {
 	if config == nil {
 		config = &LoggerConfig{
 			Agent:  []LogOpts{{Sender: model.EvergreenLogSender}},
@@ -184,15 +187,15 @@ func (c *communicatorImpl) GetLoggerProducer(ctx context.Context, taskData TaskD
 		}
 	}
 
-	exec, err := c.makeSender(ctx, taskData, config.Agent, apimodels.AgentLogPrefix)
+	exec, err := c.makeSender(ctx, td, config.Agent, apimodels.AgentLogPrefix)
 	if err != nil {
 		return nil, errors.Wrap(err, "error making agent logger")
 	}
-	task, err := c.makeSender(ctx, taskData, config.Task, apimodels.TaskLogPrefix)
+	task, err := c.makeSender(ctx, td, config.Task, apimodels.TaskLogPrefix)
 	if err != nil {
 		return nil, errors.Wrap(err, "error making task logger")
 	}
-	system, err := c.makeSender(ctx, taskData, config.System, apimodels.SystemLogPrefix)
+	system, err := c.makeSender(ctx, td, config.System, apimodels.SystemLogPrefix)
 	if err != nil {
 		return nil, errors.Wrap(err, "error making system logger")
 	}
@@ -204,7 +207,7 @@ func (c *communicatorImpl) GetLoggerProducer(ctx context.Context, taskData TaskD
 	}, nil
 }
 
-func (c *communicatorImpl) makeSender(ctx context.Context, taskData TaskData, opts []LogOpts, prefix string) (send.Sender, error) {
+func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []LogOpts, prefix string) (send.Sender, error) {
 	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
 	senders := []send.Sender{grip.GetSender()}
 
@@ -240,7 +243,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, taskData TaskData, op
 			if err != nil {
 				return nil, errors.Wrap(err, "error creating splunk logger")
 			}
-			sender = send.NewBufferedSender(newAnnotatedWrapper(taskData.ID, prefix, sender), bufferDuration, bufferSize)
+			sender = send.NewBufferedSender(newAnnotatedWrapper(td.ID, prefix, sender), bufferDuration, bufferSize)
 		case model.LogkeeperLogSender:
 			config := send.BuildloggerConfig{
 				URL:        opt.LogkeeperURL,
@@ -249,7 +252,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, taskData TaskData, op
 				Test:       prefix,
 				CreateTest: true,
 			}
-			sender, err = send.NewBuildlogger(opt.LogkeeperBuilder, &config, levelInfo)
+			sender, err = send.NewBuildlogger(opt.BuilderID, &config, levelInfo)
 			if err != nil {
 				return nil, errors.Wrap(err, "error creating logkeeper logger")
 			}
@@ -266,8 +269,50 @@ func (c *communicatorImpl) makeSender(ctx context.Context, taskData TaskData, op
 			case apimodels.TaskLogPrefix:
 				c.loggerInfo.Task = append(c.loggerInfo.Task, metadata)
 			}
+		case model.BuildloggerLogSender:
+			tk, err := c.GetTask(ctx, td)
+			if err != nil {
+				return nil, errors.Wrap(err, "error setting up buildlogger sender")
+			}
+
+			if c.cedarGRPCClient == nil {
+				bi, err := c.GetBuildloggerInfo(ctx)
+				if err != nil {
+					return nil, errors.Wrap(err, "error setting up buildlogger sender")
+				}
+
+				dialOpts := timber.DialCedarOptions{
+					BaseAddress: bi.BaseURL,
+					RPCPort:     bi.RPCPort,
+					Username:    bi.Username,
+					Password:    bi.Password,
+				}
+				c.cedarGRPCClient, err = timber.DialCedar(ctx, c.httpClient, dialOpts)
+				if err != nil {
+					return nil, errors.Wrap(err, "error creating cedar grpc client connection")
+				}
+			}
+
+			timberOpts := &timber.LoggerOptions{
+				Project:       tk.Project,
+				Version:       tk.Version,
+				Variant:       tk.BuildVariant,
+				TaskName:      tk.DisplayName,
+				TaskID:        tk.Id,
+				Execution:     int32(tk.Execution),
+				Tags:          tk.Tags,
+				Mainline:      evergreen.IsPatchRequester(tk.Requester),
+				Storage:       timber.LogStorageS3,
+				MaxBufferSize: opt.BufferSize,
+				FlushInterval: opt.BufferDuration,
+				ClientConn:    c.cedarGRPCClient,
+			}
+			sender, err = timber.NewLogger(opt.BuilderID, levelInfo, timberOpts)
+			if err != nil {
+				return nil, errors.Wrap(err, "error creating buildlogger logger")
+			}
 		default:
-			sender = newEvergreenLogSender(ctx, c, prefix, taskData, bufferSize, bufferDuration)
+			sender = newEvergreenLogSender(ctx, c, prefix, td, bufferSize, bufferDuration)
 		}
 
 		grip.Error(sender.SetFormatter(send.MakeDefaultFormatter()))

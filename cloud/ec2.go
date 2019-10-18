@@ -171,12 +171,8 @@ type EC2ManagerOptions struct {
 type ec2Manager struct {
 	*EC2ManagerOptions
 	credentials *credentials.Credentials
+	env         evergreen.Environment
 	settings    *evergreen.Settings
-}
-
-// NewEC2Manager creates a new manager of EC2 spot and on-demand instances.
-func NewEC2Manager(opts *EC2ManagerOptions) Manager {
-	return &ec2Manager{EC2ManagerOptions: opts}
 }
 
 // GetSettings returns a pointer to the manager's configuration settings struct.
@@ -235,7 +231,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		ec2Settings.UserData = expanded
 	}
 
-	userData, err := bootstrapUserData(ctx, m.settings, h, ec2Settings.UserData)
+	userData, err := bootstrapUserData(ctx, m.env, h, ec2Settings.UserData)
 	if err != nil {
 		return errors.Wrap(err, "could not add bootstrap script to user data")
 	}
@@ -256,7 +252,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	reservation, err := m.client.RunInstances(ctx, input)
 	if err != nil || reservation == nil {
 		if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
-			grip.Error(message.WrapError(h.DeleteJasperCredentials(ctx), message.Fields{
+			grip.Error(message.WrapError(h.DeleteJasperCredentials(ctx, m.env), message.Fields{
 				"message": "problem cleaning up user data credentials",
 				"host":    h.Id,
 				"distro":  h.Distro.Id,
@@ -290,7 +286,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 
 	if len(reservation.Instances) < 1 {
 		if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
-			grip.Error(message.WrapError(h.DeleteJasperCredentials(ctx), message.Fields{
+			grip.Error(message.WrapError(h.DeleteJasperCredentials(ctx, m.env), message.Fields{
 				"message": "problem cleaning up user data credentials",
 				"host":    h.Id,
 				"distro":  h.Distro.Id,
@@ -347,7 +343,7 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 		ec2Settings.UserData = expanded
 	}
 
-	userData, err := bootstrapUserData(ctx, m.settings, h, ec2Settings.UserData)
+	userData, err := bootstrapUserData(ctx, m.env, h, ec2Settings.UserData)
 	if err != nil {
 		return errors.Wrap(err, "could not add bootstrap script to user data")
 	}
@@ -368,7 +364,7 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 	spotResp, err := m.client.RequestSpotInstances(ctx, spotRequest)
 	if err != nil {
 		if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
-			grip.Error(message.WrapError(h.DeleteJasperCredentials(ctx), message.Fields{
+			grip.Error(message.WrapError(h.DeleteJasperCredentials(ctx, m.env), message.Fields{
 				"message": "problem cleaning up user data credentials",
 				"host":    h.Id,
 				"distro":  h.Distro.Id,
@@ -381,7 +377,7 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 	spotReqRes := spotResp.SpotInstanceRequests[0]
 	if *spotReqRes.State != SpotStatusOpen && *spotReqRes.State != SpotStatusActive {
 		if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
-			grip.Error(message.WrapError(h.DeleteJasperCredentials(ctx), message.Fields{
+			grip.Error(message.WrapError(h.DeleteJasperCredentials(ctx, m.env), message.Fields{
 				"message": "problem cleaning up user data credentials",
 				"host":    h.Id,
 				"distro":  h.Distro.Id,
@@ -808,7 +804,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 	}
 
 	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
-		grip.Error(message.WrapError(h.DeleteJasperCredentials(ctx), message.Fields{
+		grip.Error(message.WrapError(h.DeleteJasperCredentials(ctx, m.env), message.Fields{
 			"message": "problem deleting Jasper credentials during host termination",
 			"host":    h.Id,
 			"distro":  h.Distro.Id,
@@ -1117,7 +1113,7 @@ func cloudStatusFromSpotStatus(state string) CloudStatus {
 	}
 }
 
-func (m *ec2Manager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time, s *evergreen.Settings) (float64, error) {
+func (m *ec2Manager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time) (float64, error) {
 	if end.Before(start) || util.IsZeroTime(start) || util.IsZeroTime(end) {
 		return 0, errors.New("task timing data is malformed")
 	}

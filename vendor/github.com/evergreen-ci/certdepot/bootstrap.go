@@ -108,7 +108,7 @@ func BootstrapDepotWithMongoClient(ctx context.Context, client *mongo.Client, co
 // CreateDepot creates a certificate depot with the given BootstrapDepotConfig.
 // If a mongo client is passed in it will be used to create the mongo depot.
 func CreateDepot(ctx context.Context, client *mongo.Client, conf BootstrapDepotConfig) (Depot, error) {
-	var d depot.Depot
+	var d Depot
 	var err error
 
 	if err = conf.Validate(); err != nil {
@@ -116,7 +116,7 @@ func CreateDepot(ctx context.Context, client *mongo.Client, conf BootstrapDepotC
 	}
 
 	if conf.FileDepot != "" {
-		d, err = depot.NewFileDepot(conf.FileDepot)
+		d, err = NewFileDepot(conf.FileDepot)
 		if err != nil {
 			return nil, errors.Wrap(err, "problem initializing the file deopt")
 		}

@@ -66,15 +66,13 @@ type CertificateOptions struct {
 }
 
 // Init initializes a new CA.
-func (opts *CertificateOptions) Init(wd Depot) error {
-	d := depot.Depot(wd)
-
+func (opts *CertificateOptions) Init(wd depot.Depot) error {
 	if opts.CommonName == "" {
 		return errors.New("must provide common name of CA")
 	}
 	formattedName := strings.Replace(opts.CommonName, " ", "_", -1)
 
-	if depot.CheckCertificate(d, formattedName) || depot.CheckPrivateKey(d, formattedName) {
+	if depot.CheckCertificate(wd, formattedName) || depot.CheckPrivateKey(wd, formattedName) {
 		return errors.New("CA with specified name already exists")
 	}
 
@@ -98,16 +96,16 @@ func (opts *CertificateOptions) Init(wd Depot) error {
 		return errors.Wrap(err, "problem creating certificate authority")
 	}
 
-	if err = depot.PutCertificate(d, formattedName, crt); err != nil {
+	if err = depot.PutCertificate(wd, formattedName, crt); err != nil {
 		return errors.Wrap(err, "problem saving certificate authority")
 	}
 
 	if opts.Passphrase != "" {
-		if err = depot.PutEncryptedPrivateKey(d, formattedName, key, []byte(opts.Passphrase)); err != nil {
+		if err = depot.PutEncryptedPrivateKey(wd, formattedName, key, []byte(opts.Passphrase)); err != nil {
 			return errors.Wrap(err, "problem saving encrypted private key")
 		}
 	} else {
-		if err = depot.PutPrivateKey(d, formattedName, key); err != nil {
+		if err = depot.PutPrivateKey(wd, formattedName, key); err != nil {
 			return errors.Wrap(err, "problem saving private key")
 		}
 	}
@@ -117,11 +115,11 @@ func (opts *CertificateOptions) Init(wd Depot) error {
 	if err != nil {
 		return errors.Wrap(err, "problem creating certificate revocation list")
 	}
-	if err = depot.PutCertificateRevocationList(d, formattedName, crl); err != nil {
+	if err = depot.PutCertificateRevocationList(wd, formattedName, crl); err != nil {
 		return errors.Wrap(err, "problem saving certificate revocation list")
 	}
 
-	if md, ok := d.(*mongoDepot); ok {
+	if md, ok := wd.(*mongoDepot); ok {
 		rawCrt, err := crt.GetRawCertificate()
 		if err != nil {
 			return errors.Wrap(err, "problem getting raw cert")
@@ -145,7 +143,7 @@ func (opts *CertificateOptions) Reset() {
 
 // CertRequest creates a new certificate signing request (CSR) and key and puts
 // them in the depot.
-func (opts *CertificateOptions) CertRequest(wd Depot) error {
+func (opts *CertificateOptions) CertRequest(wd depot.Depot) error {
 	if _, _, err := opts.CertRequestInMemory(); err != nil {
 		return errors.Wrap(err, "problem creating cert request and key")
 	}
@@ -241,7 +239,7 @@ func (opts *CertificateOptions) PutCertRequestFromMemory(wd depot.Depot) error {
 }
 
 // Sign signs a CSR with a given CA for a new certificate.
-func (opts *CertificateOptions) Sign(wd Depot) error {
+func (opts *CertificateOptions) Sign(wd depot.Depot) error {
 	_, err := opts.SignInMemory(wd)
 	if err != nil {
 		return errors.Wrap(err, "problem signing certificate request")
@@ -257,9 +255,7 @@ func (opts *CertificateOptions) signedInMemory() bool {
 // SignInMemory is the same as Sign but returns the resulting certificate
 // without putting it in the depot. Use PutCertFromMemory to put the certificate
 // in the depot.
-func (opts *CertificateOptions) SignInMemory(wd Depot) (*pkix.Certificate, error) {
-	d := depot.Depot(wd)
-
+func (opts *CertificateOptions) SignInMemory(wd depot.Depot) (*pkix.Certificate, error) {
 	if opts.signedInMemory() {
 		return opts.crt, nil
 	}
@@ -277,12 +273,12 @@ func (opts *CertificateOptions) SignInMemory(wd Depot) (*pkix.Certificate, error
 		csr = opts.csr
 	} else {
 		var err error
-		csr, err = depot.GetCertificateSigningRequest(d, formattedReqName)
+		csr, err = depot.GetCertificateSigningRequest(wd, formattedReqName)
 		if err != nil {
 			return nil, errors.Wrap(err, "problem getting host's certificate signing request")
 		}
 	}
-	crt, err := depot.GetCertificate(d, formattedCAName)
+	crt, err := depot.GetCertificate(wd, formattedCAName)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting CA certificate")
 	}
@@ -301,12 +297,12 @@ func (opts *CertificateOptions) SignInMemory(wd Depot) (*pkix.Certificate, error
 
 	var key *pkix.Key
 	if opts.CAPassphrase == "" {
-		key, err = depot.GetPrivateKey(d, formattedCAName)
+		key, err = depot.GetPrivateKey(wd, formattedCAName)
 		if err != nil {
 			return nil, errors.Wrap(err, "problem getting unencrypted (assumed) CA key")
 		}
 	} else {
-		key, err = depot.GetEncryptedPrivateKey(d, formattedCAName, []byte(opts.CAPassphrase))
+		key, err = depot.GetEncryptedPrivateKey(wd, formattedCAName, []byte(opts.CAPassphrase))
 		if err != nil {
 			return nil, errors.Wrap(err, "problem getting encrypted CA key")
 		}
@@ -330,23 +326,21 @@ func (opts *CertificateOptions) SignInMemory(wd Depot) (*pkix.Certificate, error
 
 // PutCertFromMemory stores the certificate generated from the options in the
 // depot, along with the expiration TTL on the certificate.
-func (opts *CertificateOptions) PutCertFromMemory(wd Depot) error {
-	d := depot.Depot(wd)
-
+func (opts *CertificateOptions) PutCertFromMemory(wd depot.Depot) error {
 	if !opts.signedInMemory() {
 		return errors.New("must sign cert first before putting into depot")
 	}
 	formattedReqName := strings.Replace(opts.Host, " ", "_", -1)
 
-	if depot.CheckCertificate(d, formattedReqName) {
+	if depot.CheckCertificate(wd, formattedReqName) {
 		return errors.New("certificate has existed")
 	}
 
-	if err := depot.PutCertificate(d, formattedReqName, opts.crt); err != nil {
+	if err := depot.PutCertificate(wd, formattedReqName, opts.crt); err != nil {
 		return errors.Wrap(err, "problem saving certificate")
 	}
 
-	if md, ok := d.(*mongoDepot); ok {
+	if md, ok := wd.(*mongoDepot); ok {
 		rawCrt, err := opts.crt.GetRawCertificate()
 		if err != nil {
 			return errors.Wrap(err, "problem getting raw certificate")
@@ -359,16 +353,20 @@ func (opts *CertificateOptions) PutCertFromMemory(wd Depot) error {
 	return nil
 }
 
-func (opts CertificateOptions) getFormattedCertificateRequestName() (string, error) {
-	name, err := opts.getCertificateRequestName()
-	if err != nil {
-		return "", errors.Wrap(err, "could not get name for certificate request")
-	}
+func getFormattedCertificateRequestName(name string) (string, error) {
 	filenameAcceptable, err := regexp.Compile("[^a-zA-Z0-9._-]")
 	if err != nil {
 		return "", errors.Wrap(err, "error compiling regex")
 	}
 	return string(filenameAcceptable.ReplaceAll([]byte(name), []byte("_"))), nil
+}
+
+func (opts CertificateOptions) getFormattedCertificateRequestName() (string, error) {
+	name, err := opts.getCertificateRequestName()
+	if err != nil {
+		return "", errors.Wrap(err, "could not get name for certificate request")
+	}
+	return getFormattedCertificateRequestName(name)
 }
 
 func (opts CertificateOptions) getCertificateRequestName() (string, error) {
@@ -406,25 +404,26 @@ func (opts CertificateOptions) getOrCreatePrivateKey() (*pkix.Key, error) {
 	return key, nil
 }
 
-func getNameAndKey(tag *depot.Tag) (string, string) {
+func getNameAndKey(tag *depot.Tag) (string, string, error) {
 	if name := depot.GetNameFromCrtTag(tag); name != "" {
-		return name, userCertKey
+		return strings.Replace(name, " ", "_", -1), userCertKey, nil
 	}
 	if name := depot.GetNameFromPrivKeyTag(tag); name != "" {
-		return name, userPrivateKeyKey
+		return strings.Replace(name, " ", "_", -1), userPrivateKeyKey, nil
 	}
 	if name := depot.GetNameFromCsrTag(tag); name != "" {
-		return name, userCertReqKey
+		formattedName, err := getFormattedCertificateRequestName(name)
+		return formattedName, userCertReqKey, err
 	}
 	if name := depot.GetNameFromCrlTag(tag); name != "" {
-		return name, userCertRevocListKey
+		return strings.Replace(name, " ", "_", -1), userCertRevocListKey, nil
 	}
-	return "", ""
+	return "", "", nil
 }
 
 // CreateCertificate is a convenience function for creating a certificate
 // request and signing it.
-func (opts *CertificateOptions) CreateCertificate(wd Depot) error {
+func (opts *CertificateOptions) CreateCertificate(wd depot.Depot) error {
 	if err := opts.CertRequest(wd); err != nil {
 		return errors.Wrap(err, "problem creating the certificate request")
 	}
@@ -439,13 +438,12 @@ func (opts *CertificateOptions) CreateCertificate(wd Depot) error {
 // it expires within the duration `after` and creates a new certificate if
 // either condition is met. True is returned if a certificate is created,
 // false otherwise. If the certificate is a CA, the behavior is undefined.
-func (opts *CertificateOptions) CreateCertificateOnExpiration(wd Depot, after time.Duration) (bool, error) {
-	d := depot.Depot(wd)
+func (opts *CertificateOptions) CreateCertificateOnExpiration(wd depot.Depot, after time.Duration) (bool, error) {
 	dne := true
 	var created bool
 	var err error
 
-	if depot.CheckCertificate(d, opts.CommonName) {
+	if depot.CheckCertificate(wd, opts.CommonName) {
 		dne, err = DeleteOnExpiration(wd, opts.CommonName, after)
 		if err != nil {
 			return created, errors.Wrap(err, "problem deleting expiring certificate")
@@ -461,8 +459,8 @@ func (opts *CertificateOptions) CreateCertificateOnExpiration(wd Depot, after ti
 }
 
 // ValidityBounds returns the date range for which the certificate is valid.
-func ValidityBounds(wd Depot, name string) (time.Time, time.Time, error) {
-	rawCert, err := getRawCertificate(depot.Depot(wd), name)
+func ValidityBounds(wd depot.Depot, name string) (time.Time, time.Time, error) {
+	rawCert, err := getRawCertificate(wd, name)
 	if err != nil {
 		return time.Time{}, time.Time{}, errors.Wrap(err, "problem getting raw certificate")
 	}
@@ -473,33 +471,32 @@ func ValidityBounds(wd Depot, name string) (time.Time, time.Time, error) {
 // DeleteOnExpiration deletes the given certificate from the depot if it has an
 // expiration date within the duration `after`. True is returned if the
 // certificate is deleted, false otherwise.
-func DeleteOnExpiration(wd Depot, name string, after time.Duration) (bool, error) {
-	d := depot.Depot(wd)
+func DeleteOnExpiration(wd depot.Depot, name string, after time.Duration) (bool, error) {
 	var deleted bool
 
-	if !depot.CheckCertificate(d, name) {
+	if !depot.CheckCertificate(wd, name) {
 		return deleted, nil
 	}
 
-	rawCert, err := getRawCertificate(d, name)
+	rawCert, err := getRawCertificate(wd, name)
 	if err != nil {
 		return deleted, errors.Wrap(err, "problem getting raw certificate")
 	}
 
 	if rawCert.NotAfter.Before(time.Now().Add(after)) {
-		err = depot.DeleteCertificate(d, name)
+		err = depot.DeleteCertificate(wd, name)
 		if err != nil {
 			return deleted, errors.Wrap(err, "problem deleting expiring certificate")
 		}
 
 		if !rawCert.IsCA {
-			err = depot.DeleteCertificateSigningRequest(d, name)
+			err = depot.DeleteCertificateSigningRequest(wd, name)
 			if err != nil {
 				return deleted, errors.Wrap(err, "problem deleting expiring certificate signing request")
 			}
 		}
 
-		err = d.Delete(depot.PrivKeyTag(name))
+		err = wd.Delete(depot.PrivKeyTag(name))
 		if err != nil {
 			return deleted, errors.Wrap(err, "problem deleting expiring certificate key")
 		}

@@ -103,8 +103,7 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 		return false, nil
 	}
 
-	settings := env.Settings()
-	cloudHost, err := cloud.GetCloudHost(ctx, h, settings)
+	cloudHost, err := cloud.GetCloudHost(ctx, h, env)
 	if err != nil {
 		return false, errors.Wrapf(err, "error getting cloud host for host %s", h.Id)
 	}

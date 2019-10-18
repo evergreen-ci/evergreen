@@ -111,7 +111,7 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 	}
 
 	// modify the setup script to add the user's public key
-	d.Setup += fmt.Sprintf("\necho \"\n%s\" >> %s\n", so.PublicKey, filepath.Join(d.BootstrapSettings.RootDir, d.HomeDir(), ".ssh", "authorized_keys"))
+	d.Setup += fmt.Sprintf("\necho \"\n%s\" >> %s\n", so.PublicKey, filepath.Join(d.HomeDir(), ".ssh", "authorized_keys"))
 
 	// fake out replacing spot instances with on-demand equivalents
 	if d.Provider == evergreen.ProviderNameEc2Spot || d.Provider == evergreen.ProviderNameEc2Fleet {
@@ -190,8 +190,7 @@ func SetHostRDPPassword(ctx context.Context, env evergreen.Environment, host *ho
 // constructPwdUpdateCommand returns a RemoteCommand struct used to
 // set the RDP password on a remote windows machine.
 func constructPwdUpdateCommand(ctx context.Context, env evergreen.Environment, hostObj *host.Host, password string) (*jasper.Command, error) {
-	settings := env.Settings()
-	cloudHost, err := GetCloudHost(ctx, hostObj, settings)
+	cloudHost, err := GetCloudHost(ctx, hostObj, env)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -211,14 +210,14 @@ func constructPwdUpdateCommand(ctx context.Context, env evergreen.Environment, h
 		Append(fmt.Sprintf("echo -e \"%s\" | passwd", password)), nil
 }
 
-func TerminateSpawnHost(ctx context.Context, host *host.Host, settings *evergreen.Settings, user, reason string) error {
+func TerminateSpawnHost(ctx context.Context, env evergreen.Environment, host *host.Host, user, reason string) error {
 	if host.Status == evergreen.HostTerminated {
 		return errors.New("Host is already terminated")
 	}
 	if host.Status == evergreen.HostUninitialized {
 		return host.SetTerminated(user, "host never started")
 	}
-	cloudHost, err := GetCloudHost(ctx, host, settings)
+	cloudHost, err := GetCloudHost(ctx, host, env)
 	if err != nil {
 		return err
 	}
@@ -228,8 +227,8 @@ func TerminateSpawnHost(ctx context.Context, host *host.Host, settings *evergree
 	return nil
 }
 
-func ModifySpawnHost(ctx context.Context, host *host.Host, opts host.HostModifyOptions, settings *evergreen.Settings) error {
-	cloudHost, err := GetCloudHost(ctx, host, settings)
+func ModifySpawnHost(ctx context.Context, env evergreen.Environment, host *host.Host, opts host.HostModifyOptions) error {
+	cloudHost, err := GetCloudHost(ctx, host, env)
 	if err != nil {
 		return err
 	}

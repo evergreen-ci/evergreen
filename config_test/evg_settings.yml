@@ -4,6 +4,8 @@ database:
     write_concern:
       wmode: "majority"
 
+domain_name: "evergreen.localhost"
+
 configdir: "config_test"
 credentials:  {
         github: "token xxx",
@@ -26,7 +28,7 @@ providers:
         - "test_instance_type"
     docker:
         api_version: 1.32
-        
+
 auth:
     naive:
       users:

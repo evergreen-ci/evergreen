@@ -50,65 +50,65 @@ func GetNameFromCrlTag(tag *depot.Tag) string {
 }
 
 // PutCertificate creates a certificate file for a given name in the depot.
-func PutCertificate(d Depot, name string, crt *pkix.Certificate) error {
-	return depot.PutCertificate(depot.Depot(d), name, crt)
+func PutCertificate(d depot.Depot, name string, crt *pkix.Certificate) error {
+	return depot.PutCertificate(d, name, crt)
 }
 
 // CheckCertificate checks the depot for existence of a certificate file for a
 // given name.
-func CheckCertificate(d Depot, name string) bool {
-	return depot.CheckCertificate(depot.Depot(d), name)
+func CheckCertificate(d depot.Depot, name string) bool {
+	return depot.CheckCertificate(d, name)
 }
 
 // GetCertificate retrieves a certificate file for a given name from the depot.
-func GetCertificate(d Depot, name string) (crt *pkix.Certificate, err error) {
-	return depot.GetCertificate(depot.Depot(d), name)
+func GetCertificate(d depot.Depot, name string) (crt *pkix.Certificate, err error) {
+	return depot.GetCertificate(d, name)
 }
 
 // DeleteCertificate removes a certificate file for a given name from the
 // depot.
-func DeleteCertificate(d Depot, name string) error {
-	return depot.DeleteCertificate(depot.Depot(d), name)
+func DeleteCertificate(d depot.Depot, name string) error {
+	return depot.DeleteCertificate(d, name)
 }
 
 // PutCertificateSigningRequest creates a certificate signing request file for
 // a given name and csr in the depot.
-func PutCertificateSigningRequest(d Depot, name string, csr *pkix.CertificateSigningRequest) error {
-	return depot.PutCertificateSigningRequest(depot.Depot(d), name, csr)
+func PutCertificateSigningRequest(d depot.Depot, name string, csr *pkix.CertificateSigningRequest) error {
+	return depot.PutCertificateSigningRequest(d, name, csr)
 }
 
 // CheckCertificateSigningRequest checks the depot for existence of a
 // certificate signing request file for a given host name.
-func CheckCertificateSigningRequest(d Depot, name string) bool {
-	return depot.CheckCertificateSigningRequest(depot.Depot(d), name)
+func CheckCertificateSigningRequest(d depot.Depot, name string) bool {
+	return depot.CheckCertificateSigningRequest(d, name)
 }
 
 // GetCertificateSigningRequest retrieves a certificate signing request file
 // for a given host name from the depot.
-func GetCertificateSigningRequest(d Depot, name string) (crt *pkix.CertificateSigningRequest, err error) {
-	return depot.GetCertificateSigningRequest(depot.Depot(d), name)
+func GetCertificateSigningRequest(d depot.Depot, name string) (crt *pkix.CertificateSigningRequest, err error) {
+	return depot.GetCertificateSigningRequest(d, name)
 }
 
 // DeleteCertificateSigningRequest removes a certificate signing request file
 // for a given host name from the depot.
-func DeleteCertificateSigningRequest(d Depot, name string) error {
-	return depot.DeleteCertificateSigningRequest(depot.Depot(d), name)
+func DeleteCertificateSigningRequest(d depot.Depot, name string) error {
+	return depot.DeleteCertificateSigningRequest(d, name)
 }
 
 // PutPrivateKey creates a private key file for a given name in the depot.
-func PutPrivateKey(d Depot, name string, key *pkix.Key) error {
-	return depot.PutPrivateKey(depot.Depot(d), name, key)
+func PutPrivateKey(d depot.Depot, name string, key *pkix.Key) error {
+	return depot.PutPrivateKey(d, name, key)
 }
 
 // CheckPrivateKey checks the depot for existence of a private key file for a
 // given name.
-func CheckPrivateKey(d Depot, name string) bool {
-	return depot.CheckPrivateKey(depot.Depot(d), name)
+func CheckPrivateKey(d depot.Depot, name string) bool {
+	return depot.CheckPrivateKey(d, name)
 }
 
 // GetPrivateKey retrieves a private key file for a given name from the depot.
-func GetPrivateKey(d Depot, name string) (key *pkix.Key, err error) {
-	return depot.GetPrivateKey(depot.Depot(d), name)
+func GetPrivateKey(d depot.Depot, name string) (key *pkix.Key, err error) {
+	return depot.GetPrivateKey(d, name)
 }
 
 // DeletePrivateKey removes a private key file for a given host name from the
@@ -119,25 +119,25 @@ func DeletePrivateKey(d Depot, name string) error {
 
 // PutEncryptedPrivateKey creates an encrypted private key file for a given
 // name in the depot.
-func PutEncryptedPrivateKey(d Depot, name string, key *pkix.Key, passphrase []byte) error {
-	return depot.PutEncryptedPrivateKey(depot.Depot(d), name, key, passphrase)
+func PutEncryptedPrivateKey(d depot.Depot, name string, key *pkix.Key, passphrase []byte) error {
+	return depot.PutEncryptedPrivateKey(d, name, key, passphrase)
 }
 
 // GetEncryptedPrivateKey retrieves an encrypted private key file for a given
 // name from the depot.
-func GetEncryptedPrivateKey(d Depot, name string, passphrase []byte) (key *pkix.Key, err error) {
-	return depot.GetEncryptedPrivateKey(depot.Depot(d), name, passphrase)
+func GetEncryptedPrivateKey(d depot.Depot, name string, passphrase []byte) (key *pkix.Key, err error) {
+	return depot.GetEncryptedPrivateKey(d, name, passphrase)
 }
 
 // PutCertificateRevocationList creates a CRL file for a given name in the
 // depot.
-func PutCertificateRevocationList(d Depot, name string, crl *pkix.CertificateRevocationList) error {
-	return depot.PutCertificateRevocationList(depot.Depot(d), name, crl)
+func PutCertificateRevocationList(d depot.Depot, name string, crl *pkix.CertificateRevocationList) error {
+	return depot.PutCertificateRevocationList(d, name, crl)
 }
 
 // GetCertificateRevocationList gets a CRL file for a given name in the depot.
-func GetCertificateRevocationList(d Depot, name string) (*pkix.CertificateRevocationList, error) {
-	return depot.GetCertificateRevocationList(depot.Depot(d), name)
+func GetCertificateRevocationList(d depot.Depot, name string) (*pkix.CertificateRevocationList, error) {
+	return depot.GetCertificateRevocationList(d, name)
 }
 
 // DeleteCertificateRevocationList removes a CRL file for a given name in the
@@ -147,19 +147,10 @@ func DeleteCertificateRevocationList(d Depot, name string) error {
 }
 
 // PutTTL puts a new TTL for a given name in the mongo depot.
-func PutTTL(d Depot, name string, expiration time.Time) error {
+func putTTL(d depot.Depot, name string, expiration time.Time) error {
 	md, ok := d.(*mongoDepot)
 	if !ok {
 		return errors.New("cannot put TTL if depot is not a mongo depot")
 	}
 	return md.PutTTL(name, expiration)
-}
-
-// GetTTL gets a TTL for a given name in the mongo depot.
-func GetTTL(d Depot, name string) (time.Time, error) {
-	md, ok := d.(*mongoDepot)
-	if !ok {
-		return time.Time{}, errors.New("cannot get TTL if depot is not a mongo depot")
-	}
-	return md.GetTTL(name)
 }

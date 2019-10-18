@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -58,12 +59,9 @@ func TestUserDataDoneJob(t *testing.T) {
 			path, err := h.UserDataDoneFilePath()
 			require.NoError(t, err)
 
-			expectedCmd := []string{"ls", path}
+			expectedCmd := []string{h.Distro.BootstrapSettings.ShellPath, "-l", "-c", fmt.Sprintf("ls %s", path)}
 			require.Equal(t, len(expectedCmd), len(info.Options.Args))
-
-			for i := range expectedCmd {
-				assert.Equal(t, expectedCmd[i], info.Options.Args[i])
-			}
+			assert.Equal(t, expectedCmd, info.Options.Args)
 
 			dbHost, err := host.FindOneId(h.Id)
 			require.NoError(t, err)
@@ -88,6 +86,7 @@ func TestUserDataDoneJob(t *testing.T) {
 						Method:        distro.BootstrapMethodUserData,
 						Communication: distro.CommunicationMethodRPC,
 						ClientDir:     "/client_dir",
+						ShellPath:     "/shell_path",
 					},
 				},
 				Status:      evergreen.HostProvisioning,

@@ -211,7 +211,6 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no action specified", http.StatusBadRequest)
 		return
 	}
-	env := evergreen.GetEnvironment()
 	// determine what action needs to be taken
 	switch *updateParams.Action {
 	case HostTerminate:
@@ -223,7 +222,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel = context.WithCancel(r.Context())
 		defer cancel()
 
-		if err := cloud.TerminateSpawnHost(ctx, h, env.Settings(), u.Id, fmt.Sprintf("terminated via UI by %s", u.Username())); err != nil {
+		if err := cloud.TerminateSpawnHost(ctx, uis.env, h, u.Id, fmt.Sprintf("terminated via UI by %s", u.Username())); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
@@ -279,7 +278,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Invalid password"))
 			return
 		}
-		if err := cloud.SetHostRDPPassword(ctx, env, h, pwd); err != nil {
+		if err := cloud.SetHostRDPPassword(ctx, uis.env, h, pwd); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
@@ -288,9 +287,9 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 
 	case HostInstanceTypeUpdate:
 		instanceType := restModel.FromAPIString(updateParams.InstanceType)
-		if err := cloud.ModifySpawnHost(ctx, h, host.HostModifyOptions{
+		if err := cloud.ModifySpawnHost(ctx, uis.env, h, host.HostModifyOptions{
 			InstanceType: instanceType,
-		}, env.Settings()); err != nil {
+		}); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}

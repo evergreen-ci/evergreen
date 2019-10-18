@@ -1,0 +1,10 @@
+package: github.com/evergreen-ci/gimlet
+import:
+- package: github.com/codegangsta/negroni
+- package: github.com/gorilla/mux
+- package: github.com/phyber/negroni-gzip
+  subpackages:
+  - gzip
+- package: github.com/mongodb/grip
+- package: github.com/stretchr/testify
+- package: gopkg.in/yaml.v2

@@ -131,19 +131,16 @@ func parseUserDataContentType(userData string) (string, error) {
 
 // bootstrapUserData returns the multipart user data with logic to bootstrap and
 // set up the host and the custom user data.
-func bootstrapUserData(ctx context.Context, settings *evergreen.Settings, h *host.Host, customScript string) (string, error) {
+func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.Host, customScript string) (string, error) {
 	if h.Distro.BootstrapSettings.Method != distro.BootstrapMethodUserData {
 		return customScript, nil
 	}
-
-	setupScript, err := h.SetupScriptCommands(settings)
-	if err != nil {
-		return "", errors.Wrap(err, "error creating setup script for user data")
-	}
+	settings := env.Settings()
 
 	fetchClient := h.CurlCommandWithRetry(settings, host.CurlDefaultNumRetries, host.CurlDefaultMaxSecs)
 
 	var postFetchClient string
+	var err error
 	if h.StartedBy == evergreen.User {
 		// Start the host with an agent monitor to run tasks.
 		if postFetchClient, err = h.StartAgentMonitorRequest(settings); err != nil {
@@ -161,14 +158,13 @@ func bootstrapUserData(ctx context.Context, settings *evergreen.Settings, h *hos
 		return "", errors.Wrap(err, "error creating command to mark when user data is done")
 	}
 
-	creds, err := h.GenerateJasperCredentials(ctx)
+	creds, err := h.GenerateJasperCredentials(ctx, env)
 	if err != nil {
-		return customScript, errors.Wrap(err, "problem generating Jasper credentials for host")
+		return customScript, errors.Wrapf(err, "problem generating Jasper credentials for host '%s'", h.Id)
 	}
 
 	bootstrapScript, err := h.BootstrapScript(settings, creds,
-		[]string{setupScript},
-		[]string{fetchClient, postFetchClient, markDone},
+		[]string{fetchClient, h.SetupCommand(), postFetchClient, markDone},
 	)
 	if err != nil {
 		return customScript, errors.Wrap(err, "could not generate user data bootstrap script")
@@ -182,5 +178,5 @@ func bootstrapUserData(ctx context.Context, settings *evergreen.Settings, h *hos
 		return customScript, errors.Wrap(err, "error creating user data with multiple parts")
 	}
 
-	return multipartUserData, errors.Wrap(h.SaveJasperCredentials(ctx, creds), "problem saving Jasper credentials to host")
+	return multipartUserData, errors.Wrap(h.SaveJasperCredentials(ctx, env, creds), "problem saving Jasper credentials to host")
 }

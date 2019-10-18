@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -50,7 +50,7 @@ func PatchList() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
-			client := conf.GetRestCommunicator(ctx)
+			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
 			ac, rc, err := conf.getLegacyClients()

@@ -6,9 +6,9 @@ import (
 	"math"
 	"time"
 
+	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/credentials"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -17,7 +17,6 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/jasper/rpc"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -420,23 +419,34 @@ func (h *Host) SetAgentStartTime() error {
 // JasperCredentials gets the Jasper credentials for this host's running Jasper
 // service from the database. These credentials should not be used to connect to
 // the Jasper service - use JasperClientCredentials for this purpose.
-func (h *Host) JasperCredentials(ctx context.Context) (*rpc.Credentials, error) {
-	return credentials.FindByID(ctx, h.JasperCredentialsID)
+func (h *Host) JasperCredentials(ctx context.Context, env evergreen.Environment) (*certdepot.Credentials, error) {
+	creds, err := env.CertificateDepot().Find(h.JasperCredentialsID)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem finding creds in depot")
+	}
+
+	return creds, nil
 }
 
 // JasperCredentialsExpiration returns the time at which the host's Jasper
 // credentials will expire.
-func (h *Host) JasperCredentialsExpiration(ctx context.Context) (time.Time, error) {
-	return credentials.FindExpirationByID(ctx, h.JasperCredentialsID)
+func (h *Host) JasperCredentialsExpiration(ctx context.Context, env evergreen.Environment) (time.Time, error) {
+	user := &certdepot.User{}
+	if err := env.DB().Collection(evergreen.CredentialsCollection).FindOne(ctx, bson.M{"_id": h.JasperCredentialsID}).Decode(user); err != nil {
+		return time.Time{}, errors.Wrap(err, "problem finding credentials in the database")
+	}
+
+	return user.TTL, nil
 }
 
 // JasperClientCredentials gets the Jasper credentials for a client to
 // communicate with the host's running Jasper service. These credentials should
 // be used only to connect to the host's Jasper service.
-func (h *Host) JasperClientCredentials(ctx context.Context) (*rpc.Credentials, error) {
-	creds, err := credentials.ForJasperClient(ctx)
+func (h *Host) JasperClientCredentials(ctx context.Context, env evergreen.Environment) (*certdepot.Credentials, error) {
+	id := env.Settings().DomainName
+	creds, err := env.CertificateDepot().Find(id)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.Wrapf(err, "problem finding '%s' for '%s [%s]'", id, h.Id, h.JasperCredentialsID)
 	}
 	creds.ServerName = h.JasperCredentialsID
 	return creds, nil
@@ -445,7 +455,7 @@ func (h *Host) JasperClientCredentials(ctx context.Context) (*rpc.Credentials, e
 // GenerateJasperCredentials creates the Jasper credentials for the given host
 // without saving them to the database. If credentials already exist in the
 // database, they are deleted.
-func (h *Host) GenerateJasperCredentials(ctx context.Context) (*rpc.Credentials, error) {
+func (h *Host) GenerateJasperCredentials(ctx context.Context, env evergreen.Environment) (*certdepot.Credentials, error) {
 	if h.JasperCredentialsID == "" {
 		if err := h.UpdateJasperCredentialsID(h.Id); err != nil {
 			return nil, errors.Wrap(err, "problem setting Jasper credentials ID")
@@ -453,25 +463,32 @@ func (h *Host) GenerateJasperCredentials(ctx context.Context) (*rpc.Credentials,
 	}
 	// We have to delete this host's credentials because GenerateInMemory will
 	// fail if credentials already exist in the database.
-	if err := credentials.DeleteByID(ctx, h.JasperCredentialsID); err != nil {
+	if err := h.DeleteJasperCredentials(ctx, env); err != nil {
 		return nil, errors.Wrap(err, "problem deleting existing Jasper credentials")
 	}
-	return credentials.GenerateInMemory(ctx, h.JasperCredentialsID)
+
+	creds, err := env.CertificateDepot().Generate(h.JasperCredentialsID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "credential generation issue for host '%s'", h.JasperCredentialsID)
+	}
+
+	return creds, nil
 }
 
 // SaveJasperCredentials saves the given Jasper credentials in the database for
 // the host.
-func (h *Host) SaveJasperCredentials(ctx context.Context, creds *rpc.Credentials) error {
+func (h *Host) SaveJasperCredentials(ctx context.Context, env evergreen.Environment, creds *certdepot.Credentials) error {
 	if h.JasperCredentialsID == "" {
 		return errors.New("Jasper credentials ID is empty")
 	}
-	return credentials.SaveByID(ctx, h.JasperCredentialsID, creds)
+	return errors.Wrapf(env.CertificateDepot().Save(h.JasperCredentialsID, creds), "problem finding '%s'", h.JasperCredentialsID)
 }
 
 // DeleteJasperCredentials deletes the Jasper credentials for the host and
 // updates the host both in memory and in the database.
-func (h *Host) DeleteJasperCredentials(ctx context.Context) error {
-	return credentials.DeleteByID(ctx, h.JasperCredentialsID)
+func (h *Host) DeleteJasperCredentials(ctx context.Context, env evergreen.Environment) error {
+	_, err := env.DB().Collection(evergreen.CredentialsCollection).DeleteOne(ctx, bson.M{"_id": h.JasperCredentialsID})
+	return errors.Wrapf(err, "problem deleting credentials for '%s'", h.JasperCredentialsID)
 }
 
 // UpdateJasperCredentialsID sets the ID of the host's Jasper credentials.

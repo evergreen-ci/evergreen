@@ -5,7 +5,7 @@ aws_secret: "AWS SECRET VALUE"
 aws_id: "AWS ID VALUE"
 github_oauth: "token GITHUB OAUTH TOKEN"
 api_url: "mci-motu.10gen.cc"
-
+domain_name: "evergreen.local"
 keys:
     mci: "/data/home/etc/mci.pem"
 
@@ -27,7 +27,7 @@ scheduler:
 taskrunner:
     log_file: "/Users/michaelobrien/mci/logs/taskrunner.log"
 
-expansions: 
+expansions:
     github_private_key: |-
         -----BEGIN RSA PRIVATE KEY-----
         GITHUB PRIVATE KEY GOES HERE

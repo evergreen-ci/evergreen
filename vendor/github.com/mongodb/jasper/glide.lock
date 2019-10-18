@@ -31,6 +31,8 @@ imports:
     version: b7224f6123093cc04ce961170a360e1d22e214a5
   - name: github.com/evergreen-ci/aviation
     version: b5b1a9f93a1d0bd95769b3106971aaeca615a7b2
+  - name: github.com/evergreen-ci/certdepot
+    version: d2c7b2f7c9c7af6311d211fe7fb127d99bdc5d43
   - name: github.com/mongodb/ftdc
     version: 8e1b763add73034cb803b88f1fdd17438e2b7891
   - name: github.com/tychoish/mongorpc
