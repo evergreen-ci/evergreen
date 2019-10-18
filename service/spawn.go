@@ -312,7 +312,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			noExpiration := true
-			if err = cloud.ModifySpawnHost(ctx, h, host.HostModifyOptions{NoExpiration: &noExpiration}, env.Settings()); err != nil {
+			if err = cloud.ModifySpawnHost(ctx, uis.env, h, host.HostModifyOptions{NoExpiration: &noExpiration}); err != nil {
 				PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error updating host expiration"))
 				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error extending host expiration"))
 				return
