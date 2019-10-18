@@ -126,8 +126,7 @@ func TestBootstrapUserData(t *testing.T) {
 			userData, err := bootstrapUserData(ctx, env, h, "")
 			require.NoError(t, err)
 
-			cmd = h.CurlCommandWithRetry(env.Settings(), host.CurlDefaultNumRetries, host.CurlDefaultMaxSecs)
-			require.NoError(t, err)
+			cmd := h.CurlCommandWithRetry(env.Settings(), host.CurlDefaultNumRetries, host.CurlDefaultMaxSecs)
 			assert.Contains(t, userData, cmd)
 
 			cmd, err = h.StartAgentMonitorRequest(env.Settings())
@@ -147,8 +146,7 @@ func TestBootstrapUserData(t *testing.T) {
 			userData, err := bootstrapUserData(ctx, env, h, "")
 			require.NoError(t, err)
 
-			cmd = h.CurlCommandWithRetry(env.Settings(), host.CurlDefaultNumRetries, host.CurlDefaultMaxSecs)
-			require.NoError(t, err)
+			cmd := h.CurlCommandWithRetry(env.Settings(), host.CurlDefaultNumRetries, host.CurlDefaultMaxSecs)
 			assert.Contains(t, userData, cmd)
 
 			cmd, err = h.StartAgentMonitorRequest(env.Settings())
