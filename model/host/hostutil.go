@@ -408,7 +408,7 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 			"</powershell>",
 		)
 
-		return strings.Join(powershellCmds, "\r\n"), nil
+		return strings.Join(powershellCmds, "\n"), nil
 	}
 
 	setupScriptCmds, err := h.setupScriptCommands(settings)
@@ -598,7 +598,7 @@ func writeToFileCommand(path, content string, overwrite bool) string {
 	} else {
 		redirect = ">>"
 	}
-	return fmt.Sprintf("echo -n '%s' %s '%s'", content, redirect, path)
+	return fmt.Sprintf("echo -n '%s' %s %s", content, redirect, path)
 }
 
 // bufferedWriteJasperCredentialsFilesCommandsBuffered is the same as
