@@ -69,7 +69,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	project.BuildVariants = append(project.BuildVariants, bv)
 
 	// Marshal the parser project YAML for storage
-	pp.AddBuildVariant(variant, []string{taskDisplayName})
+	pp.AddBuildVariant(variant, "", "", []string{taskDisplayName})
 	projectYamlBytes, err := yaml.Marshal(pp)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal project config")

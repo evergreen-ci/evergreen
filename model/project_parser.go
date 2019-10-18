@@ -542,13 +542,24 @@ func translateProject(pp *ParserProject) (*Project, error) {
 	return proj, errors.Wrap(catcher.Resolve(), LoadProjectError)
 }
 
-func (pp *ParserProject) AddBuildVariant(name string, tasks []string) {
+func (pp *ParserProject) AddTask(name string, commands []PluginCommandConf) {
+	t := parserTask{
+		Name:     name,
+		Commands: commands,
+	}
+	pp.Tasks = append(pp.Tasks, t)
+}
+func (pp *ParserProject) AddBuildVariant(name, displayName, runOn string, tasks []string) {
 	bv := parserBV{
-		Name:  name,
-		Tasks: []parserBVTaskUnit{},
+		Name:        name,
+		DisplayName: displayName,
+		Tasks:       []parserBVTaskUnit{},
 	}
 	for _, taskName := range tasks {
 		bv.Tasks = append(bv.Tasks, parserBVTaskUnit{Name: taskName})
+	}
+	if runOn != "" {
+		bv.RunOn = []string{runOn}
 	}
 	pp.BuildVariants = append(pp.BuildVariants, bv)
 }

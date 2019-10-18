@@ -1292,6 +1292,19 @@ tasks:
 	assert.Equal("commandLogger", proj.Tasks[0].Commands[0].Loggers.System[0].Type)
 }
 
+func TestAddBuildVariant(t *testing.T) {
+	pp := ParserProject{
+		Identifier: "small",
+	}
+
+	pp.AddBuildVariant("name", "my-name", "", []string{"task"})
+	require.Len(t, pp.BuildVariants, 1)
+	assert.Equal(t, pp.BuildVariants[0].Name, "name")
+	assert.Equal(t, pp.BuildVariants[0].DisplayName, "my-name")
+	assert.Nil(t, pp.BuildVariants[0].RunOn)
+	assert.Len(t, pp.BuildVariants[0].Tasks, 1)
+}
+
 func TestParserProjectPersists(t *testing.T) {
 	simpleYaml := `
 loggers:

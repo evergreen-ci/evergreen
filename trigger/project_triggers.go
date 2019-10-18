@@ -38,12 +38,12 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 	var proj *model.Project
 	var pp *model.ParserProject
 	if args.ConfigFile != "" {
-		proj, pp, err = makeDownstreamConfigFromFile(args.DownstreamProject, args.ConfigFile)
+		proj, pp, err = makeDownstreamProjectFromFile(args.DownstreamProject, args.ConfigFile)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
 	} else if args.Command != "" {
-		proj, err = makeDownstreamConfigFromCommand(args.DownstreamProject, args.Command, args.GenerateFile)
+		proj, pp, err = makeDownstreamProjectFromCommand(args.DownstreamProject.Identifier, args.Command, args.GenerateFile)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -107,7 +107,7 @@ func metadataFromVersion(source model.Version, ref model.ProjectRef) (repotracke
 	return metadata, nil
 }
 
-func makeDownstreamConfigFromFile(ref model.ProjectRef, file string) (*model.Project, *model.ParserProject, error) {
+func makeDownstreamProjectFromFile(ref model.ProjectRef, file string) (*model.Project, *model.ParserProject, error) {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error getting evergreen settings")
@@ -136,13 +136,14 @@ func makeDownstreamConfigFromFile(ref model.ProjectRef, file string) (*model.Pro
 	return &config, pp, nil
 }
 
-func makeDownstreamConfigFromCommand(ref model.ProjectRef, command, generateFile string) (*model.Project, error) {
+func makeDownstreamProjectFromCommand(identifier, command, generateFile string) (*model.Project, *model.ParserProject, error) {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return nil, errors.Wrap(err, "error retrieving config")
+		return nil, nil, errors.Wrap(err, "error retrieving config")
 	}
-	baseConfig := model.Project{
-		Identifier: ref.Identifier,
+	bvtName := "generate-config"
+	fullProject := &model.Project{
+		Identifier: identifier,
 		Tasks: []model.ProjectTask{
 			{
 				Name: "generate-config",
@@ -176,10 +177,16 @@ func makeDownstreamConfigFromCommand(ref model.ProjectRef, command, generateFile
 				DisplayName: "generate",
 				RunOn:       []string{settings.Triggers.GenerateTaskDistro},
 				Tasks: []model.BuildVariantTaskUnit{
-					{Name: "generate-config"},
+					{Name: bvtName},
 				},
 			},
 		},
 	}
-	return &baseConfig, nil
+	pp := &model.ParserProject{
+		Identifier: identifier,
+	}
+
+	pp.AddTask(fullProject.Tasks[0].Name, fullProject.Tasks[0].Commands)
+	pp.AddBuildVariant(fullProject.BuildVariants[0].Name, fullProject.BuildVariants[0].DisplayName, settings.Triggers.GenerateTaskDistro, []string{bvtName})
+	return fullProject, pp, nil
 }

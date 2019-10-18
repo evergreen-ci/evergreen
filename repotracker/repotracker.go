@@ -71,29 +71,16 @@ type ProjectInfo struct {
 }
 
 func (p *ProjectInfo) notPopulated() bool {
-	return p.Ref == nil || p.Project == nil
+	return p.Ref == nil || p.IntermediateProject == nil || p.Project == nil
 }
 
 // PopulateVersion updates the version's ParserProject if we have or can create it
 func (p *ProjectInfo) populateVersion(v *model.Version) error {
-	if p.IntermediateProject != nil {
-		config, err := yaml.Marshal(p.IntermediateProject)
-		if err != nil {
-			return errors.Wrap(err, "error marshalling intermediate project")
-		}
-		v.Config = string(config)
-		return nil
-	}
-	config, err := yaml.Marshal(p.Project)
+	config, err := yaml.Marshal(p.IntermediateProject)
 	if err != nil {
-		return errors.Wrap(err, "error marshaling config")
-	}
-	pp, err := model.LoadProjectInto(config, p.Ref.Identifier, p.Project)
-	if err != nil {
-		return errors.Wrap(err, "error creating parser project")
+		return errors.Wrap(err, "error marshalling intermediate project")
 	}
 	v.Config = string(config)
-	p.IntermediateProject = pp
 	return nil
 }
 
@@ -615,7 +602,7 @@ func CreateManifest(v model.Version, proj *model.Project, branch string, setting
 func CreateVersionFromConfig(ctx context.Context, projectInfo *ProjectInfo,
 	metadata VersionMetadata, ignore bool, versionErrs *VersionErrors) (*model.Version, error) {
 	if projectInfo.notPopulated() {
-		return nil, errors.New("project ref and project cannot be nil")
+		return nil, errors.New("project ref and parser project cannot be nil")
 	}
 
 	// create a version document

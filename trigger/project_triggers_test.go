@@ -78,7 +78,7 @@ func TestMakeDownstreamConfigFromCommand(t *testing.T) {
 	}
 	cmd := "echo hi"
 
-	project, err := makeDownstreamConfigFromCommand(ref, cmd, "generate.json")
+	project, err := makeDownstreamProjectFromCommand(ref, cmd, "generate.json")
 	assert.NoError(err)
 	assert.Equal(ref.Identifier, project.Identifier)
 	foundCommand := false
