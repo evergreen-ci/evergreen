@@ -110,7 +110,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		}
 	}
 
-	if err = host.RemoveStaleInitializing(j.DistroID); err != nil {
+	if err = host.RemoveStaleInitializing(ctx, j.env, j.DistroID); err != nil {
 		j.AddError(errors.Wrap(err, "Problem removing previously intented hosts, before creating new ones")) // nolint:misspell
 		return
 	}

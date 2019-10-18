@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -118,8 +119,6 @@ func TestMakeMultipartUserData(t *testing.T) {
 func TestBootstrapUserData(t *testing.T) {
 	tctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	env := evergreen.GetEnvironment()
 
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host, userID string){
 		"ContainsCommandsToSetupHostForRunningTasks": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host, userID string) {
@@ -249,6 +248,7 @@ func TestBootstrapUserData(t *testing.T) {
 			require.NoError(t, h.Insert())
 			ctx, ccancel := context.WithTimeout(tctx, 5*time.Second)
 			defer ccancel()
+			env := testutil.NewEnvironment(ctx, t)
 
 			testCase(ctx, t, env, h, userID)
 		})

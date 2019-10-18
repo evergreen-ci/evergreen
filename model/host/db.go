@@ -1,6 +1,7 @@
 package host
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -760,7 +761,7 @@ func FindUserDataSpawnHostsProvisioning() ([]Host, error) {
 //
 // If you pass the empty string as a distroID, it will remove stale
 // host intents for *all* distros.
-func RemoveStaleInitializing(distroID string) error {
+func RemoveStaleInitializing(ctx context.Context, env evergreen.Environment, distroID string) error {
 	query := bson.M{
 		UserHostKey: false,
 		ProviderKey: bson.M{"$in": evergreen.ProviderSpawnable},
@@ -779,6 +780,19 @@ func RemoveStaleInitializing(distroID string) error {
 	if distroID != "" {
 		key := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
 		query[key] = distroID
+	}
+
+	hosts := []Host{}
+	if err := db.FindAll(Collection, query, db.NoProjection, db.NoSort, db.NoSkip, db.NoLimit, &hosts); err != nil {
+		return errors.WithStack(err)
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for _, h := range hosts {
+		catcher.Add(h.DeleteJasperCredentials(ctx, env))
+	}
+	if catcher.HasErrors() {
+		return catcher.Resolve()
 	}
 
 	return db.RemoveAll(Collection, query)

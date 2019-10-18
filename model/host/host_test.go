@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
@@ -15,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	adb "github.com/mongodb/anser/db"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -3037,7 +3039,13 @@ func TestFindUphostParents(t *testing.T) {
 
 func TestRemoveStaleInitializing(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 	assert.NoError(db.Clear(Collection))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env := testutil.NewEnvironment(ctx, t)
 
 	now := time.Now()
 	distro1 := distro.Distro{Id: "distro1"}
@@ -3103,18 +3111,35 @@ func TestRemoveStaleInitializing(t *testing.T) {
 	}
 
 	for i, _ := range hosts {
-		assert.NoError(hosts[i].Insert())
+		require.NoError(hosts[i].Insert())
+		creds, err := hosts[i].GenerateJasperCredentials(ctx, env)
+		require.NoError(err)
+		require.NoError(hosts[i].SaveJasperCredentials(ctx, env, creds))
 	}
 
-	err := RemoveStaleInitializing(distro1.Id)
+	err := RemoveStaleInitializing(ctx, env, distro1.Id)
 	assert.NoError(err)
 
 	numHosts, err := Count(All)
 	assert.NoError(err)
 	assert.Equal(5, numHosts)
 
-	err = RemoveStaleInitializing(distro2.Id)
+	dbCreds := certdepot.User{}
+	assert.NoError(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host1"}, db.NoProjection, db.NoSort, &dbCreds))
+	assert.NoError(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host3"}, db.NoProjection, db.NoSort, &dbCreds))
+	assert.NoError(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host4"}, db.NoProjection, db.NoSort, &dbCreds))
+	assert.NoError(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host5"}, db.NoProjection, db.NoSort, &dbCreds))
+	assert.NoError(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host7"}, db.NoProjection, db.NoSort, &dbCreds))
+	assert.True(adb.ResultsNotFound(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host2"}, db.NoProjection, db.NoSort, &dbCreds)))
+	assert.True(adb.ResultsNotFound(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host6"}, db.NoProjection, db.NoSort, &dbCreds)))
+
+	err = RemoveStaleInitializing(ctx, env, distro2.Id)
 	assert.NoError(err)
+	assert.NoError(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host1"}, db.NoProjection, db.NoSort, &dbCreds))
+	assert.NoError(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host3"}, db.NoProjection, db.NoSort, &dbCreds))
+	assert.NoError(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host5"}, db.NoProjection, db.NoSort, &dbCreds))
+	assert.NoError(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host7"}, db.NoProjection, db.NoSort, &dbCreds))
+	assert.True(adb.ResultsNotFound(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host4"}, db.NoProjection, db.NoSort, &dbCreds)))
 
 	numHosts, err = Count(All)
 	assert.NoError(err)
