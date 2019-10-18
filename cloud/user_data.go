@@ -137,14 +137,10 @@ func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.H
 	}
 	settings := env.Settings()
 
-	setupScript, err := h.SetupScriptCommands(settings)
-	if err != nil {
-		return "", errors.Wrap(err, "error creating setup script for user data")
-	}
-
 	fetchClient := h.CurlCommandWithRetry(settings, host.CurlDefaultNumRetries, host.CurlDefaultMaxSecs)
 
 	var postFetchClient string
+	var err error
 	if h.StartedBy == evergreen.User {
 		// Start the host with an agent monitor to run tasks.
 		if postFetchClient, err = h.StartAgentMonitorRequest(settings); err != nil {
@@ -168,8 +164,7 @@ func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.H
 	}
 
 	bootstrapScript, err := h.BootstrapScript(settings, creds,
-		[]string{setupScript},
-		[]string{fetchClient, postFetchClient, markDone},
+		[]string{fetchClient, h.SetupCommand(), postFetchClient, markDone},
 	)
 	if err != nil {
 		return customScript, errors.Wrap(err, "could not generate user data bootstrap script")

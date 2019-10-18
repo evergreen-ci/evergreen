@@ -7,6 +7,7 @@ import (
 	"math"
 	"net"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"syscall"
@@ -80,8 +81,8 @@ func TestJasperCommands(t *testing.T) {
 	for opName, opCase := range map[string]func(t *testing.T, h *Host, settings *evergreen.Settings){
 		"VerifyBaseFetchCommands": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			expectedCmds := []string{
-				"mkdir -m 777 -p \"/foo\"",
-				"cd \"/foo\"",
+				"mkdir -m 777 -p /foo",
+				"cd /foo",
 				fmt.Sprintf("curl -LO 'www.example.com/download_file-linux-amd64-abc123.tar.gz' --retry %d --retry-max-time %d", CurlDefaultNumRetries, CurlDefaultMaxSecs),
 				"tar xzf 'download_file-linux-amd64-abc123.tar.gz'",
 				"chmod +x 'jasper_cli'",
@@ -101,14 +102,16 @@ func TestJasperCommands(t *testing.T) {
 			}
 		},
 		"BootstrapScript": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			setupScript, err := h.setupScriptCommands(settings)
+			require.NoError(t, err)
+			expectedPreCmds := []string{setupScript}
 			expectedCmds := []string{h.FetchJasperCommand(settings.HostJasper), h.ForceReinstallJasperCommand(settings)}
-			expectedPreCmds := []string{"foo", "bar"}
 			expectedPostCmds := []string{"bat", "baz"}
 
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
 
-			script, err := h.BootstrapScript(settings, creds, expectedPreCmds, expectedPostCmds)
+			script, err := h.BootstrapScript(settings, creds, expectedPostCmds)
 			require.NoError(t, err)
 
 			assert.True(t, strings.HasPrefix(script, "#!/bin/bash"))
@@ -116,19 +119,19 @@ func TestJasperCommands(t *testing.T) {
 			currPos := 0
 			for _, expectedCmd := range expectedPreCmds {
 				offset := strings.Index(script[currPos:], expectedCmd)
-				require.NotEqual(t, offset, -1)
+				require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", expectedCmd))
 				currPos += offset + len(expectedCmd)
 			}
 
 			for _, expectedCmd := range expectedCmds {
 				offset := strings.Index(script[currPos:], expectedCmd)
-				require.NotEqual(t, -1, offset)
+				require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", expectedCmd))
 				currPos += offset + len(expectedCmd)
 			}
 
 			for _, expectedCmd := range expectedPostCmds {
 				offset := strings.Index(script[currPos:], expectedCmd)
-				require.NotEqual(t, -1, offset)
+				require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", expectedCmd))
 				currPos += offset + len(expectedCmd)
 			}
 		},
@@ -195,8 +198,8 @@ func TestJasperCommandsWindows(t *testing.T) {
 	for opName, opCase := range map[string]func(t *testing.T, h *Host, settings *evergreen.Settings){
 		"VerifyBaseFetchCommands": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			expectedCmds := []string{
-				"mkdir -m 777 -p \"/foo\"",
-				"cd \"/foo\"",
+				"mkdir -m 777 -p /foo",
+				"cd /foo",
 				fmt.Sprintf("curl -LO 'www.example.com/download_file-windows-amd64-abc123.tar.gz' --retry %d --retry-max-time %d", CurlDefaultNumRetries, CurlDefaultMaxSecs),
 				"tar xzf 'download_file-windows-amd64-abc123.tar.gz'",
 				"chmod +x 'jasper_cli.exe'",
@@ -218,15 +221,17 @@ func TestJasperCommandsWindows(t *testing.T) {
 		"BootstrapScript": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			require.NoError(t, h.Insert())
 
+			writeSetupScriptCmds, err := h.writeSetupScriptCommands(settings)
+			require.NoError(t, err)
+
 			setupUserCmds, err := h.SetupServiceUserCommands()
 			require.NoError(t, err)
 
-			expectedPreCmds := []string{"preCmd1", "preCmd2"}
 			expectedPostCmds := []string{"postCmd1", "postCmd2"}
 
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
-			writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommandsBuffered(settings.Splunk, creds)
+			writeCredentialsCmd, err := h.bufferedWriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 			require.NoError(t, err)
 
 			expectedCmds := append(writeCredentialsCmd,
@@ -238,10 +243,10 @@ func TestJasperCommandsWindows(t *testing.T) {
 				expectedCmds[i] = util.PowerShellQuotedString(expectedCmds[i])
 			}
 
-			script, err := h.BootstrapScript(settings, creds, expectedPreCmds, expectedPostCmds)
+			script, err := h.BootstrapScript(settings, creds, expectedPostCmds)
 			require.NoError(t, err)
 
-			expectedPreCmds = append([]string{setupUserCmds}, expectedPreCmds...)
+			expectedPreCmds := append([]string{setupUserCmds}, writeSetupScriptCmds...)
 
 			assert.True(t, strings.HasPrefix(script, "<powershell>"))
 			assert.True(t, strings.HasSuffix(script, "</powershell>"))
@@ -249,19 +254,19 @@ func TestJasperCommandsWindows(t *testing.T) {
 			currPos := 0
 			for _, expectedCmd := range expectedPreCmds {
 				offset := strings.Index(script[currPos:], expectedCmd)
-				require.NotEqual(t, -1, offset)
+				require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", expectedCmd))
 				currPos += offset + len(expectedCmd)
 			}
 
 			for _, expectedCmd := range expectedCmds {
 				offset := strings.Index(script[currPos:], expectedCmd)
-				require.NotEqual(t, -1, offset)
+				require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", expectedCmd))
 				currPos += offset + len(expectedCmd)
 			}
 
 			for _, expectedCmd := range expectedPostCmds {
 				offset := strings.Index(script[currPos:], expectedCmd)
-				require.NotEqual(t, -1, offset)
+				require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", expectedCmd))
 				currPos += offset + len(expectedCmd)
 			}
 		},
@@ -293,7 +298,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 
 					expectedCreds, err := creds.Export()
 					require.NoError(t, err)
-					assert.Equal(t, fmt.Sprintf("mkdir -m 777 -p \"/bar\" && echo '%s' > '/bar/bat.txt'", expectedCreds), cmd)
+					assert.Equal(t, fmt.Sprintf("mkdir -m 777 -p /bar && echo '%s' > '/bar/bat.txt'", expectedCreds), cmd)
 				},
 				"WithSplunkCredentials": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 					settings.Splunk.Token = "token"
@@ -303,7 +308,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 
 					expectedCreds, err := creds.Export()
 					require.NoError(t, err)
-					assert.Equal(t, fmt.Sprintf("mkdir -m 777 -p \"/bar\" && echo '%s' > '/bar/bat.txt' && echo '%s' > '/bar/splunk.txt'", expectedCreds, settings.Splunk.Token), cmd)
+					assert.Equal(t, fmt.Sprintf("mkdir -m 777 -p /bar && echo '%s' > '/bar/bat.txt' && echo '%s' > '/bar/splunk.txt'", expectedCreds, settings.Splunk.Token), cmd)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
@@ -333,7 +338,8 @@ func TestJasperCommandsWindows(t *testing.T) {
 					ShellPath:             "/bin/bash",
 					ServiceUser:           "service-user",
 				},
-				User: "user",
+				Setup: "#!/bin/bash\necho hello",
+				User:  "user",
 			}}
 			settings := &evergreen.Settings{
 				HostJasper: evergreen.HostJasperConfig{
@@ -548,6 +554,34 @@ func TestJasperProcess(t *testing.T) {
 	}
 }
 
+func TestBufferedWriteFileCommands(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T, path, content string){
+		"BufferedWriteFileCommandsUsesSingleCommandForShortFile": func(t *testing.T, path, content string) {
+			cmds := bufferedWriteFileCommands(path, content)
+			require.Len(t, cmds, 2)
+			assert.Equal(t, fmt.Sprintf("mkdir -m 777 -p %s", filepath.Dir(path)), cmds[0])
+			assert.Equal(t, writeToFileCommand(path, content, true), cmds[1])
+		},
+		"BufferedWriteFileCommandsUsesMultipleCommandsForLongFile": func(t *testing.T, path, content string) {
+			content = strings.Repeat(content, 1000)
+			cmds := bufferedWriteFileCommands(path, content)
+			require.NotZero(t, len(cmds))
+		},
+		"WriteToFileCommandRedirectsOnOverwrite": func(t *testing.T, path, content string) {
+			cmd := writeToFileCommand(path, content, true)
+			assert.Equal(t, fmt.Sprintf("echo -n '%s' > %s", content, path), cmd)
+		},
+		"WriteToFileCommandAppendsOnNoOverwrite": func(t *testing.T, path, content string) {
+			cmd := writeToFileCommand(path, content, false)
+			assert.Equal(t, fmt.Sprintf("echo -n '%s' >> %s", content, path), cmd)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			testCase(t, "/path/to/file", "foobar")
+		})
+	}
+}
+
 func TestTeardownCommandOverSSH(t *testing.T) {
 	cmd := TearDownCommandOverSSH()
 	assert.Equal(t, "chmod +x teardown.sh && sh teardown.sh", cmd)
@@ -602,51 +636,6 @@ func TestBuildLocalJasperClientRequest(t *testing.T) {
 	assert.Contains(t, cmd[index:], "--service=rpc")
 	assert.Contains(t, cmd[index:], fmt.Sprintf("--port=%d", config.Port))
 	assert.Contains(t, cmd[index:], fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
-}
-
-func TestSetupScriptCommands(t *testing.T) {
-	for testName, testCase := range map[string]func(t *testing.T, h *Host, settings *evergreen.Settings){
-		"ReturnsEmptyWithoutSetup": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			cmds, err := h.SetupScriptCommands(settings)
-			require.NoError(t, err)
-			assert.Empty(t, cmds)
-		},
-		"ReturnsEmptyIfSpawnedByTask": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			h.SpawnOptions.SpawnedByTask = true
-			cmds, err := h.SetupScriptCommands(settings)
-			require.NoError(t, err)
-			assert.Empty(t, cmds)
-		},
-		"ReturnsUnmodifiedWithoutExpansions": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			h.Distro.Setup = "foo"
-			cmds, err := h.SetupScriptCommands(settings)
-			require.NoError(t, err)
-			assert.Equal(t, h.Distro.Setup, cmds)
-		},
-		"ReturnsExpandedWithValidExpansions": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			key := "foo"
-			h.Distro.Setup = fmt.Sprintf("${%s}", key)
-			settings.Expansions = map[string]string{
-				key: "bar",
-			}
-			cmds, err := h.SetupScriptCommands(settings)
-			require.NoError(t, err)
-			assert.Equal(t, settings.Expansions[key], cmds)
-		},
-		"FailsWithInvalidSetup": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			key := "foo"
-			h.Distro.Setup = "${" + key
-			settings.Expansions = map[string]string{
-				key: "bar",
-			}
-			_, err := h.SetupScriptCommands(settings)
-			assert.Error(t, err)
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			testCase(t, &Host{Id: "test"}, &evergreen.Settings{})
-		})
-	}
 }
 
 func TestStartAgentMonitorRequest(t *testing.T) {
