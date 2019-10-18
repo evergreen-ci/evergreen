@@ -110,14 +110,15 @@ type CreateHost struct {
 	KeyName         string      `mapstructure:"key_name" json:"key_name" plugin:"expand"`
 
 	// docker-related settings
-	Image                    string           `mapstructure:"image" json:"image" plugin:"expand"`
-	Command                  string           `mapstructure:"command" json:"command" plugin:"expand"`
-	Registry                 RegistrySettings `mapstructure:"registry" json:"registry" plugin:"expand"`
-	Background               bool             `mapstructure:"background" json:"background"` // default is true
-	ContainerWaitTimeoutSecs int              `mapstructure:"container_wait_timeout_secs" json:"container_wait_timeout_secs"`
-	PollFrequency            int              `mapstructure:"poll_frequency_secs" json:"poll_frequency_secs"` // poll frequency in seconds
-	StdoutFile               string           `mapstructure:"stdout_file_name" json:"stdout_file_name" plugin:"expand"`
-	StderrFile               string           `mapstructure:"stderr_file_name" json:"stderr_file_name" plugin:"expand"`
+	Image                    string            `mapstructure:"image" json:"image" plugin:"expand"`
+	Command                  string            `mapstructure:"command" json:"command" plugin:"expand"`
+	Registry                 RegistrySettings  `mapstructure:"registry" json:"registry" plugin:"expand"`
+	Background               bool              `mapstructure:"background" json:"background"` // default is true
+	ContainerWaitTimeoutSecs int               `mapstructure:"container_wait_timeout_secs" json:"container_wait_timeout_secs"`
+	PollFrequency            int               `mapstructure:"poll_frequency_secs" json:"poll_frequency_secs"` // poll frequency in seconds
+	StdoutFile               string            `mapstructure:"stdout_file_name" json:"stdout_file_name" plugin:"expand"`
+	StderrFile               string            `mapstructure:"stderr_file_name" json:"stderr_file_name" plugin:"expand"`
+	EnvironmentVars          map[string]string `mapstructure:"environment_vars" json:"environment_vars" plugin:"environment_vars"`
 }
 
 type EbsDevice struct {

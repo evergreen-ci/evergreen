@@ -83,7 +83,6 @@ variables:
       - func: setup-credentials
       - func: setup-mongodb
       - func: setup-docker-host
-      - func: run-make
         vars:
           target: revendor
       - func: run-make
@@ -283,6 +282,9 @@ functions:
         scope: build
         security_group_ids:
           - sg-097bff6dd0d1d31d0
+        environment_vars:
+          - apple: red
+          - banana: yellow
     - command: host.list
       type: setup
       params:
