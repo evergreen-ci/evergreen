@@ -625,10 +625,14 @@ func (a *APIJiraConfig) ToService() (interface{}, error) {
 }
 
 type APILoggerConfig struct {
-	Buffer         *APILogBuffering `json:"buffer"`
-	DefaultLevel   APIString        `json:"default_level"`
-	ThresholdLevel APIString        `json:"threshold_level"`
-	LogkeeperURL   APIString        `json:"logkeeper_url"`
+	Buffer              *APILogBuffering `json:"buffer"`
+	DefaultLevel        APIString        `json:"default_level"`
+	ThresholdLevel      APIString        `json:"threshold_level"`
+	LogkeeperURL        APIString        `json:"logkeeper_url"`
+	BuildloggerBaseURL  APIString        `json:"buildlogger_base_url"`
+	BuildloggerRPCPort  APIString        `json:"buildlogger_rpc_port"`
+	BuildloggerUser     APIString        `json:"buildlogger_user"`
+	BuildloggerPassword APIString        `json:"buildlogger_password"`
 }
 
 func (a *APILoggerConfig) BuildFromService(h interface{}) error {
@@ -637,6 +641,10 @@ func (a *APILoggerConfig) BuildFromService(h interface{}) error {
 		a.DefaultLevel = ToAPIString(v.DefaultLevel)
 		a.ThresholdLevel = ToAPIString(v.ThresholdLevel)
 		a.LogkeeperURL = ToAPIString(v.LogkeeperURL)
+		a.BuildloggerBaseURL = ToAPIString(v.BuildloggerBaseURL)
+		a.BuildloggerRPCPort = ToAPIString(v.BuildloggerRPCPort)
+		a.BuildloggerUser = ToAPIString(v.BuildloggerUser)
+		a.BuildloggerPassword = ToAPIString(v.BuildloggerPassword)
 		a.Buffer = &APILogBuffering{}
 		if err := a.Buffer.BuildFromService(v.Buffer); err != nil {
 			return err
@@ -649,9 +657,13 @@ func (a *APILoggerConfig) BuildFromService(h interface{}) error {
 
 func (a *APILoggerConfig) ToService() (interface{}, error) {
 	config := evergreen.LoggerConfig{
-		DefaultLevel:   FromAPIString(a.DefaultLevel),
-		ThresholdLevel: FromAPIString(a.ThresholdLevel),
-		LogkeeperURL:   FromAPIString(a.LogkeeperURL),
+		DefaultLevel:        FromAPIString(a.DefaultLevel),
+		ThresholdLevel:      FromAPIString(a.ThresholdLevel),
+		LogkeeperURL:        FromAPIString(a.LogkeeperURL),
+		BuildloggerBaseURL:  FromAPIString(a.BuildloggerBaseURL),
+		BuildloggerRPCPort:  FromAPIString(a.BuildloggerRPCPort),
+		BuildloggerUser:     FromAPIString(a.BuildloggerUser),
+		BuildloggerPassword: FromAPIString(a.BuildloggerPassword),
 	}
 	i, err := a.Buffer.ToService()
 	if err != nil {
