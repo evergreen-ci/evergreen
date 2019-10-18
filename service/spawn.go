@@ -320,6 +320,10 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
+		// use now as a base for how far we're extending if there is currently no expiration
+		if h.NoExpiration {
+			h.ExpirationTime = time.Now()
+		}
 		if updateParams.Expiration.Before(h.ExpirationTime) {
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash("Expiration can only be extended."))
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("expiration can only be extended"))
@@ -338,15 +342,6 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error updating host expiration time"))
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error extending host expiration time"))
 			return
-		}
-		// make host expirable
-		if h.NoExpiration {
-			noExpiration := false
-			if err = cloud.ModifySpawnHost(ctx, h, host.HostModifyOptions{NoExpiration: &noExpiration}, env.Settings()); err != nil {
-				PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error making host expirable"))
-				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error making host expirable"))
-				return
-			}
 		}
 
 		loc, err := time.LoadLocation(u.Settings.Timezone)
