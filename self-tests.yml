@@ -9,9 +9,9 @@ loggers:
     - type: evergreen
 stepback: true
 ignore:
-    - "*.md" # don't schedule tests if a commit only changes markdown files
-    - "scripts/*" # our scripts are untested, so don't schedule tests for them
-    - ".github/*" # github CODEOWNERS configuration
+  - "*.md" # don't schedule tests if a commit only changes markdown files
+  - "scripts/*" # our scripts are untested, so don't schedule tests for them
+  - ".github/*" # github CODEOWNERS configuration
 
 post:
   - func: attach-test-results
@@ -83,6 +83,7 @@ variables:
       - func: setup-credentials
       - func: setup-mongodb
       - func: setup-docker-host
+      - func: run-make
         vars:
           target: revendor
       - func: run-make
@@ -271,7 +272,7 @@ functions:
       params:
         shell: bash
         script: |
-            gopath/src/github.com/evergreen-ci/evergreen/scripts/setup-docker.sh
+          gopath/src/github.com/evergreen-ci/evergreen/scripts/setup-docker.sh
   setup-docker-host:
     - command: host.create
       type: setup
@@ -282,9 +283,6 @@ functions:
         scope: build
         security_group_ids:
           - sg-097bff6dd0d1d31d0
-        environment_vars:
-          - apple: red
-          - banana: yellow
     - command: host.list
       type: setup
       params:
