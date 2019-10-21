@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -47,6 +48,16 @@ func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if uis.Settings.Ui.ExpireLoginCookieDomain != "" {
+		http.SetCookie(w, &http.Cookie{
+			Name:     evergreen.AuthTokenCookie,
+			Value:    "",
+			Path:     "/",
+			HttpOnly: true,
+			Expires:  time.Now().Add(-1 * time.Hour),
+			Domain:   uis.Settings.Ui.ExpireLoginCookieDomain,
+		})
+	}
 	uis.umconf.AttachCookie(token, w)
 	gimlet.WriteJSON(w, map[string]string{})
 }
@@ -80,6 +91,16 @@ func (uis *UIServer) userGetKey(w http.ResponseWriter, r *http.Request) {
 			StatusCode: http.StatusUnauthorized,
 		}))
 		return
+	}
+	if uis.Settings.Ui.ExpireLoginCookieDomain != "" {
+		http.SetCookie(w, &http.Cookie{
+			Name:     evergreen.AuthTokenCookie,
+			Value:    "",
+			Path:     "/",
+			HttpOnly: true,
+			Expires:  time.Now().Add(-1 * time.Hour),
+			Domain:   uis.Settings.Ui.ExpireLoginCookieDomain,
+		})
 	}
 	uis.umconf.AttachCookie(token, w)
 

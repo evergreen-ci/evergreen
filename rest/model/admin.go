@@ -1329,16 +1329,17 @@ func (a *APISplunkConnectionInfo) ToService() (interface{}, error) {
 }
 
 type APIUIConfig struct {
-	Url            APIString `json:"url"`
-	HelpUrl        APIString `json:"help_url"`
-	UIv2Url        APIString `json:"uiv2_url"`
-	HttpListenAddr APIString `json:"http_listen_addr"`
-	Secret         APIString `json:"secret"`
-	DefaultProject APIString `json:"default_project"`
-	CacheTemplates bool      `json:"cache_templates"`
-	CsrfKey        APIString `json:"csrf_key"`
-	CORSOrigins    []string  `json:"cors_origins"`
-	LoginDomain    APIString `json:"login_domain"`
+	Url                     APIString `json:"url"`
+	HelpUrl                 APIString `json:"help_url"`
+	UIv2Url                 APIString `json:"uiv2_url"`
+	HttpListenAddr          APIString `json:"http_listen_addr"`
+	Secret                  APIString `json:"secret"`
+	DefaultProject          APIString `json:"default_project"`
+	CacheTemplates          bool      `json:"cache_templates"`
+	CsrfKey                 APIString `json:"csrf_key"`
+	CORSOrigins             []string  `json:"cors_origins"`
+	LoginDomain             APIString `json:"login_domain"`
+	ExpireLoginCookieDomain APIString `json:"expire_domain"`
 }
 
 func (a *APIUIConfig) BuildFromService(h interface{}) error {
@@ -1354,6 +1355,7 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 		a.CsrfKey = ToAPIString(v.CsrfKey)
 		a.CORSOrigins = v.CORSOrigins
 		a.LoginDomain = ToAPIString(v.LoginDomain)
+		a.ExpireLoginCookieDomain = ToAPIString(v.ExpireLoginCookieDomain)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1362,16 +1364,17 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 
 func (a *APIUIConfig) ToService() (interface{}, error) {
 	return evergreen.UIConfig{
-		Url:            FromAPIString(a.Url),
-		HelpUrl:        FromAPIString(a.HelpUrl),
-		UIv2Url:        FromAPIString(a.UIv2Url),
-		HttpListenAddr: FromAPIString(a.HttpListenAddr),
-		Secret:         FromAPIString(a.Secret),
-		DefaultProject: FromAPIString(a.DefaultProject),
-		CacheTemplates: a.CacheTemplates,
-		CsrfKey:        FromAPIString(a.CsrfKey),
-		CORSOrigins:    a.CORSOrigins,
-		LoginDomain:    FromAPIString(a.LoginDomain),
+		Url:                     FromAPIString(a.Url),
+		HelpUrl:                 FromAPIString(a.HelpUrl),
+		UIv2Url:                 FromAPIString(a.UIv2Url),
+		HttpListenAddr:          FromAPIString(a.HttpListenAddr),
+		Secret:                  FromAPIString(a.Secret),
+		DefaultProject:          FromAPIString(a.DefaultProject),
+		CacheTemplates:          a.CacheTemplates,
+		CsrfKey:                 FromAPIString(a.CsrfKey),
+		CORSOrigins:             a.CORSOrigins,
+		LoginDomain:             FromAPIString(a.LoginDomain),
+		ExpireLoginCookieDomain: FromAPIString(a.ExpireLoginCookieDomain),
 	}, nil
 }
 
