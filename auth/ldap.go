@@ -30,6 +30,7 @@ func NewLDAPUserManager(conf *evergreen.LDAPConfig) (gimlet.UserManager, error) 
 		ClearCache:    user.ClearLoginCache,
 		GetUser:       func(id string) (gimlet.User, bool, error) { return getUserByIdWithExpiration(id, expireAfter) },
 		GetCreateUser: getOrCreateUser,
+		GroupOuName:   conf.GroupOU,
 	}
 	um, err := ldap.NewUserService(opts)
 	if err != nil {
