@@ -69,8 +69,6 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
                     host.date_for_expiration = new Date(host.expiration_time);
                     host.time_for_expiration = new Date(host.expiration_time);
                   }
-                  host.empty_time = new Date("0001-01-01T00:00:00Z")
-
                 }
               }
               if ($scope.lastSelected && $scope.lastSelected.id == host.id) {
