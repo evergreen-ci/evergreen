@@ -4,13 +4,14 @@ import (
 	"context"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/pkg/errors"
 )
 
 // MockRepoPoller is a utility for testing the repotracker using a dummy
 // project
 type mockRepoPoller struct {
-	project   *model.Project
-	revisions []model.Revision
+	parserProject *model.ParserProject
+	revisions     []model.Revision
 
 	ConfigGets uint
 	nextError  error
@@ -18,10 +19,10 @@ type mockRepoPoller struct {
 }
 
 // Creates a new MockRepo poller with the given project settings
-func NewMockRepoPoller(mockProject *model.Project, mockRevisions []model.Revision) *mockRepoPoller {
+func NewMockRepoPoller(mockProject *model.ParserProject, mockRevisions []model.Revision) *mockRepoPoller {
 	return &mockRepoPoller{
-		project:   mockProject,
-		revisions: mockRevisions,
+		parserProject: mockProject,
+		revisions:     mockRevisions,
 	}
 }
 
@@ -49,10 +50,15 @@ func (d *mockRepoPoller) GetRemoteConfig(_ context.Context, revision string) (*m
 	}
 	if d.badDistro != "" {
 		// change the target distros if we've called addBadDistro, creating a validation warning
-		d.project.BuildVariants[0].RunOn = append(d.project.BuildVariants[0].RunOn, d.badDistro)
+		d.parserProject.BuildVariants[0].RunOn = append(d.parserProject.BuildVariants[0].RunOn, d.badDistro)
 		d.badDistro = ""
 	}
-	return d.project, nil, nil
+
+	p, err := model.TranslateProject(d.parserProject)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "error translating project")
+	}
+	return p, d.parserProject, nil
 }
 
 func (d *mockRepoPoller) GetRevisionsSince(revision string, maxRevisionsToSearch int) ([]model.Revision, error) {

@@ -434,7 +434,7 @@ func LoadProjectForVersion(v *Version, identifier string, shouldSave bool) (*Pro
 	}
 	if evergreen.UseParserProject && ppFromDB != nil {
 		ppFromDB.Identifier = identifier
-		p, err := translateProject(ppFromDB)
+		p, err := TranslateProject(ppFromDB)
 		return p, ppFromDB, err
 	}
 
@@ -475,7 +475,7 @@ func LoadProjectInto(data []byte, identifier string, project *Project) (*ParserP
 	}
 
 	// return project even with errors
-	p, err := translateProject(intermediateProject)
+	p, err := TranslateProject(intermediateProject)
 	*project = *p
 	project.Identifier = identifier
 	return intermediateProject, errors.Wrap(err, "error translating project")
@@ -497,10 +497,10 @@ func createIntermediateProject(yml []byte) (*ParserProject, error) {
 	return p, nil
 }
 
-// translateProject converts our intermediate project representation into
+// TranslateProject converts our intermediate project representation into
 // the Project type that Evergreen actually uses. Errors are added to
 // pp.errors and pp.warnings and must be checked separately.
-func translateProject(pp *ParserProject) (*Project, error) {
+func TranslateProject(pp *ParserProject) (*Project, error) {
 	// Transfer top level fields
 	proj := &Project{
 		Enabled:           pp.Enabled,
@@ -549,10 +549,11 @@ func (pp *ParserProject) AddTask(name string, commands []PluginCommandConf) {
 	}
 	pp.Tasks = append(pp.Tasks, t)
 }
-func (pp *ParserProject) AddBuildVariant(name, displayName, runOn string, tasks []string) {
+func (pp *ParserProject) AddBuildVariant(name, displayName, runOn string, batchTime *int, tasks []string) {
 	bv := parserBV{
 		Name:        name,
 		DisplayName: displayName,
+		BatchTime:   batchTime,
 		Tasks:       []parserBVTaskUnit{},
 	}
 	for _, taskName := range tasks {

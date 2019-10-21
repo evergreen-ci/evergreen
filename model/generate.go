@@ -148,7 +148,7 @@ func (g *GeneratedProject) NewVersion() (*Project, *ParserProject, *Version, *ta
 	}
 	newPP.Id = v.Id
 	v.Config = newConfig
-	p, err = translateProject(newPP)
+	p, err = TranslateProject(newPP)
 	if err != nil {
 		return nil, nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error translating project").Error()}
@@ -157,10 +157,12 @@ func (g *GeneratedProject) NewVersion() (*Project, *ParserProject, *Version, *ta
 }
 
 func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProject, v *Version, t *task.Task, pm *projectMaps) error {
-	if err := VersionUpdateConfig(v.Id, v.Config, v.ConfigUpdateNumber); err != nil {
+	updatedVersion, err := VersionUpdateConfig(v.Id, v.Config, v.ConfigUpdateNumber)
+	if err != nil {
 		return errors.Wrapf(err, "error updating version %s", v.Id)
 	}
-	v.ConfigUpdateNumber += 1
+	v.ConfigUpdateNumber = updatedVersion.ConfigUpdateNumber
+	v.Config = updatedVersion.Config
 
 	if err := pp.UpsertWithConfigNumber(v.ConfigUpdateNumber); err != nil {
 		return errors.Wrapf(err, "error updating parser project %s", pp.Id)

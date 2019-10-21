@@ -71,7 +71,7 @@ type ProjectInfo struct {
 }
 
 func (p *ProjectInfo) notPopulated() bool {
-	return p.Ref == nil || p.IntermediateProject == nil || p.Project == nil
+	return p.Ref == nil || p.IntermediateProject == nil
 }
 
 // PopulateVersion updates the version's ParserProject if we have or can create it
@@ -81,6 +81,13 @@ func (p *ProjectInfo) populateVersion(v *model.Version) error {
 		return errors.Wrap(err, "error marshalling intermediate project")
 	}
 	v.Config = string(config)
+
+	if p.Project == nil {
+		p.Project, err = model.TranslateProject(p.IntermediateProject)
+		if err != nil {
+			return errors.Wrap(err, "error translating intermediate project")
+		}
+	}
 	return nil
 }
 

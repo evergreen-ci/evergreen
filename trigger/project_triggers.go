@@ -187,6 +187,6 @@ func makeDownstreamProjectFromCommand(identifier, command, generateFile string) 
 	}
 
 	pp.AddTask(fullProject.Tasks[0].Name, fullProject.Tasks[0].Commands)
-	pp.AddBuildVariant(fullProject.BuildVariants[0].Name, fullProject.BuildVariants[0].DisplayName, settings.Triggers.GenerateTaskDistro, []string{bvtName})
+	pp.AddBuildVariant(fullProject.BuildVariants[0].Name, fullProject.BuildVariants[0].DisplayName, settings.Triggers.GenerateTaskDistro, nil, []string{bvtName})
 	return fullProject, pp, nil
 }

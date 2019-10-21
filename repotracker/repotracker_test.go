@@ -481,39 +481,17 @@ func createTestRevision(revision string,
 	}
 }
 
-func createTestProject(override1, override2 *int) *model.Project {
-	return &model.Project{
-		BuildVariants: []model.BuildVariant{
-			{
-				Name:        "bv1",
-				DisplayName: "bv1",
-				BatchTime:   override1,
-				Tasks: []model.BuildVariantTaskUnit{
-					{
-						Name:    "Unabhaengigkeitserklaerungen",
-						Distros: []string{"test-distro-one"},
-					},
-				},
-			},
-			{
-				Name:        "bv2",
-				DisplayName: "bv2",
-				BatchTime:   override2,
-				Tasks: []model.BuildVariantTaskUnit{
-					{
-						Name:    "Unabhaengigkeitserklaerungen",
-						Distros: []string{"test-distro-one"},
-					},
-				},
-			},
-		},
-		Tasks: []model.ProjectTask{
-			{
-				Name:     "Unabhaengigkeitserklaerungen",
-				Commands: []model.PluginCommandConf{},
-			},
-		},
-	}
+func createTestProject(override1, override2 *int) *model.ParserProject {
+	pp := &model.ParserProject{}
+	pp.AddBuildVariant("bv1", "bv1", "", override1, []string{"Unabhaengigkeitserklaerungen"})
+	pp.BuildVariants[0].Tasks[0].Distros = []string{"test-distro-one"}
+
+	pp.AddBuildVariant("bv2", "bv2", "", override2, []string{"Unabhaengigkeitserklaerungen"})
+	pp.BuildVariants[1].Tasks[0].Distros = []string{"test-distro-one"}
+
+	pp.AddTask("Unabhaengigkeitserklaerungen", nil)
+
+	return pp
 }
 
 func TestBuildBreakSubscriptions(t *testing.T) {
