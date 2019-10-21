@@ -372,6 +372,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 	containerConf := &container.Config{
 		Cmd:   agentCmdParts,
 		Image: provisionedImage,
+		Env:   containerHost.DockerOptions.EnvironmentVars,
 	}
 	networkConf := &network.NetworkingConfig{}
 	hostConf := &container.HostConfig{}
