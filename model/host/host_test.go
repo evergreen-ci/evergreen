@@ -3117,7 +3117,7 @@ func TestRemoveStaleInitializing(t *testing.T) {
 		require.NoError(hosts[i].SaveJasperCredentials(ctx, env, creds))
 	}
 
-	err := RemoveStaleInitializing(ctx, env, distro1.Id)
+	err := RemoveStaleInitializing(distro1.Id)
 	assert.NoError(err)
 
 	numHosts, err := Count(All)
@@ -3133,7 +3133,7 @@ func TestRemoveStaleInitializing(t *testing.T) {
 	assert.True(adb.ResultsNotFound(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host2"}, db.NoProjection, db.NoSort, &dbCreds)))
 	assert.True(adb.ResultsNotFound(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host6"}, db.NoProjection, db.NoSort, &dbCreds)))
 
-	err = RemoveStaleInitializing(ctx, env, distro2.Id)
+	err = RemoveStaleInitializing(distro2.Id)
 	assert.NoError(err)
 	assert.NoError(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host1"}, db.NoProjection, db.NoSort, &dbCreds))
 	assert.NoError(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host3"}, db.NoProjection, db.NoSort, &dbCreds))
