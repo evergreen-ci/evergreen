@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -47,6 +48,20 @@ func LoadUserManager(authConfig evergreen.AuthConfig) (gimlet.UserManager, bool,
 
 // SetLoginToken sets the token in the session cookie for authentication.
 func SetLoginToken(token, domain string, w http.ResponseWriter) {
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		grip.Error(err)
+	}
+	if settings.Ui.ExpireLoginCookieDomain != "" {
+		http.SetCookie(w, &http.Cookie{
+			Name:     evergreen.AuthTokenCookie,
+			Value:    "",
+			Path:     "/",
+			HttpOnly: true,
+			Expires:  time.Now().Add(-1 * time.Hour),
+			Domain:   settings.Ui.ExpireLoginCookieDomain,
+		})
+	}
 	authTokenCookie := &http.Cookie{
 		Name:     evergreen.AuthTokenCookie,
 		Value:    token,
