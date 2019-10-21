@@ -457,6 +457,10 @@ func taskLink(uiBase string, taskID string, execution int) string {
 	return fmt.Sprintf("%s/task/%s/%d", uiBase, url.PathEscape(taskID), execution)
 }
 
+func taskLogLink(uiBase string, taskID string, execution int) string {
+	return fmt.Sprintf("%s/task_log_raw/%s/%d?type=T", uiBase, url.PathEscape(taskID), execution)
+}
+
 func buildLink(uiBase string, buildID string) string {
 	return fmt.Sprintf("%s/build/%s/", uiBase, url.PathEscape(buildID))
 }
