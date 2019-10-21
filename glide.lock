@@ -8,7 +8,7 @@ imports:
     subpackages:
       - ssh
   - name: golang.org/x/net
-    version: 1358eff22f0dd0c54fc521042cc607f6ff4b531a
+    version: 3a22650c66bd7f4fb6d1e8072ffd7b75c8a27898
     subpackages:
       - context
   - name: github.com/vaughan0/go-ini
@@ -94,12 +94,18 @@ imports:
     version: e6586c9293b9d514c7f5d5076731ec977cff1be6
     subpackages:
     - compute
+  - name: google.golang.org/grpc
+    version: 77ce7bc228475a8f28dc50a9d74ac4994fc019e7
+  - name: google.golang.org/genproto
+    version: 082222b4a5c572e33e82ee9162d1352c7cf38682
+  - name: github.com/golang/protobuf
+    version: c823c79ea1570fb5ff454033735a8e68575d1d0f
   - name: github.com/vmware/govmomi
     version: 2eadc60de1af9cf30d3c8ca9193813b1f0497f01
   - name: golang.org/x/oauth2
     version: f047394b6d14284165300fd82dad67edb3a4d7f6
   - name: golang.org/x/sys
-    version: d8f5ea21b9295e315e612b4bcf4bedea93454d4d
+    version: a9d3bda3a223baa6bba6ef412cb273f0fd163c05
   - name: github.com/google/go-github
     version: 8c08f4fba5e05e0fd2821a5f80cf0cf643bd5314
   - name: github.com/google/go-querystring
@@ -125,6 +131,8 @@ imports:
     version: 6419a04f46f350fce59a52c7fab84dd5d078e146
   - name: go.mongodb.org/mongo-driver
     version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86
+  - name: github.com/evergreen-ci/timber
+    version: 1cdd00ad2f2eaf6fb1cb9dedacaddbc3b0e03149
 
   - name: github.com/evergreen-ci/certdepot
     version: 270990334f8f50e41a803e88f169d2f467e376c5

@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -86,7 +87,11 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 		return
 	}
 
-	if output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{Args: []string{"ls", path}}); err != nil {
+	if output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
+		Args: []string{
+			filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath),
+			"-l", "-c",
+			fmt.Sprintf("ls %s", path)}}); err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "host was checked but is not yet ready",
 			"output":  output,

@@ -270,3 +270,46 @@ func TestLogkeeperMetadataPopulated(t *testing.T) {
 	assert.Equal("logkeeper/build/build1/test/test3", tc.logs.TaskLogURLs[0].URL)
 	assert.Equal("", tc.logs.TaskLogURLs[0].Command)
 }
+
+func TestTimberSender(t *testing.T) {
+	assert := assert.New(t)
+
+	agt := &Agent{
+		opts: Options{
+			HostID:       "host",
+			HostSecret:   "secret",
+			StatusPort:   2286,
+			LogPrefix:    evergreen.LocalLoggingOverride,
+			LogkeeperURL: "logkeeper",
+		},
+		comm: client.NewMock("mock"),
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	taskID := "logging"
+	taskSecret := "mock_task_secret"
+	task := &task.Task{
+		DisplayName: "task1",
+	}
+	tc := &taskContext{
+		task: client.TaskData{
+			ID:     taskID,
+			Secret: taskSecret,
+		},
+		project: &model.Project{
+			Loggers: &model.LoggerConfig{
+				Agent:  []model.LogOpts{{Type: model.BuildloggerLogSender}},
+				System: []model.LogOpts{{Type: model.BuildloggerLogSender}},
+				Task:   []model.LogOpts{{Type: model.BuildloggerLogSender}},
+			},
+		},
+		taskConfig: &model.TaskConfig{
+			Task:         task,
+			BuildVariant: &model.BuildVariant{Name: "bv"},
+			Timeout:      &model.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
+		},
+		taskModel: task,
+	}
+	assert.NoError(agt.resetLogging(ctx, tc))
+}

@@ -252,6 +252,16 @@ func (c *Mock) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDe
 	}, nil
 }
 
+// GetBuildloggerInfo returns mock buildlogger service information.
+func (c *Mock) GetBuildloggerInfo(ctx context.Context) (*apimodels.BuildloggerInfo, error) {
+	return &apimodels.BuildloggerInfo{
+		BaseURL:  "base_url",
+		RPCPort:  "1000",
+		Username: "user",
+		Password: "password",
+	}, nil
+}
+
 // SendTaskLogMessages posts tasks messages to the api server
 func (c *Mock) SendLogMessages(ctx context.Context, td TaskData, msgs []apimodels.LogMessage) error {
 	c.mu.Lock()

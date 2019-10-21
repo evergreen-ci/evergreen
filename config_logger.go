@@ -10,10 +10,14 @@ import (
 )
 
 type LoggerConfig struct {
-	Buffer         LogBuffering `bson:"buffer" json:"buffer" yaml:"buffer"`
-	DefaultLevel   string       `bson:"default_level" json:"default_level" yaml:"default_level"`
-	ThresholdLevel string       `bson:"threshold_level" json:"threshold_level" yaml:"threshold_level"`
-	LogkeeperURL   string       `bson:"logkeeper_url" json:"logkeeper_url" yaml:"logkeeper_url"`
+	Buffer              LogBuffering `bson:"buffer" json:"buffer" yaml:"buffer"`
+	DefaultLevel        string       `bson:"default_level" json:"default_level" yaml:"default_level"`
+	ThresholdLevel      string       `bson:"threshold_level" json:"threshold_level" yaml:"threshold_level"`
+	LogkeeperURL        string       `bson:"logkeeper_url" json:"logkeeper_url" yaml:"logkeeper_url"`
+	BuildloggerBaseURL  string       `bson:"buildlogger_base_url" json:"buildlogger_base_url" yaml:"buildlogger_base_url"`
+	BuildloggerRPCPort  string       `bson:"buildlogger_rpc_port" json:"buildlogger_rpc_port" yaml:"buildlogger_rpc_port"`
+	BuildloggerUser     string       `bson:"buildlogger_user" json:"buildlogger_user" yaml:"buildlogger_user"`
+	BuildloggerPassword string       `bson:"buildlogger_password" json:"buildlogger_password" yaml:"buildlogger_password"`
 }
 
 func (c LoggerConfig) Info() send.LevelInfo {
@@ -53,10 +57,14 @@ func (c *LoggerConfig) Set() error {
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			"buffer":          c.Buffer,
-			"default_level":   c.DefaultLevel,
-			"threshold_level": c.ThresholdLevel,
-			"logkeeper_url":   c.LogkeeperURL,
+			"buffer":               c.Buffer,
+			"default_level":        c.DefaultLevel,
+			"threshold_level":      c.ThresholdLevel,
+			"logkeeper_url":        c.LogkeeperURL,
+			"buildlogger_base_url": c.BuildloggerBaseURL,
+			"buildlogger_rpc_port": c.BuildloggerRPCPort,
+			"buildlogger_user":     c.BuildloggerUser,
+			"buildlogger_password": c.BuildloggerPassword,
 		},
 	}, options.Update().SetUpsert(true))
 
