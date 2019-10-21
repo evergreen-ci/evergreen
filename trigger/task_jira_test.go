@@ -288,10 +288,11 @@ func TestJIRADescription(t *testing.T) {
 				So(d, ShouldContainSubstring, "diff|https://github.com/")
 				So(d, ShouldContainSubstring, "08 Jan 19 11:56 UTC")
 			})
-			Convey("with links to the task, host, project", func() {
+			Convey("with links to the task, host, project, logs", func() {
 				So(d, ShouldContainSubstring, url.PathEscape(taskId))
 				So(d, ShouldContainSubstring, hostId)
 				So(d, ShouldContainSubstring, projectId)
+				So(d, ShouldContainSubstring, "http://evergreen.ui/task_log_raw/t1%21/0?type=T")
 			})
 			Convey("and the failed tasks should be listed with links", func() {
 				So(d, ShouldContainSubstring, cleanTestName(testName1))

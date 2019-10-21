@@ -27,6 +27,7 @@ Commit: [diff|https://github.com/{{.Project.Owner}}/{{.Project.Repo}}/commit/{{.
 Evergreen Subscription: {{.SubscriptionID}}; Evergreen Event: {{.EventID}}
 {{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] | [History|{{.HistoryURL}}]
 {{end}}
+[Task Logs | {{taskLogUrl .}} ]
 `
 const (
 	jiraMaxTitleLength = 254
@@ -39,6 +40,7 @@ var descriptionTemplate = template.Must(template.New("Desc").Funcs(template.Func
 	"taskurl":           getTaskURL,
 	"formatAsTimestamp": formatAsTimestamp,
 	"host":              getHostMetadata,
+	"taskLogUrl":        getTaskLogURL,
 }).Parse(descriptionTemplateString))
 
 func formatAsTimestamp(t time.Time) string {
@@ -64,6 +66,19 @@ func getTaskURL(data *jiraTemplateData) (string, error) {
 	}
 
 	return taskLink(data.UIRoot, id, execution), nil
+}
+
+func getTaskLogURL(data *jiraTemplateData) (string, error) {
+	if data.Task == nil {
+		return "", errors.New("task is nil")
+	}
+	id := data.Task.Id
+	execution := data.Task.Execution
+	if len(data.Task.OldTaskId) != 0 {
+		id = data.Task.OldTaskId
+	}
+
+	return taskLogLink(data.UIRoot, id, execution), nil
 }
 
 // jiraTestFailure contains the required fields for generating a failure report.
