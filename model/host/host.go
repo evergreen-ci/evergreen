@@ -181,7 +181,7 @@ type DockerOptions struct {
 	Command string `mapstructure:"command" bson:"command,omitempty" json:"command,omitempty"`
 	// If the container is created from host create, we want to skip building the image with agent
 	SkipImageBuild bool `mapstructure:"skip_build" bson:"skip_build,omitempty" json:"skip_build,omitempty"`
-	// list of environment variables KEY=VALUE
+	// list of container environment variables KEY=VALUE
 	EnvironmentVars []string `mapstructure:"environment_vars" bson:"environment_vars,omitempty" json:"environment_vars,omitempty"`
 }
 

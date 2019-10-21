@@ -407,6 +407,16 @@ buildvariants:
 	assert.Equal("echo hi", h.DockerOptions.Command)
 	assert.Equal(distro.DockerImageBuildTypePull, h.DockerOptions.Method)
 	assert.Len(h.DockerOptions.EnvironmentVars, 2)
-	assert.Equal(h.DockerOptions.EnvironmentVars[0], "banana=yellow")
-	assert.Equal(h.DockerOptions.EnvironmentVars[1], "apple=red")
+
+	foundApple := false
+	foundBanana := false
+	for _, envVar := range h.DockerOptions.EnvironmentVars {
+		if envVar == "banana=yellow" {
+			foundBanana = true
+		} else if envVar == "apple=red" {
+			foundApple = true
+		}
+	}
+	assert.True(foundApple)
+	assert.True(foundBanana)
 }
