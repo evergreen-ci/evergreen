@@ -52,9 +52,9 @@
       <section layout="row" flex style="white-space: nowrap">
           <div flex="85">
             <strong>Expiration:</strong>
-            <md-datepicker  ng-disabled=curHostData.no_expiration ng-model="!curHostData.no_expiration ? curHostData.date_for_expiration : nil" md-min-date="curHostData.time_for_expiration" md-placeholder="Date"></md-datepicker>
-            <md-time-picker read-only=curHostData.no_expiration   ng-model="!curHostData.no_expiration ? curHostData.time_for_expiration : nil" class="inline" message="message" style=""></md-time-picker>
-            <md-checkbox id="no-expiration" class="inline" ng-model="curHostData.no_expiration" style="margin-left:25px">Never</md-checkbox>
+            <md-datepicker  ng-disabled="curHostData.no_expiration" ng-model="curHostData.current_expiration" md-min-date="curHostData.original_expiration" md-placeholder="Date"></md-datepicker>
+            <md-time-picker read-only="curHostData.no_expiration"   ng-model="curHostData.current_expiration" class="inline" message="message" style=""></md-time-picker>
+            <md-checkbox id="no-expiration" class="inline" ng-model="curHostData.no_expiration" ng-click="setCurrentExpirationOnClick()" style="margin-left:25px">Never</md-checkbox>
 
           </div>
           <div flex="15">
@@ -69,7 +69,7 @@
           <span class="dropdown">
             <button class="btn btn-link btn-dropdown" data-toggle="dropdown" href="#" id="distro">
               <strong>
-                [[selectedInstanceType]]
+                [[curHostData.selectedInstanceType]]
                 <span class="fa fa-caret-down"></span>
               </strong>
           </button>
