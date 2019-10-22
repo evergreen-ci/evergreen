@@ -61,12 +61,14 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
                 if(+new Date(host.expiration_time) > +new Date("0001-01-01T00:00:00Z")){
                   if (host.no_expiration) {
                     host.expires_in = "never"
+                    host.date_for_expiration = new Date();
+                    host.time_for_expiration = new Date();
                   } else {
                     var expiretime = moment().diff(host.expiration_time, 'seconds');
                     host.expires_in = moment.duration(expiretime, 'seconds').humanize();
+                    host.date_for_expiration = new Date(host.expiration_time);
+                    host.time_for_expiration = new Date(host.expiration_time);
                   }
-                  host.date_for_expiration = new Date(host.expiration_time);
-                  host.time_for_expiration = new Date(host.expiration_time);
                 }
               }
               if ($scope.lastSelected && $scope.lastSelected.id == host.id) {
@@ -200,9 +202,12 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     };
 
     $scope.updateHostExpiration = function() {
-        let new_expiration = new Date($scope.curHostData.date_for_expiration);
-        new_expiration.setHours($scope.curHostData.time_for_expiration.getHours());
-        new_expiration.setMinutes($scope.curHostData.time_for_expiration.getMinutes());
+        let new_expiration = null;
+        if (!$scope.curHostData.no_expiration) {
+            new_expiration = new Date($scope.curHostData.date_for_expiration);
+            new_expiration.setHours($scope.curHostData.time_for_expiration.getHours());
+            new_expiration.setMinutes($scope.curHostData.time_for_expiration.getMinutes());
+        }
 
         mciSpawnRestService.extendHostExpiration(
         'extendHostExpiration',

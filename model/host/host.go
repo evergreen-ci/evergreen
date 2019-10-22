@@ -908,6 +908,7 @@ func (h *Host) SetNeedsAgentDeploy(needsDeploy bool) error {
 func (h *Host) SetExpirationTime(expirationTime time.Time) error {
 	// update the in-memory host, then the database
 	h.ExpirationTime = expirationTime
+	h.NoExpiration = false
 	h.Notifications = make(map[string]bool)
 	return UpdateOne(
 		bson.M{
@@ -916,6 +917,7 @@ func (h *Host) SetExpirationTime(expirationTime time.Time) error {
 		bson.M{
 			"$set": bson.M{
 				ExpirationTimeKey: expirationTime,
+				NoExpirationKey:   false,
 			},
 			"$unset": bson.M{
 				NotificationsKey: 1,
