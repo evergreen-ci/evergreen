@@ -595,7 +595,7 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 		},
 	})
 	if err != nil {
-		return errors.Wrapf(err, "error changing expire-on tag using client for '%s", h.Id)
+		return errors.Wrapf(err, "error creating changing expire-on tag using client for '%s", h.Id)
 	}
 
 	if noExpiration {
