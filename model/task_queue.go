@@ -286,6 +286,7 @@ func BlockTaskGroupTasks(taskID string) error {
 	for _, taskToBlock := range tasksToBlock {
 		catcher.Add(taskToBlock.AddDependency(task.Dependency{TaskId: taskID, Status: evergreen.TaskSucceeded}))
 		catcher.Add(dequeue(taskToBlock.Id, taskToBlock.DistroId))
+		catcher.Add(taskToBlock.UpdateBlockedDependencies())
 	}
 	return catcher.Resolve()
 }
