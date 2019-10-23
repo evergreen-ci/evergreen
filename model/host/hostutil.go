@@ -101,8 +101,8 @@ func (h *Host) curlCommands(settings *evergreen.Settings, curlArgs string) []str
 
 // Constants representing default curl retry arguments.
 const (
-	CurlDefaultNumRetries = 10
-	CurlDefaultMaxSecs    = 100
+	curlDefaultNumRetries = 10
+	curlDefaultMaxSecs    = 100
 )
 
 func curlRetryArgs(numRetries, maxSecs int) string {
@@ -342,7 +342,7 @@ func (h *Host) fetchJasperCommands(config evergreen.HostJasperConfig) []string {
 	return []string{
 		fmt.Sprintf("mkdir -m 777 -p %s", h.Distro.BootstrapSettings.JasperBinaryDir),
 		fmt.Sprintf("cd %s", h.Distro.BootstrapSettings.JasperBinaryDir),
-		fmt.Sprintf("curl -LO '%s/%s' %s", config.URL, downloadedFile, curlRetryArgs(CurlDefaultNumRetries, CurlDefaultMaxSecs)),
+		fmt.Sprintf("curl -LO '%s/%s' %s", config.URL, downloadedFile, curlRetryArgs(curlDefaultNumRetries, curlDefaultMaxSecs)),
 		fmt.Sprintf("tar xzf '%s'", downloadedFile),
 		fmt.Sprintf("chmod +x '%s'", extractedFile),
 		fmt.Sprintf("rm -f '%s'", downloadedFile),
@@ -370,21 +370,44 @@ func (h *Host) jasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 }
 
 // BootstrapScript creates the user data script to bootstrap the host.
-func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Credentials, postJasperSetup []string) (string, error) {
+func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Credentials) (string, error) {
 	bashPrefix := []string{"set -o errexit", "set -o verbose"}
 
+	fetchClient := h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
+	var postFetchClient string
+	var err error
+	if h.StartedBy == evergreen.User {
+		// Start the host with an agent monitor to run tasks.
+		if postFetchClient, err = h.StartAgentMonitorRequest(settings); err != nil {
+			return "", errors.Wrap(err, "error creating command to start agent monitor")
+		}
+	} else if h.ProvisionOptions != nil && h.ProvisionOptions.LoadCLI {
+		// Set up a spawn host.
+		if postFetchClient, err = h.SetupSpawnHostCommands(settings); err != nil {
+			return "", errors.Wrap(err, "error creating commands to load task data")
+		}
+	}
+
+	markDone, err := h.MarkUserDataDoneCommands()
+	if err != nil {
+		return "", errors.Wrap(err, "error creating command to mark when user data is done")
+	}
+
 	if h.Distro.IsWindows() {
-		writeSetupScriptCmds, err := h.writeSetupScriptCommands(settings)
+		var writeSetupScriptCmds []string
+		writeSetupScriptCmds, err = h.writeSetupScriptCommands(settings)
 		if err != nil {
 			return "", errors.Wrap(err, "could not get commands to run setup script")
 		}
 
-		writeCredentialsCmds, err := h.bufferedWriteJasperCredentialsFilesCommands(settings.Splunk, creds)
+		var writeCredentialsCmds []string
+		writeCredentialsCmds, err = h.bufferedWriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 		if err != nil {
 			return "", errors.Wrap(err, "could not get commands to write Jasper credentials file")
 		}
 
-		setupUserCmds, err := h.SetupServiceUserCommands()
+		var setupUserCmds string
+		setupUserCmds, err = h.SetupServiceUserCommands()
 		if err != nil {
 			return "", errors.Wrap(err, "could not get commands to set up service user")
 		}
@@ -395,7 +418,7 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 		)
 
 		bashCmds := append(writeSetupScriptCmds, setupJasperCmds...)
-		bashCmds = append(bashCmds, postJasperSetup...)
+		bashCmds = append(bashCmds, fetchClient, h.SetupCommand(), postFetchClient, markDone)
 
 		for i := range bashCmds {
 			bashCmds[i] = fmt.Sprintf("%s -l -c %s", filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.ShellPath), util.PowerShellQuotedString(bashCmds[i]))
@@ -423,7 +446,7 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 
 	bashCmds := append(bashPrefix, setupScriptCmds)
 	bashCmds = append(bashCmds, writeCredentialsCmds, h.FetchJasperCommand(settings.HostJasper), h.ForceReinstallJasperCommand(settings))
-	bashCmds = append(bashCmds, postJasperSetup...)
+	bashCmds = append(bashCmds, fetchClient, postFetchClient, markDone)
 
 	return strings.Join(append([]string{"#!/bin/bash"}, bashCmds...), "\n"), nil
 }
@@ -878,8 +901,9 @@ func buildAgentEnv(settings *evergreen.Settings) map[string]string {
 	return env
 }
 
-// SetupSpawnHostCommand returns the bash commands to handle setting up a spawn host.
-func (h *Host) SetupSpawnHostCommand(settings *evergreen.Settings) (string, error) {
+// SetupSpawnHostCommands returns the commands to handle setting up a spawn
+// host.
+func (h *Host) SetupSpawnHostCommands(settings *evergreen.Settings) (string, error) {
 	if h.ProvisionOptions == nil {
 		return "", errors.New("missing spawn host provisioning options")
 	}
@@ -935,14 +959,14 @@ const userDataDoneFileName = "user_data_done"
 
 // UserDataDoneFilePath returns the path to the user data done marker file.
 func (h *Host) UserDataDoneFilePath() (string, error) {
-	if h.Distro.BootstrapSettings.ClientDir == "" {
-		return "", errors.New("distro client directory must be specified")
+	if h.Distro.BootstrapSettings.JasperBinaryDir == "" {
+		return "", errors.New("distro jasper binary directory must be specified")
 	}
 
-	return filepath.Join(h.Distro.BootstrapSettings.ClientDir, userDataDoneFileName), nil
+	return filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, userDataDoneFileName), nil
 }
 
-// MarkUserDataDoneCommand creates the command to make the marker file
+// MarkUserDataDoneCommands creates the command to make the marker file
 // indicating user data has finished executing.
 func (h *Host) MarkUserDataDoneCommands() (string, error) {
 	path, err := h.UserDataDoneFilePath()
@@ -950,7 +974,7 @@ func (h *Host) MarkUserDataDoneCommands() (string, error) {
 		return "", errors.Wrap(err, "could not get path to user data done file")
 	}
 
-	return fmt.Sprintf("mkdir -m 777 -p %s && touch %s", h.Distro.BootstrapSettings.ClientDir, path), nil
+	return fmt.Sprintf("mkdir -m 777 -p %s && touch %s", h.Distro.BootstrapSettings.JasperBinaryDir, path), nil
 }
 
 // SetUserDataHostProvisioned sets the host to running if it was bootstrapped

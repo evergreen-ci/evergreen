@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -17,6 +18,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/yaml.v2"
 )
 
 const NumRecentVersions = 10
@@ -270,6 +272,19 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 		grip.Infof("adding BuildVariant %s", buildStatus.BuildVariant)
 	}
 
+	if evergreen.UseParserProject && destVersion.Config == "" {
+		var err error
+		pp, err := model.ParserProjectFindOneById(projCtx.Version.Id)
+		if err != nil {
+			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
+		}
+		config, err := yaml.Marshal(pp)
+		if err != nil {
+			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project"})
+		}
+		destVersion.Config = string(config)
+	}
+
 	gimlet.WriteJSON(w, destVersion)
 }
 
@@ -284,7 +299,23 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 	}
 	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	_, err := w.Write([]byte(projCtx.Version.Config))
+
+	var config []byte
+	var err error
+	pp, err := model.ParserProjectFindOneById(projCtx.Version.Id)
+	if err != nil {
+		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
+	}
+	if evergreen.UseParserProject && pp != nil {
+		config, err = yaml.Marshal(pp)
+		if err != nil {
+			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project"})
+		}
+	} else {
+		config = []byte(projCtx.Version.Config)
+	}
+
+	_, err = w.Write(config)
 	grip.Warning(errors.Wrap(err, "problem writing response"))
 }
 

@@ -189,6 +189,9 @@ const (
 
 	DefaultJasperPort          = 2385
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
+
+	// TODO: remove this when degrading YAML
+	UseParserProject = false
 )
 
 func IsFinishedTaskStatus(status string) bool {
@@ -481,7 +484,7 @@ func IsGitHubPatchRequester(requester string) bool {
 }
 
 // Permissions-related constants
-var AclCheckingIsEnabled = false
+var AclCheckingIsEnabled = (os.Getenv("ACL_ENABLED") == "true")
 
 type PermissionLevel interface {
 	String() string
