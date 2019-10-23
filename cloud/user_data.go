@@ -137,35 +137,12 @@ func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.H
 	}
 	settings := env.Settings()
 
-	fetchClient := h.CurlCommandWithRetry(settings, host.CurlDefaultNumRetries, host.CurlDefaultMaxSecs)
-
-	var postFetchClient string
-	var err error
-	if h.StartedBy == evergreen.User {
-		// Start the host with an agent monitor to run tasks.
-		if postFetchClient, err = h.StartAgentMonitorRequest(settings); err != nil {
-			return "", errors.Wrap(err, "error creating command to start agent monitor")
-		}
-	} else if h.ProvisionOptions != nil && h.ProvisionOptions.LoadCLI {
-		// Set up a spawn host.
-		if postFetchClient, err = h.SetupSpawnHostCommand(settings); err != nil {
-			return "", errors.Wrap(err, "error creating commands to load task data")
-		}
-	}
-
-	markDone, err := h.MarkUserDataDoneCommands()
-	if err != nil {
-		return "", errors.Wrap(err, "error creating command to mark when user data is done")
-	}
-
 	creds, err := h.GenerateJasperCredentials(ctx, env)
 	if err != nil {
 		return customScript, errors.Wrapf(err, "problem generating Jasper credentials for host '%s'", h.Id)
 	}
 
-	bootstrapScript, err := h.BootstrapScript(settings, creds,
-		[]string{fetchClient, h.SetupCommand(), postFetchClient, markDone},
-	)
+	bootstrapScript, err := h.BootstrapScript(settings, creds)
 	if err != nil {
 		return customScript, errors.Wrap(err, "could not generate user data bootstrap script")
 	}

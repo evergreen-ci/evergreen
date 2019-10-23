@@ -120,39 +120,12 @@ func TestBootstrapUserData(t *testing.T) {
 	tctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host, userID string){
-		"ContainsCommandsToSetupHostForRunningTasks": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host, userID string) {
+	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host){
+		"ContainsCommandsToSetupHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
 			userData, err := bootstrapUserData(ctx, env, h, "")
 			require.NoError(t, err)
 
-			cmd := h.CurlCommandWithRetry(env.Settings(), host.CurlDefaultNumRetries, host.CurlDefaultMaxSecs)
-			assert.Contains(t, userData, cmd)
-
-			cmd, err = h.StartAgentMonitorRequest(env.Settings())
-			require.NoError(t, err)
-			assert.Contains(t, userData, cmd)
-
-			cmd, err = h.SetupSpawnHostCommand(env.Settings())
-			require.NoError(t, err)
-			assert.NotContains(t, userData, cmd)
-
-			cmd, err = h.MarkUserDataDoneCommands()
-			require.NoError(t, err)
-			assert.Contains(t, userData, cmd)
-		},
-		"ContainsCommandsToSetupSpawnHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host, userID string) {
-			h.StartedBy = ""
-			userData, err := bootstrapUserData(ctx, env, h, "")
-			require.NoError(t, err)
-
-			cmd := h.CurlCommandWithRetry(env.Settings(), host.CurlDefaultNumRetries, host.CurlDefaultMaxSecs)
-			assert.Contains(t, userData, cmd)
-
-			cmd, err = h.StartAgentMonitorRequest(env.Settings())
-			require.NoError(t, err)
-			assert.NotContains(t, userData, cmd)
-
-			cmd, err = h.SetupSpawnHostCommand(env.Settings())
+			cmd, err := h.StartAgentMonitorRequest(env.Settings())
 			require.NoError(t, err)
 			assert.Contains(t, userData, cmd)
 
@@ -160,19 +133,12 @@ func TestBootstrapUserData(t *testing.T) {
 			require.NoError(t, err)
 			assert.Contains(t, userData, cmd)
 		},
-		"ChecksProvisionOptionsForSpawnHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host, userID string) {
-			h.StartedBy = ""
-			h.ProvisionOptions = &host.ProvisionOptions{LoadCLI: true}
-
-			_, err := bootstrapUserData(ctx, env, h, "")
-			assert.Error(t, err)
-		},
-		"PassesWithoutCustomUserData": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host, userID string) {
+		"PassesWithoutCustomUserData": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
 			userData, err := bootstrapUserData(ctx, env, h, "")
 			require.NoError(t, err)
 			assert.NotEmpty(t, userData)
 		},
-		"CreatesHostJasperCredentials": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host, userID string) {
+		"CreatesHostJasperCredentials": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
 			_, err := bootstrapUserData(ctx, env, h, "")
 			require.NoError(t, err)
 			assert.Equal(t, h.JasperCredentialsID, h.Id)
@@ -187,7 +153,7 @@ func TestBootstrapUserData(t *testing.T) {
 			require.NoError(t, err)
 			assert.NotNil(t, creds)
 		},
-		"PassesWithCustomUserData": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host, userID string) {
+		"PassesWithCustomUserData": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
 			customUserData := "#!/bin/bash\necho 'foobar'"
 			userData, err := bootstrapUserData(ctx, env, h, customUserData)
 			require.NoError(t, err)
@@ -204,7 +170,7 @@ func TestBootstrapUserData(t *testing.T) {
 			require.NoError(t, err)
 			assert.NotNil(t, creds)
 		},
-		"ReturnsUserDataUnmodifiedIfNotBootstrapping": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host, userID string) {
+		"ReturnsUserDataUnmodifiedIfNotBootstrapping": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
 			customUserData := "foo bar"
 			userData, err := bootstrapUserData(ctx, env, h, customUserData)
@@ -218,10 +184,6 @@ func TestBootstrapUserData(t *testing.T) {
 				assert.NoError(t, db.ClearCollections(host.Collection, user.Collection))
 			}()
 
-			userID := "user"
-			user := &user.DBUser{Id: userID}
-			require.NoError(t, user.Insert())
-
 			h := &host.Host{
 				Id: "ud-host",
 				Distro: distro.Distro{
@@ -229,18 +191,19 @@ func TestBootstrapUserData(t *testing.T) {
 					BootstrapSettings: distro.BootstrapSettings{
 						Method:                distro.BootstrapMethodUserData,
 						JasperCredentialsPath: "/bar",
+						JasperBinaryDir:       "/jasper_binary_dir",
 						ClientDir:             "/client_dir",
+						ShellPath:             "/bin/bash",
 					},
 				},
-				StartedBy:        evergreen.User,
-				ProvisionOptions: &host.ProvisionOptions{LoadCLI: true, OwnerId: userID},
+				StartedBy: evergreen.User,
 			}
 			require.NoError(t, h.Insert())
 			ctx, ccancel := context.WithTimeout(tctx, 5*time.Second)
 			defer ccancel()
 			env := testutil.NewEnvironment(ctx, t)
 
-			testCase(ctx, t, env, h, userID)
+			testCase(ctx, t, env, h)
 		})
 	}
 }
