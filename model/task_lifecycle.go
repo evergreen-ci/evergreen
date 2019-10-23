@@ -449,13 +449,16 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 			return err
 		}
 		if err = build.UpdateCachedTask(t.DisplayTask, t.TimeTaken); err != nil {
+			b, err := build.FindOneId(t.BuildId)
 			grip.Error(message.WrapError(err, message.Fields{
-				"message":    "failed to update cached display task",
-				"function":   "MarkEnd",
-				"build_id":   t.DisplayTask.BuildId,
-				"task_id":    t.DisplayTask.Id,
-				"status":     t.DisplayTask.Status,
-				"time_taken": t.TimeTaken,
+				"message":     "failed to update cached display task",
+				"function":    "MarkEnd",
+				"build_id":    t.DisplayTask.BuildId,
+				"task_id":     t.DisplayTask.Id,
+				"status":      t.DisplayTask.Status,
+				"time_taken":  t.TimeTaken,
+				"build_cache": b.Tasks,
+				"find_err":    err,
 			}))
 		}
 		if err = checkResetDisplayTask(t.DisplayTask); err != nil {
