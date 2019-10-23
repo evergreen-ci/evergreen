@@ -125,7 +125,9 @@ variables:
         vars:
           target: set-smoke-vars
       - func: run-make
-        vars: { target: "${task_name}" }
+        vars: 
+          target: "${task_name}"
+          acl_enabled: "true"
   - &run-smoke-test-with-client-url
     name: smoke
     commands:
@@ -165,6 +167,7 @@ variables:
       - func: run-make
         vars:
           target: "${task_name}"
+          acl_enabled: "true"
   - &version-constants
     nodejs_version: "6.11.1"
   - &run-generate-lint
@@ -206,6 +209,7 @@ functions:
       binary: make
       args: ["${make_args|}", "${target}"]
       env:
+        ACL_ENABLED: ${acl_enabled}
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}
         CLIENT_URL: https://s3.amazonaws.com/mciuploads/evergreen/${task_id}/evergreen-ci/evergreen/clients/${goos}_${goarch}/evergreen
