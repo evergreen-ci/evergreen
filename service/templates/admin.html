@@ -707,6 +707,10 @@ Admin Settings
 										<label>Expire After Minutes</label>
 										<input type="text" ng-model="Settings.auth.ldap.expire_after_minutes">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Group OU Name</label>
+										<input type="text" ng-model="Settings.auth.ldap.group_ou">
+									</md-input-container>
 									<div><button ng-show="auth_is_ldap" ng-click="clearAllUserTokens()" class="btn btn-primary">Logout Everyone</button></div>
 								</md-card-content>
 							</md-card>

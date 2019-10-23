@@ -788,6 +788,19 @@ func RemoveStaleInitializing(distroID string) error {
 		query[key] = distroID
 	}
 
+	hosts := []Host{}
+	if err := db.FindAll(Collection, query, bson.M{IdKey: 1}, db.NoSort, db.NoSkip, db.NoLimit, &hosts); err != nil {
+		return errors.WithStack(err)
+	}
+	ids := []string{}
+	for _, h := range hosts {
+		ids = append(ids, h.Id)
+	}
+
+	if err := db.RemoveAll(evergreen.CredentialsCollection, bson.M{CertUserIDKey: bson.M{"$in": ids}}); err != nil {
+		return errors.Wrap(err, "could not delete credentials")
+	}
+
 	return db.RemoveAll(Collection, query)
 }
 

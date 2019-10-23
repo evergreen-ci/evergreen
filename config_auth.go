@@ -32,6 +32,7 @@ type LDAPConfig struct {
 	Group              string `bson:"group" json:"group" yaml:"group"`
 	ServiceGroup       string `bson:"service_group" json:"service_group" yaml:"service_group"`
 	ExpireAfterMinutes string `bson:"expire_after_minutes" json:"expire_after_minutes" yaml:"expire_after_minutes"`
+	GroupOU            string `bson:"group_ou" json:"group_ou" yaml:"group_ou"`
 }
 
 // GithubAuthConfig holds settings for interacting with Github Authentication including the

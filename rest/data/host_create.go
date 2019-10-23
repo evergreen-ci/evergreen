@@ -188,6 +188,11 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 		method = distro.DockerImageBuildTypePull
 	}
 
+	envVars := []string{}
+	for key, val := range createHost.EnvironmentVars {
+		envVars = append(envVars, fmt.Sprintf("%s=%s", key, val))
+
+	}
 	options.DockerOptions = host.DockerOptions{
 		Image:            createHost.Image,
 		Command:          createHost.Command,
@@ -196,6 +201,7 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 		RegistryPassword: createHost.Registry.Password,
 		Method:           method,
 		SkipImageBuild:   true,
+		EnvironmentVars:  envVars,
 	}
 
 	hostIntents, err := host.GenerateContainerHostIntents(d, 1, *options)

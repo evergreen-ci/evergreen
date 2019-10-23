@@ -345,6 +345,9 @@ tasks:
       provider: docker
       num_hosts: 1
       background: false
+      environment_vars: 
+          apple: red
+          banana: yellow
 
 buildvariants:
 - name: "bv"
@@ -403,4 +406,17 @@ buildvariants:
 	assert.Equal("docker.io/library/hello-world", h.DockerOptions.Image)
 	assert.Equal("echo hi", h.DockerOptions.Command)
 	assert.Equal(distro.DockerImageBuildTypePull, h.DockerOptions.Method)
+	assert.Len(h.DockerOptions.EnvironmentVars, 2)
+
+	foundApple := false
+	foundBanana := false
+	for _, envVar := range h.DockerOptions.EnvironmentVars {
+		if envVar == "banana=yellow" {
+			foundBanana = true
+		} else if envVar == "apple=red" {
+			foundApple = true
+		}
+	}
+	assert.True(foundApple)
+	assert.True(foundBanana)
 }

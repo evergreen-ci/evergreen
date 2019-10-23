@@ -135,6 +135,14 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	opCtx := MustHaveProjectContext(ctx)
 	user := MustHaveUser(ctx)
 
+	if opCtx == nil || opCtx.ProjectRef == nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    "No project found",
+		}))
+		return
+	}
+
 	isSuperuser := util.StringSliceContains(m.sc.GetSuperUsers(), user.Username())
 	isAdmin := util.StringSliceContains(opCtx.ProjectRef.Admins, user.Username())
 	if !(isSuperuser || isAdmin) {
