@@ -104,9 +104,8 @@ type Host struct {
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
 	// for ec2 dynamic hosts, the total size of the volumes requested, in GiB
 	VolumeTotalSize int64 `bson:"volume_total_size" json:"volume_total_size,omitempty"`
-
-	VolumeIDs []string           `bson:"volume_ids,omitempty" json:"volume_ids,omitempty"`
-	Volumes   []VolumeAttachment `bson:"volumes" json:"volumes"`
+	// The volumeID and device name for each volume attached to the host
+	Volumes []VolumeAttachment `bson:"volumes,omitempty" json:"volumes,omitempty"`
 
 	// stores information on expiration notifications for spawn hosts
 	Notifications map[string]bool `bson:"notifications,omitempty" json:"notifications,omitempty"`
@@ -167,8 +166,8 @@ func (h *IdleHostsByDistroID) UnmarshalBSON(in []byte) error { return mgobson.Un
 type HostGroup []Host
 
 type VolumeAttachment struct {
-	VolumeID   string `bson:"volume_id"`
-	DeviceName string `bson:"device_name"`
+	VolumeID   string `bson:"volume_id" json:"volume_id"`
+	DeviceName string `bson:"device_name" json:"device_name"`
 }
 
 // DockerOptions contains options for starting a container
@@ -554,7 +553,7 @@ func (h *Host) Terminate(user, reason string) error {
 		bson.M{
 			"$set": bson.M{
 				TerminationTimeKey: h.TerminationTime,
-				VolumeIDsKey:       []string{},
+				VolumesKey:         nil,
 			},
 		},
 	)
@@ -1844,47 +1843,6 @@ func (h *Host) MarkShouldExpire(expireOnValue string) error {
 				NoExpirationKey:   h.NoExpiration,
 				ExpirationTimeKey: h.ExpirationTime,
 				InstanceTagsKey:   h.InstanceTags,
-			},
-		},
-	)
-}
-
-// AttachVolume adds a volume to a host's VolumeIDs field.
-func (h *Host) AttachVolume(v VolumeAttachment) error {
-	h.Volumes = append(h.Volumes, v)
-	return UpdateOne(
-		bson.M{
-			IdKey: h.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				VolumesKey: h.Volumes,
-			},
-		},
-	)
-}
-
-// DetachVolume removes a volume from a host's VolumeIDs field.
-func (h *Host) DetachVolume(volumeID string) error {
-	found := false
-	for i := range h.Volumes {
-		if volumeID == h.Volumes[i].VolumeID {
-			found = true
-			h.Volumes = append(h.Volumes[:i], h.Volumes[i+1:]...)
-		}
-	}
-
-	if !found {
-		return errors.Errorf("volume '%s' is not attached to host '%s'", volumeID, h.Id)
-	}
-
-	return UpdateOne(
-		bson.M{
-			IdKey: h.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				VolumesKey: h.Volumes,
 			},
 		},
 	)

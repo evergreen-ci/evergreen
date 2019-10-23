@@ -3797,9 +3797,9 @@ func TestFindSpawnhostsWithNoExpirationToExtend(t *testing.T) {
 	assert.Equal(t, "host-1", foundHosts[0].Id)
 }
 
-func TestAttachVolume(t *testing.T) {
+func TestAddVolumeToHost(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
-	h := Host{
+	h := &Host{
 		Id: "host-1",
 		Volumes: []VolumeAttachment{
 			{
@@ -3814,7 +3814,7 @@ func TestAttachVolume(t *testing.T) {
 		VolumeID:   "volume-2",
 		DeviceName: "device-2",
 	}
-	assert.NoError(t, h.AttachVolume(newAttachment))
+	assert.NoError(t, AddVolumeToHost(h, newAttachment))
 	assert.Equal(t, []VolumeAttachment{
 		{
 			VolumeID:   "volume-1",
@@ -3839,9 +3839,9 @@ func TestAttachVolume(t *testing.T) {
 	}, foundHost.Volumes)
 }
 
-func TestDetachVolume(t *testing.T) {
+func TestRemoveVolumeFromHost(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
-	h := Host{
+	h := &Host{
 		Id: "host-1",
 		Volumes: []VolumeAttachment{
 			{
@@ -3855,7 +3855,7 @@ func TestDetachVolume(t *testing.T) {
 		},
 	}
 	assert.NoError(t, h.Insert())
-	assert.NoError(t, h.DetachVolume("volume-2"))
+	assert.NoError(t, RemoveVolumeFromHost(h, "volume-2"))
 	assert.Equal(t, []VolumeAttachment{
 		{
 			VolumeID:   "volume-1",

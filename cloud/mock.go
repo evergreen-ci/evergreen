@@ -341,37 +341,37 @@ func (mockMgr *mockManager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return instance.TimeTilNextPayment
 }
 
-func (mockMgr *mockManager) AttachVolume(ctx context.Context, host *host.Host, attachment host.VolumeAttachment) error {
+func (mockMgr *mockManager) AttachVolume(ctx context.Context, h *host.Host, attachment host.VolumeAttachment) error {
 	l := mockMgr.mutex
 	l.Lock()
 	defer l.Unlock()
-	instance, ok := mockMgr.Instances[host.Id]
+	instance, ok := mockMgr.Instances[h.Id]
 	if !ok {
-		return errors.Errorf("unable to fetch host: %s", host.Id)
+		return errors.Errorf("unable to fetch host: %s", h.Id)
 	}
 	instance.BlockDevices = append(instance.BlockDevices, attachment.VolumeID)
-	mockMgr.Instances[host.Id] = instance
+	mockMgr.Instances[h.Id] = instance
 
-	return errors.WithStack(host.AttachVolume(attachment))
+	return errors.WithStack(host.AddVolumeToHost(h, attachment))
 }
 
-func (mockMgr *mockManager) DetachVolume(ctx context.Context, host *host.Host, volumeID string) error {
+func (mockMgr *mockManager) DetachVolume(ctx context.Context, h *host.Host, volumeID string) error {
 	l := mockMgr.mutex
 	l.Lock()
 	defer l.Unlock()
 
-	instance, ok := mockMgr.Instances[host.Id]
+	instance, ok := mockMgr.Instances[h.Id]
 	if !ok {
-		return errors.Errorf("unable to fetch host: %s", host.Id)
+		return errors.Errorf("unable to fetch host: %s", h.Id)
 	}
 	for i := range instance.BlockDevices {
 		if volumeID == instance.BlockDevices[i] {
 			instance.BlockDevices = append(instance.BlockDevices[:i], instance.BlockDevices[i+1:]...)
 		}
 	}
-	mockMgr.Instances[host.Id] = instance
+	mockMgr.Instances[h.Id] = instance
 
-	return errors.WithStack(host.DetachVolume(volumeID))
+	return errors.WithStack(host.RemoveVolumeFromHost(h, volumeID))
 }
 
 func (mockMgr *mockManager) CreateVolume(ctx context.Context, volume *host.Volume) (*host.Volume, error) {

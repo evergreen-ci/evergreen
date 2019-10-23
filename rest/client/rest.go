@@ -152,7 +152,7 @@ func (c *communicatorImpl) StopSpawnHost(ctx context.Context, hostID string, wai
 func (c *communicatorImpl) AttachVolume(ctx context.Context, hostID string, opts *restmodel.HostAttachRequest) error {
 	info := requestInfo{
 		method:  post,
-		path:    fmt.Sprintf("hosts/%s/attach"),
+		path:    fmt.Sprintf("hosts/%s/attach", hostID),
 		version: apiVersion2,
 	}
 
@@ -202,7 +202,7 @@ func (c *communicatorImpl) DetachVolume(ctx context.Context, hostID, volumeID st
 func (c *communicatorImpl) CreateVolume(ctx context.Context, volumeRequest *model.VolumePostRequest) (*model.APIVolume, error) {
 	info := requestInfo{
 		method:  post,
-		path:    "hosts/volumes",
+		path:    "volumes",
 		version: apiVersion2,
 	}
 
@@ -230,7 +230,7 @@ func (c *communicatorImpl) CreateVolume(ctx context.Context, volumeRequest *mode
 func (c *communicatorImpl) DeleteVolume(ctx context.Context, volumeID string) error {
 	info := requestInfo{
 		method:  delete,
-		path:    fmt.Sprintf("hosts/volumes/%s", volumeID),
+		path:    fmt.Sprintf("volumes/%s", volumeID),
 		version: apiVersion2,
 	}
 

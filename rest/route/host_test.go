@@ -188,7 +188,7 @@ func TestHostModifySuite(t *testing.T) {
 
 func (s *HostModifySuite) SetupTest() {
 	s.sc = getMockHostsConnector()
-	s.route = makeHostModifyRouteManager(s.sc).(*hostModifyHandler)
+	s.route = makeHostModifyRouteManager(s.sc, evergreen.GetEnvironment()).(*hostModifyHandler)
 }
 
 func (s *HostModifySuite) TestRunHostNotFound() {

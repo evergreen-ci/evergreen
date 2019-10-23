@@ -1,7 +1,9 @@
 package route
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -11,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,10 +30,15 @@ func TestHostPostHandler(t *testing.T) {
 		Provider:     evergreen.ProviderNameEc2OnDemand,
 	}
 	require.NoError(d.Insert())
+	settings, err := evergreen.GetConfig()
+	assert.NoError(err)
 	h := &hostPostHandler{
-		Task:    "task",
-		Distro:  "distro",
-		KeyName: "keyname",
+		settings: settings,
+		options: &model.HostRequestOptions{
+			TaskID:   "task",
+			DistroID: "distro",
+			KeyName:  "keyname",
+		},
 	}
 	h.sc = &data.MockConnector{}
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
@@ -38,13 +46,11 @@ func TestHostPostHandler(t *testing.T) {
 	resp := h.Run(ctx)
 	assert.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
-
-	h.UserData = "my script"
+	h.options.UserData = "my script"
 	resp = h.Run(ctx)
 	assert.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
-
-	h.InstanceTags = []host.Tag{
+	h.options.InstanceTags = []host.Tag{
 		host.Tag{
 			Key:           "key",
 			Value:         "value",
@@ -54,10 +60,9 @@ func TestHostPostHandler(t *testing.T) {
 	resp = h.Run(ctx)
 	assert.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
-
-	h.InstanceType = "test_instance_type"
+	h.options.InstanceType = "test_instance_type"
 	resp = h.Run(ctx)
-	assert.NotNil(resp)
+	require.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
 
 	assert.Len(h.sc.(*data.MockConnector).MockHostConnector.CachedHosts, 4)
@@ -82,7 +87,10 @@ func TestHostPostHandler(t *testing.T) {
 }
 
 func TestHostStopHandler(t *testing.T) {
-	h := &hostStopHandler{sc: &data.MockConnector{}}
+	h := &hostStopHandler{
+		sc:  &data.MockConnector{},
+		env: evergreen.GetEnvironment(),
+	}
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
 
 	h.sc.(*data.MockConnector).MockHostConnector.CachedHosts = []host.Host{
@@ -117,7 +125,10 @@ func TestHostStopHandler(t *testing.T) {
 }
 
 func TestHostStartHandler(t *testing.T) {
-	h := &hostStartHandler{sc: &data.MockConnector{}}
+	h := &hostStartHandler{
+		sc:  &data.MockConnector{},
+		env: evergreen.GetEnvironment(),
+	}
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
 
 	h.sc.(*data.MockConnector).MockHostConnector.CachedHosts = []host.Host{
@@ -140,4 +151,99 @@ func TestHostStartHandler(t *testing.T) {
 	resp = h.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
+}
+
+func TestAttachVolumeHandler(t *testing.T) {
+	h := &attachVolumeHandler{
+		sc:  &data.MockConnector{},
+		env: evergreen.GetEnvironment(),
+	}
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
+	h.sc.(*data.MockConnector).MockHostConnector.CachedHosts = []host.Host{
+		host.Host{
+			Id:        "my-host",
+			Status:    evergreen.HostRunning,
+			StartedBy: "user",
+		},
+		host.Host{
+			Id: "different-host",
+		},
+	}
+
+	// no volume
+	v := host.VolumeAttachment{DeviceName: "my-device"}
+	jsonBody, err := json.Marshal(v)
+	assert.NoError(t, err)
+	buffer := bytes.NewBuffer(jsonBody)
+
+	r, err := http.NewRequest("GET", "/hosts/my-host/attach", buffer)
+	assert.NoError(t, err)
+	r = gimlet.SetURLVars(r, map[string]string{"host_id": "my-host"})
+
+	assert.Error(t, h.Parse(ctx, r))
+
+	// successful
+	v.VolumeID = "my-volume"
+	jsonBody, err = json.Marshal(v)
+	assert.NoError(t, err)
+	buffer = bytes.NewBuffer(jsonBody)
+
+	r, err = http.NewRequest("GET", "/hosts/my-host/attach", buffer)
+	assert.NoError(t, err)
+	r = gimlet.SetURLVars(r, map[string]string{"host_id": "my-host"})
+
+	assert.NoError(t, h.Parse(ctx, r))
+
+	require.NotNil(t, h.attachment)
+	assert.Equal(t, h.attachment.VolumeID, "my-volume")
+	assert.Equal(t, h.attachment.DeviceName, "my-device")
+
+	resp := h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+}
+
+func TestDetachVolumeHandler(t *testing.T) {
+	h := &detachVolumeHandler{
+		sc:  &data.MockConnector{},
+		env: evergreen.GetEnvironment(),
+	}
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
+
+	h.sc.(*data.MockConnector).MockHostConnector.CachedHosts = []host.Host{
+		host.Host{
+			Id:        "my-host",
+			StartedBy: "user",
+			Status:    evergreen.HostRunning,
+			Volumes: []host.VolumeAttachment{
+				{
+					VolumeID:   "my-volume",
+					DeviceName: "my-device",
+				},
+			},
+		},
+	}
+
+	v := host.VolumeAttachment{VolumeID: "not-a-volume"}
+	jsonBody, err := json.Marshal(v)
+	assert.NoError(t, err)
+	buffer := bytes.NewBuffer(jsonBody)
+
+	r, err := http.NewRequest("GET", "/hosts/my-host/detach", buffer)
+	assert.NoError(t, err)
+	r = gimlet.SetURLVars(r, map[string]string{"host_id": "my-host"})
+
+	assert.NoError(t, h.Parse(ctx, r))
+	resp := h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusNotFound, resp.Status())
+
+	h.attachment.VolumeID = "my-volume"
+	resp = h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+}
+
+func TestCreateVolumeHandler(t *testing.T) {
+
 }

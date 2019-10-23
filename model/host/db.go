@@ -63,7 +63,6 @@ var (
 	StartedByKey                 = bsonutil.MustHaveTag(Host{}, "StartedBy")
 	InstanceTypeKey              = bsonutil.MustHaveTag(Host{}, "InstanceType")
 	VolumeTotalSizeKey           = bsonutil.MustHaveTag(Host{}, "VolumeTotalSize")
-	VolumeIDsKey                 = bsonutil.MustHaveTag(Host{}, "VolumeIDs")
 	VolumesKey                   = bsonutil.MustHaveTag(Host{}, "Volumes")
 	NotificationsKey             = bsonutil.MustHaveTag(Host{}, "Notifications")
 	LastCommunicationTimeKey     = bsonutil.MustHaveTag(Host{}, "LastCommunicationTime")
@@ -996,6 +995,52 @@ func AggregateLastContainerFinishTimes() ([]FinishTime, error) {
 	}
 	return times, nil
 
+}
+
+func AddVolumeToHost(h *Host, newVolume VolumeAttachment) error {
+	modifiedHost := &Host{}
+	_, err := db.FindAndModify(Collection,
+		bson.M{
+			IdKey: h.Id,
+		}, nil,
+		adb.Change{
+			Update: bson.M{
+				"$push": bson.M{
+					VolumesKey: newVolume,
+				},
+			},
+			ReturnNew: true,
+		},
+		&modifiedHost,
+	)
+	if err != nil {
+		return errors.Wrapf(err, "error finding and updating host")
+	}
+	h.Volumes = modifiedHost.Volumes
+	return nil
+}
+
+func RemoveVolumeFromHost(h *Host, volumeId string) error {
+	modifiedHost := &Host{}
+	_, err := db.FindAndModify(Collection,
+		bson.M{
+			IdKey: h.Id,
+		}, nil,
+		adb.Change{
+			Update: bson.M{
+				"$pull": bson.M{
+					VolumesKey: bson.M{VolumeAttachmentIDKey: volumeId},
+				},
+			},
+			ReturnNew: true,
+		},
+		&modifiedHost,
+	)
+	if err != nil {
+		return errors.Wrapf(err, "error finding and updating host")
+	}
+	h.Volumes = modifiedHost.Volumes
+	return nil
 }
 
 // FindOne gets one Volume for the given query.

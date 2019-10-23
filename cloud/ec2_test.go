@@ -678,7 +678,8 @@ func (s *EC2Suite) TestGetInstanceStatus() {
 	s.Equal("us-east-1a", s.h.Zone)
 	s.True(s.h.StartTime.Equal(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)))
 	s.Equal("public_dns_name", s.h.Host)
-	s.Equal([]string{"volume_id"}, s.h.VolumeIDs)
+	s.Require().Len(s.h.Volumes, 1)
+	s.Equal("volume_id", s.h.Volumes[0].VolumeID)
 
 	manager, ok := s.onDemandManager.(*ec2Manager)
 	s.True(ok)
@@ -822,12 +823,9 @@ func (s *EC2Suite) TestOnUp() {
 	foundHost, err := host.FindOneId(s.h.Id)
 	s.NoError(err)
 	s.NotNil(foundHost)
-	s.Equal([]host.VolumeAttachment{
-		{
-			VolumeID:   "volume_id",
-			DeviceName: "device_name",
-		},
-	}, foundHost.Volumes)
+	s.Require().Len(foundHost.Volumes, 1)
+	s.Equal("volume_id", foundHost.Volumes[0].VolumeID)
+	s.Equal("volume_id", foundHost.Volumes[0].DeviceName)
 }
 
 func (s *EC2Suite) TestGetDNSName() {

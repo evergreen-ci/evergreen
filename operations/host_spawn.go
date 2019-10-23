@@ -376,7 +376,7 @@ func hostAttach() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-			client := conf.GetRestCommunicator(ctx)
+			client := conf.getRestCommunicator(ctx)
 			defer client.Close()
 
 			opts := &model.HostAttachRequest{
@@ -423,7 +423,7 @@ func hostDetach() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-			client := conf.GetRestCommunicator(ctx)
+			client := conf.getRestCommunicator(ctx)
 			defer client.Close()
 
 			err = client.DetachVolume(ctx, hostID, volumeID)
@@ -470,7 +470,7 @@ func hostCreateVolume() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-			client := conf.GetRestCommunicator(ctx)
+			client := conf.getRestCommunicator(ctx)
 			defer client.Close()
 
 			volumeRequest := &model.VolumePostRequest{
@@ -516,7 +516,7 @@ func hostDeleteVolume() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-			client := conf.GetRestCommunicator(ctx)
+			client := conf.getRestCommunicator(ctx)
 			defer client.Close()
 
 			if err = client.DeleteVolume(ctx, volumeID); err != nil {

@@ -1070,7 +1070,7 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 	}
 	attachments := makeVolumeAttachments(devices)
 	for _, attachment := range attachments {
-		if err = h.AttachVolume(attachment); err != nil {
+		if err = host.AddVolumeToHost(h, attachment); err != nil {
 			return errors.Wrap(err, "error attaching volume")
 		}
 	}
@@ -1101,7 +1101,7 @@ func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment 
 		return errors.Wrapf(err, "error attaching volume '%s' to host '%s'", attachment.VolumeID, h.Id)
 	}
 
-	return errors.Wrapf(h.AttachVolume(attachment), "error attaching volume '%s' to host '%s' in db", attachment.VolumeID, h.Id)
+	return errors.Wrapf(host.AddVolumeToHost(h, attachment), "error attaching volume '%s' to host '%s' in db", attachment.VolumeID, h.Id)
 }
 
 func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID string) error {
@@ -1117,7 +1117,7 @@ func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID st
 		return errors.Wrapf(err, "error attaching volume '%s' to host '%s' in client", volumeID, h.Id)
 	}
 
-	return errors.Wrapf(h.DetachVolume(volumeID), "error detaching volume '%s' from host '%s' in db", volumeID, h.Id)
+	return errors.Wrapf(host.RemoveVolumeFromHost(h, volumeID), "error detaching volume '%s' from host '%s' in db", volumeID, h.Id)
 }
 
 func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*host.Volume, error) {
