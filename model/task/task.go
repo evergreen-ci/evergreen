@@ -1053,11 +1053,11 @@ func (t *Task) MarkStart(startTime time.Time) error {
 
 // SetResults sets the results of the task in LocalTestResults
 func (t *Task) SetResults(results []TestResult) error {
-	docs := make([]testresult.TestResult, len(results))
+        docs := make([]testresult.TestResult, len(results))
 
-        for	 idx, result := range results {
+        for idx, result := range results {
                 docs[idx] = result.convertToNewStyleTestResult(t)
-	}
+        }
 
 	return errors.Wrap(testresult.InsertMany(docs), "error inserting into testresults collection")
 }
