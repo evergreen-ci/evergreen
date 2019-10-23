@@ -13,6 +13,7 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -31,6 +32,8 @@ var (
 	hookIDKey = bsonutil.MustHaveTag(GithubHook{}, "HookID")
 	ownerKey  = bsonutil.MustHaveTag(GithubHook{}, "Owner")
 	repoKey   = bsonutil.MustHaveTag(GithubHook{}, "Repo")
+
+	githubHookURL = fmt.Sprintf("%s/rest/v2/hooks/github", settings.ApiUrl)
 )
 
 func (h *GithubHook) Insert() error {
@@ -85,7 +88,7 @@ func SetupNewGithubHook(ctx context.Context, settings evergreen.Settings, owner 
 		Active: github.Bool(true),
 		Events: []string{"*"},
 		Config: map[string]interface{}{
-			"url":          github.String(fmt.Sprintf("%s/rest/v2/hooks/github", settings.ApiUrl)),
+			"url":          github.String(githubHookURL),
 			"content_type": github.String("json"),
 			"secret":       github.String(settings.Api.GithubWebhookSecret),
 			"insecure_ssl": github.String("0"),
@@ -110,4 +113,36 @@ func SetupNewGithubHook(ctx context.Context, settings evergreen.Settings, owner 
 		Repo:   repo,
 	}
 	return hook, nil
+}
+
+func GetExistingGithubHooks(ctx context.Context, settings evergreen.Settings, owner, repo string) (*GithubHook, error) {
+	token, err := settings.GetGithubOauthToken()
+	if err != nil {
+		return nil, err
+	}
+	httpClient, err := util.GetOAuth2HTTPClient(token)
+	if err != nil {
+		return nil, err
+	}
+	defer util.PutHTTPClient(httpClient)
+	client := github.NewClient(httpClient)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	respHooks, resp, err := client.Repositories.ListHooks(ctx, owner, repo, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't get hooks for owner '%s', repo '%s'", owner, repo)
+	}
+
+	for _, hook := range respHooks {
+		if hook.GetURL() == githubHookURL {
+			return &GithubHook{
+				HookID: *hook.ID,
+				Owner:  owner,
+				Repo:   repo,
+			}, nil
+		}
+	}
+
+	return nil, errors.Errorf("no matching hooks found")
 }

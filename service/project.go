@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -252,20 +253,22 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 	origGithubWebhookEnabled := (hook != nil)
 	if hook == nil {
-		hook, err = model.SetupNewGithubHook(context.Background(), uis.Settings, responseRef.Owner, responseRef.Repo)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"source":  "project edit",
-				"message": "can't setup webhook",
-				"project": id,
-				"owner":   responseRef.Owner,
-				"repo":    responseRef.Repo,
-			}))
-			// don't return here:
-			// sometimes people change a project to track a personal
-			// branch we don't have access to
-			projectRef.TracksPushEvents = false
-		} else {
+		hook, err = model.SetupNewGithubHook(ctx, uis.Settings, responseRef.Owner, responseRef.Repo)
+		if err == nil || strings.Contains(err.Error(), "Hook already exists on this repository") {
+			if err != nil {
+				hook, err = model.GetExistingGithubHook(ctx, uis.Settings, responseRef.Owner, responseRef.Repo)
+				if err != nil {
+					grip.Error(message.WrapError(err, message.Fields{
+						"source":  "project edit",
+						"message": "can't get existing webhook",
+						"project": id,
+						"owner":   responseRef.Owner,
+						"repo":    responseRef.Repo,
+					}))
+					uis.LoggedError(w, r, http.StatusInternalServerError, err)
+					return
+				}
+			}
 			if err = hook.Insert(); err != nil {
 				// A github hook as been created, but we couldn't
 				// save the hook ID in our database. This needs
@@ -281,6 +284,18 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
 			}
+		} else {
+			grip.Error(message.WrapError(err, message.Fields{
+				"source":  "project edit",
+				"message": "can't setup webhook",
+				"project": id,
+				"owner":   responseRef.Owner,
+				"repo":    responseRef.Repo,
+			}))
+			// don't return here:
+			// sometimes people change a project to track a personal
+			// branch we don't have access to
+			projectRef.TracksPushEvents = false
 		}
 	}
 
