@@ -47,6 +47,10 @@ func (h *GithubHook) Insert() error {
 	return db.Insert(GithubHooksCollection, h)
 }
 
+func (h *GithubHook) Remove() error {
+	return errors.WithStack(db.Remove(GithubHooksCollection, bson.M{hookIDKey: h.HookID}))
+}
+
 func FindGithubHook(owner, repo string) (*GithubHook, error) {
 	if len(owner) == 0 || len(repo) == 0 {
 		return nil, errors.New("Owner and repository must not be empty strings")
@@ -56,6 +60,22 @@ func FindGithubHook(owner, repo string) (*GithubHook, error) {
 	err := db.FindOneQ(GithubHooksCollection, db.Query(bson.M{
 		ownerKey: owner,
 		repoKey:  repo,
+	}), hook)
+
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return hook, nil
+}
+
+func FindGithubHookByID(hookID int) (*GithubHook, error) {
+	hook := &GithubHook{}
+	err := db.FindOneQ(GithubHooksCollection, db.Query(bson.M{
+		hookIDKey: hookID,
 	}), hook)
 
 	if adb.ResultsNotFound(err) {
@@ -145,4 +165,15 @@ func GetExistingGithubHooks(ctx context.Context, settings evergreen.Settings, ow
 	}
 
 	return nil, errors.Errorf("no matching hooks found")
+}
+
+func RemoveGithubHook(hookID int) error {
+	hook, err := FindGithubHookByID(hookID)
+	if err != nil {
+		if adb.ResultsNotFound(err) {
+			return errors.Errorf("no hook found for id '%d'", hookID)
+		}
+		return errors.Wrap(err, "can't query for webhooks")
+	}
+	return errors.Wrapf(hook.Remove(), "can't remove hook with ID '%d'", hookID)
 }

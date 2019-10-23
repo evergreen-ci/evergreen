@@ -249,6 +249,16 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				}
 			}
 		}
+
+	case *github.MetaEvent:
+		if event.Action == "deleted" {
+			hookID := event.GetHookID()
+			if hookID != 0 {
+				if err := model.RemoveGithubHook(hookID); err != nil {
+					return gimlet.MakeJSONErrorResponder(err)
+				}
+			}
+		}
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
