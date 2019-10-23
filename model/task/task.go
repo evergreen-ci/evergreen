@@ -1055,17 +1055,20 @@ func (t *Task) MarkStart(startTime time.Time) error {
 func (t *Task) SetResults(results []TestResult) error {
 	docs := make([]testresult.TestResult, len(results))
 
-	for idx, result := range results {
-		docs[idx] = result.convertToNewStyleTestResult(t.Id, t.Execution)
+        for	 idx, result := range results {
+                docs[idx] = result.convertToNewStyleTestResult(t)
 	}
 
 	return errors.Wrap(testresult.InsertMany(docs), "error inserting into testresults collection")
 }
 
-func (t TestResult) convertToNewStyleTestResult(id string, execution int) testresult.TestResult {
+func (t TestResult) convertToNewStyleTestResult(task *Task) testresult.TestResult {
+        ExecutionDisplayName := ""
+        if displayTask, _ := task.GetDisplayTask(); displayTask != nil {
+                ExecutionDisplayName = displayTask.DisplayName
+        }
 	return testresult.TestResult{
-		TaskID:    id,
-		Execution: execution,
+                // copy fields from local test result.
 		Status:    t.Status,
 		TestFile:  t.TestFile,
 		URL:       t.URL,
@@ -1075,6 +1078,17 @@ func (t TestResult) convertToNewStyleTestResult(id string, execution int) testre
 		ExitCode:  t.ExitCode,
 		StartTime: t.StartTime,
 		EndTime:   t.EndTime,
+
+                // copy field values from enclosing tasks.
+                TaskID:               task.Id,
+                Execution:            task.Execution,
+                Project:              task.Project,
+                BuildVariant:         task.BuildVariant,
+                DistroId:             task.DistroId,
+                Requester:            task.Requester,
+                DisplayName:          task.DisplayName,
+                CreateTime:           task.CreateTime,
+                ExecutionDisplayName: ExecutionDisplayName,
 	}
 }
 
