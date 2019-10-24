@@ -60,6 +60,8 @@ func TestHostPostHandler(t *testing.T) {
 	resp = h.Run(ctx)
 	assert.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
+
+	h.settings.Providers.AWS.AllowedInstanceTypes = append(h.settings.Providers.AWS.AllowedInstanceTypes, "test_instance_type")
 	h.options.InstanceType = "test_instance_type"
 	resp = h.Run(ctx)
 	require.NotNil(resp)
