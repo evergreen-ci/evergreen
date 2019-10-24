@@ -1063,18 +1063,6 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 	}
 	defer m.client.Close()
 
-	// Add instance stores and volumes to host document
-	devices, err := m.client.GetInstanceBlockDevices(ctx, h)
-	if err != nil {
-		return errors.Wrap(err, "error getting devices")
-	}
-	attachments := makeVolumeAttachments(devices)
-	for _, attachment := range attachments {
-		if err = h.AddVolumeToHost(attachment); err != nil {
-			return errors.Wrap(err, "error attaching volume")
-		}
-	}
-
 	resources, err := m.getResources(ctx, h)
 	if err != nil {
 		return errors.Wrap(err, "error getting resources")

@@ -406,6 +406,19 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
+	v, err := host.FindVolumeByID(h.attachment.VolumeID)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "error checking whether attachment '%s' exists", h.attachment.VolumeID).Error(),
+		})
+	}
+	if v == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Errorf("attachment '%s' does not exist", h.attachment.VolumeID).Error(),
+		})
+	}
 	ts := util.RoundPartOfMinute(1).Format(tsFormat)
 	attachJob := units.NewSpawnhostAttachVolumeJob(targetHost, *h.attachment, ts)
 	if err = h.env.RemoteQueue().Put(ctx, attachJob); err != nil {
