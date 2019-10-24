@@ -1,6 +1,7 @@
 package units
 
 import (
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -9,11 +10,16 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCleanupTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+
 	Convey("When cleaning up a task", t, func() {
 		// reset the db
 		require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection), "error clearing tasks collection")
@@ -22,7 +28,7 @@ func TestCleanupTask(t *testing.T) {
 		Convey("an error should be thrown if the passed-in projects slice"+
 			" does not contain the task's project", func() {
 
-			err := cleanUpTimedOutTask(&task.Task{
+			err := cleanUpTimedOutTask(ctx, env, "", &task.Task{
 				Project: "proj",
 			})
 			So(err, ShouldNotBeNil)
@@ -70,7 +76,7 @@ func TestCleanupTask(t *testing.T) {
 				So(v.Insert(), ShouldBeNil)
 
 				// cleaning up the task should work
-				So(cleanUpTimedOutTask(newTask), ShouldBeNil)
+				So(cleanUpTimedOutTask(ctx, env, "", newTask), ShouldBeNil)
 
 				// refresh the task - it should be reset
 				newTask, err := task.FindOne(task.ById("t1"))
@@ -112,7 +118,7 @@ func TestCleanupTask(t *testing.T) {
 					}
 					So(b.Insert(), ShouldBeNil)
 
-					So(cleanUpTimedOutTask(et1), ShouldBeNil)
+					So(cleanUpTimedOutTask(ctx, env, "", et1), ShouldBeNil)
 					et1, err := task.FindOneId(et1.Id)
 					So(err, ShouldBeNil)
 					So(et1.Status, ShouldEqual, evergreen.TaskFailed)
@@ -153,7 +159,7 @@ func TestCleanupTask(t *testing.T) {
 				So(v.Insert(), ShouldBeNil)
 
 				// cleaning up the task should work
-				So(cleanUpTimedOutTask(newTask), ShouldBeNil)
+				So(cleanUpTimedOutTask(ctx, env, "", newTask), ShouldBeNil)
 
 				// refresh the host, make sure its running task field has
 				// been reset

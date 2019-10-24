@@ -111,7 +111,10 @@ func (m *RecentHostAgentDeploys) String() string {
 ////////////////////////////////////////////////////////////////////////
 //
 // Predicates to support error checking during the agent deploy process
-func (m *RecentHostAgentDeploys) LastAttemptFailed() bool { return m.Last == EventHostAgentDeployFailed }
+func (m *RecentHostAgentDeploys) LastAttemptFailed() bool {
+	return m.Last == EventHostAgentDeployFailed || m.Last == EventHostAgentMonitorDeployFailed
+}
+
 func (m *RecentHostAgentDeploys) AllAttemptsFailed() bool {
 	return m.Count > 0 && m.Success == 0 && m.HostStatusChanged == 0
 }
