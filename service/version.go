@@ -267,20 +267,9 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 		}
 	case "set_priority":
 		if jsonMap.Priority > evergreen.MaxTaskPriority {
-			requiredPermission := gimlet.PermissionOpts{
-				Resource:      projCtx.ProjectRef.Identifier,
-				ResourceType:  "project",
-				Permission:    evergreen.PermissionTasks,
-				RequiredLevel: int(evergreen.TasksAdmin),
-			}
-			taskAdmin, err := user.HasPermission(requiredPermission)
-			if err != nil {
-				http.Error(w, fmt.Sprintf("Error checking permissions: %s", err.Error()), http.StatusInternalServerError)
-				return
-			}
-			if !uis.isSuperUser(user) && !taskAdmin { // TODO PM-1355 remove superuser check
+			if !uis.isSuperUser(user) {
 				http.Error(w, fmt.Sprintf("Insufficient access to set priority %v, can only set priority less than or equal to %v", jsonMap.Priority, evergreen.MaxTaskPriority),
-					http.StatusUnauthorized)
+					http.StatusBadRequest)
 				return
 			}
 		}

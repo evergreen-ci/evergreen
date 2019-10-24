@@ -2,9 +2,6 @@ ui:
   "/":
     - "logkeeper"
     - "Waterfall"
-  "/waterfall/logkeeper":
-    - "logkeeper"
-    - "Waterfall"
   "/task/logkeeper_ubuntu_test_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58/0":
     - "Added .docker-test.yaml for docker testing"
     - "edd78"
@@ -23,8 +20,6 @@ ui:
     - "edd78"
     - "edd78"
     - "logkeeper"
-  "/waterfall/evergreen":
-    - "not authorized for this action"
 api:
   "/":
     - "404"
@@ -38,9 +33,4 @@ api:
     - "404"
   "/ref/evergreen":
     - "evergreen"
-  "/rest/v2/builds/logkeeper_ubuntu_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58":
-    - "logkeeper_ubuntu_test_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58"
-    - "display_name"
-    - "build_variant"
-  "/rest/v2/builds/sys_perf_linux_3_node_replSet_initialsync_40dc86136f85f88e1782a1c65b49bfba02757009_17_12_05_17_20_27":
-    - "not authorized for this action"
+

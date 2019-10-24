@@ -10,13 +10,14 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -321,63 +322,52 @@ func (n *noopMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next
 	next(rw, r)
 }
 
-func urlVarsToScopes(r *http.Request) (string, int, error) {
+func urlVarsToScopes(r *http.Request) string {
 	vars := gimlet.GetVars(r)
 	query := r.URL.Query()
 
-	resourceType := util.CoalesceStrings(query["resource_type"], vars["resource_type"])
-	if resourceType != "" {
-		switch resourceType {
-		case model.EventResourceTypeProject:
-			vars["project_id"] = vars["resource_id"]
-		case event.ResourceTypeTask:
-			vars["task_id"] = vars["resource_id"]
-		}
-	}
-
 	projectID := util.CoalesceStrings(append(query["project_id"], query["projectId"]...), vars["project_id"], vars["projectId"])
 	if projectID != "" {
-		return projectID, http.StatusOK, nil
+		return projectID
 	}
 
 	versionID := util.CoalesceStrings(append(query["version_id"], query["versionId"]...), vars["version_id"], vars["versionId"])
 	if versionID != "" {
 		proj, err := model.FindProjectForVersion(versionID)
 		if err != nil {
-			return "", http.StatusNotFound, err
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "error finding version",
+				"version": versionID,
+			}))
+			return ""
 		}
-		return proj, http.StatusOK, nil
+		return proj
 	}
 
 	patchID := util.CoalesceStrings(append(query["patch_id"], query["patchId"]...), vars["patch_id"], vars["patchId"])
 	if patchID != "" && patch.IsValidId(patchID) {
 		proj, err := patch.FindProjectForPatch(patch.NewId(patchID))
 		if err != nil {
-			return "", http.StatusNotFound, err
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "error finding patch",
+				"patch":   patchID,
+			}))
+			return ""
 		}
-		return proj, http.StatusOK, nil
+		return proj
 	}
 
 	buildID := util.CoalesceStrings(append(query["build_id"], query["buildId"]...), vars["build_id"], vars["buildId"])
 	if buildID != "" {
 		proj, err := build.FindProjectForBuild(buildID)
 		if err != nil {
-			return "", http.StatusNotFound, err
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "error finding build",
+				"build":   buildID,
+			}))
+			return ""
 		}
-		return proj, http.StatusOK, nil
-	}
-
-	testLog := util.CoalesceStrings(query["log_id"], vars["log_id"])
-	if testLog != "" {
-		test, err := model.FindOneTestLogById(testLog)
-		if err != nil {
-			return "", http.StatusNotFound, err
-		}
-		proj, err := task.FindProjectForTask(test.Task)
-		if err != nil {
-			return "", http.StatusNotFound, err
-		}
-		return proj, http.StatusOK, nil
+		return proj
 	}
 
 	// retrieve all possible naming conventions for task ID
@@ -385,10 +375,14 @@ func urlVarsToScopes(r *http.Request) (string, int, error) {
 	if taskID != "" {
 		proj, err := task.FindProjectForTask(taskID)
 		if err != nil {
-			return "", http.StatusNotFound, err
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "error finding task",
+				"build":   taskID,
+			}))
+			return ""
 		}
-		return proj, http.StatusOK, nil
+		return proj
 	}
 
-	return "", http.StatusNotFound, errors.New("no suitable projects found")
+	return ""
 }
