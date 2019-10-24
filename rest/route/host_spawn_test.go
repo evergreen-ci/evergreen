@@ -186,6 +186,11 @@ func TestAttachVolumeHandler(t *testing.T) {
 
 	// successful
 	v.VolumeID = "my-volume"
+	volume := host.Volume{
+		ID: v.VolumeID,
+	}
+	assert.NoError(t, volume.Insert())
+
 	jsonBody, err = json.Marshal(v)
 	assert.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
@@ -244,8 +249,4 @@ func TestDetachVolumeHandler(t *testing.T) {
 	resp = h.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
-}
-
-func TestCreateVolumeHandler(t *testing.T) {
-
 }
