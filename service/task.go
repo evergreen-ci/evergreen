@@ -595,6 +595,17 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	authUser := gimlet.GetUser(ctx)
 	authName := authUser.DisplayName()
+	requiredPermission := gimlet.PermissionOpts{
+		Resource:      projCtx.ProjectRef.Identifier,
+		ResourceType:  "project",
+		Permission:    evergreen.PermissionTasks,
+		RequiredLevel: int(evergreen.TasksAdmin),
+	}
+	taskAdmin, err := authUser.HasPermission(requiredPermission)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error checking permissions: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
 
 	// determine what action needs to be taken
 	switch putParams.Action {
@@ -662,9 +673,9 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if priority > evergreen.MaxTaskPriority {
-			if !uis.isSuperUser(authUser) {
+			if !uis.isSuperUser(authUser) && !taskAdmin { // TODO PM-1355 remove superuser check
 				http.Error(w, fmt.Sprintf("Insufficient access to set priority %v, can only set priority less than or equal to %v", priority, evergreen.MaxTaskPriority),
-					http.StatusBadRequest)
+					http.StatusUnauthorized)
 				return
 			}
 		}
@@ -681,7 +692,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSON(w, projCtx.Task)
 		return
 	case "override_dependencies":
-		if !projCtx.ProjectRef.IsAdmin(authUser.Username(), uis.Settings) {
+		if !projCtx.ProjectRef.IsAdmin(authUser.Username(), uis.Settings) && !taskAdmin { // TODO PM-1355 remove admin check
 			http.Error(w, "not authorized to override dependencies", http.StatusUnauthorized)
 			return
 		}
