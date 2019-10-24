@@ -249,7 +249,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	}
 
 	// Waterfall pages
-	app.AddRoute("/").Wrap(needsContext).Handler(uis.waterfallPage).Get() // TODO: figure out how to redirect these
+	app.AddRoute("/").Wrap(needsContext).Handler(uis.waterfallPage).Get()
 	app.AddRoute("/waterfall").Wrap(needsContext).Handler(uis.waterfallPage).Get()
 	app.AddRoute("/waterfall/{project_id}").Wrap(needsContext, viewTasks).Handler(uis.waterfallPage).Get()
 
