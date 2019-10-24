@@ -153,6 +153,7 @@ func fetchSource(ctx context.Context, ac, rc *legacyClient, comm client.Communic
 	if task == nil {
 		return errors.New("task not found.")
 	}
+
 	config, err := rc.GetConfig(task.Version)
 	if err != nil {
 		return err
@@ -326,6 +327,11 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 func applyPatch(patch *service.RestPatch, rootCloneDir string, conf *model.Project, variant *model.BuildVariant) error {
 	// patch sets and contain multiple patches, some of them for modules
 	for _, patchPart := range patch.Patches {
+		// calling `git apply` on an empty patch exits 128
+		if len(patchPart.PatchSet.Patch) == 0 {
+			continue
+		}
+
 		var dir string
 		if patchPart.ModuleName == "" {
 			// if patch is not part of a module, just apply patch against src root

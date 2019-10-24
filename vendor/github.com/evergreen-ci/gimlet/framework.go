@@ -41,8 +41,7 @@ func handleHandler(h RouteHandler) http.HandlerFunc {
 		defer cancel()
 
 		if err := handler.Parse(ctx, r); err != nil {
-			e := getError(err, http.StatusBadRequest)
-			WriteJSONResponse(w, e.StatusCode, e)
+			WriteResponse(w, newResponder(err, http.StatusBadRequest, JSON))
 			return
 		}
 
@@ -57,8 +56,7 @@ func handleHandler(h RouteHandler) http.HandlerFunc {
 		}
 
 		if err := resp.Validate(); err != nil {
-			e := getError(err, http.StatusBadRequest)
-			WriteJSONResponse(w, e.StatusCode, e)
+			WriteResponse(w, newResponder(err, http.StatusBadRequest, JSON))
 			return
 		}
 

@@ -29,7 +29,7 @@ type smokeEndpointTestDefinitions struct {
 	API map[string][]string `yaml:"api,omitempty"`
 }
 
-func (tests smokeEndpointTestDefinitions) checkEndpoints(username, key string) error {
+func (tests smokeEndpointTestDefinitions) checkEndpoints() error {
 	client := util.GetHTTPClient()
 	defer util.PutHTTPClient(client)
 	client.Timeout = time.Second
@@ -56,12 +56,12 @@ func (tests smokeEndpointTestDefinitions) checkEndpoints(username, key string) e
 	catcher := grip.NewSimpleCatcher()
 	grip.Info("Testing UI Endpoints")
 	for url, expected := range tests.UI {
-		catcher.Add(makeSmokeRequest(username, key, client, url, expected))
+		catcher.Add(makeSmokeRequest(client, url, expected))
 	}
 
 	grip.Info("Testing API Endpoints")
 	for url, expected := range tests.API {
-		catcher.Add(makeSmokeRequest(username, key, client, "/api"+url, expected))
+		catcher.Add(makeSmokeRequest(client, "/api"+url, expected))
 	}
 
 	grip.InfoWhen(!catcher.HasErrors(), "success: all endpoints accessible")
@@ -263,15 +263,9 @@ func checkTask(client *http.Client, username, key string, builds []apimodels.API
 	return task, nil
 }
 
-func makeSmokeRequest(username, key string, client *http.Client, url string, expected []string) error {
+func makeSmokeRequest(client *http.Client, url string, expected []string) error {
 	grip.Infof("Getting endpoint '%s'", url)
-	req, err := http.NewRequest(http.MethodGet, smokeUrlPrefix+smokeUiPort+url, nil)
-	if err != nil {
-		return errors.Wrap(err, "error forming request")
-	}
-	req.Header.Add(evergreen.APIUserHeader, username)
-	req.Header.Add(evergreen.APIKeyHeader, key)
-	resp, err := client.Do(req)
+	resp, err := client.Get(smokeUrlPrefix + smokeUiPort + url)
 	if resp != nil {
 		defer resp.Body.Close()
 	}

@@ -21,7 +21,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -151,7 +150,7 @@ func (as *APIServer) checkProject(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		r = setProjectRefContext(r, projectRef)
+		r = setProjectReftContext(r, projectRef)
 		r = setProjectContext(r, p)
 
 		next(w, r)
@@ -188,20 +187,7 @@ func (as *APIServer) GetVersion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "version not found", http.StatusNotFound)
 		return
 	}
-	// safety check
-	if v.Config == "" {
-		pp, err := model.ParserProjectFindOneById(t.Version)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-		config, err := yaml.Marshal(pp)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-		v.Config = string(config)
-	}
+
 	gimlet.WriteJSON(w, v)
 }
 
@@ -436,7 +422,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 
 	project := &model.Project{}
 	validationErr := validator.ValidationError{}
-	if _, err = model.LoadProjectInto(yamlBytes, "", project); err != nil {
+	if err = model.LoadProjectInto(yamlBytes, "", project); err != nil {
 		validationErr.Message = err.Error()
 		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
 		return
@@ -493,8 +479,6 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	checkUser := gimlet.NewRequireAuthHandler()
 	checkTask := gimlet.WrapperMiddleware(as.checkTask)
 	checkHost := gimlet.WrapperMiddleware(as.checkHost)
-	viewTasks := route.RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksView)
-	submitPatch := route.RequiresProjectPermission(evergreen.PermissionPatches, evergreen.PatchSubmit)
 
 	app := gimlet.NewApp()
 	app.SetPrefix("/api")
@@ -515,18 +499,18 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/task_queue/limit").Handler(as.checkTaskQueueSize).Get()
 
 	// CLI Operation Backends
-	app.AddRoute("/tasks/{projectId}").Wrap(checkUser, checkProject, viewTasks).Handler(as.listTasks).Get()
-	app.AddRoute("/variants/{projectId}").Wrap(checkUser, checkProject, viewTasks).Handler(as.listVariants).Get()
+	app.AddRoute("/tasks/{projectId}").Wrap(checkUser, checkProject).Handler(as.listTasks).Get()
+	app.AddRoute("/variants/{projectId}").Wrap(checkUser, checkProject).Handler(as.listVariants).Get()
 	app.AddRoute("/projects").Wrap(checkUser).Handler(as.listProjects).Get()
 
 	// Patches
 	app.PrefixRoute("/patches").Route("/").Wrap(checkUser).Handler(as.submitPatch).Put()
 	app.PrefixRoute("/patches").Route("/mine").Wrap(checkUser).Handler(as.listPatches).Get()
-	app.PrefixRoute("/patches").Route("/{patchId:\\w+}").Wrap(checkUser, viewTasks).Handler(as.summarizePatch).Get()
-	app.PrefixRoute("/patches").Route("/{patchId:\\w+}").Wrap(checkUser, submitPatch).Handler(as.existingPatchRequest).Post()
-	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/{projectId}/modules").Wrap(checkUser, checkProject, viewTasks).Handler(as.listPatchModules).Get()
-	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/modules").Wrap(checkUser, submitPatch).Handler(as.deletePatchModule).Delete()
-	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/modules").Wrap(checkUser, submitPatch).Handler(as.updatePatchModule).Post()
+	app.PrefixRoute("/patches").Route("/{patchId:\\w+}").Wrap(checkUser).Handler(as.summarizePatch).Get()
+	app.PrefixRoute("/patches").Route("/{patchId:\\w+}").Wrap(checkUser, route.RequiresProjectPermission(evergreen.PermissionPatches, evergreen.PatchSubmit)).Handler(as.existingPatchRequest).Post()
+	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/{projectId}/modules").Wrap(checkUser, checkProject).Handler(as.listPatchModules).Get()
+	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/modules").Wrap(checkUser).Handler(as.deletePatchModule).Delete()
+	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/modules").Wrap(checkUser).Handler(as.updatePatchModule).Post()
 
 	// SpawnHosts
 	app.Route().Prefix("/spawn").Wrap(checkUser).Route("/{instance_id:[\\w_\\-\\@]+}/").Handler(as.hostInfo).Get()

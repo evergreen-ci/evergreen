@@ -241,7 +241,7 @@ type requiresPermissionHandler struct {
 	opts RequiresPermissionMiddlewareOpts
 }
 
-type FindResourceFunc func(*http.Request) (string, int, error)
+type FindResourceFunc func(*http.Request) string
 
 // RequiresPermissionMiddlewareOpts defines what permissions the middleware shoud check and how. The ResourceFunc parameter
 // can be used to specify custom behavior to extract a valid resource name from request variables
@@ -268,31 +268,25 @@ func (rp *requiresPermissionHandler) ServeHTTP(rw http.ResponseWriter, r *http.R
 
 	user := GetUser(ctx)
 	if user == nil {
-		http.Error(rw, "no user found", http.StatusUnauthorized)
+		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
 	authenticator := GetAuthenticator(ctx)
 	if authenticator == nil {
-		http.Error(rw, "unable to determine an authenticator", http.StatusInternalServerError)
+		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
 	if !authenticator.CheckAuthenticated(user) {
-		http.Error(rw, "not authenticated", http.StatusUnauthorized)
+		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
 	vars := GetVars(r)
 	var resource string
-	var status int
-	var err error
 	if rp.opts.ResourceFunc != nil {
-		resource, status, err = rp.opts.ResourceFunc(r)
-		if err != nil {
-			http.Error(rw, err.Error(), status)
-			return
-		}
+		resource = rp.opts.ResourceFunc(r)
 	} else {
 		for _, level := range rp.opts.ResourceLevels {
 			if resourceVal, exists := vars[level]; exists {
@@ -316,7 +310,7 @@ func (rp *requiresPermissionHandler) ServeHTTP(rw http.ResponseWriter, r *http.R
 	}))
 
 	if !hasPermission {
-		http.Error(rw, "not authorized for this action", http.StatusUnauthorized)
+		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 

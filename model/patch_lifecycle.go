@@ -127,7 +127,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	project := &Project{}
 	// if the patched config exists, use that as the project file bytes.
 	if p.PatchedConfig != "" {
-		if _, err = LoadProjectInto([]byte(p.PatchedConfig), projectRef.Identifier, project); err != nil {
+		if err = LoadProjectInto([]byte(p.PatchedConfig), projectRef.Identifier, project); err != nil {
 			return nil, "", errors.WithStack(err)
 		}
 		return project, p.PatchedConfig, nil
@@ -175,7 +175,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 		}
 	}
 
-	if _, err := LoadProjectInto(projectFileBytes, projectRef.Identifier, project); err != nil {
+	if err := LoadProjectInto(projectFileBytes, projectRef.Identifier, project); err != nil {
 		return nil, "", errors.WithStack(err)
 	}
 
@@ -286,13 +286,12 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, githubOauthToken string) (*Version, error) {
 	// unmarshal the project YAML for storage
 	project := &Project{}
-	intermediateProject, err := LoadProjectInto([]byte(p.PatchedConfig), p.Project, project)
+	err := LoadProjectInto([]byte(p.PatchedConfig), p.Project, project)
 	if err != nil {
 		return nil, errors.Wrapf(err,
 			"Error marshaling patched project config from repository revision “%v”",
 			p.Githash)
 	}
-	intermediateProject.Id = p.Id.Hex()
 
 	distroAliases, err := distro.NewDistroAliasesLookupTable()
 	if err != nil {
@@ -402,9 +401,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	}
 
 	if err = patchVersion.Insert(); err != nil {
-		return nil, errors.WithStack(err)
-	}
-	if err = intermediateProject.Insert(); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
