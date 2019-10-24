@@ -21,7 +21,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -151,7 +150,7 @@ func (as *APIServer) checkProject(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		r = setProjectRefContext(r, projectRef)
+		r = setProjectReftContext(r, projectRef)
 		r = setProjectContext(r, p)
 
 		next(w, r)
@@ -188,20 +187,7 @@ func (as *APIServer) GetVersion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "version not found", http.StatusNotFound)
 		return
 	}
-	// safety check
-	if v.Config == "" {
-		pp, err := model.ParserProjectFindOneById(t.Version)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-		config, err := yaml.Marshal(pp)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-		v.Config = string(config)
-	}
+
 	gimlet.WriteJSON(w, v)
 }
 
@@ -436,7 +422,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 
 	project := &model.Project{}
 	validationErr := validator.ValidationError{}
-	if _, err = model.LoadProjectInto(yamlBytes, "", project); err != nil {
+	if err = model.LoadProjectInto(yamlBytes, "", project); err != nil {
 		validationErr.Message = err.Error()
 		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
 		return

@@ -81,7 +81,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	g := model.MergeGeneratedProjects(projects)
 	g.TaskID = j.TaskID
 
-	p, pp, v, t, pm, err := g.NewVersion()
+	p, v, t, pm, err := g.NewVersion()
 	if err != nil {
 		return errors.Wrap(err, "problem creating new version")
 	}
@@ -104,7 +104,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 
 	// Don't use the job's context, because it's better to finish than to exit early after a
 	// SIGTERM from a deploy. This should maybe be a context with timeout.
-	err = g.Save(context.Background(), p, pp, v, t, pm)
+	err = g.Save(context.Background(), p, v, t, pm)
 
 	// If the version has changed there was a race. Another generator will try again.
 	if err != nil && adb.ResultsNotFound(err) {

@@ -153,6 +153,7 @@ func fetchSource(ctx context.Context, ac, rc *legacyClient, comm client.Communic
 	if task == nil {
 		return errors.New("task not found.")
 	}
+
 	config, err := rc.GetConfig(task.Version)
 	if err != nil {
 		return err
