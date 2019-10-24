@@ -352,7 +352,7 @@ func (mockMgr *mockManager) AttachVolume(ctx context.Context, h *host.Host, atta
 	instance.BlockDevices = append(instance.BlockDevices, attachment.VolumeID)
 	mockMgr.Instances[h.Id] = instance
 
-	return errors.WithStack(host.AddVolumeToHost(h, attachment))
+	return errors.WithStack(h.AddVolumeToHost(attachment))
 }
 
 func (mockMgr *mockManager) DetachVolume(ctx context.Context, h *host.Host, volumeID string) error {
@@ -371,7 +371,7 @@ func (mockMgr *mockManager) DetachVolume(ctx context.Context, h *host.Host, volu
 	}
 	mockMgr.Instances[h.Id] = instance
 
-	return errors.WithStack(host.RemoveVolumeFromHost(h, volumeID))
+	return errors.WithStack(h.RemoveVolumeFromHost(volumeID))
 }
 
 func (mockMgr *mockManager) CreateVolume(ctx context.Context, volume *host.Volume) (*host.Volume, error) {

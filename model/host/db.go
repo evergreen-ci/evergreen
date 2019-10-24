@@ -997,8 +997,7 @@ func AggregateLastContainerFinishTimes() ([]FinishTime, error) {
 
 }
 
-func AddVolumeToHost(h *Host, newVolume VolumeAttachment) error {
-	modifiedHost := &Host{}
+func (h *Host) AddVolumeToHost(newVolume VolumeAttachment) error {
 	_, err := db.FindAndModify(Collection,
 		bson.M{
 			IdKey: h.Id,
@@ -1011,17 +1010,15 @@ func AddVolumeToHost(h *Host, newVolume VolumeAttachment) error {
 			},
 			ReturnNew: true,
 		},
-		&modifiedHost,
+		&h,
 	)
 	if err != nil {
 		return errors.Wrapf(err, "error finding and updating host")
 	}
-	h.Volumes = modifiedHost.Volumes
 	return nil
 }
 
-func RemoveVolumeFromHost(h *Host, volumeId string) error {
-	modifiedHost := &Host{}
+func (h *Host) RemoveVolumeFromHost(volumeId string) error {
 	_, err := db.FindAndModify(Collection,
 		bson.M{
 			IdKey: h.Id,
@@ -1034,12 +1031,11 @@ func RemoveVolumeFromHost(h *Host, volumeId string) error {
 			},
 			ReturnNew: true,
 		},
-		&modifiedHost,
+		&h,
 	)
 	if err != nil {
 		return errors.Wrapf(err, "error finding and updating host")
 	}
-	h.Volumes = modifiedHost.Volumes
 	return nil
 }
 

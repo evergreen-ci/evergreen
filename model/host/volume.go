@@ -18,6 +18,8 @@ func (v *Volume) Insert() error {
 }
 
 // Remove a volume from the volumes collection.
+// Note this shouldn't be used when you want to
+// remove from AWS itself.
 func (v *Volume) Remove() error {
 	return db.Remove(
 		VolumesCollection,

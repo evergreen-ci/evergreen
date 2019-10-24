@@ -3814,7 +3814,7 @@ func TestAddVolumeToHost(t *testing.T) {
 		VolumeID:   "volume-2",
 		DeviceName: "device-2",
 	}
-	assert.NoError(t, AddVolumeToHost(h, newAttachment))
+	assert.NoError(t, h.AddVolumeToHost(newAttachment))
 	assert.Equal(t, []VolumeAttachment{
 		{
 			VolumeID:   "volume-1",
@@ -3855,7 +3855,7 @@ func TestRemoveVolumeFromHost(t *testing.T) {
 		},
 	}
 	assert.NoError(t, h.Insert())
-	assert.NoError(t, RemoveVolumeFromHost(h, "volume-2"))
+	assert.NoError(t, h.RemoveVolumeFromHost("volume-2"))
 	assert.Equal(t, []VolumeAttachment{
 		{
 			VolumeID:   "volume-1",
