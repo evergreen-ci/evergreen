@@ -40,7 +40,7 @@ func TestUserDataDoneJob(t *testing.T) {
 			assert.Empty(t, mngr.Procs)
 		},
 		"RunFailsWithoutPathToFile": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
-			h.Distro.BootstrapSettings.ClientDir = ""
+			h.Distro.BootstrapSettings.JasperBinaryDir = ""
 			_, err := h.Upsert()
 			require.NoError(t, err)
 
@@ -83,10 +83,10 @@ func TestUserDataDoneJob(t *testing.T) {
 				Host: "localhost",
 				Distro: distro.Distro{
 					BootstrapSettings: distro.BootstrapSettings{
-						Method:        distro.BootstrapMethodUserData,
-						Communication: distro.CommunicationMethodRPC,
-						ClientDir:     "/client_dir",
-						ShellPath:     "/shell_path",
+						Method:          distro.BootstrapMethodUserData,
+						Communication:   distro.CommunicationMethodRPC,
+						JasperBinaryDir: "/jasper_binary_dir",
+						ShellPath:       "/shell_path",
 					},
 				},
 				Status:      evergreen.HostProvisioning,

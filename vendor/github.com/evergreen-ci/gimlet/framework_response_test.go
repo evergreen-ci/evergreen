@@ -270,7 +270,7 @@ func TestSimpleResponseBuilder(t *testing.T) {
 			MakeYAMLInternalErrorResponder(er),
 			MakeTextInternalErrorResponder(er),
 		} {
-			assert.Equal(t, resp.Status(), 418, "%d", idx)
+			assert.Equal(t, 418, resp.Status(), "%d", idx)
 			assert.NoError(t, resp.Validate())
 		}
 	})
