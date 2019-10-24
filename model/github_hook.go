@@ -136,11 +136,11 @@ func SetupNewGithubHook(ctx context.Context, settings evergreen.Settings, owner 
 func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, owner, repo string) (*GithubHook, error) {
 	token, err := settings.GetGithubOauthToken()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "can't get github token")
 	}
 	httpClient, err := util.GetOAuth2HTTPClient(token)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "can't get http client")
 	}
 	defer util.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
