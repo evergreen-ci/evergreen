@@ -27,7 +27,7 @@ func TestValidatePushEvent(t *testing.T) {
 	event.Ref = github.String("refs/heads/changes")
 	event.Repo = &github.PushEventRepository{}
 	event.Repo.Name = github.String("public-repo")
-	event.Repo.Owner = &github.PushEventRepoOwner{}
+	event.Repo.Owner = &github.User{}
 	event.Repo.Owner.Name = github.String("baxterthehacker")
 	event.Repo.FullName = github.String("baxterthehacker/public-repo")
 
@@ -49,7 +49,7 @@ func TestValidatePushEvent(t *testing.T) {
 	event.Ref = github.String("refs/heads/support/3.x")
 	event.Repo = &github.PushEventRepository{}
 	event.Repo.Name = github.String("public-repo")
-	event.Repo.Owner = &github.PushEventRepoOwner{}
+	event.Repo.Owner = &github.User{}
 	event.Repo.Owner.Name = github.String("baxterthehacker")
 	event.Repo.FullName = github.String("baxterthehacker/public-repo")
 

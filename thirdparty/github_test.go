@@ -161,7 +161,7 @@ func (s *githubSuite) TestGetGithubUser() {
 	s.Require().NotNil(user)
 	s.NotPanics(func() {
 		s.Equal("octocat", *user.Login)
-		s.Equal(583231, *user.ID)
+		s.Equal(583231, int(*user.ID))
 	})
 }
 
