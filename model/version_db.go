@@ -287,30 +287,16 @@ func VersionUpdateOne(query interface{}, update interface{}) error {
 	)
 }
 
-func VersionUpdateConfig(id, config string, configUpdateNumber int) (*Version, error) {
+func VersionUpdateConfig(id, config string, configUpdateNumber int) error {
 	query := bson.M{
 		VersionIdKey:           id,
 		VersionConfigNumberKey: configUpdateNumber,
 	}
 	update := bson.M{
-		"$set": bson.M{
-			VersionConfigKey: config,
-		},
+		"$set": bson.M{VersionConfigKey: config},
 		"$inc": bson.M{VersionConfigNumberKey: 1},
 	}
-	change := adb.Change{
-		Update:    update,
-		ReturnNew: true,
-	}
-	v := &Version{}
-	changeInfo, err := db.FindAndModify(VersionCollection, query, nil, change, v)
-	if err != nil {
-		return nil, errors.Wrap(err, "error updating version config")
-	}
-	if changeInfo.Updated == 0 {
-		return nil, errors.New("version out of date")
-	}
-	return v, nil
+	return VersionUpdateOne(query, update)
 }
 
 func AddSatisfiedTrigger(versionID, definitionID string) error {

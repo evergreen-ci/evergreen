@@ -157,12 +157,11 @@ func (g *GeneratedProject) NewVersion() (*Project, *ParserProject, *Version, *ta
 }
 
 func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProject, v *Version, t *task.Task, pm *projectMaps) error {
-	updatedVersion, err := VersionUpdateConfig(v.Id, v.Config, v.ConfigUpdateNumber)
+	err := VersionUpdateConfig(v.Id, v.Config, v.ConfigUpdateNumber)
 	if err != nil {
 		return errors.Wrapf(err, "error updating version %s", v.Id)
 	}
-	v.ConfigUpdateNumber = updatedVersion.ConfigUpdateNumber
-	v.Config = updatedVersion.Config
+	v.ConfigUpdateNumber += 1
 
 	if err := pp.UpsertWithConfigNumber(v.ConfigUpdateNumber); err != nil {
 		return errors.Wrapf(err, "error updating parser project %s", pp.Id)
