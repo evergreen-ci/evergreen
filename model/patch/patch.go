@@ -373,7 +373,7 @@ func MakeMergePatch(pr *github.PullRequest, projectID, alias string) (*Patch, er
 	if pr.User == nil {
 		return nil, errors.New("pr contains no user")
 	}
-	u, err := user.GetPatchUser(pr.User.GetID())
+	u, err := user.GetPatchUser(int(pr.User.GetID()))
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get user for patch")
 	}

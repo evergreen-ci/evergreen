@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -33,7 +32,7 @@ var (
 	ownerKey  = bsonutil.MustHaveTag(GithubHook{}, "Owner")
 	repoKey   = bsonutil.MustHaveTag(GithubHook{}, "Repo")
 
-	githubHookURL = fmt.Sprintf("%s/rest/v2/hooks/github", settings.ApiUrl)
+	githubHookURLString = "%s/rest/v2/hooks/github"
 )
 
 func (h *GithubHook) Insert() error {
@@ -104,11 +103,10 @@ func SetupNewGithubHook(ctx context.Context, settings evergreen.Settings, owner 
 	defer util.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 	hookObj := github.Hook{
-		Name:   github.String("web"),
 		Active: github.Bool(true),
 		Events: []string{"*"},
 		Config: map[string]interface{}{
-			"url":          github.String(githubHookURL),
+			"url":          github.String(fmt.Sprintf(githubHookURLString, settings.ApiUrl)),
 			"content_type": github.String("json"),
 			"secret":       github.String(settings.Api.GithubWebhookSecret),
 			"insecure_ssl": github.String("0"),
@@ -128,14 +126,14 @@ func SetupNewGithubHook(ctx context.Context, settings evergreen.Settings, owner 
 		return nil, errors.New("unexpected data from github")
 	}
 	hook := &GithubHook{
-		HookID: *respHook.ID,
+		HookID: int(respHook.GetID()),
 		Owner:  owner,
 		Repo:   repo,
 	}
 	return hook, nil
 }
 
-func GetExistingGithubHooks(ctx context.Context, settings evergreen.Settings, owner, repo string) (*GithubHook, error) {
+func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, owner, repo string) (*GithubHook, error) {
 	token, err := settings.GetGithubOauthToken()
 	if err != nil {
 		return nil, err
@@ -149,15 +147,16 @@ func GetExistingGithubHooks(ctx context.Context, settings evergreen.Settings, ow
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	respHooks, resp, err := client.Repositories.ListHooks(ctx, owner, repo, nil)
+	respHooks, _, err := client.Repositories.ListHooks(ctx, owner, repo, nil)
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't get hooks for owner '%s', repo '%s'", owner, repo)
 	}
 
+	url := fmt.Sprintf(githubHookURLString, settings.ApiUrl)
 	for _, hook := range respHooks {
-		if hook.GetURL() == githubHookURL {
+		if hook.GetURL() == url {
 			return &GithubHook{
-				HookID: *hook.ID,
+				HookID: int(hook.GetID()),
 				Owner:  owner,
 				Repo:   repo,
 			}, nil
@@ -170,10 +169,10 @@ func GetExistingGithubHooks(ctx context.Context, settings evergreen.Settings, ow
 func RemoveGithubHook(hookID int) error {
 	hook, err := FindGithubHookByID(hookID)
 	if err != nil {
-		if adb.ResultsNotFound(err) {
-			return errors.Errorf("no hook found for id '%d'", hookID)
-		}
 		return errors.Wrap(err, "can't query for webhooks")
+	}
+	if hook == nil {
+		return errors.Errorf("no hook found for id '%d'", hookID)
 	}
 	return errors.Wrapf(hook.Remove(), "can't remove hook with ID '%d'", hookID)
 }

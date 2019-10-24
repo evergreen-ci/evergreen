@@ -144,7 +144,7 @@ func NewGithubIntent(msgDeliveryID string, pr *github.PullRequest) (Intent, erro
 		HeadRepoName: pr.Head.Repo.GetFullName(),
 		PRNumber:     pr.GetNumber(),
 		User:         pr.User.GetLogin(),
-		UID:          pr.User.GetID(),
+		UID:          int(pr.User.GetID()),
 		HeadHash:     pr.Head.GetSHA(),
 		Title:        pr.GetTitle(),
 		IntentType:   GithubIntentType,

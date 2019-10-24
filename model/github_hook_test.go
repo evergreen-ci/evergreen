@@ -79,7 +79,7 @@ func (s *hookSuite) TestFind() {
 func (s *hookSuite) TestRemoveGithubHook() {
 	s.Error(RemoveGithubHook(1))
 
-	hook := GithubHook{
+	hook := &GithubHook{
 		HookID: 1,
 		Owner:  "evergreen-ci",
 		Repo:   "evergreen",
@@ -87,6 +87,9 @@ func (s *hookSuite) TestRemoveGithubHook() {
 	s.NoError(hook.Insert())
 
 	s.NoError(RemoveGithubHook(1))
+	hook, err := FindGithubHookByID(1)
+	s.NoError(err)
+	s.Nil(hook)
 }
 
 func (s *hookSuite) TestFindGithubHookByID() {
@@ -94,13 +97,13 @@ func (s *hookSuite) TestFindGithubHookByID() {
 	s.NoError(err)
 	s.Nil(hook)
 
-	hook := GithubHook{
+	hook = &GithubHook{
 		HookID: 1,
 		Owner:  "evergreen-ci",
 		Repo:   "evergreen",
 	}
 	s.NoError(hook.Insert())
-	hook, err := FindGithubHookByID(1)
+	hook, err = FindGithubHookByID(1)
 	s.NoError(err)
 	s.NotNil(hook)
 }

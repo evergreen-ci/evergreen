@@ -507,7 +507,7 @@ func GetGithubTokenUser(ctx context.Context, token string, requiredOrg string) (
 
 	return &GithubLoginUser{
 		Login:            *user.Login,
-		Id:               *user.ID,
+		Id:               int(*user.ID),
 		Company:          *user.Company,
 		EmailAddress:     *user.Email,
 		OrganizationsURL: *user.OrganizationsURL,
