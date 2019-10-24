@@ -235,10 +235,10 @@ func (s *RoleManagerSuite) TestRequiresPermissionMiddleware() {
 	s.Equal(http.StatusUnauthorized, rw.Code)
 	s.Equal(1, counter)
 
-	// request for an unrelated endpoint that has incorrectly configured middleware
+	// no resource found = allowed
 	rw = httptest.NewRecorder()
 	req = mux.SetURLVars(req, map[string]string{})
 	authHandler.ServeHTTP(rw, req, checkPermission)
-	s.Equal(http.StatusUnauthorized, rw.Code)
-	s.Equal(1, counter)
+	s.Equal(http.StatusOK, rw.Code)
+	s.Equal(2, counter)
 }

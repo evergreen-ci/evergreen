@@ -302,22 +302,24 @@ func (rp *requiresPermissionHandler) ServeHTTP(rw http.ResponseWriter, r *http.R
 		}
 	}
 
-	opts := PermissionOpts{
-		Resource:      resource,
-		ResourceType:  rp.opts.ResourceType,
-		Permission:    rp.opts.PermissionKey,
-		RequiredLevel: rp.opts.RequiredLevel,
-	}
-	hasPermission, err := user.HasPermission(opts)
-	grip.Error(message.WrapError(err, message.Fields{
-		"message":    "error checking permissions",
-		"user":       user.Username(),
-		"permission": rp.opts.PermissionKey,
-	}))
+	if resource != "" {
+		opts := PermissionOpts{
+			Resource:      resource,
+			ResourceType:  rp.opts.ResourceType,
+			Permission:    rp.opts.PermissionKey,
+			RequiredLevel: rp.opts.RequiredLevel,
+		}
+		hasPermission, err := user.HasPermission(opts)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":    "error checking permissions",
+			"user":       user.Username(),
+			"permission": rp.opts.PermissionKey,
+		}))
 
-	if !hasPermission {
-		http.Error(rw, "not authorized for this action", http.StatusUnauthorized)
-		return
+		if !hasPermission {
+			http.Error(rw, "not authorized for this action", http.StatusUnauthorized)
+			return
+		}
 	}
 
 	next(rw, r)
