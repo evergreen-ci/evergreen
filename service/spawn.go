@@ -317,6 +317,8 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error extending host expiration"))
 				return
 			}
+			PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("Host expiration sucessfully set to never expire")))
+			gimlet.WriteJSON(w, "Successfully updated host to never expire")
 			return
 		}
 		// use now as a base for how far we're extending if there is currently no expiration
