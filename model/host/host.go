@@ -674,6 +674,7 @@ func (h *Host) UpdateProvisioningToRunning() error {
 
 // ClearRunningAndSetLastTask unsets the running task on the host and updates the last task fields.
 func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
+	now := time.Now()
 	err := UpdateOne(
 		bson.M{
 			IdKey:          h.Id,
@@ -681,7 +682,7 @@ func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
 		},
 		bson.M{
 			"$set": bson.M{
-				LTCTimeKey:    time.Now(),
+				LTCTimeKey:    now,
 				LTCTaskKey:    t.Id,
 				LTCGroupKey:   t.TaskGroup,
 				LTCBVKey:      t.BuildVariant,
@@ -712,6 +713,7 @@ func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
 	h.LastBuildVariant = t.BuildVariant
 	h.LastVersion = t.Version
 	h.LastProject = t.Version
+	h.LastTaskCompletedTime = now
 
 	return nil
 }
