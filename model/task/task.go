@@ -1076,8 +1076,11 @@ func (t TestResult) convertToNewStyleTestResult(task *Task) testresult.TestResul
 		LogID:     t.LogId,
 		LineNum:   t.LineNum,
 		ExitCode:  t.ExitCode,
-		StartTime: t.StartTime,
-		EndTime:   t.EndTime,
+                StartTime: t.StartTime,
+                EndTime:   t.EndTime,
+
+                StartDate: util.FromPythonTime(t.StartTime).In(time.UTC),
+                EndDate:   util.FromPythonTime(t.EndTime).In(time.UTC),
 
                 // copy field values from enclosing tasks.
                 TaskID:               task.Id,

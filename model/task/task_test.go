@@ -747,6 +747,11 @@ func TestTaskSetResultsFields(t *testing.T) {
 
         displayTaskID := "jstestfuzz_self_tests_replication_fuzzers_display_master_69e2630b3272211f46bf85dd2577cd9a34c7c2cc_19_09_25_17_40_35"
         executionDisplayName := "master"
+        StartTime := 1569431862.508
+        EndTime := 1569431887.2
+
+        StartDate := util.FromPythonTime(StartTime).In(time.UTC)
+        EndDate := util.FromPythonTime(EndTime).In(time.UTC)
 
         testresults := []TestResult{
                 {
@@ -755,8 +760,8 @@ func TestTaskSetResultsFields(t *testing.T) {
                         URL:       "https://logkeeper.mongodb.org/build/dd239a5697eedef049a753c6a40a3e7e/test/5d8ba136c2ab68304e1d741c",
                         URLRaw:    "https://logkeeper.mongodb.org/build/dd239a5697eedef049a753c6a40a3e7e/test/5d8ba136c2ab68304e1d741c?raw=1",
                         ExitCode:  0,
-                        StartTime: 1569431862.508964,
-                        EndTime:   1569431887.21556,
+                        StartTime: StartTime,
+                        EndTime:   EndTime,
                 },
         }
 
@@ -805,6 +810,8 @@ func TestTaskSetResultsFields(t *testing.T) {
                         So(written[0].DisplayName, ShouldEqual, displayName)
                         So(written[0].ExecutionDisplayName, ShouldBeBlank)
                         So(written[0].CreateTime.UTC(), ShouldResemble, createTime.UTC())
+                        So(written[0].StartDate.UTC(), ShouldResemble, StartDate.UTC())
+                        So(written[0].EndDate.UTC(), ShouldResemble, EndDate.UTC())
                 })
 
                 Convey("With a display task", func() {
@@ -822,6 +829,8 @@ func TestTaskSetResultsFields(t *testing.T) {
                         So(written[0].DisplayName, ShouldEqual, displayName)
                         So(written[0].ExecutionDisplayName, ShouldEqual, executionDisplayName)
                         So(written[0].CreateTime.UTC(), ShouldResemble, createTime.UTC())
+                        So(written[0].StartDate.UTC(), ShouldResemble, StartDate.UTC())
+                        So(written[0].EndDate.UTC(), ShouldResemble, EndDate.UTC())
                 })
         })
 }

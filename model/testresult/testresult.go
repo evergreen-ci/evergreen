@@ -29,9 +29,12 @@ type TestResult struct {
         StartTime float64          `json:"start" bson:"start"`
         EndTime   float64          `json:"end" bson:"end"`
 
-	// Together, TaskID and Execution identify the task which created this TestResult
-	TaskID    string `bson:"task_id" json:"task_id"`
-	Execution int    `bson:"task_execution" json:"task_execution"`
+        StartDate time.Time `json:"start_date" bson:"start_date"`
+        EndDate   time.Time `json:"end_date" bson:"end_date"`
+
+        // Together, TaskID and Execution identify the task which created this TestResult
+        TaskID    string `bson:"task_id" json:"task_id"`
+        Execution int    `bson:"task_execution" json:"task_execution"`
 
 	// LogRaw is not persisted to the database
 	LogRaw string `json:"log_raw" bson:"log_raw,omitempty"`
