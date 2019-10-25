@@ -1,13 +1,13 @@
 package service
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -34,7 +34,7 @@ func (s *TaskHistorySuite) SetupTest() {
 		// backwards in time, in descending order
 		now = now.Add(-time.Minute)
 		version := model.Version{
-			Id:         util.RandomString(),
+			Id:         fmt.Sprintf("after_%d", i),
 			Revision:   "cccc",
 			CreateTime: now,
 			Identifier: s.projectID,
@@ -47,7 +47,7 @@ func (s *TaskHistorySuite) SetupTest() {
 	// Middle version with the same createTime as the last version in versionsBefore
 	// and the first version in versionsAfter
 	s.middleVersion = model.Version{
-		Id:         util.RandomString(),
+		Id:         "middle",
 		Revision:   "bbbb",
 		CreateTime: now,
 		Identifier: s.projectID,
@@ -57,7 +57,7 @@ func (s *TaskHistorySuite) SetupTest() {
 
 	for i := 0; i < 50; i++ {
 		version := model.Version{
-			Id:         util.RandomString(),
+			Id:         fmt.Sprintf("before_%d", i),
 			Revision:   "aaaa",
 			CreateTime: now,
 			Identifier: s.projectID,
@@ -105,4 +105,24 @@ func (s *TaskHistorySuite) TestSurroundingVersions() {
 		s.Equal("aaaa", version.Revision)
 		s.True(version.CreateTime.Equal(s.versionsBefore[i].CreateTime))
 	}
+}
+
+func (s *TaskHistorySuite) TestSurroundingVersionsSort() {
+	versionsAfter, err := surroundingVersions(&s.versionsBefore[0], s.projectID, 2, false)
+	s.NoError(err)
+	s.Require().Len(versionsAfter, 2)
+	// sorted ascending, then reversed
+	s.Equal("cccc", versionsAfter[0].Revision)
+	s.Equal("after_49", versionsAfter[0].Id)
+	s.Equal("bbbb", versionsAfter[1].Revision)
+	s.Equal("middle", versionsAfter[1].Id)
+
+	versionsBefore, err := surroundingVersions(&s.versionsAfter[49], s.projectID, 2, true)
+	s.NoError(err)
+	s.Require().Len(versionsBefore, 2)
+	// sorted descending
+	s.Equal("bbbb", versionsBefore[0].Revision)
+	s.Equal("middle", versionsBefore[0].Id)
+	s.Equal("aaaa", versionsBefore[1].Revision)
+	s.Equal("before_0", versionsBefore[1].Id)
 }
