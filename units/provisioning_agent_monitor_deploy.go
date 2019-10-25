@@ -119,6 +119,10 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		if j.HasErrors() {
 			event.LogHostAgentMonitorDeployFailed(j.host.Id, j.Error())
 
+			if j.host.Status != evergreen.HostRunning {
+				return
+			}
+
 			var noRetries bool
 			noRetries, err = j.checkNoRetries()
 			if err != nil {

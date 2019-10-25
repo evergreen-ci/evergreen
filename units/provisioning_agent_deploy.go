@@ -129,7 +129,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrapf(err, "error setting LCT on host %s", j.host.Id))
 	}
 	defer func() {
-		if j.HasErrors() {
+		if j.HasErrors() && j.host.Status == evergreen.HostRunning {
 			var noRetries bool
 			noRetries, err = j.checkNoRetries()
 			if err != nil {
@@ -238,7 +238,6 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 		"job":     j.ID(),
 	})
 	if err = j.prepRemoteHost(ctx, hostObj, sshOptions, settings); err != nil {
-		event.LogHostAgentDeployFailed(hostObj.Id, err)
 		grip.Info(message.Fields{
 			"message": "error prepping remote host",
 			"host":    j.HostID,
@@ -266,7 +265,7 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 			"host":    j.HostID,
 			"job":     j.ID(),
 		}))
-		return nil
+		return errors.Wrap(err, "could not start agent on remote")
 	}
 	grip.Info(message.Fields{"runner": "taskrunner", "message": "agent successfully started for host", "host": hostObj.Id})
 
