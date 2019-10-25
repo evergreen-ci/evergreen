@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -209,10 +208,6 @@ func (j *agentDeployJob) getHostMessage(h host.Host) message.Fields {
 func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergreen.Settings, hostObj host.Host) error {
 
 	// get the host's SSH options
-	cloudHost, err := cloud.GetCloudHost(ctx, &hostObj, j.env)
-	if err != nil {
-		return errors.Wrapf(err, "Failed to get cloud host for %s", hostObj.Id)
-	}
 	sshOptions, err := hostObj.GetSSHOptions(settings)
 	if err != nil {
 		return errors.Wrapf(err, "Error getting ssh options for host %s", hostObj.Id)
