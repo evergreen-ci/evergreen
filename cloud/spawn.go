@@ -190,11 +190,6 @@ func SetHostRDPPassword(ctx context.Context, env evergreen.Environment, host *ho
 // constructPwdUpdateCommand returns a RemoteCommand struct used to
 // set the RDP password on a remote windows machine.
 func constructPwdUpdateCommand(ctx context.Context, env evergreen.Environment, hostObj *host.Host, password string) (*jasper.Command, error) {
-	cloudHost, err := GetCloudHost(ctx, hostObj, env)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
 	hostInfo, err := hostObj.GetSSHInfo()
 	if err != nil {
 		return nil, errors.WithStack(err)
