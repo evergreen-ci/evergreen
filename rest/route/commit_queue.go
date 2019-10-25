@@ -255,7 +255,7 @@ func (cq *getCommitQueueItemAuthorHandler) Run(ctx context.Context) gimlet.Respo
 
 		var author string
 		if pr != nil && pr.User != nil && pr.User.ID != nil {
-			dbUser, _ := user.FindByGithubUID(*pr.User.ID)
+			dbUser, _ := user.FindByGithubUID(int(*pr.User.ID))
 			if dbUser != nil {
 				author = dbUser.Username()
 			} else { // return github login if evergreen username unavailable

@@ -4,6 +4,7 @@
 // license that can be found in the LICENSE file.
 
 //go:generate go run gen-accessors.go
+//go:generate go run gen-stringify-test.go
 
 package github
 
@@ -27,10 +28,9 @@ import (
 )
 
 const (
-	libraryVersion = "14"
 	defaultBaseURL = "https://api.github.com/"
 	uploadBaseURL  = "https://uploads.github.com/"
-	userAgent      = "go-github/" + libraryVersion
+	userAgent      = "go-github"
 
 	headerRateLimit     = "X-RateLimit-Limit"
 	headerRateRemaining = "X-RateLimit-Remaining"
@@ -46,14 +46,8 @@ const (
 
 	// Media Type values to access preview APIs
 
-	// https://developer.github.com/changes/2015-03-09-licenses-api/
-	mediaTypeLicensesPreview = "application/vnd.github.drax-preview+json"
-
 	// https://developer.github.com/changes/2014-12-09-new-attributes-for-stars-api/
 	mediaTypeStarringPreview = "application/vnd.github.v3.star+json"
-
-	// https://developer.github.com/changes/2015-11-11-protected-branches-api/
-	mediaTypeProtectedBranchesPreview = "application/vnd.github.loki-preview+json"
 
 	// https://help.github.com/enterprise/2.4/admin/guides/migrations/exporting-the-github-com-organization-s-repositories/
 	mediaTypeMigrationsPreview = "application/vnd.github.wyandotte-preview+json"
@@ -61,20 +55,17 @@ const (
 	// https://developer.github.com/changes/2016-04-06-deployment-and-deployment-status-enhancements/
 	mediaTypeDeploymentStatusPreview = "application/vnd.github.ant-man-preview+json"
 
+	// https://developer.github.com/changes/2018-10-16-deployments-environments-states-and-auto-inactive-updates/
+	mediaTypeExpandDeploymentStatusPreview = "application/vnd.github.flash-preview+json"
+
 	// https://developer.github.com/changes/2016-02-19-source-import-preview-api/
 	mediaTypeImportPreview = "application/vnd.github.barred-rock-preview"
 
 	// https://developer.github.com/changes/2016-05-12-reactions-api-preview/
 	mediaTypeReactionsPreview = "application/vnd.github.squirrel-girl-preview"
 
-	// https://developer.github.com/changes/2016-04-04-git-signing-api-preview/
-	mediaTypeGitSigningPreview = "application/vnd.github.cryptographer-preview+json"
-
 	// https://developer.github.com/changes/2016-05-23-timeline-preview-api/
 	mediaTypeTimelinePreview = "application/vnd.github.mockingbird-preview+json"
-
-	// https://developer.github.com/changes/2016-06-14-repository-invitations/
-	mediaTypeRepositoryInvitationsPreview = "application/vnd.github.swamp-thing-preview+json"
 
 	// https://developer.github.com/changes/2016-07-06-github-pages-preiew-api/
 	mediaTypePagesPreview = "application/vnd.github.mister-fantastic-preview+json"
@@ -100,11 +91,71 @@ const (
 	// https://developer.github.com/changes/2017-07-17-update-topics-on-repositories/
 	mediaTypeTopicsPreview = "application/vnd.github.mercy-preview+json"
 
-	// https://developer.github.com/changes/2017-07-26-team-review-request-thor-preview/
-	mediaTypeTeamReviewPreview = "application/vnd.github.thor-preview+json"
-
 	// https://developer.github.com/changes/2017-08-30-preview-nested-teams/
 	mediaTypeNestedTeamsPreview = "application/vnd.github.hellcat-preview+json"
+
+	// https://developer.github.com/changes/2017-11-09-repository-transfer-api-preview/
+	mediaTypeRepositoryTransferPreview = "application/vnd.github.nightshade-preview+json"
+
+	// https://developer.github.com/changes/2018-01-25-organization-invitation-api-preview/
+	mediaTypeOrganizationInvitationPreview = "application/vnd.github.dazzler-preview+json"
+
+	// https://developer.github.com/changes/2018-03-16-protected-branches-required-approving-reviews/
+	mediaTypeRequiredApprovingReviewsPreview = "application/vnd.github.luke-cage-preview+json"
+
+	// https://developer.github.com/changes/2018-02-22-label-description-search-preview/
+	mediaTypeLabelDescriptionSearchPreview = "application/vnd.github.symmetra-preview+json"
+
+	// https://developer.github.com/changes/2018-02-07-team-discussions-api/
+	mediaTypeTeamDiscussionsPreview = "application/vnd.github.echo-preview+json"
+
+	// https://developer.github.com/changes/2018-03-21-hovercard-api-preview/
+	mediaTypeHovercardPreview = "application/vnd.github.hagar-preview+json"
+
+	// https://developer.github.com/changes/2018-01-10-lock-reason-api-preview/
+	mediaTypeLockReasonPreview = "application/vnd.github.sailor-v-preview+json"
+
+	// https://developer.github.com/changes/2018-05-07-new-checks-api-public-beta/
+	mediaTypeCheckRunsPreview = "application/vnd.github.antiope-preview+json"
+
+	// https://developer.github.com/enterprise/2.13/v3/repos/pre_receive_hooks/
+	mediaTypePreReceiveHooksPreview = "application/vnd.github.eye-scream-preview"
+
+	// https://developer.github.com/changes/2018-02-22-protected-branches-required-signatures/
+	mediaTypeSignaturePreview = "application/vnd.github.zzzax-preview+json"
+
+	// https://developer.github.com/changes/2018-09-05-project-card-events/
+	mediaTypeProjectCardDetailsPreview = "application/vnd.github.starfox-preview+json"
+
+	// https://developer.github.com/changes/2018-12-18-interactions-preview/
+	mediaTypeInteractionRestrictionsPreview = "application/vnd.github.sombra-preview+json"
+
+	// https://developer.github.com/changes/2019-02-14-draft-pull-requests/
+	mediaTypeDraftPreview = "application/vnd.github.shadow-cat-preview+json"
+
+	// https://developer.github.com/changes/2019-03-14-enabling-disabling-pages/
+	mediaTypeEnablePagesAPIPreview = "application/vnd.github.switcheroo-preview+json"
+
+	// https://developer.github.com/changes/2019-04-24-vulnerability-alerts/
+	mediaTypeRequiredVulnerabilityAlertsPreview = "application/vnd.github.dorian-preview+json"
+
+	// https://developer.github.com/changes/2019-06-04-automated-security-fixes/
+	mediaTypeRequiredAutomatedSecurityFixesPreview = "application/vnd.github.london-preview+json"
+
+	// https://developer.github.com/changes/2019-05-29-update-branch-api/
+	mediaTypeUpdatePullRequestBranchPreview = "application/vnd.github.lydian-preview+json"
+
+	// https://developer.github.com/changes/2019-04-11-pulls-branches-for-commit/
+	mediaTypeListPullsOrBranchesForCommitPreview = "application/vnd.github.groot-preview+json"
+
+	// https://developer.github.com/changes/2019-06-12-team-sync/
+	mediaTypeTeamSyncPreview = "application/vnd.github.team-sync-preview+json"
+
+	// https://developer.github.com/v3/previews/#repository-creation-permissions
+	mediaTypeMemberAllowedRepoCreationTypePreview = "application/vnd.github.surtur-preview+json"
+
+	// https://developer.github.com/v3/previews/#create-and-use-repository-templates
+	mediaTypeRepositoryTemplatePreview = "application/vnd.github.baptiste-preview+json"
 )
 
 // A Client manages communication with the GitHub API.
@@ -133,19 +184,23 @@ type Client struct {
 	Admin          *AdminService
 	Apps           *AppsService
 	Authorizations *AuthorizationsService
+	Checks         *ChecksService
 	Gists          *GistsService
 	Git            *GitService
 	Gitignores     *GitignoresService
+	Interactions   *InteractionsService
 	Issues         *IssuesService
+	Licenses       *LicensesService
+	Marketplace    *MarketplaceService
+	Migrations     *MigrationService
 	Organizations  *OrganizationsService
 	Projects       *ProjectsService
 	PullRequests   *PullRequestsService
+	Reactions      *ReactionsService
 	Repositories   *RepositoriesService
 	Search         *SearchService
+	Teams          *TeamsService
 	Users          *UsersService
-	Licenses       *LicensesService
-	Migrations     *MigrationService
-	Reactions      *ReactionsService
 }
 
 type service struct {
@@ -164,7 +219,9 @@ type ListOptions struct {
 
 // UploadOptions specifies the parameters to methods that support uploads.
 type UploadOptions struct {
-	Name string `url:"name,omitempty"`
+	Name      string `url:"name,omitempty"`
+	Label     string `url:"label,omitempty"`
+	MediaType string `url:"-"`
 }
 
 // RawType represents type of raw format of a request instead of JSON.
@@ -206,12 +263,12 @@ func addOptions(s string, opt interface{}) (string, error) {
 }
 
 // NewClient returns a new GitHub API client. If a nil httpClient is
-// provided, http.DefaultClient will be used. To use API methods which require
+// provided, a new http.Client will be used. To use API methods which require
 // authentication, provide an http.Client that will perform the authentication
 // for you (such as that provided by the golang.org/x/oauth2 library).
 func NewClient(httpClient *http.Client) *Client {
 	if httpClient == nil {
-		httpClient = http.DefaultClient
+		httpClient = &http.Client{}
 	}
 	baseURL, _ := url.Parse(defaultBaseURL)
 	uploadURL, _ := url.Parse(uploadBaseURL)
@@ -222,11 +279,14 @@ func NewClient(httpClient *http.Client) *Client {
 	c.Admin = (*AdminService)(&c.common)
 	c.Apps = (*AppsService)(&c.common)
 	c.Authorizations = (*AuthorizationsService)(&c.common)
+	c.Checks = (*ChecksService)(&c.common)
 	c.Gists = (*GistsService)(&c.common)
 	c.Git = (*GitService)(&c.common)
 	c.Gitignores = (*GitignoresService)(&c.common)
+	c.Interactions = (*InteractionsService)(&c.common)
 	c.Issues = (*IssuesService)(&c.common)
 	c.Licenses = (*LicensesService)(&c.common)
+	c.Marketplace = &MarketplaceService{client: c}
 	c.Migrations = (*MigrationService)(&c.common)
 	c.Organizations = (*OrganizationsService)(&c.common)
 	c.Projects = (*ProjectsService)(&c.common)
@@ -234,6 +294,7 @@ func NewClient(httpClient *http.Client) *Client {
 	c.Reactions = (*ReactionsService)(&c.common)
 	c.Repositories = (*RepositoriesService)(&c.common)
 	c.Search = (*SearchService)(&c.common)
+	c.Teams = (*TeamsService)(&c.common)
 	c.Users = (*UsersService)(&c.common)
 	return c
 }
@@ -241,7 +302,7 @@ func NewClient(httpClient *http.Client) *Client {
 // NewEnterpriseClient returns a new GitHub API client with provided
 // base URL and upload URL (often the same URL).
 // If either URL does not have a trailing slash, one is added automatically.
-// If a nil httpClient is provided, http.DefaultClient will be used.
+// If a nil httpClient is provided, a new http.Client will be used.
 //
 // Note that NewEnterpriseClient is a convenience helper only;
 // its behavior is equivalent to using NewClient, followed by setting
@@ -352,7 +413,9 @@ type Response struct {
 	FirstPage int
 	LastPage  int
 
-	Rate
+	// Explicitly specify the Rate type so Rate's String() receiver doesn't
+	// propagate to Response.
+	Rate Rate
 }
 
 // newResponse creates a new Response for the provided http.Response.
@@ -467,12 +530,7 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*Res
 
 		return nil, err
 	}
-
-	defer func() {
-		// Drain up to 512 bytes and close the body to let the Transport reuse the connection
-		io.CopyN(ioutil.Discard, resp.Body, 512)
-		resp.Body.Close()
-	}()
+	defer resp.Body.Close()
 
 	response := newResponse(resp)
 
@@ -482,8 +540,22 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*Res
 
 	err = CheckResponse(resp)
 	if err != nil {
-		// even though there was an error, we still return the response
-		// in case the caller wants to inspect it further
+		// Special case for AcceptedErrors. If an AcceptedError
+		// has been encountered, the response's payload will be
+		// added to the AcceptedError and returned.
+		//
+		// Issue #1022
+		aerr, ok := err.(*AcceptedError)
+		if ok {
+			b, readErr := ioutil.ReadAll(resp.Body)
+			if readErr != nil {
+				return response, readErr
+			}
+
+			aerr.Raw = b
+			return response, aerr
+		}
+
 		return response, err
 	}
 
@@ -491,9 +563,12 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*Res
 		if w, ok := v.(io.Writer); ok {
 			io.Copy(w, resp.Body)
 		} else {
-			err = json.NewDecoder(resp.Body).Decode(v)
-			if err == io.EOF {
-				err = nil // ignore EOF errors caused by empty response body
+			decErr := json.NewDecoder(resp.Body).Decode(v)
+			if decErr == io.EOF {
+				decErr = nil // ignore EOF errors caused by empty response body
+			}
+			if decErr != nil {
+				err = decErr
 			}
 		}
 	}
@@ -574,7 +649,7 @@ type RateLimitError struct {
 func (r *RateLimitError) Error() string {
 	return fmt.Sprintf("%v %v: %d %v %v",
 		r.Response.Request.Method, sanitizeURL(r.Response.Request.URL),
-		r.Response.StatusCode, r.Message, formatRateReset(r.Rate.Reset.Time.Sub(time.Now())))
+		r.Response.StatusCode, r.Message, formatRateReset(time.Until(r.Rate.Reset.Time)))
 }
 
 // AcceptedError occurs when GitHub returns 202 Accepted response with an
@@ -583,14 +658,17 @@ func (r *RateLimitError) Error() string {
 // Technically, 202 Accepted is not a real error, it's just used to
 // indicate that results are not ready yet, but should be available soon.
 // The request can be repeated after some time.
-type AcceptedError struct{}
+type AcceptedError struct {
+	// Raw contains the response body.
+	Raw []byte
+}
 
 func (*AcceptedError) Error() string {
 	return "job scheduled on GitHub side; try again later"
 }
 
 // AbuseRateLimitError occurs when GitHub returns 403 Forbidden response with the
-// "documentation_url" field value equal to "https://developer.github.com/v3#abuse-rate-limits".
+// "documentation_url" field value equal to "https://developer.github.com/v3/#abuse-rate-limits".
 type AbuseRateLimitError struct {
 	Response *http.Response // HTTP response that caused this error
 	Message  string         `json:"message"` // error message
@@ -682,7 +760,7 @@ func CheckResponse(r *http.Response) error {
 			Response: errorResponse.Response,
 			Message:  errorResponse.Message,
 		}
-	case r.StatusCode == http.StatusForbidden && errorResponse.DocumentationURL == "https://developer.github.com/v3#abuse-rate-limits":
+	case r.StatusCode == http.StatusForbidden && strings.HasSuffix(errorResponse.DocumentationURL, "/v3/#abuse-rate-limits"):
 		abuseRateLimitError := &AbuseRateLimitError{
 			Response: errorResponse.Response,
 			Message:  errorResponse.Message,
@@ -848,14 +926,21 @@ func (t *UnauthenticatedRateLimitedTransport) RoundTrip(req *http.Request) (*htt
 	// To set extra querystring params, we must make a copy of the Request so
 	// that we don't modify the Request we were given. This is required by the
 	// specification of http.RoundTripper.
-	req = cloneRequest(req)
-	q := req.URL.Query()
+	//
+	// Since we are going to modify only req.URL here, we only need a deep copy
+	// of req.URL.
+	req2 := new(http.Request)
+	*req2 = *req
+	req2.URL = new(url.URL)
+	*req2.URL = *req.URL
+
+	q := req2.URL.Query()
 	q.Set("client_id", t.ClientID)
 	q.Set("client_secret", t.ClientSecret)
-	req.URL.RawQuery = q.Encode()
+	req2.URL.RawQuery = q.Encode()
 
 	// Make the HTTP request.
-	return t.transport().RoundTrip(req)
+	return t.transport().RoundTrip(req2)
 }
 
 // Client returns an *http.Client that makes requests which are subject to the
@@ -887,12 +972,24 @@ type BasicAuthTransport struct {
 
 // RoundTrip implements the RoundTripper interface.
 func (t *BasicAuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	req = cloneRequest(req) // per RoundTrip contract
-	req.SetBasicAuth(t.Username, t.Password)
-	if t.OTP != "" {
-		req.Header.Set(headerOTP, t.OTP)
+	// To set extra headers, we must make a copy of the Request so
+	// that we don't modify the Request we were given. This is required by the
+	// specification of http.RoundTripper.
+	//
+	// Since we are going to modify only req.Header here, we only need a deep copy
+	// of req.Header.
+	req2 := new(http.Request)
+	*req2 = *req
+	req2.Header = make(http.Header, len(req.Header))
+	for k, s := range req.Header {
+		req2.Header[k] = append([]string(nil), s...)
 	}
-	return t.transport().RoundTrip(req)
+
+	req2.SetBasicAuth(t.Username, t.Password)
+	if t.OTP != "" {
+		req2.Header.Set(headerOTP, t.OTP)
+	}
+	return t.transport().RoundTrip(req2)
 }
 
 // Client returns an *http.Client that makes requests that are authenticated
@@ -906,20 +1003,6 @@ func (t *BasicAuthTransport) transport() http.RoundTripper {
 		return t.Transport
 	}
 	return http.DefaultTransport
-}
-
-// cloneRequest returns a clone of the provided *http.Request. The clone is a
-// shallow copy of the struct and its Header map.
-func cloneRequest(r *http.Request) *http.Request {
-	// shallow copy of the struct
-	r2 := new(http.Request)
-	*r2 = *r
-	// deep copy of the Header
-	r2.Header = make(http.Header, len(r.Header))
-	for k, s := range r.Header {
-		r2.Header[k] = append([]string(nil), s...)
-	}
-	return r2
 }
 
 // formatRateReset formats d to look like "[rate reset in 2s]" or
@@ -954,6 +1037,10 @@ func Bool(v bool) *bool { return &v }
 // Int is a helper routine that allocates a new int value
 // to store v and returns a pointer to it.
 func Int(v int) *int { return &v }
+
+// Int64 is a helper routine that allocates a new int64 value
+// to store v and returns a pointer to it.
+func Int64(v int64) *int64 { return &v }
 
 // String is a helper routine that allocates a new string value
 // to store v and returns a pointer to it.

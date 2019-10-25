@@ -287,7 +287,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 
 		var githubUID int
 		if pr != nil && pr.User != nil && pr.User.ID != nil {
-			githubUID = *pr.User.ID
+			githubUID = int(*pr.User.ID)
 		}
 		if githubUID == 0 || user.Settings.GithubUser.UID != githubUID {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{

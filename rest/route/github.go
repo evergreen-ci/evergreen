@@ -6,10 +6,11 @@ import (
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/evergreen-ci/evergreen/rest/model"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
@@ -249,6 +250,26 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				}
 			}
 		}
+
+	case *github.MetaEvent:
+		if event.GetAction() == "deleted" {
+			hookID := event.GetHookID()
+			if hookID == 0 {
+				msg := "invalid hook ID for deleted hook"
+				grip.Error(message.Fields{
+					"source":  "github hook",
+					"msg_id":  gh.msgID,
+					"event":   gh.eventType,
+					"action":  event.Action,
+					"hook":    event.Hook,
+					"message": msg,
+				})
+				return gimlet.MakeJSONErrorResponder(errors.New(msg))
+			}
+			if err := model.RemoveGithubHook(int(hookID)); err != nil {
+				return gimlet.MakeJSONErrorResponder(err)
+			}
+		}
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
@@ -309,7 +330,7 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 		return errors.New("PR contains no base branch label")
 	}
 
-	modules := model.ParseGitHubCommentModules(*event.Comment.Body)
+	modules := restModel.ParseGitHubCommentModules(*event.Comment.Body)
 	baseBranch := *pr.Base.Ref
 	projectRef, err := gh.sc.GetProjectWithCommitQueueByOwnerRepoAndBranch(userRepo.Owner, userRepo.Repo, baseBranch)
 	if err != nil {
@@ -318,8 +339,8 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 	if projectRef == nil {
 		return errors.Errorf("no project with commit queue enabled for '%s:%s' tracking branch '%s'", userRepo.Owner, userRepo.Repo, baseBranch)
 	}
-	item := model.APICommitQueueItem{
-		Issue:   model.ToAPIString(strconv.Itoa(PRNum)),
+	item := restModel.APICommitQueueItem{
+		Issue:   restModel.ToAPIString(strconv.Itoa(PRNum)),
 		Modules: modules,
 	}
 	_, err = gh.sc.EnqueueItem(projectRef.Identifier, item)

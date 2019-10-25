@@ -50,7 +50,7 @@ func githubCommitToRevision(repoCommit *github.RepositoryCommit) model.Revision 
 	}
 
 	if repoCommit.Author != nil && repoCommit.Author.ID != nil {
-		r.AuthorGithubUID = *repoCommit.Author.ID
+		r.AuthorGithubUID = int(*repoCommit.Author.ID)
 	}
 
 	return r
