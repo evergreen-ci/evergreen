@@ -62,6 +62,7 @@ type ViewData struct {
 	Csrf        htmlTemplate.HTML
 	JiraHost    string
 	Bugsnag     string
+	ACLEnabled  bool // TODO PM-1355 remove this
 }
 
 func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo TemplateFunctionOptions) (*UIServer, error) {
@@ -198,6 +199,7 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 	viewData.Csrf = csrf.TemplateField(r)
 	viewData.JiraHost = uis.Settings.Jira.Host
 	viewData.Bugsnag = settings.Bugsnag
+	viewData.ACLEnabled = evergreen.AclCheckingIsEnabled
 	return viewData
 }
 

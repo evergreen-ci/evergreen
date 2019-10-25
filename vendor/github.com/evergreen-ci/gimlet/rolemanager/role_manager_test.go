@@ -242,3 +242,40 @@ func (s *RoleManagerSuite) TestRequiresPermissionMiddleware() {
 	s.Equal(http.StatusOK, rw.Code)
 	s.Equal(2, counter)
 }
+
+func (s *RoleManagerSuite) TestHighestPermissionsForRoles() {
+	r1 := gimlet.Role{
+		ID:    "r1",
+		Scope: "1",
+		Permissions: map[string]int{
+			"edit": 20,
+			"read": 20,
+		},
+	}
+	s.NoError(s.m.UpdateRole(r1))
+	r2 := gimlet.Role{
+		ID:    "r2",
+		Scope: "1",
+		Permissions: map[string]int{
+			"edit": 50,
+		},
+	}
+	s.NoError(s.m.UpdateRole(r2))
+	r3 := gimlet.Role{
+		ID:    "r3",
+		Scope: "2",
+		Permissions: map[string]int{
+			"read": 40,
+		},
+	}
+	s.NoError(s.m.UpdateRole(r3))
+
+	opts := gimlet.PermissionOpts{
+		Resource:     "resource1",
+		ResourceType: "project",
+	}
+	permissions, err := HighestPermissionsForRoles([]string{"r1", "r2", "r3"}, s.m, opts)
+	s.NoError(err)
+	s.Len(permissions, 2)
+	s.EqualValues(map[string]int{"edit": 50, "read": 20}, permissions)
+}

@@ -27,6 +27,8 @@ type PermissionOpts struct {
 	RequiredLevel int
 }
 
+type Permissions map[string]int
+
 // Authenticator represents a service that answers specific
 // authentication related questions, and is the public interface
 // used for authentication workflows.

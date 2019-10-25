@@ -505,26 +505,22 @@ type PatchPermission int
 type LogsPermission int
 
 const (
-	PermissionProjectSettings  = "project_settings"
-	PermissionProjectVariables = "project_variables"
-	PermissionTasks            = "project_tasks"
-	PermissionPatches          = "project_patches"
-	PermissionLogs             = "project_logs"
+	PermissionProjectSettings = "project_settings"
+	PermissionTasks           = "project_tasks"
+	PermissionPatches         = "project_patches"
+	PermissionLogs            = "project_logs"
 
-	ProjectSettingsEdit  ProjectSettingsPermission  = 20
-	ProjectSettingsView  ProjectSettingsPermission  = 10
-	ProjectSettingsNone  ProjectSettingsPermission  = 0
-	ProjectVariablesEdit ProjectVariablesPermission = 20
-	ProjectVariablesView ProjectVariablesPermission = 10
-	ProjectVariablesNone ProjectVariablesPermission = 0
-	TasksAdmin           TasksPermission            = 30
-	TasksBasic           TasksPermission            = 20
-	TasksView            TasksPermission            = 10
-	TasksNone            TasksPermission            = 0
-	PatchSubmit          PatchPermission            = 10
-	PatchNone            PatchPermission            = 0
-	LogsView             LogsPermission             = 10
-	LogsNone             LogsPermission             = 0
+	ProjectSettingsEdit ProjectSettingsPermission = 20
+	ProjectSettingsView ProjectSettingsPermission = 10
+	ProjectSettingsNone ProjectSettingsPermission = 0
+	TasksAdmin          TasksPermission           = 30
+	TasksBasic          TasksPermission           = 20
+	TasksView           TasksPermission           = 10
+	TasksNone           TasksPermission           = 0
+	PatchSubmit         PatchPermission           = 10
+	PatchNone           PatchPermission           = 0
+	LogsView            LogsPermission            = 10
+	LogsNone            LogsPermission            = 0
 )
 
 func (p ProjectSettingsPermission) String() string {
@@ -539,20 +535,6 @@ func (p ProjectSettingsPermission) String() string {
 	return ""
 }
 func (p ProjectSettingsPermission) Value() int {
-	return int(p)
-}
-func (p ProjectVariablesPermission) String() string {
-	switch p {
-	case ProjectVariablesEdit:
-		return "Edit project variables"
-	case ProjectVariablesView:
-		return "View project variables"
-	case ProjectVariablesNone:
-		return "No project variables permissions"
-	}
-	return ""
-}
-func (p ProjectVariablesPermission) Value() int {
 	return int(p)
 }
 func (p TasksPermission) String() string {
@@ -598,7 +580,6 @@ func (p LogsPermission) Value() int {
 
 var projectPermissions = []string{
 	PermissionProjectSettings,
-	PermissionProjectVariables,
 	PermissionTasks,
 	PermissionPatches,
 	PermissionLogs,

@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/evergreen-ci/gimlet/rolemanager"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -69,7 +71,7 @@ func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	_ = MustHaveProjectContext(r)
-	_ = MustHaveUser(r)
+	u := MustHaveUser(r)
 
 	id := gimlet.GetVars(r)["project_id"]
 
@@ -138,6 +140,12 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	opts := gimlet.PermissionOpts{Resource: projRef.Identifier, ResourceType: evergreen.ProjectResourceType}
+	permissions, err := rolemanager.HighestPermissionsForRoles(u.Roles(), evergreen.GetEnvironment().RoleManager(), opts)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
 
 	data := struct {
 		ProjectRef            *model.ProjectRef
@@ -147,7 +155,8 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		CQConflictingRefs     []string                    `json:"commit_queue_conflicting_refs,omitempty"`
 		GitHubWebhooksEnabled bool                        `json:"github_webhooks_enabled"`
 		Subscriptions         []restModel.APISubscription `json:"subscriptions"`
-	}{projRef, projVars, projectAliases, PRConflictingRefs, CQConflictingRefs, hook != nil, apiSubscriptions}
+		Permissions           gimlet.Permissions          `json:"permissions"`
+	}{projRef, projVars, projectAliases, PRConflictingRefs, CQConflictingRefs, hook != nil, apiSubscriptions, permissions}
 
 	// the project context has all projects so make the ui list using all projects
 	gimlet.WriteJSON(w, data)
