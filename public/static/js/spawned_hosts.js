@@ -48,31 +48,9 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
           success: function(resp) {
               var hosts = resp.data;
               _.each(hosts, function(host) {
-                  host.isTerminated = host.status == 'terminated';
-                  var terminateTime = moment(host.termination_time);
-                  // check if the host is terminated to determine uptime
-                  if (terminateTime > epochTime) {
-                      var uptime = terminateTime.diff(host.creation_time, 'seconds');
-                      host.uptime = moment.duration(uptime, 'seconds').humanize();
-                  } else {
-                      var uptime = moment().diff(host.creation_time, 'seconds');
-                      host.uptime = moment.duration(uptime, 'seconds').humanize();
-                      if(+new Date(host.expiration_time) > +new Date("0001-01-01T00:00:00Z")){
-                          if (host.no_expiration) {
-                              host.expires_in = "never";
-                              host.original_expiration = new Date();
-                              host.current_expiration = null;
-                              host.modified_expiration = new Date();
-                          } else {
-                              var expiretime = moment().diff(host.expiration_time, 'seconds');
-                              host.expires_in = moment.duration(expiretime, 'seconds').humanize();
+                  $scope.computeUptime(host);
+                  $scope.computeExpirationTimes(host);
 
-                              host.original_expiration = new Date(host.expiration_time);
-                              host.current_expiration = new Date(host.expiration_time);
-                              host.modified_expiration = new Date(host.expiration_time);
-                          }
-                      }
-                  }
                   host.selectedInstanceType = host.instance_type;
                   if ($scope.lastSelected && $scope.lastSelected.id == host.id) {
                       $scope.setSelected(host);
@@ -92,6 +70,68 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     }
 
 
+
+    $scope.updateSpawnedHosts = function() {
+        mciSpawnRestService.getSpawnedHosts(
+            'hosts', {}, {
+                success: function(resp) {
+                    var hosts = resp.data;
+                    _.each(hosts, function(host) {
+                        for(var i = 0; i < $scope.hosts.length; i++) {
+                            if ($scope.hosts[i].id !== host.id && $scope.hosts[i].id !== host.tag) {
+                                continue;
+                            }
+                            $scope.computeUptime(host);
+                            $scope.computeExpirationTimes(host);
+                            $scope.hosts[i].uptime = host.uptime;
+                            $scope.hosts[i].expires_in = host.expires_in;
+                            $scope.hosts[i].status = host.status;
+                            $scope.hosts[i].id = host.id;
+                            if ($scope.hosts[i].instance_type === undefined || $scope.hosts[i].instance_type === "") {
+                                $scope.hosts[i].instance_type = host.instance_type;
+                            }
+                            if ($scope.hosts[i].selectedInstanceType === undefined || $scope.hosts[i].selectedInstanceType === "") {
+                                $scope.hosts[i].selectedInstanceType = host.instance_type;
+                            }
+                        }
+                    });
+                }
+            }
+        )
+    }
+
+    $scope.computeExpirationTimes = function(host) {
+        if (!host.isTerminated && new Date(host.expiration_time) > new Date("0001-01-01T00:00:00Z")) {
+            if (host.no_expiration) {
+                host.expires_in = "never";
+                host.original_expiration = new Date();
+                host.current_expiration = null;
+                host.modified_expiration = new Date();
+            } else {
+                var expiretime = moment().diff(host.expiration_time, 'seconds');
+                host.expires_in = moment.duration(expiretime, 'seconds').humanize();
+
+                host.original_expiration = new Date(host.expiration_time);
+                host.current_expiration = new Date(host.expiration_time);
+                host.modified_expiration = new Date(host.expiration_time);
+            }
+        }
+    }
+
+
+    $scope.computeUptime = function(host) {
+        host.isTerminated = host.status == 'terminated';
+        var terminateTime = moment(host.termination_time);
+        // check if the host is terminated to determine uptime
+        if (host.isTerminated && terminateTime > epochTime) {
+            var uptime = terminateTime.diff(host.creation_time, 'seconds');
+            host.uptime = moment.duration(uptime, 'seconds').humanize();
+        } else {
+            var uptime = moment().diff(host.creation_time, 'seconds');
+            host.uptime = moment.duration(uptime, 'seconds').humanize();
+        }
+    }
+
     $scope.setCurrentExpirationOnClick = function() {
         // host previously had an expiration
         if ($scope.curHostData.current_expiration != null) {
@@ -107,8 +147,8 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     // every 60 seconds after that to pick up changes.
     $timeout($scope.fetchSpawnedHosts, 1);
 
-    $timeout($scope.fetchSpawnedHosts, 5000);
-    setInterval(function(){$scope.fetchSpawnedHosts();}, 60000);
+    $timeout($scope.updateSpawnedHosts, 5000);
+    setInterval(function(){$scope.updateSpawnedHosts();}, 60000);
 
     // Returns true if the user can spawn another host. If hosts has not been initialized it
     // assumes true.
