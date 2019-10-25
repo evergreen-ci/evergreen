@@ -117,6 +117,46 @@ func (s *APIFinderSettings) ToService() (interface{}, error) {
 
 ////////////////////////////////////////////////////////////////////////////////
 //
+// APIDispatcherSettings is the model to be returned by the API whenever distro.DispatcherSettings are fetched
+
+type APIDispatcherSettings struct {
+	Version APIString `json:"version"`
+}
+
+// BuildFromService converts from service level distro.DispatcherSettings to an APIDispatcherSettings
+func (s *APIDispatcherSettings) BuildFromService(h interface{}) error {
+	var settings distro.DispatcherSettings
+	switch v := h.(type) {
+	case distro.DispatcherSettings:
+		settings = v
+	case *distro.DispatcherSettings:
+		settings = *v
+	default:
+		return errors.Errorf("%T is not a supported expansion type", h)
+	}
+
+	if settings.Version == "" {
+		s.Version = ToAPIString(evergreen.DispatcherVersionTaskGroups)
+	} else {
+		s.Version = ToAPIString(settings.Version)
+	}
+
+	return nil
+}
+
+// ToService returns a service layer distro.DispatcherSettings using the data from APIDispatcherSettings
+func (s *APIDispatcherSettings) ToService() (interface{}, error) {
+	settings := distro.DispatcherSettings{}
+	settings.Version = FromAPIString(s.Version)
+	if settings.Version == "" {
+		settings.Version = evergreen.DispatcherVersionTaskGroups
+	}
+
+	return interface{}(settings), nil
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
 // APIBootstrapSettings is the model to be returned by the API whenever distro.BootstrapSettings are fetched
 
 type APIBootstrapSettings struct {
@@ -206,28 +246,29 @@ func (s *APIBootstrapSettings) ToService() (interface{}, error) {
 // APIDistro is the model to be returned by the API whenever distros are fetched
 
 type APIDistro struct {
-	Name              APIString              `json:"name"`
-	Aliases           []string               `json:"aliases"`
-	UserSpawnAllowed  bool                   `json:"user_spawn_allowed"`
-	Provider          APIString              `json:"provider"`
-	ProviderSettings  map[string]interface{} `json:"settings"`
-	ImageID           APIString              `json:"image_id"`
-	Arch              APIString              `json:"arch"`
-	WorkDir           APIString              `json:"work_dir"`
-	PoolSize          int                    `json:"pool_size"`
-	SetupAsSudo       bool                   `json:"setup_as_sudo"`
-	Setup             APIString              `json:"setup"`
-	Teardown          APIString              `json:"teardown"`
-	User              APIString              `json:"user"`
-	BootstrapSettings APIBootstrapSettings   `json:"bootstrap_settings"`
-	CloneMethod       APIString              `json:"clone_method"`
-	SSHKey            APIString              `json:"ssh_key"`
-	SSHOptions        []string               `json:"ssh_options"`
-	Expansions        []APIExpansion         `json:"expansions"`
-	Disabled          bool                   `json:"disabled"`
-	ContainerPool     APIString              `json:"container_pool"`
-	PlannerSettings   APIPlannerSettings     `json:"planner_settings"`
-	FinderSettings    APIFinderSettings      `json:"finder_settings"`
+	Name               APIString              `json:"name"`
+	Aliases            []string               `json:"aliases"`
+	UserSpawnAllowed   bool                   `json:"user_spawn_allowed"`
+	Provider           APIString              `json:"provider"`
+	ProviderSettings   map[string]interface{} `json:"settings"`
+	ImageID            APIString              `json:"image_id"`
+	Arch               APIString              `json:"arch"`
+	WorkDir            APIString              `json:"work_dir"`
+	PoolSize           int                    `json:"pool_size"`
+	SetupAsSudo        bool                   `json:"setup_as_sudo"`
+	Setup              APIString              `json:"setup"`
+	Teardown           APIString              `json:"teardown"`
+	User               APIString              `json:"user"`
+	BootstrapSettings  APIBootstrapSettings   `json:"bootstrap_settings"`
+	CloneMethod        APIString              `json:"clone_method"`
+	SSHKey             APIString              `json:"ssh_key"`
+	SSHOptions         []string               `json:"ssh_options"`
+	Expansions         []APIExpansion         `json:"expansions"`
+	Disabled           bool                   `json:"disabled"`
+	ContainerPool      APIString              `json:"container_pool"`
+	FinderSettings     APIFinderSettings      `json:"finder_settings"`
+	PlannerSettings    APIPlannerSettings     `json:"planner_settings"`
+	DispatcherSettings APIDispatcherSettings  `json:"dispatcher_settings"`
 }
 
 // BuildFromService converts from service level distro.Distro to an APIDistro

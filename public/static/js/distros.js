@@ -28,33 +28,48 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     $scope.distros[i].planner_settings.task_ordering = $scope.distros[i].planner_settings.task_ordering || 'interleave';
     $scope.distros[i].finder_settings = $scope.distros[i].finder_settings || {};
     $scope.distros[i].finder_settings.version = $scope.distros[i].finder_settings.version || 'legacy';
+    $scope.distros[i].dispatcher_settings = $scope.distros[i].dispatcher_settings || {};
+    $scope.distros[i].dispatcher_settings.version = $scope.distros[i].dispatcher_settings.version || 'task-groups';
     $scope.distros[i].bootstrap_settings.method = $scope.distros[i].bootstrap_settings.method || 'legacy-ssh';
     $scope.distros[i].bootstrap_settings.communication = $scope.distros[i].bootstrap_settings.communication || 'legacy-ssh';
     $scope.distros[i].clone_method = $scope.distros[i].clone_method || 'legacy-ssh';
   }
 
+  // $scope.taskFinderVersions = [{
+  //   'id': 'legacy',
+  //   'display': 'Legacy  - a task\'s dependents must be satisfied'
+  // }];
+
   $scope.plannerVersions = [{
-    'id': "legacy",
+    'id': 'legacy',
     'display': 'Legacy '
   }, {
-    'id': "revised",
+    'id': 'revised',
     'display': 'Revised '
   }, {
-    'id': "tunable",
+    'id': 'tunable',
     'display': 'Tunable '
   }];
 
+  $scope.dispatcherSettingsVersions = [{
+    'id': 'task-groups',
+    'display': 'Task Groups '
+  }, {
+    'id': 'directed-acyclic-graph',
+    'display': '(DAG) Directed-acyclic-graph '
+  }];
+
   $scope.taskOrderings = [{
-    'id': "",
+    'id': '',
     'display': ' '
   }, {
-   'id': "interleave",
+   'id': 'interleave',
     'display': 'Interleave '
   }, {
-    'id': "mainlinefirst",
+    'id': 'mainlinefirst',
     'display': 'Mainline First '
   }, {
-    'id': "patchfirst",
+    'id': 'patchfirst',
     'display': 'Patch First '
   }];
 
@@ -402,6 +417,9 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
         'finder_settings': {
           'version': 'legacy'
         },
+        'dispatcher_settings': {
+          'version': 'task-groups'
+        },
         'new': true,
       };
 
@@ -438,6 +456,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
       newDistro.expansions = _.clone($scope.activeDistro.expansions);
       newDistro.planner_settings = _.clone($scope.activeDistro.planner_settings);
       newDistro.finder_settings = _.clone($scope.activeDistro.finder_settings);
+      newDistro.dispatcher_settings = _.clone($scope.activeDistro.dispatcher_settings);
 
       $scope.distros.unshift(newDistro);
       $scope.hasNew = true;
@@ -585,6 +604,12 @@ mciModule.filter("archDisplay", function() {
 mciModule.filter("versionDisplay", function() {
   return function(version, scope) {
     return scope.getKeyDisplay('plannerVersions', version);
+  }
+});
+
+mciModule.filter("dispatcherSettingsVersionDisplay", function() {
+  return function(dispatcherSettingsVersion, scope) {
+    return scope.getKeyDisplay('dispatcherSettingsVersions', dispatcherSettingsVersion);
   }
 });
 

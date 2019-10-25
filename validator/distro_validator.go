@@ -271,7 +271,7 @@ func ensureHasValidPlannerSettings(ctx context.Context, d *distro.Distro, s *eve
 	errs := ValidationErrors{}
 	ps := d.PlannerSettings
 
-	if !util.StringSliceContains(evergreen.ValidPlannerVersions, ps.Version) {
+	if !util.StringSliceContains(evergreen.ValidTaskPlannerVersions, ps.Version) {
 		errs = append(errs, ValidationError{
 			Message: fmt.Sprintf("invalid planner_settings.version '%s' for distro '%s'", ps.Version, d.Id),
 			Level:   Error,
@@ -357,7 +357,7 @@ func ensureHasValidPlannerSettings(ctx context.Context, d *distro.Distro, s *eve
 
 // ensureHasValidFinderVersion checks that the distro's FinderSettings.Version is valid
 func ensureHasValidFinderVersion(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
-	if !util.StringSliceContains(evergreen.ValidFinderVersions, d.FinderSettings.Version) {
+	if !util.StringSliceContains(evergreen.ValidTaskFinderVersions, d.FinderSettings.Version) {
 		return ValidationErrors{
 			{
 				Message: fmt.Sprintf("invalid finder_settings.version '%s' for distro '%s'", d.FinderSettings.Version, d.Id),

@@ -15,26 +15,27 @@ import (
 )
 
 type Distro struct {
-	Id                string                  `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
-	Aliases           []string                `bson:"aliases,omitempty" json:"aliases,omitempty" mapstructure:"aliases,omitempty"`
-	Arch              string                  `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
-	WorkDir           string                  `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
-	Provider          string                  `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
-	ProviderSettings  *map[string]interface{} `bson:"settings" json:"settings,omitempty" mapstructure:"settings,omitempty"`
-	SetupAsSudo       bool                    `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`
-	Setup             string                  `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
-	Teardown          string                  `bson:"teardown,omitempty" json:"teardown,omitempty" mapstructure:"teardown,omitempty"`
-	User              string                  `bson:"user,omitempty" json:"user,omitempty" mapstructure:"user,omitempty"`
-	BootstrapSettings BootstrapSettings       `bson:"bootstrap_settings" json:"bootstrap_settings" mapstructure:"bootstrap_settings"`
-	CloneMethod       string                  `bson:"clone_method" json:"clone_method,omitempty" mapstructure:"clone_method,omitempty"`
-	SSHKey            string                  `bson:"ssh_key,omitempty" json:"ssh_key,omitempty" mapstructure:"ssh_key,omitempty"`
-	SSHOptions        []string                `bson:"ssh_options,omitempty" json:"ssh_options,omitempty" mapstructure:"ssh_options,omitempty"`
-	SpawnAllowed      bool                    `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`
-	Expansions        []Expansion             `bson:"expansions,omitempty" json:"expansions,omitempty" mapstructure:"expansions,omitempty"`
-	Disabled          bool                    `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
-	ContainerPool     string                  `bson:"container_pool,omitempty" json:"container_pool,omitempty" mapstructure:"container_pool,omitempty"`
-	PlannerSettings   PlannerSettings         `bson:"planner_settings" json:"planner_settings,omitempty" mapstructure:"planner_settings,omitempty"`
-	FinderSettings    FinderSettings          `bson:"finder_settings" json:"finder_settings,omitempty" mapstructure:"finder_settings,omitempty"`
+	Id                 string                  `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
+	Aliases            []string                `bson:"aliases,omitempty" json:"aliases,omitempty" mapstructure:"aliases,omitempty"`
+	Arch               string                  `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
+	WorkDir            string                  `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
+	Provider           string                  `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
+	ProviderSettings   *map[string]interface{} `bson:"settings" json:"settings,omitempty" mapstructure:"settings,omitempty"`
+	SetupAsSudo        bool                    `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`
+	Setup              string                  `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
+	Teardown           string                  `bson:"teardown,omitempty" json:"teardown,omitempty" mapstructure:"teardown,omitempty"`
+	User               string                  `bson:"user,omitempty" json:"user,omitempty" mapstructure:"user,omitempty"`
+	BootstrapSettings  BootstrapSettings       `bson:"bootstrap_settings" json:"bootstrap_settings" mapstructure:"bootstrap_settings"`
+	CloneMethod        string                  `bson:"clone_method" json:"clone_method,omitempty" mapstructure:"clone_method,omitempty"`
+	SSHKey             string                  `bson:"ssh_key,omitempty" json:"ssh_key,omitempty" mapstructure:"ssh_key,omitempty"`
+	SSHOptions         []string                `bson:"ssh_options,omitempty" json:"ssh_options,omitempty" mapstructure:"ssh_options,omitempty"`
+	SpawnAllowed       bool                    `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`
+	Expansions         []Expansion             `bson:"expansions,omitempty" json:"expansions,omitempty" mapstructure:"expansions,omitempty"`
+	Disabled           bool                    `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
+	ContainerPool      string                  `bson:"container_pool,omitempty" json:"container_pool,omitempty" mapstructure:"container_pool,omitempty"`
+	FinderSettings     FinderSettings          `bson:"finder_settings" json:"finder_settings,omitempty" mapstructure:"finder_settings,omitempty"`
+	PlannerSettings    PlannerSettings         `bson:"planner_settings" json:"planner_settings,omitempty" mapstructure:"planner_settings,omitempty"`
+	DispatcherSettings DispatcherSettings      `bson:"dispatcher_settings" json:"dispatcher_settings,omitempty" mapstructure:"dispatcher_settings,omitempty"`
 
 	// PoolSize is the maximum allowed number of hosts running this distro
 	PoolSize int `bson:"pool_size,omitempty" json:"pool_size,omitempty" mapstructure:"pool_size,omitempty" yaml:"poolsize"`
@@ -109,20 +110,24 @@ func (d *Distro) ValidateBootstrapSettings() error {
 
 type PlannerSettings struct {
 	Version                string        `bson:"version" json:"version" mapstructure:"version"`
-	MinimumHosts           int           `bson:"minimum_hosts" json:"minimum_hosts,omitempty" mapstructure:"minimum_hosts,omitempty"`
-	MaximumHosts           int           `bson:"maximum_hosts" json:"maximum_hosts,omitempty" mapstructure:"maximum_hosts,omitempty"`
-	TargetTime             time.Duration `bson:"target_time" json:"target_time" mapstructure:"target_time,omitempty"`
-	AcceptableHostIdleTime time.Duration `bson:"acceptable_host_idle_time" json:"acceptable_host_idle_time" mapstructure:"acceptable_host_idle_time,omitempty"`
-	GroupVersions          *bool         `bson:"group_versions" json:"group_versions" mapstructure:"group_versions,omitempty"`
-	TaskOrdering           string        `bson:"task_ordering" json:"task_ordering" mapstructure:"task_ordering,omitempty"`
-	PatchFactor            int64         `bson:"patch_zipper_factor" json:"patch_factor" mapstructure:"patch_factor"`
-	TimeInQueueFactor      int64         `bson:"time_in_queue_factor" json:"time_in_queue_factor" mapstructure:"time_in_queue_factor"`
-	ExpectedRuntimeFactor  int64         `bson:"expected_runtime_factor" json:"expected_runtime_factor" mapstructure:"expected_runtime_factor"`
+	MinimumHosts           int           `bson:"minimum_hosts" json:"minimum_hosts,omitempty" mapstructure:"minimum_hosts,omitempty"`                           // HostAllocation
+	MaximumHosts           int           `bson:"maximum_hosts" json:"maximum_hosts,omitempty" mapstructure:"maximum_hosts,omitempty"`                           // HostAllocation
+	TargetTime             time.Duration `bson:"target_time" json:"target_time" mapstructure:"target_time,omitempty"`                                           // PlannerSettings
+	AcceptableHostIdleTime time.Duration `bson:"acceptable_host_idle_time" json:"acceptable_host_idle_time" mapstructure:"acceptable_host_idle_time,omitempty"` // HostAllocation or PlannerSettings?
+	GroupVersions          *bool         `bson:"group_versions" json:"group_versions" mapstructure:"group_versions,omitempty"`                                  // PlannerSettings
+	TaskOrdering           string        `bson:"task_ordering" json:"task_ordering" mapstructure:"task_ordering,omitempty"`                                     // PlannerSettings
+	PatchFactor            int64         `bson:"patch_zipper_factor" json:"patch_factor" mapstructure:"patch_factor"`                                           // PlannerSettings?
+	TimeInQueueFactor      int64         `bson:"time_in_queue_factor" json:"time_in_queue_factor" mapstructure:"time_in_queue_factor"`                          // PlannerSettings
+	ExpectedRuntimeFactor  int64         `bson:"expected_runtime_factor" json:"expected_runtime_factor" mapstructure:"expected_runtime_factor"`                 // PlannerSettings
 
-	maxDurationPerHost time.Duration
+	maxDurationPerHost time.Duration // HostAllocation or PlannerSettings?
 }
 
 type FinderSettings struct {
+	Version string `bson:"version" json:"version" mapstructure:"version"`
+}
+
+type DispatcherSettings struct {
 	Version string `bson:"version" json:"version" mapstructure:"version"`
 }
 
@@ -229,7 +234,7 @@ func (d *Distro) GenerateName() string {
 }
 
 func (d *Distro) ShouldGroupVersions() bool {
-	if d.PlannerSettings.GroupVersions == nil {
+	if d.GroupVersions == nil {
 		return false
 	}
 
@@ -483,7 +488,7 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 		resolved.Version = config.Planner
 	}
 
-	if !util.StringSliceContains(evergreen.ValidPlannerVersions, resolved.Version) {
+	if !util.StringSliceContains(evergreen.ValidTaskPlannerVersions, resolved.Version) {
 		catcher.Errorf("'%s' is not a valid PlannerSettings.Version", resolved.Version)
 	}
 	// Validate the PlannerSettings.MinimumHosts and PlannerSettings.MaximumHosts

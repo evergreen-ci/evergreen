@@ -162,6 +162,10 @@ const (
 	PlannerVersionRevised = "revised"
 	PlannerVersionTunable = "tunable"
 
+	DispatcherVersionLegacy     = "legacy" // STU: do we actually need this?
+	DispatcherVersionTaskGroups = "task-groups"
+	DispatcherVersionDAG        = "directed-acyclic-graph"
+
 	// maximum turnaround we want to maintain for all hosts for a given distro
 	MaxDurationPerDistroHost               = 30 * time.Minute
 	MaxDurationPerDistroHostWithContainers = 2 * time.Minute
@@ -170,6 +174,7 @@ const (
 	FinderVersionParallel  = "parallel"
 	FinderVersionPipeline  = "pipeline"
 	FinderVersionAlternate = "alternate"
+	// FinderVersionTunable   = "tunable"
 
 	HostAllocatorDuration    = "duration"
 	HostAllocatorDeficit     = "deficit"
@@ -419,14 +424,21 @@ var (
 	}
 
 	// Set of valid PlannerSettings.Version strings that can be user set via the API
-	ValidPlannerVersions = []string{
+	ValidTaskPlannerVersions = []string{
 		PlannerVersionLegacy,
 		PlannerVersionRevised,
 		PlannerVersionTunable,
 	}
 
+	// Set of valid DispatchSettings.Version strings that can be user set via the API
+	ValidTaskDispatcherVersions = []string{
+		DispatcherVersionLegacy, // STU: is this actually required?
+		DispatcherVersionTaskGroups,
+		DispatcherVersionDAG,
+	}
+
 	// Set of valid FinderSettings.Version strings that can be user set via the API
-	ValidFinderVersions = []string{
+	ValidTaskFinderVersions = []string{
 		FinderVersionLegacy,
 		FinderVersionAlternate,
 		FinderVersionParallel,

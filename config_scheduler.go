@@ -78,9 +78,9 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 		c.TaskFinder = FinderVersionLegacy
 	}
 
-	if !util.StringSliceContains(ValidFinderVersions, c.TaskFinder) {
+	if !util.StringSliceContains(ValidTaskFinderVersions, c.TaskFinder) {
 		return errors.Errorf("supported task finders are %s; %s is not supported",
-			ValidFinderVersions, c.TaskFinder)
+			ValidTaskFinderVersions, c.TaskFinder)
 	}
 
 	if c.HostAllocator == "" {
@@ -110,9 +110,9 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 		c.Planner = PlannerVersionLegacy
 	}
 
-	if !util.StringSliceContains(ValidPlannerVersions, c.Planner) {
+	if !util.StringSliceContains(ValidTaskPlannerVersions, c.Planner) {
 		return errors.Errorf("supported planners are %s; %s is not supported",
-			ValidPlannerVersions, c.Planner)
+			ValidTaskPlannerVersions, c.Planner)
 	}
 
 	if c.TaskOrdering == "" {

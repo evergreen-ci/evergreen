@@ -622,6 +622,24 @@ Evergreen - Distros
             </div>
           </div>
         </div>
+
+        <div class="panel-body panel panel-default">
+          <div class="dropdown">
+            <span class="distro-menu-title">Dispatcher Version:</span>
+              <button style="margin-left:5px;" class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true"
+                ng-disabled="readOnly">
+                <strong class="distro-menu-item">[[ activeDistro.dispatcher_settings.version | dispatcherSettingsVersionDisplay:this]]<span class="fa fa-caret-down"></span></strong>
+              </button>
+              <ul class="dropdown-menu" style="margin-left: 125px" role="menu">
+                <li required name="dispatcherSettingsVersion" ng-click="form.$setDirty();activeDistro.dispatcher_settings.version = version.id" ng-repeat="version in dispatcherSettingsVersions"
+                  role="presentation"><a role="menuitem" tabindex="-1">[[version.display]]</a></li>
+              </ul>
+          </div>
+          <div class="icon fa fa-warning distro-error" ng-show="form.dispatcherSettingsVersion.$dirty && form.dispatcherSettingsVersion.$error.required ||
+            form.dispatcherSettingsVersion.$invalid">Planner Version is required
+          </div>
+        </div>
+
         <div class="panel-body panel panel-default">
           <div class="dropdown">
             <span class="distro-menu-title">Host Bootstrap Method:</span>

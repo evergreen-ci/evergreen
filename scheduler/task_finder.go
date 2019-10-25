@@ -88,14 +88,14 @@ func LegacyFindRunnableTasks(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if d.PlannerSettings.Version != evergreen.PlannerVersionTunable {
+		if d.DispatcherSettings.Version != evergreen.DispatcherVersionDAG {
 			depsMet, err := t.DependenciesMet(dependencyCaches)
 			if err != nil {
 				grip.Warning(message.Fields{
 					"runner":  RunnerName,
 					"message": "error checking dependencies for task",
 					"outcome": "skipping",
-					"planner": d.PlannerSettings.Version,
+					"planner": d.FinderSettings.Version,
 					"task":    t.Id,
 					"error":   err.Error(),
 				})
