@@ -45,7 +45,6 @@ func NewIntent(d distro.Distro, instanceName, provider string, options CreateOpt
 		CreationTime:          creationTime,
 		Status:                evergreen.HostUninitialized,
 		TerminationTime:       util.ZeroTime,
-		TaskDispatchTime:      util.ZeroTime,
 		Provider:              provider,
 		StartedBy:             options.UserName,
 		UserHost:              options.UserHost,

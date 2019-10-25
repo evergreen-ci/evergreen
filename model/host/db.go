@@ -42,7 +42,6 @@ var (
 	RunningTaskBuildVariantKey   = bsonutil.MustHaveTag(Host{}, "RunningTaskBuildVariant")
 	RunningTaskVersionKey        = bsonutil.MustHaveTag(Host{}, "RunningTaskVersion")
 	RunningTaskProjectKey        = bsonutil.MustHaveTag(Host{}, "RunningTaskProject")
-	TaskDispatchTimeKey          = bsonutil.MustHaveTag(Host{}, "TaskDispatchTime")
 	CreateTimeKey                = bsonutil.MustHaveTag(Host{}, "CreationTime")
 	ExpirationTimeKey            = bsonutil.MustHaveTag(Host{}, "ExpirationTime")
 	NoExpirationKey              = bsonutil.MustHaveTag(Host{}, "NoExpiration")

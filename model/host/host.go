@@ -67,10 +67,8 @@ type Host struct {
 	// the full task struct that is running on the host (only populated by certain aggregations)
 	RunningTaskFull *task.Task `bson:"task_full,omitempty" json:"task_full,omitempty"`
 
-	// duplicate of the DispatchTime field in the above task
-	TaskDispatchTime time.Time `bson:"task_dispatch_time" json:"task_dispatch_time"`
-	ExpirationTime   time.Time `bson:"expiration_time,omitempty" json:"expiration_time"`
-	NoExpiration     bool      `bson:"no_expiration" json:"no_expiration"`
+	ExpirationTime time.Time `bson:"expiration_time,omitempty" json:"expiration_time"`
+	NoExpiration   bool      `bson:"no_expiration" json:"no_expiration"`
 
 	// creation is when the host document was inserted to the DB, start is when it was started on the cloud provider
 	CreationTime time.Time `bson:"creation_time" json:"creation_time"`
