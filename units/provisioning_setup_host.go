@@ -472,11 +472,7 @@ func (j *setupHostJob) copyScript(ctx context.Context, settings *evergreen.Setti
 		return errors.Wrap(err, "error writing local script")
 	}
 
-	cloudHost, err := cloud.GetCloudHost(ctx, target, j.env)
-	if err != nil {
-		return errors.Wrapf(err, "failed to get cloud host for %s", target.Id)
-	}
-	sshOptions, err := cloudHost.GetSSHOptions()
+	sshOptions, err := target.GetSSHOptions(settings)
 	if err != nil {
 		return errors.Wrapf(err, "error getting ssh options for host %v", target.Id)
 	}

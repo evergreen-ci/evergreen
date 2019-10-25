@@ -140,7 +140,8 @@ func (h *Host) GetSSHInfo() (*util.StaticHostInfo, error) {
 // single distro-level SSH key name corresponding to an existing SSH key file on
 // the app servers. We should be able to handle multiple keys configured in
 // admin settings rather than from a file name in distro settings.
-func (h *Host) GetSSHOptions(keyPath string) ([]string, error) {
+func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
+	keyPath := settings.Keys[h.Distro.SSHKey]
 	if keyPath == "" {
 		return nil, errors.New("no SSH key specified for host")
 	}
@@ -716,7 +717,7 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jas
 			if err != nil {
 				return nil, errors.Wrap(err, "could not get host's SSH info")
 			}
-			sshOpts, err := h.GetSSHOptions(settings.Keys[h.Distro.SSHKey])
+			sshOpts, err := h.GetSSHOptions(settings)
 			if err != nil {
 				return nil, errors.Wrap(err, "could not get host's SSH options")
 			}

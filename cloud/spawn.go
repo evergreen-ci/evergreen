@@ -200,7 +200,7 @@ func constructPwdUpdateCommand(ctx context.Context, env evergreen.Environment, h
 		return nil, errors.WithStack(err)
 	}
 
-	sshOptions, err := cloudHost.GetSSHOptions()
+	sshOptions, err := hostObj.GetSSHOptions(env.Settings())
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

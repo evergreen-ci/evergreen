@@ -213,7 +213,7 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 	if err != nil {
 		return errors.Wrapf(err, "Failed to get cloud host for %s", hostObj.Id)
 	}
-	sshOptions, err := cloudHost.GetSSHOptions()
+	sshOptions, err := hostObj.GetSSHOptions(settings)
 	if err != nil {
 		return errors.Wrapf(err, "Error getting ssh options for host %s", hostObj.Id)
 	}

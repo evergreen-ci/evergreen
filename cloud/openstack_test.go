@@ -224,19 +224,6 @@ func (s *OpenStackSuite) TestGetDNSNameAPICall() {
 	s.Empty(dns)
 }
 
-func (s *OpenStackSuite) TestGetSSHOptions() {
-	opt := "Option"
-	host := &host.Host{
-		Distro: distro.Distro{
-			SSHOptions: []string{opt},
-		},
-	}
-
-	opts, err := s.manager.GetSSHOptions(host, s.keyname)
-	s.NoError(err)
-	s.Equal([]string{"-i", s.keyname, "-o", opt}, opts)
-}
-
 func (s *OpenStackSuite) TestSpawnInvalidSettings() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

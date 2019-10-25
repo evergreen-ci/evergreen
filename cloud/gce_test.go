@@ -299,24 +299,6 @@ func (s *GCESuite) TestGetDNSNameNetwork() {
 	s.Empty(dns)
 }
 
-func (s *GCESuite) TestGetSSHOptions() {
-	opt := "Option"
-	keyname := "key"
-	host := &host.Host{
-		Distro: distro.Distro{
-			SSHOptions: []string{opt},
-		},
-	}
-
-	opts, err := s.manager.GetSSHOptions(host, "")
-	s.Error(err)
-	s.Empty(opts)
-
-	opts, err = s.manager.GetSSHOptions(host, keyname)
-	s.NoError(err)
-	s.Equal([]string{"-i", keyname, "-o", opt}, opts)
-}
-
 func (s *GCESuite) TestSpawnInvalidSettings() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

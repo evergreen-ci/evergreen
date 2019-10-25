@@ -1086,11 +1086,6 @@ func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, erro
 	return m.client.GetPublicDNSName(ctx, h)
 }
 
-// GetSSHOptions returns the command-line args to pass to SSH.
-func (m *ec2Manager) GetSSHOptions(h *host.Host, keyName string) ([]string, error) {
-	return h.GetSSHOptions(keyName)
-}
-
 // TimeTilNextPayment returns how long until the next payment is due for a host.
 func (m *ec2Manager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return timeTilNextEC2Payment(host)

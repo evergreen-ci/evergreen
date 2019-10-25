@@ -310,17 +310,6 @@ func (mockMgr *mockManager) OnUp(ctx context.Context, host *host.Host) error {
 	return nil
 }
 
-func (mockMgr *mockManager) GetSSHOptions(host *host.Host, keyPath string) ([]string, error) {
-	l := mockMgr.mutex
-	l.RLock()
-	instance, ok := mockMgr.Instances[host.Id]
-	l.RUnlock()
-	if !ok {
-		return []string{}, errors.Errorf("unable to fetch host: %s", host.Id)
-	}
-	return instance.SSHOptions, nil
-}
-
 func (mockMgr *mockManager) TimeTilNextPayment(host *host.Host) time.Duration {
 	l := mockMgr.mutex
 	l.RLock()

@@ -211,20 +211,6 @@ func (m *dockerManager) OnUp(context.Context, *host.Host) error {
 	return nil
 }
 
-//GetSSHOptions returns an array of default SSH options for connecting to a
-//container.
-func (m *dockerManager) GetSSHOptions(h *host.Host, keyPath string) ([]string, error) {
-	if keyPath == "" {
-		return []string{}, errors.New("No key specified for Docker host")
-	}
-
-	opts := []string{"-i", keyPath}
-	for _, opt := range h.Distro.SSHOptions {
-		opts = append(opts, "-o", opt)
-	}
-	return opts, nil
-}
-
 // TimeTilNextPayment returns the amount of time until the next payment is due
 // for the host. For Docker this is not relevant.
 func (m *dockerManager) TimeTilNextPayment(_ *host.Host) time.Duration {
