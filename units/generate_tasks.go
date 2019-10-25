@@ -83,10 +83,10 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 
 	p, pp, v, t, pm, err := g.NewVersion()
 	if err != nil {
-		return j.handleError(errors.WithStack(err))
+		return j.handleError(v, errors.WithStack(err))
 	}
 	if err = validator.CheckProjectConfigurationIsValid(p); err != nil {
-		return j.handleError(errors.WithStack(err))
+		return j.handleError(v, errors.WithStack(err))
 	}
 
 	// Don't use the job's context, because it's better to finish than to exit early after a
@@ -104,7 +104,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 }
 
 // handleError return mongo.ErrNoDocuments if another job has raced, the passed in error otherwise.
-func (j *generateTasksJob) handleError(handledError error) error {
+func (j *generateTasksJob) handleError(v *model.Version, handledError error) error {
 	versionFromDB, err := model.VersionFindOne(model.VersionById(v.Id).WithFields(model.VersionConfigNumberKey))
 	if err != nil {
 		return errors.Wrapf(err, "problem finding version %s", v.Id)
