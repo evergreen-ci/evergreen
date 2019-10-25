@@ -60,7 +60,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
           },
           error: function(resp) {
             // Avoid errors when leaving the page because of a background refresh
-            if ($scope.hosts == undefined && !$scope.errorFetchingHosts) {
+            if ($scope.hosts == null && !$scope.errorFetchingHosts) {
                 notificationService.pushNotification('Error fetching spawned hosts: ' + resp.data.error, 'errorHeader');
                 $scope.errorFetchingHosts = true;
             }
