@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -28,7 +29,7 @@ func TestCleanupTask(t *testing.T) {
 		Convey("an error should be thrown if the passed-in projects slice"+
 			" does not contain the task's project", func() {
 
-			err := cleanUpTimedOutTask(ctx, env, "", &task.Task{
+			err := cleanUpTimedOutTask(ctx, env, t.Name(), &task.Task{
 				Project: "proj",
 			})
 			So(err, ShouldNotBeNil)
@@ -60,8 +61,13 @@ func TestCleanupTask(t *testing.T) {
 				host := &host.Host{
 					Id:          "h1",
 					RunningTask: "t1",
+					Provider:    evergreen.ProviderNameMock,
+					Status:      evergreen.HostRunning,
 				}
 				So(host.Insert(), ShouldBeNil)
+				cloud.GetMockProvider().Set(host.Id, cloud.MockInstance{
+					Status: cloud.StatusRunning,
+				})
 
 				b := &build.Build{
 					Id:      "b1",
@@ -76,7 +82,7 @@ func TestCleanupTask(t *testing.T) {
 				So(v.Insert(), ShouldBeNil)
 
 				// cleaning up the task should work
-				So(cleanUpTimedOutTask(ctx, env, "", newTask), ShouldBeNil)
+				So(cleanUpTimedOutTask(ctx, env, t.Name(), newTask), ShouldBeNil)
 
 				// refresh the task - it should be reset
 				newTask, err := task.FindOne(task.ById("t1"))
@@ -118,7 +124,7 @@ func TestCleanupTask(t *testing.T) {
 					}
 					So(b.Insert(), ShouldBeNil)
 
-					So(cleanUpTimedOutTask(ctx, env, "", et1), ShouldBeNil)
+					So(cleanUpTimedOutTask(ctx, env, t.Name(), et1), ShouldBeNil)
 					et1, err := task.FindOneId(et1.Id)
 					So(err, ShouldBeNil)
 					So(et1.Status, ShouldEqual, evergreen.TaskFailed)
@@ -129,8 +135,12 @@ func TestCleanupTask(t *testing.T) {
 				})
 			})
 
-			Convey("the running task field on the task's host should be"+
-				" reset", func() {
+			Convey("given a running host running a task", func() {
+				require.NoError(t, db.ClearCollections(task.Collection), "error clearing tasks collection")
+				require.NoError(t, db.ClearCollections(host.Collection), "error clearing hosts collection")
+				require.NoError(t, db.ClearCollections(build.Collection), "error clearing builds collection")
+				require.NoError(t, db.ClearCollections(task.OldCollection), "error clearing old tasks collection")
+				require.NoError(t, db.ClearCollections(model.VersionCollection), "error clearing versions collection")
 
 				newTask := &task.Task{
 					Id:       "t1",
@@ -145,6 +155,8 @@ func TestCleanupTask(t *testing.T) {
 				h := &host.Host{
 					Id:          "h1",
 					RunningTask: "t1",
+					Provider:    evergreen.ProviderNameMock,
+					Status:      evergreen.HostRunning,
 				}
 				So(h.Insert(), ShouldBeNil)
 
@@ -158,15 +170,33 @@ func TestCleanupTask(t *testing.T) {
 				v := &model.Version{Id: "v1"}
 				So(v.Insert(), ShouldBeNil)
 
-				// cleaning up the task should work
-				So(cleanUpTimedOutTask(ctx, env, "", newTask), ShouldBeNil)
+				Convey("a running host should have its running task cleared", func() {
+					cloud.GetMockProvider().Set(h.Id, cloud.MockInstance{
+						Status: cloud.StatusRunning,
+					})
 
-				// refresh the host, make sure its running task field has
-				// been reset
-				h, err := host.FindOne(host.ById("h1"))
-				So(err, ShouldBeNil)
-				So(h.RunningTask, ShouldEqual, "")
+					// cleaning up the task should work
+					So(cleanUpTimedOutTask(ctx, env, t.Name(), newTask), ShouldBeNil)
 
+					// refresh the host, make sure its running task field has
+					// been reset
+					h, err := host.FindOne(host.ById("h1"))
+					So(err, ShouldBeNil)
+					So(h.RunningTask, ShouldEqual, "")
+
+				})
+				Convey("an externally terminated host should be marked terminated and its task should be reset", func() {
+					cloud.GetMockProvider().Set(h.Id, cloud.MockInstance{
+						Status: cloud.StatusTerminated,
+					})
+
+					So(cleanUpTimedOutTask(ctx, env, t.Name(), newTask), ShouldBeNil)
+
+					h, err := host.FindOneId("h1")
+					So(err, ShouldBeNil)
+					So(h.RunningTask, ShouldEqual, "")
+					So(h.Status, ShouldEqual, evergreen.HostTerminated)
+				})
 			})
 		})
 	})

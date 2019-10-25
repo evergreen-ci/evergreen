@@ -184,15 +184,13 @@ func cleanUpTimedOutTask(ctx context.Context, env evergreen.Environment, id stri
 		// cleared on the host, an agent or agent moniitor deploy might run,
 		// which updates the LCT and prevents detection of external termination
 		// until the deploy job runs out of retries.
-		if _, err = handleExternallyTerminatedHost(ctx, id, env, host); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "could not check host with timed out task for external termination",
-				"host":    host.Id,
-				"op_id":   id,
-			}))
+		terminated, err := handleExternallyTerminatedHost(ctx, id, env, host)
+		if err != nil {
+			return errors.Wrap(err, "could not check host with timed out task for external termination")
 		}
-
-		// clear out the host's running task
+		if terminated {
+			return nil
+		}
 		if err = host.ClearRunningAndSetLastTask(t); err != nil {
 			return errors.Wrapf(err, "error clearing running task %s from host %s", t.Id, host.Id)
 		}
