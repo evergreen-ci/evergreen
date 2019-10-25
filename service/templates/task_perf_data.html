@@ -374,8 +374,6 @@
           <div class="col-lg-1 perf-trendchart-sidebar">
               <div class="mono"><a ng-href="/task/[[hoverSamples[k].task_id]]">[[hoverSamples[k].revision | limitTo : 7]]</a></div>
               <div>[[dateLabel]]</div>
-              [[metricSelect.value.key]]:&nbsp;
-              <b>[[hoverSamples[k][metricSelect.value.key] | number:0]]</b>
               <div>
                 bfs:&nbsp;
                 <span ng-repeat="bf in bfs">
