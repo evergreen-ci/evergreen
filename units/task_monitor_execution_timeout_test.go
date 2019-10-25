@@ -180,7 +180,8 @@ func TestCleanupTask(t *testing.T) {
 
 					// refresh the host, make sure its running task field has
 					// been reset
-					h, err := host.FindOne(host.ById("h1"))
+					var err error
+					h, err = host.FindOne(host.ById("h1"))
 					So(err, ShouldBeNil)
 					So(h.RunningTask, ShouldEqual, "")
 
@@ -192,7 +193,8 @@ func TestCleanupTask(t *testing.T) {
 
 					So(cleanUpTimedOutTask(ctx, env, t.Name(), newTask), ShouldBeNil)
 
-					h, err := host.FindOneId("h1")
+					var err error
+					h, err = host.FindOneId("h1")
 					So(err, ShouldBeNil)
 					So(h.RunningTask, ShouldEqual, "")
 					So(h.Status, ShouldEqual, evergreen.HostTerminated)
