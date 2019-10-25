@@ -216,16 +216,12 @@ func (s *githubSuite) TestGetGithubPullRequestDiff() {
 		BaseOwner:  "evergreen-ci",
 		BaseRepo:   "evergreen",
 		BaseBranch: "master",
-		HeadOwner:  "richardsamuels",
-		HeadRepo:   "evergreen",
-		HeadHash:   "something",
-		Author:     "richardsamuels",
 	}
 
 	diff, summaries, err := GetGithubPullRequestDiff(s.ctx, s.token, p)
 	s.NoError(err)
 	s.Len(summaries, 2)
-	s.Len(diff, 1470)
+	s.Contains(diff, "diff --git a/cli/host.go b/cli/host.go")
 }
 
 func TestVerifyGithubAPILimitHeader(t *testing.T) {
@@ -270,21 +266,6 @@ func verifyGithubAPILimitHeader(header http.Header) (int64, error) {
 	}
 
 	return rem, nil
-}
-
-func TestBuildPatchURL(t *testing.T) {
-	assert := assert.New(t)
-	p := patch.GithubPatch{
-		PRNumber:   448,
-		BaseOwner:  "evergreen-ci",
-		BaseRepo:   "evergreen",
-		BaseBranch: "master",
-		HeadOwner:  "richardsamuels",
-		HeadRepo:   "evergreen",
-		HeadHash:   "something",
-		Author:     "richardsamuels",
-	}
-	assert.Equal("https://api.github.com/repos/evergreen-ci/evergreen/pulls/448.diff", buildPatchURL(p))
 }
 
 func TestValidatePR(t *testing.T) {
