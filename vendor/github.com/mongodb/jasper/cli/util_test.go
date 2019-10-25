@@ -99,7 +99,7 @@ func TestMakeRemoteClient(t *testing.T) {
 		t.Run(remoteType, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), testutil.TestTimeout)
 			defer cancel()
-			manager, err := jasper.NewLocalManager(false)
+			manager, err := jasper.NewSynchronizedManager(false)
 			require.NoError(t, err)
 			closeService, client := makeServiceAndClient(ctx, t, testutil.GetPortNumber(), manager)
 			assert.NoError(t, closeService())
@@ -114,9 +114,9 @@ func TestCLICommon(t *testing.T) {
 		RPCService:  makeTestRPCServiceAndClient,
 	} {
 		t.Run(remoteType, func(t *testing.T) {
-			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient){
-				"CreateProcessWithConnection": func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient) {
-					withConnection(ctx, c, func(client jasper.RemoteClient) error {
+			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient) error{
+				"CreateProcessWithConnection": func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient) error {
+					return withConnection(ctx, c, func(client jasper.RemoteClient) error {
 						proc, err := client.CreateProcess(ctx, testutil.TrueCreateOpts())
 						require.NoError(t, err)
 						require.NotNil(t, proc)
@@ -124,8 +124,8 @@ func TestCLICommon(t *testing.T) {
 						return nil
 					})
 				},
-				"DoPassthroughInputOutputReadsFromStdin": func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient) {
-					withMockStdin(t, `{"value":"foo"}`, func(stdin *os.File) error {
+				"DoPassthroughInputOutputReadsFromStdin": func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient) error {
+					return withMockStdin(t, `{"value":"foo"}`, func(stdin *os.File) error {
 						return withMockStdout(t, func(*os.File) error {
 							input := &mockInput{}
 							require.NoError(t, doPassthroughInputOutput(c, input, mockRequest("")))
@@ -136,9 +136,9 @@ func TestCLICommon(t *testing.T) {
 						})
 					})
 				},
-				"DoPassthroughInputOutputSetsAndValidatesInput": func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient) {
+				"DoPassthroughInputOutputSetsAndValidatesInput": func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient) error {
 					expectedInput := "foo"
-					withMockStdin(t, fmt.Sprintf(`{"value":"%s"}`, expectedInput), func(*os.File) error {
+					return withMockStdin(t, fmt.Sprintf(`{"value":"%s"}`, expectedInput), func(*os.File) error {
 						return withMockStdout(t, func(*os.File) error {
 							input := &mockInput{}
 							require.NoError(t, doPassthroughInputOutput(c, input, mockRequest("")))
@@ -148,8 +148,8 @@ func TestCLICommon(t *testing.T) {
 						})
 					})
 				},
-				"DoPassthroughInputOutputWritesResponseToStdout": func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient) {
-					withMockStdin(t, `{"value":"foo"}`, func(*os.File) error {
+				"DoPassthroughInputOutputWritesResponseToStdout": func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient) error {
+					return withMockStdin(t, `{"value":"foo"}`, func(*os.File) error {
 						return withMockStdout(t, func(stdout *os.File) error {
 							input := &mockInput{}
 							outputVal := "bar"
@@ -167,9 +167,9 @@ func TestCLICommon(t *testing.T) {
 						})
 					})
 				},
-				"DoPassthroughOutputIgnoresStdin": func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient) {
+				"DoPassthroughOutputIgnoresStdin": func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient) error {
 					input := "foo"
-					withMockStdin(t, input, func(stdin *os.File) error {
+					return withMockStdin(t, input, func(stdin *os.File) error {
 						return withMockStdout(t, func(*os.File) error {
 							require.NoError(t, doPassthroughOutput(c, mockRequest("")))
 							output, err := ioutil.ReadAll(stdin)
@@ -180,8 +180,8 @@ func TestCLICommon(t *testing.T) {
 						})
 					})
 				},
-				"DoPassthroughOutputWritesResponseToStdout": func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient) {
-					withMockStdout(t, func(stdout *os.File) error {
+				"DoPassthroughOutputWritesResponseToStdout": func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient) error {
+					return withMockStdout(t, func(stdout *os.File) error {
 						outputVal := "bar"
 						require.NoError(t, doPassthroughOutput(c, mockRequest(outputVal)))
 
@@ -194,14 +194,14 @@ func TestCLICommon(t *testing.T) {
 						return nil
 					})
 				},
-				// "": func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient) {},
+				// "": func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient) err {},
 			} {
 				t.Run(testName, func(t *testing.T) {
 					ctx, cancel := context.WithTimeout(context.Background(), testutil.TestTimeout)
 					defer cancel()
 					port := testutil.GetPortNumber()
 					c := mockCLIContext(remoteType, port)
-					manager, err := jasper.NewLocalManager(false)
+					manager, err := jasper.NewSynchronizedManager(false)
 					require.NoError(t, err)
 					closeService, client := makeServiceAndClient(ctx, t, port, manager)
 					defer func() {
@@ -209,7 +209,7 @@ func TestCLICommon(t *testing.T) {
 						assert.NoError(t, closeService())
 					}()
 
-					testCase(ctx, t, c, client)
+					assert.NoError(t, testCase(ctx, t, c, client))
 				})
 			}
 		})

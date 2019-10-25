@@ -25,7 +25,7 @@ func startTestService(ctx context.Context, mngr jasper.Manager, addr net.Addr, c
 
 	go func() {
 		<-ctx.Done()
-		closeService()
+		grip.Error(closeService())
 	}()
 
 	return nil
@@ -41,7 +41,7 @@ func newTestClient(ctx context.Context, addr net.Addr, creds *certdepot.Credenti
 
 	go func() {
 		<-ctx.Done()
-		client.CloseConnection()
+		grip.Notice(client.CloseConnection())
 	}()
 
 	return client, nil

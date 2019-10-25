@@ -44,7 +44,7 @@ func NewClient(ctx context.Context, addr net.Addr, creds *certdepot.Credentials)
 
 	conn, err := grpc.DialContext(ctx, addr.String(), opts...)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not establish connection to service at address '%s'", addr.String())
+		return nil, errors.Wrapf(err, "could not establish connection to %s service at address '%s'", addr.Network(), addr.String())
 	}
 
 	return newRPCClient(conn), nil

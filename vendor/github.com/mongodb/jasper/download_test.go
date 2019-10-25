@@ -137,7 +137,7 @@ func TestProcessDownloadJobs(t *testing.T) {
 	listener, err := net.Listen("tcp", fileServerAddr)
 	require.NoError(t, err)
 	go func() {
-		fileServer.Serve(listener)
+		grip.Info(fileServer.Serve(listener))
 	}()
 
 	baseURL := fmt.Sprintf("http://%s", fileServerAddr)

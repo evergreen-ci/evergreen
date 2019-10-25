@@ -126,7 +126,7 @@ func smokeStartEvergreen() cli.Command {
 				}
 				ctx, cancel := context.WithCancel(context.Background())
 				defer cancel()
-				manager, err := jasper.NewLocalManager(false)
+				manager, err := jasper.NewSynchronizedManager(false)
 				if err != nil {
 					return errors.Wrap(err, "error setting up Jasper process manager")
 				}

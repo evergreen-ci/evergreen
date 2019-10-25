@@ -384,7 +384,7 @@ func TestCommandImplementation(t *testing.T) {
 								[]string{echo, arg2},
 								[]string{ls, arg3},
 							}
-							cmd.Extend(subCmds).ContinueOnError(true).IgnoreError(true).Run(ctx)
+							assert.NoError(t, cmd.Extend(subCmds).ContinueOnError(true).IgnoreError(true).Run(ctx))
 							assert.Len(t, cmd.GetProcIDs(), len(subCmds))
 						},
 						"ApplyFromOptsUpdatesCmdCorrectly": func(ctx context.Context, t *testing.T, cmd Command) {

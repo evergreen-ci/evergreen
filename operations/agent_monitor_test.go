@@ -26,7 +26,7 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 
 	jasperPort := evergreen.DefaultJasperPort
 	port := defaultMonitorPort
-	manager, err := jasper.NewLocalManager(false)
+	manager, err := jasper.NewSynchronizedManager(false)
 	require.NoError(t, err)
 	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", jasperPort))
 	require.NoError(t, err)

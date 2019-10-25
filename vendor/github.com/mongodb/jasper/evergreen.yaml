@@ -89,8 +89,8 @@ tasks:
     name: compile-base
 
   - <<: *run-build
-    tags: ["bench"]
-    name: benchmark
+    tags: ["report"]
+    name: lint
 
 #######################################
 #           Buildvariants             #
@@ -103,8 +103,9 @@ buildvariants:
     run_on:
       - archlinux-test
       - archlinux-build
-    tasks: 
+    tasks:
       - name: ".test"
+      - name: ".report"
 
   - name: ubuntu1604
     display_name: Ubuntu 16.04
@@ -113,9 +114,8 @@ buildvariants:
     run_on:
       - ubuntu1604-test
       - ubuntu1604-build
-    tasks: 
+    tasks:
       - name: ".test"
-      - name: ".bench"
 
   - name: ubuntu1604-go1.9
     display_name: Ubuntu 16.04 (go1.9)
@@ -124,7 +124,7 @@ buildvariants:
     run_on:
       - ubuntu1604-test
       - ubuntu1604-build
-    tasks: 
+    tasks:
       - name: ".legacy-check"
 
   - name: macos
@@ -133,10 +133,8 @@ buildvariants:
       build_env: "GOROOT=/opt/golang/go1.11/ PATH=/opt/golang/go1.11/bin:$PATH DISABLE_COVERAGE=true"
     run_on:
       - macos-1014
-      - macos-1014-i7
     tasks:
       - name: ".test"
-      - name: ".bench"
 
   - name: windows
     display_name: Windows
@@ -153,4 +151,3 @@ buildvariants:
       build_env: "GOROOT=c:/golang/go1.11 PATH=/cygdrive/c/golang/go1.11/bin:$PATH DISABLE_COVERAGE=true"
     tasks:
       - name: ".test"
-      - name: ".bench"

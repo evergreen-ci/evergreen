@@ -11,8 +11,8 @@ func TestClientOptions(t *testing.T) {
 		"ValidateSucceedsWithValidOptions": func(t *testing.T, opts *ClientOptions) {
 			assert.NoError(t, opts.Validate())
 		},
-		"ValidateFailsWithEmptyOptions": func(t *testing.T, opts *ClientOptions) {
-			opts = &ClientOptions{}
+		"ValidateFailsWithEmptyOptions": func(t *testing.T, _ *ClientOptions) {
+			opts := &ClientOptions{}
 			assert.Error(t, opts.Validate())
 		},
 		"ValidateFailsWithoutBinaryPath": func(t *testing.T, opts *ClientOptions) {

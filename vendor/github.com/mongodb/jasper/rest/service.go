@@ -84,6 +84,8 @@ func (s *Service) App(ctx context.Context) *gimlet.APIApp {
 	return app
 }
 
+// SetDisableCachePruning toggles the underlying option for the
+// services cache.
 func (s *Service) SetDisableCachePruning(v bool) {
 	s.cacheMutex.Lock()
 	defer s.cacheMutex.Unlock()
@@ -91,6 +93,8 @@ func (s *Service) SetDisableCachePruning(v bool) {
 	s.cacheOpts.Disabled = v
 }
 
+// SetCacheMaxSize sets the underlying option for the
+// services cache.
 func (s *Service) SetCacheMaxSize(size int) {
 	s.cacheMutex.Lock()
 	defer s.cacheMutex.Unlock()
@@ -98,6 +102,8 @@ func (s *Service) SetCacheMaxSize(size int) {
 	s.cacheOpts.MaxSize = size
 }
 
+// SetPruneDelay sets the underlying option for the
+// services cache.
 func (s *Service) SetPruneDelay(dur time.Duration) {
 	s.cacheMutex.Lock()
 	defer s.cacheMutex.Unlock()
