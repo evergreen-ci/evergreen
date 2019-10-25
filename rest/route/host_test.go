@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/jasper/options"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -404,9 +405,10 @@ func (s *hostTerminateHostHandlerSuite) TestRegularUserCannotTerminateAnyHost() 
 ////////////////////////////////////////////////////////////////////////
 
 type hostChangeRDPPasswordHandlerSuite struct {
-	rm  gimlet.RouteHandler
-	sc  *data.MockConnector
-	env evergreen.Environment
+	rm         gimlet.RouteHandler
+	sc         *data.MockConnector
+	env        evergreen.Environment
+	sshKeyName string
 	suite.Suite
 }
 
@@ -417,6 +419,8 @@ func TestHostChangeRDPPasswordHandler(t *testing.T) {
 	defer cancel()
 
 	s.env = testutil.NewEnvironment(ctx, t)
+
+	s.env.Settings().Keys["ssh_key_name"] = "ssh_key"
 
 	suite.Run(t, s)
 }
@@ -441,7 +445,10 @@ func (s *hostChangeRDPPasswordHandlerSuite) TestExecute() {
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
 
 	resp := h.Run(ctx)
-	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "Error constructing host RDP password: No known provider for ''")
+	s.Error(resp.Data().(gimlet.ErrorResponse))
+	procs, err := s.env.JasperManager().List(ctx, options.All)
+	s.NoError(err)
+	s.NotEmpty(procs)
 }
 
 func (s *hostChangeRDPPasswordHandlerSuite) TestExecuteWithUninitializedHostFails() {
@@ -497,7 +504,10 @@ func (s *hostChangeRDPPasswordHandlerSuite) TestSuperUserCanChangeAnyHost() {
 
 	resp := h.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
-	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "Error constructing host RDP password: No known provider for ''")
+	s.Error(resp.Data().(gimlet.ErrorResponse))
+	procs, err := s.env.JasperManager().List(ctx, options.All)
+	s.NoError(err)
+	s.NotEmpty(procs)
 }
 func (s *hostChangeRDPPasswordHandlerSuite) TestRegularUserCannotChangeAnyHost() {
 	h := s.rm.Factory().(*hostChangeRDPPasswordHandler)
@@ -675,6 +685,7 @@ func getMockHostsConnector() *data.MockConnector {
 		Id:       "windows",
 		Arch:     "windows_amd64",
 		Provider: evergreen.ProviderNameMock,
+		SSHKey:   "ssh_key_name",
 	}
 	connector := &data.MockConnector{
 		MockHostConnector: data.MockHostConnector{
