@@ -101,7 +101,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     }
 
     $scope.computeExpirationTimes = function(host) {
-        if (!host.isTerminated && new Date(host.expiration_time) > +new Date("0001-01-01T00:00:00Z")) {
+        if (!host.isTerminated && new Date(host.expiration_time) > new Date("0001-01-01T00:00:00Z")) {
             if (host.no_expiration) {
                 host.expires_in = "never";
                 host.original_expiration = new Date();
