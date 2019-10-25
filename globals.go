@@ -250,6 +250,8 @@ const (
 
 	// Default EC2 region where hosts should be spawned
 	DefaultEC2Region = "us-east-1"
+	// This is Amazon's EBS type default
+	DefaultEBSType = "gp2"
 )
 
 var (

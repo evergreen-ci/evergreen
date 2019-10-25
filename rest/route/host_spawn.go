@@ -526,13 +526,23 @@ func (h *createVolumeHandler) Factory() gimlet.RouteHandler {
 
 func (h *createVolumeHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.volume = &host.Volume{}
-	return errors.WithStack(util.ReadJSONInto(r.Body, h.volume))
+	if err := util.ReadJSONInto(r.Body, h.volume); err != nil {
+		return err
+	}
+	if h.volume.Size == 0 {
+		return errors.New("Size is required")
+	}
+	return nil
 }
 
 func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 
 	h.volume.CreatedBy = u.Id
+
+	if h.volume.Type == "" {
+		h.volume.Type = evergreen.DefaultEBSType
+	}
 
 	// TODO: Allow different providers/regions
 	mgrOpts := cloud.ManagerOpts{

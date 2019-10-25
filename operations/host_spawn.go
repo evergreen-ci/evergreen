@@ -457,7 +457,7 @@ func hostCreateVolume() cli.Command {
 				Usage: "set volume `TYPE`",
 			},
 		},
-		Before: mergeBeforeFuncs(setPlainLogger, requireStringFlag(sizeFlag), requireStringFlag(typeFlag)),
+		Before: mergeBeforeFuncs(setPlainLogger, requireStringFlag(sizeFlag)),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			volumeType := c.String(typeFlag)
