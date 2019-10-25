@@ -9,16 +9,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-func sliceContains(group []string, name string) bool {
-	for _, g := range group {
-		if name == g {
-			return true
-		}
-	}
-
-	return false
-}
-
 func makeEnclosingDirectories(path string) error {
 	info, err := os.Stat(path)
 	if os.IsNotExist(err) {

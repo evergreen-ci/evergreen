@@ -113,8 +113,8 @@ func (p *basicProcess) Info(_ context.Context) ProcessInfo {
 	return p.info
 }
 
-func (p *basicProcess) Complete(_ context.Context) bool {
-	return !p.Running(nil)
+func (p *basicProcess) Complete(ctx context.Context) bool {
+	return !p.Running(ctx)
 }
 
 func (p *basicProcess) Running(_ context.Context) bool {

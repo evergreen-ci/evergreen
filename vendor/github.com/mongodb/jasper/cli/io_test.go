@@ -15,7 +15,6 @@ func TestExtractResponse(t *testing.T) {
 		s1     = "foo"
 		s2     = "bar"
 		n1     = 1
-		n2     = 2
 	)
 	for outcomeName, outcome := range map[string]OutcomeResponse{
 		"Success": OutcomeResponse{

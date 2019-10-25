@@ -211,6 +211,7 @@ func (o *Output) Copy() *Output {
 	return &optsCopy
 }
 
+// Close calls all of the processes' output senders' Close method.
 func (o *Output) Close() error {
 	catcher := grip.NewBasicCatcher()
 	if o.outputSender != nil {

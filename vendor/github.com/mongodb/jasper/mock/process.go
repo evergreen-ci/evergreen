@@ -10,26 +10,20 @@ import (
 // Process implements the Process interface with exported fields to
 // configure and introspect the mock's behavior.
 type Process struct {
-	ProcInfo jasper.ProcessInfo
-
-	FailRespawn bool
-
-	FailRegisterTrigger bool
-	Triggers            jasper.ProcessTriggerSequence
-
-	FailRegisterSignalTrigger bool
-	SignalTriggers            jasper.SignalTriggerSequence
-
+	FailRespawn                 bool
+	FailRegisterTrigger         bool
+	FailRegisterSignalTrigger   bool
 	FailRegisterSignalTriggerID bool
-	SignalTriggerIDs            []jasper.SignalTriggerID
+	FailSignal                  bool
+	FailWait                    bool
+	WaitExitCode                int
 
-	FailSignal bool
-	Signals    []syscall.Signal
-
-	Tags []string
-
-	FailWait     bool
-	WaitExitCode int
+	ProcInfo         jasper.ProcessInfo
+	Triggers         jasper.ProcessTriggerSequence
+	SignalTriggers   jasper.SignalTriggerSequence
+	SignalTriggerIDs []jasper.SignalTriggerID
+	Signals          []syscall.Signal
+	Tags             []string
 }
 
 // ID returns the ID set in ProcInfo set by the user.
@@ -96,9 +90,7 @@ func (p *Process) Respawn(ctx context.Context) (jasper.Process, error) {
 		return nil, mockFail()
 	}
 
-	newProc := Process(*p)
-
-	return &newProc, nil
+	return &(*p), nil
 }
 
 // RegisterTrigger records the trigger in Triggers. If FailRegisterTrigger is

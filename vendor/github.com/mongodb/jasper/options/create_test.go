@@ -427,7 +427,7 @@ func TestFileLogging(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, cmd.Start())
 
-			cmd.Wait()
+			_ = cmd.Wait()
 			assert.NoError(t, opts.Close())
 
 			for _, file := range files {

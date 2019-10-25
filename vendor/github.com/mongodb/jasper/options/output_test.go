@@ -6,14 +6,12 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-const ProcessTestTimeout = 15 * time.Second
 
 func TestOutputOptions(t *testing.T) {
 	stdout := bytes.NewBuffer([]byte{})
@@ -169,8 +167,9 @@ func TestOutputOptions(t *testing.T) {
 			require.NoError(t, err)
 
 			msg := "foo"
-			out.Write([]byte(msg))
-			opts.outputSender.Close()
+			_, err = out.Write([]byte(msg))
+			assert.NoError(t, err)
+			assert.NoError(t, opts.outputSender.Close())
 
 			assert.Equal(t, msg, stdout.String())
 
@@ -190,8 +189,9 @@ func TestOutputOptions(t *testing.T) {
 			require.NoError(t, err)
 
 			msg := "foo"
-			errOut.Write([]byte(msg))
-			opts.errorSender.Close()
+			_, err = errOut.Write([]byte(msg))
+			assert.NoError(t, err)
+			assert.NoError(t, opts.errorSender.Close())
 
 			assert.Equal(t, msg, stderr.String())
 
@@ -306,7 +306,7 @@ func TestLoggers(t *testing.T) {
 			require.NoError(t, err)
 			defer func() {
 				assert.NoError(t, file.Close())
-				os.RemoveAll(file.Name())
+				grip.Warning(os.RemoveAll(file.Name()))
 			}()
 
 			l.Type = LogFile

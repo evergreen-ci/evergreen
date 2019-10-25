@@ -60,7 +60,7 @@ func serviceCommandCombined(cmd string, operation serviceOperation) cli.Command 
 			validateLimits(limitNumFilesFlagName, limitNumProcsFlagName, limitLockedMemoryFlagName, limitVirtualMemoryFlagName),
 		),
 		Action: func(c *cli.Context) error {
-			manager, err := jasper.NewLocalManager(false)
+			manager, err := jasper.NewSynchronizedManager(false)
 			if err != nil {
 				return errors.Wrap(err, "error creating combined manager")
 			}

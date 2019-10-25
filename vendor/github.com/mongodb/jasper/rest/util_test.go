@@ -20,11 +20,11 @@ outerRetry:
 			grip.Warning("timed out starting test service")
 			return nil, -1, errors.WithStack(ctx.Err())
 		default:
-			localManager, err := jasper.NewLocalManager(false)
+			synchronizedManager, err := jasper.NewSynchronizedManager(false)
 			if err != nil {
 				return nil, -1, errors.WithStack(err)
 			}
-			srv := NewManagerService(localManager)
+			srv := NewManagerService(synchronizedManager)
 			app := srv.App(ctx)
 			app.SetPrefix("jasper")
 
@@ -38,7 +38,7 @@ outerRetry:
 			}
 
 			go func() {
-				app.Run(ctx)
+				grip.Warning(app.Run(ctx))
 			}()
 
 			timer := time.NewTimer(5 * time.Millisecond)
