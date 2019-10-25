@@ -77,6 +77,8 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 		j.AddError(err)
 		return
 	}
+	env := evergreen.GetEnvironment()
+
 	if flags.MonitorDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"message":   "monitor is disabled",
@@ -86,7 +88,7 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 		})
 		return
 	}
-	defer j.tryRequeue(ctx)
+	defer j.tryRequeue(ctx, env)
 
 	t, err := task.FindOneId(j.Task)
 	if err != nil {
@@ -111,7 +113,7 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 		"host":      t.HostId,
 	}
 
-	err = cleanUpTimedOutTask(t)
+	err = cleanUpTimedOutTask(ctx, env, j.ID(), t)
 	if err != nil {
 		grip.Warning(message.WrapError(err, msg))
 		j.AddError(err)
@@ -121,7 +123,7 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 	grip.Debug(msg)
 }
 
-func (j *taskExecutionTimeoutJob) tryRequeue(ctx context.Context) {
+func (j *taskExecutionTimeoutJob) tryRequeue(ctx context.Context, env evergreen.Environment) {
 	if j.successful || j.Attempt >= maxAttempts {
 		return
 	}
@@ -130,7 +132,7 @@ func (j *taskExecutionTimeoutJob) tryRequeue(ctx context.Context) {
 	newJob.UpdateTimeInfo(amboy.JobTimeInfo{
 		WaitUntil: time.Now().Add(time.Minute),
 	})
-	err := evergreen.GetEnvironment().RemoteQueue().Put(ctx, newJob)
+	err := env.RemoteQueue().Put(ctx, newJob)
 	grip.Error(message.WrapError(err, message.Fields{
 		"message":  "failed to requeue task timeout job",
 		"task":     j.Task,
@@ -141,7 +143,7 @@ func (j *taskExecutionTimeoutJob) tryRequeue(ctx context.Context) {
 }
 
 // function to clean up a single task
-func cleanUpTimedOutTask(t *task.Task) error {
+func cleanUpTimedOutTask(ctx context.Context, env evergreen.Environment, id string, t *task.Task) error {
 	// get the host for the task
 	host, err := host.FindOne(host.ById(t.HostId))
 	if err != nil {
@@ -178,7 +180,17 @@ func cleanUpTimedOutTask(t *task.Task) error {
 
 	// if the host still has the task as its running task, clear it.
 	if host.RunningTask == t.Id {
-		// clear out the host's running task
+		// Check if the host was externally terminated. When the running task is
+		// cleared on the host, an agent or agent moniitor deploy might run,
+		// which updates the LCT and prevents detection of external termination
+		// until the deploy job runs out of retries.
+		terminated, err := handleExternallyTerminatedHost(ctx, id, env, host)
+		if err != nil {
+			return errors.Wrap(err, "could not check host with timed out task for external termination")
+		}
+		if terminated {
+			return nil
+		}
 		if err = host.ClearRunningAndSetLastTask(t); err != nil {
 			return errors.Wrapf(err, "error clearing running task %s from host %s", t.Id, host.Id)
 		}
