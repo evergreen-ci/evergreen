@@ -1,0 +1,2 @@
+{ "_id" : "logkeeper", "name" : "logkeeper project", "type" : "project", "resources" : [ "logkeeper" ] }
+{ "_id" : "evergreen", "name" : "evergreen project", "type" : "project", "resources" : [ "evergreen" ] }

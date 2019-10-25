@@ -29,7 +29,7 @@ type smokeEndpointTestDefinitions struct {
 	API map[string][]string `yaml:"api,omitempty"`
 }
 
-func (tests smokeEndpointTestDefinitions) checkEndpoints() error {
+func (tests smokeEndpointTestDefinitions) checkEndpoints(username, key string) error {
 	client := util.GetHTTPClient()
 	defer util.PutHTTPClient(client)
 	client.Timeout = time.Second
@@ -56,12 +56,12 @@ func (tests smokeEndpointTestDefinitions) checkEndpoints() error {
 	catcher := grip.NewSimpleCatcher()
 	grip.Info("Testing UI Endpoints")
 	for url, expected := range tests.UI {
-		catcher.Add(makeSmokeRequest(client, url, expected))
+		catcher.Add(makeSmokeRequestAndCheck(username, key, client, url, expected))
 	}
 
 	grip.Info("Testing API Endpoints")
 	for url, expected := range tests.API {
-		catcher.Add(makeSmokeRequest(client, "/api"+url, expected))
+		catcher.Add(makeSmokeRequestAndCheck(username, key, client, "/api"+url, expected))
 	}
 
 	grip.InfoWhen(!catcher.HasErrors(), "success: all endpoints accessible")
@@ -114,19 +114,11 @@ func checkTaskByCommit(username, key string) error {
 
 		grip.Infof("checking for a build of %s (%d/30)", latest, i+1)
 
-		resp, err := client.Get(smokeUrlPrefix + smokeUiPort + "/rest/v2/versions/evergreen_" + latest + "/builds")
+		body, err := makeSmokeRequest(username, key, client, "/rest/v2/versions/evergreen_"+latest+"/builds")
 		if err != nil {
-			grip.Info(err)
+			grip.Error(err)
 			continue
 		}
-
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			err = errors.Wrap(err, "error reading response body")
-			grip.Error(err)
-			return err
-		}
-		grip.Warning(resp.Body.Close())
 
 		err = json.Unmarshal(body, &builds)
 		if err != nil {
@@ -176,15 +168,9 @@ OUTER:
 			}
 
 			grip.Infof("checking for log %s", task.Logs["task_log"])
-			resp, err := client.Get(task.Logs["task_log"] + "&text=true")
+			body, err := makeSmokeRequest(username, key, client, task.Logs["task_log"]+"&text=true")
 			if err != nil {
 				return errors.Wrap(err, "error getting log data")
-			}
-			defer resp.Body.Close() //nolint: evg
-			body, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				err = errors.Wrap(err, "error reading response body")
-				return err
 			}
 			page := string(body)
 
@@ -263,19 +249,37 @@ func checkTask(client *http.Client, username, key string, builds []apimodels.API
 	return task, nil
 }
 
-func makeSmokeRequest(client *http.Client, url string, expected []string) error {
+func makeSmokeRequest(username, key string, client *http.Client, url string) ([]byte, error) {
 	grip.Infof("Getting endpoint '%s'", url)
-	resp, err := client.Get(smokeUrlPrefix + smokeUiPort + url)
+	if !strings.HasPrefix(url, smokeUrlPrefix) {
+		url = smokeUrlPrefix + smokeUiPort + url
+	}
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "error forming request")
+	}
+	req.Header.Add(evergreen.APIUserHeader, username)
+	req.Header.Add(evergreen.APIKeyHeader, key)
+	resp, err := client.Do(req)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		return errors.Errorf("error getting endpoint '%s'", url)
+		return nil, errors.Wrapf(err, "error getting endpoint '%s'", url)
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		err = errors.Wrap(err, "error reading response body")
 		grip.Error(err)
+		return nil, err
+	}
+
+	return body, nil
+}
+
+func makeSmokeRequestAndCheck(username, key string, client *http.Client, url string, expected []string) error {
+	body, err := makeSmokeRequest(username, key, client, url)
+	if err != nil {
 		return err
 	}
 	page := string(body)
@@ -285,13 +289,13 @@ func makeSmokeRequest(client *http.Client, url string, expected []string) error 
 			grip.Infof("found '%s' in endpoint '%s'", text, url)
 		} else {
 			logErr := fmt.Sprintf("did not find '%s' in endpoint '%s'", text, url)
-			grip.Info(logErr)
+			grip.Error(logErr)
 			catcher.Add(errors.New(logErr))
 		}
 	}
 
 	if catcher.HasErrors() {
-		grip.Infof("Failure occurred, endpoint returned: %s", body)
+		grip.Errorf("Failure occurred, endpoint returned: %s", body)
 	}
 	return catcher.Resolve()
 }

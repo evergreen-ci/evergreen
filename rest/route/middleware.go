@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -309,7 +310,7 @@ func RequiresProjectPermission(permission string, level evergreen.PermissionLeve
 	opts := gimlet.RequiresPermissionMiddlewareOpts{
 		RM:            evergreen.GetEnvironment().RoleManager(),
 		PermissionKey: permission,
-		ResourceType:  "project",
+		ResourceType:  evergreen.ProjectResourceType,
 		RequiredLevel: level.Value(),
 		ResourceFunc:  urlVarsToScopes,
 	}
@@ -322,67 +323,137 @@ func (n *noopMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next
 	next(rw, r)
 }
 
-func urlVarsToScopes(r *http.Request) string {
+func urlVarsToScopes(r *http.Request) (string, int, error) {
+	var err error
 	vars := gimlet.GetVars(r)
 	query := r.URL.Query()
 
-	projectID := util.CoalesceStrings(append(query["project_id"], query["projectId"]...), vars["project_id"], vars["projectId"])
-	if projectID != "" {
-		return projectID
+	resourceType := util.CoalesceStrings(query["resource_type"], vars["resource_type"])
+	if resourceType != "" {
+		switch resourceType {
+		case model.EventResourceTypeProject:
+			vars["project_id"] = vars["resource_id"]
+		case event.ResourceTypeTask:
+			vars["task_id"] = vars["resource_id"]
+		}
 	}
 
+	projectID := util.CoalesceStrings(append(query["project_id"], query["projectId"]...), vars["project_id"], vars["projectId"])
+
 	versionID := util.CoalesceStrings(append(query["version_id"], query["versionId"]...), vars["version_id"], vars["versionId"])
-	if versionID != "" {
-		proj, err := model.FindProjectForVersion(versionID)
+	if projectID == "" && versionID != "" {
+		projectID, err = model.FindProjectForVersion(versionID)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "error finding version",
-				"version": versionID,
-			}))
-			return ""
+			return "", http.StatusNotFound, err
 		}
-		return proj
 	}
 
 	patchID := util.CoalesceStrings(append(query["patch_id"], query["patchId"]...), vars["patch_id"], vars["patchId"])
-	if patchID != "" && patch.IsValidId(patchID) {
-		proj, err := patch.FindProjectForPatch(patch.NewId(patchID))
+	if projectID == "" && patchID != "" && patch.IsValidId(patchID) {
+		projectID, err = patch.FindProjectForPatch(patch.NewId(patchID))
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "error finding patch",
-				"patch":   patchID,
-			}))
-			return ""
+			return "", http.StatusNotFound, err
 		}
-		return proj
 	}
 
 	buildID := util.CoalesceStrings(append(query["build_id"], query["buildId"]...), vars["build_id"], vars["buildId"])
-	if buildID != "" {
-		proj, err := build.FindProjectForBuild(buildID)
+	if projectID == "" && buildID != "" {
+		projectID, err = build.FindProjectForBuild(buildID)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "error finding build",
-				"build":   buildID,
-			}))
-			return ""
+			return "", http.StatusNotFound, err
 		}
-		return proj
+	}
+
+	testLog := util.CoalesceStrings(query["log_id"], vars["log_id"])
+	if projectID == "" && testLog != "" {
+		test, err := model.FindOneTestLogById(testLog)
+		if err != nil {
+			return "", http.StatusNotFound, err
+		}
+		projectID, err = task.FindProjectForTask(test.Task)
+		if err != nil {
+			return "", http.StatusNotFound, err
+		}
 	}
 
 	// retrieve all possible naming conventions for task ID
 	taskID := util.CoalesceStrings(append(query["task_id"], query["taskId"]...), vars["task_id"], vars["taskId"])
-	if taskID != "" {
-		proj, err := task.FindProjectForTask(taskID)
+	if projectID == "" && taskID != "" {
+		projectID, err = task.FindProjectForTask(taskID)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "error finding task",
-				"build":   taskID,
-			}))
-			return ""
+			return "", http.StatusNotFound, err
 		}
-		return proj
 	}
 
-	return ""
+	// no project found - return a 404
+	if projectID == "" {
+		return "", http.StatusNotFound, errors.New("no project found")
+	}
+
+	return projectID, http.StatusOK, nil
+}
+
+// RequiresProjectViewPermission is mostly a copy of gimlet.RequiresPermission, but with special
+// handling for private projects
+type RequiresProjectViewPermission struct{}
+
+func (p *RequiresProjectViewPermission) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	projectID, status, err := urlVarsToScopes(r)
+	if err != nil {
+		http.Error(rw, err.Error(), status)
+		return
+	}
+	if projectID == "" {
+		http.Error(rw, "no project found", http.StatusNotFound)
+		return
+	}
+	proj, err := model.FindOneProjectRef(projectID)
+	if err != nil {
+		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if proj == nil {
+		http.Error(rw, "no project found", http.StatusNotFound)
+		return
+	}
+	if !proj.Private {
+		next(rw, r)
+		return
+	}
+
+	ctx := r.Context()
+	user := gimlet.GetUser(ctx)
+	if user == nil {
+		http.Error(rw, "no user found", http.StatusUnauthorized)
+		return
+	}
+
+	authenticator := gimlet.GetAuthenticator(ctx)
+	if authenticator == nil {
+		http.Error(rw, "unable to determine an authenticator", http.StatusInternalServerError)
+		return
+	}
+
+	if !authenticator.CheckAuthenticated(user) {
+		http.Error(rw, "not authenticated", http.StatusUnauthorized)
+		return
+	}
+
+	opts := gimlet.PermissionOpts{
+		Resource:      projectID,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionTasks,
+		RequiredLevel: int(evergreen.TasksView),
+	}
+	hasPermission, err := user.HasPermission(opts)
+	grip.Error(message.WrapError(err, message.Fields{
+		"message": "error checking task view permissions",
+		"user":    user.Username(),
+	}))
+
+	if !hasPermission {
+		http.Error(rw, "not authorized for this action", http.StatusUnauthorized)
+		return
+	}
+	next(rw, r)
 }

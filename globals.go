@@ -484,7 +484,11 @@ func IsGitHubPatchRequester(requester string) bool {
 }
 
 // Permissions-related constants
-var AclCheckingIsEnabled = false
+var AclCheckingIsEnabled = (os.Getenv("ACL_ENABLED") == "true")
+
+const (
+	ProjectResourceType = "project"
+)
 
 type PermissionLevel interface {
 	String() string

@@ -241,7 +241,7 @@ type requiresPermissionHandler struct {
 	opts RequiresPermissionMiddlewareOpts
 }
 
-type FindResourceFunc func(*http.Request) string
+type FindResourceFunc func(*http.Request) (string, int, error)
 
 // RequiresPermissionMiddlewareOpts defines what permissions the middleware shoud check and how. The ResourceFunc parameter
 // can be used to specify custom behavior to extract a valid resource name from request variables
@@ -268,25 +268,31 @@ func (rp *requiresPermissionHandler) ServeHTTP(rw http.ResponseWriter, r *http.R
 
 	user := GetUser(ctx)
 	if user == nil {
-		rw.WriteHeader(http.StatusUnauthorized)
+		http.Error(rw, "no user found", http.StatusUnauthorized)
 		return
 	}
 
 	authenticator := GetAuthenticator(ctx)
 	if authenticator == nil {
-		rw.WriteHeader(http.StatusUnauthorized)
+		http.Error(rw, "unable to determine an authenticator", http.StatusInternalServerError)
 		return
 	}
 
 	if !authenticator.CheckAuthenticated(user) {
-		rw.WriteHeader(http.StatusUnauthorized)
+		http.Error(rw, "not authenticated", http.StatusUnauthorized)
 		return
 	}
 
 	vars := GetVars(r)
 	var resource string
+	var status int
+	var err error
 	if rp.opts.ResourceFunc != nil {
-		resource = rp.opts.ResourceFunc(r)
+		resource, status, err = rp.opts.ResourceFunc(r)
+		if err != nil {
+			http.Error(rw, err.Error(), status)
+			return
+		}
 	} else {
 		for _, level := range rp.opts.ResourceLevels {
 			if resourceVal, exists := vars[level]; exists {
@@ -296,22 +302,24 @@ func (rp *requiresPermissionHandler) ServeHTTP(rw http.ResponseWriter, r *http.R
 		}
 	}
 
-	opts := PermissionOpts{
-		Resource:      resource,
-		ResourceType:  rp.opts.ResourceType,
-		Permission:    rp.opts.PermissionKey,
-		RequiredLevel: rp.opts.RequiredLevel,
-	}
-	hasPermission, err := user.HasPermission(opts)
-	grip.Error(message.WrapError(err, message.Fields{
-		"message":    "error checking permissions",
-		"user":       user.Username(),
-		"permission": rp.opts.PermissionKey,
-	}))
+	if resource != "" {
+		opts := PermissionOpts{
+			Resource:      resource,
+			ResourceType:  rp.opts.ResourceType,
+			Permission:    rp.opts.PermissionKey,
+			RequiredLevel: rp.opts.RequiredLevel,
+		}
+		hasPermission, err := user.HasPermission(opts)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":    "error checking permissions",
+			"user":       user.Username(),
+			"permission": rp.opts.PermissionKey,
+		}))
 
-	if !hasPermission {
-		rw.WriteHeader(http.StatusUnauthorized)
-		return
+		if !hasPermission {
+			http.Error(rw, "not authorized for this action", http.StatusUnauthorized)
+			return
+		}
 	}
 
 	next(rw, r)
