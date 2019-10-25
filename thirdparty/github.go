@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -33,8 +32,6 @@ const (
 	GithubAPIStatusGood  = "good"
 
 	Github502Error = "502 Server Error"
-
-	githubAcceptDiff = "application/vnd.github.v3.diff"
 )
 
 func githubShouldRetry(attempt rehttp.Attempt) bool {
@@ -676,24 +673,19 @@ func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string
 	return pr, nil
 }
 
-// GetGithubDiff downloads a diff from a Github Pull Request diff. This function
-// does not use go-github because this operation is not supported
+// GetGithubPullRequestDiff downloads a diff from a Github Pull Request diff
 func GetGithubPullRequestDiff(ctx context.Context, token string, gh patch.GithubPatch) (string, []patch.Summary, error) {
 	all := rehttp.RetryAll(rehttp.RetryMaxRetries(NumGithubRetries-1), githubShouldRetryWith404s)
-	client, err := util.GetRetryableOauth2HTTPClient(token, all, util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
+	httpClient, err := util.GetRetryableOauth2HTTPClient(token, all, util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
 	if err != nil {
-		return "", nil, errors.Wrap(err, "error getting http client")
+		return "", nil, errors.Wrap(err, "can't get client")
 	}
-	defer util.PutHTTPClient(client)
+	defer util.PutHTTPClient(httpClient)
+	client := github.NewClient(httpClient)
 
-	req, err := http.NewRequest("GET", buildPatchURL(gh), nil)
+	diff, _, err := client.PullRequests.GetRaw(ctx, gh.BaseOwner, gh.BaseRepo, gh.PRNumber, github.RawOptions{Type: github.Diff})
 	if err != nil {
-		return "", nil, errors.Wrap(err, "failed to create github request")
-	}
-
-	diff, err := doGithubRequest(client, req, githubAcceptDiff)
-	if err != nil {
-		return "", nil, errors.Wrap(err, "failed to fetch diff from github")
+		return "", nil, err
 	}
 
 	summaries, err := GetPatchSummaries(diff)
@@ -702,45 +694,6 @@ func GetGithubPullRequestDiff(ctx context.Context, token string, gh patch.Github
 	}
 
 	return diff, summaries, nil
-}
-
-func doGithubRequest(client *http.Client, req *http.Request, accept string) (string, error) {
-	req.Header.Del("Accept")
-	req.Header.Add("Accept", accept)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to fetch data from github")
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return "", errors.Errorf("Expected 200 OK, got %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
-	}
-
-	if resp.ContentLength > patch.SizeLimit || resp.ContentLength == 0 {
-		return "", errors.Errorf("Patch contents must be at least 1 byte and no greater than %d bytes; was %d bytes",
-			patch.SizeLimit, resp.ContentLength)
-	}
-
-	bytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to read response body from github response")
-	}
-
-	return string(bytes), nil
-}
-
-// buildPatchURL creates a URL to enable downloading patch files through the
-// Github API
-func buildPatchURL(gp patch.GithubPatch) string {
-	url := &url.URL{
-		Scheme: "https",
-		Host:   "api.github.com",
-		Path: fmt.Sprintf("/repos/%s/%s/pulls/%d.diff", gp.BaseOwner,
-			gp.BaseRepo, gp.PRNumber),
-	}
-
-	return url.String()
 }
 
 func ValidatePR(pr *github.PullRequest) error {
