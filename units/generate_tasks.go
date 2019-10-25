@@ -83,23 +83,10 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 
 	p, pp, v, t, pm, err := g.NewVersion()
 	if err != nil {
-		return errors.Wrap(err, "problem creating new version")
+		return j.handleError(errors.WithStack(err))
 	}
 	if err = validator.CheckProjectConfigurationIsValid(p); err != nil {
-		versionFromDB, versionErr := model.VersionFindOne(model.VersionById(v.Id).WithFields(model.VersionConfigNumberKey))
-		if versionErr != nil {
-			return errors.Wrapf(versionErr, "problem finding version %s", v.Id)
-		}
-		if versionFromDB == nil {
-			return errors.Errorf("could not find version %s", v.Id)
-		}
-		// If the config update number has been updated, then another task has raced with us.
-		// The error is therefore not an actual configuration problem but instead a symptom
-		// of the race. Noop the job.
-		if v.ConfigUpdateNumber != versionFromDB.ConfigUpdateNumber {
-			return mongo.ErrNoDocuments
-		}
-		return errors.Wrap(err, "project configuration was invalid")
+		return j.handleError(errors.WithStack(err))
 	}
 
 	// Don't use the job's context, because it's better to finish than to exit early after a
@@ -114,6 +101,24 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		return errors.Wrap(err, "error saving config in `generate.tasks`")
 	}
 	return nil
+}
+
+// handleError return mongo.ErrNoDocuments if another job has raced, the passed in error otherwise.
+func (j *generateTasksJob) handleError(handledError error) error {
+	versionFromDB, err := model.VersionFindOne(model.VersionById(v.Id).WithFields(model.VersionConfigNumberKey))
+	if err != nil {
+		return errors.Wrapf(err, "problem finding version %s", v.Id)
+	}
+	if versionFromDB == nil {
+		return errors.Errorf("could not find version %s", v.Id)
+	}
+	// If the config update number has been updated, then another task has raced with us.
+	// The error is therefore not an actual configuration problem but instead a symptom
+	// of the race.
+	if v.ConfigUpdateNumber != versionFromDB.ConfigUpdateNumber {
+		return mongo.ErrNoDocuments
+	}
+	return handledError
 }
 
 func (j *generateTasksJob) Run(ctx context.Context) {
