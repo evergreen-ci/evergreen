@@ -398,6 +398,9 @@ func urlVarsToScopes(r *http.Request) (string, int, error) {
 type RequiresProjectViewPermission struct{}
 
 func (p *RequiresProjectViewPermission) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	if !evergreen.AclCheckingIsEnabled {
+		next(rw, r)
+	}
 	projectID, status, err := urlVarsToScopes(r)
 	if err != nil {
 		http.Error(rw, err.Error(), status)
