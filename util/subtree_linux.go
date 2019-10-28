@@ -17,7 +17,7 @@ import (
 const (
 	cleanupCheckAttempts   = 10
 	cleanupCheckTimeoutMin = 100 * time.Millisecond
-	cleanupCheckTImeoutMax = 1 * time.Second
+	cleanupCheckTimeoutMax = 1 * time.Second
 	contextTimeout         = 10 * time.Second
 )
 
@@ -119,7 +119,7 @@ func cleanup(key string, logger grip.Journaler) error {
 	err = Retry(
 		ctx,
 		func() (bool, error) {
-			unkilledPids = []string{}
+			unkilledPids = []int{}
 			pids, err = listProc()
 			if err != nil {
 				return false, err
