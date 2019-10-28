@@ -210,26 +210,6 @@ func TestAttachVolumeHandler(t *testing.T) {
 	resp := h.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusBadRequest, resp.Status())
-
-	// correct availability zone
-	volume = &host.Volume{
-		ID:               "better-volume",
-		AvailabilityZone: "us-east-1c",
-	}
-	assert.NoError(t, volume.Insert())
-
-	// correct availability zone
-	h.attachment.VolumeID = "better-volume"
-	jsonBody, err = json.Marshal(v)
-	assert.NoError(t, err)
-	buffer = bytes.NewBuffer(jsonBody)
-
-	r, err = http.NewRequest("GET", "/hosts/my-host/attach", buffer)
-	assert.NoError(t, err)
-	r = gimlet.SetURLVars(r, map[string]string{"host_id": "my-host"})
-	resp = h.Run(ctx)
-	assert.NotNil(t, resp)
-	assert.Equal(t, http.StatusOK, resp.Status())
 }
 
 func TestDetachVolumeHandler(t *testing.T) {
@@ -266,9 +246,4 @@ func TestDetachVolumeHandler(t *testing.T) {
 	resp := h.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusNotFound, resp.Status())
-
-	h.attachment.VolumeID = "my-volume"
-	resp = h.Run(ctx)
-	assert.NotNil(t, resp)
-	assert.Equal(t, http.StatusOK, resp.Status())
 }

@@ -389,7 +389,7 @@ func hostAttach() cli.Command {
 				return err
 			}
 
-			grip.Infof("Job started to attach volume '%s'.", volumeID)
+			grip.Infof("Attached volume '%s'.", volumeID)
 
 			return nil
 		},
@@ -431,7 +431,7 @@ func hostDetach() cli.Command {
 				return err
 			}
 
-			grip.Infof("Job started to detach volume '%s'.", volumeID)
+			grip.Infof("Detached volume '%s'.", volumeID)
 
 			return nil
 		},
@@ -446,7 +446,7 @@ func hostCreateVolume() cli.Command {
 	)
 
 	return cli.Command{
-		Name:  "create-volume",
+		Name:  "create",
 		Usage: "create a volume for spawn hosts",
 		Flags: []cli.Flag{
 			cli.StringFlag{
@@ -503,7 +503,7 @@ func hostDeleteVolume() cli.Command {
 	)
 
 	return cli.Command{
-		Name:  "delete-volume",
+		Name:  "delete",
 		Usage: "delete a volume for spawn hosts",
 		Flags: []cli.Flag{
 			cli.StringFlag{

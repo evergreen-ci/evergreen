@@ -428,11 +428,23 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	ts := util.RoundPartOfMinute(1).Format(tsFormat)
-	attachJob := units.NewSpawnhostAttachVolumeJob(targetHost, h.attachment, ts)
-	if err = h.env.RemoteQueue().Put(ctx, attachJob); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error creating spawnhost modify job"))
+	mgrOpts := cloud.ManagerOpts{
+		Provider: attachedHost.Provider,
+		Region:   cloud.GetRegion(attachedHost.Distro),
 	}
+	mgr, err := cloud.GetManager(ctx, h.env, mgrOpts)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error getting cloud manager for spawnhost attach volume job"))
+	}
+	grip.Info(message.Fields{
+		"message": "attaching volume to spawnhost",
+		"host_id": h.hostID,
+		"volume":  h.attachment,
+	})
+	if err = mgr.AttachVolume(ctx, attachedHost, h.attachment); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error attaching volume %s for spawnhost %s", h.attachment.VolumeID, h.hostID))
+	}
+
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
@@ -467,6 +479,9 @@ func (h *detachVolumeHandler) Parse(ctx context.Context, r *http.Request) error 
 	if err := errors.WithStack(util.ReadJSONInto(r.Body, h.attachment)); err != nil {
 		return err
 	}
+	if h.attachment == nil {
+		return errors.New("body is nil")
+	}
 
 	var err error
 	h.hostID, err = validateID(gimlet.GetVars(r)["host_id"])
@@ -480,13 +495,13 @@ func (h *detachVolumeHandler) Parse(ctx context.Context, r *http.Request) error 
 func (h *detachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 
-	host, err := h.sc.FindHostByIdWithOwner(h.hostID, user)
+	targetHost, err := h.sc.FindHostByIdWithOwner(h.hostID, user)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting host '%s'", h.hostID))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting targetHost '%s'", h.hostID))
 	}
 
 	found := false
-	for _, attachment := range host.Volumes {
+	for _, attachment := range targetHost.Volumes {
 		if attachment.VolumeID == h.attachment.VolumeID {
 			found = true
 			break
@@ -495,14 +510,26 @@ func (h *detachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	if !found {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("attachment '%s' is not attached to host '%s", h.attachment.VolumeID, h.hostID),
+			Message:    fmt.Sprintf("attachment '%s' is not attached to targetHost '%s", h.attachment.VolumeID, h.hostID),
 		})
 	}
 
-	ts := util.RoundPartOfMinute(1).Format(tsFormat)
-	detachJob := units.NewSpawnhostDetachVolumeJob(host, h.attachment.VolumeID, ts)
-	if err = h.env.RemoteQueue().Put(ctx, detachJob); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error creating spawnhost detach volume job"))
+	grip.Info(message.Fields{
+		"message": "detaching volume from spawnhost",
+		"host_id": h.hostID,
+		"volume":  h.attachment.VolumeID,
+	})
+	mgrOpts := cloud.ManagerOpts{
+		Provider: targetHost.Provider,
+		Region:   cloud.GetRegion(targetHost.Distro),
+	}
+	mgr, err := cloud.GetManager(ctx, h.env, mgrOpts)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error getting cloud manager for spawnhost detach volume job"))
+	}
+
+	if err = mgr.DetachVolume(ctx, targetHost, h.attachment.VolumeID); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error detaching volume %s from spawnhost %s", h.attachment.VolumeID, h.hostID))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
