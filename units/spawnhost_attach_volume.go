@@ -26,12 +26,12 @@ func init() {
 }
 
 type spawnhostAttachVolumeJob struct {
-	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
-	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
+	HostID     string                 `bson:"host_id" json:"host_id" yaml:"host_id"`
+	Attachment *host.VolumeAttachment `bson:"attachment" json:"attachment" yaml:"attachment"`
+	job.Base   `bson:"job_base" json:"job_base" yaml:"job_base"`
 
-	host       *host.Host
-	attachment host.VolumeAttachment
-	env        evergreen.Environment
+	host *host.Host
+	env  evergreen.Environment
 }
 
 func makeSpawnhostAttachVolumeJob() *spawnhostAttachVolumeJob {
@@ -47,12 +47,12 @@ func makeSpawnhostAttachVolumeJob() *spawnhostAttachVolumeJob {
 	return j
 }
 
-func NewSpawnhostAttachVolumeJob(h *host.Host, attachment host.VolumeAttachment, ts string) amboy.Job {
+func NewSpawnhostAttachVolumeJob(h *host.Host, attachment *host.VolumeAttachment, ts string) amboy.Job {
 	j := makeSpawnhostAttachVolumeJob()
 	j.SetID(fmt.Sprintf("%s.%s.%s", spawnhostAttachVolumeName, h.Id, ts))
 	j.host = h
 	j.HostID = h.Id
-	j.attachment = attachment
+	j.Attachment = attachment
 	return j
 }
 
@@ -76,11 +76,14 @@ func (j *spawnhostAttachVolumeJob) Run(ctx context.Context) {
 		}
 	}
 
+	if j.Attachment == nil {
+		j.AddError(fmt.Errorf("no attachment given"))
+	}
 	grip.Info(message.Fields{
 		"message": "attaching volume to spawnhost",
 		"job_id":  j.ID(),
 		"host_id": j.HostID,
-		"volume":  j.attachment,
+		"volume":  j.Attachment,
 	})
 
 	mgrOpts := cloud.ManagerOpts{
@@ -93,8 +96,8 @@ func (j *spawnhostAttachVolumeJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err = mgr.AttachVolume(ctx, j.host, j.attachment); err != nil {
-		j.AddError(errors.Wrapf(err, "error attaching volume %s for spawnhost %s", j.attachment.VolumeID, j.HostID))
+	if err = mgr.AttachVolume(ctx, j.host, j.Attachment); err != nil {
+		j.AddError(errors.Wrapf(err, "error attaching volume %s for spawnhost %s", j.Attachment.VolumeID, j.HostID))
 	}
 
 	return

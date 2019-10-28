@@ -997,7 +997,7 @@ func AggregateLastContainerFinishTimes() ([]FinishTime, error) {
 
 }
 
-func (h *Host) AddVolumeToHost(newVolume VolumeAttachment) error {
+func (h *Host) AddVolumeToHost(newVolume *VolumeAttachment) error {
 	_, err := db.FindAndModify(Collection,
 		bson.M{
 			IdKey: h.Id,

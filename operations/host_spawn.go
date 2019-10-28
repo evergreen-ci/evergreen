@@ -379,17 +379,17 @@ func hostAttach() cli.Command {
 			client := conf.getRestCommunicator(ctx)
 			defer client.Close()
 
-			opts := &model.HostAttachRequest{
+			volume := &host.VolumeAttachment{
 				VolumeID:   volumeID,
 				DeviceName: deviceName,
 			}
 
-			err = client.AttachVolume(ctx, hostID, opts)
+			err = client.AttachVolume(ctx, hostID, volume)
 			if err != nil {
 				return err
 			}
 
-			grip.Infof("Attached volume '%s'.", volumeID)
+			grip.Infof("Job started to attach volume '%s'.", volumeID)
 
 			return nil
 		},
@@ -431,7 +431,7 @@ func hostDetach() cli.Command {
 				return err
 			}
 
-			grip.Infof("Detached volume '%s'.", volumeID)
+			grip.Infof("Job started to detach volume '%s'.", volumeID)
 
 			return nil
 		},
@@ -442,6 +442,7 @@ func hostCreateVolume() cli.Command {
 	const (
 		sizeFlag = "size"
 		typeFlag = "type"
+		zoneFlag = "zone"
 	)
 
 	return cli.Command{
@@ -454,13 +455,18 @@ func hostCreateVolume() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  joinFlagNames(typeFlag, "t"),
-				Usage: "set volume `TYPE`",
+				Usage: "set volume `TYPE` (default gp2)",
+			},
+			cli.StringFlag{
+				Name:  joinFlagNames(zoneFlag, "z"),
+				Usage: "set volume `AVAILABILITY ZONE` (default us-east-1a)",
 			},
 		},
 		Before: mergeBeforeFuncs(setPlainLogger, requireStringFlag(sizeFlag)),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			volumeType := c.String(typeFlag)
+			volumeZone := c.String(zoneFlag)
 			volumeSize := c.Int(sizeFlag)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -473,9 +479,10 @@ func hostCreateVolume() cli.Command {
 			client := conf.getRestCommunicator(ctx)
 			defer client.Close()
 
-			volumeRequest := &model.VolumePostRequest{
-				Type: volumeType,
-				Size: volumeSize,
+			volumeRequest := &host.Volume{
+				Type:             volumeType,
+				Size:             volumeSize,
+				AvailabilityZone: volumeZone,
 			}
 
 			volume, err := client.CreateVolume(ctx, volumeRequest)
@@ -592,12 +599,13 @@ func hostList() cli.Command {
 
 func printHosts(hosts []*model.APIHost) error {
 	for _, h := range hosts {
-		grip.Infof("ID: %s; Distro: %s; Status: %s; Host name: %s; User: %s",
+		grip.Infof("ID: %s; Distro: %s; Status: %s; Host name: %s; User: %s, Availability Zone: %s",
 			model.FromAPIString(h.Id),
 			model.FromAPIString(h.Distro.Id),
 			model.FromAPIString(h.Status),
 			model.FromAPIString(h.HostURL),
-			model.FromAPIString(h.User))
+			model.FromAPIString(h.User),
+			model.FromAPIString(h.AvailabilityZone))
 	}
 	return nil
 }

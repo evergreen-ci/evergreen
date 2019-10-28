@@ -156,6 +156,7 @@ func TestHostStartHandler(t *testing.T) {
 }
 
 func TestAttachVolumeHandler(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(host.VolumesCollection))
 	h := &attachVolumeHandler{
 		sc:  &data.MockConnector{},
 		env: evergreen.GetEnvironment(),
@@ -166,6 +167,7 @@ func TestAttachVolumeHandler(t *testing.T) {
 			Id:        "my-host",
 			Status:    evergreen.HostRunning,
 			StartedBy: "user",
+			Zone:      "us-east-1c",
 		},
 		host.Host{
 			Id: "different-host",
@@ -173,7 +175,7 @@ func TestAttachVolumeHandler(t *testing.T) {
 	}
 
 	// no volume
-	v := host.VolumeAttachment{DeviceName: "my-device"}
+	v := &host.VolumeAttachment{DeviceName: "my-device"}
 	jsonBody, err := json.Marshal(v)
 	assert.NoError(t, err)
 	buffer := bytes.NewBuffer(jsonBody)
@@ -184,9 +186,9 @@ func TestAttachVolumeHandler(t *testing.T) {
 
 	assert.Error(t, h.Parse(ctx, r))
 
-	// successful
+	// wrong availability zone
 	v.VolumeID = "my-volume"
-	volume := host.Volume{
+	volume := &host.Volume{
 		ID: v.VolumeID,
 	}
 	assert.NoError(t, volume.Insert())
@@ -206,6 +208,26 @@ func TestAttachVolumeHandler(t *testing.T) {
 	assert.Equal(t, h.attachment.DeviceName, "my-device")
 
 	resp := h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusBadRequest, resp.Status())
+
+	// correct availability zone
+	volume = &host.Volume{
+		ID:               "better-volume",
+		AvailabilityZone: "us-east-1c",
+	}
+	assert.NoError(t, volume.Insert())
+
+	// correct availability zone
+	h.attachment.VolumeID = "better-volume"
+	jsonBody, err = json.Marshal(v)
+	assert.NoError(t, err)
+	buffer = bytes.NewBuffer(jsonBody)
+
+	r, err = http.NewRequest("GET", "/hosts/my-host/attach", buffer)
+	assert.NoError(t, err)
+	r = gimlet.SetURLVars(r, map[string]string{"host_id": "my-host"})
+	resp = h.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
 }

@@ -155,9 +155,6 @@ const (
 	checkSuccessInitPeriod = time.Second
 )
 
-// Temporary default for EBS volumes
-const defaultEBSAvailabilityZone = "us-east-1a"
-
 // EC2ManagerOptions are used to construct a new ec2Manager.
 type EC2ManagerOptions struct {
 	// client is the client library for communicating with AWS.
@@ -1075,7 +1072,7 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 	return nil
 }
 
-func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment host.VolumeAttachment) error {
+func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment *host.VolumeAttachment) error {
 	if err := m.client.Create(m.credentials, evergreen.DefaultEC2Region); err != nil {
 		return errors.Wrap(err, "error creating client")
 	}
@@ -1112,9 +1109,8 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 	if err := m.client.Create(m.credentials, evergreen.DefaultEC2Region); err != nil {
 		return nil, errors.Wrap(err, "error creating client")
 	}
-
 	resp, err := m.client.CreateVolume(ctx, &ec2.CreateVolumeInput{
-		AvailabilityZone: aws.String(defaultEBSAvailabilityZone),
+		AvailabilityZone: aws.String(volume.AvailabilityZone),
 		VolumeType:       aws.String(volume.Type),
 		Size:             aws.Int64(int64(volume.Size)),
 	})

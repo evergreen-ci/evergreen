@@ -220,7 +220,7 @@ func (m *openStackManager) GetDNSName(ctx context.Context, host *host.Host) (str
 	return "", errors.Errorf("could not find IP for host %s", host.Id)
 }
 
-func (m *openStackManager) AttachVolume(context.Context, *host.Host, host.VolumeAttachment) error {
+func (m *openStackManager) AttachVolume(context.Context, *host.Host, *host.VolumeAttachment) error {
 	return errors.New("can't attach volume with openstack provider")
 }
 

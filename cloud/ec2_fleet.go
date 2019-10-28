@@ -288,7 +288,7 @@ func (m *ec2FleetManager) OnUp(ctx context.Context, h *host.Host) error {
 	return nil
 }
 
-func (m *ec2FleetManager) AttachVolume(context.Context, *host.Host, host.VolumeAttachment) error {
+func (m *ec2FleetManager) AttachVolume(context.Context, *host.Host, *host.VolumeAttachment) error {
 	return errors.New("can't attach volume with ec2 fleet provider")
 }
 

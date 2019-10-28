@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -149,7 +148,7 @@ func (c *communicatorImpl) StopSpawnHost(ctx context.Context, hostID string, wai
 	return nil
 }
 
-func (c *communicatorImpl) AttachVolume(ctx context.Context, hostID string, opts *restmodel.HostAttachRequest) error {
+func (c *communicatorImpl) AttachVolume(ctx context.Context, hostID string, opts *host.VolumeAttachment) error {
 	info := requestInfo{
 		method:  post,
 		path:    fmt.Sprintf("hosts/%s/attach", hostID),
@@ -179,8 +178,8 @@ func (c *communicatorImpl) DetachVolume(ctx context.Context, hostID, volumeID st
 		path:    fmt.Sprintf("hosts/%s/detach", hostID),
 		version: apiVersion2,
 	}
-	body := model.APISpawnHostModify{
-		VolumeID: model.ToAPIString(volumeID),
+	body := host.VolumeAttachment{
+		VolumeID: volumeID,
 	}
 
 	resp, err := c.request(ctx, info, body)
@@ -199,20 +198,23 @@ func (c *communicatorImpl) DetachVolume(ctx context.Context, hostID, volumeID st
 
 	return nil
 }
-func (c *communicatorImpl) CreateVolume(ctx context.Context, volumeRequest *model.VolumePostRequest) (*model.APIVolume, error) {
+func (c *communicatorImpl) CreateVolume(ctx context.Context, volume *host.Volume) (*model.APIVolume, error) {
 	info := requestInfo{
 		method:  post,
 		path:    "volumes",
 		version: apiVersion2,
 	}
 
-	resp, err := c.request(ctx, info, volumeRequest)
+	resp, err := c.request(ctx, info, volume)
 	if err != nil {
 		return nil, errors.Wrap(err, "error sending request to create volume")
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("The status: %d\n", resp.StatusCode)
+		respErr, _ := ioutil.ReadAll(resp.Body)
+		fmt.Printf("%v", string(respErr))
 		errMsg := gimlet.ErrorResponse{}
 		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
 			return nil, errors.Wrap(err, "problem creating volume and parsing error message")

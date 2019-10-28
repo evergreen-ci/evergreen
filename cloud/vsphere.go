@@ -182,7 +182,7 @@ func (m *vsphereManager) OnUp(ctx context.Context, host *host.Host) error {
 	return nil //TODO
 }
 
-func (m *vsphereManager) AttachVolume(context.Context, *host.Host, host.VolumeAttachment) error {
+func (m *vsphereManager) AttachVolume(context.Context, *host.Host, *host.VolumeAttachment) error {
 	return errors.New("can't attach volume with vsphere provider")
 }
 

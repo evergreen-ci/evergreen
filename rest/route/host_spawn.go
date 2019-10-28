@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -419,8 +420,16 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    errors.Errorf("attachment '%s' does not exist", h.attachment.VolumeID).Error(),
 		})
 	}
+
+	if v.AvailabilityZone != targetHost.Zone {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Errorf("Host and volume must have same availability zone").Error(),
+		})
+	}
+
 	ts := util.RoundPartOfMinute(1).Format(tsFormat)
-	attachJob := units.NewSpawnhostAttachVolumeJob(targetHost, *h.attachment, ts)
+	attachJob := units.NewSpawnhostAttachVolumeJob(targetHost, h.attachment, ts)
 	if err = h.env.RemoteQueue().Put(ctx, attachJob); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error creating spawnhost modify job"))
 	}
@@ -527,9 +536,11 @@ func (h *createVolumeHandler) Factory() gimlet.RouteHandler {
 func (h *createVolumeHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.volume = &host.Volume{}
 	if err := util.ReadJSONInto(r.Body, h.volume); err != nil {
+		grip.Debug(message.WrapError(err, "problem reading JSON into"))
 		return err
 	}
 	if h.volume.Size == 0 {
+		grip.Debug("Size is required")
 		return errors.New("Size is required")
 	}
 	return nil
@@ -543,14 +554,17 @@ func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	if h.volume.Type == "" {
 		h.volume.Type = evergreen.DefaultEBSType
 	}
+	if h.volume.AvailabilityZone == "" {
+		h.volume.AvailabilityZone = evergreen.DefaultEBSAvailabilityZone
+	}
 
-	// TODO: Allow different providers/regions
 	mgrOpts := cloud.ManagerOpts{
 		Provider: evergreen.ProviderNameEc2OnDemand,
 		Region:   evergreen.DefaultEC2Region,
 	}
 	mgr, err := cloud.GetManager(ctx, h.env, mgrOpts)
 	if err != nil {
+		grip.Debug(message.WrapError(err, "manager error"))
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
@@ -558,6 +572,7 @@ func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if h.volume, err = mgr.CreateVolume(ctx, h.volume); err != nil {
+		grip.Debug(message.WrapError(err, "create volume error"))
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
@@ -567,6 +582,7 @@ func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	volumeModel := &model.APIVolume{}
 	err = volumeModel.BuildFromService(h.volume)
 	if err != nil {
+		message.WrapError(err, "build from service")
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
 

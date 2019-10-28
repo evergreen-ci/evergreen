@@ -341,7 +341,7 @@ func (mockMgr *mockManager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return instance.TimeTilNextPayment
 }
 
-func (mockMgr *mockManager) AttachVolume(ctx context.Context, h *host.Host, attachment host.VolumeAttachment) error {
+func (mockMgr *mockManager) AttachVolume(ctx context.Context, h *host.Host, attachment *host.VolumeAttachment) error {
 	l := mockMgr.mutex
 	l.Lock()
 	defer l.Unlock()

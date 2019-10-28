@@ -3810,7 +3810,7 @@ func TestAddVolumeToHost(t *testing.T) {
 	}
 	assert.NoError(t, h.Insert())
 
-	newAttachment := VolumeAttachment{
+	newAttachment := &VolumeAttachment{
 		VolumeID:   "volume-2",
 		DeviceName: "device-2",
 	}

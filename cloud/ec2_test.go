@@ -1314,7 +1314,7 @@ func (s *EC2Suite) TestAttachVolume() {
 	defer cancel()
 
 	s.Require().NoError(s.h.Insert())
-	newAttachment := host.VolumeAttachment{
+	newAttachment := &host.VolumeAttachment{
 		VolumeID:   "test-volume",
 		DeviceName: "test-device-name",
 	}

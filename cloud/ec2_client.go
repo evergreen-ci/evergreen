@@ -1249,9 +1249,10 @@ func (c *awsClientMock) CancelSpotInstanceRequests(ctx context.Context, input *e
 func (c *awsClientMock) CreateVolume(ctx context.Context, input *ec2.CreateVolumeInput) (*ec2.Volume, error) {
 	c.CreateVolumeInput = input
 	return &ec2.Volume{
-		VolumeId:   aws.String("test-volume"),
-		VolumeType: input.VolumeType,
-		Size:       input.Size,
+		VolumeId:         aws.String("test-volume"),
+		VolumeType:       input.VolumeType,
+		AvailabilityZone: input.AvailabilityZone,
+		Size:             input.Size,
 	}, nil
 }
 
