@@ -286,6 +286,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
         $scope.prTestingEnabled = data.ProjectRef.pr_testing_enabled || false;
         $scope.commitQueueConflicts = data.commit_queue_conflicting_refs || [];
         $scope.project_triggers = data.ProjectRef.triggers || [];
+        $scope.github_valid_orgs = data.github_valid_orgs;
         _.each($scope.project_triggers, function(trigger) {
           if (trigger.command) {
             trigger.file = trigger.generate_file;
@@ -297,6 +298,8 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
         $scope.aliases = _.sortBy(data.aliases || [], function(v) {
           return v.alias + v.variant + v.task;
         });
+
+
 
         $scope.settingsFormData = {
           identifier : $scope.projectRef.identifier,
@@ -315,6 +318,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           patching_disabled: $scope.projectRef.patching_disabled,
           alert_config: $scope.projectRef.alert_config || {},
           repotracker_error: $scope.projectRef.repotracker_error || {},
+          owner_is_valid: $scope.isValidGithubOrg($scope.projectRef.owner_name),
           admins : $scope.projectRef.admins || [],
           tracks_push_events: data.ProjectRef.tracks_push_events || false,
           pr_testing_enabled: data.ProjectRef.pr_testing_enabled || false,
@@ -612,6 +616,15 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
 
   $scope.isValidMergeBaseRevision = function(revision){
     return revision && revision.length >= 40;
+  }
+
+  $scope.isValidGithubOrg = function(org){
+    for (var i = 0; i < $scope.github_valid_orgs.length; i++) {
+      if (org === $scope.github_valid_orgs[i]) {
+        return true
+      }
+    }
+    return false
   }
 
   $scope.setLastRevision = function() {

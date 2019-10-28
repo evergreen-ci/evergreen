@@ -1300,6 +1300,10 @@ Admin Settings
 										<label>Github PR creator organization</label>
 										<input type="text" ng-model="Settings.github_pr_creator_org">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%">
+										<label>Github Organizations</label>
+										<textarea ng-model="Settings.github_orgs" ng-list="&#10;" ng-trim="false" rows="3" md-select-on-focus></textarea>
+									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Log path</label>
 										<input type="text" ng-model="Settings.log_path">
