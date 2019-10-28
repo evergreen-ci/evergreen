@@ -426,28 +426,6 @@ func validateEc2DescribeInstancesOutput(describeInstancesResponse *ec2aws.Descri
 	return catcher.Resolve()
 }
 
-func validateEc2InstanceInfoResponse(instance *ec2aws.Instance) error {
-	if instance == nil {
-		return errors.New("instance is nil")
-	}
-
-	catcher := grip.NewBasicCatcher()
-	if instance.Placement == nil || instance.Placement.AvailabilityZone == nil || len(*instance.Placement.AvailabilityZone) == 0 {
-		catcher.Add(errors.New("AZ is missing"))
-	}
-	if instance.LaunchTime == nil {
-		catcher.Add(errors.New("launch time is nil"))
-	}
-	if instance.PublicDnsName == nil || len(*instance.PublicDnsName) == 0 {
-		catcher.Add(errors.New("dns name is missing"))
-	}
-	if instance.State == nil || instance.State.Name == nil || len(*instance.State.Name) == 0 {
-		catcher.Add(errors.New("state name is missing"))
-	}
-
-	return catcher.Resolve()
-}
-
 func validateEc2DescribeSubnetsOutput(describeSubnetsOutput *ec2aws.DescribeSubnetsOutput) error {
 	if describeSubnetsOutput == nil {
 		return errors.New("describe subnets response is nil")

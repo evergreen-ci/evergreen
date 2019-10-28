@@ -171,17 +171,27 @@ func (m *ec2FleetManager) GetInstanceStatus(ctx context.Context, h *host.Host) (
 	}
 	defer m.client.Close()
 
-	instance, err := m.getInstance(ctx, h)
+	instance, err := m.client.GetInstanceInfo(ctx, h.Id)
 	if err != nil {
-		return status, errors.Wrapf(err, "can't get instance status")
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":       "error getting instance info",
+			"host":          h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
+		}))
+		return status, errors.Wrap(err, "error getting instance info")
 	}
 
+	if instance.State == nil || instance.State.Name == nil || *instance.State.Name == "" {
+		return status, errors.New("state name is missing")
+	}
 	status = ec2StatusToEvergreenStatus(*instance.State.Name)
 	if status == StatusRunning {
 		// cache instance information so we can make fewer calls to AWS's API
-		if err = cacheHostData(ctx, h, instance, m.client); err != nil {
-			return status, errors.Wrapf(err, "can't update host '%s'", h.Id)
-		}
+		grip.Error(message.WrapError(cacheHostData(ctx, h, instance, m.client), message.Fields{
+			"message": "can't update host cached data",
+			"host":    h.Id,
+		}))
 	}
 
 	return status, nil
@@ -299,25 +309,6 @@ func (m *ec2FleetManager) GetDNSName(ctx context.Context, h *host.Host) (string,
 
 func (m *ec2FleetManager) TimeTilNextPayment(h *host.Host) time.Duration {
 	return timeTilNextEC2Payment(h)
-}
-
-func (m *ec2FleetManager) getInstance(ctx context.Context, h *host.Host) (*ec2.Instance, error) {
-	instance, err := m.client.GetInstanceInfo(ctx, h.Id)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":       "error getting instance info",
-			"host":          h.Id,
-			"host_provider": h.Distro.Provider,
-			"distro":        h.Distro.Id,
-		}))
-		return nil, errors.Wrap(err, "error getting instance info")
-	}
-
-	if err = validateEc2InstanceInfoResponse(instance); err != nil {
-		return nil, errors.Wrap(err, "invalid instance info response")
-	}
-
-	return instance, nil
 }
 
 func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.LaunchTemplateBlockDeviceMappingRequest) error {
