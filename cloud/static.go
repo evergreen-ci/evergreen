@@ -99,16 +99,6 @@ func (staticMgr *staticManager) OnUp(context.Context, *host.Host) error {
 	return nil
 }
 
-func (staticMgr *staticManager) GetSSHOptions(h *host.Host, keyPath string) (opts []string, err error) {
-	if keyPath != "" {
-		opts = append(opts, "-i", keyPath)
-	}
-	for _, opt := range h.Distro.SSHOptions {
-		opts = append(opts, "-o", opt)
-	}
-	return opts, nil
-}
-
 // determine how long until a payment is due for the host. static hosts always
 // return 0 for this number
 func (staticMgr *staticManager) TimeTilNextPayment(host *host.Host) time.Duration {

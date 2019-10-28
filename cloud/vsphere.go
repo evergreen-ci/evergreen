@@ -192,21 +192,6 @@ func (m *vsphereManager) GetDNSName(ctx context.Context, h *host.Host) (string, 
 	return ip, nil
 }
 
-// GetSSHOptions generates the command line args to be
-// passed to SSH to allow connection to the machine.
-func (m *vsphereManager) GetSSHOptions(host *host.Host, keyPath string) ([]string, error) {
-	if keyPath == "" {
-		return []string{}, errors.Errorf("No key specified for host %s", host.Id)
-	}
-
-	opts := []string{"-i", keyPath}
-	for _, opt := range host.Distro.SSHOptions {
-		opts = append(opts, "-o", opt)
-	}
-
-	return opts, nil
-}
-
 // TimeTilNextPayment ...
 // TODO: implement payment information for vSphere
 func (m *vsphereManager) TimeTilNextPayment(host *host.Host) time.Duration {

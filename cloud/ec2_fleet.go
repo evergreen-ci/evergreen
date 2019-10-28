@@ -297,10 +297,6 @@ func (m *ec2FleetManager) GetDNSName(ctx context.Context, h *host.Host) (string,
 	return m.client.GetPublicDNSName(ctx, h)
 }
 
-func (m *ec2FleetManager) GetSSHOptions(h *host.Host, keyName string) ([]string, error) {
-	return h.GetSSHOptions(keyName)
-}
-
 func (m *ec2FleetManager) TimeTilNextPayment(h *host.Host) time.Duration {
 	return timeTilNextEC2Payment(h)
 }

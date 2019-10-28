@@ -228,18 +228,3 @@ func (m *gceManager) GetDNSName(ctx context.Context, host *host.Host) (string, e
 
 	return configs[0].NatIP, nil
 }
-
-// GetSSHOptions generates the command line args to be passed to SSH to allow connection
-// to the machine.
-func (m *gceManager) GetSSHOptions(host *host.Host, keyPath string) ([]string, error) {
-	if keyPath == "" {
-		return []string{}, errors.New("No key specified for host")
-	}
-
-	opts := []string{"-i", keyPath}
-	for _, opt := range host.Distro.SSHOptions {
-		opts = append(opts, "-o", opt)
-	}
-
-	return opts, nil
-}

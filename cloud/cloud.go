@@ -55,10 +55,6 @@ type Manager interface {
 	// GetDNSName returns the DNS name of a host.
 	GetDNSName(context.Context, *host.Host) (string, error)
 
-	// GetSSHOptions generates the command line args to be passed to ssh to
-	// allow connection to the machine
-	GetSSHOptions(*host.Host, string) ([]string, error)
-
 	// TimeTilNextPayment returns how long there is until the next payment
 	// is due for a particular host
 	TimeTilNextPayment(*host.Host) time.Duration
