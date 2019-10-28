@@ -8,16 +8,17 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/mongodb/grip"
 )
 
 const (
-	processCleanupAttempts   = 10
-	processCleanupTimeoutMin = 100 * time.Millisecond
-	processCleanupTimeoutMax = 1 * time.Second
-	contextTimeout           = 10 * time.Second
+	cleanupCheckAttempts   = 10
+	cleanupCheckTimeoutMin = 100 * time.Millisecond
+	checkupCheckTImeoutMax = 1 * time.Second
+	contextTimeout         = 10 * time.Second
 )
 
 func TrackProcess(key string, pid int, logger grip.Journaler) {
@@ -95,44 +96,58 @@ func cleanup(key string, logger grip.Journaler) error {
 	for _, pid := range pids {
 		env, err := getEnv(pid)
 		if err != nil {
+			if !strings.Contains(err.Error(), os.ErrPermission.Error()) {
+				logger.Infof("Could not get environment for process %d", pid)
+			}
 			continue
 		}
 		if pid != myPid && envHasMarkers(key, env) {
 			p := os.Process{}
 			p.Pid = pid
 			if err := p.Kill(); err != nil {
-				logger.Infof("killing %d failed: %v", pid, err)
+				logger.Infof("Killing %d failed: %s", pid, err.Error())
 			} else {
 				logger.Infof("Killed process %d", pid)
 			}
 		}
 	}
 
+	unkilledPids := []string{}
 	// Retry listing processes until all have successfully exited
 	ctx, cancel := context.WithTimeout(context.Background(), contextTimeout)
 	defer cancel()
 	err = Retry(
 		ctx,
 		func() (bool, error) {
+			unkilledPids = []string{}
 			pids, err = listProc()
 			if err != nil {
 				return false, err
 			}
-			if len(pids) == 0 {
-				return false, nil
+			for _, pid := range pids {
+				env, err = getEnv(pid)
+				if err != nil {
+					if !strings.Contains(err.Error(), os.ErrPermission.Error()) {
+						logger.Infof("Could not get environment for process %s", pid)
+					}
+					continue
+				}
+				if pid != myPid && envHasMarkers(key, env) {
+					unkilledPids = append(unkilledPids, pid)
+				}
 			}
-			return true, nil
+			return len(unkilledPids) != 0, nil
 		},
-		processCleanupAttempts,
-		processCleanupTimeoutMin,
-		processCleanupTimeoutMax,
+		cleanupCheckAttempts,
+		cleanupCheckTimeoutMin,
+		cleanupCheckTimeoutMax,
 	)
 	if err != nil {
 		return err
 	}
 
 	// Log each process that was not cleaned up
-	for _, pid := range pids {
+	for _, pid := range unkilledPids {
 		logger.Infof("Failed to clean up process %d", pid)
 	}
 
