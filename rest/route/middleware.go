@@ -400,6 +400,7 @@ type RequiresProjectViewPermission struct{}
 func (p *RequiresProjectViewPermission) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	if !evergreen.AclCheckingIsEnabled {
 		next(rw, r)
+		return
 	}
 	projectID, status, err := urlVarsToScopes(r)
 	if err != nil {
