@@ -331,3 +331,85 @@ func TestTaskAuthMiddleware(t *testing.T) {
 	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 	assert.Equal(http.StatusOK, rw.Code)
 }
+
+func TestProjectViewPermission(t *testing.T) {
+	//setup
+	assert := assert.New(t)
+	counter := 0
+	counterFunc := func(rw http.ResponseWriter, r *http.Request) {
+		counter++
+		rw.WriteHeader(http.StatusOK)
+	}
+	env := evergreen.GetEnvironment()
+	assert.NoError(db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection, model.ProjectRefCollection))
+	role1 := gimlet.Role{
+		ID:          "r1",
+		Scope:       "proj1",
+		Permissions: map[string]int{evergreen.PermissionTasks: int(evergreen.TasksView)},
+	}
+	assert.NoError(env.RoleManager().UpdateRole(role1))
+	scope1 := gimlet.Scope{
+		ID:        "proj1",
+		Resources: []string{"proj1"},
+		Type:      "project",
+	}
+	assert.NoError(env.RoleManager().AddScope(scope1))
+	proj1 := model.ProjectRef{
+		Identifier: "proj1",
+		Private:    true,
+	}
+	proj2 := model.ProjectRef{
+		Identifier: "proj2",
+	}
+	assert.NoError(proj1.Insert())
+	assert.NoError(proj2.Insert())
+	permissionMiddleware := RequiresProjectViewPermission{}
+	checkPermission := func(rw http.ResponseWriter, r *http.Request) {
+		permissionMiddleware.ServeHTTP(rw, r, counterFunc)
+	}
+	authenticator := gimlet.NewBasicAuthenticator(nil, nil)
+	user := gimlet.NewBasicUser("user", "name", "email", "password", "key", nil, false, env.RoleManager())
+	um, err := gimlet.NewBasicUserManager([]gimlet.User{user}, env.RoleManager())
+	assert.NoError(err)
+	authHandler := gimlet.NewAuthenticationHandler(authenticator, um)
+	req := httptest.NewRequest("GET", "http://foo.com/bar", nil)
+
+	// no project should 404
+	rw := httptest.NewRecorder()
+	authHandler.ServeHTTP(rw, req, checkPermission)
+	assert.Equal(http.StatusNotFound, rw.Code)
+	assert.Equal(0, counter)
+
+	// public project should return 200 even with no user
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj2"})
+	rw = httptest.NewRecorder()
+	authHandler.ServeHTTP(rw, req, checkPermission)
+	assert.Equal(http.StatusOK, rw.Code)
+	assert.Equal(1, counter)
+
+	// private project with no user attached should 401
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj1"})
+	rw = httptest.NewRecorder()
+	authHandler.ServeHTTP(rw, req, checkPermission)
+	assert.Equal(http.StatusUnauthorized, rw.Code)
+	assert.Equal(1, counter)
+
+	// attach a user, but with no permissions yet
+	ctx := gimlet.AttachUser(req.Context(), user)
+	req = req.WithContext(ctx)
+	rw = httptest.NewRecorder()
+	authHandler.ServeHTTP(rw, req, checkPermission)
+	assert.Equal(http.StatusUnauthorized, rw.Code)
+	assert.Equal(1, counter)
+
+	// give user the right permissions
+	user = gimlet.NewBasicUser("user", "name", "email", "password", "key", []string{role1.ID}, false, env.RoleManager())
+	_, err = um.GetOrCreateUser(user)
+	assert.NoError(err)
+	ctx = gimlet.AttachUser(req.Context(), user)
+	req = req.WithContext(ctx)
+	rw = httptest.NewRecorder()
+	authHandler.ServeHTTP(rw, req, checkPermission)
+	assert.Equal(http.StatusOK, rw.Code)
+	assert.Equal(2, counter)
+}

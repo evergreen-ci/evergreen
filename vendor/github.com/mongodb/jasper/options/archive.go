@@ -13,9 +13,11 @@ type ArchiveFormat string
 const (
 	// ArchiveAuto is an ArchiveFormat that does not force any particular type of
 	// archive format.
-	ArchiveAuto  ArchiveFormat = "auto"
-	ArchiveTarGz               = "targz" // nolint
-	ArchiveZip                 = "zip"   // nolint
+	ArchiveAuto ArchiveFormat = "auto"
+	// ArchiveTarGz is an ArchiveFormat for gzipped tar archives.
+	ArchiveTarGz ArchiveFormat = "targz"
+	// ArchiveZip is an ArchiveFormat for Zip archives.
+	ArchiveZip ArchiveFormat = "zip"
 )
 
 // Validate checks that the ArchiveFormat is a recognized format.

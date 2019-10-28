@@ -210,20 +210,6 @@ func (s *VSphereSuite) TestGetDNSNameAPICall() {
 	s.Empty(dns)
 }
 
-func (s *VSphereSuite) TestGetSSHOptions() {
-	opt := "Option"
-	keyname := "key"
-	host := &host.Host{
-		Distro: distro.Distro{
-			SSHOptions: []string{opt},
-		},
-	}
-
-	opts, err := s.manager.GetSSHOptions(host, keyname)
-	s.NoError(err)
-	s.Equal([]string{"-i", keyname, "-o", opt}, opts)
-}
-
 func (s *VSphereSuite) TestSpawnInvalidSettings() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

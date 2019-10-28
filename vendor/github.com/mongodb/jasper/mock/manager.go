@@ -12,15 +12,15 @@ import (
 // Manager implements the Manager interface with exported fields to
 // configure and introspect the mock's behavior.
 type Manager struct {
-	ManagerID    string
 	FailCreate   bool
-	Create       func(*options.Create) Process
-	CreateConfig Process
 	FailRegister bool
 	FailList     bool
 	FailGroup    bool
 	FailGet      bool
 	FailClose    bool
+	Create       func(*options.Create) Process
+	CreateConfig Process
+	ManagerID    string
 	Procs        []jasper.Process
 }
 
@@ -49,7 +49,7 @@ func (m *Manager) CreateProcess(ctx context.Context, opts *options.Create) (jasp
 	if m.Create != nil {
 		proc = m.Create(opts)
 	} else {
-		proc = Process(m.CreateConfig)
+		proc = m.CreateConfig
 		proc.ProcInfo.Options = *opts
 	}
 

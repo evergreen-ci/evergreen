@@ -19,6 +19,7 @@ type Tag struct {
 	Tagger       *CommitAuthor          `json:"tagger,omitempty"`
 	Object       *GitObject             `json:"object,omitempty"`
 	Verification *SignatureVerification `json:"verification,omitempty"`
+	NodeID       *string                `json:"node_id,omitempty"`
 }
 
 // createTagRequest represents the body of a CreateTag request. This is mostly
@@ -32,7 +33,7 @@ type createTagRequest struct {
 	Tagger  *CommitAuthor `json:"tagger,omitempty"`
 }
 
-// GetTag fetchs a tag from a repo given a SHA.
+// GetTag fetches a tag from a repo given a SHA.
 //
 // GitHub API docs: https://developer.github.com/v3/git/tags/#get-a-tag
 func (s *GitService) GetTag(ctx context.Context, owner string, repo string, sha string) (*Tag, *Response, error) {
@@ -41,9 +42,6 @@ func (s *GitService) GetTag(ctx context.Context, owner string, repo string, sha 
 	if err != nil {
 		return nil, nil, err
 	}
-
-	// TODO: remove custom Accept header when this API fully launches.
-	req.Header.Set("Accept", mediaTypeGitSigningPreview)
 
 	tag := new(Tag)
 	resp, err := s.client.Do(ctx, req, tag)

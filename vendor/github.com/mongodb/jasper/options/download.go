@@ -67,6 +67,8 @@ func (info Download) Download() error {
 	return nil
 }
 
+// Extract extracts the download to the path specified, using the
+// archive format specified.
 func (info Download) Extract() error {
 	var archiveHandler archiver.Archiver
 	switch info.ArchiveOpts.Format {

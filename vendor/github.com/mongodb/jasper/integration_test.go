@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/testutil"
 	"github.com/stretchr/testify/assert"
@@ -93,7 +94,7 @@ func setupMongods(numProcs int, mongodPath string) ([]options.Create, []string, 
 
 func removeDBPaths(dbPaths []string) {
 	for _, dbPath := range dbPaths {
-		os.RemoveAll(dbPath)
+		grip.Error(os.RemoveAll(dbPath))
 	}
 }
 
@@ -117,28 +118,28 @@ func TestMongod(t *testing.T) {
 				id          string
 				numProcs    int
 				signal      syscall.Signal
-				sleepMillis time.Duration
+				sleep       time.Duration
 				expectError bool
 			}{
 				{
 					id:          "WithSingleMongod",
 					numProcs:    1,
 					signal:      syscall.SIGKILL,
-					sleepMillis: 0,
+					sleep:       0,
 					expectError: true,
 				},
 				{
 					id:          "With10MongodsAndSigkill",
 					numProcs:    10,
 					signal:      syscall.SIGKILL,
-					sleepMillis: 2000,
+					sleep:       2000 * time.Millisecond,
 					expectError: true,
 				},
 				{
 					id:          "With30MongodsAndSigkill",
 					numProcs:    30,
 					signal:      syscall.SIGKILL,
-					sleepMillis: 4000,
+					sleep:       4000 * time.Millisecond,
 					expectError: true,
 				},
 			} {
@@ -165,7 +166,7 @@ func TestMongod(t *testing.T) {
 					}
 
 					// Signal to stop mongods
-					time.Sleep(test.sleepMillis * time.Millisecond)
+					time.Sleep(test.sleep)
 					for _, proc := range procs {
 						err := proc.Signal(ctx, test.signal)
 						assert.NoError(t, err)

@@ -33,7 +33,7 @@ func NewSSHClient(remoteOpts options.Remote, clientOpts ClientOptions, trackProc
 		return nil, errors.Wrap(err, "problem validating client options")
 	}
 
-	manager, err := jasper.NewLocalManager(trackProcs)
+	manager, err := jasper.NewSynchronizedManager(trackProcs)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem creating underlying manager")
 	}

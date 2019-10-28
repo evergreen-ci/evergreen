@@ -41,8 +41,8 @@ buildvariants:
       set:
         tags: "gotcha_boy"
 `
-			p, errs := createIntermediateProject([]byte(axes))
-			So(errs, ShouldBeNil)
+			p, err := createIntermediateProject([]byte(axes))
+			So(err, ShouldBeNil)
 			axis := p.Axes[0]
 			So(axis.Id, ShouldEqual, "os")
 			So(axis.DisplayName, ShouldEqual, "Operating System")
@@ -77,8 +77,8 @@ buildvariants:
     - blue
     - green
 `
-			p, errs := createIntermediateProject([]byte(simple))
-			So(errs, ShouldBeNil)
+			p, err := createIntermediateProject([]byte(simple))
+			So(err, ShouldBeNil)
 			So(len(p.BuildVariants), ShouldEqual, 2)
 			m1 := *p.BuildVariants[0].matrix
 			So(m1, ShouldResemble, matrix{
@@ -108,8 +108,8 @@ buildvariants:
 - name: "single_variant"
   tasks: "*"
 `
-			p, errs := createIntermediateProject([]byte(simple))
-			So(errs, ShouldBeNil)
+			p, err := createIntermediateProject([]byte(simple))
+			So(err, ShouldBeNil)
 			So(len(p.BuildVariants), ShouldEqual, 2)
 			m1 := *p.BuildVariants[0].matrix
 			So(m1.Id, ShouldEqual, "test")

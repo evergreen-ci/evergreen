@@ -267,13 +267,24 @@ func (tep *taskExecutionPatchHandler) Parse(ctx context.Context, r *http.Request
 func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if tep.Priority != nil {
 		priority := *tep.Priority
-		if priority > evergreen.MaxTaskPriority &&
-			!auth.IsSuperUser(tep.sc.GetSuperUsers(), tep.user) {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				Message: fmt.Sprintf("Insufficient privilege to set priority to %d, "+
-					"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),
-				StatusCode: http.StatusForbidden,
-			})
+		if priority > evergreen.MaxTaskPriority {
+			requiredPermission := gimlet.PermissionOpts{
+				Resource:      tep.task.Project,
+				ResourceType:  "project",
+				Permission:    evergreen.PermissionTasks,
+				RequiredLevel: int(evergreen.TasksAdmin),
+			}
+			taskAdmin, err := tep.user.HasPermission(requiredPermission)
+			if err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(fmt.Errorf("error checking user permissions"))
+			}
+			if !auth.IsSuperUser(tep.sc.GetSuperUsers(), tep.user) && !taskAdmin { // TODO PM-1355 remove superuser check
+				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+					Message: fmt.Sprintf("Insufficient privilege to set priority to %d, "+
+						"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),
+					StatusCode: http.StatusUnauthorized,
+				})
+			}
 		}
 		if err := tep.sc.SetTaskPriority(tep.task, tep.user.Username(), priority); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))

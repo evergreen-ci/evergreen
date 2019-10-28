@@ -452,6 +452,7 @@ func TestHostSetExpirationTime(t *testing.T) {
 
 		memHost := &Host{
 			Id:             "hostOne",
+			NoExpiration:   true,
 			ExpirationTime: initialExpirationTime,
 			Notifications:  notifications,
 		}
@@ -465,6 +466,8 @@ func TestHostSetExpirationTime(t *testing.T) {
 
 			// ensure the db entries are as expected
 			So(err, ShouldBeNil)
+			So(memHost.NoExpiration, ShouldBeTrue)
+			So(dbHost.NoExpiration, ShouldBeTrue)
 			So(memHost.ExpirationTime.Round(time.Second).Equal(
 				initialExpirationTime.Round(time.Second)), ShouldBeTrue)
 			So(dbHost.ExpirationTime.Round(time.Second).Equal(
@@ -480,6 +483,8 @@ func TestHostSetExpirationTime(t *testing.T) {
 
 			// ensure the db entries are as expected
 			So(err, ShouldBeNil)
+			So(memHost.NoExpiration, ShouldBeFalse)
+			So(dbHost.NoExpiration, ShouldBeFalse)
 			So(memHost.ExpirationTime.Round(time.Second).Equal(
 				newExpirationTime.Round(time.Second)), ShouldBeTrue)
 			So(dbHost.ExpirationTime.Round(time.Second).Equal(

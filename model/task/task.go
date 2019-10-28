@@ -1196,7 +1196,7 @@ func (t *Task) String() (taskStruct string) {
 	return
 }
 
-// Insert writes the b to the db.
+// Insert writes the task to the db.
 func (t *Task) Insert() error {
 	return db.Insert(Collection, t)
 }

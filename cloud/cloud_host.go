@@ -62,7 +62,3 @@ func (cloudHost *CloudHost) GetInstanceStatus(ctx context.Context) (CloudStatus,
 func (cloudHost *CloudHost) GetDNSName(ctx context.Context) (string, error) {
 	return cloudHost.CloudMgr.GetDNSName(ctx, cloudHost.Host)
 }
-
-func (cloudHost *CloudHost) GetSSHOptions() ([]string, error) {
-	return cloudHost.CloudMgr.GetSSHOptions(cloudHost.Host, cloudHost.KeyPath)
-}

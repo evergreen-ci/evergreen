@@ -278,7 +278,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Invalid password"))
 			return
 		}
-		if err := cloud.SetHostRDPPassword(ctx, uis.env, h, pwd); err != nil {
+		if err = cloud.SetHostRDPPassword(ctx, uis.env, h, pwd); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
@@ -287,7 +287,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 
 	case HostInstanceTypeUpdate:
 		instanceType := restModel.FromAPIString(updateParams.InstanceType)
-		if err := cloud.ModifySpawnHost(ctx, uis.env, h, host.HostModifyOptions{
+		if err = cloud.ModifySpawnHost(ctx, uis.env, h, host.HostModifyOptions{
 			InstanceType: instanceType,
 		}); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -298,11 +298,39 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case HostExpirationExtension:
+		if updateParams.Expiration.IsZero() { // set expiration to never expire
+			count, err := host.CountSpawnhostsWithNoExpirationByUser(u.Id)
+			if err != nil {
+				PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error retrieving user spawn host data"))
+				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error retrieving user spawn host data"))
+				return
+			}
+			if count >= host.MaxSpawnhostsWithNoExpirationPerUser {
+				msg := fmt.Sprintf("Can only have %d non-expirable spawn hosts", host.MaxSpawnhostsWithNoExpirationPerUser)
+				PushFlash(uis.CookieStore, r, w, NewErrorFlash(msg))
+				uis.LoggedError(w, r, http.StatusBadRequest, errors.New(msg))
+				return
+			}
+			noExpiration := true
+			if err = cloud.ModifySpawnHost(ctx, uis.env, h, host.HostModifyOptions{NoExpiration: &noExpiration}); err != nil {
+				PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error updating host expiration"))
+				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error extending host expiration"))
+				return
+			}
+			PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("Host expiration successfully set to never expire")))
+			gimlet.WriteJSON(w, "Successfully updated host to never expire")
+			return
+		}
+		// use now as a base for how far we're extending if there is currently no expiration
+		if h.NoExpiration {
+			h.ExpirationTime = time.Now()
+		}
 		if updateParams.Expiration.Before(h.ExpirationTime) {
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash("Expiration can only be extended."))
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("expiration can only be extended"))
 			return
 		}
+
 		addtTime := updateParams.Expiration.Sub(h.ExpirationTime)
 		var futureExpiration time.Time
 		futureExpiration, err = cloud.MakeExtendedSpawnHostExpiration(h, addtTime)
@@ -311,11 +339,12 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusBadRequest, err)
 			return
 		}
-		if err := h.SetExpirationTime(futureExpiration); err != nil {
+		if err = h.SetExpirationTime(futureExpiration); err != nil {
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error updating host expiration time"))
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error extending host expiration time"))
 			return
 		}
+
 		loc, err := time.LoadLocation(u.Settings.Timezone)
 		if err != nil || loc == nil {
 			loc = time.UTC

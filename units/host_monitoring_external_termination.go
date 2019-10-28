@@ -96,7 +96,7 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 	j.AddError(err)
 }
 
-// handleExternallyTerminatedHost will check if a host from a dynamic provider has been termimated
+// handleExternallyTerminatedHost will check if a host from a dynamic provider has been terminated
 // and clean up the host if it has. Returns true if the host has been externally terminated
 func handleExternallyTerminatedHost(ctx context.Context, id string, env evergreen.Environment, h *host.Host) (bool, error) {
 	if h.Provider == evergreen.ProviderNameStatic {

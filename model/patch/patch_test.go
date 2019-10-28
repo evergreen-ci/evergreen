@@ -145,17 +145,15 @@ func (s *patchSuite) TestByGithubPRAndCreatedBefore() {
 }
 
 func (s *patchSuite) TestMakeMergePatch() {
-	shaTemp := "abcdef"
-	numTemp := 1
 	pr := &github.PullRequest{
 		Base: &github.PullRequestBranch{
-			SHA: &shaTemp,
+			SHA: github.String("abcdef"),
 		},
 		User: &github.User{
-			ID: &numTemp,
+			ID: github.Int64(1),
 		},
-		Number:         &numTemp,
-		MergeCommitSHA: &shaTemp,
+		Number:         github.Int(1),
+		MergeCommitSHA: github.String("abcdef"),
 	}
 
 	p, err := MakeMergePatch(pr, "mci", evergreen.CommitQueueAlias)

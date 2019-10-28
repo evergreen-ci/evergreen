@@ -34,7 +34,7 @@ func TestExecCmdSuite(t *testing.T) {
 
 func (s *execCmdSuite) SetupSuite() {
 	var err error
-	s.jasper, err = jasper.NewLocalManager(false)
+	s.jasper, err = jasper.NewSynchronizedManager(false)
 	s.Require().NoError(err)
 }
 

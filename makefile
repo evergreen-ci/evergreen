@@ -7,7 +7,6 @@ packages := $(name) agent operations cloud command db util plugin units
 packages += thirdparty auth scheduler model validator service monitor repotracker
 packages += model-patch model-artifact model-host model-build model-event model-task model-user model-distro model-manifest model-testresult
 packages += model-grid rest-client rest-data rest-route rest-model migrations trigger model-alertrecord model-notification model-stats model-reliability
-packages += model-credentials
 lintOnlyPackages := testutil model-manifest
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
@@ -134,7 +133,7 @@ smoke-test-task:$(localClientBinary) load-smoke-data
 	pkill -f $<
 smoke-test-endpoints:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
-	./$< service deploy test-endpoints || (pkill -f $<; exit 1)
+	./$< service deploy test-endpoints --username admin --key abb623665fdbf368a1db980dde6ee0f0 || (pkill -f $<; exit 1)
 	pkill -f $<
 smoke-start-server:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web

@@ -157,10 +157,9 @@ func TestDefaultTrigger(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			testcase(ctx, t, &localProcessManager{
+			testcase(ctx, t, &synchronizedProcessManager{
 				manager: &basicProcessManager{
-					skipDefaultTrigger: true,
-					procs:              map[string]Process{},
+					procs: map[string]Process{},
 				},
 			})
 		})

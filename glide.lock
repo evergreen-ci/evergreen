@@ -107,7 +107,7 @@ imports:
   - name: golang.org/x/sys
     version: a9d3bda3a223baa6bba6ef412cb273f0fd163c05
   - name: github.com/google/go-github
-    version: 8c08f4fba5e05e0fd2821a5f80cf0cf643bd5314
+    version: 9686ff0746200cf521ce225525b421e13b4eac1a
   - name: github.com/google/go-querystring
     version: 53e6ce116135b80d037921a7fdd5138cf32d7a8a
   - name: github.com/PuerkitoBio/rehttp
@@ -122,13 +122,13 @@ imports:
   - name: github.com/mongodb/amboy
     version: 6cc2541dc7dbad9c3472dc16de975270d60ee9de
   - name: github.com/evergreen-ci/gimlet
-    version: 1ea05cdfc321df17016663deeed11528a1da4725
+    version: 5c99f143ec586f5796afc894139c5d09172e40d8
   - name: github.com/evergreen-ci/shrub
     version: 32e668cd99410328bf6659e55671c11a6c727d9a
   - name: github.com/evergreen-ci/pail
     version: 7b2f8e0b2d972ca621cad3777d68276a54da13d0
   - name: github.com/mongodb/jasper
-    version: 6419a04f46f350fce59a52c7fab84dd5d078e146
+    version: 92b4bc00e502630402e5ae96b1a85639b58f9b16
   - name: go.mongodb.org/mongo-driver
     version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86
   - name: github.com/evergreen-ci/timber

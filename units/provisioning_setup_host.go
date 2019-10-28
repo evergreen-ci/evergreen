@@ -304,12 +304,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 // on the host, downloading the latest version of Jasper, and restarting the
 // Jasper service.
 func (j *setupHostJob) setupJasper(ctx context.Context, settings *evergreen.Settings) error {
-	cloudHost, err := cloud.GetCloudHost(ctx, j.host, j.env)
-	if err != nil {
-		return errors.Wrapf(err, "failed to get cloud host for %s", j.host.Id)
-	}
-
-	sshOptions, err := cloudHost.GetSSHOptions()
+	sshOptions, err := j.host.GetSSHOptions(settings)
 	if err != nil {
 		return errors.Wrapf(err, "error getting ssh options for host %s", j.host.Id)
 	}
@@ -472,11 +467,7 @@ func (j *setupHostJob) copyScript(ctx context.Context, settings *evergreen.Setti
 		return errors.Wrap(err, "error writing local script")
 	}
 
-	cloudHost, err := cloud.GetCloudHost(ctx, target, j.env)
-	if err != nil {
-		return errors.Wrapf(err, "failed to get cloud host for %s", target.Id)
-	}
-	sshOptions, err := cloudHost.GetSSHOptions()
+	sshOptions, err := target.GetSSHOptions(settings)
 	if err != nil {
 		return errors.Wrapf(err, "error getting ssh options for host %v", target.Id)
 	}
@@ -593,18 +584,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 			return errors.Wrapf(err, "Failed to load client binary onto host %s: %+v", h.Id, err)
 		}
 
-		cloudHost, err := cloud.GetCloudHost(ctx, h, j.env)
-		if err != nil {
-			grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
-				"operation": "setting host unprovisioned",
-				"job":       j.ID(),
-				"distro":    h.Distro.Id,
-				"host":      h.Id,
-			}))
-
-			return errors.Wrapf(err, "Failed to get cloud host for %s", h.Id)
-		}
-		sshOptions, err := cloudHost.GetSSHOptions()
+		sshOptions, err := h.GetSSHOptions(settings)
 		if err != nil {
 			grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
 				"operation": "setting host unprovisioned",
@@ -717,11 +697,7 @@ func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settin
 		return nil, errors.Wrapf(err, "error parsing ssh info %s", target.Host)
 	}
 
-	cloudHost, err := cloud.GetCloudHost(ctx, target, j.env)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to get cloud host for %s", target.Id)
-	}
-	sshOptions, err := cloudHost.GetSSHOptions()
+	sshOptions, err := target.GetSSHOptions(settings)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Error getting ssh options for host %v", target.Id)
 	}
@@ -820,11 +796,7 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, taskId, cliPath,
 		return errors.Wrapf(err, "error parsing ssh info %s", target.Host)
 	}
 
-	cloudHost, err := cloud.GetCloudHost(ctx, target, j.env)
-	if err != nil {
-		return errors.Wrapf(err, "Failed to get cloud host for %v", target.Id)
-	}
-	sshOptions, err := cloudHost.GetSSHOptions()
+	sshOptions, err := target.GetSSHOptions(settings)
 	if err != nil {
 		return errors.Wrapf(err, "Error getting ssh options for host %v", target.Id)
 	}

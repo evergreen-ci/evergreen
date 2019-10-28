@@ -48,7 +48,7 @@ func (s *AgentSuite) SetupTest() {
 		comm: client.NewMock("url"),
 	}
 	s.mockCommunicator = s.a.comm.(*client.Mock)
-	s.a.jasper, err = jasper.NewLocalManager(true)
+	s.a.jasper, err = jasper.NewSynchronizedManager(true)
 	s.Require().NoError(err)
 
 	s.tc = &taskContext{

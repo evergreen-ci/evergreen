@@ -307,7 +307,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err := j.runHostTeardown(ctx, cloudHost); err != nil {
+	if err := j.runHostTeardown(ctx, settings); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"job_type": j.Type().Name,
 			"message":  "Error running teardown script",
@@ -360,14 +360,14 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	}
 }
 
-func (j *hostTerminationJob) runHostTeardown(ctx context.Context, cloudHost *cloud.CloudHost) error {
+func (j *hostTerminationJob) runHostTeardown(ctx context.Context, settings *evergreen.Settings) error {
 	if j.host.Distro.Teardown == "" ||
 		j.host.Status == evergreen.HostProvisionFailed ||
 		j.host.SpawnOptions.SpawnedByTask {
 		return nil
 	}
 
-	sshOptions, err := cloudHost.GetSSHOptions()
+	sshOptions, err := j.host.GetSSHOptions(settings)
 	if err != nil {
 		return errors.Wrapf(err, "error getting ssh options for host %s", j.host.Id)
 	}

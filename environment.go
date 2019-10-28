@@ -582,7 +582,7 @@ func (e *envState) initSenders(ctx context.Context) error {
 }
 
 func (e *envState) initJasper() error {
-	jpm, err := jasper.NewLocalManager(true)
+	jpm, err := jasper.NewSynchronizedManager(true)
 	if err != nil {
 		return errors.WithStack(err)
 	}

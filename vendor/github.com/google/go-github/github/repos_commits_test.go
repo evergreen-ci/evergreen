@@ -16,13 +16,12 @@ import (
 )
 
 func TestRepositoriesService_ListCommits(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	// given
 	mux.HandleFunc("/repos/o/r/commits", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", mediaTypeGitSigningPreview)
 		testFormValues(t, r,
 			values{
 				"sha":    "s",
@@ -53,12 +52,11 @@ func TestRepositoriesService_ListCommits(t *testing.T) {
 }
 
 func TestRepositoriesService_GetCommit(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/repos/o/r/commits/s", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", mediaTypeGitSigningPreview)
 		fmt.Fprintf(w, `{
 		  "sha": "s",
 		  "commit": { "message": "m" },
@@ -128,7 +126,7 @@ func TestRepositoriesService_GetCommit(t *testing.T) {
 }
 
 func TestRepositoriesService_GetCommitRaw_diff(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	const rawStr = "@@diff content"
@@ -150,7 +148,7 @@ func TestRepositoriesService_GetCommitRaw_diff(t *testing.T) {
 }
 
 func TestRepositoriesService_GetCommitRaw_patch(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	const rawStr = "@@patch content"
@@ -172,7 +170,7 @@ func TestRepositoriesService_GetCommitRaw_patch(t *testing.T) {
 }
 
 func TestRepositoriesService_GetCommitRaw_invalid(t *testing.T) {
-	setup()
+	client, _, _, teardown := setup()
 	defer teardown()
 
 	_, _, err := client.Repositories.GetCommitRaw(context.Background(), "o", "r", "s", RawOptions{100})
@@ -185,7 +183,7 @@ func TestRepositoriesService_GetCommitRaw_invalid(t *testing.T) {
 }
 
 func TestRepositoriesService_GetCommitSHA1(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 	const sha1 = "01234abcde"
 
@@ -225,8 +223,47 @@ func TestRepositoriesService_GetCommitSHA1(t *testing.T) {
 	}
 }
 
+func TestRepositoriesService_NonAlphabetCharacter_GetCommitSHA1(t *testing.T) {
+	client, mux, _, teardown := setup()
+	defer teardown()
+	const sha1 = "01234abcde"
+
+	mux.HandleFunc("/repos/o/r/commits/master%20hash", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		testHeader(t, r, "Accept", mediaTypeV3SHA)
+
+		fmt.Fprintf(w, sha1)
+	})
+
+	got, _, err := client.Repositories.GetCommitSHA1(context.Background(), "o", "r", "master%20hash", "")
+	if err != nil {
+		t.Errorf("Repositories.GetCommitSHA1 returned error: %v", err)
+	}
+
+	if want := sha1; got != want {
+		t.Errorf("Repositories.GetCommitSHA1 = %v, want %v", got, want)
+	}
+
+	mux.HandleFunc("/repos/o/r/commits/tag", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		testHeader(t, r, "Accept", mediaTypeV3SHA)
+		testHeader(t, r, "If-None-Match", `"`+sha1+`"`)
+
+		w.WriteHeader(http.StatusNotModified)
+	})
+
+	got, _, err = client.Repositories.GetCommitSHA1(context.Background(), "o", "r", "tag", sha1)
+	if err == nil {
+		t.Errorf("Expected HTTP 304 response")
+	}
+
+	if want := ""; got != want {
+		t.Errorf("Repositories.GetCommitSHA1 = %v, want %v", got, want)
+	}
+}
+
 func TestRepositoriesService_CompareCommits(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/repos/o/r/compare/b...h", func(w http.ResponseWriter, r *http.Request) {
@@ -321,5 +358,25 @@ func TestRepositoriesService_CompareCommits(t *testing.T) {
 
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("Repositories.CompareCommits returned \n%+v, want \n%+v", got, want)
+	}
+}
+
+func TestRepositoriesService_ListBranchesHeadCommit(t *testing.T) {
+	client, mux, _, teardown := setup()
+	defer teardown()
+
+	mux.HandleFunc("/repos/o/r/commits/s/branches-where-head", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		fmt.Fprintf(w, `[{"name": "b"}]`)
+	})
+
+	branches, _, err := client.Repositories.ListBranchesHeadCommit(context.Background(), "o", "r", "s")
+	if err != nil {
+		t.Errorf("Repositories.ListBranchesHeadCommit returned error: %v", err)
+	}
+
+	want := []*BranchCommit{{Name: String("b")}}
+	if !reflect.DeepEqual(branches, want) {
+		t.Errorf("Repositories.ListBranchesHeadCommit returned %+v, want %+v", branches, want)
 	}
 }

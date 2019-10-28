@@ -114,6 +114,8 @@ func (opts *Create) Validate() error {
 	return nil
 }
 
+// Hash returns the canonical hash implementation for the create
+// options (and thus the process it will create.)
 func (opts *Create) Hash() hash.Hash {
 	hash := sha1.New()
 
@@ -259,6 +261,8 @@ func (opts *Create) Close() error {
 	return catcher.Resolve()
 }
 
+// RegisterCloser adds the closer function to the processes closer
+// functions, which are called when the process is closed.
 func (opts *Create) RegisterCloser(fn func() error) {
 	if fn == nil {
 		return

@@ -596,7 +596,7 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 		},
 	})
 	if err != nil {
-		return errors.Wrapf(err, "error creating changing expire-on tag using client for '%s", h.Id)
+		return errors.Wrapf(err, "error changing expire-on tag using client for '%s", h.Id)
 	}
 
 	if noExpiration {
@@ -1158,11 +1158,6 @@ func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, erro
 	defer m.client.Close()
 
 	return m.client.GetPublicDNSName(ctx, h)
-}
-
-// GetSSHOptions returns the command-line args to pass to SSH.
-func (m *ec2Manager) GetSSHOptions(h *host.Host, keyName string) ([]string, error) {
-	return h.GetSSHOptions(keyName)
 }
 
 // TimeTilNextPayment returns how long until the next payment is due for a host.

@@ -15,8 +15,217 @@ import (
 	"time"
 )
 
+func TestGist_marshall(t *testing.T) {
+	testJSONMarshal(t, &Gist{}, "{}")
+
+	createdAt := time.Date(2010, time.February, 10, 10, 10, 0, 0, time.UTC)
+	updatedAt := time.Date(2010, time.February, 10, 10, 10, 0, 0, time.UTC)
+
+	u := &Gist{
+		ID:          String("i"),
+		Description: String("description"),
+		Public:      Bool(true),
+		Owner: &User{
+			Login:       String("ll"),
+			ID:          Int64(123),
+			AvatarURL:   String("a"),
+			GravatarID:  String("g"),
+			Name:        String("n"),
+			Company:     String("c"),
+			Blog:        String("b"),
+			Location:    String("l"),
+			Email:       String("e"),
+			Hireable:    Bool(true),
+			PublicRepos: Int(1),
+			Followers:   Int(1),
+			Following:   Int(1),
+			CreatedAt:   &Timestamp{referenceTime},
+			URL:         String("u"),
+		},
+		Files: map[GistFilename]GistFile{
+			"gistfile.py": {
+				Size:     Int(167),
+				Filename: String("gistfile.py"),
+				Language: String("Python"),
+				Type:     String("application/x-python"),
+				RawURL:   String("raw-url"),
+				Content:  String("c"),
+			},
+		},
+		Comments:   Int(1),
+		HTMLURL:    String("html-url"),
+		GitPullURL: String("gitpull-url"),
+		GitPushURL: String("gitpush-url"),
+		CreatedAt:  &createdAt,
+		UpdatedAt:  &updatedAt,
+		NodeID:     String("node"),
+	}
+
+	want := `{
+		"id": "i",
+		"description": "description",
+		"public": true,
+		"owner": {
+			"login": "ll",
+			"id": 123,
+			"avatar_url": "a",
+			"gravatar_id": "g",
+			"name": "n",
+			"company": "c",
+			"blog": "b",
+			"location": "l",
+			"email": "e",
+			"hireable": true,
+			"public_repos": 1,
+			"followers": 1,
+			"following": 1,
+			"created_at": ` + referenceTimeStr + `,
+			"url": "u"
+		},
+		"files": {
+			"gistfile.py": {
+				"size": 167,
+				"filename": "gistfile.py",
+				"language": "Python",
+				"type": "application/x-python",
+				"raw_url": "raw-url",
+				"content": "c"
+			}
+		},
+		"comments": 1,
+		"html_url": "html-url",
+		"git_pull_url": "gitpull-url",
+		"git_push_url": "gitpush-url",
+		"created_at": "2010-02-10T10:10:00Z",
+		"updated_at": "2010-02-10T10:10:00Z",
+		"node_id": "node"
+	}`
+
+	testJSONMarshal(t, u, want)
+}
+
+func TestGistCommit_marshall(t *testing.T) {
+	testJSONMarshal(t, &GistCommit{}, "{}")
+
+	u := &GistCommit{
+		URL:     String("u"),
+		Version: String("v"),
+		User: &User{
+			Login:       String("ll"),
+			ID:          Int64(123),
+			AvatarURL:   String("a"),
+			GravatarID:  String("g"),
+			Name:        String("n"),
+			Company:     String("c"),
+			Blog:        String("b"),
+			Location:    String("l"),
+			Email:       String("e"),
+			Hireable:    Bool(true),
+			PublicRepos: Int(1),
+			Followers:   Int(1),
+			Following:   Int(1),
+			CreatedAt:   &Timestamp{referenceTime},
+			URL:         String("u"),
+		},
+		ChangeStatus: &CommitStats{
+			Additions: Int(1),
+			Deletions: Int(1),
+			Total:     Int(2),
+		},
+		CommittedAt: &Timestamp{referenceTime},
+		NodeID:      String("node"),
+	}
+
+	want := `{
+		"url": "u",
+		"version": "v",
+		"user": {
+			"login": "ll",
+			"id": 123,
+			"avatar_url": "a",
+			"gravatar_id": "g",
+			"name": "n",
+			"company": "c",
+			"blog": "b",
+			"location": "l",
+			"email": "e",
+			"hireable": true,
+			"public_repos": 1,
+			"followers": 1,
+			"following": 1,
+			"created_at": ` + referenceTimeStr + `,
+			"url": "u"
+		},
+		"change_status": {
+			"additions": 1,
+			"deletions": 1,
+			"total": 2
+		},
+		"committed_at": ` + referenceTimeStr + `,
+		"node_id": "node"
+	}`
+
+	testJSONMarshal(t, u, want)
+}
+
+func TestGistFork_marshall(t *testing.T) {
+	testJSONMarshal(t, &GistFork{}, "{}")
+
+	u := &GistFork{
+		URL: String("u"),
+		User: &User{
+			Login:       String("ll"),
+			ID:          Int64(123),
+			AvatarURL:   String("a"),
+			GravatarID:  String("g"),
+			Name:        String("n"),
+			Company:     String("c"),
+			Blog:        String("b"),
+			Location:    String("l"),
+			Email:       String("e"),
+			Hireable:    Bool(true),
+			PublicRepos: Int(1),
+			Followers:   Int(1),
+			Following:   Int(1),
+			CreatedAt:   &Timestamp{referenceTime},
+			URL:         String("u"),
+		},
+		ID:        String("id"),
+		CreatedAt: &Timestamp{referenceTime},
+		UpdatedAt: &Timestamp{referenceTime},
+		NodeID:    String("node"),
+	}
+
+	want := `{
+		"url": "u",
+		"user": {
+			"login": "ll",
+			"id": 123,
+			"avatar_url": "a",
+			"gravatar_id": "g",
+			"name": "n",
+			"company": "c",
+			"blog": "b",
+			"location": "l",
+			"email": "e",
+			"hireable": true,
+			"public_repos": 1,
+			"followers": 1,
+			"following": 1,
+			"created_at": ` + referenceTimeStr + `,
+			"url": "u"
+		},
+		"id": "id",
+		"created_at": ` + referenceTimeStr + `,
+		"updated_at": ` + referenceTimeStr + `,
+		"node_id": "node"
+	}`
+
+	testJSONMarshal(t, u, want)
+}
+
 func TestGistsService_List_specifiedUser(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	since := "2013-01-01T00:00:00Z"
@@ -42,7 +251,7 @@ func TestGistsService_List_specifiedUser(t *testing.T) {
 }
 
 func TestGistsService_List_authenticatedUser(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/gists", func(w http.ResponseWriter, r *http.Request) {
@@ -62,12 +271,15 @@ func TestGistsService_List_authenticatedUser(t *testing.T) {
 }
 
 func TestGistsService_List_invalidUser(t *testing.T) {
+	client, _, _, teardown := setup()
+	defer teardown()
+
 	_, _, err := client.Gists.List(context.Background(), "%", nil)
 	testURLParseError(t, err)
 }
 
 func TestGistsService_ListAll(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	since := "2013-01-01T00:00:00Z"
@@ -93,7 +305,7 @@ func TestGistsService_ListAll(t *testing.T) {
 }
 
 func TestGistsService_ListStarred(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	since := "2013-01-01T00:00:00Z"
@@ -119,7 +331,7 @@ func TestGistsService_ListStarred(t *testing.T) {
 }
 
 func TestGistsService_Get(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/gists/1", func(w http.ResponseWriter, r *http.Request) {
@@ -139,12 +351,15 @@ func TestGistsService_Get(t *testing.T) {
 }
 
 func TestGistsService_Get_invalidID(t *testing.T) {
+	client, _, _, teardown := setup()
+	defer teardown()
+
 	_, _, err := client.Gists.Get(context.Background(), "%")
 	testURLParseError(t, err)
 }
 
 func TestGistsService_GetRevision(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/gists/1/s", func(w http.ResponseWriter, r *http.Request) {
@@ -164,12 +379,15 @@ func TestGistsService_GetRevision(t *testing.T) {
 }
 
 func TestGistsService_GetRevision_invalidID(t *testing.T) {
+	client, _, _, teardown := setup()
+	defer teardown()
+
 	_, _, err := client.Gists.GetRevision(context.Background(), "%", "%")
 	testURLParseError(t, err)
 }
 
 func TestGistsService_Create(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	input := &Gist{
@@ -222,7 +440,7 @@ func TestGistsService_Create(t *testing.T) {
 }
 
 func TestGistsService_Edit(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	input := &Gist{
@@ -278,12 +496,15 @@ func TestGistsService_Edit(t *testing.T) {
 }
 
 func TestGistsService_Edit_invalidID(t *testing.T) {
+	client, _, _, teardown := setup()
+	defer teardown()
+
 	_, _, err := client.Gists.Edit(context.Background(), "%", nil)
 	testURLParseError(t, err)
 }
 
 func TestGistsService_ListCommits(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/gists/1/commits", func(w http.ResponseWriter, r *http.Request) {
@@ -316,8 +537,8 @@ func TestGistsService_ListCommits(t *testing.T) {
 	want := []*GistCommit{{
 		URL:         String("https://api.github.com/gists/1/1"),
 		Version:     String("1"),
-		User:        &User{ID: Int(1)},
-		CommittedAt: &Timestamp{time.Date(2010, 1, 1, 00, 00, 00, 0, time.UTC)},
+		User:        &User{ID: Int64(1)},
+		CommittedAt: &Timestamp{time.Date(2010, time.January, 1, 00, 00, 00, 0, time.UTC)},
 		ChangeStatus: &CommitStats{
 			Additions: Int(180),
 			Deletions: Int(0),
@@ -330,7 +551,7 @@ func TestGistsService_ListCommits(t *testing.T) {
 }
 
 func TestGistsService_ListCommits_withOptions(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/gists/1/commits", func(w http.ResponseWriter, r *http.Request) {
@@ -347,8 +568,16 @@ func TestGistsService_ListCommits_withOptions(t *testing.T) {
 	}
 }
 
+func TestGistsService_ListCommits_invalidID(t *testing.T) {
+	client, _, _, teardown := setup()
+	defer teardown()
+
+	_, _, err := client.Gists.ListCommits(context.Background(), "%", nil)
+	testURLParseError(t, err)
+}
+
 func TestGistsService_Delete(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/gists/1", func(w http.ResponseWriter, r *http.Request) {
@@ -362,12 +591,15 @@ func TestGistsService_Delete(t *testing.T) {
 }
 
 func TestGistsService_Delete_invalidID(t *testing.T) {
+	client, _, _, teardown := setup()
+	defer teardown()
+
 	_, err := client.Gists.Delete(context.Background(), "%")
 	testURLParseError(t, err)
 }
 
 func TestGistsService_Star(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/gists/1/star", func(w http.ResponseWriter, r *http.Request) {
@@ -381,12 +613,15 @@ func TestGistsService_Star(t *testing.T) {
 }
 
 func TestGistsService_Star_invalidID(t *testing.T) {
+	client, _, _, teardown := setup()
+	defer teardown()
+
 	_, err := client.Gists.Star(context.Background(), "%")
 	testURLParseError(t, err)
 }
 
 func TestGistsService_Unstar(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/gists/1/star", func(w http.ResponseWriter, r *http.Request) {
@@ -400,12 +635,15 @@ func TestGistsService_Unstar(t *testing.T) {
 }
 
 func TestGistsService_Unstar_invalidID(t *testing.T) {
+	client, _, _, teardown := setup()
+	defer teardown()
+
 	_, err := client.Gists.Unstar(context.Background(), "%")
 	testURLParseError(t, err)
 }
 
 func TestGistsService_IsStarred_hasStar(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/gists/1/star", func(w http.ResponseWriter, r *http.Request) {
@@ -423,7 +661,7 @@ func TestGistsService_IsStarred_hasStar(t *testing.T) {
 }
 
 func TestGistsService_IsStarred_noStar(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/gists/1/star", func(w http.ResponseWriter, r *http.Request) {
@@ -441,12 +679,15 @@ func TestGistsService_IsStarred_noStar(t *testing.T) {
 }
 
 func TestGistsService_IsStarred_invalidID(t *testing.T) {
+	client, _, _, teardown := setup()
+	defer teardown()
+
 	_, _, err := client.Gists.IsStarred(context.Background(), "%")
 	testURLParseError(t, err)
 }
 
 func TestGistsService_Fork(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/gists/1/forks", func(w http.ResponseWriter, r *http.Request) {
@@ -466,7 +707,7 @@ func TestGistsService_Fork(t *testing.T) {
 }
 
 func TestGistsService_ListForks(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/gists/1/forks", func(w http.ResponseWriter, r *http.Request) {
@@ -484,7 +725,7 @@ func TestGistsService_ListForks(t *testing.T) {
 		`)
 	})
 
-	gistForks, _, err := client.Gists.ListForks(context.Background(), "1")
+	gistForks, _, err := client.Gists.ListForks(context.Background(), "1", nil)
 	if err != nil {
 		t.Errorf("Gists.ListForks returned error: %v", err)
 	}
@@ -492,16 +733,66 @@ func TestGistsService_ListForks(t *testing.T) {
 	want := []*GistFork{{
 		URL:       String("https://api.github.com/gists/1"),
 		ID:        String("1"),
-		User:      &User{ID: Int(1)},
-		CreatedAt: &Timestamp{time.Date(2010, 1, 1, 00, 00, 00, 0, time.UTC)},
-		UpdatedAt: &Timestamp{time.Date(2013, 1, 1, 00, 00, 00, 0, time.UTC)}}}
+		User:      &User{ID: Int64(1)},
+		CreatedAt: &Timestamp{time.Date(2010, time.January, 1, 00, 00, 00, 0, time.UTC)},
+		UpdatedAt: &Timestamp{time.Date(2013, time.January, 1, 00, 00, 00, 0, time.UTC)}}}
 
 	if !reflect.DeepEqual(gistForks, want) {
 		t.Errorf("Gists.ListForks returned %+v, want %+v", gistForks, want)
 	}
+
 }
 
-func TestGistsService_Fork_invalidID(t *testing.T) {
-	_, _, err := client.Gists.Fork(context.Background(), "%")
-	testURLParseError(t, err)
+func TestGistsService_ListForks_withOptions(t *testing.T) {
+	client, mux, _, teardown := setup()
+	defer teardown()
+
+	mux.HandleFunc("/gists/1/forks", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		testFormValues(t, r, values{
+			"page": "2",
+		})
+		fmt.Fprint(w, `[]`)
+	})
+
+	gistForks, _, err := client.Gists.ListForks(context.Background(), "1", &ListOptions{Page: 2})
+	if err != nil {
+		t.Errorf("Gists.ListForks returned error: %v", err)
+	}
+
+	want := []*GistFork{}
+	if !reflect.DeepEqual(gistForks, want) {
+		t.Errorf("Gists.ListForks returned %+v, want %+v", gistForks, want)
+	}
+
+	// Test addOptions failure
+	_, _, err = client.Gists.ListForks(context.Background(), "%", &ListOptions{})
+	if err == nil {
+		t.Error("Gists.ListForks returned err = nil")
+	}
+
+	// Test client.NewRequest failure
+	got, resp, err := client.Gists.ListForks(context.Background(), "%", nil)
+	if got != nil {
+		t.Errorf("Gists.ListForks = %#v, want nil", got)
+	}
+	if resp != nil {
+		t.Errorf("Gists.ListForks resp = %#v, want nil", resp)
+	}
+	if err == nil {
+		t.Error("Gists.ListForks err = nil, want error")
+	}
+
+	// Test client.Do failure
+	client.rateLimits[0].Reset.Time = time.Now().Add(10 * time.Minute)
+	got, resp, err = client.Gists.ListForks(context.Background(), "1", &ListOptions{Page: 2})
+	if got != nil {
+		t.Errorf("Gists.ListForks returned = %#v, want nil", got)
+	}
+	if want := http.StatusForbidden; resp == nil || resp.Response.StatusCode != want {
+		t.Errorf("Gists.ListForks returned resp = %#v, want StatusCode=%v", resp.Response, want)
+	}
+	if err == nil {
+		t.Error("rGists.ListForks returned err = nil, want error")
+	}
 }

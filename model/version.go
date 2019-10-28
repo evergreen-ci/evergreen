@@ -24,7 +24,6 @@ type Version struct {
 	Message             string               `bson:"message" json:"message,omitempty"`
 	Status              string               `bson:"status" json:"status,omitempty"`
 	RevisionOrderNumber int                  `bson:"order,omitempty" json:"order,omitempty"`
-	ParserProject       *parserProject       `bson:"project" json:"project,omitempty"`
 	Config              string               `bson:"config" json:"config,omitempty"`
 	ConfigUpdateNumber  int                  `bson:"config_number" json:"config_number,omitempty"`
 	Ignored             bool                 `bson:"ignored" json:"ignored"`

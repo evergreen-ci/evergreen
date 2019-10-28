@@ -47,7 +47,7 @@ func (s *TimeoutSuite) SetupTest() {
 	s.tmpFileName = s.tmpFile.Name()
 	s.mockCommunicator.TimeoutFilename = s.tmpFileName
 	s.Require().NoError(s.tmpFile.Close())
-	s.a.jasper, err = jasper.NewLocalManager(false)
+	s.a.jasper, err = jasper.NewSynchronizedManager(false)
 	s.Require().NoError(err)
 }
 

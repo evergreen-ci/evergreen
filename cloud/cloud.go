@@ -67,10 +67,6 @@ type Manager interface {
 	// DeleteVolume deletes a volume.
 	DeleteVolume(context.Context, *host.Volume) error
 
-	// GetSSHOptions generates the command line args to be passed to ssh to
-	// allow connection to the machine
-	GetSSHOptions(*host.Host, string) ([]string, error)
-
 	// TimeTilNextPayment returns how long there is until the next payment
 	// is due for a particular host
 	TimeTilNextPayment(*host.Host) time.Duration

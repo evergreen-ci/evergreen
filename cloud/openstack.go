@@ -236,21 +236,6 @@ func (m *openStackManager) DeleteVolume(context.Context, *host.Volume) error {
 	return errors.New("can't delete volumes with openstack provider")
 }
 
-// GetSSHOptions generates the command line args to be passed to SSH to allow connection
-// to the machine.
-func (m *openStackManager) GetSSHOptions(host *host.Host, keyPath string) ([]string, error) {
-	if keyPath == "" {
-		return []string{}, errors.New("No key specified for host")
-	}
-
-	opts := []string{"-i", keyPath}
-	for _, opt := range host.Distro.SSHOptions {
-		opts = append(opts, "-o", opt)
-	}
-
-	return opts, nil
-}
-
 // TimeTilNextPayment always returns 0. The OpenStack dashboard requires third-party
 // plugins for billing, monitoring, and other management tools.
 func (m *openStackManager) TimeTilNextPayment(host *host.Host) time.Duration {

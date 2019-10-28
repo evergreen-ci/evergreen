@@ -67,7 +67,7 @@ func (e *Environment) Configure(ctx context.Context, path string, db *evergreen.
 
 	e.InternalSender = send.MakeInternalLogger()
 
-	jpm, err := jasper.NewLocalManager(true)
+	jpm, err := jasper.NewSynchronizedManager(true)
 	if err != nil {
 		return errors.WithStack(err)
 	}

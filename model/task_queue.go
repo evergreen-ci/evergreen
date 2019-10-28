@@ -260,7 +260,6 @@ func BlockTaskGroupTasks(taskID string) error {
 	if tg == nil {
 		return errors.Errorf("unable to find task group '%s' for task '%s'", t.TaskGroup, taskID)
 	}
-
 	indexOfTask := -1
 	for i, tgTask := range tg.Tasks {
 		if t.DisplayName == tgTask {
@@ -279,12 +278,11 @@ func BlockTaskGroupTasks(taskID string) error {
 	if err != nil {
 		catcher.Add(errors.Wrapf(err, "problem finding tasks %s", strings.Join(taskNamesToBlock, ", ")))
 	}
-
 	if err := ValidateNewGraph(t, tasksToBlock); err != nil {
 		return errors.Wrap(err, "problem validating proposed dependencies")
 	}
 	for _, taskToBlock := range tasksToBlock {
-		catcher.Add(taskToBlock.AddDependency(task.Dependency{TaskId: taskID, Status: evergreen.TaskSucceeded}))
+		catcher.Add(taskToBlock.AddDependency(task.Dependency{TaskId: taskID, Status: evergreen.TaskSucceeded, Unattainable: true}))
 		catcher.Add(dequeue(taskToBlock.Id, taskToBlock.DistroId))
 		catcher.Add(taskToBlock.UpdateBlockedDependencies())
 	}

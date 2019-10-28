@@ -860,14 +860,19 @@ func updateDisplayTaskAndCache(t *task.Task) error {
 		return errors.Wrap(err, "error updating display task")
 	}
 	err = build.UpdateCachedTask(t.DisplayTask, 0)
-	grip.Error(message.WrapError(err, message.Fields{
-		"message":      "failed to update cached display task",
-		"function":     "updateDisplayTaskAndCache",
-		"build_id":     t.BuildId,
-		"task_id":      t.Id,
-		"display_task": t.DisplayTask.Id,
-		"status":       t.Status,
-	}))
+	if err != nil {
+		b, findErr := build.FindOneId(t.BuildId)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":      "failed to update cached display task",
+			"function":     "updateDisplayTaskAndCache",
+			"build_id":     t.BuildId,
+			"task_id":      t.Id,
+			"display_task": t.DisplayTask.Id,
+			"status":       t.Status,
+			"build_cache":  b.Tasks,
+			"find_err":     findErr,
+		}))
+	}
 	return nil
 }
 
