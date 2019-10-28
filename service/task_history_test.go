@@ -3,7 +3,6 @@ package service
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -16,6 +15,7 @@ type TaskHistorySuite struct {
 	versionsBefore []model.Version
 	middleVersion  model.Version
 	versionsAfter  []model.Version
+	radius         int
 	projectID      string
 }
 
@@ -29,100 +29,67 @@ func (s *TaskHistorySuite) SetupSuite() {
 
 func (s *TaskHistorySuite) SetupTest() {
 	s.NoError(db.ClearCollections(model.VersionCollection))
-	now := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	for i := 0; i < 50; i++ {
-		// backwards in time, in descending order
-		now = now.Add(-time.Minute)
+	for i := 0; i < 25; i++ {
 		version := model.Version{
-			Id:         fmt.Sprintf("after_%d", i),
-			Revision:   "cccc",
-			CreateTime: now,
-			Identifier: s.projectID,
-			Requester:  evergreen.RepotrackerVersionRequester,
+			Id:                  fmt.Sprintf("version_%d", i),
+			RevisionOrderNumber: i + 1,
+			Identifier:          s.projectID,
+			Requester:           evergreen.RepotrackerVersionRequester,
 		}
-		s.versionsAfter = append(s.versionsAfter, version)
+		s.versionsBefore = append([]model.Version{version}, s.versionsBefore...)
 		s.NoError(version.Insert())
 	}
 
-	// Middle version with the same createTime as the last version in versionsBefore
-	// and the first version in versionsAfter
 	s.middleVersion = model.Version{
-		Id:         "middle",
-		Revision:   "bbbb",
-		CreateTime: now,
-		Identifier: s.projectID,
-		Requester:  evergreen.RepotrackerVersionRequester,
+		Id:                  "middle",
+		RevisionOrderNumber: 26,
+		Identifier:          s.projectID,
+		Requester:           evergreen.RepotrackerVersionRequester,
 	}
 	s.NoError(s.middleVersion.Insert())
 
-	for i := 0; i < 50; i++ {
+	for i := 26; i < 51; i++ {
 		version := model.Version{
-			Id:         fmt.Sprintf("before_%d", i),
-			Revision:   "aaaa",
-			CreateTime: now,
-			Identifier: s.projectID,
-			Requester:  evergreen.RepotrackerVersionRequester,
+			Id:                  fmt.Sprintf("version_%d", i),
+			RevisionOrderNumber: i + 1,
+			Identifier:          s.projectID,
+			Requester:           evergreen.RepotrackerVersionRequester,
 		}
-		s.versionsBefore = append(s.versionsBefore, version)
+		s.versionsAfter = append([]model.Version{version}, s.versionsAfter...)
 		s.NoError(version.Insert())
-
-		now = now.Add(-time.Minute)
 	}
+
+	s.radius = 25
 }
 
 func (s *TaskHistorySuite) TestGetVersionsInWindow() {
-	radius := 20
-	versions, err := getVersionsInWindow("surround", s.projectID, radius, &s.middleVersion)
+	versions, err := getVersionsInWindow("surround", s.projectID, s.radius, &s.middleVersion)
 	s.Require().NoError(err)
+	s.Require().Len(versions, (2*s.radius)+1)
 
-	for i := 0; i < radius; i++ {
-		// compare to the last _radius_ elements in s.versionsAfter
-		s.True(versions[i].CreateTime.Equal(s.versionsAfter[(len(s.versionsAfter))-radius+i].CreateTime))
+	for i := 0; i < s.radius; i++ {
+		s.Equal(s.versionsAfter[i].Id, versions[i].Id)
 	}
 
-	s.True(s.middleVersion.CreateTime.Equal(versions[radius].CreateTime))
+	s.Equal(s.middleVersion.Id, versions[s.radius].Id)
 
-	for i := 0; i < radius; i++ {
-		s.True(versions[i+(1+radius)].CreateTime.Equal(s.versionsBefore[i].CreateTime))
+	for i := 0; i < s.radius; i++ {
+		s.Equal(s.versionsBefore[i].Id, versions[i+(s.radius+1)].Id)
 	}
 }
 
 func (s *TaskHistorySuite) TestSurroundingVersions() {
-	radius := 20
-	versionsAfter, err := surroundingVersions(&s.middleVersion, s.projectID, radius, false)
+	versionsAfter, err := surroundingVersions(&s.middleVersion, s.projectID, s.radius, false)
 	s.NoError(err)
-	s.Require().Len(versionsAfter, radius)
+	s.Require().Len(versionsAfter, s.radius)
 	for i, version := range versionsAfter {
-		s.Equal("cccc", version.Revision)
-		// compare to the last _radius_ elements in s.versionsAfter
-		s.True(version.CreateTime.Equal(s.versionsAfter[(len(s.versionsAfter)-radius)+i].CreateTime))
+		s.Equal(s.versionsAfter[i].Id, version.Id)
 	}
 
-	versionsBefore, err := surroundingVersions(&s.middleVersion, s.projectID, radius, true)
+	versionsBefore, err := surroundingVersions(&s.middleVersion, s.projectID, s.radius, true)
 	s.NoError(err)
-	s.Len(versionsBefore, radius)
+	s.Len(versionsBefore, s.radius)
 	for i, version := range versionsBefore {
-		s.Equal("aaaa", version.Revision)
-		s.True(version.CreateTime.Equal(s.versionsBefore[i].CreateTime))
+		s.Equal(s.versionsBefore[i].Id, version.Id)
 	}
-}
-
-func (s *TaskHistorySuite) TestSurroundingVersionsSort() {
-	versionsAfter, err := surroundingVersions(&s.versionsBefore[0], s.projectID, 2, false)
-	s.NoError(err)
-	s.Require().Len(versionsAfter, 2)
-	// sorted ascending, then reversed
-	s.Equal("cccc", versionsAfter[0].Revision)
-	s.Equal("after_49", versionsAfter[0].Id)
-	s.Equal("bbbb", versionsAfter[1].Revision)
-	s.Equal("middle", versionsAfter[1].Id)
-
-	versionsBefore, err := surroundingVersions(&s.versionsAfter[49], s.projectID, 2, true)
-	s.NoError(err)
-	s.Require().Len(versionsBefore, 2)
-	// sorted descending
-	s.Equal("bbbb", versionsBefore[0].Revision)
-	s.Equal("middle", versionsBefore[0].Id)
-	s.Equal("aaaa", versionsBefore[1].Revision)
-	s.Equal("before_0", versionsBefore[1].Id)
 }
