@@ -17,7 +17,7 @@ import (
 const (
 	cleanupCheckAttempts   = 10
 	cleanupCheckTimeoutMin = 100 * time.Millisecond
-	checkupCheckTImeoutMax = 1 * time.Second
+	cleanupCheckTImeoutMax = 1 * time.Second
 	contextTimeout         = 10 * time.Second
 )
 
@@ -112,7 +112,7 @@ func cleanup(key string, logger grip.Journaler) error {
 		}
 	}
 
-	unkilledPids := []string{}
+	unkilledPids := []int{}
 	// Retry listing processes until all have successfully exited
 	ctx, cancel := context.WithTimeout(context.Background(), contextTimeout)
 	defer cancel()
@@ -125,7 +125,7 @@ func cleanup(key string, logger grip.Journaler) error {
 				return false, err
 			}
 			for _, pid := range pids {
-				env, err = getEnv(pid)
+				env, err := getEnv(pid)
 				if err != nil {
 					if !strings.Contains(err.Error(), os.ErrPermission.Error()) {
 						logger.Infof("Could not get environment for process %s", pid)
