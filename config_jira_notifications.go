@@ -11,62 +11,14 @@ import (
 )
 
 type JIRANotificationsConfig struct {
-	// CustomFields is a map[string]map[string]string. The key of the first
-	// map is the JIRA project (ex: EVG), the key of the second map is
-	// the custom field name, and the inner most value is the template
-	// for the custom field
-	CustomFields JIRACustomFieldsByProject `bson:"custom_fields"`
-}
-
-type JIRACustomFieldsByProject []JIRANotificationsProject
-
-func (j JIRACustomFieldsByProject) ToMap() (map[string]map[string]string, error) {
-	out := map[string]map[string]string{}
-	projectDupes := map[string]bool{}
-
-	for _, project := range j {
-		_, isDupe := projectDupes[project.Project]
-		if isDupe {
-			return nil, errors.Errorf("duplicate project key '%s'", project.Project)
-		}
-		projectDupes[project.Project] = true
-
-		fieldDupes := map[string]bool{}
-		fields := map[string]string{}
-		for i := range project.Fields {
-			_, isDupeField := fieldDupes[project.Fields[i].Field]
-			if isDupeField {
-				return nil, errors.Errorf("duplicate field key '%s' in project '%s'", project.Fields[i].Field, project.Project)
-			}
-			fieldDupes[project.Fields[i].Field] = true
-			fields[project.Fields[i].Field] = project.Fields[i].Template
-		}
-
-		out[project.Project] = fields
-	}
-	return out, nil
-}
-
-func (j *JIRACustomFieldsByProject) FromMap(m map[string]map[string]string) {
-	*j = make(JIRACustomFieldsByProject, 0, len(m))
-	for project, fields := range m {
-		fieldsSlice := make([]JIRANotificationsCustomField, 0, len(fields))
-		for field, tmpl := range fields {
-			fieldsSlice = append(fieldsSlice, JIRANotificationsCustomField{
-				Field:    field,
-				Template: tmpl,
-			})
-		}
-		*j = append(*j, JIRANotificationsProject{
-			Project: project,
-			Fields:  fieldsSlice,
-		})
-	}
+	CustomFields []JIRANotificationsProject `bson:"custom_fields"`
 }
 
 type JIRANotificationsProject struct {
-	Project string                         `bson:"project"`
-	Fields  []JIRANotificationsCustomField `bson:"fields"`
+	Project    string                         `bson:"project"`
+	Fields     []JIRANotificationsCustomField `bson:"fields"`
+	Components []string                       `bson:"components"`
+	Labels     []string                       `bson:"labels"`
 }
 
 type JIRANotificationsCustomField struct {
@@ -108,16 +60,12 @@ func (c *JIRANotificationsConfig) Set() error {
 
 func (c *JIRANotificationsConfig) ValidateAndDefault() error {
 	catcher := grip.NewSimpleCatcher()
-	m, err := c.CustomFields.ToMap()
-	if err != nil {
-		return errors.Wrap(err, "failed to build jira notifications custom field")
-	}
-
-	for project, fields := range m {
-		for field, tmpl := range fields {
-			_, err := template.New(fmt.Sprintf("%s-%s", project, field)).Parse(tmpl)
+	for _, project := range c.CustomFields {
+		for _, field := range project.Fields {
+			_, err := template.New(fmt.Sprintf("%s-%s", project.Project, field.Field)).Parse(field.Template)
 			catcher.Add(err)
 		}
 	}
+
 	return catcher.Resolve()
 }

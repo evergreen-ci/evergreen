@@ -1536,33 +1536,54 @@ func (j *APIJIRANotificationsConfig) BuildFromService(h interface{}) error {
 	case evergreen.JIRANotificationsConfig:
 		config = &v
 	default:
-		return errors.Errorf("expected *evergreen.APIJIRANotificationsConfig, but got %T instead", h)
+		return errors.Errorf("expected *evergreen.JIRANotificationsConfig, but got %T instead", h)
 	}
 
-	if len(config.CustomFields) == 0 {
-		return nil
-	}
+	j.CustomFields = make(map[string]map[string]string)
+	for _, project := range config.CustomFields {
+		apiProject := make(map[string]string)
+		for _, field := range project.Fields {
+			apiProject[field.Field] = field.Template
+		}
 
-	m, err := config.CustomFields.ToMap()
-	if err != nil {
-		return errors.Wrap(err, "failed to build jira custom field configuration")
-	}
+		components := strings.Join(project.Components, ",")
+		if len(components) > 0 {
+			apiProject["components"] = components
+		}
 
-	j.CustomFields = m
+		labels := strings.Join(project.Labels, ",")
+		if len(labels) > 0 {
+			apiProject["labels"] = labels
+		}
+
+		j.CustomFields[project.Project] = apiProject
+	}
 
 	return nil
 }
 func (j *APIJIRANotificationsConfig) ToService() (interface{}, error) {
+	service := evergreen.JIRANotificationsConfig{}
 	if j.CustomFields == nil || len(j.CustomFields) == 0 {
-		return evergreen.JIRANotificationsConfig{}, nil
-	}
-	config := evergreen.JIRANotificationsConfig{
-		CustomFields: evergreen.JIRACustomFieldsByProject{},
+		return service, nil
 	}
 
-	config.CustomFields.FromMap(j.CustomFields)
+	for projectName, fields := range j.CustomFields {
+		project := evergreen.JIRANotificationsProject{}
+		for field, template := range fields {
+			if field == "components" {
+				project.Components = strings.Split(template, ",")
+			} else if field == "labels" {
+				project.Labels = strings.Split(template, ",")
+			} else {
+				project.Fields = append(project.Fields, evergreen.JIRANotificationsCustomField{Field: field, Template: template})
+			}
+		}
+		project.Project = projectName
 
-	return config, nil
+		service.CustomFields = append(service.CustomFields, project)
+	}
+
+	return service, nil
 }
 
 type APITriggerConfig struct {

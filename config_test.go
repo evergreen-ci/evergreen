@@ -586,7 +586,7 @@ func (s *AdminSuite) TestContainerPoolsConfig() {
 
 func (s *AdminSuite) TestJIRANotificationsConfig() {
 	c := JIRANotificationsConfig{
-		CustomFields: JIRACustomFieldsByProject{
+		CustomFields: []JIRANotificationsProject{
 			{
 				Project: "this",
 				Fields: []JIRANotificationsCustomField{
@@ -605,7 +605,7 @@ func (s *AdminSuite) TestJIRANotificationsConfig() {
 		s.NoError(c.ValidateAndDefault())
 	})
 
-	c.CustomFields = JIRACustomFieldsByProject{
+	c.CustomFields = []JIRANotificationsProject{
 		{
 			Project: "EVG",
 			Fields: []JIRANotificationsCustomField{
@@ -616,27 +616,17 @@ func (s *AdminSuite) TestJIRANotificationsConfig() {
 			},
 		},
 	}
-	m, err := c.CustomFields.ToMap()
-	s.NoError(err)
-	s.Require().Len(m, 1)
-	s.Require().Len(m["EVG"], 1)
-
 	s.Require().NoError(c.Set())
 
 	c = JIRANotificationsConfig{}
 	s.Require().NoError(c.Get(s.env))
 	s.NoError(c.ValidateAndDefault())
-	m, err = c.CustomFields.ToMap()
-	s.NoError(err)
-	s.Require().Len(m, 1)
-	s.Require().Len(m["EVG"], 1)
-	s.Equal("magical{{.Template.Expansion}}", m["EVG"]["customfield_12345"])
-	s.NoError(c.ValidateAndDefault())
+	s.Len(c.CustomFields, 1)
 
 	c = JIRANotificationsConfig{}
 	s.NoError(c.Set())
 	s.NoError(c.ValidateAndDefault())
-	c.CustomFields = JIRACustomFieldsByProject{
+	c.CustomFields = []JIRANotificationsProject{
 		{
 			Project: "this",
 			Fields: []JIRANotificationsCustomField{
