@@ -155,7 +155,6 @@ func hostCreate() cli.Command {
 			return nil
 		},
 	}
-
 }
 
 func hostModify() cli.Command {
@@ -344,6 +343,200 @@ func hostStart() cli.Command {
 	}
 }
 
+func hostAttach() cli.Command {
+	const (
+		volumeFlagName = "volume"
+		deviceFlagName = "device"
+	)
+
+	return cli.Command{
+		Name:  "attach",
+		Usage: "attach a volume to a spawn host",
+		Flags: addHostFlag(
+			cli.StringFlag{
+				Name:  joinFlagNames(volumeFlagName, "v"),
+				Usage: "`ID` of volume to attach",
+			},
+			cli.StringFlag{
+				Name:  joinFlagNames(deviceFlagName, "n"),
+				Usage: "device `NAME` for attached volume",
+			},
+		),
+		Before: mergeBeforeFuncs(setPlainLogger, requireStringFlag(volumeFlagName)),
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			hostID := c.String(hostFlagName)
+			volumeID := c.String(volumeFlagName)
+			deviceName := c.String(deviceFlagName)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.getRestCommunicator(ctx)
+			defer client.Close()
+
+			volume := &host.VolumeAttachment{
+				VolumeID:   volumeID,
+				DeviceName: deviceName,
+			}
+
+			err = client.AttachVolume(ctx, hostID, volume)
+			if err != nil {
+				return err
+			}
+
+			grip.Infof("Attached volume '%s'.", volumeID)
+
+			return nil
+		},
+	}
+}
+
+func hostDetach() cli.Command {
+	const (
+		volumeFlagName = "volume"
+	)
+
+	return cli.Command{
+		Name:  "detach",
+		Usage: "detach a volume from a spawn host",
+		Flags: addHostFlag(
+			cli.StringFlag{
+				Name:  joinFlagNames(volumeFlagName, "v"),
+				Usage: "`ID` of volume to detach",
+			},
+		),
+		Before: mergeBeforeFuncs(setPlainLogger, requireStringFlag(volumeFlagName)),
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			hostID := c.String(hostFlagName)
+			volumeID := c.String(volumeFlagName)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.getRestCommunicator(ctx)
+			defer client.Close()
+
+			err = client.DetachVolume(ctx, hostID, volumeID)
+			if err != nil {
+				return err
+			}
+
+			grip.Infof("Detached volume '%s'.", volumeID)
+
+			return nil
+		},
+	}
+}
+
+func hostCreateVolume() cli.Command {
+	const (
+		sizeFlag = "size"
+		typeFlag = "type"
+		zoneFlag = "zone"
+	)
+
+	return cli.Command{
+		Name:  "create",
+		Usage: "create a volume for spawn hosts",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  joinFlagNames(sizeFlag, "s"),
+				Usage: "set volume `SIZE` in GiB",
+			},
+			cli.StringFlag{
+				Name:  joinFlagNames(typeFlag, "t"),
+				Usage: "set volume `TYPE` (default gp2)",
+			},
+			cli.StringFlag{
+				Name:  joinFlagNames(zoneFlag, "z"),
+				Usage: "set volume `AVAILABILITY ZONE` (default us-east-1a)",
+			},
+		},
+		Before: mergeBeforeFuncs(setPlainLogger, requireStringFlag(sizeFlag)),
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			volumeType := c.String(typeFlag)
+			volumeZone := c.String(zoneFlag)
+			volumeSize := c.Int(sizeFlag)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.getRestCommunicator(ctx)
+			defer client.Close()
+
+			volumeRequest := &host.Volume{
+				Type:             volumeType,
+				Size:             volumeSize,
+				AvailabilityZone: volumeZone,
+			}
+
+			volume, err := client.CreateVolume(ctx, volumeRequest)
+			if err != nil {
+				return err
+			}
+
+			grip.Infof("Created volume '%s'.", model.FromAPIString(volume.ID))
+
+			return nil
+		},
+	}
+}
+
+func hostDeleteVolume() cli.Command {
+	const (
+		idFlagName = "id"
+	)
+
+	return cli.Command{
+		Name:  "delete",
+		Usage: "delete a volume for spawn hosts",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  idFlagName,
+				Usage: "`ID` of volume to delete",
+			},
+		},
+		Before: mergeBeforeFuncs(setPlainLogger, requireStringFlag(idFlagName)),
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			volumeID := c.String(idFlagName)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.getRestCommunicator(ctx)
+			defer client.Close()
+
+			if err = client.DeleteVolume(ctx, volumeID); err != nil {
+				return err
+			}
+
+			grip.Infof("Deleted volume '%s'", volumeID)
+
+			return nil
+		},
+	}
+}
+
 func hostList() cli.Command {
 	const (
 		mineFlagName = "mine"
@@ -406,12 +599,13 @@ func hostList() cli.Command {
 
 func printHosts(hosts []*model.APIHost) error {
 	for _, h := range hosts {
-		grip.Infof("ID: %s; Distro: %s; Status: %s; Host name: %s; User: %s",
+		grip.Infof("ID: %s; Distro: %s; Status: %s; Host name: %s; User: %s, Availability Zone: %s",
 			model.FromAPIString(h.Id),
 			model.FromAPIString(h.Distro.Id),
 			model.FromAPIString(h.Status),
 			model.FromAPIString(h.HostURL),
-			model.FromAPIString(h.User))
+			model.FromAPIString(h.User),
+			model.FromAPIString(h.AvailabilityZone))
 	}
 	return nil
 }

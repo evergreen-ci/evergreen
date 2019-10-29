@@ -24,7 +24,7 @@ ui:
     - "edd78"
     - "logkeeper"
   "/waterfall/performance":
-    - var project = "performance"
+    - "not authorized for this action"
 api:
   "/":
     - "404"
@@ -45,4 +45,4 @@ api:
   "/rest/v2/builds/sys_perf_linux_3_node_replSet_initialsync_40dc86136f85f88e1782a1c65b49bfba02757009_17_12_05_17_20_27":
     - "linux-3-node-replSet-initialsync"
   "/rest/v2/builds/performance_linux_mmap_standalone_37cb7ea09393e88662e3139bd20fa29e59f2a1a3_18_01_11_00_01_36":
-    - "performance_linux_mmap_standalone_insert_37cb7ea09393e88662e3139bd20fa29e59f2a1a3_18_01_11_00_01_36"
+    - "not authorized for this action"

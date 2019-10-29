@@ -44,6 +44,7 @@ testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*
 currentHash := $(shell git rev-parse HEAD)
 ldFlags := "$(if $(DEBUG_ENABLED),,-w -s )-X=github.com/evergreen-ci/evergreen.BuildRevision=$(currentHash)"
 karmaFlags := $(if $(KARMA_REPORTER),--reporters $(KARMA_REPORTER),)
+smokeFile := $(if $(SMOKE_TEST_FILE),--test-file $(SMOKE_TEST_FILE),)
 # end evergreen specific configuration
 
 gopath := $(GOPATH)
@@ -124,16 +125,16 @@ $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
 smoke-test-agent-monitor:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
 	./$< service deploy start-evergreen --monitor --binary ./$< --client_url ${CLIENT_URL} &
-	./$< service deploy test-endpoints --check-build --username admin --key abb623665fdbf368a1db980dde6ee0f0 || (pkill -f $<; exit 1)
+	./$< service deploy test-endpoints --check-build --username admin --key abb623665fdbf368a1db980dde6ee0f0 $(smokeFile) || (pkill -f $<; exit 1)
 	pkill -f $<
 smoke-test-task:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
 	./$< service deploy start-evergreen --agent --binary ./$< &
-	./$< service deploy test-endpoints --check-build --username admin --key abb623665fdbf368a1db980dde6ee0f0 || (pkill -f $<; exit 1)
+	./$< service deploy test-endpoints --check-build --username admin --key abb623665fdbf368a1db980dde6ee0f0 $(smokeFile) || (pkill -f $<; exit 1)
 	pkill -f $<
 smoke-test-endpoints:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
-	./$< service deploy test-endpoints --username admin --key abb623665fdbf368a1db980dde6ee0f0 || (pkill -f $<; exit 1)
+	./$< service deploy test-endpoints --username admin --key abb623665fdbf368a1db980dde6ee0f0 $(smokeFile) || (pkill -f $<; exit 1)
 	pkill -f $<
 smoke-start-server:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web

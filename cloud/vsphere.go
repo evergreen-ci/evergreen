@@ -182,6 +182,22 @@ func (m *vsphereManager) OnUp(ctx context.Context, host *host.Host) error {
 	return nil //TODO
 }
 
+func (m *vsphereManager) AttachVolume(context.Context, *host.Host, *host.VolumeAttachment) error {
+	return errors.New("can't attach volume with vsphere provider")
+}
+
+func (m *vsphereManager) DetachVolume(context.Context, *host.Host, string) error {
+	return errors.New("can't detach volume with vsphere provider")
+}
+
+func (m *vsphereManager) CreateVolume(context.Context, *host.Volume) (*host.Volume, error) {
+	return nil, errors.New("can't create volumes with vsphere provider")
+}
+
+func (m *vsphereManager) DeleteVolume(context.Context, *host.Volume) error {
+	return errors.New("can't delete volumes with vsphere provider")
+}
+
 // GetDNSName returns the IPv4 address of the host.
 func (m *vsphereManager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
 	ip, err := m.client.GetIP(ctx, h)

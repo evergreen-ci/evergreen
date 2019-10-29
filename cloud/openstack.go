@@ -220,6 +220,22 @@ func (m *openStackManager) GetDNSName(ctx context.Context, host *host.Host) (str
 	return "", errors.Errorf("could not find IP for host %s", host.Id)
 }
 
+func (m *openStackManager) AttachVolume(context.Context, *host.Host, *host.VolumeAttachment) error {
+	return errors.New("can't attach volume with openstack provider")
+}
+
+func (m *openStackManager) DetachVolume(context.Context, *host.Host, string) error {
+	return errors.New("can't detach volume with openstack provider")
+}
+
+func (m *openStackManager) CreateVolume(context.Context, *host.Volume) (*host.Volume, error) {
+	return nil, errors.New("can't create volumes with openstack provider")
+}
+
+func (m *openStackManager) DeleteVolume(context.Context, *host.Volume) error {
+	return errors.New("can't delete volumes with openstack provider")
+}
+
 // TimeTilNextPayment always returns 0. The OpenStack dashboard requires third-party
 // plugins for billing, monitoring, and other management tools.
 func (m *openStackManager) TimeTilNextPayment(host *host.Host) time.Duration {

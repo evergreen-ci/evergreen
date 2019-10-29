@@ -427,43 +427,23 @@ func getVersionsInWindow(wt, projectID string, radius int, center *model.Version
 
 // Helper to query the versions collection for versions created before
 // or after the center, indicated by "before", and sorted backwards in time
-func surroundingVersions(center *model.Version, projectId string, versionsToFetch int, before bool) ([]model.Version, error) {
+func surroundingVersions(center *model.Version, projectID string, versionsToFetch int, before bool) ([]model.Version, error) {
 	direction := "$gt"
-	sortOn := []string{model.VersionCreateTimeKey}
+	sortOn := []string{model.VersionCreateTimeKey, model.VersionRevisionOrderNumberKey}
 	if before {
 		direction = "$lt"
-		sortOn = []string{"-" + model.VersionCreateTimeKey}
+		sortOn = []string{"-" + model.VersionCreateTimeKey, "-" + model.VersionRevisionOrderNumberKey}
 	}
 
-	// fetch other concurrent versions
-	concurrentVersions, err := model.VersionFind(
-		db.Query(bson.M{
-			model.VersionIdentifierKey: projectId,
-			model.VersionCreateTimeKey: center.CreateTime,
-			model.VersionRequesterKey: bson.M{
-				"$in": evergreen.SystemVersionRequesterTypes,
-			},
-			model.VersionRevisionKey: bson.M{direction: center.Revision},
-		}).WithFields(
-			model.VersionRevisionOrderNumberKey,
-			model.VersionRevisionKey,
-			model.VersionMessageKey,
-			model.VersionCreateTimeKey,
-			model.VersionErrorsKey,
-			model.VersionWarningsKey,
-			model.VersionIgnoredKey,
-		).Limit(versionsToFetch))
-	if err != nil {
-		return nil, errors.Wrap(err, "can't get concurrent versions")
-	}
-
-	// fetch consecutive versions
 	versions, err := model.VersionFind(
 		db.Query(bson.M{
-			model.VersionIdentifierKey: projectId,
-			model.VersionCreateTimeKey: bson.M{direction: center.CreateTime},
+			model.VersionIdentifierKey: projectID,
 			model.VersionRequesterKey: bson.M{
 				"$in": evergreen.SystemVersionRequesterTypes,
+			},
+			"$or": []bson.M{
+				{model.VersionCreateTimeKey: bson.M{direction: center.CreateTime}},
+				{model.VersionCreateTimeKey: center.CreateTime, model.VersionRevisionOrderNumberKey: bson.M{direction: center.RevisionOrderNumber}},
 			},
 		}).WithFields(
 			model.VersionRevisionOrderNumberKey,
@@ -473,19 +453,19 @@ func surroundingVersions(center *model.Version, projectId string, versionsToFetc
 			model.VersionErrorsKey,
 			model.VersionWarningsKey,
 			model.VersionIgnoredKey,
-		).Sort(sortOn).Limit(versionsToFetch - len(concurrentVersions)))
+		).Sort(sortOn).Limit(versionsToFetch))
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get consecutive versions")
+		return nil, errors.Wrap(err, "can't get surrounding versions")
 	}
 
-	if before {
-		return append(concurrentVersions, versions...), nil
+	if !before {
+		// reverse versions
+		for begin, end := 0, len(versions)-1; begin < end; begin, end = begin+1, end-1 {
+			versions[begin], versions[end] = versions[end], versions[begin]
+		}
 	}
-	// reverse versions
-	for begin, end := 0, len(versions)-1; begin < end; begin, end = begin+1, end-1 {
-		versions[begin], versions[end] = versions[end], versions[begin]
-	}
-	return append(versions, concurrentVersions...), nil
+
+	return versions, nil
 }
 
 // Given a task name and a slice of versions, return the appropriate sibling

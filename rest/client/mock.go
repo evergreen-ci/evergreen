@@ -402,6 +402,22 @@ func (*Mock) ExtendSpawnHostExpiration(context.Context, string, int) error {
 	return errors.New("(*Mock) ExtendSpawnHostExpiration is not implemented")
 }
 
+func (*Mock) AttachVolume(context.Context, string, *host.VolumeAttachment) error {
+	return errors.New("(*Mock) AttachVolume is not implemented")
+}
+
+func (*Mock) DetachVolume(context.Context, string, string) error {
+	return errors.New("(*Mock) DetachVolume is not implemented")
+}
+
+func (*Mock) CreateVolume(context.Context, *host.Volume) (*model.APIVolume, error) {
+	return nil, errors.New("(*Mock) CreateVolume is not implemented")
+}
+
+func (*Mock) DeleteVolume(context.Context, string) error {
+	return errors.New("(*Mock) DeleteVolume is not implemented")
+}
+
 // GetHosts will return an array with a single mock host
 func (c *Mock) GetHosts(ctx context.Context, f func([]*model.APIHost) error) error {
 	hosts := make([]*model.APIHost, 1)

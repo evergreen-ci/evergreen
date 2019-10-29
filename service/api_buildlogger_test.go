@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/db"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -16,6 +18,7 @@ import (
 )
 
 func TestBuildlogger(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(host.Collection))
 	conf := testutil.TestConfig()
 	conf.LoggerConfig.BuildloggerBaseURL = "cedar.mongodb.com"
 	conf.LoggerConfig.BuildloggerRPCPort = "7070"
