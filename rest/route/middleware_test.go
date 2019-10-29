@@ -333,6 +333,9 @@ func TestTaskAuthMiddleware(t *testing.T) {
 }
 
 func TestProjectViewPermission(t *testing.T) {
+	if !evergreen.AclCheckingIsEnabled {
+		t.Skip("ACL system not on, will not run TestProjectViewPermission")
+	}
 	//setup
 	assert := assert.New(t)
 	counter := 0
