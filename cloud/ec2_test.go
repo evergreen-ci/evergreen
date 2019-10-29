@@ -39,6 +39,7 @@ type EC2Suite struct {
 	mock                      *awsClientMock
 	h                         *host.Host
 	distro                    distro.Distro
+	volume                    *host.Volume
 
 	env evergreen.Environment
 	ctx context.Context
@@ -56,7 +57,7 @@ func TestEC2Suite(t *testing.T) {
 }
 
 func (s *EC2Suite) SetupTest() {
-	s.Require().NoError(db.ClearCollections(host.Collection, task.Collection, model.ProjectVarsCollection))
+	s.Require().NoError(db.ClearCollections(host.Collection, host.VolumesCollection, task.Collection, model.ProjectVarsCollection))
 	s.onDemandOpts = &EC2ManagerOptions{
 		client:   &awsClientMock{},
 		provider: onDemandProvider,
@@ -126,6 +127,13 @@ func (s *EC2Suite) SetupTest() {
 				CanBeModified: true,
 			},
 		},
+	}
+
+	s.volume = &host.Volume{
+		ID:        "test-volume",
+		CreatedBy: "test-user",
+		Type:      "standard",
+		Size:      32,
 	}
 }
 
@@ -670,7 +678,8 @@ func (s *EC2Suite) TestGetInstanceStatus() {
 	s.Equal("us-east-1a", s.h.Zone)
 	s.True(s.h.StartTime.Equal(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)))
 	s.Equal("public_dns_name", s.h.Host)
-	s.Equal([]string{"volume_id"}, s.h.VolumeIDs)
+	s.Require().Len(s.h.Volumes, 1)
+	s.Equal("volume_id", s.h.Volumes[0].VolumeID)
 
 	manager, ok := s.onDemandManager.(*ec2Manager)
 	s.True(ok)
@@ -798,7 +807,7 @@ func (s *EC2Suite) TestIsUp() {
 }
 
 func (s *EC2Suite) TestOnUp() {
-	s.h.VolumeIDs = []string{"volume_id"}
+	s.NoError(s.h.Insert())
 
 	s.NoError(s.onDemandManager.OnUp(s.ctx, s.h))
 	manager, ok := s.onDemandManager.(*ec2Manager)
@@ -810,6 +819,13 @@ func (s *EC2Suite) TestOnUp() {
 	s.Len(mock.CreateTagsInput.Resources, 2)
 	s.Equal(s.h.Id, *mock.CreateTagsInput.Resources[0])
 	s.Equal("volume_id", *mock.CreateTagsInput.Resources[1])
+
+	foundHost, err := host.FindOneId(s.h.Id)
+	s.NoError(err)
+	s.NotNil(foundHost)
+	s.Require().Len(foundHost.Volumes, 1)
+	s.Equal("volume_id", foundHost.Volumes[0].VolumeID)
+	s.Equal("volume_id", foundHost.Volumes[0].DeviceName)
 }
 
 func (s *EC2Suite) TestGetDNSName() {
@@ -1150,6 +1166,7 @@ func (s *EC2Suite) TestCacheHostData() {
 	}
 	instance.BlockDeviceMappings = []*ec2.InstanceBlockDeviceMapping{
 		&ec2.InstanceBlockDeviceMapping{
+			DeviceName: aws.String("device_name"),
 			Ebs: &ec2.EbsInstanceBlockDevice{
 				VolumeId: aws.String("volume_id"),
 			},
@@ -1162,7 +1179,12 @@ func (s *EC2Suite) TestCacheHostData() {
 	s.Equal(*instance.Placement.AvailabilityZone, h.Zone)
 	s.True(instance.LaunchTime.Equal(h.StartTime))
 	s.Equal("2001:0db8:85a3:0000:0000:8a2e:0370:7334", h.IP)
-	s.Equal([]string{"volume_id"}, h.VolumeIDs)
+	s.Equal([]host.VolumeAttachment{
+		{
+			VolumeID:   "volume_id",
+			DeviceName: "device_name",
+		},
+	}, h.Volumes)
 	s.Equal(int64(10), h.VolumeTotalSize)
 
 	h, err := host.FindOneId("h1")
@@ -1171,7 +1193,12 @@ func (s *EC2Suite) TestCacheHostData() {
 	s.Equal(*instance.Placement.AvailabilityZone, h.Zone)
 	s.True(instance.LaunchTime.Equal(h.StartTime))
 	s.Equal("2001:0db8:85a3:0000:0000:8a2e:0370:7334", h.IP)
-	s.Equal([]string{"volume_id"}, h.VolumeIDs)
+	s.Equal([]host.VolumeAttachment{
+		{
+			VolumeID:   "volume_id",
+			DeviceName: "device_name",
+		},
+	}, h.Volumes)
 	s.Equal(int64(10), h.VolumeTotalSize)
 }
 
@@ -1240,4 +1267,98 @@ func (s *EC2Suite) TestGetEC2Key() {
 	s.Equal("test-secret", secret)
 	s.NoError(err)
 
+}
+
+func (s *EC2Suite) TestCreateVolume() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	volume, err := s.onDemandManager.CreateVolume(ctx, s.volume)
+	s.NoError(err)
+
+	manager, ok := s.onDemandManager.(*ec2Manager)
+	s.True(ok)
+	mock, ok := manager.client.(*awsClientMock)
+	s.True(ok)
+
+	input := *mock.CreateVolumeInput
+	s.Equal("standard", *input.VolumeType)
+
+	foundVolume, err := host.FindVolumeByID(volume.ID)
+	s.NotNil(foundVolume)
+	s.NoError(err)
+}
+
+func (s *EC2Suite) TestDeleteVolume() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.NoError(s.volume.Insert())
+	s.NoError(s.onDemandManager.DeleteVolume(ctx, s.volume))
+
+	manager, ok := s.onDemandManager.(*ec2Manager)
+	s.True(ok)
+	mock, ok := manager.client.(*awsClientMock)
+	s.True(ok)
+
+	input := *mock.DeleteVolumeInput
+	s.Equal("test-volume", *input.VolumeId)
+
+	foundVolume, err := host.FindVolumeByID(s.volume.ID)
+	s.Nil(foundVolume)
+	s.NoError(err)
+}
+
+func (s *EC2Suite) TestAttachVolume() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.Require().NoError(s.h.Insert())
+	newAttachment := &host.VolumeAttachment{
+		VolumeID:   "test-volume",
+		DeviceName: "test-device-name",
+	}
+	s.NoError(s.onDemandManager.AttachVolume(ctx, s.h, newAttachment))
+
+	manager, ok := s.onDemandManager.(*ec2Manager)
+	s.True(ok)
+	mock, ok := manager.client.(*awsClientMock)
+	s.True(ok)
+
+	input := *mock.AttachVolumeInput
+	s.Equal("h1", *input.InstanceId)
+	s.Equal("test-volume", *input.VolumeId)
+	s.Equal("test-device-name", *input.Device)
+
+	host, err := host.FindOneId(s.h.Id)
+	s.NotNil(host)
+	s.NoError(err)
+	s.Contains(host.Volumes, newAttachment)
+}
+
+func (s *EC2Suite) TestDetachVolume() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	oldAttachment := host.VolumeAttachment{
+		VolumeID:   "test-volume",
+		DeviceName: "test-device-name",
+	}
+	s.h.Volumes = []host.VolumeAttachment{oldAttachment}
+	s.Require().NoError(s.h.Insert())
+	s.NoError(s.onDemandManager.DetachVolume(ctx, s.h, "test-volume"))
+
+	manager, ok := s.onDemandManager.(*ec2Manager)
+	s.True(ok)
+	mock, ok := manager.client.(*awsClientMock)
+	s.True(ok)
+
+	input := *mock.DetachVolumeInput
+	s.Equal("h1", *input.InstanceId)
+	s.Equal("test-volume", *input.VolumeId)
+
+	host, err := host.FindOneId(s.h.Id)
+	s.NotNil(host)
+	s.NoError(err)
+	s.NotContains(host.Volumes, oldAttachment)
 }

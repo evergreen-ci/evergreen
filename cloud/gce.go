@@ -210,6 +210,22 @@ func (m *gceManager) OnUp(context.Context, *host.Host) error {
 	return nil
 }
 
+func (m *gceManager) AttachVolume(context.Context, *host.Host, *host.VolumeAttachment) error {
+	return errors.New("can't attach volume with gce provider")
+}
+
+func (m *gceManager) DetachVolume(context.Context, *host.Host, string) error {
+	return errors.New("can't detach volume with gce provider")
+}
+
+func (m *gceManager) CreateVolume(context.Context, *host.Volume) (*host.Volume, error) {
+	return nil, errors.New("can't create volume with gce provider")
+}
+
+func (m *gceManager) DeleteVolume(context.Context, *host.Volume) error {
+	return errors.New("can't delete volume with gce provider")
+}
+
 // GetDNSName returns the external IPv4 address of the host.
 func (m *gceManager) GetDNSName(ctx context.Context, host *host.Host) (string, error) {
 	instance, err := m.client.GetInstance(host)

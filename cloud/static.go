@@ -99,6 +99,22 @@ func (staticMgr *staticManager) OnUp(context.Context, *host.Host) error {
 	return nil
 }
 
+func (staticMgr *staticManager) AttachVolume(context.Context, *host.Host, *host.VolumeAttachment) error {
+	return errors.New("can't attach volume with static provider")
+}
+
+func (staticMgr *staticManager) DetachVolume(context.Context, *host.Host, string) error {
+	return errors.New("can't detach volume with static provider")
+}
+
+func (staticMgr *staticManager) CreateVolume(context.Context, *host.Volume) (*host.Volume, error) {
+	return nil, errors.New("can't create volume with static provider")
+}
+
+func (staticMgr *staticManager) DeleteVolume(context.Context, *host.Volume) error {
+	return errors.New("can't delete volume with static provider")
+}
+
 // determine how long until a payment is due for the host. static hosts always
 // return 0 for this number
 func (staticMgr *staticManager) TimeTilNextPayment(host *host.Host) time.Duration {

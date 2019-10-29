@@ -189,7 +189,7 @@ func TestHostModifySuite(t *testing.T) {
 
 func (s *HostModifySuite) SetupTest() {
 	s.sc = getMockHostsConnector()
-	s.route = makeHostModifyRouteManager(s.sc).(*hostModifyHandler)
+	s.route = makeHostModifyRouteManager(s.sc, evergreen.GetEnvironment()).(*hostModifyHandler)
 }
 
 func (s *HostModifySuite) TestRunHostNotFound() {
@@ -198,6 +198,7 @@ func (s *HostModifySuite) TestRunHostNotFound() {
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
 
 	h.hostID = "host-invalid"
+	h.options = &host.HostModifyOptions{}
 	res := h.Run(ctx)
 	s.Equal(http.StatusNotFound, res.Status())
 }
@@ -208,6 +209,7 @@ func (s *HostModifySuite) TestRunHostNotStartedByUser() {
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user1"])
 
 	h.hostID = "host1"
+	h.options = &host.HostModifyOptions{}
 	res := h.Run(ctx)
 	s.Equal(http.StatusUnauthorized, res.Status())
 }
@@ -218,8 +220,44 @@ func (s *HostModifySuite) TestRunValidHost() {
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
 
 	h.hostID = "host2"
+	h.options = &host.HostModifyOptions{}
 	res := h.Run(ctx)
 	s.Equal(http.StatusOK, res.Status())
+}
+
+func (s *HostModifySuite) TestParse() {
+	h := s.route.Factory().(*hostModifyHandler)
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+
+	// empty
+	r, err := http.NewRequest("PATCH", "/hosts/my-host", bytes.NewReader(nil))
+	s.NoError(err)
+	r = gimlet.SetURLVars(r, map[string]string{"host_id": "my-host"})
+	s.Error(h.Parse(ctx, r))
+
+	// not empty
+	options := host.HostModifyOptions{
+		AddInstanceTags: []host.Tag{
+			{
+				Key:   "banana",
+				Value: "yellow",
+			},
+		},
+	}
+	jsonBody, err := json.Marshal(options)
+	s.NoError(err)
+	buffer := bytes.NewBuffer(jsonBody)
+
+	r, err = http.NewRequest("PATCH", "/hosts/my-host", buffer)
+	s.NoError(err)
+	r = gimlet.SetURLVars(r, map[string]string{"host_id": "my-host"})
+
+	s.NoError(h.Parse(ctx, r))
+
+	s.Require().Len(h.options.AddInstanceTags, 1)
+	s.Equal("banana", h.options.AddInstanceTags[0].Key)
+	s.Equal("yellow", h.options.AddInstanceTags[0].Value)
 }
 
 ////////////////////////////////////////////////////////////////////////

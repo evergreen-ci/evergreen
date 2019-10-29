@@ -102,8 +102,8 @@ type Host struct {
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
 	// for ec2 dynamic hosts, the total size of the volumes requested, in GiB
 	VolumeTotalSize int64 `bson:"volume_total_size" json:"volume_total_size,omitempty"`
-
-	VolumeIDs []string `bson:"volume_ids,omitempty" json:"volume_ids,omitempty"`
+	// The volumeID and device name for each volume attached to the host
+	Volumes []VolumeAttachment `bson:"volumes,omitempty" json:"volumes,omitempty"`
 
 	// stores information on expiration notifications for spawn hosts
 	Notifications map[string]bool `bson:"notifications,omitempty" json:"notifications,omitempty"`
@@ -162,6 +162,11 @@ func (h *IdleHostsByDistroID) MarshalBSON() ([]byte, error)  { return mgobson.Ma
 func (h *IdleHostsByDistroID) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, h) }
 
 type HostGroup []Host
+
+type VolumeAttachment struct {
+	VolumeID   string `bson:"volume_id" json:"volume_id"`
+	DeviceName string `bson:"device_name" json:"device_name"`
+}
 
 // DockerOptions contains options for starting a container
 type DockerOptions struct {
@@ -232,11 +237,13 @@ type ContainersOnParents struct {
 }
 
 type HostModifyOptions struct {
-	AddInstanceTags    []Tag         // tags to add
-	DeleteInstanceTags []string      // tags to remove
-	InstanceType       string        // new instance type
+	AddInstanceTags    []Tag
+	DeleteInstanceTags []string
+	InstanceType       string
 	NoExpiration       *bool         // whether host should never expire
 	AddHours           time.Duration // duration to extend expiration
+	AttachVolume       string
+	DetachVolume       string
 }
 
 const (
@@ -544,6 +551,7 @@ func (h *Host) Terminate(user, reason string) error {
 		bson.M{
 			"$set": bson.M{
 				TerminationTimeKey: h.TerminationTime,
+				VolumesKey:         nil,
 			},
 		},
 	)
@@ -1004,11 +1012,11 @@ func (h *Host) CacheHostData() error {
 		},
 		bson.M{
 			"$set": bson.M{
-				ZoneKey:       h.Zone,
-				StartTimeKey:  h.StartTime,
-				VolumeSizeKey: h.VolumeTotalSize,
-				VolumeIDsKey:  h.VolumeIDs,
-				DNSKey:        h.Host,
+				ZoneKey:            h.Zone,
+				StartTimeKey:       h.StartTime,
+				VolumeTotalSizeKey: h.VolumeTotalSize,
+				VolumesKey:         h.Volumes,
+				DNSKey:             h.Host,
 			},
 		},
 	)
@@ -1840,4 +1848,15 @@ func (h *Host) MarkShouldExpire(expireOnValue string) error {
 			},
 		},
 	)
+}
+
+// FindHostWithVolume finds the host associated with the
+// specified volume ID.
+func FindHostWithVolume(volumeID string) (*Host, error) {
+	q := db.Query(
+		bson.M{
+			bsonutil.GetDottedKeyName(VolumesKey, VolumeAttachmentIDKey): volumeID,
+		},
+	)
+	return FindOne(q)
 }

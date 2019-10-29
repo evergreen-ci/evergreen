@@ -72,6 +72,18 @@ type AWSClient interface {
 	// CancelSpotInstanceRequests is a wrapper for ec2.CancelSpotInstanceRequests.
 	CancelSpotInstanceRequests(context.Context, *ec2.CancelSpotInstanceRequestsInput) (*ec2.CancelSpotInstanceRequestsOutput, error)
 
+	// CreateVolume is a wrapper for ec2.CreateVolume.
+	CreateVolume(context.Context, *ec2.CreateVolumeInput) (*ec2.Volume, error)
+
+	// DeleteVolume is a wrapper for ec2.DeleteWrapper.
+	DeleteVolume(context.Context, *ec2.DeleteVolumeInput) (*ec2.DeleteVolumeOutput, error)
+
+	// AttachVolume is a wrapper for ec2.AttachVolume.
+	AttachVolume(context.Context, *ec2.AttachVolumeInput) (*ec2.VolumeAttachment, error)
+
+	// DetachVolume is a wrapper for ec2.DetachVolume.
+	DetachVolume(context.Context, *ec2.DetachVolumeInput) (*ec2.VolumeAttachment, error)
+
 	// DescribeVolumes is a wrapper for ec2.DescribeVolumes.
 	DescribeVolumes(context.Context, *ec2.DescribeVolumesInput) (*ec2.DescribeVolumesOutput, error)
 
@@ -108,6 +120,8 @@ type AWSClient interface {
 	GetKey(context.Context, *host.Host) (string, error)
 
 	SetTags(context.Context, []string, *host.Host) error
+
+	GetInstanceBlockDevices(context.Context, *host.Host) ([]*ec2.InstanceBlockDeviceMapping, error)
 
 	GetVolumeIDs(context.Context, *host.Host) ([]string, error)
 
@@ -489,6 +503,107 @@ func (c *awsClientImpl) CancelSpotInstanceRequests(ctx context.Context, input *e
 	return output, nil
 }
 
+// CreateVolume is a wrapper for ec2.CreateVolume.
+func (c *awsClientImpl) CreateVolume(ctx context.Context, input *ec2.CreateVolumeInput) (*ec2.Volume, error) {
+	var output *ec2.Volume
+	var err error
+	msg := makeAWSLogMessage("CreateVolume", fmt.Sprintf("%T", c), input)
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			output, err = c.EC2.CreateVolumeWithContext(ctx, input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	return output, nil
+}
+
+// DeleteVolume is a wrapper for ec2.DeleteWrapper.
+func (c *awsClientImpl) DeleteVolume(ctx context.Context, input *ec2.DeleteVolumeInput) (*ec2.DeleteVolumeOutput, error) {
+	var output *ec2.DeleteVolumeOutput
+	var err error
+	msg := makeAWSLogMessage("DeleteVolume", fmt.Sprintf("%T", c), input)
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			output, err = c.EC2.DeleteVolumeWithContext(ctx, input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	return output, nil
+}
+
+// AttachVolume is a wrapper for ec2.AttachVolume.
+func (c *awsClientImpl) AttachVolume(ctx context.Context, input *ec2.AttachVolumeInput) (*ec2.VolumeAttachment, error) {
+	var output *ec2.VolumeAttachment
+	var err error
+	msg := makeAWSLogMessage("AttachVolume", fmt.Sprintf("%T", c), input)
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			output, err = c.EC2.AttachVolumeWithContext(ctx, input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	return output, nil
+}
+
+// DetachVolume is a wrapper for ec2.DetachVolume.
+func (c *awsClientImpl) DetachVolume(ctx context.Context, input *ec2.DetachVolumeInput) (*ec2.VolumeAttachment, error) {
+	var output *ec2.VolumeAttachment
+	var err error
+	msg := makeAWSLogMessage("DetachVolume", fmt.Sprintf("%T", c), input)
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			output, err = c.EC2.DetachVolumeWithContext(ctx, input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	return output, nil
+
+}
+
 // DescribeVolumes is a wrapper for ec2.DescribeVolumes.
 func (c *awsClientImpl) DescribeVolumes(ctx context.Context, input *ec2.DescribeVolumesInput) (*ec2.DescribeVolumesOutput, error) {
 	var output *ec2.DescribeVolumesOutput
@@ -838,11 +953,7 @@ func (c *awsClientImpl) SetTags(ctx context.Context, resources []string, h *host
 	return nil
 }
 
-func (c *awsClientImpl) GetVolumeIDs(ctx context.Context, h *host.Host) ([]string, error) {
-	if h.VolumeIDs != nil {
-		return h.VolumeIDs, nil
-	}
-
+func (c *awsClientImpl) GetInstanceBlockDevices(ctx context.Context, h *host.Host) ([]*ec2.InstanceBlockDeviceMapping, error) {
 	id, err := c.getHostInstanceID(ctx, h)
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't get instance ID for '%s'", h.Id)
@@ -853,11 +964,23 @@ func (c *awsClientImpl) GetVolumeIDs(ctx context.Context, h *host.Host) ([]strin
 		return nil, errors.Wrap(err, "error getting instance info")
 	}
 
-	volumeIDs := []string{}
-	for _, device := range instance.BlockDeviceMappings {
-		volumeIDs = append(volumeIDs, *device.Ebs.VolumeId)
+	return instance.BlockDeviceMappings, nil
+}
+
+func (c *awsClientImpl) GetVolumeIDs(ctx context.Context, h *host.Host) ([]string, error) {
+	if h.Volumes == nil {
+		devices, err := c.GetInstanceBlockDevices(ctx, h)
+		if err != nil {
+			return nil, errors.Wrap(err, "error getting devices")
+		}
+		h.Volumes = makeVolumeAttachments(devices)
 	}
-	h.VolumeIDs = volumeIDs
+
+	// Get string slice of volume IDs
+	volumeIDs := []string{}
+	for _, attachment := range h.Volumes {
+		volumeIDs = append(volumeIDs, attachment.VolumeID)
+	}
 
 	return volumeIDs, nil
 }
@@ -909,6 +1032,10 @@ type awsClientMock struct { //nolint
 	*ec2.RequestSpotInstancesInput
 	*ec2.DescribeSpotInstanceRequestsInput
 	*ec2.CancelSpotInstanceRequestsInput
+	*ec2.CreateVolumeInput
+	*ec2.DeleteVolumeInput
+	*ec2.AttachVolumeInput
+	*ec2.DetachVolumeInput
 	*ec2.DescribeVolumesInput
 	*ec2.DescribeSpotPriceHistoryInput
 	*ec2.DescribeSubnetsInput
@@ -1118,6 +1245,35 @@ func (c *awsClientMock) CancelSpotInstanceRequests(ctx context.Context, input *e
 	return nil, nil
 }
 
+// CreateVolume is a mock for ec2.CreateVolume.
+func (c *awsClientMock) CreateVolume(ctx context.Context, input *ec2.CreateVolumeInput) (*ec2.Volume, error) {
+	c.CreateVolumeInput = input
+	return &ec2.Volume{
+		VolumeId:         aws.String("test-volume"),
+		VolumeType:       input.VolumeType,
+		AvailabilityZone: input.AvailabilityZone,
+		Size:             input.Size,
+	}, nil
+}
+
+// DeleteVolume is a mock for ec2.DeleteVolume.
+func (c *awsClientMock) DeleteVolume(ctx context.Context, input *ec2.DeleteVolumeInput) (*ec2.DeleteVolumeOutput, error) {
+	c.DeleteVolumeInput = input
+	return nil, nil
+}
+
+// AttachVolume is a mock for ec2.AttachVolume.
+func (c *awsClientMock) AttachVolume(ctx context.Context, input *ec2.AttachVolumeInput) (*ec2.VolumeAttachment, error) {
+	c.AttachVolumeInput = input
+	return nil, nil
+}
+
+// DetachVolume is a mock for ec2.DetachVolume.
+func (c *awsClientMock) DetachVolume(ctx context.Context, input *ec2.DetachVolumeInput) (*ec2.VolumeAttachment, error) {
+	c.DetachVolumeInput = input
+	return nil, nil
+}
+
 // DescribeVolumes is a mock for ec2.DescribeVolumes.
 func (c *awsClientMock) DescribeVolumes(ctx context.Context, input *ec2.DescribeVolumesInput) (*ec2.DescribeVolumesOutput, error) {
 	c.DescribeVolumesInput = input
@@ -1274,9 +1430,24 @@ func (c *awsClientMock) SetTags(ctx context.Context, resources []string, h *host
 	return nil
 }
 
+func (c *awsClientMock) GetInstanceBlockDevices(ctx context.Context, h *host.Host) ([]*ec2.InstanceBlockDeviceMapping, error) {
+	return []*ec2.InstanceBlockDeviceMapping{
+		&ec2.InstanceBlockDeviceMapping{
+			DeviceName: aws.String("device_name"),
+			Ebs: &ec2.EbsInstanceBlockDevice{
+				VolumeId: aws.String("volume_id"),
+			},
+		},
+	}, nil
+}
+
 func (c *awsClientMock) GetVolumeIDs(ctx context.Context, h *host.Host) ([]string, error) {
-	if len(h.VolumeIDs) != 0 {
-		return h.VolumeIDs, nil
+	if len(h.Volumes) == 0 {
+		volumeIDs := []string{}
+		for _, attachment := range h.Volumes {
+			volumeIDs = append(volumeIDs, attachment.VolumeID)
+		}
+		return volumeIDs, nil
 	}
 
 	return []string{"volume_id"}, nil
