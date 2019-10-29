@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip/send"
@@ -25,6 +26,7 @@ func NewConfigModel() *APIAdminSettings {
 		Jira:              &APIJiraConfig{},
 		JIRANotifications: &APIJIRANotificationsConfig{},
 		Keys:              map[string]string{},
+		LDAPRoleMap:       &APILDAPRoleMap{},
 		LoggerConfig:      &APILoggerConfig{},
 		Notify:            &APINotifyConfig{},
 		Plugins:           map[string]map[string]interface{}{},
@@ -62,6 +64,7 @@ type APIAdminSettings struct {
 	Jira               *APIJiraConfig                    `json:"jira,omitempty"`
 	JIRANotifications  *APIJIRANotificationsConfig       `json:"jira_notifications,omitempty"`
 	Keys               map[string]string                 `json:"keys,omitempty"`
+	LDAPRoleMap        *APILDAPRoleMap                   `json:"ldap_role_map,omitempty"`
 	LoggerConfig       *APILoggerConfig                  `json:"logger_config,omitempty"`
 	LogPath            APIString                         `json:"log_path,omitempty"`
 	Notify             *APINotifyConfig                  `json:"notify,omitempty"`
@@ -625,6 +628,30 @@ func (a *APIJiraConfig) ToService() (interface{}, error) {
 		Password:       FromAPIString(a.Password),
 		DefaultProject: FromAPIString(a.DefaultProject),
 	}, nil
+}
+
+type APILDAPRoleMap struct {
+	LastUpdated APITime
+	Map         map[string]string
+}
+
+func (a *APILDAPRoleMap) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.LDAPRoleMap:
+		a.LastUpdated = NewTime(v.LastUpdated)
+		a.Map = v.Map
+	}
+
+	return nil
+}
+
+func (a *APILDAPRoleMap) ToService() (interface{}, error) {
+	mapping := evergreen.LDAPRoleMap{
+		LastUpdated: time.Time(a.LastUpdated),
+		Map:         a.Map,
+	}
+
+	return mapping, nil
 }
 
 type APILoggerConfig struct {

@@ -464,3 +464,83 @@ func TestClearTaskQueueRoute(t *testing.T) {
 	assert.NoError(err)
 	assert.Len(queueFromDb.Queue, 0)
 }
+
+func TestRoleMappingRoutes(t *testing.T) {
+	ctx := context.Background()
+	sc := &data.MockConnector{}
+
+	addHandler := makeAddLDAPRoleMappingHandler(sc)
+	removeHandler := makeRemoveLDAPRoleMappingHandler(sc)
+
+	// add a key
+	body := struct {
+		Group  string `json:"group"`
+		RoleID string `json:"role_id"`
+	}{"group1", "role1"}
+	jsonBody, err := json.Marshal(&body)
+	assert.NoError(t, err)
+	buffer := bytes.NewBuffer(jsonBody)
+	request, err := http.NewRequest("POST", "/admin/add_role_mapping", buffer)
+	assert.NoError(t, err)
+	assert.NoError(t, addHandler.Parse(ctx, request))
+	assert.Equal(t, http.StatusOK, addHandler.Run(ctx).Status())
+	assert.Equal(t, "role1", sc.MockSettings.LDAPRoleMap.Map["group1"])
+
+	// add another key
+	body = struct {
+		Group  string `json:"group"`
+		RoleID string `json:"role_id"`
+	}{"group2", "role2"}
+	jsonBody, err = json.Marshal(&body)
+	assert.NoError(t, err)
+	buffer = bytes.NewBuffer(jsonBody)
+	request, err = http.NewRequest("POST", "/admin/add_role_mapping", buffer)
+	assert.NoError(t, err)
+	assert.NoError(t, addHandler.Parse(ctx, request))
+	assert.Equal(t, http.StatusOK, addHandler.Run(ctx).Status())
+	assert.Equal(t, "role1", sc.MockSettings.LDAPRoleMap.Map["group1"])
+	assert.Equal(t, "role2", sc.MockSettings.LDAPRoleMap.Map["group2"])
+
+	// change value of existing key
+	body = struct {
+		Group  string `json:"group"`
+		RoleID string `json:"role_id"`
+	}{"group2", "role3"}
+	jsonBody, err = json.Marshal(&body)
+	assert.NoError(t, err)
+	buffer = bytes.NewBuffer(jsonBody)
+	request, err = http.NewRequest("POST", "/admin/add_role_mapping", buffer)
+	assert.NoError(t, err)
+	assert.NoError(t, addHandler.Parse(ctx, request))
+	assert.Equal(t, http.StatusOK, addHandler.Run(ctx).Status())
+	assert.Equal(t, "role1", sc.MockSettings.LDAPRoleMap.Map["group1"])
+	assert.Equal(t, "role3", sc.MockSettings.LDAPRoleMap.Map["group2"])
+
+	// remove existing key
+	removeBody := struct {
+		Group string `json:"group"`
+	}{"group2"}
+	jsonBody, err = json.Marshal(&removeBody)
+	assert.NoError(t, err)
+	buffer = bytes.NewBuffer(jsonBody)
+	request, err = http.NewRequest("DELETE", "/admin/remove_role_mapping", buffer)
+	assert.NoError(t, err)
+	assert.NoError(t, removeHandler.Parse(ctx, request))
+	assert.Equal(t, http.StatusOK, removeHandler.Run(ctx).Status())
+	assert.Equal(t, "role1", sc.MockSettings.LDAPRoleMap.Map["group1"])
+	assert.Equal(t, "", sc.MockSettings.LDAPRoleMap.Map["group2"])
+
+	// remove key that DNE
+	removeBody = struct {
+		Group string `json:"group"`
+	}{"DNE"}
+	jsonBody, err = json.Marshal(&removeBody)
+	assert.NoError(t, err)
+	buffer = bytes.NewBuffer(jsonBody)
+	request, err = http.NewRequest("DELETE", "/admin/remove_role_mapping", buffer)
+	assert.NoError(t, err)
+	assert.NoError(t, removeHandler.Parse(ctx, request))
+	assert.Equal(t, http.StatusOK, removeHandler.Run(ctx).Status())
+	assert.Equal(t, "role1", sc.MockSettings.LDAPRoleMap.Map["group1"])
+	assert.Equal(t, "", sc.MockSettings.LDAPRoleMap.Map["group2"])
+}

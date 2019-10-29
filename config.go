@@ -71,6 +71,7 @@ type Settings struct {
 	JIRANotifications  JIRANotificationsConfig   `yaml:"jira_notifications" json:"jira_notifications" bson:"jira_notifications" id:"jira_notifications"`
 	Keys               map[string]string         `yaml:"keys" bson:"keys" json:"keys"`
 	KeysNew            util.KeyValuePairSlice    `yaml:"keys_new" bson:"keys_new" json:"keys_new"`
+	LDAPRoleMap        LDAPRoleMap               `yaml:"ldap_role_map" bson:"ldap_role_map" json:"ldap_role_map"`
 	LoggerConfig       LoggerConfig              `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
 	LogPath            string                    `yaml:"log_path" bson:"log_path" json:"log_path"`
 	Notify             NotifyConfig              `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
