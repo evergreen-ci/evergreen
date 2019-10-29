@@ -53,7 +53,7 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 		})
 		return errors.New("repotracker is disabled")
 	}
-	if !util.StringSliceContains(settings.GithubOrgs, *event.Repo.Owner.Name) {
+	if len(settings.GithubOrgs) > 0 && !util.StringSliceContains(settings.GithubOrgs, *event.Repo.Owner.Name) {
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":  "github hook",
 			"msg_id":  msgID,

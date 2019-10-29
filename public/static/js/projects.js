@@ -299,8 +299,6 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           return v.alias + v.variant + v.task;
         });
 
-
-
         $scope.settingsFormData = {
           identifier : $scope.projectRef.identifier,
           project_vars: $scope.projectVars,
@@ -318,7 +316,6 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           patching_disabled: $scope.projectRef.patching_disabled,
           alert_config: $scope.projectRef.alert_config || {},
           repotracker_error: $scope.projectRef.repotracker_error || {},
-          owner_is_valid: $scope.isValidGithubOrg($scope.projectRef.owner_name),
           admins : $scope.projectRef.admins || [],
           tracks_push_events: data.ProjectRef.tracks_push_events || false,
           pr_testing_enabled: data.ProjectRef.pr_testing_enabled || false,
@@ -619,6 +616,10 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
   }
 
   $scope.isValidGithubOrg = function(org){
+    // no orgs specified
+    if ($scope.github_valid_orgs === null || $scope.github_valid_orgs === undefined|| $scope.github_valid_orgs.length === 0) {
+      return true
+    }
     for (var i = 0; i < $scope.github_valid_orgs.length; i++) {
       if (org === $scope.github_valid_orgs[i]) {
         return true

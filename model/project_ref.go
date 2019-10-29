@@ -435,27 +435,6 @@ func FindProjectRefs(key string, limit int, sortDir int) ([]ProjectRef, error) {
 	return projectRefs, err
 }
 
-func FindProjectRefsWithInvalidOwners(validOrgs []string) ([]ProjectRef, error) {
-	projectRefs := []ProjectRef{}
-	query := bson.M{
-		ProjectRefRepoKey:    bson.M{"$nin": validOrgs},
-		ProjectRefEnabledKey: true,
-	}
-	err := db.FindAll(
-		ProjectRefCollection,
-		query,
-		db.NoProjection,
-		db.NoSort,
-		db.NoSkip,
-		db.NoLimit,
-		&projectRefs,
-	)
-	if err != nil {
-		return 0, errors.Wrapf(err, "error updating invalid projects")
-	}
-	return projectRefs, err
-}
-
 func (projectRef *ProjectRef) CanEnableCommitQueue() (bool, error) {
 	resultRef, err := FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(projectRef.Owner, projectRef.Repo, projectRef.Branch)
 	if err != nil {
@@ -538,10 +517,10 @@ func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {
 		return errors.New("no owner/repo specified")
 	}
 
-	if !util.StringSliceContains(validOrgs, p.Owner) {
+	if len(validOrgs) > 0 && !util.StringSliceContains(validOrgs, p.Owner) {
 		return errors.New("owner not authorized")
 	}
-
+	return nil
 }
 
 func (t TriggerDefinition) Validate(parentProject string) error {
