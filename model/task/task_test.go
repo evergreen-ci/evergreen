@@ -750,8 +750,8 @@ func TestTaskSetResultsFields(t *testing.T) {
         StartTime := 1569431862.508
         EndTime := 1569431887.2
 
-        StartDate := util.FromPythonTime(StartTime).In(time.UTC)
-        EndDate := util.FromPythonTime(EndTime).In(time.UTC)
+        TestStartTime := util.FromPythonTime(StartTime).In(time.UTC)
+        TestEndTime := util.FromPythonTime(EndTime).In(time.UTC)
 
         testresults := []TestResult{
                 {
@@ -769,12 +769,12 @@ func TestTaskSetResultsFields(t *testing.T) {
                 So(db.Clear(Collection), ShouldBeNil)
                 So(db.Clear(testresult.Collection), ShouldBeNil)
 
-                createTime, err := time.Parse(time.RFC3339, "2019-09-25T17:40:35Z")
+                taskCreateTime, err := time.Parse(time.RFC3339, "2019-09-25T17:40:35Z")
                 So(err, ShouldBeNil)
 
                 task := Task{
                         Id:           taskID,
-                        CreateTime:   createTime,
+                        CreateTime:   taskCreateTime,
                         Project:      project,
                         DistroId:     distroID,
                         BuildVariant: buildVariant,
@@ -785,7 +785,7 @@ func TestTaskSetResultsFields(t *testing.T) {
 
                 executionDisplayTask := Task{
                         Id:             displayTaskID,
-                        CreateTime:     createTime,
+                        CreateTime:     taskCreateTime,
                         Project:        project,
                         DistroId:       distroID,
                         BuildVariant:   buildVariant,
@@ -809,9 +809,9 @@ func TestTaskSetResultsFields(t *testing.T) {
                         So(written[0].Requester, ShouldEqual, requester)
                         So(written[0].DisplayName, ShouldEqual, displayName)
                         So(written[0].ExecutionDisplayName, ShouldBeBlank)
-                        So(written[0].CreateTime.UTC(), ShouldResemble, createTime.UTC())
-                        So(written[0].StartDate.UTC(), ShouldResemble, StartDate.UTC())
-                        So(written[0].EndDate.UTC(), ShouldResemble, EndDate.UTC())
+                        So(written[0].TaskCreateTime.UTC(), ShouldResemble, taskCreateTime.UTC())
+                        So(written[0].TestStartTime.UTC(), ShouldResemble, TestStartTime.UTC())
+                        So(written[0].TestEndTime.UTC(), ShouldResemble, TestEndTime.UTC())
                 })
 
                 Convey("With a display task", func() {
@@ -828,9 +828,9 @@ func TestTaskSetResultsFields(t *testing.T) {
                         So(written[0].Requester, ShouldEqual, requester)
                         So(written[0].DisplayName, ShouldEqual, displayName)
                         So(written[0].ExecutionDisplayName, ShouldEqual, executionDisplayName)
-                        So(written[0].CreateTime.UTC(), ShouldResemble, createTime.UTC())
-                        So(written[0].StartDate.UTC(), ShouldResemble, StartDate.UTC())
-                        So(written[0].EndDate.UTC(), ShouldResemble, EndDate.UTC())
+                        So(written[0].TaskCreateTime.UTC(), ShouldResemble, taskCreateTime.UTC())
+                        So(written[0].TestStartTime.UTC(), ShouldResemble, TestStartTime.UTC())
+                        So(written[0].TestEndTime.UTC(), ShouldResemble, TestEndTime.UTC())
                 })
         })
 }

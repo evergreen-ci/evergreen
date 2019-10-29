@@ -29,9 +29,6 @@ type TestResult struct {
         StartTime float64          `json:"start" bson:"start"`
         EndTime   float64          `json:"end" bson:"end"`
 
-        StartDate time.Time `json:"start_date" bson:"start_date"`
-        EndDate   time.Time `json:"end_date" bson:"end_date"`
-
         // Together, TaskID and Execution identify the task which created this TestResult
         TaskID    string `bson:"task_id" json:"task_id"`
         Execution int    `bson:"task_execution" json:"task_execution"`
@@ -47,7 +44,10 @@ type TestResult struct {
         Requester            string    `bson:"r" json:"r"`
         DisplayName          string    `bson:"display_name" json:"display_name"`
         ExecutionDisplayName string    `bson:"execution_display_name,omitempty" json:"execution_display_name,omitempty"`
-        CreateTime           time.Time `bson:"create_time" json:"create_time"`
+        TaskCreateTime       time.Time `bson:"task_create_time" json:"task_create_time"`
+
+        TestStartTime time.Time `json:"test_start_time" bson:"test_start_time"`
+        TestEndTime   time.Time `json:"test_end_time" bson:"test_end_time"`
 }
 
 var (

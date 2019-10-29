@@ -1079,9 +1079,6 @@ func (t TestResult) convertToNewStyleTestResult(task *Task) testresult.TestResul
                 StartTime: t.StartTime,
                 EndTime:   t.EndTime,
 
-                StartDate: util.FromPythonTime(t.StartTime).In(time.UTC),
-                EndDate:   util.FromPythonTime(t.EndTime).In(time.UTC),
-
                 // copy field values from enclosing tasks.
                 TaskID:               task.Id,
                 Execution:            task.Execution,
@@ -1090,9 +1087,12 @@ func (t TestResult) convertToNewStyleTestResult(task *Task) testresult.TestResul
                 DistroId:             task.DistroId,
                 Requester:            task.Requester,
                 DisplayName:          task.DisplayName,
-                CreateTime:           task.CreateTime,
+                TaskCreateTime:       task.CreateTime,
                 ExecutionDisplayName: ExecutionDisplayName,
-	}
+
+                TestStartTime: util.FromPythonTime(t.StartTime).In(time.UTC),
+                TestEndTime:   util.FromPythonTime(t.EndTime).In(time.UTC),
+        }
 }
 
 func ConvertToOld(in *testresult.TestResult) TestResult {
