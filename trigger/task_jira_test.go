@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"text/template"
 	"time"
 
 	"net/url"
@@ -529,28 +530,37 @@ func TestMakeSummaryPrefix(t *testing.T) {
 
 func TestBuild(t *testing.T) {
 	builder := jiraBuilder{
+		project: "EVG",
 		mappings: &evergreen.JIRANotificationsConfig{
 			CustomFields: []evergreen.JIRANotificationsProject{
 				{
 					Project:    "EVG",
 					Components: []string{"component0", "component1"},
 					Fields: []evergreen.JIRANotificationsCustomField{
-						{Field: "field0", Template: "{.Template}"},
+						{Field: "field0", Template: "Status: {{.Task.Status}}"},
 					},
 				},
 			},
 		},
+		data: jiraTemplateData{
+			Task:    &task.Task{Status: evergreen.TaskSucceeded},
+			Project: &model.ProjectRef{},
+			Build:   &build.Build{},
+			Version: &model.Version{Revision: "abcdefgh"},
+		},
 	}
+	var err error
+	descriptionTemplate, err = template.New("test").Parse("Status: {{.Task.Status}}")
+	assert.NoError(t, err)
 
 	message, err := builder.build()
 	assert.NoError(t, err)
 	assert.Equal(t, "EVG", message.Project)
 	assert.Len(t, message.Fields, 1)
 	require.Contains(t, message.Fields, "field0")
-	assert.Equal(t, "{.Template}", message.Fields["field0"])
+	assert.Equal(t, []string{"Status: success"}, message.Fields["field0"])
 	require.Len(t, message.Components, 2)
 	assert.Equal(t, "component0", message.Components[0])
 	assert.Equal(t, "component1", message.Components[1])
 	assert.Empty(t, message.Labels)
-
 }
