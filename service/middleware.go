@@ -232,19 +232,21 @@ func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 				uis.RedirectToLogin(w, r)
 				return
 			}
-			opts := gimlet.PermissionOpts{
-				Resource:      projCtx.ProjectRef.Identifier,
-				ResourceType:  evergreen.ProjectResourceType,
-				Permission:    evergreen.PermissionTasks,
-				RequiredLevel: int(evergreen.TasksView),
-			}
-			hasPermission, err := usr.HasPermission(opts)
-			if err != nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error checking permissions"))
-			}
-			if !hasPermission {
-				uis.LoggedError(w, r, http.StatusUnauthorized, errors.New("not authorized for this action"))
-				return
+			if evergreen.AclCheckingIsEnabled {
+				opts := gimlet.PermissionOpts{
+					Resource:      projCtx.ProjectRef.Identifier,
+					ResourceType:  evergreen.ProjectResourceType,
+					Permission:    evergreen.PermissionTasks,
+					RequiredLevel: int(evergreen.TasksView),
+				}
+				hasPermission, err := usr.HasPermission(opts)
+				if err != nil {
+					uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error checking permissions"))
+				}
+				if !hasPermission {
+					uis.LoggedError(w, r, http.StatusUnauthorized, errors.New("not authorized for this action"))
+					return
+				}
 			}
 		}
 
