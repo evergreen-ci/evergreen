@@ -471,6 +471,7 @@ func TestRoleMappingRoutes(t *testing.T) {
 
 	addHandler := makeAddLDAPRoleMappingHandler(sc)
 	removeHandler := makeRemoveLDAPRoleMappingHandler(sc)
+	lastTime := time.Now()
 
 	// add a key
 	body := struct {
@@ -485,6 +486,8 @@ func TestRoleMappingRoutes(t *testing.T) {
 	assert.NoError(t, addHandler.Parse(ctx, request))
 	assert.Equal(t, http.StatusOK, addHandler.Run(ctx).Status())
 	assert.Equal(t, "role1", sc.MockSettings.LDAPRoleMap.Map["group1"])
+	assert.True(t, lastTime.Before(sc.MockSettings.LDAPRoleMap.LastUpdated))
+	lastTime = sc.MockSettings.LDAPRoleMap.LastUpdated
 
 	// add another key
 	body = struct {
@@ -500,6 +503,8 @@ func TestRoleMappingRoutes(t *testing.T) {
 	assert.Equal(t, http.StatusOK, addHandler.Run(ctx).Status())
 	assert.Equal(t, "role1", sc.MockSettings.LDAPRoleMap.Map["group1"])
 	assert.Equal(t, "role2", sc.MockSettings.LDAPRoleMap.Map["group2"])
+	assert.True(t, lastTime.Before(sc.MockSettings.LDAPRoleMap.LastUpdated))
+	lastTime = sc.MockSettings.LDAPRoleMap.LastUpdated
 
 	// change value of existing key
 	body = struct {
@@ -515,6 +520,8 @@ func TestRoleMappingRoutes(t *testing.T) {
 	assert.Equal(t, http.StatusOK, addHandler.Run(ctx).Status())
 	assert.Equal(t, "role1", sc.MockSettings.LDAPRoleMap.Map["group1"])
 	assert.Equal(t, "role3", sc.MockSettings.LDAPRoleMap.Map["group2"])
+	assert.True(t, lastTime.Before(sc.MockSettings.LDAPRoleMap.LastUpdated))
+	lastTime = sc.MockSettings.LDAPRoleMap.LastUpdated
 
 	// remove existing key
 	removeBody := struct {
@@ -529,6 +536,8 @@ func TestRoleMappingRoutes(t *testing.T) {
 	assert.Equal(t, http.StatusOK, removeHandler.Run(ctx).Status())
 	assert.Equal(t, "role1", sc.MockSettings.LDAPRoleMap.Map["group1"])
 	assert.Equal(t, "", sc.MockSettings.LDAPRoleMap.Map["group2"])
+	assert.True(t, lastTime.Before(sc.MockSettings.LDAPRoleMap.LastUpdated))
+	lastTime = sc.MockSettings.LDAPRoleMap.LastUpdated
 
 	// remove key that DNE
 	removeBody = struct {
@@ -543,4 +552,5 @@ func TestRoleMappingRoutes(t *testing.T) {
 	assert.Equal(t, http.StatusOK, removeHandler.Run(ctx).Status())
 	assert.Equal(t, "role1", sc.MockSettings.LDAPRoleMap.Map["group1"])
 	assert.Equal(t, "", sc.MockSettings.LDAPRoleMap.Map["group2"])
+	assert.True(t, lastTime.Before(sc.MockSettings.LDAPRoleMap.LastUpdated))
 }
