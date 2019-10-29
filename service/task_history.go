@@ -429,10 +429,10 @@ func getVersionsInWindow(wt, projectID string, radius int, center *model.Version
 // or after the center, indicated by "before", and sorted backwards in time
 func surroundingVersions(center *model.Version, projectID string, versionsToFetch int, before bool) ([]model.Version, error) {
 	direction := "$gt"
-	sortOn := []string{model.VersionRevisionOrderNumberKey}
+	sortOn := []string{model.VersionCreateTimeKey, model.VersionRevisionKey}
 	if before {
 		direction = "$lt"
-		sortOn = []string{"-" + model.VersionRevisionOrderNumberKey}
+		sortOn = []string{"-" + model.VersionCreateTimeKey, "-" + model.VersionRevisionKey}
 	}
 
 	versions, err := model.VersionFind(
@@ -441,7 +441,10 @@ func surroundingVersions(center *model.Version, projectID string, versionsToFetc
 			model.VersionRequesterKey: bson.M{
 				"$in": evergreen.SystemVersionRequesterTypes,
 			},
-			model.VersionRevisionOrderNumberKey: bson.M{direction: center.RevisionOrderNumber},
+			"$or": []bson.M{
+				{model.VersionCreateTimeKey: bson.M{direction: center.CreateTime}},
+				{model.VersionCreateTimeKey: center.CreateTime, model.VersionRevisionKey: bson.M{direction: center.Revision}},
+			},
 		}).WithFields(
 			model.VersionRevisionOrderNumberKey,
 			model.VersionRevisionKey,
