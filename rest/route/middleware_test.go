@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/mongodb/grip"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -333,6 +335,10 @@ func TestTaskAuthMiddleware(t *testing.T) {
 }
 
 func TestProjectViewPermission(t *testing.T) {
+	if !evergreen.AclCheckingIsEnabled {
+		grip.Info("ACL system not on, will not run TestProjectViewPermission")
+		return
+	}
 	//setup
 	assert := assert.New(t)
 	counter := 0

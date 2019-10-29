@@ -127,7 +127,6 @@ variables:
       - func: run-make
         vars: 
           target: "${task_name}"
-          acl_enabled: "true"
   - &run-smoke-test-with-client-url
     name: smoke
     commands:
@@ -167,7 +166,6 @@ variables:
       - func: run-make
         vars:
           target: "${task_name}"
-          acl_enabled: "true"
   - &version-constants
     nodejs_version: "6.11.1"
   - &run-generate-lint
@@ -227,6 +225,7 @@ functions:
         NODE_BIN_PATH: ${nodebin}
         RACE_DETECTOR: ${race_detector}
         SETTINGS_OVERRIDE: creds.yml
+        SMOKE_TEST_FILE: ${smoke_test_file}
         TEST_TIMEOUT: ${test_timeout}
         VENDOR_PKG: "github.com/${trigger_repo_owner}/${trigger_repo_name}"
         VENDOR_REVISION: ${trigger_revision}
@@ -524,6 +523,24 @@ buildvariants:
       - name: "dist"
       - name: ".smoke"
       - name: ".test"
+
+  - name: ubuntu1604-acl
+    display_name: Ubuntu 16.04 (ACL enabled)
+    run_on:
+      - ubuntu1604-test
+      - ubuntu1604-build
+    expansions:
+      acl_enabled: true
+      disable_coverage: yes
+      goos: linux
+      goarch: amd64
+      gobin: /opt/golang/go1.9/bin/go
+      goroot: /opt/golang/go1.9
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz
+      smoke_test_file: scripts/smoke_test_acl.yml
+    tasks:
+      - name: ".smoke"
+      - name: "test-rest-route"
 
   - name: race-detector
     display_name: Race Detector
