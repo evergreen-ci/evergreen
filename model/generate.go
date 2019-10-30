@@ -138,7 +138,7 @@ func (g *GeneratedProject) NewVersion() (*Project, *ParserProject, *Version, *ta
 	// Validate generated project against original project.
 	if err = g.validateGeneratedProject(p, cachedProject); err != nil {
 		// Return version in this error case for handleError, which checks for a race. We only need to do this in cases where there is a validation check.
-		return nil, v, nil, nil, nil,
+		return nil, nil, v, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "generated project is invalid").Error()}
 	}
 
