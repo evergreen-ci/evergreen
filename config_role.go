@@ -79,7 +79,7 @@ func (m *LDAPRoleMap) Remove(group string) error {
 				ldapRoleMappingLDAPGroupKey: group,
 			},
 		},
-	}, options.Update().SetUpsert(true))
+	})
 
 	return errors.Wrapf(err, "error removing %s from the LDAP-role map", group)
 }
