@@ -304,7 +304,7 @@ func generateDeviceNameForVolume() string {
 	letters := "fghijklmnop"
 	rand.Seed(time.Now().Unix())
 
-	return fmt.Sprintf("/def/sd%c%d", letters[rand.Intn(len(letters))], rand.Intn(5)+1)
+	return fmt.Sprintf("/dev/sd%c%d", letters[rand.Intn(len(letters))], rand.Intn(5)+1)
 }
 
 func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping, error) {

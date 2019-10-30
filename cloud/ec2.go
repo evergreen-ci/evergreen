@@ -1077,13 +1077,10 @@ func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment 
 		return errors.Wrap(err, "error creating client")
 	}
 
+	// if no device name is provided, generate a unique device name
 	if attachment.DeviceName == "" {
 		deviceName := generateDeviceNameForVolume()
-		exists, err := host.HostExistsWithVolumeWithDeviceName(deviceName)
-		if err != nil {
-			return errors.Wrapf(err, "error querying for volume with device name")
-		}
-		if !exists {
+		if exists, _ := host.HostExistsWithVolumeWithDeviceName(deviceName); !exists {
 			attachment.DeviceName = deviceName
 		}
 	}
