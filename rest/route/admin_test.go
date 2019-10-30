@@ -471,9 +471,9 @@ func TestRoleMappingRoutes(t *testing.T) {
 
 	addHandler := makeAddLDAPRoleMappingHandler(sc)
 	removeHandler := makeRemoveLDAPRoleMappingHandler(sc)
-	lastTime := time.Now()
 
 	// add a key
+	expectedMappings := map[string]string{"group1": "role1"}
 	body := struct {
 		Group  string `json:"group"`
 		RoleID string `json:"role_id"`
@@ -485,11 +485,13 @@ func TestRoleMappingRoutes(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, addHandler.Parse(ctx, request))
 	assert.Equal(t, http.StatusOK, addHandler.Run(ctx).Status())
-	assert.Equal(t, "role1", sc.MockSettings.LDAPRoleMap.Map["group1"])
-	assert.True(t, lastTime.Before(sc.MockSettings.LDAPRoleMap.LastUpdated))
-	lastTime = sc.MockSettings.LDAPRoleMap.LastUpdated
+	assert.Len(t, sc.MockSettings.LDAPRoleMap, len(expectedMappings))
+	for _, mapping := range sc.MockSettings.LDAPRoleMap {
+		require.Equal(t, expectedMappings[mapping.LDAPGroup], mapping.RoleID)
+	}
 
 	// add another key
+	expectedMappings["group2"] = "role2"
 	body = struct {
 		Group  string `json:"group"`
 		RoleID string `json:"role_id"`
@@ -501,12 +503,13 @@ func TestRoleMappingRoutes(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, addHandler.Parse(ctx, request))
 	assert.Equal(t, http.StatusOK, addHandler.Run(ctx).Status())
-	assert.Equal(t, "role1", sc.MockSettings.LDAPRoleMap.Map["group1"])
-	assert.Equal(t, "role2", sc.MockSettings.LDAPRoleMap.Map["group2"])
-	assert.True(t, lastTime.Before(sc.MockSettings.LDAPRoleMap.LastUpdated))
-	lastTime = sc.MockSettings.LDAPRoleMap.LastUpdated
+	assert.Len(t, sc.MockSettings.LDAPRoleMap, len(expectedMappings))
+	for _, mapping := range sc.MockSettings.LDAPRoleMap {
+		require.Equal(t, expectedMappings[mapping.LDAPGroup], mapping.RoleID)
+	}
 
 	// change value of existing key
+	expectedMappings["group2"] = "role3"
 	body = struct {
 		Group  string `json:"group"`
 		RoleID string `json:"role_id"`
@@ -518,12 +521,13 @@ func TestRoleMappingRoutes(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, addHandler.Parse(ctx, request))
 	assert.Equal(t, http.StatusOK, addHandler.Run(ctx).Status())
-	assert.Equal(t, "role1", sc.MockSettings.LDAPRoleMap.Map["group1"])
-	assert.Equal(t, "role3", sc.MockSettings.LDAPRoleMap.Map["group2"])
-	assert.True(t, lastTime.Before(sc.MockSettings.LDAPRoleMap.LastUpdated))
-	lastTime = sc.MockSettings.LDAPRoleMap.LastUpdated
+	assert.Len(t, sc.MockSettings.LDAPRoleMap, len(expectedMappings))
+	for _, mapping := range sc.MockSettings.LDAPRoleMap {
+		require.Equal(t, expectedMappings[mapping.LDAPGroup], mapping.RoleID)
+	}
 
 	// remove existing key
+	delete(expectedMappings, "group2")
 	removeBody := struct {
 		Group string `json:"group"`
 	}{"group2"}
@@ -534,10 +538,10 @@ func TestRoleMappingRoutes(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, removeHandler.Parse(ctx, request))
 	assert.Equal(t, http.StatusOK, removeHandler.Run(ctx).Status())
-	assert.Equal(t, "role1", sc.MockSettings.LDAPRoleMap.Map["group1"])
-	assert.Equal(t, "", sc.MockSettings.LDAPRoleMap.Map["group2"])
-	assert.True(t, lastTime.Before(sc.MockSettings.LDAPRoleMap.LastUpdated))
-	lastTime = sc.MockSettings.LDAPRoleMap.LastUpdated
+	assert.Len(t, sc.MockSettings.LDAPRoleMap, len(expectedMappings))
+	for _, mapping := range sc.MockSettings.LDAPRoleMap {
+		require.Equal(t, expectedMappings[mapping.LDAPGroup], mapping.RoleID)
+	}
 
 	// remove key that DNE
 	removeBody = struct {
@@ -550,7 +554,8 @@ func TestRoleMappingRoutes(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, removeHandler.Parse(ctx, request))
 	assert.Equal(t, http.StatusOK, removeHandler.Run(ctx).Status())
-	assert.Equal(t, "role1", sc.MockSettings.LDAPRoleMap.Map["group1"])
-	assert.Equal(t, "", sc.MockSettings.LDAPRoleMap.Map["group2"])
-	assert.True(t, lastTime.Before(sc.MockSettings.LDAPRoleMap.LastUpdated))
+	assert.Len(t, sc.MockSettings.LDAPRoleMap, len(expectedMappings))
+	for _, mapping := range sc.MockSettings.LDAPRoleMap {
+		require.Equal(t, expectedMappings[mapping.LDAPGroup], mapping.RoleID)
+	}
 }

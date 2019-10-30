@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip/send"
@@ -630,28 +629,57 @@ func (a *APIJiraConfig) ToService() (interface{}, error) {
 	}, nil
 }
 
-type APILDAPRoleMap struct {
-	LastUpdated APITime
-	Map         map[string]string
+type APILDAPRoleMapping struct {
+	LDAPGroup APIString `json:"ldap_group"`
+	RoleID    APIString ` json:"role_id"`
 }
+
+func (a *APILDAPRoleMapping) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.LDAPRoleMapping:
+		a.LDAPGroup = ToAPIString(v.LDAPGroup)
+		a.RoleID = ToAPIString(v.RoleID)
+	}
+
+	return nil
+}
+
+func (a *APILDAPRoleMapping) ToService() (interface{}, error) {
+	mapping := evergreen.LDAPRoleMapping{
+		LDAPGroup: FromAPIString(a.LDAPGroup),
+		RoleID:    FromAPIString(a.RoleID),
+	}
+
+	return mapping, nil
+}
+
+type APILDAPRoleMap []*APILDAPRoleMapping
 
 func (a *APILDAPRoleMap) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.LDAPRoleMap:
-		a.LastUpdated = NewTime(v.LastUpdated)
-		a.Map = v.Map
+		m := make(APILDAPRoleMap, len(v))
+		for i := range v {
+			if err := m[i].BuildFromService(v[i]); err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
 }
 
 func (a *APILDAPRoleMap) ToService() (interface{}, error) {
-	mapping := evergreen.LDAPRoleMap{
-		LastUpdated: time.Time(a.LastUpdated),
-		Map:         a.Map,
+	serviceMap := make(evergreen.LDAPRoleMap, len(*a))
+	for i := range *a {
+		v, err := (*a)[i].ToService()
+		if err != nil {
+			return nil, err
+		}
+		serviceMap[i] = v.(evergreen.LDAPRoleMapping)
 	}
 
-	return mapping, nil
+	return serviceMap, nil
 }
 
 type APILoggerConfig struct {

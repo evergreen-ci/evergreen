@@ -318,21 +318,27 @@ func (ac *MockAdminConnector) MapLDAPGroupToRole(group, roleID string) error {
 	if ac.MockSettings == nil {
 		ac.MockSettings = &evergreen.Settings{}
 	}
-	ac.MockSettings.LDAPRoleMap.LastUpdated = time.Now()
-	if ac.MockSettings.LDAPRoleMap.Map == nil {
-		ac.MockSettings.LDAPRoleMap.Map = map[string]string{}
-	}
-	ac.MockSettings.LDAPRoleMap.Map[group] = roleID
+
+	ac.MockSettings.LDAPRoleMap = append(
+		ac.MockSettings.LDAPRoleMap,
+		evergreen.LDAPRoleMapping{group, roleID},
+	)
 
 	return nil
 }
 
 func (ac *MockAdminConnector) UnmapLDAPGroupToRole(group string) error {
-	if ac.MockSettings == nil || ac.MockSettings.LDAPRoleMap.Map == nil {
+	if ac.MockSettings == nil {
 		return nil
 	}
-	ac.MockSettings.LDAPRoleMap.LastUpdated = time.Now()
-	delete(ac.MockSettings.LDAPRoleMap.Map, group)
+
+	for i, mapping := range ac.MockSettings.LDAPRoleMap {
+		if mapping.LDAPGroup == group {
+			ac.MockSettings.LDAPRoleMap[i] = ac.MockSettings.LDAPRoleMap[len(ac.MockSettings.LDAPRoleMap)-1]
+			ac.MockSettings.LDAPRoleMap = ac.MockSettings.LDAPRoleMap[:len(ac.MockSettings.LDAPRoleMap)-1]
+			return nil
+		}
+	}
 
 	return nil
 }

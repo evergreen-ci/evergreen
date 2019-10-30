@@ -138,6 +138,7 @@ func (c *Settings) Set() error {
 			hostJasperKey:         c.HostJasper,
 			keysKey:               c.Keys,
 			keysNewKey:            c.KeysNew,
+			ldapRoleMapKey:        c.LDAPRoleMap,
 			logPathKey:            c.LogPath,
 			pprofPortKey:          c.PprofPort,
 			pluginsKey:            c.Plugins,
@@ -187,6 +188,15 @@ func (c *Settings) ValidateAndDefault() error {
 			}
 		}
 	}
+
+	keys := map[string]bool{}
+	for _, mapping := range c.LDAPRoleMap {
+		if keys[mapping.LDAPGroup] == true {
+			catcher.Add(errors.Errorf("duplicate LDAP group value %s found in LDAP-role mappings", mapping.LDAPGroup))
+		}
+		keys[mapping.LDAPGroup] = true
+	}
+
 	if catcher.HasErrors() {
 		return catcher.Resolve()
 	}
@@ -196,6 +206,7 @@ func (c *Settings) ValidateAndDefault() error {
 	if c.LogPath == "" {
 		c.LogPath = LocalLoggingOverride
 	}
+
 	return nil
 }
 
