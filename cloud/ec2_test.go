@@ -1314,11 +1314,11 @@ func (s *EC2Suite) TestAttachVolume() {
 	defer cancel()
 
 	s.Require().NoError(s.h.Insert())
-	newAttachment := &host.VolumeAttachment{
+	newAttachment := host.VolumeAttachment{
 		VolumeID:   "test-volume",
 		DeviceName: "test-device-name",
 	}
-	s.NoError(s.onDemandManager.AttachVolume(ctx, s.h, newAttachment))
+	s.NoError(s.onDemandManager.AttachVolume(ctx, s.h, &newAttachment))
 
 	manager, ok := s.onDemandManager.(*ec2Manager)
 	s.True(ok)
