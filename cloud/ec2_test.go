@@ -814,7 +814,7 @@ func (s *EC2Suite) TestOnUp() {
 	s.True(ok)
 	mock, ok := manager.client.(*awsClientMock)
 	s.True(ok)
-	s.Nil(mock.DescribeVolumesInput)
+	s.NotNil(mock.DescribeVolumesInput)
 
 	s.Len(mock.CreateTagsInput.Resources, 2)
 	s.Equal(s.h.Id, *mock.CreateTagsInput.Resources[0])
@@ -826,6 +826,7 @@ func (s *EC2Suite) TestOnUp() {
 	s.Require().Len(foundHost.Volumes, 1)
 	s.Equal("volume_id", foundHost.Volumes[0].VolumeID)
 	s.Equal("device_name", foundHost.Volumes[0].DeviceName)
+	s.NotZero(foundHost.VolumeTotalSize)
 }
 
 func (s *EC2Suite) TestGetDNSName() {

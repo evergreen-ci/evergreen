@@ -996,20 +996,22 @@ func AggregateLastContainerFinishTimes() ([]FinishTime, error) {
 
 }
 
-func (h *Host) SetVolumes(volumes []VolumeAttachment) error {
+func (h *Host) SetVolumes(volumes []VolumeAttachment, size int64) error {
 	_, err := UpsertOne(
 		bson.M{
 			IdKey: h.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				VolumesKey: volumes,
+				VolumesKey:         volumes,
+				VolumeTotalSizeKey: size,
 			},
 		})
 	if err != nil {
 		return errors.Wrapf(err, "error updating host volumes")
 	}
 	h.Volumes = volumes
+	h.VolumeTotalSize = size
 	return nil
 }
 
