@@ -511,10 +511,12 @@ func (m *ec2Manager) getResources(ctx context.Context, h *host.Host) ([]string, 
 			return nil, errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
 		}
 	}
+
 	volumeIDs, err := m.client.GetVolumeIDs(ctx, h)
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't get volume IDs for '%s'", h.Id)
 	}
+
 	resources := []string{instanceID}
 	resources = append(resources, volumeIDs...)
 	return resources, nil

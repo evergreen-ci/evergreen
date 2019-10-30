@@ -825,7 +825,7 @@ func (s *EC2Suite) TestOnUp() {
 	s.NotNil(foundHost)
 	s.Require().Len(foundHost.Volumes, 1)
 	s.Equal("volume_id", foundHost.Volumes[0].VolumeID)
-	s.Equal("volume_id", foundHost.Volumes[0].DeviceName)
+	s.Equal("device_name", foundHost.Volumes[0].DeviceName)
 }
 
 func (s *EC2Suite) TestGetDNSName() {
