@@ -143,8 +143,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                       <li>
                         <a tabindex="-1" href="#" ng-click="addSubscription()">Add Notification</a>
                       </li>
-                      <li ng-show="!task.override_dependencies && task.depends_on && task.depends_on.length > 0"
-                        ng-hide="!isAdmin && (acl_enabled && permissions.project_tasks<30)">
+                      <li ng-show="!task.override_dependencies && task.depends_on && task.depends_on.length > 0 && (isAdmin || (acl_enabled && permissions.project_tasks>=30))">
                         <a tabindex="-1" href="#" ng-click="overrideDependencies()">Override Dependencies</a>
                       </li>
                     </ul>
