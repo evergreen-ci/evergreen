@@ -54,7 +54,7 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 		return errors.New("repotracker is disabled")
 	}
 	if len(settings.GithubOrgs) > 0 && !util.StringSliceContains(settings.GithubOrgs, *event.Repo.Owner.Name) {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(message.Fields{
 			"source":  "github hook",
 			"msg_id":  msgID,
 			"event":   "push",
@@ -62,7 +62,8 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 			"repo":    *event.Repo.Name,
 			"ref":     *event.Ref,
 			"message": "owner from push event is invalid",
-		}))
+		})
+		return errors.New("owner from push event is invalid")
 	}
 	refs, err := validateProjectRefs(*event.Repo.Owner.Name, *event.Repo.Name, branch)
 	if err != nil {
