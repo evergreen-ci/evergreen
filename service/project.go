@@ -146,7 +146,11 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
 	data := struct {
 		ProjectRef            *model.ProjectRef
 		ProjectVars           *model.ProjectVars
@@ -154,9 +158,10 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		PRConflictingRefs     []string                    `json:"pr_testing_conflicting_refs,omitempty"`
 		CQConflictingRefs     []string                    `json:"commit_queue_conflicting_refs,omitempty"`
 		GitHubWebhooksEnabled bool                        `json:"github_webhooks_enabled"`
+		GithubValidOrgs       []string                    `json:"github_valid_orgs"`
 		Subscriptions         []restModel.APISubscription `json:"subscriptions"`
 		Permissions           gimlet.Permissions          `json:"permissions"`
-	}{projRef, projVars, projectAliases, PRConflictingRefs, CQConflictingRefs, hook != nil, apiSubscriptions, permissions}
+	}{projRef, projVars, projectAliases, PRConflictingRefs, CQConflictingRefs, hook != nil, settings.GithubOrgs, apiSubscriptions, permissions}
 
 	// the project context has all projects so make the ui list using all projects
 	gimlet.WriteJSON(w, data)
@@ -237,6 +242,11 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(responseRef.Branch) == 0 {
 		http.Error(w, "no branch specified", http.StatusBadRequest)
+		return
+	}
+
+	if len(uis.Settings.GithubOrgs) > 0 && !util.StringSliceContains(uis.Settings.GithubOrgs, responseRef.Owner) {
+		http.Error(w, "owner not validated in settings", http.StatusBadRequest)
 		return
 	}
 

@@ -288,6 +288,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
         $scope.commitQueueConflicts = data.commit_queue_conflicting_refs || [];
         $scope.project_triggers = data.ProjectRef.triggers || [];
         $scope.permissions = data.permissions || {};
+        $scope.github_valid_orgs = data.github_valid_orgs;
         _.each($scope.project_triggers, function(trigger) {
           if (trigger.command) {
             trigger.file = trigger.generate_file;
@@ -614,6 +615,19 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
 
   $scope.isValidMergeBaseRevision = function(revision){
     return revision && revision.length >= 40;
+  }
+
+  $scope.isValidGithubOrg = function(org){
+    // no orgs specified
+    if ($scope.github_valid_orgs === null || $scope.github_valid_orgs === undefined|| $scope.github_valid_orgs.length === 0) {
+      return true
+    }
+    for (var i = 0; i < $scope.github_valid_orgs.length; i++) {
+      if (org === $scope.github_valid_orgs[i]) {
+        return true
+      }
+    }
+    return false
   }
 
   $scope.setLastRevision = function() {
