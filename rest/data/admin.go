@@ -327,7 +327,7 @@ func (ac *MockAdminConnector) MapLDAPGroupToRole(group, roleID string) error {
 	}
 	ac.MockSettings.LDAPRoleMap = append(
 		ac.MockSettings.LDAPRoleMap,
-		evergreen.LDAPRoleMapping{group, roleID},
+		evergreen.LDAPRoleMapping{LDAPGroup: group, RoleID: roleID},
 	)
 
 	return nil
