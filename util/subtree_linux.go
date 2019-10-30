@@ -4,18 +4,21 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/mongodb/grip"
 )
 
 const (
-	processCleanupAttempts   = 10
-	processCleanupTimeoutMin = 100 * time.Millisecond
-	processCleanupTimeoutMax = 1 * time.Second
-	contextTimeout           = 10 * time.Second
+	cleanupCheckAttempts   = 10
+	cleanupCheckTimeoutMin = 100 * time.Millisecond
+	cleanupCheckTimeoutMax = 1 * time.Second
+	contextTimeout         = 10 * time.Second
 )
 
 func TrackProcess(key string, pid int, logger grip.Journaler) {
@@ -45,6 +48,43 @@ func getEnv(pid int) ([]string, error) {
 	return results, nil
 }
 
+// listProc() returns a list of active pids on the system, by listing the
+// contents of /proc and looking for entries that appear to be valid pids. Only
+// usable on systems with a /proc filesystem.
+func listProc() ([]int, error) {
+	d, err := os.Open("/proc")
+	if err != nil {
+		return nil, err
+	}
+	defer d.Close()
+
+	results := make([]int, 0, 50)
+	for {
+		fis, err := d.Readdir(10)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		for _, fi := range fis {
+			// Pid must be a directory with a numeric name
+			if !fi.IsDir() {
+				continue
+			}
+
+			// Using Atoi here will also filter out . and ..
+			pid, err := strconv.Atoi(fi.Name())
+			if err != nil {
+				continue
+			}
+			results = append(results, pid)
+		}
+	}
+	return results, nil
+}
+
 func cleanup(key string, logger grip.Journaler) error {
 	myPid := os.Getpid()
 	pids, err := listProc()
@@ -56,44 +96,58 @@ func cleanup(key string, logger grip.Journaler) error {
 	for _, pid := range pids {
 		env, err := getEnv(pid)
 		if err != nil {
+			if !strings.Contains(err.Error(), os.ErrPermission.Error()) {
+				logger.Infof("Could not get environment for process %d", pid)
+			}
 			continue
 		}
 		if pid != myPid && envHasMarkers(key, env) {
 			p := os.Process{}
 			p.Pid = pid
 			if err := p.Kill(); err != nil {
-				logger.Infof("killing %d failed: %v", pid, err)
+				logger.Infof("Killing %d failed: %s", pid, err.Error())
 			} else {
 				logger.Infof("Killed process %d", pid)
 			}
 		}
 	}
 
+	unkilledPids := []int{}
 	// Retry listing processes until all have successfully exited
 	ctx, cancel := context.WithTimeout(context.Background(), contextTimeout)
 	defer cancel()
 	err = Retry(
 		ctx,
 		func() (bool, error) {
+			unkilledPids = []int{}
 			pids, err = listProc()
 			if err != nil {
 				return false, err
 			}
-			if len(pids) == 0 {
-				return false, nil
+			for _, pid := range pids {
+				env, err := getEnv(pid)
+				if err != nil {
+					if !strings.Contains(err.Error(), os.ErrPermission.Error()) {
+						logger.Infof("Could not get environment for process %s", pid)
+					}
+					continue
+				}
+				if pid != myPid && envHasMarkers(key, env) {
+					unkilledPids = append(unkilledPids, pid)
+				}
 			}
-			return true, nil
+			return len(unkilledPids) != 0, nil
 		},
-		processCleanupAttempts,
-		processCleanupTimeoutMin,
-		processCleanupTimeoutMax,
+		cleanupCheckAttempts,
+		cleanupCheckTimeoutMin,
+		cleanupCheckTimeoutMax,
 	)
 	if err != nil {
 		return err
 	}
 
 	// Log each process that was not cleaned up
-	for _, pid := range pids {
+	for _, pid := range unkilledPids {
 		logger.Infof("Failed to clean up process %d", pid)
 	}
 

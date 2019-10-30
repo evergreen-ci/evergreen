@@ -1297,20 +1297,24 @@ Admin Settings
 										<input type="text" ng-model="Settings.domain_name">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
-										<label>Github PR creator organization</label>
-										<input type="text" ng-model="Settings.github_pr_creator_org">
+										<label>Github Organizations</label>
+										<textarea ng-model="Settings.github_orgs" ng-list="&#10;" ng-trim="false"  md-select-on-focus></textarea>
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
-										<label>Log path</label>
-										<input type="text" ng-model="Settings.log_path">
+										<label>Superusers</label>
+										<textarea ng-model="Settings.superusers" ng-list="&#10;" ng-trim="false" rows="3" md-select-on-focus></textarea>
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Github PR creator organization</label>
+										<input type="text" ng-model="Settings.github_pr_creator_org">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>Pprof port</label>
 										<input type="text" ng-model="Settings.pprof_port">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px">
-										<label>Superusers</label>
-										<textarea ng-model="Settings.superusers" ng-list="&#10;" ng-trim="false" rows="3" md-select-on-focus></textarea>
+									<md-input-container class="control" style="width:45%;">
+										<label>Log path</label>
+										<input type="text" ng-model="Settings.log_path">
 									</md-input-container>
 								</md-card-content>
 							</md-card>

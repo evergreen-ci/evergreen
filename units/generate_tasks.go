@@ -105,6 +105,9 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 
 // handleError return mongo.ErrNoDocuments if another job has raced, the passed in error otherwise.
 func (j *generateTasksJob) handleError(v *model.Version, handledError error) error {
+	if v == nil {
+		return handledError
+	}
 	versionFromDB, err := model.VersionFindOne(model.VersionById(v.Id).WithFields(model.VersionConfigNumberKey))
 	if err != nil {
 		return errors.Wrapf(err, "problem finding version %s", v.Id)
