@@ -21,7 +21,7 @@ func TestLDAPRoleMapAddAndRemove(t *testing.T) {
 	expectedMappings := map[string]string{"group1": "role1"}
 	err = m.Add("group1", "role1")
 	require.NoError(t, err)
-	coll.FindOne(ctx, byId(s.SectionId())).Decode(s)
+	require.NoError(t, coll.FindOne(ctx, byId(s.SectionId())).Decode(s))
 	for _, mapping := range s.LDAPRoleMap {
 		require.Equal(t, expectedMappings[mapping.LDAPGroup], mapping.RoleID)
 	}
@@ -29,7 +29,7 @@ func TestLDAPRoleMapAddAndRemove(t *testing.T) {
 	expectedMappings["group2"] = "role2"
 	err = m.Add("group2", "role2")
 	require.NoError(t, err)
-	coll.FindOne(ctx, byId(s.SectionId())).Decode(s)
+	require.NoError(t, coll.FindOne(ctx, byId(s.SectionId())).Decode(s))
 	for _, mapping := range s.LDAPRoleMap {
 		require.Equal(t, expectedMappings[mapping.LDAPGroup], mapping.RoleID)
 	}
@@ -37,7 +37,7 @@ func TestLDAPRoleMapAddAndRemove(t *testing.T) {
 	expectedMappings["group1"] = "role2"
 	err = m.Add("group1", "role2")
 	require.NoError(t, err)
-	coll.FindOne(ctx, byId(s.SectionId())).Decode(s)
+	require.NoError(t, coll.FindOne(ctx, byId(s.SectionId())).Decode(s))
 	for _, mapping := range s.LDAPRoleMap {
 		require.Equal(t, expectedMappings[mapping.LDAPGroup], mapping.RoleID)
 	}
@@ -45,7 +45,7 @@ func TestLDAPRoleMapAddAndRemove(t *testing.T) {
 	delete(expectedMappings, "group1")
 	err = m.Remove("group1")
 	require.NoError(t, err)
-	coll.FindOne(ctx, byId(s.SectionId())).Decode(s)
+	require.NoError(t, coll.FindOne(ctx, byId(s.SectionId())).Decode(s))
 	for _, mapping := range s.LDAPRoleMap {
 		require.Equal(t, expectedMappings[mapping.LDAPGroup], mapping.RoleID)
 	}
