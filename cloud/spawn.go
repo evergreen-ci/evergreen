@@ -63,9 +63,8 @@ func (so *SpawnOptions) validate() error {
 		return errors.Wrap(err, "Error occurred finding user's current hosts")
 	}
 
-	if len(activeSpawnedHosts) >= MaxSpawnHostsPerUser {
-		return errors.Errorf("User is already running the max allowed number of spawn hosts (%d of %d)",
-			len(activeSpawnedHosts), MaxSpawnHostsPerUser)
+	if err := checkSpawnHostLimitExceeded(len(activeSpawnedHosts)); err != nil {
+		return err
 	}
 
 	// validate public key
@@ -91,6 +90,22 @@ func (so *SpawnOptions) validate() error {
 		return errors.New("Invalid spawn options: key contains invalid base64 string")
 	}
 
+	return nil
+}
+
+func checkSpawnHostLimitExceeded(numCurrentHosts int) error {
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return errors.Wrapf(err, "Error occured getting evergreen settings")
+	}
+	maxHosts := MaxSpawnHostsPerUser
+	if settings.SpawnHostsPerUser != nil {
+		maxHosts = *settings.SpawnHostsPerUser
+	}
+	if numCurrentHosts >= maxHosts {
+		return errors.Errorf("User is already running the max allowed number of spawn hosts (%d of %d)",
+			numCurrentHosts, maxHosts)
+	}
 	return nil
 }
 

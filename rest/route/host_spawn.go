@@ -67,7 +67,7 @@ func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if hph.options.NoExpiration {
-		if err := checkExpirableHostLimitExceeded(user.Id); err != nil {
+		if err := checkExpirableHostLimitExceeded(user.Id, hph.settings.UnexpirableHostsPerUser); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 	}
@@ -144,7 +144,7 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 		catcher.Add(checkInstanceTypeValid(foundHost.Provider, h.options.InstanceType, h.env.Settings()))
 	}
 	if h.options.NoExpiration != nil && *h.options.NoExpiration {
-		catcher.Add(checkExpirableHostLimitExceeded(user.Id))
+		catcher.Add(checkExpirableHostLimitExceeded(user.Id, h.env.Settings().UnexpirableHostsPerUser))
 	}
 	if catcher.HasErrors() {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "Invalid host modify request"))
@@ -206,13 +206,31 @@ func checkInstanceTypeHostStopped(h *host.Host) error {
 	return nil
 }
 
-func checkExpirableHostLimitExceeded(userId string) error {
+func checkExpirableHostLimitExceeded(userId string, maxHostsFromSettings *int) error {
 	count, err := host.CountSpawnhostsWithNoExpirationByUser(userId)
 	if err != nil {
 		return errors.Wrapf(err, "error counting number of existing non-expiring hosts for '%s'", userId)
 	}
-	if count >= host.MaxSpawnhostsWithNoExpirationPerUser {
-		return errors.Wrapf(err, "cannot create any more non-expiring spawn hosts for '%s'", userId)
+	maxHosts := host.MaxSpawnhostsWithNoExpirationPerUser
+	if maxHostsFromSettings != nil {
+		maxHosts = *maxHostsFromSettings
+	}
+	if count >= maxHosts {
+		return errors.Errorf("cannot create any more non-expiring spawn hosts for '%s'", userId)
+	}
+	return nil
+}
+
+func checkVolumeLimitExceeded(user string, newSize int, maxSize int) error {
+	if maxSize <= 0 {
+		return nil
+	}
+	totalSize, err := host.FindTotalVolumeSizeByUser(user)
+	if err != nil {
+		return errors.Wrapf(err, "error finding total volume size for user")
+	}
+	if totalSize+newSize > maxSize {
+		return errors.Errorf("volume size limit %d exceeded", maxSize)
 	}
 	return nil
 }
@@ -543,7 +561,8 @@ type createVolumeHandler struct {
 	sc  data.Connector
 	env evergreen.Environment
 
-	volume *host.Volume
+	volume   *host.Volume
+	provider string
 }
 
 func makeCreateVolume(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
@@ -570,6 +589,7 @@ func (h *createVolumeHandler) Parse(ctx context.Context, r *http.Request) error 
 		grip.Debug("Size is required")
 		return errors.New("Size is required")
 	}
+	h.provider = evergreen.ProviderNameEc2OnDemand
 	return nil
 }
 
@@ -585,8 +605,16 @@ func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		h.volume.AvailabilityZone = evergreen.DefaultEBSAvailabilityZone
 	}
 
+	maxVolumeFromSettings := h.env.Settings().Providers.AWS.MaxVolumeSizePerUser
+	if err := checkVolumeLimitExceeded(u.Username(), h.volume.Size, maxVolumeFromSettings); err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    err.Error(),
+		})
+	}
+
 	mgrOpts := cloud.ManagerOpts{
-		Provider: evergreen.ProviderNameEc2OnDemand,
+		Provider: h.provider,
 		Region:   evergreen.DefaultEC2Region,
 	}
 	mgr, err := cloud.GetManager(ctx, h.env, mgrOpts)
@@ -625,6 +653,7 @@ type deleteVolumeHandler struct {
 	env evergreen.Environment
 
 	VolumeID string
+	provider string
 }
 
 func makeDeleteVolume(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
@@ -644,7 +673,7 @@ func (h *deleteVolumeHandler) Factory() gimlet.RouteHandler {
 func (h *deleteVolumeHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	h.VolumeID, err = validateID(gimlet.GetVars(r)["volume_id"])
-
+	h.provider = evergreen.ProviderNameEc2OnDemand
 	return err
 }
 
@@ -673,7 +702,7 @@ func (h *deleteVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	// TODO: Allow different providers/regions
 	mgrOpts := cloud.ManagerOpts{
-		Provider: evergreen.ProviderNameEc2OnDemand,
+		Provider: h.provider,
 		Region:   evergreen.DefaultEC2Region,
 	}
 	mgr, err := cloud.GetManager(ctx, h.env, mgrOpts)

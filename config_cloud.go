@@ -85,6 +85,7 @@ type AWSConfig struct {
 
 	// EC2 instance types for spawn hosts
 	AllowedInstanceTypes []string `bson:"allowed_instance_types" json:"allowed_instance_types" yaml:"allowed_instance_types"`
+	MaxVolumeSizePerUser int      `bson:"ebs_volume_max" json:"ebs_volume_max" yaml:"ebs_volume_max"`
 }
 
 // DockerConfig stores auth info for Docker.

@@ -367,6 +367,9 @@ func (mockMgr *mockManager) CreateVolume(ctx context.Context, volume *host.Volum
 	l := mockMgr.mutex
 	l.Lock()
 	defer l.Unlock()
+	if mockMgr.Volumes == nil {
+		mockMgr.Volumes = map[string]MockVolume{}
+	}
 	mockMgr.Volumes[volume.ID] = MockVolume{}
 	if err := volume.Insert(); err != nil {
 		return nil, errors.WithStack(err)

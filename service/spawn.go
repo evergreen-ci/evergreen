@@ -53,13 +53,16 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-
+	maxHosts := cloud.MaxSpawnHostsPerUser
+	if uis.Settings.SpawnHostsPerUser != nil {
+		maxHosts = *uis.Settings.SpawnHostsPerUser
+	}
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Distro          distro.Distro
 		Task            *task.Task
 		MaxHostsPerUser int
 		ViewData
-	}{spawnDistro, spawnTask, cloud.MaxSpawnHostsPerUser, uis.GetCommonViewData(w, r, false, true)}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
+	}{spawnDistro, spawnTask, maxHosts, uis.GetCommonViewData(w, r, false, true)}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) getSpawnedHosts(w http.ResponseWriter, r *http.Request) {
