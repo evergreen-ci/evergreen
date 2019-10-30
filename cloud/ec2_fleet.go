@@ -3,7 +3,6 @@ package cloud
 import (
 	"context"
 	"encoding/base64"
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -154,9 +153,10 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 		status := ec2StatusToEvergreenStatus(*instanceMap[h.Id].State.Name)
 		if status == StatusRunning {
 			// cache instance information so we can make fewer calls to AWS's API
-			if err = cacheHostData(ctx, &h, instanceMap[h.Id], m.client); err != nil {
-				return nil, errors.Wrapf(err, "can't cache host data for '%s'", h.Id)
-			}
+			grip.Error(message.WrapError(cacheHostData(ctx, &h, instanceMap[h.Id], m.client), message.Fields{
+				"message": "can't update host cached data",
+				"host":    h.Id,
+			}))
 		}
 		statuses = append(statuses, status)
 	}
@@ -401,7 +401,7 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 	createTemplateResponse, err := m.client.CreateLaunchTemplate(ctx, &ec2.CreateLaunchTemplateInput{
 		LaunchTemplateData: launchTemplate,
 		// mandatory field may only contain letters, numbers, and the following characters: - ( ) . / _
-		LaunchTemplateName: aws.String(fmt.Sprintf("%s", util.RandomString())),
+		LaunchTemplateName: aws.String(util.RandomString()),
 	})
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "can't upload config template to AWS")
