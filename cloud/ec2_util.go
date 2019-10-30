@@ -380,10 +380,12 @@ func makeBlockDeviceMappingsTemplate(mounts []MountPoint) ([]*ec2aws.LaunchTempl
 func makeVolumeAttachments(devices []*ec2.InstanceBlockDeviceMapping) []host.VolumeAttachment {
 	attachments := []host.VolumeAttachment{}
 	for _, device := range devices {
-		attachments = append(attachments, host.VolumeAttachment{
-			VolumeID:   *device.Ebs.VolumeId,
-			DeviceName: *device.DeviceName,
-		})
+		if device.Ebs != nil && device.Ebs.VolumeId != nil && device.DeviceName != nil {
+			attachments = append(attachments, host.VolumeAttachment{
+				VolumeID:   *device.Ebs.VolumeId,
+				DeviceName: *device.DeviceName,
+			})
+		}
 	}
 	return attachments
 }
