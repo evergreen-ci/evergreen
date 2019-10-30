@@ -1,6 +1,8 @@
 package testresult
 
 import (
+        "time"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
@@ -17,22 +19,35 @@ const (
 // TestResult contains test data for a task.
 type TestResult struct {
 	ID        mgobson.ObjectId `bson:"_id,omitempty" json:"id"`
-	Status    string              `json:"status" bson:"status"`
-	TestFile  string              `json:"test_file" bson:"test_file"`
-	URL       string              `json:"url" bson:"url,omitempty"`
-	URLRaw    string              `json:"url_raw" bson:"url_raw,omitempty"`
-	LogID     string              `json:"log_id,omitempty" bson:"log_id,omitempty"`
-	LineNum   int                 `json:"line_num,omitempty" bson:"line_num,omitempty"`
-	ExitCode  int                 `json:"exit_code" bson:"exit_code"`
-	StartTime float64             `json:"start" bson:"start"`
-	EndTime   float64             `json:"end" bson:"end"`
+        Status    string           `json:"status" bson:"status"`
+        TestFile  string           `json:"test_file" bson:"test_file"`
+        URL       string           `json:"url" bson:"url,omitempty"`
+        URLRaw    string           `json:"url_raw" bson:"url_raw,omitempty"`
+        LogID     string           `json:"log_id,omitempty" bson:"log_id,omitempty"`
+        LineNum   int              `json:"line_num,omitempty" bson:"line_num,omitempty"`
+        ExitCode  int              `json:"exit_code" bson:"exit_code"`
+        StartTime float64          `json:"start" bson:"start"`
+        EndTime   float64          `json:"end" bson:"end"`
 
-	// Together, TaskID and Execution identify the task which created this TestResult
-	TaskID    string `bson:"task_id" json:"task_id"`
-	Execution int    `bson:"task_execution" json:"task_execution"`
+        // Together, TaskID and Execution identify the task which created this TestResult
+        TaskID    string `bson:"task_id" json:"task_id"`
+        Execution int    `bson:"task_execution" json:"task_execution"`
 
 	// LogRaw is not persisted to the database
 	LogRaw string `json:"log_raw" bson:"log_raw,omitempty"`
+
+        // Denormalize TestResults to add fields from enclosing tasks. This
+        // facilitates faster historical test stats  aggregations.
+        Project              string    `bson:"branch" json:"branch"`
+        BuildVariant         string    `bson:"build_variant" json:"build_variant"`
+        DistroId             string    `bson:"distro" json:"distro"`
+        Requester            string    `bson:"r" json:"r"`
+        DisplayName          string    `bson:"display_name" json:"display_name"`
+        ExecutionDisplayName string    `bson:"execution_display_name,omitempty" json:"execution_display_name,omitempty"`
+        TaskCreateTime       time.Time `bson:"task_create_time" json:"task_create_time"`
+
+        TestStartTime time.Time `json:"test_start_time" bson:"test_start_time"`
+        TestEndTime   time.Time `json:"test_end_time" bson:"test_end_time"`
 }
 
 var (
