@@ -12,7 +12,7 @@ import (
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// POST /admin/role_mapping/post
+// POST /admin/role_mapping
 
 type addLDAPRoleMappingHandler struct {
 	Group  string `json:"group"`
@@ -52,7 +52,7 @@ func (h *addLDAPRoleMappingHandler) Run(ctx context.Context) gimlet.Responder {
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// DELETE /admin/role_mapping/delete
+// DELETE /admin/role_mapping
 
 type removeLDAPRoleMappingHandler struct {
 	Group string `json:"group"`
