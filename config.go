@@ -65,6 +65,7 @@ type Settings struct {
 	Expansions         map[string]string         `yaml:"expansions" bson:"expansions" json:"expansions"`
 	ExpansionsNew      util.KeyValuePairSlice    `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
 	GithubPRCreatorOrg string                    `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
+	GithubOrgs         []string                  `yaml:"github_orgs" bson:"github_orgs" json:"github_orgs"`
 	HostInit           HostInitConfig            `yaml:"hostinit" bson:"hostinit" json:"hostinit" id:"hostinit"`
 	HostJasper         HostJasperConfig          `yaml:"host_jasper" bson:"host_jasper" json:"host_jasper" id:"host_jasper"`
 	Jira               JiraConfig                `yaml:"jira" bson:"jira" json:"jira" id:"jira"`
@@ -134,6 +135,7 @@ func (c *Settings) Set() error {
 			expansionsKey:         c.Expansions,
 			expansionsNewKey:      c.ExpansionsNew,
 			githubPRCreatorOrgKey: c.GithubPRCreatorOrg,
+			githubOrgsKey:         c.GithubOrgs,
 			hostJasperKey:         c.HostJasper,
 			keysKey:               c.Keys,
 			keysNewKey:            c.KeysNew,
