@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -54,8 +55,13 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	maxHosts := cloud.MaxSpawnHostsPerUser
-	if uis.Settings.SpawnHostsPerUser != nil {
-		maxHosts = *uis.Settings.SpawnHostsPerUser
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error retrieving settings"))
+		return
+	}
+	if settings.SpawnHostsPerUser != nil {
+		maxHosts = *settings.SpawnHostsPerUser
 	}
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Distro          distro.Distro
@@ -302,16 +308,9 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 
 	case HostExpirationExtension:
 		if updateParams.Expiration.IsZero() { // set expiration to never expire
-			count, err := host.CountSpawnhostsWithNoExpirationByUser(u.Id)
-			if err != nil {
-				PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error retrieving user spawn host data"))
-				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error retrieving user spawn host data"))
-				return
-			}
-			if count >= host.MaxSpawnhostsWithNoExpirationPerUser {
-				msg := fmt.Sprintf("Can only have %d non-expirable spawn hosts", host.MaxSpawnhostsWithNoExpirationPerUser)
-				PushFlash(uis.CookieStore, r, w, NewErrorFlash(msg))
-				uis.LoggedError(w, r, http.StatusBadRequest, errors.New(msg))
+			if err := route.CheckExpirableHostLimitExceeded(u.Id, uis.Settings.UnexpirableHostsPerUser); err != nil {
+				PushFlash(uis.CookieStore, r, w, NewErrorFlash(err.Error()))
+				uis.LoggedError(w, r, http.StatusBadRequest, err)
 				return
 			}
 			noExpiration := true

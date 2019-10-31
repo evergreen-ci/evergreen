@@ -83,7 +83,7 @@ type Settings struct {
 	Scheduler               SchedulerConfig           `yaml:"scheduler" bson:"scheduler" json:"scheduler" id:"scheduler"`
 	ServiceFlags            ServiceFlags              `bson:"service_flags" json:"service_flags" id:"service_flags" yaml:"service_flags"`
 	Slack                   SlackConfig               `yaml:"slack" bson:"slack" json:"slack" id:"slack"`
-	SpawnHostsPerUser       *int                      `yaml:"spawn_hosts_per_user" bson:"spawn_host_per_user" json:"spawn_hosts_per_user"`
+	SpawnHostsPerUser       *int                      `yaml:"spawn_hosts_per_user" bson:"spawn_hosts_per_user" json:"spawn_hosts_per_user"`
 	Splunk                  send.SplunkConnectionInfo `yaml:"splunk" bson:"splunk" json:"splunk"`
 	SuperUsers              []string                  `yaml:"superusers" bson:"superusers" json:"superusers"`
 	Triggers                TriggerConfig             `yaml:"triggers" bson:"triggers" json:"triggers" id:"triggers"`
