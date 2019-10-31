@@ -96,7 +96,7 @@ func (so *SpawnOptions) validate() error {
 func checkSpawnHostLimitExceeded(numCurrentHosts int) error {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return errors.Wrapf(err, "Error occured getting evergreen settings")
+		return errors.Wrapf(err, "Error occurred getting evergreen settings")
 	}
 	maxHosts := MaxSpawnHostsPerUser
 	if settings.SpawnHostsPerUser != nil {
