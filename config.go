@@ -72,6 +72,7 @@ type Settings struct {
 	JIRANotifications       JIRANotificationsConfig   `yaml:"jira_notifications" json:"jira_notifications" bson:"jira_notifications" id:"jira_notifications"`
 	Keys                    map[string]string         `yaml:"keys" bson:"keys" json:"keys"`
 	KeysNew                 util.KeyValuePairSlice    `yaml:"keys_new" bson:"keys_new" json:"keys_new"`
+	LDAPRoleMap             LDAPRoleMap               `yaml:"ldap_role_map" bson:"ldap_role_map" json:"ldap_role_map"`
 	LoggerConfig            LoggerConfig              `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
 	LogPath                 string                    `yaml:"log_path" bson:"log_path" json:"log_path"`
 	Notify                  NotifyConfig              `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
@@ -141,6 +142,7 @@ func (c *Settings) Set() error {
 			hostJasperKey:         c.HostJasper,
 			keysKey:               c.Keys,
 			keysNewKey:            c.KeysNew,
+			ldapRoleMapKey:        c.LDAPRoleMap,
 			logPathKey:            c.LogPath,
 			pprofPortKey:          c.PprofPort,
 			pluginsKey:            c.Plugins,
@@ -192,6 +194,15 @@ func (c *Settings) ValidateAndDefault() error {
 			}
 		}
 	}
+
+	keys := map[string]bool{}
+	for _, mapping := range c.LDAPRoleMap {
+		if keys[mapping.LDAPGroup] == true {
+			catcher.Add(errors.Errorf("duplicate LDAP group value %s found in LDAP-role mappings", mapping.LDAPGroup))
+		}
+		keys[mapping.LDAPGroup] = true
+	}
+
 	if catcher.HasErrors() {
 		return catcher.Resolve()
 	}
@@ -201,6 +212,7 @@ func (c *Settings) ValidateAndDefault() error {
 	if c.LogPath == "" {
 		c.LogPath = LocalLoggingOverride
 	}
+
 	return nil
 }
 

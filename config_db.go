@@ -55,6 +55,7 @@ var (
 	githubOrgsKey         = bsonutil.MustHaveTag(Settings{}, "GithubOrgs")
 	containerPoolsKey     = bsonutil.MustHaveTag(Settings{}, "ContainerPools")
 	commitQueueKey        = bsonutil.MustHaveTag(Settings{}, "CommitQueue")
+	ldapRoleMapKey        = bsonutil.MustHaveTag(Settings{}, "LDAPRoleMap")
 
 	// degraded mode flags
 	taskDispatchKey                 = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")

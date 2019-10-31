@@ -25,6 +25,7 @@ func NewConfigModel() *APIAdminSettings {
 		Jira:              &APIJiraConfig{},
 		JIRANotifications: &APIJIRANotificationsConfig{},
 		Keys:              map[string]string{},
+		LDAPRoleMap:       &APILDAPRoleMap{},
 		LoggerConfig:      &APILoggerConfig{},
 		Notify:            &APINotifyConfig{},
 		Plugins:           map[string]map[string]interface{}{},
@@ -63,6 +64,7 @@ type APIAdminSettings struct {
 	Jira                    *APIJiraConfig                    `json:"jira,omitempty"`
 	JIRANotifications       *APIJIRANotificationsConfig       `json:"jira_notifications,omitempty"`
 	Keys                    map[string]string                 `json:"keys,omitempty"`
+	LDAPRoleMap             *APILDAPRoleMap                   `json:"ldap_role_map,omitempty"`
 	LoggerConfig            *APILoggerConfig                  `json:"logger_config,omitempty"`
 	LogPath                 APIString                         `json:"log_path,omitempty"`
 	Notify                  *APINotifyConfig                  `json:"notify,omitempty"`
@@ -634,6 +636,59 @@ func (a *APIJiraConfig) ToService() (interface{}, error) {
 		Password:       FromAPIString(a.Password),
 		DefaultProject: FromAPIString(a.DefaultProject),
 	}, nil
+}
+
+type APILDAPRoleMapping struct {
+	LDAPGroup APIString `json:"ldap_group"`
+	RoleID    APIString ` json:"role_id"`
+}
+
+func (a *APILDAPRoleMapping) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.LDAPRoleMapping:
+		a.LDAPGroup = ToAPIString(v.LDAPGroup)
+		a.RoleID = ToAPIString(v.RoleID)
+	}
+
+	return nil
+}
+
+func (a *APILDAPRoleMapping) ToService() (interface{}, error) {
+	mapping := evergreen.LDAPRoleMapping{
+		LDAPGroup: FromAPIString(a.LDAPGroup),
+		RoleID:    FromAPIString(a.RoleID),
+	}
+
+	return mapping, nil
+}
+
+type APILDAPRoleMap []APILDAPRoleMapping
+
+func (a *APILDAPRoleMap) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.LDAPRoleMap:
+		m := make(APILDAPRoleMap, len(v))
+		for i := range v {
+			if err := m[i].BuildFromService(v[i]); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (a *APILDAPRoleMap) ToService() (interface{}, error) {
+	serviceMap := make(evergreen.LDAPRoleMap, len(*a))
+	for i := range *a {
+		v, err := (*a)[i].ToService()
+		if err != nil {
+			return nil, err
+		}
+		serviceMap[i] = v.(evergreen.LDAPRoleMapping)
+	}
+
+	return serviceMap, nil
 }
 
 type APILoggerConfig struct {

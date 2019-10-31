@@ -464,3 +464,98 @@ func TestClearTaskQueueRoute(t *testing.T) {
 	assert.NoError(err)
 	assert.Len(queueFromDb.Queue, 0)
 }
+
+func TestRoleMappingRoutes(t *testing.T) {
+	ctx := context.Background()
+	sc := &data.MockConnector{}
+
+	addHandler := makeAddLDAPRoleMappingHandler(sc)
+	removeHandler := makeRemoveLDAPRoleMappingHandler(sc)
+
+	// add a key
+	expectedMappings := map[string]string{"group1": "role1"}
+	body := struct {
+		Group  string `json:"group"`
+		RoleID string `json:"role_id"`
+	}{"group1", "role1"}
+	jsonBody, err := json.Marshal(&body)
+	assert.NoError(t, err)
+	buffer := bytes.NewBuffer(jsonBody)
+	request, err := http.NewRequest("POST", "/admin/role_mapping", buffer)
+	assert.NoError(t, err)
+	assert.NoError(t, addHandler.Parse(ctx, request))
+	assert.Equal(t, http.StatusOK, addHandler.Run(ctx).Status())
+	assert.Len(t, sc.MockSettings.LDAPRoleMap, len(expectedMappings))
+	for _, mapping := range sc.MockSettings.LDAPRoleMap {
+		require.Equal(t, expectedMappings[mapping.LDAPGroup], mapping.RoleID)
+	}
+
+	// add another key
+	expectedMappings["group2"] = "role2"
+	body = struct {
+		Group  string `json:"group"`
+		RoleID string `json:"role_id"`
+	}{"group2", "role2"}
+	jsonBody, err = json.Marshal(&body)
+	assert.NoError(t, err)
+	buffer = bytes.NewBuffer(jsonBody)
+	request, err = http.NewRequest("POST", "/admin/role_mapping", buffer)
+	assert.NoError(t, err)
+	assert.NoError(t, addHandler.Parse(ctx, request))
+	assert.Equal(t, http.StatusOK, addHandler.Run(ctx).Status())
+	assert.Len(t, sc.MockSettings.LDAPRoleMap, len(expectedMappings))
+	for _, mapping := range sc.MockSettings.LDAPRoleMap {
+		require.Equal(t, expectedMappings[mapping.LDAPGroup], mapping.RoleID)
+	}
+
+	// change value of existing key
+	expectedMappings["group2"] = "role3"
+	body = struct {
+		Group  string `json:"group"`
+		RoleID string `json:"role_id"`
+	}{"group2", "role3"}
+	jsonBody, err = json.Marshal(&body)
+	assert.NoError(t, err)
+	buffer = bytes.NewBuffer(jsonBody)
+	request, err = http.NewRequest("POST", "/admin/role_mapping", buffer)
+	assert.NoError(t, err)
+	assert.NoError(t, addHandler.Parse(ctx, request))
+	assert.Equal(t, http.StatusOK, addHandler.Run(ctx).Status())
+	assert.Len(t, sc.MockSettings.LDAPRoleMap, len(expectedMappings))
+	for _, mapping := range sc.MockSettings.LDAPRoleMap {
+		require.Equal(t, expectedMappings[mapping.LDAPGroup], mapping.RoleID)
+	}
+
+	// remove existing key
+	delete(expectedMappings, "group2")
+	removeBody := struct {
+		Group string `json:"group"`
+	}{"group2"}
+	jsonBody, err = json.Marshal(&removeBody)
+	assert.NoError(t, err)
+	buffer = bytes.NewBuffer(jsonBody)
+	request, err = http.NewRequest("DELETE", "/admin/role_mapping", buffer)
+	assert.NoError(t, err)
+	assert.NoError(t, removeHandler.Parse(ctx, request))
+	assert.Equal(t, http.StatusOK, removeHandler.Run(ctx).Status())
+	assert.Len(t, sc.MockSettings.LDAPRoleMap, len(expectedMappings))
+	for _, mapping := range sc.MockSettings.LDAPRoleMap {
+		require.Equal(t, expectedMappings[mapping.LDAPGroup], mapping.RoleID)
+	}
+
+	// remove key that DNE
+	removeBody = struct {
+		Group string `json:"group"`
+	}{"DNE"}
+	jsonBody, err = json.Marshal(&removeBody)
+	assert.NoError(t, err)
+	buffer = bytes.NewBuffer(jsonBody)
+	request, err = http.NewRequest("DELETE", "/admin/role_mapping", buffer)
+	assert.NoError(t, err)
+	assert.NoError(t, removeHandler.Parse(ctx, request))
+	assert.Equal(t, http.StatusOK, removeHandler.Run(ctx).Status())
+	assert.Len(t, sc.MockSettings.LDAPRoleMap, len(expectedMappings))
+	for _, mapping := range sc.MockSettings.LDAPRoleMap {
+		require.Equal(t, expectedMappings[mapping.LDAPGroup], mapping.RoleID)
+	}
+}
