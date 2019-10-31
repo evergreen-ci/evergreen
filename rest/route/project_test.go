@@ -37,10 +37,7 @@ func TestProjectPatchSuite(t *testing.T) {
 
 func (s *ProjectPatchByIDSuite) SetupTest() {
 	s.sc = getMockProjectsConnector()
-
-	settings, err := evergreen.GetConfig()
-	s.NoError(err)
-	s.rm = makePatchProjectByID(s.sc, settings).(*projectIDPatchHandler)
+	s.rm = makePatchProjectByID(s.sc).(*projectIDPatchHandler)
 }
 
 func (s *ProjectPatchByIDSuite) TestParse() {

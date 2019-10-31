@@ -87,12 +87,6 @@ Evergreen Projects
           </div>
         </div>
       </div>
-      <div class="panel panel-danger" ng-show="!isValidGithubOrg(settingsFormData.owner_name)">
-        <div class="panel-heading">
-          <i class="fa fa-exclamation-circle"></i>
-          The current owner name ([[settingsFormData.owner_name]]) is no longer valid. In order to resume tracking the repository, please change to a valid organization as listed in the Admin Settings.
-        </div>
-      </div>
     </div>
     <div ng-show="isAdmin"><a class="link" href="/project/[[projectRef.identifier]]/events">Event Log</a></div>
     <form name="settingsForm" ng-submit="saveProject(settingsFormData)">

@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
@@ -37,11 +36,11 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 		return nil
 	}
 
-	settings, err := evergreen.GetConfig()
+	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return errors.Wrap(err, "error retrieving admin settings")
 	}
-	if settings.ServiceFlags.RepotrackerDisabled {
+	if flags.RepotrackerDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"source":  "github hook",
 			"msg_id":  msgID,
@@ -53,18 +52,7 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 		})
 		return errors.New("repotracker is disabled")
 	}
-	if len(settings.GithubOrgs) > 0 && !util.StringSliceContains(settings.GithubOrgs, *event.Repo.Owner.Name) {
-		grip.Error(message.Fields{
-			"source":  "github hook",
-			"msg_id":  msgID,
-			"event":   "push",
-			"owner":   *event.Repo.Owner.Name,
-			"repo":    *event.Repo.Name,
-			"ref":     *event.Ref,
-			"message": "owner from push event is invalid",
-		})
-		return errors.New("owner from push event is invalid")
-	}
+
 	refs, err := validateProjectRefs(*event.Repo.Owner.Name, *event.Repo.Name, branch)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{

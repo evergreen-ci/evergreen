@@ -198,22 +198,18 @@ func (h *versionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 type projectIDPatchHandler struct {
 	projectID string
 	body      []byte
-
-	sc       data.Connector
-	settings *evergreen.Settings
+	sc        data.Connector
 }
 
-func makePatchProjectByID(sc data.Connector, settings *evergreen.Settings) gimlet.RouteHandler {
+func makePatchProjectByID(sc data.Connector) gimlet.RouteHandler {
 	return &projectIDPatchHandler{
-		sc:       sc,
-		settings: settings,
+		sc: sc,
 	}
 }
 
 func (h *projectIDPatchHandler) Factory() gimlet.RouteHandler {
 	return &projectIDPatchHandler{
-		sc:       h.sc,
-		settings: h.settings,
+		sc: h.sc,
 	}
 }
 
@@ -269,12 +265,14 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if err := dbProjectRef.ValidateOwnerAndRepo(h.settings.GithubOrgs); err != nil {
+	// verify input and webhooks
+	if dbProjectRef.Owner == "" || dbProjectRef.Repo == "" {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    err.Error(),
+			Message:    "no owner/repo specified",
 		})
 	}
+
 	if dbProjectRef.Enabled {
 		var hasHook bool
 		hasHook, err = h.sc.EnableWebhooks(ctx, dbProjectRef)

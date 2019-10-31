@@ -1078,7 +1078,6 @@ func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment 
 	}
 
 	_, err := m.client.AttachVolume(ctx, &ec2.AttachVolumeInput{
-
 		InstanceId: aws.String(h.Id),
 		Device:     aws.String(attachment.DeviceName),
 		VolumeId:   aws.String(attachment.VolumeID),

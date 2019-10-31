@@ -50,7 +50,6 @@ var (
 	pprofPortKey          = bsonutil.MustHaveTag(Settings{}, "PprofPort")
 	bugsnagKey            = bsonutil.MustHaveTag(Settings{}, "Bugsnag")
 	githubPRCreatorOrgKey = bsonutil.MustHaveTag(Settings{}, "GithubPRCreatorOrg")
-	githubOrgsKey         = bsonutil.MustHaveTag(Settings{}, "GithubOrgs")
 	containerPoolsKey     = bsonutil.MustHaveTag(Settings{}, "ContainerPools")
 	commitQueueKey        = bsonutil.MustHaveTag(Settings{}, "CommitQueue")
 

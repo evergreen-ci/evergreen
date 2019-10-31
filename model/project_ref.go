@@ -511,18 +511,6 @@ func (p *ProjectRef) IsAdmin(userID string, settings evergreen.Settings) bool {
 	return util.StringSliceContains(p.Admins, userID) || util.StringSliceContains(settings.SuperUsers, userID)
 }
 
-func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {
-	// verify input and webhooks
-	if p.Owner == "" || p.Repo == "" {
-		return errors.New("no owner/repo specified")
-	}
-
-	if len(validOrgs) > 0 && !util.StringSliceContains(validOrgs, p.Owner) {
-		return errors.New("owner not authorized")
-	}
-	return nil
-}
-
 func (t TriggerDefinition) Validate(parentProject string) error {
 	upstreamProject, err := FindOneProjectRef(t.Project)
 	if err != nil {
