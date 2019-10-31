@@ -653,7 +653,7 @@ func (a *APILDAPRoleMapping) ToService() (interface{}, error) {
 	return mapping, nil
 }
 
-type APILDAPRoleMap []*APILDAPRoleMapping
+type APILDAPRoleMap []APILDAPRoleMapping
 
 func (a *APILDAPRoleMap) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
