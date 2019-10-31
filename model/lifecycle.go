@@ -480,6 +480,15 @@ func RefreshTasksCache(buildId string) error {
 	return errors.WithStack(build.SetTasksCache(buildId, cache))
 }
 
+func mergeTasksCache(buildID string, oldTasks []task.Task, newTasks task.Tasks) error {
+	allTasks := oldTasks
+	for _, newTask := range newTasks {
+		allTasks = append(allTasks, *newTask)
+	}
+	cache := CreateTasksCache(allTasks)
+	return errors.WithStack(build.SetTasksCache(buildID, cache))
+}
+
 // AddTasksToBuild creates the tasks for the given build of a project
 func AddTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *Version, taskNames []string,
 	displayNames []string, generatedBy string, tasksInBuild []task.Task, distroAliases map[string][]string) (*build.Build, error) {
@@ -502,7 +511,7 @@ func AddTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 	}
 
 	// update the build to hold the new tasks
-	if err := RefreshTasksCache(b.Id); err != nil {
+	if err := mergeTasksCache(b.Id, tasksInBuild, tasks); err != nil {
 		return nil, errors.Wrapf(err, "error updating task cache for '%s'", b.Id)
 	}
 
