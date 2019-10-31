@@ -447,7 +447,7 @@ func CreateTasksCache(tasks []task.Task) []build.TaskCache {
 	tasks = sortTasks(tasks)
 	cache := make([]build.TaskCache, 0, len(tasks))
 	for _, task := range tasks {
-		if task.DisplayTask == nil {
+		if !task.IsPartOfDisplay() {
 			cache = append(cache, cacheFromTask(task))
 		}
 	}
