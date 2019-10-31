@@ -973,26 +973,7 @@ func (c *awsClientImpl) GetVolumeIDs(ctx context.Context, h *host.Host) ([]strin
 		if err != nil {
 			return nil, errors.Wrap(err, "error getting devices")
 		}
-		attachments := makeVolumeAttachments(devices)
-
-		volumeIDs := make([]string, 0, len(attachments))
-		for _, attachment := range attachments {
-			volumeIDs = append(volumeIDs, attachment.VolumeID)
-		}
-
-		volumes, err := c.DescribeVolumes(ctx, &ec2.DescribeVolumesInput{
-			VolumeIds: aws.StringSlice(volumeIDs),
-		})
-		if err != nil {
-			return nil, errors.Wrap(err, "error describing volumes")
-		}
-
-		var size int64
-		for _, v := range volumes.Volumes {
-			size += *v.Size
-		}
-
-		if err := h.SetVolumes(attachments, size); err != nil {
+		if err := h.SetVolumes(makeVolumeAttachments(devices)); err != nil {
 			return nil, errors.Wrap(err, "error saving host volumes")
 		}
 	}
@@ -1469,26 +1450,7 @@ func (c *awsClientMock) GetVolumeIDs(ctx context.Context, h *host.Host) ([]strin
 		if err != nil {
 			return nil, errors.Wrap(err, "error getting devices")
 		}
-		attachments := makeVolumeAttachments(devices)
-
-		volumeIDs := make([]string, 0, len(attachments))
-		for _, attachment := range attachments {
-			volumeIDs = append(volumeIDs, attachment.VolumeID)
-		}
-
-		volumes, err := c.DescribeVolumes(ctx, &ec2.DescribeVolumesInput{
-			VolumeIds: aws.StringSlice(volumeIDs),
-		})
-		if err != nil {
-			return nil, errors.Wrap(err, "error describing volumes")
-		}
-
-		var size int64
-		for _, v := range volumes.Volumes {
-			size += *v.Size
-		}
-
-		if err := h.SetVolumes(attachments, size); err != nil {
+		if err := h.SetVolumes(makeVolumeAttachments(devices)); err != nil {
 			return nil, errors.Wrap(err, "error setting host volumes")
 		}
 	}
