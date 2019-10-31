@@ -273,16 +273,20 @@ func TestAPIJIRANotificationsConfig(t *testing.T) {
 	assert.Nil(dbModel.CustomFields)
 
 	api = APIJIRANotificationsConfig{
-		CustomFields: map[string]map[string]string{
-			"EVG": map[string]string{
-				"customfield_12345": "{{.Something}}",
-				"customfield_12346": "{{.SomethingElse}}",
-				"components":        "component0,component1",
+		CustomFields: map[string]APIJIRANotificationsProject{
+			"EVG": APIJIRANotificationsProject{
+				Fields: map[string]string{
+					"customfield_12345": "{{.Something}}",
+					"customfield_12346": "{{.SomethingElse}}",
+				},
+				Components: []string{"component0", "component1"},
 			},
-			"GVE": map[string]string{
-				"customfield_54321": "{{.SomethingElser}}",
-				"customfield_54322": "{{.SomethingEvenElser}}",
-				"labels":            "label0,label1",
+			"GVE": APIJIRANotificationsProject{
+				Fields: map[string]string{
+					"customfield_54321": "{{.SomethingElser}}",
+					"customfield_54322": "{{.SomethingEvenElser}}",
+				},
+				Labels: []string{"label0", "label1"},
 			},
 		},
 	}

@@ -60,8 +60,22 @@ func (c *JIRANotificationsConfig) Set() error {
 
 func (c *JIRANotificationsConfig) ValidateAndDefault() error {
 	catcher := grip.NewSimpleCatcher()
+	projectSet := make(map[string]bool)
 	for _, project := range c.CustomFields {
+		if projectSet[project.Project] {
+			catcher.Add(errors.Errorf("duplicate project key '%s'", project.Project))
+			continue
+		}
+		projectSet[project.Project] = true
+
+		fieldSet := make(map[string]bool)
 		for _, field := range project.Fields {
+			if fieldSet[field.Field] {
+				catcher.Add(errors.Errorf("duplicate field key '%s' in project '%s'", field.Field, project.Project))
+				continue
+			}
+			fieldSet[field.Field] = true
+
 			_, err := template.New(fmt.Sprintf("%s-%s", project.Project, field.Field)).Parse(field.Template)
 			catcher.Add(err)
 		}

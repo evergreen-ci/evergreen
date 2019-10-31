@@ -1525,7 +1525,13 @@ func AdminDbToRestModel(in evergreen.ConfigSection) (Model, error) {
 }
 
 type APIJIRANotificationsConfig struct {
-	CustomFields map[string]map[string]string `json:"custom_fields,omitempty"`
+	CustomFields map[string]APIJIRANotificationsProject `json:"custom_fields,omitempty"`
+}
+
+type APIJIRANotificationsProject struct {
+	Fields     map[string]string `json:"fields,omitempty"`
+	Components []string          `json:"components,omitempty"`
+	Labels     []string          `json:"labels,omitempty"`
 }
 
 func (j *APIJIRANotificationsConfig) BuildFromService(h interface{}) error {
@@ -1539,21 +1545,11 @@ func (j *APIJIRANotificationsConfig) BuildFromService(h interface{}) error {
 		return errors.Errorf("expected *evergreen.JIRANotificationsConfig, but got %T instead", h)
 	}
 
-	j.CustomFields = make(map[string]map[string]string)
+	j.CustomFields = make(map[string]APIJIRANotificationsProject)
 	for _, project := range config.CustomFields {
-		apiProject := make(map[string]string)
-		for _, field := range project.Fields {
-			apiProject[field.Field] = field.Template
-		}
-
-		components := strings.Join(project.Components, ",")
-		if len(components) > 0 {
-			apiProject["components"] = components
-		}
-
-		labels := strings.Join(project.Labels, ",")
-		if len(labels) > 0 {
-			apiProject["labels"] = labels
+		apiProject := APIJIRANotificationsProject{}
+		if err := apiProject.BuildFromService(project); err != nil {
+			return errors.Wrapf(err, "can't build project '%s' from service", project.Project)
 		}
 
 		j.CustomFields[project.Project] = apiProject
@@ -1561,6 +1557,7 @@ func (j *APIJIRANotificationsConfig) BuildFromService(h interface{}) error {
 
 	return nil
 }
+
 func (j *APIJIRANotificationsConfig) ToService() (interface{}, error) {
 	service := evergreen.JIRANotificationsConfig{}
 	if j.CustomFields == nil || len(j.CustomFields) == 0 {
@@ -1568,20 +1565,43 @@ func (j *APIJIRANotificationsConfig) ToService() (interface{}, error) {
 	}
 
 	for projectName, fields := range j.CustomFields {
-		project := evergreen.JIRANotificationsProject{}
-		for field, template := range fields {
-			if field == "components" {
-				project.Components = strings.Split(template, ",")
-			} else if field == "labels" {
-				project.Labels = strings.Split(template, ",")
-			} else {
-				project.Fields = append(project.Fields, evergreen.JIRANotificationsCustomField{Field: field, Template: template})
-			}
+		projectIface, err := fields.ToService()
+		if err != nil {
+			return nil, errors.Errorf("can't convert project '%s' to service", projectName)
 		}
-		project.Project = projectName
+		project := projectIface.(evergreen.JIRANotificationsProject)
 
+		project.Project = projectName
 		service.CustomFields = append(service.CustomFields, project)
 	}
+
+	return service, nil
+}
+
+func (j *APIJIRANotificationsProject) BuildFromService(h interface{}) error {
+	serviceProject, ok := h.(evergreen.JIRANotificationsProject)
+	if !ok {
+		return errors.Errorf("Expecting JIRANotificationsProject but got %T", h)
+	}
+
+	apiFields := make(map[string]string)
+	for _, field := range serviceProject.Fields {
+		apiFields[field.Field] = field.Template
+	}
+	j.Fields = apiFields
+	j.Components = serviceProject.Components
+	j.Labels = serviceProject.Labels
+
+	return nil
+}
+
+func (j *APIJIRANotificationsProject) ToService() (interface{}, error) {
+	service := evergreen.JIRANotificationsProject{}
+	for field, template := range j.Fields {
+		service.Fields = append(service.Fields, evergreen.JIRANotificationsCustomField{Field: field, Template: template})
+	}
+	service.Components = j.Components
+	service.Labels = j.Labels
 
 	return service, nil
 }
