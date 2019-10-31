@@ -173,7 +173,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		if taskFromDb != nil {
 			projCtx.Task = taskFromDb
 			archived = true
-		} else if execution != projCtx.Task.Execution {
+		} else if execution != projCtx.Task.Execution && !projCtx.Task.IsPartOfDisplay() {
 			uis.LoggedError(w, r, http.StatusNotFound, errors.New("Error finding task or execution"))
 			return
 		}

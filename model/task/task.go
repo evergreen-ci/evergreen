@@ -1053,22 +1053,22 @@ func (t *Task) MarkStart(startTime time.Time) error {
 
 // SetResults sets the results of the task in LocalTestResults
 func (t *Task) SetResults(results []TestResult) error {
-        docs := make([]testresult.TestResult, len(results))
+	docs := make([]testresult.TestResult, len(results))
 
-        for idx, result := range results {
-                docs[idx] = result.convertToNewStyleTestResult(t)
-        }
+	for idx, result := range results {
+		docs[idx] = result.convertToNewStyleTestResult(t)
+	}
 
 	return errors.Wrap(testresult.InsertMany(docs), "error inserting into testresults collection")
 }
 
 func (t TestResult) convertToNewStyleTestResult(task *Task) testresult.TestResult {
-        ExecutionDisplayName := ""
-        if displayTask, _ := task.GetDisplayTask(); displayTask != nil {
-                ExecutionDisplayName = displayTask.DisplayName
-        }
+	ExecutionDisplayName := ""
+	if displayTask, _ := task.GetDisplayTask(); displayTask != nil {
+		ExecutionDisplayName = displayTask.DisplayName
+	}
 	return testresult.TestResult{
-                // copy fields from local test result.
+		// copy fields from local test result.
 		Status:    t.Status,
 		TestFile:  t.TestFile,
 		URL:       t.URL,
@@ -1076,23 +1076,23 @@ func (t TestResult) convertToNewStyleTestResult(task *Task) testresult.TestResul
 		LogID:     t.LogId,
 		LineNum:   t.LineNum,
 		ExitCode:  t.ExitCode,
-                StartTime: t.StartTime,
-                EndTime:   t.EndTime,
+		StartTime: t.StartTime,
+		EndTime:   t.EndTime,
 
-                // copy field values from enclosing tasks.
-                TaskID:               task.Id,
-                Execution:            task.Execution,
-                Project:              task.Project,
-                BuildVariant:         task.BuildVariant,
-                DistroId:             task.DistroId,
-                Requester:            task.Requester,
-                DisplayName:          task.DisplayName,
-                TaskCreateTime:       task.CreateTime,
-                ExecutionDisplayName: ExecutionDisplayName,
+		// copy field values from enclosing tasks.
+		TaskID:               task.Id,
+		Execution:            task.Execution,
+		Project:              task.Project,
+		BuildVariant:         task.BuildVariant,
+		DistroId:             task.DistroId,
+		Requester:            task.Requester,
+		DisplayName:          task.DisplayName,
+		TaskCreateTime:       task.CreateTime,
+		ExecutionDisplayName: ExecutionDisplayName,
 
-                TestStartTime: util.FromPythonTime(t.StartTime).In(time.UTC),
-                TestEndTime:   util.FromPythonTime(t.EndTime).In(time.UTC),
-        }
+		TestStartTime: util.FromPythonTime(t.StartTime).In(time.UTC),
+		TestEndTime:   util.FromPythonTime(t.EndTime).In(time.UTC),
+	}
 }
 
 func ConvertToOld(in *testresult.TestResult) TestResult {
@@ -1594,7 +1594,13 @@ func (t *Task) GetDisplayTask() (*Task, error) {
 	if t.DisplayTask != nil {
 		return t.DisplayTask, nil
 	}
-	dt, err := FindOne(ByExecutionTask(t.Id))
+	var dt *Task
+	var err error
+	if t.Archived {
+		dt, err = FindOneOld(ByExecutionTask(t.Id))
+	} else {
+		dt, err = FindOne(ByExecutionTask(t.Id))
+	}
 	if err != nil {
 		return nil, err
 	}
