@@ -375,23 +375,49 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       return;
     }
     if (!$scope.Settings.jira_notifications.custom_fields[value]) {
-      $scope.Settings.jira_notifications.custom_fields[value] = {};
+      $scope.Settings.jira_notifications.custom_fields[value] = {fields: {}, components: [], labels: []};
     }
     delete $scope.jiraMapping.newProject;
   }
   $scope.addJIRAFieldToProject = function(project) {
     var field = $scope.jiraMapping.newField[project];
-    if (!field || $scope.Settings.jira_notifications.custom_fields[project][field]) {
+    
+    if ($scope.Settings.jira_notifications.custom_fields[project].fields == null) {
+      $scope.Settings.jira_notifications.custom_fields[project].fields = {}
+    }
+
+    if (!field || $scope.Settings.jira_notifications.custom_fields[project].fields[field]) {
         return;
     }
-    $scope.Settings.jira_notifications.custom_fields[project][field] = "{FIXME}";
+
+    $scope.Settings.jira_notifications.custom_fields[project].fields[field] = "{FIXME}";
     delete $scope.jiraMapping.newField[project];
   }
   $scope.deleteJIRAFieldFromProject = function(project, field) {
     if (!field) {
         return;
     }
-    delete $scope.Settings.jira_notifications.custom_fields[project][field];
+    delete $scope.Settings.jira_notifications.custom_fields[project].fields[field];
+  }
+  $scope.removeComponent = function(project, component) {
+    var index = $scope.Settings.jira_notifications.custom_fields[project].components.indexOf(component);
+    $scope.Settings.jira_notifications.custom_fields[project].components.splice(index, 1);
+  }
+  $scope.removeLabel = function(project, label) {
+    var index = $scope.Settings.jira_notifications.custom_fields[project].labels.indexOf(label);
+    $scope.Settings.jira_notifications.custom_fields[project].labels.splice(index, 1);
+  }
+  $scope.addComponent = function(project) {
+    if ($scope.Settings.jira_notifications.custom_fields[project].components == null) {
+      $scope.Settings.jira_notifications.custom_fields[project].components = [];
+    }
+    $scope.Settings.jira_notifications.custom_fields[project].components.push("");
+  }
+  $scope.addLabel = function(project) {
+    if ($scope.Settings.jira_notifications.custom_fields[project].labels == null) {
+      $scope.Settings.jira_notifications.custom_fields[project].labels = [];
+    }
+    $scope.Settings.jira_notifications.custom_fields[project].labels.push("");
   }
 
   $scope.jiraMapping = {};

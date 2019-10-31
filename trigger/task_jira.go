@@ -169,17 +169,27 @@ func (j *jiraBuilder) build() (*message.JiraIssue, error) {
 		return nil, errors.Wrap(err, "error creating summary")
 	}
 
+	fields := map[string]interface{}{}
+	components := []string{}
+	labels := []string{}
+	for _, project := range j.mappings.CustomFields {
+		if project.Project == j.project {
+			fields = j.makeCustomFields(project.Fields)
+			components = project.Components
+			labels = project.Labels
+		}
+	}
+
 	issue := message.JiraIssue{
 		Project:     j.project,
 		Type:        j.issueType,
 		Summary:     summary,
 		Description: description,
-		Fields:      j.makeCustomFields(),
+		Fields:      fields,
+		Components:  components,
+		Labels:      labels,
 	}
 
-	if err != nil {
-		return nil, errors.Wrap(err, "error creating description")
-	}
 	grip.Info(message.Fields{
 		"message":      "creating jira ticket for failure",
 		"type":         j.issueType,
@@ -251,21 +261,8 @@ func (j *jiraBuilder) getSummary() (string, error) {
 	return subj.String(), catcher.Resolve()
 }
 
-func (j *jiraBuilder) makeCustomFields() map[string]interface{} {
+func (j *jiraBuilder) makeCustomFields(customFields []evergreen.JIRANotificationsCustomField) map[string]interface{} {
 	fields := map[string]interface{}{}
-	m, err := j.mappings.CustomFields.ToMap()
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "failed to build custom fields",
-			"task_id": j.data.Task.Id,
-		}))
-		return nil
-	}
-	customFields, ok := m[j.project]
-	if !ok || len(customFields) == 0 {
-		return nil
-	}
-
 	for i := range j.data.Task.LocalTestResults {
 		if j.data.Task.LocalTestResults[i].Status == evergreen.TestFailedStatus {
 			j.data.FailedTests = append(j.data.FailedTests, j.data.Task.LocalTestResults[i])
@@ -273,21 +270,21 @@ func (j *jiraBuilder) makeCustomFields() map[string]interface{} {
 		}
 	}
 
-	for fieldName, fieldTmpl := range customFields {
-		if fieldTmpl == failedTestNamesTmpl {
-			fields[fieldName] = j.data.FailedTestNames
+	for _, field := range customFields {
+		if field.Template == failedTestNamesTmpl {
+			fields[field.Field] = j.data.FailedTestNames
 			continue
 		}
 
-		tmpl, err := template.New(fmt.Sprintf("%s-%s", j.project, fieldName)).Parse(fieldTmpl)
+		tmpl, err := template.New(fmt.Sprintf("%s-%s", j.project, field.Field)).Parse(field.Template)
 		if err != nil {
 			// Admins should be notified of misconfiguration, but we shouldn't block
 			// ticket generation
 			grip.Alert(message.WrapError(err, message.Fields{
 				"message":      "invalid custom field template",
 				"jira_project": j.project,
-				"jira_field":   fieldName,
-				"template":     fieldTmpl,
+				"jira_field":   field.Field,
+				"template":     field.Template,
 			}))
 			continue
 		}
@@ -297,13 +294,13 @@ func (j *jiraBuilder) makeCustomFields() map[string]interface{} {
 			grip.Alert(message.WrapError(err, message.Fields{
 				"message":      "template execution failed",
 				"jira_project": j.project,
-				"jira_field":   fieldName,
-				"template":     fieldTmpl,
+				"jira_field":   field.Field,
+				"template":     field.Template,
 			}))
 			continue
 		}
 
-		fields[fieldName] = []string{buf.String()}
+		fields[field.Field] = []string{buf.String()}
 	}
 	return fields
 }
