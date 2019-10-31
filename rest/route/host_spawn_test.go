@@ -155,7 +155,7 @@ func TestHostStartHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Status())
 }
 
-func TestVolumeCreateHandler(t *testing.T) {
+func TestCreateVolumeHandler(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(host.VolumesCollection))
 	h := &createVolumeHandler{
 		sc:       &data.MockConnector{},
@@ -163,9 +163,9 @@ func TestVolumeCreateHandler(t *testing.T) {
 		provider: evergreen.ProviderNameMock,
 	}
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
-	v := host.Volume{ID: "volume1", Size: 25, CreatedBy: "user"}
+	v := host.Volume{ID: "volume1", Size: 15, CreatedBy: "user"}
 	assert.NoError(t, v.Insert())
-	v = host.Volume{ID: "volume2", Size: 25, CreatedBy: "user"}
+	v = host.Volume{ID: "volume2", Size: 35, CreatedBy: "user"}
 	assert.NoError(t, v.Insert())
 	v = host.Volume{ID: "not-relevant", Size: 400, CreatedBy: "someone-else"}
 	assert.NoError(t, v.Insert())

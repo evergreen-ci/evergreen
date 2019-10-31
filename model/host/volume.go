@@ -2,7 +2,6 @@ package host
 
 import (
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -36,18 +35,23 @@ func FindVolumeByID(id string) (*Volume, error) {
 	return FindOneVolume(bson.M{VolumeIDKey: id})
 }
 
+type volumeSize struct {
+	TotalVolumeSize int `bson:"total"`
+}
+
 func FindTotalVolumeSizeByUser(user string) (int, error) {
-	q := bson.M{VolumeCreatedByKey: user}
-	volumes, err := FindVolumes(q)
 
-	if err != nil {
-		return 0, errors.Wrapf(err, "error querying database for volumes")
+	pipeline := []bson.M{
+		{"$match": bson.M{
+			VolumeCreatedByKey: user,
+		}},
+		{"$group": bson.M{
+			"_id":   "123",
+			"total": bson.M{"$sum": "$" + VolumeSizeKey},
+		}},
 	}
 
-	totalSize := 0
-
-	for _, v := range volumes {
-		totalSize += v.Size
-	}
-	return totalSize, nil
+	out := []volumeSize{}
+	err := db.Aggregate(VolumesCollection, pipeline, &out)
+	return out[0].TotalVolumeSize, err
 }
