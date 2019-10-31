@@ -95,6 +95,7 @@ var (
 	VolumeTypeKey                = bsonutil.MustHaveTag(Volume{}, "Type")
 	VolumeSizeKey                = bsonutil.MustHaveTag(Volume{}, "Size")
 	VolumeAttachmentIDKey        = bsonutil.MustHaveTag(VolumeAttachment{}, "VolumeID")
+	VolumeDeviceNameKey          = bsonutil.MustHaveTag(VolumeAttachment{}, "DeviceName")
 )
 
 var (
@@ -361,6 +362,20 @@ func NumHostsByTaskSpec(group, buildVariant, project, version string) (int, erro
 		return 0, errors.Wrap(err, "error querying database for hosts")
 	}
 	return len(hosts), nil
+}
+
+func HostExistsWithVolumeWithDeviceName(deviceName string) (bool, error) {
+	q := db.Query(
+		bson.M{bsonutil.GetDottedKeyName(VolumesKey, VolumeDeviceNameKey): deviceName},
+	)
+
+	hosts, err := Find(q)
+	if err != nil {
+		return false, errors.Wrapf(err, "error querying database for host volumes")
+	}
+	hostExists := len(hosts) > 0
+	return hostExists, nil
+
 }
 
 // IsUninitialized is a query that returns all unstarted + uninitialized Evergreen hosts.

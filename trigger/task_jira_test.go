@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"text/template"
 	"time"
 
 	"net/url"
@@ -16,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -393,20 +395,23 @@ func TestCustomFields(t *testing.T) {
 	)
 	assert := assert.New(t)
 
-	fields := map[string]map[string]string{}
-	fields["BFG"] = map[string]string{
-		jiraFailingTasksField:     "{{.TaskDisplayName}}",
-		jiraFailingTestsField:     "%%FailedTestNames%%",
-		jiraFailingVariantField:   "{{.Task.BuildVariant}}",
-		jiraEvergreenProjectField: "{{.Project.Identifier}}",
-		jiraFailingRevisionField:  "{{.Task.Revision}}",
-		jiraFailureType:           "{{.SpecificTaskStatus}}",
+	config := evergreen.JIRANotificationsConfig{
+		CustomFields: []evergreen.JIRANotificationsProject{
+			{Project: "EFG"},
+			{
+				Project:    "BFG",
+				Components: []string{"component0", "component1"},
+				Fields: []evergreen.JIRANotificationsCustomField{
+					{Field: jiraFailingTasksField, Template: "{{.TaskDisplayName}}"},
+					{Field: jiraFailingTestsField, Template: "%%FailedTestNames%%"},
+					{Field: jiraFailingVariantField, Template: "{{.Task.BuildVariant}}"},
+					{Field: jiraEvergreenProjectField, Template: "{{.Project.Identifier}}"},
+					{Field: jiraFailingRevisionField, Template: "{{.Task.Revision}}"},
+					{Field: jiraFailureType, Template: "{{.SpecificTaskStatus}}"},
+				},
+			},
+		},
 	}
-	fields["EFG"] = nil
-	fields["HIJ"] = map[string]string{}
-	config := evergreen.JIRANotificationsConfig{}
-	config.CustomFields.FromMap(fields)
-
 	j := jiraBuilder{
 		project:  "ABC",
 		mappings: &config,
@@ -445,20 +450,11 @@ func TestCustomFields(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(issue)
 
-	assert.Empty(j.makeCustomFields())
-
-	j.project = "EFG"
-	assert.Empty(j.makeCustomFields())
-
-	j.project = "HIJ"
-	assert.Empty(j.makeCustomFields())
-
-	j.project = "KLM"
-	assert.Empty(j.makeCustomFields())
+	assert.Empty(j.makeCustomFields(config.CustomFields[0].Fields))
 
 	j.project = "BFG"
 	j.data.FailedTestNames = []string{}
-	customFields := j.makeCustomFields()
+	customFields := j.makeCustomFields(config.CustomFields[1].Fields)
 	assert.Len(customFields, 6)
 	assert.Equal([]string{projectId}, customFields[jiraEvergreenProjectField])
 	assert.Equal([]string{taskName}, customFields[jiraFailingTasksField])
@@ -530,4 +526,41 @@ func TestMakeSummaryPrefix(t *testing.T) {
 
 	doc.Details.Type = evergreen.CommandTypeSetup
 	assert.Equal("Setup Failure: ", makeSummaryPrefix(doc, 0))
+}
+
+func TestBuild(t *testing.T) {
+	builder := jiraBuilder{
+		project: "EVG",
+		mappings: &evergreen.JIRANotificationsConfig{
+			CustomFields: []evergreen.JIRANotificationsProject{
+				{
+					Project:    "EVG",
+					Components: []string{"component0", "component1"},
+					Fields: []evergreen.JIRANotificationsCustomField{
+						{Field: "field0", Template: "Status: {{.Task.Status}}"},
+					},
+				},
+			},
+		},
+		data: jiraTemplateData{
+			Task:    &task.Task{Status: evergreen.TaskSucceeded},
+			Project: &model.ProjectRef{},
+			Build:   &build.Build{},
+			Version: &model.Version{Revision: "abcdefgh"},
+		},
+	}
+	var err error
+	descriptionTemplate, err = template.New("test").Parse("Status: {{.Task.Status}}")
+	assert.NoError(t, err)
+
+	message, err := builder.build()
+	assert.NoError(t, err)
+	assert.Equal(t, "EVG", message.Project)
+	assert.Len(t, message.Fields, 1)
+	require.Contains(t, message.Fields, "field0")
+	assert.Equal(t, []string{"Status: success"}, message.Fields["field0"])
+	require.Len(t, message.Components, 2)
+	assert.Equal(t, "component0", message.Components[0])
+	assert.Equal(t, "component1", message.Components[1])
+	assert.Empty(t, message.Labels)
 }

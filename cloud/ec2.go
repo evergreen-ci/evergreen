@@ -1077,6 +1077,27 @@ func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment 
 		return errors.Wrap(err, "error creating client")
 	}
 
+	// if no device name is provided, generate a unique device name
+	if attachment.DeviceName == "" {
+		err := util.Retry(
+			ctx,
+			func() (bool, error) {
+				deviceName := generateDeviceNameForVolume()
+				exists, err := host.HostExistsWithVolumeWithDeviceName(deviceName)
+				if err != nil {
+					return true, errors.Wrapf(err, "error checking if device name already exists")
+				}
+				if !exists {
+					attachment.DeviceName = deviceName
+					return false, nil
+				}
+				return true, errors.New("generated device name already exists")
+			}, 500, 0, 0)
+		if err != nil {
+			return err
+		}
+	}
+
 	_, err := m.client.AttachVolume(ctx, &ec2.AttachVolumeInput{
 
 		InstanceId: aws.String(h.Id),
@@ -1086,7 +1107,6 @@ func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment 
 	if err != nil {
 		return errors.Wrapf(err, "error attaching volume '%s' to host '%s'", attachment.VolumeID, h.Id)
 	}
-
 	return errors.Wrapf(h.AddVolumeToHost(attachment), "error attaching volume '%s' to host '%s' in db", attachment.VolumeID, h.Id)
 }
 
