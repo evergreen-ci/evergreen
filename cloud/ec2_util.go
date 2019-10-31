@@ -2,7 +2,9 @@ package cloud
 
 import (
 	"context"
+	"fmt"
 	"math"
+	"math/rand"
 	"os"
 	"os/user"
 	"regexp"
@@ -295,6 +297,14 @@ type Terms struct {
 			}
 		}
 	}
+}
+
+// format /dev/sd[f-p][1-6] taken from https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html
+func generateDeviceNameForVolume() string {
+	letters := "fghijklmnop"
+	rand.Seed(time.Now().Unix())
+
+	return fmt.Sprintf("/dev/sd%c%d", letters[rand.Intn(len(letters))], rand.Intn(5)+1)
 }
 
 func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping, error) {
