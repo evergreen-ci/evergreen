@@ -503,8 +503,11 @@ type ProjectVariablesPermission int
 type TasksPermission int
 type PatchPermission int
 type LogsPermission int
+type DistrosPermission int
+type HostsPermission int
 
 const (
+	// Project permissions.
 	PermissionProjectSettings  = "project_settings"
 	PermissionProjectVariables = "project_variables"
 	PermissionTasks            = "project_tasks"
@@ -525,6 +528,17 @@ const (
 	PatchNone            PatchPermission            = 0
 	LogsView             LogsPermission             = 10
 	LogsNone             LogsPermission             = 0
+
+	// Distro permissions.
+	PermissionDistros = "distro"
+	PermissionHosts   = "distro_hosts"
+
+	DistrosEdit DistrosPermission = 20
+	DistrosRead DistrosPermission = 10
+	DistrosNone DistrosPermission = 0
+	HostsEdit   HostsPermission   = 20
+	HostsRead   HostsPermission   = 10
+	HostsNone   HostsPermission   = 0
 )
 
 func (p ProjectSettingsPermission) String() string {
@@ -595,6 +609,34 @@ func (p LogsPermission) String() string {
 func (p LogsPermission) Value() int {
 	return int(p)
 }
+func (p DistrosPermission) String() string {
+	switch p {
+	case DistrosEdit:
+		return "Edit distros"
+	case DistrosRead:
+		return "View distros"
+	case DistrosNone:
+		return "No distros permissions"
+	}
+	return ""
+}
+func (p DistrosPermission) Value() int {
+	return int(p)
+}
+func (p HostsPermission) String() string {
+	switch p {
+	case HostsEdit:
+		return "Edit hosts"
+	case HostsRead:
+		return "View hosts"
+	case HostsNone:
+		return "No hosts permissions"
+	}
+	return ""
+}
+func (p HostsPermission) Value() int {
+	return int(p)
+}
 
 var projectPermissions = []string{
 	PermissionProjectSettings,
@@ -602,4 +644,9 @@ var projectPermissions = []string{
 	PermissionTasks,
 	PermissionPatches,
 	PermissionLogs,
+}
+
+var distroPermissions = []string{
+	PermissionDistros,
+	PermissionHosts,
 }
