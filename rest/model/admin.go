@@ -992,7 +992,7 @@ type APIAWSConfig struct {
 	S3BaseURL            APIString   `json:"s3_base_url"`
 	DefaultSecurityGroup APIString   `json:"default_security_group"`
 	AllowedInstanceTypes []APIString `json:"allowed_instance_types"`
-	MaxVolumeSizePerUser int         `json:"ebs_volume_max"`
+	MaxVolumeSizePerUser int         `json:"max_volume_size"`
 
 	// Legacy
 	EC2Secret APIString `json:"aws_secret"`
@@ -1038,6 +1038,7 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		Bucket:               FromAPIString(a.Bucket),
 		S3BaseURL:            FromAPIString(a.S3BaseURL),
 		DefaultSecurityGroup: FromAPIString(a.DefaultSecurityGroup),
+		MaxVolumeSizePerUser: a.MaxVolumeSizePerUser,
 
 		// Legacy
 		EC2Key:    FromAPIString(a.EC2Key),

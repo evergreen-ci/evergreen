@@ -1062,12 +1062,3 @@ func FindOneVolume(query interface{}) (*Volume, error) {
 	}
 	return v, err
 }
-
-func FindVolumes(query interface{}) ([]Volume, error) {
-	volumes := []Volume{}
-	err := db.FindAll(VolumesCollection, query, db.NoProjection, db.NoSort, db.NoSkip, db.NoLimit, &volumes)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	return volumes, err
-}
