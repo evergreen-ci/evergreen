@@ -152,7 +152,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if oldDistro.PlannerSettings.Version == evergreen.PlannerVersionTunable && newDistro.PlannerSettings.Version != evergreen.PlannerVersionTunable {
+	if oldDistro.DispatcherSettings.Version == evergreen.DispatcherVersionRevisedWithDependencies && newDistro.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies {
 		if err := model.RemoveTaskQueues(id); err != nil {
 			PushFlash(uis.CookieStore, r, w, NewWarningFlash(err.Error()))
 		}

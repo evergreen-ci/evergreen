@@ -276,7 +276,10 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 			Version: model.ToAPIString(evergreen.PlannerVersionLegacy),
 		},
 		DispatcherSettings: model.APIDispatcherSettings{
-			Version: model.ToAPIString(evergreen.DispatcherVersionTaskGroups),
+			Version: model.ToAPIString(evergreen.DispatcherVersionRevised),
+		},
+		HostAllocatorSettings: model.APIHostAllocatorSettings{
+			Version: model.ToAPIString(evergreen.HostAllocatorUtilization),
 		},
 		BootstrapSettings: model.APIBootstrapSettings{
 			Method:        model.ToAPIString(distro.BootstrapMethodLegacySSH),
@@ -396,57 +399,6 @@ func (h *distroIDPatchHandler) Parse(ctx context.Context, r *http.Request) error
 	return nil
 }
 
-// func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
-// 	user := MustHaveUser(ctx)
-//
-// 	original, err := h.sc.FindDistroById(h.distroID)
-// 	if err != nil && err.(gimlet.ErrorResponse).StatusCode != http.StatusNotFound {
-// 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
-// 	}
-//
-// 	apiDistro := &model.APIDistro{
-// 		Name: model.ToAPIString(h.distroID),
-// 		PlannerSettings: model.APIPlannerSettings{
-// 			Version: model.ToAPIString(evergreen.PlannerVersionLegacy),
-// 		},
-// 		FinderSettings: model.APIFinderSettings{
-// 			Version: model.ToAPIString(evergreen.FinderVersionLegacy),
-// 		},
-// 		BootstrapSettings: model.APIBootstrapSettings{
-// 			Method:        model.ToAPIString(distro.BootstrapMethodLegacySSH),
-// 			Communication: model.ToAPIString(distro.CommunicationMethodLegacySSH),
-// 		},
-// 		CloneMethod: model.ToAPIString(distro.CloneMethodLegacySSH),
-// 	}
-// 	if err = json.Unmarshal(h.body, apiDistro); err != nil {
-// 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
-// 	}
-//
-// 	distro, error := validateDistro(ctx, apiDistro, h.distroID, h.settings, false)
-// 	if error != nil {
-// 		return error
-// 	}
-//
-// 	// Existing resource
-// 	if original != nil {
-// 		if err = h.sc.UpdateDistro(original, distro); err != nil {
-// 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() distro with distro id '%s'", h.distroID))
-// 		}
-// 		event.LogDistroModified(h.distroID, user.Username(), distro)
-// 		return gimlet.NewJSONResponse(struct{}{})
-// 	}
-// 	// New resource
-// 	responder := gimlet.NewJSONResponse(struct{}{})
-// 	if err = responder.SetStatus(http.StatusCreated); err != nil {
-// 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusCreated))
-// 	}
-// 	if err = h.sc.CreateDistro(distro); err != nil {
-// 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for insert() distro with distro id '%s'", h.distroID))
-// 	}
-//
-// 	return responder
-// }
-
 // Run updates a distro by id.
 func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	old, err := h.sc.FindDistroById(h.distroID)
@@ -454,22 +406,7 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
 
-	apiDistro := &model.APIDistro{
-		Name: model.ToAPIString(h.distroID),
-		PlannerSettings: model.APIPlannerSettings{
-			Version: model.ToAPIString(evergreen.PlannerVersionLegacy),
-		},
-		FinderSettings: model.APIFinderSettings{
-			Version: model.ToAPIString(evergreen.FinderVersionLegacy),
-		},
-		// BootstrapSettings: model.APIBootstrapSettings{
-		// 	Method:        model.ToAPIString(distro.BootstrapMethodLegacySSH),
-		// 	Communication: model.ToAPIString(distro.CommunicationMethodLegacySSH),
-		// },
-		// CloneMethod: model.ToAPIString(distro.CloneMethodLegacySSH),
-	}
-
-	// apiDistro := &model.APIDistro{}
+	apiDistro := &model.APIDistro{}
 	if err = apiDistro.BuildFromService(old); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
 	}
@@ -525,12 +462,12 @@ func (h *distroIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
 
-	distroModel := &model.APIDistro{}
-	if err = distroModel.BuildFromService(d); err != nil {
+	apiDistro := &model.APIDistro{}
+	if err = apiDistro.BuildFromService(d); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
 	}
 
-	return gimlet.NewJSONResponse(distroModel)
+	return gimlet.NewJSONResponse(apiDistro)
 }
 
 ////////////////////////////////////////////////////////////////////////

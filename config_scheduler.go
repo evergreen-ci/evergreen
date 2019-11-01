@@ -84,8 +84,8 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 	}
 
 	if c.HostAllocator == "" {
-		// default to duration
-		c.HostAllocator = HostAllocatorDuration
+		// default to "utilization"
+		c.HostAllocator = HostAllocatorUtilization
 	}
 
 	if !util.StringSliceContains(ValidHostAllocators, c.HostAllocator) {

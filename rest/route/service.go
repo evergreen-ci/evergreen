@@ -66,16 +66,11 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/cost/distro/{distro_id}").Version(2).Get().Wrap(checkUser).RouteHandler(makeCostByDistroHandler(sc))
 	app.AddRoute("/cost/project/{project_id}/tasks").Version(2).Get().Wrap(checkUser).RouteHandler(makeTaskCostByProjectRoute(sc))
 	app.AddRoute("/cost/version/{version_id}").Version(2).Get().Wrap(checkUser).RouteHandler(makeCostByVersionHandler(sc))
-
 	app.AddRoute("/distros").Version(2).Get().Wrap(checkUser).RouteHandler(makeDistroRoute(sc))
-
-	app.AddRoute("/distros/{distro_id}").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetDistroByID(sc))
-	app.AddRoute("/distros/{distro_id}").Version(2).Patch().Wrap(checkUser).RouteHandler(makePatchDistroByID(sc, settings))
-
+	app.AddRoute("/distros/{distro_id}").Version(2).Get().Wrap(superUser).RouteHandler(makeGetDistroByID(sc))
+	app.AddRoute("/distros/{distro_id}").Version(2).Patch().Wrap(superUser).RouteHandler(makePatchDistroByID(sc, settings))
 	app.AddRoute("/distros/{distro_id}").Version(2).Delete().Wrap(superUser).RouteHandler(makeDeleteDistroByID(sc))
-
-	app.AddRoute("/distros/{distro_id}").Version(2).Put().Wrap(checkUser).RouteHandler(makePutDistro(sc, settings))
-
+	app.AddRoute("/distros/{distro_id}").Version(2).Put().Wrap(superUser).RouteHandler(makePutDistro(sc, settings))
 	app.AddRoute("/distros/{distro_id}/setup").Version(2).Get().Wrap(superUser).RouteHandler(makeGetDistroSetup(sc))
 	app.AddRoute("/distros/{distro_id}/setup").Version(2).Patch().Wrap(superUser).RouteHandler(makeChangeDistroSetup(sc))
 	app.AddRoute("/distros/{distro_id}/teardown").Version(2).Get().Wrap(superUser).RouteHandler(makeGetDistroTeardown(sc))

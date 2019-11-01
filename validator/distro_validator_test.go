@@ -43,6 +43,9 @@ func TestCheckDistro(t *testing.T) {
 				FinderSettings: distro.FinderSettings{
 					Version: evergreen.FinderVersionLegacy,
 				},
+				DispatcherSettings: distro.DispatcherSettings{
+					Version: evergreen.DispatcherVersionLegacy,
+				},
 			}
 			verrs, err := CheckDistro(ctx, d, conf, true)
 			So(err, ShouldBeNil)
@@ -93,6 +96,9 @@ func TestCheckDistro(t *testing.T) {
 				CloneMethod: distro.CloneMethodLegacySSH,
 				FinderSettings: distro.FinderSettings{
 					Version: evergreen.FinderVersionLegacy,
+				},
+				DispatcherSettings: distro.DispatcherSettings{
+					Version: evergreen.DispatcherVersionRevised,
 				},
 			}
 			verrs, err := CheckDistro(ctx, d, conf, false)
