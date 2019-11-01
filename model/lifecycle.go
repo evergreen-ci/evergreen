@@ -445,13 +445,18 @@ func RestartBuildTasks(buildId string, caller string) error {
 
 func CreateTasksCache(tasks []task.Task) []build.TaskCache {
 	tasks = sortTasks(tasks)
-	cache := make([]build.TaskCache, 0, len(tasks))
+	buildCache := make([]build.TaskCache, 0, len(tasks))
+	tempCache := task.NewDisplayTaskCache()
 	for _, task := range tasks {
-		if !task.IsPartOfDisplay() {
-			cache = append(cache, cacheFromTask(task))
+		displayTask, err := tempCache.Get(&task)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "unable to get display task",
+		}))
+		if displayTask == nil {
+			buildCache = append(buildCache, cacheFromTask(task))
 		}
 	}
-	return cache
+	return buildCache
 }
 
 // RefreshTasksCache updates a build document so that the tasks cache reflects the correct current
