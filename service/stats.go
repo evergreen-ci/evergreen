@@ -78,7 +78,7 @@ func (uis *UIServer) taskTimingPage(w http.ResponseWriter, r *http.Request) {
 	project, err := projCtx.GetProject()
 
 	if err != nil || project == nil {
-		uis.ProjectNotFound(projCtx, w, r)
+		uis.ProjectNotFound(w, r)
 		return
 	}
 
