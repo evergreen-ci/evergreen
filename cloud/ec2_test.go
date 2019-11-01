@@ -825,7 +825,7 @@ func (s *EC2Suite) TestOnUp() {
 	s.NotNil(foundHost)
 	s.Require().Len(foundHost.Volumes, 1)
 	s.Equal("volume_id", foundHost.Volumes[0].VolumeID)
-	s.Equal("volume_id", foundHost.Volumes[0].DeviceName)
+	s.Equal("device_name", foundHost.Volumes[0].DeviceName)
 }
 
 func (s *EC2Suite) TestGetDNSName() {
@@ -1314,11 +1314,11 @@ func (s *EC2Suite) TestAttachVolume() {
 	defer cancel()
 
 	s.Require().NoError(s.h.Insert())
-	newAttachment := &host.VolumeAttachment{
+	newAttachment := host.VolumeAttachment{
 		VolumeID:   "test-volume",
 		DeviceName: "test-device-name",
 	}
-	s.NoError(s.onDemandManager.AttachVolume(ctx, s.h, newAttachment))
+	s.NoError(s.onDemandManager.AttachVolume(ctx, s.h, &newAttachment))
 
 	manager, ok := s.onDemandManager.(*ec2Manager)
 	s.True(ok)
