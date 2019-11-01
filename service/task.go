@@ -173,7 +173,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		if taskFromDb != nil {
 			projCtx.Task = taskFromDb
 			archived = true
-		} else if execution != projCtx.Task.Execution && !projCtx.Task.IsPartOfDisplay() {
+		} else if execution != projCtx.Task.Execution {
 			uis.LoggedError(w, r, http.StatusNotFound, errors.New("Error finding task or execution"))
 			return
 		}
@@ -312,6 +312,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	if uiTask.DisplayOnly {
 		uiTask.TestResults = []uiTestResult{}
 		execTasks := []task.Task{}
+		execTaskIDs := []string{}
 		for _, t := range projCtx.Task.ExecutionTasks {
 			var et *task.Task
 			if archived {
@@ -332,15 +333,16 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			execTasks = append(execTasks, *et)
+			execTaskIDs = append(execTaskIDs, t)
 		}
 		execTasks, err = task.MergeTestResultsBulk(execTasks, nil)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		for _, execTask := range execTasks {
+		for i, execTask := range execTasks {
 			uiTask.ExecutionTasks = append(uiTask.ExecutionTasks, uiExecTask{
-				Id:        execTask.Id,
+				Id:        execTaskIDs[i],
 				Name:      execTask.DisplayName,
 				TimeTaken: execTask.TimeTaken,
 				Status:    execTask.ResultStatus(),
