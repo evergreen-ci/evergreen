@@ -32,6 +32,7 @@ var distroSyntaxValidators = []distroValidator{
 	ensureValidBootstrapSettings,
 	ensureValidCloneMethod,
 	ensureHasNoUnauthorizedCharacters,
+	ensureHasValidHostAllocatorSettings,
 	ensureHasValidPlannerSettings,
 	ensureHasValidFinderSettings,
 	ensureHasValidDispatcherSettings,
