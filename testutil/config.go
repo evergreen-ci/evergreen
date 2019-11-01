@@ -69,6 +69,7 @@ func loadConfig(path ...string) *evergreen.Settings {
 func MockConfig() *evergreen.Settings {
 	numSpawnHosts := 5
 	numUnexpirableHosts := 2
+	maxVolumeSize := 200
 	return &evergreen.Settings{
 		Alerts: evergreen.AlertsConfig{
 			SMTP: evergreen.SMTPConfig{
@@ -187,7 +188,7 @@ func MockConfig() *evergreen.Settings {
 				// Legacy
 				EC2Secret:            "aws_secret",
 				EC2Key:               "aws",
-				MaxVolumeSizePerUser: 200,
+				MaxVolumeSizePerUser: &maxVolumeSize,
 			},
 			Docker: evergreen.DockerConfig{
 				APIVersion: "docker_version",

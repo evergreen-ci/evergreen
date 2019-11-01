@@ -992,7 +992,7 @@ type APIAWSConfig struct {
 	S3BaseURL            APIString   `json:"s3_base_url"`
 	DefaultSecurityGroup APIString   `json:"default_security_group"`
 	AllowedInstanceTypes []APIString `json:"allowed_instance_types"`
-	MaxVolumeSizePerUser int         `json:"max_volume_size"`
+	MaxVolumeSizePerUser *int        `json:"max_volume_size"`
 
 	// Legacy
 	EC2Secret APIString `json:"aws_secret"`

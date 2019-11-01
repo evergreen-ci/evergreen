@@ -221,15 +221,15 @@ func CheckExpirableHostLimitExceeded(userId string, maxHostsFromSettings *int) e
 	return nil
 }
 
-func checkVolumeLimitExceeded(user string, newSize int, maxSize int) error {
-	if maxSize <= 0 {
+func checkVolumeLimitExceeded(user string, newSize int, maxSize *int) error {
+	if maxSize == nil || *maxSize <= 0 {
 		return nil
 	}
 	totalSize, err := host.FindTotalVolumeSizeByUser(user)
 	if err != nil {
 		return errors.Wrapf(err, "error finding total volume size for user")
 	}
-	if totalSize+newSize > maxSize {
+	if totalSize+newSize > *maxSize {
 		return errors.Errorf("volume size limit %d exceeded", maxSize)
 	}
 	return nil
