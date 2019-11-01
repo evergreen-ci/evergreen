@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	_ "github.com/evergreen-ci/evergreen/testutil"
+        "github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
@@ -521,6 +522,81 @@ func (s *cacheHistoryTestDataSuite) TestCacheHistoricalTestDataJob() {
 	}
 }
 
+func (s *cacheHistoryTestDataSuite) TestCacheHistoricalTestDataMergeJob() {
+        err := clearStatsData()
+        s.NoError(err)
+
+        // Our sample data will be 30 minutes apart and the Job will aggregation 1 hours worth of data.
+        // So need to be sure the sample data does not cross an hour boundary or only part of it will
+        // be aggregated. So, truncate the base date to an hour.
+        baseTime := time.Now().Add(-4 * 7 * 24 * time.Hour).Truncate(time.Hour)
+
+        ref := &model.ProjectRef{
+                Repo:       "evergreen",
+                Owner:      "evergreen-ci",
+                Identifier: s.projectId,
+                Branch:     "master",
+                RemotePath: "self-tests.yml",
+                RepoKind:   "github",
+                Enabled:    true,
+        }
+        err = ref.Insert()
+        s.NoError(err)
+
+        s.createTestData(baseTime)
+
+        job := NewCacheHistoricalTestDataJob(s.projectId, "1")
+        job.(*cacheHistoricalTestDataJob).Requesters = []string{s.requester}
+        job.(*cacheHistoricalTestDataJob).UseMerge = true
+        job.Run(context.Background())
+        s.NoError(job.Error())
+
+        doc, err := stats.GetDailyTestDoc(stats.DbTestStatsId{
+                TestFile:     "test0.js",
+                TaskName:     "taskName",
+                BuildVariant: "",
+                Distro:       "",
+                Project:      s.projectId,
+                Requester:    s.requester,
+                Date:         baseTime.Truncate(time.Hour * 24),
+        })
+        s.NoError(err)
+        if s.NotNil(doc) {
+                s.Equal(2, doc.NumFail)
+                s.Equal(0, doc.NumPass)
+        }
+
+        doc, err = stats.GetDailyTestDoc(stats.DbTestStatsId{
+                TestFile:     "test1.js",
+                TaskName:     "taskName",
+                BuildVariant: "",
+                Distro:       "",
+                Project:      s.projectId,
+                Requester:    s.requester,
+                Date:         baseTime.Truncate(time.Hour * 24),
+        })
+        s.NoError(err)
+        if s.NotNil(doc) {
+                s.Equal(1, doc.NumFail)
+                s.Equal(1, doc.NumPass)
+        }
+
+        doc, err = stats.GetDailyTestDoc(stats.DbTestStatsId{
+                TestFile:     "test2.js",
+                TaskName:     "taskName",
+                BuildVariant: "",
+                Distro:       "",
+                Project:      s.projectId,
+                Requester:    s.requester,
+                Date:         baseTime.Truncate(time.Hour * 24),
+        })
+        s.NoError(err)
+        if s.NotNil(doc) {
+                s.Equal(0, doc.NumFail)
+                s.Equal(2, doc.NumPass)
+        }
+}
+
 func (s *cacheHistoryTestDataSuite) createTestData(baseTime time.Time) {
 	t0 := baseTime
 	t1 := baseTime.Add(time.Minute * 30)
@@ -539,7 +615,6 @@ func (s *cacheHistoryTestDataSuite) createTestData(baseTime time.Time) {
 			"pass",
 		},
 	}
-	testStartTime := time.Now()
 
 	taskList := []task.Task{
 		{
@@ -565,14 +640,31 @@ func (s *cacheHistoryTestDataSuite) createTestData(baseTime time.Time) {
 		err := task.Insert()
 		s.NoError(err)
 
+                testStartTime := task.CreateTime.Add(task.FinishTime.Sub(task.CreateTime) / 2)
+
 		for j, testStatus := range testStatusList[i] {
+                        StartTime := float64(testStartTime.Unix())
+                        EndTime := float64(testStartTime.Add(time.Duration(30) * time.Second).Unix())
+
 			testResult := testresult.TestResult{
-				TaskID:    task.Id,
-				Execution: task.Execution,
 				TestFile:  fmt.Sprintf("test%d.js", j),
 				Status:    testStatus,
-				StartTime: float64(testStartTime.Unix()),
-				EndTime:   float64(testStartTime.Add(time.Duration(30) * time.Second).Unix()),
+                                StartTime: StartTime,
+                                EndTime:   EndTime,
+
+                                TaskID:    task.Id,
+                                Execution: task.Execution,
+
+                                Project:              task.Project,
+                                BuildVariant:         task.BuildVariant,
+                                DistroId:             task.DistroId,
+                                Requester:            task.Requester,
+                                DisplayName:          task.DisplayName,
+                                TaskCreateTime:       task.CreateTime,
+                                ExecutionDisplayName: "",
+
+                                TestStartTime: util.FromPythonTime(StartTime).In(time.UTC),
+                                TestEndTime:   util.FromPythonTime(EndTime).In(time.UTC),
 			}
 			err := testResult.Insert()
 			s.NoError(err)

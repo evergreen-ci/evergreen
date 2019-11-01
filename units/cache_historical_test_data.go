@@ -33,6 +33,7 @@ type cacheHistoricalTestDataJob struct {
 	ProjectID       string   `bson:"project_id" json:"project_id" yaml:"project_id"`
 	Requesters      []string `bson:"requesters" json:"requesters" yaml:"requesters"`
 	DisableOldTasks bool     `bson:"disable_old_tasks" json:"disable_old_tasks" yaml:"disable_old_tasks"`
+        UseMerge        bool     `bson:"use_merge,omitempty" json:"use_merge,omitempty" yaml:"use_merge,omitempty"`
 	job.Base        `bson:"job_base" json:"job_base" yaml:"job_base"`
 }
 
@@ -127,6 +128,7 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 			"test": true,
 			"task": false,
 		},
+                UseMerge: j.UseMerge,
 	}
 
 	syncFromTime := statsStatus.ProcessedTasksUntil
@@ -149,12 +151,19 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 		return
 	}
 
+        var generateHourlyTestStatsFn generateStatsFn = stats.GenerateHourlyTestStats
+        var generateDailyTestStatsFn generateStatsFn = stats.GenerateDailyTestStatsFromHourly
+        if j.UseMerge {
+                generateHourlyTestStatsFn = stats.GenerateHourlyTestStatsUsingMerge
+                generateDailyTestStatsFn = stats.GenerateDailyTestStatsUsingMerge
+        }
+
 	generateMap := generateFunctions{
 		HourlyFns: map[string]generateStatsFn{
-			"test": stats.GenerateHourlyTestStats,
+                        "test": generateHourlyTestStatsFn,
 		},
 		DailyFns: map[string]generateStatsFn{
-			"test": stats.GenerateDailyTestStatsFromHourly,
+                        "test": generateDailyTestStatsFn,
 			"task": stats.GenerateDailyTaskStats,
 		},
 	}
@@ -188,6 +197,7 @@ type cacheHistoricalJobContext struct {
 	ShouldFilterTasks map[string]bool
 	catcher           grip.Catcher
 	DisableOldTasks   bool
+        UseMerge          bool
 }
 
 func reportTiming(fn func()) time.Duration {

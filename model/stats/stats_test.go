@@ -106,7 +106,7 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.NoError(err)
 	require.Equal(5, s.countHourlyTestDocs())
 
-	testStatsID := DbTestStatsId{
+        s.validateDbTestStats(DbTestStatsId{
 		Project:      "p1",
 		Requester:    "r1",
 		TestFile:     "test1.js",
@@ -114,29 +114,9 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 		BuildVariant: "v1",
 		Distro:       "d1",
 		Date:         baseHour,
-	}
-	doc, err := GetHourlyTestDoc(testStatsID)
+        }, baseHour.UTC(), 0, 2, 0.0, jobTime, true)
 
-	require.NoError(err)
-	require.NotNil(doc)
-	require.Equal("p1", doc.Id.Project)
-	require.Equal("r1", doc.Id.Requester)
-	require.Equal("test1.js", doc.Id.TestFile)
-	require.Equal("task1", doc.Id.TaskName)
-	require.Equal("v1", doc.Id.BuildVariant)
-	require.Equal("d1", doc.Id.Distro)
-	require.Equal(baseHour.UTC(), doc.Id.Date.UTC())
-	require.Equal(0, doc.NumPass)
-	require.Equal(2, doc.NumFail)
-	require.Equal(float64(0), doc.AvgDurationPass)
-	require.WithinDuration(jobTime, doc.LastUpdate, 0)
-
-	var lastTestResult *testresult.TestResult
-	lastTestResult, err = s.getLastTestResult(testStatsID)
-	require.NoError(err)
-	require.Equal(lastTestResult.ID, doc.LastID)
-
-	testStatsID = DbTestStatsId{
+        s.validateDbTestStats(DbTestStatsId{
 		Project:      "p1",
 		Requester:    "r1",
 		TestFile:     "test2.js",
@@ -144,19 +124,9 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 		BuildVariant: "v1",
 		Distro:       "d1",
 		Date:         baseHour,
-	}
-	doc, err = GetHourlyTestDoc(testStatsID)
-	require.NoError(err)
-	require.NotNil(doc)
-	require.Equal(1, doc.NumPass)
-	require.Equal(1, doc.NumFail)
-	require.Equal(float64(120), doc.AvgDurationPass)
+        }, baseHour.UTC(), 1, 1, 120.0, jobTime, true)
 
-	lastTestResult, err = s.getLastTestResult(testStatsID)
-	require.NoError(err)
-	require.Equal(lastTestResult.ID, doc.LastID)
-
-	testStatsID = DbTestStatsId{
+        s.validateDbTestStats(DbTestStatsId{
 		Project:      "p1",
 		Requester:    "r1",
 		TestFile:     "test3.js",
@@ -164,17 +134,7 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 		BuildVariant: "v1",
 		Distro:       "d1",
 		Date:         baseHour,
-	}
-	doc, err = GetHourlyTestDoc(testStatsID)
-	require.NoError(err)
-	require.NotNil(doc)
-	require.Equal(2, doc.NumPass)
-	require.Equal(0, doc.NumFail)
-	require.Equal(float64(12.5), doc.AvgDurationPass)
-
-	lastTestResult, err = s.getLastTestResult(testStatsID)
-	require.NoError(err)
-	require.Equal(lastTestResult.ID, doc.LastID)
+        }, baseHour.UTC(), 2, 0, 12.5, jobTime, true)
 
 	// Generate hourly stats for project p2
 	// Testing old tasks.
@@ -188,7 +148,7 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.NoError(err)
 	require.Equal(8, s.countHourlyTestDocs()) // 3 more tests combination were added to the collection
 
-	testStatsID = DbTestStatsId{
+        s.validateDbTestStats(DbTestStatsId{
 		Project:      "p2",
 		Requester:    "r1",
 		TestFile:     "test1.js",
@@ -196,20 +156,9 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 		BuildVariant: "v1",
 		Distro:       "d1",
 		Date:         baseHour,
-	}
-	doc, err = GetHourlyTestDoc(testStatsID)
-	require.NoError(err)
-	require.NotNil(doc)
-	require.Equal(0, doc.NumPass)
-	require.Equal(3, doc.NumFail)
-	require.Equal(float64(0), doc.AvgDurationPass)
-	require.WithinDuration(jobTime, doc.LastUpdate, 0)
+        }, baseHour.UTC(), 0, 3, 0.0, jobTime, true)
 
-	lastTestResult, err = s.getLastTestResult(testStatsID)
-	require.NoError(err)
-	require.Equal(lastTestResult.ID, doc.LastID)
-
-	testStatsID = DbTestStatsId{
+        s.validateDbTestStats(DbTestStatsId{
 		Project:      "p2",
 		Requester:    "r1",
 		TestFile:     "test2.js",
@@ -217,17 +166,7 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 		BuildVariant: "v1",
 		Distro:       "d1",
 		Date:         baseHour,
-	}
-	doc, err = GetHourlyTestDoc(testStatsID)
-	require.NoError(err)
-	require.Equal(1, doc.NumPass)
-	require.Equal(2, doc.NumFail)
-	require.Equal(float64(120), doc.AvgDurationPass)
-	require.WithinDuration(jobTime, doc.LastUpdate, 0)
-
-	lastTestResult, err = s.getLastTestResult(testStatsID)
-	require.NoError(err)
-	require.Equal(lastTestResult.ID, doc.LastID)
+        }, baseHour.UTC(), 1, 2, 120.0, jobTime, true)
 
 	// Generate hourly stats for project p3.
 	// Testing display task / execution task.
@@ -241,7 +180,7 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.NoError(err)
 	require.Equal(10, s.countHourlyTestDocs()) // 2 more tests combination were added to the collection
 
-	testStatsID = DbTestStatsId{
+        doc, err := GetHourlyTestDoc(DbTestStatsId{
 		Project:      "p3",
 		Requester:    "r1",
 		TestFile:     "test1.js",
@@ -249,12 +188,11 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 		BuildVariant: "v1",
 		Distro:       "d1",
 		Date:         baseHour,
-	}
-	doc, err = GetHourlyTestDoc(testStatsID)
+        })
 	require.NoError(err)
 	require.Nil(doc)
 
-	testStatsID = DbTestStatsId{
+        s.validateDbTestStats(DbTestStatsId{
 		Project:      "p3",
 		Requester:    "r1",
 		TestFile:     "test1.js",
@@ -262,19 +200,9 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 		BuildVariant: "v1",
 		Distro:       "d1",
 		Date:         baseHour,
-	}
-	doc, err = GetHourlyTestDoc(testStatsID)
-	require.NoError(err)
-	require.NotNil(doc)
-	require.Equal(0, doc.NumPass)
-	require.Equal(1, doc.NumFail)
-	require.Equal(float64(0), doc.AvgDurationPass)
+        }, baseHour.UTC(), 0, 1, 0.0, jobTime, true)
 
-	lastTestResult, err = s.getLastTestResult(testStatsID)
-	require.NoError(err)
-	require.Equal(lastTestResult.ID, doc.LastID)
-
-	testStatsID = DbTestStatsId{
+        s.validateDbTestStats(DbTestStatsId{
 		Project:      "p3",
 		Requester:    "r1",
 		TestFile:     "test2.js",
@@ -282,17 +210,7 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 		BuildVariant: "v1",
 		Distro:       "d1",
 		Date:         baseHour,
-	}
-	doc, err = GetHourlyTestDoc(testStatsID)
-	require.NoError(err)
-	require.NotNil(doc)
-	require.Equal(1, doc.NumPass)
-	require.Equal(0, doc.NumFail)
-	require.Equal(float64(120), doc.AvgDurationPass)
-
-	lastTestResult, err = s.getLastTestResult(testStatsID)
-	require.NoError(err)
-	require.Equal(lastTestResult.ID, doc.LastID)
+        }, baseHour.UTC(), 1, 0, 120.0, jobTime, true)
 
 	// Generate hourly stats for project p5.
 	// Testing tests with status 'skip'.
@@ -306,7 +224,7 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.Equal(12, s.countHourlyTestDocs()) // 2 more tests combination were added to the collection.
 
 	// test1.js passed once and was skipped once.
-	testStatsID = DbTestStatsId{
+        s.validateDbTestStats(DbTestStatsId{
 		Project:      "p5",
 		Requester:    "r1",
 		TestFile:     "test1.js",
@@ -314,38 +232,186 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 		BuildVariant: "v1",
 		Distro:       "d1",
 		Date:         baseHour,
-	}
-	doc, err = GetHourlyTestDoc(testStatsID)
-	require.NoError(err)
-	require.NotNil(doc)
-	require.Equal(1, doc.NumPass)
-	require.Equal(0, doc.NumFail)
-	require.Equal(float64(60), doc.AvgDurationPass)
+        }, baseHour.UTC(), 1, 0, 60.0, jobTime, true)
 
-	lastTestResult, err = s.getLastTestResult(testStatsID)
-	require.NoError(err)
-	require.Equal(lastTestResult.ID, doc.LastID)
+        // test2.js failed once and was skipped once.
+        s.validateDbTestStats(DbTestStatsId{
+                Project:      "p5",
+                Requester:    "r1",
+                TestFile:     "test2.js",
+                TaskName:     "task1",
+                BuildVariant: "v1",
+                Distro:       "d1",
+                Date:         baseHour,
+        }, baseHour.UTC(), 0, 1, 0.0, jobTime, true)
+}
 
-	// test2.js failed once and was skipped once.
-	testStatsID = DbTestStatsId{
-		Project:      "p5",
+func (s *statsSuite) TestGenerateHourlyTestStatsMerge() {
+        rand.Seed(314159265)
+        require := s.Require()
+
+        // Insert task docs.
+        s.initTasks()
+
+        ctx, cancel := context.WithCancel(context.Background())
+        defer cancel()
+
+        // Generate hourly stats for project p1 and an unknown task.
+        err := GenerateHourlyTestStatsUsingMerge(ctx, GenerateOptions{
+                ProjectID: "p1",
+                Requester: "r1",
+                Window:    baseHour,
+                Tasks:     []string{"unknown_task"},
+                Runtime:   jobTime})
+	require.NoError(err)
+        require.Equal(0, s.countHourlyTestDocs())
+
+        // Generate hourly stats for project p1.
+        err = GenerateHourlyTestStatsUsingMerge(ctx, GenerateOptions{
+                ProjectID: "p1",
+                Requester: "r1",
+                Window:    baseHour,
+                Tasks:     []string{"task1"},
+                Runtime:   jobTime})
+        require.NoError(err)
+        require.Equal(5, s.countHourlyTestDocs())
+
+        s.validateDbTestStats(DbTestStatsId{
+                Project:      "p1",
+                Requester:    "r1",
+                TestFile:     "test1.js",
+                TaskName:     "task1",
+                BuildVariant: "v1",
+                Distro:       "d1",
+                Date:         baseHour,
+        }, baseHour.UTC(), 0, 2, 0.0, jobTime, true)
+
+        s.validateDbTestStats(DbTestStatsId{
+                Project:      "p1",
+                Requester:    "r1",
+                TestFile:     "test2.js",
+                TaskName:     "task1",
+                BuildVariant: "v1",
+                Distro:       "d1",
+                Date:         baseHour,
+        }, baseHour.UTC(), 1, 1, 120.0, jobTime, true)
+
+        s.validateDbTestStats(DbTestStatsId{
+                Project:      "p1",
+                Requester:    "r1",
+                TestFile:     "test3.js",
+                TaskName:     "task1",
+                BuildVariant: "v1",
+                Distro:       "d1",
+                Date:         baseHour,
+        }, baseHour.UTC(), 2, 0, 12.5, jobTime, true)
+
+        // Generate hourly stats for project p2
+        // Testing old tasks.
+        err = GenerateHourlyTestStatsUsingMerge(ctx, GenerateOptions{
+                ProjectID: "p2",
+                Requester: "r1",
+                Window:    baseHour,
+                Tasks:     []string{"task1"},
+                Runtime:   jobTime})
+	require.NoError(err)
+        require.Equal(8, s.countHourlyTestDocs()) // 3 more tests combination were added to the collection
+
+        s.validateDbTestStats(DbTestStatsId{
+                Project:      "p2",
+                Requester:    "r1",
+                TestFile:     "test1.js",
+                TaskName:     "task1",
+                BuildVariant: "v1",
+                Distro:       "d1",
+                Date:         baseHour,
+        }, baseHour.UTC(), 0, 3, 0.0, jobTime, true)
+
+        s.validateDbTestStats(DbTestStatsId{
+                Project:      "p2",
 		Requester:    "r1",
 		TestFile:     "test2.js",
 		TaskName:     "task1",
 		BuildVariant: "v1",
 		Distro:       "d1",
 		Date:         baseHour,
-	}
-	doc, err = GetHourlyTestDoc(testStatsID)
-	require.NoError(err)
-	require.NotNil(doc)
-	require.Equal(0, doc.NumPass)
-	require.Equal(1, doc.NumFail)
-	require.Equal(float64(0), doc.AvgDurationPass)
+        }, baseHour.UTC(), 1, 2, 120.0, jobTime, true)
 
-	lastTestResult, err = s.getLastTestResult(testStatsID)
+        // Generate hourly stats for project p3.
+        // Testing display task / execution task.
+        err = GenerateHourlyTestStatsUsingMerge(ctx, GenerateOptions{
+                ProjectID: "p3",
+                Requester: "r1",
+                Window:    baseHour,
+                Tasks:     []string{"task_exec_1"},
+                Runtime:   jobTime})
 	require.NoError(err)
-	require.Equal(lastTestResult.ID, doc.LastID)
+        require.Equal(10, s.countHourlyTestDocs()) // 2 more tests combination were added to the collection
+
+        doc, err := GetHourlyTestDoc(DbTestStatsId{
+                Project:      "p3",
+                Requester:    "r1",
+                TestFile:     "test1.js",
+                TaskName:     "task_exec_1",
+                BuildVariant: "v1",
+                Distro:       "d1",
+                Date:         baseHour,
+        })
+	require.NoError(err)
+        require.Nil(doc)
+
+        s.validateDbTestStats(DbTestStatsId{
+                Project:      "p3",
+                Requester:    "r1",
+                TestFile:     "test1.js",
+                TaskName:     "task_display_1",
+                BuildVariant: "v1",
+                Distro:       "d1",
+                Date:         baseHour,
+        }, baseHour.UTC(), 0, 1, 0.0, jobTime, true)
+
+        s.validateDbTestStats(DbTestStatsId{
+                Project:      "p3",
+                Requester:    "r1",
+                TestFile:     "test2.js",
+                TaskName:     "task_display_1",
+                BuildVariant: "v1",
+                Distro:       "d1",
+                Date:         baseHour,
+        }, baseHour.UTC(), 1, 0, 120.0, jobTime, true)
+
+        // Generate hourly stats for project p5.
+        // Testing tests with status 'skip'.
+        err = GenerateHourlyTestStatsUsingMerge(ctx, GenerateOptions{
+                ProjectID: "p5",
+                Requester: "r1",
+                Window:    baseHour,
+                Tasks:     []string{"task1", "task2"},
+                Runtime:   jobTime})
+        require.NoError(err)
+        require.Equal(12, s.countHourlyTestDocs()) // 2 more tests combination were added to the collection.
+
+        // test1.js passed once and was skipped once.
+        s.validateDbTestStats(DbTestStatsId{
+                Project:      "p5",
+                Requester:    "r1",
+                TestFile:     "test1.js",
+                TaskName:     "task1",
+                BuildVariant: "v1",
+                Distro:       "d1",
+                Date:         baseHour,
+        }, baseHour.UTC(), 1, 0, 60.0, jobTime, true)
+
+        // test2.js failed once and was skipped once.
+        s.validateDbTestStats(DbTestStatsId{
+                Project:      "p5",
+                Requester:    "r1",
+                TestFile:     "test2.js",
+                TaskName:     "task1",
+                BuildVariant: "v1",
+                Distro:       "d1",
+                Date:         baseHour,
+        }, baseHour.UTC(), 0, 1, 0.0, jobTime, true)
 }
 
 func (s *statsSuite) TestGenerateDailyTestStatsFromHourly() {
@@ -372,7 +438,9 @@ func (s *statsSuite) TestGenerateDailyTestStatsFromHourly() {
 	require.NoError(err)
 	require.Equal(1, s.countDailyTestDocs())
 
-	testStatsID := DbTestStatsId{
+        // This test directly creates hourly test stats without the associated testresults. So
+        // we can't check the value this way.
+        s.validateDbTestStatsNoLast(DbTestStatsId{
 		Project:      "p1",
 		Requester:    "r1",
 		TestFile:     "test1.js",
@@ -380,26 +448,138 @@ func (s *statsSuite) TestGenerateDailyTestStatsFromHourly() {
 		BuildVariant: "v1",
 		Distro:       "d1",
 		Date:         baseDay,
-	}
-	doc, err := GetDailyTestDoc(testStatsID)
-	require.Nil(err)
-	require.NotNil(doc)
-	require.Equal("p1", doc.Id.Project)
-	require.Equal("r1", doc.Id.Requester)
-	require.Equal("test1.js", doc.Id.TestFile)
-	require.Equal("task1", doc.Id.TaskName)
-	require.Equal("v1", doc.Id.BuildVariant)
-	require.Equal("d1", doc.Id.Distro)
-	require.Equal(baseDay.UTC(), doc.Id.Date.UTC())
-	require.Equal(30, doc.NumPass)
-	require.Equal(5, doc.NumFail)
-	require.Equal(float64(4), doc.AvgDurationPass)
-	require.WithinDuration(jobTime, doc.LastUpdate, 0)
+        }, baseDay.UTC(), 30, 5, 4.0, jobTime, false)
+}
 
-	var lastTestResult *dbTestStats
-	lastTestResult, err = s.getLastHourlyTestStat(testStatsID)
+func (s *statsSuite) validateDailyTestResults(ctx context.Context, dailyOptions GenerateOptions) {
+
+        require := s.Require()
+
+        // Generate daily test stats for exiting task
+        require.Equal(5, s.countDailyTestDocs())
+
+        s.validateDbTestStats(DbTestStatsId{
+                Project:      "p1",
+                Requester:    "r1",
+                TestFile:     "test1.js",
+                TaskName:     "task1",
+                BuildVariant: "v1",
+                Distro:       "d1",
+                Date:         baseDay,
+        }, baseDay.UTC(), 0, 3, 0.0, jobTime, false)
+
+        s.validateDbTestStats(DbTestStatsId{
+                Project:      "p1",
+                Requester:    "r1",
+                TestFile:     "test1.js",
+                TaskName:     "task1",
+                BuildVariant: "v2",
+                Distro:       "d1",
+                Date:         baseDay,
+        }, baseDay.UTC(), 0, 1, 0.0, jobTime, false)
+
+        s.validateDbTestStats(DbTestStatsId{
+                Project:      "p1",
+                Requester:    "r1",
+                TestFile:     "test2.js",
+                TaskName:     "task1",
+                BuildVariant: "v1",
+                Distro:       "d1",
+                Date:         baseDay,
+        }, baseDay.UTC(), 2, 1, 120.0, jobTime, false)
+
+        s.validateDbTestStats(DbTestStatsId{
+                Project:      "p1",
+                Requester:    "r1",
+                TestFile:     "test2.js",
+                TaskName:     "task1",
+                BuildVariant: "v2",
+                Distro:       "d1",
+                Date:         baseDay,
+        }, baseDay.UTC(), 0, 1, 0.0, jobTime, false)
+
+        s.validateDbTestStats(DbTestStatsId{
+                Project:      "p1",
+                Requester:    "r1",
+                TestFile:     "test3.js",
+                TaskName:     "task1",
+                BuildVariant: "v1",
+                Distro:       "d1",
+                Date:         baseDay,
+        }, baseDay.UTC(), 2, 0, 12.5, jobTime, false)
+}
+
+func (s *statsSuite) TestGenerateDailyTestStatsChained() {
+        // The merge version does not generate the Daily test stats from the hourly test stats.
+        // This approach is simpler and allows the calculations to be run independently and to
+        // be independently restarted.
+        rand.Seed(314159265)
+        require := s.Require()
+
+        ctx, cancel := context.WithCancel(context.Background())
+        defer cancel()
+
+        // Insert tasks.
+        s.initTasks()
+
+        // Generate daily test stats for unknown task.
+        err := GenerateDailyTestStatsFromHourly(ctx, GenerateOptions{
+                ProjectID: "p1",
+                Requester: "r1",
+                Window:    baseDay,
+                Tasks:     []string{"unknown_task"},
+                Runtime:   jobTime})
+        require.NoError(err)
+        require.Equal(0, s.countDailyTestDocs())
+
+        // Generate daily test stats for exiting task
+        generateOptions := GenerateOptions{ProjectID: "p1", Requester: "r1", Window: baseDay, Tasks: []string{"task1"}, Runtime: jobTime}
+        for hour := 0; hour < 24; hour++ {
+                err = GenerateHourlyTestStats(ctx, GenerateOptions{
+                        ProjectID: generateOptions.ProjectID,
+                        Requester: generateOptions.Requester,
+                        Window:    generateOptions.Window.Add(time.Hour * time.Duration(hour)),
+                        Tasks:     generateOptions.Tasks,
+                        Runtime:   generateOptions.Runtime})
+                require.NoError(err)
+	}
+
+        // Generate daily test stats for exiting task
+        err = GenerateDailyTestStatsFromHourly(ctx, generateOptions)
+        require.NoError(err)
+
+        s.validateDailyTestResults(ctx, generateOptions)
+}
+
+func (s *statsSuite) TestGenerateDailyTestStatsMerge() {
+        // The merge version does not generate the Daily test stats from the hourly test stats.
+        // This approach is simpler and allows the calculations to be run independently and to
+        // be independently restarted.
+        rand.Seed(314159265)
+        require := s.Require()
+
+        ctx, cancel := context.WithCancel(context.Background())
+        defer cancel()
+
+        // Insert hourly test stats docs.
+        s.initTasks()
+
+        // Generate daily test stats for unknown task.
+        err := GenerateDailyTestStatsUsingMerge(ctx, GenerateOptions{
+                ProjectID: "p1",
+                Requester: "r1",
+                Window:    baseDay,
+                Tasks:     []string{"unknown_task"},
+                Runtime:   jobTime})
+        require.NoError(err)
+        require.Equal(0, s.countDailyTestDocs())
+
+        // Generate daily test stats for exiting task
+        generateOptions := GenerateOptions{ProjectID: "p1", Requester: "r1", Window: baseDay, Tasks: []string{"task1"}, Runtime: jobTime}
+        err = GenerateDailyTestStatsUsingMerge(ctx, generateOptions)
 	require.NoError(err)
-	require.Equal(lastTestResult.LastID, doc.LastID)
+
+        s.validateDailyTestResults(ctx, generateOptions)
 }
 
 func (s *statsSuite) TestGenerateDailyTaskStats() {
@@ -407,6 +587,8 @@ func (s *statsSuite) TestGenerateDailyTaskStats() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+        // qry := bson.M{}
 
 	// Insert task docs.
 	s.initTasks()
@@ -654,68 +836,69 @@ func (s *statsSuite) initTasks() {
 	systemFailed := taskStatus{"failed", "system", false, 10}
 
 	// Task
-	task := s.insertTask("p1", "r1", "task_id_1", 0, "task1", "v1", "d1", t0, testFailed)
+        task := s.insertTask("p1", "r1", "task_id_1", 0, "task1", "v1", "d1", t0, t0.Add(3*time.Minute), testFailed)
 	s.insertTestResult("task_id_1", 0, "test1.js", evergreen.TestFailedStatus, 60, &task, nil)
-	s.insertTestResult("task_id_1", 0, "test2.js", evergreen.TestFailedStatus, 120, &task, nil)
+        s.insertTestResult("task_id_1", 0, "test2.js", evergreen.TestSilentlyFailedStatus, 120, &task, nil)
 	s.insertTestResult("task_id_1", 0, "test3.js", evergreen.TestSucceededStatus, 10, &task, nil)
 	// Task on variant v2
-	task = s.insertTask("p1", "r1", "task_id_2", 0, "task1", "v2", "d1", t0, testFailed)
+        task = s.insertTask("p1", "r1", "task_id_2", 0, "task1", "v2", "d1", t0, t0.Add(3*time.Minute), testFailed)
 	s.insertTestResult("task_id_2", 0, "test1.js", evergreen.TestFailedStatus, 60, &task, nil)
 	s.insertTestResult("task_id_2", 0, "test2.js", evergreen.TestFailedStatus, 120, &task, nil)
 	// Task with different task name
-	task = s.insertTask("p1", "r1", "task_id_3", 0, "task2", "v1", "d1", t0, testFailed)
+        task = s.insertTask("p1", "r1", "task_id_3", 0, "task2", "v1", "d1", t0, t0.Add(3*time.Minute), testFailed)
 	s.insertTestResult("task_id_3", 0, "test1.js", evergreen.TestFailedStatus, 60, &task, nil)
 	s.insertTestResult("task_id_3", 0, "test2.js", evergreen.TestFailedStatus, 120, &task, nil)
 	// Task 10 minutes later
-	task = s.insertTask("p1", "r1", "task_id_4", 0, "task1", "v1", "d1", t0plus10m, testFailed)
+        task = s.insertTask("p1", "r1", "task_id_4", 0, "task1", "v1", "d1", t0plus10m, t0plus10m.Add(3*time.Minute), testFailed)
 	s.insertTestResult("task_id_4", 0, "test1.js", evergreen.TestFailedStatus, 60, &task, nil)
 	s.insertTestResult("task_id_4", 0, "test2.js", evergreen.TestSucceededStatus, 120, &task, nil)
 	s.insertTestResult("task_id_4", 0, "test3.js", evergreen.TestSucceededStatus, 15, &task, nil)
 	// Task 1 hour later
-	task = s.insertTask("p1", "r1", "task_id_5", 0, "task1", "v1", "d1", t0plus1h, testFailed)
+        task = s.insertTask("p1", "r1", "task_id_5", 0, "task1", "v1", "d1", t0plus1h, t0plus1h.Add(3*time.Minute), testFailed)
 	s.insertTestResult("task_id_5", 0, "test1.js", evergreen.TestFailedStatus, 60, &task, nil)
-	s.insertTestResult("task_id_5", 0, "test2.js", evergreen.TestFailedStatus, 120, &task, nil)
+        // s.insertTestResult("task_id_5", 0, "test2.js", evergreen.TestFailedStatus, 120, &task, nil)
+        s.insertTestResult("task_id_5", 0, "test2.js", evergreen.TestSucceededStatus, 120, &task, nil)
 	// Task different requester
-	task = s.insertTask("p1", "r2", "task_id_6", 0, "task1", "v1", "d1", t0, testFailed)
+        task = s.insertTask("p1", "r2", "task_id_6", 0, "task1", "v1", "d1", t0, t0.Add(3*time.Second), testFailed)
 	s.insertTestResult("task_id_6", 0, "test1.js", evergreen.TestFailedStatus, 60, &task, nil)
 	s.insertTestResult("task_id_6", 0, "test2.js", evergreen.TestFailedStatus, 120, &task, nil)
 	// Task different project
-	task = s.insertTask("p2", "r1", "task_id_7", 0, "task1", "v1", "d1", t0, testFailed)
+        task = s.insertTask("p2", "r1", "task_id_7", 0, "task1", "v1", "d1", t0, t0.Add(3*time.Second), testFailed)
 	s.insertTestResult("task_id_7", 0, "test1.js", evergreen.TestFailedStatus, 60, &task, nil)
 	s.insertTestResult("task_id_7", 0, "test2.js", evergreen.TestFailedStatus, 120, &task, nil)
 	// Task with old executions.
-	task = s.insertTask("p2", "r1", "task_id_8", 2, "task1", "v1", "d1", t0plus10m, testFailed)
+        task = s.insertTask("p2", "r1", "task_id_8", 2, "task1", "v1", "d1", t0plus10m, t0plus10m.Add(3*time.Minute), testFailed)
 	s.insertTestResult("task_id_8", 2, "test1.js", evergreen.TestFailedStatus, 60, &task, nil)
 	s.insertTestResult("task_id_8", 2, "test2.js", evergreen.TestFailedStatus, 120, &task, nil)
-	task = s.insertOldTask("p2", "r1", "task_id_8", 0, "task1", "v1", "d1", t0min10m, testFailed)
+        task = s.insertOldTask("p2", "r1", "task_id_8", 0, "task1", "v1", "d1", t0min10m, t0min10m.Add(3*time.Minute), testFailed)
 	s.insertTestResult("task_id_8", 0, "test1.js", evergreen.TestFailedStatus, 60, &task, nil)
 	s.insertTestResult("task_id_8", 0, "test2.js", evergreen.TestSucceededStatus, 120, &task, nil)
 	s.insertTestResult("task_id_8", 0, "testOld.js", evergreen.TestFailedStatus, 120, &task, nil)
-	task = s.insertOldTask("p2", "r1", "task_id_8", 1, "task1", "v1", "d1", t0min1h, success100)
+        task = s.insertOldTask("p2", "r1", "task_id_8", 1, "task1", "v1", "d1", t0min1h, t0min10m.Add(3*time.Minute), success100)
 	s.insertTestResult("task_id_8", 1, "test1.js", evergreen.TestSucceededStatus, 60, &task, nil)
 	s.insertTestResult("task_id_8", 1, "test2.js", evergreen.TestSucceededStatus, 120, &task, nil)
 	// Execution task
-	task = s.insertTask("p3", "r1", "task_id_9", 0, "task_exec_1", "v1", "d1", t0, testFailed)
+        task = s.insertTask("p3", "r1", "task_id_9", 0, "task_exec_1", "v1", "d1", t0, t0.Add(3*time.Minute), testFailed)
 	// Display task
 	displayTask := s.insertDisplayTask("p3", "r1", "task_id_10", 0, "task_display_1", "v1", "d1", t0, testFailed, []string{"task_id_9"})
 	s.insertTestResult("task_id_9", 0, "test1.js", evergreen.TestFailedStatus, 60, &task, &displayTask)
 	s.insertTestResult("task_id_9", 0, "test2.js", evergreen.TestSucceededStatus, 120, &task, &displayTask)
 	// Project p4 used to test various task statuses
-	s.insertTask("p4", "r1", "task_id_11", 0, "task1", "v1", "d1", t0, success100)
-	s.insertTask("p4", "r1", "task_id_12", 0, "task1", "v1", "d1", t0, success200)
-	s.insertTask("p4", "r1", "task_id_13", 0, "task1", "v1", "d1", t0, testFailed)
-	s.insertTask("p4", "r1", "task_id_14", 0, "task1", "v1", "d1", t0, systemFailed)
-	s.insertTask("p4", "r1", "task_id_15", 0, "task1", "v1", "d1", t0, systemFailed)
-	s.insertTask("p4", "r1", "task_id_16", 0, "task1", "v1", "d1", t0, setupFailed)
-	s.insertTask("p4", "r1", "task_id_17", 0, "task1", "v1", "d1", t0, setupFailed)
-	s.insertTask("p4", "r1", "task_id_18", 0, "task1", "v1", "d1", t0, setupFailed)
-	s.insertTask("p4", "r1", "task_id_19", 0, "task1", "v1", "d1", t0, timeout)
-	s.insertTask("p4", "r1", "task_id_20", 0, "task1", "v1", "d1", t0, timeout)
+        s.insertTask("p4", "r1", "task_id_11", 0, "task1", "v1", "d1", t0, t0, success100)
+        s.insertTask("p4", "r1", "task_id_12", 0, "task1", "v1", "d1", t0, t0, success200)
+        s.insertTask("p4", "r1", "task_id_13", 0, "task1", "v1", "d1", t0, t0, testFailed)
+        s.insertTask("p4", "r1", "task_id_14", 0, "task1", "v1", "d1", t0, t0, systemFailed)
+        s.insertTask("p4", "r1", "task_id_15", 0, "task1", "v1", "d1", t0, t0, systemFailed)
+        s.insertTask("p4", "r1", "task_id_16", 0, "task1", "v1", "d1", t0, t0, setupFailed)
+        s.insertTask("p4", "r1", "task_id_17", 0, "task1", "v1", "d1", t0, t0, setupFailed)
+        s.insertTask("p4", "r1", "task_id_18", 0, "task1", "v1", "d1", t0, t0, setupFailed)
+        s.insertTask("p4", "r1", "task_id_19", 0, "task1", "v1", "d1", t0, t0, timeout)
+        s.insertTask("p4", "r1", "task_id_20", 0, "task1", "v1", "d1", t0, t0, timeout)
 	// Project p5 used to test handling of skipped tests.
-	task = s.insertTask("p5", "r1", "task_id_5_1", 0, "task1", "v1", "d1", t0, success100)
+        task = s.insertTask("p5", "r1", "task_id_5_1", 0, "task1", "v1", "d1", t0, t0.Add(3*time.Minute), success100)
 	s.insertTestResult("task_id_5_1", 0, "test1.js", evergreen.TestSkippedStatus, 60, &task, nil)
 	s.insertTestResult("task_id_5_1", 0, "test2.js", evergreen.TestSkippedStatus, 60, &task, nil)
-	task = s.insertTask("p5", "r1", "task_id_5_2", 0, "task1", "v1", "d1", t0, testFailed)
+        task = s.insertTask("p5", "r1", "task_id_5_2", 0, "task1", "v1", "d1", t0, t0.Add(3*time.Minute), testFailed)
 	s.insertTestResult("task_id_5_2", 0, "test1.js", evergreen.TestSucceededStatus, 60, &task, nil)
 	s.insertTestResult("task_id_5_2", 0, "test2.js", evergreen.TestFailedStatus, 60, &task, nil)
 }
@@ -729,7 +912,7 @@ func (s *statsSuite) initTasksToUpdate() {
 	s.insertFinishedTask("p5", "r1", "task4", commit2, finish2)
 }
 
-func (s *statsSuite) insertTask(project string, requester string, taskId string, execution int, taskName string, variant string, distro string, createTime time.Time, status taskStatus) task.Task {
+func (s *statsSuite) insertTask(project string, requester string, taskId string, execution int, taskName string, variant string, distro string, createTime time.Time, finishTime time.Time, status taskStatus) task.Task {
 	details := apimodels.TaskEndDetail{
 		Status:   status.Status,
 		Type:     status.DetailsType,
@@ -744,6 +927,7 @@ func (s *statsSuite) insertTask(project string, requester string, taskId string,
 		BuildVariant: variant,
 		DistroId:     distro,
 		CreateTime:   createTime,
+                FinishTime:   finishTime,
 		Status:       status.Status,
 		Details:      details,
 		TimeTaken:    status.TimeTaken,
@@ -753,7 +937,7 @@ func (s *statsSuite) insertTask(project string, requester string, taskId string,
 	return newTask
 }
 
-func (s *statsSuite) insertOldTask(project string, requester string, taskId string, execution int, taskName string, variant string, distro string, createTime time.Time, status taskStatus) task.Task {
+func (s *statsSuite) insertOldTask(project string, requester string, taskId string, execution int, taskName string, variant string, distro string, createTime time.Time, finishTime time.Time, status taskStatus) task.Task {
 	details := apimodels.TaskEndDetail{
 		Status:   status.Status,
 		Type:     status.DetailsType,
@@ -770,6 +954,7 @@ func (s *statsSuite) insertOldTask(project string, requester string, taskId stri
 		BuildVariant: variant,
 		DistroId:     distro,
 		CreateTime:   createTime,
+                FinishTime:   finishTime,
 		Status:       status.Status,
 		Details:      details,
 		TimeTaken:    status.TimeTaken,
@@ -805,7 +990,11 @@ func (s *statsSuite) insertDisplayTask(project string, requester string, taskId 
 
 func (s *statsSuite) insertTestResult(taskId string, execution int, testFile string, status string, durationSeconds int, theExecutionTask *task.Task, theDisplayTask *task.Task) {
 	startTime := time.Now()
+        if theExecutionTask != nil {
+                startTime = theExecutionTask.CreateTime.Add(time.Second)
+        }
 	endTime := startTime.Add(time.Duration(durationSeconds) * time.Second)
+
 	newTestResult := testresult.TestResult{
 		TaskID:    taskId,
 		Execution: execution,
@@ -859,6 +1048,12 @@ func (s *statsSuite) insertFinishedOldTask(project string, requester string, tas
 // Methods to access database data //
 /////////////////////////////////////
 
+func (s *statsSuite) countMatchingDocs(collection string) int {
+        count, err := db.Count(collection, bson.M{})
+        s.Require().NoError(err)
+        return count
+}
+
 func (s *statsSuite) countDocs(collection string) int {
 	count, err := db.Count(collection, bson.M{})
 	s.Require().NoError(err)
@@ -877,10 +1072,23 @@ func (s *statsSuite) countDailyTaskDocs() int {
 	return s.countDocs(DailyTaskStatsCollection)
 }
 
-func (s *statsSuite) getLastTestResult(testStatsID DbTestStatsId) (*testresult.TestResult, error) {
+func (s *statsSuite) getLastTestResult(testStatsID DbTestStatsId, hourly bool) (*testresult.TestResult, error) {
 	var lastTestResult *testresult.TestResult
 	start := util.GetUTCHour(testStatsID.Date)
 	end := start.Add(time.Hour)
+        if !hourly {
+                start = util.GetUTCDay(testStatsID.Date)
+                end = start.Add(24 * time.Hour)
+        }
+
+        // func (s *statsSuite) getLastTestResult(testStatsID DbTestStatsId) (*testresult.TestResult, error) {
+        // 	var lastTestResult *testresult.TestResult
+        // 	start := util.GetUTCHour(testStatsID.Date)
+        // 	end := start.Add(time.Hour)
+        // 	// if !hourly {
+        // 	// 	start = util.GetUTCDay(testStatsID.Date)
+        // 	// 	end = start.Add(24 * time.Hour)
+        // 	// }
 
 	qry := bson.M{
 		testresult.ProjectKey:   testStatsID.Project,
@@ -907,9 +1115,9 @@ func (s *statsSuite) getLastTestResult(testStatsID DbTestStatsId) (*testresult.T
 	return lastTestResult, err
 }
 
-func (s *statsSuite) getLastHourlyTestStat(testStatsID DbTestStatsId) (*dbTestStats, error) {
-	var lastTestStats *dbTestStats
-	testResults := []dbTestStats{}
+func (s *statsSuite) getLastHourlyTestStat(testStatsID DbTestStatsId) (*DbTestStats, error) {
+        var lastTestStats *DbTestStats
+        testResults := []DbTestStats{}
 
 	start := util.GetUTCDay(testStatsID.Date)
 	end := start.Add(24 * time.Hour)
@@ -931,10 +1139,67 @@ func (s *statsSuite) getLastHourlyTestStat(testStatsID DbTestStatsId) (*dbTestSt
 		return nil, nil
 	}
 
-	if err != nil {
+        if err != nil || len(testResults) == 0 {
 		lastTestStats = nil
 	} else {
 		lastTestStats = &testResults[0]
 	}
 	return lastTestStats, err
+}
+
+func (s *statsSuite) validateDbTestStats(testStatsID DbTestStatsId, date time.Time, numPass int, numFail int, avgDurationPass float64, lastUpdate time.Time, hourly bool) {
+        require := s.Require()
+        // var doc *DbTestStats
+        // var err error
+
+        // if hourly {
+        // 	doc, err = GetHourlyTestDoc(testStatsID)
+        // } else {
+        // 	doc, err = GetDailyTestDoc(testStatsID)
+        // }
+        // require.Nil(err)
+        // require.NotNil(doc)
+        // require.Equal(testStatsID.Project, doc.Id.Project)
+        // require.Equal(testStatsID.Requester, doc.Id.Requester)
+        // require.Equal(testStatsID.TestFile, doc.Id.TestFile)
+        // require.Equal(testStatsID.TaskName, doc.Id.TaskName)
+        // require.Equal(testStatsID.BuildVariant, doc.Id.BuildVariant)
+        // require.Equal(testStatsID.Distro, doc.Id.Distro)
+        // require.Equal(date, doc.Id.Date.UTC())
+        // require.Equal(numPass, doc.NumPass)
+        // require.Equal(numFail, doc.NumFail)
+        // require.Equal(avgDurationPass, doc.AvgDurationPass)
+        // require.WithinDuration(lastUpdate, doc.LastUpdate, 0)
+
+        doc := s.validateDbTestStatsNoLast(testStatsID, date, numPass, numFail, avgDurationPass, lastUpdate, hourly)
+        lastTestResult, err := s.getLastTestResult(testStatsID, hourly)
+        require.NoError(err)
+        require.Equal(lastTestResult.ID, doc.LastID)
+}
+
+func (s *statsSuite) validateDbTestStatsNoLast(testStatsID DbTestStatsId, date time.Time, numPass int, numFail int, avgDurationPass float64, lastUpdate time.Time, hourly bool) *DbTestStats {
+        require := s.Require()
+        var doc *DbTestStats
+        var err error
+
+        if hourly {
+                doc, err = GetHourlyTestDoc(testStatsID)
+        } else {
+                doc, err = GetDailyTestDoc(testStatsID)
+        }
+        require.Nil(err)
+        require.NotNil(doc)
+        require.Equal(testStatsID.Project, doc.Id.Project)
+        require.Equal(testStatsID.Requester, doc.Id.Requester)
+        require.Equal(testStatsID.TestFile, doc.Id.TestFile)
+        require.Equal(testStatsID.TaskName, doc.Id.TaskName)
+        require.Equal(testStatsID.BuildVariant, doc.Id.BuildVariant)
+        require.Equal(testStatsID.Distro, doc.Id.Distro)
+        require.Equal(date, doc.Id.Date.UTC())
+        require.Equal(numPass, doc.NumPass)
+        require.Equal(numFail, doc.NumFail)
+        require.Equal(avgDurationPass, doc.AvgDurationPass)
+        require.WithinDuration(lastUpdate, doc.LastUpdate, 0)
+
+        return doc
 }
