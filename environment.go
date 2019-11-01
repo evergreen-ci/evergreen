@@ -644,7 +644,7 @@ func (e *envState) setupRoleManager() error {
 		ScopeCollection: ScopeCollection,
 	})
 
-	return e.roleManager.RegisterPermissions(projectPermissions)
+	return e.roleManager.RegisterPermissions(append(projectPermissions, distroPermissions))
 }
 
 func (e *envState) Settings() *Settings {
