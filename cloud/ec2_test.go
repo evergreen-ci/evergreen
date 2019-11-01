@@ -1333,7 +1333,7 @@ func (s *EC2Suite) TestAttachVolume() {
 	host, err := host.FindOneId(s.h.Id)
 	s.NotNil(host)
 	s.NoError(err)
-	s.Contains(host.Volumes, *newAttachment)
+	s.Contains(host.Volumes, newAttachment)
 }
 
 func (s *EC2Suite) TestAttachVolumeGenerateDeviceName() {
