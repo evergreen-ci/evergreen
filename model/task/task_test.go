@@ -738,101 +738,101 @@ func TestMergeTestResultsBulk(t *testing.T) {
 }
 
 func TestTaskSetResultsFields(t *testing.T) {
-        taskID := "jstestfuzz_self_tests_replication_fuzzers_master_initial_sync_fuzzer_69e2630b3272211f46bf85dd2577cd9a34c7c2cc_19_09_25_17_40_35"
-        project := "jstestfuzz-self-tests"
-        distroID := "amazon2-test"
-        buildVariant := "replication_fuzzers"
-        displayName := "fuzzer"
-        requester := "gitter_request"
+	taskID := "jstestfuzz_self_tests_replication_fuzzers_master_initial_sync_fuzzer_69e2630b3272211f46bf85dd2577cd9a34c7c2cc_19_09_25_17_40_35"
+	project := "jstestfuzz-self-tests"
+	distroID := "amazon2-test"
+	buildVariant := "replication_fuzzers"
+	displayName := "fuzzer"
+	requester := "gitter_request"
 
-        displayTaskID := "jstestfuzz_self_tests_replication_fuzzers_display_master_69e2630b3272211f46bf85dd2577cd9a34c7c2cc_19_09_25_17_40_35"
-        executionDisplayName := "master"
-        StartTime := 1569431862.508
-        EndTime := 1569431887.2
+	displayTaskID := "jstestfuzz_self_tests_replication_fuzzers_display_master_69e2630b3272211f46bf85dd2577cd9a34c7c2cc_19_09_25_17_40_35"
+	executionDisplayName := "master"
+	StartTime := 1569431862.508
+	EndTime := 1569431887.2
 
-        TestStartTime := util.FromPythonTime(StartTime).In(time.UTC)
-        TestEndTime := util.FromPythonTime(EndTime).In(time.UTC)
+	TestStartTime := util.FromPythonTime(StartTime).In(time.UTC)
+	TestEndTime := util.FromPythonTime(EndTime).In(time.UTC)
 
-        testresults := []TestResult{
-                {
-                        Status:    "pass",
-                        TestFile:  "job0_fixture_setup",
-                        URL:       "https://logkeeper.mongodb.org/build/dd239a5697eedef049a753c6a40a3e7e/test/5d8ba136c2ab68304e1d741c",
-                        URLRaw:    "https://logkeeper.mongodb.org/build/dd239a5697eedef049a753c6a40a3e7e/test/5d8ba136c2ab68304e1d741c?raw=1",
-                        ExitCode:  0,
-                        StartTime: StartTime,
-                        EndTime:   EndTime,
-                },
-        }
+	testresults := []TestResult{
+		{
+			Status:    "pass",
+			TestFile:  "job0_fixture_setup",
+			URL:       "https://logkeeper.mongodb.org/build/dd239a5697eedef049a753c6a40a3e7e/test/5d8ba136c2ab68304e1d741c",
+			URLRaw:    "https://logkeeper.mongodb.org/build/dd239a5697eedef049a753c6a40a3e7e/test/5d8ba136c2ab68304e1d741c?raw=1",
+			ExitCode:  0,
+			StartTime: StartTime,
+			EndTime:   EndTime,
+		},
+	}
 
-        Convey("SetResults", t, func() {
-                So(db.Clear(Collection), ShouldBeNil)
-                So(db.Clear(testresult.Collection), ShouldBeNil)
+	Convey("SetResults", t, func() {
+		So(db.Clear(Collection), ShouldBeNil)
+		So(db.Clear(testresult.Collection), ShouldBeNil)
 
-                taskCreateTime, err := time.Parse(time.RFC3339, "2019-09-25T17:40:35Z")
-                So(err, ShouldBeNil)
+		taskCreateTime, err := time.Parse(time.RFC3339, "2019-09-25T17:40:35Z")
+		So(err, ShouldBeNil)
 
-                task := Task{
-                        Id:           taskID,
-                        CreateTime:   taskCreateTime,
-                        Project:      project,
-                        DistroId:     distroID,
-                        BuildVariant: buildVariant,
-                        DisplayName:  displayName,
-                        Execution:    0,
-                        Requester:    requester,
-                }
+		task := Task{
+			Id:           taskID,
+			CreateTime:   taskCreateTime,
+			Project:      project,
+			DistroId:     distroID,
+			BuildVariant: buildVariant,
+			DisplayName:  displayName,
+			Execution:    0,
+			Requester:    requester,
+		}
 
-                executionDisplayTask := Task{
-                        Id:             displayTaskID,
-                        CreateTime:     taskCreateTime,
-                        Project:        project,
-                        DistroId:       distroID,
-                        BuildVariant:   buildVariant,
-                        DisplayName:    executionDisplayName,
-                        Execution:      0,
-                        Requester:      requester,
-                        ExecutionTasks: []string{taskID},
-                }
+		executionDisplayTask := Task{
+			Id:             displayTaskID,
+			CreateTime:     taskCreateTime,
+			Project:        project,
+			DistroId:       distroID,
+			BuildVariant:   buildVariant,
+			DisplayName:    executionDisplayName,
+			Execution:      0,
+			Requester:      requester,
+			ExecutionTasks: []string{taskID},
+		}
 
-                So(task.Insert(), ShouldBeNil)
-                Convey("Without a display task", func() {
+		So(task.Insert(), ShouldBeNil)
+		Convey("Without a display task", func() {
 
-                        So(task.SetResults(testresults), ShouldBeNil)
+			So(task.SetResults(testresults), ShouldBeNil)
 
-                        written, err := testresult.Find(testresult.ByTaskIDs([]string{taskID}))
-                        So(err, ShouldBeNil)
-                        So(1, ShouldEqual, len(written))
-                        So(written[0].Project, ShouldEqual, project)
-                        So(written[0].BuildVariant, ShouldEqual, buildVariant)
-                        So(written[0].DistroId, ShouldEqual, distroID)
-                        So(written[0].Requester, ShouldEqual, requester)
-                        So(written[0].DisplayName, ShouldEqual, displayName)
-                        So(written[0].ExecutionDisplayName, ShouldBeBlank)
-                        So(written[0].TaskCreateTime.UTC(), ShouldResemble, taskCreateTime.UTC())
-                        So(written[0].TestStartTime.UTC(), ShouldResemble, TestStartTime.UTC())
-                        So(written[0].TestEndTime.UTC(), ShouldResemble, TestEndTime.UTC())
-                })
+			written, err := testresult.Find(testresult.ByTaskIDs([]string{taskID}))
+			So(err, ShouldBeNil)
+			So(1, ShouldEqual, len(written))
+			So(written[0].Project, ShouldEqual, project)
+			So(written[0].BuildVariant, ShouldEqual, buildVariant)
+			So(written[0].DistroId, ShouldEqual, distroID)
+			So(written[0].Requester, ShouldEqual, requester)
+			So(written[0].DisplayName, ShouldEqual, displayName)
+			So(written[0].ExecutionDisplayName, ShouldBeBlank)
+			So(written[0].TaskCreateTime.UTC(), ShouldResemble, taskCreateTime.UTC())
+			So(written[0].TestStartTime.UTC(), ShouldResemble, TestStartTime.UTC())
+			So(written[0].TestEndTime.UTC(), ShouldResemble, TestEndTime.UTC())
+		})
 
-                Convey("With a display task", func() {
-                        So(executionDisplayTask.Insert(), ShouldBeNil)
+		Convey("With a display task", func() {
+			So(executionDisplayTask.Insert(), ShouldBeNil)
 
-                        So(task.SetResults(testresults), ShouldBeNil)
+			So(task.SetResults(testresults), ShouldBeNil)
 
-                        written, err := testresult.Find(testresult.ByTaskIDs([]string{taskID}))
-                        So(err, ShouldBeNil)
-                        So(1, ShouldEqual, len(written))
-                        So(written[0].Project, ShouldEqual, project)
-                        So(written[0].BuildVariant, ShouldEqual, buildVariant)
-                        So(written[0].DistroId, ShouldEqual, distroID)
-                        So(written[0].Requester, ShouldEqual, requester)
-                        So(written[0].DisplayName, ShouldEqual, displayName)
-                        So(written[0].ExecutionDisplayName, ShouldEqual, executionDisplayName)
-                        So(written[0].TaskCreateTime.UTC(), ShouldResemble, taskCreateTime.UTC())
-                        So(written[0].TestStartTime.UTC(), ShouldResemble, TestStartTime.UTC())
-                        So(written[0].TestEndTime.UTC(), ShouldResemble, TestEndTime.UTC())
-                })
-        })
+			written, err := testresult.Find(testresult.ByTaskIDs([]string{taskID}))
+			So(err, ShouldBeNil)
+			So(1, ShouldEqual, len(written))
+			So(written[0].Project, ShouldEqual, project)
+			So(written[0].BuildVariant, ShouldEqual, buildVariant)
+			So(written[0].DistroId, ShouldEqual, distroID)
+			So(written[0].Requester, ShouldEqual, requester)
+			So(written[0].DisplayName, ShouldEqual, displayName)
+			So(written[0].ExecutionDisplayName, ShouldEqual, executionDisplayName)
+			So(written[0].TaskCreateTime.UTC(), ShouldResemble, taskCreateTime.UTC())
+			So(written[0].TestStartTime.UTC(), ShouldResemble, TestStartTime.UTC())
+			So(written[0].TestEndTime.UTC(), ShouldResemble, TestEndTime.UTC())
+		})
+	})
 }
 
 func TestFindOldTasksByID(t *testing.T) {
@@ -1180,7 +1180,11 @@ func TestSiblingDependency(t *testing.T) {
 func TestBulkInsert(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
-	t1 := Task{
+	t1_a := Task{
+		Id:      "t1",
+		Version: "version",
+	}
+	t1_b := Task{
 		Id:      "t1",
 		Version: "version",
 	}
@@ -1192,8 +1196,8 @@ func TestBulkInsert(t *testing.T) {
 		Id:      "t3",
 		Version: "version",
 	}
-	tasks := Tasks{&t1, &t2, &t3}
-	assert.NoError(tasks.InsertUnordered(context.Background()))
+	tasks := Tasks{&t1_a, &t1_b, &t2, &t3}
+	assert.Error(tasks.InsertUnordered(context.Background()))
 	dbTasks, err := Find(ByVersion("version"))
 	assert.NoError(err)
 	assert.Len(dbTasks, 3)
