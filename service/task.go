@@ -348,7 +348,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 				Status:    execTask.ResultStatus(),
 			})
 			for _, tr := range execTask.LocalTestResults {
-				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{TestResult: tr, TaskId: execTask.Id, TaskName: execTask.DisplayName})
+				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{TestResult: tr, TaskId: execTaskIDs[i], TaskName: execTask.DisplayName})
 			}
 		}
 	} else {

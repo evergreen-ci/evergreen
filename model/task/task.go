@@ -1597,7 +1597,7 @@ func (t *Task) GetDisplayTask() (*Task, error) {
 	var dt *Task
 	var err error
 	if t.Archived {
-		dt, err = FindOneOld(ByExecutionTask(t.Id))
+		dt, err = FindOneOld(ByExecutionTask(t.OldTaskId))
 	} else {
 		dt, err = FindOne(ByExecutionTask(t.Id))
 	}
