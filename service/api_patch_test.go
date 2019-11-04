@@ -89,6 +89,7 @@ func TestPatchListModulesEndPoints(t *testing.T) {
 				Project string   `json:"project"`
 				Modules []string `json:"modules"`
 			}{}
+
 			err = util.ReadJSONInto(resp.Body, &data)
 			So(err, ShouldBeNil)
 			So(len(data.Modules), ShouldEqual, 2)
