@@ -4,39 +4,38 @@ import (
 	"github.com/evergreen-ci/evergreen"
 )
 
-type permissionLevel struct {
+type PermissionLevel struct {
 	description string
 	value       int
 }
 
-type permission struct {
-	name             string
-	levels permissionLevel[]
+type Permission struct {
+	name   string
+	levels []PermissionLevel
 }
 
-func GetProjectPermissions() []permission {
-	permissionsData := []permission{}
+func GetProjectPermissions() []Permission {
+	permissionsData := []Permission{}
 
-	for _, permissionKey = range evergreen.ProjectPermissions {
+	for _, permissionKey := range evergreen.ProjectPermissions {
 		permissions := evergreen.MapPermissionKeyToPermissions(permissionKey)
 		name := evergreen.MapPermissionKeyToName(permissionKey)
-		levels := []permissionLevel{}
-		
-		for _, p = range permissions {
-			pl = permissionLevel{
-				description : p.String(),
-				value : p.Value(),
+		levels := []PermissionLevel{}
+
+		for _, p := range permissions {
+			pl := PermissionLevel{
+				description: p.String(),
+				value:       p.Value(),
 			}
-			append(levels, pl)
+			levels = append(levels, pl)
 		}
 
-		p := permission{
-			name: name,
-			levels: levels
+		perm := Permission{
+			name:   name,
+			levels: levels,
 		}
-		append(permissionsData, p)
+		permissionsData = append(permissionsData, perm)
 	}
 
 	return permissionsData
 }
-
