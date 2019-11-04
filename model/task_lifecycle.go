@@ -449,16 +449,13 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 			return err
 		}
 		if err = build.UpdateCachedTask(t.DisplayTask, t.TimeTaken); err != nil {
-			b, findErr := build.FindOneId(t.BuildId)
 			grip.Error(message.WrapError(err, message.Fields{
-				"message":     "failed to update cached display task",
-				"function":    "MarkEnd",
-				"build_id":    t.DisplayTask.BuildId,
-				"task_id":     t.DisplayTask.Id,
-				"status":      t.DisplayTask.Status,
-				"time_taken":  t.TimeTaken,
-				"build_cache": b.Tasks,
-				"find_err":    findErr,
+				"message":    "failed to update cached display task",
+				"function":   "MarkEnd",
+				"build_id":   t.DisplayTask.BuildId,
+				"task_id":    t.DisplayTask.Id,
+				"status":     t.DisplayTask.Status,
+				"time_taken": t.TimeTaken,
 			}))
 		}
 		if err = checkResetDisplayTask(t.DisplayTask); err != nil {
@@ -860,19 +857,14 @@ func updateDisplayTaskAndCache(t *task.Task) error {
 		return errors.Wrap(err, "error updating display task")
 	}
 	err = build.UpdateCachedTask(t.DisplayTask, 0)
-	if err != nil {
-		b, findErr := build.FindOneId(t.BuildId)
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":      "failed to update cached display task",
-			"function":     "updateDisplayTaskAndCache",
-			"build_id":     t.BuildId,
-			"task_id":      t.Id,
-			"display_task": t.DisplayTask.Id,
-			"status":       t.Status,
-			"build_cache":  b.Tasks,
-			"find_err":     findErr,
-		}))
-	}
+	grip.Error(message.WrapError(err, message.Fields{
+		"message":      "failed to update cached display task",
+		"function":     "updateDisplayTaskAndCache",
+		"build_id":     t.BuildId,
+		"task_id":      t.Id,
+		"display_task": t.DisplayTask.Id,
+		"status":       t.Status,
+	}))
 	return nil
 }
 
