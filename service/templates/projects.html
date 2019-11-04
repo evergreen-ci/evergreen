@@ -1,6 +1,7 @@
 {{define "scripts"}}
 <script>
   window.allTrackedProjects = {{.AllProjects}};
+  window.acl_enabled = {{.ACLEnabled}};
   {{if .User}}
   window.isSuperUser = {{IsSuperUser .User.Id}};
   window.user = {{.User}};
@@ -96,6 +97,7 @@ Evergreen Projects
     </div>
     <div ng-show="isAdmin"><a class="link" href="/project/[[projectRef.identifier]]/events">Event Log</a></div>
     <form name="settingsForm" ng-submit="saveProject(settingsFormData)">
+      <fieldset style="display:inline-block;" ng-disabled="acl_enabled && permissions.project_settings<20">
       <div class ="form-group">
         <div class="col-lg-8">
           <div class="radio">
@@ -674,6 +676,7 @@ Evergreen Projects
             <input class="btn btn-primary" input ng-disabled="!isDirty || !isBatchTimeValid(settingsFormData.batch_time)" type="submit" value="Save Changes">
           </div>
         </div>
+      </fieldset>
     </form>
   </div>
 </div>

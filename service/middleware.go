@@ -242,6 +242,7 @@ func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 				hasPermission, err := usr.HasPermission(opts)
 				if err != nil {
 					uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error checking permissions"))
+					return
 				}
 				if !hasPermission {
 					uis.LoggedError(w, r, http.StatusUnauthorized, errors.New("not authorized for this action"))

@@ -4,6 +4,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
   $scope.userId = $window.user.Id;
   $scope.isAdmin = $window.isSuperUser || $window.isAdmin;
   $scope.isSuperUser = $window.isSuperUser;
+  $scope.acl_enabled = $window.acl_enabled; // TODO PM-1355 remove this
 
   $scope.projectVars = {};
   $scope.patchVariants = [];
@@ -286,6 +287,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
         $scope.prTestingEnabled = data.ProjectRef.pr_testing_enabled || false;
         $scope.commitQueueConflicts = data.commit_queue_conflicting_refs || [];
         $scope.project_triggers = data.ProjectRef.triggers || [];
+        $scope.permissions = data.permissions || {};
         $scope.github_valid_orgs = data.github_valid_orgs;
         _.each($scope.project_triggers, function(trigger) {
           if (trigger.command) {

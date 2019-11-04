@@ -261,6 +261,8 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
         $scope.taskHost = $window.taskHost;
         $scope.jiraHost = $window.jiraHost;
         $scope.isAdmin = $window.isAdmin;
+        $scope.acl_enabled = $window.acl_enabled; // TODO PM-1355 remove this
+        $scope.permissions = $window.permissions || {};
 
         $scope.triggers = [
           {

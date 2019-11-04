@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/evergreen-ci/gimlet/rolemanager"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
@@ -366,6 +368,12 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	if usr != nil {
 		isAdmin = projCtx.ProjectRef.IsAdmin(usr.Username(), uis.Settings)
 	}
+	opts := gimlet.PermissionOpts{Resource: projCtx.ProjectRef.Identifier, ResourceType: evergreen.ProjectResourceType}
+	permissions, err := rolemanager.HighestPermissionsForRoles(usr.Roles(), evergreen.GetEnvironment().RoleManager(), opts)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Task           uiTaskData
@@ -373,8 +381,9 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		PluginContent  pluginData
 		JiraHost       string
 		IsProjectAdmin bool
+		Permissions    gimlet.Permissions
 		ViewData
-	}{uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, isAdmin, uis.GetCommonViewData(w, r, false, true)}, "base", "task.html", "base_angular.html", "menu.html")
+	}{uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, isAdmin, permissions, uis.GetCommonViewData(w, r, false, true)}, "base", "task.html", "base_angular.html", "menu.html")
 }
 
 type taskHistoryPageData struct {
