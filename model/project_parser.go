@@ -428,16 +428,10 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 // LoadProjectForVersion returns the project for a version, either from the parser project or the config string.
 // If read from the config string and shouldSave is set, the resulting parser project will be saved.
 func LoadProjectForVersion(v *Version, identifier string, shouldSave bool) (*Project, *ParserProject, error) {
-	var ppFromDB *ParserProject
-	var err error
-	// if not using parser project anyway, only lookup if saving
-	if evergreen.UseParserProject || shouldSave {
-		ppFromDB, err = ParserProjectFindOneById(v.Id)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "error finding parser project")
-		}
+	ppFromDB, err := ParserProjectFindOneById(v.Id)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error finding parser project")
 	}
-
 	if evergreen.UseParserProject && ppFromDB != nil {
 		ppFromDB.Identifier = identifier
 		p, err := TranslateProject(ppFromDB)
