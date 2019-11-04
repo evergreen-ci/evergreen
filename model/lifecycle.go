@@ -20,7 +20,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -506,7 +506,13 @@ func AddTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 
 	// create the new tasks for the build
 	taskIds := NewTaskIdTable(project, v, "", "")
-	tasks, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames, displayNames, generatedBy, nil, tasksInBuild, distroAliases)
+
+	createTime, err := getTaskCreateTime(project.Identifier, v)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't get create time for tasks in version '%s'", v.Id)
+	}
+
+	tasks, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames, displayNames, generatedBy, nil, tasksInBuild, distroAliases, createTime)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error creating tasks for build '%s'", b.Id)
 	}
@@ -525,18 +531,19 @@ func AddTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 
 // BuildCreateArgs is the set of parameters used in CreateBuildFromVersionNoInsert
 type BuildCreateArgs struct {
-	Project       Project                 // project to create the build for
-	Version       Version                 // the version the build belong to
-	TaskIDs       TaskIdConfig            // pre-generated IDs for the tasks to be created
-	BuildName     string                  // name of the buildvariant
-	Activated     bool                    // true if the build should be scheduled
-	TaskNames     []string                // names of tasks to create (used in patches). Will create all if nil
-	DisplayNames  []string                // names of display tasks to create (used in patches). Will create all if nil
-	GeneratedBy   string                  // ID of the task that generated this build
-	SourceRev     string                  // githash of the revision that triggered this build
-	DefinitionID  string                  // definition ID of the trigger used to create this build
-	Aliases       ProjectAliases          // project aliases to use to filter tasks created
-	DistroAliases distro.AliasLookupTable // map of distro aliases to names of distros
+	Project        Project                 // project to create the build for
+	Version        Version                 // the version the build belong to
+	TaskIDs        TaskIdConfig            // pre-generated IDs for the tasks to be created
+	BuildName      string                  // name of the buildvariant
+	Activated      bool                    // true if the build should be scheduled
+	TaskNames      []string                // names of tasks to create (used in patches). Will create all if nil
+	DisplayNames   []string                // names of display tasks to create (used in patches). Will create all if nil
+	GeneratedBy    string                  // ID of the task that generated this build
+	SourceRev      string                  // githash of the revision that triggered this build
+	DefinitionID   string                  // definition ID of the trigger used to create this build
+	Aliases        ProjectAliases          // project aliases to use to filter tasks created
+	DistroAliases  distro.AliasLookupTable // map of distro aliases to names of distros
+	TaskCreateTime time.Time               // create time of tasks in the build
 }
 
 // CreateBuildFromVersionNoInsert creates a build given all of the necessary information
@@ -598,7 +605,7 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 	b.BuildNumber = strconv.FormatUint(buildNumber, 10)
 
 	// create all of the necessary tasks for the build
-	tasksForBuild, err := createTasksForBuild(&args.Project, buildVariant, b, &args.Version, args.TaskIDs, args.TaskNames, args.DisplayNames, args.GeneratedBy, args.Aliases, nil, args.DistroAliases)
+	tasksForBuild, err := createTasksForBuild(&args.Project, buildVariant, b, &args.Version, args.TaskIDs, args.TaskNames, args.DisplayNames, args.GeneratedBy, args.Aliases, nil, args.DistroAliases, args.TaskCreateTime)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
@@ -656,7 +663,7 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariant
 // appear in the specified build variant.
 func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.Build, v *Version,
 	taskIds TaskIdConfig, taskNames []string, displayNames []string, generatedBy string,
-	aliases ProjectAliases, tasksInBuild []task.Task, distroAliases map[string][]string) (task.Tasks, error) {
+	aliases ProjectAliases, tasksInBuild []task.Task, distroAliases map[string][]string, createTime time.Time) (task.Tasks, error) {
 
 	// the list of tasks we should create.  if tasks are passed in, then
 	// use those, else use the default set
@@ -754,7 +761,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 			}
 			execTaskIds = append(execTaskIds, execTaskId)
 		}
-		t, err := createDisplayTask(id, dt.Name, execTaskIds, buildVariant, b, v, project)
+		t, err := createDisplayTask(id, dt.Name, execTaskIds, buildVariant, b, v, project, createTime)
 		if err != nil {
 			return tasks, errors.Wrapf(err, "Failed to create display task %s", id)
 		}
@@ -767,7 +774,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 
 	for _, t := range tasksToCreate {
 		id := execTable.GetId(b.BuildVariant, t.Name)
-		newTask, err := createOneTask(id, t, project, buildVariant, b, v, distroAliases)
+		newTask, err := createOneTask(id, t, project, buildVariant, b, v, distroAliases, createTime)
 		if err != nil {
 			return tasks, errors.Wrapf(err, "Failed to create task %s", id)
 		}
@@ -954,7 +961,7 @@ func getTaskCreateTime(projectId string, v *Version) (time.Time, error) {
 
 // createOneTask is a helper to create a single task.
 func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Project,
-	buildVariant *BuildVariant, b *build.Build, v *Version, dat distro.AliasLookupTable) (*task.Task, error) {
+	buildVariant *BuildVariant, b *build.Build, v *Version, dat distro.AliasLookupTable, createTime time.Time) (*task.Task, error) {
 
 	buildVarTask.Distros = dat.Expand(buildVarTask.Distros)
 	buildVariant.RunOn = dat.Expand(buildVariant.RunOn)
@@ -986,11 +993,6 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 			"version":   v.Revision,
 			"requester": v.Requester,
 		})
-	}
-
-	createTime, err := getTaskCreateTime(project.Identifier, v)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to get create time for task %s", id)
 	}
 
 	activatedTime := util.ZeroTime
@@ -1040,12 +1042,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 }
 
 func createDisplayTask(id string, displayName string, execTasks []string,
-	bv *BuildVariant, b *build.Build, v *Version, p *Project) (*task.Task, error) {
-
-	createTime, err := getTaskCreateTime(p.Identifier, v)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to get create time for task %s", id)
-	}
+	bv *BuildVariant, b *build.Build, v *Version, p *Project, createTime time.Time) (*task.Task, error) {
 
 	activatedTime := util.ZeroTime
 	if b.Activated {
@@ -1231,6 +1228,11 @@ func AddNewBuilds(ctx context.Context, activated bool, v *Version, p *Project, t
 		variantsProcessed[b.BuildVariant] = true
 	}
 
+	createTime, err := getTaskCreateTime(p.Identifier, v)
+	if err != nil {
+		return errors.Wrap(err, "can't get create time for tasks")
+	}
+
 	for _, pair := range tasks.ExecTasks {
 		if _, ok := variantsProcessed[pair.Variant]; ok { // skip variant that was already processed
 			continue
@@ -1240,14 +1242,15 @@ func AddNewBuilds(ctx context.Context, activated bool, v *Version, p *Project, t
 		taskNames := tasks.ExecTasks.TaskNames(pair.Variant)
 		displayNames := tasks.DisplayTasks.TaskNames(pair.Variant)
 		buildArgs := BuildCreateArgs{
-			Project:      *p,
-			Version:      *v,
-			TaskIDs:      taskIds,
-			BuildName:    pair.Variant,
-			Activated:    activated,
-			TaskNames:    taskNames,
-			DisplayNames: displayNames,
-			GeneratedBy:  generatedBy,
+			Project:        *p,
+			Version:        *v,
+			TaskIDs:        taskIds,
+			BuildName:      pair.Variant,
+			Activated:      activated,
+			TaskNames:      taskNames,
+			DisplayNames:   displayNames,
+			GeneratedBy:    generatedBy,
+			TaskCreateTime: createTime,
 		}
 
 		grip.Info(message.Fields{

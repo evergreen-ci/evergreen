@@ -14,9 +14,11 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
@@ -350,6 +352,14 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 
 	taskIds := NewPatchTaskIdTable(project, patchVersion, tasks)
 	variantsProcessed := map[string]bool{}
+
+	createTime, err := getTaskCreateTime(p.Project, patchVersion)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't get create time for tasks in '%s', githash '%s'", p.Project, p.Githash)
+	}
+
+	buildsToInsert := build.Builds{}
+	tasksToInsert := task.Tasks{}
 	for _, vt := range p.VariantsTasks {
 		if _, ok := variantsProcessed[vt.Variant]; ok {
 			continue
@@ -362,14 +372,15 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		}
 		taskNames := tasks.ExecTasks.TaskNames(vt.Variant)
 		buildArgs := BuildCreateArgs{
-			Project:       *project,
-			Version:       *patchVersion,
-			TaskIDs:       taskIds,
-			BuildName:     vt.Variant,
-			Activated:     true,
-			TaskNames:     taskNames,
-			DisplayNames:  displayNames,
-			DistroAliases: distroAliases,
+			Project:        *project,
+			Version:        *patchVersion,
+			TaskIDs:        taskIds,
+			BuildName:      vt.Variant,
+			Activated:      true,
+			TaskNames:      taskNames,
+			DisplayNames:   displayNames,
+			DistroAliases:  distroAliases,
+			TaskCreateTime: createTime,
 		}
 		build, tasks, err := CreateBuildFromVersionNoInsert(buildArgs)
 		if err != nil {
@@ -384,12 +395,8 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			continue
 		}
 
-		if err = build.Insert(); err != nil {
-			return nil, errors.Wrapf(err, "error inserting build %s", build.Id)
-		}
-		if err = tasks.InsertUnordered(ctx); err != nil {
-			return nil, errors.Wrapf(err, "error inserting tasks for build %s", build.Id)
-		}
+		buildsToInsert = append(buildsToInsert, build)
+		tasksToInsert = append(tasksToInsert, tasks...)
 
 		patchVersion.BuildIds = append(patchVersion.BuildIds, build.Id)
 		patchVersion.BuildVariants = append(patchVersion.BuildVariants,
@@ -406,6 +413,12 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	}
 	if err = intermediateProject.Insert(); err != nil {
 		return nil, errors.WithStack(err)
+	}
+	if err = buildsToInsert.InsertMany(ctx, false); err != nil {
+		return nil, errors.Wrapf(err, "error inserting builds for version '%s'", patchVersion.Id)
+	}
+	if err = tasksToInsert.InsertUnordered(ctx); err != nil {
+		return nil, errors.Wrapf(err, "error inserting tasks for version '%s'", patchVersion.Id)
 	}
 
 	if err = p.SetActivated(patchVersion.Id); err != nil {
