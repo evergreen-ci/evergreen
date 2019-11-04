@@ -319,14 +319,26 @@ func getSoonToBeFreeHosts(existingHosts []host.Host, freeHostFactor float64, max
 			defer recovery.LogStackTraceAndContinue("panic during free host calculation")
 			defer wg.Done()
 			for t := range source {
-				expectedDuration := t.FetchExpectedDuration()
+				durationStats := t.FetchExpectedDuration()
+				expectedDuration := durationStats.Average
+				durationStdDev := durationStats.StdDev
 				elapsedTime := time.Since(t.StartTime)
 				timeLeft := expectedDuration - elapsedTime
 
 				// calculate what fraction of the host will be free within the max duration.
 				// for example if we estimate 20 minutes left on the task and the target duration
 				// for tasks is 30 minutes, assume that this host can be 1/3 of a free host
-				freeHostFraction := float64(maxDurationPerHost-timeLeft) / float64(maxDurationPerHost)
+				var freeHostFraction float64
+				if durationStdDev > 0 && elapsedTime > expectedDuration+3*durationStdDev {
+					// if the task has taken over 3 std deviations longer (so longer than 99.7% of past runs),
+					// assume that the host will be busy the entire duration. This is to avoid unusually long
+					// tasks preventing us from starting any hosts
+					freeHostFraction = 0
+					// maybe TODO: add handling of very short tasks here so that a task that normally takes 10 secs taking a minute
+					// will not mark the host as busy for the next 30 mins
+				} else {
+					freeHostFraction = float64(maxDurationPerHost-timeLeft) / float64(maxDurationPerHost)
+				}
 				if freeHostFraction < 0 {
 					freeHostFraction = 0
 				}

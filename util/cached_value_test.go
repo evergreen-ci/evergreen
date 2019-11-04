@@ -60,8 +60,12 @@ func TestCachedIntValue(t *testing.T) {
 
 func TestCachedDurationValue(t *testing.T) {
 	assert := assert.New(t)
-	trueRefresher := func(old time.Duration) (time.Duration, bool) { return 42 * time.Second, true }
-	falseRefresher := func(old time.Duration) (time.Duration, bool) { return 42 * time.Second, false }
+	trueRefresher := func(DurationStats) (DurationStats, bool) {
+		return DurationStats{Average: 42 * time.Second, StdDev: 0}, true
+	}
+	falseRefresher := func(DurationStats) (DurationStats, bool) {
+		return DurationStats{Average: 42 * time.Second, StdDev: 0}, false
+	}
 	cv := &CachedDurationValue{
 		Value:       21 * time.Second,
 		TTL:         time.Minute,

@@ -83,8 +83,8 @@ func byAge(t1, t2 task.Task, _ *CmpBasedTaskComparator) (int, error) {
 // which we expect will shorten makespan (without shortening total
 // runtime,) leading to faster feedback for users.
 func byRuntime(t1, t2 task.Task, comp *CmpBasedTaskComparator) (int, error) {
-	oneExpected := t1.FetchExpectedDuration()
-	twoExpected := t2.FetchExpectedDuration()
+	oneExpected := t1.FetchExpectedDuration().Average
+	twoExpected := t2.FetchExpectedDuration().Average
 
 	if oneExpected == 0 || twoExpected == 0 {
 		return 0, nil

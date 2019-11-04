@@ -212,7 +212,7 @@ func (unit *Unit) RankValue() int64 {
 		}
 
 		totalPriority += t.Priority
-		expectedRuntime += t.FetchExpectedDuration()
+		expectedRuntime += t.FetchExpectedDuration().Average
 		numDeps += int64(t.NumDependents)
 
 	}
@@ -324,7 +324,7 @@ func (tl TaskList) Less(i, j int) bool {
 		return t1.Priority > t2.Priority
 	}
 
-	return t1.FetchExpectedDuration() > t2.FetchExpectedDuration()
+	return t1.FetchExpectedDuration().Average > t2.FetchExpectedDuration().Average
 }
 
 // TaskPlan provides a sortable interface on top of a slice of
