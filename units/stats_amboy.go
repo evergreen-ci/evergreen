@@ -94,12 +94,13 @@ func (j *amboyStatsCollector) Run(ctx context.Context) {
 		})
 
 		if evergreen.EnableAmboyRemoteReporting {
-			j.AddError(j.collectExtendedRemoteStats(ctx))
+			j.collectExtendedRemoteStats(ctx)
+			j.collectExtendedGroupRemoteStats(ctx)
 		}
 	}
 }
 
-func (j *amboyStatsCollector) collectExtendedRemoteStats(ctx context.Context) error {
+func (j *amboyStatsCollector) collectExtendedRemoteStats(ctx context.Context) {
 	settings := j.env.Settings()
 
 	opts := queue.DefaultMongoDBOptions()
@@ -112,35 +113,67 @@ func (j *amboyStatsCollector) collectExtendedRemoteStats(ctx context.Context) er
 		Options: opts,
 	}, j.env.Client())
 	if err != nil {
-		return err
+		j.AddError(err)
+		return
 	}
 
+	r, err := buildAmboyQueueMessage("amboy remote queue report", reporter)
+	j.AddError(err)
+	j.logger.InfoWhen(len(r) > 1, r)
+	return nil
+
+}
+
+func (j *amboyStatsCollector) collectExtendedGroupRemoteStats(ctx context.Context) {
+	settings := j.env.Settings()
+	opts := queue.DefaultMongoDBOptions()
+	opts.URI = settings.Database.Url
+	opts.DB = settings.Amboy.DB
+	opts.Priority = true
+
+	reporter, err := reporting.MakeDBQueueState(ctx, reporting.DBQueueReporterOptions{
+		Name:     settings.Amboy.Name,
+		Options:  opts,
+		ByGroups: true,
+	}, j.env.Client())
+	if err != nil {
+		j.AddError(err)
+		return
+	}
+
+	r, err := buildAmboyQueueMessage("amboy remote queue group", reporter)
+	j.AddError(err)
+	j.logger.InfoWhen(len(r) > 1, r)
+	return nil
+}
+
+func buildAmboyQueueMessage(msg string, reporter reporting.Reporter) (message.Fields, error) {
+	catcher := grip.NewBasicCatcher()
 	r := message.Fields{
-		"message": "amboy remote queue report",
+		"message": msg,
 	}
 
 	pending, err := reporter.JobStatus(ctx, reporting.Pending)
-	j.AddError(err)
+	catcher.Add(err)
 	if pending != nil {
 		r["pending"] = pending
 	}
 	inprog, err := reporter.JobStatus(ctx, reporting.InProgress)
-	j.AddError(err)
+	catcher.Add(err)
 	if inprog != nil {
 		r["inprog"] = inprog
 	}
 	stale, err := reporter.JobStatus(ctx, reporting.Stale)
-	j.AddError(err)
+	catcher.Add(err)
 	if stale != nil {
 		r["stale"] = stale
 	}
 
 	recentErrors, err := reporter.RecentErrors(ctx, time.Minute, reporting.StatsOnly)
-	j.AddError(err)
+	catcher.Add(err)
 	if recentErrors != nil {
 		r["errors"] = recentErrors
 	}
 
-	j.logger.InfoWhen(len(r) > 1, r)
-	return nil
+	return r, catcher.Resolve()
 }
