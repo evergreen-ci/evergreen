@@ -117,11 +117,9 @@ func (j *amboyStatsCollector) collectExtendedRemoteStats(ctx context.Context) {
 		return
 	}
 
-	r, err := buildAmboyQueueMessage("amboy remote queue report", reporter)
+	r, err := buildAmboyQueueMessage(ctx, "amboy remote queue report", reporter)
 	j.AddError(err)
 	j.logger.InfoWhen(len(r) > 1, r)
-	return nil
-
 }
 
 func (j *amboyStatsCollector) collectExtendedGroupRemoteStats(ctx context.Context) {
@@ -141,13 +139,12 @@ func (j *amboyStatsCollector) collectExtendedGroupRemoteStats(ctx context.Contex
 		return
 	}
 
-	r, err := buildAmboyQueueMessage("amboy remote queue group", reporter)
+	r, err := buildAmboyQueueMessage(ctx, "amboy remote queue group", reporter)
 	j.AddError(err)
 	j.logger.InfoWhen(len(r) > 1, r)
-	return nil
 }
 
-func buildAmboyQueueMessage(msg string, reporter reporting.Reporter) (message.Fields, error) {
+func buildAmboyQueueMessage(ctx context.Context, msg string, reporter reporting.Reporter) (message.Fields, error) {
 	catcher := grip.NewBasicCatcher()
 	r := message.Fields{
 		"message": msg,
