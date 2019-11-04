@@ -406,8 +406,7 @@ func (d *Distro) GetPoolSize() int {
 
 		return len(hosts)
 	default:
-		// return d.PoolSize + d.PlannerSettings.MaximumHosts 	 // SAM: Huh?
-		return d.PoolSize + d.HostAllocatorSettings.MaximumHosts // SAM: Huh?
+		return d.PoolSize
 	}
 }
 
@@ -487,7 +486,7 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 		return HostAllocatorSettings{}, errors.Wrapf(catcher.Resolve(), "cannot resolve HostAllocatorSettings for distro '%s'", d.Id)
 	}
 
-	d.HostAllocatorSettings = resolved // STU: should we do this?
+	d.HostAllocatorSettings = resolved
 	return resolved, nil
 }
 
@@ -509,7 +508,7 @@ func (d *Distro) GetResolvedFinderSettings(s *evergreen.Settings) (FinderSetting
 		resolved.Version = config.TaskFinder
 	}
 
-	d.FinderSettings = resolved // STU: should we do this?
+	d.FinderSettings = resolved
 	return resolved, nil
 }
 
@@ -570,6 +569,6 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 		return PlannerSettings{}, errors.Wrapf(catcher.Resolve(), "cannot resolve PlannerSettings for distro '%s'", d.Id)
 	}
 
-	d.PlannerSettings = resolved // STU: should we do this?
+	d.PlannerSettings = resolved
 	return resolved, nil
 }
