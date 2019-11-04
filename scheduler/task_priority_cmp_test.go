@@ -205,7 +205,7 @@ func TestByTaskGroupOrder(t *testing.T) {
 	tasks[0].TaskGroup = "example_task_group"
 	result, err = byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
 	assert.NoError(err)
-	assert.Equal(0, result)
+	assert.Equal(1, result)
 	tasks[0].TaskGroup = ""
 	tasks[1].TaskGroup = "example_task_group"
 	result, err = byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
@@ -217,7 +217,7 @@ func TestByTaskGroupOrder(t *testing.T) {
 	tasks[1].TaskGroup = "another_task_group"
 	result, err = byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
 	assert.NoError(err)
-	assert.Equal(1, result)
+	assert.Equal(-1, result)
 
 	// mismatched builds
 	tasks[0].TaskGroup = "example_task_group"
@@ -226,7 +226,7 @@ func TestByTaskGroupOrder(t *testing.T) {
 	tasks[1].BuildId = "another_build_id"
 	result, err = byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
 	assert.NoError(err)
-	assert.Equal(1, result)
+	assert.Equal(-1, result)
 
 	// t1 is earlier
 	tasks[0].TaskGroup = "example_task_group"

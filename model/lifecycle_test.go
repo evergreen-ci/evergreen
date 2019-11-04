@@ -980,12 +980,13 @@ buildvariants:
 		Convey("all of the tasks' essential fields should be set correctly", func() {
 
 			args := BuildCreateArgs{
-				Project:   *project,
-				Version:   *v,
-				TaskIDs:   table,
-				BuildName: buildVar1.Name,
-				Activated: false,
-				TaskNames: []string{},
+				Project:        *project,
+				Version:        *v,
+				TaskIDs:        table,
+				BuildName:      buildVar1.Name,
+				Activated:      false,
+				TaskNames:      []string{},
+				TaskCreateTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
 			}
 			build, tasks, err := CreateBuildFromVersionNoInsert(args)
 			So(err, ShouldBeNil)
@@ -998,8 +999,7 @@ buildvariants:
 			So(tasks[2].BuildId, ShouldEqual, build.Id)
 			So(tasks[2].DistroId, ShouldEqual, "arch")
 			So(tasks[2].BuildVariant, ShouldEqual, buildVar1.Name)
-			So(tasks[2].CreateTime.Truncate(time.Second), ShouldResemble,
-				build.CreateTime.Truncate(time.Second))
+			So(tasks[2].CreateTime.Equal(args.TaskCreateTime), ShouldBeTrue)
 			So(tasks[2].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(tasks[2].Activated, ShouldBeFalse)
 			So(tasks[2].ActivatedTime.Equal(util.ZeroTime), ShouldBeTrue)
@@ -1015,8 +1015,7 @@ buildvariants:
 			So(tasks[3].BuildId, ShouldEqual, build.Id)
 			So(tasks[3].DistroId, ShouldEqual, "arch")
 			So(tasks[3].BuildVariant, ShouldEqual, buildVar1.Name)
-			So(tasks[3].CreateTime.Truncate(time.Second), ShouldResemble,
-				build.CreateTime.Truncate(time.Second))
+			So(tasks[3].CreateTime.Equal(args.TaskCreateTime), ShouldBeTrue)
 			So(tasks[3].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(tasks[3].Activated, ShouldBeFalse)
 			So(tasks[3].ActivatedTime.Equal(util.ZeroTime), ShouldBeTrue)
@@ -1032,8 +1031,7 @@ buildvariants:
 			So(tasks[4].BuildId, ShouldEqual, build.Id)
 			So(tasks[4].DistroId, ShouldEqual, "arch")
 			So(tasks[4].BuildVariant, ShouldEqual, buildVar1.Name)
-			So(tasks[4].CreateTime.Truncate(time.Second), ShouldResemble,
-				build.CreateTime.Truncate(time.Second))
+			So(tasks[4].CreateTime.Equal(args.TaskCreateTime), ShouldBeTrue)
 			So(tasks[4].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(tasks[4].Activated, ShouldBeFalse)
 			So(tasks[4].ActivatedTime.Equal(util.ZeroTime), ShouldBeTrue)
@@ -1049,8 +1047,7 @@ buildvariants:
 			So(tasks[5].BuildId, ShouldEqual, build.Id)
 			So(tasks[5].DistroId, ShouldEqual, "arch")
 			So(tasks[5].BuildVariant, ShouldEqual, buildVar1.Name)
-			So(tasks[5].CreateTime.Truncate(time.Second), ShouldResemble,
-				build.CreateTime.Truncate(time.Second))
+			So(tasks[5].CreateTime.Equal(args.TaskCreateTime), ShouldBeTrue)
 			So(tasks[5].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(tasks[5].Activated, ShouldBeFalse)
 			So(tasks[5].ActivatedTime.Equal(util.ZeroTime), ShouldBeTrue)
@@ -1065,12 +1062,13 @@ buildvariants:
 			func() {
 
 				args := BuildCreateArgs{
-					Project:   *project,
-					Version:   *v,
-					TaskIDs:   table,
-					BuildName: buildVar1.Name,
-					Activated: true,
-					TaskNames: []string{},
+					Project:        *project,
+					Version:        *v,
+					TaskIDs:        table,
+					BuildName:      buildVar1.Name,
+					Activated:      true,
+					TaskNames:      []string{},
+					TaskCreateTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
 				}
 				build, tasks, err := CreateBuildFromVersionNoInsert(args)
 				So(err, ShouldBeNil)
@@ -1085,8 +1083,7 @@ buildvariants:
 				So(tasks[2].BuildId, ShouldEqual, build.Id)
 				So(tasks[2].DistroId, ShouldEqual, "arch")
 				So(tasks[2].BuildVariant, ShouldEqual, buildVar1.Name)
-				So(tasks[2].CreateTime.Truncate(time.Second), ShouldResemble,
-					build.CreateTime.Truncate(time.Second))
+				So(tasks[2].CreateTime.Equal(args.TaskCreateTime), ShouldBeTrue)
 				So(tasks[2].Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(tasks[2].Activated, ShouldBeTrue)
 				So(tasks[2].ActivatedTime.Equal(util.ZeroTime), ShouldBeFalse)
@@ -1102,8 +1099,7 @@ buildvariants:
 				So(tasks[3].BuildId, ShouldEqual, build.Id)
 				So(tasks[3].DistroId, ShouldEqual, "arch")
 				So(tasks[3].BuildVariant, ShouldEqual, buildVar1.Name)
-				So(tasks[3].CreateTime.Truncate(time.Second), ShouldResemble,
-					build.CreateTime.Truncate(time.Second))
+				So(tasks[3].CreateTime.Equal(args.TaskCreateTime), ShouldBeTrue)
 				So(tasks[3].Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(tasks[3].Activated, ShouldBeTrue)
 				So(tasks[3].ActivatedTime.Equal(util.ZeroTime), ShouldBeFalse)
@@ -1119,8 +1115,7 @@ buildvariants:
 				So(tasks[4].BuildId, ShouldEqual, build.Id)
 				So(tasks[4].DistroId, ShouldEqual, "arch")
 				So(tasks[4].BuildVariant, ShouldEqual, buildVar1.Name)
-				So(tasks[4].CreateTime.Truncate(time.Second), ShouldResemble,
-					build.CreateTime.Truncate(time.Second))
+				So(tasks[4].CreateTime.Equal(args.TaskCreateTime), ShouldBeTrue)
 				So(tasks[4].Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(tasks[4].Activated, ShouldBeTrue)
 				So(tasks[4].ActivatedTime.Equal(util.ZeroTime), ShouldBeFalse)
@@ -1136,8 +1131,7 @@ buildvariants:
 				So(tasks[5].BuildId, ShouldEqual, build.Id)
 				So(tasks[5].DistroId, ShouldEqual, "arch")
 				So(tasks[5].BuildVariant, ShouldEqual, buildVar1.Name)
-				So(tasks[5].CreateTime.Truncate(time.Second), ShouldResemble,
-					build.CreateTime.Truncate(time.Second))
+				So(tasks[5].CreateTime.Equal(args.TaskCreateTime), ShouldBeTrue)
 				So(tasks[5].Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(tasks[5].Activated, ShouldBeTrue)
 				So(tasks[5].ActivatedTime.Equal(util.ZeroTime), ShouldBeFalse)
@@ -1841,4 +1835,40 @@ func TestMarkAsDispatched(t *testing.T) {
 
 	})
 
+}
+
+func TestCreateTasksCache(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(task.Collection))
+	// execution tasks should be removed
+	tasks := []task.Task{
+		{
+			Id:          "execTask1",
+			DisplayName: "execTask1",
+		},
+		{
+			Id:          "execTask2",
+			DisplayName: "execTask2",
+		},
+		{
+			Id:          "displayTask",
+			DisplayName: "displayTask",
+			DisplayOnly: true,
+			ExecutionTasks: []string{
+				"execTask1",
+				"execTask2",
+			},
+		},
+		{
+			Id:          "regularTask",
+			DisplayName: "regularTask",
+		},
+	}
+	for _, t := range tasks {
+		assert.NoError(t.Insert())
+	}
+	cache := CreateTasksCache(tasks)
+	assert.Equal("displayTask", cache[0].Id)
+	assert.Equal("regularTask", cache[1].Id)
+	assert.Len(cache, 2)
 }

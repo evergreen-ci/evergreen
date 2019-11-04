@@ -503,12 +503,16 @@ type ProjectVariablesPermission int
 type TasksPermission int
 type PatchPermission int
 type LogsPermission int
+type DistroSettingsPermission int
+type HostsPermission int
 
 const (
-	PermissionProjectSettings = "project_settings"
-	PermissionTasks           = "project_tasks"
-	PermissionPatches         = "project_patches"
-	PermissionLogs            = "project_logs"
+	// Project permissions.
+	PermissionProjectSettings  = "project_settings"
+	PermissionProjectVariables = "project_variables"
+	PermissionTasks            = "project_tasks"
+	PermissionPatches          = "project_patches"
+	PermissionLogs             = "project_logs"
 
 	ProjectSettingsEdit ProjectSettingsPermission = 20
 	ProjectSettingsView ProjectSettingsPermission = 10
@@ -521,6 +525,17 @@ const (
 	PatchNone           PatchPermission           = 0
 	LogsView            LogsPermission            = 10
 	LogsNone            LogsPermission            = 0
+
+	// Distro permissions.
+	PermissionDistroSettings = "distro_settings"
+	PermissionHosts          = "distro_hosts"
+
+	DistroSettingsEdit DistroSettingsPermission = 20
+	DistroSettingsRead DistroSettingsPermission = 10
+	DistroSettingsNone DistroSettingsPermission = 0
+	HostsEdit          HostsPermission          = 20
+	HostsRead          HostsPermission          = 10
+	HostsNone          HostsPermission          = 0
 )
 
 func (p ProjectSettingsPermission) String() string {
@@ -577,10 +592,43 @@ func (p LogsPermission) String() string {
 func (p LogsPermission) Value() int {
 	return int(p)
 }
+func (p DistroSettingsPermission) String() string {
+	switch p {
+	case DistroSettingsEdit:
+		return "Edit distro settings"
+	case DistroSettingsRead:
+		return "View distro settings"
+	case DistroSettingsNone:
+		return "No distro settings permissions"
+	}
+	return ""
+}
+func (p DistroSettingsPermission) Value() int {
+	return int(p)
+}
+func (p HostsPermission) String() string {
+	switch p {
+	case HostsEdit:
+		return "Edit hosts"
+	case HostsRead:
+		return "View hosts"
+	case HostsNone:
+		return "No hosts permissions"
+	}
+	return ""
+}
+func (p HostsPermission) Value() int {
+	return int(p)
+}
 
 var projectPermissions = []string{
 	PermissionProjectSettings,
 	PermissionTasks,
 	PermissionPatches,
 	PermissionLogs,
+}
+
+var distroPermissions = []string{
+	PermissionDistroSettings,
+	PermissionHosts,
 }

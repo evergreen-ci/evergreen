@@ -371,10 +371,7 @@ func (h *attachVolumeHandler) Parse(ctx context.Context, r *http.Request) error 
 	if h.attachment.VolumeID == "" {
 		return errors.New("must provide a volume ID")
 	}
-	// TODO: can modify once Evergreen generates device names
-	if h.attachment.DeviceName == "" {
-		return errors.New("must provide a device name to attach (recommended form: /dev/sd[f-p][1-6])")
-	}
+
 	var err error
 	h.hostID, err = validateID(gimlet.GetVars(r)["host_id"])
 	if err != nil {

@@ -25,6 +25,7 @@ func NewConfigModel() *APIAdminSettings {
 		Jira:              &APIJiraConfig{},
 		JIRANotifications: &APIJIRANotificationsConfig{},
 		Keys:              map[string]string{},
+		LDAPRoleMap:       &APILDAPRoleMap{},
 		LoggerConfig:      &APILoggerConfig{},
 		Notify:            &APINotifyConfig{},
 		Plugins:           map[string]map[string]interface{}{},
@@ -63,6 +64,7 @@ type APIAdminSettings struct {
 	Jira               *APIJiraConfig                    `json:"jira,omitempty"`
 	JIRANotifications  *APIJIRANotificationsConfig       `json:"jira_notifications,omitempty"`
 	Keys               map[string]string                 `json:"keys,omitempty"`
+	LDAPRoleMap        *APILDAPRoleMap                   `json:"ldap_role_map,omitempty"`
 	LoggerConfig       *APILoggerConfig                  `json:"logger_config,omitempty"`
 	LogPath            APIString                         `json:"log_path,omitempty"`
 	Notify             *APINotifyConfig                  `json:"notify,omitempty"`
@@ -628,6 +630,59 @@ func (a *APIJiraConfig) ToService() (interface{}, error) {
 		Password:       FromAPIString(a.Password),
 		DefaultProject: FromAPIString(a.DefaultProject),
 	}, nil
+}
+
+type APILDAPRoleMapping struct {
+	LDAPGroup APIString `json:"ldap_group"`
+	RoleID    APIString ` json:"role_id"`
+}
+
+func (a *APILDAPRoleMapping) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.LDAPRoleMapping:
+		a.LDAPGroup = ToAPIString(v.LDAPGroup)
+		a.RoleID = ToAPIString(v.RoleID)
+	}
+
+	return nil
+}
+
+func (a *APILDAPRoleMapping) ToService() (interface{}, error) {
+	mapping := evergreen.LDAPRoleMapping{
+		LDAPGroup: FromAPIString(a.LDAPGroup),
+		RoleID:    FromAPIString(a.RoleID),
+	}
+
+	return mapping, nil
+}
+
+type APILDAPRoleMap []APILDAPRoleMapping
+
+func (a *APILDAPRoleMap) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.LDAPRoleMap:
+		m := make(APILDAPRoleMap, len(v))
+		for i := range v {
+			if err := m[i].BuildFromService(v[i]); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (a *APILDAPRoleMap) ToService() (interface{}, error) {
+	serviceMap := make(evergreen.LDAPRoleMap, len(*a))
+	for i := range *a {
+		v, err := (*a)[i].ToService()
+		if err != nil {
+			return nil, err
+		}
+		serviceMap[i] = v.(evergreen.LDAPRoleMapping)
+	}
+
+	return serviceMap, nil
 }
 
 type APILoggerConfig struct {
@@ -1528,7 +1583,13 @@ func AdminDbToRestModel(in evergreen.ConfigSection) (Model, error) {
 }
 
 type APIJIRANotificationsConfig struct {
-	CustomFields map[string]map[string]string `json:"custom_fields,omitempty"`
+	CustomFields map[string]APIJIRANotificationsProject `json:"custom_fields,omitempty"`
+}
+
+type APIJIRANotificationsProject struct {
+	Fields     map[string]string `json:"fields,omitempty"`
+	Components []string          `json:"components,omitempty"`
+	Labels     []string          `json:"labels,omitempty"`
 }
 
 func (j *APIJIRANotificationsConfig) BuildFromService(h interface{}) error {
@@ -1539,33 +1600,68 @@ func (j *APIJIRANotificationsConfig) BuildFromService(h interface{}) error {
 	case evergreen.JIRANotificationsConfig:
 		config = &v
 	default:
-		return errors.Errorf("expected *evergreen.APIJIRANotificationsConfig, but got %T instead", h)
+		return errors.Errorf("expected *evergreen.JIRANotificationsConfig, but got %T instead", h)
 	}
 
-	if len(config.CustomFields) == 0 {
-		return nil
-	}
+	j.CustomFields = make(map[string]APIJIRANotificationsProject)
+	for _, project := range config.CustomFields {
+		apiProject := APIJIRANotificationsProject{}
+		if err := apiProject.BuildFromService(project); err != nil {
+			return errors.Wrapf(err, "can't build project '%s' from service", project.Project)
+		}
 
-	m, err := config.CustomFields.ToMap()
-	if err != nil {
-		return errors.Wrap(err, "failed to build jira custom field configuration")
+		j.CustomFields[project.Project] = apiProject
 	}
-
-	j.CustomFields = m
 
 	return nil
 }
+
 func (j *APIJIRANotificationsConfig) ToService() (interface{}, error) {
+	service := evergreen.JIRANotificationsConfig{}
 	if j.CustomFields == nil || len(j.CustomFields) == 0 {
-		return evergreen.JIRANotificationsConfig{}, nil
-	}
-	config := evergreen.JIRANotificationsConfig{
-		CustomFields: evergreen.JIRACustomFieldsByProject{},
+		return service, nil
 	}
 
-	config.CustomFields.FromMap(j.CustomFields)
+	for projectName, fields := range j.CustomFields {
+		projectIface, err := fields.ToService()
+		if err != nil {
+			return nil, errors.Errorf("can't convert project '%s' to service", projectName)
+		}
+		project := projectIface.(evergreen.JIRANotificationsProject)
 
-	return config, nil
+		project.Project = projectName
+		service.CustomFields = append(service.CustomFields, project)
+	}
+
+	return service, nil
+}
+
+func (j *APIJIRANotificationsProject) BuildFromService(h interface{}) error {
+	serviceProject, ok := h.(evergreen.JIRANotificationsProject)
+	if !ok {
+		return errors.Errorf("Expecting JIRANotificationsProject but got %T", h)
+	}
+
+	apiFields := make(map[string]string)
+	for _, field := range serviceProject.Fields {
+		apiFields[field.Field] = field.Template
+	}
+	j.Fields = apiFields
+	j.Components = serviceProject.Components
+	j.Labels = serviceProject.Labels
+
+	return nil
+}
+
+func (j *APIJIRANotificationsProject) ToService() (interface{}, error) {
+	service := evergreen.JIRANotificationsProject{}
+	for field, template := range j.Fields {
+		service.Fields = append(service.Fields, evergreen.JIRANotificationsCustomField{Field: field, Template: template})
+	}
+	service.Components = j.Components
+	service.Labels = j.Labels
+
+	return service, nil
 }
 
 type APITriggerConfig struct {

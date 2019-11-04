@@ -790,15 +790,16 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata VersionM
 			}
 		}
 		args := model.BuildCreateArgs{
-			Project:       *projectInfo.Project,
-			Version:       *v,
-			TaskIDs:       taskIds,
-			BuildName:     buildvariant.Name,
-			Activated:     false,
-			SourceRev:     sourceRev,
-			DefinitionID:  metadata.TriggerDefinitionID,
-			Aliases:       aliases,
-			DistroAliases: distroAliases,
+			Project:        *projectInfo.Project,
+			Version:        *v,
+			TaskIDs:        taskIds,
+			BuildName:      buildvariant.Name,
+			Activated:      false,
+			SourceRev:      sourceRev,
+			DefinitionID:   metadata.TriggerDefinitionID,
+			Aliases:        aliases,
+			DistroAliases:  distroAliases,
+			TaskCreateTime: v.CreateTime,
 		}
 		b, tasks, err := model.CreateBuildFromVersionNoInsert(args)
 		if err != nil {

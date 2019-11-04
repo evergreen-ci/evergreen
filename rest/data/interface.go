@@ -206,6 +206,8 @@ type Connector interface {
 	RestartFailedCommitQueueVersions(opts model.RestartOptions) (*restModel.RestartResponse, error)
 	RevertConfigTo(string, string) error
 	GetAdminEventLog(time.Time, int) ([]restModel.APIAdminEvent, error)
+	MapLDAPGroupToRole(string, string) error
+	UnmapLDAPGroupToRole(string) error
 
 	FindCostTaskByProject(string, string, time.Time, time.Time, int, int) ([]task.Task, error)
 

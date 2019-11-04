@@ -825,7 +825,7 @@ func (s *EC2Suite) TestOnUp() {
 	s.NotNil(foundHost)
 	s.Require().Len(foundHost.Volumes, 1)
 	s.Equal("volume_id", foundHost.Volumes[0].VolumeID)
-	s.Equal("volume_id", foundHost.Volumes[0].DeviceName)
+	s.Equal("device_name", foundHost.Volumes[0].DeviceName)
 }
 
 func (s *EC2Suite) TestGetDNSName() {
@@ -1314,11 +1314,11 @@ func (s *EC2Suite) TestAttachVolume() {
 	defer cancel()
 
 	s.Require().NoError(s.h.Insert())
-	newAttachment := &host.VolumeAttachment{
+	newAttachment := host.VolumeAttachment{
 		VolumeID:   "test-volume",
 		DeviceName: "test-device-name",
 	}
-	s.NoError(s.onDemandManager.AttachVolume(ctx, s.h, newAttachment))
+	s.NoError(s.onDemandManager.AttachVolume(ctx, s.h, &newAttachment))
 
 	manager, ok := s.onDemandManager.(*ec2Manager)
 	s.True(ok)
@@ -1334,6 +1334,22 @@ func (s *EC2Suite) TestAttachVolume() {
 	s.NotNil(host)
 	s.NoError(err)
 	s.Contains(host.Volumes, newAttachment)
+}
+
+func (s *EC2Suite) TestAttachVolumeGenerateDeviceName() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.Require().NoError(s.h.Insert())
+	newAttachment := &host.VolumeAttachment{
+		VolumeID: "test-volume",
+	}
+
+	s.NoError(s.onDemandManager.AttachVolume(ctx, s.h, newAttachment))
+
+	s.Equal("test-volume", newAttachment.VolumeID)
+	s.NotEqual("", newAttachment.DeviceName)
+	s.Len(newAttachment.DeviceName, len("/dev/sdf1"))
 }
 
 func (s *EC2Suite) TestDetachVolume() {

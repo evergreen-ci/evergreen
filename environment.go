@@ -644,7 +644,10 @@ func (e *envState) setupRoleManager() error {
 		ScopeCollection: ScopeCollection,
 	})
 
-	return e.roleManager.RegisterPermissions(projectPermissions)
+	catcher := grip.NewBasicCatcher()
+	catcher.Add(e.roleManager.RegisterPermissions(projectPermissions))
+	catcher.Add(e.roleManager.RegisterPermissions(distroPermissions))
+	return catcher.Resolve()
 }
 
 func (e *envState) Settings() *Settings {

@@ -1,6 +1,7 @@
 package build
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -769,4 +770,25 @@ func TestBuildSetCachedTaskFinished(t *testing.T) {
 		b.Tasks[idx].StartTime = b2.Tasks[idx].StartTime
 	}
 	assert.EqualValues(b2, b)
+}
+
+func TestBulkInsert(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	builds := Builds{
+		&Build{Id: "b1"},
+		&Build{Id: "b1"},
+		&Build{Id: "b2"},
+		&Build{Id: "b3"},
+	}
+
+	assert.Error(t, builds.InsertMany(context.Background(), true))
+	dbBuilds, err := Find(db.Q{})
+	assert.NoError(t, err)
+	assert.Len(t, dbBuilds, 1)
+
+	assert.NoError(t, db.ClearCollections(Collection))
+	assert.Error(t, builds.InsertMany(context.Background(), false))
+	dbBuilds, err = Find(db.Q{})
+	assert.NoError(t, err)
+	assert.Len(t, dbBuilds, 3)
 }

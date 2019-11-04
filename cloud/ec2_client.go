@@ -973,7 +973,9 @@ func (c *awsClientImpl) GetVolumeIDs(ctx context.Context, h *host.Host) ([]strin
 		if err != nil {
 			return nil, errors.Wrap(err, "error getting devices")
 		}
-		h.Volumes = makeVolumeAttachments(devices)
+		if err := h.SetVolumes(makeVolumeAttachments(devices)); err != nil {
+			return nil, errors.Wrap(err, "error saving host volumes")
+		}
 	}
 
 	// Get string slice of volume IDs
@@ -1353,6 +1355,7 @@ func (c *awsClientMock) GetInstanceInfo(ctx context.Context, id string) (*ec2.In
 			Ebs: &ec2.EbsInstanceBlockDevice{
 				VolumeId: aws.String("volume_id"),
 			},
+			DeviceName: aws.String("device_name"),
 		},
 	}
 	instance.LaunchTime = aws.Time(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC))
@@ -1442,12 +1445,14 @@ func (c *awsClientMock) GetInstanceBlockDevices(ctx context.Context, h *host.Hos
 }
 
 func (c *awsClientMock) GetVolumeIDs(ctx context.Context, h *host.Host) ([]string, error) {
-	if len(h.Volumes) == 0 {
-		volumeIDs := []string{}
-		for _, attachment := range h.Volumes {
-			volumeIDs = append(volumeIDs, attachment.VolumeID)
+	if h.Volumes == nil {
+		devices, err := c.GetInstanceBlockDevices(ctx, h)
+		if err != nil {
+			return nil, errors.Wrap(err, "error getting devices")
 		}
-		return volumeIDs, nil
+		if err := h.SetVolumes(makeVolumeAttachments(devices)); err != nil {
+			return nil, errors.Wrap(err, "error setting host volumes")
+		}
 	}
 
 	return []string{"volume_id"}, nil
