@@ -30,6 +30,7 @@ var (
 	VersionBuildVariantsKey       = bsonutil.MustHaveTag(Version{}, "BuildVariants")
 	VersionRevisionOrderNumberKey = bsonutil.MustHaveTag(Version{}, "RevisionOrderNumber")
 	VersionRequesterKey           = bsonutil.MustHaveTag(Version{}, "Requester")
+	VersionProjectKey             = bsonutil.MustHaveTag(Version{}, "ParserProject")
 	VersionConfigKey              = bsonutil.MustHaveTag(Version{}, "Config")
 	VersionConfigNumberKey        = bsonutil.MustHaveTag(Version{}, "ConfigUpdateNumber")
 	VersionIgnoredKey             = bsonutil.MustHaveTag(Version{}, "Ignored")
@@ -285,18 +286,6 @@ func VersionUpdateOne(query interface{}, update interface{}) error {
 		query,
 		update,
 	)
-}
-
-func VersionUpdateConfig(id, config string, configUpdateNumber int) error {
-	query := bson.M{
-		VersionIdKey:           id,
-		VersionConfigNumberKey: configUpdateNumber,
-	}
-	update := bson.M{
-		"$set": bson.M{VersionConfigKey: config},
-		"$inc": bson.M{VersionConfigNumberKey: 1},
-	}
-	return VersionUpdateOne(query, update)
 }
 
 func AddSatisfiedTrigger(versionID, definitionID string) error {

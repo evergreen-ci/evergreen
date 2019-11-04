@@ -249,12 +249,12 @@ func (tc *taskContext) hadTimedOut() bool {
 // makeTaskConfig fetches task configuration data required to run the task from the API server.
 func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*model.TaskConfig, error) {
 	if tc.project == nil && tc.version == nil {
-		tc.logger.Execution().Info("Fetching project config.")
 		err := a.fetchProjectConfig(ctx, tc)
 		if err != nil {
 			return nil, err
 		}
 	}
+
 	tc.logger.Execution().Info("Fetching distro configuration.")
 	confDistro, err := a.comm.GetDistro(ctx, tc.task)
 	if err != nil {
