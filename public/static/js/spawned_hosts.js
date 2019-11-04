@@ -69,8 +69,6 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       );
     }
 
-
-
     $scope.updateSpawnedHosts = function() {
         mciSpawnRestService.getSpawnedHosts(
             'hosts', {}, {
@@ -117,7 +115,6 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
             }
         }
     }
-
 
     $scope.computeUptime = function(host) {
         host.isTerminated = host.status == 'terminated';
@@ -437,8 +434,57 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       if (host.distro.arch.indexOf('win') != -1) {
         $scope.curHostData.isWinHost = true;
       }
+      $scope.getTags();
       $scope.fetchAllowedInstanceTypes();
     };
+
+    $scope.getTags = function() {
+        $scope.curHostData.tags_to_delete = [];
+        $scope.curHostData.tags_to_add = {};
+        $scope.curHostData.userTags = {};
+        if ($scope.curHostData.instance_tags === undefined) {
+            return;
+        }
+        for (var i = 0; i < $scope.curHostData.instance_tags.length; i++) {
+            let curTag = $scope.curHostData.instance_tags[i];
+            if (curTag.can_be_modified) {
+                $scope.curHostData.userTags[curTag.key] = curTag.val;
+            }
+        }
+    }
+
+    $scope.removeTag = function(key) {
+        delete $scope.curHostData.userTags[key];
+        if ($scope.curHostData.instance_tags !== undefined && key in $scope.curHostData.instance_tags) {
+            $scope.curHostData.tags_to_delete.push(key);
+        }
+    }
+
+    $scope.addTag = function() {
+        if ($scope.new_tag.key && $scope.new_tag.value) {
+            $scope.curHostData.tags_to_add[$scope.new_tag.key] = $scope.new_tag.value;
+            $scope.curHostData.userTags[$scope.new_tag.key] = $scope.new_tag.value;
+            $scope.new_tag = {};
+        }
+    }
+
+    $scope.validTag = function(key, value) {
+        if (!(key)){
+            $scope.invalidKeyMessage = "";
+            return false;
+        }
+
+        if (!(value)){
+            $scope.invalidKeyMessage = "";
+            return false;
+        }
+
+        return true;
+    }
+
+    $scope.updateTags = function() {
+        // TODO
+    }
 
     initializeModal = function(modal, title, action) {
       $scope.modalTitle = title;
