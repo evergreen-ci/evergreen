@@ -1334,6 +1334,12 @@ functions:
       binary: make
       env:
         CLIENT_URL: https://s3.amazonaws.com/mciuploads/evergreen/${task_id}/evergreen-ci/evergreen/clients/${goos}_${goarch}/evergreen
+buildvariants:
+- matrix_name: "my-matrix"
+  matrix_spec: { version: ["4.0", "4.2"], os: "linux" }
+  display_name: "${version} ${os} "
+  tasks:
+    - name: "task_1"
 `
 
 	for name, test := range map[string]func(t *testing.T){
@@ -1346,6 +1352,18 @@ functions:
 			assert.NoError(t, err)
 			assert.NoError(t, checkProjectPersists(yml))
 		},
+		"javaconfig.yml": func(t *testing.T) {
+			filepath := filepath.Join(testutil.GetDirectoryOfFile(), "..", "javaconfig.yml")
+			yml, err := ioutil.ReadFile(filepath)
+			require.NoError(t, err)
+			assert.NoError(t, checkProjectPersists(yml))
+		},
+		"javaconfig_master.yml": func(t *testing.T) {
+			filepath := filepath.Join(testutil.GetDirectoryOfFile(), "..", "javaconfig_master.yml")
+			yml, err := ioutil.ReadFile(filepath)
+			require.NoError(t, err)
+			assert.NoError(t, checkProjectPersists(yml))
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			assert.NoError(t, db.ClearCollections(ParserProjectCollection))
@@ -1356,15 +1374,23 @@ functions:
 
 func checkProjectPersists(yml []byte) error {
 	pp, err := createIntermediateProject(yml)
-	pp.Id = "my-project"
-	pp.Identifier = "old-project-identifier"
-	pp.ConfigUpdateNumber = 1
 	if err != nil {
 		return errors.Wrapf(err, "error creating project")
 	}
+
+	pp.Id = "my-project"
+	pp.Identifier = "old-project-identifier"
+	pp.ConfigUpdateNumber = 1
+
 	yamlToCompare, err := yaml.Marshal(pp)
 	if err != nil {
 		return errors.Wrapf(err, "error marshalling original project")
+	}
+
+	ioutil.WriteFile("new_javaconfig.yml", yamlToCompare, 0644)
+
+	if _, err = createIntermediateProject([]byte(yamlToCompare)); err != nil {
+		return errors.Wrap(err, "marshalled project cannot be parsed")
 	}
 
 	if err = pp.UpsertWithConfigNumber(1); err != nil {
@@ -1384,11 +1410,12 @@ func checkProjectPersists(yml []byte) error {
 
 	// ensure that updating with the re-parsed project doesn't error
 	pp, err = createIntermediateProject([]byte(newYaml))
-	pp.Id = "my-project"
-	pp.Identifier = "new-project-identifier"
 	if err != nil {
 		return errors.Wrap(err, "error creating intermediate project from stored config")
 	}
+	pp.Id = "my-project"
+	pp.Identifier = "new-project-identifier"
+
 	if err = pp.UpsertWithConfigNumber(2); err != nil {
 		return errors.Wrap(err, "error updating version's project")
 	}
@@ -1398,8 +1425,6 @@ func checkProjectPersists(yml []byte) error {
 		return errors.Wrapf(err, "error finding updated project")
 	}
 	if newPP.Identifier != pp.Identifier {
-		fmt.Println("new identifier: ", newPP.Identifier)
-		fmt.Println("old identifier: ", pp.Identifier)
 		return errors.New("version project not updated")
 	}
 	if newPP.ConfigUpdateNumber != 2 {

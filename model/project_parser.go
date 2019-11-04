@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/evergreen-ci/evergreen/db"
-
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -299,11 +298,11 @@ type parserBV struct {
 	Requires     taskSelectors      `yaml:"requires,omitempty" bson:"requires,omitempty"`
 
 	// internal matrix stuff
-	matrixId  string
-	matrixVal matrixValue
-	matrix    *matrix
+	MatrixId  string      `yaml:"matrix_id,omitempty" bson:"matrix_id,omitempty"`
+	MatrixVal matrixValue `yaml:"matrix_val,omitempty" bson:"matrix_val,omitempty"`
+	Matrix    *matrix     `yaml:"matrix,omitempty" bson:"matrix,omitempty"`
 
-	matrixRules []ruleAction
+	MatrixRules []ruleAction `yaml:"matrix_rules,omitempty" bson:"matrix_rules,omitempty"`
 }
 
 // helper methods for variant tag evaluations
@@ -316,7 +315,7 @@ func (pbv *parserBV) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	merr := unmarshal(&m)
 	if merr == nil {
 		if m.Id != "" {
-			*pbv = parserBV{matrix: &m}
+			*pbv = parserBV{Matrix: &m}
 			return nil
 		}
 	}
@@ -326,6 +325,12 @@ func (pbv *parserBV) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if err := unmarshal(&bv); err != nil {
 		return errors.WithStack(err)
 	}
+	// it's possible the matrix has already been correctly stored in the build variant
+	if bv.Matrix != nil && bv.Matrix.Id != "" {
+		*pbv = parserBV(bv)
+		return nil
+	}
+
 	if bv.Name == "" {
 		// if we're here, it's very likely that the user was building a matrix but broke
 		// the syntax, so we try and surface the matrix error if they used "matrix_name".
@@ -569,8 +574,8 @@ func (pp *ParserProject) AddBuildVariant(name, displayName, runOn string, batchT
 // buildvariant matrix definitions and matrix definitions.
 func sieveMatrixVariants(bvs []parserBV) (regular []parserBV, matrices []matrix) {
 	for _, bv := range bvs {
-		if bv.matrix != nil {
-			matrices = append(matrices, *bv.matrix)
+		if bv.Matrix != nil {
+			matrices = append(matrices, *bv.Matrix)
 		} else {
 			regular = append(regular, bv)
 		}
@@ -656,7 +661,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 		bv.Tasks, errs = evaluateBVTasks(tse, tgse, vse, pbv)
 
 		// evaluate any rules passed in during matrix construction
-		for _, r := range pbv.matrixRules {
+		for _, r := range pbv.MatrixRules {
 			// remove_tasks removes all tasks with matching names
 			if len(r.RemoveTasks) > 0 {
 				prunedTasks := []BuildVariantTaskUnit{}
