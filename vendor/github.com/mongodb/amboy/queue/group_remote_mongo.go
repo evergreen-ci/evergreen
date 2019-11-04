@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -40,6 +41,9 @@ type MongoDBQueueGroupOptions struct {
 	Ordered        bool
 	DefaultWorkers int
 
+	// If abortable is true, then use an abortable pool
+	Abortable bool
+
 	// WorkerPoolSize determines how many works will be allocated
 	// to each queue, based on the queue ID passed to it.
 	WorkerPoolSize func(string) int
@@ -65,11 +69,19 @@ func (opts *MongoDBQueueGroupOptions) constructor(ctx context.Context, name stri
 		}
 	}
 
+	var q remoteQueue
 	if opts.Ordered {
-		return newSimpleRemoteOrdered(workers)
+		q = newSimpleRemoteOrdered(workers)
+	} else {
+		q = newRemoteUnordered(workers)
 	}
 
-	return newRemoteUnordered(workers)
+	if opts.Abortable {
+		p := pool.NewAbortablePool(workers, q)
+		q.SetRunner(p)
+	}
+
+	return q
 }
 
 func (opts MongoDBQueueGroupOptions) validate() error {
