@@ -1352,18 +1352,6 @@ buildvariants:
 			assert.NoError(t, err)
 			assert.NoError(t, checkProjectPersists(yml))
 		},
-		"javaconfig.yml": func(t *testing.T) {
-			filepath := filepath.Join(testutil.GetDirectoryOfFile(), "..", "javaconfig.yml")
-			yml, err := ioutil.ReadFile(filepath)
-			require.NoError(t, err)
-			assert.NoError(t, checkProjectPersists(yml))
-		},
-		"javaconfig_master.yml": func(t *testing.T) {
-			filepath := filepath.Join(testutil.GetDirectoryOfFile(), "..", "javaconfig_master.yml")
-			yml, err := ioutil.ReadFile(filepath)
-			require.NoError(t, err)
-			assert.NoError(t, checkProjectPersists(yml))
-		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			assert.NoError(t, db.ClearCollections(ParserProjectCollection))
@@ -1386,8 +1374,6 @@ func checkProjectPersists(yml []byte) error {
 	if err != nil {
 		return errors.Wrapf(err, "error marshalling original project")
 	}
-
-	ioutil.WriteFile("new_javaconfig.yml", yamlToCompare, 0644)
 
 	if _, err = createIntermediateProject([]byte(yamlToCompare)); err != nil {
 		return errors.Wrap(err, "marshalled project cannot be parsed")
