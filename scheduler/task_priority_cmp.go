@@ -1,6 +1,8 @@
 package scheduler
 
 import (
+	"fmt"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
@@ -115,39 +117,36 @@ func tasksAreCommitBuilds(t1, t2 task.Task) bool {
 // list. This is to ensure that task groups are dispatched in the order that
 // they are defined.
 func byTaskGroupOrder(t1, t2 task.Task, comparator *CmpBasedTaskComparator) (int, error) {
-	if t1.Version != t2.Version {
-		return 0, nil
-	}
-
+	// Try other comparators if both tasks are not in task groups
 	if t1.TaskGroup == "" && t2.TaskGroup == "" {
 		return 0, nil
 	}
 
+	// If one task is in a task group, sort that one higher, which keeps the pre-byTaskGroupOrder order.
 	if t2.TaskGroup == "" && t1.TaskGroup != "" {
-		return 0, nil
+		return 1, nil
 	}
-
 	if t1.TaskGroup == "" && t2.TaskGroup != "" {
 		return -1, nil
 	}
 
-	if t1.TaskGroup != t2.TaskGroup {
+	// If tasks are in the same task group and build, apply the task group comparator.
+	if t1.TaskGroup == t2.TaskGroup && t1.BuildId == t2.BuildId {
+		if t1.TaskGroupOrder > t2.TaskGroupOrder {
+			return -1, nil
+		}
+		if t2.TaskGroupOrder > t1.TaskGroupOrder {
+			return 1, nil
+		}
+	}
+
+	// Otherwise, both tasks are in task groups but in different task groups or builds. Since
+	// returning 0 would cause other comparators to run, which could change the task group
+	// order, sort them using the same rules as the pre-sort step.
+	if fmt.Sprintf("%s-%s", t1.BuildId, t1.TaskGroup) < fmt.Sprintf("%s-%s", t2.BuildId, t2.TaskGroup) {
 		return 1, nil
 	}
-
-	if t1.BuildId != t2.BuildId {
-		return 1, nil
-	}
-
-	if t1.TaskGroupOrder > t2.TaskGroupOrder {
-		return -1, nil
-	}
-
-	if t2.TaskGroupOrder > t1.TaskGroupOrder {
-		return 1, nil
-	}
-
-	return 0, nil
+	return -1, nil
 }
 
 // byGenerateTasks schedules tasks that generate tasks ahead of tasks that do not.

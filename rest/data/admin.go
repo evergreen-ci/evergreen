@@ -224,6 +224,16 @@ func (ac *DBAdminConnector) GetAdminEventLog(before time.Time, n int) ([]restMod
 	return out, catcher.Resolve()
 }
 
+func (ac *DBAdminConnector) MapLDAPGroupToRole(group, roleID string) error {
+	mapping := &evergreen.LDAPRoleMap{}
+	return errors.Wrapf(mapping.Add(group, roleID), "error mapping %s to %s", group, roleID)
+}
+
+func (ac *DBAdminConnector) UnmapLDAPGroupToRole(group string) error {
+	mapping := &evergreen.LDAPRoleMap{}
+	return errors.Wrapf(mapping.Remove(group), "error unmapping %s", group)
+}
+
 type MockAdminConnector struct {
 	mu           sync.RWMutex
 	MockSettings *evergreen.Settings
@@ -302,4 +312,39 @@ func (ac *MockAdminConnector) GetAdminEventLog(before time.Time, n int) ([]restM
 
 func (ac *MockAdminConnector) RestartFailedCommitQueueVersions(opts model.RestartOptions) (*restModel.RestartResponse, error) {
 	return nil, errors.New("not implemented")
+}
+
+func (ac *MockAdminConnector) MapLDAPGroupToRole(group, roleID string) error {
+	if ac.MockSettings == nil {
+		ac.MockSettings = &evergreen.Settings{}
+	}
+
+	for i, mapping := range ac.MockSettings.LDAPRoleMap {
+		if mapping.LDAPGroup == group {
+			ac.MockSettings.LDAPRoleMap[i].RoleID = roleID
+			return nil
+		}
+	}
+	ac.MockSettings.LDAPRoleMap = append(
+		ac.MockSettings.LDAPRoleMap,
+		evergreen.LDAPRoleMapping{LDAPGroup: group, RoleID: roleID},
+	)
+
+	return nil
+}
+
+func (ac *MockAdminConnector) UnmapLDAPGroupToRole(group string) error {
+	if ac.MockSettings == nil {
+		return nil
+	}
+
+	for i, mapping := range ac.MockSettings.LDAPRoleMap {
+		if mapping.LDAPGroup == group {
+			ac.MockSettings.LDAPRoleMap[i] = ac.MockSettings.LDAPRoleMap[len(ac.MockSettings.LDAPRoleMap)-1]
+			ac.MockSettings.LDAPRoleMap = ac.MockSettings.LDAPRoleMap[:len(ac.MockSettings.LDAPRoleMap)-1]
+			return nil
+		}
+	}
+
+	return nil
 }
