@@ -70,7 +70,7 @@ type axisValue struct {
 	Tags        parserStringSlice `yaml:"tags,omitempty" bson:"tags,omitempty"`
 	Modules     parserStringSlice `yaml:"modules,omitempty" bson:"modules,omitempty"`
 	BatchTime   *int              `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
-	Stepback    *bool             `yaml:"stepback,omitempty" bson:"stepbac,omitempty"`
+	Stepback    *bool             `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 }
 
 // helper methods for tag selectors
