@@ -363,7 +363,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 
 		deleteTags := restModel.FromAPIStringList(updateParams.DeleteTags)
 		addTagPairs := restModel.FromAPIStringList(updateParams.AddTags)
-		addTags, err := host.MakeAWSTags(addTagPairs)
+		addTags, err := host.MakeHostTags(addTagPairs)
 		if err != nil {
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error creating tags to add: "+err.Error()))
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "Error creating tags to add"))

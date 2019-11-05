@@ -1763,8 +1763,8 @@ func (h *Host) SetTags() error {
 	)
 }
 
-// MakeAWSTags creates and validates a map of supplied instance tags
-func MakeAWSTags(tagSlice []string) ([]Tag, error) {
+// MakeHostTags creates and validates a map of supplied instance tags
+func MakeHostTags(tagSlice []string) ([]Tag, error) {
 	catcher := grip.NewBasicCatcher()
 	tagsMap := make(map[string]string)
 	for _, tagString := range tagSlice {

@@ -80,7 +80,7 @@ func hostCreate() cli.Command {
 				script = string(out)
 			}
 
-			tags, err := host.MakeAWSTags(tagSlice)
+			tags, err := host.MakeHostTags(tagSlice)
 			if err != nil {
 				return errors.Wrap(err, "problem generating tags")
 			}
@@ -169,7 +169,7 @@ func hostModify() cli.Command {
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
-			addTags, err := host.MakeAWSTags(addTagSlice)
+			addTags, err := host.MakeHostTags(addTagSlice)
 			if err != nil {
 				return errors.Wrap(err, "problem generating tags to add")
 			}
