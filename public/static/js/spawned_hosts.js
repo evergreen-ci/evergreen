@@ -272,6 +272,25 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       );
     };
 
+    $scope.updateTags = function() {
+        var tags_to_add = [];
+        for (key in $scope.curHostData.tags_to_add) {
+            var new_tag = key + "=" + $scope.curHostData.tags_to_add[key];
+            tags_to_add.push(new_tag);
+        }
+        mciSpawnRestService.updateHostTags(
+            'updateHostTags',
+            $scope.curHostData.id, tags_to_add, $scope.curHostData.tags_to_delete, {}, {
+                success: function (resp) {
+                    window.location.href = "/spawn";
+                },
+                error: function (resp) {
+                    notificationService.pushNotification('Error updating host tags: ' + resp.data.error,'errorHeader');
+                }
+            }
+        );
+    };
+
     $scope.updateInstanceType = function() {
       // Do nothing if no instance type selected
       if (!$scope.curHostData.selectedInstanceType) {
@@ -448,15 +467,21 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
         for (var i = 0; i < $scope.curHostData.instance_tags.length; i++) {
             let curTag = $scope.curHostData.instance_tags[i];
             if (curTag.can_be_modified) {
-                $scope.curHostData.userTags[curTag.key] = curTag.val;
+                $scope.curHostData.userTags[curTag.key] = curTag.value;
             }
         }
     }
 
     $scope.removeTag = function(key) {
         delete $scope.curHostData.userTags[key];
-        if ($scope.curHostData.instance_tags !== undefined && key in $scope.curHostData.instance_tags) {
-            $scope.curHostData.tags_to_delete.push(key);
+        // only add to delete list if key isn't dirty
+        if ($scope.curHostData.instance_tags !== undefined) {
+            for (var i = 0; i < $scope.curHostData.instance_tags.length; i++) {
+                if ($scope.curHostData.instance_tags[i].key === key) {
+                    $scope.curHostData.tags_to_delete.push(key);
+                    return;
+                }
+            }
         }
     }
 
@@ -480,10 +505,6 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
         }
 
         return true;
-    }
-
-    $scope.updateTags = function() {
-        // TODO
     }
 
     initializeModal = function(modal, title, action) {
