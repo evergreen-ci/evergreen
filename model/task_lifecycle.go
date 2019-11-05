@@ -999,7 +999,10 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 	}
 
 	if t.IsPartOfDisplay() {
-		return t.DisplayTask.SetResetWhenFinished()
+		if err = t.DisplayTask.SetResetWhenFinished(); err != nil {
+			return errors.Wrap(err, "can't mark display task for reset")
+		}
+		return errors.Wrap(checkResetDisplayTask(t.DisplayTask), "can't check display task reset")
 	}
 
 	return errors.Wrap(TryResetTask(t.Id, "mci", evergreen.MonitorPackage, &t.Details), "problem resetting task")

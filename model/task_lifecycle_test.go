@@ -2347,6 +2347,53 @@ func TestClearAndResetStaleStrandedTask(t *testing.T) {
 	assert.Equal(evergreen.TaskFailed, updatedBuild.Tasks[0].Status)
 }
 
+func TestClearAndResetExecTask(t *testing.T) {
+	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection))
+
+	dispTask := &task.Task{
+		Id:             "dt",
+		Status:         evergreen.TaskStarted,
+		Activated:      true,
+		ActivatedTime:  time.Now(),
+		BuildId:        "b",
+		ExecutionTasks: []string{"et"},
+		DisplayOnly:    true,
+	}
+
+	execTask := &task.Task{
+		Id:            "et",
+		Status:        evergreen.TaskStarted,
+		Activated:     true,
+		ActivatedTime: time.Now(),
+		BuildId:       "b",
+	}
+	assert.NoError(t, dispTask.Insert())
+	assert.NoError(t, execTask.Insert())
+
+	h := &host.Host{
+		Id:          "h1",
+		RunningTask: "et",
+	}
+	assert.NoError(t, h.Insert())
+
+	b := build.Build{
+		Id: "b",
+		Tasks: []build.TaskCache{
+			build.TaskCache{Id: "dt"},
+			build.TaskCache{Id: "et"},
+		},
+	}
+	assert.NoError(t, b.Insert())
+
+	assert.NoError(t, ClearAndResetStrandedTask(h))
+	restartedDisplayTask, err := task.FindOne(task.ById("dt"))
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.TaskUndispatched, restartedDisplayTask.Status)
+	restartedExecutionTask, err := task.FindOne(task.ById("et"))
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.TaskUndispatched, restartedExecutionTask.Status)
+}
+
 func TestDisplayTaskUpdates(t *testing.T) {
 	require.NoError(t, db.ClearCollections(task.Collection, event.AllLogCollection), "error clearing collection")
 	assert := assert.New(t)
