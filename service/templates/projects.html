@@ -104,13 +104,13 @@ Evergreen Projects
             <label class="control-label">
               <input type="radio" ng-model="settingsFormData.enabled" ng-value="true"> <strong> Enabled </strong>
             </label> <br>
-            <label class="muted col-lg-offset-1"> Track incoming commits to the repo and create/schedule its tasks.</label>
+            <label class="muted col-lg-offset-1">Enable testing</label>
           </div>
           <div class="radio">
             <label class="control-label">
               <input type="radio" ng-model="settingsFormData.enabled" ng-value="false"> <strong> Disabled </strong>
             </label> <br>
-            <label class="muted col-lg-offset-1">Don&#39;t track any new commits until re-enabled.</label>
+            <label class="muted col-lg-offset-1">Suspend testing</label>
           </div>
         </div>
       </div>
@@ -225,10 +225,16 @@ Evergreen Projects
               <div class="muted small">When checked, tasks from previous revisions will be unscheduled when the equivalent task in a newer commit finishes successfully.</div>
             </div>
           </div>
-          <div ng-show="github_webhooks_enabled">
-            <div class="h3">Repotracker Settings</div>
-            <div class="form-group">
-                <div class="col-lg-5 col-header">
+          <div class="h3">Repotracker Settings</div>
+          <div class="form-group">
+              <div class="col-lg-5 col-header">
+                  <div>
+                      <label class="control-label">Disable Repotracker&nbsp;&nbsp;
+                        <input type="checkbox" name="disable_repotracker" ng-model="settingsFormData.repotracker_disabled"/>
+                      </label>
+                      <div class="muted small">Ignore commits pushed to the repo</div>
+                  </div>
+                  <div ng-hide="settingsFormData.repotracker_disabled || !github_webhooks_enabled">
                     <div class="radio">
                         <label class="control-label">
                             <input type="radio" ng-model="settingsFormData.tracks_push_events" ng-value="false"> <strong> Trigger Repotracker via Runner</strong>
@@ -241,14 +247,14 @@ Evergreen Projects
                         </label> <br>
                         <label class="muted col-lg-offset-1">Repotracker will be triggered from Github PushEvents sent via webhooks</label>
                     </div>
-                </div>
-                <br />
-                <div class="col-lg-8 col-header">
-                  <label class="control-label">Force run Repotracker on Save&nbsp;&nbsp;
-                    <input type="checkbox" name="force_repotracker_run" ng-model="settingsFormData.force_repotracker_run" ng-checked="repoChanged" />
-                  </label>
-                </div>
-            </div>
+                  </div>
+              </div>
+              <br />
+              <div class="col-lg-8 col-header">
+                <label class="control-label">Force run Repotracker on Save&nbsp;&nbsp;
+                  <input type="checkbox" name="force_repotracker_run" ng-model="settingsFormData.force_repotracker_run" ng-checked="repoChanged" />
+                </label>
+              </div>
           </div>
         </div>
 

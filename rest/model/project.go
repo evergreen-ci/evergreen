@@ -6,21 +6,22 @@ import (
 )
 
 type APIProject struct {
-	BatchTime          int                  `json:"batch_time"`
-	Branch             APIString            `json:"branch_name"`
-	DisplayName        APIString            `json:"display_name"`
-	Enabled            bool                 `json:"enabled"`
-	Identifier         APIString            `json:"identifier"`
-	Owner              APIString            `json:"owner_name"`
-	Private            bool                 `json:"private"`
-	RemotePath         APIString            `json:"remote_path"`
-	Repo               APIString            `json:"repo_name"`
-	Tracked            bool                 `json:"tracked"`
-	DeactivatePrevious bool                 `json:"deactivate_previous"`
-	Admins             []APIString          `json:"admins"`
-	TracksPushEvents   bool                 `json:"tracks_push_events"`
-	PRTestingEnabled   bool                 `json:"pr_testing_enabled"`
-	CommitQueue        APICommitQueueParams `json:"commit_queue"`
+	BatchTime           int                  `json:"batch_time"`
+	Branch              APIString            `json:"branch_name"`
+	DisplayName         APIString            `json:"display_name"`
+	Enabled             bool                 `json:"enabled"`
+	RepotrackerDisabled bool                 `json:"repotracker_disabled"`
+	Identifier          APIString            `json:"identifier"`
+	Owner               APIString            `json:"owner_name"`
+	Private             bool                 `json:"private"`
+	RemotePath          APIString            `json:"remote_path"`
+	Repo                APIString            `json:"repo_name"`
+	Tracked             bool                 `json:"tracked"`
+	DeactivatePrevious  bool                 `json:"deactivate_previous"`
+	Admins              []APIString          `json:"admins"`
+	TracksPushEvents    bool                 `json:"tracks_push_events"`
+	PRTestingEnabled    bool                 `json:"pr_testing_enabled"`
+	CommitQueue         APICommitQueueParams `json:"commit_queue"`
 }
 
 func (apiProject *APIProject) BuildFromService(p interface{}) error {
@@ -44,6 +45,7 @@ func (apiProject *APIProject) BuildFromService(p interface{}) error {
 	apiProject.Branch = ToAPIString(v.Branch)
 	apiProject.DisplayName = ToAPIString(v.DisplayName)
 	apiProject.Enabled = v.Enabled
+	apiProject.RepotrackerDisabled = v.RepotrackerDisabled
 	apiProject.Identifier = ToAPIString(v.Identifier)
 	apiProject.Owner = ToAPIString(v.Owner)
 	apiProject.Private = v.Private
