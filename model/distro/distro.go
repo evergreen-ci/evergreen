@@ -76,6 +76,10 @@ func (d *Distro) ValidateBootstrapSettings() error {
 		catcher.Errorf("'%s' is not a valid bootstrap method", d.BootstrapSettings.Method)
 	}
 
+	if d.BootstrapSettings.Method == BootstrapMethodNone {
+		return catcher.Resolve()
+	}
+
 	if !util.StringSliceContains(validCommunicationMethods, d.BootstrapSettings.Communication) {
 		catcher.Errorf("'%s' is not a valid communication method", d.BootstrapSettings.Communication)
 	}
@@ -148,6 +152,7 @@ const (
 	ArchWindowsAmd64 = "windows_amd64"
 
 	// Bootstrapping mechanisms
+	BootstrapMethodNone               = "none"
 	BootstrapMethodLegacySSH          = "legacy-ssh"
 	BootstrapMethodSSH                = "ssh"
 	BootstrapMethodPreconfiguredImage = "preconfigured-image"
@@ -176,6 +181,7 @@ var validArches = []string{
 
 // validBootstrapMethods includes all recognized bootstrap methods.
 var validBootstrapMethods = []string{
+	BootstrapMethodNone,
 	BootstrapMethodLegacySSH,
 	BootstrapMethodSSH,
 	BootstrapMethodPreconfiguredImage,

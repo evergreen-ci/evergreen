@@ -174,6 +174,14 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 		}
 	}
 
+	if createHost.ProvisioningMethod == "" {
+		createHost.ProvisioningMethod = distro.BootstrapMethodNone
+	}
+	d.BootstrapSettings.Method = createHost.ProvisioningMethod
+	if err := d.ValidateBootstrapSettings(); err != nil {
+		return nil, errors.Wrap(err, "problem validating distro bootstrap settings")
+	}
+
 	options, err := getAgentOptions(taskID, userID, createHost)
 	if err != nil {
 		return nil, errors.Wrap(err, "error making host options for docker")
@@ -233,6 +241,14 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 		if err = mapstructure.Decode(d.ProviderSettings, &ec2Settings); err != nil {
 			return nil, errors.Wrap(err, "problem unmarshaling provider settings")
 		}
+	}
+
+	if createHost.ProvisioningMethod == "" {
+		createHost.ProvisioningMethod = distro.BootstrapMethodNone
+	}
+	d.BootstrapSettings.Method = createHost.ProvisioningMethod
+	if err := d.ValidateBootstrapSettings(); err != nil {
+		return nil, errors.Wrap(err, "problem validating distro bootstrap settings")
 	}
 
 	// set provider

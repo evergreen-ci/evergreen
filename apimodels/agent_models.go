@@ -3,6 +3,7 @@ package apimodels
 import (
 	"strconv"
 
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -108,6 +109,9 @@ type CreateHost struct {
 	AWSKeyID        string      `mapstructure:"aws_access_key_id" json:"aws_access_key_id" plugin:"expand"`
 	AWSSecret       string      `mapstructure:"aws_secret_access_key" json:"aws_secret_access_key" plugin:"expand"`
 	KeyName         string      `mapstructure:"key_name" json:"key_name" plugin:"expand"`
+
+	// Provisioning-related settings
+	ProvisioningMethod string `mapstructure:"provisioning_method" json:"provisioning_method" plugin:"expand"`
 
 	// docker-related settings
 	Image                    string            `mapstructure:"image" json:"image" plugin:"expand"`
@@ -255,6 +259,10 @@ func (ch *CreateHost) Validate() error {
 
 	if ch.CloudProvider == ProviderDocker {
 		return ch.ValidateDocker()
+	}
+
+	if ch.ProvisioningMethod == "" {
+		ch.ProvisioningMethod = distro.BootstrapMethodNone
 	}
 
 	return errors.Errorf("Cloud provider must be either '%s' or '%s'", ProviderEC2, ProviderDocker)
