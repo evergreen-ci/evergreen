@@ -67,7 +67,7 @@ func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if hph.options.NoExpiration {
-		if err := CheckExpirableHostLimitExceeded(user.Id, hph.settings.UnexpirableHostsPerUser); err != nil {
+		if err := CheckUnexpirableHostLimitExceeded(user.Id, hph.settings.UnexpirableHostsPerUser); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 	}
@@ -144,7 +144,7 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 		catcher.Add(checkInstanceTypeValid(foundHost.Provider, h.options.InstanceType, h.env.Settings()))
 	}
 	if h.options.NoExpiration != nil && *h.options.NoExpiration {
-		catcher.Add(CheckExpirableHostLimitExceeded(user.Id, h.env.Settings().UnexpirableHostsPerUser))
+		catcher.Add(CheckUnexpirableHostLimitExceeded(user.Id, h.env.Settings().UnexpirableHostsPerUser))
 	}
 	if catcher.HasErrors() {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "Invalid host modify request"))
@@ -206,14 +206,14 @@ func checkInstanceTypeHostStopped(h *host.Host) error {
 	return nil
 }
 
-func CheckExpirableHostLimitExceeded(userId string, maxHostsFromSettings *int) error {
+func CheckUnexpirableHostLimitExceeded(userId string, maxHostsFromSettings int) error {
 	count, err := host.CountSpawnhostsWithNoExpirationByUser(userId)
 	if err != nil {
 		return errors.Wrapf(err, "error counting number of existing non-expiring hosts for '%s'", userId)
 	}
 	maxHosts := host.MaxSpawnhostsWithNoExpirationPerUser
-	if maxHostsFromSettings != nil {
-		maxHosts = *maxHostsFromSettings
+	if maxHostsFromSettings >= 0 {
+		maxHosts = maxHostsFromSettings
 	}
 	if count >= maxHosts {
 		return errors.Errorf("can only have %d expirable hosts", maxHosts)
@@ -221,15 +221,15 @@ func CheckExpirableHostLimitExceeded(userId string, maxHostsFromSettings *int) e
 	return nil
 }
 
-func checkVolumeLimitExceeded(user string, newSize int, maxSize *int) error {
-	if maxSize == nil || *maxSize <= 0 {
+func checkVolumeLimitExceeded(user string, newSize int, maxSize int) error {
+	if maxSize < 0 {
 		return nil
 	}
 	totalSize, err := host.FindTotalVolumeSizeByUser(user)
 	if err != nil {
 		return errors.Wrapf(err, "error finding total volume size for user")
 	}
-	if totalSize+newSize > *maxSize {
+	if totalSize+newSize > maxSize {
 		return errors.Errorf("volume size limit %d exceeded", maxSize)
 	}
 	return nil

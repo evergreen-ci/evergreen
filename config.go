@@ -84,12 +84,12 @@ type Settings struct {
 	Scheduler               SchedulerConfig           `yaml:"scheduler" bson:"scheduler" json:"scheduler" id:"scheduler"`
 	ServiceFlags            ServiceFlags              `bson:"service_flags" json:"service_flags" id:"service_flags" yaml:"service_flags"`
 	Slack                   SlackConfig               `yaml:"slack" bson:"slack" json:"slack" id:"slack"`
-	SpawnHostsPerUser       *int                      `yaml:"spawn_hosts_per_user" bson:"spawn_hosts_per_user" json:"spawn_hosts_per_user"`
+	SpawnHostsPerUser       int                       `yaml:"spawn_hosts_per_user" bson:"spawn_hosts_per_user" json:"spawn_hosts_per_user"`
 	Splunk                  send.SplunkConnectionInfo `yaml:"splunk" bson:"splunk" json:"splunk"`
 	SuperUsers              []string                  `yaml:"superusers" bson:"superusers" json:"superusers"`
 	Triggers                TriggerConfig             `yaml:"triggers" bson:"triggers" json:"triggers" id:"triggers"`
 	Ui                      UIConfig                  `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
-	UnexpirableHostsPerUser *int                      `yaml:"unexpirable_hosts_per_user" bson:"unexpirable_hosts_per_user" json:"unexpirable_hosts_per_user"`
+	UnexpirableHostsPerUser int                       `yaml:"unexpirable_hosts_per_user" bson:"unexpirable_hosts_per_user" json:"unexpirable_hosts_per_user"`
 }
 
 func (c *Settings) SectionId() string { return ConfigDocID }

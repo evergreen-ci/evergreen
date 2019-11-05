@@ -60,8 +60,8 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error retrieving settings"))
 		return
 	}
-	if settings.SpawnHostsPerUser != nil {
-		maxHosts = *settings.SpawnHostsPerUser
+	if settings.SpawnHostsPerUser >= 0 {
+		maxHosts = settings.SpawnHostsPerUser
 	}
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Distro          distro.Distro
@@ -308,7 +308,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 
 	case HostExpirationExtension:
 		if updateParams.Expiration.IsZero() { // set expiration to never expire
-			if err := route.CheckExpirableHostLimitExceeded(u.Id, uis.Settings.UnexpirableHostsPerUser); err != nil {
+			if err := route.CheckUnexpirableHostLimitExceeded(u.Id, uis.Settings.UnexpirableHostsPerUser); err != nil {
 				PushFlash(uis.CookieStore, r, w, NewErrorFlash(err.Error()))
 				uis.LoggedError(w, r, http.StatusBadRequest, err)
 				return

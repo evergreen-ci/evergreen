@@ -126,9 +126,13 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.Expansions = v.Expansions
 		as.Keys = v.Keys
 		as.SuperUsers = v.SuperUsers
-		as.UnexpirableHostsPerUser = v.UnexpirableHostsPerUser
-		as.SpawnHostsPerUser = v.SpawnHostsPerUser
 		as.GithubOrgs = v.GithubOrgs
+		if v.UnexpirableHostsPerUser >= 0 {
+			as.UnexpirableHostsPerUser = &v.UnexpirableHostsPerUser
+		}
+		if v.SpawnHostsPerUser >= 0 {
+			as.SpawnHostsPerUser = &v.SpawnHostsPerUser
+		}
 	default:
 		return errors.Errorf("%T is not a supported admin settings type", h)
 	}
@@ -138,12 +142,14 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 // ToService returns a service model from an API model
 func (as *APIAdminSettings) ToService() (interface{}, error) {
 	settings := evergreen.Settings{
-		Credentials: map[string]string{},
-		Expansions:  map[string]string{},
-		Keys:        map[string]string{},
-		Plugins:     evergreen.PluginConfig{},
-		SuperUsers:  as.SuperUsers,
-		GithubOrgs:  as.GithubOrgs,
+		Credentials:             map[string]string{},
+		Expansions:              map[string]string{},
+		Keys:                    map[string]string{},
+		Plugins:                 evergreen.PluginConfig{},
+		SuperUsers:              as.SuperUsers,
+		GithubOrgs:              as.GithubOrgs,
+		SpawnHostsPerUser:       -1,
+		UnexpirableHostsPerUser: -1,
 	}
 	if as.ApiUrl != nil {
 		settings.ApiUrl = *as.ApiUrl
@@ -162,8 +168,7 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	}
 	settings.DomainName = FromAPIString(as.DomainName)
 	settings.Bugsnag = FromAPIString(as.Bugsnag)
-	settings.SpawnHostsPerUser = as.SpawnHostsPerUser
-	settings.UnexpirableHostsPerUser = as.UnexpirableHostsPerUser
+
 	if as.GithubPRCreatorOrg != nil {
 		settings.GithubPRCreatorOrg = *as.GithubPRCreatorOrg
 	}
@@ -172,6 +177,12 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	}
 	if as.PprofPort != nil {
 		settings.PprofPort = *as.PprofPort
+	}
+	if as.SpawnHostsPerUser != nil {
+		settings.SpawnHostsPerUser = *as.SpawnHostsPerUser
+	}
+	if as.UnexpirableHostsPerUser != nil {
+		settings.UnexpirableHostsPerUser = *as.UnexpirableHostsPerUser
 	}
 
 	apiModelReflect := reflect.ValueOf(*as)
@@ -1014,7 +1025,9 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 		a.Bucket = ToAPIString(v.Bucket)
 		a.S3BaseURL = ToAPIString(v.S3BaseURL)
 		a.DefaultSecurityGroup = ToAPIString(v.DefaultSecurityGroup)
-		a.MaxVolumeSizePerUser = v.MaxVolumeSizePerUser
+		if v.MaxVolumeSizePerUser >= 0 {
+			a.MaxVolumeSizePerUser = &v.MaxVolumeSizePerUser
+		}
 		for _, t := range v.AllowedInstanceTypes {
 			a.AllowedInstanceTypes = append(a.AllowedInstanceTypes, ToAPIString(t))
 		}
@@ -1038,11 +1051,14 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		Bucket:               FromAPIString(a.Bucket),
 		S3BaseURL:            FromAPIString(a.S3BaseURL),
 		DefaultSecurityGroup: FromAPIString(a.DefaultSecurityGroup),
-		MaxVolumeSizePerUser: a.MaxVolumeSizePerUser,
+		MaxVolumeSizePerUser: -1,
 
 		// Legacy
 		EC2Key:    FromAPIString(a.EC2Key),
 		EC2Secret: FromAPIString(a.EC2Secret),
+	}
+	if a.MaxVolumeSizePerUser != nil {
+		config.MaxVolumeSizePerUser = *a.MaxVolumeSizePerUser
 	}
 
 	for _, k := range a.EC2Keys {

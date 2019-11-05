@@ -66,8 +66,8 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.GithubPRCreatorOrg, *apiSettings.GithubPRCreatorOrg)
 	assert.Equal(testSettings.LogPath, *apiSettings.LogPath)
 	assert.Equal(testSettings.PprofPort, *apiSettings.PprofPort)
-	assert.Equal(testSettings.SpawnHostsPerUser, apiSettings.SpawnHostsPerUser)
-	assert.Equal(testSettings.UnexpirableHostsPerUser, apiSettings.UnexpirableHostsPerUser)
+	assert.Equal(testSettings.SpawnHostsPerUser, *apiSettings.SpawnHostsPerUser)
+	assert.Equal(testSettings.UnexpirableHostsPerUser, *apiSettings.UnexpirableHostsPerUser)
 	for k, v := range testSettings.Credentials {
 		assert.Contains(apiSettings.Credentials, k)
 		assert.Equal(v, apiSettings.Credentials[k])
@@ -121,7 +121,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Key, FromAPIString(apiSettings.Providers.AWS.EC2Keys[0].Key))
 	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Secret, FromAPIString(apiSettings.Providers.AWS.EC2Keys[0].Secret))
 	assert.EqualValues(testSettings.Providers.AWS.DefaultSecurityGroup, FromAPIString(apiSettings.Providers.AWS.DefaultSecurityGroup))
-	assert.EqualValues(testSettings.Providers.AWS.MaxVolumeSizePerUser, apiSettings.Providers.AWS.MaxVolumeSizePerUser)
+	assert.EqualValues(testSettings.Providers.AWS.MaxVolumeSizePerUser, *apiSettings.Providers.AWS.MaxVolumeSizePerUser)
 	assert.EqualValues(testSettings.Providers.AWS.EC2Key, FromAPIString(apiSettings.Providers.AWS.EC2Key)) // Legacy
 	assert.EqualValues(testSettings.Providers.Docker.APIVersion, FromAPIString(apiSettings.Providers.Docker.APIVersion))
 	assert.EqualValues(testSettings.Providers.GCE.ClientEmail, FromAPIString(apiSettings.Providers.GCE.ClientEmail))
