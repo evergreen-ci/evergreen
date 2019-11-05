@@ -255,7 +255,9 @@ const (
 	InitSystemUpstart = "upstart"
 
 	// Max number of spawn hosts with no expiration for user
-	MaxSpawnhostsWithNoExpirationPerUser = 1
+	DefaultUnexpirableHostsPerUser = 1
+	// Max total EBS volume size for user
+	DefaultMaxVolumeSizePerUser = 200
 )
 
 func (h *Host) GetTaskGroupString() string {

@@ -206,14 +206,10 @@ func checkInstanceTypeHostStopped(h *host.Host) error {
 	return nil
 }
 
-func CheckUnexpirableHostLimitExceeded(userId string, maxHostsFromSettings int) error {
+func CheckUnexpirableHostLimitExceeded(userId string, maxHosts int) error {
 	count, err := host.CountSpawnhostsWithNoExpirationByUser(userId)
 	if err != nil {
 		return errors.Wrapf(err, "error counting number of existing non-expiring hosts for '%s'", userId)
-	}
-	maxHosts := host.MaxSpawnhostsWithNoExpirationPerUser
-	if maxHostsFromSettings >= 0 {
-		maxHosts = maxHostsFromSettings
 	}
 	if count >= maxHosts {
 		return errors.Errorf("can only have %d expirable hosts", maxHosts)
@@ -222,9 +218,6 @@ func CheckUnexpirableHostLimitExceeded(userId string, maxHostsFromSettings int) 
 }
 
 func checkVolumeLimitExceeded(user string, newSize int, maxSize int) error {
-	if maxSize < 0 {
-		return nil
-	}
 	totalSize, err := host.FindTotalVolumeSizeByUser(user)
 	if err != nil {
 		return errors.Wrapf(err, "error finding total volume size for user")

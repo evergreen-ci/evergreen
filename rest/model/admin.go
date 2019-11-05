@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
@@ -127,12 +129,8 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.Keys = v.Keys
 		as.SuperUsers = v.SuperUsers
 		as.GithubOrgs = v.GithubOrgs
-		if v.UnexpirableHostsPerUser >= 0 {
-			as.UnexpirableHostsPerUser = &v.UnexpirableHostsPerUser
-		}
-		if v.SpawnHostsPerUser >= 0 {
-			as.SpawnHostsPerUser = &v.SpawnHostsPerUser
-		}
+		as.UnexpirableHostsPerUser = &v.UnexpirableHostsPerUser
+		as.SpawnHostsPerUser = &v.SpawnHostsPerUser
 	default:
 		return errors.Errorf("%T is not a supported admin settings type", h)
 	}
@@ -148,8 +146,8 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 		Plugins:                 evergreen.PluginConfig{},
 		SuperUsers:              as.SuperUsers,
 		GithubOrgs:              as.GithubOrgs,
-		SpawnHostsPerUser:       -1,
-		UnexpirableHostsPerUser: -1,
+		SpawnHostsPerUser:       cloud.DefaultMaxSpawnHostsPerUser,
+		UnexpirableHostsPerUser: host.DefaultUnexpirableHostsPerUser,
 	}
 	if as.ApiUrl != nil {
 		settings.ApiUrl = *as.ApiUrl
@@ -1025,9 +1023,8 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 		a.Bucket = ToAPIString(v.Bucket)
 		a.S3BaseURL = ToAPIString(v.S3BaseURL)
 		a.DefaultSecurityGroup = ToAPIString(v.DefaultSecurityGroup)
-		if v.MaxVolumeSizePerUser >= 0 {
-			a.MaxVolumeSizePerUser = &v.MaxVolumeSizePerUser
-		}
+		a.MaxVolumeSizePerUser = &v.MaxVolumeSizePerUser
+
 		for _, t := range v.AllowedInstanceTypes {
 			a.AllowedInstanceTypes = append(a.AllowedInstanceTypes, ToAPIString(t))
 		}
@@ -1051,7 +1048,7 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		Bucket:               FromAPIString(a.Bucket),
 		S3BaseURL:            FromAPIString(a.S3BaseURL),
 		DefaultSecurityGroup: FromAPIString(a.DefaultSecurityGroup),
-		MaxVolumeSizePerUser: -1,
+		MaxVolumeSizePerUser: host.DefaultMaxVolumeSizePerUser,
 
 		// Legacy
 		EC2Key:    FromAPIString(a.EC2Key),

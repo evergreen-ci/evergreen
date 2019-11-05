@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	MaxSpawnHostsPerUser                = 3
+	DefaultMaxSpawnHostsPerUser         = 3
 	DefaultSpawnHostExpiration          = 24 * time.Hour
 	SpawnHostNoExpirationDuration       = 7 * 24 * time.Hour
 	MaxSpawnHostExpirationDurationHours = 24 * time.Hour * 14
@@ -98,13 +98,10 @@ func checkSpawnHostLimitExceeded(numCurrentHosts int) error {
 	if err != nil {
 		return errors.Wrapf(err, "Error occurred getting evergreen settings")
 	}
-	maxHosts := MaxSpawnHostsPerUser
-	if settings.SpawnHostsPerUser >= 0 {
-		maxHosts = settings.SpawnHostsPerUser
-	}
-	if numCurrentHosts >= maxHosts {
+
+	if numCurrentHosts >= settings.SpawnHostsPerUser {
 		return errors.Errorf("User is already running the max allowed number of spawn hosts (%d of %d)",
-			numCurrentHosts, maxHosts)
+			numCurrentHosts, settings.SpawnHostsPerUser)
 	}
 	return nil
 }
