@@ -9,6 +9,7 @@ func Volume() cli.Command {
 		Subcommands: []cli.Command{
 			hostCreateVolume(),
 			hostDeleteVolume(),
+			hostListVolume(),
 		},
 	}
 }

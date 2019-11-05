@@ -1079,3 +1079,13 @@ func FindOneVolume(query interface{}) (*Volume, error) {
 	}
 	return v, err
 }
+
+func FindVolumesByUser(userID string) ([]*Volume, error) {
+	volumes := []*Volume{}
+	query := bson.M{
+		VolumeCreatedByKey: userID,
+	}
+	err := db.FindAll(VolumesCollection, query, db.NoProjection, db.NoSort, db.NoSkip, db.NoLimit, &volumes)
+
+	return volumes, err
+}

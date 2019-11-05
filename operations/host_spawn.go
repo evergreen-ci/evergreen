@@ -438,6 +438,56 @@ func hostDetach() cli.Command {
 	}
 }
 
+func hostListVolume() cli.Command {
+	return cli.Command{
+		Name:  "list",
+		Usage: "list volumes for user",
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.getRestCommunicator(ctx)
+			defer client.Close()
+
+			volumes, err := client.GetVolumesByUser(ctx)
+			if err != nil {
+				return err
+			}
+			printVolumes(volumes, conf.User)
+			return nil
+		},
+	}
+}
+
+func printVolumes(volumes []model.APIVolume, userID string) {
+	if len(volumes) == 0 {
+		grip.Infof("no volumes started by user '%s'", userID)
+		return
+	}
+	totalSize := 0
+	for _, v := range volumes {
+		totalSize += v.Size
+	}
+	grip.Infof("%d volumes started by %s (total size %d):", len(volumes), userID, totalSize)
+	for _, v := range volumes {
+		grip.Infof("\nID              : %s", model.FromAPIString(v.ID))
+		grip.Infof("Size              : %d", v.Size)
+		grip.Infof("Type              : %s", model.FromAPIString(v.Type))
+		grip.Infof("Availability Zone : %s", model.FromAPIString(v.AvailabilityZone))
+		if model.FromAPIString(v.HostID) != "" {
+			grip.Infof("Device Name       : %s", model.FromAPIString(v.DeviceName))
+			grip.Infof("Attached to Host  : %s", model.FromAPIString(v.HostID))
+
+		}
+
+	}
+}
+
 func hostCreateVolume() cli.Command {
 	const (
 		sizeFlag = "size"
