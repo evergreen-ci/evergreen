@@ -545,75 +545,110 @@ func MapPermissionKeyToName(permissionKey string) string {
 		return "Patches"
 	case PermissionLogs:
 		return "Logs"
+	case PermissionDistroSettings:
+		return "Distro Settings"
+	case PermissionHosts:
+		return "Distro Hosts"
 	}
 	return ""
 }
 
-type PermissionLevel struct {
+type Permission struct {
 	Description string `json:"description"`
 	Value       int    `json:"value"`
 }
 
-func MapPermissionKeyToPermissionLevels(permissionKey string) []PermissionLevel {
+func MapPermissionKeyToPermissionLevels(permissionKey string) []Permission {
 	switch permissionKey {
 	case PermissionProjectSettings:
-		return []PermissionLevel{
-			PermissionLevel{
+		return []Permission{
+			Permission{
 				Description: ProjectSettingsEdit.String(),
 				Value:       ProjectSettingsEdit.Value(),
 			},
-			PermissionLevel{
+			Permission{
 				Description: ProjectSettingsView.String(),
 				Value:       ProjectSettingsView.Value(),
 			},
-			PermissionLevel{
+			Permission{
 				Description: ProjectSettingsNone.String(),
 				Value:       ProjectSettingsNone.Value(),
 			},
 		}
 	case PermissionTasks:
-		return []PermissionLevel{
-			PermissionLevel{
+		return []Permission{
+			Permission{
 				Description: TasksAdmin.String(),
 				Value:       TasksAdmin.Value(),
 			},
-			PermissionLevel{
+			Permission{
 				Description: TasksBasic.String(),
 				Value:       TasksBasic.Value(),
 			},
-			PermissionLevel{
+			Permission{
 				Description: TasksView.String(),
 				Value:       TasksView.Value(),
 			},
-			PermissionLevel{
+			Permission{
 				Description: TasksNone.String(),
 				Value:       TasksNone.Value(),
 			},
 		}
 	case PermissionPatches:
-		return []PermissionLevel{
-			PermissionLevel{
+		return []Permission{
+			Permission{
 				Description: PatchSubmit.String(),
 				Value:       PatchSubmit.Value(),
 			},
-			PermissionLevel{
+			Permission{
 				Description: PatchNone.String(),
 				Value:       PatchNone.Value(),
 			},
 		}
 	case PermissionLogs:
-		return []PermissionLevel{
-			PermissionLevel{
+		return []Permission{
+			Permission{
 				Description: LogsView.String(),
 				Value:       LogsView.Value(),
 			},
-			PermissionLevel{
+			Permission{
 				Description: LogsNone.String(),
 				Value:       LogsNone.Value(),
 			},
 		}
+	case PermissionDistroSettings:
+		return []Permission{
+			Permission{
+				Description: DistroSettingsEdit.String(),
+				Value:       DistroSettingsEdit.Value(),
+			},
+			Permission{
+				Description: DistroSettingsRead.String(),
+				Value:       DistroSettingsRead.Value(),
+			},
+			Permission{
+				Description: DistroSettingsNone.String(),
+				Value:       DistroSettingsNone.Value(),
+			},
+		}
+	case PermissionHosts:
+		return []Permission{
+			Permission{
+				Description: HostsEdit.String(),
+				Value:       HostsEdit.Value(),
+			},
+			Permission{
+				Description: HostsRead.String(),
+				Value:       HostsRead.Value(),
+			},
+			Permission{
+				Description: HostsNone.String(),
+				Value:       HostsNone.Value(),
+			},
+		}
 	}
-	return []PermissionLevel{}
+
+	return []Permission{}
 }
 func (p ProjectSettingsPermission) String() string {
 	switch p {

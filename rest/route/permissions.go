@@ -17,7 +17,7 @@ func (p *permissionsGetHandler) Parse(ctx context.Context, r *http.Request) erro
 func GetPermissions([]string permisisons) []model.APIPermission {
 	out := []model.APIPermission{}
 
-	for _, key := range evergreen.AllPermissions {
+	for _, key := range permissions {
 		out.Permissions = append(out.Permissions, model.APIPermission{
 			Key:    key,
 			Name:   evergreen.MapPermissionKeyToName(key),
