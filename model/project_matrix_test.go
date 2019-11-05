@@ -60,7 +60,7 @@ buildvariants:
 				Tags:        []string{"linux", "enterprise"},
 				RunOn:       []string{"rhel55", "rhel62"},
 			})
-			tags := p.BuildVariants[0].matrix.Rules[0].Then.Set.Tags
+			tags := p.BuildVariants[0].Matrix.Rules[0].Then.Set.Tags
 			So(tags, ShouldResemble, parserStringSlice{"gotcha_boy"})
 		})
 		Convey("a barebones matrix definition should parse", func() {
@@ -80,7 +80,7 @@ buildvariants:
 			p, errs := createIntermediateProject([]byte(simple))
 			So(errs, ShouldBeNil)
 			So(len(p.BuildVariants), ShouldEqual, 2)
-			m1 := *p.BuildVariants[0].matrix
+			m1 := *p.BuildVariants[0].Matrix
 			So(m1, ShouldResemble, matrix{
 				Id: "test",
 				Spec: matrixDefinition{
@@ -91,7 +91,7 @@ buildvariants:
 					{"os": []string{"ubuntu"}, "bits": []string{"32"}},
 				},
 			})
-			m2 := *p.BuildVariants[1].matrix
+			m2 := *p.BuildVariants[1].Matrix
 			So(m2, ShouldResemble, matrix{
 				Id: "test2",
 				Spec: matrixDefinition{
@@ -111,7 +111,7 @@ buildvariants:
 			p, errs := createIntermediateProject([]byte(simple))
 			So(errs, ShouldBeNil)
 			So(len(p.BuildVariants), ShouldEqual, 2)
-			m1 := *p.BuildVariants[0].matrix
+			m1 := *p.BuildVariants[0].Matrix
 			So(m1.Id, ShouldEqual, "test")
 			So(p.BuildVariants[1].Name, ShouldEqual, "single_variant")
 			So(p.BuildVariants[1].Tasks, ShouldResemble, parserBVTaskUnits{parserBVTaskUnit{Name: "*"}})
@@ -294,9 +294,9 @@ func TestBuildMatrixVariantSimple(t *testing.T) {
 				So(err, ShouldBeNil)
 				Convey("with id='test__a~0_b~0', tags=[zero]", func() {
 					So(v.Name, ShouldEqual, "test__a~0_b~0")
-					So(v.matrixVal, ShouldResemble, mv)
+					So(v.MatrixVal, ShouldResemble, mv)
 					So(v.Tags, ShouldContain, "zero")
-					So(v.matrixId, ShouldEqual, "test")
+					So(v.MatrixId, ShouldEqual, "test")
 				})
 			})
 		})
@@ -410,7 +410,7 @@ func TestMatrixVariantsSimple(t *testing.T) {
 					// ensure all values are in there...
 					vals := []matrixValue{}
 					for _, v := range vs {
-						vals = append(vals, v.matrixVal)
+						vals = append(vals, v.MatrixVal)
 					}
 					So(vals, ShouldContainResembling, matrixValue{"brand": "m&ms", "color": "red"})
 					So(vals, ShouldContainResembling, matrixValue{"brand": "m&ms", "color": "orange"})
@@ -455,7 +455,7 @@ func TestMatrixVariantsSimple(t *testing.T) {
 					So(len(vs), ShouldEqual, 16)
 					vals := []matrixValue{}
 					for _, d := range vs {
-						vals = append(vals, d.matrixVal)
+						vals = append(vals, d.MatrixVal)
 					}
 					So(vals, ShouldContainResembling, matrixValue{"brand": "m&ms", "color": "red"})
 					So(vals, ShouldContainResembling, matrixValue{"brand": "m&ms", "color": "orange"})
@@ -597,7 +597,7 @@ func TestRulesEvaluation(t *testing.T) {
 					{Name: ".special"},
 					{Name: ".tertiary"},
 				},
-				matrixRules: []ruleAction{
+				MatrixRules: []ruleAction{
 					{RemoveTasks: []string{".primary !.warm"}}, //remove blue
 					{RemoveTasks: []string{"brown"}},
 				},
@@ -614,7 +614,7 @@ func TestRulesEvaluation(t *testing.T) {
 				Tasks: parserBVTaskUnits{
 					{Name: ".special"},
 				},
-				matrixRules: []ruleAction{
+				MatrixRules: []ruleAction{
 					{AddTasks: []parserBVTaskUnit{{Name: ".primary"}}},
 					{AddTasks: []parserBVTaskUnit{{Name: ".warm"}}},
 					{AddTasks: []parserBVTaskUnit{{Name: "green", DependsOn: []parserDependency{{
@@ -634,7 +634,7 @@ func TestRulesEvaluation(t *testing.T) {
 				Tasks: parserBVTaskUnits{
 					{Name: ".secondary"},
 				},
-				matrixRules: []ruleAction{
+				MatrixRules: []ruleAction{
 					{AddTasks: []parserBVTaskUnit{{Name: ".primary"}}},
 					{RemoveTasks: []string{".secondary"}},
 					{AddTasks: []parserBVTaskUnit{{Name: ".warm"}}},
@@ -657,7 +657,7 @@ func TestRulesEvaluation(t *testing.T) {
 				Tasks: parserBVTaskUnits{
 					{Name: ".warm"},
 				},
-				matrixRules: []ruleAction{
+				MatrixRules: []ruleAction{
 					{AddTasks: []parserBVTaskUnit{{Name: "orange", DependsOn: []parserDependency{{
 						TaskSelector: taskSelector{Name: ".warm"},
 					}}}}},
@@ -666,7 +666,7 @@ func TestRulesEvaluation(t *testing.T) {
 				// case where conflicts are within the same rule
 				Name:  "test2",
 				Tasks: parserBVTaskUnits{},
-				matrixRules: []ruleAction{
+				MatrixRules: []ruleAction{
 					{AddTasks: []parserBVTaskUnit{{Name: ".warm"}, {Name: "orange", DependsOn: []parserDependency{{
 						TaskSelector: taskSelector{Name: ".warm"},
 					}}}}},
@@ -684,7 +684,7 @@ func TestRulesEvaluation(t *testing.T) {
 					{Name: ".special"},
 					{Name: ".tertiary"},
 				},
-				matrixRules: []ruleAction{
+				MatrixRules: []ruleAction{
 					{RemoveTasks: []string{".amazing"}}, //remove blue
 					{RemoveTasks: []string{"rainbow"}},
 				},
