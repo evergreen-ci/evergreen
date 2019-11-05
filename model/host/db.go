@@ -1079,3 +1079,14 @@ func FindOneVolume(query interface{}) (*Volume, error) {
 	}
 	return v, err
 }
+
+func FindDistroForHost(hostID string) (string, error) {
+	h, err := FindOne(ById(hostID))
+	if err != nil {
+		return "", err
+	}
+	if h == nil {
+		return "", errors.New("host not found")
+	}
+	return h.Distro.Id, nil
+}

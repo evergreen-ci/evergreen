@@ -489,6 +489,7 @@ var AclCheckingIsEnabled = (os.Getenv("ACL_ENABLED") == "true")
 
 const (
 	ProjectResourceType = "project"
+	DistroResourceType  = "distro"
 )
 
 type PermissionLevel interface {
@@ -528,10 +529,10 @@ const (
 	PermissionHosts          = "distro_hosts"
 
 	DistroSettingsEdit DistroSettingsPermission = 20
-	DistroSettingsRead DistroSettingsPermission = 10
+	DistroSettingsView DistroSettingsPermission = 10
 	DistroSettingsNone DistroSettingsPermission = 0
 	HostsEdit          HostsPermission          = 20
-	HostsRead          HostsPermission          = 10
+	HostsView          HostsPermission          = 10
 	HostsNone          HostsPermission          = 0
 )
 
@@ -593,7 +594,7 @@ func (p DistroSettingsPermission) String() string {
 	switch p {
 	case DistroSettingsEdit:
 		return "Edit distro settings"
-	case DistroSettingsRead:
+	case DistroSettingsView:
 		return "View distro settings"
 	case DistroSettingsNone:
 		return "No distro settings permissions"
@@ -607,7 +608,7 @@ func (p HostsPermission) String() string {
 	switch p {
 	case HostsEdit:
 		return "Edit hosts"
-	case HostsRead:
+	case HostsView:
 		return "View hosts"
 	case HostsNone:
 		return "No hosts permissions"

@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -312,7 +313,22 @@ func RequiresProjectPermission(permission string, level evergreen.PermissionLeve
 		PermissionKey: permission,
 		ResourceType:  evergreen.ProjectResourceType,
 		RequiredLevel: level.Value(),
-		ResourceFunc:  urlVarsToScopes,
+		ResourceFunc:  urlVarsToProjectScopes,
+	}
+	return gimlet.RequiresPermission(opts)
+}
+
+func RequiresDistroPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
+	if !evergreen.AclCheckingIsEnabled {
+		return &noopMiddleware{}
+	}
+
+	opts := gimlet.RequiresPermissionMiddlewareOpts{
+		RM:            evergreen.GetEnvironment().RoleManager(),
+		PermissionKey: permission,
+		ResourceType:  evergreen.DistroResourceType,
+		RequiredLevel: level.Value(),
+		ResourceFunc:  urlVarsToDistroScopes,
 	}
 	return gimlet.RequiresPermission(opts)
 }
@@ -323,7 +339,7 @@ func (n *noopMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next
 	next(rw, r)
 }
 
-func urlVarsToScopes(r *http.Request) (string, int, error) {
+func urlVarsToProjectScopes(r *http.Request) (string, int, error) {
 	var err error
 	vars := gimlet.GetVars(r)
 	query := r.URL.Query()
@@ -391,6 +407,39 @@ func urlVarsToScopes(r *http.Request) (string, int, error) {
 	}
 
 	return projectID, http.StatusOK, nil
+}
+
+func urlVarsToDistroScopes(r *http.Request) (string, int, error) {
+	var err error
+	vars := gimlet.GetVars(r)
+	query := r.URL.Query()
+
+	resourceType := util.CoalesceStrings(query["resource_type"], vars["resource_type"])
+	if resourceType != "" {
+		switch resourceType {
+		case event.ResourceTypeDistro:
+			vars["distro_id"] = vars["resource_id"]
+		case event.ResourceTypeHost:
+			vars["host_id"] = vars["resource_id"]
+		}
+	}
+
+	distroID := util.CoalesceStrings(append(query["distro_id"], query["distroId"]...), vars["distro_id"], vars["distroId"])
+
+	hostID := util.CoalesceStrings(append(query["host_id"], query["hostId"]...), vars["host_id"], vars["hostId"])
+	if distroID == "" && hostID != "" {
+		distroID, err = host.FindDistroForHost(hostID)
+		if err != nil {
+			return "", http.StatusNotFound, err
+		}
+	}
+
+	// no distro found - return a 404
+	if distroID == "" {
+		return "", http.StatusNotFound, errors.New("no distro found")
+	}
+
+	return distroID, http.StatusOK, nil
 }
 
 // RequiresProjectViewPermission is mostly a copy of gimlet.RequiresPermission, but with special
