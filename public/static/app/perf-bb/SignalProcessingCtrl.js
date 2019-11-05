@@ -268,8 +268,12 @@ mciModule.controller('SignalProcessingCtrl', function(
 
       const onFilterChanged = _.debounce(function() {
         const filtering = _.reduce(api.grid.columns, function(m, d) {
-          const term = d.filters[0].term;
-          if (term) m[d.field] = term;
+          if (d.visible) {
+            const term = d.filters[0].term;
+            if (term) {
+              m[d.field] = term;
+            }
+          }
           return m;
         }, {});
 

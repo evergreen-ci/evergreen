@@ -189,9 +189,6 @@ const (
 
 	DefaultJasperPort          = 2385
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
-
-	// TODO: remove this when degrading YAML
-	UseParserProject = false
 )
 
 func IsFinishedTaskStatus(status string) bool {
@@ -503,28 +500,39 @@ type ProjectVariablesPermission int
 type TasksPermission int
 type PatchPermission int
 type LogsPermission int
+type DistroSettingsPermission int
+type HostsPermission int
 
 const (
+	// Project permissions.
 	PermissionProjectSettings  = "project_settings"
 	PermissionProjectVariables = "project_variables"
 	PermissionTasks            = "project_tasks"
 	PermissionPatches          = "project_patches"
 	PermissionLogs             = "project_logs"
 
-	ProjectSettingsEdit  ProjectSettingsPermission  = 20
-	ProjectSettingsView  ProjectSettingsPermission  = 10
-	ProjectSettingsNone  ProjectSettingsPermission  = 0
-	ProjectVariablesEdit ProjectVariablesPermission = 20
-	ProjectVariablesView ProjectVariablesPermission = 10
-	ProjectVariablesNone ProjectVariablesPermission = 0
-	TasksAdmin           TasksPermission            = 30
-	TasksBasic           TasksPermission            = 20
-	TasksView            TasksPermission            = 10
-	TasksNone            TasksPermission            = 0
-	PatchSubmit          PatchPermission            = 10
-	PatchNone            PatchPermission            = 0
-	LogsView             LogsPermission             = 10
-	LogsNone             LogsPermission             = 0
+	ProjectSettingsEdit ProjectSettingsPermission = 20
+	ProjectSettingsView ProjectSettingsPermission = 10
+	ProjectSettingsNone ProjectSettingsPermission = 0
+	TasksAdmin          TasksPermission           = 30
+	TasksBasic          TasksPermission           = 20
+	TasksView           TasksPermission           = 10
+	TasksNone           TasksPermission           = 0
+	PatchSubmit         PatchPermission           = 10
+	PatchNone           PatchPermission           = 0
+	LogsView            LogsPermission            = 10
+	LogsNone            LogsPermission            = 0
+
+	// Distro permissions.
+	PermissionDistroSettings = "distro_settings"
+	PermissionHosts          = "distro_hosts"
+
+	DistroSettingsEdit DistroSettingsPermission = 20
+	DistroSettingsRead DistroSettingsPermission = 10
+	DistroSettingsNone DistroSettingsPermission = 0
+	HostsEdit          HostsPermission          = 20
+	HostsRead          HostsPermission          = 10
+	HostsNone          HostsPermission          = 0
 )
 
 func (p ProjectSettingsPermission) String() string {
@@ -539,20 +547,6 @@ func (p ProjectSettingsPermission) String() string {
 	return ""
 }
 func (p ProjectSettingsPermission) Value() int {
-	return int(p)
-}
-func (p ProjectVariablesPermission) String() string {
-	switch p {
-	case ProjectVariablesEdit:
-		return "Edit project variables"
-	case ProjectVariablesView:
-		return "View project variables"
-	case ProjectVariablesNone:
-		return "No project variables permissions"
-	}
-	return ""
-}
-func (p ProjectVariablesPermission) Value() int {
 	return int(p)
 }
 func (p TasksPermission) String() string {
@@ -595,11 +589,43 @@ func (p LogsPermission) String() string {
 func (p LogsPermission) Value() int {
 	return int(p)
 }
+func (p DistroSettingsPermission) String() string {
+	switch p {
+	case DistroSettingsEdit:
+		return "Edit distro settings"
+	case DistroSettingsRead:
+		return "View distro settings"
+	case DistroSettingsNone:
+		return "No distro settings permissions"
+	}
+	return ""
+}
+func (p DistroSettingsPermission) Value() int {
+	return int(p)
+}
+func (p HostsPermission) String() string {
+	switch p {
+	case HostsEdit:
+		return "Edit hosts"
+	case HostsRead:
+		return "View hosts"
+	case HostsNone:
+		return "No hosts permissions"
+	}
+	return ""
+}
+func (p HostsPermission) Value() int {
+	return int(p)
+}
 
 var projectPermissions = []string{
 	PermissionProjectSettings,
-	PermissionProjectVariables,
 	PermissionTasks,
 	PermissionPatches,
 	PermissionLogs,
+}
+
+var distroPermissions = []string{
+	PermissionDistroSettings,
+	PermissionHosts,
 }

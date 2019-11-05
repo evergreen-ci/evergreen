@@ -109,7 +109,6 @@ func (s *VersionConnectorSuite) SetupTest() {
 	s.Require().NoError(db.Clear(task.OldCollection))
 	s.Require().NoError(db.Clear(model.VersionCollection))
 	s.Require().NoError(db.Clear(build.Collection))
-	s.Require().NoError(db.Clear(model.ParserProjectCollection))
 
 	// Insert data for the test paths
 	versions := []*model.Version{
@@ -402,9 +401,7 @@ func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
 
 func TestCreateVersionFromConfig(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(model.ProjectRefCollection, model.ParserProjectCollection, model.VersionCollection, distro.Collection, task.Collection, build.Collection, user.Collection))
-	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.ParserProjectCollection})
-
+	assert.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, distro.Collection, task.Collection, build.Collection, user.Collection))
 	ref := model.ProjectRef{
 		Identifier: "mci",
 	}

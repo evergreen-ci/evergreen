@@ -8,6 +8,7 @@ window.jiraHost = {{.JiraHost}};
 window.hasBanner = {{ne .Banner ""}};
 window.isAdmin = {{.IsProjectAdmin}};
 window.user = {{.User}};
+window.acl_enabled = {{.ACLEnabled}};
 </script>
 <script type="text/javascript" src="{{Static "js" "subscriptions.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="{{Static "js" "task.js"}}?hash={{ BuildRevision }}"></script>
@@ -26,6 +27,7 @@ var have_user = true
 var taskHost = {{.Host}}
 {{end}}
 var task_data = {{.Task}}
+var permissions = {{.Permissions}};
 </script>
 {{range .PluginContent.Includes}}
 {{.}}
@@ -141,7 +143,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                       <li>
                         <a tabindex="-1" href="#" ng-click="addSubscription()">Add Notification</a>
                       </li>
-                      <li ng-show="isAdmin && !task.override_dependencies && task.depends_on && task.depends_on.length > 0">
+                      <li ng-show="!task.override_dependencies && task.depends_on && task.depends_on.length > 0 && (isAdmin || (acl_enabled && permissions.project_tasks>=30))">
                         <a tabindex="-1" href="#" ng-click="overrideDependencies()">Override Dependencies</a>
                       </li>
                     </ul>

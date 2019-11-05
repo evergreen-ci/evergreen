@@ -64,39 +64,12 @@ type VersionMetadata struct {
 	PeriodicBuildID     string
 }
 
-type ProjectInfo struct {
-	Ref                 *model.ProjectRef
-	Project             *model.Project
-	IntermediateProject *model.ParserProject
-}
-
-func (p *ProjectInfo) notPopulated() bool {
-	return p.Ref == nil || p.IntermediateProject == nil
-}
-
-// PopulateVersion updates the version's ParserProject if we have or can create it
-func (p *ProjectInfo) populateVersion(v *model.Version) error {
-	config, err := yaml.Marshal(p.IntermediateProject)
-	if err != nil {
-		return errors.Wrap(err, "error marshalling intermediate project")
-	}
-	v.Config = string(config)
-
-	if p.Project == nil {
-		p.Project, err = model.TranslateProject(p.IntermediateProject)
-		if err != nil {
-			return errors.Wrap(err, "error translating intermediate project")
-		}
-	}
-	return nil
-}
-
 // The RepoPoller interface specifies behavior required of all repository poller
 // implementations
 type RepoPoller interface {
 	// Fetches the contents of a remote repository's configuration data as at
 	// the given revision.
-	GetRemoteConfig(ctx context.Context, revision string) (*model.Project, *model.ParserProject, error)
+	GetRemoteConfig(ctx context.Context, revision string) (*model.Project, error)
 
 	// Fetches a list of all filepaths modified by a given revision.
 	GetChangedFiles(ctx context.Context, revision string) ([]string, error)
@@ -272,7 +245,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		}
 
 		var versionErrs *VersionErrors
-		project, intermediateProject, err := repoTracker.GetProjectConfig(ctx, revision)
+		project, err := repoTracker.GetProjectConfig(ctx, revision)
 		if err != nil {
 			// this is an error that implies the file is invalid - create a version and store the error
 			projErr, isProjErr := err.(projectConfigError)
@@ -336,12 +309,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		metadata := VersionMetadata{
 			Revision: revisions[i],
 		}
-		projectInfo := &ProjectInfo{
-			Ref:                 ref,
-			Project:             project,
-			IntermediateProject: intermediateProject,
-		}
-		v, err := CreateVersionFromConfig(ctx, projectInfo, metadata, ignore, versionErrs)
+		v, err := CreateVersionFromConfig(ctx, ref, project, metadata, ignore, versionErrs)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":  "error creating version",
@@ -391,9 +359,9 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 // returning a remote config if the project references a remote repository
 // configuration file - via the Identifier. Otherwise it defaults to the local
 // project file. An erroneous project file may be returned along with an error.
-func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision string) (*model.Project, *model.ParserProject, error) {
+func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision string) (*model.Project, error) {
 	projectRef := repoTracker.ProjectRef
-	project, intermediateProj, err := repoTracker.GetRemoteConfig(ctx, revision)
+	project, err := repoTracker.GetRemoteConfig(ctx, revision)
 	if err != nil {
 		// Only create a stub version on API request errors that pertain
 		// to actually fetching a config. Those errors currently include:
@@ -415,7 +383,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 			})
 
 			grip.Error(message.WrapError(err, msg))
-			return nil, nil, projectConfigError{Errors: []string{msg.String()}, Warnings: nil}
+			return nil, projectConfigError{Errors: []string{msg.String()}, Warnings: nil}
 		}
 		// If we get here then we have an infrastructural error - e.g.
 		// a thirdparty.APIUnmarshalError (indicating perhaps an API has
@@ -446,9 +414,9 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 			"lastRevision": lastRevision,
 		}))
 
-		return nil, nil, err
+		return nil, err
 	}
-	return project, intermediateProj, nil
+	return project, nil
 }
 
 // AddBuildBreakSubscriptions will subscribe admins of a project to a version if no one
@@ -606,29 +574,29 @@ func CreateManifest(v model.Version, proj *model.Project, branch string, setting
 	return newManifest, errors.Wrap(err, "error inserting manifest")
 }
 
-func CreateVersionFromConfig(ctx context.Context, projectInfo *ProjectInfo,
+func CreateVersionFromConfig(ctx context.Context, ref *model.ProjectRef, config *model.Project,
 	metadata VersionMetadata, ignore bool, versionErrs *VersionErrors) (*model.Version, error) {
-	if projectInfo.notPopulated() {
-		return nil, errors.New("project ref and parser project cannot be nil")
+	if ref == nil || config == nil {
+		return nil, errors.New("project ref and project cannot be nil")
 	}
 
 	// create a version document
-	v, err := shellVersionFromRevision(projectInfo.Ref, metadata)
+	v, err := shellVersionFromRevision(ref, metadata)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create shell version")
 	}
-	if err = sanityCheckOrderNum(v.RevisionOrderNumber, projectInfo.Ref.Identifier, metadata.Revision.Revision); err != nil {
+	if err = sanityCheckOrderNum(v.RevisionOrderNumber, ref.Identifier, metadata.Revision.Revision); err != nil {
 		return nil, errors.Wrap(err, "inconsistent version order")
 	}
-
-	if err = projectInfo.populateVersion(v); err != nil {
-		return nil, errors.Wrap(err, "problem updating version project")
+	configYaml, err := yaml.Marshal(config)
+	if err != nil {
+		return nil, errors.Wrap(err, "error marshaling config")
 	}
-	projectInfo.IntermediateProject.Id = v.Id
+	v.Config = string(configYaml)
 	v.Ignored = ignore
 
 	// validate the project
-	verrs := validator.CheckProjectSyntax(projectInfo.Project)
+	verrs := validator.CheckProjectSyntax(config)
 	if len(verrs) > 0 || versionErrs != nil {
 		// We have syntax errors in the project.
 		// Format them, as we need to store + display them to the user
@@ -649,25 +617,18 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *ProjectInfo,
 			v.Errors = append(v.Errors, versionErrs.Errors...)
 		}
 		if len(v.Errors) > 0 {
-			if err = v.Insert(); err != nil {
-				return nil, errors.Wrap(err, "error inserting version")
-			}
-			if err = projectInfo.IntermediateProject.Insert(); err != nil {
-				return v, errors.Wrap(err, "error inserting project")
-			}
-			return v, nil
-
+			return v, errors.Wrap(v.Insert(), "error inserting version")
 		}
 	}
 	var aliases model.ProjectAliases
 	if metadata.Alias != "" {
-		aliases, err = model.FindAliasInProject(projectInfo.Ref.Identifier, metadata.Alias)
+		aliases, err = model.FindAliasInProject(ref.Identifier, metadata.Alias)
 		if err != nil {
 			return v, errors.Wrap(err, "error finding project alias")
 		}
 	}
 
-	return v, errors.Wrap(createVersionItems(ctx, v, metadata, projectInfo, aliases), "error creating version items")
+	return v, errors.Wrap(createVersionItems(ctx, v, ref, metadata, config, aliases), "error creating version items")
 }
 
 // shellVersionFromRevision populates a new Version with metadata from a model.Revision.
@@ -750,7 +711,7 @@ func sanityCheckOrderNum(revOrderNum int, projectId, revision string) error {
 
 // createVersionItems populates and stores all the tasks and builds for a version according to
 // the given project config.
-func createVersionItems(ctx context.Context, v *model.Version, metadata VersionMetadata, projectInfo *ProjectInfo, aliases model.ProjectAliases) error {
+func createVersionItems(ctx context.Context, v *model.Version, ref *model.ProjectRef, metadata VersionMetadata, project *model.Project, aliases model.ProjectAliases) error {
 	client := evergreen.GetEnvironment().Client()
 	const retryCount = 5
 
@@ -763,12 +724,12 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata VersionM
 	if metadata.SourceVersion != nil {
 		sourceRev = metadata.SourceVersion.Revision
 	}
-	taskIds := model.NewTaskIdTable(projectInfo.Project, v, sourceRev, metadata.TriggerDefinitionID)
+	taskIds := model.NewTaskIdTable(project, v, sourceRev, metadata.TriggerDefinitionID)
 
 	// create all builds for the version
 	buildsToCreate := []interface{}{}
 	tasksToCreate := task.Tasks{}
-	for _, buildvariant := range projectInfo.Project.BuildVariants {
+	for _, buildvariant := range project.BuildVariants {
 		if ctx.Err() != nil {
 			return errors.Wrapf(err, "aborting version creation for version %s", v.Id)
 		}
@@ -790,15 +751,16 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata VersionM
 			}
 		}
 		args := model.BuildCreateArgs{
-			Project:       *projectInfo.Project,
-			Version:       *v,
-			TaskIDs:       taskIds,
-			BuildName:     buildvariant.Name,
-			Activated:     false,
-			SourceRev:     sourceRev,
-			DefinitionID:  metadata.TriggerDefinitionID,
-			Aliases:       aliases,
-			DistroAliases: distroAliases,
+			Project:        *project,
+			Version:        *v,
+			TaskIDs:        taskIds,
+			BuildName:      buildvariant.Name,
+			Activated:      false,
+			SourceRev:      sourceRev,
+			DefinitionID:   metadata.TriggerDefinitionID,
+			Aliases:        aliases,
+			DistroAliases:  distroAliases,
+			TaskCreateTime: v.CreateTime,
 		}
 		b, tasks, err := model.CreateBuildFromVersionNoInsert(args)
 		if err != nil {
@@ -819,7 +781,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata VersionM
 		var lastActivated *model.Version
 		activateAt := time.Now()
 		if metadata.TriggerID == "" && v.Requester != evergreen.AdHocRequester {
-			lastActivated, err = model.VersionFindOne(model.VersionByLastVariantActivation(projectInfo.Ref.Identifier, buildvariant.Name))
+			lastActivated, err = model.VersionFindOne(model.VersionByLastVariantActivation(ref.Identifier, buildvariant.Name))
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message": "error finding last activated",
@@ -838,14 +800,14 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata VersionM
 			}
 
 			if lastActivation != nil {
-				activateAt = lastActivation.Add(time.Minute * time.Duration(projectInfo.Ref.GetBatchTime(&buildvariant)))
+				activateAt = lastActivation.Add(time.Minute * time.Duration(ref.GetBatchTime(&buildvariant)))
 			}
 		}
 
 		grip.Debug(message.Fields{
 			"message": "activating build",
 			"name":    buildvariant.Name,
-			"project": projectInfo.Ref.Identifier,
+			"project": ref.Identifier,
 			"version": v.Id,
 			"time":    activateAt,
 			"runner":  RunnerName,
@@ -877,20 +839,6 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata VersionM
 				return true, nil
 			}
 			return false, errors.Wrapf(err, "error inserting version %s", v.Id)
-		}
-		_, err = evergreen.GetEnvironment().DB().Collection(model.ParserProjectCollection).InsertOne(sessCtx, projectInfo.IntermediateProject)
-		if err != nil {
-			_ = sessCtx.AbortTransaction(sessCtx)
-			grip.Error(message.Fields{
-				"message":    "aborting transaction",
-				"cause":      "can't insert project",
-				"version":    v.Id,
-				"insert_err": err.Error(),
-			})
-			if isTransientTxErr(err, v) {
-				return true, nil
-			}
-			return false, errors.Wrap(err, "error inserting project")
 		}
 		_, err = evergreen.GetEnvironment().DB().Collection(build.Collection).InsertMany(sessCtx, buildsToCreate)
 		if err != nil {

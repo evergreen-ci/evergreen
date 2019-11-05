@@ -35,7 +35,6 @@ func TestFindProject(t *testing.T) {
 		Convey("if the project file exists and is valid, the project spec within"+
 			"should be unmarshalled and returned", func() {
 			v := &Version{
-				Id:         "my_version",
 				Owner:      "fakeowner",
 				Repo:       "fakerepo",
 				Branch:     "fakebranch",
@@ -261,6 +260,9 @@ task_groups:
   - example_task_1
   - example_task_2
 `
+	proj, errs := projectFromYAML([]byte(projYml))
+	assert.NotNil(proj)
+	assert.Empty(errs)
 	v := Version{
 		Id:     "v1",
 		Config: projYml,
@@ -1083,11 +1085,11 @@ tasks:
   depends_on:
     - name: dist-test
 `
-	intermediate, err := createIntermediateProject([]byte(projYml))
-	s.NoError(err)
+	intermediate, errs := createIntermediateProject([]byte(projYml))
+	s.Len(errs, 0)
 	marshaled, err := yaml.Marshal(intermediate)
 	s.NoError(err)
-	unmarshaled := ParserProject{}
+	unmarshaled := parserProject{}
 	s.NoError(yaml.Unmarshal(marshaled, &unmarshaled))
 }
 

@@ -1,19 +1,14 @@
 package model
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
 
-	"github.com/evergreen-ci/evergreen/db"
-
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-
-	mgobson "gopkg.in/mgo.v2/bson"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const LoadProjectError = "load project error(s)"
@@ -21,8 +16,8 @@ const LoadProjectError = "load project error(s)"
 // This file contains the infrastructure for turning a YAML project configuration
 // into a usable Project struct. A basic overview of the project parsing process is:
 //
-// First, the YAML bytes are unmarshalled into an intermediary ParserProject.
-// The ParserProject's internal types define custom YAML unmarshal hooks, allowing
+// First, the YAML bytes are unmarshalled into an intermediary parserProject.
+// The parserProject's internal types define custom YAML unmarshal hooks, allowing
 // users to do things like offer a single definition where we expect a list, e.g.
 //   `tags: "single_tag"` instead of the more verbose `tags: ["single_tag"]`
 // or refer to task by a single selector. Custom YAML handling allows us to
@@ -40,61 +35,59 @@ const LoadProjectError = "load project error(s)"
 // Code outside of this file should never have to consider selectors or parser* types
 // when handling project code.
 
-// ParserProject serves as an intermediary struct for parsing project
+// parserProject serves as an intermediary struct for parsing project
 // configuration YAML. It implements the Unmarshaler interface
 // to allow for flexible handling.
-type ParserProject struct {
-	Id                 string                     `yaml:"_id" bson:"_id"` // should be the same as the version's ID
-	ConfigUpdateNumber int                        `yaml:"config_number,omitempty" bson:"config_number,omitempty"`
-	Enabled            bool                       `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
-	Stepback           bool                       `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	PreErrorFailsTask  bool                       `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
-	BatchTime          int                        `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
-	Owner              string                     `yaml:"owner,omitempty" bson:"owner,omitempty"`
-	Repo               string                     `yaml:"repo,omitempty" bson:"repo,omitempty"`
-	RemotePath         string                     `yaml:"remote_path,omitempty" bson:"remote_path,omitempty"`
-	RepoKind           string                     `yaml:"repokind,omitempty" bson:"repokind,omitempty"`
-	Branch             string                     `yaml:"branch,omitempty" bson:"branch,omitempty"`
-	Identifier         string                     `yaml:"identifier,omitempty" bson:"identifier,omitempty"`
-	DisplayName        string                     `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
-	CommandType        string                     `yaml:"command_type,omitempty" bson:"command_type,omitempty"`
-	Ignore             parserStringSlice          `yaml:"ignore,omitempty" bson:"ignore,omitempty"`
-	Pre                *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre,omitempty"`
-	Post               *YAMLCommandSet            `yaml:"post,omitempty" bson:"post,omitempty"`
-	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
-	CallbackTimeout    int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
-	Modules            []Module                   `yaml:"modules,omitempty" bson:"modules,omitempty"`
-	BuildVariants      []parserBV                 `yaml:"buildvariants,omitempty" bson:"buildvariants,omitempty"`
-	Functions          map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions,omitempty"`
-	TaskGroups         []parserTaskGroup          `yaml:"task_groups,omitempty" bson:"task_groups,omitempty"`
-	Tasks              []parserTask               `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
-	ExecTimeoutSecs    int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
-	Loggers            *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+type parserProject struct {
+	Enabled           bool                       `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
+	Stepback          bool                       `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	PreErrorFailsTask bool                       `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
+	BatchTime         int                        `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
+	Owner             string                     `yaml:"owner,omitempty" bson:"owner,omitempty"`
+	Repo              string                     `yaml:"repo,omitempty" bson:"repo,omitempty"`
+	RemotePath        string                     `yaml:"remote_path,omitempty" bson:"remote_path,omitempty"`
+	RepoKind          string                     `yaml:"repokind,omitempty" bson:"repokind,omitempty"`
+	Branch            string                     `yaml:"branch,omitempty" bson:"branch,omitempty"`
+	Identifier        string                     `yaml:"identifier,omitempty" bson:"identifier,omitempty"`
+	DisplayName       string                     `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
+	CommandType       string                     `yaml:"command_type,omitempty" bson:"command_type,omitempty"`
+	Ignore            parserStringSlice          `yaml:"ignore,omitempty" bson:"ignore,omitempty"`
+	Pre               *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre,omitempty"`
+	Post              *YAMLCommandSet            `yaml:"post,omitempty" bson:"post,omitempty"`
+	Timeout           *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
+	CallbackTimeout   int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
+	Modules           []Module                   `yaml:"modules,omitempty" bson:"modules,omitempty"`
+	BuildVariants     []parserBV                 `yaml:"buildvariants,omitempty" bson:"buildvariants,omitempty"`
+	Functions         map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions,omitempty"`
+	TaskGroups        []parserTaskGroup          `yaml:"task_groups,omitempty" bson:"task_groups,omitempty"`
+	Tasks             []parserTask               `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
+	ExecTimeoutSecs   int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
+	Loggers           *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers:omitempty"`
 
 	// Matrix code
 	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
 }
 
 type parserTaskGroup struct {
-	Name                  string             `yaml:"name,omitempty" bson:"name,omitempty"`
-	Priority              int64              `yaml:"priority,omitempty" bson:"priority,omitempty"`
-	Patchable             *bool              `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
-	PatchOnly             *bool              `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
-	ExecTimeoutSecs       int                `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
-	Stepback              *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	MaxHosts              int                `yaml:"max_hosts,omitempty" bson:"max_hosts,omitempty"`
-	SetupGroupFailTask    bool               `yaml:"setup_group_can_fail_task,omitempty" bson:"setup_group_can_fail_task,omitempty"`
-	SetupGroupTimeoutSecs int                `yaml:"setup_group_timeout_secs,omitempty" bson:"setup_group_timeout_secs,omitempty"`
-	SetupGroup            *YAMLCommandSet    `yaml:"setup_group,omitempty" bson:"setup_group,omitempty"`
-	TeardownGroup         *YAMLCommandSet    `yaml:"teardown_group,omitempty" bson:"teardown_group,omitempty"`
-	SetupTask             *YAMLCommandSet    `yaml:"setup_task,omitempty" bson:"setup_task,omitempty"`
-	TeardownTask          *YAMLCommandSet    `yaml:"teardown_task,omitempty" bson:"teardown_task,omitempty"`
-	Timeout               *YAMLCommandSet    `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
-	Tasks                 []string           `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
-	DependsOn             parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
-	Requires              taskSelectors      `yaml:"requires,omitempty" bson:"requires,omitempty"`
-	Tags                  parserStringSlice  `yaml:"tags,omitempty" bson:"tags,omitempty"`
-	ShareProcs            bool               `yaml:"share_processes,omitempty" bson:"share_processes,omitempty"`
+	Name                  string             `yaml:"name,omitempty"`
+	Priority              int64              `yaml:"priority,omitempty"`
+	Patchable             *bool              `yaml:"patchable,omitempty"`
+	PatchOnly             *bool              `yaml:"patch_only,omitempty"`
+	ExecTimeoutSecs       int                `yaml:"exec_timeout_secs,omitempty"`
+	Stepback              *bool              `yaml:"stepback,omitempty"`
+	MaxHosts              int                `yaml:"max_hosts,omitempty"`
+	SetupGroupFailTask    bool               `yaml:"setup_group_can_fail_task,omitempty"`
+	SetupGroupTimeoutSecs int                `yaml:"setup_group_timeout_secs,omitempty"`
+	SetupGroup            *YAMLCommandSet    `yaml:"setup_group,omitempty"`
+	TeardownGroup         *YAMLCommandSet    `yaml:"teardown_group,omitempty"`
+	SetupTask             *YAMLCommandSet    `yaml:"setup_task,omitempty"`
+	TeardownTask          *YAMLCommandSet    `yaml:"teardown_task,omitempty"`
+	Timeout               *YAMLCommandSet    `yaml:"timeout,omitempty"`
+	Tasks                 []string           `yaml:"tasks,omitempty"`
+	DependsOn             parserDependencies `yaml:"depends_on,omitempty"`
+	Requires              taskSelectors      `yaml:"requires,omitempty"`
+	Tags                  parserStringSlice  `yaml:"tags,omitempty"`
+	ShareProcs            bool               `yaml:"share_processes,omitempty"`
 }
 
 func (ptg *parserTaskGroup) name() string   { return ptg.Name }
@@ -102,27 +95,19 @@ func (ptg *parserTaskGroup) tags() []string { return ptg.Tags }
 
 // parserTask represents an intermediary state of task definitions.
 type parserTask struct {
-	Name            string              `yaml:"name,omitempty" bson:"name,omitempty"`
-	Priority        int64               `yaml:"priority,omitempty" bson:"priority,omitempty"`
-	ExecTimeoutSecs int                 `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
-	DependsOn       parserDependencies  `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
-	Requires        taskSelectors       `yaml:"requires,omitempty" bson:"requires,omitempty"`
-	Commands        []PluginCommandConf `yaml:"commands,omitempty" bson:"commands,omitempty"`
-	Tags            parserStringSlice   `yaml:"tags,omitempty" bson:"tags,omitempty"`
-	Patchable       *bool               `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
-	PatchOnly       *bool               `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
-	Stepback        *bool               `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	Name            string              `yaml:"name,omitempty"`
+	Priority        int64               `yaml:"priority,omitempty"`
+	ExecTimeoutSecs int                 `yaml:"exec_timeout_secs,omitempty"`
+	DependsOn       parserDependencies  `yaml:"depends_on,omitempty"`
+	Requires        taskSelectors       `yaml:"requires,omitempty"`
+	Commands        []PluginCommandConf `yaml:"commands,omitempty"`
+	Tags            parserStringSlice   `yaml:"tags,omitempty"`
+	Patchable       *bool               `yaml:"patchable,omitempty"`
+	PatchOnly       *bool               `yaml:"patch_only,omitempty"`
+	Stepback        *bool               `yaml:"stepback,omitempty"`
 }
 
-func (pp *ParserProject) Insert() error {
-	return db.Insert(ParserProjectCollection, pp)
-}
-
-func (pp *ParserProject) MarshalBSON() ([]byte, error) {
-	return mgobson.Marshal(pp)
-}
-
-func (pp *ParserProject) MarshalYAML() (interface{}, error) {
+func (pp *parserProject) MarshalYAML() (interface{}, error) {
 	for i, pt := range pp.Tasks {
 		for j := range pt.Commands {
 			if err := pp.Tasks[i].Commands[j].resolveParams(); err != nil {
@@ -135,8 +120,8 @@ func (pp *ParserProject) MarshalYAML() (interface{}, error) {
 }
 
 type displayTask struct {
-	Name           string   `yaml:"name,omitempty" bson:"name,omitempty"`
-	ExecutionTasks []string `yaml:"execution_tasks,omitempty" bson:"execution_tasks,omitempty"`
+	Name           string   `yaml:"name,omitempty"`
+	ExecutionTasks []string `yaml:"execution_tasks,omitempty"`
 }
 
 // helper methods for task tag evaluations
@@ -146,8 +131,8 @@ func (pt *parserTask) tags() []string { return pt.Tags }
 // parserDependency represents the intermediary state for referencing dependencies.
 type parserDependency struct {
 	TaskSelector  taskSelector `yaml:",inline"`
-	Status        string       `yaml:"status,omitempty" bson:"status,omitempty"`
-	PatchOptional bool         `yaml:"patch_optional,omitempty" bson:"patch_optional,omitempty"`
+	Status        string       `yaml:"status,omitempty"`
+	PatchOptional bool         `yaml:"patch_optional,omitempty"`
 }
 
 // parserDependencies is a type defined for unmarshalling both a single
@@ -283,27 +268,27 @@ func (ts *taskSelector) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // parserBV is a helper type storing intermediary variant definitions.
 type parserBV struct {
-	Name         string             `yaml:"name,omitempty" bson:"name,omitempty"`
-	DisplayName  string             `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
-	Expansions   util.Expansions    `yaml:"expansions,omitempty" bson:"expansions,omitempty"`
-	Tags         parserStringSlice  `yaml:"tags,omitempty,omitempty" bson:"tags,omitempty"`
-	Modules      parserStringSlice  `yaml:"modules,omitempty" bson:"modules,omitempty"`
-	Disabled     bool               `yaml:"disabled,omitempty" bson:"disabled,omitempty"`
-	Push         bool               `yaml:"push,omitempty" bson:"push,omitempty"`
-	BatchTime    *int               `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
-	Stepback     *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	RunOn        parserStringSlice  `yaml:"run_on,omitempty" bson:"run_on,omitempty"`
-	Tasks        parserBVTaskUnits  `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
-	DisplayTasks []displayTask      `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
-	DependsOn    parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
-	Requires     taskSelectors      `yaml:"requires,omitempty" bson:"requires,omitempty"`
+	Name         string             `yaml:"name,omitempty"`
+	DisplayName  string             `yaml:"display_name,omitempty"`
+	Expansions   util.Expansions    `yaml:"expansions,omitempty"`
+	Tags         parserStringSlice  `yaml:"tags,omitempty,omitempty"`
+	Modules      parserStringSlice  `yaml:"modules,omitempty"`
+	Disabled     bool               `yaml:"disabled,omitempty"`
+	Push         bool               `yaml:"push,omitempty"`
+	BatchTime    *int               `yaml:"batchtime,omitempty"`
+	Stepback     *bool              `yaml:"stepback,omitempty"`
+	RunOn        parserStringSlice  `yaml:"run_on,omitempty"`
+	Tasks        parserBVTaskUnits  `yaml:"tasks,omitempty"`
+	DisplayTasks []displayTask      `yaml:"display_tasks,omitempty"`
+	DependsOn    parserDependencies `yaml:"depends_on,omitempty"`
+	Requires     taskSelectors      `yaml:"requires,omitempty"`
 
 	// internal matrix stuff
-	matrixId  string
-	matrixVal matrixValue
-	matrix    *matrix
+	MatrixId  string      `yaml:"matrix_id,omitempty" bson:"matrix_id,omitempty"`
+	MatrixVal matrixValue `yaml:"matrix_val,omitempty" bson:"matrix_val,omitempty"`
+	Matrix    *matrix     `yaml:"matrix,omitempty" bson:"matrix,omitempty"`
 
-	matrixRules []ruleAction
+	MatrixRules []ruleAction `yaml:"matrix_rules,omitempty" bson:"matrix_rules,omitempty"`
 }
 
 // helper methods for variant tag evaluations
@@ -316,7 +301,7 @@ func (pbv *parserBV) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	merr := unmarshal(&m)
 	if merr == nil {
 		if m.Id != "" {
-			*pbv = parserBV{matrix: &m}
+			*pbv = parserBV{Matrix: &m}
 			return nil
 		}
 	}
@@ -326,6 +311,12 @@ func (pbv *parserBV) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if err := unmarshal(&bv); err != nil {
 		return errors.WithStack(err)
 	}
+	// it's possible the matrix has already been correctly stored in the build variant
+	if bv.Matrix != nil && bv.Matrix.Id != "" {
+		*pbv = parserBV(bv)
+		return nil
+	}
+
 	if bv.Name == "" {
 		// if we're here, it's very likely that the user was building a matrix but broke
 		// the syntax, so we try and surface the matrix error if they used "matrix_name".
@@ -340,17 +331,17 @@ func (pbv *parserBV) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // parserBVTaskUnit is a helper type storing intermediary variant task configurations.
 type parserBVTaskUnit struct {
-	Name             string             `yaml:"name,omitempty" bson:"name,omitempty"`
-	Patchable        *bool              `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
-	PatchOnly        *bool              `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
-	Priority         int64              `yaml:"priority,omitempty" bson:"priority,omitempty"`
-	DependsOn        parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
-	Requires         taskSelectors      `yaml:"requires,omitempty" bson:"requires,omitempty"`
-	ExecTimeoutSecs  int                `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
-	Stepback         *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	Distros          parserStringSlice  `yaml:"distros,omitempty" bson:"distros,omitempty"`
-	RunOn            parserStringSlice  `yaml:"run_on,omitempty" bson:"run_on,omitempty"` // Alias for "Distros" TODO: deprecate Distros
-	CommitQueueMerge bool               `yaml:"commit_queue_merge,omitempty" bson:"commit_queue_merge,omitempty"`
+	Name             string             `yaml:"name,omitempty"`
+	Patchable        *bool              `yaml:"patchable,omitempty"`
+	PatchOnly        *bool              `yaml:"patch_only,omitempty"`
+	Priority         int64              `yaml:"priority,omitempty"`
+	DependsOn        parserDependencies `yaml:"depends_on,omitempty"`
+	Requires         taskSelectors      `yaml:"requires,omitempty"`
+	ExecTimeoutSecs  int                `yaml:"exec_timeout_secs,omitempty"`
+	Stepback         *bool              `yaml:"stepback,omitempty"`
+	Distros          parserStringSlice  `yaml:"distros,omitempty"`
+	RunOn            parserStringSlice  `yaml:"run_on,omitempty"` // Alias for "Distros" TODO: deprecate Distros
+	CommitQueueMerge bool               `yaml:"commit_queue_merge,omitempty"`
 }
 
 // UnmarshalYAML allows the YAML parser to read both a single selector string or
@@ -425,76 +416,45 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 	return nil
 }
 
-// LoadProjectForVersion returns the project for a version, either from the parser project or the config string.
-// If read from the config string and shouldSave is set, the resulting parser project will be saved.
-func LoadProjectForVersion(v *Version, identifier string, shouldSave bool) (*Project, *ParserProject, error) {
-	var ppFromDB *ParserProject
-	var err error
-	// if not using parser project anyway, only lookup if saving
-	if evergreen.UseParserProject || shouldSave {
-		ppFromDB, err = ParserProjectFindOneById(v.Id)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "error finding parser project")
-		}
-	}
-
-	if evergreen.UseParserProject && ppFromDB != nil {
-		ppFromDB.Identifier = identifier
-		p, err := TranslateProject(ppFromDB)
-		return p, ppFromDB, err
-	}
-
-	if v.Config == "" {
-		return nil, nil, errors.New("version has no config")
-	}
-	p := &Project{}
-	pp, err := LoadProjectInto([]byte(v.Config), identifier, p)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "error loading project")
-	}
-	pp.Id = v.Id
-	pp.Identifier = identifier
-	pp.ConfigUpdateNumber = v.ConfigUpdateNumber
-
-	// TODO: don't need separate ppFromDB variable once UseParserProject = true
-	if shouldSave && ppFromDB == nil {
-		if err = pp.Insert(); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"project":       identifier,
-				"version":       v.Id,
-				"config_number": v.ConfigUpdateNumber,
-				"message":       "error inserting parser project for version",
-			}))
-			return nil, nil, errors.Wrap(err, "error updating version with project")
-		}
-	}
-	return p, pp, nil
-}
-
 // LoadProjectInto loads the raw data from the config file into project
-// and sets the project's identifier field to identifier. Tags are evaluated. Returns the intermediate step.
-// If reading from a version config, LoadProjectForVersion should be used to persist the resulting parser project.
-func LoadProjectInto(data []byte, identifier string, project *Project) (*ParserProject, error) {
-	intermediateProject, err := createIntermediateProject(data)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error creating parser project")
+// and sets the project's identifier field to identifier. Tags are evaluated.
+func LoadProjectInto(data []byte, identifier string, project *Project) error {
+	p, errs := projectFromYAML(data)
+	if len(errs) > 0 {
+		// create a human-readable error list
+		buf := bytes.Buffer{}
+		for _, e := range errs {
+			if len(errs) > 1 {
+				buf.WriteString("\n\t") //only newline if we have multiple errs
+			}
+			buf.WriteString(e.Error())
+		}
+		return errors.Errorf("%s: %s", LoadProjectError, buf.String())
 	}
-
-	// return project even with errors
-	p, err := TranslateProject(intermediateProject)
 	*project = *p
 	project.Identifier = identifier
-	return intermediateProject, errors.Wrap(err, "error translating project")
+	return nil
+}
+
+// projectFromYAML reads and evaluates project YAML, returning a project and warnings and
+// errors encountered during parsing or evaluation.
+func projectFromYAML(yml []byte) (*Project, []error) {
+	intermediateProject, errs := createIntermediateProject(yml)
+	if len(errs) > 0 {
+		return nil, errs
+	}
+	p, errs := translateProject(intermediateProject)
+	return p, errs
 }
 
 // createIntermediateProject marshals the supplied YAML into our
 // intermediate project representation (i.e. before selectors or
 // matrix logic has been evaluated).
-func createIntermediateProject(yml []byte) (*ParserProject, error) {
-	p := &ParserProject{}
+func createIntermediateProject(yml []byte) (*parserProject, []error) {
+	p := &parserProject{}
 	err := yaml.Unmarshal(yml, p)
 	if err != nil {
-		return nil, errors.Wrap(err, "error unmarshalling into parser project")
+		return nil, []error{err}
 	}
 	if p.Functions == nil {
 		p.Functions = map[string]*YAMLCommandSet{}
@@ -503,10 +463,10 @@ func createIntermediateProject(yml []byte) (*ParserProject, error) {
 	return p, nil
 }
 
-// TranslateProject converts our intermediate project representation into
+// translateProject converts our intermediate project representation into
 // the Project type that Evergreen actually uses. Errors are added to
 // pp.errors and pp.warnings and must be checked separately.
-func TranslateProject(pp *ParserProject) (*Project, error) {
+func translateProject(pp *parserProject) (*Project, []error) {
 	// Transfer top level fields
 	proj := &Project{
 		Enabled:           pp.Enabled,
@@ -531,52 +491,32 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		ExecTimeoutSecs:   pp.ExecTimeoutSecs,
 		Loggers:           pp.Loggers,
 	}
-	catcher := grip.NewBasicCatcher()
 	tse := NewParserTaskSelectorEvaluator(pp.Tasks)
 	tgse := newTaskGroupSelectorEvaluator(pp.TaskGroups)
 	ase := NewAxisSelectorEvaluator(pp.Axes)
 	regularBVs, matrices := sieveMatrixVariants(pp.BuildVariants)
-	var errs []error
+
+	var evalErrs, errs []error
 	matrixVariants, errs := buildMatrixVariants(pp.Axes, ase, matrices)
-	catcher.Extend(errs)
+	evalErrs = append(evalErrs, errs...)
 	buildVariants := append(regularBVs, matrixVariants...)
 	vse := NewVariantSelectorEvaluator(buildVariants, ase)
-	proj.Tasks, proj.TaskGroups, errs = evaluateTaskUnits(tse, tgse, vse, pp.Tasks, pp.TaskGroups)
-	catcher.Extend(errs)
-	proj.BuildVariants, errs = evaluateBuildVariants(tse, tgse, vse, buildVariants, pp.Tasks, proj.TaskGroups)
-	catcher.Extend(errs)
-	return proj, errors.Wrap(catcher.Resolve(), LoadProjectError)
-}
 
-func (pp *ParserProject) AddTask(name string, commands []PluginCommandConf) {
-	t := parserTask{
-		Name:     name,
-		Commands: commands,
-	}
-	pp.Tasks = append(pp.Tasks, t)
-}
-func (pp *ParserProject) AddBuildVariant(name, displayName, runOn string, batchTime *int, tasks []string) {
-	bv := parserBV{
-		Name:        name,
-		DisplayName: displayName,
-		BatchTime:   batchTime,
-		Tasks:       []parserBVTaskUnit{},
-	}
-	for _, taskName := range tasks {
-		bv.Tasks = append(bv.Tasks, parserBVTaskUnit{Name: taskName})
-	}
-	if runOn != "" {
-		bv.RunOn = []string{runOn}
-	}
-	pp.BuildVariants = append(pp.BuildVariants, bv)
+	proj.Tasks, proj.TaskGroups, errs = evaluateTaskUnits(tse, tgse, vse, pp.Tasks, pp.TaskGroups)
+	evalErrs = append(evalErrs, errs...)
+
+	proj.BuildVariants, errs = evaluateBuildVariants(tse, tgse, vse, buildVariants, pp.Tasks, proj.TaskGroups)
+	evalErrs = append(evalErrs, errs...)
+
+	return proj, evalErrs
 }
 
 // sieveMatrixVariants takes a set of parserBVs and groups them into regular
 // buildvariant matrix definitions and matrix definitions.
 func sieveMatrixVariants(bvs []parserBV) (regular []parserBV, matrices []matrix) {
 	for _, bv := range bvs {
-		if bv.matrix != nil {
-			matrices = append(matrices, *bv.matrix)
+		if bv.Matrix != nil {
+			matrices = append(matrices, *bv.Matrix)
 		} else {
 			regular = append(regular, bv)
 		}
@@ -662,7 +602,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 		bv.Tasks, errs = evaluateBVTasks(tse, tgse, vse, pbv)
 
 		// evaluate any rules passed in during matrix construction
-		for _, r := range pbv.matrixRules {
+		for _, r := range pbv.MatrixRules {
 			// remove_tasks removes all tasks with matching names
 			if len(r.RemoveTasks) > 0 {
 				prunedTasks := []BuildVariantTaskUnit{}

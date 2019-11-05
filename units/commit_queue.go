@@ -291,7 +291,6 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 	}
 
 	project.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
-
 	if err = patchDoc.UpdateGithashProjectAndTasks(); err != nil {
 		j.logError(err, "can't update patch in db", nextItem)
 		j.dequeue(cq, nextItem)
@@ -681,6 +680,11 @@ func updatePatch(ctx context.Context, githubToken string, projectRef *model.Proj
 
 		patchDoc.Patches[i].Githash = *branch.Commit.SHA
 	}
+
+	// reset patch build variants and tasks
+	patchDoc.BuildVariants = []string{}
+	patchDoc.VariantsTasks = []patch.VariantTasks{}
+	patchDoc.Tasks = []string{}
 
 	return project, nil
 }

@@ -57,10 +57,8 @@ func TestMakeDownstreamConfigFromFile(t *testing.T) {
 		Owner:      "evergreen-ci",
 		Repo:       "evergreen",
 	}
-	proj, pp, err := makeDownstreamProjectFromFile(ref, "trigger/testdata/downstream_config.yml")
+	proj, err := makeDownstreamConfigFromFile(ref, "trigger/testdata/downstream_config.yml")
 	assert.NoError(err)
-	assert.NotNil(proj)
-	assert.NotNil(pp)
 	assert.Equal(ref.Identifier, proj.Identifier)
 	assert.Len(proj.Tasks, 2)
 	assert.Equal("task1", proj.Tasks[0].Name)
@@ -73,34 +71,17 @@ func TestMakeDownstreamConfigFromCommand(t *testing.T) {
 	assert.NoError(db.ClearCollections(evergreen.ConfigCollection))
 	config := testutil.MockConfig()
 	assert.NoError(evergreen.UpdateConfig(config))
-	identifier := "project"
+	ref := model.ProjectRef{
+		Identifier: "project",
+	}
 	cmd := "echo hi"
 
-	proj, pp, err := makeDownstreamProjectFromCommand(identifier, cmd, "generate.json")
+	project, err := makeDownstreamConfigFromCommand(ref, cmd, "generate.json")
 	assert.NoError(err)
-	assert.NotNil(proj)
-	assert.NotNil(pp)
-	assert.Equal(identifier, proj.Identifier)
+	assert.Equal(ref.Identifier, project.Identifier)
 	foundCommand := false
 	foundFile := false
-	for _, t := range proj.Tasks {
-		for _, c := range t.Commands {
-			if c.Command == "subprocess.exec" {
-				foundCommand = true
-			} else if c.Command == "generate.tasks" {
-				for _, value := range c.Params {
-					assert.Contains(value, "generate.json")
-					foundFile = true
-				}
-			}
-		}
-	}
-	assert.True(foundCommand)
-	assert.True(foundFile)
-
-	foundCommand = false
-	foundFile = false
-	for _, t := range pp.Tasks {
+	for _, t := range project.Tasks {
 		for _, c := range t.Commands {
 			if c.Command == "subprocess.exec" {
 				foundCommand = true

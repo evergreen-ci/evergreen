@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Tasks []*Task
@@ -38,7 +39,8 @@ func (t Tasks) InsertUnordered(ctx context.Context) error {
 	if t.Len() == 0 {
 		return nil
 	}
-	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertMany(ctx, t.getPayload())
+	ordered := false
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertMany(ctx, t.getPayload(), &options.InsertManyOptions{Ordered: &ordered})
 	return err
 }
 
