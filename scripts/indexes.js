@@ -60,12 +60,6 @@ db.spawn_requests.ensureIndex({ "user" : 1, "status" : 1 })
 //======task_bk======//
 db.task_bk.ensureIndex({ "branch" : 1, "build_variant" : 1, "name" : 1 })
 
-//======task_event_log======//
-db.task_event_log.ensureIndex({ "r_id" : 1, "r_type" : 1, "ts" : -1 })
-db.task_event_log.ensureIndex({ "r_id" : 1, "r_type" : 1, "ts" : 1 })
-db.task_event_log.ensureIndex({ "processed_at" : 1 })
-db.task_event_log.createIndexes({"ts": 1}, {background: true, expireAfterSeconds: 60*60*24*30*6}) // (6 months)
-
 //======tasks======//
 db.tasks.ensureIndex({ "build_variant" : 1, "display_name" : 1, "order" : 1 })
 db.tasks.ensureIndex({ "gitspec" : 1, "build_variant" : 1, "display_name" : 1 })
