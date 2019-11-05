@@ -13,15 +13,3 @@ type APIPermission struct {
 	Name   string                      `json:"name"`
 	Levels []evergreen.PermissionLevel `json:"levels"`
 }
-
-func (apiPermissions *APIPermissions) BuildFromService() APIPermissions {
-	return APIPermissions{
-		Permissions: []permission{
-			permission{
-				Key:    evergreen.PermissionProjectSettings,
-				Name:   evergreen.MapPermissionKeyToName(evergreen.PermissionProjectSettings),
-				Levels: evergreen.MapPermissionKeyToPermissionLevels(evergreen.PermissionProjectSettings),
-			},
-		},
-	}
-}
