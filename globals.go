@@ -548,30 +548,69 @@ func MapPermissionKeyToName(permissionKey string) string {
 	}
 	return ""
 }
-func MapPermissionKeyToPermissions(permissionKey string) []PermissionLevel {
+
+type PermissionLevel struct {
+	Description string `json:"description"`
+	Value       int    `json:"value"`
+}
+
+func MapPermissionKeyToPermissionLevels(permissionKey string) []PermissionLevel {
 	switch permissionKey {
 	case PermissionProjectSettings:
 		return []PermissionLevel{
-			ProjectSettingsEdit,
-			ProjectSettingsView,
-			ProjectSettingsNone,
+			PermissionLevel{
+				Description: ProjectSettingsEdit.String(),
+				Value:       ProjectSettingsEdit.Value(),
+			},
+			PermissionLevel{
+				Description: ProjectSettingsView.String(),
+				Value:       ProjectSettingsView.Value(),
+			},
+			PermissionLevel{
+				Description: ProjectSettingsNone.String(),
+				Value:       ProjectSettingsNone.Value(),
+			},
 		}
 	case PermissionTasks:
 		return []PermissionLevel{
-			TasksAdmin,
-			TasksBasic,
-			TasksView,
-			TasksNone,
+			PermissionLevel{
+				Description: TasksAdmin.String(),
+				Value:       TasksAdmin.Value(),
+			},
+			PermissionLevel{
+				Description: TasksBasic.String(),
+				Value:       TasksBasic.Value(),
+			},
+			PermissionLevel{
+				Description: TasksView.String(),
+				Value:       TasksView.Value(),
+			},
+			PermissionLevel{
+				Description: TasksNone.String(),
+				Value:       TasksNone.Value(),
+			},
 		}
 	case PermissionPatches:
 		return []PermissionLevel{
-			PatchSubmit,
-			PatchNone,
+			PermissionLevel{
+				Description: PatchSubmit.String(),
+				Value:       PatchSubmit.Value(),
+			},
+			PermissionLevel{
+				Description: PatchNone.String(),
+				Value:       PatchNone.Value(),
+			},
 		}
 	case PermissionLogs:
 		return []PermissionLevel{
-			LogsView,
-			LogsNone,
+			PermissionLevel{
+				Description: LogsView.String(),
+				Value:       LogsView.Value(),
+			},
+			PermissionLevel{
+				Description: LogsNone.String(),
+				Value:       LogsNone.Value(),
+			},
 		}
 	}
 	return []PermissionLevel{}
@@ -666,7 +705,7 @@ var ProjectPermissions = []string{
 	PermissionLogs,
 }
 
-var distroPermissions = []string{
+var DistroPermissions = []string{
 	PermissionDistroSettings,
 	PermissionHosts,
 }
