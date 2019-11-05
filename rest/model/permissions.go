@@ -10,7 +10,7 @@ type APIPermissions struct {
 }
 
 type APIPermission struct {
-	Key    string                      `json:"key"`
-	Name   string                      `json:"name"`
-	Levels []evergreen.PermissionLevel `json:"levels"`
+	Key    string                 `json:"key"`
+	Name   string                 `json:"name"`
+	Levels []evergreen.Permission `json:"levels"`
 }
