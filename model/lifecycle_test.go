@@ -1836,39 +1836,3 @@ func TestMarkAsDispatched(t *testing.T) {
 	})
 
 }
-
-func TestCreateTasksCache(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(task.Collection))
-	// execution tasks should be removed
-	tasks := []task.Task{
-		{
-			Id:          "execTask1",
-			DisplayName: "execTask1",
-		},
-		{
-			Id:          "execTask2",
-			DisplayName: "execTask2",
-		},
-		{
-			Id:          "displayTask",
-			DisplayName: "displayTask",
-			DisplayOnly: true,
-			ExecutionTasks: []string{
-				"execTask1",
-				"execTask2",
-			},
-		},
-		{
-			Id:          "regularTask",
-			DisplayName: "regularTask",
-		},
-	}
-	for _, t := range tasks {
-		assert.NoError(t.Insert())
-	}
-	cache := CreateTasksCache(tasks)
-	assert.Equal("displayTask", cache[0].Id)
-	assert.Equal("regularTask", cache[1].Id)
-	assert.Len(cache, 2)
-}

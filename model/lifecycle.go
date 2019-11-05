@@ -445,18 +445,13 @@ func RestartBuildTasks(buildId string, caller string) error {
 
 func CreateTasksCache(tasks []task.Task) []build.TaskCache {
 	tasks = sortTasks(tasks)
-	buildCache := make([]build.TaskCache, 0, len(tasks))
-	tempCache := task.NewDisplayTaskCache()
+	cache := make([]build.TaskCache, 0, len(tasks))
 	for _, task := range tasks {
-		displayTask, err := tempCache.Get(&task)
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "unable to get display task",
-		}))
-		if displayTask == nil {
-			buildCache = append(buildCache, cacheFromTask(task))
+		if task.DisplayTask == nil {
+			cache = append(cache, cacheFromTask(task))
 		}
 	}
-	return buildCache
+	return cache
 }
 
 // RefreshTasksCache updates a build document so that the tasks cache reflects the correct current
@@ -483,15 +478,6 @@ func RefreshTasksCache(buildId string) error {
 
 	cache := CreateTasksCache(tasks)
 	return errors.WithStack(build.SetTasksCache(buildId, cache))
-}
-
-func mergeTasksCache(buildID string, oldTasks []task.Task, newTasks task.Tasks) error {
-	allTasks := oldTasks
-	for _, newTask := range newTasks {
-		allTasks = append(allTasks, *newTask)
-	}
-	cache := CreateTasksCache(allTasks)
-	return errors.WithStack(build.SetTasksCache(buildID, cache))
 }
 
 // AddTasksToBuild creates the tasks for the given build of a project
@@ -522,7 +508,7 @@ func AddTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 	}
 
 	// update the build to hold the new tasks
-	if err := mergeTasksCache(b.Id, tasksInBuild, tasks); err != nil {
+	if err := RefreshTasksCache(b.Id); err != nil {
 		return nil, errors.Wrapf(err, "error updating task cache for '%s'", b.Id)
 	}
 
