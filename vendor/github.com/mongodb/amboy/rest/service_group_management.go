@@ -7,6 +7,8 @@ import (
 	"github.com/mongodb/amboy"
 )
 
+// ManagementGroupService provides the reporting service
+// impelementation for queue groups.
 type ManagementGroupService struct {
 	group amboy.QueueGroup
 }
