@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/cloud"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -209,6 +211,10 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	const testUserID = "TestSpawnHostUser"
 	const testUserAPIKey = "testApiKey"
 	const testInstanceType = "testInstanceType"
+	config, err := evergreen.GetConfig()
+	s.NoError(err)
+	config.SpawnHostsPerUser = cloud.DefaultMaxSpawnHostsPerUser
+	s.NoError(config.Set())
 
 	distro := &distro.Distro{
 		Id:           testDistroID,
@@ -235,7 +241,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	}
 
 	intentHost, err := (&DBHostConnector{}).NewIntentHost(options, testUser)
-	s.NotNil(intentHost)
+	s.Require().NotNil(intentHost)
 	s.NoError(err)
 	foundHost, err := host.FindOne(host.ById(intentHost.Id))
 	s.NotNil(foundHost)

@@ -170,8 +170,7 @@ func TestCreateVolumeHandler(t *testing.T) {
 	v = host.Volume{ID: "not-relevant", Size: 400, CreatedBy: "someone-else"}
 	assert.NoError(t, v.Insert())
 
-	volumeSize := 100
-	h.env.Settings().Providers.AWS.MaxVolumeSizePerUser = &volumeSize
+	h.env.Settings().Providers.AWS.MaxVolumeSizePerUser = 100
 	v = host.Volume{ID: "volume-new", Size: 80, CreatedBy: "user"}
 	h.volume = &v
 
