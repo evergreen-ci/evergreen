@@ -85,7 +85,7 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 	failed := []string{}
 	catcher := grip.NewSimpleCatcher()
 	for i := range refs {
-		if !refs[i].TracksPushEvents || !refs[i].Enabled {
+		if !refs[i].TracksPushEvents || !refs[i].Enabled || refs[i].RepotrackerDisabled {
 			unactionable = append(unactionable, refs[i].Identifier)
 			continue
 		}
