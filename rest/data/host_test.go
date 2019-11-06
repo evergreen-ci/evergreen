@@ -84,6 +84,11 @@ func TestHostConnectorSuite(t *testing.T) {
 		s.ctx.SetSuperUsers([]string{"root"})
 	}
 
+	config, err := evergreen.GetConfig()
+	s.NoError(err)
+	config.SpawnHostsPerUser = cloud.DefaultMaxSpawnHostsPerUser
+	s.NoError(config.Set())
+
 	suite.Run(t, s)
 }
 
@@ -211,10 +216,6 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	const testUserID = "TestSpawnHostUser"
 	const testUserAPIKey = "testApiKey"
 	const testInstanceType = "testInstanceType"
-	config, err := evergreen.GetConfig()
-	s.NoError(err)
-	config.SpawnHostsPerUser = cloud.DefaultMaxSpawnHostsPerUser
-	s.NoError(config.Set())
 
 	distro := &distro.Distro{
 		Id:           testDistroID,

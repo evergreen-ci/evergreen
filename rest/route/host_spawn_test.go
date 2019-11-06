@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/cloud"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -23,6 +25,11 @@ func TestHostPostHandler(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(distro.Collection, host.Collection))
+
+	config, err := evergreen.GetConfig()
+	assert.NoError(err)
+	config.SpawnHostsPerUser = cloud.DefaultMaxSpawnHostsPerUser
+	assert.NoError(config.Set())
 
 	d := &distro.Distro{
 		Id:           "distro",
