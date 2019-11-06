@@ -133,6 +133,9 @@ type APIVolume struct {
 	Type             APIString `json:"type"`
 	AvailabilityZone APIString `json:"zone"`
 	Size             int       `json:"size"`
+
+	DeviceName APIString `json:"device_name"`
+	HostID     APIString `json:"host_id"`
 }
 
 type VolumePostRequest struct {

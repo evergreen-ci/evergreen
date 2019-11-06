@@ -692,6 +692,63 @@ func (h *deleteVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 
 ////////////////////////////////////////////////////////////////////////
 //
+// GET /rest/v2/volumes
+
+type getVolumesHandler struct {
+	sc data.Connector
+}
+
+func makeGetVolumes(sc data.Connector) gimlet.RouteHandler {
+	return &getVolumesHandler{
+		sc: sc,
+	}
+}
+
+func (h *getVolumesHandler) Factory() gimlet.RouteHandler {
+	return &getVolumesHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *getVolumesHandler) Parse(ctx context.Context, r *http.Request) error {
+	return nil
+}
+
+func (h *getVolumesHandler) Run(ctx context.Context) gimlet.Responder {
+	u := MustHaveUser(ctx)
+
+	volumes, err := host.FindVolumesByUser(u.Username())
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+
+	volumeDocs := []model.APIVolume{}
+	for _, v := range volumes {
+		volumeDoc := model.APIVolume{}
+		if err = volumeDoc.BuildFromService(v); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "err converting volume '%s' to API model", v.ID))
+		}
+
+		// if the volume is attached to a host, also return the host ID and volume device name
+		h, err := host.FindHostWithVolume(v.ID)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error querying for host"))
+		}
+		if h != nil {
+			volumeDoc.HostID = model.ToAPIString(h.Id)
+			for _, attachment := range h.Volumes {
+				if attachment.VolumeID == v.ID {
+					volumeDoc.DeviceName = model.ToAPIString(attachment.DeviceName)
+				}
+			}
+		}
+		volumeDocs = append(volumeDocs, volumeDoc)
+	}
+	return gimlet.NewJSONResponse(volumeDocs)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
 // POST /rest/v2/hosts/{host_id}/terminate
 
 // TODO this should be a DELETE method on the hosts route rather than
