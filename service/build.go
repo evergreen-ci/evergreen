@@ -190,7 +190,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 				Resource:      projCtx.ProjectRef.Identifier,
 				ResourceType:  "project",
 				Permission:    evergreen.PermissionTasks,
-				RequiredLevel: int(evergreen.TasksAdmin),
+				RequiredLevel: int(evergreen.TasksAdmin.Value),
 			}
 			taskAdmin, err := user.HasPermission(requiredPermission)
 			if err != nil {

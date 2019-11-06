@@ -237,7 +237,7 @@ func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 					Resource:      projCtx.ProjectRef.Identifier,
 					ResourceType:  evergreen.ProjectResourceType,
 					Permission:    evergreen.PermissionTasks,
-					RequiredLevel: int(evergreen.TasksView),
+					RequiredLevel: int(evergreen.TasksView.Value),
 				}
 				hasPermission, err := usr.HasPermission(opts)
 				if err != nil {
