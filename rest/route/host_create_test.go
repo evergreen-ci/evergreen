@@ -64,6 +64,7 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.Equal("task-id", h.SpawnOptions.TaskID)
 	assert.Equal("mock_key", ec2Settings.KeyName)
 	assert.Equal(true, ec2Settings.IsVpc)
+	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
 
 	// scope to build
 	myTask := task.Task{
@@ -91,6 +92,7 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.Equal("build-id", h.SpawnOptions.BuildID)
 	assert.Equal("mock_key", ec2Settings.KeyName)
 	assert.Equal(true, ec2Settings.IsVpc)
+	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
 
 	// spawn a spot evergreen distro
 	c = apimodels.CreateHost{
@@ -116,6 +118,7 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.Equal(evergreen.ProviderNameEc2Spot, h.Distro.Provider)
 	assert.Equal("mock_key", ec2Settings.KeyName)
 	assert.Equal(true, ec2Settings.IsVpc)
+	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
 
 	// override some evergreen distro settings
 	c = apimodels.CreateHost{
@@ -145,6 +148,7 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.Equal("my_secret_key", ec2Settings.AWSSecret)
 	assert.Equal("subnet-123456", ec2Settings.SubnetId)
 	assert.Equal(true, ec2Settings.IsVpc)
+	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
 
 	// bring your own ami
 	c = apimodels.CreateHost{
@@ -174,7 +178,7 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.Equal("my_secret_key", ec2Settings.AWSSecret)
 	assert.Equal("subnet-123456", ec2Settings.SubnetId)
 	assert.Equal(true, ec2Settings.IsVpc)
-
+	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
 }
 
 func TestHostCreateDocker(t *testing.T) {
