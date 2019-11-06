@@ -29,11 +29,10 @@ func getPermissions(permissions []string) []model.APIPermission {
 }
 
 func getAllPermissions() *model.APIPermissions {
-	out := &model.APIPermissions{}
-
-	out.ProjectPermissions = getPermissions(evergreen.ProjectPermissions)
-	out.DistroPermissions = getPermissions(evergreen.DistroPermissions)
-
+	out := &model.APIPermissions{
+		ProjectPermissions: getPermissions(evergreen.ProjectPermissions),
+		DistroPermissions:  getPermissions(evergreen.DistroPermissions),
+	}
 	return out
 }
 

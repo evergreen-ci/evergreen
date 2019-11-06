@@ -643,6 +643,10 @@ func GetPermissionLevelsForPermissionKey(permissionKey string) []PermissionLevel
 	}
 }
 
+// If adding a new type of permissions, i.e. a new array of permission keys, then you must:
+// 1. Add a new field in the APIPermissions model for those permissions.
+// 2. Populate the value of that APIPermissions field with the getPermissions function in rest/route/permissions.go
+
 var ProjectPermissions = []string{
 	PermissionProjectSettings,
 	PermissionTasks,
