@@ -869,9 +869,7 @@ func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetI
 			// implement awserr.Error. We therefore have to check this case in addition
 			// to the standard `err != nil` case above.
 			if len(output.Errors) > 0 {
-				if fleetErr, ok := output.Errors[0].(ec2.CreateFleetError); ok {
-					grip.Error(message.WrapError(fleetErr, msg))
-				}
+				grip.Error(message.WrapError(errors.New(output.Errors[0].String()), msg))
 				return true, err
 			}
 			grip.Info(msg)
