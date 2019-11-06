@@ -96,7 +96,7 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 
 	var err error
 	if p.Description == "" {
-		p.Description, err = gitLastCommitMessage(diffData.base, p.Ref)
+		p.Description, err = gitLastCommitMessage()
 		if err != nil {
 			grip.Debug("Couldn't create patch description using commit messages.")
 		}
@@ -430,8 +430,8 @@ func gitCommitMessages(base, ref string) (string, error) {
 }
 
 // assumes base includes @{upstream}
-func gitLastCommitMessage(base, ref string) (string, error) {
-	args := []string{"--no-show-signature", "--pretty=format:%B", fmt.Sprintf("%s...%s", base, ref), "-n 1"}
+func gitLastCommitMessage() (string, error) {
+	args := []string{"HEAD", "--no-show-signature", "--pretty=format:%s", "-n 1"}
 	return gitCmd("log", args...)
 }
 
