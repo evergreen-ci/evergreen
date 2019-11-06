@@ -3,7 +3,6 @@ package apimodels
 import (
 	"strconv"
 
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -259,10 +258,6 @@ func (ch *CreateHost) Validate() error {
 
 	if ch.CloudProvider == ProviderDocker {
 		return ch.ValidateDocker()
-	}
-
-	if ch.ProvisioningMethod == "" {
-		ch.ProvisioningMethod = distro.BootstrapMethodNone
 	}
 
 	return errors.Errorf("Cloud provider must be either '%s' or '%s'", ProviderEC2, ProviderDocker)
