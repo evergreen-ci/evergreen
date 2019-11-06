@@ -491,48 +491,93 @@ const (
 	ProjectResourceType = "project"
 )
 
-type PermissionLevel interface {
-	String() string
-	Value() int
+type PermissionLevel struct {
+	Description string `json:"description"`
+	Value       int    `json:"value"`
 }
-type ProjectSettingsPermission int
-type ProjectVariablesPermission int
-type TasksPermission int
-type PatchPermission int
-type LogsPermission int
-type DistroSettingsPermission int
-type HostsPermission int
 
-const (
+var (
 	// Project permissions.
 	PermissionProjectSettings  = "project_settings"
 	PermissionProjectVariables = "project_variables"
 	PermissionTasks            = "project_tasks"
 	PermissionPatches          = "project_patches"
 	PermissionLogs             = "project_logs"
-
-	ProjectSettingsEdit ProjectSettingsPermission = 20
-	ProjectSettingsView ProjectSettingsPermission = 10
-	ProjectSettingsNone ProjectSettingsPermission = 0
-	TasksAdmin          TasksPermission           = 30
-	TasksBasic          TasksPermission           = 20
-	TasksView           TasksPermission           = 10
-	TasksNone           TasksPermission           = 0
-	PatchSubmit         PatchPermission           = 10
-	PatchNone           PatchPermission           = 0
-	LogsView            LogsPermission            = 10
-	LogsNone            LogsPermission            = 0
-
 	// Distro permissions.
 	PermissionDistroSettings = "distro_settings"
 	PermissionHosts          = "distro_hosts"
+)
 
-	DistroSettingsEdit DistroSettingsPermission = 20
-	DistroSettingsRead DistroSettingsPermission = 10
-	DistroSettingsNone DistroSettingsPermission = 0
-	HostsEdit          HostsPermission          = 20
-	HostsRead          HostsPermission          = 10
-	HostsNone          HostsPermission          = 0
+// permission levels
+var (
+	ProjectSettingsEdit = PermissionLevel{
+		Description: "Edit project settings",
+		Value:       20,
+	}
+	ProjectSettingsView = PermissionLevel{
+		Description: "View project settings",
+		Value:       10,
+	}
+	ProjectSettingsNone = PermissionLevel{
+		Description: "No project settings permissions",
+		Value:       0,
+	}
+	TasksAdmin = PermissionLevel{
+		Description: "Full tasks permissions",
+		Value:       30,
+	}
+	TasksBasic = PermissionLevel{
+		Description: "Basic modifications to tasks",
+		Value:       20,
+	}
+	TasksView = PermissionLevel{
+		Description: "View tasks",
+		Value:       10,
+	}
+	TasksNone = PermissionLevel{
+		Description: "Not able to view or edit tasks",
+		Value:       0,
+	}
+	PatchSubmit = PermissionLevel{
+		Description: "Submit and edit patches",
+		Value:       10,
+	}
+	PatchNone = PermissionLevel{
+		Description: "Not able to view or submit patches",
+		Value:       0,
+	}
+	LogsView = PermissionLevel{
+		Description: "View logs",
+		Value:       10,
+	}
+	LogsNone = PermissionLevel{
+		Description: "Not able to view logs",
+		Value:       0,
+	}
+	DistroSettingsEdit = PermissionLevel{
+		Description: "Edit distro settings",
+		Value:       20,
+	}
+	DistroSettingsRead = PermissionLevel{
+		Description: "View distro settings",
+		Value:       10,
+	}
+	DistroSettingsNone = PermissionLevel{
+		Description: "No distro settings permissions",
+		Value:       0,
+	}
+	HostsEdit = PermissionLevel{
+		Description: "Edit hosts",
+		Value:       20,
+	}
+	HostsRead = PermissionLevel{
+		Description: "View hosts",
+		Value:       10,
+	}
+	HostsNone = PermissionLevel{
+		Description: "No hosts permissions",
+		Value:       0,
+	}
 )
 
 // GetDisplayNameForPermissionKey gets the display name associated with a permission key
@@ -555,187 +600,47 @@ func GetDisplayNameForPermissionKey(permissionKey string) string {
 	}
 }
 
-type Permission struct {
-	Description string `json:"description"`
-	Value       int    `json:"value"`
-}
-
 // GetPermissionLevelsForPermissionKey gets all permissions associated with a permission key
-func GetPermissionLevelsForPermissionKey(permissionKey string) []Permission {
+func GetPermissionLevelsForPermissionKey(permissionKey string) []PermissionLevel {
 	switch permissionKey {
 	case PermissionProjectSettings:
-		return []Permission{
-			Permission{
-				Description: ProjectSettingsEdit.String(),
-				Value:       ProjectSettingsEdit.Value(),
-			},
-			Permission{
-				Description: ProjectSettingsView.String(),
-				Value:       ProjectSettingsView.Value(),
-			},
-			Permission{
-				Description: ProjectSettingsNone.String(),
-				Value:       ProjectSettingsNone.Value(),
-			},
+		return []PermissionLevel{
+			ProjectSettingsEdit,
+			ProjectSettingsView,
+			ProjectSettingsNone,
 		}
 	case PermissionTasks:
-		return []Permission{
-			Permission{
-				Description: TasksAdmin.String(),
-				Value:       TasksAdmin.Value(),
-			},
-			Permission{
-				Description: TasksBasic.String(),
-				Value:       TasksBasic.Value(),
-			},
-			Permission{
-				Description: TasksView.String(),
-				Value:       TasksView.Value(),
-			},
-			Permission{
-				Description: TasksNone.String(),
-				Value:       TasksNone.Value(),
-			},
+		return []PermissionLevel{
+			TasksAdmin,
+			TasksBasic,
+			TasksView,
+			TasksNone,
 		}
 	case PermissionPatches:
-		return []Permission{
-			Permission{
-				Description: PatchSubmit.String(),
-				Value:       PatchSubmit.Value(),
-			},
-			Permission{
-				Description: PatchNone.String(),
-				Value:       PatchNone.Value(),
-			},
+		return []PermissionLevel{
+			PatchSubmit,
+			PatchNone,
 		}
 	case PermissionLogs:
-		return []Permission{
-			Permission{
-				Description: LogsView.String(),
-				Value:       LogsView.Value(),
-			},
-			Permission{
-				Description: LogsNone.String(),
-				Value:       LogsNone.Value(),
-			},
+		return []PermissionLevel{
+			LogsView,
+			LogsNone,
 		}
 	case PermissionDistroSettings:
-		return []Permission{
-			Permission{
-				Description: DistroSettingsEdit.String(),
-				Value:       DistroSettingsEdit.Value(),
-			},
-			Permission{
-				Description: DistroSettingsRead.String(),
-				Value:       DistroSettingsRead.Value(),
-			},
-			Permission{
-				Description: DistroSettingsNone.String(),
-				Value:       DistroSettingsNone.Value(),
-			},
+		return []PermissionLevel{
+			DistroSettingsEdit,
+			DistroSettingsRead,
+			DistroSettingsNone,
 		}
 	case PermissionHosts:
-		return []Permission{
-			Permission{
-				Description: HostsEdit.String(),
-				Value:       HostsEdit.Value(),
-			},
-			Permission{
-				Description: HostsRead.String(),
-				Value:       HostsRead.Value(),
-			},
-			Permission{
-				Description: HostsNone.String(),
-				Value:       HostsNone.Value(),
-			},
+		return []PermissionLevel{
+			HostsEdit,
+			HostsRead,
+			HostsNone,
 		}
 	default:
-		return []Permission{}
+		return []PermissionLevel{}
 	}
-}
-func (p ProjectSettingsPermission) String() string {
-	switch p {
-	case ProjectSettingsEdit:
-		return "Edit project settings"
-	case ProjectSettingsView:
-		return "View project settings"
-	case ProjectSettingsNone:
-		return "No project settings permissions"
-	}
-	return ""
-}
-func (p ProjectSettingsPermission) Value() int {
-	return int(p)
-}
-func (p TasksPermission) String() string {
-	switch p {
-	case TasksAdmin:
-		return "Full tasks permissions"
-	case TasksBasic:
-		return "Basic modifications to tasks"
-	case TasksView:
-		return "View tasks"
-	case TasksNone:
-		return "Not able to view or edit tasks"
-	}
-	return ""
-}
-func (p TasksPermission) Value() int {
-	return int(p)
-}
-func (p PatchPermission) String() string {
-	switch p {
-	case PatchSubmit:
-		return "Submit and edit patches"
-	case PatchNone:
-		return "Not able to view or submit patches"
-	}
-	return ""
-}
-func (p PatchPermission) Value() int {
-	return int(p)
-}
-func (p LogsPermission) String() string {
-	switch p {
-	case LogsView:
-		return "View logs"
-	case LogsNone:
-		return "Not able to view logs"
-	}
-	return ""
-}
-func (p LogsPermission) Value() int {
-	return int(p)
-}
-func (p DistroSettingsPermission) String() string {
-	switch p {
-	case DistroSettingsEdit:
-		return "Edit distro settings"
-	case DistroSettingsRead:
-		return "View distro settings"
-	case DistroSettingsNone:
-		return "No distro settings permissions"
-	default:
-		return ""
-	}
-}
-func (p DistroSettingsPermission) Value() int {
-	return int(p)
-}
-func (p HostsPermission) String() string {
-	switch p {
-	case HostsEdit:
-		return "Edit hosts"
-	case HostsRead:
-		return "View hosts"
-	case HostsNone:
-		return "No hosts permissions"
-	default:
-		return ""
-	}
-}
-func (p HostsPermission) Value() int {
-	return int(p)
 }
 
 var ProjectPermissions = []string{

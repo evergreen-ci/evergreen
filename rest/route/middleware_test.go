@@ -348,7 +348,7 @@ func TestProjectViewPermission(t *testing.T) {
 	role1 := gimlet.Role{
 		ID:          "r1",
 		Scope:       "proj1",
-		Permissions: map[string]int{evergreen.PermissionTasks: int(evergreen.TasksView)},
+		Permissions: map[string]int{evergreen.PermissionTasks: int(evergreen.TasksView.Value)},
 	}
 	assert.NoError(env.RoleManager().UpdateRole(role1))
 	scope1 := gimlet.Scope{

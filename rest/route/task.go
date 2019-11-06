@@ -272,7 +272,7 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 				Resource:      tep.task.Project,
 				ResourceType:  "project",
 				Permission:    evergreen.PermissionTasks,
-				RequiredLevel: int(evergreen.TasksAdmin),
+				RequiredLevel: int(evergreen.TasksAdmin.Value),
 			}
 			taskAdmin, err := tep.user.HasPermission(requiredPermission)
 			if err != nil {

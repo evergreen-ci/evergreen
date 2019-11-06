@@ -311,7 +311,7 @@ func RequiresProjectPermission(permission string, level evergreen.PermissionLeve
 		RM:            evergreen.GetEnvironment().RoleManager(),
 		PermissionKey: permission,
 		ResourceType:  evergreen.ProjectResourceType,
-		RequiredLevel: level.Value(),
+		RequiredLevel: level.Value,
 		ResourceFunc:  urlVarsToScopes,
 	}
 	return gimlet.RequiresPermission(opts)
@@ -447,7 +447,7 @@ func (p *RequiresProjectViewPermission) ServeHTTP(rw http.ResponseWriter, r *htt
 		Resource:      projectID,
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionTasks,
-		RequiredLevel: int(evergreen.TasksView),
+		RequiredLevel: int(evergreen.TasksView.Value),
 	}
 	hasPermission, err := user.HasPermission(opts)
 	grip.Error(message.WrapError(err, message.Fields{
