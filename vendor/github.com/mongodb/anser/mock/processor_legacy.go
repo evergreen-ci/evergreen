@@ -1,33 +1,33 @@
 package mock
 
 import (
-	"github.com/mongodb/anser/client"
+	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
 )
 
-type Processor struct {
+type LegacyProcessor struct {
 	NS                      model.Namespace
 	Query                   map[string]interface{}
-	Cursor                  client.Cursor
+	Iter                    *Iterator
 	MigrateError            error
 	LastMigrateCallMismatch bool
 	NumMigrateCalls         int
 }
 
-func (p *Processor) Load(cl client.Client, ns model.Namespace, query map[string]interface{}) client.Cursor {
+func (p *LegacyProcessor) Load(session db.Session, ns model.Namespace, query map[string]interface{}) db.Iterator {
 	p.NS = ns
 	p.Query = query
 
-	if p.Cursor == nil {
+	if p.Iter == nil {
 		return nil
 	}
 
-	return p.Cursor
+	return p.Iter
 }
 
-func (p *Processor) Migrate(cursor client.Cursor) error {
+func (p *LegacyProcessor) Migrate(iter db.Iterator) error {
 	p.NumMigrateCalls++
-	if cursor == p.Cursor {
+	if iter == p.Iter {
 		p.LastMigrateCallMismatch = false
 	} else {
 		p.LastMigrateCallMismatch = true

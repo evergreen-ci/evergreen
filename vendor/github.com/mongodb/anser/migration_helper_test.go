@@ -9,6 +9,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/queue"
+	"github.com/mongodb/anser/client"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/mock"
 	"github.com/mongodb/anser/model"
@@ -23,6 +24,7 @@ type MigrationHelperSuite struct {
 	env     *mock.Environment
 	mh      *migrationBase
 	session db.Session
+	client  client.Client
 	queue   amboy.Queue
 	cancel  context.CancelFunc
 	suite.Suite
@@ -35,7 +37,7 @@ func TestMigrationHelperSuite(t *testing.T) {
 func (s *MigrationHelperSuite) SetupSuite() {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
-	s.queue = queue.NewLocalUnordered(4)
+	s.queue = queue.NewLocalLimitedSize(4, 256)
 	s.NoError(s.queue.Start(ctx))
 
 	ses, err := mgo.DialWithTimeout("mongodb://localhost:27017", 10*time.Millisecond)
@@ -53,7 +55,7 @@ func (s *MigrationHelperSuite) SetupTest() {
 	s.env.Queue = s.queue
 	s.mh = NewMigrationHelper(s.env).(*migrationBase)
 
-	s.NoError(s.env.Setup(s.queue, s.session))
+	s.NoError(s.env.Setup(s.queue, s.client, s.session))
 }
 
 func (s *MigrationHelperSuite) TestEnvironmentIsConsistent() {
@@ -133,7 +135,7 @@ func (s *MigrationHelperSuite) TestErrorCaseInMigrationFinishing() {
 	env := mock.NewEnvironment()
 	ns := model.Namespace{DB: "dbname", Collection: "collname"}
 	env.MetaNS = ns
-	env.Session.DB(ns.DB).C(ns.Collection).(*mock.Collection).FailWrites = true
+	env.Session.DB(ns.DB).C(ns.Collection).(*mock.LegacyCollection).FailWrites = true
 
 	mh := NewMigrationHelper(env).(*migrationBase)
 
@@ -155,7 +157,7 @@ func (s *MigrationHelperSuite) TestPendingMigrationsWithDBError() {
 	s.Equal(-1, s.mh.PendingMigrationOperations(ns, map[string]interface{}{}))
 	s.env.SessionError = nil
 
-	s.env.Session.DB(ns.DB).C(ns.Collection).(*mock.Collection).QueryError = errors.New("failed")
+	s.env.Session.DB(ns.DB).C(ns.Collection).(*mock.LegacyCollection).QueryError = errors.New("failed")
 	s.Equal(-1, s.mh.PendingMigrationOperations(ns, map[string]interface{}{}))
 }
 

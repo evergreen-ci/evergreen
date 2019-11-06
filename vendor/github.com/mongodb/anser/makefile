@@ -1,7 +1,7 @@
 # start project configuration
 name := anser
 buildDir := build
-packages := $(name) mock model db bsonutil
+packages := $(name) mock model db bsonutil client apm
 orgPath := github.com/mongodb
 projectPath := $(orgPath)/$(name)
 # end project configuration
@@ -22,12 +22,13 @@ gobin := $(shell which go)
 #   will be vendored eventually.
 deps := github.com/mongodb/amboy
 deps += github.com/mongodb/grip
+deps += github.com/mongodb/ftdc
 deps += github.com/pkg/errors
 deps += github.com/stretchr/testify
 deps += github.com/tychoish/tarjan
 deps += github.com/satori/go.uuid
+deps += go.mongodb.org/mongo-driver/bson
 deps += gopkg.in/mgo.v2
-deps += go.mongodb.org/mongo-driver
 # end project dependencies
 
 
@@ -74,9 +75,10 @@ $(gopath)/src/%:
 # lint setup targets
 lintDeps := $(addprefix $(gopath)/src/,$(lintDeps))
 $(buildDir)/.lintSetup:$(lintDeps)
-	$(gopath)/bin/gometalinter --update --force --install >/dev/null && touch $@
-$(buildDir)/run-linter:scripts/run-linter.go $(buildDir)/.lintSetup
+	$(gopath)/bin/gometalinter --install >/dev/null && touch $@
+$(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
 	$(vendorGopath) go build -o $@ $<
+lint:$(buildDir)/.lintSetup $(lintTargets)
 # end lint setup targets
 
 

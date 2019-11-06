@@ -1,16 +1,15 @@
-package db
+package client
 
 import (
+	"github.com/evergreen-ci/birch"
 	"github.com/mongodb/anser/model"
-	"gopkg.in/mgo.v2/bson"
 )
 
 // Processor defines the process for processing a stream of
-// documents using an Iterator, which resembles mgo's Iter
-// operation.
+// documents using a Cursor.
 type Processor interface {
-	Load(Session, model.Namespace, map[string]interface{}) Iterator
-	Migrate(Iterator) error
+	Load(Client, model.Namespace, map[string]interface{}) Cursor
+	Migrate(Cursor) error
 }
 
 // MigrationOperation defines the function object that performs
@@ -19,4 +18,4 @@ type Processor interface {
 //
 // Implementors of MigrationOperations are responsible for
 // implementing idempotent operations.
-type MigrationOperation func(Session, bson.RawD) error
+type MigrationOperation func(Client, *birch.Document) error
