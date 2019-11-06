@@ -24,7 +24,7 @@ func TestEventSuite(t *testing.T) {
 }
 
 func (s *eventSuite) SetupTest() {
-	s.NoError(db.ClearCollections(AllLogCollection, TaskLogCollection))
+	s.NoError(db.ClearCollections(AllLogCollection))
 }
 
 func (s *eventSuite) TestMarshallAndUnarshallingStructsHaveSameTags() {
