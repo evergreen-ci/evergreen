@@ -6,41 +6,41 @@ import (
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/mock"
 	"github.com/mongodb/anser/model"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/mgo.v2/bson"
 )
 
 func TestApplicationConstructor(t *testing.T) {
-	assert := assert.New(t) // nolint
+	require := require.New(t) // nolint
 
 	env := mock.NewEnvironment()
-	assert.NotNil(env)
+	require.NotNil(env)
 
 	///////////////////////////////////
 	//
 	// the constructor should return errors without proper inputs
 
 	app, err := NewApplication(nil, nil)
-	assert.Nil(app)
-	assert.Error(err)
+	require.Error(err)
+	require.Nil(app)
 
 	app, err = NewApplication(env, nil)
-	assert.Nil(app)
-	assert.Error(err)
+	require.Error(err)
+	require.Nil(app)
 
 	conf := &model.Configuration{}
 	app, err = NewApplication(nil, conf)
-	assert.Nil(app)
-	assert.Error(err)
+	require.Error(err)
+	require.Nil(app)
 
 	///////////////////////////////////
 	//
 	// configure a valid, noop configuration without any generators defined
 
 	app, err = NewApplication(env, conf)
-	assert.NotNil(app)
-	assert.NoError(err)
-	assert.Len(app.Generators, 0)
+	require.NoError(err)
+	require.NotNil(app)
+	require.Len(app.Generators, 0)
 
 	///////////////////////////////////
 	//
@@ -56,7 +56,7 @@ func TestApplicationConstructor(t *testing.T) {
 		},
 	}
 
-	env.MigrationRegistry["manualOne"] = func(s db.Session, d bson.RawD) error { return nil }
+	env.LegacyMigrationRegistry["manualOne"] = func(s db.Session, d bson.RawD) error { return nil }
 	conf.ManualMigrations = []model.ConfigurationManualMigration{
 		{
 			Options: model.GeneratorOptions{
@@ -67,7 +67,7 @@ func TestApplicationConstructor(t *testing.T) {
 		},
 	}
 
-	env.ProcessorRegistry["streamOne"] = &mock.Processor{}
+	env.LegacyProcessorRegistry["streamOne"] = &mock.LegacyProcessor{}
 	conf.StreamMigrations = []model.ConfigurationManualMigration{
 		{
 			Options: model.GeneratorOptions{
@@ -79,9 +79,9 @@ func TestApplicationConstructor(t *testing.T) {
 	}
 
 	app, err = NewApplication(env, conf)
-	assert.NotNil(app)
-	assert.NoError(err)
-	assert.Len(app.Generators, 3)
+	require.NoError(err)
+	require.NotNil(app)
+	require.Len(app.Generators, 3)
 
 	///////////////////////////////////
 	//
@@ -141,6 +141,6 @@ func TestApplicationConstructor(t *testing.T) {
 	}
 
 	app, err = NewApplication(env, conf)
-	assert.Nil(app)
-	assert.Error(err)
+	require.Error(err)
+	require.Nil(app)
 }

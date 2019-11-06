@@ -8,10 +8,13 @@ import (
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
+	"github.com/mongodb/anser/client"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -23,6 +26,7 @@ func init() {
 type EnvImplSuite struct {
 	env     *envState
 	q       amboy.Queue
+	client  client.Client
 	session db.Session
 	cancel  context.CancelFunc
 	suite.Suite
@@ -35,7 +39,7 @@ func TestEnvImplSuite(t *testing.T) {
 
 func (s *EnvImplSuite) SetupTest() {
 	ctx, cancel := context.WithCancel(context.Background())
-	s.q = queue.NewLocalUnordered(4)
+	s.q = queue.NewLocalLimitedSize(4, 256)
 	s.cancel = cancel
 	s.NoError(s.q.Start(ctx))
 
@@ -45,14 +49,18 @@ func (s *EnvImplSuite) SetupTest() {
 
 	s.Require().Equal(globalEnv, GetEnvironment())
 
+	cl, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(10 * time.Millisecond))
+	s.Require().NoError(err)
+	s.client = client.WrapClient(cl)
+
 	s.env = &envState{
-		migrations: make(map[string]db.MigrationOperation),
-		processor:  make(map[string]db.Processor),
+		migrations: make(map[string]migrationOp),
+		processor:  make(map[string]processor),
 	}
 
 	s.Nil(s.env.session)
 	s.False(s.env.isSetup)
-	s.NoError(s.env.Setup(s.q, s.session))
+	s.NoError(s.env.Setup(s.q, s.client, s.session))
 	s.True(s.env.isSetup)
 	s.NotNil(s.env.session)
 	s.Equal(s.env.metadataNS.DB, defaultAnserDB)
@@ -65,14 +73,14 @@ func (s *EnvImplSuite) TearDownTest() {
 }
 
 func (s *EnvImplSuite) TestCallingSetupMultipleTimesErrors() {
-	s.Error(s.env.Setup(s.q, s.session))
+	s.Error(s.env.Setup(s.q, s.client, s.session))
 	s.True(s.env.isSetup)
 }
 
 func (s *EnvImplSuite) TestDialErrorCausesSetupError() {
 	s.env.isSetup = false
 	s.env.session = nil
-	s.Error(s.env.Setup(s.q, nil))
+	s.Error(s.env.Setup(s.q, s.client, nil))
 	s.False(s.env.isSetup)
 	s.Nil(s.env.session)
 }
@@ -81,7 +89,7 @@ func (s *EnvImplSuite) TestUnstartedQueueCausesError() {
 	s.env.isSetup = false
 	s.env.queue = nil
 
-	s.Error(s.env.Setup(queue.NewLocalUnordered(2), s.session))
+	s.Error(s.env.Setup(queue.NewLocalLimitedSize(2, 256), s.client, s.session))
 	s.Nil(s.env.queue)
 	s.False(s.env.isSetup)
 }
@@ -93,7 +101,7 @@ func (s *EnvImplSuite) TestDatabaseNameOverrideFromURI() {
 	session := db.WrapSession(mgoses)
 	defer session.Close()
 
-	s.NoError(s.env.Setup(s.q, session))
+	s.NoError(s.env.Setup(s.q, s.client, session))
 	s.True(s.env.isSetup)
 	s.Equal("mci", s.env.metadataNS.DB)
 }
@@ -118,39 +126,39 @@ func (s *EnvImplSuite) TestDepNetworkAccessor() {
 	s.Equal(s.env.deps, network)
 }
 
-func (s *EnvImplSuite) TestManualMigrationOperationRegistry() {
+func (s *EnvImplSuite) TestLegacyManualMigrationOperationRegistry() {
 	count := 0
 
 	op := func(_ db.Session, _ bson.RawD) error { count++; return nil }
 	s.Len(s.env.migrations, 0)
-	s.NoError(s.env.RegisterManualMigrationOperation("foo", op))
+	s.NoError(s.env.RegisterLegacyManualMigrationOperation("foo", op))
 	s.Len(s.env.migrations, 1)
-	s.Error(s.env.RegisterManualMigrationOperation("foo", op))
+	s.Error(s.env.RegisterLegacyManualMigrationOperation("foo", op))
 	s.Len(s.env.migrations, 1)
 
-	fun, ok := s.env.GetManualMigrationOperation("foo")
+	fun, ok := s.env.GetLegacyManualMigrationOperation("foo")
 	s.True(ok)
 	s.Equal(0, count)
 	fun(nil, bson.RawD{})
 	s.Equal(1, count)
 
-	fun, ok = s.env.GetManualMigrationOperation("bar")
+	fun, ok = s.env.GetLegacyManualMigrationOperation("bar")
 	s.False(ok)
 	s.Zero(fun)
 }
 
-func (s *EnvImplSuite) TestDocumentProcessor() {
+func (s *EnvImplSuite) TestLegacyDocumentProcessor() {
 	s.Len(s.env.processor, 0)
-	s.NoError(s.env.RegisterDocumentProcessor("foo", nil))
+	s.NoError(s.env.RegisterLegacyDocumentProcessor("foo", nil))
 	s.Len(s.env.processor, 1)
-	s.Error(s.env.RegisterDocumentProcessor("foo", nil))
+	s.Error(s.env.RegisterLegacyDocumentProcessor("foo", nil))
 	s.Len(s.env.processor, 1)
 
-	dp, ok := s.env.GetDocumentProcessor("foo")
+	dp, ok := s.env.GetLegacyDocumentProcessor("foo")
 	s.True(ok)
 	s.Nil(dp)
 
-	dp, ok = s.env.GetDocumentProcessor("bar")
+	dp, ok = s.env.GetLegacyDocumentProcessor("bar")
 	s.False(ok)
 	s.Nil(dp)
 }

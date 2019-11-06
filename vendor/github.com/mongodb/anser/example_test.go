@@ -6,9 +6,12 @@ import (
 	"time"
 
 	"github.com/mongodb/amboy/queue"
+	"github.com/mongodb/anser/client"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
 	"github.com/stretchr/testify/assert"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	mgo "gopkg.in/mgo.v2"
 )
 
@@ -31,7 +34,12 @@ func proofOfConcept() error {
 	}
 	session := db.WrapSession(ses)
 
-	if err := env.Setup(q, session); err != nil {
+	cl, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(10 * time.Millisecond))
+	if err != nil {
+		return err
+	}
+
+	if err := env.Setup(q, client.WrapClient(cl), session); err != nil {
 		return err
 	}
 
