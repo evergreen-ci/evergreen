@@ -1080,8 +1080,8 @@ func FindOneVolume(query interface{}) (*Volume, error) {
 	return v, err
 }
 
-func FindVolumesByUser(userID string) ([]*Volume, error) {
-	volumes := []*Volume{}
+func FindVolumesByUser(userID string) ([]Volume, error) {
+	volumes := []Volume{}
 	query := bson.M{
 		VolumeCreatedByKey: userID,
 	}

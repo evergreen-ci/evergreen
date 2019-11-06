@@ -475,16 +475,15 @@ func printVolumes(volumes []model.APIVolume, userID string) {
 	}
 	grip.Infof("%d volumes started by %s (total size %d):", len(volumes), userID, totalSize)
 	for _, v := range volumes {
-		grip.Infof("\nID                : %s", model.FromAPIString(v.ID))
-		grip.Infof("Size              : %d", v.Size)
-		grip.Infof("Type              : %s", model.FromAPIString(v.Type))
-		grip.Infof("Availability Zone : %s", model.FromAPIString(v.AvailabilityZone))
+		grip.Infof("\n%-18s: %s\n", "ID", model.FromAPIString(v.ID))
+		grip.Infof("%-18s: %d\n", "Size", v.Size)
+		grip.Infof("%-18s: %s\n", "Type", model.FromAPIString(v.Type))
+		grip.Infof("%-18s: %s\n", "Availability Zone", model.FromAPIString(v.AvailabilityZone))
 		if model.FromAPIString(v.HostID) != "" {
-			grip.Infof("Device Name       : %s", model.FromAPIString(v.DeviceName))
-			grip.Infof("Attached to Host  : %s", model.FromAPIString(v.HostID))
+			grip.Infof("%-18s: %s\n", "Device Name", model.FromAPIString(v.DeviceName))
+			grip.Infof("%-18s: %s\n", "Attached to Host", model.FromAPIString(v.HostID))
 
 		}
-
 	}
 }
 
