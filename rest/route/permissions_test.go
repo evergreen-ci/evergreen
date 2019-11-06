@@ -8,7 +8,7 @@ import (
 )
 
 func TestGetPermissions(t *testing.T) {
-	result := GetAllPermissions()
+	result := getAllPermissions()
 
 	assert.Equal(t, len(evergreen.ProjectPermissions), len(result.ProjectPermissions))
 	assert.Equal(t, len(evergreen.DistroPermissions), len(result.DistroPermissions))

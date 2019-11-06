@@ -535,7 +535,8 @@ const (
 	HostsNone          HostsPermission          = 0
 )
 
-func MapPermissionKeyToName(permissionKey string) string {
+// GetDisplayNameForPermissionKey gets the display name associated with a permission key
+func GetDisplayNameForPermissionKey(permissionKey string) string {
 	switch permissionKey {
 	case PermissionProjectSettings:
 		return "Settings"
@@ -549,8 +550,9 @@ func MapPermissionKeyToName(permissionKey string) string {
 		return "Distro Settings"
 	case PermissionHosts:
 		return "Distro Hosts"
+	default:
+		return ""
 	}
-	return ""
 }
 
 type Permission struct {
@@ -558,7 +560,8 @@ type Permission struct {
 	Value       int    `json:"value"`
 }
 
-func MapPermissionKeyToPermissionLevels(permissionKey string) []Permission {
+// GetPermissionLevelsForPermissionKey gets all permissions associated with a permission key
+func GetPermissionLevelsForPermissionKey(permissionKey string) []Permission {
 	switch permissionKey {
 	case PermissionProjectSettings:
 		return []Permission{
@@ -646,9 +649,9 @@ func MapPermissionKeyToPermissionLevels(permissionKey string) []Permission {
 				Value:       HostsNone.Value(),
 			},
 		}
+	default:
+		return []Permission{}
 	}
-
-	return []Permission{}
 }
 func (p ProjectSettingsPermission) String() string {
 	switch p {
@@ -712,8 +715,9 @@ func (p DistroSettingsPermission) String() string {
 		return "View distro settings"
 	case DistroSettingsNone:
 		return "No distro settings permissions"
+	default:
+		return ""
 	}
-	return ""
 }
 func (p DistroSettingsPermission) Value() int {
 	return int(p)
@@ -726,8 +730,9 @@ func (p HostsPermission) String() string {
 		return "View hosts"
 	case HostsNone:
 		return "No hosts permissions"
+	default:
+		return ""
 	}
-	return ""
 }
 func (p HostsPermission) Value() int {
 	return int(p)
