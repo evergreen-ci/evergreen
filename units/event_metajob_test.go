@@ -49,7 +49,7 @@ func (s *eventMetaJobSuite) TearDownSuite() {
 }
 
 func (s *eventMetaJobSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.AllLogCollection, event.TaskLogCollection, evergreen.ConfigCollection, notification.Collection, event.SubscriptionsCollection, patch.Collection))
+	s.NoError(db.ClearCollections(event.AllLogCollection, evergreen.ConfigCollection, notification.Collection, event.SubscriptionsCollection, patch.Collection))
 
 	events := []event.EventLogEntry{
 		{
