@@ -14,7 +14,7 @@ type permissionsGetHandler struct{}
 func (p *permissionsGetHandler) Factory() gimlet.RouteHandler                     { return p }
 func (p *permissionsGetHandler) Parse(ctx context.Context, r *http.Request) error { return nil }
 
-func getPermissions(permissions []string) []model.APIPermission {
+func (p *permissionsGetHandler) getPermissions(permissions []string) []model.APIPermission {
 	out := []model.APIPermission{}
 
 	for _, key := range permissions {
@@ -28,14 +28,14 @@ func getPermissions(permissions []string) []model.APIPermission {
 	return out
 }
 
-func getAllPermissions() *model.APIPermissions {
+func (p *permissionsGetHandler) getAllPermissions() *model.APIPermissions {
 	out := &model.APIPermissions{
-		ProjectPermissions: getPermissions(evergreen.ProjectPermissions),
-		DistroPermissions:  getPermissions(evergreen.DistroPermissions),
+		ProjectPermissions: p.getPermissions(evergreen.ProjectPermissions),
+		DistroPermissions:  p.getPermissions(evergreen.DistroPermissions),
 	}
 	return out
 }
 
 func (p *permissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
-	return gimlet.NewJSONResponse(getAllPermissions())
+	return gimlet.NewJSONResponse(p.getAllPermissions())
 }
