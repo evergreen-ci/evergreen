@@ -447,7 +447,7 @@ func (p *RequiresProjectViewPermission) ServeHTTP(rw http.ResponseWriter, r *htt
 		Resource:      projectID,
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionTasks,
-		RequiredLevel: int(evergreen.TasksView.Value),
+		RequiredLevel: evergreen.TasksView.Value,
 	}
 	hasPermission, err := user.HasPermission(opts)
 	grip.Error(message.WrapError(err, message.Fields{

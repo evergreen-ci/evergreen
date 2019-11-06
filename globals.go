@@ -584,7 +584,7 @@ var (
 func GetDisplayNameForPermissionKey(permissionKey string) string {
 	switch permissionKey {
 	case PermissionProjectSettings:
-		return "Settings"
+		return "Project Settings"
 	case PermissionTasks:
 		return "Tasks"
 	case PermissionPatches:
