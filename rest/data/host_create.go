@@ -255,11 +255,7 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 	d.Provider = provider
 
 	if publicKey != "" {
-		keyPath := filepath.Join(d.HomeDir(), ".ssh", "authorized_keys")
-		if d.BootstrapSettings.Method != distro.BootstrapMethodLegacySSH {
-			keyPath = d.BootstrapSettings.RootDir + keyPath
-		}
-		d.Setup += fmt.Sprintf("\necho \"\n%s\" >> %s\n", publicKey, keyPath)
+		d.Setup += fmt.Sprintf("\necho \"\n%s\" >> %s\n", publicKey, filepath.Join(d.HomeDir(), ".ssh", "authorized_keys"))
 	}
 
 	// set provider settings
