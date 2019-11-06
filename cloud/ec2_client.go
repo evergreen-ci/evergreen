@@ -861,6 +861,19 @@ func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetI
 				}
 				return true, err
 			}
+			// CreateFleetWithContext has oddball behavior. If there is a
+			// RequestLimitExceeded error while using CreateFleet in instant mode,
+			// usually (but not always!) EC2.CreateFleetWithContext will not return an
+			// error. Instead it will populate the output.Error array with a single
+			// item describing the error, using an error type that does _not_
+			// implement awserr.Error. We therefore have to check this case in addition
+			// to the standard `err != nil` case above.
+			if len(output.Errors) > 0 {
+				if fleetErr, ok := output.Errors[0].(ec2.CreateFleetError); ok {
+					grip.Error(message.WrapError(fleetErr, msg))
+				}
+				return true, err
+			}
 			grip.Info(msg)
 			return false, nil
 		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
