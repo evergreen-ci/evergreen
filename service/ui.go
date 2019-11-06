@@ -217,6 +217,10 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	submitPatches := route.RequiresProjectPermission(evergreen.PermissionPatches, evergreen.PatchSubmit)
 	viewProjectSettings := route.RequiresProjectPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsView)
 	editProjectSettings := route.RequiresProjectPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsEdit)
+	viewDistroSettings := route.RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsView)
+	editDistroSettings := route.RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsEdit)
+	viewHosts := route.RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.HostsView)
+	editHosts := route.RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.HostsEdit)
 
 	app := gimlet.NewApp()
 	app.NoVersions = true
@@ -302,16 +306,16 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	// Hosts
 	app.AddRoute("/hosts").Wrap(needsLogin, needsContext).Handler(uis.hostsPage).Get()
 	app.AddRoute("/hosts").Wrap(needsLogin, needsContext).Handler(uis.modifyHosts).Put()
-	app.AddRoute("/host/{host_id}").Wrap(needsLogin, needsContext).Handler(uis.hostPage).Get()
-	app.AddRoute("/host/{host_id}").Wrap(needsSuperUser, needsContext).Handler(uis.modifyHost).Put()
+	app.AddRoute("/host/{host_id}").Wrap(needsLogin, needsContext, viewHosts).Handler(uis.hostPage).Get()
+	app.AddRoute("/host/{host_id}").Wrap(needsSuperUser, needsContext, editHosts).Handler(uis.modifyHost).Put()
 
 	// Distros
 	app.AddRoute("/distros").Wrap(needsLogin, needsContext).Handler(uis.distrosPage).Get()
 	app.AddRoute("/distros").Wrap(needsSuperUser, needsContext).Handler(uis.addDistro).Put()
-	app.AddRoute("/distros/{distro_id}").Wrap(needsLogin, needsContext).Handler(uis.getDistro).Get()
-	app.AddRoute("/distros/{distro_id}").Wrap(needsSuperUser, needsContext).Handler(uis.addDistro).Put()
-	app.AddRoute("/distros/{distro_id}").Wrap(needsSuperUser, needsContext).Handler(uis.modifyDistro).Post()
-	app.AddRoute("/distros/{distro_id}").Wrap(needsSuperUser, needsContext).Handler(uis.removeDistro).Delete()
+	app.AddRoute("/distros/{distro_id}").Wrap(needsLogin, needsContext, viewDistroSettings).Handler(uis.getDistro).Get()
+	app.AddRoute("/distros/{distro_id}").Wrap(needsSuperUser, needsContext, editDistroSettings).Handler(uis.addDistro).Put()
+	app.AddRoute("/distros/{distro_id}").Wrap(needsSuperUser, needsContext, editDistroSettings).Handler(uis.modifyDistro).Post()
+	app.AddRoute("/distros/{distro_id}").Wrap(needsSuperUser, needsContext, editDistroSettings).Handler(uis.removeDistro).Delete()
 
 	// Event Logs
 	app.AddRoute("/event_log/{resource_type}/{resource_id:[\\w_\\-\\:\\.\\@]+}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.fullEventLogs).Get()

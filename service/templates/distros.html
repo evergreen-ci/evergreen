@@ -1,11 +1,12 @@
 {{define "scripts"}}
 <script type="text/javascript" src="{{Static "js" "distros.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript">
-  window.distros = {{.Distros}};
+  window.distroIds = {{.DistroIds}}
   window.keys = {{.Keys}};
   window.containerPools = {{.ContainerPools}};
   window.containerPoolDistros = {{.ContainerPoolDistros}};
   window.containerPoolIds = {{.ContainerPoolIds}};
+  window.acl_enabled = {{.ACLEnabled}};
 </script>
 {{end}}
 {{define "title"}}

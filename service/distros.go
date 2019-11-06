@@ -15,19 +15,23 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/gimlet/rolemanager"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
-	distros, err := distro.Find(distro.All)
-
+	distros, err := distro.Find(distro.All.Project(bson.M{"_id": 1}))
 	if err != nil {
-		message := fmt.Sprintf("error fetching distros: %v", err)
+		message := fmt.Sprintf("error fetching distro ids: %v", err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
 		http.Error(w, message, http.StatusInternalServerError)
 		return
 	}
-
 	sort.Sort(&sortableDistro{distros})
+	distroIds := make([]string, len(distros))
+	for i, d := range distros {
+		distroIds[i] = d.Id
+	}
 
 	settings, err := evergreen.GetConfig()
 	if err != nil {
@@ -47,13 +51,13 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
-		Distros []distro.Distro
-		Keys    map[string]string
+		DistroIds []string
+		Keys      map[string]string
 		ViewData
 		ContainerPools       []evergreen.ContainerPool
 		ContainerPoolDistros []string
 		ContainerPoolIds     []string
-	}{distros, uis.Settings.Keys, uis.GetCommonViewData(w, r, false, true), containerPools, containerPoolDistros, containerPoolIds},
+	}{distroIds, uis.Settings.Keys, uis.GetCommonViewData(w, r, false, true), containerPools, containerPoolDistros, containerPoolIds},
 		"base", "distros.html", "base_angular.html", "menu.html")
 }
 
@@ -203,6 +207,8 @@ func (uis *UIServer) removeDistro(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) getDistro(w http.ResponseWriter, r *http.Request) {
 	id := gimlet.GetVars(r)["distro_id"]
 
+	u := MustHaveUser(r)
+
 	d, err := distro.FindOne(distro.ById(id))
 	if err != nil {
 		message := fmt.Sprintf("error fetching distro '%v': %v", id, err)
@@ -211,7 +217,19 @@ func (uis *UIServer) getDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	gimlet.WriteJSON(w, d)
+	opts := gimlet.PermissionOpts{Resource: id, ResourceType: evergreen.DistroResourceType}
+	permissions, err := rolemanager.HighestPermissionsForRoles(u.Roles(), evergreen.GetEnvironment().RoleManager(), opts)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	data := struct {
+		Distro      distro.Distro      `json:"distro"`
+		Permissions gimlet.Permissions `json:"permissions"`
+	}{d, permissions}
+
+	gimlet.WriteJSON(w, data)
 }
 
 func (uis *UIServer) addDistro(w http.ResponseWriter, r *http.Request) {

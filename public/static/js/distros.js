@@ -1,37 +1,10 @@
 mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchorScroll, $filter, mciDistroRestService) {
 
-  $scope.readOnly = !$window.isSuperUser;
+  $scope.permissions = permissions;
+  $scope.readOnly = !$window.isSuperUser || ($window.acl_enabled && $scope.permissions.distro_settings < 20)
 
-  $scope.distros = $window.distros;
   $scope.containerPoolDistros = $window.containerPoolDistros;
   $scope.containerPoolIds = $window.containerPoolIds;
-
-  for (var i = 0; i < $scope.distros.length; i++) {
-    $scope.distros[i].pool_size = $scope.distros[i].pool_size || 0;
-    $scope.distros[i].planner_settings = $scope.distros[i].planner_settings || {};
-    $scope.distros[i].planner_settings.version = $scope.distros[i].planner_settings.version || 'legacy';
-    $scope.distros[i].planner_settings.minimum_hosts = $scope.distros[i].planner_settings.minimum_hosts || 0;
-    $scope.distros[i].planner_settings.maximum_hosts = $scope.distros[i].planner_settings.maximum_hosts || 0;
-    $scope.distros[i].planner_settings.target_time = $scope.distros[i].planner_settings.target_time || 0;
-    $scope.distros[i].planner_settings.acceptable_host_idle_time = $scope.distros[i].planner_settings.acceptable_host_idle_time || 0;
-    $scope.distros[i].planner_settings.patch_factor = $scope.distros[i].planner_settings.patch_factor || 0;
-    $scope.distros[i].planner_settings.time_in_queue_factor = $scope.distros[i].planner_settings.time_in_queue_factor || 0;
-    $scope.distros[i].planner_settings.expected_runtime_factor = $scope.distros[i].planner_settings.expected_runtime_factor || 0;
-    // Convert from nanoseconds (time.Duration) to seconds (UI display units) for the relevant planner_settings' fields.
-    if ($scope.distros[i].planner_settings.target_time > 0) {
-      $scope.distros[i].planner_settings.target_time /= 1e9;
-    }
-    if ($scope.distros[i].planner_settings.acceptable_host_idle_time > 0) {
-      $scope.distros[i].planner_settings.acceptable_host_idle_time /= 1e9;
-    }
-    $scope.distros[i].planner_settings.group_versions = $scope.distros[i].planner_settings.group_versions;
-    $scope.distros[i].planner_settings.task_ordering = $scope.distros[i].planner_settings.task_ordering || 'interleave';
-    $scope.distros[i].finder_settings = $scope.distros[i].finder_settings || {};
-    $scope.distros[i].finder_settings.version = $scope.distros[i].finder_settings.version || 'legacy';
-    $scope.distros[i].bootstrap_settings.method = $scope.distros[i].bootstrap_settings.method || 'legacy-ssh';
-    $scope.distros[i].bootstrap_settings.communication = $scope.distros[i].bootstrap_settings.communication || 'legacy-ssh';
-    $scope.distros[i].clone_method = $scope.distros[i].clone_method || 'legacy-ssh';
-  }
 
   $scope.plannerVersions = [{
     'id': "legacy",
@@ -162,13 +135,40 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     if (distroHash) {
       // If the distro exists, load it.
       var distro = $scope.getDistroById(distroHash);
-      if (distro) {
-    $scope.activeDistro = distro;
-    return;
+      if (distro.distro) {
+        distro.distro.pool_size = distro.distro.pool_size || 0;
+        distro.distro.planner_settings = distro.distro.planner_settings || {};
+        distro.distro.planner_settings.version = distro.distro.planner_settings.version || 'legacy';
+        distro.distro.planner_settings.minimum_hosts = distro.distro.planner_settings.minimum_hosts || 0;
+        distro.distro.planner_settings.maximum_hosts = distro.distro.planner_settings.maximum_hosts || 0;
+        distro.distro.planner_settings.target_time = distro.distro.planner_settings.target_time || 0;
+        distro.distro.planner_settings.acceptable_host_idle_time = distro.distro.planner_settings.acceptable_host_idle_time || 0;
+        distro.distro.planner_settings.patch_factor = distro.distro.planner_settings.patch_factor || 0;
+        distro.distro.planner_settings.time_in_queue_factor = distro.distro.planner_settings.time_in_queue_factor || 0;
+        distro.distro.planner_settings.expected_runtime_factor = distro.distro.planner_settings.expected_runtime_factor || 0;
+        // Convert from nanoseconds (time.Duration) to seconds (UI display units) for the relevant planner_settings' fields.
+        if (distro.distro.planner_settings.target_time > 0) {
+          distro.distro.planner_settings.target_time /= 1e9;
+        }
+        if (distro.distro.planner_settings.acceptable_host_idle_time > 0) {
+          distro.distro.planner_settings.acceptable_host_idle_time /= 1e9;
+        }
+        distro.distro.planner_settings.group_versions = distro.distro.planner_settings.group_versions;
+        distro.distro.planner_settings.task_ordering = distro.distro.planner_settings.task_ordering || 'interleave';
+        distro.distro.finder_settings = distro.distro.finder_settings || {};
+        distro.distro.finder_settings.version = distro.distro.finder_settings.version || 'legacy';
+        distro.distro.bootstrap_settings.method = distro.distro.bootstrap_settings.method || 'legacy-ssh';
+        distro.distro.bootstrap_settings.communication = distro.distro.bootstrap_settings.communication || 'legacy-ssh';
+        distro.distro.clone_method = distro.distro.clone_method || 'legacy-ssh';
+
+        $scope.readOnly = !$window.isSuperUser || ($window.acl_enabled && distro.permissions.distro_settings < 20)
+        $scope.activeDistro = distro.distro;
+        return;
       }
     }
+    // TODO: how do i get the default now?
     // Default to the first distro.
-    $scope.setActiveDistro($scope.distros[0]);
+    $scope.setActiveDistro($scope.getDistroById($scope.distroIds[0]));
   };
 
   $scope.setActiveDistro = function(distro) {
@@ -177,8 +177,9 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   };
 
   $scope.getDistroById = function(id) {
-    return _.find($scope.distros, function(distro) {
-    return distro._id === id;
+    $http.get('/distros/' + id).then(
+      function(resp){
+        return resp.data;
     });
   };
 
@@ -189,8 +190,8 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
       keys = Object.keys($window.keys);
     }
 
-    for (var i = 0; i < $scope.distros.length; i++) {
-      $scope.ids.push($scope.distros[i]._id);
+    for (var i = 0; i < $scope.distroIds.length; i++) {
+      $scope.ids.push($scope.distroIds[i]);
     }
 
     for (var i = 0; i < keys.length; i++) {

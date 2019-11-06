@@ -451,7 +451,7 @@ func (p *RequiresProjectViewPermission) ServeHTTP(rw http.ResponseWriter, r *htt
 		next(rw, r)
 		return
 	}
-	projectID, status, err := urlVarsToScopes(r)
+	projectID, status, err := urlVarsToProjectScopes(r)
 	if err != nil {
 		http.Error(rw, err.Error(), status)
 		return
