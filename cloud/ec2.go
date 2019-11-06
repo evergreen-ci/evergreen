@@ -959,11 +959,12 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		return errors.Wrapf(err, "error starting EC2 instance '%s'", h.Id)
 	}
 
+	var instance *ec2.Instance
 	// Check whether instance is running
 	err = util.Retry(
 		ctx,
 		func() (bool, error) {
-			instance, err := m.client.GetInstanceInfo(ctx, h.Id)
+			instance, err = m.client.GetInstanceInfo(ctx, h.Id)
 			if err != nil {
 				return false, errors.Wrap(err, "error getting instance info")
 			}
@@ -975,6 +976,12 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 
 	if err != nil {
 		return errors.Wrap(err, "error checking if spawnhost started")
+	}
+
+	// refresh cached values for DNS name, volumes, and launch time
+	h.VolumeTotalSize = 0
+	if err = cacheHostData(ctx, h, instance, m.client); err != nil {
+		return errors.Wrapf(err, "can't cache host data for instance '%s'", h.Id)
 	}
 
 	grip.Info(message.Fields{
