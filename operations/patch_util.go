@@ -94,6 +94,14 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 		}
 	}
 
+	var err error
+	if p.Description == "" {
+		p.Description, err = gitLastCommitMessage(diffData.base, p.Ref)
+		if err != nil {
+			grip.Debug("Couldn't create patch description using commit messages.")
+		}
+	}
+
 	patchSub := patchSubmission{
 		projectId:   p.Project,
 		patchData:   diffData.fullPatch,
@@ -418,6 +426,12 @@ func gitLog(base, ref string) (string, error) {
 
 func gitCommitMessages(base, ref string) (string, error) {
 	args := []string{"--no-show-signature", "--pretty=format:%B", fmt.Sprintf("%s@{upstream}..%s", base, ref)}
+	return gitCmd("log", args...)
+}
+
+// assumes base includes @{upstream}
+func gitLastCommitMessage(base, ref string) (string, error) {
+	args := []string{"--no-show-signature", "--pretty=format:%B", fmt.Sprintf("%s...%s", base, ref), "-n 1"}
 	return gitCmd("log", args...)
 }
 
