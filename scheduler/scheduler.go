@@ -148,7 +148,7 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 			name = task.GetTaskGroupString()
 		}
 
-		duration := task.FetchExpectedDuration()
+		duration := task.FetchExpectedDuration().Average
 		task.ExpectedDuration = duration
 		distroExpectedDuration += duration
 
