@@ -5,8 +5,8 @@ import (
 )
 
 type APIPermissions struct {
-	ProjectPermissions []APIPermission `json: "projects"`
-	DistroPermissions  []APIPermission `json: "distros"`
+	ProjectPermissions []APIPermission `json:"projectPermissions"`
+	DistroPermissions  []APIPermission `json:"distroPermissions"`
 }
 
 type APIPermission struct {
