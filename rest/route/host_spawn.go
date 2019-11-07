@@ -427,7 +427,7 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 
 	mgrOpts := cloud.ManagerOpts{
 		Provider: attachedHost.Provider,
-		Region:   cloud.GetRegion(attachedHost.Distro),
+		Region:   cloud.GetRegion(targetHost.Distro),
 	}
 	mgr, err := cloud.GetManager(ctx, h.env, mgrOpts)
 	if err != nil {
