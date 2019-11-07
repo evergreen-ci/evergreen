@@ -266,8 +266,8 @@ mciModule.controller('SignalProcessingCtrl', function(
         // NOTE do loadData(state) here for server-side sorting
       });
 
-      const onFilterChanged = _.debounce(function() {
-        const filtering = _.reduce(api.grid.columns, function(m, d) {
+      const onFilterChanged = _.debounce(function () {
+        Settings.perf.signalProcessing.persistentFiltering = _.reduce(api.grid.columns, function (m, d) {
           if (d.visible) {
             const term = d.filters[0].term;
             if (term) {
@@ -277,16 +277,12 @@ mciModule.controller('SignalProcessingCtrl', function(
           return m;
         }, {});
 
-        Settings.perf.signalProcessing.persistentFiltering = filtering;
-
+        state.filtering = getDefaultFiltering();
         // When user clicks 'Clear all filters'
         // FIXME and when clear all filters mnually. Either patching
         //       of uigrid either standalone button required
-        if (_.isEmpty(filtering)) {
-          state.filtering = getDefaultFiltering();
+        if (_.isEmpty(Settings.perf.signalProcessing.persistentFiltering)) {
           setInitialGridFiltering(vm.gridApi, state);
-        } else {
-          state.filtering = filtering;
         }
 
         loadData(state);
