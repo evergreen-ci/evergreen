@@ -3,7 +3,6 @@ package operations
 import (
 	"context"
 	"io/ioutil"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -12,54 +11,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
-
-const (
-	MaxTagKeyLength   = 128
-	MaxTagValueLength = 256
-)
-
-// makeAWSTags creates and validates a map of supplied instance tags
-func makeAWSTags(tagSlice []string) ([]host.Tag, error) {
-	catcher := grip.NewBasicCatcher()
-	tagsMap := make(map[string]string)
-	for _, tagString := range tagSlice {
-		pair := strings.Split(tagString, "=")
-		if len(pair) != 2 {
-			catcher.Add(errors.Errorf("problem parsing tag '%s'", tagString))
-			continue
-		}
-
-		key := pair[0]
-		value := pair[1]
-
-		// AWS tag key must contain no more than 128 characters
-		if len(key) > MaxTagKeyLength {
-			catcher.Add(errors.Errorf("key '%s' is longer than 128 characters", key))
-		}
-		// AWS tag value must contain no more than 256 characters
-		if len(value) > MaxTagValueLength {
-			catcher.Add(errors.Errorf("value '%s' is longer than 256 characters", value))
-		}
-		// tag prefix aws: is reserved
-		if strings.HasPrefix(key, "aws:") || strings.HasPrefix(value, "aws:") {
-			catcher.Add(errors.Errorf("illegal tag prefix 'aws:'"))
-		}
-
-		tagsMap[key] = value
-	}
-
-	// Make slice of host.Tag structs from map
-	tags := []host.Tag{}
-	for key, value := range tagsMap {
-		tags = append(tags, host.Tag{Key: key, Value: value, CanBeModified: true})
-	}
-
-	if catcher.HasErrors() {
-		return nil, catcher.Resolve()
-	}
-
-	return tags, nil
-}
 
 func hostCreate() cli.Command {
 	const (
@@ -129,7 +80,7 @@ func hostCreate() cli.Command {
 				script = string(out)
 			}
 
-			tags, err := makeAWSTags(tagSlice)
+			tags, err := host.MakeHostTags(tagSlice)
 			if err != nil {
 				return errors.Wrap(err, "problem generating tags")
 			}
@@ -218,7 +169,7 @@ func hostModify() cli.Command {
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
-			addTags, err := makeAWSTags(addTagSlice)
+			addTags, err := host.MakeHostTags(addTagSlice)
 			if err != nil {
 				return errors.Wrap(err, "problem generating tags to add")
 			}
