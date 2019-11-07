@@ -8,10 +8,12 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/anser/client"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -55,7 +57,7 @@ type streamMigrationGenerator struct {
 	mu              sync.Mutex
 }
 
-func (j *streamMigrationGenerator) Run(_ context.Context) {
+func (j *streamMigrationGenerator) Run(ctx context.Context) {
 	defer j.FinishMigration(j.ID(), &j.Base)
 
 	env := j.Env()
@@ -66,29 +68,95 @@ func (j *streamMigrationGenerator) Run(_ context.Context) {
 		return
 	}
 
-	session, err := env.GetSession()
-	if err != nil {
-		j.AddError(err)
-		return
-	}
-	defer session.Close()
+	if env.PreferClient() {
+		client, err := env.GetClient()
+		if err != nil {
+			j.AddError(err)
+			return
+		}
 
-	coll := session.DB(j.NS.DB).C(j.NS.Collection)
-	query := coll.Find(j.Query).Select(bson.M{"_id": 1})
-	if j.Limit > 0 {
-		query = query.Limit(j.Limit)
-	}
-	iter := query.Iter()
+		findOpts := options.Find().SetProjection(bson.M{"_id": 1})
+		if j.Limit > 0 {
+			findOpts.SetLimit(int64(j.Limit))
+		}
 
-	network.AddGroup(j.ID(), j.generateJobs(env, iter))
+		cursor, err := client.Database(j.NS.DB).Collection(j.NS.Collection).Find(ctx, j.Query, findOpts) // findOpts
+		if err != nil {
+			j.AddError(err)
+			return
+		}
 
-	if err := iter.Close(); err != nil {
-		j.AddError(err)
-		return
+		network.AddGroup(j.ID(), j.generateJobs(ctx, env, cursor))
+
+	} else {
+		session, err := env.GetSession()
+		if err != nil {
+			j.AddError(err)
+			return
+		}
+		defer session.Close()
+
+		coll := session.DB(j.NS.DB).C(j.NS.Collection)
+		query := coll.Find(j.Query).Select(bson.M{"_id": 1})
+		if j.Limit > 0 {
+			query = query.Limit(j.Limit)
+		}
+		iter := query.Iter()
+
+		network.AddGroup(j.ID(), j.generateLegacyJobs(env, iter))
+
+		if err := iter.Close(); err != nil {
+			j.AddError(err)
+			return
+		}
 	}
 }
 
-func (j *streamMigrationGenerator) generateJobs(env Environment, iter db.Iterator) []string {
+func (j *streamMigrationGenerator) generateJobs(ctx context.Context, env Environment, iter client.Cursor) []string {
+	ids := []string{}
+	doc := struct {
+		ID interface{} `bson:"_id"`
+	}{}
+
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	count := 0
+
+	for iter.Next(ctx) {
+		count++
+		if err := iter.Decode(&doc); err != nil {
+			grip.Error(message.WrapError(err, "problem decoding generator results"))
+			break
+		}
+
+		m := NewStreamMigration(env, model.Stream{
+			ProcessorName: j.ProcessorName,
+			Migration:     j.ID(),
+			Namespace:     j.NS,
+			Query:         j.Query,
+		}).(*streamMigrationJob)
+
+		m.SetDependency(env.NewDependencyManager(j.ID()))
+		m.SetID(fmt.Sprintf("%s.%v.%d", j.ID(), doc.ID, len(ids)))
+		ids = append(ids, m.ID())
+		j.Migrations = append(j.Migrations, m)
+
+		grip.Debug(message.Fields{
+			"ns":  j.NS,
+			"id":  m.ID(),
+			"doc": doc.ID,
+			"num": count,
+		})
+
+		if j.Limit > 0 && count >= j.Limit {
+			break
+		}
+	}
+
+	return ids
+}
+
+func (j *streamMigrationGenerator) generateLegacyJobs(env Environment, iter db.Iterator) []string {
 	ids := []string{}
 	doc := struct {
 		ID interface{} `bson:"_id"`

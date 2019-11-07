@@ -126,8 +126,9 @@ type Task struct {
 	// how long we expect the task to take from start to
 	// finish. expected duration is the legacy value, but the UI
 	// probably depends on it, so we maintain both values.
-	ExpectedDuration   time.Duration            `bson:"expected_duration,omitempty" json:"expected_duration,omitempty"`
-	DurationPrediction util.CachedDurationValue `bson:"duration_prediction,omitempty" json:"-"`
+	ExpectedDuration       time.Duration            `bson:"expected_duration,omitempty" json:"expected_duration,omitempty"`
+	ExpectedDurationStdDev time.Duration            `bson:"expected_duration_std_dev,omitempty" json:"expected_duration_std_dev,omitempty"`
+	DurationPrediction     util.CachedDurationValue `bson:"duration_prediction,omitempty" json:"-"`
 
 	// an estimate of what the task cost to run, hidden from JSON views for now
 	Cost float64 `bson:"cost,omitempty" json:"-"`
@@ -480,21 +481,6 @@ func (t *Task) PreviousCompletedTask(project string, statuses []string) (*Task, 
 		t.DisplayName, project, evergreen.SystemVersionRequesterTypes))
 }
 
-// SetExpectedDuration updates the expected duration field for the task
-func (t *Task) SetExpectedDuration(duration time.Duration) error {
-	return UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				ExpectedDurationKey:   duration,
-				DurationPredictionKey: t.DurationPrediction,
-			},
-		},
-	)
-}
-
 func (t *Task) cacheExpectedDuration() error {
 	return UpdateOne(
 		bson.M{
@@ -502,8 +488,9 @@ func (t *Task) cacheExpectedDuration() error {
 		},
 		bson.M{
 			"$set": bson.M{
-				DurationPredictionKey: t.DurationPrediction,
-				ExpectedDurationKey:   t.DurationPrediction.Value,
+				DurationPredictionKey:     t.DurationPrediction,
+				ExpectedDurationKey:       t.DurationPrediction.Value,
+				ExpectedDurationStddevKey: t.DurationPrediction.StdDev,
 			},
 		},
 	)
@@ -1621,7 +1608,7 @@ func (t *Task) GetHistoricRuntime() (time.Duration, error) {
 	return time.Duration(runtimes[0].ExpectedDuration), nil
 }
 
-func (t *Task) FetchExpectedDuration() time.Duration {
+func (t *Task) FetchExpectedDuration() util.DurationStats {
 	if t.DurationPrediction.TTL == 0 {
 		t.DurationPrediction.TTL = util.JitterInterval(predictionTTL)
 	}
@@ -1640,10 +1627,11 @@ func (t *Task) FetchExpectedDuration() time.Duration {
 			}))
 		}
 
-		return t.ExpectedDuration
+		return util.DurationStats{Average: t.ExpectedDuration, StdDev: t.ExpectedDurationStdDev}
 	}
 
-	grip.Debug(message.WrapError(t.DurationPrediction.SetRefresher(func(previous time.Duration) (time.Duration, bool) {
+	refresher := func(previous util.DurationStats) (util.DurationStats, bool) {
+		defaultVal := util.DurationStats{Average: defaultTaskDuration, StdDev: 0}
 		vals, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant, time.Now().Add(-taskCompletionEstimateWindow), time.Now())
 		grip.Notice(message.WrapError(err, message.Fields{
 			"name":      t.DisplayName,
@@ -1653,28 +1641,31 @@ func (t *Task) FetchExpectedDuration() time.Duration {
 			"operation": "fetching expected duration, expect stale scheduling data",
 		}))
 		if err != nil {
-			return defaultTaskDuration, false
+			return defaultVal, false
 		}
 
 		if len(vals) != 1 {
-			if previous == 0 {
-				return defaultTaskDuration, true
+			if previous.Average == 0 {
+				return defaultVal, true
 			}
 
 			return previous, true
 		}
 
-		ret := time.Duration(vals[0].ExpectedDuration)
-		if ret == 0 {
-			return defaultTaskDuration, true
+		avg := time.Duration(vals[0].ExpectedDuration)
+		if avg == 0 {
+			return defaultVal, true
 		}
-		return ret, true
-	}), message.Fields{
+		stdDev := time.Duration(vals[0].StdDev)
+		return util.DurationStats{Average: avg, StdDev: stdDev}, true
+	}
+
+	grip.Error(message.WrapError(t.DurationPrediction.SetRefresher(refresher), message.Fields{
 		"message": "problem setting cached value refresher",
 		"cause":   "programmer error",
 	}))
 
-	expectedDuration, ok := t.DurationPrediction.Get()
+	stats, ok := t.DurationPrediction.Get()
 	if ok {
 		if err := t.cacheExpectedDuration(); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -1683,8 +1674,10 @@ func (t *Task) FetchExpectedDuration() time.Duration {
 			}))
 		}
 	}
+	t.ExpectedDuration = stats.Average
+	t.ExpectedDurationStdDev = stats.StdDev
 
-	return expectedDuration
+	return stats
 }
 
 // TaskStatusCount holds counts for task statuses

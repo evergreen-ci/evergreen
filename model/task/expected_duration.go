@@ -17,6 +17,7 @@ const oneMonthIsh = 30 * 24 * time.Hour
 type expectedDurationResults struct {
 	DisplayName      string  `bson:"_id"`
 	ExpectedDuration float64 `bson:"exp_dur"`
+	StdDev           float64 `bson:"std_dev"`
 }
 
 func getExpectedDurationsForWindow(name, project, buildvariant string, start, end time.Time) ([]expectedDurationResults, error) {
@@ -54,9 +55,12 @@ func getExpectedDurationsForWindow(name, project, buildvariant string, start, en
 		},
 		{
 			"$group": bson.M{
-				"_id": fmt.Sprintf("$%v", DisplayNameKey),
+				"_id": fmt.Sprintf("$%s", DisplayNameKey),
 				"exp_dur": bson.M{
-					"$avg": fmt.Sprintf("$%v", TimeTakenKey),
+					"$avg": fmt.Sprintf("$%s", TimeTakenKey),
+				},
+				"std_dev": bson.M{
+					"$stdDevPop": fmt.Sprintf("$%s", TimeTakenKey),
 				},
 			},
 		},

@@ -154,6 +154,7 @@ type Communicator interface {
 	DetachVolume(context.Context, string, string) error
 	CreateVolume(context.Context, *host.Volume) (*restmodel.APIVolume, error)
 	DeleteVolume(context.Context, string) error
+	GetVolumesByUser(context.Context) ([]restmodel.APIVolume, error)
 
 	// Fetch list of distributions evergreen can spawn
 	GetDistrosList(context.Context) ([]restmodel.APIDistro, error)

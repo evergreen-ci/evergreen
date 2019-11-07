@@ -238,6 +238,8 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 	}
 
 	switch targetHost.Distro.BootstrapSettings.Method {
+	case distro.BootstrapMethodNone:
+		return nil
 	case distro.BootstrapMethodUserData:
 		// Updating the host LCT prevents the agent monitor deploy job from
 		// running. The agent monitor should be started by the user data script.

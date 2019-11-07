@@ -134,6 +134,7 @@ type APIProjectRef struct {
 	CommitQueue          APICommitQueueParams `json:"commit_queue"`
 	Tracked              bool                 `json:"tracked"`
 	PatchingDisabled     bool                 `json:"patching_disabled"`
+	RepotrackerDisabled  bool                 `json:"repotracker_disabled"`
 	Admins               []APIString          `json:"admins"`
 	DeleteAdmins         []APIString          `json:"delete_admins,omitempty"`
 	NotifyOnBuildFailure bool                 `json:"notify_on_failure"`
@@ -171,6 +172,7 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		CommitQueue:          commitQueue.(model.CommitQueueParams),
 		Tracked:              p.Tracked,
 		PatchingDisabled:     p.PatchingDisabled,
+		RepotrackerDisabled:  p.RepotrackerDisabled,
 		NotifyOnBuildFailure: p.NotifyOnBuildFailure,
 	}
 
@@ -236,6 +238,7 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.CommitQueue = cq
 	p.Tracked = projectRef.Tracked
 	p.PatchingDisabled = projectRef.PatchingDisabled
+	p.RepotrackerDisabled = projectRef.RepotrackerDisabled
 	p.NotifyOnBuildFailure = projectRef.NotifyOnBuildFailure
 
 	// Copy admins
