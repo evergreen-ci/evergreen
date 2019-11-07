@@ -494,13 +494,11 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     }
 
     $scope.validTag = function(key, value) {
-        if (!(key)){
-            $scope.invalidKeyMessage = "";
+        if (!key) {
             return false;
         }
 
-        if (!(value)){
-            $scope.invalidKeyMessage = "";
+        if (!value) {
             return false;
         }
 
