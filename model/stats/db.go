@@ -1055,8 +1055,7 @@ func aggregateIntoCollection(ctx context.Context, collection string, pipeline []
 		return errors.Wrap(err, "problem running aggregation")
 	}
 
-	buf := []mongo.WriteModel{}
-
+	buf := make([]mongo.WriteModel, 0, bulkSize)
 	for cursor.Next(ctx) {
 		doc, err := birch.DC.ReaderErr(birch.Reader(cursor.Current))
 		if err != nil {
@@ -1066,6 +1065,12 @@ func aggregateIntoCollection(ctx context.Context, collection string, pipeline []
 			SetUpsert(true).
 			SetFilter(birch.DC.Elements(birch.EC.SubDocument("_id", doc.Lookup("_id").MutableDocument()))).
 			SetUpdate(doc.Copy()))
+
+		if len(buf) >= bulkSize {
+			if err = doBulkWrite(ctx, env, outputCollection, buf); err != nil {
+				return errors.Wrapf(err, "problem bulk writing to %s", outputCollection)
+			}
+		}
 	}
 
 	if err = cursor.Err(); err != nil {
@@ -1076,6 +1081,14 @@ func aggregateIntoCollection(ctx context.Context, collection string, pipeline []
 		return errors.Wrap(err, "problem closing cursor")
 	}
 
+	if err = doBulkWrite(ctx, env, outputCollection, buf); err != nil {
+		return errors.Wrapf(err, "problem bulk writing to %s", outputCollection)
+	}
+
+	return nil
+}
+
+func doBulkWrite(ctx context.Context, env evergreen.Environment, outputCollection string, buf []mongo.WriteModel) error {
 	if len(buf) == 0 {
 		return nil
 	}
