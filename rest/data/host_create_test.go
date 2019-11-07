@@ -176,6 +176,7 @@ buildvariants:
 			assert.InDelta(t, time.Now().Add(cloud.DefaultSpawnHostExpiration).Unix(), h.ExpirationTime.Unix(), float64(1*time.Millisecond))
 			require.Len(t, ec2Settings.SecurityGroupIDs, 1)
 			assert.Equal(t, "sg-provided", ec2Settings.SecurityGroupIDs[0])
+			assert.Equal(t, distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
 		}
 	})
 
@@ -249,6 +250,7 @@ buildvariants:
 			assert.InDelta(t, time.Now().Add(cloud.DefaultSpawnHostExpiration).Unix(), h.ExpirationTime.Unix(), float64(1*time.Millisecond))
 			require.Len(t, ec2Settings.SecurityGroupIDs, 1)
 			assert.Equal(t, "sg-provided", ec2Settings.SecurityGroupIDs[0])
+			assert.Equal(t, distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
 		}
 	})
 
@@ -315,6 +317,7 @@ buildvariants:
 			assert.InDelta(t, time.Now().Add(cloud.DefaultSpawnHostExpiration).Unix(), h.ExpirationTime.Unix(), float64(1*time.Millisecond))
 			require.Len(t, ec2Settings.SecurityGroupIDs, 1)
 			assert.Equal(t, "sg-default", ec2Settings.SecurityGroupIDs[0]) // none provided, should get default from config
+			assert.Equal(t, distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
 		}
 	})
 }
