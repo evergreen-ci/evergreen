@@ -61,6 +61,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -70,6 +71,7 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -98,8 +100,8 @@ var (
 	taskDetailsKeyRef      = "$" + task.DetailsKey
 	taskTimeTakenKeyRef    = "$" + task.TimeTakenKey
 	taskOldTaskIdKeyRef    = "$" + task.OldTaskIdKey
-	testResultTaskIdKeyRef = "$" + testresult.TaskIDKey
-	testResultExecutionRef = "$" + testresult.ExecutionKey
+	// testResultTaskIdKeyRef = "$" + testresult.TaskIDKey
+	// testResultExecutionRef = "$" + testresult.ExecutionKey
 )
 
 // Convenient type to use for arrays in pipeline definitions.
@@ -249,19 +251,40 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 			"path":                       "$display_task",
 			"preserveNullAndEmptyArrays": true}},
 		{"$lookup": bson.M{
-			"from": testresult.Collection,
-			"let":  bson.M{"task_id": "$task_id", "execution": "$execution"},
-			"pipeline": []bson.M{
-				{"$match": bson.M{"$expr": bson.M{"$and": []bson.M{
-					{"$eq": Array{testResultTaskIdKeyRef, "$$task_id"}},
-					{"$eq": Array{testResultExecutionRef, "$$execution"}}}}}},
-				{"$project": bson.M{
-					testresult.IDKey:        0,
-					testresult.TestFileKey:  1,
-					testresult.StatusKey:    1,
-					testresult.StartTimeKey: 1,
-					testresult.EndTimeKey:   1}}},
-			"as": "testresults"}},
+			"as":           "testresults",
+			"from":         testresult.Collection,
+			"foreignField": "task_id",
+			"localField":   "task_id"}},
+		{"$project": bson.M{
+			"task_id":                             1,
+			"execution":                           1,
+			dbTestStatsIdProjectKey:               1,
+			DbTestStatsIdTaskNameKey:              1,
+			DbTestStatsIdBuildVariantKey:          1,
+			DbTestStatsIdDistroKey:                1,
+			dbTestStatsIdRequesterKey:             1,
+			"display_task." + task.DisplayNameKey: 1,
+			"testresults": bson.M{
+				"$filter": bson.M{
+					"input": "$testresults",
+					"as":    "testresult",
+					"cond":  bson.M{"$eq": Array{"$$testresult.task_execution", "$$ROOT.execution"}}}},
+		}},
+		{"$project": bson.M{
+			"task_id":                             1,
+			"execution":                           1,
+			dbTestStatsIdProjectKey:               1,
+			DbTestStatsIdTaskNameKey:              1,
+			DbTestStatsIdBuildVariantKey:          1,
+			DbTestStatsIdDistroKey:                1,
+			dbTestStatsIdRequesterKey:             1,
+			"display_task." + task.DisplayNameKey: 1,
+			"testresults": bson.M{
+				testresult.TestFileKey:  1,
+				testresult.StatusKey:    1,
+				testresult.StartTimeKey: 1,
+				testresult.EndTimeKey:   1},
+		}},
 		{"$unwind": "$testresults"},
 		{"$project": bson.M{
 			dbTestStatsIdTestFileKey: "$testresults." + testresult.TestFileKey,
@@ -510,11 +533,11 @@ func getDailyTaskStatsPipeline(projectId string, requester string, start time.Ti
 				bson.M{"$ne": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailTimedOut), true}}}}),
 			DbTaskStatsNumSystemFailedKey: makeSum(bson.M{"$and": Array{
 				bson.M{"$eq": Array{taskStatusKeyRef, "failed"}},
-				bson.M{"$eq": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailType), evergreen.CommandTypeSystem}},
+				bson.M{"$eq": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailType), "system"}},
 				bson.M{"$ne": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailTimedOut), true}}}}),
 			DbTaskStatsNumSetupFailedKey: makeSum(bson.M{"$and": Array{
 				bson.M{"$eq": Array{taskStatusKeyRef, "failed"}},
-				bson.M{"$eq": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailType), evergreen.CommandTypeSetup}},
+				bson.M{"$eq": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailType), "setup"}},
 				bson.M{"$ne": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailTimedOut), true}}}}),
 			DbTaskStatsAvgDurationSuccessKey: bson.M{"$avg": bson.M{"$cond": bson.M{"if": bson.M{"$eq": Array{taskStatusKeyRef, "success"}},
 				"then": "$time_taken", "else": "IGNORE"}}}}},
@@ -1027,30 +1050,22 @@ func (pf PaginationField) GetNextExpression() bson.M {
 func aggregateIntoCollection(ctx context.Context, collection string, pipeline []bson.M, outputCollection string) error {
 	env := evergreen.GetEnvironment()
 
-	opts := adb.BufferedWriteOptions{
-		DB:         env.Settings().Database.DB,
-		Collection: outputCollection,
-		Count:      bulkSize,
-		Duration:   time.Minute,
-	}
-
-	writer, err := adb.NewBufferedUpsertByID(ctx, env.Session().DB(opts.DB), opts)
-	if err != nil {
-		return errors.Wrap(err, "Failed to initialize document writer")
-	}
-
 	cursor, err := env.DB().Collection(collection, options.Collection().SetReadPreference(readpref.SecondaryPreferred())).Aggregate(ctx, pipeline, options.Aggregate().SetAllowDiskUse(true))
 	if err != nil {
 		return errors.Wrap(err, "problem running aggregation")
 	}
 
-	for cursor.Next(ctx) {
-		doc := make(bson.Raw, len(cursor.Current))
-		copy(doc, cursor.Current)
+	buf := []mongo.WriteModel{}
 
-		if err = writer.Append(doc); err != nil {
-			return errors.Wrap(err, "problem with bulk insert")
+	for cursor.Next(ctx) {
+		doc, err := birch.DC.ReaderErr(birch.Reader(cursor.Current))
+		if err != nil {
+			return errors.WithStack(err)
 		}
+		buf = append(buf, mongo.NewUpdateOneModel().
+			SetUpsert(true).
+			SetFilter(birch.DC.Elements(birch.EC.SubDocument("_id", doc.Lookup("_id").MutableDocument()))).
+			SetUpdate(doc.Copy()))
 	}
 
 	if err = cursor.Err(); err != nil {
@@ -1061,9 +1076,22 @@ func aggregateIntoCollection(ctx context.Context, collection string, pipeline []
 		return errors.Wrap(err, "problem closing cursor")
 	}
 
-	if err = writer.Close(); err != nil {
-		return errors.Wrap(err, "problem flushing to new collection")
+	if len(buf) == 0 {
+		return nil
 	}
+
+	res, err := env.DB().Collection(outputCollection).BulkWrite(ctx, buf)
+	if err != nil {
+		return errors.Wrap(err, "problem with bulk write operation")
+	}
+
+	totalModified := res.UpsertedCount + res.ModifiedCount + res.InsertedCount
+
+	if totalModified != int64(len(buf)) {
+		return errors.Errorf("failed to materialize view: %d of %d", totalModified, len(buf))
+
+	}
+
 	return nil
 }
 
