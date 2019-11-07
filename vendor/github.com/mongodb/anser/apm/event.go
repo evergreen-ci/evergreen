@@ -35,9 +35,13 @@ func (e *eventWindow) Message() message.Composer {
 		"start_at": e.timestamp,
 		"message":  "apm-event",
 	}
+
+	colls := message.Fields{}
 	for k, v := range e.data {
-		out[k.String()] = v
+		colls[k.String()] = v
 	}
+	out["collections"] = colls
+
 	return message.MakeFields(out)
 }
 

@@ -39,9 +39,12 @@ func proofOfConcept() error {
 		return err
 	}
 
-	if err := env.Setup(q, client.WrapClient(cl), session); err != nil {
+	client := client.WrapClient(cl)
+	if err := env.Setup(q, client, session); err != nil {
 		return err
 	}
+
+	env.SetPreferedDB(client)
 
 	ns := model.Namespace{DB: "mci", Collection: "test"}
 
@@ -74,7 +77,9 @@ func proofOfConcept() error {
 		},
 	}
 
-	app.Setup(env)
+	if err := app.Setup(env); err != nil {
+		return err
+	}
 
 	return app.Run(ctx)
 }

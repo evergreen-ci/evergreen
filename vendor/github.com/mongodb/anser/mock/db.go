@@ -109,7 +109,7 @@ func (c *LegacyCollection) UpsertId(id, u interface{}) (*db.ChangeInfo, error) {
 		return nil, errors.New("writes fail")
 	}
 	c.InsertedDocs = append(c.InsertedDocs, u)
-	return &db.ChangeInfo{0, 0, id}, nil
+	return &db.ChangeInfo{Updated: 0, Removed: 0, UpsertedId: id}, nil
 }
 
 func (c *LegacyCollection) UpdateId(id, u interface{}) error {

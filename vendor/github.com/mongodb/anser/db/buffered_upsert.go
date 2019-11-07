@@ -143,7 +143,7 @@ bufferLoop:
 			if ops > 0 {
 				_, err := bulk.Run()
 				if err == nil {
-					bulk = bu.db.C(bu.opts.Collection).Bulk()
+					bulk = bu.db.C(bu.opts.Collection).Bulk() // nolint
 				}
 				catcher.Add(err)
 			}

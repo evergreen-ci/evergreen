@@ -14,7 +14,7 @@ func TestEvent(t *testing.T) {
 			e := &eventWindow{}
 			fields, ok := e.Message().Raw().(message.Fields)
 			require.True(t, ok)
-			assert.Len(t, fields, 3)
+			assert.Len(t, fields, 4)
 		})
 		t.Run("Populated", func(t *testing.T) {
 			e := &eventWindow{

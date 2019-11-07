@@ -191,7 +191,7 @@ func TestSimpleMigrationGenerator(t *testing.T) {
 					&doc{"one"}, &doc{"two"}, &doc{"three"}, &doc{"four"},
 				},
 				ShouldIter:   true,
-				MaxNextCalls: 3,
+				MaxNextCalls: 4,
 			}
 
 			ids := job.generateJobs(ctx, env, cursor)
