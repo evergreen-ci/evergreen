@@ -109,9 +109,6 @@ type CreateHost struct {
 	AWSSecret       string      `mapstructure:"aws_secret_access_key" json:"aws_secret_access_key" plugin:"expand"`
 	KeyName         string      `mapstructure:"key_name" json:"key_name" plugin:"expand"`
 
-	// Provisioning-related settings
-	ProvisioningMethod string `mapstructure:"provisioning_method" json:"provisioning_method" plugin:"expand"`
-
 	// docker-related settings
 	Image                    string            `mapstructure:"image" json:"image" plugin:"expand"`
 	Command                  string            `mapstructure:"command" json:"command" plugin:"expand"`

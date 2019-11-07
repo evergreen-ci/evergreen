@@ -152,6 +152,7 @@ const (
 	ArchWindowsAmd64 = "windows_amd64"
 
 	// Bootstrapping mechanisms
+	// BootstrapMethodNone is for internal use only.
 	BootstrapMethodNone               = "none"
 	BootstrapMethodLegacySSH          = "legacy-ssh"
 	BootstrapMethodSSH                = "ssh"
