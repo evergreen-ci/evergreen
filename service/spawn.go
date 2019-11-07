@@ -26,6 +26,7 @@ import (
 var (
 	HostPasswordUpdate         = "updateRDPPassword"
 	HostInstanceTypeUpdate     = "updateInstanceType"
+	HostTagUpdate              = "updateHostTags"
 	HostExpirationExtension    = "extendHostExpiration"
 	HostTerminate              = "terminate"
 	HostStop                   = "stop"
@@ -355,7 +356,34 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			futureExpiration.In(loc).Format(time.RFC822))))
 		gimlet.WriteJSON(w, "Successfully extended host expiration time")
 		return
+	case HostTagUpdate:
+		if len(updateParams.AddTags) <= 0 && len(updateParams.DeleteTags) <= 0 {
+			PushFlash(uis.CookieStore, r, w, NewErrorFlash("Nothing to update."))
+			uis.LoggedError(w, r, http.StatusBadRequest, err)
+			return
+		}
 
+		deleteTags := restModel.FromAPIStringList(updateParams.DeleteTags)
+		addTagPairs := restModel.FromAPIStringList(updateParams.AddTags)
+		addTags, err := host.MakeHostTags(addTagPairs)
+		if err != nil {
+			PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error creating tags to add: "+err.Error()))
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "Error creating tags to add"))
+			return
+		}
+
+		opts := host.HostModifyOptions{
+			AddInstanceTags:    addTags,
+			DeleteInstanceTags: deleteTags,
+		}
+		if err = cloud.ModifySpawnHost(ctx, uis.env, h, opts); err != nil {
+			PushFlash(uis.CookieStore, r, w, NewErrorFlash("Problem modifying spawn host"))
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "Problem modifying spawn host"))
+			return
+		}
+		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprint("Host tags successfully modified.")))
+		gimlet.WriteJSON(w, "Successfully updated host tags.")
+		return
 	default:
 		http.Error(w, fmt.Sprintf("Unrecognized action: %v", updateParams.Action), http.StatusBadRequest)
 		return
