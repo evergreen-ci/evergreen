@@ -3705,6 +3705,80 @@ func TestSetInstanceType(t *testing.T) {
 	assert.Equal(t, newInstanceType, foundHost.InstanceType)
 }
 
+func TestAggregateSpawnhostData(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection, VolumesCollection))
+	hosts := []Host{
+		{
+			Id:           "host-1",
+			Status:       evergreen.HostRunning,
+			StartedBy:    "me",
+			NoExpiration: true,
+		},
+		{
+			Id:           "host-2",
+			Status:       evergreen.HostRunning,
+			StartedBy:    "me",
+			NoExpiration: false,
+		},
+		{
+			Id:           "host-3",
+			Status:       evergreen.HostStopped,
+			StartedBy:    "you",
+			NoExpiration: false,
+		},
+		{
+			Id:           "host-4",
+			Status:       evergreen.HostRunning,
+			StartedBy:    "her",
+			NoExpiration: true,
+		},
+		{
+			Id:        "host-5",
+			Status:    evergreen.HostStarting,
+			StartedBy: "",
+		},
+		{
+			Id:        "host-6",
+			Status:    evergreen.HostTerminated,
+			StartedBy: "no-one",
+		},
+	}
+	for _, h := range hosts {
+		assert.NoError(t, h.Insert())
+	}
+
+	volumes := []Volume{
+		{
+			ID:        "v1",
+			CreatedBy: "me",
+			Size:      100,
+		},
+		{
+			ID:        "v2",
+			CreatedBy: "me",
+			Size:      12,
+		},
+		{
+			ID:        "v3",
+			CreatedBy: "you",
+			Size:      300,
+		},
+	}
+	for _, v := range volumes {
+		assert.NoError(t, v.Insert())
+	}
+
+	res, err := AggregateSpawnhostData()
+	assert.NoError(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, 3, res.NumUsersWithHosts)
+	assert.Equal(t, 4, res.TotalHosts)
+	assert.EqualValues(t, 2, res.TotalUnexpirableHosts)
+	assert.Equal(t, 2, res.NumUsersWithVolumes)
+	assert.Equal(t, 412, res.TotalVolumeSize)
+	assert.Equal(t, 3, res.TotalVolumes)
+}
+
 func TestCountSpawnhostsWithNoExpirationByUser(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	hosts := []Host{
