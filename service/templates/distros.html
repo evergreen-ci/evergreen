@@ -16,18 +16,18 @@ Evergreen - Distros
 <div class="container" ng-controller="DistrosCtrl" style="margin-bottom: 15px;">
   <notify-box ng-init="destination='errorHeader'"></notify-box>
   {{template "flash" . }}
-  <div ng-show="distros.length == 0">
+  <div ng-show="distroIds.length == 0">
     <h2>No Distros</h2>
     <div class="row">
-      <button type="button" ng-hide="readOnly" class="btn btn-primary" style="margin-left: 15px" ng-click="newDistro()"
+      <button type="button" ng-hide="!window.isSuperUser" class="btn btn-primary" style="margin-left: 15px" ng-click="newDistro()"
         ng-disabled="activeDistro.new"><i class="fa fa-plus"></i>New Distro</button>
     </div>
   </div>
   <div ng-form="form" class="row">
-    <div id="nav-container" class="col-md-2" ng-show="distros.length != 0" style="left:10%; max-width:350px">
+    <div id="nav-container" class="col-md-2" ng-show="distroIds.length != 0" style="left:10%; max-width:350px">
       <div>
         <div>
-          <h2 style="text-align: center;">Distros<span ng-show="distros.length != 0">([[distros.length]])</span></h2>
+          <h2 style="text-align: center;">Distros<span ng-show="distroIds.length != 0">([[distroIds.length]])</span></h2>
         </div>
         <div class="row" style="text-align: center;">
           <button type="button" class="btn btn-primary col-lg-8" ng-hide="readOnly" style="margin-bottom: 10px; margin-left: 35px"
@@ -35,20 +35,20 @@ Evergreen - Distros
         </div>
         <div id="distros-list-container">
           <ul id="distros-list">
-            <li ng-repeat="distro in distros" ng-click="form.$setPristine();setActiveDistro(distro)" ng-class="{'active-distro': distro._id == activeDistro._id}">
-              [[distro._id]]
+            <li ng-repeat="distroId in distroIds" ng-click="form.$setPristine();setActiveDistroId(distroId)" ng-class="{'active-distro': distroId == activeDistro._id}">
+              [[distroId]]
             </li>
           </ul>
         </div>
       </div>
     </div>
     <div class="col-lg-2"></div>
-    <div class="col-lg-6 col-lg-offset-1" ng-show="distros.length != 0">
+    <div class="col-lg-6 col-lg-offset-1" ng-show="distroIds.length != 0">
       <div ng-init="initOptions()">
         <div ng-show="activeDistro">
           <h2 style="display:inline-block; padding-right:15px">Configure
           </h2>
-          <a class="pointer" ng-click="copyDistro()" ng-hide="hasNew||readOnly"> make a copy </a> /
+          <a class="pointer" ng-click="copyDistro()" ng-hide="tempDistro||readOnly"> make a copy </a> /
           <a ng-href="/event_log/distro/[[activeDistro._id]]"> view event log </a>
         </div>
         <div style="padding-top: -25px;" class="panel-body panel-default">

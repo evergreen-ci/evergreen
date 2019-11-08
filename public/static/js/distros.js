@@ -1,10 +1,9 @@
-mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchorScroll, $filter, mciDistroRestService) {
+mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, $anchorScroll, $filter, mciDistroRestService) {
 
-  $scope.permissions = permissions;
-  $scope.readOnly = !$window.isSuperUser || ($window.acl_enabled && $scope.permissions.distro_settings < 20)
-
+  $scope.distroIds = $window.distroIds;
   $scope.containerPoolDistros = $window.containerPoolDistros;
   $scope.containerPoolIds = $window.containerPoolIds;
+  $scope.newId = "new distro"
 
   $scope.plannerVersions = [{
     'id': "legacy",
@@ -134,52 +133,67 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     var distroHash = $location.hash();
     if (distroHash) {
       // If the distro exists, load it.
-      var distro = $scope.getDistroById(distroHash);
-      if (distro.distro) {
-        distro.distro.pool_size = distro.distro.pool_size || 0;
-        distro.distro.planner_settings = distro.distro.planner_settings || {};
-        distro.distro.planner_settings.version = distro.distro.planner_settings.version || 'legacy';
-        distro.distro.planner_settings.minimum_hosts = distro.distro.planner_settings.minimum_hosts || 0;
-        distro.distro.planner_settings.maximum_hosts = distro.distro.planner_settings.maximum_hosts || 0;
-        distro.distro.planner_settings.target_time = distro.distro.planner_settings.target_time || 0;
-        distro.distro.planner_settings.acceptable_host_idle_time = distro.distro.planner_settings.acceptable_host_idle_time || 0;
-        distro.distro.planner_settings.patch_factor = distro.distro.planner_settings.patch_factor || 0;
-        distro.distro.planner_settings.time_in_queue_factor = distro.distro.planner_settings.time_in_queue_factor || 0;
-        distro.distro.planner_settings.expected_runtime_factor = distro.distro.planner_settings.expected_runtime_factor || 0;
-        // Convert from nanoseconds (time.Duration) to seconds (UI display units) for the relevant planner_settings' fields.
-        if (distro.distro.planner_settings.target_time > 0) {
-          distro.distro.planner_settings.target_time /= 1e9;
-        }
-        if (distro.distro.planner_settings.acceptable_host_idle_time > 0) {
-          distro.distro.planner_settings.acceptable_host_idle_time /= 1e9;
-        }
-        distro.distro.planner_settings.group_versions = distro.distro.planner_settings.group_versions;
-        distro.distro.planner_settings.task_ordering = distro.distro.planner_settings.task_ordering || 'interleave';
-        distro.distro.finder_settings = distro.distro.finder_settings || {};
-        distro.distro.finder_settings.version = distro.distro.finder_settings.version || 'legacy';
-        distro.distro.bootstrap_settings.method = distro.distro.bootstrap_settings.method || 'legacy-ssh';
-        distro.distro.bootstrap_settings.communication = distro.distro.bootstrap_settings.communication || 'legacy-ssh';
-        distro.distro.clone_method = distro.distro.clone_method || 'legacy-ssh';
-
-        $scope.readOnly = !$window.isSuperUser || ($window.acl_enabled && distro.permissions.distro_settings < 20)
-        $scope.activeDistro = distro.distro;
-        return;
+      if (distroHash == $scope.newId && $scope.tempDistro) {
+          $scope.activeDistro = $scope.tempDistro;
+      } else if (distroHash != $scope.newId) {
+        $scope.getDistroById(distroHash).then(function(distro) {
+          if (distro) {
+            $scope.readOnly = (!$window.acl_enabled && !$window.isSuperUser) || ($window.acl_enabled && distro.permissions.distro_settings < 20)
+            $scope.activeDistro = distro.distro;
+          } else {
+            $scope.setActiveDistroId($scope.distroIds[0]);
+          }
+        });
+        return
       }
     }
-    // TODO: how do i get the default now?
-    // Default to the first distro.
-    $scope.setActiveDistro($scope.getDistroById($scope.distroIds[0]));
+    // default to first id
+    $scope.setActiveDistroId($scope.distroIds[0]);
   };
 
-  $scope.setActiveDistro = function(distro) {
-    $scope.activeDistro = distro;
-    $location.hash(distro._id);
+  $scope.setActiveDistroId = function(id) {
+    $location.hash(id);
   };
 
   $scope.getDistroById = function(id) {
-    $http.get('/distros/' + id).then(
+    if ($scope.tempDistro && $scope.tempDistro._id == id) {
+        return new Promise(function(resolve) {
+            resolve({'distro': $scope.tempDistro})
+        });
+    }
+    return $http.get('/distros/' + id).then(
       function(resp){
-        return resp.data;
+        var distro = resp.data
+        if (distro.distro) {
+          distro.distro.pool_size = distro.distro.pool_size || 0;
+          distro.distro.planner_settings = distro.distro.planner_settings || {};
+          distro.distro.planner_settings.version = distro.distro.planner_settings.version || 'legacy';
+          distro.distro.planner_settings.minimum_hosts = distro.distro.planner_settings.minimum_hosts || 0;
+          distro.distro.planner_settings.maximum_hosts = distro.distro.planner_settings.maximum_hosts || 0;
+          distro.distro.planner_settings.target_time = distro.distro.planner_settings.target_time || 0;
+          distro.distro.planner_settings.acceptable_host_idle_time = distro.distro.planner_settings.acceptable_host_idle_time || 0;
+          distro.distro.planner_settings.patch_factor = distro.distro.planner_settings.patch_factor || 0;
+          distro.distro.planner_settings.time_in_queue_factor = distro.distro.planner_settings.time_in_queue_factor || 0;
+          distro.distro.planner_settings.expected_runtime_factor = distro.distro.planner_settings.expected_runtime_factor || 0;
+          // Convert from nanoseconds (time.Duration) to seconds (UI display units) for the relevant planner_settings' fields.
+          if (distro.distro.planner_settings.target_time > 0) {
+            distro.distro.planner_settings.target_time /= 1e9;
+          }
+          if (distro.distro.planner_settings.acceptable_host_idle_time > 0) {
+            distro.distro.planner_settings.acceptable_host_idle_time /= 1e9;
+          }
+          distro.distro.planner_settings.group_versions = distro.distro.planner_settings.group_versions;
+          distro.distro.planner_settings.task_ordering = distro.distro.planner_settings.task_ordering || 'interleave';
+          distro.distro.finder_settings = distro.distro.finder_settings || {};
+          distro.distro.finder_settings.version = distro.distro.finder_settings.version || 'legacy';
+          distro.distro.bootstrap_settings.method = distro.distro.bootstrap_settings.method || 'legacy-ssh';
+          distro.distro.bootstrap_settings.communication = distro.distro.bootstrap_settings.communication || 'legacy-ssh';
+          distro.distro.clone_method = distro.distro.clone_method || 'legacy-ssh';
+        }
+        return distro
+    },
+    function(resp){
+      console.log(resp.status)
     });
   };
 
@@ -365,7 +379,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
       );
     }
     // this will reset the location hash to the new one in case the _id is changed.
-    $scope.setActiveDistro($scope.activeDistro)
+    $scope.setActiveDistroId($scope.activeDistro._id)
   };
 
   $scope.removeConfiguration = function() {
@@ -385,9 +399,9 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   };
 
   $scope.newDistro = function() {
-    if (!$scope.hasNew) {
+    if (!$scope.tempDistro) {
       var defaultOptions = {
-        '_id': 'new distro',
+        '_id': $scope.newId,
         'arch': 'linux_amd64',
         'provider': 'ec2',
         'bootstrap_settings': {
@@ -409,17 +423,19 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
       if ($scope.keys.length != 0) {
         defaultOptions.ssh_key = $scope.keys[0].name;
       }
-      $scope.distros.unshift(defaultOptions);
-      $scope.hasNew = true;
+      $scope.tempDistro = defaultOptions;
+      $scope.distroIds.unshift(defaultOptions._id);
+      $scope.setActiveDistroId(defaultOptions._id);
     }
-    $scope.setActiveDistro($scope.distros[0]);
+    $scope.setActiveDistroId($scope.distroIds[0]);
     $('#distros-list-container').animate({ scrollTop: 0 }, 'slow');
     $anchorScroll();
   };
 
   $scope.copyDistro = function(){
-    if (!$scope.hasNew) {
+    if (!$scope.tempDistro) {
       var newDistro = {
+        '_id': $scope.newId,
         'arch': $scope.activeDistro.arch,
         'work_dir': $scope.activeDistro.work_dir,
         'provider': $scope.activeDistro.provider,
@@ -439,10 +455,9 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
       newDistro.expansions = _.clone($scope.activeDistro.expansions);
       newDistro.planner_settings = _.clone($scope.activeDistro.planner_settings);
       newDistro.finder_settings = _.clone($scope.activeDistro.finder_settings);
-
-      $scope.distros.unshift(newDistro);
-      $scope.hasNew = true;
-      $scope.setActiveDistro($scope.distros[0]);
+      $scope.distroIds.unshift(newDistro._id);
+      $scope.tempDistro = newDistro;
+      $scope.setActiveDistroId(newDistro._id);
       $('#distros-list-container').animate({ scrollTop: 0 }, 'slow');
       $anchorScroll();
       }
@@ -502,16 +517,25 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   }
 
   $scope.isWindows = function() {
-    return $scope.activeDistro.arch.includes('windows');
+    if ($scope.activeDistro) {
+      return $scope.activeDistro.arch.includes('windows');
+    }
+    return false
   }
 
   $scope.isLinux = function() {
-    return $scope.activeDistro.arch.includes('linux');
+    if ($scope.activeDistro) {
+      return $scope.activeDistro.arch.includes('linux');
+    }
+    return false;
   }
 
   $scope.isNonLegacyProvisioning = function() {
-      return $scope.activeDistro.bootstrap_settings.method != 'legacy-ssh' ||
-      $scope.activeDistro.bootstrap_settings.communication != 'legacy-ssh'
+      if ($scope.activeDistro) {
+        return $scope.activeDistro.bootstrap_settings.method != 'legacy-ssh' ||
+        $scope.activeDistro.bootstrap_settings.communication != 'legacy-ssh'
+      }
+      return false;
   }
 
   $scope.validBootstrapAndCommunication = function() {
