@@ -92,8 +92,8 @@ Evergreen - My Hosts
               </td>
               <td class="col-sm-2 no-word-wrap">
                 <i class="fa fa-trash pointer" ng-show="host.status!='terminated'" style="float: right" ng-click="openSpawnModal('terminateHost')"></i>
-                <i class="fa fa-play pointer" ng-show="false" style="float: right" ng-click="openSpawnModal('startHost')" ></i>
-                <i class="fa fa-pause pointer" ng-show="false" style="float: right" ng-click="openSpawnModal('stopHost')" ></i>
+                <i class="fa fa-play pointer" ng-show="host.status=='stopped'" style="float: right" ng-click="openSpawnModal('startHost')"></i>
+                <i class="fa fa-pause pointer" ng-show="host.status=='running'" style="float: right" ng-click="openSpawnModal('stopHost')"></i>
               </td>
             </tr>
           </tbody>
