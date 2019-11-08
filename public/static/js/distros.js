@@ -139,7 +139,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
       } else if (distroHash != $scope.newId) {
         $scope.getDistroById(distroHash).then(function(distro) {
           if (distro) {
-            $scope.readOnly = (!$window.acl_enabled && !$window.isSuperUser) || ($window.acl_enabled && distro.permissions.distro_settings < 20)
+            $scope.readOnly = (!$window.aclEnabled && !$window.isSuperUser) || ($window.aclEnabled && distro.permissions.distro_settings < 20)
             $scope.activeDistro = distro.distro;
           } else {
             $scope.setActiveDistroId($scope.distroIds[0]);
