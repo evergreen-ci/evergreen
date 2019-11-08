@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
@@ -118,7 +117,6 @@ func (m *vsphereManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Hos
 		"provider": h.Provider,
 		"object":   h,
 	})
-	event.LogHostStarted(h.Id)
 
 	return h, nil
 }

@@ -8,7 +8,6 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -110,7 +109,6 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		"message": "created and started Docker container",
 		"host":    h.Id,
 	})
-	event.LogHostStarted(h.Id)
 
 	return h, nil
 }

@@ -12,23 +12,26 @@ import (
 )
 
 func init() {
-	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostProvisioned, makeSpawnHostTriggers)
-	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostProvisionFailed, makeSpawnHostTriggers)
+	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostProvisioned, makeSpawnHostProvisioningTriggers)
+	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostProvisionFailed, makeSpawnHostProvisioningTriggers)
+	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostStarted, makeSpawnHostStateChangeTriggers)
+	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostStopped, makeSpawnHostStateChangeTriggers)
+	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostModified, makeSpawnHostStateChangeTriggers)
 }
 
-type spawnHostTriggers struct {
+type spawnHostProvisioningTriggers struct {
 	hostBase
 }
 
-func makeSpawnHostTriggers() eventHandler {
-	t := &spawnHostTriggers{}
+func makeSpawnHostProvisioningTriggers() eventHandler {
+	t := &spawnHostProvisioningTriggers{}
 	t.triggers = map[string]trigger{
-		event.TriggerOutcome: t.hostSpawnOutcome,
+		event.TriggerOutcome: t.hostSpawnProvisionOutcome,
 	}
 	return t
 }
 
-func (t *spawnHostTriggers) hostSpawnOutcome(sub *event.Subscription) (*notification.Notification, error) {
+func (t *spawnHostProvisioningTriggers) hostSpawnProvisionOutcome(sub *event.Subscription) (*notification.Notification, error) {
 	if t.host.StartedBy == evergreen.User {
 		return nil, nil
 	}
@@ -36,7 +39,7 @@ func (t *spawnHostTriggers) hostSpawnOutcome(sub *event.Subscription) (*notifica
 	return t.generate(sub)
 }
 
-func (t *spawnHostTriggers) slack() *notification.SlackPayload {
+func (t *spawnHostProvisioningTriggers) slack() *notification.SlackPayload {
 	text := "Host has failed to spawn"
 	attachment := message.SlackAttachment{
 		Title:     "Click here to spawn another host",
@@ -93,7 +96,7 @@ const spawnHostEmailTemplate string = `<html>
 </html>
 `
 
-func (t *spawnHostTriggers) email() *message.Email {
+func (t *spawnHostProvisioningTriggers) email() *message.Email {
 	status := "failed to spawn"
 	url := spawnHostURL(t.uiConfig.Url)
 	cmd := "N/A"
@@ -109,7 +112,7 @@ func (t *spawnHostTriggers) email() *message.Email {
 	}
 }
 
-func (t *spawnHostTriggers) makePayload(sub *event.Subscription) interface{} {
+func (t *spawnHostProvisioningTriggers) makePayload(sub *event.Subscription) interface{} {
 	switch sub.Subscriber.Type {
 	case event.SlackSubscriberType:
 		return t.slack()
@@ -122,7 +125,7 @@ func (t *spawnHostTriggers) makePayload(sub *event.Subscription) interface{} {
 	}
 }
 
-func (t *spawnHostTriggers) generate(sub *event.Subscription) (*notification.Notification, error) {
+func (t *spawnHostProvisioningTriggers) generate(sub *event.Subscription) (*notification.Notification, error) {
 	payload := t.makePayload(sub)
 	if payload == nil {
 		return nil, errors.Errorf("unsupported subscriber type: %s", sub.ResourceType)
@@ -135,6 +138,107 @@ func spawnHostURL(base string) string {
 	return fmt.Sprintf("%s/spawn", base)
 }
 
+func hostURL(base, hostID string) string {
+	return fmt.Sprintf("%s/host/%s", base, hostID)
+}
+
 func sshCommand(h *host.Host) string {
 	return fmt.Sprintf("ssh %s@%s", h.Distro.User, h.Host)
+}
+
+type spawnHostStateChangeTriggers struct {
+	hostBase
+}
+
+func makeSpawnHostStateChangeTriggers() eventHandler {
+	t := &spawnHostStateChangeTriggers{}
+	t.triggers = map[string]trigger{
+		event.TriggerOutcome: t.spawnHostStateChangeOutcome,
+	}
+	return t
+}
+
+func (t *spawnHostStateChangeTriggers) spawnHostStateChangeOutcome(sub *event.Subscription) (*notification.Notification, error) {
+	if t.host.StartedBy == evergreen.User {
+		return nil, nil
+	}
+
+	payload, err := t.makePayload(sub)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't make payload")
+	}
+
+	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
+}
+
+func (t *spawnHostStateChangeTriggers) makePayload(sub *event.Subscription) (interface{}, error) {
+	var action string
+	switch t.event.EventType {
+	case event.EventHostStarted:
+		action = "Starting"
+	case event.EventHostStopped:
+		action = "Stopping"
+	case event.EventHostModified:
+		action = "Modifying"
+	default:
+		return nil, errors.Errorf("unexpected event type '%s'", t.event.EventType)
+	}
+
+	var result string
+	if t.data.Successful {
+		result = "succeeded"
+	} else {
+		result = "failed"
+	}
+
+	switch sub.Subscriber.Type {
+	case event.SlackSubscriberType:
+		return t.slackPayload(action, result, t.host.Id, spawnHostURL(t.uiConfig.Url), hostURL(t.uiConfig.Url, t.host.Id)), nil
+
+	case event.EmailSubscriberType:
+		return t.emailPayload(action, result, t.host.Id, spawnHostURL(t.uiConfig.Url), hostURL(t.uiConfig.Url, t.host.Id)), nil
+
+	default:
+		return nil, errors.Errorf("unexpected subscriber type '%s'", sub.Subscriber.Type)
+	}
+}
+
+func (t *spawnHostStateChangeTriggers) slackPayload(action, result, hostID, url, hostURL string) *notification.SlackPayload {
+	color := evergreenSuccessColor
+	if !t.data.Successful {
+		color = evergreenFailColor
+	}
+
+	return &notification.SlackPayload{
+		Body: fmt.Sprintf("%s spawn host <%s|%s> has %s", action, hostID, hostURL, result),
+		Attachments: []message.SlackAttachment{
+			{
+				Title:     "Spawn hosts page",
+				TitleLink: url,
+				Color:     color,
+			},
+		},
+	}
+}
+
+func (t *spawnHostStateChangeTriggers) emailPayload(action, result, hostID, url, hostURL string) *message.Email {
+	subject := fmt.Sprintf("%s spawn host has %s", action, result)
+	body := fmt.Sprintf(`<html>
+	<head>
+	</head>
+	<body>
+	<p>Hi,</p>
+	<p>%s spawn host <a href="%s">%s</a> has %s.</p>
+	<p>Manage spawn hosts from <a href="%s">your hosts page</a> or the Evergreen CLI</p>
+
+
+	</body>
+	</html>
+	`, action, hostURL, hostID, result, url)
+
+	return &message.Email{
+		Subject:           subject,
+		Body:              body,
+		PlainTextContents: false,
+	}
 }

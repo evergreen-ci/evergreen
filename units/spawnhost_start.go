@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -86,8 +87,10 @@ func (j *spawnhostStartJob) Run(ctx context.Context) {
 	// Start instance using the cloud manager
 	if err := cloudManager.StartInstance(ctx, j.host, j.UserID); err != nil {
 		j.AddError(errors.Wrap(err, "error starting spawnhost using cloud manager"))
+		event.LogHostStartFinished(j.host.Id, false)
 		return
 	}
 
+	event.LogHostStartFinished(j.host.Id, true)
 	return
 }

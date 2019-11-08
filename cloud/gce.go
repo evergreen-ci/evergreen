@@ -6,7 +6,6 @@ import (
 	"context"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
@@ -152,7 +151,6 @@ func (m *gceManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 		return nil, errors.Wrapf(err, "Could not start new instance for distro '%s'", h.Distro.Id)
 	}
 
-	event.LogHostStarted(h.Id)
 	grip.Debug(message.Fields{"message": "new gce host", "instance": h.Id, "object": h})
 	return h, nil
 }
