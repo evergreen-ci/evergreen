@@ -159,6 +159,7 @@ const (
 	RoutePaginatorNextPageHeaderKey = "Link"
 
 	PlannerVersionLegacy  = "legacy"
+	PlannerVersionRevised = "revised"
 	PlannerVersionTunable = "tunable"
 
 	DispatcherVersionLegacy                  = "legacy"
@@ -424,6 +425,7 @@ var (
 	// Set of valid PlannerSettings.Version strings that can be user set via the API
 	ValidTaskPlannerVersions = []string{
 		PlannerVersionLegacy,
+		PlannerVersionRevised,
 		PlannerVersionTunable,
 	}
 

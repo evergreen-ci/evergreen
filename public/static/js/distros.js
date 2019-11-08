@@ -30,7 +30,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     if ($scope.distros[i].planner_settings.target_time > 0) {
       $scope.distros[i].planner_settings.target_time /= 1e9;
     }
-    $scope.distros[i].planner_settings.group_versions = $scope.distros[i].planner_settings.group_versions; 
+    $scope.distros[i].planner_settings.group_versions = $scope.distros[i].planner_settings.group_versions;
     $scope.distros[i].planner_settings.task_ordering = $scope.distros[i].planner_settings.task_ordering || 'interleave';
     // Finder Settings
     $scope.distros[i].finder_settings = $scope.distros[i].finder_settings || {};
@@ -71,6 +71,9 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   $scope.plannerVersions = [{
     'id': 'legacy',
     'display': 'Legacy '
+  }, {
+    'id': 'revised',
+    'display': 'Revised '
   }, {
     'id': 'tunable',
     'display': 'Tunable '
