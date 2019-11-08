@@ -1,5 +1,6 @@
 mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, $anchorScroll, $filter, mciDistroRestService) {
 
+  $scope.superUser = $window.isSuperUser;
   $scope.distroIds = $window.distroIds;
   $scope.containerPoolDistros = $window.containerPoolDistros;
   $scope.containerPoolIds = $window.containerPoolIds;
@@ -462,7 +463,6 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
       $anchorScroll();
       }
     }
-
 
   $scope.openConfirmationModal = function(option) {
     $scope.confirmationOption = option;
