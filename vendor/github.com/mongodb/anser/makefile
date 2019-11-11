@@ -25,21 +25,6 @@ goarch := $(shell go env GOARCH)
 # end environment setup
 
 
-# project dependencies
-#   These dependencies are installed at build time, if needed. These
-#   will be vendored eventually.
-deps := github.com/mongodb/amboy
-deps += github.com/mongodb/grip
-deps += github.com/mongodb/ftdc
-deps += github.com/pkg/errors
-deps += github.com/stretchr/testify
-deps += github.com/tychoish/tarjan
-deps += github.com/satori/go.uuid
-deps += github.com/evergreen-ci/birch
-deps += go.mongodb.org/mongo-driver/bson
-deps += gopkg.in/mgo.v2
-# end project dependencies
-
 
 # start linting configuration
 #   package, testing, and linter dependencies specified
@@ -65,7 +50,6 @@ lintArgs += --enable="misspell" # --enable="lll" --line-length=100
 #   implementation details for being able to lazily install dependencies.
 #   this block has no project specific configuration but defines
 #   variables that project specific information depends on
-deps := $(addprefix $(gopath)/src/,$(deps))
 testOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).test)
 raceOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).race)
 testBin := $(foreach target,$(packages),$(buildDir)/test.$(target))
@@ -83,7 +67,7 @@ $(gopath)/src/%:
 
 # lint setup targets
 lintDeps := $(addprefix $(gopath)/src/,$(lintDeps))
-$(buildDir)/.lintSetup:$(lintDeps) $(deps)
+$(buildDir)/.lintSetup:$(lintDeps)
 	@mkdir -p $(buildDir)
 	$(gopath)/bin/gometalinter --install >/dev/null && touch $@
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
@@ -94,8 +78,7 @@ lint:$(buildDir)/.lintSetup $(lintTargets)
 
 
 # userfacing targets for basic build and development operations
-deps:$(deps)
-build:$(deps) $(srcFiles) $(gopath)/src/$(projectPath)
+build:$(srcFiles) $(gopath)/src/$(projectPath)
 	@mkdir -p $(buildDir)
 	$(gobin) build $(subst $(name),,$(subst -,/,$(foreach pkg,$(packages),./$(pkg))))
 test:$(testOutput)
@@ -128,13 +111,16 @@ lint-%:$(buildDir)/output.%.lint
 
 # start vendoring configuration
 vendor-clean:
+	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/mongodb/grip/
+	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/stretchr/testify/
+	rm -rf vendor/github.com/mongodb/amboy/vendor/go.mongodb.org/mongo-driver/
+	rm -rf vendor/github.com/mongodb/ftdc/vendor/github.com/mongodb/grip/
+	rm -rf vendor/github.com/mongodb/ftdc/vendor/github.com/stretchr/testify/
+	rm -rf vendor/github.com/mongodb/ftdc/vendor/go.mongodb.org/mongo-driver/
+	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/testify/
 	rm -rf vendor/gopkg.in/mgo.v2/harness/
-	rm -rf vendor/github.com/stretchr/testify/vendor/
-	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/davecgh/
-	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/
-	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/pmezard/
-	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/net/
 	find vendor/ -name "*.gif" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" -o -name "*.dat" -o -name "*testdata" | xargs rm -rf
+	find vendor/ -name '.git' | xargs rm -rf
 #   add phony targets
 phony += vendor-clean
 # end vendoring tooling configuration
@@ -161,19 +147,19 @@ ifneq (,$(RACE_DETECTOR))
 testArgs += -race
 endif
 # testing targets
-$(buildDir)/output.%.test:$(deps) .FORCE
+$(buildDir)/output.%.test: .FORCE
 	@mkdir -p $(buildDir)
 	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) | tee $@
-$(buildDir)/output.%.coverage:$(deps) $(buildDir)/ .FORCE
+$(buildDir)/output.%.coverage: $(buildDir)/ .FORCE
 	@mkdir -p $(buildDir)
 	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
 	@-[ -f $@ ] && $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 	$(gobin)tool cover -html=$< -o $@
 #  targets to generate gotest output from the linter.
-$(buildDir)/output.%.lint:$(buildDir)/run-linter $(deps) $(buildDir)/ .FORCE
+$(buildDir)/output.%.lint:$(buildDir)/run-linter $(buildDir)/ .FORCE
 	@./$< --output=$@ --lintArgs='$(lintArgs)' --packages='$*'
-$(buildDir)/output.lint:$(buildDir)/run-linter $(deps) $(buildDir)/ .FORCE
+$(buildDir)/output.lint:$(buildDir)/run-linter $(buildDir)/ .FORCE
 	@./$< --output="$@" --lintArgs='$(lintArgs)' --packages="$(packages)"
 # end test and coverage artifacts
 
