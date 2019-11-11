@@ -66,6 +66,8 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.GithubPRCreatorOrg, *apiSettings.GithubPRCreatorOrg)
 	assert.Equal(testSettings.LogPath, *apiSettings.LogPath)
 	assert.Equal(testSettings.PprofPort, *apiSettings.PprofPort)
+	assert.Equal(testSettings.SpawnHostsPerUser, *apiSettings.SpawnHostsPerUser)
+	assert.Equal(testSettings.UnexpirableHostsPerUser, *apiSettings.UnexpirableHostsPerUser)
 	for k, v := range testSettings.Credentials {
 		assert.Contains(apiSettings.Credentials, k)
 		assert.Equal(v, apiSettings.Credentials[k])
@@ -119,6 +121,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Key, FromAPIString(apiSettings.Providers.AWS.EC2Keys[0].Key))
 	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Secret, FromAPIString(apiSettings.Providers.AWS.EC2Keys[0].Secret))
 	assert.EqualValues(testSettings.Providers.AWS.DefaultSecurityGroup, FromAPIString(apiSettings.Providers.AWS.DefaultSecurityGroup))
+	assert.EqualValues(testSettings.Providers.AWS.MaxVolumeSizePerUser, *apiSettings.Providers.AWS.MaxVolumeSizePerUser)
 	assert.EqualValues(testSettings.Providers.AWS.EC2Key, FromAPIString(apiSettings.Providers.AWS.EC2Key)) // Legacy
 	assert.EqualValues(testSettings.Providers.Docker.APIVersion, FromAPIString(apiSettings.Providers.Docker.APIVersion))
 	assert.EqualValues(testSettings.Providers.GCE.ClientEmail, FromAPIString(apiSettings.Providers.GCE.ClientEmail))
@@ -264,6 +267,7 @@ func allStructFieldsTrue(t *testing.T, s interface{}) {
 
 func TestAPIJIRANotificationsConfig(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 	api := APIJIRANotificationsConfig{}
 	dbModelIface, err := api.ToService()
 	assert.NoError(err)
@@ -272,14 +276,20 @@ func TestAPIJIRANotificationsConfig(t *testing.T) {
 	assert.Nil(dbModel.CustomFields)
 
 	api = APIJIRANotificationsConfig{
-		CustomFields: map[string]map[string]string{
-			"EVG": map[string]string{
-				"customfield_12345": "{{.Something}}",
-				"customfield_12346": "{{.SomethingElse}}",
+		CustomFields: map[string]APIJIRANotificationsProject{
+			"EVG": APIJIRANotificationsProject{
+				Fields: map[string]string{
+					"customfield_12345": "{{.Something}}",
+					"customfield_12346": "{{.SomethingElse}}",
+				},
+				Components: []string{"component0", "component1"},
 			},
-			"GVE": map[string]string{
-				"customfield_54321": "{{.SomethingElser}}",
-				"customfield_54322": "{{.SomethingEvenElser}}",
+			"GVE": APIJIRANotificationsProject{
+				Fields: map[string]string{
+					"customfield_54321": "{{.SomethingElser}}",
+					"customfield_54322": "{{.SomethingEvenElser}}",
+				},
+				Labels: []string{"label0", "label1"},
 			},
 		},
 	}
@@ -289,19 +299,39 @@ func TestAPIJIRANotificationsConfig(t *testing.T) {
 	dbModel, ok = dbModelIface.(evergreen.JIRANotificationsConfig)
 	assert.True(ok)
 	assert.Len(dbModel.CustomFields, 2)
-
-	m, err := dbModel.CustomFields.ToMap()
-	assert.NoError(err)
-
-	evg := m["EVG"]
-	assert.Len(evg, 2)
-	assert.Equal("{{.Something}}", evg["customfield_12345"])
-	assert.Equal("{{.SomethingElse}}", evg["customfield_12346"])
-
-	gve := m["GVE"]
-	assert.Len(gve, 2)
-	assert.Equal("{{.SomethingElser}}", gve["customfield_54321"])
-	assert.Equal("{{.SomethingEvenElser}}", gve["customfield_54322"])
+	for _, project := range dbModel.CustomFields {
+		if project.Project == "EVG" {
+			assert.Len(project.Fields, 2)
+			for _, field := range project.Fields {
+				if field.Field == "customfield_12345" {
+					assert.Equal("{{.Something}}", field.Template)
+				} else if field.Field == "customfield_12346" {
+					assert.Equal("{{.SomethingElse}}", field.Template)
+				} else {
+					assert.Failf("unexpected field name '%s", field.Field)
+				}
+			}
+			require.Len(project.Components, 2)
+			assert.Equal("component0", project.Components[0])
+			assert.Equal("component1", project.Components[1])
+		} else if project.Project == "GVE" {
+			assert.Len(project.Fields, 2)
+			for _, field := range project.Fields {
+				if field.Field == "customfield_54321" {
+					assert.Equal("{{.SomethingElser}}", field.Template)
+				} else if field.Field == "customfield_54322" {
+					assert.Equal("{{.SomethingEvenElser}}", field.Template)
+				} else {
+					assert.Failf("unexpected field name '%s", field.Field)
+				}
+			}
+			require.Len(project.Labels, 2)
+			assert.Equal("label0", project.Labels[0])
+			assert.Equal("label1", project.Labels[1])
+		} else {
+			assert.Failf("unexpected project name '%s'", project.Project)
+		}
+	}
 
 	newAPI := APIJIRANotificationsConfig{}
 	assert.NoError(newAPI.BuildFromService(&dbModel))

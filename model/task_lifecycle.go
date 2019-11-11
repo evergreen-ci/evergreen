@@ -860,14 +860,19 @@ func updateDisplayTaskAndCache(t *task.Task) error {
 		return errors.Wrap(err, "error updating display task")
 	}
 	err = build.UpdateCachedTask(t.DisplayTask, 0)
-	grip.Error(message.WrapError(err, message.Fields{
-		"message":      "failed to update cached display task",
-		"function":     "updateDisplayTaskAndCache",
-		"build_id":     t.BuildId,
-		"task_id":      t.Id,
-		"display_task": t.DisplayTask.Id,
-		"status":       t.Status,
-	}))
+	if err != nil {
+		b, findErr := build.FindOneId(t.BuildId)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":      "failed to update cached display task",
+			"function":     "updateDisplayTaskAndCache",
+			"build_id":     t.BuildId,
+			"task_id":      t.Id,
+			"display_task": t.DisplayTask.Id,
+			"status":       t.Status,
+			"build_cache":  b.Tasks,
+			"find_err":     findErr,
+		}))
+	}
 	return nil
 }
 
@@ -994,7 +999,10 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 	}
 
 	if t.IsPartOfDisplay() {
-		return t.DisplayTask.SetResetWhenFinished()
+		if err = t.DisplayTask.SetResetWhenFinished(); err != nil {
+			return errors.Wrap(err, "can't mark display task for reset")
+		}
+		return errors.Wrap(checkResetDisplayTask(t.DisplayTask), "can't check display task reset")
 	}
 
 	return errors.Wrap(TryResetTask(t.Id, "mci", evergreen.MonitorPackage, &t.Details), "problem resetting task")

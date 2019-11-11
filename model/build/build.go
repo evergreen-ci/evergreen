@@ -1,6 +1,7 @@
 package build
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -10,6 +11,7 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
@@ -284,4 +286,23 @@ cacheLoop:
 
 func (b *Build) IsPatchBuild() bool {
 	return evergreen.IsPatchRequester(b.Requester)
+}
+
+type Builds []*Build
+
+func (b Builds) getPayload() []interface{} {
+	payload := make([]interface{}, len(b))
+	for idx := range b {
+		payload[idx] = interface{}(b[idx])
+	}
+
+	return payload
+}
+
+func (b Builds) InsertMany(ctx context.Context, ordered bool) error {
+	if len(b) == 0 {
+		return nil
+	}
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertMany(ctx, b.getPayload(), &options.InsertManyOptions{Ordered: &ordered})
+	return errors.Wrap(err, "can't bulk insert Builds")
 }

@@ -128,7 +128,7 @@ func TestGitPush(t *testing.T) {
 		},
 		"PushPatch": func(*testing.T) {
 			ctx := context.Background()
-			jpm, err := jasper.NewLocalManager(false)
+			jpm, err := jasper.NewSynchronizedManager(false)
 			require.NoError(t, err)
 			c.base.jasper = jpm
 			c.DryRun = true

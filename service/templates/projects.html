@@ -1,6 +1,7 @@
 {{define "scripts"}}
 <script>
   window.allTrackedProjects = {{.AllProjects}};
+  window.acl_enabled = {{.ACLEnabled}};
   {{if .User}}
   window.isSuperUser = {{IsSuperUser .User.Id}};
   window.user = {{.User}};
@@ -87,22 +88,29 @@ Evergreen Projects
           </div>
         </div>
       </div>
+      <div class="panel panel-danger" ng-show="!isValidGithubOrg(settingsFormData.owner_name)">
+        <div class="panel-heading">
+          <i class="fa fa-exclamation-circle"></i>
+          The current owner name ([[settingsFormData.owner_name]]) is no longer valid. In order to resume tracking the repository, please change to a valid organization as listed in the Admin Settings.
+        </div>
+      </div>
     </div>
     <div ng-show="isAdmin"><a class="link" href="/project/[[projectRef.identifier]]/events">Event Log</a></div>
     <form name="settingsForm" ng-submit="saveProject(settingsFormData)">
+      <fieldset style="display:inline-block;" ng-disabled="acl_enabled && permissions.project_settings<20">
       <div class ="form-group">
         <div class="col-lg-8">
           <div class="radio">
             <label class="control-label">
               <input type="radio" ng-model="settingsFormData.enabled" ng-value="true"> <strong> Enabled </strong>
             </label> <br>
-            <label class="muted col-lg-offset-1"> Track incoming commits to the repo and create/schedule its tasks.</label>
+            <label class="muted col-lg-offset-1">Enable testing</label>
           </div>
           <div class="radio">
             <label class="control-label">
               <input type="radio" ng-model="settingsFormData.enabled" ng-value="false"> <strong> Disabled </strong>
             </label> <br>
-            <label class="muted col-lg-offset-1">Don&#39;t track any new commits until re-enabled.</label>
+            <label class="muted col-lg-offset-1">Suspend testing</label>
           </div>
         </div>
       </div>
@@ -217,10 +225,16 @@ Evergreen Projects
               <div class="muted small">When checked, tasks from previous revisions will be unscheduled when the equivalent task in a newer commit finishes successfully.</div>
             </div>
           </div>
-          <div ng-show="github_webhooks_enabled">
-            <div class="h3">Repotracker Settings</div>
-            <div class="form-group">
-                <div class="col-lg-5 col-header">
+          <div class="h3">Repotracker Settings</div>
+          <div class="form-group">
+              <div class="col-lg-5 col-header">
+                  <div>
+                      <label class="control-label">Disable Repotracker&nbsp;&nbsp;
+                        <input type="checkbox" name="disable_repotracker" ng-model="settingsFormData.repotracker_disabled"/>
+                      </label>
+                      <div class="muted small">Ignore commits pushed to the repo</div>
+                  </div>
+                  <div ng-hide="settingsFormData.repotracker_disabled || !github_webhooks_enabled">
                     <div class="radio">
                         <label class="control-label">
                             <input type="radio" ng-model="settingsFormData.tracks_push_events" ng-value="false"> <strong> Trigger Repotracker via Runner</strong>
@@ -233,14 +247,14 @@ Evergreen Projects
                         </label> <br>
                         <label class="muted col-lg-offset-1">Repotracker will be triggered from Github PushEvents sent via webhooks</label>
                     </div>
-                </div>
-                <br />
-                <div class="col-lg-8 col-header">
-                  <label class="control-label">Force run Repotracker on Save&nbsp;&nbsp;
-                    <input type="checkbox" name="force_repotracker_run" ng-model="settingsFormData.force_repotracker_run" ng-checked="repoChanged" />
-                  </label>
-                </div>
-            </div>
+                  </div>
+              </div>
+              <br />
+              <div class="col-lg-8 col-header">
+                <label class="control-label">Force run Repotracker on Save&nbsp;&nbsp;
+                  <input type="checkbox" name="force_repotracker_run" ng-model="settingsFormData.force_repotracker_run" ng-checked="repoChanged" />
+                </label>
+              </div>
           </div>
         </div>
 
@@ -668,6 +682,7 @@ Evergreen Projects
             <input class="btn btn-primary" input ng-disabled="!isDirty || !isBatchTimeValid(settingsFormData.batch_time)" type="submit" value="Save Changes">
           </div>
         </div>
+      </fieldset>
     </form>
   </div>
 </div>

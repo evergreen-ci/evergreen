@@ -50,7 +50,9 @@ func StartService(ctx context.Context, manager jasper.Manager, addr net.Addr, cr
 	if err := AttachService(manager, service); err != nil {
 		return nil, errors.Wrap(err, "could not attach manager to service")
 	}
-	go service.Serve(lis)
+	go func() {
+		grip.Notice(service.Serve(lis))
+	}()
 
 	return func() error { service.Stop(); return nil }, nil
 }

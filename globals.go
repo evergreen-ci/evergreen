@@ -254,6 +254,10 @@ const (
 
 	// Default EC2 region where hosts should be spawned
 	DefaultEC2Region = "us-east-1"
+	// This is Amazon's EBS type default
+	DefaultEBSType = "gp2"
+	// This may be a temporary default
+	DefaultEBSAvailabilityZone = "us-east-1a"
 )
 
 var (
@@ -490,114 +494,176 @@ func IsGitHubPatchRequester(requester string) bool {
 }
 
 // Permissions-related constants
-var AclCheckingIsEnabled = false
-
-type PermissionLevel interface {
-	String() string
-	Value() int
-}
-type ProjectSettingsPermission int
-type ProjectVariablesPermission int
-type TasksPermission int
-type PatchPermission int
-type LogsPermission int
+var AclCheckingIsEnabled = (os.Getenv("ACL_ENABLED") == "true")
 
 const (
+	ProjectResourceType = "project"
+)
+
+type PermissionLevel struct {
+	Description string `json:"description"`
+	Value       int    `json:"value"`
+}
+
+var (
+	// Project permissions.
 	PermissionProjectSettings  = "project_settings"
 	PermissionProjectVariables = "project_variables"
 	PermissionTasks            = "project_tasks"
 	PermissionPatches          = "project_patches"
 	PermissionLogs             = "project_logs"
-
-	ProjectSettingsEdit  ProjectSettingsPermission  = 20
-	ProjectSettingsView  ProjectSettingsPermission  = 10
-	ProjectSettingsNone  ProjectSettingsPermission  = 0
-	ProjectVariablesEdit ProjectVariablesPermission = 20
-	ProjectVariablesView ProjectVariablesPermission = 10
-	ProjectVariablesNone ProjectVariablesPermission = 0
-	TasksAdmin           TasksPermission            = 30
-	TasksBasic           TasksPermission            = 20
-	TasksView            TasksPermission            = 10
-	TasksNone            TasksPermission            = 0
-	PatchSubmit          PatchPermission            = 10
-	PatchNone            PatchPermission            = 0
-	LogsView             LogsPermission             = 10
-	LogsNone             LogsPermission             = 0
+	// Distro permissions.
+	PermissionDistroSettings = "distro_settings"
+	PermissionHosts          = "distro_hosts"
 )
 
-func (p ProjectSettingsPermission) String() string {
-	switch p {
-	case ProjectSettingsEdit:
-		return "Edit project settings"
-	case ProjectSettingsView:
-		return "View project settings"
-	case ProjectSettingsNone:
-		return "No project settings permissions"
+// permission levels
+var (
+	ProjectSettingsEdit = PermissionLevel{
+		Description: "Edit project settings",
+		Value:       20,
 	}
-	return ""
-}
-func (p ProjectSettingsPermission) Value() int {
-	return int(p)
-}
-func (p ProjectVariablesPermission) String() string {
-	switch p {
-	case ProjectVariablesEdit:
-		return "Edit project variables"
-	case ProjectVariablesView:
-		return "View project variables"
-	case ProjectVariablesNone:
-		return "No project variables permissions"
+	ProjectSettingsView = PermissionLevel{
+		Description: "View project settings",
+		Value:       10,
 	}
-	return ""
-}
-func (p ProjectVariablesPermission) Value() int {
-	return int(p)
-}
-func (p TasksPermission) String() string {
-	switch p {
-	case TasksAdmin:
-		return "Full tasks permissions"
-	case TasksBasic:
-		return "Basic modifications to tasks"
-	case TasksView:
-		return "View tasks"
-	case TasksNone:
-		return "Not able to view or edit tasks"
+	ProjectSettingsNone = PermissionLevel{
+		Description: "No project settings permissions",
+		Value:       0,
 	}
-	return ""
-}
-func (p TasksPermission) Value() int {
-	return int(p)
-}
-func (p PatchPermission) String() string {
-	switch p {
-	case PatchSubmit:
-		return "Submit and edit patches"
-	case PatchNone:
-		return "Not able to view or submit patches"
+	TasksAdmin = PermissionLevel{
+		Description: "Full tasks permissions",
+		Value:       30,
 	}
-	return ""
-}
-func (p PatchPermission) Value() int {
-	return int(p)
-}
-func (p LogsPermission) String() string {
-	switch p {
-	case LogsView:
-		return "View logs"
-	case LogsNone:
-		return "Not able to view logs"
+	TasksBasic = PermissionLevel{
+		Description: "Basic modifications to tasks",
+		Value:       20,
 	}
-	return ""
-}
-func (p LogsPermission) Value() int {
-	return int(p)
+	TasksView = PermissionLevel{
+		Description: "View tasks",
+		Value:       10,
+	}
+	TasksNone = PermissionLevel{
+		Description: "Not able to view or edit tasks",
+		Value:       0,
+	}
+	PatchSubmit = PermissionLevel{
+		Description: "Submit and edit patches",
+		Value:       10,
+	}
+	PatchNone = PermissionLevel{
+		Description: "Not able to view or submit patches",
+		Value:       0,
+	}
+	LogsView = PermissionLevel{
+		Description: "View logs",
+		Value:       10,
+	}
+	LogsNone = PermissionLevel{
+		Description: "Not able to view logs",
+		Value:       0,
+	}
+	DistroSettingsEdit = PermissionLevel{
+		Description: "Edit distro settings",
+		Value:       20,
+	}
+	DistroSettingsRead = PermissionLevel{
+		Description: "View distro settings",
+		Value:       10,
+	}
+	DistroSettingsNone = PermissionLevel{
+		Description: "No distro settings permissions",
+		Value:       0,
+	}
+	HostsEdit = PermissionLevel{
+		Description: "Edit hosts",
+		Value:       20,
+	}
+	HostsRead = PermissionLevel{
+		Description: "View hosts",
+		Value:       10,
+	}
+	HostsNone = PermissionLevel{
+		Description: "No hosts permissions",
+		Value:       0,
+	}
+)
+
+// GetDisplayNameForPermissionKey gets the display name associated with a permission key
+func GetDisplayNameForPermissionKey(permissionKey string) string {
+	switch permissionKey {
+	case PermissionProjectSettings:
+		return "Project Settings"
+	case PermissionTasks:
+		return "Tasks"
+	case PermissionPatches:
+		return "Patches"
+	case PermissionLogs:
+		return "Logs"
+	case PermissionDistroSettings:
+		return "Distro Settings"
+	case PermissionHosts:
+		return "Distro Hosts"
+	default:
+		return ""
+	}
 }
 
-var projectPermissions = []string{
+// GetPermissionLevelsForPermissionKey gets all permissions associated with a permission key
+func GetPermissionLevelsForPermissionKey(permissionKey string) []PermissionLevel {
+	switch permissionKey {
+	case PermissionProjectSettings:
+		return []PermissionLevel{
+			ProjectSettingsEdit,
+			ProjectSettingsView,
+			ProjectSettingsNone,
+		}
+	case PermissionTasks:
+		return []PermissionLevel{
+			TasksAdmin,
+			TasksBasic,
+			TasksView,
+			TasksNone,
+		}
+	case PermissionPatches:
+		return []PermissionLevel{
+			PatchSubmit,
+			PatchNone,
+		}
+	case PermissionLogs:
+		return []PermissionLevel{
+			LogsView,
+			LogsNone,
+		}
+	case PermissionDistroSettings:
+		return []PermissionLevel{
+			DistroSettingsEdit,
+			DistroSettingsRead,
+			DistroSettingsNone,
+		}
+	case PermissionHosts:
+		return []PermissionLevel{
+			HostsEdit,
+			HostsRead,
+			HostsNone,
+		}
+	default:
+		return []PermissionLevel{}
+	}
+}
+
+// If adding a new type of permissions, i.e. a new array of permission keys, then you must:
+// 1. Add a new field in the APIPermissions model for those permissions.
+// 2. Populate the value of that APIPermissions field with the getPermissions function in rest/route/permissions.go
+
+var ProjectPermissions = []string{
 	PermissionProjectSettings,
-	PermissionProjectVariables,
 	PermissionTasks,
 	PermissionPatches,
 	PermissionLogs,
+}
+
+var DistroPermissions = []string{
+	PermissionDistroSettings,
+	PermissionHosts,
 }

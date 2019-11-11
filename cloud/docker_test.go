@@ -172,24 +172,6 @@ func (s *DockerSuite) TestTerminateInstanceDB() {
 	s.Error(err)
 }
 
-func (s *DockerSuite) TestGetSSHOptions() {
-	opt := "Option"
-	keyname := "key"
-	host := &host.Host{
-		Distro: distro.Distro{
-			SSHOptions: []string{opt},
-		},
-	}
-
-	opts, err := s.manager.GetSSHOptions(host, "")
-	s.Error(err)
-	s.Empty(opts)
-
-	opts, err = s.manager.GetSSHOptions(host, keyname)
-	s.NoError(err)
-	s.Equal([]string{"-i", keyname, "-o", opt}, opts)
-}
-
 func (s *DockerSuite) TestSpawnInvalidSettings() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

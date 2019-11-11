@@ -105,10 +105,10 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 	projectRef := repoTracker.ProjectRef
 	projectIdentifier := projectRef.String()
 
-	if !projectRef.Enabled {
+	if !projectRef.Enabled || projectRef.RepotrackerDisabled {
 		// this is somewhat belt-and-suspenders, as the
 		// repotracker runner process doesn't run for disabled
-		// proejcts.
+		// projects.
 		grip.Info(message.Fields{
 			"message": "skip disabled project",
 			"project": projectRef,
@@ -751,15 +751,16 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 			}
 		}
 		args := model.BuildCreateArgs{
-			Project:       *project,
-			Version:       *v,
-			TaskIDs:       taskIds,
-			BuildName:     buildvariant.Name,
-			Activated:     false,
-			SourceRev:     sourceRev,
-			DefinitionID:  metadata.TriggerDefinitionID,
-			Aliases:       aliases,
-			DistroAliases: distroAliases,
+			Project:        *project,
+			Version:        *v,
+			TaskIDs:        taskIds,
+			BuildName:      buildvariant.Name,
+			Activated:      false,
+			SourceRev:      sourceRev,
+			DefinitionID:   metadata.TriggerDefinitionID,
+			Aliases:        aliases,
+			DistroAliases:  distroAliases,
+			TaskCreateTime: v.CreateTime,
 		}
 		b, tasks, err := model.CreateBuildFromVersionNoInsert(args)
 		if err != nil {

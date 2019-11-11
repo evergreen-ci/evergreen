@@ -7,7 +7,6 @@ packages := $(name) agent operations cloud command db util plugin units
 packages += thirdparty auth scheduler model validator service monitor repotracker
 packages += model-patch model-artifact model-host model-build model-event model-task model-user model-distro model-manifest model-testresult
 packages += model-grid rest-client rest-data rest-route rest-model migrations trigger model-alertrecord model-notification model-stats model-reliability
-packages += model-credentials
 lintOnlyPackages := testutil model-manifest
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
@@ -45,6 +44,7 @@ testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*
 currentHash := $(shell git rev-parse HEAD)
 ldFlags := "$(if $(DEBUG_ENABLED),,-w -s )-X=github.com/evergreen-ci/evergreen.BuildRevision=$(currentHash)"
 karmaFlags := $(if $(KARMA_REPORTER),--reporters $(KARMA_REPORTER),)
+smokeFile := $(if $(SMOKE_TEST_FILE),--test-file $(SMOKE_TEST_FILE),)
 # end evergreen specific configuration
 
 gopath := $(GOPATH)
@@ -125,16 +125,16 @@ $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
 smoke-test-agent-monitor:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
 	./$< service deploy start-evergreen --monitor --binary ./$< --client_url ${CLIENT_URL} &
-	./$< service deploy test-endpoints --check-build --username admin --key abb623665fdbf368a1db980dde6ee0f0 || (pkill -f $<; exit 1)
+	./$< service deploy test-endpoints --check-build --username admin --key abb623665fdbf368a1db980dde6ee0f0 $(smokeFile) || (pkill -f $<; exit 1)
 	pkill -f $<
 smoke-test-task:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
 	./$< service deploy start-evergreen --agent --binary ./$< &
-	./$< service deploy test-endpoints --check-build --username admin --key abb623665fdbf368a1db980dde6ee0f0 || (pkill -f $<; exit 1)
+	./$< service deploy test-endpoints --check-build --username admin --key abb623665fdbf368a1db980dde6ee0f0 $(smokeFile) || (pkill -f $<; exit 1)
 	pkill -f $<
 smoke-test-endpoints:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
-	./$< service deploy test-endpoints || (pkill -f $<; exit 1)
+	./$< service deploy test-endpoints --username admin --key abb623665fdbf368a1db980dde6ee0f0 $(smokeFile) || (pkill -f $<; exit 1)
 	pkill -f $<
 smoke-start-server:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web
@@ -246,26 +246,36 @@ vendor-clean:
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/Microsoft/go-winio/
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/docker/go-connections/
 	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/net/
-	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/github.com/mongodb/anser/
+	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/github.com/pkg/errors/
-	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/github.com/square/certstrap/
+	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/go.mongodb.org/mongo-driver/
 	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/gopkg.in/mgo.v2/
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/pkg/errors/
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/stretchr/testify/
-	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/gopkg.in/yaml.v2/
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/go.mongodb.org/
+	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/gopkg.in/yaml.v2/
 	rm -rf vendor/github.com/evergreen-ci/go-test2json/vendor
 	rm -rf vendor/github.com/evergreen-ci/pail/vendor/github.com/aws/aws-sdk-go/
 	rm -rf vendor/github.com/evergreen-ci/pail/vendor/github.com/mitchellh/go-homedir/
 	rm -rf vendor/github.com/evergreen-ci/pail/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/evergreen-ci/pail/vendor/github.com/pkg/errors/
 	rm -rf vendor/github.com/evergreen-ci/pail/vendor/github.com/stretchr/testify/
-	rm -rf vendor/github.com/evergreen-ci/pail/vendor/gopkg.in/mgo.v2/
 	rm -rf vendor/github.com/evergreen-ci/pail/vendor/go.mongodb.org/mongo-driver/
+	rm -rf vendor/github.com/evergreen-ci/pail/vendor/gopkg.in/mgo.v2/
+	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/golang/protobuf/
+	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/mongodb/grip/
+	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/pkg/errors/
+	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/stretchr/testify/
+	rm -rf vendor/github.com/evergreen-ci/timber/vendor/go.mongodb.org/mongo-driver/
+	rm -rf vendor/github.com/evergreen-ci/timber/vendor/golang.org/x/net/
+	rm -rf vendor/github.com/evergreen-ci/timber/vendor/golang.org/x/sys/
+	rm -rf vendor/github.com/evergreen-ci/timber/vendor/golang.org/x/text/
+	rm -rf vendor/github.com/evergreen-ci/timber/vendor/google.golang.org/genproto/
+	rm -rf vendor/github.com/evergreen-ci/timber/vendor/google.golang.org/grpc/
 	rm -rf vendor/github.com/gorilla/csrf/vendor/github.com/gorilla/context/
 	rm -rf vendor/github.com/gorilla/csrf/vendor/github.com/pkg/
 	rm -rf vendor/github.com/mholt/archiver/rar.go
@@ -273,26 +283,36 @@ vendor-clean:
 	rm -rf vendor/github.com/mholt/archiver/tarlz4.go
 	rm -rf vendor/github.com/mholt/archiver/tarsz.go
 	rm -rf vendor/github.com/mholt/archiver/tarxz.go
-	rm -rf vendor/github.com/mongodb/amboy/vendor/gonum.org/v1/gonum
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/aws/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/evergreen-ci/gimlet/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/pkg/errors/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/stretchr/testify/
-	rm -rf vendor/github.com/mongodb/amboy/vendor/go.mongodb.org/mongo-driver/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/urfave/cli/
+	rm -rf vendor/github.com/mongodb/amboy/vendor/go.mongodb.org/mongo-driver/
+	rm -rf vendor/github.com/mongodb/amboy/vendor/gonum.org/v1/gonum
 	rm -rf vendor/github.com/mongodb/amboy/vendor/gopkg.in/mgo.v2/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/gopkg.in/yaml.v2/
+	rm -rf vendor/github.com/mongodb/ftdc/vendor/gopkg.in/mgo.v2
+	rm -rf vendor/github.com/mongodb/ftdc/vendor/github.com/pkg/errors
+	rm -rf vendor/github.com/mongodb/ftdc/vendor/github.com/pkg/errors/
+	rm -rf vendor/github.com/mongodb/ftdc/vendor/github.com/stretchr/testify/
+	rm -rf vendor/github.com/mongodb/ftdc/vendor/go.mongodb.org/mongo-driver
+	rm -rf vendor/github.com/mongodb/ftdc/vendor/github.com/mongodb/grip
+	rm -rf vendor/github.com/mongodb/ftdc/vendor/github.com/evergreen-ci/birch
+	rm -rf vendor/github.com/mongodb/ftdc/vendor/github.com/papertrail/go-tail/vendor/golang.org/x/sys/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/google/go-github/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/pkg/errors/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/oauth2/
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/sys/
+	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/evergreen-ci/certdepot
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/evergreen-ci/gimlet/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/evergreen-ci/timber/
-	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/evergreen-ci/certdepot
+	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/golang/protobuf/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/mholt/archiver/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/mongodb/amboy/
+	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/mongodb/ftdc
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/pkg/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/stretchr/testify/
@@ -300,13 +320,12 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/jasper/vendor/golang.org/x/net/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/golang.org/x/sys/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/golang.org/x/text/
-	rm -rf vendor/github.com/mongodb/jasper/vendor/google.golang.org/grpc/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/google.golang.org/genproto/
-	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/golang/protobuf/
+	rm -rf vendor/github.com/mongodb/jasper/vendor/google.golang.org/grpc/
 	rm -rf vendor/github.com/smartystreets/goconvey/web/
 	rm -rf vendor/github.com/square/certstrap/vendor/github.com/urfave/cli/
-	rm -rf vendor/github.com/square/certstrap/vendor/golang.org/x/sys/windows/
 	rm -rf vendor/github.com/square/certstrap/vendor/golang.org/x/sys/unix/
+	rm -rf vendor/github.com/square/certstrap/vendor/golang.org/x/sys/windows/
 	rm -rf vendor/go.mongodb.org/mongo-driver/data/
 	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/github.com/davecgh
 	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/github.com/montanaflynn
@@ -321,16 +340,6 @@ vendor-clean:
 	rm -rf vendor/gopkg.in/mgo.v2/testdb/
 	rm -rf vendor/gopkg.in/mgo.v2/testserver/
 	rm -rf vendor/gopkg.in/mgo.v2/txn/
-	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/mongodb/grip/
-	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/pkg/errors/
-	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/stretchr/testify/
-	rm -rf vendor/github.com/evergreen-ci/timber/vendor/go.mongodb.org/mongo-driver/
-	rm -rf vendor/github.com/evergreen-ci/timber/vendor/golang.org/x/net/
-	rm -rf vendor/github.com/evergreen-ci/timber/vendor/golang.org/x/sys/
-	rm -rf vendor/github.com/evergreen-ci/timber/vendor/golang.org/x/text/
-	rm -rf vendor/github.com/evergreen-ci/timber/vendor/google.golang.org/grpc/
-	rm -rf vendor/github.com/evergreen-ci/timber/vendor/google.golang.org/genproto/
-	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/golang/protobuf/
 	find vendor/ -name "*.gif" -o -name "*.jpg" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" | xargs rm -rf
 phony += vendor-clean
 $(buildDir)/run-glide:cmd/revendor/run-glide.go

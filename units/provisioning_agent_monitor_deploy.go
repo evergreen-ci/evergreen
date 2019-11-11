@@ -119,11 +119,28 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		if j.HasErrors() {
 			event.LogHostAgentMonitorDeployFailed(j.host.Id, j.Error())
 
+			if j.host.Status != evergreen.HostRunning {
+				return
+			}
+
 			var noRetries bool
 			noRetries, err = j.checkNoRetries()
 			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": "could not check whether host can retry agent monitor deploy",
+					"host":    j.host.Id,
+					"distro":  j.host.Distro.Id,
+					"job":     j.ID(),
+				}))
 				j.AddError(err)
 			} else if noRetries {
+				var externallyTerminated bool
+				externallyTerminated, err = handleExternallyTerminatedHost(ctx, j.ID(), j.env, j.host)
+				j.AddError(errors.Wrapf(err, "can't check if host %s was externally terminated", j.host.Id))
+				if externallyTerminated {
+					return
+				}
+
 				if err = j.disableHost(ctx, fmt.Sprintf("failed %d times to put agent monitor on host", agentMonitorPutRetries)); err != nil {
 					j.AddError(errors.Wrapf(err, "error marking host %s for termination", j.host.Id))
 					return
@@ -163,12 +180,6 @@ func (j *agentMonitorDeployJob) hostDown() bool {
 // disableHost changes the host so that it is down and enqueues a job to
 // terminate it.
 func (j *agentMonitorDeployJob) disableHost(ctx context.Context, reason string) error {
-	externallyTerminated, err := handleExternallyTerminatedHost(ctx, j.ID(), j.env, j.host)
-	j.AddError(errors.Wrapf(err, "can't check if host '%s' was externally terminated", j.HostID))
-	if externallyTerminated {
-		return nil
-	}
-
 	if err := j.host.DisablePoisonedHost(reason); err != nil {
 		return errors.Wrapf(err, "error terminating host %s", j.host.Id)
 	}
@@ -186,7 +197,7 @@ func (j *agentMonitorDeployJob) disableHost(ctx context.Context, reason string) 
 // checkNoRetries checks if the job has exhausted the maximum allowed attempts
 // to deploy the agent monitor.
 func (j *agentMonitorDeployJob) checkNoRetries() (bool, error) {
-	stat, err := event.GetRecentAgentMonitorDeployStatuses(j.HostID, agentMonitorPutRetries)
+	stat, err := event.GetRecentAgentMonitorDeployStatuses(j.host.Id, agentMonitorPutRetries)
 	if err != nil {
 		return false, errors.Wrap(err, "could not get recent agent monitor deploy statuses")
 	}
@@ -239,16 +250,18 @@ func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context, settings *ev
 	}
 	output, err := j.host.RunJasperProcess(ctx, j.env, opts)
 	if err != nil {
+		reason := "error running setup script on host"
 		grip.Error(message.WrapError(err, message.Fields{
-			"message":       "error running setup script on host",
-			"host":          j.host.Id,
-			"distro":        j.host.Distro.Id,
-			"output":        output,
-			"communication": j.host.Distro.BootstrapSettings.Communication,
-			"job":           j.ID(),
+			"message": reason,
+			"host":    j.host.Id,
+			"distro":  j.host.Distro.Id,
+			"logs":    output,
+			"job":     j.ID(),
 		}))
-
-		return err
+		catcher := grip.NewBasicCatcher()
+		catcher.Wrapf(err, "%s: %s", reason, output)
+		catcher.Wrap(j.disableHost(ctx, reason), "failed to disable host after setup script failed")
+		return catcher.Resolve()
 	}
 
 	return nil

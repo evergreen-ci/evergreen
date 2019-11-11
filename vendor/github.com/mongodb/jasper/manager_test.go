@@ -35,14 +35,14 @@ func TestManagerInterface(t *testing.T) {
 			}
 		},
 		"Basic/Lock/BasicProcs": func(_ context.Context, t *testing.T) Manager {
-			localManager, err := NewLocalManager(false)
+			synchronizedManager, err := NewSynchronizedManager(false)
 			require.NoError(t, err)
-			return localManager
+			return synchronizedManager
 		},
 		"Basic/Lock/BlockingProcs": func(ctx context.Context, t *testing.T) Manager {
-			localBlockingManager, err := NewLocalManagerBlockingProcesses(false)
+			synchronizedBlockingManager, err := NewSynchronizedManagerBlockingProcesses(false)
 			require.NoError(t, err)
-			return localBlockingManager
+			return synchronizedBlockingManager
 		},
 		"SelfClearing/BasicProcs": func(ctx context.Context, t *testing.T) Manager {
 			selfClearingManager, err := NewSelfClearingProcessManager(10, false)
@@ -63,7 +63,7 @@ func TestManagerInterface(t *testing.T) {
 			return NewRemoteManager(m, nil)
 		},
 		"Basic/Lock/RemoteNil/BasicProcs": func(_ context.Context, t *testing.T) Manager {
-			m, err := NewLocalManager(false)
+			m, err := NewSynchronizedManager(false)
 			require.NoError(t, err)
 			return NewRemoteManager(m, nil)
 		},
@@ -435,14 +435,18 @@ func TestTrackedManager(t *testing.T) {
 			return &basicProcessManager{
 				procs:    map[string]Process{},
 				blocking: false,
-				tracker:  newMockProcessTracker(),
+				tracker: &mockProcessTracker{
+					Infos: []ProcessInfo{},
+				},
 			}
 		},
 		"Basic/NoLock/BlockingProcs": func() *basicProcessManager {
 			return &basicProcessManager{
 				procs:    map[string]Process{},
 				blocking: true,
-				tracker:  newMockProcessTracker(),
+				tracker: &mockProcessTracker{
+					Infos: []ProcessInfo{},
+				},
 			}
 		},
 	} {

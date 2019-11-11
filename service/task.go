@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/evergreen-ci/gimlet/rolemanager"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
@@ -312,6 +314,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	if uiTask.DisplayOnly {
 		uiTask.TestResults = []uiTestResult{}
 		execTasks := []task.Task{}
+		execTaskIDs := []string{}
 		for _, t := range projCtx.Task.ExecutionTasks {
 			var et *task.Task
 			if archived {
@@ -332,21 +335,22 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			execTasks = append(execTasks, *et)
+			execTaskIDs = append(execTaskIDs, t)
 		}
 		execTasks, err = task.MergeTestResultsBulk(execTasks, nil)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		for _, execTask := range execTasks {
+		for i, execTask := range execTasks {
 			uiTask.ExecutionTasks = append(uiTask.ExecutionTasks, uiExecTask{
-				Id:        execTask.Id,
+				Id:        execTaskIDs[i],
 				Name:      execTask.DisplayName,
 				TimeTaken: execTask.TimeTaken,
 				Status:    execTask.ResultStatus(),
 			})
 			for _, tr := range execTask.LocalTestResults {
-				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{TestResult: tr, TaskId: execTask.Id, TaskName: execTask.DisplayName})
+				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{TestResult: tr, TaskId: execTaskIDs[i], TaskName: execTask.DisplayName})
 			}
 		}
 	} else {
@@ -363,8 +367,15 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	pluginContext := projCtx.ToPluginContext(uis.Settings, usr)
 	pluginContent := getPluginDataAndHTML(uis, plugin.TaskPage, pluginContext)
 	isAdmin := false
+	permissions := gimlet.Permissions{}
 	if usr != nil {
 		isAdmin = projCtx.ProjectRef.IsAdmin(usr.Username(), uis.Settings)
+		opts := gimlet.PermissionOpts{Resource: projCtx.ProjectRef.Identifier, ResourceType: evergreen.ProjectResourceType}
+		permissions, err = rolemanager.HighestPermissionsForRoles(usr.Roles(), evergreen.GetEnvironment().RoleManager(), opts)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
 	}
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
@@ -373,8 +384,9 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		PluginContent  pluginData
 		JiraHost       string
 		IsProjectAdmin bool
+		Permissions    gimlet.Permissions
 		ViewData
-	}{uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, isAdmin, uis.GetCommonViewData(w, r, false, true)}, "base", "task.html", "base_angular.html", "menu.html")
+	}{uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, isAdmin, permissions, uis.GetCommonViewData(w, r, false, true)}, "base", "task.html", "base_angular.html", "menu.html")
 }
 
 type taskHistoryPageData struct {
@@ -595,6 +607,17 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	authUser := gimlet.GetUser(ctx)
 	authName := authUser.DisplayName()
+	requiredPermission := gimlet.PermissionOpts{
+		Resource:      projCtx.ProjectRef.Identifier,
+		ResourceType:  "project",
+		Permission:    evergreen.PermissionTasks,
+		RequiredLevel: evergreen.TasksAdmin.Value,
+	}
+	taskAdmin, err := authUser.HasPermission(requiredPermission)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error checking permissions: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
 
 	// determine what action needs to be taken
 	switch putParams.Action {
@@ -662,9 +685,9 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if priority > evergreen.MaxTaskPriority {
-			if !uis.isSuperUser(authUser) {
+			if !uis.isSuperUser(authUser) && !taskAdmin { // TODO PM-1355 remove superuser check
 				http.Error(w, fmt.Sprintf("Insufficient access to set priority %v, can only set priority less than or equal to %v", priority, evergreen.MaxTaskPriority),
-					http.StatusBadRequest)
+					http.StatusUnauthorized)
 				return
 			}
 		}
@@ -681,7 +704,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSON(w, projCtx.Task)
 		return
 	case "override_dependencies":
-		if !projCtx.ProjectRef.IsAdmin(authUser.Username(), uis.Settings) {
+		if !projCtx.ProjectRef.IsAdmin(authUser.Username(), uis.Settings) && !taskAdmin { // TODO PM-1355 remove admin check
 			http.Error(w, "not authorized to override dependencies", http.StatusUnauthorized)
 			return
 		}

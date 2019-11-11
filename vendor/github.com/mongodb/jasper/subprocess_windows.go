@@ -5,8 +5,6 @@ import (
 	"syscall"
 	"time"
 	"unsafe"
-
-	"github.com/pkg/errors"
 )
 
 // TODO: needs some documentation.
@@ -81,9 +79,7 @@ const (
 )
 
 var (
-	modkernel32 = syscall.NewLazyDLL("kernel32.dll")
-	modadvapi32 = syscall.NewLazyDLL("advapi32.dll")
-
+	modkernel32                   = syscall.NewLazyDLL("kernel32.dll")
 	procAssignProcessToJobObject  = modkernel32.NewProc("AssignProcessToJobObject")
 	procCloseHandle               = modkernel32.NewProc("CloseHandle")
 	procCreateJobObjectW          = modkernel32.NewProc("CreateJobObjectW")
@@ -330,21 +326,6 @@ func WaitForSingleObject(object syscall.Handle, timeout time.Duration) (uint32, 
 		}
 	}
 	return waitStatus, nil
-}
-
-func getWaitStatusError(waitStatus uint32) error {
-	switch waitStatus {
-	case WAIT_OBJECT_0:
-		return nil
-	case WAIT_ABANDONED:
-		return errors.New("mutex object was not released by the owning thread before it terminated")
-	case WAIT_FAILED:
-		return errors.New("wait failed")
-	case WAIT_TIMEOUT:
-		return errors.New("wait timed out before the object could be signaled")
-	default:
-		return errors.New("wait failed due to unknown reason")
-	}
 }
 
 func CreateEvent(name *uint16) (syscall.Handle, error) {

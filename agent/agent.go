@@ -79,7 +79,7 @@ func New(opts Options, comm client.Communicator) (*Agent, error) {
 		comm: comm,
 	}
 
-	jpm, err := jasper.NewLocalManager(false)
+	jpm, err := jasper.NewSynchronizedManager(false)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

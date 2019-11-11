@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -25,6 +26,7 @@ import (
 var (
 	HostPasswordUpdate         = "updateRDPPassword"
 	HostInstanceTypeUpdate     = "updateInstanceType"
+	HostTagUpdate              = "updateHostTags"
 	HostExpirationExtension    = "extendHostExpiration"
 	HostTerminate              = "terminate"
 	HostStop                   = "stop"
@@ -53,13 +55,21 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-
+	maxHosts := cloud.DefaultMaxSpawnHostsPerUser
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error retrieving settings"))
+		return
+	}
+	if settings.SpawnHostsPerUser >= 0 {
+		maxHosts = settings.SpawnHostsPerUser
+	}
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Distro          distro.Distro
 		Task            *task.Task
 		MaxHostsPerUser int
 		ViewData
-	}{spawnDistro, spawnTask, cloud.MaxSpawnHostsPerUser, uis.GetCommonViewData(w, r, false, true)}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
+	}{spawnDistro, spawnTask, maxHosts, uis.GetCommonViewData(w, r, false, true)}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) getSpawnedHosts(w http.ResponseWriter, r *http.Request) {
@@ -278,7 +288,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Invalid password"))
 			return
 		}
-		if err := cloud.SetHostRDPPassword(ctx, uis.env, h, pwd); err != nil {
+		if err = cloud.SetHostRDPPassword(ctx, uis.env, h, pwd); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
@@ -287,7 +297,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 
 	case HostInstanceTypeUpdate:
 		instanceType := restModel.FromAPIString(updateParams.InstanceType)
-		if err := cloud.ModifySpawnHost(ctx, uis.env, h, host.HostModifyOptions{
+		if err = cloud.ModifySpawnHost(ctx, uis.env, h, host.HostModifyOptions{
 			InstanceType: instanceType,
 		}); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -298,11 +308,32 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case HostExpirationExtension:
+		if updateParams.Expiration.IsZero() { // set expiration to never expire
+			if err := route.CheckUnexpirableHostLimitExceeded(u.Id, uis.Settings.UnexpirableHostsPerUser); err != nil {
+				PushFlash(uis.CookieStore, r, w, NewErrorFlash(err.Error()))
+				uis.LoggedError(w, r, http.StatusBadRequest, err)
+				return
+			}
+			noExpiration := true
+			if err = cloud.ModifySpawnHost(ctx, uis.env, h, host.HostModifyOptions{NoExpiration: &noExpiration}); err != nil {
+				PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error updating host expiration"))
+				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error extending host expiration"))
+				return
+			}
+			PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("Host expiration successfully set to never expire")))
+			gimlet.WriteJSON(w, "Successfully updated host to never expire")
+			return
+		}
+		// use now as a base for how far we're extending if there is currently no expiration
+		if h.NoExpiration {
+			h.ExpirationTime = time.Now()
+		}
 		if updateParams.Expiration.Before(h.ExpirationTime) {
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash("Expiration can only be extended."))
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("expiration can only be extended"))
 			return
 		}
+
 		addtTime := updateParams.Expiration.Sub(h.ExpirationTime)
 		var futureExpiration time.Time
 		futureExpiration, err = cloud.MakeExtendedSpawnHostExpiration(h, addtTime)
@@ -311,11 +342,12 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusBadRequest, err)
 			return
 		}
-		if err := h.SetExpirationTime(futureExpiration); err != nil {
+		if err = h.SetExpirationTime(futureExpiration); err != nil {
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error updating host expiration time"))
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error extending host expiration time"))
 			return
 		}
+
 		loc, err := time.LoadLocation(u.Settings.Timezone)
 		if err != nil || loc == nil {
 			loc = time.UTC
@@ -324,7 +356,34 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			futureExpiration.In(loc).Format(time.RFC822))))
 		gimlet.WriteJSON(w, "Successfully extended host expiration time")
 		return
+	case HostTagUpdate:
+		if len(updateParams.AddTags) <= 0 && len(updateParams.DeleteTags) <= 0 {
+			PushFlash(uis.CookieStore, r, w, NewErrorFlash("Nothing to update."))
+			uis.LoggedError(w, r, http.StatusBadRequest, err)
+			return
+		}
 
+		deleteTags := restModel.FromAPIStringList(updateParams.DeleteTags)
+		addTagPairs := restModel.FromAPIStringList(updateParams.AddTags)
+		addTags, err := host.MakeHostTags(addTagPairs)
+		if err != nil {
+			PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error creating tags to add: "+err.Error()))
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "Error creating tags to add"))
+			return
+		}
+
+		opts := host.HostModifyOptions{
+			AddInstanceTags:    addTags,
+			DeleteInstanceTags: deleteTags,
+		}
+		if err = cloud.ModifySpawnHost(ctx, uis.env, h, opts); err != nil {
+			PushFlash(uis.CookieStore, r, w, NewErrorFlash("Problem modifying spawn host"))
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "Problem modifying spawn host"))
+			return
+		}
+		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprint("Host tags successfully modified.")))
+		gimlet.WriteJSON(w, "Successfully updated host tags.")
+		return
 	default:
 		http.Error(w, fmt.Sprintf("Unrecognized action: %v", updateParams.Action), http.StatusBadRequest)
 		return

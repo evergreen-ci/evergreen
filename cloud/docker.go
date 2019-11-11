@@ -211,18 +211,20 @@ func (m *dockerManager) OnUp(context.Context, *host.Host) error {
 	return nil
 }
 
-//GetSSHOptions returns an array of default SSH options for connecting to a
-//container.
-func (m *dockerManager) GetSSHOptions(h *host.Host, keyPath string) ([]string, error) {
-	if keyPath == "" {
-		return []string{}, errors.New("No key specified for Docker host")
-	}
+func (m *dockerManager) AttachVolume(context.Context, *host.Host, *host.VolumeAttachment) error {
+	return errors.New("can't attach volume with docker provider")
+}
 
-	opts := []string{"-i", keyPath}
-	for _, opt := range h.Distro.SSHOptions {
-		opts = append(opts, "-o", opt)
-	}
-	return opts, nil
+func (m *dockerManager) DetachVolume(context.Context, *host.Host, string) error {
+	return errors.New("can't detach volume with docker provider")
+}
+
+func (m *dockerManager) CreateVolume(context.Context, *host.Volume) (*host.Volume, error) {
+	return nil, errors.New("can't create volume with docker provider")
+}
+
+func (m *dockerManager) DeleteVolume(context.Context, *host.Volume) error {
+	return errors.New("can't delete volume with docker provider")
 }
 
 // TimeTilNextPayment returns the amount of time until the next payment is due

@@ -1306,6 +1306,12 @@ functions:
       binary: make
       env:
         CLIENT_URL: https://s3.amazonaws.com/mciuploads/evergreen/${task_id}/evergreen-ci/evergreen/clients/${goos}_${goarch}/evergreen
+buildvariants:
+- matrix_name: "my-matrix"
+  matrix_spec: { version: ["4.0", "4.2"], os: "linux" }
+  display_name: "${version} ${os} "
+  tasks:
+    - name: "task_1"
 `
 
 	for name, test := range map[string]func(t *testing.T){
@@ -1329,9 +1335,7 @@ functions:
 func checkProjectPersists(yml []byte) error {
 	pp, errs := createIntermediateProject(yml)
 	catcher := grip.NewBasicCatcher()
-	for _, err := range errs {
-		catcher.Add(err)
-	}
+	catcher.Extend(errs)
 	if catcher.HasErrors() {
 		return catcher.Resolve()
 	}
@@ -1340,6 +1344,11 @@ func checkProjectPersists(yml []byte) error {
 		return errors.Wrapf(err, "error marshalling original project")
 	}
 
+	_, errs = createIntermediateProject([]byte(yamlToCompare))
+	catcher.Extend(errs)
+	if catcher.HasErrors() {
+		return errors.Wrap(catcher.Resolve(), "marshalled project cannot be parsed")
+	}
 	v := Version{
 		Id:            "my-version",
 		ParserProject: pp,

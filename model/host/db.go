@@ -21,7 +21,8 @@ import (
 
 const (
 	// Collection is the name of the MongoDB collection that stores hosts.
-	Collection = "hosts"
+	Collection        = "hosts"
+	VolumesCollection = "volumes"
 )
 
 var (
@@ -42,7 +43,6 @@ var (
 	RunningTaskBuildVariantKey   = bsonutil.MustHaveTag(Host{}, "RunningTaskBuildVariant")
 	RunningTaskVersionKey        = bsonutil.MustHaveTag(Host{}, "RunningTaskVersion")
 	RunningTaskProjectKey        = bsonutil.MustHaveTag(Host{}, "RunningTaskProject")
-	TaskDispatchTimeKey          = bsonutil.MustHaveTag(Host{}, "TaskDispatchTime")
 	CreateTimeKey                = bsonutil.MustHaveTag(Host{}, "CreationTime")
 	ExpirationTimeKey            = bsonutil.MustHaveTag(Host{}, "ExpirationTime")
 	NoExpirationKey              = bsonutil.MustHaveTag(Host{}, "NoExpiration")
@@ -61,8 +61,8 @@ var (
 	JasperDeployAttemptsKey      = bsonutil.MustHaveTag(Host{}, "JasperDeployAttempts")
 	StartedByKey                 = bsonutil.MustHaveTag(Host{}, "StartedBy")
 	InstanceTypeKey              = bsonutil.MustHaveTag(Host{}, "InstanceType")
-	VolumeSizeKey                = bsonutil.MustHaveTag(Host{}, "VolumeTotalSize")
-	VolumeIDsKey                 = bsonutil.MustHaveTag(Host{}, "VolumeIDs")
+	VolumeTotalSizeKey           = bsonutil.MustHaveTag(Host{}, "VolumeTotalSize")
+	VolumesKey                   = bsonutil.MustHaveTag(Host{}, "Volumes")
 	NotificationsKey             = bsonutil.MustHaveTag(Host{}, "Notifications")
 	LastCommunicationTimeKey     = bsonutil.MustHaveTag(Host{}, "LastCommunicationTime")
 	UserHostKey                  = bsonutil.MustHaveTag(Host{}, "UserHost")
@@ -90,6 +90,12 @@ var (
 	SpawnOptionsBuildIDKey       = bsonutil.MustHaveTag(SpawnOptions{}, "BuildID")
 	SpawnOptionsTimeoutKey       = bsonutil.MustHaveTag(SpawnOptions{}, "TimeoutTeardown")
 	SpawnOptionsSpawnedByTaskKey = bsonutil.MustHaveTag(SpawnOptions{}, "SpawnedByTask")
+	VolumeIDKey                  = bsonutil.MustHaveTag(Volume{}, "ID")
+	VolumeCreatedByKey           = bsonutil.MustHaveTag(Volume{}, "CreatedBy")
+	VolumeTypeKey                = bsonutil.MustHaveTag(Volume{}, "Type")
+	VolumeSizeKey                = bsonutil.MustHaveTag(Volume{}, "Size")
+	VolumeAttachmentIDKey        = bsonutil.MustHaveTag(VolumeAttachment{}, "VolumeID")
+	VolumeDeviceNameKey          = bsonutil.MustHaveTag(VolumeAttachment{}, "DeviceName")
 )
 
 var (
@@ -356,6 +362,20 @@ func NumHostsByTaskSpec(group, buildVariant, project, version string) (int, erro
 		return 0, errors.Wrap(err, "error querying database for hosts")
 	}
 	return len(hosts), nil
+}
+
+func HostExistsWithVolumeWithDeviceName(deviceName string) (bool, error) {
+	q := db.Query(
+		bson.M{bsonutil.GetDottedKeyName(VolumesKey, VolumeDeviceNameKey): deviceName},
+	)
+
+	hosts, err := Find(q)
+	if err != nil {
+		return false, errors.Wrapf(err, "error querying database for host volumes")
+	}
+	hostExists := len(hosts) > 0
+	return hostExists, nil
+
 }
 
 // IsUninitialized is a query that returns all unstarted + uninitialized Evergreen hosts.
@@ -989,4 +1009,83 @@ func AggregateLastContainerFinishTimes() ([]FinishTime, error) {
 	}
 	return times, nil
 
+}
+
+func (h *Host) SetVolumes(volumes []VolumeAttachment) error {
+	err := UpdateOne(
+		bson.M{
+			IdKey: h.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				VolumesKey: volumes,
+			},
+		})
+	if err != nil {
+		return errors.Wrapf(err, "error updating host volumes")
+	}
+	h.Volumes = volumes
+	return nil
+}
+
+func (h *Host) AddVolumeToHost(newVolume *VolumeAttachment) error {
+	_, err := db.FindAndModify(Collection,
+		bson.M{
+			IdKey: h.Id,
+		}, nil,
+		adb.Change{
+			Update: bson.M{
+				"$push": bson.M{
+					VolumesKey: newVolume,
+				},
+			},
+			ReturnNew: true,
+		},
+		&h,
+	)
+	if err != nil {
+		return errors.Wrapf(err, "error finding and updating host")
+	}
+	return nil
+}
+
+func (h *Host) RemoveVolumeFromHost(volumeId string) error {
+	_, err := db.FindAndModify(Collection,
+		bson.M{
+			IdKey: h.Id,
+		}, nil,
+		adb.Change{
+			Update: bson.M{
+				"$pull": bson.M{
+					VolumesKey: bson.M{VolumeAttachmentIDKey: volumeId},
+				},
+			},
+			ReturnNew: true,
+		},
+		&h,
+	)
+	if err != nil {
+		return errors.Wrapf(err, "error finding and updating host")
+	}
+	return nil
+}
+
+// FindOne gets one Volume for the given query.
+func FindOneVolume(query interface{}) (*Volume, error) {
+	v := &Volume{}
+	err := db.FindOne(VolumesCollection, query, db.NoProjection, db.NoSort, v)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	return v, err
+}
+
+func FindVolumesByUser(userID string) ([]Volume, error) {
+	volumes := []Volume{}
+	query := bson.M{
+		VolumeCreatedByKey: userID,
+	}
+	err := db.FindAll(VolumesCollection, query, db.NoProjection, db.NoSort, db.NoSkip, db.NoLimit, &volumes)
+
+	return volumes, err
 }

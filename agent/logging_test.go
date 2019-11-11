@@ -57,7 +57,7 @@ func TestCommandFileLogging(t *testing.T) {
 		},
 		comm: client.NewCommunicator("www.example.com"),
 	}
-	jpm, err := jasper.NewLocalManager(false)
+	jpm, err := jasper.NewSynchronizedManager(false)
 	require.NoError(err)
 	agt.jasper = jpm
 	ctx, cancel := context.WithCancel(context.Background())

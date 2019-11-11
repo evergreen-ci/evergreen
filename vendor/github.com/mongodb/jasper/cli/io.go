@@ -225,11 +225,15 @@ func ExtractBuildloggerURLsResponse(input []byte) (BuildloggerURLsResponse, erro
 	return resp, resp.successOrError()
 }
 
+// IDResponse describes the structure of a wrapped Jasper process ID
+// specific command as a response for the CLI.
 type IDResponse struct {
 	OutcomeResponse `json:"outcome"`
 	ID              string `json:"id,omitempty"`
 }
 
+// ExtractIDResponse unmarshells an ID response from an unprocessed
+// slice of bytes.
 func ExtractIDResponse(input []byte) (IDResponse, error) {
 	resp := IDResponse{}
 	if err := json.Unmarshal(input, &resp); err != nil {

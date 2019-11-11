@@ -220,19 +220,20 @@ func (m *openStackManager) GetDNSName(ctx context.Context, host *host.Host) (str
 	return "", errors.Errorf("could not find IP for host %s", host.Id)
 }
 
-// GetSSHOptions generates the command line args to be passed to SSH to allow connection
-// to the machine.
-func (m *openStackManager) GetSSHOptions(host *host.Host, keyPath string) ([]string, error) {
-	if keyPath == "" {
-		return []string{}, errors.New("No key specified for host")
-	}
+func (m *openStackManager) AttachVolume(context.Context, *host.Host, *host.VolumeAttachment) error {
+	return errors.New("can't attach volume with openstack provider")
+}
 
-	opts := []string{"-i", keyPath}
-	for _, opt := range host.Distro.SSHOptions {
-		opts = append(opts, "-o", opt)
-	}
+func (m *openStackManager) DetachVolume(context.Context, *host.Host, string) error {
+	return errors.New("can't detach volume with openstack provider")
+}
 
-	return opts, nil
+func (m *openStackManager) CreateVolume(context.Context, *host.Volume) (*host.Volume, error) {
+	return nil, errors.New("can't create volumes with openstack provider")
+}
+
+func (m *openStackManager) DeleteVolume(context.Context, *host.Volume) error {
+	return errors.New("can't delete volumes with openstack provider")
 }
 
 // TimeTilNextPayment always returns 0. The OpenStack dashboard requires third-party

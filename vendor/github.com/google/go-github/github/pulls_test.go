@@ -17,11 +17,13 @@ import (
 )
 
 func TestPullRequestsService_List(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
+	wantAcceptHeaders := []string{mediaTypeLabelDescriptionSearchPreview, mediaTypeLockReasonPreview, mediaTypeDraftPreview}
 	mux.HandleFunc("/repos/o/r/pulls", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
+		testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
 		testFormValues(t, r, values{
 			"state":     "closed",
 			"head":      "h",
@@ -45,17 +47,53 @@ func TestPullRequestsService_List(t *testing.T) {
 	}
 }
 
+func TestPullRequestsService_ListPullRequestsWithCommit(t *testing.T) {
+	client, mux, _, teardown := setup()
+	defer teardown()
+
+	wantAcceptHeaders := []string{mediaTypeListPullsOrBranchesForCommitPreview, mediaTypeDraftPreview, mediaTypeLabelDescriptionSearchPreview, mediaTypeLockReasonPreview}
+	mux.HandleFunc("/repos/o/r/commits/sha/pulls", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
+		testFormValues(t, r, values{
+			"state":     "closed",
+			"head":      "h",
+			"base":      "b",
+			"sort":      "created",
+			"direction": "desc",
+			"page":      "2",
+		})
+		fmt.Fprint(w, `[{"number":1}]`)
+	})
+
+	opt := &PullRequestListOptions{"closed", "h", "b", "created", "desc", ListOptions{Page: 2}}
+	pulls, _, err := client.PullRequests.ListPullRequestsWithCommit(context.Background(), "o", "r", "sha", opt)
+	if err != nil {
+		t.Errorf("PullRequests.ListPullRequestsWithCommit returned error: %v", err)
+	}
+
+	want := []*PullRequest{{Number: Int(1)}}
+	if !reflect.DeepEqual(pulls, want) {
+		t.Errorf("PullRequests.ListPullRequestsWithCommit returned %+v, want %+v", pulls, want)
+	}
+}
+
 func TestPullRequestsService_List_invalidOwner(t *testing.T) {
+	client, _, _, teardown := setup()
+	defer teardown()
+
 	_, _, err := client.PullRequests.List(context.Background(), "%", "r", nil)
 	testURLParseError(t, err)
 }
 
 func TestPullRequestsService_Get(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
+	wantAcceptHeaders := []string{mediaTypeLabelDescriptionSearchPreview, mediaTypeLockReasonPreview, mediaTypeDraftPreview}
 	mux.HandleFunc("/repos/o/r/pulls/1", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
+		testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
 		fmt.Fprint(w, `{"number":1}`)
 	})
 
@@ -71,7 +109,7 @@ func TestPullRequestsService_Get(t *testing.T) {
 }
 
 func TestPullRequestsService_GetRaw_diff(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	const rawStr = "@@diff content"
@@ -93,7 +131,7 @@ func TestPullRequestsService_GetRaw_diff(t *testing.T) {
 }
 
 func TestPullRequestsService_GetRaw_patch(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	const rawStr = "@@patch content"
@@ -115,7 +153,7 @@ func TestPullRequestsService_GetRaw_patch(t *testing.T) {
 }
 
 func TestPullRequestsService_GetRaw_invalid(t *testing.T) {
-	setup()
+	client, _, _, teardown := setup()
 	defer teardown()
 
 	_, _, err := client.PullRequests.GetRaw(context.Background(), "o", "r", 1, RawOptions{100})
@@ -127,8 +165,61 @@ func TestPullRequestsService_GetRaw_invalid(t *testing.T) {
 	}
 }
 
+func TestPullRequestsService_Get_links(t *testing.T) {
+	client, mux, _, teardown := setup()
+	defer teardown()
+
+	mux.HandleFunc("/repos/o/r/pulls/1", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		fmt.Fprint(w, `{
+			"number":1,
+			"_links":{
+				"self":{"href":"https://api.github.com/repos/octocat/Hello-World/pulls/1347"},
+				"html":{"href":"https://github.com/octocat/Hello-World/pull/1347"},
+				"issue":{"href":"https://api.github.com/repos/octocat/Hello-World/issues/1347"},
+				"comments":{"href":"https://api.github.com/repos/octocat/Hello-World/issues/1347/comments"},
+				"review_comments":{"href":"https://api.github.com/repos/octocat/Hello-World/pulls/1347/comments"},
+				"review_comment":{"href":"https://api.github.com/repos/octocat/Hello-World/pulls/comments{/number}"},
+				"commits":{"href":"https://api.github.com/repos/octocat/Hello-World/pulls/1347/commits"},
+				"statuses":{"href":"https://api.github.com/repos/octocat/Hello-World/statuses/6dcb09b5b57875f334f61aebed695e2e4193db5e"}
+				}
+			}`)
+	})
+
+	pull, _, err := client.PullRequests.Get(context.Background(), "o", "r", 1)
+	if err != nil {
+		t.Errorf("PullRequests.Get returned error: %v", err)
+	}
+
+	want := &PullRequest{
+		Number: Int(1),
+		Links: &PRLinks{
+			Self: &PRLink{
+				HRef: String("https://api.github.com/repos/octocat/Hello-World/pulls/1347"),
+			}, HTML: &PRLink{
+				HRef: String("https://github.com/octocat/Hello-World/pull/1347"),
+			}, Issue: &PRLink{
+				HRef: String("https://api.github.com/repos/octocat/Hello-World/issues/1347"),
+			}, Comments: &PRLink{
+				HRef: String("https://api.github.com/repos/octocat/Hello-World/issues/1347/comments"),
+			}, ReviewComments: &PRLink{
+				HRef: String("https://api.github.com/repos/octocat/Hello-World/pulls/1347/comments"),
+			}, ReviewComment: &PRLink{
+				HRef: String("https://api.github.com/repos/octocat/Hello-World/pulls/comments{/number}"),
+			}, Commits: &PRLink{
+				HRef: String("https://api.github.com/repos/octocat/Hello-World/pulls/1347/commits"),
+			}, Statuses: &PRLink{
+				HRef: String("https://api.github.com/repos/octocat/Hello-World/statuses/6dcb09b5b57875f334f61aebed695e2e4193db5e"),
+			},
+		},
+	}
+	if !reflect.DeepEqual(pull, want) {
+		t.Errorf("PullRequests.Get returned %+v, want %+v", pull, want)
+	}
+}
+
 func TestPullRequestsService_Get_headAndBase(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/repos/o/r/pulls/1", func(w http.ResponseWriter, r *http.Request) {
@@ -145,11 +236,11 @@ func TestPullRequestsService_Get_headAndBase(t *testing.T) {
 		Number: Int(1),
 		Head: &PullRequestBranch{
 			Ref:  String("r2"),
-			Repo: &Repository{ID: Int(2)},
+			Repo: &Repository{ID: Int64(2)},
 		},
 		Base: &PullRequestBranch{
 			Ref:  String("r1"),
-			Repo: &Repository{ID: Int(1)},
+			Repo: &Repository{ID: Int64(1)},
 		},
 	}
 	if !reflect.DeepEqual(pull, want) {
@@ -158,7 +249,7 @@ func TestPullRequestsService_Get_headAndBase(t *testing.T) {
 }
 
 func TestPullRequestsService_Get_urlFields(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/repos/o/r/pulls/1", func(w http.ResponseWriter, r *http.Request) {
@@ -197,12 +288,15 @@ func TestPullRequestsService_Get_urlFields(t *testing.T) {
 }
 
 func TestPullRequestsService_Get_invalidOwner(t *testing.T) {
+	client, _, _, teardown := setup()
+	defer teardown()
+
 	_, _, err := client.PullRequests.Get(context.Background(), "%", "r", 1)
 	testURLParseError(t, err)
 }
 
 func TestPullRequestsService_Create(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	input := &NewPullRequest{Title: String("t")}
@@ -212,6 +306,8 @@ func TestPullRequestsService_Create(t *testing.T) {
 		json.NewDecoder(r.Body).Decode(v)
 
 		testMethod(t, r, "POST")
+		wantAcceptHeaders := []string{mediaTypeLabelDescriptionSearchPreview, mediaTypeDraftPreview}
+		testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
 		if !reflect.DeepEqual(v, input) {
 			t.Errorf("Request body = %+v, want %+v", v, input)
 		}
@@ -231,12 +327,48 @@ func TestPullRequestsService_Create(t *testing.T) {
 }
 
 func TestPullRequestsService_Create_invalidOwner(t *testing.T) {
+	client, _, _, teardown := setup()
+	defer teardown()
+
 	_, _, err := client.PullRequests.Create(context.Background(), "%", "r", nil)
 	testURLParseError(t, err)
 }
 
+func TestPullRequestsService_UpdateBranch(t *testing.T) {
+	client, mux, _, teardown := setup()
+	defer teardown()
+
+	mux.HandleFunc("/repos/o/r/pulls/1/update-branch", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "PUT")
+		testHeader(t, r, "Accept", mediaTypeUpdatePullRequestBranchPreview)
+		fmt.Fprint(w, `
+			{
+			  "message": "Updating pull request branch.",
+			  "url": "https://github.com/repos/o/r/pulls/1"
+			}`)
+	})
+
+	opts := &PullReqestBranchUpdateOptions{
+		ExpectedHeadSHA: String("s"),
+	}
+
+	pull, _, err := client.PullRequests.UpdateBranch(context.Background(), "o", "r", 1, opts)
+	if err != nil {
+		t.Errorf("PullRequests.UpdateBranch returned error: %v", err)
+	}
+
+	want := &PullRequestBranchUpdateResponse{
+		Message: String("Updating pull request branch."),
+		URL:     String("https://github.com/repos/o/r/pulls/1"),
+	}
+
+	if !reflect.DeepEqual(pull, want) {
+		t.Errorf("PullRequests.UpdateBranch returned %+v, want %+v", pull, want)
+	}
+}
+
 func TestPullRequestsService_Edit(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	tests := []struct {
@@ -266,8 +398,10 @@ func TestPullRequestsService_Edit(t *testing.T) {
 
 	for i, tt := range tests {
 		madeRequest := false
+		wantAcceptHeaders := []string{mediaTypeLabelDescriptionSearchPreview, mediaTypeLockReasonPreview}
 		mux.HandleFunc(fmt.Sprintf("/repos/o/r/pulls/%v", i), func(w http.ResponseWriter, r *http.Request) {
 			testMethod(t, r, "PATCH")
+			testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
 			testBody(t, r, tt.wantUpdate+"\n")
 			io.WriteString(w, tt.sendResponse)
 			madeRequest = true
@@ -289,17 +423,19 @@ func TestPullRequestsService_Edit(t *testing.T) {
 }
 
 func TestPullRequestsService_Edit_invalidOwner(t *testing.T) {
+	client, _, _, teardown := setup()
+	defer teardown()
+
 	_, _, err := client.PullRequests.Edit(context.Background(), "%", "r", 1, &PullRequest{})
 	testURLParseError(t, err)
 }
 
 func TestPullRequestsService_ListCommits(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/repos/o/r/pulls/1/commits", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", mediaTypeGitSigningPreview)
 		testFormValues(t, r, values{"page": "2"})
 		fmt.Fprint(w, `
 			[
@@ -352,7 +488,7 @@ func TestPullRequestsService_ListCommits(t *testing.T) {
 }
 
 func TestPullRequestsService_ListFiles(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/repos/o/r/pulls/1/files", func(w http.ResponseWriter, r *http.Request) {
@@ -414,7 +550,7 @@ func TestPullRequestsService_ListFiles(t *testing.T) {
 }
 
 func TestPullRequestsService_IsMerged(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/repos/o/r/pulls/1/merge", func(w http.ResponseWriter, r *http.Request) {
@@ -434,7 +570,7 @@ func TestPullRequestsService_IsMerged(t *testing.T) {
 }
 
 func TestPullRequestsService_Merge(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/repos/o/r/pulls/1/merge", func(w http.ResponseWriter, r *http.Request) {
@@ -465,7 +601,7 @@ func TestPullRequestsService_Merge(t *testing.T) {
 
 // Test that different merge options produce expected PUT requests. See issue https://github.com/google/go-github/issues/500.
 func TestPullRequestsService_Merge_options(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	tests := []struct {

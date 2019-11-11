@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	MaxSpawnHostsPerUser                = 3
+	DefaultMaxSpawnHostsPerUser         = 3
 	DefaultSpawnHostExpiration          = 24 * time.Hour
 	SpawnHostNoExpirationDuration       = 7 * 24 * time.Hour
 	MaxSpawnHostExpirationDurationHours = 24 * time.Hour * 14
@@ -63,9 +63,8 @@ func (so *SpawnOptions) validate() error {
 		return errors.Wrap(err, "Error occurred finding user's current hosts")
 	}
 
-	if len(activeSpawnedHosts) >= MaxSpawnHostsPerUser {
-		return errors.Errorf("User is already running the max allowed number of spawn hosts (%d of %d)",
-			len(activeSpawnedHosts), MaxSpawnHostsPerUser)
+	if err := checkSpawnHostLimitExceeded(len(activeSpawnedHosts)); err != nil {
+		return err
 	}
 
 	// validate public key
@@ -91,6 +90,19 @@ func (so *SpawnOptions) validate() error {
 		return errors.New("Invalid spawn options: key contains invalid base64 string")
 	}
 
+	return nil
+}
+
+func checkSpawnHostLimitExceeded(numCurrentHosts int) error {
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return errors.Wrapf(err, "Error occurred getting evergreen settings")
+	}
+
+	if numCurrentHosts >= settings.SpawnHostsPerUser {
+		return errors.Errorf("User is already running the max allowed number of spawn hosts (%d of %d)",
+			numCurrentHosts, settings.SpawnHostsPerUser)
+	}
 	return nil
 }
 
@@ -190,17 +202,12 @@ func SetHostRDPPassword(ctx context.Context, env evergreen.Environment, host *ho
 // constructPwdUpdateCommand returns a RemoteCommand struct used to
 // set the RDP password on a remote windows machine.
 func constructPwdUpdateCommand(ctx context.Context, env evergreen.Environment, hostObj *host.Host, password string) (*jasper.Command, error) {
-	cloudHost, err := GetCloudHost(ctx, hostObj, env)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
 	hostInfo, err := hostObj.GetSSHInfo()
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	sshOptions, err := cloudHost.GetSSHOptions()
+	sshOptions, err := hostObj.GetSSHOptions(env.Settings())
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

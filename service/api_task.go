@@ -155,13 +155,15 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if currentHost.RunningTask == "" {
-		grip.Error(message.Fields{
+		grip.Notice(message.Fields{
 			"message":                 "host is not assigned task, not clearing, asking agent to exit",
 			"task_id":                 t.Id,
 			"task_status_from_db":     t.Status,
 			"task_details_from_db":    t.Details,
+			"current_agent":           currentHost.AgentRevision == evergreen.BuildRevision,
 			"task_details_from_agent": details,
 			"host_id":                 currentHost.Id,
+			"distro":                  currentHost.Distro.Id,
 		})
 		endTaskResp.ShouldExit = true
 		gimlet.WriteJSON(w, endTaskResp)

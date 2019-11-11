@@ -479,6 +479,8 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	checkUser := gimlet.NewRequireAuthHandler()
 	checkTask := gimlet.WrapperMiddleware(as.checkTask)
 	checkHost := gimlet.WrapperMiddleware(as.checkHost)
+	viewTasks := &route.RequiresProjectViewPermission{}
+	submitPatch := route.RequiresProjectPermission(evergreen.PermissionPatches, evergreen.PatchSubmit)
 
 	app := gimlet.NewApp()
 	app.SetPrefix("/api")
@@ -499,18 +501,18 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/task_queue/limit").Handler(as.checkTaskQueueSize).Get()
 
 	// CLI Operation Backends
-	app.AddRoute("/tasks/{projectId}").Wrap(checkUser, checkProject).Handler(as.listTasks).Get()
-	app.AddRoute("/variants/{projectId}").Wrap(checkUser, checkProject).Handler(as.listVariants).Get()
+	app.AddRoute("/tasks/{projectId}").Wrap(checkUser, checkProject, viewTasks).Handler(as.listTasks).Get()
+	app.AddRoute("/variants/{projectId}").Wrap(checkUser, checkProject, viewTasks).Handler(as.listVariants).Get()
 	app.AddRoute("/projects").Wrap(checkUser).Handler(as.listProjects).Get()
 
 	// Patches
 	app.PrefixRoute("/patches").Route("/").Wrap(checkUser).Handler(as.submitPatch).Put()
 	app.PrefixRoute("/patches").Route("/mine").Wrap(checkUser).Handler(as.listPatches).Get()
-	app.PrefixRoute("/patches").Route("/{patchId:\\w+}").Wrap(checkUser).Handler(as.summarizePatch).Get()
-	app.PrefixRoute("/patches").Route("/{patchId:\\w+}").Wrap(checkUser, route.RequiresProjectPermission(evergreen.PermissionPatches, evergreen.PatchSubmit)).Handler(as.existingPatchRequest).Post()
-	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/{projectId}/modules").Wrap(checkUser, checkProject).Handler(as.listPatchModules).Get()
-	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/modules").Wrap(checkUser).Handler(as.deletePatchModule).Delete()
-	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/modules").Wrap(checkUser).Handler(as.updatePatchModule).Post()
+	app.PrefixRoute("/patches").Route("/{patchId:\\w+}").Wrap(checkUser, viewTasks).Handler(as.summarizePatch).Get()
+	app.PrefixRoute("/patches").Route("/{patchId:\\w+}").Wrap(checkUser, submitPatch).Handler(as.existingPatchRequest).Post()
+	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/{projectId}/modules").Wrap(checkUser, checkProject, viewTasks).Handler(as.listPatchModules).Get()
+	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/modules").Wrap(checkUser, submitPatch).Handler(as.deletePatchModule).Delete()
+	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/modules").Wrap(checkUser, submitPatch).Handler(as.updatePatchModule).Post()
 
 	// SpawnHosts
 	app.Route().Prefix("/spawn").Wrap(checkUser).Route("/{instance_id:[\\w_\\-\\@]+}/").Handler(as.hostInfo).Get()

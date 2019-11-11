@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
@@ -25,6 +27,7 @@ func NewConfigModel() *APIAdminSettings {
 		Jira:              &APIJiraConfig{},
 		JIRANotifications: &APIJIRANotificationsConfig{},
 		Keys:              map[string]string{},
+		LDAPRoleMap:       &APILDAPRoleMap{},
 		LoggerConfig:      &APILoggerConfig{},
 		Notify:            &APINotifyConfig{},
 		Plugins:           map[string]map[string]interface{}{},
@@ -41,41 +44,45 @@ func NewConfigModel() *APIAdminSettings {
 
 // APIAdminSettings is the structure of a response to the admin route
 type APIAdminSettings struct {
-	Alerts             *APIAlertsConfig                  `json:"alerts,omitempty"`
-	Amboy              *APIAmboyConfig                   `json:"amboy,omitempty"`
-	Api                *APIapiConfig                     `json:"api,omitempty"`
-	ApiUrl             APIString                         `json:"api_url,omitempty"`
-	AuthConfig         *APIAuthConfig                    `json:"auth,omitempty"`
-	Banner             APIString                         `json:"banner,omitempty"`
-	BannerTheme        APIString                         `json:"banner_theme,omitempty"`
-	ClientBinariesDir  APIString                         `json:"client_binaries_dir,omitempty"`
-	CommitQueue        *APICommitQueueConfig             `json:"commit_queue,omitempty"`
-	ConfigDir          APIString                         `json:"configdir,omitempty"`
-	ContainerPools     *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
-	Credentials        map[string]string                 `json:"credentials,omitempty"`
-	DomainName         APIString                         `json:"domain_name,omitempty"`
-	Expansions         map[string]string                 `json:"expansions,omitempty"`
-	Bugsnag            APIString                         `json:"bugsnag,omitempty"`
-	GithubPRCreatorOrg APIString                         `json:"github_pr_creator_org,omitempty"`
-	HostInit           *APIHostInitConfig                `json:"hostinit,omitempty"`
-	HostJasper         *APIHostJasperConfig              `json:"host_jasper,omitempty"`
-	Jira               *APIJiraConfig                    `json:"jira,omitempty"`
-	JIRANotifications  *APIJIRANotificationsConfig       `json:"jira_notifications,omitempty"`
-	Keys               map[string]string                 `json:"keys,omitempty"`
-	LoggerConfig       *APILoggerConfig                  `json:"logger_config,omitempty"`
-	LogPath            APIString                         `json:"log_path,omitempty"`
-	Notify             *APINotifyConfig                  `json:"notify,omitempty"`
-	Plugins            map[string]map[string]interface{} `json:"plugins,omitempty"`
-	PprofPort          APIString                         `json:"pprof_port,omitempty"`
-	Providers          *APICloudProviders                `json:"providers,omitempty"`
-	RepoTracker        *APIRepoTrackerConfig             `json:"repotracker,omitempty"`
-	Scheduler          *APISchedulerConfig               `json:"scheduler,omitempty"`
-	ServiceFlags       *APIServiceFlags                  `json:"service_flags,omitempty"`
-	Slack              *APISlackConfig                   `json:"slack,omitempty"`
-	Splunk             *APISplunkConnectionInfo          `json:"splunk,omitempty"`
-	SuperUsers         []string                          `json:"superusers,omitempty"`
-	Triggers           *APITriggerConfig                 `json:"triggers,omitempty"`
-	Ui                 *APIUIConfig                      `json:"ui,omitempty"`
+	Alerts                  *APIAlertsConfig                  `json:"alerts,omitempty"`
+	Amboy                   *APIAmboyConfig                   `json:"amboy,omitempty"`
+	Api                     *APIapiConfig                     `json:"api,omitempty"`
+	ApiUrl                  APIString                         `json:"api_url,omitempty"`
+	AuthConfig              *APIAuthConfig                    `json:"auth,omitempty"`
+	Banner                  APIString                         `json:"banner,omitempty"`
+	BannerTheme             APIString                         `json:"banner_theme,omitempty"`
+	ClientBinariesDir       APIString                         `json:"client_binaries_dir,omitempty"`
+	CommitQueue             *APICommitQueueConfig             `json:"commit_queue,omitempty"`
+	ConfigDir               APIString                         `json:"configdir,omitempty"`
+	ContainerPools          *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
+	Credentials             map[string]string                 `json:"credentials,omitempty"`
+	DomainName              APIString                         `json:"domain_name,omitempty"`
+	Expansions              map[string]string                 `json:"expansions,omitempty"`
+	Bugsnag                 APIString                         `json:"bugsnag,omitempty"`
+	GithubPRCreatorOrg      APIString                         `json:"github_pr_creator_org,omitempty"`
+	GithubOrgs              []string                          `json:"github_orgs,omitempty"`
+	HostInit                *APIHostInitConfig                `json:"hostinit,omitempty"`
+	HostJasper              *APIHostJasperConfig              `json:"host_jasper,omitempty"`
+	Jira                    *APIJiraConfig                    `json:"jira,omitempty"`
+	JIRANotifications       *APIJIRANotificationsConfig       `json:"jira_notifications,omitempty"`
+	Keys                    map[string]string                 `json:"keys,omitempty"`
+	LDAPRoleMap             *APILDAPRoleMap                   `json:"ldap_role_map,omitempty"`
+	LoggerConfig            *APILoggerConfig                  `json:"logger_config,omitempty"`
+	LogPath                 APIString                         `json:"log_path,omitempty"`
+	Notify                  *APINotifyConfig                  `json:"notify,omitempty"`
+	Plugins                 map[string]map[string]interface{} `json:"plugins,omitempty"`
+	PprofPort               APIString                         `json:"pprof_port,omitempty"`
+	Providers               *APICloudProviders                `json:"providers,omitempty"`
+	RepoTracker             *APIRepoTrackerConfig             `json:"repotracker,omitempty"`
+	Scheduler               *APISchedulerConfig               `json:"scheduler,omitempty"`
+	ServiceFlags            *APIServiceFlags                  `json:"service_flags,omitempty"`
+	Slack                   *APISlackConfig                   `json:"slack,omitempty"`
+	SpawnHostsPerUser       *int                              `json:"spawn_hosts_per_user"`
+	Splunk                  *APISplunkConnectionInfo          `json:"splunk,omitempty"`
+	SuperUsers              []string                          `json:"superusers,omitempty"`
+	Triggers                *APITriggerConfig                 `json:"triggers,omitempty"`
+	Ui                      *APIUIConfig                      `json:"ui,omitempty"`
+	UnexpirableHostsPerUser *int                              `json:"unexpirable_hosts_per_user"`
 }
 
 // BuildFromService builds a model from the service layer
@@ -121,6 +128,9 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.Expansions = v.Expansions
 		as.Keys = v.Keys
 		as.SuperUsers = v.SuperUsers
+		as.GithubOrgs = v.GithubOrgs
+		as.UnexpirableHostsPerUser = &v.UnexpirableHostsPerUser
+		as.SpawnHostsPerUser = &v.SpawnHostsPerUser
 	default:
 		return errors.Errorf("%T is not a supported admin settings type", h)
 	}
@@ -130,11 +140,14 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 // ToService returns a service model from an API model
 func (as *APIAdminSettings) ToService() (interface{}, error) {
 	settings := evergreen.Settings{
-		Credentials: map[string]string{},
-		Expansions:  map[string]string{},
-		Keys:        map[string]string{},
-		Plugins:     evergreen.PluginConfig{},
-		SuperUsers:  as.SuperUsers,
+		Credentials:             map[string]string{},
+		Expansions:              map[string]string{},
+		Keys:                    map[string]string{},
+		Plugins:                 evergreen.PluginConfig{},
+		SuperUsers:              as.SuperUsers,
+		GithubOrgs:              as.GithubOrgs,
+		SpawnHostsPerUser:       cloud.DefaultMaxSpawnHostsPerUser,
+		UnexpirableHostsPerUser: host.DefaultUnexpirableHostsPerUser,
 	}
 	if as.ApiUrl != nil {
 		settings.ApiUrl = *as.ApiUrl
@@ -153,6 +166,7 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	}
 	settings.DomainName = FromAPIString(as.DomainName)
 	settings.Bugsnag = FromAPIString(as.Bugsnag)
+
 	if as.GithubPRCreatorOrg != nil {
 		settings.GithubPRCreatorOrg = *as.GithubPRCreatorOrg
 	}
@@ -161,6 +175,12 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	}
 	if as.PprofPort != nil {
 		settings.PprofPort = *as.PprofPort
+	}
+	if as.SpawnHostsPerUser != nil {
+		settings.SpawnHostsPerUser = *as.SpawnHostsPerUser
+	}
+	if as.UnexpirableHostsPerUser != nil {
+		settings.UnexpirableHostsPerUser = *as.UnexpirableHostsPerUser
 	}
 
 	apiModelReflect := reflect.ValueOf(*as)
@@ -627,6 +647,59 @@ func (a *APIJiraConfig) ToService() (interface{}, error) {
 	}, nil
 }
 
+type APILDAPRoleMapping struct {
+	LDAPGroup APIString `json:"ldap_group"`
+	RoleID    APIString ` json:"role_id"`
+}
+
+func (a *APILDAPRoleMapping) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.LDAPRoleMapping:
+		a.LDAPGroup = ToAPIString(v.LDAPGroup)
+		a.RoleID = ToAPIString(v.RoleID)
+	}
+
+	return nil
+}
+
+func (a *APILDAPRoleMapping) ToService() (interface{}, error) {
+	mapping := evergreen.LDAPRoleMapping{
+		LDAPGroup: FromAPIString(a.LDAPGroup),
+		RoleID:    FromAPIString(a.RoleID),
+	}
+
+	return mapping, nil
+}
+
+type APILDAPRoleMap []APILDAPRoleMapping
+
+func (a *APILDAPRoleMap) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.LDAPRoleMap:
+		m := make(APILDAPRoleMap, len(v))
+		for i := range v {
+			if err := m[i].BuildFromService(v[i]); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (a *APILDAPRoleMap) ToService() (interface{}, error) {
+	serviceMap := make(evergreen.LDAPRoleMap, len(*a))
+	for i := range *a {
+		v, err := (*a)[i].ToService()
+		if err != nil {
+			return nil, err
+		}
+		serviceMap[i] = v.(evergreen.LDAPRoleMapping)
+	}
+
+	return serviceMap, nil
+}
+
 type APILoggerConfig struct {
 	Buffer              *APILogBuffering `json:"buffer"`
 	DefaultLevel        APIString        `json:"default_level"`
@@ -928,6 +1001,7 @@ type APIAWSConfig struct {
 	S3BaseURL            APIString   `json:"s3_base_url"`
 	DefaultSecurityGroup APIString   `json:"default_security_group"`
 	AllowedInstanceTypes []APIString `json:"allowed_instance_types"`
+	MaxVolumeSizePerUser *int        `json:"max_volume_size"`
 
 	// Legacy
 	EC2Secret APIString `json:"aws_secret"`
@@ -949,6 +1023,8 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 		a.Bucket = ToAPIString(v.Bucket)
 		a.S3BaseURL = ToAPIString(v.S3BaseURL)
 		a.DefaultSecurityGroup = ToAPIString(v.DefaultSecurityGroup)
+		a.MaxVolumeSizePerUser = &v.MaxVolumeSizePerUser
+
 		for _, t := range v.AllowedInstanceTypes {
 			a.AllowedInstanceTypes = append(a.AllowedInstanceTypes, ToAPIString(t))
 		}
@@ -972,10 +1048,14 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		Bucket:               FromAPIString(a.Bucket),
 		S3BaseURL:            FromAPIString(a.S3BaseURL),
 		DefaultSecurityGroup: FromAPIString(a.DefaultSecurityGroup),
+		MaxVolumeSizePerUser: host.DefaultMaxVolumeSizePerUser,
 
 		// Legacy
 		EC2Key:    FromAPIString(a.EC2Key),
 		EC2Secret: FromAPIString(a.EC2Secret),
+	}
+	if a.MaxVolumeSizePerUser != nil {
+		config.MaxVolumeSizePerUser = *a.MaxVolumeSizePerUser
 	}
 
 	for _, k := range a.EC2Keys {
@@ -1525,7 +1605,13 @@ func AdminDbToRestModel(in evergreen.ConfigSection) (Model, error) {
 }
 
 type APIJIRANotificationsConfig struct {
-	CustomFields map[string]map[string]string `json:"custom_fields,omitempty"`
+	CustomFields map[string]APIJIRANotificationsProject `json:"custom_fields,omitempty"`
+}
+
+type APIJIRANotificationsProject struct {
+	Fields     map[string]string `json:"fields,omitempty"`
+	Components []string          `json:"components,omitempty"`
+	Labels     []string          `json:"labels,omitempty"`
 }
 
 func (j *APIJIRANotificationsConfig) BuildFromService(h interface{}) error {
@@ -1536,33 +1622,68 @@ func (j *APIJIRANotificationsConfig) BuildFromService(h interface{}) error {
 	case evergreen.JIRANotificationsConfig:
 		config = &v
 	default:
-		return errors.Errorf("expected *evergreen.APIJIRANotificationsConfig, but got %T instead", h)
+		return errors.Errorf("expected *evergreen.JIRANotificationsConfig, but got %T instead", h)
 	}
 
-	if len(config.CustomFields) == 0 {
-		return nil
-	}
+	j.CustomFields = make(map[string]APIJIRANotificationsProject)
+	for _, project := range config.CustomFields {
+		apiProject := APIJIRANotificationsProject{}
+		if err := apiProject.BuildFromService(project); err != nil {
+			return errors.Wrapf(err, "can't build project '%s' from service", project.Project)
+		}
 
-	m, err := config.CustomFields.ToMap()
-	if err != nil {
-		return errors.Wrap(err, "failed to build jira custom field configuration")
+		j.CustomFields[project.Project] = apiProject
 	}
-
-	j.CustomFields = m
 
 	return nil
 }
+
 func (j *APIJIRANotificationsConfig) ToService() (interface{}, error) {
+	service := evergreen.JIRANotificationsConfig{}
 	if j.CustomFields == nil || len(j.CustomFields) == 0 {
-		return evergreen.JIRANotificationsConfig{}, nil
-	}
-	config := evergreen.JIRANotificationsConfig{
-		CustomFields: evergreen.JIRACustomFieldsByProject{},
+		return service, nil
 	}
 
-	config.CustomFields.FromMap(j.CustomFields)
+	for projectName, fields := range j.CustomFields {
+		projectIface, err := fields.ToService()
+		if err != nil {
+			return nil, errors.Errorf("can't convert project '%s' to service", projectName)
+		}
+		project := projectIface.(evergreen.JIRANotificationsProject)
 
-	return config, nil
+		project.Project = projectName
+		service.CustomFields = append(service.CustomFields, project)
+	}
+
+	return service, nil
+}
+
+func (j *APIJIRANotificationsProject) BuildFromService(h interface{}) error {
+	serviceProject, ok := h.(evergreen.JIRANotificationsProject)
+	if !ok {
+		return errors.Errorf("Expecting JIRANotificationsProject but got %T", h)
+	}
+
+	apiFields := make(map[string]string)
+	for _, field := range serviceProject.Fields {
+		apiFields[field.Field] = field.Template
+	}
+	j.Fields = apiFields
+	j.Components = serviceProject.Components
+	j.Labels = serviceProject.Labels
+
+	return nil
+}
+
+func (j *APIJIRANotificationsProject) ToService() (interface{}, error) {
+	service := evergreen.JIRANotificationsProject{}
+	for field, template := range j.Fields {
+		service.Fields = append(service.Fields, evergreen.JIRANotificationsCustomField{Field: field, Template: template})
+	}
+	service.Components = j.Components
+	service.Labels = j.Labels
+
+	return service, nil
 }
 
 type APITriggerConfig struct {

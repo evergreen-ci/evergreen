@@ -227,9 +227,28 @@ func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		usr := gimlet.GetUser(r.Context())
-		if usr == nil && (projCtx.ProjectRef != nil && projCtx.ProjectRef.Private) {
-			uis.RedirectToLogin(w, r)
-			return
+		if projCtx.ProjectRef != nil && projCtx.ProjectRef.Private {
+			if usr == nil {
+				uis.RedirectToLogin(w, r)
+				return
+			}
+			if evergreen.AclCheckingIsEnabled {
+				opts := gimlet.PermissionOpts{
+					Resource:      projCtx.ProjectRef.Identifier,
+					ResourceType:  evergreen.ProjectResourceType,
+					Permission:    evergreen.PermissionTasks,
+					RequiredLevel: evergreen.TasksView.Value,
+				}
+				hasPermission, err := usr.HasPermission(opts)
+				if err != nil {
+					uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error checking permissions"))
+					return
+				}
+				if !hasPermission {
+					uis.LoggedError(w, r, http.StatusUnauthorized, errors.New("not authorized for this action"))
+					return
+				}
+			}
 		}
 
 		if usr == nil && projCtx.Patch != nil {

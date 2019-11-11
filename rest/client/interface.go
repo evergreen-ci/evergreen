@@ -150,6 +150,11 @@ type Communicator interface {
 	ChangeSpawnHostPassword(context.Context, string, string) error
 	ExtendSpawnHostExpiration(context.Context, string, int) error
 	GetHosts(context.Context, func([]*restmodel.APIHost) error) error
+	AttachVolume(context.Context, string, *host.VolumeAttachment) error
+	DetachVolume(context.Context, string, string) error
+	CreateVolume(context.Context, *host.Volume) (*restmodel.APIVolume, error)
+	DeleteVolume(context.Context, string) error
+	GetVolumesByUser(context.Context) ([]restmodel.APIVolume, error)
 
 	// Fetch list of distributions evergreen can spawn
 	GetDistrosList(context.Context) ([]restmodel.APIDistro, error)

@@ -24,7 +24,7 @@ import (
 // running the Jasper REST service.
 func NewClient(addr net.Addr) jasper.RemoteClient {
 	return &restClient{
-		prefix: fmt.Sprintf("http://%s/jasper/v1", addr.String()),
+		prefix: fmt.Sprintf("http://%s/jasper/v1", addr),
 		client: bond.GetHTTPClient(),
 	}
 }
@@ -444,8 +444,6 @@ func (p *restProcess) Tag(t string) {
 		return
 	}
 	defer resp.Body.Close()
-
-	return
 }
 
 func (p *restProcess) GetTags() []string {

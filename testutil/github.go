@@ -25,7 +25,7 @@ func NewGithubPR(prNumber int, baseRepoName, headRepoName, headHash, user, title
 		},
 		User: &github.User{
 			Login: github.String(user),
-			ID:    github.Int(1234),
+			ID:    github.Int64(1234),
 		},
 	}
 }

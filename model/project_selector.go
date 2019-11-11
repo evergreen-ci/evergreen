@@ -381,7 +381,7 @@ func (v *variantSelectorEvaluator) evalSelector(vs *variantSelector) ([]string, 
 		results := []string{}
 		// this could be sped up considerably with caching, but I doubt we'll need to
 		for _, v := range v.variants {
-			if v.matrixVal != nil && evaluatedSelector.contains(v.matrixVal) {
+			if v.MatrixVal != nil && evaluatedSelector.contains(v.MatrixVal) {
 				results = append(results, v.Name)
 			}
 		}

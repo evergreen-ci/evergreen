@@ -55,7 +55,7 @@ func NewGithubPRLogger(ctx context.Context, name string, token string, statusSen
 	s := &githubPRLogger{
 		Base:         base,
 		ctx:          ctx,
-		prService:    githubClient.GetPullRequests(),
+		prService:    githubClient.PullRequests,
 		statusSender: statusSender,
 	}
 

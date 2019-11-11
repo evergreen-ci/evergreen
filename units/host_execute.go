@@ -82,7 +82,7 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 		return
 	}
 
-	sshOptions, err := j.host.GetSSHOptions(j.env.Settings().Keys[j.host.Distro.SSHKey])
+	sshOptions, err := j.host.GetSSHOptions(j.env.Settings())
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not get ssh options",

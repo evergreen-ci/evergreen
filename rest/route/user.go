@@ -81,7 +81,7 @@ func (h *userSettingsPostHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		userSettings.GithubUser.LastKnownAs = *ghUser.Login
-		userSettings.GithubUser.UID = *ghUser.ID
+		userSettings.GithubUser.UID = int(*ghUser.ID)
 	} else {
 		userSettings.GithubUser.UID = u.Settings.GithubUser.UID
 	}

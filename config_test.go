@@ -147,6 +147,7 @@ func (s *AdminSuite) TestBaseConfig() {
 		DomainName:         "example.com",
 		Expansions:         map[string]string{"k2": "v2"},
 		GithubPRCreatorOrg: "org",
+		GithubOrgs:         []string{"evergreen-ci"},
 		Keys:               map[string]string{"k3": "v3"},
 		LogPath:            "logpath",
 		Plugins:            map[string]map[string]interface{}{"k4": map[string]interface{}{"k5": "v5"}},
@@ -174,6 +175,7 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.DomainName, settings.DomainName)
 	s.Equal(config.Expansions, settings.Expansions)
 	s.Equal(config.GithubPRCreatorOrg, settings.GithubPRCreatorOrg)
+	s.Equal(config.GithubOrgs, settings.GithubOrgs)
 	s.Equal(config.Keys, settings.Keys)
 	s.Equal(config.LogPath, settings.LogPath)
 	s.Equal(config.Plugins, settings.Plugins)
@@ -586,7 +588,7 @@ func (s *AdminSuite) TestContainerPoolsConfig() {
 
 func (s *AdminSuite) TestJIRANotificationsConfig() {
 	c := JIRANotificationsConfig{
-		CustomFields: JIRACustomFieldsByProject{
+		CustomFields: []JIRANotificationsProject{
 			{
 				Project: "this",
 				Fields: []JIRANotificationsCustomField{
@@ -605,7 +607,7 @@ func (s *AdminSuite) TestJIRANotificationsConfig() {
 		s.NoError(c.ValidateAndDefault())
 	})
 
-	c.CustomFields = JIRACustomFieldsByProject{
+	c.CustomFields = []JIRANotificationsProject{
 		{
 			Project: "EVG",
 			Fields: []JIRANotificationsCustomField{
@@ -616,27 +618,17 @@ func (s *AdminSuite) TestJIRANotificationsConfig() {
 			},
 		},
 	}
-	m, err := c.CustomFields.ToMap()
-	s.NoError(err)
-	s.Require().Len(m, 1)
-	s.Require().Len(m["EVG"], 1)
-
 	s.Require().NoError(c.Set())
 
 	c = JIRANotificationsConfig{}
 	s.Require().NoError(c.Get(s.env))
 	s.NoError(c.ValidateAndDefault())
-	m, err = c.CustomFields.ToMap()
-	s.NoError(err)
-	s.Require().Len(m, 1)
-	s.Require().Len(m["EVG"], 1)
-	s.Equal("magical{{.Template.Expansion}}", m["EVG"]["customfield_12345"])
-	s.NoError(c.ValidateAndDefault())
+	s.Len(c.CustomFields, 1)
 
 	c = JIRANotificationsConfig{}
 	s.NoError(c.Set())
 	s.NoError(c.ValidateAndDefault())
-	c.CustomFields = JIRACustomFieldsByProject{
+	c.CustomFields = []JIRANotificationsProject{
 		{
 			Project: "this",
 			Fields: []JIRANotificationsCustomField{

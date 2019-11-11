@@ -4,6 +4,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
   $scope.userId = $window.user.Id;
   $scope.isAdmin = $window.isSuperUser || $window.isAdmin;
   $scope.isSuperUser = $window.isSuperUser;
+  $scope.acl_enabled = $window.acl_enabled; // TODO PM-1355 remove this
 
   $scope.projectVars = {};
   $scope.patchVariants = [];
@@ -286,6 +287,8 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
         $scope.prTestingEnabled = data.ProjectRef.pr_testing_enabled || false;
         $scope.commitQueueConflicts = data.commit_queue_conflicting_refs || [];
         $scope.project_triggers = data.ProjectRef.triggers || [];
+        $scope.permissions = data.permissions || {};
+        $scope.github_valid_orgs = data.github_valid_orgs;
         _.each($scope.project_triggers, function(trigger) {
           if (trigger.command) {
             trigger.file = trigger.generate_file;
@@ -313,6 +316,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           enabled: $scope.projectRef.enabled,
           private: $scope.projectRef.private,
           patching_disabled: $scope.projectRef.patching_disabled,
+          repotracker_disabled: $scope.projectRef.repotracker_disabled,
           alert_config: $scope.projectRef.alert_config || {},
           repotracker_error: $scope.projectRef.repotracker_error || {},
           admins : $scope.projectRef.admins || [],
@@ -612,6 +616,19 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
 
   $scope.isValidMergeBaseRevision = function(revision){
     return revision && revision.length >= 40;
+  }
+
+  $scope.isValidGithubOrg = function(org){
+    // no orgs specified
+    if ($scope.github_valid_orgs === null || $scope.github_valid_orgs === undefined|| $scope.github_valid_orgs.length === 0) {
+      return true
+    }
+    for (var i = 0; i < $scope.github_valid_orgs.length; i++) {
+      if (org === $scope.github_valid_orgs[i]) {
+        return true
+      }
+    }
+    return false
   }
 
   $scope.setLastRevision = function() {

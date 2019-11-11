@@ -241,6 +241,7 @@ func (cw *CappedWriter) String() string {
 	return cw.Buffer.String()
 }
 
+// Bytes returns the contents of the buffer.
 func (cw *CappedWriter) Bytes() []byte {
 	return cw.Buffer.Bytes()
 }

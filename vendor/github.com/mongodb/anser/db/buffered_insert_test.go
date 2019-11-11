@@ -41,7 +41,11 @@ func TestLegacyBufferedInsertSuite(t *testing.T) {
 	s.factory = func(_ context.Context) Session {
 		return WrapSession(session)
 	}
-	s.db = s.factory(nil).DB(s.dbname)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.db = s.factory(ctx).DB(s.dbname)
 	suite.Run(t, s)
 }
 
@@ -67,7 +71,7 @@ func TestBufferedInsertSuite(t *testing.T) {
 	s.factory = func(ctx context.Context) Session {
 		return WrapClient(ctx, client)
 	}
-	defer client.Disconnect(ctx)
+	defer func() { require.NoError(t, client.Disconnect(ctx)) }()
 	s.db = s.factory(ctx).DB(s.dbname)
 	suite.Run(t, s)
 }
@@ -152,7 +156,7 @@ func (s *BufferedInsertSuite) TestBufferFlushes() {
 	defer s.takedown(coll)
 
 	for i := 0; i < 100; i++ {
-		s.bi.Append(Document{"a": i})
+		s.NoError(s.bi.Append(Document{"a": i}))
 	}
 	s.NoError(s.bi.Flush())
 
@@ -172,7 +176,7 @@ func (s *BufferedInsertSuite) TestCloserFlushes() {
 
 	jobSize := 1000
 	for i := 0; i < jobSize; i++ {
-		s.bi.Append(Document{"a": i})
+		s.NoError(s.bi.Append(Document{"a": i}))
 	}
 	s.NoError(s.bi.Close())
 
@@ -214,7 +218,7 @@ func (s *BufferedInsertSuite) closeWithPendingDocuments() {
 	catcher := grip.NewBasicCatcher()
 	jobSize := 10
 	for i := 0; i < jobSize; i++ {
-		s.bi.Append(Document{"a": i})
+		s.NoError(s.bi.Append(Document{"a": i}))
 	}
 
 	s.NoError(s.bi.Close())
@@ -237,7 +241,7 @@ func (s *BufferedInsertSuite) flushWithPendingDocuments() {
 	catcher := grip.NewBasicCatcher()
 	jobSize := 10
 	for i := 0; i < jobSize; i++ {
-		s.bi.Append(Document{"a": i})
+		s.NoError(s.bi.Append(Document{"a": i}))
 	}
 
 	for i := 0; i < jobSize; i++ {
@@ -274,7 +278,7 @@ func (s *BufferedInsertSuite) TestFlushBeforeTimerExpires() {
 
 	jobSize := 100
 	for i := 0; i < jobSize; i++ {
-		s.bi.Append(Document{"a": i})
+		s.NoError(s.bi.Append(Document{"a": i}))
 	}
 
 	s.NoError(s.bi.Flush())

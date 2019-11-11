@@ -113,7 +113,7 @@ func makeDownstreamConfigFromFile(ref model.ProjectRef, file string) (*model.Pro
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
-	configFile, err := thirdparty.GetGithubFile(ctx, token, ref.Owner, ref.Repo, file, "")
+	configFile, err := thirdparty.GetGithubFile(ctx, token, ref.Owner, ref.Repo, file, ref.Branch)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error fetching project file for '%s'", ref.Identifier)
 	}

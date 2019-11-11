@@ -60,8 +60,12 @@ func TestCachedIntValue(t *testing.T) {
 
 func TestCachedDurationValue(t *testing.T) {
 	assert := assert.New(t)
-	trueRefresher := func(old time.Duration) (time.Duration, bool) { return 42 * time.Second, true }
-	falseRefresher := func(old time.Duration) (time.Duration, bool) { return 42 * time.Second, false }
+	trueRefresher := func(DurationStats) (DurationStats, bool) {
+		return DurationStats{Average: 42 * time.Second, StdDev: 0}, true
+	}
+	falseRefresher := func(DurationStats) (DurationStats, bool) {
+		return DurationStats{Average: 42 * time.Second, StdDev: 0}, false
+	}
 	cv := &CachedDurationValue{
 		Value:       21 * time.Second,
 		TTL:         time.Minute,
@@ -73,7 +77,7 @@ func TestCachedDurationValue(t *testing.T) {
 	// don't need to save (ok) if it's not stale
 	val, ok := cv.Get()
 	assert.False(ok)
-	assert.Equal(21*time.Second, val)
+	assert.Equal(21*time.Second, val.Average)
 
 	// make it stale but don't set a refresher
 	cv.TTL = time.Second
@@ -83,21 +87,21 @@ func TestCachedDurationValue(t *testing.T) {
 
 	val, ok = cv.Get()
 	assert.False(ok)
-	assert.Equal(21*time.Second, val)
+	assert.Equal(21*time.Second, val.Average)
 	assert.Contains(cv.String(), "stale")
 
 	// set the false refresher and make sure it doesn't change the value
 	cv.refresher = falseRefresher
 	val, ok = cv.Get()
 	assert.False(ok)
-	assert.Equal(21*time.Second, val)
+	assert.Equal(21*time.Second, val.Average)
 	assert.Contains(cv.String(), "stale")
 
 	// set the true refresher and see the value change
 	cv.refresher = trueRefresher
 	val, ok = cv.Get()
 	assert.True(ok)
-	assert.Equal(42*time.Second, val)
+	assert.Equal(42*time.Second, val.Average)
 	assert.Equal(cv.String(), "42s")
 	assert.True(cv.CollectedAt.After(startingTime))
 

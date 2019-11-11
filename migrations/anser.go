@@ -9,6 +9,7 @@ import (
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser"
+	"github.com/mongodb/anser/client"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
@@ -24,6 +25,7 @@ type Options struct {
 	Period   time.Duration
 	Database string
 	Session  db.Session
+	Client   client.Client
 }
 
 // Setup configures the migration environment, configuring the backing
@@ -49,7 +51,7 @@ func (opts Options) Setup(ctx context.Context) (anser.Environment, error) {
 		return nil, errors.WithStack(err)
 	}
 
-	if err = env.Setup(q, opts.Session); err != nil {
+	if err = env.Setup(q, opts.Client, opts.Session); err != nil {
 		return nil, errors.WithStack(err)
 	}
 

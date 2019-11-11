@@ -434,6 +434,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	if err != nil {
 		return nil, errors.Wrap(err, "error making block device mappings")
 	}
+
 	if h.InstanceType != "" {
 		ec2Settings.InstanceType = h.InstanceType
 	} else {
@@ -510,10 +511,12 @@ func (m *ec2Manager) getResources(ctx context.Context, h *host.Host) ([]string, 
 			return nil, errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
 		}
 	}
+
 	volumeIDs, err := m.client.GetVolumeIDs(ctx, h)
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't get volume IDs for '%s'", h.Id)
 	}
+
 	resources := []string{instanceID}
 	resources = append(resources, volumeIDs...)
 	return resources, nil
@@ -595,7 +598,7 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 		},
 	})
 	if err != nil {
-		return errors.Wrapf(err, "error creating changing expire-on tag using client for '%s", h.Id)
+		return errors.Wrapf(err, "error changing expire-on tag using client for '%s", h.Id)
 	}
 
 	if noExpiration {
@@ -1071,6 +1074,99 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 	return nil
 }
 
+func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment *host.VolumeAttachment) error {
+	if err := m.client.Create(m.credentials, evergreen.DefaultEC2Region); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+
+	// if no device name is provided, generate a unique device name
+	if attachment.DeviceName == "" {
+		err := util.Retry(
+			ctx,
+			func() (bool, error) {
+				deviceName := generateDeviceNameForVolume()
+				exists, err := host.HostExistsWithVolumeWithDeviceName(deviceName)
+				if err != nil {
+					return true, errors.Wrapf(err, "error checking if device name already exists")
+				}
+				if !exists {
+					attachment.DeviceName = deviceName
+					return false, nil
+				}
+				return true, errors.New("generated device name already exists")
+			}, 500, 0, 0)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err := m.client.AttachVolume(ctx, &ec2.AttachVolumeInput{
+		InstanceId: aws.String(h.Id),
+		Device:     aws.String(attachment.DeviceName),
+		VolumeId:   aws.String(attachment.VolumeID),
+	})
+	if err != nil {
+		return errors.Wrapf(err, "error attaching volume '%s' to host '%s'", attachment.VolumeID, h.Id)
+	}
+	return errors.Wrapf(h.AddVolumeToHost(attachment), "error attaching volume '%s' to host '%s' in db", attachment.VolumeID, h.Id)
+}
+
+func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID string) error {
+	if err := m.client.Create(m.credentials, evergreen.DefaultEC2Region); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+
+	_, err := m.client.DetachVolume(ctx, &ec2.DetachVolumeInput{
+		InstanceId: aws.String(h.Id),
+		VolumeId:   aws.String(volumeID),
+	})
+	if err != nil {
+		return errors.Wrapf(err, "error attaching volume '%s' to host '%s' in client", volumeID, h.Id)
+	}
+
+	return errors.Wrapf(h.RemoveVolumeFromHost(volumeID), "error detaching volume '%s' from host '%s' in db", volumeID, h.Id)
+}
+
+func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*host.Volume, error) {
+	if err := m.client.Create(m.credentials, evergreen.DefaultEC2Region); err != nil {
+		return nil, errors.Wrap(err, "error creating client")
+	}
+	resp, err := m.client.CreateVolume(ctx, &ec2.CreateVolumeInput{
+		AvailabilityZone: aws.String(volume.AvailabilityZone),
+		VolumeType:       aws.String(volume.Type),
+		Size:             aws.Int64(int64(volume.Size)),
+	})
+
+	if err != nil {
+		return nil, errors.Wrap(err, "error creating volume in client")
+	}
+	if resp.VolumeId == nil {
+		return nil, errors.New("new volume returned by EC2 does not have an ID")
+	}
+
+	volume.ID = *resp.VolumeId
+	if err = volume.Insert(); err != nil {
+		return nil, errors.Wrap(err, "error creating volume in db")
+	}
+
+	return volume, nil
+}
+
+func (m *ec2Manager) DeleteVolume(ctx context.Context, volume *host.Volume) error {
+	if err := m.client.Create(m.credentials, evergreen.DefaultEC2Region); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+
+	_, err := m.client.DeleteVolume(ctx, &ec2.DeleteVolumeInput{
+		VolumeId: aws.String(volume.ID),
+	})
+	if err != nil {
+		return errors.Wrapf(err, "error deleting volume '%s' in client", volume.ID)
+	}
+
+	return errors.Wrapf(volume.Remove(), "error deleting volume '%s' in db", volume.ID)
+}
+
 // GetDNSName returns the DNS name for the host.
 func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
 	ec2Settings := &EC2ProviderSettings{}
@@ -1084,11 +1180,6 @@ func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, erro
 	defer m.client.Close()
 
 	return m.client.GetPublicDNSName(ctx, h)
-}
-
-// GetSSHOptions returns the command-line args to pass to SSH.
-func (m *ec2Manager) GetSSHOptions(h *host.Host, keyName string) ([]string, error) {
-	return h.GetSSHOptions(keyName)
 }
 
 // TimeTilNextPayment returns how long until the next payment is due for a host.

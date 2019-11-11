@@ -85,7 +85,7 @@ func TestSelfClearingManager(t *testing.T) {
 					selfClearingManager, err := NewSelfClearingProcessManager(5, false)
 					require.NoError(t, err)
 					test(tctx, t, selfClearingManager.(*selfClearingProcessManager))
-					selfClearingManager.Close(tctx)
+					assert.NoError(t, selfClearingManager.Close(tctx))
 				})
 			}
 		})

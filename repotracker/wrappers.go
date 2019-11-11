@@ -40,7 +40,7 @@ func getTracker(conf *evergreen.Settings, project model.ProjectRef) (*RepoTracke
 }
 
 func CollectRevisionsForProject(ctx context.Context, conf *evergreen.Settings, project model.ProjectRef) error {
-	if !project.Enabled {
+	if !project.Enabled || project.RepotrackerDisabled {
 		return errors.Errorf("project disabled: %s", project.Identifier)
 	}
 

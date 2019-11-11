@@ -10,11 +10,50 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"strings"
 	"testing"
 )
 
+func TestRepositoriesService_EnablePages(t *testing.T) {
+	client, mux, _, teardown := setup()
+	defer teardown()
+
+	mux.HandleFunc("/repos/o/r/pages", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "POST")
+		wantAcceptHeaders := []string{mediaTypeEnablePagesAPIPreview, mediaTypePagesPreview}
+		testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
+		fmt.Fprint(w, `{"url":"u","status":"s","cname":"c","custom_404":false,"html_url":"h", "source": {"branch":"master", "path":"/"}}`)
+	})
+
+	page, _, err := client.Repositories.EnablePages(context.Background(), "o", "r")
+	if err != nil {
+		t.Errorf("Repositories.EnablePages returned error: %v", err)
+	}
+
+	want := &Pages{URL: String("u"), Status: String("s"), CNAME: String("c"), Custom404: Bool(false), HTMLURL: String("h"), Source: &PagesSource{Branch: String("master"), Path: String("/")}}
+
+	if !reflect.DeepEqual(page, want) {
+		t.Errorf("Repositories.EnablePages returned %v, want %v", page, want)
+	}
+}
+
+func TestRepositoriesService_DisablePages(t *testing.T) {
+	client, mux, _, teardown := setup()
+	defer teardown()
+
+	mux.HandleFunc("/repos/o/r/pages", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "DELETE")
+		testHeader(t, r, "Accept", mediaTypeEnablePagesAPIPreview)
+	})
+
+	_, err := client.Repositories.DisablePages(context.Background(), "o", "r")
+	if err != nil {
+		t.Errorf("Repositories.DisablePages returned error: %v", err)
+	}
+}
+
 func TestRepositoriesService_GetPagesInfo(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/repos/o/r/pages", func(w http.ResponseWriter, r *http.Request) {
@@ -35,7 +74,7 @@ func TestRepositoriesService_GetPagesInfo(t *testing.T) {
 }
 
 func TestRepositoriesService_ListPagesBuilds(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/repos/o/r/pages/builds", func(w http.ResponseWriter, r *http.Request) {
@@ -55,7 +94,7 @@ func TestRepositoriesService_ListPagesBuilds(t *testing.T) {
 }
 
 func TestRepositoriesService_ListPagesBuilds_withOptions(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/repos/o/r/pages/builds", func(w http.ResponseWriter, r *http.Request) {
@@ -73,7 +112,7 @@ func TestRepositoriesService_ListPagesBuilds_withOptions(t *testing.T) {
 }
 
 func TestRepositoriesService_GetLatestPagesBuild(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/repos/o/r/pages/builds/latest", func(w http.ResponseWriter, r *http.Request) {
@@ -93,7 +132,7 @@ func TestRepositoriesService_GetLatestPagesBuild(t *testing.T) {
 }
 
 func TestRepositoriesService_GetPageBuild(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/repos/o/r/pages/builds/1", func(w http.ResponseWriter, r *http.Request) {
@@ -113,7 +152,7 @@ func TestRepositoriesService_GetPageBuild(t *testing.T) {
 }
 
 func TestRepositoriesService_RequestPageBuild(t *testing.T) {
-	setup()
+	client, mux, _, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/repos/o/r/pages/builds", func(w http.ResponseWriter, r *http.Request) {

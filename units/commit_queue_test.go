@@ -262,6 +262,11 @@ func (s *commitQueueSuite) TestUpdatePatch() {
 		},
 		PatchedConfig: "asdf",
 		Project:       "evergreen",
+		BuildVariants: []string{"my-variant"},
+		Tasks:         []string{"my-task"},
+		VariantsTasks: []patch.VariantTasks{
+			{Variant: "my-variant", Tasks: []string{"my-task"}},
+		},
 	}
 
 	projectConfig, err := updatePatch(context.Background(), githubToken, projectRef, patchDoc)
@@ -269,4 +274,8 @@ func (s *commitQueueSuite) TestUpdatePatch() {
 	s.NotEqual("abcdef", patchDoc.Patches[0].Githash)
 	s.NotEqual(model.Project{}, projectConfig)
 	s.NotEqual("asdf", patchDoc.PatchedConfig)
+
+	s.Empty(patchDoc.Tasks)
+	s.Empty(patchDoc.VariantsTasks)
+	s.Empty(patchDoc.BuildVariants)
 }

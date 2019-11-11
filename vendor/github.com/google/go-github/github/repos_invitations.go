@@ -12,7 +12,7 @@ import (
 
 // RepositoryInvitation represents an invitation to collaborate on a repo.
 type RepositoryInvitation struct {
-	ID      *int        `json:"id,omitempty"`
+	ID      *int64      `json:"id,omitempty"`
 	Repo    *Repository `json:"repository,omitempty"`
 	Invitee *User       `json:"invitee,omitempty"`
 	Inviter *User       `json:"inviter,omitempty"`
@@ -40,9 +40,6 @@ func (s *RepositoriesService) ListInvitations(ctx context.Context, owner, repo s
 		return nil, nil, err
 	}
 
-	// TODO: remove custom Accept header when this API fully launches.
-	req.Header.Set("Accept", mediaTypeRepositoryInvitationsPreview)
-
 	invites := []*RepositoryInvitation{}
 	resp, err := s.client.Do(ctx, req, &invites)
 	if err != nil {
@@ -55,15 +52,12 @@ func (s *RepositoriesService) ListInvitations(ctx context.Context, owner, repo s
 // DeleteInvitation deletes a repository invitation.
 //
 // GitHub API docs: https://developer.github.com/v3/repos/invitations/#delete-a-repository-invitation
-func (s *RepositoriesService) DeleteInvitation(ctx context.Context, owner, repo string, invitationID int) (*Response, error) {
+func (s *RepositoriesService) DeleteInvitation(ctx context.Context, owner, repo string, invitationID int64) (*Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/invitations/%v", owner, repo, invitationID)
 	req, err := s.client.NewRequest("DELETE", u, nil)
 	if err != nil {
 		return nil, err
 	}
-
-	// TODO: remove custom Accept header when this API fully launches.
-	req.Header.Set("Accept", mediaTypeRepositoryInvitationsPreview)
 
 	return s.client.Do(ctx, req, nil)
 }
@@ -75,7 +69,7 @@ func (s *RepositoriesService) DeleteInvitation(ctx context.Context, owner, repo 
 // on the repository. Possible values are: "read", "write", "admin".
 //
 // GitHub API docs: https://developer.github.com/v3/repos/invitations/#update-a-repository-invitation
-func (s *RepositoriesService) UpdateInvitation(ctx context.Context, owner, repo string, invitationID int, permissions string) (*RepositoryInvitation, *Response, error) {
+func (s *RepositoriesService) UpdateInvitation(ctx context.Context, owner, repo string, invitationID int64, permissions string) (*RepositoryInvitation, *Response, error) {
 	opts := &struct {
 		Permissions string `json:"permissions"`
 	}{Permissions: permissions}
@@ -84,9 +78,6 @@ func (s *RepositoriesService) UpdateInvitation(ctx context.Context, owner, repo 
 	if err != nil {
 		return nil, nil, err
 	}
-
-	// TODO: remove custom Accept header when this API fully launches.
-	req.Header.Set("Accept", mediaTypeRepositoryInvitationsPreview)
 
 	invite := &RepositoryInvitation{}
 	resp, err := s.client.Do(ctx, req, invite)

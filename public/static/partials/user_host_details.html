@@ -15,6 +15,9 @@
         <div class="entry">
           <strong>Started at</strong> <span>[[curHostData.creation_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</span>
         </div>
+        <div class="entry" ng-hide="curHostData.no_expiration">
+          <strong>Expires at</strong> <span>[[curHostData.original_expiration | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</span>
+        </div>
         <div class="entry" ng-show="curHostData.isTerminated">
           <strong>Terminated at</strong> <span>[[curHostData.termination_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</span>
         </div>
@@ -39,52 +42,91 @@
           <pre readonly>ssh [[curHostData.user]]@[[curHostData.host]]</pre>
         </div>
       </md-card-content>
-
     </md-card>
-      <section layout="row" flex ng-show="curHostData.isWinHost && curHostData.status == 'running'">
-        <div flex="85"></div>
-        <div class="entry" flex="15">
-          <md-button type="button" class="btn-info md-raised" style="top: 8px; float: right;" ng-click="openSpawnModal('updateRDPPassword')">
-            Set RDP Password
-          </md-button>
+
+    <md-card style="width:99%">
+      <md-card-content>
+        <div class="entry">
+          <strong>User Tags</strong>
         </div>
-      </section>
-      <section layout="row" flex style="white-space: nowrap">
-          <div flex="85">
-            <strong>Expires On:</strong>
-            <md-datepicker ng-model="curHostData.date_for_expiration" md-min-date="curHostData.time_for_expiration" md-placeholder="Date"></md-datepicker>
-            <md-time-picker class="inline" ng-model="curHostData.time_for_expiration" message="message"></md-time-picker>
+        <div class="variables" style="display: grid;">
+          <div id="userTagsList" class="form-group" ng-repeat="(key, value) in curHostData.userTags">
+            <div class="col-lg-2"> <label class="control-label">[[key]]</label></div>
+            <div class="col-lg-2"> <label class="control-label">[[value]]</label></div>
+            <div class="col-lg-2">
+              <button class="btn btn-default btn-danger" type="button" ng-click="removeTag(key)">
+                <i class="fa fa-trash"></i>
+              </button>
+            </div>
           </div>
-          <div flex="15">
-            <md-button type="button" class="btn-info md-raised" style="top: 8px; float: right" ng-click="updateHostExpiration()">
-              Update
+          <div class="form-group">
+            <div class="col-lg-2">
+              <input ng-model="new_tag.key" class="form-control" type="text" placeholder="key">
+            </div>
+            <div class="col-lg-2">
+              <input ng-model="new_tag.value" class="form-control" type="text" placeholder="value">
+            </div>
+            <div class="col-lg-6">
+              <button class="plus-button btn btn-primary " ng-disabled="!validTag(new_tag.key, new_tag.value)" type="button" ng-click="addTag()">
+                <i class="fa fa-plus"></i>
+              </button>
+            </div>
+          </div>
+          <div>
+            <md-button type="button" class="btn-info md-raised" style="top: 8px; float: right" ng-click="updateTags()">
+              Update Tags
             </md-button>
+          </div>
         </div>
-      </section>
-      <section layout="row" flex ng-show="curHostData.host_type == 'ec2-ondemand' && curHostData.instance_type != ''" style="white-space: nowrap">
+      </md-card-content>
+    </md-card>
+
+    <section layout="row" ng-show="curHostData.isWinHost && curHostData.status == 'running'">
+      <div flex="85"></div>
+      <div class="entry" flex="15">
+        <md-button type="button" class="btn-info md-raised" style="top: 8px; float: right;" ng-click="openSpawnModal('updateRDPPassword')">
+          Set RDP Password
+        </md-button>
+      </div>
+    </section>
+    <section layout="row" flex style="white-space: nowrap">
         <div flex="85">
-          <strong>Instance Type:</strong>
-          <span class="dropdown">
-            <button class="btn btn-link btn-dropdown" data-toggle="dropdown" href="#" id="distro">
-              <strong>
-                [[selectedInstanceType]]
-                <span class="fa fa-caret-down"></span>
-              </strong>
-          </button>
-          <ul class="dropdown-menu" role="menu" aria-labelledby="distro">
-            <li role="presentation" class="dropdown-header">Instance types</li>
-            <li role="presentation" ng-repeat="instanceType in allowedInstanceTypes">
-              <a role="menuitem" ng-click="setInstanceType(instanceType)">
-                [[instanceType]]
-              </a>
-            </li>
-          </ul>
-          </span>
+          <strong>Expiration:</strong>
+          <md-datepicker  ng-disabled="curHostData.no_expiration" ng-model="curHostData.current_expiration" md-min-date="curHostData.original_expiration" md-placeholder="Date"></md-datepicker>
+          <md-time-picker read-only="curHostData.no_expiration"   ng-model="curHostData.current_expiration" class="inline" message="message" style=""></md-time-picker>
+          <md-checkbox id="no-expiration" class="inline" ng-show="curHostData.host_type == 'ec2-ondemand'" ng-model="curHostData.no_expiration" ng-click="setCurrentExpirationOnClick()" style="margin-left:25px">Never</md-checkbox>
+
         </div>
         <div flex="15">
-          <md-button type="button" class="btn-info md-raised" style="top: 8px; float: right" ng-click="updateInstanceType()">
+          <md-button type="button" class="btn-info md-raised" style="top: 8px; float: right" ng-click="updateHostExpiration()">
             Update
           </md-button>
+      </div>
+    </section>
+    <section layout="row" flex ng-show="curHostData.host_type == 'ec2-ondemand' && curHostData.instance_type != ''" style="white-space: nowrap">
+      <div flex="85">
+        <strong>Instance Type:</strong>
+        <span class="dropdown">
+          <button class="btn btn-link btn-dropdown" data-toggle="dropdown" href="#" id="distro">
+            <strong>
+              [[curHostData.selectedInstanceType]]
+              <span class="fa fa-caret-down"></span>
+            </strong>
+        </button>
+        <ul class="dropdown-menu" role="menu" aria-labelledby="distro">
+          <li role="presentation" class="dropdown-header">Instance types</li>
+          <li role="presentation" ng-repeat="instanceType in allowedInstanceTypes">
+            <a role="menuitem" ng-click="setInstanceType(instanceType)">
+              [[instanceType]]
+            </a>
+          </li>
+        </ul>
+        </span>
+      </div>
+      <div flex="15">
+        <md-button type="button" class="btn-info md-raised" style="top: 8px; float: right" ng-click="updateInstanceType()">
+          Update
+        </md-button>
       </div>
     </section>
   </div>

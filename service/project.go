@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
+
+	"github.com/evergreen-ci/gimlet/rolemanager"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -68,7 +71,7 @@ func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	_ = MustHaveProjectContext(r)
-	_ = MustHaveUser(r)
+	u := MustHaveUser(r)
 
 	id := gimlet.GetVars(r)["project_id"]
 
@@ -137,7 +140,17 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-
+	opts := gimlet.PermissionOpts{Resource: projRef.Identifier, ResourceType: evergreen.ProjectResourceType}
+	permissions, err := rolemanager.HighestPermissionsForRoles(u.Roles(), evergreen.GetEnvironment().RoleManager(), opts)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
 	data := struct {
 		ProjectRef            *model.ProjectRef
 		ProjectVars           *model.ProjectVars
@@ -145,8 +158,10 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		PRConflictingRefs     []string                    `json:"pr_testing_conflicting_refs,omitempty"`
 		CQConflictingRefs     []string                    `json:"commit_queue_conflicting_refs,omitempty"`
 		GitHubWebhooksEnabled bool                        `json:"github_webhooks_enabled"`
+		GithubValidOrgs       []string                    `json:"github_valid_orgs"`
 		Subscriptions         []restModel.APISubscription `json:"subscriptions"`
-	}{projRef, projVars, projectAliases, PRConflictingRefs, CQConflictingRefs, hook != nil, apiSubscriptions}
+		Permissions           gimlet.Permissions          `json:"permissions"`
+	}{projRef, projVars, projectAliases, PRConflictingRefs, CQConflictingRefs, hook != nil, settings.GithubOrgs, apiSubscriptions, permissions}
 
 	// the project context has all projects so make the ui list using all projects
 	gimlet.WriteJSON(w, data)
@@ -154,8 +169,12 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 
 // ProjectNotFound calls WriteHTML with the invalid-project page. It should be called whenever the
 // project specified by the user does not exist, or when there are no projects at all.
-func (uis *UIServer) ProjectNotFound(projCtx projectContext, w http.ResponseWriter, r *http.Request) {
-	uis.render.WriteResponse(w, http.StatusNotFound, uis.GetCommonViewData(w, r, false, false), "base", "invalid_project.html", "base_angular.html", "menu.html")
+func (uis *UIServer) ProjectNotFound(w http.ResponseWriter, r *http.Request) {
+	uis.projectNotFoundBase(w, r, uis.GetCommonViewData(w, r, false, false))
+}
+
+func (uis *UIServer) projectNotFoundBase(w http.ResponseWriter, r *http.Request, data interface{}) {
+	uis.render.WriteResponse(w, http.StatusNotFound, data, "base", "invalid_project.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
@@ -181,28 +200,29 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	origProjectRef := *projectRef
 
 	responseRef := struct {
-		Identifier         string                         `json:"identifier"`
-		DisplayName        string                         `json:"display_name"`
-		RemotePath         string                         `json:"remote_path"`
-		BatchTime          int                            `json:"batch_time"`
-		DeactivatePrevious bool                           `json:"deactivate_previous"`
-		Branch             string                         `json:"branch_name"`
-		ProjVarsMap        map[string]string              `json:"project_vars"`
-		GitHubAliases      []model.ProjectAlias           `json:"github_aliases"`
-		CommitQueueAliases []model.ProjectAlias           `json:"commit_queue_aliases"`
-		PatchAliases       []model.ProjectAlias           `json:"patch_aliases"`
-		DeleteAliases      []string                       `json:"delete_aliases"`
-		PrivateVars        map[string]bool                `json:"private_vars"`
-		Enabled            bool                           `json:"enabled"`
-		Private            bool                           `json:"private"`
-		Owner              string                         `json:"owner_name"`
-		Repo               string                         `json:"repo_name"`
-		Admins             []string                       `json:"admins"`
-		TracksPushEvents   bool                           `json:"tracks_push_events"`
-		PRTestingEnabled   bool                           `json:"pr_testing_enabled"`
-		CommitQueue        restModel.APICommitQueueParams `json:"commit_queue"`
-		PatchingDisabled   bool                           `json:"patching_disabled"`
-		AlertConfig        map[string][]struct {
+		Identifier          string                         `json:"identifier"`
+		DisplayName         string                         `json:"display_name"`
+		RemotePath          string                         `json:"remote_path"`
+		BatchTime           int                            `json:"batch_time"`
+		DeactivatePrevious  bool                           `json:"deactivate_previous"`
+		Branch              string                         `json:"branch_name"`
+		ProjVarsMap         map[string]string              `json:"project_vars"`
+		GitHubAliases       []model.ProjectAlias           `json:"github_aliases"`
+		CommitQueueAliases  []model.ProjectAlias           `json:"commit_queue_aliases"`
+		PatchAliases        []model.ProjectAlias           `json:"patch_aliases"`
+		DeleteAliases       []string                       `json:"delete_aliases"`
+		PrivateVars         map[string]bool                `json:"private_vars"`
+		Enabled             bool                           `json:"enabled"`
+		Private             bool                           `json:"private"`
+		Owner               string                         `json:"owner_name"`
+		Repo                string                         `json:"repo_name"`
+		Admins              []string                       `json:"admins"`
+		TracksPushEvents    bool                           `json:"tracks_push_events"`
+		PRTestingEnabled    bool                           `json:"pr_testing_enabled"`
+		CommitQueue         restModel.APICommitQueueParams `json:"commit_queue"`
+		PatchingDisabled    bool                           `json:"patching_disabled"`
+		RepotrackerDisabled bool                           `json:"repotracker_disabled"`
+		AlertConfig         map[string][]struct {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
 		} `json:"alert_config"`
@@ -230,6 +250,11 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(uis.Settings.GithubOrgs) > 0 && !util.StringSliceContains(uis.Settings.GithubOrgs, responseRef.Owner) {
+		http.Error(w, "owner not validated in settings", http.StatusBadRequest)
+		return
+	}
+
 	errs := []string{}
 	errs = append(errs, model.ValidateProjectAliases(responseRef.GitHubAliases, "GitHub Aliases")...)
 	errs = append(errs, model.ValidateProjectAliases(responseRef.CommitQueueAliases, "Commit Queue Aliases")...)
@@ -252,20 +277,22 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 	origGithubWebhookEnabled := (hook != nil)
 	if hook == nil {
-		hook, err = model.SetupNewGithubHook(context.Background(), uis.Settings, responseRef.Owner, responseRef.Repo)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"source":  "project edit",
-				"message": "can't setup webhook",
-				"project": id,
-				"owner":   responseRef.Owner,
-				"repo":    responseRef.Repo,
-			}))
-			// don't return here:
-			// sometimes people change a project to track a personal
-			// branch we don't have access to
-			projectRef.TracksPushEvents = false
-		} else {
+		hook, err = model.SetupNewGithubHook(ctx, uis.Settings, responseRef.Owner, responseRef.Repo)
+		if err == nil || strings.Contains(err.Error(), "Hook already exists on this repository") {
+			if err != nil {
+				hook, err = model.GetExistingGithubHook(ctx, uis.Settings, responseRef.Owner, responseRef.Repo)
+				if err != nil {
+					grip.Error(message.WrapError(err, message.Fields{
+						"source":  "project edit",
+						"message": "can't get existing webhook",
+						"project": id,
+						"owner":   responseRef.Owner,
+						"repo":    responseRef.Repo,
+					}))
+					uis.LoggedError(w, r, http.StatusInternalServerError, err)
+					return
+				}
+			}
 			if err = hook.Insert(); err != nil {
 				// A github hook as been created, but we couldn't
 				// save the hook ID in our database. This needs
@@ -281,6 +308,18 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
 			}
+		} else {
+			grip.Error(message.WrapError(err, message.Fields{
+				"source":  "project edit",
+				"message": "can't setup webhook",
+				"project": id,
+				"owner":   responseRef.Owner,
+				"repo":    responseRef.Repo,
+			}))
+			// don't return here:
+			// sometimes people change a project to track a personal
+			// branch we don't have access to
+			projectRef.TracksPushEvents = false
 		}
 	}
 
@@ -373,6 +412,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled
 	projectRef.CommitQueue = commitQueueParams
 	projectRef.PatchingDisabled = responseRef.PatchingDisabled
+	projectRef.RepotrackerDisabled = responseRef.RepotrackerDisabled
 	projectRef.NotifyOnBuildFailure = responseRef.NotifyOnBuildFailure
 	projectRef.Triggers = responseRef.Triggers
 	projectRef.FilesIgnoredFromCache = responseRef.FilesIgnoredFromCache

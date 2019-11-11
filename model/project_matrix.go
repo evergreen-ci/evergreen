@@ -30,24 +30,24 @@ import (
 // matrix defines a set of variants programmatically by
 // combining a series of axis values and rules.
 type matrix struct {
-	Id          string            `yaml:"matrix_name"`
-	Spec        matrixDefinition  `yaml:"matrix_spec"`
-	Exclude     matrixDefinitions `yaml:"exclude_spec"`
-	DisplayName string            `yaml:"display_name"`
-	Tags        parserStringSlice `yaml:"tags"`
-	Modules     parserStringSlice `yaml:"modules"`
-	BatchTime   *int              `yaml:"batchtime"`
-	Stepback    *bool             `yaml:"stepback"`
-	RunOn       parserStringSlice `yaml:"run_on"`
-	Tasks       parserBVTaskUnits `yaml:"tasks"`
-	Rules       []matrixRule      `yaml:"rules"`
+	Id          string            `yaml:"matrix_name,omitempty" bson:"matrix_name,omitempty"`
+	Spec        matrixDefinition  `yaml:"matrix_spec,omitempty" bson:"matrix_spec,omitempty"`
+	Exclude     matrixDefinitions `yaml:"exclude_spec,omitempty" bson:"exclude,omitempty"`
+	DisplayName string            `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
+	Tags        parserStringSlice `yaml:"tags,omitempty" bson:"tags,omitempty"`
+	Modules     parserStringSlice `yaml:"modules,omitempty" bson:"modules,omitempty"`
+	BatchTime   *int              `yaml:"batchtime,omitempty" bson:"batch_time,omitempty"`
+	Stepback    *bool             `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	RunOn       parserStringSlice `yaml:"run_on,omitempty" bson:"run_on,omitempty"`
+	Tasks       parserBVTaskUnits `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
+	Rules       []matrixRule      `yaml:"rules,omitempty" bson:"rules,omitempty"`
 }
 
 // matrixAxis represents one axis of a matrix definition.
 type matrixAxis struct {
-	Id          string      `yaml:"id" bson:"id"`
-	DisplayName string      `yaml:"display_name" bson:"display_name"`
-	Values      []axisValue `yaml:"values" bson:"values"`
+	Id          string      `yaml:"id,omitempty" bson:"id,omitempty"`
+	DisplayName string      `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
+	Values      []axisValue `yaml:"values,omitempty" bson:"values,omitempty"`
 }
 
 // find returns the axisValue with the given name.
@@ -63,14 +63,14 @@ func (ma matrixAxis) find(id string) (axisValue, error) {
 // axisValues make up the "points" along a matrix axis. Values are
 // combined during matrix evaluation to produce new variants.
 type axisValue struct {
-	Id          string            `yaml:"id" bson:"id"`
-	DisplayName string            `yaml:"display_name" bson:"display_name"`
-	Variables   util.Expansions   `yaml:"variables" bson:"variables"`
-	RunOn       parserStringSlice `yaml:"run_on" bson:"run_on"`
-	Tags        parserStringSlice `yaml:"tags" bson:"tags"`
-	Modules     parserStringSlice `yaml:"modules" bson:"modules"`
-	BatchTime   *int              `yaml:"batchtime" bson:"batchtime"`
-	Stepback    *bool             `yaml:"stepback" bson:"stepback"`
+	Id          string            `yaml:"id,omitempty" bson:"id,omitempty"`
+	DisplayName string            `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
+	Variables   util.Expansions   `yaml:"variables,omitempty" bson:"variables,omitempty"`
+	RunOn       parserStringSlice `yaml:"run_on,omitempty" bson:"run_on,omitempty"`
+	Tags        parserStringSlice `yaml:"tags,omitempty" bson:"tags,omitempty"`
+	Modules     parserStringSlice `yaml:"modules,omitempty" bson:"modules,omitempty"`
+	BatchTime   *int              `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
+	Stepback    *bool             `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 }
 
 // helper methods for tag selectors
@@ -295,8 +295,8 @@ func buildMatrixVariants(axes []matrixAxis, ase *axisSelectorEvaluator, matrices
 // execution.
 func buildMatrixVariant(axes []matrixAxis, mv matrixValue, m *matrix, ase *axisSelectorEvaluator) (*parserBV, error) {
 	v := parserBV{
-		matrixVal:  mv,
-		matrixId:   m.Id,
+		MatrixVal:  mv,
+		MatrixId:   m.Id,
 		Stepback:   m.Stepback,
 		BatchTime:  m.BatchTime,
 		Modules:    m.Modules,
@@ -385,7 +385,7 @@ func buildMatrixVariant(axes []matrixAxis, mv matrixValue, m *matrix, ase *axisS
 			// we append add/remove task rules internally and execute them
 			// during task evaluation, when other tasks are being evaluated.
 			if len(r.Then.RemoveTasks) > 0 || len(r.Then.AddTasks) > 0 {
-				v.matrixRules = append(v.matrixRules, r.Then)
+				v.MatrixRules = append(v.MatrixRules, r.Then)
 			}
 		}
 	}
@@ -394,16 +394,16 @@ func buildMatrixVariant(axes []matrixAxis, mv matrixValue, m *matrix, ase *axisS
 
 // matrixRule allows users to manipulate arbitrary matrix values using selectors.
 type matrixRule struct {
-	If   matrixDefinitions `yaml:"if"`
-	Then ruleAction        `yaml:"then"`
+	If   matrixDefinitions `yaml:"if" bson:"if,omitempty"`
+	Then ruleAction        `yaml:"then" bson:"then,omitempty"`
 }
 
 // ruleAction is used to define what work must be done when
 // "matrixRule.If" is satisfied.
 type ruleAction struct {
-	Set         *axisValue        `yaml:"set"`
-	RemoveTasks parserStringSlice `yaml:"remove_tasks"`
-	AddTasks    parserBVTaskUnits `yaml:"add_tasks"`
+	Set         *axisValue        `yaml:"set" bson:"set,omitempty"`
+	RemoveTasks parserStringSlice `yaml:"remove_tasks" bson:"remove_tasks,omitempty"`
+	AddTasks    parserBVTaskUnits `yaml:"add_tasks" bson:"add_tasks,omitempty"`
 }
 
 // mergeAxisValue overwrites a parserBV's fields based on settings

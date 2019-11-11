@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strings"
 	"testing"
 	"time"
 
@@ -452,6 +453,7 @@ func TestHostSetExpirationTime(t *testing.T) {
 
 		memHost := &Host{
 			Id:             "hostOne",
+			NoExpiration:   true,
 			ExpirationTime: initialExpirationTime,
 			Notifications:  notifications,
 		}
@@ -465,6 +467,8 @@ func TestHostSetExpirationTime(t *testing.T) {
 
 			// ensure the db entries are as expected
 			So(err, ShouldBeNil)
+			So(memHost.NoExpiration, ShouldBeTrue)
+			So(dbHost.NoExpiration, ShouldBeTrue)
 			So(memHost.ExpirationTime.Round(time.Second).Equal(
 				initialExpirationTime.Round(time.Second)), ShouldBeTrue)
 			So(dbHost.ExpirationTime.Round(time.Second).Equal(
@@ -480,6 +484,8 @@ func TestHostSetExpirationTime(t *testing.T) {
 
 			// ensure the db entries are as expected
 			So(err, ShouldBeNil)
+			So(memHost.NoExpiration, ShouldBeFalse)
+			So(dbHost.NoExpiration, ShouldBeFalse)
 			So(memHost.ExpirationTime.Round(time.Second).Equal(
 				newExpirationTime.Round(time.Second)), ShouldBeTrue)
 			So(dbHost.ExpirationTime.Round(time.Second).Equal(
@@ -3686,6 +3692,54 @@ func TestSetTags(t *testing.T) {
 	assert.Equal(t, h.InstanceTags, foundHost.InstanceTags)
 }
 
+func TestMakeHostTags(t *testing.T) {
+	t.Run("OK", func(t *testing.T) {
+		tagSlice := []string{"key1=value1", "key2=value2"}
+		tags, err := MakeHostTags(tagSlice)
+		require.NoError(t, err)
+
+		assert.Contains(t, tags, Tag{
+			Key:           "key1",
+			Value:         "value1",
+			CanBeModified: true,
+		})
+
+		assert.Contains(t, tags, Tag{
+			Key:           "key2",
+			Value:         "value2",
+			CanBeModified: true,
+		})
+	})
+	t.Run("ParsingError", func(t *testing.T) {
+		badTag := "incorrect"
+		tagSlice := []string{"key1=value1", badTag}
+		tags, err := MakeHostTags(tagSlice)
+		assert.Nil(t, tags)
+		assert.EqualError(t, err, fmt.Sprintf("problem parsing tag '%s'", badTag))
+	})
+	t.Run("LongKey", func(t *testing.T) {
+		badKey := strings.Repeat("a", 129)
+		tagSlice := []string{"key1=value", fmt.Sprintf("%s=value2", badKey)}
+		tags, err := MakeHostTags(tagSlice)
+		assert.Nil(t, tags)
+		assert.EqualError(t, err, fmt.Sprintf("key '%s' is longer than 128 characters", badKey))
+	})
+	t.Run("LongValue", func(t *testing.T) {
+		badValue := strings.Repeat("a", 257)
+		tagSlice := []string{"key1=value2", fmt.Sprintf("key2=%s", badValue)}
+		tags, err := MakeHostTags(tagSlice)
+		assert.Nil(t, tags)
+		assert.EqualError(t, err, fmt.Sprintf("value '%s' is longer than 256 characters", badValue))
+	})
+	t.Run("BadPrefix", func(t *testing.T) {
+		badPrefix := "aws:"
+		tagSlice := []string{"key1=value1", fmt.Sprintf("%skey2=value2", badPrefix)}
+		tags, err := MakeHostTags(tagSlice)
+		assert.Nil(t, tags)
+		assert.EqualError(t, err, fmt.Sprintf("illegal tag prefix '%s'", badPrefix))
+	})
+}
+
 func TestSetInstanceType(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	h := &Host{
@@ -3795,4 +3849,99 @@ func TestFindSpawnhostsWithNoExpirationToExtend(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, foundHosts, 1)
 	assert.Equal(t, "host-1", foundHosts[0].Id)
+}
+
+func TestAddVolumeToHost(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	h := &Host{
+		Id: "host-1",
+		Volumes: []VolumeAttachment{
+			{
+				VolumeID:   "volume-1",
+				DeviceName: "device-1",
+			},
+		},
+	}
+	assert.NoError(t, h.Insert())
+
+	newAttachment := &VolumeAttachment{
+		VolumeID:   "volume-2",
+		DeviceName: "device-2",
+	}
+	assert.NoError(t, h.AddVolumeToHost(newAttachment))
+	assert.Equal(t, []VolumeAttachment{
+		{
+			VolumeID:   "volume-1",
+			DeviceName: "device-1",
+		},
+		{
+			VolumeID:   "volume-2",
+			DeviceName: "device-2",
+		},
+	}, h.Volumes)
+	foundHost, err := FindOneId("host-1")
+	assert.NoError(t, err)
+	assert.Equal(t, []VolumeAttachment{
+		{
+			VolumeID:   "volume-1",
+			DeviceName: "device-1",
+		},
+		{
+			VolumeID:   "volume-2",
+			DeviceName: "device-2",
+		},
+	}, foundHost.Volumes)
+}
+
+func TestRemoveVolumeFromHost(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	h := &Host{
+		Id: "host-1",
+		Volumes: []VolumeAttachment{
+			{
+				VolumeID:   "volume-1",
+				DeviceName: "device-1",
+			},
+			{
+				VolumeID:   "volume-2",
+				DeviceName: "device-2",
+			},
+		},
+	}
+	assert.NoError(t, h.Insert())
+	assert.NoError(t, h.RemoveVolumeFromHost("volume-2"))
+	assert.Equal(t, []VolumeAttachment{
+		{
+			VolumeID:   "volume-1",
+			DeviceName: "device-1",
+		},
+	}, h.Volumes)
+	foundHost, err := FindOneId("host-1")
+	assert.NoError(t, err)
+	assert.Equal(t, []VolumeAttachment{
+		{
+			VolumeID:   "volume-1",
+			DeviceName: "device-1",
+		},
+	}, foundHost.Volumes)
+}
+
+func TestFindHostWithVolume(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	h := Host{
+		Id: "host-1",
+		Volumes: []VolumeAttachment{
+			{
+				VolumeID:   "volume-1",
+				DeviceName: "device-1",
+			},
+		},
+	}
+	assert.NoError(t, h.Insert())
+	foundHost, err := FindHostWithVolume("volume-1")
+	assert.NoError(t, err)
+	assert.NotNil(t, foundHost)
+	foundHost, err = FindHostWithVolume("volume-2")
+	assert.NoError(t, err)
+	assert.Nil(t, foundHost)
 }

@@ -126,7 +126,7 @@ func smokeStartEvergreen() cli.Command {
 				}
 				ctx, cancel := context.WithCancel(context.Background())
 				defer cancel()
-				manager, err := jasper.NewLocalManager(false)
+				manager, err := jasper.NewSynchronizedManager(false)
 				if err != nil {
 					return errors.Wrap(err, "error setting up Jasper process manager")
 				}
@@ -246,7 +246,7 @@ func smokeTestEndpoints() cli.Command {
 			if c.Bool(checkBuildName) {
 				return errors.Wrap(checkTaskByCommit(username, key), "check task failed")
 			}
-			return errors.WithStack(tests.checkEndpoints())
+			return errors.WithStack(tests.checkEndpoints(username, key))
 		},
 	}
 }

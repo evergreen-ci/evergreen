@@ -20,6 +20,7 @@ import (
 	"github.com/mongodb/amboy/logger"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/amboy/queue"
+	"github.com/mongodb/anser/apm"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -256,8 +257,10 @@ func (e *envState) initSettings(path string) error {
 }
 
 func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
+	opts := options.Client().ApplyURI(settings.Url).SetWriteConcern(settings.WriteConcernSettings.Resolve()).
+		SetConnectTimeout(5 * time.Second).SetMonitor(apm.NewLoggingMonitor(ctx, time.Minute, apm.NewBasicMonitor(nil)).DriverAPM())
+
 	var err error
-	opts := options.Client().ApplyURI(settings.Url).SetWriteConcern(settings.WriteConcernSettings.Resolve()).SetConnectTimeout(5 * time.Second)
 	e.client, err = mongo.NewClient(opts)
 	if err != nil {
 		return errors.Wrap(err, "problem constructing database")
@@ -582,7 +585,7 @@ func (e *envState) initSenders(ctx context.Context) error {
 }
 
 func (e *envState) initJasper() error {
-	jpm, err := jasper.NewLocalManager(true)
+	jpm, err := jasper.NewSynchronizedManager(true)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -644,7 +647,10 @@ func (e *envState) setupRoleManager() error {
 		ScopeCollection: ScopeCollection,
 	})
 
-	return e.roleManager.RegisterPermissions(projectPermissions)
+	catcher := grip.NewBasicCatcher()
+	catcher.Add(e.roleManager.RegisterPermissions(ProjectPermissions))
+	catcher.Add(e.roleManager.RegisterPermissions(DistroPermissions))
+	return catcher.Resolve()
 }
 
 func (e *envState) Settings() *Settings {

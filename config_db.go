@@ -39,6 +39,8 @@ var (
 	uiKey                 = bsonutil.MustHaveTag(Settings{}, "Ui")
 	hostInitConfigKey     = bsonutil.MustHaveTag(Settings{}, "HostInit")
 	notifyKey             = bsonutil.MustHaveTag(Settings{}, "Notify")
+	spawnHostsKey         = bsonutil.MustHaveTag(Settings{}, "SpawnHostsPerUser")
+	unexpirableHostsKey   = bsonutil.MustHaveTag(Settings{}, "UnexpirableHostsPerUser")
 	schedulerConfigKey    = bsonutil.MustHaveTag(Settings{}, "Scheduler")
 	amboyKey              = bsonutil.MustHaveTag(Settings{}, "Amboy")
 	expansionsKey         = bsonutil.MustHaveTag(Settings{}, "Expansions")
@@ -50,8 +52,10 @@ var (
 	pprofPortKey          = bsonutil.MustHaveTag(Settings{}, "PprofPort")
 	bugsnagKey            = bsonutil.MustHaveTag(Settings{}, "Bugsnag")
 	githubPRCreatorOrgKey = bsonutil.MustHaveTag(Settings{}, "GithubPRCreatorOrg")
+	githubOrgsKey         = bsonutil.MustHaveTag(Settings{}, "GithubOrgs")
 	containerPoolsKey     = bsonutil.MustHaveTag(Settings{}, "ContainerPools")
 	commitQueueKey        = bsonutil.MustHaveTag(Settings{}, "CommitQueue")
+	ldapRoleMapKey        = bsonutil.MustHaveTag(Settings{}, "LDAPRoleMap")
 
 	// degraded mode flags
 	taskDispatchKey                 = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")

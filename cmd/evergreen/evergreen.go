@@ -46,6 +46,7 @@ func buildApp() *cli.App {
 		operations.Agent(),
 		operations.Admin(),
 		operations.Host(),
+		operations.Volume(),
 		operations.Notification(),
 
 		// Top-level commands.

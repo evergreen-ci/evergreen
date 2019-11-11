@@ -2,7 +2,9 @@ package cloud
 
 import (
 	"context"
+	"fmt"
 	"math"
+	"math/rand"
 	"os"
 	"os/user"
 	"regexp"
@@ -250,12 +252,7 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, cl
 	h.Zone = *instance.Placement.AvailabilityZone
 	h.StartTime = *instance.LaunchTime
 	h.Host = *instance.PublicDnsName
-
-	volumeIDs := []string{}
-	for _, device := range instance.BlockDeviceMappings {
-		volumeIDs = append(volumeIDs, *device.Ebs.VolumeId)
-	}
-	h.VolumeIDs = volumeIDs
+	h.Volumes = makeVolumeAttachments(instance.BlockDeviceMappings)
 
 	var err error
 	h.VolumeTotalSize, err = getVolumeSize(ctx, client, h)
@@ -300,6 +297,14 @@ type Terms struct {
 			}
 		}
 	}
+}
+
+// format /dev/sd[f-p][1-6] taken from https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html
+func generateDeviceNameForVolume() string {
+	letters := "fghijklmnop"
+	rand.Seed(time.Now().Unix())
+
+	return fmt.Sprintf("/dev/sd%c%d", letters[rand.Intn(len(letters))], rand.Intn(5)+1)
 }
 
 func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping, error) {
@@ -382,6 +387,19 @@ func makeBlockDeviceMappingsTemplate(mounts []MountPoint) ([]*ec2aws.LaunchTempl
 	return mappings, nil
 }
 
+func makeVolumeAttachments(devices []*ec2.InstanceBlockDeviceMapping) []host.VolumeAttachment {
+	attachments := []host.VolumeAttachment{}
+	for _, device := range devices {
+		if device.Ebs != nil && device.Ebs.VolumeId != nil && device.DeviceName != nil {
+			attachments = append(attachments, host.VolumeAttachment{
+				VolumeID:   *device.Ebs.VolumeId,
+				DeviceName: *device.DeviceName,
+			})
+		}
+	}
+	return attachments
+}
+
 func validateEc2CreateTemplateResponse(createTemplateResponse *ec2aws.CreateLaunchTemplateOutput) error {
 	if createTemplateResponse == nil || createTemplateResponse.LaunchTemplate == nil {
 		return errors.New("create template response launch template is nil")
@@ -421,28 +439,6 @@ func validateEc2DescribeInstancesOutput(describeInstancesResponse *ec2aws.Descri
 			catcher.NewWhen(instance.InstanceId == nil, "instance missing instance id")
 			catcher.NewWhen(instance.State == nil || instance.State.Name == nil || len(*instance.State.Name) == 0, "instance missing state name")
 		}
-	}
-
-	return catcher.Resolve()
-}
-
-func validateEc2InstanceInfoResponse(instance *ec2aws.Instance) error {
-	if instance == nil {
-		return errors.New("instance is nil")
-	}
-
-	catcher := grip.NewBasicCatcher()
-	if instance.Placement == nil || instance.Placement.AvailabilityZone == nil || len(*instance.Placement.AvailabilityZone) == 0 {
-		catcher.Add(errors.New("AZ is missing"))
-	}
-	if instance.LaunchTime == nil {
-		catcher.Add(errors.New("launch time is nil"))
-	}
-	if instance.PublicDnsName == nil || len(*instance.PublicDnsName) == 0 {
-		catcher.Add(errors.New("dns name is missing"))
-	}
-	if instance.State == nil || instance.State.Name == nil || len(*instance.State.Name) == 0 {
-		catcher.Add(errors.New("state name is missing"))
 	}
 
 	return catcher.Resolve()

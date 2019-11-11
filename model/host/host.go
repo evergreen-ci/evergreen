@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/certdepot"
@@ -67,10 +68,8 @@ type Host struct {
 	// the full task struct that is running on the host (only populated by certain aggregations)
 	RunningTaskFull *task.Task `bson:"task_full,omitempty" json:"task_full,omitempty"`
 
-	// duplicate of the DispatchTime field in the above task
-	TaskDispatchTime time.Time `bson:"task_dispatch_time" json:"task_dispatch_time"`
-	ExpirationTime   time.Time `bson:"expiration_time,omitempty" json:"expiration_time"`
-	NoExpiration     bool      `bson:"no_expiration" json:"no_expiration"`
+	ExpirationTime time.Time `bson:"expiration_time,omitempty" json:"expiration_time"`
+	NoExpiration   bool      `bson:"no_expiration" json:"no_expiration"`
 
 	// creation is when the host document was inserted to the DB, start is when it was started on the cloud provider
 	CreationTime time.Time `bson:"creation_time" json:"creation_time"`
@@ -104,8 +103,8 @@ type Host struct {
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
 	// for ec2 dynamic hosts, the total size of the volumes requested, in GiB
 	VolumeTotalSize int64 `bson:"volume_total_size" json:"volume_total_size,omitempty"`
-
-	VolumeIDs []string `bson:"volume_ids,omitempty" json:"volume_ids,omitempty"`
+	// The volumeID and device name for each volume attached to the host
+	Volumes []VolumeAttachment `bson:"volumes,omitempty" json:"volumes,omitempty"`
 
 	// stores information on expiration notifications for spawn hosts
 	Notifications map[string]bool `bson:"notifications,omitempty" json:"notifications,omitempty"`
@@ -164,6 +163,11 @@ func (h *IdleHostsByDistroID) MarshalBSON() ([]byte, error)  { return mgobson.Ma
 func (h *IdleHostsByDistroID) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, h) }
 
 type HostGroup []Host
+
+type VolumeAttachment struct {
+	VolumeID   string `bson:"volume_id" json:"volume_id"`
+	DeviceName string `bson:"device_name" json:"device_name"`
+}
 
 // DockerOptions contains options for starting a container
 type DockerOptions struct {
@@ -234,11 +238,13 @@ type ContainersOnParents struct {
 }
 
 type HostModifyOptions struct {
-	AddInstanceTags    []Tag         // tags to add
-	DeleteInstanceTags []string      // tags to remove
-	InstanceType       string        // new instance type
+	AddInstanceTags    []Tag
+	DeleteInstanceTags []string
+	InstanceType       string
 	NoExpiration       *bool         // whether host should never expire
 	AddHours           time.Duration // duration to extend expiration
+	AttachVolume       string
+	DetachVolume       string
 }
 
 const (
@@ -250,7 +256,12 @@ const (
 	InitSystemUpstart = "upstart"
 
 	// Max number of spawn hosts with no expiration for user
-	MaxSpawnhostsWithNoExpirationPerUser = 1
+	DefaultUnexpirableHostsPerUser = 1
+	// Max total EBS volume size for user
+	DefaultMaxVolumeSizePerUser = 200
+
+	MaxTagKeyLength   = 128
+	MaxTagValueLength = 256
 )
 
 func (h *Host) GetTaskGroupString() string {
@@ -546,6 +557,7 @@ func (h *Host) Terminate(user, reason string) error {
 		bson.M{
 			"$set": bson.M{
 				TerminationTimeKey: h.TerminationTime,
+				VolumesKey:         nil,
 			},
 		},
 	)
@@ -676,6 +688,7 @@ func (h *Host) UpdateProvisioningToRunning() error {
 
 // ClearRunningAndSetLastTask unsets the running task on the host and updates the last task fields.
 func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
+	now := time.Now()
 	err := UpdateOne(
 		bson.M{
 			IdKey:          h.Id,
@@ -683,7 +696,7 @@ func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
 		},
 		bson.M{
 			"$set": bson.M{
-				LTCTimeKey:    time.Now(),
+				LTCTimeKey:    now,
 				LTCTaskKey:    t.Id,
 				LTCGroupKey:   t.TaskGroup,
 				LTCBVKey:      t.BuildVariant,
@@ -714,6 +727,7 @@ func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
 	h.LastBuildVariant = t.BuildVariant
 	h.LastVersion = t.Version
 	h.LastProject = t.Version
+	h.LastTaskCompletedTime = now
 
 	return nil
 }
@@ -908,6 +922,7 @@ func (h *Host) SetNeedsAgentDeploy(needsDeploy bool) error {
 func (h *Host) SetExpirationTime(expirationTime time.Time) error {
 	// update the in-memory host, then the database
 	h.ExpirationTime = expirationTime
+	h.NoExpiration = false
 	h.Notifications = make(map[string]bool)
 	return UpdateOne(
 		bson.M{
@@ -916,6 +931,7 @@ func (h *Host) SetExpirationTime(expirationTime time.Time) error {
 		bson.M{
 			"$set": bson.M{
 				ExpirationTimeKey: expirationTime,
+				NoExpirationKey:   false,
 			},
 			"$unset": bson.M{
 				NotificationsKey: 1,
@@ -1002,11 +1018,11 @@ func (h *Host) CacheHostData() error {
 		},
 		bson.M{
 			"$set": bson.M{
-				ZoneKey:       h.Zone,
-				StartTimeKey:  h.StartTime,
-				VolumeSizeKey: h.VolumeTotalSize,
-				VolumeIDsKey:  h.VolumeIDs,
-				DNSKey:        h.Host,
+				ZoneKey:            h.Zone,
+				StartTimeKey:       h.StartTime,
+				VolumeTotalSizeKey: h.VolumeTotalSize,
+				VolumesKey:         h.Volumes,
+				DNSKey:             h.Host,
 			},
 		},
 	)
@@ -1749,6 +1765,49 @@ func (h *Host) SetTags() error {
 	)
 }
 
+// MakeHostTags creates and validates a map of supplied instance tags
+func MakeHostTags(tagSlice []string) ([]Tag, error) {
+	catcher := grip.NewBasicCatcher()
+	tagsMap := make(map[string]string)
+	for _, tagString := range tagSlice {
+		pair := strings.Split(tagString, "=")
+		if len(pair) != 2 {
+			catcher.Add(errors.Errorf("problem parsing tag '%s'", tagString))
+			continue
+		}
+
+		key := pair[0]
+		value := pair[1]
+
+		// AWS tag key must contain no more than 128 characters
+		if len(key) > MaxTagKeyLength {
+			catcher.Add(errors.Errorf("key '%s' is longer than 128 characters", key))
+		}
+		// AWS tag value must contain no more than 256 characters
+		if len(value) > MaxTagValueLength {
+			catcher.Add(errors.Errorf("value '%s' is longer than 256 characters", value))
+		}
+		// tag prefix aws: is reserved
+		if strings.HasPrefix(key, "aws:") || strings.HasPrefix(value, "aws:") {
+			catcher.Add(errors.Errorf("illegal tag prefix 'aws:'"))
+		}
+
+		tagsMap[key] = value
+	}
+
+	// Make slice of host.Tag structs from map
+	tags := []Tag{}
+	for key, value := range tagsMap {
+		tags = append(tags, Tag{Key: key, Value: value, CanBeModified: true})
+	}
+
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+
+	return tags, nil
+}
+
 // SetInstanceType updates the host's instance type in the database.
 func (h *Host) SetInstanceType(instanceType string) error {
 	err := UpdateOne(
@@ -1838,4 +1897,15 @@ func (h *Host) MarkShouldExpire(expireOnValue string) error {
 			},
 		},
 	)
+}
+
+// FindHostWithVolume finds the host associated with the
+// specified volume ID.
+func FindHostWithVolume(volumeID string) (*Host, error) {
+	q := db.Query(
+		bson.M{
+			bsonutil.GetDottedKeyName(VolumesKey, VolumeAttachmentIDKey): volumeID,
+		},
+	)
+	return FindOne(q)
 }

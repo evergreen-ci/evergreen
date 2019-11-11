@@ -13,7 +13,7 @@ func makeLockingProcess(pmake ProcessConstructor) ProcessConstructor {
 		if err != nil {
 			return nil, err
 		}
-		return &localProcess{proc: proc}, nil
+		return &synchronizedProcess{proc: proc}, nil
 	}
 }
 

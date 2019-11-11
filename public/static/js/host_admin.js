@@ -22,7 +22,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciHostRestService', 'notif
           window.location.reload();
         },
         error: function(resp) {
-          notifier.pushNotification('Error updating host status: ' + resp.data.error, 'errorModal');
+          notifier.pushNotification('Error updating host status: ' + resp.data, 'errorModal');
         }
       }
     );

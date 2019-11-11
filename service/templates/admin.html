@@ -1146,6 +1146,10 @@ Admin Settings
 										<label>Default Security Group</label>
 										<input type="text" ng-model="Settings.providers.aws.default_security_group">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Total EBS Volume Size Per User</label>
+										<input type="number" ng-model="Settings.providers.aws.max_volume_size">
+									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px">
 										<label>Allowed Instance Types</label>
 										<textarea ng-model="Settings.providers.aws.allowed_instance_types" ng-list="&#10;" ng-trim="false" rows="3" md-select-on-focus></textarea>
@@ -1297,20 +1301,32 @@ Admin Settings
 										<input type="text" ng-model="Settings.domain_name">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
-										<label>Github PR creator organization</label>
-										<input type="text" ng-model="Settings.github_pr_creator_org">
+										<label>Github Organizations</label>
+										<textarea ng-model="Settings.github_orgs" ng-list="&#10;" ng-trim="false"  md-select-on-focus></textarea>
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
-										<label>Log path</label>
-										<input type="text" ng-model="Settings.log_path">
+										<label>Superusers</label>
+										<textarea ng-model="Settings.superusers" ng-list="&#10;" ng-trim="false" rows="3" md-select-on-focus></textarea>
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Github PR creator organization</label>
+										<input type="text" ng-model="Settings.github_pr_creator_org">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>Pprof port</label>
 										<input type="text" ng-model="Settings.pprof_port">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px">
-										<label>Superusers</label>
-										<textarea ng-model="Settings.superusers" ng-list="&#10;" ng-trim="false" rows="3" md-select-on-focus></textarea>
+									<md-input-container class="control" style="width:45%;">
+										<label>Log path</label>
+										<input type="text" ng-model="Settings.log_path">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left: 50px;">
+										<label>Total Spawn Hosts per user</label>
+										<input type="number" ng-model="Settings.spawn_hosts_per_user">
+									</md-input-container>
+									<md-input-container class="control" style="width:45;">
+										<label>Unexpirable Spawn Hosts per user</label>
+										<input type="number" ng-model="Settings.unexpirable_hosts_per_user">
 									</md-input-container>
 								</md-card-content>
 							</md-card>
@@ -1397,41 +1413,86 @@ Admin Settings
 							<md-card flex=100 id="jira_notifications">
 								<md-card-title>
 									<md-card-title-text>
-										<span>JIRA Notifications Custom Field Mappings</span>
+										<span>JIRA Notifications Fields</span>
 									</md-card-title-text>
 									<md-button ng-click="clearSection('jira_notifications')">
 										<i class="fa fa-trash"></i>
 									</md-button>
 								</md-card-title>
 								<md-card-content>
-									<div ng-repeat="(project, fields) in Settings.jira_notifications.custom_fields">
+									<div ng-repeat="(projectName, project) in Settings.jira_notifications.custom_fields">
 										<div>
-											<span>JIRA Project: [[project]]</span>
+											<span>JIRA Project: [[projectName]]</span>
 											<span>
-												<md-button ng-click="deleteJIRAProject(project)">
+												<md-button ng-click="deleteJIRAProject(projectName)">
 													<i class="fa fa-trash"></i>
 												</md-button>
 											</span>
 										</div>
-										<span ng-repeat="(fieldName, tmpl) in fields">
-											<md-input-container class="control" style="width: 200px;">
-												<label>[[fieldName]]</label>
-												<input type="text" ng-model="Settings.jira_notifications.custom_fields[project][fieldName]">
-											</md-input-container>
-											<md-button ng-click="deleteJIRAFieldFromProject(project, fieldName)">
-												<i class="fa fa-trash"></i>
-											</md-button>
-										</span>
 										<div>
-											<md-input-container class="control" style="width:45%;">
-												<label>Add new field</label>
-												<input type="text" default="ABC" ng-model="jiraMapping.newField[project]" />
-											</md-input-container>
-											<md-button ng-click="addJIRAFieldToProject(project)">
-												<i class="fa fa-plus"></i>
-											</md-button>
+											<label>Components</label>
+											<div>
+											  <table style="margin-left: -8px;">
+												<tbody ng-repeat="component in project.components track by $index">
+												  <tr>
+													<td style="padding-left: 10px;">
+														<input type="text" ng-model="Settings.jira_notifications.custom_fields[projectName].components[$index]" class="form-control">
+													</td>
+													<td>
+													  <a ng-click="removeComponent(projectName, component)">
+														<i class="fa fa-trash"></i>
+													  </a>
+													</td>
+												  </tr>
+												</tbody>
+											  </table>
+											</div>
+											<button type="button" class="md-raised md-button" ng-click="addComponent(projectName)"><i class="fa fa-plus"></i>Add Component</button>
 										</div>
-										<hr />
+										<div>
+											<label>Labels</label>
+											<div>
+											  <table style="margin-left: -8px;">
+												<tbody ng-repeat="label in project.labels track by $index">
+												  <tr>
+													<td style="padding-left: 10px;">
+														<input type="text" ng-model="Settings.jira_notifications.custom_fields[projectName].labels[$index]" class="form-control">
+													</td>
+													<td>
+													  <a ng-click="removeLabel(projectName, label)">
+														<i class="fa fa-trash"></i>
+													  </a>
+													</td>
+												  </tr>
+												</tbody>
+											  </table>
+											</div>
+											<button type="button" class="md-raised md-button" ng-click="addLabel(projectName)"><i class="fa fa-plus"></i>Add Label</button>
+										</div>
+										<div>
+											<label>Custom Fields</label>
+											<div>
+												<span ng-repeat="(fieldName, tmpl) in project.fields">
+													<md-input-container class="control" style="width: 200px;">
+														<label>[[fieldName]]</label>
+														<input type="text" ng-model="Settings.jira_notifications.custom_fields[projectName].fields[fieldName]">
+													</md-input-container>
+													<md-button ng-click="deleteJIRAFieldFromProject(projectName, fieldName)">
+														<i class="fa fa-trash"></i>
+													</md-button>
+												</span>
+											</div>
+											<div>
+												<md-input-container class="control" style="width:45%;">
+													<label>Add new custom field</label>
+													<input type="text" default="ABC" ng-model="jiraMapping.newField[projectName]" />
+												</md-input-container>
+												<md-button ng-click="addJIRAFieldToProject(projectName)">
+													<i class="fa fa-plus"></i>
+												</md-button>
+											</div>
+											<hr />
+										</div>
 									</div>
 									<div>
 										<md-input-container class="control" style="width: 200px;">
