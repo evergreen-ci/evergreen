@@ -210,7 +210,7 @@ func (t *spawnHostStateChangeTriggers) slackPayload(action, result, hostID, url,
 	}
 
 	return &notification.SlackPayload{
-		Body: fmt.Sprintf("%s spawn host <%s|%s> has %s", action, hostID, hostURL, result),
+		Body: fmt.Sprintf("%s spawn host <%s|%s> has %s", action, hostURL, hostID, result),
 		Attachments: []message.SlackAttachment{
 			{
 				Title:     "Spawn hosts page",

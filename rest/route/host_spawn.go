@@ -1082,6 +1082,7 @@ func makeSpawnHostSubscription(hostID, subscriberType string, user *user.DBUser)
 	}
 
 	return model.APISubscription{
+		OwnerType:    model.ToAPIString(string(event.OwnerTypePerson)),
 		ResourceType: model.ToAPIString(event.ResourceTypeHost),
 		Trigger:      model.ToAPIString(event.TriggerOutcome),
 		Selectors: []model.APISelector{
