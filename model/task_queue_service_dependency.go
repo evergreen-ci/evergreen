@@ -405,6 +405,28 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 			}
 
 			if !dependenciesMet {
+				satisfiable, err := nextTaskFromDB.DependencySatisfiable(dependencyCaches)
+				grip.Warning(message.WrapError(err, message.Fields{
+					"dispatcher": DAGDispatcher,
+					"function":   "FindNextTask",
+					"operation":  "satisfiable",
+					"message":    "error checking dependencies for task",
+					"outcome":    "skip and continue",
+					"task":       item.Id,
+					"distro_id":  d.distroID,
+				}))
+				if !satisfiable {
+					grip.Warning(message.WrapError(nextTaskFromDB.DeactivateTask(evergreen.DefaultTaskActivator+".dispatcher"),
+						message.Fields{
+							"dispatcher": DAGDispatcher,
+							"function":   "FindNextTask",
+							"operation":  "deactivating blocked",
+							"outcome":    "skip and continue",
+							"task":       item.Id,
+							"distro_id":  d.distroID,
+						}))
+				}
+
 				continue
 			}
 
@@ -515,6 +537,28 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 		}
 
 		if !dependenciesMet {
+			satisfiable, err := nextTaskFromDB.DependencySatisfiable(dependencyCaches)
+			grip.Warning(message.WrapError(err, message.Fields{
+				"dispatcher": DAGDispatcher,
+				"function":   "nextTaskGroupTask",
+				"operation":  "satisfiable",
+				"message":    "error checking dependencies for task",
+				"outcome":    "skip and continue",
+				"task":       nextTaskQueueItem.Id,
+				"distro_id":  d.distroID,
+			}))
+			if !satisfiable {
+				grip.Warning(message.WrapError(nextTaskFromDB.DeactivateTask(evergreen.DefaultTaskActivator+".dispatcher"),
+					message.Fields{
+						"function":   "nextTaskGroupTask",
+						"dispatcher": DAGDispatcher,
+						"operation":  "deactivating blocked",
+						"outcome":    "skip and continue",
+						"task":       nextTaskQueueItem.Id,
+						"distro_id":  d.distroID,
+					}))
+			}
+
 			continue
 		}
 

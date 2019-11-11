@@ -376,11 +376,11 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 	return true, nil
 }
 
-func (t *Task) findDeps(dep map[string]Task) ([]Task, error) {
+func (t *Task) populateDependencyTaskCache(depCache map[string]Task) ([]Task, error) {
 	var deps []Task
 	depIdsToQueryFor := make([]string, 0, len(t.DependsOn))
 	for _, dep := range t.DependsOn {
-		if cachedDep, ok := depCaches[dep.TaskId]; !ok {
+		if cachedDep, ok := depCache[dep.TaskId]; !ok {
 			depIdsToQueryFor = append(depIdsToQueryFor, dep.TaskId)
 		} else {
 			deps = append(deps, cachedDep)
@@ -396,7 +396,7 @@ func (t *Task) findDeps(dep map[string]Task) ([]Task, error) {
 		// add queried dependencies to the cache
 		for _, newDep := range newDeps {
 			deps = append(deps, newDep)
-			depCaches[newDep.Id] = newDep
+			depCache[newDep.Id] = newDep
 		}
 	}
 
@@ -409,7 +409,7 @@ func (t *Task) findDeps(dep map[string]Task) ([]Task, error) {
 //
 // Use dependencies met (which can also check the cache,) to figure
 // out if a task is runable.
-func (t *Task) DependencySatisfiable(dep map[string]Task) (bool, error) {
+func (t *Task) DependencySatisfiable(depCache map[string]Task) (bool, error) {
 	if len(t.DependsOn) == 0 || t.OverrideDependencies {
 		return true, nil
 	}
@@ -422,13 +422,13 @@ func (t *Task) DependencySatisfiable(dep map[string]Task) (bool, error) {
 		}
 	}
 
-	deps, err := t.findDeps(depCaches)
+	deps, err := t.populateDependencyTaskCache(depCache)
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
 
 	for _, dep := range t.DependsOn {
-		depTask, ok := deps[dep.TaskId]
+		depTask, ok := depCache[dep.TaskId]
 		if !ok {
 			grip.Error(message.Fields{
 				"task_id":     t.Id,
