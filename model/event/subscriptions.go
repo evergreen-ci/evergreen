@@ -583,3 +583,7 @@ func NewSpawnHostOutcomeByOwner(owner string, sub Subscriber) Subscription {
 func NewCommitQueueSubscriptionByOwner(owner string, sub Subscriber) Subscription {
 	return NewSubscriptionByOwner(owner, sub, ResourceTypeCommitQueue, TriggerOutcome)
 }
+
+func NewSpawnHostStateChangeOutcomeByHost(hostID string, sub Subscriber) Subscription {
+	return NewSubscriptionByID(ResourceTypeHost, TriggerOutcome, hostID, sub)
+}

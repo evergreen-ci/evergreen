@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -91,9 +92,10 @@ func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 // PATCH /rest/v2/hosts/{host_id}
 
 type hostModifyHandler struct {
-	hostID string
-	sc     data.Connector
-	env    evergreen.Environment
+	hostID           string
+	subscriptionType string
+	sc               data.Connector
+	env              evergreen.Environment
 
 	options *host.HostModifyOptions
 }
@@ -154,6 +156,19 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 	modifyJob := units.NewSpawnhostModifyJob(foundHost, *h.options, ts)
 	if err = h.env.RemoteQueue().Put(ctx, modifyJob); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error creating spawnhost modify job"))
+	}
+
+	if h.options.SubscriptionType != "" {
+		var subscriber event.Subscriber
+		if h.options.SubscriptionType == event.SlackSubscriberType {
+			subscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", user.Settings.SlackUsername))
+		} else if h.options.SubscriptionType == event.EmailSubscriberType {
+			subscriber = event.NewEmailSubscriber(user.Email())
+		}
+		resultSubscription := event.NewSpawnHostStateChangeOutcomeByHost(h.hostID, subscriber)
+		if err = resultSubscription.Upsert(); err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't insert subscription"))
+		}
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
@@ -222,9 +237,10 @@ func checkExpirableHostLimitExceeded(userId string) error {
 // POST /rest/v2/hosts/{host_id}/stop
 
 type hostStopHandler struct {
-	hostID string
-	sc     data.Connector
-	env    evergreen.Environment
+	hostID           string
+	subscriptionType string
+	sc               data.Connector
+	env              evergreen.Environment
 }
 
 func makeHostStopManager(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
@@ -244,7 +260,21 @@ func (h *hostStopHandler) Factory() gimlet.RouteHandler {
 func (h *hostStopHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	h.hostID, err = validateID(gimlet.GetVars(r)["host_id"])
-	return err
+	if err != nil {
+		return errors.Wrap(err, "can't get host id")
+	}
+
+	body := util.NewRequestReader(r)
+	defer body.Close()
+	options := struct {
+		SubscriptionType string `json:"subscription_type"`
+	}{}
+	if err := util.ReadJSONInto(body, &options); err != nil {
+		return errors.Wrap(err, "Argument read error")
+	}
+	h.subscriptionType = options.SubscriptionType
+
+	return nil
 }
 
 func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
@@ -276,6 +306,19 @@ func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error creating spawnhost stop job"))
 	}
 
+	if h.subscriptionType != "" {
+		var subscriber event.Subscriber
+		if h.subscriptionType == event.SlackSubscriberType {
+			subscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", user.Settings.SlackUsername))
+		} else if h.subscriptionType == event.EmailSubscriberType {
+			subscriber = event.NewEmailSubscriber(user.Email())
+		}
+		resultSubscription := event.NewSpawnHostStateChangeOutcomeByHost(h.hostID, subscriber)
+		if err = resultSubscription.Upsert(); err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't insert subscription"))
+		}
+	}
+
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
@@ -284,9 +327,10 @@ func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
 // POST /rest/v2/hosts/{host_id}/start
 
 type hostStartHandler struct {
-	hostID string
-	sc     data.Connector
-	env    evergreen.Environment
+	hostID           string
+	subscriptionType string
+	sc               data.Connector
+	env              evergreen.Environment
 }
 
 func makeHostStartManager(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
@@ -306,7 +350,21 @@ func (h *hostStartHandler) Factory() gimlet.RouteHandler {
 func (h *hostStartHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	h.hostID, err = validateID(gimlet.GetVars(r)["host_id"])
-	return err
+	if err != nil {
+		return errors.Wrap(err, "can't get host id")
+	}
+
+	body := util.NewRequestReader(r)
+	defer body.Close()
+	options := struct {
+		SubscriptionType string `json:"subscription_type"`
+	}{}
+	if err := util.ReadJSONInto(body, &options); err != nil {
+		return errors.Wrap(err, "Argument read error")
+	}
+	h.subscriptionType = options.SubscriptionType
+
+	return nil
 }
 
 func (h *hostStartHandler) Run(ctx context.Context) gimlet.Responder {
@@ -331,6 +389,19 @@ func (h *hostStartHandler) Run(ctx context.Context) gimlet.Responder {
 	startJob := units.NewSpawnhostStartJob(host, user.Id, ts)
 	if err = h.env.RemoteQueue().Put(ctx, startJob); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error creating spawnhost start job"))
+	}
+
+	if h.subscriptionType != "" {
+		var subscriber event.Subscriber
+		if h.subscriptionType == event.SlackSubscriberType {
+			subscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", user.Settings.SlackUsername))
+		} else if h.subscriptionType == event.EmailSubscriberType {
+			subscriber = event.NewEmailSubscriber(user.Email())
+		}
+		resultSubscription := event.NewSpawnHostStateChangeOutcomeByHost(h.hostID, subscriber)
+		if err = resultSubscription.Upsert(); err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't insert subscription"))
+		}
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})

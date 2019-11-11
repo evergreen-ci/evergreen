@@ -120,14 +120,18 @@ func (c *communicatorImpl) ModifySpawnHost(ctx context.Context, hostID string, c
 	return nil
 }
 
-func (c *communicatorImpl) StopSpawnHost(ctx context.Context, hostID string, wait bool) error {
+func (c *communicatorImpl) StopSpawnHost(ctx context.Context, hostID string, subscriptionType string, wait bool) error {
 	info := requestInfo{
 		method:  post,
 		path:    fmt.Sprintf("hosts/%s/stop", hostID),
 		version: apiVersion2,
 	}
 
-	resp, err := c.request(ctx, info, "")
+	options := struct {
+		SubscriptionType string `json:"subscription_type"`
+	}{SubscriptionType: subscriptionType}
+
+	resp, err := c.request(ctx, info, options)
 	if err != nil {
 		return errors.Wrapf(err, "error sending request to stop host")
 	}
@@ -283,14 +287,18 @@ func (c *communicatorImpl) GetVolumesByUser(ctx context.Context) ([]model.APIVol
 	return getVolumesResp, nil
 }
 
-func (c *communicatorImpl) StartSpawnHost(ctx context.Context, hostID string, wait bool) error {
+func (c *communicatorImpl) StartSpawnHost(ctx context.Context, hostID string, subscriptionType string, wait bool) error {
 	info := requestInfo{
 		method:  post,
 		path:    fmt.Sprintf("hosts/%s/start", hostID),
 		version: apiVersion2,
 	}
 
-	resp, err := c.request(ctx, info, "")
+	options := struct {
+		SubscriptionType string `json:"subscription_type"`
+	}{SubscriptionType: subscriptionType}
+
+	resp, err := c.request(ctx, info, options)
 	if err != nil {
 		return errors.Wrapf(err, "error sending request to start host")
 	}

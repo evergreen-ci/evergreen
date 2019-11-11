@@ -170,7 +170,7 @@ func hostModify() cli.Command {
 	return cli.Command{
 		Name:  "modify",
 		Usage: "modify an existing host",
-		Flags: addHostFlag(
+		Flags: mergeFlagSlices(addHostFlag(), addSubscriptionTypeFlag(
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(addTagFlagName, "t"),
 				Usage: "add instance tag `KEY=VALUE`, one tag per flag",
@@ -195,7 +195,7 @@ func hostModify() cli.Command {
 				Name:  expireFlagName,
 				Usage: "make host expire like a normal spawn host, in 24 hours",
 			},
-		),
+		)),
 		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag, requireAtLeastOneFlag(
 			addTagFlagName, deleteTagFlagName, instanceTypeFlagName, expireFlagName, noExpireFlagName, extendFlagName)),
 		Action: func(c *cli.Context) error {
@@ -207,6 +207,7 @@ func hostModify() cli.Command {
 			noExpire := c.Bool(noExpireFlagName)
 			expire := c.Bool(expireFlagName)
 			extension := c.Int(extendFlagName)
+			subscriptionType := c.String(subscriptionTypeFlag)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -228,6 +229,7 @@ func hostModify() cli.Command {
 				DeleteInstanceTags: deleteTagSlice,
 				InstanceType:       instanceType,
 				AddHours:           time.Duration(extension) * time.Hour,
+				SubscriptionType:   subscriptionType,
 			}
 
 			if noExpire {
@@ -256,16 +258,17 @@ func hostStop() cli.Command {
 	return cli.Command{
 		Name:  "stop",
 		Usage: "stop a running spawn host",
-		Flags: addHostFlag(
+		Flags: mergeFlagSlices(addHostFlag(), addSubscriptionTypeFlag(
 			cli.BoolFlag{
 				Name:  joinFlagNames(waitFlagName, "w"),
 				Usage: "command will block until host stopped",
 			},
-		),
+		)),
 		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			hostID := c.String(hostFlagName)
+			subscriptionType := c.String(subscriptionTypeFlag)
 			wait := c.Bool(waitFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -282,7 +285,7 @@ func hostStop() cli.Command {
 				grip.Infof("Stopping host '%s'. This may take a few minutes...", hostID)
 			}
 
-			err = client.StopSpawnHost(ctx, hostID, wait)
+			err = client.StopSpawnHost(ctx, hostID, subscriptionType, wait)
 			if err != nil {
 				return err
 			}
@@ -302,15 +305,16 @@ func hostStart() cli.Command {
 	return cli.Command{
 		Name:  "start",
 		Usage: "start a stopped spawn host",
-		Flags: addHostFlag(
+		Flags: mergeFlagSlices(addHostFlag(), addSubscriptionTypeFlag(
 			cli.BoolFlag{
 				Name:  joinFlagNames(waitFlagName, "w"),
 				Usage: "command will block until host started",
-			}),
+			})),
 		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			hostID := c.String(hostFlagName)
+			subscriptionType := c.String(subscriptionTypeFlag)
 			wait := c.Bool(waitFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -327,7 +331,7 @@ func hostStart() cli.Command {
 				grip.Infof("Starting host '%s'. This may take a few minutes...", hostID)
 			}
 
-			err = client.StartSpawnHost(ctx, hostID, wait)
+			err = client.StartSpawnHost(ctx, hostID, subscriptionType, wait)
 			if err != nil {
 				return err
 			}
