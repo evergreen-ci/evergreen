@@ -1066,7 +1066,8 @@ func aggregateIntoCollection(ctx context.Context, collection string, pipeline []
 				return errors.Wrapf(err, "problem bulk writing to %s", outputCollection)
 			}
 			buf = make([]mongo.WriteModel, 0, bulkSize)
-			time.Sleep(time.Duration(rand.Int63n(time.Second)))
+
+			time.Sleep(time.Duration(rand.Int63n(int64(time.Second))))
 
 		}
 	}
