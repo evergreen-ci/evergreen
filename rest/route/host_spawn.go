@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
@@ -92,10 +93,9 @@ func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 // PATCH /rest/v2/hosts/{host_id}
 
 type hostModifyHandler struct {
-	hostID           string
-	subscriptionType string
-	sc               data.Connector
-	env              evergreen.Environment
+	hostID string
+	sc     data.Connector
+	env    evergreen.Environment
 
 	options *host.HostModifyOptions
 }
@@ -159,15 +159,12 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if h.options.SubscriptionType != "" {
-		var subscriber event.Subscriber
-		if h.options.SubscriptionType == event.SlackSubscriberType {
-			subscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", user.Settings.SlackUsername))
-		} else if h.options.SubscriptionType == event.EmailSubscriberType {
-			subscriber = event.NewEmailSubscriber(user.Email())
+		subscription, err := makeSpawnHostSubscription(h.hostID, h.options.SubscriptionType, user)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't make subscription"))
 		}
-		resultSubscription := event.NewSpawnHostStateChangeOutcomeByHost(h.hostID, subscriber)
-		if err = resultSubscription.Upsert(); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't insert subscription"))
+		if err = h.sc.SaveSubscriptions(user.Username(), []model.APISubscription{subscription}); err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't save subscription"))
 		}
 	}
 
@@ -307,15 +304,12 @@ func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if h.subscriptionType != "" {
-		var subscriber event.Subscriber
-		if h.subscriptionType == event.SlackSubscriberType {
-			subscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", user.Settings.SlackUsername))
-		} else if h.subscriptionType == event.EmailSubscriberType {
-			subscriber = event.NewEmailSubscriber(user.Email())
+		subscription, err := makeSpawnHostSubscription(h.hostID, h.subscriptionType, user)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't make subscription"))
 		}
-		resultSubscription := event.NewSpawnHostStateChangeOutcomeByHost(h.hostID, subscriber)
-		if err = resultSubscription.Upsert(); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't insert subscription"))
+		if err = h.sc.SaveSubscriptions(user.Username(), []model.APISubscription{subscription}); err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't save subscription"))
 		}
 	}
 
@@ -392,15 +386,12 @@ func (h *hostStartHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if h.subscriptionType != "" {
-		var subscriber event.Subscriber
-		if h.subscriptionType == event.SlackSubscriberType {
-			subscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", user.Settings.SlackUsername))
-		} else if h.subscriptionType == event.EmailSubscriberType {
-			subscriber = event.NewEmailSubscriber(user.Email())
+		subscription, err := makeSpawnHostSubscription(h.hostID, h.subscriptionType, user)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't make subscription"))
 		}
-		resultSubscription := event.NewSpawnHostStateChangeOutcomeByHost(h.hostID, subscriber)
-		if err = resultSubscription.Upsert(); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't insert subscription"))
+		if err = h.sc.SaveSubscriptions(user.Username(), []model.APISubscription{subscription}); err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't save subscription"))
 		}
 	}
 
@@ -1072,4 +1063,33 @@ func validateID(id string) (string, error) {
 	}
 
 	return id, nil
+}
+
+func makeSpawnHostSubscription(hostID, subscriberType string, user *user.DBUser) (model.APISubscription, error) {
+	var subscriber model.APISubscriber
+	if subscriberType == event.SlackSubscriberType {
+		subscriber = model.APISubscriber{
+			Type:   model.ToAPIString(event.SlackSubscriberType),
+			Target: fmt.Sprintf("@%s", user.Settings.SlackUsername),
+		}
+	} else if subscriberType == event.EmailSubscriberType {
+		subscriber = model.APISubscriber{
+			Type:   model.ToAPIString(event.EmailSubscriberType),
+			Target: user.Email(),
+		}
+	} else {
+		return model.APISubscription{}, errors.Errorf("'%s' is not a valid subscriber type", subscriberType)
+	}
+
+	return model.APISubscription{
+		ResourceType: model.ToAPIString(event.ResourceTypeHost),
+		Trigger:      model.ToAPIString(event.TriggerOutcome),
+		Selectors: []model.APISelector{
+			{
+				Type: model.ToAPIString(event.SelectorID),
+				Data: model.ToAPIString(hostID),
+			},
+		},
+		Subscriber: subscriber,
+	}, nil
 }
