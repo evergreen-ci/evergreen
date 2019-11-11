@@ -1,7 +1,6 @@
 package notification
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -92,27 +91,6 @@ func (n *Notification) SetBSON(raw mgobson.Raw) error {
 	n.Metadata = temp.Metadata
 
 	return nil
-}
-
-func BulkInserter(ctx context.Context) (adb.BufferedWriter, error) {
-	_, mdb, err := db.GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	opts := adb.BufferedWriteOptions{
-		DB:         mdb.Name(),
-		Count:      50,
-		Duration:   5 * time.Second,
-		Collection: Collection,
-	}
-
-	bi, err := adb.NewBufferedInserter(ctx, mdb, opts)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	return bi, nil
 }
 
 func InsertMany(items ...Notification) error {
