@@ -9,28 +9,11 @@ import (
 	"github.com/evergreen-ci/gimlet"
 )
 
-/*
-type SpawnHostUsageByUser struct {
-	User            string
-	SpawnHosts      HostData
-	NumEBSVolumes   int
-	TotalVolumeSize int
-}
-
-type HostData struct {
-	Uptime     time.Duration
-	Expiration time.Time
-	Type       string
-}
-*/
-
 func makeFetchSpawnHostUsage(sc data.Connector) gimlet.RouteHandler {
 	return &adminSpawnHostHandler{sc: sc}
 }
 
 type adminSpawnHostHandler struct {
-	//userID string
-
 	sc data.Connector
 }
 
@@ -41,7 +24,6 @@ func (h *adminSpawnHostHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *adminSpawnHostHandler) Parse(ctx context.Context, r *http.Request) error {
-	//h.userID = gimlet.GetVars(r)["user_id"]
 	return nil
 }
 
