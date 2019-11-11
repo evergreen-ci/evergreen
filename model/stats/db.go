@@ -59,6 +59,7 @@ package stats
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/birch"
@@ -133,11 +134,12 @@ type DbTestStatsId struct {
 
 // dbTestStats represents the hourly_test_stats and daily_test_stats documents.
 type dbTestStats struct {
-	Id              DbTestStatsId `bson:"_id"`
-	NumPass         int           `bson:"num_pass"`
-	NumFail         int           `bson:"num_fail"`
-	AvgDurationPass float64       `bson:"avg_duration_pass"`
-	LastUpdate      time.Time     `bson:"last_update"`
+	Id              DbTestStatsId    `bson:"_id"`
+	NumPass         int              `bson:"num_pass"`
+	NumFail         int              `bson:"num_fail"`
+	AvgDurationPass float64          `bson:"avg_duration_pass"`
+	LastUpdate      time.Time        `bson:"last_update"`
+	LastID          mgobson.ObjectId `bson:"last_id"`
 }
 
 func (d *dbTestStats) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(d) }
@@ -159,6 +161,7 @@ var (
 	dbTestStatsNumFailKey         = bsonutil.MustHaveTag(dbTestStats{}, "NumFail")
 	dbTestStatsAvgDurationPassKey = bsonutil.MustHaveTag(dbTestStats{}, "AvgDurationPass")
 	dbTestStatsLastUpdateKey      = bsonutil.MustHaveTag(dbTestStats{}, "LastUpdate")
+	dbTestStatsLastIDKey          = bsonutil.MustHaveTag(dbTestStats{}, "LastID")
 
 	// BSON dotted field names for test stats id elements
 	DbTestStatsIdTestFileKeyFull     = bsonutil.GetDottedKeyName(dbTestStatsIdKey, dbTestStatsIdTestFileKey)
@@ -200,9 +203,11 @@ func hourlyTestStatsForOldTasksPipeline(projectId string, requester string, star
 				bson.M{"$ifNull": Array{bson.M{"$multiply": Array{"$existing." + dbTestStatsNumPassKey, "$existing." + dbTestStatsAvgDurationPassKey}}, 0}},
 			}},
 			dbTestStatsLastUpdateKey: 1,
+			dbTestStatsLastIDKey:     bson.M{"$max": Array{"$existing." + dbTestStatsLastIDKey, "$" + dbTestStatsLastIDKey}},
 		}},
 		{"$project": bson.M{
 			"_id":                 1,
+			dbTestStatsLastIDKey:  1,
 			dbTestStatsNumPassKey: 1,
 			dbTestStatsNumFailKey: 1,
 			dbTestStatsAvgDurationPassKey: bson.M{"$cond": bson.M{"if": bson.M{"$ne": Array{"$" + dbTestStatsNumPassKey, 0}},
@@ -219,14 +224,19 @@ func hourlyTestStatsForOldTasksPipeline(projectId string, requester string, star
 func getHourlyTestStatsPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time, oldTasks bool) []bson.M {
 	var taskIdExpr string
 	var displayTaskLookupCollection string
+	var comment string
 	if oldTasks {
 		taskIdExpr = taskOldTaskIdKeyRef
 		displayTaskLookupCollection = task.OldCollection
+		comment = "Hourly Test Stats Old Pipeline"
 	} else {
 		taskIdExpr = taskIdKeyRef
 		displayTaskLookupCollection = task.Collection
+		comment = "Hourly Test Stats Pipeline"
 	}
+
 	pipeline := []bson.M{
+		{"$match": bson.M{"$comment": fmt.Sprintf("cache historical test stats: %s", comment)}},
 		{"$match": bson.M{
 			task.ProjectKey:     projectId,
 			task.RequesterKey:   requester,
@@ -259,6 +269,7 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 					{"$eq": Array{testResultExecutionRef, "$$execution"}}}}}},
 				{"$project": bson.M{
 					testresult.IDKey:        0,
+					dbTestStatsLastIDKey:    "$" + testresult.IDKey,
 					testresult.TestFileKey:  1,
 					testresult.StatusKey:    1,
 					testresult.StartTimeKey: 1,
@@ -274,6 +285,7 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 			dbTestStatsIdProjectKey:      1,
 			dbTestStatsIdRequesterKey:    1,
 			"status":                     "$testresults." + task.StatusKey,
+			dbTestStatsLastIDKey:         "$testresults." + dbTestStatsLastIDKey,
 			"duration":                   bson.M{"$subtract": Array{"$testresults." + testresult.EndTimeKey, "$testresults." + testresult.StartTimeKey}}}},
 		{"$group": bson.M{
 			"_id": bson.D{
@@ -284,6 +296,7 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 				{Key: dbTestStatsIdProjectKey, Value: "$" + dbTestStatsIdProjectKey},
 				{Key: dbTestStatsIdRequesterKey, Value: "$" + dbTestStatsIdRequesterKey},
 			},
+			dbTestStatsLastIDKey:  bson.M{"$max": "$" + dbTestStatsLastIDKey},
 			dbTestStatsNumPassKey: makeSum(bson.M{"$eq": Array{"$status", evergreen.TestSucceededStatus}}),
 			dbTestStatsNumFailKey: makeSum(bson.M{"$in": Array{"$status", Array{evergreen.TestFailedStatus, evergreen.TestSilentlyFailedStatus}}}),
 			// "IGNORE" is not a special value, setting the value to something that is not a number will cause $avg to ignore it
@@ -325,6 +338,7 @@ func dailyTestStatsFromHourlyPipeline(projectId string, requester string, start 
 				dbTestStatsNumPassKey: bson.M{"$sum": "$" + dbTestStatsNumPassKey},
 				dbTestStatsNumFailKey: bson.M{"$sum": "$" + dbTestStatsNumFailKey},
 				"total_duration_pass": bson.M{"$sum": bson.M{"$multiply": Array{"$num_pass", "$" + dbTestStatsAvgDurationPassKey}}},
+				dbTestStatsLastIDKey:  bson.M{"$max": "$" + dbTestStatsLastIDKey},
 			},
 		},
 		{
@@ -335,6 +349,7 @@ func dailyTestStatsFromHourlyPipeline(projectId string, requester string, start 
 				dbTestStatsAvgDurationPassKey: bson.M{"$cond": bson.M{"if": bson.M{"$ne": Array{"$" + dbTestStatsNumPassKey, 0}},
 					"then": bson.M{"$divide": Array{"$total_duration_pass", "$" + dbTestStatsNumPassKey}},
 					"else": nil}},
+				dbTestStatsLastIDKey: 1,
 			},
 		},
 		{"$addFields": bson.M{
