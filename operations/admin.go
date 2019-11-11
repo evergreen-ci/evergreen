@@ -60,16 +60,15 @@ func adminSetBanner() cli.Command {
 			},
 		},
 		Before: mergeBeforeFuncs(
-			requireClientConfig,
 			func(c *cli.Context) error {
 				if c.String(messageFlagName) != "" && c.Bool(clearFlagName) {
-					return errors.New("cannot specify a message and the 'clear' option at the same time")
+					return errors.New("must specify either a message or the  'clear' option, but not both")
 				}
 				return nil
 			},
 			func(c *cli.Context) error {
 				if c.String(messageFlagName) == "" && !c.Bool(clearFlagName) {
-					return errors.New("cannot specify a message and the 'clear' option at the same time")
+					return errors.New("must specify either a message or the 'clear' option, but not both")
 				}
 				return nil
 			},

@@ -558,7 +558,7 @@ func hostList() cli.Command {
 		},
 		Before: mergeBeforeFuncs(setPlainLogger, requireOnlyOneBool(mineFlagName, allFlagName)),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(confFlagName)
 			showMine := c.Bool(mineFlagName)
 			showAll := c.Bool(allFlagName)
 
@@ -617,7 +617,7 @@ func hostTerminate() cli.Command {
 		Flags:  addHostFlag(),
 		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(confFlagName)
 			hostID := c.String(hostFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
