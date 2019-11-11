@@ -1102,6 +1102,11 @@ func doBulkWrite(ctx context.Context, env evergreen.Environment, outputCollectio
 	return nil
 }
 
+// makeSum is an internal function that creates a conditional $sum expression.
+func makeSum(condition bson.M) bson.M {
+	return bson.M{"$sum": bson.M{"$cond": bson.M{"if": condition, "then": 1, "else": 0}}}
+}
+
 ///////////////////////////////////////////////////////////////////
 // Functions to access pre-computed stats documents for testing. //
 ///////////////////////////////////////////////////////////////////
