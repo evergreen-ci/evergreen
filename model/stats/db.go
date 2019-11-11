@@ -1049,6 +1049,7 @@ func aggregateIntoCollection(ctx context.Context, collection string, pipeline []
 			if err = doBulkWrite(ctx, env, outputCollection, buf); err != nil {
 				return errors.Wrapf(err, "problem bulk writing to %s", outputCollection)
 			}
+			buf = make([]mongo.WriteModel, 0, bulkSize)
 		}
 	}
 
@@ -1081,7 +1082,6 @@ func doBulkWrite(ctx context.Context, env evergreen.Environment, outputCollectio
 
 	if totalModified != int64(len(buf)) {
 		return errors.Errorf("failed to materialize view: %d of %d", totalModified, len(buf))
-
 	}
 
 	return nil
