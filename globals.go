@@ -559,7 +559,7 @@ var (
 		Description: "Edit distro settings",
 		Value:       20,
 	}
-	DistroSettingsRead = PermissionLevel{
+	DistroSettingsView = PermissionLevel{
 		Description: "View distro settings",
 		Value:       10,
 	}
@@ -571,7 +571,7 @@ var (
 		Description: "Edit hosts",
 		Value:       20,
 	}
-	HostsRead = PermissionLevel{
+	HostsView = PermissionLevel{
 		Description: "View hosts",
 		Value:       10,
 	}
@@ -630,13 +630,13 @@ func GetPermissionLevelsForPermissionKey(permissionKey string) []PermissionLevel
 	case PermissionDistroSettings:
 		return []PermissionLevel{
 			DistroSettingsEdit,
-			DistroSettingsRead,
+			DistroSettingsView,
 			DistroSettingsNone,
 		}
 	case PermissionHosts:
 		return []PermissionLevel{
 			HostsEdit,
-			HostsRead,
+			HostsView,
 			HostsNone,
 		}
 	default:
