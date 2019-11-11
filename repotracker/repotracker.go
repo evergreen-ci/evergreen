@@ -105,10 +105,10 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 	projectRef := repoTracker.ProjectRef
 	projectIdentifier := projectRef.String()
 
-	if !projectRef.Enabled {
+	if !projectRef.Enabled || projectRef.RepotrackerDisabled {
 		// this is somewhat belt-and-suspenders, as the
 		// repotracker runner process doesn't run for disabled
-		// proejcts.
+		// projects.
 		grip.Info(message.Fields{
 			"message": "skip disabled project",
 			"project": projectRef,

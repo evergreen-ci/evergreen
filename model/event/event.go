@@ -9,10 +9,7 @@ import (
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
-const (
-	AllLogCollection  = "event_log"
-	TaskLogCollection = "task_event_log"
-)
+const AllLogCollection = "event_log"
 
 type EventLogEntry struct {
 	ID           string    `bson:"_id" json:"-"`

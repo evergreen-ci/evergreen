@@ -174,6 +174,9 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 		}
 	}
 
+	// Do not provision task-spawned hosts.
+	d.BootstrapSettings.Method = distro.BootstrapMethodNone
+
 	options, err := getAgentOptions(taskID, userID, createHost)
 	if err != nil {
 		return nil, errors.Wrap(err, "error making host options for docker")
@@ -235,15 +238,14 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 		}
 	}
 
+	// Do not provision task-spawned hosts.
+	d.BootstrapSettings.Method = distro.BootstrapMethodNone
+
 	// set provider
 	d.Provider = provider
 
 	if publicKey != "" {
-		keyPath := filepath.Join(d.HomeDir(), ".ssh", "authorized_keys")
-		if d.BootstrapSettings.Method != distro.BootstrapMethodLegacySSH {
-			keyPath = d.BootstrapSettings.RootDir + keyPath
-		}
-		d.Setup += fmt.Sprintf("\necho \"\n%s\" >> %s\n", publicKey, keyPath)
+		d.Setup += fmt.Sprintf("\necho \"\n%s\" >> %s\n", publicKey, filepath.Join(d.HomeDir(), ".ssh", "authorized_keys"))
 	}
 
 	// set provider settings

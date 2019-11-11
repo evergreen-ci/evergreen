@@ -198,6 +198,7 @@ func (c *communicatorImpl) DetachVolume(ctx context.Context, hostID, volumeID st
 
 	return nil
 }
+
 func (c *communicatorImpl) CreateVolume(ctx context.Context, volume *host.Volume) (*model.APIVolume, error) {
 	info := requestInfo{
 		method:  post,
@@ -212,9 +213,6 @@ func (c *communicatorImpl) CreateVolume(ctx context.Context, volume *host.Volume
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		fmt.Printf("The status: %d\n", resp.StatusCode)
-		respErr, _ := ioutil.ReadAll(resp.Body)
-		fmt.Printf("%v", string(respErr))
 		errMsg := gimlet.ErrorResponse{}
 		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
 			return nil, errors.Wrap(err, "problem creating volume and parsing error message")
@@ -251,6 +249,35 @@ func (c *communicatorImpl) DeleteVolume(ctx context.Context, volumeID string) er
 	}
 
 	return nil
+}
+
+func (c *communicatorImpl) GetVolumesByUser(ctx context.Context) ([]model.APIVolume, error) {
+	info := requestInfo{
+		method:  get,
+		path:    "volumes",
+		version: apiVersion2,
+	}
+
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return nil, errors.Wrap(err, "error sending request to get volumes")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errMsg := gimlet.ErrorResponse{}
+		if err = util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+			return nil, errors.Wrap(err, "problem getting volumes and parsing error message")
+		}
+		return nil, errors.Wrapf(errMsg, "problem getting volumes for user '%s'", c.apiUser)
+	}
+
+	getVolumesResp := []model.APIVolume{}
+	if err = util.ReadJSONInto(resp.Body, &getVolumesResp); err != nil {
+		return nil, fmt.Errorf("error forming response body response: %v", err)
+	}
+
+	return getVolumesResp, nil
 }
 
 func (c *communicatorImpl) StartSpawnHost(ctx context.Context, hostID string, wait bool) error {

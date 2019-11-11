@@ -79,10 +79,13 @@ func (s *ApplicationSuite) TestRunErrorsWithCanceledContext() {
 }
 
 func (s *ApplicationSuite) TestRunDoesNotErrorWithDryRun() {
-	s.env.Queue = queue.NewLocalUnordered(2)
+	s.env.Queue = queue.NewLocalLimitedSize(2, 128)
+
 	s.NoError(s.app.Setup(s.env))
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s.NoError(s.env.Queue.Start(ctx))
 	s.app.Options.DryRun = true
 	s.NoError(s.app.Run(ctx))
 }
@@ -105,7 +108,7 @@ func (s *ApplicationSuite) TestLimitIsRespected() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s.env.Queue = queue.NewLocalUnordered(2)
+	s.env.Queue = queue.NewLocalLimitedSize(2, 128)
 	s.env.Network = mock.NewDependencyNetwork()
 
 	s.NoError(s.env.Queue.Start(ctx))

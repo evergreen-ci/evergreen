@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -1491,4 +1492,105 @@ func (s *UtilizationAllocatorSuite) TestTaskGroupsWithExcessFreeHosts() {
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
 	s.NoError(err)
 	s.Equal(0, hosts)
+}
+
+func (s *UtilizationAllocatorSuite) TestHostsWithLongTasks() {
+	h1 := host.Host{
+		Id:          "h1",
+		RunningTask: "t1",
+	}
+	h2 := host.Host{
+		Id:          "h2",
+		RunningTask: "t2",
+	}
+	h3 := host.Host{
+		Id:          "h3",
+		RunningTask: "t3",
+	}
+	h4 := host.Host{
+		Id:          "h4",
+		RunningTask: "t4",
+	}
+	t1 := task.Task{
+		Id:           "t1",
+		Project:      s.projectName,
+		BuildVariant: "bv1",
+		StartTime:    time.Now().Add(-60 * time.Minute),
+		DurationPrediction: util.CachedDurationValue{
+			Value:       10 * time.Minute,
+			StdDev:      1 * time.Minute,
+			TTL:         time.Hour,
+			CollectedAt: time.Now(),
+		},
+	}
+	s.NoError(t1.Insert())
+	t2 := task.Task{
+		Id:           "t2",
+		Project:      s.projectName,
+		BuildVariant: "bv1",
+		StartTime:    time.Now().Add(-15 * time.Minute),
+		DurationPrediction: util.CachedDurationValue{
+			Value:       15 * time.Minute,
+			StdDev:      1 * time.Minute,
+			TTL:         time.Hour,
+			CollectedAt: time.Now(),
+		},
+	}
+	s.NoError(t2.Insert())
+	t3 := task.Task{
+		Id:           "t3",
+		Project:      s.projectName,
+		BuildVariant: "bv1",
+		StartTime:    time.Now().Add(-15 * time.Minute),
+		DurationPrediction: util.CachedDurationValue{
+			Value:       15 * time.Minute,
+			StdDev:      1 * time.Minute,
+			TTL:         time.Hour,
+			CollectedAt: time.Now(),
+		},
+	}
+	s.NoError(t3.Insert())
+	t4 := task.Task{
+		Id:           "t4",
+		Project:      s.projectName,
+		BuildVariant: "bv1",
+		StartTime:    time.Now().Add(-60 * time.Minute),
+		DurationPrediction: util.CachedDurationValue{
+			Value:       10 * time.Minute,
+			StdDev:      1 * time.Minute,
+			TTL:         time.Hour,
+			CollectedAt: time.Now(),
+		},
+	}
+	s.NoError(t4.Insert())
+
+	taskGroupInfo := model.TaskGroupInfo{
+		Name:                  "",
+		Count:                 5,
+		ExpectedDuration:      5 * (30 * time.Minute),
+		CountOverThreshold:    2,
+		DurationOverThreshold: 60 * time.Minute,
+	}
+
+	distroQueueInfo := model.DistroQueueInfo{
+		Length: 5,
+		// 2 running tasks that will take forever + 2 tasks that each should finish now means
+		// we should have 1 expected free host after scaling by the 0.5 fraction
+		// if we have 5 more tasks coming in, we should request 4 hosts
+		ExpectedDuration:     5 * (30 * time.Minute),
+		MaxDurationThreshold: evergreen.MaxDurationPerDistroHost,
+		CountOverThreshold:   2,
+		TaskGroupInfos:       []model.TaskGroupInfo{taskGroupInfo},
+	}
+
+	hostAllocatorData := HostAllocatorData{
+		Distro:           s.distro,
+		ExistingHosts:    []host.Host{h1, h2, h3, h4},
+		FreeHostFraction: s.freeHostFraction,
+		DistroQueueInfo:  distroQueueInfo,
+	}
+
+	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
+	s.NoError(err)
+	s.Equal(4, hosts)
 }

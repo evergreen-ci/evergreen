@@ -152,8 +152,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 					return
 				}
 
-				job := NewDecoHostNotifyJob(j.env, j.host, nil, "error starting agent on host")
-				grip.Error(message.WrapError(j.env.RemoteQueue().Put(ctx, job),
+				grip.Error(message.WrapError(j.env.RemoteQueue().Put(ctx, NewDecoHostNotifyJob(j.env, j.host, nil, "error starting agent on host")),
 					message.Fields{
 						"message": fmt.Sprintf("tried %d times to put agent on host", agentPutRetries),
 						"host":    j.host.Id,
@@ -163,14 +162,14 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 				return
 			}
 
-			if err = j.host.SetNeedsNewAgent(true); err != nil {
-				grip.Info(message.WrapError(err, message.Fields{
-					"distro":  j.host.Distro,
-					"host":    j.host.Id,
-					"job":     j.ID(),
-					"message": "problem setting needs agent flag to true",
-				}))
-			}
+			// set needs new agent and log if there's a
+			// failure.
+			grip.Info(message.WrapError(j.host.SetNeedsNewAgent(true), message.Fields{
+				"distro":  j.host.Distro,
+				"host":    j.host.Id,
+				"job":     j.ID(),
+				"message": "problem setting needs agent flag to true",
+			}))
 		}
 	}()
 
@@ -225,20 +224,7 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 	}
 	hostObj.Distro = d
 
-	// prep the remote host
-	grip.Info(message.Fields{
-		"runner":  "taskrunner",
-		"message": "prepping host for agent",
-		"host":    hostObj.Id,
-		"job":     j.ID(),
-	})
 	if err = j.prepRemoteHost(ctx, hostObj, sshOptions, settings); err != nil {
-		grip.Info(message.Fields{
-			"message": "error prepping remote host",
-			"host":    j.HostID,
-			"job":     j.ID(),
-			"error":   err.Error(),
-		})
 		return errors.Wrap(err, "could not prep remote host")
 	}
 
@@ -275,16 +261,9 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context, hostObj host.Host, 
 	// copy over the correct agent binary to the remote host
 	if logs, err := hostObj.RunSSHCommand(ctx, hostObj.CurlCommand(settings), sshOptions); err != nil {
 		event.LogHostAgentDeployFailed(hostObj.Id, err)
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "error fetching agent",
-			"host":    hostObj.Id,
-			"job":     j.ID(),
-			"logs":    logs,
-		}))
 		return errors.Wrapf(err, "error downloading agent binary on remote host: %s", logs)
 	}
 
-	// run the setup script with the agent
 	if hostObj.Distro.Setup == "" {
 		return nil
 	}
@@ -306,8 +285,7 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context, hostObj host.Host, 
 			return errors.Wrapf(disableErr, "error terminating host %s", hostObj.Id)
 		}
 
-		job := NewDecoHostNotifyJob(j.env, j.host, nil, "error running setup script on host")
-		grip.Error(message.WrapError(j.env.RemoteQueue().Put(ctx, job),
+		grip.Error(message.WrapError(j.env.RemoteQueue().Put(ctx, NewDecoHostNotifyJob(j.env, j.host, nil, "error running setup script on host")),
 			message.Fields{
 				"message": fmt.Sprintf("tried %d times to put agent on host", agentPutRetries),
 				"host":    hostObj.Id,

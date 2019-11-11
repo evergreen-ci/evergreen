@@ -133,6 +133,9 @@ type APIVolume struct {
 	Type             APIString `json:"type"`
 	AvailabilityZone APIString `json:"zone"`
 	Size             int       `json:"size"`
+
+	DeviceName APIString `json:"device_name"`
+	HostID     APIString `json:"host_id"`
 }
 
 type VolumePostRequest struct {
@@ -180,11 +183,13 @@ func (apiVolume *APIVolume) ToService() (interface{}, error) {
 }
 
 type APISpawnHostModify struct {
-	Action       APIString `json:"action"`
-	HostID       APIString `json:"host_id"`
-	VolumeID     APIString `json:"volume_id"`
-	RDPPwd       APIString `json:"rdp_pwd"`
-	AddHours     APIString `json:"add_hours"`
-	Expiration   time.Time `json:"expiration"`
-	InstanceType APIString `json:"instance_type"`
+	Action       APIString   `json:"action"`
+	HostID       APIString   `json:"host_id"`
+	VolumeID     APIString   `json:"volume_id"`
+	RDPPwd       APIString   `json:"rdp_pwd"`
+	AddHours     APIString   `json:"add_hours"`
+	Expiration   time.Time   `json:"expiration"`
+	InstanceType APIString   `json:"instance_type"`
+	AddTags      []APIString `json:"tags_to_add"`
+	DeleteTags   []APIString `json:"tags_to_delete"`
 }

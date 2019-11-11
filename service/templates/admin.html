@@ -1146,6 +1146,10 @@ Admin Settings
 										<label>Default Security Group</label>
 										<input type="text" ng-model="Settings.providers.aws.default_security_group">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Total EBS Volume Size Per User</label>
+										<input type="number" ng-model="Settings.providers.aws.max_volume_size">
+									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px">
 										<label>Allowed Instance Types</label>
 										<textarea ng-model="Settings.providers.aws.allowed_instance_types" ng-list="&#10;" ng-trim="false" rows="3" md-select-on-focus></textarea>
@@ -1315,6 +1319,14 @@ Admin Settings
 									<md-input-container class="control" style="width:45%;">
 										<label>Log path</label>
 										<input type="text" ng-model="Settings.log_path">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left: 50px;">
+										<label>Total Spawn Hosts per user</label>
+										<input type="number" ng-model="Settings.spawn_hosts_per_user">
+									</md-input-container>
+									<md-input-container class="control" style="width:45;">
+										<label>Unexpirable Spawn Hosts per user</label>
+										<input type="number" ng-model="Settings.unexpirable_hosts_per_user">
 									</md-input-container>
 								</md-card-content>
 							</md-card>

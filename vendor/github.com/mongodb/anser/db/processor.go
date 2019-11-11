@@ -9,7 +9,7 @@ import (
 // documents using an Iterator, which resembles mgo's Iter
 // operation.
 type Processor interface {
-	Load(model.Namespace, map[string]interface{}) Iterator
+	Load(Session, model.Namespace, map[string]interface{}) Iterator
 	Migrate(Iterator) error
 }
 

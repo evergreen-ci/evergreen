@@ -429,6 +429,8 @@ func TestEnsureValidBootstrapSettings(t *testing.T) {
 		}
 	}
 
+	assert.Nil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{BootstrapSettings: distro.BootstrapSettings{Method: distro.BootstrapMethodNone}}, &evergreen.Settings{}))
+
 	for testName, testCase := range map[string]func(t *testing.T, s distro.BootstrapSettings){
 		"InvalidBootstrapMethod": func(t *testing.T, s distro.BootstrapSettings) {
 			s.Method = "foobar"

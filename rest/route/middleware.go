@@ -312,7 +312,7 @@ func RequiresProjectPermission(permission string, level evergreen.PermissionLeve
 		RM:            evergreen.GetEnvironment().RoleManager(),
 		PermissionKey: permission,
 		ResourceType:  evergreen.ProjectResourceType,
-		RequiredLevel: level.Value(),
+		RequiredLevel: level.Value,
 		ResourceFunc:  urlVarsToProjectScopes,
 	}
 	return gimlet.RequiresPermission(opts)
@@ -327,7 +327,7 @@ func RequiresDistroPermission(permission string, level evergreen.PermissionLevel
 		RM:            evergreen.GetEnvironment().RoleManager(),
 		PermissionKey: permission,
 		ResourceType:  evergreen.DistroResourceType,
-		RequiredLevel: level.Value(),
+    RequiredLevel: level.Value,
 		ResourceFunc:  urlVarsToDistroScopes,
 	}
 	return gimlet.RequiresPermission(opts)
@@ -496,7 +496,7 @@ func (p *RequiresProjectViewPermission) ServeHTTP(rw http.ResponseWriter, r *htt
 		Resource:      projectID,
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionTasks,
-		RequiredLevel: int(evergreen.TasksView),
+		RequiredLevel: evergreen.TasksView.Value,
 	}
 	hasPermission, err := user.HasPermission(opts)
 	grip.Error(message.WrapError(err, message.Fields{

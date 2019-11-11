@@ -59,8 +59,10 @@ package stats
 
 import (
 	"context"
+	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -70,6 +72,7 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -131,11 +134,12 @@ type DbTestStatsId struct {
 
 // dbTestStats represents the hourly_test_stats and daily_test_stats documents.
 type dbTestStats struct {
-	Id              DbTestStatsId `bson:"_id"`
-	NumPass         int           `bson:"num_pass"`
-	NumFail         int           `bson:"num_fail"`
-	AvgDurationPass float64       `bson:"avg_duration_pass"`
-	LastUpdate      time.Time     `bson:"last_update"`
+	Id              DbTestStatsId    `bson:"_id"`
+	NumPass         int              `bson:"num_pass"`
+	NumFail         int              `bson:"num_fail"`
+	AvgDurationPass float64          `bson:"avg_duration_pass"`
+	LastUpdate      time.Time        `bson:"last_update"`
+	LastID          mgobson.ObjectId `bson:"last_id"`
 }
 
 func (d *dbTestStats) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(d) }
@@ -157,6 +161,7 @@ var (
 	dbTestStatsNumFailKey         = bsonutil.MustHaveTag(dbTestStats{}, "NumFail")
 	dbTestStatsAvgDurationPassKey = bsonutil.MustHaveTag(dbTestStats{}, "AvgDurationPass")
 	dbTestStatsLastUpdateKey      = bsonutil.MustHaveTag(dbTestStats{}, "LastUpdate")
+	dbTestStatsLastIDKey          = bsonutil.MustHaveTag(dbTestStats{}, "LastID")
 
 	// BSON dotted field names for test stats id elements
 	DbTestStatsIdTestFileKeyFull     = bsonutil.GetDottedKeyName(dbTestStatsIdKey, dbTestStatsIdTestFileKey)
@@ -198,9 +203,11 @@ func hourlyTestStatsForOldTasksPipeline(projectId string, requester string, star
 				bson.M{"$ifNull": Array{bson.M{"$multiply": Array{"$existing." + dbTestStatsNumPassKey, "$existing." + dbTestStatsAvgDurationPassKey}}, 0}},
 			}},
 			dbTestStatsLastUpdateKey: 1,
+			dbTestStatsLastIDKey:     bson.M{"$max": Array{"$existing." + dbTestStatsLastIDKey, "$" + dbTestStatsLastIDKey}},
 		}},
 		{"$project": bson.M{
 			"_id":                 1,
+			dbTestStatsLastIDKey:  1,
 			dbTestStatsNumPassKey: 1,
 			dbTestStatsNumFailKey: 1,
 			dbTestStatsAvgDurationPassKey: bson.M{"$cond": bson.M{"if": bson.M{"$ne": Array{"$" + dbTestStatsNumPassKey, 0}},
@@ -217,14 +224,19 @@ func hourlyTestStatsForOldTasksPipeline(projectId string, requester string, star
 func getHourlyTestStatsPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time, oldTasks bool) []bson.M {
 	var taskIdExpr string
 	var displayTaskLookupCollection string
+	var comment string
 	if oldTasks {
 		taskIdExpr = taskOldTaskIdKeyRef
 		displayTaskLookupCollection = task.OldCollection
+		comment = "Hourly Test Stats Old Pipeline"
 	} else {
 		taskIdExpr = taskIdKeyRef
 		displayTaskLookupCollection = task.Collection
+		comment = "Hourly Test Stats Pipeline"
 	}
+
 	pipeline := []bson.M{
+		{"$match": bson.M{"$comment": fmt.Sprintf("cache historical test stats: %s", comment)}},
 		{"$match": bson.M{
 			task.ProjectKey:     projectId,
 			task.RequesterKey:   requester,
@@ -257,6 +269,7 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 					{"$eq": Array{testResultExecutionRef, "$$execution"}}}}}},
 				{"$project": bson.M{
 					testresult.IDKey:        0,
+					dbTestStatsLastIDKey:    "$" + testresult.IDKey,
 					testresult.TestFileKey:  1,
 					testresult.StatusKey:    1,
 					testresult.StartTimeKey: 1,
@@ -272,6 +285,7 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 			dbTestStatsIdProjectKey:      1,
 			dbTestStatsIdRequesterKey:    1,
 			"status":                     "$testresults." + task.StatusKey,
+			dbTestStatsLastIDKey:         "$testresults." + dbTestStatsLastIDKey,
 			"duration":                   bson.M{"$subtract": Array{"$testresults." + testresult.EndTimeKey, "$testresults." + testresult.StartTimeKey}}}},
 		{"$group": bson.M{
 			"_id": bson.D{
@@ -282,6 +296,7 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 				{Key: dbTestStatsIdProjectKey, Value: "$" + dbTestStatsIdProjectKey},
 				{Key: dbTestStatsIdRequesterKey, Value: "$" + dbTestStatsIdRequesterKey},
 			},
+			dbTestStatsLastIDKey:  bson.M{"$max": "$" + dbTestStatsLastIDKey},
 			dbTestStatsNumPassKey: makeSum(bson.M{"$eq": Array{"$status", evergreen.TestSucceededStatus}}),
 			dbTestStatsNumFailKey: makeSum(bson.M{"$in": Array{"$status", Array{evergreen.TestFailedStatus, evergreen.TestSilentlyFailedStatus}}}),
 			// "IGNORE" is not a special value, setting the value to something that is not a number will cause $avg to ignore it
@@ -323,6 +338,7 @@ func dailyTestStatsFromHourlyPipeline(projectId string, requester string, start 
 				dbTestStatsNumPassKey: bson.M{"$sum": "$" + dbTestStatsNumPassKey},
 				dbTestStatsNumFailKey: bson.M{"$sum": "$" + dbTestStatsNumFailKey},
 				"total_duration_pass": bson.M{"$sum": bson.M{"$multiply": Array{"$num_pass", "$" + dbTestStatsAvgDurationPassKey}}},
+				dbTestStatsLastIDKey:  bson.M{"$max": "$" + dbTestStatsLastIDKey},
 			},
 		},
 		{
@@ -333,6 +349,7 @@ func dailyTestStatsFromHourlyPipeline(projectId string, requester string, start 
 				dbTestStatsAvgDurationPassKey: bson.M{"$cond": bson.M{"if": bson.M{"$ne": Array{"$" + dbTestStatsNumPassKey, 0}},
 					"then": bson.M{"$divide": Array{"$total_duration_pass", "$" + dbTestStatsNumPassKey}},
 					"else": nil}},
+				dbTestStatsLastIDKey: 1,
 			},
 		},
 		{"$addFields": bson.M{
@@ -1027,29 +1044,27 @@ func (pf PaginationField) GetNextExpression() bson.M {
 func aggregateIntoCollection(ctx context.Context, collection string, pipeline []bson.M, outputCollection string) error {
 	env := evergreen.GetEnvironment()
 
-	opts := adb.BufferedWriteOptions{
-		DB:         env.Settings().Database.DB,
-		Collection: outputCollection,
-		Count:      bulkSize,
-		Duration:   time.Minute,
-	}
-
-	writer, err := adb.NewBufferedUpsertByID(ctx, env.Session().DB(opts.DB), opts)
-	if err != nil {
-		return errors.Wrap(err, "Failed to initialize document writer")
-	}
-
 	cursor, err := env.DB().Collection(collection, options.Collection().SetReadPreference(readpref.SecondaryPreferred())).Aggregate(ctx, pipeline, options.Aggregate().SetAllowDiskUse(true))
 	if err != nil {
 		return errors.Wrap(err, "problem running aggregation")
 	}
 
+	buf := make([]mongo.WriteModel, 0, bulkSize)
 	for cursor.Next(ctx) {
-		doc := make(bson.Raw, len(cursor.Current))
-		copy(doc, cursor.Current)
+		doc, err := birch.DC.ReaderErr(birch.Reader(cursor.Current))
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		buf = append(buf, mongo.NewUpdateOneModel().
+			SetUpsert(true).
+			SetFilter(birch.DC.Elements(birch.EC.SubDocument("_id", doc.Lookup("_id").MutableDocument()))).
+			SetUpdate(doc.Copy()))
 
-		if err = writer.Append(doc); err != nil {
-			return errors.Wrap(err, "problem with bulk insert")
+		if len(buf) >= bulkSize {
+			if err = doBulkWrite(ctx, env, outputCollection, buf); err != nil {
+				return errors.Wrapf(err, "problem bulk writing to %s", outputCollection)
+			}
+			buf = make([]mongo.WriteModel, 0, bulkSize)
 		}
 	}
 
@@ -1061,9 +1076,29 @@ func aggregateIntoCollection(ctx context.Context, collection string, pipeline []
 		return errors.Wrap(err, "problem closing cursor")
 	}
 
-	if err = writer.Close(); err != nil {
-		return errors.Wrap(err, "problem flushing to new collection")
+	if err = doBulkWrite(ctx, env, outputCollection, buf); err != nil {
+		return errors.Wrapf(err, "problem bulk writing to %s", outputCollection)
 	}
+
+	return nil
+}
+
+func doBulkWrite(ctx context.Context, env evergreen.Environment, outputCollection string, buf []mongo.WriteModel) error {
+	if len(buf) == 0 {
+		return nil
+	}
+
+	res, err := env.DB().Collection(outputCollection).BulkWrite(ctx, buf)
+	if err != nil {
+		return errors.Wrap(err, "problem with bulk write operation")
+	}
+
+	totalModified := res.UpsertedCount + res.ModifiedCount + res.InsertedCount
+
+	if totalModified != int64(len(buf)) {
+		return errors.Errorf("failed to materialize view: %d of %d", totalModified, len(buf))
+	}
+
 	return nil
 }
 

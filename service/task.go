@@ -314,6 +314,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	if uiTask.DisplayOnly {
 		uiTask.TestResults = []uiTestResult{}
 		execTasks := []task.Task{}
+		execTaskIDs := []string{}
 		for _, t := range projCtx.Task.ExecutionTasks {
 			var et *task.Task
 			if archived {
@@ -334,21 +335,22 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			execTasks = append(execTasks, *et)
+			execTaskIDs = append(execTaskIDs, t)
 		}
 		execTasks, err = task.MergeTestResultsBulk(execTasks, nil)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		for _, execTask := range execTasks {
+		for i, execTask := range execTasks {
 			uiTask.ExecutionTasks = append(uiTask.ExecutionTasks, uiExecTask{
-				Id:        execTask.Id,
+				Id:        execTaskIDs[i],
 				Name:      execTask.DisplayName,
 				TimeTaken: execTask.TimeTaken,
 				Status:    execTask.ResultStatus(),
 			})
 			for _, tr := range execTask.LocalTestResults {
-				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{TestResult: tr, TaskId: execTask.Id, TaskName: execTask.DisplayName})
+				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{TestResult: tr, TaskId: execTaskIDs[i], TaskName: execTask.DisplayName})
 			}
 		}
 	} else {
@@ -609,7 +611,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		Resource:      projCtx.ProjectRef.Identifier,
 		ResourceType:  "project",
 		Permission:    evergreen.PermissionTasks,
-		RequiredLevel: int(evergreen.TasksAdmin),
+		RequiredLevel: evergreen.TasksAdmin.Value,
 	}
 	taskAdmin, err := authUser.HasPermission(requiredPermission)
 	if err != nil {

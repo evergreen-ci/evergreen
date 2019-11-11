@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/certdepot"
@@ -255,7 +256,12 @@ const (
 	InitSystemUpstart = "upstart"
 
 	// Max number of spawn hosts with no expiration for user
-	MaxSpawnhostsWithNoExpirationPerUser = 1
+	DefaultUnexpirableHostsPerUser = 1
+	// Max total EBS volume size for user
+	DefaultMaxVolumeSizePerUser = 200
+
+	MaxTagKeyLength   = 128
+	MaxTagValueLength = 256
 )
 
 func (h *Host) GetTaskGroupString() string {
@@ -1757,6 +1763,49 @@ func (h *Host) SetTags() error {
 			},
 		},
 	)
+}
+
+// MakeHostTags creates and validates a map of supplied instance tags
+func MakeHostTags(tagSlice []string) ([]Tag, error) {
+	catcher := grip.NewBasicCatcher()
+	tagsMap := make(map[string]string)
+	for _, tagString := range tagSlice {
+		pair := strings.Split(tagString, "=")
+		if len(pair) != 2 {
+			catcher.Add(errors.Errorf("problem parsing tag '%s'", tagString))
+			continue
+		}
+
+		key := pair[0]
+		value := pair[1]
+
+		// AWS tag key must contain no more than 128 characters
+		if len(key) > MaxTagKeyLength {
+			catcher.Add(errors.Errorf("key '%s' is longer than 128 characters", key))
+		}
+		// AWS tag value must contain no more than 256 characters
+		if len(value) > MaxTagValueLength {
+			catcher.Add(errors.Errorf("value '%s' is longer than 256 characters", value))
+		}
+		// tag prefix aws: is reserved
+		if strings.HasPrefix(key, "aws:") || strings.HasPrefix(value, "aws:") {
+			catcher.Add(errors.Errorf("illegal tag prefix 'aws:'"))
+		}
+
+		tagsMap[key] = value
+	}
+
+	// Make slice of host.Tag structs from map
+	tags := []Tag{}
+	for key, value := range tagsMap {
+		tags = append(tags, Tag{Key: key, Value: value, CanBeModified: true})
+	}
+
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+
+	return tags, nil
 }
 
 // SetInstanceType updates the host's instance type in the database.
