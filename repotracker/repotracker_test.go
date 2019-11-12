@@ -490,39 +490,17 @@ func createTestRevision(revision string,
 	}
 }
 
-func createTestProject(override1, override2 *int) *model.Project {
-	return &model.Project{
-		BuildVariants: []model.BuildVariant{
-			{
-				Name:        "bv1",
-				DisplayName: "bv1",
-				BatchTime:   override1,
-				Tasks: []model.BuildVariantTaskUnit{
-					{
-						Name:    "Unabhaengigkeitserklaerungen",
-						Distros: []string{"test-distro-one"},
-					},
-				},
-			},
-			{
-				Name:        "bv2",
-				DisplayName: "bv2",
-				BatchTime:   override2,
-				Tasks: []model.BuildVariantTaskUnit{
-					{
-						Name:    "Unabhaengigkeitserklaerungen",
-						Distros: []string{"test-distro-one"},
-					},
-				},
-			},
-		},
-		Tasks: []model.ProjectTask{
-			{
-				Name:     "Unabhaengigkeitserklaerungen",
-				Commands: []model.PluginCommandConf{},
-			},
-		},
-	}
+func createTestProject(override1, override2 *int) *model.ParserProject {
+	pp := &model.ParserProject{}
+	pp.AddBuildVariant("bv1", "bv1", "", override1, []string{"Unabhaengigkeitserklaerungen"})
+	pp.BuildVariants[0].Tasks[0].Distros = []string{"test-distro-one"}
+
+	pp.AddBuildVariant("bv2", "bv2", "", override2, []string{"Unabhaengigkeitserklaerungen"})
+	pp.BuildVariants[1].Tasks[0].Distros = []string{"test-distro-one"}
+
+	pp.AddTask("Unabhaengigkeitserklaerungen", nil)
+
+	return pp
 }
 
 func TestBuildBreakSubscriptions(t *testing.T) {
@@ -624,7 +602,7 @@ func TestCreateVersionFromConfigSuite(t *testing.T) {
 }
 
 func (s *CreateVersionFromConfigSuite) SetupTest() {
-	s.NoError(db.ClearCollections(model.VersionCollection, build.Collection, task.Collection, distro.Collection))
+	s.NoError(db.ClearCollections(model.VersionCollection, model.ParserProjectCollection, build.Collection, task.Collection, distro.Collection))
 	s.ref = &model.ProjectRef{
 		Repo:       "evergreen",
 		Owner:      "evergreen-ci",
@@ -664,9 +642,14 @@ tasks:
 - name: task2
 `
 	p := &model.Project{}
-	err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
+	pp, err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
 	s.NoError(err)
-	v, err := CreateVersionFromConfig(context.Background(), s.ref, p, VersionMetadata{Revision: *s.rev, SourceVersion: s.sourceVersion}, false, nil)
+	projectInfo := &ProjectInfo{
+		Ref:                 s.ref,
+		IntermediateProject: pp,
+		Project:             p,
+	}
+	v, err := CreateVersionFromConfig(context.Background(), projectInfo, VersionMetadata{Revision: *s.rev, SourceVersion: s.sourceVersion}, false, nil)
 	s.NoError(err)
 	s.Require().NotNil(v)
 
@@ -698,9 +681,14 @@ tasks:
 - name: task2
 `
 	p := &model.Project{}
-	err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
+	pp, err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
 	s.NoError(err)
-	v, err := CreateVersionFromConfig(context.Background(), s.ref, p, VersionMetadata{Revision: *s.rev}, false, nil)
+	projectInfo := &ProjectInfo{
+		Ref:                 s.ref,
+		IntermediateProject: pp,
+		Project:             p,
+	}
+	v, err := CreateVersionFromConfig(context.Background(), projectInfo, VersionMetadata{Revision: *s.rev}, false, nil)
 	s.NoError(err)
 	s.Require().NotNil(v)
 
@@ -731,13 +719,18 @@ tasks:
 - name: task2
 `
 	p := &model.Project{}
-	err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
+	pp, err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
 	s.NoError(err)
 	vErrs := VersionErrors{
 		Errors:   []string{"err1"},
 		Warnings: []string{"warn1", "warn2"},
 	}
-	v, err := CreateVersionFromConfig(context.Background(), s.ref, p, VersionMetadata{Revision: *s.rev}, false, &vErrs)
+	projectInfo := &ProjectInfo{
+		Ref:                 s.ref,
+		IntermediateProject: pp,
+		Project:             p,
+	}
+	v, err := CreateVersionFromConfig(context.Background(), projectInfo, VersionMetadata{Revision: *s.rev}, false, &vErrs)
 	s.NoError(err)
 	s.Require().NotNil(v)
 
@@ -761,16 +754,21 @@ tasks:
 - name: task2
 `
 	p := &model.Project{}
-	err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
+	pp, err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
 	s.NoError(err)
-
+	s.NotNil(pp)
 	//force a duplicate key error with the version
 	v := &model.Version{
 		Id: makeVersionId(s.ref.String(), s.rev.Revision),
 	}
 	s.NoError(v.Insert())
 
-	v, err = CreateVersionFromConfig(context.Background(), s.ref, p, VersionMetadata{Revision: *s.rev, SourceVersion: s.sourceVersion}, false, nil)
+	projectInfo := &ProjectInfo{
+		Ref:                 s.ref,
+		IntermediateProject: pp,
+		Project:             p,
+	}
+	v, err = CreateVersionFromConfig(context.Background(), projectInfo, VersionMetadata{Revision: *s.rev, SourceVersion: s.sourceVersion}, false, nil)
 	s.Error(err)
 
 	tasks, err := task.Find(task.ByVersion(v.Id))
