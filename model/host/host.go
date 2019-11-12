@@ -248,12 +248,15 @@ type HostModifyOptions struct {
 
 type SpawnHostUsage struct {
 	TotalHosts            int `bson:"total_hosts"`
+	TotalStoppedHosts     int `bson:"total_stopped_hosts"`
 	TotalUnexpirableHosts int `bson:"total_unexpirable_hosts"`
 	NumUsersWithHosts     int `bson:"num_users_with_hosts"`
 
-	TotalVolumes        int `bson:"total_volumes"`
-	TotalVolumeSize     int `bson:"total_volume_size"`
-	NumUsersWithVolumes int `bson:"num_users_with_volumes"`
+	TotalVolumes              int      `bson:"total_volumes"`
+	TotalVolumeSize           int      `bson:"total_volume_size"`
+	NumUsersWithVolumes       int      `bson:"num_users_with_volumes"`
+	InstanceTypes             []string `bson:"instance_types"`
+	AverageComputeCostPerHour float64  `bson:"average_compute_cost_per_hour"`
 }
 
 const (
@@ -1792,28 +1795,31 @@ func AggregateSpawnhostData() (*SpawnHostUsage, error) {
 	res := []SpawnHostUsage{}
 	pipeline := []bson.M{
 		{"$match": bson.M{
-			StartedByKey: bson.M{"$exists": true, "$ne": ""},
-			StatusKey:    bson.M{"$in": evergreen.UpHostStatus},
+			UserHostKey: bson.M{"$eq": true},
+			StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
 		}},
 		{"$group": bson.M{
-			"_id":         nil,
-			"hosts":       bson.M{"$sum": 1},
-			"unexpirable": bson.M{"$sum": bson.M{"$cond": []interface{}{"$" + NoExpirationKey, 1, 0}}},
-			"users":       bson.M{"$addToSet": "$" + StartedByKey},
+			"_id":            nil,
+			"hosts":          bson.M{"$sum": 1},
+			"stopped":        bson.M{"$sum": bson.M{"$cond": []interface{}{bson.M{"$eq": []string{"$" + StatusKey, evergreen.HostStopped}}, 1, 0}}},
+			"unexpirable":    bson.M{"$sum": bson.M{"$cond": []interface{}{"$" + NoExpirationKey, 1, 0}}},
+			"users":          bson.M{"$addToSet": "$" + StartedByKey},
+			"instance_types": bson.M{"$addToSet": "$" + InstanceTypeKey},
+			"cost":           bson.M{"$avg": "$" + ComputeCostPerHourKey},
 		}},
 		{"$project": bson.M{
-			"_id":                     "0",
-			"total_hosts":             "$hosts",
-			"total_unexpirable_hosts": "$unexpirable",
-			"num_users_with_hosts":    bson.M{"$size": "$users"},
+			"_id":                           "0",
+			"total_hosts":                   "$hosts",
+			"total_stopped_hosts":           "$stopped",
+			"total_unexpirable_hosts":       "$unexpirable",
+			"num_users_with_hosts":          bson.M{"$size": "$users"},
+			"instance_types":                "$instance_types",
+			"average_compute_cost_per_hour": "$cost",
 		}},
 	}
 
 	if err := db.Aggregate(Collection, pipeline, &res); err != nil {
 		return nil, errors.Wrap(err, "error aggregating hosts")
-	}
-	if len(res) == 0 {
-		return nil, errors.New("no host results found")
 	}
 
 	pipeline = []bson.M{
@@ -1834,7 +1840,7 @@ func AggregateSpawnhostData() (*SpawnHostUsage, error) {
 		return nil, errors.Wrap(err, "error aggregating volumes")
 	}
 	if len(res) == 0 {
-		return nil, errors.New("no volume results found")
+		return nil, errors.New("no host/volume results found")
 	}
 	return &res[0], nil
 }
