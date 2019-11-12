@@ -16,14 +16,17 @@ import (
 )
 
 type TaskPlannerOptions struct {
-	ID               string
-	IsSecondaryQueue bool
-	StartedAt        time.Time
+	ID                   string
+	IsSecondaryQueue     bool
+	IncludesDependencies bool
+	StartedAt            time.Time
 }
 
 type TaskPlanner func(*distro.Distro, []task.Task, TaskPlannerOptions) ([]task.Task, error)
 
 func PrioritizeTasks(d *distro.Distro, tasks []task.Task, opts TaskPlannerOptions) ([]task.Task, error) {
+	opts.IncludesDependenciese = d.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies
+
 	switch d.PlannerSettings.Version {
 	case evergreen.PlannerVersionTunable:
 		return runTunablePlanner(d, tasks, opts)
@@ -41,8 +44,7 @@ func runTunablePlanner(d *distro.Distro, tasks []task.Task, opts TaskPlannerOpti
 	}
 
 	plan := PrepareTasksForPlanning(d, tasks).Export()
-
-	info := GetDistroQueueInfo(d.Id, plan, d.MaxDurationPerHost())
+	info := GetDistroQueueInfo(d.Id, plan, d.MaxDurationPerHost(), opts)
 	info.AliasQueue = opts.IsSecondaryQueue
 	info.PlanCreatedAt = opts.StartedAt
 
@@ -67,6 +69,7 @@ func runLegacyPlanner(d *distro.Distro, tasks []task.Task, opts TaskPlannerOptio
 		TaskPrioritizer: &CmpBasedTaskPrioritizer{
 			runtimeID: opts.ID,
 		},
+		opts:      opts,
 		runtimeID: opts.ID,
 		startedAt: opts.StartedAt,
 	}
@@ -97,6 +100,7 @@ const (
 type distroScheduler struct {
 	startedAt time.Time
 	runtimeID string
+	opts      TaskPlannerOptions
 	TaskPrioritizer
 }
 
@@ -114,7 +118,7 @@ func (s *distroScheduler) scheduleDistro(distroID string, runnableTasks []task.T
 
 	}
 
-	distroQueueInfo := GetDistroQueueInfo(distroID, prioritizedTasks, maxThreshold)
+	distroQueueInfo := GetDistroQueueInfo(distroID, prioritizedTasks, maxThreshold, s.opts)
 	distroQueueInfo.AliasQueue = isSecondaryQueue
 	distroQueueInfo.PlanCreatedAt = s.startedAt
 
@@ -135,11 +139,15 @@ func (s *distroScheduler) scheduleDistro(distroID string, runnableTasks []task.T
 }
 
 // Returns the distroQueueInfo for the given set of tasks having set the task.ExpectedDuration for each task.
-func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold time.Duration) model.DistroQueueInfo {
+func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold time.Duration, opts TaskPlannerOptions) model.DistroQueueInfo {
 	var distroExpectedDuration time.Duration
 	var distroCountOverThreshold int
 	var isAliasQueue bool
 	taskGroupInfosMap := make(map[string]model.TaskGroupInfo)
+	depCache := make(map[string]task.Task, len(tasks))
+	for _, t := range tasks {
+		depCache[t.Id] = t
+	}
 
 	for i, task := range tasks {
 		group := task.TaskGroup
@@ -149,8 +157,14 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 		}
 
 		duration := task.FetchExpectedDuration().Average
-		task.ExpectedDuration = duration
-		distroExpectedDuration += duration
+
+		if !opts.IncludesDependencies {
+			task.ExpectedDuration = duration
+			distroExpectedDuration += duration
+		} else if depsMet, _ := task.DependenciesMet(depCache); depsMet {
+			task.ExpectedDuration = duration
+			distroExpectedDuration += duration
+		}
 
 		if task.DistroId != distroID {
 			isAliasQueue = true
@@ -158,8 +172,13 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 
 		var taskGroupInfo model.TaskGroupInfo
 		if info, exists := taskGroupInfosMap[name]; exists {
-			info.Count++
-			info.ExpectedDuration += duration
+			if !opts.IncludesDependencies {
+				info.Count++
+				info.ExpectedDuration += duration
+			} else if depsMet, _ := task.DependenciesMet(depCache); depsMet {
+				info.Count++
+				info.ExpectedDuration += duration
+			}
 			taskGroupInfo = info
 		} else {
 			taskGroupInfo = model.TaskGroupInfo{
@@ -169,10 +188,17 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 				ExpectedDuration: duration,
 			}
 		}
+
 		if duration >= maxDurationThreshold {
-			taskGroupInfo.CountOverThreshold++
-			taskGroupInfo.DurationOverThreshold += duration
-			distroCountOverThreshold++
+			if !opts.IncludesDependencies {
+				taskGroupInfo.CountOverThreshold++
+				taskGroupInfo.DurationOverThreshold += duration
+				distroCountOverThreshold++
+			} else if depsMet, _ := task.DependenciesMet(depCache); depsMet {
+				taskGroupInfo.CountOverThreshold++
+				taskGroupInfo.DurationOverThreshold += duration
+				distroCountOverThreshold++
+			}
 		}
 		taskGroupInfosMap[name] = taskGroupInfo
 		tasks[i] = task
