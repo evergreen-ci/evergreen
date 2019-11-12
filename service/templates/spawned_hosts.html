@@ -59,6 +59,9 @@ Evergreen - My Hosts
             <span class="label success" style="margin-right: 5px">
               [[(hosts | filter:{'status' : 'running'}).length]] Running
             </span>
+            <span class="label block-status-started" style="margin-right: 5px">
+              [[(hosts | filter:{'status' : 'stopped'}).length]] Stopped
+            </span>
             <span class="label failed">
               [[(hosts | filter:{'status' : 'terminated'}).length]] Terminated
             </span>
