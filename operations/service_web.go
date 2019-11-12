@@ -208,10 +208,13 @@ func getAdminService(ctx context.Context, env evergreen.Environment, settings *e
 	remoteAbort := rest.NewManagementService(remotePool).App()
 	remoteAbort.SetPrefix("/amboy/remote/pool")
 
+	groupAbort := rest.NewManagementGroupService(env.RemoteQueueGroup()).App()
+	groupAbort.SetPrefix("/amboy/group/pool")
+
 	localReporting := rest.NewReportingService(reporting.NewQueueReporter(env.LocalQueue())).App()
 	localReporting.SetPrefix("/amboy/local/reporting")
 
-	apps = append(apps, localAbort, remoteAbort, localReporting)
+	apps = append(apps, localAbort, remoteAbort, groupAbort, localReporting)
 	if evergreen.EnableAmboyRemoteReporting {
 		remoteReporter, err := reporting.MakeDBQueueState(ctx, reporting.DBQueueReporterOptions{
 			Name:    settings.Amboy.Name,
@@ -224,6 +227,19 @@ func getAdminService(ctx context.Context, env evergreen.Environment, settings *e
 		remoteReporting := rest.NewReportingService(remoteReporter).App()
 		remoteReporting.SetPrefix("/amboy/remote/reporting")
 		apps = append(apps, remoteReporting)
+
+		groupReporter, err := reporting.MakeDBQueueState(ctx, reporting.DBQueueReporterOptions{
+			Name:     settings.Amboy.Name,
+			Options:  opts,
+			ByGroups: true,
+		}, env.Client())
+		if err != nil {
+			return nil, errors.Wrap(err, "problem building queue reporter")
+		}
+
+		groupReporting := rest.NewReportingService(groupReporter).App()
+		groupReporting.SetPrefix("/amboy/group/reporting")
+		apps = append(apps, groupReporting)
 	}
 
 	jpm := jrest.NewManagerService(env.JasperManager())
