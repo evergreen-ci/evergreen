@@ -273,20 +273,54 @@ func TestGetImageID(t *testing.T) {
 	}
 }
 
+func TestGetResolvedHostAllocatorSettings(t *testing.T) {
+	d0 := Distro{
+		Id: "distro0",
+		HostAllocatorSettings: HostAllocatorSettings{
+			Version:                "",
+			MinimumHosts:           4,
+			MaximumHosts:           10,
+			AcceptableHostIdleTime: 0,
+		},
+	}
+	config0 := evergreen.SchedulerConfig{
+		TaskFinder:                    "legacy",
+		HostAllocator:                 evergreen.HostAllocatorUtilization,
+		FreeHostFraction:              0.1,
+		CacheDurationSeconds:          60,
+		Planner:                       evergreen.PlannerVersionLegacy,
+		TaskOrdering:                  evergreen.TaskOrderingInterleave,
+		TargetTimeSeconds:             112358,
+		AcceptableHostIdleTimeSeconds: 123,
+		GroupVersions:                 false,
+		PatchFactor:                   50,
+		TimeInQueueFactor:             12,
+		ExpectedRuntimeFactor:         7,
+	}
+
+	settings0 := &evergreen.Settings{Scheduler: config0}
+
+	resolved0, err := d0.GetResolvedHostAllocatorSettings(settings0)
+	assert.NoError(t, err)
+	// Fallback to the SchedulerConfig.HostAllocator as HostAllocatorSettings.Version is an empty string.
+	assert.Equal(t, evergreen.HostAllocatorUtilization, resolved0.Version)
+	assert.Equal(t, 4, resolved0.MinimumHosts)
+	assert.Equal(t, 10, resolved0.MaximumHosts)
+	// Fallback to the SchedulerConfig.AcceptableHostIdleTimeSeconds as HostAllocatorSettings.AcceptableHostIdleTime is equal to 0.
+	assert.Equal(t, time.Duration(123)*time.Second, resolved0.AcceptableHostIdleTime)
+}
+
 func TestGetResolvedPlannerSettings(t *testing.T) {
 	d0 := Distro{
 		Id: "distro0",
 		PlannerSettings: PlannerSettings{
-			Version:                "",
-			MinimumHosts:           4,
-			MaximumHosts:           10,
-			TargetTime:             0,
-			AcceptableHostIdleTime: 0,
-			GroupVersions:          nil,
-			TaskOrdering:           "",
-			PatchFactor:            0,
-			TimeInQueueFactor:      0,
-			ExpectedRuntimeFactor:  0,
+			Version:               "",
+			TargetTime:            0,
+			GroupVersions:         nil,
+			TaskOrdering:          "",
+			PatchFactor:           0,
+			TimeInQueueFactor:     0,
+			ExpectedRuntimeFactor: 0,
 		},
 	}
 	config0 := evergreen.SchedulerConfig{
@@ -309,10 +343,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	resolved0, err := d0.GetResolvedPlannerSettings(settings0)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.PlannerVersionLegacy, resolved0.Version)
-	assert.Equal(t, 4, resolved0.MinimumHosts)
-	assert.Equal(t, 10, resolved0.MaximumHosts)
 	assert.Equal(t, time.Duration(112358)*time.Second, resolved0.TargetTime)
-	assert.Equal(t, time.Duration(132134)*time.Second, resolved0.AcceptableHostIdleTime)
 	// Fallback to the SchedulerConfig.GroupVersions as PlannerSettings.GroupVersions is nil.
 	assert.Equal(t, false, *resolved0.GroupVersions)
 	// Fallback to the SchedulerConfig.PatchFactor as PlannerSettings.PatchFactor is is equal to 0.
@@ -328,16 +359,13 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	d1 := Distro{
 		Id: "distro1",
 		PlannerSettings: PlannerSettings{
-			Version:                evergreen.PlannerVersionTunable,
-			MinimumHosts:           1,
-			MaximumHosts:           5,
-			TargetTime:             98765000000000,
-			AcceptableHostIdleTime: 56789000000000,
-			GroupVersions:          &pTrue,
-			TaskOrdering:           evergreen.TaskOrderingPatchFirst,
-			PatchFactor:            25,
-			TimeInQueueFactor:      0,
-			ExpectedRuntimeFactor:  0,
+			Version:               evergreen.PlannerVersionTunable,
+			TargetTime:            98765000000000,
+			GroupVersions:         &pTrue,
+			TaskOrdering:          evergreen.TaskOrderingPatchFirst,
+			PatchFactor:           25,
+			TimeInQueueFactor:     0,
+			ExpectedRuntimeFactor: 0,
 		},
 	}
 	config1 := evergreen.SchedulerConfig{
@@ -361,10 +389,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	resolved1, err := d1.GetResolvedPlannerSettings(settings1)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.PlannerVersionTunable, resolved1.Version)
-	assert.Equal(t, 1, resolved1.MinimumHosts)
-	assert.Equal(t, 5, resolved1.MaximumHosts)
 	assert.Equal(t, time.Duration(98765)*time.Second, resolved1.TargetTime)
-	assert.Equal(t, time.Duration(56789)*time.Second, resolved1.AcceptableHostIdleTime)
 	assert.Equal(t, true, *resolved1.GroupVersions)
 	assert.Equal(t, evergreen.TaskOrderingPatchFirst, resolved1.TaskOrdering)
 	assert.EqualValues(t, 25, resolved1.PatchFactor)
@@ -372,16 +397,13 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	assert.EqualValues(t, 0, resolved1.ExpectedRuntimeFactor)
 
 	ps := &PlannerSettings{
-		Version:                "",
-		MinimumHosts:           7,
-		MaximumHosts:           25,
-		TargetTime:             0,
-		AcceptableHostIdleTime: 0,
-		GroupVersions:          nil,
-		TaskOrdering:           "",
-		PatchFactor:            19,
-		TimeInQueueFactor:      0,
-		ExpectedRuntimeFactor:  0,
+		Version:               "",
+		TargetTime:            0,
+		GroupVersions:         nil,
+		TaskOrdering:          "",
+		PatchFactor:           19,
+		TimeInQueueFactor:     0,
+		ExpectedRuntimeFactor: 0,
 	}
 	d2 := Distro{
 		Id:              "distro2",
@@ -407,11 +429,9 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	require.NoError(t, err)
 	// d2.PlannerSetting.Version is an empty string -- fallback on the SchedulerConfig.PlannerVersion value
 	assert.Equal(t, evergreen.PlannerVersionLegacy, resolved2.Version)
-	assert.Equal(t, 7, resolved2.MinimumHosts)
-	assert.Equal(t, 25, resolved2.MaximumHosts)
-	// d2.PlannerSetting.TargetTime and d2.PlannerSetting.AcceptableHostIdleTime are 0 -- fallback on the equivalent SchedulerConfig field vlaues
+
+	// d2.PlannerSetting.TargetTime is 0 -- fallback on the equivalent SchedulerConfig field value
 	assert.Equal(t, time.Duration(12345)*time.Second, resolved2.TargetTime)
-	assert.Equal(t, time.Duration(67890)*time.Second, resolved2.AcceptableHostIdleTime)
 	// d2.PlannerSetting.GroupVersions is nil -- fallback on the SchedulerConfig.PlannerVersion.GroupVersions value
 	assert.Equal(t, false, *resolved2.GroupVersions)
 	// d2.PlannerSetting.TaskOrdering is an empty string -- fallback on the SchedulerConfig.TaskOrdering value
@@ -419,13 +439,4 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	assert.EqualValues(t, 19, resolved2.PatchFactor)
 	assert.EqualValues(t, 0, resolved2.TimeInQueueFactor)
 	assert.EqualValues(t, 0, resolved2.ExpectedRuntimeFactor)
-
-	d2.PlannerSettings = *ps
-	d2.PlannerSettings.Version = ""
-	d2.PlannerSettings.MaximumHosts = -1
-	settings2.Scheduler.Planner = ""
-	_, err = d2.GetResolvedPlannerSettings(settings2)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "cannot resolve PlannerSettings for distro 'distro2'")
-	assert.Contains(t, err.Error(), "-1 is not a valid PlannerSettings.MaximumHosts")
 }

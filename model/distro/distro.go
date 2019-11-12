@@ -15,26 +15,28 @@ import (
 )
 
 type Distro struct {
-	Id                string                  `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
-	Aliases           []string                `bson:"aliases,omitempty" json:"aliases,omitempty" mapstructure:"aliases,omitempty"`
-	Arch              string                  `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
-	WorkDir           string                  `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
-	Provider          string                  `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
-	ProviderSettings  *map[string]interface{} `bson:"settings" json:"settings,omitempty" mapstructure:"settings,omitempty"`
-	SetupAsSudo       bool                    `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`
-	Setup             string                  `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
-	Teardown          string                  `bson:"teardown,omitempty" json:"teardown,omitempty" mapstructure:"teardown,omitempty"`
-	User              string                  `bson:"user,omitempty" json:"user,omitempty" mapstructure:"user,omitempty"`
-	BootstrapSettings BootstrapSettings       `bson:"bootstrap_settings" json:"bootstrap_settings" mapstructure:"bootstrap_settings"`
-	CloneMethod       string                  `bson:"clone_method" json:"clone_method,omitempty" mapstructure:"clone_method,omitempty"`
-	SSHKey            string                  `bson:"ssh_key,omitempty" json:"ssh_key,omitempty" mapstructure:"ssh_key,omitempty"`
-	SSHOptions        []string                `bson:"ssh_options,omitempty" json:"ssh_options,omitempty" mapstructure:"ssh_options,omitempty"`
-	SpawnAllowed      bool                    `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`
-	Expansions        []Expansion             `bson:"expansions,omitempty" json:"expansions,omitempty" mapstructure:"expansions,omitempty"`
-	Disabled          bool                    `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
-	ContainerPool     string                  `bson:"container_pool,omitempty" json:"container_pool,omitempty" mapstructure:"container_pool,omitempty"`
-	PlannerSettings   PlannerSettings         `bson:"planner_settings" json:"planner_settings,omitempty" mapstructure:"planner_settings,omitempty"`
-	FinderSettings    FinderSettings          `bson:"finder_settings" json:"finder_settings,omitempty" mapstructure:"finder_settings,omitempty"`
+	Id                    string                  `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
+	Aliases               []string                `bson:"aliases,omitempty" json:"aliases,omitempty" mapstructure:"aliases,omitempty"`
+	Arch                  string                  `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
+	WorkDir               string                  `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
+	Provider              string                  `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
+	ProviderSettings      *map[string]interface{} `bson:"settings" json:"settings,omitempty" mapstructure:"settings,omitempty"`
+	SetupAsSudo           bool                    `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`
+	Setup                 string                  `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
+	Teardown              string                  `bson:"teardown,omitempty" json:"teardown,omitempty" mapstructure:"teardown,omitempty"`
+	User                  string                  `bson:"user,omitempty" json:"user,omitempty" mapstructure:"user,omitempty"`
+	BootstrapSettings     BootstrapSettings       `bson:"bootstrap_settings" json:"bootstrap_settings" mapstructure:"bootstrap_settings"`
+	CloneMethod           string                  `bson:"clone_method" json:"clone_method,omitempty" mapstructure:"clone_method,omitempty"`
+	SSHKey                string                  `bson:"ssh_key,omitempty" json:"ssh_key,omitempty" mapstructure:"ssh_key,omitempty"`
+	SSHOptions            []string                `bson:"ssh_options,omitempty" json:"ssh_options,omitempty" mapstructure:"ssh_options,omitempty"`
+	SpawnAllowed          bool                    `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`
+	Expansions            []Expansion             `bson:"expansions,omitempty" json:"expansions,omitempty" mapstructure:"expansions,omitempty"`
+	Disabled              bool                    `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
+	ContainerPool         string                  `bson:"container_pool,omitempty" json:"container_pool,omitempty" mapstructure:"container_pool,omitempty"`
+	FinderSettings        FinderSettings          `bson:"finder_settings" json:"finder_settings" mapstructure:"finder_settings"`
+	PlannerSettings       PlannerSettings         `bson:"planner_settings" json:"planner_settings" mapstructure:"planner_settings"`
+	DispatcherSettings    DispatcherSettings      `bson:"dispatcher_settings" json:"dispatcher_settings" mapstructure:"dispatcher_settings"`
+	HostAllocatorSettings HostAllocatorSettings   `bson:"host_allocator_settings" json:"host_allocator_settings" mapstructure:"host_allocator_settings"`
 
 	// PoolSize is the maximum allowed number of hosts running this distro
 	PoolSize int `bson:"pool_size,omitempty" json:"pool_size,omitempty" mapstructure:"pool_size,omitempty" yaml:"poolsize"`
@@ -111,6 +113,17 @@ func (d *Distro) ValidateBootstrapSettings() error {
 	return catcher.Resolve()
 }
 
+type HostAllocatorSettings struct {
+	Version                string        `bson:"version" json:"version" mapstructure:"version"`
+	MinimumHosts           int           `bson:"minimum_hosts" json:"minimum_hosts" mapstructure:"minimum_hosts"`
+	MaximumHosts           int           `bson:"maximum_hosts" json:"maximum_hosts" mapstructure:"maximum_hosts"`
+	AcceptableHostIdleTime time.Duration `bson:"acceptable_host_idle_time" json:"acceptable_host_idle_time" mapstructure:"acceptable_host_idle_time"`
+}
+
+type FinderSettings struct {
+	Version string `bson:"version" json:"version" mapstructure:"version"`
+}
+
 type PlannerSettings struct {
 	Version                string        `bson:"version" json:"version" mapstructure:"version"`
 	MinimumHosts           int           `bson:"minimum_hosts" json:"minimum_hosts,omitempty" mapstructure:"minimum_hosts,omitempty"`
@@ -126,7 +139,7 @@ type PlannerSettings struct {
 	maxDurationPerHost time.Duration
 }
 
-type FinderSettings struct {
+type DispatcherSettings struct {
 	Version string `bson:"version" json:"version" mapstructure:"version"`
 }
 
@@ -403,9 +416,8 @@ func (d *Distro) GetPoolSize() int {
 
 		return len(hosts)
 	default:
-		return d.PoolSize + d.PlannerSettings.MaximumHosts
+		return d.PoolSize
 	}
-
 }
 
 // ValidateContainerPoolDistros ensures that container pools have valid distros
@@ -456,23 +468,74 @@ func (distros DistroGroup) GetDistroIds() []string {
 	return ids
 }
 
+// GetResolvedHostAllocatorSettings combines the distro's HostAllocatorSettings fields with the
+// SchedulerConfig defaults to resolve and validate a canonical set of HostAllocatorSettings' field values.
+func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAllocatorSettings, error) {
+	config := s.Scheduler
+	has := d.HostAllocatorSettings
+	resolved := HostAllocatorSettings{
+		Version:                has.Version,
+		MinimumHosts:           has.MinimumHosts,
+		MaximumHosts:           has.MaximumHosts,
+		AcceptableHostIdleTime: has.AcceptableHostIdleTime,
+	}
+
+	catcher := grip.NewBasicCatcher()
+	catcher.Add(config.ValidateAndDefault())
+
+	if resolved.Version == "" {
+		resolved.Version = config.HostAllocator
+	}
+	if !util.StringSliceContains(evergreen.ValidHostAllocators, resolved.Version) {
+		catcher.Errorf("'%s' is not a valid HostAllocationSettings.Version", resolved.Version)
+	}
+	if resolved.AcceptableHostIdleTime == 0 {
+		resolved.AcceptableHostIdleTime = time.Duration(config.AcceptableHostIdleTimeSeconds) * time.Second
+	}
+	if catcher.HasErrors() {
+		return HostAllocatorSettings{}, errors.Wrapf(catcher.Resolve(), "cannot resolve HostAllocatorSettings for distro '%s'", d.Id)
+	}
+
+	d.HostAllocatorSettings = resolved
+	return resolved, nil
+}
+
+// GetResolvedFinderSettings combines the distro's FinderSettings fields with the
+// SchedulerConfig defaults to resolve and validate a canonical set of FinderSettings' field values.
+func (d *Distro) GetResolvedFinderSettings(s *evergreen.Settings) (FinderSettings, error) {
+	config := s.Scheduler
+	fs := d.FinderSettings
+	resolved := FinderSettings{
+		Version: fs.Version,
+	}
+
+	catcher := grip.NewBasicCatcher()
+	catcher.Add(config.ValidateAndDefault())
+	if catcher.HasErrors() {
+		return FinderSettings{}, errors.Wrapf(catcher.Resolve(), "cannot resolve FinderSettings for distro '%s'", d.Id)
+	}
+	if resolved.Version == "" {
+		resolved.Version = config.TaskFinder
+	}
+
+	d.FinderSettings = resolved
+	return resolved, nil
+}
+
 // GetResolvedPlannerSettings combines the distro's PlannerSettings fields with the
 // SchedulerConfig defaults to resolve and validate a canonical set of PlannerSettings' field values.
 func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSettings, error) {
 	config := s.Scheduler
 	ps := d.PlannerSettings
 	resolved := PlannerSettings{
-		Version:                ps.Version,
-		MinimumHosts:           ps.MinimumHosts,
-		MaximumHosts:           ps.MaximumHosts,
-		TargetTime:             ps.TargetTime,
-		AcceptableHostIdleTime: ps.AcceptableHostIdleTime,
-		GroupVersions:          ps.GroupVersions,
-		TaskOrdering:           ps.TaskOrdering,
-		PatchFactor:            ps.PatchFactor,
-		TimeInQueueFactor:      ps.TimeInQueueFactor,
-		ExpectedRuntimeFactor:  ps.ExpectedRuntimeFactor,
-		maxDurationPerHost:     evergreen.MaxDurationPerDistroHost,
+		Version:               ps.Version,
+		TargetTime:            ps.TargetTime,
+		GroupVersions:         ps.GroupVersions,
+		TaskOrdering:          ps.TaskOrdering,
+		PatchFactor:           ps.PatchFactor,
+		TimeInQueueFactor:     ps.TimeInQueueFactor,
+		ExpectedRuntimeFactor: ps.ExpectedRuntimeFactor,
+		maxDurationPerHost:    evergreen.MaxDurationPerDistroHost,
 	}
 
 	catcher := grip.NewBasicCatcher()
@@ -485,29 +548,15 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 		resolved.maxDurationPerHost = evergreen.MaxDurationPerDistroHostWithContainers
 	}
 
-	// Validate the resolved PlannerSettings.Version
 	if resolved.Version == "" {
 		resolved.Version = config.Planner
 	}
-
-	if !util.StringSliceContains(evergreen.ValidPlannerVersions, resolved.Version) {
+	if !util.StringSliceContains(evergreen.ValidTaskPlannerVersions, resolved.Version) {
 		catcher.Errorf("'%s' is not a valid PlannerSettings.Version", resolved.Version)
 	}
-	// Validate the PlannerSettings.MinimumHosts and PlannerSettings.MaximumHosts
-	if resolved.MinimumHosts < 0 {
-		catcher.Errorf("%d is not a valid PlannerSettings.MinimumHosts", resolved.MinimumHosts)
-	}
-	if resolved.MaximumHosts < 0 {
-		catcher.Errorf("%d is not a valid PlannerSettings.MaximumHosts", resolved.MaximumHosts)
-	}
-	// Resolve PlannerSettings.TargetTime and PlannerSettings.AcceptableHostIdleTime
 	if resolved.TargetTime == 0 {
 		resolved.TargetTime = time.Duration(config.TargetTimeSeconds) * time.Second
 	}
-	if resolved.AcceptableHostIdleTime == 0 {
-		resolved.AcceptableHostIdleTime = time.Duration(config.AcceptableHostIdleTimeSeconds) * time.Second
-	}
-	// Resolve whether to PlannerSettings.GroupVersions, or otherwise
 	if resolved.GroupVersions == nil {
 		resolved.GroupVersions = &config.GroupVersions
 	}
@@ -520,17 +569,12 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	if resolved.ExpectedRuntimeFactor == 0 {
 		resolved.ExpectedRuntimeFactor = config.ExpectedRuntimeFactor
 	}
-
-	// Resolve and validate the PlannerSettings.TaskOrdering
 	if resolved.TaskOrdering == "" {
 		resolved.TaskOrdering = config.TaskOrdering
 	}
-
 	if !util.StringSliceContains(evergreen.ValidTaskOrderings, resolved.TaskOrdering) {
 		catcher.Errorf("'%s' is not a valid PlannerSettings.TaskOrdering", resolved.TaskOrdering)
 	}
-
-	// Any validation errors?
 	if catcher.HasErrors() {
 		return PlannerSettings{}, errors.Wrapf(catcher.Resolve(), "cannot resolve PlannerSettings for distro '%s'", d.Id)
 	}

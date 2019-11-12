@@ -61,7 +61,9 @@ func newDistroTaskDAGDispatchService(taskQueue TaskQueue, ttl time.Duration) (*b
 	return d, nil
 }
 
-func (d *basicCachedDAGDispatcherImpl) Type() string { return evergreen.PlannerVersionTunable }
+func (d *basicCachedDAGDispatcherImpl) Type() string {
+	return evergreen.DispatcherVersionRevisedWithDependencies
+}
 
 func (d *basicCachedDAGDispatcherImpl) CreatedAt() time.Time {
 	d.mu.RLock()

@@ -372,8 +372,8 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		}
 
 		var queueItem *model.TaskQueueItem
-		switch d.PlannerSettings.Version {
-		case evergreen.PlannerVersionTunable, evergreen.PlannerVersionRevised:
+		switch d.DispatcherSettings.Version {
+		case evergreen.DispatcherVersionRevised, evergreen.DispatcherVersionRevisedWithDependencies:
 			queueItem, err = dispatcher.RefreshFindNextTask(d.Id, spec)
 			if err != nil {
 				return nil, false, errors.Wrap(err, "problem getting next task")

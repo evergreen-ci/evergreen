@@ -159,8 +159,12 @@ const (
 	RoutePaginatorNextPageHeaderKey = "Link"
 
 	PlannerVersionLegacy  = "legacy"
-	PlannerVersionRevised = "revised"
+	PlannerVersionRevised = "revised" // TO DO - remove this ASAP
 	PlannerVersionTunable = "tunable"
+
+	DispatcherVersionLegacy                  = "legacy"
+	DispatcherVersionRevised                 = "revised"
+	DispatcherVersionRevisedWithDependencies = "revised-with-dependencies"
 
 	// maximum turnaround we want to maintain for all hosts for a given distro
 	MaxDurationPerDistroHost               = 30 * time.Minute
@@ -423,24 +427,29 @@ var (
 	}
 
 	// Set of valid PlannerSettings.Version strings that can be user set via the API
-	ValidPlannerVersions = []string{
+	ValidTaskPlannerVersions = []string{
 		PlannerVersionLegacy,
-		PlannerVersionRevised,
+		PlannerVersionRevised, // TO DO - remove this ASAP
 		PlannerVersionTunable,
 	}
 
+	// Set of valid DispatchSettings.Version strings that can be user set via the API
+	ValidTaskDispatcherVersions = []string{
+		DispatcherVersionLegacy,
+		DispatcherVersionRevised,
+		DispatcherVersionRevisedWithDependencies,
+	}
+
 	// Set of valid FinderSettings.Version strings that can be user set via the API
-	ValidFinderVersions = []string{
+	ValidTaskFinderVersions = []string{
 		FinderVersionLegacy,
-		FinderVersionAlternate,
 		FinderVersionParallel,
 		FinderVersionPipeline,
+		FinderVersionAlternate,
 	}
 
 	// Set of valid Host Allocators types
 	ValidHostAllocators = []string{
-		HostAllocatorDuration,
-		HostAllocatorDeficit,
 		HostAllocatorUtilization,
 	}
 

@@ -55,7 +55,7 @@ func (dc *DBDistroConnector) UpdateDistro(old, new *distro.Distro) error {
 
 	}
 
-	if old.PlannerSettings.Version == evergreen.PlannerVersionTunable && new.PlannerSettings.Version != evergreen.PlannerVersionTunable {
+	if old.DispatcherSettings.Version == evergreen.DispatcherVersionRevisedWithDependencies && new.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies {
 		if err := model.RemoveTaskQueues(new.Id); err != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,

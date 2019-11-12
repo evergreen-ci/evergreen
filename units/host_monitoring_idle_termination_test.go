@@ -338,13 +338,13 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 
 		distro1 := distro.Distro{
 			Id: "distro1",
-			PlannerSettings: distro.PlannerSettings{
+			HostAllocatorSettings: distro.HostAllocatorSettings{
 				MinimumHosts: 2,
 			},
 		}
 		distro2 := distro.Distro{
 			Id: "distro2",
-			PlannerSettings: distro.PlannerSettings{
+			HostAllocatorSettings: distro.HostAllocatorSettings{
 				MinimumHosts: 1,
 			},
 		}
@@ -412,7 +412,7 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 
 ////////////////////////////////////////////////////////////////////////
 //
-// Testing with non-zero values for Distro.PlannerSettings.MinimumHosts
+// Testing with non-zero values for Distro.HostAllocatorSettings.MinimumHosts
 //
 
 func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
@@ -426,7 +426,7 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 		// insert a reference distro.Distro
 		distro1 := distro.Distro{
 			Id: "distro1",
-			PlannerSettings: distro.PlannerSettings{
+			HostAllocatorSettings: distro.HostAllocatorSettings{
 				MinimumHosts: 2,
 			},
 		}
@@ -461,10 +461,10 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 		// clear the distro and hosts collections; add an index on the host collection
 		testFlaggingIdleHostsSetupTest(t)
 
-		// insert a reference distro.Distro (which has a non-zero value for its PlannerSettings.MinimumHosts field)
+		// insert a reference distro.Distro (which has a non-zero value for its HostAllocatorSettings.MinimumHosts field)
 		distro1 := distro.Distro{
 			Id: "distro1",
-			PlannerSettings: distro.PlannerSettings{
+			HostAllocatorSettings: distro.HostAllocatorSettings{
 				MinimumHosts: 2,
 			},
 		}
@@ -514,14 +514,14 @@ func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 
 	distro1 := distro.Distro{
 		Id: "distro1",
-		PlannerSettings: distro.PlannerSettings{
+		HostAllocatorSettings: distro.HostAllocatorSettings{
 			MinimumHosts: 3,
 		},
 	}
 
 	distro2 := distro.Distro{
 		Id: "distro2",
-		PlannerSettings: distro.PlannerSettings{
+		HostAllocatorSettings: distro.HostAllocatorSettings{
 			MinimumHosts: 0,
 		},
 	}
@@ -639,9 +639,9 @@ func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 	assert.True(info1.IdleHosts[0].CreationTime.Before(info1.IdleHosts[1].CreationTime))
 	assert.True(info1.IdleHosts[1].CreationTime.Before(info1.IdleHosts[2].CreationTime))
 
-	// Confirm the associated distro's PlannerSettings.MinimumHosts value
-	ps := distrosMap[info1.DistroID].PlannerSettings
-	minimumHosts := ps.MinimumHosts
+	// Confirm the associated distro's HostAllocatorSettings.MinimumHosts value
+	settings := distrosMap[info1.DistroID].HostAllocatorSettings
+	minimumHosts := settings.MinimumHosts
 	assert.Equal(3, minimumHosts)
 	// Confirm the maxHostsToTerminate
 	maxHostsToTerminate := info1.RunningHostsCount - minimumHosts
@@ -672,9 +672,9 @@ func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 	assert.Equal("host5", info2.IdleHosts[0].Id)
 	assert.Equal("host3", info2.IdleHosts[1].Id)
 	assert.True(info2.IdleHosts[0].CreationTime.Before(info2.IdleHosts[1].CreationTime))
-	// Confirm the associated distro's PlannerSettings.MinimumHosts value
-	ps = distrosMap[info2.DistroID].PlannerSettings
-	minimumHosts = ps.MinimumHosts
+	// Confirm the associated distro's HostAllocatorSettings.MinimumHosts value
+	settings = distrosMap[info2.DistroID].HostAllocatorSettings
+	minimumHosts = settings.MinimumHosts
 	assert.Equal(0, minimumHosts)
 	// Confirm the maxHostsToTerminate
 	maxHostsToTerminate = info2.RunningHostsCount - minimumHosts

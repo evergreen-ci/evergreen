@@ -115,13 +115,13 @@ func getStartTaskEndpoint(t *testing.T, as *APIServer, hostId, taskId string) *h
 	return w
 }
 
-func TestAssignNextAvailableTaskWithPlannerSettingVersionLegacy(t *testing.T) {
+func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	Convey("with a task queue and a host", t, func() {
-		settings := distro.PlannerSettings{
-			Version: evergreen.PlannerVersionLegacy,
+		settings := distro.DispatcherSettings{
+			Version: evergreen.DispatcherVersionLegacy,
 		}
 		if err := db.ClearCollections(distro.Collection, host.Collection, task.Collection, model.TaskQueuesCollection, model.ProjectRefCollection); err != nil {
 			t.Fatalf("clearing db: %v", err)
@@ -130,6 +130,12 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionLegacy(t *testing.T) {
 			t.Fatalf("adding test indexes %v", err)
 		}
 		distroID := "testDistro"
+		d := distro.Distro{
+			Id:                 distroID,
+			DispatcherSettings: settings,
+		}
+		So(d.Insert(), ShouldBeNil)
+
 		taskGroupInfo := model.TaskGroupInfo{
 			Name:  "",
 			Count: 2,
@@ -151,8 +157,8 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionLegacy(t *testing.T) {
 		theHostWhoCanBoastTheMostRoast := host.Host{
 			Id: "h1",
 			Distro: distro.Distro{
-				Id:              distroID,
-				PlannerSettings: settings,
+				Id:                 distroID,
+				DispatcherSettings: settings,
 			},
 			Secret: hostSecret,
 			Status: evergreen.HostRunning,
@@ -307,13 +313,13 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionLegacy(t *testing.T) {
 	})
 }
 
-func TestAssignNextAvailableTaskWithPlannerSettingVersionTunable(t *testing.T) {
+func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	Convey("with a task queue and a host", t, func() {
-		settings := distro.PlannerSettings{
-			Version: evergreen.PlannerVersionTunable,
+		settings := distro.DispatcherSettings{
+			Version: evergreen.DispatcherVersionRevisedWithDependencies,
 		}
 		if err := db.ClearCollections(distro.Collection, host.Collection, task.Collection, model.TaskQueuesCollection, model.ProjectRefCollection); err != nil {
 			t.Fatalf("clearing db: %v", err)
@@ -323,10 +329,9 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionTunable(t *testing.T) {
 		}
 
 		d := distro.Distro{
-			Id:              "testDistro",
-			PlannerSettings: settings,
+			Id:                 "testDistro",
+			DispatcherSettings: settings,
 		}
-
 		So(d.Insert(), ShouldBeNil)
 
 		taskGroupInfo := model.TaskGroupInfo{
@@ -350,8 +355,8 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionTunable(t *testing.T) {
 		theHostWhoCanBoastTheMostRoast := host.Host{
 			Id: "h1",
 			Distro: distro.Distro{
-				Id:              d.Id,
-				PlannerSettings: settings,
+				Id:                 d.Id,
+				DispatcherSettings: settings,
 			},
 			Secret: hostSecret,
 			Status: evergreen.HostRunning,
