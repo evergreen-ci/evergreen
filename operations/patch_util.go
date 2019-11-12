@@ -446,10 +446,11 @@ func getDefaultDescription() string {
 	if err != nil {
 		grip.Debug("Couldn't add branch to patch description.")
 	}
+	branch = strings.TrimSpace(branch)
 	if desc == "" {
 		return branch
 	}
-	if branch == "" {
+	if branch == "" || strings.HasPrefix(desc, branch) {
 		return desc
 	}
 	return fmt.Sprintf("%s: %s", branch, desc)
