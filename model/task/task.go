@@ -443,6 +443,10 @@ func (t *Task) DependencySatisfiable(depCache map[string]Task) (bool, error) {
 		if depTask.Blocked() {
 			return false, nil
 		}
+
+		if !t.satisfiesDependency(&depTask) && depTask.IsFinished() {
+			return false, nil
+		}
 	}
 
 	return true, nil
