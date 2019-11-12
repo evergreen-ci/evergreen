@@ -440,11 +440,11 @@ func gitBranch() (string, error) {
 func getDefaultDescription() string {
 	desc, err := gitLastCommitMessage()
 	if err != nil {
-		grip.Debug(message.WrapError(err, "Couldn't create patch description using commit messages"))
+		grip.Debug("Couldn't create patch description using commit messages: " + err.Error())
 	}
 	branch, err := gitBranch()
 	if err != nil {
-		grip.Debug(message.WrapError(err, "Couldn't add branch to patch description"))
+		grip.Debug("Couldn't add branch to patch description: " + err.Error())
 	}
 	branch = strings.TrimSpace(branch)
 	if desc == "" {
