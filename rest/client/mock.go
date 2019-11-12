@@ -418,6 +418,10 @@ func (*Mock) DeleteVolume(context.Context, string) error {
 	return errors.New("(*Mock) DeleteVolume is not implemented")
 }
 
+func (*Mock) GetVolumesByUser(context.Context) ([]model.APIVolume, error) {
+	return nil, errors.New("(*Mock) GetVolumesByUser is not implemented")
+}
+
 // GetHosts will return an array with a single mock host
 func (c *Mock) GetHosts(ctx context.Context, f func([]*model.APIHost) error) error {
 	hosts := make([]*model.APIHost, 1)

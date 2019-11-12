@@ -300,6 +300,17 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function(
         baseSvc.postResource(resource, [], config, callbacks);
     };
 
+    service.updateHostTags = function(action, hostId, tagsToAdd, tagsToDelete, data, callbacks) {
+        var config = {
+            data: data
+        };
+        config.data['action'] = action;
+        config.data['host_id'] = hostId;
+        config.data['tags_to_add'] = tagsToAdd;
+        config.data['tags_to_delete'] = tagsToDelete;
+        baseSvc.postResource(resource, [], config, callbacks);
+    }
+
     service.updateInstanceType = function(action, hostId, newInstanceType, data, callbacks) {
         var config = {
             data: data

@@ -611,7 +611,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		Resource:      projCtx.ProjectRef.Identifier,
 		ResourceType:  "project",
 		Permission:    evergreen.PermissionTasks,
-		RequiredLevel: int(evergreen.TasksAdmin),
+		RequiredLevel: evergreen.TasksAdmin.Value,
 	}
 	taskAdmin, err := authUser.HasPermission(requiredPermission)
 	if err != nil {

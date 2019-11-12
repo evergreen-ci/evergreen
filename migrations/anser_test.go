@@ -11,6 +11,7 @@ import (
 	evgmock "github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/anser"
+	"github.com/mongodb/anser/client"
 	"github.com/mongodb/anser/mock"
 	"github.com/stretchr/testify/assert"
 )
@@ -36,6 +37,7 @@ func TestAnserBasicPlaceholder(t *testing.T) {
 		Target:   2,
 		Workers:  2,
 		Session:  session,
+		Client:   client.WrapClient(evgEnv.Client()),
 	}
 
 	app, err := opts.Application(mock.NewEnvironment(), evgEnv)

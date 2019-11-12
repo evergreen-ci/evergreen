@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/cloud"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -23,6 +25,11 @@ func TestHostPostHandler(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(distro.Collection, host.Collection))
+
+	config, err := evergreen.GetConfig()
+	assert.NoError(err)
+	config.SpawnHostsPerUser = cloud.DefaultMaxSpawnHostsPerUser
+	assert.NoError(config.Set())
 
 	d := &distro.Distro{
 		Id:           "distro",
@@ -155,6 +162,35 @@ func TestHostStartHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Status())
 }
 
+func TestCreateVolumeHandler(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(host.VolumesCollection))
+	h := &createVolumeHandler{
+		sc:       &data.MockConnector{},
+		env:      evergreen.GetEnvironment(),
+		provider: evergreen.ProviderNameMock,
+	}
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
+	v := host.Volume{ID: "volume1", Size: 15, CreatedBy: "user"}
+	assert.NoError(t, v.Insert())
+	v = host.Volume{ID: "volume2", Size: 35, CreatedBy: "user"}
+	assert.NoError(t, v.Insert())
+	v = host.Volume{ID: "not-relevant", Size: 400, CreatedBy: "someone-else"}
+	assert.NoError(t, v.Insert())
+
+	h.env.Settings().Providers.AWS.MaxVolumeSizePerUser = 100
+	v = host.Volume{ID: "volume-new", Size: 80, CreatedBy: "user"}
+	h.volume = &v
+
+	resp := h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusBadRequest, resp.Status())
+
+	v.Size = 50
+	resp = h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+}
+
 func TestAttachVolumeHandler(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(host.VolumesCollection))
 	h := &attachVolumeHandler{
@@ -246,4 +282,65 @@ func TestDetachVolumeHandler(t *testing.T) {
 	resp := h.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusNotFound, resp.Status())
+}
+
+func TestGetVolumesHandler(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection))
+	h := &getVolumesHandler{
+		sc: &data.MockConnector{},
+	}
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
+
+	h1 := host.Host{
+		Id:        "has-a-volume",
+		StartedBy: "user",
+		Volumes: []host.VolumeAttachment{
+			{VolumeID: "volume1", DeviceName: "/dev/sdf4"},
+		},
+	}
+	assert.NoError(t, h1.Insert())
+	v1 := host.Volume{
+		ID:               "volume1",
+		CreatedBy:        "user",
+		Type:             evergreen.DefaultEBSType,
+		Size:             64,
+		AvailabilityZone: evergreen.DefaultEBSAvailabilityZone,
+	}
+	v2 := host.Volume{
+		ID:               "volume2",
+		CreatedBy:        "user",
+		Type:             evergreen.DefaultEBSType,
+		Size:             36,
+		AvailabilityZone: evergreen.DefaultEBSAvailabilityZone,
+	}
+	v3 := host.Volume{
+		ID:        "volume3",
+		CreatedBy: "different-user",
+	}
+	assert.NoError(t, v1.Insert())
+	assert.NoError(t, v2.Insert())
+	assert.NoError(t, v3.Insert())
+
+	resp := h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+
+	volumes, ok := resp.Data().([]model.APIVolume)
+	assert.True(t, ok)
+	require.Len(t, volumes, 2)
+
+	for _, v := range volumes {
+		assert.Equal(t, "user", model.FromAPIString(v.CreatedBy))
+		assert.Equal(t, evergreen.DefaultEBSType, model.FromAPIString(v.Type))
+		assert.Equal(t, evergreen.DefaultEBSAvailabilityZone, model.FromAPIString(v.AvailabilityZone))
+		if model.FromAPIString(v.ID) == "volume1" {
+			assert.Equal(t, h1.Id, model.FromAPIString(v.HostID))
+			assert.Equal(t, h1.Volumes[0].DeviceName, model.FromAPIString(v.DeviceName))
+			assert.Equal(t, v.Size, 64)
+		} else {
+			assert.Empty(t, model.FromAPIString(v.HostID))
+			assert.Empty(t, model.FromAPIString(v.DeviceName))
+			assert.Equal(t, v.Size, 36)
+		}
+	}
 }

@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	MaxSpawnHostsPerUser                = 3
+	DefaultMaxSpawnHostsPerUser         = 3
 	DefaultSpawnHostExpiration          = 24 * time.Hour
 	SpawnHostNoExpirationDuration       = 7 * 24 * time.Hour
 	MaxSpawnHostExpirationDurationHours = 24 * time.Hour * 14
@@ -63,9 +63,8 @@ func (so *SpawnOptions) validate() error {
 		return errors.Wrap(err, "Error occurred finding user's current hosts")
 	}
 
-	if len(activeSpawnedHosts) >= MaxSpawnHostsPerUser {
-		return errors.Errorf("User is already running the max allowed number of spawn hosts (%d of %d)",
-			len(activeSpawnedHosts), MaxSpawnHostsPerUser)
+	if err := checkSpawnHostLimitExceeded(len(activeSpawnedHosts)); err != nil {
+		return err
 	}
 
 	// validate public key
@@ -91,6 +90,19 @@ func (so *SpawnOptions) validate() error {
 		return errors.New("Invalid spawn options: key contains invalid base64 string")
 	}
 
+	return nil
+}
+
+func checkSpawnHostLimitExceeded(numCurrentHosts int) error {
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return errors.Wrapf(err, "Error occurred getting evergreen settings")
+	}
+
+	if numCurrentHosts >= settings.SpawnHostsPerUser {
+		return errors.Errorf("User is already running the max allowed number of spawn hosts (%d of %d)",
+			numCurrentHosts, settings.SpawnHostsPerUser)
+	}
 	return nil
 }
 
