@@ -25,7 +25,7 @@ type TaskPlannerOptions struct {
 type TaskPlanner func(*distro.Distro, []task.Task, TaskPlannerOptions) ([]task.Task, error)
 
 func PrioritizeTasks(d *distro.Distro, tasks []task.Task, opts TaskPlannerOptions) ([]task.Task, error) {
-	opts.IncludesDependenciese = d.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies
+	opts.IncludesDependencies = d.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies
 
 	switch d.PlannerSettings.Version {
 	case evergreen.PlannerVersionTunable:
