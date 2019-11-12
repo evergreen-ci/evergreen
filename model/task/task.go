@@ -444,8 +444,13 @@ func (t *Task) DependencySatisfiable(depCache map[string]Task) (bool, error) {
 			return false, nil
 		}
 
-		if !t.satisfiesDependency(&depTask) && depTask.IsFinished() {
-			return false, nil
+		if !t.satisfiesDependency(&depTask) {
+			if depTask.IsFinished() {
+				return false, nil
+			}
+			if !depTask.IsDispatchable() {
+				return false, nil
+			}
 		}
 	}
 
