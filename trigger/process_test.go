@@ -257,7 +257,9 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, build.Collection, model.VersionCollection, evergreen.ConfigCollection,
-		model.ProjectRefCollection, model.RepositoriesCollection, model.ProjectAliasCollection))
+		model.ProjectRefCollection, model.RepositoriesCollection, model.ProjectAliasCollection, model.ParserProjectCollection))
+	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.ParserProjectCollection})
+
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config, "TestProjectTriggerIntegration")
 	assert.NoError(config.Set())
@@ -324,7 +326,6 @@ func TestProjectTriggerIntegration(t *testing.T) {
 		assert.Equal(upstreamTask.Id, v.TriggerID)
 		assert.Equal("task", v.TriggerType)
 		assert.Equal(e.ID, v.TriggerEvent)
-		assert.NotEmpty(v.Config)
 	}
 	builds, err := build.Find(build.ByVersion(downstreamVersions[0].Id))
 	assert.NoError(err)

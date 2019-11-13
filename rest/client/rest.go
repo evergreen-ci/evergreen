@@ -217,9 +217,6 @@ func (c *communicatorImpl) CreateVolume(ctx context.Context, volume *host.Volume
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		fmt.Printf("The status: %d\n", resp.StatusCode)
-		respErr, _ := ioutil.ReadAll(resp.Body)
-		fmt.Printf("%v", string(respErr))
 		errMsg := gimlet.ErrorResponse{}
 		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
 			return nil, errors.Wrap(err, "problem creating volume and parsing error message")

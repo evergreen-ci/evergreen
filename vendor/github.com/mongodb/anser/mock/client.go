@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/birch"
 	"github.com/mongodb/anser/client"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -131,12 +132,7 @@ func (c *Cursor) Next(ctx context.Context) bool {
 	if c.ShouldIter {
 		c.NextCallsCount++
 
-		if c.NextCallsCount > c.MaxNextCalls {
-			return false
-		}
-
-		return true
-
+		return c.NextCallsCount < c.MaxNextCalls
 	}
 
 	return false
@@ -151,7 +147,8 @@ type SingleResult struct {
 
 func NewSingleResult() *SingleResult {
 	doc := birch.NewDocument()
-	val, _ := doc.MarshalBSON()
+	val, err := doc.MarshalBSON()
+	grip.Warning(err)
 
 	return &SingleResult{DecodeBytesValue: val}
 }

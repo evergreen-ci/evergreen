@@ -340,6 +340,15 @@ vendor-clean:
 	rm -rf vendor/gopkg.in/mgo.v2/testdb/
 	rm -rf vendor/gopkg.in/mgo.v2/testserver/
 	rm -rf vendor/gopkg.in/mgo.v2/txn/
+	rm -rf vendor/github.com/mongodb/anser/vendor/gopkg.in/mgo.v2
+	rm -rf vendor/github.com/mongodb/anser/vendor/github.com/stretchr/testify
+	rm -rf vendor/github.com/mongodb/anser/vendor/go.mongodb.org/mongo-driver
+	rm -rf vendor/github.com/mongodb/anser/vendor/github.com/mongodb/grip
+	rm -rf vendor/github.com/mongodb/anser/vendor/github.com/pkg/errors
+	rm -rf vendor/github.com/mongodb/anser/vendor/github.com/tychoish/tarjan
+	rm -rf vendor/github.com/mongodb/anser/vendor/github.com/mongodb/ftdc
+	rm -rf vendor/github.com/mongodb/anser/vendor/github.com/mongodb/amboy
+	rm -rf vendor/github.com/mongodb/anser/vendor/github.com/evergreen-ci/birch
 	find vendor/ -name "*.gif" -o -name "*.jpg" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" | xargs rm -rf
 phony += vendor-clean
 $(buildDir)/run-glide:cmd/revendor/run-glide.go
@@ -447,14 +456,14 @@ mongodb/.get-mongodb:
 	mkdir -p mongodb
 	cd mongodb && curl "$(MONGODB_URL)" -o mongodb.tgz && $(DECOMPRESS) mongodb.tgz && chmod +x ./mongodb-*/bin/*
 	cd mongodb && mv ./mongodb-*/bin/* . && rm -rf db_files && rm -rf db_logs && mkdir -p db_files && mkdir -p db_logs
-get-mongodb: mongodb/.get-mongodb
+get-mongodb:mongodb/.get-mongodb
 	@touch $<
-start-mongod: mongodb/.get-mongodb
+start-mongod:mongodb/.get-mongodb
 	./mongodb/mongod --dbpath ./mongodb/db_files --port 27017 --replSet evg --smallfiles --oplogSize 10
 	@echo "waiting for mongod to start up"
-init-rs: mongodb/.get-mongodb
+init-rs:mongodb/.get-mongodb
 	./mongodb/mongo --eval 'rs.initiate()'
-check-mongod: mongodb/.get-mongodb
+check-mongod:mongodb/.get-mongodb
 	./mongodb/mongo --nodb --eval "assert.soon(function(x){try{var d = new Mongo(\"localhost:27017\"); return true}catch(e){return false}}, \"timed out connecting\")"
 	@echo "mongod is up"
 # end mongodb targets

@@ -11,23 +11,7 @@ import (
 )
 
 type Environment struct {
-	Queue                   amboy.Queue
-	Session                 *Session
-	Client                  *Client
-	SetupClient             client.Client
-	SetupSession            db.Session
-	Network                 *DependencyNetwork
-	MetaNS                  model.Namespace
-	LegacyMigrationRegistry map[string]db.MigrationOperation
-	LegacyProcessorRegistry map[string]db.Processor
-	MigrationRegistry       map[string]client.MigrationOperation
-	ProcessorRegistry       map[string]client.Processor
-
 	ShouldPreferClient bool
-	PreferedSetup      interface{}
-
-	DependencyManagers map[string]*DependencyManager
-	Closers            []func() error
 	IsSetup            bool
 	ReturnNilClient    bool
 	SetupError         error
@@ -35,6 +19,21 @@ type Environment struct {
 	ClientError        error
 	QueueError         error
 	NetworkError       error
+
+	PreferedSetup           interface{}
+	Session                 *Session
+	Client                  *Client
+	Network                 *DependencyNetwork
+	Queue                   amboy.Queue
+	SetupClient             client.Client
+	SetupSession            db.Session
+	Closers                 []func() error
+	DependencyManagers      map[string]*DependencyManager
+	LegacyMigrationRegistry map[string]db.MigrationOperation
+	LegacyProcessorRegistry map[string]db.Processor
+	MigrationRegistry       map[string]client.MigrationOperation
+	ProcessorRegistry       map[string]client.Processor
+	MetaNS                  model.Namespace
 }
 
 func NewEnvironment() *Environment {

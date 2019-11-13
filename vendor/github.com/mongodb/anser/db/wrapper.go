@@ -208,7 +208,7 @@ func (c *collectionWrapper) UpdateId(q interface{}, u interface{}) error {
 		return errors.WithStack(err)
 	}
 
-	query := bson.D{{"_id", q}}
+	query := bson.D{{Key: "_id", Value: q}}
 
 	var res *mongo.UpdateResult
 	if hasDollarKey(doc) {

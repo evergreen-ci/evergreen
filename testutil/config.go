@@ -183,8 +183,9 @@ func MockConfig() *evergreen.Settings {
 				DefaultSecurityGroup: "test_security_group",
 
 				// Legacy
-				EC2Secret: "aws_secret",
-				EC2Key:    "aws",
+				EC2Secret:            "aws_secret",
+				EC2Key:               "aws",
+				MaxVolumeSizePerUser: 200,
 			},
 			Docker: evergreen.DockerConfig{
 				APIVersion: "docker_version",
@@ -262,5 +263,7 @@ func MockConfig() *evergreen.Settings {
 			CacheTemplates: true,
 			CsrfKey:        "12345678901234567890123456789012",
 		},
+		SpawnHostsPerUser:       5,
+		UnexpirableHostsPerUser: 2,
 	}
 }

@@ -14,7 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 type TestModelData struct {
@@ -30,7 +30,7 @@ func CleanupAPITestData() error {
 		task.Collection, build.Collection, host.Collection,
 		distro.Collection, model.VersionCollection, patch.Collection,
 		model.PushlogCollection, model.ProjectVarsCollection, model.TaskQueuesCollection,
-		manifest.Collection, model.ProjectRefCollection}
+		manifest.Collection, model.ProjectRefCollection, model.ParserProjectCollection}
 
 	if err := db.ClearCollections(testCollections...); err != nil {
 		return errors.Wrap(err, "Failed to clear test data collection")
@@ -54,7 +54,8 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 
 	// Unmarshal the project configuration into a struct
 	project := &model.Project{}
-	if err = model.LoadProjectInto(projectConfig, "test", project); err != nil {
+	pp, err := model.LoadProjectInto(projectConfig, "test", project)
+	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal project config")
 	}
 
@@ -65,10 +66,11 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 			Name: taskDisplayName,
 		}},
 	}
-
 	project.BuildVariants = append(project.BuildVariants, bv)
-	// Marshall the project YAML for storage
-	projectYamlBytes, err := yaml.Marshal(project)
+
+	// Marshal the parser project YAML for storage
+	pp.AddBuildVariant(variant, "", "", nil, []string{taskDisplayName})
+	projectYamlBytes, err := yaml.Marshal(pp)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal project config")
 	}
@@ -173,8 +175,12 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		BuildIds: []string{taskOne.BuildId},
 		Config:   string(projectYamlBytes),
 	}
+	pp.Id = taskOne.Version
 	if err = v.Insert(); err != nil {
-		return nil, errors.Wrap(err, "failed to insert version: ")
+		return nil, errors.Wrap(err, "failed to insert version")
+	}
+	if err = pp.Insert(); err != nil {
+		return nil, errors.Wrap(err, "failed to insert parser project")
 	}
 
 	// Insert the build that contains the tasks

@@ -43,6 +43,14 @@ func TestCheckDistro(t *testing.T) {
 				FinderSettings: distro.FinderSettings{
 					Version: evergreen.FinderVersionLegacy,
 				},
+				DispatcherSettings: distro.DispatcherSettings{
+					Version: evergreen.DispatcherVersionLegacy,
+				},
+				HostAllocatorSettings: distro.HostAllocatorSettings{
+					Version:      evergreen.HostAllocatorUtilization,
+					MinimumHosts: 10,
+					MaximumHosts: 20,
+				},
 			}
 			verrs, err := CheckDistro(ctx, d, conf, true)
 			So(err, ShouldBeNil)
@@ -93,6 +101,14 @@ func TestCheckDistro(t *testing.T) {
 				CloneMethod: distro.CloneMethodLegacySSH,
 				FinderSettings: distro.FinderSettings{
 					Version: evergreen.FinderVersionLegacy,
+				},
+				DispatcherSettings: distro.DispatcherSettings{
+					Version: evergreen.DispatcherVersionRevised,
+				},
+				HostAllocatorSettings: distro.HostAllocatorSettings{
+					Version:      evergreen.HostAllocatorUtilization,
+					MinimumHosts: 10,
+					MaximumHosts: 20,
 				},
 			}
 			verrs, err := CheckDistro(ctx, d, conf, false)
@@ -428,6 +444,8 @@ func TestEnsureValidBootstrapSettings(t *testing.T) {
 			}
 		}
 	}
+
+	assert.Nil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{BootstrapSettings: distro.BootstrapSettings{Method: distro.BootstrapMethodNone}}, &evergreen.Settings{}))
 
 	for testName, testCase := range map[string]func(t *testing.T, s distro.BootstrapSettings){
 		"InvalidBootstrapMethod": func(t *testing.T, s distro.BootstrapSettings) {

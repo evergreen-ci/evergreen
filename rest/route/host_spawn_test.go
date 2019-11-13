@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/cloud"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -24,6 +26,11 @@ func TestHostPostHandler(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(distro.Collection, host.Collection))
+
+	config, err := evergreen.GetConfig()
+	assert.NoError(err)
+	config.SpawnHostsPerUser = cloud.DefaultMaxSpawnHostsPerUser
+	assert.NoError(config.Set())
 
 	d := &distro.Distro{
 		Id:           "distro",
@@ -162,6 +169,35 @@ func TestHostStartHandler(t *testing.T) {
 
 	subscriptionConnector := h.sc.(*data.MockConnector).MockSubscriptionConnector
 	assert.Len(t, subscriptionConnector.MockSubscriptions, 1)
+}
+
+func TestCreateVolumeHandler(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(host.VolumesCollection))
+	h := &createVolumeHandler{
+		sc:       &data.MockConnector{},
+		env:      evergreen.GetEnvironment(),
+		provider: evergreen.ProviderNameMock,
+	}
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
+	v := host.Volume{ID: "volume1", Size: 15, CreatedBy: "user"}
+	assert.NoError(t, v.Insert())
+	v = host.Volume{ID: "volume2", Size: 35, CreatedBy: "user"}
+	assert.NoError(t, v.Insert())
+	v = host.Volume{ID: "not-relevant", Size: 400, CreatedBy: "someone-else"}
+	assert.NoError(t, v.Insert())
+
+	h.env.Settings().Providers.AWS.MaxVolumeSizePerUser = 100
+	v = host.Volume{ID: "volume-new", Size: 80, CreatedBy: "user"}
+	h.volume = &v
+
+	resp := h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusBadRequest, resp.Status())
+
+	v.Size = 50
+	resp = h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
 }
 
 func TestAttachVolumeHandler(t *testing.T) {

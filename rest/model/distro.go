@@ -77,6 +77,55 @@ func (s *APIPlannerSettings) ToService() (interface{}, error) {
 
 ////////////////////////////////////////////////////////////////////////////////
 //
+// APIHostAllocatorSettings is the model to be returned by the API whenever distro.HostAllocatorSettings are fetched
+
+type APIHostAllocatorSettings struct {
+	Version                APIString   `json:"version"`
+	MinimumHosts           int         `json:"minimum_hosts"`
+	MaximumHosts           int         `json:"maximum_hosts"`
+	AcceptableHostIdleTime APIDuration `json:"acceptable_host_idle_time"`
+}
+
+// BuildFromService converts from service level distro.HostAllocatorSettings to an APIHostAllocatorSettings
+func (s *APIHostAllocatorSettings) BuildFromService(h interface{}) error {
+	var settings distro.HostAllocatorSettings
+	switch v := h.(type) {
+	case distro.HostAllocatorSettings:
+		settings = v
+	case *distro.HostAllocatorSettings:
+		settings = *v
+	default:
+		return errors.Errorf("%T is not a supported expansion type", h)
+	}
+
+	if settings.Version == "" {
+		s.Version = ToAPIString(evergreen.HostAllocatorUtilization)
+	} else {
+		s.Version = ToAPIString(settings.Version)
+	}
+	s.MinimumHosts = settings.MinimumHosts
+	s.MaximumHosts = settings.MaximumHosts
+	s.AcceptableHostIdleTime = NewAPIDuration(settings.AcceptableHostIdleTime)
+
+	return nil
+}
+
+// ToService returns a service layer distro.HostAllocatorSettings using the data from APIHostAllocatorSettings
+func (s *APIHostAllocatorSettings) ToService() (interface{}, error) {
+	settings := distro.HostAllocatorSettings{}
+	settings.Version = FromAPIString(s.Version)
+	if settings.Version == "" {
+		settings.Version = evergreen.HostAllocatorUtilization
+	}
+	settings.MinimumHosts = s.MinimumHosts
+	settings.MaximumHosts = s.MaximumHosts
+	settings.AcceptableHostIdleTime = s.AcceptableHostIdleTime.ToDuration()
+
+	return interface{}(settings), nil
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
 // APIFinderSettings is the model to be returned by the API whenever distro.FinderSettings are fetched
 
 type APIFinderSettings struct {
@@ -110,6 +159,46 @@ func (s *APIFinderSettings) ToService() (interface{}, error) {
 	settings.Version = FromAPIString(s.Version)
 	if settings.Version == "" {
 		settings.Version = evergreen.FinderVersionLegacy
+	}
+
+	return interface{}(settings), nil
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// APIDispatcherSettings is the model to be returned by the API whenever distro.DispatcherSettings are fetched
+
+type APIDispatcherSettings struct {
+	Version APIString `json:"version"`
+}
+
+// BuildFromService converts from service level distro.DispatcherSettings to an APIDispatcherSettings
+func (s *APIDispatcherSettings) BuildFromService(h interface{}) error {
+	var settings distro.DispatcherSettings
+	switch v := h.(type) {
+	case distro.DispatcherSettings:
+		settings = v
+	case *distro.DispatcherSettings:
+		settings = *v
+	default:
+		return errors.Errorf("%T is not a supported expansion type", h)
+	}
+
+	if settings.Version == "" {
+		s.Version = ToAPIString(evergreen.DispatcherVersionRevised)
+	} else {
+		s.Version = ToAPIString(settings.Version)
+	}
+
+	return nil
+}
+
+// ToService returns a service layer distro.DispatcherSettings using the data from APIDispatcherSettings
+func (s *APIDispatcherSettings) ToService() (interface{}, error) {
+	settings := distro.DispatcherSettings{}
+	settings.Version = FromAPIString(s.Version)
+	if settings.Version == "" {
+		settings.Version = evergreen.DispatcherVersionRevised
 	}
 
 	return interface{}(settings), nil
@@ -206,28 +295,30 @@ func (s *APIBootstrapSettings) ToService() (interface{}, error) {
 // APIDistro is the model to be returned by the API whenever distros are fetched
 
 type APIDistro struct {
-	Name              APIString              `json:"name"`
-	Aliases           []string               `json:"aliases"`
-	UserSpawnAllowed  bool                   `json:"user_spawn_allowed"`
-	Provider          APIString              `json:"provider"`
-	ProviderSettings  map[string]interface{} `json:"settings"`
-	ImageID           APIString              `json:"image_id"`
-	Arch              APIString              `json:"arch"`
-	WorkDir           APIString              `json:"work_dir"`
-	PoolSize          int                    `json:"pool_size"`
-	SetupAsSudo       bool                   `json:"setup_as_sudo"`
-	Setup             APIString              `json:"setup"`
-	Teardown          APIString              `json:"teardown"`
-	User              APIString              `json:"user"`
-	BootstrapSettings APIBootstrapSettings   `json:"bootstrap_settings"`
-	CloneMethod       APIString              `json:"clone_method"`
-	SSHKey            APIString              `json:"ssh_key"`
-	SSHOptions        []string               `json:"ssh_options"`
-	Expansions        []APIExpansion         `json:"expansions"`
-	Disabled          bool                   `json:"disabled"`
-	ContainerPool     APIString              `json:"container_pool"`
-	PlannerSettings   APIPlannerSettings     `json:"planner_settings"`
-	FinderSettings    APIFinderSettings      `json:"finder_settings"`
+	Name                  APIString                `json:"name"`
+	Aliases               []string                 `json:"aliases"`
+	UserSpawnAllowed      bool                     `json:"user_spawn_allowed"`
+	Provider              APIString                `json:"provider"`
+	ProviderSettings      map[string]interface{}   `json:"settings"`
+	ImageID               APIString                `json:"image_id"`
+	Arch                  APIString                `json:"arch"`
+	WorkDir               APIString                `json:"work_dir"`
+	PoolSize              int                      `json:"pool_size"`
+	SetupAsSudo           bool                     `json:"setup_as_sudo"`
+	Setup                 APIString                `json:"setup"`
+	Teardown              APIString                `json:"teardown"`
+	User                  APIString                `json:"user"`
+	BootstrapSettings     APIBootstrapSettings     `json:"bootstrap_settings"`
+	CloneMethod           APIString                `json:"clone_method"`
+	SSHKey                APIString                `json:"ssh_key"`
+	SSHOptions            []string                 `json:"ssh_options"`
+	Expansions            []APIExpansion           `json:"expansions"`
+	Disabled              bool                     `json:"disabled"`
+	ContainerPool         APIString                `json:"container_pool"`
+	FinderSettings        APIFinderSettings        `json:"finder_settings"`
+	PlannerSettings       APIPlannerSettings       `json:"planner_settings"`
+	DispatcherSettings    APIDispatcherSettings    `json:"dispatcher_settings"`
+	HostAllocatorSettings APIHostAllocatorSettings `json:"host_allocator_settings"`
 }
 
 // BuildFromService converts from service level distro.Distro to an APIDistro
@@ -287,16 +378,30 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 			apiDistro.Expansions = append(apiDistro.Expansions, expansion)
 		}
 	}
-	plannerSettings := APIPlannerSettings{}
-	if err := plannerSettings.BuildFromService(d.PlannerSettings); err != nil {
-		return errors.Wrap(err, "Error converting from distro.PlannerSettings to model.APIPlannerSettings")
-	}
-	apiDistro.PlannerSettings = plannerSettings
-	finderSettings := APIFinderSettings{}
-	if err := finderSettings.BuildFromService(d.FinderSettings); err != nil {
+	// FinderSetting
+	findSettings := APIFinderSettings{}
+	if err := findSettings.BuildFromService(d.FinderSettings); err != nil {
 		return errors.Wrap(err, "Error converting from distro.FinderSettings to model.APIFinderSettings")
 	}
-	apiDistro.FinderSettings = finderSettings
+	apiDistro.FinderSettings = findSettings
+	// PlannerSettings
+	planSettings := APIPlannerSettings{}
+	if err := planSettings.BuildFromService(d.PlannerSettings); err != nil {
+		return errors.Wrap(err, "Error converting from distro.PlannerSettings to model.APIPlannerSettings")
+	}
+	apiDistro.PlannerSettings = planSettings
+	// HostAllocatorSettings
+	allocatorSettings := APIHostAllocatorSettings{}
+	if err := allocatorSettings.BuildFromService(d.HostAllocatorSettings); err != nil {
+		return errors.Wrap(err, "Error converting from distro.HostAllocatorSettings to model.API.HostAllocatorSettings")
+	}
+	apiDistro.HostAllocatorSettings = allocatorSettings
+	// DispatcherSettings
+	dispatchSettings := APIDispatcherSettings{}
+	if err := dispatchSettings.BuildFromService(d.DispatcherSettings); err != nil {
+		return errors.Wrap(err, "Error converting from distro.HostAllocatorSettings to model.API.HostAllocatorSettings")
+	}
+	apiDistro.DispatcherSettings = dispatchSettings
 
 	return nil
 }
@@ -348,24 +453,46 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	}
 	d.Disabled = apiDistro.Disabled
 	d.ContainerPool = FromAPIString(apiDistro.ContainerPool)
-	i, err = apiDistro.PlannerSettings.ToService()
-	if err != nil {
-		return nil, errors.Wrap(err, "Error converting from model.APIPlannerSettings to distro.PlannerSetting")
-	}
-	plannerSettings, ok := i.(distro.PlannerSettings)
-	if !ok {
-		return nil, errors.Errorf("Unexpected type %T for distro.PlannerSettings", i)
-	}
-	d.PlannerSettings = plannerSettings
+	// FinderSettings
 	i, err = apiDistro.FinderSettings.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "Error converting from model.APIFinderSettings to distro.FinderSetting")
+		return nil, errors.Wrap(err, "Error converting from model.APIFinderSettings to distro.FinderSettings")
 	}
-	finderSettings, ok := i.(distro.FinderSettings)
+	findSettings, ok := i.(distro.FinderSettings)
 	if !ok {
 		return nil, errors.Errorf("Unexpected type %T for distro.FinderSettings", i)
 	}
-	d.FinderSettings = finderSettings
+	d.FinderSettings = findSettings
+	// PlannerSettings
+	i, err = apiDistro.PlannerSettings.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "Error converting from model.APIPlannerSettings to distro.PlannerSettings")
+	}
+	planSettings, ok := i.(distro.PlannerSettings)
+	if !ok {
+		return nil, errors.Errorf("Unexpected type %T for distro.PlannerSettings", i)
+	}
+	d.PlannerSettings = planSettings
+	// HostAllocatorSettings
+	i, err = apiDistro.HostAllocatorSettings.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "Error converting from model.APIHostAllocatorSettings to distro.HostAllocatorSettings")
+	}
+	allocatorSettings, ok := i.(distro.HostAllocatorSettings)
+	if !ok {
+		return nil, errors.Errorf("Unexpected type %T for distro.HostAllocatorSettings", i)
+	}
+	d.HostAllocatorSettings = allocatorSettings
+	// DispatcherSettings
+	i, err = apiDistro.DispatcherSettings.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "Error converting from model.APIDispatcherSettings to distro.DispatcherSettings")
+	}
+	dispatchSettings, ok := i.(distro.DispatcherSettings)
+	if !ok {
+		return nil, errors.Errorf("Unexpected type %T for distro.DispatcherSettings", i)
+	}
+	d.DispatcherSettings = dispatchSettings
 
 	return &d, nil
 }

@@ -181,17 +181,19 @@ func TestMonitor(t *testing.T) {
 			assert.EqualValues(t, 1, op.Failed)
 		})
 		t.Run("Wrapper", func(t *testing.T) {
+			m, ok := NewBasicMonitor(nil).(*basicMonitor)
+			require.True(t, ok)
 			t.Run("Logging", func(t *testing.T) {
-				resetMonitor(t, m)
 				nctx, ncancel := context.WithCancel(ctx)
 				defer ncancel()
 				wrapped := NewLoggingMonitor(nctx, 10*time.Millisecond, m)
 				assert.NotNil(t, wrapped)
 				assert.Implements(t, (*Monitor)(nil), wrapped)
 				time.Sleep(100 * time.Millisecond)
-			})
-			t.Run("FTDC", func(t *testing.T) {
 				resetMonitor(t, m)
+			})
+			resetMonitor(t, m)
+			t.Run("FTDC", func(t *testing.T) {
 				nctx, ncancel := context.WithCancel(ctx)
 				defer ncancel()
 				collector := ftdc.NewBaseCollector(10)
@@ -229,10 +231,16 @@ func TestMonitor(t *testing.T) {
 func resetMonitor(t *testing.T, in Monitor) {
 	switch m := in.(type) {
 	case *basicMonitor:
-		m.config = nil
+		// m.config = nil
+		m.currentLock.Lock()
+		defer m.currentLock.Unlock()
 		m.current = m.config.window()
-		m.inProg = map[int64]eventKey{}
 		require.Len(t, m.current, 0)
+
+		m.inProgLock.Lock()
+		defer m.inProgLock.Unlock()
+		m.inProg = map[int64]eventKey{}
+
 	case *ftdcCollector:
 		resetMonitor(t, m.Monitor)
 	case *loggingMonitor:

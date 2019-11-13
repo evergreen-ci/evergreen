@@ -2,7 +2,6 @@ package anser
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -51,7 +50,7 @@ func (s *MigrationHelperSuite) TearDownSuite() {
 
 func (s *MigrationHelperSuite) SetupTest() {
 	s.env = mock.NewEnvironment()
-	s.env.MetaNS = model.Namespace{"anserDB", "anserMeta"}
+	s.env.MetaNS = model.Namespace{DB: "anserDB", Collection: "anserMeta"}
 	s.env.Queue = s.queue
 	s.mh = NewMigrationHelper(s.env).(*migrationBase)
 
@@ -62,8 +61,6 @@ func (s *MigrationHelperSuite) TestEnvironmentIsConsistent() {
 	s.Equal(s.mh.Env(), s.env)
 	s.NotEqual(s.mh.Env(), globalEnv)
 }
-
-func printDebug(v interface{}) { fmt.Printf("%T: %+v\n", v, v) }
 
 func (s *MigrationHelperSuite) TestSaveMigrationEvent() {
 	s.env.SessionError = errors.New("session error")

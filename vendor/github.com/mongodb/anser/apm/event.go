@@ -35,9 +35,24 @@ func (e *eventWindow) Message() message.Composer {
 		"start_at": e.timestamp,
 		"message":  "apm-event",
 	}
-	for k, v := range e.data {
-		out[k.String()] = v
+
+	type output struct {
+		Operation string  `bson:"operation" json:"operation" yaml:"operation"`
+		Duration  float64 `bson:"duration_secs" json:"duration_secs" yaml:"duration_secs"`
+		Succeeded int64   `bson:"succeeded" json:"succeeded" yaml:"succeeded"`
+		Failed    int64   `bson:"failed" json:"failed" yaml:"failed"`
 	}
+	colls := make([]output, 0, len(e.data))
+	for k, v := range e.data {
+		colls = append(colls, output{
+			Operation: k.String(),
+			Duration:  v.Duration.Seconds(),
+			Succeeded: v.Succeeded,
+			Failed:    v.Failed,
+		})
+	}
+	out["collections"] = colls
+
 	return message.MakeFields(out)
 }
 

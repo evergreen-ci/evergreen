@@ -34,3 +34,24 @@ func (v *Volume) Remove() error {
 func FindVolumeByID(id string) (*Volume, error) {
 	return FindOneVolume(bson.M{VolumeIDKey: id})
 }
+
+type volumeSize struct {
+	TotalVolumeSize int `bson:"total"`
+}
+
+func FindTotalVolumeSizeByUser(user string) (int, error) {
+
+	pipeline := []bson.M{
+		{"$match": bson.M{
+			VolumeCreatedByKey: user,
+		}},
+		{"$group": bson.M{
+			"_id":   "123",
+			"total": bson.M{"$sum": "$" + VolumeSizeKey},
+		}},
+	}
+
+	out := []volumeSize{}
+	err := db.Aggregate(VolumesCollection, pipeline, &out)
+	return out[0].TotalVolumeSize, err
+}
