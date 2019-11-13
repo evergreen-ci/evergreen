@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
 
@@ -1008,6 +1009,86 @@ func (h *hostExtendExpirationHandler) Run(ctx context.Context) gimlet.Responder 
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// POST /rest/v2/hosts/{host_id}/run_command
+//
+type hostRunCommand struct {
+	sc  data.Connector
+	env evergreen.Environment
+
+	hostID  string
+	command string
+}
+
+func makeHostRunCommand(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+	return &hostRunCommand{
+		sc:  sc,
+		env: env,
+	}
+}
+
+func (h *hostRunCommand) Factory() gimlet.RouteHandler {
+	return &hostRunCommand{
+		sc:  h.sc,
+		env: h.env,
+	}
+}
+
+func (h *hostRunCommand) Parse(ctx context.Context, r *http.Request) error {
+	var err error
+	h.hostID, err = validateID(gimlet.GetVars(r)["host_id"])
+	if err != nil {
+		return errors.Wrap(err, "invalid host id")
+	}
+
+	hostCommand := model.APIHostCommand{}
+	if err = util.ReadJSONInto(util.NewRequestReader(r), &hostCommand); err != nil {
+		return errors.Wrap(err, "can't read host command from json")
+	}
+	h.command = hostCommand.Command
+
+	return nil
+}
+
+func (h *hostRunCommand) Run(ctx context.Context) gimlet.Responder {
+	host, err := host.FindOneId(h.hostID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't get host"))
+	}
+	if host == nil {
+		response := gimlet.MakeJSONErrorResponder(errors.Errorf("no host found for id '%s'", h.hostID))
+		_ = response.SetStatus(http.StatusNotFound)
+		return response
+	}
+
+	var output string
+	if host.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
+		opts := &options.Create{
+			Args: []string{"bash", "-l", "-c", h.command},
+		}
+		output, err = host.RunJasperProcess(ctx, h.env, opts)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't run script with Jasper"))
+		}
+	} else {
+		sshOptions, err := host.GetSSHOptions(h.env.Settings())
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't get ssh options"))
+		}
+		output, err = host.RunSSHShellScript(ctx, h.command, sshOptions)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't run script over ssh"))
+		}
+	}
+
+	response := struct {
+		Output string `json:"output"`
+	}{Output: output}
+
+	return gimlet.NewJSONResponse(response)
 }
 
 ////////////////////////////////////////////////////////////////////////
