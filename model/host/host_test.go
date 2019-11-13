@@ -267,7 +267,7 @@ func TestSetStopped(t *testing.T) {
 
 	require.NoError(t, h.Insert())
 
-	h.SetStopped("")
+	assert.NoError(t, h.SetStopped(""))
 	assert.Equal(t, evergreen.HostStopped, h.Status)
 	assert.Empty(t, h.Host)
 	assert.True(t, util.IsZeroTime(h.StartTime))
