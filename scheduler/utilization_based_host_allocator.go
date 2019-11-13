@@ -66,8 +66,8 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 		numNewHostsRequired += n
 	}
 
-	// Will at least distro.PlannerSettings.MinimumHosts be running once numNewHostsRequired are up and running?
-	minimumHostsThreshold := distro.PlannerSettings.MinimumHosts
+	// Will at least distro.HostAllocatorSettings.MinimumHosts be running once numNewHostsRequired are up and running?
+	minimumHostsThreshold := distro.HostAllocatorSettings.MinimumHosts
 	numExistingAndRequiredHosts := numExistingHosts + numNewHostsRequired
 	numAdditionalHostsToMeetMinimum := 0
 	if numExistingAndRequiredHosts < minimumHostsThreshold {

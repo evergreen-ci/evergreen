@@ -144,7 +144,7 @@ func (s *UtilizationAllocatorSuite) SetupSuite() {
 		Id:       s.distroName,
 		PoolSize: 50,
 		Provider: evergreen.ProviderNameEc2Auto,
-		PlannerSettings: distro.PlannerSettings{
+		HostAllocatorSettings: distro.HostAllocatorSettings{
 			MinimumHosts: 0,
 		},
 	}
@@ -155,7 +155,7 @@ func (s *UtilizationAllocatorSuite) SetupSuite() {
 func (s *UtilizationAllocatorSuite) SetupTest() {
 	s.ctx = context.Background()
 	s.NoError(db.ClearCollections(task.Collection, host.Collection, distro.Collection))
-	s.distro.PlannerSettings.MinimumHosts = 0
+	s.distro.HostAllocatorSettings.MinimumHosts = 0
 }
 
 func (s *UtilizationAllocatorSuite) TestCalcNewHostsNeeded() {
@@ -418,7 +418,7 @@ func (s *UtilizationAllocatorSuite) TestMinimumHostsThreshold() {
 	}
 
 	minimumHostsThreshold := 10
-	s.distro.PlannerSettings.MinimumHosts = minimumHostsThreshold
+	s.distro.HostAllocatorSettings.MinimumHosts = minimumHostsThreshold
 	hostAllocatorData := HostAllocatorData{
 		Distro:           s.distro,
 		ExistingHosts:    []host.Host{h1, h2},

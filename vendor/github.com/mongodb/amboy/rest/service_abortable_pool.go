@@ -69,14 +69,14 @@ func (s *ManagementService) GetJobStatus(rw http.ResponseWriter, r *http.Request
 		gimlet.WriteJSONResponse(rw, http.StatusNotFound,
 			map[string]string{
 				"name":   name,
-				"status": "running",
+				"status": "not running",
 			})
 		return
 	}
 
 	gimlet.WriteJSON(rw, map[string]string{
 		"name":   name,
-		"status": "not running",
+		"status": "running",
 	})
 }
 

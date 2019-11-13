@@ -44,10 +44,8 @@ func TestDistroAliases(t *testing.T) {
 		t.Run("Tunable", func(t *testing.T) {
 			require.NoError(t, db.Clear(model.TaskQueuesCollection))
 
-			distroOne.PlannerSettings.TaskOrdering = evergreen.PlannerVersionTunable
-
+			distroOne.PlannerSettings.Version = evergreen.PlannerVersionTunable
 			output, err := PrioritizeTasks(distroOne, tasks, TaskPlannerOptions{ID: "tunable-0"})
-
 			require.NoError(t, err)
 			require.Len(t, output, 2)
 			require.Equal(t, "one", output[0].Id)
@@ -64,7 +62,7 @@ func TestDistroAliases(t *testing.T) {
 		t.Run("Legacy", func(t *testing.T) {
 			require.NoError(t, db.Clear(model.TaskQueuesCollection))
 
-			distroOne.PlannerSettings.TaskOrdering = evergreen.PlannerVersionLegacy
+			distroOne.PlannerSettings.Version = evergreen.PlannerVersionLegacy
 			output, err := PrioritizeTasks(distroOne, tasks, TaskPlannerOptions{ID: "legacy-1"})
 			require.NoError(t, err)
 			require.Len(t, output, 2)
@@ -92,8 +90,7 @@ func TestDistroAliases(t *testing.T) {
 		t.Run("Tunable", func(t *testing.T) {
 			require.NoError(t, db.Clear(model.TaskAliasQueuesCollection))
 
-			distroTwo.PlannerSettings.TaskOrdering = evergreen.PlannerVersionTunable
-
+			distroTwo.PlannerSettings.Version = evergreen.PlannerVersionTunable
 			output, err := PrioritizeTasks(distroTwo, tasks, TaskPlannerOptions{ID: "tunable-0", IsSecondaryQueue: true})
 			require.NoError(t, err)
 			require.Len(t, output, 2)
@@ -112,8 +109,7 @@ func TestDistroAliases(t *testing.T) {
 		t.Run("Legacy", func(t *testing.T) {
 			require.NoError(t, db.Clear(model.TaskAliasQueuesCollection))
 
-			distroTwo.PlannerSettings.TaskOrdering = evergreen.PlannerVersionLegacy
-
+			distroTwo.PlannerSettings.Version = evergreen.PlannerVersionLegacy
 			output, err := PrioritizeTasks(distroTwo, tasks, TaskPlannerOptions{ID: "legacy-0", IsSecondaryQueue: true})
 			require.NoError(t, err)
 			require.Len(t, output, 2)

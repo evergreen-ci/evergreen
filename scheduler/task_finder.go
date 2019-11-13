@@ -30,7 +30,7 @@ func GetTaskFinder(version string) TaskFinder {
 }
 
 func RunnableTasksPipeline(d distro.Distro) ([]task.Task, error) {
-	return task.FindRunnable(d.Id, d.PlannerSettings.Version != evergreen.PlannerVersionTunable)
+	return task.FindRunnable(d.Id, d.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies)
 }
 
 // The old Task finderDBTaskFinder, with the dependency check implemented in Go,
@@ -88,14 +88,14 @@ func LegacyFindRunnableTasks(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if d.PlannerSettings.Version != evergreen.PlannerVersionTunable {
+		if d.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies {
 			depsMet, err := t.DependenciesMet(dependencyCaches)
 			if err != nil {
 				grip.Warning(message.Fields{
 					"runner":  RunnerName,
 					"message": "error checking dependencies for task",
 					"outcome": "skipping",
-					"planner": d.PlannerSettings.Version,
+					"planner": d.FinderSettings.Version,
 					"task":    t.Id,
 					"error":   err.Error(),
 				})
@@ -190,7 +190,7 @@ func AlternateTaskFinder(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if d.PlannerSettings.Version != evergreen.PlannerVersionTunable {
+		if d.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies {
 			depsMet, err := t.AllDependenciesSatisfied(cache)
 			catcher.Add(err)
 			if !depsMet {
@@ -297,7 +297,7 @@ func ParallelTaskFinder(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if d.PlannerSettings.Version != evergreen.PlannerVersionTunable {
+		if d.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies {
 			depsMet, err := t.AllDependenciesSatisfied(cache)
 			if err != nil {
 				catcher.Add(err)

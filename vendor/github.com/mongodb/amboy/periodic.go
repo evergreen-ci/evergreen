@@ -101,55 +101,6 @@ func GroupQueueOperationFactory(first QueueOperation, ops ...QueueOperation) Que
 	}
 }
 
-// PeriodicQueueOperation launches a goroutine that runs the
-// QueueOperation on the specified Queue at the specified interval. If
-// ignoreErrors is true, then a QueueOperation that returns an error will
-// *not* interrupt the background process. Otherwise, the background
-// process will exit if a QueueOperation fails. Use the context to
-// terminate the background process.
-func PeriodicQueueOperation(ctx context.Context, q Queue, interval time.Duration, conf QueueOperationConfig, op QueueOperation) {
-	go func() {
-		var err error
-
-		defer func() {
-			err = recovery.HandlePanicWithError(recover(), err, "periodic background scheduler error")
-			if err != nil {
-				if !conf.ContinueOnError {
-					return
-				}
-
-				if ctx.Err() != nil {
-					return
-				}
-
-				PeriodicQueueOperation(ctx, q, interval, conf, op)
-			}
-		}()
-
-		timer := time.NewTimer(0)
-		defer timer.Stop()
-		count := 0
-
-		for {
-			select {
-			case <-ctx.Done():
-				grip.InfoWhen(conf.DebugLogging, message.Fields{
-					"message":    "exiting periodic job scheduler",
-					"numPeriods": count,
-				})
-				return
-			case <-timer.C:
-				if err = scheduleOp(ctx, q, op, conf); err != nil {
-					return
-				}
-
-				count++
-				timer.Reset(interval)
-			}
-		}
-	}()
-}
-
 // IntervalQueueOperation runs a queue scheduling operation on a
 // regular interval, starting at specific time. Use this method to
 // schedule jobs every hour, or similar use-cases.
@@ -178,12 +129,7 @@ func IntervalQueueOperation(ctx context.Context, q Queue, interval time.Duration
 			}
 		}()
 
-		for {
-			if !startAt.Before(time.Now()) {
-				break
-			}
-			startAt = startAt.Add(interval)
-		}
+		waitUntilInterval(ctx, startAt, interval)
 
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
@@ -233,4 +179,27 @@ func scheduleOp(ctx context.Context, q Queue, op QueueOperation, conf QueueOpera
 	}
 
 	return nil
+}
+
+func waitUntilInterval(ctx context.Context, startAt time.Time, interval time.Duration) {
+	if startAt.Before(time.Now()) {
+		for {
+			startAt = startAt.Add(interval)
+			if startAt.Before(time.Now()) {
+				continue
+			}
+
+			break
+		}
+	}
+
+	timer := time.NewTimer(-time.Since(startAt))
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return
+	case <-timer.C:
+		return
+	}
 }
