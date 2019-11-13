@@ -267,7 +267,7 @@ func (h *hostStopHandler) Parse(ctx context.Context, r *http.Request) error {
 		SubscriptionType string `json:"subscription_type"`
 	}{}
 	if err := util.ReadJSONInto(body, &options); err != nil {
-		return errors.Wrap(err, "Argument read error")
+		h.subscriptionType = ""
 	}
 	h.subscriptionType = options.SubscriptionType
 
@@ -354,7 +354,7 @@ func (h *hostStartHandler) Parse(ctx context.Context, r *http.Request) error {
 		SubscriptionType string `json:"subscription_type"`
 	}{}
 	if err := util.ReadJSONInto(body, &options); err != nil {
-		return errors.Wrap(err, "Argument read error")
+		h.subscriptionType = ""
 	}
 	h.subscriptionType = options.SubscriptionType
 
