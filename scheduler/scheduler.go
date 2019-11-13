@@ -158,10 +158,7 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 
 		duration := task.FetchExpectedDuration().Average
 
-		if !opts.IncludesDependencies {
-			task.ExpectedDuration = duration
-			distroExpectedDuration += duration
-		} else if depsMet, _ := task.DependenciesMet(depCache); depsMet {
+		if !opts.IncludesDependencies || checkDependenciesMet(&task, depCache) {
 			task.ExpectedDuration = duration
 			distroExpectedDuration += duration
 		}
@@ -172,10 +169,7 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 
 		var taskGroupInfo model.TaskGroupInfo
 		if info, exists := taskGroupInfosMap[name]; exists {
-			if !opts.IncludesDependencies {
-				info.Count++
-				info.ExpectedDuration += duration
-			} else if depsMet, _ := task.DependenciesMet(depCache); depsMet {
+			if !opts.IncludesDependencies || checkDependenciesMet(&task, depCache) {
 				info.Count++
 				info.ExpectedDuration += duration
 			}
@@ -190,11 +184,7 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 		}
 
 		if duration >= maxDurationThreshold {
-			if !opts.IncludesDependencies {
-				taskGroupInfo.CountOverThreshold++
-				taskGroupInfo.DurationOverThreshold += duration
-				distroCountOverThreshold++
-			} else if depsMet, _ := task.DependenciesMet(depCache); depsMet {
+			if !opts.IncludesDependencies || checkDependenciesMet(&task, depCache) {
 				taskGroupInfo.CountOverThreshold++
 				taskGroupInfo.DurationOverThreshold += duration
 				distroCountOverThreshold++
@@ -219,6 +209,15 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 	}
 
 	return distroQueueInfo
+}
+
+func checkDependenciesMet(t *task.Task, cache map[string]task.Task) bool {
+	met, err := t.DependenciesMet(cache)
+	if err != nil {
+		return false
+	}
+	return met
+
 }
 
 // Call out to the embedded Manager to spawn hosts.  Takes in a map of
