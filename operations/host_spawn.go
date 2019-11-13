@@ -641,3 +641,41 @@ func hostTerminate() cli.Command {
 		},
 	}
 }
+
+func hostRunCommand() cli.Command {
+	const commandFlagName = "command"
+
+	return cli.Command{
+		Name:  "run-command",
+		Usage: "run a bash shell script on the host",
+		Flags: addHostFlag(
+			cli.StringFlag{
+				Name:  commandFlagName,
+				Usage: "script to pass to bash",
+			}),
+		Before: mergeBeforeFuncs(setPlainLogger),
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			hostID := c.String(hostFlagName)
+			command := c.String(commandFlagName)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.setupRestCommunicator(ctx)
+			defer client.Close()
+
+			output, err := client.RunHostCommand(ctx, hostID, command)
+			if err != nil {
+				return errors.Wrap(err, "problem running command")
+			}
+
+			grip.Info(output)
+			return nil
+		},
+	}
+}

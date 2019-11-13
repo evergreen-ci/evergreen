@@ -197,3 +197,7 @@ type APISpawnHostModify struct {
 type APIHostCommand struct {
 	Command string `json:"command"`
 }
+
+type APIHostCommandResponse struct {
+	Output string `json:"output"`
+}

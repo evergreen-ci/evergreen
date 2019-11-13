@@ -1064,6 +1064,10 @@ func (h *hostRunCommand) Run(ctx context.Context) gimlet.Responder {
 		return response
 	}
 
+	if host.Status != evergreen.HostRunning {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("can't run command on host with status '%s'", host.Status))
+	}
+
 	var output string
 	if host.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
 		opts := &options.Create{
@@ -1084,11 +1088,7 @@ func (h *hostRunCommand) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	response := struct {
-		Output string `json:"output"`
-	}{Output: output}
-
-	return gimlet.NewJSONResponse(response)
+	return gimlet.NewJSONResponse(model.APIHostCommandResponse{Output: output})
 }
 
 ////////////////////////////////////////////////////////////////////////
