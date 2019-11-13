@@ -888,8 +888,8 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 	defer cancel()
 
 	Convey("with tasks, a host, a build, and a task queue", t, func() {
-		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection,
-			model.ParserProjectCollection, model.ProjectRefCollection, model.VersionCollection, alertrecord.Collection, event.AllLogCollection); err != nil {
+		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection,
+			build.Collection, model.ProjectRefCollection, model.VersionCollection, alertrecord.Collection, event.AllLogCollection); err != nil {
 			t.Fatalf("clearing db: %v", err)
 		}
 
@@ -959,7 +959,6 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 		testVersion := model.Version{
 			Id:     versionId,
 			Branch: projectId,
-			Config: "identifier: " + projectId,
 		}
 		So(testVersion.Insert(), ShouldBeNil)
 
