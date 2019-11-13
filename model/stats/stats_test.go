@@ -585,13 +585,11 @@ func (s *statsSuite) TestGenerateDailyTestStatsMerge() {
 func (s *statsSuite) TestGenerateDailyTaskStats() {
 	require := s.Require()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+        ctx, cancel := context.WithCancel(context.Background())
+        defer cancel()
 
-        // qry := bson.M{}
-
-	// Insert task docs.
-	s.initTasks()
+        // Insert task docs.
+        s.initTasks()
 
 	// Generate task stats for project p1 and an unknown task.
 	err := GenerateDailyTaskStats(ctx, GenerateOptions{
@@ -1081,18 +1079,9 @@ func (s *statsSuite) getLastTestResult(testStatsID DbTestStatsId, hourly bool) (
                 end = start.Add(24 * time.Hour)
         }
 
-        // func (s *statsSuite) getLastTestResult(testStatsID DbTestStatsId) (*testresult.TestResult, error) {
-        // 	var lastTestResult *testresult.TestResult
-        // 	start := util.GetUTCHour(testStatsID.Date)
-        // 	end := start.Add(time.Hour)
-        // 	// if !hourly {
-        // 	// 	start = util.GetUTCDay(testStatsID.Date)
-        // 	// 	end = start.Add(24 * time.Hour)
-        // 	// }
-
-	qry := bson.M{
-		testresult.ProjectKey:   testStatsID.Project,
-		testresult.RequesterKey: testStatsID.Requester,
+        qry := bson.M{
+                testresult.ProjectKey:   testStatsID.Project,
+                testresult.RequesterKey: testStatsID.Requester,
 		testresult.TestFileKey:  testStatsID.TestFile,
 		"$or": []bson.M{
 			{testresult.DisplayNameKey: testStatsID.TaskName},
@@ -1149,27 +1138,6 @@ func (s *statsSuite) getLastHourlyTestStat(testStatsID DbTestStatsId) (*DbTestSt
 
 func (s *statsSuite) validateDbTestStats(testStatsID DbTestStatsId, date time.Time, numPass int, numFail int, avgDurationPass float64, lastUpdate time.Time, hourly bool) {
         require := s.Require()
-        // var doc *DbTestStats
-        // var err error
-
-        // if hourly {
-        // 	doc, err = GetHourlyTestDoc(testStatsID)
-        // } else {
-        // 	doc, err = GetDailyTestDoc(testStatsID)
-        // }
-        // require.Nil(err)
-        // require.NotNil(doc)
-        // require.Equal(testStatsID.Project, doc.Id.Project)
-        // require.Equal(testStatsID.Requester, doc.Id.Requester)
-        // require.Equal(testStatsID.TestFile, doc.Id.TestFile)
-        // require.Equal(testStatsID.TaskName, doc.Id.TaskName)
-        // require.Equal(testStatsID.BuildVariant, doc.Id.BuildVariant)
-        // require.Equal(testStatsID.Distro, doc.Id.Distro)
-        // require.Equal(date, doc.Id.Date.UTC())
-        // require.Equal(numPass, doc.NumPass)
-        // require.Equal(numFail, doc.NumFail)
-        // require.Equal(avgDurationPass, doc.AvgDurationPass)
-        // require.WithinDuration(lastUpdate, doc.LastUpdate, 0)
 
         doc := s.validateDbTestStatsNoLast(testStatsID, date, numPass, numFail, avgDurationPass, lastUpdate, hourly)
         lastTestResult, err := s.getLastTestResult(testStatsID, hourly)
