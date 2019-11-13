@@ -169,28 +169,6 @@ Evergreen - Distros
             <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsVersion.$dirty && form.plannerSettingsVersion.$error.required ||
               form.plannerSettingsVersion.$invalid">Planner Version is required
             </div>
-            <!-- <div ng-show="activeDistro.provider != 'static' && activeDistro.provider != 'docker'">
-              <div>
-                <label class="distro-label">Maximum Number of Hosts Allowed:</label>
-                <input ng-readonly="readOnly" type="number" ng-required="activeDistro.provider != 'static' && activeDistro.provider != 'docker'"
-                  name="poolSize" class="form-control" ng-model="activeDistro.pool_size" ng-change="activeDistro.planner_settings.maximum_hosts=activeDistro.pool_size" placeholder="Max pool size e.g. 10">
-                <div class="icon fa fa-warning distro-error" ng-show="form.poolSize.$dirty && form.poolSize.$error.required ||
-                  form.poolSize.$invalid ||
-                  form.poolSize.$modelValue < 0 ||
-                  form.poolSize.$modelValue % 1 != 0"> A non-negative integer value for Maximum Hosts (a.k.a. Pool Size) is required
-                </div>
-              </div> -->
-              <!-- <div>
-                <label class="distro-label">Minimum Number of Hosts Allowed:</label>
-                <input ng-readonly="readOnly" type="number"
-                  name="plannerSettingsMinimumHosts" class="form-control" ng-model="activeDistro.planner_settings.minimum_hosts" placeholder="Min pool size e.g. 0">
-                <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsMinimumHosts.$dirty && form.plannerSettingsMinimumHosts.$error.required ||
-                  form.plannerSettingsMinimumHosts.$invalid ||
-                  form.plannerSettingsMinimumHosts.$modelValue < 0 ||
-                  form.plannerSettingsMinimumHosts.$modelValue % 1 != 0"> A non-negative integer value for Minimum Hosts is required
-                </div>
-              </div>
-            </div> -->
             <div ng-show="activeDistro.provider != 'static' && activeDistro.provider != 'docker' && activeDistro.planner_settings.version == 'tunable'">
               <div>
                 <label class="distro-label">Target Time (sec):</label>
@@ -202,16 +180,6 @@ Evergreen - Distros
                 form.plannerSettingsTargetTime.$modelValue < 0 ||
                 form.plannerSettingsTargetTime.$modelValue % 1 != 0"> Target Time must be a non-negative integer
               </div>
-              <!-- <div>
-                <label class="distro-label">Acceptable Host Idle Time (sec):</label>
-                <input ng-readonly="readOnly" type="number" ng-required="activeDistro.planner_settings.version == 'tunable'"
-                  name="plannerSettingsAcceptableHostIdleTime" class="form-control" ng-model="activeDistro.planner_settings.acceptable_host_idle_time" placeholder="Set to 0 to use its global default">
-              </div>
-              <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsAcceptableHostIdleTime.$dirty && form.plannerSettingsAcceptableHostIdleTime.$error.required ||
-                form.plannerSettingsAcceptableHostIdleTime.$invalid ||
-                form.plannerSettingsAcceptableHostIdleTime.$modelValue < 0 ||
-                form.plannerSettingsAcceptableHostIdleTime.$modelValue % 1 != 0"> Acceptable Host Idle Time must a non-negative integer
-              </div> -->
               <div>
                 <label class="distro-label">Patch Factor (0 to 100 inclusive):</label>
                 <input ng-readonly="readOnly" type="number" ng-required="activeDistro.planner_settings.version == 'tunable'"
@@ -307,11 +275,6 @@ Evergreen - Distros
               form.dispatcherSettingsVersion.$invalid">Task Dispatcher Version is required
             </div>
           </div>
-
-          <!-- #############################################################-->
-          <!-- #############################################################-->
-          <!-- #############################################################-->
-
           <br>
           <div class="panel-body panel panel-default">
             <div class="dropdown">

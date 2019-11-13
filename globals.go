@@ -159,7 +159,6 @@ const (
 	RoutePaginatorNextPageHeaderKey = "Link"
 
 	PlannerVersionLegacy  = "legacy"
-	PlannerVersionRevised = "revised" // TO DO - remove this ASAP
 	PlannerVersionTunable = "tunable"
 
 	DispatcherVersionLegacy                  = "legacy"
@@ -432,7 +431,6 @@ var (
 	// Set of valid PlannerSettings.Version strings that can be user set via the API
 	ValidTaskPlannerVersions = []string{
 		PlannerVersionLegacy,
-		PlannerVersionRevised, // TO DO - remove this ASAP
 		PlannerVersionTunable,
 	}
 
