@@ -388,7 +388,7 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 					"task":       item.Id,
 					"distro_id":  d.distroID,
 				}))
-				if !satisfiable {
+				if err == nil && !satisfiable {
 					grip.Warning(message.WrapError(nextTaskFromDB.DeactivateTask(evergreen.DefaultTaskActivator+".dispatcher"),
 						message.Fields{
 							"dispatcher": SchedulableUnitDispatcher,
@@ -527,7 +527,7 @@ func (d *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *Tas
 				"task":       nextTaskQueueItem.Id,
 				"distro_id":  d.distroID,
 			}))
-			if !satisfiable {
+			if err == nil && !satisfiable {
 				grip.Warning(message.WrapError(nextTaskFromDB.DeactivateTask(evergreen.DefaultTaskActivator+".dispatcher"),
 					message.Fields{
 						"function":   "nextTaskGroupTask",

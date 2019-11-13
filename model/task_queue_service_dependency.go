@@ -415,7 +415,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 					"task":       item.Id,
 					"distro_id":  d.distroID,
 				}))
-				if !satisfiable {
+				if err == nil && !satisfiable {
 					grip.Warning(message.WrapError(nextTaskFromDB.DeactivateTask(evergreen.DefaultTaskActivator+".dispatcher"),
 						message.Fields{
 							"dispatcher": DAGDispatcher,
@@ -547,7 +547,7 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 				"task":       nextTaskQueueItem.Id,
 				"distro_id":  d.distroID,
 			}))
-			if !satisfiable {
+			if err == nil && !satisfiable {
 				grip.Warning(message.WrapError(nextTaskFromDB.DeactivateTask(evergreen.DefaultTaskActivator+".dispatcher"),
 					message.Fields{
 						"function":   "nextTaskGroupTask",
