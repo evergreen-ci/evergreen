@@ -13,7 +13,10 @@
           <span>[[curHostData.id]] </span>
         </div>
         <div class="entry">
-          <strong>Started at</strong> <span>[[curHostData.creation_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</span>
+          <strong>Created at</strong> <span>[[curHostData.creation_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</span>
+        </div>
+        <div class="entry" ng-hide="curHostData.status=='stopped'">
+          <strong>Started at</strong> <span>[[curHostData.start_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</span>
         </div>
         <div class="entry" ng-hide="curHostData.no_expiration">
           <strong>Expires at</strong> <span>[[curHostData.original_expiration | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</span>
