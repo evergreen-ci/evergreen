@@ -245,6 +245,7 @@ type HostModifyOptions struct {
 	AddHours           time.Duration // duration to extend expiration
 	AttachVolume       string
 	DetachVolume       string
+	SubscriptionType   string
 }
 
 const (

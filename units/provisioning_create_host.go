@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -293,6 +294,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		return errors.Wrapf(err, "error updating host %s", j.host.Id)
 	}
 
+	event.LogHostStartFinished(j.host.Id, true)
 	grip.Info(message.Fields{
 		"message": "successfully started host",
 		"hostid":  j.host.Id,
@@ -327,6 +329,8 @@ func (j *createHostJob) tryRequeue(ctx context.Context) {
 			"attempts": j.CurrentAttempt,
 		}))
 		j.AddError(err)
+	} else {
+		event.LogHostStartFinished(j.host.Id, false)
 	}
 }
 
