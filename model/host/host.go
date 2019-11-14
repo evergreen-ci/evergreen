@@ -252,11 +252,11 @@ type SpawnHostUsage struct {
 	TotalUnexpirableHosts int `bson:"total_unexpirable_hosts"`
 	NumUsersWithHosts     int `bson:"num_users_with_hosts"`
 
-	TotalVolumes              int      `bson:"total_volumes"`
-	TotalVolumeSize           int      `bson:"total_volume_size"`
-	NumUsersWithVolumes       int      `bson:"num_users_with_volumes"`
-	InstanceTypes             []string `bson:"instance_types"`
-	AverageComputeCostPerHour float64  `bson:"average_compute_cost_per_hour"`
+	TotalVolumes              int            `bson:"total_volumes"`
+	TotalVolumeSize           int            `bson:"total_volume_size"`
+	NumUsersWithVolumes       int            `bson:"num_users_with_volumes"`
+	InstanceTypes             map[string]int `bson:"instance_types"`
+	AverageComputeCostPerHour float64        `bson:"average_compute_cost_per_hour"`
 }
 
 const (
@@ -1793,19 +1793,18 @@ func (h *Host) SetInstanceType(instanceType string) error {
 
 func AggregateSpawnhostData() (*SpawnHostUsage, error) {
 	res := []SpawnHostUsage{}
-	pipeline := []bson.M{
+	hostPipeline := []bson.M{
 		{"$match": bson.M{
 			UserHostKey: bson.M{"$eq": true},
 			StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
 		}},
 		{"$group": bson.M{
-			"_id":            nil,
-			"hosts":          bson.M{"$sum": 1},
-			"stopped":        bson.M{"$sum": bson.M{"$cond": []interface{}{bson.M{"$eq": []string{"$" + StatusKey, evergreen.HostStopped}}, 1, 0}}},
-			"unexpirable":    bson.M{"$sum": bson.M{"$cond": []interface{}{"$" + NoExpirationKey, 1, 0}}},
-			"users":          bson.M{"$addToSet": "$" + StartedByKey},
-			"instance_types": bson.M{"$addToSet": "$" + InstanceTypeKey},
-			"cost":           bson.M{"$avg": "$" + ComputeCostPerHourKey},
+			"_id":         nil,
+			"hosts":       bson.M{"$sum": 1},
+			"stopped":     bson.M{"$sum": bson.M{"$cond": []interface{}{bson.M{"$eq": []string{"$" + StatusKey, evergreen.HostStopped}}, 1, 0}}},
+			"unexpirable": bson.M{"$sum": bson.M{"$cond": []interface{}{"$" + NoExpirationKey, 1, 0}}},
+			"users":       bson.M{"$addToSet": "$" + StartedByKey},
+			"cost":        bson.M{"$avg": "$" + ComputeCostPerHourKey},
 		}},
 		{"$project": bson.M{
 			"_id":                           "0",
@@ -1813,16 +1812,15 @@ func AggregateSpawnhostData() (*SpawnHostUsage, error) {
 			"total_stopped_hosts":           "$stopped",
 			"total_unexpirable_hosts":       "$unexpirable",
 			"num_users_with_hosts":          bson.M{"$size": "$users"},
-			"instance_types":                "$instance_types",
 			"average_compute_cost_per_hour": "$cost",
 		}},
 	}
 
-	if err := db.Aggregate(Collection, pipeline, &res); err != nil {
+	if err := db.Aggregate(Collection, hostPipeline, &res); err != nil {
 		return nil, errors.Wrap(err, "error aggregating hosts")
 	}
 
-	pipeline = []bson.M{
+	volumePipeline := []bson.M{
 		{"$group": bson.M{
 			"_id":     nil,
 			"volumes": bson.M{"$sum": 1},
@@ -1836,11 +1834,41 @@ func AggregateSpawnhostData() (*SpawnHostUsage, error) {
 			"num_users_with_volumes": bson.M{"$size": "$users"},
 		}},
 	}
-	if err := db.Aggregate(VolumesCollection, pipeline, &res); err != nil {
+	if err := db.Aggregate(VolumesCollection, volumePipeline, &res); err != nil {
 		return nil, errors.Wrap(err, "error aggregating volumes")
 	}
 	if len(res) == 0 {
 		return nil, errors.New("no host/volume results found")
+	}
+
+	temp := []struct {
+		InstanceType string `bson:"instance_type"`
+		Count        int    `bson:"count"`
+	}{}
+
+	instanceTypePipeline := []bson.M{
+		{"$match": bson.M{
+			UserHostKey: bson.M{"$eq": true},
+			StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
+		}},
+		{"$group": bson.M{
+			"_id":   "$" + InstanceTypeKey,
+			"count": bson.M{"$sum": 1},
+		}},
+		{"$project": bson.M{
+			"_id":           "0",
+			"instance_type": "$_id",
+			"count":         "$count",
+		}},
+	}
+
+	if err := db.Aggregate(Collection, instanceTypePipeline, &temp); err != nil {
+		return nil, errors.Wrap(err, "error aggregating instance types")
+	}
+
+	res[0].InstanceTypes = map[string]int{}
+	for _, each := range temp {
+		res[0].InstanceTypes[each.InstanceType] = each.Count
 	}
 	return &res[0], nil
 }

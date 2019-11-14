@@ -3790,10 +3790,15 @@ func TestAggregateSpawnhostData(t *testing.T) {
 	assert.Equal(t, 1, res.TotalStoppedHosts)
 	assert.EqualValues(t, 2, res.TotalUnexpirableHosts)
 	assert.Equal(t, 30.0, res.AverageComputeCostPerHour)
-	assert.Len(t, res.InstanceTypes, 3)
 	assert.Equal(t, 2, res.NumUsersWithVolumes)
 	assert.Equal(t, 412, res.TotalVolumeSize)
 	assert.Equal(t, 3, res.TotalVolumes)
+	assert.NotNil(t, res.InstanceTypes)
+	assert.Len(t, res.InstanceTypes, 3)
+	assert.Equal(t, res.InstanceTypes["small"], 2)
+	assert.Equal(t, res.InstanceTypes["medium"], 1)
+	assert.Equal(t, res.InstanceTypes["large"], 1)
+	assert.Equal(t, res.InstanceTypes["tiny"], 0)
 }
 
 func TestCountSpawnhostsWithNoExpirationByUser(t *testing.T) {
