@@ -168,8 +168,6 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
           if (distro) {
             $scope.readOnly = (!$window.aclEnabled && !$window.isSuperUser) || ($window.aclEnabled && distro.permissions.distro_settings < 20)
             $scope.activeDistro = distro.distro;
-          } else {
-            $scope.setActiveDistroId($scope.distroIds[0]);
           }
         });
       }
