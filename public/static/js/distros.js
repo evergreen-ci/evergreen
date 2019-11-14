@@ -4,7 +4,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
   $scope.distroIds = $window.distroIds;
   $scope.containerPoolDistros = $window.containerPoolDistros;
   $scope.containerPoolIds = $window.containerPoolIds;
-  $scope.newId = "new distro"
+  newId = "new distro"
 
   $scope.hostAllocatorVersions = [{
     'id': 'utilization',
@@ -161,9 +161,9 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
     var distroHash = $location.hash();
     if (distroHash) {
       // If the distro exists, load it.
-      if (distroHash == $scope.newId && $scope.tempDistro) {
+      if (distroHash == newId && $scope.tempDistro) {
           $scope.activeDistro = $scope.tempDistro;
-      } else if (distroHash != $scope.newId) {
+      } else if (distroHash != newId) {
         $scope.getDistroById(distroHash).then(function(distro) {
           if (distro) {
             $scope.readOnly = (!$window.aclEnabled && !$window.isSuperUser) || ($window.aclEnabled && distro.permissions.distro_settings < 20)
@@ -448,7 +448,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
   $scope.newDistro = function() {
     if (!$scope.tempDistro) {
       var defaultOptions = {
-        '_id': $scope.newId,
+        '_id': newId,
         'arch': 'linux_amd64',
         'provider': 'ec2',
         'bootstrap_settings': {
@@ -487,7 +487,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
   $scope.copyDistro = function(){
     if (!$scope.tempDistro) {
       var newDistro = {
-        '_id': $scope.newId,
+        '_id': newId,
         'arch': $scope.activeDistro.arch,
         'work_dir': $scope.activeDistro.work_dir,
         'provider': $scope.activeDistro.provider,
