@@ -736,7 +736,7 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jas
 
 			return jcli.NewSSHClient(remoteOpts, clientOpts, true)
 		case distro.CommunicationMethodRPC:
-			creds, err := h.GenerateJasperCredentials(ctx, env)
+			creds, err := h.JasperClientCredentials(ctx, env)
 			if err != nil {
 				return nil, errors.Wrap(err, "could not get client credentials to communicate with the host's Jasper service")
 			}
