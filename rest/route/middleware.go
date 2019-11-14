@@ -327,7 +327,7 @@ func RequiresDistroPermission(permission string, level evergreen.PermissionLevel
 		RM:            evergreen.GetEnvironment().RoleManager(),
 		PermissionKey: permission,
 		ResourceType:  evergreen.DistroResourceType,
-    RequiredLevel: level.Value,
+		RequiredLevel: level.Value,
 		ResourceFunc:  urlVarsToDistroScopes,
 	}
 	return gimlet.RequiresPermission(opts)
