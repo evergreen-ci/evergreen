@@ -193,46 +193,46 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
       function(resp){
         var distro = resp.data
         if (distro.distro) {
-          $scope.distros[i].pool_size = $scope.distros[i].pool_size || 0;
+          distro.distro.pool_size = distro.distro.pool_size || 0;
           // Host Allocator Settings
-          $scope.distros[i].host_allocator_settings = $scope.distros[i].host_allocator_settings || {};
-          $scope.distros[i].host_allocator_settings.version = $scope.distros[i].host_allocator_settings.version || 'utilization';
-          $scope.distros[i].host_allocator_settings.minimum_hosts = $scope.distros[i].host_allocator_settings.minimum_hosts || 0;
-          $scope.distros[i].host_allocator_settings.maximum_hosts = $scope.distros[i].host_allocator_settings.maximum_hosts || 0;
-          $scope.distros[i].host_allocator_settings.acceptable_host_idle_time = $scope.distros[i].host_allocator_settings.acceptable_host_idle_time || 0;
+          distro.distro.host_allocator_settings = distro.distro.host_allocator_settings || {};
+          distro.distro.host_allocator_settings.version = distro.distro.host_allocator_settings.version || 'utilization';
+          distro.distro.host_allocator_settings.minimum_hosts = distro.distro.host_allocator_settings.minimum_hosts || 0;
+          distro.distro.host_allocator_settings.maximum_hosts = distro.distro.host_allocator_settings.maximum_hosts || 0;
+          distro.distro.host_allocator_settings.acceptable_host_idle_time = distro.distro.host_allocator_settings.acceptable_host_idle_time || 0;
           // Convert from nanoseconds (time.Duration) to seconds (UI display units) for the relevant host_allocator_settings' fields.
-          if ($scope.distros[i].host_allocator_settings.acceptable_host_idle_time > 0) {
-            $scope.distros[i].host_allocator_settings.acceptable_host_idle_time /= 1e9;
+          if (distro.distro.host_allocator_settings.acceptable_host_idle_time > 0) {
+            scope.scope.host_allocator_settings.acceptable_host_idle_time /= 1e9;
 
           }
           // Planner Settings
-          $scope.distros[i].planner_settings = $scope.distros[i].planner_settings || {};
-          $scope.distros[i].planner_settings.version = $scope.distros[i].planner_settings.version || 'legacy';
-          $scope.distros[i].planner_settings.target_time = $scope.distros[i].planner_settings.target_time || 0;
-          $scope.distros[i].planner_settings.patch_factor = $scope.distros[i].planner_settings.patch_factor || 0;
-          $scope.distros[i].planner_settings.time_in_queue_factor = $scope.distros[i].planner_settings.time_in_queue_factor || 0;
-          $scope.distros[i].planner_settings.expected_runtime_factor = $scope.distros[i].planner_settings.expected_runtime_factor || 0;
+          distro.distro.planner_settings = distro.distro.planner_settings || {};
+          distro.distro.planner_settings.version = distro.distro.planner_settings.version || 'legacy';
+          distro.distro.planner_settings.target_time = distro.distro.planner_settings.target_time || 0;
+          distro.distro.planner_settings.patch_factor = distro.distro.planner_settings.patch_factor || 0;
+          distro.distro.planner_settings.time_in_queue_factor = distro.distro.planner_settings.time_in_queue_factor || 0;
+          distro.distro.planner_settings.expected_runtime_factor = distro.distro.planner_settings.expected_runtime_factor || 0;
           // Convert from nanoseconds (time.Duration) to seconds (UI display units) for the relevant planner_settings' fields.
-          if ($scope.distros[i].planner_settings.target_time > 0) {
-            $scope.distros[i].planner_settings.target_time /= 1e9;
+          if (distro.distro.planner_settings.target_time > 0) {
+            distro.distro.planner_settings.target_time /= 1e9;
           }
-          $scope.distros[i].planner_settings.group_versions = $scope.distros[i].planner_settings.group_versions;
-          $scope.distros[i].planner_settings.task_ordering = $scope.distros[i].planner_settings.task_ordering || 'interleave';
+          distro.distro.planner_settings.group_versions = distro.distro.planner_settings.group_versions;
+          distro.distro.planner_settings.task_ordering = distro.distro.planner_settings.task_ordering || 'interleave';
           // Finder Settings
-          $scope.distros[i].finder_settings = $scope.distros[i].finder_settings || {};
-          $scope.distros[i].finder_settings.version = $scope.distros[i].finder_settings.version || 'legacy';
+          distro.distro.finder_settings = distro.distro.finder_settings || {};
+          distro.distro.finder_settings.version = distro.distro.finder_settings.version || 'legacy';
           // Dispatcher Settings
-          $scope.distros[i].dispatcher_settings = $scope.distros[i].dispatcher_settings || {};
-          $scope.distros[i].dispatcher_settings.version = $scope.distros[i].dispatcher_settings.version || 'revised';
-          $scope.distros[i].planner_settings.minimum_hosts = $scope.distros[i].planner_settings.minimum_hosts || 0;
-          $scope.distros[i].planner_settings.maximum_hosts = $scope.distros[i].planner_settings.maximum_hosts || 0;
-          $scope.distros[i].planner_settings.acceptable_host_idle_time = $scope.distros[i].planner_settings.acceptable_host_idle_time || 0;
-          if ($scope.distros[i].planner_settings.acceptable_host_idle_time > 0) {
-            $scope.distros[i].planner_settings.acceptable_host_idle_time /= 1e9;
+          distro.distro.dispatcher_settings = distro.distro.dispatcher_settings || {};
+          distro.distro.dispatcher_settings.version = distro.distro.dispatcher_settings.version || 'revised';
+          distro.distro.planner_settings.minimum_hosts = distro.distro.planner_settings.minimum_hosts || 0;
+          distro.distro.planner_settings.maximum_hosts = distro.distro.planner_settings.maximum_hosts || 0;
+          distro.distro.planner_settings.acceptable_host_idle_time = distro.distro.planner_settings.acceptable_host_idle_time || 0;
+          if (distro.distro.planner_settings.acceptable_host_idle_time > 0) {
+            distro.distro.planner_settings.acceptable_host_idle_time /= 1e9;
           }
-          $scope.distros[i].bootstrap_settings.method = $scope.distros[i].bootstrap_settings.method || 'legacy-ssh';
-          $scope.distros[i].bootstrap_settings.communication = $scope.distros[i].bootstrap_settings.communication || 'legacy-ssh';
-          $scope.distros[i].clone_method = $scope.distros[i].clone_method || 'legacy-ssh';
+          distro.distro.bootstrap_settings.method = distro.distro.bootstrap_settings.method || 'legacy-ssh';
+          distro.distro.bootstrap_settings.communication = distro.distro.bootstrap_settings.communication || 'legacy-ssh';
+          distro.distro.clone_method = distro.distro.clone_method || 'legacy-ssh';
         }
         return distro
     },
