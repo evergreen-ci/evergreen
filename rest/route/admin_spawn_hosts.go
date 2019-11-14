@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 )
@@ -28,7 +27,7 @@ func (h *adminSpawnHostHandler) Parse(ctx context.Context, r *http.Request) erro
 }
 
 func (h *adminSpawnHostHandler) Run(ctx context.Context) gimlet.Responder {
-	res, err := host.AggregateSpawnhostData()
+	res, err := h.sc.AggregateSpawnhostData()
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
