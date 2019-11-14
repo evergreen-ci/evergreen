@@ -1055,19 +1055,9 @@ func (h *hostRunCommand) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *hostRunCommand) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-	host, err := host.FindOneId(h.hostID)
+	host, err := h.sc.FindHostByIdWithOwner(h.hostID, user)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't get host"))
-	}
-	if host == nil {
-		response := gimlet.MakeJSONErrorResponder(errors.Errorf("no host found for id '%s'", h.hostID))
-		_ = response.SetStatus(http.StatusNotFound)
-		return response
-	}
-	if host.StartedBy != user.Id {
-		response := gimlet.MakeJSONErrorResponder(errors.New("Unauthorized"))
-		_ = response.SetStatus(http.StatusUnauthorized)
-		return response
 	}
 	if host.Status != evergreen.HostRunning {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("can't run command on host with status '%s'", host.Status))
