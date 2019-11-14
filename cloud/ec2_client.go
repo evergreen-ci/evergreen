@@ -870,7 +870,7 @@ func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetI
 			// to the standard `err != nil` case above.
 			if len(output.Errors) > 0 {
 				grip.Error(message.WrapError(errors.New(output.Errors[0].String()), msg))
-				return true, errors.Errorf("Got error in CreateFleet response: %s", output.Errors[0].String())
+				return true, err
 			}
 			grip.Info(msg)
 			return false, nil
