@@ -79,7 +79,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/distros/{distro_id}").Version(2).Get().Wrap(superUser, viewDistroSettings).RouteHandler(makeGetDistroByID(sc))
 	app.AddRoute("/distros/{distro_id}").Version(2).Patch().Wrap(superUser, editDistroSettings).RouteHandler(makePatchDistroByID(sc, settings))
 	app.AddRoute("/distros/{distro_id}").Version(2).Delete().Wrap(superUser, editDistroSettings).RouteHandler(makeDeleteDistroByID(sc))
-	app.AddRoute("/distros/{distro_id}").Version(2).Put().Wrap(superUser, editDistroSettings).RouteHandler(makePutDistro(sc, settings))
+	app.AddRoute("/distros/{distro_id}").Version(2).Put().Wrap(superUser).RouteHandler(makePutDistro(sc, settings))
 	app.AddRoute("/distros/{distro_id}/setup").Version(2).Get().Wrap(superUser, viewDistroSettings).RouteHandler(makeGetDistroSetup(sc))
 	app.AddRoute("/distros/{distro_id}/setup").Version(2).Patch().Wrap(superUser, editDistroSettings).RouteHandler(makeChangeDistroSetup(sc))
 	app.AddRoute("/distros/{distro_id}/teardown").Version(2).Get().Wrap(superUser, viewDistroSettings).RouteHandler(makeGetDistroTeardown(sc))
