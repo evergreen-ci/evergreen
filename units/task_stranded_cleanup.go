@@ -3,9 +3,12 @@ package units
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -69,6 +72,19 @@ func (j *taskStrandedCleanupJob) Run(ctx context.Context) {
 		hostIDs = append(hostIDs, h.Id)
 
 		j.AddError(model.ClearAndResetStrandedTask(&h))
+	}
+
+	tasks, err := task.FindStuckDispatching()
+	if err != nil {
+		j.AddError(err)
+	}
+
+	for _, t := range tasks {
+		if time.Since(t.CreateTime) >= 2*7*24*time.Hour {
+			j.AddError(t.DeactiveTask(j.ID()))
+		} else {
+			j.AddError(model.TryResetTask(t.Id, evergreen.User, j.ID(), t.EndDetails))
+		}
 	}
 
 	grip.InfoWhen(!j.HasErrors(),

@@ -451,6 +451,9 @@ func (t *Task) DependencySatisfiable(depCache map[string]Task) (bool, error) {
 			if !depTask.IsDispatchable() {
 				return false, nil
 			}
+			if !depTask.Activated {
+				return false, nil
+			}
 		}
 	}
 
