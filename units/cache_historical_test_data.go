@@ -30,11 +30,11 @@ func init() {
 }
 
 type cacheHistoricalTestDataJob struct {
-	ProjectID       string   `bson:"project_id" json:"project_id" yaml:"project_id"`
-	Requesters      []string `bson:"requesters" json:"requesters" yaml:"requesters"`
-	DisableOldTasks bool     `bson:"disable_old_tasks" json:"disable_old_tasks" yaml:"disable_old_tasks"`
-        UseMerge        bool     `bson:"use_merge,omitempty" json:"use_merge,omitempty" yaml:"use_merge,omitempty"`
-	job.Base        `bson:"job_base" json:"job_base" yaml:"job_base"`
+        ProjectID       string   `bson:"project_id" json:"project_id" yaml:"project_id"`
+        Requesters      []string `bson:"requesters" json:"requesters" yaml:"requesters"`
+        DisableOldTasks bool     `bson:"disable_old_tasks" json:"disable_old_tasks" yaml:"disable_old_tasks"`
+        EnableMerge     bool     `bson:"enable_merge,omitempty" json:"enable_merge,omitempty" yaml:"enable_merge,omitempty"`
+        job.Base        `bson:"job_base" json:"job_base" yaml:"job_base"`
 }
 
 type dailyStatsRollup map[time.Time]map[string][]string
@@ -96,6 +96,7 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 	}
 
 	j.DisableOldTasks = flags.CacheStatsOldTasksDisabled
+        j.EnableMerge = flags.CacheStatsMergeEnabled
 
 	var statsStatus stats.StatsStatus
 	timingMsg["status_check"] = reportTiming(func() {
@@ -125,13 +126,13 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 		catcher:         grip.NewBasicCatcher(),
 		DisableOldTasks: j.DisableOldTasks,
 		ShouldFilterTasks: map[string]bool{
-			"test": true,
-			"task": false,
-		},
-                UseMerge: j.UseMerge,
-	}
+                        "test": true,
+                        "task": false,
+                },
+                EnableMerge: j.EnableMerge,
+        }
 
-	syncFromTime := statsStatus.ProcessedTasksUntil
+        syncFromTime := statsStatus.ProcessedTasksUntil
 	syncToTime := findTargetTimeForSync(syncFromTime)
 	timingMsg["sync_from"] = syncFromTime
 	timingMsg["sync_to"] = syncToTime
@@ -153,7 +154,7 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 
         var generateHourlyTestStatsFn generateStatsFn = stats.GenerateHourlyTestStats
         var generateDailyTestStatsFn generateStatsFn = stats.GenerateDailyTestStatsFromHourly
-        if j.UseMerge {
+        if j.EnableMerge {
                 generateHourlyTestStatsFn = stats.GenerateHourlyTestStatsUsingMerge
                 generateDailyTestStatsFn = stats.GenerateDailyTestStatsUsingMerge
         }
@@ -194,10 +195,10 @@ type cacheHistoricalJobContext struct {
 	ProjectID         string
 	JobTime           time.Time
 	TasksToIgnore     []*regexp.Regexp
-	ShouldFilterTasks map[string]bool
-	catcher           grip.Catcher
-	DisableOldTasks   bool
-        UseMerge          bool
+        ShouldFilterTasks map[string]bool
+        catcher           grip.Catcher
+        DisableOldTasks   bool
+        EnableMerge       bool
 }
 
 func reportTiming(fn func()) time.Duration {

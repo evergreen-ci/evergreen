@@ -87,10 +87,10 @@ type GenerateOptions struct {
 	ProjectID       string
 	Requester       string
 	Tasks           []string
-	Window          time.Time
-	Runtime         time.Time
-	DisableOldTasks bool
-        UseMerge        bool
+        Window          time.Time
+        Runtime         time.Time
+        DisableOldTasks bool
+        EnableMerge     bool
 }
 
 // GenerateHourlyTestStats aggregates task and testresults present in the database and saves the

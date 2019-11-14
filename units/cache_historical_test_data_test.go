@@ -547,7 +547,7 @@ func (s *cacheHistoryTestDataSuite) TestCacheHistoricalTestDataMergeJob() {
 
         job := NewCacheHistoricalTestDataJob(s.projectId, "1")
         job.(*cacheHistoricalTestDataJob).Requesters = []string{s.requester}
-        job.(*cacheHistoricalTestDataJob).UseMerge = true
+        job.(*cacheHistoricalTestDataJob).EnableMerge = true
         job.Run(context.Background())
         s.NoError(job.Error())
 
