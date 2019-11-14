@@ -674,7 +674,10 @@ func hostRunCommand() cli.Command {
 				return errors.Wrap(err, "problem running command")
 			}
 
-			grip.Info(output)
+			for _, line := range output {
+				grip.Info(line)
+			}
+
 			return nil
 		},
 	}

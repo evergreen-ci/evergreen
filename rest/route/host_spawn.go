@@ -1054,6 +1054,7 @@ func (h *hostRunCommand) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *hostRunCommand) Run(ctx context.Context) gimlet.Responder {
+	user := MustHaveUser(ctx)
 	host, err := host.FindOneId(h.hostID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't get host"))
@@ -1063,32 +1064,38 @@ func (h *hostRunCommand) Run(ctx context.Context) gimlet.Responder {
 		_ = response.SetStatus(http.StatusNotFound)
 		return response
 	}
-
+	if host.StartedBy != user.Id {
+		response := gimlet.MakeJSONErrorResponder(errors.New("Unauthorized"))
+		_ = response.SetStatus(http.StatusUnauthorized)
+		return response
+	}
 	if host.Status != evergreen.HostRunning {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("can't run command on host with status '%s'", host.Status))
 	}
 
-	var output string
 	if host.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
 		opts := &options.Create{
 			Args: []string{"bash", "-l", "-c", h.command},
 		}
-		output, err = host.RunJasperProcess(ctx, h.env, opts)
+		output, err := host.RunJasperProcess(ctx, h.env, opts)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't run script with Jasper"))
 		}
-	} else {
-		sshOptions, err := host.GetSSHOptions(h.env.Settings())
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't get ssh options"))
-		}
-		output, err = host.RunSSHShellScript(ctx, h.command, sshOptions)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't run script over ssh"))
-		}
+		return gimlet.NewJSONResponse(model.APIHostCommandResponse{Output: output})
 	}
 
-	return gimlet.NewJSONResponse(model.APIHostCommandResponse{Output: output})
+	sshOptions, err := host.GetSSHOptions(h.env.Settings())
+	sshOptions = append(sshOptions, "-o", "LogLevel=quiet")
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't get ssh options"))
+	}
+	output, err := host.RunSSHShellScript(ctx, h.command, sshOptions)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't run script over ssh"))
+	}
+
+	outputSlice := strings.Split(output, "\r\n")
+	return gimlet.NewJSONResponse(model.APIHostCommandResponse{Output: outputSlice[:len(outputSlice)-1]})
 }
 
 ////////////////////////////////////////////////////////////////////////

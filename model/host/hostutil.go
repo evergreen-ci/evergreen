@@ -656,32 +656,43 @@ func (h *Host) splunkTokenFilePath() string {
 // RunJasperProcess makes a request to the host's Jasper service to create the
 // process with the given options, wait for its completion, and returns the
 // output from it.
-func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, opts *options.Create) (string, error) {
+func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, opts *options.Create) ([]string, error) {
 	client, err := h.JasperClient(ctx, env)
 	if err != nil {
-		return "", errors.Wrap(err, "could not get a Jasper client")
+		return nil, errors.Wrap(err, "could not get a Jasper client")
 	}
 	defer client.CloseConnection()
 
-	output := &util.CappedWriter{
-		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024, // 1 MB
+	inMemoryLoggerExists := false
+	for _, logger := range opts.Output.Loggers {
+		if logger.Type == options.LogInMemory {
+			inMemoryLoggerExists = true
+			break
+		}
+	}
+	if !inMemoryLoggerExists {
+		opts.Output.Loggers = append(opts.Output.Loggers, jasper.NewInMemoryLogger(1000))
 	}
 
 	proc, err := client.CreateProcess(ctx, opts)
 	if err != nil {
-		return "", errors.Wrap(err, "problem creating process")
+		return nil, errors.Wrap(err, "problem creating process")
 	}
 
 	exitCode, err := proc.Wait(ctx)
 	if err != nil {
-		return "", errors.Wrap(err, "problem waiting for process completion")
+		return nil, errors.Wrap(err, "problem waiting for process completion")
 	}
 	if exitCode != 0 {
-		return "", errors.Errorf("process returned exit code %d", exitCode)
+		return nil, errors.Errorf("process returned exit code %d", exitCode)
 	}
 
-	return output.String(), nil
+	logStream, err := client.GetLogStream(ctx, proc.ID(), 1000)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get output of process")
+	}
+
+	return logStream.Logs, nil
 }
 
 // StartJasperProcess makes a request to the host's Jasper service to start a

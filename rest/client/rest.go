@@ -1157,9 +1157,9 @@ func (c *communicatorImpl) GetManifestByTask(ctx context.Context, taskId string)
 	return &mfest, nil
 }
 
-func (c *communicatorImpl) RunHostCommand(ctx context.Context, hostID, command string) (string, error) {
+func (c *communicatorImpl) RunHostCommand(ctx context.Context, hostID, command string) ([]string, error) {
 	info := requestInfo{
-		method:  get,
+		method:  post,
 		version: apiVersion2,
 		path:    fmt.Sprintf("/hosts/%s/run_command", hostID),
 	}
@@ -1167,21 +1167,21 @@ func (c *communicatorImpl) RunHostCommand(ctx context.Context, hostID, command s
 	data := model.APIHostCommand{Command: command}
 	resp, err := c.request(ctx, info, data)
 	if err != nil {
-		return "", errors.Wrap(err, "can't make request to run command on host")
+		return nil, errors.Wrap(err, "can't make request to run command on host")
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		restErr := gimlet.ErrorResponse{}
 		if err = util.ReadJSONInto(resp.Body, &restErr); err != nil {
-			return "", errors.Wrap(err, "received an error but was unable to parse")
+			return nil, errors.Wrap(err, "received an error but was unable to parse")
 		}
-		return "", errors.Wrapf(restErr, "response code %d running command on host", resp.StatusCode)
+		return nil, errors.Wrapf(restErr, "response code %d running command on host", resp.StatusCode)
 	}
 
 	output := model.APIHostCommandResponse{}
 	if err := util.ReadJSONInto(resp.Body, &output); err != nil {
-		return "", errors.Wrap(err, "problem reading response")
+		return nil, errors.Wrap(err, "problem reading response")
 	}
 
 	return output.Output, nil

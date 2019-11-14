@@ -199,5 +199,5 @@ type APIHostCommand struct {
 }
 
 type APIHostCommandResponse struct {
-	Output string `json:"output"`
+	Output []string `json:"output"`
 }
