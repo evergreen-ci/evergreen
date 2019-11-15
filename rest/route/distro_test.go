@@ -592,10 +592,12 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 	s.data = data.MockDistroConnector{
 		CachedDistros: []*distro.Distro{
 			{
-				Id:       "fedora8",
-				Arch:     "linux_amd64",
-				WorkDir:  "/data/mci",
-				PoolSize: 30,
+				Id:      "fedora8",
+				Arch:    "linux_amd64",
+				WorkDir: "/data/mci",
+				HostAllocatorSettings: distro.HostAllocatorSettings{
+					MaximumHosts: 30,
+				},
 				Provider: "mock",
 				ProviderSettings: &map[string]interface{}{
 					"bid_price":      0.2,
@@ -742,9 +744,9 @@ func (s *DistroPatchByIDSuite) TestRunValidWorkDir() {
 	s.Equal(apiDistro.WorkDir, model.ToAPIString("/tmp"))
 }
 
-func (s *DistroPatchByIDSuite) TestRunValidPoolSize() {
+func (s *DistroPatchByIDSuite) TestRunValidHostAllocatorSettingsMaximumHosts() {
 	ctx := context.Background()
-	json := []byte(`{"pool_size": 50}`)
+	json := []byte(`{"host_allocator_settings": {"maximum_hosts": 50}}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
 	h.body = json
@@ -755,7 +757,7 @@ func (s *DistroPatchByIDSuite) TestRunValidPoolSize() {
 
 	apiDistro, ok := (resp.Data()).(*model.APIDistro)
 	s.Require().True(ok)
-	s.Equal(apiDistro.PoolSize, 50)
+	s.Equal(apiDistro.HostAllocatorSettings.MaximumHosts, 50)
 }
 
 func (s *DistroPatchByIDSuite) TestRunValidSetupAsSudo() {
@@ -1157,7 +1159,9 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 		`{
 				"arch" : "linux_amd64",
 				"work_dir" : "~/data/mci",
-				"pool_size" : 20,
+				"host_allocator_settings": {
+					"maximum_hosts": 20
+				},
 				"provider" : "mock",
 				"settings" : {
 					"mount_points" : [{
@@ -1232,7 +1236,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(apiDistro.Disabled, false)
 	s.Equal(apiDistro.Name, model.ToAPIString("fedora8"))
 	s.Equal(apiDistro.WorkDir, model.ToAPIString("~/data/mci"))
-	s.Equal(apiDistro.PoolSize, 20)
+	s.Equal(apiDistro.HostAllocatorSettings.MaximumHosts, 20)
 	s.Equal(apiDistro.Provider, model.ToAPIString("mock"))
 
 	points := apiDistro.ProviderSettings["mount_points"]
@@ -1294,10 +1298,12 @@ func getMockDistrosConnector() *data.MockConnector {
 		MockDistroConnector: data.MockDistroConnector{
 			CachedDistros: []*distro.Distro{
 				{
-					Id:       "fedora8",
-					Arch:     "linux_amd64",
-					WorkDir:  "/data/mci",
-					PoolSize: 30,
+					Id:      "fedora8",
+					Arch:    "linux_amd64",
+					WorkDir: "/data/mci",
+					HostAllocatorSettings: distro.HostAllocatorSettings{
+						MaximumHosts: 30,
+					},
 					Provider: "mock",
 					ProviderSettings: &map[string]interface{}{
 						"bid_price":      0.2,
