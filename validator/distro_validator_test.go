@@ -43,6 +43,14 @@ func TestCheckDistro(t *testing.T) {
 				FinderSettings: distro.FinderSettings{
 					Version: evergreen.FinderVersionLegacy,
 				},
+				DispatcherSettings: distro.DispatcherSettings{
+					Version: evergreen.DispatcherVersionLegacy,
+				},
+				HostAllocatorSettings: distro.HostAllocatorSettings{
+					Version:      evergreen.HostAllocatorUtilization,
+					MinimumHosts: 10,
+					MaximumHosts: 20,
+				},
 			}
 			verrs, err := CheckDistro(ctx, d, conf, true)
 			So(err, ShouldBeNil)
@@ -93,6 +101,14 @@ func TestCheckDistro(t *testing.T) {
 				CloneMethod: distro.CloneMethodLegacySSH,
 				FinderSettings: distro.FinderSettings{
 					Version: evergreen.FinderVersionLegacy,
+				},
+				DispatcherSettings: distro.DispatcherSettings{
+					Version: evergreen.DispatcherVersionRevised,
+				},
+				HostAllocatorSettings: distro.HostAllocatorSettings{
+					Version:      evergreen.HostAllocatorUtilization,
+					MinimumHosts: 10,
+					MaximumHosts: 20,
 				},
 			}
 			verrs, err := CheckDistro(ctx, d, conf, false)

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/gophercloud/gophercloud"
 	"github.com/mitchellh/mapstructure"
@@ -127,7 +126,6 @@ func (m *openStackManager) SpawnHost(ctx context.Context, h *host.Host) (*host.H
 	h.Id = server.ID
 
 	grip.Debug(message.Fields{"message": "new openstack host", "instance": h.Id, "object": h})
-	event.LogHostStarted(h.Id)
 
 	return h, nil
 }

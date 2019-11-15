@@ -8,12 +8,21 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
 
   for (var i = 0; i < $scope.distros.length; i++) {
     $scope.distros[i].pool_size = $scope.distros[i].pool_size || 0;
+    // Host Allocator Settings
+    $scope.distros[i].host_allocator_settings = $scope.distros[i].host_allocator_settings || {};
+    $scope.distros[i].host_allocator_settings.version = $scope.distros[i].host_allocator_settings.version || 'utilization';
+    $scope.distros[i].host_allocator_settings.minimum_hosts = $scope.distros[i].host_allocator_settings.minimum_hosts || 0;
+    $scope.distros[i].host_allocator_settings.maximum_hosts = $scope.distros[i].host_allocator_settings.maximum_hosts || 0;
+    $scope.distros[i].host_allocator_settings.acceptable_host_idle_time = $scope.distros[i].host_allocator_settings.acceptable_host_idle_time || 0;
+    // Convert from nanoseconds (time.Duration) to seconds (UI display units) for the relevant host_allocator_settings' fields.
+    if ($scope.distros[i].host_allocator_settings.acceptable_host_idle_time > 0) {
+      $scope.distros[i].host_allocator_settings.acceptable_host_idle_time /= 1e9;
+
+    }
+    // Planner Settings
     $scope.distros[i].planner_settings = $scope.distros[i].planner_settings || {};
     $scope.distros[i].planner_settings.version = $scope.distros[i].planner_settings.version || 'legacy';
-    $scope.distros[i].planner_settings.minimum_hosts = $scope.distros[i].planner_settings.minimum_hosts || 0;
-    $scope.distros[i].planner_settings.maximum_hosts = $scope.distros[i].planner_settings.maximum_hosts || 0;
     $scope.distros[i].planner_settings.target_time = $scope.distros[i].planner_settings.target_time || 0;
-    $scope.distros[i].planner_settings.acceptable_host_idle_time = $scope.distros[i].planner_settings.acceptable_host_idle_time || 0;
     $scope.distros[i].planner_settings.patch_factor = $scope.distros[i].planner_settings.patch_factor || 0;
     $scope.distros[i].planner_settings.time_in_queue_factor = $scope.distros[i].planner_settings.time_in_queue_factor || 0;
     $scope.distros[i].planner_settings.expected_runtime_factor = $scope.distros[i].planner_settings.expected_runtime_factor || 0;
@@ -21,40 +30,65 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     if ($scope.distros[i].planner_settings.target_time > 0) {
       $scope.distros[i].planner_settings.target_time /= 1e9;
     }
-    if ($scope.distros[i].planner_settings.acceptable_host_idle_time > 0) {
-      $scope.distros[i].planner_settings.acceptable_host_idle_time /= 1e9;
-    }
     $scope.distros[i].planner_settings.group_versions = $scope.distros[i].planner_settings.group_versions;
     $scope.distros[i].planner_settings.task_ordering = $scope.distros[i].planner_settings.task_ordering || 'interleave';
+    // Finder Settings
     $scope.distros[i].finder_settings = $scope.distros[i].finder_settings || {};
     $scope.distros[i].finder_settings.version = $scope.distros[i].finder_settings.version || 'legacy';
+    // Dispatcher Settings
+    $scope.distros[i].dispatcher_settings = $scope.distros[i].dispatcher_settings || {};
+    $scope.distros[i].dispatcher_settings.version = $scope.distros[i].dispatcher_settings.version || 'revised';
     $scope.distros[i].bootstrap_settings.method = $scope.distros[i].bootstrap_settings.method || 'legacy-ssh';
     $scope.distros[i].bootstrap_settings.communication = $scope.distros[i].bootstrap_settings.communication || 'legacy-ssh';
     $scope.distros[i].clone_method = $scope.distros[i].clone_method || 'legacy-ssh';
   }
 
-  $scope.plannerVersions = [{
-    'id': "legacy",
+  $scope.hostAllocatorVersions = [{
+    'id': 'utilization',
+    'display': 'Utilization '
+  }];
+
+  $scope.finderVersions = [{
+    'id': 'legacy',
     'display': 'Legacy '
   }, {
-    'id': "revised",
-    'display': 'Revised '
+    'id': 'parallel',
+    'display': 'Parallel '
   }, {
-    'id': "tunable",
+    'id': 'pipeline',
+    'display': 'Pipeline '
+  }, {
+    'id': 'alternate',
+    'display': 'Alternate '
+  }];
+
+  $scope.plannerVersions = [{
+    'id': 'legacy',
+    'display': 'Legacy '
+  }, {
+    'id': 'tunable',
     'display': 'Tunable '
   }];
 
+  $scope.dispatcherVersions = [{
+    'id': 'revised',
+    'display': 'Revised '
+  }, {
+    'id': 'revised-with-dependencies',
+    'display': 'Revised w/Dependencies '
+  }];
+
   $scope.taskOrderings = [{
-    'id': "",
+    'id': '',
     'display': ' '
   }, {
-   'id': "interleave",
+   'id': 'interleave',
     'display': 'Interleave '
   }, {
-    'id': "mainlinefirst",
+    'id': 'mainlinefirst',
     'display': 'Mainline First '
   }, {
-    'id': "patchfirst",
+    'id': 'patchfirst',
     'display': 'Patch First '
   }];
 
@@ -328,12 +362,12 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   }
 
   $scope.saveConfiguration = function() {
-    // Convert from UI display units (seconds) to nanoseconds (time.Duration) for relevant planner_settings' fields.
+    // Convert from UI display units (seconds) to nanoseconds (time.Duration) for relevant *_settings' fields.
     if($scope.activeDistro.planner_settings.target_time > 0) {
       $scope.activeDistro.planner_settings.target_time *= 1e9
     }
-    if($scope.activeDistro.planner_settings.acceptable_host_idle_time > 0) {
-      $scope.activeDistro.planner_settings.acceptable_host_idle_time *= 1e9
+    if($scope.activeDistro.host_allocator_settings.acceptable_host_idle_time > 0) {
+      $scope.activeDistro.host_allocator_settings.acceptable_host_idle_time *= 1e9
     }
     if ($scope.activeDistro.new) {
       mciDistroRestService.addDistro(
@@ -395,12 +429,17 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
         },
         'clone_method': 'legacy-ssh',
         'settings': {},
-        'planner_settings': {
-          'version': 'legacy',
-          'minimum_hosts': 0
-        },
         'finder_settings': {
           'version': 'legacy'
+        },
+        'planner_settings': {
+          'version': 'legacy',
+        },
+        'dispatcher_settings': {
+          'version': 'revised'
+        },
+        'host_allocator_settings': {
+          'version': 'utilization'
         },
         'new': true,
       };
@@ -438,6 +477,8 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
       newDistro.expansions = _.clone($scope.activeDistro.expansions);
       newDistro.planner_settings = _.clone($scope.activeDistro.planner_settings);
       newDistro.finder_settings = _.clone($scope.activeDistro.finder_settings);
+      newDistro.dispatcher_settings = _.clone($scope.activeDistro.dispatcher_settings);
+      newDistro.host_allocator_settings = _.clone($scope.activeDistro.host_allocator_setting);
 
       $scope.distros.unshift(newDistro);
       $scope.hasNew = true;
@@ -582,9 +623,27 @@ mciModule.filter("archDisplay", function() {
   }
 });
 
-mciModule.filter("versionDisplay", function() {
+mciModule.filter("finderVersionDisplay", function() {
+  return function(version, scope) {
+    return scope.getKeyDisplay('finderVersions', version);
+  }
+});
+
+mciModule.filter("plannerVersionDisplay", function() {
   return function(version, scope) {
     return scope.getKeyDisplay('plannerVersions', version);
+  }
+});
+
+mciModule.filter("hostAllocatorVersionDisplay", function() {
+  return function(version, scope) {
+    return scope.getKeyDisplay('hostAllocatorVersions', version);
+  }
+});
+
+mciModule.filter("dispatcherVersionDisplay", function() {
+  return function(version, scope) {
+    return scope.getKeyDisplay('dispatcherVersions', version);
   }
 });
 

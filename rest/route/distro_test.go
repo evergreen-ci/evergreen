@@ -257,15 +257,24 @@ func (s *DistroByIDSuite) SetupSuite() {
 		CachedDistros: []*distro.Distro{
 			{
 				Id: "distro1",
-				PlannerSettings: distro.PlannerSettings{
-					Version:                evergreen.PlannerVersionLegacy,
+				DispatcherSettings: distro.DispatcherSettings{
+					Version: evergreen.DispatcherVersionRevisedWithDependencies,
+				},
+				HostAllocatorSettings: distro.HostAllocatorSettings{
+					Version:                evergreen.HostAllocatorUtilization,
 					MinimumHosts:           5,
 					MaximumHosts:           10,
-					TargetTime:             60000000000,
 					AcceptableHostIdleTime: 10000000000,
-					GroupVersions:          &pTrue,
-					PatchFactor:            7,
-					TaskOrdering:           evergreen.TaskOrderingInterleave,
+				},
+				FinderSettings: distro.FinderSettings{
+					Version: evergreen.FinderVersionLegacy,
+				},
+				PlannerSettings: distro.PlannerSettings{
+					Version:       evergreen.PlannerVersionTunable,
+					TargetTime:    80000000000,
+					GroupVersions: &pTrue,
+					PatchFactor:   7,
+					TaskOrdering:  evergreen.TaskOrderingInterleave,
 				},
 				BootstrapSettings: distro.BootstrapSettings{
 					Method:        distro.BootstrapMethodLegacySSH,
@@ -298,13 +307,15 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 	s.NotNil(resp.Data())
 
 	d, ok := (resp.Data()).(*model.APIDistro)
+
 	s.True(ok)
 	s.Equal(model.ToAPIString("distro1"), d.Name)
-	s.Equal(model.ToAPIString(evergreen.PlannerVersionLegacy), d.PlannerSettings.Version)
-	s.Equal(5, d.PlannerSettings.MinimumHosts)
-	s.Equal(10, d.PlannerSettings.MaximumHosts)
-	s.Equal(model.NewAPIDuration(60000000000), d.PlannerSettings.TargetTime)
-	s.Equal(model.NewAPIDuration(10000000000), d.PlannerSettings.AcceptableHostIdleTime)
+
+	s.Equal(5, d.HostAllocatorSettings.MinimumHosts)
+	s.Equal(10, d.HostAllocatorSettings.MaximumHosts)
+	s.Equal(model.NewAPIDuration(10000000000), d.HostAllocatorSettings.AcceptableHostIdleTime)
+	s.Equal(model.ToAPIString(evergreen.PlannerVersionTunable), d.PlannerSettings.Version)
+	s.Equal(model.NewAPIDuration(80000000000), d.PlannerSettings.TargetTime)
 	s.Equal(true, *d.PlannerSettings.GroupVersions)
 	s.EqualValues(7, d.PlannerSettings.PatchFactor)
 	s.Equal(model.ToAPIString(evergreen.TaskOrderingInterleave), d.PlannerSettings.TaskOrdering)
@@ -312,6 +323,7 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), d.BootstrapSettings.Communication)
 	s.Equal(model.ToAPIString(distro.CloneMethodLegacySSH), d.CloneMethod)
 	s.Equal(model.ToAPIString(evergreen.FinderVersionLegacy), d.FinderSettings.Version)
+	s.Equal(model.ToAPIString(evergreen.DispatcherVersionRevisedWithDependencies), d.DispatcherSettings.Version)
 }
 
 func (s *DistroByIDSuite) TestFindByIdFail() {

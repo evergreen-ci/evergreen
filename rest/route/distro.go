@@ -269,8 +269,17 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 
 	apiDistro := &model.APIDistro{
 		Name: model.ToAPIString(h.distroID),
+		FinderSettings: model.APIFinderSettings{
+			Version: model.ToAPIString(evergreen.FinderVersionLegacy),
+		},
 		PlannerSettings: model.APIPlannerSettings{
 			Version: model.ToAPIString(evergreen.PlannerVersionLegacy),
+		},
+		DispatcherSettings: model.APIDispatcherSettings{
+			Version: model.ToAPIString(evergreen.DispatcherVersionRevised),
+		},
+		HostAllocatorSettings: model.APIHostAllocatorSettings{
+			Version: model.ToAPIString(evergreen.HostAllocatorUtilization),
 		},
 		BootstrapSettings: model.APIBootstrapSettings{
 			Method:        model.ToAPIString(distro.BootstrapMethodLegacySSH),
@@ -453,12 +462,12 @@ func (h *distroIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
 
-	distroModel := &model.APIDistro{}
-	if err = distroModel.BuildFromService(d); err != nil {
+	apiDistro := &model.APIDistro{}
+	if err = apiDistro.BuildFromService(d); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
 	}
 
-	return gimlet.NewJSONResponse(distroModel)
+	return gimlet.NewJSONResponse(apiDistro)
 }
 
 ////////////////////////////////////////////////////////////////////////

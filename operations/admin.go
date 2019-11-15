@@ -60,16 +60,15 @@ func adminSetBanner() cli.Command {
 			},
 		},
 		Before: mergeBeforeFuncs(
-			requireClientConfig,
 			func(c *cli.Context) error {
 				if c.String(messageFlagName) != "" && c.Bool(clearFlagName) {
-					return errors.New("cannot specify a message and the 'clear' option at the same time")
+					return errors.New("must specify either a message or the  'clear' option, but not both")
 				}
 				return nil
 			},
 			func(c *cli.Context) error {
 				if c.String(messageFlagName) == "" && !c.Bool(clearFlagName) {
-					return errors.New("cannot specify a message and the 'clear' option at the same time")
+					return errors.New("must specify either a message or the 'clear' option, but not both")
 				}
 				return nil
 			},
@@ -349,7 +348,10 @@ func revert() cli.Command {
 }
 
 func amboyCmd() cli.Command {
-	const useLocalFlagName = "local"
+	const (
+		useLocalFlagName = "local"
+		useGroupFlagName = "group"
+	)
 
 	opts := &amboyCLI.ServiceOptions{
 		BaseURL:          "http://localhost:2285",
@@ -363,6 +365,10 @@ func amboyCmd() cli.Command {
 			Name:  useLocalFlagName,
 			Usage: "set the default to use the local queue.",
 		},
+		cli.BoolFlag{
+			Name:  useGroupFlagName,
+			Usage: "set the default to use the group queue",
+		},
 	}
 
 	cmd.Before = func(c *cli.Context) error {
@@ -370,6 +376,9 @@ func amboyCmd() cli.Command {
 		if c.Bool(useLocalFlagName) {
 			opts.ReportingPrefix = "/amboy/local/reporting"
 			opts.ManagementPrefix = "/amboy/local/pool"
+		} else if c.Bool(useGroupFlagName) {
+			opts.ReportingPrefix = "/amboy/group/reporting"
+			opts.ManagementPrefix = "/amboy/group/pool"
 		}
 		return nil
 	}

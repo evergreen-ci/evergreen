@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -95,8 +96,10 @@ func (j *spawnhostModifyJob) Run(ctx context.Context) {
 	// Modify spawnhost using the cloud manager
 	if err := cloudManager.ModifyHost(ctx, j.host, j.ModifyOptions); err != nil {
 		j.AddError(errors.Wrap(err, "error modifying spawnhost using cloud manager"))
+		event.LogHostModifyFinished(j.host.Id, false)
 		return
 	}
 
+	event.LogHostModifyFinished(j.host.Id, true)
 	return
 }

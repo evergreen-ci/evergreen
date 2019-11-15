@@ -1174,6 +1174,11 @@ func (c *awsClientMock) StartInstances(ctx context.Context, input *ec2.StartInst
 		State: &ec2.InstanceState{
 			Name: aws.String(ec2.InstanceStateNameRunning),
 		},
+		Placement: &ec2.Placement{
+			AvailabilityZone: aws.String("us-east-1a"),
+		},
+		PublicDnsName: aws.String("public_dns_name"),
+		LaunchTime:    aws.Time(time.Now()),
 	}
 	return &ec2.StartInstancesOutput{}, nil
 }

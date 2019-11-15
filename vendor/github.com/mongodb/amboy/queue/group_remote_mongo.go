@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -33,10 +34,12 @@ type MongoDBQueueGroupOptions struct {
 	// Prefix is a string prepended to the queue collections.
 	Prefix string
 
-	// Ordered controls if an order-respecting queue will be
-	// created, while default workers sets the defualt number of
-	// workers new queues will have if the WorkerPoolSize function
-	// is not set.
+	// Abortable controls if the queue will use an abortable pool
+	// imlementation. The Ordered option controls if an
+	// order-respecting queue will be created, while default
+	// workers sets the defualt number of workers new queues will
+	// have if the WorkerPoolSize function is not set.
+	Abortable      bool
 	Ordered        bool
 	DefaultWorkers int
 
@@ -65,11 +68,19 @@ func (opts *MongoDBQueueGroupOptions) constructor(ctx context.Context, name stri
 		}
 	}
 
+	var q remoteQueue
 	if opts.Ordered {
-		return newSimpleRemoteOrdered(workers)
+		q = newSimpleRemoteOrdered(workers)
+	} else {
+		q = newRemoteUnordered(workers)
 	}
 
-	return newRemoteUnordered(workers)
+	if opts.Abortable {
+		p := pool.NewAbortablePool(workers, q)
+		grip.Debug(q.SetRunner(p))
+	}
+
+	return q
 }
 
 func (opts MongoDBQueueGroupOptions) validate() error {

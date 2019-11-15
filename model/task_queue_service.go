@@ -90,23 +90,13 @@ func (s *taskDispatchService) ensureQueue(distroID string) (CachedDispatcher, er
 	if err != nil {
 		return nil, errors.Wrapf(err, "database error for find() by distro id '%s'", distroID)
 	}
-
-	config, err := evergreen.GetConfig()
-	if err != nil {
-		return nil, errors.Wrap(err, "error retrieving Evergreen config")
-	}
-	plannerSettings, err := d.GetResolvedPlannerSettings(config)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error resolving the PlannerSettings for distro '%s'", d.Id)
-	}
-
 	// If there is a "distro": *basicCachedDispatcherImpl in the cachedDispatchers map, return that.
 	// Otherwise, get the "distro"'s taskQueue from the database; seed its cachedDispatcher; put that in the map and return it.
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	distroDispatchService, ok := s.cachedDispatchers[distroID]
-	if ok && distroDispatchService.Type() == plannerSettings.Version {
+	if ok && distroDispatchService.Type() == d.DispatcherSettings.Version {
 		return distroDispatchService, nil
 	}
 
@@ -121,14 +111,14 @@ func (s *taskDispatchService) ensureQueue(distroID string) (CachedDispatcher, er
 		return nil, errors.WithStack(err)
 	}
 
-	switch plannerSettings.Version {
-	case evergreen.PlannerVersionTunable:
+	switch d.DispatcherSettings.Version {
+	case evergreen.DispatcherVersionRevisedWithDependencies:
 		distroDispatchService, err = newDistroTaskDAGDispatchService(taskQueue, s.ttl)
 		if err != nil {
 			return nil, err
 		}
 	default:
-		distroDispatchService = newDistroTaskDispatchService(taskQueue, plannerSettings.Version, s.ttl)
+		distroDispatchService = newDistroTaskDispatchService(taskQueue, d.DispatcherSettings.Version, s.ttl)
 	}
 
 	s.cachedDispatchers[distroID] = distroDispatchService

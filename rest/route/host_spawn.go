@@ -11,7 +11,9 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
@@ -156,6 +158,16 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error creating spawnhost modify job"))
 	}
 
+	if h.options.SubscriptionType != "" {
+		subscription, err := makeSpawnHostSubscription(h.hostID, h.options.SubscriptionType, user)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't make subscription"))
+		}
+		if err = h.sc.SaveSubscriptions(user.Username(), []model.APISubscription{subscription}); err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't save subscription"))
+		}
+	}
+
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
@@ -233,9 +245,10 @@ func checkVolumeLimitExceeded(user string, newSize int, maxSize int) error {
 // POST /rest/v2/hosts/{host_id}/stop
 
 type hostStopHandler struct {
-	hostID string
-	sc     data.Connector
-	env    evergreen.Environment
+	hostID           string
+	subscriptionType string
+	sc               data.Connector
+	env              evergreen.Environment
 }
 
 func makeHostStopManager(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
@@ -255,7 +268,21 @@ func (h *hostStopHandler) Factory() gimlet.RouteHandler {
 func (h *hostStopHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	h.hostID, err = validateID(gimlet.GetVars(r)["host_id"])
-	return err
+	if err != nil {
+		return errors.Wrap(err, "can't get host id")
+	}
+
+	body := util.NewRequestReader(r)
+	defer body.Close()
+	options := struct {
+		SubscriptionType string `json:"subscription_type"`
+	}{}
+	if err := util.ReadJSONInto(body, &options); err != nil {
+		h.subscriptionType = ""
+	}
+	h.subscriptionType = options.SubscriptionType
+
+	return nil
 }
 
 func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
@@ -287,6 +314,16 @@ func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error creating spawnhost stop job"))
 	}
 
+	if h.subscriptionType != "" {
+		subscription, err := makeSpawnHostSubscription(h.hostID, h.subscriptionType, user)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't make subscription"))
+		}
+		if err = h.sc.SaveSubscriptions(user.Username(), []model.APISubscription{subscription}); err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't save subscription"))
+		}
+	}
+
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
@@ -295,9 +332,10 @@ func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
 // POST /rest/v2/hosts/{host_id}/start
 
 type hostStartHandler struct {
-	hostID string
-	sc     data.Connector
-	env    evergreen.Environment
+	hostID           string
+	subscriptionType string
+	sc               data.Connector
+	env              evergreen.Environment
 }
 
 func makeHostStartManager(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
@@ -317,7 +355,21 @@ func (h *hostStartHandler) Factory() gimlet.RouteHandler {
 func (h *hostStartHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	h.hostID, err = validateID(gimlet.GetVars(r)["host_id"])
-	return err
+	if err != nil {
+		return errors.Wrap(err, "can't get host id")
+	}
+
+	body := util.NewRequestReader(r)
+	defer body.Close()
+	options := struct {
+		SubscriptionType string `json:"subscription_type"`
+	}{}
+	if err := util.ReadJSONInto(body, &options); err != nil {
+		h.subscriptionType = ""
+	}
+	h.subscriptionType = options.SubscriptionType
+
+	return nil
 }
 
 func (h *hostStartHandler) Run(ctx context.Context) gimlet.Responder {
@@ -342,6 +394,16 @@ func (h *hostStartHandler) Run(ctx context.Context) gimlet.Responder {
 	startJob := units.NewSpawnhostStartJob(host, user.Id, ts)
 	if err = h.env.RemoteQueue().Put(ctx, startJob); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error creating spawnhost start job"))
+	}
+
+	if h.subscriptionType != "" {
+		subscription, err := makeSpawnHostSubscription(h.hostID, h.subscriptionType, user)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't make subscription"))
+		}
+		if err = h.sc.SaveSubscriptions(user.Username(), []model.APISubscription{subscription}); err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't save subscription"))
+		}
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
@@ -1023,4 +1085,34 @@ func validateID(id string) (string, error) {
 	}
 
 	return id, nil
+}
+
+func makeSpawnHostSubscription(hostID, subscriberType string, user *user.DBUser) (model.APISubscription, error) {
+	var subscriber model.APISubscriber
+	if subscriberType == event.SlackSubscriberType {
+		subscriber = model.APISubscriber{
+			Type:   model.ToAPIString(event.SlackSubscriberType),
+			Target: fmt.Sprintf("@%s", user.Settings.SlackUsername),
+		}
+	} else if subscriberType == event.EmailSubscriberType {
+		subscriber = model.APISubscriber{
+			Type:   model.ToAPIString(event.EmailSubscriberType),
+			Target: user.Email(),
+		}
+	} else {
+		return model.APISubscription{}, errors.Errorf("'%s' is not a valid subscriber type", subscriberType)
+	}
+
+	return model.APISubscription{
+		OwnerType:    model.ToAPIString(string(event.OwnerTypePerson)),
+		ResourceType: model.ToAPIString(event.ResourceTypeHost),
+		Trigger:      model.ToAPIString(event.TriggerOutcome),
+		Selectors: []model.APISelector{
+			{
+				Type: model.ToAPIString(event.SelectorID),
+				Data: model.ToAPIString(hostID),
+			},
+		},
+		Subscriber: subscriber,
+	}, nil
 }
