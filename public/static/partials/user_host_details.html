@@ -40,7 +40,7 @@
           <strong>User Data:</strong><br/>
           <pre>[[curHostData.userdata]]</pre>
         </div>
-        <div class="entry" ng-show="!curHostData.isTerminated && curHostData.host.length > 0 && (curHostData.distro.bootstrap_method != 'user-data' || curHostData.status == 'running')">
+        <div class="entry" ng-show="!curHostData.isTerminated && curHostData.host.length > 0 && (curHostData.distro.bootstrap_settings.method != 'user-data' || curHostData.status == 'running')">
           <strong>Login Command:</strong>
           <pre readonly>ssh [[curHostData.user]]@[[curHostData.host]]</pre>
         </div>
