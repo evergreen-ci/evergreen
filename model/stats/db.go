@@ -1101,8 +1101,6 @@ func doBulkWrite(ctx context.Context, env evergreen.Environment, outputCollectio
 
 	if totalModified != int64(len(buf)) {
 		return errors.Errorf("failed to materialize view: %d of %d", totalModified, len(buf))
-
-		mm
 	}
 
 	return nil
