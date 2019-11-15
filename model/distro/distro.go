@@ -37,9 +37,6 @@ type Distro struct {
 	PlannerSettings       PlannerSettings         `bson:"planner_settings" json:"planner_settings" mapstructure:"planner_settings"`
 	DispatcherSettings    DispatcherSettings      `bson:"dispatcher_settings" json:"dispatcher_settings" mapstructure:"dispatcher_settings"`
 	HostAllocatorSettings HostAllocatorSettings   `bson:"host_allocator_settings" json:"host_allocator_settings" mapstructure:"host_allocator_settings"`
-
-	// PoolSize is the maximum allowed number of hosts running this distro
-	// PoolSize int `bson:"pool_size,omitempty" json:"pool_size,omitempty" mapstructure:"pool_size,omitempty" yaml:"poolsize"`
 }
 
 // BootstrapSettings encapsulates all settings related to bootstrapping hosts.
