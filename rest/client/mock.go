@@ -685,6 +685,6 @@ func (c *Mock) GetManifestByTask(context.Context, string) (*manifest.Manifest, e
 	return &manifest.Manifest{Id: "manifest0"}, nil
 }
 
-func (c *Mock) RunHostCommand(context.Context, string, string) ([]string, error) {
+func (c *Mock) RunHostScript(context.Context, string, string) ([]string, error) {
 	return nil, nil
 }

@@ -1157,17 +1157,17 @@ func (c *communicatorImpl) GetManifestByTask(ctx context.Context, taskId string)
 	return &mfest, nil
 }
 
-func (c *communicatorImpl) RunHostCommand(ctx context.Context, hostID, command string) ([]string, error) {
+func (c *communicatorImpl) RunHostScript(ctx context.Context, hostID, script string) ([]string, error) {
 	info := requestInfo{
 		method:  post,
 		version: apiVersion2,
-		path:    fmt.Sprintf("/hosts/%s/run_command", hostID),
+		path:    fmt.Sprintf("/hosts/%s/run_script", hostID),
 	}
 
-	data := model.APIHostCommand{Command: command}
+	data := model.APIHostScript{Script: script}
 	resp, err := c.request(ctx, info, data)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't make request to run command on host")
+		return nil, errors.Wrap(err, "can't make request to run script on host")
 	}
 	defer resp.Body.Close()
 
@@ -1176,10 +1176,10 @@ func (c *communicatorImpl) RunHostCommand(ctx context.Context, hostID, command s
 		if err = util.ReadJSONInto(resp.Body, &restErr); err != nil {
 			return nil, errors.Wrap(err, "received an error but was unable to parse")
 		}
-		return nil, errors.Wrapf(restErr, "response code %d running command on host", resp.StatusCode)
+		return nil, errors.Wrapf(restErr, "response code %d running script on host", resp.StatusCode)
 	}
 
-	output := model.APIHostCommandResponse{}
+	output := model.APIHostScriptResponse{}
 	if err := util.ReadJSONInto(resp.Body, &output); err != nil {
 		return nil, errors.Wrap(err, "problem reading response")
 	}

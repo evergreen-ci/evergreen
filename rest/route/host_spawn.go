@@ -1015,63 +1015,63 @@ func (h *hostExtendExpirationHandler) Run(ctx context.Context) gimlet.Responder 
 //
 // POST /rest/v2/hosts/{host_id}/run_command
 //
-type hostRunCommand struct {
+type hostRunScript struct {
 	sc  data.Connector
 	env evergreen.Environment
 
-	hostID  string
-	command string
+	hostID string
+	script string
 }
 
-func makeHostRunCommand(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
-	return &hostRunCommand{
+func makeHostRunScript(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+	return &hostRunScript{
 		sc:  sc,
 		env: env,
 	}
 }
 
-func (h *hostRunCommand) Factory() gimlet.RouteHandler {
-	return &hostRunCommand{
+func (h *hostRunScript) Factory() gimlet.RouteHandler {
+	return &hostRunScript{
 		sc:  h.sc,
 		env: h.env,
 	}
 }
 
-func (h *hostRunCommand) Parse(ctx context.Context, r *http.Request) error {
+func (h *hostRunScript) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	h.hostID, err = validateID(gimlet.GetVars(r)["host_id"])
 	if err != nil {
 		return errors.Wrap(err, "invalid host id")
 	}
 
-	hostCommand := model.APIHostCommand{}
-	if err = util.ReadJSONInto(util.NewRequestReader(r), &hostCommand); err != nil {
+	hostScript := model.APIHostScript{}
+	if err = util.ReadJSONInto(util.NewRequestReader(r), &hostScript); err != nil {
 		return errors.Wrap(err, "can't read host command from json")
 	}
-	h.command = hostCommand.Command
+	h.script = hostScript.Script
 
 	return nil
 }
 
-func (h *hostRunCommand) Run(ctx context.Context) gimlet.Responder {
+func (h *hostRunScript) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 	host, err := h.sc.FindHostByIdWithOwner(h.hostID, user)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't get host"))
 	}
 	if host.Status != evergreen.HostRunning {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("can't run command on host with status '%s'", host.Status))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("can't run script on host with status '%s'", host.Status))
 	}
 
-	if host.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
+	if host.JasperCommunication() {
 		opts := &options.Create{
-			Args: []string{"bash", "-l", "-c", h.command},
+			Args: []string{"bash", "-l", "-c", h.script},
 		}
 		output, err := host.RunJasperProcess(ctx, h.env, opts)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't run script with Jasper"))
 		}
-		return gimlet.NewJSONResponse(model.APIHostCommandResponse{Output: output})
+		return gimlet.NewJSONResponse(model.APIHostScriptResponse{Output: output})
 	}
 
 	sshOptions, err := host.GetSSHOptions(h.env.Settings())
@@ -1079,13 +1079,13 @@ func (h *hostRunCommand) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't get ssh options"))
 	}
-	output, err := host.RunSSHShellScript(ctx, h.command, sshOptions)
+	output, err := host.RunSSHShellScript(ctx, h.script, sshOptions)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't run script over ssh"))
 	}
 
 	outputSlice := strings.Split(output, "\r\n")
-	return gimlet.NewJSONResponse(model.APIHostCommandResponse{Output: outputSlice[:len(outputSlice)-1]})
+	return gimlet.NewJSONResponse(model.APIHostScriptResponse{Output: outputSlice[:len(outputSlice)-1]})
 }
 
 ////////////////////////////////////////////////////////////////////////

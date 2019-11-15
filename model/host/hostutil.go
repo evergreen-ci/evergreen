@@ -687,12 +687,20 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 		return nil, errors.Errorf("process returned exit code %d", exitCode)
 	}
 
-	logStream, err := client.GetLogStream(ctx, proc.ID(), 1000)
-	if err != nil {
-		return nil, errors.Wrap(err, "can't get output of process")
+	logs := []string{}
+	for {
+		logStream, err := client.GetLogStream(ctx, proc.ID(), 1000)
+		if err != nil {
+			return nil, errors.Wrap(err, "can't get output of process")
+		}
+
+		logs = append(logs, logStream.Logs...)
+		if logStream.Done {
+			break
+		}
 	}
 
-	return logStream.Logs, nil
+	return logs, nil
 }
 
 // StartJasperProcess makes a request to the host's Jasper service to start a

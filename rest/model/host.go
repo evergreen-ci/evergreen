@@ -194,10 +194,10 @@ type APISpawnHostModify struct {
 	DeleteTags   []APIString `json:"tags_to_delete"`
 }
 
-type APIHostCommand struct {
-	Command string `json:"command"`
+type APIHostScript struct {
+	Script string `json:"script"`
 }
 
-type APIHostCommandResponse struct {
+type APIHostScriptResponse struct {
 	Output []string `json:"output"`
 }

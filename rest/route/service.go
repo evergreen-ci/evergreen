@@ -90,7 +90,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/hosts").Version(2).Patch().Wrap(superUser).RouteHandler(makeChangeHostsStatuses(sc))
 	app.AddRoute("/hosts/{host_id}").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetHostByID(sc))
 	app.AddRoute("/hosts/{host_id}").Version(2).Patch().Wrap(checkUser).RouteHandler(makeHostModifyRouteManager(sc, env))
-	app.AddRoute("/hosts/{host_id}/run_command").Version(2).Post().Wrap(checkUser).RouteHandler(makeHostRunCommand(sc, env))
+	app.AddRoute("/hosts/{host_id}/run_script").Version(2).Post().Wrap(checkUser).RouteHandler(makeHostRunScript(sc, env))
 	app.AddRoute("/hosts/{host_id}/stop").Version(2).Post().Wrap(checkUser).RouteHandler(makeHostStopManager(sc, env))
 	app.AddRoute("/hosts/{host_id}/start").Version(2).Post().Wrap(checkUser).RouteHandler(makeHostStartManager(sc, env))
 	app.AddRoute("/hosts/{host_id}/change_password").Version(2).Post().Wrap(checkUser).RouteHandler(makeHostChangePassword(sc, env))
