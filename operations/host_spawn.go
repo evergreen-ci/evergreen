@@ -648,7 +648,7 @@ func hostRunCommand() cli.Command {
 
 	return cli.Command{
 		Name:  "exec",
-		Usage: "run a bash shell script on a host",
+		Usage: "run a bash shell script on a host and print the output",
 		Flags: addHostFlag(
 			cli.StringFlag{
 				Name:  scriptFlagName,
@@ -659,7 +659,7 @@ func hostRunCommand() cli.Command {
 				Usage: "path to a file containing a script",
 			},
 		),
-		Before: mergeBeforeFuncs(setPlainLogger),
+		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag, mutuallyExclusiveArgs(true, scriptFlagName, pathFlagName)),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			hostID := c.String(hostFlagName)
@@ -676,16 +676,15 @@ func hostRunCommand() cli.Command {
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
-			if script == "" && path != "" {
+			if path != "" {
 				scriptBytes, err := ioutil.ReadFile(path)
 				if err != nil {
 					return errors.Wrapf(err, "can't read script from '%s'", path)
 				}
 				script = string(scriptBytes)
-			}
-
-			if script == "" {
-				return errors.New("script is empty")
+				if script == "" {
+					return errors.New("script is empty")
+				}
 			}
 
 			output, err := client.RunHostScript(ctx, hostID, script)
