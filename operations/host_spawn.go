@@ -647,7 +647,7 @@ func hostRunCommand() cli.Command {
 	const pathFlagName = "path"
 
 	return cli.Command{
-		Name:  "run-script",
+		Name:  "exec",
 		Usage: "run a bash shell script on a host",
 		Flags: addHostFlag(
 			cli.StringFlag{
