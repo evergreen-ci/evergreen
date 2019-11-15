@@ -140,6 +140,8 @@ type Connector interface {
 	// NewIntentHost is a method to insert an intent host given a distro and the name of a saved public key
 	NewIntentHost(*restModel.HostRequestOptions, *user.DBUser) (*host.Host, error)
 
+	// AggregateSpawnhostData returns basic metrics on spawn host/volume usage.
+	AggregateSpawnhostData() (*host.SpawnHostUsage, error)
 	// FetchContext is a method to fetch a context given a series of identifiers.
 	FetchContext(string, string, string, string, string) (model.Context, error)
 
