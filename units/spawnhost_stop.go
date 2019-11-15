@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -86,8 +87,10 @@ func (j *spawnhostStopJob) Run(ctx context.Context) {
 	// Stop instance using the cloud manager
 	if err := cloudManager.StopInstance(ctx, j.host, j.UserID); err != nil {
 		j.AddError(errors.Wrap(err, "error stopping spawnhost using cloud manager"))
+		event.LogHostStopFinished(j.host.Id, false)
 		return
 	}
 
+	event.LogHostStopFinished(j.host.Id, true)
 	return
 }

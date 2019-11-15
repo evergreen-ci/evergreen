@@ -27,6 +27,7 @@ const (
 	activeFlagName         = "active"
 	refFlagName            = "ref"
 	uncommittedChangesFlag = "uncommitted"
+	subscriptionTypeFlag   = "subscription-type"
 
 	anserDryRunFlagName      = "dry-run"
 	anserLimitFlagName       = "limit"
@@ -133,6 +134,13 @@ func addHostFlag(flags ...cli.Flag) []cli.Flag {
 		},
 	}, flags...)
 
+}
+
+func addSubscriptionTypeFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.StringFlag{
+		Name:  subscriptionTypeFlag,
+		Usage: "subscribe for notifications through `TYPE`",
+	})
 }
 
 func addStartTimeFlag(flags ...cli.Flag) []cli.Flag {

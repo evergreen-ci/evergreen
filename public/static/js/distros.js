@@ -38,12 +38,6 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     // Dispatcher Settings
     $scope.distros[i].dispatcher_settings = $scope.distros[i].dispatcher_settings || {};
     $scope.distros[i].dispatcher_settings.version = $scope.distros[i].dispatcher_settings.version || 'revised';
-    $scope.distros[i].planner_settings.minimum_hosts = $scope.distros[i].planner_settings.minimum_hosts || 0;
-    $scope.distros[i].planner_settings.maximum_hosts = $scope.distros[i].planner_settings.maximum_hosts || 0;
-    $scope.distros[i].planner_settings.acceptable_host_idle_time = $scope.distros[i].planner_settings.acceptable_host_idle_time || 0;
-    if ($scope.distros[i].planner_settings.acceptable_host_idle_time > 0) {
-      $scope.distros[i].planner_settings.acceptable_host_idle_time /= 1e9;
-    }
     $scope.distros[i].bootstrap_settings.method = $scope.distros[i].bootstrap_settings.method || 'legacy-ssh';
     $scope.distros[i].bootstrap_settings.communication = $scope.distros[i].bootstrap_settings.communication || 'legacy-ssh';
     $scope.distros[i].clone_method = $scope.distros[i].clone_method || 'legacy-ssh';
@@ -71,9 +65,6 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   $scope.plannerVersions = [{
     'id': 'legacy',
     'display': 'Legacy '
-  }, {
-    'id': 'revised',
-    'display': 'Revised '
   }, {
     'id': 'tunable',
     'display': 'Tunable '
@@ -374,9 +365,6 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     // Convert from UI display units (seconds) to nanoseconds (time.Duration) for relevant *_settings' fields.
     if($scope.activeDistro.planner_settings.target_time > 0) {
       $scope.activeDistro.planner_settings.target_time *= 1e9
-    }
-    if($scope.activeDistro.planner_settings.acceptable_host_idle_time > 0) {
-      $scope.activeDistro.planner_settings.acceptable_host_idle_time *= 1e9
     }
     if($scope.activeDistro.host_allocator_settings.acceptable_host_idle_time > 0) {
       $scope.activeDistro.host_allocator_settings.acceptable_host_idle_time *= 1e9

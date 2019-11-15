@@ -17,6 +17,9 @@ func init() {
 	registry.AllowSubscription(ResourceTypeHost, EventHostExpirationWarningSent)
 	registry.AllowSubscription(ResourceTypeHost, EventHostProvisioned)
 	registry.AllowSubscription(ResourceTypeHost, EventHostProvisionFailed)
+	registry.AllowSubscription(ResourceTypeHost, EventHostStarted)
+	registry.AllowSubscription(ResourceTypeHost, EventHostStopped)
+	registry.AllowSubscription(ResourceTypeHost, EventHostModified)
 }
 
 const (
@@ -26,6 +29,8 @@ const (
 	// event types
 	EventHostCreated                  = "HOST_CREATED"
 	EventHostStarted                  = "HOST_STARTED"
+	EventHostStopped                  = "HOST_STOPPED"
+	EventHostModified                 = "HOST_MODIFIED"
 	EventHostAgentDeployed            = "HOST_AGENT_DEPLOYED"
 	EventHostAgentDeployFailed        = "HOST_AGENT_DEPLOY_FAILED"
 	EventHostAgentMonitorDeployed     = "HOST_AGENT_MONITOR_DEPLOYED"
@@ -91,12 +96,20 @@ func LogHostEvent(hostId string, eventType string, eventData HostEventData) {
 	}
 }
 
-func LogHostStarted(hostId string) {
-	LogHostEvent(hostId, EventHostStarted, HostEventData{})
-}
-
 func LogHostCreated(hostId string) {
 	LogHostEvent(hostId, EventHostCreated, HostEventData{})
+}
+
+func LogHostStartFinished(hostId string, successful bool) {
+	LogHostEvent(hostId, EventHostStarted, HostEventData{Successful: successful})
+}
+
+func LogHostStopFinished(hostId string, successful bool) {
+	LogHostEvent(hostId, EventHostStopped, HostEventData{Successful: successful})
+}
+
+func LogHostModifyFinished(hostId string, successful bool) {
+	LogHostEvent(hostId, EventHostModified, HostEventData{Successful: successful})
 }
 
 func LogHostAgentDeployed(hostId string) {
@@ -191,7 +204,7 @@ func UpdateExecutions(hostId, taskId string, execution int) error {
 	taskIdKey := bsonutil.MustHaveTag(HostEventData{}, "TaskId")
 	executionKey := bsonutil.MustHaveTag(HostEventData{}, "Execution")
 	query := bson.M{
-		"r_id": hostId,
+		"r_id":                    hostId,
 		DataKey + "." + taskIdKey: taskId,
 	}
 	update := bson.M{

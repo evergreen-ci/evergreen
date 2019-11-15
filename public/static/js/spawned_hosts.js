@@ -85,6 +85,8 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
                             $scope.hosts[i].expires_in = host.expires_in;
                             $scope.hosts[i].status = host.status;
                             $scope.hosts[i].id = host.id;
+                            $scope.hosts[i].host = host.host;
+                            $scope.hosts[i].start_time = host.start_time;
                             if ($scope.hosts[i].instance_type === undefined || $scope.hosts[i].instance_type === "") {
                                 $scope.hosts[i].instance_type = host.instance_type;
                             }
@@ -118,15 +120,18 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
 
     $scope.computeUptime = function(host) {
         host.isTerminated = host.status == 'terminated';
-        var terminateTime = moment(host.termination_time);
+        const terminateTime = moment(host.termination_time);
+        const startTime = moment(host.start_time);
         // check if the host is terminated to determine uptime
         if (host.isTerminated && terminateTime > epochTime) {
-            var uptime = terminateTime.diff(host.creation_time, 'seconds');
-            host.uptime = moment.duration(uptime, 'seconds').humanize();
+          const uptime = terminateTime.diff(startTime, 'seconds');
+          host.uptime = moment.duration(uptime, 'seconds').humanize();
+        } else if (host.status == 'stopped') {
+          host.uptime = "";
         } else {
-            var uptime = moment().diff(host.creation_time, 'seconds');
-            host.uptime = moment.duration(uptime, 'seconds').humanize();
-        }
+          const uptime = moment().diff(startTime, 'seconds');
+          host.uptime = moment.duration(uptime, 'seconds').humanize();
+        }        
     }
 
     $scope.setCurrentExpirationOnClick = function() {

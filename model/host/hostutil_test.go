@@ -634,21 +634,37 @@ func TestJasperProcess(t *testing.T) {
 	defer cancel()
 
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create){
-		"RunJasperProcessErrorsWithoutJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
-			assert.Error(t, h.StartJasperProcess(ctx, env, opts))
-		},
-		"StartJasperProcessErrorsWithoutJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
-			assert.Error(t, h.StartJasperProcess(ctx, env, opts))
-		},
-		"RunJasperProcessPassesWithJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
+		"RunJasperProcessPasses": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
 			assert.NoError(t, withJasperServiceSetupAndTeardown(ctx, env, manager, h, func() {
 				_, err := h.RunJasperProcess(ctx, env, opts)
 				assert.NoError(t, err)
 			}))
 		},
-		"StartJasperProcessPassesWithJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
+		"StartJasperProcessPasses": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
 			assert.NoError(t, withJasperServiceSetupAndTeardown(ctx, env, manager, h, func() {
 				assert.NoError(t, h.StartJasperProcess(ctx, env, opts))
+			}))
+		},
+		"RunJasperProcessFailsIfProcessCreationFails": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
+			manager.FailCreate = true
+			assert.NoError(t, withJasperServiceSetupAndTeardown(ctx, env, manager, h, func() {
+				_, err := h.RunJasperProcess(ctx, env, opts)
+				assert.Error(t, err)
+			}))
+		},
+		"RunJasperProcessFailsIfProcessExitsWithError": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
+			manager.Create = func(*options.Create) jmock.Process {
+				return jmock.Process{FailWait: true}
+			}
+			assert.NoError(t, withJasperServiceSetupAndTeardown(ctx, env, manager, h, func() {
+				_, err := h.RunJasperProcess(ctx, env, opts)
+				assert.Error(t, err)
+			}))
+		},
+		"StartJasperProcessFailsIfProcessCreationFails": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
+			manager.FailCreate = true
+			assert.NoError(t, withJasperServiceSetupAndTeardown(ctx, env, manager, h, func() {
+				assert.Error(t, h.StartJasperProcess(ctx, env, opts))
 			}))
 		},
 	} {
@@ -924,6 +940,9 @@ func TestSetupSpawnHostCommands(t *testing.T) {
 			Arch:    distro.ArchLinuxAmd64,
 			WorkDir: "/dir",
 			User:    "user",
+			BootstrapSettings: distro.BootstrapSettings{
+				JasperCredentialsPath: "/jasper_credentials_path",
+			},
 		},
 		ProvisionOptions: &ProvisionOptions{
 			OwnerId: user.Id,
@@ -936,6 +955,10 @@ func TestSetupSpawnHostCommands(t *testing.T) {
 		Ui: evergreen.UIConfig{
 			Url: "www.example1.com",
 		},
+		HostJasper: evergreen.HostJasperConfig{
+			BinaryName: "jasper_cli",
+			Port:       12345,
+		},
 	}
 
 	cmd, err := h.SetupSpawnHostCommands(settings)
@@ -946,9 +969,15 @@ func TestSetupSpawnHostCommands(t *testing.T) {
 
 	h.ProvisionOptions.TaskId = "task_id"
 	cmd, err = h.SetupSpawnHostCommands(settings)
+	assert.Contains(t, cmd, expected)
 	require.NoError(t, err)
-	expected += " && /home/user/evergreen -c /home/user/cli_bin/.evergreen.yml fetch -t task_id --source --artifacts --dir='/dir'"
-	assert.Equal(t, expected, cmd)
+	fetchCmd := []string{"/home/user/evergreen", "-c", "/home/user/cli_bin/.evergreen.yml", "fetch", "-t", "task_id", "--source", "--artifacts", "--dir", "/dir"}
+	currIndex := 0
+	for _, arg := range fetchCmd {
+		foundIndex := strings.Index(cmd[currIndex:], arg)
+		require.NotEqual(t, foundIndex, -1)
+		currIndex += foundIndex
+	}
 }
 
 func TestMarkUserDataDoneCommands(t *testing.T) {

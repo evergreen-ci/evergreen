@@ -245,6 +245,7 @@ type HostModifyOptions struct {
 	AddHours           time.Duration // duration to extend expiration
 	AttachVolume       string
 	DetachVolume       string
+	SubscriptionType   string
 }
 
 const (
@@ -381,7 +382,28 @@ func (h *Host) SetStopping(user string) error {
 }
 
 func (h *Host) SetStopped(user string) error {
-	return h.SetStatus(evergreen.HostStopped, user, "")
+	err := UpdateOne(
+		bson.M{
+			IdKey:     h.Id,
+			StatusKey: h.Status,
+		},
+		bson.M{"$set": bson.M{
+			StatusKey:    evergreen.HostStopped,
+			DNSKey:       "",
+			StartTimeKey: util.ZeroTime,
+		}},
+	)
+	if err != nil {
+		return errors.Wrap(err, "can't set host stopped in db")
+	}
+
+	event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostStopped, user, "")
+
+	h.Status = evergreen.HostStopped
+	h.Host = ""
+	h.StartTime = util.ZeroTime
+
+	return nil
 }
 
 func (h *Host) SetUnprovisioned() error {
