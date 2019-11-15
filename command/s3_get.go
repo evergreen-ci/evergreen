@@ -127,6 +127,7 @@ func (c *s3get) Execute(ctx context.Context,
 
 	// create pail bucket
 	client := util.GetHTTPClient()
+	client.Timeout = s3HTTPClientTimeout
 	defer util.PutHTTPClient(client)
 	err := c.createPailBucket(client)
 	if err != nil {

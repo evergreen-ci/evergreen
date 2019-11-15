@@ -211,6 +211,7 @@ func (s3pc *s3put) Execute(ctx context.Context,
 
 	// create pail bucket
 	httpClient := util.GetHTTPClient()
+	client.Timeout = s3HTTPClientTimeout
 	defer util.PutHTTPClient(httpClient)
 	if err := s3pc.createPailBucket(httpClient); err != nil {
 		return errors.Wrap(err, "problem connecting to s3")
