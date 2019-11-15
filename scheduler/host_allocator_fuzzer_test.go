@@ -53,8 +53,10 @@ func (s *HostAllocatorFuzzerSuite) SetupSuite() {
 	rand.Seed(time.Now().UnixNano())
 	s.distroName = "testDistro"
 	s.distro = distro.Distro{
-		Id:       s.distroName,
-		PoolSize: 100,
+		Id: s.distroName,
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			MaximumHosts: 100,
+		},
 		Provider: evergreen.ProviderNameEc2Auto,
 	}
 	s.projectName = "testProject"

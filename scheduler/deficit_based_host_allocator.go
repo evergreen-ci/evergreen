@@ -33,7 +33,7 @@ func deficitNumNewHostsForDistro(ctx context.Context, hostAllocatorData *HostAll
 		// the deficit of available hosts vs. tasks to be run
 		hostAllocatorData.DistroQueueInfo.Length-len(freeHosts),
 		// the maximum number of new hosts we're allowed to spin up
-		distro.PoolSize-len(hostAllocatorData.ExistingHosts),
+		distro.HostAllocatorSettings.MaximumHosts-len(hostAllocatorData.ExistingHosts),
 	)
 
 	// cap to zero as lower bound

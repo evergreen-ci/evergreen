@@ -33,9 +33,9 @@ func TestDistroAliases(t *testing.T) {
 		})
 		t.Run("PoolSize", func(t *testing.T) {
 			distros := byPoolSize{
-				{Id: "three", PoolSize: 10},
-				{Id: "two", PoolSize: 20},
-				{Id: "one", PoolSize: 100},
+				{Id: "three", HostAllocatorSettings: HostAllocatorSettings{MaximumHosts: 10}},
+				{Id: "two", HostAllocatorSettings: HostAllocatorSettings{MaximumHosts: 20}},
+				{Id: "one", HostAllocatorSettings: HostAllocatorSettings{MaximumHosts: 100}},
 			}
 			sort.Sort(distros)
 			assert.Equal(t, "one", distros[0].Id)

@@ -1636,13 +1636,13 @@ func parentCapacity(parent distro.Distro, numNewParents, numCurrentParents int, 
 	}
 	// if there are already maximum numbers of parents running, do not spawn
 	// any more parents
-	if numCurrentParents >= parent.PoolSize {
+	if numCurrentParents >= parent.HostAllocatorSettings.MaximumHosts {
 		numNewParents = 0
 	}
 	// if adding all new parents results in more parents than allowed, only add
 	// enough parents to fill to capacity
-	if numNewParents+numCurrentParents > parent.PoolSize {
-		numNewParents = parent.PoolSize - numCurrentParents
+	if numNewParents+numCurrentParents > parent.HostAllocatorSettings.MaximumHosts {
+		numNewParents = parent.HostAllocatorSettings.MaximumHosts - numCurrentParents
 	}
 	return numNewParents, nil
 }
