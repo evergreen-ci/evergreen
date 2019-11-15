@@ -31,6 +31,26 @@ func setupSmokeTest(err error) cli.BeforeFunc {
 	}
 }
 
+func startLocalEvergreen() cli.Command {
+	return cli.Command{
+		Name:  "start-local-evergreen",
+		Usage: "start an evergreen for local development",
+		Action: func(c *cli.Context) error {
+			exit := make(chan error, 1)
+			wd, err := os.Getwd()
+			if err != nil {
+				return errors.Wrap(err, "couldn't get working directory")
+			}
+			binary := filepath.Join(wd, "clients", runtime.GOOS+"_"+runtime.GOARCH, "evergreen")
+			if err := smokeRunBinary(exit, "web.service", wd, binary, "service", "web", "--db", "evergreen_local"); err != nil {
+				return errors.Wrap(err, "error running web service")
+			}
+			<-exit
+			return nil
+		},
+	}
+}
+
 func smokeStartEvergreen() cli.Command {
 	const (
 		binaryFlagName       = "binary"
