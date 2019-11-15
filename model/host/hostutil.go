@@ -949,8 +949,20 @@ func (h *Host) SetupSpawnHostCommands(settings *evergreen.Settings) (string, err
 
 	script := setupBinDirCmds
 	if h.ProvisionOptions.TaskId != "" {
-		fetchCmd := fmt.Sprintf("%s -c %s fetch -t %s --source --artifacts --dir='%s'", binaryPath, confPath, h.ProvisionOptions.TaskId, h.Distro.WorkDir)
-		script += " && " + fetchCmd
+		fetchCmd := []string{
+			binaryPath,
+			"-c", confPath,
+			"fetch",
+			"-t", h.ProvisionOptions.TaskId,
+			"--source",
+			"--artifacts",
+			"--dir", h.Distro.WorkDir,
+		}
+		jasperFetchCmd, err := h.buildLocalJasperClientRequest(settings.HostJasper, strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "), &options.Command{Commands: [][]string{fetchCmd}})
+		if err != nil {
+			return "", errors.Wrap(err, "could not construct Jasper command to fetch task data")
+		}
+		script += " && " + jasperFetchCmd
 	}
 
 	return script, nil
