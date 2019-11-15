@@ -2,9 +2,9 @@
   <div class="timestamp col-lg-2 col-md-3 col-sm-4" style="min-width: 250px;">[[eventLogObj.timestamp | convertDateToUserTimezone:userTz:'MMM D, YYYY h:mm:ss a']]</div>
   <div class="event_details col-lg-9 col-md-8 col-sm-7" ng-switch="eventLogObj.event_type" ng-init="showlogs = false">
     <span ng-switch-when="HOST_CREATED">Host created</span>
-    <span ng-switch-when="HOST_STARTED">Host started</span>
-    <span ng-switch-when="HOST_STOPPED">Host stopped</span>
-    <span ng-switch-when="HOST_MODIFIED">Host modified</span>
+    <span ng-switch-when="HOST_STARTED">Host start attempt[[eventLogObj.data.successful | conditional:' succeeded':'']]</span>
+    <span ng-switch-when="HOST_STOPPED">Host stop attempt[[eventLogObj.data.successful | conditional:' succeeded':'']]</span>
+    <span ng-switch-when="HOST_MODIFIED">Host modify attempt[[eventLogObj.data.successful | conditional:' succeeded':'']]</span>
     <span ng-switch-when="HOST_PROVISION_ERROR">Host encountered error during provisioning</span>
     <span ng-switch-when="HOST_AGENT_DEPLOY_FAILED">New agent deploy failed</span>
     <span ng-switch-when="HOST_AGENT_DEPLOYED">Agent deployed with revision <b>[[eventLogObj.data.agent_revision]]</b></span>
