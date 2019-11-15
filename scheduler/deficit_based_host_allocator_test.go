@@ -32,7 +32,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 					{Id: hostIds[1]},
 					{Id: hostIds[2]},
 				}
-				dist.PoolSize = len(hosts) + 5
+				dist.HostAllocatorSettings.MaximumHosts = len(hosts) + 5
 
 				hostAllocatorData := &HostAllocatorData{
 					Distro:        dist,
@@ -45,7 +45,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 
 		Convey("if the number of existing hosts equals the max hosts, no new"+
 			" hosts can be spawned", func() {
-			dist.PoolSize = 0
+			dist.HostAllocatorSettings.MaximumHosts = 0
 
 			hostAllocatorData := &HostAllocatorData{
 				ExistingHosts: []host.Host{},
@@ -57,7 +57,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			hosts := []host.Host{
 				{Id: hostIds[0]},
 			}
-			dist.PoolSize = len(hosts)
+			dist.HostAllocatorSettings.MaximumHosts = len(hosts)
 
 			distroQueueInfo := model.DistroQueueInfo{
 				Length: 4,
@@ -79,7 +79,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				{Id: hostIds[0]},
 				{Id: hostIds[1]},
 			}
-			dist.PoolSize = 1
+			dist.HostAllocatorSettings.MaximumHosts = 1
 
 			distroQueueInfo := model.DistroQueueInfo{
 				Length: 4,
@@ -103,7 +103,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				{Id: hostIds[2]},
 				{Id: hostIds[3]},
 			}
-			dist.PoolSize = len(hosts) + 5
+			dist.HostAllocatorSettings.MaximumHosts = len(hosts) + 5
 
 			distroQueueInfo := model.DistroQueueInfo{
 				Length: 2,
@@ -128,7 +128,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				{Id: hostIds[2], RunningTask: runningTaskIds[1]},
 				{Id: hostIds[3]},
 			}
-			dist.PoolSize = len(hosts) + 5
+			dist.HostAllocatorSettings.MaximumHosts = len(hosts) + 5
 
 			distroQueueInfo := model.DistroQueueInfo{
 				Length: 2,
@@ -154,7 +154,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				{Id: hostIds[3]},
 				{Id: hostIds[4], RunningTask: runningTaskIds[2]},
 			}
-			dist.PoolSize = 9
+			dist.HostAllocatorSettings.MaximumHosts = 9
 
 			distroQueueInfo := model.DistroQueueInfo{
 				Length: 5,
@@ -169,7 +169,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 3)
 
-			dist.PoolSize = 8
+			dist.HostAllocatorSettings.MaximumHosts = 8
 
 			distroQueueInfo = model.DistroQueueInfo{
 				Length: 5,
@@ -182,7 +182,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			}
 			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 3)
-			dist.PoolSize = 7
+			dist.HostAllocatorSettings.MaximumHosts = 7
 			hostAllocatorData = &HostAllocatorData{
 				Distro:          dist,
 				ExistingHosts:   hosts,
@@ -190,7 +190,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			}
 			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 2)
-			dist.PoolSize = 6
+			dist.HostAllocatorSettings.MaximumHosts = 6
 			hostAllocatorData = &HostAllocatorData{
 				Distro:          dist,
 				ExistingHosts:   hosts,
@@ -205,7 +205,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			hosts := []host.Host{
 				{Id: hostIds[0]},
 			}
-			dist.PoolSize = 20
+			dist.HostAllocatorSettings.MaximumHosts = 20
 			dist.Provider = evergreen.ProviderNameStatic
 
 			distroQueueInfo := model.DistroQueueInfo{

@@ -3306,8 +3306,14 @@ func TestNumNewParentsNeeded(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections("hosts", "distro", "tasks"))
 
-	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock,
-		ContainerPool: "test-pool"}
+	d := distro.Distro{
+		Id:            "distro",
+		Provider:      evergreen.ProviderNameMock,
+		ContainerPool: "test-pool",
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			MaximumHosts: 3,
+		},
+	}
 	pool := &evergreen.ContainerPool{Distro: "distro", Id: "test-pool", MaxContainers: 2}
 	host1 := &Host{
 		Id:                    "host1",
@@ -3364,8 +3370,14 @@ func TestNumNewParentsNeeded2(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections("hosts", "distro", "tasks"))
 
-	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock,
-		ContainerPool: "test-pool"}
+	d := distro.Distro{
+		Id:            "distro",
+		Provider:      evergreen.ProviderNameMock,
+		ContainerPool: "test-pool",
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			MaximumHosts: 3,
+		},
+	}
 	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 3}
 
 	host1 := &Host{
@@ -3413,8 +3425,15 @@ func TestFindAvailableParent(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections("hosts", "distro", "tasks"))
 
-	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock,
-		ContainerPool: "test-pool"}
+	d := distro.Distro{
+		Id:            "distro",
+		Provider:      evergreen.ProviderNameMock,
+		ContainerPool: "test-pool",
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			MaximumHosts: 3,
+		},
+	}
+
 	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
 	durationOne := 20 * time.Minute
 	durationTwo := 30 * time.Minute
@@ -3483,7 +3502,13 @@ func TestFindNoAvailableParent(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections("hosts", "distro", "tasks"))
 
-	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock}
+	d := distro.Distro{
+		Id:       "distro",
+		Provider: evergreen.ProviderNameMock,
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			MaximumHosts: 3,
+		},
+	}
 	pool := &evergreen.ContainerPool{Distro: "distro", Id: "test-pool", MaxContainers: 1}
 	durationOne := 20 * time.Minute
 	durationTwo := 30 * time.Minute
@@ -3549,7 +3574,13 @@ func TestGetNumNewParentsAndHostsToSpawn(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections("hosts", "distro", "tasks"))
 
-	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock}
+	d := distro.Distro{
+		Id:       "distro",
+		Provider: evergreen.ProviderNameMock,
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			MaximumHosts: 3,
+		},
+	}
 	pool := &evergreen.ContainerPool{Distro: "distro", Id: "test-pool", MaxContainers: 1}
 
 	host1 := &Host{
@@ -3595,7 +3626,13 @@ func TestGetNumNewParentsWithInitializingParentAndHost(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections("hosts", "distro", "tasks"))
 
-	d := distro.Distro{Id: "distro", PoolSize: 2, Provider: evergreen.ProviderNameMock}
+	d := distro.Distro{
+		Id:       "distro",
+		Provider: evergreen.ProviderNameMock,
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			MaximumHosts: 2,
+		},
+	}
 	pool := &evergreen.ContainerPool{Distro: "distro", Id: "test-pool", MaxContainers: 2}
 
 	host1 := &Host{

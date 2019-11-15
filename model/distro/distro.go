@@ -39,7 +39,7 @@ type Distro struct {
 	HostAllocatorSettings HostAllocatorSettings   `bson:"host_allocator_settings" json:"host_allocator_settings" mapstructure:"host_allocator_settings"`
 
 	// PoolSize is the maximum allowed number of hosts running this distro
-	PoolSize int `bson:"pool_size,omitempty" json:"pool_size,omitempty" mapstructure:"pool_size,omitempty" yaml:"poolsize"`
+	// PoolSize int `bson:"pool_size,omitempty" json:"pool_size,omitempty" mapstructure:"pool_size,omitempty" yaml:"poolsize"`
 }
 
 // BootstrapSettings encapsulates all settings related to bootstrapping hosts.
@@ -413,7 +413,7 @@ func (d *Distro) GetPoolSize() int {
 
 		return len(hosts)
 	default:
-		return d.PoolSize
+		return d.HostAllocatorSettings.MaximumHosts
 	}
 }
 
