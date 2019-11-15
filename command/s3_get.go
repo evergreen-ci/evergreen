@@ -126,10 +126,10 @@ func (c *s3get) Execute(ctx context.Context,
 	}
 
 	// create pail bucket
-	client := util.GetHTTPClient()
-	client.Timeout = s3HTTPClientTimeout
-	defer util.PutHTTPClient(client)
-	err := c.createPailBucket(client)
+	httpClient := util.GetHTTPClient()
+	httpClient.Timeout = s3HTTPClientTimeout
+	defer util.PutHTTPClient(httpClient)
+	err := c.createPailBucket(httpClient)
 	if err != nil {
 		return errors.Wrap(err, "problem connecting to s3")
 	}
@@ -243,13 +243,13 @@ func (c *s3get) get(ctx context.Context) error {
 	return nil
 }
 
-func (c *s3get) createPailBucket(client *http.Client) error {
+func (c *s3get) createPailBucket(httpClient *http.Client) error {
 	opts := pail.S3Options{
 		Credentials: pail.CreateAWSCredentials(c.AwsKey, c.AwsSecret, ""),
 		Region:      endpoints.UsEast1RegionID,
 		Name:        c.Bucket,
 	}
-	bucket, err := pail.NewS3BucketWithHTTPClient(client, opts)
+	bucket, err := pail.NewS3BucketWithHTTPClient(httpClient, opts)
 	c.bucket = bucket
 	return err
 }
