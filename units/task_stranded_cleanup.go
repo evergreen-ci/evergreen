@@ -81,9 +81,9 @@ func (j *taskStrandedCleanupJob) Run(ctx context.Context) {
 
 	for _, t := range tasks {
 		if time.Since(t.CreateTime) >= 2*7*24*time.Hour {
-			j.AddError(t.DeactiveTask(j.ID()))
+			j.AddError(t.DeactivateTask(j.ID()))
 		} else {
-			j.AddError(model.TryResetTask(t.Id, evergreen.User, j.ID(), t.EndDetails))
+			j.AddError(model.TryResetTask(t.Id, evergreen.User, j.ID(), &t.Details))
 		}
 	}
 
