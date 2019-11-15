@@ -634,21 +634,37 @@ func TestJasperProcess(t *testing.T) {
 	defer cancel()
 
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create){
-		"RunJasperProcessErrorsWithoutJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
-			assert.Error(t, h.StartJasperProcess(ctx, env, opts))
-		},
-		"StartJasperProcessErrorsWithoutJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
-			assert.Error(t, h.StartJasperProcess(ctx, env, opts))
-		},
-		"RunJasperProcessPassesWithJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
+		"RunJasperProcessPasses": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
 			assert.NoError(t, withJasperServiceSetupAndTeardown(ctx, env, manager, h, func() {
 				_, err := h.RunJasperProcess(ctx, env, opts)
 				assert.NoError(t, err)
 			}))
 		},
-		"StartJasperProcessPassesWithJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
+		"StartJasperProcessPasses": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
 			assert.NoError(t, withJasperServiceSetupAndTeardown(ctx, env, manager, h, func() {
 				assert.NoError(t, h.StartJasperProcess(ctx, env, opts))
+			}))
+		},
+		"RunJasperProcessFailsIfProcessCreationFails": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
+			manager.FailCreate = true
+			assert.NoError(t, withJasperServiceSetupAndTeardown(ctx, env, manager, h, func() {
+				_, err := h.RunJasperProcess(ctx, env, opts)
+				assert.Error(t, err)
+			}))
+		},
+		"RunJasperProcessFailsIfProcessExitsWithError": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
+			manager.Create = func(*options.Create) jmock.Process {
+				return jmock.Process{FailWait: true}
+			}
+			assert.NoError(t, withJasperServiceSetupAndTeardown(ctx, env, manager, h, func() {
+				_, err := h.RunJasperProcess(ctx, env, opts)
+				assert.Error(t, err)
+			}))
+		},
+		"StartJasperProcessFailsIfProcessCreationFails": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
+			manager.FailCreate = true
+			assert.NoError(t, withJasperServiceSetupAndTeardown(ctx, env, manager, h, func() {
+				assert.Error(t, h.StartJasperProcess(ctx, env, opts))
 			}))
 		},
 	} {
