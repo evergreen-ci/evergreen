@@ -131,7 +131,7 @@ func (hc *DBHostConnector) CheckHostSecret(r *http.Request) (int, error) {
 	return code, errors.WithStack(err)
 }
 
-func (hc *DBHostConnector) AggregateSpawnHostData() (*host.SpawnHostUsage, error) {
+func (hc *DBHostConnector) AggregateSpawnhostData() (*host.SpawnHostUsage, error) {
 	data, err := host.AggregateSpawnhostData()
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting spawn host data")
