@@ -949,7 +949,7 @@ func (h *Host) SetupSpawnHostCommands(settings *evergreen.Settings) (string, err
 
 	script := setupBinDirCmds
 	if h.ProvisionOptions.TaskId != "" {
-		fetchCmd := fmt.Sprintf("%s -c %s fetch -t %s --source --artifacts --dir='%s'", binaryPath, confPath, h.ProvisionOptions.TaskId, h.Distro.WorkDir)
+		fetchCmd := fmt.Sprintf("%s -c %s fetch -t %s --source --artifacts --dir='%s' || true", binaryPath, confPath, h.ProvisionOptions.TaskId, h.Distro.WorkDir)
 		script += " && " + fetchCmd
 	}
 
