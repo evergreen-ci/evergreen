@@ -358,7 +358,6 @@ func (t *Task) AddDependency(d Dependency) error {
 // used to check rather than fetching from the database. All queries
 // are cached back into the map for later use.
 func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
-
 	if len(t.DependsOn) == 0 || t.OverrideDependencies {
 		return true, nil
 	}
