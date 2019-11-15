@@ -29,9 +29,6 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
     'id': 'legacy',
     'display': 'Legacy '
   }, {
-    'id': 'revised',
-    'display': 'Revised '
-  }, {
     'id': 'tunable',
     'display': 'Tunable '
   }];
@@ -222,12 +219,6 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
           // Dispatcher Settings
           distro.distro.dispatcher_settings = distro.distro.dispatcher_settings || {};
           distro.distro.dispatcher_settings.version = distro.distro.dispatcher_settings.version || 'revised';
-          distro.distro.planner_settings.minimum_hosts = distro.distro.planner_settings.minimum_hosts || 0;
-          distro.distro.planner_settings.maximum_hosts = distro.distro.planner_settings.maximum_hosts || 0;
-          distro.distro.planner_settings.acceptable_host_idle_time = distro.distro.planner_settings.acceptable_host_idle_time || 0;
-          if (distro.distro.planner_settings.acceptable_host_idle_time > 0) {
-            distro.distro.planner_settings.acceptable_host_idle_time /= 1e9;
-          }
           distro.distro.bootstrap_settings.method = distro.distro.bootstrap_settings.method || 'legacy-ssh';
           distro.distro.bootstrap_settings.communication = distro.distro.bootstrap_settings.communication || 'legacy-ssh';
           distro.distro.clone_method = distro.distro.clone_method || 'legacy-ssh';
@@ -388,9 +379,6 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
     // Convert from UI display units (seconds) to nanoseconds (time.Duration) for relevant *_settings' fields.
     if($scope.activeDistro.planner_settings.target_time > 0) {
       $scope.activeDistro.planner_settings.target_time *= 1e9
-    }
-    if($scope.activeDistro.planner_settings.acceptable_host_idle_time > 0) {
-      $scope.activeDistro.planner_settings.acceptable_host_idle_time *= 1e9
     }
     if($scope.activeDistro.host_allocator_settings.acceptable_host_idle_time > 0) {
       $scope.activeDistro.host_allocator_settings.acceptable_host_idle_time *= 1e9

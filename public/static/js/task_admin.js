@@ -169,7 +169,6 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$window', '$rootScope', 'mc
 mciModule.directive('adminAbortTask', function() {
     let merge_test = "merge_test"
     return {
-
         restrict: 'E',
         template:
     '<div class="row">' +

@@ -257,6 +257,29 @@ func TestUpdatingHostStatus(t *testing.T) {
 
 }
 
+func TestSetStopped(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	h := &Host{
+		Id:        "h1",
+		Status:    evergreen.HostRunning,
+		StartTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+		Host:      "host.mongodb.com",
+	}
+
+	require.NoError(t, h.Insert())
+
+	assert.NoError(t, h.SetStopped(""))
+	assert.Equal(t, evergreen.HostStopped, h.Status)
+	assert.Empty(t, h.Host)
+	assert.True(t, util.IsZeroTime(h.StartTime))
+
+	h, err := FindOneId("h1")
+	require.NoError(t, err)
+	assert.Equal(t, evergreen.HostStopped, h.Status)
+	assert.Empty(t, h.Host)
+	assert.True(t, util.IsZeroTime(h.StartTime))
+}
+
 func TestSetHostTerminated(t *testing.T) {
 
 	Convey("With a host", t, func() {

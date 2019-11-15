@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -128,9 +129,13 @@ func TestHostStopHandler(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, resp.Status())
 
 	h.hostID = "host-running"
+	h.subscriptionType = event.SlackSubscriberType
 	resp = h.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
+
+	subscriptionConnector := h.sc.(*data.MockConnector).MockSubscriptionConnector
+	assert.Len(t, subscriptionConnector.MockSubscriptions, 1)
 }
 
 func TestHostStartHandler(t *testing.T) {
@@ -157,9 +162,13 @@ func TestHostStartHandler(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, resp.Status())
 
 	h.hostID = "host-stopped"
+	h.subscriptionType = event.SlackSubscriberType
 	resp = h.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
+
+	subscriptionConnector := h.sc.(*data.MockConnector).MockSubscriptionConnector
+	assert.Len(t, subscriptionConnector.MockSubscriptions, 1)
 }
 
 func TestCreateVolumeHandler(t *testing.T) {
@@ -343,4 +352,22 @@ func TestGetVolumesHandler(t *testing.T) {
 			assert.Equal(t, v.Size, 36)
 		}
 	}
+}
+
+func TestMakeSpawnHostSubscription(t *testing.T) {
+	user := &user.DBUser{
+		EmailAddress: "evergreen@mongodb.com",
+		Settings: user.UserSettings{
+			SlackUsername: "mci",
+		},
+	}
+	_, err := makeSpawnHostSubscription("id", "non-existent", user)
+	assert.Error(t, err)
+
+	sub, err := makeSpawnHostSubscription("id", event.SlackSubscriberType, user)
+	assert.NoError(t, err)
+	assert.Equal(t, event.ResourceTypeHost, model.FromAPIString(sub.ResourceType))
+	assert.Len(t, sub.Selectors, 1)
+	assert.Equal(t, event.SlackSubscriberType, model.FromAPIString(sub.Subscriber.Type))
+	assert.Equal(t, "@mci", sub.Subscriber.Target)
 }

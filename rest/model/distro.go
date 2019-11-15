@@ -13,16 +13,13 @@ import (
 // APIPlannerSettings is the model to be returned by the API whenever distro.PlannerSettings are fetched
 
 type APIPlannerSettings struct {
-	Version                APIString   `json:"version"`
-	MinimumHosts           int         `json:"minimum_hosts"`
-	MaximumHosts           int         `json:"maximum_hosts"`
-	TargetTime             APIDuration `json:"target_time"`
-	AcceptableHostIdleTime APIDuration `json:"acceptable_host_idle_time"`
-	GroupVersions          *bool       `json:"group_versions"`
-	TaskOrdering           APIString   `json:"task_ordering"`
-	PatchFactor            int64       `json:"patch_factor"`
-	TimeInQueueFactor      int64       `json:"time_in_queue_factor"`
-	ExpectedRuntimeFactor  int64       `json:"expected_runtime_factor"`
+	Version               APIString   `json:"version"`
+	TargetTime            APIDuration `json:"target_time"`
+	GroupVersions         *bool       `json:"group_versions"`
+	TaskOrdering          APIString   `json:"task_ordering"`
+	PatchFactor           int64       `json:"patch_factor"`
+	TimeInQueueFactor     int64       `json:"time_in_queue_factor"`
+	ExpectedRuntimeFactor int64       `json:"expected_runtime_factor"`
 }
 
 // BuildFromService converts from service level distro.PlannerSetting to an APIPlannerSettings
@@ -42,10 +39,7 @@ func (s *APIPlannerSettings) BuildFromService(h interface{}) error {
 	} else {
 		s.Version = ToAPIString(settings.Version)
 	}
-	s.MinimumHosts = settings.MinimumHosts
-	s.MaximumHosts = settings.MaximumHosts
 	s.TargetTime = NewAPIDuration(settings.TargetTime)
-	s.AcceptableHostIdleTime = NewAPIDuration(settings.AcceptableHostIdleTime)
 	s.GroupVersions = settings.GroupVersions
 	s.TaskOrdering = ToAPIString(settings.TaskOrdering)
 	s.PatchFactor = settings.PatchFactor
@@ -62,10 +56,7 @@ func (s *APIPlannerSettings) ToService() (interface{}, error) {
 	if settings.Version == "" {
 		settings.Version = evergreen.PlannerVersionLegacy
 	}
-	settings.MinimumHosts = s.MinimumHosts
-	settings.MaximumHosts = s.MaximumHosts
 	settings.TargetTime = s.TargetTime.ToDuration()
-	settings.AcceptableHostIdleTime = s.AcceptableHostIdleTime.ToDuration()
 	settings.GroupVersions = s.GroupVersions
 	settings.TaskOrdering = FromAPIString(s.TaskOrdering)
 	settings.PatchFactor = s.PatchFactor

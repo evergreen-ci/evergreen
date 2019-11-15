@@ -160,27 +160,38 @@ func (dc *DBSubscriptionConnector) CopyProjectSubscriptions(oldProject, newProje
 }
 
 type MockSubscriptionConnector struct {
-	MockSubscriptions []event.Subscription
+	MockSubscriptions []restModel.APISubscription
 }
 
 func (mc *MockSubscriptionConnector) GetSubscriptions(owner string, ownerType event.OwnerType) ([]restModel.APISubscription, error) {
-	return nil, nil
+	return mc.MockSubscriptions, nil
 }
 
 func (mc *MockSubscriptionConnector) SaveSubscriptions(owner string, subscriptions []restModel.APISubscription) error {
-	if len(subscriptions) == 0 {
-		return nil
+	for _, sub := range subscriptions {
+		mc.MockSubscriptions = append(mc.MockSubscriptions, sub)
 	}
-	return errors.New("MockSubscriptionConnector unimplemented")
+	return nil
 }
 
-func (dc *MockSubscriptionConnector) DeleteSubscriptions(owner string, ids []string) error {
-	if len(ids) == 0 {
-		return nil
+func (mc *MockSubscriptionConnector) DeleteSubscriptions(owner string, ids []string) error {
+	idMap := make(map[string]bool)
+	for _, id := range ids {
+		idMap[id] = true
 	}
-	return errors.New("MockSubscriptionConnector unimplemented")
+
+	n := 0
+	for _, sub := range mc.MockSubscriptions {
+		if idMap[restModel.FromAPIString(sub.ID)] {
+			mc.MockSubscriptions[n] = sub
+			n++
+		}
+	}
+	mc.MockSubscriptions = mc.MockSubscriptions[:n]
+
+	return nil
 }
 
-func (dc *MockSubscriptionConnector) CopyProjectSubscriptions(oldProject, newProject string) error {
+func (mc *MockSubscriptionConnector) CopyProjectSubscriptions(oldProject, newProject string) error {
 	return nil
 }

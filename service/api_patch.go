@@ -396,6 +396,7 @@ func (as *APIServer) listPatchModules(w http.ResponseWriter, r *http.Request) {
 	for m := range mods {
 		data.Modules = append(data.Modules, m)
 	}
+
 	gimlet.WriteJSON(w, &data)
 }
 

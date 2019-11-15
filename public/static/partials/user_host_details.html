@@ -13,7 +13,10 @@
           <span>[[curHostData.id]] </span>
         </div>
         <div class="entry">
-          <strong>Started at</strong> <span>[[curHostData.creation_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</span>
+          <strong>Created at</strong> <span>[[curHostData.creation_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</span>
+        </div>
+        <div class="entry" ng-hide="curHostData.status=='stopped'">
+          <strong>Started at</strong> <span>[[curHostData.start_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</span>
         </div>
         <div class="entry" ng-hide="curHostData.no_expiration">
           <strong>Expires at</strong> <span>[[curHostData.original_expiration | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</span>
@@ -37,7 +40,7 @@
           <strong>User Data:</strong><br/>
           <pre>[[curHostData.userdata]]</pre>
         </div>
-        <div class="entry" ng-show="!curHostData.isTerminated && curHostData.host.length > 0 && (curHostData.distro.bootstrap_method != 'user-data' || curHostData.status == 'running')">
+        <div class="entry" ng-show="!curHostData.isTerminated && curHostData.host.length > 0 && (curHostData.distro.bootstrap_settings.method != 'user-data' || curHostData.status == 'running')">
           <strong>Login Command:</strong>
           <pre readonly>ssh [[curHostData.user]]@[[curHostData.host]]</pre>
         </div>

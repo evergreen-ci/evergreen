@@ -94,6 +94,11 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 		}
 	}
 
+	var err error
+	if p.Description == "" {
+		p.Description = getDefaultDescription()
+	}
+
 	patchSub := patchSubmission{
 		projectId:   p.Project,
 		patchData:   diffData.fullPatch,
@@ -419,6 +424,36 @@ func gitLog(base, ref string) (string, error) {
 func gitCommitMessages(base, ref string) (string, error) {
 	args := []string{"--no-show-signature", "--pretty=format:%B", fmt.Sprintf("%s@{upstream}..%s", base, ref)}
 	return gitCmd("log", args...)
+}
+
+// assumes base includes @{upstream}
+func gitLastCommitMessage() (string, error) {
+	args := []string{"HEAD", "--no-show-signature", "--pretty=format:%s", "-n 1"}
+	return gitCmd("log", args...)
+}
+
+func gitBranch() (string, error) {
+	args := []string{"--abbrev-ref", "HEAD"}
+	return gitCmd("rev-parse", args...)
+}
+
+func getDefaultDescription() string {
+	desc, err := gitLastCommitMessage()
+	if err != nil {
+		grip.Debug("Couldn't create patch description using commit messages: " + err.Error())
+	}
+	branch, err := gitBranch()
+	if err != nil {
+		grip.Debug("Couldn't add branch to patch description: " + err.Error())
+	}
+	branch = strings.TrimSpace(branch)
+	if desc == "" {
+		return branch
+	}
+	if branch == "" || strings.HasPrefix(desc, branch) {
+		return desc
+	}
+	return fmt.Sprintf("%s: %s", branch, desc)
 }
 
 func gitCommitCount(base, ref string) (int, error) {

@@ -159,7 +159,6 @@ const (
 	RoutePaginatorNextPageHeaderKey = "Link"
 
 	PlannerVersionLegacy  = "legacy"
-	PlannerVersionRevised = "revised" // TO DO - remove this ASAP
 	PlannerVersionTunable = "tunable"
 
 	DispatcherVersionLegacy                  = "legacy"
@@ -193,9 +192,6 @@ const (
 
 	DefaultJasperPort          = 2385
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
-
-	// TODO: remove this when degrading YAML
-	UseParserProject = false
 )
 
 func IsFinishedTaskStatus(status string) bool {
@@ -432,7 +428,6 @@ var (
 	// Set of valid PlannerSettings.Version strings that can be user set via the API
 	ValidTaskPlannerVersions = []string{
 		PlannerVersionLegacy,
-		PlannerVersionRevised, // TO DO - remove this ASAP
 		PlannerVersionTunable,
 	}
 
