@@ -180,9 +180,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
 
   $scope.getDistroById = function(id) {
     if ($scope.tempDistro && $scope.tempDistro._id == id) {
-        return new Promise(function(resolve) {
-            resolve({'distro': $scope.tempDistro})
-        });
+        return
     }
     return $http.get('/distros/' + id).then(
       function(resp){
