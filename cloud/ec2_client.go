@@ -867,8 +867,10 @@ func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetI
 			// error. Instead it will populate the output.Error array with a single
 			// item describing the error, using an error type that does _not_
 			// implement awserr.Error. We therefore have to check this case in addition
-			// to the standard `err != nil` case above.
-			if len(output.Errors) > 0 {
+			// to the standard `err != nil` case above. There are other errors that can
+			// appear in this place, which do not prevent spawning a host, so we have to
+			// check specifically for RequestLimitExceeded.
+			if len(output.Errors) > 0 && *output.Errors[0].ErrorCode == "RequestLimitExceeded" {
 				grip.Error(message.WrapError(errors.New(output.Errors[0].String()), msg))
 				return true, errors.Errorf("Got error in CreateFleet response: %s", output.Errors[0].String())
 			}
