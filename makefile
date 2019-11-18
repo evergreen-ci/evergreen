@@ -67,7 +67,7 @@ lintArgs += --vendored-linters --enable-gc
 lintArgs += --disable="gotype" --disable="gosec" --disable="gocyclo" --disable="maligned"
 lintArgs += --disable="golint" --disable="goconst" --disable="dupl"
 lintArgs += --disable="varcheck" --disable="structcheck" --disable="aligncheck"
-lintArgs += --skip="$(buildDir)" --skip="scripts" --skip="$(gopath)"
+lintArgs += --skip="$(buildDir)" --skip="scripts" --skip="$(gopath)" --skip="vendor"
 #  add and configure additional linters
 lintArgs += --enable="misspell" # --enable="lll" --line-length=100
 lintArgs += --disable="staticcheck" --disable="megacheck"
