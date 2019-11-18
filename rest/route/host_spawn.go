@@ -224,7 +224,7 @@ func CheckUnexpirableHostLimitExceeded(userId string, maxHosts int) error {
 		return errors.Wrapf(err, "error counting number of existing non-expiring hosts for '%s'", userId)
 	}
 	if count >= maxHosts {
-		return errors.Errorf("can only have %d expirable hosts", maxHosts)
+		return errors.Errorf("can have at most %d unexpirable hosts", maxHosts)
 	}
 	return nil
 }

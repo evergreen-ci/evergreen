@@ -188,7 +188,13 @@ func TestHostCreateDocker(t *testing.T) {
 	handler := hostCreateHandler{
 		sc: &data.DBConnector{},
 	}
-	parent := distro.Distro{Id: "parent-distro", PoolSize: 3, Provider: evergreen.ProviderNameMock}
+	parent := distro.Distro{
+		Id:       "parent-distro",
+		Provider: evergreen.ProviderNameMock,
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			MaximumHosts: 3,
+		},
+	}
 	require.NoError(parent.Insert())
 
 	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
@@ -245,7 +251,13 @@ func TestGetDockerLogs(t *testing.T) {
 		sc: &data.MockConnector{},
 	}
 
-	parent := distro.Distro{Id: "parent-distro", PoolSize: 3, Provider: evergreen.ProviderNameMock}
+	parent := distro.Distro{
+		Id:       "parent-distro",
+		Provider: evergreen.ProviderNameMock,
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			MaximumHosts: 3,
+		},
+	}
 	require.NoError(parent.Insert())
 
 	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
@@ -344,7 +356,13 @@ func TestGetDockerStatus(t *testing.T) {
 		sc: &data.MockConnector{},
 	}
 
-	parent := distro.Distro{Id: "parent-distro", PoolSize: 3, Provider: evergreen.ProviderNameMock}
+	parent := distro.Distro{
+		Id:       "parent-distro",
+		Provider: evergreen.ProviderNameMock,
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			MaximumHosts: 3,
+		},
+	}
 	require.NoError(parent.Insert())
 
 	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}

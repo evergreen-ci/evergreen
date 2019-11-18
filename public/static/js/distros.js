@@ -186,7 +186,6 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
       function(resp){
         var distro = resp.data
         if (distro.distro) {
-          distro.distro.pool_size = distro.distro.pool_size || 0;
           // Host Allocator Settings
           distro.distro.host_allocator_settings = distro.distro.host_allocator_settings || {};
           distro.distro.host_allocator_settings.version = distro.distro.host_allocator_settings.version || 'utilization';
@@ -482,7 +481,6 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
         'setup': $scope.activeDistro.setup,
         'setup': $scope.activeDistro.teardown,
         'setup': $scope.activeDistro.user_data,
-        'pool_size': $scope.activeDistro.pool_size,
         'setup_as_sudo' : $scope.activeDistro.setup_as_sudo,
         'bootstrap_settings': $scope.activeDistro.bootstrap_settings,
         'clone_method': $scope.activeDistro.clone_method,

@@ -26,7 +26,6 @@ func fetchTestDistro() distro.Distro {
 		Id:       "test_distro",
 		Arch:     "linux_amd64",
 		WorkDir:  "/data/mci",
-		PoolSize: 10,
 		Provider: evergreen.ProviderNameEc2Spot,
 		ProviderSettings: &map[string]interface{}{
 			"ami":           "ami-97785bed",
@@ -41,7 +40,9 @@ func fetchTestDistro() distro.Distro {
 			"subnet_id":          "subnet-517c941a",
 			"vpc_name":           "stage_dynamic_vpc",
 		},
-
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			MaximumHosts: 10,
+		},
 		SetupAsSudo: true,
 		Setup:       "",
 		Teardown:    "",

@@ -127,7 +127,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 			return
 		}
 
-		if numHosts > j.host.Distro.PoolSize {
+		if numHosts > j.host.Distro.HostAllocatorSettings.MaximumHosts {
 			grip.Info(message.Fields{
 				"host_id":   j.HostID,
 				"attempt":   j.CurrentAttempt,
@@ -135,7 +135,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 				"job":       j.ID(),
 				"provider":  j.host.Provider,
 				"message":   "not provisioning host to respect maxhosts",
-				"max_hosts": j.host.Distro.PoolSize,
+				"max_hosts": j.host.Distro.HostAllocatorSettings.MaximumHosts,
 			})
 
 			err = errors.Wrap(j.host.Remove(), "problem removing host intent")
