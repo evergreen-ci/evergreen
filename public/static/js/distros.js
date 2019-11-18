@@ -4,7 +4,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
   $scope.distroIds = $window.distroIds;
   $scope.containerPoolDistros = $window.containerPoolDistros;
   $scope.containerPoolIds = $window.containerPoolIds;
-  newId = "new distro"
+  let newId = "new distro"
 
   $scope.hostAllocatorVersions = [{
     'id': 'utilization',
@@ -158,7 +158,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
     var distroHash = $location.hash();
     if (distroHash) {
       // If the distro exists, load it.
-      if (distroHash == newId && $scope.tempDistro) {
+      if (distroHash === newId && $scope.tempDistro) {
           $scope.activeDistro = $scope.tempDistro;
       } else if (distroHash != newId) {
         $scope.getDistroById(distroHash).then(function(distro) {
@@ -169,8 +169,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
         });
       }
     } else {
-      // default to first id
-      $scope.setActiveDistroId($scope.distroIds[0]);
+        $scope.setActiveDistroId(distroIds[0]);
     }
   };
 
@@ -179,8 +178,10 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
   };
 
   $scope.getDistroById = function(id) {
-    if ($scope.tempDistro && $scope.tempDistro._id == id) {
-        return
+    if ($scope.tempDistro && $scope.tempDistro._id === id) {
+        return new Promise(function(resolve) {
+            resolve();
+        });
     }
     return $http.get('/distros/' + id).then(
       function(resp){
