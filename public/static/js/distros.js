@@ -169,6 +169,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
         });
       }
     } else {
+        // default to first id
         $scope.setActiveDistroId(distroIds[0]);
     }
   };
