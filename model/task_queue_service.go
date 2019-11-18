@@ -359,7 +359,6 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 					"dispatcher": SchedulableUnitDispatcher,
 					"function":   "FindNextTask",
 					"message":    "error checking dependencies for task",
-					"operation":  "met",
 					"outcome":    "skip and continue",
 					"task":       item.Id,
 					"distro_id":  d.distroID,
@@ -368,28 +367,6 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 			}
 
 			if !dependenciesMet {
-				satisfiable, err := nextTaskFromDB.DependencySatisfiable(dependencyCaches)
-				grip.Warning(message.WrapError(err, message.Fields{
-					"dispatcher": SchedulableUnitDispatcher,
-					"function":   "FindNextTask",
-					"operation":  "satisfiable",
-					"message":    "error checking dependencies for task",
-					"outcome":    "skip and continue",
-					"task":       item.Id,
-					"distro_id":  d.distroID,
-				}))
-				if err == nil && !satisfiable {
-					grip.Warning(message.WrapError(nextTaskFromDB.DeactivateTask(evergreen.DefaultTaskActivator+".dispatcher"),
-						message.Fields{
-							"dispatcher": SchedulableUnitDispatcher,
-							"function":   "FindNextTask",
-							"operation":  "deactivating blocked",
-							"outcome":    "skip and continue",
-							"task":       item.Id,
-							"distro_id":  d.distroID,
-						}))
-				}
-
 				continue
 			}
 
@@ -507,28 +484,6 @@ func (d *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *Tas
 		}
 
 		if !dependenciesMet {
-			satisfiable, err := nextTaskFromDB.DependencySatisfiable(dependencyCaches)
-			grip.Warning(message.WrapError(err, message.Fields{
-				"dispatcher": SchedulableUnitDispatcher,
-				"function":   "nextTaskGroupTask",
-				"operation":  "satisfiable",
-				"message":    "error checking dependencies for task",
-				"outcome":    "skip and continue",
-				"task":       nextTaskQueueItem.Id,
-				"distro_id":  d.distroID,
-			}))
-			if err == nil && !satisfiable {
-				grip.Warning(message.WrapError(nextTaskFromDB.DeactivateTask(evergreen.DefaultTaskActivator+".dispatcher"),
-					message.Fields{
-						"function":   "nextTaskGroupTask",
-						"dispatcher": SchedulableUnitDispatcher,
-						"operation":  "deactivating blocked",
-						"outcome":    "skip and continue",
-						"task":       nextTaskQueueItem.Id,
-						"distro_id":  d.distroID,
-					}))
-			}
-
 			continue
 		}
 
