@@ -56,7 +56,13 @@ func TestSpawnHosts(t *testing.T) {
 			}
 
 			for _, id := range distroIds {
-				d := distro.Distro{Id: id, PoolSize: 3, Provider: evergreen.ProviderNameMock}
+				d := distro.Distro{
+					Id:       id,
+					Provider: evergreen.ProviderNameMock,
+					HostAllocatorSettings: distro.HostAllocatorSettings{
+						MaximumHosts: 3,
+					},
+				}
 
 				newHostsSpawned, err := SpawnHosts(ctx, d, newHostsNeeded[id], nil)
 				So(err, ShouldBeNil)
@@ -75,7 +81,13 @@ func (s *SchedulerSuite) TestSpawnHostsParents() {
 	providerSettings["image_url"] = "my-image"
 	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock,
 		ContainerPool: "test-pool", ProviderSettings: &providerSettings}
-	parent := distro.Distro{Id: "parent-distro", PoolSize: 3, Provider: evergreen.ProviderNameMock}
+	parent := distro.Distro{
+		Id:       "parent-distro",
+		Provider: evergreen.ProviderNameMock,
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			MaximumHosts: 3,
+		},
+	}
 	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
 	host1 := &host.Host{
 		Id:                    "host1",
@@ -129,7 +141,13 @@ func (s *SchedulerSuite) TestSpawnHostsContainers() {
 	providerSettings["image_url"] = "my-image"
 	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock,
 		ContainerPool: "test-pool", ProviderSettings: &providerSettings}
-	parent := distro.Distro{Id: "parent-distro", PoolSize: 3, Provider: evergreen.ProviderNameMock}
+	parent := distro.Distro{
+		Id:       "parent-distro",
+		Provider: evergreen.ProviderNameMock,
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			MaximumHosts: 3,
+		},
+	}
 
 	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 3}
 	host1 := &host.Host{
@@ -175,7 +193,13 @@ func (s *SchedulerSuite) TestSpawnHostsParentsAndSomeContainers() {
 	providerSettings["image_url"] = "my-image"
 	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock, ContainerPool: "test-pool",
 		ProviderSettings: &providerSettings}
-	parent := distro.Distro{Id: "parent-distro", PoolSize: 2, Provider: evergreen.ProviderNameMock}
+	parent := distro.Distro{
+		Id:       "parent-distro",
+		Provider: evergreen.ProviderNameMock,
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			MaximumHosts: 2,
+		},
+	}
 
 	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 3}
 	host1 := &host.Host{
@@ -233,7 +257,13 @@ func (s *SchedulerSuite) TestSpawnHostsOneNewParent() {
 	providerSettings["image_url"] = "my-image"
 	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock, ContainerPool: "test-pool",
 		ProviderSettings: &providerSettings}
-	parent := distro.Distro{Id: "parent-distro", PoolSize: 2, Provider: evergreen.ProviderNameMock}
+	parent := distro.Distro{
+		Id:       "parent-distro",
+		Provider: evergreen.ProviderNameMock,
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			MaximumHosts: 2,
+		},
+	}
 
 	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 3}
 
@@ -272,8 +302,15 @@ func (s *SchedulerSuite) TestSpawnHostsMaximumCapacity() {
 
 	providerSettings := make(map[string]interface{})
 	providerSettings["image_url"] = "my-image"
-	d := distro.Distro{Id: "distro", PoolSize: 1, Provider: evergreen.ProviderNameMock,
-		ContainerPool: "test-pool", ProviderSettings: &providerSettings}
+	d := distro.Distro{
+		Id:               "distro",
+		Provider:         evergreen.ProviderNameMock,
+		ContainerPool:    "test-pool",
+		ProviderSettings: &providerSettings,
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			MaximumHosts: 1,
+		},
+	}
 	pool := &evergreen.ContainerPool{Distro: "distro", Id: "test-pool", MaxContainers: 2}
 	host1 := &host.Host{
 		Id:                    "host1",

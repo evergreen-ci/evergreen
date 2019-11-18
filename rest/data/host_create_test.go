@@ -348,7 +348,7 @@ tasks:
       provider: docker
       num_hosts: 1
       background: false
-      environment_vars: 
+      environment_vars:
           apple: red
           banana: yellow
 
@@ -370,7 +370,14 @@ buildvariants:
 	}
 	assert.NoError(h1.Insert())
 
-	parent := distro.Distro{Id: "parent-distro", PoolSize: 3, Provider: evergreen.ProviderNameMock}
+	parent := distro.Distro{
+		Id: "parent-distro",
+		// PoolSize: 3,
+		Provider: evergreen.ProviderNameMock,
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			MaximumHosts: 3,
+		},
+	}
 	require.NoError(parent.Insert())
 
 	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}

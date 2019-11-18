@@ -294,7 +294,6 @@ type APIDistro struct {
 	ImageID               APIString                `json:"image_id"`
 	Arch                  APIString                `json:"arch"`
 	WorkDir               APIString                `json:"work_dir"`
-	PoolSize              int                      `json:"pool_size"`
 	SetupAsSudo           bool                     `json:"setup_as_sudo"`
 	Setup                 APIString                `json:"setup"`
 	Teardown              APIString                `json:"teardown"`
@@ -341,7 +340,6 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	}
 	apiDistro.Arch = ToAPIString(d.Arch)
 	apiDistro.WorkDir = ToAPIString(d.WorkDir)
-	apiDistro.PoolSize = d.PoolSize
 	apiDistro.SetupAsSudo = d.SetupAsSudo
 	apiDistro.Setup = ToAPIString(d.Setup)
 	apiDistro.Teardown = ToAPIString(d.Teardown)
@@ -404,7 +402,6 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d.Aliases = apiDistro.Aliases
 	d.Arch = FromAPIString(apiDistro.Arch)
 	d.WorkDir = FromAPIString(apiDistro.WorkDir)
-	d.PoolSize = apiDistro.PoolSize
 	d.Provider = FromAPIString(apiDistro.Provider)
 	if apiDistro.ProviderSettings != nil {
 		d.ProviderSettings = &apiDistro.ProviderSettings
