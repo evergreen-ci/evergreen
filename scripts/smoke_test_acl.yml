@@ -31,7 +31,7 @@ ui:
   "/hosts":
     - "localhost"
   "/host/localhost":
-    - "Host: localhost"
+    - "Host localhost"
   "/host/localhost2":
     - "not authorized for this action"
 api:
