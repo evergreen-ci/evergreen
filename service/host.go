@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/pkg/errors"
 )
 
@@ -42,6 +43,8 @@ type uiParams struct {
 }
 
 func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
+	u := MustHaveUser(r)
+
 	id := gimlet.GetVars(r)["host_id"]
 
 	h, err := host.FindOneByIdOrTag(id)
@@ -52,6 +55,13 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 
 	if h == nil {
 		http.Error(w, "Host not found", http.StatusNotFound)
+		return
+	}
+
+	opts := gimlet.PermissionOpts{Resource: h.Distro.Id, ResourceType: evergreen.DistroResourceType}
+	permissions, err := rolemanager.HighestPermissionsForRoles(u.Roles(), evergreen.GetEnvironment().RoleManager(), opts)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -85,14 +95,17 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Events      []event.EventLogEntry
 		Host        *host.Host
+		Permissions gimlet.Permissions
 		RunningTask *task.Task
 		Containers  []host.Host
 		ViewData
-	}{events, h, runningTask, containers, uis.GetCommonViewData(w, r, false, true)},
+	}{events, h, permissions, runningTask, containers, uis.GetCommonViewData(w, r, false, true)},
 		"base", "host.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) hostsPage(w http.ResponseWriter, r *http.Request) {
+	u := MustHaveUser(r)
+
 	includeSpawnedHosts, _ := strconv.ParseBool(r.FormValue(IncludeSpawnedHosts))
 	hosts, err := getHostsData(includeSpawnedHosts)
 	if err != nil {
@@ -100,11 +113,25 @@ func (uis *UIServer) hostsPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	permittedHosts := &hostsData{}
+	for i := range hosts.Hosts {
+		opts := gimlet.PermissionOpts{Resource: hosts.Hosts[i].Host.Distro.Id, ResourceType: evergreen.DistroResourceType}
+		permissions, err := rolemanager.HighestPermissionsForRoles(u.Roles(), evergreen.GetEnvironment().RoleManager(), opts)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+
+		if !evergreen.AclCheckingIsEnabled || permissions[evergreen.PermissionHosts] > 0 {
+			permittedHosts.Hosts = append(permittedHosts.Hosts, hosts.Hosts[i])
+		}
+	}
+
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Hosts               *hostsData
 		IncludeSpawnedHosts bool
 		ViewData
-	}{hosts, includeSpawnedHosts, uis.GetCommonViewData(w, r, false, true)},
+	}{permittedHosts, includeSpawnedHosts, uis.GetCommonViewData(w, r, false, true)},
 		"base", "hosts.html", "base_angular.html", "menu.html")
 }
 

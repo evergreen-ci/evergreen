@@ -25,6 +25,15 @@ ui:
     - "logkeeper"
   "/waterfall/performance":
     - "not authorized for this action"
+  "/distros":
+    - "localhost"
+    - "localhost2"
+  "/hosts":
+    - "localhost"
+  "/host/localhost":
+    - "Host localhost"
+  "/host/localhost2":
+    - "not authorized for this action"
 api:
   "/":
     - "404"
