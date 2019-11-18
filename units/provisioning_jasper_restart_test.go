@@ -53,7 +53,7 @@ func setupJasperService(ctx context.Context, env *mock.Environment, mngr *jmock.
 
 // setupHostCredentials is used to bootstrap the credentials collection
 // for testing.
-func setupCredentialsCollection(ctx context.Context, env *mock.Environment) error {
+func setupHostCredentials(ctx context.Context, env *mock.Environment) error {
 	settings := env.Settings()
 	settings.DomainName = "test-service"
 
@@ -103,7 +103,7 @@ func teardownJasperService(closeService jasper.CloseFunc) error {
 }
 
 func teardownHostCredentials() error {
-	return db.ClearCollections(credentials.Collection, host.Collection)
+	return db.ClearCollections(evergreen.CredentialsCollection, host.Collection)
 }
 
 func getJasperRestartJobName(hostID string, restartThroughJasper bool, jobID string) string {
