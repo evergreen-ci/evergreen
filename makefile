@@ -16,7 +16,7 @@ projectPath := $(orgPath)/$(name)
 ifneq (,$(GO_BIN_PATH))
 gobin := $(GO_BIN_PATH)
 else
-gobin := $(shell if [ -x /opt/golang/go1.9/bin/go ]; then /opt/golang/go1.9/bin/go; fi)
+gobin := $(shell if [ -x /opt/golang/go1.9/bin/go ]; then echo /opt/golang/go1.9/bin/go; fi)
 ifeq (,$(gobin))
 gobin := go
 endif
