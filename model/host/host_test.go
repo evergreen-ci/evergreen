@@ -1286,7 +1286,7 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			tctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			tctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
 
 			env := &mock.Environment{}

@@ -596,7 +596,7 @@ func TestJasperClient(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			tctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			tctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
 
 			env := &mock.Environment{}
@@ -669,14 +669,12 @@ func TestJasperProcess(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			tctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			tctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(tctx, "", nil))
 			env.Settings().HostJasper.BinaryName = "binary"
-
-			require.NoError(t, setupCredentialsCollection(ctx, env))
 
 			manager := &jmock.Manager{}
 			env.JasperProcessManager = manager
@@ -903,7 +901,7 @@ func TestStopAgentMonitor(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			tctx, tcancel := context.WithTimeout(ctx, 5*time.Second)
+			tctx, tcancel := context.WithTimeout(ctx, 10*time.Second)
 			defer tcancel()
 
 			env := &mock.Environment{}
