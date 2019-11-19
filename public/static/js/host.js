@@ -4,6 +4,7 @@ mciModule.controller('HostCtrl', function($scope, $window) {
   $scope.running_task = $window.runningTask;
   $scope.events = $window.events.reverse();
   $scope.containers = $window.containers;
+  $scope.readOnly = (!window.aclEnabled && !$window.isSuperUser) || ($window.aclEnabled && $window.permissions.distro_hosts < 20) 
 
   // Spawned by task aliases
   $scope.spawnedByTask = $scope.host.spawn_options.spawned_by_task

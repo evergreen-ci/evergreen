@@ -329,7 +329,7 @@ func (j *createHostJob) tryRequeue(ctx context.Context) {
 			"attempts": j.CurrentAttempt,
 		}))
 		j.AddError(err)
-	} else {
+	} else if j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuilding {
 		event.LogHostStartFinished(j.host.Id, false)
 	}
 }
