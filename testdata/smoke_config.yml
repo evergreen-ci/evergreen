@@ -30,6 +30,9 @@ auth:
         - username: "admin"
           password: "password"
           display_name: "Evergreen Admin"
+        - username: "julian"
+          password: "password"
+          display_name: "Julian Edwards"
 
 plugins:
   perf:

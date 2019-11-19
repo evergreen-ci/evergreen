@@ -23,12 +23,12 @@ functions:
        shell: bash
        script: |
          echo "get-project function"
-  set-up-credentials:
+  setup-credentials:
     command: shell.exec
     params:
        shell: bash
        script: |
-         echo "set-up-credentials function"
+         echo "setup-credentials function"
   run-make:
     command: shell.exec
     params:
@@ -98,7 +98,7 @@ var sampleGeneratedProject = []json.RawMessage{json.RawMessage(`
           "func": "get-project"
         },
         {
-          "func": "set-up-credentials"
+          "func": "setup-credentials"
         },
         {
           "func": "run-make",
@@ -115,7 +115,7 @@ var sampleGeneratedProject = []json.RawMessage{json.RawMessage(`
           "func": "get-project"
         },
         {
-          "func": "set-up-credentials"
+          "func": "setup-credentials"
         },
         {
           "func": "run-make",

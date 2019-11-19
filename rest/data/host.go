@@ -131,10 +131,19 @@ func (hc *DBHostConnector) CheckHostSecret(r *http.Request) (int, error) {
 	return code, errors.WithStack(err)
 }
 
+func (hc *DBHostConnector) AggregateSpawnhostData() (*host.SpawnHostUsage, error) {
+	data, err := host.AggregateSpawnhostData()
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting spawn host data")
+	}
+	return data, nil
+}
+
 // MockHostConnector is a struct that implements the Host related methods
 // from the Connector through interactions with the backing database.
 type MockHostConnector struct {
-	CachedHosts []host.Host
+	CachedHosts   []host.Host
+	CachedVolumes []host.Volume
 }
 
 // FindHostsById searches the mock hosts slice for hosts and returns them
@@ -283,6 +292,42 @@ func (hc *MockHostConnector) CheckHostSecret(r *http.Request) (int, error) {
 
 func (dbc *MockConnector) FindHostByIdWithOwner(hostID string, user gimlet.User) (*host.Host, error) {
 	return findHostByIdWithOwner(dbc, hostID, user)
+}
+
+func (hc *MockConnector) AggregateSpawnhostData() (*host.SpawnHostUsage, error) {
+	data := host.SpawnHostUsage{}
+	usersWithHosts := map[string]bool{} // set for existing users
+	data.InstanceTypes = map[string]int{}
+	totalComputeCost := 0.0
+	for _, h := range hc.CachedHosts {
+		if !h.UserHost {
+			continue
+		}
+		data.TotalHosts += 1
+		if h.Status == evergreen.HostStopped {
+			data.TotalStoppedHosts += 1
+		}
+		if h.NoExpiration {
+			data.TotalUnexpirableHosts += 1
+		}
+		data.InstanceTypes[h.InstanceType] += 1
+		usersWithHosts[h.StartedBy] = true
+		totalComputeCost += h.ComputeCostPerHour
+	}
+	data.AverageComputeCostPerHour = totalComputeCost / float64(data.TotalHosts)
+	data.NumUsersWithHosts = len(usersWithHosts)
+
+	usersWithVolumes := map[string]bool{}
+	for _, v := range hc.CachedVolumes {
+		data.TotalVolumes += 1
+		data.TotalVolumeSize += v.Size
+		usersWithVolumes[v.CreatedBy] = true
+	}
+	data.NumUsersWithVolumes = len(usersWithVolumes)
+	if data.TotalVolumes == 0 && data.TotalHosts == 0 {
+		return nil, errors.New("no host/volume results found")
+	}
+	return &data, nil
 }
 
 func findHostByIdWithOwner(c Connector, hostID string, user gimlet.User) (*host.Host, error) {

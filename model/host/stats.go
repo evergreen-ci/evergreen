@@ -125,7 +125,7 @@ func statsByDistroPipeline() []bson.M {
 					"$sum": 1,
 				},
 				"max_hosts": bson.M{
-					"$max": "$" + DistroKey + "." + distro.PoolSizeKey,
+					"$max": "$" + DistroKey + "." + bsonutil.GetDottedKeyName(distro.HostAllocatorSettingsKey, distro.HostAllocatorSettingsMaximumHostsKey),
 				},
 				"tasks": bson.M{
 					"$addToSet": "$" + RunningTaskKey,

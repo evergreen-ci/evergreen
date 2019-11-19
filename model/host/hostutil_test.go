@@ -599,7 +599,7 @@ func TestJasperClient(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			tctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			tctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
 
 			env := &mock.Environment{}
@@ -672,7 +672,7 @@ func TestJasperProcess(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			tctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			tctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
 
 			env := &mock.Environment{}
@@ -904,7 +904,7 @@ func TestStopAgentMonitor(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			tctx, tcancel := context.WithTimeout(ctx, 5*time.Second)
+			tctx, tcancel := context.WithTimeout(ctx, 10*time.Second)
 			defer tcancel()
 
 			env := &mock.Environment{}

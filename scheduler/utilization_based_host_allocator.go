@@ -27,7 +27,7 @@ type TaskGroupData struct {
 func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (int, error) {
 	distro := hostAllocatorData.Distro
 	numExistingHosts := len(hostAllocatorData.ExistingHosts)
-	if numExistingHosts >= distro.PoolSize {
+	if numExistingHosts >= distro.HostAllocatorSettings.MaximumHosts {
 		return 0, nil
 	}
 
@@ -40,7 +40,7 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 	for name, taskGroupData := range taskGroupDatas {
 		var maxHosts int
 		if name == "" {
-			maxHosts = distro.PoolSize
+			maxHosts = distro.HostAllocatorSettings.MaximumHosts
 		} else {
 			if taskGroupData.Info.Count == 0 {
 				continue // skip this group if there are no tasks in the queue for it
@@ -115,7 +115,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 		if err != nil {
 			return 0, errors.Wrap(err, "error finding parent distro")
 		}
-		maxHosts = parentDistro.PoolSize * containerPool.MaxContainers
+		maxHosts = parentDistro.HostAllocatorSettings.MaximumHosts * containerPool.MaxContainers
 	}
 
 	// determine how many free hosts we have that are already up
@@ -146,7 +146,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 
 	// alert if the distro is underwater
 	if maxHosts < 1 {
-		return 0, errors.Errorf("unable to plan hosts for distro %s due to pool size of %d", d.Id, d.PoolSize)
+		return 0, errors.Errorf("unable to plan hosts for distro %s due to pool size of %d", d.Id, d.HostAllocatorSettings.MaximumHosts)
 	}
 	underWaterAlert := message.Fields{
 		"provider":  d.Provider,
@@ -155,7 +155,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 		"runner":    RunnerName,
 		"message":   "distro underwater",
 		"num_hosts": len(existingHosts),
-		"max_hosts": d.PoolSize,
+		"max_hosts": d.HostAllocatorSettings.MaximumHosts,
 	}
 	avgMakespan := scheduledDuration / time.Duration(maxHosts)
 	grip.AlertWhen(avgMakespan > dynamicDistroRuntimeAlertThreshold, underWaterAlert)
@@ -165,7 +165,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 		"runner":                       RunnerName,
 		"provider":                     d.Provider,
 		"distro":                       d.Id,
-		"pool_size":                    d.PoolSize,
+		"pool_size":                    d.HostAllocatorSettings.MaximumHosts,
 		"new_hosts_needed":             numNewHosts,
 		"num_existing_hosts":           len(existingHosts),
 		"num_free_hosts_approx":        numFreeHosts,
