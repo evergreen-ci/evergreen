@@ -250,6 +250,7 @@ functions:
       type: setup
       params:
         env:
+          gobin: /opt/golang/go1.9/bin/go
           MONGODB_URL: ${mongodb_url}
           DECOMPRESS: ${decompress}
         working_dir: gopath/src/github.com/evergreen-ci/evergreen/
