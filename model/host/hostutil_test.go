@@ -676,6 +676,8 @@ func TestJasperProcess(t *testing.T) {
 			require.NoError(t, env.Configure(tctx, "", nil))
 			env.Settings().HostJasper.BinaryName = "binary"
 
+			require.NoError(t, setupCredentialsCollection(ctx, env))
+
 			manager := &jmock.Manager{}
 			env.JasperProcessManager = manager
 
