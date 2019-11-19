@@ -168,7 +168,7 @@ lintDeps := $(addprefix $(gopath)/src/,$(lintDeps))
 $(buildDir)/.lintSetup:$(lintDeps)
 	$(gobin) get github.com/evergreen-ci/evg-lint/...
 	@mkdir -p $(buildDir)
-	$(gopath)/bin/gometalinter --force --install >/dev/null && touch $@
+	$(if $(GO_BIN_PATH),export PATH=$(shell dirname $(GO_BIN_PATH)):${PATH} && ,)$(gopath)/bin/gometalinter --force --install >/dev/null && touch $@
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
 	@mkdir -p $(buildDir)
 	$(gobin) build -o $@ $<
