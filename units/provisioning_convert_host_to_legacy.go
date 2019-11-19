@@ -82,6 +82,18 @@ func (j *convertHostToLegacyProvisioningJob) Run(ctx context.Context) {
 		return
 	}
 
+	// The host cannot be reprovisioned until the host's agent has
+	// stopped.
+	if !j.host.NeedsNewAgent {
+		grip.Error(message.WrapError(j.tryRequeue(ctx), message.Fields{
+			"message": "could not enqueue job to retry provisioning conversion when host's agent is still running",
+			"host": j.host.Id,
+			"distro": j.host.Distro.Id,
+			"job": j.ID(),
+		}
+		return
+	}
+
 	defer func() {
 		if j.HasErrors() {
 			event.LogHostConvertingProvisioningError(j.host.Id, j.Error())
@@ -129,12 +141,6 @@ func (j *convertHostToLegacyProvisioningJob) Run(ctx context.Context) {
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
-	}
-
-	// The host cannot be reprovisioned until the host's agent monitor has
-	// stopped.
-	if !j.host.NeedsNewAgent {
-		return
 	}
 
 	settings := j.env.Settings()
