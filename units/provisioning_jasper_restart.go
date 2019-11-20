@@ -82,11 +82,6 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	if err := j.populateIfUnset(ctx); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "could not populate required fields",
-			"host":    j.HostID,
-			"job":     j.ID(),
-		}))
 		j.AddError(err)
 		return
 	}
@@ -100,10 +95,10 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 	if j.host.StartedBy == evergreen.User && !j.host.NeedsNewAgentMonitor {
 		grip.Error(message.WrapError(j.tryRequeue(ctx), message.Fields{
 			"message": "could not enqueue job to retry provisioning conversion when host's agent monitor is still running",
-			"host": j.host.Id,
-			"distro": j.host.Distro.Id,
-			"job": j.ID(),
-		}
+			"host":    j.host.Id,
+			"distro":  j.host.Distro.Id,
+			"job":     j.ID(),
+		}))
 		return
 	}
 

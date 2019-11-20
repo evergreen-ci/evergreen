@@ -62,12 +62,6 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	if err := j.populateIfUnset(); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "could not populate fields",
-			"host":    j.host.Id,
-			"distro":  j.host.Distro.Id,
-			"job":     j.ID(),
-		}))
 		j.AddError(err)
 		return
 	}

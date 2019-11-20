@@ -71,12 +71,6 @@ func (j *convertHostToNewProvisioningJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	if err := j.populateIfUnset(); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "could not populate required fields",
-			"host":    j.HostID,
-			"distro":  j.host.Distro.Id,
-			"job":     j.ID(),
-		}))
 		j.AddError(err)
 		return
 	}
@@ -110,12 +104,6 @@ func (j *convertHostToNewProvisioningJob) Run(ctx context.Context) {
 				}))
 				j.AddError(err)
 			}
-			grip.Error(message.WrapError(j.Error(), message.Fields{
-				"message": "failed to convert host to new provisioning but will retry",
-				"host":    j.host.Id,
-				"distro":  j.host.Distro.Id,
-				"job":     j.ID(),
-			}))
 		}
 		if err := j.host.SetReprovisioningLocked(false); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{

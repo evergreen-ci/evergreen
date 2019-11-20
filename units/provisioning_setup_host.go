@@ -606,14 +606,6 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 	err := j.runHostSetup(ctx, h, settings)
 	if err != nil {
 		if shouldRetryProvisioning(h) {
-			grip.Debug(message.Fields{
-				"host":     h.Id,
-				"attempts": h.ProvisionAttempts,
-				"distro":   h.Distro.Id,
-				"job":      j.ID(),
-				"error":    err.Error(),
-				"message":  "provisioning failed, but will retry",
-			})
 			return nil
 		}
 

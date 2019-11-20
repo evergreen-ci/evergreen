@@ -68,12 +68,6 @@ func (j *convertHostToLegacyProvisioningJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	if err := j.populateIfUnset(); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "could not populate required fields",
-			"host":    j.HostID,
-			"distro":  j.host.Distro.Id,
-			"job":     j.ID(),
-		}))
 		j.AddError(err)
 		return
 	}
@@ -107,12 +101,6 @@ func (j *convertHostToLegacyProvisioningJob) Run(ctx context.Context) {
 				}))
 				j.AddError(err)
 			}
-			grip.Error(message.WrapError(j.Error(), message.Fields{
-				"message": "failed to convert host to legacy provisioning but will retry",
-				"host":    j.host.Id,
-				"distro":  j.host.Distro.Id,
-				"job":     j.ID(),
-			}))
 		}
 		grip.Error(message.WrapError(j.host.SetReprovisioningLocked(false), message.Fields{
 			"message": "could not clear host reprovisioning lock",
