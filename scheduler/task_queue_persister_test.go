@@ -94,8 +94,8 @@ func TestDBTaskQueuePersister(t *testing.T) {
 			},
 		}
 
-		distroQueueInfo1 := GetDistroQueueInfo("", tasks[0:3], evergreen.MaxDurationPerDistroHost)
-		distroQueueInfo2 := GetDistroQueueInfo("", tasks[3:], evergreen.MaxDurationPerDistroHost)
+		distroQueueInfo1 := GetDistroQueueInfo("", tasks[0:3], evergreen.MaxDurationPerDistroHost, TaskPlannerOptions{})
+		distroQueueInfo2 := GetDistroQueueInfo("", tasks[3:], evergreen.MaxDurationPerDistroHost, TaskPlannerOptions{})
 
 		So(db.Clear(model.TaskQueuesCollection), ShouldBeNil)
 

@@ -82,6 +82,9 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Now copy the file into the permanent location
+	client := util.GetHTTPClient()
+	client.Timeout = 10 * time.Minute
+	defer util.PutHTTPClient(client)
 	srcOpts := pail.S3Options{
 		Credentials: pail.CreateAWSCredentials(s3CopyReq.AwsKey, s3CopyReq.AwsSecret, ""),
 		Region:      region,

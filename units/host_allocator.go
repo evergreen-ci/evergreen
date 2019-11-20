@@ -202,7 +202,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		"job_type":                hostAllocatorJobName,
 		"distro":                  distro.Id,
 		"provider":                distro.Provider,
-		"max_hosts":               distro.PoolSize,
+		"max_hosts":               distro.HostAllocatorSettings.MaximumHosts,
 		"num_new_hosts":           len(hostsSpawned),
 		"pool_info":               existingHosts.Stats(),
 		"queue":                   eventInfo,

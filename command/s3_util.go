@@ -12,10 +12,11 @@ import (
 )
 
 const (
-	maxS3OpAttempts   = 10
-	s3OpSleep         = 2 * time.Second
-	s3OpRetryMaxSleep = 20 * time.Second
-	s3baseURL         = "https://s3.amazonaws.com/"
+	maxS3OpAttempts     = 10
+	s3HTTPClientTimeout = 10 * time.Minute
+	s3OpSleep           = 2 * time.Second
+	s3OpRetryMaxSleep   = 20 * time.Second
+	s3baseURL           = "https://s3.amazonaws.com/"
 )
 
 var (

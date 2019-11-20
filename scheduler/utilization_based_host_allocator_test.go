@@ -142,10 +142,10 @@ func (s *UtilizationAllocatorSuite) SetupSuite() {
 	s.distroName = "testDistro"
 	s.distro = distro.Distro{
 		Id:       s.distroName,
-		PoolSize: 50,
 		Provider: evergreen.ProviderNameEc2Auto,
 		HostAllocatorSettings: distro.HostAllocatorSettings{
 			MinimumHosts: 0,
+			MaximumHosts: 50,
 		},
 	}
 	s.projectName = "testProject"
@@ -515,7 +515,9 @@ func (s *UtilizationAllocatorSuite) TestOverMaxHosts() {
 
 	distro := distro.Distro{
 		Provider: evergreen.ProviderNameEc2Auto,
-		PoolSize: 10,
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			MaximumHosts: 10,
+		},
 	}
 
 	taskGroupInfo := model.TaskGroupInfo{
@@ -933,8 +935,10 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario2() {
 func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {
 	parentDistro := distro.Distro{
 		Id:       "parent-distro",
-		PoolSize: 50,
 		Provider: evergreen.ProviderNameEc2Auto,
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			MaximumHosts: 50,
+		},
 	}
 	s.NoError(parentDistro.Insert())
 
@@ -1043,8 +1047,10 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {
 func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
 	parentDistro := distro.Distro{
 		Id:       "parent-distro",
-		PoolSize: 50,
 		Provider: evergreen.ProviderNameEc2Auto,
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			MaximumHosts: 50,
+		},
 	}
 	s.NoError(parentDistro.Insert())
 

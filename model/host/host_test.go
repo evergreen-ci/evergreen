@@ -1286,7 +1286,7 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			tctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			tctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
 
 			env := &mock.Environment{}
@@ -3306,8 +3306,14 @@ func TestNumNewParentsNeeded(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections("hosts", "distro", "tasks"))
 
-	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock,
-		ContainerPool: "test-pool"}
+	d := distro.Distro{
+		Id:            "distro",
+		Provider:      evergreen.ProviderNameMock,
+		ContainerPool: "test-pool",
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			MaximumHosts: 3,
+		},
+	}
 	pool := &evergreen.ContainerPool{Distro: "distro", Id: "test-pool", MaxContainers: 2}
 	host1 := &Host{
 		Id:                    "host1",
@@ -3364,8 +3370,14 @@ func TestNumNewParentsNeeded2(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections("hosts", "distro", "tasks"))
 
-	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock,
-		ContainerPool: "test-pool"}
+	d := distro.Distro{
+		Id:            "distro",
+		Provider:      evergreen.ProviderNameMock,
+		ContainerPool: "test-pool",
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			MaximumHosts: 3,
+		},
+	}
 	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 3}
 
 	host1 := &Host{
@@ -3413,8 +3425,15 @@ func TestFindAvailableParent(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections("hosts", "distro", "tasks"))
 
-	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock,
-		ContainerPool: "test-pool"}
+	d := distro.Distro{
+		Id:            "distro",
+		Provider:      evergreen.ProviderNameMock,
+		ContainerPool: "test-pool",
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			MaximumHosts: 3,
+		},
+	}
+
 	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
 	durationOne := 20 * time.Minute
 	durationTwo := 30 * time.Minute
@@ -3483,7 +3502,13 @@ func TestFindNoAvailableParent(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections("hosts", "distro", "tasks"))
 
-	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock}
+	d := distro.Distro{
+		Id:       "distro",
+		Provider: evergreen.ProviderNameMock,
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			MaximumHosts: 3,
+		},
+	}
 	pool := &evergreen.ContainerPool{Distro: "distro", Id: "test-pool", MaxContainers: 1}
 	durationOne := 20 * time.Minute
 	durationTwo := 30 * time.Minute
@@ -3549,7 +3574,13 @@ func TestGetNumNewParentsAndHostsToSpawn(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections("hosts", "distro", "tasks"))
 
-	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock}
+	d := distro.Distro{
+		Id:       "distro",
+		Provider: evergreen.ProviderNameMock,
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			MaximumHosts: 3,
+		},
+	}
 	pool := &evergreen.ContainerPool{Distro: "distro", Id: "test-pool", MaxContainers: 1}
 
 	host1 := &Host{
@@ -3595,7 +3626,13 @@ func TestGetNumNewParentsWithInitializingParentAndHost(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections("hosts", "distro", "tasks"))
 
-	d := distro.Distro{Id: "distro", PoolSize: 2, Provider: evergreen.ProviderNameMock}
+	d := distro.Distro{
+		Id:       "distro",
+		Provider: evergreen.ProviderNameMock,
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			MaximumHosts: 2,
+		},
+	}
 	pool := &evergreen.ContainerPool{Distro: "distro", Id: "test-pool", MaxContainers: 2}
 
 	host1 := &Host{
@@ -3775,6 +3812,102 @@ func TestSetInstanceType(t *testing.T) {
 	foundHost, err := FindOneId(h.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, newInstanceType, foundHost.InstanceType)
+}
+
+func TestAggregateSpawnhostData(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection, VolumesCollection))
+	hosts := []Host{
+		{
+			Id:                 "host-1",
+			Status:             evergreen.HostRunning,
+			InstanceType:       "small",
+			ComputeCostPerHour: 20,
+			StartedBy:          "me",
+			UserHost:           true,
+			NoExpiration:       true,
+		},
+		{
+			Id:                 "host-2",
+			Status:             evergreen.HostRunning,
+			InstanceType:       "small",
+			ComputeCostPerHour: 30,
+			StartedBy:          "me",
+			UserHost:           true,
+			NoExpiration:       false,
+		},
+		{
+			Id:                 "host-3",
+			Status:             evergreen.HostStopped,
+			InstanceType:       "large",
+			ComputeCostPerHour: 60,
+			StartedBy:          "you",
+			UserHost:           true,
+			NoExpiration:       false,
+		},
+		{
+			Id:                 "host-4",
+			Status:             evergreen.HostRunning,
+			InstanceType:       "medium",
+			ComputeCostPerHour: 10,
+			StartedBy:          "her",
+			UserHost:           true,
+			NoExpiration:       true,
+		},
+		{
+			Id:        "host-5",
+			Status:    evergreen.HostStarting,
+			StartedBy: "no-one",
+		},
+		{
+			Id:           "host-6",
+			Status:       evergreen.HostTerminated,
+			InstanceType: "tiny",
+			StartedBy:    "doesnt-matter",
+			UserHost:     true,
+		},
+	}
+	for _, h := range hosts {
+		assert.NoError(t, h.Insert())
+	}
+
+	volumes := []Volume{
+		{
+			ID:        "v1",
+			CreatedBy: "me",
+			Size:      100,
+		},
+		{
+			ID:        "v2",
+			CreatedBy: "me",
+			Size:      12,
+		},
+		{
+			ID:        "v3",
+			CreatedBy: "you",
+			Size:      300,
+		},
+	}
+	for _, v := range volumes {
+		assert.NoError(t, v.Insert())
+	}
+
+	res, err := AggregateSpawnhostData()
+	assert.NoError(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, 3, res.NumUsersWithHosts)
+	assert.Equal(t, 4, res.TotalHosts)
+	assert.Equal(t, 1, res.TotalStoppedHosts)
+	assert.EqualValues(t, 2, res.TotalUnexpirableHosts)
+	assert.Equal(t, 30.0, res.AverageComputeCostPerHour)
+	assert.Equal(t, 2, res.NumUsersWithVolumes)
+	assert.Equal(t, 412, res.TotalVolumeSize)
+	assert.Equal(t, 3, res.TotalVolumes)
+	assert.NotNil(t, res.InstanceTypes)
+	assert.Len(t, res.InstanceTypes, 3)
+	assert.Equal(t, res.InstanceTypes["small"], 2)
+	assert.Equal(t, res.InstanceTypes["medium"], 1)
+	assert.Equal(t, res.InstanceTypes["large"], 1)
+	assert.Equal(t, res.InstanceTypes["tiny"], 0)
 }
 
 func TestCountSpawnhostsWithNoExpirationByUser(t *testing.T) {
