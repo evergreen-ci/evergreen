@@ -352,6 +352,9 @@ func testStatsMergePipeline(daily bool, projectIDs []string, requesters []string
         match := bson.M{
                 testresult.IDKey:             bson.M{"$gt": lastID},
                 testresult.TaskCreateTimeKey: bson.M{"$gte": start, "$lt": end},
+                testresult.ProjectKey:        bson.M{"$in": projectIDs},
+                testresult.DisplayNameKey:    bson.M{"$in": tasks},
+                testresult.RequesterKey:      bson.M{"$in": requesters},
                 // For simplicity's sake, (and to shorten any required index) the following line
                 // is removed but could be used to filter further (with a supporting index).
                 // testresult.StatusKey: bson.M{"$in": Array{evergreen.TestSucceededStatus, evergreen.TestFailedStatus, evergreen.TestSilentlyFailedStatus}},
@@ -359,28 +362,14 @@ func testStatsMergePipeline(daily bool, projectIDs []string, requesters []string
 
         if len(projectIDs) == 1 {
                 match[testresult.ProjectKey] = projectIDs[0]
-        } else if len(projectIDs) > 1 {
-                match[testresult.ProjectKey] = bson.M{"$in": projectIDs}
         }
 
-        var or []bson.M
         if len(tasks) == 1 {
-                or = []bson.M{
-                        {testresult.DisplayNameKey: tasks[0]},
-                        {testresult.ExecutionDisplayNameKey: tasks[0]},
-                }
-        } else if len(tasks) > 1 {
-                or = []bson.M{
-                        {testresult.DisplayNameKey: bson.M{"$in": tasks}},
-                        {testresult.ExecutionDisplayNameKey: bson.M{"$in": tasks}},
-                }
+                match[testresult.DisplayNameKey] = tasks[0]
         }
-        match["$or"] = or
 
         if len(requesters) == 1 {
                 match[testresult.RequesterKey] = requesters[0]
-        } else if len(requesters) > 1 {
-                match[testresult.RequesterKey] = bson.M{"$in": requesters}
         }
 
         dateFromParts := bson.M{
