@@ -68,6 +68,7 @@ func toMdbForLocal() cli.Command {
 			}
 
 			connCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			defer cancel()
 			if err = client.Connect(connCtx); err != nil {
 				return errors.Wrap(err, "problem connecting to mongodb")
 			}
@@ -197,6 +198,7 @@ func fromMdbForLocal() cli.Command {
 			}
 
 			connCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			defer cancel()
 			if err = client.Connect(connCtx); err != nil {
 				return errors.Wrap(err, "problem connecting to mongodb")
 			}
