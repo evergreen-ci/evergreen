@@ -30,8 +30,8 @@ func makeTasks() *shrub.Configuration {
 	config.CommandType = "test"
 	for _, target := range targets {
 		config.Task(target).Function("get-project").
-			Function("set-up-credentials").
-			Function("set-up-mongodb").
+			Function("setup-credentials").
+			Function("setup-mongodb").
 			FunctionWithVars("run-make", map[string]string{"target": "revendor"}).
 			FunctionWithVars("run-make", map[string]string{"target": target}).
 			Function("attach-test-results")
@@ -55,7 +55,7 @@ func makeTasks() *shrub.Configuration {
 			"token":     "${github_token}",
 		},
 	})
-	config.Function("set-up-credentials").Append(&shrub.CommandDefinition{
+	config.Function("setup-credentials").Append(&shrub.CommandDefinition{
 		CommandName:   "subprocess.exec",
 		ExecutionType: "setup",
 		Params: map[string]interface{}{
@@ -73,7 +73,7 @@ func makeTasks() *shrub.Configuration {
 			},
 		},
 	})
-	config.Function("set-up-mongodb").Append(&shrub.CommandDefinition{
+	config.Function("setup-mongodb").Append(&shrub.CommandDefinition{
 		CommandName:   "subprocess.exec",
 		ExecutionType: "setup",
 		Params: map[string]interface{}{

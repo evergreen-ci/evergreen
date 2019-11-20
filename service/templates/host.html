@@ -12,6 +12,8 @@
   var userTz = {{GetTimezone $.User}}
   var runningTask = {{.RunningTask}}
   var containers = {{.Containers}}
+  window.permissions = {{.Permissions}}
+  window.aclEnabled = {{.ACLEnabled}};
 </script>
 {{end}}
 
@@ -43,7 +45,7 @@ Evergreen - Host {{.Host.Id}}
           </a>
 
           <ul class="dropdown-menu" role="menu">
-            <li><a tabindex="-1" href="#" ng-click="openAdminModal('statusChange')">Update Status</a></li>
+            <li><a tabindex="-1" href="#" ng-hide="readOnly" ng-click="openAdminModal('statusChange')">Update Status</a></li>
           </ul>
         </div>
         <admin-modal>

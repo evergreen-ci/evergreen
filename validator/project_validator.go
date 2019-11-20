@@ -1068,7 +1068,7 @@ func checkOrAddTask(task, variant string, tasksFound map[string]interface{}) *Va
 func validateCreateHosts(p *model.Project) ValidationErrors {
 	ts := p.TasksThatCallCommand(evergreen.CreateHostCommandName)
 	errs := validateTimesCalledPerTask(p, ts, evergreen.CreateHostCommandName, 3)
-	errs = append(errs, validateTimesCalledTotal(p, ts, evergreen.CreateHostCommandName, 35)...)
+	errs = append(errs, validateTimesCalledTotal(p, ts, evergreen.CreateHostCommandName, 50)...)
 	return errs
 }
 
