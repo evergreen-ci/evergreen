@@ -116,15 +116,14 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 	ctx, cancel = context.WithCancel(ctx)
 	defer cancel()
 
-	mgrOpts := cloud.ManagerOpts{
-		Provider: j.host.Provider,
-		Region:   cloud.GetRegion(j.host.Distro),
+	catcher := grip.NewBasicCatcher()
+	mgrOpts, err := GetManagerOptions(j.host.Distro)
+	catcher.Add(errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id))
+	if !catcher.HasErrors() {
+		manager, err := cloud.GetManager(ctx, j.env, mgrOpts)
+		catcher.Add(errors.Wrapf(err, "Error loading provider for host %s cost calculation", j.task.HostId))
 	}
-	manager, err := cloud.GetManager(ctx, j.env, mgrOpts)
-	if err != nil {
-		j.AddError(err)
-		grip.Error(message.WrapErrorf(err, "Error loading provider for host %s cost calculation", j.task.HostId))
-	} else {
+	if !catcher.HasErrors() {
 		if calc, ok := manager.(cloud.CostCalculator); ok {
 			cost, err = calc.CostForDuration(ctx, j.host, j.task.StartTime, j.task.FinishTime)
 			if err != nil {
@@ -139,6 +138,7 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 			}
 		}
 	}
+	j.AddError(catcher.Resolve())
 
 	msg := message.Fields{
 		"activated_by":         j.task.ActivatedBy,

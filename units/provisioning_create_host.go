@@ -178,9 +178,14 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		"max_attempts": j.MaxAttempts,
 	})
 
-	mgrOpts := cloud.ManagerOpts{
-		Provider: j.host.Provider,
-		Region:   cloud.GetRegion(j.host.Distro),
+	mgrOpts, err := GetManagerOptions(j.host.Distro)
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "can't get ManagerOpts for host",
+			"host":    j.host.Id,
+			"job":     j.ID(),
+		}))
+		return errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id)
 	}
 	cloudManager, err = cloud.GetManager(ctx, j.env, mgrOpts)
 	if err != nil {

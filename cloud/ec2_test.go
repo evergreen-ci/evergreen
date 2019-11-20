@@ -1252,14 +1252,6 @@ func (s *EC2Suite) TestGetEC2Key() {
 	s.Empty(secret)
 	s.EqualError(err, "Unable to find region 'test-region' in config")
 
-	// LEGACY (delete block when Evergreen only uses region-based EC2Keys struct)
-	settings.Providers.AWS.EC2Key = "legacy-key"
-	settings.Providers.AWS.EC2Secret = "legacy-secret"
-	key, secret, err = GetEC2Key("", settings)
-	s.Equal("legacy-key", key)
-	s.Equal("legacy-secret", secret)
-	s.NoError(err)
-
 	settings.Providers.AWS.EC2Keys = []evergreen.EC2Key{
 		{Region: "bogus-region", Key: "bogus-key", Secret: "bogus-secret"},
 		{Region: "test-region", Key: "test-key", Secret: "test-secret"},

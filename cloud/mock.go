@@ -399,14 +399,17 @@ func (m *mockManager) CostForDuration(ctx context.Context, h *host.Host, start, 
 }
 
 // Get mock region from ProviderSettings object
-func getMockRegion(providerSettings *map[string]interface{}) string {
-	s := &MockProviderSettings{}
-	if providerSettings != nil {
-		if err := mapstructure.Decode(providerSettings, s); err != nil {
-			return ""
-		} else {
-			return s.Region
-		}
+func getMockManagerOptions(provider string, providerSettings *map[string]interface{}) (ManagerOpts, error) {
+	opts := ManagerOpts{Provider: provider}
+	if providerSettings == nil {
+		return opts, errors.New("nil ProviderSettings")
 	}
-	return ""
+
+	s := &MockProviderSettings{}
+	if err := mapstructure.Decode(providerSettings, s); err != nil {
+		return opts, errors.Wrap(err, "can't decode ProviderSettings")
+	}
+	opts.Region = s.Region
+
+	return opts, nil
 }

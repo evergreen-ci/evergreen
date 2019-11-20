@@ -61,21 +61,21 @@ func (j *cloudHostReadyJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	hostsToCheck, err := host.Find(host.Starting())
-	if err != nil {
-		j.AddError(errors.Wrap(err, "problem finding hosts that are not running"))
-		return
-	}
-	if len(hostsToCheck) == 0 {
-		return
-	}
-
 	// Collect hosts by provider and region
-	hostsByManager := cloud.GroupHostsByManager(hostsToCheck)
-
-	for mgrOpts, hosts := range hostsByManager {
+	startingHostsByClient, err := host.StartingHostsByClient()
+	if err != nil {
+		j.AddError(errors.Wrap(err, "can't get starting hosts"))
+		return
+	}
+	for clientOpts, hosts := range startingHostsByClient {
 		if len(hosts) == 0 {
 			continue
+		}
+		mgrOpts := cloud.ManagerOpts{
+			Provider: clientOpts.Provider,
+			Region: clientOpts.Region,
+			ProviderKey: clientOpts.Key,
+			ProviderSecret: clientOpts.Secretm
 		}
 		m, err := cloud.GetManager(ctx, j.env, mgrOpts)
 		if err != nil {

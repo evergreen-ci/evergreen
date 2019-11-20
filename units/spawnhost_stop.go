@@ -74,9 +74,10 @@ func (j *spawnhostStopJob) Run(ctx context.Context) {
 		}
 	}
 
-	mgrOpts := cloud.ManagerOpts{
-		Provider: j.host.Provider,
-		Region:   cloud.GetRegion(j.host.Distro),
+	mgrOpts, err := GetManagerOptions(j.host.Distro)
+	if err != nil {
+		j.AddError(errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id))
+		return
 	}
 	cloudManager, err := cloud.GetManager(ctx, j.env, mgrOpts)
 	if err != nil {

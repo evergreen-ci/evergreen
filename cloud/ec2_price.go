@@ -76,7 +76,7 @@ func (cpf *cachingPriceFetcher) getEC2Cost(ctx context.Context, client AWSClient
 		if err != nil {
 			return 0, errors.Wrap(err, "could not get zone for host")
 		}
-		region := azToRegion(zone)
+		region := AztoRegion(zone)
 		price, err := cpf.getEC2OnDemandCost(ctx, client, os, h.InstanceType, region)
 		if err != nil {
 			return 0, err
@@ -436,7 +436,7 @@ func (cpf *cachingPriceFetcher) getEBSCost(ctx context.Context, client AWSClient
 	if err != nil {
 		return 0, errors.Wrap(err, "could not get zone for host")
 	}
-	region := azToRegion(zone)
+	region := AztoRegion(zone)
 	return cpf.ebsCost(region, size, dur)
 }
 

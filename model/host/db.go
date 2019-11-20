@@ -1100,3 +1100,49 @@ func FindVolumesByUser(userID string) ([]Volume, error) {
 
 	return volumes, err
 }
+
+type ClientOptions struct {
+	Provider string `bson:"provider"`
+	Region   string `bson:"region"`
+	Key      string `bson:"key"`
+	Secret   string `bson:"secret"`
+}
+
+const awsRegionKey = "region"
+const awsKeyKey = "aws_access_key_id"
+const awsSecretKey = "aws_secret_access_key"
+
+func StartingHostsByClient() (map[ClientOptions][]Host, error) {
+	results := []struct {
+		Options ClientOptions `bson:"_id"`
+		Hosts   []Host        `bson:"hosts"`
+	}{}
+
+	pipeline := []bson.M{
+		{
+			"$match": bson.M{StatusKey: evergreen.HostStarting},
+		},
+		{
+			"$group": bson.M{
+				"_id": bson.M{
+					"provider": "$" + bsonutil.GetDottedKeyName(DistroKey, distro.ProviderKey),
+					"region":   "$" + bsonutil.GetDottedKeyName(DistroKey, distro.ProviderSettingsKey, awsRegionKey),
+					"key":      "$" + bsonutil.GetDottedKeyName(DistroKey, distro.ProviderSettingsKey, awsKeyKey),
+					"secret":   "$" + bsonutil.GetDottedKeyName(DistroKey, distro.ProviderSettingsKey, awsSecretKey),
+				},
+				"hosts": bson.M{"$push": "$$ROOT"},
+			},
+		},
+	}
+
+	if err := db.Aggregate(Collection, pipeline, &results); err != nil {
+		return nil, errors.Wrap(err, "can't get starting hosts")
+	}
+
+	optionsMap := make(map[ClientOptions][]Host)
+	for _, result := range results {
+		optionsMap[result.Options] = result.Hosts
+	}
+
+	return optionsMap, nil
+}
