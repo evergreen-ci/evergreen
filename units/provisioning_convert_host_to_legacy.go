@@ -87,10 +87,10 @@ func (j *convertHostToLegacyProvisioningJob) Run(ctx context.Context) {
 	if !j.host.NeedsNewAgent {
 		grip.Error(message.WrapError(j.tryRequeue(ctx), message.Fields{
 			"message": "could not enqueue job to retry provisioning conversion when host's agent is still running",
-			"host": j.host.Id,
-			"distro": j.host.Distro.Id,
-			"job": j.ID(),
-		}
+			"host":    j.host.Id,
+			"distro":  j.host.Distro.Id,
+			"job":     j.ID(),
+		}))
 		return
 	}
 
