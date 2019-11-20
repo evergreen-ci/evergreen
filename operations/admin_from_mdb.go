@@ -222,7 +222,6 @@ func fromMdbForLocal() cli.Command {
 			if err != nil {
 				return errors.Wrapf(err, "problem opening file %s", outfn)
 			}
-			defer f.Close()
 			gw := gzip.NewWriter(f)
 			defer gw.Close()
 			tw := tar.NewWriter(gw)
@@ -274,7 +273,7 @@ func fromMdbForLocal() cli.Command {
 				grip.Error(cursor.Close(ctx))
 			}
 
-			return nil
+			return f.Close()
 		},
 	}
 }
