@@ -218,15 +218,11 @@ func fromMdbForLocal() cli.Command {
 				return errors.Errorf("cannot export to %s, file already exists", outfn)
 			}
 
-			var f io.Writer
-			if outfn != "" {
-				f, err = os.Create(outfn)
-				if err != nil {
-					return errors.Wrapf(err, "problem opening file %s", outfn)
-				}
-			} else {
-				f = &bytes.Buffer{}
+			f, err := os.Create(outfn)
+			if err != nil {
+				return errors.Wrapf(err, "problem opening file %s", outfn)
 			}
+			defer f.Close()
 			gw := gzip.NewWriter(f)
 			defer gw.Close()
 			tw := tar.NewWriter(gw)
