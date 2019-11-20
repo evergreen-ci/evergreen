@@ -146,9 +146,9 @@ db.hourly_test_stats.createIndex({ "_id.project": 1, "_id.requester": 1, "_id.ta
 db.daily_test_stats.createIndex({ "_id.date": 1 }, { expireAfterSeconds: 26 * 7 * 24 * 3600 })  // 26 weeks TTL
 db.daily_test_stats.createIndex({ "_id.project": 1, "_id.requester": 1, "_id.test_file": 1, "_id.date": 1 })
 db.daily_test_stats.createIndex({ "_id.project": 1, "_id.requester": 1, "_id.task_name": 1, "_id.date": 1 })
-db.daily_test_stats.createIndex({ "_id.project": 1, "_id.requester": 1, "_id.task_name": 1, "_id.variant": 1"_id.date": 1 })
+db.daily_test_stats.createIndex({ "_id.project": 1, "_id.requester": 1, "_id.task_name": 1, "_id.variant": 1, "_id.date": 1 })
 db.daily_test_stats.createIndex({ "_id.project": 1, "_id.requester": 1, "_id.test_file": 1, "_id.task_name": 1, "_id.date": 1 })
-db.daily_test_stats.createIndex({ "_id.project": 1, "_id.requester": 1, "_id.test_file": 1, "_id.task_name": 1, "_id.variant": 1"_id.date": 1 })
+db.daily_test_stats.createIndex({ "_id.project": 1, "_id.requester": 1, "_id.test_file": 1, "_id.task_name": 1, "_id.variant": 1, "_id.date": 1 })
 
 //======daily_task_stats======//
 db.daily_task_stats.createIndex({ "_id.date": 1 }, { expireAfterSeconds: 26 * 7 * 24 * 3600 })  // 26 weeks TTL
