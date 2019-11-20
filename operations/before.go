@@ -218,3 +218,26 @@ func mergeBeforeFuncs(ops ...func(c *cli.Context) error) cli.BeforeFunc {
 		return catcher.Resolve()
 	}
 }
+
+// mutuallyExclusiveArgs allows only one of the flags to be set
+// if required is true, one of the flags must be set
+func mutuallyExclusiveArgs(required bool, flags ...string) cli.BeforeFunc {
+	return func(c *cli.Context) error {
+		providedCount := 0
+		for _, flag := range flags {
+			if c.IsSet(flag) {
+				providedCount++
+			}
+		}
+
+		if providedCount > 1 {
+			return errors.Errorf("only one of (%s) can be set", strings.Join(flags, " | "))
+		}
+
+		if required && providedCount == 0 {
+			return errors.Errorf("one of (%s) must be set", strings.Join(flags, " | "))
+		}
+
+		return nil
+	}
+}

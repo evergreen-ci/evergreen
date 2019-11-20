@@ -120,7 +120,7 @@ imports:
   - name: github.com/mongodb/amboy
     version: e5548953650b5d4cc7b6d7aba4cb1b2771e35342
   - name: github.com/evergreen-ci/gimlet
-    version: 30ffe4e2999a7bfcbaaf2087eb89add6e0cc74d5
+    version: 64ab7f031df7b8c81c53847a7905c98c19edf950
   - name: github.com/evergreen-ci/shrub
     version: 32e668cd99410328bf6659e55671c11a6c727d9a
   - name: github.com/evergreen-ci/pail
@@ -163,6 +163,6 @@ imports:
   - name: github.com/evergreen-ci/birch
     version: 5b054047680765b089c1e6f77d0896803d1fd73d
   - name: github.com/mongodb/anser
-    version: ceb57a41614b2efd0c16a653c23b656becb8a380
+    version: 66f27fb0b805b5cef5ea9b19764c3dc417aa8af6
   - name: github.com/mongodb/ftdc
     version: 7e505d9a86240264dd35b1d900c2e88ce74f6066
