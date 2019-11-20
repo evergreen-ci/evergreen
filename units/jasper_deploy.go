@@ -167,8 +167,7 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 				"bash", "-c", writeCredentialsCmd,
 			},
 		}
-		var output string
-		if output, err = j.host.RunJasperProcess(ctx, j.env, writeCredentialsOpts); err != nil {
+		if output, err := j.host.RunJasperProcess(ctx, j.env, writeCredentialsOpts); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not replace existing Jasper credentials on host",
 				"logs":    output,

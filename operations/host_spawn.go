@@ -645,3 +645,62 @@ func hostTerminate() cli.Command {
 		},
 	}
 }
+
+func hostRunCommand() cli.Command {
+	const scriptFlagName = "script"
+	const pathFlagName = "path"
+
+	return cli.Command{
+		Name:  "exec",
+		Usage: "run a bash shell script on a host and print the output",
+		Flags: addHostFlag(
+			cli.StringFlag{
+				Name:  scriptFlagName,
+				Usage: "script to pass to bash",
+			},
+			cli.StringFlag{
+				Name:  pathFlagName,
+				Usage: "path to a file containing a script",
+			},
+		),
+		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag, mutuallyExclusiveArgs(true, scriptFlagName, pathFlagName)),
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			hostID := c.String(hostFlagName)
+			script := c.String(scriptFlagName)
+			path := c.String(pathFlagName)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.setupRestCommunicator(ctx)
+			defer client.Close()
+
+			if path != "" {
+				scriptBytes, err := ioutil.ReadFile(path)
+				if err != nil {
+					return errors.Wrapf(err, "can't read script from '%s'", path)
+				}
+				script = string(scriptBytes)
+				if script == "" {
+					return errors.New("script is empty")
+				}
+			}
+
+			output, err := client.RunHostScript(ctx, hostID, script)
+			if err != nil {
+				return errors.Wrap(err, "problem running command")
+			}
+
+			for _, line := range output {
+				grip.Info(line)
+			}
+
+			return nil
+		},
+	}
+}
