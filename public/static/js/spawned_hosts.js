@@ -126,7 +126,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
         if (host.isTerminated && terminateTime > epochTime) {
           const uptime = terminateTime.diff(startTime, 'seconds');
           host.uptime = moment.duration(uptime, 'seconds').humanize();
-        } else if (host.status == 'stopped') {
+        } else if (host.status == 'stopped' || host.start_time == "0001-01-01T00:00:00Z") {
           host.uptime = "";
         } else {
           const uptime = moment().diff(startTime, 'seconds');
