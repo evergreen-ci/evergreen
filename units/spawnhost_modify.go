@@ -83,7 +83,7 @@ func (j *spawnhostModifyJob) Run(ctx context.Context) {
 		"changes": j.ModifyOptions,
 	})
 
-	mgrOpts, err := GetManagerOptions(j.host.Distro)
+	mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id))
 		return

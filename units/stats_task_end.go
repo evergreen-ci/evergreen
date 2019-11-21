@@ -116,29 +116,27 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 	ctx, cancel = context.WithCancel(ctx)
 	defer cancel()
 
-	catcher := grip.NewBasicCatcher()
-	mgrOpts, err := GetManagerOptions(j.host.Distro)
-	catcher.Add(errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id))
-	if !catcher.HasErrors() {
+	mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
+	j.AddError(errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id))
+	if !j.HasErrors() {
 		manager, err := cloud.GetManager(ctx, j.env, mgrOpts)
-		catcher.Add(errors.Wrapf(err, "Error loading provider for host %s cost calculation", j.task.HostId))
-	}
-	if !catcher.HasErrors() {
-		if calc, ok := manager.(cloud.CostCalculator); ok {
-			cost, err = calc.CostForDuration(ctx, j.host, j.task.StartTime, j.task.FinishTime)
-			if err != nil {
-				j.AddError(err)
-			} else {
-				if err = j.task.SetCost(cost); err != nil {
+		j.AddError(errors.Wrapf(err, "Error loading provider for host %s cost calculation", j.task.HostId))
+		if err == nil {
+			if calc, ok := manager.(cloud.CostCalculator); ok {
+				cost, err = calc.CostForDuration(ctx, j.host, j.task.StartTime, j.task.FinishTime)
+				if err != nil {
 					j.AddError(err)
-				}
-				if err = j.host.IncCost(cost); err != nil {
-					j.AddError(err)
+				} else {
+					if err = j.task.SetCost(cost); err != nil {
+						j.AddError(err)
+					}
+					if err = j.host.IncCost(cost); err != nil {
+						j.AddError(err)
+					}
 				}
 			}
 		}
 	}
-	j.AddError(catcher.Resolve())
 
 	msg := message.Fields{
 		"activated_by":         j.task.ActivatedBy,

@@ -117,39 +117,35 @@ func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, s *evergreen
 	}
 
 	if d.Provider == "" {
-		errs = append(errs, ValidationError{
+		return append(errs, ValidationError{
 			Message: fmt.Sprintf("distro '%v' cannot be blank", distro.ProviderKey),
 			Level:   Error,
 		})
-		return errs
 	}
 
 	mgrOpts, err := cloud.GetManagerOptions(*d)
 	if err != nil {
-		errs = append(errs, ValidationError{
+		return append(errs, ValidationError{
 			Message: err.Error(),
 			Level:   Error,
 		})
-		return errs
 	}
 	mgr, err := cloud.GetManager(ctx, evergreen.GetEnvironment(), mgrOpts)
 	if err != nil {
-		errs = append(errs, ValidationError{
+		return append(errs, ValidationError{
 			Message: err.Error(),
 			Level:   Error,
 		})
-		return errs
 	}
 
 	settings := mgr.GetSettings()
 
 	if d.ProviderSettings != nil {
 		if err = mapstructure.Decode(d.ProviderSettings, settings); err != nil {
-			errs = append(errs, ValidationError{
+			return append(errs, ValidationError{
 				Message: fmt.Sprintf("distro '%v' decode error: %v", distro.ProviderSettingsKey, err),
 				Level:   Error,
 			})
-			return errs
 		}
 	}
 

@@ -74,7 +74,7 @@ func (j *spawnhostStartJob) Run(ctx context.Context) {
 		}
 	}
 
-	mgrOpts, err := GetManagerOptions(j.host.Distro)
+	mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id))
 		return

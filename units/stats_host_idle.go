@@ -124,20 +124,22 @@ func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 	var cost float64
 	catcher := grip.NewBasicCatcher()
 	if j.manager == nil {
-		mgrOpts, err := GetManagerOptions(j.host.Distro)
+		mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
 		catcher.Add(errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id))
 		if !catcher.HasErrors() {
 			j.manager, err = cloud.GetManager(ctx, j.env, mgrOpts)
-			catcher.Add(errors.Wrapf("can't get manager for '%s'", j.host.Id))
+			catcher.Add(errors.Wrapf(err, "can't get manager for '%s'", j.host.Id))
 		}
 	}
 
-	if !catcher.HasErrors() && calc, ok := j.manager.(cloud.CostCalculator); ok{
+	if !catcher.HasErrors() {
+		if calc, ok := j.manager.(cloud.CostCalculator); ok {
 			cost, err = calc.CostForDuration(ctx, j.host, j.StartTime, j.FinishTime)
 			catcher.Add(err)
 			if !catcher.HasErrors() {
 				catcher.Add(j.host.IncCost(cost))
 			}
+		}
 	}
 	j.AddError(catcher.Resolve())
 

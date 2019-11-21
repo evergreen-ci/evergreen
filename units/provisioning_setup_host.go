@@ -216,7 +216,7 @@ func (j *setupHostJob) setDNSName(ctx context.Context, host *host.Host, cloudMgr
 // non-nil.
 func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, settings *evergreen.Settings) error {
 	// fetch the appropriate cloud provider for the host
-	mgrOpts, err := GetManagerOptions(targetHost.Distro)
+	mgrOpts, err := cloud.GetManagerOptions(targetHost.Distro)
 	if err != nil {
 		return errors.Wrapf(err, "can't get ManagerOpts for '%s'", targetHost.Id)
 	}

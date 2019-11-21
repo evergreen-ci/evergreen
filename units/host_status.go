@@ -72,10 +72,10 @@ func (j *cloudHostReadyJob) Run(ctx context.Context) {
 			continue
 		}
 		mgrOpts := cloud.ManagerOpts{
-			Provider: clientOpts.Provider,
-			Region: clientOpts.Region,
-			ProviderKey: clientOpts.Key,
-			ProviderSecret: clientOpts.Secretm
+			Provider:       clientOpts.Provider,
+			Region:         clientOpts.Region,
+			ProviderKey:    clientOpts.Key,
+			ProviderSecret: clientOpts.Secret,
 		}
 		m, err := cloud.GetManager(ctx, j.env, mgrOpts)
 		if err != nil {
