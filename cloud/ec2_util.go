@@ -322,7 +322,7 @@ func getGeneratedDeviceNameForVolume(ctx context.Context, isWindowsHost bool) (s
 func generateDeviceNameForVolume(isWindowsHost bool) string {
 	letters := "fghijklmnop"
 	rand.Seed(time.Now().Unix())
-	pattern := "/dev/sd%c%d"
+	pattern := "/dev/sd%c"
 	if isWindowsHost {
 		pattern = "xvd%c"
 	}
