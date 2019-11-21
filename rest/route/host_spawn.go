@@ -499,7 +499,7 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	mgrOpts, err := GetManagerOptions(targetHost.Distro)
+	mgrOpts, err := cloud.GetManagerOptions(targetHost.Distro)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error getting manager options for spawnhost attach volume job"))
 	}
@@ -666,7 +666,7 @@ func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	mgrOpts, err := cloud.ManagerOpts{
+	mgrOpts := cloud.ManagerOpts{
 		Provider: h.provider,
 		Region:   cloud.AztoRegion(h.volume.AvailabilityZone),
 	}

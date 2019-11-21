@@ -402,7 +402,7 @@ func (m *mockManager) CostForDuration(ctx context.Context, h *host.Host, start, 
 func getMockManagerOptions(provider string, providerSettings *map[string]interface{}) (ManagerOpts, error) {
 	opts := ManagerOpts{Provider: provider}
 	if providerSettings == nil {
-		return opts, errors.New("nil ProviderSettings")
+		return opts, nil
 	}
 
 	s := &MockProviderSettings{}
