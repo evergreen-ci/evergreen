@@ -200,6 +200,43 @@ func TestCreateVolumeHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Status())
 }
 
+func TestDeleteVolumeHandler(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(host.VolumesCollection))
+	h := &deleteVolumeHandler{
+		sc:       &data.MockConnector{},
+		env:      evergreen.GetEnvironment(),
+		provider: evergreen.ProviderNameMock,
+	}
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
+
+	h.sc.(*data.MockConnector).MockHostConnector = data.MockHostConnector{
+		CachedHosts: []host.Host{
+			host.Host{
+				Id:        "my-host",
+				StartedBy: "user",
+				Status:    evergreen.HostRunning,
+				Volumes: []host.VolumeAttachment{
+					{
+						VolumeID:   "my-volume",
+						DeviceName: "my-device",
+					},
+				},
+			},
+		},
+		CachedVolumes: []host.Volume{
+			host.Volume{
+				ID:        "my-volume",
+				CreatedBy: "user",
+			},
+		},
+	}
+
+	h.VolumeID = "my-volume"
+	resp := h.Run(ctx)
+	require.NotNil(t, resp)
+	assert.Equal(t, http.StatusBadRequest, resp.Status())
+}
+
 func TestAttachVolumeHandler(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(host.VolumesCollection))
 	h := &attachVolumeHandler{
@@ -233,10 +270,11 @@ func TestAttachVolumeHandler(t *testing.T) {
 
 	// wrong availability zone
 	v.VolumeID = "my-volume"
-	volume := &host.Volume{
-		ID: v.VolumeID,
+	h.sc.(*data.MockConnector).MockHostConnector.CachedVolumes = []host.Volume{
+		host.Volume{
+			ID: v.VolumeID,
+		},
 	}
-	assert.NoError(t, volume.Insert())
 
 	jsonBody, err = json.Marshal(v)
 	assert.NoError(t, err)
@@ -307,28 +345,30 @@ func TestGetVolumesHandler(t *testing.T) {
 			{VolumeID: "volume1", DeviceName: "/dev/sdf4"},
 		},
 	}
-	assert.NoError(t, h1.Insert())
-	v1 := host.Volume{
-		ID:               "volume1",
-		CreatedBy:        "user",
-		Type:             evergreen.DefaultEBSType,
-		Size:             64,
-		AvailabilityZone: evergreen.DefaultEBSAvailabilityZone,
+
+	h.sc.(*data.MockConnector).MockHostConnector = data.MockHostConnector{
+		CachedHosts: []host.Host{h1},
+		CachedVolumes: []host.Volume{
+			host.Volume{
+				ID:               "volume1",
+				CreatedBy:        "user",
+				Type:             evergreen.DefaultEBSType,
+				Size:             64,
+				AvailabilityZone: evergreen.DefaultEBSAvailabilityZone,
+			},
+			host.Volume{
+				ID:               "volume2",
+				CreatedBy:        "user",
+				Type:             evergreen.DefaultEBSType,
+				Size:             36,
+				AvailabilityZone: evergreen.DefaultEBSAvailabilityZone,
+			},
+			host.Volume{
+				ID:        "volume3",
+				CreatedBy: "different-user",
+			},
+		},
 	}
-	v2 := host.Volume{
-		ID:               "volume2",
-		CreatedBy:        "user",
-		Type:             evergreen.DefaultEBSType,
-		Size:             36,
-		AvailabilityZone: evergreen.DefaultEBSAvailabilityZone,
-	}
-	v3 := host.Volume{
-		ID:        "volume3",
-		CreatedBy: "different-user",
-	}
-	assert.NoError(t, v1.Insert())
-	assert.NoError(t, v2.Insert())
-	assert.NoError(t, v3.Insert())
 
 	resp := h.Run(ctx)
 	assert.NotNil(t, resp)

@@ -137,8 +137,14 @@ type Connector interface {
 
 	FindHostsByDistroID(string) ([]host.Host, error)
 
+	// FindHostWithVolume returns the host that has the given volume attached
+	FindHostWithVolume(string) (*host.Host, error)
+
 	// NewIntentHost is a method to insert an intent host given a distro and the name of a saved public key
 	NewIntentHost(*restModel.HostRequestOptions, *user.DBUser) (*host.Host, error)
+
+	FindVolumeById(string) (*host.Volume, error)
+	FindVolumesByUser(string) ([]host.Volume, error)
 
 	// AggregateSpawnhostData returns basic metrics on spawn host/volume usage.
 	AggregateSpawnhostData() (*host.SpawnHostUsage, error)
