@@ -21,7 +21,7 @@ mciModule.factory('TestSample', function() {
 
     this.testNames = function(){
       var tests = _.pluck(this.sample.data.results, "name");
-      if (tests.length == 0) {
+      if (tests.length === 0) {
         tests = _.pluck(this.sample, "info.test_name");
       }
       return tests
