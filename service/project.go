@@ -351,6 +351,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if commitQueueParams.Enabled {
+		grip.Debug("COMMIT QUEUE ENABLED")
 		var projRef *model.ProjectRef
 		projRef, err = model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
 		if err != nil {
@@ -366,6 +367,19 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable Commit Queue without github webhooks enabled for the project"))
 			return
 		}
+		if len(responseRef.CommitQueueAliases) == 0 {
+			aliases, err := model.FindAliasInProject(responseRef.Identifier, evergreen.CommitQueueAlias)
+			if err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error checking for commit queue aliases"))
+				return
+			}
+			if len(aliases) == 0 {
+				uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Cannot enable Commit Queue without patch definitions."))
+				return
+			}
+			grip.Debugf("Len(aliases) == %d", len(aliases))
+		}
+		grip.Debugf("In the commit queue part, response ref had: %d", len(responseRef.CommitQueueAliases))
 
 		_, err = commitqueue.FindOneId(responseRef.Identifier)
 		if err != nil {

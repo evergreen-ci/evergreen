@@ -293,6 +293,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 				return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling PR testing for project '%s'", h.projectID))
 			}
 		}
+
 		// verify enabling commit queue valid
 		var temp interface{}
 		temp, err = apiProjectRef.CommitQueue.ToService()
@@ -311,6 +312,17 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 				gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					StatusCode: http.StatusBadRequest,
 					Message:    "Cannot enable commit queue in this repo, must enable GitHub webhooks first",
+				})
+			}
+
+			ok, err := h.hasCommitQueuePatchDefinition(apiProjectRef)
+			if err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(err)
+			}
+			if !ok {
+				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+					StatusCode: http.StatusBadRequest,
+					Message:    fmt.Sprintf("Cannot enable commit queue without a %s patch definition", evergreen.CommitQueueAlias),
 				})
 			}
 			if err = h.sc.EnableCommitQueue(dbProjectRef, commitQueueParams); err != nil {
@@ -399,6 +411,25 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusOK))
 	}
 	return responder
+}
+
+func (h *projectIDPatchHandler) hasCommitQueuePatchDefinition(pRef *model.APIProjectRef) (bool, error) {
+	for _, alias := range pRef.Aliases {
+		if model.FromAPIString(alias.Alias) == evergreen.CommitQueueAlias {
+			return true, nil
+		}
+	}
+
+	aliases, err := h.sc.FindProjectAliases(model.FromAPIString(pRef.Identifier))
+	if err != nil {
+		return false, errors.Wrapf(err, "Error checking existing patch definitions")
+	}
+	for _, alias := range aliases {
+		if model.FromAPIString(alias.Alias) == evergreen.CommitQueueAlias {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 ////////////////////////////////////////////////////////////////////////

@@ -95,6 +95,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 	if j.intent == nil {
 		j.intent, err = patch.FindIntent(j.IntentID, j.IntentType)
 		j.AddError(err)
+		j.IntentType = j.intent.GetType()
 	}
 
 	if j.HasErrors() {
@@ -260,8 +261,8 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 
 	project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())
 
-	if j.intent.ShouldFinalizePatch() && len(patchDoc.Tasks) == 0 &&
-		len(patchDoc.BuildVariants) == 0 {
+	if (j.intent.ShouldFinalizePatch() || patchDoc.Alias == evergreen.CommitQueueAlias) &&
+		len(patchDoc.Tasks) == 0 && len(patchDoc.BuildVariants) == 0 {
 		j.gitHubError = NoTasksOrVariants
 		return errors.New("patch has no build variants or tasks")
 	}
