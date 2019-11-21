@@ -78,8 +78,8 @@ type AWSClient interface {
 	// DeleteVolume is a wrapper for ec2.DeleteWrapper.
 	DeleteVolume(context.Context, *ec2.DeleteVolumeInput) (*ec2.DeleteVolumeOutput, error)
 
-	// AttachVolume is a wrapper for ec2.AttachVolume. Bool indicates if host is windows or not, to regenerate device name on error.
-	AttachVolume(context.Context, *ec2.AttachVolumeInput, bool) (*ec2.VolumeAttachment, error)
+	// AttachVolume is a wrapper for ec2.AttachVolume. Generates device name on error if applicable.
+	AttachVolume(context.Context, *ec2.AttachVolumeInput, generateDeviceNameOptions) (*ec2.VolumeAttachment, error)
 
 	// DetachVolume is a wrapper for ec2.DetachVolume.
 	DetachVolume(context.Context, *ec2.DetachVolumeInput) (*ec2.VolumeAttachment, error)
@@ -134,6 +134,11 @@ type awsClientImpl struct { //nolint
 	httpClient *http.Client
 	pricing    *pricing.Pricing
 	*ec2.EC2
+}
+
+type generateDeviceNameOptions struct {
+	isWindows      bool
+	shouldGenerate bool
 }
 
 const (
@@ -554,7 +559,7 @@ func (c *awsClientImpl) DeleteVolume(ctx context.Context, input *ec2.DeleteVolum
 }
 
 // AttachVolume is a wrapper for ec2.AttachVolume.
-func (c *awsClientImpl) AttachVolume(ctx context.Context, input *ec2.AttachVolumeInput, isWindows bool) (*ec2.VolumeAttachment, error) {
+func (c *awsClientImpl) AttachVolume(ctx context.Context, input *ec2.AttachVolumeInput, opts generateDeviceNameOptions) (*ec2.VolumeAttachment, error) {
 	var output *ec2.VolumeAttachment
 	var err error
 	msg := makeAWSLogMessage("AttachVolume", fmt.Sprintf("%T", c), input)
@@ -565,13 +570,15 @@ func (c *awsClientImpl) AttachVolume(ctx context.Context, input *ec2.AttachVolum
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, msg))
-					newDeviceName, err2 := getGeneratedDeviceNameForVolume(ctx, isWindows)
+					if opts.shouldGenerate {
+						newDeviceName, err2 := getGeneratedDeviceNameForVolume(ctx, opts.isWindows)
+						if err2 != nil {
+							return true, err2
+						}
 
-					if err2 != nil {
-						return true, err2
+						input.Device = &newDeviceName
+						msg = makeAWSLogMessage("AttachVolume", fmt.Sprintf("%T", c), input)
 					}
-					input.Device = &newDeviceName
-					msg = makeAWSLogMessage("AttachVolume", fmt.Sprintf("%T", c), input)
 				}
 				return true, err
 			}
@@ -1288,7 +1295,7 @@ func (c *awsClientMock) DeleteVolume(ctx context.Context, input *ec2.DeleteVolum
 }
 
 // AttachVolume is a mock for ec2.AttachVolume.
-func (c *awsClientMock) AttachVolume(ctx context.Context, input *ec2.AttachVolumeInput, isWindows bool) (*ec2.VolumeAttachment, error) {
+func (c *awsClientMock) AttachVolume(ctx context.Context, input *ec2.AttachVolumeInput, opts generateDeviceNameOptions) (*ec2.VolumeAttachment, error) {
 	c.AttachVolumeInput = input
 	return nil, nil
 }

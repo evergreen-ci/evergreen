@@ -1084,6 +1084,7 @@ func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment 
 		return errors.Wrap(err, "error creating client")
 	}
 
+	opts := generateDeviceNameOptions{isWindows: h.Distro.IsWindows()}
 	// if no device name is provided, generate a unique device name
 	if attachment.DeviceName == "" {
 		deviceName, err := getGeneratedDeviceNameForVolume(ctx, h.Distro.IsWindows())
@@ -1091,13 +1092,14 @@ func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment 
 			return errors.Wrap(err, "error generating initial device name")
 		}
 		attachment.DeviceName = deviceName
+		opts.shouldGenerate = true
 	}
 
 	_, err := m.client.AttachVolume(ctx, &ec2.AttachVolumeInput{
 		InstanceId: aws.String(h.Id),
 		Device:     aws.String(attachment.DeviceName),
 		VolumeId:   aws.String(attachment.VolumeID),
-	}, h.Distro.IsWindows())
+	}, opts)
 	if err != nil {
 		return errors.Wrapf(err, "error attaching volume '%s' to host '%s'", attachment.VolumeID, h.Id)
 	}
