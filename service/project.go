@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/evergreen-ci/evergreen/units"
@@ -522,6 +523,22 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	for _, alias := range responseRef.DeleteAliases {
 		catcher.Add(model.RemoveProjectAlias(alias))
 	}
+
+	currentAliases, err := model.FindAliasesForProject(id)
+	catcher.Add(err)
+	if err == nil && projectRef.PRTestingEnabled {
+		githubAliasFound := false
+		for _, alias := range currentAliases {
+			if alias.Alias == patch.GithubAlias {
+				githubAliasFound = true
+				break
+			}
+		}
+		if !githubAliasFound {
+			catcher.Add(errors.New("can't enable PR testing without variants/tasks"))
+		}
+	}
+
 	if catcher.HasErrors() {
 		uis.LoggedError(w, r, http.StatusInternalServerError, catcher.Resolve())
 		return
@@ -537,7 +554,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		Subscriptions:      origSubscriptions,
 	}
 
-	currentAliases, _ := model.FindAliasesForProject(id)
 	currentSubscriptions, _ := event.FindSubscriptionsByOwner(projectRef.Identifier, event.OwnerTypeProject)
 	after := model.ProjectSettingsEvent{
 		ProjectRef:         *projectRef,
