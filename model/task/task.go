@@ -362,11 +362,25 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 		return true, nil
 	}
 
-	deps := make([]Task, 0, len(t.DependsOn))
+	deps, err := t.populateDependencyTaskCache(depCaches)
+	if err != nil {
+		return false, errors.WithStack(err)
+	}
 
+	for _, depTask := range deps {
+		if !t.satisfiesDependency(&depTask) {
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
+func (t *Task) populateDependencyTaskCache(depCache map[string]Task) ([]Task, error) {
+	var deps []Task
 	depIdsToQueryFor := make([]string, 0, len(t.DependsOn))
 	for _, dep := range t.DependsOn {
-		if cachedDep, ok := depCaches[dep.TaskId]; !ok {
+		if cachedDep, ok := depCache[dep.TaskId]; !ok {
 			depIdsToQueryFor = append(depIdsToQueryFor, dep.TaskId)
 		} else {
 			deps = append(deps, cachedDep)
@@ -376,19 +390,70 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 	if len(depIdsToQueryFor) > 0 {
 		newDeps, err := Find(ByIds(depIdsToQueryFor).WithFields(StatusKey, DependsOnKey))
 		if err != nil {
-			return false, err
+			return nil, errors.WithStack(err)
 		}
 
 		// add queried dependencies to the cache
 		for _, newDep := range newDeps {
 			deps = append(deps, newDep)
-			depCaches[newDep.Id] = newDep
+			depCache[newDep.Id] = newDep
 		}
 	}
 
-	for _, depTask := range deps {
-		if !t.satisfiesDependency(&depTask) {
+	return deps, nil
+}
+
+// DependenciesSatisfiable returns true when a dependency is satisfied
+// or could be satisfied in the future, and false if any of the first
+// order dependencies are blocked, checking the cache if necessary.
+//
+// Use dependencies met (which can also check the cache,) to figure
+// out if a task is runable.
+func (t *Task) DependencySatisfiable(depCache map[string]Task) (bool, error) {
+	if len(t.DependsOn) == 0 || t.OverrideDependencies {
+		return true, nil
+	}
+
+	// do this early, if possible to avoid caching tasks that we
+	// won't need.
+	for _, dep := range t.DependsOn {
+		if dep.Unattainable {
 			return false, nil
+		}
+	}
+
+	deps, err := t.populateDependencyTaskCache(depCache)
+	if err != nil {
+		return false, errors.WithStack(err)
+	}
+
+	for _, dep := range t.DependsOn {
+		depTask, ok := depCache[dep.TaskId]
+		if !ok {
+			grip.Error(message.Fields{
+				"task_id":     t.Id,
+				"dep_task_id": depTask.Id,
+				"cache_size":  len(deps),
+				"operation":   "DependencySatisfiable",
+				"message":     "cache failure",
+			})
+			continue
+		}
+
+		if depTask.Blocked() {
+			return false, nil
+		}
+
+		if !t.satisfiesDependency(&depTask) {
+			if depTask.IsFinished() {
+				return false, nil
+			}
+			if !depTask.IsDispatchable() {
+				return false, nil
+			}
+			if !depTask.Activated {
+				return false, nil
+			}
 		}
 	}
 

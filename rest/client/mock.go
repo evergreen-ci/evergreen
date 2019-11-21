@@ -684,3 +684,7 @@ func (c *Mock) GetDockerStatus(context.Context, string) (*cloud.ContainerStatus,
 func (c *Mock) GetManifestByTask(context.Context, string) (*manifest.Manifest, error) {
 	return &manifest.Manifest{Id: "manifest0"}, nil
 }
+
+func (c *Mock) RunHostScript(context.Context, string, string) ([]string, error) {
+	return nil, nil
+}

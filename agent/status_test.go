@@ -91,7 +91,7 @@ func (s *StatusSuite) TestAgentFailsToStartTwice() {
 
 	mockCommunicator := agt.comm.(*client.Mock)
 	mockCommunicator.NextTaskIsNil = true
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	s.cancel = cancel
 
 	first := make(chan error, 1)
@@ -130,7 +130,11 @@ func (s *StatusSuite) TestAgentFailsToStartTwice() {
 		c <- agt.Start(secondCtx)
 	}(second)
 
-	err = <-second
+	select {
+	case <-ctx.Done():
+		s.Fail("first agent status server stopped before second status server could attempt to start")
+	case err = <-second:
+	}
 	s.Error(err)
 	s.Contains(err.Error(), "another agent is running on 2287")
 

@@ -813,6 +813,21 @@ func findAllTaskIDs(q db.Q) ([]string, error) {
 	return ids, nil
 }
 
+func FindStuckDispatching() ([]Task, error) {
+	tasks, err := FindAll(db.Query(bson.M{
+		StatusKey:       evergreen.TaskDispatched,
+		DispatchTimeKey: bson.M{"$gt": time.Now().Add(30 * time.Minute)},
+		StartTimeKey:    util.ZeroTime,
+	}))
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "problem finding stuck dispatching tasks")
+	}
+	return tasks, nil
+}
+
 func FindAllTaskIDsFromVersion(versionId string) ([]string, error) {
 	q := db.Query(bson.M{VersionKey: versionId}).WithFields(IdKey)
 	return findAllTaskIDs(q)

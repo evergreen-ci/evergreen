@@ -1193,6 +1193,9 @@ ul.tooltip-tasks li.tooltip-task {
   overflow-y: auto;
   overflow-x: none;
 }
+.patch-diff-panel tbody {
+  word-break: break-word;
+}
 .patch-diff-panel tr .extra-info {
   font-size: 10px;
   color: #777;

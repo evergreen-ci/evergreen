@@ -119,8 +119,12 @@ set-smoke-vars:$(buildDir)/.load-smoke-data
 	@./bin/set-project-var -dbName mci_smoke -key aws_secret -value $(AWS_SECRET)
 	@./bin/set-var -dbName mci_smoke -collection hosts -id localhost -key agent_revision -value $(currentHash)
 load-smoke-data:$(buildDir)/.load-smoke-data
+load-local-data:$(buildDir)/.load-local-data
 $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
 	./$<
+	@touch $@
+$(buildDir)/.load-local-data:$(buildDir)/load-smoke-data
+	./$< --path testdata/local --dbName evergreen_local
 	@touch $@
 smoke-test-agent-monitor:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
@@ -136,6 +140,8 @@ smoke-test-endpoints:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
 	./$< service deploy test-endpoints --username admin --key abb623665fdbf368a1db980dde6ee0f0 $(smokeFile) || (pkill -f $<; exit 1)
 	pkill -f $<
+local-evergreen:$(localClientBinary) load-local-data
+	./$< service deploy start-local-evergreen
 smoke-start-server:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web
 # end smoke test rules
