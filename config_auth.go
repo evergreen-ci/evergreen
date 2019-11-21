@@ -29,6 +29,7 @@ type LDAPConfig struct {
 	Port                string `bson:"port" json:"port" yaml:"port"`
 	ServiceUserName     string `bson:"service_user_name" json:"service_user_name" yaml:"service_user_name"`
 	ServiceUserPassword string `bson:"service_user_password" json:"service_user_password" yaml:"service_user_password"`
+	ServiceUserPath     string `bson:"service_user_path json:"service_user_path" yaml:"service_user_path"`
 	UserPath            string `bson:"path" json:"path" yaml:"path"`
 	ServicePath         string `bson:"service_path" json:"service_path" yaml:"service_path"`
 	Group               string `bson:"group" json:"group" yaml:"group"`
