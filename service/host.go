@@ -105,6 +105,15 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) hostsPage(w http.ResponseWriter, r *http.Request) {
 	u := MustHaveUser(r)
+	permissions, err := rolemanager.HighestPermissionsForRolesAndResourceType(
+		u.Roles(),
+		evergreen.DistroResourceType,
+		evergreen.GetEnvironment().RoleManager(),
+	)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
 
 	includeSpawnedHosts, _ := strconv.ParseBool(r.FormValue(IncludeSpawnedHosts))
 	hosts, err := getHostsData(includeSpawnedHosts)
@@ -115,14 +124,8 @@ func (uis *UIServer) hostsPage(w http.ResponseWriter, r *http.Request) {
 
 	permittedHosts := &hostsData{}
 	for i := range hosts.Hosts {
-		opts := gimlet.PermissionOpts{Resource: hosts.Hosts[i].Host.Distro.Id, ResourceType: evergreen.DistroResourceType}
-		permissions, err := rolemanager.HighestPermissionsForRoles(u.Roles(), evergreen.GetEnvironment().RoleManager(), opts)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-
-		if !evergreen.AclCheckingIsEnabled || permissions[evergreen.PermissionHosts] > 0 {
+		resourcePermissions, ok := permissions[hosts.Hosts[i].Host.Distro.Id]
+		if !evergreen.AclCheckingIsEnabled || (ok && resourcePermissions[evergreen.PermissionHosts] > 0) {
 			permittedHosts.Hosts = append(permittedHosts.Hosts, hosts.Hosts[i])
 		}
 	}
