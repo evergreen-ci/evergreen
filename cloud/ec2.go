@@ -653,6 +653,7 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return nil, errors.Wrap(err, "error creating client")
 	}
+	defer m.client.Close()
 
 	spotHosts := []*host.Host{}
 	instanceIdToHostMap := map[string]*host.Host{}
@@ -1062,6 +1063,7 @@ func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment 
 	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "error creating client")
 	}
+	defer m.client.Close()
 
 	// if no device name is provided, generate a unique device name
 	if attachment.DeviceName == "" {
@@ -1099,6 +1101,7 @@ func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID st
 	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "error creating client")
 	}
+	defer m.client.Close()
 
 	_, err := m.client.DetachVolume(ctx, &ec2.DetachVolumeInput{
 		InstanceId: aws.String(h.Id),
@@ -1115,6 +1118,8 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return nil, errors.Wrap(err, "error creating client")
 	}
+	defer m.client.Close()
+
 	resp, err := m.client.CreateVolume(ctx, &ec2.CreateVolumeInput{
 		AvailabilityZone: aws.String(volume.AvailabilityZone),
 		VolumeType:       aws.String(volume.Type),
@@ -1140,6 +1145,7 @@ func (m *ec2Manager) DeleteVolume(ctx context.Context, volume *host.Volume) erro
 	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "error creating client")
 	}
+	defer m.client.Close()
 
 	_, err := m.client.DeleteVolume(ctx, &ec2.DeleteVolumeInput{
 		VolumeId: aws.String(volume.ID),
