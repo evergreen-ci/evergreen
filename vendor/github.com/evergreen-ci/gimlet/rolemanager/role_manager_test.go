@@ -82,6 +82,13 @@ func (s *RoleManagerSuite) SetupSuite() {
 		Type:        "project",
 	}
 	s.NoError(s.m.AddScope(scope4))
+	scope5 := gimlet.Scope{
+		ID:          "5",
+		Resources:   []string{"resource5"},
+		ParentScope: "root",
+		Type:        "distro",
+	}
+	s.NoError(s.m.AddScope(scope5))
 	root := gimlet.Scope{
 		ID:   "root",
 		Type: "project",
@@ -168,6 +175,60 @@ func (s *RoleManagerSuite) TestFilterForResource() {
 	filtered, err = s.m.FilterForResource(allRoles, "resource4", "project")
 	s.NoError(err)
 	s.Equal([]gimlet.Role{role4, roleRoot}, filtered)
+}
+
+func (s *RoleManagerSuite) TestFilterScopesByResourceType() {
+	correctType := "correctType"
+	wrongType := "wrongType"
+	typeMap := map[string]map[string]bool{}
+	typeMap[correctType] = map[string]bool{}
+	typeMap[wrongType] = map[string]bool{}
+
+	scope1 := gimlet.Scope{
+		ID:   "s1",
+		Type: correctType,
+	}
+	typeMap[correctType]["s1"] = true
+	s.Require().NoError(s.m.AddScope(scope1))
+	scope2 := gimlet.Scope{
+		ID:   "s2",
+		Type: correctType,
+	}
+	typeMap[correctType]["s2"] = true
+	s.Require().NoError(s.m.AddScope(scope2))
+	scope3 := gimlet.Scope{
+		ID:   "s3",
+		Type: wrongType,
+	}
+	typeMap[wrongType]["s3"] = true
+	s.Require().NoError(s.m.AddScope(scope3))
+	scope4 := gimlet.Scope{
+		ID:   "s4",
+		Type: correctType,
+	}
+	typeMap[correctType]["s4"] = true
+	s.Require().NoError(s.m.AddScope(scope4))
+	scope5 := gimlet.Scope{
+		ID:   "s5",
+		Type: wrongType,
+	}
+	typeMap[wrongType]["s5"] = true
+	s.Require().NoError(s.m.AddScope(scope5))
+	allIds := []string{"s1", "s2", "s3", "s4", "s5"}
+
+	filtered, err := s.m.FilterScopesByResourceType(allIds, correctType)
+	s.Require().NoError(err)
+	s.Require().Len(filtered, len(typeMap[correctType]))
+	for _, scope := range filtered {
+		s.True(typeMap[correctType][scope.ID])
+	}
+
+	filtered, err = s.m.FilterScopesByResourceType(allIds, wrongType)
+	s.Require().NoError(err)
+	s.Require().Len(filtered, len(typeMap[wrongType]))
+	for _, scope := range filtered {
+		s.True(typeMap[wrongType][scope.ID])
+	}
 }
 
 func (s *RoleManagerSuite) TestRequiresPermissionMiddleware() {
@@ -278,4 +339,41 @@ func (s *RoleManagerSuite) TestHighestPermissionsForRoles() {
 	s.NoError(err)
 	s.Len(permissions, 2)
 	s.EqualValues(map[string]int{"edit": 50, "read": 20}, permissions)
+}
+
+func (s *RoleManagerSuite) TestHighestPermissionsForRolesAndResourceType() {
+	r1 := gimlet.Role{
+		ID:    "r1",
+		Scope: "1",
+		Permissions: map[string]int{
+			"edit": 20,
+			"read": 20,
+		},
+	}
+	s.NoError(s.m.UpdateRole(r1))
+	r2 := gimlet.Role{
+		ID:    "r2",
+		Scope: "1",
+		Permissions: map[string]int{
+			"edit": 50,
+		},
+	}
+	s.NoError(s.m.UpdateRole(r2))
+	r3 := gimlet.Role{
+		ID:    "r3",
+		Scope: "2",
+		Permissions: map[string]int{
+			"read": 40,
+		},
+	}
+	s.NoError(s.m.UpdateRole(r3))
+
+	expectedMap := map[string]gimlet.Permissions{}
+	expectedMap["resource1"] = map[string]int{"edit": 50, "read": 20}
+	expectedMap["resource2"] = map[string]int{"edit": 50, "read": 20}
+	expectedMap["resource3"] = map[string]int{"read": 40}
+
+	highestPermissions, err := HighestPermissionsForRolesAndResourceType([]string{"r1", "r2", "r3"}, "project", s.m)
+	s.NoError(err)
+	s.Equal(expectedMap, highestPermissions)
 }
