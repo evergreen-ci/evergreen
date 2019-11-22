@@ -146,7 +146,6 @@ const (
 	AgentAPIVersion  = 2
 	APIRoutePrefixV2 = "/rest/v2"
 
-	// Tags on Jasper processes
 	AgentMonitorTag = "agent-monitor"
 
 	DegradedLoggingPercent = 10

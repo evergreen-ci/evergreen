@@ -60,7 +60,6 @@ var (
 	JasperCredentialsIDKey       = bsonutil.MustHaveTag(Host{}, "JasperCredentialsID")
 	NeedsReprovisionKey          = bsonutil.MustHaveTag(Host{}, "NeedsReprovision")
 	ReprovisioningLockedKey      = bsonutil.MustHaveTag(Host{}, "ReprovisioningLocked")
-	JasperRestartAttemptsKey     = bsonutil.MustHaveTag(Host{}, "JasperRestartAttempts")
 	StartedByKey                 = bsonutil.MustHaveTag(Host{}, "StartedBy")
 	InstanceTypeKey              = bsonutil.MustHaveTag(Host{}, "InstanceType")
 	VolumeTotalSizeKey           = bsonutil.MustHaveTag(Host{}, "VolumeTotalSize")

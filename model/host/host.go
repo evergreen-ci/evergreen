@@ -99,10 +99,6 @@ type Host struct {
 	// for non-legacy hosts.
 	JasperCredentialsID string `bson:"jasper_credentials_id" json:"jasper_credentials_id"`
 
-	// JasperRestartAttempts is the current number of times the app server has
-	// attempted to restart the Jasper service on the host.
-	JasperRestartAttempts int `bson:"jasper_restart_attempts" json:"jasper_restart_attempts"`
-
 	// for ec2 dynamic hosts, the instance type requested
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
 	// for ec2 dynamic hosts, the total size of the volumes requested, in GiB
@@ -745,11 +741,15 @@ func (h *Host) UpdateProvisioningToRunning() error {
 }
 
 // SetNeedsJasperRestart sets this host as needing to have its Jasper service
-// restarted. If the host is ready to reprovision now (i.e. no agent monitor is
-// running), it is put in the reprovisioning state.
+// restarted as long as the host does not already need a different
+// reprovisioning change. If the host is ready to reprovision now (i.e. no agent
+// monitor is running), it is put in the reprovisioning state.
 func (h *Host) SetNeedsJasperRestart() error {
+	if err := h.setAwaitingJasperRestart(); err != nil {
+		return err
+	}
 	if h.StartedBy == evergreen.User && !h.NeedsNewAgentMonitor {
-		return h.setAwaitingJasperRestart()
+		return nil
 	}
 	return h.MarkAsReprovisioning()
 }

@@ -942,7 +942,7 @@ func PopulateHostJasperRestartJobs(env evergreen.Environment) amboy.QueueOperati
 				continue
 			}
 
-			catcher.Add(queue.Put(ctx, NewJasperRestartJob(env, h, expiration, h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC, ts)))
+			catcher.Add(queue.Put(ctx, NewJasperRestartJob(env, h, expiration, h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC, ts, 0)))
 		}
 
 		return catcher.Resolve()

@@ -12,7 +12,7 @@ func TestNeedsReprovision(t *testing.T) {
 	for testName, testCase := range map[string]struct {
 		d        distro.Distro
 		h        *host.Host
-		expected host.Reprovisioning
+		expected host.ReprovisionType
 	}{
 		"NewLegacyHostsDoNotNeedReprovisioning": {
 			d: distro.Distro{

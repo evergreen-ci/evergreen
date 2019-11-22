@@ -468,18 +468,8 @@ func TestMarkAsReprovisioning(t *testing.T) {
 			assert.Equal(t, util.ZeroTime, h.AgentStartTime)
 			assert.False(t, h.Provisioned)
 			assert.False(t, h.NeedsNewAgentMonitor)
-		"NeedsJasperRestartSetsNeedsAgentForLegacyProvisioning": func(t *testing.T, h *Host) {
-			h.NeedsReprovision = ReprovisionJasperRestart
-			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodLegacySSH
-			require.NoError(t, h.Insert())
-
-			require.NoError(t, h.MarkAsReprovisioning())
-			assert.Equal(t, util.ZeroTime, h.AgentStartTime)
-			assert.False(t, h.Provisioned)
-			assert.True(t, h.NeedsNewAgent)
-			assert.False(t, h.NeedsNewAgentMonitor)
 		},
-		"NeedsJasperRestartSetsNeedsAgentMonitorForNewProvisioning": func(t *testing.T, h *Host) {
+		"NeedsJasperRestartSetsNeedsAgentMonitor": func(t *testing.T, h *Host) {
 			h.NeedsReprovision = ReprovisionJasperRestart
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
 			require.NoError(t, h.Insert())
@@ -1019,23 +1009,6 @@ func TestFindNeedsNewAgent(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 0)
 		})
-		Convey("with a host with that is still provisioning and has not yet communicated", func() {
-			h := Host{
-				Id:            "h",
-				Status:        evergreen.HostProvisioning,
-				StartedBy:     evergreen.User,
-				NeedsNewAgent: true,
-			}
-			So(h.Insert(), ShouldBeNil)
-			hosts, err := Find(db.Query(NeedsAgentDeploy(now)))
-			So(err, ShouldBeNil)
-			So(len(hosts), ShouldEqual, 1)
-			So(hosts[0].Id, ShouldEqual, h.Id)
-
-			hosts, err = Find(ShouldDeployAgent())
-			So(err, ShouldBeNil)
-			So(len(hosts), ShouldEqual, 0)
-		})
 	})
 }
 
@@ -1048,7 +1021,6 @@ func TestSetNeedsJasperRestart(t *testing.T) {
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
 			assert.False(t, h.Provisioned)
 			assert.Equal(t, ReprovisionJasperRestart, h.NeedsReprovision)
-			assert.Zero(t, h.JasperRestartAttempts)
 		},
 		"SucceedsIfAlreadyNeedsJasperRestart": func(t *testing.T, h *Host) {
 			h.NeedsReprovision = ReprovisionJasperRestart
@@ -1058,7 +1030,6 @@ func TestSetNeedsJasperRestart(t *testing.T) {
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
 			assert.False(t, h.Provisioned)
 			assert.Equal(t, ReprovisionJasperRestart, h.NeedsReprovision)
-			assert.Zero(t, h.JasperRestartAttempts)
 		},
 		"FailsIfReprovisioningLocked": func(t *testing.T, h *Host) {
 			h.ReprovisioningLocked = true
@@ -1085,10 +1056,9 @@ func TestSetNeedsJasperRestart(t *testing.T) {
 				assert.NoError(t, db.Clear(Collection))
 			}()
 			h := &Host{
-				Id:                    "id",
-				Status:                evergreen.HostRunning,
-				JasperRestartAttempts: 10,
-				Provisioned:           true,
+				Id:          "id",
+				Status:      evergreen.HostRunning,
+				Provisioned: true,
 			}
 			testCase(t, h)
 		})

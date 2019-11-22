@@ -33,57 +33,6 @@ func (h *Host) IncProvisionAttempts() error {
 	return nil
 }
 
-// IncJasperRestartAttempts increments the number of times we have attempted to
-// deploy Jasper to this host.
-func (h *Host) IncJasperRestartAttempts() error {
-	query := bson.M{
-		IdKey: h.Id,
-	}
-
-	change := adb.Change{
-		ReturnNew: true,
-		Update: bson.M{
-			"$inc": bson.M{JasperRestartAttemptsKey: 1},
-		},
-	}
-
-	info, err := db.FindAndModify(Collection, query, []string{}, change, h)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	if info.Updated != 1 {
-		return errors.Errorf("could not find host document to update, %s", h.Id)
-	}
-
-	return nil
-}
-
-// SetJasperRestartAttempts sets the number of Jasper restart attempts to n.
-func (h *Host) SetJasperRestartAttempts(n int) error {
-	query := bson.M{
-		IdKey: h.Id,
-	}
-
-	change := adb.Change{
-		ReturnNew: true,
-		Update: bson.M{
-			"$set": bson.M{JasperRestartAttemptsKey: n},
-		},
-	}
-
-	info, err := db.FindAndModify(Collection, query, []string{}, change, h)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	if info.Updated != 1 {
-		return errors.Errorf("could not find host document to update, %s", h.Id)
-	}
-
-	return nil
-}
-
 func (h *Host) IncTaskCount() error {
 	query := bson.M{
 		IdKey: h.Id,

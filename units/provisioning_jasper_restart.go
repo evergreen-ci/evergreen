@@ -37,7 +37,9 @@ type jasperRestartJob struct {
 	// If set, the restart will be done by sending requests to the Jasper
 	// service. Otherwise, the commands will be run as regular SSH commands
 	// without communicating with Jasper at all.
-	RestartThroughJasper bool `bson:"restart_through_jasper" json:"restart_through_jasper" yaml:"restart_through_jasper"`
+	RestartThroughJasper bool   `bson:"restart_through_jasper" json:"restart_through_jasper" yaml:"restart_through_jasper"`
+	CurrentAttempt       int    `bson:"current_attempt" json:"current_attempt" yaml:"current_attempt"`
+	Timestamp            string `bson:"timestamp" json:"timestamp" yaml:"timestamp"`
 
 	env      evergreen.Environment
 	settings *evergreen.Settings
@@ -62,7 +64,7 @@ func makeJasperRestartJob() *jasperRestartJob {
 
 // NewJasperRestartJob creates a job that restarts an existing Jasper service
 // with new credentials.
-func NewJasperRestartJob(env evergreen.Environment, h host.Host, expiration time.Time, restartThroughJasper bool, id string) amboy.Job {
+func NewJasperRestartJob(env evergreen.Environment, h host.Host, expiration time.Time, restartThroughJasper bool, ts string, attempt int) amboy.Job {
 	j := makeJasperRestartJob()
 	j.env = env
 	j.settings = env.Settings()
@@ -70,7 +72,9 @@ func NewJasperRestartJob(env evergreen.Environment, h host.Host, expiration time
 	j.host = &h
 	j.CredentialsExpiration = expiration
 	j.RestartThroughJasper = restartThroughJasper
-	jobID := fmt.Sprintf("%s.%s.%s", jasperRestartJobName, j.HostID, id)
+	j.CurrentAttempt = attempt
+	j.Timestamp = ts
+	jobID := fmt.Sprintf("%s.%s.%s.attempt-%d", jasperRestartJobName, j.HostID, ts, attempt)
 	if restartThroughJasper {
 		jobID += ".restart-through-jasper"
 	}
@@ -118,15 +122,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 					"host":     j.host.Distro.Id,
 					"distro:":  j.host.Distro.Id,
 					"expires":  j.CredentialsExpiration,
-					"attempts": j.host.JasperRestartAttempts,
-					"job":      j.ID(),
-				}))
-				grip.Error(message.WrapError(j.host.SetJasperRestartAttempts(0), message.Fields{
-					"message":  "could not reset Jasper restart attempts",
-					"host":     j.host.Id,
-					"distro:":  j.host.Distro.Id,
-					"expires":  j.CredentialsExpiration,
-					"attempts": j.host.JasperRestartAttempts,
+					"attempts": j.CurrentAttempt,
 					"job":      j.ID(),
 				}))
 				return
@@ -356,16 +352,6 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 	})
 	event.LogHostJasperRestarted(j.host.Id, j.settings.HostJasper.Version)
 
-	// If job succeeded, reset jasper restart count.
-	if err := j.host.SetJasperRestartAttempts(0); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "could not reset Jasper restart attempts",
-			"host":    j.host.Id,
-			"distro":  j.host.Distro.Id,
-			"job":     j.ID(),
-		}))
-	}
-
 	// If this doesn't succeed, a new agent monitor will be deployed
 	// when LCT elapses.
 	if err := j.host.SetNeedsNewAgentMonitor(true); err != nil {
@@ -418,18 +404,12 @@ func (j *jasperRestartJob) populateIfUnset(ctx context.Context) error {
 // do so on the next try, it instead requeues the job without using Jasper
 // (i.e. SSH).
 func (j *jasperRestartJob) tryRequeue(ctx context.Context) error {
-	if err := j.host.IncJasperRestartAttempts(); err != nil {
-		return errors.Wrap(err, "could not increment Jasper restart attempt")
-	}
-
 	if j.RestartThroughJasper && j.canRetryRestart() && !j.credentialsExpireBefore(time.Hour) {
 		return errors.Wrap(j.requeueRestartThroughJasper(ctx, true), "could not requeue job with restart through Jasper")
 	}
 
 	if j.RestartThroughJasper {
-		if err := j.host.SetJasperRestartAttempts(0); err != nil {
-			return errors.Wrap(err, "could not reset Jasper restart attempts")
-		}
+		j.CurrentAttempt = -1
 	}
 
 	if j.canRetryRestart() {
@@ -440,7 +420,7 @@ func (j *jasperRestartJob) tryRequeue(ctx context.Context) error {
 }
 
 func (j *jasperRestartJob) requeueRestartThroughJasper(ctx context.Context, restartThroughJasper bool) error {
-	job := NewJasperRestartJob(j.env, *j.host, j.CredentialsExpiration, restartThroughJasper, fmt.Sprintf("attempt-%d", j.host.JasperRestartAttempts))
+	job := NewJasperRestartJob(j.env, *j.host, j.CredentialsExpiration, restartThroughJasper, j.Timestamp, j.CurrentAttempt+1)
 	job.UpdateTimeInfo(amboy.JobTimeInfo{
 		WaitUntil: time.Now().Add(time.Minute),
 	})
@@ -453,5 +433,5 @@ func (j *jasperRestartJob) requeueRestartThroughJasper(ctx context.Context, rest
 }
 
 func (j *jasperRestartJob) canRetryRestart() bool {
-	return j.host.JasperRestartAttempts < jasperRestartRetryLimit
+	return j.CurrentAttempt <= jasperRestartRetryLimit
 }

@@ -346,7 +346,7 @@ func prepareForReprovision(ctx context.Context, env evergreen.Environment, setti
 			return errors.Wrapf(err, "problem getting credentials expiration time", h.Id)
 		}
 		ts := util.RoundPartOfHour(0).Format(units.TSFormat)
-		if err := env.RemoteQueue().Put(ctx, units.NewJasperRestartJob(env, *h, expiration, h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC, ts)); err != nil {
+		if err := env.RemoteQueue().Put(ctx, units.NewJasperRestartJob(env, *h, expiration, h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC, ts, 0)); err != nil {
 			return errors.Wrap(err, "problem enqueueing jobs to reprovision host to new")
 		}
 	}
