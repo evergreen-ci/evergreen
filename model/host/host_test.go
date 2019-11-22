@@ -812,6 +812,14 @@ func TestUpsert(t *testing.T) {
 			So(ok, ShouldBeTrue)
 			So(val, ShouldEqual, 0)
 		})
+		Convey("Upserting a host that does not need its provisioning changed unsets the field", func() {
+			So(host.Insert(), ShouldBeNil)
+			_, err := host.Upsert()
+			So(err, ShouldBeNil)
+
+			_, err = FindOne(db.Query(bson.M{IdKey: host.Id, NeedsReprovisionKey: bson.M{"$exists": false}}))
+			So(err, ShouldBeNil)
+		})
 	})
 }
 

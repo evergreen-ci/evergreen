@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -663,6 +664,68 @@ func TestNextTask(t *testing.T) {
 				So(json.NewDecoder(resp.Body).Decode(details), ShouldBeNil)
 				So(details.ShouldExit, ShouldEqual, false)
 				So(sampleHost.SetAgentRevision(evergreen.BuildRevision), ShouldBeNil) // reset
+			})
+			Convey("with a non-legacy host that needs to be reprovisioned", func() {
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+
+				env := as.env
+				defer func() {
+					as.env = env
+				}()
+				mockEnv := &mock.Environment{}
+				mockEnv.Configure(ctx, "", nil)
+				as.env = mockEnv
+
+				h := host.Host{
+					Id: "id",
+					Distro: distro.Distro{
+						Id: distroID,
+						BootstrapSettings: distro.BootstrapSettings{
+
+							Method:        distro.BootstrapMethodSSH,
+							Communication: distro.CommunicationMethodRPC,
+						},
+					},
+					Secret:           hostSecret,
+					Provisioned:      true,
+					Status:           evergreen.HostRunning,
+					NeedsReprovision: host.ReprovisionToNew,
+				}
+				So(h.Insert(), ShouldBeNil)
+
+				Convey("should prepare to reprovision", func() {
+					_, err := host.FindOneId(h.Id)
+					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.BuildRevision}
+					resp := getNextTaskEndpoint(t, as, h.Id, reqDetails)
+					respDetails := &apimodels.NextTaskResponse{}
+					So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
+					So(respDetails.ShouldExit, ShouldBeTrue)
+					dbHost, err := host.FindOneId(h.Id)
+					So(err, ShouldBeNil)
+					So(dbHost.NeedsReprovision, ShouldEqual, host.ReprovisionToNew)
+					So(dbHost.Status, ShouldEqual, evergreen.HostProvisioning)
+					So(dbHost.Provisioned, ShouldBeFalse)
+					So(dbHost.NeedsNewAgent, ShouldBeFalse)
+					So(dbHost.NeedsNewAgentMonitor, ShouldBeTrue)
+					So(util.IsZeroTime(dbHost.AgentStartTime), ShouldBeTrue)
+				})
+				Convey("does not reprovision if no reprovision is needed", func() {
+					So(host.UpdateOne(bson.M{host.IdKey: h.Id}, bson.M{"$unset": bson.M{host.NeedsReprovisionKey: host.ReprovisionNone}}), ShouldBeNil)
+					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.BuildRevision}
+					resp := getNextTaskEndpoint(t, as, h.Id, reqDetails)
+					respDetails := &apimodels.NextTaskResponse{}
+					So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
+					So(respDetails.ShouldExit, ShouldBeFalse)
+					dbHost, err := host.FindOneId(h.Id)
+					So(err, ShouldBeNil)
+					So(dbHost.NeedsReprovision, ShouldBeEmpty)
+					So(dbHost.Status, ShouldEqual, evergreen.HostRunning)
+					So(dbHost.Provisioned, ShouldBeTrue)
+					So(dbHost.NeedsNewAgent, ShouldBeFalse)
+					So(dbHost.NeedsNewAgentMonitor, ShouldBeFalse)
+					So(dbHost.AgentStartTime, ShouldNotEqual, util.ZeroTime)
+				})
 			})
 			Convey("with a non-legacy host with an old agent revision in the database", func() {
 				nonLegacyHost := host.Host{

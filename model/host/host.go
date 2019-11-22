@@ -92,6 +92,7 @@ type Host struct {
 	NeedsNewAgentMonitor bool   `bson:"needs_agent_monitor" json:"needs_agent_monitor"`
 
 	// NeedsReprovision is set if the host needs to be reprovisioned.
+	// These fields must be unset if no provisioning is needed anymore.
 	NeedsReprovision     ReprovisionType `bson:"needs_reprovision,omitempty" json:"needs_reprovision,omitempty"`
 	ReprovisioningLocked bool            `bson:"reprovisioning_locked,omitempty" json:"reprovisioning_locked,omitempty"`
 

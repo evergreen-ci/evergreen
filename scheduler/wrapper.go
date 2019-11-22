@@ -144,12 +144,6 @@ func doStaticHostUpdate(d distro.Distro) ([]string, error) {
 		if provisionChange == host.ReprovisionNone && !dbHost.ReprovisioningLocked {
 			provisionChange = dbHost.NeedsReprovision
 		}
-		grip.InfoWhen(provisionChange != dbHost.NeedsReprovision, message.Fields{
-			"message":                 "kim: changing provisioning needs on each static host",
-			"host":                    dbHost.Id,
-			"new_provisioning_change": provisionChange,
-			"old_provisioning_change": dbHost.NeedsReprovision,
-		})
 
 		staticHost := host.Host{
 			Id:                h.Name,
