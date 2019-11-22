@@ -21,6 +21,15 @@ import (
 
 func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 	u := MustHaveUser(r)
+	permissions, err := rolemanager.HighestPermissionsForRolesAndResourceType(
+		u.Roles(),
+		evergreen.DistroResourceType,
+		evergreen.GetEnvironment().RoleManager(),
+	)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
 
 	distros, err := distro.Find(distro.All.Project(bson.M{"_id": 1}))
 	if err != nil {
@@ -32,14 +41,8 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 	sort.Sort(&sortableDistro{distros})
 	distroIds := []string{}
 	for _, d := range distros {
-		opts := gimlet.PermissionOpts{Resource: d.Id, ResourceType: evergreen.DistroResourceType}
-		permissions, err := rolemanager.HighestPermissionsForRoles(u.Roles(), evergreen.GetEnvironment().RoleManager(), opts)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-
-		if !evergreen.AclCheckingIsEnabled || permissions[evergreen.PermissionDistroSettings] > 0 {
+		resourcePermissions, ok := permissions[d.Id]
+		if !evergreen.AclCheckingIsEnabled || (ok && resourcePermissions[evergreen.PermissionDistroSettings] > 0) {
 			distroIds = append(distroIds, d.Id)
 		}
 	}

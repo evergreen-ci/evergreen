@@ -89,6 +89,10 @@ type RoleManager interface {
 	// FilterForResource takes a list of roles and returns the subset of those applicable for a certain resource
 	FilterForResource([]Role, string, string) ([]Role, error)
 
+	// FilterScopesByResourceType takes a list of scope IDs and a resource
+	// type and returns a list of scopes filtered by the resource type.
+	FilterScopesByResourceType([]string, string) ([]Scope, error)
+
 	// AddScope adds a scope to the manager
 	AddScope(Scope) error
 
