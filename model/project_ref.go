@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -602,6 +603,9 @@ func (p *ProjectRef) AddTags(tags ...string) (bool, error) {
 	toAdd := []string{}
 	for _, t := range tags {
 		if _, ok := set[t]; ok {
+			continue
+		}
+		if strings.Contains(t, ",") {
 			continue
 		}
 		toAdd = append(toAdd, t)

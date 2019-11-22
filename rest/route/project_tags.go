@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -148,6 +149,13 @@ func (h *addProjectTag) Parse(ctx context.Context, r *http.Request) error {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "no project specified",
+		}
+	}
+
+	if strings.Contains(h.tag, ",") {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "tags cannot contain commas",
 		}
 	}
 
