@@ -351,7 +351,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if commitQueueParams.Enabled {
-		grip.Debug("COMMIT QUEUE ENABLED")
 		var projRef *model.ProjectRef
 		projRef, err = model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
 		if err != nil {
@@ -373,13 +372,19 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error checking for commit queue aliases"))
 				return
 			}
-			if len(aliases) == 0 {
+
+			remainingAliases := 0
+			for _, a := range aliases {
+				// only consider aliases that won't be deleted
+				if !util.StringSliceContains(responseRef.DeleteAliases, a.Alias) {
+					remainingAliases++
+				}
+			}
+			if remainingAliases == 0 {
 				uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Cannot enable Commit Queue without patch definitions."))
 				return
 			}
-			grip.Debugf("Len(aliases) == %d", len(aliases))
 		}
-		grip.Debugf("In the commit queue part, response ref had: %d", len(responseRef.CommitQueueAliases))
 
 		_, err = commitqueue.FindOneId(responseRef.Identifier)
 		if err != nil {
