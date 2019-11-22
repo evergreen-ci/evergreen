@@ -696,6 +696,7 @@ func TestNextTask(t *testing.T) {
 
 				Convey("should prepare to reprovision", func() {
 					_, err := host.FindOneId(h.Id)
+					So(err, ShouldBeNil)
 					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.BuildRevision}
 					resp := getNextTaskEndpoint(t, as, h.Id, reqDetails)
 					respDetails := &apimodels.NextTaskResponse{}
