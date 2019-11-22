@@ -484,26 +484,15 @@ func TestJasperClient(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sshKeyName := "foo"
-	sshKeyValue := "bar"
+	const (
+		sshKeyName  = "foo"
+		sshKeyValue = "bar"
+	)
 	for testName, testCase := range map[string]struct {
 		withSetupAndTeardown func(ctx context.Context, env *mock.Environment, manager *jmock.Manager, h *Host, fn func()) error
 		h                    *Host
 		expectError          bool
 	}{
-		"LegacyHostErrors": {
-			h: &Host{
-				Id: "test-host",
-				Distro: distro.Distro{
-					BootstrapSettings: distro.BootstrapSettings{
-						Method:        distro.BootstrapMethodLegacySSH,
-						Communication: distro.CommunicationMethodLegacySSH,
-					},
-					SSHKey: sshKeyName,
-				},
-			},
-			expectError: true,
-		},
 		"PassesWithSSHCommunicationAndSSHInfo": {
 			h: &Host{
 				Id: "test-host",
@@ -518,6 +507,20 @@ func TestJasperClient(t *testing.T) {
 				Host: "bar",
 			},
 			expectError: false,
+		},
+		"PassesWithHostReprovisioningToLegacy": {
+			h: &Host{
+				Id:               "test-host",
+				NeedsReprovision: ReprovisionToLegacy,
+				Distro: distro.Distro{
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodLegacySSH,
+						Communication: distro.CommunicationMethodLegacySSH,
+					},
+					SSHKey: sshKeyName,
+				},
+			},
+			expectError: true,
 		},
 		"FailsWithSSHCommunicationButNoSSHKey": {
 			h: &Host{
@@ -760,7 +763,7 @@ func TestBuildLocalJasperClientRequest(t *testing.T) {
 	subCmd := "sub"
 
 	config.BinaryName = "binary"
-	binaryName := h.jasperBinaryFilePath(config)
+	binaryName := h.JasperBinaryFilePath(config)
 
 	cmd, err := h.buildLocalJasperClientRequest(config, subCmd, input)
 	require.NoError(t, err)

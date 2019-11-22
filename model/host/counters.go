@@ -33,9 +33,9 @@ func (h *Host) IncProvisionAttempts() error {
 	return nil
 }
 
-// IncJasperDeployAttempts increments the number of times we have attempted to
+// IncJasperRestartAttempts increments the number of times we have attempted to
 // deploy Jasper to this host.
-func (h *Host) IncJasperDeployAttempts() error {
+func (h *Host) IncJasperRestartAttempts() error {
 	query := bson.M{
 		IdKey: h.Id,
 	}
@@ -43,7 +43,7 @@ func (h *Host) IncJasperDeployAttempts() error {
 	change := adb.Change{
 		ReturnNew: true,
 		Update: bson.M{
-			"$inc": bson.M{JasperDeployAttemptsKey: 1},
+			"$inc": bson.M{JasperRestartAttemptsKey: 1},
 		},
 	}
 
@@ -59,9 +59,8 @@ func (h *Host) IncJasperDeployAttempts() error {
 	return nil
 }
 
-// ResetJasperDeployAttempts resets the number of Jasper deploy attempts to
-// zero.
-func (h *Host) ResetJasperDeployAttempts() error {
+// SetJasperRestartAttempts sets the number of Jasper restart attempts to n.
+func (h *Host) SetJasperRestartAttempts(n int) error {
 	query := bson.M{
 		IdKey: h.Id,
 	}
@@ -69,7 +68,7 @@ func (h *Host) ResetJasperDeployAttempts() error {
 	change := adb.Change{
 		ReturnNew: true,
 		Update: bson.M{
-			"$set": bson.M{JasperDeployAttemptsKey: 0},
+			"$set": bson.M{JasperRestartAttemptsKey: n},
 		},
 	}
 

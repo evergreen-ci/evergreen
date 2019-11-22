@@ -91,13 +91,17 @@ type Host struct {
 	NeedsNewAgent        bool   `bson:"needs_agent" json:"needs_agent"`
 	NeedsNewAgentMonitor bool   `bson:"needs_agent_monitor" json:"needs_agent_monitor"`
 
+	// NeedsReprovision is set if the host needs to be reprovisioned.
+	NeedsReprovision     ReprovisionType `bson:"needs_reprovision,omitempty" json:"needs_reprovision,omitempty"`
+	ReprovisioningLocked bool            `bson:"reprovisioning_locked,omitempty" json:"reprovisioning_locked,omitempty"`
+
 	// JasperCredentialsID is used to match hosts to their Jasper credentials
 	// for non-legacy hosts.
 	JasperCredentialsID string `bson:"jasper_credentials_id" json:"jasper_credentials_id"`
 
-	// JasperDeployAttempts is the current number of times the app server has
-	// attempted to deploy a new Jasper service to the host.
-	JasperDeployAttempts int `bson:"jasper_deploy_attempts" json:"jasper_deploy_attempts"`
+	// JasperRestartAttempts is the current number of times the app server has
+	// attempted to restart the Jasper service on the host.
+	JasperRestartAttempts int `bson:"jasper_restart_attempts" json:"jasper_restart_attempts"`
 
 	// for ec2 dynamic hosts, the instance type requested
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
@@ -149,6 +153,23 @@ type Tag struct {
 	Value         string `bson:"value" json:"value"`
 	CanBeModified bool   `bson:"can_be_modified" json:"can_be_modified"`
 }
+
+// Reprovision represents a state change in how the host is provisioned.
+type ReprovisionType string
+
+// Constants representing host provisioning changes.
+const (
+	ReprovisionNone ReprovisionType = ""
+	// ProvisionNew indicates a transition from legacy provisioning to
+	// non-legacy provisioning.
+	ReprovisionToNew ReprovisionType = "convert-to-new"
+	// ReprovisionToLegacy indicates a transition from non-legacy
+	// provisioning to legacy provisioning.
+	ReprovisionToLegacy ReprovisionType = "convert-to-legacy"
+	// ReprovisionJasperRestart indicates that the host's Jasper service should
+	// restart.
+	ReprovisionJasperRestart ReprovisionType = "jasper-restart"
+)
 
 func (h *Host) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(h) }
 func (h *Host) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, h) }
@@ -642,7 +663,6 @@ func (h *Host) SetIPv6Address(ipv6Address string) error {
 }
 
 func (h *Host) MarkAsProvisioned() error {
-	event.LogHostProvisioned(h.Id)
 	now := time.Now()
 	err := UpdateOne(
 		bson.M{
@@ -657,6 +677,7 @@ func (h *Host) MarkAsProvisioned() error {
 				ProvisionedKey:   true,
 				ProvisionTimeKey: now,
 			},
+			"$unset": bson.M{NeedsReprovisionKey: ReprovisionNone},
 		},
 	)
 
@@ -667,6 +688,10 @@ func (h *Host) MarkAsProvisioned() error {
 	h.Status = evergreen.HostRunning
 	h.Provisioned = true
 	h.ProvisionTime = now
+	h.NeedsReprovision = ReprovisionNone
+
+	event.LogHostProvisioned(h.Id)
+
 	return nil
 }
 
@@ -717,6 +742,79 @@ func (h *Host) UpdateProvisioningToRunning() error {
 	h.Status = evergreen.HostRunning
 
 	event.LogHostProvisioned(h.Id)
+
+	return nil
+}
+
+// MarkAsReprovisioning puts the host in a state that means it is going to be
+// reprovisioned.
+func (h *Host) MarkAsReprovisioning() error {
+	var needsAgent bool
+	var needsAgentMonitor bool
+	switch h.NeedsReprovision {
+	case ReprovisionToLegacy:
+		needsAgent = true
+	case ReprovisionToNew:
+		needsAgentMonitor = true
+	case ReprovisionJasperRestart:
+		needsAgentMonitor = h.StartedBy == evergreen.User
+	}
+
+	err := UpdateOne(bson.M{IdKey: h.Id, NeedsReprovisionKey: h.NeedsReprovision},
+		bson.M{
+			"$set": bson.M{
+				AgentStartTimeKey:       util.ZeroTime,
+				ProvisionedKey:          false,
+				StatusKey:               evergreen.HostProvisioning,
+				NeedsNewAgentKey:        needsAgent,
+				NeedsNewAgentMonitorKey: needsAgentMonitor,
+			}})
+	if err != nil {
+		return errors.Wrap(err, "problem marking host as reprovisioning")
+	}
+
+	if h.NeedsReprovision == ReprovisionToLegacy || h.NeedsReprovision == ReprovisionToNew {
+		event.LogHostConvertingProvisioning(h.Id, h.Distro.BootstrapSettings.Method)
+	}
+
+	h.AgentStartTime = util.ZeroTime
+	h.Provisioned = false
+	h.Status = evergreen.HostProvisioning
+	h.NeedsNewAgent = needsAgent
+	h.NeedsNewAgentMonitor = needsAgentMonitor
+
+	return nil
+}
+
+// MarkAsReprovisioned indicates that the host was successfully reprovisioned.
+func (h *Host) MarkAsReprovisioned() error {
+	now := time.Now()
+	err := UpdateOne(
+		bson.M{
+			IdKey: h.Id,
+			StatusKey: bson.M{
+				"$nin": evergreen.DownHostStatus,
+			},
+			NeedsReprovisionKey: h.NeedsReprovision,
+		},
+		bson.M{
+			"$set": bson.M{
+				StatusKey:        evergreen.HostRunning,
+				ProvisionedKey:   true,
+				ProvisionTimeKey: now,
+			},
+			"$unset": bson.M{NeedsReprovisionKey: ReprovisionNone},
+		},
+	)
+
+	if err != nil {
+		return err
+	}
+
+	h.Status = evergreen.HostRunning
+	h.Provisioned = true
+	h.ProvisionTime = now
+	h.NeedsReprovision = ReprovisionNone
 
 	return nil
 }
@@ -875,13 +973,8 @@ func (h *Host) IsWaitingForAgent() bool {
 	return false
 }
 
-// SetNeedsNewAgent sets the "needs new agent" flag on the host. This is a no-op
-// on non-legacy hosts.
+// SetNeedsNewAgent sets the "needs new agent" flag on the host.
 func (h *Host) SetNeedsNewAgent(needsAgent bool) error {
-	if !h.LegacyBootstrap() {
-		return nil
-	}
-
 	err := UpdateOne(bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{NeedsNewAgentKey: needsAgent}})
 	if err != nil {
@@ -925,6 +1018,71 @@ func (h *Host) SetNeedsNewAgentMonitorAtomically(needsAgentMonitor bool) error {
 	return nil
 }
 
+// SetNeedsJasperRestart sets this host as needing to have its Jasper
+// service restarted.
+func (h *Host) SetNeedsJasperRestart() error {
+	if err := UpdateOne(
+		bson.M{
+			IdKey:     h.Id,
+			StatusKey: bson.M{"$in": []string{evergreen.HostRunning, evergreen.HostProvisioning}},
+			"$or": []bson.M{
+				{NeedsReprovisionKey: bson.M{"$exists": false}},
+				{NeedsReprovisionKey: ReprovisionJasperRestart},
+			},
+			ReprovisioningLockedKey: bson.M{"$ne": true},
+		},
+		bson.M{
+			"$set": bson.M{
+				NeedsReprovisionKey: ReprovisionJasperRestart,
+			},
+		},
+	); err != nil {
+		return err
+	}
+
+	h.Status = evergreen.HostProvisioning
+	h.Provisioned = false
+	h.NeedsReprovision = ReprovisionJasperRestart
+	h.JasperRestartAttempts = 0
+
+	return nil
+}
+
+// SetReprovisioningLocked sets the "provisioning is locked" flag on the host to
+// indicate that provisioning jobs should not run.
+func (h *Host) SetReprovisioningLocked(locked bool) error {
+	var update bson.M
+	if locked {
+		update = bson.M{"$set": bson.M{ReprovisioningLockedKey: true}}
+	} else {
+		update = bson.M{"$unset": bson.M{ReprovisioningLockedKey: false}}
+	}
+	if err := UpdateOne(bson.M{IdKey: h.Id}, update); err != nil {
+		return err
+	}
+	h.ReprovisioningLocked = locked
+	return nil
+}
+
+// SetReprovisioningLockedAtomically is the same as SetReprovisioningLocked but
+// performs an atomic update on the host in the database.
+func (h *Host) SetReprovisioningLockedAtomically(locked bool) error {
+	query := bson.M{IdKey: h.Id}
+	var update bson.M
+	if locked {
+		query[ReprovisioningLockedKey] = bson.M{"$ne": true}
+		update = bson.M{"$set": bson.M{ReprovisioningLockedKey: true}}
+	} else {
+		query[ReprovisioningLockedKey] = true
+		update = bson.M{"$unset": bson.M{ReprovisioningLockedKey: false}}
+	}
+	if err := UpdateOne(query, update); err != nil {
+		return err
+	}
+	h.ReprovisioningLocked = locked
+	return nil
+}
+
 // LegacyBootstrap returns whether the host was bootstrapped using the legacy
 // method.
 func (h *Host) LegacyBootstrap() bool {
@@ -946,11 +1104,12 @@ func (h *Host) JasperCommunication() bool {
 // SetNeedsAgentDeploy indicates that the host's agent or agent monitor needs
 // to be deployed.
 func (h *Host) SetNeedsAgentDeploy(needsDeploy bool) error {
-	if h.LegacyBootstrap() {
-		return errors.Wrap(h.SetNeedsNewAgent(needsDeploy), "error setting host needs new agent")
+	if !h.LegacyBootstrap() {
+		if err := h.SetNeedsNewAgentMonitor(needsDeploy); err != nil {
+			return errors.Wrap(err, "error setting host needs new agent monitor")
+		}
 	}
-
-	return errors.Wrap(h.SetNeedsNewAgentMonitor(needsDeploy), "error setting host needs new agent monitor")
+	return errors.Wrap(h.SetNeedsNewAgent(needsDeploy), "error setting host needs new agent")
 }
 
 // SetExpirationTime updates the expiration time of a spawn host
@@ -1018,25 +1177,25 @@ func (h *Host) Upsert() (*adb.ChangeInfo, error) {
 				// If adding or removing fields here, make sure that all callers will work
 				// correctly after the change. Any fields defined here but not set by the
 				// caller will insert the zero value into the document
-				DNSKey:                  h.Host,
-				UserKey:                 h.User,
-				DistroKey:               h.Distro,
-				ProvisionedKey:          h.Provisioned,
-				StartedByKey:            h.StartedBy,
-				ExpirationTimeKey:       h.ExpirationTime,
-				ProviderKey:             h.Provider,
-				TagKey:                  h.Tag,
-				InstanceTypeKey:         h.InstanceType,
-				ZoneKey:                 h.Zone,
-				ProjectKey:              h.Project,
-				ProvisionAttemptsKey:    h.ProvisionAttempts,
-				ProvisionOptionsKey:     h.ProvisionOptions,
-				StartTimeKey:            h.StartTime,
-				HasContainersKey:        h.HasContainers,
-				ContainerImagesKey:      h.ContainerImages,
-				NeedsNewAgentMonitorKey: h.NeedsNewAgentMonitor,
-				JasperCredentialsIDKey:  h.JasperCredentialsID,
-				JasperDeployAttemptsKey: h.JasperDeployAttempts,
+				DNSKey:                   h.Host,
+				UserKey:                  h.User,
+				DistroKey:                h.Distro,
+				ProvisionedKey:           h.Provisioned,
+				StartedByKey:             h.StartedBy,
+				ExpirationTimeKey:        h.ExpirationTime,
+				ProviderKey:              h.Provider,
+				TagKey:                   h.Tag,
+				InstanceTypeKey:          h.InstanceType,
+				ZoneKey:                  h.Zone,
+				ProjectKey:               h.Project,
+				ProvisionAttemptsKey:     h.ProvisionAttempts,
+				ProvisionOptionsKey:      h.ProvisionOptions,
+				StartTimeKey:             h.StartTime,
+				HasContainersKey:         h.HasContainers,
+				ContainerImagesKey:       h.ContainerImages,
+				NeedsNewAgentMonitorKey:  h.NeedsNewAgentMonitor,
+				JasperCredentialsIDKey:   h.JasperCredentialsID,
+				JasperRestartAttemptsKey: h.JasperRestartAttempts,
 			},
 			"$setOnInsert": bson.M{
 				StatusKey:     h.Status,
@@ -1190,6 +1349,7 @@ func FindHostsToTerminate() ([]Host, error) {
 				CreateTimeKey: bson.M{"$lte": now.Add(-provisioningCutoff)},
 				StatusKey:     bson.M{"$ne": evergreen.HostTerminated},
 				StartedByKey:  evergreen.User,
+				ProviderKey:   bson.M{"$ne": evergreen.ProviderNameStatic},
 			},
 			{ // host.IsDecommissioned
 				RunningTaskKey: bson.M{"$exists": false},

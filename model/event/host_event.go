@@ -27,50 +27,54 @@ const (
 	ResourceTypeHost = "HOST"
 
 	// event types
-	EventHostCreated                  = "HOST_CREATED"
-	EventHostStarted                  = "HOST_STARTED"
-	EventHostStopped                  = "HOST_STOPPED"
-	EventHostModified                 = "HOST_MODIFIED"
-	EventHostAgentDeployed            = "HOST_AGENT_DEPLOYED"
-	EventHostAgentDeployFailed        = "HOST_AGENT_DEPLOY_FAILED"
-	EventHostAgentMonitorDeployed     = "HOST_AGENT_MONITOR_DEPLOYED"
-	EventHostAgentMonitorDeployFailed = "HOST_AGENT_MONITOR_DEPLOY_FAILED"
-	EventHostJasperDeployed           = "HOST_JASPER_DEPLOYED"
-	EventHostJasperDeployFailed       = "HOST_JASPER_DEPLOY_FAILED"
-	EventHostStatusChanged            = "HOST_STATUS_CHANGED"
-	EventHostDNSNameSet               = "HOST_DNS_NAME_SET"
-	EventHostProvisionError           = "HOST_PROVISION_ERROR"
-	EventHostProvisionFailed          = "HOST_PROVISION_FAILED"
-	EventHostProvisioned              = "HOST_PROVISIONED"
-	EventHostRunningTaskSet           = "HOST_RUNNING_TASK_SET"
-	EventHostRunningTaskCleared       = "HOST_RUNNING_TASK_CLEARED"
-	EventHostTaskPidSet               = "HOST_TASK_PID_SET"
-	EventHostMonitorFlag              = "HOST_MONITOR_FLAG"
-	EventTaskFinished                 = "HOST_TASK_FINISHED"
-	EventHostTeardown                 = "HOST_TEARDOWN"
-	EventHostTerminatedExternally     = "HOST_TERMINATED_EXTERNALLY"
-	EventHostExpirationWarningSent    = "HOST_EXPIRATION_WARNING_SENT"
-	EventHostScriptExecuted           = "HOST_SCRIPT_EXECUTED"
-	EventHostScriptExecuteFailed      = "HOST_SCRIPT_EXECUTE_FAILED"
+	EventHostCreated                     = "HOST_CREATED"
+	EventHostStarted                     = "HOST_STARTED"
+	EventHostStopped                     = "HOST_STOPPED"
+	EventHostModified                    = "HOST_MODIFIED"
+	EventHostAgentDeployed               = "HOST_AGENT_DEPLOYED"
+	EventHostAgentDeployFailed           = "HOST_AGENT_DEPLOY_FAILED"
+	EventHostAgentMonitorDeployed        = "HOST_AGENT_MONITOR_DEPLOYED"
+	EventHostAgentMonitorDeployFailed    = "HOST_AGENT_MONITOR_DEPLOY_FAILED"
+	EventHostJasperRestarted             = "HOST_JASPER_RESTARTED"
+	EventHostJasperRestartError          = "HOST_JASPER_RESTART_ERROR"
+	EventHostConvertingProvisioning      = "HOST_CONVERTING_PROVISIONING"
+	EventHostConvertedProvisioning       = "HOST_CONVERTED_PROVISIONING"
+	EventHostConvertingProvisioningError = "HOST_CONVERTING_PROVISIONING_ERROR"
+	EventHostStatusChanged               = "HOST_STATUS_CHANGED"
+	EventHostDNSNameSet                  = "HOST_DNS_NAME_SET"
+	EventHostProvisionError              = "HOST_PROVISION_ERROR"
+	EventHostProvisionFailed             = "HOST_PROVISION_FAILED"
+	EventHostProvisioned                 = "HOST_PROVISIONED"
+	EventHostRunningTaskSet              = "HOST_RUNNING_TASK_SET"
+	EventHostRunningTaskCleared          = "HOST_RUNNING_TASK_CLEARED"
+	EventHostTaskPidSet                  = "HOST_TASK_PID_SET"
+	EventHostMonitorFlag                 = "HOST_MONITOR_FLAG"
+	EventTaskFinished                    = "HOST_TASK_FINISHED"
+	EventHostTeardown                    = "HOST_TEARDOWN"
+	EventHostTerminatedExternally        = "HOST_TERMINATED_EXTERNALLY"
+	EventHostExpirationWarningSent       = "HOST_EXPIRATION_WARNING_SENT"
+	EventHostScriptExecuted              = "HOST_SCRIPT_EXECUTED"
+	EventHostScriptExecuteFailed         = "HOST_SCRIPT_EXECUTE_FAILED"
 )
 
 // implements EventData
 type HostEventData struct {
-	AgentRevision  string        `bson:"a_rev,omitempty" json:"agent_revision,omitempty"`
-	JasperRevision string        `bson:"j_rev,omitempty" json:"jasper_revision,omitempty"`
-	OldStatus      string        `bson:"o_s,omitempty" json:"old_status,omitempty"`
-	NewStatus      string        `bson:"n_s,omitempty" json:"new_status,omitempty"`
-	Logs           string        `bson:"log,omitempty" json:"logs,omitempty"`
-	Hostname       string        `bson:"hn,omitempty" json:"hostname,omitempty"`
-	TaskId         string        `bson:"t_id,omitempty" json:"task_id,omitempty"`
-	TaskExecution  int           `bson:"t_execution,omitempty" json:"task_execution,omitempty"`
-	TaskPid        string        `bson:"t_pid,omitempty" json:"task_pid,omitempty"`
-	TaskStatus     string        `bson:"t_st,omitempty" json:"task_status,omitempty"`
-	Execution      string        `bson:"execution,omitempty" json:"execution,omitempty"`
-	MonitorOp      string        `bson:"monitor_op,omitempty" json:"monitor,omitempty"`
-	User           string        `bson:"usr" json:"user,omitempty"`
-	Successful     bool          `bson:"successful,omitempty" json:"successful"`
-	Duration       time.Duration `bson:"duration,omitempty" json:"duration"`
+	AgentRevision      string        `bson:"a_rev,omitempty" json:"agent_revision,omitempty"`
+	JasperRevision     string        `bson:"j_rev,omitempty" json:"jasper_revision,omitempty"`
+	OldStatus          string        `bson:"o_s,omitempty" json:"old_status,omitempty"`
+	NewStatus          string        `bson:"n_s,omitempty" json:"new_status,omitempty"`
+	Logs               string        `bson:"log,omitempty" json:"logs,omitempty"`
+	Hostname           string        `bson:"hn,omitempty" json:"hostname,omitempty"`
+	ProvisioningMethod string        `bson:"prov_method" json:"provisioning_method,omitempty"`
+	TaskId             string        `bson:"t_id,omitempty" json:"task_id,omitempty"`
+	TaskExecution      int           `bson:"t_execution,omitempty" json:"task_execution,omitempty"`
+	TaskPid            string        `bson:"t_pid,omitempty" json:"task_pid,omitempty"`
+	TaskStatus         string        `bson:"t_st,omitempty" json:"task_status,omitempty"`
+	Execution          string        `bson:"execution,omitempty" json:"execution,omitempty"`
+	MonitorOp          string        `bson:"monitor_op,omitempty" json:"monitor,omitempty"`
+	User               string        `bson:"usr" json:"user,omitempty"`
+	Successful         bool          `bson:"successful,omitempty" json:"successful"`
+	Duration           time.Duration `bson:"duration,omitempty" json:"duration"`
 }
 
 var (
@@ -128,12 +132,24 @@ func LogHostAgentMonitorDeployFailed(hostId string, err error) {
 	LogHostEvent(hostId, EventHostAgentMonitorDeployFailed, HostEventData{Logs: err.Error()})
 }
 
-func LogHostJasperDeployed(hostId string, revision string) {
-	LogHostEvent(hostId, EventHostJasperDeployed, HostEventData{JasperRevision: revision})
+func LogHostJasperRestarted(hostId string, revision string) {
+	LogHostEvent(hostId, EventHostJasperRestarted, HostEventData{JasperRevision: revision})
 }
 
-func LogHostJasperDeployFailed(hostId string, err error) {
-	LogHostEvent(hostId, EventHostJasperDeployFailed, HostEventData{Logs: err.Error()})
+func LogHostJasperRestartError(hostId string, err error) {
+	LogHostEvent(hostId, EventHostJasperRestartError, HostEventData{Logs: err.Error()})
+}
+
+func LogHostConvertingProvisioning(hostID, method string) {
+	LogHostEvent(hostID, EventHostConvertingProvisioning, HostEventData{ProvisioningMethod: method})
+}
+
+func LogHostConvertedProvisioning(hostID, method string) {
+	LogHostEvent(hostID, EventHostConvertedProvisioning, HostEventData{ProvisioningMethod: method})
+}
+
+func LogHostConvertingProvisioningError(hostId string, err error) {
+	LogHostEvent(hostId, EventHostConvertingProvisioningError, HostEventData{Logs: err.Error()})
 }
 
 // LogHostProvisionError is used to log each failed provision attempt

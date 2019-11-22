@@ -57,7 +57,7 @@ func TestSpawnhostModifyJob(t *testing.T) {
 		InstanceType:       "instance-type-2",
 	}
 
-	ts := util.RoundPartOfMinute(1).Format(tsFormat)
+	ts := util.RoundPartOfMinute(1).Format(TSFormat)
 	j := NewSpawnhostModifyJob(&h, changes, ts)
 
 	j.Run(context.Background())

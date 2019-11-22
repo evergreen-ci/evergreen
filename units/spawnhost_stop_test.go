@@ -32,7 +32,7 @@ func TestSpawnhostStopJob(t *testing.T) {
 			Status: cloud.StatusStopped,
 		})
 
-		ts := util.RoundPartOfMinute(1).Format(tsFormat)
+		ts := util.RoundPartOfMinute(1).Format(TSFormat)
 		j := NewSpawnhostStopJob(&h, "user", ts)
 
 		j.Run(context.Background())
@@ -51,7 +51,7 @@ func TestSpawnhostStopJob(t *testing.T) {
 			Status: cloud.StatusRunning,
 		})
 
-		ts := util.RoundPartOfMinute(1).Format(tsFormat)
+		ts := util.RoundPartOfMinute(1).Format(TSFormat)
 		j := NewSpawnhostStopJob(&h, "user", ts)
 
 		j.Run(context.Background())

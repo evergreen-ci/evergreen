@@ -21,8 +21,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const tsFormat = "2006-01-02.15-04-05"
-
 type projectGetHandler struct {
 	key   string
 	limit int
@@ -385,7 +383,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// run the repotracker for the project
 	if newRevision != "" {
-		ts := util.RoundPartOfHour(1).Format(tsFormat)
+		ts := util.RoundPartOfHour(1).Format(units.TSFormat)
 		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), h.projectID)
 
 		queue := evergreen.GetEnvironment().RemoteQueue()
