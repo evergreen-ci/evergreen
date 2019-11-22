@@ -62,6 +62,8 @@ imports:
 
   - name: github.com/urfave/cli
     version: 01857ac33766ce0c93856370626f9799281c14f4
+  - name: github.com/cheynewallace/tabby
+    version: b7224f6123093cc04ce961170a360e1d22e214a5
 
   - name: github.com/kardianos/osext
     version: 6e7f843663477789fac7c02def0d0909e969b4e5
