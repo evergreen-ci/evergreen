@@ -313,7 +313,7 @@ func getGeneratedDeviceNameForVolume(ctx context.Context, isWindowsHost bool) (s
 				return false, nil
 			}
 			return true, errors.New("generated device name already exists")
-		}, 500, 0, 0)
+		}, 500, 1, 10)
 
 	return deviceName, err
 }
