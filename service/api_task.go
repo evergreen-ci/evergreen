@@ -584,6 +584,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		err = errors.Wrap(err, "error retrieving admin settings")
 		grip.Error(err)
 		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
+		return
 	}
 	if flags.TaskDispatchDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), "task dispatch is disabled, returning no task")
