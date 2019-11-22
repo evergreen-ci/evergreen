@@ -169,6 +169,10 @@ const (
 	MaxDurationPerDistroHost               = 30 * time.Minute
 	MaxDurationPerDistroHostWithContainers = 2 * time.Minute
 
+	// max expirations
+	SpawnHostExpireDays = 30
+	HostExpireDays      = 10
+
 	FinderVersionLegacy    = "legacy"
 	FinderVersionParallel  = "parallel"
 	FinderVersionPipeline  = "pipeline"

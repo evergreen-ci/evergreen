@@ -23,11 +23,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	spawnHostExpireDays = 30
-	mciHostExpireDays   = 10
-)
-
 //Valid values for EC2 instance states:
 //pending | running | shutting-down | terminated | stopping | stopped
 //see http://goo.gl/3OrCGn
@@ -159,10 +154,10 @@ func makeTags(intentHost *host.Host) []host.Tag {
 	// and if that tag is passed the reaper terminates the host. This reaping occurs to
 	// ensure that any hosts that we forget about or that fail to terminate do not stay alive
 	// forever.
-	expireOn := expireInDays(mciHostExpireDays)
+	expireOn := expireInDays(evergreen.HostExpireDays)
 	if intentHost.UserHost {
 		// If this is a spawn host, use a different expiration date.
-		expireOn = expireInDays(spawnHostExpireDays)
+		expireOn = expireInDays(evergreen.SpawnHostExpireDays)
 	}
 
 	systemTags := []host.Tag{
