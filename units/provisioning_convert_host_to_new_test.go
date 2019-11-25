@@ -44,8 +44,8 @@ func TestConvertHostToNewProvisioningJob(t *testing.T) {
 			assert.False(t, convertJob.HasErrors())
 			assert.Empty(t, mgr.Procs)
 		},
-		"NoopsIfHostIsNotProvisioning": func(ctx context.Context, t *testing.T, env *mock.Environment, mgr *jmock.Manager, h *host.Host) {
-			h.Status = evergreen.HostRunning
+		"NoopsIfHostIsNotProvisioningOrRunning": func(ctx context.Context, t *testing.T, env *mock.Environment, mgr *jmock.Manager, h *host.Host) {
+			h.Status = evergreen.HostTerminated
 			require.NoError(t, h.Insert())
 
 			j := NewConvertHostToNewProvisioningJob(env, *h, "job-id", 0)
@@ -93,10 +93,10 @@ func TestConvertHostToNewProvisioningJob(t *testing.T) {
 			}()
 
 			h := host.Host{
-				Id:                      "id",
-				Status:                  evergreen.HostProvisioning,
+				Id:               "id",
+				Status:           evergreen.HostProvisioning,
 				NeedsReprovision: host.ReprovisionToNew,
-				NeedsNewAgent:           true,
+				NeedsNewAgent:    true,
 				Distro: distro.Distro{
 					Id: "distro-id",
 					BootstrapSettings: distro.BootstrapSettings{
