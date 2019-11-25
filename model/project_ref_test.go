@@ -296,3 +296,78 @@ func TestValidatePeriodicBuildDefinition(t *testing.T) {
 		assert.NotEmpty(testCase.ID)
 	}
 }
+
+func TestProjectRefTags(t *testing.T) {
+	require.NoError(t, db.Clear(ProjectRefCollection))
+
+	mci := &ProjectRef{
+		Identifier: "mci",
+		Enabled:    true,
+		Tags:       []string{"ci", "release"},
+	}
+	evg := &ProjectRef{
+		Identifier: "evg",
+		Enabled:    true,
+		Tags:       []string{"ci", "mainline"},
+	}
+	off := &ProjectRef{
+		Identifier: "amboy",
+		Enabled:    false,
+		Tags:       []string{"queue"},
+	}
+	require.NoError(t, mci.Insert())
+	require.NoError(t, off.Insert())
+	require.NoError(t, evg.Insert())
+
+	t.Run("Find", func(t *testing.T) {
+		prjs, err := FindTaggedProjectRefs(false, "ci")
+		require.NoError(t, err)
+		assert.Len(t, prjs, 2)
+
+		prjs, err = FindTaggedProjectRefs(false, "mainline")
+		require.NoError(t, err)
+		require.Len(t, prjs, 1)
+		require.Equal(t, "evg", prjs[0].Identifier)
+	})
+	t.Run("NoResults", func(t *testing.T) {
+		prjs, err := FindTaggedProjectRefs(false, "NOT EXIST")
+		require.NoError(t, err)
+		assert.Len(t, prjs, 0)
+	})
+	t.Run("Disabled", func(t *testing.T) {
+		prjs, err := FindTaggedProjectRefs(false, "queue")
+		require.NoError(t, err)
+		assert.Len(t, prjs, 0)
+
+		prjs, err = FindTaggedProjectRefs(true, "queue")
+		require.NoError(t, err)
+		require.Len(t, prjs, 1)
+		require.Equal(t, "amboy", prjs[0].Identifier)
+	})
+	t.Run("Add", func(t *testing.T) {
+		mci.AddTags("test", "testing")
+
+		prjs, err := FindTaggedProjectRefs(false, "testing")
+		require.NoError(t, err)
+		assert.Len(t, prjs, 1)
+		require.Equal(t, "mci", prjs[0].Identifier)
+
+		prjs, err = FindTaggedProjectRefs(false, "test")
+		require.NoError(t, err)
+		assert.Len(t, prjs, 1)
+		require.Equal(t, "mci", prjs[0].Identifier)
+	})
+	t.Run("Remove", func(t *testing.T) {
+		prjs, err := FindTaggedProjectRefs(false, "release")
+		require.NoError(t, err)
+		require.Len(t, prjs, 1)
+
+		removed, err := mci.RemoveTag("release")
+		require.NoError(t, err)
+		assert.True(t, removed)
+
+		prjs, err = FindTaggedProjectRefs(false, "release")
+		require.NoError(t, err)
+		require.Len(t, prjs, 0)
+	})
+}

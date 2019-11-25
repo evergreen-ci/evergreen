@@ -20,9 +20,21 @@ const (
 )
 
 func init() {
-	if flag.Lookup("test.v") == nil {
-		grip.Alert("called init() in testutil for production code.")
-	} else if evergreen.GetEnvironment() == nil {
+	if flag.Lookup("test.v") == nil && flag.Lookup("v") == nil {
+		grip.Alert(message.Fields{
+			"op":     "called init() in testutil for production code.",
+			"test.v": flag.Lookup("test.v"),
+			"v":      flag.Lookup("v"),
+			"args":   flag.Args(),
+		})
+	} else {
+		Setup()
+	}
+
+}
+
+func Setup() {
+	if evergreen.GetEnvironment() == nil {
 		ctx := context.Background()
 
 		path := filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings)

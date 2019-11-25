@@ -35,6 +35,7 @@ func getMockProjectSettings() ProjectSettingsEvent {
 			Private:    true,
 			Identifier: projectId,
 			Admins:     []string{},
+			Tags:       []string{},
 		},
 		GitHubHooksEnabled: true,
 		Vars: ProjectVars{
