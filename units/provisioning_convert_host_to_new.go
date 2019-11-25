@@ -75,7 +75,7 @@ func (j *convertHostToNewProvisioningJob) Run(ctx context.Context) {
 		return
 	}
 
-	if j.host.NeedsReprovision != host.ReprovisionToNew || j.host.Status != evergreen.HostProvisioning {
+	if j.host.NeedsReprovision != host.ReprovisionToNew || (j.host.Status != evergreen.HostProvisioning && j.host.Status != evergreen.HostRunning) {
 		return
 	}
 

@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
@@ -137,7 +136,7 @@ func doStaticHostUpdate(d distro.Distro) ([]string, error) {
 		}
 
 		dbHost, err := host.FindOneId(h.Name)
-		if err != nil && !adb.ResultsNotFound(err) {
+		if err != nil {
 			return nil, errors.Wrapf(err, "error finding host named %s", h.Name)
 		}
 		provisionChange := needsReprovisioning(d, dbHost)
