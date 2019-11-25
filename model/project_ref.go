@@ -601,15 +601,19 @@ func (p *ProjectRef) AddTags(tags ...string) (bool, error) {
 		set[t] = struct{}{}
 	}
 	toAdd := []string{}
+	catcher := grip.NewBasicCatcher()
 	for _, t := range tags {
 		if _, ok := set[t]; ok {
 			continue
 		}
-		if strings.Contains(t, ",") {
-			continue
-		}
+		catcher.ErrorfWhen(strings.Contains(t, ","),
+			"cannot specify tags with a comma (,) [%s]", t)
 		toAdd = append(toAdd, t)
 	}
+	if catcher.HasErrors() {
+		return false, errors.Resolve()
+	}
+
 	if len(toAdd) == 0 {
 		return false, nil
 	}
