@@ -435,16 +435,16 @@ func validateEc2CreateTemplateResponse(createTemplateResponse *ec2aws.CreateLaun
 	return catcher.Resolve()
 }
 
-func validateEc2CreateFleetResponse(createFleetResponse *ec2aws.CreateFleetOutput) error {
+func ec2CreateFleetResponseContainsInstance(createFleetResponse *ec2aws.CreateFleetOutput) bool {
 	if createFleetResponse == nil {
-		return errors.New("create fleet response is nil")
+		return false
 	}
 
 	if len(createFleetResponse.Instances) == 0 || len(createFleetResponse.Instances[0].InstanceIds) == 0 {
-		return errors.New("no instance ID in create fleet response")
+		return false
 	}
 
-	return nil
+	return true
 }
 
 func validateEc2DescribeInstancesOutput(describeInstancesResponse *ec2aws.DescribeInstancesOutput) error {

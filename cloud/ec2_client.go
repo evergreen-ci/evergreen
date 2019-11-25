@@ -882,9 +882,14 @@ func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetI
 			// item describing the error, using an error type that does _not_
 			// implement awserr.Error. We therefore have to check this case in addition
 			// to the standard `err != nil` case above.
-			if len(output.Errors) > 0 {
-				grip.Error(message.WrapError(errors.New(output.Errors[0].String()), msg))
-				return true, err
+			if !ec2CreateFleetResponseContainsInstance(output) {
+				if len(output.Errors) > 0 {
+					grip.Error(message.WrapError(errors.New(output.Errors[0].String()), msg))
+					return true, errors.Errorf("Got error in CreateFleet response: %s", output.Errors[0].String())
+				}
+				grip.Error(message.WrapError(errors.New("No instance ID and no error in CreateFleet response"), msg))
+				// This condition is unexpected, so do not retry.
+				return false, errors.New("No instance ID no error in create fleet response")
 			}
 			grip.Info(msg)
 			return false, nil
