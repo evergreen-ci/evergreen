@@ -27,7 +27,14 @@ func init() {
 			"v":      flag.Lookup("v"),
 			"args":   flag.Args(),
 		})
-	} else if evergreen.GetEnvironment() == nil {
+	} else {
+		Setup()
+	}
+
+}
+
+func Setup() {
+	if evergreen.GetEnvironment() == nil {
 		ctx := context.Background()
 
 		path := filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings)
