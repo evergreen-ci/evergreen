@@ -413,9 +413,11 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	return responder
 }
 
+// verify that either the user has added a new commit queue alias, or there is a pre-existing commit queue alias
 func (h *projectIDPatchHandler) hasCommitQueuePatchDefinition(pRef *model.APIProjectRef) (bool, error) {
 	aliasesToDelete := map[string]bool{}
 	for _, alias := range pRef.Aliases {
+		// return immediately if new commit queue alias has been added
 		if model.FromAPIString(alias.Alias) == evergreen.CommitQueueAlias {
 			return true, nil
 		}

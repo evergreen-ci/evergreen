@@ -366,6 +366,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable Commit Queue without github webhooks enabled for the project"))
 			return
 		}
+		// if no new commit queue aliases, verify there are pre-existing commit queue aliases
 		if len(responseRef.CommitQueueAliases) == 0 {
 			aliases, err := model.FindAliasInProject(responseRef.Identifier, evergreen.CommitQueueAlias)
 			if err != nil {
