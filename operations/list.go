@@ -152,7 +152,7 @@ func listProjects(ctx context.Context, confPath string) error {
 	}
 
 	sort.Slice(matching, func(i, j int) bool { return matching[i].Identifier < matching[j].Identifier })
-	fmt.Println(len(ids), "projects:")
+	fmt.Println(len(matching), "projects:")
 
 	t := tabby.New()
 	t.AddHeader("Name", "Description")
