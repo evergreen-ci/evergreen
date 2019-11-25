@@ -294,12 +294,35 @@ type Terms struct {
 	}
 }
 
-// format /dev/sd[f-p][1-6] taken from https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html
-func generateDeviceNameForVolume() string {
+func getGeneratedDeviceNameForVolume(ctx context.Context, isWindowsHost bool) (string, error) {
+	deviceName := ""
+	err := util.Retry(
+		ctx,
+		func() (bool, error) {
+			deviceName = generateDeviceNameForVolume(isWindowsHost)
+			exists, err := host.HostExistsWithVolumeWithDeviceName(deviceName)
+			if err != nil {
+				return true, errors.Wrapf(err, "error checking if device name already exists")
+			}
+			if !exists {
+				return false, nil
+			}
+			return true, errors.New("generated device name already exists")
+		}, 500, 1, 10)
+
+	return deviceName, err
+}
+
+// formats /dev/sd[f-p]and xvd[f-p] taken from https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html
+func generateDeviceNameForVolume(isWindowsHost bool) string {
 	letters := "fghijklmnop"
 	rand.Seed(time.Now().Unix())
+	pattern := "/dev/sd%c"
+	if isWindowsHost {
+		pattern = "xvd%c"
+	}
 
-	return fmt.Sprintf("/dev/sd%c%d", letters[rand.Intn(len(letters))], rand.Intn(5)+1)
+	return fmt.Sprintf(pattern, letters[rand.Intn(len(letters))])
 }
 
 func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping, error) {
