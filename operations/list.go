@@ -9,21 +9,24 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/cheynewallace/tabby"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
 func List() cli.Command {
 	const (
-		projectsFlagName  = "projects"
-		variantsFlagName  = "variants"
-		tasksFlagName     = "tasks"
-		distrosFlagName   = "distros"
-		spawnableFlagName = "spawnable"
-		aliasesFlagName   = "aliases"
+		projectsFlagName    = "projects"
+		variantsFlagName    = "variants"
+		tasksFlagName       = "tasks"
+		distrosFlagName     = "distros"
+		spawnableFlagName   = "spawnable"
+		aliasesFlagName     = "aliases"
+		projectTagsFlagName = "taggedProjects"
 	)
 
 	return cli.Command{
@@ -32,27 +35,31 @@ func List() cli.Command {
 		Flags: addPathFlag(addProjectFlag(
 			cli.BoolFlag{
 				Name:  projectsFlagName,
-				Usage: "project whose variants or tasks should be listed (use with --variants/--tasks)",
+				Usage: "list all configured projects",
+			},
+			cli.BoolFlag{
+				Name:  distrosFlagName,
+				Usage: "list all available distros",
 			},
 			cli.BoolFlag{
 				Name:  variantsFlagName,
-				Usage: "path to config file whose variants or tasks should be listed (use with --variants/--tasks)",
+				Usage: "list all variants defined in the specified file",
 			},
 			cli.BoolFlag{
 				Name:  tasksFlagName,
-				Usage: "list all tasks for a project",
+				Usage: "list all tasks for the specified file",
 			},
 			cli.BoolFlag{
 				Name:  aliasesFlagName,
 				Usage: "list all patch aliases for a project",
 			},
 			cli.BoolFlag{
-				Name:  distrosFlagName,
-				Usage: "list all distros for a project",
-			},
-			cli.BoolFlag{
 				Name:  spawnableFlagName,
 				Usage: "list all spawnable distros for a project",
+			},
+			cli.StringFlag{
+				Name:  projectTagsFlagName,
+				Usage: "list all projects with this tag",
 			})...),
 		Before: requireOnlyOneBool(projectsFlagName, variantsFlagName, tasksFlagName, aliasesFlagName, distrosFlagName, spawnableFlagName),
 		Action: func(c *cli.Context) error {
@@ -75,10 +82,49 @@ func List() cli.Command {
 				return listAliases(ctx, confPath, project, filename)
 			case c.Bool(distrosFlagName), onlyUserSpawnable:
 				return listDistros(ctx, confPath, onlyUserSpawnable)
+			case c.IsSet(projectTagsFlagName):
+				return listTaggedProjects(ctx, confPath, c.String(projectTagsFlagName))
 			}
 			return errors.Errorf("this code should not be reachable")
 		},
 	}
+}
+
+func listTaggedProjects(ctx context.Context, confPath string, tag string) error {
+	conf, err := NewClientSettings(confPath)
+	if err != nil {
+		return errors.Wrap(err, "problem loading configuration")
+	}
+	client := conf.setupRestCommunicator(ctx)
+	defer client.Close()
+
+	ac, _, err := conf.getLegacyClients()
+	if err != nil {
+		return errors.Wrap(err, "problem accessing evergreen service")
+	}
+
+	projs, err := ac.ListProjects()
+	if err != nil {
+		return err
+	}
+
+	matching := []model.ProjectRef{}
+	for _, prj := range projs {
+		if prj.Enabled && util.StringSliceContains(prj.Tags, tag) {
+			matching = append(matching, prj)
+		}
+	}
+
+	sort.Slice(matching, func(i, j int) bool { return matching[i].Identifier < matching[j].Identifier })
+
+	t := tabby.New()
+	t.AddHeader("Name", "Description", "Tags")
+	for _, prj := range matching {
+		t.AddLine(prj.Identifier, prj.DisplayName, strings.Join(prj.Tags, ", "))
+	}
+	fmt.Printf("%d matching projects:\n", len(matching))
+	t.Print()
+	return nil
 }
 
 func listProjects(ctx context.Context, confPath string) error {
@@ -98,28 +144,23 @@ func listProjects(ctx context.Context, confPath string) error {
 	if err != nil {
 		return err
 	}
-	ids := make([]string, 0, len(projs))
-	names := make(map[string]string)
+	matching := []model.ProjectRef{}
 	for _, proj := range projs {
-		// Only list projects that are enabled
 		if proj.Enabled {
-			ids = append(ids, proj.Identifier)
-			names[proj.Identifier] = proj.DisplayName
+			matching = append(matching, proj)
 		}
 	}
-	sort.Strings(ids)
-	fmt.Println(len(ids), "projects:")
-	w := new(tabwriter.Writer)
-	// Format in tab-separated columns with a tab stop of 8.
-	w.Init(os.Stdout, 0, 8, 0, '\t', 0)
-	for _, id := range ids {
-		line := fmt.Sprintf("\t%v\t", id)
-		if len(names[id]) > 0 && names[id] != id {
-			line = line + fmt.Sprintf("%v", names[id])
-		}
-		fmt.Fprintln(w, line)
+
+	sort.Slice(matching, func(i, j int) bool { return matching[i].Identifier < matching[j].Identifier })
+	fmt.Println(len(matching), "projects:")
+
+	t := tabby.New()
+	t.AddHeader("Name", "Description")
+	for _, prj := range matching {
+		t.AddLine(prj.Identifier, prj.DisplayName)
 	}
-	return errors.WithStack(w.Flush())
+	t.Print()
+	return nil
 }
 
 func listVariants(ctx context.Context, confPath, project, filename string) error {

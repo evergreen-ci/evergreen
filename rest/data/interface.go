@@ -79,7 +79,7 @@ type Connector interface {
 
 	// Find project variables matching given projectId.
 	FindProjectVarsById(string) (*restModel.APIProjectVars, error)
-	// UpdateProjectVars updates the project using the variables given in the model.
+	// UpdateProjectVars updates the project using the variables given in the model.ggg
 	// If successful, updates the given projectVars with the updated projectVars.
 	UpdateProjectVars(string, *restModel.APIProjectVars) error
 	// CopyProjectVars copies the variables for the first project to the second
@@ -104,6 +104,10 @@ type Connector interface {
 	// FindProjectByBranch is a method to find the projectref given a branch name.
 	FindProjectByBranch(string) (*model.ProjectRef, error)
 	GetProjectWithCommitQueueByOwnerRepoAndBranch(string, string, string) (*model.ProjectRef, error)
+
+	FindProjectsByTag(string) ([]restModel.APIProjectRef, error)
+	AddTagsToProject(string, ...string) error
+	RemoveTagFromProject(string, string) error
 
 	// GetVersionsAndVariants returns recent versions for a project
 	GetVersionsAndVariants(int, int, *model.Project) (*restModel.VersionVariantData, error)
