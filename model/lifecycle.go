@@ -1200,7 +1200,7 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch).
 func AddNewBuilds(ctx context.Context, activated bool, v *Version, p *Project, tasks TaskVariantPairs, generatedBy string) error {
-	taskIds := NewPatchTaskIdTable(p, v, tasks)
+	taskIds := NewTaskIdTable(p, v, "", "")
 
 	newBuildIds := make([]string, 0)
 	newBuildStatuses := make([]VersionBuildStatus, 0)
