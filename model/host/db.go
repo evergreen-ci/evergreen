@@ -1108,9 +1108,17 @@ type ClientOptions struct {
 	Secret   string `bson:"secret"`
 }
 
-const awsRegionKey = "region"
-const awsKeyKey = "aws_access_key_id"
-const awsSecretKey = "aws_secret_access_key"
+type EC2ProviderSettings struct {
+	Region string `bson:"region"`
+	Key    string `bson:"aws_access_key_id"`
+	Secret string `bson:"aws_secret_access_key"`
+}
+
+var (
+	awsRegionKey = bsonutil.MustHaveTag(EC2ProviderSettings{}, "Region")
+	awsKeyKey    = bsonutil.MustHaveTag(EC2ProviderSettings{}, "Key")
+	awsSecretKey = bsonutil.MustHaveTag(EC2ProviderSettings{}, "Secret")
+)
 
 func StartingHostsByClient() (map[ClientOptions][]Host, error) {
 	results := []struct {
