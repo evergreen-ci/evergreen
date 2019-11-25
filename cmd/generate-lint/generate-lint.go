@@ -143,14 +143,11 @@ func generateTasks() (*shrub.Configuration, error) {
 		}
 	}
 
+	conf := &shrub.Configuration{}
 	if len(targets) == 0 {
-		targets, err = getAllTargets()
-		if err != nil {
-			return nil, err
-		}
+		return conf
 	}
 
-	conf := &shrub.Configuration{}
 	lintTargets := []string{}
 	for _, t := range targets {
 		name := makeTarget(t)
