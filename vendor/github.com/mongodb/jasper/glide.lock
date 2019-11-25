@@ -8,7 +8,7 @@ imports:
   - name: github.com/stretchr/testify
     version: 890a5c3458b43e6104ff5da8dfa139d013d77544
   - name: github.com/mongodb/grip
-    version: b1dabf523db900adb1bce209a0df2a459eae1f7f
+    version: e78519fadff49ae1fd719a10d124755089615238
   - name: github.com/evergreen-ci/gimlet
     version: 8a317d725d0315a97c5d0c08ec04921f3ba498d5
   - name: github.com/tychoish/bond
@@ -26,19 +26,23 @@ imports:
   - name: github.com/urfave/cli
     version: 693af58b4d51b8fcc7f9d89576da170765980581
   - name: github.com/evergreen-ci/service
-    version: 82d35dc013454d62290efe84c5df82378f4a68ec
+    version: c7818d4e48fd67e86fc501d90262049a377c8d5b
   - name: github.com/cheynewallace/tabby
     version: b7224f6123093cc04ce961170a360e1d22e214a5
   - name: github.com/evergreen-ci/aviation
-    version: b5b1a9f93a1d0bd95769b3106971aaeca615a7b2
+    version: d74791c0d819b6f7908cced0dd37e6ab3fb9eeae
   - name: github.com/evergreen-ci/certdepot
     version: d2c7b2f7c9c7af6311d211fe7fb127d99bdc5d43
+  - name: github.com/evergreen-ci/mrpc
+    version: 5dd01196f47328d6833ddc0247690dc986525475
+  - name: github.com/evergreen-ci/birch
+    version: 5b054047680765b089c1e6f77d0896803d1fd73d
   - name: github.com/mongodb/ftdc
-    version: 8e1b763add73034cb803b88f1fdd17438e2b7891
-  - name: github.com/tychoish/mongorpc
-    version: 3c204a3ee0bd5ba72fdcd8ab0baa779adf879951
+    version: 7e505d9a86240264dd35b1d900c2e88ce74f6066
   - name: github.com/evergreen-ci/timber
-    version: d8ccb7cbe151e1466a7be084342653363a1be500
+    version: 1cdd00ad2f2eaf6fb1cb9dedacaddbc3b0e03149
+  - name: github.com/evergreen-ci/poplar
+    version: a77cf69fb19eb0d3235d73eb0e5428002936827e
 
   # cgroup requirements
   - name: github.com/containerd/cgroups
@@ -57,10 +61,12 @@ imports:
   # grpc and dependencies
   - name: google.golang.org/grpc
     version: 2773c7bbcf81cf358d3f0038b1469b2d44062acb
+  - name: golang.org/x/crypto
+    version: 87dc89f01550277dc22b74ffcf4cd89fa2f40f4c
   - name: golang.org/x/net
     version: 3a22650c66bd7f4fb6d1e8072ffd7b75c8a27898
   - name: golang.org/x/sys
-    version: a9d3bda3a223baa6bba6ef412cb273f0fd163c05
+    version: bd437916bb0eb726b873ee8e9b2dcf212d32e2fd
   - name: golang.org/x/text
     version: 6c92c7dc7f53607809182301b96e4cc1975143f1
   - name: google.golang.org/genproto
@@ -68,6 +74,8 @@ imports:
   - name: github.com/golang/protobuf
     version: c823c79ea1570fb5ff454033735a8e68575d1d0f
 
-  # vendoring mongo-go-driver because many dependencies use it
+  # vendoring mongo-go-driver and mgo.v2 because many dependencies use it
   - name: go.mongodb.org/mongo-driver
     version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86
+  - name: gopkg.in/mgo.v2
+    version: a6b53ec6cb22a3699387a57a161566f9402ee85b

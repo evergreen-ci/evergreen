@@ -8,15 +8,7 @@ import (
 )
 
 func TestMockInterfaces(t *testing.T) {
-	manager := &Manager{}
-	_, ok := interface{}(manager).(jasper.Manager)
-	assert.True(t, ok)
-
-	process := &Process{}
-	_, ok = interface{}(process).(jasper.Process)
-	assert.True(t, ok)
-
-	remoteClient := &RemoteClient{}
-	_, ok = interface{}(remoteClient).(jasper.RemoteClient)
-	assert.True(t, ok)
+	assert.Implements(t, (*jasper.Manager)(nil), &Manager{})
+	assert.Implements(t, (*jasper.Process)(nil), &Process{})
+	assert.Implements(t, (*jasper.RemoteClient)(nil), &RemoteClient{})
 }

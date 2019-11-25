@@ -24,10 +24,6 @@ func NewSSHClient(remoteOpts options.Remote, clientOpts ClientOptions, trackProc
 	if err := remoteOpts.Validate(); err != nil {
 		return nil, errors.Wrap(err, "problem validating remote options")
 	}
-	// We have to suppress logs from SSH, because it will prevent the JSON
-	// output from the Jasper CLI from being parsed correctly (e.g. adding a
-	// host to the known hosts file generates a warning).
-	remoteOpts.Args = append([]string{"-o", "LogLevel=QUIET"}, remoteOpts.Args...)
 
 	if err := clientOpts.Validate(); err != nil {
 		return nil, errors.Wrap(err, "problem validating client options")
@@ -91,6 +87,14 @@ func (c *sshClient) CreateCommand(ctx context.Context) *jasper.Command {
 
 		return nil
 	})
+}
+
+func (c *sshClient) CreateScripting(ctx context.Context, opts options.ScriptingEnvironment) (jasper.ScriptingEnvironment, error) {
+	return nil, errors.New("scripting environment is not supported")
+}
+
+func (c *sshClient) GetScripting(ctx context.Context, id string) (jasper.ScriptingEnvironment, error) {
+	return nil, errors.New("scripting environment is not supported")
 }
 
 func (c *sshClient) Register(ctx context.Context, proc jasper.Process) error {
@@ -187,8 +191,8 @@ func (c *sshClient) ConfigureCache(ctx context.Context, opts options.Cache) erro
 	return nil
 }
 
-func (c *sshClient) DownloadFile(ctx context.Context, info options.Download) error {
-	output, err := c.runRemoteCommand(ctx, DownloadFileCommand, &info)
+func (c *sshClient) DownloadFile(ctx context.Context, opts options.Download) error {
+	output, err := c.runRemoteCommand(ctx, DownloadFileCommand, &opts)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -200,9 +204,9 @@ func (c *sshClient) DownloadFile(ctx context.Context, info options.Download) err
 	return nil
 }
 
-func (c *sshClient) WriteFile(ctx context.Context, info options.WriteFile) error {
-	sendInfo := func(info options.WriteFile) error {
-		output, err := c.runRemoteCommand(ctx, WriteFileCommand, &info)
+func (c *sshClient) WriteFile(ctx context.Context, opts options.WriteFile) error {
+	return opts.WriteBufferedContent(func(opts options.WriteFile) error {
+		output, err := c.runRemoteCommand(ctx, WriteFileCommand, &opts)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -212,8 +216,7 @@ func (c *sshClient) WriteFile(ctx context.Context, info options.WriteFile) error
 		}
 
 		return nil
-	}
-	return info.WriteBufferedContent(sendInfo)
+	})
 }
 
 func (c *sshClient) DownloadMongoDB(ctx context.Context, opts options.MongoDBDownload) error {
@@ -299,7 +302,7 @@ func (c *sshClient) runClientCommand(ctx context.Context, subcommand []string, s
 // newCommand creates the command that runs the Jasper CLI client command
 // over SSH.
 func (c *sshClient) newCommand(ctx context.Context, clientSubcommand []string, input []byte, output io.WriteCloser) *jasper.Command {
-	cmd := c.manager.CreateCommand(ctx).Host(c.opts.Machine.Host).User(c.opts.Machine.User).ExtendRemoteArgs(c.opts.Machine.Args...).
+	cmd := c.manager.CreateCommand(ctx).SetRemoteOptions(&c.opts.Machine).
 		Add(c.opts.buildCommand(clientSubcommand...))
 
 	if len(input) != 0 {

@@ -126,6 +126,7 @@ type Config struct {
 	// The following fields are not supported on Windows.
 	WorkingDirectory string // Initial working directory.
 	ChRoot           string
+	Environment      map[string]string
 
 	// System specific options.
 	//  * OS X
@@ -145,6 +146,10 @@ type Config struct {
 	//    - Restart       string (always)           - How shall service be restarted.
 	//    - SuccessExitStatus string ()             - The list of exit status that shall be considered as successful,
 	//                                                in addition to the default ones.
+	//    - LimitNumFiles string ()					- Set the maximum number of open file descriptors.
+	//    - LimitNumProcs string ()					- Set the maximum number of processes.
+	//    - LimitLockedMemory string ()             - Set the maximum size that may be locked into memory.
+	//    - LimitVirtualMemory string ()            - Set the maximum amount of virtual memory available to the shell and, on some systems, to its children.
 	Option KeyValue
 }
 

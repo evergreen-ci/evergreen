@@ -273,6 +273,12 @@ var launchdConfig = `<?xml version='1.0' encoding='UTF-8'?>
 {{if .UserName}}<key>UserName</key><string>{{html .UserName}}</string>{{end}}
 {{if .ChRoot}}<key>RootDirectory</key><string>{{html .ChRoot}}</string>{{end}}
 {{if .WorkingDirectory}}<key>WorkingDirectory</key><string>{{html .WorkingDirectory}}</string>{{end}}
+{{if .Environment}}<key>EnvironmentVariables</key>
+<dict>
+{{range $name, $value := .Environment}}<key>{{$name}}</key>
+<string>{{$value}}</string>
+{{end}}</dict>
+{{end}}
 <key>SessionCreate</key><{{bool .SessionCreate}}/>
 <key>KeepAlive</key><{{bool .KeepAlive}}/>
 <key>RunAtLoad</key><{{bool .RunAtLoad}}/>

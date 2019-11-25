@@ -70,7 +70,6 @@ func main() {
 	packages = strings.Split(strings.Replace(packageList, "-", "/", -1), " ")
 	dirname, _ := os.Getwd()
 	cwd := filepath.Base(dirname)
-	gopath, _ = filepath.Abs(gopath)
 	lintArgs += fmt.Sprintf(" --concurrency=%d", runtime.NumCPU()/2)
 
 	for _, pkg := range packages {

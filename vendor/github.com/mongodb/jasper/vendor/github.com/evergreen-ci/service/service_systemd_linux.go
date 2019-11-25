@@ -271,6 +271,7 @@ StandardError=file:/var/log/{{.Name}}.err
 {{if .Restart}}Restart={{.Restart}}{{end}}
 {{if .SuccessExitStatus}}SuccessExitStatus={{.SuccessExitStatus}}{{end}}
 RestartSec=120
+{{if ne (len .Environment) 0}}Environment={{range $name, $value := .Environment}}{{$name}}={{$value}} {{end}}{{end}}
 EnvironmentFile=-/etc/sysconfig/{{.Name}}
 
 [Install]

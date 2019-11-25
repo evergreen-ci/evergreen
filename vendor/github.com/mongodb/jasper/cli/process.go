@@ -101,7 +101,9 @@ func processComplete() cli.Command {
 
 func processSignal() cli.Command {
 	return cli.Command{
-		Name: SignalCommand,
+		Name:   SignalCommand,
+		Flags:  clientFlags(),
+		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
 			input := &SignalInput{}
 			return doPassthroughInputOutput(c, input, func(ctx context.Context, client jasper.RemoteClient) interface{} {
@@ -139,7 +141,9 @@ func processWait() cli.Command {
 
 func processRespawn() cli.Command {
 	return cli.Command{
-		Name: RespawnCommand,
+		Name:   RespawnCommand,
+		Flags:  clientFlags(),
+		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
 			input := &IDInput{}
 			return doPassthroughInputOutput(c, input, func(ctx context.Context, client jasper.RemoteClient) interface{} {

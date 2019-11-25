@@ -182,7 +182,7 @@ func TestMongod(t *testing.T) {
 						}
 					}
 
-					// Check that the processes have all noted an unsucessful run
+					// Check that the processes have all noted an unsuccessful run
 					for _, proc := range procs {
 						if test.expectError {
 							assert.False(t, proc.Info(ctx).Successful)

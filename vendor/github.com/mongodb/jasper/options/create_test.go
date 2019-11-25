@@ -140,9 +140,9 @@ func TestCreate(t *testing.T) {
 		"WorkingDirectoryUnresolveableShouldNotError": func(t *testing.T, opts *Create) {
 			cmd, _, err := opts.Resolve(ctx)
 			require.NoError(t, err)
-			assert.NotNil(t, cmd)
-			assert.NotZero(t, cmd.Dir)
-			assert.Equal(t, opts.WorkingDirectory, cmd.Dir)
+			require.NotNil(t, cmd)
+			assert.NotZero(t, cmd.Dir())
+			assert.Equal(t, opts.WorkingDirectory, cmd.Dir())
 		},
 		"ResolveFailsIfOptionsAreFatal": func(t *testing.T, opts *Create) {
 			opts.Args = []string{}
@@ -153,13 +153,13 @@ func TestCreate(t *testing.T) {
 		"WithoutOverrideEnvironmentEnvIsPopulated": func(t *testing.T, opts *Create) {
 			cmd, _, err := opts.Resolve(ctx)
 			assert.NoError(t, err)
-			assert.NotZero(t, cmd.Env)
+			assert.NotEmpty(t, cmd.Env())
 		},
 		"WithOverrideEnvironmentEnvIsEmpty": func(t *testing.T, opts *Create) {
 			opts.OverrideEnviron = true
 			cmd, _, err := opts.Resolve(ctx)
 			assert.NoError(t, err)
-			assert.Zero(t, cmd.Env)
+			assert.Empty(t, cmd.Env())
 		},
 		"EnvironmentVariablesArePropagated": func(t *testing.T, opts *Create) {
 			opts.Environment = map[string]string{
@@ -168,22 +168,22 @@ func TestCreate(t *testing.T) {
 
 			cmd, _, err := opts.Resolve(ctx)
 			assert.NoError(t, err)
-			assert.Contains(t, cmd.Env, "foo=bar")
-			assert.NotContains(t, cmd.Env, "bar=foo")
+			assert.Contains(t, cmd.Env(), "foo=bar")
+			assert.NotContains(t, cmd.Env(), "bar=foo")
 		},
 		"MultipleArgsArePropagated": func(t *testing.T, opts *Create) {
 			opts.Args = append(opts.Args, "-lha")
 			cmd, _, err := opts.Resolve(ctx)
 			assert.NoError(t, err)
-			assert.Contains(t, cmd.Path, "ls")
-			assert.Len(t, cmd.Args, 2)
+			require.Len(t, cmd.Args(), 2)
+			assert.Contains(t, cmd.Args()[0], "ls")
+			assert.Equal(t, cmd.Args()[1], "-lha")
 		},
 		"WithOnlyCommandsArgsHasOneVal": func(t *testing.T, opts *Create) {
 			cmd, _, err := opts.Resolve(ctx)
 			assert.NoError(t, err)
-			assert.Contains(t, cmd.Path, "ls")
-			assert.Len(t, cmd.Args, 1)
-			assert.Equal(t, "ls", cmd.Args[0])
+			require.Len(t, cmd.Args(), 1)
+			assert.Equal(t, "ls", cmd.Args()[0])
 		},
 		"WithTimeout": func(t *testing.T, opts *Create) {
 			opts.Timeout = time.Second
@@ -192,7 +192,8 @@ func TestCreate(t *testing.T) {
 			cmd, deadline, err := opts.Resolve(ctx)
 			require.NoError(t, err)
 			assert.True(t, time.Now().Before(deadline))
-			assert.Error(t, cmd.Run())
+			assert.NoError(t, cmd.Start())
+			assert.Error(t, cmd.Wait())
 			assert.True(t, time.Now().After(deadline))
 		},
 		"ReturnedContextWrapsResolveContext": func(t *testing.T, opts *Create) {
@@ -203,7 +204,8 @@ func TestCreate(t *testing.T) {
 
 			cmd, deadline, err := opts.Resolve(ctx)
 			require.NoError(t, err)
-			assert.Error(t, cmd.Run())
+			assert.NoError(t, cmd.Start())
+			assert.Error(t, cmd.Wait())
 			assert.Equal(t, context.DeadlineExceeded, tctx.Err())
 			assert.True(t, time.Now().After(deadline))
 		},
@@ -216,7 +218,8 @@ func TestCreate(t *testing.T) {
 			start := time.Now()
 			cmd, deadline, err := opts.Resolve(ctx)
 			require.NoError(t, err)
-			assert.Error(t, cmd.Run())
+			assert.NoError(t, cmd.Start())
+			assert.Error(t, cmd.Wait())
 			elapsed := time.Since(start)
 			assert.True(t, elapsed > opts.Timeout)
 			assert.NoError(t, tctx.Err())
@@ -253,13 +256,13 @@ func TestCreate(t *testing.T) {
 			assert.Equal(t, 1, opts.TimeoutSecs)
 		},
 		"ResolveFailsWithInvalidLoggingConfiguration": func(t *testing.T, opts *Create) {
-			opts.Output.Loggers = []Logger{Logger{Type: LogSumologic, Options: Log{Format: LogFormatPlain}}}
+			opts.Output.Loggers = []Logger{{Type: LogSumologic, Options: Log{Format: LogFormatPlain}}}
 			cmd, _, err := opts.Resolve(ctx)
 			assert.Error(t, err)
 			assert.Nil(t, cmd)
 		},
 		"ResolveFailsWithInvalidErrorLoggingConfiguration": func(t *testing.T, opts *Create) {
-			opts.Output.Loggers = []Logger{Logger{Type: LogSumologic, Options: Log{Format: LogFormatPlain}}}
+			opts.Output.Loggers = []Logger{{Type: LogSumologic, Options: Log{Format: LogFormatPlain}}}
 			opts.Output.SuppressOutput = true
 			cmd, _, err := opts.Resolve(ctx)
 			assert.Error(t, err)
@@ -300,95 +303,78 @@ func TestFileLogging(t *testing.T) {
 	require.NoError(t, err)
 	require.NotZero(t, numBytes)
 
-	type Command struct {
-		args         []string
-		usesGoodFile bool
-		usesBadFile  bool
-	}
-	commands := map[string]Command{
-		"Output": Command{
-			args:         []string{"cat", goodFileName},
-			usesGoodFile: true,
-			usesBadFile:  false,
-		},
-		"Error": Command{
-			args:         []string{"cat", badFileName},
-			usesGoodFile: false,
-			usesBadFile:  true,
-		},
-		"OutputAndError": Command{
-			args:         []string{"cat", goodFileName, badFileName},
-			usesGoodFile: true,
-			usesBadFile:  true,
-		},
+	args := map[string][]string{
+		"Output":         {"cat", goodFileName},
+		"Error":          {"cat", badFileName},
+		"OutputAndError": {"cat", goodFileName, badFileName},
 	}
 
 	for _, testParams := range []struct {
 		id               string
-		command          Command
+		command          []string
 		numBytesExpected int64
 		numLogs          int
 		outOpts          Output
 	}{
 		{
 			id:               "LoggerWritesOutputToOneFileEndpoint",
-			command:          commands["Output"],
+			command:          args["Output"],
 			numBytesExpected: outputSize,
 			numLogs:          1,
 			outOpts:          Output{SuppressOutput: false, SuppressError: false},
 		},
 		{
 			id:               "LoggerWritesOutputToMultipleFileEndpoints",
-			command:          commands["Output"],
+			command:          args["Output"],
 			numBytesExpected: outputSize,
 			numLogs:          2,
 			outOpts:          Output{SuppressOutput: false, SuppressError: false},
 		},
 		{
 			id:               "LoggerWritesErrorToFileEndpoint",
-			command:          commands["Error"],
+			command:          args["Error"],
 			numBytesExpected: errorSize,
 			numLogs:          1,
 			outOpts:          Output{SuppressOutput: true, SuppressError: false},
 		},
 		{
 			id:               "LoggerReadsFromBothStandardOutputAndStandardError",
-			command:          commands["OutputAndError"],
+			command:          args["OutputAndError"],
 			numBytesExpected: outputSize + errorSize,
 			numLogs:          1,
 			outOpts:          Output{SuppressOutput: false, SuppressError: false},
 		},
 		{
 			id:               "LoggerIgnoresOutputWhenSuppressed",
-			command:          commands["Output"],
+			command:          args["Output"],
 			numBytesExpected: 0,
 			numLogs:          1,
 			outOpts:          Output{SuppressOutput: true, SuppressError: false},
 		},
 		{
 			id:               "LoggerIgnoresErrorWhenSuppressed",
-			command:          commands["Error"],
+			command:          args["Error"],
 			numBytesExpected: 0,
 			numLogs:          1,
 			outOpts:          Output{SuppressOutput: false, SuppressError: true},
 		},
 		{
 			id:               "LoggerIgnoresOutputAndErrorWhenSuppressed",
-			command:          commands["OutputAndError"],
+			command:          args["OutputAndError"],
 			numBytesExpected: 0,
 			numLogs:          1,
 			outOpts:          Output{SuppressOutput: true, SuppressError: true},
 		},
 		{
 			id:               "LoggerReadsFromRedirectedOutput",
-			command:          commands["Output"],
+			command:          args["Output"],
 			numBytesExpected: outputSize,
 			numLogs:          1,
 			outOpts:          Output{SuppressOutput: false, SuppressError: false, SendOutputToError: true},
 		},
 		{
 			id:               "LoggerReadsFromRedirectedError",
-			command:          commands["Error"],
+			command:          args["Error"],
 			numBytesExpected: errorSize,
 			numLogs:          1,
 			outOpts:          Output{SuppressOutput: false, SuppressError: false, SendErrorToOutput: true},
@@ -421,7 +407,7 @@ func TestFileLogging(t *testing.T) {
 				}
 				opts.Output.Loggers = append(opts.Output.Loggers, logger)
 			}
-			opts.Args = testParams.command.args
+			opts.Args = testParams.command
 
 			cmd, _, err := opts.Resolve(ctx)
 			require.NoError(t, err)

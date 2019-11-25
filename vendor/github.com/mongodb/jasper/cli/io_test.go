@@ -17,14 +17,14 @@ func TestExtractResponse(t *testing.T) {
 		n1     = 1
 	)
 	for outcomeName, outcome := range map[string]OutcomeResponse{
-		"Success": OutcomeResponse{
+		"Success": {
 			Success: true,
 		},
-		"Unsuccessful": OutcomeResponse{
+		"Unsuccessful": {
 			Success: false,
 			Message: errMsg,
 		},
-		"UnsuccessfulDefaultError": OutcomeResponse{
+		"UnsuccessfulDefaultError": {
 			Success: false,
 		},
 	} {

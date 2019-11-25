@@ -23,7 +23,26 @@ type selfClearingProcessManager struct {
 // synchronized process manager for multithreaded use.
 // TODO: MAKE-803: allow synchronized process manager to wrap other managers.
 func NewSelfClearingProcessManager(maxProcs int, trackProcs bool) (Manager, error) {
-	pm, err := newBasicProcessManager(map[string]Process{}, false, trackProcs)
+	pm, err := newBasicProcessManager(map[string]Process{}, false, trackProcs, false)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	bpm, ok := pm.(*basicProcessManager)
+	if !ok {
+		return nil, errors.New("process manager construction error")
+	}
+
+	return &selfClearingProcessManager{
+		basicProcessManager: bpm,
+		maxProcs:            maxProcs,
+	}, nil
+}
+
+// NewSSHLibrarySelfClearingProcessManager is the same as
+// NewSelfClearingProcessManager but uses the SSH library instead of the SSH
+// binary for remote processes.
+func NewSSHLibrarySelfClearingProcessManager(maxProcs int, trackProcs bool) (Manager, error) {
+	pm, err := newBasicProcessManager(map[string]Process{}, false, trackProcs, true)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -44,9 +63,8 @@ func NewSelfClearingProcessManager(maxProcs int, trackProcs bool) (Manager, erro
 //
 // The self clearing process manager is not thread safe. Wrap with the
 // synchronized process manager for multithreaded use.
-// TODO: MAKE-803: allow synchronized process manager to wrap other managers.
 func NewSelfClearingProcessManagerBlockingProcesses(maxProcs int, trackProcs bool) (Manager, error) {
-	pm, err := newBasicProcessManager(map[string]Process{}, true, trackProcs)
+	pm, err := newBasicProcessManager(map[string]Process{}, true, trackProcs, false)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

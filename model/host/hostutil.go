@@ -749,9 +749,11 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jas
 			}
 
 			remoteOpts := options.Remote{
-				Host: hostInfo.Hostname,
-				User: hostInfo.User,
-				Args: sshOpts,
+				RemoteConfig: options.RemoteConfig{
+					Host: hostInfo.Hostname,
+					User: hostInfo.User,
+					Args: sshOpts,
+				},
 			}
 			clientOpts := jcli.ClientOptions{
 				BinaryPath:          h.JasperBinaryFilePath(settings.HostJasper),
