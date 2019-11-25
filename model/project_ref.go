@@ -611,7 +611,7 @@ func (p *ProjectRef) AddTags(tags ...string) (bool, error) {
 		toAdd = append(toAdd, t)
 	}
 	if catcher.HasErrors() {
-		return false, errors.Resolve()
+		return false, cacher.Resolve()
 	}
 
 	if len(toAdd) == 0 {
