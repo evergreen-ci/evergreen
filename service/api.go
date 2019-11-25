@@ -168,6 +168,16 @@ func (as *APIServer) checkHost(next http.HandlerFunc) http.HandlerFunc {
 		if err := h.UpdateLastCommunicated(); err != nil {
 			grip.Warningf("Could not update host last communication time for %s: %+v", h.Id, err)
 		}
+		// Since the host has contacted the app server, we should prevent the
+		// app server from attempting to deploy agents or agent monitors.
+		// Deciding whether or not we should redeploy agents or agent monitors
+		// is handled within the REST route handler.
+		if h.NeedsNewAgent {
+			grip.Warning(message.WrapError(h.SetNeedsNewAgent(false), "problem clearing host needs new agent"))
+		}
+		if h.NeedsNewAgentMonitor {
+			grip.Warning(message.WrapError(h.SetNeedsNewAgentMonitor(false), "problem clearing host needs new agent monitor"))
+		}
 		r = setAPIHostContext(r, h)
 		next(w, r)
 	}

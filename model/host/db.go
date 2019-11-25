@@ -183,7 +183,7 @@ func IdleEphemeralGroupedByDistroID() ([]IdleHostsByDistroID, error) {
 		},
 		{
 			"$group": mgobson.M{
-				"_id":                             "$" + bsonutil.GetDottedKeyName(DistroKey, distro.IdKey),
+				"_id": "$" + bsonutil.GetDottedKeyName(DistroKey, distro.IdKey),
 				HostsByDistroRunningHostsCountKey: mgobson.M{"$sum": 1},
 				HostsByDistroIdleHostsKey:         mgobson.M{"$push": bson.M{"$cond": []interface{}{mgobson.M{"$eq": []interface{}{"$running_task", mgobson.Undefined}}, "$$ROOT", mgobson.Undefined}}},
 			},
@@ -713,13 +713,19 @@ func NeedsAgentDeploy(currentTime time.Time) bson.M {
 	cutoffTime := currentTime.Add(-MaxLCTInterval)
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	return bson.M{
-		StatusKey:        bson.M{"$in": []string{evergreen.HostRunning, evergreen.HostProvisioning}},
 		StartedByKey:     evergreen.User,
 		HasContainersKey: bson.M{"$ne": true},
 		ParentIDKey:      bson.M{"$exists": false},
 		RunningTaskKey:   bson.M{"$exists": false},
 		"$and": []bson.M{
-			bson.M{"$or": []bson.M{
+			{"$or": []bson.M{
+				{StatusKey: evergreen.HostRunning},
+				{"$and": []bson.M{
+					{StatusKey: evergreen.HostProvisioning},
+					{NeedsReprovisionKey: bson.M{"$exists": true, "$ne": ""}},
+				}},
+			}},
+			{"$or": []bson.M{
 				{LastCommunicationTimeKey: util.ZeroTime},
 				{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
 				{LastCommunicationTimeKey: bson.M{"$exists": false}},
@@ -739,15 +745,23 @@ func NeedsAgentMonitorDeploy(currentTime time.Time) bson.M {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	cutoffTime := currentTime.Add(-MaxLCTInterval)
 	return bson.M{
-		StatusKey:        bson.M{"$in": []string{evergreen.HostRunning, evergreen.HostProvisioning}},
 		StartedByKey:     evergreen.User,
 		HasContainersKey: bson.M{"$ne": true},
 		ParentIDKey:      bson.M{"$exists": false},
 		RunningTaskKey:   bson.M{"$exists": false},
-		"$or": []bson.M{
-			{LastCommunicationTimeKey: util.ZeroTime},
-			{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
-			{LastCommunicationTimeKey: bson.M{"$exists": false}},
+		"$and": []bson.M{
+			{"$or": []bson.M{
+				{StatusKey: evergreen.HostRunning},
+				{"$and": []bson.M{
+					{StatusKey: evergreen.HostProvisioning},
+					{NeedsReprovisionKey: bson.M{"$exists": true, "$ne": ""}},
+				}},
+			}},
+			{"$or": []bson.M{
+				{LastCommunicationTimeKey: util.ZeroTime},
+				{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
+				{LastCommunicationTimeKey: bson.M{"$exists": false}},
+			}},
 		},
 		bootstrapKey: bson.M{"$in": []string{
 			distro.BootstrapMethodSSH,
