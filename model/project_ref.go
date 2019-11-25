@@ -239,7 +239,9 @@ func FindTaggedProjectRefs(includeDisabled bool, tags ...string) ([]ProjectRef, 
 
 	if adb.ResultsNotFound(err) {
 		return nil, nil
-	} else if err != nil {
+	}
+
+	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
