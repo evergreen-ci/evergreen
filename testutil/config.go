@@ -20,8 +20,6 @@ const (
 )
 
 func init() {
-	testing.Init()
-
 	if flag.Lookup("test.v") == nil && flag.Lookup("v") == nil {
 		grip.Alert(message.Fields{
 			"op":     "called init() in testutil for production code.",
