@@ -145,7 +145,7 @@ func generateTasks() (*shrub.Configuration, error) {
 
 	conf := &shrub.Configuration{}
 	if len(targets) == 0 {
-		return conf
+		return conf, nil
 	}
 
 	lintTargets := []string{}
