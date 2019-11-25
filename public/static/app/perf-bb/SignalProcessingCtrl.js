@@ -1,7 +1,7 @@
 mciModule.controller('SignalProcessingCtrl', function(
   $log, $scope, $timeout, $window, ChangePointsService, CHANGE_POINTS_GRID,
   EvgUiGridUtil, EvgUtil, FORMAT, MDBQueryAdaptor, PROCESSED_TYPE,
-  Settings, STITCH_CONFIG, Stitch, uiGridConstants,
+  Settings, STITCH_CONFIG, Stitch, uiGridConstants, ModeToItemVisibilityMap
 ) {
   const vm = this;
   // Ui grid col accessor
@@ -61,13 +61,8 @@ mciModule.controller('SignalProcessingCtrl', function(
     processed: STITCH_CONFIG.PERF.COLL_PROCESSED_POINTS,
   };
 
-  const modeToItemVisibilityMap = {
-    unprocessed: function(item) { return item.processed_type !== PROCESSED_TYPE.HIDDEN },
-    processed: function(item) { return item.processed_type !== PROCESSED_TYPE.NONE },
-  };
-
   function refreshGridData(gridOptions) {
-    gridOptions.data = _.filter(gridOptions.data, modeToItemVisibilityMap[state.mode]);
+    gridOptions.data = _.filter(gridOptions.data, ModeToItemVisibilityMap[state.mode]);
     vm.gridApi.selection.clearSelectedRows();
     handleRowSelectionChange(vm.gridApi);
   }
@@ -456,4 +451,11 @@ mciModule.controller('SignalProcessingCtrl', function(
       },
     ]
   };
+}).factory('ModeToItemVisibilityMap', function (PROCESSED_TYPE) {
+  const ModeToItemVisibilityMap = {
+    unprocessed: (item) => item.processed_type !== PROCESSED_TYPE.HIDDEN && item.processed_type !== PROCESSED_TYPE.ACKNOWLEDGED,
+    processed: (item) => item.processed_type !== PROCESSED_TYPE.NONE,
+  };
+
+  return ModeToItemVisibilityMap;
 });

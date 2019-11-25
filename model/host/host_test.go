@@ -892,7 +892,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 
 		Convey("with a host with a last communication time > 10 mins", func() {
 			anotherHost := Host{
-				Id:                    "anotherID",
+				Id: "anotherID",
 				LastCommunicationTime: now.Add(-time.Duration(20) * time.Minute),
 				Status:                evergreen.HostRunning,
 				StartedBy:             evergreen.User,
@@ -906,7 +906,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 
 		Convey("with a host with a normal LCT", func() {
 			anotherHost := Host{
-				Id:                    "testhost",
+				Id: "testhost",
 				LastCommunicationTime: now.Add(time.Duration(5) * time.Minute),
 				Status:                evergreen.HostRunning,
 				StartedBy:             evergreen.User,
@@ -975,12 +975,25 @@ func TestFindNeedsNewAgent(t *testing.T) {
 			So(len(hosts), ShouldEqual, 1)
 			So(hosts[0].Id, ShouldEqual, h.Id)
 		})
-		Convey("with a host with that is still provisioning and has not yet communicated", func() {
+		Convey("with a host with that is still provisioning, does not need reprovisioning, and has not yet communicated", func() {
 			h := Host{
 				Id:            "h",
 				Status:        evergreen.HostProvisioning,
 				StartedBy:     evergreen.User,
 				NeedsNewAgent: true,
+			}
+			So(h.Insert(), ShouldBeNil)
+			hosts, err := Find(db.Query(NeedsAgentDeploy(now)))
+			So(err, ShouldBeNil)
+			So(hosts, ShouldBeEmpty)
+		})
+		Convey("with a host with that is still provisioning, needs reprovisioning, and has not yet communicated", func() {
+			h := Host{
+				Id:               "h",
+				Status:           evergreen.HostProvisioning,
+				NeedsReprovision: ReprovisionToLegacy,
+				StartedBy:        evergreen.User,
+				NeedsNewAgent:    true,
 			}
 			So(h.Insert(), ShouldBeNil)
 			hosts, err := Find(db.Query(NeedsAgentDeploy(now)))
@@ -1062,8 +1075,18 @@ func TestNeedsAgentMonitorDeploy(t *testing.T) {
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0].Id)
 		},
-		"FindsHostsStillProvisioning": func(t *testing.T, h *Host) {
+		"DoesNotFindsHostsNotNeedingReprovisioning": func(t *testing.T, h *Host) {
 			h.Status = evergreen.HostProvisioning
+			require.NoError(t, h.Insert())
+
+			hosts, err := Find(db.Query(NeedsAgentMonitorDeploy(time.Now())))
+			require.NoError(t, err)
+
+			assert.Len(t, hosts, 0)
+		},
+		"FindsHostsReprovisioning": func(t *testing.T, h *Host) {
+			h.Status = evergreen.HostProvisioning
+			h.NeedsReprovision = ReprovisionToNew
 			require.NoError(t, h.Insert())
 
 			hosts, err := Find(db.Query(NeedsAgentMonitorDeploy(time.Now())))
@@ -1581,7 +1604,7 @@ func TestHostElapsedCommTime(t *testing.T) {
 		StartTime:    now.Add(-1 * time.Minute),
 	}
 	hostWithNoCreateTime := Host{
-		Id:                    "hostWithNoCreateTime",
+		Id: "hostWithNoCreateTime",
 		LastCommunicationTime: now.Add(-15 * time.Minute),
 	}
 	hostWithOnlyCreateTime := Host{

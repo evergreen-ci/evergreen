@@ -40,7 +40,6 @@ type volumeSize struct {
 }
 
 func FindTotalVolumeSizeByUser(user string) (int, error) {
-
 	pipeline := []bson.M{
 		{"$match": bson.M{
 			VolumeCreatedByKey: user,
@@ -53,5 +52,9 @@ func FindTotalVolumeSizeByUser(user string) (int, error) {
 
 	out := []volumeSize{}
 	err := db.Aggregate(VolumesCollection, pipeline, &out)
-	return out[0].TotalVolumeSize, err
+	if err != nil || len(out) == 0 {
+		return 0, err
+	}
+
+	return out[0].TotalVolumeSize, nil
 }

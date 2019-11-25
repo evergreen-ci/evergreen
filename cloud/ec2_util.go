@@ -23,11 +23,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	spawnHostExpireDays = 30
-	mciHostExpireDays   = 10
-)
-
 //Valid values for EC2 instance states:
 //pending | running | shutting-down | terminated | stopping | stopped
 //see http://goo.gl/3OrCGn
@@ -159,10 +154,10 @@ func makeTags(intentHost *host.Host) []host.Tag {
 	// and if that tag is passed the reaper terminates the host. This reaping occurs to
 	// ensure that any hosts that we forget about or that fail to terminate do not stay alive
 	// forever.
-	expireOn := expireInDays(mciHostExpireDays)
+	expireOn := expireInDays(evergreen.HostExpireDays)
 	if intentHost.UserHost {
 		// If this is a spawn host, use a different expiration date.
-		expireOn = expireInDays(spawnHostExpireDays)
+		expireOn = expireInDays(evergreen.SpawnHostExpireDays)
 	}
 
 	systemTags := []host.Tag{
@@ -299,12 +294,35 @@ type Terms struct {
 	}
 }
 
-// format /dev/sd[f-p][1-6] taken from https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html
-func generateDeviceNameForVolume() string {
+func getGeneratedDeviceNameForVolume(ctx context.Context, isWindowsHost bool) (string, error) {
+	deviceName := ""
+	err := util.Retry(
+		ctx,
+		func() (bool, error) {
+			deviceName = generateDeviceNameForVolume(isWindowsHost)
+			exists, err := host.HostExistsWithVolumeWithDeviceName(deviceName)
+			if err != nil {
+				return true, errors.Wrapf(err, "error checking if device name already exists")
+			}
+			if !exists {
+				return false, nil
+			}
+			return true, errors.New("generated device name already exists")
+		}, 500, 1, 10)
+
+	return deviceName, err
+}
+
+// formats /dev/sd[f-p]and xvd[f-p] taken from https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html
+func generateDeviceNameForVolume(isWindowsHost bool) string {
 	letters := "fghijklmnop"
 	rand.Seed(time.Now().Unix())
+	pattern := "/dev/sd%c"
+	if isWindowsHost {
+		pattern = "xvd%c"
+	}
 
-	return fmt.Sprintf("/dev/sd%c%d", letters[rand.Intn(len(letters))], rand.Intn(5)+1)
+	return fmt.Sprintf(pattern, letters[rand.Intn(len(letters))])
 }
 
 func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping, error) {
@@ -417,16 +435,16 @@ func validateEc2CreateTemplateResponse(createTemplateResponse *ec2aws.CreateLaun
 	return catcher.Resolve()
 }
 
-func validateEc2CreateFleetResponse(createFleetResponse *ec2aws.CreateFleetOutput) error {
+func ec2CreateFleetResponseContainsInstance(createFleetResponse *ec2aws.CreateFleetOutput) bool {
 	if createFleetResponse == nil {
-		return errors.New("create fleet response is nil")
+		return false
 	}
 
 	if len(createFleetResponse.Instances) == 0 || len(createFleetResponse.Instances[0].InstanceIds) == 0 {
-		return errors.New("no instance ID in create fleet response")
+		return false
 	}
 
-	return nil
+	return true
 }
 
 func validateEc2DescribeInstancesOutput(describeInstancesResponse *ec2aws.DescribeInstancesOutput) error {

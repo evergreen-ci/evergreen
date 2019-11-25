@@ -246,6 +246,10 @@ func ModifySpawnHost(ctx context.Context, env evergreen.Environment, host *host.
 }
 
 func MakeExtendedSpawnHostExpiration(host *host.Host, extendBy time.Duration) (time.Time, error) {
+	if err := host.PastMaxExpiration(extendBy); err != nil {
+		return time.Time{}, err
+	}
+
 	newExp := host.ExpirationTime.Add(extendBy)
 	remainingDuration := newExp.Sub(time.Now()) //nolint
 	if remainingDuration > MaxSpawnHostExpirationDurationHours {

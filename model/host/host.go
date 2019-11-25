@@ -1429,8 +1429,8 @@ func FindAllRunningParentsOrdered() ([]Host, error) {
 // FindAllRunningParentsOnDistro finds all running hosts of a given distro with child containers
 func FindAllRunningParentsByDistro(distroId string) ([]Host, error) {
 	query := db.Query(bson.M{
-		StatusKey:        evergreen.HostRunning,
-		HasContainersKey: true,
+		StatusKey:                                          evergreen.HostRunning,
+		HasContainersKey:                                   true,
 		bsonutil.GetDottedKeyName(DistroKey, distro.IdKey): distroId,
 	}).Sort([]string{LastContainerFinishTimeKey})
 	return Find(query)
@@ -1497,6 +1497,23 @@ func (h *Host) IsIdleParent() (bool, error) {
 	return num == 0, nil
 }
 
+// For spawn hosts that have never been set unexpirable, this will
+// prevent spawn hosts from being set further than 30 days.
+// For unexpirable hosts, this will prevent them from being extended any further
+// than the new 30 day expiration (unless it is set to unexpirable again #loophole)
+func (h *Host) PastMaxExpiration(extension time.Duration) error {
+	maxExpirationTime := h.CreationTime.Add(evergreen.SpawnHostExpireDays * time.Hour * 24)
+	if h.ExpirationTime.After(maxExpirationTime) {
+		return errors.New("Spawn host cannot be extended further")
+	}
+
+	proposedTime := h.ExpirationTime.Add(extension)
+	if proposedTime.After(maxExpirationTime) {
+		return errors.Errorf("Spawn host cannot be extended more than %d days past creation", evergreen.SpawnHostExpireDays)
+	}
+	return nil
+}
+
 // UpdateLastContainerFinishTime updates latest finish time for a host with containers
 func (h *Host) UpdateLastContainerFinishTime(t time.Time) error {
 	selector := bson.M{
@@ -1538,7 +1555,7 @@ func FindRunningHosts(includeSpawnHosts bool) ([]Host, error) {
 		},
 		{
 			"$unwind": bson.M{
-				"path":                       "$task_full",
+				"path": "$task_full",
 				"preserveNullAndEmptyArrays": true,
 			},
 		},

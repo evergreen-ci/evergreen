@@ -2,13 +2,13 @@ package rolemanager
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 
 	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/evergreen-ci/gimlet"
+	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -162,6 +162,25 @@ func (m *mongoBackedRoleManager) FilterForResource(roles []gimlet.Role, resource
 	return filtered, nil
 }
 
+func (m *mongoBackedRoleManager) FilterScopesByResourceType(ScopeIDs []string, resourceType string) ([]gimlet.Scope, error) {
+	coll := m.client.Database(m.db).Collection(m.scopeColl)
+	ctx := context.Background()
+	query := bson.M{
+		"_id":  bson.M{"$in": ScopeIDs},
+		"type": resourceType,
+	}
+	cursor, err := coll.Find(ctx, query)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem filtering ScopeIDs by resource type in db")
+	}
+	scopes := []gimlet.Scope{}
+	if err = cursor.All(ctx, &scopes); err != nil {
+		return nil, errors.Wrap(err, "problem marshalling scope data")
+	}
+
+	return scopes, nil
+}
+
 func (m *mongoBackedRoleManager) AddScope(scope gimlet.Scope) error {
 	_, err := m.client.Database(m.db).Collection(m.scopeColl).InsertOne(context.Background(), scope)
 	return err
@@ -244,6 +263,22 @@ func (m *inMemoryRoleManager) FilterForResource(roles []gimlet.Role, resource, r
 	return filtered, nil
 }
 
+func (m *inMemoryRoleManager) FilterScopesByResourceType(ScopeIDs []string, resourceType string) ([]gimlet.Scope, error) {
+	scopeIdMap := map[string]bool{}
+	for _, id := range ScopeIDs {
+		scopeIdMap[id] = true
+	}
+
+	scopes := []gimlet.Scope{}
+	for _, scope := range m.scopes {
+		if scopeIdMap[scope.ID] && scope.Type == resourceType {
+			scopes = append(scopes, scope)
+		}
+	}
+
+	return scopes, nil
+}
+
 func (m *inMemoryRoleManager) AddScope(scope gimlet.Scope) error {
 	m.scopes[scope.ID] = scope
 	return nil
@@ -319,5 +354,43 @@ func HighestPermissionsForRoles(rolesIDs []string, rm gimlet.RoleManager, opts g
 			}
 		}
 	}
+	return highestPermissions, nil
+}
+
+// HighestPermissionsForResourceType takes a list of role IDs, a resource type,
+// and a role manager and returns a mapping of all resource IDs for the given
+// roles to their highest permissions based on those roles.
+func HighestPermissionsForRolesAndResourceType(roleIDs []string, resourceType string, rm gimlet.RoleManager) (map[string]gimlet.Permissions, error) {
+	roles, err := rm.GetRoles(roleIDs)
+	ScopeIDs := make([]string, len(roles))
+	for i, role := range roles {
+		ScopeIDs[i] = role.Scope
+	}
+
+	scopes, err := rm.FilterScopesByResourceType(ScopeIDs, resourceType)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem filtering scopes by resource types")
+	}
+	scopeMap := map[string][]string{}
+	for _, scope := range scopes {
+		scopeMap[scope.ID] = scope.Resources
+	}
+
+	highestPermissions := map[string]gimlet.Permissions{}
+	for _, role := range roles {
+		for _, resource := range scopeMap[role.Scope] {
+			if _, ok := highestPermissions[resource]; ok {
+				for permission, level := range role.Permissions {
+					highestLevel, exists := highestPermissions[resource][permission]
+					if !exists || level > highestLevel {
+						highestPermissions[resource][permission] = level
+					}
+				}
+			} else {
+				highestPermissions[resource] = role.Permissions
+			}
+		}
+	}
+
 	return highestPermissions, nil
 }

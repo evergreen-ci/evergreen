@@ -40,16 +40,16 @@ func TestCheckHostWrapper(t *testing.T) {
 			t.Fatalf("creating test API server: %v", err)
 		}
 		var (
-			retreivedTask *task.Task
-			retreivedHost *host.Host
+			retrievedTask *task.Task
+			retrievedHost *host.Host
 		)
 
 		app := gimlet.NewApp()
 		app.NoVersions = true
 		app.AddRoute("/{taskId}/").Handler(as.checkTaskStrict(as.checkHost(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				retreivedTask = GetTask(r)
-				retreivedHost = GetHost(r)
+				retrievedTask = GetTask(r)
+				retrievedHost = GetHost(r)
 				gimlet.WriteJSON(w, nil)
 			}),
 		))).Get()
@@ -74,8 +74,8 @@ func TestCheckHostWrapper(t *testing.T) {
 				So(w.Code, ShouldEqual, http.StatusConflict)
 
 				Convey("and attach nothing to the context", func() {
-					So(retreivedTask, ShouldBeNil)
-					So(retreivedHost, ShouldBeNil)
+					So(retrievedTask, ShouldBeNil)
+					So(retrievedHost, ShouldBeNil)
 				})
 			})
 			Convey("a request with proper task fields but no host fields should not pass", func() {
@@ -84,8 +84,8 @@ func TestCheckHostWrapper(t *testing.T) {
 				So(w.Code, ShouldEqual, http.StatusBadRequest)
 
 				Convey("and attach nothing to the context", func() {
-					So(retreivedTask, ShouldBeNil)
-					So(retreivedHost, ShouldBeNil)
+					So(retrievedTask, ShouldBeNil)
+					So(retrievedHost, ShouldBeNil)
 				})
 			})
 			Convey("a request with proper task fields and host fields should pass", func() {
@@ -95,14 +95,29 @@ func TestCheckHostWrapper(t *testing.T) {
 				root.ServeHTTP(w, r)
 				So(w.Code, ShouldEqual, http.StatusOK)
 
-				Convey("and attach the and host to the context", func() {
-					So(retreivedTask, ShouldNotBeNil)
-					So(retreivedHost, ShouldNotBeNil)
-					So(retreivedHost.Id, ShouldEqual, h1.Id)
+				Convey("and attach the task and host to the context", func() {
+					So(retrievedTask, ShouldNotBeNil)
+					So(retrievedHost, ShouldNotBeNil)
+					So(retrievedHost.Id, ShouldEqual, h1.Id)
 					Convey("with an updated LastCommunicationTime", func() {
-						So(retreivedHost.LastCommunicationTime, ShouldHappenWithin, time.Second, time.Now())
+						So(retrievedHost.LastCommunicationTime, ShouldHappenWithin, time.Second, time.Now())
 					})
 				})
+			})
+			Convey("a request on a host should not need a new agent or monitor", func() {
+				So(h1.SetNeedsNewAgent(true), ShouldBeNil)
+				So(h1.SetNeedsNewAgentMonitor(true), ShouldBeNil)
+
+				r.Header.Add(evergreen.TaskSecretHeader, t1.Secret)
+				r.Header.Add(evergreen.HostHeader, h1.Id)
+				r.Header.Add(evergreen.HostSecretHeader, h1.Secret)
+				root.ServeHTTP(w, r)
+				So(w.Code, ShouldEqual, http.StatusOK)
+
+				dbHost, err := host.FindOneId(h1.Id)
+				So(err, ShouldBeNil)
+				So(dbHost.NeedsNewAgent, ShouldBeFalse)
+				So(dbHost.NeedsNewAgentMonitor, ShouldBeFalse)
 			})
 			Convey("a request with the wrong host secret should fail", func() {
 				r.Header.Add(evergreen.TaskSecretHeader, t1.Secret)
@@ -114,8 +129,8 @@ func TestCheckHostWrapper(t *testing.T) {
 				So(string(msg), ShouldContainSubstring, "secret")
 
 				Convey("and attach nothing to the context", func() {
-					So(retreivedTask, ShouldBeNil)
-					So(retreivedHost, ShouldBeNil)
+					So(retrievedTask, ShouldBeNil)
+					So(retrievedHost, ShouldBeNil)
 				})
 			})
 		})
@@ -149,8 +164,8 @@ func TestCheckHostWrapper(t *testing.T) {
 				So(string(msg), ShouldContainSubstring, "should be running")
 
 				Convey("and attach the and host to the context", func() {
-					So(retreivedTask, ShouldBeNil)
-					So(retreivedHost, ShouldBeNil)
+					So(retrievedTask, ShouldBeNil)
+					So(retrievedHost, ShouldBeNil)
 				})
 			})
 		})
@@ -166,16 +181,16 @@ func TestCheckHostWrapper(t *testing.T) {
 		}
 
 		var (
-			retreivedTask *task.Task
-			retreivedHost *host.Host
+			retrievedTask *task.Task
+			retrievedHost *host.Host
 		)
 
 		app := gimlet.NewApp()
 		app.NoVersions = true
 		app.AddRoute("/{taskId}/{hostId}").Handler(as.checkTaskStrict(as.checkHost(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				retreivedTask = GetTask(r)
-				retreivedHost = GetHost(r)
+				retrievedTask = GetTask(r)
+				retrievedHost = GetHost(r)
 
 				gimlet.WriteJSON(w, nil)
 			}),
@@ -204,11 +219,11 @@ func TestCheckHostWrapper(t *testing.T) {
 				So(w.Code, ShouldEqual, http.StatusOK)
 
 				Convey("and attach the and host to the context", func() {
-					So(retreivedTask, ShouldNotBeNil)
-					So(retreivedHost, ShouldNotBeNil)
-					So(retreivedHost.Id, ShouldEqual, h1.Id)
+					So(retrievedTask, ShouldNotBeNil)
+					So(retrievedHost, ShouldNotBeNil)
+					So(retrievedHost.Id, ShouldEqual, h1.Id)
 					Convey("with an updated LastCommunicationTime", func() {
-						So(retreivedHost.LastCommunicationTime, ShouldHappenWithin, time.Second, time.Now())
+						So(retrievedHost.LastCommunicationTime, ShouldHappenWithin, time.Second, time.Now())
 					})
 				})
 			})
@@ -221,8 +236,8 @@ func TestCheckHostWrapper(t *testing.T) {
 				So(string(msg), ShouldContainSubstring, "secret")
 
 				Convey("and attach nothing to the context", func() {
-					So(retreivedTask, ShouldBeNil)
-					So(retreivedHost, ShouldBeNil)
+					So(retrievedTask, ShouldBeNil)
+					So(retrievedHost, ShouldBeNil)
 				})
 			})
 		})
