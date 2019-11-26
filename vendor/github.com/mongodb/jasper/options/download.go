@@ -11,7 +11,8 @@ import (
 	"github.com/tychoish/bond"
 )
 
-// Download represents the URL to download and the file path where it should be downloaded.
+// Download represents the options to download a file to a given path and
+// optionally extract its contents.
 type Download struct {
 	URL         string  `json:"url"`
 	Path        string  `json:"path"`
@@ -19,25 +20,25 @@ type Download struct {
 }
 
 // Validate checks the download options.
-func (info Download) Validate() error {
+func (opts Download) Validate() error {
 	catcher := grip.NewBasicCatcher()
 
-	if info.URL == "" {
+	if opts.URL == "" {
 		catcher.New("download url cannot be empty")
 	}
 
-	if !filepath.IsAbs(info.Path) {
+	if !filepath.IsAbs(opts.Path) {
 		catcher.New("download path must be an absolute path")
 	}
 
-	catcher.Add(info.ArchiveOpts.Validate())
+	catcher.Add(opts.ArchiveOpts.Validate())
 
 	return catcher.Resolve()
 }
 
 // Download executes the download operation.
-func (info Download) Download() error {
-	req, err := http.NewRequest(http.MethodGet, info.URL, nil)
+func (opts Download) Download() error {
+	req, err := http.NewRequest(http.MethodGet, opts.URL, nil)
 	if err != nil {
 		return errors.Wrap(err, "problem building request")
 	}
@@ -47,35 +48,35 @@ func (info Download) Download() error {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return errors.Wrapf(err, "problem downloading file for url %s", info.URL)
+		return errors.Wrapf(err, "problem downloading file for url %s", opts.URL)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return errors.Errorf("%s: could not download %s to path %s", resp.Status, info.URL, info.Path)
+		return errors.Errorf("%s: could not download %s to path %s", resp.Status, opts.URL, opts.Path)
 	}
 
-	if err = writeFile(resp.Body, info.Path); err != nil {
+	if err = writeFile(resp.Body, opts.Path); err != nil {
 		return err
 	}
 
-	if info.ArchiveOpts.ShouldExtract {
-		if err = info.Extract(); err != nil {
-			return errors.Wrapf(err, "problem extracting file %s to path %s", info.Path, info.ArchiveOpts.TargetPath)
+	if opts.ArchiveOpts.ShouldExtract {
+		if err = opts.Extract(); err != nil {
+			return errors.Wrapf(err, "problem extracting file %s to path %s", opts.Path, opts.ArchiveOpts.TargetPath)
 		}
 	}
 
 	return nil
 }
 
-// Extract extracts the download to the path specified, using the
-// archive format specified.
-func (info Download) Extract() error {
+// Extract extracts the download to the path specified, using the archive format
+// specified.
+func (opts Download) Extract() error {
 	var archiveHandler archiver.Archiver
-	switch info.ArchiveOpts.Format {
+	switch opts.ArchiveOpts.Format {
 	case ArchiveAuto:
-		unzipper := archiver.MatchingFormat(info.Path)
+		unzipper := archiver.MatchingFormat(opts.Path)
 		if unzipper == nil {
-			return errors.Errorf("could not detect archive format for %s", info.Path)
+			return errors.Errorf("could not detect archive format for %s", opts.Path)
 		}
 		archiveHandler = unzipper
 	case ArchiveTarGz:
@@ -83,17 +84,18 @@ func (info Download) Extract() error {
 	case ArchiveZip:
 		archiveHandler = archiver.Zip
 	default:
-		return errors.Errorf("unrecognized archive format %s", info.ArchiveOpts.Format)
+		return errors.Errorf("unrecognized archive format %s", opts.ArchiveOpts.Format)
 	}
 
-	if err := archiveHandler.Open(info.Path, info.ArchiveOpts.TargetPath); err != nil {
-		return errors.Wrapf(err, "problem extracting archive %s to %s", info.Path, info.ArchiveOpts.TargetPath)
+	if err := archiveHandler.Open(opts.Path, opts.ArchiveOpts.TargetPath); err != nil {
+		return errors.Wrapf(err, "problem extracting archive %s to %s", opts.Path, opts.ArchiveOpts.TargetPath)
 	}
 
 	return nil
 }
 
-// MongoDBDownload represent one build variant of MongoDB.
+// MongoDBDownload represents the options to download MongoDB on a target
+// platform.
 type MongoDBDownload struct {
 	BuildOpts bond.BuildOptions `json:"build_opts"`
 	Path      string            `json:"path"`

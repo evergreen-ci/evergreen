@@ -2,10 +2,12 @@ package testutil
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"sync"
 	"time"
 
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -29,8 +31,8 @@ func PutHTTPClient(client *http.Client) {
 	httpClientPool.Put(client)
 }
 
-// waitForRESTService waits until the REST service becomes available to serve
-// requests or the context times out.
+// WaitForRESTService waits until either the REST service becomes available to
+// serve requests or the context is done.
 func WaitForRESTService(ctx context.Context, url string) error {
 	client := GetHTTPClient()
 	defer PutHTTPClient(client)
@@ -58,6 +60,28 @@ func WaitForRESTService(ctx context.Context, url string) error {
 				timer.Reset(timeoutInterval)
 				continue
 			}
+			return nil
+		}
+	}
+}
+
+// WaitForWireService waits unti either the wire service becomes available to
+// serve requests or the context times ou t.
+func WaitForWireService(ctx context.Context, addr net.Addr) error { //nolint: interfacer
+	// Block until the service comes up
+	timeoutInterval := 10 * time.Millisecond
+	timer := time.NewTimer(timeoutInterval)
+	for {
+		select {
+		case <-ctx.Done():
+			return errors.Wrap(ctx.Err(), "context errored before connection could be established to service")
+		case <-timer.C:
+			conn, err := net.Dial("tcp", addr.String())
+			if err != nil {
+				timer.Reset(timeoutInterval)
+				continue
+			}
+			grip.Warning(conn.Close())
 			return nil
 		}
 	}

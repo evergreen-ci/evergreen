@@ -227,7 +227,7 @@ func TestDoExtract(t *testing.T) {
 
 			require.NoError(t, testCase.archiveMaker.Make(archiveFile.Name(), []string{file.Name()}))
 
-			info := options.Download{
+			opts := options.Download{
 				Path: archiveFile.Name(),
 				ArchiveOpts: options.Archive{
 					ShouldExtract: true,
@@ -236,10 +236,10 @@ func TestDoExtract(t *testing.T) {
 				},
 			}
 			if !testCase.expectSuccess {
-				assert.Error(t, info.Extract())
+				assert.Error(t, opts.Extract())
 				return
 			}
-			assert.NoError(t, info.Extract())
+			assert.NoError(t, opts.Extract())
 
 			fileInfo, err := os.Stat(archiveFile.Name())
 			require.NoError(t, err)
@@ -257,7 +257,7 @@ func TestDoExtractUnarchivedFile(t *testing.T) {
 	require.NoError(t, err)
 	defer os.Remove(file.Name())
 
-	info := options.Download{
+	opts := options.Download{
 		URL:  "https://example.com",
 		Path: file.Name(),
 		ArchiveOpts: options.Archive{
@@ -266,7 +266,7 @@ func TestDoExtractUnarchivedFile(t *testing.T) {
 			TargetPath:    "build",
 		},
 	}
-	err = info.Extract()
+	err = opts.Extract()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "could not detect archive format")
 }

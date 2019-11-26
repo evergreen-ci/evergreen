@@ -12,16 +12,21 @@ import (
 // Manager implements the Manager interface with exported fields to
 // configure and introspect the mock's behavior.
 type Manager struct {
-	FailCreate   bool
-	FailRegister bool
-	FailList     bool
-	FailGroup    bool
-	FailGet      bool
-	FailClose    bool
-	Create       func(*options.Create) Process
-	CreateConfig Process
-	ManagerID    string
-	Procs        []jasper.Process
+	FailCreate          bool
+	FailRegister        bool
+	FailList            bool
+	FailGroup           bool
+	FailGet             bool
+	FailClose           bool
+	FailCreateScripting bool
+	FailGetScripting    bool
+	FailWriteFile       bool
+	Create              func(*options.Create) Process
+	CreateConfig        Process
+	ManagerID           string
+	Procs               []jasper.Process
+	ScriptingEnv        jasper.ScriptingEnvironment
+	WriteFileOptions    options.WriteFile
 }
 
 func mockFail() error {
@@ -32,6 +37,7 @@ func mockFail() error {
 	return errors.Errorf("function failed: %s", frame.Function)
 }
 
+// ID returns the value of the ManagerID field.
 func (m *Manager) ID() string {
 	return m.ManagerID
 }
@@ -62,6 +68,35 @@ func (m *Manager) CreateProcess(ctx context.Context, opts *options.Create) (jasp
 // underlying processes.
 func (m *Manager) CreateCommand(ctx context.Context) *jasper.Command {
 	return jasper.NewCommand().ProcConstructor(m.CreateProcess)
+}
+
+// GetScripting returns a cached scripting environment. If FailGetScripting is
+// set, it returns an error.
+func (m *Manager) GetScripting(ctx context.Context, id string) (jasper.ScriptingEnvironment, error) {
+	if m.FailGetScripting {
+		return nil, mockFail()
+	}
+	return m.ScriptingEnv, nil
+}
+
+// CreateScripting constructs an attached scripting environment. If
+// FailCreateScripting is set, it returns an error.
+func (m *Manager) CreateScripting(ctx context.Context, opts options.ScriptingEnvironment) (jasper.ScriptingEnvironment, error) {
+	if m.FailCreateScripting {
+		return nil, mockFail()
+	}
+	return m.ScriptingEnv, nil
+}
+
+// WriteFile saves the options.WriteFile. If FailWriteFile is set, it returns an
+// error.
+func (m *Manager) WriteFile(ctx context.Context, opts options.WriteFile) error {
+	if m.FailWriteFile {
+		return mockFail()
+	}
+
+	m.WriteFileOptions = opts
+	return nil
 }
 
 // Register adds the process to Procs. If FailRegister is set, it returns an

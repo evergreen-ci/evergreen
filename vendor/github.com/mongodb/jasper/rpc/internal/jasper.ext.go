@@ -10,6 +10,7 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
+	"github.com/pkg/errors"
 	"github.com/tychoish/bond"
 )
 
@@ -517,46 +518,46 @@ func ConvertCacheOptions(jopts options.Cache) *CacheOptions {
 }
 
 // Export takes a protobuf RPC DownloadInfo struct and returns the analogous
-// Jasper DownloadInfo struct.
-func (info *DownloadInfo) Export() options.Download {
+// options.Download struct.
+func (opts *DownloadInfo) Export() options.Download {
 	return options.Download{
-		Path:        info.Path,
-		URL:         info.Url,
-		ArchiveOpts: info.ArchiveOpts.Export(),
+		Path:        opts.Path,
+		URL:         opts.Url,
+		ArchiveOpts: opts.ArchiveOpts.Export(),
 	}
 }
 
-// ConvertDownloadInfo takes a Jasper DownloadInfo struct and returns an
-// equivalent protobuf RPC DownloadInfo struct. ConvertDownloadInfo is the
+// ConvertDownloadOptions takes an options.Download struct and returns an
+// equivalent protobuf RPC DownloadInfo struct. ConvertDownloadOptions is the
 // inverse of (*DownloadInfo) Export().
-func ConvertDownloadInfo(info options.Download) *DownloadInfo {
+func ConvertDownloadOptions(opts options.Download) *DownloadInfo {
 	return &DownloadInfo{
-		Path:        info.Path,
-		Url:         info.URL,
-		ArchiveOpts: ConvertArchiveOptions(info.ArchiveOpts),
+		Path:        opts.Path,
+		Url:         opts.URL,
+		ArchiveOpts: ConvertArchiveOptions(opts.ArchiveOpts),
 	}
 }
 
 // Export takes a protobuf RPC WriteFileInfo struct and returns the analogous
-// Jasper WriteFileInfo struct.
-func (info *WriteFileInfo) Export() options.WriteFile {
+// options.WriteFile struct.
+func (opts *WriteFileInfo) Export() options.WriteFile {
 	return options.WriteFile{
-		Path:    info.Path,
-		Content: info.Content,
-		Append:  info.Append,
-		Perm:    os.FileMode(info.Perm),
+		Path:    opts.Path,
+		Content: opts.Content,
+		Append:  opts.Append,
+		Perm:    os.FileMode(opts.Perm),
 	}
 }
 
-// ConvertWriteFileInfo takes a Jasper WriteFileInfo struct and returns an
-// equivalent protobuf RPC WriteFileInfo struct. ConvertWriteFileInfo is the
+// ConvertWriteFileOptions takes an options.WriteFile struct and returns an
+// equivalent protobuf RPC WriteFileInfo struct. ConvertWriteFileOptions is the
 // inverse of (*WriteFileInfo) Export().
-func ConvertWriteFileInfo(info options.WriteFile) *WriteFileInfo {
+func ConvertWriteFileOptions(opts options.WriteFile) *WriteFileInfo {
 	return &WriteFileInfo{
-		Path:    info.Path,
-		Content: info.Content,
-		Append:  info.Append,
-		Perm:    uint32(info.Perm),
+		Path:    opts.Path,
+		Content: opts.Content,
+		Append:  opts.Append,
+		Perm:    uint32(opts.Perm),
 	}
 }
 
@@ -668,4 +669,48 @@ func ConvertLogStream(l jasper.LogStream) *LogStream {
 		Logs: l.Logs,
 		Done: l.Done,
 	}
+}
+
+// Export converts the rpc type to jasper's equivalent option type.
+func (o *ScriptingOptions) Export() (options.ScriptingEnvironment, error) {
+	switch val := o.Value.(type) {
+	case *ScriptingOptions_Golang:
+		return &options.ScriptingGolang{
+			Gopath:         val.Golang.Gopath,
+			Goroot:         val.Golang.Goroot,
+			Packages:       val.Golang.Packages,
+			Context:        val.Golang.Context,
+			WithUpdate:     val.Golang.WithUpdate,
+			CachedDuration: time.Duration(o.Duration),
+			Environment:    o.Environment,
+			Output:         o.Output.Export(),
+		}, nil
+	case *ScriptingOptions_Python:
+		return &options.ScriptingPython{
+			VirtualEnvPath:        val.Python.VirtualEnvPath,
+			RequirementsFilePath:  val.Python.RequirementsPath,
+			HostPythonInterpreter: val.Python.HostPython,
+			Packages:              val.Python.Packages,
+			LegacyPython:          val.Python.LegacyPython,
+			CachedDuration:        time.Duration(o.Duration),
+			Environment:           o.Environment,
+			Output:                o.Output.Export(),
+		}, nil
+	case *ScriptingOptions_Roswell:
+		return &options.ScriptingRoswell{
+			Path:           val.Roswell.Path,
+			Systems:        val.Roswell.Systems,
+			Lisp:           val.Roswell.Lisp,
+			CachedDuration: time.Duration(o.Duration),
+			Environment:    o.Environment,
+			Output:         o.Output.Export(),
+		}, nil
+	default:
+		return nil, errors.Errorf("invalid scripting options type %T", val)
+	}
+}
+
+func ConvertScriptingOptions(opts options.ScriptingEnvironment) *ScriptingOptions {
+	return nil
+
 }

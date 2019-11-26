@@ -4,15 +4,13 @@ import (
 	"context"
 	"math/rand"
 	"os"
-	"os/exec"
 	"runtime"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
+	"github.com/mongodb/jasper/internal/executor"
 	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
@@ -20,8 +18,7 @@ import (
 
 type blockingProcess struct {
 	id       string
-	opts     options.Create
-	ops      chan func(*exec.Cmd)
+	ops      chan func(executor.Executor)
 	complete chan struct{}
 	err      error
 
@@ -43,9 +40,8 @@ func newBlockingProcess(ctx context.Context, opts *options.Create) (Process, err
 
 	p := &blockingProcess{
 		id:       id,
-		opts:     *opts,
 		tags:     make(map[string]struct{}),
-		ops:      make(chan func(*exec.Cmd)),
+		ops:      make(chan func(executor.Executor)),
 		complete: make(chan struct{}),
 	}
 
@@ -54,21 +50,31 @@ func newBlockingProcess(ctx context.Context, opts *options.Create) (Process, err
 	}
 
 	if err = p.RegisterTrigger(ctx, makeOptionsCloseTrigger()); err != nil {
-		return nil, errors.Wrap(err, "problem registering options closer trigger")
+		catcher := grip.NewBasicCatcher()
+		catcher.Wrap(opts.Close(), "problem closing options")
+		catcher.Add(err)
+		return nil, errors.Wrap(catcher.Resolve(), "problem registering options close trigger")
 	}
 
 	if err = cmd.Start(); err != nil {
-		return nil, errors.Wrap(err, "problem starting command")
+		catcher := grip.NewBasicCatcher()
+		catcher.Wrap(opts.Close(), "problem closing options")
+		catcher.Add(err)
+		return nil, errors.Wrap(catcher.Resolve(), "problem starting command")
 	}
 
 	p.info = ProcessInfo{
 		ID:        id,
-		PID:       cmd.Process.Pid,
+		PID:       cmd.PID(),
 		Options:   *opts,
 		IsRunning: true,
 		StartAt:   time.Now(),
 	}
-	p.info.Host, _ = os.Hostname()
+	if opts.Remote != nil {
+		p.info.Host = opts.Remote.Host
+	} else {
+		p.info.Host, _ = os.Hostname()
+	}
 
 	go p.reactor(ctx, deadline, cmd)
 
@@ -108,7 +114,9 @@ func (p *blockingProcess) getErr() error {
 	return p.err
 }
 
-func (p *blockingProcess) reactor(ctx context.Context, deadline time.Time, cmd *exec.Cmd) {
+func (p *blockingProcess) reactor(ctx context.Context, deadline time.Time, cmd executor.Executor) {
+	defer cmd.Close()
+
 	signal := make(chan error)
 	go func() {
 		defer close(signal)
@@ -131,30 +139,18 @@ func (p *blockingProcess) reactor(ctx context.Context, deadline time.Time, cmd *
 				info.Complete = true
 				info.IsRunning = false
 
-				if cmd.ProcessState != nil {
-					info.Successful = cmd.ProcessState.Success()
-					procWaitStatus := cmd.ProcessState.Sys().(syscall.WaitStatus)
-					if procWaitStatus.Signaled() {
-						info.ExitCode = int(procWaitStatus.Signal())
-						if !deadline.IsZero() {
-							info.Timeout = procWaitStatus.Signal() == syscall.SIGKILL && finishTime.After(deadline)
-						}
-					} else {
-						info.ExitCode = procWaitStatus.ExitStatus()
-						if runtime.GOOS == "windows" && !deadline.IsZero() {
-							info.Timeout = procWaitStatus.ExitStatus() == 1 && finishTime.After(deadline)
-						}
+				info.Successful = cmd.Success()
+				if sig, signaled := cmd.SignalInfo(); signaled {
+					info.ExitCode = int(sig)
+					if !deadline.IsZero() {
+						info.Timeout = sig == syscall.SIGKILL && finishTime.After(deadline)
 					}
 				} else {
-					info.Successful = (err == nil)
+					info.ExitCode = cmd.ExitCode()
+					if runtime.GOOS == "windows" && !deadline.IsZero() {
+						info.Timeout = cmd.ExitCode() == 1 && finishTime.After(deadline)
+					}
 				}
-
-				grip.Debug(message.WrapError(err, message.Fields{
-					"id":           p.ID,
-					"cmd":          strings.Join(p.opts.Args, " "),
-					"success":      info.Successful,
-					"num_triggers": len(p.triggers),
-				}))
 			}()
 
 			p.mu.RLock()
@@ -193,7 +189,7 @@ func (p *blockingProcess) Info(ctx context.Context) ProcessInfo {
 	}
 
 	out := make(chan ProcessInfo)
-	operation := func(cmd *exec.Cmd) {
+	operation := func(cmd executor.Executor) {
 		out <- p.getInfo()
 		close(out)
 	}
@@ -221,15 +217,15 @@ func (p *blockingProcess) Running(ctx context.Context) bool {
 	}
 
 	out := make(chan bool)
-	operation := func(cmd *exec.Cmd) {
+	operation := func(cmd executor.Executor) {
 		defer close(out)
 
-		if cmd == nil || cmd.Process == nil {
+		if cmd == nil {
 			out <- false
 			return
 		}
 
-		if cmd.Process.Pid <= 0 {
+		if cmd.PID() <= 0 {
 			out <- false
 			return
 		}
@@ -264,7 +260,7 @@ func (p *blockingProcess) Signal(ctx context.Context, sig syscall.Signal) error 
 	}
 
 	out := make(chan error)
-	operation := func(cmd *exec.Cmd) {
+	operation := func(cmd executor.Executor) {
 		defer close(out)
 
 		if cmd == nil {
@@ -274,7 +270,7 @@ func (p *blockingProcess) Signal(ctx context.Context, sig syscall.Signal) error 
 
 		if skipSignal := p.signalTriggers.Run(p.getInfo(), sig); !skipSignal {
 			sig = makeCompatible(sig)
-			out <- errors.Wrapf(cmd.Process.Signal(sig), "problem sending signal '%s' to '%s'",
+			out <- errors.Wrapf(cmd.Signal(sig), "problem sending signal '%s' to '%s'",
 				sig, p.id)
 		} else {
 			out <- nil
@@ -346,7 +342,7 @@ func (p *blockingProcess) Wait(ctx context.Context) (int, error) {
 	}
 
 	out := make(chan error)
-	waiter := func(cmd *exec.Cmd) {
+	waiter := func(cmd executor.Executor) {
 		if !p.hasCompleteInfo() {
 			return
 		}
@@ -388,7 +384,7 @@ func (p *blockingProcess) Tag(t string) {
 	}
 
 	p.tags[t] = struct{}{}
-	p.opts.Tags = append(p.opts.Tags, t)
+	p.info.Options.Tags = append(p.info.Options.Tags, t)
 }
 
 func (p *blockingProcess) ResetTags() {
@@ -396,7 +392,7 @@ func (p *blockingProcess) ResetTags() {
 	defer p.mu.Unlock()
 
 	p.tags = make(map[string]struct{})
-	p.opts.Tags = []string{}
+	p.info.Options.Tags = []string{}
 }
 
 func (p *blockingProcess) GetTags() []string {

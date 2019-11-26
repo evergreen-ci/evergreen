@@ -12,17 +12,21 @@ import (
 )
 
 type basicProcessManager struct {
-	id       string
-	procs    map[string]Process
-	blocking bool
-	tracker  ProcessTracker
+	id            string
+	procs         map[string]Process
+	senv          map[string]ScriptingEnvironment
+	blocking      bool
+	useSSHLibrary bool
+	tracker       ProcessTracker
 }
 
-func newBasicProcessManager(procs map[string]Process, blocking bool, trackProcs bool) (Manager, error) {
+func newBasicProcessManager(procs map[string]Process, blocking bool, trackProcs bool, useSSHLibrary bool) (Manager, error) {
 	m := basicProcessManager{
-		procs:    procs,
-		blocking: blocking,
-		id:       uuid.Must(uuid.NewV4()).String(),
+		procs:         procs,
+		senv:          make(map[string]ScriptingEnvironment),
+		blocking:      blocking,
+		id:            uuid.Must(uuid.NewV4()).String(),
+		useSSHLibrary: useSSHLibrary,
 	}
 	if trackProcs {
 		tracker, err := NewProcessTracker(m.id)
@@ -38,6 +42,31 @@ func (m *basicProcessManager) ID() string {
 	return m.id
 }
 
+func (m *basicProcessManager) CreateScripting(ctx context.Context, opts options.ScriptingEnvironment) (ScriptingEnvironment, error) {
+	if se, ok := m.senv[opts.ID()]; ok {
+		return se, nil
+	}
+
+	se, err := scriptingEnvironmentFactory(m, opts)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	if err = se.Setup(ctx); err != nil {
+		return nil, errors.Wrap(err, "problem setting up scripting environment")
+	}
+
+	return se, nil
+}
+
+func (m *basicProcessManager) GetScripting(ctx context.Context, id string) (ScriptingEnvironment, error) {
+	se, ok := m.senv[id]
+	if !ok {
+		return nil, errors.Errorf("could not find scripting environment named '%s'", id)
+	}
+	return se, nil
+}
+
 func (m *basicProcessManager) CreateProcess(ctx context.Context, opts *options.Create) (Process, error) {
 	opts.AddEnvVar(ManagerEnvironID, m.id)
 
@@ -46,6 +75,9 @@ func (m *basicProcessManager) CreateProcess(ctx context.Context, opts *options.C
 		err  error
 	)
 
+	if opts.Remote != nil && m.useSSHLibrary {
+		opts.Remote.UseSSHLibrary = true
+	}
 	if m.blocking {
 		proc, err = newBlockingProcess(ctx, opts)
 	} else {
@@ -75,6 +107,14 @@ func (m *basicProcessManager) CreateProcess(ctx context.Context, opts *options.C
 
 func (m *basicProcessManager) CreateCommand(ctx context.Context) *Command {
 	return NewCommand().ProcConstructor(m.CreateProcess)
+}
+
+func (m *basicProcessManager) WriteFile(ctx context.Context, opts options.WriteFile) error {
+	if err := opts.Validate(); err != nil {
+		return errors.Wrap(err, "invalid file options")
+	}
+
+	return errors.Wrap(opts.DoWrite(), "problem writing data")
 }
 
 func (m *basicProcessManager) Register(ctx context.Context, proc Process) error {
@@ -109,6 +149,10 @@ func (m *basicProcessManager) Register(ctx context.Context, proc Process) error 
 
 func (m *basicProcessManager) List(ctx context.Context, f options.Filter) ([]Process, error) {
 	out := []Process{}
+
+	if err := f.Validate(); err != nil {
+		return out, errors.Wrap(err, "invalid filter")
+	}
 
 	for _, proc := range m.procs {
 		if ctx.Err() != nil {

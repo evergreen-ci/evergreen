@@ -20,11 +20,16 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
+
+func init() {
+	testutil.Setup()
+}
 
 func TestHostParseAndValidate(t *testing.T) {
 	Convey("With a hostGetHandler and request", t, func() {

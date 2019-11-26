@@ -2,7 +2,8 @@ buildDir := build
 srcFiles := $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "*\#*")
 testFiles := $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
 
-packages := aviation
+testPackages := ./ ./services
+packages := aviation services
 #
 # override the go binary path if set
 ifneq (,$(GO_BIN_PATH))
@@ -84,13 +85,13 @@ endif
 $(buildDir)/:
 	mkdir -p $@
 $(buildDir)/output.%.test:$(buildDir)/ $(deps) .FORCE
-	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$*,) | tee $@
+	$(gobin) test $(testArgs) $(testPackages)$(if $(subst $(name),,$*),$*,) | tee $@
 	@! grep -s -q -e "^FAIL" $@ && ! grep -s -q "^WARNING: DATA RACE" $@
 $(buildDir)/output.test:$(buildDir)/ $(deps) .FORCE
-	$(gobin) test $(testArgs) ./... | tee $@
+	$(gobin) test $(testArgs) $(testPackages)... | tee $@
 	@! grep -s -q -e "^FAIL" $@ && ! grep -s -q "^WARNING: DATA RACE" $@
 $(buildDir)/output.%.coverage:$(buildDir)/ $(deps) .FORCE
-	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$*,) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
+	$(gobin) test $(testArgs) $(testPackages)$(if $(subst $(name),,$*),$*,) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
 	@-[ -f $@ ] && $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 	$(gobin) tool cover -html=$< -o $@
@@ -124,11 +125,11 @@ phony += vendor-clean
 
 # userfacing targets for basic build and development operations
 compile:
-	$(gobin) build ./
+	$(gobin) build $(testPackages)
 test:$(buildDir)/test.out
 $(buildDir)/test.out:.FORCE
 	@mkdir -p $(buildDir)
-	$(gobin) test $(testArgs) ./ | tee $@
+	$(gobin) test $(testArgs) $(testPackages) | tee $@
 	@grep -s -q -e "^PASS" $@
 coverage:$(buildDir)/cover.out
 	@$(gobin) tool cover -func=$< | sed -E 's%github.com/.*/ftdc/%%' | column -t

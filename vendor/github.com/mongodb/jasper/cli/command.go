@@ -433,13 +433,13 @@ func DownloadCMD() cli.Command {
 				return nil
 			}),
 		Action: func(c *cli.Context) error {
-			info := options.Download{
+			opts := options.Download{
 				URL:  c.String(urlFlagName),
 				Path: c.String(pathFlagName),
 			}
 
 			if path := c.String(extractPathFlagName); path != "" {
-				info.ArchiveOpts = options.Archive{
+				opts.ArchiveOpts = options.Archive{
 					ShouldExtract: true,
 					Format:        options.ArchiveAuto,
 					TargetPath:    path,
@@ -450,7 +450,7 @@ func DownloadCMD() cli.Command {
 			defer cancel()
 
 			return withConnection(ctx, c, func(client jasper.RemoteClient) error {
-				return errors.WithStack(client.DownloadFile(ctx, info))
+				return errors.WithStack(client.DownloadFile(ctx, opts))
 			})
 		},
 	}

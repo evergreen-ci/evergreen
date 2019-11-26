@@ -32,11 +32,14 @@ type Manager interface {
 	ID() string
 	CreateProcess(context.Context, *options.Create) (Process, error)
 	CreateCommand(context.Context) *Command
+	CreateScripting(context.Context, options.ScriptingEnvironment) (ScriptingEnvironment, error)
 	Register(context.Context, Process) error
+	WriteFile(context.Context, options.WriteFile) error
 
 	List(context.Context, options.Filter) ([]Process, error)
 	Group(context.Context, string) ([]Process, error)
 	Get(context.Context, string) (Process, error)
+	GetScripting(context.Context, string) (ScriptingEnvironment, error)
 	Clear(context.Context)
 	Close(context.Context) error
 }
@@ -121,15 +124,42 @@ type ProcessConstructor func(context.Context, *options.Create) (Process, error)
 // returned and passed by value, and reflects the state of the process
 // when it was created.
 type ProcessInfo struct {
-	ID         string         `json:"id"`
-	Host       string         `json:"host"`
-	PID        int            `json:"pid"`
-	ExitCode   int            `json:"exit_code"`
-	IsRunning  bool           `json:"is_running"`
-	Successful bool           `json:"successful"`
-	Complete   bool           `json:"complete"`
-	Timeout    bool           `json:"timeout"`
-	Options    options.Create `json:"options"`
-	StartAt    time.Time      `json:"start_at"`
-	EndAt      time.Time      `json:"end_at"`
+	ID         string         `json:"id" bson:"id"`
+	Host       string         `json:"host" bson:"host"`
+	PID        int            `json:"pid" bson:"pid"`
+	ExitCode   int            `json:"exit_code" bson:"exit_code"`
+	IsRunning  bool           `json:"is_running" bson:"is_running"`
+	Successful bool           `json:"successful" bson:"successful"`
+	Complete   bool           `json:"complete" bson:"complete"`
+	Timeout    bool           `json:"timeout" bson:"timeout"`
+	Options    options.Create `json:"options" bson:"options"`
+	StartAt    time.Time      `json:"start_at" bson:"start_at"`
+	EndAt      time.Time      `json:"end_at" bson:"end_at"`
+}
+
+// ScriptingEnvironment provides an interface to execute code in a
+// scripting environment such as a Python Virtual
+// Environment. Implementations should be make it possible to execute
+// either locally or on remote systems.
+type ScriptingEnvironment interface {
+	// ID returns a unique ID for the underlying environment. This
+	// should match the ID produced by the underlying options
+	// implementation.
+	ID() string
+	// Setup initializes the environment, and should be safe to
+	// call multiple times.
+	Setup(context.Context) error
+	// Run executes a command (as arguments) with the environment's
+	// interpreter.
+	Run(context.Context, []string) error
+	// RunScript takes the body of a script and should write that
+	// data to a file and then runs that script directly.
+	RunScript(context.Context, string) error
+	// Build will run the environments native build system to
+	// generate some kind of build artifact from the scripting
+	// environment. Pass a directory in addition to a list of
+	// arguments to describe any arguments to the build system.
+	Build(context.Context, string, []string) error
+	// Cleanup should remove the files created by the scripting environment.
+	Cleanup(context.Context) error
 }

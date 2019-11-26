@@ -4,11 +4,14 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/mholt/archiver"
 	"github.com/mongodb/grip"
 )
 
+// AddFileToDirectory adds an archive file given by fileName with the given
+// fileContents to the directory.
 func AddFileToDirectory(dir string, fileName string, fileContents string) error {
 	if format := archiver.MatchingFormat(fileName); format != nil {
 		tmpFile, err := ioutil.TempFile(dir, "tmp.txt")
@@ -43,4 +46,12 @@ func AddFileToDirectory(dir string, fileName string, fileContents string) error 
 		return catcher.Resolve()
 	}
 	return file.Close()
+}
+
+// GetDirectoryOfFile returns the directory of the file where this
+// function is called from.
+func GetDirectoryOfFile() string {
+	_, file, _, _ := runtime.Caller(1)
+
+	return filepath.Dir(file)
 }

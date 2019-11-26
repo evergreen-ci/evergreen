@@ -230,6 +230,60 @@ message EventName {
   string value = 1;
 }
 
+message ScriptingEnvironmentID {
+  string id = 1;
+  bool setup = 2;
+}
+
+message ScriptingOptionsGolang {
+  string gopath = 1;
+  string goroot = 2;
+  repeated string packages = 3;
+  string context = 4;
+  bool with_update = 5;
+}
+
+message ScriptingOptionsPython {
+  string virtual_env_path = 1;
+  string requirements_path = 2;
+  string host_python = 3;
+  repeated string packages = 4;
+  bool legacy_python = 5;
+}
+
+message ScriptingOptionsRoswell {
+  string path = 1;
+  repeated string systems = 2; 
+  string lisp = 3;
+}
+
+message ScriptingOptions {
+  oneof value {
+    ScriptingOptionsGolang golang = 1; 
+    ScriptingOptionsPython python = 2; 
+    ScriptingOptionsRoswell roswell = 3;
+  }
+  map<string, string> environment = 4;
+  OutputOptions output = 5; 
+  int64 duration = 6;
+}
+
+message ScriptingEnvironmentRunArgs {
+  string id = 1; 
+  repeated string args = 2; 
+}
+
+message ScriptingEnvironmentBuildArgs {
+  string id = 1; 
+  string directory = 2;
+  repeated string args = 3; 
+}
+
+message ScriptingEnvironmentRunScriptArgs {
+  string id = 1;
+  string script = 2;
+}
+
 service JasperProcessManager {
   // Manager functions
   rpc ID(google.protobuf.Empty) returns (IDResponse);
@@ -248,6 +302,15 @@ service JasperProcessManager {
   rpc RegisterSignalTriggerID(SignalTriggerParams) returns (OperationOutcome);
   rpc Wait(JasperProcessID) returns (OperationOutcome);
   rpc Respawn(JasperProcessID) returns (ProcessInfo);
+
+  // ScriptingEnvironment functions
+  rpc ScriptingEnvironmentCreate(ScriptingOptions) returns (ScriptingEnvironmentID); 
+  rpc ScriptingEnvironmentCheck(ScriptingEnvironmentID) returns (OperationOutcome);
+  rpc ScriptingEnvironmentSetup(ScriptingEnvironmentID) returns (OperationOutcome);
+  rpc ScriptingEnvironmentCleanup(ScriptingEnvironmentID) returns (OperationOutcome);
+  rpc ScriptingEnvironmentRun(ScriptingEnvironmentRunArgs) returns (OperationOutcome);
+  rpc ScriptingEnvironmentBuild(ScriptingEnvironmentBuildArgs) returns (OperationOutcome);
+  rpc ScriptingEnvironmentRunScript(ScriptingEnvironmentRunScriptArgs) returns (OperationOutcome);
 
   // RPC-specific functions
   rpc Status(google.protobuf.Empty) returns (StatusResponse);
