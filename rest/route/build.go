@@ -48,15 +48,6 @@ func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	buildModel := &model.APIBuild{}
-	ref, err := b.sc.FindProjectByBranch(foundBuild.Project)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(err)
-	}
-	var proj string
-	if ref != nil {
-		proj = ref.Repo
-	}
-	buildModel.ProjectId = model.ToAPIString(proj)
 	err = buildModel.BuildFromService(*foundBuild)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))

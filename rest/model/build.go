@@ -26,7 +26,6 @@ type APIBuild struct {
 	StartTime           APITime        `json:"start_time"`
 	FinishTime          APITime        `json:"finish_time"`
 	Version             APIString      `json:"version"`
-	Branch              APIString      `json:"branch"`
 	Revision            APIString      `json:"git_hash"`
 	BuildVariant        APIString      `json:"build_variant"`
 	Status              APIString      `json:"status"`
@@ -57,7 +56,6 @@ func (apiBuild *APIBuild) BuildFromService(h interface{}) error {
 	apiBuild.StartTime = NewTime(v.StartTime)
 	apiBuild.FinishTime = NewTime(v.FinishTime)
 	apiBuild.Version = ToAPIString(v.Version)
-	apiBuild.Branch = ToAPIString(v.Branch)
 	apiBuild.Revision = ToAPIString(v.Revision)
 	apiBuild.BuildVariant = ToAPIString(v.BuildVariant)
 	apiBuild.Status = ToAPIString(v.Status)
@@ -65,6 +63,7 @@ func (apiBuild *APIBuild) BuildFromService(h interface{}) error {
 	apiBuild.ActivatedBy = ToAPIString(v.ActivatedBy)
 	apiBuild.ActivatedTime = NewTime(v.ActivatedTime)
 	apiBuild.RevisionOrderNumber = v.RevisionOrderNumber
+	apiBuild.ProjectId = ToAPIString(v.Project)
 	for _, t := range v.Tasks {
 		apiBuild.Tasks = append(apiBuild.Tasks, t.Id)
 	}
