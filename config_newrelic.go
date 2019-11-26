@@ -59,21 +59,21 @@ func (c *NewRelicConfig) Set() error {
 
 func (c *NewRelicConfig) ValidateAndDefault() error {
 	catcher := grip.NewSimpleCatcher()
-	if c.AccountID == "" {
-		catcher.Add(errors.New("Account ID must not be empty"))
-	}
-	if c.TrustKey == "" {
-		catcher.Add(errors.New("Trust Key must not be empty"))
-	}
-	if c.AgentID == "" {
-		catcher.Add(errors.New("Agent ID must not be empty"))
-	}
-	if c.LicenseKey == "" {
-		catcher.Add(errors.New("License Key must not be empty"))
-	}
-	if c.ApplicationID == "" {
-		catcher.Add(errors.New("Application ID must not be empty"))
-	}
+	// if c.AccountID == "" {
+	// 	catcher.Add(errors.New("Account ID must not be empty"))
+	// }
+	// if c.TrustKey == "" {
+	// 	catcher.Add(errors.New("Trust Key must not be empty"))
+	// }
+	// if c.AgentID == "" {
+	// 	catcher.Add(errors.New("Agent ID must not be empty"))
+	// }
+	// if c.LicenseKey == "" {
+	// 	catcher.Add(errors.New("License Key must not be empty"))
+	// }
+	// if c.ApplicationID == "" {
+	// 	catcher.Add(errors.New("Application ID must not be empty"))
+	// }
 
 	return catcher.Resolve()
 }
