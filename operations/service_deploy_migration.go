@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/migrations"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/anser/client"
 	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -40,6 +41,7 @@ func deployMigration() cli.Command {
 				Workers:  c.Int(anserWorkersFlagName),
 				IDs:      c.StringSlice(anserMigrationIDFlagName),
 				Session:  env.Session(),
+				Client:   client.WrapClient(env.Client()),
 				Database: settings.Database.DB,
 			}
 
@@ -93,6 +95,7 @@ func deployDataTransforms() cli.Command {
 				DryRun:   c.Bool(anserDryRunFlagName),
 				Workers:  c.Int(anserWorkersFlagName),
 				Session:  env.Session(),
+				Client:   client.WrapClient(env.Client()),
 				Database: settings.Database.DB,
 			}
 

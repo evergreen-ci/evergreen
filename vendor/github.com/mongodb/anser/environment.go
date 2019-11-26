@@ -49,14 +49,17 @@ type Environment interface {
 	GetQueue() (amboy.Queue, error)
 	GetDependencyNetwork() (model.DependencyNetworker, error)
 	MetadataNamespace() model.Namespace
+
 	RegisterLegacyManualMigrationOperation(string, db.MigrationOperation) error
 	GetLegacyManualMigrationOperation(string) (db.MigrationOperation, bool)
 	RegisterLegacyDocumentProcessor(string, db.Processor) error
 	GetLegacyDocumentProcessor(string) (db.Processor, bool)
+
 	RegisterManualMigrationOperation(string, client.MigrationOperation) error
 	GetManualMigrationOperation(string) (client.MigrationOperation, bool)
 	RegisterDocumentProcessor(string, client.Processor) error
 	GetDocumentProcessor(string) (client.Processor, bool)
+
 	NewDependencyManager(string) dependency.Manager
 	RegisterCloser(func() error)
 	Close() error
@@ -127,6 +130,7 @@ func (e *envState) Setup(q amboy.Queue, cl client.Client, session db.Session) er
 	e.closers = append(e.closers, func() error { session.Close(); return nil })
 	e.queue = q
 	e.session = session
+	e.client = cl
 	e.metadataNS.Collection = defaultMetadataCollection
 	e.metadataNS.DB = dbName
 	e.isSetup = true
@@ -287,8 +291,12 @@ func (e *envState) NewDependencyManager(migrationID string) dependency.Manager {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
-	d.MigrationHelper = NewMigrationHelper(e)
 	d.MigrationID = migrationID
+	if e.unsafePreferClient() {
+		d.MigrationHelper = NewMigrationHelper(e)
+	} else {
+		d.MigrationHelper = NewLegacyMigrationHelper(e)
+	}
 
 	return d
 }
@@ -340,7 +348,10 @@ func (e *envState) SetPreferedDB(in interface{}) {
 func (e *envState) PreferClient() bool {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
+	return e.unsafePreferClient()
+}
 
+func (e *envState) unsafePreferClient() bool {
 	if e.client == nil && e.session != nil {
 		return false
 	}

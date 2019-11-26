@@ -1,8 +1,9 @@
 package anser
 
 import (
+	"context"
+
 	"github.com/mongodb/amboy/job"
-	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/mock"
 	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
@@ -16,13 +17,13 @@ type MigrationHelperMock struct {
 	MigrationEvents         []*model.MigrationMetadata
 	SaveMigrationEventError error
 	NumPendingMigrations    int
-	GetMigrationEventsIter  *mock.Iterator
+	GetMigrationEventsIter  MigrationMetadataIterator
 	GetMigrationEventsError error
 }
 
 func (m *MigrationHelperMock) Env() Environment { return m.Environment }
 
-func (m *MigrationHelperMock) FinishMigration(name string, j *job.Base) {
+func (m *MigrationHelperMock) FinishMigration(ctx context.Context, name string, j *job.Base) {
 	j.MarkComplete()
 	meta := model.MigrationMetadata{
 		ID:        j.ID(),
@@ -30,23 +31,23 @@ func (m *MigrationHelperMock) FinishMigration(name string, j *job.Base) {
 		HasErrors: j.HasErrors(),
 		Completed: true,
 	}
-	err := m.SaveMigrationEvent(&meta)
+	err := m.SaveMigrationEvent(ctx, &meta)
 	if err != nil {
 		j.AddError(err)
 		grip.Warningf("encountered problem [%s] saving migration metadata", err.Error())
 	}
 }
 
-func (m *MigrationHelperMock) SaveMigrationEvent(data *model.MigrationMetadata) error {
+func (m *MigrationHelperMock) SaveMigrationEvent(ctx context.Context, data *model.MigrationMetadata) error {
 	m.MigrationEvents = append(m.MigrationEvents, data)
 
 	return m.SaveMigrationEventError
 }
 
-func (m *MigrationHelperMock) PendingMigrationOperations(_ model.Namespace, _ map[string]interface{}) int {
+func (m *MigrationHelperMock) PendingMigrationOperations(ctx context.Context, _ model.Namespace, _ map[string]interface{}) int {
 	return m.NumPendingMigrations
 }
 
-func (m *MigrationHelperMock) GetMigrationEvents(_ map[string]interface{}) (db.Iterator, error) {
-	return m.GetMigrationEventsIter, m.GetMigrationEventsError
+func (m *MigrationHelperMock) GetMigrationEvents(ctx context.Context, _ map[string]interface{}) MigrationMetadataIterator {
+	return m.GetMigrationEventsIter
 }

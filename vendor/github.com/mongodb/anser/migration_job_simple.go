@@ -58,7 +58,7 @@ func (j *simpleMigrationJob) Run(ctx context.Context) {
 		"client":    preferClient,
 	})
 
-	defer j.FinishMigration(j.Definition.Migration, &j.Base)
+	defer j.FinishMigration(ctx, j.Definition.Migration, &j.Base)
 
 	if preferClient {
 		client, err := env.GetClient()

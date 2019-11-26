@@ -58,7 +58,7 @@ type streamMigrationGenerator struct {
 }
 
 func (j *streamMigrationGenerator) Run(ctx context.Context) {
-	defer j.FinishMigration(j.ID(), &j.Base)
+	defer j.FinishMigration(ctx, j.ID(), &j.Base)
 
 	env := j.Env()
 

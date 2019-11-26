@@ -28,9 +28,9 @@ type Collection interface {
 	Find(context.Context, interface{}, ...*options.FindOptions) (Cursor, error)
 	FindOne(context.Context, interface{}, ...*options.FindOneOptions) SingleResult
 	Name() string
-	ReplaceOne(context.Context, interface{}, interface{}) (*UpdateResult, error)
-	UpdateOne(context.Context, interface{}, interface{}) (*UpdateResult, error)
-	UpdateMany(context.Context, interface{}, interface{}) (*UpdateResult, error)
+	ReplaceOne(context.Context, interface{}, interface{}, ...*options.ReplaceOptions) (*UpdateResult, error)
+	UpdateOne(context.Context, interface{}, interface{}, ...*options.UpdateOptions) (*UpdateResult, error)
+	UpdateMany(context.Context, interface{}, interface{}, ...*options.UpdateOptions) (*UpdateResult, error)
 	InsertOne(context.Context, interface{}) (*InsertOneResult, error)
 	InsertMany(context.Context, []interface{}) (*InsertManyResult, error)
 }
