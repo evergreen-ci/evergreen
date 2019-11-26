@@ -1112,12 +1112,12 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 func (s *EC2Suite) TestGetRegion() {
 	ec2Settings := &EC2ProviderSettings{}
 	r := ec2Settings.getRegion()
-	s.Equal(defaultRegion, r)
+	s.Equal(evergreen.DefaultEC2Region, r)
 
-	(*s.h.Distro.ProviderSettings)["region"] = defaultRegion
+	(*s.h.Distro.ProviderSettings)["region"] = evergreen.DefaultEC2Region
 	s.NoError(ec2Settings.fromDistroSettings(s.h.Distro))
 	r = ec2Settings.getRegion()
-	s.Equal(defaultRegion, r)
+	s.Equal(evergreen.DefaultEC2Region, r)
 
 	(*s.h.Distro.ProviderSettings)["region"] = "us-west-2"
 	s.NoError(ec2Settings.fromDistroSettings(s.h.Distro))
@@ -1226,19 +1226,21 @@ func (s *EC2Suite) TestFromDistroSettings() {
 	s.Equal(float64(0.001), ec2Settings.BidPrice)
 }
 
-func (s *EC2Suite) TestGetEC2Region() {
+func (s *EC2Suite) TestGetEC2ManagerOptions() {
 	d1 := distro.Distro{
+		Provider: evergreen.ProviderNameEc2OnDemand,
 		ProviderSettings: &map[string]interface{}{
-			"region": "test-region",
+			"region":                "test-region",
+			"aws_access_key_id":     "key",
+			"aws_secret_access_key": "secret",
 		},
 	}
 
-	d2 := distro.Distro{
-		ProviderSettings: &map[string]interface{}{},
-	}
-
-	s.Equal("test-region", getEC2Region(d1.ProviderSettings))
-	s.Equal(evergreen.DefaultEC2Region, getEC2Region(d2.ProviderSettings))
+	managerOpts, err := getEC2ManagerOptions(d1.Provider, d1.ProviderSettings)
+	s.NoError(err)
+	s.Equal("test-region", managerOpts.Provider)
+	s.Equal("key", managerOpts.ProviderKey)
+	s.Equal("secret", managerOpts.ProviderSecret)
 }
 
 func (s *EC2Suite) TestGetEC2Key() {

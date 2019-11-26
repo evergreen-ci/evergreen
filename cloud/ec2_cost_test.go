@@ -187,7 +187,7 @@ func (s *CostIntegrationSuite) SetupSuite() {
 
 	s.m = &ec2Manager{env: env, EC2ManagerOptions: &EC2ManagerOptions{client: &awsClientImpl{}}}
 	s.NoError(s.m.Configure(s.ctx, settings))
-	s.NoError(s.m.client.Create(s.m.credentials, defaultRegion))
+	s.NoError(s.m.client.Create(s.m.credentials, evergreen.DefaultEC2Region))
 	s.client = s.m.client
 }
 
@@ -394,11 +394,11 @@ func (s *CostIntegrationSuite) TestGetProviderAuto() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	m4LargeOnDemand, err := pkgCachingPriceFetcher.getEC2OnDemandCost(context.Background(), s.m.client, getOsName(s.h), "m4.large", defaultRegion)
+	m4LargeOnDemand, err := pkgCachingPriceFetcher.getEC2OnDemandCost(context.Background(), s.m.client, getOsName(s.h), "m4.large", evergreen.DefaultEC2Region)
 	s.InDelta(.1, m4LargeOnDemand, .05)
 	s.NoError(err)
 
-	t2MicroOnDemand, err := pkgCachingPriceFetcher.getEC2OnDemandCost(context.Background(), s.m.client, getOsName(s.h), "t2.micro", defaultRegion)
+	t2MicroOnDemand, err := pkgCachingPriceFetcher.getEC2OnDemandCost(context.Background(), s.m.client, getOsName(s.h), "t2.micro", evergreen.DefaultEC2Region)
 	s.InDelta(.0116, t2MicroOnDemand, .01)
 	s.NoError(err)
 
