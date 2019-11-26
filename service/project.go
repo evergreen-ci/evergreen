@@ -377,7 +377,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			remainingAliases := 0
 			for _, a := range aliases {
 				// only consider aliases that won't be deleted
-				if !util.StringSliceContains(responseRef.DeleteAliases, a.Alias) {
+				if !util.StringSliceContains(responseRef.DeleteAliases, a.ID.String()) {
 					remainingAliases++
 				}
 			}
