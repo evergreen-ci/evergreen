@@ -9,12 +9,11 @@ specified as edges are satisfied before reporting as "ready" for work.
 package anser
 
 import (
+	"context"
+
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/registry"
-	"github.com/mongodb/anser/db"
-	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func init() {
@@ -50,29 +49,29 @@ func (d *migrationDependency) State() dependency.State {
 		return dependency.Ready
 	}
 
+	ctx, cancel := context.WithCancel(context.TODO())
+	defer cancel()
+
 	// query the "done" dependencies, and make sure that all the
 	// edges listed in the edges document are satisfied.
-
-	query := getDependencyStateQuery(edges)
-	iter, err := d.GetMigrationEvents(query)
-	if err != nil {
-		grip.Warning(err)
-		return dependency.Blocked
-	}
-
-	return processEdges(len(edges), iter)
+	return processEdges(ctx, len(edges), d.GetMigrationEvents(ctx, getDependencyStateQuery(edges)))
 }
 
-func processEdges(numEdges int, iter db.Iterator) dependency.State {
+func processEdges(ctx context.Context, numEdges int, iter MigrationMetadataIterator) dependency.State {
 	count := 0
-	meta := &model.MigrationMetadata{}
-	for iter.Next(meta) {
+
+	for iter.Next(ctx) {
+		meta := iter.Item()
 		// if any of the edges are *not* satisfied, then the
 		// dependency is by definition blocked
 		if !meta.Satisfied() {
 			return dependency.Blocked
 		}
 		count++
+	}
+	if err := iter.Err(); err != nil {
+		grip.Warning(err)
+		return dependency.Blocked
 	}
 
 	// if we encountered an error in the query, then we should log
@@ -93,4 +92,6 @@ func processEdges(numEdges int, iter db.Iterator) dependency.State {
 	return dependency.Ready
 }
 
-func getDependencyStateQuery(ids []string) bson.M { return bson.M{"_id": bson.M{"$in": ids}} }
+func getDependencyStateQuery(ids []string) map[string]interface{} {
+	return map[string]interface{}{"_id": map[string]interface{}{"$in": ids}}
+}

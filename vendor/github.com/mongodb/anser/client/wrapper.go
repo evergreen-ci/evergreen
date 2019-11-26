@@ -64,16 +64,16 @@ func (c *collectionWrapper) InsertMany(ctx context.Context, docs []interface{}) 
 func (c *collectionWrapper) InsertOne(ctx context.Context, doc interface{}) (*InsertOneResult, error) {
 	return c.Collection.InsertOne(ctx, doc)
 }
-func (c *collectionWrapper) ReplaceOne(ctx context.Context, query, doc interface{}) (*UpdateResult, error) {
-	return c.Collection.ReplaceOne(ctx, query, doc)
+func (c *collectionWrapper) ReplaceOne(ctx context.Context, query, doc interface{}, opts ...*options.ReplaceOptions) (*UpdateResult, error) {
+	return c.Collection.ReplaceOne(ctx, query, doc, opts...)
 }
 
-func (c *collectionWrapper) UpdateMany(ctx context.Context, query, update interface{}) (*UpdateResult, error) {
-	return c.Collection.UpdateMany(ctx, query, update)
+func (c *collectionWrapper) UpdateMany(ctx context.Context, query, update interface{}, opts ...*options.UpdateOptions) (*UpdateResult, error) {
+	return c.Collection.UpdateMany(ctx, query, update, opts...)
 }
 
-func (c *collectionWrapper) UpdateOne(ctx context.Context, query, update interface{}) (*UpdateResult, error) {
-	return c.Collection.UpdateOne(ctx, query, update)
+func (c *collectionWrapper) UpdateOne(ctx context.Context, query, update interface{}, opts ...*options.UpdateOptions) (*UpdateResult, error) {
+	return c.Collection.UpdateOne(ctx, query, update, opts...)
 }
 
 type singleResultWrapper struct {

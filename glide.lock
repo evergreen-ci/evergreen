@@ -165,6 +165,6 @@ imports:
   - name: github.com/evergreen-ci/birch
     version: 5b054047680765b089c1e6f77d0896803d1fd73d
   - name: github.com/mongodb/anser
-    version: 66f27fb0b805b5cef5ea9b19764c3dc417aa8af6
+    version: ee4e72afa4fed132f32d481b87983ab413f8bece
   - name: github.com/mongodb/ftdc
     version: 7e505d9a86240264dd35b1d900c2e88ce74f6066

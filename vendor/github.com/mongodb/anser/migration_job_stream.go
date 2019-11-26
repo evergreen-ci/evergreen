@@ -41,7 +41,7 @@ type streamMigrationJob struct {
 	MigrationHelper `bson:"-" json:"-" yaml:"-"`
 }
 
-func (j *streamMigrationJob) Run(_ context.Context) {
+func (j *streamMigrationJob) Run(ctx context.Context) {
 	grip.Info(message.Fields{
 		"message":   "starting migration",
 		"migration": j.Definition.Migration,
@@ -51,7 +51,7 @@ func (j *streamMigrationJob) Run(_ context.Context) {
 		"name":      j.Definition.ProcessorName,
 	})
 
-	defer j.FinishMigration(j.Definition.Migration, &j.Base)
+	defer j.FinishMigration(ctx, j.Definition.Migration, &j.Base)
 
 	env := j.Env()
 

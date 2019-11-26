@@ -1,6 +1,7 @@
 package anser
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/mongodb/anser/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type DependencyManagerSuite struct {
@@ -50,6 +50,7 @@ func (s *DependencyManagerSuite) TestNoEdgesReported() {
 
 func (s *DependencyManagerSuite) TestEdgeQueryReturnsError() {
 	s.helper.NumPendingMigrations = 2
+	s.helper.GetMigrationEventsIter = &legacyMigrationMetadataIterator{iter: &mock.Iterator{}}
 	s.helper.GetMigrationEventsError = errors.New("problem")
 	s.NoError(s.dep.AddEdge("foo"))
 	s.Equal(s.dep.State(), dependency.Blocked)
@@ -57,7 +58,7 @@ func (s *DependencyManagerSuite) TestEdgeQueryReturnsError() {
 
 func (s *DependencyManagerSuite) TestEdgeQueryReturnsNoResults() {
 	s.helper.NumPendingMigrations = 2
-	s.helper.GetMigrationEventsIter = &mock.Iterator{}
+	s.helper.GetMigrationEventsIter = &legacyMigrationMetadataIterator{iter: &mock.Iterator{}}
 	s.NoError(s.dep.AddEdge("foo"))
 	// the outcome is blocked because processEdges() ends up
 	// having seen 0 documents, but there are two edges pending
@@ -73,24 +74,26 @@ func TestDependencyStateQuery(t *testing.T) {
 	idClause, ok := query["_id"]
 	assert.True(ok)
 	assert.Len(idClause, 1)
-	inClause := idClause.(bson.M)["$in"].([]string)
+	inClause := idClause.(map[string]interface{})["$in"].([]string)
 	assert.Len(inClause, 2)
 }
 
 func TestDependencyEdgeProcessing(t *testing.T) {
 	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// if we don't iterate (the default), then the number of edges of 1 will
 	// always be greater than 0, resulting  in a blocked state
-	assert.Equal(dependency.Blocked, processEdges(1, &mock.Iterator{}))
+	assert.Equal(dependency.Blocked, processEdges(ctx, 1, &legacyMigrationMetadataIterator{iter: &mock.Iterator{}}))
 
 	// if there are -1 edges (not possible in normal situations,
 	// but...) then we will have seen in the iteration more
 	// dependencies (e.g. 0) than the number of edges (0)
-	assert.Equal(dependency.Ready, processEdges(-1, &mock.Iterator{}))
+	assert.Equal(dependency.Ready, processEdges(ctx, -1, &legacyMigrationMetadataIterator{iter: &mock.Iterator{}}))
 
 	// if the close method returns an error, then it's blocked.
-	assert.Equal(dependency.Blocked, processEdges(-1, &mock.Iterator{Error: errors.New("blocked")}))
+	assert.Equal(dependency.Blocked, processEdges(ctx, -1, &legacyMigrationMetadataIterator{iter: &mock.Iterator{Error: errors.New("blocked")}}))
 
 	assert.True((&model.MigrationMetadata{Completed: true, HasErrors: false}).Satisfied())
 	assert.False((&model.MigrationMetadata{}).Satisfied())
@@ -101,5 +104,5 @@ func TestDependencyEdgeProcessing(t *testing.T) {
 		&model.MigrationMetadata{ID: "six", Completed: true, HasErrors: false},
 		&model.MigrationMetadata{ID: "seven"},
 	}}
-	assert.Equal(dependency.Blocked, processEdges(1, iter))
+	assert.Equal(dependency.Blocked, processEdges(ctx, 1, &legacyMigrationMetadataIterator{iter: iter}))
 }

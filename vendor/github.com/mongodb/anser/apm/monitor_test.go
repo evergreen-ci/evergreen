@@ -213,7 +213,7 @@ func TestMonitor(t *testing.T) {
 			_ = m.Rotate()
 			assert.True(t, startedAt.Before(m.currentStartAt))
 		})
-		t.Run("Rotate", func(t *testing.T) {
+		t.Run("Operation", func(t *testing.T) {
 			assert.Len(t, m.current, 0)
 			m.inProg[42] = eventKey{cmdName: "find"}
 			_ = m.getRecord(42)
@@ -225,7 +225,43 @@ func TestMonitor(t *testing.T) {
 				assert.Equal(t, 1, len(event.data))
 			}
 		})
+		t.Run("PropagatesSettings", func(t *testing.T) {
+			conf := &MonitorConfig{AllTags: true, Tags: []string{"41", "1"}}
+			monitor := NewBasicMonitor(conf)
+			event, ok := monitor.Rotate().(*eventWindow)
+			require.True(t, ok)
+			assert.True(t, event.allTags)
+			assert.Contains(t, event.tags, "41")
+			assert.Contains(t, event.tags, "1")
+		})
 	})
+	t.Run("Tags", func(t *testing.T) {
+		conf := &MonitorConfig{Tags: []string{"41", "1"}}
+		t.Run("ConstructorSorts", func(t *testing.T) {
+			assert.Equal(t, "41", conf.Tags[0])
+			assert.Equal(t, "1", conf.Tags[1])
+
+			monitor := NewBasicMonitor(conf)
+			require.NotNil(t, monitor)
+			assert.Equal(t, "1", conf.Tags[0])
+			assert.Equal(t, "41", conf.Tags[1])
+		})
+		t.Run("AddTags", func(t *testing.T) {
+			ctx := SetTags(context.Background(), "41")
+			monitor := NewBasicMonitor(conf).(*basicMonitor)
+			event := &eventRecord{Tags: map[string]int64{}}
+			monitor.addTags(ctx, event)
+			assert.Contains(t, event.Tags, "41")
+		})
+		t.Run("AddTagsSkipped", func(t *testing.T) {
+			ctx := SetTags(context.Background(), "400")
+			monitor := NewBasicMonitor(conf).(*basicMonitor)
+			event := &eventRecord{Tags: map[string]int64{}}
+			monitor.addTags(ctx, event)
+			assert.Len(t, event.Tags, 0)
+		})
+	})
+
 }
 
 func resetMonitor(t *testing.T, in Monitor) {
