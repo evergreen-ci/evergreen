@@ -233,7 +233,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 	if err != nil {
 		return errors.Wrap(err, "problem finding builds for version")
 	}
-	buildSet := make(map[string]struct{})
+	buildSet := map[string]struct{}{}
 	for _, b := range builds {
 		buildSet[b.BuildVariant] = struct{}{}
 	}
