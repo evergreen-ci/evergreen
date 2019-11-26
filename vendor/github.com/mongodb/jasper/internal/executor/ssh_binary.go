@@ -13,7 +13,6 @@ import (
 
 // execSSHBinary runs remote processes using the SSH binary.
 type execSSHBinary struct {
-	ctx        context.Context
 	cmd        *exec.Cmd
 	remoteOpts []string
 	cmdArgs    []string
@@ -23,7 +22,13 @@ type execSSHBinary struct {
 
 // NewSSHBinary returns an Executor that creates processes using the SSH binary.
 func NewSSHBinary(ctx context.Context, remoteOpts []string, args []string) Executor {
-	return &execSSHBinary{ctx: ctx, remoteOpts: remoteOpts, cmdArgs: args}
+	e := &execSSHBinary{
+		remoteOpts: remoteOpts,
+		cmdArgs:    args,
+		// The actual arguments to SSH will be resolved when Start is called.
+		cmd: exec.CommandContext(ctx, "ssh"),
+	}
+	return e
 }
 
 // Args returns the arguments to the process.
@@ -76,7 +81,14 @@ func (e *execSSHBinary) Start() error {
 		resolvedArgs += strings.Join(e.env, " ") + " "
 	}
 	resolvedArgs += strings.Join(e.cmdArgs, " ")
-	e.cmd = exec.CommandContext(e.ctx, "ssh", append(e.remoteOpts, resolvedArgs)...)
+	path, err := exec.LookPath("ssh")
+	if err != nil {
+		return errors.Wrap(err, "could not find SSH binary")
+	}
+	e.cmd.Path = path
+	e.cmd.Args = []string{"ssh"}
+	e.cmd.Args = append(e.cmd.Args, e.remoteOpts...)
+	e.cmd.Args = append(e.cmd.Args, resolvedArgs)
 
 	return e.cmd.Start()
 }

@@ -37,12 +37,10 @@ imports:
     version: 5dd01196f47328d6833ddc0247690dc986525475
   - name: github.com/evergreen-ci/birch
     version: 5b054047680765b089c1e6f77d0896803d1fd73d
-  - name: github.com/mongodb/ftdc
-    version: 7e505d9a86240264dd35b1d900c2e88ce74f6066
   - name: github.com/evergreen-ci/timber
     version: 1cdd00ad2f2eaf6fb1cb9dedacaddbc3b0e03149
   - name: github.com/evergreen-ci/poplar
-    version: a77cf69fb19eb0d3235d73eb0e5428002936827e
+    version: 3043bd036e01aa6abbad6af0df031a8315308ff9
 
   # cgroup requirements
   - name: github.com/containerd/cgroups

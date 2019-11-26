@@ -172,7 +172,7 @@ func (opts *Create) Resolve(ctx context.Context) (executor.Executor, time.Time, 
 		}
 		cmd = executor.MakeSSH(ctx, client, session, opts.Args)
 	} else {
-		cmd = executor.NewSSHBinary(ctx, opts.Remote.Args, opts.Args)
+		cmd = executor.NewSSHBinary(ctx, append(opts.Remote.Args, opts.Remote.String()), opts.Args)
 	}
 
 	if opts.WorkingDirectory == "" && opts.Remote == nil {
