@@ -135,15 +135,24 @@ func (h *Host) GetSSHInfo() (*util.StaticHostInfo, error) {
 	return hostInfo, nil
 }
 
+func (h *Host) GetSSHKeyPath() (string, error) {
+	keyPath := settings.Keys[h.Distro.SSHKey]
+	if keyPath == "" {
+		return "", errors.New("no SSH key specified for host")
+	}
+
+	return keyPath, nil
+}
+
 // GetSSHOptions returns the options to SSH into this host.
 // EVG-6389: this currently relies on the fact that the EC2 provider has a
 // single distro-level SSH key name corresponding to an existing SSH key file on
 // the app servers. We should be able to handle multiple keys configured in
 // admin settings rather than from a file name in distro settings.
 func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
-	keyPath := settings.Keys[h.Distro.SSHKey]
-	if keyPath == "" {
-		return nil, errors.New("no SSH key specified for host")
+	keyPath, err := h.GetSSHKeyPath()
+	if err != nil {
+		return nil, errors.WithStack(err)
 	}
 
 	opts := []string{"-i", keyPath}
@@ -747,12 +756,16 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jas
 			if err != nil {
 				return nil, errors.Wrap(err, "could not get host's SSH options")
 			}
+			keyPath, err := h.GetSShKeyPath()
+			if err != nil {
+				return nil, errors.Wrap(err, "could not get host's SSH options")
+			}
 
 			remoteOpts := options.Remote{
 				RemoteConfig: options.RemoteConfig{
 					Host:    hostInfo.Hostname,
 					User:    hostInfo.User,
-					KeyFile: h.Distro.SSHKey,
+					KeyFile: keyPath,
 					Args:    sshOpts,
 				},
 			}
