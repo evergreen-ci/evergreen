@@ -418,7 +418,7 @@ func (h *projectIDPatchHandler) hasCommitQueuePatchDefinition(pRef *model.APIPro
 	aliasesToDelete := map[string]bool{}
 	for _, alias := range pRef.Aliases {
 		// return immediately if new commit queue alias has been added
-		if model.FromAPIString(alias.Alias) == evergreen.CommitQueueAlias {
+		if model.FromAPIString(alias.Alias) == evergreen.CommitQueueAlias && !alias.Delete {
 			return true, nil
 		}
 		aliasesToDelete[model.FromAPIString(alias.ID)] = alias.Delete
