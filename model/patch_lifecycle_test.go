@@ -264,6 +264,25 @@ func TestFinalizePatch(t *testing.T) {
 				So(len(tasks), ShouldEqual, 1)
 			})
 
+			Convey("a commit queue patch with no tasks/build variants should not create a version", func() {
+				//normal patch works
+				token, err := patchTestConfig.GetGithubOauthToken()
+				So(err, ShouldBeNil)
+				configPatch := resetPatchSetup(t, configFilePath)
+				configPatch.Tasks = []string{}
+				configPatch.BuildVariants = []string{}
+				configPatch.VariantsTasks = []patch.VariantTasks{}
+				v, err := FinalizePatch(ctx, configPatch, evergreen.MergeTestRequester, token)
+				So(err, ShouldBeNil)
+				So(v, ShouldNotBeNil)
+				So(v.BuildIds, ShouldBeEmpty)
+
+				// commit queue patch should not
+				configPatch.Alias = evergreen.CommitQueueAlias
+				_, err = FinalizePatch(ctx, configPatch, evergreen.MergeTestRequester, token)
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldContainSubstring, "No builds or tasks for commit queue version")
+			})
 			Reset(func() {
 				So(db.Clear(distro.Collection), ShouldBeNil)
 			})

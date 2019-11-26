@@ -364,6 +364,26 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable Commit Queue without github webhooks enabled for the project"))
 			return
 		}
+		// if no new commit queue aliases, verify there are pre-existing commit queue aliases
+		if len(responseRef.CommitQueueAliases) == 0 {
+			aliases, err := model.FindAliasInProject(responseRef.Identifier, evergreen.CommitQueueAlias)
+			if err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error checking for commit queue aliases"))
+				return
+			}
+
+			remainingAliases := 0
+			for _, a := range aliases {
+				// only consider aliases that won't be deleted
+				if !util.StringSliceContains(responseRef.DeleteAliases, a.ID.Hex()) {
+					remainingAliases++
+				}
+			}
+			if remainingAliases == 0 {
+				uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Cannot enable Commit Queue without patch definitions."))
+				return
+			}
+		}
 
 		_, err = commitqueue.FindOneId(responseRef.Identifier)
 		if err != nil {
