@@ -49,6 +49,7 @@ func TestTerminateHosts(t *testing.T) {
 	h := &host.Host{
 		Id:          hostID,
 		Status:      evergreen.HostRunning,
+		Distro:      distro.Distro{Provider: evergreen.ProviderNameMock},
 		Provider:    evergreen.ProviderNameMock,
 		Provisioned: true,
 	}
