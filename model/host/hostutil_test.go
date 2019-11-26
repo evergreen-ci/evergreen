@@ -522,6 +522,19 @@ func TestJasperClient(t *testing.T) {
 			},
 			expectError: true,
 		},
+		"FailsWithLegacyHost": {
+			h: &Host{
+				Id: "test-host",
+				Distro: distro.Distro{
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodLegacySSH,
+						Communication: distro.CommunicationMethodLegacySSH,
+					},
+					SSHKey: sshKeyName,
+				},
+			},
+			expectError: true,
+		},
 		"FailsWithSSHCommunicationButNoSSHKey": {
 			h: &Host{
 				Id: "test-host",
@@ -851,7 +864,6 @@ func TestStopAgentMonitor(t *testing.T) {
 
 			require.Len(t, mockProc.Signals, 1)
 			assert.Equal(t, syscall.SIGTERM, mockProc.Signals[0])
-
 		},
 		"DoesNotKillProcessesWithoutCorrectTag": func(ctx context.Context, t *testing.T, env evergreen.Environment, manager *jmock.Manager, h *Host) {
 			proc, err := manager.CreateProcess(ctx, &options.Create{

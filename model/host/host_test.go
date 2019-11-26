@@ -394,10 +394,17 @@ func TestMarkAsProvisioned(t *testing.T) {
 			Status: evergreen.HostTerminated,
 		}
 
+		host3 := &Host{
+			Id:               "hostThree",
+			Status:           evergreen.HostProvisioning,
+			NeedsReprovision: ReprovisionToNew,
+		}
+
 		So(host.Insert(), ShouldBeNil)
 		So(host2.Insert(), ShouldBeNil)
-		Convey("marking a host that isn't down as provisioned should update the status,"+
-			" provisioned, and host name fields in both the in-memory and"+
+		So(host3.Insert(), ShouldBeNil)
+		Convey("marking a host that isn't down as provisioned should update the status"+
+			" and provisioning fields in both the in-memory and"+
 			" database copies of the host", func() {
 
 			So(host.MarkAsProvisioned(), ShouldBeNil)
@@ -461,6 +468,16 @@ func TestMarkAsReprovisioning(t *testing.T) {
 			assert.Equal(t, util.ZeroTime, h.AgentStartTime)
 			assert.False(t, h.Provisioned)
 			assert.False(t, h.NeedsNewAgentMonitor)
+		},
+		"NeedsJasperRestartSetsNeedsAgentMonitor": func(t *testing.T, h *Host) {
+			h.NeedsReprovision = ReprovisionJasperRestart
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
+			require.NoError(t, h.Insert())
+
+			require.NoError(t, h.MarkAsReprovisioning())
+			assert.Equal(t, util.ZeroTime, h.AgentStartTime)
+			assert.False(t, h.Provisioned)
+			assert.True(t, h.NeedsNewAgentMonitor)
 			assert.False(t, h.NeedsNewAgent)
 		},
 	} {
@@ -795,6 +812,14 @@ func TestUpsert(t *testing.T) {
 			So(ok, ShouldBeTrue)
 			So(val, ShouldEqual, 0)
 		})
+		Convey("Upserting a host that does not need its provisioning changed unsets the field", func() {
+			So(host.Insert(), ShouldBeNil)
+			_, err := host.Upsert()
+			So(err, ShouldBeNil)
+
+			_, err = FindOne(db.Query(bson.M{IdKey: host.Id, NeedsReprovisionKey: bson.M{"$exists": false}}))
+			So(err, ShouldBeNil)
+		})
 	})
 }
 
@@ -1017,7 +1042,6 @@ func TestSetNeedsJasperRestart(t *testing.T) {
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
 			assert.False(t, h.Provisioned)
 			assert.Equal(t, ReprovisionJasperRestart, h.NeedsReprovision)
-			assert.Zero(t, h.JasperRestartAttempts)
 		},
 		"SucceedsIfAlreadyNeedsJasperRestart": func(t *testing.T, h *Host) {
 			h.NeedsReprovision = ReprovisionJasperRestart
@@ -1027,7 +1051,6 @@ func TestSetNeedsJasperRestart(t *testing.T) {
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
 			assert.False(t, h.Provisioned)
 			assert.Equal(t, ReprovisionJasperRestart, h.NeedsReprovision)
-			assert.Zero(t, h.JasperRestartAttempts)
 		},
 		"FailsIfReprovisioningLocked": func(t *testing.T, h *Host) {
 			h.ReprovisioningLocked = true
@@ -1054,10 +1077,9 @@ func TestSetNeedsJasperRestart(t *testing.T) {
 				assert.NoError(t, db.Clear(Collection))
 			}()
 			h := &Host{
-				Id:                    "id",
-				Status:                evergreen.HostRunning,
-				JasperRestartAttempts: 10,
-				Provisioned:           true,
+				Id:          "id",
+				Status:      evergreen.HostRunning,
+				Provisioned: true,
 			}
 			testCase(t, h)
 		})

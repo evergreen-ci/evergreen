@@ -30,6 +30,7 @@ var distroSyntaxValidators = []distroValidator{
 	ensureValidContainerPool,
 	ensureValidArch,
 	ensureValidBootstrapSettings,
+	ensureValidStaticBootstrapSettings,
 	ensureValidCloneMethod,
 	ensureHasNoUnauthorizedCharacters,
 	ensureHasValidHostAllocatorSettings,
@@ -216,6 +217,20 @@ func ensureValidArch(ctx context.Context, d *distro.Distro, s *evergreen.Setting
 func ensureValidBootstrapSettings(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
 	if err := d.ValidateBootstrapSettings(); err != nil {
 		return ValidationErrors{{Level: Error, Message: err.Error()}}
+	}
+	return nil
+}
+
+// ensureValidBootstrapSettingsForStaticDistro checks that static hosts are
+// bootstrapped with one of the allowed methods.
+func ensureValidStaticBootstrapSettings(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
+	if d.Provider == evergreen.ProviderNameStatic && d.BootstrapSettings.Method == distro.BootstrapMethodUserData {
+		return ValidationErrors{
+			{
+				Message: fmt.Sprintf("static distro %s cannot be bootstrapped with user data", d.Id),
+				Level:   Error,
+			},
+		}
 	}
 	return nil
 }

@@ -106,8 +106,8 @@ func teardownHostCredentials() error {
 	return db.ClearCollections(evergreen.CredentialsCollection, host.Collection)
 }
 
-func getJasperRestartJobName(hostID string, restartThroughJasper bool, jobID string) string {
-	id := fmt.Sprintf("%s.%s.%s", jasperRestartJobName, hostID, jobID)
+func getJasperRestartJobName(hostID string, restartThroughJasper bool, ts string, attempt int) string {
+	id := fmt.Sprintf("%s.%s.%s.attempt-%d", jasperRestartJobName, hostID, ts, attempt)
 	if restartThroughJasper {
 		id += ".restart-through-jasper"
 	}
@@ -138,88 +138,91 @@ func TestJasperRestartJob(t *testing.T) {
 	defer cancel()
 
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host){
-		"NewJasperDeployJobPopulatesFields": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
+		"NewJasperRestartJobPopulatesFields": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
 			expiration := time.Now()
+			ts := time.Now().Format(TSFormat)
 
-			j := NewJasperRestartJob(env, *h, expiration, true, "attempt-0")
+			j := NewJasperRestartJob(env, *h, expiration, true, ts, 5)
 			restartJob, ok := j.(*jasperRestartJob)
 			require.True(t, ok)
 
 			assert.Equal(t, h.Id, restartJob.HostID)
 			assert.True(t, restartJob.RestartThroughJasper)
 			assert.Equal(t, expiration, restartJob.CredentialsExpiration)
-			assert.Equal(t, getJasperRestartJobName(h.Id, true, "attempt-0"), restartJob.ID())
+			assert.Equal(t, 5, restartJob.CurrentAttempt)
+			assert.Equal(t, ts, restartJob.Timestamp)
+			assert.Equal(t, getJasperRestartJobName(h.Id, true, ts, 5), restartJob.ID())
 		},
 		"RequeueJobRestartsThroughJasperIfAttemptsRemainingAndCredentialsNotExpiring": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
 			expiration := time.Now().Add(24 * time.Hour)
+			ts := time.Now().Format(TSFormat)
 
-			j := NewJasperRestartJob(env, *h, expiration, true, "attempt-0")
+			j := NewJasperRestartJob(env, *h, expiration, true, ts, 0)
 			restartJob, ok := j.(*jasperRestartJob)
 			require.True(t, ok)
 
 			require.NoError(t, restartJob.tryRequeue(ctx))
 
-			newJob, ok := env.RemoteQueue().Get(ctx, getJasperRestartJobName(h.Id, true, "attempt-1"))
+			newJob, ok := env.RemoteQueue().Get(ctx, getJasperRestartJobName(h.Id, true, ts, 1))
 			require.True(t, ok)
 			require.NotNil(t, newJob)
-			newDeployJob, ok := newJob.(*jasperRestartJob)
+			newRestartJob, ok := newJob.(*jasperRestartJob)
 			require.True(t, ok)
-			require.NotNil(t, newDeployJob)
+			require.NotNil(t, newRestartJob)
 
-			assert.True(t, newDeployJob.RestartThroughJasper)
+			assert.True(t, newRestartJob.RestartThroughJasper)
 		},
 		"RequeueJobDoesNotRestartThroughJasperIfCredentialsExpiring": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
 			expiration := time.Now()
+			ts := time.Now().Format(TSFormat)
 
-			j := NewJasperRestartJob(env, *h, expiration, true, "attempt-0")
+			j := NewJasperRestartJob(env, *h, expiration, true, ts, 0)
 			restartJob, ok := j.(*jasperRestartJob)
 			require.True(t, ok)
 
 			require.NoError(t, restartJob.tryRequeue(ctx))
 
-			newJob, ok := env.RemoteQueue().Get(ctx, getJasperRestartJobName(h.Id, false, "attempt-0"))
+			newJob, ok := env.RemoteQueue().Get(ctx, getJasperRestartJobName(h.Id, false, ts, 0))
 			require.True(t, ok)
 			require.NotNil(t, newJob)
-			newDeployJob, ok := newJob.(*jasperRestartJob)
+			newRestartJob, ok := newJob.(*jasperRestartJob)
 			require.True(t, ok)
-			require.NotNil(t, newDeployJob)
+			require.NotNil(t, newRestartJob)
 
-			assert.False(t, newDeployJob.RestartThroughJasper)
+			assert.False(t, newRestartJob.RestartThroughJasper)
 		},
 		"ChecksAttemptsBeforeRequeueingWithJasperRestart": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
 			expiration := time.Now().Add(24 * time.Hour)
+			ts := time.Now().Format(TSFormat)
 
-			require.NoError(t, h.SetJasperRestartAttempts(jasperRestartRetryLimit))
-
-			j := NewJasperRestartJob(env, *h, expiration, true, fmt.Sprintf("attempt-%d", jasperRestartRetryLimit))
+			j := NewJasperRestartJob(env, *h, expiration, true, ts, jasperRestartRetryLimit+1)
 			restartJob, ok := j.(*jasperRestartJob)
 			require.True(t, ok)
 
 			require.NoError(t, restartJob.tryRequeue(ctx))
 
-			_, ok = env.RemoteQueue().Get(ctx, getJasperRestartJobName(h.Id, true, fmt.Sprintf("attempt-%d", jasperRestartRetryLimit+1)))
+			_, ok = env.RemoteQueue().Get(ctx, getJasperRestartJobName(h.Id, true, ts, jasperRestartRetryLimit+1))
 			assert.False(t, ok)
 
-			newJob, ok := env.RemoteQueue().Get(ctx, getJasperRestartJobName(h.Id, false, "attempt-0"))
+			newJob, ok := env.RemoteQueue().Get(ctx, getJasperRestartJobName(h.Id, false, ts, 0))
 			require.True(t, ok)
-			newDeployJob, ok := newJob.(*jasperRestartJob)
+			newRestartJob, ok := newJob.(*jasperRestartJob)
 			require.True(t, ok)
-			require.NotNil(t, newDeployJob)
+			require.NotNil(t, newRestartJob)
 
-			assert.False(t, newDeployJob.RestartThroughJasper)
+			assert.False(t, newRestartJob.RestartThroughJasper)
 		},
-		"DoesNotRequeueIfNoAttemptsRemainingAndNotDeployingThroughJasper": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
+		"DoesNotRequeueIfNoAttemptsRemainingAndNotRestartingThroughJasper": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
 			expiration := time.Now()
+			ts := time.Now().Format(TSFormat)
 
-			require.NoError(t, h.SetJasperRestartAttempts(jasperRestartRetryLimit))
-
-			j := NewJasperRestartJob(env, *h, expiration, false, fmt.Sprintf("attempt-%d", jasperRestartRetryLimit))
+			j := NewJasperRestartJob(env, *h, expiration, false, ts, jasperRestartRetryLimit+1)
 			restartJob, ok := j.(*jasperRestartJob)
 			require.True(t, ok)
 
 			assert.Error(t, restartJob.tryRequeue(ctx))
 		},
-		"RunPerformsExpectedOperationsWhenDeployingThroughJasper": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
+		"RunPerformsExpectedOperationsWhenRestartingThroughJasper": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
 			clientCreds, err := env.CertificateDepot().Find(env.Settings().DomainName)
 			require.NoError(t, err)
 
@@ -233,8 +236,9 @@ func TestJasperRestartJob(t *testing.T) {
 			assert.Equal(t, h.JasperCredentialsID, creds.ServerName)
 
 			expiration := time.Now().Add(24 * time.Hour)
+			ts := time.Now().Format(TSFormat)
 
-			j := NewJasperRestartJob(env, *h, expiration, true, "attempt-0")
+			j := NewJasperRestartJob(env, *h, expiration, true, ts, 0)
 			j.Run(ctx)
 
 			restartJob, ok := j.(*jasperRestartJob)

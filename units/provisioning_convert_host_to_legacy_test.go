@@ -44,8 +44,8 @@ func TestConvertHostToLegacyProvisioningJob(t *testing.T) {
 			assert.False(t, convertJob.HasErrors())
 			assert.Empty(t, mgr.Procs)
 		},
-		"NoopsIfHostIsNotProvisioning": func(ctx context.Context, t *testing.T, env *mock.Environment, mgr *jmock.Manager, h *host.Host) {
-			h.Status = evergreen.HostRunning
+		"NoopsIfHostIsNotProvisioningOrRunning": func(ctx context.Context, t *testing.T, env *mock.Environment, mgr *jmock.Manager, h *host.Host) {
+			h.Status = evergreen.HostTerminated
 			require.NoError(t, h.Insert())
 
 			j := NewConvertHostToLegacyProvisioningJob(env, *h, "job-id", 0)

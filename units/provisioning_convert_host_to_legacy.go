@@ -72,7 +72,7 @@ func (j *convertHostToLegacyProvisioningJob) Run(ctx context.Context) {
 		return
 	}
 
-	if j.host.NeedsReprovision != host.ReprovisionToLegacy || j.host.Status != evergreen.HostProvisioning {
+	if j.host.NeedsReprovision != host.ReprovisionToLegacy || (j.host.Status != evergreen.HostProvisioning && j.host.Status != evergreen.HostRunning) {
 		return
 	}
 
