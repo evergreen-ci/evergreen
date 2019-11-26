@@ -57,7 +57,7 @@ func (apiBuild *APIBuild) BuildFromService(h interface{}) error {
 	apiBuild.StartTime = NewTime(v.StartTime)
 	apiBuild.FinishTime = NewTime(v.FinishTime)
 	apiBuild.Version = ToAPIString(v.Version)
-	apiBuild.Branch = ToAPIString(v.Project)
+	apiBuild.Branch = ToAPIString(v.Branch)
 	apiBuild.Revision = ToAPIString(v.Revision)
 	apiBuild.BuildVariant = ToAPIString(v.BuildVariant)
 	apiBuild.Status = ToAPIString(v.Status)
