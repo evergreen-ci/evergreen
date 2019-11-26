@@ -233,14 +233,14 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 	if err != nil {
 		return errors.Wrap(err, "problem finding builds for version")
 	}
-	buildSet := make(map[string]bool)
+	buildSet := make(map[string]struct{})
 	for _, b := range builds {
-		buildSet[b.BuildVariant] = true
+		buildSet[b.BuildVariant] = struct{}{}
 	}
 	newTVPairsForExistingVariants := TaskVariantPairs{}
 	newTVPairsForNewVariants := TaskVariantPairs{}
 	for _, execTask := range newTVPairs.ExecTasks {
-		if buildSet[execTask.Variant] {
+		if _, ok := buildSet[execTask.Variant]; ok {
 			newTVPairsForExistingVariants.ExecTasks = append(newTVPairsForExistingVariants.ExecTasks, execTask)
 		} else {
 			newTVPairsForNewVariants.ExecTasks = append(newTVPairsForNewVariants.ExecTasks, execTask)
