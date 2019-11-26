@@ -78,13 +78,11 @@ func TestAPIPatch(t *testing.T) {
 	}
 	for i, vt := range a.VariantsTasks {
 		assert.Equal(p.VariantsTasks[i].Variant, FromAPIString(vt.Name))
-
-		for i2, task := range vt.Tasks {
-			assert.Equal(a.Tasks[i2], task)
-		}
 	}
 	assert.Equal("__github", FromAPIString(a.Alias))
 	assert.NotZero(a.GithubPatchData)
+	assert.NotEqual(a.VariantsTasks[0].Tasks, a.VariantsTasks[1].Tasks)
+	assert.Len(a.VariantsTasks[0].Tasks, 1)
 }
 
 func TestGithubPatch(t *testing.T) {

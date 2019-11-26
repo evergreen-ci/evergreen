@@ -64,7 +64,7 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	variantTasks := []variantTask{}
 	for _, vt := range v.VariantsTasks {
 		vtasks := make([]APIString, 0)
-		for _, task := range v.Tasks {
+		for _, task := range vt.Tasks {
 			vtasks = append(vtasks, ToAPIString(task))
 		}
 		variantTasks = append(variantTasks, variantTask{
