@@ -1219,6 +1219,12 @@ ul.tooltip-tasks li.tooltip-task {
   margin-top: 10px;
   font-weight: bold;
 }
+.project-variable {
+  text-align: left;
+  word-break: break-all;
+  margin-bottom: 0;
+  vertical-align: middle;
+}
 .triggerinfo {
   list-style: none;
   border: 1px solid #ccc;

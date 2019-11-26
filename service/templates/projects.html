@@ -279,7 +279,7 @@ Evergreen Projects
             <div class="col-header col-lg-4 form-control-static"> <h3> Variables </h3></div>
           </div>
           <div id="projectVarsList" class="form-group" ng-repeat="(name, value) in settingsFormData.project_vars">
-            <div class="col-lg-2"> <label class="control-label">[[name]]</label> </div>
+            <div class="col-lg-4"> <label class="project-variable">[[name]]</label> </div>
             <div class="col-lg-4">
               <textarea class="form-control" style="font-family:monospace;" readonly>[[valueString(name, value)]]</textarea>
             </div>
@@ -290,7 +290,7 @@ Evergreen Projects
             </div>
           </div>
           <div class="form-group">
-            <div class="col-lg-2">
+            <div class="col-lg-4">
               <input ng-model="proj_var.name" class="form-control" type="text" placeholder="variable name">
             </div>
             <div class="col-lg-4">
