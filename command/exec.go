@@ -31,6 +31,12 @@ type subprocessExec struct {
 	// that's launched.
 	AddExpansionsToEnv bool `mapstructure:"add_expansions_to_env"`
 
+	// IncludeExpansionsInEnv allows users to specify a number of
+	// expansions that will be included in the environment, if
+	// they are defined. It is not an error to specify expansions
+	// that are not defined in include_expansions_in_env.
+	IncludeExpansionsInEnv []string `mapstructure:"include_expansions_in_env"`
+
 	// Background, if set to true, prevents shell code/output from
 	// waiting for the script to complete and immediately returns
 	// to the caller
@@ -142,9 +148,16 @@ func (c *subprocessExec) doExpansions(exp *util.Expansions) error {
 		c.Env["PATH"] = strings.Join(path, string(filepath.ListSeparator))
 	}
 
+	expansions := exp.Map()
 	if c.AddExpansionsToEnv {
-		for k, v := range exp.Map() {
+		for k, v := range expansions {
 			c.Env[k] = v
+		}
+	}
+
+	for _, ei := range c.IncludeExpansionsInEnv {
+		if val, ok := expansions[ei]; ok {
+			c.Env[ei] = val
 		}
 	}
 
