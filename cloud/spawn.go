@@ -213,7 +213,7 @@ func constructPwdUpdateCommand(ctx context.Context, env evergreen.Environment, h
 	}
 
 	return env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostObj.User).
-		ExtendRemoteArgs("-p", hostInfo.Port).ExtendRemoteArgs(sshOptions...).
+		ExtendRemoteArgs("-p", hostInfo.Port).ExtendRemoteArgs(sshOptions...).PrivKey(hostObj.Distro.SSHKey).
 		Append(fmt.Sprintf("echo -e \"%s\" | passwd", password)), nil
 }
 

@@ -750,9 +750,10 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jas
 
 			remoteOpts := options.Remote{
 				RemoteConfig: options.RemoteConfig{
-					Host: hostInfo.Hostname,
-					User: hostInfo.User,
-					Args: sshOpts,
+					Host:    hostInfo.Hostname,
+					User:    hostInfo.User,
+					KeyFile: h.Distro.SSHKey,
+					Args:    sshOpts,
 				},
 			}
 			clientOpts := jcli.ClientOptions{

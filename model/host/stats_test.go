@@ -1,6 +1,7 @@
 package host
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -83,6 +84,8 @@ func TestHostStatsByProvider(t *testing.T) {
 
 	alt, err := GetProviderCounts()
 	assert.NoError(err)
+	sort.Slice(alt, func(i, j int) bool { return alt[i].Provider < alt[j].Provider })
+	sort.Slice(result, func(i, j int) bool { return result[i].Provider < result[j].Provider })
 	assert.Equal(alt, result)
 
 	assert.NoError(db.ClearCollections(Collection))
@@ -112,6 +115,8 @@ func TestHostStatsByDistro(t *testing.T) {
 
 	alt, err := GetStatsByDistro()
 	assert.NoError(err)
+	sort.Slice(alt, func(i, j int) bool { return alt[i].Distro < alt[j].Distro })
+	sort.Slice(result, func(i, j int) bool { return result[i].Distro < result[j].Distro })
 	assert.Equal(alt, result)
 
 	assert.NoError(db.ClearCollections(Collection))
