@@ -144,16 +144,16 @@ func doStaticHostUpdate(d distro.Distro) ([]string, error) {
 			provisionChange = dbHost.NeedsReprovision
 		}
 
+		provisioned := provisionChange == host.ReprovisionNone || (dbHost != nil && dbHost.Provisioned)
 		staticHost := host.Host{
-			Id:                h.Name,
-			User:              user,
-			Host:              h.Name,
-			Distro:            d,
-			CreationTime:      time.Now(),
-			StartedBy:         evergreen.User,
-			Provisioned:       dbHost.Provisioned,
-			ProvisionAttempts: dbHost.ProvisionAttempts,
-			NeedsReprovision:  provisionChange,
+			Id:               h.Name,
+			User:             user,
+			Host:             h.Name,
+			Distro:           d,
+			CreationTime:     time.Now(),
+			StartedBy:        evergreen.User,
+			NeedsReprovision: provisionChange,
+			Provisioned:      provisioned,
 		}
 
 		if d.Provider == evergreen.ProviderNameStatic {
