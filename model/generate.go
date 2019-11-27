@@ -226,7 +226,8 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 	for _, bv := range g.BuildVariants {
 		newTVPairs = appendTasks(newTVPairs, bv, p)
 	}
-	newTVPairs.ExecTasks = append(newTVPairs.ExecTasks, IncludePatchDependencies(p, newTVPairs.ExecTasks)...)
+	newTVPairs.ExecTasks = IncludePatchDependencies(p, newTVPairs.ExecTasks)
+	//newTVPairs.ExecTasks = append(newTVPairs.ExecTasks, IncludePatchDependencies(p, newTVPairs.ExecTasks)...)
 
 	// group into new builds and new tasks for existing builds
 	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.IdKey, build.BuildVariantKey))

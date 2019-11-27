@@ -832,10 +832,15 @@ func evaluateDependsOn(tse *tagSelectorEvaluator, tgse *tagSelectorEvaluator, vs
 		// if the variant field is set.
 		variants := []string{""}
 		if d.TaskSelector.Variant != nil {
-			variants, err = vse.evalSelector(d.TaskSelector.Variant)
-			if err != nil {
-				evalErrs = append(evalErrs, err)
-				continue
+			// * is a special case for dependencies, so don't eval it
+			if d.TaskSelector.Variant.MatrixSelector == nil && d.TaskSelector.Variant.StringSelector == AllVariants {
+				variants = []string{AllVariants}
+			} else {
+				variants, err = vse.evalSelector(d.TaskSelector.Variant)
+				if err != nil {
+					evalErrs = append(evalErrs, err)
+					continue
+				}
 			}
 		}
 		// create new dependency definitions--duplicates must have the same status requirements
@@ -849,7 +854,7 @@ func evaluateDependsOn(tse *tagSelectorEvaluator, tgse *tagSelectorEvaluator, vs
 					Status:        d.Status,
 					PatchOptional: d.PatchOptional,
 				}
-				// add the new dep if it doesn't already exists (we must avoid conflicting status fields)
+				// add the new dep if it doesn't already exist (we must avoid conflicting status fields)
 				if oldDep, ok := newDepsByNameAndVariant[TVPair{newDep.Variant, newDep.Name}]; !ok {
 					newDeps = append(newDeps, newDep)
 					newDepsByNameAndVariant[TVPair{newDep.Variant, newDep.Name}] = newDep

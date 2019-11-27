@@ -557,6 +557,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	sampleBuild := build.Build{
 		Id:           "sample_build",
 		BuildVariant: "a_variant",
+		Version:      "version_that_called_generate_task",
 	}
 	v := &Version{
 		Id:                 "version_that_called_generate_task",
@@ -578,7 +579,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	tasks := []task.Task{}
 	err = db.FindAllQ(task.Collection, db.Q{}, &tasks)
 	s.NoError(err)
-	s.Len(builds, 3)
+	s.Len(builds, 2)
 	s.Len(tasks, 6)
 
 	for _, task := range tasks {
