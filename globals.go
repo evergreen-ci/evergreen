@@ -499,6 +499,7 @@ func IsGitHubPatchRequester(requester string) bool {
 var AclCheckingIsEnabled = (os.Getenv("ACL_ENABLED") == "true")
 
 const (
+	AdminResourceType   = "admin"
 	ProjectResourceType = "project"
 	DistroResourceType  = "distro"
 )
@@ -509,19 +510,34 @@ type PermissionLevel struct {
 }
 
 var (
+	// SuperUserPermissions resource ID.
+	SuperUserPermissionsID = "super_user"
+
+	// Admin permissions.
+	PermissionAdminSettings = "admin_settings"
 	// Project permissions.
+	PermissionProjectCreate    = "project_create"
 	PermissionProjectSettings  = "project_settings"
 	PermissionProjectVariables = "project_variables"
 	PermissionTasks            = "project_tasks"
 	PermissionPatches          = "project_patches"
 	PermissionLogs             = "project_logs"
 	// Distro permissions.
+	PermissionDistroCreate   = "distro_create"
 	PermissionDistroSettings = "distro_settings"
 	PermissionHosts          = "distro_hosts"
 )
 
 // permission levels
 var (
+	AdminSettings = PermissionLevel{
+		Description: "Edit admin settings",
+		Value:       10,
+	}
+	ProjectCreate = PermissionLevel{
+		Description: "Create new projects",
+		Value:       30,
+	}
 	ProjectSettingsEdit = PermissionLevel{
 		Description: "Edit project settings",
 		Value:       20,
@@ -565,6 +581,10 @@ var (
 	LogsNone = PermissionLevel{
 		Description: "Not able to view logs",
 		Value:       0,
+	}
+	DistroCreate = PermissionLevel{
+		Description: "Create new distros",
+		Value:       30,
 	}
 	DistroSettingsEdit = PermissionLevel{
 		Description: "Edit distro settings",
