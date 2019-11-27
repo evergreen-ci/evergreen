@@ -59,7 +59,7 @@ func (s *BuildByIdSuite) TestFindByIdProjFound() {
 	b, ok := (resp.Data()).(*model.APIBuild)
 	s.True(ok)
 	s.Equal(model.ToAPIString("build1"), b.Id)
-	s.Equal(model.ToAPIString("project"), b.ProjectId)
+	s.Equal(model.ToAPIString("branch"), b.ProjectId)
 }
 
 func (s *BuildByIdSuite) TestFindByIdProjNotFound() {
