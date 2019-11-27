@@ -62,18 +62,6 @@ func (s *BuildByIdSuite) TestFindByIdProjFound() {
 	s.Equal(model.ToAPIString("branch"), b.ProjectId)
 }
 
-func (s *BuildByIdSuite) TestFindByIdProjNotFound() {
-	s.rm.(*buildGetHandler).buildId = "build2"
-	resp := s.rm.Run(context.TODO())
-	s.Equal(resp.Status(), http.StatusOK)
-	s.NotNil(resp.Data())
-
-	b, ok := (resp.Data()).(*model.APIBuild)
-	s.True(ok)
-	s.Equal(model.ToAPIString("build2"), b.Id)
-	s.Equal(model.ToAPIString(""), b.ProjectId)
-}
-
 func (s *BuildByIdSuite) TestFindByIdFail() {
 	s.rm.(*buildGetHandler).buildId = "build3"
 	resp := s.rm.Run(context.TODO())
