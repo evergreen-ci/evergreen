@@ -8,11 +8,11 @@ import (
 )
 
 type NewRelicConfig struct {
-	AccountID     string `bson:"accountId" json:"accountId" yaml:"accountId"`
-	TrustKey      string `bson:"trustKey" json:"trustKey" yaml:"trustKey"`
-	AgentID       string `bson:"agentId" json:"agentId" yaml:"agentId"`
-	LicenseKey    string `bson:"licenseKey" json:"licenseKey" yaml:"licenseKey"`
-	ApplicationID string `bson:"applicationId" json:"applicationId" yaml:"applicationId"`
+	AccountID     string `bson:"account_id" json:"account_id" yaml:"account_id"`
+	TrustKey      string `bson:"trust_key" json:"trust_key" yaml:"trust_key"`
+	AgentID       string `bson:"agent_id" json:"agent_id" yaml:"agent_id"`
+	LicenseKey    string `bson:"license_key" json:"license_key" yaml:"license_key"`
+	ApplicationID string `bson:"application_id" json:"application_id" yaml:"application_id"`
 }
 
 func (c *NewRelicConfig) SectionId() string { return "newrelic" }
@@ -45,11 +45,11 @@ func (c *NewRelicConfig) Set() error {
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			"accountId":     c.AccountID,
-			"trustKey":      c.TrustKey,
-			"agentId":       c.AgentID,
-			"licenseKey":    c.LicenseKey,
-			"applicationId": c.ApplicationID,
+			"account_id":     c.AccountID,
+			"trust_key":      c.TrustKey,
+			"agent_id":       c.AgentID,
+			"license_key":    c.LicenseKey,
+			"application_id": c.ApplicationID,
 		},
 	}, options.Update().SetUpsert(true))
 

@@ -157,6 +157,13 @@ func MockConfig() *evergreen.Settings {
 		},
 		Keys:    map[string]string{"k3": "v3"},
 		LogPath: "logpath",
+		NewRelic: evergreen.NewRelicConfig{
+			AccountID:     "123123123",
+			TrustKey:      "098765",
+			AgentID:       "45678",
+			LicenseKey:    "890765",
+			ApplicationID: "8888888",
+		},
 		Notify: evergreen.NotifyConfig{
 			SMTP: evergreen.SMTPConfig{
 				Server:     "server",
