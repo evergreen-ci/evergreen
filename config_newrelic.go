@@ -1,7 +1,6 @@
 package evergreen
 
 import (
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -58,14 +57,11 @@ func (c *NewRelicConfig) Set() error {
 }
 
 func (c *NewRelicConfig) ValidateAndDefault() error {
-	catcher := grip.NewSimpleCatcher()
-
 	allFieldsAreEmpty := c.AccountID == "" && c.TrustKey == "" && c.AgentID == "" && c.LicenseKey == "" && c.ApplicationID == ""
 	allFieldsAreFilledOut := len(c.AccountID) > 0 && len(c.TrustKey) > 0 && len(c.AgentID) > 0 && len(c.LicenseKey) > 0 && len(c.ApplicationID) > 0
 
-	if allFieldsAreEmpty == false && allFieldsAreFilledOut == false {
-		catcher.Add(errors.New("Must provide all fields or no fields for New Relic settings"))
+	if !allFieldsAreEmpty && !allFieldsAreFilledOut {
+		return errors.New("Must provide all fields or no fields for New Relic settings")
 	}
-
-	return catcher.Resolve()
+	return nil
 }
