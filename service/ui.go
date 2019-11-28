@@ -62,6 +62,7 @@ type ViewData struct {
 	Csrf        htmlTemplate.HTML
 	JiraHost    string
 	Bugsnag     string
+	NewRelic    evergreen.NewRelicConfig
 	ACLEnabled  bool // TODO PM-1355 remove this
 }
 
@@ -199,6 +200,7 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 	viewData.Csrf = csrf.TemplateField(r)
 	viewData.JiraHost = uis.Settings.Jira.Host
 	viewData.Bugsnag = settings.Bugsnag
+	viewData.NewRelic = settings.NewRelic
 	viewData.ACLEnabled = evergreen.AclCheckingIsEnabled
 	return viewData
 }
