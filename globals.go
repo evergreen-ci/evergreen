@@ -499,6 +499,7 @@ func IsGitHubPatchRequester(requester string) bool {
 var AclCheckingIsEnabled = (os.Getenv("ACL_ENABLED") == "true")
 
 const (
+	AdminResourceType   = "admin"
 	ProjectResourceType = "project"
 	DistroResourceType  = "distro"
 )
@@ -509,6 +510,13 @@ type PermissionLevel struct {
 }
 
 var (
+	// SuperUserPermissions resource ID.
+	SuperUserPermissionsID = "super_user"
+
+	// Admin permissions.
+	PermissionAdminSettings = "admin_settings"
+	PermissionProjectCreate = "project_create"
+	PermissionDistroCreate  = "distro_create"
 	// Project permissions.
 	PermissionProjectSettings  = "project_settings"
 	PermissionProjectVariables = "project_variables"
@@ -522,6 +530,18 @@ var (
 
 // permission levels
 var (
+	AdminSettingsEdit = PermissionLevel{
+		Description: "Edit admin settings",
+		Value:       10,
+	}
+	ProjectCreate = PermissionLevel{
+		Description: "Create new projects",
+		Value:       10,
+	}
+	DistroCreate = PermissionLevel{
+		Description: "Create new distros",
+		Value:       10,
+	}
 	ProjectSettingsEdit = PermissionLevel{
 		Description: "Edit project settings",
 		Value:       20,

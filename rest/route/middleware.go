@@ -333,6 +333,22 @@ func RequiresDistroPermission(permission string, level evergreen.PermissionLevel
 	return gimlet.RequiresPermission(opts)
 }
 
+func RequiresSuperUserPermission(resourceType string, permission string, level evergreen.PermissionLevel) gimlet.Middleware {
+	if !evergreen.AclCheckingIsEnabled {
+		return &noopMiddleware{}
+	}
+
+	opts := gimlet.RequiresPermissionMiddlewareOpts{
+		RM:            evergreen.GetEnvironment().RoleManager(),
+		PermissionKey: permission,
+		ResourceType:  resourceType,
+		RequiredLevel: level.Value,
+		ResourceFunc:  superUserResource,
+	}
+	return gimlet.RequiresPermission(opts)
+
+}
+
 type noopMiddleware struct{}
 
 func (n *noopMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
@@ -440,6 +456,10 @@ func urlVarsToDistroScopes(r *http.Request) (string, int, error) {
 	}
 
 	return distroID, http.StatusOK, nil
+}
+
+func superUserResource(_ *http.Request) (string, int, error) {
+	return evergreen.SuperUserPermissionsID, http.StatusOK, nil
 }
 
 // RequiresProjectViewPermission is mostly a copy of gimlet.RequiresPermission, but with special
