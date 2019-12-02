@@ -38,9 +38,10 @@ func TestS3CopyPluginExecution(t *testing.T) {
 		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 		So(err, ShouldBeNil)
 
+		require.True(t, len(testConfig.Providers.AWS.EC2Keys) > 0)
 		conf.Expansions.Update(map[string]string{
-			"aws_key":    testConfig.Providers.AWS.EC2Key,
-			"aws_secret": testConfig.Providers.AWS.EC2Secret,
+			"aws_key":    testConfig.Providers.AWS.EC2Keys[0].Key,
+			"aws_secret": testConfig.Providers.AWS.EC2Keys[0].Secret,
 		})
 
 		Convey("the s3 copy command should execute successfully", func() {

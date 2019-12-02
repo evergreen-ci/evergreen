@@ -1,6 +1,7 @@
 package evergreen
 
 import (
+	"github.com/evergreen-ci/evergreen"
 	"context"
 	"os"
 	"path/filepath"
@@ -328,8 +329,11 @@ func (s *AdminSuite) TestJiraConfig() {
 func (s *AdminSuite) TestProvidersConfig() {
 	config := CloudProviders{
 		AWS: AWSConfig{
-			EC2Secret: "aws_secret",
-			EC2Key:    "aws",
+			EC2Keys: []EC2Key{
+				Region: evergreen.DefaultEC2Region,
+				EC2Secret: "aws_secret",
+				EC2Key:    "aws",
+			}
 		},
 		Docker: DockerConfig{
 			APIVersion: "docker_version",

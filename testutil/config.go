@@ -181,10 +181,6 @@ func MockConfig() *evergreen.Settings {
 					},
 				},
 				DefaultSecurityGroup: "test_security_group",
-
-				// Legacy
-				EC2Secret:            "aws_secret",
-				EC2Key:               "aws",
 				MaxVolumeSizePerUser: 200,
 			},
 			Docker: evergreen.DockerConfig{

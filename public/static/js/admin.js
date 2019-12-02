@@ -41,26 +41,6 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       $scope.tempPlugins = resp.data.plugins ? jsyaml.safeDump(resp.data.plugins) : ""
       $scope.tempContainerPools = resp.data.container_pools.pools ? jsyaml.safeDump(resp.data.container_pools.pools) : ""
 
-      // Support transition to region-based EC2Keys struct -- TO BE DELETED
-      let default_exists = false;
-      if (resp.data.providers.aws.aws_id && resp.data.providers.aws.aws_secret) {
-          if (resp.data.providers.aws.ec2_keys) {
-              for (var i = 0; i < resp.data.providers.aws.ec2_keys.length; i++) {
-                  if (resp.data.providers.aws.ec2_keys[i].region == "us-east-1") { // we already have this region
-                    default_exists = true;
-                    break;
-                  }
-              }
-          } else {
-            resp.data.providers.aws.ec2_keys = [];
-          }
-          if (!default_exists) {
-              resp.data.providers.aws.ec2_keys.push({"region": "us-east-1", "key": resp.data.providers.aws.aws_id, "secret": resp.data.providers.aws.aws_secret})
-          }
-          resp.data.providers.aws.aws_id = "";
-          resp.data.providers.aws.aws_secret = "";
-      }
-
       $scope.Settings = resp.data;
       $scope.Settings.jira_notifications = $scope.Settings.jira_notifications;
       $scope.Settings.jira_notifications.custom_fields = $scope.Settings.jira_notifications.custom_fields || {};

@@ -330,29 +330,6 @@ func (s *EC2Suite) TestConfigure() {
 	s.NoError(err)
 	s.Equal("test-key", creds.AccessKeyID)
 	s.Equal("test-secret", creds.SecretAccessKey)
-
-	// LEGACY (delete when Evergreen only uses region-based EC2Keys struct)
-	settings.Providers.AWS.EC2Keys = nil
-	settings.Providers.AWS.EC2Key = "legacy-key"
-	err = s.onDemandManager.Configure(ctx, settings)
-	s.Error(err)
-
-	settings.Providers.AWS.EC2Key = ""
-	settings.Providers.AWS.EC2Secret = "legacy-secret"
-	err = s.onDemandManager.Configure(ctx, settings)
-	s.Error(err)
-
-	settings.Providers.AWS.EC2Key = "legacy-key"
-	err = s.onDemandManager.Configure(ctx, settings)
-	s.NoError(err)
-	ec2m, ok = s.onDemandManager.(*ec2Manager)
-	s.True(ok)
-	creds, err = ec2m.credentials.Get()
-	s.NoError(err)
-	s.Equal("legacy-key", creds.AccessKeyID)
-	s.Equal("legacy-secret", creds.SecretAccessKey)
-	// END LEGACY
-
 }
 
 func (s *EC2Suite) TestSpawnHostInvalidInput() {
