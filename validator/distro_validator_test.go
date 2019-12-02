@@ -536,6 +536,24 @@ func TestEnsureValidBootstrapSettings(t *testing.T) {
 	}
 }
 
+func TestEnsureValidStaticBootstrapSettings(t *testing.T) {
+	ctx := context.Background()
+	d := distro.Distro{
+		Provider: evergreen.ProviderNameStatic,
+	}
+	for _, method := range []string{
+		distro.BootstrapMethodLegacySSH,
+		distro.BootstrapMethodSSH,
+		distro.BootstrapMethodPreconfiguredImage,
+	} {
+		d.BootstrapSettings.Method = method
+		assert.Nil(t, ensureValidStaticBootstrapSettings(ctx, &d, &evergreen.Settings{}))
+	}
+
+	d.BootstrapSettings.Method = distro.BootstrapMethodUserData
+	assert.NotNil(t, ensureValidStaticBootstrapSettings(ctx, &d, &evergreen.Settings{}))
+}
+
 func TestEnsureValidCloneMethod(t *testing.T) {
 	ctx := context.Background()
 	assert.NotNil(t, ensureValidCloneMethod(ctx, &distro.Distro{}, &evergreen.Settings{}))

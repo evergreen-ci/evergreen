@@ -21,7 +21,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-const tsFormat = "2006-01-02.15-04-05"
+const TSFormat = "2006-01-02.15-04-05"
 
 func PopulateCatchupJobs(part int) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
@@ -43,7 +43,7 @@ func PopulateCatchupJobs(part int) amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 
-		ts := util.RoundPartOfHour(part).Format(tsFormat)
+		ts := util.RoundPartOfHour(part).Format(TSFormat)
 
 		catcher := grip.NewBasicCatcher()
 		for _, proj := range projects {
@@ -97,7 +97,7 @@ func PopulateRepotrackerPollingJobs(part int) amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 
-		ts := util.RoundPartOfHour(part).Format(tsFormat)
+		ts := util.RoundPartOfHour(part).Format(TSFormat)
 
 		catcher := grip.NewBasicCatcher()
 		for _, proj := range projects {
@@ -135,7 +135,7 @@ func PopulateActivationJobs(part int) amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 
-		ts := util.RoundPartOfHour(part).Format(tsFormat)
+		ts := util.RoundPartOfHour(part).Format(TSFormat)
 
 		catcher := grip.NewBasicCatcher()
 		for _, proj := range projects {
@@ -174,7 +174,7 @@ func PopulateHostMonitoring(env evergreen.Environment) amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 
-		ts := util.RoundPartOfHour(2).Format(tsFormat)
+		ts := util.RoundPartOfHour(2).Format(TSFormat)
 		catcher := grip.NewBasicCatcher()
 
 		grip.InfoWhen(len(hosts) > 0, message.Fields{
@@ -210,7 +210,7 @@ func PopulateEventAlertProcessing(parts int) amboy.QueueOperation {
 			return nil
 		}
 
-		ts := util.RoundPartOfHour(parts).Format(tsFormat)
+		ts := util.RoundPartOfHour(parts).Format(TSFormat)
 
 		return errors.Wrap(queue.Put(ctx, NewEventMetaJob(queue, ts)), "failed to queue event-metajob")
 	}
@@ -232,7 +232,7 @@ func PopulateTaskMonitoring(mins int) amboy.QueueOperation {
 			return nil
 		}
 
-		return queue.Put(ctx, NewTaskExecutionMonitorPopulateJob(util.RoundPartOfHour(mins).Format(tsFormat)))
+		return queue.Put(ctx, NewTaskExecutionMonitorPopulateJob(util.RoundPartOfHour(mins).Format(TSFormat)))
 	}
 }
 
@@ -298,7 +298,7 @@ func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		catcher := grip.NewBasicCatcher()
-		ts := util.RoundPartOfHour(1).Format(tsFormat)
+		ts := util.RoundPartOfHour(1).Format(TSFormat)
 		// Each DistroID's idleHosts are sorted from oldest to newest CreationTime.
 		distroHosts, err := host.IdleEphemeralGroupedByDistroID()
 		if err != nil {
@@ -368,7 +368,7 @@ func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
 func PopulateLastContainerFinishTimeJobs() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
-		ts := util.RoundPartOfHour(1).Format(tsFormat)
+		ts := util.RoundPartOfHour(1).Format(TSFormat)
 		err := queue.Put(ctx, NewLastContainerFinishTimeJob(ts))
 		catcher.Add(err)
 
@@ -379,7 +379,7 @@ func PopulateLastContainerFinishTimeJobs() amboy.QueueOperation {
 func PopulateParentDecommissionJobs() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
-		ts := util.RoundPartOfHour(1).Format(tsFormat)
+		ts := util.RoundPartOfHour(1).Format(TSFormat)
 
 		settings, err := evergreen.GetConfig()
 		if err != nil {
@@ -399,7 +399,7 @@ func PopulateParentDecommissionJobs() amboy.QueueOperation {
 func PopulateContainerStateJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
-		ts := util.RoundPartOfHour(1).Format(tsFormat)
+		ts := util.RoundPartOfHour(1).Format(TSFormat)
 
 		parents, err := host.FindAllRunningParents()
 		if err != nil {
@@ -418,7 +418,7 @@ func PopulateContainerStateJobs(env evergreen.Environment) amboy.QueueOperation 
 func PopulateOldestImageRemovalJobs() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
-		ts := util.RoundPartOfHour(1).Format(tsFormat)
+		ts := util.RoundPartOfHour(1).Format(TSFormat)
 
 		parents, err := host.FindAllRunningParents()
 		if err != nil {
@@ -450,7 +450,7 @@ func PopulateCommitQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		catcher := grip.NewBasicCatcher()
-		ts := util.RoundPartOfHour(1).Format(tsFormat)
+		ts := util.RoundPartOfHour(1).Format(TSFormat)
 
 		projectRefs, err := model.FindProjectRefsWithCommitQueueEnabled()
 		if err != nil {
@@ -620,7 +620,7 @@ func PopulateHostAlertJobs(parts int) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
 
-		ts := util.RoundPartOfHour(parts).Format(tsFormat)
+		ts := util.RoundPartOfHour(parts).Format(TSFormat)
 
 		hosts, err := host.Find(host.IsRunningTask)
 		grip.Warning(message.WrapError(err, message.Fields{
@@ -658,7 +658,7 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 			return nil
 		}
 
-		err = host.UpdateAll(host.AgentLastCommunicationTimeElapsed(time.Now()), bson.M{"$set": bson.M{
+		err = host.UpdateAll(host.NeedsAgentDeploy(time.Now()), bson.M{"$set": bson.M{
 			host.NeedsNewAgentKey: true,
 		}})
 		if err != nil && !adb.ResultsNotFound(err) {
@@ -671,7 +671,7 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 
-		hosts, err := host.Find(host.NeedsNewAgentFlagSet())
+		hosts, err := host.Find(host.ShouldDeployAgent())
 		grip.Error(message.WrapError(err, message.Fields{
 			"operation": "background task creation",
 			"cron":      agentDeployJobName,
@@ -683,7 +683,7 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		// 3x / minute
-		ts := util.RoundPartOfMinute(15).Format(tsFormat)
+		ts := util.RoundPartOfMinute(15).Format(TSFormat)
 		catcher := grip.NewBasicCatcher()
 
 		// For each host, set its last communication time to now and its needs new agent
@@ -715,7 +715,7 @@ func PopulateGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
 
 		versions := map[string]amboy.Queue{}
 
-		ts := util.RoundPartOfHour(1).Format(tsFormat)
+		ts := util.RoundPartOfHour(1).Format(TSFormat)
 		group := env.RemoteQueueGroup()
 		for _, t := range tasks {
 			if q, ok = versions[t.Version]; !ok {
@@ -754,9 +754,9 @@ func PopulateAgentMonitorDeployJobs(env evergreen.Environment) amboy.QueueOperat
 		// The agent monitor deploy job will atomically clear the
 		// NeedsNewAgentMonitor field to prevent other jobs from running
 		// concurrently.
-		if err = host.UpdateAll(host.AgentMonitorLastCommunicationTimeElapsed(time.Now()), bson.M{"$set": bson.M{
+		if err = host.UpdateAll(host.NeedsAgentMonitorDeploy(time.Now()), bson.M{"$set": bson.M{
 			host.NeedsNewAgentMonitorKey: true,
-		}}); err != nil && !adb.ResultsNotFound(err) {
+		}}); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"operation": "background task creation",
 				"cron":      agentMonitorDeployJobName,
@@ -766,7 +766,7 @@ func PopulateAgentMonitorDeployJobs(env evergreen.Environment) amboy.QueueOperat
 			return errors.WithStack(err)
 		}
 
-		hosts, err := host.FindByNeedsNewAgentMonitor()
+		hosts, err := host.Find(host.ShouldDeployAgentMonitor())
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"operation": "background task creation",
@@ -778,7 +778,7 @@ func PopulateAgentMonitorDeployJobs(env evergreen.Environment) amboy.QueueOperat
 		}
 
 		// 3x / minute
-		ts := util.RoundPartOfMinute(20).Format(tsFormat)
+		ts := util.RoundPartOfMinute(20).Format(TSFormat)
 		catcher := grip.NewBasicCatcher()
 
 		for _, h := range hosts {
@@ -824,7 +824,7 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 			return errors.WithStack(err)
 		}
 
-		ts := util.RoundPartOfHour(part).Format(tsFormat)
+		ts := util.RoundPartOfHour(part).Format(TSFormat)
 		catcher := grip.NewBasicCatcher()
 		submitted := 0
 
@@ -879,7 +879,7 @@ func PopulateHostSetupJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.Wrap(err, "error fetching provisioning hosts")
 		}
 
-		ts := util.RoundPartOfMinute(30).Format(tsFormat)
+		ts := util.RoundPartOfMinute(30).Format(TSFormat)
 		catcher := grip.NewBasicCatcher()
 		for _, h := range hosts {
 			catcher.Add(queue.Put(ctx, NewHostSetupJob(env, h, ts)))
@@ -891,9 +891,9 @@ func PopulateHostSetupJobs(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
-// PopulateJasperDeployJobs enqueues the jobs to deploy new Jasper service
-// credentials to any host whose credentials are set to expire soon.
-func PopulateJasperDeployJobs(env evergreen.Environment) amboy.QueueOperation {
+// PopulateHostJasperRestartJobs enqueues the jobs to restart the Jasper service
+// on the host.
+func PopulateHostJasperRestartJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
@@ -903,27 +903,37 @@ func PopulateJasperDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 		if flags.HostInitDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "host init disabled",
-				"impact":  "existing hosts are not provisioned with new Jasper credentials, which may expire soon",
+				"impact":  "existing hosts are not provisioned with new Jasper services",
 				"mode":    "degraded",
 			})
 			return nil
 		}
 
+		if err = host.UpdateAll(host.NeedsReprovisioningLocked(time.Now()), bson.M{"$unset": bson.M{
+			host.ReprovisioningLockedKey: false,
+		}}); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":   "problem updating hosts with elapsed last communication time",
+				"operation": "reprovisioning hosts",
+				"impact":    "hosts cannot be reprovisioned",
+			}))
+			return errors.WithStack(err)
+		}
 		hosts, err := host.FindByExpiringJasperCredentials(expirationCutoff)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"operation": "Jasper service redeployment",
-				"cron":      jasperDeployJobName,
-				"impact":    "existing hosts are not provisioned with new Jasper credentials, which may expire soon",
+				"operation": "Jasper service restart",
+				"cron":      jasperRestartJobName,
+				"impact":    "existing hosts will not have their Jasper services restarted",
 			}))
 			return errors.Wrap(err, "problem finding hosts with expiring credentials")
 		}
 
-		ts := util.RoundPartOfDay(0).Format(tsFormat)
+		ts := util.RoundPartOfHour(0).Format(TSFormat)
 		catcher := grip.NewBasicCatcher()
 		for _, h := range hosts {
-			if err := h.ResetJasperDeployAttempts(); err != nil {
-				catcher.Add(errors.Wrapf(err, "problem resetting Jasper deploy attempts for host %s", h.Id))
+			if err := h.SetNeedsJasperRestart(); err != nil {
+				catcher.Add(errors.Wrapf(err, "problem marking host as needing Jasper service restarted"))
 				continue
 			}
 			expiration, err := h.JasperCredentialsExpiration(ctx, env)
@@ -932,7 +942,60 @@ func PopulateJasperDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 				continue
 			}
 
-			catcher.Add(queue.Put(ctx, NewJasperDeployJob(env, &h, expiration, h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC, ts)))
+			catcher.Add(queue.Put(ctx, NewJasperRestartJob(env, h, expiration, h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC, ts, 0)))
+		}
+
+		return catcher.Resolve()
+	}
+}
+
+// PopulateHostProvisioningConversionJobs enqueues the jobs to convert the host
+// provisioning type.
+func PopulateHostProvisioningConversionJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if flags.HostInitDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "host init disabled",
+				"impact":  "existing hosts that need to be converted to a different provisioning type are not being reprovisioned",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		if err = host.UpdateAll(host.NeedsReprovisioningLocked(time.Now()), bson.M{"$unset": bson.M{
+			host.ReprovisioningLockedKey: false,
+		}}); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":   "problem updating hosts with elapsed last communication time",
+				"operation": "reprovisioning hosts",
+				"impact":    "hosts cannot be reprovisioned",
+			}))
+			return errors.WithStack(err)
+		}
+
+		hosts, err := host.FindByShouldConvertProvisioning()
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"operation": "reprovisioning hosts",
+				"impact":    "existing hosts will not have their provisioning methods changed",
+			}))
+			return errors.Wrap(err, "problem finding hosts that need reprovisioning")
+		}
+
+		ts := util.RoundPartOfMinute(0).Format(TSFormat)
+		catcher := grip.NewBasicCatcher()
+		for _, h := range hosts {
+			switch h.NeedsReprovision {
+			case host.ReprovisionToLegacy:
+				catcher.Add(queue.Put(ctx, NewConvertHostToLegacyProvisioningJob(env, h, ts, 0)))
+			case host.ReprovisionToNew:
+				catcher.Add(queue.Put(ctx, NewConvertHostToNewProvisioningJob(env, h, ts, 0)))
+			}
 		}
 
 		return catcher.Resolve()
@@ -960,7 +1023,7 @@ func PopulateBackgroundStatsJobs(env evergreen.Environment, part int) amboy.Queu
 		}
 
 		catcher := grip.NewBasicCatcher()
-		ts := util.RoundPartOfMinute(part).Format(tsFormat)
+		ts := util.RoundPartOfMinute(part).Format(TSFormat)
 
 		catcher.Add(queue.Put(ctx, NewRemoteAmboyStatsCollector(env, ts)))
 		catcher.Add(queue.Put(ctx, NewHostStatsCollector(ts)))
@@ -983,7 +1046,7 @@ func PopulatePeriodicNotificationJobs(parts int) amboy.QueueOperation {
 			return nil
 		}
 
-		ts := util.RoundPartOfHour(parts).Format(tsFormat)
+		ts := util.RoundPartOfHour(parts).Format(TSFormat)
 		catcher := grip.NewBasicCatcher()
 		catcher.Add(queue.Put(ctx, NewSpawnhostExpirationWarningsJob(ts)))
 		return catcher.Resolve()
@@ -1010,7 +1073,7 @@ func PopulateCacheHistoricalTestDataJob(part int) amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 
-		ts := util.RoundPartOfDay(part).Format(tsFormat)
+		ts := util.RoundPartOfDay(part).Format(TSFormat)
 
 		catcher := grip.NewBasicCatcher()
 		for _, project := range projects {
@@ -1034,7 +1097,7 @@ func PopulateSpawnhostExpirationCheckJob() amboy.QueueOperation {
 
 		catcher := grip.NewBasicCatcher()
 		for _, h := range hosts {
-			ts := util.RoundPartOfHour(0).Format(tsFormat)
+			ts := util.RoundPartOfHour(0).Format(TSFormat)
 			catcher.Add(queue.Put(ctx, NewSpawnhostExpirationCheckJob(ts, &h)))
 		}
 
@@ -1045,7 +1108,7 @@ func PopulateSpawnhostExpirationCheckJob() amboy.QueueOperation {
 func PopulateLocalQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
-		catcher.Add(queue.Put(ctx, NewJasperManagerCleanup(util.RoundPartOfMinute(0).Format(tsFormat), env)))
+		catcher.Add(queue.Put(ctx, NewJasperManagerCleanup(util.RoundPartOfMinute(0).Format(TSFormat), env)))
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			grip.Alert(message.WrapError(err, message.Fields{
@@ -1065,8 +1128,8 @@ func PopulateLocalQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 			return nil
 		}
 
-		catcher.Add(queue.Put(ctx, NewSysInfoStatsCollector(fmt.Sprintf("sys-info-stats-%s", util.RoundPartOfMinute(30).Format(tsFormat)))))
-		catcher.Add(queue.Put(ctx, NewLocalAmboyStatsCollector(env, fmt.Sprintf("amboy-local-stats-%s", util.RoundPartOfMinute(0).Format(tsFormat)))))
+		catcher.Add(queue.Put(ctx, NewSysInfoStatsCollector(fmt.Sprintf("sys-info-stats-%s", util.RoundPartOfMinute(30).Format(TSFormat)))))
+		catcher.Add(queue.Put(ctx, NewLocalAmboyStatsCollector(env, fmt.Sprintf("amboy-local-stats-%s", util.RoundPartOfMinute(0).Format(TSFormat)))))
 		return catcher.Resolve()
 
 	}
@@ -1080,7 +1143,7 @@ func PopulatePeriodicBuilds(part int) amboy.QueueOperation {
 		}
 		catcher := grip.NewBasicCatcher()
 		for _, project := range projects {
-			catcher.Add(queue.Put(ctx, NewPeriodicBuildJob(project.Identifier, util.RoundPartOfMinute(30).Format(tsFormat))))
+			catcher.Add(queue.Put(ctx, NewPeriodicBuildJob(project.Identifier, util.RoundPartOfMinute(30).Format(TSFormat))))
 		}
 		return nil
 	}
@@ -1095,7 +1158,7 @@ func PopulateUserDataDoneJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.Wrap(err, "error finding user data hosts that are still provisioning")
 		}
 		catcher := grip.NewBasicCatcher()
-		ts := util.RoundPartOfMinute(15).Format(tsFormat)
+		ts := util.RoundPartOfMinute(15).Format(TSFormat)
 		for _, h := range hosts {
 			catcher.Add(queue.Put(ctx, NewUserDataDoneJob(env, h, ts)))
 		}

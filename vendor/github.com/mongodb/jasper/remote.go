@@ -17,10 +17,9 @@ type RemoteClient interface {
 	Manager
 	CloseConnection() error
 	ConfigureCache(ctx context.Context, opts options.Cache) error
-	DownloadFile(ctx context.Context, info options.Download) error
+	DownloadFile(ctx context.Context, opts options.Download) error
 	DownloadMongoDB(ctx context.Context, opts options.MongoDBDownload) error
 	GetLogStream(ctx context.Context, id string, count int) (LogStream, error)
 	GetBuildloggerURLs(ctx context.Context, id string) ([]string, error)
 	SignalEvent(ctx context.Context, name string) error
-	WriteFile(ctx context.Context, info options.WriteFile) error
 }

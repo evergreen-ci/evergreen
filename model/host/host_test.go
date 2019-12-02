@@ -24,6 +24,10 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+func init() {
+	testutil.Setup()
+}
+
 // IsActive is a query that returns all Evergreen hosts that are working or
 // capable of being assigned work to do.
 var IsActive = db.Query(
@@ -394,10 +398,17 @@ func TestMarkAsProvisioned(t *testing.T) {
 			Status: evergreen.HostTerminated,
 		}
 
+		host3 := &Host{
+			Id:               "hostThree",
+			Status:           evergreen.HostProvisioning,
+			NeedsReprovision: ReprovisionToNew,
+		}
+
 		So(host.Insert(), ShouldBeNil)
 		So(host2.Insert(), ShouldBeNil)
-		Convey("marking a host that isn't down as provisioned should update the status,"+
-			" provisioned, and host name fields in both the in-memory and"+
+		So(host3.Insert(), ShouldBeNil)
+		Convey("marking a host that isn't down as provisioned should update the status"+
+			" and provisioning fields in both the in-memory and"+
 			" database copies of the host", func() {
 
 			So(host.MarkAsProvisioned(), ShouldBeNil)
@@ -413,8 +424,82 @@ func TestMarkAsProvisioned(t *testing.T) {
 			So(host2.Status, ShouldEqual, evergreen.HostTerminated)
 			So(host2.Provisioned, ShouldEqual, false)
 		})
-
 	})
+}
+
+func TestMarkAsReprovisioning(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T, h *Host){
+		"ConvertToLegacyNeedsAgent": func(t *testing.T, h *Host) {
+			h.NeedsReprovision = ReprovisionToLegacy
+			require.NoError(t, h.Insert())
+
+			require.NoError(t, h.MarkAsReprovisioning())
+			assert.Equal(t, evergreen.HostProvisioning, h.Status)
+			assert.Equal(t, util.ZeroTime, h.AgentStartTime)
+			assert.False(t, h.Provisioned)
+			assert.True(t, h.NeedsNewAgent)
+			assert.False(t, h.NeedsNewAgentMonitor)
+		},
+		"ConvertToNewNeedsAgentMonitor": func(t *testing.T, h *Host) {
+			h.NeedsReprovision = ReprovisionToNew
+			require.NoError(t, h.Insert())
+
+			require.NoError(t, h.MarkAsReprovisioning())
+			assert.Equal(t, evergreen.HostProvisioning, h.Status)
+			assert.Equal(t, util.ZeroTime, h.AgentStartTime)
+			assert.False(t, h.Provisioned)
+			assert.True(t, h.NeedsNewAgentMonitor)
+			assert.False(t, h.NeedsNewAgent)
+		},
+		"JasperRestart": func(t *testing.T, h *Host) {
+			h.NeedsReprovision = ReprovisionJasperRestart
+			require.NoError(t, h.Insert())
+
+			require.NoError(t, h.MarkAsReprovisioning())
+			assert.Equal(t, evergreen.HostProvisioning, h.Status)
+			assert.Equal(t, util.ZeroTime, h.AgentStartTime)
+			assert.False(t, h.Provisioned)
+			assert.True(t, h.NeedsNewAgentMonitor)
+			assert.False(t, h.NeedsNewAgent)
+		},
+		"JasperRestartSpawnHost": func(t *testing.T, h *Host) {
+			h.NeedsReprovision = ReprovisionJasperRestart
+			h.StartedBy = "user"
+			require.NoError(t, h.Insert())
+
+			require.NoError(t, h.MarkAsReprovisioning())
+			assert.Equal(t, evergreen.HostProvisioning, h.Status)
+			assert.Equal(t, util.ZeroTime, h.AgentStartTime)
+			assert.False(t, h.Provisioned)
+			assert.False(t, h.NeedsNewAgentMonitor)
+		},
+		"NeedsJasperRestartSetsNeedsAgentMonitor": func(t *testing.T, h *Host) {
+			h.NeedsReprovision = ReprovisionJasperRestart
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
+			require.NoError(t, h.Insert())
+
+			require.NoError(t, h.MarkAsReprovisioning())
+			assert.Equal(t, util.ZeroTime, h.AgentStartTime)
+			assert.False(t, h.Provisioned)
+			assert.True(t, h.NeedsNewAgentMonitor)
+			assert.False(t, h.NeedsNewAgent)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			defer func() {
+				assert.NoError(t, db.Clear(Collection))
+			}()
+			h := &Host{
+				AgentStartTime:   time.Now(),
+				Provisioned:      true,
+				Status:           evergreen.HostRunning,
+				NeedsReprovision: ReprovisionToLegacy,
+				StartedBy:        evergreen.User,
+			}
+			testCase(t, h)
+		})
+	}
 }
 
 func TestHostCreateSecret(t *testing.T) {
@@ -731,6 +816,14 @@ func TestUpsert(t *testing.T) {
 			So(ok, ShouldBeTrue)
 			So(val, ShouldEqual, 0)
 		})
+		Convey("Upserting a host that does not need its provisioning changed unsets the field", func() {
+			So(host.Insert(), ShouldBeNil)
+			_, err := host.Upsert()
+			So(err, ShouldBeNil)
+
+			_, err = FindOne(db.Query(bson.M{IdKey: host.Id, NeedsReprovisionKey: bson.M{"$exists": false}}))
+			So(err, ShouldBeNil)
+		})
 	})
 }
 
@@ -806,7 +899,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				StartedBy: evergreen.User,
 			}
 			So(h.Insert(), ShouldBeNil)
-			hosts, err := Find(db.Query(AgentLastCommunicationTimeElapsed(time.Now())))
+			hosts, err := Find(db.Query(NeedsAgentDeploy(time.Now())))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 1)
 			So(hosts[0].Id, ShouldEqual, "id")
@@ -819,7 +912,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				foundHost, err := FindOne(ById(h.Id))
 				So(err, ShouldBeNil)
 				So(foundHost, ShouldNotBeNil)
-				hosts, err := Find(db.Query(AgentLastCommunicationTimeElapsed(time.Now())))
+				hosts, err := Find(db.Query(NeedsAgentDeploy(time.Now())))
 				So(err, ShouldBeNil)
 				So(len(hosts), ShouldEqual, 1)
 				So(hosts[0].Id, ShouldEqual, h.Id)
@@ -834,7 +927,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				StartedBy:             evergreen.User,
 			}
 			So(anotherHost.Insert(), ShouldBeNil)
-			hosts, err := Find(db.Query(AgentLastCommunicationTimeElapsed(now)))
+			hosts, err := Find(db.Query(NeedsAgentDeploy(now)))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 1)
 			So(hosts[0].Id, ShouldEqual, anotherHost.Id)
@@ -848,13 +941,13 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				StartedBy:             evergreen.User,
 			}
 			So(anotherHost.Insert(), ShouldBeNil)
-			hosts, err := Find(db.Query(AgentLastCommunicationTimeElapsed(now)))
+			hosts, err := Find(db.Query(NeedsAgentDeploy(now)))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 0)
 			Convey("after resetting the LCT", func() {
 				So(anotherHost.ResetLastCommunicated(), ShouldBeNil)
 				So(anotherHost.LastCommunicationTime, ShouldResemble, time.Unix(0, 0))
-				h, err := Find(db.Query(AgentLastCommunicationTimeElapsed(now)))
+				h, err := Find(db.Query(NeedsAgentDeploy(now)))
 				So(err, ShouldBeNil)
 				So(len(h), ShouldEqual, 1)
 				So(h[0].Id, ShouldEqual, "testhost")
@@ -867,7 +960,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				StartedBy: evergreen.User,
 			}
 			So(h.Insert(), ShouldBeNil)
-			hosts, err := Find(db.Query(AgentLastCommunicationTimeElapsed(now)))
+			hosts, err := Find(db.Query(NeedsAgentDeploy(now)))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 0)
 		})
@@ -878,7 +971,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				StartedBy: "anotherUser",
 			}
 			So(h.Insert(), ShouldBeNil)
-			hosts, err := Find(db.Query(AgentLastCommunicationTimeElapsed(now)))
+			hosts, err := Find(db.Query(NeedsAgentDeploy(now)))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 0)
 		})
@@ -892,7 +985,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 			}
 			So(h.Insert(), ShouldBeNil)
 
-			hosts, err := Find(NeedsNewAgentFlagSet())
+			hosts, err := Find(ShouldDeployAgent())
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 1)
 			So(hosts[0].Id, ShouldEqual, h.Id)
@@ -906,37 +999,80 @@ func TestFindNeedsNewAgent(t *testing.T) {
 			}
 			So(h.Insert(), ShouldBeNil)
 
-			hosts, err := Find(NeedsNewAgentFlagSet())
+			hosts, err := Find(ShouldDeployAgent())
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 1)
 			So(hosts[0].Id, ShouldEqual, h.Id)
 		})
+		Convey("with a host with that is still provisioning, does not need reprovisioning, and has not yet communicated", func() {
+			h := Host{
+				Id:            "h",
+				Status:        evergreen.HostProvisioning,
+				StartedBy:     evergreen.User,
+				NeedsNewAgent: true,
+			}
+			So(h.Insert(), ShouldBeNil)
+			hosts, err := Find(db.Query(NeedsAgentDeploy(now)))
+			So(err, ShouldBeNil)
+			So(hosts, ShouldBeEmpty)
+		})
+		Convey("with a host with that is still provisioning, needs reprovisioning, and has not yet communicated", func() {
+			h := Host{
+				Id:               "h",
+				Status:           evergreen.HostProvisioning,
+				NeedsReprovision: ReprovisionToLegacy,
+				StartedBy:        evergreen.User,
+				NeedsNewAgent:    true,
+			}
+			So(h.Insert(), ShouldBeNil)
+			hosts, err := Find(db.Query(NeedsAgentDeploy(now)))
+			So(err, ShouldBeNil)
+			So(len(hosts), ShouldEqual, 1)
+			So(hosts[0].Id, ShouldEqual, h.Id)
+
+			hosts, err = Find(ShouldDeployAgent())
+			So(err, ShouldBeNil)
+			So(len(hosts), ShouldEqual, 0)
+		})
 	})
 }
 
-func TestSetNeedsNewAgent(t *testing.T) {
+func TestSetNeedsJasperRestart(t *testing.T) {
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
-		"SucceedsOnLegacyHosts": func(t *testing.T, h *Host) {
+		"SetsProvisioningFields": func(t *testing.T, h *Host) {
 			require.NoError(t, h.Insert())
 
-			require.NoError(t, h.SetNeedsNewAgent(true))
-			assert.True(t, h.NeedsNewAgent)
-
-			dbHost, err := FindOne(ById(h.Id))
-			require.NoError(t, err)
-			assert.True(t, dbHost.NeedsNewAgent)
+			require.NoError(t, h.SetNeedsJasperRestart())
+			assert.Equal(t, evergreen.HostProvisioning, h.Status)
+			assert.False(t, h.Provisioned)
+			assert.Equal(t, ReprovisionJasperRestart, h.NeedsReprovision)
 		},
-		"NoopsOnNonLegacyHosts": func(t *testing.T, h *Host) {
-			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodUserData
-			h.Distro.BootstrapSettings.Communication = distro.CommunicationMethodSSH
+		"SucceedsIfAlreadyNeedsJasperRestart": func(t *testing.T, h *Host) {
+			h.NeedsReprovision = ReprovisionJasperRestart
 			require.NoError(t, h.Insert())
 
-			require.NoError(t, h.SetNeedsNewAgent(true))
-			assert.False(t, h.NeedsNewAgent)
+			require.NoError(t, h.SetNeedsJasperRestart())
+			assert.Equal(t, evergreen.HostProvisioning, h.Status)
+			assert.False(t, h.Provisioned)
+			assert.Equal(t, ReprovisionJasperRestart, h.NeedsReprovision)
+		},
+		"FailsIfReprovisioningLocked": func(t *testing.T, h *Host) {
+			h.ReprovisioningLocked = true
+			require.NoError(t, h.Insert())
 
-			dbHost, err := FindOne(ById(h.Id))
-			require.NoError(t, err)
-			assert.False(t, dbHost.NeedsNewAgent)
+			assert.Error(t, h.SetNeedsJasperRestart())
+		},
+		"FailsIfHostNotRunningOrProvisioning": func(t *testing.T, h *Host) {
+			h.Status = evergreen.HostTerminated
+			require.NoError(t, h.Insert())
+
+			assert.Error(t, h.SetNeedsJasperRestart())
+		},
+		"FailsIfAlreadyNeedsReprovision": func(t *testing.T, h *Host) {
+			h.NeedsReprovision = ReprovisionToLegacy
+			require.NoError(t, h.Insert())
+
+			assert.Error(t, h.SetNeedsJasperRestart())
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
@@ -944,17 +1080,42 @@ func TestSetNeedsNewAgent(t *testing.T) {
 			defer func() {
 				assert.NoError(t, db.Clear(Collection))
 			}()
-			testCase(t, &Host{Id: "id"})
+			h := &Host{
+				Id:          "id",
+				Status:      evergreen.HostRunning,
+				Provisioned: true,
+			}
+			testCase(t, h)
 		})
 	}
 }
 
-func TestAgentMonitorLastCommunicationTimeElapsed(t *testing.T) {
+func TestNeedsAgentMonitorDeploy(t *testing.T) {
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"FindsNotRecentlyCommunicatedHosts": func(t *testing.T, h *Host) {
 			require.NoError(t, h.Insert())
 
-			hosts, err := Find(db.Query(AgentMonitorLastCommunicationTimeElapsed(time.Now())))
+			hosts, err := Find(db.Query(NeedsAgentMonitorDeploy(time.Now())))
+			require.NoError(t, err)
+
+			require.Len(t, hosts, 1)
+			assert.Equal(t, h.Id, hosts[0].Id)
+		},
+		"DoesNotFindsHostsNotNeedingReprovisioning": func(t *testing.T, h *Host) {
+			h.Status = evergreen.HostProvisioning
+			require.NoError(t, h.Insert())
+
+			hosts, err := Find(db.Query(NeedsAgentMonitorDeploy(time.Now())))
+			require.NoError(t, err)
+
+			assert.Len(t, hosts, 0)
+		},
+		"FindsHostsReprovisioning": func(t *testing.T, h *Host) {
+			h.Status = evergreen.HostProvisioning
+			h.NeedsReprovision = ReprovisionToNew
+			require.NoError(t, h.Insert())
+
+			hosts, err := Find(db.Query(NeedsAgentMonitorDeploy(time.Now())))
 			require.NoError(t, err)
 
 			require.Len(t, hosts, 1)
@@ -964,7 +1125,7 @@ func TestAgentMonitorLastCommunicationTimeElapsed(t *testing.T) {
 			h.LastCommunicationTime = time.Now()
 			require.NoError(t, h.Insert())
 
-			hosts, err := Find(db.Query(AgentMonitorLastCommunicationTimeElapsed(time.Now())))
+			hosts, err := Find(db.Query(NeedsAgentMonitorDeploy(time.Now())))
 			require.NoError(t, err)
 
 			assert.Empty(t, hosts)
@@ -974,7 +1135,7 @@ func TestAgentMonitorLastCommunicationTimeElapsed(t *testing.T) {
 			h.Distro.BootstrapSettings.Communication = distro.CommunicationMethodLegacySSH
 			require.NoError(t, h.Insert())
 
-			hosts, err := Find(db.Query(AgentMonitorLastCommunicationTimeElapsed(time.Now())))
+			hosts, err := Find(db.Query(NeedsAgentMonitorDeploy(time.Now())))
 			require.NoError(t, err)
 
 			assert.Empty(t, hosts)
@@ -984,7 +1145,7 @@ func TestAgentMonitorLastCommunicationTimeElapsed(t *testing.T) {
 			h.Distro.BootstrapSettings.Communication = ""
 			require.NoError(t, h.Insert())
 
-			hosts, err := Find(db.Query(AgentMonitorLastCommunicationTimeElapsed(time.Now())))
+			hosts, err := Find(db.Query(NeedsAgentMonitorDeploy(time.Now())))
 			require.NoError(t, err)
 
 			assert.Empty(t, hosts)
@@ -1011,13 +1172,13 @@ func TestAgentMonitorLastCommunicationTimeElapsed(t *testing.T) {
 	}
 }
 
-func TestFindByNeedsNewAgentMonitor(t *testing.T) {
+func TestShouldDeployAgentMonitor(t *testing.T) {
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"NotRunningHost": func(t *testing.T, h *Host) {
 			h.Status = evergreen.HostDecommissioned
 			require.NoError(t, h.Insert())
 
-			hosts, err := FindByNeedsNewAgentMonitor()
+			hosts, err := Find(ShouldDeployAgentMonitor())
 			require.NoError(t, err)
 			require.Len(t, hosts, 0)
 		},
@@ -1025,7 +1186,7 @@ func TestFindByNeedsNewAgentMonitor(t *testing.T) {
 			h.NeedsNewAgentMonitor = false
 			require.NoError(t, h.Insert())
 
-			hosts, err := FindByNeedsNewAgentMonitor()
+			hosts, err := Find(ShouldDeployAgentMonitor())
 			require.NoError(t, err)
 			require.Len(t, hosts, 0)
 		},
@@ -1033,7 +1194,7 @@ func TestFindByNeedsNewAgentMonitor(t *testing.T) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodLegacySSH
 			require.NoError(t, h.Insert())
 
-			hosts, err := FindByNeedsNewAgentMonitor()
+			hosts, err := Find(ShouldDeployAgentMonitor())
 			require.NoError(t, err)
 			require.Len(t, hosts, 0)
 		},
@@ -1041,7 +1202,7 @@ func TestFindByNeedsNewAgentMonitor(t *testing.T) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
 			require.NoError(t, h.Insert())
 
-			hosts, err := FindByNeedsNewAgentMonitor()
+			hosts, err := Find(ShouldDeployAgentMonitor())
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0].Id)
@@ -1050,7 +1211,7 @@ func TestFindByNeedsNewAgentMonitor(t *testing.T) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodUserData
 			require.NoError(t, h.Insert())
 
-			hosts, err := FindByNeedsNewAgentMonitor()
+			hosts, err := Find(ShouldDeployAgentMonitor())
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0].Id)
@@ -1059,7 +1220,7 @@ func TestFindByNeedsNewAgentMonitor(t *testing.T) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodPreconfiguredImage
 			require.NoError(t, h.Insert())
 
-			hosts, err := FindByNeedsNewAgentMonitor()
+			hosts, err := Find(ShouldDeployAgentMonitor())
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0].Id)
@@ -1077,6 +1238,66 @@ func TestFindByNeedsNewAgentMonitor(t *testing.T) {
 				NeedsNewAgentMonitor: true,
 			}
 			testCase(t, &h)
+		})
+	}
+}
+
+func TestNeedsReprovisioningLocked(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T, h *Host){
+		"IgnoresHostWithRecentLCT": func(t *testing.T, h *Host) {
+			h.LastCommunicationTime = time.Now()
+			require.NoError(t, h.Insert())
+
+			hosts, err := Find(db.Query(NeedsReprovisioningLocked(time.Now())))
+			assert.NoError(t, err)
+			assert.Empty(t, hosts)
+		},
+		"IgnoresRunningHosts": func(t *testing.T, h *Host) {
+			h.Status = evergreen.HostRunning
+			require.NoError(t, h.Insert())
+
+			hosts, err := Find(db.Query(NeedsReprovisioningLocked(time.Now())))
+			assert.NoError(t, err)
+			assert.Empty(t, hosts)
+		},
+		"IgnoresHostsWithoutProvisioningNeeds": func(t *testing.T, h *Host) {
+			h.NeedsReprovision = ReprovisionNone
+			require.NoError(t, h.Insert())
+
+			hosts, err := Find(db.Query(NeedsReprovisioningLocked(time.Now())))
+			assert.NoError(t, err)
+			assert.Empty(t, hosts)
+		},
+		"IgnoresHostsWithProvisioningUnlocked": func(t *testing.T, h *Host) {
+			h.ReprovisioningLocked = false
+			require.NoError(t, h.Insert())
+
+			hosts, err := Find(db.Query(NeedsReprovisioningLocked(time.Now())))
+			assert.NoError(t, err)
+			assert.Empty(t, hosts)
+		},
+		"ReturnsReprovisioningLockedHosts": func(t *testing.T, h *Host) {
+			require.NoError(t, h.Insert())
+
+			hosts, err := Find(db.Query(NeedsReprovisioningLocked(time.Now())))
+			require.NoError(t, err)
+			require.Len(t, hosts, 1)
+			assert.Equal(t, h.Id, hosts[0].Id)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			defer func() {
+				assert.NoError(t, db.Clear(Collection))
+			}()
+			h := &Host{
+				Id:                   "id",
+				StartedBy:            evergreen.User,
+				Status:               evergreen.HostProvisioning,
+				NeedsReprovision:     ReprovisionToNew,
+				ReprovisioningLocked: true,
+			}
+			testCase(t, h)
 		})
 	}
 }
@@ -1216,6 +1437,53 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			require.NoError(t, err)
 			assert.Empty(t, dbHosts)
 		},
+		"IgnoresHostsAlreadyNeedingOtherProvisioning": func(ctx context.Context, t *testing.T) {
+			h := &Host{
+				Id: "id",
+				Distro: distro.Distro{
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodSSH,
+						Communication: distro.CommunicationMethodSSH,
+					},
+				},
+				JasperCredentialsID: "cid",
+				Status:              evergreen.HostProvisioning,
+				NeedsReprovision:    ReprovisionToLegacy,
+			}
+			require.NoError(t, h.Insert())
+
+			creds, err := h.GenerateJasperCredentials(ctx, env)
+			require.NoError(t, err)
+			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
+
+			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
+			require.NoError(t, err)
+			assert.Empty(t, dbHosts)
+		},
+		"ReturnsProvisioningHostsWithExpiringCredentials": func(ctx context.Context, t *testing.T) {
+			h := &Host{
+				Id: "id",
+				Distro: distro.Distro{
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodSSH,
+						Communication: distro.CommunicationMethodSSH,
+					},
+				},
+				JasperCredentialsID: "cid",
+				Status:              evergreen.HostProvisioning,
+				NeedsReprovision:    ReprovisionJasperRestart,
+			}
+			require.NoError(t, h.Insert())
+
+			creds, err := h.GenerateJasperCredentials(ctx, env)
+			require.NoError(t, err)
+			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
+
+			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
+			require.NoError(t, err)
+			require.Len(t, dbHosts, 1)
+			assert.Equal(t, h.Id, dbHosts[0].Id)
+		},
 		"ReturnsWithExpiringCredentials": func(ctx context.Context, t *testing.T) {
 			h := &Host{
 				Id: "id",
@@ -1296,6 +1564,53 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			require.NoError(t, setupCredentialsCollection(ctx, env))
 			testCase(tctx, t)
 			assert.NoError(t, db.ClearCollections(evergreen.CredentialsCollection, Collection))
+		})
+	}
+}
+
+func TestFindByShouldConvertProvisioning(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T, h *Host){
+		"IgnoresHostWithoutMatchingStatus": func(t *testing.T, h *Host) {
+			h.Status = evergreen.HostTerminated
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindByShouldConvertProvisioning()
+			assert.NoError(t, err)
+			assert.Empty(t, hosts)
+		},
+		"ReturnsHostsThatNeedNewReprovisioning": func(t *testing.T, h *Host) {
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindByShouldConvertProvisioning()
+			require.NoError(t, err)
+			require.Len(t, hosts, 1)
+			assert.Equal(t, h.Id, hosts[0].Id)
+		},
+		"ReturnsHostsThatNeedLegacyReprovisioning": func(t *testing.T, h *Host) {
+			h.NeedsReprovision = ReprovisionToLegacy
+			h.NeedsNewAgentMonitor = false
+			h.NeedsNewAgent = true
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindByShouldConvertProvisioning()
+			require.NoError(t, err)
+			require.Len(t, hosts, 1)
+			assert.Equal(t, h.Id, hosts[0].Id)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			defer func() {
+				assert.NoError(t, db.Clear(Collection))
+			}()
+			h := &Host{
+				Id:                   "id",
+				StartedBy:            evergreen.User,
+				Status:               evergreen.HostProvisioning,
+				NeedsReprovision:     ReprovisionToNew,
+				NeedsNewAgentMonitor: true,
+			}
+			testCase(t, h)
 		})
 	}
 }
@@ -2842,7 +3157,8 @@ func TestHostsSpawnedByTasks(t *testing.T) {
 
 func TestFindByFirstProvisioningAttempt(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
+	require := require.New(t)
+	require.NoError(db.ClearCollections(Collection))
 
 	hosts := []Host{
 		{
@@ -2869,15 +3185,26 @@ func TestFindByFirstProvisioningAttempt(t *testing.T) {
 	}
 
 	hosts, err := FindByFirstProvisioningAttempt()
-	assert.NoError(err)
-	assert.Len(hosts, 1)
+	require.NoError(err)
+	require.Len(hosts, 1)
 	assert.Equal("host3", hosts[0].Id)
 
-	assert.NoError(db.ClearCollections(Collection))
-	assert.NoError(db.Insert(Collection, bson.M{
+	require.NoError(db.ClearCollections(Collection))
+	require.NoError(db.Insert(Collection, bson.M{
 		"_id":    "host5",
 		"status": evergreen.HostProvisioning,
 	}))
+	hosts, err = FindByFirstProvisioningAttempt()
+	assert.NoError(err)
+	assert.Empty(hosts)
+
+	require.NoError(db.Clear(Collection))
+	h := &Host{
+		Id:               "host6",
+		Status:           evergreen.HostProvisioning,
+		NeedsReprovision: ReprovisionToNew,
+	}
+	require.NoError(h.Insert())
 	hosts, err = FindByFirstProvisioningAttempt()
 	assert.NoError(err)
 	assert.Empty(hosts)

@@ -30,6 +30,8 @@ func Admin() cli.Command {
 			revert(),
 			fetchAllProjectConfigs(),
 			amboyCmd(),
+			fromMdbForLocal(),
+			toMdbForLocal(),
 		},
 	}
 }

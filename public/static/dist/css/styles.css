@@ -1193,6 +1193,9 @@ ul.tooltip-tasks li.tooltip-task {
   overflow-y: auto;
   overflow-x: none;
 }
+.patch-diff-panel tbody {
+  word-break: break-word;
+}
 .patch-diff-panel tr .extra-info {
   font-size: 10px;
   color: #777;
@@ -1215,6 +1218,12 @@ ul.tooltip-tasks li.tooltip-task {
   font-size: 12px;
   margin-top: 10px;
   font-weight: bold;
+}
+.project-variable {
+  text-align: left;
+  word-break: break-all;
+  margin-bottom: 0;
+  vertical-align: middle;
 }
 .triggerinfo {
   list-style: none;

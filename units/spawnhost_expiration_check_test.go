@@ -41,7 +41,7 @@ func TestSpawnhostExpirationCheckJob(t *testing.T) {
 		Status: cloud.StatusRunning,
 	})
 
-	ts := util.RoundPartOfHour(0).Format(tsFormat)
+	ts := util.RoundPartOfHour(0).Format(TSFormat)
 	j := NewSpawnhostExpirationCheckJob(ts, &h)
 	j.Run(context.Background())
 	assert.NoError(t, j.Error())

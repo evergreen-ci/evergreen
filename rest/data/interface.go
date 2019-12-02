@@ -79,7 +79,7 @@ type Connector interface {
 
 	// Find project variables matching given projectId.
 	FindProjectVarsById(string) (*restModel.APIProjectVars, error)
-	// UpdateProjectVars updates the project using the variables given in the model.
+	// UpdateProjectVars updates the project using the variables given in the model.ggg
 	// If successful, updates the given projectVars with the updated projectVars.
 	UpdateProjectVars(string, *restModel.APIProjectVars) error
 	// CopyProjectVars copies the variables for the first project to the second
@@ -104,6 +104,10 @@ type Connector interface {
 	// FindProjectByBranch is a method to find the projectref given a branch name.
 	FindProjectByBranch(string) (*model.ProjectRef, error)
 	GetProjectWithCommitQueueByOwnerRepoAndBranch(string, string, string) (*model.ProjectRef, error)
+
+	FindProjectsByTag(string) ([]restModel.APIProjectRef, error)
+	AddTagsToProject(string, ...string) error
+	RemoveTagFromProject(string, string) error
 
 	// GetVersionsAndVariants returns recent versions for a project
 	GetVersionsAndVariants(int, int, *model.Project) (*restModel.VersionVariantData, error)
@@ -137,8 +141,14 @@ type Connector interface {
 
 	FindHostsByDistroID(string) ([]host.Host, error)
 
+	// FindHostWithVolume returns the host that has the given volume attached
+	FindHostWithVolume(string) (*host.Host, error)
+
 	// NewIntentHost is a method to insert an intent host given a distro and the name of a saved public key
 	NewIntentHost(*restModel.HostRequestOptions, *user.DBUser) (*host.Host, error)
+
+	FindVolumeById(string) (*host.Volume, error)
+	FindVolumesByUser(string) ([]host.Volume, error)
 
 	// AggregateSpawnhostData returns basic metrics on spawn host/volume usage.
 	AggregateSpawnhostData() (*host.SpawnHostUsage, error)

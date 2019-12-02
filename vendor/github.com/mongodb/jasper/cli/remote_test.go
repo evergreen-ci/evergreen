@@ -94,8 +94,8 @@ func TestCLIRemote(t *testing.T) {
 						assert.NoError(t, os.RemoveAll(tmpFile.Name()))
 					}()
 
-					info := options.WriteFile{Path: tmpFile.Name(), Content: []byte("foo")}
-					input, err := json.Marshal(info)
+					opts := options.WriteFile{Path: tmpFile.Name(), Content: []byte("foo")}
+					input, err := json.Marshal(opts)
 					require.NoError(t, err)
 					resp := &OutcomeResponse{}
 
@@ -103,9 +103,9 @@ func TestCLIRemote(t *testing.T) {
 
 					assert.True(t, resp.Successful())
 
-					data, err := ioutil.ReadFile(info.Path)
+					data, err := ioutil.ReadFile(opts.Path)
 					require.NoError(t, err)
-					assert.Equal(t, info.Content, data)
+					assert.Equal(t, opts.Content, data)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {

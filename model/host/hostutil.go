@@ -135,15 +135,24 @@ func (h *Host) GetSSHInfo() (*util.StaticHostInfo, error) {
 	return hostInfo, nil
 }
 
+func (h *Host) GetSSHKeyPath(settings *evergreen.Settings) (string, error) {
+	keyPath := settings.Keys[h.Distro.SSHKey]
+	if keyPath == "" {
+		return "", errors.New("no SSH key specified for host")
+	}
+
+	return keyPath, nil
+}
+
 // GetSSHOptions returns the options to SSH into this host.
 // EVG-6389: this currently relies on the fact that the EC2 provider has a
 // single distro-level SSH key name corresponding to an existing SSH key file on
 // the app servers. We should be able to handle multiple keys configured in
 // admin settings rather than from a file name in distro settings.
 func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
-	keyPath := settings.Keys[h.Distro.SSHKey]
-	if keyPath == "" {
-		return nil, errors.New("no SSH key specified for host")
+	keyPath, err := h.GetSSHKeyPath(settings)
+	if err != nil {
+		return nil, errors.WithStack(err)
 	}
 
 	opts := []string{"-i", keyPath}
@@ -320,11 +329,18 @@ func (h *Host) RestartJasperCommand(config evergreen.HostJasperConfig) string {
 	return h.jasperServiceCommand(config, jcli.RestartCommand)
 }
 
+// QuietUninstallJasperCommand returns the command to uninstall the Jasper
+// service. If the service is already not installed, this no-ops.
+func (h *Host) QuietUninstallJasperCommand(config evergreen.HostJasperConfig) string {
+	return h.jasperServiceCommand(config, jcli.UninstallCommand, "--quiet")
+}
+
 func (h *Host) jasperServiceCommand(config evergreen.HostJasperConfig, subCmd string, args ...string) string {
-	cmd := append(jcli.BuildServiceCommand(h.jasperBinaryFilePath(config)), subCmd, jcli.RPCService)
+	cmd := append(jcli.BuildServiceCommand(h.JasperBinaryFilePath(config)), subCmd, jcli.RPCService)
 	cmd = append(cmd, args...)
-	// Jasper service commands need elevated privileges to execute. On Windows,
-	// this is assuming that the command is already being run by Administrator.
+	// Jasper service commands generally need elevated privileges to execute. On
+	// Windows, this is assuming that the command is already being run by
+	// Administrator.
 	if !h.Distro.IsWindows() {
 		cmd = append([]string{"sudo"}, cmd...)
 	}
@@ -365,8 +381,8 @@ func (h *Host) jasperBinaryFileName(config evergreen.HostJasperConfig) string {
 	return config.BinaryName
 }
 
-// jasperBinaryFilePath returns the full path to the Jasper binary.
-func (h *Host) jasperBinaryFilePath(config evergreen.HostJasperConfig) string {
+// JasperBinaryFilePath returns the full path to the Jasper binary.
+func (h *Host) JasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 	return filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, h.jasperBinaryFileName(config))
 }
 
@@ -566,7 +582,7 @@ func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, 
 	clientInput := fmt.Sprintf("<<EOF\n%s\nEOF", inputBytes)
 
 	return strings.Join([]string{
-		strings.Join(jcli.BuildClientCommand(h.jasperBinaryFilePath(config)), " "),
+		strings.Join(jcli.BuildClientCommand(h.JasperBinaryFilePath(config)), " "),
 		subCmd,
 		flags,
 		clientInput,
@@ -740,14 +756,21 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jas
 			if err != nil {
 				return nil, errors.Wrap(err, "could not get host's SSH options")
 			}
+			keyPath, err := h.GetSSHKeyPath(settings)
+			if err != nil {
+				return nil, errors.Wrap(err, "could not get host's SSH options")
+			}
 
 			remoteOpts := options.Remote{
-				Host: hostInfo.Hostname,
-				User: hostInfo.User,
-				Args: sshOpts,
+				RemoteConfig: options.RemoteConfig{
+					Host:    hostInfo.Hostname,
+					User:    hostInfo.User,
+					KeyFile: keyPath,
+					Args:    sshOpts,
+				},
 			}
 			clientOpts := jcli.ClientOptions{
-				BinaryPath:          h.jasperBinaryFilePath(settings.HostJasper),
+				BinaryPath:          h.JasperBinaryFilePath(settings.HostJasper),
 				Type:                jcli.RPCService,
 				Port:                settings.HostJasper.Port,
 				CredentialsFilePath: filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.JasperCredentialsPath),
@@ -833,7 +856,7 @@ func (h *Host) StartAgentMonitorRequest(settings *evergreen.Settings) (string, e
 // StopAgentMonitor stops the agent monitor (if it is running) on the host via
 // its Jasper service . On legacy hosts, this is a no-op.
 func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) error {
-	if h.LegacyBootstrap() {
+	if (h.LegacyBootstrap() && h.NeedsReprovision != ReprovisionToLegacy) || h.NeedsReprovision == ReprovisionToNew {
 		return nil
 	}
 

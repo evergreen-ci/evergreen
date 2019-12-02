@@ -192,7 +192,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		return errors.Wrapf(errIgnorableCreateHost, "problem getting cloud provider for host '%s' [%s]", j.host.Id, err.Error())
 	}
 
-	if j.host.Status != evergreen.HostUninitialized {
+	if j.host.Status != evergreen.HostUninitialized && j.host.Status != evergreen.HostBuilding {
 		return nil
 	}
 	// Set status temporarily to HostBuilding. Conventional hosts only stay in
@@ -353,11 +353,25 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 		return false, errors.Errorf("parent for host '%s' not running", j.host.Id)
 	}
 	if ok := parent.ContainerImages[j.host.DockerOptions.Image]; ok {
+		grip.Info(message.Fields{
+			"message":  "image already exists, will start container",
+			"host":     j.host.Id,
+			"image":    j.host.DockerOptions.Image,
+			"attempts": j.CurrentAttempt,
+			"job":      j.ID(),
+		})
 		return true, nil
 	}
 
 	//  If the image is not already present on the parent, run job to build the new image
 	if j.BuildImageStarted == false {
+		grip.Info(message.Fields{
+			"message":  "image not on host, will import image",
+			"host":     j.host.Id,
+			"image":    j.host.DockerOptions.Image,
+			"attempts": j.CurrentAttempt,
+			"job":      j.ID(),
+		})
 		j.BuildImageStarted = true
 		buildingContainerJob := NewBuildingContainerImageJob(j.env, parent, j.host.DockerOptions, j.host.Provider)
 		err = j.env.RemoteQueue().Put(ctx, buildingContainerJob)

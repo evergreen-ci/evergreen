@@ -10,6 +10,7 @@ import (
 
 	empty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
@@ -21,7 +22,7 @@ import (
 // AttachService attaches the given manager to the jasper GRPC server. This
 // function eventually calls generated Protobuf code for registering the
 // GRPC Jasper server with the given Manager.
-func AttachService(manager jasper.Manager, s *grpc.Server) error {
+func AttachService(ctx context.Context, manager jasper.Manager, s *grpc.Server) error {
 	hn, err := os.Hostname()
 	if err != nil {
 		return errors.WithStack(err)
@@ -39,26 +40,38 @@ func AttachService(manager jasper.Manager, s *grpc.Server) error {
 
 	RegisterJasperProcessManagerServer(s, srv)
 
-	go srv.backgroundPrune()
+	go srv.pruneCache(ctx)
 
 	return nil
 }
 
-func (s *jasperService) backgroundPrune() {
+func (s *jasperService) pruneCache(ctx context.Context) {
+	defer func() {
+		err := recovery.HandlePanicWithError(recover(), nil, "cache pruning")
+		if ctx.Err() != nil || err == nil {
+			return
+		}
+		go s.pruneCache(ctx)
+	}()
+
 	s.cacheMutex.RLock()
 	timer := time.NewTimer(s.cacheOpts.PruneDelay)
 	s.cacheMutex.RUnlock()
 
 	for {
-		<-timer.C
-		s.cacheMutex.RLock()
-		if !s.cacheOpts.Disabled {
-			if err := s.cache.Prune(s.cacheOpts.MaxSize, nil, false); err != nil {
-				grip.Error(errors.Wrap(err, "error during cache pruning"))
+		select {
+		case <-timer.C:
+			s.cacheMutex.RLock()
+			if !s.cacheOpts.Disabled {
+				if err := s.cache.Prune(s.cacheOpts.MaxSize, nil, false); err != nil {
+					grip.Error(errors.Wrap(err, "error during cache pruning"))
+				}
 			}
+			timer.Reset(s.cacheOpts.PruneDelay)
+			s.cacheMutex.RUnlock()
+		case <-ctx.Done():
+			return
 		}
-		timer.Reset(s.cacheOpts.PruneDelay)
-		s.cacheMutex.RUnlock()
 	}
 }
 
@@ -103,10 +116,14 @@ func (s *jasperService) Create(ctx context.Context, opts *CreateOptions) (*Proce
 	if err := proc.RegisterTrigger(ctx, func(_ jasper.ProcessInfo) {
 		cancel()
 	}); err != nil {
-		if !proc.Info(ctx).Complete {
-			return ConvertProcessInfo(proc.Info(ctx)), nil
-		}
+		info := getProcInfoNoHang(ctx, proc)
 		cancel()
+		// If we get an error registering a trigger, then we should make sure
+		// that the reason for it isn't just because the process has exited
+		// already, since that should not be considered an error.
+		if !info.Complete {
+			return nil, errors.WithStack(err)
+		}
 	}
 
 	return getProcInfoNoHang(ctx, proc), nil
@@ -226,23 +243,26 @@ func (s *jasperService) Respawn(ctx context.Context, id *JasperProcessID) (*Proc
 	// Spawn a new context so that the process' context is not potentially
 	// canceled by the request's. See how rest_service.go's createProcess() does
 	// this same thing.
-	cctx, cancel := context.WithCancel(context.Background())
-	newProc, err := proc.Respawn(cctx)
+	pctx, cancel := context.WithCancel(context.Background())
+	newProc, err := proc.Respawn(pctx)
 	if err != nil {
 		err = errors.Wrap(err, "problem encountered while respawning")
 		cancel()
 		return nil, errors.WithStack(err)
 	}
-	_ = s.manager.Register(ctx, newProc)
+	if err := s.manager.Register(ctx, newProc); err != nil {
+		cancel()
+		return nil, errors.WithStack(err)
+	}
 
 	if err := newProc.RegisterTrigger(ctx, func(_ jasper.ProcessInfo) {
 		cancel()
 	}); err != nil {
 		newProcInfo := getProcInfoNoHang(ctx, newProc)
+		cancel()
 		if !newProcInfo.Complete {
 			return newProcInfo, nil
 		}
-		cancel()
 	}
 
 	return getProcInfoNoHang(ctx, newProc), nil
@@ -354,22 +374,22 @@ func (s *jasperService) ConfigureCache(ctx context.Context, opts *CacheOptions) 
 	return &OperationOutcome{Success: true, Text: "cache configured"}, nil
 }
 
-func (s *jasperService) DownloadFile(ctx context.Context, info *DownloadInfo) (*OperationOutcome, error) {
-	jinfo := info.Export()
+func (s *jasperService) DownloadFile(ctx context.Context, opts *DownloadInfo) (*OperationOutcome, error) {
+	jopts := opts.Export()
 
-	if err := jinfo.Validate(); err != nil {
-		err = errors.Wrap(err, "problem validating download info")
+	if err := jopts.Validate(); err != nil {
+		err = errors.Wrap(err, "problem validating download options")
 		return &OperationOutcome{Success: false, Text: err.Error(), ExitCode: -2}, nil
 	}
 
-	if err := jinfo.Download(); err != nil {
-		err = errors.Wrapf(err, "problem occurred during file download for URL %s to path %s", jinfo.URL, jinfo.Path)
+	if err := jopts.Download(); err != nil {
+		err = errors.Wrapf(err, "problem occurred during file download for URL %s to path %s", jopts.URL, jopts.Path)
 		return &OperationOutcome{Success: false, Text: err.Error(), ExitCode: -3}, nil
 	}
 
 	return &OperationOutcome{
 		Success: true,
-		Text:    fmt.Sprintf("downloaded file %s to path %s", jinfo.URL, jinfo.Path),
+		Text:    fmt.Sprintf("downloaded file %s to path %s", jopts.URL, jopts.Path),
 	}, nil
 }
 
@@ -467,11 +487,9 @@ func (s *jasperService) SignalEvent(ctx context.Context, name *EventName) (*Oper
 }
 
 func (s *jasperService) WriteFile(stream JasperProcessManager_WriteFileServer) error {
-	var jinfo options.WriteFile
+	var jopts options.WriteFile
 
-	numRecvs := 0
-	for info, err := stream.Recv(); err == nil; info, err = stream.Recv() {
-		numRecvs++
+	for opts, err := stream.Recv(); err == nil; opts, err = stream.Recv() {
 		if err == io.EOF {
 			break
 		}
@@ -486,12 +504,12 @@ func (s *jasperService) WriteFile(stream JasperProcessManager_WriteFileServer) e
 			return nil
 		}
 
-		jinfo = info.Export()
+		jopts = opts.Export()
 
-		if err := jinfo.Validate(); err != nil {
+		if err := jopts.Validate(); err != nil {
 			if sendErr := stream.SendAndClose(&OperationOutcome{
 				Success:  false,
-				Text:     errors.Wrap(err, "problem validating file write info").Error(),
+				Text:     errors.Wrap(err, "problem validating file write options").Error(),
 				ExitCode: -3,
 			}); sendErr != nil {
 				return errors.Wrapf(sendErr, "could not send error response to client: %s", err.Error())
@@ -499,10 +517,10 @@ func (s *jasperService) WriteFile(stream JasperProcessManager_WriteFileServer) e
 			return nil
 		}
 
-		if err := jinfo.DoWrite(); err != nil {
+		if err := jopts.DoWrite(); err != nil {
 			if sendErr := stream.SendAndClose(&OperationOutcome{
 				Success:  false,
-				Text:     errors.Wrap(err, "problem validating file write info").Error(),
+				Text:     errors.Wrap(err, "problem validating file write opts").Error(),
 				ExitCode: -4,
 			}); sendErr != nil {
 				return errors.Wrapf(sendErr, "could not send error response to client: %s", err.Error())
@@ -511,10 +529,10 @@ func (s *jasperService) WriteFile(stream JasperProcessManager_WriteFileServer) e
 		}
 	}
 
-	if err := jinfo.SetPerm(); err != nil {
+	if err := jopts.SetPerm(); err != nil {
 		if sendErr := stream.SendAndClose(&OperationOutcome{
 			Success:  false,
-			Text:     errors.Wrapf(err, "problem setting permissions for file %s", jinfo.Path).Error(),
+			Text:     errors.Wrapf(err, "problem setting permissions for file %s", jopts.Path).Error(),
 			ExitCode: -5,
 		}); sendErr != nil {
 			return errors.Wrapf(sendErr, "could not send error response to client: %s", err.Error())
@@ -524,6 +542,170 @@ func (s *jasperService) WriteFile(stream JasperProcessManager_WriteFileServer) e
 
 	return errors.Wrap(stream.SendAndClose(&OperationOutcome{
 		Success: true,
-		Text:    fmt.Sprintf("file %s successfully written", jinfo.Path),
+		Text:    fmt.Sprintf("file %s successfully written", jopts.Path),
 	}), "could not send success response to client")
+}
+
+func (s *jasperService) ScriptingEnvironmentCreate(ctx context.Context, opts *ScriptingOptions) (*ScriptingEnvironmentID, error) {
+	xopts, err := opts.Export()
+	if err != nil {
+		return nil, errors.Wrap(err, "problem converting options")
+	}
+
+	se, err := s.manager.CreateScripting(ctx, xopts)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem generating scripting environment")
+	}
+	return &ScriptingEnvironmentID{
+		Id:    se.ID(),
+		Setup: true,
+	}, nil
+}
+func (s *jasperService) ScriptingEnvironmentCheck(ctx context.Context, id *ScriptingEnvironmentID) (*OperationOutcome, error) {
+	se, err := s.manager.GetScripting(ctx, id.Id)
+	if err != nil {
+		return &OperationOutcome{
+			Success:  false,
+			Text:     err.Error(),
+			ExitCode: 1,
+		}, nil
+	}
+
+	return &OperationOutcome{
+		Success:  true,
+		Text:     se.ID(),
+		ExitCode: 0,
+	}, nil
+}
+
+func (s *jasperService) ScriptingEnvironmentSetup(ctx context.Context, id *ScriptingEnvironmentID) (*OperationOutcome, error) {
+	se, err := s.manager.GetScripting(ctx, id.Id)
+	if err != nil {
+		return &OperationOutcome{
+			Success:  false,
+			Text:     err.Error(),
+			ExitCode: 1,
+		}, nil
+	}
+
+	err = se.Setup(ctx)
+
+	if err != nil {
+		return &OperationOutcome{
+			Success:  false,
+			Text:     err.Error(),
+			ExitCode: 1,
+		}, nil
+	}
+
+	return &OperationOutcome{
+		Success:  true,
+		Text:     se.ID(),
+		ExitCode: 0,
+	}, nil
+}
+
+func (s *jasperService) ScriptingEnvironmentCleanup(ctx context.Context, id *ScriptingEnvironmentID) (*OperationOutcome, error) {
+	se, err := s.manager.GetScripting(ctx, id.Id)
+	if err != nil {
+		return &OperationOutcome{
+			Success:  false,
+			Text:     err.Error(),
+			ExitCode: 1,
+		}, nil
+	}
+
+	err = se.Cleanup(ctx)
+
+	if err != nil {
+		return &OperationOutcome{
+			Success:  false,
+			Text:     err.Error(),
+			ExitCode: 1,
+		}, nil
+	}
+
+	return &OperationOutcome{
+		Success:  true,
+		Text:     se.ID(),
+		ExitCode: 0,
+	}, nil
+}
+
+func (s *jasperService) ScriptingEnvironmentRun(ctx context.Context, args *ScriptingEnvironmentRunArgs) (*OperationOutcome, error) {
+	se, err := s.manager.GetScripting(ctx, args.Id)
+	if err != nil {
+		return &OperationOutcome{
+			Success:  false,
+			Text:     err.Error(),
+			ExitCode: 1,
+		}, nil
+	}
+
+	err = se.Run(ctx, args.Args)
+	if err != nil {
+		return &OperationOutcome{
+			Success:  false,
+			Text:     err.Error(),
+			ExitCode: 1,
+		}, nil
+	}
+
+	return &OperationOutcome{
+		Success:  true,
+		Text:     se.ID(),
+		ExitCode: 0,
+	}, nil
+}
+
+func (s *jasperService) ScriptingEnvironmentRunScript(ctx context.Context, args *ScriptingEnvironmentRunScriptArgs) (*OperationOutcome, error) {
+	se, err := s.manager.GetScripting(ctx, args.Id)
+	if err != nil {
+		return &OperationOutcome{
+			Success:  false,
+			Text:     err.Error(),
+			ExitCode: 1,
+		}, nil
+	}
+
+	err = se.RunScript(ctx, args.Script)
+	if err != nil {
+		return &OperationOutcome{
+			Success:  false,
+			Text:     err.Error(),
+			ExitCode: 1,
+		}, nil
+	}
+
+	return &OperationOutcome{
+		Success:  true,
+		Text:     se.ID(),
+		ExitCode: 0,
+	}, nil
+}
+
+func (s *jasperService) ScriptingEnvironmentBuild(ctx context.Context, args *ScriptingEnvironmentBuildArgs) (*OperationOutcome, error) {
+	se, err := s.manager.GetScripting(ctx, args.Id)
+	if err != nil {
+		return &OperationOutcome{
+			Success:  false,
+			Text:     err.Error(),
+			ExitCode: 1,
+		}, nil
+	}
+
+	err = se.Build(ctx, args.Directory, args.Args)
+	if err != nil {
+		return &OperationOutcome{
+			Success:  false,
+			Text:     err.Error(),
+			ExitCode: 1,
+		}, nil
+	}
+
+	return &OperationOutcome{
+		Success:  true,
+		Text:     se.ID(),
+		ExitCode: 0,
+	}, nil
 }

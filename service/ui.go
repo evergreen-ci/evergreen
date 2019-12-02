@@ -62,6 +62,7 @@ type ViewData struct {
 	Csrf        htmlTemplate.HTML
 	JiraHost    string
 	Bugsnag     string
+	NewRelic    evergreen.NewRelicConfig
 	ACLEnabled  bool // TODO PM-1355 remove this
 }
 
@@ -199,6 +200,7 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 	viewData.Csrf = csrf.TemplateField(r)
 	viewData.JiraHost = uis.Settings.Jira.Host
 	viewData.Bugsnag = settings.Bugsnag
+	viewData.NewRelic = settings.NewRelic
 	viewData.ACLEnabled = evergreen.AclCheckingIsEnabled
 	return viewData
 }
@@ -350,7 +352,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/filediff/{patch_id}/").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.fileDiffPage).Get()
 	app.AddRoute("/rawdiff/{patch_id}/").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.rawDiffPage).Get()
 	app.AddRoute("/patches").Wrap(needsLogin, needsContext).Handler(uis.patchTimeline).Get()
-	app.AddRoute("/patches/project/{project_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.patchTimeline).Get()
+	app.AddRoute("/patches/project/{project_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.projectPatchesTimeline).Get()
 	app.AddRoute("/patches/user/{user_id}").Wrap(needsLogin, needsContext).Handler(uis.userPatchesTimeline).Get()
 	app.AddRoute("/patches/mine").Wrap(needsLogin, needsContext).Handler(uis.myPatchesTimeline).Get()
 

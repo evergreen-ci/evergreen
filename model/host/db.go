@@ -58,7 +58,8 @@ var (
 	NeedsNewAgentKey             = bsonutil.MustHaveTag(Host{}, "NeedsNewAgent")
 	NeedsNewAgentMonitorKey      = bsonutil.MustHaveTag(Host{}, "NeedsNewAgentMonitor")
 	JasperCredentialsIDKey       = bsonutil.MustHaveTag(Host{}, "JasperCredentialsID")
-	JasperDeployAttemptsKey      = bsonutil.MustHaveTag(Host{}, "JasperDeployAttempts")
+	NeedsReprovisionKey          = bsonutil.MustHaveTag(Host{}, "NeedsReprovision")
+	ReprovisioningLockedKey      = bsonutil.MustHaveTag(Host{}, "ReprovisioningLocked")
 	StartedByKey                 = bsonutil.MustHaveTag(Host{}, "StartedBy")
 	InstanceTypeKey              = bsonutil.MustHaveTag(Host{}, "InstanceType")
 	VolumeTotalSizeKey           = bsonutil.MustHaveTag(Host{}, "VolumeTotalSize")
@@ -181,7 +182,7 @@ func IdleEphemeralGroupedByDistroID() ([]IdleHostsByDistroID, error) {
 		},
 		{
 			"$group": mgobson.M{
-				"_id":                             "$" + bsonutil.GetDottedKeyName(DistroKey, distro.IdKey),
+				"_id": "$" + bsonutil.GetDottedKeyName(DistroKey, distro.IdKey),
 				HostsByDistroRunningHostsCountKey: mgobson.M{"$sum": 1},
 				HostsByDistroIdleHostsKey:         mgobson.M{"$push": bson.M{"$cond": []interface{}{mgobson.M{"$eq": []interface{}{"$running_task", mgobson.Undefined}}, "$$ROOT", mgobson.Undefined}}},
 			},
@@ -394,15 +395,19 @@ func Provisioning() db.Q {
 	return db.Query(bson.M{StatusKey: evergreen.HostProvisioning})
 }
 
+// FindByFirstProvisioningAttempt finds all hosts that have not yet attempted
+// provisioning.
 func FindByFirstProvisioningAttempt() ([]Host, error) {
 	return Find(db.Query(bson.M{
 		ProvisionAttemptsKey: 0,
 		StatusKey:            evergreen.HostProvisioning,
+		NeedsReprovisionKey:  bson.M{"$exists": false},
 	}))
 }
 
 // FindByExpiringJasperCredentials finds all hosts whose Jasper service
-// credentials will expire within the given cutoff.
+// credentials will expire within the given cutoff. These hosts are marked as
+// needing provisioning changes.
 func FindByExpiringJasperCredentials(cutoff time.Duration) ([]Host, error) {
 	deadline := time.Now().Add(cutoff)
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
@@ -417,7 +422,11 @@ func FindByExpiringJasperCredentials(cutoff time.Duration) ([]Host, error) {
 				"$exists": true,
 				"$ne":     distro.BootstrapMethodLegacySSH,
 			},
-			StatusKey:        evergreen.HostRunning,
+			StatusKey: bson.M{"$in": []string{evergreen.HostRunning, evergreen.HostProvisioning}},
+			"$or": []bson.M{
+				bson.M{NeedsReprovisionKey: bson.M{"$exists": false}},
+				bson.M{NeedsReprovisionKey: ReprovisionJasperRestart},
+			},
 			HasContainersKey: bson.M{"$ne": true},
 			ParentIDKey:      bson.M{"$exists": false},
 		}},
@@ -435,12 +444,44 @@ func FindByExpiringJasperCredentials(cutoff time.Duration) ([]Host, error) {
 		}},
 	}
 
-	err := db.Aggregate(Collection, pipeline, &hosts)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
+	if err := db.Aggregate(Collection, pipeline, &hosts); err != nil {
+		return nil, err
 	}
 
-	return hosts, err
+	return hosts, nil
+}
+
+// FindBySHouldConvertProvisioning finds all hosts that are ready and waiting to
+// convert their provisioning type.
+func FindByShouldConvertProvisioning() ([]Host, error) {
+	return Find(db.Query(bson.M{
+		StatusKey:           bson.M{"$in": []string{evergreen.HostProvisioning, evergreen.HostRunning}},
+		StartedByKey:        evergreen.User,
+		RunningTaskKey:      bson.M{"$exists": false},
+		HasContainersKey:    bson.M{"$ne": true},
+		ParentIDKey:         bson.M{"$exists": false},
+		NeedsReprovisionKey: bson.M{"$in": []ReprovisionType{ReprovisionToNew, ReprovisionToLegacy}},
+	}))
+}
+
+// NeedsReprovisioningLocked finds all hosts that need their provisioning changed
+// but their provisioning has been locked for more than the max LCT interval.
+func NeedsReprovisioningLocked(currentTime time.Time) bson.M {
+	cutoffTime := currentTime.Add(-MaxLCTInterval)
+	return bson.M{
+		StatusKey:               evergreen.HostProvisioning,
+		StartedByKey:            evergreen.User,
+		RunningTaskKey:          bson.M{"$exists": false},
+		HasContainersKey:        bson.M{"$ne": true},
+		ParentIDKey:             bson.M{"$exists": false},
+		NeedsReprovisionKey:     bson.M{"$exists": true, "$ne": ""},
+		ReprovisioningLockedKey: true,
+		"$or": []bson.M{
+			{LastCommunicationTimeKey: util.ZeroTime},
+			{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
+			{LastCommunicationTimeKey: bson.M{"$exists": false}},
+		},
+	}
 }
 
 // IsRunningAndSpawned is a query that returns all running hosts
@@ -664,19 +705,26 @@ func FindStaleRunningTasks(cutoff time.Duration) ([]task.Task, error) {
 	return tasks, nil
 }
 
-// AgentLastCommunicationTimeElapsed finds legacy hosts which do not have an
-// agent or whose agents have not communicated recently.
-func AgentLastCommunicationTimeElapsed(currentTime time.Time) bson.M {
-	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
+// NeedsAgentDeploy finds hosts which need the agent to be deployed because
+// either they do not have an agent yet or their agents have not communicated
+// recently.
+func NeedsAgentDeploy(currentTime time.Time) bson.M {
 	cutoffTime := currentTime.Add(-MaxLCTInterval)
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	return bson.M{
-		StatusKey:        evergreen.HostRunning,
 		StartedByKey:     evergreen.User,
 		HasContainersKey: bson.M{"$ne": true},
 		ParentIDKey:      bson.M{"$exists": false},
 		RunningTaskKey:   bson.M{"$exists": false},
 		"$and": []bson.M{
-			bson.M{"$or": []bson.M{
+			{"$or": []bson.M{
+				{StatusKey: evergreen.HostRunning},
+				{"$and": []bson.M{
+					{StatusKey: evergreen.HostProvisioning},
+					{NeedsReprovisionKey: bson.M{"$exists": true, "$ne": ""}},
+				}},
+			}},
+			{"$or": []bson.M{
 				{LastCommunicationTimeKey: util.ZeroTime},
 				{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
 				{LastCommunicationTimeKey: bson.M{"$exists": false}},
@@ -689,22 +737,30 @@ func AgentLastCommunicationTimeElapsed(currentTime time.Time) bson.M {
 	}
 }
 
-// AgentMonitorLastCommunicationTimeElapsed finds hosts which do not have an
-// agent monitor or which should have an agent monitor but their agent has not
-// communicated recently.
-func AgentMonitorLastCommunicationTimeElapsed(currentTime time.Time) bson.M {
+// NeedsAgentMonitorDeploy finds hosts which do not have an agent monitor yet or
+// which should have an agent monitor but their agent has not communicated
+// recently.
+func NeedsAgentMonitorDeploy(currentTime time.Time) bson.M {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	cutoffTime := currentTime.Add(-MaxLCTInterval)
 	return bson.M{
-		StatusKey:        evergreen.HostRunning,
 		StartedByKey:     evergreen.User,
 		HasContainersKey: bson.M{"$ne": true},
 		ParentIDKey:      bson.M{"$exists": false},
 		RunningTaskKey:   bson.M{"$exists": false},
-		"$or": []bson.M{
-			{LastCommunicationTimeKey: util.ZeroTime},
-			{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
-			{LastCommunicationTimeKey: bson.M{"$exists": false}},
+		"$and": []bson.M{
+			{"$or": []bson.M{
+				{StatusKey: evergreen.HostRunning},
+				{"$and": []bson.M{
+					{StatusKey: evergreen.HostProvisioning},
+					{NeedsReprovisionKey: bson.M{"$exists": true, "$ne": ""}},
+				}},
+			}},
+			{"$or": []bson.M{
+				{LastCommunicationTimeKey: util.ZeroTime},
+				{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
+				{LastCommunicationTimeKey: bson.M{"$exists": false}},
+			}},
 		},
 		bootstrapKey: bson.M{"$in": []string{
 			distro.BootstrapMethodSSH,
@@ -714,29 +770,30 @@ func AgentMonitorLastCommunicationTimeElapsed(currentTime time.Time) bson.M {
 	}
 }
 
-// NeedsNewAgentFlagSet returns legacy hosts with NeedsNewAgent set to true.
-func NeedsNewAgentFlagSet() db.Q {
+// ShouldDeployAgent returns legacy hosts with NeedsNewAgent set to true and are
+// in a state in which they can deploy agents.
+func ShouldDeployAgent() db.Q {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	return db.Query(bson.M{
 		"$or": []bson.M{
 			{bootstrapKey: bson.M{"$exists": false}},
 			{bootstrapKey: bson.M{"$in": []string{"", distro.BootstrapMethodLegacySSH}}},
 		},
-		StatusKey:        evergreen.HostRunning,
-		StartedByKey:     evergreen.User,
-		HasContainersKey: bson.M{"$ne": true},
-		ParentIDKey:      bson.M{"$exists": false},
-		RunningTaskKey:   bson.M{"$exists": false},
-		NeedsNewAgentKey: true,
+		StatusKey:           evergreen.HostRunning,
+		StartedByKey:        evergreen.User,
+		HasContainersKey:    bson.M{"$ne": true},
+		ParentIDKey:         bson.M{"$exists": false},
+		RunningTaskKey:      bson.M{"$exists": false},
+		NeedsNewAgentKey:    true,
+		NeedsReprovisionKey: bson.M{"$exists": false},
 	})
 }
 
-// FindByNeedsNewAgentMonitor returns running hosts that need a new agent
+// ShouldDeployAgentMonitor returns running hosts that need a new agent
 // monitor.
-func FindByNeedsNewAgentMonitor() ([]Host, error) {
+func ShouldDeployAgentMonitor() db.Q {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
-	hosts := []Host{}
-	query := bson.M{
+	return db.Query(bson.M{
 		bootstrapKey: bson.M{
 			"$exists": true,
 			"$ne":     distro.BootstrapMethodLegacySSH,
@@ -747,14 +804,8 @@ func FindByNeedsNewAgentMonitor() ([]Host, error) {
 		ParentIDKey:             bson.M{"$exists": false},
 		RunningTaskKey:          bson.M{"$exists": false},
 		NeedsNewAgentMonitorKey: true,
-	}
-
-	err := db.FindAll(Collection, query, db.NoProjection, db.NoSort, db.NoSkip, db.NoLimit, &hosts)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-
-	return hosts, err
+		NeedsReprovisionKey:     bson.M{"$exists": false},
+	})
 }
 
 // FindUserDataSpawnHostsProvisioning finds all spawn hosts that have been

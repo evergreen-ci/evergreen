@@ -37,7 +37,7 @@ func NewCronRemoteMinuteJob() amboy.Job {
 		},
 	}
 	j.SetDependency(dependency.NewAlways())
-	j.SetID(fmt.Sprintf("%s.%s", cronsRemoteMinuteJobName, util.RoundPartOfMinute(0).Format(tsFormat)))
+	j.SetID(fmt.Sprintf("%s.%s", cronsRemoteMinuteJobName, util.RoundPartOfMinute(0).Format(TSFormat)))
 	return j
 }
 

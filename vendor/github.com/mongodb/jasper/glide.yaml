@@ -16,4 +16,11 @@ import:
   - package: github.com/tychoish/mongorpc
   - package: github.com/mongodb/ftdc
   - package: github.com/evergreen-ci/timber
+  - package: golang.org/x/crypto
+  - package: golang.org/x/net
+  - package: golang.org/x/sys
+  - package: golang.org/x/text
+  - package: google.golang.org/genproto
+  - package: github.com/golang/protobuf
   - package: go.mongodb.org/go-driver
+  - package: github.com/evergreen-ci/poplar

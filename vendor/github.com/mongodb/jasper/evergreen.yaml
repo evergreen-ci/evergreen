@@ -26,26 +26,15 @@ variables:
 #######################################
 functions:
   run-make:
-    command: shell.exec
+    command: subprocess.exec
     type: test
     params:
-       script: |
-         set -o errexit
-         set -o verbose
-
-         # Configure a local go path for this build.
-         export GOPATH=`pwd`/gopath
-
-         # on windows we need to turn the slashes the other way
-         if [ "Windows_NT" == "$OS" ]; then
-            export GOPATH=$(cygpath -m $GOPATH)
-         fi
-
-         cd gopath/src/github.com/mongodb/jasper
-
-         # Run make, called with proper environment variables set,
-         # running the target.
-         ${build_env|} make -k ${target}
+      working_dir: gopath/src/github.com/mongodb/jasper
+      binary: make
+      args: ["${make_args|}", "${target}"]
+      add_expansions_to_env: true
+      env:
+        GOPATH: ${workdir}/gopath
 
 #######################################
 #                Tasks                #
@@ -56,8 +45,6 @@ post:
     params:
       files:
         - "gopath/src/github.com/mongodb/jasper/build/output.*"
-        - "gopath/src/github.com/mongodb/jasper/build/test.*.out"
-        - "gopath/src/github.com/mongodb/jasper/build/race.*.out"
 
 tasks:
   - <<: *run-build
@@ -99,7 +86,11 @@ buildvariants:
   - name: race-detector
     display_name: Race Detector (Arch Linux)
     expansions:
-      build_env: "DISABLE_COVERAGE=true RACE_DETECTOR=true"
+      DISABLE_COVERAGE: true
+      GOROOT: /opt/golang/go1.10
+      GO_BIN_PATH: /opt/golang/go1.10/bin/go
+      RACE_DETECTOR: true
+      make_args: -k
     run_on:
       - archlinux-test
       - archlinux-build
@@ -110,7 +101,10 @@ buildvariants:
   - name: ubuntu1604
     display_name: Ubuntu 16.04
     expansions:
-      build_env: "GOROOT=/opt/golang/go1.11/ PATH=/opt/golang/go1.11/bin:$PATH"
+      DISABLE_COVERAGE: true
+      GOROOT: /opt/golang/go1.11
+      GO_BIN_PATH: /opt/golang/go1.11/bin/go
+      make_args: -k
     run_on:
       - ubuntu1604-test
       - ubuntu1604-build
@@ -120,7 +114,10 @@ buildvariants:
   - name: ubuntu1604-go1.9
     display_name: Ubuntu 16.04 (go1.9)
     expansions:
-      build_env: "GOROOT=/opt/golang/go1.9/ PATH=/opt/golang/go1.9/bin:$PATH"
+      DISABLE_COVERAGE: true
+      GOROOT: /opt/golang/go1.9
+      GO_BIN_PATH: /opt/golang/go1.9/bin/go
+      make_args: -k
     run_on:
       - ubuntu1604-test
       - ubuntu1604-build
@@ -130,7 +127,10 @@ buildvariants:
   - name: macos
     display_name: macOS
     expansions:
-      build_env: "GOROOT=/opt/golang/go1.11/ PATH=/opt/golang/go1.11/bin:$PATH DISABLE_COVERAGE=true"
+      DISABLE_COVERAGE: true
+      GOROOT: /opt/golang/go1.11
+      GO_BIN_PATH: /opt/golang/go1.11/bin/go
+      make_args: -k
     run_on:
       - macos-1014
     tasks:
@@ -148,6 +148,9 @@ buildvariants:
       - windows-64-vs2013-compile
       - windows-64-vs2013-test
     expansions:
-      build_env: "GOROOT=c:/golang/go1.11 PATH=/cygdrive/c/golang/go1.11/bin:$PATH DISABLE_COVERAGE=true"
+      DISABLE_COVERAGE: true
+      GOROOT: C:/golang/go1.11
+      GO_BIN_PATH: /cygdrive/c/golang/go1.11/bin/go
+      make_args: -k
     tasks:
       - name: ".test"

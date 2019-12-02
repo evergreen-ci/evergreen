@@ -20,9 +20,21 @@ const (
 )
 
 func init() {
-	if flag.Lookup("test.v") == nil {
-		grip.Alert("called init() in testutil for production code.")
-	} else if evergreen.GetEnvironment() == nil {
+	if flag.Lookup("test.v") == nil && flag.Lookup("v") == nil {
+		grip.Alert(message.Fields{
+			"op":     "called init() in testutil for production code.",
+			"test.v": flag.Lookup("test.v"),
+			"v":      flag.Lookup("v"),
+			"args":   flag.Args(),
+		})
+	} else {
+		Setup()
+	}
+
+}
+
+func Setup() {
+	if evergreen.GetEnvironment() == nil {
 		ctx := context.Background()
 
 		path := filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings)
@@ -157,6 +169,13 @@ func MockConfig() *evergreen.Settings {
 		},
 		Keys:    map[string]string{"k3": "v3"},
 		LogPath: "logpath",
+		NewRelic: evergreen.NewRelicConfig{
+			AccountID:     "123123123",
+			TrustKey:      "098765",
+			AgentID:       "45678",
+			LicenseKey:    "890765",
+			ApplicationID: "8888888",
+		},
 		Notify: evergreen.NotifyConfig{
 			SMTP: evergreen.SMTPConfig{
 				Server:     "server",

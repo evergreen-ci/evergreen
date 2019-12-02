@@ -399,7 +399,7 @@ func (pc *MockProjectConnector) GetProjectWithCommitQueueByOwnerRepoAndBranch(ow
 	return nil, nil
 }
 func (pc *MockProjectConnector) EnableWebhooks(ctx context.Context, projectRef *model.ProjectRef) (bool, error) {
-	return false, nil
+	return true, nil
 }
 
 func (pc *MockProjectConnector) EnableCommitQueue(projectRef *model.ProjectRef, commitQueueParams model.CommitQueueParams) error {

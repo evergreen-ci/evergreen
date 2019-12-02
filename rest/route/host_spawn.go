@@ -153,8 +153,7 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "Invalid host modify request"))
 	}
 
-	ts := util.RoundPartOfMinute(1).Format(tsFormat)
-	modifyJob := units.NewSpawnhostModifyJob(foundHost, *h.options, ts)
+	modifyJob := units.NewSpawnhostModifyJob(foundHost, *h.options, units.TSFormat)
 	if err = h.env.RemoteQueue().Put(ctx, modifyJob); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error creating spawnhost modify job"))
 	}
@@ -309,7 +308,7 @@ func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// Stop the host
-	ts := util.RoundPartOfMinute(1).Format(tsFormat)
+	ts := util.RoundPartOfMinute(1).Format(units.TSFormat)
 	stopJob := units.NewSpawnhostStopJob(host, user.Id, ts)
 	if err = h.env.RemoteQueue().Put(ctx, stopJob); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error creating spawnhost stop job"))
@@ -391,7 +390,7 @@ func (h *hostStartHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// Start the host
-	ts := util.RoundPartOfMinute(1).Format(tsFormat)
+	ts := util.RoundPartOfMinute(1).Format(units.TSFormat)
 	startJob := units.NewSpawnhostStartJob(host, user.Id, ts)
 	if err = h.env.RemoteQueue().Put(ctx, startJob); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error creating spawnhost start job"))
@@ -478,7 +477,7 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	v, err := host.FindVolumeByID(h.attachment.VolumeID)
+	v, err := h.sc.FindVolumeById(h.attachment.VolumeID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -505,15 +504,21 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	mgr, err := cloud.GetManager(ctx, h.env, mgrOpts)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error getting cloud manager for spawnhost attach volume job"))
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "error getting cloud manager for spawnhost attach volume job").Error(),
+		})
 	}
 	grip.Info(message.Fields{
 		"message": "attaching volume to spawnhost",
 		"host_id": h.hostID,
 		"volume":  h.attachment,
 	})
-	if err = mgr.AttachVolume(ctx, attachedHost, h.attachment); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error attaching volume %s for spawnhost %s", h.attachment.VolumeID, h.hostID))
+	if err = mgr.AttachVolume(ctx, targetHost, h.attachment); err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "error attaching volume %s for spawnhost %s", h.attachment.VolumeID, h.hostID).Error(),
+		})
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
@@ -596,11 +601,17 @@ func (h *detachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	mgr, err := cloud.GetManager(ctx, h.env, mgrOpts)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error getting cloud manager for spawnhost detach volume job"))
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "error getting cloud manager for spawnhost detach volume job").Error(),
+		})
 	}
 
 	if err = mgr.DetachVolume(ctx, targetHost, h.attachment.VolumeID); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error detaching volume %s from spawnhost %s", h.attachment.VolumeID, h.hostID))
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "error detaching volume %s from spawnhost %s", h.attachment.VolumeID, h.hostID).Error(),
+		})
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
@@ -635,11 +646,9 @@ func (h *createVolumeHandler) Factory() gimlet.RouteHandler {
 func (h *createVolumeHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.volume = &host.Volume{}
 	if err := util.ReadJSONInto(r.Body, h.volume); err != nil {
-		grip.Debug(message.WrapError(err, "problem reading JSON into"))
 		return err
 	}
 	if h.volume.Size == 0 {
-		grip.Debug("Size is required")
 		return errors.New("Size is required")
 	}
 	h.provider = evergreen.ProviderNameEc2OnDemand
@@ -672,7 +681,6 @@ func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	mgr, err := cloud.GetManager(ctx, h.env, mgrOpts)
 	if err != nil {
-		grip.Debug(message.WrapError(err, "manager error"))
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
@@ -680,7 +688,6 @@ func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if h.volume, err = mgr.CreateVolume(ctx, h.volume); err != nil {
-		grip.Debug(message.WrapError(err, "create volume error"))
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
@@ -690,7 +697,6 @@ func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	volumeModel := &model.APIVolume{}
 	err = volumeModel.BuildFromService(h.volume)
 	if err != nil {
-		message.WrapError(err, "build from service")
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
 
@@ -733,7 +739,7 @@ func (h *deleteVolumeHandler) Parse(ctx context.Context, r *http.Request) error 
 func (h *deleteVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 
-	volume, err := host.FindVolumeByID(h.VolumeID)
+	volume, err := h.sc.FindVolumeById(h.VolumeID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -751,6 +757,20 @@ func (h *deleteVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    fmt.Sprintf("not authorized to delete attachment '%s'", volume.ID),
+		})
+	}
+
+	attachedHost, err := h.sc.FindHostWithVolume(h.VolumeID)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    fmt.Sprintf("problem finding host with volume"),
+		})
+	}
+	if attachedHost != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("Must detach from host '%s'", attachedHost.Id),
 		})
 	}
 
@@ -802,8 +822,9 @@ func (h *getVolumesHandler) Parse(ctx context.Context, r *http.Request) error {
 func (h *getVolumesHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 
-	volumes, err := host.FindVolumesByUser(u.Username())
+	volumes, err := h.sc.FindVolumesByUser(u.Username())
 	if err != nil {
+		fmt.Println("grr")
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
@@ -811,11 +832,12 @@ func (h *getVolumesHandler) Run(ctx context.Context) gimlet.Responder {
 	for _, v := range volumes {
 		volumeDoc := model.APIVolume{}
 		if err = volumeDoc.BuildFromService(v); err != nil {
+			fmt.Println("ahhh")
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "err converting volume '%s' to API model", v.ID))
 		}
 
 		// if the volume is attached to a host, also return the host ID and volume device name
-		h, err := host.FindHostWithVolume(v.ID)
+		h, err := h.sc.FindHostWithVolume(v.ID)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error querying for host"))
 		}

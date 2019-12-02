@@ -20,9 +20,9 @@ import (
 )
 
 func TestRPCService(t *testing.T) {
-	for managerName, makeManager := range map[string]func(trackProcs bool) (jasper.Manager, error){
-		"Basic":    jasper.NewSynchronizedManager,
-		"Blocking": jasper.NewSynchronizedManagerBlockingProcesses,
+	for managerName, makeManager := range map[string]func() (jasper.Manager, error){
+		"Basic":    func() (jasper.Manager, error) { return jasper.NewSynchronizedManager(false) },
+		"Blocking": func() (jasper.Manager, error) { return jasper.NewSynchronizedManagerBlockingProcesses(false) },
 	} {
 		t.Run(managerName, func(t *testing.T) {
 			for testName, testCase := range map[string]func(context.Context, *testing.T, internal.JasperProcessManagerClient){
@@ -73,11 +73,11 @@ func TestRPCService(t *testing.T) {
 						assert.NoError(t, os.RemoveAll(file.Name()))
 					}()
 
-					info := options.Download{
+					opts := options.Download{
 						URL:  "http://example.com",
 						Path: file.Name(),
 					}
-					outcome, err := client.DownloadFile(ctx, internal.ConvertDownloadInfo(info))
+					outcome, err := client.DownloadFile(ctx, internal.ConvertDownloadOptions(opts))
 					require.NoError(t, err)
 					assert.True(t, outcome.Success)
 
@@ -88,7 +88,7 @@ func TestRPCService(t *testing.T) {
 				"DownloadFileFailsForInvalidArchiveFormat": func(ctx context.Context, t *testing.T, client internal.JasperProcessManagerClient) {
 					fileName := filepath.Join(buildDir(t), "out.txt")
 
-					info := options.Download{
+					opts := options.Download{
 						URL:  "https://example.com",
 						Path: fileName,
 						ArchiveOpts: options.Archive{
@@ -96,29 +96,29 @@ func TestRPCService(t *testing.T) {
 							Format:        options.ArchiveFormat("foo"),
 						},
 					}
-					outcome, err := client.DownloadFile(ctx, internal.ConvertDownloadInfo(info))
+					outcome, err := client.DownloadFile(ctx, internal.ConvertDownloadOptions(opts))
 					assert.NoError(t, err)
 					assert.False(t, outcome.Success)
 				},
 				"DownloadFileFailsForInvalidURL": func(ctx context.Context, t *testing.T, client internal.JasperProcessManagerClient) {
 					fileName := filepath.Join(buildDir(t), "out.txt")
 
-					info := options.Download{
+					opts := options.Download{
 						URL:  "://example.com",
 						Path: fileName,
 					}
-					outcome, err := client.DownloadFile(ctx, internal.ConvertDownloadInfo(info))
+					outcome, err := client.DownloadFile(ctx, internal.ConvertDownloadOptions(opts))
 					require.NoError(t, err)
 					assert.False(t, outcome.Success)
 				},
 				"DownloadFileFailsForNonexistentURL": func(ctx context.Context, t *testing.T, client internal.JasperProcessManagerClient) {
 					fileName := filepath.Join(buildDir(t), "out.txt")
 
-					info := options.Download{
+					opts := options.Download{
 						URL:  "http://example.com/foo",
 						Path: fileName,
 					}
-					outcome, err := client.DownloadFile(ctx, internal.ConvertDownloadInfo(info))
+					outcome, err := client.DownloadFile(ctx, internal.ConvertDownloadOptions(opts))
 					require.NoError(t, err)
 					assert.False(t, outcome.Success)
 				},
@@ -183,7 +183,7 @@ func TestRPCService(t *testing.T) {
 					ctx, cancel := context.WithTimeout(context.Background(), testutil.TestTimeout)
 					defer cancel()
 
-					manager, err := makeManager(false)
+					manager, err := makeManager()
 					require.NoError(t, err)
 					addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", testutil.GetPortNumber()))
 					require.NoError(t, err)

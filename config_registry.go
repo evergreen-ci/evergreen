@@ -42,6 +42,7 @@ func resetRegistry() error {
 		&HostJasperConfig{},
 		&JiraConfig{},
 		&LoggerConfig{},
+		&NewRelicConfig{},
 		&NotifyConfig{},
 		&RepoTrackerConfig{},
 		&SchedulerConfig{},

@@ -27,6 +27,10 @@ func proofOfConcept(shouldUseClient bool) error {
 		return err
 	}
 
+	if err := cl.Connect(ctx); err != nil {
+		return err
+	}
+
 	client := client.WrapClient(cl)
 	var session db.Session
 	if shouldUseClient {
@@ -90,13 +94,12 @@ func proofOfConcept(shouldUseClient bool) error {
 }
 
 func TestExampleApp(t *testing.T) {
-	t.Skip("flawed integration test")
-	ResetEnvironment()
-	t.Run("Session", func(t *testing.T) {
-		assert.NoError(t, proofOfConcept(false))
-	})
 	ResetEnvironment()
 	t.Run("Client", func(t *testing.T) {
 		assert.NoError(t, proofOfConcept(true))
+	})
+	ResetEnvironment()
+	t.Run("Session", func(t *testing.T) {
+		assert.NoError(t, proofOfConcept(false))
 	})
 }

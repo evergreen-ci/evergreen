@@ -112,7 +112,12 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		return
 	}
 	if err = j.host.UpdateLastCommunicated(); err != nil {
-		j.AddError(errors.Wrapf(err, "error setting LCT on host %s", j.host.Id))
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "could not update host communication time",
+			"host":    j.host.Id,
+			"distro":  j.host.Distro.Id,
+			"job":     j.ID(),
+		}))
 	}
 
 	defer func() {

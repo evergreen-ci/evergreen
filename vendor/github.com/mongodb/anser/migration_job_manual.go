@@ -3,11 +3,11 @@ package anser
 import (
 	"context"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/anser/model"
-	"github.com/evergreen-ci/birch"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -55,7 +55,7 @@ func (j *manualMigrationJob) Run(ctx context.Context) {
 		"name":      j.Definition.OperationName,
 	})
 
-	defer j.FinishMigration(j.Definition.Migration, &j.Base)
+	defer j.FinishMigration(ctx, j.Definition.Migration, &j.Base)
 	env := j.Env()
 
 	if operation, ok := env.GetLegacyManualMigrationOperation(j.Definition.OperationName); ok {

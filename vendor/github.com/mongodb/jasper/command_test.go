@@ -204,7 +204,7 @@ func TestCommandImplementation(t *testing.T) {
 										t.Run(subTestName, func(t *testing.T) {
 											cmd = *NewCommand().ProcConstructor(makep)
 											if isRemote {
-												cmd.User(user).Host("localhost")
+												cmd.User(user).Host("localhost").Password("password")
 											}
 											subTestCase(ctx, t, cmd)
 										})
@@ -238,9 +238,9 @@ func TestCommandImplementation(t *testing.T) {
 						"SingleInvalidSubCommandCausesTotalError": func(ctx context.Context, t *testing.T, cmd Command) {
 							cmd.ID(t.Name()).Priority(level.Info).Extend(
 								[][]string{
-									[]string{echo, arg1},
-									[]string{ls, arg2},
-									[]string{echo, arg3},
+									{echo, arg1},
+									{ls, arg2},
+									{echo, arg3},
 								},
 							).Directory(cwd)
 							assert.Error(t, runFunc(&cmd, ctx))
@@ -325,9 +325,9 @@ func TestCommandImplementation(t *testing.T) {
 							} {
 								t.Run(subName, func(t *testing.T) {
 									cmd = *NewCommand().ProcConstructor(makep).Extend([][]string{
-										[]string{echo, arg1},
-										[]string{echo, arg2},
-										[]string{ls, arg3},
+										{echo, arg1},
+										{echo, arg2},
+										{ls, arg3},
 									}).ContinueOnError(true).IgnoreError(true)
 
 									var buf bytes.Buffer
@@ -365,9 +365,9 @@ func TestCommandImplementation(t *testing.T) {
 							} {
 								t.Run(subName, func(t *testing.T) {
 									cmd = *NewCommand().ProcConstructor(makep).Extend([][]string{
-										[]string{echo, arg1},
-										[]string{echo, arg2},
-										[]string{ls, arg3},
+										{echo, arg1},
+										{echo, arg2},
+										{ls, arg3},
 									}).ContinueOnError(true).IgnoreError(true).Priority(level.Info)
 
 									levelInfo := send.LevelInfo{Default: cmd.opts.Priority, Threshold: cmd.opts.Priority}
@@ -380,9 +380,9 @@ func TestCommandImplementation(t *testing.T) {
 						},
 						"GetProcIDsReturnsCorrectNumberOfIDs": func(ctx context.Context, t *testing.T, cmd Command) {
 							subCmds := [][]string{
-								[]string{echo, arg1},
-								[]string{echo, arg2},
-								[]string{ls, arg3},
+								{echo, arg1},
+								{echo, arg2},
+								{ls, arg3},
 							}
 							assert.NoError(t, cmd.Extend(subCmds).ContinueOnError(true).IgnoreError(true).Run(ctx))
 							assert.Len(t, cmd.GetProcIDs(), len(subCmds))
@@ -491,9 +491,9 @@ func TestCommandImplementation(t *testing.T) {
 						},
 						"SingleArgCommandSplitsShellCommandCorrectly": func(ctx context.Context, t *testing.T, cmd Command) {
 							cmd.Extend([][]string{
-								[]string{"echo hello world"},
-								[]string{"echo 'hello world'"},
-								[]string{"echo 'hello\"world\"'"},
+								{"echo hello world"},
+								{"echo 'hello world'"},
+								{"echo 'hello\"world\"'"},
 							})
 
 							optslist, err := cmd.Export()
@@ -543,9 +543,9 @@ func TestCommandImplementation(t *testing.T) {
 
 func TestRunParallelRunsInParallel(t *testing.T) {
 	cmd := NewCommand().Extend([][]string{
-		[]string{"sleep", "3"},
-		[]string{"sleep", "3"},
-		[]string{"sleep", "3"},
+		{"sleep", "3"},
+		{"sleep", "3"},
+		{"sleep", "3"},
 	})
 	threePointFiveSeconds := time.Second*3 + time.Millisecond*500
 	maxRunTimeAllowed := threePointFiveSeconds

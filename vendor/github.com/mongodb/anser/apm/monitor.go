@@ -2,6 +2,7 @@ package apm
 
 import (
 	"context"
+	"sort"
 	"sync"
 	"time"
 
@@ -25,6 +26,10 @@ type basicMonitor struct {
 // not automatically rotate data. The MonitorConfig makes it possible to
 // filter events. If this value is nil, no events will be filtered.
 func NewBasicMonitor(config *MonitorConfig) Monitor {
+	if config != nil && len(config.Tags) > 0 {
+		sort.Strings(config.Tags)
+	}
+
 	return &basicMonitor{
 		config:         config,
 		inProg:         make(map[int64]eventKey),
@@ -67,7 +72,9 @@ func (m *basicMonitor) getRecord(id int64) *eventRecord {
 
 	e := m.current[key]
 	if e == nil {
-		e = &eventRecord{}
+		e = &eventRecord{
+			Tags: map[string]int64{},
+		}
 		m.current[key] = e
 	}
 
@@ -110,6 +117,8 @@ func (m *basicMonitor) DriverAPM() *event.CommandMonitor {
 
 			event.Succeeded++
 			event.Duration += time.Duration(e.DurationNanos)
+
+			m.addTags(ctx, event)
 		},
 		Failed: func(ctx context.Context, e *event.CommandFailedEvent) {
 			event := m.getRecord(e.RequestID)
@@ -122,7 +131,21 @@ func (m *basicMonitor) DriverAPM() *event.CommandMonitor {
 
 			event.Failed++
 			event.Duration += time.Duration(e.DurationNanos)
+
+			m.addTags(ctx, event)
 		},
+	}
+}
+
+func (m *basicMonitor) addTags(ctx context.Context, event *eventRecord) {
+	if m.config == nil {
+		return
+	}
+
+	for _, tag := range GetTags(ctx) {
+		if m.config.AllTags || stringSliceContains(m.config.Tags, tag) {
+			event.Tags[tag]++
+		}
 	}
 }
 
@@ -135,6 +158,11 @@ func (m *basicMonitor) Rotate() Event {
 	out := &eventWindow{
 		data:      m.current,
 		timestamp: m.currentStartAt,
+	}
+
+	if m.config != nil {
+		out.allTags = m.config.AllTags
+		out.tags = m.config.Tags
 	}
 
 	m.current = newWindow

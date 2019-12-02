@@ -557,6 +557,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	sampleBuild := build.Build{
 		Id:           "sample_build",
 		BuildVariant: "a_variant",
+		Version:      "version_that_called_generate_task",
 	}
 	v := &Version{
 		Id:                 "version_that_called_generate_task",
@@ -578,7 +579,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	tasks := []task.Task{}
 	err = db.FindAllQ(task.Collection, db.Q{}, &tasks)
 	s.NoError(err)
-	s.Len(builds, 3)
+	s.Len(builds, 2)
 	s.Len(tasks, 6)
 
 	for _, task := range tasks {
@@ -652,6 +653,82 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	for taskName, expect := range expected {
 		s.True(expect, fmt.Sprintf("%s should be a dependency but wasn't", taskName))
 	}
+}
+
+func (s *GenerateSuite) TestSaveNewTasksWithCrossVariantDependencies() {
+	t1 := task.Task{
+		Id:      "generator",
+		BuildId: "b1",
+		Version: "v1",
+	}
+	s.NoError(t1.Insert())
+
+	existingBuild := build.Build{
+		Id:           "b1",
+		BuildVariant: "a_variant",
+		Version:      "v1",
+	}
+	v := &Version{
+		Id:       "v1",
+		BuildIds: []string{"b1"},
+		Config: `tasks:
+- name: say_something
+- name: generator
+
+buildvariants:
+- name: a_variant
+  tasks:
+  - name: say_something
+  - name: generator
+`,
+	}
+	s.NoError(existingBuild.Insert())
+	s.NoError(v.Insert())
+
+	g := GeneratedProject{
+		TaskID: t1.Id,
+		Tasks: []parserTask{
+			{
+				Name: "task_that_has_dependencies",
+				DependsOn: []parserDependency{
+					{
+						TaskSelector: taskSelector{
+							Name: "say_something",
+							Variant: &variantSelector{
+								StringSelector: "a_variant",
+							},
+						},
+					},
+				},
+			},
+		},
+		BuildVariants: []parserBV{
+			parserBV{
+				Name: "a_new_variant",
+				Tasks: parserBVTaskUnits{
+					parserBVTaskUnit{
+						Name: "task_that_has_dependencies",
+					},
+				},
+			},
+		},
+	}
+
+	p, v, t, pm, err := g.NewVersion()
+	s.NoError(err)
+	s.NoError(g.Save(context.Background(), p, v, t, pm))
+
+	// the depended-on task is created in the existing variant
+	saySomething := task.Task{}
+	err = db.FindOneQ(task.Collection, db.Query(bson.M{"display_name": "say_something"}), &saySomething)
+	s.NoError(err)
+
+	// the dependent task depends on the depended-on task
+	taskWithDeps := task.Task{}
+	err = db.FindOneQ(task.Collection, db.Query(bson.M{"display_name": "task_that_has_dependencies"}), &taskWithDeps)
+	s.NoError(err)
+	s.Len(taskWithDeps.DependsOn, 1)
+	s.Equal(taskWithDeps.DependsOn[0].TaskId, saySomething.Id)
 }
 
 func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {

@@ -119,8 +119,12 @@ set-smoke-vars:$(buildDir)/.load-smoke-data
 	@./bin/set-project-var -dbName mci_smoke -key aws_secret -value $(AWS_SECRET)
 	@./bin/set-var -dbName mci_smoke -collection hosts -id localhost -key agent_revision -value $(currentHash)
 load-smoke-data:$(buildDir)/.load-smoke-data
+load-local-data:$(buildDir)/.load-local-data
 $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
 	./$<
+	@touch $@
+$(buildDir)/.load-local-data:$(buildDir)/load-smoke-data
+	./$< --path testdata/local --dbName evergreen_local
 	@touch $@
 smoke-test-agent-monitor:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
@@ -136,6 +140,8 @@ smoke-test-endpoints:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
 	./$< service deploy test-endpoints --username admin --key abb623665fdbf368a1db980dde6ee0f0 $(smokeFile) || (pkill -f $<; exit 1)
 	pkill -f $<
+local-evergreen:$(localClientBinary) load-local-data
+	./$< service deploy start-local-evergreen
 smoke-start-server:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web
 # end smoke test rules
@@ -306,9 +312,15 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/oauth2/
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/sys/
+	rm -rf vendor/github.com/mongodb/jasper/harness.go
+	rm -rf vendor/github.com/mongodb/jasper/cmd/run-benchmarks/
+	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/evergreen-ci/poplar/
+	rm -rf vendor/github.com/mongodb/jasper/vendor/gopkg.in/mgo.v2
+	rm -rf vendor/github.com/mongodb/jasper/vendor/golang.org/x/crypto/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/evergreen-ci/certdepot
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/evergreen-ci/gimlet/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/evergreen-ci/timber/
+	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/evergreen-ci/birch/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/golang/protobuf/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/mholt/archiver/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/mongodb/amboy/

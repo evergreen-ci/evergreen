@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// WriteFile represents the information necessary to write to a file.
+// WriteFile represents the options necessary to write to a file.
 type WriteFile struct {
 	Path string `json:"path"`
 	// File content can come from either Content or Reader, but not both.
@@ -25,57 +25,53 @@ type WriteFile struct {
 
 // validateContent ensures that there is at most one source of content for
 // the file.
-func (info *WriteFile) validateContent() error {
-	if len(info.Content) > 0 && info.Reader != nil {
+func (opts *WriteFile) validateContent() error {
+	if len(opts.Content) > 0 && opts.Reader != nil {
 		return errors.New("cannot have both data and reader set as file content")
 	}
 	// If neither is set, ensure that Content is empty rather than nil to
 	// prevent potential writes with a nil slice.
-	if len(info.Content) == 0 && info.Reader == nil {
-		info.Content = []byte{}
+	if len(opts.Content) == 0 && opts.Reader == nil {
+		opts.Content = []byte{}
 	}
 	return nil
 }
 
 // Validate ensures that all the parameters to write to a file are valid and sets
 // default permissions if necessary.
-func (info *WriteFile) Validate() error {
+func (opts *WriteFile) Validate() error {
+	if opts.Perm == 0 {
+		opts.Perm = 0666
+	}
+
 	catcher := grip.NewBasicCatcher()
-	if info.Path == "" {
-		catcher.New("path to file must be specified")
-	}
-
-	if info.Perm == 0 {
-		info.Perm = 0666
-	}
-
-	catcher.Add(info.validateContent())
-
+	catcher.NewWhen(opts.Path == "", "path to file must be specified")
+	catcher.Add(opts.validateContent())
 	return catcher.Resolve()
 }
 
 // DoWrite writes the data to the given path, creating the directory hierarchy as
 // needed and the file if it does not exist yet.
-func (info *WriteFile) DoWrite() error {
-	if err := makeEnclosingDirectories(filepath.Dir(info.Path)); err != nil {
+func (opts *WriteFile) DoWrite() error {
+	if err := makeEnclosingDirectories(filepath.Dir(opts.Path)); err != nil {
 		return errors.Wrap(err, "problem making enclosing directories")
 	}
 
 	openFlags := os.O_RDWR | os.O_CREATE
-	if info.Append {
+	if opts.Append {
 		openFlags |= os.O_APPEND
 	} else {
 		openFlags |= os.O_TRUNC
 	}
 
-	file, err := os.OpenFile(info.Path, openFlags, 0666)
+	file, err := os.OpenFile(opts.Path, openFlags, 0666)
 	if err != nil {
-		return errors.Wrapf(err, "error opening file %s", info.Path)
+		return errors.Wrapf(err, "error opening file %s", opts.Path)
 	}
 
 	catcher := grip.NewBasicCatcher()
 
-	reader, err := info.ContentReader()
+	reader, err := opts.ContentReader()
 	if err != nil {
 		catcher.Wrap(file.Close(), "error closing file")
 		catcher.Wrap(err, "error getting file content as bytes")
@@ -95,24 +91,24 @@ func (info *WriteFile) DoWrite() error {
 // WriteBufferedContent writes the content to a file by repeatedly calling
 // doWrite with a buffered portion of the content. doWrite processes the
 // WriteFile containing the next content to write to the file.
-func (info *WriteFile) WriteBufferedContent(doWrite func(bufInfo WriteFile) error) error {
-	if err := info.validateContent(); err != nil {
+func (opts *WriteFile) WriteBufferedContent(doWrite func(bufopts WriteFile) error) error {
+	if err := opts.validateContent(); err != nil {
 		return errors.Wrap(err, "could not validate file content source")
 	}
 	didWrite := false
-	for buf, err := info.contentBytes(); len(buf) != 0; buf, err = info.contentBytes() {
+	for buf, err := opts.contentBytes(); len(buf) != 0; buf, err = opts.contentBytes() {
 		if err != nil && err != io.EOF {
 			return errors.Wrap(err, "error getting content bytes")
 		}
 
-		bufInfo := *info
-		bufInfo.Content = buf
+		bufOpts := *opts
+		bufOpts.Content = buf
 		if didWrite {
-			bufInfo.Append = true
+			bufOpts.Append = true
 		}
 
-		if err := doWrite(bufInfo); err != nil {
-			return errors.Wrap(err, "could not write info")
+		if writeErr := doWrite(bufOpts); err != nil {
+			return errors.Wrap(writeErr, "could not perform buffered write")
 		}
 
 		didWrite = true
@@ -126,46 +122,46 @@ func (info *WriteFile) WriteBufferedContent(doWrite func(bufInfo WriteFile) erro
 		return nil
 	}
 
-	return errors.Wrap(doWrite(*info), "could not write info")
+	return errors.Wrap(doWrite(*opts), "could not perform buffered write")
 
 }
 
 // SetPerm sets the file permissions on the file. This should be called after
 // DoWrite. If no file exists at (WriteFile).Path, it will error.
-func (info *WriteFile) SetPerm() error {
-	return errors.Wrap(os.Chmod(info.Path, info.Perm), "error setting permissions")
+func (opts *WriteFile) SetPerm() error {
+	return errors.Wrap(os.Chmod(opts.Path, opts.Perm), "error setting permissions")
 }
 
 // contentBytes returns the contents to be written to the file as a byte slice.
 // and will return io.EOF when all the file content has been received. Callers
 // should process the byte slice before checking for the io.EOF condition.
-func (info *WriteFile) contentBytes() ([]byte, error) {
-	if err := info.validateContent(); err != nil {
+func (opts *WriteFile) contentBytes() ([]byte, error) {
+	if err := opts.validateContent(); err != nil {
 		return nil, errors.Wrap(err, "could not validate file content source")
 	}
 
-	if info.Reader != nil {
+	if opts.Reader != nil {
 		const mb = 1024 * 1024
 		buf := make([]byte, mb)
-		n, err := info.Reader.Read(buf)
+		n, err := opts.Reader.Read(buf)
 		return buf[:n], err
 	}
 
-	return info.Content, io.EOF
+	return opts.Content, io.EOF
 }
 
 // ContentReader returns the contents to be written to the file as an io.Reader.
-func (info *WriteFile) ContentReader() (io.Reader, error) {
-	if err := info.validateContent(); err != nil {
+func (opts *WriteFile) ContentReader() (io.Reader, error) {
+	if err := opts.validateContent(); err != nil {
 		return nil, errors.Wrap(err, "could not validate file content source")
 	}
 
-	if info.Reader != nil {
-		return info.Reader, nil
+	if opts.Reader != nil {
+		return opts.Reader, nil
 	}
 
-	info.Reader = bytes.NewBuffer(info.Content)
-	info.Content = nil
+	opts.Reader = bytes.NewBuffer(opts.Content)
+	opts.Content = nil
 
-	return info.Reader, nil
+	return opts.Reader, nil
 }

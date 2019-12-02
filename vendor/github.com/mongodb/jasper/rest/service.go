@@ -3,6 +3,7 @@ package rest
 import (
 	"context"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -75,11 +76,18 @@ func (s *Service) App(ctx context.Context) *gimlet.APIApp {
 	app.AddRoute("/process/{id}/signal/{signal}").Version(1).Patch().Handler(s.signalProcess)
 	app.AddRoute("/process/{id}/trigger/signal/{trigger-id}").Version(1).Patch().Handler(s.registerSignalTriggerID)
 	app.AddRoute("/signal/event/{name}").Version(1).Patch().Handler(s.signalEvent)
+	app.AddRoute("/scripting/create/{type}").Version(1).Post().Handler(s.scriptingCreate)
+	app.AddRoute("/scripting/{id}").Version(1).Get().Handler(s.scriptingCheck)
+	app.AddRoute("/scripting/{id}").Version(1).Delete().Handler(s.scriptingCleanup)
+	app.AddRoute("/scripting/{id}/setup").Version(1).Post().Handler(s.scriptingSetup)
+	app.AddRoute("/scripting/{id}/run").Version(1).Post().Handler(s.scriptingRun)
+	app.AddRoute("/scripting/{id}/script").Version(1).Post().Handler(s.scriptingRunScript)
+	app.AddRoute("/scripting/{id}/build").Version(1).Post().Handler(s.scriptingBuild)
 	app.AddRoute("/file/write").Version(1).Put().Handler(s.writeFile)
 	app.AddRoute("/clear").Version(1).Post().Handler(s.clearManager)
 	app.AddRoute("/close").Version(1).Delete().Handler(s.closeManager)
 
-	go s.backgroundPrune(ctx)
+	go s.pruneCache(ctx)
 
 	return app
 }
@@ -111,13 +119,13 @@ func (s *Service) SetPruneDelay(dur time.Duration) {
 	s.cacheOpts.PruneDelay = dur
 }
 
-func (s *Service) backgroundPrune(ctx context.Context) {
+func (s *Service) pruneCache(ctx context.Context) {
 	defer func() {
 		err := recovery.HandlePanicWithError(recover(), nil, "background pruning")
 		if ctx.Err() != nil || err == nil {
 			return
 		}
-		go s.backgroundPrune(ctx)
+		go s.pruneCache(ctx)
 	}()
 
 	s.cacheMutex.RLock()
@@ -199,17 +207,18 @@ func (s *Service) createProcess(rw http.ResponseWriter, r *http.Request) {
 	if err := proc.RegisterTrigger(ctx, func(_ jasper.ProcessInfo) {
 		cancel()
 	}); err != nil {
-		// If we get an error registering a trigger, then we should make sure that
-		// the reason for it isn't just because the process has exited already,
-		// since that should not be considered an error.
-		if !getProcInfoNoHang(ctx, proc).Complete {
+		info := getProcInfoNoHang(ctx, proc)
+		cancel()
+		// If we get an error registering a trigger, then we should make sure
+		// that the reason for it isn't just because the process has exited
+		// already, since that should not be considered an error.
+		if !info.Complete {
 			writeError(rw, gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
-				Message:    errors.Wrap(err, "problem managing resources").Error(),
+				Message:    errors.Wrap(err, "problem registering trigger").Error(),
 			})
 			return
 		}
-		cancel()
 	}
 
 	gimlet.WriteJSON(rw, getProcInfoNoHang(ctx, proc))
@@ -451,15 +460,16 @@ func (s *Service) respawnProcess(rw http.ResponseWriter, r *http.Request) {
 	if err := newProc.RegisterTrigger(ctx, func(_ jasper.ProcessInfo) {
 		cancel()
 	}); err != nil {
-		if !getProcInfoNoHang(ctx, newProc).Complete {
+		newProcInfo := getProcInfoNoHang(ctx, newProc)
+		cancel()
+		if !newProcInfo.Complete {
 			writeError(rw, gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message: errors.Wrap(
-					err, "failed to register trigger on respawn").Error(),
+					err, "failed to register trigger on respawned process").Error(),
 			})
 			return
 		}
-		cancel()
 	}
 
 	info := getProcInfoNoHang(ctx, newProc)
@@ -500,8 +510,8 @@ func (s *Service) signalProcess(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) downloadFile(rw http.ResponseWriter, r *http.Request) {
-	var info options.Download
-	if err := gimlet.GetJSON(r.Body, &info); err != nil {
+	var opts options.Download
+	if err := gimlet.GetJSON(r.Body, &opts); err != nil {
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    errors.Wrap(err, "problem reading request").Error(),
@@ -509,18 +519,18 @@ func (s *Service) downloadFile(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := info.Validate(); err != nil {
+	if err := opts.Validate(); err != nil {
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    errors.Wrap(err, "problem validating download info").Error(),
+			Message:    errors.Wrap(err, "problem validating download options").Error(),
 		})
 		return
 	}
 
-	if err := info.Download(); err != nil {
+	if err := opts.Download(); err != nil {
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "problem occurred during file download for URL %s", info.URL).Error(),
+			Message:    errors.Wrapf(err, "problem occurred during file download for URL %s", opts.URL).Error(),
 		})
 		return
 	}
@@ -584,8 +594,8 @@ func (s *Service) signalEvent(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) writeFile(rw http.ResponseWriter, r *http.Request) {
-	var info options.WriteFile
-	if err := gimlet.GetJSON(r.Body, &info); err != nil {
+	var opts options.WriteFile
+	if err := gimlet.GetJSON(r.Body, &opts); err != nil {
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    errors.Wrap(err, "problem reading request").Error(),
@@ -593,26 +603,26 @@ func (s *Service) writeFile(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := info.Validate(); err != nil {
+	if err := opts.Validate(); err != nil {
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    errors.Wrap(err, "problem validating file write info").Error(),
+			Message:    errors.Wrap(err, "problem validating file write options").Error(),
 		})
 		return
 	}
 
-	if err := info.DoWrite(); err != nil {
+	if err := opts.DoWrite(); err != nil {
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "problem occurred during file write to %s", info.Path).Error(),
+			Message:    errors.Wrapf(err, "problem occurred during file write to %s", opts.Path).Error(),
 		})
 		return
 	}
 
-	if err := info.SetPerm(); err != nil {
+	if err := opts.SetPerm(); err != nil {
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "problem occurred while setting permissions on file %s", info.Path).Error(),
+			Message:    errors.Wrapf(err, "problem occurred while setting permissions on file %s", opts.Path).Error(),
 		})
 		return
 	}
@@ -753,4 +763,200 @@ func (s *Service) oomTrackerList(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	gimlet.WriteJSON(rw, resp)
+}
+
+func (s *Service) scriptingCreate(rw http.ResponseWriter, r *http.Request) {
+	seopt, err := options.NewScriptingEnvironment(gimlet.GetVars(r)["type"])
+	if err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    err.Error(),
+		})
+		return
+	}
+
+	if err = gimlet.GetJSON(r.Body, seopt); err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		})
+		return
+	}
+
+	se, err := s.manager.CreateScripting(r.Context(), seopt)
+	if err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    err.Error(),
+		})
+		return
+	}
+
+	gimlet.WriteJSON(rw, struct {
+		ID string `json:"id"`
+	}{
+		ID: se.ID(),
+	})
+}
+
+func (s *Service) scriptingCheck(rw http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	_, err := s.manager.GetScripting(ctx, gimlet.GetVars(r)["id"])
+	if err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    err.Error(),
+		})
+		return
+	}
+
+	gimlet.WriteJSON(rw, struct{}{})
+}
+
+func (s *Service) scriptingSetup(rw http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	se, err := s.manager.GetScripting(ctx, gimlet.GetVars(r)["id"])
+	if err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    err.Error(),
+		})
+		return
+	}
+
+	if err := se.Setup(ctx); err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		})
+		return
+	}
+
+	gimlet.WriteJSON(rw, struct{}{})
+}
+
+func (s *Service) scriptingRun(rw http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	se, err := s.manager.GetScripting(ctx, gimlet.GetVars(r)["id"])
+	if err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    err.Error(),
+		})
+		return
+	}
+
+	args := &struct {
+		Args []string `json:"args"`
+	}{}
+	if err := gimlet.GetJSON(r.Body, args); err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		})
+		return
+	}
+
+	if err := se.Run(ctx, args.Args); err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    err.Error(),
+		})
+		return
+	}
+
+	gimlet.WriteJSON(rw, struct{}{})
+}
+
+func (s *Service) scriptingRunScript(rw http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	se, err := s.manager.GetScripting(ctx, gimlet.GetVars(r)["id"])
+	if err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    err.Error(),
+		})
+		return
+	}
+
+	data, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		})
+		return
+	}
+
+	if err := se.RunScript(ctx, string(data)); err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    err.Error(),
+		})
+		return
+	}
+
+	gimlet.WriteJSON(rw, struct{}{})
+}
+
+func (s *Service) scriptingBuild(rw http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	se, err := s.manager.GetScripting(ctx, gimlet.GetVars(r)["id"])
+	if err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    err.Error(),
+		})
+		return
+	}
+
+	args := &struct {
+		Directory string   `json:"directory"`
+		Args      []string `json:"args"`
+	}{}
+	if err := gimlet.GetJSON(r.Body, args); err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		})
+		return
+	}
+
+	if err := se.Build(ctx, args.Directory, args.Args); err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    err.Error(),
+		})
+		return
+	}
+
+	gimlet.WriteJSON(rw, struct{}{})
+}
+
+func (s *Service) scriptingCleanup(rw http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	se, err := s.manager.GetScripting(ctx, gimlet.GetVars(r)["id"])
+	if err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    err.Error(),
+		})
+		return
+	}
+
+	if err := se.Cleanup(ctx); err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		})
+		return
+	}
+
+	gimlet.WriteJSON(rw, struct{}{})
 }

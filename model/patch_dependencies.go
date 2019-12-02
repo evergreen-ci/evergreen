@@ -55,8 +55,8 @@ func (di *dependencyIncluder) handle(pair TVPair) bool {
 	// since it contains the full scope of dependency information
 	bvt := di.Project.FindTaskForVariant(pair.TaskName, pair.Variant)
 	if bvt == nil {
-		grip.Errorf("task %s does not exist in project %s", pair.TaskName,
-			di.Project.Identifier)
+		grip.Errorf("task %s does not exist in project '%s' for variant '%s'", pair.TaskName,
+			di.Project.Identifier, pair.Variant)
 		di.included[pair] = false
 		return false // task not found in project--skip it.
 	}
@@ -74,7 +74,7 @@ func (di *dependencyIncluder) handle(pair TVPair) bool {
 	for _, dep := range deps {
 		if ok := di.handle(dep); !ok {
 			di.included[pair] = false
-			return false // task depends on an unpatchable task, so skip it
+			return false // task depends on an unpatchable or non-existent task, so skip it
 		}
 	}
 

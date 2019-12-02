@@ -44,7 +44,7 @@ func SetupDownloadMongoDBReleases(ctx context.Context, cache *lru.Cache, opts op
 	urls, errs := feed.GetArchives(opts.Releases, opts.BuildOpts)
 	jobs := createDownloadJobs(opts.Path, urls, catcher)
 
-	if err := setupDownloadJobsAsync(ctx, jobs, processDownloadJobs(ctx, addMongoDBFilesToCache(cache, opts.Path))); err != nil {
+	if err = setupDownloadJobsAsync(ctx, jobs, processDownloadJobs(ctx, addMongoDBFilesToCache(cache, opts.Path))); err != nil {
 		catcher.Add(errors.Wrap(err, "problem starting download jobs"))
 	}
 

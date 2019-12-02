@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/evergreen-ci/service"
@@ -45,10 +46,10 @@ const (
 	quietFlagName    = "quiet"
 	userFlagName     = "user"
 	passwordFlagName = "password"
+	envFlagName      = "env"
 
-	logNameFlagName = "log_name"
-	defaultLogName  = "jasper"
-
+	logNameFlagName  = "log_name"
+	defaultLogName   = "jasper"
 	logLevelFlagName = "log_level"
 
 	splunkURLFlagName           = "splunk_url"
@@ -116,6 +117,10 @@ func serviceFlags() []cli.Flag {
 			Name:   passwordFlagName,
 			Usage:  "the password for the user running the service",
 			EnvVar: "JASPER_USER_PASSWORD",
+		},
+		cli.StringSliceFlag{
+			Name:  envFlagName,
+			Usage: "the service environment variables (format: key=value)",
 		},
 		cli.StringFlag{
 			Name:  logNameFlagName,
@@ -294,9 +299,64 @@ func serviceConfig(serviceType string, c *cli.Context, args []string) *service.C
 		Description: "Jasper is a service for process management",
 		Executable:  "", // No executable refers to the current executable.
 		Arguments:   args,
-		Option:      serviceOptions(c),
+		Environment: makeUserEnvironment(c.String(userFlagName), c.StringSlice(envFlagName)),
 		UserName:    c.String(userFlagName),
+		Option:      serviceOptions(c),
 	}
+}
+
+// makeUserEnvironment sets up the environment variables for the service. It
+// attempts to reads the common user environment variables from /etc/passwd for
+// upstart and sysv.
+func makeUserEnvironment(user string, vars []string) map[string]string {
+	env := map[string]string{}
+	for _, v := range vars {
+		keyAndValue := strings.Split(v, "=")
+		if len(keyAndValue) == 2 {
+			env[keyAndValue[0]] = keyAndValue[1]
+		}
+	}
+
+	if user == "" {
+		return env
+	}
+	system := service.ChosenSystem()
+	if system == nil || (system.String() != "linux-upstart" && system.String() != "unix-systemv") {
+		return env
+	}
+	// Content and format of /etc/passwd is documented here:
+	// https://linux.die.net/man/5/passwd
+	file := "/etc/passwd"
+	content, err := ioutil.ReadFile(file)
+	if err != nil {
+		grip.Debug(message.WrapErrorf(err, "could not read file '%s'", file))
+		return env
+	}
+
+	const numEtcPasswdFields = 7
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, user+":") {
+			fields := strings.Split(line, ":")
+			if len(fields) == numEtcPasswdFields {
+				if _, ok := env["USER"]; !ok {
+					env["USER"] = user
+				}
+				if _, ok := env["LOGNAME"]; !ok {
+					env["LOGNAME"] = user
+				}
+				if _, ok := env["HOME"]; !ok {
+					env["HOME"] = fields[numEtcPasswdFields-2]
+				}
+				if _, ok := env["SHELL"]; !ok {
+					env["SHELL"] = fields[numEtcPasswdFields-1]
+				}
+				return env
+			}
+		}
+	}
+	grip.Debug(message.WrapErrorf(err, "could not find user environment variables in file '%s'", file))
+	return env
 }
 
 type serviceOperation func(daemon service.Interface, config *service.Config) error

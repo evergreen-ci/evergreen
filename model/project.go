@@ -766,6 +766,11 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 		return nil, errors.New("host cannot be nil")
 	}
 
+	projectRef, err := FindOneProjectRef(t.Project)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem finding project ref")
+	}
+
 	expansions := util.Expansions{}
 	expansions.Put("execution", fmt.Sprintf("%v", t.Execution))
 	expansions.Put("version_id", t.Version)
@@ -774,9 +779,10 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	expansions.Put("build_id", t.BuildId)
 	expansions.Put("build_variant", t.BuildVariant)
 	expansions.Put("revision", t.Revision)
-	expansions.Put("project", t.Project)
 	expansions.Put(evergreen.GlobalGitHubTokenExpansion, oauthToken)
 	expansions.Put("distro_id", h.Distro.Id)
+	expansions.Put("project", projectRef.Identifier)
+	expansions.Put("project_tags", strings.Join(projectRef.Tags, ","))
 
 	if t.TriggerID != "" {
 		expansions.Put("trigger_event_identifier", t.TriggerID)

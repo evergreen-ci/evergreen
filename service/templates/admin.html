@@ -69,6 +69,7 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('slack')">Slack</li>
 						<li class="link" ng-click="scrollTo('splunk')">Splunk</li>
 						<li class="link" ng-click="scrollTo('bugsnag')">Bugsnag</li>
+						<li class="link" ng-click="scrollTo('newrelic')">New Relic</li>
 						<div>Background Processing</div>
 						<li class="link" ng-click="scrollTo('amboy')">Amboy</li>
 						<li class="link" ng-click="scrollTo('logger_config')">Logger Config</li>
@@ -688,6 +689,18 @@ Admin Settings
 										<input type="text" ng-model="Settings.auth.ldap.port">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
+										<label>Service User Name</label>
+										<input type="text" ng-model="Settings.auth.ldap.service_user_name">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Service User Password</label>
+										<input type="text" ng-model="Settings.auth.ldap.service_user_password">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Service User Path</label>
+										<input type="text" ng-model="Settings.auth.ldap.service_user_path">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
 										<label>User Path</label>
 										<input type="text" ng-model="Settings.auth.ldap.path">
 									</md-input-container>
@@ -907,9 +920,42 @@ Admin Settings
 							</md-card>
 			            </section>
 
+						<section layout="row" flex>
+							<md-card flex=50 id="newrelic" style="height:auto">
+								<md-card-title>
+									<md-card-title-text>
+										<span>New Relic</span>
+									</md-card-title-text>
+									<md-button ng-click="clearSection('newrelic')">
+										<i class="fa fa-trash"></i>
+									</md-button>
+								</md-card-title>
+								<md-card-content>
+									<md-input-container class="control" style="width:45%;">
+										<label>Account ID</label>
+										<input type="text" ng-model="Settings.newrelic.accountId">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Trust Key</label>
+										<input type="text" ng-model="Settings.newrelic.trustKey">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Agent ID</label>
+										<input type="text" ng-model="Settings.newrelic.agentId">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>License Key</label>
+										<input type="text" ng-model="Settings.newrelic.licenseKey">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Application ID</label>
+										<input type="text" ng-model="Settings.newrelic.applicationId">
+									</md-input-container>
+								</md-card-content>
+							</md-card>
+						</section>
 
 						<section layout="row" flex>
-
 							<md-card flex=50 id="amboy">
 								<md-card-title>
 									<md-card-title-text>

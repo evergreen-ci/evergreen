@@ -1312,7 +1312,6 @@ func (s *EC2Suite) TestAttachVolume() {
 func (s *EC2Suite) TestAttachVolumeGenerateDeviceName() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
 	s.Require().NoError(s.h.Insert())
 	newAttachment := &host.VolumeAttachment{
 		VolumeID: "test-volume",
@@ -1322,7 +1321,7 @@ func (s *EC2Suite) TestAttachVolumeGenerateDeviceName() {
 
 	s.Equal("test-volume", newAttachment.VolumeID)
 	s.NotEqual("", newAttachment.DeviceName)
-	s.Len(newAttachment.DeviceName, len("/dev/sdf1"))
+	s.Len(newAttachment.DeviceName, len("/dev/sdf"))
 }
 
 func (s *EC2Suite) TestDetachVolume() {

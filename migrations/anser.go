@@ -55,6 +55,8 @@ func (opts Options) Setup(ctx context.Context) (anser.Environment, error) {
 		return nil, errors.WithStack(err)
 	}
 
+	env.SetPreferedDB(opts.Client)
+
 	return env, nil
 }
 

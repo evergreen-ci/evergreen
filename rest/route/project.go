@@ -21,8 +21,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const tsFormat = "2006-01-02.15-04-05"
-
 type projectGetHandler struct {
 	key   string
 	limit int
@@ -293,6 +291,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 				return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling PR testing for project '%s'", h.projectID))
 			}
 		}
+
 		// verify enabling commit queue valid
 		var temp interface{}
 		temp, err = apiProjectRef.CommitQueue.ToService()
@@ -311,6 +310,17 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 				gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					StatusCode: http.StatusBadRequest,
 					Message:    "Cannot enable commit queue in this repo, must enable GitHub webhooks first",
+				})
+			}
+
+			ok, err := h.hasCommitQueuePatchDefinition(apiProjectRef)
+			if err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(err)
+			}
+			if !ok {
+				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+					StatusCode: http.StatusBadRequest,
+					Message:    fmt.Sprintf("Cannot enable commit queue without a %s patch definition", evergreen.CommitQueueAlias),
 				})
 			}
 			if err = h.sc.EnableCommitQueue(dbProjectRef, commitQueueParams); err != nil {
@@ -385,7 +395,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// run the repotracker for the project
 	if newRevision != "" {
-		ts := util.RoundPartOfHour(1).Format(tsFormat)
+		ts := util.RoundPartOfHour(1).Format(units.TSFormat)
 		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), h.projectID)
 
 		queue := evergreen.GetEnvironment().RemoteQueue()
@@ -399,6 +409,32 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusOK))
 	}
 	return responder
+}
+
+// verify that either the user has added a new commit queue alias, or there is a pre-existing commit queue alias
+func (h *projectIDPatchHandler) hasCommitQueuePatchDefinition(pRef *model.APIProjectRef) (bool, error) {
+	aliasesToDelete := map[string]bool{}
+	for _, alias := range pRef.Aliases {
+		// return immediately if new commit queue alias has been added
+		if model.FromAPIString(alias.Alias) == evergreen.CommitQueueAlias && !alias.Delete {
+			return true, nil
+		}
+		aliasesToDelete[model.FromAPIString(alias.ID)] = alias.Delete
+	}
+
+	aliases, err := h.sc.FindProjectAliases(model.FromAPIString(pRef.Identifier))
+	if err != nil {
+		return false, errors.Wrapf(err, "Error checking existing patch definitions")
+	}
+	for _, alias := range aliases {
+		if model.FromAPIString(alias.Alias) == evergreen.CommitQueueAlias {
+			// assert this alias wasn't meant to be deleted
+			if !aliasesToDelete[model.FromAPIString(alias.ID)] {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }
 
 ////////////////////////////////////////////////////////////////////////

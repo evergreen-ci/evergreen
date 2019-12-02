@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -20,17 +21,18 @@ import (
 // The ProjectRef struct contains general information, independent of any
 // revision control system, needed to track a given project
 type ProjectRef struct {
-	Owner              string `bson:"owner_name" json:"owner_name" yaml:"owner"`
-	Repo               string `bson:"repo_name" json:"repo_name" yaml:"repo"`
-	Branch             string `bson:"branch_name" json:"branch_name" yaml:"branch"`
-	RepoKind           string `bson:"repo_kind" json:"repo_kind" yaml:"repokind"`
-	Enabled            bool   `bson:"enabled" json:"enabled" yaml:"enabled"`
-	Private            bool   `bson:"private" json:"private" yaml:"private"`
-	BatchTime          int    `bson:"batch_time" json:"batch_time" yaml:"batchtime"`
-	RemotePath         string `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
-	Identifier         string `bson:"identifier" json:"identifier" yaml:"identifier"`
-	DisplayName        string `bson:"display_name" json:"display_name" yaml:"display_name"`
-	DeactivatePrevious bool   `bson:"deactivate_previous" json:"deactivate_previous" yaml:"deactivate_previous"`
+	Owner              string   `bson:"owner_name" json:"owner_name" yaml:"owner"`
+	Repo               string   `bson:"repo_name" json:"repo_name" yaml:"repo"`
+	Branch             string   `bson:"branch_name" json:"branch_name" yaml:"branch"`
+	RepoKind           string   `bson:"repo_kind" json:"repo_kind" yaml:"repokind"`
+	Enabled            bool     `bson:"enabled" json:"enabled" yaml:"enabled"`
+	Private            bool     `bson:"private" json:"private" yaml:"private"`
+	BatchTime          int      `bson:"batch_time" json:"batch_time" yaml:"batchtime"`
+	RemotePath         string   `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
+	Identifier         string   `bson:"identifier" json:"identifier" yaml:"identifier"`
+	DisplayName        string   `bson:"display_name" json:"display_name" yaml:"display_name"`
+	DeactivatePrevious bool     `bson:"deactivate_previous" json:"deactivate_previous" yaml:"deactivate_previous"`
+	Tags               []string `bson:"tags" json:"tags" yaml:"tags"`
 
 	// TracksPushEvents, if true indicates that Repotracker is triggered by
 	// Github PushEvents for this project, instead of the Repotracker runner
@@ -149,6 +151,7 @@ var (
 	projectRefNotifyOnFailureKey     = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 	projectRefTriggersKey            = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
 	projectRefPeriodicBuildsKey      = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
+	projectRefTagsKey                = bsonutil.MustHaveTag(ProjectRef{}, "Tags")
 
 	projectRefCommitQueueEnabledKey = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	projectRefTriggerProjectKey     = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
@@ -205,6 +208,44 @@ func FindFirstProjectRef() (*ProjectRef, error) {
 		projectRef,
 	)
 	return projectRef, err
+}
+
+func FindTaggedProjectRefs(includeDisabled bool, tags ...string) ([]ProjectRef, error) {
+	if len(tags) == 0 {
+		return nil, errors.New("must specify one or more tags")
+	}
+
+	q := bson.M{}
+	if !includeDisabled {
+		q[ProjectRefEnabledKey] = true
+	}
+
+	if len(tags) == 1 {
+		q[projectRefTagsKey] = tags[0]
+	} else {
+		q[projectRefTagsKey] = bson.M{"$in": tags}
+	}
+
+	projectRefs := []ProjectRef{}
+	err := db.FindAll(
+		ProjectRefCollection,
+		q,
+		db.NoProjection,
+		db.NoSort,
+		db.NoSkip,
+		db.NoLimit,
+		&projectRefs,
+	)
+
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return projectRefs, nil
 }
 
 // FindAllTrackedProjectRefs returns all project refs in the db
@@ -466,6 +507,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefRepoKey:                projectRef.Repo,
 				ProjectRefBranchKey:              projectRef.Branch,
 				ProjectRefDisplayNameKey:         projectRef.DisplayName,
+				projectRefTagsKey:                projectRef.Tags,
 				ProjectRefDeactivatePreviousKey:  projectRef.DeactivatePrevious,
 				ProjectRefTrackedKey:             projectRef.Tracked,
 				ProjectRefRemotePathKey:          projectRef.RemotePath,
@@ -524,6 +566,75 @@ func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {
 		return errors.New("owner not authorized")
 	}
 	return nil
+}
+
+func (p *ProjectRef) RemoveTag(tag string) (bool, error) {
+	newTags := []string{}
+	for _, t := range p.Tags {
+		if tag == t {
+			continue
+		}
+		newTags = append(newTags, t)
+	}
+	if len(newTags) == len(p.Tags) {
+		return false, nil
+	}
+
+	err := db.Update(
+		ProjectRefCollection,
+		bson.M{ProjectRefIdentifierKey: p.Identifier},
+		bson.M{"$pull": bson.M{projectRefTagsKey: tag}},
+	)
+	if adb.ResultsNotFound(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, errors.Wrap(err, "database error")
+	}
+
+	p.Tags = newTags
+
+	return true, nil
+}
+
+func (p *ProjectRef) AddTags(tags ...string) (bool, error) {
+	set := make(map[string]struct{}, len(p.Tags))
+	for _, t := range p.Tags {
+		set[t] = struct{}{}
+	}
+	toAdd := []string{}
+	catcher := grip.NewBasicCatcher()
+	for _, t := range tags {
+		if _, ok := set[t]; ok {
+			continue
+		}
+		catcher.ErrorfWhen(strings.Contains(t, ","),
+			"cannot specify tags with a comma (,) [%s]", t)
+		toAdd = append(toAdd, t)
+	}
+	if catcher.HasErrors() {
+		return false, catcher.Resolve()
+	}
+
+	if len(toAdd) == 0 {
+		return false, nil
+	}
+
+	err := db.Update(
+		ProjectRefCollection,
+		bson.M{ProjectRefIdentifierKey: p.Identifier},
+		bson.M{"$addToSet": bson.M{projectRefTagsKey: bson.M{"$each": toAdd}}},
+	)
+	if adb.ResultsNotFound(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, errors.Wrap(err, "database error")
+	}
+
+	p.Tags = append(p.Tags, toAdd...)
+
+	return true, nil
 }
 
 func (t TriggerDefinition) Validate(parentProject string) error {

@@ -187,7 +187,7 @@ func (l *Logger) Configure() (send.Sender, error) {
 		}
 	case LogInherit:
 		sender = grip.GetSender()
-		if err := sender.SetLevel(l.Options.Level); err != nil {
+		if err = sender.SetLevel(l.Options.Level); err != nil {
 			return nil, err
 		}
 	case LogSplunk:
@@ -206,7 +206,7 @@ func (l *Logger) Configure() (send.Sender, error) {
 		if err != nil {
 			return nil, err
 		}
-		if err := sender.SetLevel(l.Options.Level); err != nil {
+		if err = sender.SetLevel(l.Options.Level); err != nil {
 			return nil, err
 		}
 	case LogInMemory:

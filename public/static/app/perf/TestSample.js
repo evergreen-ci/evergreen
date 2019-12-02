@@ -20,7 +20,11 @@ mciModule.factory('TestSample', function() {
     }
 
     this.testNames = function(){
-      return _.pluck(this.sample.data.results, "name") ;
+      var tests = _.pluck(this.sample.data.results, "name");
+      if (tests.length === 0) {
+        tests = _.pluck(_.pluck(this.sample, "info"), "test_name");
+      }
+      return tests
     }
 
     this.getLegendName = function(){

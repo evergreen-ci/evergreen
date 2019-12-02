@@ -98,6 +98,20 @@ func (s *ProjectPatchByIDSuite) TestRunValid() {
 	s.True(ok)
 }
 
+func (s *ProjectPatchByIDSuite) TestRunWithCommitQueueEnabled() {
+	ctx := context.Background()
+	jsonBody := []byte(`{"enabled": true, "revision": "my_revision", "commit_queue": {"enabled": true}}`)
+	h := s.rm.(*projectIDPatchHandler)
+	h.projectID = "dimoxinil"
+	h.body = jsonBody
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusBadRequest)
+	errResp := (resp.Data()).(gimlet.ErrorResponse)
+	s.Equal(errResp.Message, "Cannot enable commit queue without a __commit_queue patch definition")
+}
+
 ////////////////////////////////////////////////////////////////////////
 //
 // Tests for PUT /rest/v2/projects/{project_id}

@@ -24,8 +24,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const tsFormat = "2006-01-02.15-04-05"
-
 // publicProjectFields are the fields needed by the UI
 // on base_angular and the menu
 type UIProjectFields struct {
@@ -366,6 +364,26 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable Commit Queue without github webhooks enabled for the project"))
 			return
 		}
+		// if no new commit queue aliases, verify there are pre-existing commit queue aliases
+		if len(responseRef.CommitQueueAliases) == 0 {
+			aliases, err := model.FindAliasInProject(responseRef.Identifier, evergreen.CommitQueueAlias)
+			if err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error checking for commit queue aliases"))
+				return
+			}
+
+			remainingAliases := 0
+			for _, a := range aliases {
+				// only consider aliases that won't be deleted
+				if !util.StringSliceContains(responseRef.DeleteAliases, a.ID.Hex()) {
+					remainingAliases++
+				}
+			}
+			if remainingAliases == 0 {
+				uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Cannot enable Commit Queue without patch definitions."))
+				return
+			}
+		}
 
 		_, err = commitqueue.FindOneId(responseRef.Identifier)
 		if err != nil {
@@ -429,7 +447,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if responseRef.ForceRepotrackerRun {
-		ts := util.RoundPartOfHour(1).Format(tsFormat)
+		ts := util.RoundPartOfHour(1).Format(units.TSFormat)
 		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Identifier)
 		if err = uis.queue.Put(ctx, j); err != nil {
 			grip.Error(errors.Wrap(err, "problem creating catchup job from UI"))
@@ -668,7 +686,7 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// run the repotracker for the project
-	ts := util.RoundPartOfHour(1).Format(tsFormat)
+	ts := util.RoundPartOfHour(1).Format(units.TSFormat)
 	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Identifier)
 	if err := uis.queue.Put(r.Context(), j); err != nil {
 		grip.Error(errors.Wrap(err, "problem creating catchup job from UI"))

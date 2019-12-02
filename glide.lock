@@ -62,6 +62,8 @@ imports:
 
   - name: github.com/urfave/cli
     version: 01857ac33766ce0c93856370626f9799281c14f4
+  - name: github.com/cheynewallace/tabby
+    version: b7224f6123093cc04ce961170a360e1d22e214a5
 
   - name: github.com/kardianos/osext
     version: 6e7f843663477789fac7c02def0d0909e969b4e5
@@ -120,13 +122,13 @@ imports:
   - name: github.com/mongodb/amboy
     version: e5548953650b5d4cc7b6d7aba4cb1b2771e35342
   - name: github.com/evergreen-ci/gimlet
-    version: 64ab7f031df7b8c81c53847a7905c98c19edf950
+    version: eac814ab558f476500c19e497317c27484522a8b
   - name: github.com/evergreen-ci/shrub
     version: 32e668cd99410328bf6659e55671c11a6c727d9a
   - name: github.com/evergreen-ci/pail
     version: 7b2f8e0b2d972ca621cad3777d68276a54da13d0
   - name: github.com/mongodb/jasper
-    version: 92b4bc00e502630402e5ae96b1a85639b58f9b16
+    version: 22734e3b18d61530d97e559c95c7b9c948811664
   - name: go.mongodb.org/mongo-driver
     version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86
   - name: github.com/evergreen-ci/timber
@@ -163,6 +165,6 @@ imports:
   - name: github.com/evergreen-ci/birch
     version: 5b054047680765b089c1e6f77d0896803d1fd73d
   - name: github.com/mongodb/anser
-    version: ceb57a41614b2efd0c16a653c23b656becb8a380
+    version: ee4e72afa4fed132f32d481b87983ab413f8bece
   - name: github.com/mongodb/ftdc
     version: 7e505d9a86240264dd35b1d900c2e88ce74f6066

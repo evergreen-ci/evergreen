@@ -19,6 +19,7 @@ type APIProject struct {
 	Tracked             bool                 `json:"tracked"`
 	DeactivatePrevious  bool                 `json:"deactivate_previous"`
 	Admins              []APIString          `json:"admins"`
+	Tags                []APIString          `json:"tags"`
 	TracksPushEvents    bool                 `json:"tracks_push_events"`
 	PRTestingEnabled    bool                 `json:"pr_testing_enabled"`
 	CommitQueue         APICommitQueueParams `json:"commit_queue"`
@@ -62,6 +63,11 @@ func (apiProject *APIProject) BuildFromService(p interface{}) error {
 		admins = append(admins, ToAPIString(a))
 	}
 	apiProject.Admins = admins
+	tags := []APIString{}
+	for _, a := range v.Tags {
+		tags = append(tags, ToAPIString(a))
+	}
+	apiProject.Tags = tags
 
 	return nil
 }
@@ -138,6 +144,7 @@ type APIProjectRef struct {
 	Admins               []APIString          `json:"admins"`
 	DeleteAdmins         []APIString          `json:"delete_admins,omitempty"`
 	NotifyOnBuildFailure bool                 `json:"notify_on_failure"`
+	Tags                 []APIString          `json:"tags"`
 
 	Revision            APIString              `json:"revision"`
 	Triggers            []APITriggerDefinition `json:"triggers"`
@@ -182,6 +189,13 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		admins = append(admins, FromAPIString(admin))
 	}
 	projectRef.Admins = admins
+
+	// Copy tags
+	tags := []string{}
+	for _, tag := range p.Tags {
+		tags = append(tags, FromAPIString(tag))
+	}
+	projectRef.Tags = tags
 
 	// Copy triggers
 	triggers := []model.TriggerDefinition{}
@@ -247,6 +261,13 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 		admins = append(admins, ToAPIString(admin))
 	}
 	p.Admins = admins
+
+	// Copy tags
+	tags := []APIString{}
+	for _, tag := range projectRef.Tags {
+		tags = append(tags, ToAPIString(tag))
+	}
+	p.Tags = tags
 
 	// Copy triggers
 	triggers := []APITriggerDefinition{}

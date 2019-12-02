@@ -134,15 +134,26 @@ func doStaticHostUpdate(d distro.Distro) ([]string, error) {
 		if user == "" {
 			user = d.User
 		}
+
+		dbHost, err := host.FindOneId(h.Name)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error finding host named %s", h.Name)
+		}
+		provisionChange := needsReprovisioning(d, dbHost)
+		if provisionChange == host.ReprovisionNone && !dbHost.ReprovisioningLocked {
+			provisionChange = dbHost.NeedsReprovision
+		}
+
+		provisioned := provisionChange == host.ReprovisionNone || (dbHost != nil && dbHost.Provisioned)
 		staticHost := host.Host{
-			Id:           h.Name,
-			User:         user,
-			Host:         h.Name,
-			Distro:       d,
-			CreationTime: time.Now(),
-			StartedBy:    evergreen.User,
-			Status:       evergreen.HostRunning,
-			Provisioned:  true,
+			Id:               h.Name,
+			User:             user,
+			Host:             h.Name,
+			Distro:           d,
+			CreationTime:     time.Now(),
+			StartedBy:        evergreen.User,
+			NeedsReprovision: provisionChange,
+			Provisioned:      provisioned,
 		}
 
 		if d.Provider == evergreen.ProviderNameStatic {
@@ -158,4 +169,24 @@ func doStaticHostUpdate(d distro.Distro) ([]string, error) {
 	}
 
 	return staticHosts, nil
+}
+
+// needsReprovisioning checks if the host needs to be reprovisioned.
+func needsReprovisioning(d distro.Distro, h *host.Host) host.ReprovisionType {
+	if h == nil {
+		if d.BootstrapSettings.Method != "" && d.BootstrapSettings.Method != distro.BootstrapMethodLegacySSH {
+			return host.ReprovisionToNew
+		}
+		return host.ReprovisionNone
+	}
+
+	if h.LegacyBootstrap() && d.BootstrapSettings.Method != "" && d.BootstrapSettings.Method != distro.BootstrapMethodLegacySSH {
+		return host.ReprovisionToNew
+	}
+
+	if !h.LegacyBootstrap() && (d.BootstrapSettings.Method == "" || d.BootstrapSettings.Method == distro.BootstrapMethodLegacySSH) {
+		return host.ReprovisionToLegacy
+	}
+
+	return host.ReprovisionNone
 }

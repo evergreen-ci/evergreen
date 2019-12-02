@@ -22,6 +22,7 @@ func (t *windowsProcessTracker) setJobIfInvalid() error {
 	return nil
 }
 
+// NewProcessTracker creates a job object for all tracked processes.
 func NewProcessTracker(name string) (ProcessTracker, error) {
 	t := &windowsProcessTracker{processTrackerBase: &processTrackerBase{Name: name}}
 	if err := t.setJobIfInvalid(); err != nil {

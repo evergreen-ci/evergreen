@@ -131,6 +131,18 @@ func (hc *DBHostConnector) CheckHostSecret(r *http.Request) (int, error) {
 	return code, errors.WithStack(err)
 }
 
+func (hc *DBHostConnector) FindVolumeById(volumeID string) (*host.Volume, error) {
+	return host.FindVolumeByID(volumeID)
+}
+
+func (hc *DBHostConnector) FindVolumesByUser(user string) ([]host.Volume, error) {
+	return host.FindVolumesByUser(user)
+}
+
+func (hc *DBHostConnector) FindHostWithVolume(volumeID string) (*host.Host, error) {
+	return host.FindHostWithVolume(volumeID)
+}
+
 func (hc *DBHostConnector) AggregateSpawnhostData() (*host.SpawnHostUsage, error) {
 	data, err := host.AggregateSpawnhostData()
 	if err != nil {
@@ -292,6 +304,36 @@ func (hc *MockHostConnector) CheckHostSecret(r *http.Request) (int, error) {
 
 func (dbc *MockConnector) FindHostByIdWithOwner(hostID string, user gimlet.User) (*host.Host, error) {
 	return findHostByIdWithOwner(dbc, hostID, user)
+}
+
+func (hc *MockConnector) FindVolumeById(volumeID string) (*host.Volume, error) {
+	for _, v := range hc.CachedVolumes {
+		if v.ID == volumeID {
+			return &v, nil
+		}
+	}
+	return nil, nil
+}
+
+func (hc *MockConnector) FindVolumesByUser(user string) ([]host.Volume, error) {
+	vols := []host.Volume{}
+	for _, v := range hc.CachedVolumes {
+		if v.CreatedBy == user {
+			vols = append(vols, v)
+		}
+	}
+	return vols, nil
+}
+
+func (hc *MockConnector) FindHostWithVolume(volumeID string) (*host.Host, error) {
+	for _, h := range hc.CachedHosts {
+		for _, v := range h.Volumes {
+			if v.VolumeID == volumeID {
+				return &h, nil
+			}
+		}
+	}
+	return nil, nil
 }
 
 func (hc *MockConnector) AggregateSpawnhostData() (*host.SpawnHostUsage, error) {

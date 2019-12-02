@@ -126,36 +126,36 @@ func TestOutputOptions(t *testing.T) {
 			assert.Error(t, opts.Validate())
 		},
 		"ValidateFailsForInvalidLogFormat": func(t *testing.T, opts Output) {
-			opts.Loggers = []Logger{Logger{Type: LogDefault, Options: Log{Format: LogFormat("foo")}}}
+			opts.Loggers = []Logger{{Type: LogDefault, Options: Log{Format: LogFormat("foo")}}}
 			assert.Error(t, opts.Validate())
 		},
 		"ValidateFailsForInvalidLogTypes": func(t *testing.T, opts Output) {
-			opts.Loggers = []Logger{Logger{Type: LogType(""), Options: Log{Format: LogFormatPlain}}}
+			opts.Loggers = []Logger{{Type: LogType(""), Options: Log{Format: LogFormatPlain}}}
 			assert.Error(t, opts.Validate())
 		},
 		"SuppressOutputWithLogger": func(t *testing.T, opts Output) {
-			opts.Loggers = []Logger{Logger{Type: LogDefault, Options: Log{Format: LogFormatPlain}}}
+			opts.Loggers = []Logger{{Type: LogDefault, Options: Log{Format: LogFormatPlain}}}
 			opts.SuppressOutput = true
 			assert.NoError(t, opts.Validate())
 		},
 		"SuppressErrorWithLogger": func(t *testing.T, opts Output) {
-			opts.Loggers = []Logger{Logger{Type: LogDefault, Options: Log{Format: LogFormatPlain}}}
+			opts.Loggers = []Logger{{Type: LogDefault, Options: Log{Format: LogFormatPlain}}}
 			opts.SuppressError = true
 			assert.NoError(t, opts.Validate())
 		},
 		"SuppressOutputAndErrorWithLogger": func(t *testing.T, opts Output) {
-			opts.Loggers = []Logger{Logger{Type: LogDefault, Options: Log{Format: LogFormatPlain}}}
+			opts.Loggers = []Logger{{Type: LogDefault, Options: Log{Format: LogFormatPlain}}}
 			opts.SuppressOutput = true
 			opts.SuppressError = true
 			assert.NoError(t, opts.Validate())
 		},
 		"RedirectOutputWithLogger": func(t *testing.T, opts Output) {
-			opts.Loggers = []Logger{Logger{Type: LogDefault, Options: Log{Format: LogFormatPlain}}}
+			opts.Loggers = []Logger{{Type: LogDefault, Options: Log{Format: LogFormatPlain}}}
 			opts.SendOutputToError = true
 			assert.NoError(t, opts.Validate())
 		},
 		"RedirectErrorWithLogger": func(t *testing.T, opts Output) {
-			opts.Loggers = []Logger{Logger{Type: LogDefault, Options: Log{Format: LogFormatPlain}}}
+			opts.Loggers = []Logger{{Type: LogDefault, Options: Log{Format: LogFormatPlain}}}
 			opts.SendErrorToOutput = true
 			assert.NoError(t, opts.Validate())
 		},

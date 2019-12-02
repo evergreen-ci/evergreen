@@ -86,13 +86,13 @@ func (c *Collection) InsertMany(ctx context.Context, docs []interface{}) (*clien
 	return &c.InsertManyResult, nil
 }
 
-func (c *Collection) ReplaceOne(ctx context.Context, query, update interface{}) (*client.UpdateResult, error) {
+func (c *Collection) ReplaceOne(ctx context.Context, query, update interface{}, opts ...*options.ReplaceOptions) (*client.UpdateResult, error) {
 	return &c.UpdateResult, nil
 }
-func (c *Collection) UpdateOne(ctx context.Context, query, update interface{}) (*client.UpdateResult, error) {
+func (c *Collection) UpdateOne(ctx context.Context, query, update interface{}, opts ...*options.UpdateOptions) (*client.UpdateResult, error) {
 	return &c.UpdateResult, nil
 }
-func (c *Collection) UpdateMany(ctx context.Context, query, update interface{}) (*client.UpdateResult, error) {
+func (c *Collection) UpdateMany(ctx context.Context, query, update interface{}, opts ...*options.UpdateOptions) (*client.UpdateResult, error) {
 	return &c.UpdateResult, nil
 }
 

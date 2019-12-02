@@ -128,7 +128,7 @@ func (j *taskExecutionTimeoutJob) tryRequeue(ctx context.Context, env evergreen.
 		return
 	}
 	ts := util.RoundPartOfHour(15)
-	newJob := NewTaskExecutionMonitorJob(j.Task, j.Execution, j.Attempt+1, ts.Format(tsFormat))
+	newJob := NewTaskExecutionMonitorJob(j.Task, j.Execution, j.Attempt+1, ts.Format(TSFormat))
 	newJob.UpdateTimeInfo(amboy.JobTimeInfo{
 		WaitUntil: time.Now().Add(time.Minute),
 	})
@@ -282,7 +282,7 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 
 	for id, execution := range taskIDs {
 		ts := util.RoundPartOfHour(15)
-		j.AddError(queue.Put(ctx, NewTaskExecutionMonitorJob(id, execution, 1, ts.Format(tsFormat))))
+		j.AddError(queue.Put(ctx, NewTaskExecutionMonitorJob(id, execution, 1, ts.Format(TSFormat))))
 	}
 	grip.Info(message.Fields{
 		"operation": "task-execution-timeout-populate",

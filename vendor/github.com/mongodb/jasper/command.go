@@ -78,22 +78,18 @@ func (c *Command) GetProcIDs() []string {
 	return ids
 }
 
-// ApplyFromOpts uses the options.Create to configure the Command. If this is a
-// remote command (i.e. host has been set), the WorkingDirectory and Environment
-// will apply to the command being run on remote.
-// If Args is set on the options.Create, it will be ignored; the Args can be
-// added using Add, Append, AppendArgs, or Extend.
-// This overwrites options that were previously set in the following functions:
-// AddEnv, Environment, RedirectErrorToOutput, RedirectOutputToError,
-// SetCombinedSender, SetErrorSender, SetErrorWriter, SetOutputOptions,
-// SetOutputSender, SetOutputWriter, SuppressStandardError, and
-// SuppressStandardOutput.
+// ApplyFromOpts uses the options.Create to configure the Command. All existing
+// options will be overwritten. Use of this function is discouraged unless all
+// desired options are populated in the given opts.
+// If Args is set on the options.Create, it will be ignored; the command
+// arguments can be added using Add, Append, AppendArgs, or Extend.
 func (c *Command) ApplyFromOpts(opts *options.Create) *Command {
 	c.opts.Process = *opts
 	return c
 }
 
-// SetOutputOptions sets the output options for a command.
+// SetOutputOptions sets the output options for a command. This overwrites an
+// existing output options.
 func (c *Command) SetOutputOptions(opts options.Output) *Command {
 	c.opts.Process.Output = opts
 	return c
@@ -121,42 +117,139 @@ func (c *Command) Export() ([]*options.Create, error) {
 	return opts, nil
 }
 
-// Directory sets the working directory. If this is a remote command, it sets
-// the working directory of the command being run remotely.
-func (c *Command) Directory(d string) *Command { c.opts.Process.WorkingDirectory = d; return c }
-
-// Host sets the hostname. A blank hostname implies local execution of the
-// command, a non-blank hostname is treated as a remotely executed command.
-func (c *Command) Host(h string) *Command { c.initRemote(); c.opts.Remote.Host = h; return c }
-
 func (c *Command) initRemote() {
 	if c.opts.Remote == nil {
 		c.opts.Remote = &options.Remote{}
 	}
 }
 
-// User sets the username for remote operations. Host name must be set
-// to execute as a remote command.
+func (c *Command) initRemoteProxy() {
+	if c.opts.Remote == nil {
+		c.opts.Remote = &options.Remote{}
+	}
+	if c.opts.Remote.Proxy == nil {
+		c.opts.Remote.Proxy = &options.Proxy{}
+	}
+}
+
+// Host sets the hostname for connecting to a remote host.
+func (c *Command) Host(h string) *Command {
+	c.initRemote()
+	c.opts.Remote.Host = h
+	return c
+}
+
+// User sets the username for connecting to a remote host.
 func (c *Command) User(u string) *Command {
 	c.initRemote()
 	c.opts.Remote.User = u
 	return c
 }
 
-// SetRemoteArgs sets the arguments, if any, that are passed to the
-// underlying ssh command, for remote commands.
-func (c *Command) SetRemoteArgs(args []string) *Command {
+// Port sets the port for connecting to a remote host.
+func (c *Command) Port(p int) *Command {
 	c.initRemote()
-	c.opts.Remote.Args = args
+	c.opts.Remote.Port = p
 	return c
 }
 
 // ExtendRemoteArgs allows you to add arguments, when needed, to the
+// Password sets the password in order to authenticate to a remote host.
 // underlying ssh command, for remote commands.
 func (c *Command) ExtendRemoteArgs(args ...string) *Command {
+	c.initRemote()
 	c.opts.Remote.Args = append(c.opts.Remote.Args, args...)
 	return c
 }
+
+// PrivKey sets the private key in order to authenticate to a remote host.
+func (c *Command) PrivKey(key string) *Command {
+	c.initRemote()
+	c.opts.Remote.Key = key
+	return c
+}
+
+// PrivKeyFile sets the path to the private key file in order to authenticate to
+// a remote host.
+func (c *Command) PrivKeyFile(path string) *Command {
+	c.initRemote()
+	c.opts.Remote.KeyFile = path
+	return c
+}
+
+// PrivKeyPassphrase sets the passphrase for the private key file in order to
+// authenticate to a remote host.
+func (c *Command) PrivKeyPassphrase(pass string) *Command {
+	c.initRemote()
+	c.opts.Remote.KeyPassphrase = pass
+	return c
+}
+
+// Password sets the password in order to authenticate to a remote host.
+func (c *Command) Password(p string) *Command {
+	c.initRemote()
+	c.opts.Remote.Password = p
+	return c
+}
+
+// ProxyHost sets the proxy hostname for connecting to a proxy host.
+func (c *Command) ProxyHost(h string) *Command {
+	c.initRemoteProxy()
+	c.opts.Remote.Proxy.Host = h
+	return c
+}
+
+// ProxyUser sets the proxy username for connecting to a proxy host.
+func (c *Command) ProxyUser(u string) *Command {
+	c.initRemoteProxy()
+	c.opts.Remote.Proxy.User = u
+	return c
+}
+
+// ProxyPort sets the proxy port for connecting to a proxy host.
+func (c *Command) ProxyPort(p int) *Command {
+	c.initRemoteProxy()
+	c.opts.Remote.Proxy.Port = p
+	return c
+}
+
+// ProxyPrivKey sets the proxy private key in order to authenticate to a remote host.
+func (c *Command) ProxyPrivKey(key string) *Command {
+	c.initRemoteProxy()
+	c.opts.Remote.Proxy.Key = key
+	return c
+}
+
+// ProxyPrivKeyFile sets the path to the proxy private key file in order to
+// authenticate to a proxy host.
+func (c *Command) ProxyPrivKeyFile(path string) *Command {
+	c.initRemoteProxy()
+	c.opts.Remote.Proxy.KeyFile = path
+	return c
+}
+
+// ProxyPrivKeyPassphrase sets the passphrase for the private key file in order to
+// authenticate to a proxy host.
+func (c *Command) ProxyPrivKeyPassphrase(pass string) *Command {
+	c.initRemoteProxy()
+	c.opts.Remote.Proxy.KeyPassphrase = pass
+	return c
+}
+
+// ProxyPassword sets the password in order to authenticate to a proxy host.
+func (c *Command) ProxyPassword(p string) *Command {
+	c.initRemoteProxy()
+	c.opts.Remote.Proxy.Password = p
+	return c
+}
+
+// SetRemoteOptions sets the configuration for remote operations. This overrides
+// any existing remote configuration.
+func (c *Command) SetRemoteOptions(opts *options.Remote) *Command { c.opts.Remote = opts; return c }
+
+// Directory sets the working directory. If this is a remote command, it sets
+// the working directory of the command being run remotely.
+func (c *Command) Directory(d string) *Command { c.opts.Process.WorkingDirectory = d; return c }
 
 // Priority sets the logging priority.
 func (c *Command) Priority(l level.Priority) *Command { c.opts.Priority = l; return c }
@@ -285,7 +378,7 @@ func (c *Command) Sudo(sudo bool) *Command { c.opts.Sudo = sudo; return c }
 // SudoAs runs each command with sudo but allows each command to be run as a
 // user other than the default target user (usually root). This will cause the
 // commands to fail if the commands are executed in Windows. If this is a remote
-// command, the command being run remotely uses superuse privileges.
+// command, the command being run remotely uses superuser privileges.
 func (c *Command) SudoAs(user string) *Command {
 	c.opts.Sudo = true
 	c.opts.SudoUser = user
@@ -326,6 +419,10 @@ func (c *Command) Sh(script string) *Command { return c.ShellScript("sh", script
 // in the form of arguments.
 func (c *Command) AppendArgs(args ...string) *Command { return c.Add(args) }
 
+// SetHook allows you to add a function that's always called (locally)
+// after the command completes.
+func (c *Command) SetHook(h func(error) error) *Command { c.opts.Hook = h; return c }
+
 func (c *Command) setupEnv() {
 	if c.opts.Process.Environment == nil {
 		c.opts.Process.Environment = map[string]string{}
@@ -364,8 +461,10 @@ func (c *Command) Run(ctx context.Context) error {
 		}
 
 		err := c.exec(ctx, opt, idx)
-		if !c.opts.IgnoreError {
-			catcher.Add(err)
+		catcher.AddWhen(!c.opts.IgnoreError, err)
+
+		if c.opts.Hook != nil {
+			catcher.AddWhen(!c.opts.IgnoreError, c.opts.Hook(err))
 		}
 
 		if err != nil && !c.opts.ContinueOnError {
@@ -631,7 +730,7 @@ func (c *Command) getCreateOpts() ([]*options.Create, error) {
 		}
 
 		if c.opts.Remote != nil {
-			cmd.RemoteInfo = c.opts.Remote
+			cmd.Remote = c.opts.Remote
 		}
 
 		out = append(out, cmd)
@@ -667,7 +766,8 @@ func (c *Command) exec(ctx context.Context, opts *options.Create, idx int) error
 			_, err = proc.Wait(ctx)
 			waitCatcher.Add(errors.Wrapf(err, "error waiting on process '%s'", proc.ID()))
 		}
-		msg["err"] = waitCatcher.Resolve()
+		err = waitCatcher.Resolve()
+		msg["err"] = err
 		grip.Log(c.opts.Priority, writeOutput(msg))
 	}
 

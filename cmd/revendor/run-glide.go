@@ -40,10 +40,16 @@ func updateGlide(pkg, revision string) {
 
 	vendorPath := filepath.Join(wd, "vendor", pkg)
 	stat, err := os.Stat(vendorPath)
-	grip.EmergencyFatal(errors.Wrapf(err, "vendor directory %s not found", vendorPath))
-	if !stat.IsDir() {
-		grip.EmergencyFatalf("'%s' is not a directory", vendorPath)
-	}
+	if err != nil {
+		if os.IsNotExist(err) {
+			err = os.MkdirAll(vendorPath, 0777)
+			grip.EmergencyFatal(errors.Wrapf(err, "unable to make directory %s", vendorPath))
+		} else {
+			grip.EmergencyFatal(errors.Wrapf(err, "vendor directory %s not found", vendorPath))
+		}
+	} else if !stat.IsDir() {
+			grip.EmergencyFatalf("'%s' is not a directory", vendorPath)
+		}
 
 	glidePath := filepath.Join(wd, "glide.lock")
 	_, err = os.Stat(glidePath)
@@ -64,7 +70,8 @@ func updateGlide(pkg, revision string) {
 		}
 	}
 	if !found {
-		grip.EmergencyFatalf("package %s not found in glide file", pkg)
+		lines = append(lines, fmt.Sprintf(`  - name: %s`, pkg))
+		lines = append(lines, fmt.Sprintf(`    version: %s`, revision))
 	}
 
 	grip.EmergencyFatal(errors.Wrap(ioutil.WriteFile(glidePath, []byte(strings.Join(lines, "\n")), 0777), "error writing glide file"))

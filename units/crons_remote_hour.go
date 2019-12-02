@@ -37,7 +37,7 @@ func NewCronRemoteHourJob() amboy.Job {
 		},
 	}
 	j.SetDependency(dependency.NewAlways())
-	j.SetID(fmt.Sprintf("%s.%s", cronsRemoteHourJobName, util.RoundPartOfHour(0).Format(tsFormat)))
+	j.SetID(fmt.Sprintf("%s.%s", cronsRemoteHourJobName, util.RoundPartOfHour(0).Format(TSFormat)))
 	return j
 }
 
@@ -49,7 +49,7 @@ func (j *cronsRemoteHourJob) Run(ctx context.Context) {
 
 	ops := []amboy.QueueOperation{
 		PopulateCacheHistoricalTestDataJob(2),
-		PopulateJasperDeployJobs(j.env),
+		PopulateHostJasperRestartJobs(j.env),
 		PopulateSpawnhostExpirationCheckJob(),
 	}
 
