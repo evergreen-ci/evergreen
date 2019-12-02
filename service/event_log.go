@@ -34,8 +34,8 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		ids := []string{}
-		h, err := host.FindOneByIdOrTag(resourceID)
-		if err != nil || h == nil {
+		h, _ := host.FindOneByIdOrTag(resourceID)
+		if h == nil {
 			ids = []string{resourceID}
 		} else {
 			ids = []string{h.Id, h.Tag}
