@@ -516,12 +516,14 @@ var (
 	// Admin permissions.
 	PermissionAdminSettings = "admin_settings"
 	// Project permissions.
+	PermissionProjectCreate    = "project_create"
 	PermissionProjectSettings  = "project_settings"
 	PermissionProjectVariables = "project_variables"
 	PermissionTasks            = "project_tasks"
 	PermissionPatches          = "project_patches"
 	PermissionLogs             = "project_logs"
 	// Distro permissions.
+	PermissionDistroCreate   = "distro_create"
 	PermissionDistroSettings = "distro_settings"
 	PermissionHosts          = "distro_hosts"
 )
@@ -532,9 +534,9 @@ var (
 		Description: "Edit admin settings",
 		Value:       10,
 	}
-	ProjectSettingsCreate = PermissionLevel{
+	ProjectCreate = PermissionLevel{
 		Description: "Create new projects",
-		Value:       30,
+		Value:       10,
 	}
 	ProjectSettingsEdit = PermissionLevel{
 		Description: "Edit project settings",
@@ -580,9 +582,9 @@ var (
 		Description: "Not able to view logs",
 		Value:       0,
 	}
-	DistroSettingsCreate = PermissionLevel{
+	DistroCreate = PermissionLevel{
 		Description: "Create new distros",
-		Value:       30,
+		Value:       10,
 	}
 	DistroSettingsEdit = PermissionLevel{
 		Description: "Edit distro settings",
