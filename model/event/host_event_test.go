@@ -19,6 +19,7 @@ func TestLoggingHostEvents(t *testing.T) {
 			" logged", func() {
 
 			hostId := "host_id"
+			hostTag := "host_tag"
 			hostname := "hostname"
 			taskId := "task_id"
 			taskPid := "12345"
@@ -26,28 +27,28 @@ func TestLoggingHostEvents(t *testing.T) {
 			// log some events, sleeping in between to make sure the times are different
 			LogHostCreated(hostId)
 			time.Sleep(1 * time.Millisecond)
-			LogHostStatusChanged(hostId, evergreen.HostRunning, evergreen.HostTerminated, "user", "myLogs")
+			LogHostStatusChanged(hostTag, evergreen.HostRunning, evergreen.HostTerminated, "user", "myLogs")
 			time.Sleep(1 * time.Millisecond)
 			LogHostDNSNameSet(hostId, hostname)
 			time.Sleep(1 * time.Millisecond)
-			LogHostProvisioned(hostId)
+			LogHostProvisioned(hostTag)
 			time.Sleep(1 * time.Millisecond)
 			LogHostRunningTaskSet(hostId, taskId)
 			time.Sleep(1 * time.Millisecond)
 			LogHostRunningTaskCleared(hostId, taskId)
 			time.Sleep(1 * time.Millisecond)
-			LogHostTaskPidSet(hostId, taskPid)
+			LogHostTaskPidSet(hostTag, taskPid)
 			time.Sleep(1 * time.Millisecond)
 
 			// fetch all the events from the database, make sure they are
 			// persisted correctly
 
-			eventsForHost, err := Find(AllLogCollection, HostEventsInOrder(hostId))
+			eventsForHost, err := Find(AllLogCollection, MostRecentHostEvents([]string{hostId, hostTag}, 50))
 			So(err, ShouldBeNil)
 
-			event := eventsForHost[0]
+			So(eventsForHost, ShouldHaveLength, 7)
+			event := eventsForHost[6]
 			So(event.EventType, ShouldEqual, EventHostCreated)
-			So(event.ResourceId, ShouldEqual, hostId)
 
 			eventData, ok := event.Data.(*HostEventData)
 			So(ok, ShouldBeTrue)
@@ -58,9 +59,8 @@ func TestLoggingHostEvents(t *testing.T) {
 			So(eventData.TaskId, ShouldBeBlank)
 			So(eventData.TaskPid, ShouldBeBlank)
 
-			event = eventsForHost[1]
+			event = eventsForHost[5]
 			So(event.EventType, ShouldEqual, EventHostStatusChanged)
-			So(event.ResourceId, ShouldEqual, hostId)
 
 			eventData, ok = event.Data.(*HostEventData)
 			So(ok, ShouldBeTrue)
@@ -71,9 +71,8 @@ func TestLoggingHostEvents(t *testing.T) {
 			So(eventData.TaskId, ShouldBeBlank)
 			So(eventData.TaskPid, ShouldBeBlank)
 
-			event = eventsForHost[2]
+			event = eventsForHost[4]
 			So(event.EventType, ShouldEqual, EventHostDNSNameSet)
-			So(event.ResourceId, ShouldEqual, hostId)
 
 			eventData, ok = event.Data.(*HostEventData)
 			So(ok, ShouldBeTrue)
@@ -86,7 +85,6 @@ func TestLoggingHostEvents(t *testing.T) {
 
 			event = eventsForHost[3]
 			So(event.EventType, ShouldEqual, EventHostProvisioned)
-			So(event.ResourceId, ShouldEqual, hostId)
 
 			eventData, ok = event.Data.(*HostEventData)
 			So(ok, ShouldBeTrue)
@@ -97,9 +95,8 @@ func TestLoggingHostEvents(t *testing.T) {
 			So(eventData.TaskId, ShouldBeBlank)
 			So(eventData.TaskPid, ShouldBeBlank)
 
-			event = eventsForHost[4]
+			event = eventsForHost[2]
 			So(event.EventType, ShouldEqual, EventHostRunningTaskSet)
-			So(event.ResourceId, ShouldEqual, hostId)
 
 			eventData, ok = event.Data.(*HostEventData)
 			So(ok, ShouldBeTrue)
@@ -110,9 +107,8 @@ func TestLoggingHostEvents(t *testing.T) {
 			So(eventData.TaskId, ShouldEqual, taskId)
 			So(eventData.TaskPid, ShouldBeBlank)
 
-			event = eventsForHost[5]
+			event = eventsForHost[1]
 			So(event.EventType, ShouldEqual, EventHostRunningTaskCleared)
-			So(event.ResourceId, ShouldEqual, hostId)
 
 			eventData, ok = event.Data.(*HostEventData)
 			So(ok, ShouldBeTrue)
@@ -123,9 +119,8 @@ func TestLoggingHostEvents(t *testing.T) {
 			So(eventData.TaskId, ShouldEqual, taskId)
 			So(eventData.TaskPid, ShouldBeBlank)
 
-			event = eventsForHost[6]
+			event = eventsForHost[0]
 			So(event.EventType, ShouldEqual, EventHostTaskPidSet)
-			So(event.ResourceId, ShouldEqual, hostId)
 
 			eventData, ok = event.Data.(*HostEventData)
 			So(ok, ShouldBeTrue)
@@ -140,7 +135,7 @@ func TestLoggingHostEvents(t *testing.T) {
 			err = UpdateExecutions(hostId, taskId, 0)
 			So(err, ShouldBeNil)
 
-			eventsForHost, err = Find(AllLogCollection, HostEventsInOrder(hostId))
+			eventsForHost, err = Find(AllLogCollection, MostRecentHostEvents([]string{hostId}, 50))
 			So(err, ShouldBeNil)
 			So(len(eventsForHost), ShouldBeGreaterThan, 0)
 			for _, event = range eventsForHost {
