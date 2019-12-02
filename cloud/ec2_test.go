@@ -1215,7 +1215,7 @@ func (s *EC2Suite) TestGetEC2ManagerOptions() {
 
 	managerOpts, err := getEC2ManagerOptions(d1.Provider, d1.ProviderSettings)
 	s.NoError(err)
-	s.Equal("test-region", managerOpts.Provider)
+	s.Equal("test-region", managerOpts.Region)
 	s.Equal("key", managerOpts.ProviderKey)
 	s.Equal("secret", managerOpts.ProviderSecret)
 }
