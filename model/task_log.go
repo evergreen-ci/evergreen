@@ -235,7 +235,7 @@ func FindMostRecentLogMessages(taskId string, execution int, numMsgs int,
 	severities []string, msgTypes []string) ([]apimodels.LogMessage, error) {
 	logMsgs := []apimodels.LogMessage{}
 	numMsgsNeeded := numMsgs
-	lastTimeStamp := time.Date(2020, 0, 0, 0, 0, 0, 0, time.UTC)
+	lastTimeStamp := time.Now().Add(24 * time.Hour)
 
 	oldMsgTypes := []string{}
 	for _, msgType := range msgTypes {
