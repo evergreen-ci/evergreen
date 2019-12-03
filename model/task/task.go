@@ -153,8 +153,10 @@ type Task struct {
 	GeneratedTasks bool `bson:"generated_tasks,omitempty" json:"generated_tasks,omitempty"`
 	// GeneratedBy, if present, is the ID of the task that generated this task.
 	GeneratedBy string `bson:"generated_by,omitempty" json:"generated_by,omitempty"`
-	// GeneratedJSON is the the configuration information to create new tasks from.
+	// GeneratedJSONKey is no longer used but must be kept for old tasks.
 	GeneratedJSON []json.RawMessage `bson:"generate_json,omitempty" json:"generate_json,omitempty"`
+	// GeneratedJSONAsString is the configuration information to create new tasks from.
+	GeneratedJSONAsString []string `bson:"generated_json,omitempty" json:"generated_json,omitempty"`
 	// GenerateTasksError any encountered while generating tasks.
 	GenerateTasksError string `bson:"generate_error,omitempty" json:"generate_error,omitempty"`
 
@@ -658,25 +660,30 @@ func GenerateNotRun() ([]Task, error) {
 		StartTimeKey:      bson.M{"$gt": time.Now().Add(-maxGenerateTimeAgo)}, // ignore older tasks, just in case
 		GenerateTaskKey:   true,                                               // task contains generate.tasks command
 		GeneratedTasksKey: bson.M{"$exists": false},                           // generate.tasks has not yet run
-		GeneratedJSONKey:  bson.M{"$exists": true},                            // config has been posted by generate.tasks command
+		"$or": []bson.M{
+			bson.M{GeneratedJSONAsStringKey: bson.M{"$exists": true}}, // config has been posted by generate.tasks command
+			bson.M{GeneratedJSONKey: bson.M{"$exists": true}},         // TODO Remove after EVG-6759 is deployed
+		},
 	}))
 }
 
 // SetGeneratedJSON sets JSON data to generate tasks from.
 func (t *Task) SetGeneratedJSON(json []json.RawMessage) error {
-	if len(t.GeneratedJSON) > 0 {
+	if len(t.GeneratedJSONAsString) > 0 {
 		return nil
 	}
-	t.GeneratedJSON = json
+	s := []string{}
+	for _, j := range json {
+		s = append(s, string(j))
+	}
+	t.GeneratedJSONAsString = s
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
-			// If this field already is set, something has gone wrong.
-			GeneratedJSONKey: bson.M{"$exists": false},
 		},
 		bson.M{
 			"$set": bson.M{
-				GeneratedJSONKey: json,
+				GeneratedJSONAsStringKey: s,
 			},
 		},
 	)
