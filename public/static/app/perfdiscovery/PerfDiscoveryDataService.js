@@ -150,7 +150,7 @@ mciModule.factory('PerfDiscoveryDataService', function (
 
       // TODO add group validation instead of individual
       // Process current (revision) data
-      if (d.current) {
+      if (d.current && d.current.data) {
         // Copy storageEngine to the context
         d.ctx.storageEngine = d.current.data.storageEngine || '(none)'
 
@@ -160,7 +160,7 @@ mciModule.factory('PerfDiscoveryDataService', function (
       }
 
       // Process baseline data
-      if (d.baseline) {
+      if (d.baseline && d.baseline.data) {
         _.each(d.baseline.data.results, function (result) {
           processItem(result, baseline, d.ctx)
         })
@@ -237,6 +237,7 @@ mciModule.factory('PerfDiscoveryDataService', function (
           taskName: taskName,
           buildName: build.name,
           buildVariant: build.variant,
+          project: build.project,
         }
       }))
     }, [])
@@ -387,13 +388,15 @@ mciModule.factory('PerfDiscoveryDataService', function (
 
   // Makes series of HTTP calls and loads curent, baseline and history data
   // :rtype: $q.promise
-  function queryData(tasksPromise, baselineTasks) {
+  function queryData(tasksPromise, baselineTasks, expandedCurrent, expandedBaseline, expandedTrend) {
     return $q.all({
       tasks: tasksPromise,
       baselineTasks: baselineTasks
     }).then(function (promise) {
       return $q.all(_.map(promise.tasks, function (task) {
-        return ApiTaskdata.getTaskById(task.taskId, 'perf')
+        let currentTaskPromise = expandedCurrent ? ApiTaskdata.getExpandedTaskById(task.taskId, 'perf') : ApiTaskdata.getTaskById(task.taskId, 'perf');
+        let taskHistory = expandedTrend ? ApiTaskdata.getExpandedHistory(task.taskName, task.buildVariant, task.project) : ApiTaskdata.getTaskHistory(task.taskId, 'perf');
+        return currentTaskPromise
           .then(respData, function () {
             return null
           })
@@ -405,15 +408,16 @@ mciModule.factory('PerfDiscoveryDataService', function (
               })
               // Skip items with no baseline results
               if (!baseline) return null
+              let baselinePromise = expandedBaseline ? ApiTaskdata.getExpandedTaskById(baseline.taskId, 'perf') : ApiTaskdata.getTaskById(baseline.taskId, 'perf');
 
               return $q.all({
                 ctx: $q.resolve(task),
                 current: data,
-                history: ApiTaskdata.getTaskHistory(task.taskId, 'perf')
+                history: taskHistory
                   .then(respData, function (e) {
                     return []
                   }),
-                baseline: ApiTaskdata.getTaskById(baseline.taskId, 'perf')
+                baseline: baselinePromise
                   .then(respData, function (e) {
                     return null
                   }),
@@ -491,12 +495,11 @@ mciModule.factory('PerfDiscoveryDataService', function (
       })
   }
 
-  function getData(version, baselineTag) {
+  function getData(version, baselineTag, expandedCurrent, expandedBaseline, expandedTrend) {
     return getRows(
       processData(
         queryData(
-          tasksOfBuilds(queryBuildData(version)),
-          tasksOfBuilds(queryBuildData(baselineTag))
+          tasksOfBuilds(queryBuildData(version)), tasksOfBuilds(queryBuildData(baselineTag)), expandedCurrent, expandedBaseline, expandedTrend
         )
       )
     )

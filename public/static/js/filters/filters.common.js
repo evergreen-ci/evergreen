@@ -85,6 +85,12 @@ var convertSingleTest = function (test, execution) {
   return output;
 }
 
+let latestExecution = function (perfData) {
+  return _.max(perfData, (singleTest) => {
+    return singleTest.info && singleTest.info.execution || 0;
+  }).execution;
+}
+
 filters.common.filter('conditional', function () {
     return function (b, t, f) {
       return b ? t : f;
@@ -471,6 +477,9 @@ filters.common.filter('conditional', function () {
       if (!data) {
         return null;
       }
+      if (!execution) {
+        execution = latestExecution(data);
+      }
       var output = {
         data: {
           "results": []
@@ -491,6 +500,9 @@ filters.common.filter('conditional', function () {
     return function (data, execution) {
       if (!data) {
         return null;
+      }
+      if (!execution) {
+        execution = latestExecution(data);
       }
       let output = [];
 

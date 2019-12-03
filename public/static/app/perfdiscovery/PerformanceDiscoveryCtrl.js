@@ -88,6 +88,10 @@ mciModule.controller('PerformanceDiscoveryCtrl', function (
     item && vm.updateData()
   })
 
+  $scope.reload = function () {
+    vm.updateData(true);
+  }
+
   let oldFromVersion, oldToVersion;
 
   // Convert the name to a revision that can be used to query atlas.
@@ -109,7 +113,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function (
     };
   };
 
-  function loadCompOptions(fromVersion, toVersion) {
+  function loadCompOptions(fromVersion, toVersion, expandedCurrent, expandedBaseline, expandedTrend) {
     // Set loading flag to display spinner
     vm.isLoading = true;
 
@@ -132,7 +136,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function (
       // Load perf data
       .then(function (promise) {
         return dataUtil.getData(
-          promise.fromVersionObj, promise.toVersionObj
+          promise.fromVersionObj, promise.toVersionObj, expandedCurrent, expandedBaseline, expandedTrend
         );
       })
       // Apply perf data
@@ -210,12 +214,12 @@ mciModule.controller('PerformanceDiscoveryCtrl', function (
       })
   }
 
-  vm.updateData = function () {
+  vm.updateData = function (force) {
     var fromVersion = vm.fromSelect.selected
     var toVersion = vm.toSelect.selected
 
     // If nothing has changed, exit the function
-    if (fromVersion == oldFromVersion && toVersion == oldToVersion) {
+    if (!force && (fromVersion == oldFromVersion && toVersion == oldToVersion)) {
       return
     }
 
@@ -230,8 +234,11 @@ mciModule.controller('PerformanceDiscoveryCtrl', function (
 
     // Display no data while loading is in progress
     vm.gridOptions.data = []
+    expandedCurrent = vm.expandedOptions && vm.expandedOptions.includes("current");
+    expandedBaseline = vm.expandedOptions && vm.expandedOptions.includes("baseline");
+    expandedHistory = vm.expandedOptions && vm.expandedOptions.includes("history");
 
-    loadCompOptions(fromVersion, toVersion)
+    loadCompOptions(fromVersion, toVersion, expandedCurrent, expandedBaseline, expandedHistory);
   }
 
   function updateChartContext(grid) {

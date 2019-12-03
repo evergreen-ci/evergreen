@@ -28,6 +28,7 @@ describe('PerfDiscoveryDataServiceTest', function () {
           id: 'baid',
           name: 'buildAName',
           variant: 'bvA',
+          project: "foo",
           tasks: {
             taskA: {
               task_id: 'idA'
@@ -41,6 +42,7 @@ describe('PerfDiscoveryDataServiceTest', function () {
           id: 'bbid',
           name: 'buildBName',
           variant: 'bvB',
+          project: "foo",
           tasks: {
             taskC: {
               task_id: 'idC'
@@ -61,24 +63,28 @@ describe('PerfDiscoveryDataServiceTest', function () {
       taskId: 'idA',
       taskName: 'taskA',
       buildName: 'buildAName',
+      project: "foo",
     }, {
       buildId: 'baid',
       buildVariant: 'bvA',
       taskId: 'idB',
       taskName: 'taskB',
       buildName: 'buildAName',
+      project: "foo",
     }, {
       buildId: 'bbid',
       buildVariant: 'bvB',
       taskId: 'idC',
       taskName: 'taskC',
       buildName: 'buildBName',
+      project: "foo",
     }, {
       buildId: 'bbid',
       buildVariant: 'bvB',
       taskId: 'idD',
       taskName: 'taskD',
       buildName: 'buildBName',
+      project: "foo",
     }]);
   });
 
