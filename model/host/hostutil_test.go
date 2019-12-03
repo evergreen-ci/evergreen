@@ -979,7 +979,7 @@ func TestSetupSpawnHostCommands(t *testing.T) {
 	cmd, err := h.SetupSpawnHostCommands(settings)
 	require.NoError(t, err)
 
-	expected := `mkdir -m 777 -p /home/user/cli_bin && echo '{"api_key":"key","api_server_host":"www.example0.com/api","ui_server_host":"www.example1.com","user":"user"}' > /home/user/cli_bin/.evergreen.yml && cp /home/user/evergreen /home/user/cli_bin && (echo 'PATH=${PATH}:/home/user/cli_bin' >> /home/user/.profile || true; echo 'PATH=${PATH}:/home/user/cli_bin' >> /home/user/.bash_profile || true)`
+	expected := `mkdir -m 777 -p /home/user/cli_bin && echo '{"api_key":"key","api_server_host":"www.example0.com/api","ui_server_host":"www.example1.com","user":"user"}' > /home/user/cli_bin/.evergreen.yml && cp /home/user/evergreen /home/user/cli_bin && (echo 'export PATH="${PATH}:/home/user/cli_bin"' >> /home/user/.profile || true; echo 'export PATH="${PATH}:/home/user/cli_bin"' >> /home/user/.bash_profile || true)`
 	assert.Equal(t, expected, cmd)
 
 	h.ProvisionOptions.TaskId = "task_id"
