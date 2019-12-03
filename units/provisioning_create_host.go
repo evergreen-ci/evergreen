@@ -178,9 +178,9 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		"max_attempts": j.MaxAttempts,
 	})
 
-	mgrOpts := cloud.ManagerOpts{
-		Provider: j.host.Provider,
-		Region:   cloud.GetRegion(j.host.Distro),
+	mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
+	if err != nil {
+		return errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id)
 	}
 	cloudManager, err = cloud.GetManager(ctx, j.env, mgrOpts)
 	if err != nil {

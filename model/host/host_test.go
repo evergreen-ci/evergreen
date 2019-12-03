@@ -4428,3 +4428,98 @@ func TestFindHostWithVolume(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Nil(t, foundHost)
 }
+
+func TestStartingHostsByClient(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+
+	startingHosts := []Host{
+		{
+			Id:     "h0",
+			Status: evergreen.HostStarting,
+			Distro: distro.Distro{
+				Provider:         evergreen.ProviderNameEc2OnDemand,
+				ProviderSettings: &map[string]interface{}{awsRegionKey: evergreen.DefaultEC2Region},
+			},
+		},
+		{
+			Id:     "h1",
+			Status: evergreen.HostStarting,
+			Distro: distro.Distro{
+				Provider:         evergreen.ProviderNameEc2OnDemand,
+				ProviderSettings: &map[string]interface{}{awsRegionKey: evergreen.DefaultEC2Region},
+			},
+		},
+		{
+			Id:     "h2",
+			Status: evergreen.HostStarting,
+			Distro: distro.Distro{
+				Provider: evergreen.ProviderNameDocker,
+			},
+		},
+		{
+			Id:     "h3",
+			Status: evergreen.HostStarting,
+			Distro: distro.Distro{
+				Provider: evergreen.ProviderNameDocker,
+			},
+		},
+		{
+			Id:     "h4",
+			Status: evergreen.HostStarting,
+			Distro: distro.Distro{
+				Provider:         evergreen.ProviderNameEc2Spot,
+				ProviderSettings: &map[string]interface{}{awsRegionKey: "us-west1", awsKeyKey: "key1", awsSecretKey: "secret1"},
+			},
+		},
+		{
+			Id:     "h5",
+			Status: evergreen.HostStarting,
+			Distro: distro.Distro{
+				Provider:         evergreen.ProviderNameEc2Spot,
+				ProviderSettings: &map[string]interface{}{awsRegionKey: "us-west1", awsKeyKey: "key2", awsSecretKey: "secret2"},
+			},
+		},
+	}
+	for _, h := range startingHosts {
+		require.NoError(t, h.Insert())
+	}
+
+	hostsByClient, err := StartingHostsByClient()
+	assert.NoError(t, err)
+	assert.Len(t, hostsByClient, 4)
+	for clientOptions, hosts := range hostsByClient {
+		switch clientOptions {
+		case ClientOptions{
+			Provider: evergreen.ProviderNameEc2OnDemand,
+			Region:   evergreen.DefaultEC2Region,
+		}:
+			assert.Len(t, hosts, 2)
+			assert.Contains(t, hosts, startingHosts[0])
+			assert.Contains(t, hosts, startingHosts[1])
+		case ClientOptions{
+			Provider: evergreen.ProviderNameDocker,
+		}:
+			assert.Len(t, hosts, 2)
+			assert.Contains(t, hosts, startingHosts[2])
+			assert.Contains(t, hosts, startingHosts[3])
+		case ClientOptions{
+			Provider: evergreen.ProviderNameEc2Spot,
+			Region:   "us-west1",
+			Key:      "key1",
+			Secret:   "secret1",
+		}:
+			assert.Len(t, hosts, 1)
+			assert.Contains(t, hosts, startingHosts[4])
+		case ClientOptions{
+			Provider: evergreen.ProviderNameEc2Spot,
+			Region:   "us-west1",
+			Key:      "key2",
+			Secret:   "secret2",
+		}:
+			assert.Len(t, hosts, 1)
+			assert.Contains(t, hosts, startingHosts[5])
+		default:
+			assert.Fail(t, "unrecognized client options")
+		}
+	}
+}

@@ -64,14 +64,15 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 		// insert a reference distro.Distro
 		distro1 := distro.Distro{
-			Id: "distro1",
+			Id:       "distro1",
+			Provider: evergreen.ProviderNameMock,
 		}
 		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
 		// insert a host that is currently running a task - but whose
 		// creation time would otherwise indicate it has been idle a while
 		host1 := host.Host{
 			Id:           "h1",
-			Distro:       distro.Distro{Id: "distro1"},
+			Distro:       distro1,
 			Provider:     evergreen.ProviderNameMock,
 			CreationTime: time.Now().Add(-30 * time.Minute),
 			RunningTask:  "t1",
@@ -92,13 +93,14 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 		// insert a reference distro.Distro
 		distro1 := distro.Distro{
-			Id: "distro1",
+			Id:       "distro1",
+			Provider: evergreen.ProviderNameMock,
 		}
 		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
 
 		host1 := host.Host{
 			Id:                    "h1",
-			Distro:                distro.Distro{Id: "distro1"},
+			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			CreationTime:          time.Now().Add(-30 * time.Minute),
 			RunningTask:           "t3",
@@ -120,7 +122,8 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 		// insert a reference distro.Distro
 		distro1 := distro.Distro{
-			Id: "distro1",
+			Id:       "distro1",
+			Provider: evergreen.ProviderNameMock,
 		}
 		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
 
@@ -128,7 +131,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		// ago, one whose last task was less than 15 minutes ago
 		host1 := host.Host{
 			Id:                    "h1",
-			Distro:                distro.Distro{Id: "distro1"},
+			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			LastTask:              "t1",
 			LastTaskCompletedTime: time.Now().Add(-time.Minute * 20),
@@ -139,7 +142,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		}
 		host2 := host.Host{
 			Id:                    "h2",
-			Distro:                distro.Distro{Id: "distro1"},
+			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			LastTask:              "t2",
 			LastTaskCompletedTime: time.Now().Add(-time.Minute * 2),
@@ -163,7 +166,8 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		testFlaggingIdleHostsSetupTest(t)
 		// insert a reference distro.Distro
 		distro1 := distro.Distro{
-			Id: "distro1",
+			Id:       "distro1",
+			Provider: evergreen.ProviderNameMock,
 		}
 		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
 
@@ -171,7 +175,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		// ago, one whose last task was less than 15 minutes ago
 		host1 := host.Host{
 			Id:                    "h1",
-			Distro:                distro.Distro{Id: "distro1"},
+			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			LastTask:              "t1",
 			LastTaskCompletedTime: time.Now().Add(-time.Minute * 20),
@@ -182,7 +186,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		}
 		host2 := host.Host{
 			Id:                    "h2",
-			Distro:                distro.Distro{Id: "distro1"},
+			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			LastTask:              "t2",
 			LastTaskCompletedTime: time.Now().Add(-time.Minute * 2),
@@ -206,13 +210,14 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		testFlaggingIdleHostsSetupTest(t)
 		// insert our reference distro.Distro
 		distro1 := distro.Distro{
-			Id: "distro1",
+			Id:       "distro1",
+			Provider: evergreen.ProviderNameMock,
 		}
 		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
 
 		h5 := host.Host{
 			Id:                    "h5",
-			Distro:                distro.Distro{Id: "distro1"},
+			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			LastCommunicationTime: time.Now(),
 			Status:                evergreen.HostRunning,
@@ -233,7 +238,8 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 		// insert a reference distro.Distro
 		distro1 := distro.Distro{
-			Id: "distro1",
+			Id:       "distro1",
+			Provider: evergreen.ProviderNameMock,
 			BootstrapSettings: distro.BootstrapSettings{
 				Method:        distro.BootstrapMethodLegacySSH,
 				Communication: distro.CommunicationMethodLegacySSH,
@@ -264,7 +270,8 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 		// insert a reference distro.Distro
 		distro1 := distro.Distro{
-			Id: "distro1",
+			Id:       "distro1",
+			Provider: evergreen.ProviderNameMock,
 			BootstrapSettings: distro.BootstrapSettings{
 				Method:        distro.BootstrapMethodSSH,
 				Communication: distro.CommunicationMethodSSH,
@@ -295,7 +302,8 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 		// insert a reference distro.Distro
 		distro1 := distro.Distro{
-			Id: "distro1",
+			Id:       "distro1",
+			Provider: evergreen.ProviderNameMock,
 			BootstrapSettings: distro.BootstrapSettings{
 				Method:        distro.BootstrapMethodSSH,
 				Communication: distro.CommunicationMethodSSH,
@@ -337,13 +345,15 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 		// insert two reference distro.Distro
 
 		distro1 := distro.Distro{
-			Id: "distro1",
+			Id:       "distro1",
+			Provider: evergreen.ProviderNameMock,
 			HostAllocatorSettings: distro.HostAllocatorSettings{
 				MinimumHosts: 2,
 			},
 		}
 		distro2 := distro.Distro{
-			Id: "distro2",
+			Id:       "distro2",
+			Provider: evergreen.ProviderNameMock,
 			HostAllocatorSettings: distro.HostAllocatorSettings{
 				MinimumHosts: 1,
 			},
@@ -354,7 +364,7 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 		// insert a gaggle of hosts, some of which reference a host.Distro that doesn't exist in the distro collection
 		host1 := host.Host{
 			Id:           "h1",
-			Distro:       distro.Distro{Id: "distro2"},
+			Distro:       distro2,
 			Provider:     evergreen.ProviderNameMock,
 			CreationTime: time.Now().Add(-10 * time.Minute),
 			Status:       evergreen.HostRunning,
@@ -362,31 +372,40 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 		}
 		host2 := host.Host{
 			Id:           "h2",
-			Distro:       distro.Distro{Id: "distro1"},
+			Distro:       distro1,
 			Provider:     evergreen.ProviderNameMock,
 			CreationTime: time.Now().Add(-20 * time.Minute),
 			Status:       evergreen.HostRunning,
 			StartedBy:    evergreen.User,
 		}
 		host3 := host.Host{
-			Id:           "h3",
-			Distro:       distro.Distro{Id: "distroZ"},
+			Id: "h3",
+			Distro: distro.Distro{
+				Id:       "distroZ",
+				Provider: evergreen.ProviderNameMock,
+			},
 			Provider:     evergreen.ProviderNameMock,
 			CreationTime: time.Now().Add(-30 * time.Minute),
 			Status:       evergreen.HostRunning,
 			StartedBy:    evergreen.User,
 		}
 		host4 := host.Host{
-			Id:           "h4",
-			Distro:       distro.Distro{Id: "distroA"},
+			Id: "h4",
+			Distro: distro.Distro{
+				Id:       "distroA",
+				Provider: evergreen.ProviderNameMock,
+			},
 			Provider:     evergreen.ProviderNameMock,
 			CreationTime: time.Now().Add(-30 * time.Minute),
 			Status:       evergreen.HostRunning,
 			StartedBy:    evergreen.User,
 		}
 		host5 := host.Host{
-			Id:           "h5",
-			Distro:       distro.Distro{Id: "distroC"},
+			Id: "h5",
+			Distro: distro.Distro{
+				Id:       "distroC",
+				Provider: evergreen.ProviderNameMock,
+			},
 			Provider:     evergreen.ProviderNameMock,
 			CreationTime: time.Now().Add(-20 * time.Minute),
 			Status:       evergreen.HostRunning,
@@ -425,7 +444,8 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 
 		// insert a reference distro.Distro
 		distro1 := distro.Distro{
-			Id: "distro1",
+			Id:       "distro1",
+			Provider: evergreen.ProviderNameMock,
 			HostAllocatorSettings: distro.HostAllocatorSettings{
 				MinimumHosts: 2,
 			},
@@ -434,7 +454,7 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 
 		host1 := host.Host{
 			Id:           "h1",
-			Distro:       distro.Distro{Id: "distro1"},
+			Distro:       distro1,
 			Provider:     evergreen.ProviderNameMock,
 			CreationTime: time.Now().Add(-30 * time.Minute),
 			Status:       evergreen.HostRunning,
@@ -442,7 +462,7 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 		}
 		host2 := host.Host{
 			Id:           "h2",
-			Distro:       distro.Distro{Id: "distro1"},
+			Distro:       distro1,
 			Provider:     evergreen.ProviderNameMock,
 			CreationTime: time.Now().Add(-20 * time.Minute),
 			Status:       evergreen.HostRunning,
@@ -463,7 +483,8 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 
 		// insert a reference distro.Distro (which has a non-zero value for its HostAllocatorSettings.MinimumHosts field)
 		distro1 := distro.Distro{
-			Id: "distro1",
+			Id:       "distro1",
+			Provider: evergreen.ProviderNameMock,
 			HostAllocatorSettings: distro.HostAllocatorSettings{
 				MinimumHosts: 2,
 			},
@@ -472,7 +493,7 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 
 		host1 := host.Host{
 			Id:           "h1",
-			Distro:       distro.Distro{Id: "distro1"},
+			Distro:       distro1,
 			Provider:     evergreen.ProviderNameMock,
 			CreationTime: time.Now().Add(-30 * time.Minute),
 			Status:       evergreen.HostRunning,
@@ -480,7 +501,7 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 		}
 		host2 := host.Host{
 			Id:           "h2",
-			Distro:       distro.Distro{Id: "distro1"},
+			Distro:       distro1,
 			Provider:     evergreen.ProviderNameMock,
 			CreationTime: time.Now().Add(-20 * time.Minute),
 			Status:       evergreen.HostRunning,
@@ -488,7 +509,7 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 		}
 		host3 := host.Host{
 			Id:           "h3",
-			Distro:       distro.Distro{Id: "distro1"},
+			Distro:       distro1,
 			Provider:     evergreen.ProviderNameMock,
 			CreationTime: time.Now().Add(-10 * time.Minute),
 			Status:       evergreen.HostRunning,
@@ -513,14 +534,16 @@ func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 	assert.NoError(db.ClearCollections(distro.Collection))
 
 	distro1 := distro.Distro{
-		Id: "distro1",
+		Id:       "distro1",
+		Provider: evergreen.ProviderNameMock,
 		HostAllocatorSettings: distro.HostAllocatorSettings{
 			MinimumHosts: 3,
 		},
 	}
 
 	distro2 := distro.Distro{
-		Id: "distro2",
+		Id:       "distro2",
+		Provider: evergreen.ProviderNameMock,
 		HostAllocatorSettings: distro.HostAllocatorSettings{
 			MinimumHosts: 0,
 		},

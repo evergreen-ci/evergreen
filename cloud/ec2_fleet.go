@@ -19,8 +19,10 @@ import (
 )
 
 type EC2FleetManagerOptions struct {
-	client AWSClient
-	region string
+	client         AWSClient
+	region         string
+	providerKey    string
+	providerSecret string
 }
 
 type ec2FleetManager struct {
@@ -37,14 +39,21 @@ func (m *ec2FleetManager) GetSettings() ProviderSettings {
 func (m *ec2FleetManager) Configure(ctx context.Context, settings *evergreen.Settings) error {
 	m.settings = settings
 
-	key, secret, err := GetEC2Key(m.EC2FleetManagerOptions.region, settings)
-	if err != nil {
-		return errors.Wrap(err, "Problem getting EC2 keys")
+	if m.region == "" {
+		m.region = evergreen.DefaultEC2Region
+	}
+
+	if m.providerKey == "" || m.providerSecret == "" {
+		var err error
+		m.providerKey, m.providerSecret, err = GetEC2Key(m.region, settings)
+		if err != nil {
+			return errors.Wrap(err, "Problem getting EC2 keys")
+		}
 	}
 
 	m.credentials = credentials.NewStaticCredentialsFromCreds(credentials.Value{
-		AccessKeyID:     key,
-		SecretAccessKey: secret,
+		AccessKeyID:     m.providerKey,
+		SecretAccessKey: m.providerSecret,
 	})
 
 	return nil
@@ -56,23 +65,16 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 			h.Distro.Id, h.Distro.Provider)
 	}
 
+	if err := m.client.Create(m.credentials, m.region); err != nil {
+		return nil, errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+
 	ec2Settings := &EC2ProviderSettings{}
 	err := ec2Settings.fromDistroSettings(h.Distro)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting EC2 settings")
 	}
-
-	if ec2Settings.AWSKeyID != "" {
-		m.credentials = credentials.NewStaticCredentialsFromCreds(credentials.Value{
-			AccessKeyID:     ec2Settings.AWSKeyID,
-			SecretAccessKey: ec2Settings.AWSSecret,
-		})
-	}
-
-	if err = m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
-		return nil, errors.Wrap(err, "error creating client")
-	}
-	defer m.client.Close()
 
 	if ec2Settings.KeyName == "" && !h.UserHost {
 		if !h.SpawnOptions.SpawnedByTask {
@@ -120,7 +122,7 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 		instanceIDs = append(instanceIDs, aws.String(h.Id))
 	}
 
-	if err := m.client.Create(m.credentials, defaultRegion); err != nil {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return nil, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
@@ -164,8 +166,8 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 func (m *ec2FleetManager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
 	status := StatusUnknown
 
-	if err := m.configureClient(h); err != nil {
-		return status, errors.Wrapf(err, "can't configure client for '%s'", h.Id)
+	if err := m.client.Create(m.credentials, m.region); err != nil {
+		return status, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
 
@@ -199,8 +201,8 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 	if h.Status == evergreen.HostTerminated {
 		return errors.Errorf("Can not terminate %s - already marked as terminated!", h.Id)
 	}
-	if err := m.configureClient(h); err != nil {
-		return errors.Wrapf(err, "can't configure client for '%s'", h.Id)
+	if err := m.client.Create(m.credentials, m.region); err != nil {
+		return errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
 
@@ -265,8 +267,8 @@ func (m *ec2FleetManager) IsUp(ctx context.Context, h *host.Host) (bool, error) 
 
 // OnUp sets tags on the instance created by Fleet
 func (m *ec2FleetManager) OnUp(ctx context.Context, h *host.Host) error {
-	if err := m.configureClient(h); err != nil {
-		return errors.Wrapf(err, "can't configure client for '%s'", h.Id)
+	if err := m.client.Create(m.credentials, m.region); err != nil {
+		return errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
 
@@ -313,8 +315,8 @@ func (m *ec2FleetManager) DeleteVolume(context.Context, *host.Volume) error {
 }
 
 func (m *ec2FleetManager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
-	if err := m.configureClient(h); err != nil {
-		return "", errors.Wrapf(err, "can't configure client for '%s'", h.Id)
+	if err := m.client.Create(m.credentials, m.region); err != nil {
+		return "", errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
 
@@ -492,19 +494,6 @@ func (m *ec2FleetManager) makeOverrides(ctx context.Context, ec2Settings *EC2Pro
 	}
 
 	return overrides, nil
-}
-
-func (m *ec2FleetManager) configureClient(h *host.Host) error {
-	ec2Settings := &EC2ProviderSettings{}
-	err := ec2Settings.fromDistroSettings(h.Distro)
-	if err != nil {
-		return errors.Wrap(err, "problem getting settings from host")
-	}
-	if err = m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
-		return errors.Wrap(err, "error creating client")
-	}
-
-	return nil
 }
 
 func subnetMatchesAz(subnet *ec2.Subnet) bool {

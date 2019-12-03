@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -61,7 +62,7 @@ func TestCleanupTask(t *testing.T) {
 				host := &host.Host{
 					Id:          "h1",
 					RunningTask: "t1",
-					Provider:    evergreen.ProviderNameMock,
+					Distro:      distro.Distro{Provider: evergreen.ProviderNameMock},
 					Status:      evergreen.HostRunning,
 				}
 				So(host.Insert(), ShouldBeNil)
@@ -155,7 +156,7 @@ func TestCleanupTask(t *testing.T) {
 				h := &host.Host{
 					Id:          "h1",
 					RunningTask: "t1",
-					Provider:    evergreen.ProviderNameMock,
+					Distro:      distro.Distro{Provider: evergreen.ProviderNameMock},
 					Status:      evergreen.HostRunning,
 				}
 				So(h.Insert(), ShouldBeNil)

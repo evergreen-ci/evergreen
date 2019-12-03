@@ -115,9 +115,10 @@ func (j *idleHostJob) Run(ctx context.Context) {
 	communicationTime := j.host.GetElapsedCommunicationTime()
 
 	// get a cloud manager for the host
-	mgrOpts := cloud.ManagerOpts{
-		Provider: j.host.Provider,
-		Region:   cloud.GetRegion(j.host.Distro),
+	mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
+	if err != nil {
+		j.AddError(errors.Wrapf(err, "can't get ManagerOpts for host '%s'", j.host.Id))
+		return
 	}
 	manager, err := cloud.GetManager(ctx, j.env, mgrOpts)
 	if err != nil {

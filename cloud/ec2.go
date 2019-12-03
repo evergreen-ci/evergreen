@@ -127,7 +127,7 @@ func (s *EC2ProviderSettings) getRegion() string {
 	if s.Region != "" {
 		return s.Region
 	}
-	return defaultRegion
+	return evergreen.DefaultEC2Region
 }
 
 type ec2ProviderType int
@@ -164,6 +164,12 @@ type EC2ManagerOptions struct {
 
 	// region is the AWS region specified by distro
 	region string
+
+	// providerKey is the AWS credential key
+	providerKey string
+
+	// providerSecret is the AWS credential secret
+	providerSecret string
 }
 
 // ec2Manager starts and configures instances in EC2.
@@ -183,14 +189,21 @@ func (m *ec2Manager) GetSettings() ProviderSettings {
 func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings) error {
 	m.settings = settings
 
-	key, secret, err := GetEC2Key(m.region, settings)
-	if err != nil {
-		return errors.Wrap(err, "Problem getting EC2 keys")
+	if m.region == "" {
+		m.region = evergreen.DefaultEC2Region
+	}
+
+	if m.providerKey == "" || m.providerSecret == "" {
+		var err error
+		m.providerKey, m.providerSecret, err = GetEC2Key(m.region, settings)
+		if err != nil {
+			return errors.Wrap(err, "Problem getting EC2 keys")
+		}
 	}
 
 	m.credentials = credentials.NewStaticCredentialsFromCreds(credentials.Value{
-		AccessKeyID:     key,
-		SecretAccessKey: secret,
+		AccessKeyID:     m.providerKey,
+		SecretAccessKey: m.providerSecret,
 	})
 
 	return nil
@@ -400,24 +413,16 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 			h.Distro.Id, h.Distro.Provider)
 	}
 
+	if err := m.client.Create(m.credentials, m.region); err != nil {
+		return nil, errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+
 	ec2Settings := &EC2ProviderSettings{}
 	err := ec2Settings.fromDistroSettings(h.Distro)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting EC2 settings")
 	}
-
-	if ec2Settings.AWSKeyID != "" {
-		m.credentials = credentials.NewStaticCredentialsFromCreds(credentials.Value{
-			AccessKeyID:     ec2Settings.AWSKeyID,
-			SecretAccessKey: ec2Settings.AWSSecret,
-		})
-	}
-
-	if err = m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
-		return nil, errors.Wrap(err, "error creating client")
-	}
-	defer m.client.Close()
-
 	if ec2Settings.KeyName == "" && !h.UserHost {
 		if !h.SpawnOptions.SpawnedByTask {
 			return nil, errors.New("key name must not be empty")
@@ -612,11 +617,7 @@ func (m *ec2Manager) extendExpiration(ctx context.Context, h *host.Host, extensi
 
 // ModifyHost modifies a spawn host according to the changes specified by a HostModifyOptions struct.
 func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.HostModifyOptions) error {
-	ec2Settings := &EC2ProviderSettings{}
-	if err := ec2Settings.fromDistroSettings(h.Distro); err != nil {
-		return errors.Wrap(err, "error getting EC2 settings")
-	}
-	if err := m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
@@ -653,9 +654,10 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 
 // GetInstanceStatuses returns the current status of a slice of EC2 instances.
 func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) ([]CloudStatus, error) {
-	if err := m.client.Create(m.credentials, defaultRegion); err != nil {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return nil, errors.Wrap(err, "error creating client")
 	}
+	defer m.client.Close()
 
 	spotHosts := []*host.Host{}
 	instanceIdToHostMap := map[string]*host.Host{}
@@ -744,12 +746,7 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
 	status := StatusUnknown
 
-	ec2Settings := &EC2ProviderSettings{}
-	err := ec2Settings.fromDistroSettings(h.Distro)
-	if err != nil {
-		return status, errors.Wrap(err, "problem getting settings from host")
-	}
-	if err := m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return status, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
@@ -816,18 +813,14 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		}))
 	}
 
-	ec2Settings := &EC2ProviderSettings{}
-	err := ec2Settings.fromDistroSettings(h.Distro)
-	if err != nil {
-		return errors.Wrap(err, "problem getting settings from host")
-	}
-	if err = m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
 
 	instanceId := h.Id
 	if isHostSpot(h) {
+		var err error
 		instanceId, err = m.cancelSpotRequest(ctx, h)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -885,11 +878,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 		return errors.Errorf("cannot stop '%s' - host is not running", h.Id)
 	}
 
-	ec2Settings := &EC2ProviderSettings{}
-	if err := ec2Settings.fromDistroSettings(h.Distro); err != nil {
-		return errors.Wrap(err, "problem getting settings from host")
-	}
-	if err := m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
@@ -944,11 +933,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		return errors.Errorf("cannot start '%s' - host is not stopped", h.Id)
 	}
 
-	ec2Settings := &EC2ProviderSettings{}
-	if err := ec2Settings.fromDistroSettings(h.Distro); err != nil {
-		return errors.Wrap(err, "problem getting settings from host")
-	}
-	if err := m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
@@ -1061,12 +1046,7 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 		"is_spot":       isHostSpot(h),
 	})
 
-	ec2Settings := &EC2ProviderSettings{}
-	err := ec2Settings.fromDistroSettings(h.Distro)
-	if err != nil {
-		return errors.Wrap(err, "problem getting region from host")
-	}
-	if err = m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
@@ -1084,9 +1064,10 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 }
 
 func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment *host.VolumeAttachment) error {
-	if err := m.client.Create(m.credentials, evergreen.DefaultEC2Region); err != nil {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "error creating client")
 	}
+	defer m.client.Close()
 
 	opts := generateDeviceNameOptions{isWindows: h.Distro.IsWindows()}
 	// if no device name is provided, generate a unique device name
@@ -1111,9 +1092,10 @@ func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment 
 }
 
 func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID string) error {
-	if err := m.client.Create(m.credentials, evergreen.DefaultEC2Region); err != nil {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "error creating client")
 	}
+	defer m.client.Close()
 
 	_, err := m.client.DetachVolume(ctx, &ec2.DetachVolumeInput{
 		InstanceId: aws.String(h.Id),
@@ -1127,9 +1109,11 @@ func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID st
 }
 
 func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*host.Volume, error) {
-	if err := m.client.Create(m.credentials, evergreen.DefaultEC2Region); err != nil {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return nil, errors.Wrap(err, "error creating client")
 	}
+	defer m.client.Close()
+
 	resp, err := m.client.CreateVolume(ctx, &ec2.CreateVolumeInput{
 		AvailabilityZone: aws.String(volume.AvailabilityZone),
 		VolumeType:       aws.String(volume.Type),
@@ -1152,9 +1136,10 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 }
 
 func (m *ec2Manager) DeleteVolume(ctx context.Context, volume *host.Volume) error {
-	if err := m.client.Create(m.credentials, evergreen.DefaultEC2Region); err != nil {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "error creating client")
 	}
+	defer m.client.Close()
 
 	_, err := m.client.DeleteVolume(ctx, &ec2.DeleteVolumeInput{
 		VolumeId: aws.String(volume.ID),
@@ -1168,12 +1153,7 @@ func (m *ec2Manager) DeleteVolume(ctx context.Context, volume *host.Volume) erro
 
 // GetDNSName returns the DNS name for the host.
 func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
-	ec2Settings := &EC2ProviderSettings{}
-	err := ec2Settings.fromDistroSettings(h.Distro)
-	if err != nil {
-		return "", errors.Wrap(err, "problem getting region from host")
-	}
-	if err = m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return "", errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
@@ -1212,7 +1192,7 @@ func (m *ec2Manager) CostForDuration(ctx context.Context, h *host.Host, start, e
 	if err != nil {
 		return 0, errors.Wrap(err, "problem getting region from host")
 	}
-	if err = m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
+	if err = m.client.Create(m.credentials, m.region); err != nil {
 		return 0, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()

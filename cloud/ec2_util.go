@@ -91,8 +91,8 @@ func regionFullname(region string) (string, error) {
 	return "", errors.Errorf("region %v not supported for On Demand cost calculation", region)
 }
 
-// azToRegion takes an availability zone and returns the region id.
-func azToRegion(az string) string {
+// AztoRegion takes an availability zone and returns the region id.
+func AztoRegion(az string) string {
 	// an amazon region is just the availability zone minus the final letter
 	return az[:len(az)-1]
 }
@@ -502,26 +502,31 @@ func IsEc2Provider(provider string) bool {
 }
 
 // Get EC2 region from an EC2 ProviderSettings object
-func getEC2Region(providerSettings *map[string]interface{}) string {
-	s := &EC2ProviderSettings{}
-	if providerSettings != nil {
-		if err := mapstructure.Decode(providerSettings, s); err != nil {
-			return evergreen.DefaultEC2Region
-		} else {
-			return s.getRegion()
-		}
+func getEC2ManagerOptions(provider string, providerSettings *map[string]interface{}) (ManagerOpts, error) {
+	opts := ManagerOpts{}
+	if providerSettings == nil {
+		return opts, errors.New("nil ProviderSettings map")
 	}
 
-	return evergreen.DefaultEC2Region
+	s := &EC2ProviderSettings{}
+	if err := mapstructure.Decode(providerSettings, s); err != nil {
+		return opts, errors.Wrap(err, "can't decode into EC2ProviderSettings")
+	}
+
+	opts.Provider = provider
+	opts.Region = s.Region
+	opts.ProviderKey = s.AWSKeyID
+	opts.ProviderSecret = s.AWSSecret
+
+	if opts.Region == "" {
+		opts.Region = evergreen.DefaultEC2Region
+	}
+
+	return opts, nil
 }
 
 // Get EC2 key and secret from the AWS configuration for the given region
 func GetEC2Key(region string, s *evergreen.Settings) (string, string, error) {
-	// Get default region if field is blank
-	if region == "" {
-		region = evergreen.DefaultEC2Region
-	}
-
 	// Get key and secret for specified region
 	var key, secret string
 	for _, k := range s.Providers.AWS.EC2Keys {
@@ -537,26 +542,7 @@ func GetEC2Key(region string, s *evergreen.Settings) (string, string, error) {
 		}
 	}
 
-	// LEGACY (delete block when Evergreen only uses region-based EC2Keys struct)
-	if key == "" || secret == "" {
-		key = s.Providers.AWS.EC2Key
-		secret = s.Providers.AWS.EC2Secret
-
-		// Move default key and secret to new EC2Keys struct
-		if key != "" && secret != "" {
-			s.Providers.AWS.EC2Keys = append(s.Providers.AWS.EC2Keys, evergreen.EC2Key{
-				Region: evergreen.DefaultEC2Region,
-				Key:    key,
-				Secret: secret,
-			})
-			err := s.Providers.Set()
-			if err != nil {
-				return "", "", errors.New("Failed to update settings with new default EC2 credentials from legacy EC2 credentials")
-			}
-		}
-	}
-
-	// Error if region specified but missing in config
+	// Error if region is missing from config
 	if key == "" || secret == "" {
 		return "", "", errors.Errorf("Unable to find region '%s' in config", region)
 	}

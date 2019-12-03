@@ -330,29 +330,6 @@ func (s *EC2Suite) TestConfigure() {
 	s.NoError(err)
 	s.Equal("test-key", creds.AccessKeyID)
 	s.Equal("test-secret", creds.SecretAccessKey)
-
-	// LEGACY (delete when Evergreen only uses region-based EC2Keys struct)
-	settings.Providers.AWS.EC2Keys = nil
-	settings.Providers.AWS.EC2Key = "legacy-key"
-	err = s.onDemandManager.Configure(ctx, settings)
-	s.Error(err)
-
-	settings.Providers.AWS.EC2Key = ""
-	settings.Providers.AWS.EC2Secret = "legacy-secret"
-	err = s.onDemandManager.Configure(ctx, settings)
-	s.Error(err)
-
-	settings.Providers.AWS.EC2Key = "legacy-key"
-	err = s.onDemandManager.Configure(ctx, settings)
-	s.NoError(err)
-	ec2m, ok = s.onDemandManager.(*ec2Manager)
-	s.True(ok)
-	creds, err = ec2m.credentials.Get()
-	s.NoError(err)
-	s.Equal("legacy-key", creds.AccessKeyID)
-	s.Equal("legacy-secret", creds.SecretAccessKey)
-	// END LEGACY
-
 }
 
 func (s *EC2Suite) TestSpawnHostInvalidInput() {
@@ -1112,12 +1089,12 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 func (s *EC2Suite) TestGetRegion() {
 	ec2Settings := &EC2ProviderSettings{}
 	r := ec2Settings.getRegion()
-	s.Equal(defaultRegion, r)
+	s.Equal(evergreen.DefaultEC2Region, r)
 
-	(*s.h.Distro.ProviderSettings)["region"] = defaultRegion
+	(*s.h.Distro.ProviderSettings)["region"] = evergreen.DefaultEC2Region
 	s.NoError(ec2Settings.fromDistroSettings(s.h.Distro))
 	r = ec2Settings.getRegion()
-	s.Equal(defaultRegion, r)
+	s.Equal(evergreen.DefaultEC2Region, r)
 
 	(*s.h.Distro.ProviderSettings)["region"] = "us-west-2"
 	s.NoError(ec2Settings.fromDistroSettings(s.h.Distro))
@@ -1226,19 +1203,21 @@ func (s *EC2Suite) TestFromDistroSettings() {
 	s.Equal(float64(0.001), ec2Settings.BidPrice)
 }
 
-func (s *EC2Suite) TestGetEC2Region() {
+func (s *EC2Suite) TestGetEC2ManagerOptions() {
 	d1 := distro.Distro{
+		Provider: evergreen.ProviderNameEc2OnDemand,
 		ProviderSettings: &map[string]interface{}{
-			"region": "test-region",
+			"region":                "test-region",
+			"aws_access_key_id":     "key",
+			"aws_secret_access_key": "secret",
 		},
 	}
 
-	d2 := distro.Distro{
-		ProviderSettings: &map[string]interface{}{},
-	}
-
-	s.Equal("test-region", getEC2Region(d1.ProviderSettings))
-	s.Equal(evergreen.DefaultEC2Region, getEC2Region(d2.ProviderSettings))
+	managerOpts, err := getEC2ManagerOptions(d1.Provider, d1.ProviderSettings)
+	s.NoError(err)
+	s.Equal("test-region", managerOpts.Region)
+	s.Equal("key", managerOpts.ProviderKey)
+	s.Equal("secret", managerOpts.ProviderSecret)
 }
 
 func (s *EC2Suite) TestGetEC2Key() {
@@ -1251,14 +1230,6 @@ func (s *EC2Suite) TestGetEC2Key() {
 	s.Empty(key)
 	s.Empty(secret)
 	s.EqualError(err, "Unable to find region 'test-region' in config")
-
-	// LEGACY (delete block when Evergreen only uses region-based EC2Keys struct)
-	settings.Providers.AWS.EC2Key = "legacy-key"
-	settings.Providers.AWS.EC2Secret = "legacy-secret"
-	key, secret, err = GetEC2Key("", settings)
-	s.Equal("legacy-key", key)
-	s.Equal("legacy-secret", secret)
-	s.NoError(err)
 
 	settings.Providers.AWS.EC2Keys = []evergreen.EC2Key{
 		{Region: "bogus-region", Key: "bogus-key", Secret: "bogus-secret"},

@@ -18,7 +18,7 @@ func TestGetManager(t *testing.T) {
 	Convey("GetManager() should return non-nil for all valid provider names", t, func() {
 
 		Convey("EC2Auto should be returned for ec2-auto provider name", func() {
-			mgrOpts := ManagerOpts{Provider: evergreen.ProviderNameEc2Auto, Region: ""}
+			mgrOpts := ManagerOpts{Provider: evergreen.ProviderNameEc2Auto, ProviderKey: "key", ProviderSecret: "secret"}
 			cloudMgr, err := GetManager(ctx, env, mgrOpts)
 			So(cloudMgr, ShouldNotBeNil)
 			So(err, ShouldBeNil)
@@ -26,7 +26,7 @@ func TestGetManager(t *testing.T) {
 		})
 
 		Convey("EC2Spot should be returned for ec2-spot provider name", func() {
-			mgrOpts := ManagerOpts{Provider: evergreen.ProviderNameEc2Spot, Region: ""}
+			mgrOpts := ManagerOpts{Provider: evergreen.ProviderNameEc2Spot, ProviderKey: "key", ProviderSecret: "secret"}
 			cloudMgr, err := GetManager(ctx, env, mgrOpts)
 			So(cloudMgr, ShouldNotBeNil)
 			So(err, ShouldBeNil)
@@ -34,7 +34,7 @@ func TestGetManager(t *testing.T) {
 		})
 
 		Convey("EC2OnDemand should be returned for ec2-ondemand provider name", func() {
-			mgrOpts := ManagerOpts{Provider: evergreen.ProviderNameEc2OnDemand, Region: ""}
+			mgrOpts := ManagerOpts{Provider: evergreen.ProviderNameEc2OnDemand, ProviderKey: "key", ProviderSecret: "secret"}
 			cloudMgr, err := GetManager(ctx, env, mgrOpts)
 			So(cloudMgr, ShouldNotBeNil)
 			So(err, ShouldBeNil)
@@ -42,7 +42,7 @@ func TestGetManager(t *testing.T) {
 		})
 
 		Convey("Static should be returned for static provider name", func() {
-			mgrOpts := ManagerOpts{Provider: evergreen.ProviderNameStatic, Region: ""}
+			mgrOpts := ManagerOpts{Provider: evergreen.ProviderNameStatic, ProviderKey: "key", ProviderSecret: "secret"}
 			cloudMgr, err := GetManager(ctx, env, mgrOpts)
 			So(cloudMgr, ShouldNotBeNil)
 			So(err, ShouldBeNil)
@@ -50,7 +50,7 @@ func TestGetManager(t *testing.T) {
 		})
 
 		Convey("Mock should be returned for mock provider name", func() {
-			mgrOpts := ManagerOpts{Provider: evergreen.ProviderNameMock, Region: ""}
+			mgrOpts := ManagerOpts{Provider: evergreen.ProviderNameMock, ProviderKey: "key", ProviderSecret: "secret"}
 			cloudMgr, err := GetManager(ctx, env, mgrOpts)
 			So(cloudMgr, ShouldNotBeNil)
 			So(err, ShouldBeNil)
@@ -58,7 +58,7 @@ func TestGetManager(t *testing.T) {
 		})
 
 		Convey("Invalid provider names should return nil with err", func() {
-			mgrOpts := ManagerOpts{Provider: "bogus", Region: ""}
+			mgrOpts := ManagerOpts{Provider: "bogus", ProviderKey: "key", ProviderSecret: "secret"}
 			cloudMgr, err := GetManager(ctx, env, mgrOpts)
 			So(cloudMgr, ShouldBeNil)
 			So(err, ShouldNotBeNil)

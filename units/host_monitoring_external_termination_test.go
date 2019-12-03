@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
@@ -42,7 +43,7 @@ func TestHostMonitoringCheckJob(t *testing.T) {
 		Id:                    "h1",
 		LastCommunicationTime: time.Now().Add(-15 * time.Minute),
 		Status:                evergreen.HostRunning,
-		Provider:              evergreen.ProviderNameMock,
+		Distro:                distro.Distro{Provider: evergreen.ProviderNameMock},
 		StartedBy:             evergreen.User,
 	}
 	require.NoError(h.Insert())
@@ -71,9 +72,9 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 	mockCloud.Set("h1", m1)
 
 	h := &host.Host{
-		Id:       "h1",
-		Status:   evergreen.HostRunning,
-		Provider: evergreen.ProviderNameMock,
+		Id:     "h1",
+		Status: evergreen.HostRunning,
+		Distro: distro.Distro{Provider: evergreen.ProviderNameMock},
 	}
 	require.NoError(t, h.Insert())
 

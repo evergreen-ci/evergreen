@@ -116,29 +116,7 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 	ctx, cancel = context.WithCancel(ctx)
 	defer cancel()
 
-	mgrOpts := cloud.ManagerOpts{
-		Provider: j.host.Provider,
-		Region:   cloud.GetRegion(j.host.Distro),
-	}
-	manager, err := cloud.GetManager(ctx, j.env, mgrOpts)
-	if err != nil {
-		j.AddError(err)
-		grip.Error(message.WrapErrorf(err, "Error loading provider for host %s cost calculation", j.task.HostId))
-	} else {
-		if calc, ok := manager.(cloud.CostCalculator); ok {
-			cost, err = calc.CostForDuration(ctx, j.host, j.task.StartTime, j.task.FinishTime)
-			if err != nil {
-				j.AddError(err)
-			} else {
-				if err = j.task.SetCost(cost); err != nil {
-					j.AddError(err)
-				}
-				if err = j.host.IncCost(cost); err != nil {
-					j.AddError(err)
-				}
-			}
-		}
-	}
+	j.AddError(j.recordTaskCost(ctx))
 
 	msg := message.Fields{
 		"activated_by":         j.task.ActivatedBy,
@@ -176,4 +154,33 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		msg["average_runtime_secs"] = historicRuntime.Seconds()
 		grip.Info(msg)
 	}
+}
+
+func (j *collectTaskEndDataJob) recordTaskCost(ctx context.Context) error {
+	mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
+	if err != nil {
+		return errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id)
+	}
+	manager, err := cloud.GetManager(ctx, j.env, mgrOpts)
+	if err != nil {
+		return errors.Wrapf(err, "Error loading provider for host %s cost calculation", j.host.Id)
+	}
+
+	calc, ok := manager.(cloud.CostCalculator)
+	if !ok {
+		return errors.Errorf("manager of type '%T' is not a cost calculator", manager)
+	}
+	cost, err := calc.CostForDuration(ctx, j.host, j.task.StartTime, j.task.FinishTime)
+	if err != nil {
+		return errors.Wrapf(err, "can't get cost for duration")
+	}
+
+	if err = j.task.SetCost(cost); err != nil {
+		return errors.Wrapf(err, "can't set cost for task '%s'", j.task.Id)
+	}
+	if err = j.host.IncCost(cost); err != nil {
+		return errors.Wrapf(err, "can't increment cost for host '%s'", j.host.Id)
+	}
+
+	return nil
 }

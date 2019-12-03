@@ -121,29 +121,8 @@ func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 	//
 	// collect data
 
-	var cost float64
-	if j.manager == nil {
-		mgrOpts := cloud.ManagerOpts{
-			Provider: j.host.Provider,
-			Region:   cloud.GetRegion(j.host.Distro),
-		}
-		j.manager, err = cloud.GetManager(ctx, j.env, mgrOpts)
-
-		if err != nil {
-			j.AddError(err)
-			grip.Warning(message.WrapErrorf(err, "Error loading provider for host %s cost calculation", j.HostID))
-		}
-	}
-
-	if calc, ok := j.manager.(cloud.CostCalculator); ok {
-		cost, err = calc.CostForDuration(ctx, j.host, j.StartTime, j.FinishTime)
-		if err != nil {
-			j.AddError(err)
-		}
-		if err = j.host.IncCost(cost); err != nil {
-			j.AddError(err)
-		}
-	}
+	cost, err := j.incrementCostForDuration(ctx)
+	j.AddError(err)
 
 	if j.TaskID != "" && j.host.Provider != evergreen.ProviderNameStatic {
 		if err = j.host.IncTaskCount(); err != nil {
@@ -167,6 +146,36 @@ func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 	if j.TaskID != "" {
 		grip.Info(j.getTaskStartStatsMessage())
 	}
+}
+
+func (j *collectHostIdleDataJob) incrementCostForDuration(ctx context.Context) (float64, error) {
+	if j.manager == nil {
+		mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
+		if err != nil {
+			return 0, errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id)
+		}
+
+		j.manager, err = cloud.GetManager(ctx, j.env, mgrOpts)
+		if err != nil {
+			return 0, errors.Wrapf(err, "can't get manager for '%s'", j.host.Id)
+		}
+	}
+
+	calc, ok := j.manager.(cloud.CostCalculator)
+	if !ok {
+		return 0, errors.Errorf("manager of type '%T' isn't a cost calculator", j.manager)
+	}
+
+	cost, err := calc.CostForDuration(ctx, j.host, j.StartTime, j.FinishTime)
+	if err != nil {
+		return 0, errors.Wrapf(err, "can't get cost for '%s'", j.host.Id)
+	}
+
+	if err = j.host.IncCost(cost); err != nil {
+		return 0, errors.Wrapf(err, "can't increment cost for host '%s'", j.host.Id)
+	}
+
+	return cost, nil
 }
 
 func (j *collectHostIdleDataJob) getHostStatsMessage(cost float64, idleTime time.Duration) message.Composer {

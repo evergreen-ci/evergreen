@@ -43,8 +43,10 @@ jira:
 
 providers:
   aws:
-    aws_id: "$AWS_KEY"
-    aws_secret: "$AWS_SECRET"
+    ec2_keys:
+      - region: "us-east-1"
+        key: "$AWS_KEY"
+        secret: "$AWS_SECRET"
 
 auth:
     naive:
