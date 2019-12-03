@@ -33,10 +33,10 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 	opts1 := uiParams{Action: "updateStatus", Status: evergreen.HostQuarantined, Notes: "because I can"}
 
 	result, err := modifyHostStatus(env.LocalQueue(), &h1, &opts1, &user1)
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.Equal(result, fmt.Sprintf(HostStatusUpdateSuccess, evergreen.HostRunning, evergreen.HostQuarantined))
 	assert.Equal(h1.Status, evergreen.HostQuarantined)
-	events, err2 := event.Find(event.AllLogCollection, event.MostRecentHostEvents("h1", 1))
+	events, err2 := event.Find(event.AllLogCollection, event.MostRecentHostEvents([]string{"h1"}, 1))
 	assert.NoError(err2)
 	assert.Len(events, 1)
 	hostevent, ok := events[0].Data.(*event.HostEventData)
@@ -48,7 +48,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 	opts2 := uiParams{Action: "updateStatus", Status: evergreen.HostDecommissioned}
 
 	_, err = modifyHostStatus(env.LocalQueue(), &h2, &opts2, &user2)
-	assert.NotNil(err)
+	assert.Error(err)
 	assert.Contains(err.Error(), DecommissionStaticHostError)
 
 	user3 := user.DBUser{Id: "user3"}
@@ -56,6 +56,6 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 	opts3 := uiParams{Action: "updateStatus", Status: "undefined"}
 
 	_, err = modifyHostStatus(env.LocalQueue(), &h3, &opts3, &user3)
-	assert.NotNil(err)
+	assert.Error(err)
 	assert.Contains(err.Error(), fmt.Sprintf(InvalidStatusError, "undefined"))
 }

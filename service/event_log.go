@@ -5,6 +5,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/pkg/errors"
+
+	"github.com/evergreen-ci/evergreen/model/host"
+
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/gimlet"
@@ -31,7 +35,18 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			uis.RedirectToLogin(w, r)
 			return
 		}
-		eventQuery := event.MostRecentHostEvents(resourceID, 5000)
+		ids := []string{}
+		var h *host.Host
+		h, err = host.FindOneByIdOrTag(resourceID)
+		if err != nil {
+			http.Error(w, errors.Wrap(err, "error finding host '%s'").Error(), http.StatusInternalServerError)
+			return
+		}
+		if h == nil {
+			http.Error(w, "host '%s' not found", http.StatusBadRequest)
+			return
+		}
+		eventQuery := event.MostRecentHostEvents(ids, 5000)
 		loggedEvents, err = event.Find(event.AllLogCollection, eventQuery)
 	case event.ResourceTypeDistro:
 		if u == nil {
