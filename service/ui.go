@@ -193,6 +193,7 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 		grip.Criticalf("user [%s] is not of the correct type: %T", userCtx.Username(), userCtx)
 	}
 
+	// TODO: add admin user check
 	viewData.Banner = settings.Banner
 	viewData.BannerTheme = string(settings.BannerTheme)
 	viewData.ProjectData = projectCtx

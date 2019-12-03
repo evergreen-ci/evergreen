@@ -47,6 +47,14 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	var createDistro bool
+	resourcePermissions, ok := permissions[evergreen.SuperUserPermissionsID]
+	if ok {
+		if resourcePermissions[evergreen.PermissionDistroCreate] > 0 {
+			createDistro = true
+		}
+	}
+
 	settings, err := evergreen.GetConfig()
 	if err != nil {
 		message := fmt.Sprintf("error fetching evergreen settings: %v", err)
@@ -65,13 +73,14 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
-		DistroIds []string
-		Keys      map[string]string
+		CreateDistro bool
+		DistroIds    []string
+		Keys         map[string]string
 		ViewData
 		ContainerPools       []evergreen.ContainerPool
 		ContainerPoolDistros []string
 		ContainerPoolIds     []string
-	}{distroIds, uis.Settings.Keys, uis.GetCommonViewData(w, r, false, true), containerPools, containerPoolDistros, containerPoolIds},
+	}{createDistro, distroIds, uis.Settings.Keys, uis.GetCommonViewData(w, r, false, true), containerPools, containerPoolDistros, containerPoolIds},
 		"base", "distros.html", "base_angular.html", "menu.html")
 }
 

@@ -1,7 +1,8 @@
 {{define "scripts"}}
 <script type="text/javascript" src="{{Static "js" "distros.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript">
-  window.distroIds = {{.DistroIds}}
+  window.createDistro = {{.CreateDistro}};
+  window.distroIds = {{.DistroIds}};
   window.keys = {{.Keys}};
   window.containerPools = {{.ContainerPools}};
   window.containerPoolDistros = {{.ContainerPoolDistros}};
