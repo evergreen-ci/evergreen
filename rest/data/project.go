@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/event"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	adb "github.com/mongodb/anser/db"
@@ -248,6 +249,21 @@ func (ac *DBProjectConnector) GetVersionsInProject(project, requester string, li
 	return out, catcher.Resolve()
 }
 
+func (pc *DBProjectConnector) GetProjectSettingsEvent(identifier string, p *model.ProjectRef) *model.ProjectSettingsEvent {
+	hook, _ := model.FindGithubHook(p.Owner, p.Repo)
+	projectVars, _ := model.FindOneProjectVars(identifier)
+	projectAliases, _ := model.FindAliasesForProject(identifier)
+	subscriptions, _ := event.FindSubscriptionsByOwner(identifier, event.OwnerTypeProject)
+	projectSettingsEvent := model.ProjectSettingsEvent{
+		ProjectRef:         *p,
+		GitHubHooksEnabled: hook != nil,
+		Vars:               *projectVars,
+		Aliases:            projectAliases,
+		Subscriptions:      subscriptions,
+	}
+	return &projectSettingsEvent
+}
+
 // MockPatchConnector is a struct that implements the Patch related methods
 // from the Connector through interactions with he backing database.
 type MockProjectConnector struct {
@@ -416,4 +432,8 @@ func (pc *MockProjectConnector) UpdateProjectRevision(projectID, revision string
 
 func (ac *MockProjectConnector) GetVersionsInProject(project, requester string, limit, startOrder int) ([]restModel.APIVersion, error) {
 	return nil, nil
+}
+
+func (pc *MockProjectConnector) GetProjectSettingsEvent(identifier string, p *model.ProjectRef) *model.ProjectSettingsEvent {
+	return nil
 }

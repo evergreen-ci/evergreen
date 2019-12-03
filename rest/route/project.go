@@ -273,6 +273,9 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    err.Error(),
 		})
 	}
+
+	before := h.sc.GetProjectSettingsEvent(identifier, dbProjectRef)
+
 	if dbProjectRef.Enabled {
 		var hasHook bool
 		hasHook, err = h.sc.EnableWebhooks(ctx, dbProjectRef)
@@ -391,6 +394,13 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	if err = h.sc.DeleteSubscriptions(h.projectID, toDelete); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error deleting subscriptions for project '%s'", h.projectID))
+	}
+
+	after := h.sc.GetProjectSettingsEvent(identifier, dbProjectRef)
+	dbUser := MustHaveUser(ctx)
+	username := dbUser.DisplayName()
+	if err = dbModel.LogProjectModified(identifier, username, *before, *after); err != nil {
+		grip.Infof("Could not log changes to project %s", identifier)
 	}
 
 	// run the repotracker for the project

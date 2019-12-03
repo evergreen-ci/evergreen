@@ -303,4 +303,7 @@ type Connector interface {
 	GetDockerLogs(context.Context, string, *host.Host, *evergreen.Settings, types.ContainerLogsOptions) (io.Reader, error)
 	// GetDockerStatus returns the status of the given docker container
 	GetDockerStatus(context.Context, string, *host.Host, *evergreen.Settings) (*cloud.ContainerStatus, error)
+
+	//GetProjectEventSettings returns the ProjectSettingsEvents of the given identifier and ProjectRef
+	GetProjectSettingsEvent(identifier string, p *model.ProjectRef) *model.ProjectSettingsEvent
 }

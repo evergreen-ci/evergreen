@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/mongodb/grip"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/mongodb/grip/message"
@@ -128,11 +130,11 @@ func LogProjectEvent(eventType string, projectId string, eventData ProjectChange
 
 	logger := event.NewDBEventLogger(event.AllLogCollection)
 	if err := logger.LogEvent(&projectEvent); err != nil {
-		message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": EventResourceTypeProject,
 			"message":       "error logging event",
 			"source":        "event-log-fail",
-		})
+		}))
 		return errors.Wrap(err, "Error logging project event")
 	}
 
