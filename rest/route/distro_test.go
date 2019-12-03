@@ -1385,7 +1385,7 @@ func (s *DistroIDExecuteSuite) SetupTest() {
 	s.cancel = cancel
 	env := &mock.Environment{}
 	s.env = env
-	s.Require().NoError(env.Configure(ctx, "", nil))
+	s.Require().NoError(env.Configure(ctx))
 	h := makeDistroExecute(s.sc, s.env)
 	rh, ok := h.(*distroIDExecuteHandler)
 	s.Require().True(ok)

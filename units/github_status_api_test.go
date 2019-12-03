@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -48,7 +47,7 @@ func (s *githubStatusUpdateSuite) SetupTest() {
 	s.cancel = cancel
 
 	s.env = &mock.Environment{}
-	s.Require().NoError(s.env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+	s.Require().NoError(s.env.Configure(ctx))
 
 	startTime := time.Now().Truncate(time.Millisecond)
 	id := mgobson.NewObjectId()

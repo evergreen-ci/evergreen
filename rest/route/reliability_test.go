@@ -659,7 +659,7 @@ func TestRun(t *testing.T) {
 func setupEnv(ctx context.Context) (*mock.Environment, error) {
 	env := &mock.Environment{}
 
-	if err := env.Configure(ctx, "", nil); err != nil {
+	if err := env.Configure(ctx); err != nil {
 		return nil, errors.WithStack(err)
 	}
 	return env, nil

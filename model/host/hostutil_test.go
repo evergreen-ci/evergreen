@@ -616,7 +616,7 @@ func TestJasperClient(t *testing.T) {
 			defer cancel()
 
 			env := &mock.Environment{}
-			require.NoError(t, env.Configure(tctx, "", nil))
+			require.NoError(t, env.Configure(tctx))
 			env.Settings().HostJasper.BinaryName = "binary"
 			env.Settings().Keys = map[string]string{sshKeyName: sshKeyValue}
 
@@ -689,7 +689,7 @@ func TestJasperProcess(t *testing.T) {
 			defer cancel()
 
 			env := &mock.Environment{}
-			require.NoError(t, env.Configure(tctx, "", nil))
+			require.NoError(t, env.Configure(tctx))
 			env.Settings().HostJasper.BinaryName = "binary"
 
 			manager := &jmock.Manager{}
@@ -920,7 +920,7 @@ func TestStopAgentMonitor(t *testing.T) {
 			defer tcancel()
 
 			env := &mock.Environment{}
-			require.NoError(t, env.Configure(tctx, "", nil))
+			require.NoError(t, env.Configure(tctx))
 			manager := &jmock.Manager{}
 
 			h := &Host{

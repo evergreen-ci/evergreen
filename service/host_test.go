@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -12,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -24,7 +22,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 	defer cancel()
 
 	env := mock.Environment{}
-	assert.NoError(env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+	assert.NoError(env.Configure(ctx))
 	require.NoError(db.ClearCollections(event.AllLogCollection), "error clearing collections")
 
 	// Normal test, changing a host from running to quarantined

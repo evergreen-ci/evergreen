@@ -2,14 +2,11 @@ package migrations
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	evg "github.com/evergreen-ci/evergreen/db"
 	evgmock "github.com/evergreen-ci/evergreen/mock"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/client"
 	"github.com/mongodb/anser/mock"
@@ -29,7 +26,7 @@ func TestAnserBasicPlaceholder(t *testing.T) {
 
 	evgEnv := &evgmock.Environment{}
 
-	assert.NoError(evgEnv.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+	assert.NoError(evgEnv.Configure(ctx))
 
 	opts := Options{
 		Database: "mci_test",

@@ -1558,7 +1558,7 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			defer cancel()
 
 			env := &mock.Environment{}
-			require.NoError(t, env.Configure(tctx, "", nil))
+			require.NoError(t, env.Configure(tctx))
 			env.EnvContext = tctx
 
 			require.NoError(t, setupCredentialsCollection(ctx, env))
