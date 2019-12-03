@@ -813,14 +813,14 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		}))
 	}
 
-	var err error
-	if err = m.client.Create(m.credentials, m.region); err != nil {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
 
 	instanceId := h.Id
 	if isHostSpot(h) {
+		var err error
 		instanceId, err = m.cancelSpotRequest(ctx, h)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{

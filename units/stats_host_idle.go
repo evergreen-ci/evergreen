@@ -121,27 +121,8 @@ func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 	//
 	// collect data
 
-	var cost float64
-	catcher := grip.NewBasicCatcher()
-	if j.manager == nil {
-		mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
-		catcher.Add(errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id))
-		if !catcher.HasErrors() {
-			j.manager, err = cloud.GetManager(ctx, j.env, mgrOpts)
-			catcher.Add(errors.Wrapf(err, "can't get manager for '%s'", j.host.Id))
-		}
-	}
-
-	if !catcher.HasErrors() {
-		if calc, ok := j.manager.(cloud.CostCalculator); ok {
-			cost, err = calc.CostForDuration(ctx, j.host, j.StartTime, j.FinishTime)
-			catcher.Add(err)
-			if !catcher.HasErrors() {
-				catcher.Add(j.host.IncCost(cost))
-			}
-		}
-	}
-	j.AddError(catcher.Resolve())
+	cost, err := j.incrementCostForDuration(ctx)
+	j.AddError(err)
 
 	if j.TaskID != "" && j.host.Provider != evergreen.ProviderNameStatic {
 		if err = j.host.IncTaskCount(); err != nil {
@@ -165,6 +146,36 @@ func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 	if j.TaskID != "" {
 		grip.Info(j.getTaskStartStatsMessage())
 	}
+}
+
+func (j *collectHostIdleDataJob) incrementCostForDuration(ctx context.Context) (float64, error) {
+	if j.manager == nil {
+		mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
+		if err != nil {
+			return 0, errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id)
+		}
+
+		j.manager, err = cloud.GetManager(ctx, j.env, mgrOpts)
+		if err != nil {
+			return 0, errors.Wrapf(err, "can't get manager for '%s'", j.host.Id)
+		}
+	}
+
+	calc, ok := j.manager.(cloud.CostCalculator)
+	if !ok {
+		return 0, errors.Errorf("manager of type '%T' isn't a cost calculator", j.manager)
+	}
+
+	cost, err := calc.CostForDuration(ctx, j.host, j.StartTime, j.FinishTime)
+	if err != nil {
+		return 0, errors.Wrapf(err, "can't get cost for '%s'", j.host.Id)
+	}
+
+	if err = j.host.IncCost(cost); err != nil {
+		return 0, errors.Wrapf(err, "can't increment cost for host '%s'", j.host.Id)
+	}
+
+	return cost, nil
 }
 
 func (j *collectHostIdleDataJob) getHostStatsMessage(cost float64, idleTime time.Duration) message.Composer {
