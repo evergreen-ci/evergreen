@@ -196,7 +196,7 @@ func (h *versionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 type projectIDPatchHandler struct {
 	projectID string
 	body      []byte
-	user      *user.DBUser
+	username  string
 
 	sc       data.Connector
 	settings *evergreen.Settings
@@ -219,7 +219,10 @@ func (h *projectIDPatchHandler) Factory() gimlet.RouteHandler {
 // Parse fetches the project's identifier from the http request.
 func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.projectID = gimlet.GetVars(r)["project_id"]
-	h.user = MustHaveUser(ctx)
+	user := MustHaveUser(ctx)
+	if user != nil {
+		h.username = user.DisplayName()
+	}
 	body := util.NewRequestReader(r)
 	defer body.Close()
 	b, err := ioutil.ReadAll(body)
@@ -405,8 +408,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettingsEvent after update for project'%s'", h.projectID))
 	}
-	username := h.user.DisplayName()
-	if err = dbModel.LogProjectModified(identifier, username, *before, *after); err != nil {
+	if err = dbModel.LogProjectModified(identifier, h.username, *before, *after); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error logging project modification for project'%s'", h.projectID))
 	}
 
