@@ -406,7 +406,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	dbUser := MustHaveUser(ctx)
 	username := dbUser.DisplayName()
 	if err = dbModel.LogProjectModified(identifier, username, *before, *after); err != nil {
-		grip.Infof("Could not log changes to project %s", identifier)
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error logging project modification for project'%s'", h.projectID))
 	}
 
 	// run the repotracker for the project
