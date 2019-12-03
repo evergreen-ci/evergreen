@@ -274,7 +274,10 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	before := h.sc.GetProjectSettingsEvent(identifier, dbProjectRef)
+	before, err := h.sc.GetProjectSettingsEvent(identifier, dbProjectRef)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettingsEvent before update for project'%s'", h.projectID))
+	}
 
 	if dbProjectRef.Enabled {
 		var hasHook bool
@@ -396,7 +399,10 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error deleting subscriptions for project '%s'", h.projectID))
 	}
 
-	after := h.sc.GetProjectSettingsEvent(identifier, dbProjectRef)
+	after, err := h.sc.GetProjectSettingsEvent(identifier, dbProjectRef)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettingsEvent after update for project'%s'", h.projectID))
+	}
 	dbUser := MustHaveUser(ctx)
 	username := dbUser.DisplayName()
 	if err = dbModel.LogProjectModified(identifier, username, *before, *after); err != nil {

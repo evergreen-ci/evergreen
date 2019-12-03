@@ -305,5 +305,5 @@ type Connector interface {
 	GetDockerStatus(context.Context, string, *host.Host, *evergreen.Settings) (*cloud.ContainerStatus, error)
 
 	//GetProjectEventSettings returns the ProjectSettingsEvents of the given identifier and ProjectRef
-	GetProjectSettingsEvent(identifier string, p *model.ProjectRef) *model.ProjectSettingsEvent
+	GetProjectSettingsEvent(identifier string, p *model.ProjectRef) (*model.ProjectSettingsEvent, error)
 }
