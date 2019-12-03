@@ -249,22 +249,22 @@ func (ac *DBProjectConnector) GetVersionsInProject(project, requester string, li
 	return out, catcher.Resolve()
 }
 
-func (pc *DBProjectConnector) GetProjectSettingsEvent(identifier string, p *model.ProjectRef) (*model.ProjectSettingsEvent, error) {
+func (pc *DBProjectConnector) GetProjectSettingsEvent(p *model.ProjectRef) (*model.ProjectSettingsEvent, error) {
 	hook, err := model.FindGithubHook(p.Owner, p.Repo)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Database error finding github hook for project '%s'", identifier)
+		return nil, errors.Wrapf(err, "Database error finding github hook for project '%s'", p.Identifier)
 	}
-	projectVars, err := model.FindOneProjectVars(identifier)
+	projectVars, err := model.FindOneProjectVars(p.Identifier)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error finding variables for project '%s'", identifier)
+		return nil, errors.Wrapf(err, "error finding variables for project '%s'", p.Identifier)
 	}
-	projectAliases, err := model.FindAliasesForProject(identifier)
+	projectAliases, err := model.FindAliasesForProject(p.Identifier)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error finding aliases for project '%s'", identifier)
+		return nil, errors.Wrapf(err, "error finding aliases for project '%s'", p.Identifier)
 	}
-	subscriptions, err := event.FindSubscriptionsByOwner(identifier, event.OwnerTypeProject)
+	subscriptions, err := event.FindSubscriptionsByOwner(p.Identifier, event.OwnerTypeProject)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error finding subscription for project '%s'", identifier)
+		return nil, errors.Wrapf(err, "error finding subscription for project '%s'", p.Identifier)
 	}
 	projectSettingsEvent := model.ProjectSettingsEvent{
 		ProjectRef:         *p,
@@ -446,6 +446,6 @@ func (ac *MockProjectConnector) GetVersionsInProject(project, requester string, 
 	return nil, nil
 }
 
-func (pc *MockProjectConnector) GetProjectSettingsEvent(identifier string, p *model.ProjectRef) (*model.ProjectSettingsEvent, error) {
+func (pc *MockProjectConnector) GetProjectSettingsEvent(p *model.ProjectRef) (*model.ProjectSettingsEvent, error) {
 	return nil, nil
 }

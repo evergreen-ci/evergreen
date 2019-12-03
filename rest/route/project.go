@@ -276,7 +276,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	before, err := h.sc.GetProjectSettingsEvent(identifier, dbProjectRef)
+	before, err := h.sc.GetProjectSettingsEvent(dbProjectRef)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettingsEvent before update for project'%s'", h.projectID))
 	}
@@ -401,7 +401,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error deleting subscriptions for project '%s'", h.projectID))
 	}
 
-	after, err := h.sc.GetProjectSettingsEvent(identifier, dbProjectRef)
+	after, err := h.sc.GetProjectSettingsEvent(dbProjectRef)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettingsEvent after update for project'%s'", h.projectID))
 	}
