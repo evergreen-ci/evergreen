@@ -298,13 +298,12 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 		}
 		revision := module.Branch
 		if mfest != nil {
+			mfestModule, ok := mfest.Modules[moduleName]
+			if ok && mfestModule.Revision != "" {
+				revision = mfestModule.Revision
+			}
 			if override, ok := mfest.ModuleOverrides[moduleName]; ok {
 				revision = override
-			} else {
-				mfestModule, ok := mfest.Modules[moduleName]
-				if ok && mfestModule.Revision != "" {
-					revision = mfestModule.Revision
-				}
 			}
 		}
 
