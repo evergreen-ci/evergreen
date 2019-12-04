@@ -14,7 +14,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dustin/go-humanize"
+	humanize "github.com/dustin/go-humanize"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/manifest"
@@ -301,6 +301,9 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 			mfestModule, ok := mfest.Modules[moduleName]
 			if ok && mfestModule.Revision != "" {
 				revision = mfestModule.Revision
+			}
+			if override, ok := mfest.ModuleOverrides[moduleName]; ok {
+				revision = override
 			}
 		}
 

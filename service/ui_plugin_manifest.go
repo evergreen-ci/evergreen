@@ -17,7 +17,7 @@ func (uis *UIServer) GetManifest(w http.ResponseWriter, r *http.Request) {
 	version, err := model.VersionFindOne(model.VersionByProjectIdAndRevision(project, revision))
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error getting version for project %v with revision %v: %v",
-			project, revision, err), http.StatusBadRequest)
+			project, revision, err), http.StatusInternalServerError)
 		return
 	}
 	if version == nil {
@@ -26,15 +26,16 @@ func (uis *UIServer) GetManifest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	foundManifest, err := manifest.FindFromVersion(version.Id, version.Identifier, version.Revision)
+	foundManifest, err := manifest.FindFromVersion(version.Id, version.Identifier, version.Revision, version.Requester)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error getting manifest with version id %v: %v",
-			version.Id, err), http.StatusBadRequest)
+			version.Id, err), http.StatusInternalServerError)
 		return
 	}
 	if foundManifest == nil {
 		http.Error(w, fmt.Sprintf("manifest not found for version %v", version.Id), http.StatusNotFound)
 		return
 	}
+
 	gimlet.WriteJSON(w, foundManifest)
 }
