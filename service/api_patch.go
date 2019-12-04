@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
@@ -229,24 +228,6 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	if err = p.UpdateModulePatch(modulePatch); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
-	}
-
-	if p.Version != "" {
-		patchVersion, err := model.VersionFindOneId(p.Version)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error finding patch version %s", p.Version))
-			return
-		}
-		m, err := manifest.FindFromVersion(patchVersion.Id, patchVersion.Identifier, patchVersion.Revision)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error finding patch manifest"))
-			return
-		}
-		err = m.UpdateModuleRevision(moduleName, githash)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error finding updating revision for module %s", moduleName))
-			return
-		}
 	}
 
 	gimlet.WriteJSON(w, "Patch module updated")
