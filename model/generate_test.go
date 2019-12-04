@@ -306,7 +306,7 @@ func (s *GenerateSuite) SetupTest() {
 }
 
 func (s *GenerateSuite) TestParseProjectFromJSON() {
-	g, err := ParseProjectFromJSON([]byte(sampleGenerateTasksYml))
+	g, err := ParseProjectFromJSON(sampleGenerateTasksYml)
 	s.NotNil(g)
 	s.Nil(err)
 
