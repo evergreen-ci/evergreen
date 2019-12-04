@@ -3,7 +3,8 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
   $scope.availableTriggers = $window.availableTriggers
   $scope.userId = $window.user.Id;
   $scope.isAdmin = $window.isSuperUser || $window.isAdmin;
-  $scope.isSuperUser = $window.isSuperUser;
+  $scope.create = (!$window.acl_enabled && $window.isSuperUser) || ($window.acl_enabled && $window.canCreate); // TODO: PM-1355 remove this
+  console.log($scope.create)
   $scope.acl_enabled = $window.acl_enabled; // TODO PM-1355 remove this
 
   $scope.projectVars = {};

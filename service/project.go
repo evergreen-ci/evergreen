@@ -59,10 +59,23 @@ func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	opts := gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectCreate,
+		RequiredLevel: evergreen.ProjectCreate.Value,
+	}
+	canCreate, err := dbUser.HasPermission(opts)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
 	data := struct {
 		AllProjects []model.ProjectRef
+		CanCreate   bool
 		ViewData
-	}{allProjects, uis.GetCommonViewData(w, r, true, true)}
+	}{allProjects, canCreate, uis.GetCommonViewData(w, r, true, true)}
 
 	uis.render.WriteResponse(w, http.StatusOK, data, "base", "projects.html", "base_angular.html", "menu.html")
 }

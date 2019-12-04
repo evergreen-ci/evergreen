@@ -327,8 +327,6 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 	versionId := vars["version_id"]
 	patchId := vars["patch_id"]
 
-	projectId := uis.getRequestProjectId(r)
-
 	pc := projectContext{AuthRedirect: uis.UserManager.IsRedirect()}
 	isSuperUser := (dbUser != nil) && auth.IsSuperUser(uis.Settings.SuperUsers, dbUser)
 	err := pc.populateProjectRefs(dbUser != nil, isSuperUser, dbUser)
@@ -336,10 +334,40 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 		return pc, err
 	}
 
-	// If we still don't have a default projectId, just use the first project in the list
-	// if there is one.
-	if len(projectId) == 0 && len(pc.AllProjects) > 0 {
-		projectId = pc.AllProjects[0].Identifier
+	projectId := uis.getRequestProjectId(r)
+	opts := gimlet.PermissionOpts{
+		Resource:      projectId,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionTasks,
+		RequiredLevel: evergreen.TasksView.Value,
+	}
+	ok, err := dbUser.HasPermission(opts)
+	if err != nil {
+		return pc, err
+	}
+	if !ok {
+		projectId = ""
+	}
+
+	// If we still don't have a default projectId, just use the first
+	// project in the list that the user has read access to.
+	if projectId == "" {
+		for _, p := range pc.AllProjects {
+			opts := gimlet.PermissionOpts{
+				Resource:      p.Identifier,
+				ResourceType:  evergreen.ProjectResourceType,
+				Permission:    evergreen.PermissionTasks,
+				RequiredLevel: evergreen.TasksView.Value,
+			}
+			ok, err := dbUser.HasPermission(opts)
+			if err != nil {
+				return pc, err
+			}
+			if ok {
+				projectId = p.Identifier
+				break
+			}
+		}
 	}
 
 	// Build a model.Context using the data available.
