@@ -3,6 +3,7 @@ package repotracker
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -712,9 +713,6 @@ func sanityCheckOrderNum(revOrderNum int, projectId, revision string) error {
 // createVersionItems populates and stores all the tasks and builds for a version according to
 // the given project config.
 func createVersionItems(ctx context.Context, v *model.Version, ref *model.ProjectRef, metadata VersionMetadata, project *model.Project, aliases model.ProjectAliases) error {
-	client := evergreen.GetEnvironment().Client()
-	const retryCount = 5
-
 	distroAliases, err := distro.NewDistroAliasesLookupTable()
 	if err != nil {
 		return errors.WithStack(err)
@@ -828,13 +826,15 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 		}
 		_, err = evergreen.GetEnvironment().DB().Collection(model.VersionCollection).InsertOne(sessCtx, v)
 		if err != nil {
-			_ = sessCtx.AbortTransaction(sessCtx)
-			grip.Notice(message.Fields{
+			grip.Error(message.Fields{
 				"message":    "aborting transaction",
 				"cause":      "can't insert version",
 				"version":    v.Id,
 				"insert_err": err.Error(),
 			})
+			if err = sessCtx.AbortTransaction(sessCtx); err != nil {
+				return false, errors.Wrap(err, "error aborting transaction")
+			}
 			if isTransientTxErr(err, v) {
 				return true, nil
 			}
@@ -842,13 +842,16 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 		}
 		_, err = evergreen.GetEnvironment().DB().Collection(build.Collection).InsertMany(sessCtx, buildsToCreate)
 		if err != nil {
-			_ = sessCtx.AbortTransaction(sessCtx)
 			grip.Error(message.Fields{
 				"message":    "aborting transaction",
 				"cause":      "can't insert builds",
 				"version":    v.Id,
 				"insert_err": err.Error(),
 			})
+			if err = sessCtx.AbortTransaction(sessCtx); err != nil {
+				return false, errors.Wrap(err, "error aborting transaction")
+			}
+
 			if isTransientTxErr(err, v) {
 				return true, nil
 			}
@@ -856,13 +859,15 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 		}
 		err = tasksToCreate.InsertUnordered(sessCtx)
 		if err != nil {
-			_ = sessCtx.AbortTransaction(sessCtx)
 			grip.Error(message.Fields{
 				"message":    "aborting transaction",
 				"cause":      "can't insert tasks",
 				"version":    v.Id,
 				"insert_err": err.Error(),
 			})
+			if err = sessCtx.AbortTransaction(sessCtx); err != nil {
+				return false, errors.Wrap(err, "error aborting transaction")
+			}
 			if isTransientTxErr(err, v) {
 				return true, nil
 			}
@@ -870,13 +875,19 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 		}
 		err = sessCtx.CommitTransaction(sessCtx)
 		if err != nil {
+			grip.Error(message.Fields{
+				"message":    "aborting transaction",
+				"cause":      "unable to commit transaction",
+				"version":    v.Id,
+				"insert_err": err.Error(),
+			})
+			if err = sessCtx.AbortTransaction(sessCtx); err != nil {
+				return false, errors.Wrap(err, "error aborting transaction")
+			}
+
 			if isTransientTxErr(err, v) {
 				return true, nil
 			}
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "unable to commit transaction",
-				"version": v.Id,
-			}))
 			return false, errors.Wrapf(err, "error committing transaction for version %s", v.Id)
 		}
 		grip.Info(message.Fields{
@@ -889,21 +900,43 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 		return false, nil
 	}
 
-	return client.UseSession(ctx, func(sessCtx mongo.SessionContext) error {
-		for i := 0; i < retryCount; i++ {
+	return transactionWithRetries(ctx, txFunc)
+}
+
+// If we error in aborting transaction, we recreate the client and start again.
+// If we abort successfully and the error is a transient transaction error, we retry using the same client.
+func transactionWithRetries(ctx context.Context, txFunc func(sessCtx mongo.SessionContext) (bool, error)) error {
+	const transactionRetryCount = 5
+	const clientRetryCount = 2
+	useSessionFunc := func(sessCtx mongo.SessionContext) error {
+		for j := 0; j < transactionRetryCount; j++ {
 			shouldRetry, err := txFunc(sessCtx)
 			if err != nil {
 				return err
 			}
 			if !shouldRetry {
-				break
-			}
-			if i >= retryCount-1 {
-				return errors.Errorf("hit max retries for version %s", v.Id)
+				return nil
 			}
 		}
-		return nil
-	})
+		return errors.New("hit max retries for version")
+	}
+
+	for i := 0; i < clientRetryCount; i++ {
+		client := evergreen.GetEnvironment().Client()
+		err := client.UseSession(ctx, useSessionFunc)
+		if err == nil {
+			return nil
+		}
+		if !strings.Contains(err.Error(), "error aborting transaction") {
+			// error unrelated to session retry
+			return err
+		}
+		grip.InfoWhen(i < clientRetryCount-1, message.WrapError(err, message.Fields{
+			"message":     "hit error aborting transaction, will recreate client",
+			"cur_attempt": i,
+		}))
+	}
+	return errors.New("hit max client retries for version")
 }
 
 func isTransientTxErr(err error, version *model.Version) bool {
