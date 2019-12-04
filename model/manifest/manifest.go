@@ -14,7 +14,7 @@ type Manifest struct {
 	ProjectName     string             `json:"project" bson:"project"`
 	Branch          string             `json:"branch" bson:"branch"`
 	Modules         map[string]*Module `json:"modules" bson:"modules"`
-	ModuleOverrides map[string]string  `json:"module_overrides,omitempty" bson:"omitempty"`
+	ModuleOverrides map[string]string  `json:"module_overrides,omitempty" bson:"-"`
 }
 
 // A Module is a snapshot of the module associated with a version.
