@@ -198,7 +198,7 @@ func (tc *DBTaskConnector) GetManifestByTask(taskId string) (*manifest.Manifest,
 	if t == nil {
 		return nil, errors.Errorf("task '%s' not found", t.Id)
 	}
-	mfest, err := manifest.FindFromVersion(t.Version, t.Project, t.Revision)
+	mfest, err := manifest.FindFromVersion(t.Version, t.Project, t.Revision, t.Requester)
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem finding manifest from version '%s'", t.Version)
 	}

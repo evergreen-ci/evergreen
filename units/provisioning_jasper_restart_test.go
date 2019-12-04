@@ -304,7 +304,7 @@ func TestJasperRestartJob(t *testing.T) {
 			}
 
 			env := &mock.Environment{}
-			require.NoError(t, env.Configure(tctx, "", nil))
+			require.NoError(t, env.Configure(tctx))
 
 			require.NoError(t, withJasperServiceSetupAndTeardown(tctx, env, mngr, h, func(env evergreen.Environment) {
 				testCase(tctx, t, env, mngr, h)

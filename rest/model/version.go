@@ -7,14 +7,13 @@ import (
 
 // APIVersion is the model to be returned by the API whenever versions are fetched.
 type APIVersion struct {
-	Id         APIString `json:"version_id"`
-	CreateTime APITime   `json:"create_time"`
-	StartTime  APITime   `json:"start_time"`
-	FinishTime APITime   `json:"finish_time"`
-	Revision   APIString `json:"revision"`
-	Order      int       `json:"order"`
-	Project    APIString `json:"project"`
-
+	Id            APIString     `json:"version_id"`
+	CreateTime    APITime       `json:"create_time"`
+	StartTime     APITime       `json:"start_time"`
+	FinishTime    APITime       `json:"finish_time"`
+	Revision      APIString     `json:"revision"`
+	Order         int           `json:"order"`
+	Project       APIString     `json:"project"`
 	Author        APIString     `json:"author"`
 	AuthorEmail   APIString     `json:"author_email"`
 	Message       APIString     `json:"message"`
@@ -22,10 +21,7 @@ type APIVersion struct {
 	Repo          APIString     `json:"repo"`
 	Branch        APIString     `json:"branch"`
 	BuildVariants []buildDetail `json:"build_variants_status"`
-
-	Errors   []APIString `json:"errors"`
-	Warnings []APIString `json:"warnings"`
-	Ignored  bool        `json:"ignored"`
+	Requester     APIString     `json:"requester"`
 }
 
 type buildDetail struct {
@@ -53,6 +49,7 @@ func (apiVersion *APIVersion) BuildFromService(h interface{}) error {
 	apiVersion.Branch = ToAPIString(v.Branch)
 	apiVersion.Order = v.RevisionOrderNumber
 	apiVersion.Project = ToAPIString(v.Identifier)
+	apiVersion.Requester = ToAPIString(v.Requester)
 
 	var bd buildDetail
 	for _, t := range v.BuildVariants {

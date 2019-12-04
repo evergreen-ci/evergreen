@@ -36,7 +36,7 @@ func TestTerminateHosts(t *testing.T) {
 	defer cancel()
 
 	env := &mock.Environment{}
-	assert.NoError(env.Configure(ctx, "", nil))
+	assert.NoError(env.Configure(ctx))
 
 	hostID := "i-12345"
 	mcp := cloud.GetMockProvider()
@@ -103,7 +103,7 @@ func TestHostCosts(t *testing.T) {
 	assert.NoError(t1.Insert())
 
 	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx, "", nil))
+	require.NoError(t, env.Configure(ctx))
 	j := NewHostTerminationJob(env, *h, true, "")
 	j.Run(ctx)
 	assert.NoError(j.Error())

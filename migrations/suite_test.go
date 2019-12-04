@@ -2,13 +2,10 @@ package migrations
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/client"
 	adb "github.com/mongodb/anser/db"
@@ -35,7 +32,7 @@ func (s *migrationSuite) SetupSuite() {
 	ctx, s.cancel = context.WithCancel(context.Background())
 
 	s.env = &mock.Environment{}
-	require.NoError(s.env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+	require.NoError(s.env.Configure(ctx))
 
 	var err error
 	session, database, err := db.GetGlobalSessionFactory().GetSession()

@@ -33,7 +33,7 @@ func (as *APIServer) manifestLoadHandler(w http.ResponseWriter, r *http.Request)
 		as.LoggedError(w, r, http.StatusNotFound, errors.Errorf("version not found: %s", task.Version))
 		return
 	}
-	currentManifest, err := manifest.FindFromVersion(v.Id, v.Identifier, v.Revision)
+	currentManifest, err := manifest.FindFromVersion(v.Id, v.Identifier, v.Revision, v.Requester)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest,
 			errors.Wrapf(err, "error retrieving manifest with version id %s", task.Version))
