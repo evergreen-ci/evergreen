@@ -73,7 +73,7 @@ func TestUserDataDoneJob(t *testing.T) {
 			defer cancel()
 
 			env := &mock.Environment{}
-			require.NoError(t, env.Configure(tctx, "", nil))
+			require.NoError(t, env.Configure(tctx))
 			env.Settings().HostJasper = evergreen.HostJasperConfig{}
 
 			mngr := &jmock.Manager{}

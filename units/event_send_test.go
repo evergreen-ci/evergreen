@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"regexp"
 	"testing"
 	"time"
@@ -14,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/suite"
@@ -46,7 +44,7 @@ func (s *eventNotificationSuite) SetupSuite() {
 
 func (s *eventNotificationSuite) SetupTest() {
 	s.env = &mock.Environment{}
-	s.NoError(s.env.Configure(s.ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+	s.NoError(s.env.Configure(s.ctx))
 
 	s.NoError(db.ClearCollections(notification.Collection, evergreen.ConfigCollection))
 

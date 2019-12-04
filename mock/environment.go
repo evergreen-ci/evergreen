@@ -45,15 +45,12 @@ type Environment struct {
 	roleManager          gimlet.RoleManager
 }
 
-func (e *Environment) Configure(ctx context.Context, path string, db *evergreen.DBSettings) error {
+func (e *Environment) Configure(ctx context.Context) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.EnvContext = ctx
 
 	e.EvergreenSettings = testutil.TestConfig()
-	if db != nil {
-		e.EvergreenSettings.Database = *db
-	}
 	e.DBSession = anserMock.NewSession()
 
 	e.Remote = queue.NewLocalLimitedSize(2, 1048)
