@@ -187,6 +187,22 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// For a single-host task group, if a task fails, block and dequeue later tasks in that group.
+	// Call before MarkEnd so the version is marked finished when this is the last task in the version
+	// to finish
+	if t.TaskGroup != "" && t.TaskGroupMaxHosts == 1 && details.Status != evergreen.TaskSucceeded {
+		if err = model.BlockTaskGroupTasks(t.Id); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "problem blocking task group tasks",
+				"task_id": t.Id,
+			}))
+		}
+		grip.Debug(message.Fields{
+			"message": "blocked task group tasks for task",
+			"task_id": t.Id,
+		})
+	}
+
 	// mark task as finished
 	updates := model.StatusChanges{}
 	err = model.MarkEnd(t, APIServerLockTitle, finishTime, details, projectRef.DeactivatePrevious, &updates)
@@ -196,7 +212,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if projectRef.CommitQueue.Enabled && details.Status != evergreen.TaskSucceeded {
+	if t.Requester == evergreen.MergeTestRequester && details.Status != evergreen.TaskSucceeded {
 		if err = model.TryDequeueAndAbortCommitQueueVersion(projectRef, t.Version, APIServerLockTitle); err != nil {
 			err = errors.Wrapf(err, "Error dequeueing and aborting failed commit queue version")
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -215,20 +231,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		endTaskResp = &apimodels.EndTaskResponse{}
 		gimlet.WriteJSON(w, endTaskResp)
 		return
-	}
-
-	// For a single-host task group, if a task fails, block and dequeue later tasks in that group.
-	if t.TaskGroup != "" && t.TaskGroupMaxHosts == 1 && details.Status != evergreen.TaskSucceeded {
-		if err = model.BlockTaskGroupTasks(t.Id); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "problem blocking task group tasks",
-				"task_id": t.Id,
-			}))
-		}
-		grip.Debug(message.Fields{
-			"message": "blocked task group tasks for task",
-			"task_id": t.Id,
-		})
 	}
 
 	job := units.NewCollectTaskEndDataJob(t, currentHost)
