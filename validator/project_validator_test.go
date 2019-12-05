@@ -657,11 +657,12 @@ func TestValidateTaskNames(t *testing.T) {
 				{Name: "task|"},
 				{Name: "|task"},
 				{Name: "ta|sk"},
+				{Name: "this is my task"},
 				{Name: "task"},
 			},
 		}
 		validationResults := validateTaskNames(project)
-		So(len(validationResults), ShouldEqual, 3)
+		So(len(validationResults), ShouldEqual, 4)
 	})
 }
 

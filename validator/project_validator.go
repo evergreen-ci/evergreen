@@ -518,13 +518,14 @@ func ensureReferentialIntegrity(project *model.Project, distroIds []string) Vali
 
 // validateTaskNames ensures the task names do not contain unauthorized characters.
 func validateTaskNames(project *model.Project) ValidationErrors {
+	unauthorizedTaskCharacters := unauthorizedCharacters + " "
 	errs := ValidationErrors{}
 	for _, task := range project.Tasks {
-		if strings.ContainsAny(task.Name, unauthorizedCharacters) {
+		if strings.ContainsAny(strings.TrimSpace(task.Name), unauthorizedTaskCharacters) {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("task name %v contains unauthorized characters (%v)",
-						task.Name, unauthorizedCharacters),
+					Message: fmt.Sprintf("task name %v contains unauthorized characters ('%v')",
+						task.Name, unauthorizedTaskCharacters),
 				})
 		}
 	}
