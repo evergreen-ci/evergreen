@@ -327,34 +327,6 @@ func (m *ec2FleetManager) TimeTilNextPayment(h *host.Host) time.Duration {
 	return timeTilNextEC2Payment(h)
 }
 
-func (m *ec2FleetManager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time) (float64, error) {
-	if end.Before(start) || util.IsZeroTime(start) || util.IsZeroTime(end) {
-		return 0, errors.New("task timing data is malformed")
-	}
-
-	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return 0, errors.Wrap(err, "error creating client")
-	}
-	defer m.client.Close()
-
-	t := timeRange{start: start, end: end}
-	ec2Cost, err := pkgCachingPriceFetcher.getEC2Cost(ctx, m.client, h, t)
-	if err != nil {
-		return 0, errors.Wrap(err, "error fetching ec2 cost")
-	}
-	ebsCost, err := pkgCachingPriceFetcher.getEBSCost(ctx, m.client, h, t)
-	if err != nil {
-		return 0, errors.Wrap(err, "error fetching ebs cost")
-	}
-	total := ec2Cost + ebsCost
-
-	if total < 0 {
-		return 0, errors.Errorf("cost appears to be less than 0 (%g) which is impossible", total)
-	}
-
-	return total, nil
-}
-
 func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.LaunchTemplateBlockDeviceMappingRequest) error {
 	// Cleanup
 	var templateID *string

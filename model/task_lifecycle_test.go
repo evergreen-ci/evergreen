@@ -1201,10 +1201,8 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 	p := &patch.Patch{
 		Version: v.Id,
 		GithubPatchData: patch.GithubPatch{
-			PRNumber:  12,
-			HeadOwner: "evergreen-ci",
-			BaseRepo:  "evergreen",
-			Author:    "octocat",
+			PRNumber:       12,
+			MergeCommitSHA: "abcdef",
 		},
 		Alias:  evergreen.CommitQueueAlias,
 		Status: evergreen.PatchStarted,
@@ -1257,7 +1255,7 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 
 	pRef := &ProjectRef{Identifier: cq.ProjectID}
 
-	assert.NoError(t, TryDequeueAndAbortCommitQueueVersion(pRef, v.Id, t1.Requester))
+	assert.NoError(t, TryDequeueAndAbortCommitQueueVersion(pRef, v.Id, evergreen.User))
 	cq, err := commitqueue.FindOneId("my-project")
 	assert.NoError(t, err)
 	assert.Equal(t, cq.FindItem("12"), -1)

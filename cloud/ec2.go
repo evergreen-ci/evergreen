@@ -1187,7 +1187,12 @@ func (m *ec2Manager) CostForDuration(ctx context.Context, h *host.Host, start, e
 	if end.Before(start) || util.IsZeroTime(start) || util.IsZeroTime(end) {
 		return 0, errors.New("task timing data is malformed")
 	}
-	if err := m.client.Create(m.credentials, m.region); err != nil {
+	ec2Settings := &EC2ProviderSettings{}
+	err := ec2Settings.fromDistroSettings(h.Distro)
+	if err != nil {
+		return 0, errors.Wrap(err, "problem getting region from host")
+	}
+	if err = m.client.Create(m.credentials, m.region); err != nil {
 		return 0, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()

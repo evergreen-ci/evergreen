@@ -163,8 +163,7 @@ func (j *collectHostIdleDataJob) incrementCostForDuration(ctx context.Context) (
 
 	calc, ok := j.manager.(cloud.CostCalculator)
 	if !ok {
-		// return early if we can't get the cost
-		return 0, nil
+		return 0, errors.Errorf("manager of type '%T' isn't a cost calculator", j.manager)
 	}
 
 	cost, err := calc.CostForDuration(ctx, j.host, j.StartTime, j.FinishTime)
