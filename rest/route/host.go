@@ -64,6 +64,28 @@ func (h *hostsChangeStatusesHandler) Parse(ctx context.Context, r *http.Request)
 func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 	for id := range h.HostToStatus {
+		if evergreen.AclCheckingIsEnabled {
+			opts := gimlet.PermissionOpts{
+				Resource:      id,
+				ResourceType:  evergreen.DistroResourceType,
+				Permission:    evergreen.PermissionHosts,
+				RequiredLevel: evergreen.HostsEdit.Value,
+			}
+			ok, err := user.HasPermission(opts)
+			if err != nil {
+				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    fmt.Sprintf("Problem checking permission for host '%s'", foundHost.Id),
+				})
+			}
+			if !ok {
+				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+					StatusCode: http.StatusUnauthorized,
+					Message:    fmt.Sprintf("User not authorized to edit host '%s'", foundHost.Id),
+				})
+			}
+		}
+
 		foundHost, err := h.sc.FindHostByIdWithOwner(id, user)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", id))
