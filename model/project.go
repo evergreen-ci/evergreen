@@ -1019,6 +1019,7 @@ func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
 }
 
 func FindLastKnownGoodProject(identifier string) (*Project, error) {
+	const retryCount = 5
 	if identifier == "" {
 		return nil, errors.WithStack(errors.New("cannot pass empty identifier to FindLastKnownGoodProject"))
 	}
@@ -1026,18 +1027,22 @@ func FindLastKnownGoodProject(identifier string) (*Project, error) {
 		Identifier: identifier,
 	}
 
-	lastGoodVersion, err := VersionFindOne(VersionByLastKnownGoodConfig(identifier))
-	if err != nil {
-		return nil, errors.Wrapf(err, "Error finding recent valid version for '%s'", identifier)
-	}
-	if lastGoodVersion != nil {
-		err = LoadProjectInto([]byte(lastGoodVersion.Config), identifier, project)
-		if err != nil {
-			return nil, errors.Wrapf(err, "Error loading project from "+
-				"last good version for project, %s", lastGoodVersion.Identifier)
+	revisionOrderNum := -1 // only specify in the event of failure
+	var err error
+	var lastGoodVersion *Version
+	for i := 0; i < retryCount; i++ {
+		lastGoodVersion, err = FindVersionByLastKnownGoodConfig(identifier, revisionOrderNum)
+		if lastGoodVersion != nil {
+			err = LoadProjectInto([]byte(lastGoodVersion.Config), identifier, project)
+			revisionOrderNum = lastGoodVersion.RevisionOrderNumber // look for an older version if the returned version is malformed
+		}
+		if err == nil {
+			return project, nil
 		}
 	}
-	return project, nil
+
+	return nil, errors.Wrapf(err, "Error loading project from "+
+		"last good version for project, %s", lastGoodVersion.Identifier)
 }
 
 func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit {

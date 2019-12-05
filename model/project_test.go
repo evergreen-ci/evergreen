@@ -39,6 +39,7 @@ func TestFindProject(t *testing.T) {
 
 		Convey("if the project file exists and is valid, the project spec within"+
 			"should be unmarshalled and returned", func() {
+			So(db.ClearCollections(VersionCollection), ShouldBeNil)
 			v := &Version{
 				Owner:      "fakeowner",
 				Repo:       "fakerepo",
@@ -57,6 +58,35 @@ func TestFindProject(t *testing.T) {
 			_, err := FindLastKnownGoodProject(p.Identifier)
 			So(err, ShouldBeNil)
 
+		})
+		Convey("if the first version is somehow malformed, return an earlier one", func() {
+			So(db.ClearCollections(VersionCollection), ShouldBeNil)
+			badVersion := &Version{
+				Id:                  "bad_version",
+				Owner:               "fakeowner",
+				Repo:                "fakerepo",
+				Branch:              "fakebranch",
+				Identifier:          "project_test",
+				Requester:           evergreen.RepotrackerVersionRequester,
+				Config:              "this is just nonsense",
+				RevisionOrderNumber: 10,
+			}
+			goodVersion := &Version{
+				Id:                  "good_version",
+				Owner:               "fakeowner",
+				Repo:                "fakerepo",
+				Branch:              "fakebranch",
+				Identifier:          "project_test",
+				Requester:           evergreen.RepotrackerVersionRequester,
+				Config:              "owner: fakeowner\nrepo: fakerepo\nbranch: fakebranch",
+				RevisionOrderNumber: 8,
+			}
+			So(badVersion.Insert(), ShouldBeNil)
+			So(goodVersion.Insert(), ShouldBeNil)
+			p, err := FindLastKnownGoodProject("project_test")
+			So(err, ShouldBeNil)
+			So(p, ShouldNotBeNil)
+			So(p.Owner, ShouldEqual, "fakeowner")
 		})
 
 	})

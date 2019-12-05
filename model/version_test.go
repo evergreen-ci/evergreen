@@ -25,7 +25,7 @@ func TestLastKnownGoodConfig(t *testing.T) {
 				Errors:     []string{"error 1", "error 2"},
 			}
 			require.NoError(t, v.Insert(), "Error inserting test version: %s", v.Id)
-			lastGood, err := VersionFindOne(VersionByLastKnownGoodConfig(identifier))
+			lastGood, err := FindVersionByLastKnownGoodConfig(identifier, -1)
 			require.NoError(t, err, "error finding last known good")
 			So(lastGood, ShouldBeNil)
 		})
@@ -35,7 +35,7 @@ func TestLastKnownGoodConfig(t *testing.T) {
 				Requester:  evergreen.RepotrackerVersionRequester,
 			}
 			require.NoError(t, v.Insert(), "Error inserting test version: %s", v.Id)
-			lastGood, err := VersionFindOne(VersionByLastKnownGoodConfig(identifier))
+			lastGood, err := FindVersionByLastKnownGoodConfig(identifier, -1)
 			require.NoError(t, err, "error finding last known good: %s", lastGood.Id)
 			So(lastGood, ShouldNotBeNil)
 		})
@@ -56,7 +56,7 @@ func TestLastKnownGoodConfig(t *testing.T) {
 			v.RevisionOrderNumber = 2
 			v.Config = "2"
 			require.NoError(t, v.Insert(), "Error inserting test version: %s", v.Id)
-			lastGood, err := VersionFindOne(VersionByLastKnownGoodConfig(identifier))
+			lastGood, err := FindVersionByLastKnownGoodConfig(identifier, -1)
 			require.NoError(t, err, "error finding last known good: %s", v.Id)
 			So(lastGood, ShouldNotBeNil)
 			So(lastGood.Config, ShouldEqual, "5")
