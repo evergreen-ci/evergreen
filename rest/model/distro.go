@@ -208,7 +208,34 @@ type APIBootstrapSettings struct {
 	ServiceUser           APIString         `json:"service_user"`
 	ShellPath             APIString         `json:"shell_path"`
 	RootDir               APIString         `json:"root_dir"`
+	Env                   []APIEnvVar       `json:"env"`
 	ResourceLimits        APIResourceLimits `json:"resource_limits"`
+}
+
+type APIEnvVar struct {
+	Key   APIString `json:"key"`
+	Value APIString `json:"value"`
+}
+
+// BuildFromService converts a service level distro.EnvVar to an APIEnvVar
+func (e *APIEnvVar) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case distro.Expansion:
+		e.Key = ToAPIString(v.Key)
+		e.Value = ToAPIString(v.Value)
+	default:
+		return errors.Errorf("%T is not a supported expansion type", h)
+	}
+	return nil
+}
+
+// ToService returns a service layer distro.Expansion using the data from an APIExpansion
+func (e *APIEnvVar) ToService() (interface{}, error) {
+	d := distro.EnvVar{}
+	d.Key = FromAPIString(e.Key)
+	d.Value = FromAPIString(e.Value)
+
+	return interface{}(d), nil
 }
 
 type APIResourceLimits struct {
@@ -245,6 +272,13 @@ func (s *APIBootstrapSettings) BuildFromService(h interface{}) error {
 	s.ServiceUser = ToAPIString(settings.ServiceUser)
 	s.ShellPath = ToAPIString(settings.ShellPath)
 	s.RootDir = ToAPIString(settings.RootDir)
+	for _, envVar := range settings.Env {
+		apiEnvVar := APIEnvVar{}
+		if err := apiEnvVar.BuildFromService(envVar); err != nil {
+			return errors.Wrap(err, "error building environment variable")
+		}
+		s.Env = append(s.Env, apiEnvVar)
+	}
 
 	s.ResourceLimits.NumFiles = settings.ResourceLimits.NumFiles
 	s.ResourceLimits.NumProcesses = settings.ResourceLimits.NumProcesses
@@ -272,6 +306,17 @@ func (s *APIBootstrapSettings) ToService() (interface{}, error) {
 	settings.ServiceUser = FromAPIString(s.ServiceUser)
 	settings.ShellPath = FromAPIString(s.ShellPath)
 	settings.RootDir = FromAPIString(s.RootDir)
+	for _, apiEnvVar := range s.Env {
+		i, err := apiEnvVar.ToService()
+		if err != nil {
+			return nil, errors.Wrap(err, "error building environment variable")
+		}
+		envVar, ok := i.(distro.EnvVar)
+		if !ok {
+			return nil, errors.Errorf("unexpected type %T for environment variable", i)
+		}
+		settings.Env = append(settings.Env, envVar)
+	}
 
 	settings.ResourceLimits.NumFiles = s.ResourceLimits.NumFiles
 	settings.ResourceLimits.NumProcesses = s.ResourceLimits.NumProcesses

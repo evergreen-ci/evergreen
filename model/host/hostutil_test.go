@@ -197,7 +197,9 @@ func TestJasperCommands(t *testing.T) {
 			assert.Contains(t, cmd, "--host=0.0.0.0")
 			assert.Contains(t, cmd, fmt.Sprintf("--port=%d", settings.HostJasper.Port))
 			assert.Contains(t, cmd, fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
-			assert.Contains(t, cmd, fmt.Sprintf("--user=%s", h.Distro.User), cmd)
+			assert.Contains(t, cmd, fmt.Sprintf("--user=%s", h.Distro.User))
+			assert.Contains(t, cmd, fmt.Sprintf("--env envKey0=envValue0"))
+			assert.Contains(t, cmd, fmt.Sprintf("--env envKey1=envValue1"))
 			assert.Contains(t, cmd, fmt.Sprintf("--limit_num_procs=%d", h.Distro.BootstrapSettings.ResourceLimits.NumProcesses))
 			assert.Contains(t, cmd, fmt.Sprintf("--limit_num_files=%d", h.Distro.BootstrapSettings.ResourceLimits.NumFiles))
 			assert.Contains(t, cmd, fmt.Sprintf("--limit_virtual_memory=%d", h.Distro.BootstrapSettings.ResourceLimits.VirtualMemoryKB))
@@ -231,6 +233,10 @@ func TestJasperCommands(t *testing.T) {
 					BootstrapSettings: distro.BootstrapSettings{
 						JasperBinaryDir:       "/foo",
 						JasperCredentialsPath: "/bar/bat.txt",
+						Env: []distro.EnvVar{
+							{Key: "envKey0", Value: "envValue0"},
+							{Key: "envKey1", Value: "envValue1"},
+						},
 						ResourceLimits: distro.ResourceLimits{
 							NumProcesses:    1,
 							NumFiles:        2,
