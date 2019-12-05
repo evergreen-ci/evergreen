@@ -3,7 +3,6 @@ package repotracker
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -25,7 +24,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/x/network/command"
 	mgobson "gopkg.in/mgo.v2/bson"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -819,10 +818,10 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 		})
 	}
 
-	txFunc := func(sessCtx mongo.SessionContext) (bool, error) {
+	txFunc := func(sessCtx mongo.SessionContext) error {
 		err := sessCtx.StartTransaction()
 		if err != nil {
-			return false, errors.Wrap(err, "error starting transaction")
+			return errors.Wrap(err, "error starting transaction")
 		}
 		_, err = evergreen.GetEnvironment().DB().Collection(model.VersionCollection).InsertOne(sessCtx, v)
 		if err != nil {
@@ -833,12 +832,9 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 				"insert_err": err.Error(),
 			})
 			if err = sessCtx.AbortTransaction(sessCtx); err != nil {
-				return false, errors.Wrap(err, "error aborting transaction")
+				return errors.Wrap(err, "error aborting transaction")
 			}
-			if isTransientTxErr(err, v) {
-				return true, nil
-			}
-			return false, errors.Wrapf(err, "error inserting version %s", v.Id)
+			return errors.Wrapf(err, "error inserting version %s", v.Id)
 		}
 		_, err = evergreen.GetEnvironment().DB().Collection(build.Collection).InsertMany(sessCtx, buildsToCreate)
 		if err != nil {
@@ -849,13 +845,10 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 				"insert_err": err.Error(),
 			})
 			if err = sessCtx.AbortTransaction(sessCtx); err != nil {
-				return false, errors.Wrap(err, "error aborting transaction")
+				return errors.Wrap(err, "error aborting transaction")
 			}
 
-			if isTransientTxErr(err, v) {
-				return true, nil
-			}
-			return false, errors.Wrap(err, "error inserting builds")
+			return errors.Wrap(err, "error inserting builds")
 		}
 		err = tasksToCreate.InsertUnordered(sessCtx)
 		if err != nil {
@@ -866,12 +859,9 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 				"insert_err": err.Error(),
 			})
 			if err = sessCtx.AbortTransaction(sessCtx); err != nil {
-				return false, errors.Wrap(err, "error aborting transaction")
+				return errors.Wrap(err, "error aborting transaction")
 			}
-			if isTransientTxErr(err, v) {
-				return true, nil
-			}
-			return false, errors.Wrap(err, "error inserting tasks")
+			return errors.Wrap(err, "error inserting tasks")
 		}
 		err = sessCtx.CommitTransaction(sessCtx)
 		if err != nil {
@@ -882,13 +872,10 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 				"insert_err": err.Error(),
 			})
 			if err = sessCtx.AbortTransaction(sessCtx); err != nil {
-				return false, errors.Wrap(err, "error aborting transaction")
+				return errors.Wrap(err, "error aborting transaction")
 			}
 
-			if isTransientTxErr(err, v) {
-				return true, nil
-			}
-			return false, errors.Wrapf(err, "error committing transaction for version %s", v.Id)
+			return errors.Wrapf(err, "error committing transaction for version %s", v.Id)
 		}
 		grip.Info(message.Fields{
 			"message": "successfully created version",
@@ -897,55 +884,38 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 			"project": v.Branch,
 			"runner":  RunnerName,
 		})
-		return false, nil
+		return nil
 	}
 
-	return transactionWithRetries(ctx, txFunc)
+	return transactionWithRetries(ctx, v.Id, txFunc)
 }
 
 // If we error in aborting transaction, we create a new session and start again.
 // If we abort successfully and the error is a transient transaction error, we retry using the same session.
-func transactionWithRetries(ctx context.Context, txFunc func(sessCtx mongo.SessionContext) (bool, error)) error {
-	const transactionRetryCount = 5
-	const sessionRetryCount = 2
-	useSessionFunc := func(sessCtx mongo.SessionContext) error {
-		for j := 0; j < transactionRetryCount; j++ {
-			shouldRetry, err := txFunc(sessCtx)
-			if err != nil {
-				return err
-			}
-			if !shouldRetry {
-				return nil
-			}
-		}
-		return errors.New("hit max retries for version")
-	}
+func transactionWithRetries(ctx context.Context, versionId string, sessionFunc func(sessCtx mongo.SessionContext) error) error {
+	const retryCount = 5
 
 	client := evergreen.GetEnvironment().Client()
-	for i := 0; i < sessionRetryCount; i++ {
-		err := client.UseSession(ctx, useSessionFunc)
-		if err == nil {
-			return nil
-		}
-		if !strings.Contains(err.Error(), "error aborting transaction") {
-			// error unrelated to session retry
+	for i := 0; i < retryCount; i++ {
+		err := client.UseSession(ctx, sessionFunc)
+		// only continue if we had a transaction error
+		if !isTransientTxErr(err, versionId) {
 			return err
 		}
-		grip.InfoWhen(i < sessionRetryCount-1, message.WrapError(err, message.Fields{
-			"message":     "hit error aborting transaction, will start new session",
-			"cur_attempt": i,
-		}))
 	}
-	return errors.New("hit max client retries for version")
+	return errors.Errorf("hit max client retries for version '%s'", versionId)
 }
 
-func isTransientTxErr(err error, version *model.Version) bool {
+func isTransientTxErr(err error, versionId string) bool {
+	if err == nil {
+		return false
+	}
 	rootErr := errors.Cause(err)
 	cmdErr, isCmdErr := rootErr.(mongo.CommandError)
 	if isCmdErr && cmdErr.HasErrorLabel(command.TransientTransactionError) {
 		grip.Notice(message.WrapError(err, message.Fields{
 			"message": "hit transient transaction error, will retry",
-			"version": version.Id,
+			"version": versionId,
 		}))
 		return true
 	}
