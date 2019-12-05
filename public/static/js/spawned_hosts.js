@@ -1,4 +1,4 @@
-mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', 'mciSpawnRestService', 'notificationService', function ($scope, $window, $timeout, mciSpawnRestService, notificationService) {
+mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q', 'mciSpawnRestService', 'notificationService', function ($scope, $window, $timeout, $q, mciSpawnRestService, notificationService) {
     $scope.userTz = $window.userTz;
     $scope.hosts = null;
     $scope.modalOpen = false;
@@ -117,7 +117,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', 'mciS
         if (host.no_expiration) {
           host.expires_in = "never";
           host.original_expiration = null;
-          host.current_expiration = new Date();
+          host.current_expiration = null;
           host.modified_expiration = new Date();
         } else {
           var expiretime = moment().diff(host.expiration_time, 'seconds');
@@ -273,6 +273,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', 'mciS
     };
 
     $scope.update = function () {
+      let promises = [];
       // update expiration if it changed
       if (!moment($scope.curHostData.original_expiration).startOf("second").isSame(moment($scope.curHostData.current_expiration).startOf("second"))) {
         let new_expiration = null;
@@ -280,37 +281,31 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', 'mciS
           new_expiration = new Date($scope.curHostData.current_expiration);
         }
 
-        mciSpawnRestService.extendHostExpiration(
+        promises.push(mciSpawnRestService.extendHostExpiration(
           'extendHostExpiration',
           $scope.curHostData.id, new_expiration, {}, {
-            success: function (resp) {
-              window.location.href = "/spawn";
-            },
             error: function (resp) {
               notificationService.pushNotification('Error extending host expiration: ' + resp.data.error, 'errorHeader');
             }
           }
-        );
+        ));
       }
 
       // update tags if they changed
-      if (($scope.curHostData.tags_to_add && $scope.curHostData.tags_to_add.length > 0) || ($scope.curHostData.tags_to_delete && $scope.curHostData.tags_to_delete.length > 0)) {
+      if (($scope.curHostData.tags_to_add && Object.entries($scope.curHostData.tags_to_add).length > 0) || ($scope.curHostData.tags_to_delete && $scope.curHostData.tags_to_delete.length > 0)) {
         let tags_to_add = [];
         for (key in $scope.curHostData.tags_to_add) {
           let new_tag = key + "=" + $scope.curHostData.tags_to_add[key];
           tags_to_add.push(new_tag);
         }
-        mciSpawnRestService.updateHostTags(
+        promises.push(mciSpawnRestService.updateHostTags(
           'updateHostTags',
           $scope.curHostData.id, tags_to_add, $scope.curHostData.tags_to_delete, {}, {
-            success: function (resp) {
-              window.location.href = "/spawn";
-            },
             error: function (resp) {
               notificationService.pushNotification('Error updating host tags: ' + resp.data.error, 'errorHeader');
             }
           }
-        );
+        ));
       }
 
       // update instance type if it changed
@@ -320,18 +315,19 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', 'mciS
           notificationService.pushNotification('Host must be stopped before modifying instance type', 'errorHeader');
           return
         }
-        mciSpawnRestService.updateInstanceType(
+        promises.push(mciSpawnRestService.updateInstanceType(
           'updateInstanceType',
           $scope.curHostData.id, $scope.curHostData.selectedInstanceType, {}, {
-            success: function (resp) {
-              window.location.href = "/spawn";
-            },
             error: function (resp) {
               notificationService.pushNotification('Error setting new instance type: ' + resp.data.error, 'errorHeader')
             }
           }
-        );
+        ));
       }
+
+      $q.all.then(() => {
+        window.location.href = "/spawn";
+      })
     }
 
     $scope.updateHostStatus = function (action) {

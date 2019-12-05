@@ -29,12 +29,12 @@ mciServices.rest.factory('mciBaseRestService', ['$http', function ($http) {
             };
         };
 
-        $http(config).then(callbacks.success || function () {}, callbacks.error || function () {});
+        return $http(config).then(callbacks.success || function () {}, callbacks.error || function () {});
     };
 
     ['delete', 'get', 'post', 'put'].forEach(function (method) {
         service[method + 'Resource'] = function (resource, idents, config, callbacks) {
-            httpCall(method, resource, idents, config, callbacks);
+            return httpCall(method, resource, idents, config, callbacks);
         };
     });
 
@@ -297,7 +297,7 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function 
         config.data['action'] = action;
         config.data['host_id'] = hostId;
         config.data['expiration'] = newExpiration;
-        baseSvc.postResource(resource, [], config, callbacks);
+        return baseSvc.postResource(resource, [], config, callbacks);
     };
 
     service.updateHostTags = function (action, hostId, tagsToAdd, tagsToDelete, data, callbacks) {
@@ -308,7 +308,7 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function 
         config.data['host_id'] = hostId;
         config.data['tags_to_add'] = tagsToAdd;
         config.data['tags_to_delete'] = tagsToDelete;
-        baseSvc.postResource(resource, [], config, callbacks);
+        return baseSvc.postResource(resource, [], config, callbacks);
     }
 
     service.updateInstanceType = function (action, hostId, newInstanceType, data, callbacks) {
@@ -318,7 +318,7 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function 
         config.data['action'] = action;
         config.data['host_id'] = hostId;
         config.data['instance_type'] = newInstanceType;
-        baseSvc.postResource(resource, [], config, callbacks);
+        return baseSvc.postResource(resource, [], config, callbacks);
     }
 
     return service;
