@@ -47,15 +47,13 @@ mciModule.factory('ApiTaskdata', function ($http, $filter, ApiUtil, API_TASKDATA
     },
 
     getExpandedTaskById: function (taskId, name) {
-      return cedarAPI("rest/v1/perf/task_id/" + taskId).then(resp => {
-        return $filter("expandedMetricConverter")(resp.data); // note: this will filter data to just the latest execution
-      });
+      // note: this will filter data to just the latest execution
+      return cedarAPI("rest/v1/perf/task_id/" + taskId).then(resp => $filter("expandedMetricConverter")(resp.data));
     },
 
     getExpandedHistory: function (taskName, variant, project) {
-      return cedarAPI("rest/v1/perf/task_name/" + taskName + "?variant=" + variant + "&project=" + project).then(resp => {
-        return $filter("expandedHistoryConverter")(resp.data); // note: this will filter data to just the latest execution
-      });
+      // note: this will filter data to just the latest execution
+      return cedarAPI("rest/v1/perf/task_name/" + taskName + "?variant=" + variant + "&project=" + project).then(resp => $filter("expandedHistoryConverter")(resp.data));
     },
   }
 })

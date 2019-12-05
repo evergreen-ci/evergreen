@@ -226,7 +226,7 @@ mciModule.factory('PerfDiscoveryDataService', function (
 
   // TODO Should be part of `VersionResource`
   // :parm version: version object
-  // :returns: Array of {taskId, taskName, buildName}
+  // :returns: Array of objects representing tasks within a version
   function extractTasks(version) {
     return _.reduce(version.builds, function (items, build) {
       // Going over dict of tasks ({taskName: data})
@@ -394,8 +394,8 @@ mciModule.factory('PerfDiscoveryDataService', function (
       baselineTasks: baselineTasks
     }).then(function (promise) {
       return $q.all(_.map(promise.tasks, function (task) {
-        let currentTaskPromise = expandedCurrent ? ApiTaskdata.getExpandedTaskById(task.taskId, 'perf') : ApiTaskdata.getTaskById(task.taskId, 'perf');
-        let taskHistory = expandedTrend ? ApiTaskdata.getExpandedHistory(task.taskName, task.buildVariant, task.project) : ApiTaskdata.getTaskHistory(task.taskId, 'perf');
+        const currentTaskPromise = expandedCurrent ? ApiTaskdata.getExpandedTaskById(task.taskId, 'perf') : ApiTaskdata.getTaskById(task.taskId, 'perf');
+        const taskHistory = expandedTrend ? ApiTaskdata.getExpandedHistory(task.taskName, task.buildVariant, task.project) : ApiTaskdata.getTaskHistory(task.taskId, 'perf');
         return currentTaskPromise
           .then(respData, function () {
             return null

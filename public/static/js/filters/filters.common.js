@@ -85,10 +85,13 @@ var convertSingleTest = function (test, execution) {
   return output;
 }
 
-let latestExecution = function (perfData) {
+const latestExecution = function (perfData) {
+  if (perfData.length === 0) {
+    return 0;
+  }
   return _.max(perfData, (singleTest) => {
     return singleTest.info && singleTest.info.execution || 0;
-  }).execution;
+  }).info.execution;
 }
 
 filters.common.filter('conditional', function () {
