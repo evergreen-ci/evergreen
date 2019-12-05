@@ -302,7 +302,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
           'updateHostTags',
           $scope.curHostData.id, tags_to_add, $scope.curHostData.tags_to_delete, {}, {
             error: function (resp) {
-              notificationService.pushNotification('Error updating host tags: ' + resp.data.error, 'errorHeader');
+              notificationService.pushNotification('Error updating host tags: ' + resp.data, 'errorHeader');
             }
           }
         ));
@@ -319,7 +319,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
           'updateInstanceType',
           $scope.curHostData.id, $scope.curHostData.selectedInstanceType, {}, {
             error: function (resp) {
-              notificationService.pushNotification('Error setting new instance type: ' + resp.data.error, 'errorHeader')
+              notificationService.pushNotification('Error setting new instance type: ' + resp.data, 'errorHeader')
             }
           }
         ));
@@ -337,8 +337,8 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
           success: function (resp) {
             window.location.href = "/spawn";
           },
-          error: function (jqXHR, status, errorThrown) {
-            notificationService.pushNotification('Error changing host status: ' + resp.data.error, 'errorHeader');
+          error: function (resp) {
+            notificationService.pushNotification('Error changing host status: ' + resp.data, 'errorHeader');
           }
         }
       );
