@@ -116,8 +116,8 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', 'mciS
       if (!host.isTerminated && new Date(host.expiration_time) > new Date("0001-01-01T00:00:00Z")) {
         if (host.no_expiration) {
           host.expires_in = "never";
-          host.original_expiration = new Date();
-          host.current_expiration = null;
+          host.original_expiration = null;
+          host.current_expiration = new Date();
           host.modified_expiration = new Date();
         } else {
           var expiretime = moment().diff(host.expiration_time, 'seconds');
@@ -272,65 +272,66 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', 'mciS
       );
     };
 
-    $scope.updateHostExpiration = function () {
-      let new_expiration = null;
-      if (!$scope.curHostData.no_expiration) {
-        new_expiration = new Date($scope.curHostData.current_expiration);
+    $scope.update = function () {
+      // update expiration if it changed
+      if (!moment($scope.curHostData.original_expiration).startOf("second").isSame(moment($scope.curHostData.current_expiration).startOf("second"))) {
+        let new_expiration = null;
+        if (!$scope.curHostData.no_expiration) {
+          new_expiration = new Date($scope.curHostData.current_expiration);
+        }
+
+        mciSpawnRestService.extendHostExpiration(
+          'extendHostExpiration',
+          $scope.curHostData.id, new_expiration, {}, {
+            success: function (resp) {
+              window.location.href = "/spawn";
+            },
+            error: function (resp) {
+              notificationService.pushNotification('Error extending host expiration: ' + resp.data.error, 'errorHeader');
+            }
+          }
+        );
       }
 
-      mciSpawnRestService.extendHostExpiration(
-        'extendHostExpiration',
-        $scope.curHostData.id, new_expiration, {}, {
-          success: function (resp) {
-            window.location.href = "/spawn";
-          },
-          error: function (resp) {
-            notificationService.pushNotification('Error extending host expiration: ' + resp.data.error, 'errorHeader');
-          }
+      // update tags if they changed
+      if (($scope.curHostData.tags_to_add && $scope.curHostData.tags_to_add.length > 0) || ($scope.curHostData.tags_to_delete && $scope.curHostData.tags_to_delete.length > 0)) {
+        let tags_to_add = [];
+        for (key in $scope.curHostData.tags_to_add) {
+          let new_tag = key + "=" + $scope.curHostData.tags_to_add[key];
+          tags_to_add.push(new_tag);
         }
-      );
-    };
+        mciSpawnRestService.updateHostTags(
+          'updateHostTags',
+          $scope.curHostData.id, tags_to_add, $scope.curHostData.tags_to_delete, {}, {
+            success: function (resp) {
+              window.location.href = "/spawn";
+            },
+            error: function (resp) {
+              notificationService.pushNotification('Error updating host tags: ' + resp.data.error, 'errorHeader');
+            }
+          }
+        );
+      }
 
-    $scope.updateTags = function () {
-      var tags_to_add = [];
-      for (key in $scope.curHostData.tags_to_add) {
-        var new_tag = key + "=" + $scope.curHostData.tags_to_add[key];
-        tags_to_add.push(new_tag);
-      }
-      mciSpawnRestService.updateHostTags(
-        'updateHostTags',
-        $scope.curHostData.id, tags_to_add, $scope.curHostData.tags_to_delete, {}, {
-          success: function (resp) {
-            window.location.href = "/spawn";
-          },
-          error: function (resp) {
-            notificationService.pushNotification('Error updating host tags: ' + resp.data.error, 'errorHeader');
-          }
+      // update instance type if it changed
+      if ($scope.curHostData.selectedInstanceType && $scope.curHostData.instance_type !== $scope.curHostData.selectedInstanceType) {
+        // Do nothing if host is not stopped
+        if ($scope.curHostData.status != "stopped") {
+          notificationService.pushNotification('Host must be stopped before modifying instance type', 'errorHeader');
+          return
         }
-      );
-    };
-
-    $scope.updateInstanceType = function () {
-      // Do nothing if no instance type selected
-      if (!$scope.curHostData.selectedInstanceType) {
-        return
-      }
-      // Do nothing if host is not stopped
-      if ($scope.curHostData.status != "stopped") {
-        notificationService.pushNotification('Host must be stopped before modifying instance type', 'errorHeader');
-        return
-      }
-      mciSpawnRestService.updateInstanceType(
-        'updateInstanceType',
-        $scope.curHostData.id, $scope.curHostData.selectedInstanceType, {}, {
-          success: function (resp) {
-            window.location.href = "/spawn";
-          },
-          error: function (resp) {
-            notificationService.pushNotification('Error setting new instance type: ' + resp.data.error, 'errorHeader')
+        mciSpawnRestService.updateInstanceType(
+          'updateInstanceType',
+          $scope.curHostData.id, $scope.curHostData.selectedInstanceType, {}, {
+            success: function (resp) {
+              window.location.href = "/spawn";
+            },
+            error: function (resp) {
+              notificationService.pushNotification('Error setting new instance type: ' + resp.data.error, 'errorHeader')
+            }
           }
-        }
-      )
+        );
+      }
     }
 
     $scope.updateHostStatus = function (action) {
