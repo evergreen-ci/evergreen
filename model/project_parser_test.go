@@ -89,7 +89,7 @@ tasks:
 `
 				p, err := createIntermediateProject([]byte(nameless))
 				So(p, ShouldBeNil)
-				So(err, ShouldBeNil)
+				So(err, ShouldNotBeNil)
 			})
 			Convey("or multiple", func() {
 				nameless := `
@@ -398,7 +398,7 @@ func TestTranslateDependsOn(t *testing.T) {
 			}
 			out, err := translateProject(pp)
 			So(out, ShouldNotBeNil)
-			So(err, ShouldBeNil)
+			So(err, ShouldNotBeNil)
 		})
 	})
 }
@@ -688,7 +688,7 @@ tasks:
 	proj, err = projectFromYAML([]byte(nonexistentTaskYml))
 	assert.NotNil(proj)
 	assert.Error(err)
-	assert.Contains(err, "notHere: nothing named 'notHere'")
+	assert.Contains(err.Error(), "notHere: nothing named 'notHere'")
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
 	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
 	assert.Len(proj.BuildVariants[1].DisplayTasks, 0)
@@ -946,7 +946,7 @@ buildvariants:
 	proj, err = projectFromYAML([]byte(wrongTaskYml))
 	assert.NotNil(proj)
 	assert.Error(err)
-	assert.Contains(err, `nothing named 'example_task_3'`)
+	assert.Contains(err.Error(), `nothing named 'example_task_3'`)
 
 	// check that tasks listed in the task group yml maintain their order
 	orderedYml := `

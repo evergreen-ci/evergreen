@@ -1656,7 +1656,7 @@ func TestTaskValidation(t *testing.T) {
   - name: "bv"
     tasks:
     - name: task0
-    -name: "this task is too long"
+    - name: "this task is too long"
 `
 	var proj model.Project
 	err := model.LoadProjectInto([]byte(simpleYml), "", &proj)
