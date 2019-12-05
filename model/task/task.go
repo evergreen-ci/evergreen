@@ -683,7 +683,7 @@ func (t *Task) SetGeneratedJSON(json []json.RawMessage) error {
 		},
 		bson.M{
 			"$set": bson.M{
-				GeneratedJSONAsStringKey: json,
+				GeneratedJSONAsStringKey: s,
 			},
 		},
 	)
