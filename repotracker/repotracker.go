@@ -826,7 +826,7 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 		}
 		_, err = evergreen.GetEnvironment().DB().Collection(model.VersionCollection).InsertOne(sessCtx, v)
 		if err != nil {
-			grip.Error(message.Fields{
+			grip.Notice(message.Fields{
 				"message":    "aborting transaction",
 				"cause":      "can't insert version",
 				"version":    v.Id,
@@ -903,11 +903,11 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 	return transactionWithRetries(ctx, txFunc)
 }
 
-// If we error in aborting transaction, we recreate the client and start again.
-// If we abort successfully and the error is a transient transaction error, we retry using the same client.
+// If we error in aborting transaction, we create a new session and start again.
+// If we abort successfully and the error is a transient transaction error, we retry using the same session.
 func transactionWithRetries(ctx context.Context, txFunc func(sessCtx mongo.SessionContext) (bool, error)) error {
 	const transactionRetryCount = 5
-	const clientRetryCount = 2
+	const sessionRetryCount = 2
 	useSessionFunc := func(sessCtx mongo.SessionContext) error {
 		for j := 0; j < transactionRetryCount; j++ {
 			shouldRetry, err := txFunc(sessCtx)
@@ -921,8 +921,8 @@ func transactionWithRetries(ctx context.Context, txFunc func(sessCtx mongo.Sessi
 		return errors.New("hit max retries for version")
 	}
 
-	for i := 0; i < clientRetryCount; i++ {
-		client := evergreen.GetEnvironment().Client()
+	client := evergreen.GetEnvironment().Client()
+	for i := 0; i < sessionRetryCount; i++ {
 		err := client.UseSession(ctx, useSessionFunc)
 		if err == nil {
 			return nil
@@ -931,8 +931,8 @@ func transactionWithRetries(ctx context.Context, txFunc func(sessCtx mongo.Sessi
 			// error unrelated to session retry
 			return err
 		}
-		grip.InfoWhen(i < clientRetryCount-1, message.WrapError(err, message.Fields{
-			"message":     "hit error aborting transaction, will recreate client",
+		grip.InfoWhen(i < sessionRetryCount-1, message.WrapError(err, message.Fields{
+			"message":     "hit error aborting transaction, will start new session",
 			"cur_attempt": i,
 		}))
 	}
