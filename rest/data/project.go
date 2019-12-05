@@ -447,5 +447,5 @@ func (ac *MockProjectConnector) GetVersionsInProject(project, requester string, 
 }
 
 func (pc *MockProjectConnector) GetProjectSettingsEvent(p *model.ProjectRef) (*model.ProjectSettingsEvent, error) {
-	return nil, nil
+	return &model.ProjectSettingsEvent{}, nil
 }
