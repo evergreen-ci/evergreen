@@ -168,8 +168,7 @@ func (j *collectTaskEndDataJob) recordTaskCost(ctx context.Context) error {
 
 	calc, ok := manager.(cloud.CostCalculator)
 	if !ok {
-		// return early if we can't get the cost
-		return nil
+		return errors.Errorf("manager of type '%T' is not a cost calculator", manager)
 	}
 	cost, err := calc.CostForDuration(ctx, j.host, j.task.StartTime, j.task.FinishTime)
 	if err != nil {
