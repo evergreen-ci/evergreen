@@ -10,9 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 
 	"github.com/stretchr/testify/require"
 
@@ -1333,21 +1332,18 @@ buildvariants:
 }
 
 func checkProjectPersists(yml []byte) error {
-	pp, errs := createIntermediateProject(yml)
-	catcher := grip.NewBasicCatcher()
-	catcher.Extend(errs)
-	if catcher.HasErrors() {
-		return catcher.Resolve()
+	pp, err := createIntermediateProject(yml)
+	if err != nil {
+		return err
 	}
 	yamlToCompare, err := yaml.Marshal(pp)
 	if err != nil {
 		return errors.Wrapf(err, "error marshalling original project")
 	}
 
-	_, errs = createIntermediateProject([]byte(yamlToCompare))
-	catcher.Extend(errs)
-	if catcher.HasErrors() {
-		return errors.Wrap(catcher.Resolve(), "marshalled project cannot be parsed")
+	_, err = createIntermediateProject([]byte(yamlToCompare))
+	if err != nil {
+		return errors.Wrap(err, "marshalled project cannot be parsed")
 	}
 	v := Version{
 		Id:            "my-version",

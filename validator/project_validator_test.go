@@ -1646,6 +1646,23 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 		})
 	})
 }
+func TestTaskValidation(t *testing.T) {
+	assert.New(t)
+	simpleYml := `
+  tasks:
+  - name: task0
+  - name: this task is too long
+  buildvariants:
+  - name: "bv"
+    tasks:
+    - name: task0
+    -name: "this task is too long"
+`
+	var proj model.Project
+	err := model.LoadProjectInto([]byte(simpleYml), "", &proj)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "spaces are unauthorized")
+}
 
 func TestTaskGroupValidation(t *testing.T) {
 	assert := assert.New(t)
