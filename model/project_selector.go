@@ -277,7 +277,7 @@ func (t *taskSelectorEvaluator) evalSelector(s Selector) ([]string, error) {
 
 func newTaskGroupSelectorEvaluator(groups []parserTaskGroup) *tagSelectorEvaluator {
 	var selectees []tagged
-	for i, _ := range groups {
+	for i := range groups {
 		selectees = append(selectees, &groups[i])
 	}
 

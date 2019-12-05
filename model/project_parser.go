@@ -1,14 +1,14 @@
 package model
 
 import (
-	"bytes"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 const LoadProjectError = "load project error(s)"
@@ -419,17 +419,9 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 // LoadProjectInto loads the raw data from the config file into project
 // and sets the project's identifier field to identifier. Tags are evaluated.
 func LoadProjectInto(data []byte, identifier string, project *Project) error {
-	p, errs := projectFromYAML(data)
-	if len(errs) > 0 {
-		// create a human-readable error list
-		buf := bytes.Buffer{}
-		for _, e := range errs {
-			if len(errs) > 1 {
-				buf.WriteString("\n\t") //only newline if we have multiple errs
-			}
-			buf.WriteString(e.Error())
-		}
-		return errors.Errorf("%s: %s", LoadProjectError, buf.String())
+	p, err := projectFromYAML(data)
+	if err != nil {
+		return errors.Wrap(err, LoadProjectError)
 	}
 	*project = *p
 	project.Identifier = identifier
@@ -438,23 +430,23 @@ func LoadProjectInto(data []byte, identifier string, project *Project) error {
 
 // projectFromYAML reads and evaluates project YAML, returning a project and warnings and
 // errors encountered during parsing or evaluation.
-func projectFromYAML(yml []byte) (*Project, []error) {
-	intermediateProject, errs := createIntermediateProject(yml)
-	if len(errs) > 0 {
-		return nil, errs
+func projectFromYAML(yml []byte) (*Project, error) {
+	intermediateProject, err := createIntermediateProject(yml)
+	if err != nil {
+		return nil, errors.Wrap(err, "error creating intermediate project")
 	}
-	p, errs := translateProject(intermediateProject)
-	return p, errs
+	p, err := translateProject(intermediateProject)
+	return p, errors.Wrap(err, "error translating project")
 }
 
 // createIntermediateProject marshals the supplied YAML into our
 // intermediate project representation (i.e. before selectors or
 // matrix logic has been evaluated).
-func createIntermediateProject(yml []byte) (*parserProject, []error) {
+func createIntermediateProject(yml []byte) (*parserProject, error) {
 	p := &parserProject{}
 	err := yaml.Unmarshal(yml, p)
 	if err != nil {
-		return nil, []error{err}
+		return nil, err
 	}
 	if p.Functions == nil {
 		p.Functions = map[string]*YAMLCommandSet{}
@@ -466,7 +458,7 @@ func createIntermediateProject(yml []byte) (*parserProject, []error) {
 // translateProject converts our intermediate project representation into
 // the Project type that Evergreen actually uses. Errors are added to
 // pp.errors and pp.warnings and must be checked separately.
-func translateProject(pp *parserProject) (*Project, []error) {
+func translateProject(pp *parserProject) (*Project, error) {
 	// Transfer top level fields
 	proj := &Project{
 		Enabled:           pp.Enabled,
@@ -491,24 +483,24 @@ func translateProject(pp *parserProject) (*Project, []error) {
 		ExecTimeoutSecs:   pp.ExecTimeoutSecs,
 		Loggers:           pp.Loggers,
 	}
+	catcher := grip.NewBasicCatcher()
 	tse := NewParserTaskSelectorEvaluator(pp.Tasks)
 	tgse := newTaskGroupSelectorEvaluator(pp.TaskGroups)
 	ase := NewAxisSelectorEvaluator(pp.Axes)
 	regularBVs, matrices := sieveMatrixVariants(pp.BuildVariants)
 
-	var evalErrs, errs []error
 	matrixVariants, errs := buildMatrixVariants(pp.Axes, ase, matrices)
-	evalErrs = append(evalErrs, errs...)
+	catcher.Extend(errs)
 	buildVariants := append(regularBVs, matrixVariants...)
 	vse := NewVariantSelectorEvaluator(buildVariants, ase)
 
 	proj.Tasks, proj.TaskGroups, errs = evaluateTaskUnits(tse, tgse, vse, pp.Tasks, pp.TaskGroups)
-	evalErrs = append(evalErrs, errs...)
+	catcher.Extend(errs)
 
 	proj.BuildVariants, errs = evaluateBuildVariants(tse, tgse, vse, buildVariants, pp.Tasks, proj.TaskGroups)
-	evalErrs = append(evalErrs, errs...)
+	catcher.Extend(errs)
 
-	return proj, evalErrs
+	return proj, catcher.Resolve()
 }
 
 // sieveMatrixVariants takes a set of parserBVs and groups them into regular
@@ -541,6 +533,9 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			Patchable:       pt.Patchable,
 			PatchOnly:       pt.PatchOnly,
 			Stepback:        pt.Stepback,
+		}
+		if strings.Contains(strings.TrimSpace(pt.Name), " ") {
+			evalErrs = append(evalErrs, errors.Errorf("spaces are unauthorized in task names ('%s')", pt.Name))
 		}
 		t.DependsOn, errs = evaluateDependsOn(tse.tagEval, tgse, vse, pt.DependsOn)
 		evalErrs = append(evalErrs, errs...)

@@ -1097,8 +1097,8 @@ tasks:
   depends_on:
     - name: dist-test
 `
-	intermediate, errs := createIntermediateProject([]byte(projYml))
-	s.Len(errs, 0)
+	intermediate, err := createIntermediateProject([]byte(projYml))
+	s.NoError(err)
 	marshaled, err := yaml.Marshal(intermediate)
 	s.NoError(err)
 	unmarshaled := parserProject{}
