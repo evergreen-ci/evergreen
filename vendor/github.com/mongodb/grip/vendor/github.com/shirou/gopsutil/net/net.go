@@ -58,6 +58,7 @@ type InterfaceAddr struct {
 }
 
 type InterfaceStat struct {
+	Index        int             `json:"index" bson:"index,omitempty"`
 	MTU          int             `json:"mtu" bson:"mtu,omitempty"`                   // maximum transmission unit
 	Name         string          `json:"name"`                                       // e.g., "en0", "lo0", "eth0.100" bson:"name"`         // e.g., "en0", "lo0", "eth0.100,omitempty"
 	HardwareAddr string          `json:"hardwareaddr" bson:"hardwareaddr,omitempty"` // IEEE MAC-48, EUI-48 and EUI-64 form
@@ -233,6 +234,7 @@ func InterfacesWithContext(ctx context.Context) ([]InterfaceStat, error) {
 		}
 
 		r := InterfaceStat{
+			Index:        ifi.Index,
 			Name:         ifi.Name,
 			MTU:          ifi.MTU,
 			HardwareAddr: ifi.HardwareAddr.String(),

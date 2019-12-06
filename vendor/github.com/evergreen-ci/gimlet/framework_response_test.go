@@ -7,6 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -146,6 +147,7 @@ func TestResponseBuilderConstructor(t *testing.T) {
 	)
 
 	assert := assert.New(t)
+	require := require.New(t)
 
 	resp, err = NewBasicResponder(http.StatusOK, TEXT, "foo")
 	assert.NoError(err)
@@ -176,14 +178,14 @@ func TestResponseBuilderConstructor(t *testing.T) {
 	assert.Error(resp.Validate())
 
 	resp = &responseBuilder{pages: &ResponsePages{Next: &Page{}}}
-	resp.SetFormat(TEXT)
-	resp.SetStatus(http.StatusTeapot)
+	require.NoError(resp.SetFormat(TEXT))
+	require.NoError(resp.SetStatus(http.StatusTeapot))
 	assert.Error(resp.Validate())
 
 	resp = &responseBuilder{}
 	assert.Error(resp.Validate())
-	resp.SetFormat(TEXT)
-	resp.SetStatus(http.StatusTeapot)
+	require.NoError(resp.SetFormat(TEXT))
+	require.NoError(resp.SetStatus(http.StatusTeapot))
 	assert.NoError(resp.Validate())
 
 }

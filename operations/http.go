@@ -10,6 +10,8 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/evergreen-ci/gimlet"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -102,6 +104,10 @@ func (ac *legacyClient) put(path string, body io.Reader) (*http.Response, error)
 
 func (ac *legacyClient) post(path string, body io.Reader) (*http.Response, error) {
 	return ac.doReq("POST", path, 1, body)
+}
+
+func (ac *legacyClient) post2(path string, body io.Reader) (*http.Response, error) {
+	return ac.doReq("POST", path, 2, body)
 }
 
 func (ac *legacyClient) modifyExisting(patchId, action string) error {
@@ -571,4 +577,23 @@ func (ac *legacyClient) GetRecentVersions(projectID string) ([]string, error) {
 	}
 
 	return out, nil
+}
+
+func (ac *legacyClient) UpdateRole(role *gimlet.Role) error {
+	if role == nil {
+		return errors.New("no role to update")
+	}
+	roleJSON, err := json.Marshal(role)
+	if err != nil {
+		return errors.Wrap(err, "error serializing role data")
+	}
+	resp, err := ac.post2("roles", bytes.NewBuffer(roleJSON))
+	if err != nil {
+		return errors.Wrap(err, "error making request to update role")
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return NewAPIError(resp)
+	}
+	return nil
 }

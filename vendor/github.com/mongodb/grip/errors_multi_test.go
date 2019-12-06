@@ -324,3 +324,25 @@ func (s *CatcherSuite) TestWhenErrorfFull() {
 	s.Equal(s.catcher.Len(), 1)
 	s.Contains(s.catcher.Errors()[0].Error(), "this what")
 }
+
+func (s *CatcherSuite) TestCheckWhenError() {
+	fn := func() error { return errors.New("hi") }
+	s.Error(fn())
+	s.catcher.CheckWhen(false, fn)
+	s.Equal(s.catcher.Len(), 0)
+	s.catcher.CheckWhen(true, fn)
+	s.Equal(s.catcher.Len(), 1)
+	s.catcher.Check(fn)
+	s.Equal(s.catcher.Len(), 2)
+}
+
+func (s *CatcherSuite) TestCheckWhenNoError() {
+	fn := func() error { return nil }
+	s.NoError(fn())
+	s.catcher.CheckWhen(false, fn)
+	s.Equal(s.catcher.Len(), 0)
+	s.catcher.CheckWhen(true, fn)
+	s.Equal(s.catcher.Len(), 0)
+	s.catcher.Check(fn)
+	s.Equal(s.catcher.Len(), 0)
+}

@@ -32,6 +32,7 @@ func testRoleUpdate(t *testing.T, m gimlet.RoleManager) func(t *testing.T) {
 		assert.NoError(t, err)
 		buffer := bytes.NewBuffer(jsonBody)
 		request, err := http.NewRequest(http.MethodPost, "/roles", buffer)
+		assert.NoError(t, err)
 		assert.NoError(t, handler.Parse(context.Background(), request))
 		resp := handler.Run(context.Background())
 		assert.Equal(t, 200, resp.Status())

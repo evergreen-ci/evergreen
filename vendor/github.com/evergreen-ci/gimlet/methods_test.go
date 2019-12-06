@@ -11,7 +11,7 @@ func TestMethodString(t *testing.T) {
 	cases := map[httpMethod]string{
 		get:             "GET",
 		put:             "PUT",
-		delete:          "DELETE",
+		del:             "DELETE",
 		patch:           "PATCH",
 		post:            "POST",
 		head:            "HEAD",

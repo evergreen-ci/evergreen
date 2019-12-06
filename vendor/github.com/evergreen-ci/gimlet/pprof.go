@@ -51,7 +51,7 @@ func GetPProfApp() *APIApp {
 // The package initialization registers it as /debug/pprof/cmdline.
 func pprofCmdline(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	fmt.Fprintf(w, strings.Join(os.Args, "\x00"))
+	_, _ = fmt.Fprintf(w, strings.Join(os.Args, "\x00"))
 }
 
 func pprofSleep(ctx context.Context, d time.Duration) {
@@ -78,7 +78,7 @@ func pprofProfile(w http.ResponseWriter, r *http.Request) {
 		// and send error code.
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Could not enable CPU profiling: %s\n", err)
+		_, _ = fmt.Fprintf(w, "Could not enable CPU profiling: %s\n", err)
 		return
 	}
 	pprofSleep(r.Context(), time.Duration(sec)*time.Second)
@@ -102,7 +102,7 @@ func pprofTrace(w http.ResponseWriter, r *http.Request) {
 		// Can change header back to text content and send error code.
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Could not enable tracing: %s\n", err)
+		_, _ = fmt.Fprintf(w, "Could not enable tracing: %s\n", err)
 		return
 	}
 	pprofSleep(r.Context(), time.Duration(sec*float64(time.Second)))
@@ -165,7 +165,7 @@ func (name pprofHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	p := pprof.Lookup(string(name))
 	if p == nil {
 		w.WriteHeader(404)
-		fmt.Fprintf(w, "Unknown profile: %s\n", name)
+		_, _ = fmt.Fprintf(w, "Unknown profile: %s\n", name)
 		return
 	}
 	gc, _ := strconv.Atoi(r.FormValue("gc"))

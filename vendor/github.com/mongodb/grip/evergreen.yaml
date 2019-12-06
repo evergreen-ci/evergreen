@@ -139,7 +139,6 @@ buildvariants:
       build_env: "GOROOT=/opt/golang/go1.9 PATH=/opt/golang/go1.9/bin:$PATH DISABLE_COVERAGE=yes"
     run_on:
       - macos-1014
-      - macos-1014-i7
     tasks: [ ".test" ]
 
   - name: windows

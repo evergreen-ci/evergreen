@@ -14,8 +14,8 @@ type Email struct {
 	Subject    string   `bson:"subject" json:"subject" yaml:"subject"`
 	Body       string   `bson:"body" json:"body" yaml:"body"`
 	// PlainTextContents dictates the Content-Type of the email. If true,
-	// it will text/html, if false text/plain. This value is overridden by
-	// the presence of a "Content-Type" header in Headers
+	// it will text/plain; otherwise, it is text/html. This value is overridden
+	// by the presence of a "Content-Type" header in Headers.
 	PlainTextContents bool `bson:"is_plain_text" json:"is_plain_text" yaml:"is_plain_text"`
 
 	// Headers adds additional headers to the email body, ignoring any

@@ -21,7 +21,7 @@ imports:
   version: 7a51fb928f52a196d5f31daefb8a489453ef54ff
 
 - name: github.com/shirou/gopsutil
-  version: a83baef6e49bf57acfbcd987181f4f9bcde22c11
+  version: c9a2a69ca76b46342953793afe41e42b6cef0ce3
 - name: github.com/shirou/w32
   version: bb4de0191aa41b5507caa14b0650cdbddcd9280b
 - name: github.com/StackExchange/wmi
@@ -38,7 +38,7 @@ imports:
 - name: golang.org/x/oauth2
   version: f047394b6d14284165300fd82dad67edb3a4d7f6
 - name: golang.org/x/sys
-  version: d8f5ea21b9295e315e612b4bcf4bedea93454d4d
+  version: bd437916bb0eb726b873ee8e9b2dcf212d32e2fd
 
 - name: github.com/trivago/tgo
   version: 27c472027c1e3b665eb2f6368d000ce9b879f34a

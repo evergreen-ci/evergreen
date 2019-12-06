@@ -70,7 +70,7 @@ func (s *RoutingSuite) TestDeleteMethod() {
 	r := s.app.AddRoute("/work").Delete()
 	s.Len(s.app.routes, 1)
 	s.Len(r.methods, 1)
-	s.Equal(r.methods[0], delete)
+	s.Equal(r.methods[0], del)
 	s.Equal(r.methods[0].String(), "DELETE")
 }
 
@@ -160,7 +160,7 @@ func (s *RoutingSuite) TestRouteValidation() {
 	r.version = 2
 	s.False(r.IsValid())
 
-	r.methods = []httpMethod{get, delete, post}
+	r.methods = []httpMethod{get, del, post}
 	s.False(r.IsValid())
 
 	r.handler = func(_ http.ResponseWriter, _ *http.Request) { grip.Debug("dummy route") }

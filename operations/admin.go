@@ -4,7 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
+
+	"github.com/evergreen-ci/gimlet"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -32,6 +36,7 @@ func Admin() cli.Command {
 			amboyCmd(),
 			fromMdbForLocal(),
 			toMdbForLocal(),
+			updateRoleCmd(),
 		},
 	}
 }
@@ -391,4 +396,83 @@ func amboyCmd() cli.Command {
 	}
 
 	return cmd
+}
+
+func updateRoleCmd() cli.Command {
+	const (
+		idFlagName          = "id"
+		nameFlagName        = "name"
+		scopeFlagName       = "scope"
+		permissionsFlagName = "permissions"
+		ownersFlagName      = "owners"
+	)
+
+	return cli.Command{
+		Name:   "update-role",
+		Before: mergeBeforeFuncs(setPlainLogger, requireStringFlag(idFlagName), requireStringFlag(scopeFlagName)),
+		Usage:  "create or update a role",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  idFlagName,
+				Usage: "ID of role. Specifying an existing ID will overwrite that role, and a new ID will create a new role",
+			},
+			cli.StringFlag{
+				Name:  nameFlagName,
+				Usage: "Name of role, used to identify it to users",
+			},
+			cli.StringFlag{
+				Name:  scopeFlagName,
+				Usage: "Scope of the role, used to identify what resources it has permissions for",
+			},
+			cli.StringSliceFlag{
+				Name:  permissionsFlagName,
+				Usage: "Permissions to grant the role, in the format of permission:level",
+			},
+			cli.StringSliceFlag{
+				Name:  ownersFlagName,
+				Usage: "Owners of the role, who will approve requests from users who wish to have the role",
+			},
+		},
+		Action: func(c *cli.Context) error {
+			id := c.String(idFlagName)
+			name := c.String(nameFlagName)
+			scope := c.String(scopeFlagName)
+			owners := c.StringSlice(ownersFlagName)
+			tempPermissions := c.StringSlice(permissionsFlagName)
+
+			permissions := map[string]int{}
+			for _, permission := range tempPermissions {
+				parts := strings.Split(permission, ":")
+				if len(parts) != 2 {
+					return errors.Errorf("permission '%s' must be in the form of 'permission:level'", permission)
+				}
+				val, err := strconv.Atoi(parts[1])
+				if err != nil {
+					return errors.Errorf("level for permission '%s' must be an integer", parts[1])
+				}
+				permissions[parts[0]] = val
+			}
+			role := gimlet.Role{
+				ID:          id,
+				Name:        name,
+				Scope:       scope,
+				Owners:      owners,
+				Permissions: permissions,
+			}
+
+			confPath := c.Parent().Parent().String(confFlagName)
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.setupRestCommunicator(context.Background())
+			defer client.Close()
+			ac, _, err := conf.getLegacyClients()
+			if err != nil {
+				return errors.Wrap(err, "problem accessing evergreen service")
+			}
+
+			return ac.UpdateRole(&role)
+		},
+	}
 }
