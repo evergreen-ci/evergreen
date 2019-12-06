@@ -133,6 +133,7 @@ func LogProjectEvent(eventType string, projectId string, eventData ProjectChange
 			"resource_type": EventResourceTypeProject,
 			"message":       "error logging event",
 			"source":        "event-log-fail",
+			"projectId":     projectId,
 		}))
 		return errors.Wrap(err, "Error logging project event")
 	}
