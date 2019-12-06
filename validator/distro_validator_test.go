@@ -492,6 +492,8 @@ func TestEnsureValidBootstrapSettings(t *testing.T) {
 			assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{Arch: distro.ArchWindowsAmd64, BootstrapSettings: s}, &evergreen.Settings{}))
 		},
 		"FormattedEnvironmentVariables": func(t *testing.T, s distro.BootstrapSettings) {
+			s.Method = distro.BootstrapMethodUserData
+			s.Communication = distro.CommunicationMethodRPC
 			s.Env = append(s.Env, distro.EnvVar{Key: "foo", Value: "bar"})
 			s.Env = append(s.Env, distro.EnvVar{Key: "bat", Value: "baz"})
 			assert.Nil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{BootstrapSettings: s}, &evergreen.Settings{}))
