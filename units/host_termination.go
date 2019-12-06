@@ -339,9 +339,10 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		j.AddError(idleJob.Error())
 
 		if j.host.SpawnOptions.SpawnedByTask {
-			mgrOpts := cloud.ManagerOpts{
-				Provider: j.host.Provider,
-				Region:   cloud.GetRegion(j.host.Distro),
+			mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
+			if err != nil {
+				j.AddError(errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id))
+				return
 			}
 			manager, err := cloud.GetManager(ctx, j.env, mgrOpts)
 			if err != nil {

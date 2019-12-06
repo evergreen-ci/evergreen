@@ -73,10 +73,6 @@ type EC2Key struct {
 type AWSConfig struct {
 	EC2Keys []EC2Key `bson:"ec2_keys" json:"ec2_keys" yaml:"ec2_keys"`
 
-	// Legacy fields (to be removed when EC2Keys struct is set)
-	EC2Key    string `bson:"aws_id" json:"aws_id" yaml:"aws_id"`
-	EC2Secret string `bson:"aws_secret" json:"aws_secret" yaml:"aws_secret"`
-
 	S3Key                string `bson:"s3_key" json:"s3_key" yaml:"s3_key"`
 	S3Secret             string `bson:"s3_secret" json:"s3_secret" yaml:"s3_secret"`
 	Bucket               string `bson:"bucket" json:"bucket" yaml:"bucket"`

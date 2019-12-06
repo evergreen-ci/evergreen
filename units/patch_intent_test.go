@@ -4,7 +4,6 @@ import (
 	"context"
 	"io/ioutil"
 	"net/http"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -57,7 +56,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
-	s.Require().NoError(s.env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+	s.Require().NoError(s.env.Configure(ctx))
 
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings(), "TestPatchIntentUnitsSuite")
 	s.NotNil(s.env.Settings())

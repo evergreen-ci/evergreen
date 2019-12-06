@@ -498,9 +498,9 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	mgrOpts := cloud.ManagerOpts{
-		Provider: targetHost.Provider,
-		Region:   cloud.GetRegion(targetHost.Distro),
+	mgrOpts, err := cloud.GetManagerOptions(targetHost.Distro)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error getting manager options for spawnhost attach volume job"))
 	}
 	mgr, err := cloud.GetManager(ctx, h.env, mgrOpts)
 	if err != nil {
@@ -595,9 +595,9 @@ func (h *detachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		"host_id": h.hostID,
 		"volume":  h.attachment.VolumeID,
 	})
-	mgrOpts := cloud.ManagerOpts{
-		Provider: targetHost.Provider,
-		Region:   cloud.GetRegion(targetHost.Distro),
+	mgrOpts, err := cloud.GetManagerOptions(targetHost.Distro)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error getting manager options for spawnhost detach volume job"))
 	}
 	mgr, err := cloud.GetManager(ctx, h.env, mgrOpts)
 	if err != nil {
@@ -677,7 +677,7 @@ func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 
 	mgrOpts := cloud.ManagerOpts{
 		Provider: h.provider,
-		Region:   evergreen.DefaultEC2Region,
+		Region:   cloud.AztoRegion(h.volume.AvailabilityZone),
 	}
 	mgr, err := cloud.GetManager(ctx, h.env, mgrOpts)
 	if err != nil {
@@ -774,10 +774,9 @@ func (h *deleteVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	// TODO: Allow different providers/regions
 	mgrOpts := cloud.ManagerOpts{
 		Provider: h.provider,
-		Region:   evergreen.DefaultEC2Region,
+		Region:   cloud.AztoRegion(volume.AvailabilityZone),
 	}
 	mgr, err := cloud.GetManager(ctx, h.env, mgrOpts)
 	if err != nil {

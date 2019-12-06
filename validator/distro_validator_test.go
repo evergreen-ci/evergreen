@@ -19,6 +19,7 @@ func TestCheckDistro(t *testing.T) {
 
 	env := evergreen.GetEnvironment()
 	conf := env.Settings()
+	conf.Providers.AWS.EC2Keys = []evergreen.EC2Key{{Region: evergreen.DefaultEC2Region, Key: "key", Secret: "secret"}}
 
 	Convey("When validating a distro", t, func() {
 
@@ -489,6 +490,25 @@ func TestEnsureValidBootstrapSettings(t *testing.T) {
 			s.Communication = distro.CommunicationMethodSSH
 			s.ServiceUser = ""
 			assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{Arch: distro.ArchWindowsAmd64, BootstrapSettings: s}, &evergreen.Settings{}))
+		},
+		"FormattedEnvironmentVariables": func(t *testing.T, s distro.BootstrapSettings) {
+			s.Method = distro.BootstrapMethodUserData
+			s.Communication = distro.CommunicationMethodRPC
+			s.Env = append(s.Env, distro.EnvVar{Key: "foo", Value: "bar"})
+			s.Env = append(s.Env, distro.EnvVar{Key: "bat", Value: "baz"})
+			assert.Nil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{BootstrapSettings: s}, &evergreen.Settings{}))
+		},
+		"EnvironmentVariableWithoutKey": func(t *testing.T, s distro.BootstrapSettings) {
+			s.Method = distro.BootstrapMethodUserData
+			s.Communication = distro.CommunicationMethodRPC
+			s.Env = append(s.Env, distro.EnvVar{Value: "foo"})
+			assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{BootstrapSettings: s}, &evergreen.Settings{}))
+		},
+		"EnvironmentVariableWithoutValue": func(t *testing.T, s distro.BootstrapSettings) {
+			s.Method = distro.BootstrapMethodUserData
+			s.Communication = distro.CommunicationMethodRPC
+			s.Env = append(s.Env, distro.EnvVar{Key: "foo"})
+			assert.Nil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{BootstrapSettings: s}, &evergreen.Settings{}))
 		},
 		"ResourceLimits": func(t *testing.T, s distro.BootstrapSettings) {
 			for resourceTestName, resourceTestCase := range map[string]func(t *testing.T, s distro.BootstrapSettings){

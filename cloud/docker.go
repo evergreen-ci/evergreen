@@ -326,9 +326,9 @@ func (m *dockerManager) CostForDuration(ctx context.Context, h *host.Host, start
 	}
 
 	// get cloud manager for parent
-	mgrOpts := ManagerOpts{
-		Provider: parent.Provider,
-		Region:   GetRegion(parent.Distro),
+	mgrOpts, err := GetManagerOptions(parent.Distro)
+	if err != nil {
+		return 0, errors.Wrapf(err, "can't get ManagerOpts for parent '%s'", parent.Id)
 	}
 	parentMgr, err := GetManager(ctx, m.env, mgrOpts)
 	if err != nil {

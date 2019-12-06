@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
@@ -35,14 +34,11 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	dbUser := MustHaveUser(r)
 
 	data := struct {
-		Description string `json:"desc"`
-		Project     string `json:"project"`
-		Patch       string `json:"patch"`
-		Githash     string `json:"githash"`
-		// TODO: remove this once users have been given enough time to update
-		// their binary versions.
-		Variants    string   `json:"buildvariants"`
-		VariantsNew []string `json:"buildvariants_new"`
+		Description string   `json:"desc"`
+		Project     string   `json:"project"`
+		Patch       string   `json:"patch"`
+		Githash     string   `json:"githash"`
+		Variants    []string `json:"buildvariants_new"`
 		Tasks       []string `json:"tasks"`
 		Finalize    bool     `json:"finalize"`
 		Alias       string   `json:"alias"`
@@ -55,10 +51,6 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	if len(data.Patch) > patch.SizeLimit {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("Patch is too large"))
 		return
-	}
-	variants := strings.Split(data.Variants, ",")
-	if len(data.VariantsNew) != 0 {
-		variants = data.VariantsNew
 	}
 
 	pref, err := model.FindOneProjectRef(data.Project)
@@ -80,7 +72,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	intent, err := patch.NewCliIntent(dbUser.Id, data.Project, data.Githash, r.FormValue("module"), data.Patch, data.Description, data.Finalize, variants, data.Tasks, data.Alias)
+	intent, err := patch.NewCliIntent(dbUser.Id, data.Project, data.Githash, r.FormValue("module"), data.Patch, data.Description, data.Finalize, data.Variants, data.Tasks, data.Alias)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
@@ -236,24 +228,6 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	if err = p.UpdateModulePatch(modulePatch); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
-	}
-
-	if p.Version != "" {
-		patchVersion, err := model.VersionFindOneId(p.Version)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error finding patch version %s", p.Version))
-			return
-		}
-		m, err := manifest.FindFromVersion(patchVersion.Id, patchVersion.Identifier, patchVersion.Revision)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error finding patch manifest"))
-			return
-		}
-		err = m.UpdateModuleRevision(moduleName, githash)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error finding updating revision for module %s", moduleName))
-			return
-		}
 	}
 
 	gimlet.WriteJSON(w, "Patch module updated")

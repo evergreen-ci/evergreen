@@ -74,7 +74,7 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 
 	m := &ec2Manager{env: env, EC2ManagerOptions: opts}
 	require.NoError(m.Configure(ctx, testConfig))
-	require.NoError(m.client.Create(m.credentials, defaultRegion))
+	require.NoError(m.client.Create(m.credentials, evergreen.DefaultEC2Region))
 
 	d := fetchTestDistro()
 	d.Provider = evergreen.ProviderNameEc2OnDemand
@@ -119,7 +119,7 @@ func TestSpawnEC2InstanceSpot(t *testing.T) {
 
 	m := &ec2Manager{env: env, EC2ManagerOptions: opts}
 	require.NoError(m.Configure(ctx, testConfig))
-	require.NoError(m.client.Create(m.credentials, defaultRegion))
+	require.NoError(m.client.Create(m.credentials, evergreen.DefaultEC2Region))
 	d := fetchTestDistro()
 	d.Provider = evergreen.ProviderNameEc2Spot
 	h := host.NewIntent(d, d.GenerateName(), d.Provider, host.CreateOptions{

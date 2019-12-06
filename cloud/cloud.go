@@ -100,8 +100,10 @@ type BatchManager interface {
 // ManagerOpts is a struct containing the fields needed to get a new cloud manager
 // of the proper type.
 type ManagerOpts struct {
-	Provider string
-	Region   string
+	Provider       string
+	Region         string
+	ProviderKey    string
+	ProviderSecret string
 }
 
 // GetManager returns an implementation of Manager for the given manager options.
@@ -110,18 +112,53 @@ func GetManager(ctx context.Context, env evergreen.Environment, mgrOpts ManagerO
 	var provider Manager
 
 	switch mgrOpts.Provider {
+	case evergreen.ProviderNameEc2OnDemand:
+		provider = &ec2Manager{
+			env: env,
+			EC2ManagerOptions: &EC2ManagerOptions{
+				client:         &awsClientImpl{},
+				provider:       onDemandProvider,
+				region:         mgrOpts.Region,
+				providerKey:    mgrOpts.ProviderKey,
+				providerSecret: mgrOpts.ProviderSecret,
+			},
+		}
+	case evergreen.ProviderNameEc2Spot:
+		provider = &ec2Manager{
+			env: env,
+			EC2ManagerOptions: &EC2ManagerOptions{
+				client:         &awsClientImpl{},
+				provider:       spotProvider,
+				region:         mgrOpts.Region,
+				providerKey:    mgrOpts.ProviderKey,
+				providerSecret: mgrOpts.ProviderSecret,
+			},
+		}
+	case evergreen.ProviderNameEc2Auto:
+		provider = &ec2Manager{
+			env: env,
+			EC2ManagerOptions: &EC2ManagerOptions{
+				client:         &awsClientImpl{},
+				provider:       autoProvider,
+				region:         mgrOpts.Region,
+				providerKey:    mgrOpts.ProviderKey,
+				providerSecret: mgrOpts.ProviderSecret,
+			},
+		}
+	case evergreen.ProviderNameEc2Fleet:
+		provider = &ec2FleetManager{
+			env: env,
+			EC2FleetManagerOptions: &EC2FleetManagerOptions{
+				client:         &awsClientImpl{},
+				region:         mgrOpts.Region,
+				providerKey:    mgrOpts.ProviderKey,
+				providerSecret: mgrOpts.ProviderSecret,
+			},
+		}
 	case evergreen.ProviderNameStatic:
 		provider = &staticManager{}
 	case evergreen.ProviderNameMock:
 		provider = makeMockManager()
-	case evergreen.ProviderNameEc2OnDemand:
-		provider = &ec2Manager{env: env, EC2ManagerOptions: &EC2ManagerOptions{client: &awsClientImpl{}, provider: onDemandProvider, region: mgrOpts.Region}}
-	case evergreen.ProviderNameEc2Spot:
-		provider = &ec2Manager{env: env, EC2ManagerOptions: &EC2ManagerOptions{client: &awsClientImpl{}, provider: spotProvider, region: mgrOpts.Region}}
-	case evergreen.ProviderNameEc2Auto:
-		provider = &ec2Manager{env: env, EC2ManagerOptions: &EC2ManagerOptions{client: &awsClientImpl{}, provider: autoProvider, region: mgrOpts.Region}}
-	case evergreen.ProviderNameEc2Fleet:
-		provider = &ec2FleetManager{env: env, EC2FleetManagerOptions: &EC2FleetManagerOptions{client: &awsClientImpl{}, region: mgrOpts.Region}}
 	case evergreen.ProviderNameDocker:
 		provider = &dockerManager{env: env}
 	case evergreen.ProviderNameDockerMock:
@@ -143,31 +180,16 @@ func GetManager(ctx context.Context, env evergreen.Environment, mgrOpts ManagerO
 	return provider, nil
 }
 
-// GroupHostsByManager returns a map where the key represents the manager options
-// (provider name and region) and the value represents the hosts from the provided
-// slice that are reachable through that manager.
-func GroupHostsByManager(hosts []host.Host) map[ManagerOpts][]host.Host {
-	hostsByManager := make(map[ManagerOpts][]host.Host)
-	for _, h := range hosts {
-		key := ManagerOpts{
-			Provider: h.Provider,
-			Region:   GetRegion(h.Distro),
-		}
-		hostsByManager[key] = append(hostsByManager[key], h)
-	}
-	return hostsByManager
-}
-
-// GetRegion gets the region name from the provider settings object for a given
+// GetManagerOptions gets the manager options from the provider settings object for a given
 // provider name.
-func GetRegion(d distro.Distro) string {
+func GetManagerOptions(d distro.Distro) (ManagerOpts, error) {
 	if IsEc2Provider(d.Provider) {
-		return getEC2Region(d.ProviderSettings)
+		return getEC2ManagerOptions(d.Provider, d.ProviderSettings)
 	}
 	if d.Provider == evergreen.ProviderNameMock {
-		return getMockRegion(d.ProviderSettings)
+		return getMockManagerOptions(d.Provider, d.ProviderSettings)
 	}
-	return ""
+	return ManagerOpts{Provider: d.Provider}, nil
 }
 
 // ConvertContainerManager converts a regular manager into a container manager,

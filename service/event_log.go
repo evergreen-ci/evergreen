@@ -7,7 +7,9 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/pkg/errors"
 )
 
 func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
@@ -31,7 +33,17 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			uis.RedirectToLogin(w, r)
 			return
 		}
-		eventQuery := event.MostRecentHostEvents(resourceID, 5000)
+		var h *host.Host
+		h, err = host.FindOneByIdOrTag(resourceID)
+		if err != nil {
+			http.Error(w, errors.Wrap(err, "error finding host '%s'").Error(), http.StatusInternalServerError)
+			return
+		}
+		if h == nil {
+			http.Error(w, "host '%s' not found", http.StatusBadRequest)
+			return
+		}
+		eventQuery := event.MostRecentHostEvents([]string{h.Id, h.Tag}, 5000)
 		loggedEvents, err = event.Find(event.AllLogCollection, eventQuery)
 	case event.ResourceTypeDistro:
 		if u == nil {

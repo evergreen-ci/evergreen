@@ -720,7 +720,7 @@ Evergreen - Distros
               class="form-control" ng-model="activeDistro.bootstrap_settings.shell_path" placeholder="Absolute native path to the shell binary file (bash)">
             <div class="icon fa fa-warning distro-error" ng-show="form.shellPath.$invalid"> Shell path is required</div><br />
 
-			<div ng-show="isWindows()">
+            <div ng-show="isWindows()">
               <label class="distro-label">Service User:</label>
               <input type="text" ng-required="isWindows() && isNonLegacyProvisioning()"
                 ng-readonly="readOnly" name="serviceUser"
@@ -731,36 +731,63 @@ Evergreen - Distros
               <input type="text" ng-required="isWindows() && isNonLegacyProvisioning()" name="rootDir" class="form-control" ng-model="activeDistro.bootstrap_settings.root_dir"
                 placeholder="Native path to root directory" ng-readonly="readOnly">
               <div class="icon fa fa-warning distro-error" ng-show="form.rootDir.$invalid"> Root directory is required</div><br />
+            </div>
+			<div ng-form name="env">
+			  <label id="env-table" class="distro-label">Environment Variables:</label>
+			  <div class="distro-table-scroll">
+				<table style="margin-left: -8px;" class="table distro-table" ng-show="activeDistro.bootstrap_settings.env">
+				  <thead class="muted">
+					<tr>
+					  <th>Key</th>
+					  <th>Value</th>
+					</tr>
+				  </thead>
+				  <tbody ng-repeat="envVar in activeDistro.bootstrap_settings.env">
+					<tr>
+					  <td><input ng-readonly="readOnly" type="text" required name="envKey" ng-model="envVar.key" class="form-control"></td>
+					  <td><input ng-readonly="readOnly" type="text" ng-model="envVar.value" class="form-control"></td>
+					  <td ng-hide="readOnly"><a ng-click="form.$setDirty();removeEnvVar(envVar)"><i class="fa fa-trash distro-trash-icon"></i></a></td>
+					</tr>
+				  </tbody>
+				</table>
+			  </div>
+			  <div>
+				<div class="icon fa fa-warning distro-error" ng-show="env.envKey.$dirty && env.envKey.$error.required">
+					Environment key can not be blank<br />
+				</div>
+				<button type="button" ng-hide="readOnly" ng-disabled="env.envKey.$dirty && env.envKey.$invalid || env.envKey.$error.required"
+				  class="btn btn-primary" ng-click="form.$setDirty();addEnvVar()"><i class="fa fa-plus"></i>Add Environment Variable</button>
+			  </div>
 			</div>
 
             <div ng-show="isLinux()">
-			  <label class="distro-label">Resource Limits:</label><br />
-			  <label class="muted">Number of Files:</label>
+              <label class="distro-label">Resource Limits:</label><br />
+              <label class="muted">Number of Files:</label>
               <input type="number" ng-readonly="readOnly" name="numFiles"
                 class="form-control" ng-model="activeDistro.bootstrap_settings.resource_limits.num_files"
-			    placeholder="Max number of open file handles. Set -1 for unlimited"
-			    min="-1">
+                placeholder="Max number of open file handles. Set -1 for unlimited"
+                min="-1">
               <div class="icon fa fa-warning distro-error" ng-show="form.numFiles.$invalid"> Invalid max open files</div><br />
 
-			  <label class="muted">Number of Processes:</label>
+              <label class="muted">Number of Processes:</label>
               <input type="number" ng-readonly="readOnly" name="numProcesses"
                 class="form-control" ng-model="activeDistro.bootstrap_settings.resource_limits.num_processes"
-			    placeholder="Max number of processes. Set -1 for unlimited"
-			    min="-1">
+                placeholder="Max number of processes. Set -1 for unlimited"
+                min="-1">
               <div class="icon fa fa-warning distro-error" ng-show="form.numProcesses.$invalid"> Invalid max processes</div><br />
 
-			  <label class="muted">Locked Memory:</label>
+              <label class="muted">Locked Memory:</label>
               <input type="number" ng-readonly="readOnly" name="lockedMemoryKB"
                 class="form-control" ng-model="activeDistro.bootstrap_settings.resource_limits.locked_memory"
-			    placeholder="Max size (in KB) that can be locked into memory. Set -1 for unlimited"
-			    min="-1">
+                placeholder="Max size (in KB) that can be locked into memory. Set -1 for unlimited"
+                min="-1">
               <div class="icon fa fa-warning distro-error" ng-show="form.lockedMemoryKB.$invalid"> Invalid max locked memory</div><br />
 
-			  <label class="muted">Virtual Memory:</label>
+              <label class="muted">Virtual Memory:</label>
               <input type="number" ng-readonly="readOnly" name="virtualMemoryKB"
                 class="form-control" ng-model="activeDistro.bootstrap_settings.resource_limits.virtual_memory"
-			    placeholder="Max size (in KB) of available virtual memory. Set -1 for unlimited"
-			    min="-1">
+                placeholder="Max size (in KB) of available virtual memory. Set -1 for unlimited"
+                min="-1">
               <div class="icon fa fa-warning distro-error" ng-show="form.virtualMemory.$invalid"> Invalid max virtual memory</div><br />
             </div>
           </div>

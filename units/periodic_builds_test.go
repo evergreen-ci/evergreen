@@ -2,7 +2,6 @@ package units
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -22,7 +21,7 @@ func TestPeriodicBuildsJob(t *testing.T) {
 	ctx := context.Background()
 	env := &mock.Environment{}
 	j.env = env
-	assert.NoError(env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+	assert.NoError(env.Configure(ctx))
 	testutil.ConfigureIntegrationTest(t, j.env.Settings(), "TestPeriodicBuildsJob")
 
 	sampleProject := model.ProjectRef{

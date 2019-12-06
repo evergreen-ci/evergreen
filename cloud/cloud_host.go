@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/pkg/errors"
 )
 
 //CloudHost is a provider-agnostic host object that delegates methods
@@ -19,9 +20,9 @@ type CloudHost struct {
 // GetCloudHost returns an instance of CloudHost wrapping the given model.Host,
 // giving access to the provider-specific methods to manipulate on the host.
 func GetCloudHost(ctx context.Context, host *host.Host, env evergreen.Environment) (*CloudHost, error) {
-	mgrOpts := ManagerOpts{
-		Provider: host.Provider,
-		Region:   GetRegion(host.Distro),
+	mgrOpts, err := GetManagerOptions(host.Distro)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't get ManagerOpts for '%s'", host.Id)
 	}
 	mgr, err := GetManager(ctx, env, mgrOpts)
 	if err != nil {

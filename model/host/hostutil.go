@@ -305,6 +305,10 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 		}
 	}
 
+	for _, envVar := range h.Distro.BootstrapSettings.Env {
+		params = append(params, fmt.Sprintf("--env '%s=%s'", envVar.Key, envVar.Value))
+	}
+
 	if os, _ := h.Distro.Platform(); os == "linux" {
 		if numProcs := h.Distro.BootstrapSettings.ResourceLimits.NumProcesses; numProcs != 0 {
 			params = append(params, fmt.Sprintf("--limit_num_procs=%d", numProcs))
@@ -986,7 +990,7 @@ func (h *Host) SetupSpawnHostCommands(settings *evergreen.Settings) (string, err
 		fmt.Sprintf("mkdir -m 777 -p %s", binDir),
 		fmt.Sprintf("echo '%s' > %s", confJSON, confPath),
 		fmt.Sprintf("cp %s %s", binaryPath, binDir),
-		fmt.Sprintf("(echo 'PATH=${PATH}:%s' >> %s/.profile || true; echo 'PATH=${PATH}:%s' >> %s/.bash_profile || true)", binDir, h.Distro.HomeDir(), binDir, h.Distro.HomeDir()),
+		fmt.Sprintf("(echo 'export PATH=\"${PATH}:%s\"' >> %s/.profile || true; echo 'export PATH=\"${PATH}:%s\"' >> %s/.bash_profile || true)", binDir, h.Distro.HomeDir(), binDir, h.Distro.HomeDir()),
 	}, " && ")
 
 	script := setupBinDirCmds

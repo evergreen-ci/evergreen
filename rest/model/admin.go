@@ -1013,10 +1013,6 @@ type APIAWSConfig struct {
 	DefaultSecurityGroup APIString   `json:"default_security_group"`
 	AllowedInstanceTypes []APIString `json:"allowed_instance_types"`
 	MaxVolumeSizePerUser *int        `json:"max_volume_size"`
-
-	// Legacy
-	EC2Secret APIString `json:"aws_secret"`
-	EC2Key    APIString `json:"aws_id"`
 }
 
 func (a *APIAWSConfig) BuildFromService(h interface{}) error {
@@ -1039,10 +1035,6 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 		for _, t := range v.AllowedInstanceTypes {
 			a.AllowedInstanceTypes = append(a.AllowedInstanceTypes, ToAPIString(t))
 		}
-
-		// Legacy
-		a.EC2Secret = ToAPIString(v.EC2Secret)
-		a.EC2Key = ToAPIString(v.EC2Key)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1060,10 +1052,6 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		S3BaseURL:            FromAPIString(a.S3BaseURL),
 		DefaultSecurityGroup: FromAPIString(a.DefaultSecurityGroup),
 		MaxVolumeSizePerUser: host.DefaultMaxVolumeSizePerUser,
-
-		// Legacy
-		EC2Key:    FromAPIString(a.EC2Key),
-		EC2Secret: FromAPIString(a.EC2Secret),
 	}
 	if a.MaxVolumeSizePerUser != nil {
 		config.MaxVolumeSizePerUser = *a.MaxVolumeSizePerUser

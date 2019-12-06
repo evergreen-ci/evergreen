@@ -1,4 +1,4 @@
-mciModule.factory('PerfDiscoveryDataService', function(
+mciModule.factory('PerfDiscoveryDataService', function (
   $q, $window, ApiV1, ApiV2, ApiTaskdata, BF, EVG, MPA_UI,
   PERF_DISCOVERY, Stitch, STITCH_CONFIG
 ) {
@@ -8,7 +8,7 @@ mciModule.factory('PerfDiscoveryDataService', function(
    * UTILITY FUNCTIONS *
    *********************/
 
-  var respData = function(resp) {
+  var respData = function (resp) {
     return resp.data
   }
 
@@ -33,7 +33,7 @@ mciModule.factory('PerfDiscoveryDataService', function(
   }
 
   function noBaselineFilter(results) {
-    return function(item, id) {
+    return function (item, id) {
       return results.baseline[id] == undefined
     }
   }
@@ -51,7 +51,7 @@ mciModule.factory('PerfDiscoveryDataService', function(
   }
 
   function githashToVersionId(githash) {
-    return $window.project.replace('sys-perf','sys_perf') + '_' + githash
+    return $window.project.replace('sys-perf', 'sys_perf') + '_' + githash
   }
 
   // For given `query` attempts to construct valid selctable
@@ -108,21 +108,25 @@ mciModule.factory('PerfDiscoveryDataService', function(
 
     return _.chain(item.results)
       .omit(_.isString)
-      .each(function(speed, threads) {
+      .each(function (speed, threads) {
         var data = {
           build: ctx.buildName,
           buildId: ctx.buildId,
           buildVariant: ctx.buildVariant,
           task: ctx.taskName,
-          taskURL: MPA_UI.TASK_BY_ID({task_id: ctx.taskId}),
-          buildURL: MPA_UI.BUILD_BY_ID({build_id: ctx.buildId}),
+          taskURL: MPA_UI.TASK_BY_ID({
+            task_id: ctx.taskId
+          }),
+          buildURL: MPA_UI.BUILD_BY_ID({
+            build_id: ctx.buildId
+          }),
           taskId: ctx.taskId,
           test: item.name,
           threads: +threads,
           speed: speed.ops_per_sec,
           storageEngine: ctx.storageEngine,
         }
-        receiver[slug(data)] =  data
+        receiver[slug(data)] = data
       })
   }
 
@@ -136,38 +140,40 @@ mciModule.factory('PerfDiscoveryDataService', function(
   //   {...}
   // ]
   function onProcessData(data) {
-    var now = {}, baseline = {}, history = {}
+    var now = {},
+      baseline = {},
+      history = {}
 
-    _.each(data, function(d) {
+    _.each(data, function (d) {
       // Skip empty items
       if (d == null) return
 
       // TODO add group validation instead of individual
       // Process current (revision) data
-      if (d.current) {
+      if (d.current && d.current.data) {
         // Copy storageEngine to the context
         d.ctx.storageEngine = d.current.data.storageEngine || '(none)'
 
-        _.each(d.current.data.results, function(result) {
+        _.each(d.current.data.results, function (result) {
           processItem(result, now, d.ctx)
         })
       }
 
       // Process baseline data
-      if (d.baseline) {
-        _.each(d.baseline.data.results, function(result) {
+      if (d.baseline && d.baseline.data) {
+        _.each(d.baseline.data.results, function (result) {
           processItem(result, baseline, d.ctx)
         })
       }
 
       // Process history data
-      _.each(d.history, function(histItems) {
+      _.each(d.history, function (histItems) {
         // Create an empty 'bucket' for history items if not exists
         var order = histItems.order
         if (history[order] == undefined) {
           history[order] = {}
         }
-        _.each(histItems.data.results, function(result) {
+        _.each(histItems.data.results, function (result) {
           processItem(result, history[order], d.ctx)
         })
       })
@@ -179,7 +185,9 @@ mciModule.factory('PerfDiscoveryDataService', function(
       // Sorts history items by `order` and returns the list
       history: _.map(
         _.sortBy(_.keys(history)),
-        function(key) { return history[key] }
+        function (key) {
+          return history[key]
+        }
       ),
     }
   }
@@ -187,7 +195,7 @@ mciModule.factory('PerfDiscoveryDataService', function(
   function onGetRows(results) {
     return _.chain(results.now)
       .omit(noBaselineFilter(results))
-      .map(function(item, id) {
+      .map(function (item, id) {
         var baseline = results.baseline[id]
         var appendix = {
           ratio: ratio(item.speed, baseline.speed),
@@ -196,7 +204,7 @@ mciModule.factory('PerfDiscoveryDataService', function(
 
         var trendData = _.chain(results.history)
           .take(100)
-          .map(function(run) {
+          .map(function (run) {
             var base = run[id]
             if (base == undefined || !base.speed) {
               return 1
@@ -218,17 +226,18 @@ mciModule.factory('PerfDiscoveryDataService', function(
 
   // TODO Should be part of `VersionResource`
   // :parm version: version object
-  // :returns: Array of {taskId, taskName, buildName}
+  // :returns: Array of objects representing tasks within a version
   function extractTasks(version) {
-    return _.reduce(version.builds, function(items, build) {
+    return _.reduce(version.builds, function (items, build) {
       // Going over dict of tasks ({taskName: data})
-      return items.concat(_.map(build.tasks, function(taskData, taskName) {
+      return items.concat(_.map(build.tasks, function (taskData, taskName) {
         return {
           taskId: taskData.task_id,
           buildId: build.id,
           taskName: taskName,
           buildName: build.name,
           buildVariant: build.variant,
+          project: build.project,
         }
       }))
     }, [])
@@ -236,24 +245,31 @@ mciModule.factory('PerfDiscoveryDataService', function(
 
   function queryBuildData(version) {
     return $q.all(
-      _.map(version.build_variants_status, function(d) {
+      _.map(version.build_variants_status, function (d) {
         return ApiV1.getBuildDetail(d.build_id).then(
-          respData, function(e) { return {} }
+          respData,
+          function (e) {
+            return {}
+          }
         )
       })
     )
   }
 
   function tasksOfBuilds(promise) {
-    return promise.then(function(builds) {
-      return extractTasks({builds: builds})
+    return promise.then(function (builds) {
+      return extractTasks({
+        builds: builds
+      })
     })
   }
 
   function versionSelectAdaptor(versionsRes) {
     return _.chain(versionsRes.data.versions)
-      .where({rolled_up: false})
-      .map(function(d) {
+      .where({
+        rolled_up: false
+      })
+      .map(function (d) {
         return {
           kind: PD.KIND_VERSION,
           id: d.versions[0].version_id,
@@ -264,8 +280,12 @@ mciModule.factory('PerfDiscoveryDataService', function(
   }
 
   function tagSelectAdaptor(tagsRes) {
-    return _.map(tagsRes.data, function(d) {
-      return {kind: PD.KIND_TAG, id: d.obj.version_id, name: d.name}
+    return _.map(tagsRes.data, function (d) {
+      return {
+        kind: PD.KIND_TAG,
+        id: d.obj.version_id,
+        name: d.name
+      }
     })
   }
 
@@ -278,24 +298,26 @@ mciModule.factory('PerfDiscoveryDataService', function(
   function postprocessBFs(bfs) {
     return _.chain(bfs)
       // Group all BFs by task, bv and test
-      .groupBy(function(bf) {
+      .groupBy(function (bf) {
         return [bf.tasks, bf.buildvariants, bf.tests && ''].join('|')
       })
       // In each group, sort by status/date and mark 'open' items
-      .map(function(bfsGroup) {
+      .map(function (bfsGroup) {
         return _.chain(bfsGroup)
           // Split Bfs into two category 'Open' and 'not open'
-          .partition(function(bf) {
+          .partition(function (bf) {
             return _.contains(BF.OPEN_STATUSES, bf.status)
           })
           // Sort BFs in each split by date created
-          .map(function(bfs) {
+          .map(function (bfs) {
             return _.sortBy(bfs, '-created')
           })
           // Kind of minor optimisation - sets _isOpen to true for
           // each BF which was considered to be open on the first stage
-          .each(function(bfs, idx) {
-            idx == 0 && _.each(bfs, function(bf) { bf._isOpen = true })
+          .each(function (bfs, idx) {
+            idx == 0 && _.each(bfs, function (bf) {
+              bf._isOpen = true
+            })
           })
           // Merging two splits into single array of BFs
           .flatten(true)
@@ -312,39 +334,73 @@ mciModule.factory('PerfDiscoveryDataService', function(
   // :rtype: $q.promise({taskId: {key, link}, ...})
   function getBFTicketsForRows(rows) {
     var uniqueTasks = _.chain(rows)
-      .uniq(false, function(d) {
+      .uniq(false, function (d) {
         return d.task
       })
       .pluck('task')
       .value()
 
-    return Stitch.use(STITCH_CONFIG.PERF).query(function(client) {
+    return Stitch.use(STITCH_CONFIG.PERF).query(function (client) {
       return client
         .db(STITCH_CONFIG.PERF.DB_PERF)
         .collection(STITCH_CONFIG.PERF.COLL_BUILD_FAILURES)
-        .aggregate([
-          {$match: {tasks: {$in: uniqueTasks}}},
+        .aggregate([{
+            $match: {
+              tasks: {
+                $in: uniqueTasks
+              }
+            }
+          },
           // Denormalization
-          {$unwind: {path: '$tasks', preserveNullAndEmptyArrays: true}},
-          {$unwind: {path: '$buildvariants', preserveNullAndEmptyArrays: true}},
-          {$unwind: {path: '$project', preserveNullAndEmptyArrays: true}},
-          {$unwind: {path: '$tests', preserveNullAndEmptyArrays: true}},
-          {$unwind: {path: '$first_failing_revision', preserveNullAndEmptyArrays: true}},
+          {
+            $unwind: {
+              path: '$tasks',
+              preserveNullAndEmptyArrays: true
+            }
+          },
+          {
+            $unwind: {
+              path: '$buildvariants',
+              preserveNullAndEmptyArrays: true
+            }
+          },
+          {
+            $unwind: {
+              path: '$project',
+              preserveNullAndEmptyArrays: true
+            }
+          },
+          {
+            $unwind: {
+              path: '$tests',
+              preserveNullAndEmptyArrays: true
+            }
+          },
+          {
+            $unwind: {
+              path: '$first_failing_revision',
+              preserveNullAndEmptyArrays: true
+            }
+          },
         ])
     }).then(postprocessBFs)
   }
 
   // Makes series of HTTP calls and loads curent, baseline and history data
   // :rtype: $q.promise
-  function queryData(tasksPromise, baselineTasks) {
+  function queryData(tasksPromise, baselineTasks, expandedCurrent, expandedBaseline, expandedTrend) {
     return $q.all({
       tasks: tasksPromise,
       baselineTasks: baselineTasks
-    }).then(function(promise) {
-      return $q.all(_.map(promise.tasks, function(task) {
-        return ApiTaskdata.getTaskById(task.taskId, 'perf')
-          .then(respData, function() { return null })
-          .then(function(data) {
+    }).then(function (promise) {
+      return $q.all(_.map(promise.tasks, function (task) {
+        const currentTaskPromise = expandedCurrent ? ApiTaskdata.getExpandedTaskById(task.taskId, 'perf') : ApiTaskdata.getTaskById(task.taskId, 'perf');
+        const taskHistory = expandedTrend ? ApiTaskdata.getExpandedHistory(task.taskName, task.buildVariant, task.project) : ApiTaskdata.getTaskHistory(task.taskId, 'perf');
+        return currentTaskPromise
+          .then(respData, function () {
+            return null
+          })
+          .then(function (data) {
             if (data) {
               var baseline = _.findWhere(promise.baselineTasks, {
                 buildName: task.buildName,
@@ -352,14 +408,19 @@ mciModule.factory('PerfDiscoveryDataService', function(
               })
               // Skip items with no baseline results
               if (!baseline) return null
+              let baselinePromise = expandedBaseline ? ApiTaskdata.getExpandedTaskById(baseline.taskId, 'perf') : ApiTaskdata.getTaskById(baseline.taskId, 'perf');
 
               return $q.all({
                 ctx: $q.resolve(task),
                 current: data,
-                history: ApiTaskdata.getTaskHistory(task.taskId, 'perf')
-                  .then(respData, function(e) { return [] }),
-                baseline: ApiTaskdata.getTaskById(baseline.taskId, 'perf')
-                  .then(respData, function(e) { return null }),
+                history: taskHistory
+                  .then(respData, function (e) {
+                    return []
+                  }),
+                baseline: baselinePromise
+                  .then(respData, function (e) {
+                    return null
+                  }),
               })
             } else {
               return null
@@ -397,7 +458,7 @@ mciModule.factory('PerfDiscoveryDataService', function(
     return $q.all([
       ApiV2.getRecentVersions(projectId).then(versionSelectAdaptor),
       ApiTaskdata.getProjectTags(projectId).then(tagSelectAdaptor)
-    ]).then(function(data) {
+    ]).then(function (data) {
       return Array.prototype.concat.apply([], data)
     })
   }
@@ -405,7 +466,7 @@ mciModule.factory('PerfDiscoveryDataService', function(
   function findVersionItem(items, query) {
     if (query == undefined) return
 
-    return _.find(items, function(d) {
+    return _.find(items, function (d) {
       // Checks if query is inside or equal an id
       // Useful for long verion ids and revisions
       // e.g. $GITHASH will match sys-perf_$GITHASH
@@ -429,17 +490,16 @@ mciModule.factory('PerfDiscoveryDataService', function(
   function getCompItemVersion(compItem) {
     return ApiV2.getVersionById(compItem.id)
       // Extract version object
-      .then(function(res) {
+      .then(function (res) {
         return res.data
       })
   }
 
-  function getData(version, baselineTag) {
+  function getData(version, baselineTag, expandedCurrent, expandedBaseline, expandedTrend) {
     return getRows(
       processData(
         queryData(
-          tasksOfBuilds(queryBuildData(version)),
-          tasksOfBuilds(queryBuildData(baselineTag))
+          tasksOfBuilds(queryBuildData(version)), tasksOfBuilds(queryBuildData(baselineTag)), expandedCurrent, expandedBaseline, expandedTrend
         )
       )
     )

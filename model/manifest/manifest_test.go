@@ -3,29 +3,41 @@ package manifest
 import (
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-
+	"github.com/evergreen-ci/evergreen/model/patch"
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestUpdateModuleRev(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
-	m := Manifest{
-		Id: "m",
-		Modules: map[string]*Module{
-			"foo": &Module{
-				Revision: "123",
+func TestFindFromVersion(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection, patch.Collection))
+
+	moduleName := "sample_module"
+	projectName := "p1"
+	revision := "12345"
+	mfest := &Manifest{
+		Id:          "m1",
+		ProjectName: projectName,
+		Revision:    revision,
+		Modules:     map[string]*Module{moduleName: &Module{}},
+	}
+	_, err := mfest.TryInsert()
+	assert.NoError(t, err)
+
+	patchID := "aabbccddeeff001122334455"
+	p := patch.Patch{
+		Id: patch.NewId(patchID),
+		Patches: []patch.ModulePatch{
+			{
+				ModuleName: moduleName,
+				Githash:    "abcdef",
 			},
 		},
 	}
-	_, err := m.TryInsert()
-	assert.NoError(err)
+	assert.NoError(t, p.Insert())
 
-	assert.EqualError(m.UpdateModuleRevision("bar", "abc"), "no module named bar found")
-	assert.NoError(m.UpdateModuleRevision("foo", "abc"))
-	dbManifest, err := FindOne(ById(m.Id))
-	assert.NoError(err)
-	assert.Equal("abc", dbManifest.Modules["foo"].Revision)
+	mfest, err = FindFromVersion(patchID, projectName, revision, evergreen.PatchVersionRequester)
+	assert.NoError(t, err)
+	assert.Equal(t, "abcdef", mfest.ModuleOverrides[moduleName])
 }

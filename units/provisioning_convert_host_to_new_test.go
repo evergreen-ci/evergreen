@@ -74,7 +74,7 @@ func TestConvertHostToNewProvisioningJob(t *testing.T) {
 			defer cancel()
 
 			env := &mock.Environment{}
-			require.NoError(t, env.Configure(tctx, "", nil))
+			require.NoError(t, env.Configure(tctx))
 			mgr := &jmock.Manager{}
 			env.JasperProcessManager = mgr
 			sshKeyName, sshKeyValue := "foo", "bar"

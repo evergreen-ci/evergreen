@@ -34,7 +34,7 @@ func (m *ManifestPlugin) GetPanelConfig() (*PanelConfig, error) {
 					if context.Version == nil {
 						return nil, nil
 					}
-					currentManifest, err := manifest.FindFromVersion(context.Version.Id, context.Version.Identifier, context.Version.Revision)
+					currentManifest, err := manifest.FindFromVersion(context.Version.Id, context.Version.Identifier, context.Version.Revision, context.Version.Requester)
 					if err != nil {
 						return nil, err
 					}

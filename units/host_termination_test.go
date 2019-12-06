@@ -36,7 +36,7 @@ func TestTerminateHosts(t *testing.T) {
 	defer cancel()
 
 	env := &mock.Environment{}
-	assert.NoError(env.Configure(ctx, "", nil))
+	assert.NoError(env.Configure(ctx))
 
 	hostID := "i-12345"
 	mcp := cloud.GetMockProvider()
@@ -49,6 +49,7 @@ func TestTerminateHosts(t *testing.T) {
 	h := &host.Host{
 		Id:          hostID,
 		Status:      evergreen.HostRunning,
+		Distro:      distro.Distro{Provider: evergreen.ProviderNameMock},
 		Provider:    evergreen.ProviderNameMock,
 		Provisioned: true,
 	}
@@ -61,9 +62,9 @@ func TestTerminateHosts(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(dbHost)
 	assert.Equal(evergreen.HostTerminated, dbHost.Status)
-	events, err := event.Find(event.AllLogCollection, event.HostEventsInOrder(hostID))
+	events, err := event.Find(event.AllLogCollection, event.MostRecentHostEvents([]string{hostID}, 50))
 	assert.NoError(err)
-	data, valid := events[len(events)-1].Data.(*event.HostEventData)
+	data, valid := events[0].Data.(*event.HostEventData)
 	assert.True(valid)
 	assert.Equal("foo", data.Logs)
 }
@@ -102,7 +103,7 @@ func TestHostCosts(t *testing.T) {
 	assert.NoError(t1.Insert())
 
 	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx, "", nil))
+	require.NoError(t, env.Configure(ctx))
 	j := NewHostTerminationJob(env, *h, true, "")
 	j.Run(ctx)
 	assert.NoError(j.Error())

@@ -215,8 +215,20 @@ func cacheProjectData(p *Project) projectMaps {
 
 // saveNewBuildsAndTasks saves new builds and tasks to the db.
 func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProject *projectMaps, v *Version, p *Project, parentPriority int64) error {
-	newTVPairsForExistingVariants := TaskVariantPairs{}
-	newTVPairsForNewVariants := TaskVariantPairs{}
+	// inherit priority from the parent task
+	for i, projBv := range p.BuildVariants {
+		for j := range projBv.Tasks {
+			p.BuildVariants[i].Tasks[j].Priority = parentPriority
+		}
+	}
+
+	newTVPairs := TaskVariantPairs{}
+	for _, bv := range g.BuildVariants {
+		newTVPairs = appendTasks(newTVPairs, bv, p)
+	}
+	newTVPairs.ExecTasks = IncludePatchDependencies(p, newTVPairs.ExecTasks)
+
+	// group into new builds and new tasks for existing builds
 	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.IdKey, build.BuildVariantKey))
 	if err != nil {
 		return errors.Wrap(err, "problem finding builds for version")
@@ -225,31 +237,26 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 	for _, b := range builds {
 		buildSet[b.BuildVariant] = struct{}{}
 	}
-	for _, bv := range g.BuildVariants {
-		// If the buildvariant already exists, append tasks to it.
-		if _, ok := buildSet[bv.Name]; ok {
-			newTVPairsForExistingVariants = appendTasks(newTVPairsForExistingVariants, bv, p)
+	newTVPairsForExistingVariants := TaskVariantPairs{}
+	newTVPairsForNewVariants := TaskVariantPairs{}
+	for _, execTask := range newTVPairs.ExecTasks {
+		if _, ok := buildSet[execTask.Variant]; ok {
+			newTVPairsForExistingVariants.ExecTasks = append(newTVPairsForExistingVariants.ExecTasks, execTask)
 		} else {
-			// If the buildvariant does not exist, create it.
-			newTVPairsForNewVariants = appendTasks(newTVPairsForNewVariants, bv, p)
+			newTVPairsForNewVariants.ExecTasks = append(newTVPairsForNewVariants.ExecTasks, execTask)
+		}
+	}
+	for _, dispTask := range newTVPairs.DisplayTasks {
+		if _, ok := buildSet[dispTask.Variant]; ok {
+			newTVPairsForExistingVariants.DisplayTasks = append(newTVPairsForExistingVariants.DisplayTasks, dispTask)
+		} else {
+			newTVPairsForNewVariants.DisplayTasks = append(newTVPairsForNewVariants.DisplayTasks, dispTask)
 		}
 	}
 
-	// inherit priority from the parent task
-	projBvs := []BuildVariant(p.BuildVariants)
-	for i, projBv := range projBvs {
-		for j, _ := range projBv.Tasks {
-			projBvs[i].Tasks[j].Priority = parentPriority
-		}
-	}
-
-	dependencies := IncludePatchDependencies(p, newTVPairsForExistingVariants.ExecTasks)
-	newTVPairsForExistingVariants.ExecTasks = append(newTVPairsForExistingVariants.ExecTasks, dependencies...)
 	if err := AddNewTasks(ctx, true, v, p, newTVPairsForExistingVariants, g.TaskID); err != nil {
 		return errors.Wrap(err, "errors adding new tasks")
 	}
-	dependencies = IncludePatchDependencies(p, newTVPairsForNewVariants.ExecTasks)
-	newTVPairsForNewVariants.ExecTasks = append(newTVPairsForNewVariants.ExecTasks, dependencies...)
 	if err := AddNewBuilds(ctx, true, v, p, newTVPairsForNewVariants, g.TaskID); err != nil {
 		return errors.Wrap(err, "errors adding new builds")
 	}
