@@ -72,14 +72,14 @@ window.JiraHost = {{.JiraHost}};
           </a>
           <ul class="dropdown-menu">
             <li><a ng-href="/distros">Distros</a></li>
-            {{if .ProjectData.IsAdmin}}
+            {{if .ProjectData.IsAdmin }}
             <li><a ng-href="/projects##[[project]]">Projects</a></li>
             {{end}}
             <li><a href="/spawn">Hosts</a></li>
             <li><a href="/patches/mine">Patches</a></li>
             <li class="divider"></li>
             <li><a href="/settings">User Settings</a></li>
-            {{if IsSuperUser .User.Id}}
+            {{if .IsAdmin}}
             <li><a href="/admin">Admin Settings</a></li>
             {{end}}
             <li><a href="/notifications">Notifications</a></li>

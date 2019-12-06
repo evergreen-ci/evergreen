@@ -1,6 +1,7 @@
 mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, $anchorScroll, $filter, mciDistroRestService) {
 
   $scope.superUser = $window.isSuperUser;
+  $scope.createDistro = (!$window.aclEnabled && $window.isSuperUser) || ($window.aclEnabled && $window.canCreateDistro) // PM-1355: remove this
   $scope.distroIds = $window.distroIds;
   $scope.containerPoolDistros = $window.containerPoolDistros;
   $scope.containerPoolIds = $window.containerPoolIds;

@@ -63,6 +63,7 @@ type ViewData struct {
 	JiraHost    string
 	Bugsnag     string
 	NewRelic    evergreen.NewRelicConfig
+	IsAdmin     bool
 	ACLEnabled  bool // TODO PM-1355 remove this
 }
 
@@ -189,6 +190,20 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 
 	if u, ok := userCtx.(*user.DBUser); ok {
 		viewData.User = u
+		opts := gimlet.PermissionOpts{
+			Resource:      evergreen.SuperUserPermissionsID,
+			ResourceType:  evergreen.SuperUserResourceType,
+			Permission:    evergreen.PermissionAdminSettings,
+			RequiredLevel: evergreen.AdminSettingsEdit.Value,
+		}
+		viewData.IsAdmin, err = u.HasPermission(opts)
+		if err != nil {
+			grip.Criticalf("failed to check admin permissions for user [%s%]", userCtx.Username())
+		}
+		// TODO: PM-1355 remove this if statement.
+		if !evergreen.AclCheckingIsEnabled {
+			viewData.IsAdmin = uis.isSuperUser(u)
+		}
 	} else if userCtx != nil {
 		grip.Criticalf("user [%s] is not of the correct type: %T", userCtx.Username(), userCtx)
 	}
@@ -213,6 +228,9 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	needsSuperUser := gimlet.WrapperMiddleware(uis.requireSuperUser)
 	needsAdmin := gimlet.WrapperMiddleware(uis.requireAdmin)
 	allowsCORS := gimlet.WrapperMiddleware(uis.setCORSHeaders)
+	adminSettings := route.RequiresSuperUserPermission(evergreen.PermissionAdminSettings, evergreen.AdminSettingsEdit)
+	createProject := route.RequiresSuperUserPermission(evergreen.PermissionProjectCreate, evergreen.ProjectCreate)
+	createDistro := route.RequiresSuperUserPermission(evergreen.PermissionDistroCreate, evergreen.DistroCreate)
 	viewTasks := &route.RequiresProjectViewPermission{}
 	editTasks := route.RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksBasic)
 	viewLogs := route.RequiresProjectPermission(evergreen.PermissionLogs, evergreen.LogsView)
@@ -313,7 +331,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Distros
 	app.AddRoute("/distros").Wrap(needsLogin, needsContext).Handler(uis.distrosPage).Get()
-	app.AddRoute("/distros").Wrap(needsSuperUser, needsContext).Handler(uis.addDistro).Put()
+	app.AddRoute("/distros").Wrap(needsSuperUser, needsContext, createDistro).Handler(uis.addDistro).Put()
 	app.AddRoute("/distros/{distro_id}").Wrap(needsLogin, needsContext, viewDistroSettings).Handler(uis.getDistro).Get()
 	app.AddRoute("/distros/{distro_id}").Wrap(needsSuperUser, needsContext, editDistroSettings).Handler(uis.addDistro).Put()
 	app.AddRoute("/distros/{distro_id}").Wrap(needsSuperUser, needsContext, editDistroSettings).Handler(uis.modifyDistro).Post()
@@ -382,13 +400,13 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/project/{project_id}").Wrap(needsContext, needsAdmin, viewProjectSettings).Handler(uis.projectPage).Get()
 	app.AddRoute("/project/{project_id}/events").Wrap(needsContext, needsAdmin, viewProjectSettings).Handler(uis.projectEvents).Get()
 	app.AddRoute("/project/{project_id}").Wrap(needsContext, needsAdmin, editProjectSettings).Handler(uis.modifyProject).Post()
-	app.AddRoute("/project/{project_id}").Wrap(needsContext, needsAdmin, editProjectSettings).Handler(uis.addProject).Put()
+	app.AddRoute("/project/{project_id}").Wrap(needsContext, needsAdmin, createProject).Handler(uis.addProject).Put()
 	app.AddRoute("/project/{project_id}/repo_revision").Wrap(needsContext, editProjectSettings).Handler(uis.setRevision).Put()
 
 	// Admin routes
-	app.AddRoute("/admin").Wrap(needsLogin, needsContext).Handler(uis.adminSettings).Get()
-	app.AddRoute("/admin/cleartokens").Wrap(needsSuperUser).Handler(uis.clearAllUserTokens).Post()
-	app.AddRoute("/admin/events").Wrap(needsLogin, needsContext).Handler(uis.adminEvents).Get()
+	app.AddRoute("/admin").Wrap(needsLogin, needsContext, adminSettings).Handler(uis.adminSettings).Get()
+	app.AddRoute("/admin/cleartokens").Wrap(needsSuperUser, adminSettings).Handler(uis.clearAllUserTokens).Post()
+	app.AddRoute("/admin/events").Wrap(needsLogin, needsContext, adminSettings).Handler(uis.adminEvents).Get()
 
 	// Plugin routes
 	app.PrefixRoute("/plugin").Route("/buildbaron/jira_bf_search/{task_id}/{execution}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.bbJiraSearch).Get()

@@ -1,7 +1,8 @@
 {{define "scripts"}}
 <script type="text/javascript" src="{{Static "js" "distros.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript">
-  window.distroIds = {{.DistroIds}}
+  window.canCreateDistro = {{.CreateDistro}};
+  window.distroIds = {{.DistroIds}};
   window.keys = {{.Keys}};
   window.containerPools = {{.ContainerPools}};
   window.containerPoolDistros = {{.ContainerPoolDistros}};
@@ -19,7 +20,7 @@ Evergreen - Distros
   <div ng-show="distroIds.length == 0">
     <h2>No Distros</h2>
     <div class="row">
-      <button type="button" ng-hide="!superUser" class="btn btn-primary" style="margin-left: 15px" ng-click="newDistro()"
+      <button type="button" ng-hide="!createDistro" class="btn btn-primary" style="margin-left: 15px" ng-click="newDistro()"
         ng-disabled="activeDistro.new"><i class="fa fa-plus"></i>New Distro</button>
     </div>
   </div>
@@ -30,7 +31,7 @@ Evergreen - Distros
           <h2 style="text-align: center;">Distros<span ng-show="distroIds.length != 0">([[distroIds.length]])</span></h2>
         </div>
         <div class="row" style="text-align: center;">
-          <button type="button" class="btn btn-primary col-lg-8" ng-hide="!superUser" style="margin-bottom: 10px; margin-left: 35px"
+          <button type="button" class="btn btn-primary col-lg-8" ng-hide="!createDistro" style="margin-bottom: 10px; margin-left: 35px"
             ng-click="newDistro()" ng-disabled="activeDistro.new"><i class="fa fa-plus"></i>New Distro</button>
         </div>
         <div id="distros-list-container">
@@ -48,7 +49,7 @@ Evergreen - Distros
         <div ng-show="activeDistro">
           <h2 style="display:inline-block; padding-right:15px">Configure
           </h2>
-          <a class="pointer" ng-click="copyDistro()" ng-hide="tempDistro||readOnly"> make a copy </a> /
+          <a class="pointer" ng-click="copyDistro()" ng-hide="tempDistro||!createDistro"> make a copy </a> /
           <a ng-href="/event_log/distro/[[activeDistro._id]]"> view event log </a>
         </div>
         <div style="padding-top: -25px;" class="panel-body panel-default">

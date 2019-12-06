@@ -47,6 +47,20 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	opts := gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionDistroCreate,
+		RequiredLevel: evergreen.DistroCreate.Value,
+	}
+	createDistro, err := u.HasPermission(opts)
+	if err != nil {
+		message := "error fetching distro create permissions"
+		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
+		http.Error(w, message, http.StatusInternalServerError)
+		return
+	}
+
 	settings, err := evergreen.GetConfig()
 	if err != nil {
 		message := fmt.Sprintf("error fetching evergreen settings: %v", err)
@@ -65,13 +79,14 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
-		DistroIds []string
-		Keys      map[string]string
+		CreateDistro bool
+		DistroIds    []string
+		Keys         map[string]string
 		ViewData
 		ContainerPools       []evergreen.ContainerPool
 		ContainerPoolDistros []string
 		ContainerPoolIds     []string
-	}{distroIds, uis.Settings.Keys, uis.GetCommonViewData(w, r, false, true), containerPools, containerPoolDistros, containerPoolIds},
+	}{createDistro, distroIds, uis.Settings.Keys, uis.GetCommonViewData(w, r, false, true), containerPools, containerPoolDistros, containerPoolIds},
 		"base", "distros.html", "base_angular.html", "menu.html")
 }
 

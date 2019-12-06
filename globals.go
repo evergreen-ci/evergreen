@@ -499,9 +499,9 @@ func IsGitHubPatchRequester(requester string) bool {
 var AclCheckingIsEnabled = (os.Getenv("ACL_ENABLED") == "true")
 
 const (
-	AdminResourceType   = "admin"
-	ProjectResourceType = "project"
-	DistroResourceType  = "distro"
+	SuperUserResourceType = "super_user"
+	ProjectResourceType   = "project"
+	DistroResourceType    = "distro"
 )
 
 type PermissionLevel struct {
