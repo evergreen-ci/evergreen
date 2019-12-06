@@ -433,10 +433,10 @@ func LoadProjectInto(data []byte, identifier string, project *Project) error {
 func projectFromYAML(yml []byte) (*Project, error) {
 	intermediateProject, err := createIntermediateProject(yml)
 	if err != nil {
-		return nil, errors.Wrap(err, "error creating intermediate project")
+		return nil, err
 	}
 	p, err := translateProject(intermediateProject)
-	return p, errors.Wrap(err, "error translating project")
+	return p, err
 }
 
 // createIntermediateProject marshals the supplied YAML into our

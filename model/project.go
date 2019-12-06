@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-git-ignore"
 	yaml "gopkg.in/yaml.v2"
@@ -1039,6 +1040,11 @@ func FindLastKnownGoodProject(identifier string) (*Project, error) {
 		if err == nil {
 			return project, nil
 		}
+		grip.Critical(message.WrapError(err, message.Fields{
+			"message": "last known good version has malformed config",
+			"version": lastGoodVersion.Identifier,
+			"project": identifier,
+		}))
 	}
 
 	return nil, errors.Wrapf(err, "Error loading project from "+

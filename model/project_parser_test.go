@@ -101,7 +101,7 @@ tasks:
 `
 				p, err := createIntermediateProject([]byte(nameless))
 				So(p, ShouldBeNil)
-				So(err, ShouldBeNil)
+				So(err, ShouldNotBeNil)
 			})
 			Convey("but an unused depends_on field should not error", func() {
 				nameless := `
@@ -745,7 +745,7 @@ tasks:
 	proj, err = projectFromYAML([]byte(conflictYml))
 	assert.NotNil(proj)
 	assert.Error(err)
-	assert.Contains(err, "display task execTask1 cannot have the same name as an execution task")
+	assert.Contains(err.Error(), "display task execTask1 cannot have the same name as an execution task")
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 0)
 
 	// test that wildcard selectors are resolved correctly
