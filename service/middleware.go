@@ -335,23 +335,25 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 	}
 
 	projectId := uis.getRequestProjectId(r)
-	opts := gimlet.PermissionOpts{
-		Resource:      projectId,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionTasks,
-		RequiredLevel: evergreen.TasksView.Value,
-	}
-	ok, err := dbUser.HasPermission(opts)
-	if err != nil {
-		return pc, err
-	}
-	if !ok {
-		projectId = ""
+	if evergreen.AclCheckingIsEnabled {
+		opts := gimlet.PermissionOpts{
+			Resource:      projectId,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionTasks,
+			RequiredLevel: evergreen.TasksView.Value,
+		}
+		ok, err := dbUser.HasPermission(opts)
+		if err != nil {
+			return pc, err
+		}
+		if !ok {
+			projectId = ""
+		}
 	}
 
 	// If we still don't have a default projectId, just use the first
 	// project in the list that the user has read access to.
-	if projectId == "" {
+	if projectId == "" && evergreen.AclCheckingIsEnabled {
 		for _, p := range pc.AllProjects {
 			opts := gimlet.PermissionOpts{
 				Resource:      p.Identifier,

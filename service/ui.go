@@ -192,7 +192,7 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 		viewData.User = u
 		opts := gimlet.PermissionOpts{
 			Resource:      evergreen.SuperUserPermissionsID,
-			ResourceType:  evergreen.AdminResourceType,
+			ResourceType:  evergreen.SuperUserResourceType,
 			Permission:    evergreen.PermissionAdminSettings,
 			RequiredLevel: evergreen.AdminSettingsEdit.Value,
 		}
@@ -228,9 +228,9 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	needsSuperUser := gimlet.WrapperMiddleware(uis.requireSuperUser)
 	needsAdmin := gimlet.WrapperMiddleware(uis.requireAdmin)
 	allowsCORS := gimlet.WrapperMiddleware(uis.setCORSHeaders)
-	adminSettings := route.RequiresSuperUserPermission(evergreen.AdminResourceType, evergreen.PermissionAdminSettings, evergreen.AdminSettingsEdit)
-	createProject := route.RequiresSuperUserPermission(evergreen.ProjectResourceType, evergreen.PermissionProjectCreate, evergreen.ProjectCreate)
-	createDistro := route.RequiresSuperUserPermission(evergreen.DistroResourceType, evergreen.PermissionDistroCreate, evergreen.DistroCreate)
+	adminSettings := route.RequiresSuperUserPermission(evergreen.PermissionAdminSettings, evergreen.AdminSettingsEdit)
+	createProject := route.RequiresSuperUserPermission(evergreen.PermissionProjectCreate, evergreen.ProjectCreate)
+	createDistro := route.RequiresSuperUserPermission(evergreen.PermissionDistroCreate, evergreen.DistroCreate)
 	viewTasks := &route.RequiresProjectViewPermission{}
 	editTasks := route.RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksBasic)
 	viewLogs := route.RequiresProjectPermission(evergreen.PermissionLogs, evergreen.LogsView)

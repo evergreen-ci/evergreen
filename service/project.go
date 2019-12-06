@@ -61,7 +61,7 @@ func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 
 	opts := gimlet.PermissionOpts{
 		Resource:      evergreen.SuperUserPermissionsID,
-		ResourceType:  evergreen.ProjectResourceType,
+		ResourceType:  evergreen.SuperUserResourceType,
 		Permission:    evergreen.PermissionProjectCreate,
 		RequiredLevel: evergreen.ProjectCreate.Value,
 	}

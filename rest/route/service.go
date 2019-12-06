@@ -34,9 +34,9 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	addProject := NewProjectContextMiddleware(sc)
 	checkProjectAdmin := NewProjectAdminMiddleware(sc)
 	checkCommitQueueItemOwner := NewCommitQueueItemOwnerMiddleware(sc)
-	adminSettings := RequiresSuperUserPermission(evergreen.AdminResourceType, evergreen.PermissionAdminSettings, evergreen.AdminSettingsEdit)
-	createProject := RequiresSuperUserPermission(evergreen.ProjectResourceType, evergreen.PermissionProjectCreate, evergreen.ProjectCreate)
-	createDistro := RequiresSuperUserPermission(evergreen.DistroResourceType, evergreen.PermissionDistroCreate, evergreen.DistroCreate)
+	adminSettings := RequiresSuperUserPermission(evergreen.PermissionAdminSettings, evergreen.AdminSettingsEdit)
+	createProject := RequiresSuperUserPermission(evergreen.PermissionProjectCreate, evergreen.ProjectCreate)
+	createDistro := RequiresSuperUserPermission(evergreen.PermissionDistroCreate, evergreen.DistroCreate)
 	viewTasks := &RequiresProjectViewPermission{}
 	editTasks := RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksBasic)
 	submitPatches := RequiresProjectPermission(evergreen.PermissionPatches, evergreen.PatchSubmit)

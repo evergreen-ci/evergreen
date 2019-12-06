@@ -47,12 +47,18 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var createDistro bool
-	resourcePermissions, ok := permissions[evergreen.SuperUserPermissionsID]
-	if ok {
-		if resourcePermissions[evergreen.PermissionDistroCreate] > 0 {
-			createDistro = true
-		}
+	opts := gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionDistroCreate,
+		RequiredLevel: evergreen.DistroCreate.Value,
+	}
+	createDistro, err := u.HasPermission(opts)
+	if err != nil {
+		message := "error fetching distro create permissions"
+		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
+		http.Error(w, message, http.StatusInternalServerError)
+		return
 	}
 
 	settings, err := evergreen.GetConfig()
