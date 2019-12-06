@@ -64,17 +64,25 @@ var VersionAll = db.Query(bson.D{})
 
 // ByLastKnownGoodConfig filters on versions with valid (i.e., have no errors) config for the given
 // project. Does not apply a limit, so should generally be used with a FindOne.
-func VersionByLastKnownGoodConfig(projectId string) db.Q {
-	return db.Query(
-		bson.M{
-			VersionIdentifierKey: projectId,
-			VersionRequesterKey: bson.M{
-				"$in": evergreen.SystemVersionRequesterTypes,
-			},
-			VersionErrorsKey: bson.M{
-				"$exists": false,
-			},
-		}).Sort([]string{"-" + VersionRevisionOrderNumberKey})
+func FindVersionByLastKnownGoodConfig(projectId string, revisionOrderNumber int) (*Version, error) {
+	q := bson.M{
+		VersionIdentifierKey: projectId,
+		VersionRequesterKey: bson.M{
+			"$in": evergreen.SystemVersionRequesterTypes,
+		},
+		VersionErrorsKey: bson.M{
+			"$exists": false,
+		},
+	}
+
+	if revisionOrderNumber >= 0 {
+		q[VersionRevisionOrderNumberKey] = bson.M{"$lt": revisionOrderNumber}
+	}
+	v, err := VersionFindOne(db.Query(q).Sort([]string{"-" + VersionRevisionOrderNumberKey}))
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error finding recent valid version for '%s'", projectId)
+	}
+	return v, nil
 }
 
 // ByProjectIdAndRevision finds non-patch versions for the given project and revision.

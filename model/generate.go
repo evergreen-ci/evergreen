@@ -286,9 +286,9 @@ func appendTasks(pairs TaskVariantPairs, bv parserBV, p *Project) TaskVariantPai
 // addGeneratedProjectToConfig takes a YML config and returns a new one with the GeneratedProject included.
 func (g *GeneratedProject) addGeneratedProjectToConfig(config string, cachedProject projectMaps) (string, error) {
 	// Append buildvariants, tasks, and functions to the config.
-	intermediateProject, errs := createIntermediateProject([]byte(config))
-	if errs != nil {
-		return "", errors.Wrap(errs[0], "error creating intermediate project")
+	intermediateProject, err := createIntermediateProject([]byte(config))
+	if err != nil {
+		return "", errors.Wrap(err, "error creating intermediate project")
 	}
 	intermediateProject.TaskGroups = append(intermediateProject.TaskGroups, g.TaskGroups...)
 	intermediateProject.Tasks = append(intermediateProject.Tasks, g.Tasks...)
