@@ -98,8 +98,12 @@ $http.get(templateUrl).success(function(template) {
 
   $scope.deleteTag = function () {
     $http.delete("/plugin/json/task/" + $scope.task.id + "/perf/tag").then(
-      function (resp) { delete $scope.perfTagData.tag; },
-      function () { console.log("error") }
+      function (resp) {
+        delete $scope.perfTagData.tag;
+      },
+      function () {
+        console.log("error")
+      }
     );
   }
 
@@ -110,16 +114,24 @@ $http.get(templateUrl).success(function(template) {
   $scope.task = $window.task_data;
   $scope.tablemode = 'maxthroughput';
   $scope.threadLevelsRadio = {
-    options: [
-      { key: 'maxonly', val: 'Max Only' },
-      { key: 'all', val: 'All' }
+    options: [{
+        key: 'maxonly',
+        val: 'Max Only'
+      },
+      {
+        key: 'all',
+        val: 'All'
+      }
     ],
     value: Settings.perf.trendchart.threadLevelMode,
   }
 
   $scope.metricSelect = {
     options: [],
-    default: { key: 'ops_per_sec', name: 'ops/sec (Default)' },
+    default: {
+      key: 'ops_per_sec',
+      name: 'ops/sec (Default)'
+    },
     value: undefined,
   }
   $scope.metricSelect.options.push($scope.metricSelect.default)
@@ -258,14 +270,41 @@ $http.get(templateUrl).success(function(template) {
 
   // converts a percentage to a color. Higher -> greener, Lower -> redder.
   $scope.percentToColor = function (percent) {
-    var percentColorRanges = [
-      { min: -Infinity, max: -15, color: "#FF0000" },
-      { min: -15, max: -10, color: "#FF5500" },
-      { min: -10, max: -5, color: "#FFAA00" },
-      { min: -5, max: -2.5, color: "#FEFF00" },
-      { min: -2.5, max: 5, color: "#A9FF00" },
-      { min: 5, max: 10, color: "#54FF00" },
-      { min: 10, max: +Infinity, color: "#00FF00" }
+    var percentColorRanges = [{
+        min: -Infinity,
+        max: -15,
+        color: "#FF0000"
+      },
+      {
+        min: -15,
+        max: -10,
+        color: "#FF5500"
+      },
+      {
+        min: -10,
+        max: -5,
+        color: "#FFAA00"
+      },
+      {
+        min: -5,
+        max: -2.5,
+        color: "#FEFF00"
+      },
+      {
+        min: -2.5,
+        max: 5,
+        color: "#A9FF00"
+      },
+      {
+        min: 5,
+        max: 10,
+        color: "#54FF00"
+      },
+      {
+        min: 10,
+        max: +Infinity,
+        color: "#00FF00"
+      }
     ];
 
     for (var i = 0; i < percentColorRanges.length; i++) {
@@ -294,7 +333,12 @@ $http.get(templateUrl).success(function(template) {
       var testName = testNames[i];
       $("#chart-" + cleanId(taskId) + "-" + i).empty();
       var series1 = sample.threadsVsOps(testName);
-      var margin = { top: 20, right: 50, bottom: 30, left: 80 };
+      var margin = {
+        top: 20,
+        right: 50,
+        bottom: 30,
+        left: 80
+      };
       var width = 450 - margin.left - margin.right;
       var height = 200 - margin.top - margin.bottom;
       var id = "chart-" + cleanId(taskId) + "-" + i;
@@ -338,7 +382,9 @@ $http.get(templateUrl).success(function(template) {
       var bar = svg.selectAll("g")
         .data(series)
         .enter().append("g")
-        .style("fill", function (d, i) { return z(i); })
+        .style("fill", function (d, i) {
+          return z(i);
+        })
         .attr("transform", function (d, i) {
           let x = x1(i);
           if (Number.isNaN(x)) {
@@ -348,7 +394,9 @@ $http.get(templateUrl).success(function(template) {
         });
 
       bar.selectAll("rect")
-        .data(function (d) { return d })
+        .data(function (d) {
+          return d
+        })
         .enter().append("rect")
         .attr('stroke', 'black')
         .attr('x', function (d, i) {
@@ -419,24 +467,34 @@ $http.get(templateUrl).success(function(template) {
           .data(series)
           .enter()
           .append("rect")
-          .attr("fill", function (d, i) { return z(i) })
-          .attr("x", function (d, i) { return 0 })
-          .attr("y", function (d, i) { return 5 + legend_y(i) })
+          .attr("fill", function (d, i) {
+            return z(i)
+          })
+          .attr("x", function (d, i) {
+            return 0
+          })
+          .attr("y", function (d, i) {
+            return 5 + legend_y(i)
+          })
           .attr("width", legendWidth / 3)
           .attr("height", legend_y.rangeBand());
         svg.selectAll("text")
           .data(series)
           .enter()
           .append("text")
-          .attr("x", function (d, i) { return (legendWidth / 3) + 10 })
-          .attr("y", function (d, i) { return legend_y(i) })
+          .attr("x", function (d, i) {
+            return (legendWidth / 3) + 10
+          })
+          .attr("y", function (d, i) {
+            return legend_y(i)
+          })
           .attr("dy", legend_y.rangeBand())
           .attr("class", "mono")
           .text(function (d, i) {
             if (i == 0) {
               return "this task";
             } else {
-              return compareSamples[i - 1].getLegendName()//series.legendName
+              return compareSamples[i - 1].getLegendName() //series.legendName
             }
           });
       }
@@ -474,7 +532,9 @@ $http.get(templateUrl).success(function(template) {
   }
 
   $scope.getSampleAtCommit = function (series, commit) {
-    return _.find(series, function (x) { return x.revision == commit });
+    return _.find(series, function (x) {
+      return x.revision == commit
+    });
   }
 
   $scope.getCommits = function (seriesByName) {
@@ -485,9 +545,15 @@ $http.get(templateUrl).success(function(template) {
 
   $scope.setTaskTag = function (keyEvent) {
     if (keyEvent.which === 13) {
-      $http.post("/plugin/json/task/" + $scope.task.id + "/perf/tag", { tag: $scope.perfTagData.input }).then(
-        function (resp) { $scope.perfTagData.tag = $scope.perfTagData.input },
-        function () { console.log("error") }
+      $http.post("/plugin/json/task/" + $scope.task.id + "/perf/tag", {
+        tag: $scope.perfTagData.input
+      }).then(
+        function (resp) {
+          $scope.perfTagData.tag = $scope.perfTagData.input
+        },
+        function () {
+          console.log("error")
+        }
       );
     }
     return true
@@ -520,7 +586,9 @@ $http.get(templateUrl).success(function(template) {
           $scope.comparePerfSamples.push(compareSample)
           if (draw) $scope.redrawGraphs()
         },
-        function (resp) { console.log(resp.data) });
+        function (resp) {
+          console.log(resp.data)
+        });
     } else if (Boolean(formData.tag) && formData.tag.length > 0) {
       $http.get("/plugin/json/tag/" + $scope.project + "/" + formData.tag + "/" + $scope.task.build_variant + "/" + $scope.task.display_name + "/perf").then(
         function (resp) {
@@ -529,7 +597,9 @@ $http.get(templateUrl).success(function(template) {
           $scope.comparePerfSamples.push(compareSample)
           if (draw) $scope.redrawGraphs()
         },
-        function (resp) { console.log(resp.data) });
+        function (resp) {
+          console.log(resp.data)
+        });
     }
 
     $scope.compareForm = {}
@@ -546,7 +616,9 @@ $http.get(templateUrl).success(function(template) {
   }
 
   $scope.addComparisonHash = function (hash) {
-    $scope.addComparisonForm({ hash: hash }, true)
+    $scope.addComparisonForm({
+      hash: hash
+    }, true)
   }
 
   $scope.redrawGraphs = function () {
@@ -565,8 +637,10 @@ $http.get(templateUrl).success(function(template) {
       let series = samples.seriesByName;
       $scope.hiddenGraphs = {};
       _.each(series, function (testResults, testName) {
-        if (_.some(testResults, (singleResult) => { return singleResult[metric] })) {
-          delete ($scope.hiddenGraphs[testName]);
+        if (_.some(testResults, (singleResult) => {
+            return singleResult[metric]
+          })) {
+          delete($scope.hiddenGraphs[testName]);
         } else {
           $scope.hiddenGraphs[testName] = true;
         }
@@ -590,7 +664,9 @@ $http.get(templateUrl).success(function(template) {
 
   // Once the task data has been loaded
   $scope.processAndDrawGraphs = function () {
-    setTimeout(function () { drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id, $scope.metricSelect.value.key) }, 0);
+    setTimeout(function () {
+      drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id, $scope.metricSelect.value.key)
+    }, 0);
 
     const project = $scope.task.branch;
     const task_name = $scope.task.display_name;
@@ -636,7 +712,7 @@ $http.get(templateUrl).success(function(template) {
             $scope.addComparisonForm(hashparsed.compare[i], false)
           }
         }
-      } catch (e) { }
+      } catch (e) {}
     }
     // Populate the graph and table for this task
     var legacySuccess = function (toMerge, resp) {
@@ -663,7 +739,9 @@ $http.get(templateUrl).success(function(template) {
     $http.get("/plugin/json/task/" + $scope.task.id + "/perf/tags").then(
       function (resp) {
         const d = resp.data;
-        $scope.tags = d.sort(function (a, b) { return a.tag.localeCompare(b.tag) })
+        $scope.tags = d.sort(function (a, b) {
+          return a.tag.localeCompare(b.tag)
+        })
       });
 
     if ($scope.task.patch_info && $scope.task.patch_info.Patch.Githash) {
@@ -674,7 +752,9 @@ $http.get(templateUrl).success(function(template) {
 }).factory('trendDataComplete', function ($location, TrendSamples) {
   // Create a callback function to handle
   return function (scope, data) {
-    const {legacy = [], cedar = []} = data;
+    const {
+      legacy = [], cedar = []
+    } = data;
 
     if (!scope.trendResults.length && scope.perfSample && scope.perfSample.sample) {
       scope.trendResults = scope.trendResults.concat(scope.perfSample.sample);
@@ -702,7 +782,10 @@ $http.get(templateUrl).success(function(template) {
     }
     scope.metricSelect.options = scope.metricSelect.options.concat(
       _.map(
-        _.without(scope.allTrendSamples.metrics, scope.metricSelect.default.key), d => ({ key: d, name: d }))
+        _.without(scope.allTrendSamples.metrics, scope.metricSelect.default.key), d => ({
+          key: d,
+          name: d
+        }))
     );
     scope.metricSelect.options = _.uniq(scope.metricSelect.options, false, function (option) {
       return option.key;
@@ -713,9 +796,11 @@ $http.get(templateUrl).success(function(template) {
       if ($location.hash().length > 0) {
         try {
           if ('metric' in hashparsed) {
-            scope.metricSelect.value = _.findWhere(scope.metricSelect.options, { key: hashparsed.metric }) || scope.metricSelect.default
+            scope.metricSelect.value = _.findWhere(scope.metricSelect.options, {
+              key: hashparsed.metric
+            }) || scope.metricSelect.default
           }
-        } catch (e) { }
+        } catch (e) {}
       }
     }
     return data;
@@ -727,8 +812,15 @@ $http.get(templateUrl).success(function(template) {
   return function (project, variant, task) {
     // Get a list of rejected points.
     const points = PointsDataService.getOutlierPointsQ(project, variant, task);
-    const whitelist= WhitelistDataService.getWhitelistQ({ project, variant, task });
-    return $q.all({ points, whitelist });
+    const whitelist = WhitelistDataService.getWhitelistQ({
+      project,
+      variant,
+      task
+    });
+    return $q.all({
+      points,
+      whitelist
+    });
   }
 }).factory('loadTrendData', function ($http, $filter, $q, $log, ApiTaskdata) {
   // Attempt to load historical performance data from both the following sources:
@@ -742,11 +834,14 @@ $http.get(templateUrl).success(function(template) {
       .catch(err => $log.warn('error loading legacy data', err));
 
     const cedar = ApiTaskdata.cedarAPI("/rest/v1/perf/task_name/" + task +
-      "?variant=" + variant + "&project=" + project)
+        "?variant=" + variant + "&project=" + project)
       .then(resp => $filter("expandedHistoryConverter")(resp.data, scope.task.execution))
       .catch(err => $log.warn('error loading cedar data', err));
 
-    return $q.all({legacy, cedar});
+    return $q.all({
+      legacy,
+      cedar
+    });
   }
 }).factory('loadChangePoints', function ($q, loadUnprocessed, loadProcessed) {
   return function (scope, project, variant, task) {
@@ -758,11 +853,20 @@ $http.get(templateUrl).success(function(template) {
     // Wait for processed / unprocessed and then merge processed and unprocessed change points.
     // Processed ones always have a priority (in situations, when the revision has one processed
     // and one unprocessed point).
-    return $q.all({ processed, unprocessed }).then(function (points) {
-      const { processed, unprocessed } = points;
+    return $q.all({
+      processed,
+      unprocessed
+    }).then(function (points) {
+      const {
+        processed,
+        unprocessed
+      } = points;
       const docs = _.reduce(unprocessed, function (m, d) {
         // If there are no processed change point with same revision and test
-        if (!_.findWhere(m, { suspect_revision: d.suspect_revision , test: d.test })) {
+        if (!_.findWhere(m, {
+            suspect_revision: d.suspect_revision,
+            test: d.test
+          })) {
           return m.concat(d);
         }
         return m;
@@ -778,7 +882,11 @@ $http.get(templateUrl).success(function(template) {
       return db
         .db(STITCH_CONFIG.PERF.DB_PERF)
         .collection(STITCH_CONFIG.PERF.COLL_PROCESSED_POINTS)
-        .find({ project, variant, task})
+        .find({
+          project,
+          variant,
+          task
+        })
         .execute();
     }).then(
       docs => docs,
@@ -890,25 +998,52 @@ $http.get(templateUrl).success(function(template) {
   return function (project, variant, task) {
     // Load revisions to orders from the points collection.
     // const task_identifier = { project: $scope.task.branch, task: $scope.task.display_name, variant: $scope.task.build_variant };
-    const task_identifier = { project: project, variant: variant, task: task };
-    const pipeline = [
-      { $match: { project: project } },
-      {
-        "$group": {
-          "_id": { revision: "$revision", order: '$order' },
-          "tasks": { $addToSet: { project: '$project', variant: '$variant', task: '$task' } }
+    const task_identifier = {
+      project: project,
+      variant: variant,
+      task: task
+    };
+    const pipeline = [{
+        $match: {
+          project: project
         }
       },
-      { $project: { revision: '$_id.revision', order: '$_id.order', tasks: 1, _id: 0 } },
-      { $sort: { order: 1 } }
+      {
+        "$group": {
+          "_id": {
+            revision: "$revision",
+            order: '$order'
+          },
+          "tasks": {
+            $addToSet: {
+              project: '$project',
+              variant: '$variant',
+              task: '$task'
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          revision: '$_id.revision',
+          order: '$_id.order',
+          tasks: 1,
+          _id: 0
+        }
+      },
+      {
+        $sort: {
+          order: 1
+        }
+      }
     ];
 
     return Stitch.use(STITCH_CONFIG.PERF).query(function (db) {
-      return db
-        .db(STITCH_CONFIG.PERF.DB_PERF)
-        .collection(STITCH_CONFIG.PERF.COLL_POINTS)
-        .aggregate(pipeline);
-    }).catch(err => null)
+        return db
+          .db(STITCH_CONFIG.PERF.DB_PERF)
+          .collection(STITCH_CONFIG.PERF.COLL_POINTS)
+          .aggregate(pipeline);
+      }).catch(err => null)
       .then((points) => new RevisionsMapper(points, task_identifier))
   }
 }).factory('loadBuildFailures', function ($log, Stitch, STITCH_CONFIG, loadRevisions) {
@@ -919,8 +1054,7 @@ $http.get(templateUrl).success(function(template) {
       return db
         .db(STITCH_CONFIG.PERF.DB_PERF)
         .collection(STITCH_CONFIG.PERF.COLL_BUILD_FAILURES)
-        .aggregate([
-          {
+        .aggregate([{
             $match: {
               project: project,
               buildvariants: variant,
@@ -928,8 +1062,18 @@ $http.get(templateUrl).success(function(template) {
             }
           },
           // Denormalization
-          { $unwind: { path: '$tests', preserveNullAndEmptyArrays: true } },
-          { $unwind: { path: '$first_failing_revision', preserveNullAndEmptyArrays: true } },
+          {
+            $unwind: {
+              path: '$tests',
+              preserveNullAndEmptyArrays: true
+            }
+          },
+          {
+            $unwind: {
+              path: '$first_failing_revision',
+              preserveNullAndEmptyArrays: true
+            }
+          },
         ]);
     }).then(
       docs => {
@@ -949,7 +1093,7 @@ $http.get(templateUrl).success(function(template) {
                 doc.order = order;
               }
             }
-            doc.revisions = doc.orders.map(order => (scope.lookups.allOrdersMap[order]  || null))
+            doc.revisions = doc.orders.map(order => (scope.lookups.allOrdersMap[order] || null))
           });
           scope.buildFailures = _.groupBy(docs, 'tests');
           return scope.buildFailures;

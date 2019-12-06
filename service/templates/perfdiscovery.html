@@ -43,6 +43,15 @@ Performance Discovery
       Baseline Results
       <version-dropdown model="$ctrl.toSelect" />
     </label>
+
+    <md-input-container style="width: 200px;">
+      <label>Use Expanded Data For:</label>
+      <md-select ng-model="$ctrl.expandedOptions" ng-change="reload()" multiple>
+        <md-option value="current">Current Results</md-option>
+        <md-option value="baseline">Baseline Results</md-option>
+        <md-option value="history">History</md-option>
+      </md-select>
+    </md-input-container>
   </div>
 
   <div
