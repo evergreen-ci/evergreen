@@ -406,10 +406,10 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	after, err := h.sc.GetProjectSettingsEvent(dbProjectRef)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettingsEvent after update for project'%s'", h.projectID))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettingsEvent after update for project '%s'", h.projectID))
 	}
 	if err = dbModel.LogProjectModified(identifier, h.username, *before, *after); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error logging project modification for project'%s'", h.projectID))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error logging project modification for project '%s'", h.projectID))
 	}
 
 	// run the repotracker for the project
