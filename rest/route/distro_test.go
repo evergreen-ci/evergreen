@@ -1187,7 +1187,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 					"service_user": "service_user",
 					"shell_path": "/usr/bin/bash",
 					"root_dir" : "/new/root/dir",
-					"env": [{"key": "envKey": "value": "envValue"}],
+					"env": [{"key": "envKey", "value": "envValue"}],
 					"resource_limits": {
 						"num_files": 1,
 						"num_processes": 2,
@@ -1261,7 +1261,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(model.ToAPIString("service_user"), apiDistro.BootstrapSettings.ServiceUser)
 	s.Equal(model.ToAPIString("/usr/bin/bash"), apiDistro.BootstrapSettings.ShellPath)
 	s.Equal(model.ToAPIString("/new/root/dir"), apiDistro.BootstrapSettings.RootDir)
-	s.Equal([]distro.EnvVar{{Key: "envKey", Value: "envValue"}}, apiDistro.BootstrapSettings.Env)
+	s.Equal([]model.APIEnvVar{{Key: model.ToAPIString("envKey"), Value: model.ToAPIString("envValue")}}, apiDistro.BootstrapSettings.Env)
 	s.Equal(1, apiDistro.BootstrapSettings.ResourceLimits.NumFiles)
 	s.Equal(2, apiDistro.BootstrapSettings.ResourceLimits.NumProcesses)
 	s.Equal(3, apiDistro.BootstrapSettings.ResourceLimits.LockedMemoryKB)

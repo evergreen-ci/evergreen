@@ -220,16 +220,16 @@ type APIEnvVar struct {
 // BuildFromService converts a service level distro.EnvVar to an APIEnvVar
 func (e *APIEnvVar) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case distro.Expansion:
+	case distro.EnvVar:
 		e.Key = ToAPIString(v.Key)
 		e.Value = ToAPIString(v.Value)
 	default:
-		return errors.Errorf("%T is not a supported expansion type", h)
+		return errors.Errorf("%T is not a supported environment variable type", h)
 	}
 	return nil
 }
 
-// ToService returns a service layer distro.Expansion using the data from an APIExpansion
+// ToService returns a service layer distro.EnvVar using the data from an APIEnvVar
 func (e *APIEnvVar) ToService() (interface{}, error) {
 	d := distro.EnvVar{}
 	d.Key = FromAPIString(e.Key)
