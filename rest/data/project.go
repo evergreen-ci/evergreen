@@ -258,6 +258,9 @@ func (pc *DBProjectConnector) GetProjectSettingsEvent(p *model.ProjectRef) (*mod
 	if err != nil {
 		return nil, errors.Wrapf(err, "error finding variables for project '%s'", p.Identifier)
 	}
+	if projectVars == nil {
+		projectVars = &model.ProjectVars{}
+	}
 	projectAliases, err := model.FindAliasesForProject(p.Identifier)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error finding aliases for project '%s'", p.Identifier)
