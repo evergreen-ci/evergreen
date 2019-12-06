@@ -765,28 +765,12 @@ func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settin
 	}
 	sshOptions = append(sshOptions, "-o", "UserKnownHostsFile=/dev/null")
 
-	mkdirOutput := &util.CappedWriter{
-		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024,
-	}
-
-	mkdctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	mkdirctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	makeShellCmd := j.env.JasperManager().CreateCommand(mkdctx).Host(hostSSHInfo.Hostname).User(target.User).
-		ExtendRemoteArgs("-p", hostSSHInfo.Port).ExtendRemoteArgs(sshOptions...).
-		RedirectErrorToOutput(true).SetOutputWriter(mkdirOutput).
-		Append(fmt.Sprintf("mkdir -m 777 -p ~/%s && (echo 'export PATH=\"$PATH:~/%s\"' >> ~/.profile || true; echo 'export PATH=\"$PATH:~/%s\"' >> ~/.bash_profile || true)", targetDir, targetDir, targetDir))
-
-	// Create the directory for the binary to be uploaded into.
-	// Also, make a best effort to add the binary's location to $PATH upon login. If we can't do
-	// this successfully, the command will still succeed, it just means that the user will have to
-	// use an absolute path (or manually set $PATH in their shell) to execute it.
-
-	// run the make shell command with a timeout
-	if err = makeShellCmd.Run(mkdctx); err != nil {
-		return nil, errors.Wrapf(err, "error running setup command for cli, %v",
-			mkdirOutput.Buffer.String())
+	output, err := target.RunSSHCommandLiterally(mkdirctx, fmt.Sprintf("mkdir -m 777 -p ~/%s && (echo 'export PATH=\"$PATH:~/%s\"' >> ~/.profile || true; echo 'export PATH=\"$PATH:~/%s\"' >> ~/.bash_profile || true)", targetDir, targetDir, targetDir), sshOptions)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error running setup command for cli: %s", output)
 	}
 
 	// run the command to curl the agent
@@ -798,7 +782,7 @@ func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settin
 		MaxBytes: 1024 * 1024,
 	}
 
-	curlcmd := j.env.JasperManager().CreateCommand(mkdctx).Host(hostSSHInfo.Hostname).User(target.User).
+	curlcmd := j.env.JasperManager().CreateCommand(curlctx).Host(hostSSHInfo.Hostname).User(target.User).
 		ExtendRemoteArgs("-p", hostSSHInfo.Port).ExtendRemoteArgs(sshOptions...).
 		RedirectErrorToOutput(true).SetOutputWriter(curlOut).
 		Append(target.CurlCommand(settings))
@@ -807,7 +791,7 @@ func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settin
 		return nil, errors.Wrapf(err, "error running curl command for cli, %s", curlOut.Buffer.String())
 	}
 
-	// 4. Write a settings file for the user that owns the host, and scp it to the directory
+	// 2. Write a settings file for the user that owns the host, and scp it to the directory
 	outputStruct := struct {
 		APIKey        string `json:"api_key"`
 		APIServerHost string `json:"api_server_host"`
