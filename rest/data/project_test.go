@@ -65,6 +65,17 @@ func getMockProjectSettings() model.ProjectSettingsEvent {
 	}
 }
 
+func getProjectRef() *model.ProjectRef {
+	return &model.ProjectRef{
+		Owner:      "admin",
+		Enabled:    true,
+		Private:    true,
+		Identifier: projectId,
+		Admins:     []string{},
+		Repo:       "SomeRepo",
+	}
+}
+
 func TestProjectConnectorGetSuite(t *testing.T) {
 	s := new(ProjectConnectorGetSuite)
 	s.setup = func() error {
@@ -327,6 +338,13 @@ func (s *ProjectConnectorGetSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBr
 	projRef, err = s.ctx.GetProjectWithCommitQueueByOwnerRepoAndBranch("evergreen-ci", "evergreen", "master")
 	s.NoError(err)
 	s.NotNil(projRef)
+}
+
+func (s *ProjectConnectorGetSuite) TestGetProjectSettingsEvent() {
+	projRef := getProjectRef()
+	projectSettingsEvent, err := s.ctx.GetProjectSettingsEvent(projRef)
+	s.NoError(err)
+	s.NotNil(projectSettingsEvent)
 }
 
 func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
