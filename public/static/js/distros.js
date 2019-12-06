@@ -361,6 +361,21 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
     $scope.activeDistro.ssh_options.splice(index, 1);
   }
 
+  $scope.addEnvVar = function() {
+    if ($scope.activeDistro.bootstrap_settings == null) {
+      $scope.activeDistro.bootstrap_settings = {};
+    }
+    if ($scope.activeDistro.bootstrap_settings.env == null) {
+      $scope.activeDistro.bootstrap_settings.env = [];
+    }
+    $scope.activeDistro.bootstrap_settings.env.push({"key": "", "value": ""});
+  }
+
+  $scope.removeEnvVar = function(envVar) {
+    var index = $scope.activeDistro.bootstrap_settings.env.indexOf(envVar);
+    $scope.activeDistro.bootstrap_settings.env.splice(index, 1);
+  }
+
   $scope.addExpansion = function(expansion) {
     if ($scope.activeDistro.expansions == null) {
       $scope.activeDistro.expansions = [];
@@ -484,11 +499,11 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
         'setup': $scope.activeDistro.teardown,
         'setup': $scope.activeDistro.user_data,
         'setup_as_sudo' : $scope.activeDistro.setup_as_sudo,
-        'bootstrap_settings': $scope.activeDistro.bootstrap_settings,
         'clone_method': $scope.activeDistro.clone_method,
       };
       newDistro.settings = _.clone($scope.activeDistro.settings);
       newDistro.expansions = _.clone($scope.activeDistro.expansions);
+      newDistro.bootstrap_settings = _.clone($scope.activeDistro.bootstrap_settings);
       newDistro.planner_settings = _.clone($scope.activeDistro.planner_settings);
       newDistro.finder_settings = _.clone($scope.activeDistro.finder_settings);
       newDistro.dispatcher_settings = _.clone($scope.activeDistro.dispatcher_settings);
@@ -555,21 +570,21 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
   }
 
   $scope.isWindows = function() {
-    if ($scope.activeDistro) {
+    if ($scope.activeDistro && $scope.activeDistro.arch) {
       return $scope.activeDistro.arch.includes('windows');
     }
     return false
   }
 
   $scope.isLinux = function() {
-    if ($scope.activeDistro) {
+    if ($scope.activeDistro && $scope.activeDistro.arch) {
       return $scope.activeDistro.arch.includes('linux');
     }
     return false;
   }
 
   $scope.isNonLegacyProvisioning = function() {
-      if ($scope.activeDistro) {
+      if ($scope.activeDistro && $scope.activeDistro.bootstrap_settings) {
         return $scope.activeDistro.bootstrap_settings.method != 'legacy-ssh' ||
         $scope.activeDistro.bootstrap_settings.communication != 'legacy-ssh'
       }
@@ -577,7 +592,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
   }
 
   $scope.validBootstrapAndCommunication = function() {
-    if ($scope.activeDistro) {
+    if ($scope.activeDistro && $scope.activeDistro.bootstrap_settings) {
       return ($scope.activeDistro.bootstrap_settings.method == 'legacy-ssh' && $scope.activeDistro.bootstrap_settings.communication == 'legacy-ssh') ||
              ($scope.activeDistro.bootstrap_settings.method != 'legacy-ssh' && $scope.activeDistro.bootstrap_settings.communication != 'legacy-ssh');
     }

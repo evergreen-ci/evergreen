@@ -305,6 +305,10 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 		}
 	}
 
+	for _, envVar := range h.Distro.BootstrapSettings.Env {
+		params = append(params, fmt.Sprintf("--env '%s=%s'", envVar.Key, envVar.Value))
+	}
+
 	if os, _ := h.Distro.Platform(); os == "linux" {
 		if numProcs := h.Distro.BootstrapSettings.ResourceLimits.NumProcesses; numProcs != 0 {
 			params = append(params, fmt.Sprintf("--limit_num_procs=%d", numProcs))

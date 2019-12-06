@@ -55,8 +55,15 @@ type BootstrapSettings struct {
 	ShellPath   string `bson:"shell_path,omitempty" json:"shell_path,omitempty" mapstructure:"shell_path,omitempty"`
 	RootDir     string `bson:"root_dir,omitempty" json:"root_dir,omitempty" mapstructure:"root_dir,omitempty"`
 
+	Env []EnvVar `bson:"env,omitempty" json:"env,omitempty" mapstructure:"env,omitempty"`
+
 	// Linux-specific
 	ResourceLimits ResourceLimits `bson:"resource_limits,omitempty" json:"resource_limits,omitempty" mapstructure:"resource_limits,omitempty"`
+}
+
+type EnvVar struct {
+	Key   string `bson:"key" json:"key"`
+	Value string `bson:"value" json:"value"`
 }
 
 // ResourceLimits represents resource limits in Linux.
@@ -92,6 +99,10 @@ func (d *Distro) ValidateBootstrapSettings() error {
 
 	if d.BootstrapSettings.Method == BootstrapMethodLegacySSH || d.BootstrapSettings.Communication == CommunicationMethodLegacySSH {
 		return catcher.Resolve()
+	}
+
+	for _, envVar := range d.BootstrapSettings.Env {
+		catcher.NewWhen(envVar.Key == "", "environment variable key cannot be empty")
 	}
 
 	catcher.NewWhen(d.BootstrapSettings.ClientDir == "", "client directory cannot be empty for non-legacy bootstrapping")
