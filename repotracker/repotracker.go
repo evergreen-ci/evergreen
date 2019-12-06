@@ -825,12 +825,11 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 		}
 		_, err = evergreen.GetEnvironment().DB().Collection(model.VersionCollection).InsertOne(sessCtx, v)
 		if err != nil {
-			grip.Notice(message.Fields{
-				"message":    "aborting transaction",
-				"cause":      "can't insert version",
-				"version":    v.Id,
-				"insert_err": err.Error(),
-			})
+			grip.Notice(message.WrapError(err, message.Fields{
+				"message": "aborting transaction",
+				"cause":   "can't insert version",
+				"version": v.Id,
+			}))
 			if err = sessCtx.AbortTransaction(sessCtx); err != nil {
 				return errors.Wrap(err, "error aborting transaction")
 			}
@@ -838,12 +837,11 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 		}
 		_, err = evergreen.GetEnvironment().DB().Collection(build.Collection).InsertMany(sessCtx, buildsToCreate)
 		if err != nil {
-			grip.Error(message.Fields{
-				"message":    "aborting transaction",
-				"cause":      "can't insert builds",
-				"version":    v.Id,
-				"insert_err": err.Error(),
-			})
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "aborting transaction",
+				"cause":   "can't insert builds",
+				"version": v.Id,
+			}))
 			if err = sessCtx.AbortTransaction(sessCtx); err != nil {
 				return errors.Wrap(err, "error aborting transaction")
 			}
@@ -852,12 +850,11 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 		}
 		err = tasksToCreate.InsertUnordered(sessCtx)
 		if err != nil {
-			grip.Error(message.Fields{
-				"message":    "aborting transaction",
-				"cause":      "can't insert tasks",
-				"version":    v.Id,
-				"insert_err": err.Error(),
-			})
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "aborting transaction",
+				"cause":   "can't insert tasks",
+				"version": v.Id,
+			}))
 			if err = sessCtx.AbortTransaction(sessCtx); err != nil {
 				return errors.Wrap(err, "error aborting transaction")
 			}
@@ -865,12 +862,11 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 		}
 		err = sessCtx.CommitTransaction(sessCtx)
 		if err != nil {
-			grip.Error(message.Fields{
-				"message":    "aborting transaction",
-				"cause":      "unable to commit transaction",
-				"version":    v.Id,
-				"insert_err": err.Error(),
-			})
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "aborting transaction",
+				"cause":   "unable to commit transaction",
+				"version": v.Id,
+			}))
 			if err = sessCtx.AbortTransaction(sessCtx); err != nil {
 				return errors.Wrap(err, "error aborting transaction")
 			}
