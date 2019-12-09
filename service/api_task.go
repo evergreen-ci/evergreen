@@ -332,7 +332,7 @@ func prepareForReprovision(ctx context.Context, env evergreen.Environment, setti
 		return errors.Wrap(err, "error marking host as ready for reprovisioning")
 	}
 
-	ts := util.RoundPartOfHour(0).Format(units.TSFormat)
+	ts := util.RoundPartOfMinute(0).Format(units.TSFormat)
 	switch h.NeedsReprovision {
 	case host.ReprovisionToLegacy:
 		if err := env.RemoteQueue().Put(ctx, units.NewConvertHostToLegacyProvisioningJob(env, *h, ts, 0)); err != nil {
@@ -347,7 +347,7 @@ func prepareForReprovision(ctx context.Context, env evergreen.Environment, setti
 		if err != nil {
 			return errors.Wrap(err, "problem getting credentials expiration time")
 		}
-		ts := util.RoundPartOfHour(0).Format(units.TSFormat)
+		ts := util.RoundPartOfMinute(0).Format(units.TSFormat)
 		if err := env.RemoteQueue().Put(ctx, units.NewJasperRestartJob(env, *h, expiration, h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC, ts, 0)); err != nil {
 			return errors.Wrap(err, "problem enqueueing jobs to reprovision host to new")
 		}
