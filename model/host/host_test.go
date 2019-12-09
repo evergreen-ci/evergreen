@@ -4412,7 +4412,9 @@ func TestRemoveVolumeFromHost(t *testing.T) {
 func TestFindHostWithVolume(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	h := Host{
-		Id: "host-1",
+		Id:       "host-1",
+		UserHost: true,
+		Status:   evergreen.HostRunning,
 		Volumes: []VolumeAttachment{
 			{
 				VolumeID:   "volume-1",
