@@ -462,8 +462,15 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting host '%s'", h.hostID))
 	}
 
+	if util.StringSliceContains(evergreen.DownHostStatus, targetHost.Status) {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Errorf("host '%s' status is %s", targetHost.Id, targetHost.Status).Error(),
+		})
+	}
+
 	// Check whether attachment already attached to a host
-	attachedHost, err := host.FindHostWithVolume(h.attachment.VolumeID)
+	attachedHost, err := h.sc.FindHostWithVolume(h.attachment.VolumeID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -824,7 +831,6 @@ func (h *getVolumesHandler) Run(ctx context.Context) gimlet.Responder {
 
 	volumes, err := h.sc.FindVolumesByUser(u.Username())
 	if err != nil {
-		fmt.Println("grr")
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
@@ -832,7 +838,6 @@ func (h *getVolumesHandler) Run(ctx context.Context) gimlet.Responder {
 	for _, v := range volumes {
 		volumeDoc := model.APIVolume{}
 		if err = volumeDoc.BuildFromService(v); err != nil {
-			fmt.Println("ahhh")
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "err converting volume '%s' to API model", v.ID))
 		}
 
