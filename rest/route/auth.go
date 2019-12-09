@@ -20,10 +20,6 @@ type authPermissionGetHandler struct {
 	requiredLevel int
 }
 
-func makeGetAuthPermissionHandler() gimlet.RouteHandler {
-	return &authPermissionGetHandler{}
-}
-
 func (h *authPermissionGetHandler) Factory() gimlet.RouteHandler { return h }
 func (h *authPermissionGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
