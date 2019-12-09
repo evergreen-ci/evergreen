@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -66,7 +67,7 @@ buildvariants:
       - name: generate-lint
 `
 
-var sampleGeneratedProject = []string{`
+var sampleGeneratedProject = []json.RawMessage{json.RawMessage(`
 {
   "buildvariants": [
     {
@@ -137,7 +138,7 @@ var sampleGeneratedProject = []string{`
       },
   ]
 }
-`}
+`)}
 
 func TestGenerateTasks(t *testing.T) {
 	assert := assert.New(t)
@@ -165,13 +166,13 @@ func TestGenerateTasks(t *testing.T) {
 	}
 	require.NoError(sampleBuild.Insert())
 	sampleTask := task.Task{
-		Id:                    "sample_task",
-		Version:               "sample_version",
-		BuildId:               "sample_build_id",
-		Project:               "mci",
-		DisplayName:           "sample_task",
-		GeneratedJSONAsString: sampleGeneratedProject,
-		Status:                evergreen.TaskStarted,
+		Id:            "sample_task",
+		Version:       "sample_version",
+		BuildId:       "sample_build_id",
+		Project:       "mci",
+		DisplayName:   "sample_task",
+		GeneratedJSON: sampleGeneratedProject,
+		Status:        evergreen.TaskStarted,
 	}
 	sampleDistros := []distro.Distro{
 		distro.Distro{
