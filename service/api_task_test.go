@@ -757,14 +757,14 @@ func TestNextTask(t *testing.T) {
 					So(err, ShouldBeNil)
 					So(dbHost.Status, ShouldEqual, evergreen.HostRunning)
 				})
-				Convey("should no-op when it has not yet been provisioned by the app server", func() {
+				Convey("should exit when it has not yet been provisioned by the app server", func() {
 					So(nonLegacyHost.SetStatus(evergreen.HostProvisioning, evergreen.User, ""), ShouldBeNil)
 					So(db.Update(host.Collection, bson.M{host.IdKey: nonLegacyHost.Id}, bson.M{"$set": bson.M{host.ProvisionedKey: false}}), ShouldBeNil)
 					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.BuildRevision}
 					resp := getNextTaskEndpoint(t, as, nonLegacyHost.Id, reqDetails)
 					respDetails := &apimodels.NextTaskResponse{}
 					So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
-					So(respDetails.ShouldExit, ShouldBeFalse)
+					So(respDetails.ShouldExit, ShouldBeTrue)
 					So(respDetails.TaskId, ShouldBeEmpty)
 					dbHost, err := host.FindOneId(nonLegacyHost.Id)
 					So(err, ShouldBeNil)
