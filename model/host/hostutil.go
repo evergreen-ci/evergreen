@@ -744,70 +744,62 @@ const jasperDialTimeout = 15 * time.Second
 // JasperClient returns a remote client that communicates with this host's
 // Jasper service.
 func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jasper.RemoteClient, error) {
-	if h.LegacyBootstrap() || h.LegacyCommunication() {
+	if (h.LegacyBootstrap() || h.LegacyCommunication()) && h.NeedsReprovision != ReprovisionToLegacy {
 		return nil, errors.New("legacy host does not support remote Jasper process management")
 	}
 
 	settings := env.Settings()
-	if h.JasperCommunication() {
-		switch h.Distro.BootstrapSettings.Communication {
-		case distro.CommunicationMethodSSH:
-			hostInfo, err := h.GetSSHInfo()
-			if err != nil {
-				return nil, errors.Wrap(err, "could not get host's SSH info")
-			}
-			sshOpts, err := h.GetSSHOptions(settings)
-			if err != nil {
-				return nil, errors.Wrap(err, "could not get host's SSH options")
-			}
-			keyPath, err := h.GetSSHKeyPath(settings)
-			if err != nil {
-				return nil, errors.Wrap(err, "could not get host's SSH options")
-			}
-
-			remoteOpts := options.Remote{
-				RemoteConfig: options.RemoteConfig{
-					Host:    hostInfo.Hostname,
-					User:    hostInfo.User,
-					KeyFile: keyPath,
-					Args:    sshOpts,
-				},
-			}
-			clientOpts := jcli.ClientOptions{
-				BinaryPath:          h.JasperBinaryFilePath(settings.HostJasper),
-				Type:                jcli.RPCService,
-				Port:                settings.HostJasper.Port,
-				CredentialsFilePath: filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.JasperCredentialsPath),
-			}
-
-			return jcli.NewSSHClient(remoteOpts, clientOpts, true)
-		case distro.CommunicationMethodRPC:
-			creds, err := h.JasperClientCredentials(ctx, env)
-			if err != nil {
-				return nil, errors.Wrap(err, "could not get client credentials to communicate with the host's Jasper service")
-			}
-
-			var hostName string
-			if h.Host != "" {
-				hostName = h.Host
-			} else if h.IP != "" {
-				hostName = fmt.Sprintf("[%s]", h.IP)
-			} else {
-				return nil, errors.New("cannot resolve Jasper service address if neither host name nor IP is set")
-			}
-
-			addrStr := fmt.Sprintf("%s:%d", hostName, settings.HostJasper.Port)
-
-			serviceAddr, err := net.ResolveTCPAddr("tcp", addrStr)
-			if err != nil {
-				return nil, errors.Wrapf(err, "could not resolve Jasper service address at '%s'", addrStr)
-			}
-
-			dialCtx, cancel := context.WithTimeout(ctx, jasperDialTimeout)
-			defer cancel()
-
-			return rpc.NewClient(dialCtx, serviceAddr, creds)
+	if h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodSSH || h.NeedsReprovision == ReprovisionToLegacy {
+		hostInfo, err := h.GetSSHInfo()
+		if err != nil {
+			return nil, errors.Wrap(err, "could not get host's SSH info")
 		}
+		sshOpts, err := h.GetSSHOptions(settings)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not get host's SSH options")
+		}
+
+		remoteOpts := options.Remote{}
+		remoteOpts.Host = hostInfo.Hostname
+		remoteOpts.User = hostInfo.User
+		remoteOpts.Args = sshOpts
+		// kim: TODO: remove this line
+		remoteOpts.KeyFile = h.Distro.SSHKey
+		clientOpts := jcli.ClientOptions{
+			BinaryPath:          h.JasperBinaryFilePath(settings.HostJasper),
+			Type:                jcli.RPCService,
+			Port:                settings.HostJasper.Port,
+			CredentialsFilePath: h.Distro.BootstrapSettings.JasperCredentialsPath,
+		}
+
+		return jcli.NewSSHClient(remoteOpts, clientOpts, true)
+	}
+	if h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC {
+		creds, err := h.JasperClientCredentials(ctx, env)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not get client credentials to communicate with the host's Jasper service")
+		}
+
+		var hostName string
+		if h.Host != "" {
+			hostName = h.Host
+		} else if h.IP != "" {
+			hostName = fmt.Sprintf("[%s]", h.IP)
+		} else {
+			return nil, errors.New("cannot resolve Jasper service address if neither host name nor IP is set")
+		}
+
+		addrStr := fmt.Sprintf("%s:%d", hostName, settings.HostJasper.Port)
+
+		serviceAddr, err := net.ResolveTCPAddr("tcp", addrStr)
+		if err != nil {
+			return nil, errors.Wrapf(err, "could not resolve Jasper service address at '%s'", addrStr)
+		}
+
+		dialCtx, cancel := context.WithTimeout(ctx, jasperDialTimeout)
+		defer cancel()
+
+		return rpc.NewClient(dialCtx, serviceAddr, creds)
 	}
 
 	return nil, errors.Errorf("host does not have recognized communication method '%s'", h.Distro.BootstrapSettings.Communication)
