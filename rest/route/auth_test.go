@@ -28,7 +28,7 @@ func (s *AuthRouteSuite) TestParse() {
 	s.Require().NoError(err)
 	s.Equal("abc", h.resource)
 	s.Equal("project", h.resourceType)
-	s.Equal("permission", h.permission)
+	s.Equal("read", h.permission)
 	s.Equal(10, h.requiredLevel)
 }
 
@@ -42,6 +42,6 @@ func (s *AuthRouteSuite) TestParseFail() {
 	s.Error(err)
 	s.Equal("abc", h.resource)
 	s.Equal("project", h.resourceType)
-	s.Equal("permission", h.permission)
+	s.Equal("read", h.permission)
 	s.Equal(0, h.requiredLevel)
 }
