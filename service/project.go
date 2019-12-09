@@ -351,6 +351,17 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
+
+		// verify there are PR aliases defined
+		aliasesDefined, err := verifyAliasExists(evergreen.GithubAlias, projectRef.Identifier, responseRef.GitHubAliases, responseRef.DeleteAliases)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if GitHub aliases are set"))
+			return
+		}
+		if !aliasesDefined {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot enable PR testing without patch definitions"))
+			return
+		}
 	}
 
 	// Prevent multiple projects tracking the same repo/branch from enabling commit queue
@@ -377,25 +388,16 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable Commit Queue without github webhooks enabled for the project"))
 			return
 		}
-		// if no new commit queue aliases, verify there are pre-existing commit queue aliases
-		if len(responseRef.CommitQueueAliases) == 0 {
-			aliases, err := model.FindAliasInProject(responseRef.Identifier, evergreen.CommitQueueAlias)
-			if err != nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error checking for commit queue aliases"))
-				return
-			}
 
-			remainingAliases := 0
-			for _, a := range aliases {
-				// only consider aliases that won't be deleted
-				if !util.StringSliceContains(responseRef.DeleteAliases, a.ID.Hex()) {
-					remainingAliases++
-				}
-			}
-			if remainingAliases == 0 {
-				uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Cannot enable Commit Queue without patch definitions."))
-				return
-			}
+		// verify there are commit queue aliases defined
+		exists, err := verifyAliasExists(evergreen.CommitQueueAlias, projectRef.Identifier, responseRef.CommitQueueAliases, responseRef.DeleteAliases)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if commit queue aliases are set"))
+			return
+		}
+		if !exists {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot enable commit queue without patch definitions"))
+			return
 		}
 
 		_, err = commitqueue.FindOneId(responseRef.Identifier)
@@ -732,4 +734,26 @@ func (uis *UIServer) projectEvents(w http.ResponseWriter, r *http.Request) {
 		ViewData
 	}{id, uis.GetCommonViewData(w, r, true, true)}
 	uis.render.WriteResponse(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
+}
+
+func verifyAliasExists(alias, projectIdentifier string, newAliasDefinitions []model.ProjectAlias, deletedAliasDefinitionIDs []string) (bool, error) {
+	if len(newAliasDefinitions) > 0 {
+		return true, nil
+	}
+
+	existingAliasDefinitions, err := model.FindAliasInProject(projectIdentifier, alias)
+	if err != nil {
+		return false, errors.Wrap(err, "error checking for existing aliases")
+	}
+
+	remainingAliases := false
+	for _, a := range existingAliasDefinitions {
+		// only consider aliases that won't be deleted
+		if !util.StringSliceContains(deletedAliasDefinitionIDs, a.ID.Hex()) {
+			remainingAliases = true
+			break
+		}
+	}
+
+	return remainingAliases, nil
 }

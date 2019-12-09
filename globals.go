@@ -188,6 +188,7 @@ const (
 	TaskOrderingPatchFirst    = "patchfirst"
 
 	CommitQueueAlias = "__commit_queue"
+	GithubAlias      = "__github"
 	MergeTaskVariant = "commit-queue-merge"
 	MergeTaskName    = "merge-patch"
 	MergeTaskGroup   = "merge-task-group"

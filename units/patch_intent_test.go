@@ -86,13 +86,13 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 
 	s.NoError((&model.ProjectAlias{
 		ProjectID: "mci",
-		Alias:     patch.GithubAlias,
+		Alias:     evergreen.GithubAlias,
 		Variant:   "ubuntu.*",
 		Task:      "dist.*",
 	}).Upsert())
 	s.NoError((&model.ProjectAlias{
 		ProjectID: "mci",
-		Alias:     patch.GithubAlias,
+		Alias:     evergreen.GithubAlias,
 		Variant:   "race.*",
 		Task:      "dist.*",
 	}).Upsert())

@@ -287,6 +287,18 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 					Message:    "Cannot enable PR Testing in this repo, must enable GitHub webhooks first",
 				})
 			}
+
+			ghAliasesDefined, err := h.hasAliasDefined(apiProjectRef, evergreen.GithubAlias)
+			if err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't check for alias definitions"))
+			}
+			if !ghAliasesDefined {
+				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+					StatusCode: http.StatusBadRequest,
+					Message:    "cannot enable PR testing without a PR patch definitions",
+				})
+			}
+
 			if err = h.sc.EnablePRTesting(dbProjectRef); err != nil {
 				return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling PR testing for project '%s'", h.projectID))
 			}
@@ -313,14 +325,14 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 				})
 			}
 
-			ok, err := h.hasCommitQueuePatchDefinition(apiProjectRef)
+			cqAliasesDefined, err := h.hasAliasDefined(apiProjectRef, evergreen.CommitQueueAlias)
 			if err != nil {
-				return gimlet.MakeJSONInternalErrorResponder(err)
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't check for alias definitions"))
 			}
-			if !ok {
+			if !cqAliasesDefined {
 				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					StatusCode: http.StatusBadRequest,
-					Message:    fmt.Sprintf("Cannot enable commit queue without a %s patch definition", evergreen.CommitQueueAlias),
+					Message:    "cannot enable commit queue without a commit queue patch definition",
 				})
 			}
 			if err = h.sc.EnableCommitQueue(dbProjectRef, commitQueueParams); err != nil {
@@ -411,27 +423,25 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	return responder
 }
 
-// verify that either the user has added a new commit queue alias, or there is a pre-existing commit queue alias
-func (h *projectIDPatchHandler) hasCommitQueuePatchDefinition(pRef *model.APIProjectRef) (bool, error) {
+// verify for a given alias that either the user has added a new definition or there is a pre-existing definition
+func (h *projectIDPatchHandler) hasAliasDefined(pRef *model.APIProjectRef, alias string) (bool, error) {
 	aliasesToDelete := map[string]bool{}
-	for _, alias := range pRef.Aliases {
-		// return immediately if new commit queue alias has been added
-		if model.FromAPIString(alias.Alias) == evergreen.CommitQueueAlias && !alias.Delete {
+	for _, a := range pRef.Aliases {
+		// return immediately if a new definition has been added
+		if model.FromAPIString(a.Alias) == alias && !a.Delete {
 			return true, nil
 		}
-		aliasesToDelete[model.FromAPIString(alias.ID)] = alias.Delete
+		aliasesToDelete[model.FromAPIString(a.ID)] = a.Delete
 	}
 
+	// check if a definition exists and hasn't been deleted
 	aliases, err := h.sc.FindProjectAliases(model.FromAPIString(pRef.Identifier))
 	if err != nil {
 		return false, errors.Wrapf(err, "Error checking existing patch definitions")
 	}
-	for _, alias := range aliases {
-		if model.FromAPIString(alias.Alias) == evergreen.CommitQueueAlias {
-			// assert this alias wasn't meant to be deleted
-			if !aliasesToDelete[model.FromAPIString(alias.ID)] {
-				return true, nil
-			}
+	for _, a := range aliases {
+		if model.FromAPIString(a.Alias) == alias && !aliasesToDelete[model.FromAPIString(a.ID)] {
+			return true, nil
 		}
 	}
 	return false, nil
