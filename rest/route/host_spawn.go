@@ -465,7 +465,7 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	if util.StringSliceContains(evergreen.DownHostStatus, targetHost.Status) {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    errors.Errorf("host '%s' is not up (status is %s)", targetHost.Id, targetHost.Status).Error(),
+			Message:    errors.Errorf("host '%s' status is %s", targetHost.Id, targetHost.Status).Error(),
 		})
 	}
 
