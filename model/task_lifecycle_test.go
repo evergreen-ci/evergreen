@@ -2378,7 +2378,6 @@ func TestClearAndResetExecTask(t *testing.T) {
 		Id: "b",
 		Tasks: []build.TaskCache{
 			build.TaskCache{Id: "dt"},
-			build.TaskCache{Id: "et"},
 		},
 	}
 	assert.NoError(t, b.Insert())

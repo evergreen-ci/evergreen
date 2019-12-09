@@ -978,8 +978,10 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 	if err = t.MarkSystemFailed(); err != nil {
 		return errors.Wrap(err, "problem marking task failed")
 	}
-	if err := build.UpdateCachedTask(t, 0); err != nil {
-		return errors.Wrap(err, "problem resetting cached task")
+	if !t.IsPartOfDisplay() {
+		if err := build.UpdateCachedTask(t, 0); err != nil {
+			return errors.Wrap(err, "problem resetting cached task")
+		}
 	}
 
 	if time.Since(t.ActivatedTime) > task.UnschedulableThreshold {
