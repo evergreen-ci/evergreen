@@ -14,17 +14,15 @@ import (
 type basicProcessManager struct {
 	id            string
 	procs         map[string]Process
-	senv          map[string]ScriptingEnvironment
-	blocking      bool
+	senv          map[string]ScriptingHarness
 	useSSHLibrary bool
 	tracker       ProcessTracker
 }
 
-func newBasicProcessManager(procs map[string]Process, blocking bool, trackProcs bool, useSSHLibrary bool) (Manager, error) {
+func newBasicProcessManager(procs map[string]Process, trackProcs bool, useSSHLibrary bool) (Manager, error) {
 	m := basicProcessManager{
 		procs:         procs,
-		senv:          make(map[string]ScriptingEnvironment),
-		blocking:      blocking,
+		senv:          make(map[string]ScriptingHarness),
 		id:            uuid.Must(uuid.NewV4()).String(),
 		useSSHLibrary: useSSHLibrary,
 	}
@@ -42,12 +40,12 @@ func (m *basicProcessManager) ID() string {
 	return m.id
 }
 
-func (m *basicProcessManager) CreateScripting(ctx context.Context, opts options.ScriptingEnvironment) (ScriptingEnvironment, error) {
+func (m *basicProcessManager) CreateScripting(ctx context.Context, opts options.ScriptingHarness) (ScriptingHarness, error) {
 	if se, ok := m.senv[opts.ID()]; ok {
 		return se, nil
 	}
 
-	se, err := scriptingEnvironmentFactory(m, opts)
+	se, err := NewScriptingHarness(m, opts)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -56,10 +54,12 @@ func (m *basicProcessManager) CreateScripting(ctx context.Context, opts options.
 		return nil, errors.Wrap(err, "problem setting up scripting environment")
 	}
 
+	m.senv[se.ID()] = se
+
 	return se, nil
 }
 
-func (m *basicProcessManager) GetScripting(ctx context.Context, id string) (ScriptingEnvironment, error) {
+func (m *basicProcessManager) GetScripting(ctx context.Context, id string) (ScriptingHarness, error) {
 	se, ok := m.senv[id]
 	if !ok {
 		return nil, errors.Errorf("could not find scripting environment named '%s'", id)
@@ -70,20 +70,11 @@ func (m *basicProcessManager) GetScripting(ctx context.Context, id string) (Scri
 func (m *basicProcessManager) CreateProcess(ctx context.Context, opts *options.Create) (Process, error) {
 	opts.AddEnvVar(ManagerEnvironID, m.id)
 
-	var (
-		proc Process
-		err  error
-	)
-
 	if opts.Remote != nil && m.useSSHLibrary {
 		opts.Remote.UseSSHLibrary = true
 	}
-	if m.blocking {
-		proc, err = newBlockingProcess(ctx, opts)
-	} else {
-		proc, err = newBasicProcess(ctx, opts)
-	}
 
+	proc, err := NewProcess(ctx, opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem constructing process")
 	}

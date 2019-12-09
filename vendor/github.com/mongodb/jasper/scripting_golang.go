@@ -65,13 +65,28 @@ func (e *golangEnvironment) Run(ctx context.Context, args []string) error {
 	return cmd.Run(ctx)
 }
 
-func (e *golangEnvironment) Build(ctx context.Context, dir string, args []string) error {
-	return e.manager.CreateCommand(ctx).
+func (e *golangEnvironment) Build(ctx context.Context, dir string, args []string) (string, error) {
+	err := e.manager.CreateCommand(ctx).
 		Directory(dir).
 		AddEnv("GOPATH", e.opts.Gopath).
 		AddEnv("GOROOT", e.opts.Goroot).
 		SetOutputOptions(e.opts.Output).
 		Add(append([]string{e.opts.Interpreter(), "build"}, args...)).Run(ctx)
+
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	for idx, val := range args {
+		if val == "-o" {
+			if len(args) >= idx+1 {
+				return args[idx+1], nil
+			}
+			break
+		}
+	}
+
+	return "", nil
 }
 
 func (e *golangEnvironment) RunScript(ctx context.Context, script string) error {

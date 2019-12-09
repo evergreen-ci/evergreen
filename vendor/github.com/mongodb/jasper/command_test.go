@@ -7,7 +7,6 @@ import (
 	"math"
 	"os"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -25,32 +24,9 @@ const (
 	lsErrorMsg       = "No such file or directory"
 )
 
-type Buffer struct {
-	b bytes.Buffer
-	sync.RWMutex
-}
-
-func (b *Buffer) Read(p []byte) (n int, err error) {
-	b.RLock()
-	defer b.RUnlock()
-	return b.b.Read(p)
-}
-func (b *Buffer) Write(p []byte) (n int, err error) {
-	b.Lock()
-	defer b.Unlock()
-	return b.b.Write(p)
-}
-func (b *Buffer) String() string {
-	b.RLock()
-	defer b.RUnlock()
-	return b.b.String()
-}
-
-func (b *Buffer) Close() error { return nil }
-
 func verifyCommandAndGetOutput(ctx context.Context, t *testing.T, cmd *Command, run cmdRunFunc, success bool) string {
 	var buf bytes.Buffer
-	bufCloser := &Buffer{b: buf}
+	bufCloser := &localBuffer{b: buf}
 
 	cmd.SetCombinedWriter(bufCloser)
 
@@ -304,20 +280,20 @@ func TestCommandImplementation(t *testing.T) {
 							}
 						},
 						"WriterOutputAndErrorIsSettable": func(ctx context.Context, t *testing.T, cmd Command) {
-							for subName, subTestCase := range map[string]func(context.Context, *testing.T, Command, *Buffer){
-								"StdOutOnly": func(ctx context.Context, t *testing.T, cmd Command, buf *Buffer) {
+							for subName, subTestCase := range map[string]func(context.Context, *testing.T, Command, *localBuffer){
+								"StdOutOnly": func(ctx context.Context, t *testing.T, cmd Command, buf *localBuffer) {
 									cmd.SetOutputWriter(buf)
 									require.NoError(t, runFunc(&cmd, ctx))
 									checkOutput(t, true, buf.String(), arg1, arg2)
 									checkOutput(t, false, buf.String(), lsErrorMsg)
 								},
-								"StdErrOnly": func(ctx context.Context, t *testing.T, cmd Command, buf *Buffer) {
+								"StdErrOnly": func(ctx context.Context, t *testing.T, cmd Command, buf *localBuffer) {
 									cmd.SetErrorWriter(buf)
 									require.NoError(t, runFunc(&cmd, ctx))
 									checkOutput(t, true, buf.String(), lsErrorMsg)
 									checkOutput(t, false, buf.String(), arg1, arg2)
 								},
-								"StdOutAndStdErr": func(ctx context.Context, t *testing.T, cmd Command, buf *Buffer) {
+								"StdOutAndStdErr": func(ctx context.Context, t *testing.T, cmd Command, buf *localBuffer) {
 									cmd.SetCombinedWriter(buf)
 									require.NoError(t, runFunc(&cmd, ctx))
 									checkOutput(t, true, buf.String(), arg1, arg2, lsErrorMsg)
@@ -331,7 +307,7 @@ func TestCommandImplementation(t *testing.T) {
 									}).ContinueOnError(true).IgnoreError(true)
 
 									var buf bytes.Buffer
-									bufCloser := &Buffer{b: buf}
+									bufCloser := &localBuffer{b: buf}
 
 									subTestCase(ctx, t, cmd, bufCloser)
 								})

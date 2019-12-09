@@ -17,8 +17,7 @@ import (
 
 func TestWindowsRPCService(t *testing.T) {
 	for managerName, makeManager := range map[string]func(trackProcs bool) (jasper.Manager, error){
-		"Basic":    jasper.NewSynchronizedManager,
-		"Blocking": jasper.NewSynchronizedManagerBlockingProcesses,
+		"Basic": jasper.NewSynchronizedManager,
 	} {
 		t.Run(managerName, func(t *testing.T) {
 			for testName, testCase := range map[string]func(context.Context, *testing.T, internal.JasperProcessManagerClient){

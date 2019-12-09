@@ -10,14 +10,10 @@ ignore:
 #######################################
 variables:
   - &run-build
-    # runs a build operations. The task name in evergreen should
+    # runs a build operation. The task name in evergreen should
     # correspond to a make target for the build operation.
     name: test
     commands:
-      - command: git.get_project
-        type: system
-        params:
-          directory: gopath/src/github.com/mongodb/jasper
       - func: run-make
         vars: { target: "${task_name}" }
 
@@ -25,6 +21,11 @@ variables:
 #              Functions              #
 #######################################
 functions:
+  get-project:
+    command: git.get_project
+    type: system
+    params:
+      directory: gopath/src/github.com/mongodb/jasper
   run-make:
     command: subprocess.exec
     type: test
@@ -35,17 +36,16 @@ functions:
       add_expansions_to_env: true
       env:
         GOPATH: ${workdir}/gopath
-
-#######################################
-#                Tasks                #
-#######################################
-post:
-  - command: gotest.parse_files
+  parse-results:
+    command: gotest.parse_files
     type: setup
     params:
       files:
         - "gopath/src/github.com/mongodb/jasper/build/output.*"
 
+#######################################
+#                Tasks                #
+#######################################
 tasks:
   - <<: *run-build
     tags: ["test"]
@@ -72,12 +72,73 @@ tasks:
     name: test-rpc
 
   - <<: *run-build
+    tags: ["test"]
+    name: test-wire
+
+  - name: compile-base
     tags: ["legacy-check"]
-    name: compile-base
+    commands:
+      - func: get-project
+      - func: run-make
+        vars: { target: "${task_name}" }
 
   - <<: *run-build
     tags: ["report"]
-    name: lint
+    name: lint-cli
+
+  - <<: *run-build
+    tags: ["report"]
+    name: lint-internal-executor
+
+  - <<: *run-build
+    tags: ["report"]
+    name: lint-mock
+
+  - <<: *run-build
+    tags: ["report"]
+    name: lint-options
+
+  - <<: *run-build
+    tags: ["report"]
+    name: lint-rest
+
+  - <<: *run-build
+    tags: ["report"]
+    name: lint-rpc
+
+  - <<: *run-build
+    tags: ["report"]
+    name: lint-rpc-internal
+
+  - <<: *run-build
+    tags: ["report"]
+    name: lint-testutil
+
+  - <<: *run-build
+    tags: ["report"]
+    name: lint-wire
+
+task_groups:
+  - name: lintGroup
+    tasks: [ ".report"]
+    max_hosts: 2
+    setup_group:
+      - func: get-project
+    setup_task:
+      - func: run-make
+        vars: { target: "clean-results" }
+    teardown_task:
+      - func: parse-results
+  - name: testGroup
+    tasks: [ ".test"]
+    max_hosts: 2
+    setup_group:
+      - func: get-project
+    setup_task:
+      - func: run-make
+        vars: { target: "clean-results" }
+    teardown_task:
+      - func: parse-results
 
 #######################################
 #           Buildvariants             #
@@ -87,16 +148,28 @@ buildvariants:
     display_name: Race Detector (Arch Linux)
     expansions:
       DISABLE_COVERAGE: true
-      GOROOT: /opt/golang/go1.10
-      GO_BIN_PATH: /opt/golang/go1.10/bin/go
+      GOROOT: /opt/golang/go1.13
+      GO_BIN_PATH: /opt/golang/go1.13/bin/go
       RACE_DETECTOR: true
       make_args: -k
     run_on:
       - archlinux-test
       - archlinux-build
     tasks:
-      - name: ".test"
-      - name: ".report"
+      - name: "testGroup"
+
+  - name: lint
+    display_name: Lint (Arch Linux)
+    expansions:
+      DISABLE_COVERAGE: true
+      GOROOT: /opt/golang/go1.13
+      GO_BIN_PATH: /opt/golang/go1.13/bin/go
+      make_args: -k
+    run_on:
+      - archlinux-test
+      - archlinux-build
+    tasks: 
+      - name: "lintGroup"
 
   - name: ubuntu1604
     display_name: Ubuntu 16.04
@@ -109,7 +182,7 @@ buildvariants:
       - ubuntu1604-test
       - ubuntu1604-build
     tasks:
-      - name: ".test"
+      - name: "testGroup"
 
   - name: ubuntu1604-go1.9
     display_name: Ubuntu 16.04 (go1.9)
@@ -134,7 +207,7 @@ buildvariants:
     run_on:
       - macos-1014
     tasks:
-      - name: ".test"
+      - name: "testGroup"
 
   - name: windows
     display_name: Windows
@@ -153,4 +226,4 @@ buildvariants:
       GO_BIN_PATH: /cygdrive/c/golang/go1.11/bin/go
       make_args: -k
     tasks:
-      - name: ".test"
+      - name: "testGroup"

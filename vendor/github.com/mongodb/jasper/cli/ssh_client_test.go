@@ -510,6 +510,30 @@ func TestSSHClient(t *testing.T) {
 			opts := options.WriteFile{Path: filepath.Join(buildDir(t), "write_file"), Content: []byte("foo")}
 			assert.Error(t, client.WriteFile(ctx, opts))
 		},
+		"ScriptingReturnsFromCache": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
+			opts := &options.ScriptingPython{
+				VirtualEnvPath: "build",
+				Packages:       []string{"pymongo"},
+			}
+			env, err := jasper.NewScriptingHarness(baseManager, opts)
+			require.NoError(t, err)
+			client.shCache.envs[env.ID()] = env
+
+			sh, err := client.CreateScripting(ctx, opts)
+			require.NoError(t, err)
+			require.NotNil(t, sh)
+			assert.Equal(t, env.ID(), sh.ID())
+		},
+		"ScriptingCacheReturnsZero": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
+			opts := &options.ScriptingPython{
+				VirtualEnvPath: "build",
+				Packages:       []string{"pymongo"},
+			}
+
+			sh, err := client.CreateScripting(ctx, opts)
+			require.Error(t, err)
+			require.Nil(t, sh)
+		},
 		// "": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {},
 	} {
 		t.Run(testName, func(t *testing.T) {

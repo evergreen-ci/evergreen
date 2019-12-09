@@ -70,9 +70,18 @@ func (e *roswellEnvironment) RunScript(ctx context.Context, script string) error
 		SetOutputOptions(e.opts.Output).AppendArgs(e.opts.Interpreter(), wo.Path).Run(ctx)
 }
 
-func (e *roswellEnvironment) Build(ctx context.Context, dir string, args []string) error {
-	return e.manager.CreateCommand(ctx).Directory(dir).Environment(e.opts.Environment).AddEnv("ROSWELL_HOME", e.opts.Path).
+func (e *roswellEnvironment) Build(ctx context.Context, dir string, args []string) (string, error) {
+	err := e.manager.CreateCommand(ctx).Directory(dir).Environment(e.opts.Environment).AddEnv("ROSWELL_HOME", e.opts.Path).
 		SetOutputOptions(e.opts.Output).Add(append([]string{e.opts.Interpreter(), "dump", "executable"}, args...)).Run(ctx)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	if len(args) >= 1 {
+		return strings.TrimRight(args[0], ".ros"), nil
+	}
+
+	return "", nil
 }
 
 func (e *roswellEnvironment) Cleanup(ctx context.Context) error {

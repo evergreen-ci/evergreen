@@ -15,7 +15,7 @@ func MakeSynchronizedManager(manager Manager) (Manager, error) {
 
 // NewSynchronizedManager is a constructor for a thread-safe Manager.
 func NewSynchronizedManager(trackProcs bool) (Manager, error) {
-	basicManager, err := newBasicProcessManager(map[string]Process{}, false, trackProcs, false)
+	basicManager, err := newBasicProcessManager(map[string]Process{}, trackProcs, false)
 	if err != nil {
 		return nil, err
 	}
@@ -26,22 +26,11 @@ func NewSynchronizedManager(trackProcs bool) (Manager, error) {
 // NewSSHLibrarySynchronizedManager is the same as NewSynchronizedManager but
 // uses the SSH library instead of the SSH binary for remote processes.
 func NewSSHLibrarySynchronizedManager(trackProcs bool) (Manager, error) {
-	basicManager, err := newBasicProcessManager(map[string]Process{}, false, trackProcs, true)
+	basicManager, err := newBasicProcessManager(map[string]Process{}, trackProcs, true)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem constructing underlying manager")
 	}
 	return &synchronizedProcessManager{manager: basicManager}, nil
-}
-
-// NewSynchronizedManagerBlockingProcesses is a constructor for a thread-safe Manager
-// that uses blockingProcess instead of the default basicProcess.
-func NewSynchronizedManagerBlockingProcesses(trackProcs bool) (Manager, error) {
-	basicBlockingManager, err := newBasicProcessManager(map[string]Process{}, true, trackProcs, false)
-	if err != nil {
-		return nil, err
-	}
-
-	return &synchronizedProcessManager{manager: basicBlockingManager}, nil
 }
 
 type synchronizedProcessManager struct {
@@ -79,14 +68,14 @@ func (m *synchronizedProcessManager) WriteFile(ctx context.Context, opts options
 	return errors.WithStack(m.manager.WriteFile(ctx, opts))
 }
 
-func (m *synchronizedProcessManager) CreateScripting(ctx context.Context, opts options.ScriptingEnvironment) (ScriptingEnvironment, error) {
+func (m *synchronizedProcessManager) CreateScripting(ctx context.Context, opts options.ScriptingHarness) (ScriptingHarness, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	return m.manager.CreateScripting(ctx, opts)
 }
 
-func (m *synchronizedProcessManager) GetScripting(ctx context.Context, id string) (ScriptingEnvironment, error) {
+func (m *synchronizedProcessManager) GetScripting(ctx context.Context, id string) (ScriptingHarness, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -105,7 +94,11 @@ func (m *synchronizedProcessManager) List(ctx context.Context, f options.Filter)
 	defer m.mu.RUnlock()
 
 	procs, err := m.manager.List(ctx, f)
-	return procs, errors.WithStack(err)
+	var syncedProcs []Process
+	for _, proc := range procs {
+		syncedProcs = append(syncedProcs, &synchronizedProcess{proc: proc})
+	}
+	return syncedProcs, errors.WithStack(err)
 }
 
 func (m *synchronizedProcessManager) Get(ctx context.Context, id string) (Process, error) {
@@ -113,7 +106,10 @@ func (m *synchronizedProcessManager) Get(ctx context.Context, id string) (Proces
 	defer m.mu.RUnlock()
 
 	proc, err := m.manager.Get(ctx, id)
-	return proc, errors.WithStack(err)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return &synchronizedProcess{proc: proc}, errors.WithStack(err)
 }
 
 func (m *synchronizedProcessManager) Clear(ctx context.Context) {
@@ -135,5 +131,9 @@ func (m *synchronizedProcessManager) Group(ctx context.Context, name string) ([]
 	defer m.mu.RUnlock()
 
 	procs, err := m.manager.Group(ctx, name)
-	return procs, errors.WithStack(err)
+	var syncedProcs []Process
+	for _, proc := range procs {
+		syncedProcs = append(syncedProcs, &synchronizedProcess{proc: proc})
+	}
+	return syncedProcs, errors.WithStack(err)
 }

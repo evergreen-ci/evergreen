@@ -28,11 +28,11 @@ func (m *remoteOverrideMgr) CreateProcess(ctx context.Context, opts *options.Cre
 	return m.mgr.CreateProcess(ctx, opts)
 }
 
-func (m *remoteOverrideMgr) CreateScripting(ctx context.Context, opts options.ScriptingEnvironment) (ScriptingEnvironment, error) {
+func (m *remoteOverrideMgr) CreateScripting(ctx context.Context, opts options.ScriptingHarness) (ScriptingHarness, error) {
 	return m.mgr.CreateScripting(ctx, opts)
 }
 
-func (m *remoteOverrideMgr) GetScripting(ctx context.Context, id string) (ScriptingEnvironment, error) {
+func (m *remoteOverrideMgr) GetScripting(ctx context.Context, id string) (ScriptingHarness, error) {
 	return m.mgr.GetScripting(ctx, id)
 }
 

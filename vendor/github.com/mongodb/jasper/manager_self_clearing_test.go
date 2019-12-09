@@ -34,24 +34,29 @@ func fillUp(ctx context.Context, t *testing.T, manager *selfClearingProcessManag
 }
 
 func TestSelfClearingManager(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for mname, createFunc := range map[string]func(context.Context, *selfClearingProcessManager, *testing.T, *options.Create) (Process, error){
 		"Create":   pureCreate,
 		"Register": registerBasedCreate,
 	} {
 		t.Run(mname, func(t *testing.T) {
-			for name, test := range map[string]func(context.Context, *testing.T, *selfClearingProcessManager){
-				"SucceedsWhenFree": func(ctx context.Context, t *testing.T, manager *selfClearingProcessManager) {
+
+			for name, test := range map[string]func(context.Context, *testing.T, *selfClearingProcessManager, testutil.OptsModify){
+				"SucceedsWhenFree": func(ctx context.Context, t *testing.T, manager *selfClearingProcessManager, mod testutil.OptsModify) {
 					proc, err := createFunc(ctx, manager, t, testutil.TrueCreateOpts())
 					assert.NoError(t, err)
 					assert.NotNil(t, proc)
 				},
-				"ErrorsWhenFull": func(ctx context.Context, t *testing.T, manager *selfClearingProcessManager) {
+				"ErrorsWhenFull": func(ctx context.Context, t *testing.T, manager *selfClearingProcessManager, mod testutil.OptsModify) {
 					fillUp(ctx, t, manager, manager.maxProcs)
+
 					sleep, err := createFunc(ctx, manager, t, testutil.SleepCreateOpts(10))
 					assert.Error(t, err)
 					assert.Nil(t, sleep)
 				},
-				"PartiallySucceedsWhenAlmostFull": func(ctx context.Context, t *testing.T, manager *selfClearingProcessManager) {
+				"PartiallySucceedsWhenAlmostFull": func(ctx context.Context, t *testing.T, manager *selfClearingProcessManager, mod testutil.OptsModify) {
 					fillUp(ctx, t, manager, manager.maxProcs-1)
 					firstSleep, err := createFunc(ctx, manager, t, testutil.SleepCreateOpts(10))
 					assert.NoError(t, err)
@@ -60,7 +65,7 @@ func TestSelfClearingManager(t *testing.T) {
 					assert.Error(t, err)
 					assert.Nil(t, secondSleep)
 				},
-				"InitialFailureIsResolvedByWaiting": func(ctx context.Context, t *testing.T, manager *selfClearingProcessManager) {
+				"InitialFailureIsResolvedByWaiting": func(ctx context.Context, t *testing.T, manager *selfClearingProcessManager, mod testutil.OptsModify) {
 					fillUp(ctx, t, manager, manager.maxProcs)
 					sleepOpts := testutil.SleepCreateOpts(100)
 					sleepProc, err := createFunc(ctx, manager, t, sleepOpts)
@@ -78,15 +83,35 @@ func TestSelfClearingManager(t *testing.T) {
 				},
 				//"": func(ctx context.Context, t *testing.T, manager *selfClearingProcessManager) {},
 			} {
-				t.Run(name, func(t *testing.T) {
-					tctx, cancel := context.WithTimeout(context.Background(), testutil.ManagerTestTimeout)
-					defer cancel()
 
-					selfClearingManager, err := NewSelfClearingProcessManager(5, false)
-					require.NoError(t, err)
-					test(tctx, t, selfClearingManager.(*selfClearingProcessManager))
-					assert.NoError(t, selfClearingManager.Close(tctx))
+				t.Run("Blocking", func(t *testing.T) {
+					t.Run(name, func(t *testing.T) {
+						tctx, cancel := context.WithTimeout(ctx, testutil.ManagerTestTimeout)
+						defer cancel()
+
+						selfClearingManager, err := NewSelfClearingProcessManager(5, false)
+
+						require.NoError(t, err)
+						test(tctx, t, selfClearingManager.(*selfClearingProcessManager), func(o *options.Create) {
+							o.Implementation = options.ProcessImplementationBlocking
+						})
+						assert.NoError(t, selfClearingManager.Close(tctx))
+					})
 				})
+				t.Run("Basic", func(t *testing.T) {
+					t.Run(name, func(t *testing.T) {
+						tctx, cancel := context.WithTimeout(ctx, testutil.ManagerTestTimeout)
+						defer cancel()
+
+						selfClearingManager, err := NewSelfClearingProcessManager(5, false)
+						require.NoError(t, err)
+						test(tctx, t, selfClearingManager.(*selfClearingProcessManager), func(o *options.Create) {
+							o.Implementation = options.ProcessImplementationBasic
+						})
+						assert.NoError(t, selfClearingManager.Close(tctx))
+					})
+				})
+
 			}
 		})
 	}

@@ -26,7 +26,7 @@ imports:
   - name: github.com/urfave/cli
     version: 693af58b4d51b8fcc7f9d89576da170765980581
   - name: github.com/evergreen-ci/service
-    version: c7818d4e48fd67e86fc501d90262049a377c8d5b
+    version: 6a120a364c348396879d3e3a27df7dce23c9c89a
   - name: github.com/cheynewallace/tabby
     version: b7224f6123093cc04ce961170a360e1d22e214a5
   - name: github.com/evergreen-ci/aviation
@@ -34,7 +34,7 @@ imports:
   - name: github.com/evergreen-ci/certdepot
     version: d2c7b2f7c9c7af6311d211fe7fb127d99bdc5d43
   - name: github.com/evergreen-ci/mrpc
-    version: 5dd01196f47328d6833ddc0247690dc986525475
+    version: 1eaf67addbd7d8eb1481cd3ff45a2e7fdc1d98b2
   - name: github.com/evergreen-ci/birch
     version: 5b054047680765b089c1e6f77d0896803d1fd73d
   - name: github.com/evergreen-ci/timber

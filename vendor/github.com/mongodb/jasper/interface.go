@@ -32,14 +32,14 @@ type Manager interface {
 	ID() string
 	CreateProcess(context.Context, *options.Create) (Process, error)
 	CreateCommand(context.Context) *Command
-	CreateScripting(context.Context, options.ScriptingEnvironment) (ScriptingEnvironment, error)
+	CreateScripting(context.Context, options.ScriptingHarness) (ScriptingHarness, error)
 	Register(context.Context, Process) error
 	WriteFile(context.Context, options.WriteFile) error
 
 	List(context.Context, options.Filter) ([]Process, error)
 	Group(context.Context, string) ([]Process, error)
 	Get(context.Context, string) (Process, error)
-	GetScripting(context.Context, string) (ScriptingEnvironment, error)
+	GetScripting(context.Context, string) (ScriptingHarness, error)
 	Clear(context.Context)
 	Close(context.Context) error
 }
@@ -137,11 +137,11 @@ type ProcessInfo struct {
 	EndAt      time.Time      `json:"end_at" bson:"end_at"`
 }
 
-// ScriptingEnvironment provides an interface to execute code in a
+// ScriptingHarness provides an interface to execute code in a
 // scripting environment such as a Python Virtual
 // Environment. Implementations should be make it possible to execute
 // either locally or on remote systems.
-type ScriptingEnvironment interface {
+type ScriptingHarness interface {
 	// ID returns a unique ID for the underlying environment. This
 	// should match the ID produced by the underlying options
 	// implementation.
@@ -159,7 +159,9 @@ type ScriptingEnvironment interface {
 	// generate some kind of build artifact from the scripting
 	// environment. Pass a directory in addition to a list of
 	// arguments to describe any arguments to the build system.
-	Build(context.Context, string, []string) error
+	// The Build operation returns the path of the build artifact
+	// produced by the operation.
+	Build(context.Context, string, []string) (string, error)
 	// Cleanup should remove the files created by the scripting environment.
 	Cleanup(context.Context) error
 }

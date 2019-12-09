@@ -230,7 +230,7 @@ message EventName {
   string value = 1;
 }
 
-message ScriptingEnvironmentID {
+message ScriptingHarnessID {
   string id = 1;
   bool setup = 2;
 }
@@ -268,18 +268,24 @@ message ScriptingOptions {
   int64 duration = 6;
 }
 
-message ScriptingEnvironmentRunArgs {
+message ScriptingHarnessRunArgs {
   string id = 1; 
   repeated string args = 2; 
 }
 
-message ScriptingEnvironmentBuildArgs {
+message ScriptingHarnessBuildArgs {
   string id = 1; 
   string directory = 2;
   repeated string args = 3; 
 }
 
-message ScriptingEnvironmentRunScriptArgs {
+message ScriptingHarnessBuildResponse {
+  OperationOutcome outcome = 1;
+  string path = 2; 
+}
+
+
+message ScriptingHarnessRunScriptArgs {
   string id = 1;
   string script = 2;
 }
@@ -303,14 +309,14 @@ service JasperProcessManager {
   rpc Wait(JasperProcessID) returns (OperationOutcome);
   rpc Respawn(JasperProcessID) returns (ProcessInfo);
 
-  // ScriptingEnvironment functions
-  rpc ScriptingEnvironmentCreate(ScriptingOptions) returns (ScriptingEnvironmentID); 
-  rpc ScriptingEnvironmentCheck(ScriptingEnvironmentID) returns (OperationOutcome);
-  rpc ScriptingEnvironmentSetup(ScriptingEnvironmentID) returns (OperationOutcome);
-  rpc ScriptingEnvironmentCleanup(ScriptingEnvironmentID) returns (OperationOutcome);
-  rpc ScriptingEnvironmentRun(ScriptingEnvironmentRunArgs) returns (OperationOutcome);
-  rpc ScriptingEnvironmentBuild(ScriptingEnvironmentBuildArgs) returns (OperationOutcome);
-  rpc ScriptingEnvironmentRunScript(ScriptingEnvironmentRunScriptArgs) returns (OperationOutcome);
+  // ScriptingHarness functions
+  rpc ScriptingHarnessCreate(ScriptingOptions) returns (ScriptingHarnessID); 
+  rpc ScriptingHarnessCheck(ScriptingHarnessID) returns (OperationOutcome);
+  rpc ScriptingHarnessSetup(ScriptingHarnessID) returns (OperationOutcome);
+  rpc ScriptingHarnessCleanup(ScriptingHarnessID) returns (OperationOutcome);
+  rpc ScriptingHarnessRun(ScriptingHarnessRunArgs) returns (OperationOutcome);
+  rpc ScriptingHarnessBuild(ScriptingHarnessBuildArgs) returns (ScriptingHarnessBuildResponse);
+  rpc ScriptingHarnessRunScript(ScriptingHarnessRunScriptArgs) returns (OperationOutcome);
 
   // RPC-specific functions
   rpc Status(google.protobuf.Empty) returns (StatusResponse);

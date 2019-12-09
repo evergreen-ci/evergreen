@@ -31,7 +31,7 @@ type ScriptingRoswell struct {
 // based on the arguments provided. Use this function for
 // simple cases when you do not need or want to set as many aspects of
 // the environment configuration.
-func NewRoswellScriptingEnvironment(path string, systems ...string) ScriptingEnvironment {
+func NewRoswellScriptingEnvironment(path string, systems ...string) ScriptingHarness {
 	return &ScriptingRoswell{
 		Path:           path,
 		Systems:        systems,

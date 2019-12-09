@@ -48,8 +48,8 @@ func (c *RemoteClient) CloseConnection() error {
 	return nil
 }
 
-// ConfigureCache saves the mock CacheOptions. If FailConfigureCache is set, it
-// returns an error.
+// ConfigureCache stores the given cache options. If FailConfigureCache is set,
+// it returns an error.
 func (c *RemoteClient) ConfigureCache(ctx context.Context, opts options.Cache) error {
 	if c.FailConfigureCache {
 		return mockFail()
@@ -60,8 +60,8 @@ func (c *RemoteClient) ConfigureCache(ctx context.Context, opts options.Cache) e
 	return nil
 }
 
-// DownloadFile saves the mock DownloadOptions. If FailDownloadFile is set, it
-// returns an error.
+// DownloadFile stores the given download options. If FailDownloadFile is set,
+// it returns an error.
 func (c *RemoteClient) DownloadFile(ctx context.Context, opts options.Download) error {
 	if c.FailDownloadFile {
 		return mockFail()
@@ -72,7 +72,7 @@ func (c *RemoteClient) DownloadFile(ctx context.Context, opts options.Download) 
 	return nil
 }
 
-// DownloadMongoDB saves the MongoDBDownloadOptions. If FailDownloadMongoDB is
+// DownloadMongoDB stores the given download options. If FailDownloadMongoDB is
 // set, it returns an error.
 func (c *RemoteClient) DownloadMongoDB(ctx context.Context, opts options.MongoDBDownload) error {
 	if c.FailDownloadMongoDB {
@@ -84,8 +84,8 @@ func (c *RemoteClient) DownloadMongoDB(ctx context.Context, opts options.MongoDB
 	return nil
 }
 
-// GetBuildloggerURLs returns the URLs set in BuildloggerURLs. If
-// FailGetBuildloggerURLs is set, it returns an error.
+// GetBuildloggerURLs returns BuildloggerURLs field. If FailGetBuildloggerURLs
+// is set, it returns an error.
 func (c *RemoteClient) GetBuildloggerURLs(ctx context.Context, id string) ([]string, error) {
 	if c.FailGetBuildloggerURLs {
 		return nil, mockFail()
@@ -94,21 +94,22 @@ func (c *RemoteClient) GetBuildloggerURLs(ctx context.Context, id string) ([]str
 	return c.BuildloggerURLs, nil
 }
 
-// GetLogStream saves the LogStreamID and LogStreamCount and returns a
-// jasper.LogStream that is done. If FailGetLogStream is set, it returns an
-// error.
+// GetLogStream stores the given log stream ID and count and returns a
+// jasper.LogStream indicating that it is done. If FailGetLogStream is set, it
+// returns an error.
 func (c *RemoteClient) GetLogStream(ctx context.Context, id string, count int) (jasper.LogStream, error) {
 	if c.FailGetLogStream {
 		return jasper.LogStream{Done: true}, mockFail()
 	}
+
 	c.LogStreamID = id
 	c.LogStreamCount = count
 
-	return jasper.LogStream{Done: true}, nil
+	return c.LogStream, nil
 }
 
-// SignalEvent saves the EventName. If FailSignalEvent is set, it returns an
-// error.
+// SignalEvent stores the given event name. If FailSignalEvent is set, it
+// returns an error.
 func (c *RemoteClient) SignalEvent(ctx context.Context, name string) error {
 	if c.FailSignalEvent {
 		return mockFail()

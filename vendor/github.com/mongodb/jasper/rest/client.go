@@ -135,7 +135,7 @@ func (c *restClient) CreateCommand(ctx context.Context) *jasper.Command {
 	return jasper.NewCommand().ProcConstructor(c.CreateProcess)
 }
 
-func (c *restClient) CreateScripting(ctx context.Context, opts options.ScriptingEnvironment) (jasper.ScriptingEnvironment, error) {
+func (c *restClient) CreateScripting(ctx context.Context, opts options.ScriptingHarness) (jasper.ScriptingHarness, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, errors.Wrap(err, "problem validating input")
 	}
@@ -165,7 +165,7 @@ func (c *restClient) CreateScripting(ctx context.Context, opts options.Scripting
 	}, nil
 }
 
-func (c *restClient) GetScripting(ctx context.Context, id string) (jasper.ScriptingEnvironment, error) {
+func (c *restClient) GetScripting(ctx context.Context, id string) (jasper.ScriptingHarness, error) {
 	resp, err := c.doRequest(ctx, http.MethodPost, c.getURL("/scripting/%s", id), nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "request returned error")
@@ -575,22 +575,30 @@ func (s *restScripting) RunScript(ctx context.Context, script string) error {
 	return nil
 }
 
-func (s *restScripting) Build(ctx context.Context, dir string, args []string) error {
+func (s *restScripting) Build(ctx context.Context, dir string, args []string) (string, error) {
 	body, err := makeBody(struct {
 		Directory string   `json:"directory"`
 		Args      []string `json:"args"`
 	}{Args: args})
 	if err != nil {
-		return errors.Wrap(err, "problem building request")
+		return "", errors.Wrap(err, "problem building request")
 	}
 
 	resp, err := s.client.doRequest(ctx, http.MethodPost, s.client.getURL("/scripting/%s/build", s.id), body)
 	if err != nil {
-		return errors.Wrap(err, "request returned error")
+		return "", errors.Wrap(err, "request returned error")
 	}
 	defer resp.Body.Close()
 
-	return nil
+	out := struct {
+		Path string `json:"path"`
+	}{}
+
+	if err = gimlet.GetJSON(resp.Body, &out); err != nil {
+		return "", errors.Wrap(err, "problem reading response")
+	}
+
+	return out.Path, nil
 }
 
 func (s *restScripting) Cleanup(ctx context.Context) error {

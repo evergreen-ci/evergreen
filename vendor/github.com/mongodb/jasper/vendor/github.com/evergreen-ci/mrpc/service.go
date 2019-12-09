@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"time"
 
-	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/mrpc/mongowire"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -18,26 +16,33 @@ import (
 
 type HandlerFunc func(context.Context, io.Writer, mongowire.Message)
 
-type Service struct {
+type Service interface {
+	Address() string
+	RegisterOperation(scope *mongowire.OpScope, h HandlerFunc) error
+	Run(context.Context) error
+}
+
+type basicService struct {
 	addr     string
 	registry *OperationRegistry
 }
 
-// NewService starts a service listening on the given address and port.
-func NewService(listenAddr string, port int) *Service {
-	return &Service{
-		addr:     fmt.Sprintf("%s:%d", listenAddr, port),
+// NewService starts a generic wire protocol service listening on the given host
+// and port.
+func NewBasicService(host string, port int) Service {
+	return &basicService{
+		addr:     fmt.Sprintf("%s:%d", host, port),
 		registry: &OperationRegistry{ops: make(map[mongowire.OpScope]HandlerFunc)},
 	}
 }
 
-func (s *Service) Address() string { return s.addr }
+func (s *basicService) Address() string { return s.addr }
 
-func (s *Service) RegisterOperation(scope *mongowire.OpScope, h HandlerFunc) error {
+func (s *basicService) RegisterOperation(scope *mongowire.OpScope, h HandlerFunc) error {
 	return errors.WithStack(s.registry.Add(*scope, h))
 }
 
-func (s *Service) Run(ctx context.Context) error {
+func (s *basicService) Run(ctx context.Context) error {
 	l, err := net.Listen("tcp", s.addr)
 	if err != nil {
 		return errors.Wrapf(err, "problem listening on %s", s.addr)
@@ -61,30 +66,10 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 }
 
-func writeErrorReply(w io.Writer, err error) error {
-	responseNotOK := birch.EC.Int32("ok", 0)
-	doc := birch.NewDocument(responseNotOK)
-	if err != nil {
-		doc.Append(birch.EC.String("errmsg", err.Error()))
-	}
-	// TODO: handle OP_MSG replies for newer protocol versions.
-	reply := mongowire.NewReply(int64(0), int32(0), int32(0), int32(1), []birch.Document{*doc.Copy()})
-	_, err = w.Write(reply.Serialize())
-	return errors.Wrap(err, "could not write response")
-}
-
-func (s *Service) dispatchRequest(ctx context.Context, conn net.Conn) {
+func (s *basicService) dispatchRequest(ctx context.Context, conn net.Conn) {
 	defer func() {
 		err := recovery.HandlePanicWithError(recover(), nil, "connection handling")
-		if err != nil {
-			grip.Error(message.WrapError(err, "error during request handling"))
-			// Attempt to reply with the given deadline.
-			if deadlineErr := conn.SetDeadline(time.Now().Add(15 * time.Second)); deadlineErr != nil {
-				grip.Error(message.WrapError(err, "failed to set deadline on panic reply"))
-			} else if writeErr := writeErrorReply(conn, err); writeErr != nil {
-				grip.Error(message.WrapError(writeErr, "error writing reply after panic recovery"))
-			}
-		}
+		grip.Error(message.WrapError(err, "error during request handling"))
 		if err := conn.Close(); err != nil {
 			grip.Error(message.WrapErrorf(err, "error closing connection from %s", conn.RemoteAddr()))
 			return

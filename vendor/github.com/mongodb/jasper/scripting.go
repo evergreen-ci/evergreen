@@ -5,7 +5,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-func scriptingEnvironmentFactory(m Manager, env options.ScriptingEnvironment) (ScriptingEnvironment, error) {
+// NewScriptingHarness constructs a scripting harness that wraps the
+// manager. Use this factory function to build new harnesses, which
+// are not cached in the manager (like harnesses constructed directly
+// using Manager.CreateScripting), but are otherwise totally functional.
+func NewScriptingHarness(m Manager, env options.ScriptingHarness) (ScriptingHarness, error) {
 	if err := env.Validate(); err != nil {
 		return nil, errors.WithStack(err)
 	}

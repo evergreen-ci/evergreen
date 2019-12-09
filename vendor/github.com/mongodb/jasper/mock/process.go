@@ -84,7 +84,7 @@ func (p *Process) Wait(ctx context.Context) (int, error) {
 }
 
 // Respawn creates a new Process, which has a copy of all the fields in the
-// current Process.
+// current Process. If FailRespawn is set, it returns an error.
 func (p *Process) Respawn(ctx context.Context) (jasper.Process, error) {
 	if p.FailRespawn {
 		return nil, mockFail()

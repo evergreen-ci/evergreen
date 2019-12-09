@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/certdepot"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/logging"
+	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/rpc/internal"
 	"github.com/pkg/errors"
@@ -53,6 +54,7 @@ func StartService(ctx context.Context, manager jasper.Manager, addr net.Addr, cr
 		return nil, errors.Wrap(err, "could not attach manager to service")
 	}
 	go func() {
+		defer recovery.LogStackTraceAndContinue("RPC service")
 		grip.Notice(service.Serve(lis))
 	}()
 
