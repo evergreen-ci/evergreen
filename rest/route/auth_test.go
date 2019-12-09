@@ -7,14 +7,12 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/cedar/rest/data"
-	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/suite"
 )
 
 type AuthRouteSuite struct {
 	sc data.Connector
 	suite.Suite
-	postHandler gimlet.RouteHandler
 }
 
 func TestAuthRouteSuite(t *testing.T) {
