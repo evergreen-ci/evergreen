@@ -107,9 +107,9 @@ func (s *ProjectPatchByIDSuite) TestRunWithCommitQueueEnabled() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusBadRequest)
+	s.Equal(http.StatusBadRequest, resp.Status())
 	errResp := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal(errResp.Message, "Cannot enable commit queue without a __commit_queue patch definition")
+	s.Equal("cannot enable commit queue without a commit queue patch definition", errResp.Message)
 }
 
 func (s *ProjectPatchByIDSuite) TestHasAliasDefined() {
