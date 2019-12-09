@@ -11,11 +11,17 @@
     <span ng-switch-when="HOST_AGENT_MONITOR_DEPLOYED">Agent monitor deployed with revision <b>[[eventLogObj.data.agent_revision]]</b></span>
     <span ng-switch-when="HOST_AGENT_MONITOR_DEPLOY_FAILED">New agent monitor deploy failed</span>
     <span ng-switch-when="HOST_JASPER_RESTARTED">Jasper service restarted with revision <b>[[eventLogObj.data.jasper_revision]]</b></span>
-    <span ng-switch-when="HOST_JASPER_RESTART_ERROR">Host encountered error when restarting Jasper service</span>
-	<span ng-switch-when="HOST_REPROVISIONING">Host reprovisioning to [[eventLogObj.data.provisioning_method]] method</span>
-    <span ng-switch-when="HOST_REPROVISIONED">Host successfully reprovisioned to [[eventLogObj.data.provisioning_method]] method</span>
-    <span ng-switch-when="HOST_REPROVISION_ERROR">
-	  <div>Host encountered error when reprovisioning</div>
+	<span ng-switch-when="HOST_JASPER_RESTART_ERROR">
+	  <div>Host encountered error when restarting Jasper service</div>
+      <div class="toggle pointer" ng-click="showlogs = !showlogs"><i class="fa" ng-class="showlogs | conditional:'fa-caret-down':'fa-caret-right'"></i> [[showlogs | conditional:'hide':'show']] provisioning logs</div>
+      <div ng-show="showlogs">
+        <pre>[[eventLogObj.data.logs]]</pre>
+      </div>
+	</span>
+	<span ng-switch-when="HOST_CONVERTING_PROVISIONING">Host converting provisioning type to [[eventLogObj.data.provisioning_method]] method</span>
+    <span ng-switch-when="HOST_CONVERTED_PROVISIONING">Host successfully converted provisioning type to [[eventLogObj.data.provisioning_method]] method</span>
+    <span ng-switch-when="HOST_CONVERTING_PROVISIONING_ERROR">
+	  <div>Host encountered error when converting reprovisioning</div>
       <div class="toggle pointer" ng-click="showlogs = !showlogs"><i class="fa" ng-class="showlogs | conditional:'fa-caret-down':'fa-caret-right'"></i> [[showlogs | conditional:'hide':'show']] provisioning logs</div>
       <div ng-show="showlogs">
         <pre>[[eventLogObj.data.logs]]</pre>
