@@ -831,7 +831,6 @@ func (h *getVolumesHandler) Run(ctx context.Context) gimlet.Responder {
 
 	volumes, err := h.sc.FindVolumesByUser(u.Username())
 	if err != nil {
-		fmt.Println("grr")
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
@@ -839,7 +838,6 @@ func (h *getVolumesHandler) Run(ctx context.Context) gimlet.Responder {
 	for _, v := range volumes {
 		volumeDoc := model.APIVolume{}
 		if err = volumeDoc.BuildFromService(v); err != nil {
-			fmt.Println("ahhh")
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "err converting volume '%s' to API model", v.ID))
 		}
 
