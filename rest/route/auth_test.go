@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/evergreen-ci/cedar/rest/data"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/stretchr/testify/suite"
 )
 
