@@ -6,12 +6,10 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/stretchr/testify/suite"
 )
 
 type AuthRouteSuite struct {
-	sc data.Connector
 	suite.Suite
 }
 
