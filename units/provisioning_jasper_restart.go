@@ -94,18 +94,6 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 		return
 	}
 
-	// The host cannot be reprovisioned until the host's agent monitor has been
-	// stopped.
-	if j.host.StartedBy == evergreen.User && !j.host.NeedsNewAgentMonitor {
-		grip.Error(message.WrapError(j.tryRequeue(ctx), message.Fields{
-			"message": "could not enqueue job to retry provisioning conversion when host's agent monitor is still running",
-			"host":    j.host.Id,
-			"distro":  j.host.Distro.Id,
-			"job":     j.ID(),
-		}))
-		return
-	}
-
 	defer func() {
 		grip.Error(message.WrapError(j.host.SetReprovisioningLocked(false), message.Fields{
 			"message": "could not clear host provisioning lock",
@@ -135,6 +123,18 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 	if err := j.host.SetReprovisioningLockedAtomically(true); err != nil {
 		grip.Info(message.WrapError(err, message.Fields{
 			"message": "provisioning already locked, returning from job",
+			"host":    j.host.Id,
+			"distro":  j.host.Distro.Id,
+			"job":     j.ID(),
+		}))
+		return
+	}
+
+	// The host cannot be reprovisioned until the host's agent monitor has been
+	// stopped.
+	if j.host.StartedBy == evergreen.User && !j.host.NeedsNewAgentMonitor {
+		grip.Error(message.WrapError(j.tryRequeue(ctx), message.Fields{
+			"message": "could not enqueue job to retry provisioning conversion when host's agent monitor is still running",
 			"host":    j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
