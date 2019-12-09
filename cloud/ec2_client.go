@@ -569,14 +569,17 @@ func (c *awsClientImpl) AttachVolume(ctx context.Context, input *ec2.AttachVolum
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, msg))
-					if opts.shouldGenerate {
-						newDeviceName, err2 := getGeneratedDeviceNameForVolume(ctx, opts.isWindows)
-						if err2 != nil {
-							return true, err2
+					if strings.Contains(ec2err.Message(), "not a valid EBS device name") {
+						if opts.shouldGenerate {
+							newDeviceName, err2 := getGeneratedDeviceNameForVolume(ctx, opts.isWindows)
+							if err2 != nil {
+								return true, err2
+							}
+							input.Device = &newDeviceName
+							msg = makeAWSLogMessage("AttachVolume", fmt.Sprintf("%T", c), input)
+						} else { // user chose device name so can't attempt with a new one
+							return false, err
 						}
-
-						input.Device = &newDeviceName
-						msg = makeAWSLogMessage("AttachVolume", fmt.Sprintf("%T", c), input)
 					}
 				}
 				return true, err
