@@ -67,6 +67,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/admin/role_mapping").Version(2).Post().Wrap(superUser, adminSettings).RouteHandler(makeAddLDAPRoleMappingHandler(sc))
 	app.AddRoute("/admin/role_mapping").Version(2).Delete().Wrap(superUser, adminSettings).RouteHandler(makeRemoveLDAPRoleMappingHandler(sc))
 	app.AddRoute("/alias/{name}").Version(2).Get().RouteHandler(makeFetchAliases(sc))
+	app.AddRoute("/auth").Version(2).Get().RouteHandler(makeGetAuthPermissionsHandler())
 	app.AddRoute("/builds/{build_id}").Version(2).Get().Wrap(viewTasks).RouteHandler(makeGetBuildByID(sc))
 	app.AddRoute("/builds/{build_id}").Version(2).Patch().Wrap(checkUser, editTasks).RouteHandler(makeChangeStatusForBuild(sc))
 	app.AddRoute("/builds/{build_id}/abort").Version(2).Post().Wrap(checkUser, editTasks).RouteHandler(makeAbortBuild(sc))
