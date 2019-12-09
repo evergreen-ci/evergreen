@@ -336,20 +336,20 @@ func prepareForReprovision(ctx context.Context, env evergreen.Environment, setti
 	switch h.NeedsReprovision {
 	case host.ReprovisionToLegacy:
 		if err := env.RemoteQueue().Put(ctx, units.NewConvertHostToLegacyProvisioningJob(env, *h, ts, 0)); err != nil {
-			return errors.Wrap(err, "problem enqueueing jobs to reprovision host to legacy")
+			grip.Warning(message.WrapError(err, "problem enqueueing jobs to reprovision host to legacy"))
 		}
 	case host.ReprovisionToNew:
 		if err := env.RemoteQueue().Put(ctx, units.NewConvertHostToNewProvisioningJob(env, *h, ts, 0)); err != nil {
-			return errors.Wrap(err, "problem enqueueing jobs to reprovision host to new")
+			grip.Warning(message.WrapError(err, "problem enqueueing jobs to reprovision host to new"))
 		}
 	case host.ReprovisionJasperRestart:
 		expiration, err := h.JasperCredentialsExpiration(ctx, env)
 		if err != nil {
-			return errors.Wrap(err, "problem getting credentials expiration time")
+			grip.Warning(message.WrapError(err, "problem getting credentials expiration time"))
 		}
 		ts := util.RoundPartOfMinute(0).Format(units.TSFormat)
 		if err := env.RemoteQueue().Put(ctx, units.NewJasperRestartJob(env, *h, expiration, h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC, ts, 0)); err != nil {
-			return errors.Wrap(err, "problem enqueueing jobs to reprovision host to new")
+			grip.Warning(message.WrapError(err, "problem enqueueing jobs to reprovision host to new"))
 		}
 	}
 
@@ -539,7 +539,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	// The agent may start before the host has been fully provisioned by the app
 	// server, so no-op until the app server is done provisioning.
 	if !h.Provisioned {
-		gimlet.WriteJSON(w, apimodels.NextTaskResponse{})
+		gimlet.WriteJSON(w, apimodels.NextTaskResponse{ShouldExit: true})
 		return
 	}
 
