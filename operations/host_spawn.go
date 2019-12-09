@@ -395,8 +395,9 @@ func hostDetach() cli.Command {
 
 func hostListVolume() cli.Command {
 	return cli.Command{
-		Name:  "list",
-		Usage: "list volumes for user",
+		Name:   "list",
+		Usage:  "list volumes for user",
+		Before: setPlainLogger,
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			ctx, cancel := context.WithCancel(context.Background())

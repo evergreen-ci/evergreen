@@ -2200,6 +2200,8 @@ func (h *Host) MarkShouldExpire(expireOnValue string) error {
 func FindHostWithVolume(volumeID string) (*Host, error) {
 	q := db.Query(
 		bson.M{
+			StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
+			UserHostKey: true,
 			bsonutil.GetDottedKeyName(VolumesKey, VolumeAttachmentIDKey): volumeID,
 		},
 	)
