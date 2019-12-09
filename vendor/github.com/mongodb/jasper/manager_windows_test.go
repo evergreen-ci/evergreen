@@ -19,15 +19,10 @@ func TestBasicManagerWithTrackedProcesses(t *testing.T) {
 	defer cancel()
 
 	for managerName, makeManager := range map[string]func(ctx context.Context, t *testing.T) *basicProcessManager{
-		"Basic/NoLock/BasicProcs": func(ctx context.Context, t *testing.T) *basicProcessManager {
-			basicManager, err := newBasicProcessManager(map[string]Process{}, false, true, false)
+		"Basic": func(ctx context.Context, t *testing.T) *basicProcessManager {
+			basicManager, err := newBasicProcessManager(map[string]Process{}, false, false)
 			require.NoError(t, err)
 			return basicManager.(*basicProcessManager)
-		},
-		"Basic/NoLock/BlockingProcs": func(ctx context.Context, t *testing.T) *basicProcessManager {
-			basicBlockingManager, err := newBasicProcessManager(map[string]Process{}, true, true, false)
-			require.NoError(t, err)
-			return basicBlockingManager.(*basicProcessManager)
 		},
 	} {
 		t.Run(managerName, func(t *testing.T) {

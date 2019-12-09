@@ -763,8 +763,6 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jas
 		remoteOpts.Host = hostInfo.Hostname
 		remoteOpts.User = hostInfo.User
 		remoteOpts.Args = sshOpts
-		// kim: TODO: remove this line
-		remoteOpts.KeyFile = h.Distro.SSHKey
 		clientOpts := jcli.ClientOptions{
 			BinaryPath:          h.JasperBinaryFilePath(settings.HostJasper),
 			Type:                jcli.RPCService,

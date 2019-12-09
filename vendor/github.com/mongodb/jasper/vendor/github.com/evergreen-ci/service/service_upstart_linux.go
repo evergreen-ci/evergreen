@@ -245,12 +245,13 @@ const upstartScript = `# {{.Description}}
 start on filesystem or runlevel [2345]
 stop on runlevel [!2345]
 
-{{if and .UserName .HasSetUIDStanza}}setuid {{.UserName}}{{end}}
+{{if and .UserName .HasSetUIDStanza}}setuid {{.UserName}}
 
 {{- range $name, $value := .Environment}}
 env {{$name}}={{$value}}
 export {{$name}}
 {{- end}}
+{{end}}
 
 {{if .Option.LimitLockedMemory }}limit memlock {{.Option.LimitLockedMemory}} {{.Option.LimitLockedMemory}}{{end}}
 {{if .Option.LimitNumFiles }}limit nofile {{.Option.LimitNumFiles}} {{.Option.LimitNumFiles}}{{end}}
@@ -269,10 +270,10 @@ end script
 
 # Start
 script
-	{{if .LogOutput}}
+	{{- if .LogOutput}}
 	stdout_log="/var/log/{{.Name}}.out"
 	stderr_log="/var/log/{{.Name}}.err"
-	{{end}}
+	{{- end}}
 	
 	if [ -f "/etc/sysconfig/{{.Name}}" ]; then
 		set -a
@@ -280,6 +281,6 @@ script
 		set +a
 	fi
 
-	exec {{if and .UserName (not .HasSetUIDStanza)}}sudo -E -u {{.UserName}} {{end}}{{.Path}}{{range .Arguments}} {{.|cmd}}{{end}}{{if .LogOutput}} >> $stdout_log 2>> $stderr_log{{end}}
+	exec {{if and .UserName (not .HasSetUIDStanza)}}sudo -E -u {{.UserName}}{{range $name, $value := .Environment}} {{$name}}={{$value}}{{end}}{{end}} {{.Path}}{{range .Arguments}} {{.|cmd}}{{end}}{{if .LogOutput}} >> $stdout_log 2>> $stderr_log{{end}}
 end script
 `

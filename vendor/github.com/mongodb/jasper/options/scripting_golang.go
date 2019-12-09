@@ -31,7 +31,7 @@ type ScriptingGolang struct {
 // based on the arguments provided. Use this function for
 // simple cases when you do not need or want to set as many aspects of
 // the environment configuration.
-func NewGolangScriptingEnvironment(gopath, goroot string, packages ...string) ScriptingEnvironment {
+func NewGolangScriptingEnvironment(gopath, goroot string, packages ...string) ScriptingHarness {
 	return &ScriptingGolang{
 		Gopath:         gopath,
 		Goroot:         goroot,

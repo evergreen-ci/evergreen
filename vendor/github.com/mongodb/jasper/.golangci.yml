@@ -1,0 +1,37 @@
+---
+# TODO: cli.RunCMD() is excessively complicated and gocognit complains.
+linters:
+  disable-all: true
+  enable:
+    - deadcode
+    - errcheck
+    # - gocognit
+    - goconst
+    - gofmt
+    - goimports
+    - golint
+    - gosimple
+    - govet
+    - ineffassign
+    - interfacer
+    - maligned
+    - misspell
+    - staticcheck
+    - structcheck
+    - typecheck
+    - unconvert
+    - varcheck
+
+run:
+  skip-dirs:
+    - build
+issues:
+  exclude-rules:
+    - linters:
+        - goconst
+      # Ignore GOOS warnings.
+      text: "string `windows`"
+    - path: _test\.go
+      linters:
+        - gocognit
+        - goconst

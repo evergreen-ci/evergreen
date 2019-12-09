@@ -766,7 +766,7 @@ func (s *Service) oomTrackerList(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) scriptingCreate(rw http.ResponseWriter, r *http.Request) {
-	seopt, err := options.NewScriptingEnvironment(gimlet.GetVars(r)["type"])
+	seopt, err := options.NewScriptingHarness(gimlet.GetVars(r)["type"])
 	if err != nil {
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -919,15 +919,15 @@ func (s *Service) scriptingBuild(rw http.ResponseWriter, r *http.Request) {
 		Directory string   `json:"directory"`
 		Args      []string `json:"args"`
 	}{}
-	if err := gimlet.GetJSON(r.Body, args); err != nil {
+	if err = gimlet.GetJSON(r.Body, args); err != nil {
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
 		})
 		return
 	}
-
-	if err := se.Build(ctx, args.Directory, args.Args); err != nil {
+	path, err := se.Build(ctx, args.Directory, args.Args)
+	if err != nil {
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    err.Error(),
@@ -935,7 +935,11 @@ func (s *Service) scriptingBuild(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	gimlet.WriteJSON(rw, struct{}{})
+	gimlet.WriteJSON(rw, struct {
+		Path string `json:"path"`
+	}{
+		Path: path,
+	})
 }
 
 func (s *Service) scriptingCleanup(rw http.ResponseWriter, r *http.Request) {
@@ -957,6 +961,5 @@ func (s *Service) scriptingCleanup(rw http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
 	gimlet.WriteJSON(rw, struct{}{})
 }

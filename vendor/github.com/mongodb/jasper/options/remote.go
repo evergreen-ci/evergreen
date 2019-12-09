@@ -52,6 +52,11 @@ func (opts *RemoteConfig) validate() error {
 	if opts.Port == 0 {
 		opts.Port = defaultSSHPort
 	}
+
+	if !opts.UseSSHLibrary {
+		return catcher.Resolve()
+	}
+
 	numAuthMethods := 0
 	for _, authMethod := range []string{opts.Key, opts.KeyFile, opts.Password} {
 		if authMethod != "" {

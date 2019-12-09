@@ -10,6 +10,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 	"github.com/tychoish/bond"
@@ -59,6 +60,8 @@ func createDownloadJobs(path string, urls <-chan string, catcher grip.Catcher) <
 	output := make(chan amboy.Job)
 
 	go func() {
+		defer recovery.LogStackTraceAndContinue("download generator")
+
 		for url := range urls {
 			j, err := recall.NewDownloadJob(url, path, true)
 			if err != nil {
@@ -113,6 +116,7 @@ func setupDownloadJobsAsync(ctx context.Context, jobs <-chan amboy.Job, processJ
 	}
 
 	go func() {
+		defer recovery.LogStackTraceAndContinue("download job generator")
 		if err := processJobs(q); err != nil {
 			grip.Errorf(errors.Wrap(err, "error occurred while adding jobs to cache").Error())
 		}

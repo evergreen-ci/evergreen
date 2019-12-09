@@ -287,7 +287,7 @@ func TestWriteFileOptions(t *testing.T) {
 					require.NoError(t, f.Close())
 
 					opts.Append = true
-					opts.Content = []byte(content)
+					opts.Content = content
 
 					require.NoError(t, opts.DoWrite())
 
@@ -304,7 +304,7 @@ func TestWriteFileOptions(t *testing.T) {
 					require.NoError(t, err)
 					require.NoError(t, f.Close())
 
-					opts.Content = []byte(content)
+					opts.Content = content
 
 					require.NoError(t, opts.DoWrite())
 

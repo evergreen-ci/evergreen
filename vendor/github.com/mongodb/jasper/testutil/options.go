@@ -60,3 +60,6 @@ func ValidMongoDBDownloadOptions() options.MongoDBDownload {
 		Releases: []string{"4.0-current"},
 	}
 }
+
+// OptsModify functions mutate creation options for tests.
+type OptsModify func(*options.Create)

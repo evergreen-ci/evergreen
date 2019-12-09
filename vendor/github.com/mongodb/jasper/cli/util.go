@@ -42,15 +42,13 @@ func joinFlagNames(names ...string) string {
 
 // unparseFlagSet returns all flags set in the given context in the form
 // --flag=value.
-func unparseFlagSet(c *cli.Context) []string {
-	args := []string{}
-	for _, flagName := range c.FlagNames() {
-		if !c.IsSet(flagName) {
-			continue
+func unparseFlagSet(c *cli.Context, serviceType string) []string {
+	for i, arg := range os.Args {
+		if arg == serviceType && i+1 < len(os.Args) {
+			return os.Args[i+1:]
 		}
-		args = append(args, fmt.Sprintf("--%s=%s", flagName, c.String(flagName)))
 	}
-	return args
+	return []string{}
 }
 
 func requireStringFlag(name string) cli.BeforeFunc {

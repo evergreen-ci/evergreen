@@ -27,8 +27,8 @@ func NewInMemoryLogger(maxSize int) options.Logger {
 // stream, containing the logs (if any) and whether or not the stream is done
 // reading.
 type LogStream struct {
-	Logs []string `json:"logs,omitempty"`
-	Done bool     `json:"done"`
+	Logs []string `bson:"logs,omitempty" json:"logs,omitempty"`
+	Done bool     `bson:"done" json:"done"`
 }
 
 // GetInMemoryLogStream gets at most count logs from the in-memory output logs

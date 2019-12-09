@@ -96,8 +96,8 @@ func (c *rpcClient) CreateCommand(ctx context.Context) *jasper.Command {
 	return jasper.NewCommand().ProcConstructor(c.CreateProcess)
 }
 
-func (c *rpcClient) CreateScripting(ctx context.Context, opts options.ScriptingEnvironment) (jasper.ScriptingEnvironment, error) {
-	seid, err := c.client.ScriptingEnvironmentCreate(ctx, internal.ConvertScriptingOptions(opts))
+func (c *rpcClient) CreateScripting(ctx context.Context, opts options.ScriptingHarness) (jasper.ScriptingHarness, error) {
+	seid, err := c.client.ScriptingHarnessCreate(ctx, internal.ConvertScriptingOptions(opts))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -105,8 +105,8 @@ func (c *rpcClient) CreateScripting(ctx context.Context, opts options.ScriptingE
 	return &rpcScripting{client: c.client, id: seid.Id}, nil
 }
 
-func (c *rpcClient) GetScripting(ctx context.Context, id string) (jasper.ScriptingEnvironment, error) {
-	resp, err := c.client.ScriptingEnvironmentCheck(ctx, &internal.ScriptingEnvironmentID{Id: id})
+func (c *rpcClient) GetScripting(ctx context.Context, id string) (jasper.ScriptingHarness, error) {
+	resp, err := c.client.ScriptingHarnessCheck(ctx, &internal.ScriptingHarnessID{Id: id})
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -118,7 +118,7 @@ func (c *rpcClient) GetScripting(ctx context.Context, id string) (jasper.Scripti
 }
 
 func (c *rpcClient) Register(ctx context.Context, proc jasper.Process) error {
-	return errors.New("cannot register extant processes on remote process managers")
+	return errors.New("cannot register local processes on remote process managers")
 }
 
 func (c *rpcClient) List(ctx context.Context, f options.Filter) ([]jasper.Process, error) {
@@ -442,7 +442,7 @@ type rpcScripting struct {
 func (s *rpcScripting) ID() string { return s.id }
 
 func (s *rpcScripting) Run(ctx context.Context, args []string) error {
-	resp, err := s.client.ScriptingEnvironmentRun(ctx, &internal.ScriptingEnvironmentRunArgs{Id: s.id, Args: args})
+	resp, err := s.client.ScriptingHarnessRun(ctx, &internal.ScriptingHarnessRunArgs{Id: s.id, Args: args})
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -455,7 +455,7 @@ func (s *rpcScripting) Run(ctx context.Context, args []string) error {
 }
 
 func (s *rpcScripting) Setup(ctx context.Context) error {
-	resp, err := s.client.ScriptingEnvironmentSetup(ctx, &internal.ScriptingEnvironmentID{Id: s.id})
+	resp, err := s.client.ScriptingHarnessSetup(ctx, &internal.ScriptingHarnessID{Id: s.id})
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -468,7 +468,7 @@ func (s *rpcScripting) Setup(ctx context.Context) error {
 }
 
 func (s *rpcScripting) RunScript(ctx context.Context, script string) error {
-	resp, err := s.client.ScriptingEnvironmentRunScript(ctx, &internal.ScriptingEnvironmentRunScriptArgs{Id: s.id, Script: script})
+	resp, err := s.client.ScriptingHarnessRunScript(ctx, &internal.ScriptingHarnessRunScriptArgs{Id: s.id, Script: script})
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -480,21 +480,21 @@ func (s *rpcScripting) RunScript(ctx context.Context, script string) error {
 	return errors.New(resp.Text)
 }
 
-func (s *rpcScripting) Build(ctx context.Context, dir string, args []string) error {
-	resp, err := s.client.ScriptingEnvironmentBuild(ctx, &internal.ScriptingEnvironmentBuildArgs{Id: s.id, Directory: dir, Args: args})
+func (s *rpcScripting) Build(ctx context.Context, dir string, args []string) (string, error) {
+	resp, err := s.client.ScriptingHarnessBuild(ctx, &internal.ScriptingHarnessBuildArgs{Id: s.id, Directory: dir, Args: args})
 	if err != nil {
-		return errors.WithStack(err)
+		return "", errors.WithStack(err)
 	}
 
-	if resp.Success {
-		return nil
+	if !resp.Outcome.Success {
+		return "", errors.New(resp.Outcome.Text)
 	}
 
-	return errors.New(resp.Text)
+	return resp.Path, nil
 }
 
 func (s *rpcScripting) Cleanup(ctx context.Context) error {
-	resp, err := s.client.ScriptingEnvironmentCleanup(ctx, &internal.ScriptingEnvironmentID{Id: s.id})
+	resp, err := s.client.ScriptingHarnessCleanup(ctx, &internal.ScriptingHarnessID{Id: s.id})
 	if err != nil {
 		return errors.WithStack(err)
 	}

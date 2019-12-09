@@ -2,9 +2,9 @@ package options
 
 import "github.com/pkg/errors"
 
-// ScriptingEnvironment defines the interface for all types that
+// ScriptingHarness defines the interface for all types that
 // define a scripting environment.
-type ScriptingEnvironment interface {
+type ScriptingHarness interface {
 	// ID should return a unique hash of the implementation of
 	// ScrptingEnvironment. This can be cached, and should change
 	// if any of the dependencies change.
@@ -20,10 +20,10 @@ type ScriptingEnvironment interface {
 	Validate() error
 }
 
-// NewScriptingEnvironment provides a factory to generate concrete
+// NewScriptingHarness provides a factory to generate concrete
 // implementations of the ScriptingEnvironment interface for use in
 // marshaling arbitrary values for a known environment exists.
-func NewScriptingEnvironment(se string) (ScriptingEnvironment, error) {
+func NewScriptingHarness(se string) (ScriptingHarness, error) {
 	switch se {
 	case "python2":
 		return &ScriptingPython{LegacyPython: true}, nil

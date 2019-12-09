@@ -21,9 +21,8 @@ type selfClearingProcessManager struct {
 //
 // The self clearing process manager is not thread safe. Wrap with the
 // synchronized process manager for multithreaded use.
-// TODO: MAKE-803: allow synchronized process manager to wrap other managers.
 func NewSelfClearingProcessManager(maxProcs int, trackProcs bool) (Manager, error) {
-	pm, err := newBasicProcessManager(map[string]Process{}, false, trackProcs, false)
+	pm, err := newBasicProcessManager(map[string]Process{}, trackProcs, false)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -42,7 +41,7 @@ func NewSelfClearingProcessManager(maxProcs int, trackProcs bool) (Manager, erro
 // NewSelfClearingProcessManager but uses the SSH library instead of the SSH
 // binary for remote processes.
 func NewSSHLibrarySelfClearingProcessManager(maxProcs int, trackProcs bool) (Manager, error) {
-	pm, err := newBasicProcessManager(map[string]Process{}, false, trackProcs, true)
+	pm, err := newBasicProcessManager(map[string]Process{}, trackProcs, true)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -51,27 +50,6 @@ func NewSSHLibrarySelfClearingProcessManager(maxProcs int, trackProcs bool) (Man
 		return nil, errors.New("process manager construction error")
 	}
 
-	return &selfClearingProcessManager{
-		basicProcessManager: bpm,
-		maxProcs:            maxProcs,
-	}, nil
-}
-
-// NewSelfClearingProcessManagerBlockingProcesses creates and returns a process
-// manager that uses blockingProcesses rather than the default basicProcess.
-// See the NewSelfClearingProcessManager() constructor for more information.
-//
-// The self clearing process manager is not thread safe. Wrap with the
-// synchronized process manager for multithreaded use.
-func NewSelfClearingProcessManagerBlockingProcesses(maxProcs int, trackProcs bool) (Manager, error) {
-	pm, err := newBasicProcessManager(map[string]Process{}, true, trackProcs, false)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	bpm, ok := pm.(*basicProcessManager)
-	if !ok {
-		return nil, errors.New("process manager construction error")
-	}
 	return &selfClearingProcessManager{
 		basicProcessManager: bpm,
 		maxProcs:            maxProcs,

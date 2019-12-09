@@ -672,7 +672,7 @@ func ConvertLogStream(l jasper.LogStream) *LogStream {
 }
 
 // Export converts the rpc type to jasper's equivalent option type.
-func (o *ScriptingOptions) Export() (options.ScriptingEnvironment, error) {
+func (o *ScriptingOptions) Export() (options.ScriptingHarness, error) {
 	switch val := o.Value.(type) {
 	case *ScriptingOptions_Golang:
 		return &options.ScriptingGolang{
@@ -710,7 +710,7 @@ func (o *ScriptingOptions) Export() (options.ScriptingEnvironment, error) {
 	}
 }
 
-func ConvertScriptingOptions(opts options.ScriptingEnvironment) *ScriptingOptions {
+func ConvertScriptingOptions(opts options.ScriptingHarness) *ScriptingOptions {
 	return nil
 
 }

@@ -39,6 +39,7 @@ const (
 	RPCService      = "rpc"
 	RESTService     = "rest"
 	CombinedService = "combined"
+	WireService     = "wire"
 )
 
 // Constants representing service flags.
@@ -232,10 +233,19 @@ func makeLogger(c *cli.Context) *options.Logger {
 	}
 }
 
+// setupLogger creates a logger and sets it as the global logging back end.
+func setupLogger(opts *options.Logger) error {
+	sender, err := opts.Configure()
+	if err != nil {
+		return errors.Wrap(err, "could not configure logging")
+	}
+	return errors.Wrap(grip.SetSender(sender), "could not set grip logger")
+}
+
 // buildRunCommand builds the command arguments to run the Jasper service with
 // the flags set in the cli.Context.
 func buildRunCommand(c *cli.Context, serviceType string) []string {
-	args := unparseFlagSet(c)
+	args := unparseFlagSet(c, serviceType)
 	subCmd := []string{JasperCommand, ServiceCommand, RunCommand, serviceType}
 	return append(subCmd, args...)
 }
@@ -371,6 +381,7 @@ func serviceCommand(cmd string, operation serviceOperation) cli.Command {
 			serviceCommandREST(cmd, operation),
 			serviceCommandRPC(cmd, operation),
 			serviceCommandCombined(cmd, operation),
+			serviceCommandWire(cmd, operation),
 		},
 	}
 }

@@ -19,6 +19,20 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	// ProcessImplementationBlocking suggests that the process
+	// constructor use a blocking implementation. Some managers
+	// may override this option. Blocking implementations
+	// typically require the manager to maintain multiple
+	// go routines.
+	ProcessImplementationBlocking = "blocking"
+	// ProcessImplementationBasic suggests that the process
+	// constructor use a basic implementation. Some managers
+	// may override this option. Basic implementations are more
+	// simple than blocking implementations.
+	ProcessImplementationBasic = "basic"
+)
+
 // Create contains options related to starting a process. This includes
 // execution configuration, post-execution triggers, and output configuration.
 // It is not safe for concurrent access.
@@ -26,6 +40,8 @@ type Create struct {
 	Args             []string          `bson:"args" json:"args" yaml:"args"`
 	Environment      map[string]string `bson:"env,omitempty" json:"env,omitempty" yaml:"env,omitempty"`
 	OverrideEnviron  bool              `bson:"override_env,omitempty" json:"override_env,omitempty" yaml:"override_env,omitempty"`
+	Synchronized     bool              `bson:"synchronized" json:"synchronized" yaml:"synchronized"`
+	Implementation   string            `bson:"implementation" json:"implementation" yaml:"implementation"`
 	WorkingDirectory string            `bson:"working_directory,omitempty" json:"working_directory,omitempty" yaml:"working_directory,omitempty"`
 	Output           Output            `bson:"output" json:"output" yaml:"output"`
 	Remote           *Remote           `bson:"remote,omitempty" json:"remote,omitempty" yaml:"remote,omitempty"`
@@ -88,6 +104,10 @@ func (opts *Create) Validate() error {
 		opts.Timeout = time.Duration(opts.TimeoutSecs) * time.Second
 	} else if opts.Timeout != 0 {
 		opts.TimeoutSecs = int(opts.Timeout.Seconds())
+	}
+
+	if opts.Implementation == "" {
+		opts.Implementation = ProcessImplementationBasic
 	}
 
 	if err := opts.Output.Validate(); err != nil {

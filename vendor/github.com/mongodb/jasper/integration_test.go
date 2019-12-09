@@ -39,7 +39,7 @@ func downloadMongoDB(t *testing.T) (string, string) {
 		edition = "enterprise"
 		target = platform
 	}
-	arch := bond.MongoDBArch("x86_64")
+	arch := "x86_64"
 	release := "4.0-stable"
 
 	dir, err := ioutil.TempDir("", "mongodb")
@@ -57,7 +57,7 @@ func downloadMongoDB(t *testing.T) (string, string) {
 	catalog, err := bond.NewCatalog(ctx, dir)
 	require.NoError(t, err)
 
-	path, err := catalog.Get("4.0-current", string(edition), target, string(arch), false)
+	path, err := catalog.Get("4.0-current", edition, target, arch, false)
 	require.NoError(t, err)
 
 	var mongodPath string
@@ -139,7 +139,7 @@ func TestMongod(t *testing.T) {
 					id:          "With30MongodsAndSigkill",
 					numProcs:    30,
 					signal:      syscall.SIGKILL,
-					sleep:       4000 * time.Millisecond,
+					sleep:       3000 * time.Millisecond,
 					expectError: true,
 				},
 			} {
@@ -169,7 +169,7 @@ func TestMongod(t *testing.T) {
 					time.Sleep(test.sleep)
 					for _, proc := range procs {
 						err := proc.Signal(ctx, test.signal)
-						assert.NoError(t, err)
+						require.NoError(t, err)
 					}
 
 					// Check that the processes all received signal

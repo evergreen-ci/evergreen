@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"sync"
 
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
@@ -16,6 +17,10 @@ import (
 type sshClient struct {
 	manager jasper.Manager
 	opts    sshClientOptions
+	shCache struct {
+		mutex sync.Mutex
+		envs  map[string]jasper.ScriptingHarness
+	}
 }
 
 // NewSSHClient creates a new Jasper manager that connects to a remote
@@ -24,6 +29,10 @@ func NewSSHClient(remoteOpts options.Remote, clientOpts ClientOptions, trackProc
 	if err := remoteOpts.Validate(); err != nil {
 		return nil, errors.Wrap(err, "problem validating remote options")
 	}
+	// We have to suppress logs from SSH, because it will prevent the JSON
+	// output from the Jasper CLI from being parsed correctly (e.g. adding a
+	// host to the known hosts file generates a warning).
+	remoteOpts.Args = append([]string{"-o", "LogLevel=QUIET"}, remoteOpts.Args...)
 
 	if err := clientOpts.Validate(); err != nil {
 		return nil, errors.Wrap(err, "problem validating client options")
@@ -34,13 +43,15 @@ func NewSSHClient(remoteOpts options.Remote, clientOpts ClientOptions, trackProc
 		return nil, errors.Wrap(err, "problem creating underlying manager")
 	}
 
-	return &sshClient{
+	client := &sshClient{
 		opts: sshClientOptions{
 			Machine: remoteOpts,
 			Client:  clientOpts,
 		},
 		manager: manager,
-	}, nil
+	}
+	client.shCache.envs = make(map[string]jasper.ScriptingHarness)
+	return client, nil
 }
 
 func (c *sshClient) ID() string {
@@ -89,12 +100,50 @@ func (c *sshClient) CreateCommand(ctx context.Context) *jasper.Command {
 	})
 }
 
-func (c *sshClient) CreateScripting(ctx context.Context, opts options.ScriptingEnvironment) (jasper.ScriptingEnvironment, error) {
-	return nil, errors.New("scripting environment is not supported")
+func (c *sshClient) CreateScripting(ctx context.Context, opts options.ScriptingHarness) (jasper.ScriptingHarness, error) {
+	c.shCache.mutex.Lock()
+	defer c.shCache.mutex.Unlock()
+
+	sh, ok := c.shCache.envs[opts.ID()]
+	if ok {
+		return sh, nil
+	}
+
+	cliOpts, err := BuildScriptingOptions(opts)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	output, err := c.runManagerCommand(ctx, CreateScriptingCommand, cliOpts)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	_, err = ExtractIDResponse(output)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	sh, err = jasper.NewScriptingHarness(c, opts)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	c.shCache.envs[sh.ID()] = sh
+
+	return sh, nil
 }
 
-func (c *sshClient) GetScripting(ctx context.Context, id string) (jasper.ScriptingEnvironment, error) {
-	return nil, errors.New("scripting environment is not supported")
+func (c *sshClient) GetScripting(ctx context.Context, id string) (jasper.ScriptingHarness, error) {
+	c.shCache.mutex.Lock()
+	defer c.shCache.mutex.Unlock()
+
+	sh, ok := c.shCache.envs[id]
+	if !ok {
+		return nil, errors.Errorf("no locally cached value for %s", id)
+	}
+
+	return sh, nil
 }
 
 func (c *sshClient) Register(ctx context.Context, proc jasper.Process) error {
