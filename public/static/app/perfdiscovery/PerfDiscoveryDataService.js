@@ -9,7 +9,7 @@ mciModule.factory('PerfDiscoveryDataService', function (
    *********************/
 
   var respData = function (resp) {
-    return resp.data
+    return resp.data;
   }
 
   function slug(data) {
