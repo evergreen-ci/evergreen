@@ -539,12 +539,13 @@ func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
 	}
 
 	opts := cloneOpts{
-		method: distro.CloneMethodOAuth,
-		branch: conf.ProjectRef.Branch,
-		owner:  conf.ProjectRef.Owner,
-		repo:   conf.ProjectRef.Repo,
-		dir:    c.Directory,
-		token:  c.Token,
+		method:             distro.CloneMethodOAuth,
+		branch:             conf.ProjectRef.Branch,
+		owner:              conf.ProjectRef.Owner,
+		repo:               conf.ProjectRef.Repo,
+		dir:                c.Directory,
+		token:              c.Token,
+		mergeTestRequester: true,
 	}
 	s.Require().NoError(opts.setLocation())
 
