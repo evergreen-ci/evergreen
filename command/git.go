@@ -47,13 +47,15 @@ type gitFetchProject struct {
 }
 
 type cloneOpts struct {
-	method   string
-	location string
-	owner    string
-	repo     string
-	branch   string
-	dir      string
-	token    string
+	method             string
+	location           string
+	owner              string
+	repo               string
+	branch             string
+	dir                string
+	token              string
+	shallowClone       bool
+	mergeTestRequester bool
 }
 
 func (opts cloneOpts) validate() error {
@@ -152,6 +154,9 @@ func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
 		return nil, errors.Wrap(err, "failed to parse URL from location")
 	}
 	clone := fmt.Sprintf("git clone %s '%s'", thirdparty.FormGitUrl(urlLocation.Host, opts.owner, opts.repo, opts.token), opts.dir)
+	if !opts.mergeTestRequester && opts.shallowClone {
+		cloneCmd = fmt.Sprintf("%s --depth 1", cloneCmd)
+	}
 	if opts.branch != "" {
 		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
 	}
@@ -168,6 +173,9 @@ func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
 
 func (opts cloneOpts) buildSSHCloneCommand() ([]string, error) {
 	cloneCmd := fmt.Sprintf("git clone '%s' '%s'", opts.location, opts.dir)
+	if !opts.mergeTestRequester && opts.shallowClone {
+		cloneCmd = fmt.Sprintf("%s --depth 1", cloneCmd)
+	}
 	if opts.branch != "" {
 		cloneCmd = fmt.Sprintf("%s --branch '%s'", cloneCmd, opts.branch)
 	}
@@ -235,9 +243,12 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig, opts cloneOp
 		}...)
 
 	} else {
-		if conf.Task.Requester == evergreen.MergeTestRequester {
+		if opts.mergeTestRequester {
 			gitCommands = append(gitCommands, fmt.Sprintf("git checkout '%s'", conf.ProjectRef.Branch))
 		} else {
+			if opts.shallowClone {
+				gitCommands = append(gitCommands, fmt.Sprint("git log HEAD..%s || git clone --unshallow"))
+			}
 			gitCommands = append(gitCommands, fmt.Sprintf("git reset --hard %s", conf.Task.Revision))
 		}
 	}
@@ -321,12 +332,14 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 		return errors.Wrap(err, "failed to get method of cloning and token")
 	}
 	opts := cloneOpts{
-		method: projectMethod,
-		owner:  conf.ProjectRef.Owner,
-		repo:   conf.ProjectRef.Repo,
-		branch: conf.ProjectRef.Branch,
-		dir:    c.Directory,
-		token:  projectToken,
+		method:             projectMethod,
+		owner:              conf.ProjectRef.Owner,
+		repo:               conf.ProjectRef.Repo,
+		branch:             conf.ProjectRef.Branch,
+		dir:                c.Directory,
+		token:              projectToken,
+		shallowClone:       conf.Distro.ShallowClone,
+		mergeTestRequester: conf.Task.Requester == evergreen.MergeTestRequester,
 	}
 	if err = opts.setLocation(); err != nil {
 		return errors.Wrap(err, "failed to set location to clone from")
