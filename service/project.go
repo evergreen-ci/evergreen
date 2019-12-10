@@ -746,14 +746,11 @@ func verifyAliasExists(alias, projectIdentifier string, newAliasDefinitions []mo
 		return false, errors.Wrap(err, "error checking for existing aliases")
 	}
 
-	remainingAliases := false
 	for _, a := range existingAliasDefinitions {
 		// only consider aliases that won't be deleted
 		if !util.StringSliceContains(deletedAliasDefinitionIDs, a.ID.Hex()) {
-			remainingAliases = true
-			break
+			return true, nil
 		}
 	}
-
-	return remainingAliases, nil
+	return false, nil
 }
