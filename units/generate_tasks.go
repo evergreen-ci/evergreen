@@ -94,7 +94,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	err = g.Save(context.Background(), p, pp, v, t, pm)
 
 	// If the version has changed there was a race. Another generator will try again.
-	if err != nil && adb.ResultsNotFound(err) {
+	if adb.ResultsNotFound(err) {
 		return err
 	}
 	if err != nil {
@@ -151,13 +151,13 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		"task":          t.Id,
 		"version":       t.Version,
 	})
-	grip.DebugWhen(adb.ResultsNotFound(err), message.Fields{
+	grip.DebugWhen(adb.ResultsNotFound(err), message.WrapError(err, message.Fields{
 		"message":       "generate.tasks noop",
 		"operation":     "generate.tasks",
 		"duration_secs": time.Since(start).Seconds(),
 		"task":          t.Id,
 		"version":       t.Version,
-	})
+	}))
 	grip.ErrorWhen(!adb.ResultsNotFound(err), message.WrapError(err, message.Fields{
 		"message":       "generate.tasks finished with errors",
 		"operation":     "generate.tasks",

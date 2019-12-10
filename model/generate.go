@@ -164,9 +164,7 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProje
 	}
 	v.ConfigUpdateNumber += 1
 
-	if err := pp.UpsertWithConfigNumber(v.ConfigUpdateNumber); err != nil {
-		return errors.Wrapf(err, "error updating parser project %s", pp.Id)
-	}
+	// TODO: Include parser project in generated tasks
 
 	if v.Requester == evergreen.MergeTestRequester {
 		mergeTask, err := task.FindMergeTaskForVersion(v.Id)

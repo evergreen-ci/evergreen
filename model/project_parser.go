@@ -445,6 +445,7 @@ func LoadProjectForVersion(v *Version, identifier string, shouldSave bool) (*Pro
 	}
 
 	if evergreen.UseParserProject && ppFromDB != nil {
+		// TODO: check here for ppFromDB.ConfigUpdateNumber >= v.ConfigUpdateNumber
 		ppFromDB.Identifier = identifier
 		p, err := TranslateProject(ppFromDB)
 		return p, ppFromDB, err
