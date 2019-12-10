@@ -184,7 +184,20 @@ func (a ProjectAliases) HasMatchingTask(variant string, variantTags []string, t 
 
 func isValidRegexOrTag(curItem, aliasRegex string, curTags, aliasTags []string, regexp *regexp.Regexp) bool {
 	isValidRegex := aliasRegex != "" && regexp.MatchString(curItem)
-	isValidTag := len(aliasTags) > 0 && len(util.StringSliceIntersection(curTags, aliasTags)) > 0
+
+	isValidTag := false
+	for _, tag := range aliasTags {
+		if util.StringSliceContains(curTags, tag) {
+			isValidTag = true
+			break
+		}
+		// a negated tag
+		if len(tag) > 0 && tag[0] == '!' && !util.StringSliceContains(curTags, tag[1:]) {
+			isValidTag = true
+			break
+		}
+	}
+
 	return isValidRegex || isValidTag
 }
 
