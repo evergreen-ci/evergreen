@@ -155,7 +155,7 @@ func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
 	}
 	clone := fmt.Sprintf("git clone %s '%s'", thirdparty.FormGitUrl(urlLocation.Host, opts.owner, opts.repo, opts.token), opts.dir)
 	if !opts.mergeTestRequester && opts.shallowClone {
-		cloneCmd = fmt.Sprintf("%s --depth 1", cloneCmd)
+		clone = fmt.Sprintf("%s --depth 1", clone)
 	}
 	if opts.branch != "" {
 		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
