@@ -331,6 +331,7 @@ func FindDownstreamProjects(project string) ([]ProjectRef, error) {
 	err := db.FindAll(
 		ProjectRefCollection,
 		bson.M{
+			ProjectRefEnabledKey: true,
 			bsonutil.GetDottedKeyName(projectRefTriggersKey, projectRefTriggerProjectKey): project,
 		},
 		db.NoProjection,
