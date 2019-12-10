@@ -544,15 +544,11 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 	ase := NewAxisSelectorEvaluator(pp.Axes)
 	regularBVs, matrices := sieveMatrixVariants(pp.BuildVariants)
 
-	var errs []error
 	matrixVariants, errs := buildMatrixVariants(pp.Axes, ase, matrices)
 	catcher.Extend(errs)
 	buildVariants := append(regularBVs, matrixVariants...)
 	vse := NewVariantSelectorEvaluator(buildVariants, ase)
 	proj.Tasks, proj.TaskGroups, errs = evaluateTaskUnits(tse, tgse, vse, pp.Tasks, pp.TaskGroups)
-	catcher.Extend(errs)
-
-	proj.BuildVariants, errs = evaluateBuildVariants(tse, tgse, vse, buildVariants, pp.Tasks, proj.TaskGroups)
 	catcher.Extend(errs)
 
 	proj.BuildVariants, errs = evaluateBuildVariants(tse, tgse, vse, buildVariants, pp.Tasks, proj.TaskGroups)
