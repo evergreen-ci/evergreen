@@ -165,6 +165,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
         $scope.getDistroById(distroHash).then(function(distro) {
           if (distro) {
             $scope.readOnly = (!$window.aclEnabled && !$window.isSuperUser) || ($window.aclEnabled && distro.permissions.distro_settings < 20)
+            $scope.remove = (!$window.aclEnabled && $window.isSuperUser) || ($window.aclEnabled && distro.permissions.distro_settings == 30)
             $scope.activeDistro = distro.distro;
           }
         });

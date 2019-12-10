@@ -44,6 +44,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	editProjectSettings := RequiresProjectPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsEdit)
 	viewDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsView)
 	editDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsEdit)
+	removeDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsRemove)
 
 	env := evergreen.GetEnvironment()
 	settings := env.Settings()
@@ -83,7 +84,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/distros").Version(2).Get().Wrap(checkUser).RouteHandler(makeDistroRoute(sc))
 	app.AddRoute("/distros/{distro_id}").Version(2).Get().Wrap(superUser, viewDistroSettings).RouteHandler(makeGetDistroByID(sc))
 	app.AddRoute("/distros/{distro_id}").Version(2).Patch().Wrap(superUser, editDistroSettings).RouteHandler(makePatchDistroByID(sc, settings))
-	app.AddRoute("/distros/{distro_id}").Version(2).Delete().Wrap(superUser, editDistroSettings).RouteHandler(makeDeleteDistroByID(sc))
+	app.AddRoute("/distros/{distro_id}").Version(2).Delete().Wrap(superUser, removeDistroSettings).RouteHandler(makeDeleteDistroByID(sc))
 	app.AddRoute("/distros/{distro_id}").Version(2).Put().Wrap(superUser, createDistro).RouteHandler(makePutDistro(sc, settings))
 	app.AddRoute("/distros/{distro_id}/setup").Version(2).Get().Wrap(superUser, viewDistroSettings).RouteHandler(makeGetDistroSetup(sc))
 	app.AddRoute("/distros/{distro_id}/setup").Version(2).Patch().Wrap(superUser, editDistroSettings).RouteHandler(makeChangeDistroSetup(sc))

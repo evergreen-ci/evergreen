@@ -586,6 +586,10 @@ var (
 		Description: "Not able to view logs",
 		Value:       0,
 	}
+	DistroSettingsRemove = PermissionLevel{
+		Description: "Remove distro",
+		Value:       30,
+	}
 	DistroSettingsEdit = PermissionLevel{
 		Description: "Edit distro settings",
 		Value:       20,
