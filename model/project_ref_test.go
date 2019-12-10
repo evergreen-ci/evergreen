@@ -371,3 +371,26 @@ func TestProjectRefTags(t *testing.T) {
 		require.Len(t, prjs, 0)
 	})
 }
+
+func TestFindDownstreamProjects(t *testing.T) {
+	require.NoError(t, db.Clear(ProjectRefCollection))
+
+	proj1 := ProjectRef{
+		Identifier: "evergreen",
+		Enabled:    true,
+		Triggers:   []TriggerDefinition{{Project: "grip"}},
+	}
+	require.NoError(t, proj1.Insert())
+
+	proj2 := ProjectRef{
+		Identifier: "mci",
+		Enabled:    false,
+		Triggers:   []TriggerDefinition{{Project: "grip"}},
+	}
+	require.NoError(t, proj2.Insert())
+
+	projects, err := FindDownstreamProjects("grip")
+	assert.NoError(t, err)
+	assert.Len(t, projects, 1)
+	assert.Equal(t, proj1, projects[0])
+}

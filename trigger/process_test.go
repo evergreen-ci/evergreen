@@ -71,6 +71,7 @@ func (s *projectTriggerSuite) SetupTest() {
 func (s *projectTriggerSuite) TestSimpleTaskFile() {
 	simpleTaskFile := model.ProjectRef{
 		Identifier: "simpleTaskFile",
+		Enabled:    true,
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile"},
 			{Project: "notTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile"},
@@ -93,6 +94,7 @@ func (s *projectTriggerSuite) TestSimpleTaskFile() {
 func (s *projectTriggerSuite) TestSimpleTaskCommand() {
 	simpleTaskCommand := model.ProjectRef{
 		Identifier: "simpleTaskCommand",
+		Enabled:    true,
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, Command: "command"},
 			{Project: "notTrigger", Level: model.ProjectTriggerLevelTask, Command: "command"},
@@ -115,6 +117,7 @@ func (s *projectTriggerSuite) TestSimpleTaskCommand() {
 func (s *projectTriggerSuite) TestMultipleProjects() {
 	proj1 := model.ProjectRef{
 		Identifier: "proj1",
+		Enabled:    true,
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile"},
 		},
@@ -122,6 +125,7 @@ func (s *projectTriggerSuite) TestMultipleProjects() {
 	s.NoError(proj1.Insert())
 	proj2 := model.ProjectRef{
 		Identifier: "proj2",
+		Enabled:    true,
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, Command: "command"},
 		},
@@ -129,6 +133,7 @@ func (s *projectTriggerSuite) TestMultipleProjects() {
 	s.NoError(proj2.Insert())
 	proj3 := model.ProjectRef{
 		Identifier: "proj3",
+		Enabled:    true,
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, Command: "command"},
 		},
@@ -148,6 +153,7 @@ func (s *projectTriggerSuite) TestDateCutoff() {
 	date := 1
 	proj := model.ProjectRef{
 		Identifier: "proj",
+		Enabled:    true,
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile", DateCutoff: &date},
 		},
@@ -166,6 +172,7 @@ func (s *projectTriggerSuite) TestDateCutoff() {
 func (s *projectTriggerSuite) TestWrongEvent() {
 	simpleTaskCommand := model.ProjectRef{
 		Identifier: "simpleTaskCommand",
+		Enabled:    true,
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, Command: "command"},
 		},
@@ -184,6 +191,7 @@ func (s *projectTriggerSuite) TestWrongEvent() {
 func (s *projectTriggerSuite) TestTaskRegex() {
 	proj1 := model.ProjectRef{
 		Identifier: "proj1",
+		Enabled:    true,
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, TaskRegex: "task*", ConfigFile: "configFile1"},
 		},
@@ -191,6 +199,7 @@ func (s *projectTriggerSuite) TestTaskRegex() {
 	s.NoError(proj1.Insert())
 	proj2 := model.ProjectRef{
 		Identifier: "proj2",
+		Enabled:    true,
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, TaskRegex: "$wontmatch^", ConfigFile: "configFile2"},
 		},
@@ -211,6 +220,7 @@ func (s *projectTriggerSuite) TestTaskRegex() {
 func (s *projectTriggerSuite) TestMultipleTriggers() {
 	duplicate := model.ProjectRef{
 		Identifier: "duplicate",
+		Enabled:    true,
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile1"},
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile2"},
@@ -230,6 +240,7 @@ func (s *projectTriggerSuite) TestMultipleTriggers() {
 func (s *projectTriggerSuite) TestBuildFinish() {
 	ref := model.ProjectRef{
 		Identifier: "ref",
+		Enabled:    true,
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelBuild, ConfigFile: "configFile"},
 			{Project: "notTrigger", Level: model.ProjectTriggerLevelBuild, ConfigFile: "configFile"},
@@ -286,6 +297,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	assert.NoError(upstreamVersion.Insert())
 	downstreamProjectRef := model.ProjectRef{
 		Identifier: "downstream",
+		Enabled:    true,
 		Owner:      "evergreen-ci",
 		Repo:       "evergreen",
 		RemotePath: "self-tests.yml",
