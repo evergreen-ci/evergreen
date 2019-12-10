@@ -744,9 +744,9 @@ buildvariants:
 		},
 	}
 
-	p, v, t, pm, err := g.NewVersion()
+	p, pp, v, t, pm, err := g.NewVersion()
 	s.NoError(err)
-	s.NoError(g.Save(context.Background(), p, v, t, pm))
+	s.NoError(g.Save(context.Background(), p, pp, v, t, pm))
 
 	// the depended-on task is created in the existing variant
 	saySomething := task.Task{}
