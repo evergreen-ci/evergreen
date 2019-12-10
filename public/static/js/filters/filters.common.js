@@ -483,18 +483,17 @@ filters.common.filter('conditional', function () {
       if (!execution) {
         execution = latestExecution(data);
       }
-      var output = {
-        data: {
-          "results": []
-        }
-      };
+      let output = {};
+      let results = [];
 
       _.each(data, function (test) {
         let singleTest = convertSingleTest(test, execution);
         if (singleTest) {
-          output.data.results = output.data.results.concat(singleTest.data.results);
+          Object.assign(output, singleTest);
+          results = results.concat(singleTest.data.results);
         }
       })
+      output.data.results = results;
 
       return output;
     }
