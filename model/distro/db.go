@@ -31,6 +31,7 @@ var (
 	PlannerSettingsKey       = bsonutil.MustHaveTag(Distro{}, "PlannerSettings")
 	FinderSettingsKey        = bsonutil.MustHaveTag(Distro{}, "FinderSettings")
 	HostAllocatorSettingsKey = bsonutil.MustHaveTag(Distro{}, "HostAllocatorSettings")
+	ShallowCloneKey          = bsonutil.MustHaveTag(Distro{}, "ShallowClone")
 )
 
 var (
