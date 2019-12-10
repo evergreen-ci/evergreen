@@ -1659,7 +1659,7 @@ func TestTaskValidation(t *testing.T) {
     - name: "this task is too long"
 `
 	var proj model.Project
-	err := model.LoadProjectInto([]byte(simpleYml), "", &proj)
+	_, err := model.LoadProjectInto([]byte(simpleYml), "", &proj)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "spaces are unauthorized")
 }
@@ -1948,7 +1948,7 @@ func TestValidateCreateHosts(t *testing.T) {
     tasks:
     - name: t_1
   `
-	err = model.LoadProjectInto([]byte(yml), "id", &p)
+	pp, err = model.LoadProjectInto([]byte(yml), "id", &p)
 	require.NoError(err)
 	require.NotNil(pp)
 	errs = validateCreateHosts(&p)
