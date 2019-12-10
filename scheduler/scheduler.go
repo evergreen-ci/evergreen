@@ -44,7 +44,7 @@ func runTunablePlanner(d *distro.Distro, tasks []task.Task, opts TaskPlannerOpti
 	}
 
 	plan := PrepareTasksForPlanning(d, tasks).Export()
-	info := GetDistroQueueInfo(d.Id, plan, d.MaxDurationPerHost(), opts)
+	info := GetDistroQueueInfo(d.Id, plan, d.GetTargetTime(), opts)
 	info.AliasQueue = opts.IsSecondaryQueue
 	info.PlanCreatedAt = opts.StartedAt
 
@@ -74,7 +74,7 @@ func runLegacyPlanner(d *distro.Distro, tasks []task.Task, opts TaskPlannerOptio
 		startedAt: opts.StartedAt,
 	}
 
-	prioritizedTasks, err := ds.scheduleDistro(d.Id, runnableTasks, versions, d.MaxDurationPerHost(), opts.IsSecondaryQueue)
+	prioritizedTasks, err := ds.scheduleDistro(d.Id, runnableTasks, versions, d.GetTargetTime(), opts.IsSecondaryQueue)
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem calculating distro plan for distro '%s'", d.Id)
 	}
