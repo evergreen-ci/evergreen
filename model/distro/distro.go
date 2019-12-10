@@ -295,6 +295,14 @@ func (d *Distro) MaxDurationPerHost() time.Duration {
 	return evergreen.MaxDurationPerDistroHost
 }
 
+func (d *Distro) GetTargetTime() time.Duration {
+	if d.PlannerSettings.TargetTime == 0 {
+		return d.MaxDurationPerHost()
+	}
+
+	return d.PlannerSettings.TargetTime
+}
+
 // IsPowerShellSetup returns whether or not the setup script is a powershell
 // script based on the header shebang line.
 func (d *Distro) IsPowerShellSetup() bool {
