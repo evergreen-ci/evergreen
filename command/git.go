@@ -247,7 +247,7 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig, opts cloneOp
 			gitCommands = append(gitCommands, fmt.Sprintf("git checkout '%s'", conf.ProjectRef.Branch))
 		} else {
 			if opts.shallowClone {
-				gitCommands = append(gitCommands, fmt.Sprint("git log HEAD..%s || git clone --unshallow"))
+				gitCommands = append(gitCommands, fmt.Sprintf("git log HEAD..%s || git fetch --unshallow", conf.Task.Revision))
 			}
 			gitCommands = append(gitCommands, fmt.Sprintf("git reset --hard %s", conf.Task.Revision))
 		}
