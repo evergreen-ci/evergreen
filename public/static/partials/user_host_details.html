@@ -114,7 +114,7 @@
       </md-card-content>
       <md-card-footer>
         <md-button type="button" class="btn-info md-raised" ng-click="update()">
-          Update Host
+          Update Host (updating only yaml should not run lint)
         </md-button>
         <md-button ng-show="curHostData.isWinHost && curHostData.status == 'running'" type="button" class="btn-info md-raised" ng-click="openSpawnModal('updateRDPPassword')">
             Set RDP Password
