@@ -140,9 +140,6 @@ func doStaticHostUpdate(d distro.Distro) ([]string, error) {
 			return nil, errors.Wrapf(err, "error finding host named %s", h.Name)
 		}
 		provisionChange := needsReprovisioning(d, dbHost)
-		if provisionChange == host.ReprovisionNone && !dbHost.ReprovisioningLocked {
-			provisionChange = dbHost.NeedsReprovision
-		}
 
 		provisioned := provisionChange == host.ReprovisionNone || (dbHost != nil && dbHost.Provisioned)
 		staticHost := host.Host{
