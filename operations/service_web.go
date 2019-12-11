@@ -21,7 +21,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
-	jrest "github.com/mongodb/jasper/rest"
+	"github.com/mongodb/jasper/remote"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -245,7 +245,7 @@ func getAdminService(ctx context.Context, env evergreen.Environment, settings *e
 		apps = append(apps, groupReporting)
 	}
 
-	jpm := jrest.NewManagerService(env.JasperManager())
+	jpm := remote.NewRestService(env.JasperManager())
 	jpmapp := jpm.App(ctx)
 	jpmapp.SetPrefix("jasper")
 	jpm.SetDisableCachePruning(true)

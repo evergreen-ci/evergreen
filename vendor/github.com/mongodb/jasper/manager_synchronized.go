@@ -68,20 +68,6 @@ func (m *synchronizedProcessManager) WriteFile(ctx context.Context, opts options
 	return errors.WithStack(m.manager.WriteFile(ctx, opts))
 }
 
-func (m *synchronizedProcessManager) CreateScripting(ctx context.Context, opts options.ScriptingHarness) (ScriptingHarness, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	return m.manager.CreateScripting(ctx, opts)
-}
-
-func (m *synchronizedProcessManager) GetScripting(ctx context.Context, id string) (ScriptingHarness, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	return m.manager.GetScripting(ctx, id)
-}
-
 func (m *synchronizedProcessManager) Register(ctx context.Context, proc Process) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

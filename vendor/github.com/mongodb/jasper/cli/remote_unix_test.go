@@ -9,13 +9,14 @@ import (
 
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/testutil"
+	"github.com/mongodb/jasper/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli"
 )
 
 func TestCLIRemoteUnix(t *testing.T) {
-	for remoteType, makeService := range map[string]func(ctx context.Context, t *testing.T, port int, manager jasper.Manager) jasper.CloseFunc{
+	for remoteType, makeService := range map[string]func(ctx context.Context, t *testing.T, port int, manager jasper.Manager) util.CloseFunc{
 		RESTService: makeTestRESTService,
 		RPCService:  makeTestRPCService,
 	} {

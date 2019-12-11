@@ -14,6 +14,7 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/testutil"
+	"github.com/mongodb/jasper/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,7 +27,7 @@ const (
 
 func verifyCommandAndGetOutput(ctx context.Context, t *testing.T, cmd *Command, run cmdRunFunc, success bool) string {
 	var buf bytes.Buffer
-	bufCloser := &localBuffer{b: buf}
+	bufCloser := util.NewLocalBuffer(buf)
 
 	cmd.SetCombinedWriter(bufCloser)
 
@@ -280,20 +281,20 @@ func TestCommandImplementation(t *testing.T) {
 							}
 						},
 						"WriterOutputAndErrorIsSettable": func(ctx context.Context, t *testing.T, cmd Command) {
-							for subName, subTestCase := range map[string]func(context.Context, *testing.T, Command, *localBuffer){
-								"StdOutOnly": func(ctx context.Context, t *testing.T, cmd Command, buf *localBuffer) {
+							for subName, subTestCase := range map[string]func(context.Context, *testing.T, Command, *util.LocalBuffer){
+								"StdOutOnly": func(ctx context.Context, t *testing.T, cmd Command, buf *util.LocalBuffer) {
 									cmd.SetOutputWriter(buf)
 									require.NoError(t, runFunc(&cmd, ctx))
 									checkOutput(t, true, buf.String(), arg1, arg2)
 									checkOutput(t, false, buf.String(), lsErrorMsg)
 								},
-								"StdErrOnly": func(ctx context.Context, t *testing.T, cmd Command, buf *localBuffer) {
+								"StdErrOnly": func(ctx context.Context, t *testing.T, cmd Command, buf *util.LocalBuffer) {
 									cmd.SetErrorWriter(buf)
 									require.NoError(t, runFunc(&cmd, ctx))
 									checkOutput(t, true, buf.String(), lsErrorMsg)
 									checkOutput(t, false, buf.String(), arg1, arg2)
 								},
-								"StdOutAndStdErr": func(ctx context.Context, t *testing.T, cmd Command, buf *localBuffer) {
+								"StdOutAndStdErr": func(ctx context.Context, t *testing.T, cmd Command, buf *util.LocalBuffer) {
 									cmd.SetCombinedWriter(buf)
 									require.NoError(t, runFunc(&cmd, ctx))
 									checkOutput(t, true, buf.String(), arg1, arg2, lsErrorMsg)
@@ -307,7 +308,7 @@ func TestCommandImplementation(t *testing.T) {
 									}).ContinueOnError(true).IgnoreError(true)
 
 									var buf bytes.Buffer
-									bufCloser := &localBuffer{b: buf}
+									bufCloser := util.NewLocalBuffer(buf)
 
 									subTestCase(ctx, t, cmd, bufCloser)
 								})

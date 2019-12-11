@@ -15,7 +15,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
-	"github.com/mongodb/jasper/rpc"
+	"github.com/mongodb/jasper/remote"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	yaml "gopkg.in/yaml.v2"
@@ -154,7 +154,7 @@ func smokeStartEvergreen() cli.Command {
 				if err != nil {
 					return errors.Wrap(err, "error resolving Jasper network address")
 				}
-				closeServer, err := rpc.StartService(ctx, manager, jasperAddr, nil)
+				closeServer, err := remote.StartRPCService(ctx, manager, jasperAddr, nil)
 				if err != nil {
 					return errors.Wrap(err, "error setting up Jasper RPC service")
 				}

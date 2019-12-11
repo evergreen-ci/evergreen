@@ -2,7 +2,7 @@ name := jasper
 buildDir := build
 srcFiles := $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "*\#*")
 testFiles := $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
-packages := $(name) cli rpc rpc-internal rest wire options mock testutil internal-executor
+packages := $(name) cli remote remote-internal options mock testutil internal-executor
 lintPackages := $(packages) mock testutil
 testPackages := $(packages) mock
 projectPath := github.com/mongodb/jasper
@@ -96,8 +96,8 @@ $(buildDir)/output.%.lint:$(buildDir)/run-linter $(buildDir) .FORCE
 
 # user-facing targets for basic build and development operations
 proto:
-	@mkdir -p rpc/internal
-	protoc --go_out=plugins=grpc:rpc/internal *.proto
+	@mkdir -p remote/internal
+	protoc --go_out=plugins=grpc:remote/internal *.proto
 lint:$(buildDir) $(foreach target,$(packages),$(buildDir)/output.$(target).lint)
 	
 test:$(buildDir) $(foreach target,$(testPackages),$(buildDir)/output.$(target).test)

@@ -25,7 +25,7 @@ import (
 	"github.com/mongodb/jasper"
 	jcli "github.com/mongodb/jasper/cli"
 	"github.com/mongodb/jasper/options"
-	"github.com/mongodb/jasper/rpc"
+	"github.com/mongodb/jasper/remote"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -743,7 +743,7 @@ const jasperDialTimeout = 15 * time.Second
 
 // JasperClient returns a remote client that communicates with this host's
 // Jasper service.
-func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jasper.RemoteClient, error) {
+func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (remote.Manager, error) {
 	if (h.LegacyBootstrap() || h.LegacyCommunication()) && h.NeedsReprovision != ReprovisionToLegacy {
 		return nil, errors.New("legacy host does not support remote Jasper process management")
 	}
@@ -797,7 +797,7 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jas
 		dialCtx, cancel := context.WithTimeout(ctx, jasperDialTimeout)
 		defer cancel()
 
-		return rpc.NewClient(dialCtx, serviceAddr, creds)
+		return remote.NewRPCClient(dialCtx, serviceAddr, creds)
 	}
 
 	return nil, errors.Errorf("host does not have recognized communication method '%s'", h.Distro.BootstrapSettings.Communication)

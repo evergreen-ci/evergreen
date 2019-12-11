@@ -12,6 +12,7 @@ import (
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
+	"github.com/mongodb/jasper/remote"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
 	"github.com/urfave/cli"
@@ -102,7 +103,7 @@ func RunCMD() cli.Command {
 
 			logger := jasper.NewInMemoryLogger(1000)
 
-			return withConnection(ctx, c, func(client jasper.RemoteClient) error {
+			return withConnection(ctx, c, func(client remote.Manager) error {
 				cmd := client.CreateCommand(ctx).Sudo(useSudo).ID(cmdID).SetTags(tags)
 
 				if wait {
@@ -246,7 +247,7 @@ func ListCMD() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			return withConnection(ctx, c, func(client jasper.RemoteClient) error {
+			return withConnection(ctx, c, func(client remote.Manager) error {
 				var (
 					procs []jasper.Process
 					err   error
@@ -312,7 +313,7 @@ func KillCMD() cli.Command {
 
 			sendKill := c.Bool(killFlagName)
 			procID := c.String(idFlagName)
-			return withConnection(ctx, c, func(client jasper.RemoteClient) error {
+			return withConnection(ctx, c, func(client remote.Manager) error {
 				proc, err := client.Get(ctx, procID)
 				if err != nil {
 					return errors.WithStack(err)
@@ -338,7 +339,7 @@ func ClearCMD() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			return withConnection(ctx, c, func(client jasper.RemoteClient) error {
+			return withConnection(ctx, c, func(client remote.Manager) error {
 				client.Clear(ctx)
 				return nil
 			})
@@ -381,7 +382,7 @@ func KillAllCMD() cli.Command {
 
 			sendKill := c.Bool(killFlagName)
 			group := c.String(groupFlagName)
-			return withConnection(ctx, c, func(client jasper.RemoteClient) error {
+			return withConnection(ctx, c, func(client remote.Manager) error {
 				procs, err := client.Group(ctx, group)
 				if err != nil {
 					return errors.WithStack(err)
@@ -449,7 +450,7 @@ func DownloadCMD() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			return withConnection(ctx, c, func(client jasper.RemoteClient) error {
+			return withConnection(ctx, c, func(client remote.Manager) error {
 				return errors.WithStack(client.DownloadFile(ctx, opts))
 			})
 		},

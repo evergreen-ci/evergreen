@@ -3,8 +3,8 @@ package cli
 import (
 	"context"
 
-	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
+	"github.com/mongodb/jasper/remote"
 	"github.com/urfave/cli"
 )
 
@@ -45,7 +45,7 @@ func remoteConfigureCache() cli.Command {
 		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
 			input := options.Cache{}
-			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client jasper.RemoteClient) interface{} {
+			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client remote.Manager) interface{} {
 				return makeOutcomeResponse(client.ConfigureCache(ctx, input))
 			})
 		},
@@ -59,7 +59,7 @@ func remoteWriteFile() cli.Command {
 		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
 			input := options.WriteFile{}
-			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client jasper.RemoteClient) interface{} {
+			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client remote.Manager) interface{} {
 				return makeOutcomeResponse(client.WriteFile(ctx, input))
 			})
 		},
@@ -73,7 +73,7 @@ func remoteDownloadFile() cli.Command {
 		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
 			input := options.Download{}
-			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client jasper.RemoteClient) interface{} {
+			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client remote.Manager) interface{} {
 				return makeOutcomeResponse(client.DownloadFile(ctx, input))
 			})
 		},
@@ -87,7 +87,7 @@ func remoteDownloadMongoDB() cli.Command {
 		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
 			input := options.MongoDBDownload{}
-			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client jasper.RemoteClient) interface{} {
+			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client remote.Manager) interface{} {
 				return makeOutcomeResponse(client.DownloadMongoDB(ctx, input))
 			})
 		},
@@ -101,7 +101,7 @@ func remoteGetLogStream() cli.Command {
 		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
 			input := LogStreamInput{}
-			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client jasper.RemoteClient) interface{} {
+			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client remote.Manager) interface{} {
 				logs, err := client.GetLogStream(ctx, input.ID, input.Count)
 				if err != nil {
 					return &LogStreamResponse{OutcomeResponse: *makeOutcomeResponse(err)}
@@ -119,7 +119,7 @@ func remoteGetBuildloggerURLs() cli.Command {
 		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
 			input := IDInput{}
-			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client jasper.RemoteClient) interface{} {
+			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client remote.Manager) interface{} {
 				urls, err := client.GetBuildloggerURLs(ctx, input.ID)
 				if err != nil {
 					return &BuildloggerURLsResponse{OutcomeResponse: *makeOutcomeResponse(err)}
@@ -137,7 +137,7 @@ func remoteSignalEvent() cli.Command {
 		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
 			input := EventInput{}
-			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client jasper.RemoteClient) interface{} {
+			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client remote.Manager) interface{} {
 				if err := client.SignalEvent(ctx, input.Name); err != nil {
 					return makeOutcomeResponse(err)
 				}

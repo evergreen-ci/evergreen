@@ -9,7 +9,8 @@ import (
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
-	"github.com/mongodb/jasper/rest"
+	"github.com/mongodb/jasper/remote"
+	"github.com/mongodb/jasper/util"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -114,7 +115,7 @@ func (d *restDaemon) run(ctx context.Context) error {
 	return errors.Wrap(runServices(ctx, d.newService), "error running REST service")
 }
 
-func (d *restDaemon) newService(ctx context.Context) (jasper.CloseFunc, error) {
+func (d *restDaemon) newService(ctx context.Context) (util.CloseFunc, error) {
 	if d.Manager == nil {
 		return nil, errors.New("manager is not set on REST service")
 	}
@@ -124,8 +125,8 @@ func (d *restDaemon) newService(ctx context.Context) (jasper.CloseFunc, error) {
 
 // newRESTService creates a REST service around the manager serving requests on
 // the host and port.
-func newRESTService(ctx context.Context, host string, port int, manager jasper.Manager) (jasper.CloseFunc, error) {
-	service := rest.NewManagerService(manager)
+func newRESTService(ctx context.Context, host string, port int, manager jasper.Manager) (util.CloseFunc, error) {
+	service := remote.NewRestService(manager)
 	app := service.App(ctx)
 	app.SetPrefix("jasper")
 	if err := app.SetHost(host); err != nil {

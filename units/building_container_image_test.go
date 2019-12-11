@@ -12,6 +12,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func init() {
+	testutil.Setup()
+}
+
 func TestBuildingContainerImageJob(t *testing.T) {
 	assert := assert.New(t)
 
