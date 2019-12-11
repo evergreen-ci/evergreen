@@ -14,7 +14,6 @@ import (
 type basicProcessManager struct {
 	id            string
 	procs         map[string]Process
-	senv          map[string]ScriptingHarness
 	useSSHLibrary bool
 	tracker       ProcessTracker
 }
@@ -22,7 +21,6 @@ type basicProcessManager struct {
 func newBasicProcessManager(procs map[string]Process, trackProcs bool, useSSHLibrary bool) (Manager, error) {
 	m := basicProcessManager{
 		procs:         procs,
-		senv:          make(map[string]ScriptingHarness),
 		id:            uuid.Must(uuid.NewV4()).String(),
 		useSSHLibrary: useSSHLibrary,
 	}
@@ -38,33 +36,6 @@ func newBasicProcessManager(procs map[string]Process, trackProcs bool, useSSHLib
 
 func (m *basicProcessManager) ID() string {
 	return m.id
-}
-
-func (m *basicProcessManager) CreateScripting(ctx context.Context, opts options.ScriptingHarness) (ScriptingHarness, error) {
-	if se, ok := m.senv[opts.ID()]; ok {
-		return se, nil
-	}
-
-	se, err := NewScriptingHarness(m, opts)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	if err = se.Setup(ctx); err != nil {
-		return nil, errors.Wrap(err, "problem setting up scripting environment")
-	}
-
-	m.senv[se.ID()] = se
-
-	return se, nil
-}
-
-func (m *basicProcessManager) GetScripting(ctx context.Context, id string) (ScriptingHarness, error) {
-	se, ok := m.senv[id]
-	if !ok {
-		return nil, errors.Errorf("could not find scripting environment named '%s'", id)
-	}
-	return se, nil
 }
 
 func (m *basicProcessManager) CreateProcess(ctx context.Context, opts *options.Create) (Process, error) {

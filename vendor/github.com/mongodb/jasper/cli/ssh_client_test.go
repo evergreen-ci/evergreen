@@ -12,6 +12,7 @@ import (
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/mock"
 	"github.com/mongodb/jasper/options"
+	"github.com/mongodb/jasper/scripting"
 	"github.com/mongodb/jasper/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -515,24 +516,14 @@ func TestSSHClient(t *testing.T) {
 				VirtualEnvPath: "build",
 				Packages:       []string{"pymongo"},
 			}
-			env, err := jasper.NewScriptingHarness(baseManager, opts)
+			env, err := scripting.NewHarness(baseManager, opts)
 			require.NoError(t, err)
-			client.shCache.envs[env.ID()] = env
+			require.NoError(t, client.shCache.Add(env.ID(), env))
 
 			sh, err := client.CreateScripting(ctx, opts)
 			require.NoError(t, err)
 			require.NotNil(t, sh)
 			assert.Equal(t, env.ID(), sh.ID())
-		},
-		"ScriptingCacheReturnsZero": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
-			opts := &options.ScriptingPython{
-				VirtualEnvPath: "build",
-				Packages:       []string{"pymongo"},
-			}
-
-			sh, err := client.CreateScripting(ctx, opts)
-			require.Error(t, err)
-			require.Nil(t, sh)
 		},
 		// "": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {},
 	} {

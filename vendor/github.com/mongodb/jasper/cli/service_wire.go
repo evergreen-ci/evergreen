@@ -9,7 +9,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
-	"github.com/mongodb/jasper/wire"
+	"github.com/mongodb/jasper/remote"
+	"github.com/mongodb/jasper/util"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -113,13 +114,13 @@ func (d *wireDaemon) run(ctx context.Context) error {
 	return errors.Wrap(runServices(ctx, d.newService), "error running wire service")
 }
 
-func (d *wireDaemon) newService(ctx context.Context) (jasper.CloseFunc, error) {
+func (d *wireDaemon) newService(ctx context.Context) (util.CloseFunc, error) {
 	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", d.Host, d.Port))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to resolve wire address")
 	}
 
-	closeService, err := wire.StartService(ctx, d.Manager, addr)
+	closeService, err := remote.StartMDBService(ctx, d.Manager, addr)
 	if err != nil {
 		return nil, errors.Wrap(err, "error starting wire service")
 	}

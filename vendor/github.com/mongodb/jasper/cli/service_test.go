@@ -8,14 +8,16 @@ import (
 	"github.com/evergreen-ci/service"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
+	"github.com/mongodb/jasper/remote"
 	"github.com/mongodb/jasper/testutil"
+	"github.com/mongodb/jasper/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDaemon(t *testing.T) {
-	for daemonAndClientName, makeDaemonAndClient := range map[string]func(ctx context.Context, t *testing.T, manager jasper.Manager) (jasper.CloseFunc, jasper.RemoteClient){
-		"RPCService": func(ctx context.Context, t *testing.T, _ jasper.Manager) (jasper.CloseFunc, jasper.RemoteClient) {
+	for daemonAndClientName, makeDaemonAndClient := range map[string]func(ctx context.Context, t *testing.T, manager jasper.Manager) (util.CloseFunc, remote.Manager){
+		"RPCService": func(ctx context.Context, t *testing.T, _ jasper.Manager) (util.CloseFunc, remote.Manager) {
 			port := testutil.GetPortNumber()
 			manager, err := jasper.NewSynchronizedManager(false)
 			require.NoError(t, err)
@@ -30,7 +32,7 @@ func TestDaemon(t *testing.T) {
 
 			return func() error { return daemon.Stop(svc) }, client
 		},
-		"RESTService": func(ctx context.Context, t *testing.T, _ jasper.Manager) (jasper.CloseFunc, jasper.RemoteClient) {
+		"RESTService": func(ctx context.Context, t *testing.T, _ jasper.Manager) (util.CloseFunc, remote.Manager) {
 			port := testutil.GetPortNumber()
 			manager, err := jasper.NewSynchronizedManager(false)
 			require.NoError(t, err)
@@ -46,7 +48,7 @@ func TestDaemon(t *testing.T) {
 
 			return func() error { return daemon.Stop(svc) }, client
 		},
-		"CombinedServiceRESTClient": func(ctx context.Context, t *testing.T, manager jasper.Manager) (jasper.CloseFunc, jasper.RemoteClient) {
+		"CombinedServiceRESTClient": func(ctx context.Context, t *testing.T, manager jasper.Manager) (util.CloseFunc, remote.Manager) {
 			restPort := testutil.GetPortNumber()
 			daemon := newCombinedDaemon(
 				newRESTDaemon("localhost", restPort, manager, nil),
@@ -62,7 +64,7 @@ func TestDaemon(t *testing.T) {
 
 			return func() error { return daemon.Stop(svc) }, client
 		},
-		"CombinedServiceRPCClient": func(ctx context.Context, t *testing.T, manager jasper.Manager) (jasper.CloseFunc, jasper.RemoteClient) {
+		"CombinedServiceRPCClient": func(ctx context.Context, t *testing.T, manager jasper.Manager) (util.CloseFunc, remote.Manager) {
 			rpcPort := testutil.GetPortNumber()
 			daemon := newCombinedDaemon(
 				newRESTDaemon("localhost", testutil.GetPortNumber(), manager, nil),

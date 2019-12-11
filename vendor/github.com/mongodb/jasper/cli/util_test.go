@@ -11,7 +11,9 @@ import (
 
 	"github.com/evergreen-ci/service"
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/remote"
 	"github.com/mongodb/jasper/testutil"
+	"github.com/mongodb/jasper/util"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -92,7 +94,7 @@ func TestMakeRemoteClientInvalidService(t *testing.T) {
 }
 
 func TestMakeRemoteClient(t *testing.T) {
-	for remoteType, makeServiceAndClient := range map[string]func(ctx context.Context, t *testing.T, port int, manager jasper.Manager) (jasper.CloseFunc, jasper.RemoteClient){
+	for remoteType, makeServiceAndClient := range map[string]func(ctx context.Context, t *testing.T, port int, manager jasper.Manager) (util.CloseFunc, remote.Manager){
 		RESTService: makeTestRESTServiceAndClient,
 		RPCService:  makeTestRPCServiceAndClient,
 	} {
@@ -109,14 +111,14 @@ func TestMakeRemoteClient(t *testing.T) {
 }
 
 func TestCLICommon(t *testing.T) {
-	for remoteType, makeServiceAndClient := range map[string]func(ctx context.Context, t *testing.T, port int, manager jasper.Manager) (jasper.CloseFunc, jasper.RemoteClient){
+	for remoteType, makeServiceAndClient := range map[string]func(ctx context.Context, t *testing.T, port int, manager jasper.Manager) (util.CloseFunc, remote.Manager){
 		RESTService: makeTestRESTServiceAndClient,
 		RPCService:  makeTestRPCServiceAndClient,
 	} {
 		t.Run(remoteType, func(t *testing.T) {
-			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient) error{
-				"CreateProcessWithConnection": func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient) error {
-					return withConnection(ctx, c, func(client jasper.RemoteClient) error {
+			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, c *cli.Context, client remote.Manager) error{
+				"CreateProcessWithConnection": func(ctx context.Context, t *testing.T, c *cli.Context, client remote.Manager) error {
+					return withConnection(ctx, c, func(client remote.Manager) error {
 						proc, err := client.CreateProcess(ctx, testutil.TrueCreateOpts())
 						require.NoError(t, err)
 						require.NotNil(t, proc)
@@ -124,7 +126,7 @@ func TestCLICommon(t *testing.T) {
 						return nil
 					})
 				},
-				"DoPassthroughInputOutputReadsFromStdin": func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient) error {
+				"DoPassthroughInputOutputReadsFromStdin": func(ctx context.Context, t *testing.T, c *cli.Context, client remote.Manager) error {
 					return withMockStdin(t, `{"value":"foo"}`, func(stdin *os.File) error {
 						return withMockStdout(t, func(*os.File) error {
 							input := &mockInput{}
@@ -136,7 +138,7 @@ func TestCLICommon(t *testing.T) {
 						})
 					})
 				},
-				"DoPassthroughInputOutputSetsAndValidatesInput": func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient) error {
+				"DoPassthroughInputOutputSetsAndValidatesInput": func(ctx context.Context, t *testing.T, c *cli.Context, client remote.Manager) error {
 					expectedInput := "foo"
 					return withMockStdin(t, fmt.Sprintf(`{"value":"%s"}`, expectedInput), func(*os.File) error {
 						return withMockStdout(t, func(*os.File) error {
@@ -148,7 +150,7 @@ func TestCLICommon(t *testing.T) {
 						})
 					})
 				},
-				"DoPassthroughInputOutputWritesResponseToStdout": func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient) error {
+				"DoPassthroughInputOutputWritesResponseToStdout": func(ctx context.Context, t *testing.T, c *cli.Context, client remote.Manager) error {
 					return withMockStdin(t, `{"value":"foo"}`, func(*os.File) error {
 						return withMockStdout(t, func(stdout *os.File) error {
 							input := &mockInput{}
@@ -167,7 +169,7 @@ func TestCLICommon(t *testing.T) {
 						})
 					})
 				},
-				"DoPassthroughOutputIgnoresStdin": func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient) error {
+				"DoPassthroughOutputIgnoresStdin": func(ctx context.Context, t *testing.T, c *cli.Context, client remote.Manager) error {
 					input := "foo"
 					return withMockStdin(t, input, func(stdin *os.File) error {
 						return withMockStdout(t, func(*os.File) error {
@@ -180,7 +182,7 @@ func TestCLICommon(t *testing.T) {
 						})
 					})
 				},
-				"DoPassthroughOutputWritesResponseToStdout": func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient) error {
+				"DoPassthroughOutputWritesResponseToStdout": func(ctx context.Context, t *testing.T, c *cli.Context, client remote.Manager) error {
 					return withMockStdout(t, func(stdout *os.File) error {
 						outputVal := "bar"
 						require.NoError(t, doPassthroughOutput(c, mockRequest(outputVal)))
@@ -194,7 +196,7 @@ func TestCLICommon(t *testing.T) {
 						return nil
 					})
 				},
-				// "": func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient) err {},
+				// "": func(ctx context.Context, t *testing.T, c *cli.Context, client remote.Manager) err {},
 			} {
 				t.Run(testName, func(t *testing.T) {
 					ctx, cancel := context.WithTimeout(context.Background(), testutil.TestTimeout)
@@ -239,13 +241,13 @@ func TestRunServices(t *testing.T) {
 	ctx, cancel = context.WithCancel(context.Background())
 	cancel()
 
-	assert.Error(t, runServices(ctx, func(ctx context.Context) (jasper.CloseFunc, error) {
+	assert.Error(t, runServices(ctx, func(ctx context.Context) (util.CloseFunc, error) {
 		return nil, ctx.Err()
 	}))
 
 	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()
-	assert.NoError(t, runServices(ctx, func(ctx context.Context) (jasper.CloseFunc, error) {
+	assert.NoError(t, runServices(ctx, func(ctx context.Context) (util.CloseFunc, error) {
 		return func() error { return nil }, nil
 	}))
 
@@ -258,7 +260,7 @@ func TestRunServices(t *testing.T) {
 		return nil
 	}
 
-	assert.Error(t, runServices(ctx, func(ctx context.Context) (jasper.CloseFunc, error) {
+	assert.Error(t, runServices(ctx, func(ctx context.Context) (util.CloseFunc, error) {
 		return closeFunc, errors.New("fail to make service")
 	}))
 	assert.False(t, closeFuncCalled)
@@ -267,7 +269,7 @@ func TestRunServices(t *testing.T) {
 	defer cancel()
 	closeFuncCalled = false
 
-	assert.NoError(t, runServices(ctx, func(ctx context.Context) (jasper.CloseFunc, error) {
+	assert.NoError(t, runServices(ctx, func(ctx context.Context) (util.CloseFunc, error) {
 		return closeFunc, nil
 	}))
 	assert.True(t, closeFuncCalled)
@@ -278,9 +280,9 @@ func TestRunServices(t *testing.T) {
 		return nil
 	}
 
-	assert.Error(t, runServices(ctx, func(ctx context.Context) (jasper.CloseFunc, error) {
+	assert.Error(t, runServices(ctx, func(ctx context.Context) (util.CloseFunc, error) {
 		return closeFunc, nil
-	}, func(ctx context.Context) (jasper.CloseFunc, error) {
+	}, func(ctx context.Context) (util.CloseFunc, error) {
 		return anotherCloseFunc, errors.New("fail to make another service")
 	}))
 	assert.True(t, closeFuncCalled)
@@ -291,9 +293,9 @@ func TestRunServices(t *testing.T) {
 	closeFuncCalled = false
 	anotherCloseFuncCalled = false
 
-	assert.NoError(t, runServices(ctx, func(ctx context.Context) (jasper.CloseFunc, error) {
+	assert.NoError(t, runServices(ctx, func(ctx context.Context) (util.CloseFunc, error) {
 		return closeFunc, nil
-	}, func(ctx context.Context) (jasper.CloseFunc, error) {
+	}, func(ctx context.Context) (util.CloseFunc, error) {
 		return anotherCloseFunc, nil
 	}))
 	assert.True(t, closeFuncCalled)

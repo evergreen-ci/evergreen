@@ -22,7 +22,7 @@ import (
 	"github.com/mongodb/grip/sometimes"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
-	"github.com/mongodb/jasper/rpc"
+	"github.com/mongodb/jasper/remote"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -61,7 +61,7 @@ type monitor struct {
 	agentArgs []string
 
 	// Set during runtime
-	jasperClient jasper.RemoteClient
+	jasperClient remote.Manager
 }
 
 const (
@@ -298,7 +298,7 @@ func (m *monitor) setupJasperConnection(ctx context.Context, retry util.RetryArg
 	}
 
 	if err = util.RetryWithArgs(ctx, func() (bool, error) {
-		m.jasperClient, err = rpc.NewClientWithFile(ctx, serverAddr, m.credentialsPath)
+		m.jasperClient, err = remote.NewRPCClientWithFile(ctx, serverAddr, m.credentialsPath)
 		if err != nil {
 			return true, errors.Wrap(err, "could not connect to Jasper RPC service")
 		}

@@ -65,15 +65,7 @@ tasks:
 
   - <<: *run-build
     tags: ["test"]
-    name: test-rest
-
-  - <<: *run-build
-    tags: ["test"]
-    name: test-rpc
-
-  - <<: *run-build
-    tags: ["test"]
-    name: test-wire
+    name: test-remote
 
   - name: compile-base
     tags: ["legacy-check"]
@@ -100,23 +92,15 @@ tasks:
 
   - <<: *run-build
     tags: ["report"]
-    name: lint-rest
+    name: lint-remote-internal
 
   - <<: *run-build
     tags: ["report"]
-    name: lint-rpc
-
-  - <<: *run-build
-    tags: ["report"]
-    name: lint-rpc-internal
+    name: lint-remote
 
   - <<: *run-build
     tags: ["report"]
     name: lint-testutil
-
-  - <<: *run-build
-    tags: ["report"]
-    name: lint-wire
 
 task_groups:
   - name: lintGroup

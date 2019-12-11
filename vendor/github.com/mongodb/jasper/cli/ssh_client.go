@@ -5,10 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"sync"
 
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
+	"github.com/mongodb/jasper/remote"
+	"github.com/mongodb/jasper/scripting"
 	"github.com/pkg/errors"
 )
 
@@ -17,15 +18,12 @@ import (
 type sshClient struct {
 	manager jasper.Manager
 	opts    sshClientOptions
-	shCache struct {
-		mutex sync.Mutex
-		envs  map[string]jasper.ScriptingHarness
-	}
+	shCache scripting.HarnessCache
 }
 
 // NewSSHClient creates a new Jasper manager that connects to a remote
 // machine's Jasper service over SSH using the remote machine's Jasper CLI.
-func NewSSHClient(remoteOpts options.Remote, clientOpts ClientOptions, trackProcs bool) (jasper.RemoteClient, error) {
+func NewSSHClient(remoteOpts options.Remote, clientOpts ClientOptions, trackProcs bool) (remote.Manager, error) {
 	if err := remoteOpts.Validate(); err != nil {
 		return nil, errors.Wrap(err, "problem validating remote options")
 	}
@@ -48,9 +46,9 @@ func NewSSHClient(remoteOpts options.Remote, clientOpts ClientOptions, trackProc
 			Machine: remoteOpts,
 			Client:  clientOpts,
 		},
+		shCache: scripting.NewCache(),
 		manager: manager,
 	}
-	client.shCache.envs = make(map[string]jasper.ScriptingHarness)
 	return client, nil
 }
 
@@ -100,50 +98,11 @@ func (c *sshClient) CreateCommand(ctx context.Context) *jasper.Command {
 	})
 }
 
-func (c *sshClient) CreateScripting(ctx context.Context, opts options.ScriptingHarness) (jasper.ScriptingHarness, error) {
-	c.shCache.mutex.Lock()
-	defer c.shCache.mutex.Unlock()
-
-	sh, ok := c.shCache.envs[opts.ID()]
-	if ok {
-		return sh, nil
-	}
-
-	cliOpts, err := BuildScriptingOptions(opts)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	output, err := c.runManagerCommand(ctx, CreateScriptingCommand, cliOpts)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	_, err = ExtractIDResponse(output)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	sh, err = jasper.NewScriptingHarness(c, opts)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	c.shCache.envs[sh.ID()] = sh
-
-	return sh, nil
+func (c *sshClient) CreateScripting(ctx context.Context, opts options.ScriptingHarness) (scripting.Harness, error) {
+	return c.shCache.Create(c.manager, opts)
 }
-
-func (c *sshClient) GetScripting(ctx context.Context, id string) (jasper.ScriptingHarness, error) {
-	c.shCache.mutex.Lock()
-	defer c.shCache.mutex.Unlock()
-
-	sh, ok := c.shCache.envs[id]
-	if !ok {
-		return nil, errors.Errorf("no locally cached value for %s", id)
-	}
-
-	return sh, nil
+func (c *sshClient) GetScripting(ctx context.Context, id string) (scripting.Harness, error) {
+	return c.shCache.Get(id)
 }
 
 func (c *sshClient) Register(ctx context.Context, proc jasper.Process) error {

@@ -16,9 +16,8 @@ import (
 
 	"github.com/evergreen-ci/service"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/jasper"
-	"github.com/mongodb/jasper/rest"
-	"github.com/mongodb/jasper/rpc"
+	"github.com/mongodb/jasper/remote"
+	"github.com/mongodb/jasper/util"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -101,16 +100,16 @@ func writeOutput(output io.Writer, input interface{}) error {
 // newRemoteClient returns a remote client that connects to the service at the
 // given host and port, with the optional TLS credentials file for RPC
 // communication.
-func newRemoteClient(ctx context.Context, service, host string, port int, credsFilePath string) (jasper.RemoteClient, error) {
+func newRemoteClient(ctx context.Context, service, host string, port int, credsFilePath string) (remote.Manager, error) {
 	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to resolve address")
 	}
 
 	if service == RESTService {
-		return rest.NewClient(addr), nil
+		return remote.NewRestClient(addr), nil
 	} else if service == RPCService {
-		return rpc.NewClientWithFile(ctx, addr, credsFilePath)
+		return remote.NewRPCClientWithFile(ctx, addr, credsFilePath)
 	}
 	return nil, errors.Errorf("unrecognized service type '%s'", service)
 }
@@ -118,7 +117,7 @@ func newRemoteClient(ctx context.Context, service, host string, port int, credsF
 // doPassthroughInputOutput passes input from standard input to the input validator,
 // validates the input, runs the request, and writes the response of the request
 // to standard output.
-func doPassthroughInputOutput(c *cli.Context, input Validator, request func(context.Context, jasper.RemoteClient) (response interface{})) error {
+func doPassthroughInputOutput(c *cli.Context, input Validator, request func(context.Context, remote.Manager) (response interface{})) error {
 	ctx, cancel := context.WithTimeout(context.Background(), clientConnectionTimeout)
 	defer cancel()
 
@@ -129,25 +128,25 @@ func doPassthroughInputOutput(c *cli.Context, input Validator, request func(cont
 		return errors.Wrap(err, "input is invalid")
 	}
 
-	return withConnection(ctx, c, func(client jasper.RemoteClient) error {
+	return withConnection(ctx, c, func(client remote.Manager) error {
 		return errors.Wrap(writeOutput(os.Stdout, request(ctx, client)), "error writing to standard output")
 	})
 }
 
 // doPassthroughOutput runs the request and writes the output of the request to
 // standard output.
-func doPassthroughOutput(c *cli.Context, request func(context.Context, jasper.RemoteClient) (response interface{})) error {
+func doPassthroughOutput(c *cli.Context, request func(context.Context, remote.Manager) (response interface{})) error {
 	ctx, cancel := context.WithTimeout(context.Background(), clientConnectionTimeout)
 	defer cancel()
 
-	return withConnection(ctx, c, func(client jasper.RemoteClient) error {
+	return withConnection(ctx, c, func(client remote.Manager) error {
 		return errors.Wrap(writeOutput(os.Stdout, request(ctx, client)), "error writing to standard output")
 	})
 }
 
 // withConnection runs the operation within the scope of a remote client
 // connection.
-func withConnection(ctx context.Context, c *cli.Context, operation func(jasper.RemoteClient) error) error {
+func withConnection(ctx context.Context, c *cli.Context, operation func(remote.Manager) error) error {
 	host := c.String(hostFlagName)
 	port := c.Int(portFlagName)
 	service := c.String(serviceFlagName)
@@ -176,9 +175,9 @@ func withService(daemon service.Interface, config *service.Config, operation fun
 
 // runServices starts the given services, waits until the context is done, and
 // closes all the running services.
-func runServices(ctx context.Context, makeServices ...func(context.Context) (jasper.CloseFunc, error)) error {
-	closeServices := []jasper.CloseFunc{}
-	closeAllServices := func(closeServices []jasper.CloseFunc) error {
+func runServices(ctx context.Context, makeServices ...func(context.Context) (util.CloseFunc, error)) error {
+	closeServices := []util.CloseFunc{}
+	closeAllServices := func(closeServices []util.CloseFunc) error {
 		catcher := grip.NewBasicCatcher()
 		for _, closeService := range closeServices {
 			catcher.Add(errors.Wrap(closeService(), "error closing service"))

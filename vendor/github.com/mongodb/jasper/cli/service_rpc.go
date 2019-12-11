@@ -10,7 +10,8 @@ import (
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
-	"github.com/mongodb/jasper/rpc"
+	"github.com/mongodb/jasper/remote"
+	"github.com/mongodb/jasper/util"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -121,7 +122,7 @@ func (d *rpcDaemon) run(ctx context.Context) error {
 	return errors.Wrap(runServices(ctx, d.newService), "error running RPC service")
 }
 
-func (d *rpcDaemon) newService(ctx context.Context) (jasper.CloseFunc, error) {
+func (d *rpcDaemon) newService(ctx context.Context) (util.CloseFunc, error) {
 	if d.Manager == nil {
 		return nil, errors.New("manager is not set on RPC service")
 	}
@@ -133,13 +134,13 @@ func (d *rpcDaemon) newService(ctx context.Context) (jasper.CloseFunc, error) {
 
 // newRPCService creates an RPC service around the manager serving requests on
 // the host and port.
-func newRPCService(ctx context.Context, host string, port int, manager jasper.Manager, credsFilePath string) (jasper.CloseFunc, error) {
+func newRPCService(ctx context.Context, host string, port int, manager jasper.Manager, credsFilePath string) (util.CloseFunc, error) {
 	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to resolve RPC address")
 	}
 
-	closeService, err := rpc.StartServiceWithFile(ctx, manager, addr, credsFilePath)
+	closeService, err := remote.StartRPCServiceWithFile(ctx, manager, addr, credsFilePath)
 	if err != nil {
 		return nil, errors.Wrap(err, "error starting RPC service")
 	}

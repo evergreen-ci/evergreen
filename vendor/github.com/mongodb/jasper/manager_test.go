@@ -447,12 +447,6 @@ func TestManagerInterface(t *testing.T) {
 						assert.True(t, findIDInProcList(procID))
 					}
 				},
-				"NonExistentScripting": func(ctx context.Context, t *testing.T, manager Manager, mod testutil.OptsModify) {
-					se, err := manager.GetScripting(ctx, "foo")
-					require.Error(t, err)
-					require.Nil(t, se)
-				},
-				// "": func(ctx context.Context, t *testing.T, manager Manager, mod testutil.OptsModify) {},
 			} {
 				t.Run(name+"/Basic", func(t *testing.T) {
 					tctx, cancel := context.WithTimeout(ctx, testutil.ManagerTestTimeout)
