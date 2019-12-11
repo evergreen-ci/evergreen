@@ -30,7 +30,7 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 	require.NoError(t, err)
 	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", jasperPort))
 	require.NoError(t, err)
-	closeServer, err := remote.StartRPCgService(ctx, manager, addr, nil)
+	closeServer, err := remote.StartRPCService(ctx, manager, addr, nil)
 	require.NoError(t, err)
 	defer func() {
 		assert.NoError(t, closeServer())
