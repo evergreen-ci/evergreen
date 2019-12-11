@@ -391,11 +391,6 @@ mciModule.controller('TaskTimingController', function(
         .append("g")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-        // sort task data by create time
-        $scope.taskData.sort(function(a,b){
-            return moment(a.create_time).diff(moment(b.create_time));
-        })
-
         var maxTime = d3.max($scope.taskData, function(task){return yMap(task);});
         var minTime = d3.min($scope.taskData, function(task){ return yMap(task);});
 
