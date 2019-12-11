@@ -766,7 +766,7 @@ func TestUpsert(t *testing.T) {
 		})
 
 		Convey("Updating some fields of an already inserted host should cause "+
-			"those fields to be updated but should leave status unchanged",
+			"those fields to be updated ",
 			func() {
 				_, err := host.Upsert()
 				So(err, ShouldBeNil)
@@ -795,10 +795,10 @@ func TestUpsert(t *testing.T) {
 				_, err = host.Upsert()
 				So(err, ShouldBeNil)
 
-				// host db status should remain unchanged
+				// host db status should be modified
 				host, err = FindOne(ById(host.Id))
 				So(err, ShouldBeNil)
-				So(host.Status, ShouldEqual, evergreen.HostDecommissioned)
+				So(host.Status, ShouldEqual, evergreen.HostRunning)
 				So(host.Host, ShouldEqual, "host2")
 
 			})
