@@ -239,6 +239,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	editProjectSettings := route.RequiresProjectPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsEdit)
 	viewDistroSettings := route.RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsView)
 	editDistroSettings := route.RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsEdit)
+	removeDistroSettings := route.RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsRemove)
 	viewHosts := route.RequiresDistroPermission(evergreen.PermissionHosts, evergreen.HostsView)
 	editHosts := route.RequiresDistroPermission(evergreen.PermissionHosts, evergreen.HostsEdit)
 
@@ -335,7 +336,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/distros/{distro_id}").Wrap(needsLogin, needsContext, viewDistroSettings).Handler(uis.getDistro).Get()
 	app.AddRoute("/distros/{distro_id}").Wrap(needsSuperUser, needsContext, editDistroSettings).Handler(uis.addDistro).Put()
 	app.AddRoute("/distros/{distro_id}").Wrap(needsSuperUser, needsContext, editDistroSettings).Handler(uis.modifyDistro).Post()
-	app.AddRoute("/distros/{distro_id}").Wrap(needsSuperUser, needsContext, editDistroSettings).Handler(uis.removeDistro).Delete()
+	app.AddRoute("/distros/{distro_id}").Wrap(needsSuperUser, needsContext, removeDistroSettings).Handler(uis.removeDistro).Delete()
 
 	// Event Logs
 	app.AddRoute("/event_log/{resource_type}/{resource_id:[\\w_\\-\\:\\.\\@]+}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.fullEventLogs).Get()
