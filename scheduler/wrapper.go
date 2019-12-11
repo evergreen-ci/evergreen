@@ -155,10 +155,14 @@ func doStaticHostUpdate(d distro.Distro) ([]string, error) {
 			NeedsReprovision: provisionChange,
 			Provisioned:      provisioned,
 		}
-		if provisioned {
-			staticHost.Status = evergreen.HostRunning
+		if dbHost == nil || dbHost.Status == evergreen.HostTerminated {
+			if provisioned {
+				staticHost.Status = evergreen.HostRunning
+			} else {
+				staticHost.Status = evergreen.HostProvisioning
+			}
 		} else {
-			staticHost.Status = evergreen.HostProvisioning
+			staticHost.Status = dbHost.Status
 		}
 
 		if d.Provider == evergreen.ProviderNameStatic {
