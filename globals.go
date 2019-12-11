@@ -587,7 +587,7 @@ var (
 		Value:       0,
 	}
 	DistroSettingsRemove = PermissionLevel{
-		Description: "Remove distro",
+		Description: "Remove distro and edit distro settings",
 		Value:       30,
 	}
 	DistroSettingsEdit = PermissionLevel{

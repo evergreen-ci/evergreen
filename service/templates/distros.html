@@ -914,7 +914,7 @@ Evergreen - Distros
         </p>
         <button type="button" class="btn btn-primary" style="float: left; margin-left: 5px;" ng-disabled="form.$pristine || (form.$dirty && form.$invalid) || !validForm()"
           ng-click="saveConfiguration()">Save Configuration</button>
-        <button type="button" class="btn btn-danger" style="float: right; margin-right: 5px;" ng-hide="!remove" ng-click="openConfirmationModal('removeDistro')"
+        <button type="button" class="btn btn-danger" style="float: right; margin-right: 5px;" ng-show="remove" ng-click="openConfirmationModal('removeDistro')"
           ng-disabled="activeDistro.new">Remove Configuration</button>
         <admin-modal>
           <remove-distro ng-show="confirmationOption == 'removeDistro'"></remove-distro>
