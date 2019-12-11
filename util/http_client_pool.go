@@ -184,7 +184,7 @@ func GetHTTPRetryableClient(conf HTTPRetryConfiguration) *http.Client {
 		statusRetries = append(statusRetries, rehttp.RetryTemporaryErr())
 	}
 
-	retryFns := []rehttp.RetryFn{rehttp.RetyryAny(statusRetries...)}
+	retryFns := []rehttp.RetryFn{rehttp.RetryAny(statusRetries...)}
 
 	if len(conf.Methods) > 0 {
 		retryFns = append(retryFns, rehttp.RetryHTTPMethods(conf.Methods...))
