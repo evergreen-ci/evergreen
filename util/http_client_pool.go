@@ -133,3 +133,74 @@ func GetRetryableOauth2HTTPClient(oauthToken string, fRetry rehttp.RetryFn, fDel
 
 	return client, nil
 }
+
+type HTTPRetryConfiguration struct {
+	MaxDelay        time.Duration
+	BaseDelay       time.Duration
+	MaxRetries      int
+	TemporaryErrors bool
+	Methods         []string
+	Statuses        []int
+}
+
+func NewDefaultHTTPRetryConf() HTTPRetryConfiguration {
+	return HTTPRetryConfiguration{
+		MaxRetries:      100,
+		TemporaryErrors: true,
+		MaxDelay:        5 * time.Second,
+		BaseDelay:       50 * time.Millisecond,
+		Methods: []string{
+			http.MethodGet,
+			http.MethodPost,
+			http.MethodPut,
+			http.MethodDelete,
+			http.MethodPatch,
+		},
+		Statuses: []int{
+			http.StatusInternalServerError,
+			http.StatusBadGateway,
+			http.StatusServiceUnavailable,
+			http.StatusGatewayTimeout,
+			http.StatusInsufficientStorage,
+			http.StatusConflict,
+			http.StatusRequestTimeout,
+			http.StatusPreconditionFailed,
+			http.StatusExpectationFailed,
+		},
+	}
+}
+
+func GetHTTPRetryableClient(conf HTTPRetryConfiguration) *http.Client {
+	client := GetHTTPClient()
+
+	statusRetries := []rehttp.RetryFn{}
+	if len(conf.Statuses) > 0 {
+		statusRetries = append(statusRetries, rehttp.RetryStatuses(conf.Statuses...))
+	} else {
+		conf.TemporaryErrors = true
+	}
+
+	if conf.TemporaryErrors {
+		statusRetries = append(statusRetries, rehttp.RetryTemporaryErr())
+	}
+
+	retryFns := []rehttp.RetryFn{rehttp.RetyryAny(statusRetries...)}
+
+	if len(conf.Methods) > 0 {
+		retryFns = append(retryFns, rehttp.RetryHTTPMethods(conf.Methods...))
+	}
+
+	if conf.MaxRetries > 0 {
+		retryFns = append(retryFns, rehttp.RetryMaxRetries(conf.MaxRetries))
+	}
+
+	client.Transport = rehttp.NewTransport(client.Transport,
+		rehttp.RetryAll(retryFns...),
+		rehttp.ExpJitterDelay(conf.BaseDelay, conf.MaxDelay))
+
+	return client
+}
+
+func GetDefaultHTTPRetryableClient() *http.Client {
+	return GetHTTPRetryableClient(NewDefaultHTTPRetryConf())
+}
