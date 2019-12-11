@@ -145,7 +145,7 @@ type HTTPRetryConfiguration struct {
 
 func NewDefaultHTTPRetryConf() HTTPRetryConfiguration {
 	return HTTPRetryConfiguration{
-		MaxRetries:      100,
+		MaxRetries:      50,
 		TemporaryErrors: true,
 		MaxDelay:        5 * time.Second,
 		BaseDelay:       50 * time.Millisecond,
