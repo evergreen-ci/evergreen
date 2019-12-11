@@ -10,16 +10,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
-
-	"github.com/stretchr/testify/require"
-
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
-
+	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v2"
 )
 
 // ShouldContainResembling tests whether a slice contains an element that DeepEquals
@@ -330,7 +327,7 @@ buildvariants:
 
 func TestTranslateDependsOn(t *testing.T) {
 	Convey("With an intermediate parseProject", t, func() {
-		pp := &parserProject{}
+		pp := &ParserProject{}
 		Convey("a tag-free dependency config should be unchanged", func() {
 			pp.BuildVariants = []parserBV{
 				{Name: "v1"},
@@ -344,7 +341,7 @@ func TestTranslateDependsOn(t *testing.T) {
 						Name: "t2", Variant: &variantSelector{StringSelector: "v1"}}}},
 				},
 			}
-			out, err := translateProject(pp)
+			out, err := TranslateProject(pp)
 			So(out, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			deps := out.Tasks[2].DependsOn
@@ -368,7 +365,7 @@ func TestTranslateDependsOn(t *testing.T) {
 						Name: ".a !.b", Variant: &variantSelector{StringSelector: ".cool"}}}},
 				},
 			}
-			out, err := translateProject(pp)
+			out, err := TranslateProject(pp)
 			So(out, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(out.Tasks[1].DependsOn[0].Name, ShouldEqual, "*")
@@ -396,16 +393,18 @@ func TestTranslateDependsOn(t *testing.T) {
 					{TaskSelector: taskSelector{Name: ".b"}},                                                       //[4] conflicts with above
 				}},
 			}
-			out, err := translateProject(pp)
+
+			out, err := TranslateProject(pp)
 			So(out, ShouldNotBeNil)
 			So(err, ShouldNotBeNil)
+			So(len(strings.Split(err.Error(), "\n")), ShouldEqual, 6)
 		})
 	})
 }
 
 func TestTranslateRequires(t *testing.T) {
 	Convey("With an intermediate parseProject", t, func() {
-		pp := &parserProject{}
+		pp := &ParserProject{}
 		Convey("a task with valid requirements should succeed", func() {
 			pp.BuildVariants = []parserBV{
 				{Name: "v1"},
@@ -418,7 +417,7 @@ func TestTranslateRequires(t *testing.T) {
 					{Name: "t2", Variant: &variantSelector{StringSelector: "v1"}},
 				}},
 			}
-			out, err := translateProject(pp)
+			out, err := TranslateProject(pp)
 			So(out, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			reqs := out.Tasks[2].Requires
@@ -440,16 +439,17 @@ func TestTranslateRequires(t *testing.T) {
 					{Name: "t1 t2"}, //nothing returned
 				}},
 			}
-			out, err := translateProject(pp)
+			out, err := TranslateProject(pp)
 			So(out, ShouldNotBeNil)
 			So(err, ShouldNotBeNil)
+			So(len(strings.Split(err.Error(), "\n")), ShouldEqual, 7)
 		})
 	})
 }
 
 func TestTranslateBuildVariants(t *testing.T) {
 	Convey("With an intermediate parseProject", t, func() {
-		pp := &parserProject{}
+		pp := &ParserProject{}
 		Convey("a project with valid variant tasks should succeed", func() {
 			pp.Tasks = []parserTask{
 				{Name: "t1"},
@@ -466,7 +466,7 @@ func TestTranslateBuildVariants(t *testing.T) {
 				},
 			}}
 
-			out, err := translateProject(pp)
+			out, err := TranslateProject(pp)
 			So(out, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			bvts := out.BuildVariants[0].Tasks
@@ -487,9 +487,10 @@ func TestTranslateBuildVariants(t *testing.T) {
 					{Name: "t1", Requires: taskSelectors{{Name: ".b"}}},
 				},
 			}}
-			out, err := translateProject(pp)
+			out, err := TranslateProject(pp)
 			So(out, ShouldNotBeNil)
 			So(err, ShouldNotBeNil)
+			So(len(strings.Split(err.Error(), "\n")), ShouldEqual, 2)
 		})
 	})
 }
@@ -653,9 +654,10 @@ tasks:
 - name: execTask4
 `
 
-	proj, err := projectFromYAML([]byte(validYml))
+	proj := &Project{}
+	_, err := LoadProjectInto([]byte(validYml), "id", proj)
 	assert.NotNil(proj)
-	assert.NoError(err)
+	assert.Nil(err)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
 	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
 	assert.Len(proj.BuildVariants[1].DisplayTasks, 0)
@@ -685,9 +687,9 @@ tasks:
 - name: execTask4
 `
 
-	proj, err = projectFromYAML([]byte(nonexistentTaskYml))
+	proj = &Project{}
+	_, err = LoadProjectInto([]byte(nonexistentTaskYml), "id", proj)
 	assert.NotNil(proj)
-	assert.Error(err)
 	assert.Contains(err.Error(), "notHere: nothing named 'notHere'")
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
 	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
@@ -717,9 +719,10 @@ tasks:
 - name: execTask4
 `
 
-	proj, err = projectFromYAML([]byte(duplicateTaskYml))
+	proj = &Project{}
+	_, err = LoadProjectInto([]byte(duplicateTaskYml), "id", proj)
 	assert.NotNil(proj)
-	assert.Error(err)
+	assert.NotNil(err)
 	assert.Contains(err.Error(), "execution task execTask3 is listed in more than 1 display task")
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 0)
 
@@ -742,9 +745,10 @@ tasks:
 - name: execTask4
 `
 
-	proj, err = projectFromYAML([]byte(conflictYml))
+	proj = &Project{}
+	_, err = LoadProjectInto([]byte(conflictYml), "id", proj)
 	assert.NotNil(proj)
-	assert.Error(err)
+	assert.NotNil(err)
 	assert.Contains(err.Error(), "display task execTask1 cannot have the same name as an execution task")
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 0)
 
@@ -771,9 +775,10 @@ tasks:
 - name: execTask4
 `
 
-	proj, err = projectFromYAML([]byte(wildcardYml))
+	proj = &Project{}
+	_, err = LoadProjectInto([]byte(wildcardYml), "id", proj)
 	assert.NotNil(proj)
-	assert.NoError(err)
+	assert.Nil(err)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
 	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 3)
 
@@ -804,9 +809,10 @@ tasks:
   tags: [ "even" ]
 `
 
-	proj, err = projectFromYAML([]byte(tagYml))
+	proj = &Project{}
+	_, err = LoadProjectInto([]byte(tagYml), "id", proj)
 	assert.NotNil(proj)
-	assert.NoError(err)
+	assert.Nil(err)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 2)
 	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
 	assert.Len(proj.BuildVariants[0].DisplayTasks[1].ExecutionTasks, 2)
@@ -854,7 +860,7 @@ tasks:
 	assert.Len(pp.BuildVariants[0].DisplayTasks[1].ExecutionTasks, 1)
 	assert.Equal(".even", pp.BuildVariants[0].DisplayTasks[1].ExecutionTasks[0])
 
-	proj, err := translateProject(pp)
+	proj, err := TranslateProject(pp)
 	assert.NotNil(proj)
 	assert.NoError(err)
 	// assert parser project hasn't changed
@@ -912,9 +918,11 @@ buildvariants:
   tasks:
   - name: example_task_group
 `
-	proj, err := projectFromYAML([]byte(validYml))
+
+	proj := &Project{}
+	_, err := LoadProjectInto([]byte(validYml), "id", proj)
 	assert.NotNil(proj)
-	assert.NoError(err)
+	assert.Nil(err)
 	assert.Len(proj.TaskGroups, 1)
 	tg := proj.TaskGroups[0]
 	assert.Equal("example_task_group", tg.Name)
@@ -943,9 +951,11 @@ buildvariants:
   tasks:
   - name: example_task_group
 `
-	proj, err = projectFromYAML([]byte(wrongTaskYml))
+
+	proj = &Project{}
+	_, err = LoadProjectInto([]byte(wrongTaskYml), "id", proj)
 	assert.NotNil(proj)
-	assert.Error(err)
+	assert.NotNil(err)
 	assert.Contains(err.Error(), `nothing named 'example_task_3'`)
 
 	// check that tasks listed in the task group yml maintain their order
@@ -977,9 +987,11 @@ buildvariants:
   tasks:
   - name: example_task_group
 `
-	proj, err = projectFromYAML([]byte(orderedYml))
+
+	proj = &Project{}
+	_, err = LoadProjectInto([]byte(orderedYml), "id", proj)
 	assert.NotNil(proj)
-	assert.NoError(err)
+	assert.Nil(err)
 	for i, t := range proj.TaskGroups[0].Tasks {
 		assert.Equal(strconv.Itoa(i+1), t)
 	}
@@ -1008,9 +1020,11 @@ buildvariants:
   - name: even_task_group
   - name: odd_task_group
 `
-	proj, err = projectFromYAML([]byte(tagYml))
+
+	proj = &Project{}
+	_, err = LoadProjectInto([]byte(tagYml), "id", proj)
 	assert.NotNil(proj)
-	assert.NoError(err)
+	assert.Nil(err)
 	assert.Len(proj.TaskGroups, 2)
 	assert.Equal("even_task_group", proj.TaskGroups[0].Name)
 	assert.Len(proj.TaskGroups[0].Tasks, 2)
@@ -1043,9 +1057,11 @@ buildvariants:
       - task_1
       - task_2
 `
-	proj, err := projectFromYAML([]byte(validYml))
+
+	proj := &Project{}
+	_, err := LoadProjectInto([]byte(validYml), "id", proj)
 	assert.NotNil(proj)
-	assert.NoError(err)
+	assert.Nil(err)
 	assert.Len(proj.TaskGroups, 1)
 	tg := proj.TaskGroups[0]
 	assert.Equal("task_group_1", tg.Name)
@@ -1077,9 +1093,11 @@ buildvariants:
       execution_tasks:
       - ".tag_1"
 `
-	proj, err := projectFromYAML([]byte(validYml))
+
+	proj := &Project{}
+	_, err := LoadProjectInto([]byte(validYml), "id", proj)
 	assert.NotNil(proj)
-	assert.NoError(err)
+	assert.Nil(err)
 	assert.Len(proj.TaskGroups, 1)
 	tg := proj.TaskGroups[0]
 	assert.Equal("task_group_1", tg.Name)
@@ -1111,9 +1129,11 @@ buildvariants:
       - task_1
       - task_2
 `
-	proj, err := projectFromYAML([]byte(validYml))
+
+	proj := &Project{}
+	_, err := LoadProjectInto([]byte(validYml), "id", proj)
 	assert.NotNil(proj)
-	assert.NoError(err)
+	assert.Nil(err)
 	assert.Len(proj.TaskGroups, 1)
 	tg := proj.TaskGroups[0]
 	assert.Equal("task_group_1", tg.Name)
@@ -1144,9 +1164,11 @@ buildvariants:
       execution_tasks:
       - ".tag_1"
 `
-	proj, err := projectFromYAML([]byte(validYml))
+
+	proj := &Project{}
+	_, err := LoadProjectInto([]byte(validYml), "id", proj)
 	assert.NotNil(proj)
-	assert.NoError(err)
+	assert.Nil(err)
 	assert.Len(proj.TaskGroups, 1)
 	tg := proj.TaskGroups[0]
 	assert.Equal("task_group_1", tg.Name)
@@ -1184,9 +1206,11 @@ buildvariants:
     - name: task_4
     - name: task_5
 `
-	proj, err := projectFromYAML([]byte(yml))
+
+	proj := &Project{}
+	_, err := LoadProjectInto([]byte(yml), "id", proj)
 	assert.NotNil(proj)
-	assert.NoError(err)
+	assert.Nil(err)
 	assert.Len(proj.BuildVariants, 3)
 
 	assert.Equal("bv_1", proj.BuildVariants[0].Name)
@@ -1233,9 +1257,10 @@ buildvariants:
   - name: task_2
 `
 
-	proj, err := projectFromYAML([]byte(yml))
+	proj := &Project{}
+	_, err := LoadProjectInto([]byte(yml), "id", proj)
 	assert.NotNil(proj)
-	assert.NoError(err)
+	assert.Nil(err)
 	assert.Len(proj.BuildVariants, 3)
 
 	assert.Len(proj.BuildVariants[0].Tasks, 2)
@@ -1267,17 +1292,31 @@ tasks:
         - type: commandLogger
 `
 
-	proj, err := projectFromYAML([]byte(yml))
+	proj := &Project{}
+	_, err := LoadProjectInto([]byte(yml), "id", proj)
 	assert.NotNil(proj)
-	assert.NoError(err)
+	assert.Nil(err)
 	assert.Equal("something", proj.Loggers.Agent[0].Type)
 	assert.Equal("idk", proj.Loggers.Agent[0].SplunkToken)
 	assert.Equal("somethingElse", proj.Loggers.Agent[1].Type)
 	assert.Equal("commandLogger", proj.Tasks[0].Commands[0].Loggers.System[0].Type)
 }
 
+func TestAddBuildVariant(t *testing.T) {
+	pp := ParserProject{
+		Identifier: "small",
+	}
+
+	pp.AddBuildVariant("name", "my-name", "", nil, []string{"task"})
+	require.Len(t, pp.BuildVariants, 1)
+	assert.Equal(t, pp.BuildVariants[0].Name, "name")
+	assert.Equal(t, pp.BuildVariants[0].DisplayName, "my-name")
+	assert.Nil(t, pp.BuildVariants[0].RunOn)
+	assert.Len(t, pp.BuildVariants[0].Tasks, 1)
+}
+
 func TestParserProjectPersists(t *testing.T) {
-	simpleYml := `
+	simpleYaml := `
 loggers:
   agent:
     - type: something
@@ -1315,7 +1354,7 @@ buildvariants:
 
 	for name, test := range map[string]func(t *testing.T){
 		"simpleYaml": func(t *testing.T) {
-			assert.NoError(t, checkProjectPersists([]byte(simpleYml)))
+			assert.NoError(t, checkProjectPersists([]byte(simpleYaml)))
 		},
 		"self-tests.yml": func(t *testing.T) {
 			filepath := filepath.Join(testutil.GetDirectoryOfFile(), "..", "self-tests.yml")
@@ -1325,7 +1364,7 @@ buildvariants:
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			assert.NoError(t, db.ClearCollections(VersionCollection))
+			assert.NoError(t, db.ClearCollections(ParserProjectCollection))
 			test(t)
 		})
 	}
@@ -1334,34 +1373,53 @@ buildvariants:
 func checkProjectPersists(yml []byte) error {
 	pp, err := createIntermediateProject(yml)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "error creating project")
 	}
+	pp.Id = "my-project"
+	pp.Identifier = "old-project-identifier"
+	pp.ConfigUpdateNumber = 1
+
 	yamlToCompare, err := yaml.Marshal(pp)
 	if err != nil {
 		return errors.Wrapf(err, "error marshalling original project")
 	}
 
-	_, err = createIntermediateProject([]byte(yamlToCompare))
-	if err != nil {
-		return errors.Wrap(err, "marshalled project cannot be parsed")
+	if err = pp.UpsertWithConfigNumber(1); err != nil {
+		return errors.Wrapf(err, "error inserting parser project")
 	}
-	v := Version{
-		Id:            "my-version",
-		ParserProject: pp,
-	}
-	if err = v.Insert(); err != nil {
-		return errors.Wrapf(err, "error inserting version")
-	}
-	newV, err := VersionFindOneId(v.Id)
+	newPP, err := ParserProjectFindOneById(pp.Id)
 	if err != nil {
 		return errors.Wrapf(err, "error finding version")
 	}
-	newYaml, err := yaml.Marshal(newV.ParserProject)
+	newYaml, err := yaml.Marshal(newPP)
 	if err != nil {
 		return errors.Wrapf(err, "error marshalling database project")
 	}
 	if !bytes.Equal(newYaml, yamlToCompare) {
 		return errors.New("yamls not equal")
 	}
+
+	// ensure that updating with the re-parsed project doesn't error
+	pp, err = createIntermediateProject([]byte(newYaml))
+	pp.Id = "my-project"
+	pp.Identifier = "new-project-identifier"
+	if err != nil {
+		return errors.Wrap(err, "error creating intermediate project from stored config")
+	}
+	if err = pp.UpsertWithConfigNumber(2); err != nil {
+		return errors.Wrap(err, "error updating version's project")
+	}
+
+	newPP, err = ParserProjectFindOneById(pp.Id)
+	if err != nil {
+		return errors.Wrapf(err, "error finding updated project")
+	}
+	if newPP.Identifier != pp.Identifier {
+		return errors.New("version project not updated")
+	}
+	if newPP.ConfigUpdateNumber != 2 {
+		return errors.New("Config update number wrong")
+	}
+
 	return nil
 }

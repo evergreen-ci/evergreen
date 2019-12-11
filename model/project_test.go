@@ -41,6 +41,7 @@ func TestFindProject(t *testing.T) {
 			"should be unmarshalled and returned", func() {
 			So(db.ClearCollections(VersionCollection), ShouldBeNil)
 			v := &Version{
+				Id:         "my_version",
 				Owner:      "fakeowner",
 				Repo:       "fakerepo",
 				Branch:     "fakebranch",
@@ -295,9 +296,6 @@ task_groups:
   - example_task_1
   - example_task_2
 `
-	proj, errs := projectFromYAML([]byte(projYml))
-	assert.NotNil(proj)
-	assert.Empty(errs)
 	v := Version{
 		Id:     "v1",
 		Config: projYml,
@@ -1131,7 +1129,7 @@ tasks:
 	s.NoError(err)
 	marshaled, err := yaml.Marshal(intermediate)
 	s.NoError(err)
-	unmarshaled := parserProject{}
+	unmarshaled := ParserProject{}
 	s.NoError(yaml.Unmarshal(marshaled, &unmarshaled))
 }
 
