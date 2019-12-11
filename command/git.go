@@ -154,7 +154,7 @@ func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
 		return nil, errors.Wrap(err, "failed to parse URL from location")
 	}
 	clone := fmt.Sprintf("git clone %s '%s'", thirdparty.FormGitUrl(urlLocation.Host, opts.owner, opts.repo, opts.token), opts.dir)
-	if !opts.mergeTestRequester && opts.shallowClone {
+	if opts.shallowClone {
 		// Experiments with shallow clone on AWS hosts suggest that depth 100 is as fast as 1, but 1000 is slower.
 		clone = fmt.Sprintf("%s --depth 100", clone)
 	}
@@ -174,7 +174,7 @@ func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
 
 func (opts cloneOpts) buildSSHCloneCommand() ([]string, error) {
 	cloneCmd := fmt.Sprintf("git clone '%s' '%s'", opts.location, opts.dir)
-	if !opts.mergeTestRequester && opts.shallowClone {
+	if opts.shallowClone {
 		// Experiments with shallow clone on AWS hosts suggest that depth 100 is as fast as 1, but 1000 is slower.
 		cloneCmd = fmt.Sprintf("%s --depth 100", cloneCmd)
 	}
@@ -245,12 +245,10 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig, opts cloneOp
 		}...)
 
 	} else {
-		if opts.mergeTestRequester {
-			gitCommands = append(gitCommands, fmt.Sprintf("git checkout '%s'", conf.ProjectRef.Branch))
-		} else {
-			if opts.shallowClone {
-				gitCommands = append(gitCommands, fmt.Sprintf("git log HEAD..%s || git fetch --unshallow", conf.Task.Revision))
-			}
+		if opts.shallowClone {
+			gitCommands = append(gitCommands, fmt.Sprintf("git log HEAD..%s || git fetch --unshallow", conf.Task.Revision))
+		}
+		if !opts.mergeTestRequester {
 			gitCommands = append(gitCommands, fmt.Sprintf("git reset --hard %s", conf.Task.Revision))
 		}
 	}
