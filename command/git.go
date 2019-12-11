@@ -155,7 +155,8 @@ func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
 	}
 	clone := fmt.Sprintf("git clone %s '%s'", thirdparty.FormGitUrl(urlLocation.Host, opts.owner, opts.repo, opts.token), opts.dir)
 	if !opts.mergeTestRequester && opts.shallowClone {
-		clone = fmt.Sprintf("%s --depth 1", clone)
+		// Experiments with shallow clone on AWS hosts suggest that depth 100 is as fast as 1, but 1000 is slower.
+		clone = fmt.Sprintf("%s --depth 100", clone)
 	}
 	if opts.branch != "" {
 		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
@@ -174,7 +175,8 @@ func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
 func (opts cloneOpts) buildSSHCloneCommand() ([]string, error) {
 	cloneCmd := fmt.Sprintf("git clone '%s' '%s'", opts.location, opts.dir)
 	if !opts.mergeTestRequester && opts.shallowClone {
-		cloneCmd = fmt.Sprintf("%s --depth 1", cloneCmd)
+		// Experiments with shallow clone on AWS hosts suggest that depth 100 is as fast as 1, but 1000 is slower.
+		cloneCmd = fmt.Sprintf("%s --depth 100", cloneCmd)
 	}
 	if opts.branch != "" {
 		cloneCmd = fmt.Sprintf("%s --branch '%s'", cloneCmd, opts.branch)
