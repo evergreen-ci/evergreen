@@ -107,7 +107,7 @@ imports:
   - name: golang.org/x/oauth2
     version: f047394b6d14284165300fd82dad67edb3a4d7f6
   - name: golang.org/x/sys
-    version: a9d3bda3a223baa6bba6ef412cb273f0fd163c05
+    version: bd437916bb0eb726b873ee8e9b2dcf212d32e2fd
   - name: github.com/google/go-github
     version: 9686ff0746200cf521ce225525b421e13b4eac1a
   - name: github.com/google/go-querystring
