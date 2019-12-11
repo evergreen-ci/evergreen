@@ -182,6 +182,7 @@ func TestMatching(t *testing.T) {
 		{Alias: "two", Variant: "bv2", Task: "t2"},
 		{Alias: "three", Variant: "bv3", TaskTags: []string{"tag3"}},
 		{Alias: "four", VariantTags: []string{"variantTag"}, TaskTags: []string{"tag4"}},
+		{Alias: "five", Variant: "bv4", TaskTags: []string{"!tag3", "tag5"}},
 	}
 	match, err := aliases.HasMatchingVariant("bv1", nil)
 	assert.NoError(err)
@@ -233,11 +234,15 @@ func TestMatching(t *testing.T) {
 	task = &ProjectTask{
 		Tags: []string{"tag4"},
 	}
-	match, err = aliases.HasMatchingTask("bv4", nil, task)
+	match, err = aliases.HasMatchingTask("bv5", nil, task)
 	assert.NoError(err)
 	assert.False(match)
 
 	match, err = aliases.HasMatchingTask("", []string{"variantTag", "notATag"}, task)
+	assert.NoError(err)
+	assert.True(match)
+
+	match, err = aliases.HasMatchingTask("bv4", nil, task)
 	assert.NoError(err)
 	assert.True(match)
 }
