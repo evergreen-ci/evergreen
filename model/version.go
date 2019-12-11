@@ -241,19 +241,3 @@ func (v *Version) UpdateMergeTaskDependencies(p *Project, mergeTask *task.Task) 
 
 	return mergeTask.UpdateDependencies(mergeTaskDependencies)
 }
-
-type VersionsByOrder []Version
-
-func (v VersionsByOrder) Len() int {
-	return len(v)
-}
-
-func (v VersionsByOrder) Less(i, j int) bool {
-	return v[i].RevisionOrderNumber < v[j].RevisionOrderNumber
-}
-
-func (v VersionsByOrder) Swap(i, j int) {
-	temp := v[i]
-	v[i] = v[j]
-	v[j] = temp
-}
