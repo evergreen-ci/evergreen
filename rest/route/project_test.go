@@ -107,9 +107,51 @@ func (s *ProjectPatchByIDSuite) TestRunWithCommitQueueEnabled() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusBadRequest)
+	s.Equal(http.StatusBadRequest, resp.Status())
 	errResp := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal(errResp.Message, "Cannot enable commit queue without a __commit_queue patch definition")
+	s.Equal("cannot enable commit queue without a commit queue patch definition", errResp.Message)
+}
+
+func (s *ProjectPatchByIDSuite) TestHasAliasDefined() {
+	h := s.rm.(*projectIDPatchHandler)
+
+	projectID := "evergreen"
+	// a new definition for the github alias is added
+	pref := &model.APIProjectRef{
+		Identifier: model.ToAPIString(projectID),
+		Aliases: []model.APIProjectAlias{
+			{
+				Alias: model.ToAPIString(evergreen.GithubAlias),
+			},
+		},
+	}
+
+	exists, err := h.hasAliasDefined(pref, evergreen.GithubAlias)
+	s.NoError(err)
+	s.True(exists)
+
+	// a definition already exists
+	s.sc.MockAliasConnector.Aliases = []model.APIProjectAlias{
+		{
+			ID:    model.ToAPIString("abcdef"),
+			Alias: model.ToAPIString(evergreen.GithubAlias),
+		},
+	}
+	pref.Aliases = nil
+	exists, err = h.hasAliasDefined(pref, evergreen.GithubAlias)
+	s.NoError(err)
+	s.True(exists)
+
+	// the only existing github alias is being deleted
+	pref.Aliases = []model.APIProjectAlias{
+		{
+			ID:     model.ToAPIString("abcdef"),
+			Delete: true,
+		},
+	}
+	exists, err = h.hasAliasDefined(pref, evergreen.GithubAlias)
+	s.NoError(err)
+	s.False(exists)
 }
 
 ////////////////////////////////////////////////////////////////////////

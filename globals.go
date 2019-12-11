@@ -187,7 +187,10 @@ const (
 	TaskOrderingMainlineFirst = "mainlinefirst"
 	TaskOrderingPatchFirst    = "patchfirst"
 
+	// CommitQueueAlias and GithubAlias are special aliases to specify variants and tasks for commit queue and GitHub PR patches
 	CommitQueueAlias = "__commit_queue"
+	GithubAlias      = "__github"
+
 	MergeTaskVariant = "commit-queue-merge"
 	MergeTaskName    = "merge-patch"
 	MergeTaskGroup   = "merge-task-group"

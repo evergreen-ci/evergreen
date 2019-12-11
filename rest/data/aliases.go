@@ -83,11 +83,13 @@ func (d *DBAliasConnector) UpdateProjectAliases(projectId string, aliases []rest
 
 // MockAliasConnector is a struct that implements mock versions of
 // Alias-related methods for testing.
-type MockAliasConnector struct{}
+type MockAliasConnector struct {
+	Aliases []restModel.APIProjectAlias
+}
 
 // FindAllAliases is a mock implementation for testing.
 func (d *MockAliasConnector) FindProjectAliases(projectId string) ([]restModel.APIProjectAlias, error) {
-	return nil, nil
+	return d.Aliases, nil
 }
 
 func (d *MockAliasConnector) CopyProjectAliases(oldProjectId, newProjectId string) error {

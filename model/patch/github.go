@@ -21,9 +21,6 @@ const (
 
 	// GithubIntentType represents patch intents created for GitHub.
 	GithubIntentType = "github"
-
-	// GithubAlias is a special alias to specify default variants and tasks for GitHub pull requests.
-	GithubAlias = "__github"
 )
 
 // githubIntent represents an intent to create a patch build as a result of a
@@ -224,7 +221,7 @@ func (g *githubIntent) NewPatch() *Patch {
 	pullURL := fmt.Sprintf("https://github.com/%s/pull/%d", g.BaseRepoName, g.PRNumber)
 	patchDoc := &Patch{
 		Id:          mgobson.NewObjectId(),
-		Alias:       GithubAlias,
+		Alias:       evergreen.GithubAlias,
 		Description: fmt.Sprintf("'%s' pull request #%d by %s: %s (%s)", g.BaseRepoName, g.PRNumber, g.User, g.Title, pullURL),
 		Author:      evergreen.GithubPatchUser,
 		Status:      evergreen.PatchCreated,
@@ -245,5 +242,5 @@ func (g *githubIntent) NewPatch() *Patch {
 }
 
 func (g *githubIntent) GetAlias() string {
-	return GithubAlias
+	return evergreen.GithubAlias
 }
