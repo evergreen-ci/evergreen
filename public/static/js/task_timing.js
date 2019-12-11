@@ -231,7 +231,7 @@ mciModule.controller('TaskTimingController', function(
         var hoverInfo;
         if (isPatch()){
             hoverInfo =  {
-                "revision" : $scope.versions[i].Revision,
+                "revision" : $scope.versions[i].Githash,
                 "duration" : formatDuration(yMap($scope.taskData[i])),
                 "id" : $scope.taskData[i].id,
                 "message" : $scope.versions[i].Description,

@@ -165,10 +165,15 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 		// TODO: switch this to be a query on the builds TaskCache
 		var builds []build.Build
 
+		sortOn := []string{"-" + build.CreateTimeKey}
+		if util.StringSliceContains(evergreen.SystemVersionRequesterTypes, request) {
+			sortOn = []string{"-" + build.RevisionOrderNumberKey}
+		}
+
 		builds, err = build.Find(build.ByProjectAndVariant(project.Identifier, buildVariant, request, statuses).
 			WithFields(build.IdKey, build.CreateTimeKey, build.VersionKey,
 				build.TimeTakenKey, build.TasksKey, build.FinishTimeKey, build.StartTimeKey, build.StatusKey).
-			Sort([]string{"-" + build.RevisionOrderNumberKey}).
+			Sort(sortOn).
 			Limit(limit))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusBadRequest, err)
@@ -197,6 +202,11 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 		data.Builds = uiBuilds
 
 	} else {
+		sortOn := []string{"-" + task.CreateTimeKey}
+		if util.StringSliceContains(evergreen.SystemVersionRequesterTypes, request) {
+			sortOn = []string{"-" + task.RevisionOrderNumberKey}
+		}
+
 		var tasks []task.Task
 
 		fields := []string{task.CreateTimeKey, task.DispatchTimeKey,
@@ -217,7 +227,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 			}
 
 			tasks, err = task.FindAll(task.ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses,
-				buildVariant, taskName, project.Identifier, []string{request}).Limit(limit).WithFields(fields...))
+				buildVariant, taskName, project.Identifier, []string{request}).Limit(limit).Sort(sortOn).WithFields(fields...))
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusNotFound, err)
 				return
@@ -225,7 +235,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 
 		} else {
 			tasks, err = task.FindAll(task.ByStatuses(statuses,
-				buildVariant, taskName, project.Identifier, request).Limit(limit).WithFields(fields...).Sort([]string{"-" + task.RevisionOrderNumberKey}))
+				buildVariant, taskName, project.Identifier, request).Limit(limit).WithFields(fields...).Sort(sortOn))
 
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusNotFound, err)
@@ -276,13 +286,30 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// patches
 		patches, err := patch.Find(patch.ByVersions(versionIds).
-			WithFields(patch.IdKey, patch.CreateTimeKey, patch.DescriptionKey, patch.AuthorKey))
+			WithFields(patch.IdKey, patch.CreateTimeKey, patch.DescriptionKey, patch.AuthorKey, patch.VersionKey, patch.GithashKey))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusNotFound, errors.Wrap(err, "error finding past patches"))
 			return
 		}
-		data.Patches = patches
+		data.Patches = alignPatches(patches, versionIds)
 	}
 
 	gimlet.WriteJSON(w, data)
+}
+
+// alignPatches aligns patches with their corresponding version ids
+func alignPatches(patches []patch.Patch, versionIDs []string) []patch.Patch {
+	patchMap := make(map[string]patch.Patch)
+	for _, p := range patches {
+		patchMap[p.Version] = p
+	}
+
+	alignedPatches := make([]patch.Patch, 0, len(versionIDs))
+	for _, version := range versionIDs {
+		if p, ok := patchMap[version]; ok {
+			alignedPatches = append(alignedPatches, p)
+		}
+	}
+
+	return alignedPatches
 }
