@@ -24,10 +24,10 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
-	"github.com/mongodb/jasper"
 	jmock "github.com/mongodb/jasper/mock"
 	"github.com/mongodb/jasper/options"
-	"github.com/mongodb/jasper/rpc"
+	"github.com/mongodb/jasper/remote"
+	jutil "github.com/mongodb/jasper/util"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1192,7 +1192,7 @@ func setupCredentialsCollection(ctx context.Context, env *mock.Environment) erro
 
 // setupJasperService performs the necessary setup to start a local Jasper
 // service associated with this host.
-func setupJasperService(ctx context.Context, env *mock.Environment, manager *jmock.Manager, h *Host) (jasper.CloseFunc, error) {
+func setupJasperService(ctx context.Context, env *mock.Environment, manager *jmock.Manager, h *Host) (jutil.CloseFunc, error) {
 	if err := h.Insert(); err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -1208,7 +1208,7 @@ func setupJasperService(ctx context.Context, env *mock.Environment, manager *jmo
 		return nil, errors.WithStack(err)
 	}
 
-	closeService, err := rpc.StartService(ctx, manager, addr, creds)
+	closeService, err := remote.StartRPCService(ctx, manager, addr, creds)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -1217,7 +1217,7 @@ func setupJasperService(ctx context.Context, env *mock.Environment, manager *jmo
 
 // teardownJasperService cleans up after a Jasper service has been set up for a
 // host.
-func teardownJasperService(ctx context.Context, closeService jasper.CloseFunc) error {
+func teardownJasperService(ctx context.Context, closeService jutil.CloseFunc) error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(db.ClearCollections(evergreen.CredentialsCollection, Collection))
 	if closeService != nil {
