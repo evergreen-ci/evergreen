@@ -1,10 +1,12 @@
 package grip
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 )
 
@@ -18,4 +20,18 @@ func init() {
 	sender, err := send.NewNativeLogger(std.Name(), std.GetSender().Level())
 	std.Alert(std.SetSender(sender))
 	std.Alert(err)
+}
+
+// MakeStandardLogger constructs a standard library logging instance
+// that logs all messages to the global grip logging instance.
+func MakeStandardLogger(p level.Priority) *log.Logger {
+	return send.MakeStandardLogger(std.GetSender(), p)
+}
+
+// SetDefaultStandardLogger set's the standard library's global
+// logging instance to use grip's global logger at the specified
+// level.
+func SetDefaultStandardLogger(p level.Priority) {
+	log.SetFlags(0)
+	log.SetOutput(send.MakeWriterSender(std.GetSender(), p))
 }

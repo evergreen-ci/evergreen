@@ -110,7 +110,8 @@ func (s *UserTestSuite) SetupTest() {
 	}
 	s.NoError(rm.AddScope(scope4))
 	root := gimlet.Scope{
-		ID: "root",
+		ID:        "root",
+		Resources: []string{"resource1", "resource2", "resource3", "resource4"},
 	}
 	s.NoError(rm.AddScope(root))
 	r1p1 := gimlet.Role{

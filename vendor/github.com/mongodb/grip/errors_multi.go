@@ -51,6 +51,9 @@ type Catcher interface {
 
 	Wrap(error, string)
 	Wrapf(error, string, ...interface{})
+
+	Check(func() error)
+	CheckWhen(bool, func() error)
 }
 
 // multiCatcher provides an interface to collect and coalesse error
@@ -198,6 +201,16 @@ func (c *baseCatcher) NewWhen(cond bool, e string) {
 	}
 
 	c.New(e)
+}
+
+func (c *baseCatcher) Check(fn func() error) { c.Add(fn()) }
+
+func (c *baseCatcher) CheckWhen(cond bool, fn func() error) {
+	if !cond {
+		return
+	}
+
+	c.Add(fn())
 }
 
 func (c *baseCatcher) Errors() []error {
@@ -381,6 +394,18 @@ func (c *timeAnnotatingCatcher) Wrap(err error, m string) {
 
 func (c *timeAnnotatingCatcher) Wrapf(err error, f string, args ...interface{}) {
 	c.Add(WrapErrorTimeMessagef(err, f, args...))
+}
+
+func (c *timeAnnotatingCatcher) Check(fn func() error) {
+	c.Add(fn())
+}
+
+func (c *timeAnnotatingCatcher) CheckWhen(cond bool, fn func() error) {
+	if !cond {
+		return
+	}
+
+	c.Add(fn())
 }
 
 func (c *timeAnnotatingCatcher) Len() int {

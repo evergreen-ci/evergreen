@@ -6,6 +6,8 @@
 package send
 
 import (
+	"log"
+
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 )
@@ -82,4 +84,11 @@ func setup(s Sender, name string, l LevelInfo) (Sender, error) {
 	s.SetName(name)
 
 	return s, nil
+}
+
+// MakeStandardLogger creates a standard library logging
+// instance that logs all messages to the underlying sender
+// directly at the specified level.
+func MakeStandardLogger(s Sender, p level.Priority) *log.Logger {
+	return log.New(MakeWriterSender(s, p), "", 0)
 }

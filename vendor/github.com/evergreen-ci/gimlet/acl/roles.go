@@ -21,7 +21,9 @@ func NewUpdateRoleHandler(m gimlet.RoleManager) gimlet.RouteHandler {
 }
 
 func (h *updateRoleHandler) Factory() gimlet.RouteHandler {
-	return &updateRoleHandler{}
+	return &updateRoleHandler{
+		manager: h.manager,
+	}
 }
 
 func (h *updateRoleHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -57,7 +59,9 @@ func NewGetAllRolesHandler(m gimlet.RoleManager) gimlet.RouteHandler {
 }
 
 func (h *getAllRolesHandler) Factory() gimlet.RouteHandler {
-	return &getAllRolesHandler{}
+	return &getAllRolesHandler{
+		manager: h.manager,
+	}
 }
 
 func (h *getAllRolesHandler) Parse(ctx context.Context, r *http.Request) error {

@@ -9,7 +9,7 @@ const (
 	get httpMethod = iota
 	put
 	post
-	delete
+	del
 	patch
 	head
 	options
@@ -21,7 +21,7 @@ func (m httpMethod) String() string {
 		return http.MethodGet
 	case put:
 		return http.MethodPut
-	case delete:
+	case del:
 		return http.MethodDelete
 	case patch:
 		return http.MethodPatch

@@ -124,12 +124,12 @@ func TestBytesConverter(t *testing.T) {
 		in := c[1]
 
 		buf := &bytes.Buffer{}
-		writePayload(buf, in)
+		_, _ = writePayload(buf, in)
 		assert.Equal([]byte(out), buf.Bytes())
 	}
 
 	buf := &bytes.Buffer{}
-	writePayload(buf, []string{"gimlet", "gimlet"})
+	_, _ = writePayload(buf, []string{"gimlet", "gimlet"})
 	assert.Equal([]byte("gimlet\ngimlet"), buf.Bytes())
 }
 

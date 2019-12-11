@@ -218,7 +218,7 @@ func (r *APIRoute) Post() *APIRoute {
 // Delete is a chainable method to add a handler for the DELETE method
 // to the current route. Routes may specify multiple methods.
 func (r *APIRoute) Delete() *APIRoute {
-	r.methods = append(r.methods, delete)
+	r.methods = append(r.methods, del)
 	return r
 }
 
@@ -250,7 +250,7 @@ func (r *APIRoute) Method(m string) *APIRoute {
 		return r.Put()
 	case post.String():
 		return r.Post()
-	case delete.String():
+	case del.String():
 		return r.Delete()
 	case patch.String():
 		return r.Patch()

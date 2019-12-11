@@ -29,7 +29,7 @@ type VirtualMemoryStat struct {
 	// Percentage of RAM used by programs
 	//
 	// This value is computed from the kernel specific values.
-	UsedPercent float64 `json:"usedPercent,omitempty" bson:"usedPercent,omitempty"`
+	UsedPercent float64 `json:"usedPercent" bson:"usedPercent,omitempty"`
 
 	// This is the kernel's notion of free memory; RAM chips whose bits nobody
 	// cares about the value of right now. For a human consumable number,
@@ -58,6 +58,7 @@ type VirtualMemoryStat struct {
 	Shared         uint64 `json:"shared" bson:"shared,omitempty"`
 	Slab           uint64 `json:"slab" bson:"slab,omitempty"`
 	SReclaimable   uint64 `json:"sreclaimable" bson:"sreclaimable,omitempty"`
+	SUnreclaim     uint64 `json:"sunreclaim" bson:"sunreclaim,omitempty"`
 	PageTables     uint64 `json:"pagetables" bson:"pagetables,omitempty"`
 	SwapCached     uint64 `json:"swapcached" bson:"swapcached,omitempty"`
 	CommitLimit    uint64 `json:"commitlimit" bson:"commitlimit,omitempty"`
@@ -81,7 +82,7 @@ type SwapMemoryStat struct {
 	Total       uint64  `json:"total" bson:"total,omitempty"`
 	Used        uint64  `json:"used" bson:"used,omitempty"`
 	Free        uint64  `json:"free" bson:"free,omitempty"`
-	UsedPercent float64 `json:"usedPercent,omitempty" bson:"usedPercent,omitempty"`
+	UsedPercent float64 `json:"usedPercent" bson:"usedPercent,omitempty"`
 	Sin         uint64  `json:"sin" bson:"sin,omitempty"`
 	Sout        uint64  `json:"sout" bson:"sout,omitempty"`
 	PgIn        uint64  `json:"pgin" bson:"pgin,omitempty"`

@@ -93,6 +93,9 @@ type RoleManager interface {
 	// type and returns a list of scopes filtered by the resource type.
 	FilterScopesByResourceType([]string, string) ([]Scope, error)
 
+	// FindScopeForResources returns a scope that exactly matches a given set of resources
+	FindScopeForResources(string, ...string) (*Scope, error)
+
 	// AddScope adds a scope to the manager
 	AddScope(Scope) error
 
@@ -102,4 +105,10 @@ type RoleManager interface {
 	// RegisterPermissions adds a list of strings to the role manager as valid permission keys. Returns an
 	// error if the same permission is registered more than once
 	RegisterPermissions([]string) error
+
+	// FindRolesWithPermissions returns a role that exactly matches the given resources and permissions
+	FindRoleWithPermissions(string, []string, Permissions) (*Role, error)
+
+	// Clear deletes all roles and scopes. This should only be used in tests
+	Clear() error
 }
