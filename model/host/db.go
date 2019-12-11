@@ -182,7 +182,7 @@ func IdleEphemeralGroupedByDistroID() ([]IdleHostsByDistroID, error) {
 		},
 		{
 			"$group": mgobson.M{
-				"_id":                             "$" + bsonutil.GetDottedKeyName(DistroKey, distro.IdKey),
+				"_id": "$" + bsonutil.GetDottedKeyName(DistroKey, distro.IdKey),
 				HostsByDistroRunningHostsCountKey: mgobson.M{"$sum": 1},
 				HostsByDistroIdleHostsKey:         mgobson.M{"$push": bson.M{"$cond": []interface{}{mgobson.M{"$eq": []interface{}{"$running_task", mgobson.Undefined}}, "$$ROOT", mgobson.Undefined}}},
 			},

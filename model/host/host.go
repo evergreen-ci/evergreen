@@ -1189,13 +1189,13 @@ func (h *Host) Upsert() (*adb.ChangeInfo, error) {
 		ProvisionedKey:       h.Provisioned,
 		ProvisionAttemptsKey: h.ProvisionAttempts,
 		ProvisionOptionsKey:  h.ProvisionOptions,
-		StatusKey:            h.Status,
 		StartTimeKey:         h.StartTime,
 		HasContainersKey:     h.HasContainers,
 		ContainerImagesKey:   h.ContainerImages,
 	}
 	update := bson.M{
 		"$setOnInsert": bson.M{
+			StatusKey:     h.Status,
 			CreateTimeKey: h.CreationTime,
 		},
 	}
