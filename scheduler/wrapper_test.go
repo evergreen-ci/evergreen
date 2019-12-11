@@ -390,6 +390,106 @@ func TestDoStaticHostUpdate(t *testing.T) {
 			assert.Equal(t, host.ReprovisionToLegacy, dbHost.NeedsReprovision)
 			assert.True(t, dbHost.Provisioned)
 		},
+		"QuarantinedLegacyHostOnLegacyDistro": func(t *testing.T) {
+			h := legacyHost()
+			h.Status = evergreen.HostQuarantined
+			require.NoError(t, h.Insert())
+			d := distro.Distro{
+				Id:               "distro",
+				ProviderSettings: makeStaticHostProviderSettings(t, h.Id),
+				Provider:         evergreen.ProviderNameStatic,
+				BootstrapSettings: distro.BootstrapSettings{
+					Method:        distro.BootstrapMethodLegacySSH,
+					Communication: distro.BootstrapMethodLegacySSH,
+				},
+			}
+
+			hosts, err := doStaticHostUpdate(d)
+			require.NoError(t, err)
+			require.Len(t, hosts, 1)
+			assert.Equal(t, h.Id, hosts[0])
+
+			dbHost, err := host.FindOneId(h.Id)
+			require.NoError(t, err)
+			assert.Equal(t, evergreen.HostQuarantined, dbHost.Status)
+			assert.Equal(t, host.ReprovisionNone, dbHost.NeedsReprovision)
+			assert.True(t, dbHost.Provisioned)
+		},
+		"QuarantinedLegacyHostOnNonLegacyDistro": func(t *testing.T) {
+			h := legacyHost()
+			h.Status = evergreen.HostQuarantined
+			require.NoError(t, h.Insert())
+			d := distro.Distro{
+				Id:               "distro",
+				ProviderSettings: makeStaticHostProviderSettings(t, h.Id),
+				Provider:         evergreen.ProviderNameStatic,
+				BootstrapSettings: distro.BootstrapSettings{
+					Method:        distro.BootstrapMethodSSH,
+					Communication: distro.BootstrapMethodSSH,
+				},
+			}
+
+			hosts, err := doStaticHostUpdate(d)
+			require.NoError(t, err)
+			require.Len(t, hosts, 1)
+			assert.Equal(t, h.Id, hosts[0])
+
+			dbHost, err := host.FindOneId(h.Id)
+			require.NoError(t, err)
+			assert.Equal(t, evergreen.HostQuarantined, dbHost.Status)
+			assert.Equal(t, host.ReprovisionToNew, dbHost.NeedsReprovision)
+			assert.True(t, dbHost.Provisioned)
+		},
+		"QuarantinedNonLegacyHostOnNonLegacyDistro": func(t *testing.T) {
+			h := nonLegacyHost()
+			h.Status = evergreen.HostQuarantined
+			require.NoError(t, h.Insert())
+			d := distro.Distro{
+				Id:               "distro",
+				ProviderSettings: makeStaticHostProviderSettings(t, h.Id),
+				Provider:         evergreen.ProviderNameStatic,
+				BootstrapSettings: distro.BootstrapSettings{
+					Method:        distro.BootstrapMethodSSH,
+					Communication: distro.BootstrapMethodSSH,
+				},
+			}
+
+			hosts, err := doStaticHostUpdate(d)
+			require.NoError(t, err)
+			require.Len(t, hosts, 1)
+			assert.Equal(t, h.Id, hosts[0])
+
+			dbHost, err := host.FindOneId(h.Id)
+			require.NoError(t, err)
+			assert.Equal(t, evergreen.HostQuarantined, dbHost.Status)
+			assert.Equal(t, host.ReprovisionNone, dbHost.NeedsReprovision)
+			assert.True(t, dbHost.Provisioned)
+		},
+		"QuarantinedNonLegacyHostOnLegacyDistro": func(t *testing.T) {
+			h := nonLegacyHost()
+			h.Status = evergreen.HostQuarantined
+			require.NoError(t, h.Insert())
+			d := distro.Distro{
+				Id:               "distro",
+				ProviderSettings: makeStaticHostProviderSettings(t, h.Id),
+				Provider:         evergreen.ProviderNameStatic,
+				BootstrapSettings: distro.BootstrapSettings{
+					Method:        distro.BootstrapMethodLegacySSH,
+					Communication: distro.BootstrapMethodLegacySSH,
+				},
+			}
+
+			hosts, err := doStaticHostUpdate(d)
+			require.NoError(t, err)
+			require.Len(t, hosts, 1)
+			assert.Equal(t, h.Id, hosts[0])
+
+			dbHost, err := host.FindOneId(h.Id)
+			require.NoError(t, err)
+			assert.Equal(t, evergreen.HostQuarantined, dbHost.Status)
+			assert.Equal(t, host.ReprovisionToLegacy, dbHost.NeedsReprovision)
+			assert.True(t, dbHost.Provisioned)
+		},
 	} {
 		t.Run(testName, func(t *testing.T) {
 			require.NoError(t, db.Clear(host.Collection))
