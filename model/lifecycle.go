@@ -1294,7 +1294,7 @@ func AddNewTasks(ctx context.Context, activated bool, v *Version, p *Project, pa
 		return nil
 	}
 
-	builds, err := build.Find(build.ByIds(v.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey))
+	builds, err := build.Find(build.ByIds(v.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey, build.RequesterKey))
 	if err != nil {
 		return err
 	}
