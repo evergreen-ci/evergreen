@@ -48,12 +48,12 @@ func (h *Host) TearDownCommand() string {
 	return fmt.Sprintf("cd %s && ./%s host teardown", h.Distro.HomeDir(), h.Distro.BinaryName())
 }
 
-// TearDownCommandOverSSH returns a command for running a teardown script on a host. This command
+// TearDownDirectlyCommand returns a command for running a teardown script on a host. This command
 // runs if there is a problem running host teardown with the agent and is intended only as a
 // backstop if multiple agent deploys interfere with one another
 // (https://jira.mongodb.org/browse/EVG-5972). It likely can be removed after work to improve amboy
 // job locking or the SSH dependency.
-func TearDownCommandOverSSH() string {
+func TearDownDirectlyCommand() string {
 	chmod := ChmodCommandWithSudo(context.Background(), evergreen.TeardownScriptName, false).Args
 	chmodString := strings.Join(chmod, " ")
 	sh := ShCommandWithSudo(context.Background(), evergreen.TeardownScriptName, false).Args
