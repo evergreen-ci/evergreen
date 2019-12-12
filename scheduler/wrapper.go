@@ -140,9 +140,6 @@ func doStaticHostUpdate(d distro.Distro) ([]string, error) {
 			return nil, errors.Wrapf(err, "error finding host named %s", h.Name)
 		}
 		provisionChange := needsReprovisioning(d, dbHost)
-		if provisionChange == host.ReprovisionNone && !dbHost.ReprovisioningLocked {
-			provisionChange = dbHost.NeedsReprovision
-		}
 
 		provisioned := provisionChange == host.ReprovisionNone || (dbHost != nil && dbHost.Provisioned)
 		staticHost := host.Host{
@@ -154,6 +151,15 @@ func doStaticHostUpdate(d distro.Distro) ([]string, error) {
 			StartedBy:        evergreen.User,
 			NeedsReprovision: provisionChange,
 			Provisioned:      provisioned,
+		}
+		if dbHost == nil || dbHost.Status == evergreen.HostTerminated {
+			if provisioned {
+				staticHost.Status = evergreen.HostRunning
+			} else {
+				staticHost.Status = evergreen.HostProvisioning
+			}
+		} else {
+			staticHost.Status = dbHost.Status
 		}
 
 		if d.Provider == evergreen.ProviderNameStatic {
