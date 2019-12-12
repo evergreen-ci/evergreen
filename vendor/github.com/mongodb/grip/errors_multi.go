@@ -19,6 +19,10 @@ import (
 // don't translate errors into string internally.
 //
 
+// CheckFunction are functions which take no arguments and return an
+// error.
+type CheckFunction func() error
+
 // Catcher is an interface for an error collector for use when
 // implementing continue-on-error semantics in concurrent
 // operations. There are three different Catcher implementations
@@ -52,8 +56,9 @@ type Catcher interface {
 	Wrap(error, string)
 	Wrapf(error, string, ...interface{})
 
-	Check(func() error)
-	CheckWhen(bool, func() error)
+	Check(CheckFunction)
+	CheckExtend([]CheckFunction)
+	CheckWhen(bool, CheckFunction)
 }
 
 // multiCatcher provides an interface to collect and coalesse error
@@ -203,14 +208,20 @@ func (c *baseCatcher) NewWhen(cond bool, e string) {
 	c.New(e)
 }
 
-func (c *baseCatcher) Check(fn func() error) { c.Add(fn()) }
+func (c *baseCatcher) Check(fn CheckFunction) { c.Add(fn()) }
 
-func (c *baseCatcher) CheckWhen(cond bool, fn func() error) {
+func (c *baseCatcher) CheckWhen(cond bool, fn CheckFunction) {
 	if !cond {
 		return
 	}
 
 	c.Add(fn())
+}
+
+func (c *baseCatcher) CheckExtend(fns []CheckFunction) {
+	for _, fn := range fns {
+		c.Add(fn())
+	}
 }
 
 func (c *baseCatcher) Errors() []error {
@@ -396,16 +407,22 @@ func (c *timeAnnotatingCatcher) Wrapf(err error, f string, args ...interface{}) 
 	c.Add(WrapErrorTimeMessagef(err, f, args...))
 }
 
-func (c *timeAnnotatingCatcher) Check(fn func() error) {
+func (c *timeAnnotatingCatcher) Check(fn CheckFunction) {
 	c.Add(fn())
 }
 
-func (c *timeAnnotatingCatcher) CheckWhen(cond bool, fn func() error) {
+func (c *timeAnnotatingCatcher) CheckWhen(cond bool, fn CheckFunction) {
 	if !cond {
 		return
 	}
 
 	c.Add(fn())
+}
+
+func (c *timeAnnotatingCatcher) CheckExtend(fns []CheckFunction) {
+	for _, fn := range fns {
+		c.Add(fn())
+	}
 }
 
 func (c *timeAnnotatingCatcher) Len() int {

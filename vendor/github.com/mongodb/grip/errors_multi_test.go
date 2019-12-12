@@ -346,3 +346,24 @@ func (s *CatcherSuite) TestCheckWhenNoError() {
 	s.catcher.Check(fn)
 	s.Equal(s.catcher.Len(), 0)
 }
+
+func (s *CatcherSuite) TestCheckExtendNoError() {
+	fn := func() error { return nil }
+	s.catcher.CheckExtend([]CheckFunction{fn, fn, fn})
+	s.Equal(s.catcher.Len(), 0)
+}
+
+func (s *CatcherSuite) TestCheckExtendError() {
+	fn := func() error { return errors.New("hi") }
+	s.catcher.CheckExtend([]CheckFunction{fn, fn, fn})
+	s.Equal(s.catcher.Len(), 3)
+}
+
+func (s *CatcherSuite) TestCheckExtendMixed() {
+	s.catcher.CheckExtend([]CheckFunction{
+		func() error { return errors.New("hi") },
+		func() error { return errors.New("hi") },
+		func() error { return nil },
+	})
+	s.Equal(s.catcher.Len(), 2)
+}
