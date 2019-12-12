@@ -437,7 +437,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 			dbHost, err := host.FindOneId(h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostQuarantined, dbHost.Status)
-			assert.Equal(t, host.ReprovisionToNew, dbHost.NeedsReprovision)
+			assert.Equal(t, host.ReprovisionNone, dbHost.NeedsReprovision)
 			assert.True(t, dbHost.Provisioned)
 		},
 		"QuarantinedNonLegacyHostOnNonLegacyDistro": func(t *testing.T) {
@@ -487,7 +487,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 			dbHost, err := host.FindOneId(h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostQuarantined, dbHost.Status)
-			assert.Equal(t, host.ReprovisionToLegacy, dbHost.NeedsReprovision)
+			assert.Equal(t, host.ReprovisionNone, dbHost.NeedsReprovision)
 			assert.True(t, dbHost.Provisioned)
 		},
 	} {

@@ -185,6 +185,9 @@ func needsReprovisioning(d distro.Distro, h *host.Host) host.ReprovisionType {
 		}
 		return host.ReprovisionNone
 	}
+	if h.Status == evergreen.HostQuarantined {
+		return host.ReprovisionNone
+	}
 
 	if h.LegacyBootstrap() && d.BootstrapSettings.Method != "" && d.BootstrapSettings.Method != distro.BootstrapMethodLegacySSH {
 		return host.ReprovisionToNew
