@@ -231,7 +231,7 @@ mciModule.controller('TaskTimingController', function(
         var hoverInfo;
         if (isPatch()){
             hoverInfo =  {
-                "revision" : $scope.versions[i].Githash,
+                "revision" : $scope.versions[i].Revision,
                 "duration" : formatDuration(yMap($scope.taskData[i])),
                 "id" : $scope.taskData[i].id,
                 "message" : $scope.versions[i].Description,
@@ -390,6 +390,11 @@ mciModule.controller('TaskTimingController', function(
         .attr("height", height + margin.top + margin.bottom)
         .append("g")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        // sort task data by create time
+        $scope.taskData.sort(function(a,b){
+            return moment(a.create_time).diff(moment(b.create_time));
+        })
 
         var maxTime = d3.max($scope.taskData, function(task){return yMap(task);});
         var minTime = d3.min($scope.taskData, function(task){ return yMap(task);});

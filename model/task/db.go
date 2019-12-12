@@ -295,7 +295,7 @@ func ByBeforeRevisionWithStatusesAndRequesters(revisionOrder int, statuses []str
 			"$in": statuses,
 		},
 		ProjectKey: project,
-	})
+	}).Sort([]string{"-" + RevisionOrderNumberKey})
 }
 
 // ByTimeRun returns all tasks that are running in between two given times.

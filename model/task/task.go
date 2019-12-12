@@ -542,7 +542,7 @@ func (t *Task) PreviousCompletedTask(project string, statuses []string) (*Task, 
 		statuses = CompletedStatuses
 	}
 	return FindOneNoMerge(ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses, t.BuildVariant,
-		t.DisplayName, project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + RevisionOrderNumberKey}))
+		t.DisplayName, project, evergreen.SystemVersionRequesterTypes))
 }
 
 func (t *Task) cacheExpectedDuration() error {

@@ -2,6 +2,7 @@ package service
 
 import (
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -167,7 +168,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 		builds, err = build.Find(build.ByProjectAndVariant(project.Identifier, buildVariant, request, statuses).
 			WithFields(build.IdKey, build.CreateTimeKey, build.VersionKey,
 				build.TimeTakenKey, build.TasksKey, build.FinishTimeKey, build.StartTimeKey, build.StatusKey).
-			Sort([]string{"-" + build.CreateTimeKey}).
+			Sort([]string{"-" + build.RevisionOrderNumberKey}).
 			Limit(limit))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusBadRequest, err)
@@ -216,7 +217,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 			}
 
 			tasks, err = task.FindAll(task.ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses,
-				buildVariant, taskName, project.Identifier, []string{request}).Limit(limit).Sort([]string{"-" + task.CreateTimeKey}).WithFields(fields...))
+				buildVariant, taskName, project.Identifier, []string{request}).Limit(limit).WithFields(fields...))
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusNotFound, err)
 				return
@@ -224,7 +225,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 
 		} else {
 			tasks, err = task.FindAll(task.ByStatuses(statuses,
-				buildVariant, taskName, project.Identifier, request).Limit(limit).WithFields(fields...).Sort([]string{"-" + task.CreateTimeKey}))
+				buildVariant, taskName, project.Identifier, request).Limit(limit).WithFields(fields...).Sort([]string{"-" + task.RevisionOrderNumberKey}))
 
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusNotFound, err)
@@ -264,55 +265,24 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 	if util.StringSliceContains(evergreen.SystemVersionRequesterTypes, request) {
 		versions, err := model.VersionFind(model.VersionByIds(versionIds).
 			WithFields(model.VersionIdKey, model.VersionCreateTimeKey, model.VersionMessageKey,
-				model.VersionAuthorKey, model.VersionRevisionKey))
+				model.VersionAuthorKey, model.VersionRevisionKey, model.VersionRevisionOrderNumberKey))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusNotFound, errors.Wrap(err, "error finding past versions"))
 			return
 		}
-		data.Versions = alignVersions(versions, versionIds)
+		sort.Sort(sort.Reverse(model.VersionsByOrder(versions)))
+
+		data.Versions = versions
 	} else {
 		// patches
 		patches, err := patch.Find(patch.ByVersions(versionIds).
-			WithFields(patch.IdKey, patch.CreateTimeKey, patch.DescriptionKey, patch.AuthorKey, patch.VersionKey, patch.GithashKey))
+			WithFields(patch.IdKey, patch.CreateTimeKey, patch.DescriptionKey, patch.AuthorKey))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusNotFound, errors.Wrap(err, "error finding past patches"))
 			return
 		}
-		data.Patches = alignPatches(patches, versionIds)
+		data.Patches = patches
 	}
 
 	gimlet.WriteJSON(w, data)
-}
-
-func alignVersions(versions []model.Version, versionIDs []string) []model.Version {
-	versionMap := make(map[string]model.Version)
-	for _, v := range versions {
-		versionMap[v.Id] = v
-	}
-
-	alignedVersions := make([]model.Version, 0, len(versionIDs))
-	for _, vID := range versionIDs {
-		if v, ok := versionMap[vID]; ok {
-			alignedVersions = append(alignedVersions, v)
-		}
-	}
-
-	return alignedVersions
-}
-
-// alignPatches aligns patches with their corresponding version ids
-func alignPatches(patches []patch.Patch, versionIDs []string) []patch.Patch {
-	patchMap := make(map[string]patch.Patch)
-	for _, p := range patches {
-		patchMap[p.Version] = p
-	}
-
-	alignedPatches := make([]patch.Patch, 0, len(versionIDs))
-	for _, version := range versionIDs {
-		if p, ok := patchMap[version]; ok {
-			alignedPatches = append(alignedPatches, p)
-		}
-	}
-
-	return alignedPatches
 }
