@@ -61,6 +61,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"regexp"
 	"time"
 
 	"github.com/evergreen-ci/birch"
@@ -73,6 +74,7 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -157,12 +159,12 @@ var (
 	dbTestStatsIdDateKey         = bsonutil.MustHaveTag(DbTestStatsId{}, "Date")
 
 	// BSON fields for the test stats struct
-        dbTestStatsIdKey              = bsonutil.MustHaveTag(DbTestStats{}, "Id")
-        dbTestStatsNumPassKey         = bsonutil.MustHaveTag(DbTestStats{}, "NumPass")
-        dbTestStatsNumFailKey         = bsonutil.MustHaveTag(DbTestStats{}, "NumFail")
-        dbTestStatsAvgDurationPassKey = bsonutil.MustHaveTag(DbTestStats{}, "AvgDurationPass")
-        dbTestStatsLastUpdateKey      = bsonutil.MustHaveTag(DbTestStats{}, "LastUpdate")
-        dbTestStatsLastIDKey          = bsonutil.MustHaveTag(DbTestStats{}, "LastID")
+	dbTestStatsIdKey              = bsonutil.MustHaveTag(DbTestStats{}, "Id")
+	dbTestStatsNumPassKey         = bsonutil.MustHaveTag(DbTestStats{}, "NumPass")
+	dbTestStatsNumFailKey         = bsonutil.MustHaveTag(DbTestStats{}, "NumFail")
+	dbTestStatsAvgDurationPassKey = bsonutil.MustHaveTag(DbTestStats{}, "AvgDurationPass")
+	dbTestStatsLastUpdateKey      = bsonutil.MustHaveTag(DbTestStats{}, "LastUpdate")
+	dbTestStatsLastIDKey          = bsonutil.MustHaveTag(DbTestStats{}, "LastID")
 
 	// BSON dotted field names for test stats id elements
 	DbTestStatsIdTestFileKeyFull     = bsonutil.GetDottedKeyName(dbTestStatsIdKey, dbTestStatsIdTestFileKey)
@@ -175,14 +177,14 @@ var (
 )
 
 // hourlyTestStatsPipeline returns a pipeline aggregating task documents into hourly test stats.
-func hourlyTestStatsPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time, lastID mgobson.ObjectId) []bson.M {
-        return getHourlyTestStatsPipeline(projectId, requester, start, end, tasks, lastUpdate, lastID, false)
+func hourlyTestStatsPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time) []bson.M {
+	return getHourlyTestStatsPipeline(projectId, requester, start, end, tasks, lastUpdate, false)
 }
 
 // hourlyTestStatsForOldTasksPipeline returns a pipeline aggregating old task documents into hourly test stats.
-func hourlyTestStatsForOldTasksPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time, lastID mgobson.ObjectId) []bson.M {
+func hourlyTestStatsForOldTasksPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time) []bson.M {
 	// Using the same pipeline as for the tasks collection as the base.
-        basePipeline := getHourlyTestStatsPipeline(projectId, requester, start, end, tasks, lastUpdate, lastID, true)
+	basePipeline := getHourlyTestStatsPipeline(projectId, requester, start, end, tasks, lastUpdate, true)
 	// And the merge the documents with the existing ones.
 	mergePipeline := []bson.M{
 		{"$lookup": bson.M{
@@ -222,7 +224,7 @@ func hourlyTestStatsForOldTasksPipeline(projectId string, requester string, star
 
 // getHourlyTestStatsPipeline is an internal helper function to create a pipeline aggregating task
 // documents into hourly test stats.
-func getHourlyTestStatsPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time, lastID mgobson.ObjectId, oldTasks bool) []bson.M {
+func getHourlyTestStatsPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time, oldTasks bool) []bson.M {
 	var taskIdExpr string
 	var displayTaskLookupCollection string
 	var comment string
@@ -315,154 +317,169 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 
 // hourlyTestStatsMergePipeline is an internal helper function to create a pipeline aggregating testresults
 // documents  directly into hourly test stats.
-func hourlyTestStatsMergePipeline(projectIDs []string, requesters []string, tasks []string, lastUpdate time.Time, lastID mgobson.ObjectId, start time.Time, end time.Time) []bson.M {
+func hourlyTestStatsMergePipeline(projectIDs []string, requesters []string, tasksToIgnore []*regexp.Regexp, lastUpdate time.Time, mergeBatchLimit int, startID mgobson.ObjectId, endID mgobson.ObjectId) []bson.M {
 
-        comment := []bson.M{
-                {"$match": bson.M{"$comment": fmt.Sprintf("cache historical test stats: Hourly Test Stats Merge Pipeline %s to %s", start.Format("2006-01-02 15:04:05"), end.Format("2006-01-02 15:04:05"))}},
-        }
-        pipeline := testStatsMergePipeline(false, projectIDs, requesters, tasks, lastUpdate, lastID, start, end)
-        return append(comment, pipeline...)
+	comment := []bson.M{
+		{"$match": bson.M{"$comment": fmt.Sprintf("cache historical test stats: Hourly Test Stats Merge Pipeline %s to %s", startID.Time().Format("2006-01-02 15:04:05"), endID.Time().Format("2006-01-02 15:04:05"))}},
+	}
+	pipeline := testStatsMergePipeline(false, projectIDs, requesters, tasksToIgnore, lastUpdate, startID, endID, mergeBatchLimit)
+	return append(comment, pipeline...)
 }
 
 // dailyTestStatsMergePipeline is an internal helper function to create a pipeline aggregating testresults
 // documents  directly into hourly test stats.
-func dailyTestStatsMergePipeline(projectIDs []string, requesters []string, tasks []string, lastUpdate time.Time, lastID mgobson.ObjectId, start time.Time, end time.Time) []bson.M {
-        comment := []bson.M{
-                {"$match": bson.M{"$comment": fmt.Sprintf("cache historical test stats: Daily Test Stats Merge Pipeline %s to %s", start.Format("2006-01-02 15:04:05"), end.Format("2006-01-02 15:04:05"))}},
-        }
-        pipeline := testStatsMergePipeline(true, projectIDs, requesters, tasks, lastUpdate, lastID, start, end)
-        return append(comment, pipeline...)
+func dailyTestStatsMergePipeline(projectIDs []string, requesters []string, tasksToIgnore []*regexp.Regexp, lastUpdate time.Time, mergeBatchLimit int, startID mgobson.ObjectId, endID mgobson.ObjectId) []bson.M {
+	comment := []bson.M{
+		{"$match": bson.M{"$comment": fmt.Sprintf("cache historical test stats: Daily Test Stats Merge Pipeline %s to %s", startID.Time().Format("2006-01-02 15:04:05"), endID.Time().Format("2006-01-02 15:04:05"))}},
+	}
+	pipeline := testStatsMergePipeline(true, projectIDs, requesters, tasksToIgnore, lastUpdate, startID, endID, mergeBatchLimit)
+	return append(comment, pipeline...)
+}
+
+// regexToBson converts a slice of regexes to bson form to allow them to be used
+// in a query.
+func regexToBson(tasksToIgnore []*regexp.Regexp) []primitive.Regex {
+	patterns := []primitive.Regex{}
+	for _, pattern := range tasksToIgnore {
+		patterns = append(patterns, primitive.Regex{Pattern: pattern.String()})
+	}
+	return patterns
 }
 
 // testStatsMergePipeline is an internal helper function to create a pipeline aggregating testresults
 // documents  directly into hourly or daily test stats.
-func testStatsMergePipeline(daily bool, projectIDs []string, requesters []string, tasks []string, lastUpdate time.Time, lastID mgobson.ObjectId, start time.Time, end time.Time) []bson.M {
-        // _id gt last will allow this task to be stopped / resumed.
-        // task_create_time makes the current version work the same as
-        // the previous.
-        // To be resumed the match stage would need to be sorted on _id,
-        // this can be achieved either by using the default _id index or
-        // by adding a new one prefixed on _id. Probably something like
-        // {_id:1, project:1, r:1, status: 1, task_create_time:1} or something
-        // close to that.
-        // Going forward, I would eventually expect us to just use _id  $gte
-        // lastID for each project. This would also require using the ignored
-        // tasks directly in here. Currently this is based on the stats to update
-        // Project / tasks.
-        match := bson.M{
-                testresult.IDKey:             bson.M{"$gt": lastID},
-                testresult.TaskCreateTimeKey: bson.M{"$gte": start, "$lt": end},
-                testresult.ProjectKey:        bson.M{"$in": projectIDs},
-                testresult.DisplayNameKey:    bson.M{"$in": tasks},
-                testresult.RequesterKey:      bson.M{"$in": requesters},
-                // For simplicity's sake, (and to shorten any required index) the following line
-                // is removed but could be used to filter further (with a supporting index).
-                // testresult.StatusKey: bson.M{"$in": Array{evergreen.TestSucceededStatus, evergreen.TestFailedStatus, evergreen.TestSilentlyFailedStatus}},
-        }
+func testStatsMergePipeline(daily bool, projectIDs []string, requesters []string, tasksToIgnore []*regexp.Regexp, lastUpdate time.Time, startID mgobson.ObjectId, endID mgobson.ObjectId, mergeBatchLimit int) []bson.M {
+	// This version of the aggregation no longer depends on task_create_time,
+	// it uses the testresults._id field which is similar to the task
+	// create time (in that it is a time) but is better than the task create time
+	// in that it no longer depends on when the task was created, started, or ended.
+	// It now only depends on when the testresult was inserted.
+	// By combining _id $gt startID and $lt endID with a $sort on _id
+	// this aggregation can be stopped and resumed.
+	// To be resumed the match stage would need to be sorted on _id,
+	// this can be achieved by adding a new index like
+	// { branch: 1, r: 1, _id: 1, display_name: 1 }. The default _id index
+	// would also ensure that the aggregation can be resumed but is not as
+	// efficient.
+	patternsToIgnore := regexToBson(tasksToIgnore)
+	match := bson.M{
+		testresult.IDKey:          bson.M{"$gt": startID, "$lte": endID},
+		testresult.ProjectKey:     bson.M{"$in": projectIDs},
+		testresult.DisplayNameKey: bson.M{"$nin": patternsToIgnore},
+		testresult.RequesterKey:   bson.M{"$in": requesters},
+		// For simplicity's sake, (and to shorten any required index) the following line
+		// is removed but could be used to filter further (with a supporting index).
+		// testresult.StatusKey: bson.M{"$in": Array{evergreen.TestSucceededStatus, evergreen.TestFailedStatus, evergreen.TestSilentlyFailedStatus}},
+	}
 
-        if len(projectIDs) == 1 {
-                match[testresult.ProjectKey] = projectIDs[0]
-        }
+	if len(projectIDs) == 1 {
+		match[testresult.ProjectKey] = projectIDs[0]
+	}
 
-        if len(tasks) == 1 {
-                match[testresult.DisplayNameKey] = tasks[0]
-        }
+	if len(tasksToIgnore) == 1 {
+		match[testresult.DisplayNameKey] = bson.M{"$not": patternsToIgnore[0]}
+	}
 
-        if len(requesters) == 1 {
-                match[testresult.RequesterKey] = requesters[0]
-        }
+	if len(requesters) == 1 {
+		match[testresult.RequesterKey] = requesters[0]
+	}
 
-        dateFromParts := bson.M{
-                "year":  bson.M{"$year": "$" + testresult.TaskCreateTimeKey},
-                "month": bson.M{"$month": "$" + testresult.TaskCreateTimeKey},
-                "day":   bson.M{"$dayOfMonth": "$" + testresult.TaskCreateTimeKey},
-        }
-        into := dailyTestStatsCollection
+	dateFromParts := bson.M{
+		"year":  bson.M{"$year": "$" + testresult.TaskCreateTimeKey},
+		"month": bson.M{"$month": "$" + testresult.TaskCreateTimeKey},
+		"day":   bson.M{"$dayOfMonth": "$" + testresult.TaskCreateTimeKey},
+	}
+	into := dailyTestStatsCollection
 
-        if !daily {
-                into = hourlyTestStatsCollection
-                dateFromParts["hour"] = bson.M{"$hour": "$" + testresult.TaskCreateTimeKey}
-        }
+	if !daily {
+		into = hourlyTestStatsCollection
+		dateFromParts["hour"] = bson.M{"$hour": "$" + testresult.TaskCreateTimeKey}
+	}
 
-        pipeline := []bson.M{
-                {"$match": match},
-                {
-                        "$project": bson.M{
-                                dbTestStatsLastIDKey: "$" + testresult.IDKey,
-                                "_id": bson.D{
-                                        {Key: dbTestStatsIdTestFileKey, Value: "$" + dbTestStatsIdTestFileKey},
-                                        {Key: DbTestStatsIdTaskNameKey, Value: bson.M{"$ifNull": Array{"$" + testresult.ExecutionDisplayNameKey, "$" + testresult.DisplayNameKey}}},
-                                        {Key: DbTestStatsIdBuildVariantKey, Value: "$" + testresult.BuildVariantKey},
-                                        {Key: DbTestStatsIdDistroKey, Value: "$" + DbTestStatsIdDistroKey},
-                                        {Key: dbTestStatsIdProjectKey, Value: "$" + testresult.ProjectKey},
-                                        {Key: dbTestStatsIdRequesterKey, Value: "$" + testresult.RequesterKey},
-                                        {Key: dbTestStatsIdDateKey, Value: bson.M{"$dateFromParts": dateFromParts}},
-                                },
-                                dbTestStatsAvgDurationPassKey: bson.M{
-                                        "$cond": bson.M{
-                                                "if":   bson.M{"$eq": Array{"$" + testresult.StatusKey, evergreen.TestSucceededStatus}},
-                                                "then": bson.M{"$subtract": Array{"$" + testresult.EndTimeKey, "$" + testresult.StartTimeKey}},
-                                                "else": 0,
-                                        },
-                                },
-                                dbTestStatsNumPassKey: bson.M{
-                                        "$cond": bson.M{
-                                                "if":   bson.M{"$eq": Array{"$" + testresult.StatusKey, evergreen.TestSucceededStatus}},
-                                                "then": 1,
-                                                "else": 0,
-                                        },
-                                },
-                                dbTestStatsNumFailKey: bson.M{
-                                        "$cond": bson.M{
-                                                "if":   bson.M{"$in": Array{"$" + testresult.StatusKey, Array{evergreen.TestFailedStatus, evergreen.TestSilentlyFailedStatus}}},
-                                                "then": 1,
-                                                "else": 0,
-                                        },
-                                },
-                        },
-                },
-                {
-                        "$merge": bson.M{
-                                "into":           into,
-                                "on":             "_id",
-                                "whenNotMatched": "insert",
-                                "whenMatched": Array{
-                                        bson.M{
-                                                "$addFields": bson.M{
-                                                        dbTestStatsNumPassKey: bson.M{"$sum": Array{"$" + dbTestStatsNumPassKey, "$$new." + dbTestStatsNumPassKey}},
-                                                        dbTestStatsNumFailKey: bson.M{"$sum": Array{"$" + dbTestStatsNumFailKey, "$$new." + dbTestStatsNumFailKey}},
-                                                },
-                                        },
-                                        bson.M{
-                                                "$addFields": bson.M{
-                                                        dbTestStatsAvgDurationPassKey: bson.M{
-                                                                "$cond": Array{
-                                                                        bson.M{"$eq": Array{"$" + dbTestStatsNumPassKey, 0}},
-                                                                        nil,
-                                                                        bson.M{
-                                                                                "$divide": Array{
-                                                                                        bson.M{
-                                                                                                "$sum": Array{
-                                                                                                        bson.M{"$multiply": Array{"$" + dbTestStatsAvgDurationPassKey, bson.M{"$sum": Array{"$" + dbTestStatsNumPassKey, -1}}}},
-                                                                                                        "$$new." + dbTestStatsAvgDurationPassKey,
-                                                                                                },
-                                                                                        },
-                                                                                        "$" + dbTestStatsNumPassKey,
-                                                                                },
-                                                                        },
-                                                                },
-                                                        },
-                                                        dbTestStatsLastIDKey: "$$new." + dbTestStatsLastIDKey,
-                                                        // For compatibility use lastUpdate value maybe $$NOW eventually.
-                                                        // "last_update": bson.M{"$add": "$$NOW"},
-                                                        dbTestStatsLastUpdateKey: lastUpdate,
-                                                },
-                                        },
-                                },
-                        },
-                },
-        }
-        return pipeline
+	pipeline := []bson.M{
+		{"$match": match},
+		{"$sort": bson.M{testresult.IDKey: 1}},
+	}
+	if mergeBatchLimit > 0 {
+		pipeline = append(pipeline, bson.M{"$limit": mergeBatchLimit})
+	}
+	pipeline = append(pipeline,
+		bson.M{
+			"$project": bson.M{
+				dbTestStatsLastIDKey: "$" + testresult.IDKey,
+				"_id": bson.D{
+					{Key: dbTestStatsIdTestFileKey, Value: "$" + dbTestStatsIdTestFileKey},
+					{Key: DbTestStatsIdTaskNameKey, Value: bson.M{"$ifNull": Array{"$" + testresult.ExecutionDisplayNameKey, "$" + testresult.DisplayNameKey}}},
+					{Key: DbTestStatsIdBuildVariantKey, Value: "$" + testresult.BuildVariantKey},
+					{Key: DbTestStatsIdDistroKey, Value: "$" + DbTestStatsIdDistroKey},
+					{Key: dbTestStatsIdProjectKey, Value: "$" + testresult.ProjectKey},
+					{Key: dbTestStatsIdRequesterKey, Value: "$" + testresult.RequesterKey},
+					{Key: dbTestStatsIdDateKey, Value: bson.M{"$dateFromParts": dateFromParts}},
+				},
+				dbTestStatsAvgDurationPassKey: bson.M{
+					"$cond": bson.M{
+						"if":   bson.M{"$eq": Array{"$" + testresult.StatusKey, evergreen.TestSucceededStatus}},
+						"then": bson.M{"$subtract": Array{"$" + testresult.EndTimeKey, "$" + testresult.StartTimeKey}},
+						"else": 0,
+					},
+				},
+				dbTestStatsNumPassKey: bson.M{
+					"$cond": bson.M{
+						"if":   bson.M{"$eq": Array{"$" + testresult.StatusKey, evergreen.TestSucceededStatus}},
+						"then": 1,
+						"else": 0,
+					},
+				},
+				dbTestStatsNumFailKey: bson.M{
+					"$cond": bson.M{
+						"if":   bson.M{"$in": Array{"$" + testresult.StatusKey, Array{evergreen.TestFailedStatus, evergreen.TestSilentlyFailedStatus}}},
+						"then": 1,
+						"else": 0,
+					},
+				},
+			},
+		},
+		bson.M{
+			"$merge": bson.M{
+				"into":           into,
+				"on":             "_id",
+				"whenNotMatched": "insert",
+				"whenMatched": Array{
+					bson.M{
+						"$addFields": bson.M{
+							dbTestStatsNumPassKey: bson.M{"$sum": Array{"$" + dbTestStatsNumPassKey, "$$new." + dbTestStatsNumPassKey}},
+							dbTestStatsNumFailKey: bson.M{"$sum": Array{"$" + dbTestStatsNumFailKey, "$$new." + dbTestStatsNumFailKey}},
+						},
+					},
+					bson.M{
+						"$addFields": bson.M{
+							dbTestStatsAvgDurationPassKey: bson.M{
+								"$cond": Array{
+									bson.M{"$eq": Array{"$" + dbTestStatsNumPassKey, 0}},
+									nil,
+									bson.M{
+										"$divide": Array{
+											bson.M{
+												"$sum": Array{
+													bson.M{"$multiply": Array{"$" + dbTestStatsAvgDurationPassKey, bson.M{"$sum": Array{"$" + dbTestStatsNumPassKey, -1}}}},
+													"$$new." + dbTestStatsAvgDurationPassKey,
+												},
+											},
+											"$" + dbTestStatsNumPassKey,
+										},
+									},
+								},
+							},
+							dbTestStatsLastIDKey: "$$new." + dbTestStatsLastIDKey,
+							// For compatibility use lastUpdate value maybe $$NOW eventually.
+							// "last_update": bson.M{"$add": "$$NOW"},
+							dbTestStatsLastUpdateKey: lastUpdate,
+						},
+					},
+				},
+			},
+		})
+	return pipeline
 }
 
 //////////////////////
@@ -1267,39 +1284,67 @@ func makeSum(condition bson.M) bson.M {
 // Functions to access pre-computed stats documents for testing. //
 ///////////////////////////////////////////////////////////////////
 // Get the last updated hourly test stats document for a given project.
-func GetLatestHourlyTestDoc(projectID string, requester string, tasks []string) (*DbTestStats, error) {
-        return getLatestTestDoc(hourlyTestStatsCollection, projectID, requester, tasks)
+// func GetLatestHourlyTestDoc(projectID string, requester string, tasks []string) (*DbTestStats, error) {
+func GetLatestHourlyTestDoc(projectID string, requesters []string) (*DbTestStats, error) {
+	tasks := []string{}
+	return getLatestTestDoc(hourlyTestStatsCollection, projectID, requesters, tasks)
 }
 
 // GetLatestDailyTestDoc find the last updated daily test stats document for a given project.
-func GetLatestDailyTestDoc(projectID string, requester string, tasks []string) (*DbTestStats, error) {
-        return getLatestTestDoc(dailyTestStatsCollection, projectID, requester, tasks)
+// func GetLatestDailyTestDoc(projectID string, requester string, tasks []string) (*DbTestStats, error) {
+func GetLatestDailyTestDoc(projectID string, requesters []string) (*DbTestStats, error) {
+	tasks := []string{}
+	return getLatestTestDoc(dailyTestStatsCollection, projectID, requesters, tasks)
 }
 
-func getLatestTestDoc(collection string, projectID string, requester string, tasks []string) (*DbTestStats, error) {
-        doc := DbTestStats{}
-        qry := bson.M{
-                // "_id.project":   projectID,
-                DbTestStatsIdProjectKeyFull:   projectID,
-                DbTestStatsIdRequesterKeyFull: requester,
-        }
+func getLatestTestDoc(collection string, projectID string, requesters []string, tasks []string) (*DbTestStats, error) {
+	doc := DbTestStats{}
+	qry := bson.M{
+		DbTestStatsIdProjectKeyFull: projectID,
+	}
 
-        if len(tasks) == 1 {
-                // qry["_id.task_name"] = tasks[0]
-                qry[DbTestStatsIdTaskNameKeyFull] = tasks[0]
-        } else if len(tasks) > 1 {
-                qry[DbTestStatsIdTaskNameKeyFull] = bson.M{"$in": tasks}
-        }
-        sort := []string{"-" + dbTestStatsLastIDKey}
-        err := db.FindOne(collection, qry, db.NoProjection, sort, &doc)
-        if adb.ResultsNotFound(err) {
-                return nil, nil
-        }
-        return &doc, err
+	if len(requesters) >= 1 {
+		if len(requesters) == 1 {
+			qry[DbTestStatsIdRequesterKeyFull] = requesters[0]
+		} else if len(requesters) > 1 {
+			qry[DbTestStatsIdRequesterKeyFull] = bson.M{"$in": requesters}
+		}
+	}
+
+	if len(tasks) >= 1 {
+		if len(tasks) == 1 {
+			qry[DbTestStatsIdTaskNameKeyFull] = tasks[0]
+		} else if len(tasks) > 1 {
+			qry[DbTestStatsIdTaskNameKeyFull] = bson.M{"$in": tasks}
+		}
+	}
+
+	sort := []string{"-" + dbTestStatsLastIDKey}
+	err := db.FindOne(collection, qry, db.NoProjection, sort, &doc)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	return &doc, err
+}
+
+// UpdateHourlyTestDocLastID $sets the lastID field in the hourly test stats document.
+func UpdateHourlyTestDocLastID(stats *DbTestStats, lastID mgobson.ObjectId) error {
+	return updateTestDocLastID(hourlyTestStatsCollection, stats, lastID)
+}
+
+// UpdateDailyTestDocLastID $sets the lastID field in the daily test stats document.
+func UpdateDailyTestDocLastID(stats *DbTestStats, lastID mgobson.ObjectId) error {
+	return updateTestDocLastID(dailyTestStatsCollection, stats, lastID)
+}
+
+func updateTestDocLastID(collection string, stats *DbTestStats, lastID mgobson.ObjectId) error {
+	update := bson.M{"$set": bson.M{"last_id": lastID}}
+	err := db.UpdateId(collection, stats.Id, update)
+	return err
 }
 
 func GetDailyTestDoc(id DbTestStatsId) (*DbTestStats, error) {
-        doc := DbTestStats{}
+	doc := DbTestStats{}
 	err := db.FindOne(dailyTestStatsCollection, bson.M{"_id": id}, db.NoProjection, db.NoSort, &doc)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
@@ -1308,7 +1353,7 @@ func GetDailyTestDoc(id DbTestStatsId) (*DbTestStats, error) {
 }
 
 func GetHourlyTestDoc(id DbTestStatsId) (*DbTestStats, error) {
-        doc := DbTestStats{}
+	doc := DbTestStats{}
 	err := db.FindOne(hourlyTestStatsCollection, bson.M{"_id": id}, db.NoProjection, db.NoSort, &doc)
 	if adb.ResultsNotFound(err) {
 		return nil, nil

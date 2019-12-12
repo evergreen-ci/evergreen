@@ -23,7 +23,8 @@ type ServiceFlags struct {
 	CacheStatsJobDisabled      bool `bson:"cache_stats_job_disabled" json:"cache_stats_job_disabled"`
 	CacheStatsEndpointDisabled bool `bson:"cache_stats_endpoint_disabled" json:"cache_stats_endpoint_disabled"`
 	CacheStatsOldTasksDisabled bool `bson:"cache_stats_old_tasks_disabled" json:"cache_stats_old_tasks_disabled"`
-        CacheStatsMergeEnabled     bool `bson:"cache_stats_merge_enabled" json:"cache_stats_merge_enabled"`
+	CacheStatsMergeEnabled     bool `bson:"cache_stats_merge_enabled" json:"cache_stats_merge_enabled"`
+	CacheStatsMergeBatchLimit  int  `bson:"cache_stats_merge_batch_limit" json:"cache_stats_merge_batch_limit"`
 	TaskReliabilityDisabled    bool `bson:"task_reliability_disabled" json:"task_reliability_disabled"`
 	CommitQueueDisabled        bool `bson:"commit_queue_disabled" json:"commit_queue_disabled"`
 	PlannerDisabled            bool `bson:"planner_disabled" json:"planner_disabled"`
@@ -87,7 +88,7 @@ func (c *ServiceFlags) Set() error {
 			taskLoggingDisabledKey:          c.TaskLoggingDisabled,
 			cacheStatsJobDisabledKey:        c.CacheStatsJobDisabled,
 			cacheStatsEndpointDisabledKey:   c.CacheStatsEndpointDisabled,
-                        cacheStatsMergeEnabledKey:       c.CacheStatsMergeEnabled,
+			cacheStatsMergeEnabledKey:       c.CacheStatsMergeEnabled,
 			taskReliabilityDisabledKey:      c.TaskReliabilityDisabled,
 			commitQueueDisabledKey:          c.CommitQueueDisabled,
 			plannerDisabledKey:              c.PlannerDisabled,

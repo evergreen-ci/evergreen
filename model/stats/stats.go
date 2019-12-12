@@ -6,9 +6,11 @@ package stats
 
 import (
 	"context"
+	"math/rand"
+	"regexp"
 	"time"
 
-        "github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -18,7 +20,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-        mgobson "gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -87,10 +89,12 @@ type GenerateOptions struct {
 	ProjectID       string
 	Requester       string
 	Tasks           []string
-        Window          time.Time
-        Runtime         time.Time
-        DisableOldTasks bool
-        EnableMerge     bool
+	TasksToIgnore   []*regexp.Regexp
+	Window          time.Time
+	Runtime         time.Time
+	DisableOldTasks bool
+	EnableMerge     bool
+	MergeBatchLimit int
 }
 
 // GenerateHourlyTestStats aggregates task and testresults present in the database and saves the
@@ -107,18 +111,8 @@ func GenerateHourlyTestStats(ctx context.Context, opts GenerateOptions) error {
 	start := util.GetUTCHour(opts.Window)
 	end := start.Add(time.Hour)
 
-        testStats, err := GetLatestHourlyTestDoc(opts.ProjectID, opts.Requester, opts.Tasks)
-        if err != nil {
-                return errors.Wrap(err, "Failed to generate hourly stats")
-        }
-
-        lastHourlyTestObjectID := mgobson.NewObjectIdWithTime(start)
-        if testStats != nil {
-                lastHourlyTestObjectID = testStats.LastID
-        }
-
-        pipeline := hourlyTestStatsPipeline(opts.ProjectID, opts.Requester, start, end, opts.Tasks, opts.Runtime, lastHourlyTestObjectID)
-        err = aggregateIntoCollection(ctx, task.Collection, pipeline, hourlyTestStatsCollection)
+	pipeline := hourlyTestStatsPipeline(opts.ProjectID, opts.Requester, start, end, opts.Tasks, opts.Runtime)
+	err := aggregateIntoCollection(ctx, task.Collection, pipeline, hourlyTestStatsCollection)
 
 	if err != nil {
 		return errors.Wrap(err, "Failed to generate hourly stats")
@@ -133,7 +127,7 @@ func GenerateHourlyTestStats(ctx context.Context, opts GenerateOptions) error {
 			"tasks":     opts.Tasks,
 		})
 		// Generate/Update the stats for old tasks.
-                pipeline = hourlyTestStatsForOldTasksPipeline(opts.ProjectID, opts.Requester, start, end, opts.Tasks, opts.Runtime, lastHourlyTestObjectID)
+		pipeline = hourlyTestStatsForOldTasksPipeline(opts.ProjectID, opts.Requester, start, end, opts.Tasks, opts.Runtime)
 		err = aggregateIntoCollection(ctx, task.OldCollection, pipeline, hourlyTestStatsCollection)
 		if err != nil {
 			return errors.Wrap(err, "Failed to generate hourly stats for old tasks")
@@ -146,34 +140,104 @@ func GenerateHourlyTestStats(ctx context.Context, opts GenerateOptions) error {
 // resulting hourly test stats documents for the project, requester, hour, and tasks specified.
 // The hour covered is the UTC hour corresponding to the given `hour` parameter.
 func GenerateHourlyTestStatsUsingMerge(ctx context.Context, opts GenerateOptions) error {
-        grip.Info(message.Fields{
-                "message":   "Generating hourly test stats using merge",
-                "project":   opts.ProjectID,
-                "requester": opts.Requester,
-                "hour":      opts.Window,
-                "tasks":     opts.Tasks,
-        })
-        start := util.GetUTCHour(opts.Window)
-        end := start.Add(time.Hour)
+	grip.Info(message.Fields{
+		"message":         "Generating hourly test stats using merge",
+		"project":         opts.ProjectID,
+		"requester":       opts.Requester,
+		"hour":            opts.Window,
+		"tasks":           opts.Tasks,
+		"ignore":          opts.TasksToIgnore,
+		"MergeBatchLimit": opts.MergeBatchLimit,
+	})
+	start := util.GetUTCHour(opts.Window)
+	end := start.Add(time.Hour)
 
-        testStats, err := GetLatestHourlyTestDoc(opts.ProjectID, opts.Requester, opts.Tasks)
-        if err != nil {
-                return errors.Wrap(err, "Failed to Get lastest hourly test doc")
-        }
+	// start and endID define the execute bounds of the aggregation. currentID captures the
+	// progress through the range.
+	currentID := mgobson.NewObjectIdWithTime(start)
+	endID := mgobson.NewObjectIdWithTime(end)
 
-        lastHourlyTestObjectID := mgobson.NewObjectIdWithTime(start)
-        if testStats != nil {
-                lastHourlyTestObjectID = testStats.LastID
-        }
+	testStats, err := GetLatestHourlyTestDoc(opts.ProjectID, []string{opts.Requester})
+	if err != nil {
+		return errors.Wrap(err, "Failed to Get lastest hourly test doc")
+	}
 
-        pipeline := hourlyTestStatsMergePipeline([]string{opts.ProjectID}, []string{opts.Requester}, opts.Tasks, opts.Runtime, lastHourlyTestObjectID, start, end)
-        output := []bson.M{}
-        err = db.Aggregate(testresult.Collection, pipeline, &output)
+	// If we have already processed the object ids in this range. Say the
+	// task died before it updated the daily stats status.
+	if testStats != nil {
+		if testStats.LastID >= endID {
+			return nil
+		}
+		currentID = testStats.LastID
+	}
 
-        if err != nil {
-                return errors.Wrap(err, "Failed to generate hourly stats")
-        }
-        return nil
+	for {
+		grip.Info(message.Fields{
+			"message":         "Generating hourly test stats using merge progress",
+			"project":         opts.ProjectID,
+			"requester":       opts.Requester,
+			"hour":            opts.Window,
+			"tasks":           opts.Tasks,
+			"ignore":          opts.TasksToIgnore,
+			"MergeBatchLimit": opts.MergeBatchLimit,
+			"start":           start,
+			"current":         currentID.Time(),
+			"end":             endID.Time(),
+		})
+
+		pipeline := hourlyTestStatsMergePipeline([]string{opts.ProjectID}, []string{opts.Requester}, opts.TasksToIgnore, opts.Runtime, opts.MergeBatchLimit, currentID, endID)
+		output := []bson.M{}
+		err = db.Aggregate(testresult.Collection, pipeline, &output)
+
+		if err != nil {
+			return errors.Wrap(err, "Failed to generate hourly stats")
+		}
+
+		// Get the last processed Test Doc
+		testStats, err = GetLatestHourlyTestDoc(opts.ProjectID, []string{opts.Requester})
+		if err != nil {
+			return errors.Wrap(err, "Failed to Get lastest daily test doc")
+		}
+
+		if testStats == nil {
+			break
+		}
+
+		if testStats.LastID == currentID {
+			break
+		}
+		currentID = testStats.LastID
+		time.Sleep(time.Duration(rand.Int63n(int64(time.Second))))
+	}
+
+	return nil
+}
+
+// FastforwardHourlyTestStats is used to skip past TestResults that are too old
+// to safely process.
+func FastforwardHourlyTestStats(stat StatsToUpdate) error {
+
+	start := util.GetUTCHour(stat.Hour)
+
+	testStats, err := GetLatestHourlyTestDoc(stat.ProjectId, []string{stat.Requester})
+	if err != nil {
+		return errors.Wrap(err, "Failed to Get lastest hourly test doc")
+	}
+
+	// If we have already processed the object ids in this range. Say the
+	// task died before it updated the daily stats status.
+	if testStats != nil {
+		from := start.Add(-time.Hour).Truncate(time.Hour)
+		endID := mgobson.NewObjectIdWithTime(from)
+
+		if testStats.LastID < endID {
+			if err := UpdateHourlyTestDocLastID(testStats, endID); err != nil {
+				return errors.Wrap(err, "Failed to Set lastest daily test doc")
+			}
+		}
+
+	}
+	return nil
 }
 
 // GenerateDailyTestStatsFromHourly aggregates the hourly test stats present in the database and
@@ -197,38 +261,107 @@ func GenerateDailyTestStatsFromHourly(ctx context.Context, opts GenerateOptions)
 	return nil
 }
 
-// GenerateDailyTestStatsUsingMerge aggregates the hourly test stats present in the database and
+// FastforwardDailyTestStats is used to skip past TestResults that are too old
+// to safely process.
+func FastforwardDailyTestStats(projectID string, requester string, day time.Time) error {
+
+	testStats, err := GetLatestDailyTestDoc(projectID, []string{requester})
+	if err != nil {
+		return errors.Wrap(err, "Failed to Get lastest hourly test doc")
+	}
+
+	// If we have already processed the object ids in this range. Say the
+	// task died before it updated the daily stats status.
+	if testStats != nil {
+		from := util.GetUTCDay(day).Add(-time.Hour).Truncate(time.Hour)
+		endID := mgobson.NewObjectIdWithTime(from)
+
+		if testStats.LastID < endID {
+			if err := UpdateDailyTestDocLastID(testStats, endID); err != nil {
+				return errors.Wrap(err, "Failed to Set lastest daily test doc")
+			}
+		}
+
+	}
+	return nil
+}
+
+// GenerateDailyTestStatsUsingMerge aggregates the testresults present in the database and
 // saves the resulting daily test stats documents for the project, requester, day, and tasks specified.
+// It is not dependant on the hourly_test_stats.
 // The day covered is the UTC day corresponding to the given `day` parameter.
 func GenerateDailyTestStatsUsingMerge(ctx context.Context, opts GenerateOptions) error {
-        grip.Info(message.Fields{
-                "message":   "Generating daily test stats using merge",
-                "project":   opts.ProjectID,
-                "requester": opts.Requester,
-                "hour":      opts.Window,
-                "tasks":     opts.Tasks,
-        })
-        start := util.GetUTCDay(opts.Window)
-        end := start.Add(24 * time.Hour)
+	grip.Info(message.Fields{
+		"message":         "Generating daily test stats using merge",
+		"project":         opts.ProjectID,
+		"requester":       opts.Requester,
+		"hour":            opts.Window,
+		"tasks":           opts.Tasks,
+		"ignore":          opts.TasksToIgnore,
+		"MergeBatchLimit": opts.MergeBatchLimit,
+	})
+	start := util.GetUTCDay(opts.Window)
+	end := start.Add(24 * time.Hour)
 
-        testStats, err := GetLatestDailyTestDoc(opts.ProjectID, opts.Requester, opts.Tasks)
-        if err != nil {
-                return errors.Wrap(err, "Failed to Get lastest daily test doc")
-        }
+	// start and endID define the execute bounds of the aggregation. currentID captures the
+	// progress through the range.
+	currentID := mgobson.NewObjectIdWithTime(start)
+	endID := mgobson.NewObjectIdWithTime(end)
 
-        lastDailyTestObjectID := mgobson.NewObjectIdWithTime(start)
-        if testStats != nil {
-                lastDailyTestObjectID = testStats.LastID
-        }
+	testStats, err := GetLatestDailyTestDoc(opts.ProjectID, []string{opts.Requester})
+	if err != nil {
+		return errors.Wrap(err, "Failed to Get lastest hourly test doc")
+	}
 
-        pipeline := dailyTestStatsMergePipeline([]string{opts.ProjectID}, []string{opts.Requester}, opts.Tasks, opts.Runtime, lastDailyTestObjectID, start, end)
-        output := []bson.M{}
-        err = db.Aggregate(testresult.Collection, pipeline, &output)
+	// If we have already processed the object ids in this range. Say the
+	// task died before it updated the daily stats status.
+	if testStats != nil {
+		if testStats.LastID >= endID {
+			return nil
+		}
 
-        if err != nil {
-                return errors.Wrap(err, "Failed to generate hourly stats")
-        }
-        return nil
+		currentID = testStats.LastID
+	}
+
+	for {
+		grip.Info(message.Fields{
+			"message":         "Generating daily test stats using merge progress",
+			"project":         opts.ProjectID,
+			"requester":       opts.Requester,
+			"hour":            opts.Window,
+			"tasks":           opts.Tasks,
+			"ignore":          opts.TasksToIgnore,
+			"MergeBatchLimit": opts.MergeBatchLimit,
+			"start":           start,
+			"current":         currentID.Time(),
+			"end":             endID.Time(),
+		})
+
+		pipeline := dailyTestStatsMergePipeline([]string{opts.ProjectID}, []string{opts.Requester}, opts.TasksToIgnore, opts.Runtime, opts.MergeBatchLimit, currentID, endID)
+		output := []bson.M{}
+		err = db.Aggregate(testresult.Collection, pipeline, &output)
+
+		if err != nil {
+			return errors.Wrap(err, "Failed to generate hourly stats")
+		}
+
+		// Get the last processed Test Doc
+		testStats, err = GetLatestDailyTestDoc(opts.ProjectID, []string{opts.Requester})
+		if err != nil {
+			return errors.Wrap(err, "Failed to Get lastest daily test doc")
+		}
+
+		if testStats == nil {
+			break
+		}
+
+		if testStats.LastID == currentID {
+			break
+		}
+		currentID = testStats.LastID
+		time.Sleep(time.Duration(rand.Int63n(int64(time.Second))))
+	}
+	return nil
 }
 
 ///////////////////////////////////////////
@@ -262,8 +395,6 @@ func GenerateDailyTaskStats(ctx context.Context, opts GenerateOptions) error {
 			"hour":      opts.Window,
 			"tasks":     opts.Tasks,
 		})
-		start = util.GetUTCDay(opts.Window)
-		end = start.Add(24 * time.Hour)
 		pipeline = dailyTaskStatsForOldTasksPipeline(opts.ProjectID, opts.Requester, start, end, opts.Tasks, opts.Runtime)
 		err = aggregateIntoCollection(ctx, task.OldCollection, pipeline, DailyTaskStatsCollection)
 		if err != nil {
@@ -336,9 +467,9 @@ type FindStatsOptions struct {
 	DisableOldTasks bool
 }
 
-// FindStatsToUpdate finds the stats that need to be updated as a result of tasks finishing between 'start' and 'end'.
+// FindTestResultsToUpdate finds the stats that need to be updated as a result of tasks finishing between 'start' and 'end'.
 // The results are ordered by project id, then hour, then requester.
-func FindStatsToUpdate(opts FindStatsOptions) ([]StatsToUpdate, error) {
+func FindTestResultsToUpdate(opts FindStatsOptions) ([]StatsToUpdate, error) {
 	grip.Info(message.Fields{
 		"message": "Finding tasks that need their stats updated",
 		"project": opts.ProjectID,
@@ -361,6 +492,34 @@ func FindStatsToUpdate(opts FindStatsOptions) ([]StatsToUpdate, error) {
 		}
 	}
 	return mergeStatsToUpdateLists(statsList, statsListForOldTasks), nil
+}
+
+// FindStatsToUpdate finds the stats that need to be updated as a result of tasks finishing between 'start' and 'end'.
+// The results are ordered by project id, then hour, then requester.
+func FindStatsToUpdate(opts FindStatsOptions) ([]StatsToUpdate, error) {
+	grip.Info(message.Fields{
+		"message": "Finding tasks that need their stats updated",
+		"project": opts.ProjectID,
+		"start":   opts.Start,
+		"end":     opts.End,
+	})
+	pipeline := statsToUpdatePipeline(opts.ProjectID, opts.Requesters, opts.Start, opts.End)
+	taskStatsToUpdate := []StatsToUpdate{}
+
+	err := db.Aggregate(task.Collection, pipeline, &taskStatsToUpdate)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to aggregate finished tasks")
+	}
+
+	statsListForOldTasks := []StatsToUpdate{}
+	if !opts.DisableOldTasks {
+		err = db.Aggregate(task.OldCollection, pipeline, &statsListForOldTasks)
+		if err != nil {
+			return nil, errors.Wrap(err, "Failed to aggregate finished old tasks")
+		}
+	}
+	taskStatsToUpdate = mergeStatsToUpdateLists(taskStatsToUpdate, statsListForOldTasks)
+	return taskStatsToUpdate, nil
 }
 
 // mergeStatsToUpdateLists takes 2 sorted lists of StatsToUpdate and merge their results.
