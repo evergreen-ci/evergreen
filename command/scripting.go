@@ -32,12 +32,14 @@ type scriptingExec struct {
 	// Exeuction Options
 
 	// Specify the command to run as a string that Evergreen will
-	// split into an argument array.
+	// split into an argument array. This, as with subprocess.exec
+	// is split using shell parsing rules.
 	Command string `mapstructure:"command"`
 	// Specify the command to run as a list of arguments.
 	Args []string `mapstructure:"args"`
 	// Specify the content of a script to execute in the
-	// environment.
+	// environment. This probably only makes sense for roswell,
+	// but is here for completeness, and won't be documented.
 	Script string `mapstructure:"script"`
 	// Specify a list of directories to add to the PATH of the
 	// environment.
@@ -60,8 +62,8 @@ type scriptingExec struct {
 	// task groups regardless.
 	CleanupHarness bool `mapstructure:"cleanup_harness"`
 	// LockFile describes the path to the dependency file
-	// (e.g. requirements.txt if it exists,) that lists your
-	// dependencies. Not all environments support Lockfiles
+	// (e.g. requirements.txt if it exists) that lists your
+	// dependencies. Not all environments support Lockfiles.
 	LockFile string `mapstructure:"lock_file"`
 	// Packages are a list of dependencies that will be installed
 	// in your environment.
@@ -73,7 +75,7 @@ type scriptingExec struct {
 	// HostPath is the path to the hosting interpreter or binary,
 	// where appropriate. This should be the path to the python
 	// interpreter or go binary.
-	HostPath string `mapstructure:"host"`
+	HostPath string `mapstructure:"host_path"`
 
 	////////////////////////////////
 	//
@@ -102,7 +104,7 @@ type scriptingExec struct {
 	WorkingDir string `mapstructure:"working_dir"`
 
 	// IgnoreStandardOutput and IgnoreStandardError allow users to
-	// elect to ignore either standard out and/or standard output.
+	// elect to ignore either standard error and/or standard output.
 	IgnoreStandardOutput bool `mapstructure:"ignore_standard_out"`
 	IgnoreStandardError  bool `mapstructure:"ignore_standard_error"`
 
@@ -184,6 +186,9 @@ func (c *scriptingExec) doExpansions(exp *util.Expansions) error {
 	catcher.Add(err)
 
 	c.HarnessPath, err = exp.ExpandString(c.HarnessPath)
+	catcher.Add(err)
+
+	c.HostPath, err = exp.ExpandString(c.HostPath)
 	catcher.Add(err)
 
 	for idx := range c.Packages {
