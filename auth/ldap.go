@@ -19,21 +19,18 @@ func NewLDAPUserManager(conf *evergreen.LDAPConfig) (gimlet.UserManager, error) 
 	}
 	expireAfter := time.Duration(minutes) * time.Minute
 	opts := ldap.CreationOpts{
-		URL:                 conf.URL,
-		Port:                conf.Port,
-		UserPath:            conf.UserPath,
-		ServicePath:         conf.ServicePath,
-		UserGroup:           conf.Group,
-		ServiceGroup:        conf.ServiceGroup,
-		PutCache:            user.PutLoginCache,
-		GetCache:            func(token string) (gimlet.User, bool, error) { return user.GetLoginCache(token, expireAfter) },
-		ClearCache:          user.ClearLoginCache,
-		GetUser:             func(id string) (gimlet.User, bool, error) { return getUserByIdWithExpiration(id, expireAfter) },
-		GetCreateUser:       getOrCreateUser,
-		GroupOuName:         conf.GroupOU,
-		ServiceUserName:     conf.ServiceUserName,
-		ServiceUserPassword: conf.ServiceUserPassword,
-		ServiceUserPath:     conf.ServiceUserPath,
+		URL:           conf.URL,
+		Port:          conf.Port,
+		UserPath:      conf.UserPath,
+		ServicePath:   conf.ServicePath,
+		UserGroup:     conf.Group,
+		ServiceGroup:  conf.ServiceGroup,
+		PutCache:      user.PutLoginCache,
+		GetCache:      func(token string) (gimlet.User, bool, error) { return user.GetLoginCache(token, expireAfter) },
+		ClearCache:    user.ClearLoginCache,
+		GetUser:       func(id string) (gimlet.User, bool, error) { return getUserByIdWithExpiration(id, expireAfter) },
+		GetCreateUser: getOrCreateUser,
+		GroupOuName:   conf.GroupOU,
 	}
 	um, err := ldap.NewUserService(opts)
 	if err != nil {
