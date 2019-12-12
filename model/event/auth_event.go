@@ -9,9 +9,10 @@ import (
 )
 
 const (
-	ResourceTypeAuth   = "AUTH"
-	EventTypeUserRoles = "USER_ROLES_CHANGED"
-	EventTypeRole      = "ACL_ROLE_CHANGED"
+	ResourceTypeUserRoles = "USER_ROLES"
+	ResourceTypeRole      = "ROLE"
+	EventTypeUserRoles    = "USER_ROLES_CHANGED"
+	EventTypeRole         = "ROLE_CHANGED"
 )
 
 type RoleChangeOperation string
@@ -31,7 +32,7 @@ func (op RoleChangeOperation) validate() error {
 	}
 }
 
-type userRolesChange struct {
+type userRolesData struct {
 	User      string              `bson:"user" json:"user"`
 	RoleID    string              `bson:"role_id" json:"role_id"`
 	Operation RoleChangeOperation `bson:"operation" json:"operation"`
@@ -39,10 +40,10 @@ type userRolesChange struct {
 
 func LogUserRolesEvent(user, roleID string, op RoleChangeOperation) error {
 	if err := op.validate(); err != nil {
-		return errors.Wrap(err, "failed to log user role event for user '%s' and role '%s'", user, roleID)
+		return errors.Wrapf(err, "failed to log user role event for user '%s' and role '%s'", user, roleID)
 	}
 
-	data := userRolesChange{
+	data := userRolesData{
 		User:      user,
 		RoleID:    roleID,
 		Operation: op,
@@ -52,12 +53,12 @@ func LogUserRolesEvent(user, roleID string, op RoleChangeOperation) error {
 		Timestamp:    time.Now(),
 		EventType:    EventTypeUserRoles,
 		Data:         data,
-		ResourceType: ResourceTypeAuth,
+		ResourceType: ResourceTypeUserRoles,
 	}
 	logger := NewDBEventLogger(AllLogCollection)
 	if err := logger.LogEvent(&event); err != nil {
 		message.WrapError(err, message.Fields{
-			"resource_type": ResourceTypeAuth,
+			"resource_type": ResourceTypeUserRoles,
 			"message":       "error logging event",
 			"source":        "event-log-fail",
 		})
@@ -67,7 +68,7 @@ func LogUserRolesEvent(user, roleID string, op RoleChangeOperation) error {
 	return nil
 }
 
-type roleChange struct {
+type roleData struct {
 	// TODO: do we want a before and after?
 	Role      gimlet.Role         `bson:"role" json:"role"`
 	Operation RoleChangeOperation `bson:"operation" json:"operation"`
@@ -75,10 +76,10 @@ type roleChange struct {
 
 func LogRoleEvent(role gimlet.Role, op RoleChangeOperation) error {
 	if err := op.validate(); err != nil {
-		return errors.Wrap(err, "failed to log role event for  role '%s'", roleID)
+		return errors.Wrapf(err, "failed to log role event for  role '%s'", role.ID)
 	}
 
-	data := roleChange{
+	data := roleData{
 		Role:      role,
 		Operation: op,
 	}
@@ -87,16 +88,16 @@ func LogRoleEvent(role gimlet.Role, op RoleChangeOperation) error {
 		Timestamp:    time.Now(),
 		EventType:    EventTypeRole,
 		Data:         data,
-		ResourceType: ResourceTypeAuth,
+		ResourceType: ResourceTypeRole,
 	}
 	logger := NewDBEventLogger(AllLogCollection)
 	if err := logger.LogEvent(&event); err != nil {
 		message.WrapError(err, message.Fields{
-			"resource_type": ResourceTypeAuth,
+			"resource_type": ResourceTypeRole,
 			"message":       "error logging event",
 			"source":        "event-log-fail",
 		})
-		return errors.Wrapf(err, "failed to log user role event for role '%s'", roleID)
+		return errors.Wrapf(err, "failed to log user role event for role '%s'", role.ID)
 	}
 
 	return nil
