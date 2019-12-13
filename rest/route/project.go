@@ -220,9 +220,7 @@ func (h *projectIDPatchHandler) Factory() gimlet.RouteHandler {
 func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.projectID = gimlet.GetVars(r)["project_id"]
 	user := MustHaveUser(ctx)
-	if user != nil {
-		h.username = user.DisplayName()
-	}
+	h.username = user.DisplayName()
 	body := util.NewRequestReader(r)
 	defer body.Close()
 	b, err := ioutil.ReadAll(body)
