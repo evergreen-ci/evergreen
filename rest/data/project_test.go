@@ -76,6 +76,16 @@ func getProjectRef() *model.ProjectRef {
 	}
 }
 
+func getProjectRefNoRepo() *model.ProjectRef {
+	return &model.ProjectRef{
+		Owner:      "admin",
+		Enabled:    true,
+		Private:    true,
+		Identifier: projectId,
+		Admins:     []string{},
+	}
+}
+
 func TestProjectConnectorGetSuite(t *testing.T) {
 	s := new(ProjectConnectorGetSuite)
 	s.setup = func() error {
@@ -345,6 +355,13 @@ func (s *ProjectConnectorGetSuite) TestGetProjectSettingsEvent() {
 	projectSettingsEvent, err := s.ctx.GetProjectSettingsEvent(projRef)
 	s.NoError(err)
 	s.NotNil(projectSettingsEvent)
+}
+
+func (s *ProjectConnectorGetSuite) TestGetProjectSettingsEventNoRepo() {
+	projRef := model.ProjectRef{}
+	projectSettingsEvent, err := s.ctx.GetProjectSettingsEvent(&projRef)
+	s.NotNil(err)
+	s.Nil(projectSettingsEvent)
 }
 
 func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
