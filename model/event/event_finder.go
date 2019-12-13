@@ -83,15 +83,13 @@ func CountUnprocessedEvents() (int, error) {
 // === Queries ===
 
 // Host Events
-func MostRecentHostEvents(ids []string, n int) db.Q {
+func MostRecentHostEvents(id string, tag string, n int) db.Q {
 	filter := ResourceTypeKeyIs(ResourceTypeHost)
-	usableIds := []string{}
-	for _, id := range ids {
-		if id != "" {
-			usableIds = append(usableIds, id)
-		}
+	if tag != "" {
+		filter[ResourceIdKey] = bson.M{"$in": []string{id, tag}}
+	} else {
+		filter[ResourceIdKey] = id
 	}
-	filter[ResourceIdKey] = bson.M{"$in": usableIds}
 
 	return db.Query(filter).Sort([]string{"-" + TimestampKey}).Limit(n)
 }

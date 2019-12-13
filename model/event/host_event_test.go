@@ -43,7 +43,7 @@ func TestLoggingHostEvents(t *testing.T) {
 			// fetch all the events from the database, make sure they are
 			// persisted correctly
 
-			eventsForHost, err := Find(AllLogCollection, MostRecentHostEvents([]string{hostId, hostTag}, 50))
+			eventsForHost, err := Find(AllLogCollection, MostRecentHostEvents(hostId, hostTag, 50))
 			So(err, ShouldBeNil)
 
 			So(eventsForHost, ShouldHaveLength, 7)
@@ -135,7 +135,7 @@ func TestLoggingHostEvents(t *testing.T) {
 			err = UpdateExecutions(hostId, taskId, 0)
 			So(err, ShouldBeNil)
 
-			eventsForHost, err = Find(AllLogCollection, MostRecentHostEvents([]string{hostId}, 50))
+			eventsForHost, err = Find(AllLogCollection, MostRecentHostEvents(hostId, "", 50))
 			So(err, ShouldBeNil)
 			So(len(eventsForHost), ShouldBeGreaterThan, 0)
 			for _, event = range eventsForHost {
