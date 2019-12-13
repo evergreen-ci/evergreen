@@ -19,4 +19,4 @@ issues:
     - linters:
       - errcheck
       text: "return value of .* is not checked.*defer"
-  new-from-rev: 0c90ec1e6a1961860b8e37b1f5c0d66afd2a4832
+  #new-from-rev: 0c90ec1e6a1961860b8e37b1f5c0d66afd2a4832

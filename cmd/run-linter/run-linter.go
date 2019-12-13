@@ -97,7 +97,7 @@ func main() {
 		for _, linter := range customLinters {
 			customLinterStart := time.Now()
 			out, err = exec.Command("sh", "-c", fmt.Sprintf("%s %s", linter, pkgDir)).CombinedOutput()
-			r.passed = err == nil
+			r.passed = r.passed && err == nil
 			r.duration += time.Since(customLinterStart)
 			r.output = append(r.output, strings.Split(string(out), "\n")...)
 		}
