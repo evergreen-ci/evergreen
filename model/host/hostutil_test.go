@@ -745,8 +745,8 @@ func TestBufferedWriteFileCommands(t *testing.T) {
 	}
 }
 
-func TestTeardownCommandOverSSH(t *testing.T) {
-	cmd := TearDownCommandOverSSH()
+func TestTearDownDirectlyCommand(t *testing.T) {
+	cmd := TearDownDirectlyCommand()
 	assert.Equal(t, "chmod +x teardown.sh && sh teardown.sh", cmd)
 }
 

@@ -48,12 +48,12 @@ func (h *Host) TearDownCommand() string {
 	return fmt.Sprintf("cd %s && ./%s host teardown", h.Distro.HomeDir(), h.Distro.BinaryName())
 }
 
-// TearDownCommandOverSSH returns a command for running a teardown script on a host. This command
+// TearDownDirectlyCommand returns a command for running a teardown script on a host. This command
 // runs if there is a problem running host teardown with the agent and is intended only as a
 // backstop if multiple agent deploys interfere with one another
 // (https://jira.mongodb.org/browse/EVG-5972). It likely can be removed after work to improve amboy
 // job locking or the SSH dependency.
-func TearDownCommandOverSSH() string {
+func TearDownDirectlyCommand() string {
 	chmod := ChmodCommandWithSudo(context.Background(), evergreen.TeardownScriptName, false).Args
 	chmodString := strings.Join(chmod, " ")
 	sh := ShCommandWithSudo(context.Background(), evergreen.TeardownScriptName, false).Args
@@ -699,19 +699,17 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 		return nil, errors.Wrap(err, "problem creating process")
 	}
 
-	exitCode, err := proc.Wait(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "problem waiting for process completion")
-	}
-	if exitCode != 0 {
-		return nil, errors.Errorf("process returned exit code %d", exitCode)
+	catcher := grip.NewBasicCatcher()
+	if _, err := proc.Wait(ctx); err != nil {
+		catcher.Wrap(err, "problem waiting for process completion")
 	}
 
-	logs := []string{}
+	var logs []string
 	for {
 		logStream, err := client.GetLogStream(ctx, proc.ID(), 1000)
 		if err != nil {
-			return nil, errors.Wrap(err, "can't get output of process")
+			catcher.Wrap(err, "can't get output of process")
+			break
 		}
 
 		logs = append(logs, logStream.Logs...)
@@ -720,7 +718,7 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 		}
 	}
 
-	return logs, nil
+	return logs, catcher.Resolve()
 }
 
 // StartJasperProcess makes a request to the host's Jasper service to start a
