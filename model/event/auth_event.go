@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -56,11 +55,6 @@ func LogUserRolesEvent(user, roleID string, op RoleChangeOperation) error {
 	}
 	logger := NewDBEventLogger(AllLogCollection)
 	if err := logger.LogEvent(&event); err != nil {
-		message.WrapError(err, message.Fields{
-			"resource_type": ResourceTypeUserRoles,
-			"message":       "error logging event",
-			"source":        "event-log-fail",
-		})
 		return errors.Wrapf(err, "failed to log user role event for user '%s' and role '%s'", user, roleID)
 	}
 
@@ -91,11 +85,6 @@ func LogRoleEvent(before, after *gimlet.Role, op RoleChangeOperation) error {
 	}
 	logger := NewDBEventLogger(AllLogCollection)
 	if err := logger.LogEvent(&event); err != nil {
-		message.WrapError(err, message.Fields{
-			"resource_type": ResourceTypeRole,
-			"message":       "error logging event",
-			"source":        "event-log-fail",
-		})
 		return errors.Wrapf(err, "failed to log user role event for role '%s'", before.ID)
 	}
 
