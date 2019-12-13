@@ -151,7 +151,7 @@ func (c *scriptingExec) ParseParams(params map[string]interface{}) error {
 	}
 
 	if c.CacheDurationSeconds < 1 {
-		c.CacheDurationSeconds = 10
+		c.CacheDurationSeconds = 900
 	}
 
 	if c.Silent {
