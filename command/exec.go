@@ -91,8 +91,11 @@ func (c *subprocessExec) ParseParams(params map[string]interface{}) error {
 		}
 
 		args, err := shlex.Split(c.Command)
-		if err != nil || len(args) == 0 {
-			return errors.Wrap(err, "problem parsing shell command")
+		if err != nil {
+			return errors.Wrapf(err, "problem parsing %s command", c.Name())
+		}
+		if len(args) == 0 {
+			return errors.Errorf("no arguments for command %s", c.Name())
 		}
 
 		c.Binary = args[0]

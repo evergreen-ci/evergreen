@@ -49,6 +49,7 @@ func init() {
 		"shell.exec":                    shellExecFactory,
 		"shell.track":                   shellTrackFactory,
 		"subprocess.exec":               subprocessExecFactory,
+		"subprocess.scripting":          subprocessScriptingFactory,
 		"setup.initial":                 initialSetupFactory,
 		"timeout.update":                timeoutUpdateFactory,
 	}
