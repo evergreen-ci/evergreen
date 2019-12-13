@@ -49,7 +49,6 @@ func LogUserRolesEvent(user, roleID string, op RoleChangeOperation) error {
 		Operation: op,
 	}
 	event := EventLogEntry{
-		// TODO: figure out difference between timestamp and processed at
 		Timestamp:    time.Now(),
 		EventType:    EventTypeUserRoles,
 		Data:         data,
@@ -69,7 +68,6 @@ func LogUserRolesEvent(user, roleID string, op RoleChangeOperation) error {
 }
 
 type roleData struct {
-	// TODO: do we want a before and after?
 	Before    *gimlet.Role        `bson:"before" json:"before"`
 	After     *gimlet.Role        `bson:"after" json:"after"`
 	Operation RoleChangeOperation `bson:"operation" json:"operation"`
@@ -86,7 +84,6 @@ func LogRoleEvent(before, after *gimlet.Role, op RoleChangeOperation) error {
 		Operation: op,
 	}
 	event := EventLogEntry{
-		// TODO: figure out difference between timestamp and processed at
 		Timestamp:    time.Now(),
 		EventType:    EventTypeRole,
 		Data:         data,
