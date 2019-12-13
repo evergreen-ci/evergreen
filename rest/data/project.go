@@ -450,5 +450,31 @@ func (ac *MockProjectConnector) GetVersionsInProject(project, requester string, 
 }
 
 func (pc *MockProjectConnector) GetProjectSettingsEvent(p *model.ProjectRef) (*model.ProjectSettingsEvent, error) {
-	return &model.ProjectSettingsEvent{}, nil
+	hook, err := model.FindGithubHook(p.Owner, p.Repo)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Database error finding github hook for project '%s'", p.Identifier)
+	}
+	projectVars, err := model.FindOneProjectVars(p.Identifier)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error finding variables for project '%s'", p.Identifier)
+	}
+	if projectVars == nil {
+		projectVars = &model.ProjectVars{}
+	}
+	projectAliases, err := model.FindAliasesForProject(p.Identifier)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error finding aliases for project '%s'", p.Identifier)
+	}
+	subscriptions, err := event.FindSubscriptionsByOwner(p.Identifier, event.OwnerTypeProject)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error finding subscription for project '%s'", p.Identifier)
+	}
+	projectSettingsEvent := model.ProjectSettingsEvent{
+		ProjectRef:         *p,
+		GitHubHooksEnabled: hook != nil,
+		Vars:               *projectVars,
+		Aliases:            projectAliases,
+		Subscriptions:      subscriptions,
+	}
+	return &projectSettingsEvent, nil
 }
