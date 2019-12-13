@@ -707,7 +707,7 @@ func TestGetTestHistory(t *testing.T) {
 			DisplayName:         "test",
 			BuildVariant:        "osx",
 			Project:             project,
-			StartTime:           now.Add(time.Duration(30 * time.Minute)),
+			StartTime:           now.Add(30 * time.Minute),
 			RevisionOrderNumber: 2,
 			Status:              evergreen.TaskFailed,
 		}
@@ -849,7 +849,7 @@ func TestGetTestHistory(t *testing.T) {
 		params = TestHistoryParameters{
 			TaskNames:  []string{"test"},
 			Project:    project,
-			BeforeDate: now.Add(time.Duration(15 * time.Minute)),
+			BeforeDate: now.Add(15 * time.Minute),
 			Limit:      20,
 		}
 		assert.NoError(params.SetDefaultsAndValidate())

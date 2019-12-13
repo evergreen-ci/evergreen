@@ -197,8 +197,14 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 			j.AddError(err)
 			return
 		}
-		defer client.CloseConnection()
-
+		defer func() {
+			grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
+				"message": "could not close connection to Jasper",
+				"host":    j.host.Id,
+				"distro":  j.host.Distro.Id,
+				"job":     j.ID(),
+			}))
+		}()
 		// We use this ID to later verify the current running Jasper service.
 		// When Jasper is restarted, its ID should be different to indicate it
 		// is a new Jasper service.
@@ -254,7 +260,14 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 			j.AddError(err)
 			return
 		}
-		defer client.CloseConnection()
+		defer func() {
+			grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
+				"message": "could not close connection to Jasper",
+				"host":    j.host.Id,
+				"distro":  j.host.Distro.Id,
+				"job":     j.ID(),
+			}))
+		}()
 
 		newServiceID := client.ID()
 		if newServiceID == "" {

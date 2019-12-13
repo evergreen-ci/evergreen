@@ -221,13 +221,13 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 			}
 		}
 
-		defer os.Remove(patchFilePath) //nolint: evg
+		defer os.Remove(patchFilePath) //nolint: evg-lint
 		// write project configuration
 		configFilePath, err := util.WriteToTempFile(projectConfig)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not write config file")
 		}
-		defer os.Remove(configFilePath) //nolint: evg
+		defer os.Remove(configFilePath) //nolint: evg-lint
 
 		// clean the working directory
 		workingDirectory := filepath.Dir(patchFilePath)

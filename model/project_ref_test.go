@@ -345,7 +345,8 @@ func TestProjectRefTags(t *testing.T) {
 		require.Equal(t, "amboy", prjs[0].Identifier)
 	})
 	t.Run("Add", func(t *testing.T) {
-		mci.AddTags("test", "testing")
+		_, err := mci.AddTags("test", "testing")
+		require.NoError(t, err)
 
 		prjs, err := FindTaggedProjectRefs(false, "testing")
 		require.NoError(t, err)

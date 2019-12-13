@@ -132,7 +132,7 @@ func TestGetRecentVersions(t *testing.T) {
 				Version:      versions[i].Id,
 				DisplayName:  "some-task-name",
 				Status:       "success",
-				TimeTaken:    time.Duration(100 * time.Millisecond),
+				TimeTaken:    100 * time.Millisecond,
 				BuildVariant: build.BuildVariant,
 			}
 			So(task.Insert(), ShouldBeNil)
@@ -614,7 +614,7 @@ func TestGetVersionStatus(t *testing.T) {
 			Id:          "some-task-id",
 			DisplayName: "some-task-name",
 			Status:      "success",
-			TimeTaken:   time.Duration(100 * time.Millisecond),
+			TimeTaken:   100 * time.Millisecond,
 		}
 		build := &build.Build{
 			Id:           "some-build-id",

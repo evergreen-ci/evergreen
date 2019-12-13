@@ -681,7 +681,13 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get a Jasper client")
 	}
-	defer client.CloseConnection()
+	defer func() {
+		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
+			"message": "could not close connection to Jasper",
+			"host":    h.Id,
+			"distro":  h.Distro.Id,
+		}))
+	}()
 
 	inMemoryLoggerExists := false
 	for _, logger := range opts.Output.Loggers {
@@ -730,7 +736,13 @@ func (h *Host) StartJasperProcess(ctx context.Context, env evergreen.Environment
 	if err != nil {
 		return errors.Wrap(err, "could not get a Jasper client")
 	}
-	defer client.CloseConnection()
+	defer func() {
+		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
+			"message": "could not close connection to Jasper",
+			"host":    h.Id,
+			"distro":  h.Distro.Id,
+		}))
+	}()
 
 	if _, err := client.CreateProcess(ctx, opts); err != nil {
 		return errors.Wrap(err, "problem creating Jasper process")
@@ -858,7 +870,13 @@ func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) 
 	if err != nil {
 		return errors.Wrap(err, "could not get a Jasper client")
 	}
-	defer client.CloseConnection()
+	defer func() {
+		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
+			"message": "could not close connection to Jasper",
+			"host":    h.Id,
+			"distro":  h.Distro.Id,
+		}))
+	}()
 
 	procs, err := client.Group(ctx, evergreen.AgentMonitorTag)
 	if err != nil {

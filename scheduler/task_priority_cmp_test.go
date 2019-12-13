@@ -190,7 +190,9 @@ func TestByTaskGroupOrder(t *testing.T) {
 	require := require.New(t)
 
 	require.NoError(db.ClearCollections(model.VersionCollection))
-	defer db.ClearCollections(model.VersionCollection)
+	defer func() {
+		assert.NoError(db.ClearCollections(model.VersionCollection))
+	}()
 
 	taskComparator := &CmpBasedTaskComparator{}
 	tasks := []task.Task{
