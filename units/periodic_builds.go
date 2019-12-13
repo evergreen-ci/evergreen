@@ -108,6 +108,7 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 		IsAdHoc:         true,
 		Message:         definition.Message,
 		PeriodicBuildID: definition.ID,
+		Alias:           definition.Alias,
 	}
 	projectInfo := &repotracker.ProjectInfo{
 		Ref:                 j.project,
