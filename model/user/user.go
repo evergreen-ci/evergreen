@@ -206,7 +206,7 @@ func (u *DBUser) AddRole(role string) error {
 	}
 	u.SystemRoles = append(u.SystemRoles, role)
 
-	return nil
+	return event.LogUserRolesEvent(u.Id, role, event.AddRole)
 }
 
 func (u *DBUser) RemoveRole(role string) error {
@@ -222,7 +222,7 @@ func (u *DBUser) RemoveRole(role string) error {
 		}
 	}
 
-	return nil
+	return event.LogUserRolesEvent(u.Id, role, event.RemoveRole)
 }
 
 func (u *DBUser) HasPermission(opts gimlet.PermissionOpts) (bool, error) {

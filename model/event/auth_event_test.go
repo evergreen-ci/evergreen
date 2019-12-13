@@ -42,17 +42,24 @@ func TestLogRoleEvent(t *testing.T) {
 	defer db.Clear(AllLogCollection)
 
 	t.Run("InvalidRoleChangeOperation", func(t *testing.T) {
-		assert.Error(t, LogRoleEvent(gimlet.Role{}, "invalid"))
+		assert.Error(t, LogRoleEvent(&gimlet.Role{}, nil, "invalid"))
 	})
 	t.Run("LogEvent", func(t *testing.T) {
-		role := gimlet.Role{
+		before := &gimlet.Role{
 			ID:          "role",
 			Name:        "role",
 			Scope:       "scope",
 			Permissions: gimlet.Permissions{"project_settings": 10},
 			Owners:      []string{"evergreen"},
 		}
-		assert.NoError(t, LogRoleEvent(role, UpdateRole))
+		after := &gimlet.Role{
+			ID:          "role",
+			Name:        "role",
+			Scope:       "different_scope",
+			Permissions: gimlet.Permissions{"project_settings": 10},
+			Owners:      []string{"evergreen"},
+		}
+		assert.NoError(t, LogRoleEvent(before, after, UpdateRole))
 
 		e := &EventLogEntry{}
 		err := db.FindOne(
@@ -60,12 +67,17 @@ func TestLogRoleEvent(t *testing.T) {
 			bson.M{
 				"r_type": ResourceTypeRole,
 				"e_type": EventTypeRole,
-				bsonutil.GetDottedKeyName("data", "role", "_id"):         role.ID,
-				bsonutil.GetDottedKeyName("data", "role", "name"):        role.Name,
-				bsonutil.GetDottedKeyName("data", "role", "scope"):       role.Scope,
-				bsonutil.GetDottedKeyName("data", "role", "permissions"): role.Permissions,
-				bsonutil.GetDottedKeyName("data", "role", "owners"):      role.Owners,
-				bsonutil.GetDottedKeyName("data", "operation"):           UpdateRole,
+				bsonutil.GetDottedKeyName("data", "before", "_id"):         before.ID,
+				bsonutil.GetDottedKeyName("data", "before", "name"):        before.Name,
+				bsonutil.GetDottedKeyName("data", "before", "scope"):       before.Scope,
+				bsonutil.GetDottedKeyName("data", "before", "permissions"): before.Permissions,
+				bsonutil.GetDottedKeyName("data", "before", "owners"):      before.Owners,
+				bsonutil.GetDottedKeyName("data", "after", "_id"):          after.ID,
+				bsonutil.GetDottedKeyName("data", "after", "name"):         after.Name,
+				bsonutil.GetDottedKeyName("data", "after", "scope"):        after.Scope,
+				bsonutil.GetDottedKeyName("data", "after", "permissions"):  after.Permissions,
+				bsonutil.GetDottedKeyName("data", "after", "owners"):       after.Owners,
+				bsonutil.GetDottedKeyName("data", "operation"):             UpdateRole,
 			},
 			nil,
 			[]string{},

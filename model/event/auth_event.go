@@ -70,17 +70,19 @@ func LogUserRolesEvent(user, roleID string, op RoleChangeOperation) error {
 
 type roleData struct {
 	// TODO: do we want a before and after?
-	Role      gimlet.Role         `bson:"role" json:"role"`
+	Before    *gimlet.Role        `bson:"before" json:"before"`
+	After     *gimlet.Role        `bson:"after" json:"after"`
 	Operation RoleChangeOperation `bson:"operation" json:"operation"`
 }
 
-func LogRoleEvent(role gimlet.Role, op RoleChangeOperation) error {
+func LogRoleEvent(before, after *gimlet.Role, op RoleChangeOperation) error {
 	if err := op.validate(); err != nil {
-		return errors.Wrapf(err, "failed to log role event for  role '%s'", role.ID)
+		return errors.Wrapf(err, "failed to log role event for  role '%s'", before.ID)
 	}
 
 	data := roleData{
-		Role:      role,
+		Before:    before,
+		After:     after,
 		Operation: op,
 	}
 	event := EventLogEntry{
@@ -97,7 +99,7 @@ func LogRoleEvent(role gimlet.Role, op RoleChangeOperation) error {
 			"message":       "error logging event",
 			"source":        "event-log-fail",
 		})
-		return errors.Wrapf(err, "failed to log user role event for role '%s'", role.ID)
+		return errors.Wrapf(err, "failed to log user role event for role '%s'", before.ID)
 	}
 
 	return nil
