@@ -9,7 +9,3 @@ linters:
     - interfacer
     - misspell
     - unconvert
-
-run:
-  skip-dirs:
-    - build
