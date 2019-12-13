@@ -2,12 +2,14 @@
 linters:
   disable-all: true
   enable:
+    - errcheck
     - goimports
     - govet
     - ineffassign
+    - interfacer
     - misspell
     - typecheck
-      # TODO: custom linter probably needs to go in run-linter.
+    - unconvert
 
 run:
   skip-dirs:
@@ -15,10 +17,7 @@ run:
 issues:
   exclude-rules:
     - linters:
-        - goconst
-      # Ignore GOOS warnings.
-      text: "string `windows`"
-    - path: _test\.go
-      linters:
-        - gocognit
-        - goconst
+      - errcheck
+      text: "return value of .* is not checked.*defer"
+  # Ignore existing lint problems
+  new: true
