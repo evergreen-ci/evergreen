@@ -268,7 +268,7 @@ func TestFindNextTaskEmptySpec(t *testing.T) {
 
 	require.NoError(db.ClearCollections(host.Collection, task.Collection))
 	defer func() {
-		assert.NoError(t, db.ClearCollections(host.Collection, task.Collection))
+		assert.NoError(db.ClearCollections(host.Collection, task.Collection))
 	}()
 
 	hosts := []host.Host{}
@@ -383,7 +383,7 @@ func TestFindNextTaskWithLastTask(t *testing.T) {
 
 	require.NoError(db.ClearCollections(host.Collection, task.Collection))
 	defer func() {
-		assert.NoError(t, db.ClearCollections(host.Collection, task.Collection))
+		assert.NoError(db.ClearCollections(host.Collection, task.Collection))
 	}()
 
 	hosts := []host.Host{}
