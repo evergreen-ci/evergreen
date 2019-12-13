@@ -442,7 +442,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	}
 
 	status := t.ResultStatus()
-	event.LogTaskFinished(t.Id, t.Execution, t.HostId, status)
+	event.LogTaskFinished(t.Id, t.Execution, t.HostId, status, t.DisplayOnly)
 
 	if t.IsPartOfDisplay() {
 		if err = UpdateDisplayTask(t.DisplayTask); err != nil {
@@ -1088,7 +1088,7 @@ func UpdateDisplayTask(t *task.Task) error {
 	t.Details = statusTask.Details
 	t.TimeTaken = timeTaken
 	if !wasFinished && t.IsFinished() {
-		event.LogDisplayTaskFinished(t.Id, t.Execution, t.ResultStatus())
+		event.LogTaskFinished(t.Id, t.Execution, "", t.ResultStatus(), true)
 	}
 	return nil
 }

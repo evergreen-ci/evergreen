@@ -114,13 +114,11 @@ func LogTaskStarted(taskId string, execution int) {
 	logTaskEvent(taskId, TaskStarted, TaskEventData{Execution: execution})
 }
 
-func LogTaskFinished(taskId string, execution int, hostId, status string) {
+func LogTaskFinished(taskId string, execution int, hostId, status string, isDisplay bool) {
 	logTaskEvent(taskId, TaskFinished, TaskEventData{Execution: execution, Status: status})
-	LogHostEvent(hostId, EventTaskFinished, HostEventData{TaskExecution: execution, TaskStatus: status, TaskId: taskId})
-}
-
-func LogDisplayTaskFinished(taskId string, execution int, status string) {
-	logTaskEvent(taskId, TaskFinished, TaskEventData{Execution: execution, Status: status})
+	if !isDisplay {
+		LogHostEvent(hostId, EventTaskFinished, HostEventData{TaskExecution: execution, TaskStatus: status, TaskId: taskId})
+	}
 }
 
 func LogTaskRestarted(taskId string, execution int, userId string) {
