@@ -391,35 +391,37 @@ func (j *hostTerminationJob) runHostTeardown(ctx context.Context, settings *ever
 				return errors.Wrapf(err, "error running teardown script on remote host: %s", logs)
 			}
 		}
-	} else {
-		// We do not write the teardown script in user data because the user
-		// data script is subject to a 16kB text limit, which is easy to exceed.
-		if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
-			startTime = time.Now()
-			args := []string{filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath), "-c", fmt.Sprintf("cat > %s <<'EOF'\n%s\nEOF", filepath.Join(j.host.Distro.HomeDir(), evergreen.TeardownScriptName), j.host.Distro.Teardown)}
-			if output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
-				Args: args,
-			}); err != nil {
-				return errors.Wrapf(err, "could not write teardown file to host: %s", strings.Join(output, "\n"))
-			}
-		}
+		event.LogHostTeardown(j.host.Id, logs, true, time.Since(startTime))
+		return nil
+	}
 
+	// We do not write the teardown script in user data because the user
+	// data script is subject to a 16kB text limit, which is easy to exceed.
+	if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
 		startTime = time.Now()
-		output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
-			Args: []string{filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath), "-l", "-c", j.host.TearDownCommand()},
+		args := []string{filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath), "-c", fmt.Sprintf("cat > %s <<'EOF'\n%s\nEOF", filepath.Join(j.host.Distro.HomeDir(), evergreen.TeardownScriptName), j.host.Distro.Teardown)}
+		if output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
+			Args: args,
+		}); err != nil {
+			return errors.Wrapf(err, "could not write teardown file to host: %s", strings.Join(output, "\n"))
+		}
+	}
+
+	startTime = time.Now()
+	output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
+		Args: []string{filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath), "-l", "-c", j.host.TearDownCommand()},
+	})
+	if err != nil {
+		event.LogHostTeardown(j.host.Id, strings.Join(output, "\n"), false, time.Since(startTime))
+		startTime = time.Now()
+		output, err = j.host.RunJasperProcess(ctx, j.env, &options.Create{
+			Args: []string{filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath), "-l", "-c", host.TearDownDirectlyCommand()},
 		})
 		if err != nil {
-			event.LogHostTeardown(j.host.Id, strings.Join(output, "\n"), false, time.Since(startTime))
-			startTime = time.Now()
-			output, err = j.host.RunJasperProcess(ctx, j.env, &options.Create{
-				Args: []string{filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath), "-l", "-c", host.TearDownDirectlyCommand()},
-			})
-			if err != nil {
-				return errors.Wrapf(err, "error running teardown script on remote host")
-			}
+			return errors.Wrapf(err, "error running teardown script on remote host")
 		}
-		logs = strings.Join(output, "\n")
 	}
+	logs = strings.Join(output, "\n")
 
 	event.LogHostTeardown(j.host.Id, logs, true, time.Since(startTime))
 	return nil
