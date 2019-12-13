@@ -539,20 +539,21 @@ func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
 	}
 
 	opts := cloneOpts{
-		method: distro.CloneMethodOAuth,
-		branch: conf.ProjectRef.Branch,
-		owner:  conf.ProjectRef.Owner,
-		repo:   conf.ProjectRef.Repo,
-		dir:    c.Directory,
-		token:  c.Token,
+		method:             distro.CloneMethodOAuth,
+		branch:             conf.ProjectRef.Branch,
+		owner:              conf.ProjectRef.Owner,
+		repo:               conf.ProjectRef.Repo,
+		dir:                c.Directory,
+		token:              c.Token,
+		mergeTestRequester: true,
 	}
 	s.Require().NoError(opts.setLocation())
 
 	s.modelData2.TaskConfig.Task.Requester = evergreen.MergeTestRequester
 	cmds, err := c.buildCloneCommand(conf, opts)
 	s.NoError(err)
-	s.Len(cmds, 9)
-	s.True(strings.HasPrefix(cmds[8], fmt.Sprintf("git checkout '%s'", s.modelData2.TaskConfig.ProjectRef.Branch)))
+	s.Len(cmds, 8)
+	s.True(strings.HasSuffix(cmds[5], fmt.Sprintf("--branch '%s'", s.modelData2.TaskConfig.ProjectRef.Branch)))
 }
 
 func (s *GitGetProjectSuite) TestBuildModuleCommand() {
