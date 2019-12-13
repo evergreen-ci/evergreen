@@ -58,28 +58,29 @@ endif
 #   package, testing, and linter dependencies specified
 #   separately. This is a temporary solution: eventually we should
 #   vendorize all of these dependencies.
-lintDeps := github.com/alecthomas/gometalinter
+# lintDeps := github.com/alecthomas/gometalinter
+# lintDeps := github.com/evergreen-ci/evg-lint/...
 #   include test files and give linters 40s to run to avoid timeouts
-lintArgs := --tests --deadline=10m --vendor --aggregate --sort=line
-lintArgs += --vendored-linters --enable-gc
-#   gotype produces false positives because it reads .a files which
-#   are rarely up to date.
-lintArgs += --disable="gotype" --disable="gosec" --disable="gocyclo" --disable="maligned"
-lintArgs += --disable="golint" --disable="goconst" --disable="dupl"
-lintArgs += --disable="varcheck" --disable="structcheck" --disable="aligncheck"
-lintArgs += --skip="$(buildDir)" --skip="scripts" --skip="$(gopath)"
-#  add and configure additional linters
-lintArgs += --enable="misspell" # --enable="lll" --line-length=100
-lintArgs += --disable="staticcheck" --disable="megacheck"
-#  suppress some lint errors (logging methods could return errors, and error checking in defers.)
-lintArgs += --exclude=".*([mM]ock.*ator|modadvapi32|osSUSE) is unused \((deadcode|unused|megacheck)\)$$"
-lintArgs += --exclude="error return value not checked \((defer .*|fmt.Fprint.*) \(errcheck\)$$"
-lintArgs += --exclude=".* \(SA5001\) \(megacheck\)$$"
-lintArgs += --exclude=".*file is not goimported"
-lintArgs += --exclude="declaration of \"assert\" shadows declaration at .*_test.go:"
-lintArgs += --exclude="declaration of \"require\" shadows declaration at .*_test.go:"
-lintArgs += --linter="evg:$(gopath)/bin/evg-lint:PATH:LINE:COL:MESSAGE" --enable=evg
-lintArgs += --enable=goimports --disable="gotypex"
+# lintArgs := --tests --deadline=10m --vendor --aggregate --sort=line
+# lintArgs += --vendored-linters --enable-gc
+# #   gotype produces false positives because it reads .a files which
+# #   are rarely up to date.
+# lintArgs += --disable="gotype" --disable="gosec" --disable="gocyclo" --disable="maligned"
+# lintArgs += --disable="golint" --disable="goconst" --disable="dupl"
+# lintArgs += --disable="varcheck" --disable="structcheck" --disable="aligncheck"
+# lintArgs += --skip="$(buildDir)" --skip="scripts" --skip="$(gopath)"
+# #  add and configure additional linters
+# lintArgs += --enable="misspell" # --enable="lll" --line-length=100
+# lintArgs += --disable="staticcheck" --disable="megacheck"
+# #  suppress some lint errors (logging methods could return errors, and error checking in defers.)
+# lintArgs += --exclude=".*([mM]ock.*ator|modadvapi32|osSUSE) is unused \((deadcode|unused|megacheck)\)$$"
+# lintArgs += --exclude="error return value not checked \((defer .*|fmt.Fprint.*) \(errcheck\)$$"
+# lintArgs += --exclude=".* \(SA5001\) \(megacheck\)$$"
+# lintArgs += --exclude=".*file is not goimported"
+# lintArgs += --exclude="declaration of \"assert\" shadows declaration at .*_test.go:"
+# lintArgs += --exclude="declaration of \"require\" shadows declaration at .*_test.go:"
+# lintArgs += --linter="evg:$(gopath)/bin/evg-lint:PATH:LINE:COL:MESSAGE" --enable=evg
+# lintArgs += --enable=goimports --disable="gotypex"
 # end lint configuration
 
 
@@ -166,15 +167,18 @@ coverageHtmlOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).
 $(gopath)/src/%:
 	@-[ ! -d $(gopath) ] && mkdir -p $(gopath) || true
 	$(gobin) get $(subst $(gopath)/src/,,$@)
+$(gopath)/bin:
+	mkdir -p $@
 # end dependency installation tools
 
 
 # lint setup targets
-lintDeps := $(addprefix $(gopath)/src/,$(lintDeps))
-$(buildDir)/.lintSetup:$(lintDeps)
+# lintDeps := $(addprefix $(gopath)/src/,$(lintDeps))
+$(buildDir)/.lintSetup:#$(lintDeps)
 	$(gobin) get github.com/evergreen-ci/evg-lint/...
 	@mkdir -p $(buildDir)
-	$(if $(GO_BIN_PATH),export PATH=$(shell dirname $(GO_BIN_PATH)):${PATH} && ,)$(gopath)/bin/gometalinter --force --install >/dev/null && touch $@
+	# $(if $(GO_BIN_PATH),export PATH=$(shell dirname $(GO_BIN_PATH)):${PATH} && ,)$(gopath)/bin/gometalinter --force --install >/dev/null && touch $@
+	curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(buildDir) v1.10.2 >/dev/null 2>&1
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
 	@mkdir -p $(buildDir)
 	$(gobin) build -o $@ $<
@@ -445,9 +449,11 @@ $(buildDir)/output.%.coverage:$(tmpDir) .FORCE
 	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 #  targets to generate gotest output from the linter.
 $(buildDir)/output.%.lint:$(buildDir)/run-linter $(testSrcFiles) .FORCE
-	@./$< --output=$@ --lintArgs='$(lintArgs)' --packages='$*'
+	# @./$< --output=$@ --lintArgs='$(lintArgs)' --packages='$*'
+	./$< --output=$@ --lintBin="$(buildDir)/golangci-lint" --customLinters="$(gopath)/bin/evg-lint -set_exit_status" --packages='$*'
 $(buildDir)/output.lint:$(buildDir)/run-linter .FORCE
-	@./$< --output="$@" --lintArgs='$(lintArgs)' --packages="$(packages)"
+	# @./$< --output="$@" --lintArgs='$(lintArgs)' --packages="$(packages)"
+	./$< --output="$@" --lintBin="$(buildDir)/golangci-lint" --customLinters="$(gopath)/bin/evg-lint -set_exit_status" --packages="$(packages)"
 #  targets to process and generate coverage reports
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 	$(gobin) tool cover -html=$< -o $@

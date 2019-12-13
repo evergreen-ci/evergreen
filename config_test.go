@@ -150,7 +150,7 @@ func (s *AdminSuite) TestBaseConfig() {
 		GithubOrgs:         []string{"evergreen-ci"},
 		Keys:               map[string]string{"k3": "v3"},
 		LogPath:            "logpath",
-		Plugins:            map[string]map[string]interface{}{"k4": map[string]interface{}{"k5": "v5"}},
+		Plugins:            map[string]map[string]interface{}{"k4": {"k5": "v5"}},
 		PprofPort:          "port",
 		Splunk: send.SplunkConnectionInfo{
 			ServerURL: "server",
@@ -278,7 +278,7 @@ func (s *AdminSuite) TestAuthConfig() {
 			ExpireAfterMinutes: "60",
 		},
 		Naive: &NaiveAuthConfig{
-			Users: []*AuthUser{&AuthUser{Username: "user", Password: "pw"}},
+			Users: []*AuthUser{{Username: "user", Password: "pw"}},
 		},
 		Github: &GithubAuthConfig{
 			ClientId:     "ghclient",
@@ -537,7 +537,7 @@ func (s *AdminSuite) TestContainerPoolsConfig() {
 
 	invalidConfig := ContainerPoolsConfig{
 		Pools: []ContainerPool{
-			ContainerPool{
+			{
 				Distro:        "d1",
 				Id:            "test-pool-1",
 				MaxContainers: -5,
@@ -550,12 +550,12 @@ func (s *AdminSuite) TestContainerPoolsConfig() {
 
 	validConfig := ContainerPoolsConfig{
 		Pools: []ContainerPool{
-			ContainerPool{
+			{
 				Distro:        "d1",
 				Id:            "test-pool-1",
 				MaxContainers: 100,
 			},
-			ContainerPool{
+			{
 				Distro:        "d2",
 				Id:            "test-pool-2",
 				MaxContainers: 1,
