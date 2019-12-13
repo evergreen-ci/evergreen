@@ -699,19 +699,17 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 		return nil, errors.Wrap(err, "problem creating process")
 	}
 
-	exitCode, err := proc.Wait(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "problem waiting for process completion")
-	}
-	if exitCode != 0 {
-		return nil, errors.Errorf("process returned exit code %d", exitCode)
+	catcher := grip.NewBasicCatcher()
+	if _, err := proc.Wait(ctx); err != nil {
+		catcher.Wrap(err, "problem waiting for process completion")
 	}
 
 	logs := []string{}
 	for {
 		logStream, err := client.GetLogStream(ctx, proc.ID(), 1000)
 		if err != nil {
-			return nil, errors.Wrap(err, "can't get output of process")
+			catcher.Wrap(err, "can't get output of process")
+			break
 		}
 
 		logs = append(logs, logStream.Logs...)
@@ -720,7 +718,7 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 		}
 	}
 
-	return logs, nil
+	return logs, catcher.Resolve()
 }
 
 // StartJasperProcess makes a request to the host's Jasper service to start a
