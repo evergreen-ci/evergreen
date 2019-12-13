@@ -179,7 +179,7 @@ $(buildDir)/.lintSetup:#$(lintDeps)
 	@mkdir -p $(buildDir)
 	# $(if $(GO_BIN_PATH),export PATH=$(shell dirname $(GO_BIN_PATH)):${PATH} && ,)$(gopath)/bin/gometalinter --force --install >/dev/null && touch $@
 	curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(buildDir) v1.10.2 >/dev/null 2>&1 && touch $@
-$(buildDir)/run-linter:cmd/run_linter/run-linter.go $(buildDir)/.lintSetup
+$(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
 	@mkdir -p $(buildDir)
 	$(gobin) build -o $@ $<
 
@@ -189,7 +189,7 @@ $(buildDir)/run-linter:cmd/run_linter/run-linter.go $(buildDir)/.lintSetup
 generate-lint:$(buildDir)/generate-lint.json
 $(buildDir)/generate-lint.json:$(buildDir)/generate-lint $(srcFiles)
 	./$(buildDir)/generate-lint
-$(buildDir)/generate-lint:cmd/generate_lint/generate-lint.go
+$(buildDir)/generate-lint:cmd/generate-lint/generate-lint.go
 	$(gobin) build -o $@ $<
 # end generate lint
 

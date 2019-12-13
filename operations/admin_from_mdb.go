@@ -109,7 +109,7 @@ func toMdbForLocal() cli.Command {
 					continue
 				case tar.TypeReg:
 					buf = &bytes.Buffer{}
-					io.Copy(buf, tr)
+					_, _ = io.Copy(buf, tr)
 				}
 
 				docs := []interface{}{}
@@ -123,7 +123,7 @@ func toMdbForLocal() cli.Command {
 					}
 					docs = append(docs, doc)
 				}
-				coll.InsertMany(ctx, docs)
+				_, _ = coll.InsertMany(ctx, docs)
 				grip.Infof("inserted %d docs into %s", len(docs), header.Name)
 			}
 
