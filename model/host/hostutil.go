@@ -704,7 +704,7 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 		catcher.Wrap(err, "problem waiting for process completion")
 	}
 
-	logs := []string{}
+	var logs []string
 	for {
 		logStream, err := client.GetLogStream(ctx, proc.ID(), 1000)
 		if err != nil {

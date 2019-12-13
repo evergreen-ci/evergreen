@@ -373,17 +373,6 @@ func (j *hostTerminationJob) runHostTeardown(ctx context.Context, settings *ever
 	}
 
 	var startTime time.Time
-	if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
-		startTime = time.Now()
-		args := []string{filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath), "-c", fmt.Sprintf("set -o verbose && cat > %s <<'EOF'\n%s\nEOF", filepath.Join(j.host.Distro.HomeDir(), evergreen.TeardownScriptName), j.host.Distro.Teardown)}
-		if output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
-			Args: args,
-		}); err != nil {
-			event.LogHostTeardown(j.host.Id, strings.Join(output, "\n"), false, time.Since(startTime))
-			return errors.Wrapf(err, "could not write teardown file to host: %s", strings.Join(output, "\n"))
-		}
-	}
-
 	var logs string
 	if j.host.LegacyBootstrap() {
 		sshOptions, err := j.host.GetSSHOptions(settings)
@@ -403,6 +392,17 @@ func (j *hostTerminationJob) runHostTeardown(ctx context.Context, settings *ever
 			}
 		}
 	} else {
+		if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
+			startTime = time.Now()
+			args := []string{filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath), "-c", fmt.Sprintf("cat > %s <<'EOF'\n%s\nEOF", filepath.Join(j.host.Distro.HomeDir(), evergreen.TeardownScriptName), j.host.Distro.Teardown)}
+			if output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
+				Args: args,
+			}); err != nil {
+				event.LogHostTeardown(j.host.Id, strings.Join(output, "\n"), false, time.Since(startTime))
+				return errors.Wrapf(err, "could not write teardown file to host: %s", strings.Join(output, "\n"))
+			}
+		}
+
 		startTime = time.Now()
 		output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
 			Args: []string{filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath), "-l", "-c", j.host.TearDownCommand()},
