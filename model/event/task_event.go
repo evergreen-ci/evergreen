@@ -114,9 +114,9 @@ func LogTaskStarted(taskId string, execution int) {
 	logTaskEvent(taskId, TaskStarted, TaskEventData{Execution: execution})
 }
 
-func LogTaskFinished(taskId string, execution int, hostId, status string, isDisplay bool) {
+func LogTaskFinished(taskId string, execution int, hostId, status string) {
 	logTaskEvent(taskId, TaskFinished, TaskEventData{Execution: execution, Status: status})
-	if !isDisplay {
+	if hostId != "" {
 		LogHostEvent(hostId, EventTaskFinished, HostEventData{TaskExecution: execution, TaskStatus: status, TaskId: taskId})
 	}
 }

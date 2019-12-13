@@ -780,7 +780,7 @@ func (t *Task) MarkSystemFailed() error {
 		Type:   evergreen.CommandTypeSystem,
 	}
 
-	event.LogTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed, t.DisplayOnly)
+	event.LogTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
 
 	return UpdateOne(
 		bson.M{
