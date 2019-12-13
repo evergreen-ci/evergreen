@@ -8,7 +8,6 @@ linters:
     - ineffassign
     - interfacer
     - misspell
-    - typecheck
     - unconvert
 
 run:
