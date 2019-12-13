@@ -392,13 +392,14 @@ func (j *hostTerminationJob) runHostTeardown(ctx context.Context, settings *ever
 			}
 		}
 	} else {
+		// We do not write the teardown script in user data because the user
+		// data script is subject to a 16kB text limit, which is easy to exceed.
 		if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
 			startTime = time.Now()
 			args := []string{filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath), "-c", fmt.Sprintf("cat > %s <<'EOF'\n%s\nEOF", filepath.Join(j.host.Distro.HomeDir(), evergreen.TeardownScriptName), j.host.Distro.Teardown)}
 			if output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
 				Args: args,
 			}); err != nil {
-				event.LogHostTeardown(j.host.Id, strings.Join(output, "\n"), false, time.Since(startTime))
 				return errors.Wrapf(err, "could not write teardown file to host: %s", strings.Join(output, "\n"))
 			}
 		}
