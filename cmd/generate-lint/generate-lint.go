@@ -123,14 +123,12 @@ func getAllTargets() ([]string, error) {
 
 // generateTasks returns a map of tasks to generate.
 func generateTasks() (*shrub.Configuration, error) {
-	// changes, err := whatChanged()
-	// if err != nil {
-	//     return nil, err
-	// }
-	var err error
+	changes, err := whatChanged()
+	if err != nil {
+		return nil, err
+	}
 	var targets []string
 	var maxHosts int
-	changes := []string{}
 	if len(changes) == 0 {
 		maxHosts = commitMaxHosts
 		targets, err = getAllTargets()
