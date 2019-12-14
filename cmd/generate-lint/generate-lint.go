@@ -61,7 +61,9 @@ func targetsFromChangedFiles(files []string) ([]string, error) {
 				continue
 			}
 
-			if strings.HasPrefix(dir, "vendor") {
+			// We can't run make targets on packages in the cmd directory
+			// because the packages contain dashes.
+			if strings.HasPrefix(dir, "vendor") || strings.HasPrefix(dir, "cmd") {
 				continue
 			}
 
