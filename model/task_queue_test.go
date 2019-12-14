@@ -501,7 +501,9 @@ func TestFindDistroTaskQueue(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(TaskQueuesCollection))
-	defer db.ClearCollections(TaskQueuesCollection)
+	defer func() {
+		assert.NoError(db.ClearCollections(TaskQueuesCollection))
+	}()
 
 	distroID := "distro1"
 	info := DistroQueueInfo{
@@ -543,7 +545,9 @@ func TestGetDistroQueueInfo(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(TaskQueuesCollection))
-	defer db.ClearCollections(TaskQueuesCollection)
+	defer func() {
+		assert.NoError(db.ClearCollections(TaskQueuesCollection))
+	}()
 
 	distroID := "distro1"
 	info := DistroQueueInfo{
