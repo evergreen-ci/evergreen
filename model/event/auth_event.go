@@ -13,6 +13,7 @@ const (
 	EventTypeRoleChanged = "ROLE_CHANGED"
 )
 
+// UserEventType represents types of changes possible to a DB user.
 type UserEventType string
 
 const (
@@ -34,6 +35,7 @@ type userData struct {
 	After  interface{} `bson:"after" json:"after"`
 }
 
+// LogUserEvent logs a change to DB User to the event log collection.
 func LogUserEvent(user string, eventType UserEventType, before, after interface{}) error {
 	if err := eventType.validate(); err != nil {
 		return errors.Wrapf(err, "failed to log user event for user '%s'", user)
@@ -58,6 +60,7 @@ func LogUserEvent(user string, eventType UserEventType, before, after interface{
 	return nil
 }
 
+// RoleEventType represents types of changes possible to a role.
 type RoleEventType string
 
 const (
@@ -80,6 +83,7 @@ type roleData struct {
 	After  *gimlet.Role `bson:"after" json:"after"`
 }
 
+// LogRoleEvent logs a change to a role to the event log collection.
 func LogRoleEvent(eventType RoleEventType, before, after *gimlet.Role) error {
 	if err := eventType.validate(); err != nil {
 		return errors.Wrapf(err, "failed to log role event for role '%s'", before.ID)
