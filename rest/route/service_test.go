@@ -1118,7 +1118,7 @@ func TestTaskResetExecute(t *testing.T) {
 			So(resTask.DispatchTime, ShouldResemble, model.APIZeroTime)
 			dbTask, err := sc.FindTaskById("testTaskId")
 			So(err, ShouldBeNil)
-			So(string(dbTask.Secret), ShouldNotResemble, "initialSecret")
+			So(dbTask.Secret, ShouldNotResemble, "initialSecret")
 		})
 	})
 

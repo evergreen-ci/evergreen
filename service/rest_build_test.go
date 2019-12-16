@@ -67,7 +67,7 @@ func TestGetBuildInfo(t *testing.T) {
 			Id:          "some-task-id",
 			DisplayName: "some-task-name",
 			Status:      "success",
-			TimeTaken:   time.Duration(100 * time.Millisecond),
+			TimeTaken:   100 * time.Millisecond,
 		}
 		build := &build.Build{
 			Id:                  buildId,
@@ -84,7 +84,7 @@ func TestGetBuildInfo(t *testing.T) {
 			ActivatedTime:       time.Now().Add(-15 * time.Minute),
 			RevisionOrderNumber: rand.Int(),
 			Tasks:               []build.TaskCache{task},
-			TimeTaken:           time.Duration(10 * time.Minute),
+			TimeTaken:           10 * time.Minute,
 			DisplayName:         "My build",
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
@@ -220,7 +220,7 @@ func TestGetBuildStatus(t *testing.T) {
 			Id:          "some-task-id",
 			DisplayName: "some-task-name",
 			Status:      "success",
-			TimeTaken:   time.Duration(100 * time.Millisecond),
+			TimeTaken:   100 * time.Millisecond,
 		}
 		build := &build.Build{
 			Id:           buildId,

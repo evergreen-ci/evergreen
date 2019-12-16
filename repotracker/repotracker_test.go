@@ -107,7 +107,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 		Convey("On storing several repo revisions, we expect a version to be created "+
 			"for each revision", func() {
 			createTime := time.Now()
-			laterCreateTime := createTime.Add(time.Duration(4 * time.Hour))
+			laterCreateTime := createTime.Add(4 * time.Hour)
 
 			revisionOne := *createTestRevision("1d97b5e8127a684f341d9fea5b3a2848f075c3b0", laterCreateTime)
 			revisionTwo := *createTestRevision("d8e95fcffa1055fb9e2793fa47fec39d61dd1500", createTime)
@@ -314,7 +314,7 @@ func TestBatchTimes(t *testing.T) {
 			"have overridden their batch times, all variants should be activated", func() {
 			project := createTestProject(nil, nil)
 			revisions := []model.Revision{
-				*createTestRevision("bar", time.Now().Add(time.Duration(-6*time.Minute))),
+				*createTestRevision("bar", time.Now().Add(-6*time.Minute)),
 			}
 			repoTracker := RepoTracker{
 				testConfig,

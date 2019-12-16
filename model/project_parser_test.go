@@ -1400,7 +1400,7 @@ func checkProjectPersists(yml []byte) error {
 	}
 
 	// ensure that updating with the re-parsed project doesn't error
-	pp, err = createIntermediateProject([]byte(newYaml))
+	pp, err = createIntermediateProject(newYaml)
 	pp.Id = "my-project"
 	pp.Identifier = "new-project-identifier"
 	if err != nil {

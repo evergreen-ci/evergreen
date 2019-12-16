@@ -24,7 +24,7 @@ func TestRecordTaskCost(t *testing.T) {
 	t1 := &task.Task{
 		Id:         "t1",
 		StartTime:  time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-		FinishTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC).Add(time.Duration(time.Hour)),
+		FinishTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC).Add(time.Hour),
 	}
 	assert.NoError(t, t1.Insert())
 

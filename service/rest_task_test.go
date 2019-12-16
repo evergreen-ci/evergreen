@@ -58,8 +58,8 @@ func insertTaskForTesting(taskId, versionId, projectName string, testResults []t
 			Description: "some-stage",
 		},
 		Aborted:          false,
-		TimeTaken:        time.Duration(100 * time.Millisecond),
-		ExpectedDuration: time.Duration(99 * time.Millisecond),
+		TimeTaken:        100 * time.Millisecond,
+		ExpectedDuration: 99 * time.Millisecond,
 	}
 
 	err := task.Insert()

@@ -158,7 +158,9 @@ func smokeStartEvergreen() cli.Command {
 				if err != nil {
 					return errors.Wrap(err, "error setting up Jasper RPC service")
 				}
-				defer closeServer()
+				defer func() {
+					grip.Warning(closeServer())
+				}()
 
 				clientFile, err := ioutil.TempFile("", "evergreen")
 				if err != nil {

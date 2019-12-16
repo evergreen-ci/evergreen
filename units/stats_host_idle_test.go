@@ -23,7 +23,7 @@ func TestIncrementCostForDuration(t *testing.T) {
 	assert.NoError(t, h1.Insert())
 
 	startTime := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	finishTime := startTime.Add(time.Duration(time.Hour))
+	finishTime := startTime.Add(time.Hour)
 
 	j := newHostIdleJob()
 	j.env = evergreen.GetEnvironment()
