@@ -8,9 +8,8 @@ import (
 )
 
 const (
-	ResourceTypeUser     = "USER"
-	ResourceTypeRole     = "ROLE"
-	EventTypeRoleChanged = "ROLE_CHANGED"
+	ResourceTypeUser = "USER"
+	ResourceTypeRole = "ROLE"
 )
 
 // UserEventType represents types of changes possible to a DB user.
@@ -35,7 +34,7 @@ type userData struct {
 	After  interface{} `bson:"after" json:"after"`
 }
 
-// LogUserEvent logs a change to DB User to the event log collection.
+// LogUserEvent logs a DB User change to the event log collection.
 func LogUserEvent(user string, eventType UserEventType, before, after interface{}) error {
 	if err := eventType.validate(); err != nil {
 		return errors.Wrapf(err, "failed to log user event for user '%s'", user)
