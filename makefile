@@ -143,9 +143,10 @@ $(gopath)/bin:
 
 
 # lint setup targets
-$(buildDir)/.lintSetup:
+$(buildDir)/.lintSetup:$(buildDir)/golangci-lint
 	$(gobin) get github.com/evergreen-ci/evg-lint/...
 	@mkdir -p $(buildDir)
+$(buildDir)/golangci-lint:
 	@curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(buildDir) v1.10.2 >/dev/null 2>&1 && touch $@
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
 	@mkdir -p $(buildDir)
@@ -416,9 +417,9 @@ $(buildDir)/output.%.coverage:$(tmpDir) .FORCE
 	$(testRunEnv) $(gobin) test -ldflags=$(ldFlags) $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
 	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 #  targets to generate gotest output from the linter.
-$(buildDir)/output.%.lint:$(buildDir)/run-linter $(testSrcFiles) .FORCE
+$(buildDir)/output.%.lint:$(buildDir)/run-linter $(buildDir)/golangci-lint $(testSrcFiles) .FORCE
 	@./$< --output=$@ --lintBin="$(buildDir)/golangci-lint" --customLinters="$(gopath)/bin/evg-lint -set_exit_status" --packages='$*'
-$(buildDir)/output.lint:$(buildDir)/run-linter .FORCE
+$(buildDir)/output.lint:$(buildDir)/run-linter $(buildDir)/golangci-lint .FORCE
 	@./$< --output="$@" --lintBin="$(buildDir)/golangci-lint" --customLinters="$(gopath)/bin/evg-lint -set_exit_status" --packages="$(packages)"
 #  targets to process and generate coverage reports
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
