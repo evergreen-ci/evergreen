@@ -329,6 +329,33 @@ func (s *ProjectConnectorGetSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBr
 	s.NotNil(projRef)
 }
 
+func (s *ProjectConnectorGetSuite) TestGetProjectSettingsEvent() {
+	projRef := &model.ProjectRef{
+		Owner:      "admin",
+		Enabled:    true,
+		Private:    true,
+		Identifier: projectId,
+		Admins:     []string{},
+		Repo:       "SomeRepo",
+	}
+	projectSettingsEvent, err := s.ctx.GetProjectSettingsEvent(projRef)
+	s.NoError(err)
+	s.NotNil(projectSettingsEvent)
+}
+
+func (s *ProjectConnectorGetSuite) TestGetProjectSettingsEventNoRepo() {
+	projRef := &model.ProjectRef{
+		Owner:      "admin",
+		Enabled:    true,
+		Private:    true,
+		Identifier: projectId,
+		Admins:     []string{},
+	}
+	projectSettingsEvent, err := s.ctx.GetProjectSettingsEvent(projRef)
+	s.NotNil(err)
+	s.Nil(projectSettingsEvent)
+}
+
 func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
 	res, err := s.ctx.FindProjectVarsById(projectId)
 	s.NoError(err)

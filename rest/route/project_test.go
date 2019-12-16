@@ -8,10 +8,10 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/db"
-
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -45,6 +45,7 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 
 func (s *ProjectPatchByIDSuite) TestParse() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 
 	json := []byte(`{"private" : false}`)
 	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil?revision=my-revision", bytes.NewBuffer(json))

@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/event"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	adb "github.com/mongodb/anser/db"
@@ -248,6 +249,36 @@ func (ac *DBProjectConnector) GetVersionsInProject(project, requester string, li
 	return out, catcher.Resolve()
 }
 
+func (pc *DBProjectConnector) GetProjectSettingsEvent(p *model.ProjectRef) (*model.ProjectSettingsEvent, error) {
+	hook, err := model.FindGithubHook(p.Owner, p.Repo)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Database error finding github hook for project '%s'", p.Identifier)
+	}
+	projectVars, err := model.FindOneProjectVars(p.Identifier)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error finding variables for project '%s'", p.Identifier)
+	}
+	if projectVars == nil {
+		projectVars = &model.ProjectVars{}
+	}
+	projectAliases, err := model.FindAliasesForProject(p.Identifier)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error finding aliases for project '%s'", p.Identifier)
+	}
+	subscriptions, err := event.FindSubscriptionsByOwner(p.Identifier, event.OwnerTypeProject)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error finding subscription for project '%s'", p.Identifier)
+	}
+	projectSettingsEvent := model.ProjectSettingsEvent{
+		ProjectRef:         *p,
+		GitHubHooksEnabled: hook != nil,
+		Vars:               *projectVars,
+		Aliases:            projectAliases,
+		Subscriptions:      subscriptions,
+	}
+	return &projectSettingsEvent, nil
+}
+
 // MockPatchConnector is a struct that implements the Patch related methods
 // from the Connector through interactions with he backing database.
 type MockProjectConnector struct {
@@ -416,4 +447,11 @@ func (pc *MockProjectConnector) UpdateProjectRevision(projectID, revision string
 
 func (ac *MockProjectConnector) GetVersionsInProject(project, requester string, limit, startOrder int) ([]restModel.APIVersion, error) {
 	return nil, nil
+}
+
+func (pc *MockProjectConnector) GetProjectSettingsEvent(p *model.ProjectRef) (*model.ProjectSettingsEvent, error) {
+	if len(p.Owner) == 0 || len(p.Repo) == 0 {
+		return nil, errors.New("Owner and repository must not be empty strings")
+	}
+	return &model.ProjectSettingsEvent{}, nil
 }

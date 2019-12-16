@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -128,11 +129,12 @@ func LogProjectEvent(eventType string, projectId string, eventData ProjectChange
 
 	logger := event.NewDBEventLogger(event.AllLogCollection)
 	if err := logger.LogEvent(&projectEvent); err != nil {
-		message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": EventResourceTypeProject,
 			"message":       "error logging event",
 			"source":        "event-log-fail",
-		})
+			"projectId":     projectId,
+		}))
 		return errors.Wrap(err, "Error logging project event")
 	}
 
@@ -143,16 +145,19 @@ func LogProjectAdded(projectId, username string) error {
 	return LogProjectEvent(EventTypeProjectAdded, projectId, ProjectChangeEvent{User: username})
 }
 
-func LogProjectModified(projectId, username string, before, after ProjectSettingsEvent) error {
+func LogProjectModified(projectId, username string, before, after *ProjectSettingsEvent) error {
+	if before == nil || after == nil {
+		return nil
+	}
 	// Stop if there are no changes
-	if reflect.DeepEqual(before, after) {
+	if reflect.DeepEqual(*before, *after) {
 		return nil
 	}
 
 	eventData := ProjectChangeEvent{
 		User:   username,
-		Before: before,
-		After:  after,
+		Before: *before,
+		After:  *after,
 	}
 	return LogProjectEvent(EventTypeProjectModified, projectId, eventData)
 }

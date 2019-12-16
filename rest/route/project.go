@@ -196,6 +196,7 @@ func (h *versionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 type projectIDPatchHandler struct {
 	projectID string
 	body      []byte
+	username  string
 
 	sc       data.Connector
 	settings *evergreen.Settings
@@ -218,6 +219,8 @@ func (h *projectIDPatchHandler) Factory() gimlet.RouteHandler {
 // Parse fetches the project's identifier from the http request.
 func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.projectID = gimlet.GetVars(r)["project_id"]
+	user := MustHaveUser(ctx)
+	h.username = user.DisplayName()
 	body := util.NewRequestReader(r)
 	defer body.Close()
 	b, err := ioutil.ReadAll(body)
@@ -273,6 +276,12 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    err.Error(),
 		})
 	}
+
+	before, err := h.sc.GetProjectSettingsEvent(dbProjectRef)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettingsEvent before update for project'%s'", h.projectID))
+	}
+
 	if dbProjectRef.Enabled {
 		var hasHook bool
 		hasHook, err = h.sc.EnableWebhooks(ctx, dbProjectRef)
@@ -403,6 +412,14 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	if err = h.sc.DeleteSubscriptions(h.projectID, toDelete); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error deleting subscriptions for project '%s'", h.projectID))
+	}
+
+	after, err := h.sc.GetProjectSettingsEvent(dbProjectRef)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettingsEvent after update for project '%s'", h.projectID))
+	}
+	if err = dbModel.LogProjectModified(identifier, h.username, before, after); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error logging project modification for project '%s'", h.projectID))
 	}
 
 	// run the repotracker for the project
