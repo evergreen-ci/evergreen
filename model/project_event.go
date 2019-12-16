@@ -145,16 +145,19 @@ func LogProjectAdded(projectId, username string) error {
 	return LogProjectEvent(EventTypeProjectAdded, projectId, ProjectChangeEvent{User: username})
 }
 
-func LogProjectModified(projectId, username string, before, after ProjectSettingsEvent) error {
+func LogProjectModified(projectId, username string, before, after *ProjectSettingsEvent) error {
+	if before == nil || after == nil {
+		return nil
+	}
 	// Stop if there are no changes
-	if reflect.DeepEqual(before, after) {
+	if reflect.DeepEqual(*before, *after) {
 		return nil
 	}
 
 	eventData := ProjectChangeEvent{
 		User:   username,
-		Before: before,
-		After:  after,
+		Before: *before,
+		After:  *after,
 	}
 	return LogProjectEvent(EventTypeProjectModified, projectId, eventData)
 }

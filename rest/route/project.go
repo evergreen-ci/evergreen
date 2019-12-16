@@ -406,7 +406,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettingsEvent after update for project '%s'", h.projectID))
 	}
-	if err = dbModel.LogProjectModified(identifier, h.username, *before, *after); err != nil {
+	if err = dbModel.LogProjectModified(identifier, h.username, before, after); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error logging project modification for project '%s'", h.projectID))
 	}
 
