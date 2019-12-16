@@ -121,9 +121,9 @@ type Connector interface {
 	FindTasksByProjectAndCommit(string, string, string, string, int) ([]task.Task, error)
 
 	// FindTestsByTaskId is a method to find a set of tests that correspond to
-	// a given task. It takes a taskId, testName to start from, test status to filter,
+	// a given task. It takes a taskId, testId to start from, test name and status to filter,
 	// limit, and sort to provide additional control over the results.
-	FindTestsByTaskId(string, string, string, int, int) ([]testresult.TestResult, error)
+	FindTestsByTaskId(string, string, string, string, int, int) ([]testresult.TestResult, error)
 
 	// FindUserById is a method to find a specific user given its ID.
 	FindUserById(string) (gimlet.User, error)

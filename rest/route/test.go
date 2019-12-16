@@ -15,6 +15,7 @@ import (
 type testGetHandler struct {
 	taskId        string
 	testStatus    string
+	testName      string
 	testExecution int
 	key           string
 	limit         int
@@ -61,7 +62,7 @@ func (tgh *testGetHandler) Parse(ctx context.Context, r *http.Request) error {
 
 	tgh.testStatus = vals.Get("status")
 	tgh.key = vals.Get("start_at")
-
+	tgh.testName = vals.Get("test_name")
 	tgh.limit, err = getLimit(vals)
 	if err != nil {
 		return errors.WithStack(err)
@@ -71,7 +72,7 @@ func (tgh *testGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
-	tests, err := tgh.sc.FindTestsByTaskId(tgh.taskId, tgh.key, tgh.testStatus, tgh.limit+1, tgh.testExecution)
+	tests, err := tgh.sc.FindTestsByTaskId(tgh.taskId, tgh.key, tgh.testName, tgh.testStatus, tgh.limit+1, tgh.testExecution)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}

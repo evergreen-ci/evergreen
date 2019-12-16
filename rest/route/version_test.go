@@ -147,7 +147,7 @@ func (s *VersionSuite) TestFindAllBuildsForVersion() {
 	builds, ok := res.Data().([]model.Model)
 	s.True(ok)
 
-	s.Equal(2, len(builds))
+	s.Len(builds, 2)
 
 	for idx, build := range builds {
 		b, ok := (build).(*model.APIBuild)
@@ -159,6 +159,28 @@ func (s *VersionSuite) TestFindAllBuildsForVersion() {
 		s.Equal(model.NewTime(timeField), b.FinishTime)
 		s.Equal(model.ToAPIString(versionId), b.Version)
 		s.Equal(model.ToAPIString(s.bv[idx]), b.BuildVariant)
+	}
+}
+
+func (s *VersionSuite) TestFindBuildsForVersionByVariant() {
+	handler := &buildsForVersionHandler{versionId: "versionId", sc: s.sc}
+
+	for i, variant := range s.bv {
+		handler.variant = variant
+		res := handler.Run(context.Background())
+		s.Equal(http.StatusOK, res.Status())
+		s.NotNil(res)
+
+		builds, ok := res.Data().([]model.Model)
+		s.True(ok)
+
+		s.Require().Len(builds, 1)
+		b, ok := (builds[0]).(*model.APIBuild)
+		s.True(ok)
+
+		s.Equal(versionId, model.FromAPIString(b.Version))
+		s.Equal(s.bi[i], model.FromAPIString(b.Id))
+		s.Equal(variant, model.FromAPIString(b.BuildVariant))
 	}
 }
 
