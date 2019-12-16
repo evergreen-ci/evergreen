@@ -19,7 +19,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"github.com/sabhiram/go-git-ignore"
+	ignore "github.com/sabhiram/go-git-ignore"
 	"gopkg.in/yaml.v2"
 )
 

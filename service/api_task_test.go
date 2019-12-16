@@ -674,7 +674,7 @@ func TestNextTask(t *testing.T) {
 					as.env = env
 				}()
 				mockEnv := &mock.Environment{}
-				mockEnv.Configure(ctx)
+				require.NoError(t, mockEnv.Configure(ctx))
 				as.env = mockEnv
 
 				h := host.Host{

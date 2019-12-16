@@ -16,13 +16,13 @@ const (
 
 type NotificationHistory struct {
 	Id                    mgobson.ObjectId `bson:"_id,omitempty"`
-	PrevNotificationId    string              `bson:"p_nid"`
-	CurrNotificationId    string              `bson:"c_nid"`
-	NotificationName      string              `bson:"n_name"`
-	NotificationType      string              `bson:"n_type"`
-	NotificationTime      time.Time           `bson:"n_time"`
-	NotificationProject   string              `bson:"n_branch"`
-	NotificationRequester string              `bson:"n_requester"`
+	PrevNotificationId    string           `bson:"p_nid"`
+	CurrNotificationId    string           `bson:"c_nid"`
+	NotificationName      string           `bson:"n_name"`
+	NotificationType      string           `bson:"n_type"`
+	NotificationTime      time.Time        `bson:"n_time"`
+	NotificationProject   string           `bson:"n_branch"`
+	NotificationRequester string           `bson:"n_requester"`
 }
 
 var (

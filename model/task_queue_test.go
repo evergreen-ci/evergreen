@@ -267,7 +267,9 @@ func TestFindNextTaskEmptySpec(t *testing.T) {
 	require := require.New(t)
 
 	require.NoError(db.ClearCollections(host.Collection, task.Collection))
-	defer db.ClearCollections(host.Collection, task.Collection)
+	defer func() {
+		assert.NoError(db.ClearCollections(host.Collection, task.Collection))
+	}()
 
 	hosts := []host.Host{}
 	for i := 0; i < 10; i++ {
@@ -380,7 +382,9 @@ func TestFindNextTaskWithLastTask(t *testing.T) {
 	require := require.New(t)
 
 	require.NoError(db.ClearCollections(host.Collection, task.Collection))
-	defer db.ClearCollections(host.Collection, task.Collection)
+	defer func() {
+		assert.NoError(db.ClearCollections(host.Collection, task.Collection))
+	}()
 
 	hosts := []host.Host{}
 	for i := 0; i < 10; i++ {
@@ -440,7 +444,9 @@ func TestTaskQueueGenerationTimes(t *testing.T) {
 	require := require.New(t)
 
 	require.NoError(db.ClearCollections(TaskQueuesCollection))
-	defer db.ClearCollections(TaskQueuesCollection)
+	defer func() {
+		assert.NoError(db.ClearCollections(TaskQueuesCollection))
+	}()
 
 	now := time.Now().Round(time.Millisecond).UTC()
 	taskQueue := &TaskQueue{
@@ -495,7 +501,9 @@ func TestFindDistroTaskQueue(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(TaskQueuesCollection))
-	defer db.ClearCollections(TaskQueuesCollection)
+	defer func() {
+		assert.NoError(db.ClearCollections(TaskQueuesCollection))
+	}()
 
 	distroID := "distro1"
 	info := DistroQueueInfo{
@@ -537,7 +545,9 @@ func TestGetDistroQueueInfo(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(TaskQueuesCollection))
-	defer db.ClearCollections(TaskQueuesCollection)
+	defer func() {
+		assert.NoError(db.ClearCollections(TaskQueuesCollection))
+	}()
 
 	distroID := "distro1"
 	info := DistroQueueInfo{

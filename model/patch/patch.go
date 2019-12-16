@@ -129,7 +129,7 @@ func (p *Patch) FetchPatchFiles() error {
 		if err != nil {
 			return err
 		}
-		defer file.Close() //nolint: evg
+		defer file.Close() //nolint: evg-lint
 		raw, err := ioutil.ReadAll(file)
 		if err != nil {
 			return err

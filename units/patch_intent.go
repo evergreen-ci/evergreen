@@ -330,7 +330,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 }
 
 func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) error {
-	defer j.intent.SetProcessed()
+	defer j.intent.SetProcessed() //nolint: errcheck
 	projectRef, err := model.FindOneProjectRef(patchDoc.Project)
 	if err != nil {
 		return errors.Wrapf(err, "Could not find project ref '%s'", patchDoc.Project)
@@ -385,7 +385,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 		})
 		return false, errors.New("github pr testing is disabled, not processing pull request")
 	}
-	defer j.intent.SetProcessed()
+	defer j.intent.SetProcessed() //nolint: errcheck
 
 	mustBeMemberOfOrg := j.env.Settings().GithubPRCreatorOrg
 	if mustBeMemberOfOrg == "" {
