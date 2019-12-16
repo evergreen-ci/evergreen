@@ -62,7 +62,7 @@ func TestTerminateHosts(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(dbHost)
 	assert.Equal(evergreen.HostTerminated, dbHost.Status)
-	events, err := event.Find(event.AllLogCollection, event.MostRecentHostEvents([]string{hostID}, 50))
+	events, err := event.Find(event.AllLogCollection, event.MostRecentHostEvents(hostID, "", 50))
 	assert.NoError(err)
 	data, valid := events[0].Data.(*event.HostEventData)
 	assert.True(valid)

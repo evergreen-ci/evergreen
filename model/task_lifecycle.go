@@ -1088,7 +1088,7 @@ func UpdateDisplayTask(t *task.Task) error {
 	t.Details = statusTask.Details
 	t.TimeTaken = timeTaken
 	if !wasFinished && t.IsFinished() {
-		event.LogDisplayTaskFinished(t.Id, t.Execution, t.ResultStatus())
+		event.LogTaskFinished(t.Id, t.Execution, "", t.ResultStatus())
 	}
 	return nil
 }
