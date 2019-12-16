@@ -69,7 +69,7 @@ func (s *ProjectEventSuite) TestModifyProjectEvent() {
 	after := getMockProjectSettings()
 	after.ProjectRef.Enabled = false
 
-	s.NoError(LogProjectModified(projectId, username, before, after))
+	s.NoError(LogProjectModified(projectId, username, &before, &after))
 
 	projectEvents, err := MostRecentProjectEvents(projectId, 5)
 	s.NoError(err)
@@ -87,7 +87,7 @@ func (s *ProjectEventSuite) TestModifyProjectNonEvent() {
 	before := getMockProjectSettings()
 	after := getMockProjectSettings()
 
-	s.NoError(LogProjectModified(projectId, username, before, after))
+	s.NoError(LogProjectModified(projectId, username, &before, &after))
 
 	projectEvents, err := MostRecentProjectEvents(projectId, 5)
 	s.NoError(err)
