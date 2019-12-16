@@ -3,7 +3,6 @@ package agent
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -312,7 +311,7 @@ func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
 	if tc.logger != nil {
 		grip.Error(tc.logger.Close())
 	}
-	grip.Error(os.RemoveAll(filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)))
+	grip.Error(util.RemoveAll(filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)))
 	if tc.project != nil && tc.project.Loggers != nil {
 		tc.logger, err = a.makeLoggerProducer(ctx, tc, tc.project.Loggers, "")
 	} else {

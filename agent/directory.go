@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -56,7 +57,7 @@ func (a *Agent) removeTaskDirectory(tc *taskContext) {
 	}
 	grip.Infof("Deleting directory for completed task: %s", tc.taskDirectory)
 
-	err := os.RemoveAll(tc.taskDirectory)
+	err := util.RemoveAll(tc.taskDirectory)
 	grip.Critical(errors.Wrapf(err, "Error removing working directory for the task: %s", tc.taskDirectory))
 	grip.InfoWhenf(err == nil, "Successfully deleted directory for completed task: %s", tc.taskDirectory)
 }
@@ -139,7 +140,7 @@ func tryCleanupDirectory(dir string) {
 
 	grip.Infof("attempting to clean up directory '%s'", dir)
 	for _, p := range paths {
-		if err = os.RemoveAll(p); err != nil {
+		if err = util.RemoveAll(p); err != nil {
 			grip.Notice(err)
 		}
 	}
