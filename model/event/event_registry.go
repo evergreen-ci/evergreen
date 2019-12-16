@@ -25,7 +25,7 @@ func init() {
 	registry.AddType(ResourceTypeAdmin, adminEventDataFactory)
 	registry.AddType(ResourceTypeBuild, buildEventDataFactory)
 	registry.AddType(ResourceTypeDistro, distroEventDataFactory)
-	registry.AddType(ResourceTypeUserRoles, userRolesEventDataFactory)
+	registry.AddType(ResourceTypeUser, userEventDataFactory)
 	registry.AddType(ResourceTypeRole, roleEventDataFactory)
 	registry.AllowSubscription(ResourceTypeBuild, BuildStateChange)
 
@@ -118,8 +118,8 @@ func adminEventDataFactory() interface{} {
 	return &rawAdminEventData{}
 }
 
-func userRolesEventDataFactory() interface{} {
-	return &userRolesData{}
+func userEventDataFactory() interface{} {
+	return &userData{}
 }
 
 func roleEventDataFactory() interface{} {

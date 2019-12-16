@@ -14,21 +14,23 @@ import (
 func TestLogUserRolesEvent(t *testing.T) {
 	defer db.Clear(AllLogCollection)
 
-	t.Run("InvalidRoleChangeOperation", func(t *testing.T) {
-		assert.Error(t, LogUserRolesEvent("user", "role", "invalid"))
+	t.Run("InvalidUserEventType", func(t *testing.T) {
+		assert.Error(t, LogUserEvent("user", "invalid", []string{"role"}, []string{}))
 	})
-	t.Run("LogEvent", func(t *testing.T) {
-		assert.NoError(t, LogUserRolesEvent("user", "role", AddRole))
+	t.Run("LogRoleChangeEvent", func(t *testing.T) {
+		before := []string{"role1", "role2"}
+		after := []string{"role1", "role2", "role3"}
+		assert.NoError(t, LogUserEvent("user", UserEventTypeRolesUpdate, before, after))
 
 		e := &EventLogEntry{}
 		err := db.FindOne(
 			AllLogCollection,
 			bson.M{
-				"r_type": ResourceTypeUserRoles,
-				"e_type": EventTypeUserRoles,
-				bsonutil.GetDottedKeyName("data", "user"):      "user",
-				bsonutil.GetDottedKeyName("data", "role_id"):   "role",
-				bsonutil.GetDottedKeyName("data", "operation"): AddRole,
+				"r_type": ResourceTypeUser,
+				"e_type": UserEventTypeRolesUpdate,
+				bsonutil.GetDottedKeyName("data", "user"):   "user",
+				bsonutil.GetDottedKeyName("data", "before"): before,
+				bsonutil.GetDottedKeyName("data", "after"):  after,
 			},
 			nil,
 			[]string{},
@@ -41,8 +43,8 @@ func TestLogUserRolesEvent(t *testing.T) {
 func TestLogRoleEvent(t *testing.T) {
 	defer db.Clear(AllLogCollection)
 
-	t.Run("InvalidRoleChangeOperation", func(t *testing.T) {
-		assert.Error(t, LogRoleEvent(&gimlet.Role{}, nil, "invalid"))
+	t.Run("InvalidRoleEventType", func(t *testing.T) {
+		assert.Error(t, LogRoleEvent("invalid", &gimlet.Role{}, nil))
 	})
 	t.Run("LogEvent", func(t *testing.T) {
 		before := &gimlet.Role{
@@ -59,14 +61,14 @@ func TestLogRoleEvent(t *testing.T) {
 			Permissions: gimlet.Permissions{"project_settings": 10},
 			Owners:      []string{"evergreen"},
 		}
-		assert.NoError(t, LogRoleEvent(before, after, UpdateRole))
+		assert.NoError(t, LogRoleEvent(RoleEventTypeUpdate, before, after))
 
 		e := &EventLogEntry{}
 		err := db.FindOne(
 			AllLogCollection,
 			bson.M{
 				"r_type": ResourceTypeRole,
-				"e_type": EventTypeRole,
+				"e_type": RoleEventTypeUpdate,
 				bsonutil.GetDottedKeyName("data", "before", "_id"):         before.ID,
 				bsonutil.GetDottedKeyName("data", "before", "name"):        before.Name,
 				bsonutil.GetDottedKeyName("data", "before", "scope"):       before.Scope,
@@ -77,7 +79,6 @@ func TestLogRoleEvent(t *testing.T) {
 				bsonutil.GetDottedKeyName("data", "after", "scope"):        after.Scope,
 				bsonutil.GetDottedKeyName("data", "after", "permissions"):  after.Permissions,
 				bsonutil.GetDottedKeyName("data", "after", "owners"):       after.Owners,
-				bsonutil.GetDottedKeyName("data", "operation"):             UpdateRole,
 			},
 			nil,
 			[]string{},

@@ -206,10 +206,11 @@ func (u *DBUser) AddRole(role string) error {
 	}
 	u.SystemRoles = append(u.SystemRoles, role)
 
-	return event.LogUserRolesEvent(u.Id, role, event.AddRole)
+	return event.LogUserEvent(u.Id, event.UserEventTypeRolesUpdate, u.SystemRoles[:len(u.SystemRoles)-1], u.SystemRoles)
 }
 
 func (u *DBUser) RemoveRole(role string) error {
+	before := u.SystemRoles
 	update := bson.M{
 		"$pull": bson.M{RolesKey: role},
 	}
@@ -222,7 +223,7 @@ func (u *DBUser) RemoveRole(role string) error {
 		}
 	}
 
-	return event.LogUserRolesEvent(u.Id, role, event.RemoveRole)
+	return event.LogUserEvent(u.Id, event.UserEventTypeRolesUpdate, before, u.SystemRoles)
 }
 
 func (u *DBUser) HasPermission(opts gimlet.PermissionOpts) (bool, error) {

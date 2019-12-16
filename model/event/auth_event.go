@@ -8,84 +8,96 @@ import (
 )
 
 const (
-	ResourceTypeUserRoles = "USER_ROLES"
-	ResourceTypeRole      = "ROLE"
-	EventTypeUserRoles    = "USER_ROLES_CHANGED"
-	EventTypeRole         = "ROLE_CHANGED"
+	ResourceTypeUser     = "USER"
+	ResourceTypeRole     = "ROLE"
+	EventTypeRoleChanged = "ROLE_CHANGED"
 )
 
-type RoleChangeOperation string
+type UserEventType string
 
 const (
-	AddRole    RoleChangeOperation = "add"
-	UpdateRole RoleChangeOperation = "update"
-	RemoveRole RoleChangeOperation = "remove"
+	UserEventTypeRolesUpdate UserEventType = "USER_ROLES_UPDATED"
 )
 
-func (op RoleChangeOperation) validate() error {
-	switch op {
-	case AddRole, UpdateRole, RemoveRole:
+func (e UserEventType) validate() error {
+	switch e {
+	case UserEventTypeRolesUpdate:
 		return nil
 	default:
-		return errors.Errorf("invalid role change operation '%s'", op)
+		return errors.Errorf("invalid user event type '%s'", e)
 	}
 }
 
-type userRolesData struct {
-	User      string              `bson:"user" json:"user"`
-	RoleID    string              `bson:"role_id" json:"role_id"`
-	Operation RoleChangeOperation `bson:"operation" json:"operation"`
+type userData struct {
+	User   string      `bson:"user" json:"user"`
+	Before interface{} `bson:"before" json:"before"`
+	After  interface{} `bson:"after" json:"after"`
 }
 
-func LogUserRolesEvent(user, roleID string, op RoleChangeOperation) error {
-	if err := op.validate(); err != nil {
-		return errors.Wrapf(err, "failed to log user role event for user '%s' and role '%s'", user, roleID)
+func LogUserEvent(user string, eventType UserEventType, before, after interface{}) error {
+	if err := eventType.validate(); err != nil {
+		return errors.Wrapf(err, "failed to log user event for user '%s'", user)
 	}
 
-	data := userRolesData{
-		User:      user,
-		RoleID:    roleID,
-		Operation: op,
+	data := userData{
+		User:   user,
+		Before: before,
+		After:  after,
 	}
 	event := EventLogEntry{
 		Timestamp:    time.Now(),
-		EventType:    EventTypeUserRoles,
+		EventType:    string(eventType),
 		Data:         data,
-		ResourceType: ResourceTypeUserRoles,
+		ResourceType: ResourceTypeUser,
 	}
 	logger := NewDBEventLogger(AllLogCollection)
 	if err := logger.LogEvent(&event); err != nil {
-		return errors.Wrapf(err, "failed to log user role event for user '%s' and role '%s'", user, roleID)
+		return errors.Wrapf(err, "failed to log user event for user '%s'", user)
 	}
 
 	return nil
 }
 
-type roleData struct {
-	Before    *gimlet.Role        `bson:"before" json:"before"`
-	After     *gimlet.Role        `bson:"after" json:"after"`
-	Operation RoleChangeOperation `bson:"operation" json:"operation"`
+type RoleEventType string
+
+const (
+	RoleEventTypeAdd    RoleEventType = "ROLE_ADDED"
+	RoleEventTypeUpdate RoleEventType = "ROLE_UPDATED"
+	RoleEventTypeRemove RoleEventType = "ROLE_REMOVED"
+)
+
+func (e RoleEventType) validate() error {
+	switch e {
+	case RoleEventTypeAdd, RoleEventTypeUpdate, RoleEventTypeRemove:
+		return nil
+	default:
+		return errors.Errorf("invalid role event type '%s'", e)
+	}
 }
 
-func LogRoleEvent(before, after *gimlet.Role, op RoleChangeOperation) error {
-	if err := op.validate(); err != nil {
-		return errors.Wrapf(err, "failed to log role event for  role '%s'", before.ID)
+type roleData struct {
+	Before *gimlet.Role `bson:"before" json:"before"`
+	After  *gimlet.Role `bson:"after" json:"after"`
+}
+
+func LogRoleEvent(eventType RoleEventType, before, after *gimlet.Role) error {
+	if err := eventType.validate(); err != nil {
+		return errors.Wrapf(err, "failed to log role event for role '%s'", before.ID)
 	}
 
 	data := roleData{
-		Before:    before,
-		After:     after,
-		Operation: op,
+		Before: before,
+		After:  after,
 	}
 	event := EventLogEntry{
 		Timestamp:    time.Now(),
-		EventType:    EventTypeRole,
+		EventType:    string(eventType),
 		Data:         data,
 		ResourceType: ResourceTypeRole,
 	}
 	logger := NewDBEventLogger(AllLogCollection)
 	if err := logger.LogEvent(&event); err != nil {
-		return errors.Wrapf(err, "failed to log user role event for role '%s'", before.ID)
+		return errors.Wrapf(err, "failed to log role event for role '%s'", before.ID)
 	}
 
 	return nil
