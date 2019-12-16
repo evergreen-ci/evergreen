@@ -358,8 +358,8 @@ func (s *ProjectConnectorGetSuite) TestGetProjectSettingsEvent() {
 }
 
 func (s *ProjectConnectorGetSuite) TestGetProjectSettingsEventNoRepo() {
-	projRef := model.ProjectRef{}
-	projectSettingsEvent, err := s.ctx.GetProjectSettingsEvent(&projRef)
+	projRef := getProjectRefNoRepo()
+	projectSettingsEvent, err := s.ctx.GetProjectSettingsEvent(projRef)
 	s.NotNil(err)
 	s.Nil(projectSettingsEvent)
 }
