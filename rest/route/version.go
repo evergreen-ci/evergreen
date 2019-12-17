@@ -66,6 +66,7 @@ func (vh *versionHandler) Run(ctx context.Context) gimlet.Responder {
 // buildsForVersionHandler is a RequestHandler for fetching all builds for a version
 type buildsForVersionHandler struct {
 	versionId string
+	variant   string
 	sc        data.Connector
 }
 
@@ -89,7 +90,8 @@ func (h *buildsForVersionHandler) Parse(ctx context.Context, r *http.Request) er
 	if h.versionId == "" {
 		return errors.New("request data incomplete")
 	}
-
+	vars := r.URL.Query()
+	h.variant = vars.Get("variant")
 	return nil
 }
 
@@ -105,6 +107,10 @@ func (h *buildsForVersionHandler) Run(ctx context.Context) gimlet.Responder {
 	// Then, find each build variant in the found version by its ID.
 	buildModels := []model.Model{}
 	for _, buildStatus := range foundVersion.BuildVariants {
+		// If a variant was specified, only retrieve that variant
+		if h.variant != "" && buildStatus.BuildVariant != h.variant {
+			continue
+		}
 		foundBuild, err := h.sc.FindBuildById(buildStatus.BuildId)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in finding the build"))

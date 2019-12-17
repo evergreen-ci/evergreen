@@ -97,7 +97,7 @@ func ByTaskIDs(ids []string) db.Q {
 	})
 }
 
-// find returns all test results that satisfy the query. Returns an empty slice no tasks match.
+// find returns all test results that satisfy the query. Returns an empty slice if no tasks match.
 func Find(query db.Q) ([]TestResult, error) {
 	tests := []TestResult{}
 	err := db.FindAllQ(Collection, query, &tests)
@@ -134,13 +134,16 @@ func Aggregate(pipeline []bson.M, results interface{}) error {
 }
 
 // TestResultsQuery is a query for returning test results to the REST v2 API.
-func TestResultsQuery(taskIds []string, testId, status string, limit, execution int) db.Q {
+func TestResultsQuery(taskIds []string, testId, testName, status string, limit, execution int) db.Q {
 	match := bson.M{
 		TaskIDKey:    bson.M{"$in": taskIds},
 		ExecutionKey: execution,
 	}
 	if status != "" {
 		match[StatusKey] = status
+	}
+	if testName != "" {
+		match[TestFileKey] = testName
 	}
 	if testId != "" {
 		match[IDKey] = bson.M{"$gte": mgobson.ObjectId(testId)}
