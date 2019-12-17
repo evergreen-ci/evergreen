@@ -445,10 +445,13 @@ func LoadProjectForVersion(v *Version, identifier string, shouldSave bool) (*Pro
 	}
 
 	if evergreen.UseParserProject && ppFromDB != nil {
-		// TODO: check here for ppFromDB.ConfigUpdateNumber >= v.ConfigUpdateNumber
-		ppFromDB.Identifier = identifier
-		p, err := TranslateProject(ppFromDB)
-		return p, ppFromDB, err
+		// if parser project config number is old then there was a race,
+		// and we should default to the version config
+		if ppFromDB.ConfigUpdateNumber >= v.ConfigUpdateNumber {
+			ppFromDB.Identifier = identifier
+			p, err := TranslateProject(ppFromDB)
+			return p, ppFromDB, err
+		}
 	}
 
 	if v.Config == "" {
@@ -465,12 +468,15 @@ func LoadProjectForVersion(v *Version, identifier string, shouldSave bool) (*Pro
 
 	// TODO: don't need separate ppFromDB variable once UseParserProject = true
 	if shouldSave && ppFromDB == nil {
-		if err = pp.Insert(); err != nil {
+		// we upsert here instead of insert bc it is possible that since this function started a project has been inserted, and we don't want to error in that case
+		// https://mongodb.splunkcloud.com/en-US/app/search/search?q=search%20index%3Devergreen%20%22error%20inserting%20parser%20project%22&display.page.search.mode=smart&dispatch.sample_ratio=1&earliest=1575954000&latest=1576645200&sid=1576609915.8744045
+		if err = pp.UpsertWithConfigNumber(pp.ConfigUpdateNumber); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"project":       identifier,
-				"version":       v.Id,
-				"config_number": v.ConfigUpdateNumber,
-				"message":       "error inserting parser project for version",
+				"project":                 identifier,
+				"version":                 v.Id,
+				"attempted_update_number": pp.ConfigUpdateNumber,
+				"current_update_num":      v.ConfigUpdateNumber,
+				"message":                 "error upserting parser project for version",
 			}))
 			return nil, nil, errors.Wrap(err, "error updating version with project")
 		}

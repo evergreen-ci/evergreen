@@ -4,6 +4,8 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -61,7 +63,8 @@ func ParserProjectUpdateOne(query interface{}, update interface{}) error {
 	)
 }
 
-// UpsertWithConfigNumber inserts project if it DNE, otherwise updates if the config number is correct
+// UpsertWithConfigNumber inserts project if it DNE
+// otherwise, updates if the existing config number is less than or equal to the new config number
 func (pp *ParserProject) UpsertWithConfigNumber(num int) error {
 	if pp.Id == "" {
 		return errors.New("no version ID given")
@@ -73,15 +76,21 @@ func (pp *ParserProject) UpsertWithConfigNumber(num int) error {
 	}
 	if found == nil {
 		pp.ConfigUpdateNumber = num
+		// this could error but it seems unlikely
 		return errors.Wrap(pp.Insert(), "error inserting parser project")
 	}
 
-	return errors.Wrapf(ParserProjectUpdateOne(
+	// NOTE: if $lt: num is true this will error which we don't want ($lt bc we may want to update other things still if equal)
+	// either we case here on ErrorNotFound and continue (it's fine if LoadProjectForVersion is using an older version bc that's what it did before so)
+	// or we check before updating if $lte but potentially racey
+	err = ParserProjectUpdateOne(
 		bson.M{
-			ParserProjectIdKey: pp.Id,
-			"$or": []bson.M{
-				bson.M{ParserProjectConfigNumberKey: bson.M{"$exists": false}},
-				bson.M{ParserProjectConfigNumberKey: pp.ConfigUpdateNumber},
+			"$and": []bson.M{
+				{ParserProjectIdKey: pp.Id},
+				{"$or": []bson.M{
+					bson.M{ParserProjectConfigNumberKey: bson.M{"$exists": false}},
+					bson.M{ParserProjectConfigNumberKey: bson.M{"$lte": num}},
+				}},
 			},
 		},
 		bson.M{
@@ -110,7 +119,18 @@ func (pp *ParserProject) UpsertWithConfigNumber(num int) error {
 				ParserProjectTasksKey:             pp.Tasks,
 				ParserProjectExecTimeoutSecsKey:   pp.ExecTimeoutSecs,
 				ParserProjectLoggersKey:           pp.Loggers,
+				ParserProjectAxesKey:              pp.Axes,
 				ParserProjectConfigNumberKey:      num,
 			},
-		}), "error updating parser project '%s'", pp.Id)
+		})
+	if adb.ResultsNotFound(err) {
+		grip.Debug(message.Fields{
+			"message":                 "parser project not updated",
+			"version":                 pp.Id,
+			"attempted_update_number": pp.ConfigUpdateNumber,
+			"current_update_num":      num,
+		})
+		return nil
+	}
+	return errors.Wrapf(err, "error updating parser project '%s'", pp.Id)
 }

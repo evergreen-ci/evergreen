@@ -158,13 +158,24 @@ func (g *GeneratedProject) NewVersion() (*Project, *ParserProject, *Version, *ta
 }
 
 func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProject, v *Version, t *task.Task, pm *projectMaps) error {
+
+	//if pp.ConfigUpdateNumber > v.ConfigUpdateNumber { // I don't think this could happen until UseParserProject, and even then maybe not until we stop preferencing version
+	//	update parser project contingent on equal config numbers
+	//	update version
+	//
+	//} else { // this is the current case
+	//	update version contingent on equal config numbers
+	//	update parser project
+	//}
+
 	err := VersionUpdateConfig(v.Id, v.Config, v.ConfigUpdateNumber)
 	if err != nil {
 		return errors.Wrapf(err, "error updating version %s", v.Id)
 	}
 	v.ConfigUpdateNumber += 1
-
-	// TODO: Include parser project in generated tasks
+	if err = pp.UpsertWithConfigNumber(v.ConfigUpdateNumber); err != nil {
+		return errors.Wrapf(err, "database error upserting parser project")
+	}
 
 	if v.Requester == evergreen.MergeTestRequester {
 		mergeTask, err := task.FindMergeTaskForVersion(v.Id)
