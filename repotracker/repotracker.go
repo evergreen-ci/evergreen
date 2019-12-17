@@ -22,7 +22,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/x/network/command"
+	"go.mongodb.org/mongo-driver/x/mongo/driver"
 	mgobson "gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )
@@ -947,7 +947,7 @@ func isTransientTxErr(err error, versionId string) bool {
 	}
 	rootErr := errors.Cause(err)
 	cmdErr, isCmdErr := rootErr.(mongo.CommandError)
-	if isCmdErr && cmdErr.HasErrorLabel(command.TransientTransactionError) {
+	if isCmdErr && cmdErr.HasErrorLabel(driver.TransientTransactionError) {
 		grip.Notice(message.WrapError(err, message.Fields{
 			"message": "hit transient transaction error, will retry",
 			"version": versionId,
