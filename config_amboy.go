@@ -48,7 +48,6 @@ func (c *AmboyConfig) Set() error {
 	ctx, cancel := env.Context()
 	defer cancel()
 	coll := env.DB().Collection(ConfigCollection)
-	t := true
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
@@ -63,7 +62,7 @@ func (c *AmboyConfig) Set() error {
 			"group_prune_frequency":             c.GroupPruneFrequencyMinutes,
 			"group_ttl":                         c.GroupTTLMinutes,
 		},
-	}, &options.UpdateOptions{Upsert: &t})
+	}, options.Update().SetUpsert(true))
 
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
