@@ -1,6 +1,7 @@
 package evergreen
 
 import (
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -28,19 +29,17 @@ func (c *AmboyConfig) Get(env Environment) error {
 	coll := env.DB().Collection(ConfigCollection)
 
 	res := coll.FindOne(ctx, byId(c.SectionId()))
+	grip.Info(res.Err())
 	if err := res.Err(); err != nil {
-		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
-	}
-
-	if err := res.Decode(c); err != nil {
 		if err == mongo.ErrNoDocuments {
 			*c = AmboyConfig{}
 			return nil
 		}
-
+		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+	}
+	if err := res.Decode(c); err != nil {
 		return errors.Wrap(err, "problem decoding result")
 	}
-
 	return nil
 }
 
@@ -49,6 +48,7 @@ func (c *AmboyConfig) Set() error {
 	ctx, cancel := env.Context()
 	defer cancel()
 	coll := env.DB().Collection(ConfigCollection)
+	t := true
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
@@ -63,7 +63,7 @@ func (c *AmboyConfig) Set() error {
 			"group_prune_frequency":             c.GroupPruneFrequencyMinutes,
 			"group_ttl":                         c.GroupTTLMinutes,
 		},
-	}, options.Update().SetUpsert(true))
+	}, &options.UpdateOptions{Upsert: &t})
 
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
