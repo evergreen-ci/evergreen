@@ -90,7 +90,7 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 // It also updates the task cache for the build document.
 func SetBuildActivation(buildId string, active bool, caller string, skipDependencies bool) error {
 	if err := build.UpdateActivation([]string{buildId}, active, caller); err != nil {
-		return errors.WithStack(err)
+		return errors.Wrapf(err, "can't set build activation to %t for build '%s'", active, buildId)
 	}
 
 	return errors.Wrapf(SetTaskActivationForBuild(buildId, active, caller, skipDependencies), "can't set task activation for build '%s'", buildId)
