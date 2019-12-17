@@ -281,6 +281,43 @@ func TestBuildMarkAborted(t *testing.T) {
 	})
 }
 
+func TestSetVersionActivation(t *testing.T) {
+	require.NoError(t, db.ClearCollections(build.Collection, task.Collection))
+
+	vID := "abcdef"
+	builds := []build.Build{
+		{Id: "b0", Version: vID, Activated: true},
+		{Id: "b1", Version: vID, Activated: true},
+	}
+	for _, build := range builds {
+		require.NoError(t, build.Insert())
+	}
+
+	tasks := []task.Task{
+		{Id: "t0", BuildId: "b0", Activated: true, Status: evergreen.TaskUndispatched},
+		{Id: "t1", BuildId: "b1", Activated: true, Status: evergreen.TaskSucceeded},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
+
+	assert.NoError(t, SetVersionActivation(vID, false, "user"))
+	builds, err := build.FindBuildsByVersions([]string{vID})
+	require.NoError(t, err)
+	require.Len(t, builds, 2)
+	for _, b := range builds {
+		assert.False(t, b.Activated)
+	}
+
+	t0, err := task.FindOneId(tasks[0].Id)
+	require.NoError(t, err)
+	assert.False(t, t0.Activated)
+
+	t1, err := task.FindOneId(tasks[1].Id)
+	require.NoError(t, err)
+	assert.True(t, t1.Activated)
+}
+
 func TestBuildSetActivated(t *testing.T) {
 	Convey("With a build", t, func() {
 
