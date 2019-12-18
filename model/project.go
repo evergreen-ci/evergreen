@@ -483,8 +483,6 @@ func (c *LoggerConfig) IsValid() error {
 			catcher.New("file logger is disallowed for system logs; will use Evergreen logger")
 		} else if opts.Type == LogkeeperLogSender {
 			catcher.New("logkeeper is disallowed for system logs; will use Evergreen logger")
-		} else if opts.Type == BuildloggerLogSender {
-			catcher.New("buildlogger is disallowed for system logs; will use Evergreen logger")
 		}
 	}
 	for _, opts := range c.Task {
