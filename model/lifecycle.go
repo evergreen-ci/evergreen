@@ -74,6 +74,8 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 		buildIDs = append(buildIDs, build.Id)
 	}
 
+	// Update activation for all builds before updating their tasks so the version won't spend
+	// time in an intermediate state where only some builds are updated
 	if err = build.UpdateActivation(buildIDs, active, caller); err != nil {
 		return errors.Wrapf(err, "can't set activation for builds in '%s'", versionId)
 	}
