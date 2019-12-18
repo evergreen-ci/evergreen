@@ -26,7 +26,7 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2019-12-17"
+	ClientVersion = "2019-12-18"
 )
 
 // ConfigSection defines a sub-document in the evegreen config
