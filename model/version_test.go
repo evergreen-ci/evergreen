@@ -1,6 +1,7 @@
 package model
 
 import (
+	"sort"
 	"testing"
 	"time"
 
@@ -64,6 +65,23 @@ func TestLastKnownGoodConfig(t *testing.T) {
 			So(db.Clear(VersionCollection), ShouldBeNil)
 		})
 	})
+}
+
+func TestVersionSortByCreateTime(t *testing.T) {
+	assert := assert.New(t)
+	versions := VersionsByCreateTime{
+		{Id: "5", CreateTime: time.Now().Add(time.Hour * 3)},
+		{Id: "3", CreateTime: time.Now().Add(time.Hour)},
+		{Id: "1", CreateTime: time.Now()},
+		{Id: "4", CreateTime: time.Now().Add(time.Hour * 2)},
+		{Id: "100", CreateTime: time.Now().Add(time.Hour * 4)},
+	}
+	sort.Sort(versions)
+	assert.Equal("1", versions[0].Id)
+	assert.Equal("3", versions[1].Id)
+	assert.Equal("4", versions[2].Id)
+	assert.Equal("5", versions[3].Id)
+	assert.Equal("100", versions[4].Id)
 }
 
 func TestUpdateMergeTaskDependencies(t *testing.T) {
