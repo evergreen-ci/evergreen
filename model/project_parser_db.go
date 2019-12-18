@@ -63,8 +63,8 @@ func ParserProjectUpdateOne(query interface{}, update interface{}) error {
 	)
 }
 
-// UpsertWithConfigNumber inserts project if it DNE
-// otherwise, updates if the existing config number is less than or equal to the new config number
+// UpsertWithConfigNumber inserts project if it DNE. Otherwise, updates if the
+// existing config number is less than or equal to the new config number.
 func (pp *ParserProject) UpsertWithConfigNumber(num int) error {
 	if pp.Id == "" {
 		return errors.New("no version ID given")
@@ -85,12 +85,10 @@ func (pp *ParserProject) UpsertWithConfigNumber(num int) error {
 	// or we check before updating if $lte but potentially racey
 	err = ParserProjectUpdateOne(
 		bson.M{
-			"$and": []bson.M{
-				{ParserProjectIdKey: pp.Id},
-				{"$or": []bson.M{
-					bson.M{ParserProjectConfigNumberKey: bson.M{"$exists": false}},
-					bson.M{ParserProjectConfigNumberKey: bson.M{"$lte": num}},
-				}},
+			ParserProjectIdKey: pp.Id,
+			"$or": []bson.M{
+				bson.M{ParserProjectConfigNumberKey: bson.M{"$exists": false}},
+				bson.M{ParserProjectConfigNumberKey: bson.M{"$lte": num}},
 			},
 		},
 		bson.M{
@@ -124,12 +122,12 @@ func (pp *ParserProject) UpsertWithConfigNumber(num int) error {
 			},
 		})
 	if adb.ResultsNotFound(err) {
-		grip.Debug(message.Fields{
+		grip.Debug(message.WrapError(err, message.Fields{
 			"message":                 "parser project not updated",
 			"version":                 pp.Id,
 			"attempted_update_number": pp.ConfigUpdateNumber,
 			"current_update_num":      num,
-		})
+		}))
 		return nil
 	}
 	return errors.Wrapf(err, "error updating parser project '%s'", pp.Id)
