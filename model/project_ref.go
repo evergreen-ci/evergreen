@@ -38,6 +38,8 @@ type ProjectRef struct {
 	// Github PushEvents for this project, instead of the Repotracker runner
 	TracksPushEvents bool `bson:"tracks_push_events" json:"tracks_push_events" yaml:"tracks_push_events"`
 
+	DefaultLogger string `bson:"default_logger" json:"default_logger" yaml:"default_logger"`
+
 	PRTestingEnabled bool              `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
 	CommitQueue      CommitQueueParams `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
 
@@ -144,6 +146,7 @@ var (
 	ProjectRefDisabledStatsCache     = bsonutil.MustHaveTag(ProjectRef{}, "DisabledStatsCache")
 	ProjectRefAdminsKey              = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	projectRefTracksPushEventsKey    = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
+	projectRefDefaultLogger          = bsonutil.MustHaveTag(ProjectRef{}, "DefaultLogger")
 	projectRefPRTestingEnabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
 	projectRefRepotrackerDisabledKey = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerDisabled")
 	projectRefCommitQueueKey         = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueue")
@@ -518,6 +521,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefDisabledStatsCache:     projectRef.DisabledStatsCache,
 				ProjectRefAdminsKey:              projectRef.Admins,
 				projectRefTracksPushEventsKey:    projectRef.TracksPushEvents,
+				projectRefDefaultLogger:          projectRef.DefaultLogger,
 				projectRefPRTestingEnabledKey:    projectRef.PRTestingEnabled,
 				projectRefCommitQueueKey:         projectRef.CommitQueue,
 				projectRefPatchingDisabledKey:    projectRef.PatchingDisabled,

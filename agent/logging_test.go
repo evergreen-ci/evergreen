@@ -271,6 +271,54 @@ func TestLogkeeperMetadataPopulated(t *testing.T) {
 	assert.Equal("", tc.logs.TaskLogURLs[0].Command)
 }
 
+func TestProjectRefDefaultSender(t *testing.T) {
+	assert := assert.New(t)
+
+	agt := &Agent{
+		opts: Options{
+			HostID:       "host",
+			HostSecret:   "secret",
+			StatusPort:   2286,
+			LogPrefix:    evergreen.LocalLoggingOverride,
+			LogkeeperURL: "logkeeper",
+		},
+		comm: client.NewMock("mock"),
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	taskID := "logging"
+	taskSecret := "mock_task_secret"
+	task := &task.Task{
+		DisplayName: "task1",
+	}
+	tc := &taskContext{
+		task: client.TaskData{
+			ID:     taskID,
+			Secret: taskSecret,
+		},
+		project: &model.Project{
+			Loggers: &model.LoggerConfig{
+				Agent:  []model.LogOpts{},
+				System: []model.LogOpts{},
+				Task:   []model.LogOpts{},
+			},
+		},
+		taskConfig: &model.TaskConfig{
+			Task:         task,
+			ProjectRef:   &model.ProjectRef{DefaultLogger: model.BuildloggerLogSender},
+			BuildVariant: &model.BuildVariant{Name: "bv"},
+			Timeout:      &model.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
+		},
+		taskModel: task,
+	}
+	assert.NoError(agt.resetLogging(ctx, tc))
+	expectedLogOpts := []model.LogOpts{{Type: model.BuildloggerLogSender}}
+	assert.Equal(expectedLogOpts, tc.project.Loggers.Agent)
+	assert.Equal(expectedLogOpts, tc.project.Loggers.System)
+	assert.Equal(expectedLogOpts, tc.project.Loggers.Task)
+}
+
 func TestTimberSender(t *testing.T) {
 	assert := assert.New(t)
 
