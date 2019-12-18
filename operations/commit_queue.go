@@ -17,9 +17,10 @@ import (
 )
 
 const (
-	itemFlagName   = "item"
-	pauseFlagName  = "pause"
-	resumeFlagName = "resume"
+	itemFlagName        = "item"
+	pauseFlagName       = "pause"
+	resumeFlagName      = "resume"
+	descriptionFlagName = "description"
 )
 
 func CommitQueue() cli.Command {
@@ -155,7 +156,7 @@ func setModuleCommand() cli.Command {
 		Usage: "update or add module to an existing merge patch",
 		Flags: mergeFlagSlices(addLargeFlag(), addPatchIDFlag(), addModuleFlag(), addYesFlag(), addRefFlag(
 			cli.StringFlag{
-				Name:  joinFlagNames("description", "d"),
+				Name:  joinFlagNames(descriptionFlagName, "d"),
 				Usage: "commit message",
 			},
 		)),
@@ -168,7 +169,7 @@ func setModuleCommand() cli.Command {
 				patchID:     c.String(patchIDFlagName),
 				module:      c.String(moduleFlagName),
 				ref:         c.String(refFlagName),
-				message:     c.String(messageFlagName),
+				message:     c.String(descriptionFlagName),
 				large:       c.Bool(largeFlagName),
 				skipConfirm: c.Bool(yesFlagName),
 			}
