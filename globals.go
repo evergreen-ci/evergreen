@@ -182,11 +182,6 @@ const (
 	HostAllocatorDeficit     = "deficit"
 	HostAllocatorUtilization = "utilization"
 
-	TaskOrderingNotDeclared   = ""
-	TaskOrderingInterleave    = "interleave"
-	TaskOrderingMainlineFirst = "mainlinefirst"
-	TaskOrderingPatchFirst    = "patchfirst"
-
 	// CommitQueueAlias and GithubAlias are special aliases to specify variants and tasks for commit queue and GitHub PR patches
 	CommitQueueAlias = "__commit_queue"
 	GithubAlias      = "__github"
@@ -459,14 +454,6 @@ var (
 	// Set of valid Host Allocators types
 	ValidHostAllocators = []string{
 		HostAllocatorUtilization,
-	}
-
-	// Set of valid Task Ordering options that can be user set via the API
-	ValidTaskOrderings = []string{
-		TaskOrderingNotDeclared,
-		TaskOrderingInterleave,
-		TaskOrderingMainlineFirst,
-		TaskOrderingPatchFirst,
 	}
 
 	// constant arrays for db update logic

@@ -377,12 +377,6 @@ func ensureHasValidPlannerSettings(ctx context.Context, d *distro.Distro, s *eve
 			Level:   Error,
 		})
 	}
-	if !util.StringSliceContains(evergreen.ValidTaskOrderings, settings.TaskOrdering) {
-		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("invalid planner_settings.task_ordering '%s' for distro '%s'", settings.TaskOrdering, d.Id),
-			Level:   Error,
-		})
-	}
 
 	return errs
 }

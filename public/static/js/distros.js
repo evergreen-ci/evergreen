@@ -1,4 +1,3 @@
-mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, $anchorScroll, $filter, mciDistroRestService) {
 
   $scope.superUser = $window.isSuperUser;
   $scope.createDistro = (!$window.aclEnabled && $window.isSuperUser) || ($window.aclEnabled && $window.canCreateDistro) // PM-1355: remove this
@@ -40,20 +39,6 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
   }, {
     'id': 'revised-with-dependencies',
     'display': 'Revised w/Dependencies '
-  }];
-
-  $scope.taskOrderings = [{
-    'id': '',
-    'display': ' '
-  }, {
-   'id': 'interleave',
-    'display': 'Interleave '
-  }, {
-    'id': 'mainlinefirst',
-    'display': 'Mainline First '
-  }, {
-    'id': 'patchfirst',
-    'display': 'Patch First '
   }];
 
   $scope.providers = [{
@@ -213,7 +198,6 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
             distro.distro.planner_settings.target_time /= 1e9;
           }
           distro.distro.planner_settings.group_versions = distro.distro.planner_settings.group_versions;
-          distro.distro.planner_settings.task_ordering = distro.distro.planner_settings.task_ordering || 'interleave';
           // Finder Settings
           distro.distro.finder_settings = distro.distro.finder_settings || {};
           distro.distro.finder_settings.version = distro.distro.finder_settings.version || 'legacy';
@@ -683,12 +667,6 @@ mciModule.filter("hostAllocatorVersionDisplay", function() {
 mciModule.filter("dispatcherVersionDisplay", function() {
   return function(version, scope) {
     return scope.getKeyDisplay('dispatcherVersions', version);
-  }
-});
-
-mciModule.filter('taskOrderingDisplay', function() {
-  return function(taskOrdering, scope) {
-    return scope.getKeyDisplay('taskOrderings', taskOrdering);
   }
 });
 
