@@ -37,7 +37,7 @@ type Distro struct {
 	PlannerSettings       PlannerSettings         `bson:"planner_settings" json:"planner_settings" mapstructure:"planner_settings"`
 	DispatcherSettings    DispatcherSettings      `bson:"dispatcher_settings" json:"dispatcher_settings" mapstructure:"dispatcher_settings"`
 	HostAllocatorSettings HostAllocatorSettings   `bson:"host_allocator_settings" json:"host_allocator_settings" mapstructure:"host_allocator_settings"`
-	ShallowClone          bool                    `bson:"shallow_clone" json:"shallow_clone" mapstructure:"shallow_clone"`
+	DisableShallowClone   bool                    `bson:"disable_shallow_clone" json:"disable_shallow_clone" mapstructure:"disable_shallow_clone"`
 }
 
 // BootstrapSettings encapsulates all settings related to bootstrapping hosts.

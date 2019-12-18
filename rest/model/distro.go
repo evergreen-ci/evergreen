@@ -354,7 +354,7 @@ type APIDistro struct {
 	PlannerSettings       APIPlannerSettings       `json:"planner_settings"`
 	DispatcherSettings    APIDispatcherSettings    `json:"dispatcher_settings"`
 	HostAllocatorSettings APIHostAllocatorSettings `json:"host_allocator_settings"`
-	ShallowClone          bool                     `json:"shallow_clone"`
+	DisableShallowClone   bool                     `json:"disable_shallow_clone"`
 }
 
 // BuildFromService converts from service level distro.Distro to an APIDistro
