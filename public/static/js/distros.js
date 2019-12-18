@@ -42,20 +42,6 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
     'display': 'Revised w/Dependencies '
   }];
 
-  $scope.taskOrderings = [{
-    'id': '',
-    'display': ' '
-  }, {
-   'id': 'interleave',
-    'display': 'Interleave '
-  }, {
-    'id': 'mainlinefirst',
-    'display': 'Mainline First '
-  }, {
-    'id': 'patchfirst',
-    'display': 'Patch First '
-  }];
-
   $scope.providers = [{
     'id': 'ec2-auto',
     'display': 'EC2 Auto'
@@ -213,7 +199,6 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
             distro.distro.planner_settings.target_time /= 1e9;
           }
           distro.distro.planner_settings.group_versions = distro.distro.planner_settings.group_versions;
-          distro.distro.planner_settings.task_ordering = distro.distro.planner_settings.task_ordering || 'interleave';
           // Finder Settings
           distro.distro.finder_settings = distro.distro.finder_settings || {};
           distro.distro.finder_settings.version = distro.distro.finder_settings.version || 'legacy';
@@ -683,12 +668,6 @@ mciModule.filter("hostAllocatorVersionDisplay", function() {
 mciModule.filter("dispatcherVersionDisplay", function() {
   return function(version, scope) {
     return scope.getKeyDisplay('dispatcherVersions', version);
-  }
-});
-
-mciModule.filter('taskOrderingDisplay', function() {
-  return function(taskOrdering, scope) {
-    return scope.getKeyDisplay('taskOrderings', taskOrdering);
   }
 });
 

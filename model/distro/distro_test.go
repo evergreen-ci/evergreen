@@ -289,7 +289,6 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 		FreeHostFraction:              0.1,
 		CacheDurationSeconds:          60,
 		Planner:                       evergreen.PlannerVersionLegacy,
-		TaskOrdering:                  evergreen.TaskOrderingInterleave,
 		TargetTimeSeconds:             112358,
 		AcceptableHostIdleTimeSeconds: 123,
 		GroupVersions:                 false,
@@ -317,7 +316,6 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 			Version:               "",
 			TargetTime:            0,
 			GroupVersions:         nil,
-			TaskOrdering:          "",
 			PatchFactor:           0,
 			TimeInQueueFactor:     0,
 			ExpectedRuntimeFactor: 0,
@@ -329,7 +327,6 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		FreeHostFraction:              0.1,
 		CacheDurationSeconds:          60,
 		Planner:                       evergreen.PlannerVersionLegacy,
-		TaskOrdering:                  evergreen.TaskOrderingInterleave,
 		TargetTimeSeconds:             112358,
 		AcceptableHostIdleTimeSeconds: 132134,
 		GroupVersions:                 false,
@@ -348,8 +345,6 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	assert.Equal(t, false, *resolved0.GroupVersions)
 	// Fallback to the SchedulerConfig.PatchFactor as PlannerSettings.PatchFactor is is equal to 0.
 	assert.EqualValues(t, 50, resolved0.PatchFactor)
-	// Fallback to the SchedulerConfig.TaskOrdering as PlannerSettings.TaskOrdering is an empty string.
-	assert.EqualValues(t, evergreen.TaskOrderingInterleave, resolved0.TaskOrdering)
 	// Fallback to the SchedulerConfig.TimeInQueueFactor as PlannerSettings.TimeInQueueFactor is equal to 0.
 	assert.EqualValues(t, 12, resolved0.TimeInQueueFactor)
 	// Fallback to the SchedulerConfig.TimeInQueueFactor as PlannerSettings.TimeInQueueFactor is equal to 0.
@@ -362,7 +357,6 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 			Version:               evergreen.PlannerVersionTunable,
 			TargetTime:            98765000000000,
 			GroupVersions:         &pTrue,
-			TaskOrdering:          evergreen.TaskOrderingPatchFirst,
 			PatchFactor:           25,
 			TimeInQueueFactor:     0,
 			ExpectedRuntimeFactor: 0,
@@ -374,7 +368,6 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		FreeHostFraction:              0.1,
 		CacheDurationSeconds:          60,
 		Planner:                       evergreen.PlannerVersionLegacy,
-		TaskOrdering:                  evergreen.TaskOrderingInterleave,
 		TargetTimeSeconds:             10,
 		AcceptableHostIdleTimeSeconds: 60,
 		GroupVersions:                 false,
@@ -391,7 +384,6 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	assert.Equal(t, evergreen.PlannerVersionTunable, resolved1.Version)
 	assert.Equal(t, time.Duration(98765)*time.Second, resolved1.TargetTime)
 	assert.Equal(t, true, *resolved1.GroupVersions)
-	assert.Equal(t, evergreen.TaskOrderingPatchFirst, resolved1.TaskOrdering)
 	assert.EqualValues(t, 25, resolved1.PatchFactor)
 	assert.EqualValues(t, 0, resolved1.TimeInQueueFactor)
 	assert.EqualValues(t, 0, resolved1.ExpectedRuntimeFactor)
@@ -400,7 +392,6 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		Version:               "",
 		TargetTime:            0,
 		GroupVersions:         nil,
-		TaskOrdering:          "",
 		PatchFactor:           19,
 		TimeInQueueFactor:     0,
 		ExpectedRuntimeFactor: 0,
@@ -415,7 +406,6 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		FreeHostFraction:              0.1,
 		CacheDurationSeconds:          60,
 		Planner:                       evergreen.PlannerVersionLegacy,
-		TaskOrdering:                  evergreen.TaskOrderingMainlineFirst,
 		TargetTimeSeconds:             12345,
 		AcceptableHostIdleTimeSeconds: 67890,
 		GroupVersions:                 false,
@@ -434,8 +424,6 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	assert.Equal(t, time.Duration(12345)*time.Second, resolved2.TargetTime)
 	// d2.PlannerSetting.GroupVersions is nil -- fallback on the SchedulerConfig.PlannerVersion.GroupVersions value
 	assert.Equal(t, false, *resolved2.GroupVersions)
-	// d2.PlannerSetting.TaskOrdering is an empty string -- fallback on the SchedulerConfig.TaskOrdering value
-	assert.Equal(t, evergreen.TaskOrderingMainlineFirst, resolved2.TaskOrdering)
 	assert.EqualValues(t, 19, resolved2.PatchFactor)
 	assert.EqualValues(t, 0, resolved2.TimeInQueueFactor)
 	assert.EqualValues(t, 0, resolved2.ExpectedRuntimeFactor)

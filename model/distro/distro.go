@@ -137,7 +137,6 @@ type PlannerSettings struct {
 	Version               string        `bson:"version" json:"version" mapstructure:"version"`
 	TargetTime            time.Duration `bson:"target_time" json:"target_time" mapstructure:"target_time,omitempty"`
 	GroupVersions         *bool         `bson:"group_versions" json:"group_versions" mapstructure:"group_versions,omitempty"`
-	TaskOrdering          string        `bson:"task_ordering" json:"task_ordering" mapstructure:"task_ordering,omitempty"`
 	PatchFactor           int64         `bson:"patch_zipper_factor" json:"patch_factor" mapstructure:"patch_factor"`
 	TimeInQueueFactor     int64         `bson:"time_in_queue_factor" json:"time_in_queue_factor" mapstructure:"time_in_queue_factor"`
 	ExpectedRuntimeFactor int64         `bson:"expected_runtime_factor" json:"expected_runtime_factor" mapstructure:"expected_runtime_factor"`
@@ -545,7 +544,6 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 		Version:               ps.Version,
 		TargetTime:            ps.TargetTime,
 		GroupVersions:         ps.GroupVersions,
-		TaskOrdering:          ps.TaskOrdering,
 		PatchFactor:           ps.PatchFactor,
 		TimeInQueueFactor:     ps.TimeInQueueFactor,
 		ExpectedRuntimeFactor: ps.ExpectedRuntimeFactor,
@@ -582,12 +580,6 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	}
 	if resolved.ExpectedRuntimeFactor == 0 {
 		resolved.ExpectedRuntimeFactor = config.ExpectedRuntimeFactor
-	}
-	if resolved.TaskOrdering == "" {
-		resolved.TaskOrdering = config.TaskOrdering
-	}
-	if !util.StringSliceContains(evergreen.ValidTaskOrderings, resolved.TaskOrdering) {
-		catcher.Errorf("'%s' is not a valid PlannerSettings.TaskOrdering", resolved.TaskOrdering)
 	}
 	if catcher.HasErrors() {
 		return PlannerSettings{}, errors.Wrapf(catcher.Resolve(), "cannot resolve PlannerSettings for distro '%s'", d.Id)

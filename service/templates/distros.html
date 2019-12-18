@@ -216,17 +216,6 @@ Evergreen - Distros
                 form.plannerSettingsExpectedRuntimeFactor.$modelValue % 1 != 0"> Time In Queue Factor must be an integer between 0 and 100
               </div>
               <br/>
-              <div class="dropdown">
-                <span>Task Ordering:</span>
-                  <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true" ng-disabled="readOnly">
-                    <strong class="distro-menu-item">[[activeDistro.planner_settings.task_ordering | taskOrderingDisplay:this]]<span class="fa fa-caret-down"></span></strong>
-                  </button>
-                  <ul class="dropdown-menu" style="margin-left: 125px" role="menu">
-                    <li required name="plannerSettingsTaskOrdering" ng-click="form.$setDirty();activeDistro.planner_settings.task_ordering = taskOrdering.id" ng-repeat="taskOrdering in taskOrderings"
-                      role="presentation"><a role="menuitem" tabindex="-1">[[taskOrdering.display]]</a></li>
-                  </ul>
-              </div>
-              <br/>
               <div>
                 <span class="distro-menu-title">Group Versions:</span>
                 <label>

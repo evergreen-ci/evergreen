@@ -16,7 +16,6 @@ type APIPlannerSettings struct {
 	Version               APIString   `json:"version"`
 	TargetTime            APIDuration `json:"target_time"`
 	GroupVersions         *bool       `json:"group_versions"`
-	TaskOrdering          APIString   `json:"task_ordering"`
 	PatchFactor           int64       `json:"patch_factor"`
 	TimeInQueueFactor     int64       `json:"time_in_queue_factor"`
 	ExpectedRuntimeFactor int64       `json:"expected_runtime_factor"`
@@ -41,7 +40,6 @@ func (s *APIPlannerSettings) BuildFromService(h interface{}) error {
 	}
 	s.TargetTime = NewAPIDuration(settings.TargetTime)
 	s.GroupVersions = settings.GroupVersions
-	s.TaskOrdering = ToAPIString(settings.TaskOrdering)
 	s.PatchFactor = settings.PatchFactor
 	s.ExpectedRuntimeFactor = settings.ExpectedRuntimeFactor
 	s.TimeInQueueFactor = settings.TimeInQueueFactor
@@ -58,7 +56,6 @@ func (s *APIPlannerSettings) ToService() (interface{}, error) {
 	}
 	settings.TargetTime = s.TargetTime.ToDuration()
 	settings.GroupVersions = s.GroupVersions
-	settings.TaskOrdering = FromAPIString(s.TaskOrdering)
 	settings.PatchFactor = s.PatchFactor
 	settings.TimeInQueueFactor = s.TimeInQueueFactor
 	settings.ExpectedRuntimeFactor = s.ExpectedRuntimeFactor

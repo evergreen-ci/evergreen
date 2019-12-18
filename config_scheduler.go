@@ -15,7 +15,6 @@ type SchedulerConfig struct {
 	FreeHostFraction              float64 `bson:"free_host_fraction" json:"free_host_fraction" yaml:"free_host_fraction"`
 	CacheDurationSeconds          int     `bson:"cache_duration_seconds" json:"cache_duration_seconds" yaml:"cache_duration_seconds"`
 	Planner                       string  `bson:"planner" json:"planner" mapstructure:"planner"`
-	TaskOrdering                  string  `bson:"task_ordering" json:"task_ordering" yaml:"task_ordering"`
 	TargetTimeSeconds             int     `bson:"target_time_seconds" json:"target_time_seconds" mapstructure:"target_time_seconds"`
 	AcceptableHostIdleTimeSeconds int     `bson:"acceptable_host_idle_time_seconds" json:"acceptable_host_idle_time_seconds" mapstructure:"acceptable_host_idle_time_seconds"`
 	GroupVersions                 bool    `bson:"group_versions" json:"group_versions" mapstructure:"group_versions"`
@@ -59,7 +58,6 @@ func (c *SchedulerConfig) Set() error {
 			"free_host_fraction":                c.FreeHostFraction,
 			"cache_duration_seconds":            c.CacheDurationSeconds,
 			"planner":                           c.Planner,
-			"task_ordering":                     c.TaskOrdering,
 			"target_time_seconds":               c.TargetTimeSeconds,
 			"acceptable_host_idle_time_seconds": c.AcceptableHostIdleTimeSeconds,
 			"group_versions":                    c.GroupVersions,
@@ -113,16 +111,6 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 	if !util.StringSliceContains(ValidTaskPlannerVersions, c.Planner) {
 		return errors.Errorf("supported planners are %s; %s is not supported",
 			ValidTaskPlannerVersions, c.Planner)
-	}
-
-	if c.TaskOrdering == "" {
-		// default to 'interleave'
-		c.TaskOrdering = TaskOrderingInterleave
-	}
-
-	if !util.StringSliceContains(ValidTaskOrderings, c.TaskOrdering) {
-		return errors.Errorf("supported task orderings are %s; %s is not supported",
-			ValidTaskOrderings, c.TaskOrdering)
 	}
 
 	if c.TargetTimeSeconds < 0 {
