@@ -900,8 +900,8 @@ Evergreen - Distros
               Allow users to spawn these hosts for personal use.
             </p>
             <p class="distro-checkbox checkbox">
-              <input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.shallow_clone">
-              Clone using shallow clone. Older versions of git do not support 'git fetch --unshallow'.
+              <input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.disable_shallow_clone">
+              Disable shallow clone for this distro.
             </p>
             <p class="distro-checkbox checkbox">
               <input type="checkbox" ng-model="activeDistro.disabled">

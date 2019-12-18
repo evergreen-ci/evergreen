@@ -340,7 +340,7 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 		branch:             conf.ProjectRef.Branch,
 		dir:                c.Directory,
 		token:              projectToken,
-		shallowClone:       c.ShallowClone && conf.Distro.ShallowClone,
+		shallowClone:       c.ShallowClone && !conf.Distro.DisableShallowClone,
 		mergeTestRequester: conf.Task.Requester == evergreen.MergeTestRequester,
 	}
 	if err = opts.setLocation(); err != nil {

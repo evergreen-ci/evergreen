@@ -354,7 +354,7 @@ type APIDistro struct {
 	PlannerSettings       APIPlannerSettings       `json:"planner_settings"`
 	DispatcherSettings    APIDispatcherSettings    `json:"dispatcher_settings"`
 	HostAllocatorSettings APIHostAllocatorSettings `json:"host_allocator_settings"`
-	ShallowClone          bool                     `json:"shallow_clone"`
+	DisableShallowClone   bool                     `json:"disable_shallow_clone"`
 }
 
 // BuildFromService converts from service level distro.Distro to an APIDistro
@@ -437,7 +437,7 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 		return errors.Wrap(err, "Error converting from distro.HostAllocatorSettings to model.API.HostAllocatorSettings")
 	}
 	apiDistro.DispatcherSettings = dispatchSettings
-	apiDistro.ShallowClone = d.ShallowClone
+	apiDistro.DisableShallowClone = d.DisableShallowClone
 
 	return nil
 }
@@ -528,7 +528,7 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 		return nil, errors.Errorf("Unexpected type %T for distro.DispatcherSettings", i)
 	}
 	d.DispatcherSettings = dispatchSettings
-	d.ShallowClone = apiDistro.ShallowClone
+	d.DisableShallowClone = apiDistro.DisableShallowClone
 
 	return &d, nil
 }
