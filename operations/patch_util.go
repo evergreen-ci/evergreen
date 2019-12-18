@@ -32,9 +32,7 @@ var patchDisplayTemplate = template.Must(template.New("patch").Parse(`
     Description : {{if .Patch.Description}}{{.Patch.Description}}{{else}}<none>{{end}}
 	  Build : {{.Link}}
 	 Status : {{.Patch.Status}}
-{{if .ShowFinalized}}
-      Finalized : {{if .Patch.Activated}}Yes{{else}}No{{end}}
-{{end}}
+{{if .ShowFinalized}}      Finalized : {{if .Patch.Activated}}Yes{{else}}No{{end}}{{end}}
 {{if .ShowSummary}}
 	Summary :
 {{range .Patch.Patches}}{{if not (eq .ModuleName "") }}Module:{{.ModuleName}}{{end}}
