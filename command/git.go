@@ -43,6 +43,8 @@ type gitFetchProject struct {
 
 	Token string `plugin:"expand" mapstructure:"token"`
 
+	ShallowClone bool `mapstructure:"shallow_clone"`
+
 	base
 }
 
@@ -338,7 +340,7 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 		branch:             conf.ProjectRef.Branch,
 		dir:                c.Directory,
 		token:              projectToken,
-		shallowClone:       conf.Distro.ShallowClone,
+		shallowClone:       c.ShallowClone && conf.Distro.ShallowClone,
 		mergeTestRequester: conf.Task.Requester == evergreen.MergeTestRequester,
 	}
 	if err = opts.setLocation(); err != nil {
