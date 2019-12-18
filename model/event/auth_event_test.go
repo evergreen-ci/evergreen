@@ -11,8 +11,9 @@ import (
 )
 
 func TestLogUserRolesEvent(t *testing.T) {
-	defer db.Clear(AllLogCollection)
-
+	defer func() {
+		require.NoError(t, db.Clear(AllLogCollection))
+	}()
 	t.Run("InvalidUserEventType", func(t *testing.T) {
 		assert.Error(t, LogUserEvent("user", "invalid", []string{"role"}, []string{}))
 	})
