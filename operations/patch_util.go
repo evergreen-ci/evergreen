@@ -12,6 +12,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -31,7 +32,9 @@ var patchDisplayTemplate = template.Must(template.New("patch").Parse(`
     Description : {{if .Patch.Description}}{{.Patch.Description}}{{else}}<none>{{end}}
 	  Build : {{.Link}}
 	 Status : {{.Patch.Status}}
+{{if .ShowFinalized}}
       Finalized : {{if .Patch.Activated}}Yes{{else}}No{{end}}
+{{end}}
 {{if .ShowSummary}}
 	Summary :
 {{range .Patch.Patches}}{{if not (eq .ModuleName "") }}Module:{{.ModuleName}}{{end}}
@@ -337,13 +340,15 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, err
 	}
 
 	err := patchDisplayTemplate.Execute(&out, struct {
-		Patch       *patch.Patch
-		ShowSummary bool
-		Link        string
+		Patch         *patch.Patch
+		ShowSummary   bool
+		ShowFinalized bool
+		Link          string
 	}{
-		Patch:       p,
-		ShowSummary: summarize,
-		Link:        url,
+		Patch:         p,
+		ShowSummary:   summarize,
+		ShowFinalized: p.Alias != evergreen.CommitQueueAlias,
+		Link:          url,
 	})
 	if err != nil {
 		return "", err
