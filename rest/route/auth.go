@@ -38,8 +38,8 @@ func (h *authPermissionGetHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 
 	// TODO: remove with PM-1355
-	if !evergreen.IsAclEnabled {
-		return gimlet.NewTextResponse(false)
+	if !evergreen.AclCheckingIsEnabled {
+		return gimlet.NewTextResponse(true)
 	}
 
 	opts := gimlet.PermissionOpts{
