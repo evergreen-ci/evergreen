@@ -127,24 +127,32 @@ func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName s
 		grip.Error(errors.Wrapf(os.MkdirAll(logDir, os.ModeDir|os.ModePerm), "error making log directory for command %s", commandName))
 	}
 	config := client.LoggerConfig{}
-	projectRef := tc.taskConfig.ProjectRef
 
-	if len(c.Agent) == 0 && projectRef != nil && projectRef.DefaultLogger != "" {
-		c.Agent = []model.LogOpts{{Type: projectRef.DefaultLogger}}
+	// get the default logger, first from project ref then from global
+	// settings
+	defaultLogger := evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+	if tc.taskConfig.ProjectRef != nil && tc.taskConfig.ProjectRef.DefaultLogger != "" {
+		defaultLogger = tc.taskConfig.ProjectRef.DefaultLogger
 	}
+	if !model.IsValidDefaultLogger(defaultLogger) {
+		grip.Warningf("default logger '%s' is not valid, setting Evergreen logger as default", defaultLogger)
+		defaultLogger = model.EvergreenLogSender
+	}
+	if len(c.Agent) == 0 {
+		c.Agent = []model.LogOpts{{Type: defaultLogger}}
+	}
+	if len(c.System) == 0 {
+		c.System = []model.LogOpts{{Type: defaultLogger}}
+	}
+	if len(c.Task) == 0 {
+		c.Task = []model.LogOpts{{Type: defaultLogger}}
+	}
+
 	for _, agentConfig := range c.Agent {
 		config.Agent = append(config.Agent, a.prepSingleLogger(tc, agentConfig, logDir, agentLogFileName))
 	}
-
-	if len(c.System) == 0 && projectRef != nil && projectRef.DefaultLogger != "" {
-		c.System = []model.LogOpts{{Type: projectRef.DefaultLogger}}
-	}
 	for _, systemConfig := range c.System {
 		config.System = append(config.System, a.prepSingleLogger(tc, systemConfig, logDir, systemLogFileName))
-	}
-
-	if len(c.Task) == 0 && projectRef != nil && projectRef.DefaultLogger != "" {
-		c.Task = []model.LogOpts{{Type: projectRef.DefaultLogger}}
 	}
 	for _, taskConfig := range c.Task {
 		config.Task = append(config.Task, a.prepSingleLogger(tc, taskConfig, logDir, taskLogFileName))

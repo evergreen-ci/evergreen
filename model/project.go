@@ -515,6 +515,19 @@ const (
 	SplunkLogSender      = "splunk"
 )
 
+// IsValidDefaultLogger returns whether the given logger, set either globally
+// or at the project level, is a valid default logger. Default loggers must be
+// configured globally or not require configuration and must be valid for use
+// with system logs.
+func IsValidDefaultLogger(logger string) bool {
+	switch logger {
+	case EvergreenLogSender, BuildloggerLogSender:
+		return true
+	default:
+		return false
+	}
+}
+
 var ValidLogSenders = []string{
 	EvergreenLogSender,
 	FileLogSender,

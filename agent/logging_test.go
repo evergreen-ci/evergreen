@@ -12,11 +12,16 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func init() {
+	testutil.Setup()
+}
 
 func TestGetSenderRemote(t *testing.T) {
 	assert := assert.New(t)
@@ -271,7 +276,8 @@ func TestLogkeeperMetadataPopulated(t *testing.T) {
 	assert.Equal("", tc.logs.TaskLogURLs[0].Command)
 }
 
-func TestProjectRefDefaultSender(t *testing.T) {
+func TestDefaultSender(t *testing.T) {
+	env := evergreen.GetEnvironment()
 	assert := assert.New(t)
 
 	agt := &Agent{
@@ -297,26 +303,61 @@ func TestProjectRefDefaultSender(t *testing.T) {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
-		project: &model.Project{
-			Loggers: &model.LoggerConfig{
-				Agent:  []model.LogOpts{},
-				System: []model.LogOpts{},
-				Task:   []model.LogOpts{},
-			},
-		},
+		project: &model.Project{},
 		taskConfig: &model.TaskConfig{
 			Task:         task,
-			ProjectRef:   &model.ProjectRef{DefaultLogger: model.BuildloggerLogSender},
 			BuildVariant: &model.BuildVariant{Name: "bv"},
 			Timeout:      &model.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
 		},
 		taskModel: task,
 	}
-	assert.NoError(agt.resetLogging(ctx, tc))
-	expectedLogOpts := []model.LogOpts{{Type: model.BuildloggerLogSender}}
-	assert.Equal(expectedLogOpts, tc.project.Loggers.Agent)
-	assert.Equal(expectedLogOpts, tc.project.Loggers.System)
-	assert.Equal(expectedLogOpts, tc.project.Loggers.Task)
+
+	t.Run("ProjectRefDefault", func(t *testing.T) {
+		t.Run("Valid", func(t *testing.T) {
+			tc.project.Loggers = &model.LoggerConfig{}
+			tc.taskConfig.ProjectRef = &model.ProjectRef{DefaultLogger: model.BuildloggerLogSender}
+
+			assert.NoError(agt.resetLogging(ctx, tc))
+			expectedLogOpts := []model.LogOpts{{Type: model.BuildloggerLogSender}}
+			assert.Equal(expectedLogOpts, tc.project.Loggers.Agent)
+			assert.Equal(expectedLogOpts, tc.project.Loggers.System)
+			assert.Equal(expectedLogOpts, tc.project.Loggers.Task)
+		})
+		t.Run("Invalid", func(t *testing.T) {
+			tc.project.Loggers = &model.LoggerConfig{}
+			tc.taskConfig.ProjectRef = &model.ProjectRef{DefaultLogger: model.SplunkLogSender}
+
+			assert.NoError(agt.resetLogging(ctx, tc))
+			expectedLogOpts := []model.LogOpts{{Type: model.EvergreenLogSender}}
+			assert.Equal(expectedLogOpts, tc.project.Loggers.Agent)
+			assert.Equal(expectedLogOpts, tc.project.Loggers.System)
+			assert.Equal(expectedLogOpts, tc.project.Loggers.Task)
+		})
+	})
+	t.Run("GlobalDefault", func(t *testing.T) {
+		t.Run("Valid", func(t *testing.T) {
+			env.Settings().LoggerConfig.DefaultLogger = model.BuildloggerLogSender
+			tc.project.Loggers = &model.LoggerConfig{}
+			tc.taskConfig.ProjectRef = &model.ProjectRef{}
+
+			assert.NoError(agt.resetLogging(ctx, tc))
+			expectedLogOpts := []model.LogOpts{{Type: model.BuildloggerLogSender}}
+			assert.Equal(expectedLogOpts, tc.project.Loggers.Agent)
+			assert.Equal(expectedLogOpts, tc.project.Loggers.System)
+			assert.Equal(expectedLogOpts, tc.project.Loggers.Task)
+		})
+		t.Run("Invalid", func(t *testing.T) {
+			env.Settings().LoggerConfig.DefaultLogger = model.LogkeeperLogSender
+			tc.project.Loggers = &model.LoggerConfig{}
+			tc.taskConfig.ProjectRef = &model.ProjectRef{}
+
+			assert.NoError(agt.resetLogging(ctx, tc))
+			expectedLogOpts := []model.LogOpts{{Type: model.EvergreenLogSender}}
+			assert.Equal(expectedLogOpts, tc.project.Loggers.Agent)
+			assert.Equal(expectedLogOpts, tc.project.Loggers.System)
+			assert.Equal(expectedLogOpts, tc.project.Loggers.Task)
+		})
+	})
 }
 
 func TestTimberSender(t *testing.T) {
