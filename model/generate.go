@@ -202,7 +202,6 @@ func updateVersionAndParserProject(v *Version, pp *ParserProject) error {
 	if err := pp.UpsertWithConfigNumber(v.ConfigUpdateNumber, false); err != nil {
 		return errors.Wrapf(err, "database error upserting parser project '%s'", pp.Id)
 	}
-	v.ConfigUpdateNumber += 1
 	return nil
 }
 

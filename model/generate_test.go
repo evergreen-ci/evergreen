@@ -5,14 +5,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
-	"github.com/stretchr/testify/require"
-
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 	"gopkg.in/yaml.v2"
@@ -607,6 +605,10 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	p, pp, v, t, pm, err := g.NewVersion()
 	s.Require().NoError(err)
 	s.NoError(g.Save(context.Background(), p, pp, v, t, pm))
+
+	v, err = VersionFindOneId(v.Id)
+	s.NoError(err)
+	s.Require().NotNil(v)
 	s.Equal(5, v.ConfigUpdateNumber)
 	builds, err := build.Find(db.Query(bson.M{}))
 	s.NoError(err)
@@ -673,6 +675,10 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	p, pp, v, t, pm, err := g.NewVersion()
 	s.NoError(err)
 	s.NoError(g.Save(context.Background(), p, pp, v, t, pm))
+
+	v, err = VersionFindOneId(v.Id)
+	s.NoError(err)
+	s.Require().NotNil(v)
 	s.Equal(1, v.ConfigUpdateNumber)
 	tasks := []task.Task{}
 	err = db.FindAllQ(task.Collection, db.Query(bson.M{}), &tasks)
@@ -795,6 +801,10 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	p, pp, v, t, pm, err := g.NewVersion()
 	s.Require().NoError(err)
 	s.NoError(g.Save(context.Background(), p, pp, v, t, pm))
+
+	v, err = VersionFindOneId(v.Id)
+	s.NoError(err)
+	s.Require().NotNil(v)
 	s.Equal(1, v.ConfigUpdateNumber)
 
 	tasks := []task.Task{}
