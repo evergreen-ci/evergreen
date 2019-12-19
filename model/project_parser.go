@@ -445,10 +445,13 @@ func LoadProjectForVersion(v *Version, identifier string, shouldSave bool) (*Pro
 	}
 
 	if evergreen.UseParserProject && ppFromDB != nil {
-		// TODO: check here for ppFromDB.ConfigUpdateNumber >= v.ConfigUpdateNumber
-		ppFromDB.Identifier = identifier
-		p, err := TranslateProject(ppFromDB)
-		return p, ppFromDB, err
+		// if parser project config number is old then there was a race,
+		// and we should default to the version config
+		if ppFromDB.ConfigUpdateNumber >= v.ConfigUpdateNumber {
+			ppFromDB.Identifier = identifier
+			p, err := TranslateProject(ppFromDB)
+			return p, ppFromDB, err
+		}
 	}
 
 	if v.Config == "" {
@@ -465,12 +468,11 @@ func LoadProjectForVersion(v *Version, identifier string, shouldSave bool) (*Pro
 
 	// TODO: don't need separate ppFromDB variable once UseParserProject = true
 	if shouldSave && ppFromDB == nil {
-		if err = pp.Insert(); err != nil {
+		if err = pp.TryUpsert(); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"project":       identifier,
-				"version":       v.Id,
-				"config_number": v.ConfigUpdateNumber,
-				"message":       "error inserting parser project for version",
+				"project": identifier,
+				"version": v.Id,
+				"message": "error inserting parser project for version",
 			}))
 			return nil, nil, errors.Wrap(err, "error updating version with project")
 		}

@@ -9,6 +9,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 	"gopkg.in/yaml.v2"
@@ -603,6 +605,10 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	p, pp, v, t, pm, err := g.NewVersion()
 	s.Require().NoError(err)
 	s.NoError(g.Save(context.Background(), p, pp, v, t, pm))
+
+	v, err = VersionFindOneId(v.Id)
+	s.NoError(err)
+	s.Require().NotNil(v)
 	s.Equal(5, v.ConfigUpdateNumber)
 	builds, err := build.Find(db.Query(bson.M{}))
 	s.NoError(err)
@@ -669,6 +675,10 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	p, pp, v, t, pm, err := g.NewVersion()
 	s.NoError(err)
 	s.NoError(g.Save(context.Background(), p, pp, v, t, pm))
+
+	v, err = VersionFindOneId(v.Id)
+	s.NoError(err)
+	s.Require().NotNil(v)
 	s.Equal(1, v.ConfigUpdateNumber)
 	tasks := []task.Task{}
 	err = db.FindAllQ(task.Collection, db.Query(bson.M{}), &tasks)
@@ -791,6 +801,10 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	p, pp, v, t, pm, err := g.NewVersion()
 	s.Require().NoError(err)
 	s.NoError(g.Save(context.Background(), p, pp, v, t, pm))
+
+	v, err = VersionFindOneId(v.Id)
+	s.NoError(err)
+	s.Require().NotNil(v)
 	s.Equal(1, v.ConfigUpdateNumber)
 
 	tasks := []task.Task{}
@@ -807,4 +821,53 @@ func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
 	s.Require().NotNil(merged)
 	s.Require().Len(merged.BuildVariants, 1)
 	s.Len(merged.BuildVariants[0].DisplayTasks, 1)
+}
+
+func TestUpdateVersionAndParserProject(t *testing.T) {
+
+	for testName, setupTest := range map[string]func(t *testing.T, v *Version, pp *ParserProject){
+		"noParserProject": func(t *testing.T, v *Version, pp *ParserProject) {
+			v.ConfigUpdateNumber = 5
+			assert.NoError(t, v.Insert())
+
+		},
+		"ParserProjectMoreRecent": func(t *testing.T, v *Version, pp *ParserProject) {
+			v.ConfigUpdateNumber = 1
+			pp.ConfigUpdateNumber = 5
+			assert.NoError(t, v.Insert())
+			assert.NoError(t, pp.Insert())
+		},
+		"ConfigMostRecent": func(t *testing.T, v *Version, pp *ParserProject) {
+			v.ConfigUpdateNumber = 5
+			pp.ConfigUpdateNumber = 1
+			assert.NoError(t, v.Insert())
+			assert.NoError(t, pp.Insert())
+		},
+		"WithZero": func(t *testing.T, v *Version, pp *ParserProject) {
+			v.ConfigUpdateNumber = 0
+			assert.NoError(t, v.Insert())
+			assert.NoError(t, pp.Insert())
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(VersionCollection, ParserProjectCollection))
+			v := &Version{Id: "my-version"}
+			pp := &ParserProject{Id: "my-version"}
+			setupTest(t, v, pp)
+			assert.NoError(t, updateVersionAndParserProject(v, pp))
+			v, err := VersionFindOneId(v.Id)
+			assert.NoError(t, err)
+			require.NotNil(t, v)
+			pp, err = ParserProjectFindOneById(v.Id)
+			assert.NoError(t, err)
+			require.NotNil(t, pp)
+			if testName == "WithZero" {
+				assert.Equal(t, 1, v.ConfigUpdateNumber)
+				assert.Equal(t, 1, pp.ConfigUpdateNumber)
+				return
+			}
+			assert.Equal(t, 6, v.ConfigUpdateNumber)
+			assert.Equal(t, 6, pp.ConfigUpdateNumber)
+		})
+	}
 }
