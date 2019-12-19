@@ -468,14 +468,11 @@ func LoadProjectForVersion(v *Version, identifier string, shouldSave bool) (*Pro
 
 	// TODO: don't need separate ppFromDB variable once UseParserProject = true
 	if shouldSave && ppFromDB == nil {
-		// we upsert here instead of insert bc it is possible that since this function started a project has been inserted, and we don't want to error in that case
-		if err = pp.UpsertWithConfigNumber(pp.ConfigUpdateNumber); err != nil {
+		if err = pp.TryUpsert(); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"project":                 identifier,
-				"version":                 v.Id,
-				"attempted_update_number": pp.ConfigUpdateNumber,
-				"current_update_num":      v.ConfigUpdateNumber,
-				"message":                 "error upserting parser project for version",
+				"project": identifier,
+				"version": v.Id,
+				"message": "error inserting parser project for version",
 			}))
 			return nil, nil, errors.Wrap(err, "error updating version with project")
 		}

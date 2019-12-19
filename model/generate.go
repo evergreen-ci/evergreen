@@ -158,23 +158,8 @@ func (g *GeneratedProject) NewVersion() (*Project, *ParserProject, *Version, *ta
 }
 
 func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProject, v *Version, t *task.Task, pm *projectMaps) error {
-
-	//if pp.ConfigUpdateNumber > v.ConfigUpdateNumber { // I don't think this could happen until UseParserProject, and even then maybe not until we stop preferencing version
-	//	update parser project contingent on equal config numbers
-	//	update version
-	//
-	//} else { // this is the current case
-	//	update version contingent on equal config numbers
-	//	update parser project
-	//}
-
-	err := VersionUpdateConfig(v.Id, v.Config, v.ConfigUpdateNumber)
-	if err != nil {
-		return errors.Wrapf(err, "error updating version %s", v.Id)
-	}
-	v.ConfigUpdateNumber += 1
-	if err = pp.UpsertWithConfigNumber(v.ConfigUpdateNumber); err != nil {
-		return errors.Wrapf(err, "database error upserting parser project")
+	if err := updateVersionAndParserProject(v, pp); err != nil {
+		return errors.Wrapf(err, "error saving version/parser project")
 	}
 
 	if v.Requester == evergreen.MergeTestRequester {
@@ -192,6 +177,31 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProje
 
 	if err := g.saveNewBuildsAndTasks(ctx, pm, v, p, t.Priority); err != nil {
 		return errors.Wrap(err, "error savings new builds and tasks")
+	}
+	return nil
+}
+
+// if the parser project is more recent, update contingent on that and force update the version (and vice versa)
+func updateVersionAndParserProject(v *Version, pp *ParserProject) error {
+	if pp.ConfigUpdateNumber > v.ConfigUpdateNumber {
+		//	update parser project contingent on equal config numbers
+		if err := pp.UpsertWithConfigNumber(pp.ConfigUpdateNumber, true); err != nil {
+			return errors.Wrapf(err, "error upserting parser project '%s'", pp.Id)
+		}
+
+		if err := VersionUpdateConfig(v.Id, v.Config, pp.ConfigUpdateNumber, false); err != nil {
+			return errors.Wrapf(err, "database error updating version '%s'", v.Id)
+		}
+
+		return nil
+	}
+
+	if err := VersionUpdateConfig(v.Id, v.Config, v.ConfigUpdateNumber, true); err != nil {
+		return errors.Wrapf(err, "error updating version '%s'", v.Id)
+	}
+
+	if err := pp.UpsertWithConfigNumber(v.ConfigUpdateNumber, false); err != nil {
+		return errors.Wrapf(err, "database error upserting parser project '%s'", pp.Id)
 	}
 	return nil
 }

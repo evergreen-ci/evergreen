@@ -1,6 +1,8 @@
 package model
 
 import (
+	"strings"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -63,70 +65,99 @@ func ParserProjectUpdateOne(query interface{}, update interface{}) error {
 	)
 }
 
+func setAllFieldsUpdate(pp *ParserProject) interface{} {
+	return bson.M{
+		"$set": bson.M{
+			ParserProjectEnabledKey:           pp.Enabled,
+			ParserProjectStepbackKey:          pp.Stepback,
+			ParserProjectPreErrorFailsTaskKey: pp.PreErrorFailsTask,
+			ParserProjectBatchTimeKey:         pp.BatchTime,
+			ParserProjectOwnerKey:             pp.Owner,
+			ParserProjectRepoKey:              pp.Repo,
+			ParserProjectRepoKindKey:          pp.RepoKind,
+			ParserProjectRemotePathKey:        pp.RemotePath,
+			ParserProjectBranchKey:            pp.Branch,
+			ParserProjectIdentifierKey:        pp.Identifier,
+			ParserProjectDisplayNameKey:       pp.DisplayName,
+			ParserProjectCommandTypeKey:       pp.CommandType,
+			ParserProjectIgnoreKey:            pp.Ignore,
+			ParserProjectPreKey:               pp.Pre,
+			ParserProjectPostKey:              pp.Post,
+			ParserProjectTimeoutKey:           pp.Timeout,
+			ParserProjectCallbackTimeoutKey:   pp.CallbackTimeout,
+			ParserProjectModulesKey:           pp.Modules,
+			ParserProjectBuildVariantsKey:     pp.BuildVariants,
+			ParserProjectFunctionsKey:         pp.Functions,
+			ParserProjectTaskGroupsKey:        pp.TaskGroups,
+			ParserProjectTasksKey:             pp.Tasks,
+			ParserProjectExecTimeoutSecsKey:   pp.ExecTimeoutSecs,
+			ParserProjectLoggersKey:           pp.Loggers,
+			ParserProjectAxesKey:              pp.Axes,
+			ParserProjectConfigNumberKey:      pp.ConfigUpdateNumber,
+		},
+	}
+}
+
+func configNumberMatchesQuery(num int) interface{} {
+	return []bson.M{
+		bson.M{ParserProjectConfigNumberKey: bson.M{"$exists": false}},
+		bson.M{ParserProjectConfigNumberKey: num},
+	}
+}
+
+// TryInsert suppresses the error of inserting if it's a duplicate key error and attempts to
+// upsert if config number matches
+func (pp *ParserProject) TryUpsert() error {
+	err := pp.Insert()
+	if err == nil || !strings.Contains(err.Error(), "duplicate key error") {
+		return errors.Wrapf(err, "database error inserting parser project")
+	}
+
+	err = ParserProjectUpdateOne(configNumberMatchesQuery(pp.ConfigUpdateNumber), setAllFieldsUpdate(pp))
+	if err == nil || adb.ResultsNotFound(err) {
+		return nil
+	}
+
+	return errors.Wrapf(err, "database error updating parser project")
+}
+
 // UpsertWithConfigNumber inserts project if it DNE. Otherwise, updates if the
 // existing config number is less than or equal to the new config number.
-func (pp *ParserProject) UpsertWithConfigNumber(num int) error {
+// If shouldEqual, only update if the config update number matches.
+func (pp *ParserProject) UpsertWithConfigNumber(num int, shouldEqual bool) error {
 	if pp.Id == "" {
 		return errors.New("no version ID given")
 	}
-
+	pp.ConfigUpdateNumber = num + 1
 	found, err := ParserProjectFindOneById(pp.Id)
 	if err != nil {
 		return errors.Wrapf(err, "error finding parser project '%s'", pp.Id)
 	}
+	// the document doesn't exist yet, so just insert it
 	if found == nil {
-		pp.ConfigUpdateNumber = num
-		// this could error but it seems unlikely
-		return errors.Wrap(pp.Insert(), "error inserting parser project")
+		if err = pp.Insert(); err == nil {
+			return nil
+		}
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message":                         "new parser project could not be inserted",
+			"version":                         pp.Id,
+			"attempted_to_update_with_number": pp.ConfigUpdateNumber,
+		}))
+		// if the insert didn't succeed, likely this ID has now already been inserted, so we should overwrite it
 	}
 
-	// NOTE: if $lt: num is true this will error which we don't want ($lt bc we may want to update other things still if equal)
-	// either we case here on ErrorNotFound and continue (it's fine if LoadProjectForVersion is using an older version bc that's what it did before so)
-	// or we check before updating if $lte but potentially racey
-	err = ParserProjectUpdateOne(
-		bson.M{
-			ParserProjectIdKey: pp.Id,
-			"$or": []bson.M{
-				bson.M{ParserProjectConfigNumberKey: bson.M{"$exists": false}},
-				bson.M{ParserProjectConfigNumberKey: bson.M{"$lte": num}},
-			},
-		},
-		bson.M{
-			"$set": bson.M{
-				ParserProjectEnabledKey:           pp.Enabled,
-				ParserProjectStepbackKey:          pp.Stepback,
-				ParserProjectPreErrorFailsTaskKey: pp.PreErrorFailsTask,
-				ParserProjectBatchTimeKey:         pp.BatchTime,
-				ParserProjectOwnerKey:             pp.Owner,
-				ParserProjectRepoKey:              pp.Repo,
-				ParserProjectRepoKindKey:          pp.RepoKind,
-				ParserProjectRemotePathKey:        pp.RemotePath,
-				ParserProjectBranchKey:            pp.Branch,
-				ParserProjectIdentifierKey:        pp.Identifier,
-				ParserProjectDisplayNameKey:       pp.DisplayName,
-				ParserProjectCommandTypeKey:       pp.CommandType,
-				ParserProjectIgnoreKey:            pp.Ignore,
-				ParserProjectPreKey:               pp.Pre,
-				ParserProjectPostKey:              pp.Post,
-				ParserProjectTimeoutKey:           pp.Timeout,
-				ParserProjectCallbackTimeoutKey:   pp.CallbackTimeout,
-				ParserProjectModulesKey:           pp.Modules,
-				ParserProjectBuildVariantsKey:     pp.BuildVariants,
-				ParserProjectFunctionsKey:         pp.Functions,
-				ParserProjectTaskGroupsKey:        pp.TaskGroups,
-				ParserProjectTasksKey:             pp.Tasks,
-				ParserProjectExecTimeoutSecsKey:   pp.ExecTimeoutSecs,
-				ParserProjectLoggersKey:           pp.Loggers,
-				ParserProjectAxesKey:              pp.Axes,
-				ParserProjectConfigNumberKey:      num,
-			},
-		})
+	q := bson.M{ParserProjectIdKey: pp.Id}
+	if shouldEqual { // guarantee that the config number hasn't changed
+		q["$or"] = configNumberMatchesQuery(num)
+	}
+
+	err = ParserProjectUpdateOne(q, setAllFieldsUpdate(pp))
 	if adb.ResultsNotFound(err) {
 		grip.Debug(message.WrapError(err, message.Fields{
-			"message":                 "parser project not updated",
-			"version":                 pp.Id,
-			"attempted_update_number": pp.ConfigUpdateNumber,
-			"current_update_num":      num,
+			"message":                         "parser project not updated",
+			"version":                         pp.Id,
+			"found_update_num":                found.ConfigUpdateNumber,
+			"attempted_to_update_with_number": num + 1,
 		}))
 		return nil
 	}
