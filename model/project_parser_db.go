@@ -103,12 +103,10 @@ func setAllFieldsUpdate(pp *ParserProject) interface{} {
 func checkConfigNumberQuery(id string, configNum int) bson.M {
 	q := bson.M{ParserProjectIdKey: id}
 	if configNum == 0 {
-		q["$or"] = []bson.M{
-			bson.M{ParserProjectConfigNumberKey: bson.M{"$exists": false}},
-			bson.M{ParserProjectConfigNumberKey: configNum},
-		}
+		q[ParserProjectConfigNumberKey] = bson.M{"$exists": false}
 		return q
 	}
+
 	q[ParserProjectConfigNumberKey] = configNum
 	return q
 }
