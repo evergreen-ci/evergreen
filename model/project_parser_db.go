@@ -57,12 +57,14 @@ func ParserProjectFindOneById(id string) (*ParserProject, error) {
 }
 
 // UpdateOne updates one project
-func ParserProjectUpdateOne(query interface{}, update interface{}) error {
-	return db.Update(
+func ParserProjectUpsertOne(query interface{}, update interface{}) error {
+	_, err := db.Upsert(
 		ParserProjectCollection,
 		query,
 		update,
 	)
+
+	return err
 }
 
 func setAllFieldsUpdate(pp *ParserProject) interface{} {
@@ -114,17 +116,19 @@ func checkConfigNumberQuery(id string, configNum int) bson.M {
 // TryInsert suppresses the error of inserting if it's a duplicate key error and attempts to
 // upsert if config number matches
 func (pp *ParserProject) TryUpsert() error {
-	err := pp.Insert()
-	if err == nil || !strings.Contains(err.Error(), "duplicate key error") {
-		return errors.Wrapf(err, "database error inserting parser project")
+	err := ParserProjectUpsertOne(checkConfigNumberQuery(pp.Id, pp.ConfigUpdateNumber), setAllFieldsUpdate(pp))
+	if isValidErr(err) {
+		return errors.Wrapf(err, "database error upserting parser project")
 	}
 
-	err = ParserProjectUpdateOne(checkConfigNumberQuery(pp.Id, pp.ConfigUpdateNumber), setAllFieldsUpdate(pp))
-	if err == nil || adb.ResultsNotFound(err) {
-		return nil
-	}
+	// log this error but don't return it
+	grip.Debug(message.WrapError(err, message.Fields{
+		"message":                      "parser project not upserted",
+		"version":                      pp.Id,
+		"attempted_to_update_with_num": pp.ConfigUpdateNumber,
+	}))
 
-	return errors.Wrapf(err, "database error updating parser project")
+	return nil
 }
 
 // UpsertWithConfigNumber inserts project if it DNE. Otherwise, updates if the
@@ -135,37 +139,29 @@ func (pp *ParserProject) UpsertWithConfigNumber(num int, shouldEqual bool) error
 		return errors.New("no version ID given")
 	}
 	pp.ConfigUpdateNumber = num + 1
-	found, err := ParserProjectFindOneById(pp.Id)
-	if err != nil {
-		return errors.Wrapf(err, "error finding parser project '%s'", pp.Id)
-	}
-	// the document doesn't exist yet, so just insert it
-	if found == nil {
-		if err = pp.Insert(); err == nil {
-			return nil
-		}
-		grip.Debug(message.WrapError(err, message.Fields{
-			"message":                         "new parser project could not be inserted",
-			"version":                         pp.Id,
-			"attempted_to_update_with_number": pp.ConfigUpdateNumber,
-		}))
-		// if the insert didn't succeed, likely this ID has now already been inserted, so we should overwrite it
-	}
-
 	q := bson.M{ParserProjectIdKey: pp.Id}
 	if shouldEqual { // guarantee that the config number hasn't changed
 		q = checkConfigNumberQuery(pp.Id, num)
 	}
 
-	err = ParserProjectUpdateOne(q, setAllFieldsUpdate(pp))
-	if adb.ResultsNotFound(err) {
-		grip.Debug(message.WrapError(err, message.Fields{
-			"message":                         "parser project not updated",
-			"version":                         pp.Id,
-			"found_update_num":                found.ConfigUpdateNumber,
-			"attempted_to_update_with_number": num + 1,
-		}))
-		return nil
+	err := ParserProjectUpsertOne(q, setAllFieldsUpdate(pp))
+	if isValidErr(err) {
+		return errors.Wrapf(err, "database error upserting parser project '%s'", pp.Id)
 	}
-	return errors.Wrapf(err, "error updating parser project '%s'", pp.Id)
+	// log this error but don't return it
+	grip.Debug(message.WrapError(err, message.Fields{
+		"message":                      "parser project not upserted",
+		"version":                      pp.Id,
+		"attempted_to_update_with_num": num + 1,
+	}))
+	return nil
+}
+
+func isValidErr(err error) bool {
+	// suppress results not found errors and dup key errors
+	if err == nil || adb.ResultsNotFound(err) || strings.Contains(err.Error(), "duplicate key error") {
+		return false
+	}
+
+	return true
 }

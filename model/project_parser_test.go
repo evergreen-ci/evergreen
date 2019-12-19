@@ -1315,6 +1315,58 @@ func TestAddBuildVariant(t *testing.T) {
 	assert.Len(t, pp.BuildVariants[0].Tasks, 1)
 }
 
+func TestTryUpsert(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T){
+		"configNumberMatches": func(t *testing.T) {
+			pp := &ParserProject{
+				Id:                 "my-project",
+				ConfigUpdateNumber: 4,
+				Owner:              "me",
+			}
+			assert.NoError(t, pp.TryUpsert()) // new project should work
+			pp.Owner = "you"
+			assert.NoError(t, pp.TryUpsert())
+			pp, err := ParserProjectFindOneById(pp.Id)
+			assert.NoError(t, err)
+			require.NotNil(t, pp)
+			assert.Equal(t, "you", pp.Owner)
+		},
+		"noConfigNumber": func(t *testing.T) {
+			pp := &ParserProject{
+				Id:    "my-project",
+				Owner: "me",
+			}
+			assert.NoError(t, pp.TryUpsert()) // new project should work
+			pp.Owner = "you"
+			assert.NoError(t, pp.TryUpsert())
+			pp, err := ParserProjectFindOneById(pp.Id)
+			assert.NoError(t, err)
+			require.NotNil(t, pp)
+			assert.Equal(t, "you", pp.Owner)
+		},
+		"configNumberDoesNotMatch": func(t *testing.T) {
+			pp := &ParserProject{
+				Id:                 "my-project",
+				ConfigUpdateNumber: 4,
+				Owner:              "me",
+			}
+			assert.NoError(t, pp.TryUpsert()) // new project should work
+			pp.ConfigUpdateNumber = 5
+			pp.Owner = "you"
+			assert.NoError(t, pp.TryUpsert()) // should not update and should not error
+			pp, err := ParserProjectFindOneById(pp.Id)
+			assert.NoError(t, err)
+			require.NotNil(t, pp)
+			assert.Equal(t, "me", pp.Owner)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(ParserProjectCollection))
+			testCase(t)
+		})
+	}
+}
+
 func TestParserProjectPersists(t *testing.T) {
 	simpleYaml := `
 loggers:
