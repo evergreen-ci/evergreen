@@ -250,6 +250,15 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, cl
 	h.Volumes = makeVolumeAttachments(instance.BlockDeviceMappings)
 
 	var err error
+	if h.ComputeCostPerHour == 0 {
+		ec2Settings := &EC2ProviderSettings{}
+		err := ec2Settings.fromDistroSettings(h.Distro)
+		if err != nil {
+			return errors.Wrapf(err, "error getting EC2 settings for host '%s'", h.Id)
+		}
+		h.ComputeCostPerHour, _, err = pkgCachingPriceFetcher.getLatestSpotCostForInstance(ctx, client, ec2Settings, getOsName(h), h.Zone)
+	}
+
 	h.VolumeTotalSize, err = getVolumeSize(ctx, client, h)
 	if err != nil {
 		return errors.Wrapf(err, "error getting volume size for host %s", h.Id)

@@ -1216,11 +1216,12 @@ func (h *Host) CacheHostData() error {
 		},
 		bson.M{
 			"$set": bson.M{
-				ZoneKey:            h.Zone,
-				StartTimeKey:       h.StartTime,
-				VolumeTotalSizeKey: h.VolumeTotalSize,
-				VolumesKey:         h.Volumes,
-				DNSKey:             h.Host,
+				ZoneKey:               h.Zone,
+				StartTimeKey:          h.StartTime,
+				VolumeTotalSizeKey:    h.VolumeTotalSize,
+				VolumesKey:            h.Volumes,
+				DNSKey:                h.Host,
+				ComputeCostPerHourKey: h.ComputeCostPerHour,
 			},
 		},
 	)

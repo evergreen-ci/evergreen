@@ -1126,10 +1126,7 @@ func (s *EC2Suite) TestGetSecurityGroups() {
 func (s *EC2Suite) TestCacheHostData() {
 	ec2m := s.onDemandManager.(*ec2Manager)
 
-	h := &host.Host{
-		Id: "h1",
-	}
-	s.Require().NoError(h.Insert())
+	s.Require().NoError(s.h.Insert())
 
 	instance := &ec2.Instance{Placement: &ec2.Placement{}}
 	instance.Placement.AvailabilityZone = aws.String("us-east-1a")
@@ -1153,18 +1150,19 @@ func (s *EC2Suite) TestCacheHostData() {
 	}
 	instance.PublicDnsName = aws.String("public_dns_name")
 
-	s.NoError(cacheHostData(s.ctx, h, instance, ec2m.client))
+	s.NoError(cacheHostData(s.ctx, s.h, instance, ec2m.client))
 
-	s.Equal(*instance.Placement.AvailabilityZone, h.Zone)
-	s.True(instance.LaunchTime.Equal(h.StartTime))
-	s.Equal("2001:0db8:85a3:0000:0000:8a2e:0370:7334", h.IP)
+	s.Equal(*instance.Placement.AvailabilityZone, s.h.Zone)
+	s.True(instance.LaunchTime.Equal(s.h.StartTime))
+	s.Equal("2001:0db8:85a3:0000:0000:8a2e:0370:7334", s.h.IP)
 	s.Equal([]host.VolumeAttachment{
 		{
 			VolumeID:   "volume_id",
 			DeviceName: "device_name",
 		},
-	}, h.Volumes)
-	s.Equal(int64(10), h.VolumeTotalSize)
+	}, s.h.Volumes)
+	s.Equal(int64(10), s.h.VolumeTotalSize)
+	s.Equal(float64(1), s.h.ComputeCostPerHour)
 
 	h, err := host.FindOneId("h1")
 	s.Require().NoError(err)
@@ -1179,6 +1177,7 @@ func (s *EC2Suite) TestCacheHostData() {
 		},
 	}, h.Volumes)
 	s.Equal(int64(10), h.VolumeTotalSize)
+	s.Equal(float64(1), h.ComputeCostPerHour)
 }
 
 func (s *EC2Suite) TestFromDistroSettings() {
