@@ -833,6 +833,11 @@ func TestUpdateVersionAndParserProject(t *testing.T) {
 			assert.NoError(t, v.Insert())
 			assert.NoError(t, pp.Insert())
 		},
+		"WithZero": func(t *testing.T, v *Version, pp *ParserProject) {
+			v.ConfigUpdateNumber = 0
+			assert.NoError(t, v.Insert())
+			assert.NoError(t, pp.Insert())
+		},
 	} {
 		t.Run(testName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(VersionCollection, ParserProjectCollection))
@@ -846,6 +851,11 @@ func TestUpdateVersionAndParserProject(t *testing.T) {
 			pp, err = ParserProjectFindOneById(v.Id)
 			assert.NoError(t, err)
 			require.NotNil(t, pp)
+			if testName == "WithZero" {
+				assert.Equal(t, 1, v.ConfigUpdateNumber)
+				assert.Equal(t, 1, pp.ConfigUpdateNumber)
+				return
+			}
 			assert.Equal(t, 6, v.ConfigUpdateNumber)
 			assert.Equal(t, 6, pp.ConfigUpdateNumber)
 		})
