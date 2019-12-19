@@ -96,7 +96,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		versionAsUI.PatchInfo = &uiPatch{Patch: *projCtx.Patch}
 		// diff builds for each build in the version
 		var baseBuilds []build.Build
-		baseBuilds, err = build.Find(build.ByRevision(projCtx.Version.Revision))
+		baseBuilds, err = build.Find(build.ByRevisionWithSystemVersionRequester(projCtx.Version.Revision))
 		if err != nil {
 			http.Error(w,
 				fmt.Sprintf("error loading base builds for patch: %v", err),
