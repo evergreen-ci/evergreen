@@ -1,6 +1,7 @@
 package patch
 
 import (
+	"sort"
 	"testing"
 	"time"
 
@@ -202,4 +203,21 @@ func (s *patchSuite) TestUpdateGithashProjectAndTasks() {
 
 	s.Require().NotEmpty(patch.VariantsTasks)
 	s.Equal("variant1", dbPatch.VariantsTasks[0].Variant)
+}
+
+func TestPatchSortByCreateTime(t *testing.T) {
+	assert := assert.New(t)
+	patches := PatchesByCreateTime{
+		{PatchNumber: 5, CreateTime: time.Now().Add(time.Hour * 3)},
+		{PatchNumber: 3, CreateTime: time.Now().Add(time.Hour)},
+		{PatchNumber: 1, CreateTime: time.Now()},
+		{PatchNumber: 4, CreateTime: time.Now().Add(time.Hour * 2)},
+		{PatchNumber: 100, CreateTime: time.Now().Add(time.Hour * 4)},
+	}
+	sort.Sort(patches)
+	assert.Equal(1, patches[0].PatchNumber)
+	assert.Equal(3, patches[1].PatchNumber)
+	assert.Equal(4, patches[2].PatchNumber)
+	assert.Equal(5, patches[3].PatchNumber)
+	assert.Equal(100, patches[4].PatchNumber)
 }
