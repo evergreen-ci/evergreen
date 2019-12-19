@@ -103,7 +103,10 @@ func setAllFieldsUpdate(pp *ParserProject) interface{} {
 func checkConfigNumberQuery(id string, configNum int) bson.M {
 	q := bson.M{ParserProjectIdKey: id}
 	if configNum == 0 {
-		q[ParserProjectConfigNumberKey] = bson.M{"$exists": false}
+		q["$or"] = []bson.M{
+			bson.M{ParserProjectConfigNumberKey: bson.M{"$exists": false}},
+			bson.M{ParserProjectConfigNumberKey: configNum},
+		}
 		return q
 	}
 
@@ -155,8 +158,8 @@ func (pp *ParserProject) UpsertWithConfigNumber(num int, shouldEqual bool) error
 	return nil
 }
 
+// return true if this is an error we want to expose
 func isValidErr(err error) bool {
-	// suppress results not found errors and dup key errors
 	if err == nil || adb.ResultsNotFound(err) || strings.Contains(err.Error(), "duplicate key error") {
 		return false
 	}
