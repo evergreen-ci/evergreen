@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -807,4 +811,43 @@ func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
 	s.Require().NotNil(merged)
 	s.Require().Len(merged.BuildVariants, 1)
 	s.Len(merged.BuildVariants[0].DisplayTasks, 1)
+}
+
+func TestUpdateVersionAndParserProject(t *testing.T) {
+
+	for testName, setupTest := range map[string]func(t *testing.T, v *Version, pp *ParserProject){
+		"noParserProject": func(t *testing.T, v *Version, pp *ParserProject) {
+			v.ConfigUpdateNumber = 5
+			assert.NoError(t, v.Insert())
+
+		},
+		"ParserProjectMoreRecent": func(t *testing.T, v *Version, pp *ParserProject) {
+			v.ConfigUpdateNumber = 1
+			pp.ConfigUpdateNumber = 5
+			assert.NoError(t, v.Insert())
+			assert.NoError(t, pp.Insert())
+		},
+		"ConfigMostRecent": func(t *testing.T, v *Version, pp *ParserProject) {
+			v.ConfigUpdateNumber = 5
+			pp.ConfigUpdateNumber = 1
+			assert.NoError(t, v.Insert())
+			assert.NoError(t, pp.Insert())
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(VersionCollection, ParserProjectCollection))
+			v := &Version{Id: "my-version"}
+			pp := &ParserProject{Id: "my-version"}
+			setupTest(t, v, pp)
+			assert.NoError(t, updateVersionAndParserProject(v, pp))
+			v, err := VersionFindOneId(v.Id)
+			assert.NoError(t, err)
+			require.NotNil(t, v)
+			pp, err = ParserProjectFindOneById(v.Id)
+			assert.NoError(t, err)
+			require.NotNil(t, pp)
+			assert.Equal(t, 6, v.ConfigUpdateNumber)
+			assert.Equal(t, 6, pp.ConfigUpdateNumber)
+		})
+	}
 }

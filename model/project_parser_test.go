@@ -1384,7 +1384,7 @@ func checkProjectPersists(yml []byte) error {
 		return errors.Wrapf(err, "error marshalling original project")
 	}
 
-	if err = pp.UpsertWithConfigNumber(1); err != nil {
+	if err = pp.TryUpsert(); err != nil {
 		return errors.Wrapf(err, "error inserting parser project")
 	}
 	newPP, err := ParserProjectFindOneById(pp.Id)
@@ -1406,7 +1406,7 @@ func checkProjectPersists(yml []byte) error {
 	if err != nil {
 		return errors.Wrap(err, "error creating intermediate project from stored config")
 	}
-	if err = pp.UpsertWithConfigNumber(2); err != nil {
+	if err = pp.TryUpsert(); err != nil {
 		return errors.Wrap(err, "error updating version's project")
 	}
 
@@ -1416,9 +1416,6 @@ func checkProjectPersists(yml []byte) error {
 	}
 	if newPP.Identifier != pp.Identifier {
 		return errors.New("version project not updated")
-	}
-	if newPP.ConfigUpdateNumber != 2 {
-		return errors.New("Config update number wrong")
 	}
 
 	return nil

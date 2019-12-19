@@ -92,16 +92,9 @@ func setAllFieldsUpdate(pp *ParserProject) interface{} {
 			ParserProjectTasksKey:             pp.Tasks,
 			ParserProjectExecTimeoutSecsKey:   pp.ExecTimeoutSecs,
 			ParserProjectLoggersKey:           pp.Loggers,
-			ParserProjectAxesKey:              pp.Axes,
-			ParserProjectConfigNumberKey:      pp.ConfigUpdateNumber,
+			//ParserProjectAxesKey:              pp.Axes,
+			ParserProjectConfigNumberKey: pp.ConfigUpdateNumber,
 		},
-	}
-}
-
-func configNumberMatchesQuery(num int) interface{} {
-	return []bson.M{
-		bson.M{ParserProjectConfigNumberKey: bson.M{"$exists": false}},
-		bson.M{ParserProjectConfigNumberKey: num},
 	}
 }
 
@@ -113,7 +106,11 @@ func (pp *ParserProject) TryUpsert() error {
 		return errors.Wrapf(err, "database error inserting parser project")
 	}
 
-	err = ParserProjectUpdateOne(configNumberMatchesQuery(pp.ConfigUpdateNumber), setAllFieldsUpdate(pp))
+	q := bson.M{
+		ParserProjectConfigNumberKey: bson.M{"$exists": false},
+		ParserProjectConfigNumberKey: pp.ConfigUpdateNumber,
+	}
+	err = ParserProjectUpdateOne(q, setAllFieldsUpdate(pp))
 	if err == nil || adb.ResultsNotFound(err) {
 		return nil
 	}
@@ -148,7 +145,10 @@ func (pp *ParserProject) UpsertWithConfigNumber(num int, shouldEqual bool) error
 
 	q := bson.M{ParserProjectIdKey: pp.Id}
 	if shouldEqual { // guarantee that the config number hasn't changed
-		q["$or"] = configNumberMatchesQuery(num)
+		q["$or"] = []bson.M{
+			bson.M{ParserProjectConfigNumberKey: bson.M{"$exists": false}},
+			bson.M{ParserProjectConfigNumberKey: num},
+		}
 	}
 
 	err = ParserProjectUpdateOne(q, setAllFieldsUpdate(pp))
