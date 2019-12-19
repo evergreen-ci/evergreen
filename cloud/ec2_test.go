@@ -899,37 +899,43 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 		{
 			Id: "sir-1",
 			Distro: distro.Distro{
-				Provider: evergreen.ProviderNameEc2Spot,
+				Provider:         evergreen.ProviderNameEc2Spot,
+				ProviderSettings: s.distro.ProviderSettings,
 			},
 		},
 		{
 			Id: "i-2",
 			Distro: distro.Distro{
-				Provider: evergreen.ProviderNameEc2OnDemand,
+				Provider:         evergreen.ProviderNameEc2OnDemand,
+				ProviderSettings: s.distro.ProviderSettings,
 			},
 		},
 		{
 			Id: "sir-3",
 			Distro: distro.Distro{
-				Provider: evergreen.ProviderNameEc2Spot,
+				Provider:         evergreen.ProviderNameEc2Spot,
+				ProviderSettings: s.distro.ProviderSettings,
 			},
 		},
 		{
 			Id: "i-4",
 			Distro: distro.Distro{
-				Provider: evergreen.ProviderNameEc2OnDemand,
+				Provider:         evergreen.ProviderNameEc2OnDemand,
+				ProviderSettings: s.distro.ProviderSettings,
 			},
 		},
 		{
 			Id: "i-5",
 			Distro: distro.Distro{
-				Provider: evergreen.ProviderNameEc2OnDemand,
+				Provider:         evergreen.ProviderNameEc2OnDemand,
+				ProviderSettings: s.distro.ProviderSettings,
 			},
 		},
 		{
 			Id: "i-6",
 			Distro: distro.Distro{
-				Provider: evergreen.ProviderNameEc2OnDemand,
+				Provider:         evergreen.ProviderNameEc2OnDemand,
+				ProviderSettings: s.distro.ProviderSettings,
 			},
 		},
 	}

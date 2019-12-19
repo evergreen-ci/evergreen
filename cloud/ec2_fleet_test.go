@@ -152,7 +152,7 @@ func TestFleet(t *testing.T) {
 		},
 		"CostForDuration": func(*testing.T) {
 			start := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-			end := start.Add(time.Duration(time.Hour * 24))
+			end := start.Add(time.Hour * 24)
 			h := &host.Host{
 				ComputeCostPerHour: float64(1),
 				VolumeTotalSize:    int64(30),
