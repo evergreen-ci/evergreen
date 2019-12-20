@@ -831,6 +831,7 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 
 		// shuffle hosts because hosts will always come off the index in insertion order
 		// and we want all of them to get an equal chance at being created on this pass
+		// (Fisher-Yates shuffle)
 		rand.Seed(time.Now().UnixNano())
 		for i := len(hosts) - 1; i > 0; i-- {
 			j := rand.Intn(i + 1)
