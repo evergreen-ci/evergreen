@@ -197,6 +197,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	canEdit := (currentUser != nil) && (projCtx.Version.Requester != evergreen.MergeTestRequester)
 	pluginContext := projCtx.ToPluginContext(uis.Settings, currentUser)
 	pluginContent := getPluginDataAndHTML(uis, plugin.VersionPage, pluginContext)
 
@@ -209,7 +210,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	}{
 		Version:       &versionAsUI,
 		PluginContent: pluginContent,
-		CanEdit:       currentUser != nil,
+		CanEdit:       canEdit,
 		JiraHost:      uis.Settings.Jira.Host,
 		ViewData:      uis.GetCommonViewData(w, r, false, true)}, "base", "version.html", "base_angular.html", "menu.html")
 }

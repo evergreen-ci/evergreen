@@ -58,7 +58,7 @@ Evergreen - Patches
         &nbsp;]
       </span>
     </span>
-    <span ng-if="!patch.version">
+    <span ng-if="!patch.version && patch.canEdit">
       <a ng-href="/patch/[[patch.id]]" class="btn btn-info btn-sm">
         Configure
       </a>
