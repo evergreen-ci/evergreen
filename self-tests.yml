@@ -200,6 +200,7 @@ functions:
     params:
       directory: gopath/src/github.com/evergreen-ci/evergreen
       token: ${github_token}
+      shallow_clone: true
   run-make:
     command: subprocess.exec
     params:
