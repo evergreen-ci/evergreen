@@ -117,8 +117,8 @@ func mergeCommand() cli.Command {
 				Name:  joinFlagNames(messageFlagName, "m", "description", "d"),
 				Usage: "commit message",
 			},
-			cli.StringFlag{
-				Name:  joinFlagNames(forceFlagName, "f"),
+			cli.BoolFlag{
+				Name:  forceFlagName,
 				Usage: "force item to front of queue",
 			},
 		)),
@@ -136,7 +136,7 @@ func mergeCommand() cli.Command {
 				large:       c.Bool(largeFlagName),
 				force:       c.Bool(forceFlagName),
 			}
-			if params.force && !confirm("Forcing item to front of queue. Continue? (y/n)", false) {
+			if params.force && !confirm("Forcing item to front of queue will be reported. Continue? (y/n)", false) {
 				return errors.New("Merge aborted.")
 			}
 			conf, err := NewClientSettings(c.Parent().Parent().String(confFlagName))
