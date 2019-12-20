@@ -32,7 +32,7 @@ var (
 	FinderSettingsKey        = bsonutil.MustHaveTag(Distro{}, "FinderSettings")
 	HostAllocatorSettingsKey = bsonutil.MustHaveTag(Distro{}, "HostAllocatorSettings")
 	DisableShallowCloneKey   = bsonutil.MustHaveTag(Distro{}, "DisableShallowClone")
-	LegacyAgentKey           = bsonutil.MustHaveTag(Distro{}, "LegacyAgent")
+	UseLegacyAgentKey        = bsonutil.MustHaveTag(Distro{}, "UseLegacyAgent")
 )
 
 var (
