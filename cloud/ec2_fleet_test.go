@@ -3,6 +3,7 @@ package cloud
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -148,6 +149,21 @@ func TestFleet(t *testing.T) {
 				AvailabilityZone: aws.String("us-east-1a"),
 			}
 			assert.True(t, subnetMatchesAz(subnet))
+		},
+		"CostForDuration": func(*testing.T) {
+			start := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+			end := start.Add(time.Hour * 24)
+			h := &host.Host{
+				ComputeCostPerHour: float64(1),
+				VolumeTotalSize:    int64(30),
+				Zone:               "us-east-1a",
+			}
+			pkgCachingPriceFetcher.ebsPrices = make(map[string]float64)
+			pkgCachingPriceFetcher.ebsPrices["us-east-1"] = float64(1)
+
+			cost, err := m.CostForDuration(context.Background(), h, start, end)
+			assert.NoError(t, err)
+			assert.EqualValues(t, 25, cost)
 		},
 	} {
 		h = &host.Host{
