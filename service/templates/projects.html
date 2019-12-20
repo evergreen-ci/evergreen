@@ -10,6 +10,7 @@
   window.isSuperUser = false;
   {{end}}
   window.canCreate = {{.CanCreate}};
+  window.validDefaultLoggers = {{.ValidDefaultLoggers}}
 </script>
 <script type="text/javascript" src="{{Static "thirdparty" "tablesorter.js"}}"></script>
 <script type="text/javascript" src="{{Static "js" "alerts.js"}}?hash={{ BuildRevision }}"></script>
