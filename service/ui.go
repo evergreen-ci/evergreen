@@ -53,18 +53,19 @@ type UIServer struct {
 
 // ViewData contains common data that is provided to all Evergreen pages
 type ViewData struct {
-	User        *user.DBUser
-	ProjectData projectContext
-	Project     model.Project
-	Flashes     []interface{}
-	Banner      string
-	BannerTheme string
-	Csrf        htmlTemplate.HTML
-	JiraHost    string
-	Bugsnag     string
-	NewRelic    evergreen.NewRelicConfig
-	IsAdmin     bool
-	ACLEnabled  bool // TODO PM-1355 remove this
+	User                *user.DBUser
+	ProjectData         projectContext
+	Project             model.Project
+	Flashes             []interface{}
+	Banner              string
+	BannerTheme         string
+	Csrf                htmlTemplate.HTML
+	JiraHost            string
+	Bugsnag             string
+	NewRelic            evergreen.NewRelicConfig
+	IsAdmin             bool
+	ACLEnabled          bool // TODO PM-1355 remove this
+	ValidDefaultLoggers []string
 }
 
 func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo TemplateFunctionOptions) (*UIServer, error) {
@@ -217,6 +218,7 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 	viewData.Bugsnag = settings.Bugsnag
 	viewData.NewRelic = settings.NewRelic
 	viewData.ACLEnabled = evergreen.AclCheckingIsEnabled
+	viewData.ValidDefaultLoggers = []string{model.EvergreenLogSender, model.BuildloggerLogSender}
 	return viewData
 }
 
