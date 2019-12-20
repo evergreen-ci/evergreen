@@ -984,11 +984,14 @@ func (c *communicatorImpl) DeleteCommitQueueItem(ctx context.Context, projectID,
 	return nil
 }
 
-func (c *communicatorImpl) EnqueueItem(ctx context.Context, patchID string) (int, error) {
+func (c *communicatorImpl) EnqueueItem(ctx context.Context, patchID string, enqueueNext bool) (int, error) {
 	info := requestInfo{
 		method:  put,
 		version: apiVersion2,
 		path:    fmt.Sprintf("/commit_queue/%s", patchID),
+	}
+	if enqueueNext {
+		info.path += "?force=true"
 	}
 
 	resp, err := c.request(ctx, info, nil)

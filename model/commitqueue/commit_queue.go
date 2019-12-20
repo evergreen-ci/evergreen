@@ -55,7 +55,7 @@ func InsertQueue(q *CommitQueue) error {
 
 func (q *CommitQueue) Enqueue(item CommitQueueItem) (int, error) {
 	position := q.FindItem(item.Issue)
-	if !(position < 0) {
+	if position >= 0 {
 		return position + 1, errors.New("item already in queue")
 	}
 
@@ -73,6 +73,33 @@ func (q *CommitQueue) Enqueue(item CommitQueueItem) (int, error) {
 
 	q.Queue = append(q.Queue, item)
 	return len(q.Queue), nil
+}
+
+func (q *CommitQueue) EnqueueAtFront(item CommitQueueItem) (int, error) {
+	position := q.FindItem(item.Issue)
+	if position >= 0 {
+		return position + 1, errors.New("item already in queue")
+	}
+
+	item.EnqueueTime = time.Now()
+	if err := addToFront(q.ProjectID, q.Queue, item); err != nil {
+		return 0, errors.Wrapf(err, "can't force add '%s' to queue '%s'", item.Issue, q.ProjectID)
+	}
+
+	grip.Critical(message.Fields{
+		"source":       "commit queue",
+		"item_id":      item.Issue,
+		"project_id":   q.ProjectID,
+		"queue_length": len(q.Queue) + 1,
+		"message":      "enqueued commit queue item at front",
+		"force":        true,
+	})
+	if len(q.Queue) == 0 {
+		q.Queue = append(q.Queue, item)
+		return 1, nil
+	}
+	q.Queue = append([]CommitQueueItem{q.Queue[0], item}, q.Queue[1:]...)
+	return 2, nil
 }
 
 func (q *CommitQueue) Next() *CommitQueueItem {

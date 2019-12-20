@@ -71,6 +71,37 @@ func (s *CommitQueueSuite) TestEnqueue() {
 	s.NotEqual(-1, dbq.FindItem("c123"))
 }
 
+func (s *CommitQueueSuite) TestEnqueueAtFront() {
+	// if queue is empty, puts as the first item
+	pos, err := s.q.EnqueueAtFront(sampleCommitQueueItem)
+	s.Require().NoError(err)
+	s.Equal(pos, 1)
+
+	dbq, err := FindOneId("mci")
+	s.NoError(err)
+	s.Len(dbq.Queue, 1)
+
+	// insert different items
+	item := sampleCommitQueueItem
+	item.Issue = "456"
+	_, err = s.q.Enqueue(item)
+	s.Require().NoError(err)
+	item.Issue = "789"
+	pos, err = s.q.Enqueue(item)
+	s.Require().NoError(err)
+	s.Equal(3, pos)
+
+	item.Issue = "critical"
+	pos, err = s.q.EnqueueAtFront(item)
+	s.Require().NoError(err)
+	s.Equal(2, pos)
+
+	dbq, err = FindOneId("mci")
+	s.NoError(err)
+	s.Require().Len(dbq.Queue, 4)
+	s.Equal("critical", dbq.Queue[1].Issue)
+}
+
 func (s *CommitQueueSuite) TestUpdateVersion() {
 	_, err := s.q.Enqueue(sampleCommitQueueItem)
 	s.NoError(err)

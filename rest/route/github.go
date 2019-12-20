@@ -343,7 +343,7 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 		Issue:   restModel.ToAPIString(strconv.Itoa(PRNum)),
 		Modules: modules,
 	}
-	_, err = gh.sc.EnqueueItem(projectRef.Identifier, item)
+	_, err = gh.sc.EnqueueItem(projectRef.Identifier, item, false)
 	if err != nil {
 		return errors.Wrap(err, "can't enqueue item on commit queue")
 	}
