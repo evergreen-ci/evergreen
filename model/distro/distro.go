@@ -38,6 +38,7 @@ type Distro struct {
 	DispatcherSettings    DispatcherSettings      `bson:"dispatcher_settings" json:"dispatcher_settings" mapstructure:"dispatcher_settings"`
 	HostAllocatorSettings HostAllocatorSettings   `bson:"host_allocator_settings" json:"host_allocator_settings" mapstructure:"host_allocator_settings"`
 	DisableShallowClone   bool                    `bson:"disable_shallow_clone" json:"disable_shallow_clone" mapstructure:"disable_shallow_clone"`
+	LegacyAgent           bool                    `bson:"legacy_agent" json:"legacy_agent" mapstructure:"legacy_agent"`
 }
 
 // BootstrapSettings encapsulates all settings related to bootstrapping hosts.
@@ -347,6 +348,10 @@ func (d *Distro) BinaryName() string {
 
 // ExecutableSubPath returns the directory containing the compiled agents.
 func (d *Distro) ExecutableSubPath() string {
+	arch := d.Arch
+	if d.LegacyAgent {
+		arch = fmt.Sprintf("%s_legacy", arch)
+	}
 	return filepath.Join(d.Arch, d.BinaryName())
 }
 

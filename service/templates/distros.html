@@ -665,6 +665,10 @@ Evergreen - Distros
 
         <div class="panel-body panel panel-default">
           <div class="dropdown">
+            <p class="distro-checkbox checkbox">
+              <input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.legacy_agent">
+              Use legacy agent for this distro.
+            </p>
             <span class="distro-menu-title">Host Bootstrap Method:</span>
               <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true" ng-disabled="readOnly">
                 <strong class="distro-menu-item">[[activeDistro.bootstrap_settings.method | bootstrapMethodDisplay:this]]<span class="fa fa-caret-down"></span></strong>

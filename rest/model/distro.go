@@ -352,6 +352,7 @@ type APIDistro struct {
 	DispatcherSettings    APIDispatcherSettings    `json:"dispatcher_settings"`
 	HostAllocatorSettings APIHostAllocatorSettings `json:"host_allocator_settings"`
 	DisableShallowClone   bool                     `json:"disable_shallow_clone"`
+	LegacyAgent           bool                     `json:"legacy_agent"`
 }
 
 // BuildFromService converts from service level distro.Distro to an APIDistro
@@ -435,6 +436,7 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	}
 	apiDistro.DispatcherSettings = dispatchSettings
 	apiDistro.DisableShallowClone = d.DisableShallowClone
+	apiDistro.LegacyAgent = d.LegacyAgent
 
 	return nil
 }
@@ -526,6 +528,7 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	}
 	d.DispatcherSettings = dispatchSettings
 	d.DisableShallowClone = apiDistro.DisableShallowClone
+	d.LegacyAgent = apiDistro.LegacyAgent
 
 	return &d, nil
 }
