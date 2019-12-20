@@ -1,5 +1,6 @@
 mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', 'mciAdminRestService', 'notificationService', '$mdpTimePicker', function($scope, $window, $http, mciAdminRestService, notificationService) {
   $scope.auth_is_ldap = $window.auth_is_ldap;
+  $scope.validDefaultLoggers = $window.validDefaultLoggers;
 
   $scope.load = function() {
     $scope.Settings = {};

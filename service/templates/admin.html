@@ -1,6 +1,7 @@
 {{define "scripts"}}
 <script>
 	window.auth_is_ldap = {{.AuthIsLDAP}};
+        window.validDefaultLoggers = {{.ValidDefaultLoggers}};
 </script>
 <script src="{{Static "js" "admin.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="{{Static "thirdparty" "js-yaml.min.js"}}?hash={{ BuildRevision }}"></script>
@@ -1017,9 +1018,11 @@ Admin Settings
 									</md-button>
 								</md-card-title>
 								<md-card-content>
-									<md-input-container class="control" style="width:45%;">
-										<label>Default Logger</label>
-										<input type="text" ng-model="Settings.logger_config.default_logger">
+									<md-input-container class="control" style="width:100%;">
+										<md-card-text>Default logger</md-card-text>
+                                                                                <select name="repeatSelect" id="repeatSelect" ng-model="Settings.logger_config.default_logger">
+                                                                                  <option ng-repeat="logger in validDefaultLoggers">[[logger]]</option>
+                                                                                </select>
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>Default level</label>
