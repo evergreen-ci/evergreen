@@ -136,37 +136,25 @@ func (b *Build) PreviousSuccessful() (*Build, error) {
 		b.RevisionOrderNumber, b.Project, b.BuildVariant))
 }
 
-// UpdateActivation updates one build with the given id
+// UpdateActivation updates builds with the given ids
 // to the given activation setting.
-func UpdateActivation(buildId string, active bool, caller string) error {
-	var err error
-	if !active && (evergreen.IsSystemActivator(caller)) {
-		_, err = UpdateAllBuilds(
-			bson.M{IdKey: buildId,
-				ActivatedByKey: caller,
-			},
-			bson.M{
-				"$set": bson.M{
-					ActivatedKey:     active,
-					ActivatedTimeKey: time.Now(),
-					ActivatedByKey:   caller,
-				},
-			},
-		)
-	} else {
-		_, err = UpdateAllBuilds(
-			bson.M{IdKey: buildId},
-			bson.M{
-				"$set": bson.M{
-					ActivatedKey:     active,
-					ActivatedTimeKey: time.Now(),
-					ActivatedByKey:   caller,
-				},
-			},
-		)
+func UpdateActivation(buildIds []string, active bool, caller string) error {
+	query := bson.M{IdKey: bson.M{"$in": buildIds}}
+	if !active && evergreen.IsSystemActivator(caller) {
+		query[ActivatedByKey] = caller
 	}
-	return err
 
+	_, err := UpdateAllBuilds(
+		query,
+		bson.M{
+			"$set": bson.M{
+				ActivatedKey:     active,
+				ActivatedTimeKey: time.Now(),
+				ActivatedByKey:   caller,
+			},
+		},
+	)
+	return errors.Wrapf(err, "can't set build activation to '%t'", active)
 }
 
 // UpdateStatus sets the build status to the given string.

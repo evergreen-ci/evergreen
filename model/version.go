@@ -241,3 +241,17 @@ func (v *Version) UpdateMergeTaskDependencies(p *Project, mergeTask *task.Task) 
 
 	return mergeTask.UpdateDependencies(mergeTaskDependencies)
 }
+
+type VersionsByCreateTime []Version
+
+func (v VersionsByCreateTime) Len() int {
+	return len(v)
+}
+
+func (v VersionsByCreateTime) Less(i, j int) bool {
+	return v[i].CreateTime.Before(v[j].CreateTime)
+}
+
+func (v VersionsByCreateTime) Swap(i, j int) {
+	v[i], v[j] = v[j], v[i]
+}

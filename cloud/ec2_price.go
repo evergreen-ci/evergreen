@@ -284,7 +284,9 @@ func (cpf *cachingPriceFetcher) parseAWSPricing(out *pricing.GetProductsOutput) 
 	return p, nil
 }
 
-func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(ctx context.Context, client AWSClient, settings *EC2ProviderSettings, os osType) (float64, string, error) {
+// getLatestSpotCostForInstance gets the latest price for a spot instance in the given zone
+// pass an empty zone to find the lowest priced zone
+func (cpf *cachingPriceFetcher) getLatestSpotCostForInstance(ctx context.Context, client AWSClient, settings *EC2ProviderSettings, os osType, zone string) (float64, string, error) {
 	osName := string(os)
 	if settings.IsVpc {
 		osName += " (Amazon VPC)"
@@ -293,7 +295,7 @@ func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(ctx context.C
 	grip.Debug(message.Fields{
 		"message":       "getting spot history",
 		"instance_type": settings.InstanceType,
-		"function":      "getLatestLowestSpotCostForInstance",
+		"function":      "getLatestSpotCostForInstance",
 		"start_time":    "future",
 	})
 
@@ -303,8 +305,7 @@ func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(ctx context.C
 		// passing a future start time gets the latest price only
 		start: time.Now().UTC().Add(24 * time.Hour),
 		end:   time.Now().UTC().Add(25 * time.Hour),
-		// passing empty zone to find the "best"
-		zone: "",
+		zone:  zone,
 	}
 
 	prices, err := cpf.describeSpotPriceHistory(ctx, client, args)
@@ -338,18 +339,14 @@ func (m *ec2Manager) getProvider(ctx context.Context, h *host.Host, ec2settings 
 		az            string
 	)
 	if h.UserHost || m.provider == onDemandProvider || m.provider == autoProvider {
-		ec2Settings := &EC2ProviderSettings{}
-		err := ec2Settings.fromDistroSettings(h.Distro)
-		if err != nil {
-			return 0, errors.Wrap(err, "problem getting settings from host")
-		}
 		onDemandPrice, err = pkgCachingPriceFetcher.getEC2OnDemandCost(ctx, m.client, getOsName(h), ec2settings.InstanceType, ec2settings.getRegion())
 		if err != nil {
 			return 0, errors.Wrap(err, "error getting ec2 on-demand cost")
 		}
 	}
 	if m.provider == spotProvider || m.provider == autoProvider {
-		spotPrice, az, err = pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(ctx, m.client, ec2settings, getOsName(h))
+		// passing empty zone to find the "best"
+		spotPrice, az, err = pkgCachingPriceFetcher.getLatestSpotCostForInstance(ctx, m.client, ec2settings, getOsName(h), "")
 		if err != nil {
 			return 0, errors.Wrap(err, "error getting latest lowest spot price")
 		}

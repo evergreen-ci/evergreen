@@ -158,13 +158,9 @@ func (g *GeneratedProject) NewVersion() (*Project, *ParserProject, *Version, *ta
 }
 
 func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProject, v *Version, t *task.Task, pm *projectMaps) error {
-	err := VersionUpdateConfig(v.Id, v.Config, v.ConfigUpdateNumber)
-	if err != nil {
-		return errors.Wrapf(err, "error updating version %s", v.Id)
+	if err := updateVersionAndParserProject(v, pp); err != nil {
+		return errors.Wrapf(err, "error saving version/parser project")
 	}
-	v.ConfigUpdateNumber += 1
-
-	// TODO: Include parser project in generated tasks
 
 	if v.Requester == evergreen.MergeTestRequester {
 		mergeTask, err := task.FindMergeTaskForVersion(v.Id)
@@ -181,6 +177,30 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProje
 
 	if err := g.saveNewBuildsAndTasks(ctx, pm, v, p, t.Priority); err != nil {
 		return errors.Wrap(err, "error savings new builds and tasks")
+	}
+	return nil
+}
+
+// if the parser project is more recent, update contingent on that and force update the version (and vice versa)
+func updateVersionAndParserProject(v *Version, pp *ParserProject) error {
+	if pp.ConfigUpdateNumber > v.ConfigUpdateNumber {
+		curNumber := pp.ConfigUpdateNumber
+		if err := pp.UpsertWithConfigNumber(curNumber, true); err != nil {
+			return errors.Wrapf(err, "error upserting parser project '%s'", pp.Id)
+		}
+
+		if err := VersionUpdateConfig(v.Id, v.Config, curNumber, false); err != nil {
+			return errors.Wrapf(err, "database error updating version '%s'", v.Id)
+		}
+		return nil
+	}
+
+	if err := VersionUpdateConfig(v.Id, v.Config, v.ConfigUpdateNumber, true); err != nil {
+		return errors.Wrapf(err, "error updating version '%s'", v.Id)
+	}
+
+	if err := pp.UpsertWithConfigNumber(v.ConfigUpdateNumber, false); err != nil {
+		return errors.Wrapf(err, "database error upserting parser project '%s'", pp.Id)
 	}
 	return nil
 }

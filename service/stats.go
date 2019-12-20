@@ -2,6 +2,7 @@ package service
 
 import (
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -260,6 +261,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 		data.Tasks = uiTasks
 	}
 
+	orderedVersionIDs := make([]string, 0, len(versionIds))
 	// Populate the versions field if with commits, otherwise patches field
 	if util.StringSliceContains(evergreen.SystemVersionRequesterTypes, request) {
 		versions, err := model.VersionFind(model.VersionByIds(versionIds).
@@ -269,7 +271,13 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusNotFound, errors.Wrap(err, "error finding past versions"))
 			return
 		}
-		data.Versions = alignVersions(versions, versionIds)
+
+		sort.Sort(sort.Reverse(model.VersionsByCreateTime(versions)))
+		for _, v := range versions {
+			orderedVersionIDs = append(orderedVersionIDs, v.Id)
+		}
+
+		data.Versions = versions
 	} else {
 		// patches
 		patches, err := patch.Find(patch.ByVersions(versionIds).
@@ -278,41 +286,48 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusNotFound, errors.Wrap(err, "error finding past patches"))
 			return
 		}
-		data.Patches = alignPatches(patches, versionIds)
+		sort.Sort(sort.Reverse(patch.PatchesByCreateTime(patches)))
+		for _, p := range patches {
+			orderedVersionIDs = append(orderedVersionIDs, p.Id.Hex())
+		}
+
+		data.Patches = patches
+	}
+
+	if len(data.Builds) > 0 {
+		data.Builds = alignBuilds(orderedVersionIDs, data.Builds)
+	}
+	if len(data.Tasks) > 0 {
+		data.Tasks = alignTasks(orderedVersionIDs, data.Tasks)
 	}
 
 	gimlet.WriteJSON(w, data)
 }
 
-func alignVersions(versions []model.Version, versionIDs []string) []model.Version {
-	versionMap := make(map[string]model.Version)
-	for _, v := range versions {
-		versionMap[v.Id] = v
+func alignBuilds(versionIDs []string, builds []*UIBuild) []*UIBuild {
+	buildMap := make(map[string]*UIBuild)
+	for _, b := range builds {
+		buildMap[b.Version] = b
 	}
 
-	alignedVersions := make([]model.Version, 0, len(versionIDs))
-	for _, vID := range versionIDs {
-		if v, ok := versionMap[vID]; ok {
-			alignedVersions = append(alignedVersions, v)
-		}
+	orderedBuilds := make([]*UIBuild, 0, len(builds))
+	for _, id := range versionIDs {
+		orderedBuilds = append(orderedBuilds, buildMap[id])
 	}
 
-	return alignedVersions
+	return orderedBuilds
 }
 
-// alignPatches aligns patches with their corresponding version ids
-func alignPatches(patches []patch.Patch, versionIDs []string) []patch.Patch {
-	patchMap := make(map[string]patch.Patch)
-	for _, p := range patches {
-		patchMap[p.Version] = p
+func alignTasks(versionIDs []string, tasks []*UITask) []*UITask {
+	taskMap := make(map[string]*UITask)
+	for _, t := range tasks {
+		taskMap[t.Version] = t
 	}
 
-	alignedPatches := make([]patch.Patch, 0, len(versionIDs))
-	for _, version := range versionIDs {
-		if p, ok := patchMap[version]; ok {
-			alignedPatches = append(alignedPatches, p)
-		}
+	orderedTasks := make([]*UITask, 0, len(tasks))
+	for _, id := range versionIDs {
+		orderedTasks = append(orderedTasks, taskMap[id])
 	}
 
-	return alignedPatches
+	return orderedTasks
 }
