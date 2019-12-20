@@ -352,7 +352,7 @@ func (d *Distro) ExecutableSubPath() string {
 	if d.UseLegacyAgent {
 		arch += "_legacy"
 	}
-	return filepath.Join(d.Arch, d.BinaryName())
+	return filepath.Join(arch, d.BinaryName())
 }
 
 // HomeDir gets the absolute path to the home directory for this distro's user.
