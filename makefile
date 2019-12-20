@@ -54,7 +54,7 @@ distContents := $(clientBinaries) $(distArtifacts)
 srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "./scripts/*" -not -path "*\#*")
 testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
 currentHash := $(shell git rev-parse HEAD)
-ldFlags := "$(if $(DEBUG_ENABLED),,-w -s )-X=github.com/evergreen-ci/evergreen.BuildRevision=$(currentHash)"
+ldFlags := $(if $(DEBUG_ENABLED),,-w -s )-X=github.com/evergreen-ci/evergreen.BuildRevision=$(currentHash)
 karmaFlags := $(if $(KARMA_REPORTER),--reporters $(KARMA_REPORTER),)
 smokeFile := $(if $(SMOKE_TEST_FILE),--test-file $(SMOKE_TEST_FILE),)
 # end evergreen specific configuration
@@ -82,7 +82,7 @@ endif
 cli:$(localClientBinary)
 clis:$(clientBinaries)
 $(clientBuildDir)/%/evergreen $(clientBuildDir)/%/evergreen.exe:$(buildDir)/build-cross-compile $(srcFiles)
-	@./$(buildDir)/build-cross-compile -buildName=$* -ldflags=$(ldFlags) -legacyGoBinary="$(legacyGobin)" -goBinary="$(gobin)" $(if $(RACE_DETECTOR),-race ,)-directory=$(clientBuildDir) -source=$(clientSource) -output=$@
+	@./$(buildDir)/build-cross-compile -buildName=$* -ldflags="$(ldFlags)" -legacyGoBinary="$(legacyGobin)" -goBinary="$(gobin)" $(if $(RACE_DETECTOR),-race ,)-directory=$(clientBuildDir) -source=$(clientSource) -output=$@
 phony += cli clis
 # end client build directives
 
@@ -416,17 +416,18 @@ testArgs += -timeout=$(TEST_TIMEOUT)
 else
 testArgs += -timeout=10m
 endif
+testArgs += -ldflags="$(ldFlags) -X=github.com/evergreen-ci/evergreen/testutil.ExecutionEnvironmentType=test"
 #  targets to run any tests in the top-level package
 $(buildDir):
 	mkdir -p $@
 $(tmpDir):$(buildDir)
 	mkdir -p $@
 $(buildDir)/output.%.test:$(tmpDir) .FORCE
-	$(testRunEnv) $(gobin) test -ldflags=$(ldFlags) $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
+	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
 $(buildDir)/output-dlv.%.test:$(tmpDir) .FORCE
-	$(testRunEnv) dlv test -ldflags=$(ldFlags) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -- $(dlvArgs) 2>&1 | tee $@
+	$(testRunEnv) dlv test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -- $(dlvArgs) 2>&1 | tee $@
 $(buildDir)/output.%.coverage:$(tmpDir) .FORCE
-	$(testRunEnv) $(gobin) test -ldflags=$(ldFlags) $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
+	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
 	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 #  targets to generate gotest output from the linter.
 $(buildDir)/output.%.lint:$(buildDir)/run-linter $(buildDir)/golangci-lint $(testSrcFiles) .FORCE
