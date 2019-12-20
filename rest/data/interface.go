@@ -291,7 +291,8 @@ type Connector interface {
 	// Commit queue methods
 	// GetGithubPR takes the owner, repo, and PR number.
 	GetGitHubPR(context.Context, string, string, int) (*github.PullRequest, error)
-	EnqueueItem(string, restModel.APICommitQueueItem) (int, error)
+	// if bool is true, move the commit queue item to be processed next.
+	EnqueueItem(string, restModel.APICommitQueueItem, bool) (int, error)
 	FindCommitQueueByID(string) (*restModel.APICommitQueue, error)
 	EnableCommitQueue(*model.ProjectRef, model.CommitQueueParams) error
 	CommitQueueRemoveItem(string, string) (bool, error)

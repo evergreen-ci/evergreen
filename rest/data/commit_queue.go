@@ -37,10 +37,10 @@ func (pc *DBCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo s
 	return pr, nil
 }
 
-func (pc *DBCommitQueueConnector) EnqueueItem(projectID string, item restModel.APICommitQueueItem) (int, error) {
+func (pc *DBCommitQueueConnector) EnqueueItem(projectID string, item restModel.APICommitQueueItem, enqueueNext bool) (int, error) {
 	q, err := commitqueue.FindOneId(projectID)
 	if err != nil {
-		return 0, errors.Wrapf(err, "can't query for queue id %s", projectID)
+		return 0, errors.Wrapf(err, "can't query for queue id '%s'", projectID)
 	}
 
 	itemInterface, err := item.ToService()
@@ -49,9 +49,17 @@ func (pc *DBCommitQueueConnector) EnqueueItem(projectID string, item restModel.A
 	}
 
 	itemService := itemInterface.(commitqueue.CommitQueueItem)
+	if enqueueNext {
+		position, err := q.EnqueueAtFront(itemService)
+		if err != nil {
+			return 0, errors.Wrapf(err, "can't force enqueue item to queue '%s'", projectID)
+		}
+		return position, nil
+	}
+
 	position, err := q.Enqueue(itemService)
 	if err != nil {
-		return 0, errors.Wrapf(err, "can't enqueue item to queue %s", projectID)
+		return 0, errors.Wrapf(err, "can't enqueue item to queue '%s'", projectID)
 	}
 
 	return position, nil
@@ -166,13 +174,16 @@ func (pc *MockCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo
 	}, nil
 }
 
-func (pc *MockCommitQueueConnector) EnqueueItem(projectID string, item restModel.APICommitQueueItem) (int, error) {
+func (pc *MockCommitQueueConnector) EnqueueItem(projectID string, item restModel.APICommitQueueItem, enqueueNext bool) (int, error) {
 	if pc.Queue == nil {
 		pc.Queue = make(map[string][]restModel.APICommitQueueItem)
 	}
-
+	if enqueueNext && len(pc.Queue[projectID]) > 0 {
+		q := pc.Queue[projectID]
+		pc.Queue[projectID] = append([]restModel.APICommitQueueItem{q[0], item}, q[1:]...)
+		return 2, nil
+	}
 	pc.Queue[projectID] = append(pc.Queue[projectID], item)
-
 	return len(pc.Queue[projectID]), nil
 }
 
