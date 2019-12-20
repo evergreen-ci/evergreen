@@ -860,9 +860,9 @@ func FindAllTaskIDsFromBuild(buildId string) ([]string, error) {
 }
 
 // FindTasksFromBuildWithDependencies finds tasks from a build that have dependencies.
-func FindTasksFromBuildWithDependencies(buildId string) ([]Task, error) {
+func FindTasksFromBuildWithDependencies(buildIds []string) ([]Task, error) {
 	q := db.Query(bson.M{
-		BuildIdKey:   buildId,
+		BuildIdKey:   bson.M{"$in": buildIds},
 		DependsOnKey: bson.M{"$not": bson.M{"$size": 0}},
 	}).WithFields(IdKey, DependsOnKey)
 	tasks := []Task{}

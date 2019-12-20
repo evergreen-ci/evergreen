@@ -67,26 +67,41 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 		build.ByVersion(versionId).WithFields(build.IdKey),
 	)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "can't get builds for version '%s'", versionId)
 	}
-	for _, b := range builds {
-		err = SetBuildActivation(b.Id, active, caller, false)
-		if err != nil {
-			return err
-		}
+	buildIDs := make([]string, 0, len(builds))
+	for _, build := range builds {
+		buildIDs = append(buildIDs, build.Id)
 	}
-	return nil
+
+	// Update activation for all builds before updating their tasks so the version won't spend
+	// time in an intermediate state where only some builds are updated
+	if err = build.UpdateActivation(buildIDs, active, caller); err != nil {
+		return errors.Wrapf(err, "can't set activation for builds in '%s'", versionId)
+	}
+
+	return errors.Wrapf(SetTaskActivationForBuilds(buildIDs, active, caller, false), "can't set activation for tasks in version '%s'", versionId)
 }
 
 // SetBuildActivation updates the "active" state of this build and all associated tasks.
 // It also updates the task cache for the build document.
 func SetBuildActivation(buildId string, active bool, caller string, skipDependencies bool) error {
+	if err := build.UpdateActivation([]string{buildId}, active, caller); err != nil {
+		return errors.Wrapf(err, "can't set build activation to %t for build '%s'", active, buildId)
+	}
+
+	return errors.Wrapf(SetTaskActivationForBuilds([]string{buildId}, active, caller, skipDependencies), "can't set task activation for build '%s'", buildId)
+}
+
+// SetTaskActivationForBuilds updates the "active" state of all tasks in buildIds.
+// It also updates the task cache for the build document.
+func SetTaskActivationForBuilds(buildIds []string, active bool, caller string, skipDependencies bool) error {
 	var err error
 	// If activating a task, set the ActivatedBy field to be the caller
 	if active {
 		_, err = task.UpdateAll(
 			bson.M{
-				task.BuildIdKey: buildId,
+				task.BuildIdKey: bson.M{"$in": buildIds},
 				task.StatusKey:  evergreen.TaskUndispatched,
 			},
 			bson.M{"$set": bson.M{task.ActivatedKey: active, task.ActivatedByKey: caller, task.ActivatedTimeKey: time.Now()}},
@@ -96,9 +111,9 @@ func SetBuildActivation(buildId string, active bool, caller string, skipDependen
 		}
 		if !skipDependencies {
 			var tasks []task.Task
-			tasks, err = task.FindTasksFromBuildWithDependencies(buildId)
+			tasks, err = task.FindTasksFromBuildWithDependencies(buildIds)
 			if err != nil {
-				return errors.Wrapf(err, "problem finding tasks with dependencies for build %s", buildId)
+				return errors.Wrapf(err, "problem finding tasks with dependencies for builds %s", buildIds)
 			}
 			catcher := grip.NewBasicCatcher()
 			for _, t := range tasks {
@@ -106,17 +121,16 @@ func SetBuildActivation(buildId string, active bool, caller string, skipDependen
 					catcher.Add(SetActiveState(d.TaskId, caller, active))
 				}
 			}
-			grip.Error(errors.Wrapf(catcher.Resolve(), "problem settings dependencies for build %s", buildId))
+			grip.Error(errors.Wrapf(catcher.Resolve(), "problem settings dependencies for builds %s", buildIds))
 		}
 	} else {
-
 		// if trying to deactivate a task then only deactivate tasks that have not been activated by a user.
 		// if the caller is the default task activator,
 		// only deactivate tasks that are activated by the default task activator
 		if evergreen.IsSystemActivator(caller) {
 			_, err = task.UpdateAll(
 				bson.M{
-					task.BuildIdKey:     buildId,
+					task.BuildIdKey:     bson.M{"$in": buildIds},
 					task.StatusKey:      evergreen.TaskUndispatched,
 					task.ActivatedByKey: caller,
 				},
@@ -127,31 +141,34 @@ func SetBuildActivation(buildId string, active bool, caller string, skipDependen
 			// update all tasks if the caller is not evergreen.
 			_, err = task.UpdateAll(
 				bson.M{
-					task.BuildIdKey: buildId,
+					task.BuildIdKey: bson.M{"$in": buildIds},
 					task.StatusKey:  evergreen.TaskUndispatched,
 				},
 				bson.M{"$set": bson.M{task.ActivatedKey: active, task.ActivatedByKey: caller}},
 			)
 		}
 	}
-
 	if err != nil {
 		return err
 	}
-	if err = build.UpdateActivation(buildId, active, caller); err != nil {
-		return err
+
+	for _, buildId := range buildIds {
+		if err = RefreshTasksCache(buildId); err != nil {
+			return errors.Wrapf(err, "can't refresh cache for build '%s'", buildId)
+		}
 	}
-	return RefreshTasksCache(buildId)
+
+	return nil
 }
 
-// AbortBuild sets the abort flag on all tasks associated with the build which are in an abortable
-// state, and marks the build as deactivated.
+// AbortBuild marks the build as deactivated and sets the abort flag on all tasks associated
+// with the build which are in an abortable state.
 func AbortBuild(buildId string, caller string) error {
-	err := task.AbortBuild(buildId, caller)
-	if err != nil {
-		return err
+	if err := build.UpdateActivation([]string{buildId}, false, caller); err != nil {
+		return errors.Wrapf(err, "can't deactivate build '%s'", buildId)
 	}
-	return build.UpdateActivation(buildId, false, caller)
+
+	return errors.Wrapf(task.AbortBuild(buildId, caller), "can't abort tasks for build '%s'", buildId)
 }
 
 // AbortVersion sets the abort flag on all tasks associated with the version which are in an
@@ -371,13 +388,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	}
 
 	// update activation for all the builds
-	for _, b := range buildIdList {
-		if err := build.UpdateActivation(b, true, caller); err != nil {
-			return errors.WithStack(err)
-		}
-	}
-
-	return nil
+	return errors.Wrap(build.UpdateActivation(buildIdList, true, caller), "can't activate builds")
 }
 
 // RestartBuild restarts completed tasks associated with a given buildId.
@@ -400,6 +411,10 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 		}
 	}
 
+	if err := build.UpdateActivation([]string{buildId}, true, caller); err != nil {
+		return errors.Wrapf(err, "can't activate build '%s'", buildId)
+	}
+
 	if abortInProgress {
 		// abort in-progress tasks in this build
 		_, err = task.UpdateAll(
@@ -420,7 +435,7 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 		}
 	}
 
-	return errors.WithStack(build.UpdateActivation(buildId, true, caller))
+	return nil
 }
 
 // RestartBuildTasks restarts all the tasks associated with a given build.
@@ -440,7 +455,8 @@ func RestartBuildTasks(buildId string, caller string) error {
 			}
 		}
 	}
-	return errors.WithStack(build.UpdateActivation(buildId, true, caller))
+
+	return errors.WithStack(build.UpdateActivation([]string{buildId}, true, caller))
 }
 
 func CreateTasksCache(tasks []task.Task) []build.TaskCache {
@@ -457,6 +473,7 @@ func CreateTasksCache(tasks []task.Task) []build.TaskCache {
 // RefreshTasksCache updates a build document so that the tasks cache reflects the correct current
 // state of the tasks it represents.
 func RefreshTasksCache(buildId string) error {
+
 	tasks, err := task.FindWithDisplayTasks(task.ByBuildId(buildId))
 	if err != nil {
 		return errors.WithStack(err)

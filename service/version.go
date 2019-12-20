@@ -248,16 +248,20 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	case "set_active":
+		if err = model.SetVersionActivation(projCtx.Version.Id, jsonMap.Active, user.Id); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// abort after deactivating the version so we aren't bombarded with failing tasks while
+		// the deactivation is in progress
 		if jsonMap.Abort {
 			if err = model.AbortVersion(projCtx.Version.Id, authName); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 		}
-		if err = model.SetVersionActivation(projCtx.Version.Id, jsonMap.Active, user.Id); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+
 		if !jsonMap.Active && projCtx.Version.Requester == evergreen.MergeTestRequester {
 			_, err := commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
 				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Version.Id, true)
