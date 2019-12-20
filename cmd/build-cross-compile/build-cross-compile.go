@@ -26,16 +26,15 @@ func supportsRaceDetector(arch, system string) bool {
 
 func main() {
 	var (
-		arch        string
-		system      string
-		directory   string
-		source      string
-		ldFlags     string
-		buildName   string
-		output      string
-		goBin       string
-		legacyGobin string
-		race        bool
+		arch      string
+		system    string
+		directory string
+		source    string
+		ldFlags   string
+		buildName string
+		output    string
+		goBin     string
+		race      bool
 
 		defaultArch   string
 		defaultSystem string
@@ -57,7 +56,6 @@ func main() {
 	flag.StringVar(&ldFlags, "ldflags", "", "specify any ldflags to pass to go build")
 	flag.StringVar(&buildName, "buildName", "", "use GOOS_ARCH to specify target platform")
 	flag.StringVar(&goBin, "goBinary", "go", "specify path to go binary")
-	flag.StringVar(&legacyGobin, "legacyGoBinary", "/opt/golang/go1.9/bin/go", "specify path to a legacy go binary")
 	flag.StringVar(&output, "output", "", "specify the name of executable")
 	flag.BoolVar(&race, "race", false, "specify to enable the race detector")
 	flag.Parse()
@@ -71,9 +69,6 @@ func main() {
 		buildName = fmt.Sprintf("%s_%s", system, arch)
 	}
 
-	if strings.Contains(output, "legacy") {
-		gobin = legacyGobin
-	}
 	cmd := exec.Command(goBin, "build")
 
 	if system == runtime.GOOS && arch == runtime.GOARCH {
