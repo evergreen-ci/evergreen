@@ -12,18 +12,30 @@ orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
 # end project configuration
 
+
 # override the go binary path if set
 ifneq (,$(GO_BIN_PATH))
-gobin := $(GO_BIN_PATH)
-else
-gobin := $(shell if [ -x /opt/golang/go1.9/bin/go ]; then echo /opt/golang/go1.9/bin/go; fi)
-ifeq (,$(gobin))
-gobin := go
-endif
+  gobin := $(GO_BIN_PATH)
+ else
+  gobin := $(shell if [ -x /opt/golang/go1.13/bin/go ]; then echo /opt/golang/go1.13/bin/go; fi)
+  ifeq (,$(gobin))
+    gobin := go
+  endif
 endif
 
+ifneq (,$(LEGACY_GO_BIN_PATH))
+  legacyGobin := $(LEGACY_GO_BIN_PATH)
+ else
+  legacyGobin := $(shell if [ -x /opt/golang/go1.9/bin/go ]; then echo /opt/golang/go1.9/bin/go; fi)
+  ifeq (,$(legacyGobin))
+    legacyGobin := go
+  endif
+endif
+# end gibinary settings
+
+
 # start evergreen specific configuration
-unixPlatforms := linux_amd64 darwin_amd64 $(if $(STAGING_ONLY),,linux_386 linux_s390x linux_arm64 linux_ppc64le)
+unixPlatforms := linux_amd64 darwin_amd64 $(if $(STAGING_ONLY),,linux_386 linux_s390x linux_arm64 linux_ppc64le linux_amd64_legacy)
 windowsPlatforms := windows_amd64 $(if $(STAGING_ONLY),,windows_386)
 
 goos := $(shell $(gobin) env GOOS)
@@ -70,7 +82,7 @@ endif
 cli:$(localClientBinary)
 clis:$(clientBinaries)
 $(clientBuildDir)/%/evergreen $(clientBuildDir)/%/evergreen.exe:$(buildDir)/build-cross-compile $(srcFiles)
-	@./$(buildDir)/build-cross-compile -buildName=$* -ldflags=$(ldFlags) -goBinary="$(gobin)" $(if $(RACE_DETECTOR),-race ,)-directory=$(clientBuildDir) -source=$(clientSource) -output=$@
+	@./$(buildDir)/build-cross-compile -buildName=$* -ldflags=$(ldFlags) -legacyGoBinary="$(legacyGobin)" -goBinary="$(gobin)" $(if $(RACE_DETECTOR),-race ,)-directory=$(clientBuildDir) -source=$(clientSource) -output=$@
 phony += cli clis
 # end client build directives
 
