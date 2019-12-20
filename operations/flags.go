@@ -28,6 +28,7 @@ const (
 	refFlagName            = "ref"
 	uncommittedChangesFlag = "uncommitted"
 	subscriptionTypeFlag   = "subscription-type"
+	graphqlFeatureFlag     = "withgraphql"
 
 	anserDryRunFlagName      = "dry-run"
 	anserLimitFlagName       = "limit"
@@ -67,7 +68,12 @@ func serviceConfigFlags(flags ...cli.Flag) []cli.Flag {
 		cli.BoolFlag{
 			Name:  overwriteConfFlagName,
 			Usage: "overwrite the configuration in the db with the file",
-		})
+		},
+		cli.BoolFlag{
+			Name:  graphqlFeatureFlag,
+			Usage: "start graphql server",
+		},
+	)
 }
 
 func addProjectFlag(flags ...cli.Flag) []cli.Flag {

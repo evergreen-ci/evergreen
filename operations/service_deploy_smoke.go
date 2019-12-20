@@ -42,7 +42,7 @@ func startLocalEvergreen() cli.Command {
 				return errors.Wrap(err, "couldn't get working directory")
 			}
 			binary := filepath.Join(wd, "clients", runtime.GOOS+"_"+runtime.GOARCH, "evergreen")
-			if err := smokeRunBinary(exit, "web.service", wd, binary, "service", "web", "--db", "evergreen_local"); err != nil {
+			if err := smokeRunBinary(exit, "web.service", wd, binary, "service", "web", "--db", "evergreen_local", "--withgraphql"); err != nil {
 				return errors.Wrap(err, "error running web service")
 			}
 			<-exit
