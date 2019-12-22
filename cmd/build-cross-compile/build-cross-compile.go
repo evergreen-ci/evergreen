@@ -97,7 +97,7 @@ func main() {
 	cmd.Env = []string{
 		"PATH=" + strings.Replace(os.Getenv("PATH"), `\`, `\\`, -1),
 		"GOPATH=" + strings.Replace(os.Getenv("GOPATH"), `\`, `\\`, -1),
-		"GOROOT=" + runtime.GOROOT(),
+		"GOROOT=" + goRoot,
 		"GOCACHE=" + filepath.Join(absDirectory, ".cache"),
 	}
 
