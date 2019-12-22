@@ -14,9 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/anser/backup"
 	adb "github.com/mongodb/anser/db"
-	amodel "github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
@@ -1176,66 +1174,4 @@ func PopulateUserDataDoneJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 		return catcher.Resolve()
 	}
-}
-
-func AddBackupJobs(ctx context.Context, env evergreen.Environment) error {
-	flags, err := evergreen.GetServiceFlags()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	if flags.DRBackupDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-			"message": "disaster recovery backups disabled",
-			"impact":  "backup jobs not dispatched",
-			"mode":    "degraded",
-		})
-		return nil
-	}
-
-	util.RoundPartOfDay(6)
-	queue, err := j.env.RemoteQueueGroup().Get(ctx, "backup_collector")
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	settings := j.env.Settings()
-	catcher := grip.NewBasicCatcher()
-	for _, opt := range []backup.Options{
-		{
-			NS: amodel.Namespace{
-				DB:         settings.Database.DB,
-				Collection: model.ProjectRefCollection,
-			},
-		},
-		{
-			NS: amodel.Namespace{
-				DB:         settings.Database.DB,
-				Collection: model.ProjectVarsCollection,
-			},
-		},
-		{
-			NS: amodel.Namespace{
-				DB:         settings.Database.DB,
-				Collection: evergreen.ConfigCollection,
-			},
-		},
-		{
-			NS: amodel.Namespace{
-				DB:         "amboy",
-				Collection: settings.Amboy.Name + ".jobs",
-			},
-			IndexesOnly: true,
-		},
-		{
-			NS: amodel.Namespace{
-				DB:         "amboy",
-				Collection: settings.Amboy.Name + ".group",
-			},
-			IndexesOnly: true,
-		},
-	} {
-		catcher.Add(queue.Put(ctx, NewBackupMDBCollectionJob(opt, ts)))
-	}
-
-	return catcher.Resolve()
 }
