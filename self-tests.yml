@@ -517,8 +517,8 @@ buildvariants:
     expansions:
       goos: linux
       goarch: amd64
-      gobin: /opt/golang/go1.13/bin/go
-      goroot: /opt/golang/go1.13
+      gobin: /opt/golang/go1.10/bin/go
+      goroot: /opt/golang/go1.10
       legacyGobin: /opt/golang/go1.9/bin/go
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       test_timeout: 15m
