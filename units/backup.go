@@ -28,7 +28,7 @@ func init() {
 }
 
 type backupMDBCollectionJob struct {
-	opts     backup.Options `bson:"options" json:"options" yaml:"options"`
+	Options  backup.Options `bson:"options" json:"options" yaml:"options"`
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
 
 	env evergreen.Environment
@@ -51,7 +51,7 @@ func makeBackupMDBCollectionJob() *backupMDBCollectionJob {
 
 func NewBackupMDBCollectionJob(opts backup.Options, ts time.Time) amboy.Job {
 	j := makeBackupMDBCollectionJob()
-	j.opts = opts
+	j.Options = opts
 	j.SetID(fmt.Sprintf("%s.%s.%s", backupMDBJobName, opts.NS.String(), ts.Format(TSFormat)))
 	return j
 }
@@ -97,6 +97,6 @@ func (j *backupMDBCollectionJob) Run(ctx context.Context) {
 		return
 	}
 
-	j.opts.Target = bucket.Writer
-	j.AddError(backup.Collection(ctx, j.env.Client(), j.opts))
+	j.Options.Target = bucket.Writer
+	j.AddError(backup.Collection(ctx, j.env.Client(), j.Options))
 }
