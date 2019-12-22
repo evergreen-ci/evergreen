@@ -76,6 +76,11 @@ func main() {
 	}
 	cmd := exec.Command(goBin, "build")
 
+	goRoot := runtime.GOROOT()
+	if len(goBin) > 2 {
+		goRoot = filepath.Dir(filepath.Dir(goBin))
+	}
+
 	if system == runtime.GOOS && arch == runtime.GOARCH {
 		cmd.Args = append(cmd.Args, "-i")
 	}
