@@ -92,6 +92,7 @@ func (c *ServiceFlags) Set() error {
 			commitQueueDisabledKey:          c.CommitQueueDisabled,
 			plannerDisabledKey:              c.PlannerDisabled,
 			hostAllocatorDisabledKey:        c.HostAllocatorDisabled,
+			drBackupDisabledKey:             c.DRBackupDisabled,
 		},
 	}, options.Update().SetUpsert(true))
 
