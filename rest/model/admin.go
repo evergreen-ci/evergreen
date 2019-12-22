@@ -444,11 +444,10 @@ type APIBackupConfig struct {
 
 func (a *APIBackupConfig) BuildFromService(c interface{}) error {
 	switch conf := c.(type) {
-	case *evergreen.BackupConfig:
-		if conf == nil {
-			return nil
-		}
-
+	case evergreen.BackupConfig:
+		// if conf == nil {
+		// 	return nil
+		// }
 		a.BucketName = ToAPIString(conf.BucketName)
 		a.Key = ToAPIString(conf.Key)
 		a.Secret = ToAPIString(conf.Secret)
@@ -464,7 +463,7 @@ func (a *APIBackupConfig) ToService() (interface{}, error) {
 		return nil, nil
 	}
 
-	return &evergreen.BackupConfig{
+	return evergreen.BackupConfig{
 		BucketName: FromAPIString(a.BucketName),
 		Key:        FromAPIString(a.Key),
 		Secret:     FromAPIString(a.Secret),
