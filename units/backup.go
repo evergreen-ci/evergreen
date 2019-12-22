@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"path"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -86,6 +87,7 @@ func (j *backupMDBCollectionJob) Run(ctx context.Context) {
 		Permissions: pail.S3PermissionsPrivate,
 		Name:        conf.BucketName,
 		Compress:    conf.Compress,
+		Prefix:      path.Join("evergreen", j.TimeInfo().Created.Format(TSFormat), "dump"),
 	})
 	if err != nil {
 		j.AddError(err)
