@@ -60,8 +60,8 @@ type Bucket interface {
 	// Sync methods: these methods are the recursive, efficient
 	// copy methods of files from s3 to the local file
 	// system.
-	Push(context.Context, string, string) error
-	Pull(context.Context, string, string) error
+	Push(context.Context, SyncOptions) error
+	Pull(context.Context, SyncOptions) error
 
 	// Copy does a special copy operation that does not require
 	// downloading a file. Note that CopyOptions.DestinationBucket must
@@ -86,6 +86,14 @@ type Bucket interface {
 	// List provides a way to iterator over the contents of a
 	// bucket (for a given prefix.)
 	List(context.Context, string) (BucketIterator, error)
+}
+
+// SyncOptions describes the arguments to the sync operations (Push and Pull).
+// Note that exclude is a regular expression.
+type SyncOptions struct {
+	Local   string
+	Remote  string
+	Exclude string
 }
 
 // CopyOptions describes the arguments to the Copy method for moving

@@ -10,7 +10,9 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -54,20 +56,41 @@ func walkLocalTree(ctx context.Context, prefix string) ([]string, error) {
 			return errors.New("operation canceled")
 		}
 
-		if info.IsDir() {
-			return nil
-		}
-
 		rel, err := filepath.Rel(prefix, path)
 		if err != nil {
 			return errors.Wrap(err, "problem getting relative path")
 		}
+
+		if info.Mode()&os.ModeSymlink != 0 {
+			symPath, err := filepath.EvalSymlinks(path)
+			if err != nil {
+				return errors.Wrap(err, "problem getting symlink path")
+			}
+			symTree, err := walkLocalTree(ctx, symPath)
+			if err != nil {
+				return errors.Wrap(err, "problem getting symlink tree")
+			}
+			for i := range symTree {
+				symTree[i] = filepath.Join(rel, symTree[i])
+			}
+			out = append(out, symTree...)
+
+			return nil
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
 		out = append(out, rel)
 		return nil
 	})
 
 	if err != nil {
 		return nil, errors.Wrap(err, "problem finding files")
+	}
+	if ctx.Err() != nil {
+		return nil, errors.New("operation canceled")
 	}
 
 	return out, nil
@@ -104,4 +127,57 @@ func removeMatching(ctx context.Context, expression string, b Bucket) error {
 		}
 	}
 	return errors.Wrapf(b.RemoveMany(ctx, keys...), "failed to delete some objects matching '%s'", expression)
+}
+
+func consistentJoin(prefix, key string) string {
+	if prefix != "" {
+		return prefix + "/" + key
+	}
+	return key
+}
+
+func deleteOnPush(ctx context.Context, sourceFiles []string, remote string, bucket Bucket) error {
+	sourceFilesMap := map[string]bool{}
+	for _, fn := range sourceFiles {
+		sourceFilesMap[fn] = true
+	}
+
+	iter, err := bucket.List(ctx, remote)
+	if err != nil {
+		return err
+	}
+
+	toDelete := []string{}
+	for iter.Next(ctx) {
+		fn := strings.TrimPrefix(iter.Item().Name(), remote)
+		fn = strings.TrimPrefix(fn, "/")
+		fn = strings.TrimPrefix(fn, "\\") // cause windows...
+
+		if !sourceFilesMap[fn] {
+			toDelete = append(toDelete, iter.Item().Name())
+		}
+	}
+
+	return bucket.RemoveMany(ctx, toDelete...)
+}
+
+func deleteOnPull(ctx context.Context, sourceFiles []string, local string) error {
+	sourceFilesMap := map[string]bool{}
+	for _, fn := range sourceFiles {
+		sourceFilesMap[fn] = true
+	}
+
+	destinationFiles, err := walkLocalTree(ctx, local)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for _, fn := range destinationFiles {
+		if !sourceFilesMap[fn] {
+			catcher.Add(os.RemoveAll(filepath.Join(local, fn)))
+		}
+	}
+
+	return catcher.Resolve()
 }

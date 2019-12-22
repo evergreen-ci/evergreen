@@ -399,7 +399,7 @@ func (s3pc *s3put) createPailBucket(httpClient *http.Client) error {
 		Credentials: pail.CreateAWSCredentials(s3pc.AwsKey, s3pc.AwsSecret, ""),
 		Region:      endpoints.UsEast1RegionID,
 		Name:        s3pc.Bucket,
-		Permission:  s3pc.Permissions,
+		Permissions: pail.S3Permissions(s3pc.Permissions),
 		ContentType: s3pc.ContentType,
 	}
 	bucket, err := pail.NewS3MultiPartBucketWithHTTPClient(httpClient, opts)

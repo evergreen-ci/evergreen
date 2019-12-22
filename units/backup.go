@@ -6,11 +6,17 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/anser/backup"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
+	"github.com/pkg/errors"
 )
 
 const backupMDBJobName = "backup-mdb-collection"
@@ -56,5 +62,41 @@ func (j *backupMDBCollectionJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		j.AddError(errors.Wrapf(err, "Can't get degraded mode flags"))
+		return
+	}
+
+	if flags.DRBackupDisabled {
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			"job":     backupMDBJobName,
+			"message": "disaster recovery backup job disabled",
+		})
+		return
+	}
+	conf := j.env.Settings().Backup
+
+	client := util.GetHTTPClient()
+	client.Timeout = 60 * time.Minute
+	defer util.PutHTTPClient(client)
+
+	bucket, err := pail.NewS3MultiPartBucketWithHTTPClient(client, pail.S3Options{
+		Credentials: pail.CreateAWSCredentials(conf.Key, conf.Secret, ""),
+		Permissions: pail.S3PermissionsPrivate,
+		Name:        conf.BucketName,
+		Compress:    conf.Compress,
+	})
+	if err != nil {
+		j.AddError(err)
+		return
+	}
+
+	if err := bucket.Check(ctx); err != nil {
+		j.AddError(err)
+		return
+	}
+
+	j.opts.Target = bucket.Writer
 	j.AddError(backup.Collection(ctx, j.env.Client(), j.opts))
 }
