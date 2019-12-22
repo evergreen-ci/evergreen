@@ -2,7 +2,7 @@ hash: ""
 updated: 2019-11-07T14:42:47.264471-05:00
 imports:
   - name: github.com/evergreen-ci/birch
-    version: 84e679301eb0478dae95bdebc1c6debdff1f76e2
+    version: 3a26bb67719ad6a9e7daed059abd5d018586f3cd
   - name: github.com/mongodb/amboy
     version: e5548953650b5d4cc7b6d7aba4cb1b2771e35342
   - name: github.com/mongodb/ftdc

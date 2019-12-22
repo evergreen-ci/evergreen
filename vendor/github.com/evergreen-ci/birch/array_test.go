@@ -388,7 +388,6 @@ func TestArray(t *testing.T) {
 		})
 
 	})
-
 }
 
 type testArrayPrependAppendGenerator struct{}
@@ -518,16 +517,19 @@ func ExampleArray() {
 			),
 			VC.String("go1.9.2"),
 		)
+
 		if appName != "" {
 			arr.Append(VC.DocumentFromElements(EC.String("name", appName)))
 		}
 
 		return arr
 	}
+
 	buf, err := f("hello-world").MarshalBSON()
 	if err != nil {
 		fmt.Println(err)
 	}
+
 	fmt.Println(buf)
 
 	// Output: [154 0 0 0 3 48 0 52 0 0 0 2 110 97 109 101 0 16 0 0 0 109 111 110 103 111 45 103 111 45 100 114 105 118 101 114 0 2 118 101 114 115 105 111 110 0 8 0 0 0 49 50 51 52 53 54 55 0 0 3 49 0 46 0 0 0 2 116 121 112 101 0 7 0 0 0 100 97 114 119 105 110 0 2 97 114 99 104 105 116 101 99 116 117 114 101 0 6 0 0 0 97 109 100 54 52 0 0 2 50 0 8 0 0 0 103 111 49 46 57 46 50 0 3 51 0 27 0 0 0 2 110 97 109 101 0 12 0 0 0 104 101 108 108 111 45 119 111 114 108 100 0 0 0]

@@ -11,14 +11,17 @@ func checkEqualVal(t1, t2 bsontype.Type, v1, v2 []byte) bool {
 	if t1 != t2 {
 		return false
 	}
+
 	v1, _, ok := readValue(v1, t1)
 	if !ok {
 		return false
 	}
+
 	v2, _, ok = readValue(v2, t2)
 	if !ok {
 		return false
 	}
+
 	return bytes.Equal(v1, v2)
 }
 
@@ -27,6 +30,7 @@ func readstring(src []byte) (string, []byte, bool) {
 	if !ok {
 		return "", src, false
 	}
+
 	if len(src[4:]) < int(l) {
 		return "", src, false
 	}
@@ -50,6 +54,7 @@ func appendstring(dst []byte, s string) []byte {
 	l := int32(len(s) + 1)
 	dst = appendi32(dst, l)
 	dst = append(dst, s...)
+
 	return append(dst, 0x00)
 }
 

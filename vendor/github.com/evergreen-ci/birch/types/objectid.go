@@ -60,9 +60,9 @@ func (id ObjectID) IsZero() bool {
 	return bytes.Equal(id[:], NilObjectID[:])
 }
 
-// FromHex creates a new ObjectID from a hex string. It returns an error if the hex string is not a
+// ObjectIDFromHex creates a new ObjectID from a hex string. It returns an error if the hex string is not a
 // valid ObjectID.
-func FromHex(s string) (ObjectID, error) {
+func ObjectIDFromHex(s string) (ObjectID, error) {
 	b, err := hex.DecodeString(s)
 	if err != nil {
 		return NilObjectID, err
@@ -73,9 +73,21 @@ func FromHex(s string) (ObjectID, error) {
 	}
 
 	var oid [12]byte
-	copy(oid[:], b[:])
+
+	copy(oid[:], b)
 
 	return oid, nil
+}
+
+// MustObjectIDFromHex builds an ObjectID, panicing if the hex string
+// isn't valid
+func MustObjectIDFromHex(s string) ObjectID {
+	oid, err := ObjectIDFromHex(s)
+	if err != nil {
+		panic(err)
+	}
+
+	return oid
 }
 
 // MarshalJSON returns the ObjectID as a string
@@ -89,6 +101,7 @@ func (id ObjectID) MarshalJSON() ([]byte, error) {
 // return an error.
 func (id *ObjectID) UnmarshalJSON(b []byte) error {
 	var err error
+
 	switch len(b) {
 	case 12:
 		copy(id[:], b)
@@ -96,19 +109,23 @@ func (id *ObjectID) UnmarshalJSON(b []byte) error {
 		// Extended JSON
 		var res interface{}
 		err := json.Unmarshal(b, &res)
+
 		if err != nil {
 			return err
 		}
+
 		str, ok := res.(string)
 		if !ok {
 			m, ok := res.(map[string]interface{})
 			if !ok {
 				return errors.New("not an extended JSON ObjectID")
 			}
+
 			oid, ok := m["$oid"]
 			if !ok {
 				return errors.New("not an extended JSON ObjectID")
 			}
+
 			str, ok = oid.(string)
 			if !ok {
 				return errors.New("not an extended JSON ObjectID")
@@ -130,8 +147,8 @@ func (id *ObjectID) UnmarshalJSON(b []byte) error {
 
 func processUniqueBytes() [5]byte {
 	var b [5]byte
-	_, err := io.ReadFull(rand.Reader, b[:])
-	if err != nil {
+
+	if _, err := io.ReadFull(rand.Reader, b[:]); err != nil {
 		panic(errors.Errorf("cannot initialize objectid package with crypto.rand.Reader: %v", err))
 	}
 
@@ -140,8 +157,8 @@ func processUniqueBytes() [5]byte {
 
 func readRandomUint32() uint32 {
 	var b [4]byte
-	_, err := io.ReadFull(rand.Reader, b[:])
-	if err != nil {
+
+	if _, err := io.ReadFull(rand.Reader, b[:]); err != nil {
 		panic(errors.Errorf("cannot initialize objectid package with crypto.rand.Reader: %v", err))
 	}
 

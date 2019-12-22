@@ -1,7 +1,7 @@
 # start project configuration
 name := anser
 buildDir := build
-packages := $(name) mock model db bsonutil client apm
+packages := $(name) mock model db bsonutil client apm backup
 orgPath := github.com/mongodb
 projectPath := $(orgPath)/$(name)
 # end project configuration

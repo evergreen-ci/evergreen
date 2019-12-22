@@ -10,5 +10,6 @@ func (a *Array) Interface() []interface{} {
 	for iter.Next() {
 		out = append(out, iter.Value().Interface())
 	}
+
 	return out
 }

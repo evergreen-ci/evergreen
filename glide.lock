@@ -163,8 +163,8 @@ imports:
 
   # anser and deps
   - name: github.com/evergreen-ci/birch
-    version: 5b054047680765b089c1e6f77d0896803d1fd73d
+    version: 3a26bb67719ad6a9e7daed059abd5d018586f3cd
   - name: github.com/mongodb/anser
-    version: ee4e72afa4fed132f32d481b87983ab413f8bece
+    version: cc2c8355390715b964f103949e92d09139819e2e
   - name: github.com/mongodb/ftdc
     version: 7e505d9a86240264dd35b1d900c2e88ce74f6066
