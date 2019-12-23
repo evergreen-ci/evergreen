@@ -132,6 +132,7 @@ func setCloudHostStatus(ctx context.Context, m cloud.Manager, h host.Host, hostS
 		"DNS":     h.Host,
 		"distro":  h.Distro.Id,
 		"runner":  "hostinit",
+		"status":  hostStatus,
 	})
 	return nil
 }

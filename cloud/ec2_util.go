@@ -23,16 +23,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-//Valid values for EC2 instance states:
-//pending | running | shutting-down | terminated | stopping | stopped
-//see http://goo.gl/3OrCGn
 const (
-	EC2StatusPending      = "pending"
-	EC2StatusRunning      = "running"
-	EC2StatusShuttingdown = "shutting-down"
-	EC2StatusTerminated   = "terminated"
-	EC2StatusStopped      = "stopped"
-	EC2ErrorNotFound      = "InvalidInstanceID.NotFound"
+	EC2ErrorNotFound = "InvalidInstanceID.NotFound"
 )
 
 type MountPoint struct {
@@ -110,16 +102,14 @@ func osBillingName(os osType) string {
 //provider-specific status codes.
 func ec2StatusToEvergreenStatus(ec2Status string) CloudStatus {
 	switch ec2Status {
-	case EC2StatusPending:
+	case ec2.InstanceStateNamePending:
 		return StatusInitializing
-	case EC2StatusRunning:
+	case ec2.InstanceStateNameRunning:
 		return StatusRunning
-	case EC2StatusShuttingdown:
-		return StatusTerminated
-	case EC2StatusTerminated:
-		return StatusTerminated
-	case EC2StatusStopped:
+	case ec2.InstanceStateNameStopped:
 		return StatusStopped
+	case ec2.InstanceStateNameTerminated, ec2.InstanceStateNameShuttingDown:
+		return StatusTerminated
 	default:
 		return StatusUnknown
 	}
