@@ -128,8 +128,6 @@ func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName s
 	}
 	config := client.LoggerConfig{}
 
-	// get the default logger, first from project ref then from global
-	// settings
 	var defaultLogger string
 	if tc.taskConfig != nil && tc.taskConfig.ProjectRef != nil && tc.taskConfig.ProjectRef.DefaultLogger != "" {
 		defaultLogger = tc.taskConfig.ProjectRef.DefaultLogger
