@@ -517,8 +517,8 @@ buildvariants:
     expansions:
       goos: linux
       goarch: amd64
-      gobin: /opt/golang/go1.13/bin/go
-      goroot: /opt/golang/go1.13
+      gobin: /opt/golang/go1.10/bin/go
+      goroot: /opt/golang/go1.10
       legacyGobin: /opt/golang/go1.9/bin/go
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       test_timeout: 15m
@@ -622,9 +622,9 @@ buildvariants:
       - windows-64-vs2017-compile
     expansions:
       disable_coverage: yes
-      gobin: /cygdrive/c/golang/go1.13/bin/go
+      gobin: /cygdrive/c/golang/go1.11/bin/go
+      goroot: c:/golang/go1.11
       legacyGobin: /cygdrive/c/golang/go1.9/bin/go
-      goroot: c:/golang/go1.13
       mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-4.0.3.zip
       extension: ".exe"
       archiveExt: ".zip"
@@ -658,10 +658,10 @@ buildvariants:
       xc_build: yes
       disable_coverage: yes
       goarch: s390x
-      gobin: /opt/golang/go1.13/bin/go
+      gobin: /opt/golang/go1.11/bin/go
+      goroot: /opt/golang/go1.11
       legacyGobin: /opt/golang/go1.9/bin/go
       goos: linux
-      goroot: /opt/golang/go1.13
       # No official release of 4.0 for rhel72 zseries
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-s390x-enterprise-rhel72-3.6.4.tgz
     tasks:

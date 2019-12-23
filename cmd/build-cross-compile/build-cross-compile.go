@@ -76,6 +76,11 @@ func main() {
 	}
 	cmd := exec.Command(goBin, "build")
 
+	goRoot := runtime.GOROOT()
+	if len(goBin) > 2 {
+		goRoot = filepath.Dir(filepath.Dir(goBin))
+	}
+
 	if system == runtime.GOOS && arch == runtime.GOARCH {
 		cmd.Args = append(cmd.Args, "-i")
 	}
@@ -92,7 +97,7 @@ func main() {
 	cmd.Env = []string{
 		"PATH=" + strings.Replace(os.Getenv("PATH"), `\`, `\\`, -1),
 		"GOPATH=" + strings.Replace(os.Getenv("GOPATH"), `\`, `\\`, -1),
-		"GOROOT=" + runtime.GOROOT(),
+		"GOROOT=" + goRoot,
 		"GOCACHE=" + filepath.Join(absDirectory, ".cache"),
 	}
 
