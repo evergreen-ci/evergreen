@@ -187,15 +187,15 @@ func (c *communicatorImpl) GetLoggerProducer(ctx context.Context, td TaskData, c
 		}
 	}
 
-	exec, err := c.makeSender(ctx, td, config.Agent, apimodels.AgentLogPrefix)
+	exec, err := c.makeSender(ctx, td, config.Agent, apimodels.AgentLogPrefix, evergreen.LogTypeAgent)
 	if err != nil {
 		return nil, errors.Wrap(err, "error making agent logger")
 	}
-	task, err := c.makeSender(ctx, td, config.Task, apimodels.TaskLogPrefix)
+	task, err := c.makeSender(ctx, td, config.Task, apimodels.TaskLogPrefix, evergreen.LogTypeTask)
 	if err != nil {
 		return nil, errors.Wrap(err, "error making task logger")
 	}
-	system, err := c.makeSender(ctx, td, config.System, apimodels.SystemLogPrefix)
+	system, err := c.makeSender(ctx, td, config.System, apimodels.SystemLogPrefix, evergreen.LogTypeSystem)
 	if err != nil {
 		return nil, errors.Wrap(err, "error making system logger")
 	}
@@ -207,7 +207,7 @@ func (c *communicatorImpl) GetLoggerProducer(ctx context.Context, td TaskData, c
 	}, nil
 }
 
-func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []LogOpts, prefix string) (send.Sender, error) {
+func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []LogOpts, prefix string, logType string) (send.Sender, error) {
 	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
 	senders := []send.Sender{grip.GetSender()}
 
@@ -301,6 +301,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 				TaskID:        tk.Id,
 				Execution:     int32(tk.Execution),
 				Tags:          tk.Tags,
+				ProcessName:   logType,
 				Mainline:      evergreen.IsPatchRequester(tk.Requester),
 				Storage:       timber.LogStorageS3,
 				MaxBufferSize: opt.BufferSize,
