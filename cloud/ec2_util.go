@@ -20,6 +20,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -111,6 +112,10 @@ func ec2StatusToEvergreenStatus(ec2Status string) CloudStatus {
 	case ec2.InstanceStateNameTerminated, ec2.InstanceStateNameShuttingDown:
 		return StatusTerminated
 	default:
+		grip.Error(message.Fields{
+			"message": "got an unknown ec2 state name",
+			"status":  ec2Status,
+		})
 		return StatusUnknown
 	}
 }
