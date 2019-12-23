@@ -4,6 +4,7 @@ import (
 	"math"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -11,6 +12,7 @@ import (
 )
 
 func TestFindOneProjectRef(t *testing.T) {
+	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
 	assert := assert.New(t)
 	require.NoError(t, db.Clear(ProjectRefCollection),
 		"Error clearing collection")
@@ -29,13 +31,14 @@ func TestFindOneProjectRef(t *testing.T) {
 	assert.Nil(err)
 	assert.NotNil(projectRefFromDB)
 
-	assert.Equal(projectRef.Owner, "mongodb")
-	assert.Equal(projectRef.Repo, "mci")
-	assert.Equal(projectRef.Branch, "master")
-	assert.Equal(projectRef.RepoKind, "github")
-	assert.Equal(projectRef.Enabled, true)
-	assert.Equal(projectRef.BatchTime, 10)
-	assert.Equal(projectRef.Identifier, "ident")
+	assert.Equal(projectRefFromDB.Owner, "mongodb")
+	assert.Equal(projectRefFromDB.Repo, "mci")
+	assert.Equal(projectRefFromDB.Branch, "master")
+	assert.Equal(projectRefFromDB.RepoKind, "github")
+	assert.Equal(projectRefFromDB.Enabled, true)
+	assert.Equal(projectRefFromDB.BatchTime, 10)
+	assert.Equal(projectRefFromDB.Identifier, "ident")
+	assert.Equal(projectRefFromDB.DefaultLogger, "buildlogger")
 }
 
 func TestGetBatchTimeDoesNotExceedMaxInt32(t *testing.T) {
@@ -63,7 +66,9 @@ func TestGetBatchTimeDoesNotExceedMaxInt32(t *testing.T) {
 }
 
 func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
+	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
 	assert := assert.New(t)
+	require := require.New(t)
 
 	assert.NoError(db.Clear(ProjectRefCollection))
 
@@ -92,7 +97,9 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 
 	projectRefs, err = FindProjectRefsByRepoAndBranch("mongodb", "mci", "master")
 	assert.NoError(err)
-	assert.Len(projectRefs, 1)
+	require.Len(projectRefs, 1)
+	assert.Equal("ident", projectRefs[0].Identifier)
+	assert.Equal("buildlogger", projectRefs[0].DefaultLogger)
 
 	projectRef.Identifier = "ident2"
 	assert.NoError(projectRef.Insert())
@@ -102,6 +109,7 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 }
 
 func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
+	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
 	assert := assert.New(t)   //nolint
 	require := require.New(t) //nolint
 
@@ -145,6 +153,7 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	assert.NoError(err)
 	require.NotNil(projectRef)
 	assert.Equal("ident1", projectRef.Identifier)
+	assert.Equal("buildlogger", projectRef.DefaultLogger)
 
 	// 2 matching documents, error!
 	doc.Identifier = "ident2"
@@ -156,6 +165,7 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 }
 
 func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
+	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -187,6 +197,8 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "master")
 	assert.NoError(err)
 	assert.NotNil(projectRef)
+	assert.Equal("mci", projectRef.Identifier)
+	assert.Equal("buildlogger", projectRef.DefaultLogger)
 }
 
 func TestCanEnableCommitQueue(t *testing.T) {
@@ -226,6 +238,7 @@ func TestCanEnableCommitQueue(t *testing.T) {
 }
 
 func TestFindProjectRefsWithCommitQueueEnabled(t *testing.T) {
+	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -259,7 +272,9 @@ func TestFindProjectRefsWithCommitQueueEnabled(t *testing.T) {
 	assert.NoError(err)
 	require.Len(projectRefs, 2)
 	assert.Equal("mci", projectRefs[0].Identifier)
+	assert.Equal("buildlogger", projectRefs[0].DefaultLogger)
 	assert.Equal("mci", projectRefs[1].Identifier)
+	assert.Equal("buildlogger", projectRefs[1].DefaultLogger)
 }
 
 func TestValidatePeriodicBuildDefinition(t *testing.T) {
@@ -299,6 +314,7 @@ func TestValidatePeriodicBuildDefinition(t *testing.T) {
 
 func TestProjectRefTags(t *testing.T) {
 	require.NoError(t, db.Clear(ProjectRefCollection))
+	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
 
 	mci := &ProjectRef{
 		Identifier: "mci",
@@ -327,7 +343,8 @@ func TestProjectRefTags(t *testing.T) {
 		prjs, err = FindTaggedProjectRefs(false, "mainline")
 		require.NoError(t, err)
 		require.Len(t, prjs, 1)
-		require.Equal(t, "evg", prjs[0].Identifier)
+		assert.Equal(t, "evg", prjs[0].Identifier)
+		assert.Equal(t, "buildlogger", prjs[0].DefaultLogger)
 	})
 	t.Run("NoResults", func(t *testing.T) {
 		prjs, err := FindTaggedProjectRefs(false, "NOT EXIST")
@@ -342,7 +359,8 @@ func TestProjectRefTags(t *testing.T) {
 		prjs, err = FindTaggedProjectRefs(true, "queue")
 		require.NoError(t, err)
 		require.Len(t, prjs, 1)
-		require.Equal(t, "amboy", prjs[0].Identifier)
+		assert.Equal(t, "amboy", prjs[0].Identifier)
+		assert.Equal(t, "buildlogger", prjs[0].DefaultLogger)
 	})
 	t.Run("Add", func(t *testing.T) {
 		_, err := mci.AddTags("test", "testing")
@@ -350,13 +368,15 @@ func TestProjectRefTags(t *testing.T) {
 
 		prjs, err := FindTaggedProjectRefs(false, "testing")
 		require.NoError(t, err)
-		assert.Len(t, prjs, 1)
-		require.Equal(t, "mci", prjs[0].Identifier)
+		require.Len(t, prjs, 1)
+		assert.Equal(t, "mci", prjs[0].Identifier)
+		assert.Equal(t, "buildlogger", prjs[0].DefaultLogger)
 
 		prjs, err = FindTaggedProjectRefs(false, "test")
 		require.NoError(t, err)
-		assert.Len(t, prjs, 1)
-		require.Equal(t, "mci", prjs[0].Identifier)
+		require.Len(t, prjs, 1)
+		assert.Equal(t, "mci", prjs[0].Identifier)
+		assert.Equal(t, "buildlogger", prjs[0].DefaultLogger)
 	})
 	t.Run("Remove", func(t *testing.T) {
 		prjs, err := FindTaggedProjectRefs(false, "release")
@@ -375,6 +395,7 @@ func TestProjectRefTags(t *testing.T) {
 
 func TestFindDownstreamProjects(t *testing.T) {
 	require.NoError(t, db.Clear(ProjectRefCollection))
+	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
 
 	proj1 := ProjectRef{
 		Identifier: "evergreen",
@@ -393,5 +414,6 @@ func TestFindDownstreamProjects(t *testing.T) {
 	projects, err := FindDownstreamProjects("grip")
 	assert.NoError(t, err)
 	assert.Len(t, projects, 1)
+	proj1.DefaultLogger = "buildlogger"
 	assert.Equal(t, proj1, projects[0])
 }

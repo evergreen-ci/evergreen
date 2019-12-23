@@ -196,6 +196,11 @@ func FindOneProjectRef(identifier string) (*ProjectRef, error) {
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
+
+	if projectRef.DefaultLogger == "" {
+		projectRef.DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+	}
+
 	return projectRef, err
 }
 
@@ -210,6 +215,11 @@ func FindFirstProjectRef() (*ProjectRef, error) {
 		[]string{"-" + ProjectRefDisplayNameKey},
 		projectRef,
 	)
+
+	if projectRef.DefaultLogger == "" {
+		projectRef.DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+	}
+
 	return projectRef, err
 }
 
@@ -248,6 +258,12 @@ func FindTaggedProjectRefs(includeDisabled bool, tags ...string) ([]ProjectRef, 
 		return nil, errors.WithStack(err)
 	}
 
+	for i := range projectRefs {
+		if projectRefs[i].DefaultLogger == "" {
+			projectRefs[i].DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+		}
+	}
+
 	return projectRefs, nil
 }
 
@@ -265,6 +281,13 @@ func FindAllTrackedProjectRefs() ([]ProjectRef, error) {
 		db.NoLimit,
 		&projectRefs,
 	)
+
+	for i := range projectRefs {
+		if projectRefs[i].DefaultLogger == "" {
+			projectRefs[i].DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+		}
+	}
+
 	return projectRefs, err
 }
 
@@ -284,6 +307,13 @@ func FindAllTrackedProjectRefsWithRepoInfo() ([]ProjectRef, error) {
 		db.NoLimit,
 		&projectRefs,
 	)
+
+	for i := range projectRefs {
+		if projectRefs[i].DefaultLogger == "" {
+			projectRefs[i].DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+		}
+	}
+
 	return projectRefs, err
 }
 
@@ -299,6 +329,13 @@ func FindAllProjectRefs() ([]ProjectRef, error) {
 		db.NoLimit,
 		&projectRefs,
 	)
+
+	for i := range projectRefs {
+		if projectRefs[i].DefaultLogger == "" {
+			projectRefs[i].DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+		}
+	}
+
 	return projectRefs, err
 }
 
@@ -325,6 +362,12 @@ func FindProjectRefsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRe
 		return nil, err
 	}
 
+	for i := range projectRefs {
+		if projectRefs[i].DefaultLogger == "" {
+			projectRefs[i].DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+		}
+	}
+
 	return projectRefs, err
 }
 
@@ -346,6 +389,13 @@ func FindDownstreamProjects(project string) ([]ProjectRef, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	for i := range projectRefs {
+		if projectRefs[i].DefaultLogger == "" {
+			projectRefs[i].DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+		}
+	}
+
 	return projectRefs, err
 }
 
@@ -382,6 +432,10 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (
 		return nil, nil
 	}
 
+	if projectRefs[target].DefaultLogger == "" {
+		projectRefs[target].DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+	}
+
 	return &projectRefs[target], nil
 }
 
@@ -389,7 +443,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (
 // There should only ever be one project for the query because we only enable commit queue if
 // no other project ref with the same specification has it enabled.
 func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {
-	projRef := &ProjectRef{}
+	projectRef := &ProjectRef{}
 	err := db.FindOne(
 		ProjectRefCollection,
 		bson.M{
@@ -400,7 +454,7 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 		},
 		db.NoProjection,
 		db.NoSort,
-		projRef,
+		projectRef,
 	)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
@@ -408,7 +462,12 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't query for project with commit queue. owner: %s, repo: %s, branch: %s", owner, repo, branch)
 	}
-	return projRef, nil
+
+	if projectRef.DefaultLogger == "" {
+		projectRef.DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+	}
+
+	return projectRef, nil
 }
 
 func FindProjectRefsWithCommitQueueEnabled() ([]ProjectRef, error) {
@@ -429,6 +488,13 @@ func FindProjectRefsWithCommitQueueEnabled() ([]ProjectRef, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	for i := range projectRefs {
+		if projectRefs[i].DefaultLogger == "" {
+			projectRefs[i].DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+		}
+	}
+
 	return projectRefs, nil
 }
 
@@ -453,6 +519,13 @@ func FindPeriodicProjects() ([]ProjectRef, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	for i := range projectRefs {
+		if projectRefs[i].DefaultLogger == "" {
+			projectRefs[i].DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+		}
+	}
+
 	return projectRefs, nil
 }
 
@@ -479,6 +552,13 @@ func FindProjectRefs(key string, limit int, sortDir int) ([]ProjectRef, error) {
 		limit,
 		&projectRefs,
 	)
+
+	for i := range projectRefs {
+		if projectRefs[i].DefaultLogger == "" {
+			projectRefs[i].DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+		}
+	}
+
 	return projectRefs, err
 }
 
