@@ -115,7 +115,7 @@ func (j *cloudHostReadyJob) Run(ctx context.Context) {
 // setCloudHostStatus sets the host's status to HostProvisioning if host is running.
 func setCloudHostStatus(ctx context.Context, m cloud.Manager, h host.Host, hostStatus cloud.CloudStatus) error {
 	switch hostStatus {
-	case cloud.StatusFailed:
+	case cloud.StatusFailed, cloud.StatusTerminated:
 		grip.Debug(message.Fields{
 			"ticket":     "EVG-6100",
 			"message":    "host status",
