@@ -18,6 +18,66 @@ import (
 	"github.com/pkg/errors"
 )
 
+func appendInexOnlyBackupCollections(dbName string, in []backup.Options) []backup.Options {
+	for _, coll := range []string{} {
+		in = append(in, backup.Options{
+			NS: amodel.Namespace{
+				DB:         dbName,
+				Collection: coll,
+			},
+			IndexesOnly: true,
+		})
+	}
+
+	return in
+}
+
+func appendFullBackupCollections(dbName string, in []backup.Options) []backup.Options {
+	for _, coll := range []string{
+		evergreen.ConfigCollection,
+		evergreen.CredentialsCollection, // grpc CA
+		evergreen.ScopeCollection,       // acl data
+		model.GithubHooksCollection,
+		model.KeyValCollection,
+		model.ProjectAliasCollection,
+		model.ProjectRefCollection,
+		model.ProjectVarsCollection,
+		model.PushlogCollection,      // s3copy pushes
+		model.RepositoriesCollection, // last seen hash
+		user.Collection,
+		db.GlobalsCollection, // revision_orderNumber
+		distro.Collection,
+	} {
+		in = append(in, backup.Options{
+			NS: amodel.Namespace{
+				DB:         dbName,
+				Collection: coll,
+			},
+			IndexesOnly: false,
+		})
+	}
+	return in
+}
+
+func appendAmboyCollections(conf evergreen.AmboyConfig, in []backup.Options) []backup.Options {
+	return append(in,
+		backup.Options{
+			NS: amodel.Namespace{
+				DB:         con.DB,
+				Collection: conf.Name + ".jobs",
+			},
+			IndexesOnly: true,
+		},
+		backup.Options{
+			NS: amodel.Namespace{
+				DB:         conf.DB,
+				Collection: conf.Name + ".group",
+			},
+			IndexesOnly: true,
+		},
+	)
+}
+
 func AddBackupJobs(ctx context.Context, env evergreen.Environment, ts time.Time) error {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
@@ -39,107 +99,13 @@ func AddBackupJobs(ctx context.Context, env evergreen.Environment, ts time.Time)
 		return errors.WithStack(err)
 	}
 	settings := env.Settings()
+
+	collections := appendAmboyCollections(settings.Amboy, []backup.Options{})
+	collections = appendFullBackupCollections(settings.Database.DB, collections)
+	collections = appendInexOnlyBackupCollections(settings.Database.DB, collections)
+
 	catcher := grip.NewBasicCatcher()
-	for _, opt := range []backup.Options{
-		{
-			NS: amodel.Namespace{
-				DB:         settings.Database.DB,
-				Collection: model.ProjectRefCollection,
-			},
-		},
-		{
-			NS: amodel.Namespace{
-				DB:         settings.Database.DB,
-				Collection: model.ProjectVarsCollection,
-			},
-		},
-		{
-			NS: amodel.Namespace{
-				DB:         settings.Database.DB,
-				Collection: model.ProjectAliasCollection,
-			},
-		},
-		{
-			NS: amodel.Namespace{
-				DB:         settings.Database.DB,
-				Collection: evergreen.ConfigCollection,
-			},
-		},
-		{
-			NS: amodel.Namespace{
-				DB:         settings.Database.DB,
-				Collection: evergreen.ScopeCollection,
-			},
-		},
-		{
-			NS: amodel.Namespace{
-				// s3copy pushes
-				DB:         settings.Database.DB,
-				Collection: model.PushlogCollection,
-			},
-		},
-		{
-			NS: amodel.Namespace{
-				// revision_order_number
-				DB:         settings.Database.DB,
-				Collection: model.RepositoriesCollection,
-			},
-		},
-		{
-			NS: amodel.Namespace{
-				// revision_order_number
-				DB:         settings.Database.DB,
-				Collection: db.GlobalsCollection,
-			},
-		},
-		{
-			NS: amodel.Namespace{
-				DB:         settings.Database.DB,
-				Collection: model.GithubHooksCollection,
-			},
-		},
-		{
-			NS: amodel.Namespace{
-				DB:         settings.Database.DB,
-				Collection: distro.Collection,
-			},
-		},
-		{
-			NS: amodel.Namespace{
-				// grpc credentials
-				// TODO: ttl and/or filter this by
-				// running hosts?
-				DB:         settings.Database.DB,
-				Collection: evergreen.CredentialsCollection,
-			},
-		},
-		{
-			NS: amodel.Namespace{
-				DB:         settings.Database.DB,
-				Collection: user.Collection,
-			},
-		},
-		{
-			NS: amodel.Namespace{
-				DB:         settings.Database.DB,
-				Collection: model.KeyValCollection,
-			},
-		},
-		{
-			NS: amodel.Namespace{
-				DB:         settings.Amboy.DB,
-				Collection: settings.Amboy.Name + ".jobs",
-			},
-			IndexesOnly: true,
-		},
-		{
-			NS: amodel.Namespace{
-				DB:         settings.Amboy.DB,
-				Collection: settings.Amboy.Name + ".group",
-			},
-			IndexesOnly: true,
-		},
-	} {
+	for _, opt := range collections {
 		catcher.Add(queue.Put(ctx, NewBackupMDBCollectionJob(opt, ts)))
 	}
 
