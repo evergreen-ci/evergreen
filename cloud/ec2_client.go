@@ -730,7 +730,6 @@ func (c *awsClientImpl) GetInstanceInfo(ctx context.Context, id string) (*ec2.In
 	}
 	reservation := resp.Reservations
 	if len(reservation) == 0 {
-		err = errors.Errorf("No reservation found for instance id: %s", id)
 		return nil, noReservationError
 	}
 

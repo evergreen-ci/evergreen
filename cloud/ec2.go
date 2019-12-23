@@ -724,14 +724,12 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 				// Terminate an unknown host in the db
 				for _, h := range hosts {
 					if h.Id == *hostsToCheck[i] {
-						if err = h.Terminate(evergreen.User, "host is unknown to AWS"); err != nil {
-							grip.Error(message.WrapError(err, message.Fields{
-								"message":       "can't mark instance as terminated",
-								"host":          h.Id,
-								"host_provider": h.Distro.Provider,
-								"distro":        h.Distro.Id,
-							}))
-						}
+						grip.Error(message.WrapError(h.Terminate(evergreen.User, "host is unknown to AWS"), message.Fields{
+							"message":       "can't mark instance as terminated",
+							"host":          h.Id,
+							"host_provider": h.Distro.Provider,
+							"distro":        h.Distro.Id,
+						}))
 					}
 				}
 				return nil, errors.Errorf("host '%s' not included in DescribeInstances response", *hostsToCheck[i])
@@ -790,14 +788,12 @@ func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cloud
 	if err != nil {
 		// terminate an unknown host in the db
 		if err == noReservationError {
-			if terminateErr := h.Terminate(evergreen.User, "host is unknown to AWS"); terminateErr != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message":       "can't mark instance as terminated",
-					"host":          h.Id,
-					"host_provider": h.Distro.Provider,
-					"distro":        h.Distro.Id,
-				}))
-			}
+			grip.Error(message.WrapError(h.Terminate(evergreen.User, "host is unknown to AWS"), message.Fields{
+				"message":       "can't mark instance as terminated",
+				"host":          h.Id,
+				"host_provider": h.Distro.Provider,
+				"distro":        h.Distro.Id,
+			}))
 		}
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error getting instance info",
