@@ -7,7 +7,14 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/manifest"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/stats"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/backup"
@@ -53,7 +60,22 @@ func AddBackupJobs(ctx context.Context, env evergreen.Environment, ts time.Time)
 }
 
 func appendInexOnlyBackupCollections(dbName string, in []backup.Options) []backup.Options {
-	for _, coll := range []string{} {
+	for _, coll := range []string{
+		task.OldCollection,
+		stats.HourlyTestStatsCollection,
+		stats.DailyTaskStatsCollection,
+		stats.DailyTestStatsCollection,
+		stats.DailyStatsStatusCollection,
+		model.TaskAliasQueuesCollection,
+		model.TaskQueuesCollection,
+		model.TestLogCollection,
+		testresult.Collection,
+		model.NotifyTimesCollection,
+		model.NotifyHistoryCollection,
+		event.AllLogCollection,
+		event.SubscriptionsCollection,
+		patch.IntentCollection,
+	} {
 		in = append(in, backup.Options{
 			NS: amodel.Namespace{
 				DB:         dbName,
@@ -81,6 +103,8 @@ func appendFullBackupCollections(dbName string, in []backup.Options) []backup.Op
 		user.Collection,
 		db.GlobalsCollection, // revision_orderNumber
 		distro.Collection,
+		commitqueue.Collection,
+		manifest.Collection,
 	} {
 		in = append(in, backup.Options{
 			NS: amodel.Namespace{

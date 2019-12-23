@@ -51,7 +51,7 @@ func createDefaultStatsStatus(projectId string) StatsStatus {
 func GetStatsStatus(projectId string) (StatsStatus, error) {
 	status := StatsStatus{}
 	query := statsStatusQuery(projectId)
-	err := db.FindOne(dailyStatsStatusCollection, query, db.NoProjection, db.NoSort, &status)
+	err := db.FindOne(DailyStatsStatusCollection, query, db.NoProjection, db.NoSort, &status)
 	if adb.ResultsNotFound(err) {
 		return createDefaultStatsStatus(projectId), nil
 	}
@@ -69,7 +69,7 @@ func UpdateStatsStatus(projectId string, lastJobRun time.Time, processedTasksUnt
 		ProcessedTasksUntil: processedTasksUntil,
 		Runtime:             runtime,
 	}
-	_, err := db.Upsert(dailyStatsStatusCollection, bson.M{"_id": projectId}, status)
+	_, err := db.Upsert(DailyStatsStatusCollection, bson.M{"_id": projectId}, status)
 	if err != nil {
 		return errors.Wrap(err, "Failed to update test stats status")
 	}
@@ -104,7 +104,7 @@ func GenerateHourlyTestStats(ctx context.Context, opts GenerateOptions) error {
 	end := start.Add(time.Hour)
 	// Generate the stats based on tasks.
 	pipeline := hourlyTestStatsPipeline(opts.ProjectID, opts.Requester, start, end, opts.Tasks, opts.Runtime)
-	err := aggregateIntoCollection(ctx, task.Collection, pipeline, hourlyTestStatsCollection)
+	err := aggregateIntoCollection(ctx, task.Collection, pipeline, HourlyTestStatsCollection)
 	if err != nil {
 		return errors.Wrap(err, "Failed to generate hourly stats")
 	}
@@ -119,7 +119,7 @@ func GenerateHourlyTestStats(ctx context.Context, opts GenerateOptions) error {
 		})
 		// Generate/Update the stats for old tasks.
 		pipeline = hourlyTestStatsForOldTasksPipeline(opts.ProjectID, opts.Requester, start, end, opts.Tasks, opts.Runtime)
-		err = aggregateIntoCollection(ctx, task.OldCollection, pipeline, hourlyTestStatsCollection)
+		err = aggregateIntoCollection(ctx, task.OldCollection, pipeline, HourlyTestStatsCollection)
 		if err != nil {
 			return errors.Wrap(err, "Failed to generate hourly stats for old tasks")
 		}
@@ -141,7 +141,7 @@ func GenerateDailyTestStatsFromHourly(ctx context.Context, opts GenerateOptions)
 	start := util.GetUTCDay(opts.Window)
 	end := start.Add(24 * time.Hour)
 	pipeline := dailyTestStatsFromHourlyPipeline(opts.ProjectID, opts.Requester, start, end, opts.Tasks, opts.Runtime)
-	err := aggregateIntoCollection(ctx, hourlyTestStatsCollection, pipeline, dailyTestStatsCollection)
+	err := aggregateIntoCollection(ctx, HourlyTestStatsCollection, pipeline, DailyTestStatsCollection)
 	if err != nil {
 		return errors.Wrap(err, "Failed to aggregate hourly stats into daily stats")
 	}
