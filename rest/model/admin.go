@@ -439,6 +439,7 @@ type APIBackupConfig struct {
 	BucketName APIString `bson:"bucket_name" json:"bucket_name" yaml:"bucket_name"`
 	Key        APIString `bson:"key" json:"key" yaml:"key"`
 	Secret     APIString `bson:"secret" json:"secret" yaml:"secret"`
+	Prefix     APIString `bson:"prefix" json:"prefix" yaml:"prefix"`
 	Compress   bool      `bson:"compress" json:"compress" yaml:"compress"`
 }
 
@@ -449,6 +450,7 @@ func (a *APIBackupConfig) BuildFromService(c interface{}) error {
 		a.Key = ToAPIString(conf.Key)
 		a.Secret = ToAPIString(conf.Secret)
 		a.Compress = conf.Compress
+		a.Prefix = ToAPIString(conf.Prefix)
 
 		return nil
 	default:
@@ -464,6 +466,7 @@ func (a *APIBackupConfig) ToService() (interface{}, error) {
 		BucketName: FromAPIString(a.BucketName),
 		Key:        FromAPIString(a.Key),
 		Secret:     FromAPIString(a.Secret),
+		Prefix:     FromAPIString(a.Prefix),
 		Compress:   a.Compress,
 	}, nil
 }

@@ -18,6 +18,40 @@ import (
 	"github.com/pkg/errors"
 )
 
+func AddBackupJobs(ctx context.Context, env evergreen.Environment, ts time.Time) error {
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if flags.DRBackupDisabled {
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			"message": "disaster recovery backups disabled",
+			"impact":  "backup jobs not dispatched",
+			"mode":    "degraded",
+		})
+		return nil
+	}
+
+	util.RoundPartOfDay(6)
+	queue, err := env.RemoteQueueGroup().Get(ctx, "backup_collector")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	settings := env.Settings()
+
+	collections := appendAmboyCollections(settings.Amboy, []backup.Options{})
+	collections = appendFullBackupCollections(settings.Database.DB, collections)
+	collections = appendInexOnlyBackupCollections(settings.Database.DB, collections)
+
+	catcher := grip.NewBasicCatcher()
+	for _, opt := range collections {
+		catcher.Add(queue.Put(ctx, NewBackupMDBCollectionJob(opt, ts)))
+	}
+
+	return catcher.Resolve()
+}
+
 func appendInexOnlyBackupCollections(dbName string, in []backup.Options) []backup.Options {
 	for _, coll := range []string{} {
 		in = append(in, backup.Options{
@@ -63,7 +97,7 @@ func appendAmboyCollections(conf evergreen.AmboyConfig, in []backup.Options) []b
 	return append(in,
 		backup.Options{
 			NS: amodel.Namespace{
-				DB:         con.DB,
+				DB:         conf.DB,
 				Collection: conf.Name + ".jobs",
 			},
 			IndexesOnly: true,
@@ -76,38 +110,4 @@ func appendAmboyCollections(conf evergreen.AmboyConfig, in []backup.Options) []b
 			IndexesOnly: true,
 		},
 	)
-}
-
-func AddBackupJobs(ctx context.Context, env evergreen.Environment, ts time.Time) error {
-	flags, err := evergreen.GetServiceFlags()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	if flags.DRBackupDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-			"message": "disaster recovery backups disabled",
-			"impact":  "backup jobs not dispatched",
-			"mode":    "degraded",
-		})
-		return nil
-	}
-
-	util.RoundPartOfDay(6)
-	queue, err := env.RemoteQueueGroup().Get(ctx, "backup_collector")
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	settings := env.Settings()
-
-	collections := appendAmboyCollections(settings.Amboy, []backup.Options{})
-	collections = appendFullBackupCollections(settings.Database.DB, collections)
-	collections = appendInexOnlyBackupCollections(settings.Database.DB, collections)
-
-	catcher := grip.NewBasicCatcher()
-	for _, opt := range collections {
-		catcher.Add(queue.Put(ctx, NewBackupMDBCollectionJob(opt, ts)))
-	}
-
-	return catcher.Resolve()
 }

@@ -87,7 +87,7 @@ func (j *backupMDBCollectionJob) Run(ctx context.Context) {
 		Permissions: pail.S3PermissionsPrivate,
 		Name:        conf.BucketName,
 		Compress:    conf.Compress,
-		Prefix:      path.Join("evergreen", j.TimeInfo().Created.Format(TSFormat), "dump"),
+		Prefix:      path.Join(conf.Prefix, j.TimeInfo().Created.Format(TSFormat), "dump"),
 	})
 	if err != nil {
 		j.AddError(err)

@@ -11,6 +11,7 @@ type BackupConfig struct {
 	BucketName string `bson:"bucket_name" json:"bucket_name" yaml:"bucket_name"`
 	Key        string `bson:"key" json:"key" yaml:"key"`
 	Secret     string `bson:"secret" json:"secret" yaml:"secret"`
+	Prefix     string `bson:"prefix" json:"prefix" yaml:"prefix"`
 	Compress   bool   `bson:"compress" json:"compress" yaml:"compress"`
 }
 
@@ -29,6 +30,7 @@ func (c *BackupConfig) Set() error {
 			"key":         c.Key,
 			"secret":      c.Secret,
 			"compress":    c.Compress,
+			"prefix":      c.Prefix,
 		},
 	}, options.Update().SetUpsert(true))
 
