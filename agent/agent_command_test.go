@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/suite"
@@ -67,6 +68,7 @@ func (s *CommandSuite) TestShellExec() {
 			Secret: taskSecret,
 		},
 		runGroupSetup: true,
+		taskModel:     &task.Task{},
 	}
 	s.NoError(s.a.resetLogging(ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
@@ -114,6 +116,7 @@ func (s *CommandSuite) TestS3Copy() {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
+		taskModel: &task.Task{},
 	}
 	s.NoError(s.a.resetLogging(ctx, tc))
 	defer s.a.removeTaskDirectory(tc)

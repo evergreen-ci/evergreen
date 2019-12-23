@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/suite"
@@ -66,6 +67,7 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
+		taskModel:     &task.Task{},
 		runGroupSetup: true,
 	}
 	// Windows may not have finished deleting task directories when
@@ -131,6 +133,7 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
+		taskModel:     &task.Task{},
 		runGroupSetup: true,
 	}
 	// Windows may not have finished deleting task directories when
@@ -193,6 +196,7 @@ func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
+		taskModel:     &task.Task{},
 		runGroupSetup: true,
 	}
 	// Windows may not have finished deleting task directories when
@@ -255,6 +259,7 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
+		taskModel:     &task.Task{},
 		runGroupSetup: true,
 	}
 	// Windows may not have finished deleting task directories when
@@ -317,6 +322,7 @@ func (s *TimeoutSuite) TestDynamicIdleTimeout() {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
+		taskModel:     &task.Task{},
 		runGroupSetup: true,
 	}
 	// Windows may not have finished deleting task directories when
@@ -379,6 +385,7 @@ func (s *TimeoutSuite) TestDynamicExecTimeoutTask() {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
+		taskModel:     &task.Task{},
 		runGroupSetup: true,
 	}
 	// Windows may not have finished deleting task directories when

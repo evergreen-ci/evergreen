@@ -130,8 +130,8 @@ func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName s
 
 	// get the default logger, first from project ref then from global
 	// settings
-	defaultLogger := evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
-	if tc.taskConfig.ProjectRef != nil && tc.taskConfig.ProjectRef.DefaultLogger != "" {
+	var defaultLogger string
+	if tc.taskConfig != nil && tc.taskConfig.ProjectRef != nil && tc.taskConfig.ProjectRef.DefaultLogger != "" {
 		defaultLogger = tc.taskConfig.ProjectRef.DefaultLogger
 	}
 	if !model.IsValidDefaultLogger(defaultLogger) {

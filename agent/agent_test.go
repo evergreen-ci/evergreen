@@ -507,6 +507,7 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	tc := &taskContext{}
 	tc.logger, err = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task, nil)
 	s.NoError(err)
+	tc.taskModel = &task.Task{}
 	tc.taskConfig = &model.TaskConfig{
 		Task: &task.Task{
 			Version: "version_base",
@@ -547,6 +548,7 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	nextTask.Build = "build_id_2"
 	tc.taskGroup = "bar"
 	tc.taskDirectory = "task_directory"
+	tc.taskModel = &task.Task{}
 	tc = s.a.prepareNextTask(context.Background(), nextTask, tc)
 	s.True(tc.runGroupSetup, "if the next task in the same version but a different build, runSetupGroup should be true")
 	s.Equal("bar", tc.taskGroup)
@@ -750,6 +752,7 @@ task_groups:
 }
 
 func (s *AgentSuite) TestGroupPostGroupCommands() {
+	s.tc.taskModel = &task.Task{}
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
