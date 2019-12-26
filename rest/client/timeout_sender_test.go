@@ -108,7 +108,7 @@ func (s *logSenderSuite) TestFileLogger() {
 
 	// no file logger for system logs
 	path := filepath.Join(s.tempDir, "nothere")
-	defaultSender, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.FileLogSender, Filepath: path, ""}}, apimodels.SystemLogPrefix)
+	defaultSender, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.FileLogSender, Filepath: path}}, apimodels.SystemLogPrefix, "")
 	s.NoError(err)
 	s.NotNil(defaultSender)
 	logger = logging.MakeGrip(defaultSender)
