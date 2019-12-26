@@ -302,7 +302,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 				Execution:     int32(tk.Execution),
 				Tags:          tk.Tags,
 				ProcessName:   logType,
-				Mainline:      evergreen.IsPatchRequester(tk.Requester),
+				Mainline:      !evergreen.IsPatchRequester(tk.Requester),
 				Storage:       timber.LogStorageS3,
 				MaxBufferSize: opt.BufferSize,
 				FlushInterval: opt.BufferDuration,
