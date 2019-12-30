@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/user"
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -427,4 +428,32 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	assert.EqualValues(t, 19, resolved2.PatchFactor)
 	assert.EqualValues(t, 0, resolved2.TimeInQueueFactor)
 	assert.EqualValues(t, 0, resolved2.ExpectedRuntimeFactor)
+}
+
+func TestAddPermissions(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(user.Collection, Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
+	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+	u := user.DBUser{
+		Id: "me",
+	}
+	assert.NoError(u.Insert())
+	d := Distro{
+		Id: "myDistro",
+	}
+	assert.NoError(d.Add(&u))
+
+	rm := evergreen.GetEnvironment().RoleManager()
+	scope, err := rm.FindScopeForResources(evergreen.DistroResourceType, d.Id)
+	assert.NoError(err)
+	assert.NotNil(scope)
+	role, err := rm.FindRoleWithPermissions(evergreen.DistroResourceType, []string{d.Id}, map[string]int{
+		evergreen.PermissionDistroSettings: evergreen.DistroSettingsRemove.Value,
+		evergreen.PermissionHosts:          evergreen.HostsEdit.Value,
+	})
+	assert.NoError(err)
+	assert.NotNil(role)
+	dbUser, err := user.FindOneById(u.Id)
+	assert.NoError(err)
+	assert.Contains(dbUser.Roles(), "admin_distro_myDistro")
 }

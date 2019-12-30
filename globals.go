@@ -495,6 +495,10 @@ const (
 	SuperUserResourceType = "super_user"
 	ProjectResourceType   = "project"
 	DistroResourceType    = "distro"
+
+	AllProjectsScope          = "all_projects"
+	UnrestrictedProjectsScope = "unrestricted_projects"
+	AllDistrosScope           = "all_distros"
 )
 
 type PermissionLevel struct {
