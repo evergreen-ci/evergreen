@@ -13,8 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var ExecutionEnvironmentType = "production"
-
 const (
 	TestDir                    = "config_test"
 	TestSettings               = "evg_settings.yml"
@@ -22,17 +20,17 @@ const (
 )
 
 func init() {
-	if ExecutionEnvironmentType != "test" {
+	if flag.Lookup("test.v") == nil && flag.Lookup("v") == nil {
 		grip.Alert(message.Fields{
-			"op":      "called init() in testutil for production code.",
-			"test.v":  flag.Lookup("test.v"),
-			"v":       flag.Lookup("v"),
-			"args":    flag.Args(),
-			"environ": ExecutionEnvironmentType,
+			"op":     "called init() in testutil for production code.",
+			"test.v": flag.Lookup("test.v"),
+			"v":      flag.Lookup("v"),
+			"args":   flag.Args(),
 		})
 	} else {
 		Setup()
 	}
+
 }
 
 func Setup() {
