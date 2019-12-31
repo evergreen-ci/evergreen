@@ -11,129 +11,77 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
-	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsoncodec"
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
-	"go.mongodb.org/mongo-driver/mongo/writeconcern"
-	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
-	"go.mongodb.org/mongo-driver/x/mongo/driver"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/description"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/operation"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
+	"go.mongodb.org/mongo-driver/x/bsonx"
+	"go.mongodb.org/mongo-driver/x/mongo/driverlegacy"
+	"go.mongodb.org/mongo-driver/x/network/command"
+	"go.mongodb.org/mongo-driver/x/network/description"
 )
 
-// ErrInvalidIndexValue is returned if an index is created with a keys document that has a value that is not a number
-// or string.
+// ErrInvalidIndexValue indicates that the index Keys document has a value that isn't either a number or a string.
 var ErrInvalidIndexValue = errors.New("invalid index value")
 
-// ErrNonStringIndexName is returned if an index is created with a name that is not a string.
+// ErrNonStringIndexName indicates that the index name specified in the options is not a string.
 var ErrNonStringIndexName = errors.New("index name must be a string")
 
-// ErrMultipleIndexDrop is returned if multiple indexes would be dropped from a call to IndexView.DropOne.
+// ErrMultipleIndexDrop indicates that multiple indexes would be dropped from a call to IndexView.DropOne.
 var ErrMultipleIndexDrop = errors.New("multiple indexes would be dropped")
 
-// IndexView is a type that can be used to create, drop, and list indexes on a collection. An IndexView for a collection
-// can be created by a call to Collection.Indexes().
+// IndexView is used to create, drop, and list indexes on a given collection.
 type IndexView struct {
 	coll *Collection
 }
 
-// IndexModel represents a new index to be created.
+// IndexModel contains information about an index.
 type IndexModel struct {
-	// A document describing which keys should be used for the index. It cannot be nil. See
-	// https://docs.mongodb.com/manual/indexes/#indexes for examples of valid documents.
-	Keys interface{}
-
-	// The options to use to create the index.
+	Keys    interface{}
 	Options *options.IndexOptions
 }
 
-func isNamespaceNotFoundError(err error) bool {
-	if de, ok := err.(driver.Error); ok {
-		return de.Code == 26
-	}
-	return false
-}
-
-// List executes a listIndexes command and returns a cursor over the indexes in the collection.
-//
-// The opts parameter can be used to specify options for this operation (see the options.ListIndexesOptions
-// documentation).
-//
-// For more information about the command, see https://docs.mongodb.com/manual/reference/command/listIndexes/.
+// List returns a cursor iterating over all the indexes in the collection.
 func (iv IndexView) List(ctx context.Context, opts ...*options.ListIndexesOptions) (*Cursor, error) {
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
 	sess := sessionFromContext(ctx)
-	if sess == nil && iv.coll.client.sessionPool != nil {
-		var err error
-		sess, err = session.NewClientSession(iv.coll.client.sessionPool, iv.coll.client.id, session.Implicit)
-		if err != nil {
-			return nil, err
-		}
-	}
 
 	err := iv.coll.client.validSession(sess)
 	if err != nil {
-		closeImplicitSession(sess)
 		return nil, err
 	}
 
-	selector := description.CompositeSelector([]description.ServerSelector{
+	listCmd := command.ListIndexes{
+		NS:      iv.coll.namespace(),
+		Session: sess,
+		Clock:   iv.coll.client.clock,
+	}
+
+	readSelector := description.CompositeSelector([]description.ServerSelector{
 		description.ReadPrefSelector(readpref.Primary()),
 		description.LatencySelector(iv.coll.client.localThreshold),
 	})
-	selector = makeReadPrefSelector(sess, selector, iv.coll.client.localThreshold)
-	op := operation.NewListIndexes().
-		Session(sess).CommandMonitor(iv.coll.client.monitor).
-		ServerSelector(selector).ClusterClock(iv.coll.client.clock).
-		Database(iv.coll.db.name).Collection(iv.coll.name).
-		Deployment(iv.coll.client.deployment)
-
-	var cursorOpts driver.CursorOptions
-	lio := options.MergeListIndexesOptions(opts...)
-	if lio.BatchSize != nil {
-		op = op.BatchSize(*lio.BatchSize)
-		cursorOpts.BatchSize = *lio.BatchSize
-	}
-	if lio.MaxTime != nil {
-		op = op.MaxTimeMS(int64(*lio.MaxTime / time.Millisecond))
-	}
-	retry := driver.RetryNone
-	if iv.coll.client.retryReads {
-		retry = driver.RetryOncePerCommand
-	}
-	op.Retry(retry)
-
-	err = op.Execute(ctx)
+	batchCursor, err := driverlegacy.ListIndexes(
+		ctx, listCmd,
+		iv.coll.client.topology,
+		readSelector,
+		iv.coll.client.id,
+		iv.coll.client.topology.SessionPool,
+		opts...,
+	)
 	if err != nil {
-		// for namespaceNotFound errors, return an empty cursor and do not throw an error
-		closeImplicitSession(sess)
-		if isNamespaceNotFoundError(err) {
+		if err == command.ErrEmptyCursor {
 			return newEmptyCursor(), nil
 		}
-
 		return nil, replaceErrors(err)
 	}
 
-	bc, err := op.Result(cursorOpts)
-	if err != nil {
-		closeImplicitSession(sess)
-		return nil, replaceErrors(err)
-	}
-	cursor, err := newCursorWithSession(bc, iv.coll.registry, sess)
+	cursor, err := newCursor(batchCursor, iv.coll.registry)
 	return cursor, replaceErrors(err)
 }
 
-// CreateOne executes a createIndexes command to create an index on the collection and returns the name of the new
-// index. See the IndexView.CreateMany documentation for more information and an example.
+// CreateOne creates a single index in the collection specified by the model.
 func (iv IndexView) CreateOne(ctx context.Context, model IndexModel, opts ...*options.CreateIndexesOptions) (string, error) {
 	names, err := iv.CreateMany(ctx, []IndexModel{model}, opts...)
 	if err != nil {
@@ -143,23 +91,13 @@ func (iv IndexView) CreateOne(ctx context.Context, model IndexModel, opts ...*op
 	return names[0], nil
 }
 
-// CreateMany executes a createIndexes command to create multiple indexes on the collection and returns the names of
-// the new indexes.
-//
-// For each IndexModel in the models parameter, the index name can be specified via the Options field. If a name is not
-// given, it will be generated from the Keys document.
-//
-// The opts parameter can be used to specify options for this operation (see the options.CreateIndexesOptions
-// documentation).
-//
-// For more information about the command, see https://docs.mongodb.com/manual/reference/command/createIndexes/.
+// CreateMany creates multiple indexes in the collection specified by the models. The names of the
+// created indexes are returned.
 func (iv IndexView) CreateMany(ctx context.Context, models []IndexModel, opts ...*options.CreateIndexesOptions) ([]string, error) {
 	names := make([]string, 0, len(models))
+	indexes := bsonx.Arr{}
 
-	var indexes bsoncore.Document
-	aidx, indexes := bsoncore.AppendArrayStart(indexes)
-
-	for i, model := range models {
+	for _, model := range models {
 		if model.Keys == nil {
 			return nil, fmt.Errorf("index model keys cannot be nil")
 		}
@@ -171,67 +109,46 @@ func (iv IndexView) CreateMany(ctx context.Context, models []IndexModel, opts ..
 
 		names = append(names, name)
 
-		keys, err := transformBsoncoreDocument(iv.coll.registry, model.Keys)
+		keys, err := transformDocument(iv.coll.registry, model.Keys)
 		if err != nil {
 			return nil, err
 		}
+		index := bsonx.Doc{{"key", bsonx.Document(keys)}}
+		if model.Options != nil {
+			optsDoc, err := iv.createOptionsDoc(model.Options)
+			if err != nil {
+				return nil, err
+			}
 
-		var iidx int32
-		iidx, indexes = bsoncore.AppendDocumentElementStart(indexes, strconv.Itoa(i))
-		indexes = bsoncore.AppendDocumentElement(indexes, "key", keys)
-
-		if model.Options == nil {
-			model.Options = options.Index()
+			index = append(index, optsDoc...)
 		}
-		model.Options.SetName(name)
+		index = index.Set("name", bsonx.String(name))
 
-		optsDoc, err := iv.createOptionsDoc(model.Options)
-		if err != nil {
-			return nil, err
-		}
-
-		indexes = bsoncore.AppendDocument(indexes, optsDoc)
-
-		indexes, err = bsoncore.AppendDocumentEnd(indexes, iidx)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	indexes, err := bsoncore.AppendArrayEnd(indexes, aidx)
-	if err != nil {
-		return nil, err
+		indexes = append(indexes, bsonx.Document(index))
 	}
 
 	sess := sessionFromContext(ctx)
 
-	if sess == nil && iv.coll.client.sessionPool != nil {
-		sess, err = session.NewClientSession(iv.coll.client.sessionPool, iv.coll.client.id, session.Implicit)
-		if err != nil {
-			return nil, err
-		}
-		defer sess.EndSession()
-	}
-
-	err = iv.coll.client.validSession(sess)
+	err := iv.coll.client.validSession(sess)
 	if err != nil {
 		return nil, err
 	}
 
-	selector := makePinnedSelector(sess, iv.coll.writeSelector)
-
-	option := options.MergeCreateIndexesOptions(opts...)
-
-	op := operation.NewCreateIndexes(indexes).
-		Session(sess).ClusterClock(iv.coll.client.clock).
-		Database(iv.coll.db.name).Collection(iv.coll.name).CommandMonitor(iv.coll.client.monitor).
-		Deployment(iv.coll.client.deployment).ServerSelector(selector)
-
-	if option.MaxTime != nil {
-		op.MaxTimeMS(int64(*option.MaxTime / time.Millisecond))
+	cmd := command.CreateIndexes{
+		NS:      iv.coll.namespace(),
+		Indexes: indexes,
+		Session: sess,
+		Clock:   iv.coll.client.clock,
 	}
 
-	err = op.Execute(ctx)
+	_, err = driverlegacy.CreateIndexes(
+		ctx, cmd,
+		iv.coll.client.topology,
+		iv.coll.writeSelector,
+		iv.coll.client.id,
+		iv.coll.client.topology.SessionPool,
+		opts...,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -239,170 +156,139 @@ func (iv IndexView) CreateMany(ctx context.Context, models []IndexModel, opts ..
 	return names, nil
 }
 
-func (iv IndexView) createOptionsDoc(opts *options.IndexOptions) (bsoncore.Document, error) {
-	optsDoc := bsoncore.Document{}
+func (iv IndexView) createOptionsDoc(opts *options.IndexOptions) (bsonx.Doc, error) {
+	optsDoc := bsonx.Doc{}
 	if opts.Background != nil {
-		optsDoc = bsoncore.AppendBooleanElement(optsDoc, "background", *opts.Background)
+		optsDoc = append(optsDoc, bsonx.Elem{"background", bsonx.Boolean(*opts.Background)})
 	}
 	if opts.ExpireAfterSeconds != nil {
-		optsDoc = bsoncore.AppendInt32Element(optsDoc, "expireAfterSeconds", *opts.ExpireAfterSeconds)
+		optsDoc = append(optsDoc, bsonx.Elem{"expireAfterSeconds", bsonx.Int32(*opts.ExpireAfterSeconds)})
 	}
 	if opts.Name != nil {
-		optsDoc = bsoncore.AppendStringElement(optsDoc, "name", *opts.Name)
+		optsDoc = append(optsDoc, bsonx.Elem{"name", bsonx.String(*opts.Name)})
 	}
 	if opts.Sparse != nil {
-		optsDoc = bsoncore.AppendBooleanElement(optsDoc, "sparse", *opts.Sparse)
+		optsDoc = append(optsDoc, bsonx.Elem{"sparse", bsonx.Boolean(*opts.Sparse)})
 	}
 	if opts.StorageEngine != nil {
-		doc, err := transformBsoncoreDocument(iv.coll.registry, opts.StorageEngine)
+		doc, err := transformDocument(iv.coll.registry, opts.StorageEngine)
 		if err != nil {
 			return nil, err
 		}
 
-		optsDoc = bsoncore.AppendDocumentElement(optsDoc, "storageEngine", doc)
+		optsDoc = append(optsDoc, bsonx.Elem{"storageEngine", bsonx.Document(doc)})
 	}
 	if opts.Unique != nil {
-		optsDoc = bsoncore.AppendBooleanElement(optsDoc, "unique", *opts.Unique)
+		optsDoc = append(optsDoc, bsonx.Elem{"unique", bsonx.Boolean(*opts.Unique)})
 	}
 	if opts.Version != nil {
-		optsDoc = bsoncore.AppendInt32Element(optsDoc, "v", *opts.Version)
+		optsDoc = append(optsDoc, bsonx.Elem{"v", bsonx.Int32(*opts.Version)})
 	}
 	if opts.DefaultLanguage != nil {
-		optsDoc = bsoncore.AppendStringElement(optsDoc, "default_language", *opts.DefaultLanguage)
+		optsDoc = append(optsDoc, bsonx.Elem{"default_language", bsonx.String(*opts.DefaultLanguage)})
 	}
 	if opts.LanguageOverride != nil {
-		optsDoc = bsoncore.AppendStringElement(optsDoc, "language_override", *opts.LanguageOverride)
+		optsDoc = append(optsDoc, bsonx.Elem{"language_override", bsonx.String(*opts.LanguageOverride)})
 	}
 	if opts.TextVersion != nil {
-		optsDoc = bsoncore.AppendInt32Element(optsDoc, "textIndexVersion", *opts.TextVersion)
+		optsDoc = append(optsDoc, bsonx.Elem{"textIndexVersion", bsonx.Int32(*opts.TextVersion)})
 	}
 	if opts.Weights != nil {
-		doc, err := transformBsoncoreDocument(iv.coll.registry, opts.Weights)
+		weightsDoc, err := transformDocument(iv.coll.registry, opts.Weights)
 		if err != nil {
 			return nil, err
 		}
 
-		optsDoc = bsoncore.AppendDocumentElement(optsDoc, "weights", doc)
+		optsDoc = append(optsDoc, bsonx.Elem{"weights", bsonx.Document(weightsDoc)})
 	}
 	if opts.SphereVersion != nil {
-		optsDoc = bsoncore.AppendInt32Element(optsDoc, "2dsphereIndexVersion", *opts.SphereVersion)
+		optsDoc = append(optsDoc, bsonx.Elem{"2dsphereIndexVersion", bsonx.Int32(*opts.SphereVersion)})
 	}
 	if opts.Bits != nil {
-		optsDoc = bsoncore.AppendInt32Element(optsDoc, "bits", *opts.Bits)
+		optsDoc = append(optsDoc, bsonx.Elem{"bits", bsonx.Int32(*opts.Bits)})
 	}
 	if opts.Max != nil {
-		optsDoc = bsoncore.AppendDoubleElement(optsDoc, "max", *opts.Max)
+		optsDoc = append(optsDoc, bsonx.Elem{"max", bsonx.Double(*opts.Max)})
 	}
 	if opts.Min != nil {
-		optsDoc = bsoncore.AppendDoubleElement(optsDoc, "min", *opts.Min)
+		optsDoc = append(optsDoc, bsonx.Elem{"min", bsonx.Double(*opts.Min)})
 	}
 	if opts.BucketSize != nil {
-		optsDoc = bsoncore.AppendInt32Element(optsDoc, "bucketSize", *opts.BucketSize)
+		optsDoc = append(optsDoc, bsonx.Elem{"bucketSize", bsonx.Int32(*opts.BucketSize)})
 	}
 	if opts.PartialFilterExpression != nil {
-		doc, err := transformBsoncoreDocument(iv.coll.registry, opts.PartialFilterExpression)
+		doc, err := transformDocument(iv.coll.registry, opts.PartialFilterExpression)
 		if err != nil {
 			return nil, err
 		}
 
-		optsDoc = bsoncore.AppendDocumentElement(optsDoc, "partialFilterExpression", doc)
+		optsDoc = append(optsDoc, bsonx.Elem{"partialFilterExpression", bsonx.Document(doc)})
 	}
 	if opts.Collation != nil {
-		optsDoc = bsoncore.AppendDocumentElement(optsDoc, "collation", bsoncore.Document(opts.Collation.ToDocument()))
-	}
-	if opts.WildcardProjection != nil {
-		doc, err := transformBsoncoreDocument(iv.coll.registry, opts.WildcardProjection)
+		collDoc, err := bsonx.ReadDoc(opts.Collation.ToDocument())
 		if err != nil {
 			return nil, err
 		}
-
-		optsDoc = bsoncore.AppendDocumentElement(optsDoc, "wildcardProjection", doc)
+		optsDoc = append(optsDoc, bsonx.Elem{"collation", bsonx.Document(collDoc)})
 	}
 
 	return optsDoc, nil
 }
 
-func (iv IndexView) drop(ctx context.Context, name string, opts ...*options.DropIndexesOptions) (bson.Raw, error) {
-	if ctx == nil {
-		ctx = context.Background()
+// DropOne drops the index with the given name from the collection.
+func (iv IndexView) DropOne(ctx context.Context, name string, opts ...*options.DropIndexesOptions) (bson.Raw, error) {
+	if name == "*" {
+		return nil, ErrMultipleIndexDrop
 	}
 
 	sess := sessionFromContext(ctx)
-	if sess == nil && iv.coll.client.sessionPool != nil {
-		var err error
-		sess, err = session.NewClientSession(iv.coll.client.sessionPool, iv.coll.client.id, session.Implicit)
-		if err != nil {
-			return nil, err
-		}
-		defer sess.EndSession()
-	}
 
 	err := iv.coll.client.validSession(sess)
 	if err != nil {
 		return nil, err
 	}
 
-	wc := iv.coll.writeConcern
-	if sess.TransactionRunning() {
-		wc = nil
-	}
-	if !writeconcern.AckWrite(wc) {
-		sess = nil
-	}
-
-	selector := makePinnedSelector(sess, iv.coll.writeSelector)
-
-	dio := options.MergeDropIndexesOptions(opts...)
-	op := operation.NewDropIndexes(name).
-		Session(sess).WriteConcern(wc).CommandMonitor(iv.coll.client.monitor).
-		ServerSelector(selector).ClusterClock(iv.coll.client.clock).
-		Database(iv.coll.db.name).Collection(iv.coll.name).
-		Deployment(iv.coll.client.deployment)
-	if dio.MaxTime != nil {
-		op.MaxTimeMS(int64(*dio.MaxTime / time.Millisecond))
+	cmd := command.DropIndexes{
+		NS:      iv.coll.namespace(),
+		Index:   name,
+		Session: sess,
+		Clock:   iv.coll.client.clock,
 	}
 
-	err = op.Execute(ctx)
-	if err != nil {
-		return nil, replaceErrors(err)
-	}
-
-	// TODO: it's weird to return a bson.Raw here because we have to convert the result back to BSON
-	ridx, res := bsoncore.AppendDocumentStart(nil)
-	res = bsoncore.AppendInt32Element(res, "nIndexesWas", op.Result().NIndexesWas)
-	res, _ = bsoncore.AppendDocumentEnd(res, ridx)
-	return res, nil
+	return driverlegacy.DropIndexes(
+		ctx, cmd,
+		iv.coll.client.topology,
+		iv.coll.writeSelector,
+		iv.coll.client.id,
+		iv.coll.client.topology.SessionPool,
+		opts...,
+	)
 }
 
-// DropOne executes a dropIndexes operation to drop an index on the collection. If the operation succeeds, this returns
-// a BSON document in the form {nIndexesWas: <int32>}. The "nIndexesWas" field in the response contains the number of
-// indexes that existed prior to the drop.
-//
-// The name parameter should be the name of the index to drop. If the name is "*", ErrMultipleIndexDrop will be returned
-// without running the command because doing so would drop all indexes.
-//
-// The opts parameter can be used to specify options for this operation (see the options.DropIndexesOptions
-// documentation).
-//
-// For more information about the command, see https://docs.mongodb.com/manual/reference/command/dropIndexes/.
-func (iv IndexView) DropOne(ctx context.Context, name string, opts ...*options.DropIndexesOptions) (bson.Raw, error) {
-	if name == "*" {
-		return nil, ErrMultipleIndexDrop
-	}
-
-	return iv.drop(ctx, name, opts...)
-}
-
-// DropAll executes a dropIndexes operation to drop all indexes on the collection. If the operation succeeds, this
-// returns a BSON document in the form {nIndexesWas: <int32>}. The "nIndexesWas" field in the response contains the
-// number of indexes that existed prior to the drop.
-//
-// The opts parameter can be used to specify options for this operation (see the options.DropIndexesOptions
-// documentation).
-//
-// For more information about the command, see https://docs.mongodb.com/manual/reference/command/dropIndexes/.
+// DropAll drops all indexes in the collection.
 func (iv IndexView) DropAll(ctx context.Context, opts ...*options.DropIndexesOptions) (bson.Raw, error) {
-	return iv.drop(ctx, "*", opts...)
+	sess := sessionFromContext(ctx)
+
+	err := iv.coll.client.validSession(sess)
+	if err != nil {
+		return nil, err
+	}
+
+	cmd := command.DropIndexes{
+		NS:      iv.coll.namespace(),
+		Index:   "*",
+		Session: sess,
+		Clock:   iv.coll.client.clock,
+	}
+
+	return driverlegacy.DropIndexes(
+		ctx, cmd,
+		iv.coll.client.topology,
+		iv.coll.writeSelector,
+		iv.coll.client.id,
+		iv.coll.client.topology.SessionPool,
+		opts...,
+	)
 }
 
 func getOrGenerateIndexName(registry *bsoncodec.Registry, model IndexModel) (string, error) {

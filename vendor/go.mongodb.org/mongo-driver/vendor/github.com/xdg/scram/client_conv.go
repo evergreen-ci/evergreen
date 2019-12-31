@@ -1,9 +1,3 @@
-// Copyright 2018 by David A. Golden. All rights reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License"); you may
-// not use this file except in compliance with the License. You may obtain
-// a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
-
 package scram
 
 import (
@@ -23,9 +17,7 @@ const (
 	clientDone
 )
 
-// ClientConversation implements the client-side of an authentication
-// conversation with a server.  A new conversation must be created for
-// each authentication attempt.
+// ClientConversation ...
 type ClientConversation struct {
 	client   *Client
 	nonceGen NonceGeneratorFcn
@@ -39,11 +31,7 @@ type ClientConversation struct {
 	serveSig []byte
 }
 
-// Step takes a string provided from a server (or just an empty string for the
-// very first conversation step) and attempts to move the authentication
-// conversation forward.  It returns a string to be sent to the server or an
-// error if the server message is invalid.  Calling Step after a conversation
-// completes is also an error.
+// Step ...
 func (cc *ClientConversation) Step(challenge string) (response string, err error) {
 	switch cc.state {
 	case clientStarting:
@@ -61,14 +49,12 @@ func (cc *ClientConversation) Step(challenge string) (response string, err error
 	return
 }
 
-// Done returns true if the conversation is completed or has errored.
+// Done ...
 func (cc *ClientConversation) Done() bool {
 	return cc.state == clientDone
 }
 
-// Valid returns true if the conversation successfully authenticated with the
-// server, including counter-validation that the server actually has the
-// user's stored credentials.
+// Valid ...
 func (cc *ClientConversation) Valid() bool {
 	return cc.valid
 }
@@ -110,7 +96,7 @@ func (cc *ClientConversation) finalMsg(s1 string) (string, error) {
 	authMsg := cc.c1b + "," + s1 + "," + c2wop
 
 	// Get derived keys from client cache
-	dk := cc.client.getDerivedKeys(KeyFactors{Salt: string(msg.salt), Iters: msg.iters})
+	dk := cc.client.GetDerivedKeys(KeyFactors{Salt: string(msg.salt), Iters: msg.iters})
 
 	// Create proof as clientkey XOR clientsignature
 	clientSignature := computeHMAC(cc.hashGen, dk.StoredKey, []byte(authMsg))
@@ -142,8 +128,8 @@ func (cc *ClientConversation) validateServer(s2 string) (string, error) {
 }
 
 func (cc *ClientConversation) gs2Header() string {
-	if cc.client.authzID == "" {
+	if cc.client.authID == "" {
 		return "n,,"
 	}
-	return fmt.Sprintf("n,%s,", encodeName(cc.client.authzID))
+	return fmt.Sprintf("n,%s,", encodeName(cc.client.authID))
 }

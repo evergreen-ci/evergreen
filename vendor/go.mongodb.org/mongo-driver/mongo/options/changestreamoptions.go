@@ -19,14 +19,11 @@ type ChangeStreamOptions struct {
 	MaxAwaitTime         *time.Duration       // The maximum amount of time for the server to wait on new documents to satisfy a change stream query
 	ResumeAfter          interface{}          // Specifies the logical starting point for the new change stream
 	StartAtOperationTime *primitive.Timestamp // Ensures that a change stream will only provide changes that occurred after a timestamp.
-	StartAfter           interface{}          // Specifies a resume token. The started change stream will return the first notification after the token.
 }
 
 // ChangeStream returns a pointer to a new ChangeStreamOptions
 func ChangeStream() *ChangeStreamOptions {
-	cso := &ChangeStreamOptions{}
-	cso.SetFullDocument(Default)
-	return cso
+	return &ChangeStreamOptions{}
 }
 
 // SetBatchSize specifies the number of documents to return per batch
@@ -69,13 +66,6 @@ func (cso *ChangeStreamOptions) SetStartAtOperationTime(t *primitive.Timestamp) 
 	return cso
 }
 
-// SetStartAfter specifies a resume token. The resulting change stream will return the first notification after the token.
-// Cannot be used in conjunction with ResumeAfter.
-func (cso *ChangeStreamOptions) SetStartAfter(sa interface{}) *ChangeStreamOptions {
-	cso.StartAfter = sa
-	return cso
-}
-
 // MergeChangeStreamOptions combines the argued ChangeStreamOptions into a single ChangeStreamOptions in a last-one-wins fashion
 func MergeChangeStreamOptions(opts ...*ChangeStreamOptions) *ChangeStreamOptions {
 	csOpts := ChangeStream()
@@ -100,9 +90,6 @@ func MergeChangeStreamOptions(opts ...*ChangeStreamOptions) *ChangeStreamOptions
 		}
 		if cso.StartAtOperationTime != nil {
 			csOpts.StartAtOperationTime = cso.StartAtOperationTime
-		}
-		if cso.StartAfter != nil {
-			csOpts.StartAfter = cso.StartAfter
 		}
 	}
 

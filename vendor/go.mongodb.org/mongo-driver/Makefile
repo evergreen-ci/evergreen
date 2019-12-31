@@ -10,7 +10,6 @@ EXAMPLES_PKGS = $(shell etc/list_pkgs.sh ./examples)
 EXAMPLES_TEST_PKGS = $(shell etc/list_test_pkgs.sh ./examples)
 PKGS = $(BSON_PKGS) $(MONGO_PKGS) $(UNSTABLE_PKGS) $(TAG_PKG) $(EXAMPLES_PKGS)
 TEST_PKGS = $(BSON_TEST_PKGS) $(MONGO_TEST_PKGS) $(UNSTABLE_TEST_PKGS) $(TAG_PKG) $(EXAMPLES_TEST_PKGS)
-ATLAS_URIS = "$(ATLAS_FREE)" "$(ATLAS_REPLSET)" "$(ATLAS_SHARD)" "$(ATLAS_TLS11)" "$(ATLAS_TLS12)" "$(ATLAS_FREE_SRV)" "$(ATLAS_REPLSET_SRV)" "$(ATLAS_SHARD_SRV)" "$(ATLAS_TLS11_SRV)" "$(ATLAS_TLS12_SRV)"
 
 TEST_TIMEOUT = 600
 
@@ -27,19 +26,15 @@ doc:
 
 .PHONY: build-examples
 build-examples:
-	go build $(BUILD_TAGS) ./examples/... ./x/mongo/driver/examples/...
+	go build $(BUILD_TAGS) ./examples/... ./x/network/examples/...
 
 .PHONY: build
 build:
 	go build $(filter-out ./core/auth/internal/gssapi,$(PKGS))
 
-.PHONY: build-cse
-build-cse:
-	go build -tags cse $(filter-out ./core/auth/internal/gssapi,$(PKGS))
-
 .PHONY: check-fmt
 check-fmt:
-	etc/check_fmt.sh $(PKGS)
+	@gofmt -l -s $(PKGS) | read; if [ $$? == 0 ]; then echo "gofmt check failed for:"; gofmt -l -s $(PKGS) | sed -e 's/^/ - /'; exit 1; fi
 
 .PHONY: fmt
 fmt:
@@ -60,27 +55,19 @@ errcheck:
 
 .PHONY: test
 test:
-	for TEST in $(TEST_PKGS) ; do \
-		go test $(BUILD_TAGS) -timeout $(TEST_TIMEOUT)s $$TEST ; \
-	done
+	go test $(BUILD_TAGS) -timeout $(TEST_TIMEOUT)s $(TEST_PKGS)
 
 .PHONY: test-cover
 test-cover:
-	for TEST in $(TEST_PKGS) ; do \
-    	go test $(BUILD_TAGS) -timeout $(TEST_TIMEOUT)s -cover $(COVER_ARGS) $$TEST ; \
-    done
+	go test $(BUILD_TAGS) -timeout $(TEST_TIMEOUT)s -cover $(COVER_ARGS) $(TEST_PKGS)
 
 .PHONY: test-race
 test-race:
-	for TEST in $(TEST_PKGS) ; do \
-    	go test $(BUILD_TAGS) -timeout $(TEST_TIMEOUT)s -race $(COVER_ARGS) $$TEST ; \
-    done
+	go test $(BUILD_TAGS) -timeout $(TEST_TIMEOUT)s -race $(TEST_PKGS)
 
 .PHONY: test-short
 test-short:
-	for TEST in $(TEST_PKGS) ; do \
-    	go test $(BUILD_TAGS) -timeout $(TEST_TIMEOUT)s -short $(COVER_ARGS) $$TEST ; \
-    done
+	go test $(BUILD_TAGS) -timeout $(TEST_TIMEOUT)s -short $(TEST_PKGS)
 
 .PHONY: update-bson-corpus-tests
 update-bson-corpus-tests:
@@ -122,17 +109,11 @@ vet:
 # Evergreen specific targets
 .PHONY: evg-test
 evg-test:
-	for TEST in $(TEST_PKGS) ; do \
-		LD_LIBRARY_PATH=$(LD_LIBRARY_PATH) PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) go test $(BUILD_TAGS) -v -timeout $(TEST_TIMEOUT)s $$TEST >> test.suite ; \
-	done
+	go test $(BUILD_TAGS) -v -timeout $(TEST_TIMEOUT)s $(TEST_PKGS) > test.suite
 
 .PHONY: evg-test-auth
 evg-test-auth:
-	go run -tags gssapi ./x/mongo/driver/examples/count/main.go -uri $(MONGODB_URI)
-
-.PHONY: evg-test-atlas
-evg-test-atlas:
-	go run ./mongo/testatlas/main.go $(ATLAS_URIS)
+	go run -tags gssapi ./x/network/examples/count/main.go -uri $(MONGODB_URI)
 
 # benchmark specific targets and support
 perf:driver-test-data.tar.gz

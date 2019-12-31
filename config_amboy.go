@@ -1,7 +1,6 @@
 package evergreen
 
 import (
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -29,17 +28,19 @@ func (c *AmboyConfig) Get(env Environment) error {
 	coll := env.DB().Collection(ConfigCollection)
 
 	res := coll.FindOne(ctx, byId(c.SectionId()))
-	grip.Info(res.Err())
 	if err := res.Err(); err != nil {
+		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+	}
+
+	if err := res.Decode(c); err != nil {
 		if err == mongo.ErrNoDocuments {
 			*c = AmboyConfig{}
 			return nil
 		}
-		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
-	}
-	if err := res.Decode(c); err != nil {
+
 		return errors.Wrap(err, "problem decoding result")
 	}
+
 	return nil
 }
 

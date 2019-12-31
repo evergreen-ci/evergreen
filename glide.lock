@@ -130,7 +130,7 @@ imports:
   - name: github.com/mongodb/jasper
     version: 61a695020101f18236583d806735d4ea1ccfd1fe
   - name: go.mongodb.org/mongo-driver
-    version: ca416d3887a4551abe7e319211fcc4d3ae75ffe5
+    version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86
   - name: github.com/evergreen-ci/timber
     version: 1cdd00ad2f2eaf6fb1cb9dedacaddbc3b0e03149
 

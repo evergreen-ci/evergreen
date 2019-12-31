@@ -19,23 +19,21 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/event"
-	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/description"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/operation"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/topology"
+	"go.mongodb.org/mongo-driver/x/bsonx"
+	"go.mongodb.org/mongo-driver/x/mongo/driverlegacy/topology"
+	"go.mongodb.org/mongo-driver/x/network/command"
+	"go.mongodb.org/mongo-driver/x/network/connection"
+	"go.mongodb.org/mongo-driver/x/network/connstring"
+	"go.mongodb.org/mongo-driver/x/network/description"
 )
 
 var connectionString connstring.ConnString
 var connectionStringOnce sync.Once
 var connectionStringErr error
 var liveTopology *topology.Topology
-var liveSessionPool *session.Pool
 var liveTopologyOnce sync.Once
 var liveTopologyErr error
 var monitoredTopology *topology.Topology
-var monitoredSessionPool *session.Pool
 var monitoredTopologyOnce sync.Once
 var monitoredTopologyErr error
 
@@ -88,10 +86,10 @@ func MonitoredTopology(t *testing.T, dbName string, monitor *event.CommandMonito
 		topology.WithServerOptions(func(opts ...topology.ServerOption) []topology.ServerOption {
 			return append(
 				opts,
-				topology.WithConnectionOptions(func(opts ...topology.ConnectionOption) []topology.ConnectionOption {
+				topology.WithConnectionOptions(func(opts ...connection.Option) []connection.Option {
 					return append(
 						opts,
-						topology.WithMonitor(func(*event.CommandMonitor) *event.CommandMonitor {
+						connection.WithMonitor(func(*event.CommandMonitor) *event.CommandMonitor {
 							return monitor
 						}),
 					)
@@ -104,10 +102,17 @@ func MonitoredTopology(t *testing.T, dbName string, monitor *event.CommandMonito
 	if err != nil {
 		t.Fatal(err)
 	} else {
-		monitoredTopology.Connect()
+		monitoredTopology.Connect(context.Background())
+		s, err := monitoredTopology.SelectServer(context.Background(), description.WriteSelector())
+		require.NoError(t, err)
 
-		err = operation.NewCommand(bsoncore.BuildDocument(nil, bsoncore.AppendInt32Element(nil, "dropDatabase", 1))).
-			Database(dbName).ServerSelector(description.WriteSelector()).Deployment(monitoredTopology).Execute(context.Background())
+		c, err := s.Connection(context.Background())
+		require.NoError(t, err)
+
+		_, err = (&command.Write{
+			DB:      dbName,
+			Command: bsonx.Doc{{"dropDatabase", bsonx.Int32(1)}},
+		}).RoundTrip(context.Background(), s.SelectedDescription(), c)
 
 		require.NoError(t, err)
 	}
@@ -123,10 +128,10 @@ func GlobalMonitoredTopology(t *testing.T, monitor *event.CommandMonitor) *topol
 		topology.WithServerOptions(func(opts ...topology.ServerOption) []topology.ServerOption {
 			return append(
 				opts,
-				topology.WithConnectionOptions(func(opts ...topology.ConnectionOption) []topology.ConnectionOption {
+				topology.WithConnectionOptions(func(opts ...connection.Option) []connection.Option {
 					return append(
 						opts,
-						topology.WithMonitor(func(*event.CommandMonitor) *event.CommandMonitor {
+						connection.WithMonitor(func(*event.CommandMonitor) *event.CommandMonitor {
 							return monitor
 						}),
 					)
@@ -141,16 +146,19 @@ func GlobalMonitoredTopology(t *testing.T, monitor *event.CommandMonitor) *topol
 		if err != nil {
 			monitoredTopologyErr = err
 		} else {
-			monitoredTopology.Connect()
-
-			err = operation.NewCommand(bsoncore.BuildDocument(nil, bsoncore.AppendInt32Element(nil, "dropDatabase", 1))).
-				Database(DBName(t)).ServerSelector(description.WriteSelector()).Deployment(monitoredTopology).Execute(context.Background())
-
+			monitoredTopology.Connect(context.Background())
+			s, err := monitoredTopology.SelectServer(context.Background(), description.WriteSelector())
 			require.NoError(t, err)
 
-			sub, err := monitoredTopology.Subscribe()
+			c, err := s.Connection(context.Background())
 			require.NoError(t, err)
-			monitoredSessionPool = session.NewPool(sub.Updates)
+
+			_, err = (&command.Write{
+				DB:      DBName(t),
+				Command: bsonx.Doc{{"dropDatabase", bsonx.Int32(1)}},
+			}).RoundTrip(context.Background(), s.SelectedDescription(), c)
+
+			require.NoError(t, err)
 		}
 	})
 
@@ -159,12 +167,6 @@ func GlobalMonitoredTopology(t *testing.T, monitor *event.CommandMonitor) *topol
 	}
 
 	return monitoredTopology
-}
-
-// GlobalMonitoredSessionPool returns the globally configured session pool.
-// Must be called after GlobalMonitoredTopology()
-func GlobalMonitoredSessionPool() *session.Pool {
-	return monitoredSessionPool
 }
 
 // Topology gets the globally configured topology.
@@ -176,15 +178,18 @@ func Topology(t *testing.T) *topology.Topology {
 		if err != nil {
 			liveTopologyErr = err
 		} else {
-			liveTopology.Connect()
-
-			err = operation.NewCommand(bsoncore.BuildDocument(nil, bsoncore.AppendInt32Element(nil, "dropDatabase", 1))).
-				Database(DBName(t)).ServerSelector(description.WriteSelector()).Deployment(liveTopology).Execute(context.Background())
+			liveTopology.Connect(context.Background())
+			s, err := liveTopology.SelectServer(context.Background(), description.WriteSelector())
 			require.NoError(t, err)
 
-			sub, err := liveTopology.Subscribe()
+			c, err := s.Connection(context.Background())
 			require.NoError(t, err)
-			liveSessionPool = session.NewPool(sub.Updates)
+
+			_, err = (&command.Write{
+				DB:      DBName(t),
+				Command: bsonx.Doc{{"dropDatabase", bsonx.Int32(1)}},
+			}).RoundTrip(context.Background(), s.SelectedDescription(), c)
+			require.NoError(t, err)
 		}
 	})
 
@@ -195,11 +200,6 @@ func Topology(t *testing.T) *topology.Topology {
 	return liveTopology
 }
 
-// SessionPool gets the globally configured session pool. Must be called after Topology().
-func SessionPool() *session.Pool {
-	return liveSessionPool
-}
-
 // TopologyWithConnString takes a connection string and returns a connected
 // topology, or else bails out of testing
 func TopologyWithConnString(t *testing.T, cs connstring.ConnString) *topology.Topology {
@@ -207,7 +207,7 @@ func TopologyWithConnString(t *testing.T, cs connstring.ConnString) *topology.To
 	if err != nil {
 		t.Fatal("Could not construct topology")
 	}
-	err = topology.Connect()
+	err = topology.Connect(context.Background())
 	if err != nil {
 		t.Fatal("Could not start topology connection")
 	}

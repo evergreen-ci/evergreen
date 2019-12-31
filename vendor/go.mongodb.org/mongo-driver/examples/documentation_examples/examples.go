@@ -2002,8 +2002,9 @@ func ChangeStreamExamples(t *testing.T, db *mongo.Database) {
 		ok := original.Next(ctx)
 		require.True(t, ok)
 
+		next := original.Current
 		// Start Changestream Example 3
-		resumeToken := original.ResumeToken()
+		resumeToken := next.Lookup("_id").Document()
 
 		cs, err := coll.Watch(ctx, mongo.Pipeline{}, options.ChangeStream().SetResumeAfter(resumeToken))
 		require.NoError(t, err)
