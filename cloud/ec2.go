@@ -724,7 +724,7 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 				// Terminate an unknown host in the db
 				for _, h := range hosts {
 					if h.Id == *hostsToCheck[i] {
-						grip.Error(message.WrapError(h.Terminate(evergreen.User, "host is unknown to AWS"), message.Fields{
+						grip.Error(message.WrapError(h.Terminate(evergreen.User, "host is missing from DescribeInstances response"), message.Fields{
 							"message":       "can't mark instance as terminated",
 							"host":          h.Id,
 							"host_provider": h.Distro.Provider,
