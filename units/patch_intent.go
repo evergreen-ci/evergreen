@@ -1,6 +1,7 @@
 package units
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -25,6 +26,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
+	"github.com/sam-falvo/mbox"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
@@ -172,8 +174,8 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	default:
 		return errors.Errorf("Intent type '%s' is unknown", j.IntentType)
 	}
-	if len := len(patchDoc.Patches); len != 1 {
-		catcher.Add(errors.Errorf("patch document should have 1 patch, found %d", len))
+	if len(patchDoc.Patches) != 1 {
+		catcher.Add(errors.Errorf("patch document should have 1 patch, found %d", len(patchDoc.Patches)))
 	}
 
 	if err = catcher.Resolve(); err != nil {
@@ -354,13 +356,29 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 	if err != nil {
 		return err
 	}
+
 	defer reader.Close()
-	bytes, err := ioutil.ReadAll(reader)
-	if err != nil {
-		return err
+	var patchBytes []byte
+	// if mbox format, squash body to make summary
+	if stream, err := mbox.CreateMboxStream(reader); err == nil {
+		patchBytes, err = handleFormattedPatch(stream)
+		if err != nil {
+			grip.Debug(message.WrapError(err, message.Fields{
+				"ticket": "problem parsing mbox",
+				"patch":  patchDoc.Id.Hex(),
+				"desc":   patchDoc.Description,
+				"alias":  patchDoc.Alias,
+			}))
+			return errors.Wrap(err, "error parsing formatted patch")
+		}
+	} else {
+		patchBytes, err = ioutil.ReadAll(reader)
+		if err != nil {
+			return errors.Wrap(err, "error parsing patch")
+		}
 	}
 
-	summaries, err := thirdparty.GetPatchSummaries(string(bytes))
+	summaries, err := thirdparty.GetPatchSummaries(string(patchBytes))
 	if err != nil {
 		return err
 	}
@@ -368,6 +386,39 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 	patchDoc.Patches[0].PatchSet.Summary = summaries
 
 	return nil
+}
+
+func handleFormattedPatch(stream *mbox.MboxStream) ([]byte, error) {
+	var err error
+	var result []byte
+	if stream == nil {
+		return nil, errors.New("mbox stream is nil")
+	}
+	// iterate through patches
+	for err == nil {
+		msg, err := stream.ReadMessage()
+		if err != nil {
+			if err == io.EOF { // no more patches
+				return result, nil
+			}
+			return nil, errors.Wrap(err, "error reading message")
+		}
+		reader := msg.BodyReader()
+		// iterate through patch body
+		for err == nil {
+			buffer := make([]byte, bytes.MinRead)
+			n, err := reader.Read(buffer)
+			if err != nil {
+				if err == io.EOF {
+					break // finished reading body of this patch
+				}
+				return nil, errors.Wrap(err, "error reading body")
+			}
+			result = append(result, buffer[0:n]...)
+		}
+	}
+
+	return result, nil
 }
 
 func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) (bool, error) {

@@ -20,6 +20,9 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip/send"
+	"github.com/sam-falvo/mbox"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -529,4 +532,68 @@ func (s *PatchIntentUnitsSuite) verifyGithubSubscriptions(patchDoc *patch.Patch)
 
 	s.True(foundPatch)
 	s.True(foundBuild)
+}
+
+func TestHandleFormattedPatch(t *testing.T) {
+	patchData := `From 8af7f21625315b8c24975016aa2107cf5a8a12b1 Mon Sep 17 00:00:00 2001
+From: ablack12 <annie.black@10gen.com>
+Date: Thu, 2 Jan 2020 10:41:34 -0500
+Subject: [PATCH 1/2] EVG-6799 remove one commit validation
+
+---
+units/commit_queue.go | 16 +++++++++-------
+1 file changed, 9 insertions(+), 7 deletions(-)
+
+diff --git a/operations/commit_queue.go b/operations/commit_queue.go
+index 3fd24ea7e..800e17d2f 100644
+--- a/operations/commit_queue.go
++++ b/operations/commit_queue.go
+@@ -122,6 +122,7 @@ func mergeCommand() cli.Command {
+                                Usage: "force item to front of queue",
+                        },
+                )),
++               Before: setPlainLogger,
+                Action: func(c *cli.Context) error {
+                        ctx, cancel := context.WithCancel(context.Background())
+                        defer cancel()
+
+From 8c030c565ebca71380f3ca5c88d895fa9f25bebd Mon Sep 17 00:00:00 2001
+From: ablack12 <annie.black@10gen.com>
+Date: Thu, 2 Jan 2020 13:35:10 -0500
+Subject: [PATCH 2/2] temp
+
+---
+units/commit_queue.go | 5 +++--
+1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/units/commit_queue.go b/units/commit_queue.go
+index ce0542e91..718dd8099 100644
+--- a/units/commit_queue.go
++++ b/units/commit_queue.go
+@@ -512,6 +512,7 @@ func validateBranch(branch *github.Branch) error {
+ }
+ 
+ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error {
++       grip.Log("From (hoping this doesn't mess anything up)")'"
+        settings, err := evergreen.GetConfig()
+        if err != nil {
+                return errors.Wrap(err, "error retrieving Evergreen config")
+`
+	reader := ioutil.NopCloser(strings.NewReader(patchData))
+	defer assert.NoError(t, reader.Close())
+
+	m, err := mbox.CreateMboxStream(reader)
+	assert.NoError(t, err)
+	require.NotNil(t, m)
+	res, err := handleFormattedPatch(m)
+	assert.NoError(t, err)
+	fullPatch := string(res)
+	assert.Equal(t, 1, strings.Count(fullPatch, "From ")) // from the print statement
+	assert.NotContains(t, fullPatch, "ablack12")
+	assert.NotContains(t, fullPatch, "Date:")
+	assert.NotContains(t, fullPatch, "Subject:")
+
+	for _, x := range strings.Split(fullPatch, "\n") {
+		assert.Contains(t, fullPatch, x) // data unmodified
+	}
 }

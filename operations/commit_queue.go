@@ -122,6 +122,7 @@ func mergeCommand() cli.Command {
 				Usage: "force item to front of queue",
 			},
 		)),
+		Before: setPlainLogger,
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -339,7 +340,7 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		return errors.New("CLI commit queue not enabled for project")
 	}
 
-	diffData, err := loadGitData(ref.Branch, p.ref)
+	diffData, err := loadGitData(ref.Branch, p.ref, true)
 	if err != nil {
 		return errors.Wrap(err, "can't generate patches")
 	}
@@ -406,7 +407,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 		p.message = message
 	}
 
-	diffData, err := loadGitData(moduleBranch, p.ref)
+	diffData, err := loadGitData(moduleBranch, p.ref, true)
 	if err != nil {
 		return errors.Wrap(err, "can't get patch data")
 	}

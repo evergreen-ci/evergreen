@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/ioutil"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -97,7 +98,8 @@ func Patch() cli.Command {
 				return err
 			}
 
-			diffData, err := loadGitData(ref.Branch, params.Ref, args...)
+			format := params.Alias == evergreen.CommitQueueAlias
+			diffData, err := loadGitData(ref.Branch, params.Ref, format, args...)
 			if err != nil {
 				return err
 			}
