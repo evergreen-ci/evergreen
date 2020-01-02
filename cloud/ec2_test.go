@@ -1092,6 +1092,68 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 	s.Equal("i-3", hosts[2].ExternalIdentifier)
 }
 
+func (s *EC2Suite) TestGetInstanceStatusesTerminate() {
+	hosts := []host.Host{
+		{
+			Id: "i-1",
+			Distro: distro.Distro{
+				Provider:         evergreen.ProviderNameEc2OnDemand,
+				ProviderSettings: s.distro.ProviderSettings,
+			},
+			Status: evergreen.HostStarting,
+		},
+		{
+			Id: "i-2",
+			Distro: distro.Distro{
+				Provider:         evergreen.ProviderNameEc2OnDemand,
+				ProviderSettings: s.distro.ProviderSettings,
+			},
+			Status: evergreen.HostStarting,
+		},
+	}
+	for _, h := range hosts {
+		s.NoError(h.Insert())
+	}
+
+	manager := s.onDemandManager.(*ec2Manager)
+	mock := manager.client.(*awsClientMock)
+	mock.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
+		Reservations: []*ec2.Reservation{
+			{
+				Instances: []*ec2.Instance{
+					{
+						InstanceId: aws.String("i-1"),
+						State: &ec2.InstanceState{
+							Name: aws.String(ec2.InstanceStateNameRunning),
+						},
+						PublicDnsName: aws.String("public_dns_name_2"),
+						Placement: &ec2.Placement{
+							AvailabilityZone: aws.String("us-east-1a"),
+						},
+						LaunchTime: aws.Time(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)),
+						BlockDeviceMappings: []*ec2.InstanceBlockDeviceMapping{
+							&ec2.InstanceBlockDeviceMapping{
+								Ebs: &ec2.EbsInstanceBlockDevice{
+									VolumeId: aws.String("volume_id"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	batchManager := s.onDemandManager.(BatchManager)
+	s.NotNil(batchManager)
+	_, err := batchManager.GetInstanceStatuses(context.Background(), hosts)
+	s.Error(err)
+
+	h, err := host.FindOneId("i-2")
+	s.NoError(err)
+	s.Equal(evergreen.HostTerminated, h.Status)
+}
+
 func (s *EC2Suite) TestGetRegion() {
 	ec2Settings := &EC2ProviderSettings{}
 	r := ec2Settings.getRegion()
