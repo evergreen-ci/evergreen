@@ -63,6 +63,8 @@ func (j *cronsRemoteHourJob) Run(ctx context.Context) {
 
 		catcher.Add(op(ctx, queue))
 	}
+
+	catcher.Add(AddBackupJobs(ctx, j.env, util.RoundPartOfHour(0)))
 	j.ErrorCount = catcher.Len()
 
 	grip.Debug(message.Fields{

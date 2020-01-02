@@ -1,0 +1,52 @@
+linters:
+  disable-all: true
+  enable:
+    - deadcode
+    - errcheck
+    - goconst
+    - gocritic
+    - gofmt
+    - goimports
+    - golint
+    - gosimple
+    - govet
+    - ineffassign
+    - interfacer
+    - maligned
+    - misspell
+    - staticcheck
+    - structcheck
+    - typecheck
+    - unconvert
+    - varcheck
+    - stylecheck
+    - wsl
+    # - godox
+    - prealloc
+    - nakedret
+
+run:
+  skip-dirs:
+    - build
+  max-same-issues: 100
+  max-issues-per-linter: 100
+  exclude-use-default: false
+  timeout: 10m
+
+linters-settings:
+  maligned:
+    suggest-new: true
+
+issues:
+  exclude-rules:
+    - linters:
+        - goconst
+      # Ignore GOOS warnings.
+      text: "string `windows`"
+    - path: _test\.go
+      linters:
+        - gocognit
+        - goconst
+    - linters:
+        - golint
+      text: ".*should have name of the form ErrFoo"

@@ -40,6 +40,8 @@ type Value struct {
 	d *Document
 }
 
+// Copy constructs an entirely new value object with the same data as
+// the original.
 func (v *Value) Copy() *Value {
 	return &Value{
 		start:  v.start,
@@ -47,6 +49,15 @@ func (v *Value) Copy() *Value {
 		data:   v.data,
 		d:      v.d.Copy(),
 	}
+}
+
+// Set changes the internal representation of a value to have the
+// internal representation of a second value
+func (v *Value) Set(v2 *Value) {
+	v.start = v2.start
+	v.offset = v2.offset
+	v.data = v2.data
+	v.d = v2.d
 }
 
 // Interface returns the Go value of this Value as an empty interface.
@@ -96,6 +107,7 @@ func (v *Value) Interface() interface{} {
 	case bsontype.CodeWithScope:
 		code, scope := v.MutableJavaScriptWithScope()
 		val, _ := scope.MarshalBSON()
+
 		return types.CodeWithScope{Code: code, Scope: val}
 	case bsontype.Int32:
 		return v.Int32()
@@ -134,13 +146,16 @@ func (v *Value) validate(sizeOnly bool) (uint32, error) {
 		if int(v.offset+8) > len(v.data) {
 			return total, newErrTooSmall()
 		}
+
 		total += 8
 	case '\x02', '\x0D', '\x0E':
 		if int(v.offset+4) > len(v.data) {
 			return total, newErrTooSmall()
 		}
+
 		l := readi32(v.data[v.offset : v.offset+4])
 		total += 4
+
 		if int32(v.offset)+4+l > int32(len(v.data)) {
 			return total, newErrTooSmall()
 		}
@@ -151,90 +166,115 @@ func (v *Value) validate(sizeOnly bool) (uint32, error) {
 		if !sizeOnly && v.data[v.offset+4+uint32(l)-1] != 0x00 {
 			return total, bsonerr.InvalidString
 		}
+
 		total += uint32(l)
 	case '\x03':
 		if v.d != nil {
 			n, err := v.d.Validate()
 			total += n
+
 			if err != nil {
 				return total, err
 			}
+
 			break
 		}
 
 		if int(v.offset+4) > len(v.data) {
 			return total, newErrTooSmall()
 		}
+
 		l := readi32(v.data[v.offset : v.offset+4])
 		total += 4
+
 		if l < 5 {
 			return total, bsonerr.InvalidReadOnlyDocument
 		}
+
 		if int32(v.offset)+l > int32(len(v.data)) {
 			return total, newErrTooSmall()
 		}
+
 		if !sizeOnly {
 			n, err := Reader(v.data[v.offset : v.offset+uint32(l)]).Validate()
 			total += n - 4
+
 			if err != nil {
 				return total, err
 			}
+
 			break
 		}
+
 		total += uint32(l) - 4
 	case '\x04':
 		if v.d != nil {
 			n, err := (&Array{v.d}).Validate()
 			total += n
+
 			if err != nil {
 				return total, err
 			}
+
 			break
 		}
 
 		if int(v.offset+4) > len(v.data) {
 			return total, newErrTooSmall()
 		}
+
 		l := readi32(v.data[v.offset : v.offset+4])
 		total += 4
+
 		if l < 5 {
 			return total, bsonerr.InvalidReadOnlyDocument
 		}
+
 		if int32(v.offset)+l > int32(len(v.data)) {
 			return total, newErrTooSmall()
 		}
+
 		if !sizeOnly {
 			n, err := Reader(v.data[v.offset : v.offset+uint32(l)]).Validate()
 			total += n - 4
+
 			if err != nil {
 				return total, err
 			}
+
 			break
 		}
+
 		total += uint32(l) - 4
 	case '\x05':
 		if int(v.offset+5) > len(v.data) {
 			return total, newErrTooSmall()
 		}
+
 		l := readi32(v.data[v.offset : v.offset+4])
 		total += 5
+
 		if v.data[v.offset+4] > '\x05' && v.data[v.offset+4] < '\x80' {
 			return total, bsonerr.InvalidBinarySubtype
 		}
+
 		if int32(v.offset)+5+l > int32(len(v.data)) {
 			return total, newErrTooSmall()
 		}
+
 		total += uint32(l)
 	case '\x07':
 		if int(v.offset+12) > len(v.data) {
 			return total, newErrTooSmall()
 		}
+
 		total += 12
 	case '\x08':
 		if int(v.offset+1) > len(v.data) {
 			return total, newErrTooSmall()
 		}
 		total++
+
 		if v.data[v.offset] != '\x00' && v.data[v.offset] != '\x01' {
 			return total, bsonerr.InvalidBooleanType
 		}
@@ -242,20 +282,24 @@ func (v *Value) validate(sizeOnly bool) (uint32, error) {
 		if int(v.offset+8) > len(v.data) {
 			return total, newErrTooSmall()
 		}
+
 		total += 8
 	case '\x0B':
 		i := v.offset
 		for ; int(i) < len(v.data) && v.data[i] != '\x00'; i++ {
 			total++
 		}
+
 		if int(i) == len(v.data) || v.data[i] != '\x00' {
 			return total, bsonerr.InvalidString
 		}
 		i++
 		total++
+
 		for ; int(i) < len(v.data) && v.data[i] != '\x00'; i++ {
 			total++
 		}
+
 		if int(i) == len(v.data) || v.data[i] != '\x00' {
 			return total, bsonerr.InvalidString
 		}
@@ -264,11 +308,14 @@ func (v *Value) validate(sizeOnly bool) (uint32, error) {
 		if int(v.offset+4) > len(v.data) {
 			return total, newErrTooSmall()
 		}
+
 		l := readi32(v.data[v.offset : v.offset+4])
 		total += 4
+
 		if int32(v.offset)+4+l+12 > int32(len(v.data)) {
 			return total, newErrTooSmall()
 		}
+
 		total += uint32(l) + 12
 	case '\x0F':
 		if v.d != nil {
@@ -280,31 +327,41 @@ func (v *Value) validate(sizeOnly bool) (uint32, error) {
 			if int(v.offset+8) > len(v.data) {
 				return total, newErrTooSmall()
 			}
+
 			total += 8
 			sLength := readi32(v.data[v.offset+4 : v.offset+8])
+
 			if int(sLength) > len(v.data)+8 {
 				return total, newErrTooSmall()
 			}
+
 			total += uint32(sLength)
+
 			if !sizeOnly && v.data[v.offset+8+uint32(sLength)-1] != 0x00 {
 				return total, bsonerr.InvalidString
 			}
 
 			n, err := v.d.Validate()
 			total += n
+
 			if err != nil {
 				return total, err
 			}
+
 			break
 		}
+
 		if int(v.offset+4) > len(v.data) {
 			return total, newErrTooSmall()
 		}
+
 		l := readi32(v.data[v.offset : v.offset+4])
 		total += 4
+
 		if int32(v.offset)+l > int32(len(v.data)) {
 			return total, newErrTooSmall()
 		}
+
 		if !sizeOnly {
 			sLength := readi32(v.data[v.offset+4 : v.offset+8])
 			total += 4
@@ -324,31 +381,37 @@ func (v *Value) validate(sizeOnly bool) (uint32, error) {
 			if v.data[v.offset+8+uint32(sLength)-1] != 0x00 {
 				return total, bsonerr.InvalidString
 			}
+
 			total += uint32(sLength)
 			n, err := Reader(v.data[v.offset+8+uint32(sLength) : v.offset+uint32(l)]).Validate()
 			total += n
+
 			if err != nil {
 				return total, err
 			}
+
 			break
 		}
+
 		total += uint32(l) - 4
 	case '\x10':
 		if int(v.offset+4) > len(v.data) {
 			return total, newErrTooSmall()
 		}
+
 		total += 4
 	case '\x11', '\x12':
 		if int(v.offset+8) > len(v.data) {
 			return total, newErrTooSmall()
 		}
+
 		total += 8
 	case '\x13':
 		if int(v.offset+16) > len(v.data) {
 			return total, newErrTooSmall()
 		}
-		total += 16
 
+		total += 16
 	default:
 		return total, bsonerr.InvalidElement
 	}
@@ -367,6 +430,7 @@ func (v *Value) Type() bsontype.Type {
 	if v == nil || v.offset == 0 || v.data == nil {
 		panic(bsonerr.UninitializedElement)
 	}
+
 	return bsontype.Type(v.data[v.start])
 }
 
@@ -376,9 +440,11 @@ func (v *Value) Double() float64 {
 	if v == nil || v.offset == 0 || v.data == nil {
 		panic(bsonerr.UninitializedElement)
 	}
+
 	if v.data[v.start] != '\x01' {
-		panic(bsonerr.ElementType{"compact.Element.double", bsontype.Type(v.data[v.start])})
+		panic(bsonerr.NewElementTypeError("compact.Element.double", bsontype.Type(v.data[v.start])))
 	}
+
 	return math.Float64frombits(v.getUint64())
 }
 
@@ -387,6 +453,7 @@ func (v *Value) DoubleOK() (float64, bool) {
 	if v == nil || v.offset == 0 || v.data == nil || bsontype.Type(v.data[v.start]) != bsontype.Double {
 		return 0, false
 	}
+
 	return v.Double(), true
 }
 
@@ -399,10 +466,13 @@ func (v *Value) StringValue() string {
 	if v == nil || v.offset == 0 || v.data == nil {
 		panic(bsonerr.UninitializedElement)
 	}
+
 	if v.data[v.start] != '\x02' {
-		panic(bsonerr.ElementType{"compact.Element.String", bsontype.Type(v.data[v.start])})
+		panic(bsonerr.NewElementTypeError("compact.Element.String", bsontype.Type(v.data[v.start])))
 	}
+
 	l := readi32(v.data[v.offset : v.offset+4])
+
 	return string(v.data[v.offset+4 : int32(v.offset)+4+l-1])
 }
 
@@ -412,6 +482,7 @@ func (v *Value) StringValueOK() (string, bool) {
 	if v == nil || v.offset == 0 || v.data == nil || bsontype.Type(v.data[v.start]) != bsontype.String {
 		return "", false
 	}
+
 	return v.StringValue(), true
 }
 
@@ -423,7 +494,7 @@ func (v *Value) ReaderDocument() Reader {
 	}
 
 	if v.data[v.start] != '\x03' {
-		panic(bsonerr.ElementType{"compact.Element.Document", bsontype.Type(v.data[v.start])})
+		panic(bsonerr.NewElementTypeError("compact.Element.Document", bsontype.Type(v.data[v.start])))
 	}
 
 	return v.getReader()
@@ -442,6 +513,7 @@ func (v *Value) Reader() Reader {
 
 func (v *Value) getReader() Reader {
 	var r Reader
+
 	if v.d == nil {
 		l := readi32(v.data[v.offset : v.offset+4])
 		r = Reader(v.data[v.offset : v.offset+uint32(l)])
@@ -463,6 +535,7 @@ func (v *Value) ReaderDocumentOK() (Reader, bool) {
 	if v == nil || v.offset == 0 || v.data == nil || bsontype.Type(v.data[v.start]) != bsontype.EmbeddedDocument {
 		return nil, false
 	}
+
 	return v.ReaderDocument(), true
 }
 
@@ -471,17 +544,22 @@ func (v *Value) MutableDocument() *Document {
 	if v == nil || v.offset == 0 || v.data == nil {
 		panic(bsonerr.UninitializedElement)
 	}
+
 	if v.data[v.start] != '\x03' {
-		panic(bsonerr.ElementType{"compact.Element.Document", bsontype.Type(v.data[v.start])})
+		panic(bsonerr.NewElementTypeError("compact.Element.Document", bsontype.Type(v.data[v.start])))
 	}
+
 	if v.d == nil {
 		var err error
+
 		l := int32(binary.LittleEndian.Uint32(v.data[v.offset : v.offset+4]))
+
 		v.d, err = ReadDocument(v.data[v.offset : v.offset+uint32(l)])
 		if err != nil {
 			panic(err)
 		}
 	}
+
 	return v.d
 }
 
@@ -491,6 +569,7 @@ func (v *Value) MutableDocumentOK() (*Document, bool) {
 	if v == nil || v.offset == 0 || v.data == nil || bsontype.Type(v.data[v.start]) != bsontype.EmbeddedDocument {
 		return nil, false
 	}
+
 	return v.MutableDocument(), true
 }
 
@@ -502,7 +581,7 @@ func (v *Value) ReaderArray() Reader {
 	}
 
 	if v.data[v.start] != '\x04' {
-		panic(bsonerr.ElementType{"compact.Element.Array", bsontype.Type(v.data[v.start])})
+		panic(bsonerr.NewElementTypeError("compact.Element.Array", bsontype.Type(v.data[v.start])))
 	}
 
 	return v.getReader()
@@ -514,6 +593,7 @@ func (v *Value) ReaderArrayOK() (Reader, bool) {
 	if v == nil || v.offset == 0 || v.data == nil || bsontype.Type(v.data[v.start]) != bsontype.Array {
 		return nil, false
 	}
+
 	return v.ReaderArray(), true
 }
 
@@ -522,17 +602,22 @@ func (v *Value) MutableArray() *Array {
 	if v == nil || v.offset == 0 || v.data == nil {
 		panic(bsonerr.UninitializedElement)
 	}
+
 	if v.data[v.start] != '\x04' {
-		panic(bsonerr.ElementType{"compact.Element.Array", bsontype.Type(v.data[v.start])})
+		panic(bsonerr.NewElementTypeError("compact.Element.Array", bsontype.Type(v.data[v.start])))
 	}
+
 	if v.d == nil {
 		var err error
+
 		l := int32(binary.LittleEndian.Uint32(v.data[v.offset : v.offset+4]))
 		v.d, err = ReadDocument(v.data[v.offset : v.offset+uint32(l)])
+
 		if err != nil {
 			panic(err)
 		}
 	}
+
 	return &Array{v.d}
 }
 
@@ -542,6 +627,7 @@ func (v *Value) MutableArrayOK() (*Array, bool) {
 	if v == nil || v.offset == 0 || v.data == nil || bsontype.Type(v.data[v.start]) != bsontype.Array {
 		return nil, false
 	}
+
 	return v.MutableArray(), true
 }
 
@@ -551,18 +637,23 @@ func (v *Value) Binary() (subtype byte, data []byte) {
 	if v == nil || v.offset == 0 || v.data == nil {
 		panic(bsonerr.UninitializedElement)
 	}
+
 	if v.data[v.start] != '\x05' {
-		panic(bsonerr.ElementType{"compact.Element.binary", bsontype.Type(v.data[v.start])})
+		panic(bsonerr.NewElementTypeError("compact.Element.binary", bsontype.Type(v.data[v.start])))
 	}
+
 	l := readi32(v.data[v.offset : v.offset+4])
 	st := v.data[v.offset+4]
 	offset := uint32(5)
+
 	if st == 0x02 {
 		offset += 4
 		l = readi32(v.data[v.offset+5 : v.offset+9])
 	}
+
 	b := make([]byte, l)
 	copy(b, v.data[v.offset+offset:int32(v.offset)+int32(offset)+l])
+
 	return st, b
 }
 
@@ -572,7 +663,9 @@ func (v *Value) BinaryOK() (subtype byte, data []byte, ok bool) {
 	if v == nil || v.offset == 0 || v.data == nil || bsontype.Type(v.data[v.start]) != bsontype.Binary {
 		return 0x00, nil, false
 	}
+
 	st, b := v.Binary()
+
 	return st, b, true
 }
 
@@ -582,11 +675,15 @@ func (v *Value) ObjectID() types.ObjectID {
 	if v == nil || v.offset == 0 || v.data == nil {
 		panic(bsonerr.UninitializedElement)
 	}
+
 	if v.data[v.start] != '\x07' {
-		panic(bsonerr.ElementType{"compact.Element.ObejctID", bsontype.Type(v.data[v.start])})
+		panic(bsonerr.NewElementTypeError("compact.Element.ObejctID", bsontype.Type(v.data[v.start])))
 	}
+
 	var arr [12]byte
+
 	copy(arr[:], v.data[v.offset:v.offset+12])
+
 	return arr
 }
 
@@ -594,9 +691,11 @@ func (v *Value) ObjectID() types.ObjectID {
 // panicking.
 func (v *Value) ObjectIDOK() (types.ObjectID, bool) {
 	var empty types.ObjectID
+
 	if v == nil || v.offset == 0 || v.data == nil || bsontype.Type(v.data[v.start]) != bsontype.ObjectID {
 		return empty, false
 	}
+
 	return v.ObjectID(), true
 }
 
@@ -606,9 +705,11 @@ func (v *Value) Boolean() bool {
 	if v == nil || v.offset == 0 || v.data == nil {
 		panic(bsonerr.UninitializedElement)
 	}
+
 	if v.data[v.start] != '\x08' {
-		panic(bsonerr.ElementType{"compact.Element.Boolean", bsontype.Type(v.data[v.start])})
+		panic(bsonerr.NewElementTypeError("compact.Element.Boolean", bsontype.Type(v.data[v.start])))
 	}
+
 	return v.data[v.offset] == '\x01'
 }
 
@@ -618,6 +719,7 @@ func (v *Value) BooleanOK() (bool, bool) {
 	if v == nil || v.offset == 0 || v.data == nil || bsontype.Type(v.data[v.start]) != bsontype.Boolean {
 		return false, false
 	}
+
 	return v.Boolean(), true
 }
 
@@ -627,9 +729,11 @@ func (v *Value) DateTime() int64 {
 	if v == nil || v.offset == 0 || v.data == nil {
 		panic(bsonerr.UninitializedElement)
 	}
+
 	if v.data[v.start] != '\x09' {
-		panic(bsonerr.ElementType{"compact.Element.dateTime", bsontype.Type(v.data[v.start])})
+		panic(bsonerr.NewElementTypeError("compact.Element.dateTime", bsontype.Type(v.data[v.start])))
 	}
+
 	return int64(v.getUint64())
 }
 
@@ -646,6 +750,7 @@ func (v *Value) TimeOK() (time.Time, bool) {
 	if v == nil || v.offset == 0 || v.data == nil || bsontype.Type(v.data[v.start]) != bsontype.DateTime {
 		return time.Time{}, false
 	}
+
 	return v.Time(), true
 }
 
@@ -655,20 +760,31 @@ func (v *Value) Regex() (pattern, options string) {
 	if v == nil || v.offset == 0 || v.data == nil {
 		panic(bsonerr.UninitializedElement)
 	}
+
 	if v.data[v.start] != '\x0B' {
-		panic(bsonerr.ElementType{"compact.Element.regex", bsontype.Type(v.data[v.start])})
+		panic(bsonerr.NewElementTypeError("compact.Element.regex", bsontype.Type(v.data[v.start])))
 	}
 	// TODO(skriptble): Use the elements package here.
-	var pstart, pend, ostart, oend uint32
+	var (
+		pstart uint32
+		pend   uint32
+		ostart uint32
+		oend   uint32
+	)
+
 	i := v.offset
 	pstart = i
+
 	for ; v.data[i] != '\x00'; i++ {
 	}
+
 	pend = i
 	i++
 	ostart = i
+
 	for ; v.data[i] != '\x00'; i++ {
 	}
+
 	oend = i
 
 	return string(v.data[pstart:pend]), string(v.data[ostart:oend])
@@ -680,6 +796,7 @@ func (v *Value) DateTimeOK() (int64, bool) {
 	if v == nil || v.offset == 0 || v.data == nil || bsontype.Type(v.data[v.start]) != bsontype.DateTime {
 		return 0, false
 	}
+
 	return v.DateTime(), true
 }
 
@@ -689,12 +806,17 @@ func (v *Value) DBPointer() (string, types.ObjectID) {
 	if v == nil || v.offset == 0 || v.data == nil {
 		panic(bsonerr.UninitializedElement)
 	}
+
 	if v.data[v.start] != '\x0C' {
-		panic(bsonerr.ElementType{"compact.Element.dbPointer", bsontype.Type(v.data[v.start])})
+		panic(bsonerr.NewElementTypeError("compact.Element.dbPointer", bsontype.Type(v.data[v.start])))
 	}
+
 	l := readi32(v.data[v.offset : v.offset+4])
+
 	var p [12]byte
+
 	copy(p[:], v.data[v.offset+4+uint32(l):v.offset+4+uint32(l)+12])
+
 	return string(v.data[v.offset+4 : int32(v.offset)+4+l-1]), p
 }
 
@@ -702,10 +824,13 @@ func (v *Value) DBPointer() (string, types.ObjectID) {
 // instead of panicking.
 func (v *Value) DBPointerOK() (string, types.ObjectID, bool) {
 	var empty types.ObjectID
+
 	if v == nil || v.offset == 0 || v.data == nil || bsontype.Type(v.data[v.start]) != bsontype.DBPointer {
 		return "", empty, false
 	}
+
 	s, o := v.DBPointer()
+
 	return s, o, true
 }
 
@@ -715,10 +840,13 @@ func (v *Value) JavaScript() string {
 	if v == nil || v.offset == 0 || v.data == nil {
 		panic(bsonerr.UninitializedElement)
 	}
+
 	if v.data[v.start] != '\x0D' {
-		panic(bsonerr.ElementType{"compact.Element.JavaScript", bsontype.Type(v.data[v.start])})
+		panic(bsonerr.NewElementTypeError("compact.Element.JavaScript", bsontype.Type(v.data[v.start])))
 	}
+
 	l := readi32(v.data[v.offset : v.offset+4])
+
 	return string(v.data[v.offset+4 : int32(v.offset)+4+l-1])
 }
 
@@ -728,6 +856,7 @@ func (v *Value) JavaScriptOK() (string, bool) {
 	if v == nil || v.offset == 0 || v.data == nil || bsontype.Type(v.data[v.start]) != bsontype.JavaScript {
 		return "", false
 	}
+
 	return v.JavaScript(), true
 }
 
@@ -737,10 +866,13 @@ func (v *Value) Symbol() string {
 	if v == nil || v.offset == 0 || v.data == nil {
 		panic(bsonerr.UninitializedElement)
 	}
+
 	if v.data[v.start] != '\x0E' {
-		panic(bsonerr.ElementType{"compact.Element.symbol", bsontype.Type(v.data[v.start])})
+		panic(bsonerr.NewElementTypeError("compact.Element.symbol", bsontype.Type(v.data[v.start])))
 	}
+
 	l := readi32(v.data[v.offset : v.offset+4])
+
 	return string(v.data[v.offset+4 : int32(v.offset)+4+l-1])
 }
 
@@ -753,7 +885,7 @@ func (v *Value) ReaderJavaScriptWithScope() (string, Reader) {
 	}
 
 	if v.data[v.start] != '\x0F' {
-		panic(bsonerr.ElementType{"compact.Element.JavaScriptWithScope", bsontype.Type(v.data[v.start])})
+		panic(bsonerr.NewElementTypeError("compact.Element.JavaScriptWithScope", bsontype.Type(v.data[v.start])))
 	}
 
 	sLength := readi32(v.data[v.offset+4 : v.offset+8])
@@ -763,6 +895,7 @@ func (v *Value) ReaderJavaScriptWithScope() (string, Reader) {
 	str := string(v.data[v.offset+8 : v.offset+8+uint32(sLength)-1])
 
 	var r Reader
+
 	if v.d == nil {
 		l := readi32(v.data[v.offset : v.offset+4])
 		r = Reader(v.data[v.offset+8+uint32(sLength) : v.offset+uint32(l)])
@@ -784,7 +917,9 @@ func (v *Value) ReaderJavaScriptWithScopeOK() (string, Reader, bool) {
 	if v == nil || v.offset == 0 || v.data == nil || bsontype.Type(v.data[v.start]) != bsontype.CodeWithScope {
 		return "", nil, false
 	}
+
 	s, r := v.ReaderJavaScriptWithScope()
+
 	return s, r, true
 }
 
@@ -794,8 +929,9 @@ func (v *Value) MutableJavaScriptWithScope() (code string, d *Document) {
 	if v == nil || v.offset == 0 {
 		panic(bsonerr.UninitializedElement)
 	}
+
 	if v.data[v.start] != '\x0F' {
-		panic(bsonerr.ElementType{"compact.Element.JavaScriptWithScope", bsontype.Type(v.data[v.start])})
+		panic(bsonerr.NewElementTypeError("compact.Element.JavaScriptWithScope", bsontype.Type(v.data[v.start])))
 	}
 	// TODO(skriptble): This is wrong and could cause a panic.
 	l := int32(binary.LittleEndian.Uint32(v.data[v.offset : v.offset+4]))
@@ -805,13 +941,16 @@ func (v *Value) MutableJavaScriptWithScope() (code string, d *Document) {
 	// field minus the int32 for length, 5 bytes for a minimum document
 	// size, and an int32 for the string length the value is invalid.
 	str := string(v.data[v.offset+4+4 : v.offset+4+4+uint32(sLength)-1]) // offset + total length + string length + bytes - null byte
+
 	if v.d == nil {
 		var err error
+
 		v.d, err = ReadDocument(v.data[v.offset+4+4+uint32(sLength) : v.offset+uint32(l)])
 		if err != nil {
 			panic(err)
 		}
 	}
+
 	return str, v.d
 }
 
@@ -821,7 +960,9 @@ func (v *Value) MutableJavaScriptWithScopeOK() (string, *Document, bool) {
 	if v == nil || v.offset == 0 || v.data == nil || bsontype.Type(v.data[v.start]) != bsontype.CodeWithScope {
 		return "", nil, false
 	}
+
 	s, d := v.MutableJavaScriptWithScope()
+
 	return s, d, true
 }
 
@@ -831,9 +972,11 @@ func (v *Value) Int32() int32 {
 	if v == nil || v.offset == 0 || v.data == nil {
 		panic(bsonerr.UninitializedElement)
 	}
+
 	if v.data[v.start] != '\x10' {
-		panic(bsonerr.ElementType{"compact.Element.int32", bsontype.Type(v.data[v.start])})
+		panic(bsonerr.NewElementTypeError("compact.Element.int32", bsontype.Type(v.data[v.start])))
 	}
+
 	return readi32(v.data[v.offset : v.offset+4])
 }
 
@@ -843,6 +986,7 @@ func (v *Value) Int32OK() (int32, bool) {
 	if v == nil || v.offset == 0 || v.data == nil || bsontype.Type(v.data[v.start]) != bsontype.Int32 {
 		return 0, false
 	}
+
 	return v.Int32(), true
 }
 
@@ -852,9 +996,11 @@ func (v *Value) Timestamp() (uint32, uint32) {
 	if v == nil || v.offset == 0 || v.data == nil {
 		panic(bsonerr.UninitializedElement)
 	}
+
 	if bsontype.Type(v.data[v.start]) != bsontype.Timestamp {
-		panic(bsonerr.ElementType{"compact.Element.timestamp", bsontype.Type(v.data[v.start])})
+		panic(bsonerr.NewElementTypeError("compact.Element.timestamp", bsontype.Type(v.data[v.start])))
 	}
+
 	return binary.LittleEndian.Uint32(v.data[v.offset+4 : v.offset+8]), binary.LittleEndian.Uint32(v.data[v.offset : v.offset+4])
 }
 
@@ -864,7 +1010,9 @@ func (v *Value) TimestampOK() (uint32, uint32, bool) {
 	if v == nil || v.offset == 0 || v.data == nil || bsontype.Type(v.data[v.start]) != bsontype.Timestamp {
 		return 0, 0, false
 	}
+
 	t, i := v.Timestamp()
+
 	return t, i, true
 }
 
@@ -874,9 +1022,11 @@ func (v *Value) Int64() int64 {
 	if v == nil || v.offset == 0 || v.data == nil {
 		panic(bsonerr.UninitializedElement)
 	}
+
 	if v.data[v.start] != '\x12' {
-		panic(bsonerr.ElementType{"compact.Element.int64Type", bsontype.Type(v.data[v.start])})
+		panic(bsonerr.NewElementTypeError("compact.Element.int64Type", bsontype.Type(v.data[v.start])))
 	}
+
 	return int64(v.getUint64())
 }
 
@@ -884,6 +1034,9 @@ func (v *Value) getUint64() uint64 {
 	return binary.LittleEndian.Uint64(v.data[v.offset : v.offset+8])
 }
 
+// Int returns a flexible integer value, from an underlying bson value
+// that is either an int32 or an int64. Int() panics if the value is
+// a different type.
 func (v *Value) Int() int {
 	if val, ok := v.Int32OK(); ok {
 		return int(val)
@@ -893,9 +1046,13 @@ func (v *Value) Int() int {
 		return int(val)
 	}
 
-	panic(bsonerr.ElementType{"int", bsontype.Type(v.data[v.start])})
+	panic(bsonerr.NewElementTypeError("int", bsontype.Type(v.data[v.start])))
 }
 
+// IntOK returns a flexible integer value from an underlying bson
+// value that is either an int32 or int64. The second value is false
+// when the underlying type is a different type, or the value is
+// invalid.
 func (v *Value) IntOK() (int, bool) {
 	if v == nil || v.offset == 0 || v.data == nil {
 		return 0, false
@@ -914,6 +1071,7 @@ func (v *Value) Int64OK() (int64, bool) {
 	if v == nil || v.offset == 0 || v.data == nil || bsontype.Type(v.data[v.start]) != bsontype.Int64 {
 		return 0, false
 	}
+
 	return v.Int64(), true
 }
 
@@ -923,12 +1081,14 @@ func (v *Value) Decimal128() decimal.Decimal128 {
 	if v == nil || v.offset == 0 || v.data == nil {
 		panic(bsonerr.UninitializedElement)
 	}
+
 	if v.data[v.start] != '\x13' {
-		panic(bsonerr.ElementType{"compact.Element.Decimal128", bsontype.Type(v.data[v.start])})
+		panic(bsonerr.NewElementTypeError("compact.Element.Decimal128", bsontype.Type(v.data[v.start])))
 	}
-	l := binary.LittleEndian.Uint64(v.data[v.offset : v.offset+8])
-	h := binary.LittleEndian.Uint64(v.data[v.offset+8 : v.offset+16])
-	return decimal.NewDecimal128(h, l)
+
+	return decimal.NewDecimal128(
+		binary.LittleEndian.Uint64(v.data[v.offset:v.offset+8]),
+		binary.LittleEndian.Uint64(v.data[v.offset+8:v.offset+16]))
 }
 
 // Decimal128OK is the same as Decimal128, except that it returns a boolean
@@ -937,6 +1097,7 @@ func (v *Value) Decimal128OK() (decimal.Decimal128, bool) {
 	if v == nil || v.offset == 0 || v.data == nil || bsontype.Type(v.data[v.start]) != bsontype.Decimal128 {
 		return decimal.NewDecimal128(0, 0), false
 	}
+
 	return v.Decimal128(), true
 }
 
@@ -964,6 +1125,7 @@ func (v *Value) Equal(v2 *Value) bool {
 	if err != nil {
 		return false
 	}
+
 	data2, err := v2.docToBytes(t2)
 	if err != nil {
 		return false
@@ -987,10 +1149,12 @@ func (v *Value) docToBytes(t bsontype.Type) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		code, _, ok := readJavaScriptValue(v.data[v.offset+4:])
 		if !ok {
 			return nil, errors.New("invalid code component")
 		}
+
 		return appendCodeWithScope(nil, code, scope), nil
 	default:
 		return v.data[v.offset:], nil

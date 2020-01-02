@@ -80,10 +80,10 @@ import (
 )
 
 const (
-	hourlyTestStatsCollection  = "hourly_test_stats"
-	dailyTestStatsCollection   = "daily_test_stats"
+	HourlyTestStatsCollection  = "hourly_test_stats"
+	DailyTestStatsCollection   = "daily_test_stats"
 	DailyTaskStatsCollection   = "daily_task_stats"
-	dailyStatsStatusCollection = "daily_stats_status"
+	DailyStatsStatusCollection = "daily_stats_status"
 	bulkSize                   = 1000
 	nsInASecond                = time.Second / time.Nanosecond
 )
@@ -186,7 +186,7 @@ func hourlyTestStatsForOldTasksPipeline(projectId string, requester string, star
 	// And the merge the documents with the existing ones.
 	mergePipeline := []bson.M{
 		{"$lookup": bson.M{
-			"from":         hourlyTestStatsCollection,
+			"from":         HourlyTestStatsCollection,
 			"localField":   dbTestStatsIdKey,
 			"foreignField": dbTestStatsIdKey,
 			"as":           "existing",
@@ -1117,7 +1117,7 @@ func makeSum(condition bson.M) bson.M {
 
 func GetDailyTestDoc(id DbTestStatsId) (*dbTestStats, error) {
 	doc := dbTestStats{}
-	err := db.FindOne(dailyTestStatsCollection, bson.M{"_id": id}, db.NoProjection, db.NoSort, &doc)
+	err := db.FindOne(DailyTestStatsCollection, bson.M{"_id": id}, db.NoProjection, db.NoSort, &doc)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -1126,7 +1126,7 @@ func GetDailyTestDoc(id DbTestStatsId) (*dbTestStats, error) {
 
 func GetHourlyTestDoc(id DbTestStatsId) (*dbTestStats, error) {
 	doc := dbTestStats{}
-	err := db.FindOne(hourlyTestStatsCollection, bson.M{"_id": id}, db.NoProjection, db.NoSort, &doc)
+	err := db.FindOne(HourlyTestStatsCollection, bson.M{"_id": id}, db.NoProjection, db.NoSort, &doc)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

@@ -14,8 +14,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/evergreen-ci/birch/bsonerr"
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,7 +34,6 @@ func BenchmarkReaderValidate(b *testing.B) {
 		rdr[250], rdr[251], rdr[252], rdr[253], rdr[254] = '\x05', '\x00', '\x00', '\x00', '\x00'
 		_, _ = rdr[250:].Validate()
 	}
-
 }
 
 func TestReader(t *testing.T) {
@@ -541,9 +540,11 @@ func readerElementEqual(e1, e2 *Element) bool {
 	if e1.value.start != e2.value.start {
 		return false
 	}
+
 	if e1.value.offset != e2.value.offset {
 		return false
 	}
+
 	return true
 }
 
@@ -552,10 +553,12 @@ func readerElementComparer(e1, e2 *Element) bool {
 	if err != nil {
 		return false
 	}
+
 	b2, err := e2.MarshalBSON()
 	if err != nil {
 		return false
 	}
+
 	if !bytes.Equal(b1, b2) {
 		return false
 	}
@@ -564,5 +567,5 @@ func readerElementComparer(e1, e2 *Element) bool {
 }
 
 func fromElement(e *Element) *Element {
-	return (*Element)(e)
+	return e
 }

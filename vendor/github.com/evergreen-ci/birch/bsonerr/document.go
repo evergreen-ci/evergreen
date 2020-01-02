@@ -34,9 +34,8 @@ var InvalidDocumentType = errors.New("invalid document type")
 // InvalidDepthTraversal indicates that a provided path of keys to a nested value in a document
 // does not exist.
 //
-// TODO(skriptble): This error message is pretty awful.
 // Please fix.
-var InvalidDepthTraversal = errors.New("invalid depth traversal")
+var InvalidDepthTraversal = errors.New("invalid depth traversal for key path")
 
 // ElementNotFound indicates that an Element matching a certain condition does not exist.
 var ElementNotFound = errors.New("element not found")

@@ -21,8 +21,8 @@ variables:
         type: system
         params:
           optional: true
-          aws_key: ${aws_key}
-          aws_secret: ${aws_secret}
+          aws_key: ${aws_s3_key}
+          aws_secret: ${aws_s3_secret}
           local_file: gopath/src/github.com/evergreen-ci/pail/build/${task_name}.tar.gz
           remote_file: pail/${build_id}-${build_variant}/pail-${task_name}-${revision}.tar.gz
           bucket: mciuploads
@@ -55,6 +55,7 @@ functions:
       silent: true
       working_dir: gopath/src/github.com/evergreen-ci/pail
       env:
+        WORK_DIR: ${workdir}
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}
       command: bash scripts/setup-credentials.sh
@@ -70,8 +71,10 @@ functions:
         DISABLE_COVERAGE: ${disable_coverage}
         GOROOT: ${goroot}
         GOPATH: ${workdir}/gopath
+        USERPROFILE: ${workdir}
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}
+        RACE_DETECTOR: ${race_detector}
   set-up-mongodb:
     - command: subprocess.exec
       type: setup
@@ -102,8 +105,9 @@ post:
     params:
       files:
         - "gopath/src/github.com/evergreen-ci/pail/build/output.*"
-        - "gopath/src/github.com/evergreen-ci/pail/build/test.*.out"
-        - "gopath/src/github.com/evergreen-ci/pail/build/race.*.out"
+        - "gopath/src/github.com/evergreen-ci/pail/build/test.out"
+        - "gopath/src/github.com/evergreen-ci/pail/build/race.out"
+        - "gopath/src/github.com/evergreen-ci/pail/build/cover*"
   - command: subprocess.exec
     type: setup
     params:
@@ -111,9 +115,9 @@ post:
   - command: s3.put
     type: system
     params:
-      aws_key: ${aws_key}
-      aws_secret: ${aws_secret}
-      local_files_include_filter: ["gopath/src/github.com/evergreen-ci/pail/build/output.*.coverage.html"]
+      aws_key: ${aws_s3_key}
+      aws_secret: ${aws_s3_secret}
+      local_files_include_filter: ["gopath/src/github.com/evergreen-ci/pail/build/cover.html"]
       remote_file: pail/${task_id}/
       bucket: mciuploads
       content_type: text/html
@@ -122,9 +126,9 @@ post:
   - command: s3.put
     type: system
     params:
-      aws_key: ${aws_key}
-      aws_secret: ${aws_secret}
-      local_files_include_filter: ["gopath/src/github.com/evergreen-ci/pail/build/output.*.coverage"]
+      aws_key: ${aws_s3_key}
+      aws_secret: ${aws_s3_secret}
+      local_files_include_filter: ["gopath/src/github.com/evergreen-ci/pail/build/cover.out"]
       remote_file: pail/${task_id}/
       bucket: mciuploads
       content_type: text/plain
@@ -172,34 +176,48 @@ buildvariants:
   - name: race-detector
     display_name: Race Detector (Arch Linux)
     expansions:
+      disable_coverage: true
+      goroot: /opt/golang/go1.13/bin/go
+      gobin: /opt/golang/go1.13
       mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.1.tgz
+      race_detector: true
     run_on:
       - archlinux-test
     tasks:
       - name: ".race"
+
+  - name: coverage
+    display_name: Coverage (Arch Linux)
+    expansions:
+      gobin: /opt/golang/go1.13/bin/go
+      goroot: /opt/golang/go1.13
+      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.1.tgz
+    run_on:
+      - archlinux-test
+    tasks:
       - name: ".report"
 
   - name: ubuntu1604
     display_name: Ubuntu 16.04
     expansions:
-      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.1.tgz
-      goroot: /opt/go1.8/go
-      gobin: /opt/go1.8/go/bin/go
       disable_coverage: true
+      gobin: /opt/golang/go1.9/bin/go
+      goroot: /opt/golang/go1.9
+      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.1.tgz
     run_on:
       - ubuntu1604-test
     tasks:
       - name: ".test"
 
   - name: macos
-    display_name: macOS 10.12
+    display_name: macOS 10.14
     expansions:
-      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.1.tgz
-      goroot: /usr/local/go1.8/go
-      gobin: /usr/local/go1.8/go/bin/go
       disable_coverage: true
+      gobin: /opt/golang/go1.9/bin/go
+      goroot: /opt/golang/go1.9
+      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.1.tgz
     run_on:
-      - macos-1012
+      - macos-1014
     tasks:
       - name: ".test"
 
@@ -208,11 +226,9 @@ buildvariants:
     run_on:
       - windows-64-vs2015-small
     expansions:
-      mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-4.0.1.zip
-      goroot: c:/go1.8/go
-      gobin: /cygdrive/c/go1.8/go/bin/go
       disable_coverage: true
-      extension: ".exe"
-      archiveExt: ".zip"
+      gobin: /cygdrive/c/golang/go1.9/bin/go
+      goroot: c:/golang/go1.9
+      mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-4.0.1.zip
     tasks:
       - name: ".test"

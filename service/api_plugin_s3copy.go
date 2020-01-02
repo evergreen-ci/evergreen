@@ -89,7 +89,7 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 		Credentials: pail.CreateAWSCredentials(s3CopyReq.AwsKey, s3CopyReq.AwsSecret, ""),
 		Region:      region,
 		Name:        s3CopyReq.S3SourceBucket,
-		Permission:  s3CopyReq.S3Permissions,
+		Permissions: pail.S3Permissions(s3CopyReq.S3Permissions),
 	}
 	srcBucket, err := pail.NewS3MultiPartBucket(srcOpts)
 	if err != nil {
@@ -99,7 +99,7 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 		Credentials: pail.CreateAWSCredentials(s3CopyReq.AwsKey, s3CopyReq.AwsSecret, ""),
 		Region:      region,
 		Name:        s3CopyReq.S3DestinationBucket,
-		Permission:  s3CopyReq.S3Permissions,
+		Permissions: pail.S3Permissions(s3CopyReq.S3Permissions),
 	}
 	destBucket, err := pail.NewS3MultiPartBucket(destOpts)
 	if err != nil {

@@ -1131,7 +1131,7 @@ func PopulateLocalQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 
 		if flags.BackgroundStatsDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "system stats ",
+				"message": "system stats",
 				"impact":  "memory, cpu, runtime stats",
 				"mode":    "degraded",
 			})

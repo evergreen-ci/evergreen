@@ -38,9 +38,9 @@ func TestStatsSuite(t *testing.T) {
 
 func (s *statsSuite) SetupTest() {
 	collectionsToClear := []string{
-		hourlyTestStatsCollection,
-		dailyTestStatsCollection,
-		dailyStatsStatusCollection,
+		HourlyTestStatsCollection,
+		DailyTestStatsCollection,
+		DailyStatsStatusCollection,
 		DailyTaskStatsCollection,
 		task.Collection,
 		task.OldCollection,
@@ -615,7 +615,7 @@ func (s *statsSuite) initHourly() {
 
 func (s *statsSuite) insertHourlyTestStats(project string, requester string, testFile string, taskName string, variant string, distro string, date time.Time, numPass int, numFail int, avgDuration float64, lastID mgobson.ObjectId) {
 
-	err := db.Insert(hourlyTestStatsCollection, bson.M{
+	err := db.Insert(HourlyTestStatsCollection, bson.M{
 		"_id": DbTestStatsId{
 			Project:      project,
 			Requester:    requester,
@@ -866,11 +866,11 @@ func (s *statsSuite) countDocs(collection string) int {
 }
 
 func (s *statsSuite) countDailyTestDocs() int {
-	return s.countDocs(dailyTestStatsCollection)
+	return s.countDocs(DailyTestStatsCollection)
 }
 
 func (s *statsSuite) countHourlyTestDocs() int {
-	return s.countDocs(hourlyTestStatsCollection)
+	return s.countDocs(HourlyTestStatsCollection)
 }
 
 func (s *statsSuite) countDailyTaskDocs() int {
@@ -926,7 +926,7 @@ func (s *statsSuite) getLastHourlyTestStat(testStatsID DbTestStatsId) (*dbTestSt
 			"$lt":  end,
 		},
 	}
-	err := db.FindAll(hourlyTestStatsCollection, qry, db.NoProjection, []string{"-last_id"}, db.NoSkip, 1, &testResults)
+	err := db.FindAll(HourlyTestStatsCollection, qry, db.NoProjection, []string{"-last_id"}, db.NoSkip, 1, &testResults)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

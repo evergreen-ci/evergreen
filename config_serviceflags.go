@@ -27,6 +27,7 @@ type ServiceFlags struct {
 	CommitQueueDisabled        bool `bson:"commit_queue_disabled" json:"commit_queue_disabled"`
 	PlannerDisabled            bool `bson:"planner_disabled" json:"planner_disabled"`
 	HostAllocatorDisabled      bool `bson:"host_allocator_disabled" json:"host_allocator_disabled"`
+	DRBackupDisabled           bool `bson:"dr_backup_disabled" json:"dr_backup_disabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -91,6 +92,7 @@ func (c *ServiceFlags) Set() error {
 			commitQueueDisabledKey:          c.CommitQueueDisabled,
 			plannerDisabledKey:              c.PlannerDisabled,
 			hostAllocatorDisabledKey:        c.HostAllocatorDisabled,
+			drBackupDisabledKey:             c.DRBackupDisabled,
 		},
 	}, options.Update().SetUpsert(true))
 

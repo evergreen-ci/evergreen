@@ -7,8 +7,9 @@ import (
 )
 
 func readValue(src []byte, t bsontype.Type) ([]byte, []byte, bool) {
-	var length int32
+	length := int32(0)
 	ok := true
+
 	switch t {
 	case bsontype.Array, bsontype.EmbeddedDocument, bsontype.CodeWithScope:
 		length, _, ok = readLength(src)
@@ -39,11 +40,13 @@ func readValue(src []byte, t bsontype.Type) ([]byte, []byte, bool) {
 			ok = false
 			break
 		}
+
 		pattern := bytes.IndexByte(src[regex+1:], 0x00)
 		if pattern < 0 {
 			ok = false
 			break
 		}
+
 		length = int32(int64(regex) + 1 + int64(pattern) + 1)
 	default:
 		ok = false

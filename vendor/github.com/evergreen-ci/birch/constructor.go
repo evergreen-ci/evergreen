@@ -25,7 +25,7 @@ var VC ValueConstructor
 // ElementConstructor is used as a namespace for document element constructor functions.
 type ElementConstructor struct{}
 
-// ValueConstructor is used as a namespace for document element constructor functions.
+// ValueConstructor is used as a namespace for value constructor functions.
 type ValueConstructor struct{}
 
 // Interface will attempt to turn the provided key and value into an Element.
@@ -111,12 +111,10 @@ func (ElementConstructor) Interface(key string, value interface{}) *Element {
 		elem = EC.SubDocument(key, DC.MapTime(t))
 	case map[string]time.Duration:
 		elem = EC.SubDocument(key, DC.MapDuration(t))
+	case map[string]DocumentMarshaler:
+		elem = EC.SubDocument(key, DC.MapDocumentMarshaler(t))
 	case map[string]Marshaler:
-		var doc *Document
-		doc, err = DC.MapMarshalerErr(t)
-		if err == nil {
-			elem = EC.SubDocument(key, doc)
-		}
+		elem = EC.SubDocument(key, DC.MapMarshaler(t))
 	case map[string][]string:
 		elem = EC.SubDocument(key, DC.MapSliceString(t))
 	case map[string][]interface{}:
@@ -135,12 +133,10 @@ func (ElementConstructor) Interface(key string, value interface{}) *Element {
 		elem = EC.SubDocument(key, DC.MapSliceTime(t))
 	case map[string][]time.Duration:
 		elem = EC.SubDocument(key, DC.MapSliceDuration(t))
+	case map[string][]DocumentMarshaler:
+		elem = EC.SubDocument(key, DC.MapSliceDocumentMarshaler(t))
 	case map[string][]Marshaler:
-		var doc *Document
-		doc, err = DC.MapSliceMarshalerErr(t)
-		if err == nil {
-			elem = EC.SubDocument(key, doc)
-		}
+		elem = EC.SubDocument(key, DC.MapSliceMarshaler(t))
 	case map[interface{}]interface{}:
 		elem = EC.SubDocument(key, DC.Interface(t))
 	case []interface{}:
@@ -161,6 +157,8 @@ func (ElementConstructor) Interface(key string, value interface{}) *Element {
 		elem = EC.SliceTime(key, t)
 	case []time.Duration:
 		elem = EC.SliceDuration(key, t)
+	case []DocumentMarshaler:
+		elem, err = EC.SliceDocumentMarshalerErr(key, t)
 	case []Marshaler:
 		elem, err = EC.SliceMarshalerErr(key, t)
 	case []*Element:
@@ -175,10 +173,13 @@ func (ElementConstructor) Interface(key string, value interface{}) *Element {
 		}
 	case Reader:
 		var doc *Document
+
 		doc, err = DC.ReaderErr(t)
 		if err == nil {
 			elem = EC.SubDocument(key, doc)
 		}
+	case DocumentMarshaler:
+		elem, err = EC.DocumentMarshalerErr(key, t)
 	case Marshaler:
 		elem, err = EC.MarshalerErr(key, t)
 	default:
@@ -214,34 +215,24 @@ func (ElementConstructor) InterfaceErr(key string, value interface{}) (*Element,
 		default:
 			return EC.Int64(key, int64(t)), nil
 		}
-	case bool, int8, int16, int32, int, int64, uint8, uint16, uint32, string, float32, float64,
-		*Element, *Document, Reader, types.Timestamp,
-		time.Time:
-
+	case bool, int8, int16, int32, int, int64, uint8, uint16, uint32, string, float32, float64, *Element, *Document, Reader, types.Timestamp, time.Time:
 		return EC.Interface(key, t), nil
-
-	case map[string]string, map[string]float32, map[string]float64,
-		map[string]int32, map[string]int64, map[string]int,
-		map[string]time.Time, map[string]time.Duration:
-
+	case map[string]string, map[string]float32, map[string]float64, map[string]int32, map[string]int64, map[string]int, map[string]time.Time, map[string]time.Duration:
 		return EC.Interface(key, t), nil
-
-	case map[string]interface{}, map[interface{}]interface{}, map[string]Marshaler:
-
-		return EC.InterfaceErr(key, t)
-
-	case map[string][]string, map[string][]int32, map[string][]int64, map[string][]int,
-		map[string][]time.Time, map[string][]time.Duration, map[string][]float32, map[string][]float64:
-
+	case map[string][]string, map[string][]int32, map[string][]int64, map[string][]int, map[string][]time.Time, map[string][]time.Duration, map[string][]float32, map[string][]float64:
 		return EC.Interface(key, value), nil
 	case []string, []int32, []int64, []int, []time.Time, []time.Duration, []float64, []float32:
 		return EC.Interface(key, value), nil
-	case map[string][]interface{}, map[string][]Marshaler:
+	case map[string]interface{}, map[interface{}]interface{}, map[string]Marshaler, map[string]DocumentMarshaler:
+		return EC.InterfaceErr(key, t)
+	case map[string][]interface{}, map[string][]Marshaler, map[string][]DocumentMarshaler:
 		return EC.InterfaceErr(key, value)
-	case []interface{}, []Marshaler:
+	case []interface{}, []Marshaler, []DocumentMarshaler:
 		return EC.InterfaceErr(key, value)
 	case *Value:
 		return EC.ValueErr(key, t)
+	case DocumentMarshaler:
+		return EC.DocumentMarshalerErr(key, t)
 	case Marshaler:
 		return EC.MarshalerErr(key, t)
 	default:
@@ -253,12 +244,13 @@ func (ElementConstructor) InterfaceErr(key string, value interface{}) (*Element,
 func (ElementConstructor) Double(key string, f float64) *Element {
 	b := make([]byte, 1+len(key)+1+8)
 	elem := newElement(0, 1+uint32(len(key))+1)
-	_, err := elements.Double.Element(0, b, key, f)
-	if err != nil {
+
+	if _, err := elements.Double.Element(0, b, key, f); err != nil {
 		panic(err)
 	}
 
 	elem.value.data = b
+
 	return elem
 }
 
@@ -267,11 +259,13 @@ func (ElementConstructor) String(key string, val string) *Element {
 	size := uint32(1 + len(key) + 1 + 4 + len(val) + 1)
 	b := make([]byte, size)
 	elem := newElement(0, 1+uint32(len(key))+1)
-	_, err := elements.String.Element(0, b, key, val)
-	if err != nil {
+
+	if _, err := elements.String.Element(0, b, key, val); err != nil {
 		panic(err)
 	}
+
 	elem.value.data = b
+
 	return elem
 }
 
@@ -280,16 +274,18 @@ func (ElementConstructor) SubDocument(key string, d *Document) *Element {
 	size := uint32(1 + len(key) + 1)
 	b := make([]byte, size)
 	elem := newElement(0, size)
-	_, err := elements.Byte.Encode(0, b, '\x03')
-	if err != nil {
+
+	if _, err := elements.Byte.Encode(0, b, '\x03'); err != nil {
 		panic(err)
 	}
-	_, err = elements.CString.Encode(1, b, key)
-	if err != nil {
+
+	if _, err := elements.CString.Encode(1, b, key); err != nil {
 		panic(err)
 	}
+
 	elem.value.data = b
 	elem.value.d = d
+
 	return elem
 }
 
@@ -298,18 +294,20 @@ func (ElementConstructor) SubDocumentFromReader(key string, r Reader) *Element {
 	size := uint32(1 + len(key) + 1 + len(r))
 	b := make([]byte, size)
 	elem := newElement(0, uint32(1+len(key)+1))
-	_, err := elements.Byte.Encode(0, b, '\x03')
-	if err != nil {
+
+	if _, err := elements.Byte.Encode(0, b, '\x03'); err != nil {
 		panic(err)
 	}
-	_, err = elements.CString.Encode(1, b, key)
-	if err != nil {
+
+	if _, err := elements.CString.Encode(1, b, key); err != nil {
 		panic(err)
 	}
+
 	// NOTE: We don't validate the Reader here since we don't validate the
 	// Document when provided to SubDocument.
 	copy(b[1+len(key)+1:], r)
 	elem.value.data = b
+
 	return elem
 }
 
@@ -324,16 +322,18 @@ func (ElementConstructor) Array(key string, a *Array) *Element {
 	size := uint32(1 + len(key) + 1)
 	b := make([]byte, size)
 	elem := newElement(0, size)
-	_, err := elements.Byte.Encode(0, b, '\x04')
-	if err != nil {
+
+	if _, err := elements.Byte.Encode(0, b, '\x04'); err != nil {
 		panic(err)
 	}
-	_, err = elements.CString.Encode(1, b, key)
-	if err != nil {
+
+	if _, err := elements.CString.Encode(1, b, key); err != nil {
 		panic(err)
 	}
+
 	elem.value.data = b
 	elem.value.d = a.doc
+
 	return elem
 }
 
@@ -358,12 +358,13 @@ func (ElementConstructor) BinaryWithSubtype(key string, b []byte, btype byte) *E
 
 	buf := make([]byte, size)
 	elem := newElement(0, 1+uint32(len(key))+1)
-	_, err := elements.Binary.Element(0, buf, key, b, btype)
-	if err != nil {
+
+	if _, err := elements.Binary.Element(0, buf, key, b, btype); err != nil {
 		panic(err)
 	}
 
 	elem.value.data = buf
+
 	return elem
 }
 
@@ -372,15 +373,17 @@ func (ElementConstructor) Undefined(key string) *Element {
 	size := 1 + uint32(len(key)) + 1
 	b := make([]byte, size)
 	elem := newElement(0, size)
-	_, err := elements.Byte.Encode(0, b, '\x06')
-	if err != nil {
+
+	if _, err := elements.Byte.Encode(0, b, '\x06'); err != nil {
 		panic(err)
 	}
-	_, err = elements.CString.Encode(1, b, key)
-	if err != nil {
+
+	if _, err := elements.CString.Encode(1, b, key); err != nil {
 		panic(err)
 	}
+
 	elem.value.data = b
+
 	return elem
 }
 
@@ -390,8 +393,7 @@ func (ElementConstructor) ObjectID(key string, oid types.ObjectID) *Element {
 	elem := newElement(0, 1+uint32(len(key))+1)
 	elem.value.data = make([]byte, size)
 
-	_, err := elements.ObjectID.Element(0, elem.value.data, key, oid)
-	if err != nil {
+	if _, err := elements.ObjectID.Element(0, elem.value.data, key, oid); err != nil {
 		panic(err)
 	}
 
@@ -404,8 +406,7 @@ func (ElementConstructor) Boolean(key string, b bool) *Element {
 	elem := newElement(0, 1+uint32(len(key))+1)
 	elem.value.data = make([]byte, size)
 
-	_, err := elements.Boolean.Element(0, elem.value.data, key, b)
-	if err != nil {
+	if _, err := elements.Boolean.Element(0, elem.value.data, key, b); err != nil {
 		panic(err)
 	}
 
@@ -419,8 +420,7 @@ func (ElementConstructor) DateTime(key string, dt int64) *Element {
 	elem := newElement(0, 1+uint32(len(key))+1)
 	elem.value.data = make([]byte, size)
 
-	_, err := elements.DateTime.Element(0, elem.value.data, key, dt)
-	if err != nil {
+	if _, err := elements.DateTime.Element(0, elem.value.data, key, dt); err != nil {
 		panic(err)
 	}
 
@@ -438,15 +438,17 @@ func (ElementConstructor) Null(key string) *Element {
 	size := uint32(1 + len(key) + 1)
 	b := make([]byte, size)
 	elem := newElement(0, uint32(1+len(key)+1))
-	_, err := elements.Byte.Encode(0, b, '\x0A')
-	if err != nil {
+
+	if _, err := elements.Byte.Encode(0, b, '\x0A'); err != nil {
 		panic(err)
 	}
-	_, err = elements.CString.Encode(1, b, key)
-	if err != nil {
+
+	if _, err := elements.CString.Encode(1, b, key); err != nil {
 		panic(err)
 	}
+
 	elem.value.data = b
+
 	return elem
 }
 
@@ -635,6 +637,8 @@ func (ElementConstructor) Value(key string, value *Value) *Element {
 	return convertValueToElem(key, value)
 }
 
+// ValueErr constructs an element using the specified value, but
+// returns an error if the value is nil or otherwise invalid.
 func (ElementConstructor) ValueErr(key string, value *Value) (*Element, error) {
 	elem := EC.Value(key, value)
 	if elem == nil {

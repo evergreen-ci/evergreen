@@ -309,7 +309,7 @@ func WriteGridFile(fsPrefix, name string, source io.Reader) error {
 	defer cancel()
 	bucket, err := pail.NewGridFSBucketWithClient(ctx, env.Client(), pail.GridFSOptions{
 		Database: env.DB().Name(),
-		Prefix:   fsPrefix,
+		Name:     fsPrefix,
 	})
 
 	if err != nil {
@@ -325,7 +325,7 @@ func GetGridFile(fsPrefix, name string) (io.ReadCloser, error) {
 	defer cancel()
 	bucket, err := pail.NewGridFSBucketWithClient(ctx, env.Client(), pail.GridFSOptions{
 		Database: env.DB().Name(),
-		Prefix:   fsPrefix,
+		Name:     fsPrefix,
 	})
 
 	if err != nil {
