@@ -18,6 +18,10 @@ type BackupConfig struct {
 func (c *BackupConfig) SectionId() string         { return "backup" }
 func (c *BackupConfig) ValidateAndDefault() error { return nil }
 
+func (c *BackupConfig) Populated() bool {
+	return c.BucketName != "" && c.Prefix != ""
+}
+
 func (c *BackupConfig) Set() error {
 	env := GetEnvironment()
 	ctx, cancel := env.Context()

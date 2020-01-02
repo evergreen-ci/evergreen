@@ -31,11 +31,14 @@ func AddBackupJobs(ctx context.Context, env evergreen.Environment, ts time.Time)
 		return errors.WithStack(err)
 	}
 
-	if flags.DRBackupDisabled {
+	settings := env.Settings()
+
+	if flags.DRBackupDisabled || !settings.Backup.Populated() {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-			"message": "disaster recovery backups disabled",
-			"impact":  "backup jobs not dispatched",
-			"mode":    "degraded",
+			"message":   "disaster recovery backups disabled or not configured",
+			"impact":    "backup jobs not dispatched",
+			"mode":      "disabled",
+			"populated": settings.Backup.Populated(),
 		})
 		return nil
 	}
@@ -45,11 +48,10 @@ func AddBackupJobs(ctx context.Context, env evergreen.Environment, ts time.Time)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	settings := env.Settings()
 
 	collections := appendAmboyCollections(settings.Amboy, []backup.Options{})
 	collections = appendFullBackupCollections(settings.Database.DB, collections)
-	collections = appendInexOnlyBackupCollections(settings.Database.DB, collections)
+	collections = appendIndexOnlyBackupCollections(settings.Database.DB, collections)
 
 	catcher := grip.NewBasicCatcher()
 	for _, opt := range collections {
@@ -59,7 +61,7 @@ func AddBackupJobs(ctx context.Context, env evergreen.Environment, ts time.Time)
 	return catcher.Resolve()
 }
 
-func appendInexOnlyBackupCollections(dbName string, in []backup.Options) []backup.Options {
+func appendIndexOnlyBackupCollections(dbName string, in []backup.Options) []backup.Options {
 	for _, coll := range []string{
 		task.OldCollection,
 		stats.HourlyTestStatsCollection,
