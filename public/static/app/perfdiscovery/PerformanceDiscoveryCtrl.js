@@ -113,7 +113,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function (
     };
   };
 
-  function loadCompOptions(fromVersion, toVersion, expandedCurrent, expandedBaseline, expandedTrend) {
+  function loadCompOptions(fromVersion, toVersion, expandedCurrent, expandedBaseline, expandedTrend, metricName) {
     // Set loading flag to display spinner
     vm.isLoading = true;
 
@@ -136,12 +136,17 @@ mciModule.controller('PerformanceDiscoveryCtrl', function (
       // Load perf data
       .then(function (promise) {
         return dataUtil.getData(
-          promise.fromVersionObj, promise.toVersionObj, expandedCurrent, expandedBaseline, expandedTrend
+          promise.fromVersionObj, promise.toVersionObj, expandedCurrent, expandedBaseline, expandedTrend, metricName
         );
       })
       // Apply perf data
       .then(function (res) {
         vm.gridOptions.data = res
+        let metrics = [];
+        _.each(res, (test) => {
+          metrics = metrics.concat(test.all_metrics)
+        });
+        vm.all_metrics = _.uniq(metrics).sort();
         // Apply options data to filter drop downs
         gridUtil.applyMultiselectOptions(
           res,
@@ -234,74 +239,16 @@ mciModule.controller('PerformanceDiscoveryCtrl', function (
 
     // Display no data while loading is in progress
     vm.gridOptions.data = []
+    updateColumnDefs(vm.gridApi.grid);
     expandedCurrent = vm.expandedOptions && vm.expandedOptions.includes("current");
     expandedBaseline = vm.expandedOptions && vm.expandedOptions.includes("baseline");
     expandedHistory = vm.expandedOptions && vm.expandedOptions.includes("history");
 
-    loadCompOptions(fromVersion, toVersion, expandedCurrent, expandedBaseline, expandedHistory);
+    loadCompOptions(fromVersion, toVersion, expandedCurrent, expandedBaseline, expandedHistory, vm.metric_name);
   }
 
-  function updateChartContext(grid) {
-    // Update context chart data for given rendered rows
-    // sets [min, max] list to the scope for visible rows
-    vm.refCtx = d3.extent(
-      _.reduce(grid.renderContainers.body.renderedRows, function (m, d) {
-        return m.concat([
-          Math.log(d.entity.avgVsSelf[0]),
-          Math.log(d.entity.avgVsSelf[1])
-        ])
-      }, [])
-    )
-  }
-
-  // Returns a predefined URL for given `row` and `col`
-  // Works with build abd task columns only
-  vm.getCellUrl = function (row, col) {
-    return row.entity[{
-      build: 'buildURL',
-      task: 'taskURL',
-    } [col.field]]
-  }
-
-  vm.gridOptions = {
-    enableFiltering: true,
-    enableGridMenu: true,
-    onRegisterApi: function (gridApi) {
-      vm.gridApi = gridApi
-      grid = gridApi.grid;
-
-      // Using _.once, because this behavior is required on init only
-      gridApi.core.on.rowsRendered($scope, function () {
-        // For some reason, calback being called before
-        // the changes were applied to grid
-        // Timeout forces underlying code to be executed at the end
-        $timeout(
-          _.bind(updateChartContext, null, grid) // When rendered, update charts context
-        )
-      })
-
-      gridApi.core.on.rowsRendered($scope, _.once(function () { // Do once
-        stateUtil.applyStateToGrid(state, grid)
-        // Set handlers after grid initialized
-        gridApi.core.on.sortChanged(
-          $scope, stateUtil.onSortChanged(state)
-        )
-        gridApi.core.on.filterChanged(
-          $scope, stateUtil.onFilteringChanged(state, grid)
-        )
-      }))
-
-      // Adding grid to $scope to create a watcher
-      $scope.grid = grid
-      // This triggers on vertical scroll
-      $scope.$watch(
-        'grid.renderContainers.body.currentTopRow',
-        function () {
-          updateChartContext(grid)
-        }
-      )
-    },
-    columnDefs: [{
+  function updateColumnDefs(grid) {
+    vm.gridOptions.columnDefs = [{
         name: 'Tickets',
         field: 'buildFailures',
         cellTemplate: 'perf-discovery-bfs',
@@ -370,7 +317,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function (
         enableFiltering: false,
       },
       {
-        name: 'ops/sec',
+        name: vm.metric_name ? vm.metric_name : 'ops/sec',
         field: 'speed',
         type: 'number',
         cellFilter: 'number:2',
@@ -393,4 +340,67 @@ mciModule.controller('PerformanceDiscoveryCtrl', function (
       },
     ]
   }
+
+  function updateChartContext(grid) {
+    // Update context chart data for given rendered rows
+    // sets [min, max] list to the scope for visible rows
+    vm.refCtx = d3.extent(
+      _.reduce(grid.renderContainers.body.renderedRows, function (m, d) {
+        return m.concat([
+          Math.log(d.entity.avgVsSelf[0]),
+          Math.log(d.entity.avgVsSelf[1])
+        ])
+      }, [])
+    )
+  }
+
+  // Returns a predefined URL for given `row` and `col`
+  // Works with build abd task columns only
+  vm.getCellUrl = function (row, col) {
+    return row.entity[{
+      build: 'buildURL',
+      task: 'taskURL',
+    } [col.field]]
+  }
+
+  vm.gridOptions = {
+    enableFiltering: true,
+    enableGridMenu: true,
+    onRegisterApi: function (gridApi) {
+      vm.gridApi = gridApi
+      grid = gridApi.grid;
+
+      // Using _.once, because this behavior is required on init only
+      gridApi.core.on.rowsRendered($scope, function () {
+        // For some reason, calback being called before
+        // the changes were applied to grid
+        // Timeout forces underlying code to be executed at the end
+        $timeout(
+          _.bind(updateChartContext, null, grid) // When rendered, update charts context
+        )
+      })
+
+      gridApi.core.on.rowsRendered($scope, _.once(function () { // Do once
+        stateUtil.applyStateToGrid(state, grid)
+        // Set handlers after grid initialized
+        gridApi.core.on.sortChanged(
+          $scope, stateUtil.onSortChanged(state)
+        )
+        gridApi.core.on.filterChanged(
+          $scope, stateUtil.onFilteringChanged(state, grid)
+        )
+      }))
+
+      // Adding grid to $scope to create a watcher
+      $scope.grid = grid
+      // This triggers on vertical scroll
+      $scope.$watch(
+        'grid.renderContainers.body.currentTopRow',
+        function () {
+          updateChartContext(grid)
+        }
+      )
+    }
+  }
+  updateColumnDefs(grid);
 });

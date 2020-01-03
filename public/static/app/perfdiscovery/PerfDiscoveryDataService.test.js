@@ -115,6 +115,7 @@ describe('PerfDiscoveryDataServiceTest', function () {
       receiver
     ).toEqual({
       'b-wt-t-name-8': {
+        all_metrics: ['ops_per_sec'],
         build: 'b',
         buildId: 'bid',
         buildVariant: 'bv',
@@ -128,6 +129,7 @@ describe('PerfDiscoveryDataServiceTest', function () {
         speed: 100,
       },
       'b-wt-t-name-16': {
+        all_metrics: ['ops_per_sec'],
         build: 'b',
         buildId: 'bid',
         buildVariant: 'bv',
@@ -189,7 +191,7 @@ describe('PerfDiscoveryDataServiceTest', function () {
       }
     }];
 
-    const processed = service._onProcessData(data);
+    const processed = service._onProcessData()(data);
 
     expect(
       _.keys(processed.now).length
@@ -220,7 +222,7 @@ describe('PerfDiscoveryDataServiceTest', function () {
     }];
 
     expect(
-      service._onProcessData(data)
+      service._onProcessData()(data)
     ).toEqual({
       now: {},
       baseline: {},
@@ -232,7 +234,7 @@ describe('PerfDiscoveryDataServiceTest', function () {
     const data = [null];
 
     expect(
-      service._onProcessData(data)
+      service._onProcessData()(data)
     ).toEqual({
       now: {},
       baseline: {},
@@ -466,5 +468,17 @@ describe('PerfDiscoveryDataServiceTest', function () {
       id: sysPerfIdLong,
       name: sysPerfIdLong
     });
+  })
+
+  it("extracts metric names correctly", () => {
+    const testData = {
+      "95th_read_latency_us": 8410,
+      "95th_read_latency_us_values": [8410],
+      "average_read_latency_us": 100232.63822741479,
+      "average_read_latency_us_values": [100232.63822741479],
+      "ops_per_sec": 549.8739561462517,
+      "ops_per_sec_values": [549.8739561462517]
+    }
+    expect(service._getAllMetrics(testData)).toEqual(["95th_read_latency_us", "average_read_latency_us", "ops_per_sec"]);
   })
 });
