@@ -2,7 +2,6 @@ package units
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -259,14 +258,12 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.NoError(err)
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
-	fmt.Println("Make job")
 	j := s.makeJobAndPatch(intent)
 
 	patchDoc, err := patch.FindOne(patch.ById(j.PatchID))
 	s.NoError(err)
 	s.Require().NotNil(patchDoc)
 
-	fmt.Println("Verify")
 	s.verifyPatchDoc(patchDoc, j.PatchID)
 
 	s.NotZero(patchDoc.CreateTime)

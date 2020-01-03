@@ -382,7 +382,14 @@ func getPatchSummaries(patchDoc *patch.Patch) ([]patch.Summary, error) {
 			}))
 			return nil, errors.Wrap(err, "error parsing formatted patch")
 		}
-	} else {
+		// TODO: in the future this should just error
+		// refresh reader to try again in the case of an old commit queue item
+		reader, err = db.GetGridFile(patch.GridFSPrefix, patchDoc.Patches[0].PatchSet.PatchFileId)
+		if err != nil {
+			return nil, errors.Wrap(err, "error getting patch file")
+		}
+	}
+	if len(patchBytes) == 0 {
 		patchBytes, err = ioutil.ReadAll(reader)
 		if err != nil {
 			return nil, errors.Wrap(err, "error parsing patch")
