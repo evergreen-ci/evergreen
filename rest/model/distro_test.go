@@ -23,6 +23,7 @@ func TestDistroBuildFromService(t *testing.T) {
 			ServiceUser:           "service_user",
 			ShellPath:             "/shell_path",
 		},
+		Note: "note1",
 	}
 	apiDistro := &APIDistro{}
 	err := apiDistro.BuildFromService(d)
@@ -35,6 +36,7 @@ func TestDistroBuildFromService(t *testing.T) {
 	assert.Equal(t, d.BootstrapSettings.JasperCredentialsPath, FromAPIString(apiDistro.BootstrapSettings.JasperCredentialsPath))
 	assert.Equal(t, d.BootstrapSettings.ServiceUser, FromAPIString(apiDistro.BootstrapSettings.ServiceUser))
 	assert.Equal(t, d.BootstrapSettings.ShellPath, FromAPIString(apiDistro.BootstrapSettings.ShellPath))
+	assert.Equal(t, d.Note, FromAPIString(apiDistro.Note))
 }
 
 func TestDistroBuildFromServiceDefaults(t *testing.T) {
@@ -70,6 +72,7 @@ func TestDistroToService(t *testing.T) {
 				VirtualMemoryKB: 4,
 			},
 		},
+		Note: ToAPIString("note1"),
 	}
 
 	res, err := apiDistro.ToService()
@@ -91,6 +94,7 @@ func TestDistroToService(t *testing.T) {
 	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.NumProcesses, d.BootstrapSettings.ResourceLimits.NumProcesses)
 	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.LockedMemoryKB, d.BootstrapSettings.ResourceLimits.LockedMemoryKB)
 	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.VirtualMemoryKB, d.BootstrapSettings.ResourceLimits.VirtualMemoryKB)
+	assert.Equal(t, apiDistro.Note, ToAPIString(d.Note))
 }
 
 func TestDistroToServiceDefaults(t *testing.T) {
