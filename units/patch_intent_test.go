@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -20,9 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip/send"
-	"github.com/sam-falvo/mbox"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -260,13 +259,14 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.NoError(err)
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
-
+	fmt.Println("Make job")
 	j := s.makeJobAndPatch(intent)
 
 	patchDoc, err := patch.FindOne(patch.ById(j.PatchID))
 	s.NoError(err)
 	s.Require().NotNil(patchDoc)
 
+	fmt.Println("Verify")
 	s.verifyPatchDoc(patchDoc, j.PatchID)
 
 	s.NotZero(patchDoc.CreateTime)
@@ -582,10 +582,7 @@ index ce0542e91..718dd8099 100644
 	reader := ioutil.NopCloser(strings.NewReader(patchData))
 	defer assert.NoError(t, reader.Close())
 
-	m, err := mbox.CreateMboxStream(reader)
-	assert.NoError(t, err)
-	require.NotNil(t, m)
-	res, err := handleFormattedPatch(m)
+	res, err := handleFormattedPatch(reader)
 	assert.NoError(t, err)
 	fullPatch := string(res)
 	assert.Equal(t, 1, strings.Count(fullPatch, "From ")) // from the print statement

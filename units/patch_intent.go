@@ -351,17 +351,28 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 			patchDoc.Githash, projectRef.Identifier)
 	}
 
-	var reader io.ReadCloser
-	reader, err = db.GetGridFile(patch.GridFSPrefix, patchDoc.Patches[0].PatchSet.PatchFileId)
+	summaries, err := getPatchSummaries(patchDoc)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error getting patch summary")
 	}
 
+	patchDoc.Patches[0].ModuleName = ""
+	patchDoc.Patches[0].PatchSet.Summary = summaries
+
+	return nil
+}
+
+func getPatchSummaries(patchDoc *patch.Patch) ([]patch.Summary, error) {
+	var reader io.ReadCloser
+	reader, err := db.GetGridFile(patch.GridFSPrefix, patchDoc.Patches[0].PatchSet.PatchFileId)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting patch file")
+	}
 	defer reader.Close()
 	var patchBytes []byte
-	// if mbox format, squash body to make summary
-	if stream, err := mbox.CreateMboxStream(reader); err == nil {
-		patchBytes, err = handleFormattedPatch(stream)
+	// if commit queue then mbox format, squash body to make summary
+	if patchDoc.Alias == evergreen.CommitQueueAlias {
+		patchBytes, err = handleFormattedPatch(reader)
 		if err != nil {
 			grip.Debug(message.WrapError(err, message.Fields{
 				"ticket": "problem parsing mbox",
@@ -369,28 +380,24 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 				"desc":   patchDoc.Description,
 				"alias":  patchDoc.Alias,
 			}))
-			return errors.Wrap(err, "error parsing formatted patch")
+			return nil, errors.Wrap(err, "error parsing formatted patch")
 		}
 	} else {
 		patchBytes, err = ioutil.ReadAll(reader)
 		if err != nil {
-			return errors.Wrap(err, "error parsing patch")
+			return nil, errors.Wrap(err, "error parsing patch")
 		}
 	}
-
-	summaries, err := thirdparty.GetPatchSummaries(string(patchBytes))
-	if err != nil {
-		return err
-	}
-	patchDoc.Patches[0].ModuleName = ""
-	patchDoc.Patches[0].PatchSet.Summary = summaries
-
-	return nil
+	return thirdparty.GetPatchSummaries(string(patchBytes))
 }
 
-func handleFormattedPatch(stream *mbox.MboxStream) ([]byte, error) {
+func handleFormattedPatch(reader io.Reader) ([]byte, error) {
 	var err error
 	var result []byte
+	stream, err := mbox.CreateMboxStream(reader)
+	if err != nil {
+		return nil, errors.Wrap(err, "error creating stream")
+	}
 	if stream == nil {
 		return nil, errors.New("mbox stream is nil")
 	}

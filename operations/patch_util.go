@@ -358,6 +358,7 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, err
 // The branch argument is used to determine where to generate the merge base from, and any extra
 // arguments supplied are passed directly in as additional args to git diff.
 func loadGitData(branch string, ref string, format bool, extraArgs ...string) (*localDiff, error) {
+	fmt.Println("Are we even in here")
 	// branch@{upstream} refers to the branch that the branch specified by branchname is set to
 	// build on top of. This allows automatically detecting a branch based on the correct remote,
 	// if the user's repo is a fork, for example.
