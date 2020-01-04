@@ -56,7 +56,14 @@ func (a *Agent) removeTaskDirectory(tc *taskContext) {
 	}
 	grip.Infof("Deleting directory for completed task: %s", tc.taskDirectory)
 
-	err := os.RemoveAll(tc.taskDirectory)
+	// Removing long relative paths hangs on Windows https://github.com/golang/go/issues/36375,
+	// so we have to convert to an absolute path before removing.
+	wd, err := os.Getwd()
+	if err != nil {
+		grip.Critical(errors.Wrap(err, "Problem getting working directory while cleaning up"))
+		return
+	}
+	err = os.RemoveAll(filepath.Join(wd, tc.taskDirectory))
 	grip.Critical(errors.Wrapf(err, "Error removing working directory for the task: %s", tc.taskDirectory))
 	grip.InfoWhenf(err == nil, "Successfully deleted directory for completed task: %s", tc.taskDirectory)
 }
