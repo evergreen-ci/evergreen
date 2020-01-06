@@ -97,7 +97,6 @@ mciModule.controller('PatchController', function($scope, $filter, $window, mciCo
   $scope.deleteFromQueue = function() {
     var successHandler =  function(resp) {
         window.location.reload();
-        notificationService.pushNotification("Item successfully cleared from queue", 'success');
     };
     var errorHandler = function(resp) {
         notificationService.pushNotification('Error deleting from queue: ' + JSON.stringify(resp.data), 'errorHeader');
