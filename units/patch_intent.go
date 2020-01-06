@@ -403,6 +403,9 @@ func handleFormattedPatch(reader io.Reader) ([]byte, error) {
 	var result []byte
 	stream, err := mbox.CreateMboxStream(reader)
 	if err != nil {
+		if err == io.EOF { // empty commit
+			return nil, errors.Errorf("patch has no build variants or tasks")
+		}
 		return nil, errors.Wrap(err, "error creating stream")
 	}
 	if stream == nil {
@@ -419,7 +422,7 @@ func handleFormattedPatch(reader io.Reader) ([]byte, error) {
 		}
 		reader := msg.BodyReader()
 		// iterate through patch body
-		for err == nil {
+		for {
 			buffer := make([]byte, bytes.MinRead)
 			n, err := reader.Read(buffer)
 			if err != nil {

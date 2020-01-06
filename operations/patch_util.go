@@ -358,7 +358,6 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, err
 // The branch argument is used to determine where to generate the merge base from, and any extra
 // arguments supplied are passed directly in as additional args to git diff.
 func loadGitData(branch string, ref string, format bool, extraArgs ...string) (*localDiff, error) {
-	fmt.Println("Are we even in here")
 	// branch@{upstream} refers to the branch that the branch specified by branchname is set to
 	// build on top of. This allows automatically detecting a branch based on the correct remote,
 	// if the user's repo is a fork, for example.
@@ -386,13 +385,6 @@ func loadGitData(branch string, ref string, format bool, extraArgs ...string) (*
 
 	var fullPatch string
 	if format {
-		grip.Debug(message.Fields{
-			"message": "we totally tried formatting",
-			"ticket":  "mbox",
-			"format":  format,
-			"branch":  branch,
-			"ref":     ref,
-		})
 		fullPatch, err = gitFormatPatch(mergeBase, ref)
 		if err != nil {
 			return nil, errors.Wrap(err, "Error getting formatted patch")
@@ -434,7 +426,7 @@ func gitDiff(base string, ref string, diffArgs ...string) (string, error) {
 
 func gitFormatPatch(base string, ref string) (string, error) {
 	revisionRange := fmt.Sprintf("%s..%s", base, ref)
-	return gitCmd("format-patch", "--keep-subject", "--no-signature", "--stdout", "--no-ext-diff", "--summary", revisionRange)
+	return gitCmd("format-patch", "--keep-subject", "--no-signature", "--stdout", "--no-ext-diff", "--summary", "--binary", revisionRange)
 }
 
 // getLog runs "git log <base>...<ref>
