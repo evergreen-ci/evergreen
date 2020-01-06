@@ -72,7 +72,7 @@ func (q *CommitQueue) Enqueue(item CommitQueueItem) (int, error) {
 	})
 
 	q.Queue = append(q.Queue, item)
-	return len(q.Queue), nil
+	return len(q.Queue) - 1, nil
 }
 
 func (q *CommitQueue) EnqueueAtFront(item CommitQueueItem) (int, error) {
