@@ -973,7 +973,7 @@ func (c *communicatorImpl) DeleteCommitQueueItem(ctx context.Context, projectID,
 		return errors.Wrapf(err, "problem deleting item '%s' from commit queue '%s'", item, projectID)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusNoContent {
 		errMsg := gimlet.ErrorResponse{}
 		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
 			return errors.Wrapf(err, "response code %d problem deleting item '%s' from commit queue '%s' and parsing error message", resp.StatusCode, item, projectID)

@@ -56,7 +56,7 @@ func InsertQueue(q *CommitQueue) error {
 func (q *CommitQueue) Enqueue(item CommitQueueItem) (int, error) {
 	position := q.FindItem(item.Issue)
 	if position >= 0 {
-		return position + 1, errors.New("item already in queue")
+		return position, errors.New("item already in queue")
 	}
 
 	item.EnqueueTime = time.Now()
@@ -78,7 +78,7 @@ func (q *CommitQueue) Enqueue(item CommitQueueItem) (int, error) {
 func (q *CommitQueue) EnqueueAtFront(item CommitQueueItem) (int, error) {
 	position := q.FindItem(item.Issue)
 	if position >= 0 {
-		return position + 1, errors.New("item already in queue")
+		return position, errors.New("item already in queue")
 	}
 
 	item.EnqueueTime = time.Now()
@@ -96,10 +96,10 @@ func (q *CommitQueue) EnqueueAtFront(item CommitQueueItem) (int, error) {
 	})
 	if len(q.Queue) == 0 {
 		q.Queue = append(q.Queue, item)
-		return 1, nil
+		return 0, nil
 	}
 	q.Queue = append([]CommitQueueItem{q.Queue[0], item}, q.Queue[1:]...)
-	return 2, nil
+	return 1, nil
 }
 
 func (q *CommitQueue) Next() *CommitQueueItem {
