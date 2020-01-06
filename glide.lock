@@ -136,7 +136,7 @@ imports:
 
   - name: github.com/evergreen-ci/certdepot
     version: 270990334f8f50e41a803e88f169d2f467e376c5
-
+    
   # git library and its dependencies
   - name: gopkg.in/src-d/go-git.v4
     version: bf3b1f1fb9e0a04d0f87511a7ded2562b48a19d8
@@ -168,3 +168,16 @@ imports:
     version: cc2c8355390715b964f103949e92d09139819e2e
   - name: github.com/mongodb/ftdc
     version: 7e505d9a86240264dd35b1d900c2e88ce74f6066
+
+  # GraphQL deps
+  - name: github.com/99designs/gqlgen
+    version: f869f5a85385745d5854daaa25eab5571b04b245
+  
+  - name: github.com/vektah/gqlparser
+    version: 6b4a7854a7ef7ee3f626490d1e2d22a823828fc6
+  - name: github.com/gorilla/websocket
+    version: c3e18be99d19e6b3e8f1559eea2c161a665c4b6b
+  - name: github.com/agnivade/levenshtein
+    version: ee956134f90a4fca4e25fa69d52e20293d715a45
+  - name: github.com/hashicorp/golang-lru
+    version: 7f827b33c0f158ec5dfbba01bb0b14a4541fd81d

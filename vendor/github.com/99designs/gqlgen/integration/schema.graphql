@@ -1,0 +1,46 @@
+"This directive does magical things"
+directive @magic(kind: Int) on FIELD_DEFINITION
+
+type Element {
+    child: Element!
+    error: Boolean!
+    mismatched: [Boolean!]
+}
+
+enum DATE_FILTER_OP {
+    # multi
+    # line
+    # comment
+    EQ
+    NEQ
+    GT
+    GTE
+    LT
+    LTE
+}
+
+input DateFilter {
+    value: String!
+    timezone: String = "UTC"
+    op: DATE_FILTER_OP = EQ
+}
+
+type Viewer {
+    user: User
+}
+
+type Query {
+    path: [Element]
+    date(filter: DateFilter!): Boolean!
+    viewer: Viewer
+    jsonEncoding: String!
+    error(type: ErrorType = NORMAL): Boolean!
+    complexity(value: Int!): Boolean!
+}
+
+enum ErrorType {
+    CUSTOM
+    NORMAL
+}
+
+# this is a comment with a `backtick`
