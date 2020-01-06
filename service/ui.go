@@ -38,8 +38,6 @@ type UIServer struct {
 	// The root URL of the server, used in redirects for instance.
 	RootURL string
 
-	EnableGraphQL bool
-
 	//authManager
 	UserManager        gimlet.UserManager
 	umconf             gimlet.UserMiddlewareConfiguration
