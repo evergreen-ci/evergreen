@@ -177,3 +177,7 @@ imports:
     version: 6b4a7854a7ef7ee3f626490d1e2d22a823828fc6
   - name: github.com/gorilla/websocket
     version: c3e18be99d19e6b3e8f1559eea2c161a665c4b6b
+  - name: github.com/agnivade/levenshtein
+    version: ee956134f90a4fca4e25fa69d52e20293d715a45
+  - name: github.com/hashicorp/golang-lru
+    version: 7f827b33c0f158ec5dfbba01bb0b14a4541fd81d
