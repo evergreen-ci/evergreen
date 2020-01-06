@@ -181,10 +181,10 @@ func (pc *MockCommitQueueConnector) EnqueueItem(projectID string, item restModel
 	if enqueueNext && len(pc.Queue[projectID]) > 0 {
 		q := pc.Queue[projectID]
 		pc.Queue[projectID] = append([]restModel.APICommitQueueItem{q[0], item}, q[1:]...)
-		return 2, nil
+		return 1, nil
 	}
 	pc.Queue[projectID] = append(pc.Queue[projectID], item)
-	return len(pc.Queue[projectID]), nil
+	return len(pc.Queue[projectID]) - 1, nil
 }
 
 func (pc *MockCommitQueueConnector) FindCommitQueueByID(id string) (*restModel.APICommitQueue, error) {
