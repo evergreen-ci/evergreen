@@ -136,8 +136,7 @@ imports:
 
   - name: github.com/evergreen-ci/certdepot
     version: 270990334f8f50e41a803e88f169d2f467e376c5
-  - name: github.com/99designs/gqlgen
-    version: f869f5a85385745d5854daaa25eab5571b04b245
+    
   # git library and its dependencies
   - name: gopkg.in/src-d/go-git.v4
     version: bf3b1f1fb9e0a04d0f87511a7ded2562b48a19d8
