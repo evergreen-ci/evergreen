@@ -351,56 +351,44 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 			patchDoc.Githash, projectRef.Identifier)
 	}
 
-	summaries, err := getPatchSummaries(patchDoc)
+	reader, err := db.GetGridFile(patch.GridFSPrefix, patchDoc.Patches[0].PatchSet.PatchFileId)
 	if err != nil {
-		return errors.Wrap(err, "error getting patch summary")
+		return errors.Wrap(err, "error getting patch file")
 	}
-
 	patchDoc.Patches[0].ModuleName = ""
+
+	// TODO: refactor this when migration is done. Populate both summary and
+	//  CommitSummary for commit queue patches for backwards compatibility.
+	patchBytes, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return errors.Wrap(err, "error parsing patch")
+	}
+	summaries, err := thirdparty.GetPatchSummaries(string(patchBytes))
 	patchDoc.Patches[0].PatchSet.Summary = summaries
+
+	if patchDoc.Alias == evergreen.CommitQueueAlias {
+		// refresh the reader
+		reader, err = db.GetGridFile(patch.GridFSPrefix, patchDoc.Patches[0].PatchSet.PatchFileId)
+		if err != nil {
+			return errors.Wrap(err, "error getting patch file")
+		}
+		defer reader.Close()
+		summaries, err := getPatchSummariesByCommit(reader)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":      "error getting summaries by commit",
+				"patch_id":     patchDoc.Id.Hex(),
+				"patch_doc_id": patchDoc.Patches[0].PatchSet.PatchFileId,
+			}))
+		}
+		patchDoc.Patches[0].PatchSet.CommitSummary = summaries
+	}
 
 	return nil
 }
 
-func getPatchSummaries(patchDoc *patch.Patch) ([]patch.Summary, error) {
-	var reader io.ReadCloser
-	reader, err := db.GetGridFile(patch.GridFSPrefix, patchDoc.Patches[0].PatchSet.PatchFileId)
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting patch file")
-	}
-	defer reader.Close()
-	var patchBytes []byte
-	// if commit queue then mbox format, squash body to make summary
-	if patchDoc.Alias == evergreen.CommitQueueAlias {
-		patchBytes, err = handleFormattedPatch(reader)
-		if err != nil {
-			grip.Debug(message.WrapError(err, message.Fields{
-				"ticket": "problem parsing mbox",
-				"patch":  patchDoc.Id.Hex(),
-				"desc":   patchDoc.Description,
-				"alias":  patchDoc.Alias,
-			}))
-			return nil, errors.Wrap(err, "error parsing formatted patch")
-		}
-		// TODO: in the future this should just error
-		// refresh reader to try again in the case of an old commit queue item
-		reader, err = db.GetGridFile(patch.GridFSPrefix, patchDoc.Patches[0].PatchSet.PatchFileId)
-		if err != nil {
-			return nil, errors.Wrap(err, "error getting patch file")
-		}
-	}
-	if len(patchBytes) == 0 {
-		patchBytes, err = ioutil.ReadAll(reader)
-		if err != nil {
-			return nil, errors.Wrap(err, "error parsing patch")
-		}
-	}
-	return thirdparty.GetPatchSummaries(string(patchBytes))
-}
-
-func handleFormattedPatch(reader io.Reader) ([]byte, error) {
-	var err error
-	var result []byte
+// if commit queue then mbox format, organize summaries by commit
+func getPatchSummariesByCommit(reader io.Reader) ([]patch.CommitSummary, error) {
 	stream, err := mbox.CreateMboxStream(reader)
 	if err != nil {
 		if err == io.EOF { // empty commit
@@ -411,8 +399,11 @@ func handleFormattedPatch(reader io.Reader) ([]byte, error) {
 	if stream == nil {
 		return nil, errors.New("mbox stream is nil")
 	}
+	result := []patch.CommitSummary{}
+
 	// iterate through patches
 	for err == nil {
+		var buffer []byte
 		msg, err := stream.ReadMessage()
 		if err != nil {
 			if err == io.EOF { // no more patches
@@ -420,18 +411,33 @@ func handleFormattedPatch(reader io.Reader) ([]byte, error) {
 			}
 			return nil, errors.Wrap(err, "error reading message")
 		}
+
+		commitSummary := patch.CommitSummary{}
+		// store only the commit hash and first author
+		if sender := strings.Split(msg.Sender(), " "); len(sender) > 0 {
+			commitSummary.Commit = sender[0]
+		}
+		if authors := msg.Headers()["From"]; len(authors) > 0 {
+			commitSummary.Author = authors[0]
+		}
 		reader := msg.BodyReader()
 		// iterate through patch body
 		for {
-			buffer := make([]byte, bytes.MinRead)
-			n, err := reader.Read(buffer)
+			curBytes := make([]byte, bytes.MinRead)
+			n, err := reader.Read(curBytes)
 			if err != nil {
-				if err == io.EOF {
-					break // finished reading body of this patch
+				if err == io.EOF { // finished reading body of this patch
+					summaries, err := thirdparty.GetPatchSummaries(string(buffer))
+					if err != nil {
+						return nil, errors.Wrapf(err, "error getting patch summaries for commit '%s'", commitSummary.Commit)
+					}
+					commitSummary.Summary = summaries
+					result = append(result, commitSummary)
+					break
 				}
 				return nil, errors.Wrap(err, "error reading body")
 			}
-			result = append(result, buffer[0:n]...)
+			buffer = append(buffer, curBytes[0:n]...)
 		}
 	}
 

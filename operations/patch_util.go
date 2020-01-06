@@ -389,7 +389,6 @@ func loadGitData(branch string, ref string, format bool, extraArgs ...string) (*
 		if err != nil {
 			return nil, errors.Wrap(err, "Error getting formatted patch")
 		}
-		grip.Error(fullPatch)
 	} else {
 		if !util.StringSliceContains(extraArgs, "--binary") {
 			extraArgs = append(extraArgs, "--binary")

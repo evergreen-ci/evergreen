@@ -21,6 +21,7 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -531,17 +532,17 @@ func (s *PatchIntentUnitsSuite) verifyGithubSubscriptions(patchDoc *patch.Patch)
 	s.True(foundBuild)
 }
 
-func TestHandleFormattedPatch(t *testing.T) {
+func TestGetPatchSummariesByCommit(t *testing.T) {
 	patchData := `From 8af7f21625315b8c24975016aa2107cf5a8a12b1 Mon Sep 17 00:00:00 2001
 From: ablack12 <annie.black@10gen.com>
 Date: Thu, 2 Jan 2020 10:41:34 -0500
 Subject: [PATCH 1/2] EVG-6799 remove one commit validation
 
 ---
-units/commit_queue.go | 16 +++++++++-------
-1 file changed, 9 insertions(+), 7 deletions(-)
+operations/commit_queue.go | 16 +++++++++-------
+2 files changed, 9 insertions(+), 7 deletions(-)
 
-diff --git a/operations/commit_queue.go b/operations/commit_queue.go
+diff --git a/operations/commit_queue.go b/units/commit_queue.go
 index 3fd24ea7e..800e17d2f 100644
 --- a/operations/commit_queue.go
 +++ b/operations/commit_queue.go
@@ -579,15 +580,17 @@ index ce0542e91..718dd8099 100644
 	reader := ioutil.NopCloser(strings.NewReader(patchData))
 	defer assert.NoError(t, reader.Close())
 
-	res, err := handleFormattedPatch(reader)
+	summariesByCommit, err := getPatchSummariesByCommit(reader)
 	assert.NoError(t, err)
-	fullPatch := string(res)
-	assert.Equal(t, 1, strings.Count(fullPatch, "From ")) // from the print statement
-	assert.NotContains(t, fullPatch, "ablack12")
-	assert.NotContains(t, fullPatch, "Date:")
-	assert.NotContains(t, fullPatch, "Subject:")
+	require.Len(t, summariesByCommit, 2)
+	assert.Equal(t, "ablack12 <annie.black@10gen.com>", summariesByCommit[0].Author)
+	assert.Equal(t, "ablack12 <annie.black@10gen.com>", summariesByCommit[1].Author)
+	assert.Equal(t, "8af7f21625315b8c24975016aa2107cf5a8a12b1", summariesByCommit[0].Commit)
+	assert.Equal(t, "8c030c565ebca71380f3ca5c88d895fa9f25bebd", summariesByCommit[1].Commit)
 
-	for _, x := range strings.Split(fullPatch, "\n") {
-		assert.Contains(t, fullPatch, x) // data unmodified
-	}
+	require.Len(t, summariesByCommit[0].Summary, 1)
+	assert.Equal(t, "operations/commit_queue.go", summariesByCommit[0].Summary[0].Name)
+	require.Len(t, summariesByCommit[1].Summary, 1)
+
+	assert.Equal(t, "units/commit_queue.go", summariesByCommit[1].Summary[0].Name)
 }
