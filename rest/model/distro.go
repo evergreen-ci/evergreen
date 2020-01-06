@@ -354,6 +354,7 @@ type APIDistro struct {
 	DisableShallowClone   bool                     `json:"disable_shallow_clone"`
 	UseLegacyAgent        bool                     `json:"use_legacy_agent"`
 	Note                  APIString                `json:"note"`
+	ValidProjects         []string                 `json:"valid_projects"`
 }
 
 // BuildFromService converts from service level distro.Distro to an APIDistro
@@ -439,6 +440,7 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	apiDistro.DisableShallowClone = d.DisableShallowClone
 	apiDistro.UseLegacyAgent = d.UseLegacyAgent
 	apiDistro.Note = ToAPIString(d.Note)
+	apiDistro.ValidProjects = d.ValidProjects
 
 	return nil
 }
@@ -532,6 +534,7 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d.DisableShallowClone = apiDistro.DisableShallowClone
 	d.UseLegacyAgent = apiDistro.UseLegacyAgent
 	d.Note = FromAPIString(apiDistro.Note)
+	d.ValidProjects = apiDistro.ValidProjects
 
 	return &d, nil
 }

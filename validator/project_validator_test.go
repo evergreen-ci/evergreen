@@ -2108,3 +2108,32 @@ buildvariants:
 	assert.Len(errs, 1, "one warning was found")
 	assert.NoError(CheckProjectConfigurationIsValid(&proj), "no errors are reported because they are warnings")
 }
+
+func TestGetDistroIdsForProject(t *testing.T) {
+	require := require.New(t)
+	require.NoError(db.Clear(distro.Collection))
+	d := distro.Distro{
+		Id:            "distro1",
+		ValidProjects: []string{"project1", "project2"},
+	}
+	require.NoError(d.Insert())
+	d = distro.Distro{
+		Id: "distro2",
+	}
+	require.NoError(d.Insert())
+	d = distro.Distro{
+		Id:            "distro3",
+		ValidProjects: []string{"project5"},
+	}
+	require.NoError(d.Insert())
+
+	ids, err := getDistroIds()
+	require.NoError(err)
+	require.Len(ids, 3)
+	ids, err = getDistroIdsForProject("project1")
+	require.NoError(err)
+	require.Len(ids, 2)
+	ids, err = getDistroIdsForProject("project3")
+	require.NoError(err)
+	require.Len(ids, 1)
+}
