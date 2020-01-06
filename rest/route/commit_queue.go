@@ -123,8 +123,8 @@ func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responde
 	}
 
 	response := gimlet.NewJSONResponse(struct{}{})
-	if err := response.SetStatus(http.StatusNoContent); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusNoContent))
+	if err := response.SetStatus(http.StatusOK); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusOK))
 	}
 	return response
 }

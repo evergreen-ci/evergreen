@@ -1,4 +1,4 @@
-mciModule.controller('PatchController', function($scope, $filter, $window, notificationService, $http) {
+mciModule.controller('PatchController', function($scope, $filter, $window, mciCommitQueueRestService, notificationService, $http) {
   $scope.userTz = $window.userTz;
   $scope.canEdit = $window.canEdit;
   $scope.commitQueuePosition = $window.commitQueuePosition;
@@ -92,6 +92,18 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
         }
       })
     }
+  }
+
+  $scope.deleteFromQueue = function() {
+    var successHandler =  function(resp) {
+        window.location.reload();
+        notificationService.pushNotification("Item successfully cleared from queue", 'success');
+    };
+    var errorHandler = function(resp) {
+        notificationService.pushNotification('Error deleting from queue: ' + JSON.stringify(resp.data), 'errorHeader');
+    };
+
+    mciCommitQueueRestService.deleteItem($scope.patch.Project, $scope.patch.Id, { success: successHandler, error: errorHandler });
   }
 
   $scope.isUnauthorizedPRPatch = (patch.Version.length === 0 && patch.GithubPatchData.PRNumber !== 0);
