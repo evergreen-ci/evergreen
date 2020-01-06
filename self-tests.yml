@@ -200,6 +200,7 @@ functions:
     params:
       directory: gopath/src/github.com/evergreen-ci/evergreen
       token: ${github_token}
+      shallow_clone: true
   run-make:
     command: subprocess.exec
     params:
@@ -396,9 +397,6 @@ tasks:
     name: test-cloud
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-repotracker
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
     name: test-scheduler
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -485,6 +483,22 @@ tasks:
           target: revendor
       - func: run-make
         vars: { target: "test-thirdparty-docker" }
+  - name: test-repotracker
+    tags: ["db", "test"]
+    commands:
+      - command: git.get_project
+        type: setup
+        params:
+          directory: gopath/src/github.com/evergreen-ci/evergreen
+          token: ${github_token}
+          shallow_clone: false
+      - func: setup-credentials
+      - func: setup-mongodb
+      - func: run-make
+        vars:
+          target: revendor
+      - func: run-make
+        vars: { target: "test-repotracker" }
 
 
 buildvariants:

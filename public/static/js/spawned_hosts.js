@@ -325,7 +325,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
         ));
       }
 
-      $q.all.then(() => {
+      $q.all(promises).then(() => {
         window.location.href = "/spawn";
       })
     }

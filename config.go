@@ -54,6 +54,7 @@ type Settings struct {
 	Banner                  string                    `bson:"banner" json:"banner" yaml:"banner"`
 	BannerTheme             BannerTheme               `bson:"banner_theme" json:"banner_theme" yaml:"banner_theme"`
 	Bugsnag                 string                    `yaml:"bugsnag" bson:"bugsnag" json:"bugsnag"`
+	Backup                  BackupConfig              `bson:"backup" json:"backup" yaml:"backup"`
 	ClientBinariesDir       string                    `yaml:"client_binaries_dir" bson:"client_binaries_dir" json:"client_binaries_dir"`
 	CommitQueue             CommitQueueConfig         `yaml:"commit_queue" bson:"commit_queue" json:"commit_queue" id:"commit_queue"`
 	ConfigDir               string                    `yaml:"configdir" bson:"configdir" json:"configdir"`

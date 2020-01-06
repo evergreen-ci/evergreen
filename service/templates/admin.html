@@ -84,10 +84,11 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('vsphere')">VSphere</li>
 						<li class="link" ng-click="scrollTo('openstack')">OpenStack</li>
 						<div>Other</div>
+						<li class="link" ng-click="scrollTo('backup')">DR Backup Settings</li>
 						<li class="link" ng-click="scrollTo('misc')">Misc Settings</li>
 						<li class="link" ng-click="scrollTo('credentials')">Credentials</li>
 						<li class="link" ng-click="scrollTo('expansions')">Expansions</li>
-                        <li class="link" ng-click="scrollTo('host_jasper')">Host Jasper</li>
+						<li class="link" ng-click="scrollTo('host_jasper')">Host Jasper</li>
 						<li class="link" ng-click="scrollTo('plugins')">Plugins</li>
 						<li class="link" ng-click="scrollTo('jira_notifications')">JIRA Custom Field Mappings</li>
 						<div>Non-Configuration</div>
@@ -99,181 +100,190 @@ Admin Settings
 		</md-content>
 
 		<md-content id="main" flex="85" layout-padding>
-			<notify-box ng-init="destination='errorHeader'"></notify-box>
-			<md-card style="width:99%">
-				<form ngSubmit="saveSettings()" style="min-width:1225px; overflow-x:scroll;">
-					<md-card-content class="squeezeAll">
+		  <notify-box ng-init="destination='errorHeader'"></notify-box>
+		  <md-card style="width:99%">
+		    <form ngSubmit="saveSettings()" style="min-width:1225px; overflow-x:scroll;">
+		      <md-card-content class="squeezeAll">
 
-						<section layout="row" flex>
-							<md-card flex=50 id="degraded">
-								<md-card-title>
-									<md-card-title-text>
-										<span>Service Degrading</span>
-									</md-card-title-text>
-								</md-card-title>
-								<md-card-content>
+			<section layout="row" flex>
+			  <md-card flex=50 id="degraded">
+			    <md-card-title>
+			      <md-card-title-text>
+				<span>Service Degrading</span>
+			      </md-card-title-text>
+			    </md-card-title>
+			    <md-card-content>
 
-									<table class="flagsTable">
-										<thead>
-											<tr>
-												<th />
-												<th>Enabled</th>
-												<th>Disabled</th>
-											</tr>
-										</thead>
-										<tbody>
-											<tr>
-												<td>Dispatch tasks</td>
-												<td colspan="2">
-													<md-radio-group data-ng-model="Settings.service_flags.task_dispatch_disabled" layout="row">
-														<md-radio-button data-ng-value="false"></md-radio-button>
-														<md-radio-button data-ng-value="true"></md-radio-button>
-													</md-radio-group>
-												</td>
-											</tr>
-											<tr>
-												<td>Create and provision hosts</td>
-												<td colspan="2">
-													<md-radio-group data-ng-model="Settings.service_flags.host_init_disabled" layout="row">
-														<md-radio-button data-ng-value="false"></md-radio-button>
-														<md-radio-button data-ng-value="true"></md-radio-button>
-													</md-radio-group>
-												</td>
-											</tr>
-											<tr>
-												<td>Monitor hosts and tasks</td>
-												<td colspan="2">
-													<md-radio-group data-ng-model="Settings.service_flags.monitor_disabled" layout="row">
-														<md-radio-button data-ng-value="false"></md-radio-button>
-														<md-radio-button data-ng-value="true"></md-radio-button>
-													</md-radio-group>
-												</td>
-											</tr>
-											<tr>
-												<td>Alert for spawn host expiration</td>
-												<td colspan="2">
-													<md-radio-group data-ng-model="Settings.service_flags.alerts_disabled" layout="row">
-														<md-radio-button data-ng-value="false"></md-radio-button>
-														<md-radio-button data-ng-value="true"></md-radio-button>
-													</md-radio-group>
-												</td>
-											</tr>
-											<tr>
-												<td>Start agents on hosts</td>
-												<td colspan="2">
-													<md-radio-group data-ng-model="Settings.service_flags.agent_start_disabled" layout="row">
-														<md-radio-button data-ng-value="false"></md-radio-button>
-														<md-radio-button data-ng-value="true"></md-radio-button>
-													</md-radio-group>
-												</td>
-											</tr>
-											<tr>
-												<td>Track GitHub repositories</td>
-												<td colspan="2">
-													<md-radio-group data-ng-model="Settings.service_flags.repotracker_disabled" layout="row">
-														<md-radio-button data-ng-value="false"></md-radio-button>
-														<md-radio-button data-ng-value="true"></md-radio-button>
-													</md-radio-group>
-												</td>
-											</tr>
-											<tr>
-												<td>Schedule tasks</td>
-												<td colspan="2">
-													<md-radio-group data-ng-model="Settings.service_flags.scheduler_disabled" layout="row">
-														<md-radio-button data-ng-value="false"></md-radio-button>
-														<md-radio-button data-ng-value="true"></md-radio-button>
-													</md-radio-group>
-												</td>
-											</tr>
-											<tr>
-												<td>Test GitHub pull requests</td>
-												<td colspan="2">
-													<md-radio-group data-ng-model="Settings.service_flags.github_pr_testing_disabled" layout="row">
-														<md-radio-button data-ng-value="false"></md-radio-button>
-														<md-radio-button data-ng-value="true"></md-radio-button>
-													</md-radio-group>
-												</td>
-											</tr>
-											<tr>
-												<td>Update CLI</td>
-												<td colspan="2">
-													<md-radio-group data-ng-model="Settings.service_flags.cli_updates_disabled" layout="row">
-														<md-radio-button data-ng-value="false"></md-radio-button>
-														<md-radio-button data-ng-value="true"></md-radio-button>
-													</md-radio-group>
-												</td>
-											</tr>
-											<tr>
-												<td>Collect background statistics</td>
-												<td colspan="2">
-													<md-radio-group data-ng-model="Settings.service_flags.background_stats_disabled" layout="row">
-														<md-radio-button data-ng-value="false"></md-radio-button>
-														<md-radio-button data-ng-value="true"></md-radio-button>
-													</md-radio-group>
-												</td>
-											</tr>
-											<tr>
-												<td>Persist task and test logs</td>
-												<td colspan="2">
-													<md-radio-group data-ng-model="Settings.service_flags.task_logging_disabled" layout="row">
-														<md-radio-button data-ng-value="false"></md-radio-button>
-														<md-radio-button data-ng-value="true"></md-radio-button>
-													</md-radio-group>
-												</td>
-											</tr>
-											<tr>
-												<td>Cache historical statistics</td>
-												<td colspan="2">
-													<md-radio-group data-ng-model="Settings.service_flags.cache_stats_job_disabled" layout="row">
-														<md-radio-button data-ng-value="false"></md-radio-button>
-														<md-radio-button data-ng-value="true"></md-radio-button>
-													</md-radio-group>
-												</td>
-											</tr>
-											<tr>
-												<td>Cache historical statistics endpoint</td>
-												<td colspan="2">
-													<md-radio-group data-ng-model="Settings.service_flags.cache_stats_endpoint_disabled" layout="row">
-														<md-radio-button data-ng-value="false"></md-radio-button>
-														<md-radio-button data-ng-value="true"></md-radio-button>
-													</md-radio-group>
-												</td>
-											</tr>
-												<td>Cache historical statistics old tasks</td>
-												<td colspan="2">
-													<md-radio-group data-ng-model="Settings.service_flags.cache_stats_old_tasks_disabled" layout="row">
-														<md-radio-button data-ng-value="false"></md-radio-button>
-														<md-radio-button data-ng-value="true"></md-radio-button>
-													</md-radio-group>
-												</td>
+			      <table class="flagsTable">
+				<thead>
+				  <tr>
+				    <th />
+				    <th>Enabled</th>
+				    <th>Disabled</th>
+				  </tr>
+				</thead>
+				<tbody>
+				  <tr>
+				    <td>Dispatch tasks</td>
+				    <td colspan="2">
+				      <md-radio-group data-ng-model="Settings.service_flags.task_dispatch_disabled" layout="row">
+					<md-radio-button data-ng-value="false"></md-radio-button>
+					<md-radio-button data-ng-value="true"></md-radio-button>
+				      </md-radio-group>
+				    </td>
+				  </tr>
+				  <tr>
+				    <td>Create and provision hosts</td>
+				    <td colspan="2">
+				      <md-radio-group data-ng-model="Settings.service_flags.host_init_disabled" layout="row">
+					<md-radio-button data-ng-value="false"></md-radio-button>
+					<md-radio-button data-ng-value="true"></md-radio-button>
+				      </md-radio-group>
+				    </td>
+				  </tr>
+				  <tr>
+				    <td>Monitor hosts and tasks</td>
+				    <td colspan="2">
+				      <md-radio-group data-ng-model="Settings.service_flags.monitor_disabled" layout="row">
+					<md-radio-button data-ng-value="false"></md-radio-button>
+					<md-radio-button data-ng-value="true"></md-radio-button>
+				      </md-radio-group>
+				    </td>
+				  </tr>
+				  <tr>
+				    <td>Alert for spawn host expiration</td>
+				    <td colspan="2">
+				      <md-radio-group data-ng-model="Settings.service_flags.alerts_disabled" layout="row">
+					<md-radio-button data-ng-value="false"></md-radio-button>
+					<md-radio-button data-ng-value="true"></md-radio-button>
+				      </md-radio-group>
+				    </td>
+				  </tr>
+				  <tr>
+				    <td>Start agents on hosts</td>
+				    <td colspan="2">
+				      <md-radio-group data-ng-model="Settings.service_flags.agent_start_disabled" layout="row">
+					<md-radio-button data-ng-value="false"></md-radio-button>
+					<md-radio-button data-ng-value="true"></md-radio-button>
+				      </md-radio-group>
+				    </td>
+				  </tr>
+				  <tr>
+				    <td>Track GitHub repositories</td>
+				    <td colspan="2">
+				      <md-radio-group data-ng-model="Settings.service_flags.repotracker_disabled" layout="row">
+					<md-radio-button data-ng-value="false"></md-radio-button>
+					<md-radio-button data-ng-value="true"></md-radio-button>
+				      </md-radio-group>
+				    </td>
+				  </tr>
+				  <tr>
+				    <td>Schedule tasks</td>
+				    <td colspan="2">
+				      <md-radio-group data-ng-model="Settings.service_flags.scheduler_disabled" layout="row">
+					<md-radio-button data-ng-value="false"></md-radio-button>
+					<md-radio-button data-ng-value="true"></md-radio-button>
+				      </md-radio-group>
+				    </td>
+				  </tr>
+				  <tr>
+				    <td>Test GitHub pull requests</td>
+				    <td colspan="2">
+				      <md-radio-group data-ng-model="Settings.service_flags.github_pr_testing_disabled" layout="row">
+					<md-radio-button data-ng-value="false"></md-radio-button>
+					<md-radio-button data-ng-value="true"></md-radio-button>
+				      </md-radio-group>
+				    </td>
+				  </tr>
+				  <tr>
+				    <td>Update CLI</td>
+				    <td colspan="2">
+				      <md-radio-group data-ng-model="Settings.service_flags.cli_updates_disabled" layout="row">
+					<md-radio-button data-ng-value="false"></md-radio-button>
+					<md-radio-button data-ng-value="true"></md-radio-button>
+				      </md-radio-group>
+				    </td>
+				  </tr>
+				  <tr>
+				    <td>Collect background statistics</td>
+				    <td colspan="2">
+				      <md-radio-group data-ng-model="Settings.service_flags.background_stats_disabled" layout="row">
+					<md-radio-button data-ng-value="false"></md-radio-button>
+					<md-radio-button data-ng-value="true"></md-radio-button>
+				      </md-radio-group>
+				    </td>
+				  </tr>
+				  <tr>
+				    <td>Persist task and test logs</td>
+				    <td colspan="2">
+				      <md-radio-group data-ng-model="Settings.service_flags.task_logging_disabled" layout="row">
+					<md-radio-button data-ng-value="false"></md-radio-button>
+					<md-radio-button data-ng-value="true"></md-radio-button>
+				      </md-radio-group>
+				    </td>
+				  </tr>
+				  <tr>
+				    <td>Cache historical statistics</td>
+				    <td colspan="2">
+				      <md-radio-group data-ng-model="Settings.service_flags.cache_stats_job_disabled" layout="row">
+					<md-radio-button data-ng-value="false"></md-radio-button>
+					<md-radio-button data-ng-value="true"></md-radio-button>
+				      </md-radio-group>
+				    </td>
+				  </tr>
+				  <tr>
+				    <td>Cache historical statistics endpoint</td>
+				    <td colspan="2">
+				      <md-radio-group data-ng-model="Settings.service_flags.cache_stats_endpoint_disabled" layout="row">
+					<md-radio-button data-ng-value="false"></md-radio-button>
+					<md-radio-button data-ng-value="true"></md-radio-button>
+				      </md-radio-group>
+				    </td>
+				  </tr>
+				  <td>Cache historical statistics old tasks</td>
+				  <td colspan="2">
+				    <md-radio-group data-ng-model="Settings.service_flags.cache_stats_old_tasks_disabled" layout="row">
+				      <md-radio-button data-ng-value="false"></md-radio-button>
+				      <md-radio-button data-ng-value="true"></md-radio-button>
+				    </md-radio-group>
+				  </td>
 
-											<tr>
-												<td>Process Commit Queue</td>
-												<td colspan="2">
-													<md-radio-group data-ng-model="Settings.service_flags.commit_queue_disabled" layout="row">
-														<md-radio-button data-ng-value="false"></md-radio-button>
-														<md-radio-button data-ng-value="true"></md-radio-button>
-													</md-radio-group>
-												</td>
-											</tr>
-											<tr>
-												<td>Planner</td>
-												<td colspan="2">
-													<md-radio-group data-ng-model="Settings.service_flags.planner_disabled" layout="row">
-														<md-radio-button data-ng-value="false"></md-radio-button>
-														<md-radio-button data-ng-value="true"></md-radio-button>
-													</md-radio-group>
-												</td>
-											</tr>
-											<tr>
-												<td>Host Allocator</td>
-												<td colspan="2">
-													<md-radio-group data-ng-model="Settings.service_flags.host_allocator_disabled" layout="row">
-													<md-radio-button data-ng-value="false"></md-radio-button>
-													<md-radio-button data-ng-value="true"></md-radio-button>
-												</md-radio-group>
-												</td>
-											</tr>
+				  <tr>
+				    <td>Process Commit Queue</td>
+				    <td colspan="2">
+				      <md-radio-group data-ng-model="Settings.service_flags.commit_queue_disabled" layout="row">
+					<md-radio-button data-ng-value="false"></md-radio-button>
+					<md-radio-button data-ng-value="true"></md-radio-button>
+				      </md-radio-group>
+				    </td>
+				  </tr>
+				  <tr>
+				    <td>Planner</td>
+				    <td colspan="2">
+				      <md-radio-group data-ng-model="Settings.service_flags.planner_disabled" layout="row">
+					<md-radio-button data-ng-value="false"></md-radio-button>
+					<md-radio-button data-ng-value="true"></md-radio-button>
+				      </md-radio-group>
+				    </td>
+				  </tr>
+				  <tr>
+				    <td>Host Allocator</td>
+				    <td colspan="2">
+				      <md-radio-group data-ng-model="Settings.service_flags.host_allocator_disabled" layout="row">
+					<md-radio-button data-ng-value="false"></md-radio-button>
+					<md-radio-button data-ng-value="true"></md-radio-button>
+				      </md-radio-group>
+				    </td>
+				  </tr>
+				  <tr>
+				    <td>Disaster Recovery Backup Disabled</td>
+				    <td colspan="2">
+				      <md-radio-group data-ng-model="Settings.service_flags.dr_backup_disabled" layout="row">
+					<md-radio-button data-ng-value="false"></md-radio-button>
+					<md-radio-button data-ng-value="true"></md-radio-button>
+				      </md-radio-group>
+				    </td>
+				  </tr>
 											<tr>
 												<td>&nbsp;</td>
 											</tr>
@@ -1315,6 +1325,37 @@ Admin Settings
 									<md-input-container class="control" style="width:45%;">
 										<label>Region</label>
 										<input type="text" ng-model="Settings.providers.openstack.region">
+									</md-input-container>
+								</md-card-content>
+							</md-card>
+
+							<md-card flex=50 id="backup">
+								<md-card-title>
+									<md-card-title-text>
+										<span>Misc Settings</span>
+									</md-card-title-text>
+								</md-card-title>
+								<md-card-content>
+									<md-input-container class="control" style="width:45%;">
+										<label>Bucket Name</label>
+										<input type="text" ng-model="Settings.backup.bucket_name">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Prefix</label>
+										<input type="text" ng-model="Settings.backup.prefix">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Key</label>
+										<input type="text" ng-model="Settings.backup.key">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Secret</label>
+										<input type="text" ng-model="Settings.backup.secret">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<md-checkbox ng-model="Settings.backup.compress">
+											Compress Backups
+										</md-checkbox>
 									</md-input-container>
 								</md-card-content>
 							</md-card>

@@ -14,8 +14,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/evergreen-ci/birch/bsonerr"
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -858,7 +858,6 @@ func TestDocument(t *testing.T) {
 		})
 
 	})
-
 }
 
 var tpag testPrependAppendGenerator
@@ -949,16 +948,19 @@ func ExampleDocument() {
 			),
 			EC.String("platform", "go1.9.2"),
 		)
+
 		if appName != "" {
 			doc.Append(EC.SubDocumentFromElements("application", EC.String("name", appName)))
 		}
 
 		return doc
 	}
+
 	buf, err := f("hello-world").MarshalBSON()
 	if err != nil {
 		fmt.Println(err)
 	}
+
 	fmt.Println(buf)
 
 	// Output: [177 0 0 0 3 100 114 105 118 101 114 0 52 0 0 0 2 110 97 109 101 0 16 0 0 0 109 111 110 103 111 45 103 111 45 100 114 105 118 101 114 0 2 118 101 114 115 105 111 110 0 8 0 0 0 49 50 51 52 53 54 55 0 0 3 111 115 0 46 0 0 0 2 116 121 112 101 0 7 0 0 0 100 97 114 119 105 110 0 2 97 114 99 104 105 116 101 99 116 117 114 101 0 6 0 0 0 97 109 100 54 52 0 0 2 112 108 97 116 102 111 114 109 0 8 0 0 0 103 111 49 46 57 46 50 0 3 97 112 112 108 105 99 97 116 105 111 110 0 27 0 0 0 2 110 97 109 101 0 12 0 0 0 104 101 108 108 111 45 119 111 114 108 100 0 0 0]
@@ -966,7 +968,9 @@ func ExampleDocument() {
 
 func BenchmarkDocument(b *testing.B) {
 	b.ReportAllocs()
+
 	internalVersion := "1234567"
+
 	for i := 0; i < b.N; i++ {
 		doc := NewDocument(
 			EC.SubDocumentFromElements("driver",
@@ -999,6 +1003,7 @@ func valueEqual(v1, v2 *Value) bool {
 	if v1.offset != v2.offset {
 		return false
 	}
+
 	return true
 }
 
@@ -1006,6 +1011,7 @@ func elementEqual(e1, e2 *Element) bool {
 	if e1 == nil && e2 == nil {
 		return true
 	}
+
 	if e1 == nil || e2 == nil {
 		return false
 	}
@@ -1017,11 +1023,13 @@ func documentComparer(d1, d2 *Document) bool {
 	if (len(d1.elems) != len(d2.elems)) || (len(d1.index) != len(d2.index)) {
 		return false
 	}
+
 	for index := range d1.elems {
 		b1, err := d1.elems[index].MarshalBSON()
 		if err != nil {
 			return false
 		}
+
 		b2, err := d2.elems[index].MarshalBSON()
 		if err != nil {
 			return false
@@ -1035,5 +1043,6 @@ func documentComparer(d1, d2 *Document) bool {
 			return false
 		}
 	}
+
 	return true
 }

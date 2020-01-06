@@ -28,7 +28,7 @@ func TestStatsQuerySuite(t *testing.T) {
 }
 
 func (s *statsQuerySuite) SetupTest() {
-	s.clearCollection(dailyTestStatsCollection)
+	s.clearCollection(DailyTestStatsCollection)
 	s.clearCollection(DailyTaskStatsCollection)
 
 	s.baseTestFilter = StatsFilter{
@@ -948,7 +948,7 @@ func (s *statsQuerySuite) clearCollection(name string) {
 
 func (s *statsQuerySuite) insertDailyTestStats(project string, requester string, testFile string, taskName string, variant string, distro string, date time.Time, numPass int, numFail int, avgDuration float64) {
 
-	err := db.Insert(dailyTestStatsCollection, bson.M{
+	err := db.Insert(DailyTestStatsCollection, bson.M{
 		"_id": DbTestStatsId{
 			Project:      project,
 			Requester:    requester,

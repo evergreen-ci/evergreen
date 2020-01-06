@@ -24,6 +24,7 @@ const (
 	startTimeFlagName      = "time"
 	limitFlagName          = "limit"
 	messageFlagName        = "message"
+	forceFlagName          = "force"
 	activeFlagName         = "active"
 	refFlagName            = "ref"
 	uncommittedChangesFlag = "uncommitted"

@@ -69,15 +69,17 @@ func TestTimeStamp(t *testing.T) {
 	for _, testcase := range testCases {
 		id, err := FromHex(testcase.Hex)
 		require.NoError(t, err)
+
 		secs := int64(binary.BigEndian.Uint32(id[0:4]))
 		timestamp := time.Unix(secs, 0).UTC()
 		require.Equal(t, testcase.Expected, timestamp.String())
 	}
-
 }
 
 func TestCounterOverflow(t *testing.T) {
 	objectIDCounter = 0xFFFFFFFF
-	NewObjectID()
+
+	_ = NewObjectID()
+
 	require.Equal(t, uint32(0), objectIDCounter)
 }
