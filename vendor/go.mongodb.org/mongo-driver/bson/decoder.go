@@ -16,6 +16,9 @@ import (
 	"go.mongodb.org/mongo-driver/bson/bsonrw"
 )
 
+// ErrDecodeToNil is the error returned when trying to decode to a nil value
+var ErrDecodeToNil = errors.New("cannot Decode to nil value")
+
 // This pool is used to keep the allocations of Decoders down. This is only used for the Marshal*
 // methods and is not consumable from outside of this package. The Decoders retrieved from this pool
 // must have both Reset and SetRegistry called on them.
@@ -75,10 +78,19 @@ func (d *Decoder) Decode(val interface{}) error {
 	}
 
 	rval := reflect.ValueOf(val)
-	if rval.Kind() != reflect.Ptr {
-		return fmt.Errorf("argument to Decode must be a pointer to a type, but got %v", rval)
+	switch rval.Kind() {
+	case reflect.Ptr:
+		if rval.IsNil() {
+			return ErrDecodeToNil
+		}
+		rval = rval.Elem()
+	case reflect.Map:
+		if rval.IsNil() {
+			return ErrDecodeToNil
+		}
+	default:
+		return fmt.Errorf("argument to Decode must be a pointer or a map, but got %v", rval)
 	}
-	rval = rval.Elem()
 	decoder, err := d.dc.LookupDecoder(rval.Type())
 	if err != nil {
 		return err

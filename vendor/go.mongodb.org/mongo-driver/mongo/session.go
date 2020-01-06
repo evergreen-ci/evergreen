@@ -9,24 +9,28 @@ package mongo
 import (
 	"context"
 	"errors"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/x/mongo/driverlegacy"
-	"go.mongodb.org/mongo-driver/x/mongo/driverlegacy/session"
-	"go.mongodb.org/mongo-driver/x/mongo/driverlegacy/topology"
-	"go.mongodb.org/mongo-driver/x/network/command"
-	"go.mongodb.org/mongo-driver/x/network/description"
+	"go.mongodb.org/mongo-driver/x/bsonx"
+	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
+	"go.mongodb.org/mongo-driver/x/mongo/driver"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/description"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/operation"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
 )
 
 // ErrWrongClient is returned when a user attempts to pass in a session created by a different client than
 // the method call is using.
 var ErrWrongClient = errors.New("session was not created by this client")
 
-// SessionContext is a hybrid interface. It combines a context.Context with
-// a mongo.Session. This type can be used as a regular context.Context or
-// Session type. It is not goroutine safe and should not be used in multiple goroutines concurrently.
+var withTransactionTimeout = 120 * time.Second
+
+// SessionContext combines the context.Context and mongo.Session interfaces. It should be used as the Context arguments
+// to operations that should be executed in a session. This type is not goroutine safe and must not be used concurrently
+// by multiple goroutines.
 type SessionContext interface {
 	context.Context
 	Session
@@ -40,40 +44,157 @@ type sessionContext struct {
 type sessionKey struct {
 }
 
-// Session is the interface that represents a sequential set of operations executed.
-// Instances of this interface can be used to use transactions against the server
-// and to enable causally consistent behavior for applications.
+// Session is an interface that represents a MongoDB logical session. Sessions can be used to enable causal consistency
+// for a group of operations or to execute operations in an ACID transaction. A new Session can be created from a Client
+// instance. A Session created from a Client must only be used to execute operations using that Client or a Database or
+// Collection created from that Client. Custom implementations of this interface should not be used in production. For
+// more information about sessions, and their use cases, see https://docs.mongodb.com/manual/reference/server-sessions/,
+// https://docs.mongodb.com/manual/core/read-isolation-consistency-recency/#causal-consistency, and
+// https://docs.mongodb.com/manual/core/transactions/.
+//
+// StartTransaction starts a new transaction, configured with the given options, on this session. This method will
+// return an error if there is already a transaction in-progress for this session.
+//
+// CommitTransaction commits the active transaction for this session. This method will return an error if there is no
+// active transaction for this session or the transaction has been aborted.
+//
+// AbortTransaction aborts the active transaction for this session. This method will return an error if there is no
+// active transaction for this session or the transaction has been committed or aborted.
+//
+// WithTransaction starts a transaction on this session and runs the fn callback. Errors with the
+// TransientTransactionError and UnknownTransactionCommitResult labels are retried for up to 120 seconds. Inside the
+// callback, sessCtx must be used as the Context parameter for any operations that should be part of the transaction. If
+// the ctx parameter already has a Session attached to it, it will be replaced by this session. The fn callback may be
+// run multiple times during WithTransaction due to retry attempts, so it must be idempotent. Non-retryable operation
+// errors or any operation errors that occur after the timeout expires will be returned without retrying. For a usage
+// example, see the Client.StartSession method documentation.
+//
+// ClusterTime, OperationTime, and Client return the session's current operation time, the session's current cluster
+// time, and the Client associated with the session, respectively.
+//
+// EndSession method should abort any existing transactions and close the session.
+//
+// AdvanceClusterTime and AdvanceOperationTime are for internal use only and must not be called.
 type Session interface {
-	EndSession(context.Context)
 	StartTransaction(...*options.TransactionOptions) error
 	AbortTransaction(context.Context) error
 	CommitTransaction(context.Context) error
+	WithTransaction(ctx context.Context, fn func(sessCtx SessionContext) (interface{}, error),
+		opts ...*options.TransactionOptions) (interface{}, error)
 	ClusterTime() bson.Raw
-	AdvanceClusterTime(bson.Raw) error
 	OperationTime() *primitive.Timestamp
+	Client() *Client
+	EndSession(context.Context)
+
+	AdvanceClusterTime(bson.Raw) error
 	AdvanceOperationTime(*primitive.Timestamp) error
+
 	session()
+}
+
+// XSession is an unstable interface for internal use only. This interface is deprecated and is not part of the
+// stability guarantee. It may be removed at any time.
+type XSession interface {
+	ClientSession() *session.Client
+	ID() bsonx.Doc
 }
 
 // sessionImpl represents a set of sequential operations executed by an application that are related in some way.
 type sessionImpl struct {
-	*session.Client
-	topo                *topology.Topology
+	clientSession       *session.Client
+	client              *Client
+	deployment          driver.Deployment
 	didCommitAfterStart bool // true if commit was called after start with no other operations
 }
 
-// EndSession ends the session.
+var _ Session = &sessionImpl{}
+var _ XSession = &sessionImpl{}
+
+// ClientSession implements the XSession interface.
+func (s *sessionImpl) ClientSession() *session.Client {
+	return s.clientSession
+}
+
+// ID implements the XSession interface.
+func (s *sessionImpl) ID() bsonx.Doc {
+	return s.clientSession.SessionID
+}
+
+// EndSession implements the Session interface.
 func (s *sessionImpl) EndSession(ctx context.Context) {
-	if s.TransactionInProgress() {
+	if s.clientSession.TransactionInProgress() {
 		// ignore all errors aborting during an end session
 		_ = s.AbortTransaction(ctx)
 	}
-	s.Client.EndSession()
+	s.clientSession.EndSession()
 }
 
-// StartTransaction starts a transaction for this session.
+// WithTransaction implements the Session interface.
+func (s *sessionImpl) WithTransaction(ctx context.Context, fn func(sessCtx SessionContext) (interface{}, error),
+	opts ...*options.TransactionOptions) (interface{}, error) {
+	timeout := time.NewTimer(withTransactionTimeout)
+	defer timeout.Stop()
+	var err error
+	for {
+		err = s.StartTransaction(opts...)
+		if err != nil {
+			return nil, err
+		}
+
+		res, err := fn(contextWithSession(ctx, s))
+		if err != nil {
+			if s.clientSession.TransactionRunning() {
+				_ = s.AbortTransaction(ctx)
+			}
+
+			select {
+			case <-timeout.C:
+				return nil, err
+			default:
+			}
+
+			if cerr, ok := err.(CommandError); ok {
+				if cerr.HasErrorLabel(driver.TransientTransactionError) {
+					continue
+				}
+			}
+			return res, err
+		}
+
+		err = s.clientSession.CheckAbortTransaction()
+		if err != nil {
+			return res, nil
+		}
+
+	CommitLoop:
+		for {
+			err = s.CommitTransaction(ctx)
+			if err == nil {
+				return res, nil
+			}
+
+			select {
+			case <-timeout.C:
+				return res, err
+			default:
+			}
+
+			if cerr, ok := err.(CommandError); ok {
+				if cerr.HasErrorLabel(driver.UnknownTransactionCommitResult) && !cerr.IsMaxTimeMSExpiredError() {
+					continue
+				}
+				if cerr.HasErrorLabel(driver.TransientTransactionError) {
+					break CommitLoop
+				}
+			}
+			return res, err
+		}
+	}
+}
+
+// StartTransaction implements the Session interface.
 func (s *sessionImpl) StartTransaction(opts ...*options.TransactionOptions) error {
-	err := s.CheckStartTransaction()
+	err := s.clientSession.CheckStartTransaction()
 	if err != nil {
 		return err
 	}
@@ -85,80 +206,105 @@ func (s *sessionImpl) StartTransaction(opts ...*options.TransactionOptions) erro
 		ReadConcern:    topts.ReadConcern,
 		ReadPreference: topts.ReadPreference,
 		WriteConcern:   topts.WriteConcern,
+		MaxCommitTime:  topts.MaxCommitTime,
 	}
 
-	return s.Client.StartTransaction(coreOpts)
+	return s.clientSession.StartTransaction(coreOpts)
 }
 
-// AbortTransaction aborts the session's transaction, returning any errors and error codes
+// AbortTransaction implements the Session interface.
 func (s *sessionImpl) AbortTransaction(ctx context.Context) error {
-	err := s.CheckAbortTransaction()
+	err := s.clientSession.CheckAbortTransaction()
 	if err != nil {
 		return err
 	}
 
-	cmd := command.AbortTransaction{
-		Session: s.Client,
+	// Do not run the abort command if the transaction is in starting state
+	if s.clientSession.TransactionStarting() || s.didCommitAfterStart {
+		return s.clientSession.AbortTransaction()
 	}
 
-	s.Aborting = true
-	_, err = driverlegacy.AbortTransaction(ctx, cmd, s.topo, description.WriteSelector())
+	selector := makePinnedSelector(s.clientSession, description.WriteSelector())
 
-	_ = s.Client.AbortTransaction()
-	return replaceErrors(err)
+	s.clientSession.Aborting = true
+	_ = operation.NewAbortTransaction().Session(s.clientSession).ClusterClock(s.client.clock).Database("admin").
+		Deployment(s.deployment).WriteConcern(s.clientSession.CurrentWc).ServerSelector(selector).
+		Retry(driver.RetryOncePerCommand).CommandMonitor(s.client.monitor).
+		RecoveryToken(bsoncore.Document(s.clientSession.RecoveryToken)).Execute(ctx)
+
+	s.clientSession.Aborting = false
+	_ = s.clientSession.AbortTransaction()
+
+	return nil
 }
 
-// CommitTransaction commits the sesson's transaction.
+// CommitTransaction implements the Session interface.
 func (s *sessionImpl) CommitTransaction(ctx context.Context) error {
-	err := s.CheckCommitTransaction()
+	err := s.clientSession.CheckCommitTransaction()
 	if err != nil {
 		return err
 	}
 
 	// Do not run the commit command if the transaction is in started state
-	if s.TransactionStarting() || s.didCommitAfterStart {
+	if s.clientSession.TransactionStarting() || s.didCommitAfterStart {
 		s.didCommitAfterStart = true
-		return s.Client.CommitTransaction()
+		return s.clientSession.CommitTransaction()
 	}
 
-	if s.Client.TransactionCommitted() {
-		s.RetryingCommit = true
+	if s.clientSession.TransactionCommitted() {
+		s.clientSession.RetryingCommit = true
 	}
 
-	cmd := command.CommitTransaction{
-		Session: s.Client,
+	selector := makePinnedSelector(s.clientSession, description.WriteSelector())
+
+	s.clientSession.Committing = true
+	op := operation.NewCommitTransaction().
+		Session(s.clientSession).ClusterClock(s.client.clock).Database("admin").Deployment(s.deployment).
+		WriteConcern(s.clientSession.CurrentWc).ServerSelector(selector).Retry(driver.RetryOncePerCommand).
+		CommandMonitor(s.client.monitor).RecoveryToken(bsoncore.Document(s.clientSession.RecoveryToken))
+	if s.clientSession.CurrentMct != nil {
+		op.MaxTimeMS(int64(*s.clientSession.CurrentMct / time.Millisecond))
 	}
 
-	// Hack to ensure that session stays in committed state
-	if s.TransactionCommitted() {
-		s.Committing = true
-		defer func() {
-			s.Committing = false
-		}()
+	err = op.Execute(ctx)
+	s.clientSession.Committing = false
+	commitErr := s.clientSession.CommitTransaction()
+
+	// We set the write concern to majority for subsequent calls to CommitTransaction.
+	s.clientSession.UpdateCommitTransactionWriteConcern()
+
+	if err != nil {
+		return replaceErrors(err)
 	}
-	_, err = driverlegacy.CommitTransaction(ctx, cmd, s.topo, description.WriteSelector())
-	if err == nil {
-		return s.Client.CommitTransaction()
-	}
-	return replaceErrors(err)
+	return commitErr
 }
 
+// ClusterTime implements the Session interface.
 func (s *sessionImpl) ClusterTime() bson.Raw {
-	return s.Client.ClusterTime
+	return s.clientSession.ClusterTime
 }
 
+// AdvanceClusterTime implements the Session interface.
 func (s *sessionImpl) AdvanceClusterTime(d bson.Raw) error {
-	return s.Client.AdvanceClusterTime(d)
+	return s.clientSession.AdvanceClusterTime(d)
 }
 
+// OperationTime implements the Session interface.
 func (s *sessionImpl) OperationTime() *primitive.Timestamp {
-	return s.Client.OperationTime
+	return s.clientSession.OperationTime
 }
 
+// AdvanceOperationTime implements the Session interface.
 func (s *sessionImpl) AdvanceOperationTime(ts *primitive.Timestamp) error {
-	return s.Client.AdvanceOperationTime(ts)
+	return s.clientSession.AdvanceOperationTime(ts)
 }
 
+// Client implements the Session interface.
+func (s *sessionImpl) Client() *Client {
+	return s.client
+}
+
+// session implements the Session interface.
 func (*sessionImpl) session() {
 }
 
@@ -167,12 +313,13 @@ func (*sessionImpl) session() {
 func sessionFromContext(ctx context.Context) *session.Client {
 	s := ctx.Value(sessionKey{})
 	if ses, ok := s.(*sessionImpl); ses != nil && ok {
-		return ses.Client
+		return ses.clientSession
 	}
 
 	return nil
 }
 
+// contextWithSession creates a new SessionContext associated with the given Context and Session parameters.
 func contextWithSession(ctx context.Context, sess Session) SessionContext {
 	return &sessionContext{
 		Context: context.WithValue(ctx, sessionKey{}, sess),
