@@ -169,5 +169,9 @@ imports:
   - name: github.com/mongodb/ftdc
     version: 7e505d9a86240264dd35b1d900c2e88ce74f6066
 
+  # GraphQL deps
   - name: github.com/99designs/gqlgen
     version: f869f5a85385745d5854daaa25eab5571b04b245
+  
+  - name: github.com/vektah/gqlparser
+    version: 6b4a7854a7ef7ee3f626490d1e2d22a823828fc6
