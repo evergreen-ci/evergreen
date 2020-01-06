@@ -68,8 +68,7 @@ func serviceConfigFlags(flags ...cli.Flag) []cli.Flag {
 		cli.BoolFlag{
 			Name:  overwriteConfFlagName,
 			Usage: "overwrite the configuration in the db with the file",
-		},
-	)
+		})
 }
 
 func addProjectFlag(flags ...cli.Flag) []cli.Flag {
