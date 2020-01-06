@@ -175,3 +175,5 @@ imports:
   
   - name: github.com/vektah/gqlparser
     version: 6b4a7854a7ef7ee3f626490d1e2d22a823828fc6
+  - name: github.com/gorilla/websocket
+    version: c3e18be99d19e6b3e8f1559eea2c161a665c4b6b
