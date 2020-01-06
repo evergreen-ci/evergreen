@@ -154,58 +154,56 @@ mciModule.factory('PerfDiscoveryDataService', function (
   //   },
   //   {...}
   // ]
-  function onProcessDataFn(metricName) {
-    return function (data) {
-      var now = {},
-        baseline = {},
-        history = {}
+  function onProcessData(data, metricName) {
+    var now = {},
+      baseline = {},
+      history = {}
 
-      _.each(data, function (d) {
-        // Skip empty items
-        if (d == null) return
+    _.each(data, function (d) {
+      // Skip empty items
+      if (d == null) return
 
-        // TODO add group validation instead of individual
-        // Process current (revision) data
-        if (d.current && d.current.data) {
-          // Copy storageEngine to the context
-          d.ctx.storageEngine = d.current.data.storageEngine || '(none)'
+      // TODO add group validation instead of individual
+      // Process current (revision) data
+      if (d.current && d.current.data) {
+        // Copy storageEngine to the context
+        d.ctx.storageEngine = d.current.data.storageEngine || '(none)'
 
-          _.each(d.current.data.results, function (result) {
-            processItem(result, now, d.ctx, metricName);
-          })
+        _.each(d.current.data.results, function (result) {
+          processItem(result, now, d.ctx, metricName);
+        })
+      }
+
+      // Process baseline data
+      if (d.baseline && d.baseline.data) {
+        _.each(d.baseline.data.results, function (result) {
+          processItem(result, baseline, d.ctx, metricName);
+        })
+      }
+
+      // Process history data
+      _.each(d.history, function (histItems) {
+        // Create an empty 'bucket' for history items if not exists
+        var order = histItems.order
+        if (history[order] == undefined) {
+          history[order] = {}
         }
-
-        // Process baseline data
-        if (d.baseline && d.baseline.data) {
-          _.each(d.baseline.data.results, function (result) {
-            processItem(result, baseline, d.ctx, metricName);
-          })
-        }
-
-        // Process history data
-        _.each(d.history, function (histItems) {
-          // Create an empty 'bucket' for history items if not exists
-          var order = histItems.order
-          if (history[order] == undefined) {
-            history[order] = {}
-          }
-          _.each(histItems.data.results, function (result) {
-            processItem(result, history[order], d.ctx, metricName);
-          })
+        _.each(histItems.data.results, function (result) {
+          processItem(result, history[order], d.ctx, metricName);
         })
       })
+    })
 
-      return {
-        now: now,
-        baseline: baseline,
-        // Sorts history items by `order` and returns the list
-        history: _.map(
-          _.sortBy(_.keys(history)),
-          function (key) {
-            return history[key]
-          }
-        ),
-      }
+    return {
+      now: now,
+      baseline: baseline,
+      // Sorts history items by `order` and returns the list
+      history: _.map(
+        _.sortBy(_.keys(history)),
+        function (key) {
+          return history[key]
+        }
+      ),
     }
   }
 
@@ -451,7 +449,7 @@ mciModule.factory('PerfDiscoveryDataService', function (
   // Populates dicts of current (now, baseline) and history result items
   // returns dict of {now, baseline, history} test result items
   function processData(promise, metricName) {
-    return promise.then(onProcessDataFn(metricName))
+    return promise.then(data => onProcessData(data, metricName))
   }
 
   // Returns data for the (ui) grid
@@ -535,7 +533,7 @@ mciModule.factory('PerfDiscoveryDataService', function (
     // For teting
     _extractTasks: extractTasks,
     _processItem: processItem,
-    _onProcessData: onProcessDataFn(),
+    _onProcessData: onProcessData,
     _onGetRows: onGetRows,
     _versionSelectAdaptor: versionSelectAdaptor,
     _tagSelectAdaptor: tagSelectAdaptor,
