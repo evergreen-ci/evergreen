@@ -39,6 +39,7 @@ type Distro struct {
 	HostAllocatorSettings HostAllocatorSettings   `bson:"host_allocator_settings" json:"host_allocator_settings" mapstructure:"host_allocator_settings"`
 	DisableShallowClone   bool                    `bson:"disable_shallow_clone" json:"disable_shallow_clone" mapstructure:"disable_shallow_clone"`
 	UseLegacyAgent        bool                    `bson:"use_legacy_agent" json:"use_legacy_agent" mapstructure:"use_legacy_agent"`
+	Note                  string                  `bson:"note" json:"note" mapstructure:"note"`
 }
 
 // BootstrapSettings encapsulates all settings related to bootstrapping hosts.
