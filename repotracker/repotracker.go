@@ -22,7 +22,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/x/network/command"
+	"go.mongodb.org/mongo-driver/x/mongo/driver"
 	mgobson "gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )
@@ -869,8 +869,8 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata VersionM
 				"cause":   "can't insert version",
 				"version": v.Id,
 			}))
-			if err = sessCtx.AbortTransaction(sessCtx); err != nil {
-				return errors.Wrap(err, "error aborting transaction")
+			if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
+				return errors.Wrap(abortErr, "error aborting transaction")
 			}
 			return errors.Wrapf(err, "error inserting version %s", v.Id)
 		}
@@ -881,8 +881,8 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata VersionM
 				"cause":   "can't insert builds",
 				"version": v.Id,
 			}))
-			if err = sessCtx.AbortTransaction(sessCtx); err != nil {
-				return errors.Wrap(err, "error aborting transaction")
+			if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
+				return errors.Wrap(abortErr, "error aborting transaction")
 			}
 
 			return errors.Wrap(err, "error inserting builds")
@@ -894,8 +894,8 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata VersionM
 				"cause":   "can't insert tasks",
 				"version": v.Id,
 			}))
-			if err = sessCtx.AbortTransaction(sessCtx); err != nil {
-				return errors.Wrap(err, "error aborting transaction")
+			if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
+				return errors.Wrap(abortErr, "error aborting transaction")
 			}
 			return errors.Wrap(err, "error inserting tasks")
 		}
@@ -906,8 +906,8 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata VersionM
 				"cause":   "unable to commit transaction",
 				"version": v.Id,
 			}))
-			if err = sessCtx.AbortTransaction(sessCtx); err != nil {
-				return errors.Wrap(err, "error aborting transaction")
+			if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
+				return errors.Wrap(abortErr, "error aborting transaction")
 			}
 
 			return errors.Wrapf(err, "error committing transaction for version %s", v.Id)
@@ -947,7 +947,7 @@ func isTransientTxErr(err error, versionId string) bool {
 	}
 	rootErr := errors.Cause(err)
 	cmdErr, isCmdErr := rootErr.(mongo.CommandError)
-	if isCmdErr && cmdErr.HasErrorLabel(command.TransientTransactionError) {
+	if isCmdErr && cmdErr.HasErrorLabel(driver.TransientTransactionError) {
 		grip.Notice(message.WrapError(err, message.Fields{
 			"message": "hit transient transaction error, will retry",
 			"version": versionId,

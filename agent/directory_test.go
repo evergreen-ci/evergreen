@@ -7,10 +7,36 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func osExists(err error) bool { return !os.IsNotExist(err) }
 
+func TestRemoveTaskDirectory(t *testing.T) {
+	require := require.New(t)
+
+	// make a long directory name to test working around https://github.com/golang/go/issues/36375
+	a := ""
+	b := ""
+	for i := 0; i < 150; i++ {
+		a += "a"
+		b += "b"
+
+	}
+	wd, err := os.Getwd()
+	require.NoError(err)
+	tmpDir, err := ioutil.TempDir(wd, "test-remove")
+	require.NoError(err)
+	err = os.MkdirAll(filepath.Join(tmpDir, "foo", "bar", a, b), 0755)
+	require.NoError(err)
+
+	// remove the task directory
+	agent := Agent{}
+	tc := &taskContext{taskDirectory: filepath.Base(tmpDir)}
+	agent.removeTaskDirectory(tc)
+	_, err = os.Stat(tmpDir)
+	require.True(os.IsNotExist(err), "directory should have been deleted")
+}
 func TestDirectoryCleanup(t *testing.T) {
 	assert := assert.New(t)
 

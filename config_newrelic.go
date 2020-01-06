@@ -24,16 +24,16 @@ func (c *NewRelicConfig) Get(env Environment) error {
 
 	res := coll.FindOne(ctx, byId(c.SectionId()))
 	if err := res.Err(); err != nil {
-		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
-	}
-
-	if err := res.Decode(c); err != nil {
 		if err == mongo.ErrNoDocuments {
 			*c = NewRelicConfig{}
 			return nil
 		}
 		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
 	}
+	if err := res.Decode(c); err != nil {
+		return errors.Wrap(err, "problem decoding result")
+	}
+
 	return nil
 }
 

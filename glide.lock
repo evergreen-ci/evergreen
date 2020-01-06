@@ -46,6 +46,9 @@ imports:
   - name: github.com/stretchr/testify
     version: 890a5c3458b43e6104ff5da8dfa139d013d77544
 
+  - name: github.com/sam-falvo/mbox
+    version: 766c02448eff8a6c8397ed1553677fd17af4ba69
+
   - name: github.com/jacobsa/oglematchers
     version: 4fc24f97b5b74022c2a3f4ca7eed57ca29083d3e
   - name: github.com/jtolds/gls
@@ -122,7 +125,7 @@ imports:
   - name: github.com/mongodb/amboy
     version: e5548953650b5d4cc7b6d7aba4cb1b2771e35342
   - name: github.com/evergreen-ci/gimlet
-    version: 2ced738455fa387e56528bafb31fbd9db1741b81
+    version: f29b6c78d420998c0d30f5477c0ddbf93bead2a3
   - name: github.com/evergreen-ci/shrub
     version: 32e668cd99410328bf6659e55671c11a6c727d9a
   - name: github.com/evergreen-ci/pail
@@ -130,13 +133,13 @@ imports:
   - name: github.com/mongodb/jasper
     version: 61a695020101f18236583d806735d4ea1ccfd1fe
   - name: go.mongodb.org/mongo-driver
-    version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86
+    version: 90164f879ba927bc0fa38682215b7a71d4ff8a92
   - name: github.com/evergreen-ci/timber
     version: 1cdd00ad2f2eaf6fb1cb9dedacaddbc3b0e03149
 
   - name: github.com/evergreen-ci/certdepot
     version: 270990334f8f50e41a803e88f169d2f467e376c5
-
+    
   # git library and its dependencies
   - name: gopkg.in/src-d/go-git.v4
     version: bf3b1f1fb9e0a04d0f87511a7ded2562b48a19d8
@@ -169,5 +172,15 @@ imports:
   - name: github.com/mongodb/ftdc
     version: 7e505d9a86240264dd35b1d900c2e88ce74f6066
 
-  - name: github.com/sam-falvo/mbox
-    version: 766c02448eff8a6c8397ed1553677fd17af4ba69
+  # GraphQL deps
+  - name: github.com/99designs/gqlgen
+    version: f869f5a85385745d5854daaa25eab5571b04b245
+  
+  - name: github.com/vektah/gqlparser
+    version: 6b4a7854a7ef7ee3f626490d1e2d22a823828fc6
+  - name: github.com/gorilla/websocket
+    version: c3e18be99d19e6b3e8f1559eea2c161a665c4b6b
+  - name: github.com/agnivade/levenshtein
+    version: ee956134f90a4fca4e25fa69d52e20293d715a45
+  - name: github.com/hashicorp/golang-lru
+    version: 7f827b33c0f158ec5dfbba01bb0b14a4541fd81d
