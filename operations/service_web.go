@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/gimlet"
@@ -104,10 +103,6 @@ func startWebService() cli.Command {
 
 				close(adminWait)
 			}()
-
-			if c.Bool(graphqlFeatureFlag) {
-				graphql.StartServer()
-			}
 
 			gracefulWait := make(chan struct{})
 			go gracefulShutdownForSIGTERM(ctx, []*http.Server{uiServer, apiServer, adminServer}, gracefulWait, catcher)
