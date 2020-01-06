@@ -16,6 +16,8 @@ import (
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -306,9 +308,12 @@ func (uis *UIServer) addDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = d.Insert(); err != nil {
-		message := fmt.Sprintf("error inserting distro '%v': %v", d.Id, err)
-		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
+	if err = d.Add(u); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error adding distro",
+		}))
+		errMsg := fmt.Sprintf("error adding distro")
+		PushFlash(uis.CookieStore, r, w, NewErrorFlash(errMsg))
 		gimlet.WriteJSONInternalError(w, err)
 		return
 	}
