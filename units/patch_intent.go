@@ -364,6 +364,9 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 		return errors.Wrap(err, "error parsing patch")
 	}
 	summaries, err := thirdparty.GetPatchSummaries(string(patchBytes))
+	if err != nil {
+		return err
+	}
 	patchDoc.Patches[0].PatchSet.Summary = summaries
 
 	if patchDoc.Alias == evergreen.CommitQueueAlias {
@@ -391,8 +394,8 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 func getPatchSummariesByCommit(reader io.Reader) ([]patch.CommitSummary, error) {
 	stream, err := mbox.CreateMboxStream(reader)
 	if err != nil {
-		if err == io.EOF { // empty commit
-			return nil, errors.Errorf("patch has no build variants or tasks")
+		if err == io.EOF {
+			return nil, errors.Errorf("patch is empty")
 		}
 		return nil, errors.Wrap(err, "error creating stream")
 	}
