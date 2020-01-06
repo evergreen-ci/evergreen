@@ -191,7 +191,7 @@ describe('PerfDiscoveryDataServiceTest', function () {
       }
     }];
 
-    const processed = service._onProcessData()(data);
+    const processed = service._onProcessData(data);
 
     expect(
       _.keys(processed.now).length
@@ -222,7 +222,7 @@ describe('PerfDiscoveryDataServiceTest', function () {
     }];
 
     expect(
-      service._onProcessData()(data)
+      service._onProcessData(data)
     ).toEqual({
       now: {},
       baseline: {},
@@ -234,7 +234,7 @@ describe('PerfDiscoveryDataServiceTest', function () {
     const data = [null];
 
     expect(
-      service._onProcessData()(data)
+      service._onProcessData(data)
     ).toEqual({
       now: {},
       baseline: {},

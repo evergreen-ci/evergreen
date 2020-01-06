@@ -142,11 +142,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function (
       // Apply perf data
       .then(function (res) {
         vm.gridOptions.data = res
-        let metrics = [];
-        _.each(res, (test) => {
-          metrics = metrics.concat(test.all_metrics)
-        });
-        vm.all_metrics = _.uniq(metrics).sort();
+        vm.all_metrics = _.chain(res).map(test => test.all_metrics).flatten().uniq().sort().value();
         // Apply options data to filter drop downs
         gridUtil.applyMultiselectOptions(
           res,

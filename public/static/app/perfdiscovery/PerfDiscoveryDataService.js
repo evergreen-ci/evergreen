@@ -154,7 +154,7 @@ mciModule.factory('PerfDiscoveryDataService', function (
   //   },
   //   {...}
   // ]
-  function onProcessData(metricName, data) {
+  function onProcessDataFn(metricName) {
     return function (data) {
       var now = {},
         baseline = {},
@@ -451,7 +451,7 @@ mciModule.factory('PerfDiscoveryDataService', function (
   // Populates dicts of current (now, baseline) and history result items
   // returns dict of {now, baseline, history} test result items
   function processData(promise, metricName) {
-    return promise.then(onProcessData(metricName))
+    return promise.then(onProcessDataFn(metricName))
   }
 
   // Returns data for the (ui) grid
@@ -535,7 +535,7 @@ mciModule.factory('PerfDiscoveryDataService', function (
     // For teting
     _extractTasks: extractTasks,
     _processItem: processItem,
-    _onProcessData: onProcessData,
+    _onProcessData: onProcessDataFn(),
     _onGetRows: onGetRows,
     _versionSelectAdaptor: versionSelectAdaptor,
     _tagSelectAdaptor: tagSelectAdaptor,
