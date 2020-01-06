@@ -52,3 +52,25 @@ func TestSplitCommas(t *testing.T) {
 		})
 	}
 }
+
+func TestStringSliceSymmetricDifference(t *testing.T) {
+	assert := assert.New(t)
+	a := []string{"a", "c", "f", "n", "q"}
+	b := []string{"q", "q", "g", "y", "a"}
+
+	onlyA, onlyB := StringSliceSymmetricDifference(a, b)
+	assert.EqualValues([]string{"c", "f", "n"}, onlyA)
+	assert.EqualValues([]string{"g", "y"}, onlyB)
+
+	onlyB, onlyA = StringSliceSymmetricDifference(b, a)
+	assert.EqualValues([]string{"c", "f", "n"}, onlyA)
+	assert.EqualValues([]string{"g", "y"}, onlyB)
+
+	onlyA, onlyB = StringSliceSymmetricDifference(a, a)
+	assert.Equal([]string{}, onlyA)
+	assert.Equal([]string{}, onlyB)
+
+	empty1, empty2 := StringSliceSymmetricDifference([]string{}, []string{})
+	assert.Equal([]string{}, empty1)
+	assert.Equal([]string{}, empty2)
+}
