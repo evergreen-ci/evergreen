@@ -8,8 +8,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
+	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -276,6 +279,10 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 			csrf.Protect([]byte(uis.Settings.Ui.CsrfKey), csrf.ErrorHandler(http.HandlerFunc(ForbiddenHandler))),
 		))
 	}
+
+	// GraphQL
+	app.AddRoute("/graphql").Handler(playground.Handler("GraphQL playground", "/graphql/query")).Get().Wrap(needsLogin)
+	app.AddRoute("/graphql/query").Handler(handler.NewDefaultServer(graphql.NewExecutableSchema(graphql.New())).ServeHTTP).Options().Post().Get().Wrap(needsLogin)
 
 	// Waterfall pages
 	app.AddRoute("/").Wrap(needsContext).Handler(uis.waterfallPage).Get()

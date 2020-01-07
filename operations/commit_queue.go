@@ -117,6 +117,10 @@ func mergeCommand() cli.Command {
 				Name:  joinFlagNames(messageFlagName, "m", "description", "d"),
 				Usage: "commit message",
 			},
+			cli.BoolFlag{
+				Name:  forceFlagName,
+				Usage: "force item to front of queue",
+			},
 		)),
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
@@ -130,8 +134,11 @@ func mergeCommand() cli.Command {
 				message:     c.String(messageFlagName),
 				skipConfirm: c.Bool(yesFlagName),
 				large:       c.Bool(largeFlagName),
+				force:       c.Bool(forceFlagName),
 			}
-
+			if params.force && !confirm("Forcing item to front of queue will be reported. Continue? (y/n)", false) {
+				return errors.New("Merge aborted.")
+			}
 			conf, err := NewClientSettings(c.Parent().Parent().String(confFlagName))
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
@@ -287,6 +294,7 @@ type mergeParams struct {
 	message     string
 	skipConfirm bool
 	large       bool
+	force       bool
 }
 
 func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, client client.Communicator, ac *legacyClient) error {
@@ -295,13 +303,14 @@ func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, cli
 			return err
 		}
 	}
-	if !p.pause {
-		position, err := client.EnqueueItem(ctx, p.id)
-		if err != nil {
-			return err
-		}
-		grip.Infof("Queue position is %d", position)
+	if p.pause {
+		return nil
 	}
+	position, err := client.EnqueueItem(ctx, p.id, p.force)
+	if err != nil {
+		return err
+	}
+	grip.Infof("Queue position is %d", position)
 
 	return nil
 }

@@ -228,7 +228,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		Private             bool                           `json:"private"`
 		Owner               string                         `json:"owner_name"`
 		Repo                string                         `json:"repo_name"`
-		Admins              []string                       `json:"admins"`
+		Admins              []string                       `json:"admins"` //TODO: update roles for this project if admins change
 		TracksPushEvents    bool                           `json:"tracks_push_events"`
 		PRTestingEnabled    bool                           `json:"pr_testing_enabled"`
 		CommitQueue         restModel.APICommitQueueParams `json:"commit_queue"`
@@ -621,9 +621,13 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 		RepoKind:   "github",
 	}
 
-	err = newProject.Insert()
+	err = newProject.Add(dbUser)
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error adding project",
+		}))
+		errMsg := fmt.Sprintf("error adding project")
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.New(errMsg))
 		return
 	}
 

@@ -96,7 +96,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		versionAsUI.PatchInfo = &uiPatch{Patch: *projCtx.Patch}
 		// diff builds for each build in the version
 		var baseBuilds []build.Build
-		baseBuilds, err = build.Find(build.ByRevision(projCtx.Version.Revision))
+		baseBuilds, err = build.Find(build.ByRevisionWithSystemVersionRequester(projCtx.Version.Revision))
 		if err != nil {
 			http.Error(w,
 				fmt.Sprintf("error loading base builds for patch: %v", err),
@@ -197,6 +197,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	canEdit := (currentUser != nil) && (projCtx.Version.Requester != evergreen.MergeTestRequester)
 	pluginContext := projCtx.ToPluginContext(uis.Settings, currentUser)
 	pluginContent := getPluginDataAndHTML(uis, plugin.VersionPage, pluginContext)
 
@@ -209,7 +210,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	}{
 		Version:       &versionAsUI,
 		PluginContent: pluginContent,
-		CanEdit:       currentUser != nil,
+		CanEdit:       canEdit,
 		JiraHost:      uis.Settings.Jira.Host,
 		ViewData:      uis.GetCommonViewData(w, r, false, true)}, "base", "version.html", "base_angular.html", "menu.html")
 }
@@ -248,16 +249,20 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	case "set_active":
+		if err = model.SetVersionActivation(projCtx.Version.Id, jsonMap.Active, user.Id); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// abort after deactivating the version so we aren't bombarded with failing tasks while
+		// the deactivation is in progress
 		if jsonMap.Abort {
 			if err = model.AbortVersion(projCtx.Version.Id, authName); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 		}
-		if err = model.SetVersionActivation(projCtx.Version.Id, jsonMap.Active, user.Id); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+
 		if !jsonMap.Active && projCtx.Version.Requester == evergreen.MergeTestRequester {
 			_, err := commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
 				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Version.Id, true)

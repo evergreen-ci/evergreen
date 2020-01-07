@@ -1315,6 +1315,58 @@ func TestAddBuildVariant(t *testing.T) {
 	assert.Len(t, pp.BuildVariants[0].Tasks, 1)
 }
 
+func TestTryUpsert(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T){
+		"configNumberMatches": func(t *testing.T) {
+			pp := &ParserProject{
+				Id:                 "my-project",
+				ConfigUpdateNumber: 4,
+				Owner:              "me",
+			}
+			assert.NoError(t, pp.TryUpsert()) // new project should work
+			pp.Owner = "you"
+			assert.NoError(t, pp.TryUpsert())
+			pp, err := ParserProjectFindOneById(pp.Id)
+			assert.NoError(t, err)
+			require.NotNil(t, pp)
+			assert.Equal(t, "you", pp.Owner)
+		},
+		"noConfigNumber": func(t *testing.T) {
+			pp := &ParserProject{
+				Id:    "my-project",
+				Owner: "me",
+			}
+			assert.NoError(t, pp.TryUpsert()) // new project should work
+			pp.Owner = "you"
+			assert.NoError(t, pp.TryUpsert())
+			pp, err := ParserProjectFindOneById(pp.Id)
+			assert.NoError(t, err)
+			require.NotNil(t, pp)
+			assert.Equal(t, "you", pp.Owner)
+		},
+		"configNumberDoesNotMatch": func(t *testing.T) {
+			pp := &ParserProject{
+				Id:                 "my-project",
+				ConfigUpdateNumber: 4,
+				Owner:              "me",
+			}
+			assert.NoError(t, pp.TryUpsert()) // new project should work
+			pp.ConfigUpdateNumber = 5
+			pp.Owner = "you"
+			assert.NoError(t, pp.TryUpsert()) // should not update and should not error
+			pp, err := ParserProjectFindOneById(pp.Id)
+			assert.NoError(t, err)
+			require.NotNil(t, pp)
+			assert.Equal(t, "me", pp.Owner)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(ParserProjectCollection))
+			testCase(t)
+		})
+	}
+}
+
 func TestParserProjectPersists(t *testing.T) {
 	simpleYaml := `
 loggers:
@@ -1384,7 +1436,7 @@ func checkProjectPersists(yml []byte) error {
 		return errors.Wrapf(err, "error marshalling original project")
 	}
 
-	if err = pp.UpsertWithConfigNumber(1); err != nil {
+	if err = pp.TryUpsert(); err != nil {
 		return errors.Wrapf(err, "error inserting parser project")
 	}
 	newPP, err := ParserProjectFindOneById(pp.Id)
@@ -1406,7 +1458,7 @@ func checkProjectPersists(yml []byte) error {
 	if err != nil {
 		return errors.Wrap(err, "error creating intermediate project from stored config")
 	}
-	if err = pp.UpsertWithConfigNumber(2); err != nil {
+	if err = pp.TryUpsert(); err != nil {
 		return errors.Wrap(err, "error updating version's project")
 	}
 
@@ -1416,9 +1468,6 @@ func checkProjectPersists(yml []byte) error {
 	}
 	if newPP.Identifier != pp.Identifier {
 		return errors.New("version project not updated")
-	}
-	if newPP.ConfigUpdateNumber != 2 {
-		return errors.New("Config update number wrong")
 	}
 
 	return nil

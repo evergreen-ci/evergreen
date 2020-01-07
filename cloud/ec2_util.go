@@ -20,19 +20,12 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
-//Valid values for EC2 instance states:
-//pending | running | shutting-down | terminated | stopping | stopped
-//see http://goo.gl/3OrCGn
 const (
-	EC2StatusPending      = "pending"
-	EC2StatusRunning      = "running"
-	EC2StatusShuttingdown = "shutting-down"
-	EC2StatusTerminated   = "terminated"
-	EC2StatusStopped      = "stopped"
-	EC2ErrorNotFound      = "InvalidInstanceID.NotFound"
+	EC2ErrorNotFound = "InvalidInstanceID.NotFound"
 )
 
 type MountPoint struct {
@@ -110,17 +103,19 @@ func osBillingName(os osType) string {
 //provider-specific status codes.
 func ec2StatusToEvergreenStatus(ec2Status string) CloudStatus {
 	switch ec2Status {
-	case EC2StatusPending:
+	case ec2.InstanceStateNamePending:
 		return StatusInitializing
-	case EC2StatusRunning:
+	case ec2.InstanceStateNameRunning:
 		return StatusRunning
-	case EC2StatusShuttingdown:
-		return StatusTerminated
-	case EC2StatusTerminated:
-		return StatusTerminated
-	case EC2StatusStopped:
+	case ec2.InstanceStateNameStopped:
 		return StatusStopped
+	case ec2.InstanceStateNameTerminated, ec2.InstanceStateNameShuttingDown:
+		return StatusTerminated
 	default:
+		grip.Error(message.Fields{
+			"message": "got an unknown ec2 state name",
+			"status":  ec2Status,
+		})
 		return StatusUnknown
 	}
 }
@@ -250,6 +245,18 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, cl
 	h.Volumes = makeVolumeAttachments(instance.BlockDeviceMappings)
 
 	var err error
+	if h.ComputeCostPerHour == 0 {
+		ec2Settings := &EC2ProviderSettings{}
+		err := ec2Settings.fromDistroSettings(h.Distro)
+		if err != nil {
+			return errors.Wrapf(err, "error getting EC2 settings for host '%s'", h.Id)
+		}
+		h.ComputeCostPerHour, _, err = pkgCachingPriceFetcher.getLatestSpotCostForInstance(ctx, client, ec2Settings, getOsName(h), h.Zone)
+		if err != nil {
+			return errors.Wrapf(err, "can't get pricing for host '%s'", h.Id)
+		}
+	}
+
 	h.VolumeTotalSize, err = getVolumeSize(ctx, client, h)
 	if err != nil {
 		return errors.Wrapf(err, "error getting volume size for host %s", h.Id)

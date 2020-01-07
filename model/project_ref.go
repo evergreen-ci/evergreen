@@ -10,7 +10,9 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -168,6 +170,51 @@ const (
 
 func (projectRef *ProjectRef) Insert() error {
 	return db.Insert(ProjectRefCollection, projectRef)
+}
+
+func (p *ProjectRef) Add(creator *user.DBUser) error {
+	err := db.Insert(ProjectRefCollection, p)
+	if err != nil {
+		return errors.Wrap(err, "Error inserting distro")
+	}
+	return p.AddPermissions(creator)
+}
+
+func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
+	rm := evergreen.GetEnvironment().RoleManager()
+	if err := rm.AddResourceToScope(evergreen.AllProjectsScope, p.Identifier); err != nil { // TODO: update for restricted/not
+		return errors.Wrapf(err, "error adding project '%s' to list of all projects", p.Identifier)
+	}
+	newScope := gimlet.Scope{
+		ID:          fmt.Sprintf("project_%s", p.Identifier),
+		Resources:   []string{p.Identifier},
+		Name:        p.Identifier,
+		Type:        evergreen.ProjectResourceType,
+		ParentScope: evergreen.AllProjectsScope,
+	}
+	if err := rm.AddScope(newScope); err != nil {
+		return errors.Wrapf(err, "error adding scope for project '%s'", p.Identifier)
+	}
+	newRole := gimlet.Role{
+		ID:     fmt.Sprintf("admin_project_%s", p.Identifier),
+		Owners: []string{creator.Id},
+		Scope:  newScope.ID,
+		Permissions: map[string]int{
+			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+			evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
+			evergreen.PermissionPatches:         evergreen.PatchSubmit.Value,
+			evergreen.PermissionLogs:            evergreen.LogsView.Value,
+		},
+	}
+	if err := rm.UpdateRole(newRole); err != nil {
+		return errors.Wrapf(err, "error adding admin role for project '%s'", p.Identifier)
+	}
+	if creator != nil {
+		if err := creator.AddRole(newRole.ID); err != nil {
+			return errors.Wrapf(err, "error adding role '%s' to user '%s'", newRole.ID, creator.Id)
+		}
+	}
+	return nil
 }
 
 func (projectRef *ProjectRef) Update() error {

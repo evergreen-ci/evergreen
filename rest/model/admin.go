@@ -18,6 +18,7 @@ func NewConfigModel() *APIAdminSettings {
 		Amboy:             &APIAmboyConfig{},
 		Api:               &APIapiConfig{},
 		AuthConfig:        &APIAuthConfig{},
+		Backup:            &APIBackupConfig{},
 		CommitQueue:       &APICommitQueueConfig{},
 		ContainerPools:    &APIContainerPoolsConfig{},
 		Credentials:       map[string]string{},
@@ -52,6 +53,7 @@ type APIAdminSettings struct {
 	AuthConfig              *APIAuthConfig                    `json:"auth,omitempty"`
 	Banner                  APIString                         `json:"banner,omitempty"`
 	BannerTheme             APIString                         `json:"banner_theme,omitempty"`
+	Backup                  *APIBackupConfig                  `json:"backup,omitempty"`
 	ClientBinariesDir       APIString                         `json:"client_binaries_dir,omitempty"`
 	CommitQueue             *APICommitQueueConfig             `json:"commit_queue,omitempty"`
 	ConfigDir               APIString                         `json:"configdir,omitempty"`
@@ -433,18 +435,51 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 	}, nil
 }
 
+type APIBackupConfig struct {
+	BucketName APIString `bson:"bucket_name" json:"bucket_name" yaml:"bucket_name"`
+	Key        APIString `bson:"key" json:"key" yaml:"key"`
+	Secret     APIString `bson:"secret" json:"secret" yaml:"secret"`
+	Prefix     APIString `bson:"prefix" json:"prefix" yaml:"prefix"`
+	Compress   bool      `bson:"compress" json:"compress" yaml:"compress"`
+}
+
+func (a *APIBackupConfig) BuildFromService(c interface{}) error {
+	switch conf := c.(type) {
+	case evergreen.BackupConfig:
+		a.BucketName = ToAPIString(conf.BucketName)
+		a.Key = ToAPIString(conf.Key)
+		a.Secret = ToAPIString(conf.Secret)
+		a.Compress = conf.Compress
+		a.Prefix = ToAPIString(conf.Prefix)
+
+		return nil
+	default:
+		return errors.Errorf("%T is not a supported type", c)
+	}
+}
+func (a *APIBackupConfig) ToService() (interface{}, error) {
+	if a == nil {
+		return nil, nil
+	}
+
+	return evergreen.BackupConfig{
+		BucketName: FromAPIString(a.BucketName),
+		Key:        FromAPIString(a.Key),
+		Secret:     FromAPIString(a.Secret),
+		Prefix:     FromAPIString(a.Prefix),
+		Compress:   a.Compress,
+	}, nil
+}
+
 type APILDAPConfig struct {
-	URL                 APIString `json:"url"`
-	Port                APIString `json:"port"`
-	ServiceUserName     APIString `json:"service_user_name"`
-	ServiceUserPassword APIString `json:"service_user_password"`
-	ServiceUserPath     APIString `json:"service_user_path"`
-	UserPath            APIString `json:"path"`
-	ServicePath         APIString `json:"service_path"`
-	Group               APIString `json:"group"`
-	ServiceGroup        APIString `json:"service_group"`
-	ExpireAfterMinutes  APIString `json:"expire_after_minutes"`
-	GroupOU             APIString `json:"group_ou"`
+	URL                APIString `json:"url"`
+	Port               APIString `json:"port"`
+	UserPath           APIString `json:"path"`
+	ServicePath        APIString `json:"service_path"`
+	Group              APIString `json:"group"`
+	ServiceGroup       APIString `json:"service_group"`
+	ExpireAfterMinutes APIString `json:"expire_after_minutes"`
+	GroupOU            APIString `json:"group_ou"`
 }
 
 func (a *APILDAPConfig) BuildFromService(h interface{}) error {
@@ -455,9 +490,6 @@ func (a *APILDAPConfig) BuildFromService(h interface{}) error {
 		}
 		a.URL = ToAPIString(v.URL)
 		a.Port = ToAPIString(v.Port)
-		a.ServiceUserName = ToAPIString(v.ServiceUserName)
-		a.ServiceUserPassword = ToAPIString(v.ServiceUserPassword)
-		a.ServiceUserPath = ToAPIString(v.ServiceUserPath)
 		a.UserPath = ToAPIString(v.UserPath)
 		a.ServicePath = ToAPIString(v.ServicePath)
 		a.Group = ToAPIString(v.Group)
@@ -475,17 +507,14 @@ func (a *APILDAPConfig) ToService() (interface{}, error) {
 		return nil, nil
 	}
 	return &evergreen.LDAPConfig{
-		URL:                 FromAPIString(a.URL),
-		Port:                FromAPIString(a.Port),
-		ServiceUserName:     FromAPIString(a.ServiceUserName),
-		ServiceUserPassword: FromAPIString(a.ServiceUserPassword),
-		ServiceUserPath:     FromAPIString(a.ServiceUserPath),
-		UserPath:            FromAPIString(a.UserPath),
-		ServicePath:         FromAPIString(a.ServicePath),
-		Group:               FromAPIString(a.Group),
-		ServiceGroup:        FromAPIString(a.ServiceGroup),
-		ExpireAfterMinutes:  FromAPIString(a.ExpireAfterMinutes),
-		GroupOU:             FromAPIString(a.Group),
+		URL:                FromAPIString(a.URL),
+		Port:               FromAPIString(a.Port),
+		UserPath:           FromAPIString(a.UserPath),
+		ServicePath:        FromAPIString(a.ServicePath),
+		Group:              FromAPIString(a.Group),
+		ServiceGroup:       FromAPIString(a.ServiceGroup),
+		ExpireAfterMinutes: FromAPIString(a.ExpireAfterMinutes),
+		GroupOU:            FromAPIString(a.Group),
 	}, nil
 }
 
@@ -1291,6 +1320,7 @@ type APIServiceFlags struct {
 	CommitQueueDisabled        bool `json:"commit_queue_disabled"`
 	PlannerDisabled            bool `json:"planner_disabled"`
 	HostAllocatorDisabled      bool `json:"host_allocator_disabled"`
+	DRBackupDisabled           bool `json:"dr_backup_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -1545,6 +1575,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.CommitQueueDisabled = v.CommitQueueDisabled
 		as.PlannerDisabled = v.PlannerDisabled
 		as.HostAllocatorDisabled = v.HostAllocatorDisabled
+		as.DRBackupDisabled = v.DRBackupDisabled
 	default:
 		return errors.Errorf("%T is not a supported service flags type", h)
 	}
@@ -1578,6 +1609,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		CommitQueueDisabled:          as.CommitQueueDisabled,
 		PlannerDisabled:              as.PlannerDisabled,
 		HostAllocatorDisabled:        as.HostAllocatorDisabled,
+		DRBackupDisabled:             as.DRBackupDisabled,
 	}, nil
 }
 

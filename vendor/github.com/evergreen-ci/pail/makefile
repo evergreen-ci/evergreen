@@ -1,16 +1,23 @@
 buildDir := build
 srcFiles := $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "*\#*")
 testFiles := $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
+projectPath := github.com/evergreen-ci/pail
 
 packages := pail
-#
-# override the go binary path if set
-ifneq (,$(GO_BIN_PATH))
-gobin := $(GO_BIN_PATH)
+
+# start environment setup
+ifneq (,${GO_BIN_PATH})
+gobin := ${GO_BIN_PATH}
 else
 gobin := go
 endif
-
+gopath := $(GOPATH)
+ifeq ($(OS),Windows_NT)
+gopath := $(shell cygpath -m $(gopath))
+userProfile := $(shell cygpath -m $(USERPROFILE))
+endif
+goEnv := GOPATH=$(gopath) $(if ${GO_BIN_PATH},PATH="$(shell dirname ${GO_BIN_PATH}):${PATH}")
+# end environment setup
 
 # start linting configuration
 #   package, testing, and linter dependencies specified
@@ -41,16 +48,12 @@ lintArgs += --exclude="error return value not checked .defer.*"
 
 # start dependency installation tools
 #   implementation details for being able to lazily install dependencies
-gopath := $(GOPATH)
-ifeq ($(OS),Windows_NT)
-gopath := $(shell cygpath -m $(gopath))
-endif
 lintDeps := $(addprefix $(gopath)/src/,$(lintDeps))
 $(gopath)/src/%:
 	@-[ ! -d $(gopath) ] && mkdir -p $(gopath) || true
-	$(gobin) get $(subst $(gopath)/src/,,$@)
+	$(goEnv) $(gobin) get $(subst $(gopath)/src/,,$@)
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
-	 $(gobin) build -o $@ $<
+	 $(goEnv) $(gobin) build -o $@ $<
 $(buildDir)/.lintSetup:$(lintDeps)
 	@-$(gopath)/bin/gometalinter --install >/dev/null && touch $@
 # end dependency installation tools
@@ -61,6 +64,7 @@ ifneq (,$(RUN_TEST))
 testArgs += -run='$(RUN_TEST)'
 endif
 ifneq (,$(RUN_COUNT))
+  WORK_DIR: ${workdir}
 testArgs += -count='$(RUN_COUNT)'
 endif
 ifneq (,$(SKIP_LONG))
@@ -72,20 +76,29 @@ endif
 ifneq (,$(RACE_DETECTOR))
 testArgs += -race
 endif
+ifneq (,$(TEST_TIMEOUT))
+testArgs += -timeout=$(TEST_TIMEOUT)
+else
+testArgs += -timeout=30m
+endif
+
 # test execution and output handlers
 $(buildDir)/:
 	mkdir -p $@
 $(buildDir)/output.%.test:$(buildDir)/ .FORCE
-	GOPATH=$(gopath) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$*,) | tee $@
+	export USERPROFILE=$(userProfile)
+	$(goEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$*,) | tee $@
 	@! grep -s -q -e "^FAIL" $@ && ! grep -s -q "^WARNING: DATA RACE" $@
 $(buildDir)/output.test:$(buildDir)/ .FORCE
-	GOPATH=$(gopath) $(gobin) test $(testArgs) ./... | tee $@
+	export USERPROFILE=$(userProfile)
+	$(goEnv) $(gobin) test $(testArgs) ./... | tee $@
 	@! grep -s -q -e "^FAIL" $@ && ! grep -s -q "^WARNING: DATA RACE" $@
 $(buildDir)/output.%.coverage:$(buildDir)/ .FORCE
-	GOPATH=$(gopath) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$*,) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
-	@-[ -f $@ ] && $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
+	export USERPROFILE=$(userProfile)
+	$(goEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$*,) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
+	@-[ -f $@ ] && $(goEnv) $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
-	GOPATH=$(gopath) $(gobin) tool cover -html=$< -o $@
+	$(goEnv) $(gobin) tool cover -html=$< -o $@
 #  targets to generate gotest output from the linter.
 $(buildDir)/output.%.lint:$(buildDir)/run-linter $(buildDir)/ .FORCE
 	@./$< --output=$@ --lintArgs='$(lintArgs)' --packages='$*'
@@ -97,18 +110,19 @@ $(buildDir)/output.lint:$(buildDir)/run-linter $(buildDir)/ .FORCE
 
 # userfacing targets for basic build and development operations
 compile:
-	GOPATH=$(gopath) $(gobin) build ./
+	$(goEnv) $(gobin) build ./
 test:$(buildDir)/test.out
 $(buildDir)/test.out:.FORCE
+	export USERPROFILE=$(userProfile)
 	@mkdir -p $(buildDir)
-	GOPATH=$(gopath) $(gobin) test $(testArgs) ./ | tee $@
+	$(goEnv) $(gobin) test $(testArgs) ./ | tee $@
 	@grep -s -q -e "^PASS" $@
 coverage:$(buildDir)/cover.out
-	GOPATH=$(gopath) @$(gobin) tool cover -func=$< | sed -E 's%github.com/.*/ftdc/%%' | column -t
+	@$(goEnv) $(gobin) tool cover -func=$< | sed -E 's%$(projectPath)/%%' | column -t
 coverage-html:$(buildDir)/cover.html
 
 benchmark:
-	$(gobin) test -v -benchmem -bench=. -run="Benchmark.*" -timeout=20m
+	$(goEnv) $(gobin) test -v -benchmem -bench=. -run="Benchmark.*" -timeout=20m
 lint:$(foreach target,$(packages),$(buildDir)/output.$(target).lint)
 
 phony += lint lint-deps build build-race race test coverage coverage-html
@@ -120,9 +134,10 @@ phony += lint lint-deps build build-race race test coverage coverage-html
 $(buildDir):$(srcFiles) compile
 	@mkdir -p $@
 $(buildDir)/cover.out:$(buildDir) $(testFiles) .FORCE
-	$(gobin) test $(testArgs) -covermode=count -coverprofile $@ -cover ./
+	export USERPROFILE=$(userProfile)
+	$(goEnv) $(gobin) test $(testArgs) -covermode=count -coverprofile $@ -cover ./
 $(buildDir)/cover.html:$(buildDir)/cover.out
-	$(gobin) tool cover -html=$< -o $@
+	$(goEnv) $(gobin) tool cover -html=$< -o $@
 
 
 vendor-clean:

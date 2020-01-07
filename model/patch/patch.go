@@ -410,3 +410,17 @@ func MakeMergePatch(pr *github.PullRequest, projectID, alias string) (*Patch, er
 
 	return patchDoc, nil
 }
+
+type PatchesByCreateTime []Patch
+
+func (p PatchesByCreateTime) Len() int {
+	return len(p)
+}
+
+func (p PatchesByCreateTime) Less(i, j int) bool {
+	return p[i].CreateTime.Before(p[j].CreateTime)
+}
+
+func (p PatchesByCreateTime) Swap(i, j int) {
+	p[i], p[j] = p[j], p[i]
+}

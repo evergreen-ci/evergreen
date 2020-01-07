@@ -665,6 +665,10 @@ Evergreen - Distros
 
         <div class="panel-body panel panel-default">
           <div class="dropdown">
+            <p class="distro-checkbox checkbox">
+              <input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.use_legacy_agent">
+              Use legacy agent for this distro.
+            </p>
             <span class="distro-menu-title">Host Bootstrap Method:</span>
               <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true" ng-disabled="readOnly">
                 <strong class="distro-menu-item">[[activeDistro.bootstrap_settings.method | bootstrapMethodDisplay:this]]<span class="fa fa-caret-down"></span></strong>
@@ -883,6 +887,12 @@ Evergreen - Distros
                 Expansion</button>
             </div>
           </div>
+          <div>
+            <label class="distro-label">Notes:</label>
+            <textarea ng-readonly="readOnly" name="notes" class="form-control" rows="5"
+              ng-model="activeDistro.note" style="margin-left: 0px"></textarea>
+          </div>
+          <br>
           <div>
             <p class="distro-checkbox checkbox">
               <input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.spawn_allowed">

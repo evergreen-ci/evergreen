@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -828,6 +829,15 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 		catcher := grip.NewBasicCatcher()
 		submitted := 0
 
+		// shuffle hosts because hosts will always come off the index in insertion order
+		// and we want all of them to get an equal chance at being created on this pass
+		// (Fisher-Yates shuffle)
+		rand.Seed(time.Now().UnixNano())
+		for i := len(hosts) - 1; i > 0; i-- {
+			j := rand.Intn(i + 1)
+			hosts[i], hosts[j] = hosts[j], hosts[i]
+		}
+
 		for _, h := range hosts {
 			if h.UserHost || h.SpawnOptions.SpawnedByTask {
 				// pass:
@@ -1121,7 +1131,7 @@ func PopulateLocalQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 
 		if flags.BackgroundStatsDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "system stats ",
+				"message": "system stats",
 				"impact":  "memory, cpu, runtime stats",
 				"mode":    "degraded",
 			})

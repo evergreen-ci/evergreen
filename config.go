@@ -26,7 +26,7 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2019-12-17"
+	ClientVersion = "2019-01-07"
 )
 
 // ConfigSection defines a sub-document in the evegreen config
@@ -54,6 +54,7 @@ type Settings struct {
 	Banner                  string                    `bson:"banner" json:"banner" yaml:"banner"`
 	BannerTheme             BannerTheme               `bson:"banner_theme" json:"banner_theme" yaml:"banner_theme"`
 	Bugsnag                 string                    `yaml:"bugsnag" bson:"bugsnag" json:"bugsnag"`
+	Backup                  BackupConfig              `bson:"backup" json:"backup" yaml:"backup"`
 	ClientBinariesDir       string                    `yaml:"client_binaries_dir" bson:"client_binaries_dir" json:"client_binaries_dir"`
 	CommitQueue             CommitQueueConfig         `yaml:"commit_queue" bson:"commit_queue" json:"commit_queue" id:"commit_queue"`
 	ConfigDir               string                    `yaml:"configdir" bson:"configdir" json:"configdir"`
@@ -102,15 +103,13 @@ func (c *Settings) Get(env Environment) error {
 
 	res := coll.FindOne(ctx, byId(c.SectionId()))
 	if err := res.Err(); err != nil {
-		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
-	}
-
-	if err := res.Decode(c); err != nil {
 		if err == mongo.ErrNoDocuments {
 			*c = Settings{}
 			return nil
 		}
-
+		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+	}
+	if err := res.Decode(c); err != nil {
 		return errors.Wrap(err, "problem decoding result")
 	}
 

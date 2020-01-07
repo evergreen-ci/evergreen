@@ -263,7 +263,7 @@ func GetTestStats(filter StatsFilter) ([]TestStats, error) {
 	}
 	var stats []TestStats
 	pipeline := filter.testStatsQueryPipeline()
-	err = db.Aggregate(dailyTestStatsCollection, pipeline, &stats)
+	err = db.Aggregate(DailyTestStatsCollection, pipeline, &stats)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to aggregate test statistics")
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -162,6 +163,7 @@ func (cq *commitQueueClearAllHandler) Run(ctx context.Context) gimlet.Responder 
 type commitQueueEnqueueItemHandler struct {
 	item    string
 	project string
+	force   bool
 
 	sc data.Connector
 }
@@ -187,11 +189,15 @@ func (cq *commitQueueEnqueueItemHandler) Parse(ctx context.Context, r *http.Requ
 	}
 	cq.project = patch.Project
 
+	force := r.URL.Query().Get("force")
+	if strings.ToLower(force) == "true" {
+		cq.force = true
+	}
 	return nil
 }
 
 func (cq *commitQueueEnqueueItemHandler) Run(ctx context.Context) gimlet.Responder {
-	position, err := cq.sc.EnqueueItem(cq.project, model.APICommitQueueItem{Issue: model.ToAPIString(cq.item)})
+	position, err := cq.sc.EnqueueItem(cq.project, model.APICommitQueueItem{Issue: model.ToAPIString(cq.item)}, cq.force)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't enqueue item"))
 	}

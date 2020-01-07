@@ -125,7 +125,7 @@ variables:
         vars:
           target: set-smoke-vars
       - func: run-make
-        vars: 
+        vars:
           target: "${task_name}"
   - &run-smoke-test-with-client-url
     name: smoke
@@ -200,6 +200,7 @@ functions:
     params:
       directory: gopath/src/github.com/evergreen-ci/evergreen
       token: ${github_token}
+      shallow_clone: true
   run-make:
     command: subprocess.exec
     params:
@@ -217,6 +218,7 @@ functions:
         EVERGREEN_ALL: "true"
         GOARCH: ${goarch}
         GO_BIN_PATH: ${gobin}
+        LEGACY_GO_BIN_PATH: ${legacyGobin}
         GOOS: ${goos}
         GOPATH: ${workdir}/gopath
         GOROOT: ${goroot}
@@ -396,9 +398,6 @@ tasks:
     name: test-cloud
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-repotracker
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
     name: test-scheduler
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -485,6 +484,22 @@ tasks:
           target: revendor
       - func: run-make
         vars: { target: "test-thirdparty-docker" }
+  - name: test-repotracker
+    tags: ["db", "test"]
+    commands:
+      - command: git.get_project
+        type: setup
+        params:
+          directory: gopath/src/github.com/evergreen-ci/evergreen
+          token: ${github_token}
+          shallow_clone: false
+      - func: setup-credentials
+      - func: setup-mongodb
+      - func: run-make
+        vars:
+          target: revendor
+      - func: run-make
+        vars: { target: "test-repotracker" }
 
 
 buildvariants:
@@ -498,8 +513,9 @@ buildvariants:
       goos: linux
       goarch: amd64
       nodebin: /opt/node/bin
-      gobin: /opt/golang/go1.9/bin/go
-      goroot: /opt/golang/go1.9
+      gobin: /opt/golang/go1.13/bin/go
+      goroot: /opt/golang/go1.13
+      legacyGobin: /opt/golang/go1.9/bin/go
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz
     tasks:
       - name: "dist"
@@ -514,8 +530,9 @@ buildvariants:
     expansions:
       goos: linux
       goarch: amd64
-      gobin: /opt/golang/go1.9/bin/go
-      goroot: /opt/golang/go1.9
+      gobin: /opt/golang/go1.10/bin/go
+      goroot: /opt/golang/go1.10
+      legacyGobin: /opt/golang/go1.9/bin/go
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       test_timeout: 15m
       nodebin: /opt/node/bin
@@ -535,8 +552,9 @@ buildvariants:
       disable_coverage: yes
       goos: linux
       goarch: amd64
-      gobin: /opt/golang/go1.9/bin/go
-      goroot: /opt/golang/go1.9
+      gobin: /opt/golang/go1.13/bin/go
+      goroot: /opt/golang/go1.13
+      legacyGobin: /opt/golang/go1.9/bin/go
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz
       smoke_test_file: scripts/smoke_test_acl.yml
     tasks:
@@ -549,8 +567,9 @@ buildvariants:
       - archlinux-test
       - archlinux-build
     expansions:
-      gobin: /opt/golang/go1.9/bin/go
-      goroot: /opt/golang/go1.9
+      gobin: /opt/golang/go1.13/bin/go
+      goroot: /opt/golang/go1.13
+      legacyGobin: /opt/golang/go1.9/bin/go
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       race_detector: true
       test_timeout: 15m
@@ -564,8 +583,9 @@ buildvariants:
       - archlinux-test
       - archlinux-build
     expansions:
-      gobin: /opt/golang/go1.9/bin/go
-      goroot: /opt/golang/go1.9
+      gobin: /opt/golang/go1.13/bin/go
+      goroot: /opt/golang/go1.13
+      legacyGobin: /opt/golang/go1.9/bin/go
     tasks:
       - name: generate-lint
 
@@ -575,8 +595,9 @@ buildvariants:
       - archlinux-test
       - archlinux-build
     expansions:
-      gobin: /opt/golang/go1.9/bin/go
-      goroot: /opt/golang/go1.9
+      gobin: /opt/golang/go1.13/bin/go
+      goroot: /opt/golang/go1.13
+      legacyGobin: /opt/golang/go1.9/bin/go
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       test_timeout: 15m
     tasks:
@@ -590,8 +611,9 @@ buildvariants:
       - macos-1014
     expansions:
       disable_coverage: yes
-      gobin: /opt/golang/go1.9/bin/go
-      goroot: /opt/golang/go1.9
+      gobin: /opt/golang/go1.13/bin/go
+      goroot: /opt/golang/go1.13
+      legacyGobin: /opt/golang/go1.9/bin/go
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.3.tgz
     tasks:
       - name: "dist"
@@ -613,8 +635,9 @@ buildvariants:
       - windows-64-vs2017-compile
     expansions:
       disable_coverage: yes
-      gobin: /cygdrive/c/golang/go1.9/bin/go
-      goroot: c:/golang/go1.9
+      gobin: /cygdrive/c/golang/go1.11/bin/go
+      goroot: c:/golang/go1.11
+      legacyGobin: /cygdrive/c/golang/go1.9/bin/go
       mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-4.0.3.zip
       extension: ".exe"
       archiveExt: ".zip"
@@ -631,9 +654,10 @@ buildvariants:
       disable_coverage: yes
       xc_build: yes
       goarch: ppc64le
-      gobin: /opt/golang/go1.9/bin/go
+      gobin: /opt/golang/go1.13/bin/go
+      legacyGobin: /opt/golang/go1.9/bin/go
       goos: linux
-      goroot: /opt/golang/go1.9
+      goroot: /opt/golang/go1.13
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-ppc64le-enterprise-rhel71-4.0.3.tgz
     tasks:
       - name: ".agent .test"
@@ -647,9 +671,10 @@ buildvariants:
       xc_build: yes
       disable_coverage: yes
       goarch: s390x
-      gobin: /opt/golang/go1.9/bin/go
+      gobin: /opt/golang/go1.11/bin/go
+      goroot: /opt/golang/go1.11
+      legacyGobin: /opt/golang/go1.9/bin/go
       goos: linux
-      goroot: /opt/golang/go1.9
       # No official release of 4.0 for rhel72 zseries
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-s390x-enterprise-rhel72-3.6.4.tgz
     tasks:
@@ -665,8 +690,9 @@ buildvariants:
       xc_build: yes
       goarch: arm64
       goos: linux
-      gobin: /opt/golang/go1.9/bin/go
-      goroot: /opt/golang/go1.9
+      gobin: /opt/golang/go1.13/bin/go
+      goroot: /opt/golang/go1.13
+      legacyGobin: /opt/golang/go1.9/bin/go
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-arm64-enterprise-ubuntu1604-4.0.3.tgz
     tasks:
       - name: ".agent .test"

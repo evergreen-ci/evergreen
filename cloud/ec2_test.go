@@ -899,37 +899,43 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 		{
 			Id: "sir-1",
 			Distro: distro.Distro{
-				Provider: evergreen.ProviderNameEc2Spot,
+				Provider:         evergreen.ProviderNameEc2Spot,
+				ProviderSettings: s.distro.ProviderSettings,
 			},
 		},
 		{
 			Id: "i-2",
 			Distro: distro.Distro{
-				Provider: evergreen.ProviderNameEc2OnDemand,
+				Provider:         evergreen.ProviderNameEc2OnDemand,
+				ProviderSettings: s.distro.ProviderSettings,
 			},
 		},
 		{
 			Id: "sir-3",
 			Distro: distro.Distro{
-				Provider: evergreen.ProviderNameEc2Spot,
+				Provider:         evergreen.ProviderNameEc2Spot,
+				ProviderSettings: s.distro.ProviderSettings,
 			},
 		},
 		{
 			Id: "i-4",
 			Distro: distro.Distro{
-				Provider: evergreen.ProviderNameEc2OnDemand,
+				Provider:         evergreen.ProviderNameEc2OnDemand,
+				ProviderSettings: s.distro.ProviderSettings,
 			},
 		},
 		{
 			Id: "i-5",
 			Distro: distro.Distro{
-				Provider: evergreen.ProviderNameEc2OnDemand,
+				Provider:         evergreen.ProviderNameEc2OnDemand,
+				ProviderSettings: s.distro.ProviderSettings,
 			},
 		},
 		{
 			Id: "i-6",
 			Distro: distro.Distro{
-				Provider: evergreen.ProviderNameEc2OnDemand,
+				Provider:         evergreen.ProviderNameEc2OnDemand,
+				ProviderSettings: s.distro.ProviderSettings,
 			},
 		},
 	}
@@ -1086,6 +1092,68 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 	s.Equal("i-3", hosts[2].ExternalIdentifier)
 }
 
+func (s *EC2Suite) TestGetInstanceStatusesTerminate() {
+	hosts := []host.Host{
+		{
+			Id: "i-1",
+			Distro: distro.Distro{
+				Provider:         evergreen.ProviderNameEc2OnDemand,
+				ProviderSettings: s.distro.ProviderSettings,
+			},
+			Status: evergreen.HostStarting,
+		},
+		{
+			Id: "i-2",
+			Distro: distro.Distro{
+				Provider:         evergreen.ProviderNameEc2OnDemand,
+				ProviderSettings: s.distro.ProviderSettings,
+			},
+			Status: evergreen.HostStarting,
+		},
+	}
+	for _, h := range hosts {
+		s.NoError(h.Insert())
+	}
+
+	manager := s.onDemandManager.(*ec2Manager)
+	mock := manager.client.(*awsClientMock)
+	mock.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
+		Reservations: []*ec2.Reservation{
+			{
+				Instances: []*ec2.Instance{
+					{
+						InstanceId: aws.String("i-1"),
+						State: &ec2.InstanceState{
+							Name: aws.String(ec2.InstanceStateNameRunning),
+						},
+						PublicDnsName: aws.String("public_dns_name_2"),
+						Placement: &ec2.Placement{
+							AvailabilityZone: aws.String("us-east-1a"),
+						},
+						LaunchTime: aws.Time(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)),
+						BlockDeviceMappings: []*ec2.InstanceBlockDeviceMapping{
+							&ec2.InstanceBlockDeviceMapping{
+								Ebs: &ec2.EbsInstanceBlockDevice{
+									VolumeId: aws.String("volume_id"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	batchManager := s.onDemandManager.(BatchManager)
+	s.NotNil(batchManager)
+	_, err := batchManager.GetInstanceStatuses(context.Background(), hosts)
+	s.Error(err)
+
+	h, err := host.FindOneId("i-2")
+	s.NoError(err)
+	s.Equal(evergreen.HostTerminated, h.Status)
+}
+
 func (s *EC2Suite) TestGetRegion() {
 	ec2Settings := &EC2ProviderSettings{}
 	r := ec2Settings.getRegion()
@@ -1126,10 +1194,7 @@ func (s *EC2Suite) TestGetSecurityGroups() {
 func (s *EC2Suite) TestCacheHostData() {
 	ec2m := s.onDemandManager.(*ec2Manager)
 
-	h := &host.Host{
-		Id: "h1",
-	}
-	s.Require().NoError(h.Insert())
+	s.Require().NoError(s.h.Insert())
 
 	instance := &ec2.Instance{Placement: &ec2.Placement{}}
 	instance.Placement.AvailabilityZone = aws.String("us-east-1a")
@@ -1153,18 +1218,19 @@ func (s *EC2Suite) TestCacheHostData() {
 	}
 	instance.PublicDnsName = aws.String("public_dns_name")
 
-	s.NoError(cacheHostData(s.ctx, h, instance, ec2m.client))
+	s.NoError(cacheHostData(s.ctx, s.h, instance, ec2m.client))
 
-	s.Equal(*instance.Placement.AvailabilityZone, h.Zone)
-	s.True(instance.LaunchTime.Equal(h.StartTime))
-	s.Equal("2001:0db8:85a3:0000:0000:8a2e:0370:7334", h.IP)
+	s.Equal(*instance.Placement.AvailabilityZone, s.h.Zone)
+	s.True(instance.LaunchTime.Equal(s.h.StartTime))
+	s.Equal("2001:0db8:85a3:0000:0000:8a2e:0370:7334", s.h.IP)
 	s.Equal([]host.VolumeAttachment{
 		{
 			VolumeID:   "volume_id",
 			DeviceName: "device_name",
 		},
-	}, h.Volumes)
-	s.Equal(int64(10), h.VolumeTotalSize)
+	}, s.h.Volumes)
+	s.Equal(int64(10), s.h.VolumeTotalSize)
+	s.Equal(float64(1), s.h.ComputeCostPerHour)
 
 	h, err := host.FindOneId("h1")
 	s.Require().NoError(err)
@@ -1179,6 +1245,7 @@ func (s *EC2Suite) TestCacheHostData() {
 		},
 	}, h.Volumes)
 	s.Equal(int64(10), h.VolumeTotalSize)
+	s.Equal(float64(1), h.ComputeCostPerHour)
 }
 
 func (s *EC2Suite) TestFromDistroSettings() {

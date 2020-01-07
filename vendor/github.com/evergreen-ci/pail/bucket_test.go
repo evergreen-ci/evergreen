@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -14,10 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
-	homedir "github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -32,58 +27,9 @@ func newUUID() string {
 	return hex.EncodeToString(b)
 }
 
-func createS3Client(region string) (*s3.S3, error) {
-	sess, err := session.NewSession(&aws.Config{Region: aws.String(region)})
-	if err != nil {
-		return nil, errors.Wrap(err, "problem connecting to AWS")
-	}
-	svc := s3.New(sess)
-	return svc, nil
-}
-
-func cleanUpS3Bucket(name, prefix, region string) error {
-	svc, err := createS3Client(region)
-	if err != nil {
-		return errors.Wrap(err, "clean up failed")
-	}
-	deleteObjectsInput := &s3.DeleteObjectsInput{
-		Bucket: aws.String(name),
-		Delete: &s3.Delete{},
-	}
-	listInput := &s3.ListObjectsInput{
-		Bucket: aws.String(name),
-		Prefix: aws.String(prefix),
-	}
-	var result *s3.ListObjectsOutput
-
-	for {
-		result, err = svc.ListObjects(listInput)
-		if err != nil {
-			return errors.Wrap(err, "clean up failed")
-		}
-
-		for _, object := range result.Contents {
-			deleteObjectsInput.Delete.Objects = append(deleteObjectsInput.Delete.Objects, &s3.ObjectIdentifier{
-				Key: object.Key,
-			})
-		}
-
-		if deleteObjectsInput.Delete.Objects != nil {
-			_, err = svc.DeleteObjects(deleteObjectsInput)
-			if err != nil {
-				return errors.Wrap(err, "failed to delete S3 bucket")
-			}
-			deleteObjectsInput.Delete = &s3.Delete{}
-		}
-
-		if *result.IsTruncated {
-			listInput.Marker = result.Contents[len(result.Contents)-1].Key
-		} else {
-			break
-		}
-	}
-
-	return nil
+type bucketTestCase struct {
+	id   string
+	test func(*testing.T, Bucket)
 }
 
 func TestBucket(t *testing.T) {
@@ -114,11 +60,6 @@ func TestBucket(t *testing.T) {
 	defer cancel()
 	require.NoError(t, client.Connect(connctx))
 
-	type bucketTestCase struct {
-		id   string
-		test func(*testing.T, Bucket)
-	}
-
 	for _, impl := range []struct {
 		name        string
 		constructor func(*testing.T) Bucket
@@ -127,9 +68,9 @@ func TestBucket(t *testing.T) {
 		{
 			name: "Local",
 			constructor: func(t *testing.T) Bucket {
-				path := filepath.Join(tempdir, uuid, newUUID())
+				path := filepath.Join(tempdir, uuid)
 				require.NoError(t, os.MkdirAll(path, 0777))
-				return &localFileSystem{path: path}
+				return &localFileSystem{path: path, prefix: newUUID()}
 			},
 			tests: []bucketTestCase{
 				{
@@ -227,7 +168,9 @@ func TestBucket(t *testing.T) {
 						cancel()
 						bucket := b.(*localFileSystem)
 						bucket.path = ""
-						err := b.Pull(tctx, "", filepath.Dir(file))
+						bucket.prefix = ""
+						opts := SyncOptions{Remote: filepath.Dir(file)}
+						err := b.Pull(tctx, opts)
 						assert.Error(t, err)
 					},
 				},
@@ -236,7 +179,8 @@ func TestBucket(t *testing.T) {
 					test: func(t *testing.T, b Bucket) {
 						tctx, cancel := context.WithCancel(ctx)
 						cancel()
-						err := b.Push(tctx, filepath.Dir(file), "")
+						opts := SyncOptions{Local: filepath.Dir(file)}
+						err := b.Push(tctx, opts)
 						assert.Error(t, err)
 					},
 				},
@@ -247,6 +191,7 @@ func TestBucket(t *testing.T) {
 			constructor: func(t *testing.T) Bucket {
 				require.NoError(t, client.Database(uuid).Drop(ctx))
 				b, err := NewGridFSBucketWithClient(ctx, client, GridFSOptions{
+					Name:     newUUID(),
 					Prefix:   newUUID(),
 					Database: uuid,
 				})
@@ -259,6 +204,7 @@ func TestBucket(t *testing.T) {
 			constructor: func(t *testing.T) Bucket {
 				require.NoError(t, client.Database(uuid).Drop(ctx))
 				b, err := NewLegacyGridFSBucketWithSession(ses.Clone(), GridFSOptions{
+					Name:     newUUID(),
 					Prefix:   newUUID(),
 					Database: uuid,
 				})
@@ -301,223 +247,48 @@ func TestBucket(t *testing.T) {
 				require.NoError(t, err)
 				return b
 			},
-			tests: []bucketTestCase{
-				{
-					id: "VerifyBucketType",
-					test: func(t *testing.T, b Bucket) {
-						bucket, ok := b.(*s3BucketSmall)
-						require.True(t, ok)
-						assert.NotNil(t, bucket)
-					},
-				},
-				{
-					id: "TestCredentialsOverrideDefaults",
-					test: func(t *testing.T, b Bucket) {
-						input := &s3.GetBucketLocationInput{
-							Bucket: aws.String(s3BucketName),
-						}
+			tests: getS3SmallBucketTests(ctx, tempdir, s3BucketName, s3Prefix, s3Region),
+		},
+		{
+			name: "S3BucketChecksums",
+			constructor: func(t *testing.T) Bucket {
+				s3Options := S3Options{
+					Region:                 s3Region,
+					Name:                   s3BucketName,
+					Prefix:                 s3Prefix + newUUID(),
+					MaxRetries:             20,
+					UseSingleFileChecksums: true,
+				}
+				b, err := NewS3Bucket(s3Options)
+				require.NoError(t, err)
+				return b
+			},
+			tests: getS3SmallBucketTests(ctx, tempdir, s3BucketName, s3Prefix, s3Region),
+		},
+		{
+			name: "ParallelLocal",
+			constructor: func(t *testing.T) Bucket {
+				t.Skip()
+				path := filepath.Join(tempdir, uuid, newUUID())
+				require.NoError(t, os.MkdirAll(path, 0777))
+				bucket := &localFileSystem{path: path}
 
-						rawBucket := b.(*s3BucketSmall)
-						_, err := rawBucket.svc.GetBucketLocationWithContext(ctx, input)
-						assert.NoError(t, err)
-
-						badOptions := S3Options{
-							Credentials: CreateAWSCredentials("asdf", "asdf", "asdf"),
-							Region:      s3Region,
-							Name:        s3BucketName,
-						}
-						badBucket, err := NewS3Bucket(badOptions)
-						require.NoError(t, err)
-						rawBucket = badBucket.(*s3BucketSmall)
-						_, err = rawBucket.svc.GetBucketLocationWithContext(ctx, input)
-						assert.Error(t, err)
-					},
-				},
-				{
-					id: "TestCheckPassesWhenDoNotHaveAccess",
-					test: func(t *testing.T, b Bucket) {
-						rawBucket := b.(*s3BucketSmall)
-						rawBucket.name = "mciuploads"
-						assert.NoError(t, rawBucket.Check(ctx))
-					},
-				},
-				{
-					id: "TestCheckFailsWhenBucketDNE",
-					test: func(t *testing.T, b Bucket) {
-						rawBucket := b.(*s3BucketSmall)
-						rawBucket.name = newUUID()
-						assert.Error(t, rawBucket.Check(ctx))
-					},
-				},
-				{
-					id: "TestSharedCredentialsOption",
-					test: func(t *testing.T, b Bucket) {
-						require.NoError(t, b.Check(ctx))
-
-						newFile, err := os.Create(filepath.Join(tempdir, "creds"))
-						require.NoError(t, err)
-						defer newFile.Close()
-						_, err = newFile.WriteString("[my_profile]\n")
-						require.NoError(t, err)
-						awsKey := fmt.Sprintf("aws_access_key_id = %s\n", os.Getenv("AWS_KEY"))
-						_, err = newFile.WriteString(awsKey)
-						require.NoError(t, err)
-						awsSecret := fmt.Sprintf("aws_secret_access_key = %s\n", os.Getenv("AWS_SECRET"))
-						_, err = newFile.WriteString(awsSecret)
-						require.NoError(t, err)
-
-						sharedCredsOptions := S3Options{
-							SharedCredentialsFilepath: filepath.Join(tempdir, "creds"),
-							SharedCredentialsProfile:  "my_profile",
-							Region:                    s3Region,
-							Name:                      s3BucketName,
-						}
-						sharedCredsBucket, err := NewS3Bucket(sharedCredsOptions)
-						require.NoError(t, err)
-						assert.NoError(t, sharedCredsBucket.Check(ctx))
-					},
-				},
-				{
-					id: "TestSharedCredentialsUsesCorrectDefaultFile",
-					test: func(t *testing.T, b Bucket) {
-						require.NoError(t, b.Check(ctx))
-
-						sharedCredsOptions := S3Options{
-							SharedCredentialsProfile: "default",
-							Region:                   s3Region,
-							Name:                     s3BucketName,
-						}
-						sharedCredsBucket, err := NewS3Bucket(sharedCredsOptions)
-						require.NoError(t, err)
-						homeDir, err := homedir.Dir()
-						require.NoError(t, err)
-						fileName := filepath.Join(homeDir, ".aws", "credentials")
-						_, err = os.Stat(fileName)
-						if err == nil {
-							assert.NoError(t, sharedCredsBucket.Check(ctx))
-						} else {
-							assert.True(t, os.IsNotExist(err))
-						}
-					},
-				},
-				{
-					id: "TestSharedCredentialsFailsWhenProfileDNE",
-					test: func(t *testing.T, b Bucket) {
-						require.NoError(t, b.Check(ctx))
-
-						sharedCredsOptions := S3Options{
-							SharedCredentialsProfile: "DNE",
-							Region:                   s3Region,
-							Name:                     s3BucketName,
-						}
-						_, err := NewS3Bucket(sharedCredsOptions)
-						assert.Error(t, err)
-					},
-				},
-
-				{
-					id: "TestPermissions",
-					test: func(t *testing.T, b Bucket) {
-						// default permissions
-						key1 := newUUID()
-						writer, err := b.Writer(ctx, key1)
-						require.NoError(t, err)
-						_, err = writer.Write([]byte("hello world"))
-						require.NoError(t, err)
-						require.NoError(t, writer.Close())
-						rawBucket := b.(*s3BucketSmall)
-						objectACLInput := &s3.GetObjectAclInput{
-							Bucket: aws.String(s3BucketName),
-							Key:    aws.String(rawBucket.normalizeKey(key1)),
-						}
-						objectACLOutput, err := rawBucket.svc.GetObjectAcl(objectACLInput)
-						require.NoError(t, err)
-						require.Equal(t, 1, len(objectACLOutput.Grants))
-						assert.Equal(t, "FULL_CONTROL", *objectACLOutput.Grants[0].Permission)
-
-						// explicitly set permissions
-						openOptions := S3Options{
-							Region:     s3Region,
-							Name:       s3BucketName,
-							Prefix:     s3Prefix + newUUID(),
-							Permission: "public-read",
-						}
-						openBucket, err := NewS3Bucket(openOptions)
-						require.NoError(t, err)
-						key2 := newUUID()
-						writer, err = openBucket.Writer(ctx, key2)
-						require.NoError(t, err)
-						_, err = writer.Write([]byte("hello world"))
-						require.NoError(t, err)
-						require.NoError(t, writer.Close())
-						rawBucket = openBucket.(*s3BucketSmall)
-						objectACLInput = &s3.GetObjectAclInput{
-							Bucket: aws.String(s3BucketName),
-							Key:    aws.String(rawBucket.normalizeKey(key2)),
-						}
-						objectACLOutput, err = rawBucket.svc.GetObjectAcl(objectACLInput)
-						require.NoError(t, err)
-						require.Equal(t, 2, len(objectACLOutput.Grants))
-						assert.Equal(t, "READ", *objectACLOutput.Grants[1].Permission)
-
-						// copy with permissions
-						destKey := newUUID()
-						copyOpts := CopyOptions{
-							SourceKey:         key1,
-							DestinationKey:    destKey,
-							DestinationBucket: openBucket,
-						}
-						require.NoError(t, b.Copy(ctx, copyOpts))
-						require.NoError(t, err)
-						require.Equal(t, 2, len(objectACLOutput.Grants))
-						assert.Equal(t, "READ", *objectACLOutput.Grants[1].Permission)
-					},
-				},
-				{
-					id: "TestContentType",
-					test: func(t *testing.T, b Bucket) {
-						// default content type
-						key := newUUID()
-						writer, err := b.Writer(ctx, key)
-						require.NoError(t, err)
-						_, err = writer.Write([]byte("hello world"))
-						require.NoError(t, err)
-						require.NoError(t, writer.Close())
-						rawBucket := b.(*s3BucketSmall)
-						getObjectInput := &s3.GetObjectInput{
-							Bucket: aws.String(s3BucketName),
-							Key:    aws.String(rawBucket.normalizeKey(key)),
-						}
-						getObjectOutput, err := rawBucket.svc.GetObject(getObjectInput)
-						require.NoError(t, err)
-						assert.Nil(t, getObjectOutput.ContentType)
-
-						// explicitly set content type
-						htmlOptions := S3Options{
-							Region:      s3Region,
-							Name:        s3BucketName,
-							Prefix:      s3Prefix + newUUID(),
-							ContentType: "html/text",
-						}
-						htmlBucket, err := NewS3Bucket(htmlOptions)
-						require.NoError(t, err)
-						key = newUUID()
-						writer, err = htmlBucket.Writer(ctx, key)
-						require.NoError(t, err)
-						_, err = writer.Write([]byte("hello world"))
-						require.NoError(t, err)
-						require.NoError(t, writer.Close())
-						rawBucket = htmlBucket.(*s3BucketSmall)
-						getObjectInput = &s3.GetObjectInput{
-							Bucket: aws.String(s3BucketName),
-							Key:    aws.String(rawBucket.normalizeKey(key)),
-						}
-						getObjectOutput, err = rawBucket.svc.GetObject(getObjectInput)
-						require.NoError(t, err)
-						require.NotNil(t, getObjectOutput.ContentType)
-						assert.Equal(t, "html/text", *getObjectOutput.ContentType)
-					},
-				},
+				return NewParallelSyncBucket(ParallelBucketOptions{Workers: runtime.NumCPU()}, bucket)
+			},
+		},
+		{
+			name: "ParallelS3Bucket",
+			constructor: func(t *testing.T) Bucket {
+				s3Options := S3Options{
+					Region:                 s3Region,
+					Name:                   s3BucketName,
+					Prefix:                 s3Prefix + newUUID(),
+					MaxRetries:             20,
+					UseSingleFileChecksums: true,
+				}
+				b, err := NewS3Bucket(s3Options)
+				require.NoError(t, err)
+				return NewParallelSyncBucket(ParallelBucketOptions{Workers: runtime.NumCPU()}, b)
 			},
 		},
 		{
@@ -533,127 +304,23 @@ func TestBucket(t *testing.T) {
 				require.NoError(t, err)
 				return b
 			},
-			tests: []bucketTestCase{
-				{
-					id: "VerifyBucketType",
-					test: func(t *testing.T, b Bucket) {
-						bucket, ok := b.(*s3BucketLarge)
-						require.True(t, ok)
-						assert.NotNil(t, bucket)
-					},
-				},
-				{
-					id: "TestPermissions",
-					test: func(t *testing.T, b Bucket) {
-						// default permissions
-						key := newUUID()
-						writer, err := b.Writer(ctx, key)
-						require.NoError(t, err)
-						_, err = writer.Write([]byte("hello world"))
-						require.NoError(t, err)
-						require.NoError(t, writer.Close())
-						rawBucket := b.(*s3BucketLarge)
-						objectACLInput := &s3.GetObjectAclInput{
-							Bucket: aws.String(s3BucketName),
-							Key:    aws.String(rawBucket.normalizeKey(key)),
-						}
-						objectACLOutput, err := rawBucket.svc.GetObjectAcl(objectACLInput)
-						require.NoError(t, err)
-						require.Equal(t, 1, len(objectACLOutput.Grants))
-						assert.Equal(t, "FULL_CONTROL", *objectACLOutput.Grants[0].Permission)
-
-						// explicitly set permissions
-						openOptions := S3Options{
-							Region:     s3Region,
-							Name:       s3BucketName,
-							Prefix:     s3Prefix + newUUID(),
-							Permission: "public-read",
-						}
-						openBucket, err := NewS3MultiPartBucket(openOptions)
-						require.NoError(t, err)
-						key = newUUID()
-						writer, err = openBucket.Writer(ctx, key)
-						require.NoError(t, err)
-						_, err = writer.Write([]byte("hello world"))
-						require.NoError(t, err)
-						require.NoError(t, writer.Close())
-						rawBucket = openBucket.(*s3BucketLarge)
-						objectACLInput = &s3.GetObjectAclInput{
-							Bucket: aws.String(s3BucketName),
-							Key:    aws.String(rawBucket.normalizeKey(key)),
-						}
-						objectACLOutput, err = rawBucket.svc.GetObjectAcl(objectACLInput)
-						require.NoError(t, err)
-						require.Equal(t, 2, len(objectACLOutput.Grants))
-						assert.Equal(t, "READ", *objectACLOutput.Grants[1].Permission)
-					},
-				},
-				{
-					id: "TestContentType",
-					test: func(t *testing.T, b Bucket) {
-						// default content type
-						key := newUUID()
-						writer, err := b.Writer(ctx, key)
-						require.NoError(t, err)
-						_, err = writer.Write([]byte("hello world"))
-						require.NoError(t, err)
-						require.NoError(t, writer.Close())
-						rawBucket := b.(*s3BucketLarge)
-						getObjectInput := &s3.GetObjectInput{
-							Bucket: aws.String(s3BucketName),
-							Key:    aws.String(rawBucket.normalizeKey(key)),
-						}
-						getObjectOutput, err := rawBucket.svc.GetObject(getObjectInput)
-						require.NoError(t, err)
-						assert.Nil(t, getObjectOutput.ContentType)
-
-						// explicitly set content type
-						htmlOptions := S3Options{
-							Region:      s3Region,
-							Name:        s3BucketName,
-							Prefix:      s3Prefix + newUUID(),
-							ContentType: "html/text",
-						}
-						htmlBucket, err := NewS3MultiPartBucket(htmlOptions)
-						require.NoError(t, err)
-						key = newUUID()
-						writer, err = htmlBucket.Writer(ctx, key)
-						require.NoError(t, err)
-						_, err = writer.Write([]byte("hello world"))
-						require.NoError(t, err)
-						require.NoError(t, writer.Close())
-						rawBucket = htmlBucket.(*s3BucketLarge)
-						getObjectInput = &s3.GetObjectInput{
-							Bucket: aws.String(s3BucketName),
-							Key:    aws.String(rawBucket.normalizeKey(key)),
-						}
-						getObjectOutput, err = rawBucket.svc.GetObject(getObjectInput)
-						require.NoError(t, err)
-						require.NotNil(t, getObjectOutput.ContentType)
-						assert.Equal(t, "html/text", *getObjectOutput.ContentType)
-					},
-				},
-				{
-					id: "TestLargeFileRoundTrip",
-					test: func(t *testing.T, b Bucket) {
-						size := int64(10000000)
-						key := newUUID()
-						bigBuff := make([]byte, size)
-						path := filepath.Join(tempdir, "bigfile.test0")
-
-						// upload large empty file
-						require.NoError(t, ioutil.WriteFile(path, bigBuff, 0666))
-						require.NoError(t, b.Upload(ctx, key, path))
-
-						// check size of empty file
-						path = filepath.Join(tempdir, "bigfile.test1")
-						require.NoError(t, b.Download(ctx, key, path))
-						fi, err := os.Stat(path)
-						require.NoError(t, err)
-						assert.Equal(t, size, fi.Size())
-					},
-				},
+			tests: getS3LargeBucketTests(ctx, tempdir, s3BucketName, s3Prefix, s3Region),
+		},
+		{
+			name: "S3MultiPartBucketChecksum",
+			constructor: func(t *testing.T) Bucket {
+				s3Options := S3Options{
+					Region:                 s3Region,
+					Name:                   s3BucketName,
+					Prefix:                 s3Prefix + newUUID(),
+					MaxRetries:             20,
+					UseSingleFileChecksums: true,
+				}
+				b, err := NewS3MultiPartBucket(s3Options)
+				require.NoError(t, err)
+				return b
 			},
+			tests: getS3LargeBucketTests(ctx, tempdir, s3BucketName, s3Prefix, s3Region),
 		},
 	} {
 		t.Run(impl.name, func(t *testing.T) {
@@ -1013,27 +680,27 @@ func TestBucket(t *testing.T) {
 				assert.NoError(t, writeDataToFile(ctx, bucket, key, contents))
 
 				_, err := os.Stat(path)
-				assert.True(t, os.IsNotExist(err))
-				assert.NoError(t, bucket.Download(ctx, key, path))
+				require.True(t, os.IsNotExist(err))
+				require.NoError(t, bucket.Download(ctx, key, path))
 				_, err = os.Stat(path)
-				assert.False(t, os.IsNotExist(err))
+				require.False(t, os.IsNotExist(err))
 
 				data, err := ioutil.ReadFile(path)
 				require.NoError(t, err)
-				assert.Equal(t, contents, string(data))
+				require.Equal(t, contents, string(data))
 
 				// writes file to disk with dry run bucket
 				setDryRun(bucket, true)
 				path = filepath.Join(tempdir, uuid, newUUID())
 				_, err = os.Stat(path)
-				assert.True(t, os.IsNotExist(err))
-				assert.NoError(t, bucket.Download(ctx, key, path))
+				require.True(t, os.IsNotExist(err))
+				require.NoError(t, bucket.Download(ctx, key, path))
 				_, err = os.Stat(path)
-				assert.False(t, os.IsNotExist(err))
+				require.False(t, os.IsNotExist(err))
 
 				data, err = ioutil.ReadFile(path)
 				require.NoError(t, err)
-				assert.Equal(t, contents, string(data))
+				require.Equal(t, contents, string(data))
 			})
 			t.Run("ListRespectsPrefixes", func(t *testing.T) {
 				bucket := impl.constructor(t)
@@ -1059,7 +726,7 @@ func TestBucket(t *testing.T) {
 			})
 			t.Run("RoundTripManyFiles", func(t *testing.T) {
 				data := map[string]string{}
-				for i := 0; i < 300; i++ {
+				for i := 0; i < 3; i++ {
 					data[newUUID()] = strings.Join([]string{newUUID(), newUUID(), newUUID()}, "\n")
 				}
 
@@ -1094,7 +761,7 @@ func TestBucket(t *testing.T) {
 			})
 			t.Run("PullFromBucket", func(t *testing.T) {
 				data := map[string]string{}
-				for i := 0; i < 100; i++ {
+				for i := 0; i < 50; i++ {
 					data[newUUID()] = strings.Join([]string{newUUID(), newUUID(), newUUID()}, "\n")
 				}
 
@@ -1106,38 +773,77 @@ func TestBucket(t *testing.T) {
 				t.Run("BasicPull", func(t *testing.T) {
 					mirror := filepath.Join(tempdir, "pull-one", newUUID())
 					require.NoError(t, os.MkdirAll(mirror, 0700))
-					for i := 0; i < 3; i++ {
-						assert.NoError(t, bucket.Pull(ctx, mirror, ""))
-						files, err := walkLocalTree(ctx, mirror)
-						require.NoError(t, err)
-						assert.Len(t, files, 100)
+					opts := SyncOptions{Local: mirror}
+					assert.NoError(t, bucket.Pull(ctx, opts))
+					files, err := walkLocalTree(ctx, mirror)
+					require.NoError(t, err)
+					require.Len(t, files, 50)
 
-						if !strings.Contains(impl.name, "GridFS") {
-							for _, fn := range files {
-								_, ok := data[filepath.Base(fn)]
-								require.True(t, ok)
-							}
+					if !strings.Contains(impl.name, "GridFS") {
+						for _, fn := range files {
+							_, ok := data[filepath.Base(fn)]
+							require.True(t, ok)
 						}
 					}
 				})
 				t.Run("DryRunBucketPulls", func(t *testing.T) {
 					setDryRun(bucket, true)
-					mirror := filepath.Join(tempdir, "pull-one", newUUID())
+					mirror := filepath.Join(tempdir, "pull-one", newUUID(), "")
 					require.NoError(t, os.MkdirAll(mirror, 0700))
-					for i := 0; i < 3; i++ {
-						assert.NoError(t, bucket.Pull(ctx, mirror, ""))
-						files, err := walkLocalTree(ctx, mirror)
-						require.NoError(t, err)
-						assert.Len(t, files, 100)
+					opts := SyncOptions{Local: mirror}
+					assert.NoError(t, bucket.Pull(ctx, opts))
+					files, err := walkLocalTree(ctx, mirror)
+					require.NoError(t, err)
+					require.Len(t, files, 50)
 
-						if !strings.Contains(impl.name, "GridFS") {
-							for _, fn := range files {
-								_, ok := data[filepath.Base(fn)]
-								require.True(t, ok)
-							}
+					if !strings.Contains(impl.name, "GridFS") {
+						for _, fn := range files {
+							_, ok := data[filepath.Base(fn)]
+							require.True(t, ok)
 						}
 					}
 					setDryRun(bucket, false)
+				})
+				t.Run("PullWithExcludes", func(t *testing.T) {
+					require.NoError(t, writeDataToFile(ctx, bucket, "python.py", "exclude"))
+					require.NoError(t, writeDataToFile(ctx, bucket, "python2.py", "exclude2"))
+
+					mirror := filepath.Join(tempdir, "not_excludes", newUUID())
+					require.NoError(t, os.MkdirAll(mirror, 0700))
+					opts := SyncOptions{Local: mirror}
+					assert.NoError(t, bucket.Pull(ctx, opts))
+					files, err := walkLocalTree(ctx, mirror)
+					require.NoError(t, err)
+					require.Len(t, files, 52)
+
+					if !strings.Contains(impl.name, "GridFS") {
+						for _, fn := range files {
+							_, ok := data[filepath.Base(fn)]
+							if !ok {
+								ok = filepath.Base(fn) == "python.py" || filepath.Base(fn) == "python2.py"
+							}
+							require.True(t, ok)
+						}
+					}
+
+					mirror = filepath.Join(tempdir, "excludes", newUUID())
+					require.NoError(t, os.MkdirAll(mirror, 0700))
+					opts.Local = mirror
+					opts.Exclude = ".*\\.py"
+					assert.NoError(t, bucket.Pull(ctx, opts))
+					files, err = walkLocalTree(ctx, mirror)
+					require.NoError(t, err)
+					require.Len(t, files, 50)
+
+					if !strings.Contains(impl.name, "GridFS") {
+						for _, fn := range files {
+							_, ok := data[filepath.Base(fn)]
+							require.True(t, ok)
+						}
+					}
+
+					require.NoError(t, bucket.Remove(ctx, "python.py"))
+					require.NoError(t, bucket.Remove(ctx, "python2.py"))
 				})
 				t.Run("DeleteOnSync", func(t *testing.T) {
 					setDeleteOnSync(bucket, true)
@@ -1145,86 +851,188 @@ func TestBucket(t *testing.T) {
 					// dry run bucket does not delete
 					mirror := filepath.Join(tempdir, "pull-one", newUUID())
 					require.NoError(t, os.MkdirAll(mirror, 0700))
+					require.NoError(t, writeDataToDisk(mirror, "delete1", "should be deleted"))
+					require.NoError(t, writeDataToDisk(mirror, "delete2", "this should also be deleted"))
 					setDryRun(bucket, true)
-					require.NoError(t, bucket.Pull(ctx, mirror, ""))
+					opts := SyncOptions{Local: mirror}
+					require.NoError(t, bucket.Pull(ctx, opts))
 					files, err := walkLocalTree(ctx, mirror)
 					require.NoError(t, err)
-					require.Len(t, files, 100)
-
-					iter, err := bucket.List(ctx, "")
-					require.NoError(t, err)
-					count := 0
-					for iter.Next(ctx) {
-						require.NotNil(t, iter.Item())
-						count++
-					}
-					assert.NoError(t, iter.Err())
-					assert.Equal(t, 100, count)
+					require.Len(t, files, 52)
 					setDryRun(bucket, false)
 					require.NoError(t, os.RemoveAll(mirror))
 
 					// with out dry run set
 					mirror = filepath.Join(tempdir, "pull-one", newUUID())
 					require.NoError(t, os.MkdirAll(mirror, 0700))
-					assert.NoError(t, bucket.Pull(ctx, mirror, ""))
+					require.NoError(t, writeDataToDisk(mirror, "delete1", "should be deleted"))
+					require.NoError(t, writeDataToDisk(mirror, "delete2", "this should also be deleted"))
+					opts.Local = mirror
+					assert.NoError(t, bucket.Pull(ctx, opts))
 					files, err = walkLocalTree(ctx, mirror)
 					require.NoError(t, err)
-					assert.Len(t, files, 100)
-
-					iter, err = bucket.List(ctx, "")
-					require.NoError(t, err)
-					assert.False(t, iter.Next(ctx))
-					assert.Nil(t, iter.Item())
-					assert.NoError(t, iter.Err())
-
+					assert.Len(t, files, 50)
 					setDeleteOnSync(bucket, false)
+				})
+				t.Run("LargePull", func(t *testing.T) {
+					prefix := newUUID()
+					largeData := map[string]string{}
+					for i := 0; i < 1050; i++ {
+						largeData[newUUID()] = strings.Join([]string{newUUID(), newUUID(), newUUID()}, "\n")
+					}
+					for k, v := range largeData {
+						require.NoError(t, writeDataToFile(ctx, bucket, prefix+"/"+k, v))
+					}
+
+					mirror := filepath.Join(tempdir, "pull-one", newUUID(), "")
+					require.NoError(t, os.MkdirAll(mirror, 0700))
+
+					opts := SyncOptions{Local: mirror, Remote: prefix}
+					assert.NoError(t, bucket.Pull(ctx, opts))
+					files, err := walkLocalTree(ctx, mirror)
+					require.NoError(t, err)
+					assert.Len(t, files, len(largeData))
+
+					if !strings.Contains(impl.name, "GridFS") {
+						for _, fn := range files {
+							_, ok := largeData[fn]
+							require.True(t, ok)
+						}
+					}
 				})
 			})
 			t.Run("PushToBucket", func(t *testing.T) {
 				prefix := filepath.Join(tempdir, newUUID())
-				for i := 0; i < 100; i++ {
+				filenames := map[string]bool{}
+				for i := 0; i < 50; i++ {
+					fn := newUUID()
+					filenames[fn] = true
 					require.NoError(t, writeDataToDisk(prefix,
-						newUUID(), strings.Join([]string{newUUID(), newUUID(), newUUID()}, "\n")))
+						fn, strings.Join([]string{newUUID(), newUUID(), newUUID()}, "\n")))
 				}
 
 				bucket := impl.constructor(t)
 				t.Run("NoPrefix", func(t *testing.T) {
-					assert.NoError(t, bucket.Push(ctx, prefix, ""))
-					assert.NoError(t, bucket.Push(ctx, prefix, ""))
+					opts := SyncOptions{Local: prefix}
+					assert.NoError(t, bucket.Push(ctx, opts))
+
+					iter, err := bucket.List(ctx, "")
+					require.NoError(t, err)
+					counter := 0
+					for iter.Next(ctx) {
+						require.True(t, filenames[iter.Item().Name()])
+						counter++
+					}
+					assert.NoError(t, iter.Err())
+					assert.Equal(t, 50, counter)
 				})
 				t.Run("ShortPrefix", func(t *testing.T) {
-					assert.NoError(t, bucket.Push(ctx, prefix, "foo"))
-					assert.NoError(t, bucket.Push(ctx, prefix, "foo"))
+					remotePrefix := "foo"
+					opts := SyncOptions{Local: prefix, Remote: remotePrefix}
+					assert.NoError(t, bucket.Push(ctx, opts))
+
+					iter, err := bucket.List(ctx, remotePrefix)
+					require.NoError(t, err)
+					counter := 0
+					for iter.Next(ctx) {
+						fn, err := filepath.Rel(remotePrefix, iter.Item().Name())
+						require.NoError(t, err)
+						require.True(t, filenames[fn])
+						counter++
+					}
+					assert.NoError(t, iter.Err())
+					assert.Equal(t, 50, counter)
 				})
 				t.Run("DryRunBucketDoesNotPush", func(t *testing.T) {
+					remotePrefix := "bar"
 					setDryRun(bucket, true)
-					assert.NoError(t, bucket.Push(ctx, prefix, "bar"))
-					setDryRun(bucket, false)
-				})
-				t.Run("BucketContents", func(t *testing.T) {
-					iter, err := bucket.List(ctx, "")
+					opts := SyncOptions{Local: prefix, Remote: remotePrefix}
+					assert.NoError(t, bucket.Push(ctx, opts))
+
+					iter, err := bucket.List(ctx, remotePrefix)
 					require.NoError(t, err)
 					counter := 0
 					for iter.Next(ctx) {
 						counter++
 					}
 					assert.NoError(t, iter.Err())
-					assert.Equal(t, 200, counter)
+					assert.Equal(t, 0, counter)
+
+					setDryRun(bucket, false)
+				})
+				t.Run("PushWithExcludes", func(t *testing.T) {
+					require.NoError(t, writeDataToDisk(prefix, "python.py", "exclude"))
+					require.NoError(t, writeDataToDisk(prefix, "python2.py", "exclude2"))
+
+					remotePrefix := "not_excludes"
+					opts := SyncOptions{Local: prefix, Remote: remotePrefix}
+					assert.NoError(t, bucket.Push(ctx, opts))
+					iter, err := bucket.List(ctx, remotePrefix)
+					require.NoError(t, err)
+					counter := 0
+					for iter.Next(ctx) {
+						fn, err := filepath.Rel(remotePrefix, iter.Item().Name())
+						require.NoError(t, err)
+						ok := filenames[fn]
+						if !ok {
+							ok = fn == "python.py" || fn == "python2.py"
+						}
+						require.True(t, ok)
+						counter++
+					}
+					assert.NoError(t, iter.Err())
+					assert.Equal(t, 52, counter)
+
+					remotePrefix = "excludes"
+					opts.Remote = remotePrefix
+					opts.Exclude = ".*\\.py"
+					assert.NoError(t, bucket.Push(ctx, opts))
+					iter, err = bucket.List(ctx, remotePrefix)
+					require.NoError(t, err)
+					counter = 0
+					for iter.Next(ctx) {
+						fn, err := filepath.Rel(remotePrefix, iter.Item().Name())
+						require.NoError(t, err)
+						require.True(t, filenames[fn])
+						counter++
+					}
+					assert.NoError(t, iter.Err())
+					assert.Equal(t, 50, counter)
+
+					require.NoError(t, os.RemoveAll(filepath.Join(prefix, "python.py")))
+					require.NoError(t, os.RemoveAll(filepath.Join(prefix, "python2.py")))
 				})
 				t.Run("DeleteOnSync", func(t *testing.T) {
 					setDeleteOnSync(bucket, true)
 
-					// dry run bucket does not delete
-					setDryRun(bucket, true)
-					assert.NoError(t, bucket.Push(ctx, prefix, "baz"))
-					files, err := walkLocalTree(ctx, prefix)
-					require.NoError(t, err)
-					assert.Equal(t, 100, len(files))
-					setDryRun(bucket, false)
+					contents := []byte("should be deleted")
+					require.NoError(t, bucket.Put(ctx, filepath.Join("baz", "delete1"), bytes.NewBuffer(contents)))
+					contents = []byte("this should also be deleted")
+					require.NoError(t, bucket.Put(ctx, filepath.Join("baz", "delete2"), bytes.NewBuffer(contents)))
 
-					assert.NoError(t, bucket.Push(ctx, prefix, "baz"))
-					_, err = os.Stat(prefix)
-					assert.True(t, os.IsNotExist(err))
+					// dry run bucket does not push or delete
+					setDryRun(bucket, true)
+					opts := SyncOptions{Local: prefix, Remote: "baz"}
+					assert.NoError(t, bucket.Push(ctx, opts))
+					setDryRun(bucket, false)
+					iter, err := bucket.List(ctx, "baz")
+					require.NoError(t, err)
+					count := 0
+					for iter.Next(ctx) {
+						require.NotNil(t, iter.Item())
+						count++
+					}
+					assert.Equal(t, 2, count)
+
+					assert.NoError(t, bucket.Push(ctx, opts))
+					iter, err = bucket.List(ctx, "baz")
+					require.NoError(t, err)
+					count = 0
+					for iter.Next(ctx) {
+						require.NotNil(t, iter.Item())
+						count++
+					}
+					assert.Equal(t, 50, count)
 
 					setDeleteOnSync(bucket, false)
 				})
@@ -1233,7 +1041,6 @@ func TestBucket(t *testing.T) {
 				bucket := impl.constructor(t)
 				err := bucket.Upload(ctx, "key", "foo\x00bar")
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), "problem opening file")
 			})
 			t.Run("DownloadWithBadFileName", func(t *testing.T) {
 				bucket := impl.constructor(t)
@@ -1248,7 +1055,6 @@ func TestBucket(t *testing.T) {
 
 				err = bucket.Download(ctx, "key", "location-\x00/key-name")
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), "problem creating enclosing directory")
 			})
 			t.Run("DownloadToBadFileName", func(t *testing.T) {
 				bucket := impl.constructor(t)
@@ -1258,7 +1064,6 @@ func TestBucket(t *testing.T) {
 
 				err = bucket.Download(ctx, "key", "location-\x00-key-name")
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), "problem creating file")
 			})
 		})
 	}
@@ -1280,7 +1085,6 @@ func writeDataToFile(ctx context.Context, bucket Bucket, key, data string) error
 	if err != nil {
 		return errors.WithStack(err)
 	}
-
 	_, err = writer.Write([]byte(data))
 	if err != nil {
 		return errors.WithStack(err)
@@ -1328,6 +1132,9 @@ func setDryRun(b Bucket, set bool) {
 		i.dryRun = set
 	case *gridfsBucket:
 		i.opts.DryRun = set
+	case *parallelBucketImpl:
+		i.dryRun = set
+		setDryRun(i.Bucket, set)
 	}
 }
 
@@ -1343,5 +1150,8 @@ func setDeleteOnSync(b Bucket, set bool) {
 		i.deleteOnSync = set
 	case *gridfsBucket:
 		i.opts.DeleteOnSync = set
+	case *parallelBucketImpl:
+		i.deleteOnSync = set
+		setDeleteOnSync(i.Bucket, set)
 	}
 }

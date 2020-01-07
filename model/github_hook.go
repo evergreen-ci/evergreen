@@ -144,17 +144,17 @@ func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, own
 	}
 	defer util.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	newCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	respHooks, _, err := client.Repositories.ListHooks(ctx, owner, repo, nil)
+	respHooks, _, err := client.Repositories.ListHooks(newCtx, owner, repo, nil)
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't get hooks for owner '%s', repo '%s'", owner, repo)
 	}
 
 	url := fmt.Sprintf(githubHookURLString, settings.ApiUrl)
 	for _, hook := range respHooks {
-		if hook.GetURL() == url {
+		if hook.Config["url"] == url {
 			return &GithubHook{
 				HookID: int(hook.GetID()),
 				Owner:  owner,

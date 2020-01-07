@@ -27,6 +27,7 @@ type ServiceFlags struct {
 	CommitQueueDisabled        bool `bson:"commit_queue_disabled" json:"commit_queue_disabled"`
 	PlannerDisabled            bool `bson:"planner_disabled" json:"planner_disabled"`
 	HostAllocatorDisabled      bool `bson:"host_allocator_disabled" json:"host_allocator_disabled"`
+	DRBackupDisabled           bool `bson:"dr_backup_disabled" json:"dr_backup_disabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -46,15 +47,14 @@ func (c *ServiceFlags) Get(env Environment) error {
 
 	res := coll.FindOne(ctx, byId(c.SectionId()))
 	if err := res.Err(); err != nil {
-		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
-	}
-
-	if err := res.Decode(c); err != nil {
 		if err == mongo.ErrNoDocuments {
 			*c = ServiceFlags{}
 			return nil
 		}
 		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+	}
+	if err := res.Decode(c); err != nil {
+		return errors.Wrap(err, "problem decoding result")
 	}
 	return nil
 }
@@ -91,6 +91,7 @@ func (c *ServiceFlags) Set() error {
 			commitQueueDisabledKey:          c.CommitQueueDisabled,
 			plannerDisabledKey:              c.PlannerDisabled,
 			hostAllocatorDisabledKey:        c.HostAllocatorDisabled,
+			drBackupDisabledKey:             c.DRBackupDisabled,
 		},
 	}, options.Update().SetUpsert(true))
 

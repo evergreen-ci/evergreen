@@ -47,6 +47,7 @@ func NewFromIOReader(r io.Reader) (Reader, error) {
 	if length < 0 {
 		return nil, bsonerr.InvalidLength
 	}
+
 	reader := make([]byte, length)
 
 	copy(reader, lengthBytes[:])
@@ -83,13 +84,16 @@ func (r Reader) Validate() (size uint32, err error) {
 func (r Reader) validateKey(pos, end uint32) (uint32, error) {
 	// Read a CString, return the length, including the '\x00'
 	var total uint32
+
 	for ; pos < end && r[pos] != '\x00'; pos++ {
 		total++
 	}
+
 	if pos == end || r[pos] != '\x00' {
 		return total, bsonerr.InvalidKey
 	}
 	total++
+
 	return total, nil
 }
 
@@ -108,6 +112,7 @@ func (r Reader) RecursiveLookup(key ...string) (*Element, error) {
 	}
 
 	var elem *Element
+
 	_, err := r.readElements(func(e *Element) error {
 		if key[0] == e.Key() {
 			if len(key) > 1 {
@@ -147,8 +152,11 @@ func (r Reader) RecursiveLookup(key ...string) (*Element, error) {
 // method will validate all the elements up to and including the element at
 // the given index.
 func (r Reader) ElementAt(index uint) (*Element, error) {
-	var current uint
-	var elem *Element
+	var (
+		current uint
+		elem    *Element
+	)
+
 	_, err := r.readElements(func(e *Element) error {
 		if current != index {
 			current++
@@ -160,9 +168,11 @@ func (r Reader) ElementAt(index uint) (*Element, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if elem == nil {
 		return nil, bsonerr.OutOfBounds
 	}
+
 	return elem, nil
 }
 
@@ -183,8 +193,11 @@ func (r Reader) Keys(recursive bool) (Keys, error) {
 // String implements the fmt.Stringer interface.
 func (r Reader) String() string {
 	var buf bytes.Buffer
+
 	buf.Write([]byte("bson.Reader{"))
+
 	idx := 0
+
 	_, _ = r.readElements(func(elem *Element) error {
 		if idx > 0 {
 			buf.Write([]byte(", "))
@@ -193,6 +206,7 @@ func (r Reader) String() string {
 		idx++
 		return nil
 	})
+
 	buf.WriteByte('}')
 
 	return buf.String()
@@ -202,10 +216,10 @@ func (r Reader) String() string {
 //
 // This method does not copy the bytes from r.
 func (r Reader) MarshalBSON() ([]byte, error) {
-	_, err := r.Validate()
-	if err != nil {
+	if _, err := r.Validate(); err != nil {
 		return nil, err
 	}
+
 	return r, nil
 }
 
@@ -236,9 +250,11 @@ func (r Reader) recursiveKeys(recursive bool, prefix ...string) (Keys, error) {
 		}
 		return nil
 	})
+
 	if err != nil {
 		return nil, err
 	}
+
 	return ks, nil
 }
 
@@ -259,40 +275,53 @@ func (r Reader) readElements(f func(e *Element) error) (uint32, error) {
 	if len(r) < int(givenLength) || givenLength < 0 {
 		return 0, bsonerr.InvalidLength
 	}
-	var pos uint32 = 4
-	var elemStart, elemValStart uint32
-	var elem *Element
+
+	pos := uint32(4)
 	end := uint32(givenLength)
+
+	var (
+		elemStart    uint32
+		elemValStart uint32
+		elem         *Element
+	)
+
 	for {
 		if pos >= end {
 			// We've gone off the end of the buffer and we're missing
 			// a null terminator.
 			return pos, bsonerr.InvalidReadOnlyDocument
 		}
+
 		if r[pos] == '\x00' {
 			break
 		}
+
 		elemStart = pos
 		pos++
 		n, err := r.validateKey(pos, end)
 		pos += n
+
 		if err != nil {
 			return pos, err
 		}
+
 		elemValStart = pos
 		elem = newElement(elemStart, elemValStart)
 		elem.value.data = r
 		n, err = elem.value.validate(true)
 		pos += n
+
 		if err != nil {
 			return pos, err
 		}
+
 		if f != nil {
 			err = f(elem)
 			if err != nil {
 				if err == errValidateDone {
 					break
 				}
+
 				return pos, err
 			}
 		}
@@ -301,7 +330,6 @@ func (r Reader) readElements(f func(e *Element) error) (uint32, error) {
 	// The size is always 1 larger than the position, since position is 0
 	// indexed.
 	return pos + 1, nil
-
 }
 
 // Keys represents the keys of a BSON document.
@@ -320,6 +348,7 @@ func (k Key) String() string {
 	if str != "" {
 		return str + "." + k.Name
 	}
+
 	return k.Name
 }
 

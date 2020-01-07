@@ -45,6 +45,8 @@ type gitFetchProject struct {
 
 	ShallowClone bool `mapstructure:"shallow_clone"`
 
+	RecurseSubmodules bool `mapstructure:"recurse_submodules"`
+
 	base
 }
 
@@ -57,6 +59,7 @@ type cloneOpts struct {
 	dir                string
 	token              string
 	shallowClone       bool
+	recurseSubmodules  bool
 	mergeTestRequester bool
 }
 
@@ -156,6 +159,9 @@ func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
 		return nil, errors.Wrap(err, "failed to parse URL from location")
 	}
 	clone := fmt.Sprintf("git clone %s '%s'", thirdparty.FormGitUrl(urlLocation.Host, opts.owner, opts.repo, opts.token), opts.dir)
+	if opts.recurseSubmodules {
+		clone = fmt.Sprintf("%s --recurse-submodules", clone)
+	}
 	if opts.shallowClone {
 		// Experiments with shallow clone on AWS hosts suggest that depth 100 is as fast as 1, but 1000 is slower.
 		clone = fmt.Sprintf("%s --depth 100", clone)
@@ -176,6 +182,9 @@ func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
 
 func (opts cloneOpts) buildSSHCloneCommand() ([]string, error) {
 	cloneCmd := fmt.Sprintf("git clone '%s' '%s'", opts.location, opts.dir)
+	if opts.recurseSubmodules {
+		cloneCmd = fmt.Sprintf("%s --recurse-submodules", cloneCmd)
+	}
 	if opts.shallowClone {
 		// Experiments with shallow clone on AWS hosts suggest that depth 100 is as fast as 1, but 1000 is slower.
 		cloneCmd = fmt.Sprintf("%s --depth 100", cloneCmd)
@@ -341,6 +350,7 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 		dir:                c.Directory,
 		token:              projectToken,
 		shallowClone:       c.ShallowClone && !conf.Distro.DisableShallowClone,
+		recurseSubmodules:  c.RecurseSubmodules,
 		mergeTestRequester: conf.Task.Requester == evergreen.MergeTestRequester,
 	}
 	if err = opts.setLocation(); err != nil {

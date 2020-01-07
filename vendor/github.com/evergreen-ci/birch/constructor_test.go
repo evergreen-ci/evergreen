@@ -1169,8 +1169,8 @@ func TestDocumentConstructor(t *testing.T) {
 				Type: bsontype.EmbeddedDocument,
 				Size: 2,
 				Input: map[string][]interface{}{
-					"a": []interface{}{"1", 2, "3"},
-					"b": []interface{}{false, true, "1", 2, "3"},
+					"a": {"1", 2, "3"},
+					"b": {false, true, "1", 2, "3"},
 				},
 			},
 			{
@@ -1205,8 +1205,8 @@ func TestDocumentConstructor(t *testing.T) {
 				Size: 2,
 				Type: bsontype.EmbeddedDocument,
 				Input: map[string][]Marshaler{
-					"one": []Marshaler{NewDocument(), NewDocument()},
-					"two": []Marshaler{NewArray()},
+					"one": {NewDocument(), NewDocument()},
+					"two": {NewArray()},
 				},
 			},
 			{
@@ -1220,9 +1220,9 @@ func TestDocumentConstructor(t *testing.T) {
 				Size: 3,
 				Type: bsontype.EmbeddedDocument,
 				Input: map[string][]string{
-					"hi":      []string{"hello", "world"},
-					"results": []string{},
-					"other":   []string{"one"},
+					"hi":      {"hello", "world"},
+					"results": {},
+					"other":   {"one"},
 				},
 			},
 			{
@@ -1285,5 +1285,4 @@ func TestDocumentConstructor(t *testing.T) {
 			})
 		}
 	})
-
 }

@@ -5,17 +5,16 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
-
-	"github.com/mongodb/grip"
-
-	"go.mongodb.org/mongo-driver/bson/primitive"
-
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"time"
 
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/x/mongo/driver"
 )
 
 type mongoBackedRoleManager struct {
@@ -59,6 +58,9 @@ func (m *mongoBackedRoleManager) GetAllRoles() ([]gimlet.Role, error) {
 
 func (m *mongoBackedRoleManager) GetRoles(ids []string) ([]gimlet.Role, error) {
 	out := []gimlet.Role{}
+	if len(ids) == 0 {
+		return out, nil
+	}
 	ctx := context.Background()
 	cursor, err := m.client.Database(m.db).Collection(m.roleColl).Find(ctx, bson.M{
 		"_id": bson.M{
@@ -133,6 +135,9 @@ func (m *mongoBackedRoleManager) FilterForResource(roles []gimlet.Role, resource
 }
 
 func (m *mongoBackedRoleManager) FilterScopesByResourceType(scopeIDs []string, resourceType string) ([]gimlet.Scope, error) {
+	if len(scopeIDs) == 0 {
+		return []gimlet.Scope{}, nil
+	}
 	coll := m.client.Database(m.db).Collection(m.scopeColl)
 	ctx := context.Background()
 	query := bson.M{
@@ -182,12 +187,125 @@ func (m *mongoBackedRoleManager) FindScopeForResources(resourceType string, reso
 }
 
 func (m *mongoBackedRoleManager) AddScope(scope gimlet.Scope) error {
-	_, err := m.client.Database(m.db).Collection(m.scopeColl).InsertOne(context.Background(), scope)
+	toUpdate := []string{}
+	var err error
+	if scope.ParentScope != "" {
+		toUpdate, err = m.findParentsOfScope(scope.ParentScope)
+		if err != nil {
+			return err
+		}
+	}
+
+	updateFunc := func(ctx mongo.SessionContext) error {
+		err := ctx.StartTransaction()
+		if err != nil {
+			return err
+		}
+		scopeCollection := m.client.Database(m.db).Collection(m.scopeColl)
+		_, err = scopeCollection.InsertOne(ctx, scope)
+		if err != nil {
+			return err
+		}
+		if len(scope.Resources) > 0 && len(toUpdate) > 0 {
+			filter := bson.M{
+				"_id": bson.M{
+					"$in": toUpdate,
+				},
+			}
+			update := bson.M{
+				"$push": bson.M{
+					"resources": bson.M{
+						"$each": scope.Resources,
+					},
+				},
+			}
+			_, err = scopeCollection.UpdateMany(ctx, filter, update)
+			if err != nil {
+				return err
+			}
+		}
+		return ctx.CommitTransaction(ctx)
+	}
+	return m.retryTransaction(updateFunc)
+}
+
+// note this assumes that resources in parent scopes are not duplicated (SERVER-1014)
+func (m *mongoBackedRoleManager) DeleteScope(scope gimlet.Scope) error {
+	var toUpdate []string
+	var err error
+	toUpdate, err = m.findParentsOfScope(scope.ParentScope)
+	if err != nil {
+		return err
+	}
+
+	updateFunc := func(ctx mongo.SessionContext) error {
+		err := ctx.StartTransaction()
+		if err != nil {
+			return err
+		}
+		scopeCollection := m.client.Database(m.db).Collection(m.scopeColl)
+		_, err = scopeCollection.DeleteOne(ctx, bson.M{"_id": scope.ID})
+		if err != nil {
+			return err
+		}
+		if len(toUpdate) > 0 {
+			filter := bson.M{
+				"_id": bson.M{
+					"$in": toUpdate,
+				},
+			}
+			update := bson.M{
+				"$pull": bson.M{
+					"resources": bson.M{
+						"$each": scope.Resources,
+					},
+				},
+			}
+			_, err = scopeCollection.UpdateMany(ctx, filter, update)
+			if err != nil {
+				return err
+			}
+		}
+		return ctx.CommitTransaction(ctx)
+	}
+	return m.retryTransaction(updateFunc)
+}
+
+func (m *mongoBackedRoleManager) AddResourceToScope(scope, resource string) error {
+	toUpdate, err := m.findParentsOfScope(scope)
+	if err != nil {
+		return err
+	}
+	filter := bson.M{
+		"_id": bson.M{
+			"$in": toUpdate,
+		},
+	}
+	update := bson.M{
+		"$push": bson.M{
+			"resources": resource,
+		},
+	}
+	_, err = m.client.Database(m.db).Collection(m.scopeColl).UpdateMany(context.Background(), filter, update)
 	return err
 }
 
-func (m *mongoBackedRoleManager) DeleteScope(id string) error {
-	_, err := m.client.Database(m.db).Collection(m.scopeColl).DeleteOne(context.Background(), bson.M{"_id": id})
+func (m *mongoBackedRoleManager) RemoveResourceFromScope(scope, resource string) error {
+	toUpdate, err := m.findParentsOfScope(scope)
+	if err != nil {
+		return err
+	}
+	filter := bson.M{
+		"_id": bson.M{
+			"$in": toUpdate,
+		},
+	}
+	update := bson.M{
+		"$pull": bson.M{
+			"resources": resource,
+		},
+	}
+	_, err = m.client.Database(m.db).Collection(m.scopeColl).UpdateMany(context.Background(), filter, update)
 	return err
 }
 
@@ -263,7 +381,101 @@ func (m *mongoBackedRoleManager) Clear() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(m.client.Database(m.db).Collection(m.scopeColl).Drop(ctx))
 	catcher.Add(m.client.Database(m.db).Collection(m.roleColl).Drop(ctx))
+	cmd := map[string]string{
+		"create": m.scopeColl,
+	}
+	catcher.Add(m.client.Database(m.db).RunCommand(context.Background(), cmd).Err())
+	cmd = map[string]string{
+		"create": m.roleColl,
+	}
+	catcher.Add(m.client.Database(m.db).RunCommand(context.Background(), cmd).Err())
 	return catcher.Resolve()
+}
+
+func (m *mongoBackedRoleManager) findParentsOfScope(scopeId string) ([]string, error) {
+	pipeline := []bson.M{
+		{
+			"$match": bson.M{
+				"_id": scopeId,
+			},
+		},
+		{
+			"$graphLookup": bson.M{
+				"from":             m.scopeColl,
+				"startWith":        "$parent",
+				"connectFromField": "parent",
+				"connectToField":   "_id",
+				"as":               "parents_temp",
+			},
+		},
+		{
+			"$addFields": bson.M{
+				"parents_temp": bson.M{
+					"$concatArrays": []interface{}{"$parents_temp", []string{"$$ROOT"}},
+				},
+			},
+		},
+		{
+			"$project": bson.M{
+				"_id":     0,
+				"results": "$parents_temp",
+			},
+		},
+		{
+			"$unwind": "$results",
+		},
+		{
+			"$replaceRoot": bson.M{
+				"newRoot": "$results",
+			},
+		},
+		{
+			"$project": bson.M{
+				"_id": 1,
+			},
+		},
+	}
+
+	ctx := context.Background()
+	cursor, err := m.client.Database(m.db).Collection(m.scopeColl).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	scopes := []gimlet.Scope{}
+	err = cursor.All(ctx, &scopes)
+	if err != nil {
+		return nil, err
+	}
+	scopeIds := []string{}
+	for _, scope := range scopes {
+		scopeIds = append(scopeIds, scope.ID)
+	}
+	return scopeIds, nil
+}
+
+func (m *mongoBackedRoleManager) retryTransaction(f func(mongo.SessionContext) error) error {
+	const retryCount = 5
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
+	for i := 0; i < retryCount; i++ {
+		err := m.client.UseSession(ctx, f)
+		if !isTransientTxErr(err) {
+			return err
+		}
+	}
+	return errors.New("hit max retries while retrying transaction")
+}
+
+func isTransientTxErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	rootErr := errors.Cause(err)
+	cmdErr, isCmdErr := rootErr.(mongo.CommandError)
+	if isCmdErr && cmdErr.HasErrorLabel(driver.TransientTransactionError) {
+		return true
+	}
+	return false
 }
 
 type inMemoryRoleManager struct {
@@ -365,11 +577,58 @@ func (m *inMemoryRoleManager) FindScopeForResources(resourceType string, resourc
 
 func (m *inMemoryRoleManager) AddScope(scope gimlet.Scope) error {
 	m.scopes[scope.ID] = scope
+	parents := m.findScopesRecursive(scope)
+	for _, parentId := range parents {
+		if parentId != scope.ID {
+			parent := m.scopes[parentId]
+			parent.Resources = append(parent.Resources, scope.Resources...)
+			m.scopes[parentId] = parent
+		}
+	}
 	return nil
 }
 
-func (m *inMemoryRoleManager) DeleteScope(id string) error {
-	delete(m.scopes, id)
+func (m *inMemoryRoleManager) DeleteScope(scope gimlet.Scope) error {
+	delete(m.scopes, scope.ID)
+	for _, resource := range scope.Resources {
+		if err := m.RemoveResourceFromScope(scope.ParentScope, resource); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m *inMemoryRoleManager) AddResourceToScope(scopeId, resource string) error {
+	baseScope, found := m.scopes[scopeId]
+	if !found {
+		return errors.New("no scope found")
+	}
+	toUpdate := m.findScopesRecursive(baseScope)
+	for _, scopeId := range toUpdate {
+		scope := m.scopes[scopeId]
+		scope.Resources = append(scope.Resources, resource)
+		m.scopes[scopeId] = scope
+	}
+
+	return nil
+}
+
+func (m *inMemoryRoleManager) RemoveResourceFromScope(scopeId, resource string) error {
+	baseScope, found := m.scopes[scopeId]
+	if !found {
+		return errors.New("no scope found")
+	}
+	toUpdate := m.findScopesRecursive(baseScope)
+	for _, scopeId := range toUpdate {
+		scope := m.scopes[scopeId]
+		for i := len(scope.Resources) - 1; i >= 0; i-- {
+			if scope.Resources[i] == resource {
+				scope.Resources = append(scope.Resources[:i], scope.Resources[i+1:]...)
+			}
+		}
+		m.scopes[scopeId] = scope
+	}
+
 	return nil
 }
 

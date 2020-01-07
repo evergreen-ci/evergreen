@@ -24,6 +24,8 @@ import (
 
 const MockIPV6 = "abcd:1234:459c:2d00:cfe4:843b:1d60:8e47"
 
+var noReservationError = errors.New("no reservation returned for instance")
+
 // AWSClient is a wrapper for aws-sdk-go so we can use a mock in testing.
 type AWSClient interface {
 	// Create a new aws-sdk-client or mock if one does not exist, otherwise no-op.
@@ -728,8 +730,7 @@ func (c *awsClientImpl) GetInstanceInfo(ctx context.Context, id string) (*ec2.In
 	}
 	reservation := resp.Reservations
 	if len(reservation) == 0 {
-		err = errors.Errorf("No reservation found for instance id: %s", id)
-		return nil, err
+		return nil, noReservationError
 	}
 
 	instances := reservation[0].Instances

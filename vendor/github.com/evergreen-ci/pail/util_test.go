@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestChecksum(t *testing.T) {
@@ -84,5 +85,25 @@ func TestWalkTree(t *testing.T) {
 		out, err := walkLocalTree(ctx, filepath.Dir(file))
 		assert.NoError(t, err)
 		assert.NotNil(t, out)
+	})
+	t.Run("SymLink", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("git symlinks do not work on windows")
+		}
+		vendor, err := walkLocalTree(ctx, "vendor")
+		require.NoError(t, err)
+
+		out, err := walkLocalTree(ctx, "testdata")
+		require.NoError(t, err)
+
+		fnMap := map[string]bool{}
+		for _, fn := range out {
+			fnMap[fn] = true
+		}
+		assert.True(t, fnMap["a_file.txt"])
+		assert.True(t, fnMap["z_file.txt"])
+		for _, fn := range vendor {
+			require.True(t, fnMap[filepath.Join("vendor", fn)])
+		}
 	})
 }

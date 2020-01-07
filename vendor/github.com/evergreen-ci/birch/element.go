@@ -32,7 +32,8 @@ func newElement(start uint32, offset uint32) *Element {
 	return &Element{&Value{start: start, offset: offset}}
 }
 
-// Clone creates a of the element/
+// Copy creates a new Element which has a copy of the content from
+// original value, but is otherwise entirely independent.
 func (e *Element) Copy() *Element {
 	return &Element{e.value.Copy()}
 }
@@ -47,21 +48,27 @@ func (e *Element) Validate() (uint32, error) {
 	if e == nil {
 		return 0, bsonerr.NilElement
 	}
+
 	if e.value == nil {
 		return 0, bsonerr.UninitializedElement
 	}
 
 	var total uint32 = 1
+
 	n, err := e.validateKey()
 	total += n
+
 	if err != nil {
 		return total, err
 	}
+
 	n, err = e.value.validate(false)
 	total += n
+
 	if err != nil {
 		return total, err
 	}
+
 	return total, nil
 }
 
@@ -70,18 +77,24 @@ func (e *Element) validateKey() (uint32, error) {
 		return 0, bsonerr.UninitializedElement
 	}
 
-	pos, end := e.value.start+1, e.value.offset
+	pos := e.value.start + 1
+	end := e.value.offset
+
 	var total uint32
+
 	if end > uint32(len(e.value.data)) {
 		end = uint32(len(e.value.data))
 	}
+
 	for ; pos < end && e.value.data[pos] != '\x00'; pos++ {
 		total++
 	}
+
 	if pos == end || e.value.data[pos] != '\x00' {
 		return total, bsonerr.InvalidKey
 	}
 	total++
+
 	return total, nil
 }
 
@@ -92,9 +105,12 @@ func (e *Element) Key() string {
 	if !ok {
 		panic(bsonerr.UninitializedElement)
 	}
+
 	return key
 }
 
+// KeyOK returns the key of the document, return a false OK value if
+// the element is uninitialized.
 func (e *Element) KeyOK() (string, bool) {
 	if e == nil || e.value == nil || e.value.offset == 0 || e.value.data == nil {
 		return "", false
@@ -119,28 +135,33 @@ func (e *Element) writeElement(key bool, start uint, writer interface{}) (int64,
 	// TODO(skriptble): Figure out if we want to use uint or uint32 and
 	// standardize across all packages.
 	var total int64
+
 	size, err := e.Validate()
 	if err != nil {
 		return 0, err
 	}
+
 	switch w := writer.(type) {
 	case []byte:
 		n, err := e.writeByteSlice(key, start, size, w)
 		if err != nil {
 			return 0, newErrTooSmall()
 		}
+
 		total += n
 	case io.Writer:
 		return e.WriteTo(w)
 	default:
 		return 0, bsonerr.InvalidWriter
 	}
+
 	return total, nil
 }
 
 // writeByteSlice handles writing this element to a slice of bytes.
 func (e *Element) writeByteSlice(key bool, start uint, size uint32, b []byte) (int64, error) {
 	var startToWrite uint
+
 	needed := start + uint(size)
 
 	if key {
@@ -157,6 +178,7 @@ func (e *Element) writeByteSlice(key bool, start uint, size uint32, b []byte) (i
 	}
 
 	var n int
+
 	switch e.Value().Type() {
 	case bsontype.EmbeddedDocument:
 		if e.value.d == nil {
@@ -166,6 +188,7 @@ func (e *Element) writeByteSlice(key bool, start uint, size uint32, b []byte) (i
 
 		header := e.value.offset - e.value.start
 		size -= header
+
 		if key {
 			n += copy(b[start:], e.value.data[startToWrite:e.value.offset])
 			start += uint(n)
@@ -173,6 +196,7 @@ func (e *Element) writeByteSlice(key bool, start uint, size uint32, b []byte) (i
 
 		nn, err := e.value.d.writeByteSlice(start, size, b)
 		n += int(nn)
+
 		if err != nil {
 			return int64(n), err
 		}
@@ -184,6 +208,7 @@ func (e *Element) writeByteSlice(key bool, start uint, size uint32, b []byte) (i
 
 		header := e.value.offset - e.value.start
 		size -= header
+
 		if key {
 			n += copy(b[start:], e.value.data[startToWrite:e.value.offset])
 			start += uint(n)
@@ -193,6 +218,7 @@ func (e *Element) writeByteSlice(key bool, start uint, size uint32, b []byte) (i
 
 		nn, err := arr.writeByteSlice(start, size, b)
 		n += int(nn)
+
 		if err != nil {
 			return int64(n), err
 		}
@@ -210,8 +236,8 @@ func (e *Element) writeByteSlice(key bool, start uint, size uint32, b []byte) (i
 			}
 
 			codeWithScopeLength := lengthWithoutScope + int32(scopeLength)
-			_, err = elements.Int32.Encode(uint(e.value.offset), e.value.data, codeWithScopeLength)
-			if err != nil {
+
+			if _, err = elements.Int32.Encode(uint(e.value.offset), e.value.data, codeWithScopeLength); err != nil {
 				return int64(n), err
 			}
 
@@ -223,6 +249,7 @@ func (e *Element) writeByteSlice(key bool, start uint, size uint32, b []byte) (i
 
 			nn, err := e.value.d.writeByteSlice(start, scopeLength, b)
 			n += int(nn)
+
 			if err != nil {
 				return int64(n), err
 			}
@@ -239,8 +266,8 @@ func (e *Element) writeByteSlice(key bool, start uint, size uint32, b []byte) (i
 
 		// Set the length of the value
 		codeWithScopeLength := codeWithScopeEnd - int32(e.value.offset)
-		_, err := elements.Int32.Encode(uint(e.value.offset), e.value.data, codeWithScopeLength)
-		if err != nil {
+
+		if _, err := elements.Int32.Encode(uint(e.value.offset), e.value.data, codeWithScopeLength); err != nil {
 			return 0, err
 		}
 
@@ -258,11 +285,13 @@ func (e *Element) MarshalBSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	b := make([]byte, size)
-	_, err = e.writeByteSlice(true, 0, size, b)
-	if err != nil {
+
+	if _, err = e.writeByteSlice(true, 0, size, b); err != nil {
 		return nil, err
 	}
+
 	return b, nil
 }
 
@@ -272,6 +301,7 @@ func (e *Element) String() string {
 	if s, ok := val.(string); ok && e.Value().Type() == bsontype.String {
 		val = strconv.Quote(s)
 	}
+
 	return fmt.Sprintf(`bson.Element{[%s]"%s": %v}`, e.Value().Type(), e.Key(), val)
 }
 
@@ -280,6 +310,7 @@ func (e *Element) Equal(e2 *Element) bool {
 	if e == nil && e2 == nil {
 		return true
 	}
+
 	if e == nil || e2 == nil {
 		return false
 	}
@@ -287,6 +318,7 @@ func (e *Element) Equal(e2 *Element) bool {
 	if e.Key() != e2.Key() {
 		return false
 	}
+
 	return e.value.Equal(e2.value)
 }
 
@@ -322,6 +354,7 @@ func convertValueToElem(key string, v *Value) *Element {
 	elem := newElement(0, uint32(keyLen+2))
 	elem.value.data = d
 	elem.value.d = nil
+
 	if v.d != nil {
 		elem.value.d = v.d.Copy()
 	}

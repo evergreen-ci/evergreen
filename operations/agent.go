@@ -107,7 +107,7 @@ func Agent() cli.Command {
 					Credentials: pail.CreateAWSCredentials(os.Getenv("S3_KEY"), os.Getenv("S3_SECRET"), ""),
 					Region:      endpoints.UsEast1RegionID,
 					Name:        os.Getenv("S3_BUCKET"),
-					Permission:  "public-read",
+					Permissions: pail.S3PermissionsPublicRead,
 					ContentType: "text/plain",
 				},
 			}

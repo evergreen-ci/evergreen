@@ -21,7 +21,9 @@ const (
 	//StatusRunning means the machine is done booting, and active
 	StatusRunning
 
+	StatusStopping
 	StatusStopped
+
 	StatusTerminated
 )
 
@@ -35,6 +37,8 @@ func (stat CloudStatus) String() string {
 		return "initializing"
 	case StatusRunning:
 		return "running"
+	case StatusStopping:
+		return "stopping"
 	case StatusStopped:
 		return "stopped"
 	case StatusTerminated:

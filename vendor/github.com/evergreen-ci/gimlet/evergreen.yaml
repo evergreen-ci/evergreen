@@ -1,9 +1,9 @@
-stepback: false 
+stepback: false
 command_type: test
 ignore:
-    - "*.md" # don't schedule tests if a commit only changes markdown files
-    - "*.rst"
-    - "buildscripts/*" # our scripts are untested, so don't schedule tests for them
+  - "*.md" # don't schedule tests if a commit only changes markdown files
+  - "*.rst"
+  - "buildscripts/*" # our scripts are untested, so don't schedule tests for them
 
 #######################################
 #         YAML Templates              #
@@ -22,7 +22,6 @@ variables:
       - func: run-make
         vars: { target: "${task_name}" }
 
-
 #######################################
 #              Functions              #
 #######################################
@@ -40,26 +39,30 @@ functions:
         GO_BIN_PATH: ${go_bin_path}
         TEST_TIMEOUT: ${test_timeout}
   setup-mongodb:
-  - command: subprocess.exec
-    type: setup
-    params:
-      env:
-        MONGODB_URL: ${mongodb_url}
-        DECOMPRESS: ${decompress}
-      working_dir: gopath/src/github.com/evergreen-ci/gimlet
-      command: make get-mongodb
-  - command: subprocess.exec
-    type: setup
-    params:
-      background: true
-      working_dir: gopath/src/github.com/evergreen-ci/gimlet
-      command: make start-mongod
-  - command: subprocess.exec
-    type: setup
-    params:
-      working_dir: gopath/src/github.com/evergreen-ci/gimlet
-      command: make check-mongod
-
+    - command: subprocess.exec
+      type: setup
+      params:
+        env:
+          MONGODB_URL: ${mongodb_url}
+          DECOMPRESS: ${decompress}
+        working_dir: gopath/src/github.com/evergreen-ci/gimlet
+        command: make get-mongodb
+    - command: subprocess.exec
+      type: setup
+      params:
+        background: true
+        working_dir: gopath/src/github.com/evergreen-ci/gimlet
+        command: make start-mongod
+    - command: subprocess.exec
+      type: setup
+      params:
+        working_dir: gopath/src/github.com/evergreen-ci/gimlet
+        command: make check-mongod
+    - command: subprocess.exec
+      type: setup
+      params:
+        working_dir: gopath/src/github.com/evergreen-ci/gimlet
+        command: make init-rs
 
 #######################################
 #                Tasks                #
@@ -75,7 +78,10 @@ post:
     params:
       aws_key: ${aws_key}
       aws_secret: ${aws_secret}
-      local_files_include_filter: ["gopath/src/github.com/evergreen-ci/gimlet/build/output.*.coverage.html"]
+      local_files_include_filter:
+        [
+          "gopath/src/github.com/evergreen-ci/gimlet/build/output.*.coverage.html",
+        ]
       remote_file: evergreen/${task_id}/
       bucket: mciuploads
       content_type: text/html
@@ -86,7 +92,8 @@ post:
     params:
       aws_key: ${aws_key}
       aws_secret: ${aws_secret}
-      local_files_include_filter: ["gopath/src/github.com/evergreen-ci/gimlet/build/output.*.coverage"]
+      local_files_include_filter:
+        ["gopath/src/github.com/evergreen-ci/gimlet/build/output.*.coverage"]
       remote_file: evergreen/${task_id}/
       bucket: mciuploads
       content_type: text/plain
@@ -106,7 +113,7 @@ tasks:
         vars: { target: "lint" }
 
   - name: coverage
-    tags: [ "report" ]
+    tags: ["report"]
     commands:
       - command: git.get_project
         params:

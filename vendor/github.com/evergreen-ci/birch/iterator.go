@@ -68,9 +68,11 @@ type readerIterator struct {
 // newReaderIterator constructors a new readerIterator over a given Reader.
 func newReaderIterator(r Reader) (*readerIterator, error) {
 	itr := new(readerIterator)
+
 	if len(r) < 5 {
 		return nil, newErrTooSmall()
 	}
+
 	givenLength := readi32(r[0:4])
 	if len(r) < int(givenLength) {
 		return nil, bsonerr.InvalidLength
@@ -92,13 +94,16 @@ func (itr *readerIterator) Next() bool {
 		itr.err = bsonerr.InvalidReadOnlyDocument
 		return false
 	}
+
 	if itr.r[itr.pos] == '\x00' {
 		return false
 	}
+
 	elemStart := itr.pos
 	itr.pos++
 	n, err := itr.r.validateKey(itr.pos, itr.end)
 	itr.pos += n
+
 	if err != nil {
 		itr.err = err
 		return false
@@ -111,10 +116,12 @@ func (itr *readerIterator) Next() bool {
 
 	n, err = itr.elem.value.validate(false)
 	itr.pos += n
+
 	if err != nil {
 		itr.err = err
 		return false
 	}
+
 	return true
 }
 

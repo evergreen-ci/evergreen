@@ -654,8 +654,8 @@ func (c *Mock) DeleteCommitQueueItem(ctx context.Context, projectID, item string
 	return nil
 }
 
-func (c *Mock) EnqueueItem(ctx context.Context, patchID string) (int, error) {
-	return 1, nil
+func (c *Mock) EnqueueItem(ctx context.Context, patchID string, force bool) (int, error) {
+	return 0, nil
 }
 
 func (c *Mock) GetCommitQueueItemAuthor(ctx context.Context, projectID, item string) (string, error) {
