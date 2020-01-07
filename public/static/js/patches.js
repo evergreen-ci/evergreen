@@ -35,7 +35,7 @@ mciModule.controller('PatchesController', function($scope, $filter, $http, $wind
       $scope.patches = data['UIPatches'];
 
       _.each($scope.patches, function(patch) {
-          patch.canEdit = (($window.user.Id === patch.Author ) || $window.isSuperUser) && patch.alias !== "__commit_queue"
+          patch.canEdit = (($window.user.Id === patch.author ) || $window.isSuperUser) && patch.alias !== "__commit_queue"
       });
 
       _.each($scope.buildsMap, function(buildArray) {
