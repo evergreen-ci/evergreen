@@ -243,7 +243,11 @@ func (ac *legacyClient) GetPatchedConfig(patchId string) (*model.Project, error)
 		return nil, NewAPIError(resp)
 	}
 	ref := &model.Project{}
-	if err := util.ReadYAMLInto(resp.Body, ref); err != nil {
+	yamlBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := model.LoadProjectInto(yamlBytes, "", ref); err != nil {
 		return nil, err
 	}
 	return ref, nil
@@ -259,7 +263,11 @@ func (ac *legacyClient) GetConfig(versionId string) (*model.Project, error) {
 		return nil, NewAPIError(resp)
 	}
 	ref := &model.Project{}
-	if err := util.ReadYAMLInto(resp.Body, ref); err != nil {
+	yamlBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := model.LoadProjectInto(yamlBytes, "", ref); err != nil {
 		return nil, err
 	}
 	return ref, nil

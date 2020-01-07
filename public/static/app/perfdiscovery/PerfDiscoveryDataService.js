@@ -98,7 +98,10 @@ mciModule.factory('PerfDiscoveryDataService', function (
   // :param receiver: dict which will receive processed results
   // :param ctx: dict of {build, task, storageEngine} see `extractTasks`
   // returns: could be ignored
-  function processItem(item, receiver, ctx) {
+  function processItem(item, receiver, ctx, metricName) {
+    if (!metricName) {
+      metricName = "ops_per_sec";
+    }
     var parts = item.name.split('-')
     // At some point we renamed the tests to remove -wiredTiger and -MMAPv1 suffixs.
     // Normalize old names to match the new ones
@@ -110,6 +113,7 @@ mciModule.factory('PerfDiscoveryDataService', function (
       .omit(_.isString)
       .each(function (speed, threads) {
         var data = {
+          all_metrics: getAllMetrics(speed),
           build: ctx.buildName,
           buildId: ctx.buildId,
           buildVariant: ctx.buildVariant,
@@ -123,11 +127,22 @@ mciModule.factory('PerfDiscoveryDataService', function (
           taskId: ctx.taskId,
           test: item.name,
           threads: +threads,
-          speed: speed.ops_per_sec,
+          speed: speed[metricName],
           storageEngine: ctx.storageEngine,
         }
         receiver[slug(data)] = data
       })
+  }
+
+  // getAllMetrics returns all properties that have scalar numeric values in a single test result
+  function getAllMetrics(result) {
+    let metrics = [];
+    for (const name in result) {
+      if (Number.isFinite(result[name])) {
+        metrics.push(name);
+      }
+    }
+    return metrics;
   }
 
   // data is [
@@ -139,7 +154,7 @@ mciModule.factory('PerfDiscoveryDataService', function (
   //   },
   //   {...}
   // ]
-  function onProcessData(data) {
+  function onProcessData(data, metricName) {
     var now = {},
       baseline = {},
       history = {}
@@ -155,14 +170,14 @@ mciModule.factory('PerfDiscoveryDataService', function (
         d.ctx.storageEngine = d.current.data.storageEngine || '(none)'
 
         _.each(d.current.data.results, function (result) {
-          processItem(result, now, d.ctx)
+          processItem(result, now, d.ctx, metricName);
         })
       }
 
       // Process baseline data
       if (d.baseline && d.baseline.data) {
         _.each(d.baseline.data.results, function (result) {
-          processItem(result, baseline, d.ctx)
+          processItem(result, baseline, d.ctx, metricName);
         })
       }
 
@@ -174,7 +189,7 @@ mciModule.factory('PerfDiscoveryDataService', function (
           history[order] = {}
         }
         _.each(histItems.data.results, function (result) {
-          processItem(result, history[order], d.ctx)
+          processItem(result, history[order], d.ctx, metricName);
         })
       })
     })
@@ -433,8 +448,8 @@ mciModule.factory('PerfDiscoveryDataService', function (
   // Processes `queryData` return value
   // Populates dicts of current (now, baseline) and history result items
   // returns dict of {now, baseline, history} test result items
-  function processData(promise) {
-    return promise.then(onProcessData)
+  function processData(promise, metricName) {
+    return promise.then(data => onProcessData(data, metricName))
   }
 
   // Returns data for the (ui) grid
@@ -495,12 +510,12 @@ mciModule.factory('PerfDiscoveryDataService', function (
       })
   }
 
-  function getData(version, baselineTag, expandedCurrent, expandedBaseline, expandedTrend) {
+  function getData(version, baselineTag, expandedCurrent, expandedBaseline, expandedTrend, metricName) {
     return getRows(
       processData(
         queryData(
           tasksOfBuilds(queryBuildData(version)), tasksOfBuilds(queryBuildData(baselineTag)), expandedCurrent, expandedBaseline, expandedTrend
-        )
+        ), metricName
       )
     )
   }
@@ -522,5 +537,6 @@ mciModule.factory('PerfDiscoveryDataService', function (
     _onGetRows: onGetRows,
     _versionSelectAdaptor: versionSelectAdaptor,
     _tagSelectAdaptor: tagSelectAdaptor,
+    _getAllMetrics: getAllMetrics,
   }
 })

@@ -426,6 +426,18 @@ mciServices.rest.factory('mciAdminRestService', ['mciBaseRestService', function 
     return service;
 }]);
 
+mciServices.rest.factory('mciCommitQueueRestService', ['mciBaseRestService', function (baseSvc) {
+    var resource = mciServices.rest.RestV2Resource("commit_queue");
+
+    var service = {};
+
+    service.deleteItem = function(project, item, callbacks) {
+        var url = [resource, project, item].join('/');
+        baseSvc.deleteResource(url, [], {}, callbacks);
+    }
+    return service;
+}])
+
 mciServices.rest.factory('mciProjectRestService', ['mciBaseRestService', function (baseSvc) {
     var resource = mciServices.rest.RestV2Resource("projects");
 
