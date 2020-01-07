@@ -14,15 +14,12 @@ func TestNewLDAPUserManager(t *testing.T) {
 	assert.Nil(t, u)
 
 	conf = &evergreen.LDAPConfig{
-		URL:                 "url",
-		Port:                "port",
-		UserPath:            "path",
-		ServicePath:         "bot",
-		Group:               "group",
-		ExpireAfterMinutes:  "60",
-		ServiceUserName:     "service",
-		ServiceUserPassword: "password",
-		ServiceUserPath:     "/service",
+		URL:                "url",
+		Port:               "port",
+		UserPath:           "path",
+		ServicePath:        "bot",
+		Group:              "group",
+		ExpireAfterMinutes: "60",
 	}
 	u, err = NewLDAPUserManager(conf)
 	assert.NoError(t, err)

@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -593,4 +595,47 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 
 	d.PlannerSettings = resolved
 	return resolved, nil
+}
+
+func (d *Distro) Add(creator *user.DBUser) error {
+	err := d.Insert()
+	if err != nil {
+		return errors.Wrap(err, "Error inserting distro")
+	}
+	return d.AddPermissions(creator)
+}
+
+func (d *Distro) AddPermissions(creator *user.DBUser) error {
+	rm := evergreen.GetEnvironment().RoleManager()
+	if err := rm.AddResourceToScope(evergreen.AllDistrosScope, d.Id); err != nil {
+		return errors.Wrapf(err, "error adding distro '%s' to list of all distros", d.Id)
+	}
+	newScope := gimlet.Scope{
+		ID:          fmt.Sprintf("distro_%s", d.Id),
+		Resources:   []string{d.Id},
+		Name:        d.Id,
+		Type:        evergreen.DistroResourceType,
+		ParentScope: evergreen.AllDistrosScope,
+	}
+	if err := rm.AddScope(newScope); err != nil {
+		return errors.Wrapf(err, "error adding scope for distro '%s'", d.Id)
+	}
+	newRole := gimlet.Role{
+		ID:     fmt.Sprintf("admin_distro_%s", d.Id),
+		Owners: []string{creator.Id},
+		Scope:  newScope.ID,
+		Permissions: map[string]int{
+			evergreen.PermissionDistroSettings: evergreen.DistroSettingsRemove.Value,
+			evergreen.PermissionHosts:          evergreen.HostsEdit.Value,
+		},
+	}
+	if err := rm.UpdateRole(newRole); err != nil {
+		return errors.Wrapf(err, "error adding admin role for distro '%s'", d.Id)
+	}
+	if creator != nil {
+		if err := creator.AddRole(newRole.ID); err != nil {
+			return errors.Wrapf(err, "error adding role '%s' to user '%s'", newRole.ID, creator.Id)
+		}
+	}
+	return nil
 }

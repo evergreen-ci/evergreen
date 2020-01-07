@@ -9,15 +9,12 @@ import (
 
 func TestLoadUserManager(t *testing.T) {
 	l := evergreen.LDAPConfig{
-		URL:                 "url",
-		Port:                "port",
-		UserPath:            "path",
-		ServicePath:         "bot",
-		Group:               "group",
-		ExpireAfterMinutes:  "60",
-		ServiceUserName:     "service",
-		ServiceUserPassword: "password",
-		ServiceUserPath:     "/service",
+		URL:                "url",
+		Port:               "port",
+		UserPath:           "path",
+		ServicePath:        "bot",
+		Group:              "group",
+		ExpireAfterMinutes: "60",
 	}
 	g := evergreen.GithubAuthConfig{
 		ClientId:     "client_id",

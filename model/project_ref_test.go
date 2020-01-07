@@ -4,7 +4,9 @@ import (
 	"math"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
@@ -394,4 +396,34 @@ func TestFindDownstreamProjects(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, projects, 1)
 	assert.Equal(t, proj1, projects[0])
+}
+
+func TestAddPermissions(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(user.Collection, ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
+	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+	u := user.DBUser{
+		Id: "me",
+	}
+	assert.NoError(u.Insert())
+	p := ProjectRef{
+		Identifier: "myProject",
+	}
+	assert.NoError(p.Add(&u))
+
+	rm := evergreen.GetEnvironment().RoleManager()
+	scope, err := rm.FindScopeForResources(evergreen.ProjectResourceType, p.Identifier)
+	assert.NoError(err)
+	assert.NotNil(scope)
+	role, err := rm.FindRoleWithPermissions(evergreen.ProjectResourceType, []string{p.Identifier}, map[string]int{
+		evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+		evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
+		evergreen.PermissionPatches:         evergreen.PatchSubmit.Value,
+		evergreen.PermissionLogs:            evergreen.LogsView.Value,
+	})
+	assert.NoError(err)
+	assert.NotNil(role)
+	dbUser, err := user.FindOneById(u.Id)
+	assert.NoError(err)
+	assert.Contains(dbUser.Roles(), "admin_project_myProject")
 }

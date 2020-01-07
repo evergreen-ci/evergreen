@@ -25,17 +25,14 @@ type NaiveAuthConfig struct {
 
 // LDAPConfig contains settings for interacting with an LDAP server.
 type LDAPConfig struct {
-	URL                 string `bson:"url" json:"url" yaml:"url"`
-	Port                string `bson:"port" json:"port" yaml:"port"`
-	ServiceUserName     string `bson:"service_user_name" json:"service_user_name" yaml:"service_user_name"`
-	ServiceUserPassword string `bson:"service_user_password" json:"service_user_password" yaml:"service_user_password"`
-	ServiceUserPath     string `bson:"service_user_path" json:"service_user_path" yaml:"service_user_path"`
-	UserPath            string `bson:"path" json:"path" yaml:"path"`
-	ServicePath         string `bson:"service_path" json:"service_path" yaml:"service_path"`
-	Group               string `bson:"group" json:"group" yaml:"group"`
-	ServiceGroup        string `bson:"service_group" json:"service_group" yaml:"service_group"`
-	ExpireAfterMinutes  string `bson:"expire_after_minutes" json:"expire_after_minutes" yaml:"expire_after_minutes"`
-	GroupOU             string `bson:"group_ou" json:"group_ou" yaml:"group_ou"`
+	URL                string `bson:"url" json:"url" yaml:"url"`
+	Port               string `bson:"port" json:"port" yaml:"port"`
+	UserPath           string `bson:"path" json:"path" yaml:"path"`
+	ServicePath        string `bson:"service_path" json:"service_path" yaml:"service_path"`
+	Group              string `bson:"group" json:"group" yaml:"group"`
+	ServiceGroup       string `bson:"service_group" json:"service_group" yaml:"service_group"`
+	ExpireAfterMinutes string `bson:"expire_after_minutes" json:"expire_after_minutes" yaml:"expire_after_minutes"`
+	GroupOU            string `bson:"group_ou" json:"group_ou" yaml:"group_ou"`
 }
 
 // GithubAuthConfig holds settings for interacting with Github Authentication including the
@@ -64,15 +61,13 @@ func (c *AuthConfig) Get(env Environment) error {
 
 	res := coll.FindOne(ctx, byId(c.SectionId()))
 	if err := res.Err(); err != nil {
-		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
-	}
-
-	if err := res.Decode(c); err != nil {
 		if err == mongo.ErrNoDocuments {
 			*c = AuthConfig{}
 			return nil
 		}
-
+		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+	}
+	if err := res.Decode(c); err != nil {
 		return errors.Wrap(err, "problem decoding result")
 	}
 
