@@ -222,13 +222,8 @@ func (j *setupHostJob) attachVolume(ctx context.Context) error {
 		return errors.Wrapf(err, "can't attach volume '%s' to host '%s'", volume.ID, j.host.Id)
 	}
 
-	// mount on the user's home directory
-	mountCommand := fmt.Sprintf(`umount %[1]s || true
-/sbin/mkfs.xfs -f %[1]s
-mkdir -p /working_dir
-echo "%[1]s /working_dir auto noatime 0 0" | tee -a /etc/fstab
-mount %[1]s /working_dir
-ln -s /working_dir $HOME/working_dir`, attachment.DeviceName)
+	// run the distro's mount script
+	mountCommand := strings.Replace(j.host.Distro.MountScript, distro.DeviceNamePlaceholder, attachment.DeviceName, -1)
 	if j.host.JasperCommunication() {
 		opts := &options.Create{
 			Args: []string{"bash", "-l", "-c", mountCommand},
