@@ -126,16 +126,17 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	authedUser := MustHaveUser(r)
 
 	putParams := struct {
-		Task          string     `json:"task_id"`
-		Distro        string     `json:"distro"`
-		KeyName       string     `json:"key_name"`
-		PublicKey     string     `json:"public_key"`
-		SaveKey       bool       `json:"save_key"`
-		UserData      string     `json:"userdata"`
-		UseTaskConfig bool       `json:"use_task_config"`
-		AttachVolume  bool       `json:"attach_volume"`
-		InstanceTags  []host.Tag `json:"instance_tags"`
-		InstanceType  string     `json:"instance_type"`
+		Task           string     `json:"task_id"`
+		Distro         string     `json:"distro"`
+		KeyName        string     `json:"key_name"`
+		PublicKey      string     `json:"public_key"`
+		SaveKey        bool       `json:"save_key"`
+		UserData       string     `json:"userdata"`
+		UseTaskConfig  bool       `json:"use_task_config"`
+		AttachVolume   bool       `json:"attach_volume"`
+		HomeVolumeSize int        `json:"home_volume_size"`
+		InstanceTags   []host.Tag `json:"instance_tags"`
+		InstanceType   string     `json:"instance_type"`
 	}{}
 
 	err := util.ReadJSONInto(util.NewRequestReader(r), &putParams)
@@ -154,13 +155,14 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	}
 	hc := &data.DBConnector{}
 	options := &restModel.HostRequestOptions{
-		DistroID:     putParams.Distro,
-		KeyName:      putParams.PublicKey,
-		TaskID:       putParams.Task,
-		UserData:     putParams.UserData,
-		InstanceTags: putParams.InstanceTags,
-		InstanceType: putParams.InstanceType,
-		AttachVolume: putParams.AttachVolume,
+		DistroID:       putParams.Distro,
+		KeyName:        putParams.PublicKey,
+		TaskID:         putParams.Task,
+		UserData:       putParams.UserData,
+		InstanceTags:   putParams.InstanceTags,
+		InstanceType:   putParams.InstanceType,
+		AttachVolume:   putParams.AttachVolume,
+		HomeVolumeSize: putParams.HomeVolumeSize,
 	}
 	spawnHost, err := hc.NewIntentHost(options, authedUser)
 

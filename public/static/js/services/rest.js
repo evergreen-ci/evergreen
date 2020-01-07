@@ -268,6 +268,7 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function 
         config.data['public_key'] = spawnInfo.spawnKey.key;
         config.data['userdata'] = spawnInfo.userData;
         config.data['attach_volume'] = spawnInfo.attach_volume;
+        config.data['home_volume_size'] = spawnInfo.home_volume_size;
         config.data['use_task_config'] = spawnInfo.useTaskConfig;
         baseSvc.putResource(resource, [], config, callbacks);
     };

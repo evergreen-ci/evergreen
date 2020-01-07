@@ -144,7 +144,8 @@ type Host struct {
 	// InstanceTags stores user-specified tags for instances
 	InstanceTags []Tag `bson:"instance_tags,omitempty" json:"instance_tags,omitempty"`
 
-	AttachVolume bool `bson:"attach_volume" json:"attach_volume"`
+	AttachVolume   bool `bson:"attach_volume" json:"attach_volume"`
+	HomeVolumeSize int  `bson:"home_volume_size" json:"home_volume_size"`
 }
 
 type Tag struct {

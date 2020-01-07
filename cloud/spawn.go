@@ -39,6 +39,7 @@ type SpawnOptions struct {
 	InstanceType     string
 	NoExpiration     bool
 	AttachVolume     bool
+	HomeVolumeSize   int
 }
 
 // Validate returns an instance of BadOptionsErr if the SpawnOptions object contains invalid
@@ -150,6 +151,7 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 		InstanceType:       so.InstanceType,
 		NoExpiration:       so.NoExpiration,
 		AttachVolume:       so.AttachVolume,
+		HomeVolumeSize:     so.HomeVolumeSize,
 	}
 
 	intentHost := host.NewIntent(d, d.GenerateName(), d.Provider, hostOptions)

@@ -207,7 +207,7 @@ func (j *setupHostJob) attachVolume(ctx context.Context) error {
 
 	// create the volume
 	volume, err := cloudMgr.CreateVolume(ctx, &host.Volume{
-		Size:             10,
+		Size:             j.host.HomeVolumeSize,
 		AvailabilityZone: j.host.Zone,
 		CreatedBy:        j.host.StartedBy,
 		Type:             evergreen.DefaultEBSType,
