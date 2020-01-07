@@ -25,6 +25,7 @@ type CreateOptions struct {
 	InstanceTags          []Tag
 	InstanceType          string
 	NoExpiration          bool
+	AttachVolume          bool
 }
 
 // NewIntent creates an IntentHost using the given host settings. An IntentHost is a host that
@@ -55,6 +56,7 @@ func NewIntent(d distro.Distro, instanceName, provider string, options CreateOpt
 		DockerOptions:         options.DockerOptions,
 		InstanceTags:          options.InstanceTags,
 		InstanceType:          options.InstanceType,
+		AttachVolume:          options.AttachVolume,
 	}
 
 	if options.ExpirationDuration != nil {

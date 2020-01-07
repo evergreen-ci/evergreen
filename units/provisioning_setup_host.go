@@ -25,6 +25,7 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
 
@@ -169,6 +170,16 @@ func (j *setupHostJob) setupHost(ctx context.Context, h *host.Host, settings *ev
 		return nil
 	}
 
+	if h.AttachVolume {
+		grip.Error(message.WrapError(j.attachVolume(ctx), message.Fields{
+			"message":  "can't attach volume",
+			"host":     j.host.Id,
+			"distro":   j.host.Distro.Id,
+			"attempts": h.ProvisionAttempts,
+			"job":      j.ID(),
+		}))
+	}
+
 	grip.Info(message.Fields{
 		"message":  "successfully finished provisioning host",
 		"hostid":   h.Id,
@@ -178,6 +189,65 @@ func (j *setupHostJob) setupHost(ctx context.Context, h *host.Host, settings *ev
 		"attempts": h.ProvisionAttempts,
 		"runtime":  time.Since(setupStartTime),
 	})
+
+	return nil
+}
+
+func (j *setupHostJob) attachVolume(ctx context.Context) error {
+	mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
+	if err != nil {
+		return errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id)
+	}
+	cloudMgr, err := cloud.GetManager(ctx, j.env, mgrOpts)
+	if err != nil {
+		return errors.Wrapf(err,
+			"failed to get cloud manager for host %s with provider %s",
+			j.host.Id, j.host.Provider)
+	}
+
+	// create the volume
+	volume, err := cloudMgr.CreateVolume(ctx, &host.Volume{
+		Size:             10,
+		AvailabilityZone: j.host.Zone,
+		CreatedBy:        j.host.StartedBy,
+		Type:             evergreen.DefaultEBSType,
+	})
+	if err != nil {
+		return errors.Wrapf(err, "can't create a new volume for host '%s'", j.host.Id)
+	}
+
+	// attach to the host
+	attachment := host.VolumeAttachment{VolumeID: volume.ID}
+	if err = cloudMgr.AttachVolume(ctx, j.host, &attachment); err != nil {
+		return errors.Wrapf(err, "can't attach volume '%s' to host '%s'", volume.ID, j.host.Id)
+	}
+
+	// mount on the user's home directory
+	mountCommand := fmt.Sprintf(`umount %[1]s || true
+/sbin/mkfs.xfs -f %[1]s
+mkdir -p /working_dir
+echo "%[1]s /working_dir auto noatime 0 0" | tee -a /etc/fstab
+mount %[1]s /working_dir
+ln -s /working_dir $HOME/working_dir`, attachment.DeviceName)
+	if j.host.JasperCommunication() {
+		opts := &options.Create{
+			Args: []string{"bash", "-l", "-c", mountCommand},
+		}
+		_, err := j.host.RunJasperProcess(ctx, j.env, opts)
+		if err != nil {
+			return errors.Wrap(err, "can't run mount command with Jasper")
+		}
+	} else {
+		sshOptions, err := j.host.GetSSHOptions(j.env.Settings())
+		sshOptions = append(sshOptions, "-o", "LogLevel=quiet")
+		if err != nil {
+			return errors.Wrap(err, "can't get ssh options")
+		}
+		_, err = j.host.RunSSHShellScript(ctx, mountCommand, sshOptions)
+		if err != nil {
+			return errors.Wrap(err, "can't run mount command over ssh")
+		}
+	}
 
 	return nil
 }

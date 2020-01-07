@@ -132,6 +132,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		SaveKey       bool       `json:"save_key"`
 		UserData      string     `json:"userdata"`
 		UseTaskConfig bool       `json:"use_task_config"`
+		AttachVolume  bool       `json:"attach_volume"`
 		InstanceTags  []host.Tag `json:"instance_tags"`
 		InstanceType  string     `json:"instance_type"`
 	}{}
@@ -158,6 +159,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		UserData:     putParams.UserData,
 		InstanceTags: putParams.InstanceTags,
 		InstanceType: putParams.InstanceType,
+		AttachVolume: putParams.AttachVolume,
 	}
 	spawnHost, err := hc.NewIntentHost(options, authedUser)
 

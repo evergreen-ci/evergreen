@@ -34,6 +34,7 @@ type HostRequestOptions struct {
 	InstanceTags []host.Tag `json:"instance_tags"`
 	InstanceType string     `json:"instance_type"`
 	NoExpiration bool       `json:"no_expiration"`
+	AttachVolume bool       `json:"attach_volume"`
 }
 
 type DistroInfo struct {

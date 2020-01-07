@@ -64,6 +64,9 @@
         <input type="text" id="input-key-name" name="keyname" ng-model="selectedKey.name" ng-disabled="!saveKey"; placeholder="mykey.pub" key-name-unique></input>
       </p>
     </div>
+    <div style="padding-bottom:5px;">
+      <input type="checkbox" ng-model="$parent.attach_volume"> Mount a volume on user's home directory </input>
+    </div>
     <div id="userData" style="padding-bottom:5px;">
       <input type="checkbox" ng-model="$parent.use_userdata"> Run Userdata script on start </input>
       <p class="textarea" ng-show="$parent.use_userdata">
