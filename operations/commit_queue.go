@@ -171,6 +171,7 @@ func setModuleCommand() cli.Command {
 		Before: mergeBeforeFuncs(
 			requirePatchIDFlag,
 			requireModuleFlag,
+			setPlainLogger,
 		),
 		Action: func(c *cli.Context) error {
 			params := moduleParams{
@@ -423,11 +424,12 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	}
 
 	params := UpdatePatchModuleParams{
-		patchID: p.patchID,
-		module:  p.module,
-		patch:   diffData.fullPatch,
-		base:    diffData.base,
-		message: p.message,
+		patchID:   p.patchID,
+		module:    p.module,
+		patch:     diffData.fullPatch,
+		base:      diffData.base,
+		message:   p.message,
+		formatted: true,
 	}
 	err = ac.UpdatePatchModule(params)
 	if err != nil {

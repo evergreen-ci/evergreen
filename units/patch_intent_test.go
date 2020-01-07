@@ -580,7 +580,7 @@ index ce0542e91..718dd8099 100644
 	reader := ioutil.NopCloser(strings.NewReader(patchData))
 	defer assert.NoError(t, reader.Close())
 
-	summariesByCommit, err := getPatchSummariesByCommit(reader)
+	summariesByCommit, err := GetPatchSummariesByCommit(reader)
 	assert.NoError(t, err)
 	require.Len(t, summariesByCommit, 2)
 	assert.Equal(t, "ablack12 <annie.black@10gen.com>", summariesByCommit[0].Author)

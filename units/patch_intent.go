@@ -376,7 +376,7 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 			return errors.Wrap(err, "error getting patch file")
 		}
 		defer reader.Close()
-		summaries, err := getPatchSummariesByCommit(reader)
+		summaries, err := GetPatchSummariesByCommit(reader)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":      "error getting summaries by commit",
@@ -391,7 +391,7 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 }
 
 // if commit queue then mbox format, organize summaries by commit
-func getPatchSummariesByCommit(reader io.Reader) ([]patch.CommitSummary, error) {
+func GetPatchSummariesByCommit(reader io.Reader) ([]patch.CommitSummary, error) {
 	stream, err := mbox.CreateMboxStream(reader)
 	if err != nil {
 		if err == io.EOF {

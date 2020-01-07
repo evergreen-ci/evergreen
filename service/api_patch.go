@@ -144,24 +144,27 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var moduleName, patchContent, githash, message string
+	var formatted bool
 
 	if r.Header.Get("Content-Type") == formMimeType {
 		moduleName = r.FormValue("module")
 		patchContent = r.FormValue("patch")
 		githash = r.FormValue("githash")
 		message = r.FormValue("message")
+		formatted = r.FormValue("formatted") == "true"
 	} else {
 		data := struct {
-			Module  string `json:"module"`
-			Patch   string `json:"patch"`
-			Githash string `json:"githash"`
-			Message string `json:"message"`
+			Module    string `json:"module"`
+			Patch     string `json:"patch"`
+			Githash   string `json:"githash"`
+			Message   string `json:"message"`
+			Formatted bool   `json:"formatted"`
 		}{}
 		if err = util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
 			as.LoggedError(w, r, http.StatusBadRequest, err)
 			return
 		}
-		moduleName, patchContent, githash, message = data.Module, data.Patch, data.Githash, data.Message
+		moduleName, patchContent, githash, message, formatted = data.Module, data.Patch, data.Githash, data.Message, data.Formatted
 	}
 
 	projectRef, err := model.FindOneProjectRef(p.Project)
@@ -190,6 +193,16 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
+	var summariesByCommit []patch.CommitSummary
+	if formatted {
+		// refresh the reader
+		reader := strings.NewReader(patchContent)
+		summariesByCommit, err = units.GetPatchSummariesByCommit(reader)
+		if err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("Error parsing formatted commit"))
+		}
+	}
+
 	repoOwner, repo := module.GetRepoOwnerAndName()
 
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
@@ -214,8 +227,9 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		Message:    message,
 		Githash:    githash,
 		PatchSet: patch.PatchSet{
-			PatchFileId: patchFileId,
-			Summary:     summaries,
+			PatchFileId:   patchFileId,
+			Summary:       summaries,
+			CommitSummary: summariesByCommit,
 		},
 	}
 
