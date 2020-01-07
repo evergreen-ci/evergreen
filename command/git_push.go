@@ -104,7 +104,12 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 			continue
 		}
 
-		if len(modulePatch.PatchSet.Summary) == 0 {
+		if len(modulePatch.PatchSet.Summary) == 0 { // TODO: remove summary check after migration
+			for _, commit := range modulePatch.PatchSet.CommitSummary {
+				if len(commit.Summary) > 0 { // don't error if some commit is non-empty
+					continue
+				}
+			}
 			logger.Execution().Infof("Skipping empty patch for module '%s' on patch ID '%s'", modulePatch.ModuleName, p.Id.Hex())
 			continue
 		}
@@ -136,12 +141,17 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 	}
 
 	// Push main patch
-	for _, modulePatch := range p.Patches {
-		if modulePatch.ModuleName != "" {
+	for _, mainPatch := range p.Patches {
+		if mainPatch.ModuleName != "" {
 			continue
 		}
 
-		if len(modulePatch.PatchSet.Summary) == 0 {
+		if len(mainPatch.PatchSet.Summary) == 0 {
+			for _, commit := range mainPatch.PatchSet.CommitSummary {
+				if len(commit.Summary) > 0 { // don't error if some commit is non-empty
+					continue
+				}
+			}
 			logger.Execution().Infof("Skipping empty main patch on patch id '%s'", p.Id.Hex())
 			continue
 		}
@@ -149,7 +159,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		logger.Execution().Info("Pushing patch")
 		params.directory = filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory))
 		params.branch = conf.ProjectRef.Branch
-		params.commitMessage = modulePatch.Message
+		params.commitMessage = mainPatch.Message
 		if err = c.pushPatch(ctx, logger, params); err != nil {
 			return errors.Wrap(err, "can't push patch")
 		}
@@ -181,7 +191,10 @@ func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p
 	cmd := jpm.CreateCommand(ctx).Directory(p.directory).Append(commitCommand).SetInput(bytes.NewBufferString(p.commitMessage)).
 		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
 	if err := cmd.Run(ctx); err != nil {
-		return errors.Wrap(err, "can't create commit from files")
+		// don't error if no changes to account for git am
+		if !strings.Contains(err.Error(), "no changes") {
+			return errors.Wrap(err, "can't create commit from files")
+		}
 	}
 
 	if !c.DryRun {
