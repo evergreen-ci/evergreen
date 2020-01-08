@@ -1,0 +1,35 @@
+type Query {
+  userPatches(userId: String!): [Patch]!
+}
+
+type Patch {
+  id: ID!
+  description: String!
+  project: String!
+  githash: String!
+  patchNumber: Int!
+  author: String!
+  version: String!
+  status: String!
+  createTime: Time!
+  startTime: Time
+  finishTime: Time
+  variants: [String]!
+  tasks: [String]!
+  variantTasks: [VariantTask]!
+  activated: Boolean!
+  alias: String!
+}
+
+type VariantTask {
+  display_name: String!
+  tasks: [String]!
+}
+
+type StatusDetails {
+  status: String!
+  type: String!
+  desc: String!
+}
+
+scalar Time

@@ -24,23 +24,17 @@ mciModule.controller('SignalProcessingCtrl', function(
   // Holds currently selected items
   vm.selection = [];
 
-  // Could not be overridden by persistent user settings
-  const mandatoryDefaultFiltering = {
+  vm.defaultChangePointFilter = {
     create_time: '>' + moment().subtract(2, 'weeks').format(FORMAT.ISO_DATE),
     project: '=' + $window.project,
-  };
-
-  // Might be overridden by persistent user settings
-  const secondaryDefaultFiltering = {
     probability: '>0.05',
   };
 
-  const getDefaultFiltering = function() {
+  vm.changePointFilter = function() {
     return _.extend(
       {},
-      secondaryDefaultFiltering,
+      vm.defaultChangePointFilter,
       Settings.perf.signalProcessing.persistentFiltering,
-      mandatoryDefaultFiltering
     );
   };
 
@@ -52,7 +46,7 @@ mciModule.controller('SignalProcessingCtrl', function(
       field: 'magnitude',
       direction: 'asc',
     }],
-    filtering: getDefaultFiltering(),
+    filtering: vm.changePointFilter(),
     mode: vm.mode.value,
   };
 
@@ -272,7 +266,7 @@ mciModule.controller('SignalProcessingCtrl', function(
           return m;
         }, {});
 
-        state.filtering = getDefaultFiltering();
+        state.filtering = vm.changePointFilter();
         // When user clicks 'Clear all filters'
         // FIXME and when clear all filters mnually. Either patching
         //       of uigrid either standalone button required

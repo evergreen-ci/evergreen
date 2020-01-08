@@ -59,11 +59,11 @@ func (s *CommitQueueSuite) TestGetCommitQueue() {
 			},
 		}, false)
 	s.NoError(err)
-	s.Equal(1, pos)
+	s.Equal(0, pos)
 
 	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToAPIString("2")}, false)
 	s.Require().NoError(err)
-	s.Require().Equal(2, pos)
+	s.Require().Equal(1, pos)
 
 	response := route.Run(context.Background())
 	s.Equal(200, response.Status())
@@ -101,10 +101,10 @@ func (s *CommitQueueSuite) TestDeleteItem() {
 	route := makeDeleteCommitQueueItems(s.sc, env).(*commitQueueDeleteItemHandler)
 	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToAPIString("1")}, false)
 	s.Require().NoError(err)
-	s.Require().Equal(1, pos)
+	s.Require().Equal(0, pos)
 	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToAPIString("2")}, false)
 	s.Require().NoError(err)
-	s.Require().Equal(2, pos)
+	s.Require().Equal(1, pos)
 
 	route.project = "mci"
 
@@ -129,16 +129,16 @@ func (s *CommitQueueSuite) TestClearAll() {
 	route := makeClearCommitQueuesHandler(s.sc).(*commitQueueClearAllHandler)
 	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToAPIString("12")}, false)
 	s.Require().NoError(err)
-	s.Require().Equal(1, pos)
+	s.Require().Equal(0, pos)
 	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToAPIString("23")}, false)
 	s.Require().NoError(err)
-	s.Require().Equal(2, pos)
+	s.Require().Equal(1, pos)
 	pos, err = s.sc.EnqueueItem("logkeeper", model.APICommitQueueItem{Issue: model.ToAPIString("34")}, false)
 	s.Require().NoError(err)
-	s.Require().Equal(1, pos)
+	s.Require().Equal(0, pos)
 	pos, err = s.sc.EnqueueItem("logkeeper", model.APICommitQueueItem{Issue: model.ToAPIString("45")}, false)
 	s.Require().NoError(err)
-	s.Require().Equal(2, pos)
+	s.Require().Equal(1, pos)
 
 	response := route.Run(context.Background())
 	s.Equal(200, response.Status())
@@ -162,7 +162,7 @@ func (s *CommitQueueSuite) TestEnqueueItem() {
 	route.item = id.Hex()
 	response := route.Run(context.Background())
 	s.Equal(200, response.Status())
-	s.Equal(model.APICommitQueuePosition{Position: 1}, response.Data())
+	s.Equal(model.APICommitQueuePosition{Position: 0}, response.Data())
 }
 
 func (s *CommitQueueSuite) TestGetItemAuthor() {
