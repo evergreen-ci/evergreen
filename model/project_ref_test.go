@@ -430,8 +430,7 @@ func TestAddPermissions(t *testing.T) {
 }
 
 func TestUpdateAdminRoles(t *testing.T) {
-	expect := assert.New(t)
-	expect.NoError(db.ClearCollections(ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, user.Collection))
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, user.Collection))
 	env := evergreen.GetEnvironment()
 	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
 	rm := env.RoleManager()
@@ -440,32 +439,32 @@ func TestUpdateAdminRoles(t *testing.T) {
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"proj"},
 	}
-	expect.NoError(rm.AddScope(adminScope))
+	require.NoError(t, rm.AddScope(adminScope))
 	adminRole := gimlet.Role{
 		ID:          "admin",
 		Scope:       evergreen.AllProjectsScope,
 		Permissions: adminPermissions,
 	}
-	expect.NoError(rm.UpdateRole(adminRole))
+	require.NoError(t, rm.UpdateRole(adminRole))
 	oldAdmin := user.DBUser{
 		Id:          "oldAdmin",
 		SystemRoles: []string{"admin"},
 	}
-	expect.NoError(oldAdmin.Insert())
+	require.NoError(t, oldAdmin.Insert())
 	newAdmin := user.DBUser{
 		Id: "newAdmin",
 	}
-	expect.NoError(newAdmin.Insert())
+	require.NoError(t, newAdmin.Insert())
 	p := ProjectRef{
 		Identifier: "proj",
 	}
-	expect.NoError(p.Insert())
+	require.NoError(t, p.Insert())
 
-	expect.NoError(p.UpdateAdminRoles([]string{newAdmin.Id}, []string{oldAdmin.Id}))
+	assert.NoError(t, p.UpdateAdminRoles([]string{newAdmin.Id}, []string{oldAdmin.Id}))
 	oldAdminFromDB, err := user.FindOneById(oldAdmin.Id)
-	expect.NoError(err)
-	expect.Len(oldAdminFromDB.Roles(), 0)
+	assert.NoError(t, err)
+	assert.Len(t, oldAdminFromDB.Roles(), 0)
 	newAdminFromDB, err := user.FindOneById(newAdmin.Id)
-	expect.NoError(err)
-	expect.Len(newAdminFromDB.Roles(), 1)
+	assert.NoError(t, err)
+	assert.Len(t, newAdminFromDB.Roles(), 1)
 }
