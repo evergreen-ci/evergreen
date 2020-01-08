@@ -318,11 +318,12 @@ type UpdatePatchModuleParams struct {
 // UpdatePatchModule makes a request to the API server to set a module patch on the given patch ID.
 func (ac *legacyClient) UpdatePatchModule(params UpdatePatchModuleParams) error {
 	data := struct {
-		Module  string `json:"module"`
-		Patch   string `json:"patch"`
-		Githash string `json:"githash"`
-		Message string `json:"message"`
-	}{params.module, params.patch, params.base, params.message}
+		Module    string `json:"module"`
+		Patch     string `json:"patch"`
+		Githash   string `json:"githash"`
+		Message   string `json:"message"`
+		Formatted bool   `json:"formatted"`
+	}{params.module, params.patch, params.base, params.message, params.formatted}
 
 	rPipe, wPipe := io.Pipe()
 	encoder := json.NewEncoder(wPipe)

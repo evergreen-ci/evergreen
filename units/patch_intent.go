@@ -382,8 +382,8 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 				"patch_id":     patchDoc.Id.Hex(),
 				"patch_doc_id": patchDoc.Patches[0].PatchSet.PatchFileId,
 			}))
+			patchDoc.Patches[0].PatchSet.Summary = summaries
 		}
-		patchDoc.Patches[0].PatchSet.Summary = summaries
 	}
 
 	return nil

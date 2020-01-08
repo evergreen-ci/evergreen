@@ -193,7 +193,6 @@ func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p
 		}
 	}
 
-	fmt.Printf("DRY RUN? %v\n", c.DryRun)
 	if !c.DryRun {
 		stdErr := noopWriteCloser{&bytes.Buffer{}}
 		pushCommand := fmt.Sprintf("git push origin %s", p.branch)
