@@ -472,17 +472,14 @@ func (a *APIBackupConfig) ToService() (interface{}, error) {
 }
 
 type APILDAPConfig struct {
-	URL                 APIString `json:"url"`
-	Port                APIString `json:"port"`
-	ServiceUserName     APIString `json:"service_user_name"`
-	ServiceUserPassword APIString `json:"service_user_password"`
-	ServiceUserPath     APIString `json:"service_user_path"`
-	UserPath            APIString `json:"path"`
-	ServicePath         APIString `json:"service_path"`
-	Group               APIString `json:"group"`
-	ServiceGroup        APIString `json:"service_group"`
-	ExpireAfterMinutes  APIString `json:"expire_after_minutes"`
-	GroupOU             APIString `json:"group_ou"`
+	URL                APIString `json:"url"`
+	Port               APIString `json:"port"`
+	UserPath           APIString `json:"path"`
+	ServicePath        APIString `json:"service_path"`
+	Group              APIString `json:"group"`
+	ServiceGroup       APIString `json:"service_group"`
+	ExpireAfterMinutes APIString `json:"expire_after_minutes"`
+	GroupOU            APIString `json:"group_ou"`
 }
 
 func (a *APILDAPConfig) BuildFromService(h interface{}) error {
@@ -493,9 +490,6 @@ func (a *APILDAPConfig) BuildFromService(h interface{}) error {
 		}
 		a.URL = ToAPIString(v.URL)
 		a.Port = ToAPIString(v.Port)
-		a.ServiceUserName = ToAPIString(v.ServiceUserName)
-		a.ServiceUserPassword = ToAPIString(v.ServiceUserPassword)
-		a.ServiceUserPath = ToAPIString(v.ServiceUserPath)
 		a.UserPath = ToAPIString(v.UserPath)
 		a.ServicePath = ToAPIString(v.ServicePath)
 		a.Group = ToAPIString(v.Group)
@@ -513,17 +507,14 @@ func (a *APILDAPConfig) ToService() (interface{}, error) {
 		return nil, nil
 	}
 	return &evergreen.LDAPConfig{
-		URL:                 FromAPIString(a.URL),
-		Port:                FromAPIString(a.Port),
-		ServiceUserName:     FromAPIString(a.ServiceUserName),
-		ServiceUserPassword: FromAPIString(a.ServiceUserPassword),
-		ServiceUserPath:     FromAPIString(a.ServiceUserPath),
-		UserPath:            FromAPIString(a.UserPath),
-		ServicePath:         FromAPIString(a.ServicePath),
-		Group:               FromAPIString(a.Group),
-		ServiceGroup:        FromAPIString(a.ServiceGroup),
-		ExpireAfterMinutes:  FromAPIString(a.ExpireAfterMinutes),
-		GroupOU:             FromAPIString(a.Group),
+		URL:                FromAPIString(a.URL),
+		Port:               FromAPIString(a.Port),
+		UserPath:           FromAPIString(a.UserPath),
+		ServicePath:        FromAPIString(a.ServicePath),
+		Group:              FromAPIString(a.Group),
+		ServiceGroup:       FromAPIString(a.ServiceGroup),
+		ExpireAfterMinutes: FromAPIString(a.ExpireAfterMinutes),
+		GroupOU:            FromAPIString(a.Group),
 	}, nil
 }
 
