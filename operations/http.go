@@ -321,11 +321,12 @@ func (ac *legacyClient) UpdatePatchModule(params UpdatePatchModuleParams) error 
 	// Because marshalling a byte slice to JSON will base64 encode it, the patch will be sent over the wire in base64
 	// and non utf-8 characters will be preserved.
 	data := struct {
-		Module  string `json:"module"`
-		Patch   []byte `json:"patch"`
-		Githash string `json:"githash"`
-		Message string `json:"message"`
-	}{params.module, []byte(params.patch), params.base, params.message}
+		Module      string `json:"module"`
+		PatchBytes  []byte `json:"patch_bytes"`
+		PatchString string `json:"patch"`
+		Githash     string `json:"githash"`
+		Message     string `json:"message"`
+	}{params.module, []byte(params.patch), params.patch, params.base, params.message}
 
 	rPipe, wPipe := io.Pipe()
 	encoder := json.NewEncoder(wPipe)
@@ -415,7 +416,8 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 	data := struct {
 		Description string   `json:"desc"`
 		Project     string   `json:"project"`
-		Patch       []byte   `json:"patch"`
+		PatchBytes  []byte   `json:"patch_bytes"`
+		PatchString string   `json:"patch"`
 		Githash     string   `json:"githash"`
 		Variants    []string `json:"buildvariants_new"`
 		Tasks       []string `json:"tasks"`
@@ -425,6 +427,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		incomingPatch.description,
 		incomingPatch.projectId,
 		[]byte(incomingPatch.patchData),
+		incomingPatch.patchData,
 		incomingPatch.base,
 		incomingPatch.variants,
 		incomingPatch.tasks,

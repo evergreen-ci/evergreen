@@ -36,7 +36,8 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		Description string   `json:"desc"`
 		Project     string   `json:"project"`
-		Patch       []byte   `json:"patch"`
+		PatchBytes  []byte   `json:"patch_bytes"`
+		PatchString string   `json:"patch"`
 		Githash     string   `json:"githash"`
 		Variants    []string `json:"buildvariants_new"`
 		Tasks       []string `json:"tasks"`
@@ -49,7 +50,10 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	patchString := string(data.Patch)
+	patchString := string(data.PatchBytes)
+	if patchString == "" {
+		patchString = data.PatchString
+	}
 	if len(patchString) > patch.SizeLimit {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("Patch is too large"))
 		return
@@ -147,16 +151,21 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := struct {
-		Module  string `json:"module"`
-		Patch   []byte `json:"patch"`
-		Githash string `json:"githash"`
-		Message string `json:"message"`
+		Module      string `json:"module"`
+		PatchBytes  []byte `json:"patch_bytes"`
+		PatchString string `json:"patch"`
+		Githash     string `json:"githash"`
+		Message     string `json:"message"`
 	}{}
 	if err = util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
-	moduleName, patchContent, githash, message := data.Module, string(data.Patch), data.Githash, data.Message
+	moduleName, githash, message := data.Module, data.Githash, data.Message
+	patchContent := string(data.PatchBytes)
+	if patchContent == "" {
+		patchContent = data.PatchString
+	}
 
 	projectRef, err := model.FindOneProjectRef(p.Project)
 	if err != nil {
