@@ -279,8 +279,8 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	}
 
 	// GraphQL
-	app.AddRoute("/graphql").Handler(playground.Handler("GraphQL playground", "/graphql/query")).Get().Wrap(needsLogin)
-	app.AddRoute("/graphql/query").Handler(handler.NewDefaultServer(graphql.NewExecutableSchema(graphql.New())).ServeHTTP).Options().Post().Get().Wrap(needsLogin)
+	app.AddRoute("/graphql").Wrap(needsLogin, allowsCORS).Handler(playground.Handler("GraphQL playground", "/graphql/query")).Get()
+	app.AddRoute("/graphql/query").Wrap(needsLogin, allowsCORS).Handler(handler.NewDefaultServer(graphql.NewExecutableSchema(graphql.New())).ServeHTTP).Options().Post().Get()
 
 	// Waterfall pages
 	app.AddRoute("/").Wrap(needsContext).Handler(uis.waterfallPage).Get()
