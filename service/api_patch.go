@@ -36,7 +36,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		Description string   `json:"desc"`
 		Project     string   `json:"project"`
-		Patch       string   `json:"patch"`
+		Patch       []byte   `json:"patch"`
 		Githash     string   `json:"githash"`
 		Variants    []string `json:"buildvariants_new"`
 		Tasks       []string `json:"tasks"`
@@ -48,7 +48,9 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
-	if len(data.Patch) > patch.SizeLimit {
+
+	patchString := string(data.Patch)
+	if len(patchString) > patch.SizeLimit {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("Patch is too large"))
 		return
 	}
@@ -72,7 +74,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	intent, err := patch.NewCliIntent(dbUser.Id, data.Project, data.Githash, r.FormValue("module"), data.Patch, data.Description, data.Finalize, data.Variants, data.Tasks, data.Alias)
+	intent, err := patch.NewCliIntent(dbUser.Id, data.Project, data.Githash, r.FormValue("module"), patchString, data.Description, data.Finalize, data.Variants, data.Tasks, data.Alias)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
@@ -144,26 +146,17 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var moduleName, patchContent, githash, message string
-
-	if r.Header.Get("Content-Type") == formMimeType {
-		moduleName = r.FormValue("module")
-		patchContent = r.FormValue("patch")
-		githash = r.FormValue("githash")
-		message = r.FormValue("message")
-	} else {
-		data := struct {
-			Module  string `json:"module"`
-			Patch   string `json:"patch"`
-			Githash string `json:"githash"`
-			Message string `json:"message"`
-		}{}
-		if err = util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
-			as.LoggedError(w, r, http.StatusBadRequest, err)
-			return
-		}
-		moduleName, patchContent, githash, message = data.Module, data.Patch, data.Githash, data.Message
+	data := struct {
+		Module  string `json:"module"`
+		Patch   []byte `json:"patch"`
+		Githash string `json:"githash"`
+		Message string `json:"message"`
+	}{}
+	if err = util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
+		as.LoggedError(w, r, http.StatusBadRequest, err)
+		return
 	}
+	moduleName, patchContent, githash, message := data.Module, string(data.Patch), data.Githash, data.Message
 
 	projectRef, err := model.FindOneProjectRef(p.Project)
 	if err != nil {
