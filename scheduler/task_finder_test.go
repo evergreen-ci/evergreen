@@ -62,22 +62,6 @@ func TestParallelTaskFinder(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func (s *TaskFinderSuite) SetupSuite() {
-	s.NoError(db.Clear(model.ProjectRefCollection))
-
-	ref := &model.ProjectRef{
-		Identifier: "exists",
-		Enabled:    true,
-	}
-
-	s.distro.PlannerSettings.Version = evergreen.PlannerVersionLegacy
-	s.NoError(ref.Insert())
-}
-
-func (s *TaskFinderSuite) TearDownSuite() {
-	s.NoError(db.Clear(model.ProjectRefCollection))
-}
-
 func (s *TaskFinderSuite) SetupTest() {
 	taskIds := []string{"t0", "t1", "t2", "t3", "t4", "t5"}
 	s.tasks = []task.Task{
@@ -95,11 +79,21 @@ func (s *TaskFinderSuite) SetupTest() {
 		{Id: depTaskIds[1]},
 	}
 
+	s.NoError(db.Clear(model.ProjectRefCollection))
+
+	ref := &model.ProjectRef{
+		Identifier: "exists",
+		Enabled:    true,
+	}
+
+	s.distro.PlannerSettings.Version = evergreen.PlannerVersionLegacy
+	s.NoError(ref.Insert())
+
 	s.NoError(db.Clear(task.Collection))
 }
 
 func (s *TaskFinderSuite) TearDownTest() {
-	s.NoError(db.Clear(task.Collection))
+	s.NoError(db.ClearCollections(task.Collection, distro.Collection, model.ProjectRefCollection))
 }
 
 func (s *TaskFinderSuite) insertTasks() {
@@ -127,6 +121,35 @@ func (s *TaskFinderSuite) TestInactiveTasksNeverReturned() {
 	runnableTasks, err := s.FindRunnableTasks(s.distro)
 	s.NoError(err)
 	s.Len(runnableTasks, 4)
+}
+
+func (s *TaskFinderSuite) TestFilterTasksWhenValidProjectsSet() {
+	// Validate our assumption that we find 5 tasks in the default case
+	s.insertTasks()
+	s.FindRunnableTasks(s.distro)
+	runnableTasks, err := s.FindRunnableTasks(s.distro)
+	s.NoError(err)
+	s.Len(runnableTasks, 5)
+
+	// Validate that we find 5 tasks if their project is listed as valid
+	db.Clear(task.Collection)
+	db.Clear(distro.Collection)
+	s.distro.ValidProjects = []string{"exists"}
+	s.insertTasks()
+	s.Require().NoError(s.distro.Insert())
+	runnableTasks, err = s.FindRunnableTasks(s.distro)
+	s.NoError(err)
+	s.Len(runnableTasks, 5)
+
+	// Change some projects and validate we don't find those
+	db.Clear(task.Collection)
+	db.Clear(distro.Collection)
+	s.tasks[0].Project = "something_else"
+	s.tasks[1].Project = "something_else"
+	s.insertTasks()
+	runnableTasks, err = s.FindRunnableTasks(s.distro)
+	s.NoError(err)
+	s.Len(runnableTasks, 3)
 }
 
 func (s *TaskFinderSuite) TestTasksWithUnsatisfiedDependenciesNeverReturned() {
