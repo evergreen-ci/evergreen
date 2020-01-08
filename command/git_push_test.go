@@ -107,6 +107,7 @@ func TestGitPush(t *testing.T) {
 				commitMessage: "testing 123",
 				branch:        "master",
 				token:         token,
+				needsCommit:   true,
 			}
 
 			assert.NoError(t, c.pushPatch(context.Background(), logger, params))
@@ -161,6 +162,7 @@ func TestGitPush(t *testing.T) {
 				authorEmail:   "baxter@thehacker.com",
 				commitMessage: "testing 123",
 				branch:        "master",
+				needsCommit:   true,
 			}
 			assert.NoError(t, c.pushPatch(ctx, logger, params))
 

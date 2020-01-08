@@ -68,10 +68,18 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 	}
 
 	// fail the merge if HEAD has moved
-	logger.Execution().Info("Checking HEAD")
-	headSHA, err := c.revParse(ctx, conf, logger, "HEAD")
+	head := "HEAD"
+	numCommitsAdded := 0
+	for _, curPatch := range p.Patches {
+		numCommitsAdded += len(curPatch.PatchSet.CommitSummary)
+	}
+	if numCommitsAdded > 0 {
+		head = fmt.Sprintf("%s~%d", head, numCommitsAdded)
+	}
+	logger.Execution().Info("Checking " + head)
+	headSHA, err := c.revParse(ctx, conf, logger, head)
 	if err != nil {
-		return errors.Wrap(err, "can't get SHA for HEAD")
+		return errors.Wrap(err, "can't get SHA for "+head)
 	}
 	if p.Githash != headSHA {
 		return errors.Errorf("tip of branch '%s' has moved. Expecting '%s', but found '%s'", conf.ProjectRef.Branch, p.Githash, headSHA)
@@ -96,6 +104,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		authorName:  restModel.FromAPIString(u.DisplayName),
 		authorEmail: restModel.FromAPIString(u.Email),
 		token:       projectToken,
+		needsCommit: numCommitsAdded == 0,
 	}
 
 	// push module patches
@@ -175,33 +184,34 @@ type pushParams struct {
 	authorEmail   string
 	commitMessage string
 	branch        string
+	needsCommit   bool
 }
 
 func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p pushParams) error {
 	jpm := c.JasperManager()
 
-	author := fmt.Sprintf("%s <%s>", p.authorName, p.authorEmail)
-	commitCommand := fmt.Sprintf("git "+
-		`-c "user.name=%s" `+
-		`-c "user.email=%s" `+
-		`commit --file - `+
-		`--author="%s"`,
-		c.CommitterName, c.CommitterEmail, author)
-	logger.Execution().Debugf("git commit command: %s", commitCommand)
-	cmd := jpm.CreateCommand(ctx).Directory(p.directory).Append(commitCommand).SetInput(bytes.NewBufferString(p.commitMessage)).
-		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
-	if err := cmd.Run(ctx); err != nil {
-		// don't error if no changes to account for git am
-		if !strings.Contains(err.Error(), "no changes") {
+	if p.needsCommit {
+		author := fmt.Sprintf("%s <%s>", p.authorName, p.authorEmail)
+		commitCommand := fmt.Sprintf("git "+
+			`-c "user.name=%s" `+
+			`-c "user.email=%s" `+
+			`commit --file - `+
+			`--author="%s"`,
+			c.CommitterName, c.CommitterEmail, author)
+		logger.Execution().Debugf("git commit command: %s", commitCommand)
+		cmd := jpm.CreateCommand(ctx).Directory(p.directory).Append(commitCommand).SetInput(bytes.NewBufferString(p.commitMessage)).
+			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
+		if err := cmd.Run(ctx); err != nil {
 			return errors.Wrap(err, "can't create commit from files")
 		}
 	}
 
+	fmt.Printf("DRY RUN? %v\n", c.DryRun)
 	if !c.DryRun {
 		stdErr := noopWriteCloser{&bytes.Buffer{}}
 		pushCommand := fmt.Sprintf("git push origin %s", p.branch)
 		logger.Execution().Debugf("git push command: %s", pushCommand)
-		cmd = jpm.CreateCommand(ctx).Directory(p.directory).Append(pushCommand).
+		cmd := jpm.CreateCommand(ctx).Directory(p.directory).Append(pushCommand).
 			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorWriter(stdErr)
 		if err := cmd.Run(ctx); err != nil {
 			return errors.Wrap(err, "can't push to remote")
