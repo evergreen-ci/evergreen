@@ -341,17 +341,17 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		return errors.New("CLI commit queue not enabled for project")
 	}
 
-	diffData, err := loadGitData(ref.Branch, p.ref, true)
-	if err != nil {
-		return errors.Wrap(err, "can't generate patches")
-	}
-
 	commitCount, err := gitCommitCount(ref.Branch, p.ref)
 	if err != nil {
 		return errors.Wrap(err, "can't get commit count")
 	}
-	if commitCount > 1 {
-		return errors.New("patch contains multiple commits, must contain 1")
+	if commitCount > 1 && !confirm("Commit queue patch has multiple commits. Continue? (y/n):", false) {
+		return errors.New("patch aborted")
+	}
+
+	diffData, err := loadGitData(ref.Branch, p.ref, true)
+	if err != nil {
+		return errors.Wrap(err, "can't generate patches")
 	}
 
 	if p.message == "" && commitCount != 0 {
@@ -405,6 +405,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 		if err != nil {
 			return errors.Wrap(err, "can't get commit messages")
 		}
+
 		p.message = message
 	}
 

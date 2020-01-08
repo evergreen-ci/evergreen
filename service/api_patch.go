@@ -193,7 +193,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	var summariesByCommit []patch.CommitSummary
+	var summariesByCommit []patch.Summary
 	if formatted {
 		// refresh the reader
 		reader := strings.NewReader(patchContent)
@@ -201,6 +201,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("Error parsing formatted commit"))
 		}
+		summaries = summariesByCommit
 	}
 
 	repoOwner, repo := module.GetRepoOwnerAndName()
@@ -227,9 +228,8 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		Message:    message,
 		Githash:    githash,
 		PatchSet: patch.PatchSet{
-			PatchFileId:   patchFileId,
-			Summary:       summaries,
-			CommitSummary: summariesByCommit,
+			PatchFileId: patchFileId,
+			Summary:     summaries,
 		},
 	}
 

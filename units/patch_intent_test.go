@@ -536,7 +536,7 @@ func TestGetPatchSummariesByCommit(t *testing.T) {
 	patchData := `From 8af7f21625315b8c24975016aa2107cf5a8a12b1 Mon Sep 17 00:00:00 2001
 From: ablack12 <annie.black@10gen.com>
 Date: Thu, 2 Jan 2020 10:41:34 -0500
-Subject: [PATCH 1/2] EVG-6799 remove one commit validation
+Subject: EVG-6799 remove one commit validation
 
 ---
 operations/commit_queue.go | 16 +++++++++-------
@@ -558,7 +558,7 @@ index 3fd24ea7e..800e17d2f 100644
 From 8c030c565ebca71380f3ca5c88d895fa9f25bebd Mon Sep 17 00:00:00 2001
 From: ablack12 <annie.black@10gen.com>
 Date: Thu, 2 Jan 2020 13:35:10 -0500
-Subject: [PATCH 2/2] temp
+Subject: temp
 
 ---
 units/commit_queue.go | 5 +++--
@@ -580,17 +580,12 @@ index ce0542e91..718dd8099 100644
 	reader := ioutil.NopCloser(strings.NewReader(patchData))
 	defer assert.NoError(t, reader.Close())
 
-	summariesByCommit, err := GetPatchSummariesByCommit(reader)
+	summaries, err := GetPatchSummariesByCommit(reader)
 	assert.NoError(t, err)
-	require.Len(t, summariesByCommit, 2)
-	assert.Equal(t, "ablack12 <annie.black@10gen.com>", summariesByCommit[0].Author)
-	assert.Equal(t, "ablack12 <annie.black@10gen.com>", summariesByCommit[1].Author)
-	assert.Equal(t, "8af7f21625315b8c24975016aa2107cf5a8a12b1", summariesByCommit[0].Commit)
-	assert.Equal(t, "8c030c565ebca71380f3ca5c88d895fa9f25bebd", summariesByCommit[1].Commit)
+	require.Len(t, summaries, 2)
+	assert.Equal(t, "EVG-6799 remove one commit validation", summaries[0].Description)
+	assert.Equal(t, "temp", summaries[1].Description)
 
-	require.Len(t, summariesByCommit[0].Summary, 1)
-	assert.Equal(t, "operations/commit_queue.go", summariesByCommit[0].Summary[0].Name)
-	require.Len(t, summariesByCommit[1].Summary, 1)
-
-	assert.Equal(t, "units/commit_queue.go", summariesByCommit[1].Summary[0].Name)
+	assert.Equal(t, "operations/commit_queue.go", summaries[0].Name)
+	assert.Equal(t, "units/commit_queue.go", summaries[1].Name)
 }

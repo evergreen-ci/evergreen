@@ -41,6 +41,7 @@
         <table class="table table-new" ng-init="patchNum=$index">
           <thead>
             <tr>
+              <th class="col-lg-2" ng-show="patchinfo.Patch.Alias === '__commit_queue'">Description</th>
               <th class="col-lg-2">Additions</th>
               <th class="col-lg-2">Deletions</th>
               <th class="col-lg-8">File</th>
@@ -48,6 +49,7 @@
           </thead>
           <tbody>
             <tr ng-repeat="file in patch.PatchSet.Summary">
+              <th class="col-lg-2" ng-show="patchinfo.Patch.Alias === '__commit_queue'">[[file.Description]]</th>
               <td class="col-lg-4 additions">+[[file.Additions]]</td>
               <td class="col-lg-4 deletions">-[[file.Deletions]]</td>
               <td class="col-lg-4">

@@ -436,7 +436,8 @@ func gitLog(base, ref string) (string, error) {
 
 func gitCommitMessages(base, ref string) (string, error) {
 	args := []string{"--no-show-signature", "--pretty=format:%B", fmt.Sprintf("%s@{upstream}..%s", base, ref)}
-	return gitCmd("log", args...)
+	msg, err := gitCmd("log", args...)
+	return strings.Replace(msg, "\n\n", "\n", -1), err // remove multiple line format if applicable
 }
 
 // assumes base includes @{upstream}

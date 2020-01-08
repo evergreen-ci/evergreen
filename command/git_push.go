@@ -69,12 +69,9 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 
 	// fail the merge if HEAD has moved
 	head := "HEAD"
-	numCommitsAdded := 0
-	for _, curPatch := range p.Patches {
-		numCommitsAdded += len(curPatch.PatchSet.CommitSummary)
-	}
-	if numCommitsAdded > 0 {
-		head = fmt.Sprintf("%s~%d", head, numCommitsAdded)
+	numCommits := p.CountSummaryCommits()
+	if numCommits > 0 {
+		head = fmt.Sprintf("%s~%d", head, numCommits)
 	}
 	logger.Execution().Info("Checking " + head)
 	headSHA, err := c.revParse(ctx, conf, logger, head)
@@ -104,7 +101,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		authorName:  restModel.FromAPIString(u.DisplayName),
 		authorEmail: restModel.FromAPIString(u.Email),
 		token:       projectToken,
-		needsCommit: numCommitsAdded == 0,
+		needsCommit: numCommits == 0,
 	}
 
 	// push module patches
@@ -113,12 +110,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 			continue
 		}
 
-		if len(modulePatch.PatchSet.Summary) == 0 { // TODO: remove summary check after migration
-			for _, commit := range modulePatch.PatchSet.CommitSummary {
-				if len(commit.Summary) > 0 { // don't error if some commit is non-empty
-					continue
-				}
-			}
+		if len(modulePatch.PatchSet.Summary) == 0 {
 			logger.Execution().Infof("Skipping empty patch for module '%s' on patch ID '%s'", modulePatch.ModuleName, p.Id.Hex())
 			continue
 		}
@@ -156,11 +148,6 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		}
 
 		if len(mainPatch.PatchSet.Summary) == 0 {
-			for _, commit := range mainPatch.PatchSet.CommitSummary {
-				if len(commit.Summary) > 0 { // don't error if some commit is non-empty
-					continue
-				}
-			}
 			logger.Execution().Infof("Skipping empty main patch on patch id '%s'", p.Id.Hex())
 			continue
 		}
