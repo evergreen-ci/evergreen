@@ -126,14 +126,13 @@ func (s *TaskFinderSuite) TestInactiveTasksNeverReturned() {
 func (s *TaskFinderSuite) TestFilterTasksWhenValidProjectsSet() {
 	// Validate our assumption that we find 5 tasks in the default case
 	s.insertTasks()
-	s.FindRunnableTasks(s.distro)
 	runnableTasks, err := s.FindRunnableTasks(s.distro)
 	s.NoError(err)
 	s.Len(runnableTasks, 5)
 
 	// Validate that we find 5 tasks if their project is listed as valid
-	db.Clear(task.Collection)
-	db.Clear(distro.Collection)
+	s.Require().NoError(db.Clear(task.Collection))
+	s.Require().NoError(db.Clear(distro.Collection))
 	s.distro.ValidProjects = []string{"exists"}
 	s.insertTasks()
 	s.Require().NoError(s.distro.Insert())
@@ -142,8 +141,8 @@ func (s *TaskFinderSuite) TestFilterTasksWhenValidProjectsSet() {
 	s.Len(runnableTasks, 5)
 
 	// Change some projects and validate we don't find those
-	db.Clear(task.Collection)
-	db.Clear(distro.Collection)
+	s.Require().NoError(db.Clear(task.Collection))
+	s.Require().NoError(db.Clear(distro.Collection))
 	s.tasks[0].Project = "something_else"
 	s.tasks[1].Project = "something_else"
 	s.insertTasks()
