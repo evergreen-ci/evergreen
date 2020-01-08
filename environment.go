@@ -252,6 +252,7 @@ func (e *envState) initSettings(path string) error {
 	if err = e.settings.Validate(); err != nil {
 		return errors.Wrap(err, "problem validating settings")
 	}
+	AclCheckingIsEnabled = e.settings.ACLCheckingEnabled
 
 	return nil
 }
