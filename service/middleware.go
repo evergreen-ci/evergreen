@@ -183,16 +183,9 @@ func (uis *UIServer) setCORSHeaders(next http.HandlerFunc) http.HandlerFunc {
 			if util.StringSliceContains(uis.Settings.Ui.CORSOrigins, requester) {
 				w.Header().Add("Access-Control-Allow-Origin", requester)
 				w.Header().Add("Access-Control-Allow-Credentials", "true")
-				w.Header().Add("Access-Control-Allow-Headers", fmt.Sprintf("%s, %s", evergreen.APIKeyHeader, evergreen.APIUserHeader))
-				if gqlHeader != "" {
-					w.Header().Add("Access-Control-Allow-Headers", gqlHeader)
-				}
+				w.Header().Add("Access-Control-Allow-Headers", fmt.Sprintf("%s, %s, %s", evergreen.APIKeyHeader, evergreen.APIUserHeader, gqlHeader))
 			}
 		}
-		grip.ErrorWhen(r.Method != http.MethodGet, message.Fields{
-			"cause":   "programmer error",
-			"message": "CORS headers should only be sent on requests that are idempotent and safe",
-		})
 		next(w, r)
 	}
 }
