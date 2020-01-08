@@ -222,6 +222,7 @@ LOOP:
 					continue LOOP
 				}
 				if shouldExit {
+					tc.logger.Close()
 					return nil
 				}
 				needPostGroup = true
@@ -442,9 +443,6 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) 
 	a.killProcs(ctx, tc, false)
 
 	tc.logger.Execution().Infof("Sending final status as: %v", detail.Status)
-	if err = tc.logger.Close(); err != nil {
-		grip.Errorf("Error closing logger: %v", err)
-	}
 	grip.Infof("Sending final status as: %v", detail.Status)
 	resp, err := a.comm.EndTask(ctx, detail, tc.task)
 	grip.Infof("Sent final status as: %v", detail.Status)
