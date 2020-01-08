@@ -222,6 +222,10 @@ func (j *setupHostJob) attachVolume(ctx context.Context) error {
 		return errors.Wrapf(err, "can't attach volume '%s' to host '%s'", volume.ID, j.host.Id)
 	}
 
+	if err = j.host.SetHomeVolumeID(volume.ID); err != nil {
+		return errors.Wrapf(err, "can't set home volume ID for host '%s'", j.host.Id)
+	}
+
 	// run the distro's mount script
 	mountCommand := strings.Replace(j.host.Distro.MountScript, distro.DeviceNamePlaceholder, attachment.DeviceName, -1)
 	if j.host.JasperCommunication() {

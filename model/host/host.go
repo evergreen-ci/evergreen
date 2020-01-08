@@ -144,8 +144,9 @@ type Host struct {
 	// InstanceTags stores user-specified tags for instances
 	InstanceTags []Tag `bson:"instance_tags,omitempty" json:"instance_tags,omitempty"`
 
-	AttachVolume   bool `bson:"attach_volume" json:"attach_volume"`
-	HomeVolumeSize int  `bson:"home_volume_size" json:"home_volume_size"`
+	AttachVolume   bool   `bson:"attach_volume" json:"attach_volume"`
+	HomeVolumeSize int    `bson:"home_volume_size" json:"home_volume_size"`
+	HomeVolumeID   string `bson:"home_volume_id" json:"home_volume_id"`
 }
 
 type Tag struct {
@@ -456,6 +457,14 @@ func (h *Host) SetUnprovisioned() error {
 
 func (h *Host) SetQuarantined(user string, logs string) error {
 	return h.SetStatus(evergreen.HostQuarantined, user, logs)
+}
+
+func (h *Host) SetHomeVolumeID(volumeID string) error {
+	h.HomeVolumeID = volumeID
+	return UpdateOne(
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{HomeVolumeIDKey: volumeID}},
+	)
 }
 
 // CreateSecret generates a host secret and updates the host both locally

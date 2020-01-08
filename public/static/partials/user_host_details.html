@@ -35,6 +35,9 @@
             <div class="entry" ng-show="!curHostData.isTerminated">
               <strong>DNS Name</strong> <span>[[curHostData.host]]</span>
             </div>
+            <div class="entry" ng-show="curHostData.home_volume_id">
+              <strong>Home Volume</strong> <span>[[curHostData.home_volume_id]]</span>
+            </div>
             <div class="entry" ng-show="!curHostData.isTerminated">
               <strong>Work Directory</strong> <span class="mono">[[curHostData.distro.work_dir]]</span>
             </div>
