@@ -631,6 +631,19 @@ func TestVerifyTaskRequirements(t *testing.T) {
 			}
 			So(verifyTaskRequirements(p), ShouldResemble, ValidationErrors{})
 		})
+		Convey("a task requiring a task outside its own variant should be allowed", func() {
+			p := &model.Project{
+				Tasks: []model.ProjectTask{
+					{Name: "1", Requires: []model.TaskUnitRequirement{{Name: "2", Variant: "v2"}}},
+					{Name: "2"},
+				},
+				BuildVariants: []model.BuildVariant{
+					{Name: "v1", Tasks: []model.BuildVariantTaskUnit{{Name: "1"}}},
+					{Name: "v2", Tasks: []model.BuildVariantTaskUnit{{Name: "2"}}},
+				},
+			}
+			So(verifyTaskRequirements(p), ShouldResemble, ValidationErrors{})
+		})
 		Convey("hiding a nonexistent requirement in a task group is found", func() {
 			p := &model.Project{
 				Tasks: []model.ProjectTask{
