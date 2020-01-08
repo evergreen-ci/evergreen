@@ -581,7 +581,7 @@ func validateBVNames(project *model.Project) ValidationErrors {
 			errs = append(errs,
 				ValidationError{
 					Level:   Warning,
-					Message: fmt.Sprintf("%s build variants share the same display name: '%s'", v, k),
+					Message: fmt.Sprintf("%d build variants share the same display name: '%s'", v, k),
 				},
 			)
 
