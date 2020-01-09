@@ -492,6 +492,11 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	if tc.taskConfig == nil {
 		return
 	}
+	err := a.resetLogging(ctx, tc)
+	if err != nil {
+		grip.Critical(errors.Wrap(err, "error making post-group logger"))
+		return
+	}
 	defer tc.logger.Close()
 	taskGroup, err := model.GetTaskGroup(tc.taskGroup, tc.taskConfig)
 	if err != nil {
