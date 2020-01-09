@@ -233,6 +233,7 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 		if err != nil {
 			return nil, errors.Wrap(err, "problem finding distro")
 		}
+		grip.Info(d)
 		if err = mapstructure.Decode(d.ProviderSettings, &ec2Settings); err != nil {
 			return nil, errors.Wrap(err, "problem unmarshaling provider settings")
 		}
