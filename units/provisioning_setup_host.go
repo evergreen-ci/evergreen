@@ -171,6 +171,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, h *host.Host, settings *ev
 	}
 
 	if h.AttachVolume {
+		// continue on error
 		grip.Error(message.WrapError(j.attachVolume(ctx), message.Fields{
 			"message":  "can't attach volume",
 			"host":     j.host.Id,
