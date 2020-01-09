@@ -523,6 +523,9 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if projectVars == nil {
+		projectVars = &model.ProjectVars{}
+	}
 	origProjectVars := *projectVars
 	// If the variable is private, and if the variable in the submission is
 	// empty, then do not modify it. This variable has been redacted and is
