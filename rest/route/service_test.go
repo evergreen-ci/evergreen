@@ -92,6 +92,7 @@ func TestHostPaginator(t *testing.T) {
 						Status:           model.ToAPIString(""),
 						InstanceType:     model.ToAPIString(""),
 						AvailabilityZone: model.ToAPIString(""),
+						HomeVolumeID:     model.ToAPIString(""),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
@@ -132,6 +133,7 @@ func TestHostPaginator(t *testing.T) {
 						Status:           model.ToAPIString(""),
 						InstanceType:     model.ToAPIString(""),
 						AvailabilityZone: model.ToAPIString(""),
+						HomeVolumeID:     model.ToAPIString(""),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
@@ -173,6 +175,7 @@ func TestHostPaginator(t *testing.T) {
 						Status:           model.ToAPIString(""),
 						InstanceType:     model.ToAPIString(""),
 						AvailabilityZone: model.ToAPIString(""),
+						HomeVolumeID:     model.ToAPIString(""),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
@@ -213,6 +216,7 @@ func TestHostPaginator(t *testing.T) {
 						Status:           model.ToAPIString(""),
 						InstanceType:     model.ToAPIString(""),
 						AvailabilityZone: model.ToAPIString(""),
+						HomeVolumeID:     model.ToAPIString(""),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
