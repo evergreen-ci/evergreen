@@ -346,6 +346,7 @@ func TestProjectViewPermission(t *testing.T) {
 	}
 	env := evergreen.GetEnvironment()
 	assert.NoError(db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection, model.ProjectRefCollection))
+	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
 	role1 := gimlet.Role{
 		ID:          "r1",
 		Scope:       "proj1",
