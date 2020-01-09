@@ -309,6 +309,25 @@ func (m *mongoBackedRoleManager) RemoveResourceFromScope(scope, resource string)
 	return err
 }
 
+func (m *mongoBackedRoleManager) FindRolesWithResources(resourceType string, resources []string) ([]gimlet.Role, error) {
+	ctx := context.Background()
+	pipeline := m.resourcesPipeline(resourceType, resources)
+	cursor, err := m.client.Database(m.db).Collection(m.roleColl).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	var roles []gimlet.Role
+	err = cursor.All(ctx, &roles)
+	if err != nil {
+		return nil, err
+	}
+	if len(roles) == 0 {
+		return nil, nil
+	}
+
+	return roles, nil
+}
+
 func (m *mongoBackedRoleManager) FindRoleWithPermissions(resourceType string, resources []string, permissions gimlet.Permissions) (*gimlet.Role, error) {
 	ctx := context.Background()
 	var permissionMatch bson.M
@@ -325,42 +344,8 @@ func (m *mongoBackedRoleManager) FindRoleWithPermissions(resourceType string, re
 			"permissions": nil,
 		}
 	}
-	pipeline := []bson.M{
-		{
-			"$match": bson.M{
-				"$and": []bson.M{
-					{"resources": bson.M{
-						"$all": resources,
-					}},
-					{"resources": bson.M{
-						"$size": len(resources),
-					}},
-					{
-						"type": resourceType,
-					},
-				},
-			},
-		},
-		{
-			"$lookup": bson.M{
-				"from":         m.roleColl,
-				"localField":   "_id",
-				"foreignField": "scope",
-				"as":           "temp_roles",
-			},
-		},
-		{
-			"$replaceRoot": bson.M{
-				"newRoot": bson.M{
-					"$arrayElemAt": []interface{}{"$temp_roles", 0},
-				},
-			},
-		},
-		{
-			"$match": permissionMatch,
-		},
-	}
-	cursor, err := m.client.Database(m.db).Collection(m.scopeColl).Aggregate(ctx, pipeline)
+	pipeline := append(m.resourcesPipeline(resourceType, resources), bson.M{"$match": permissionMatch})
+	cursor, err := m.client.Database(m.db).Collection(m.roleColl).Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, err
 	}
@@ -374,6 +359,34 @@ func (m *mongoBackedRoleManager) FindRoleWithPermissions(resourceType string, re
 	}
 
 	return &roles[0], nil
+}
+
+func (m *mongoBackedRoleManager) resourcesPipeline(resourceType string, resources []string) []bson.M {
+	return []bson.M{
+		{
+			"$lookup": bson.M{
+				"from":         m.scopeColl,
+				"localField":   "scope",
+				"foreignField": "_id",
+				"as":           "scope_document",
+			},
+		},
+		{
+			"$match": bson.M{
+				"$and": []bson.M{
+					{"scope_document.0.resources": bson.M{
+						"$all": resources,
+					}},
+					{"scope_document.0.resources": bson.M{
+						"$size": len(resources),
+					}},
+					{
+						"scope_document.0.type": resourceType,
+					},
+				},
+			},
+		},
+	}
 }
 
 func (m *mongoBackedRoleManager) Clear() error {
@@ -644,6 +657,22 @@ func (m *inMemoryRoleManager) findScopesRecursive(currScope gimlet.Scope) []stri
 		return scopes
 	}
 	return append(scopes, m.findScopesRecursive(m.scopes[currScope.ParentScope])...)
+}
+
+func (m *inMemoryRoleManager) FindRolesWithResources(resourceType string, resources []string) ([]gimlet.Role, error) {
+	validScopes := []string{}
+	for _, scope := range m.scopes {
+		if slicesContainSameElements(resources, scope.Resources) && scope.Type == resourceType {
+			validScopes = append(validScopes, scope.ID)
+		}
+	}
+	roles := []gimlet.Role{}
+	for _, role := range m.roles {
+		if stringSliceContains(validScopes, role.Scope) {
+			roles = append(roles, role)
+		}
+	}
+	return roles, nil
 }
 
 func (m *inMemoryRoleManager) FindRoleWithPermissions(resourceType string, resources []string, permissions gimlet.Permissions) (*gimlet.Role, error) {
