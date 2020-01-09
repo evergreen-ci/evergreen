@@ -144,27 +144,24 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var moduleName, patchContent, githash, message string
-	var formatted bool
 
 	if r.Header.Get("Content-Type") == formMimeType {
 		moduleName = r.FormValue("module")
 		patchContent = r.FormValue("patch")
 		githash = r.FormValue("githash")
 		message = r.FormValue("message")
-		formatted = r.FormValue("formatted") == "true"
 	} else {
 		data := struct {
-			Module    string `json:"module"`
-			Patch     string `json:"patch"`
-			Githash   string `json:"githash"`
-			Message   string `json:"message"`
-			Formatted bool   `json:"formatted"`
+			Module  string `json:"module"`
+			Patch   string `json:"patch"`
+			Githash string `json:"githash"`
+			Message string `json:"message"`
 		}{}
 		if err = util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
 			as.LoggedError(w, r, http.StatusBadRequest, err)
 			return
 		}
-		moduleName, patchContent, githash, message, formatted = data.Module, data.Patch, data.Githash, data.Message, data.Formatted
+		moduleName, patchContent, githash, message = data.Module, data.Patch, data.Githash, data.Message
 	}
 
 	projectRef, err := model.FindOneProjectRef(p.Project)
@@ -188,20 +185,19 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: refactor this when migration is done. Don't run this if formatted is false
-	summaries, err := thirdparty.GetPatchSummaries(patchContent)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-	if formatted {
-		// refresh the reader
+	var summaries []patch.Summary
+	if patch.IsMailboxDiff(patchContent) {
 		reader := strings.NewReader(patchContent)
-		summariesByCommit, err := units.GetPatchSummariesByCommit(reader)
+		summaries, err = units.GetPatchSummariesByCommit(reader)
 		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("Error parsing formatted commit"))
-		} else {
-			summaries = summariesByCommit
+			as.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("Error getting summaries by commit"))
+			return
+		}
+	} else {
+		summaries, err = thirdparty.GetPatchSummaries(patchContent)
+		if err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
 		}
 	}
 

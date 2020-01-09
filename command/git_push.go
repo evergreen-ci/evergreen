@@ -68,10 +68,11 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 	}
 
 	// fail the merge if HEAD has moved
-	logger.Execution().Info("Checking master@{upstream}")
-	headSHA, err := c.revParse(ctx, conf, logger, "master@{upstream}")
+	ref := conf.ProjectRef.Branch + "@{upstream}"
+	logger.Execution().Info("Checking " + ref)
+	headSHA, err := c.revParse(ctx, conf, logger, ref)
 	if err != nil {
-		return errors.Wrap(err, "can't get SHA for master@{upstream}")
+		return errors.Wrap(err, "can't get SHA for "+ref)
 	}
 	if p.Githash != headSHA {
 		return errors.Errorf("tip of branch '%s' has moved. Expecting '%s', but found '%s'", conf.ProjectRef.Branch, p.Githash, headSHA)

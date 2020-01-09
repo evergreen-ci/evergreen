@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sam-falvo/mbox"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -26,7 +28,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	"github.com/sam-falvo/mbox"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
@@ -351,42 +352,32 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 			patchDoc.Githash, projectRef.Identifier)
 	}
 
-	reader, err := db.GetGridFile(patch.GridFSPrefix, patchDoc.Patches[0].PatchSet.PatchFileId)
+	readCloser, err := db.GetGridFile(patch.GridFSPrefix, patchDoc.Patches[0].PatchSet.PatchFileId)
 	if err != nil {
 		return errors.Wrap(err, "error getting patch file")
 	}
-	patchDoc.Patches[0].ModuleName = ""
-
-	// TODO: refactor this when migration is done. Don't run this if evergreen.CommitQueueAlias is true
-	patchBytes, err := ioutil.ReadAll(reader)
+	defer readCloser.Close()
+	patchBytes, err := ioutil.ReadAll(readCloser)
 	if err != nil {
 		return errors.Wrap(err, "error parsing patch")
 	}
-	summaries, err := thirdparty.GetPatchSummaries(string(patchBytes))
-	if err != nil {
-		return err
+
+	var summaries []patch.Summary
+	if patch.IsMailboxDiff(string(patchBytes)) {
+		reader := strings.NewReader(string(patchBytes))
+		summaries, err = GetPatchSummariesByCommit(reader)
+		if err != nil {
+			return errors.Wrapf(err, "error getting summaries by commit")
+		}
+	} else {
+		summaries, err = thirdparty.GetPatchSummaries(string(patchBytes))
+		if err != nil {
+			return err
+		}
 	}
+
+	patchDoc.Patches[0].ModuleName = ""
 	patchDoc.Patches[0].PatchSet.Summary = summaries
-
-	if patchDoc.Alias == evergreen.CommitQueueAlias {
-		// refresh the reader
-		reader, err = db.GetGridFile(patch.GridFSPrefix, patchDoc.Patches[0].PatchSet.PatchFileId)
-		if err != nil {
-			return errors.Wrap(err, "error getting patch file")
-		}
-		defer reader.Close()
-		summaries, err := GetPatchSummariesByCommit(reader)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":      "error getting summaries by commit",
-				"patch_id":     patchDoc.Id.Hex(),
-				"patch_doc_id": patchDoc.Patches[0].PatchSet.PatchFileId,
-			}))
-		} else {
-			patchDoc.Patches[0].PatchSet.Summary = summaries
-		}
-	}
-
 	return nil
 }
 

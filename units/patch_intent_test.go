@@ -8,6 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
@@ -20,8 +23,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip/send"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -577,6 +578,7 @@ index ce0542e91..718dd8099 100644
         if err != nil {
                 return errors.Wrap(err, "error retrieving Evergreen config")
 `
+	assert.True(t, patch.IsMailboxDiff(patchData))
 	reader := ioutil.NopCloser(strings.NewReader(patchData))
 	defer assert.NoError(t, reader.Close())
 

@@ -1,8 +1,13 @@
 package patch
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -11,6 +16,7 @@ import (
 	"github.com/google/go-github/github"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
+	"github.com/sam-falvo/mbox"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -119,7 +125,7 @@ func (p *Patch) ClearPatchData() {
 
 // FetchPatchFiles dereferences externally-stored patch diffs by fetching them from gridfs
 // and placing their contents into the patch object.
-func (p *Patch) FetchPatchFiles() error {
+func (p *Patch) FetchPatchFiles(useRaw bool) error {
 	for i, patchPart := range p.Patches {
 		// If the patch isn't stored externally, no need to do anything.
 		if patchPart.PatchSet.PatchFileId == "" {
@@ -135,7 +141,18 @@ func (p *Patch) FetchPatchFiles() error {
 		if err != nil {
 			return err
 		}
-		p.Patches[i].PatchSet.Patch = string(raw)
+		rawStr := string(raw)
+		if useRaw || !IsMailboxDiff(rawStr) {
+			p.Patches[i].PatchSet.Patch = rawStr
+			continue
+		}
+
+		reader := strings.NewReader(rawStr)
+		diffs, err := GetPatchDiffsForMailbox(reader)
+		if err != nil {
+			return errors.Wrapf(err, "error getting patch diffs for formatted patch")
+		}
+		p.Patches[i].PatchSet.Patch = diffs
 	}
 	return nil
 }
@@ -368,6 +385,77 @@ func (p *Patch) IsGithubPRPatch() bool {
 
 func (p *Patch) IsPRMergePatch() bool {
 	return p.GithubPatchData.MergeCommitSHA != ""
+}
+
+// IsMailbox checks if the first line of a patch file
+// has "From ". If so, it's assumed to be a mailbox-style patch, otherwise
+// it's a diff
+func IsMailbox(patchFile string) (bool, error) {
+	file, err := os.Open(patchFile)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to read patch file")
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	if !scanner.Scan() {
+		if err = scanner.Err(); err != nil {
+			return false, errors.Wrap(err, "failed to read patch file")
+		}
+
+		// otherwise, it's EOF. Empty patches are not errors!
+		return false, nil
+	}
+	line := scanner.Text()
+
+	return IsMailboxDiff(line), nil
+}
+
+func IsMailboxDiff(patchDiff string) bool {
+	return strings.HasPrefix(patchDiff, "From ")
+}
+
+func GetPatchDiffsForMailbox(reader io.Reader) (string, error) {
+	stream, err := mbox.CreateMboxStream(reader)
+	if err != nil {
+		if err == io.EOF {
+			return "", errors.Errorf("patch is empty")
+		}
+		return "", errors.Wrap(err, "error creating stream")
+	}
+	if stream == nil {
+		return "", errors.New("mbox stream is nil")
+	}
+
+	var result string
+	// iterate through patches
+	for err == nil {
+		var buffer []byte
+		msg, err := stream.ReadMessage()
+		if err != nil {
+			if err == io.EOF { // no more patches
+				return result, nil
+			}
+			return "", errors.Wrap(err, "error reading message")
+		}
+
+		reader := msg.BodyReader()
+		// iterate through patch body
+		for {
+			curBytes := make([]byte, bytes.MinRead)
+			n, err := reader.Read(curBytes)
+			if err != nil {
+				if err == io.EOF { // finished reading body of this patch
+					result = result + string(buffer)
+					break
+				}
+				return "", errors.Wrap(err, "error reading body")
+			}
+			buffer = append(buffer, curBytes[0:n]...)
+		}
+	}
+
+	return result, nil
 }
 
 func MakeMergePatch(pr *github.PullRequest, projectID, alias string) (*Patch, error) {

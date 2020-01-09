@@ -720,24 +720,6 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionManifest() {
 	s.True(foundMsg)
 }
 
-func (s *GitGetProjectSuite) TestIsMailboxPatch() {
-	isMBP, err := isMailboxPatch(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "filethatdoesntexist.txt"))
-	s.Error(err)
-	s.False(isMBP)
-
-	isMBP, err = isMailboxPatch(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "test.patch"))
-	s.NoError(err)
-	s.True(isMBP)
-
-	isMBP, err = isMailboxPatch(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "test.diff"))
-	s.NoError(err)
-	s.False(isMBP)
-
-	isMBP, err = isMailboxPatch(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "emptyfile.txt"))
-	s.NoError(err)
-	s.False(isMBP)
-}
-
 func (s *GitGetProjectSuite) TearDownSuite() {
 	if s.modelData1.TaskConfig != nil {
 		s.NoError(os.RemoveAll(s.modelData1.TaskConfig.WorkDir))
