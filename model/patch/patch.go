@@ -370,18 +370,6 @@ func (p *Patch) IsPRMergePatch() bool {
 	return p.GithubPatchData.MergeCommitSHA != ""
 }
 
-func (p *Patch) CountSummaryCommits() int {
-	commitsAdded := map[string]bool{}
-	for _, curPatch := range p.Patches {
-		for _, diff := range curPatch.PatchSet.Summary {
-			if diff.Description != "" {
-				commitsAdded[diff.Description] = true
-			}
-		}
-	}
-	return len(commitsAdded)
-}
-
 func MakeMergePatch(pr *github.PullRequest, projectID, alias string) (*Patch, error) {
 	if pr.User == nil {
 		return nil, errors.New("pr contains no user")

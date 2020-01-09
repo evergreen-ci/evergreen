@@ -396,8 +396,8 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	if err != nil {
 		return errors.Wrap(err, "can't get commit count")
 	}
-	if commitCount != 1 {
-		return errors.Errorf("patch contains %d commits, must contain 1", commitCount)
+	if commitCount > 1 && !confirm("Commit queue patch has multiple commits. Continue? (y/n):", false) {
+		return errors.New("patch aborted")
 	}
 
 	if p.message == "" {

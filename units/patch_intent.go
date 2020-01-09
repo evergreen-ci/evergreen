@@ -382,6 +382,7 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 				"patch_id":     patchDoc.Id.Hex(),
 				"patch_doc_id": patchDoc.Patches[0].PatchSet.PatchFileId,
 			}))
+		} else {
 			patchDoc.Patches[0].PatchSet.Summary = summaries
 		}
 	}
@@ -415,7 +416,6 @@ func GetPatchSummariesByCommit(reader io.Reader) ([]patch.Summary, error) {
 		}
 
 		var description string
-		// store only the commit hash and first author
 		if subject := msg.Headers()["Subject"]; len(subject) > 0 {
 			description = strings.TrimSpace(subject[0])
 		}

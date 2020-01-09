@@ -68,15 +68,10 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 	}
 
 	// fail the merge if HEAD has moved
-	head := "HEAD"
-	numCommits := p.CountSummaryCommits()
-	if numCommits > 0 {
-		head = fmt.Sprintf("%s~%d", head, numCommits)
-	}
-	logger.Execution().Info("Checking " + head)
-	headSHA, err := c.revParse(ctx, conf, logger, head)
+	logger.Execution().Info("Checking master@{upstream}")
+	headSHA, err := c.revParse(ctx, conf, logger, "master@{upstream}")
 	if err != nil {
-		return errors.Wrap(err, "can't get SHA for "+head)
+		return errors.Wrap(err, "can't get SHA for master@{upstream}")
 	}
 	if p.Githash != headSHA {
 		return errors.Errorf("tip of branch '%s' has moved. Expecting '%s', but found '%s'", conf.ProjectRef.Branch, p.Githash, headSHA)
@@ -96,12 +91,11 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 	if err != nil {
 		return errors.Wrap(err, "failed to get token")
 	}
-
+	hasCommits := false
 	params := pushParams{
 		authorName:  restModel.FromAPIString(u.DisplayName),
 		authorEmail: restModel.FromAPIString(u.Email),
 		token:       projectToken,
-		needsCommit: numCommits == 0,
 	}
 
 	// push module patches
@@ -113,6 +107,13 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		if len(modulePatch.PatchSet.Summary) == 0 {
 			logger.Execution().Infof("Skipping empty patch for module '%s' on patch ID '%s'", modulePatch.ModuleName, p.Id.Hex())
 			continue
+		}
+
+		for _, summary := range modulePatch.PatchSet.Summary {
+			if summary.Description != "" {
+				hasCommits = true
+				break
+			}
 		}
 
 		var module *model.Module
@@ -135,12 +136,13 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		params.directory = filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory, moduleBase))
 		params.branch = module.Branch
 		params.commitMessage = modulePatch.Message
-
+		params.skipCommit = hasCommits
 		if err = c.pushPatch(ctx, logger, params); err != nil {
 			return errors.Wrap(err, "can't push module patch")
 		}
 	}
 
+	hasCommits = false
 	// Push main patch
 	for _, mainPatch := range p.Patches {
 		if mainPatch.ModuleName != "" {
@@ -152,10 +154,17 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 			continue
 		}
 
+		for _, summary := range mainPatch.PatchSet.Summary {
+			if summary.Description != "" {
+				hasCommits = true
+				break
+			}
+		}
 		logger.Execution().Info("Pushing patch")
 		params.directory = filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory))
 		params.branch = conf.ProjectRef.Branch
 		params.commitMessage = mainPatch.Message
+		params.skipCommit = hasCommits
 		if err = c.pushPatch(ctx, logger, params); err != nil {
 			return errors.Wrap(err, "can't push patch")
 		}
@@ -171,13 +180,13 @@ type pushParams struct {
 	authorEmail   string
 	commitMessage string
 	branch        string
-	needsCommit   bool
+	skipCommit    bool
 }
 
 func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p pushParams) error {
 	jpm := c.JasperManager()
 
-	if p.needsCommit {
+	if p.skipCommit {
 		author := fmt.Sprintf("%s <%s>", p.authorName, p.authorEmail)
 		commitCommand := fmt.Sprintf("git "+
 			`-c "user.name=%s" `+

@@ -188,6 +188,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO: refactor this when migration is done. Don't run this if formatted is false
 	summaries, err := thirdparty.GetPatchSummaries(patchContent)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -199,6 +200,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		summariesByCommit, err := units.GetPatchSummariesByCommit(reader)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("Error parsing formatted commit"))
+		} else {
 			summaries = summariesByCommit
 		}
 	}
