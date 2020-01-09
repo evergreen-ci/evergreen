@@ -524,7 +524,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if projectVars == nil {
-		projectVars = &projectVars{}
+		projectVars = &model.ProjectVars{}
 	}
 	origProjectVars := *projectVars
 	// If the variable is private, and if the variable in the submission is
