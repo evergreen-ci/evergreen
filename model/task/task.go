@@ -1449,7 +1449,7 @@ func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 	var err error
 	if distroID != "" {
 		match[DistroIdKey] = distroID
-		d, _ = distro.FindOne(distro.ById(distroID).WithFields(distro.ValidProjectsKey))
+		d, err = distro.FindOne(distro.ById(distroID).WithFields(distro.ValidProjectsKey))
 		if err != nil {
 			return nil, errors.Wrapf(err, "problem finding distro '%s'", distroID)
 		}
