@@ -106,14 +106,14 @@ func (s *AdminEventSuite) TestNoSpuriousLogging() {
 		ApiUrl: "api",
 		HostInit: evergreen.HostInitConfig{
 			SSHTimeoutSeconds: 10,
-			SSHTimeoutSeconds: 64,
+			HostThrottle:      64,
 		},
 	}
 	after := evergreen.Settings{
 		ApiUrl: "api",
 		HostInit: evergreen.HostInitConfig{
 			SSHTimeoutSeconds: 15,
-			SSHTimeoutSeconds: 128,
+			HostThrottle:      128,
 		},
 	}
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.username))
