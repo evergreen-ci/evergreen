@@ -59,6 +59,9 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if patch.IsMailboxDiff(patchString) {
+		as.LoggedError(w, r, http.StatusBadRequest, errors.New("CLI is out of date: use 'evergreen get-update --install'"))
+	}
 	pref, err := model.FindOneProjectRef(data.Project)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "project %s is not specified", data.Project))

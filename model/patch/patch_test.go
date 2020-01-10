@@ -1,6 +1,7 @@
 package patch
 
 import (
+	"path/filepath"
 	"sort"
 	"testing"
 	"time"
@@ -220,4 +221,22 @@ func TestPatchSortByCreateTime(t *testing.T) {
 	assert.Equal(4, patches[2].PatchNumber)
 	assert.Equal(5, patches[3].PatchNumber)
 	assert.Equal(100, patches[4].PatchNumber)
+}
+
+func TestIsMailbox(t *testing.T) {
+	isMBP, err := IsMailbox(filepath.Join(testutil.GetDirectoryOfFile(), "..", "testdata", "filethatdoesntexist.txt"))
+	assert.Error(t, err)
+	assert.False(t, isMBP)
+
+	isMBP, err = IsMailbox(filepath.Join(testutil.GetDirectoryOfFile(), "..", "testdata", "test.patch"))
+	assert.NoError(t, err)
+	assert.True(t, isMBP)
+
+	isMBP, err = IsMailbox(filepath.Join(testutil.GetDirectoryOfFile(), "..", "testdata", "patch.diff"))
+	assert.NoError(t, err)
+	assert.False(t, isMBP)
+
+	isMBP, err = IsMailbox(filepath.Join(testutil.GetDirectoryOfFile(), "..", "testdata", "emptyfile.txt"))
+	assert.NoError(t, err)
+	assert.False(t, isMBP)
 }
