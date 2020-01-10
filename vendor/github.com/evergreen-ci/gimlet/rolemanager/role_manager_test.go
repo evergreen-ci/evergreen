@@ -493,3 +493,33 @@ func (s *RoleManagerSuite) TestAddAndRemoveResources() {
 	s.NoError(err)
 	s.Equal(foundScope.ID, "root")
 }
+
+func (s *RoleManagerSuite) TestFindRolesWithResources() {
+	r1 := gimlet.Role{
+		ID:    "r1",
+		Scope: "1",
+	}
+	s.NoError(s.m.UpdateRole(r1))
+	r2 := gimlet.Role{
+		ID:    "r2",
+		Scope: "2",
+	}
+	s.NoError(s.m.UpdateRole(r2))
+	r3 := gimlet.Role{
+		ID:    "r3",
+		Scope: "1",
+	}
+	s.NoError(s.m.UpdateRole(r3))
+
+	roles, err := s.m.FindRolesWithResources("project", []string{"resource1", "resource2"})
+	s.NoError(err)
+	s.Len(roles, 2)
+
+	roles, err = s.m.FindRolesWithResources("project", []string{"resource1"})
+	s.NoError(err)
+	s.Len(roles, 0)
+
+	roles, err = s.m.FindRolesWithResources("project", []string{"resource4"})
+	s.NoError(err)
+	s.Len(roles, 0)
+}

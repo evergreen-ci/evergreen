@@ -279,8 +279,10 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	}
 
 	// GraphQL
-	app.AddRoute("/graphql").Wrap(needsLogin, allowsCORS).Handler(playground.Handler("GraphQL playground", "/graphql/query")).Get()
-	app.AddRoute("/graphql/query").Wrap(needsLogin, allowsCORS).Handler(handler.NewDefaultServer(graphql.NewExecutableSchema(graphql.New())).ServeHTTP).Options().Post().Get()
+	app.AddRoute("/graphql").Wrap(allowsCORS, needsLogin).Handler(playground.Handler("GraphQL playground", "/graphql/query")).Get()
+	app.AddRoute("/graphql/query").Wrap(allowsCORS, needsLogin).Handler(handler.NewDefaultServer(graphql.NewExecutableSchema(graphql.New())).ServeHTTP).Post().Get()
+	// this route is used solely to introspect the schema of the GQL server. OPTIONS request by design do not include auth headers; therefore must not require login.
+	app.AddRoute("/graphql/query").Wrap(allowsCORS).Handler(func(_ http.ResponseWriter, _ *http.Request) {}).Options()
 
 	// Waterfall pages
 	app.AddRoute("/").Wrap(needsContext).Handler(uis.waterfallPage).Get()
