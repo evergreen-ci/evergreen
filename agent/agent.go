@@ -499,7 +499,9 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	if tc.taskConfig == nil {
 		return
 	}
-	defer grip.Error(tc.logger.Close())
+	defer func() {
+		grip.Error(tc.logger.Close())
+	}()
 	taskGroup, err := model.GetTaskGroup(tc.taskGroup, tc.taskConfig)
 	if err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for post-group commands"))
