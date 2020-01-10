@@ -132,6 +132,11 @@ func (a *Agent) loop(ctx context.Context) error {
 
 	tc := &taskContext{}
 	needPostGroup := false
+	defer func() {
+		if tc.logger != nil {
+			grip.Error(tc.logger.Close())
+		}
+	}()
 
 LOOP:
 	for {
@@ -178,7 +183,11 @@ LOOP:
 					agentSleepInterval = minAgentSleepInterval
 					continue LOOP
 				}
+				prevLogger := tc.logger
 				tc = a.prepareNextTask(ctx, nextTask, tc)
+				if prevLogger != nil {
+					grip.Error(prevLogger.Close())
+				}
 				if err = a.fetchProjectConfig(ctx, tc); err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
 						"message": "error fetching project config; will attempt at a later point",
@@ -222,7 +231,6 @@ LOOP:
 					continue LOOP
 				}
 				if shouldExit {
-					tc.logger.Close()
 					return nil
 				}
 				needPostGroup = true
@@ -236,6 +244,7 @@ LOOP:
 				// destroy prior task information.
 				tc = &taskContext{}
 			}
+
 			jitteredSleep = util.JitterInterval(agentSleepInterval)
 			grip.Debugf("Agent sleeping %s", jitteredSleep)
 			timer.Reset(jitteredSleep)
@@ -490,7 +499,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	if tc.taskConfig == nil {
 		return
 	}
-	defer tc.logger.Close()
+	defer grip.Error(tc.logger.Close())
 	taskGroup, err := model.GetTaskGroup(tc.taskGroup, tc.taskConfig)
 	if err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for post-group commands"))
