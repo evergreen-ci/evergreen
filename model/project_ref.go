@@ -29,6 +29,7 @@ type ProjectRef struct {
 	RepoKind           string   `bson:"repo_kind" json:"repo_kind" yaml:"repokind"`
 	Enabled            bool     `bson:"enabled" json:"enabled" yaml:"enabled"`
 	Private            bool     `bson:"private" json:"private" yaml:"private"`
+	Restricted         bool     `bson:"restricted" json:"restricted" yaml:"restricted"`
 	BatchTime          int      `bson:"batch_time" json:"batch_time" yaml:"batchtime"`
 	RemotePath         string   `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
 	Identifier         string   `bson:"identifier" json:"identifier" yaml:"identifier"`
@@ -165,6 +166,13 @@ const (
 	ProjectTriggerLevelBuild = "build"
 )
 
+var adminPermissions = gimlet.Permissions{
+	evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+	evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
+	evergreen.PermissionPatches:         evergreen.PatchSubmit.Value,
+	evergreen.PermissionLogs:            evergreen.LogsView.Value,
+}
+
 func (projectRef *ProjectRef) Insert() error {
 	return db.Insert(ProjectRefCollection, projectRef)
 }
@@ -179,8 +187,10 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 
 func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
-	if err := rm.AddResourceToScope(evergreen.AllProjectsScope, p.Identifier); err != nil { // TODO: update for restricted/not
-		return errors.Wrapf(err, "error adding project '%s' to list of all projects", p.Identifier)
+	if !p.Restricted {
+		if err := rm.AddResourceToScope(evergreen.AllProjectsScope, p.Identifier); err != nil {
+			return errors.Wrapf(err, "error adding project '%s' to list of all projects", p.Identifier)
+		}
 	}
 	newScope := gimlet.Scope{
 		ID:          fmt.Sprintf("project_%s", p.Identifier),
@@ -193,15 +203,10 @@ func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
 		return errors.Wrapf(err, "error adding scope for project '%s'", p.Identifier)
 	}
 	newRole := gimlet.Role{
-		ID:     fmt.Sprintf("admin_project_%s", p.Identifier),
-		Owners: []string{creator.Id},
-		Scope:  newScope.ID,
-		Permissions: map[string]int{
-			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
-			evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
-			evergreen.PermissionPatches:         evergreen.PatchSubmit.Value,
-			evergreen.PermissionLogs:            evergreen.LogsView.Value,
-		},
+		ID:          fmt.Sprintf("admin_project_%s", p.Identifier),
+		Owners:      []string{creator.Id},
+		Scope:       newScope.ID,
+		Permissions: adminPermissions,
 	}
 	if err := rm.UpdateRole(newRole); err != nil {
 		return errors.Wrapf(err, "error adding admin role for project '%s'", p.Identifier)
@@ -683,6 +688,53 @@ func (p *ProjectRef) AddTags(tags ...string) (bool, error) {
 	p.Tags = append(p.Tags, toAdd...)
 
 	return true, nil
+}
+
+func (p *ProjectRef) MakeRestricted() error {
+	rm := evergreen.GetEnvironment().RoleManager()
+	return errors.Wrapf(rm.RemoveResourceFromScope(evergreen.UnrestrictedProjectsScope, p.Identifier), "unable to remove %s from list of unrestricted projects", p.Identifier)
+}
+
+func (p *ProjectRef) MakeUnrestricted() error {
+	rm := evergreen.GetEnvironment().RoleManager()
+	return errors.Wrapf(rm.AddResourceToScope(evergreen.UnrestrictedProjectsScope, p.Identifier), "unable to add %s to list of unrestricted projects", p.Identifier)
+}
+
+func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
+	if len(toAdd) == 0 && len(toRemove) == 0 {
+		return nil
+	}
+	rm := evergreen.GetEnvironment().RoleManager()
+	role, err := rm.FindRoleWithPermissions(evergreen.ProjectResourceType, []string{p.Identifier}, adminPermissions)
+	if err != nil {
+		return errors.Wrap(err, "error finding role with admin permissions")
+	}
+	if role == nil {
+		return errors.Errorf("no admin role for %s found", p.Identifier)
+	}
+	for _, addedUser := range toAdd {
+		adminUser, err := user.FindOneById(addedUser)
+		if err != nil {
+			return errors.Wrapf(err, "error finding user %s", addedUser)
+		}
+		if !util.StringSliceContains(adminUser.Roles(), role.ID) {
+			err = adminUser.AddRole(role.ID)
+			if err != nil {
+				return errors.Wrapf(err, "error adding role to user %s", addedUser)
+			}
+		}
+	}
+	for _, removedUser := range toRemove {
+		adminUser, err := user.FindOneById(removedUser)
+		if err != nil {
+			return errors.Wrapf(err, "error finding user %s", removedUser)
+		}
+		err = adminUser.RemoveRole(role.ID)
+		if err != nil {
+			return errors.Wrapf(err, "error removing role from user %s", removedUser)
+		}
+	}
+	return nil
 }
 
 func (t TriggerDefinition) Validate(parentProject string) error {

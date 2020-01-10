@@ -249,13 +249,16 @@ func checkTask(client *http.Client, username, key string, builds []apimodels.API
 	if err != nil {
 		return task, errors.Wrap(err, "error getting task data")
 	}
-
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		err = errors.Wrap(err, "error reading response body")
 		grip.Error(err)
 		return task, err
 	}
+	if resp.StatusCode >= 400 {
+		return task, errors.Errorf("got HTTP response code %d with error %s", resp.StatusCode, string(body))
+	}
+
 	err = json.Unmarshal(body, &task)
 	if err != nil {
 		return task, errors.Wrap(err, "error unmarshaling json")
@@ -288,15 +291,16 @@ func makeSmokeRequest(username, key string, client *http.Client, url string) ([]
 		grip.Error(err)
 		return nil, err
 	}
+	if resp.StatusCode >= 400 {
+		return body, errors.Errorf("got HTTP response code %d with error %s", resp.StatusCode, string(body))
+	}
 
 	return body, nil
 }
 
 func makeSmokeRequestAndCheck(username, key string, client *http.Client, url string, expected []string) error {
 	body, err := makeSmokeRequest(username, key, client, url)
-	if err != nil {
-		return err
-	}
+	grip.Error(err)
 	page := string(body)
 	catcher := grip.NewSimpleCatcher()
 	for _, text := range expected {
