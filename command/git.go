@@ -606,7 +606,7 @@ func isMailboxPatch(patchFile string) (bool, error) {
 // patch, it uses git-am (see https://git-scm.com/docs/git-am), otherwise
 // it uses git apply
 func getApplyCommand(patchFile string) (string, error) {
-	isMBP, err := isMailboxPatch(patchFile)
+	isMBP, err := patch.IsMailbox(patchFile)
 	if err != nil {
 		return "", errors.Wrap(err, "can't check patch type")
 	}
