@@ -842,7 +842,7 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 			if h.UserHost || h.SpawnOptions.SpawnedByTask {
 				// pass:
 				//    always start spawn hosts asap
-			} else if submitted > 32 {
+			} else if submitted > env.Settings().HostInit.HostThrottle {
 				// throttle hosts, so that we're starting very
 				// few hosts on every pass. Hostinit runs very
 				// frequently, lets not start too many all at
