@@ -87,7 +87,7 @@ backgroundSender:
 	for {
 		select {
 		case <-ctx.Done():
-			c.closed = true
+			s.closed = true
 			break backgroundSender
 		case <-timer.C:
 			if len(buffer) > 0 {
@@ -136,6 +136,7 @@ func (s *evergreenLogSender) Send(m message.Composer) {
 	}
 	if s.Level().ShouldLog(m) {
 		s.pipe <- m
+	} else {
 	}
 }
 
