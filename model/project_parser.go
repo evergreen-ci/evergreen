@@ -192,7 +192,7 @@ func (pd *parserDependency) UnmarshalYAML(unmarshal func(interface{}) error) err
 // in the context of dependencies and requirements fields. //TODO no export?
 type taskSelector struct {
 	Name    string           `yaml:"name,omitempty"`
-	Variant *variantSelector `yaml:"variant,omitempty" bson:"variant"`
+	Variant *variantSelector `yaml:"variant,omitempty" bson:"variant,omitempty"`
 }
 
 // TaskSelectors is a helper type for parsing arrays of TaskSelector.
@@ -201,8 +201,8 @@ type taskSelectors []taskSelector
 // VariantSelector handles the selection of a variant, either by a id/tag selector
 // or by matching against matrix axis values.
 type variantSelector struct {
-	StringSelector string           `yaml:"string_selector" bson:"string_selector"`
-	MatrixSelector matrixDefinition `yaml:"matrix_selector" bson:"matrix_selector"`
+	StringSelector string           `yaml:"string_selector,omitempty" bson:"string_selector,omitempty"`
+	MatrixSelector matrixDefinition `yaml:"matrix_selector,omitempty" bson:"matrix_selector,omitempty"`
 }
 
 // UnmarshalYAML allows variants to be referenced as single selector strings or
