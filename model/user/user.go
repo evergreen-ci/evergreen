@@ -35,8 +35,10 @@ func (u *DBUser) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(u) }
 func (u *DBUser) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, u) }
 
 type LoginCache struct {
-	Token string    `bson:"token"`
-	TTL   time.Time `bson:"ttl"`
+	Token        string    `bson:"token"`
+	TTL          time.Time `bson:"ttl"`
+	AccessToken  string    `bson:"access_token,omitempty"`
+	RefreshToken string    `bson:"refresh_token,omitempty"`
 }
 
 type GithubUser struct {
@@ -316,6 +318,42 @@ func PutLoginCache(g gimlet.User) (string, error) {
 	return token, nil
 }
 
+// PutLoginCacheAndTokens is the same as PutLoginCache but also adds the given
+// access and refresh tokens to the cache.
+func PutLoginCacheAndTokens(gu gimlet.User, accessToken, refreshToken string) (string, error) {
+	u, err := FindOneById(gu.Username())
+	if err != nil {
+		return "", errors.Wrap(err, "problem finding user by id")
+	}
+	if u == nil {
+		return "", errors.Errorf("no user '%s' found", gu.Username())
+	}
+
+	// Always update the TTL. If the user doesn't  have a token, generate and
+	// set it.
+	var update bson.M
+	token := u.LoginCache.Token
+	if token == "" {
+		token = util.RandomString()
+		update = bson.M{"$set": bson.M{
+			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTokenKey):        token,
+			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey):          time.Now(),
+			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheAccessTokenKey):  accessToken,
+			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheRefreshTokenKey): refreshToken,
+		}}
+	} else {
+		update = bson.M{"$set": bson.M{
+			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey):          time.Now(),
+			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheAccessTokenKey):  accessToken,
+			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheRefreshTokenKey): refreshToken,
+		}}
+	}
+	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+		return "", errors.Wrap(err, "problem updating user cache")
+	}
+	return token, nil
+}
+
 // GetLoginCache retrieve a cached user by token.
 // It returns an error if and only if there was an error retrieving the user from the cache.
 // It returns (<user>, true, nil) if the user is present in the cache and is valid.
@@ -333,6 +371,19 @@ func GetLoginCache(token string, expireAfter time.Duration) (gimlet.User, bool, 
 		return u, false, nil
 	}
 	return u, true, nil
+}
+
+// GetLoginCacheAndTokens is the same as GetLoginCache but also returns their
+// access and refresh tokens.
+func GetLoginCacheAndTokens(token string, expireAfter time.Duration) (user gimlet.User, valid bool, accessToken string, refreshToken string, err error) {
+	u, err := FindOneByToken(token)
+	if err != nil {
+		return nil, false, "", "", errors.Wrap(err, "probloem getting user from cache")
+	}
+	if u == nil {
+		return nil, false, "", "", nil
+	}
+	return u, time.Since(u.LoginCache.TTL) < expireAfter, u.LoginCache.AccessToken, u.LoginCache.RefreshToken, nil
 }
 
 // ClearLoginCache clears a user or all users' tokens from the cache, forcibly logging them out
