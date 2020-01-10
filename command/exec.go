@@ -269,8 +269,8 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 	addTempDirs(c.Env, taskTmpDir)
 
 	if !c.KeepEmptyArgs {
-		for i, arg := range c.Args {
-			if arg == "" {
+		for i := len(c.Args) - 1; i >= 0; i-- {
+			if c.Args[i] == "" {
 				c.Args = append(c.Args[:i], c.Args[i+1:]...)
 			}
 		}
