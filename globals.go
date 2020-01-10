@@ -507,6 +507,7 @@ type PermissionLevel struct {
 }
 
 var (
+	UnauthedUserRoles = []string{"unauthorized_project"}
 	// SuperUserPermissions resource ID.
 	SuperUserPermissionsID = "super_user"
 

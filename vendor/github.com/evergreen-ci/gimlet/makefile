@@ -1,7 +1,7 @@
 # start project configuration
 name := gimlet
 buildDir := build
-packages := $(name) acl ldap rolemanager
+packages := $(name) acl ldap okta rolemanager
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
 # end project configuration
@@ -115,16 +115,17 @@ $(buildDir)/$(name).race:$(gopath)/src/$(projectPath) $(srcFiles) $(deps)
 	$(goEnv) $(gobin) build -race -o $@ main/$(name).go
 # end main build
 
+$(buildDir)/output.%.test:
 
 # convenience targets for runing tests and coverage tasks on a
 # specific package.
-race-%:$(buildDir)/output.%.race
+race-%:$(buildDir)/race.%.out
 	@grep -s -q -e "^PASS" $< && ! grep -s -q "^WARNING: DATA RACE" $<
-test-%:$(buildDir)/output.%.test
+test-%:$(buildDir)/test.%.out
 	@grep -s -q -e "^PASS" $<
-coverage-%:$(buildDir)/output.%.coverage
+coverage-%:$(buildDir)/coverage.%.out
 	@grep -s -q -e "^PASS" $(subst coverage,test,$<)
-html-coverage-%:$(buildDir)/output.%.coverage $(buildDir)/output.%.coverage.html
+html-coverage-%:$(buildDir)/coverage.%.out $(buildDir)/coverage.%.html
 	@grep -s -q -e "^PASS" $(subst coverage,test,$<)
 lint-%:$(buildDir)/output.%.lint
 	@grep -v -s -q "^--- FAIL" $<
@@ -184,6 +185,7 @@ vendor-clean:
 	rm -rf vendor/gopkg.in/asn1-ber.v1/tests/
 	rm -rf vendor/github.com/rs/cors/examples/
 	find vendor/ -name "*.gif" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" -o -name "*.dat" -o -name "*testdata" | xargs rm -rf
+	find vendor/ -type d -name '.git' | xargs rm -rf
 phony += vendor-clean
 # end vendoring tooling configuration
 

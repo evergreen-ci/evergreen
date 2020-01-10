@@ -10,6 +10,8 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -102,6 +104,16 @@ func (u *DBUser) DisplayName() string {
 		return u.DispName
 	}
 	return u.Id
+}
+
+func (u *DBUser) GetAccessToken() string {
+	grip.Alert("GetAccessToken not yet implemented for DBUser")
+	return ""
+}
+
+func (u *DBUser) GetRefreshToken() string {
+	grip.Alert("GetRefreshToken not yet implemented for DBUser")
+	return ""
 }
 
 func (u *DBUser) GetPublicKey(keyname string) (string, error) {
@@ -228,23 +240,29 @@ func (u *DBUser) RemoveRole(role string) error {
 	return event.LogUserEvent(u.Id, event.UserEventTypeRolesUpdate, before, u.SystemRoles)
 }
 
-func (u *DBUser) HasPermission(opts gimlet.PermissionOpts) (bool, error) {
+func (u *DBUser) HasPermission(opts gimlet.PermissionOpts) bool {
 	roleManager := evergreen.GetEnvironment().RoleManager()
 	roles, err := roleManager.GetRoles(u.Roles())
 	if err != nil {
-		return false, errors.Wrap(err, "error getting roles")
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error getting roles",
+		}))
+		return false
 	}
 	roles, err = roleManager.FilterForResource(roles, opts.Resource, opts.ResourceType)
 	if err != nil {
-		return false, errors.Wrap(err, "error filtering resources")
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error filtering resources",
+		}))
+		return false
 	}
 	for _, role := range roles {
 		level, hasPermission := role.Permissions[opts.Permission]
 		if hasPermission && level >= opts.RequiredLevel {
-			return true, nil
+			return true
 		}
 	}
-	return false, nil
+	return false
 }
 
 func GetPatchUser(gitHubUID int) (*DBUser, error) {
