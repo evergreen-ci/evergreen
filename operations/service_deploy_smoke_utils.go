@@ -173,6 +173,7 @@ OUTER:
 				body, err := makeSmokeRequest(username, key, client, task.Logs["task_log"]+"&text=true")
 				if err != nil {
 					err = errors.Wrap(err, "error getting log data")
+					grip.Debug(err)
 					continue
 				}
 				if err = checkTaskLog(body); err == nil {

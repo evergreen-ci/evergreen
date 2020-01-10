@@ -136,7 +136,6 @@ func (s *evergreenLogSender) Send(m message.Composer) {
 	}
 	if s.Level().ShouldLog(m) {
 		s.pipe <- m
-	} else {
 	}
 }
 
