@@ -87,6 +87,7 @@ backgroundSender:
 	for {
 		select {
 		case <-ctx.Done():
+			c.closed = true
 			break backgroundSender
 		case <-timer.C:
 			if len(buffer) > 0 {
