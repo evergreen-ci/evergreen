@@ -73,6 +73,8 @@ func (s *CommandSuite) TestShellExec() {
 	_, err = s.a.runTask(ctx, cancel, tc)
 	s.NoError(err)
 
+	// TODO: remove this line with MAKE-1091
+	s.Require().NoError(tc.logger.Close())
 	messages := s.mockCommunicator.GetMockMessages()
 	s.Len(messages, 1)
 	foundSuccessLogMessage := false
@@ -120,6 +122,8 @@ func (s *CommandSuite) TestS3Copy() {
 	_, err := s.a.runTask(ctx, cancel, tc)
 	s.NoError(err)
 
+	// TODO: remove this line with MAKE-1090
+	s.Require().NoError(tc.logger.Close())
 	messages := s.mockCommunicator.GetMockMessages()
 	s.Len(messages, 1)
 	foundSuccessLogMessage := false

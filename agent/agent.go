@@ -132,6 +132,11 @@ func (a *Agent) loop(ctx context.Context) error {
 
 	tc := &taskContext{}
 	needPostGroup := false
+	defer func() {
+		if tc.logger != nil {
+			grip.Error(tc.logger.Close())
+		}
+	}()
 
 LOOP:
 	for {
@@ -178,7 +183,11 @@ LOOP:
 					agentSleepInterval = minAgentSleepInterval
 					continue LOOP
 				}
+				prevLogger := tc.logger
 				tc = a.prepareNextTask(ctx, nextTask, tc)
+				if prevLogger != nil {
+					grip.Error(prevLogger.Close())
+				}
 				if err = a.fetchProjectConfig(ctx, tc); err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
 						"message": "error fetching project config; will attempt at a later point",
@@ -235,6 +244,7 @@ LOOP:
 				// destroy prior task information.
 				tc = &taskContext{}
 			}
+
 			jitteredSleep = util.JitterInterval(agentSleepInterval)
 			grip.Debugf("Agent sleeping %s", jitteredSleep)
 			timer.Reset(jitteredSleep)
@@ -442,9 +452,6 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) 
 	a.killProcs(ctx, tc, false)
 
 	tc.logger.Execution().Infof("Sending final status as: %v", detail.Status)
-	if err = tc.logger.Close(); err != nil {
-		grip.Errorf("Error closing logger: %v", err)
-	}
 	grip.Infof("Sending final status as: %v", detail.Status)
 	resp, err := a.comm.EndTask(ctx, detail, tc.task)
 	grip.Infof("Sent final status as: %v", detail.Status)
@@ -492,12 +499,9 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	if tc.taskConfig == nil {
 		return
 	}
-	err := a.resetLogging(ctx, tc)
-	if err != nil {
-		grip.Critical(errors.Wrap(err, "error making post-group logger"))
-		return
-	}
-	defer tc.logger.Close()
+	defer func() {
+		grip.Error(tc.logger.Close())
+	}()
 	taskGroup, err := model.GetTaskGroup(tc.taskGroup, tc.taskConfig)
 	if err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for post-group commands"))
