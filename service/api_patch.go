@@ -61,6 +61,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 
 	if patch.IsMailboxDiff(patchString) {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("CLI is out of date: use 'evergreen get-update --install'"))
+		return
 	}
 	pref, err := model.FindOneProjectRef(data.Project)
 	if err != nil {
