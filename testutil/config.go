@@ -155,6 +155,7 @@ func MockConfig() *evergreen.Settings {
 		GithubPRCreatorOrg: "org",
 		HostInit: evergreen.HostInitConfig{
 			SSHTimeoutSeconds: 10,
+			HostThrottle:      64,
 		},
 		HostJasper: evergreen.HostJasperConfig{
 			BinaryName:       "binary",
