@@ -32,6 +32,30 @@ func StringSliceIntersection(a, b []string) []string {
 	return out
 }
 
+// StringSliceSymmetricDifference returns only elements not in common between 2 slices
+// (ie. inverse of the intersection)
+func StringSliceSymmetricDifference(a, b []string) ([]string, []string) {
+	mapA := map[string]bool{}
+	mapAcopy := map[string]bool{}
+	for _, elem := range a {
+		mapA[elem] = true
+		mapAcopy[elem] = true
+	}
+	inB := []string{}
+	for _, elem := range b {
+		if mapAcopy[elem] { // need to delete from the copy in case B has duplicates of the same value in A
+			delete(mapA, elem)
+		} else {
+			inB = append(inB, elem)
+		}
+	}
+	inA := []string{}
+	for elem := range mapA {
+		inA = append(inA, elem)
+	}
+	return inA, inB
+}
+
 // UniqueStrings takes a slice of strings and returns a new slice with duplicates removed.
 // Order is preserved.
 func UniqueStrings(slice []string) []string {

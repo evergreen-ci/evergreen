@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
@@ -1444,12 +1445,22 @@ func FindSchedulableForAlias(id string) ([]Task, error) {
 
 func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 	match := scheduleableTasksQuery()
+	var d distro.Distro
+	var err error
 	if distroID != "" {
 		match[DistroIdKey] = distroID
+		d, err = distro.FindOne(distro.ById(distroID).WithFields(distro.ValidProjectsKey))
+		if err != nil {
+			return nil, errors.Wrapf(err, "problem finding distro '%s'", distroID)
+		}
 	}
 
 	matchActivatedUndispatchedTasks := bson.M{
 		"$match": match,
+	}
+
+	filterInvalidDistros := bson.M{
+		"$match": bson.M{ProjectKey: bson.M{"$in": d.ValidProjects}},
 	}
 
 	removeFields := bson.M{
@@ -1571,6 +1582,10 @@ func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 		matchActivatedUndispatchedTasks,
 		removeFields,
 		graphLookupTaskDeps,
+	}
+
+	if distroID != "" && len(d.ValidProjects) > 0 {
+		pipeline = append(pipeline, filterInvalidDistros)
 	}
 
 	if removeDeps {

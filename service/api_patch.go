@@ -36,7 +36,8 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		Description string   `json:"desc"`
 		Project     string   `json:"project"`
-		Patch       string   `json:"patch"`
+		PatchBytes  []byte   `json:"patch_bytes"`
+		PatchString string   `json:"patch"`
 		Githash     string   `json:"githash"`
 		Variants    []string `json:"buildvariants_new"`
 		Tasks       []string `json:"tasks"`
@@ -48,11 +49,20 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
-	if len(data.Patch) > patch.SizeLimit {
+
+	patchString := string(data.PatchBytes)
+	if patchString == "" {
+		patchString = data.PatchString
+	}
+	if len(patchString) > patch.SizeLimit {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("Patch is too large"))
 		return
 	}
 
+	if patch.IsMailboxDiff(patchString) {
+		as.LoggedError(w, r, http.StatusBadRequest, errors.New("CLI is out of date: use 'evergreen get-update --install'"))
+		return
+	}
 	pref, err := model.FindOneProjectRef(data.Project)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "project %s is not specified", data.Project))
@@ -72,7 +82,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	intent, err := patch.NewCliIntent(dbUser.Id, data.Project, data.Githash, r.FormValue("module"), data.Patch, data.Description, data.Finalize, data.Variants, data.Tasks, data.Alias)
+	intent, err := patch.NewCliIntent(dbUser.Id, data.Project, data.Githash, r.FormValue("module"), patchString, data.Description, data.Finalize, data.Variants, data.Tasks, data.Alias)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
@@ -144,25 +154,21 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var moduleName, patchContent, githash, message string
-
-	if r.Header.Get("Content-Type") == formMimeType {
-		moduleName = r.FormValue("module")
-		patchContent = r.FormValue("patch")
-		githash = r.FormValue("githash")
-		message = r.FormValue("message")
-	} else {
-		data := struct {
-			Module  string `json:"module"`
-			Patch   string `json:"patch"`
-			Githash string `json:"githash"`
-			Message string `json:"message"`
-		}{}
-		if err = util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
-			as.LoggedError(w, r, http.StatusBadRequest, err)
-			return
-		}
-		moduleName, patchContent, githash, message = data.Module, data.Patch, data.Githash, data.Message
+	data := struct {
+		Module      string `json:"module"`
+		PatchBytes  []byte `json:"patch_bytes"`
+		PatchString string `json:"patch"`
+		Githash     string `json:"githash"`
+		Message     string `json:"message"`
+	}{}
+	if err = util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
+		as.LoggedError(w, r, http.StatusBadRequest, err)
+		return
+	}
+	moduleName, githash, message := data.Module, data.Githash, data.Message
+	patchContent := string(data.PatchBytes)
+	if patchContent == "" {
+		patchContent = data.PatchString
 	}
 
 	projectRef, err := model.FindOneProjectRef(p.Project)

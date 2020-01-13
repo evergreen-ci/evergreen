@@ -3,7 +3,8 @@
 # Refer to https://gqlgen.com/config/
 # for detailed .gqlgen.yml documentation.
 
-schema: graphql/schema.graphql
+schema:
+  - graphql/schema.graphql
 exec:
   filename: graphql/generated.go
 model:
@@ -11,3 +12,6 @@ model:
 resolver:
   filename: graphql/resolvers.go
   type: Resolver
+models:
+  Patch:
+    model: github.com/evergreen-ci/evergreen/model/patch.Patch

@@ -299,6 +299,7 @@ func (s *AdminSuite) TestAuthConfig() {
 func (s *AdminSuite) TestHostinitConfig() {
 	config := HostInitConfig{
 		SSHTimeoutSeconds: 10,
+		HostThrottle:      64,
 	}
 
 	err := config.Set()

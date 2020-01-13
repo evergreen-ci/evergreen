@@ -46,6 +46,7 @@ func NewConfigModel() *APIAdminSettings {
 
 // APIAdminSettings is the structure of a response to the admin route
 type APIAdminSettings struct {
+	ACLCheckingEnabled      *bool                             `json:"acl_enabled,omitempty"`
 	Alerts                  *APIAlertsConfig                  `json:"alerts,omitempty"`
 	Amboy                   *APIAmboyConfig                   `json:"amboy,omitempty"`
 	Api                     *APIapiConfig                     `json:"api,omitempty"`
@@ -116,6 +117,7 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 				return errors.Wrapf(err, "error converting model section %s", propName)
 			}
 		}
+		as.ACLCheckingEnabled = &v.ACLCheckingEnabled
 		as.ApiUrl = &v.ApiUrl
 		as.Banner = &v.Banner
 		tmp := string(v.BannerTheme)
@@ -152,6 +154,9 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 		GithubOrgs:              as.GithubOrgs,
 		SpawnHostsPerUser:       cloud.DefaultMaxSpawnHostsPerUser,
 		UnexpirableHostsPerUser: host.DefaultUnexpirableHostsPerUser,
+	}
+	if as.ACLCheckingEnabled != nil {
+		settings.ACLCheckingEnabled = *as.ACLCheckingEnabled
 	}
 	if as.ApiUrl != nil {
 		settings.ApiUrl = *as.ApiUrl
@@ -640,12 +645,14 @@ type APIBanner struct {
 
 type APIHostInitConfig struct {
 	SSHTimeoutSeconds int64 `json:"ssh_timeout_secs"`
+	HostThrottle      int   `json:"host_throttle"`
 }
 
 func (a *APIHostInitConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.HostInitConfig:
 		a.SSHTimeoutSeconds = v.SSHTimeoutSeconds
+		a.HostThrottle = v.HostThrottle
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -655,6 +662,7 @@ func (a *APIHostInitConfig) BuildFromService(h interface{}) error {
 func (a *APIHostInitConfig) ToService() (interface{}, error) {
 	return evergreen.HostInitConfig{
 		SSHTimeoutSeconds: a.SSHTimeoutSeconds,
+		HostThrottle:      a.HostThrottle,
 	}, nil
 }
 

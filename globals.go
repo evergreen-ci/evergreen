@@ -489,7 +489,7 @@ func IsGitHubPatchRequester(requester string) bool {
 }
 
 // Permissions-related constants
-var AclCheckingIsEnabled = (os.Getenv("ACL_ENABLED") == "true")
+var AclCheckingIsEnabled = false
 
 const (
 	SuperUserResourceType = "super_user"

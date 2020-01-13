@@ -140,6 +140,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.AuthConfig.Github.ClientId, settingsFromConnector.AuthConfig.Github.ClientId)
 	s.Equal(len(testSettings.AuthConfig.Github.Users), len(settingsFromConnector.AuthConfig.Github.Users))
 	s.EqualValues(testSettings.HostInit.SSHTimeoutSeconds, settingsFromConnector.HostInit.SSHTimeoutSeconds)
+	s.EqualValues(testSettings.HostInit.HostThrottle, settingsFromConnector.HostInit.HostThrottle)
 	s.EqualValues(testSettings.Jira.Username, settingsFromConnector.Jira.Username)
 	s.EqualValues(testSettings.LoggerConfig.DefaultLevel, settingsFromConnector.LoggerConfig.DefaultLevel)
 	s.EqualValues(testSettings.LoggerConfig.Buffer.Count, settingsFromConnector.LoggerConfig.Buffer.Count)
@@ -211,6 +212,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	newExpansions := map[string]string{"newkey": "newval"}
 	newHostinit := restModel.APIHostInitConfig{
 		SSHTimeoutSeconds: 999,
+		HostThrottle:      64,
 	}
 	updatedSettings := restModel.APIAdminSettings{
 		Banner:     &newBanner,

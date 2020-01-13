@@ -477,6 +477,10 @@ Admin Settings
 										<label>SSH timeout (secs)</label>
 										<input type="number" ng-model="Settings.hostinit.ssh_timeout_secs">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Host throttle (num hosts)</label>
+										<input type="number" ng-model="Settings.hostinit.host_throttle">
+									</md-input-container>
 								</md-card-content>
 							</md-card>
 
@@ -1323,11 +1327,13 @@ Admin Settings
 									</md-input-container>
 								</md-card-content>
 							</md-card>
+						</section>
 
+						<section layout="row" flex>
 							<md-card flex=50 id="backup">
 								<md-card-title>
 									<md-card-title-text>
-										<span>Misc Settings</span>
+										<span>Backup</span>
 									</md-card-title-text>
 								</md-card-title>
 								<md-card-content>
@@ -1390,7 +1396,7 @@ Admin Settings
 										<label>Github PR creator organization</label>
 										<input type="text" ng-model="Settings.github_pr_creator_org">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" sstyle="width:45%; margin-left:50px;">
 										<label>Pprof port</label>
 										<input type="text" ng-model="Settings.pprof_port">
 									</md-input-container>
@@ -1402,14 +1408,20 @@ Admin Settings
 										<label>Total Spawn Hosts per user</label>
 										<input type="number" ng-model="Settings.spawn_hosts_per_user">
 									</md-input-container>
-									<md-input-container class="control" style="width:45;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Unexpirable Spawn Hosts per user</label>
 										<input type="number" ng-model="Settings.unexpirable_hosts_per_user">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left: 50px;">
+										<md-checkbox ng-model="Settings.acl_enabled">
+											ACL Enabled
+										</md-checkbox>
+									</md-input-container>
 								</md-card-content>
 							</md-card>
-
 						</section>
+
+
 
 						<section layout="row" flex>
 

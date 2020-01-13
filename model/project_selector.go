@@ -372,7 +372,7 @@ func (v *variantSelectorEvaluator) evalSelector(vs *variantSelector) ([]string, 
 	if vs == nil {
 		return nil, errors.New("empty selector")
 	}
-	if vs.MatrixSelector != nil {
+	if len(vs.MatrixSelector) > 0 {
 		evaluatedSelector, errs := vs.MatrixSelector.evaluatedCopy(v.axisEval)
 		if len(errs) > 0 {
 			return nil, errors.Errorf(
@@ -381,7 +381,7 @@ func (v *variantSelectorEvaluator) evalSelector(vs *variantSelector) ([]string, 
 		results := []string{}
 		// this could be sped up considerably with caching, but I doubt we'll need to
 		for _, v := range v.variants {
-			if v.MatrixVal != nil && evaluatedSelector.contains(v.MatrixVal) {
+			if len(v.MatrixVal) > 0 && evaluatedSelector.contains(v.MatrixVal) {
 				results = append(results, v.Name)
 			}
 		}

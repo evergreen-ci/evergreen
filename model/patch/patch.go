@@ -1,8 +1,11 @@
 package patch
 
 import (
+	"bufio"
 	"fmt"
 	"io/ioutil"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -367,6 +370,34 @@ func (p *Patch) IsGithubPRPatch() bool {
 
 func (p *Patch) IsPRMergePatch() bool {
 	return p.GithubPatchData.MergeCommitSHA != ""
+}
+
+// IsMailbox checks if the first line of a patch file
+// has "From ". If so, it's assumed to be a mailbox-style patch, otherwise
+// it's a diff
+func IsMailbox(patchFile string) (bool, error) {
+	file, err := os.Open(patchFile)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to read patch file")
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	if !scanner.Scan() {
+		if err = scanner.Err(); err != nil {
+			return false, errors.Wrap(err, "failed to read patch file")
+		}
+
+		// otherwise, it's EOF. Empty patches are not errors!
+		return false, nil
+	}
+	line := scanner.Text()
+
+	return IsMailboxDiff(line), nil
+}
+
+func IsMailboxDiff(patchDiff string) bool {
+	return strings.HasPrefix(patchDiff, "From ")
 }
 
 func MakeMergePatch(pr *github.PullRequest, projectID, alias string) (*Patch, error) {

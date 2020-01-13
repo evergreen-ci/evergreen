@@ -226,6 +226,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		PrivateVars         map[string]bool                `json:"private_vars"`
 		Enabled             bool                           `json:"enabled"`
 		Private             bool                           `json:"private"`
+		Restricted          bool                           `json:"restricted"`
 		Owner               string                         `json:"owner_name"`
 		Repo                string                         `json:"repo_name"`
 		Admins              []string                       `json:"admins"` //TODO: update roles for this project if admins change
@@ -438,6 +439,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.Enabled = responseRef.Enabled
 	projectRef.DefaultLogger = responseRef.DefaultLogger
 	projectRef.Private = responseRef.Private
+	projectRef.Restricted = responseRef.Restricted
 	projectRef.Owner = responseRef.Owner
 	projectRef.DeactivatePrevious = responseRef.DeactivatePrevious
 	projectRef.Repo = responseRef.Repo
@@ -525,6 +527,9 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if projectVars == nil {
+		projectVars = &model.ProjectVars{}
+	}
 	origProjectVars := *projectVars
 	// If the variable is private, and if the variable in the submission is
 	// empty, then do not modify it. This variable has been redacted and is
@@ -583,6 +588,25 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 	if err = model.LogProjectModified(id, username, before, after); err != nil {
 		grip.Infof("Could not log changes to project %s", id)
+	}
+
+	if origProjectRef.Restricted != projectRef.Restricted {
+		var err error
+		if projectRef.Restricted {
+			err = projectRef.MakeRestricted()
+		} else {
+			err = projectRef.MakeUnrestricted()
+		}
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+	}
+
+	toAdd, toRemove := util.StringSliceSymmetricDifference(projectRef.Admins, origProjectRef.Admins)
+	if err = projectRef.UpdateAdminRoles(toAdd, toRemove); err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
 	}
 
 	allProjects, err := uis.filterAuthorizedProjects(dbUser)
