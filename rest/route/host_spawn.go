@@ -1129,7 +1129,6 @@ func (h *hostRunScript) Factory() gimlet.RouteHandler {
 
 func (h *hostRunScript) Parse(ctx context.Context, r *http.Request) error {
 	var err error
-
 	hostScriptOpts := model.APIHostScript{}
 	if err = util.ReadJSONInto(util.NewRequestReader(r), &hostScriptOpts); err != nil {
 		return errors.Wrap(err, "can't read host command from json")
@@ -1142,16 +1141,16 @@ func (h *hostRunScript) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *hostRunScript) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-
 	type hostOutput struct {
 		hostID string
 		output string
 	}
-	hostsOutput := make(chan hostOutput)
+	hostsOutput := make(chan hostOutput, len(h.hostIDs))
 	wg := &sync.WaitGroup{}
+	wg.Add(len(h.hostIDs))
 	for _, hostID := range h.hostIDs {
-		wg.Add(1)
 		go func(ctx context.Context, hostID string, u *user.DBUser) {
+			defer wg.Done()
 			host, err := h.sc.FindHostByIdWithOwner(hostID, u)
 			if err != nil {
 				hostsOutput <- hostOutput{hostID: hostID, output: errors.Wrap(err, "can't get host").Error()}

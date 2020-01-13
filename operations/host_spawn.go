@@ -686,7 +686,7 @@ func hostRunCommand() cli.Command {
 				Usage: "path to a file containing a script",
 			},
 		)),
-		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag, mutuallyExclusiveArgs(true, scriptFlagName, pathFlagName)),
+		Before: mergeBeforeFuncs(setPlainLogger, mutuallyExclusiveArgs(true, scriptFlagName, pathFlagName)),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			hostID := c.String(hostFlagName)
@@ -712,13 +712,18 @@ func hostRunCommand() cli.Command {
 			if hostID != "" {
 				hostIDs = []string{hostID}
 			} else {
-				createdBeforeTime, err := time.Parse(time.RFC3339, createdBefore)
-				if err != nil {
-					return errors.Wrap(err, "can't parse created before time")
+				var createdBeforeTime, createdAfterTime time.Time
+				if createdBefore != "" {
+					createdBeforeTime, err = time.Parse(time.RFC3339, createdBefore)
+					if err != nil {
+						return errors.Wrap(err, "can't parse created before time")
+					}
 				}
-				createdAfterTime, err := time.Parse(time.RFC3339, createdAfter)
-				if err != nil {
-					return errors.Wrap(err, "can't parse create after time")
+				if createdAfter != "" {
+					createdAfterTime, err = time.Parse(time.RFC3339, createdAfter)
+					if err != nil {
+						return errors.Wrap(err, "can't parse create after time")
+					}
 				}
 
 				hosts, err := client.GetHosts(ctx, model.APIHostParams{
@@ -731,13 +736,17 @@ func hostRunCommand() cli.Command {
 				if err != nil {
 					return errors.Wrapf(err, "can't get matching hosts")
 				}
+				if len(hosts) == 0 {
+					return errors.New("no matching hosts")
+				}
+				for _, host := range hosts {
+					hostIDs = append(hostIDs, model.FromAPIString(host.Id))
+				}
+
 				if !skipConfirm {
 					if !confirm(fmt.Sprintf("The script will run on %d host(s), \n%s\nContinue? (y/n): ", len(hostIDs), strings.Join(hostIDs, "\n")), true) {
 						return nil
 					}
-				}
-				for _, host := range hosts {
-					hostIDs = append(hostIDs, model.FromAPIString(host.Id))
 				}
 			}
 
@@ -759,7 +768,7 @@ func hostRunCommand() cli.Command {
 
 			for hostName, hostOutput := range hostOutputs {
 				if len(hostOutputs) > 1 {
-					grip.Infof("Host '%s' output: ", hostName)
+					grip.Infof("'%s' output: ", hostName)
 				}
 				grip.Info(hostOutput)
 			}

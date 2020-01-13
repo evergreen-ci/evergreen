@@ -939,7 +939,7 @@ func UpsertOne(query interface{}, update interface{}) (*adb.ChangeInfo, error) {
 	)
 }
 
-func FindHostsInRange(createdBefore, createdAfter time.Time, user, distro, status string, userSpawned bool, limit int) ([]Host, error) {
+func FindHostsInRange(createdBefore, createdAfter time.Time, user, distroID, status string, userSpawned bool, limit int) ([]Host, error) {
 	var statusMatch interface{}
 	if status != "" {
 		statusMatch = status
@@ -961,8 +961,8 @@ func FindHostsInRange(createdBefore, createdAfter time.Time, user, distro, statu
 		filter[StartedByKey] = user
 	}
 
-	if distro != "" {
-		filter[DistroKey] = distro
+	if distroID != "" {
+		filter[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = distroID
 	}
 
 	if userSpawned {

@@ -40,7 +40,7 @@ func (c *communicatorImpl) GetHostsByUser(ctx context.Context, user string) ([]*
 
 	hosts := []*model.APIHost{}
 	for p.hasMore() {
-		resp, err := p.getNextPage(ctx, nil)
+		resp, err := p.getNextPage(ctx, model.APIHostParams{})
 		if err != nil {
 			return nil, err
 		}
