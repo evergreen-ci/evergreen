@@ -838,16 +838,16 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 			hosts[i], hosts[j] = hosts[j], hosts[i]
 		}
 
+		// refersh HostInit
+		if err := env.Settings().HostInit.Get(env); err != nil {
+			return errors.Wrap(err, "problem getting global config")
+		}
 		for _, h := range hosts {
 			if h.UserHost || h.SpawnOptions.SpawnedByTask {
 				// pass:
 				//    always start spawn hosts asap
 			} else {
-				config, err := evergreen.GetConfig()
-				if err != nil {
-					return errors.Wrap(err, "problem getting global config")
-				}
-				if submitted > config.HostInit.HostThrottle {
+				if submitted > env.Settings().HostInit.HostThrottle {
 					// throttle hosts, so that we're starting very
 					// few hosts on every pass. Hostinit runs very
 					// frequently, lets not start too many all at
