@@ -27,7 +27,7 @@ type TaskGroupData struct {
 func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (int, error) {
 	distro := hostAllocatorData.Distro
 	numExistingHosts := len(hostAllocatorData.ExistingHosts)
-	if numExistingHosts >= distro.HostAllocatorSettings.MaximumHosts {
+	if distro.Provider != evergreen.ProviderNameDocker && numExistingHosts >= distro.HostAllocatorSettings.MaximumHosts {
 		return 0, nil
 	}
 
