@@ -186,8 +186,7 @@ type pushParams struct {
 
 func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p pushParams) error {
 	jpm := c.JasperManager()
-
-	if p.skipCommit {
+	if !p.skipCommit {
 		author := fmt.Sprintf("%s <%s>", p.authorName, p.authorEmail)
 		commitCommand := fmt.Sprintf("git "+
 			`-c "user.name=%s" `+
