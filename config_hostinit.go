@@ -54,7 +54,7 @@ func (c *HostInitConfig) Set() error {
 }
 
 func (c *HostInitConfig) ValidateAndDefault() error {
-	if c.HostThrottle == 0 {
+	if c.HostThrottle <= 0 {
 		c.HostThrottle = defaultHostThrottle
 	}
 	return nil
