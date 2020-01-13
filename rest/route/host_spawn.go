@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -1108,8 +1109,8 @@ type hostRunScript struct {
 	sc  data.Connector
 	env evergreen.Environment
 
-	hostID string
-	script string
+	hostIDs []string
+	script  string
 }
 
 func makeHostRunScript(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
@@ -1128,53 +1129,76 @@ func (h *hostRunScript) Factory() gimlet.RouteHandler {
 
 func (h *hostRunScript) Parse(ctx context.Context, r *http.Request) error {
 	var err error
-	h.hostID, err = validateID(gimlet.GetVars(r)["host_id"])
-	if err != nil {
-		return errors.Wrap(err, "invalid host id")
-	}
 
-	hostScript := model.APIHostScript{}
-	if err = util.ReadJSONInto(util.NewRequestReader(r), &hostScript); err != nil {
+	hostScriptOpts := model.APIHostScript{}
+	if err = util.ReadJSONInto(util.NewRequestReader(r), &hostScriptOpts); err != nil {
 		return errors.Wrap(err, "can't read host command from json")
 	}
-	h.script = hostScript.Script
+	h.script = hostScriptOpts.Script
+	h.hostIDs = hostScriptOpts.Hosts
 
 	return nil
 }
 
 func (h *hostRunScript) Run(ctx context.Context) gimlet.Responder {
-	user := MustHaveUser(ctx)
-	host, err := h.sc.FindHostByIdWithOwner(h.hostID, user)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't get host"))
+	u := MustHaveUser(ctx)
+
+	type hostOutput struct {
+		hostID string
+		output string
 	}
-	if host.Status != evergreen.HostRunning {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("can't run script on host with status '%s'", host.Status))
+	hostsOutput := make(chan hostOutput)
+	wg := &sync.WaitGroup{}
+	for _, hostID := range h.hostIDs {
+		wg.Add(1)
+		go func(ctx context.Context, hostID string, u *user.DBUser) {
+			host, err := h.sc.FindHostByIdWithOwner(hostID, u)
+			if err != nil {
+				hostsOutput <- hostOutput{hostID: hostID, output: errors.Wrap(err, "can't get host").Error()}
+				return
+			}
+			if host.Status != evergreen.HostRunning {
+				hostsOutput <- hostOutput{hostID: hostID, output: errors.Errorf("can't run script on host with status '%s'", host.Status).Error()}
+				return
+			}
+
+			if host.JasperCommunication() {
+				opts := &options.Create{
+					Args: []string{"bash", "-l", "-c", h.script},
+				}
+				processOutput, err := host.RunJasperProcess(ctx, h.env, opts)
+				if err != nil {
+					hostsOutput <- hostOutput{hostID: hostID, output: errors.Wrap(err, "can't run script with Jasper").Error()}
+					return
+				}
+				hostsOutput <- hostOutput{hostID: hostID, output: strings.Join(processOutput, "\n")}
+				return
+			}
+
+			sshOptions, err := host.GetSSHOptions(h.env.Settings())
+			sshOptions = append(sshOptions, "-o", "LogLevel=quiet")
+			if err != nil {
+				hostsOutput <- hostOutput{hostID: hostID, output: errors.Wrap(err, "can't get ssh options").Error()}
+				return
+			}
+			processOutput, err := host.RunSSHShellScript(ctx, h.script, sshOptions)
+			if err != nil {
+				hostsOutput <- hostOutput{hostID: hostID, output: errors.Wrap(err, "can't run script over ssh").Error()}
+				return
+			}
+			hostsOutput <- hostOutput{hostID: hostID, output: processOutput}
+		}(ctx, hostID, u)
 	}
 
-	if host.JasperCommunication() {
-		opts := &options.Create{
-			Args: []string{"bash", "-l", "-c", h.script},
-		}
-		output, err := host.RunJasperProcess(ctx, h.env, opts)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't run script with Jasper"))
-		}
-		return gimlet.NewJSONResponse(model.APIHostScriptResponse{Output: output})
+	wg.Wait()
+	close(hostsOutput)
+
+	outputMap := make(map[string]string)
+	for output := range hostsOutput {
+		outputMap[output.hostID] = output.output
 	}
 
-	sshOptions, err := host.GetSSHOptions(h.env.Settings())
-	sshOptions = append(sshOptions, "-o", "LogLevel=quiet")
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't get ssh options"))
-	}
-	output, err := host.RunSSHShellScript(ctx, h.script, sshOptions)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't run script over ssh"))
-	}
-
-	outputSlice := strings.Split(output, "\r\n")
-	return gimlet.NewJSONResponse(model.APIHostScriptResponse{Output: outputSlice[:len(outputSlice)-1]})
+	return gimlet.NewJSONResponse(model.APIHostScriptResponse{Output: outputMap})
 }
 
 ////////////////////////////////////////////////////////////////////////

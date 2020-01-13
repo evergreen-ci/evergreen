@@ -40,7 +40,7 @@ func (c *communicatorImpl) GetHostsByUser(ctx context.Context, user string) ([]*
 
 	hosts := []*model.APIHost{}
 	for p.hasMore() {
-		resp, err := p.getNextPage(ctx)
+		resp, err := p.getNextPage(ctx, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -433,7 +433,7 @@ func (c *communicatorImpl) ExtendSpawnHostExpiration(ctx context.Context, hostID
 }
 
 // GetHosts gathers all active hosts and invokes a function on them
-func (c *communicatorImpl) GetHosts(ctx context.Context, f func([]*model.APIHost) error) error {
+func (c *communicatorImpl) GetHosts(ctx context.Context, data model.APIHostParams) ([]*model.APIHost, error) {
 	info := requestInfo{
 		method:  get,
 		path:    "hosts",
@@ -442,28 +442,26 @@ func (c *communicatorImpl) GetHosts(ctx context.Context, f func([]*model.APIHost
 
 	p, err := newPaginatorHelper(&info, c)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	hosts := []*model.APIHost{}
 	for p.hasMore() {
-		hosts := []*model.APIHost{}
-		resp, err := p.getNextPage(ctx)
+		apiHosts := []*model.APIHost{}
+		resp, err := p.getNextPage(ctx, data)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		err = util.ReadJSONInto(resp.Body, &hosts)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		err = f(hosts)
-		if err != nil {
-			return err
-		}
+		hosts = append(hosts, apiHosts...)
 	}
 
-	return nil
+	return hosts, nil
 }
 
 func (c *communicatorImpl) SetBannerMessage(ctx context.Context, message string, theme evergreen.BannerTheme) error {
@@ -1168,14 +1166,14 @@ func (c *communicatorImpl) GetManifestByTask(ctx context.Context, taskId string)
 	return &mfest, nil
 }
 
-func (c *communicatorImpl) RunHostScript(ctx context.Context, hostID, script string) ([]string, error) {
+func (c *communicatorImpl) RunHostScript(ctx context.Context, hostIDs []string, script string) (map[string]string, error) {
 	info := requestInfo{
 		method:  post,
 		version: apiVersion2,
-		path:    fmt.Sprintf("/hosts/%s/run_script", hostID),
+		path:    "/hosts/run_script",
 	}
 
-	data := model.APIHostScript{Script: script}
+	data := model.APIHostScript{Hosts: hostIDs, Script: script}
 	resp, err := c.request(ctx, info, data)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't make request to run script on host")

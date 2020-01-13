@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -24,10 +25,10 @@ import (
 // from the Connector through interactions with the backing database.
 type DBHostConnector struct{}
 
-// FindHostsById uses the service layer's host type to query the backing database for
+// FindHostsInRange uses the service layer's host type to query the backing database for
 // the hosts.
-func (hc *DBHostConnector) FindHostsById(id, status, user string, limit int) ([]host.Host, error) {
-	hostRes, err := host.GetHostsByFromIDWithStatus(id, status, user, limit)
+func (hc *DBHostConnector) FindHostsInRange(createdBefore, createdAfter time.Time, user, distro, status string, userSpawned bool, limit int) ([]host.Host, error) {
+	hostRes, err := host.FindHostsInRange(createdBefore, createdAfter, user, distro, status, userSpawned, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -158,18 +159,11 @@ type MockHostConnector struct {
 	CachedVolumes []host.Volume
 }
 
-// FindHostsById searches the mock hosts slice for hosts and returns them
-func (hc *MockHostConnector) FindHostsById(id, status, user string, limit int) ([]host.Host, error) {
-	if id != "" && user == "" && status == "" {
-		return hc.FindHostsByIdOnly(id, status, user, limit)
-	}
-
+// FindHostsInRange searches the mock hosts slice for hosts and returns them
+func (hc *MockHostConnector) FindHostsInRange(createdBefore, createdAfter time.Time, user, distro, status string, userSpawned bool, limit int) ([]host.Host, error) {
 	var hostsToReturn []host.Host
 	for ix := range hc.CachedHosts {
 		h := hc.CachedHosts[ix]
-		if id != "" {
-			continue
-		}
 		if user != "" && h.StartedBy != user {
 			continue
 		}
@@ -178,15 +172,25 @@ func (hc *MockHostConnector) FindHostsById(id, status, user string, limit int) (
 				continue
 			}
 		} else {
-			statusFound := false
-			for _, status := range evergreen.UpHostStatus {
-				if h.Status == status {
-					statusFound = true
-				}
-			}
-			if !statusFound {
+			if !util.StringSliceContains(evergreen.UpHostStatus, h.Status) {
 				continue
 			}
+		}
+
+		if distro != "" && h.Distro.Id != distro {
+			continue
+		}
+
+		if userSpawned && !h.UserHost {
+			continue
+		}
+
+		if h.CreationTime.Before(createdAfter) {
+			continue
+		}
+
+		if !util.IsZeroTime(createdBefore) && h.CreationTime.After(createdBefore) {
+			continue
 		}
 
 		hostsToReturn = append(hostsToReturn, h)

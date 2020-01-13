@@ -195,9 +195,18 @@ type APISpawnHostModify struct {
 }
 
 type APIHostScript struct {
-	Script string `json:"script"`
+	Hosts  []string `json:"hosts"`
+	Script string   `json:"script"`
 }
 
 type APIHostScriptResponse struct {
-	Output []string `json:"output"`
+	Output map[string]string `json:"output"`
+}
+
+type APIHostParams struct {
+	CreatedBefore time.Time `json:"created_before"`
+	CreatedAfter  time.Time `json:"created_after"`
+	Distro        string    `json:"distro"`
+	UserSpawned   bool      `json:"user_spawned"`
+	Status        string    `json:"status"`
 }

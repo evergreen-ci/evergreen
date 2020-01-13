@@ -939,7 +939,7 @@ func UpsertOne(query interface{}, update interface{}) (*adb.ChangeInfo, error) {
 	)
 }
 
-func GetHostsByFromIDWithStatus(id, status, user string, limit int) ([]Host, error) {
+func FindHostsInRange(createdBefore, createdAfter time.Time, user, distro, status string, userSpawned bool, limit int) ([]Host, error) {
 	var statusMatch interface{}
 	if status != "" {
 		statusMatch = status
@@ -947,13 +947,26 @@ func GetHostsByFromIDWithStatus(id, status, user string, limit int) ([]Host, err
 		statusMatch = bson.M{"$in": evergreen.UpHostStatus}
 	}
 
+	createTimeFilter := bson.M{"$gt": createdAfter}
+	if !util.IsZeroTime(createdBefore) {
+		createTimeFilter["$lt"] = createdBefore
+	}
+
 	filter := bson.M{
-		IdKey:     bson.M{"$gte": id},
-		StatusKey: statusMatch,
+		StatusKey:     statusMatch,
+		CreateTimeKey: createTimeFilter,
 	}
 
 	if user != "" {
 		filter[StartedByKey] = user
+	}
+
+	if distro != "" {
+		filter[DistroKey] = distro
+	}
+
+	if userSpawned {
+		filter[UserHostKey] = true
 	}
 
 	var query db.Q

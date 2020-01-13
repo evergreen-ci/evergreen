@@ -52,13 +52,13 @@ func (p *paginatorHelper) setNextPagePath(path string) {
 
 // GetNextPage returns the response from a single page. The caller must close the
 // response body
-func (p *paginatorHelper) getNextPage(ctx context.Context) (*http.Response, error) {
+func (p *paginatorHelper) getNextPage(ctx context.Context, data interface{}) (*http.Response, error) {
 	info := *p.routeInfo
 	if p.nextPagePath != "" {
 		info.path = p.nextPagePath
 	}
 
-	resp, err := p.comm.request(ctx, info, nil)
+	resp, err := p.comm.request(ctx, info, data)
 	if err != nil {
 		p.more = false
 		return nil, err

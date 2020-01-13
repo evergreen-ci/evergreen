@@ -2,8 +2,12 @@ package operations
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
+	"strings"
 	"time"
+
+	"github.com/evergreen-ci/evergreen"
 
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -554,7 +558,7 @@ func hostList() cli.Command {
 		Flags: []cli.Flag{
 			cli.BoolFlag{
 				Name:  mineFlagName,
-				Usage: "list hosts spawned but the current user",
+				Usage: "list hosts spawned by the current user",
 			},
 			cli.BoolFlag{
 				Name:  allFlagName,
@@ -580,21 +584,18 @@ func hostList() cli.Command {
 			switch {
 			case showMine:
 				var hosts []*model.APIHost
-
 				hosts, err = client.GetHostsByUser(ctx, conf.User)
 				if err != nil {
 					return err
 				}
-
 				grip.Infof("%d hosts started by '%s':", len(hosts), conf.User)
-
-				if err = printHosts(hosts); err != nil {
-					return errors.Wrap(err, "problem printing hosts")
-				}
+				printHosts(hosts)
 			case showAll:
-				if err = client.GetHosts(ctx, printHosts); err != nil {
+				hosts, err := client.GetHosts(ctx, model.APIHostParams{UserSpawned: true})
+				if err != nil {
 					return errors.Wrap(err, "problem printing hosts")
 				}
+				printHosts(hosts)
 			}
 
 			return nil
@@ -602,7 +603,7 @@ func hostList() cli.Command {
 	}
 }
 
-func printHosts(hosts []*model.APIHost) error {
+func printHosts(hosts []*model.APIHost) {
 	for _, h := range hosts {
 		grip.Infof("ID: %s; Distro: %s; Status: %s; Host name: %s; User: %s, Availability Zone: %s",
 			model.FromAPIString(h.Id),
@@ -612,7 +613,6 @@ func printHosts(hosts []*model.APIHost) error {
 			model.FromAPIString(h.User),
 			model.FromAPIString(h.AvailabilityZone))
 	}
-	return nil
 }
 
 func hostTerminate() cli.Command {
@@ -648,13 +648,35 @@ func hostTerminate() cli.Command {
 }
 
 func hostRunCommand() cli.Command {
-	const scriptFlagName = "script"
-	const pathFlagName = "path"
+	const (
+		scriptFlagName    = "script"
+		pathFlagName      = "path"
+		createdBeforeFlag = "created-before"
+		createdAfterFlag  = "created-after"
+		distroFlag        = "distro"
+		userHostFlag      = "user-host"
+	)
 
 	return cli.Command{
 		Name:  "exec",
-		Usage: "run a bash shell script on a host and print the output",
-		Flags: addHostFlag(
+		Usage: "run a bash shell script on host(s) and print the output",
+		Flags: mergeFlagSlices(addHostFlag(), addYesFlag(
+			cli.StringFlag{
+				Name:  createdBeforeFlag,
+				Usage: "only run on hosts created before `TIME` in RFC3339 format",
+			},
+			cli.StringFlag{
+				Name:  createdAfterFlag,
+				Usage: "only run on hosts created after `TIME` in RFC3339 format",
+			},
+			cli.StringFlag{
+				Name:  distroFlag,
+				Usage: "only run on hosts of `DISTRO`",
+			},
+			cli.BoolFlag{
+				Name:  userHostFlag,
+				Usage: "only run on user hosts",
+			},
 			cli.StringFlag{
 				Name:  scriptFlagName,
 				Usage: "script to pass to bash",
@@ -663,13 +685,18 @@ func hostRunCommand() cli.Command {
 				Name:  pathFlagName,
 				Usage: "path to a file containing a script",
 			},
-		),
+		)),
 		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag, mutuallyExclusiveArgs(true, scriptFlagName, pathFlagName)),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			hostID := c.String(hostFlagName)
+			createdBefore := c.String(createdBeforeFlag)
+			createdAfter := c.String(createdAfterFlag)
+			distro := c.String(distroFlag)
+			userSpawned := c.Bool(userHostFlag)
 			script := c.String(scriptFlagName)
 			path := c.String(pathFlagName)
+			skipConfirm := c.Bool(yesFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -680,6 +707,39 @@ func hostRunCommand() cli.Command {
 			}
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
+
+			var hostIDs []string
+			if hostID != "" {
+				hostIDs = []string{hostID}
+			} else {
+				createdBeforeTime, err := time.Parse(time.RFC3339, createdBefore)
+				if err != nil {
+					return errors.Wrap(err, "can't parse created before time")
+				}
+				createdAfterTime, err := time.Parse(time.RFC3339, createdAfter)
+				if err != nil {
+					return errors.Wrap(err, "can't parse create after time")
+				}
+
+				hosts, err := client.GetHosts(ctx, model.APIHostParams{
+					CreatedBefore: createdBeforeTime,
+					CreatedAfter:  createdAfterTime,
+					Distro:        distro,
+					UserSpawned:   userSpawned,
+					Status:        evergreen.HostRunning,
+				})
+				if err != nil {
+					return errors.Wrapf(err, "can't get matching hosts")
+				}
+				if !skipConfirm {
+					if !confirm(fmt.Sprintf("The script will run on %d host(s), \n%s\nContinue? (y/n): ", len(hostIDs), strings.Join(hostIDs, "\n")), true) {
+						return nil
+					}
+				}
+				for _, host := range hosts {
+					hostIDs = append(hostIDs, model.FromAPIString(host.Id))
+				}
+			}
 
 			if path != "" {
 				scriptBytes, err := ioutil.ReadFile(path)
@@ -692,13 +752,16 @@ func hostRunCommand() cli.Command {
 				}
 			}
 
-			output, err := client.RunHostScript(ctx, hostID, script)
+			hostOutputs, err := client.RunHostScript(ctx, hostIDs, script)
 			if err != nil {
 				return errors.Wrap(err, "problem running command")
 			}
 
-			for _, line := range output {
-				grip.Info(line)
+			for hostName, hostOutput := range hostOutputs {
+				if len(hostOutputs) > 1 {
+					grip.Infof("Host '%s' output: ", hostName)
+				}
+				grip.Info(hostOutput)
 			}
 
 			return nil
