@@ -34,7 +34,43 @@ describe('SignalProcessingFactoriesTest', () => {
       it('HIDDEN should be false', () => expect(unprocessed({ processed_type: PROCESSED_TYPE.HIDDEN })).toBe(false))
       it('ACKNOWLEDGED should be false', () => expect(unprocessed({ processed_type: PROCESSED_TYPE.ACKNOWLEDGED })).toBe(false))
     });
-
   });
 
+  describe('SignalProcessingCtrl', () => {
+    let $controller;
+    let settings;
+
+    beforeEach(inject(function(_$controller_, _Settings_) {
+      $controller = _$controller_;
+      settings = _Settings_;
+    }));
+
+    describe('changePointFilter', () => {
+      let $scope;
+      let controller;
+
+      beforeEach(function() {
+        $scope = {};
+        controller = $controller('SignalProcessingCtrl', {$scope: $scope});
+      });
+
+      afterEach(function() {
+        settings.perf.signalProcessing.persistentFiltering = {};
+      });
+
+      it('should use defaults if no user preference specified', () => {
+        expect(controller.changePointFilter()).toEqual(controller.defaultChangePointFilter);
+      });
+
+      it('should use user preferences if specified', () => {
+        const filtering = {
+          create_time: ">now",
+          project: "=my-project",
+          probability: ">3.14",
+        };
+        settings.perf.signalProcessing.persistentFiltering = filtering;
+        expect(controller.changePointFilter()).toEqual(filtering);
+      });
+    });
+  });
 });

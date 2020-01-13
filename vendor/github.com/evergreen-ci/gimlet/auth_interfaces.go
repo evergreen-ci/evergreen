@@ -112,6 +112,9 @@ type RoleManager interface {
 	// error if the same permission is registered more than once
 	RegisterPermissions([]string) error
 
+	// FindRoleWithResources returns all roles that apply to exactly the given resources
+	FindRolesWithResources(string, []string) ([]Role, error)
+
 	// FindRolesWithPermissions returns a role that exactly matches the given resources and permissions
 	FindRoleWithPermissions(string, []string, Permissions) (*Role, error)
 

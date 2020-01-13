@@ -346,8 +346,8 @@ type ArtifactInstructions struct {
 }
 
 type YAMLCommandSet struct {
-	SingleCommand *PluginCommandConf  `bson:"single_command,omitempty"`
-	MultiCommand  []PluginCommandConf `bson:"multi_command,omitempty"`
+	SingleCommand *PluginCommandConf  `yaml:"single_command,omitempty" bson:"single_command,omitempty"`
+	MultiCommand  []PluginCommandConf `yaml:"multi_command,omitempty" bson:"multi_command,omitempty"`
 }
 
 func (c *YAMLCommandSet) List() []PluginCommandConf {
@@ -1045,7 +1045,7 @@ func FindLastKnownGoodProject(identifier string) (*Project, error) {
 		}
 		grip.Critical(message.WrapError(err, message.Fields{
 			"message": "last known good version has malformed config",
-			"version": lastGoodVersion.Identifier,
+			"version": lastGoodVersion.Id,
 			"project": identifier,
 		}))
 	}

@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -345,6 +346,7 @@ func TestProjectViewPermission(t *testing.T) {
 	}
 	env := evergreen.GetEnvironment()
 	assert.NoError(db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection, model.ProjectRefCollection))
+	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
 	role1 := gimlet.Role{
 		ID:          "r1",
 		Scope:       "proj1",

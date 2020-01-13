@@ -196,7 +196,7 @@ const (
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
 
 	// TODO: remove this when degrading YAML
-	UseParserProject = false
+	UseParserProject = true
 )
 
 func IsFinishedTaskStatus(status string) bool {
@@ -489,7 +489,7 @@ func IsGitHubPatchRequester(requester string) bool {
 }
 
 // Permissions-related constants
-var AclCheckingIsEnabled = (os.Getenv("ACL_ENABLED") == "true")
+var AclCheckingIsEnabled = false
 
 const (
 	SuperUserResourceType = "super_user"

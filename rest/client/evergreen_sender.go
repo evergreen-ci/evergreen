@@ -87,7 +87,8 @@ backgroundSender:
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			s.closed = true
+			break backgroundSender
 		case <-timer.C:
 			if len(buffer) > 0 {
 				s.flush(ctx, buffer)
@@ -102,10 +103,6 @@ backgroundSender:
 				timer.Reset(bufferTime)
 			}
 		case <-s.signalEnd:
-			if len(buffer) >= s.bufferSize/2 {
-				s.flush(ctx, buffer)
-				buffer = []apimodels.LogMessage{}
-			}
 			break backgroundSender
 		}
 	}

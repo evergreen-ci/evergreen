@@ -46,6 +46,7 @@ type ConfigSection interface {
 // with the "id" struct tag should implement the ConfigSection interface.
 type Settings struct {
 	Id                      string                    `bson:"_id" json:"id" yaml:"id"`
+	ACLCheckingEnabled      bool                      `yaml:"acl_enabled" bson:"acl_enabled" json:"acl_enabled"`
 	Alerts                  AlertsConfig              `yaml:"alerts" bson:"alerts" json:"alerts" id:"alerts"`
 	Amboy                   AmboyConfig               `yaml:"amboy" bson:"amboy" json:"amboy" id:"amboy"`
 	Api                     APIConfig                 `yaml:"api" bson:"api" json:"api" id:"api"`
@@ -124,6 +125,7 @@ func (c *Settings) Set() error {
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
+			aclEnabledKey:         c.ACLCheckingEnabled,
 			apiUrlKey:             c.ApiUrl,
 			bannerKey:             c.Banner,
 			bannerThemeKey:        c.BannerTheme,

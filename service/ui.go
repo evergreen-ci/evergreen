@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
@@ -279,8 +278,10 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	}
 
 	// GraphQL
-	app.AddRoute("/graphql").Handler(playground.Handler("GraphQL playground", "/graphql/query")).Get().Wrap(needsLogin)
-	app.AddRoute("/graphql/query").Handler(handler.NewDefaultServer(graphql.NewExecutableSchema(graphql.New())).ServeHTTP).Options().Post().Get().Wrap(needsLogin)
+	app.AddRoute("/graphql").Wrap(allowsCORS, needsLogin).Handler(playground.Handler("GraphQL playground", "/graphql/query")).Get()
+	app.AddRoute("/graphql/query").Wrap(allowsCORS, needsLogin).Handler(graphql.Handler()).Post().Get()
+	// this route is used solely to introspect the schema of the GQL server. OPTIONS request by design do not include auth headers; therefore must not require login.
+	app.AddRoute("/graphql/query").Wrap(allowsCORS).Handler(func(_ http.ResponseWriter, _ *http.Request) {}).Options()
 
 	// Waterfall pages
 	app.AddRoute("/").Wrap(needsContext).Handler(uis.waterfallPage).Get()

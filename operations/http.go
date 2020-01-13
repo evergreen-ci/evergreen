@@ -317,13 +317,17 @@ type UpdatePatchModuleParams struct {
 
 // UpdatePatchModule makes a request to the API server to set a module patch on the given patch ID.
 func (ac *legacyClient) UpdatePatchModule(params UpdatePatchModuleParams) error {
+	// Characters in a string without a utf-8 representation are shoehorned into the � replacement character
+	// when marshalled into JSON.
+	// Because marshalling a byte slice to JSON will base64 encode it, the patch will be sent over the wire in base64
+	// and non utf-8 characters will be preserved.
 	data := struct {
-		Module    string `json:"module"`
-		Patch     string `json:"patch"`
-		Githash   string `json:"githash"`
-		Message   string `json:"message"`
-		Formatted bool   `json:"formatted"`
-	}{params.module, params.patch, params.base, params.message, params.formatted}
+		Module      string `json:"module"`
+		PatchBytes  []byte `json:"patch_bytes"`
+		PatchString string `json:"patch"`
+		Githash     string `json:"githash"`
+		Message     string `json:"message"`
+	}{params.module, []byte(params.patch), params.patch, params.base, params.message}
 
 	rPipe, wPipe := io.Pipe()
 	encoder := json.NewEncoder(wPipe)
@@ -406,10 +410,15 @@ func (ac *legacyClient) ListDistros() ([]distro.Distro, error) {
 // PutPatch submits a new patch for the given project to the API server. If successful, returns
 // the patch object itself.
 func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, error) {
+	// Characters in a string without a utf-8 representation are shoehorned into the � replacement character
+	// when marshalled into JSON.
+	// Because marshalling a byte slice to JSON will base64 encode it, the patch will be sent over the wire in base64
+	// and non utf-8 characters will be preserved.
 	data := struct {
 		Description string   `json:"desc"`
 		Project     string   `json:"project"`
-		Patch       string   `json:"patch"`
+		PatchBytes  []byte   `json:"patch_bytes"`
+		PatchString string   `json:"patch"`
 		Githash     string   `json:"githash"`
 		Variants    []string `json:"buildvariants_new"`
 		Tasks       []string `json:"tasks"`
@@ -418,6 +427,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 	}{
 		incomingPatch.description,
 		incomingPatch.projectId,
+		[]byte(incomingPatch.patchData),
 		incomingPatch.patchData,
 		incomingPatch.base,
 		incomingPatch.variants,

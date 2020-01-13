@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
@@ -426,4 +427,44 @@ func TestAddPermissions(t *testing.T) {
 	dbUser, err := user.FindOneById(u.Id)
 	assert.NoError(err)
 	assert.Contains(dbUser.Roles(), "admin_project_myProject")
+}
+
+func TestUpdateAdminRoles(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, user.Collection))
+	env := evergreen.GetEnvironment()
+	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+	rm := env.RoleManager()
+	adminScope := gimlet.Scope{
+		ID:        evergreen.AllProjectsScope,
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"proj"},
+	}
+	require.NoError(t, rm.AddScope(adminScope))
+	adminRole := gimlet.Role{
+		ID:          "admin",
+		Scope:       evergreen.AllProjectsScope,
+		Permissions: adminPermissions,
+	}
+	require.NoError(t, rm.UpdateRole(adminRole))
+	oldAdmin := user.DBUser{
+		Id:          "oldAdmin",
+		SystemRoles: []string{"admin"},
+	}
+	require.NoError(t, oldAdmin.Insert())
+	newAdmin := user.DBUser{
+		Id: "newAdmin",
+	}
+	require.NoError(t, newAdmin.Insert())
+	p := ProjectRef{
+		Identifier: "proj",
+	}
+	require.NoError(t, p.Insert())
+
+	assert.NoError(t, p.UpdateAdminRoles([]string{newAdmin.Id}, []string{oldAdmin.Id}))
+	oldAdminFromDB, err := user.FindOneById(oldAdmin.Id)
+	assert.NoError(t, err)
+	assert.Len(t, oldAdminFromDB.Roles(), 0)
+	newAdminFromDB, err := user.FindOneById(newAdmin.Id)
+	assert.NoError(t, err)
+	assert.Len(t, newAdminFromDB.Roles(), 1)
 }

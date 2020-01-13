@@ -224,19 +224,19 @@ func TestPatchSortByCreateTime(t *testing.T) {
 }
 
 func TestIsMailbox(t *testing.T) {
-	isMBP, err := IsMailbox(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "filethatdoesntexist.txt"))
+	isMBP, err := IsMailbox(filepath.Join(testutil.GetDirectoryOfFile(), "..", "testdata", "filethatdoesntexist.txt"))
 	assert.Error(t, err)
 	assert.False(t, isMBP)
 
-	isMBP, err = IsMailbox(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "test.patch"))
+	isMBP, err = IsMailbox(filepath.Join(testutil.GetDirectoryOfFile(), "..", "testdata", "test.patch"))
 	assert.NoError(t, err)
 	assert.True(t, isMBP)
 
-	isMBP, err = IsMailbox(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "test.diff"))
+	isMBP, err = IsMailbox(filepath.Join(testutil.GetDirectoryOfFile(), "..", "testdata", "patch.diff"))
 	assert.NoError(t, err)
 	assert.False(t, isMBP)
 
-	isMBP, err = IsMailbox(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "emptyfile.txt"))
+	isMBP, err = IsMailbox(filepath.Join(testutil.GetDirectoryOfFile(), "..", "testdata", "emptyfile.txt"))
 	assert.NoError(t, err)
 	assert.False(t, isMBP)
 }
