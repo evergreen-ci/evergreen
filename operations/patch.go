@@ -53,18 +53,18 @@ func Patch() cli.Command {
 			confPath := c.Parent().String(confFlagName)
 			args := c.Args()
 			params := &patchParams{
-				Project:     c.String(projectFlagName),
-				Variants:    util.SplitCommas(c.StringSlice(variantsFlagName)),
-				Tasks:       util.SplitCommas(c.StringSlice(tasksFlagName)),
-				SkipConfirm: c.Bool(yesFlagName),
+				Alias:       c.String(patchAliasFlagName),
+				Browse:      c.Bool(patchBrowseFlagName),
 				Description: c.String(patchDescriptionFlagName),
 				Finalize:    c.Bool(patchFinalizeFlagName),
-				Browse:      c.Bool(patchBrowseFlagName),
-				ShowSummary: c.Bool(patchVerboseFlagName),
 				Large:       c.Bool(largeFlagName),
-				Alias:       c.String(patchAliasFlagName),
+				Project:     c.String(projectFlagName),
 				Ref:         c.String(refFlagName),
+				ShowSummary: c.Bool(patchVerboseFlagName),
+				SkipConfirm: c.Bool(yesFlagName),
+				Tasks:       util.SplitCommas(c.StringSlice(tasksFlagName)),
 				Uncommitted: c.Bool(uncommittedChangesFlag),
+				Variants:    util.SplitCommas(c.StringSlice(variantsFlagName)),
 			}
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -119,10 +119,6 @@ func PatchFile() cli.Command {
 		Usage: "submit patch using a diff file",
 		Flags: getPatchFlags(
 			cli.StringFlag{
-				Name:  joinFlagNames("base", "b"),
-				Usage: "githash of base",
-			},
-			cli.StringFlag{
 				Name:  diffPathFlagName,
 				Usage: "path to a file for diff of the patch",
 			},
@@ -131,18 +127,18 @@ func PatchFile() cli.Command {
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			params := &patchParams{
-				Project:     c.String(projectFlagName),
-				Variants:    util.SplitCommas(c.StringSlice(variantsFlagName)),
-				Tasks:       util.SplitCommas(c.StringSlice(tasksFlagName)),
 				Alias:       c.String(patchAliasFlagName),
-				SkipConfirm: c.Bool(yesFlagName),
 				Description: c.String(patchDescriptionFlagName),
 				Finalize:    c.Bool(patchFinalizeFlagName),
-				ShowSummary: c.Bool(patchVerboseFlagName),
 				Large:       c.Bool(largeFlagName),
+				Project:     c.String(projectFlagName),
+				Ref:         c.String(refFlagName),
+				ShowSummary: c.Bool(patchVerboseFlagName),
+				SkipConfirm: c.Bool(yesFlagName),
+				Tasks:       util.SplitCommas(c.StringSlice(tasksFlagName)),
+				Variants:    util.SplitCommas(c.StringSlice(variantsFlagName)),
 			}
 			diffPath := c.String(diffPathFlagName)
-			base := c.String(baseFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -160,9 +156,16 @@ func PatchFile() cli.Command {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
 
-			if _, err = params.validatePatchCommand(ctx, conf, ac, comm); err != nil {
+			if ref, err = params.validatePatchCommand(ctx, conf, ac, comm); err != nil {
 				return err
 			}
+			var featureBranch string
+			if ref == "" {
+				featureBranch = "HEAD"
+			} else {
+				featureBranch = ref
+			}
+			mergeBase, err := gitMergeBase(ref.branch+"@{upstream}", featureBranch)
 
 			fullPatch, err := ioutil.ReadFile(diffPath)
 			if err != nil {
