@@ -184,7 +184,6 @@ func (unit *Unit) RankValue() int64 {
 	var (
 		expectedRuntime  time.Duration
 		timeInQueue      time.Duration
-		lifeTime         time.Duration
 		totalPriority    int64
 		numDeps          int64
 		inCommitQueue    bool
@@ -205,10 +204,8 @@ func (unit *Unit) RankValue() int64 {
 
 		if !t.ActivatedTime.IsZero() {
 			timeInQueue += time.Since(t.ActivatedTime)
-		}
-
-		if !t.IngestTime.IsZero() {
-			lifeTime += time.Since(t.IngestTime)
+		} else {
+			timeInQueue += time.Since(t.IngestTime)
 		}
 
 		totalPriority += t.Priority
@@ -243,10 +240,10 @@ func (unit *Unit) RankValue() int64 {
 	} else {
 		// for mainline builds that are more recent, give them a bit
 		// of a bump, to avoid running older builds first.
-		avgLifeTime := lifeTime / time.Duration(length)
+		avgLifeTime := timeInQueue / time.Duration(length)
 
-		if avgLifeTime < time.Duration(48)*time.Hour {
-			unit.cachedValue += priority * unit.distro.GetTimeInQueueFactor() * int64((48*time.Hour - avgLifeTime).Hours())
+		if avgLifeTime < time.Duration(7*24)*time.Hour {
+			unit.cachedValue += priority * int64((7*24*time.Hour - avgLifeTime).Hours())
 		}
 	}
 
