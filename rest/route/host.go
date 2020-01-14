@@ -184,15 +184,10 @@ func makeFetchHosts(sc data.Connector) gimlet.RouteHandler {
 }
 
 type hostGetHandler struct {
-	limit int
-
-	createdBefore time.Time
-	createdAfter  time.Time
-	distro        string
-	userSpawned   bool
-	status        string
-
-	user string
+	limit  int
+	key    string
+	status string
+	user   string
 
 	sc data.Connector
 }
@@ -205,7 +200,10 @@ func (hgh *hostGetHandler) Factory() gimlet.RouteHandler {
 
 func (hgh *hostGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	vals := r.URL.Query()
+	hgh.status = vals.Get("status")
+	hgh.key = vals.Get("host_id")
 	var err error
+
 	hgh.limit, err = getLimit(vals)
 	if err != nil {
 		return errors.WithStack(err)
@@ -214,29 +212,11 @@ func (hgh *hostGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	// only populated in the case of the /users/{user}/hosts route
 	hgh.user = gimlet.GetVars(r)["user_id"]
 
-	body := util.NewRequestReader(r)
-	defer body.Close()
-	data := &model.APIHostParams{}
-	if err := util.ReadJSONInto(body, data); err != nil {
-		return errors.Wrap(err, "Argument read error")
-	}
-	hgh.createdBefore = data.CreatedBefore
-	hgh.createdAfter = data.CreatedAfter
-	hgh.distro = data.Distro
-	hgh.status = data.Status
-	hgh.userSpawned = data.UserSpawned
-
 	return nil
 }
 
 func (hgh *hostGetHandler) Run(ctx context.Context) gimlet.Responder {
-	dbUser := MustHaveUser(ctx)
-	// only admins see hosts that aren't theirs
-	if !util.StringSliceContains(hgh.sc.GetSuperUsers(), dbUser.Username()) {
-		hgh.user = dbUser.Username()
-	}
-
-	hosts, err := hgh.sc.FindHostsInRange(hgh.createdBefore, hgh.createdAfter, hgh.user, hgh.distro, hgh.status, hgh.userSpawned, hgh.limit+1)
+	hosts, err := hgh.sc.FindHostsById(hgh.key, hgh.status, hgh.user, hgh.limit+1)
 	if err != nil {
 		gimlet.NewJSONErrorResponse(errors.Wrap(err, "Database error"))
 	}
@@ -332,4 +312,78 @@ func getLimit(vals url.Values) (int, error) {
 	}
 
 	return limit, nil
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// GET /hosts/range
+
+func makeFetchHostRange(sc data.Connector) gimlet.RouteHandler {
+	return &hostGetHandler{
+		sc: sc,
+	}
+}
+
+type hostRangeGetHandler struct {
+	createdBefore time.Time
+	createdAfter  time.Time
+	distro        string
+	userSpawned   bool
+	status        string
+	mine          bool
+
+	sc data.Connector
+}
+
+func (h *hostRangeGetHandler) Factory() gimlet.RouteHandler {
+	return &hostGetHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *hostRangeGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	body := util.NewRequestReader(r)
+	defer body.Close()
+	data := &model.APIHostParams{}
+	if err := util.ReadJSONInto(body, data); err != nil {
+		return errors.Wrap(err, "Argument read error")
+	}
+	h.createdBefore = data.CreatedBefore
+	h.createdAfter = data.CreatedAfter
+	h.distro = data.Distro
+	h.status = data.Status
+	h.userSpawned = data.UserSpawned
+	h.mine = data.Mine
+
+	return nil
+}
+
+func (h *hostRangeGetHandler) Run(ctx context.Context) gimlet.Responder {
+	dbUser := MustHaveUser(ctx)
+	username := ""
+	// only admins see hosts that aren't theirs
+	if !util.StringSliceContains(h.sc.GetSuperUsers(), dbUser.Username()) || h.mine {
+		username = dbUser.Username()
+	}
+
+	hosts, err := h.sc.FindHostsInRange(h.createdBefore, h.createdAfter, username, h.distro, h.status, h.userSpawned)
+	if err != nil {
+		gimlet.NewJSONErrorResponse(errors.Wrap(err, "Database error"))
+	}
+
+	resp := gimlet.NewResponseBuilder()
+	if err = resp.SetFormat(gimlet.JSON); err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+	for _, host := range hosts {
+		apiHost := &model.APIHost{}
+		if err = apiHost.BuildFromService(host); err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
+		}
+		if err = resp.AddData(apiHost); err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
+		}
+	}
+
+	return resp
 }

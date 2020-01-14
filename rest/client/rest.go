@@ -20,46 +20,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (*communicatorImpl) GetAllHosts() {}
-func (*communicatorImpl) GetHostByID() {}
-
-// GetHostsByUser will return a slice of all hosts spawned by the given user
-// The API route is paginated, but we will add all pages to a local slice because
-// there is an application-defined limit on the number of hosts a user can have
-func (c *communicatorImpl) GetHostsByUser(ctx context.Context, user string) ([]*model.APIHost, error) {
-	info := requestInfo{
-		method:  get,
-		path:    fmt.Sprintf("/users/%s/hosts", user),
-		version: apiVersion2,
-	}
-
-	p, err := newPaginatorHelper(&info, c)
-	if err != nil {
-		return nil, err
-	}
-
-	hosts := []*model.APIHost{}
-	for p.hasMore() {
-		resp, err := p.getNextPage(ctx, model.APIHostParams{})
-		if err != nil {
-			return nil, err
-		}
-
-		temp := []*model.APIHost{}
-		err = util.ReadJSONInto(resp.Body, &temp)
-		if err != nil {
-			err = resp.Body.Close()
-			if err != nil {
-				return nil, errors.Wrap(err, "error closing response body")
-			}
-			return nil, err
-		}
-
-		hosts = append(hosts, temp...)
-	}
-	return hosts, nil
-}
-
+func (*communicatorImpl) GetAllHosts()     {}
+func (*communicatorImpl) GetHostByID()     {}
 func (*communicatorImpl) SetHostStatus()   {}
 func (*communicatorImpl) SetHostStatuses() {}
 
@@ -432,35 +394,32 @@ func (c *communicatorImpl) ExtendSpawnHostExpiration(ctx context.Context, hostID
 	return nil
 }
 
-// GetHosts gathers all active hosts and invokes a function on them
+// GetHosts gets all hosts matching filters
 func (c *communicatorImpl) GetHosts(ctx context.Context, data model.APIHostParams) ([]*model.APIHost, error) {
 	info := requestInfo{
 		method:  get,
-		path:    "hosts",
+		path:    "hosts/range",
 		version: apiVersion2,
 	}
 
-	p, err := newPaginatorHelper(&info, c)
+	resp, err := c.request(ctx, info, data)
 	if err != nil {
+		err = errors.Wrapf(err, "error sending request to spawn host")
 		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		errMsg := gimlet.ErrorResponse{}
+		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+			return nil, errors.Wrap(err, "problem reading hosts error")
+		}
+		return nil, errors.Wrap(errMsg, "problem getting hosts")
 	}
 
 	hosts := []*model.APIHost{}
-	for p.hasMore() {
-		apiHosts := []*model.APIHost{}
-		resp, err := p.getNextPage(ctx, data)
-		if err != nil {
-			return nil, err
-		}
-
-		err = util.ReadJSONInto(resp.Body, &hosts)
-		if err != nil {
-			return nil, err
-		}
-
-		hosts = append(hosts, apiHosts...)
+	if err = util.ReadJSONInto(resp.Body, hosts); err != nil {
+		return nil, errors.Wrap(err, "can't read response as APIHost slice")
 	}
-
 	return hosts, nil
 }
 

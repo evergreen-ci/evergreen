@@ -128,8 +128,13 @@ type Connector interface {
 	// FindUserById is a method to find a specific user given its ID.
 	FindUserById(string) (gimlet.User, error)
 
-	// FindHostsInRange is a method to find a sorted list of hosts
-	FindHostsInRange(time.Time, time.Time, string, string, string, bool, int) ([]host.Host, error)
+	// FindHostsById is a method to find a sorted list of hosts given an ID to
+	// start from.
+	FindHostsById(string, string, string, int) ([]host.Host, error)
+
+	// FindHostsInRange is a method to find a filtered list of hosts
+	FindHostsInRange(time.Time, time.Time, string, string, string, bool) ([]host.Host, error)
+
 	FindHostById(string) (*host.Host, error)
 
 	// FindHostByIdWithOwner finds a host with given host ID that was

@@ -209,4 +209,5 @@ type APIHostParams struct {
 	Distro        string    `json:"distro"`
 	UserSpawned   bool      `json:"user_spawned"`
 	Status        string    `json:"status"`
+	Mine          bool      `json:"mine"`
 }

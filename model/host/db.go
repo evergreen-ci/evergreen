@@ -939,7 +939,32 @@ func UpsertOne(query interface{}, update interface{}) (*adb.ChangeInfo, error) {
 	)
 }
 
-func FindHostsInRange(createdBefore, createdAfter time.Time, user, distroID, status string, userSpawned bool, limit int) ([]Host, error) {
+func GetHostsByFromIDWithStatus(id, status, user string, limit int) ([]Host, error) {
+	var statusMatch interface{}
+	if status != "" {
+		statusMatch = status
+	} else {
+		statusMatch = bson.M{"$in": evergreen.UpHostStatus}
+	}
+
+	filter := bson.M{
+		IdKey:     bson.M{"$gte": id},
+		StatusKey: statusMatch,
+	}
+
+	if user != "" {
+		filter[StartedByKey] = user
+	}
+
+	var query db.Q
+	hosts, err := Find(query.Filter(filter).Sort([]string{IdKey}).Limit(limit))
+	if err != nil {
+		return nil, errors.Wrap(err, "Error querying database")
+	}
+	return hosts, nil
+}
+
+func FindHostsInRange(createdBefore, createdAfter time.Time, user, distroID, status string, userSpawned bool) ([]Host, error) {
 	var statusMatch interface{}
 	if status != "" {
 		statusMatch = status
@@ -970,7 +995,7 @@ func FindHostsInRange(createdBefore, createdAfter time.Time, user, distroID, sta
 	}
 
 	var query db.Q
-	hosts, err := Find(query.Filter(filter).Sort([]string{IdKey}).Limit(limit))
+	hosts, err := Find(query.Filter(filter))
 	if err != nil {
 		return nil, errors.Wrap(err, "Error querying database")
 	}

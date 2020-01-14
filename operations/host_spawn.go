@@ -560,16 +560,11 @@ func hostList() cli.Command {
 				Name:  mineFlagName,
 				Usage: "list hosts spawned by the current user",
 			},
-			cli.BoolFlag{
-				Name:  allFlagName,
-				Usage: "list all hosts",
-			},
 		},
-		Before: mergeBeforeFuncs(setPlainLogger, requireOnlyOneBool(mineFlagName, allFlagName)),
+		Before: setPlainLogger,
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			showMine := c.Bool(mineFlagName)
-			showAll := c.Bool(allFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -581,22 +576,15 @@ func hostList() cli.Command {
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
-			switch {
-			case showMine:
-				var hosts []*model.APIHost
-				hosts, err = client.GetHostsByUser(ctx, conf.User)
-				if err != nil {
-					return err
-				}
-				grip.Infof("%d hosts started by '%s':", len(hosts), conf.User)
-				printHosts(hosts)
-			case showAll:
-				hosts, err := client.GetHosts(ctx, model.APIHostParams{UserSpawned: true})
-				if err != nil {
-					return errors.Wrap(err, "problem printing hosts")
-				}
-				printHosts(hosts)
+			params := model.APIHostParams{
+				UserSpawned: true,
+				Mine:        showMine,
 			}
+			hosts, err := client.GetHosts(ctx, model.APIHostParams{UserSpawned: true})
+			if err != nil {
+				return errors.Wrap(err, "problem getting hosts")
+			}
+			printHosts(hosts)
 
 			return nil
 		},
@@ -649,12 +637,13 @@ func hostTerminate() cli.Command {
 
 func hostRunCommand() cli.Command {
 	const (
-		scriptFlagName    = "script"
-		pathFlagName      = "path"
-		createdBeforeFlag = "created-before"
-		createdAfterFlag  = "created-after"
-		distroFlag        = "distro"
-		userHostFlag      = "user-host"
+		scriptFlagName        = "script"
+		pathFlagName          = "path"
+		createdBeforeFlagName = "created-before"
+		createdAfterFlagName  = "created-after"
+		distroFlagName        = "distro"
+		userHostFlagName      = "user-host"
+		mineFlagName          = "mine"
 	)
 
 	return cli.Command{
@@ -662,20 +651,24 @@ func hostRunCommand() cli.Command {
 		Usage: "run a bash shell script on host(s) and print the output",
 		Flags: mergeFlagSlices(addHostFlag(), addYesFlag(
 			cli.StringFlag{
-				Name:  createdBeforeFlag,
+				Name:  createdBeforeFlagName,
 				Usage: "only run on hosts created before `TIME` in RFC3339 format",
 			},
 			cli.StringFlag{
-				Name:  createdAfterFlag,
+				Name:  createdAfterFlagName,
 				Usage: "only run on hosts created after `TIME` in RFC3339 format",
 			},
 			cli.StringFlag{
-				Name:  distroFlag,
+				Name:  distroFlagName,
 				Usage: "only run on hosts of `DISTRO`",
 			},
 			cli.BoolFlag{
-				Name:  userHostFlag,
+				Name:  userHostFlagName,
 				Usage: "only run on user hosts",
+			},
+			cli.BoolFlag{
+				Name:  mineFlagName,
+				Usage: "only run on my hosts",
 			},
 			cli.StringFlag{
 				Name:  scriptFlagName,
@@ -690,10 +683,11 @@ func hostRunCommand() cli.Command {
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			hostID := c.String(hostFlagName)
-			createdBefore := c.String(createdBeforeFlag)
-			createdAfter := c.String(createdAfterFlag)
-			distro := c.String(distroFlag)
-			userSpawned := c.Bool(userHostFlag)
+			createdBefore := c.String(createdBeforeFlagName)
+			createdAfter := c.String(createdAfterFlagName)
+			distro := c.String(distroFlagName)
+			userSpawned := c.Bool(userHostFlagName)
+			mine := c.Bool(mineFlagName)
 			script := c.String(scriptFlagName)
 			path := c.String(pathFlagName)
 			skipConfirm := c.Bool(yesFlagName)
@@ -731,6 +725,7 @@ func hostRunCommand() cli.Command {
 					CreatedAfter:  createdAfterTime,
 					Distro:        distro,
 					UserSpawned:   userSpawned,
+					Mine:          mine,
 					Status:        evergreen.HostRunning,
 				})
 				if err != nil {

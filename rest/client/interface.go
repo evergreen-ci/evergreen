@@ -137,9 +137,6 @@ type Communicator interface {
 	GetEvents(context.Context, time.Time, int) ([]interface{}, error)
 	RevertSettings(context.Context, string) error
 
-	// Host methods
-	GetHostsByUser(context.Context, string) ([]*restmodel.APIHost, error)
-
 	// Spawnhost methods
 	//
 	CreateSpawnHost(context.Context, *restmodel.HostRequestOptions) (*restmodel.APIHost, error)

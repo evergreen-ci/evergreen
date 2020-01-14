@@ -25,10 +25,24 @@ import (
 // from the Connector through interactions with the backing database.
 type DBHostConnector struct{}
 
-// FindHostsInRange uses the service layer's host type to query the backing database for
+// FindHostsById uses the service layer's host type to query the backing database for
 // the hosts.
-func (hc *DBHostConnector) FindHostsInRange(createdBefore, createdAfter time.Time, user, distro, status string, userSpawned bool, limit int) ([]host.Host, error) {
-	hostRes, err := host.FindHostsInRange(createdBefore, createdAfter, user, distro, status, userSpawned, limit)
+func (hc *DBHostConnector) FindHostsById(id, status, user string, limit int) ([]host.Host, error) {
+	hostRes, err := host.GetHostsByFromIDWithStatus(id, status, user, limit)
+	if err != nil {
+		return nil, err
+	}
+	if len(hostRes) == 0 {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    "no hosts found",
+		}
+	}
+	return hostRes, nil
+}
+
+func (hc *DBHostConnector) FindHostsInRange(createdBefore, createdAfter time.Time, user, distro, status string, userSpawned bool) ([]host.Host, error) {
+	hostRes, err := host.FindHostsInRange(createdBefore, createdAfter, user, distro, status, userSpawned)
 	if err != nil {
 		return nil, err
 	}
@@ -159,8 +173,47 @@ type MockHostConnector struct {
 	CachedVolumes []host.Volume
 }
 
+// FindHostsById searches the mock hosts slice for hosts and returns them
+func (hc *MockHostConnector) FindHostsById(id, status, user string, limit int) ([]host.Host, error) {
+	if id != "" && user == "" && status == "" {
+		return hc.FindHostsByIdOnly(id, status, user, limit)
+	}
+
+	var hostsToReturn []host.Host
+	for ix := range hc.CachedHosts {
+		h := hc.CachedHosts[ix]
+		if id != "" {
+			continue
+		}
+		if user != "" && h.StartedBy != user {
+			continue
+		}
+		if status != "" {
+			if h.Status != status {
+				continue
+			}
+		} else {
+			statusFound := false
+			for _, status := range evergreen.UpHostStatus {
+				if h.Status == status {
+					statusFound = true
+				}
+			}
+			if !statusFound {
+				continue
+			}
+		}
+
+		hostsToReturn = append(hostsToReturn, h)
+		if len(hostsToReturn) >= limit {
+			return hostsToReturn, nil
+		}
+	}
+	return hostsToReturn, nil
+}
+
 // FindHostsInRange searches the mock hosts slice for hosts and returns them
-func (hc *MockHostConnector) FindHostsInRange(createdBefore, createdAfter time.Time, user, distro, status string, userSpawned bool, limit int) ([]host.Host, error) {
+func (hc *MockHostConnector) FindHostsInRange(createdBefore, createdAfter time.Time, user, distro, status string, userSpawned bool) ([]host.Host, error) {
 	var hostsToReturn []host.Host
 	for ix := range hc.CachedHosts {
 		h := hc.CachedHosts[ix]
@@ -194,9 +247,6 @@ func (hc *MockHostConnector) FindHostsInRange(createdBefore, createdAfter time.T
 		}
 
 		hostsToReturn = append(hostsToReturn, h)
-		if len(hostsToReturn) >= limit {
-			return hostsToReturn, nil
-		}
 	}
 	return hostsToReturn, nil
 }

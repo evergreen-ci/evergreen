@@ -343,21 +343,6 @@ func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData) (*patchmodel.Patch
 	return patch, nil
 }
 
-// GetHostsByUser will return an array with a single mock host
-func (c *Mock) GetHostsByUser(ctx context.Context, user string) ([]*model.APIHost, error) {
-	hosts := make([]*model.APIHost, 1)
-	spawnRequest := &model.HostRequestOptions{
-		DistroID:     "mock_distro",
-		KeyName:      "mock_key",
-		UserData:     "",
-		InstanceTags: nil,
-		InstanceType: "mock_type",
-	}
-	host, _ := c.CreateSpawnHost(ctx, spawnRequest)
-	hosts = append(hosts, host)
-	return hosts, nil
-}
-
 // CreateSpawnHost will return a mock host that would have been intended
 func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostRequestOptions) (*model.APIHost, error) {
 	mockHost := &model.APIHost{
