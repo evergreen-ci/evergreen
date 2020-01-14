@@ -204,14 +204,13 @@ func (unit *Unit) RankValue() int64 {
 
 		if !t.ActivatedTime.IsZero() {
 			timeInQueue += time.Since(t.ActivatedTime)
-		} else {
+		} else if !t.IngestTime.IsZero() {
 			timeInQueue += time.Since(t.IngestTime)
 		}
 
 		totalPriority += t.Priority
 		expectedRuntime += t.FetchExpectedDuration().Average
 		numDeps += int64(t.NumDependents)
-
 	}
 
 	length := int64(len(unit.tasks))
