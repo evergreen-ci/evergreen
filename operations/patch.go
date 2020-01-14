@@ -156,23 +156,24 @@ func PatchFile() cli.Command {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
 
-			if ref, err = params.validatePatchCommand(ctx, conf, ac, comm); err != nil {
+			ref, err := params.validatePatchCommand(ctx, conf, ac, comm)
+			if err != nil {
 				return err
 			}
 			var featureBranch string
-			if ref == "" {
+			if params.Ref == "" {
 				featureBranch = "HEAD"
 			} else {
-				featureBranch = ref
+				featureBranch = params.Ref
 			}
-			mergeBase, err := gitMergeBase(ref.branch+"@{upstream}", featureBranch)
+			mergeBase, err := gitMergeBase(ref.Branch+"@{upstream}", featureBranch)
 
 			fullPatch, err := ioutil.ReadFile(diffPath)
 			if err != nil {
 				return errors.Wrap(err, "problem reading diff file")
 			}
 
-			diffData := &localDiff{string(fullPatch), "", "", base}
+			diffData := &localDiff{string(fullPatch), "", "", mergeBase}
 
 			_, err = params.createPatch(ac, conf, diffData)
 			return err
