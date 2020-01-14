@@ -312,7 +312,6 @@ func RequiresProjectPermission(permission string, level evergreen.PermissionLeve
 		grip.Critical(message.WrapError(err, message.Fields{
 			"message": "unable to get default roles",
 		}))
-		return nil
 	}
 
 	opts := gimlet.RequiresPermissionMiddlewareOpts{
@@ -335,7 +334,6 @@ func RequiresDistroPermission(permission string, level evergreen.PermissionLevel
 		grip.Critical(message.WrapError(err, message.Fields{
 			"message": "unable to get default roles",
 		}))
-		return nil
 	}
 
 	opts := gimlet.RequiresPermissionMiddlewareOpts{
@@ -358,7 +356,6 @@ func RequiresSuperUserPermission(permission string, level evergreen.PermissionLe
 		grip.Critical(message.WrapError(err, message.Fields{
 			"message": "unable to get default roles",
 		}))
-		return nil
 	}
 
 	opts := gimlet.RequiresPermissionMiddlewareOpts{
