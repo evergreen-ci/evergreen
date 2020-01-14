@@ -115,7 +115,7 @@ func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request
 		if d.SpawnAllowed {
 			distroList = append(distroList, map[string]interface{}{
 				"name":          d.Id,
-				"mount_allowed": d.MountScript != "",
+				"mount_allowed": d.MountCommand != "",
 			})
 		}
 	}
@@ -134,7 +134,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		UserData       string     `json:"userdata"`
 		UseTaskConfig  bool       `json:"use_task_config"`
 		AttachVolume   bool       `json:"attach_volume"`
-		HomeVolumeSize int        `json:"home_volume_size"`
+		HomeVolumeGB int        `json:"home_volume_gb"`
 		InstanceTags   []host.Tag `json:"instance_tags"`
 		InstanceType   string     `json:"instance_type"`
 	}{}
@@ -162,7 +162,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		InstanceTags:   putParams.InstanceTags,
 		InstanceType:   putParams.InstanceType,
 		AttachVolume:   putParams.AttachVolume,
-		HomeVolumeSize: putParams.HomeVolumeSize,
+		HomeVolumeGB: putParams.HomeVolumeGB,
 	}
 	spawnHost, err := hc.NewIntentHost(options, authedUser)
 

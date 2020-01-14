@@ -16,8 +16,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const DeviceNamePlaceholder = "${device_name}"
-
 type Distro struct {
 	Id                    string                  `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
 	Aliases               []string                `bson:"aliases,omitempty" json:"aliases,omitempty" mapstructure:"aliases,omitempty"`
@@ -44,7 +42,7 @@ type Distro struct {
 	DisableShallowClone   bool                    `bson:"disable_shallow_clone" json:"disable_shallow_clone" mapstructure:"disable_shallow_clone"`
 	UseLegacyAgent        bool                    `bson:"use_legacy_agent" json:"use_legacy_agent" mapstructure:"use_legacy_agent"`
 	Note                  string                  `bson:"note" json:"note" mapstructure:"note"`
-	MountScript           string                  `bson:"mount_script" json:"mount_script" mapstructure:"mount_script"`
+	MountCommand          string                  `bson:"mount_command" json:"mount_command" mapstructure:"mount_command"`
 }
 
 // BootstrapSettings encapsulates all settings related to bootstrapping hosts.

@@ -68,7 +68,7 @@
       <input type="checkbox" ng-model="$parent.attach_volume"> Mount a volume on user's home directory </input>
       <div ng-show="$parent.attach_volume">
         <label> Volume size (GB) </label>
-        <input type="number" ng-model="$parent.home_volume_size" min="1" max="100"></input>
+        <input type="number" ng-model="$parent.home_volume_gb" min="1" max="10000"></input>
       </div>
     </div>
     <div id="userData" style="padding-bottom:5px;">

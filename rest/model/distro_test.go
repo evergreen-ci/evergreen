@@ -24,7 +24,7 @@ func TestDistroBuildFromService(t *testing.T) {
 			ShellPath:             "/shell_path",
 		},
 		Note:        "note1",
-		MountScript: "mount /dev/sdg /home/ubuntu",
+		MountCommand: "mount /dev/sdg /home/ubuntu",
 	}
 	apiDistro := &APIDistro{}
 	err := apiDistro.BuildFromService(d)
@@ -38,7 +38,7 @@ func TestDistroBuildFromService(t *testing.T) {
 	assert.Equal(t, d.BootstrapSettings.ServiceUser, FromAPIString(apiDistro.BootstrapSettings.ServiceUser))
 	assert.Equal(t, d.BootstrapSettings.ShellPath, FromAPIString(apiDistro.BootstrapSettings.ShellPath))
 	assert.Equal(t, d.Note, FromAPIString(apiDistro.Note))
-	assert.Equal(t, d.MountScript, FromAPIString(apiDistro.MountScript))
+	assert.Equal(t, d.MountCommand, FromAPIString(apiDistro.MountCommand))
 }
 
 func TestDistroBuildFromServiceDefaults(t *testing.T) {
@@ -75,7 +75,7 @@ func TestDistroToService(t *testing.T) {
 			},
 		},
 		Note:        ToAPIString("note1"),
-		MountScript: ToAPIString("mount /dev/sdg /home/ubuntu"),
+		MountCommand: ToAPIString("mount /dev/sdg /home/ubuntu"),
 	}
 
 	res, err := apiDistro.ToService()
@@ -98,7 +98,7 @@ func TestDistroToService(t *testing.T) {
 	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.LockedMemoryKB, d.BootstrapSettings.ResourceLimits.LockedMemoryKB)
 	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.VirtualMemoryKB, d.BootstrapSettings.ResourceLimits.VirtualMemoryKB)
 	assert.Equal(t, apiDistro.Note, ToAPIString(d.Note))
-	assert.Equal(t, apiDistro.MountScript, ToAPIString(d.MountScript))
+	assert.Equal(t, apiDistro.MountCommand, ToAPIString(d.MountCommand))
 }
 
 func TestDistroToServiceDefaults(t *testing.T) {

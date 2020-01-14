@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/google/shlex"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -208,7 +209,7 @@ func (j *setupHostJob) attachVolume(ctx context.Context) error {
 
 	// create the volume
 	volume, err := cloudMgr.CreateVolume(ctx, &host.Volume{
-		Size:             j.host.HomeVolumeSize,
+		Size:             j.host.HomeVolumeGB,
 		AvailabilityZone: j.host.Zone,
 		CreatedBy:        j.host.StartedBy,
 		Type:             evergreen.DefaultEBSType,
@@ -228,12 +229,16 @@ func (j *setupHostJob) attachVolume(ctx context.Context) error {
 	}
 
 	// run the distro's mount script
-	mountCommand := strings.Replace(j.host.Distro.MountScript, distro.DeviceNamePlaceholder, attachment.DeviceName, -1)
+	mountCommand := strings.Replace(j.host.Distro.MountCommand, evergreen.DeviceNamePlaceholder, attachment.DeviceName, -1)
 	if j.host.JasperCommunication() {
-		opts := &options.Create{
-			Args: []string{"bash", "-l", "-c", mountCommand},
+		args, err := shlex.Split(mountCommand)
+		if err != nil {
+			return errors.Wrap(err, "can't split mount command")
 		}
-		_, err := j.host.RunJasperProcess(ctx, j.env, opts)
+		opts := &options.Create{
+			Args: args,
+		}
+		_, err = j.host.RunJasperProcess(ctx, j.env, opts)
 		if err != nil {
 			return errors.Wrap(err, "can't run mount command with Jasper")
 		}
@@ -243,7 +248,7 @@ func (j *setupHostJob) attachVolume(ctx context.Context) error {
 		if err != nil {
 			return errors.Wrap(err, "can't get ssh options")
 		}
-		_, err = j.host.RunSSHShellScript(ctx, mountCommand, sshOptions)
+		_, err = j.host.RunSSHCommand(ctx, mountCommand, sshOptions)
 		if err != nil {
 			return errors.Wrap(err, "can't run mount command over ssh")
 		}

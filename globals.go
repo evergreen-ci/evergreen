@@ -155,6 +155,7 @@ const (
 	PowerShellSetupScriptName     = "setup.ps1"
 	PowerShellTempSetupScriptName = "setup-temp.ps1"
 	TeardownScriptName            = "teardown.sh"
+	DeviceNamePlaceholder         = "${device_name}"
 
 	RoutePaginatorNextPageHeaderKey = "Link"
 
