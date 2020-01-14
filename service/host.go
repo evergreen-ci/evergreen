@@ -212,14 +212,30 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 	// determine what action needs to be taken
 	switch opts.Action {
 	case "updateStatus":
+		hostsUpdated := 0
+		var permissions map[string]gimlet.Permissions
+		if evergreen.AclCheckingIsEnabled {
+			rm := evergreen.GetEnvironment().RoleManager()
+			permissions, err = rolemanager.HighestPermissionsForRolesAndResourceType(user.Roles(), evergreen.DistroResourceType, rm)
+			if err != nil {
+				http.Error(w, "Unable to get permissions", http.StatusInternalServerError)
+				return
+			}
+		}
 		for _, h := range hosts {
+			if evergreen.AclCheckingIsEnabled {
+				if permissions[h.Distro.Id][evergreen.PermissionHosts] < evergreen.HostsEdit.Value {
+					continue
+				}
+			}
 			_, err := modifyHostStatus(evergreen.GetEnvironment().RemoteQueue(), &h, opts, user)
 			if err != nil {
 				gimlet.WriteResponse(w, gimlet.MakeTextErrorResponder(err))
 				return
 			}
+			hostsUpdated++
 		}
-		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("%d hosts will be updated to '%s'", len(hosts), opts.Status)))
+		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("%d hosts will be updated to '%s'", hostsUpdated, opts.Status)))
 		return
 	default:
 		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Unrecognized action: %v", opts.Action))
