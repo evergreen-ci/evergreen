@@ -396,6 +396,9 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	if err != nil {
 		return errors.Wrap(err, "can't get commit count")
 	}
+	if commitCount == 0 {
+		return errors.New("No commits for module")
+	}
 	if commitCount > 1 && !confirm("Commit queue patch has multiple commits. Continue? (y/n):", false) {
 		return errors.New("patch aborted")
 	}
