@@ -1,5 +1,6 @@
 type Query {
   userPatches(userId: String!): [Patch]!
+  task(taskId: String!): [Task]!
 }
 
 type Patch {
@@ -30,6 +31,69 @@ type StatusDetails {
   status: String!
   type: String!
   desc: String!
+}
+type Task {
+  id: String!
+  secret: String!
+  createTime: Time
+  ingestTime: Time
+  dispatchTime: Time
+  scheduledTime: Time
+  startTime: Time
+  finishTime: Time
+  activatedTime: Time
+
+  version: String
+  project: String
+  revision: String
+  priority: Float
+  taskGroup: String
+  taskGroupMaxHosts: Int
+  taskGroupOrder: Int
+  logs: TaskLogs
+  lastHeartbeat: Time
+  activated: Boolean
+  activatedBy: String
+  buildId: String
+  distroId: String
+  buildVariant: String
+  dependsOn: [Dependency]
+  numDependents: Int
+  overrideDependencies: Boolean
+  distroAliases: [String]
+  displayName: String
+  tags: [String]
+  hostId: String
+  restarts: Int
+  execution: Int
+  oldTaskId: String
+  archived: Boolean
+  revisionOrderNumber: Int
+  requester: String
+  status: String
+  details: TaskEndDetail
+  aborted: Boolean
+  timeTaken: Duration
+
+  expectedDuration: Duration
+  expectedDurationStdDev: Duration
+  durationPrediction: CachedDurationValue
+  cost: float64
+  spawnedHostCost: float64
+  localTestResults: [TestResult]
+  displayOnly: Boolean
+  executionTasks: [String]
+  resetWhenFinished: Boolean
+  DisplayTask: Task
+  generateTask: Boolean
+  generatedTasks: Boolean
+  generatedBy: String
+  generatedJSON: RawMessage
+  generateTasksError: String
+  triggerID: String
+  triggerType: String
+  triggerEvent: String
+  commitQueueMerge: Boolean
 }
 
 scalar Time
