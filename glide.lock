@@ -46,6 +46,9 @@ imports:
   - name: github.com/stretchr/testify
     version: 890a5c3458b43e6104ff5da8dfa139d013d77544
 
+  - name: github.com/sam-falvo/mbox
+    version: 766c02448eff8a6c8397ed1553677fd17af4ba69
+
   - name: github.com/jacobsa/oglematchers
     version: 4fc24f97b5b74022c2a3f4ca7eed57ca29083d3e
   - name: github.com/jtolds/gls
