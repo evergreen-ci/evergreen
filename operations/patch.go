@@ -167,6 +167,9 @@ func PatchFile() cli.Command {
 				featureBranch = params.Ref
 			}
 			mergeBase, err := gitMergeBase(ref.Branch+"@{upstream}", featureBranch)
+			if err != nil {
+				return err
+			}
 
 			fullPatch, err := ioutil.ReadFile(diffPath)
 			if err != nil {
