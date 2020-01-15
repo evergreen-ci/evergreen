@@ -316,10 +316,10 @@ func getLimit(vals url.Values) (int, error) {
 
 ////////////////////////////////////////////////////////////////////////
 //
-// GET /hosts/range
+// GET /host/range
 
 func makeFetchHostRange(sc data.Connector) gimlet.RouteHandler {
-	return &hostGetHandler{
+	return &hostRangeGetHandler{
 		sc: sc,
 	}
 }
@@ -336,7 +336,7 @@ type hostRangeGetHandler struct {
 }
 
 func (h *hostRangeGetHandler) Factory() gimlet.RouteHandler {
-	return &hostGetHandler{
+	return &hostRangeGetHandler{
 		sc: h.sc,
 	}
 }

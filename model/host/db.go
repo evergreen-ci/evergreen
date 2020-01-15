@@ -994,8 +994,7 @@ func FindHostsInRange(createdBefore, createdAfter time.Time, user, distroID, sta
 		filter[UserHostKey] = true
 	}
 
-	var query db.Q
-	hosts, err := Find(query.Filter(filter))
+	hosts, err := Find(db.Query(filter))
 	if err != nil {
 		return nil, errors.Wrap(err, "Error querying database")
 	}

@@ -580,7 +580,7 @@ func hostList() cli.Command {
 				UserSpawned: true,
 				Mine:        showMine,
 			}
-			hosts, err := client.GetHosts(ctx, model.APIHostParams{UserSpawned: true})
+			hosts, err := client.GetHosts(ctx, params)
 			if err != nil {
 				return errors.Wrap(err, "problem getting hosts")
 			}

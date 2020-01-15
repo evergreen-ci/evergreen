@@ -398,7 +398,7 @@ func (c *communicatorImpl) ExtendSpawnHostExpiration(ctx context.Context, hostID
 func (c *communicatorImpl) GetHosts(ctx context.Context, data model.APIHostParams) ([]*model.APIHost, error) {
 	info := requestInfo{
 		method:  get,
-		path:    "hosts/range",
+		path:    "host/range",
 		version: apiVersion2,
 	}
 
@@ -417,7 +417,7 @@ func (c *communicatorImpl) GetHosts(ctx context.Context, data model.APIHostParam
 	}
 
 	hosts := []*model.APIHost{}
-	if err = util.ReadJSONInto(resp.Body, hosts); err != nil {
+	if err = util.ReadJSONInto(resp.Body, &hosts); err != nil {
 		return nil, errors.Wrap(err, "can't read response as APIHost slice")
 	}
 	return hosts, nil
@@ -1129,7 +1129,7 @@ func (c *communicatorImpl) RunHostScript(ctx context.Context, hostIDs []string, 
 	info := requestInfo{
 		method:  post,
 		version: apiVersion2,
-		path:    "/hosts/run_script",
+		path:    "/host/run_script",
 	}
 
 	data := model.APIHostScript{Hosts: hostIDs, Script: script}
