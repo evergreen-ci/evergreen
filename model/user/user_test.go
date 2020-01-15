@@ -524,40 +524,33 @@ func (s *UserTestSuite) TestHasPermission() {
 	u := s.users[0]
 
 	// no roles - no permission
-	hasPermission, err := u.HasPermission(gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 1})
-	s.NoError(err)
+	hasPermission := u.HasPermission(gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 1})
 	s.False(hasPermission)
 
 	// has a role with explicit permission to the resource
 	s.NoError(u.AddRole("r1p1"))
-	hasPermission, err = u.HasPermission(gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 1})
-	s.NoError(err)
+	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 1})
 	s.True(hasPermission)
-	hasPermission, err = u.HasPermission(gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 0})
-	s.NoError(err)
+	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 0})
 	s.True(hasPermission)
 
 	// role with insufficient permission but the right resource
-	hasPermission, err = u.HasPermission(gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 2})
-	s.NoError(err)
+	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 2})
 	s.False(hasPermission)
 
 	// role with a parent scope
 	s.NoError(u.AddRole("r12p1"))
-	hasPermission, err = u.HasPermission(gimlet.PermissionOpts{Resource: "resource2", Permission: "permission", RequiredLevel: 1})
-	s.NoError(err)
+	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource2", Permission: "permission", RequiredLevel: 1})
 	s.True(hasPermission)
 
 	// role with no permission to the specified resource
-	hasPermission, err = u.HasPermission(gimlet.PermissionOpts{Resource: "resource4", Permission: "permission", RequiredLevel: 1})
-	s.NoError(err)
+	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource4", Permission: "permission", RequiredLevel: 1})
 	s.False(hasPermission)
 
 	// permission to everything
 	s.NoError(u.RemoveRole("r1p1"))
 	s.NoError(u.RemoveRole("r12p1"))
 	s.NoError(u.AddRole("r1234p2"))
-	hasPermission, err = u.HasPermission(gimlet.PermissionOpts{Resource: "resource4", Permission: "permission", RequiredLevel: 2})
-	s.NoError(err)
+	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource4", Permission: "permission", RequiredLevel: 2})
 	s.True(hasPermission)
 }

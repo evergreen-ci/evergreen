@@ -503,7 +503,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	checkUser := gimlet.NewRequireAuthHandler()
 	checkTask := gimlet.WrapperMiddleware(as.checkTask)
 	checkHost := gimlet.WrapperMiddleware(as.checkHost)
-	viewTasks := &route.RequiresProjectViewPermission{}
+	viewTasks := route.RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksView)
 	submitPatch := route.RequiresProjectPermission(evergreen.PermissionPatches, evergreen.PatchSubmit)
 
 	app := gimlet.NewApp()

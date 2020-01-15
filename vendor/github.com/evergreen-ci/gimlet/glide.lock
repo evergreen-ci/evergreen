@@ -23,3 +23,11 @@ imports:
   version: db0fe48135e83b5812a5a31be0eea66984b1b521
 - name: go.mongodb.org/mongo-driver
   version: 0622dc2fbb426411e5ee2675962ca80811bb2c37
+
+# Okta verifier and packages
+- name: github.com/okta/okta-jwt-verifier-golang
+  version: 04702def3e1b9b1c6b419c9c3aae1ec184a5d4b2
+- name: github.com/lestrrat-go/jwx
+  version: 5d60d87d07ddea9874404944870bec81aabcf574
+- name: github.com/patrickmn/go-cache
+  version: a3647f8e31d79543b2d0f0ae2fe5c379d72cedc0

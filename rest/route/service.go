@@ -28,7 +28,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	sc.SetSuperUsers(opts.SuperUsers)
 
 	// Middleware
-	superUser := gimlet.NewRestrictAccessToUsers(sc.GetSuperUsers())
+	superUser := gimlet.NewRestrictAccessToUsers(sc.GetSuperUsers()) //TODO: remove
 	checkUser := gimlet.NewRequireAuthHandler()
 	checkTask := NewTaskAuthMiddleware(sc)
 	addProject := NewProjectContextMiddleware(sc)
@@ -37,7 +37,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	adminSettings := RequiresSuperUserPermission(evergreen.PermissionAdminSettings, evergreen.AdminSettingsEdit)
 	createProject := RequiresSuperUserPermission(evergreen.PermissionProjectCreate, evergreen.ProjectCreate)
 	createDistro := RequiresSuperUserPermission(evergreen.PermissionDistroCreate, evergreen.DistroCreate)
-	viewTasks := &RequiresProjectViewPermission{}
+	viewTasks := RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksView)
 	editTasks := RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksBasic)
 	submitPatches := RequiresProjectPermission(evergreen.PermissionPatches, evergreen.PatchSubmit)
 	viewProjectSettings := RequiresProjectPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsView)

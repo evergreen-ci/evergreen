@@ -247,7 +247,7 @@ func (s *RoleManagerSuite) TestRequiresPermissionMiddleware() {
 		permissionMiddleware.ServeHTTP(rw, r, counterFunc)
 	}
 	authenticator := gimlet.NewBasicAuthenticator(nil, nil)
-	user := gimlet.NewBasicUser("user", "name", "email", "password", "key", nil, false, s.m)
+	user := gimlet.NewBasicUser("user", "name", "email", "password", "key", "", "", nil, false, s.m)
 	um, err := gimlet.NewBasicUserManager([]gimlet.User{user}, s.m)
 	s.NoError(err)
 	authHandler := gimlet.NewAuthenticationHandler(authenticator, um)
@@ -269,7 +269,7 @@ func (s *RoleManagerSuite) TestRequiresPermissionMiddleware() {
 	s.Equal(0, counter)
 
 	// give user the right permissions
-	user = gimlet.NewBasicUser("user", "name", "email", "password", "key", []string{role1.ID}, false, s.m)
+	user = gimlet.NewBasicUser("user", "name", "email", "password", "key", "", "", []string{role1.ID}, false, s.m)
 	_, err = um.GetOrCreateUser(user)
 	s.NoError(err)
 	ctx = gimlet.AttachUser(req.Context(), user)
@@ -286,12 +286,12 @@ func (s *RoleManagerSuite) TestRequiresPermissionMiddleware() {
 	s.Equal(http.StatusUnauthorized, rw.Code)
 	s.Equal(1, counter)
 
-	// no resource found = allowed
+	// no resource found = not allowed
 	rw = httptest.NewRecorder()
 	req = mux.SetURLVars(req, map[string]string{})
 	authHandler.ServeHTTP(rw, req, checkPermission)
-	s.Equal(http.StatusOK, rw.Code)
-	s.Equal(2, counter)
+	s.Equal(http.StatusUnauthorized, rw.Code)
+	s.Equal(1, counter)
 }
 
 func (s *RoleManagerSuite) TestHighestPermissionsForRoles() {
