@@ -353,7 +353,7 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 	}
 	// With `evergreen patch-file`, a user can pass a branch name or tag instead of a hash. We
 	// must normalize this to a hash before storing the patch doc.
-	if commit.SHA != nil && patchDoc.Githash != *commit.SHA {
+	if commit != nil && commit.SHA != nil && patchDoc.Githash != *commit.SHA {
 		patchDoc.Githash = *commit.SHA
 	}
 

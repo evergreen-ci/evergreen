@@ -266,7 +266,7 @@ func GetCommitEvent(ctx context.Context, oauthToken, repoOwner, repo, githash st
 		"query":     githash,
 		"repo":      repoOwner + "/" + repo,
 	}
-	if commit != nil {
+	if commit != nil && commit.SHA != nil {
 		msg["commit"] = *commit.SHA
 	}
 	grip.Debug(msg)
