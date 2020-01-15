@@ -263,7 +263,8 @@ func GetCommitEvent(ctx context.Context, oauthToken, repoOwner, repo, githash st
 		"operation": "github api query",
 		"size":      resp.ContentLength,
 		"status":    resp.Status,
-		"commit":    githash,
+		"query":     githash,
+		"commit":    commit,
 		"repo":      repoOwner + "/" + repo,
 	})
 
