@@ -28,22 +28,25 @@ Evergreen - Patches
       Error loading data from server: [[patchesError]]
     </div>
 
-    <div  ng-if="patches.length > 0"
-          class="btn-group btn-group-sm pagination-fixed">
-      <span ng-if="currentPage > 0">
-        <a  class="btn btn-default"
-            style="cursor: pointer"
-            ng-click="previousPage()">
-          Newer
-        </a>
-      </span>
-      <span>
-        <a  class="btn btn-default"
-            style="cursor: pointer"
-            ng-click="nextPage()">
-          Older
-        </a>
-      </span>
+    <div class="form-inline" ng-if="patches.length > 0">
+      <div class="btn-group btn-group-sm header-pagination">
+        <input type="checkbox" id="queue" ng-model="filterCommitQueue" ng-change="toggleFilter()">
+        <label for="queue" style="font-weight:normal;margin-right: 10px;">Filter Commit Queue</label>
+        <span ng-if="currentPage > 0">
+          <a  class="btn btn-default"
+              style="cursor: pointer"
+              ng-click="previousPage()">
+            Newer
+          </a>
+        </span>
+        <span>
+          <a  class="btn btn-default"
+              style="cursor: pointer"
+              ng-click="nextPage()">
+            Older
+          </a>
+        </span>
+      </div>
     </div>
   </header>
 
