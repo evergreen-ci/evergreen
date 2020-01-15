@@ -213,7 +213,7 @@ func (p *patchesByUserHandler) Run(ctx context.Context) gimlet.Responder {
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
 				BaseURL:         p.sc.GetURL(),
-				Key:             model.NewTime(patches[p.limit].CreateTime).String(),
+				Key:             patches[p.limit].CreateTime.Format(model.APITimeFormat),
 				Limit:           p.limit,
 			},
 		})
@@ -320,7 +320,7 @@ func (p *patchesByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
 				BaseURL:         p.sc.GetURL(),
-				Key:             model.NewTime(patches[p.limit].CreateTime).String(),
+				Key:             patches[p.limit].CreateTime.Format(model.APITimeFormat),
 				Limit:           p.limit,
 			},
 		})

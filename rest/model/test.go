@@ -16,8 +16,8 @@ type APITest struct {
 	TestFile  *string `json:"test_file"`
 	Logs      TestLogs  `json:"logs"`
 	ExitCode  int       `json:"exit_code"`
-	StartTime APITime   `json:"start_time"`
-	EndTime   APITime   `json:"end_time"`
+	StartTime time.Time   `json:"start_time"`
+	EndTime   time.Time   `json:"end_time"`
 }
 
 // TestLogs is a struct for storing the information about logs that will
@@ -39,8 +39,8 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		startTime := util.FromPythonTime(v.StartTime)
 		endTime := util.FromPythonTime(v.EndTime)
 
-		at.StartTime = NewTime(startTime)
-		at.EndTime = NewTime(endTime)
+		at.StartTime = startTime
+		at.EndTime = endTime
 
 		at.Logs = TestLogs{
 			URL:     ToStringPtr(v.URL),

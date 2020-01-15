@@ -45,7 +45,7 @@ type DistroInfo struct {
 type taskInfo struct {
 	Id           *string `json:"task_id"`
 	Name         *string `json:"name"`
-	DispatchTime APITime   `json:"dispatch_time"`
+	DispatchTime time.Time   `json:"dispatch_time"`
 	VersionId    *string `json:"version_id"`
 	BuildId      *string `json:"build_id"`
 }
@@ -71,7 +71,7 @@ func getTaskInfo(t *task.Task) taskInfo {
 	return taskInfo{
 		Id:           ToStringPtr(t.Id),
 		Name:         ToStringPtr(t.DisplayName),
-		DispatchTime: NewTime(t.DispatchTime),
+		DispatchTime: t.DispatchTime,
 		VersionId:    ToStringPtr(t.Version),
 		BuildId:      ToStringPtr(t.BuildId),
 	}

@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -652,8 +653,8 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						StartTime: model.NewTime(time.Unix(0, 0)),
-						EndTime:   model.NewTime(time.Unix(0, 0)),
+						StartTime: time.Unix(0, 0),
+						EndTime:   time.Unix(0, 0),
 						Status:    model.ToStringPtr(status),
 						TaskId:    model.ToStringPtr(""),
 						TestFile:  model.ToStringPtr(""),
@@ -695,8 +696,8 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						StartTime: model.NewTime(time.Unix(0, 0)),
-						EndTime:   model.NewTime(time.Unix(0, 0)),
+						StartTime: time.Unix(0, 0),
+						EndTime:   time.Unix(0, 0),
 						Status:    model.ToStringPtr(status),
 						TaskId:    model.ToStringPtr(""),
 						TestFile:  model.ToStringPtr(""),
@@ -738,8 +739,8 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						StartTime: model.NewTime(time.Unix(0, 0)),
-						EndTime:   model.NewTime(time.Unix(0, 0)),
+						StartTime: time.Unix(0, 0),
+						EndTime:   time.Unix(0, 0),
 						Status:    model.ToStringPtr(status),
 						TaskId:    model.ToStringPtr(""),
 						TestFile:  model.ToStringPtr(""),
@@ -781,8 +782,8 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						StartTime: model.NewTime(time.Unix(0, 0)),
-						EndTime:   model.NewTime(time.Unix(0, 0)),
+						StartTime: time.Unix(0, 0),
+						EndTime:   time.Unix(0, 0),
 						Status:    model.ToStringPtr(status),
 						TaskId:    model.ToStringPtr(""),
 						TestFile:  model.ToStringPtr(""),
@@ -1115,7 +1116,7 @@ func TestTaskResetExecute(t *testing.T) {
 			resTask, ok := res.Data().(*model.APITask)
 			So(ok, ShouldBeTrue)
 			So(resTask.Activated, ShouldBeTrue)
-			So(resTask.DispatchTime, ShouldResemble, model.APIZeroTime)
+			So(resTask.DispatchTime, ShouldResemble, util.ZeroTime)
 			dbTask, err := sc.FindTaskById("testTaskId")
 			So(err, ShouldBeNil)
 			So(dbTask.Secret, ShouldNotResemble, "initialSecret")

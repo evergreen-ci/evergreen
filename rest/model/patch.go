@@ -1,6 +1,8 @@
 package model
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -18,9 +20,9 @@ type APIPatch struct {
 	Author          *string       `json:"author"`
 	Version         *string       `json:"version"`
 	Status          *string       `json:"status"`
-	CreateTime      APITime       `json:"create_time"`
-	StartTime       APITime       `json:"start_time"`
-	FinishTime      APITime       `json:"finish_time"`
+	CreateTime      time.Time     `json:"create_time"`
+	StartTime       time.Time     `json:"start_time"`
+	FinishTime      time.Time     `json:"finish_time"`
 	Variants        []*string     `json:"builds"`
 	Tasks           []*string     `json:"tasks"`
 	VariantsTasks   []variantTask `json:"variants_tasks"`
@@ -48,9 +50,9 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	apiPatch.Author = ToStringPtr(v.Author)
 	apiPatch.Version = ToStringPtr(v.Version)
 	apiPatch.Status = ToStringPtr(v.Status)
-	apiPatch.CreateTime = NewTime(v.CreateTime)
-	apiPatch.StartTime = NewTime(v.StartTime)
-	apiPatch.FinishTime = NewTime(v.FinishTime)
+	apiPatch.CreateTime = v.CreateTime
+	apiPatch.StartTime = v.StartTime
+	apiPatch.FinishTime = v.FinishTime
 	builds := make([]*string, 0)
 	for _, b := range v.BuildVariants {
 		builds = append(builds, ToStringPtr(b))
@@ -94,11 +96,11 @@ func (apiPatch *APIPatch) ToService() (interface{}, error) {
 	res.Status = FromStringPtr(apiPatch.Status)
 	res.Alias = FromStringPtr(apiPatch.Alias)
 	res.Activated = apiPatch.Activated
-	res.CreateTime, err = ParseTime(apiPatch.CreateTime.String())
+	res.CreateTime, err = ParseTime(apiPatch.CreateTime.Format(APITimeFormat))
 	catcher.Add(err)
-	res.StartTime, err = ParseTime(apiPatch.StartTime.String())
+	res.StartTime, err = ParseTime(apiPatch.StartTime.Format(APITimeFormat))
 	catcher.Add(err)
-	res.FinishTime, err = ParseTime(apiPatch.FinishTime.String())
+	res.FinishTime, err = ParseTime(apiPatch.FinishTime.Format(APITimeFormat))
 	catcher.Add(err)
 
 	builds := make([]string, len(apiPatch.Variants))

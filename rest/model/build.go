@@ -20,27 +20,27 @@ var (
 
 // APIBuild is the model to be returned by the API whenever builds are fetched.
 type APIBuild struct {
-	Id                  *string      `json:"_id"`
-	ProjectId           *string      `json:"project_id"`
-	CreateTime          APITime        `json:"create_time"`
-	StartTime           APITime        `json:"start_time"`
-	FinishTime          APITime        `json:"finish_time"`
-	Version             *string      `json:"version"`
-	Revision            *string      `json:"git_hash"`
-	BuildVariant        *string      `json:"build_variant"`
-	Status              *string      `json:"status"`
+	Id                  *string        `json:"_id"`
+	ProjectId           *string        `json:"project_id"`
+	CreateTime          time.Time      `json:"create_time"`
+	StartTime           time.Time      `json:"start_time"`
+	FinishTime          time.Time      `json:"finish_time"`
+	Version             *string        `json:"version"`
+	Revision            *string        `json:"git_hash"`
+	BuildVariant        *string        `json:"build_variant"`
+	Status              *string        `json:"status"`
 	Activated           bool           `json:"activated"`
-	ActivatedBy         *string      `json:"activated_by"`
-	ActivatedTime       APITime        `json:"activated_time"`
+	ActivatedBy         *string        `json:"activated_by"`
+	ActivatedTime       time.Time      `json:"activated_time"`
 	RevisionOrderNumber int            `json:"order"`
 	TaskCache           []APITaskCache `json:"task_cache"`
 	// Tasks is the build's task cache with just the names
 	Tasks             []string             `json:"tasks"`
 	TimeTaken         APIDuration          `json:"time_taken_ms"`
-	DisplayName       *string            `json:"display_name"`
+	DisplayName       *string              `json:"display_name"`
 	PredictedMakespan APIDuration          `json:"predicted_makespan_ms"`
 	ActualMakespan    APIDuration          `json:"actual_makespan_ms"`
-	Origin            *string            `json:"origin"`
+	Origin            *string              `json:"origin"`
 	StatusCounts      task.TaskStatusCount `json:"status_counts"`
 }
 
@@ -52,16 +52,16 @@ func (apiBuild *APIBuild) BuildFromService(h interface{}) error {
 		return fmt.Errorf("incorrect type when fetching converting build type")
 	}
 	apiBuild.Id = ToStringPtr(v.Id)
-	apiBuild.CreateTime = NewTime(v.CreateTime)
-	apiBuild.StartTime = NewTime(v.StartTime)
-	apiBuild.FinishTime = NewTime(v.FinishTime)
+	apiBuild.CreateTime = v.CreateTime
+	apiBuild.StartTime = v.StartTime
+	apiBuild.FinishTime = v.FinishTime
 	apiBuild.Version = ToStringPtr(v.Version)
 	apiBuild.Revision = ToStringPtr(v.Revision)
 	apiBuild.BuildVariant = ToStringPtr(v.BuildVariant)
 	apiBuild.Status = ToStringPtr(v.Status)
 	apiBuild.Activated = v.Activated
 	apiBuild.ActivatedBy = ToStringPtr(v.ActivatedBy)
-	apiBuild.ActivatedTime = NewTime(v.ActivatedTime)
+	apiBuild.ActivatedTime = v.ActivatedTime
 	apiBuild.RevisionOrderNumber = v.RevisionOrderNumber
 	apiBuild.ProjectId = ToStringPtr(v.Project)
 	for _, t := range v.Tasks {

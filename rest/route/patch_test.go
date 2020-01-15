@@ -133,8 +133,8 @@ func (s *PatchesByProjectSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	s.NotNil(payload)
 
 	s.Len(payload, 2)
-	s.Equal(model.NewTime(s.now.Add(time.Second*6)), (payload[0]).(*model.APIPatch).CreateTime)
-	s.Equal(model.NewTime(s.now.Add(time.Second*4)), (payload[1]).(*model.APIPatch).CreateTime)
+	s.Equal(s.now.Add(time.Second*6), (payload[0]).(*model.APIPatch).CreateTime)
+	s.Equal(s.now.Add(time.Second*4), (payload[1]).(*model.APIPatch).CreateTime)
 
 	pages := resp.Pages()
 	s.NotNil(pages)
@@ -423,8 +423,8 @@ func (s *PatchesByUserSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	payload := resp.Data().([]interface{})
 
 	s.Len(payload, 2)
-	s.Equal(model.NewTime(s.now.Add(time.Second*6)), (payload[0]).(*model.APIPatch).CreateTime)
-	s.Equal(model.NewTime(s.now.Add(time.Second*4)), (payload[1]).(*model.APIPatch).CreateTime)
+	s.Equal(s.now.Add(time.Second*6), (payload[0]).(*model.APIPatch).CreateTime)
+	s.Equal(s.now.Add(time.Second*4), (payload[1]).(*model.APIPatch).CreateTime)
 
 	pageData := resp.Pages()
 

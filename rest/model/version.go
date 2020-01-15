@@ -1,27 +1,29 @@
 package model
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/pkg/errors"
 )
 
 // APIVersion is the model to be returned by the API whenever versions are fetched.
 type APIVersion struct {
-	Id            *string     `json:"version_id"`
-	CreateTime    APITime       `json:"create_time"`
-	StartTime     APITime       `json:"start_time"`
-	FinishTime    APITime       `json:"finish_time"`
-	Revision      *string     `json:"revision"`
+	Id            *string       `json:"version_id"`
+	CreateTime    time.Time     `json:"create_time"`
+	StartTime     time.Time     `json:"start_time"`
+	FinishTime    time.Time     `json:"finish_time"`
+	Revision      *string       `json:"revision"`
 	Order         int           `json:"order"`
-	Project       *string     `json:"project"`
-	Author        *string     `json:"author"`
-	AuthorEmail   *string     `json:"author_email"`
-	Message       *string     `json:"message"`
-	Status        *string     `json:"status"`
-	Repo          *string     `json:"repo"`
-	Branch        *string     `json:"branch"`
+	Project       *string       `json:"project"`
+	Author        *string       `json:"author"`
+	AuthorEmail   *string       `json:"author_email"`
+	Message       *string       `json:"message"`
+	Status        *string       `json:"status"`
+	Repo          *string       `json:"repo"`
+	Branch        *string       `json:"branch"`
 	BuildVariants []buildDetail `json:"build_variants_status"`
-	Requester     *string     `json:"requester"`
+	Requester     *string       `json:"requester"`
 }
 
 type buildDetail struct {
@@ -37,9 +39,9 @@ func (apiVersion *APIVersion) BuildFromService(h interface{}) error {
 	}
 
 	apiVersion.Id = ToStringPtr(v.Id)
-	apiVersion.CreateTime = NewTime(v.CreateTime)
-	apiVersion.StartTime = NewTime(v.StartTime)
-	apiVersion.FinishTime = NewTime(v.FinishTime)
+	apiVersion.CreateTime = v.CreateTime
+	apiVersion.StartTime = v.StartTime
+	apiVersion.FinishTime = v.FinishTime
 	apiVersion.Revision = ToStringPtr(v.Revision)
 	apiVersion.Author = ToStringPtr(v.Author)
 	apiVersion.AuthorEmail = ToStringPtr(v.AuthorEmail)

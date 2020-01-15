@@ -19,12 +19,12 @@ const (
 type APITask struct {
 	Id                 *string        `json:"task_id"`
 	ProjectId          *string        `json:"project_id"`
-	CreateTime         APITime          `json:"create_time"`
-	DispatchTime       APITime          `json:"dispatch_time"`
-	ScheduledTime      APITime          `json:"scheduled_time"`
-	StartTime          APITime          `json:"start_time"`
-	FinishTime         APITime          `json:"finish_time"`
-	IngestTime         APITime          `json:"ingest_time"`
+	CreateTime         time.Time          `json:"create_time"`
+	DispatchTime       time.Time          `json:"dispatch_time"`
+	ScheduledTime      time.Time          `json:"scheduled_time"`
+	StartTime          time.Time          `json:"start_time"`
+	FinishTime         time.Time          `json:"finish_time"`
+	IngestTime         time.Time          `json:"ingest_time"`
 	Version            *string        `json:"version_id"`
 	Revision           *string        `json:"revision"`
 	Priority           int64            `json:"priority"`
@@ -91,12 +91,12 @@ func (at *APITask) BuildFromService(t interface{}) error {
 		(*at) = APITask{
 			Id:            ToStringPtr(v.Id),
 			ProjectId:     ToStringPtr(v.Project),
-			CreateTime:    NewTime(v.CreateTime),
-			DispatchTime:  NewTime(v.DispatchTime),
-			ScheduledTime: NewTime(v.ScheduledTime),
-			StartTime:     NewTime(v.StartTime),
-			FinishTime:    NewTime(v.FinishTime),
-			IngestTime:    NewTime(v.IngestTime),
+			CreateTime:    v.CreateTime,
+			DispatchTime:  v.DispatchTime,
+			ScheduledTime: v.ScheduledTime,
+			StartTime:     v.StartTime,
+			FinishTime:    v.FinishTime,
+			IngestTime:    v.IngestTime,
 			Version:       ToStringPtr(v.Version),
 			Revision:      ToStringPtr(v.Revision),
 			Priority:      v.Priority,
