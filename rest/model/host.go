@@ -10,19 +10,19 @@ import (
 
 // APIHost is the model to be returned by the API whenever hosts are fetched.
 type APIHost struct {
-	Id               APIString  `json:"host_id"`
-	HostURL          APIString  `json:"host_url"`
+	Id               *string  `json:"host_id"`
+	HostURL          *string  `json:"host_url"`
 	Distro           DistroInfo `json:"distro"`
 	Provisioned      bool       `json:"provisioned"`
-	StartedBy        APIString  `json:"started_by"`
-	Type             APIString  `json:"host_type"`
-	User             APIString  `json:"user"`
-	Status           APIString  `json:"status"`
+	StartedBy        *string  `json:"started_by"`
+	Type             *string  `json:"host_type"`
+	User             *string  `json:"user"`
+	Status           *string  `json:"status"`
 	RunningTask      taskInfo   `json:"running_task"`
 	UserHost         bool       `json:"user_host"`
 	InstanceTags     []host.Tag `json:"instance_tags"`
-	InstanceType     APIString  `json:"instance_type"`
-	AvailabilityZone APIString  `json:"zone"`
+	InstanceType     *string  `json:"instance_type"`
+	AvailabilityZone *string  `json:"zone"`
 }
 
 // HostPostRequest is a struct that holds the format of a POST request to /hosts
@@ -37,17 +37,17 @@ type HostRequestOptions struct {
 }
 
 type DistroInfo struct {
-	Id       APIString `json:"distro_id"`
-	Provider APIString `json:"provider"`
-	ImageId  APIString `json:"image_id"`
+	Id       *string `json:"distro_id"`
+	Provider *string `json:"provider"`
+	ImageId  *string `json:"image_id"`
 }
 
 type taskInfo struct {
-	Id           APIString `json:"task_id"`
-	Name         APIString `json:"name"`
+	Id           *string `json:"task_id"`
+	Name         *string `json:"name"`
 	DispatchTime APITime   `json:"dispatch_time"`
-	VersionId    APIString `json:"version_id"`
-	BuildId      APIString `json:"build_id"`
+	VersionId    *string `json:"version_id"`
+	BuildId      *string `json:"build_id"`
 }
 
 // BuildFromService converts from service level structs to an APIHost. It can
@@ -69,11 +69,11 @@ func (apiHost *APIHost) BuildFromService(h interface{}) error {
 
 func getTaskInfo(t *task.Task) taskInfo {
 	return taskInfo{
-		Id:           ToAPIString(t.Id),
-		Name:         ToAPIString(t.DisplayName),
+		Id:           ToStringPtr(t.Id),
+		Name:         ToStringPtr(t.DisplayName),
 		DispatchTime: NewTime(t.DispatchTime),
-		VersionId:    ToAPIString(t.Version),
-		BuildId:      ToAPIString(t.BuildId),
+		VersionId:    ToStringPtr(t.Version),
+		BuildId:      ToStringPtr(t.BuildId),
 	}
 }
 
@@ -88,26 +88,26 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	default:
 		return errors.New("incorrect type when fetching converting host type")
 	}
-	apiHost.Id = ToAPIString(v.Id)
-	apiHost.HostURL = ToAPIString(v.Host)
+	apiHost.Id = ToStringPtr(v.Id)
+	apiHost.HostURL = ToStringPtr(v.Host)
 	apiHost.Provisioned = v.Provisioned
-	apiHost.StartedBy = ToAPIString(v.StartedBy)
-	apiHost.Type = ToAPIString(v.InstanceType)
-	apiHost.User = ToAPIString(v.User)
-	apiHost.Status = ToAPIString(v.Status)
+	apiHost.StartedBy = ToStringPtr(v.StartedBy)
+	apiHost.Type = ToStringPtr(v.InstanceType)
+	apiHost.User = ToStringPtr(v.User)
+	apiHost.Status = ToStringPtr(v.Status)
 	apiHost.UserHost = v.UserHost
 	apiHost.InstanceTags = v.InstanceTags
-	apiHost.InstanceType = ToAPIString(v.InstanceType)
-	apiHost.AvailabilityZone = ToAPIString(v.Zone)
+	apiHost.InstanceType = ToStringPtr(v.InstanceType)
+	apiHost.AvailabilityZone = ToStringPtr(v.Zone)
 
 	imageId, err := v.Distro.GetImageID()
 	if err != nil {
 		return errors.Wrap(err, "problem getting image ID")
 	}
 	di := DistroInfo{
-		Id:       ToAPIString(v.Distro.Id),
-		Provider: ToAPIString(v.Distro.Provider),
-		ImageId:  ToAPIString(imageId),
+		Id:       ToStringPtr(v.Distro.Id),
+		Provider: ToStringPtr(v.Distro.Provider),
+		ImageId:  ToStringPtr(imageId),
 	}
 	apiHost.Distro = di
 	return nil
@@ -116,26 +116,26 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 // ToService returns a service layer host using the data from the APIHost.
 func (apiHost *APIHost) ToService() (interface{}, error) {
 	h := host.Host{
-		Id:           FromAPIString(apiHost.Id),
+		Id:           FromStringPtr(apiHost.Id),
 		Provisioned:  apiHost.Provisioned,
-		StartedBy:    FromAPIString(apiHost.StartedBy),
-		InstanceType: FromAPIString(apiHost.Type),
-		User:         FromAPIString(apiHost.User),
-		Status:       FromAPIString(apiHost.Status),
-		Zone:         FromAPIString(apiHost.AvailabilityZone),
+		StartedBy:    FromStringPtr(apiHost.StartedBy),
+		InstanceType: FromStringPtr(apiHost.Type),
+		User:         FromStringPtr(apiHost.User),
+		Status:       FromStringPtr(apiHost.Status),
+		Zone:         FromStringPtr(apiHost.AvailabilityZone),
 	}
 	return interface{}(h), nil
 }
 
 type APIVolume struct {
-	ID               APIString `json:"volume_id"`
-	CreatedBy        APIString `json:"created_by"`
-	Type             APIString `json:"type"`
-	AvailabilityZone APIString `json:"zone"`
+	ID               *string `json:"volume_id"`
+	CreatedBy        *string `json:"created_by"`
+	Type             *string `json:"type"`
+	AvailabilityZone *string `json:"zone"`
 	Size             int       `json:"size"`
 
-	DeviceName APIString `json:"device_name"`
-	HostID     APIString `json:"host_id"`
+	DeviceName *string `json:"device_name"`
+	HostID     *string `json:"host_id"`
 }
 
 type VolumePostRequest struct {
@@ -164,34 +164,34 @@ func (apiVolume *APIVolume) buildFromVolumeStruct(volume interface{}) error {
 	default:
 		return errors.New("incorrect type when converting volume type")
 	}
-	apiVolume.ID = ToAPIString(v.ID)
-	apiVolume.CreatedBy = ToAPIString(v.CreatedBy)
-	apiVolume.Type = ToAPIString(v.Type)
-	apiVolume.AvailabilityZone = ToAPIString(v.AvailabilityZone)
+	apiVolume.ID = ToStringPtr(v.ID)
+	apiVolume.CreatedBy = ToStringPtr(v.CreatedBy)
+	apiVolume.Type = ToStringPtr(v.Type)
+	apiVolume.AvailabilityZone = ToStringPtr(v.AvailabilityZone)
 	apiVolume.Size = v.Size
 	return nil
 }
 
 func (apiVolume *APIVolume) ToService() (interface{}, error) {
 	return host.Volume{
-		ID:               FromAPIString(apiVolume.ID),
-		CreatedBy:        FromAPIString(apiVolume.CreatedBy),
-		Type:             FromAPIString(apiVolume.Type),
-		AvailabilityZone: FromAPIString(apiVolume.AvailabilityZone),
+		ID:               FromStringPtr(apiVolume.ID),
+		CreatedBy:        FromStringPtr(apiVolume.CreatedBy),
+		Type:             FromStringPtr(apiVolume.Type),
+		AvailabilityZone: FromStringPtr(apiVolume.AvailabilityZone),
 		Size:             apiVolume.Size,
 	}, nil
 }
 
 type APISpawnHostModify struct {
-	Action       APIString   `json:"action"`
-	HostID       APIString   `json:"host_id"`
-	VolumeID     APIString   `json:"volume_id"`
-	RDPPwd       APIString   `json:"rdp_pwd"`
-	AddHours     APIString   `json:"add_hours"`
+	Action       *string   `json:"action"`
+	HostID       *string   `json:"host_id"`
+	VolumeID     *string   `json:"volume_id"`
+	RDPPwd       *string   `json:"rdp_pwd"`
+	AddHours     *string   `json:"add_hours"`
 	Expiration   time.Time   `json:"expiration"`
-	InstanceType APIString   `json:"instance_type"`
-	AddTags      []APIString `json:"tags_to_add"`
-	DeleteTags   []APIString `json:"tags_to_delete"`
+	InstanceType *string   `json:"instance_type"`
+	AddTags      []*string `json:"tags_to_add"`
+	DeleteTags   []*string `json:"tags_to_delete"`
 }
 
 type APIHostScript struct {

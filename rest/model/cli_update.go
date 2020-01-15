@@ -27,7 +27,7 @@ func (a *APICLIUpdate) ToService() (interface{}, error) {
 
 type APIClientConfig struct {
 	ClientBinaries []APIClientBinary `json:"client_binaries,omitempty"`
-	LatestRevision APIString         `json:"latest_revision"`
+	LatestRevision *string         `json:"latest_revision"`
 }
 
 func (a *APIClientConfig) BuildFromService(h interface{}) error {
@@ -40,13 +40,13 @@ func (a *APIClientConfig) BuildFromService(h interface{}) error {
 	for i := range a.ClientBinaries {
 		catcher.Add(a.ClientBinaries[i].BuildFromService(c.ClientBinaries[i]))
 	}
-	a.LatestRevision = ToAPIString(c.LatestRevision)
+	a.LatestRevision = ToStringPtr(c.LatestRevision)
 	return catcher.Resolve()
 }
 
 func (a *APIClientConfig) ToService() (interface{}, error) {
 	c := evergreen.ClientConfig{}
-	c.LatestRevision = FromAPIString(a.LatestRevision)
+	c.LatestRevision = FromStringPtr(a.LatestRevision)
 	c.ClientBinaries = make([]evergreen.ClientBinary, len(a.ClientBinaries))
 
 	catcher := grip.NewBasicCatcher()
@@ -63,9 +63,9 @@ func (a *APIClientConfig) ToService() (interface{}, error) {
 }
 
 type APIClientBinary struct {
-	Arch APIString `json:"arch"`
-	OS   APIString `json:"os"`
-	URL  APIString `json:"url"`
+	Arch *string `json:"arch"`
+	OS   *string `json:"os"`
+	URL  *string `json:"url"`
 }
 
 func (a *APIClientBinary) BuildFromService(h interface{}) error {
@@ -73,16 +73,16 @@ func (a *APIClientBinary) BuildFromService(h interface{}) error {
 	if !ok {
 		return fmt.Errorf("incorrect type when fetching converting client binary")
 	}
-	a.Arch = ToAPIString(b.Arch)
-	a.OS = ToAPIString(b.OS)
-	a.URL = ToAPIString(b.URL)
+	a.Arch = ToStringPtr(b.Arch)
+	a.OS = ToStringPtr(b.OS)
+	a.URL = ToStringPtr(b.URL)
 	return nil
 }
 
 func (a *APIClientBinary) ToService() (interface{}, error) {
 	b := evergreen.ClientBinary{}
-	b.Arch = FromAPIString(a.Arch)
-	b.OS = FromAPIString(a.OS)
-	b.URL = FromAPIString(a.URL)
+	b.Arch = FromStringPtr(a.Arch)
+	b.OS = FromStringPtr(a.OS)
+	b.URL = FromStringPtr(a.URL)
 	return b, nil
 }

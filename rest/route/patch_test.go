@@ -59,7 +59,7 @@ func (s *PatchByIdSuite) TestFindById() {
 
 	p, ok := res.Data().(*model.APIPatch)
 	s.True(ok)
-	s.Equal(model.ToAPIString(s.objIds[0].Hex()), p.Id)
+	s.Equal(model.ToStringPtr(s.objIds[0].Hex()), p.Id)
 }
 func (s *PatchByIdSuite) TestFindByIdFail() {
 	new_id := mgobson.NewObjectId()
@@ -225,7 +225,7 @@ func (s *PatchAbortSuite) TestAbort() {
 	s.Equal("", s.data.CachedAborted[s.objIds[1].Hex()])
 	p, ok := (res.Data()).(*model.APIPatch)
 	s.True(ok)
-	s.Equal(model.ToAPIString(s.objIds[0].Hex()), p.Id)
+	s.Equal(model.ToStringPtr(s.objIds[0].Hex()), p.Id)
 
 	res = rm.Run(ctx)
 	s.Equal(http.StatusOK, res.Status())
@@ -234,7 +234,7 @@ func (s *PatchAbortSuite) TestAbort() {
 	s.Equal("", s.data.CachedAborted[s.objIds[1].Hex()])
 	p, ok = (res.Data()).(*model.APIPatch)
 	s.True(ok)
-	s.Equal(model.ToAPIString(s.objIds[0].Hex()), p.Id)
+	s.Equal(model.ToStringPtr(s.objIds[0].Hex()), p.Id)
 
 	rm.patchId = s.objIds[1].Hex()
 	res = rm.Run(ctx)

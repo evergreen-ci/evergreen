@@ -9,8 +9,8 @@ import (
 
 type APIGithubHook struct {
 	HookID int       `json:"hook_id"`
-	Owner  APIString `json:"owner"`
-	Repo   APIString `json:"repo"`
+	Owner  *string `json:"owner"`
+	Repo   *string `json:"repo"`
 }
 
 func (a *APIGithubHook) BuildFromService(h interface{}) error {
@@ -29,8 +29,8 @@ func (a *APIGithubHook) BuildFromService(h interface{}) error {
 	}
 
 	a.HookID = v.HookID
-	a.Owner = ToAPIString(v.Owner)
-	a.Repo = ToAPIString(v.Repo)
+	a.Owner = ToStringPtr(v.Owner)
+	a.Repo = ToStringPtr(v.Repo)
 	return nil
 }
 

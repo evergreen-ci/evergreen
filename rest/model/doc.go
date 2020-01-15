@@ -13,9 +13,6 @@
 	This is likely to be more information than seems directly needed, but there is
 	little penalty to its inclusion.
 
-	Use APIString instead of Golang's string type. APIString serializes empty strings
-	as JSON null instead of Go's zero type of '""'.
-
 	Use APITime instead of go's time type. APITime is a type that wraps Go's time.Time
 	and automatically and correctly serializes it to ISO-8601 UTC time.
 

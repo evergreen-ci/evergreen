@@ -50,37 +50,37 @@ func (s *CommitQueueSuite) TestGetCommitQueue() {
 	pos, err := s.sc.EnqueueItem(
 		"mci",
 		model.APICommitQueueItem{
-			Issue: model.ToAPIString("1"),
+			Issue: model.ToStringPtr("1"),
 			Modules: []model.APIModule{
 				model.APIModule{
-					Module: model.ToAPIString("test_module"),
-					Issue:  model.ToAPIString("1234"),
+					Module: model.ToStringPtr("test_module"),
+					Issue:  model.ToStringPtr("1234"),
 				},
 			},
 		}, false)
 	s.NoError(err)
 	s.Equal(0, pos)
 
-	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToAPIString("2")}, false)
+	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToStringPtr("2")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
 
 	response := route.Run(context.Background())
 	s.Equal(200, response.Status())
 	s.Equal(&model.APICommitQueue{
-		ProjectID: model.ToAPIString("mci"),
+		ProjectID: model.ToStringPtr("mci"),
 		Queue: []model.APICommitQueueItem{
 			model.APICommitQueueItem{
-				Issue: model.ToAPIString("1"),
+				Issue: model.ToStringPtr("1"),
 				Modules: []model.APIModule{
 					model.APIModule{
-						Module: model.ToAPIString("test_module"),
-						Issue:  model.ToAPIString("1234"),
+						Module: model.ToStringPtr("test_module"),
+						Issue:  model.ToStringPtr("1234"),
 					},
 				},
 			},
 			model.APICommitQueueItem{
-				Issue: model.ToAPIString("2"),
+				Issue: model.ToStringPtr("2"),
 			},
 		},
 	}, response.Data())
@@ -99,10 +99,10 @@ func (s *CommitQueueSuite) TestDeleteItem() {
 	s.Require().NoError(env.Configure(ctx))
 
 	route := makeDeleteCommitQueueItems(s.sc, env).(*commitQueueDeleteItemHandler)
-	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToAPIString("1")}, false)
+	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToStringPtr("1")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
-	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToAPIString("2")}, false)
+	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToStringPtr("2")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
 
@@ -127,16 +127,16 @@ func (s *CommitQueueSuite) TestDeleteItem() {
 
 func (s *CommitQueueSuite) TestClearAll() {
 	route := makeClearCommitQueuesHandler(s.sc).(*commitQueueClearAllHandler)
-	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToAPIString("12")}, false)
+	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToStringPtr("12")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
-	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToAPIString("23")}, false)
+	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToStringPtr("23")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
-	pos, err = s.sc.EnqueueItem("logkeeper", model.APICommitQueueItem{Issue: model.ToAPIString("34")}, false)
+	pos, err = s.sc.EnqueueItem("logkeeper", model.APICommitQueueItem{Issue: model.ToStringPtr("34")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
-	pos, err = s.sc.EnqueueItem("logkeeper", model.APICommitQueueItem{Issue: model.ToAPIString("45")}, false)
+	pos, err = s.sc.EnqueueItem("logkeeper", model.APICommitQueueItem{Issue: model.ToStringPtr("45")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
 
@@ -185,7 +185,7 @@ func (s *CommitQueueSuite) TestGetItemAuthor() {
 	route.item = p.Id.Hex()
 	resp := route.Run(ctx)
 	s.Equal(200, resp.Status())
-	s.Equal(model.APICommitQueueItemAuthor{Author: model.ToAPIString(p.Author)}, resp.Data())
+	s.Equal(model.APICommitQueueItemAuthor{Author: model.ToStringPtr(p.Author)}, resp.Data())
 
 	pRef = &dbModel.ProjectRef{
 		Identifier: "not-mci",
@@ -198,5 +198,5 @@ func (s *CommitQueueSuite) TestGetItemAuthor() {
 	route.item = "1234"
 	resp = route.Run(ctx)
 	s.Equal(200, resp.Status())
-	s.Equal(model.APICommitQueueItemAuthor{Author: model.ToAPIString("github.user")}, resp.Data())
+	s.Equal(model.APICommitQueueItemAuthor{Author: model.ToStringPtr("github.user")}, resp.Data())
 }

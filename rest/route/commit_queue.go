@@ -197,7 +197,7 @@ func (cq *commitQueueEnqueueItemHandler) Parse(ctx context.Context, r *http.Requ
 }
 
 func (cq *commitQueueEnqueueItemHandler) Run(ctx context.Context) gimlet.Responder {
-	position, err := cq.sc.EnqueueItem(cq.project, model.APICommitQueueItem{Issue: model.ToAPIString(cq.item)}, cq.force)
+	position, err := cq.sc.EnqueueItem(cq.project, model.APICommitQueueItem{Issue: model.ToStringPtr(cq.item)}, cq.force)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't enqueue item"))
 	}
@@ -243,7 +243,7 @@ func (cq *getCommitQueueItemAuthorHandler) Run(ctx context.Context) gimlet.Respo
 		if err != nil {
 			return gimlet.NewJSONErrorResponse(errors.Wrap(err, "problem finding patch"))
 		}
-		resp.Author = model.ToAPIString(p.Author)
+		resp.Author = model.ToStringPtr(p.Author)
 		return gimlet.NewJSONResponse(resp)
 	}
 	if pRef.CommitQueue.PatchType == commitqueue.PRPatchType {
@@ -269,7 +269,7 @@ func (cq *getCommitQueueItemAuthorHandler) Run(ctx context.Context) gimlet.Respo
 			}
 		}
 		if author != "" {
-			resp.Author = model.ToAPIString(author)
+			resp.Author = model.ToStringPtr(author)
 			return gimlet.NewJSONResponse(resp)
 		}
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "unable to find author"))

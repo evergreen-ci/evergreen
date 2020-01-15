@@ -7,16 +7,16 @@ import (
 )
 
 type APIFile struct {
-	Name           APIString `json:"name"`
-	Link           APIString `json:"url"`
-	Visibility     APIString `json:"visibility"`
+	Name           *string `json:"name"`
+	Link           *string `json:"url"`
+	Visibility     *string `json:"visibility"`
 	IgnoreForFetch bool      `json:"ignore_for_fetch"`
 }
 
 type APIEntry struct {
-	TaskId          APIString `json:"task_id"`
-	TaskDisplayName APIString `json:"task_name"`
-	BuildId         APIString `json:"build"`
+	TaskId          *string `json:"task_id"`
+	TaskDisplayName *string `json:"task_name"`
+	BuildId         *string `json:"build"`
 	Files           []APIFile `json:"files"`
 	Execution       int       `json:"execution"`
 }
@@ -24,9 +24,9 @@ type APIEntry struct {
 func (f *APIFile) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case artifact.File:
-		f.Name = ToAPIString(v.Name)
-		f.Link = ToAPIString(v.Link)
-		f.Visibility = ToAPIString(v.Visibility)
+		f.Name = ToStringPtr(v.Name)
+		f.Link = ToStringPtr(v.Link)
+		f.Visibility = ToStringPtr(v.Visibility)
 		f.IgnoreForFetch = v.IgnoreForFetch
 	default:
 		return errors.Errorf("%T is not a supported type", h)
@@ -36,9 +36,9 @@ func (f *APIFile) BuildFromService(h interface{}) error {
 
 func (f *APIFile) ToService() (interface{}, error) {
 	return artifact.File{
-		Name:           FromAPIString(f.Name),
-		Link:           FromAPIString(f.Link),
-		Visibility:     FromAPIString(f.Visibility),
+		Name:           FromStringPtr(f.Name),
+		Link:           FromStringPtr(f.Link),
+		Visibility:     FromStringPtr(f.Visibility),
 		IgnoreForFetch: f.IgnoreForFetch,
 	}, nil
 }
@@ -47,9 +47,9 @@ func (e *APIEntry) BuildFromService(h interface{}) error {
 	catcher := grip.NewBasicCatcher()
 	switch v := h.(type) {
 	case artifact.Entry:
-		e.TaskId = ToAPIString(v.TaskId)
-		e.TaskDisplayName = ToAPIString(v.TaskDisplayName)
-		e.BuildId = ToAPIString(v.BuildId)
+		e.TaskId = ToStringPtr(v.TaskId)
+		e.TaskDisplayName = ToStringPtr(v.TaskDisplayName)
+		e.BuildId = ToStringPtr(v.BuildId)
 		e.Execution = v.Execution
 		for _, file := range v.Files {
 			apiFile := APIFile{}
@@ -64,9 +64,9 @@ func (e *APIEntry) BuildFromService(h interface{}) error {
 
 func (e *APIEntry) ToService() (interface{}, error) {
 	entry := artifact.Entry{
-		TaskId:          FromAPIString(e.TaskId),
-		TaskDisplayName: FromAPIString(e.TaskDisplayName),
-		BuildId:         FromAPIString(e.BuildId),
+		TaskId:          FromStringPtr(e.TaskId),
+		TaskDisplayName: FromStringPtr(e.TaskDisplayName),
+		BuildId:         FromStringPtr(e.BuildId),
 		Execution:       e.Execution,
 	}
 	catcher := grip.NewBasicCatcher()

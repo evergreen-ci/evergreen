@@ -6,8 +6,8 @@ import (
 )
 
 type APIJiraComment struct {
-	IssueID APIString `json:"issue_id"`
-	Body    APIString `json:"body"`
+	IssueID *string `json:"issue_id"`
+	Body    *string `json:"body"`
 }
 
 // BuildFromService converts from service level message.JIRAComment to APIJiraComment.
@@ -20,8 +20,8 @@ func (c *APIJiraComment) BuildFromService(h interface{}) error {
 		return errors.Errorf("%T is not a supported type", h)
 	}
 
-	c.IssueID = ToAPIString(comment.IssueID)
-	c.Body = ToAPIString(comment.Body)
+	c.IssueID = ToStringPtr(comment.IssueID)
+	c.Body = ToStringPtr(comment.Body)
 
 	return nil
 }
@@ -29,8 +29,8 @@ func (c *APIJiraComment) BuildFromService(h interface{}) error {
 // ToService returns a service layer message.JIRAComment using the data from APIJiraComment.
 func (c *APIJiraComment) ToService() (interface{}, error) {
 	comment := message.JIRAComment{}
-	comment.IssueID = FromAPIString(c.IssueID)
-	comment.Body = FromAPIString(c.Body)
+	comment.IssueID = FromStringPtr(c.IssueID)
+	comment.Body = FromStringPtr(c.Body)
 
 	return &comment, nil
 }
@@ -38,13 +38,13 @@ func (c *APIJiraComment) ToService() (interface{}, error) {
 ///////////////////////////////////////////////////////////////////////
 
 type APIJiraIssue struct {
-	IssueKey    APIString              `json:"issue_key"`
-	Project     APIString              `json:"project"`
-	Summary     APIString              `json:"summary"`
-	Description APIString              `json:"description"`
-	Reporter    APIString              `json:"reporter"`
-	Assignee    APIString              `json:"assignee"`
-	Type        APIString              `json:"type"`
+	IssueKey    *string              `json:"issue_key"`
+	Project     *string              `json:"project"`
+	Summary     *string              `json:"summary"`
+	Description *string              `json:"description"`
+	Reporter    *string              `json:"reporter"`
+	Assignee    *string              `json:"assignee"`
+	Type        *string              `json:"type"`
 	Components  []string               `json:"components"`
 	Labels      []string               `json:"labels"`
 	Fields      map[string]interface{} `json:"fields"`
@@ -60,13 +60,13 @@ func (i *APIJiraIssue) BuildFromService(h interface{}) error {
 		return errors.Errorf("%T is not a supported type", h)
 	}
 
-	i.IssueKey = ToAPIString(issue.IssueKey)
-	i.Project = ToAPIString(issue.Project)
-	i.Summary = ToAPIString(issue.Summary)
-	i.Description = ToAPIString(issue.Description)
-	i.Reporter = ToAPIString(issue.Reporter)
-	i.Assignee = ToAPIString(issue.Assignee)
-	i.Type = ToAPIString(issue.Type)
+	i.IssueKey = ToStringPtr(issue.IssueKey)
+	i.Project = ToStringPtr(issue.Project)
+	i.Summary = ToStringPtr(issue.Summary)
+	i.Description = ToStringPtr(issue.Description)
+	i.Reporter = ToStringPtr(issue.Reporter)
+	i.Assignee = ToStringPtr(issue.Assignee)
+	i.Type = ToStringPtr(issue.Type)
 	if issue.Components != nil {
 		i.Components = issue.Components
 	}
@@ -81,13 +81,13 @@ func (i *APIJiraIssue) BuildFromService(h interface{}) error {
 // ToService returns a service layer message.JiraIssue using the data from APIJiraIssue.
 func (i *APIJiraIssue) ToService() (interface{}, error) {
 	issue := message.JiraIssue{}
-	issue.IssueKey = FromAPIString(i.IssueKey)
-	issue.Project = FromAPIString(i.Project)
-	issue.Summary = FromAPIString(i.Summary)
-	issue.Description = FromAPIString(i.Description)
-	issue.Reporter = FromAPIString(i.Reporter)
-	issue.Assignee = FromAPIString(i.Assignee)
-	issue.Type = FromAPIString(i.Type)
+	issue.IssueKey = FromStringPtr(i.IssueKey)
+	issue.Project = FromStringPtr(i.Project)
+	issue.Summary = FromStringPtr(i.Summary)
+	issue.Description = FromStringPtr(i.Description)
+	issue.Reporter = FromStringPtr(i.Reporter)
+	issue.Assignee = FromStringPtr(i.Assignee)
+	issue.Type = FromStringPtr(i.Type)
 	issue.Components = i.Components
 	issue.Labels = i.Labels
 	issue.Fields = i.Fields
@@ -98,8 +98,8 @@ func (i *APIJiraIssue) ToService() (interface{}, error) {
 ///////////////////////////////////////////////////////////////////////
 
 type APISlack struct {
-	Target      APIString            `json:"target"`
-	Msg         APIString            `json:"msg"`
+	Target      *string            `json:"target"`
+	Msg         *string            `json:"msg"`
 	Attachments []APISlackAttachment `json:"attachments"`
 }
 
@@ -113,8 +113,8 @@ func (n *APISlack) BuildFromService(h interface{}) error {
 		return errors.Errorf("%T is not a supported type", h)
 	}
 
-	n.Target = ToAPIString(slack.Target)
-	n.Msg = ToAPIString(slack.Msg)
+	n.Target = ToStringPtr(slack.Target)
+	n.Msg = ToStringPtr(slack.Msg)
 	if slack.Attachments != nil {
 		n.Attachments = []APISlackAttachment{}
 		for _, a := range slack.Attachments {
@@ -137,16 +137,16 @@ func (n *APISlack) ToService() (interface{}, error) {
 ///////////////////////////////////////////////////////////////////////
 
 type APISlackAttachment struct {
-	Color      APIString                 `json:"color"`
-	Fallback   APIString                 `json:"fallback"`
-	AuthorName APIString                 `json:"author_name"`
-	AuthorIcon APIString                 `json:"author_icon"`
-	Title      APIString                 `json:"title"`
-	TitleLink  APIString                 `json:"title_link"`
-	Text       APIString                 `json:"text"`
+	Color      *string                 `json:"color"`
+	Fallback   *string                 `json:"fallback"`
+	AuthorName *string                 `json:"author_name"`
+	AuthorIcon *string                 `json:"author_icon"`
+	Title      *string                 `json:"title"`
+	TitleLink  *string                 `json:"title_link"`
+	Text       *string                 `json:"text"`
 	Fields     []APISlackAttachmentField `json:"fields"`
 	MarkdownIn []string                  `json:"mrkdwn_in"`
-	Footer     APIString                 `json:"footer"`
+	Footer     *string                 `json:"footer"`
 }
 
 // BuildFromService converts from service level message.SlackAttachment to APISlackAttachment.
@@ -159,14 +159,14 @@ func (a *APISlackAttachment) BuildFromService(h interface{}) error {
 		return errors.Errorf("%T is not a supported type", h)
 	}
 
-	a.Color = ToAPIString(attachment.Color)
-	a.Fallback = ToAPIString(attachment.Fallback)
-	a.AuthorName = ToAPIString(attachment.AuthorName)
-	a.AuthorIcon = ToAPIString(attachment.AuthorIcon)
-	a.Title = ToAPIString(attachment.Title)
-	a.TitleLink = ToAPIString(attachment.TitleLink)
-	a.Text = ToAPIString(attachment.Text)
-	a.Footer = ToAPIString(attachment.Footer)
+	a.Color = ToStringPtr(attachment.Color)
+	a.Fallback = ToStringPtr(attachment.Fallback)
+	a.AuthorName = ToStringPtr(attachment.AuthorName)
+	a.AuthorIcon = ToStringPtr(attachment.AuthorIcon)
+	a.Title = ToStringPtr(attachment.Title)
+	a.TitleLink = ToStringPtr(attachment.TitleLink)
+	a.Text = ToStringPtr(attachment.Text)
+	a.Footer = ToStringPtr(attachment.Footer)
 	if attachment.Fields != nil {
 		a.Fields = []APISlackAttachmentField{}
 		for _, f := range attachment.Fields {
@@ -187,14 +187,14 @@ func (a *APISlackAttachment) BuildFromService(h interface{}) error {
 // ToService returns a service layer message.SlackAttachment using the data from APISlackAttachment.
 func (a *APISlackAttachment) ToService() (interface{}, error) {
 	attachment := message.SlackAttachment{}
-	attachment.Color = FromAPIString(a.Color)
-	attachment.Fallback = FromAPIString(a.Fallback)
-	attachment.AuthorName = FromAPIString(a.AuthorName)
-	attachment.AuthorIcon = FromAPIString(a.AuthorIcon)
-	attachment.Title = FromAPIString(a.Title)
-	attachment.TitleLink = FromAPIString(a.TitleLink)
-	attachment.Text = FromAPIString(a.Text)
-	attachment.Footer = FromAPIString(a.Footer)
+	attachment.Color = FromStringPtr(a.Color)
+	attachment.Fallback = FromStringPtr(a.Fallback)
+	attachment.AuthorName = FromStringPtr(a.AuthorName)
+	attachment.AuthorIcon = FromStringPtr(a.AuthorIcon)
+	attachment.Title = FromStringPtr(a.Title)
+	attachment.TitleLink = FromStringPtr(a.TitleLink)
+	attachment.Text = FromStringPtr(a.Text)
+	attachment.Footer = FromStringPtr(a.Footer)
 	for _, f := range a.Fields {
 		i, err := f.ToService()
 		if err != nil {
@@ -210,8 +210,8 @@ func (a *APISlackAttachment) ToService() (interface{}, error) {
 ///////////////////////////////////////////////////////////////////////
 
 type APISlackAttachmentField struct {
-	Title APIString `json:"title"`
-	Value APIString `json:"value"`
+	Title *string `json:"title"`
+	Value *string `json:"value"`
 	Short bool      `json:"short"`
 }
 
@@ -225,8 +225,8 @@ func (f *APISlackAttachmentField) BuildFromService(h interface{}) error {
 		return errors.Errorf("%T is not a supported type", h)
 	}
 
-	f.Title = ToAPIString(field.Title)
-	f.Value = ToAPIString(field.Value)
+	f.Title = ToStringPtr(field.Title)
+	f.Value = ToStringPtr(field.Value)
 	f.Short = field.Short
 
 	return nil
@@ -235,8 +235,8 @@ func (f *APISlackAttachmentField) BuildFromService(h interface{}) error {
 // ToService returns a service layer message.SlackAttachmentField using the data from APISlackAttachmentField.
 func (f *APISlackAttachmentField) ToService() (interface{}, error) {
 	field := message.SlackAttachmentField{}
-	field.Title = FromAPIString(f.Title)
-	field.Value = FromAPIString(f.Value)
+	field.Title = FromStringPtr(f.Title)
+	field.Value = FromStringPtr(f.Value)
 	field.Short = f.Short
 
 	return &field, nil
@@ -245,10 +245,10 @@ func (f *APISlackAttachmentField) ToService() (interface{}, error) {
 ///////////////////////////////////////////////////////////////////////
 
 type APIEmail struct {
-	From              APIString           `json:"from"`
+	From              *string           `json:"from"`
 	Recipients        []string            `json:"recipients"`
-	Subject           APIString           `json:"subject"`
-	Body              APIString           `json:"body"`
+	Subject           *string           `json:"subject"`
+	Body              *string           `json:"body"`
 	PlainTextContents bool                `json:"is_plain_text"`
 	Headers           map[string][]string `json:"headers"`
 }
@@ -263,12 +263,12 @@ func (n *APIEmail) BuildFromService(h interface{}) error {
 		return errors.Errorf("%T is not a supported type", h)
 	}
 
-	n.From = ToAPIString(email.From)
+	n.From = ToStringPtr(email.From)
 	if email.Recipients != nil {
 		n.Recipients = email.Recipients
 	}
-	n.Subject = ToAPIString(email.Subject)
-	n.Body = ToAPIString(email.Body)
+	n.Subject = ToStringPtr(email.Subject)
+	n.Body = ToStringPtr(email.Body)
 	n.PlainTextContents = email.PlainTextContents
 	n.Headers = email.Headers
 
@@ -278,10 +278,10 @@ func (n *APIEmail) BuildFromService(h interface{}) error {
 // ToService returns a service layer message.Email using the data from APIEmail.
 func (n *APIEmail) ToService() (interface{}, error) {
 	email := message.Email{}
-	email.From = FromAPIString(n.From)
+	email.From = FromStringPtr(n.From)
 	email.Recipients = n.Recipients
-	email.Subject = FromAPIString(n.Subject)
-	email.Body = FromAPIString(n.Body)
+	email.Subject = FromStringPtr(n.Subject)
+	email.Body = FromStringPtr(n.Body)
 	email.PlainTextContents = n.PlainTextContents
 	email.Headers = n.Headers
 

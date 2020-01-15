@@ -75,7 +75,7 @@ func (s *UserConnectorSuite) TestGetSshKeys() {
 	for i, result := range payload {
 		s.IsType(new(model.APIPubKey), result)
 		key := result.(*model.APIPubKey)
-		s.Equal(key.Name, model.ToAPIString(fmt.Sprintf("user0_pubkey%d", i)))
+		s.Equal(key.Name, model.ToStringPtr(fmt.Sprintf("user0_pubkey%d", i)))
 	}
 }
 

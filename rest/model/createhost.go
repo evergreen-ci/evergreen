@@ -6,14 +6,14 @@ import (
 )
 
 type CreateHost struct {
-	DNSName    APIString `json:"dns_name"`
-	IP         APIString `json:"ip_address"`
-	InstanceID APIString `json:"instance_id"`
+	DNSName    *string `json:"dns_name"`
+	IP         *string `json:"ip_address"`
+	InstanceID *string `json:"instance_id"`
 
-	HostID   APIString `json:"host_id"`
-	ParentID APIString `json:"parent_id"`
-	Image    APIString `json:"image"`
-	Command  APIString `json:"command"`
+	HostID   *string `json:"host_id"`
+	ParentID *string `json:"parent_id"`
+	Image    *string `json:"image"`
+	Command  *string `json:"command"`
 }
 
 func (createHost *CreateHost) BuildFromService(h interface{}) error {
@@ -21,29 +21,29 @@ func (createHost *CreateHost) BuildFromService(h interface{}) error {
 	case host.Host:
 		// container
 		if v.ParentID != "" {
-			createHost.HostID = ToAPIString(v.Id)
-			createHost.ParentID = ToAPIString(v.ParentID)
-			createHost.Image = ToAPIString(v.DockerOptions.Image)
-			createHost.Command = ToAPIString(v.DockerOptions.Command)
+			createHost.HostID = ToStringPtr(v.Id)
+			createHost.ParentID = ToStringPtr(v.ParentID)
+			createHost.Image = ToStringPtr(v.DockerOptions.Image)
+			createHost.Command = ToStringPtr(v.DockerOptions.Command)
 			return nil
 		}
-		createHost.DNSName = ToAPIString(v.Host)
-		createHost.InstanceID = ToAPIString(v.Id)
-		createHost.IP = ToAPIString(v.IP)
-		createHost.InstanceID = ToAPIString(v.ExternalIdentifier)
+		createHost.DNSName = ToStringPtr(v.Host)
+		createHost.InstanceID = ToStringPtr(v.Id)
+		createHost.IP = ToStringPtr(v.IP)
+		createHost.InstanceID = ToStringPtr(v.ExternalIdentifier)
 	case *host.Host:
 		// container
 		if v.ParentID != "" {
-			createHost.HostID = ToAPIString(v.Id)
-			createHost.ParentID = ToAPIString(v.ParentID)
-			createHost.Image = ToAPIString(v.DockerOptions.Image)
-			createHost.Command = ToAPIString(v.DockerOptions.Command)
+			createHost.HostID = ToStringPtr(v.Id)
+			createHost.ParentID = ToStringPtr(v.ParentID)
+			createHost.Image = ToStringPtr(v.DockerOptions.Image)
+			createHost.Command = ToStringPtr(v.DockerOptions.Command)
 			return nil
 		}
-		createHost.DNSName = ToAPIString(v.Host)
-		createHost.InstanceID = ToAPIString(v.Id)
-		createHost.IP = ToAPIString(v.IP)
-		createHost.InstanceID = ToAPIString(v.ExternalIdentifier)
+		createHost.DNSName = ToStringPtr(v.Host)
+		createHost.InstanceID = ToStringPtr(v.Id)
+		createHost.IP = ToStringPtr(v.IP)
+		createHost.InstanceID = ToStringPtr(v.ExternalIdentifier)
 	default:
 		return errors.Errorf("Invalid type passed to *CreateHost.BuildFromService (%T)", h)
 	}

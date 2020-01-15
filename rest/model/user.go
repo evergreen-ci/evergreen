@@ -10,16 +10,16 @@ import (
 )
 
 type APIPubKey struct {
-	Name APIString `json:"name"`
-	Key  APIString `json:"key"`
+	Name *string `json:"name"`
+	Key  *string `json:"key"`
 }
 
 // BuildFromService converts from service level structs to an APIPubKey.
 func (apiPubKey *APIPubKey) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case user.PubKey:
-		apiPubKey.Name = ToAPIString(v.Name)
-		apiPubKey.Key = ToAPIString(v.Key)
+		apiPubKey.Name = ToStringPtr(v.Name)
+		apiPubKey.Key = ToStringPtr(v.Key)
 	default:
 		return errors.Errorf("incorrect type when fetching converting pubkey type")
 	}
@@ -32,10 +32,10 @@ func (apiPubKey *APIPubKey) ToService() (interface{}, error) {
 }
 
 type APIUserSettings struct {
-	Timezone         APIString                   `json:"timezone"`
+	Timezone         *string                   `json:"timezone"`
 	UseSpruceOptions *APIUseSpruceOptions        `json:"use_spruce_options"`
 	GithubUser       *APIGithubUser              `json:"github_user"`
-	SlackUsername    APIString                   `json:"slack_username"`
+	SlackUsername    *string                   `json:"slack_username"`
 	Notifications    *APINotificationPreferences `json:"notifications"`
 	SpruceFeedback   *APIFeedbackSubmission      `json:"spruce_feedback"`
 }
@@ -47,8 +47,8 @@ type APIUseSpruceOptions struct {
 func (s *APIUserSettings) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case user.UserSettings:
-		s.Timezone = ToAPIString(v.Timezone)
-		s.SlackUsername = ToAPIString(v.SlackUsername)
+		s.Timezone = ToStringPtr(v.Timezone)
+		s.SlackUsername = ToStringPtr(v.SlackUsername)
 		s.UseSpruceOptions = &APIUseSpruceOptions{
 			PatchPage: v.UseSpruceOptions.PatchPage,
 		}
@@ -90,8 +90,8 @@ func (s *APIUserSettings) ToService() (interface{}, error) {
 		useSpruceOptions.PatchPage = s.UseSpruceOptions.PatchPage
 	}
 	return user.UserSettings{
-		Timezone:         FromAPIString(s.Timezone),
-		SlackUsername:    FromAPIString(s.SlackUsername),
+		Timezone:         FromStringPtr(s.Timezone),
+		SlackUsername:    FromStringPtr(s.SlackUsername),
 		GithubUser:       githubUser,
 		Notifications:    preferences,
 		UseSpruceOptions: useSpruceOptions,
@@ -100,7 +100,7 @@ func (s *APIUserSettings) ToService() (interface{}, error) {
 
 type APIGithubUser struct {
 	UID         int       `json:"uid,omitempty"`
-	LastKnownAs APIString `json:"last_known_as,omitempty"`
+	LastKnownAs *string `json:"last_known_as,omitempty"`
 }
 
 func (g *APIGithubUser) BuildFromService(h interface{}) error {
@@ -110,7 +110,7 @@ func (g *APIGithubUser) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case user.GithubUser:
 		g.UID = v.UID
-		g.LastKnownAs = ToAPIString(v.LastKnownAs)
+		g.LastKnownAs = ToStringPtr(v.LastKnownAs)
 	default:
 		return errors.Errorf("incorrect type for APIGithubUser")
 	}
@@ -123,21 +123,21 @@ func (g *APIGithubUser) ToService() (interface{}, error) {
 	}
 	return user.GithubUser{
 		UID:         g.UID,
-		LastKnownAs: FromAPIString(g.LastKnownAs),
+		LastKnownAs: FromStringPtr(g.LastKnownAs),
 	}, nil
 }
 
 type APINotificationPreferences struct {
-	BuildBreak            APIString `json:"build_break"`
-	BuildBreakID          APIString `json:"build_break_id,omitempty"`
-	PatchFinish           APIString `json:"patch_finish"`
-	PatchFinishID         APIString `json:"patch_finish_id,omitempty"`
-	SpawnHostExpiration   APIString `json:"spawn_host_expiration"`
-	SpawnHostExpirationID APIString `json:"spawn_host_expiration_id,omitempty"`
-	SpawnHostOutcome      APIString `json:"spawn_host_outcome"`
-	SpawnHostOutcomeID    APIString `json:"spawn_host_outcome_id,omitempty"`
-	CommitQueue           APIString `json:"commit_queue"`
-	CommitQueueID         APIString `json:"commit_queue_id,omitempty"`
+	BuildBreak            *string `json:"build_break"`
+	BuildBreakID          *string `json:"build_break_id,omitempty"`
+	PatchFinish           *string `json:"patch_finish"`
+	PatchFinishID         *string `json:"patch_finish_id,omitempty"`
+	SpawnHostExpiration   *string `json:"spawn_host_expiration"`
+	SpawnHostExpirationID *string `json:"spawn_host_expiration_id,omitempty"`
+	SpawnHostOutcome      *string `json:"spawn_host_outcome"`
+	SpawnHostOutcomeID    *string `json:"spawn_host_outcome_id,omitempty"`
+	CommitQueue           *string `json:"commit_queue"`
+	CommitQueueID         *string `json:"commit_queue_id,omitempty"`
 }
 
 func (n *APINotificationPreferences) BuildFromService(h interface{}) error {
@@ -146,25 +146,25 @@ func (n *APINotificationPreferences) BuildFromService(h interface{}) error {
 	}
 	switch v := h.(type) {
 	case user.NotificationPreferences:
-		n.BuildBreak = ToAPIString(string(v.BuildBreak))
-		n.PatchFinish = ToAPIString(string(v.PatchFinish))
-		n.SpawnHostOutcome = ToAPIString(string(v.SpawnHostOutcome))
-		n.SpawnHostExpiration = ToAPIString(string(v.SpawnHostExpiration))
-		n.CommitQueue = ToAPIString(string(v.CommitQueue))
+		n.BuildBreak = ToStringPtr(string(v.BuildBreak))
+		n.PatchFinish = ToStringPtr(string(v.PatchFinish))
+		n.SpawnHostOutcome = ToStringPtr(string(v.SpawnHostOutcome))
+		n.SpawnHostExpiration = ToStringPtr(string(v.SpawnHostExpiration))
+		n.CommitQueue = ToStringPtr(string(v.CommitQueue))
 		if v.BuildBreakID != "" {
-			n.BuildBreakID = ToAPIString(v.BuildBreakID)
+			n.BuildBreakID = ToStringPtr(v.BuildBreakID)
 		}
 		if v.PatchFinishID != "" {
-			n.PatchFinishID = ToAPIString(v.PatchFinishID)
+			n.PatchFinishID = ToStringPtr(v.PatchFinishID)
 		}
 		if v.SpawnHostOutcomeID != "" {
-			n.SpawnHostOutcomeID = ToAPIString(v.SpawnHostOutcomeID)
+			n.SpawnHostOutcomeID = ToStringPtr(v.SpawnHostOutcomeID)
 		}
 		if v.SpawnHostExpirationID != "" {
-			n.SpawnHostExpirationID = ToAPIString(v.SpawnHostExpirationID)
+			n.SpawnHostExpirationID = ToStringPtr(v.SpawnHostExpirationID)
 		}
 		if v.CommitQueueID != "" {
-			n.CommitQueueID = ToAPIString(v.CommitQueueID)
+			n.CommitQueueID = ToStringPtr(v.CommitQueueID)
 		}
 	default:
 		return errors.Errorf("incorrect type for APINotificationPreferences")
@@ -176,11 +176,11 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 	if n == nil {
 		return user.NotificationPreferences{}, nil
 	}
-	buildbreak := FromAPIString(n.BuildBreak)
-	patchFinish := FromAPIString(n.PatchFinish)
-	spawnHostExpiration := FromAPIString(n.SpawnHostExpiration)
-	spawnHostOutcome := FromAPIString(n.SpawnHostOutcome)
-	commitQueue := FromAPIString(n.CommitQueue)
+	buildbreak := FromStringPtr(n.BuildBreak)
+	patchFinish := FromStringPtr(n.PatchFinish)
+	spawnHostExpiration := FromStringPtr(n.SpawnHostExpiration)
+	spawnHostOutcome := FromStringPtr(n.SpawnHostOutcome)
+	commitQueue := FromStringPtr(n.CommitQueue)
 	if !user.IsValidSubscriptionPreference(buildbreak) {
 		return nil, errors.New("Build break preference is not a valid type")
 	}
@@ -203,11 +203,11 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 		SpawnHostExpiration: user.UserSubscriptionPreference(spawnHostExpiration),
 		CommitQueue:         user.UserSubscriptionPreference(commitQueue),
 	}
-	preferences.BuildBreakID = FromAPIString(n.BuildBreakID)
-	preferences.PatchFinishID = FromAPIString(n.PatchFinishID)
-	preferences.SpawnHostOutcomeID = FromAPIString(n.PatchFinishID)
-	preferences.SpawnHostExpirationID = FromAPIString(n.SpawnHostExpirationID)
-	preferences.CommitQueueID = FromAPIString(n.CommitQueueID)
+	preferences.BuildBreakID = FromStringPtr(n.BuildBreakID)
+	preferences.PatchFinishID = FromStringPtr(n.PatchFinishID)
+	preferences.SpawnHostOutcomeID = FromStringPtr(n.PatchFinishID)
+	preferences.SpawnHostExpirationID = FromStringPtr(n.SpawnHostExpirationID)
+	preferences.CommitQueueID = FromStringPtr(n.CommitQueueID)
 	return preferences, nil
 }
 
@@ -232,8 +232,8 @@ func ApplyUserChanges(current user.UserSettings, changes APIUserSettings) (APIUs
 }
 
 type APIUserAuthorInformation struct {
-	DisplayName APIString
-	Email       APIString
+	DisplayName *string
+	Email       *string
 }
 
 func (u *APIUserAuthorInformation) BuildFromService(h interface{}) error {
@@ -245,8 +245,8 @@ func (u *APIUserAuthorInformation) BuildFromService(h interface{}) error {
 		return errors.New("can't build from nil user")
 	}
 
-	u.DisplayName = ToAPIString(v.DisplayName())
-	u.Email = ToAPIString(v.Email())
+	u.DisplayName = ToStringPtr(v.DisplayName())
+	u.Email = ToStringPtr(v.Email())
 
 	return nil
 }
@@ -256,8 +256,8 @@ func (u *APIUserAuthorInformation) ToService() (interface{}, error) {
 }
 
 type APIFeedbackSubmission struct {
-	Type        APIString           `json:"type"`
-	User        APIString           `json:"user"`
+	Type        *string           `json:"type"`
+	User        *string           `json:"user"`
 	SubmittedAt time.Time           `json:"submitted_at"`
 	Questions   []APIQuestionAnswer `json:"questions"`
 }
@@ -268,8 +268,8 @@ func (a *APIFeedbackSubmission) BuildFromService(h interface{}) error {
 
 func (a *APIFeedbackSubmission) ToService() (interface{}, error) {
 	result := model.FeedbackSubmission{
-		Type:        FromAPIString(a.Type),
-		User:        FromAPIString(a.User),
+		Type:        FromStringPtr(a.Type),
+		User:        FromStringPtr(a.User),
 		SubmittedAt: a.SubmittedAt,
 	}
 	for _, question := range a.Questions {
@@ -281,9 +281,9 @@ func (a *APIFeedbackSubmission) ToService() (interface{}, error) {
 }
 
 type APIQuestionAnswer struct {
-	ID     APIString `json:"id"`
-	Prompt APIString `json:"prompt"`
-	Answer APIString `json:"answer"`
+	ID     *string `json:"id"`
+	Prompt *string `json:"prompt"`
+	Answer *string `json:"answer"`
 }
 
 func (a *APIQuestionAnswer) BuildFromService(h interface{}) error {
@@ -292,8 +292,8 @@ func (a *APIQuestionAnswer) BuildFromService(h interface{}) error {
 
 func (a *APIQuestionAnswer) ToService() (interface{}, error) {
 	return model.QuestionAnswer{
-		ID:     FromAPIString(a.ID),
-		Prompt: FromAPIString(a.Prompt),
-		Answer: FromAPIString(a.Answer),
+		ID:     FromStringPtr(a.ID),
+		Prompt: FromStringPtr(a.Prompt),
+		Answer: FromStringPtr(a.Answer),
 	}, nil
 }

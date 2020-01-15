@@ -8,7 +8,7 @@ import (
 
 // APIVersionCost is the model to be returned by the API whenever cost data is fetched by version id.
 type APIVersionCost struct {
-	VersionId     APIString   `json:"version_id"`
+	VersionId     *string   `json:"version_id"`
 	SumTimeTaken  APIDuration `json:"sum_time_taken"`
 	EstimatedCost float64     `json:"estimated_cost"`
 }
@@ -18,7 +18,7 @@ type APIVersionCost struct {
 func (apiVersionCost *APIVersionCost) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *task.VersionCost:
-		apiVersionCost.VersionId = ToAPIString(v.VersionId)
+		apiVersionCost.VersionId = ToStringPtr(v.VersionId)
 		apiVersionCost.SumTimeTaken = NewAPIDuration(v.SumTimeTaken)
 		apiVersionCost.EstimatedCost = v.SumEstimatedCost
 	default:
@@ -34,10 +34,10 @@ func (apiVersionCost *APIVersionCost) ToService() (interface{}, error) {
 
 // APIDistroCost is the model to be returned by the API whenever cost data is fetched by distro id.
 type APIDistroCost struct {
-	DistroId      APIString   `json:"distro_id"`
+	DistroId      *string   `json:"distro_id"`
 	SumTimeTaken  APIDuration `json:"sum_time_taken"`
-	Provider      APIString   `json:"provider"`
-	InstanceType  APIString   `json:"instance_type,omitempty"`
+	Provider      *string   `json:"provider"`
+	InstanceType  *string   `json:"instance_type,omitempty"`
 	EstimatedCost float64     `json:"estimated_cost"`
 	NumTasks      int         `json:"num_tasks"`
 }
@@ -47,9 +47,9 @@ type APIDistroCost struct {
 func (apiDistroCost *APIDistroCost) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *task.DistroCost:
-		apiDistroCost.DistroId = ToAPIString(v.DistroId)
+		apiDistroCost.DistroId = ToStringPtr(v.DistroId)
 		apiDistroCost.SumTimeTaken = NewAPIDuration(v.SumTimeTaken)
-		apiDistroCost.Provider = ToAPIString(v.Provider)
+		apiDistroCost.Provider = ToStringPtr(v.Provider)
 		apiDistroCost.EstimatedCost = v.SumEstimatedCost
 		apiDistroCost.NumTasks = v.NumTasks
 
@@ -63,7 +63,7 @@ func (apiDistroCost *APIDistroCost) BuildFromService(h interface{}) error {
 			if instanceTypeStr == "" {
 				return errors.Errorf("ec2 missing instance type in provider settings")
 			}
-			apiDistroCost.InstanceType = ToAPIString(instanceTypeStr)
+			apiDistroCost.InstanceType = ToStringPtr(instanceTypeStr)
 		}
 	default:
 		return errors.Errorf("incorrect type when fetching converting distro cost type")

@@ -215,7 +215,7 @@ func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacy
 	grip.Infof("Queue Length: %d\n", len(cq.Queue))
 	for i, item := range cq.Queue {
 		grip.Infof("%d:", i)
-		author, _ := client.GetCommitQueueItemAuthor(ctx, projectID, restModel.FromAPIString(item.Issue))
+		author, _ := client.GetCommitQueueItemAuthor(ctx, projectID, restModel.FromStringPtr(item.Issue))
 		if author != "" {
 			grip.Infof("Author: %s", author)
 		}
@@ -232,7 +232,7 @@ func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacy
 }
 
 func listPRCommitQueueItem(ctx context.Context, item restModel.APICommitQueueItem, projectRef *model.ProjectRef, uiServerHost string) {
-	issue := restModel.FromAPIString(item.Issue)
+	issue := restModel.FromStringPtr(item.Issue)
 	prDisplay := `
            PR # : %s
             URL : %s
@@ -241,15 +241,15 @@ func listPRCommitQueueItem(ctx context.Context, item restModel.APICommitQueueIte
 	grip.Infof(prDisplay, issue, url)
 
 	prDisplayVersion := "          Build : %s/version/%s"
-	if restModel.FromAPIString(item.Version) != "" {
-		grip.Infof(prDisplayVersion, uiServerHost, restModel.FromAPIString(item.Version))
+	if restModel.FromStringPtr(item.Version) != "" {
+		grip.Infof(prDisplayVersion, uiServerHost, restModel.FromStringPtr(item.Version))
 	}
 
 	grip.Info("\n")
 }
 
 func listCLICommitQueueItem(ctx context.Context, item restModel.APICommitQueueItem, ac *legacyClient, uiServerHost string) {
-	issue := restModel.FromAPIString(item.Issue)
+	issue := restModel.FromStringPtr(item.Issue)
 	p, err := ac.GetPatch(issue)
 	if err != nil {
 		grip.Error(message.WrapError(err, "\terror getting patch"))
@@ -269,7 +269,7 @@ func listModules(item restModel.APICommitQueueItem) {
 		grip.Infof("\tModules :")
 
 		for j, module := range item.Modules {
-			grip.Infof("\t\t%d: %s (%s)\n", j+1, restModel.FromAPIString(module.Module), restModel.FromAPIString(module.Issue))
+			grip.Infof("\t\t%d: %s (%s)\n", j+1, restModel.FromStringPtr(module.Module), restModel.FromStringPtr(module.Issue))
 		}
 		grip.Info("\n")
 	}

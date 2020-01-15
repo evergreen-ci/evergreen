@@ -12,7 +12,7 @@ import (
 
 type APIProjectEvent struct {
 	Timestamp time.Time          `json:"ts"`
-	User      APIString          `json:"user"`
+	User      *string          `json:"user"`
 	Before    APIProjectSettings `json:"before"`
 	After     APIProjectSettings `json:"after"`
 }
@@ -32,13 +32,13 @@ type APIProjectVars struct {
 }
 
 type APIProjectAlias struct {
-	Alias       APIString   `json:"alias"`
-	Variant     APIString   `json:"variant"`
-	Task        APIString   `json:"task"`
-	VariantTags []APIString `json:"variant_tags,omitempty"`
-	TaskTags    []APIString `json:"tags,omitempty"`
+	Alias       *string   `json:"alias"`
+	Variant     *string   `json:"variant"`
+	Task        *string   `json:"task"`
+	VariantTags []*string `json:"variant_tags,omitempty"`
+	TaskTags    []*string `json:"tags,omitempty"`
 	Delete      bool        `json:"delete,omitempty"`
-	ID          APIString   `json:"_id,omitempty"`
+	ID          *string   `json:"_id,omitempty"`
 }
 
 func (e *APIProjectEvent) BuildFromService(h interface{}) error {
@@ -50,7 +50,7 @@ func (e *APIProjectEvent) BuildFromService(h interface{}) error {
 			return errors.New("unable to convert event data to project change")
 		}
 
-		user := ToAPIString(data.User)
+		user := ToStringPtr(data.User)
 		before, err := DbProjectSettingsToRestModel(data.Before)
 		if err != nil {
 			return errors.Wrap(err, "unable to convert 'before' changes")
@@ -126,14 +126,14 @@ func (p *APIProjectVars) BuildFromService(h interface{}) error {
 
 func (a *APIProjectAlias) ToService() (interface{}, error) {
 	res := model.ProjectAlias{
-		Alias:       FromAPIString(a.Alias),
-		Task:        FromAPIString(a.Task),
-		Variant:     FromAPIString(a.Variant),
-		TaskTags:    FromAPIStringList(a.TaskTags),
-		VariantTags: FromAPIStringList(a.VariantTags),
+		Alias:       FromStringPtr(a.Alias),
+		Task:        FromStringPtr(a.Task),
+		Variant:     FromStringPtr(a.Variant),
+		TaskTags:    FromStringPtrSlice(a.TaskTags),
+		VariantTags: FromStringPtrSlice(a.VariantTags),
 	}
-	if model.IsValidId(FromAPIString(a.ID)) {
-		res.ID = model.NewId(FromAPIString(a.ID))
+	if model.IsValidId(FromStringPtr(a.ID)) {
+		res.ID = model.NewId(FromStringPtr(a.ID))
 	}
 	return res, nil
 }
@@ -141,25 +141,25 @@ func (a *APIProjectAlias) ToService() (interface{}, error) {
 func (a *APIProjectAlias) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *model.ProjectAlias:
-		APITaskTags := ToAPIStringList(v.TaskTags)
-		APIVariantTags := ToAPIStringList(v.VariantTags)
+		APITaskTags := ToStringPtrSlice(v.TaskTags)
+		APIVariantTags := ToStringPtrSlice(v.VariantTags)
 
-		a.Alias = ToAPIString(v.Alias)
-		a.Variant = ToAPIString(v.Variant)
-		a.Task = ToAPIString(v.Task)
+		a.Alias = ToStringPtr(v.Alias)
+		a.Variant = ToStringPtr(v.Variant)
+		a.Task = ToStringPtr(v.Task)
 		a.VariantTags = APIVariantTags
 		a.TaskTags = APITaskTags
-		a.ID = ToAPIString(v.ID.Hex())
+		a.ID = ToStringPtr(v.ID.Hex())
 	case model.ProjectAlias:
-		APITaskTags := ToAPIStringList(v.TaskTags)
-		APIVariantTags := ToAPIStringList(v.VariantTags)
+		APITaskTags := ToStringPtrSlice(v.TaskTags)
+		APIVariantTags := ToStringPtrSlice(v.VariantTags)
 
-		a.Alias = ToAPIString(v.Alias)
-		a.Variant = ToAPIString(v.Variant)
-		a.Task = ToAPIString(v.Task)
+		a.Alias = ToStringPtr(v.Alias)
+		a.Variant = ToStringPtr(v.Variant)
+		a.Task = ToStringPtr(v.Task)
 		a.VariantTags = APIVariantTags
 		a.TaskTags = APITaskTags
-		a.ID = ToAPIString(v.ID.Hex())
+		a.ID = ToStringPtr(v.ID.Hex())
 	default:
 		return errors.New("Invalid type of argument")
 	}
@@ -170,11 +170,11 @@ func DbProjectAliasesToRestModel(aliases []model.ProjectAlias) []APIProjectAlias
 	result := []APIProjectAlias{}
 	for _, alias := range aliases {
 		apiAlias := APIProjectAlias{
-			Alias:       ToAPIString(alias.Alias),
-			Variant:     ToAPIString(alias.Variant),
-			Task:        ToAPIString(alias.Task),
-			TaskTags:    ToAPIStringList(alias.TaskTags),
-			VariantTags: ToAPIStringList(alias.VariantTags),
+			Alias:       ToStringPtr(alias.Alias),
+			Variant:     ToStringPtr(alias.Variant),
+			Task:        ToStringPtr(alias.Task),
+			TaskTags:    ToStringPtrSlice(alias.TaskTags),
+			VariantTags: ToStringPtrSlice(alias.VariantTags),
 		}
 		result = append(result, apiAlias)
 	}

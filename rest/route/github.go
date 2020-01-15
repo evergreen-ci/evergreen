@@ -340,7 +340,7 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 		return errors.Errorf("no project with commit queue enabled for '%s:%s' tracking branch '%s'", userRepo.Owner, userRepo.Repo, baseBranch)
 	}
 	item := restModel.APICommitQueueItem{
-		Issue:   restModel.ToAPIString(strconv.Itoa(PRNum)),
+		Issue:   restModel.ToStringPtr(strconv.Itoa(PRNum)),
 		Modules: modules,
 	}
 	_, err = gh.sc.EnqueueItem(projectRef.Identifier, item, false)
