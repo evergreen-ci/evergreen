@@ -20,9 +20,9 @@ type APIPatch struct {
 	Author          *string       `json:"author"`
 	Version         *string       `json:"version"`
 	Status          *string       `json:"status"`
-	CreateTime      time.Time     `json:"create_time"`
-	StartTime       time.Time     `json:"start_time"`
-	FinishTime      time.Time     `json:"finish_time"`
+	CreateTime      *time.Time    `json:"create_time"`
+	StartTime       *time.Time    `json:"start_time"`
+	FinishTime      *time.Time    `json:"finish_time"`
 	Variants        []*string     `json:"builds"`
 	Tasks           []*string     `json:"tasks"`
 	VariantsTasks   []variantTask `json:"variants_tasks"`
@@ -50,9 +50,9 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	apiPatch.Author = ToStringPtr(v.Author)
 	apiPatch.Version = ToStringPtr(v.Version)
 	apiPatch.Status = ToStringPtr(v.Status)
-	apiPatch.CreateTime = v.CreateTime
-	apiPatch.StartTime = v.StartTime
-	apiPatch.FinishTime = v.FinishTime
+	apiPatch.CreateTime = &v.CreateTime
+	apiPatch.StartTime = &v.StartTime
+	apiPatch.FinishTime = &v.FinishTime
 	builds := make([]*string, 0)
 	for _, b := range v.BuildVariants {
 		builds = append(builds, ToStringPtr(b))

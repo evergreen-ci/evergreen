@@ -36,10 +36,10 @@ type APIBuild struct {
 	TaskCache           []APITaskCache `json:"task_cache"`
 	// Tasks is the build's task cache with just the names
 	Tasks             []string             `json:"tasks"`
-	TimeTaken         APIDuration          `json:"time_taken_ms"`
+	TimeTaken         time.Duration          `json:"time_taken_ms"`
 	DisplayName       *string              `json:"display_name"`
-	PredictedMakespan APIDuration          `json:"predicted_makespan_ms"`
-	ActualMakespan    APIDuration          `json:"actual_makespan_ms"`
+	PredictedMakespan time.Duration          `json:"predicted_makespan_ms"`
+	ActualMakespan    time.Duration          `json:"actual_makespan_ms"`
 	Origin            *string              `json:"origin"`
 	StatusCounts      task.TaskStatusCount `json:"status_counts"`
 }
@@ -67,10 +67,10 @@ func (apiBuild *APIBuild) BuildFromService(h interface{}) error {
 	for _, t := range v.Tasks {
 		apiBuild.Tasks = append(apiBuild.Tasks, t.Id)
 	}
-	apiBuild.TimeTaken = NewAPIDuration(v.TimeTaken)
+	apiBuild.TimeTaken = v.TimeTaken
 	apiBuild.DisplayName = ToStringPtr(v.DisplayName)
-	apiBuild.PredictedMakespan = NewAPIDuration(v.PredictedMakespan)
-	apiBuild.ActualMakespan = NewAPIDuration(v.ActualMakespan)
+	apiBuild.PredictedMakespan = v.PredictedMakespan
+	apiBuild.ActualMakespan = v.ActualMakespan
 	var origin string
 	switch v.Requester {
 	case evergreen.RepotrackerVersionRequester:

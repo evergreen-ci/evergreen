@@ -21,14 +21,3 @@ func ParseTime(tval string) (time.Time, error) {
 	t, err := time.ParseInLocation(APITimeFormat, tval, time.UTC)
 	return t, errors.WithStack(err)
 }
-
-// Represents duration in milliseconds
-type APIDuration uint64
-
-func NewAPIDuration(d time.Duration) APIDuration {
-	return APIDuration(d / time.Millisecond)
-}
-
-func (i APIDuration) ToDuration() time.Duration {
-	return time.Duration(i) * time.Millisecond
-}

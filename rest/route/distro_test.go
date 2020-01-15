@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/mock"
@@ -264,14 +265,14 @@ func (s *DistroByIDSuite) SetupSuite() {
 					Version:                evergreen.HostAllocatorUtilization,
 					MinimumHosts:           5,
 					MaximumHosts:           10,
-					AcceptableHostIdleTime: 10000000000,
+					AcceptableHostIdleTime: 10 * time.Second,
 				},
 				FinderSettings: distro.FinderSettings{
 					Version: evergreen.FinderVersionLegacy,
 				},
 				PlannerSettings: distro.PlannerSettings{
 					Version:       evergreen.PlannerVersionTunable,
-					TargetTime:    80000000000,
+					TargetTime:    8 * time.Second,
 					GroupVersions: &pTrue,
 					PatchFactor:   7,
 				},
@@ -312,9 +313,9 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 
 	s.Equal(5, d.HostAllocatorSettings.MinimumHosts)
 	s.Equal(10, d.HostAllocatorSettings.MaximumHosts)
-	s.Equal(model.NewAPIDuration(10000000000), d.HostAllocatorSettings.AcceptableHostIdleTime)
+	s.Equal(10*time.Second, d.HostAllocatorSettings.AcceptableHostIdleTime)
 	s.Equal(model.ToStringPtr(evergreen.PlannerVersionTunable), d.PlannerSettings.Version)
-	s.Equal(model.NewAPIDuration(80000000000), d.PlannerSettings.TargetTime)
+	s.Equal(8*time.Second, d.PlannerSettings.TargetTime)
 	s.Equal(true, *d.PlannerSettings.GroupVersions)
 	s.EqualValues(7, d.PlannerSettings.PatchFactor)
 	s.Equal(model.ToStringPtr(distro.BootstrapMethodLegacySSH), d.BootstrapSettings.Method)
