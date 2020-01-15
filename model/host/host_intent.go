@@ -6,6 +6,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -131,6 +133,16 @@ func InsertParentIntentsAndGetNumHostsToSpawn(pool *evergreen.ContainerPool, new
 		return nil, 0, errors.Wrap(err, "error find parent distro")
 	}
 	newParentHosts := createParents(parentDistro, numNewParentsToSpawn, pool)
+	for _, p := range newParentHosts {
+		if p.HasContainers == false {
+			grip.Debug(message.Fields{
+				"message": "found a parent intent with has_containers not set to true",
+				"ticket":  "EVG-7163",
+				"host_id": p.Id,
+				"distro":  p.Distro.Id,
+			})
+		}
+	}
 	if err = InsertMany(newParentHosts); err != nil {
 		return nil, 0, errors.Wrap(err, "error inserting new parent hosts")
 	}
