@@ -187,7 +187,7 @@ func (cq *commitQueueEnqueueItemHandler) Parse(ctx context.Context, r *http.Requ
 	if err != nil {
 		return errors.Wrap(err, "can't find item")
 	}
-	cq.project = patch.Project
+	cq.project = *patch.ProjectId
 
 	force := r.URL.Query().Get("force")
 	if strings.ToLower(force) == "true" {
@@ -243,7 +243,7 @@ func (cq *getCommitQueueItemAuthorHandler) Run(ctx context.Context) gimlet.Respo
 		if err != nil {
 			return gimlet.NewJSONErrorResponse(errors.Wrap(err, "problem finding patch"))
 		}
-		resp.Author = model.ToStringPtr(p.Author)
+		resp.Author = p.Author
 		return gimlet.NewJSONResponse(resp)
 	}
 	if pRef.CommitQueue.PatchType == commitqueue.PRPatchType {

@@ -1,0 +1,10 @@
+{
+  userPatches(userId: "testuser") {
+    id
+    variants
+    variantsTasks {
+      name
+      tasks
+    }
+  }
+}

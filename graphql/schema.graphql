@@ -5,7 +5,7 @@ type Query {
 type Patch {
   id: ID!
   description: String!
-  project: String!
+  projectID: String!
   githash: String!
   patchNumber: Int!
   author: String!
@@ -16,13 +16,13 @@ type Patch {
   finishTime: Time
   variants: [String]!
   tasks: [String]!
-  variantTasks: [VariantTask]!
+  variantsTasks: [VariantTask]!
   activated: Boolean!
   alias: String!
 }
 
 type VariantTask {
-  display_name: String!
+  name: String!
   tasks: [String]!
 }
 

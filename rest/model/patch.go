@@ -25,12 +25,12 @@ type APIPatch struct {
 	FinishTime      *time.Time    `json:"finish_time"`
 	Variants        []*string     `json:"builds"`
 	Tasks           []*string     `json:"tasks"`
-	VariantsTasks   []variantTask `json:"variants_tasks"`
+	VariantsTasks   []VariantTask `json:"variants_tasks"`
 	Activated       bool          `json:"activated"`
 	Alias           *string       `json:"alias,omitempty"`
 	GithubPatchData githubPatch   `json:"github_patch_data,omitempty"`
 }
-type variantTask struct {
+type VariantTask struct {
 	Name  *string   `json:"name"`
 	Tasks []*string `json:"tasks"`
 }
@@ -63,13 +63,13 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 		tasks = append(tasks, ToStringPtr(t))
 	}
 	apiPatch.Tasks = tasks
-	variantTasks := []variantTask{}
+	variantTasks := []VariantTask{}
 	for _, vt := range v.VariantsTasks {
 		vtasks := make([]*string, 0)
 		for _, task := range vt.Tasks {
 			vtasks = append(vtasks, ToStringPtr(task))
 		}
-		variantTasks = append(variantTasks, variantTask{
+		variantTasks = append(variantTasks, VariantTask{
 			Name:  ToStringPtr(vt.Variant),
 			Tasks: vtasks,
 		})

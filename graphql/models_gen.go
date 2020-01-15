@@ -7,8 +7,3 @@ type StatusDetails struct {
 	Type   string `json:"type"`
 	Desc   string `json:"desc"`
 }
-
-type VariantTask struct {
-	DisplayName string    `json:"display_name"`
-	Tasks       []*string `json:"tasks"`
-}

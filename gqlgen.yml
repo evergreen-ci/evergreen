@@ -14,4 +14,6 @@ resolver:
   type: Resolver
 models:
   Patch:
-    model: github.com/evergreen-ci/evergreen/model/patch.Patch
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPatch
+  VariantTask:
+    model: github.com/evergreen-ci/evergreen/rest/model.VariantTask
