@@ -119,6 +119,16 @@ func (j *createHostJob) Run(ctx context.Context) {
 		return
 	}
 
+	if j.host.Distro.Id == "archlinux-test" && !j.host.HasContainers {
+		grip.Debug(message.Fields{
+			"message":   "found a parent intent with has_containers not set to true",
+			"ticket":    "EVG-7163",
+			"host_id":   p.Id,
+			"distro":    p.Distro.Id,
+			"operation": "provisioning-create-host",
+		})
+	}
+
 	if j.host.ParentID == "" && !j.host.SpawnOptions.SpawnedByTask && !j.host.UserHost {
 		var numHosts int
 		numHosts, err = host.CountRunningHosts(j.host.Distro.Id)
