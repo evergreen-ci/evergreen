@@ -65,11 +65,7 @@ func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 		Permission:    evergreen.PermissionProjectCreate,
 		RequiredLevel: evergreen.ProjectCreate.Value,
 	}
-	canCreate, err := dbUser.HasPermission(opts)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
+	canCreate := dbUser.HasPermission(opts)
 
 	data := struct {
 		AllProjects []model.ProjectRef

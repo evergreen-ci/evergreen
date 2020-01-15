@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/pkg/errors"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -48,10 +47,5 @@ func (h *authPermissionGetHandler) Run(ctx context.Context) gimlet.Responder {
 		Permission:    h.permission,
 		RequiredLevel: h.requiredLevel,
 	}
-	ok, err := u.HasPermission(opts)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error checking permission for user"))
-	}
-
-	return gimlet.NewTextResponse(ok)
+	return gimlet.NewTextResponse(u.HasPermission(opts))
 }

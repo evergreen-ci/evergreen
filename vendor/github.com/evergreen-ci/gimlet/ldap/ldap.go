@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/gimlet/usercache"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -25,7 +26,7 @@ type userService struct {
 	userGroup    string
 	serviceGroup string
 	groupOuName  string
-	cache        UserCache
+	cache        usercache.Cache
 	connect      connectFunc
 	conn         ldap.Client
 }
@@ -40,13 +41,9 @@ type CreationOpts struct {
 	ServiceGroup string // LDAP serviceGroup to authorize services
 	GroupOuName  string // name of the OU that lists a user's groups
 
-	UserCache UserCache
+	UserCache usercache.Cache
 	// Functions to produce a UserCache
-	PutCache      PutUserGetToken // Put user to cache
-	GetCache      GetUserByToken  // Get user from cache
-	ClearCache    ClearUserToken  // Remove user(s) from cache
-	GetUser       GetUserByID     // Get user from storage
-	GetCreateUser GetOrCreateUser // Get or create user from storage
+	ExternalCache *usercache.ExternalOptions
 
 	connect connectFunc // connect changes connection behavior for testing
 }
@@ -81,8 +78,18 @@ func NewUserService(opts CreationOpts) (gimlet.UserManager, error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
 	}
+	var cache usercache.Cache
+	if opts.UserCache != nil {
+		cache = opts.UserCache
+	} else {
+		var err error
+		cache, err = usercache.NewExternal(*opts.ExternalCache)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create user cache")
+		}
+	}
 	u := &userService{
-		cache:        opts.MakeUserCache(),
+		cache:        cache,
 		connect:      connect,
 		url:          opts.URL,
 		port:         opts.Port,
@@ -105,21 +112,16 @@ func (opts CreationOpts) validate() error {
 	catcher := grip.NewBasicCatcher()
 
 	if opts.URL == "" || opts.Port == "" || opts.UserPath == "" || opts.ServicePath == "" {
-		catcher.Add(errors.Errorf("URL ('%s'), Port ('%s'), UserPath ('%s') and ServicePath ('%s') must be provided",
-			opts.URL, opts.Port, opts.UserPath, opts.ServicePath))
+		catcher.Errorf("URL ('%s'), Port ('%s'), UserPath ('%s') and ServicePath ('%s') must be provided",
+			opts.URL, opts.Port, opts.UserPath, opts.ServicePath)
 	}
 
 	if opts.UserGroup == "" {
-		catcher.Add(errors.New("LDAP user group cannot be empty"))
+		catcher.New("LDAP user group cannot be empty")
 	}
 
-	if opts.UserCache == nil {
-		if opts.PutCache == nil || opts.GetCache == nil || opts.ClearCache == nil {
-			catcher.Add(errors.New("PutCache, GetCache, and ClearCache must not be nil"))
-		}
-		if opts.GetUser == nil || opts.GetCreateUser == nil {
-			catcher.Add(errors.New("GetUserByID and GetOrCreateUser must not be nil"))
-		}
+	if opts.UserCache == nil && opts.ExternalCache == nil {
+		catcher.New("must specify user cache")
 	}
 
 	return catcher.Resolve()
@@ -489,5 +491,5 @@ func makeUser(result *ldap.SearchResult) gimlet.User {
 			groups = append(groups, entry.Values...)
 		}
 	}
-	return gimlet.NewBasicUser(id, name, email, "", "", groups, false, nil)
+	return gimlet.NewBasicUser(id, name, email, "", "", "", "", groups, false, nil)
 }

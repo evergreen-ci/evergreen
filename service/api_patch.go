@@ -43,7 +43,6 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		Tasks       []string `json:"tasks"`
 		Finalize    bool     `json:"finalize"`
 		Alias       string   `json:"alias"`
-		CommitQueue bool     `json:"commit_queue"`
 	}{}
 	if err := util.ReadJSONInto(util.NewRequestReaderWithSize(r, patch.SizeLimit), &data); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
@@ -59,13 +58,9 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if patch.IsMailboxDiff(patchString) {
-		as.LoggedError(w, r, http.StatusBadRequest, errors.New("CLI is out of date: use 'evergreen get-update --install'"))
-		return
-	}
 	pref, err := model.FindOneProjectRef(data.Project)
 	if err != nil {
-		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "project %s is not specified", data.Project))
+		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "project '%s' is not specified", data.Project))
 		return
 	}
 	if pref == nil {
@@ -192,11 +187,22 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	summaries, err := thirdparty.GetPatchSummaries(patchContent)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
+	var summaries []patch.Summary
+	if patch.IsMailboxDiff(patchContent) {
+		reader := strings.NewReader(patchContent)
+		summaries, err = units.GetPatchSummariesByCommit(reader)
+		if err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("Error getting summaries by commit"))
+			return
+		}
+	} else {
+		summaries, err = thirdparty.GetPatchSummaries(patchContent)
+		if err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
 	}
+
 	repoOwner, repo := module.GetRepoOwnerAndName()
 
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)

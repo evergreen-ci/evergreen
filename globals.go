@@ -196,7 +196,7 @@ const (
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
 
 	// TODO: remove this when degrading YAML
-	UseParserProject = false
+	UseParserProject = true
 )
 
 func IsFinishedTaskStatus(status string) bool {
@@ -507,6 +507,7 @@ type PermissionLevel struct {
 }
 
 var (
+	UnauthedUserRoles = []string{"unauthorized_project"}
 	// SuperUserPermissions resource ID.
 	SuperUserPermissionsID = "super_user"
 
