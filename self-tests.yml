@@ -104,6 +104,19 @@ variables:
           target: revendor
       - func: run-make
         vars: { target: "${task_name}" }
+  - &run-go-test-suite-with-mongodb-useast
+    # runs a make target above, but only on systems that have a
+    # running mongod started for testing.
+    name: test
+    commands:
+      - func: get-project
+      - func: setup-credentials
+      - func: setup-mongodb
+      - func: run-make
+        vars:
+          target: revendor
+      - func: run-make
+        vars: { target: "${task_name}", tz: "America/New_York" }
   - &run-smoke-test
     name: smoke
     commands:
@@ -232,6 +245,7 @@ functions:
         SETTINGS_OVERRIDE: creds.yml
         SMOKE_TEST_FILE: ${smoke_test_file}
         TEST_TIMEOUT: ${test_timeout}
+        TZ: ${tz}
         VENDOR_PKG: "github.com/${trigger_repo_owner}/${trigger_repo_name}"
         VENDOR_REVISION: ${trigger_revision}
         XC_BUILD: ${xc_build}
@@ -477,7 +491,7 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-grid
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite-with-mongodb-useast
     tags: ["db", "test"]
     name: test-graphql
   - name: docker-cleanup

@@ -24,6 +24,8 @@ import (
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -67,7 +69,7 @@ func (s *graphQLSuite) TestQueries() {
 	for _, testCase := range spec.Tests {
 		singleTest := func(t *testing.T) {
 			f, err := ioutil.ReadFile(filepath.Join("testdata", testCase.QueryFile))
-			s.Require().NoError(err)
+			require.NoError(t, err)
 			jsonQuery := fmt.Sprintf(`{"operationName":null,"variables":{},"query":"%s"}`, escapeGQLQuery(string(f)))
 			body := bytes.NewBuffer([]byte(jsonQuery))
 			client := http.Client{}
@@ -77,10 +79,10 @@ func (s *graphQLSuite) TestQueries() {
 			r.Header.Add(evergreen.APIUserHeader, s.apiUser)
 			r.Header.Add("content-type", "application/json")
 			resp, err := client.Do(r)
-			s.Require().NoError(err)
+			require.NoError(t, err)
 			b, err := ioutil.ReadAll(resp.Body)
-			s.Require().NoError(err)
-			s.JSONEq(string(testCase.Result), string(b), fmt.Sprintf("expected %s but got %s", string(testCase.Result), string(b)))
+			require.NoError(t, err)
+			assert.JSONEq(t, string(testCase.Result), string(b), fmt.Sprintf("expected %s but got %s", string(testCase.Result), string(b)))
 		}
 
 		s.T().Run(testCase.QueryFile, singleTest)
