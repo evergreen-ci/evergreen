@@ -198,10 +198,7 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 			Permission:    evergreen.PermissionAdminSettings,
 			RequiredLevel: evergreen.AdminSettingsEdit.Value,
 		}
-		viewData.IsAdmin, err = u.HasPermission(opts)
-		if err != nil {
-			grip.Criticalf("failed to check admin permissions for user [%s%]", userCtx.Username())
-		}
+		viewData.IsAdmin = u.HasPermission(opts)
 		// TODO: PM-1355 remove this if statement.
 		if !evergreen.AclCheckingIsEnabled {
 			viewData.IsAdmin = uis.isSuperUser(u)
@@ -233,7 +230,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	adminSettings := route.RequiresSuperUserPermission(evergreen.PermissionAdminSettings, evergreen.AdminSettingsEdit)
 	createProject := route.RequiresSuperUserPermission(evergreen.PermissionProjectCreate, evergreen.ProjectCreate)
 	createDistro := route.RequiresSuperUserPermission(evergreen.PermissionDistroCreate, evergreen.DistroCreate)
-	viewTasks := &route.RequiresProjectViewPermission{}
+	viewTasks := route.RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksView)
 	editTasks := route.RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksBasic)
 	viewLogs := route.RequiresProjectPermission(evergreen.PermissionLogs, evergreen.LogsView)
 	submitPatches := route.RequiresProjectPermission(evergreen.PermissionPatches, evergreen.PatchSubmit)
@@ -284,7 +281,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/graphql/query").Wrap(allowsCORS).Handler(func(_ http.ResponseWriter, _ *http.Request) {}).Options()
 
 	// Waterfall pages
-	app.AddRoute("/").Wrap(needsContext).Handler(uis.waterfallPage).Get()
+	app.AddRoute("/").Wrap(needsContext).Handler(uis.waterfallPage).Get().Head()
 	app.AddRoute("/waterfall").Wrap(needsContext).Handler(uis.waterfallPage).Get()
 	app.AddRoute("/waterfall/{project_id}").Wrap(needsContext, viewTasks).Handler(uis.waterfallPage).Get()
 

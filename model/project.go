@@ -20,6 +20,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-git-ignore"
+	mgobson "gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )
 
@@ -316,6 +317,13 @@ func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) err
 	c.Loggers = temp.Loggers
 	c.ParamsYAML = temp.ParamsYAML
 	c.Params = temp.Params
+	return c.unmarshalParams()
+}
+
+func (c *PluginCommandConf) UnmarshalBSON(in []byte) error {
+	if err := mgobson.Unmarshal(in, c); err != nil {
+		return err
+	}
 	return c.unmarshalParams()
 }
 

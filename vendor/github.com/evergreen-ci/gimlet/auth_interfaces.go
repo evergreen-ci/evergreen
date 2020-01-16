@@ -3,6 +3,9 @@ package gimlet
 import (
 	"context"
 	"net/http"
+
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 // User provides a common way of interacting with users from
@@ -16,7 +19,12 @@ type User interface {
 	Username() string
 	GetAPIKey() string
 	Roles() []string
-	HasPermission(PermissionOpts) (bool, error)
+	HasPermission(PermissionOpts) bool
+
+	// These only apply to systems that require token-based authorization
+	// (e.g. Okta).
+	GetAccessToken() string
+	GetRefreshToken() string
 }
 
 // PermissionOpts is the required data to be provided when asking if a user has permission for a resource
@@ -120,4 +128,22 @@ type RoleManager interface {
 
 	// Clear deletes all roles and scopes. This should only be used in tests
 	Clear() error
+}
+
+func HasPermission(rm RoleManager, opts PermissionOpts, roles []Role) bool {
+	roles, err := rm.FilterForResource(roles, opts.Resource, opts.ResourceType)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error filtering for resource",
+		}))
+		return false
+	}
+
+	for _, role := range roles {
+		level, hasPermission := role.Permissions[opts.Permission]
+		if hasPermission && level >= opts.RequiredLevel {
+			return true
+		}
+	}
+	return false
 }

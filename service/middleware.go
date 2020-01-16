@@ -152,7 +152,7 @@ func (uis *UIServer) requireSuperUser(next http.HandlerFunc) http.HandlerFunc {
 			next(w, r)
 			return
 		}
-		uis.RedirectToLogin(w, r)
+		http.Error(w, "This action requires superuser security", http.StatusUnauthorized)
 	}
 }
 
@@ -239,12 +239,7 @@ func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 					Permission:    evergreen.PermissionTasks,
 					RequiredLevel: evergreen.TasksView.Value,
 				}
-				hasPermission, err := usr.HasPermission(opts)
-				if err != nil {
-					uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error checking permissions"))
-					return
-				}
-				if !hasPermission {
+				if !usr.HasPermission(opts) {
 					uis.LoggedError(w, r, http.StatusUnauthorized, errors.New("not authorized for this action"))
 					return
 				}
@@ -336,17 +331,18 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 
 	projectId := uis.getRequestProjectId(r)
 	if evergreen.AclCheckingIsEnabled {
+		if dbUser == nil {
+			dbUser = &user.DBUser{
+				SystemRoles: evergreen.UnauthedUserRoles,
+			}
+		}
 		opts := gimlet.PermissionOpts{
 			Resource:      projectId,
 			ResourceType:  evergreen.ProjectResourceType,
 			Permission:    evergreen.PermissionTasks,
 			RequiredLevel: evergreen.TasksView.Value,
 		}
-		ok, err := dbUser.HasPermission(opts)
-		if err != nil {
-			return pc, err
-		}
-		if !ok {
+		if !dbUser.HasPermission(opts) {
 			projectId = ""
 		}
 	}
@@ -361,11 +357,7 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 				Permission:    evergreen.PermissionTasks,
 				RequiredLevel: evergreen.TasksView.Value,
 			}
-			ok, err := dbUser.HasPermission(opts)
-			if err != nil {
-				return pc, err
-			}
-			if ok {
+			if dbUser.HasPermission(opts) {
 				projectId = p.Identifier
 				break
 			}

@@ -602,8 +602,8 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 	}
 
 	patchDoc.PatchedConfig = string(yamlBytes)
-	patchDoc.BuildVariants = append(patchDoc.BuildVariants, "commit-queue-merge")
-	patchDoc.Tasks = append(patchDoc.Tasks, "merge-patch")
+	patchDoc.BuildVariants = append(patchDoc.BuildVariants, evergreen.MergeTaskVariant)
+	patchDoc.Tasks = append(patchDoc.Tasks, evergreen.MergeTaskName)
 
 	return nil
 }

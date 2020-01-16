@@ -122,6 +122,7 @@ func mergeCommand() cli.Command {
 				Usage: "force item to front of queue",
 			},
 		)),
+		Before: setPlainLogger,
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -170,6 +171,7 @@ func setModuleCommand() cli.Command {
 		Before: mergeBeforeFuncs(
 			requirePatchIDFlag,
 			requireModuleFlag,
+			setPlainLogger,
 		),
 		Action: func(c *cli.Context) error {
 			params := moduleParams{
@@ -339,17 +341,17 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		return errors.New("CLI commit queue not enabled for project")
 	}
 
-	diffData, err := loadGitData(ref.Branch, p.ref)
-	if err != nil {
-		return errors.Wrap(err, "can't generate patches")
-	}
-
 	commitCount, err := gitCommitCount(ref.Branch, p.ref)
 	if err != nil {
 		return errors.Wrap(err, "can't get commit count")
 	}
-	if commitCount > 1 {
-		return errors.New("patch contains multiple commits, must contain 1")
+	if commitCount > 1 && !confirm("Commit queue patch has multiple commits. Continue? (y/n):", false) {
+		return errors.New("patch aborted")
+	}
+
+	diffData, err := loadGitData(ref.Branch, p.ref, true)
+	if err != nil {
+		return errors.Wrap(err, "can't generate patches")
 	}
 
 	if p.message == "" && commitCount != 0 {
@@ -394,8 +396,11 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	if err != nil {
 		return errors.Wrap(err, "can't get commit count")
 	}
-	if commitCount != 1 {
-		return errors.Errorf("patch contains %d commits, must contain 1", commitCount)
+	if commitCount == 0 {
+		return errors.New("No commits for module")
+	}
+	if commitCount > 1 && !confirm("Commit queue patch has multiple commits. Continue? (y/n):", false) {
+		return errors.New("patch aborted")
 	}
 
 	if p.message == "" {
@@ -403,10 +408,11 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 		if err != nil {
 			return errors.Wrap(err, "can't get commit messages")
 		}
+
 		p.message = message
 	}
 
-	diffData, err := loadGitData(moduleBranch, p.ref)
+	diffData, err := loadGitData(moduleBranch, p.ref, true)
 	if err != nil {
 		return errors.Wrap(err, "can't get patch data")
 	}
@@ -422,11 +428,12 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	}
 
 	params := UpdatePatchModuleParams{
-		patchID: p.patchID,
-		module:  p.module,
-		patch:   diffData.fullPatch,
-		base:    diffData.base,
-		message: p.message,
+		patchID:   p.patchID,
+		module:    p.module,
+		patch:     diffData.fullPatch,
+		base:      diffData.base,
+		message:   p.message,
+		formatted: true,
 	}
 	err = ac.UpdatePatchModule(params)
 	if err != nil {

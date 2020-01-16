@@ -2,7 +2,9 @@ package patch
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -14,6 +16,7 @@ import (
 	"github.com/google/go-github/github"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
+	"github.com/sam-falvo/mbox"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -90,9 +93,10 @@ type PatchSet struct {
 
 // Summary stores summary patch information
 type Summary struct {
-	Name      string `bson:"filename"`
-	Additions int    `bson:"additions"`
-	Deletions int    `bson:"deletions"`
+	Name        string `bson:"filename"`
+	Additions   int    `bson:"additions"`
+	Deletions   int    `bson:"deletions"`
+	Description string `bson:"description,omitempty"`
 }
 
 // SetDescription sets a patch's description in the database
@@ -121,7 +125,7 @@ func (p *Patch) ClearPatchData() {
 
 // FetchPatchFiles dereferences externally-stored patch diffs by fetching them from gridfs
 // and placing their contents into the patch object.
-func (p *Patch) FetchPatchFiles() error {
+func (p *Patch) FetchPatchFiles(useRaw bool) error {
 	for i, patchPart := range p.Patches {
 		// If the patch isn't stored externally, no need to do anything.
 		if patchPart.PatchSet.PatchFileId == "" {
@@ -137,7 +141,18 @@ func (p *Patch) FetchPatchFiles() error {
 		if err != nil {
 			return err
 		}
-		p.Patches[i].PatchSet.Patch = string(raw)
+		rawStr := string(raw)
+		if useRaw || !IsMailboxDiff(rawStr) {
+			p.Patches[i].PatchSet.Patch = rawStr
+			continue
+		}
+
+		reader := strings.NewReader(rawStr)
+		diffs, err := GetPatchDiffsForMailbox(reader)
+		if err != nil {
+			return errors.Wrapf(err, "error getting patch diffs for formatted patch")
+		}
+		p.Patches[i].PatchSet.Patch = diffs
 	}
 	return nil
 }
@@ -398,6 +413,49 @@ func IsMailbox(patchFile string) (bool, error) {
 
 func IsMailboxDiff(patchDiff string) bool {
 	return strings.HasPrefix(patchDiff, "From ")
+}
+
+func GetPatchDiffsForMailbox(reader io.Reader) (string, error) {
+	stream, err := mbox.CreateMboxStream(reader)
+	if err != nil {
+		if err == io.EOF {
+			return "", errors.Errorf("patch is empty")
+		}
+		return "", errors.Wrap(err, "error creating stream")
+	}
+	if stream == nil {
+		return "", errors.New("mbox stream is nil")
+	}
+
+	var result string
+	// iterate through patches
+	for err == nil {
+		var buffer []byte
+		msg, err := stream.ReadMessage()
+		if err != nil {
+			if err == io.EOF { // no more patches
+				return result, nil
+			}
+			return "", errors.Wrap(err, "error reading message")
+		}
+
+		reader := msg.BodyReader()
+		// iterate through patch body
+		for {
+			curBytes := make([]byte, bytes.MinRead)
+			n, err := reader.Read(curBytes)
+			if err != nil {
+				if err == io.EOF { // finished reading body of this patch
+					result = result + string(buffer)
+					break
+				}
+				return "", errors.Wrap(err, "error reading body")
+			}
+			buffer = append(buffer, curBytes[0:n]...)
+		}
+	}
+
+	return result, nil
 }
 
 func MakeMergePatch(pr *github.PullRequest, projectID, alias string) (*Patch, error) {

@@ -259,13 +259,17 @@ func GetCommitEvent(ctx context.Context, oauthToken, repoOwner, repo, githash st
 		return nil, APIResponseError{err.Error()}
 	}
 
-	grip.Debug(message.Fields{
+	msg := message.Fields{
 		"operation": "github api query",
 		"size":      resp.ContentLength,
 		"status":    resp.Status,
-		"commit":    githash,
+		"query":     githash,
 		"repo":      repoOwner + "/" + repo,
-	})
+	}
+	if commit != nil && commit.SHA != nil {
+		msg["commit"] = *commit.SHA
+	}
+	grip.Debug(msg)
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, err := ioutil.ReadAll(resp.Body)
