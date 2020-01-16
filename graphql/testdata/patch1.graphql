@@ -1,6 +1,19 @@
 {
   userPatches(userId: "testuser") {
     id
+    description
+    projectID
+    githash
+    patchNumber
+    author
+    version
+    status
+    createTime
+    startTime
+    finishTime
+    tasks
+    activated
+    alias
     variants
     variantsTasks {
       name
