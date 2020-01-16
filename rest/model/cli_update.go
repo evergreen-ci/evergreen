@@ -27,7 +27,7 @@ func (a *APICLIUpdate) ToService() (interface{}, error) {
 
 type APIClientConfig struct {
 	ClientBinaries []APIClientBinary `json:"client_binaries,omitempty"`
-	LatestRevision *string         `json:"latest_revision"`
+	LatestRevision *string           `json:"latest_revision"`
 }
 
 func (a *APIClientConfig) BuildFromService(h interface{}) error {

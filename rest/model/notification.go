@@ -38,13 +38,13 @@ func (c *APIJiraComment) ToService() (interface{}, error) {
 ///////////////////////////////////////////////////////////////////////
 
 type APIJiraIssue struct {
-	IssueKey    *string              `json:"issue_key"`
-	Project     *string              `json:"project"`
-	Summary     *string              `json:"summary"`
-	Description *string              `json:"description"`
-	Reporter    *string              `json:"reporter"`
-	Assignee    *string              `json:"assignee"`
-	Type        *string              `json:"type"`
+	IssueKey    *string                `json:"issue_key"`
+	Project     *string                `json:"project"`
+	Summary     *string                `json:"summary"`
+	Description *string                `json:"description"`
+	Reporter    *string                `json:"reporter"`
+	Assignee    *string                `json:"assignee"`
+	Type        *string                `json:"type"`
 	Components  []string               `json:"components"`
 	Labels      []string               `json:"labels"`
 	Fields      map[string]interface{} `json:"fields"`
@@ -98,8 +98,8 @@ func (i *APIJiraIssue) ToService() (interface{}, error) {
 ///////////////////////////////////////////////////////////////////////
 
 type APISlack struct {
-	Target      *string            `json:"target"`
-	Msg         *string            `json:"msg"`
+	Target      *string              `json:"target"`
+	Msg         *string              `json:"msg"`
 	Attachments []APISlackAttachment `json:"attachments"`
 }
 
@@ -137,16 +137,16 @@ func (n *APISlack) ToService() (interface{}, error) {
 ///////////////////////////////////////////////////////////////////////
 
 type APISlackAttachment struct {
-	Color      *string                 `json:"color"`
-	Fallback   *string                 `json:"fallback"`
-	AuthorName *string                 `json:"author_name"`
-	AuthorIcon *string                 `json:"author_icon"`
-	Title      *string                 `json:"title"`
-	TitleLink  *string                 `json:"title_link"`
-	Text       *string                 `json:"text"`
+	Color      *string                   `json:"color"`
+	Fallback   *string                   `json:"fallback"`
+	AuthorName *string                   `json:"author_name"`
+	AuthorIcon *string                   `json:"author_icon"`
+	Title      *string                   `json:"title"`
+	TitleLink  *string                   `json:"title_link"`
+	Text       *string                   `json:"text"`
 	Fields     []APISlackAttachmentField `json:"fields"`
 	MarkdownIn []string                  `json:"mrkdwn_in"`
-	Footer     *string                 `json:"footer"`
+	Footer     *string                   `json:"footer"`
 }
 
 // BuildFromService converts from service level message.SlackAttachment to APISlackAttachment.
@@ -212,7 +212,7 @@ func (a *APISlackAttachment) ToService() (interface{}, error) {
 type APISlackAttachmentField struct {
 	Title *string `json:"title"`
 	Value *string `json:"value"`
-	Short bool      `json:"short"`
+	Short bool    `json:"short"`
 }
 
 // BuildFromService converts from service level message.SlackAttachmentField to an APISlackAttachmentField.
@@ -245,10 +245,10 @@ func (f *APISlackAttachmentField) ToService() (interface{}, error) {
 ///////////////////////////////////////////////////////////////////////
 
 type APIEmail struct {
-	From              *string           `json:"from"`
+	From              *string             `json:"from"`
 	Recipients        []string            `json:"recipients"`
-	Subject           *string           `json:"subject"`
-	Body              *string           `json:"body"`
+	Subject           *string             `json:"subject"`
+	Body              *string             `json:"body"`
 	PlainTextContents bool                `json:"is_plain_text"`
 	Headers           map[string][]string `json:"headers"`
 }

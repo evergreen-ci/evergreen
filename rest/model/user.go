@@ -32,10 +32,10 @@ func (apiPubKey *APIPubKey) ToService() (interface{}, error) {
 }
 
 type APIUserSettings struct {
-	Timezone         *string                   `json:"timezone"`
+	Timezone         *string                     `json:"timezone"`
 	UseSpruceOptions *APIUseSpruceOptions        `json:"use_spruce_options"`
 	GithubUser       *APIGithubUser              `json:"github_user"`
-	SlackUsername    *string                   `json:"slack_username"`
+	SlackUsername    *string                     `json:"slack_username"`
 	Notifications    *APINotificationPreferences `json:"notifications"`
 	SpruceFeedback   *APIFeedbackSubmission      `json:"spruce_feedback"`
 }
@@ -99,7 +99,7 @@ func (s *APIUserSettings) ToService() (interface{}, error) {
 }
 
 type APIGithubUser struct {
-	UID         int       `json:"uid,omitempty"`
+	UID         int     `json:"uid,omitempty"`
 	LastKnownAs *string `json:"last_known_as,omitempty"`
 }
 
@@ -256,8 +256,8 @@ func (u *APIUserAuthorInformation) ToService() (interface{}, error) {
 }
 
 type APIFeedbackSubmission struct {
-	Type        *string           `json:"type"`
-	User        *string           `json:"user"`
+	Type        *string             `json:"type"`
+	User        *string             `json:"user"`
 	SubmittedAt time.Time           `json:"submitted_at"`
 	Questions   []APIQuestionAnswer `json:"questions"`
 }

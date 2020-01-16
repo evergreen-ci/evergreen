@@ -10,19 +10,19 @@ import (
 
 // APIHost is the model to be returned by the API whenever hosts are fetched.
 type APIHost struct {
-	Id               *string  `json:"host_id"`
-	HostURL          *string  `json:"host_url"`
+	Id               *string    `json:"host_id"`
+	HostURL          *string    `json:"host_url"`
 	Distro           DistroInfo `json:"distro"`
 	Provisioned      bool       `json:"provisioned"`
-	StartedBy        *string  `json:"started_by"`
-	Type             *string  `json:"host_type"`
-	User             *string  `json:"user"`
-	Status           *string  `json:"status"`
+	StartedBy        *string    `json:"started_by"`
+	Type             *string    `json:"host_type"`
+	User             *string    `json:"user"`
+	Status           *string    `json:"status"`
 	RunningTask      taskInfo   `json:"running_task"`
 	UserHost         bool       `json:"user_host"`
 	InstanceTags     []host.Tag `json:"instance_tags"`
-	InstanceType     *string  `json:"instance_type"`
-	AvailabilityZone *string  `json:"zone"`
+	InstanceType     *string    `json:"instance_type"`
+	AvailabilityZone *string    `json:"zone"`
 }
 
 // HostPostRequest is a struct that holds the format of a POST request to /hosts
@@ -43,11 +43,11 @@ type DistroInfo struct {
 }
 
 type taskInfo struct {
-	Id           *string `json:"task_id"`
-	Name         *string `json:"name"`
-	DispatchTime time.Time   `json:"dispatch_time"`
-	VersionId    *string `json:"version_id"`
-	BuildId      *string `json:"build_id"`
+	Id           *string   `json:"task_id"`
+	Name         *string   `json:"name"`
+	DispatchTime time.Time `json:"dispatch_time"`
+	VersionId    *string   `json:"version_id"`
+	BuildId      *string   `json:"build_id"`
 }
 
 // BuildFromService converts from service level structs to an APIHost. It can
@@ -132,7 +132,7 @@ type APIVolume struct {
 	CreatedBy        *string `json:"created_by"`
 	Type             *string `json:"type"`
 	AvailabilityZone *string `json:"zone"`
-	Size             int       `json:"size"`
+	Size             int     `json:"size"`
 
 	DeviceName *string `json:"device_name"`
 	HostID     *string `json:"host_id"`
@@ -188,7 +188,7 @@ type APISpawnHostModify struct {
 	VolumeID     *string   `json:"volume_id"`
 	RDPPwd       *string   `json:"rdp_pwd"`
 	AddHours     *string   `json:"add_hours"`
-	Expiration   time.Time   `json:"expiration"`
+	Expiration   time.Time `json:"expiration"`
 	InstanceType *string   `json:"instance_type"`
 	AddTags      []*string `json:"tags_to_add"`
 	DeleteTags   []*string `json:"tags_to_delete"`

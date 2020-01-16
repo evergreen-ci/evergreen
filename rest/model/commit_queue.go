@@ -8,13 +8,13 @@ import (
 )
 
 type APICommitQueue struct {
-	ProjectID *string            `json:"queue_id"`
+	ProjectID *string              `json:"queue_id"`
 	Queue     []APICommitQueueItem `json:"queue"`
 }
 
 type APICommitQueueItem struct {
-	Issue   *string   `json:"issue"`
-	Version *string   `json:"version"`
+	Issue   *string     `json:"issue"`
+	Version *string     `json:"version"`
 	Modules []APIModule `json:"modules"`
 }
 

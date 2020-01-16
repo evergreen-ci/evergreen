@@ -12,14 +12,14 @@ type APISelector struct {
 }
 
 type APISubscription struct {
-	ID             *string         `json:"id"`
-	ResourceType   *string         `json:"resource_type"`
-	Trigger        *string         `json:"trigger"`
+	ID             *string           `json:"id"`
+	ResourceType   *string           `json:"resource_type"`
+	Trigger        *string           `json:"trigger"`
 	Selectors      []APISelector     `json:"selectors"`
 	RegexSelectors []APISelector     `json:"regex_selectors"`
 	Subscriber     APISubscriber     `json:"subscriber"`
-	OwnerType      *string         `json:"owner_type"`
-	Owner          *string         `json:"owner"`
+	OwnerType      *string           `json:"owner_type"`
+	Owner          *string           `json:"owner"`
 	TriggerData    map[string]string `json:"trigger_data,omitempty"`
 }
 

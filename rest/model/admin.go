@@ -50,20 +50,20 @@ type APIAdminSettings struct {
 	Alerts                  *APIAlertsConfig                  `json:"alerts,omitempty"`
 	Amboy                   *APIAmboyConfig                   `json:"amboy,omitempty"`
 	Api                     *APIapiConfig                     `json:"api,omitempty"`
-	ApiUrl                  *string                         `json:"api_url,omitempty"`
+	ApiUrl                  *string                           `json:"api_url,omitempty"`
 	AuthConfig              *APIAuthConfig                    `json:"auth,omitempty"`
-	Banner                  *string                         `json:"banner,omitempty"`
-	BannerTheme             *string                         `json:"banner_theme,omitempty"`
+	Banner                  *string                           `json:"banner,omitempty"`
+	BannerTheme             *string                           `json:"banner_theme,omitempty"`
 	Backup                  *APIBackupConfig                  `json:"backup,omitempty"`
-	ClientBinariesDir       *string                         `json:"client_binaries_dir,omitempty"`
+	ClientBinariesDir       *string                           `json:"client_binaries_dir,omitempty"`
 	CommitQueue             *APICommitQueueConfig             `json:"commit_queue,omitempty"`
-	ConfigDir               *string                         `json:"configdir,omitempty"`
+	ConfigDir               *string                           `json:"configdir,omitempty"`
 	ContainerPools          *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
 	Credentials             map[string]string                 `json:"credentials,omitempty"`
-	DomainName              *string                         `json:"domain_name,omitempty"`
+	DomainName              *string                           `json:"domain_name,omitempty"`
 	Expansions              map[string]string                 `json:"expansions,omitempty"`
-	Bugsnag                 *string                         `json:"bugsnag,omitempty"`
-	GithubPRCreatorOrg      *string                         `json:"github_pr_creator_org,omitempty"`
+	Bugsnag                 *string                           `json:"bugsnag,omitempty"`
+	GithubPRCreatorOrg      *string                           `json:"github_pr_creator_org,omitempty"`
 	GithubOrgs              []string                          `json:"github_orgs,omitempty"`
 	HostInit                *APIHostInitConfig                `json:"hostinit,omitempty"`
 	HostJasper              *APIHostJasperConfig              `json:"host_jasper,omitempty"`
@@ -72,11 +72,11 @@ type APIAdminSettings struct {
 	Keys                    map[string]string                 `json:"keys,omitempty"`
 	LDAPRoleMap             *APILDAPRoleMap                   `json:"ldap_role_map,omitempty"`
 	LoggerConfig            *APILoggerConfig                  `json:"logger_config,omitempty"`
-	LogPath                 *string                         `json:"log_path,omitempty"`
+	LogPath                 *string                           `json:"log_path,omitempty"`
 	NewRelic                *APINewRelicConfig                `json:"newrelic,omitempty"`
 	Notify                  *APINotifyConfig                  `json:"notify,omitempty"`
 	Plugins                 map[string]map[string]interface{} `json:"plugins,omitempty"`
-	PprofPort               *string                         `json:"pprof_port,omitempty"`
+	PprofPort               *string                           `json:"pprof_port,omitempty"`
 	Providers               *APICloudProviders                `json:"providers,omitempty"`
 	RepoTracker             *APIRepoTrackerConfig             `json:"repotracker,omitempty"`
 	Scheduler               *APISchedulerConfig               `json:"scheduler,omitempty"`
@@ -261,8 +261,8 @@ func (a *APIAlertsConfig) ToService() (interface{}, error) {
 
 type APISMTPConfig struct {
 	Server     *string   `json:"server"`
-	Port       int         `json:"port"`
-	UseSSL     bool        `json:"use_ssl"`
+	Port       int       `json:"port"`
+	UseSSL     bool      `json:"use_ssl"`
 	Username   *string   `json:"username"`
 	Password   *string   `json:"password"`
 	From       *string   `json:"from"`
@@ -309,13 +309,13 @@ type APIAmboyConfig struct {
 	Name                                  *string `json:"name"`
 	SingleName                            *string `json:"single_name"`
 	DB                                    *string `json:"database"`
-	PoolSizeLocal                         int       `json:"pool_size_local"`
-	PoolSizeRemote                        int       `json:"pool_size_remote"`
-	LocalStorage                          int       `json:"local_storage_size"`
-	GroupDefaultWorkers                   int       `json:"group_default_workers"`
-	GroupBackgroundCreateFrequencyMinutes int       `json:"group_background_create_frequency"`
-	GroupPruneFrequencyMinutes            int       `json:"group_prune_frequency"`
-	GroupTTLMinutes                       int       `json:"group_ttl"`
+	PoolSizeLocal                         int     `json:"pool_size_local"`
+	PoolSizeRemote                        int     `json:"pool_size_remote"`
+	LocalStorage                          int     `json:"local_storage_size"`
+	GroupDefaultWorkers                   int     `json:"group_default_workers"`
+	GroupBackgroundCreateFrequencyMinutes int     `json:"group_background_create_frequency"`
+	GroupPruneFrequencyMinutes            int     `json:"group_prune_frequency"`
+	GroupTTLMinutes                       int     `json:"group_ttl"`
 }
 
 func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
@@ -445,7 +445,7 @@ type APIBackupConfig struct {
 	Key        *string `bson:"key" json:"key" yaml:"key"`
 	Secret     *string `bson:"secret" json:"secret" yaml:"secret"`
 	Prefix     *string `bson:"prefix" json:"prefix" yaml:"prefix"`
-	Compress   bool      `bson:"compress" json:"compress" yaml:"compress"`
+	Compress   bool    `bson:"compress" json:"compress" yaml:"compress"`
 }
 
 func (a *APIBackupConfig) BuildFromService(c interface{}) error {
@@ -750,13 +750,13 @@ func (a *APILDAPRoleMap) ToService() (interface{}, error) {
 
 type APILoggerConfig struct {
 	Buffer              *APILogBuffering `json:"buffer"`
-	DefaultLevel        *string        `json:"default_level"`
-	ThresholdLevel      *string        `json:"threshold_level"`
-	LogkeeperURL        *string        `json:"logkeeper_url"`
-	BuildloggerBaseURL  *string        `json:"buildlogger_base_url"`
-	BuildloggerRPCPort  *string        `json:"buildlogger_rpc_port"`
-	BuildloggerUser     *string        `json:"buildlogger_user"`
-	BuildloggerPassword *string        `json:"buildlogger_password"`
+	DefaultLevel        *string          `json:"default_level"`
+	ThresholdLevel      *string          `json:"threshold_level"`
+	LogkeeperURL        *string          `json:"logkeeper_url"`
+	BuildloggerBaseURL  *string          `json:"buildlogger_base_url"`
+	BuildloggerRPCPort  *string          `json:"buildlogger_rpc_port"`
+	BuildloggerUser     *string          `json:"buildlogger_user"`
+	BuildloggerPassword *string          `json:"buildlogger_password"`
 }
 
 func (a *APILoggerConfig) BuildFromService(h interface{}) error {
@@ -986,8 +986,8 @@ func (a *APIContainerPoolsConfig) ToService() (interface{}, error) {
 type APIContainerPool struct {
 	Distro        *string `json:"distro"`
 	Id            *string `json:"id"`
-	MaxContainers int       `json:"max_containers"`
-	Port          uint16    `json:"port"`
+	MaxContainers int     `json:"max_containers"`
+	Port          uint16  `json:"port"`
 }
 
 func (a *APIContainerPool) BuildFromService(h interface{}) error {
@@ -1043,12 +1043,12 @@ func (a *APIEC2Key) ToService() (interface{}, error) {
 
 type APIAWSConfig struct {
 	EC2Keys              []APIEC2Key `json:"ec2_keys"`
-	S3Key                *string   `json:"s3_key"`
-	S3Secret             *string   `json:"s3_secret"`
-	Bucket               *string   `json:"bucket"`
-	S3BaseURL            *string   `json:"s3_base_url"`
-	DefaultSecurityGroup *string   `json:"default_security_group"`
-	AllowedInstanceTypes []*string `json:"allowed_instance_types"`
+	S3Key                *string     `json:"s3_key"`
+	S3Secret             *string     `json:"s3_secret"`
+	Bucket               *string     `json:"bucket"`
+	S3BaseURL            *string     `json:"s3_base_url"`
+	DefaultSecurityGroup *string     `json:"default_security_group"`
+	AllowedInstanceTypes []*string   `json:"allowed_instance_types"`
 	MaxVolumeSizePerUser *int        `json:"max_volume_size"`
 }
 
@@ -1258,15 +1258,15 @@ func (a *APIRepoTrackerConfig) ToService() (interface{}, error) {
 type APISchedulerConfig struct {
 	TaskFinder                    *string `json:"task_finder"`
 	HostAllocator                 *string `json:"host_allocator"`
-	FreeHostFraction              float64   `json:"free_host_fraction"`
-	CacheDurationSeconds          int       `json:"cache_duration_seconds"`
+	FreeHostFraction              float64 `json:"free_host_fraction"`
+	CacheDurationSeconds          int     `json:"cache_duration_seconds"`
 	Planner                       *string `json:"planner"`
-	TargetTimeSeconds             int       `json:"target_time_seconds"`
-	AcceptableHostIdleTimeSeconds int       `json:"acceptable_host_idle_time_seconds"`
-	GroupVersions                 bool      `json:"group_versions"`
-	PatchFactor                   int64     `json:"patch_factor"`
-	TimeInQueueFactor             int64     `json:"time_in_queue_factor"`
-	ExpectedRuntimeFactor         int64     `json:"expected_runtime_factor"`
+	TargetTimeSeconds             int     `json:"target_time_seconds"`
+	AcceptableHostIdleTimeSeconds int     `json:"acceptable_host_idle_time_seconds"`
+	GroupVersions                 bool    `json:"group_versions"`
+	PatchFactor                   int64   `json:"patch_factor"`
+	TimeInQueueFactor             int64   `json:"time_in_queue_factor"`
+	ExpectedRuntimeFactor         int64   `json:"expected_runtime_factor"`
 }
 
 func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
@@ -1338,8 +1338,8 @@ type APIServiceFlags struct {
 
 type APISlackConfig struct {
 	Options *APISlackOptions `json:"options"`
-	Token   *string        `json:"token"`
-	Level   *string        `json:"level"`
+	Token   *string          `json:"token"`
+	Level   *string          `json:"level"`
 }
 
 func (a *APISlackConfig) BuildFromService(h interface{}) error {
@@ -1373,11 +1373,11 @@ func (a *APISlackConfig) ToService() (interface{}, error) {
 }
 
 type APISlackOptions struct {
-	Channel       *string       `json:"channel"`
-	Hostname      *string       `json:"hostname"`
-	Name          *string       `json:"name"`
-	Username      *string       `json:"username"`
-	IconURL       *string       `json:"icon_url"`
+	Channel       *string         `json:"channel"`
+	Hostname      *string         `json:"hostname"`
+	Name          *string         `json:"name"`
+	Username      *string         `json:"username"`
+	IconURL       *string         `json:"icon_url"`
 	BasicMetadata bool            `json:"add_basic_metadata"`
 	Fields        bool            `json:"use_fields"`
 	AllFields     bool            `json:"all_fields"`
@@ -1446,17 +1446,17 @@ func (a *APISplunkConnectionInfo) ToService() (interface{}, error) {
 }
 
 type APIUIConfig struct {
-	Url                     *string `json:"url"`
-	HelpUrl                 *string `json:"help_url"`
-	UIv2Url                 *string `json:"uiv2_url"`
-	HttpListenAddr          *string `json:"http_listen_addr"`
-	Secret                  *string `json:"secret"`
-	DefaultProject          *string `json:"default_project"`
-	CacheTemplates          bool      `json:"cache_templates"`
-	CsrfKey                 *string `json:"csrf_key"`
-	CORSOrigins             []string  `json:"cors_origins"`
-	LoginDomain             *string `json:"login_domain"`
-	ExpireLoginCookieDomain *string `json:"expire_domain"`
+	Url                     *string  `json:"url"`
+	HelpUrl                 *string  `json:"help_url"`
+	UIv2Url                 *string  `json:"uiv2_url"`
+	HttpListenAddr          *string  `json:"http_listen_addr"`
+	Secret                  *string  `json:"secret"`
+	DefaultProject          *string  `json:"default_project"`
+	CacheTemplates          bool     `json:"cache_templates"`
+	CsrfKey                 *string  `json:"csrf_key"`
+	CORSOrigins             []string `json:"cors_origins"`
+	LoginDomain             *string  `json:"login_domain"`
+	ExpireLoginCookieDomain *string  `json:"expire_domain"`
 }
 
 func (a *APIUIConfig) BuildFromService(h interface{}) error {
@@ -1778,7 +1778,7 @@ func (c *APITriggerConfig) ToService() (interface{}, error) {
 type APIHostJasperConfig struct {
 	BinaryName       *string `json:"binary_name,omitempty"`
 	DownloadFileName *string `json:"download_file_name,omitempty"`
-	Port             int       `json:"port,omitempty"`
+	Port             int     `json:"port,omitempty"`
 	URL              *string `json:"url,omitempty"`
 	Version          *string `json:"version,omitempty"`
 }

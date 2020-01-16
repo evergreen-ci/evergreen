@@ -50,7 +50,7 @@ func (apiStatus *APIRecentTaskStats) ToService() (interface{}, error) {
 
 type APIStat struct {
 	Name  *string `json:"name"`
-	Count int       `json:"count"`
+	Count int     `json:"count"`
 }
 
 type APIStatList []APIStat
@@ -99,9 +99,9 @@ type APIHostStatsByDistro struct {
 type apiHostStatsForDistro struct {
 	Distro   *string `json:"distro"`
 	Status   *string `json:"status"`
-	NumHosts int       `json:"num_hosts"`
-	NumTasks int       `json:"running_tasks"`
-	MaxHosts int       `json:"max_hosts"`
+	NumHosts int     `json:"num_hosts"`
+	NumTasks int     `json:"running_tasks"`
+	MaxHosts int     `json:"max_hosts"`
 }
 
 // BuildFromService takes the slice of stats returned by GetHostStatsByDistro and embeds

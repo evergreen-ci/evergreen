@@ -36,10 +36,10 @@ type APIBuild struct {
 	TaskCache           []APITaskCache `json:"task_cache"`
 	// Tasks is the build's task cache with just the names
 	Tasks             []string             `json:"tasks"`
-	TimeTaken         time.Duration          `json:"time_taken_ms"`
+	TimeTaken         time.Duration        `json:"time_taken_ms"`
 	DisplayName       *string              `json:"display_name"`
-	PredictedMakespan time.Duration          `json:"predicted_makespan_ms"`
-	ActualMakespan    time.Duration          `json:"actual_makespan_ms"`
+	PredictedMakespan time.Duration        `json:"predicted_makespan_ms"`
+	ActualMakespan    time.Duration        `json:"actual_makespan_ms"`
 	Origin            *string              `json:"origin"`
 	StatusCounts      task.TaskStatusCount `json:"status_counts"`
 }

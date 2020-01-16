@@ -11,27 +11,27 @@ import (
 )
 
 type APISubscriber struct {
-	Type   *string   `json:"type"`
+	Type   *string     `json:"type"`
 	Target interface{} `json:"target"`
 }
 
 type APIGithubPRSubscriber struct {
 	Owner    *string `json:"owner" mapstructure:"owner"`
 	Repo     *string `json:"repo" mapstructure:"repo"`
-	PRNumber int       `json:"pr_number" mapstructure:"pr_number"`
+	PRNumber int     `json:"pr_number" mapstructure:"pr_number"`
 	Ref      *string `json:"ref" mapstructure:"ref"`
 }
 
 type APIGithubMergeSubscriber struct {
 	PRs         []APIPRInfo `json:"prs" mapstructure:"prs"`
-	Item        *string   `json:"item" mapstructure:"item"`
-	MergeMethod *string   `json:"merge_method" mapstructure:"merge_method"`
+	Item        *string     `json:"item" mapstructure:"item"`
+	MergeMethod *string     `json:"merge_method" mapstructure:"merge_method"`
 }
 
 type APIPRInfo struct {
 	Owner       *string `json:"owner" mapstructure:"owner"`
 	Repo        *string `json:"repo" mapstructure:"repo"`
-	PRNumber    int       `json:"pr_number" mapstructure:"pr_number"`
+	PRNumber    int     `json:"pr_number" mapstructure:"pr_number"`
 	Ref         *string `json:"ref" mapstructure:"ref"`
 	CommitTitle *string `json:"commit_title" mapstructure:"commit_title"`
 }

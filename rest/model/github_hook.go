@@ -8,7 +8,7 @@ import (
 )
 
 type APIGithubHook struct {
-	HookID int       `json:"hook_id"`
+	HookID int     `json:"hook_id"`
 	Owner  *string `json:"owner"`
 	Repo   *string `json:"repo"`
 }

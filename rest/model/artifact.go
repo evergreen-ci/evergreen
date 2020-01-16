@@ -10,13 +10,13 @@ type APIFile struct {
 	Name           *string `json:"name"`
 	Link           *string `json:"url"`
 	Visibility     *string `json:"visibility"`
-	IgnoreForFetch bool      `json:"ignore_for_fetch"`
+	IgnoreForFetch bool    `json:"ignore_for_fetch"`
 }
 
 type APIEntry struct {
-	TaskId          *string `json:"task_id"`
-	TaskDisplayName *string `json:"task_name"`
-	BuildId         *string `json:"build"`
+	TaskId          *string   `json:"task_id"`
+	TaskDisplayName *string   `json:"task_name"`
+	BuildId         *string   `json:"build"`
 	Files           []APIFile `json:"files"`
 	Execution       int       `json:"execution"`
 }

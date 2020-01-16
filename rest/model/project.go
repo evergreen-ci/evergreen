@@ -7,19 +7,19 @@ import (
 
 type APIProject struct {
 	BatchTime           int                  `json:"batch_time"`
-	Branch              *string            `json:"branch_name"`
-	DisplayName         *string            `json:"display_name"`
+	Branch              *string              `json:"branch_name"`
+	DisplayName         *string              `json:"display_name"`
 	Enabled             bool                 `json:"enabled"`
 	RepotrackerDisabled bool                 `json:"repotracker_disabled"`
-	Identifier          *string            `json:"identifier"`
-	Owner               *string            `json:"owner_name"`
+	Identifier          *string              `json:"identifier"`
+	Owner               *string              `json:"owner_name"`
 	Private             bool                 `json:"private"`
-	RemotePath          *string            `json:"remote_path"`
-	Repo                *string            `json:"repo_name"`
+	RemotePath          *string              `json:"remote_path"`
+	Repo                *string              `json:"repo_name"`
 	Tracked             bool                 `json:"tracked"`
 	DeactivatePrevious  bool                 `json:"deactivate_previous"`
-	Admins              []*string          `json:"admins"`
-	Tags                []*string          `json:"tags"`
+	Admins              []*string            `json:"admins"`
+	Tags                []*string            `json:"tags"`
 	TracksPushEvents    bool                 `json:"tracks_push_events"`
 	PRTestingEnabled    bool                 `json:"pr_testing_enabled"`
 	CommitQueue         APICommitQueueParams `json:"commit_queue"`
@@ -83,7 +83,7 @@ type APITriggerDefinition struct {
 	BuildVariantRegex *string `json:"variant_regex"`
 	TaskRegex         *string `json:"task_regex"`
 	Status            *string `json:"status"`
-	DateCutoff        *int      `json:"date_cutoff"`
+	DateCutoff        *int    `json:"date_cutoff"`
 	ConfigFile        *string `json:"config_file"`
 	GenerateFile      *string `json:"generate_file"`
 	Command           *string `json:"command"`
@@ -91,7 +91,7 @@ type APITriggerDefinition struct {
 }
 
 type APICommitQueueParams struct {
-	Enabled     bool      `json:"enabled"`
+	Enabled     bool    `json:"enabled"`
 	MergeMethod *string `json:"merge_method"`
 	PatchType   *string `json:"patch_type"`
 }
@@ -124,16 +124,16 @@ func (cqParams *APICommitQueueParams) ToService() (interface{}, error) {
 }
 
 type APIProjectRef struct {
-	Owner                *string            `json:"owner_name"`
-	Repo                 *string            `json:"repo_name"`
-	Branch               *string            `json:"branch_name"`
-	RepoKind             *string            `json:"repo_kind"`
+	Owner                *string              `json:"owner_name"`
+	Repo                 *string              `json:"repo_name"`
+	Branch               *string              `json:"branch_name"`
+	RepoKind             *string              `json:"repo_kind"`
 	Enabled              bool                 `json:"enabled"`
 	Private              bool                 `json:"private"`
 	BatchTime            int                  `json:"batch_time"`
-	RemotePath           *string            `json:"remote_path"`
-	Identifier           *string            `json:"identifier"`
-	DisplayName          *string            `json:"display_name"`
+	RemotePath           *string              `json:"remote_path"`
+	Identifier           *string              `json:"identifier"`
+	DisplayName          *string              `json:"display_name"`
 	DeactivatePrevious   bool                 `json:"deactivate_previous"`
 	TracksPushEvents     bool                 `json:"tracks_push_events"`
 	PRTestingEnabled     bool                 `json:"pr_testing_enabled"`
@@ -141,17 +141,17 @@ type APIProjectRef struct {
 	Tracked              bool                 `json:"tracked"`
 	PatchingDisabled     bool                 `json:"patching_disabled"`
 	RepotrackerDisabled  bool                 `json:"repotracker_disabled"`
-	Admins               []*string          `json:"admins"`
-	DeleteAdmins         []*string          `json:"delete_admins,omitempty"`
+	Admins               []*string            `json:"admins"`
+	DeleteAdmins         []*string            `json:"delete_admins,omitempty"`
 	NotifyOnBuildFailure bool                 `json:"notify_on_failure"`
-	Tags                 []*string          `json:"tags"`
+	Tags                 []*string            `json:"tags"`
 
-	Revision            *string              `json:"revision"`
+	Revision            *string                `json:"revision"`
 	Triggers            []APITriggerDefinition `json:"triggers"`
 	Aliases             []APIProjectAlias      `json:"aliases"`
 	Variables           APIProjectVars         `json:"variables"`
 	Subscriptions       []APISubscription      `json:"subscriptions"`
-	DeleteSubscriptions []*string            `json:"delete_subscriptions,omitempty"`
+	DeleteSubscriptions []*string              `json:"delete_subscriptions,omitempty"`
 }
 
 // ToService returns a service layer ProjectRef using the data from APIProjectRef

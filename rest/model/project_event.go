@@ -12,7 +12,7 @@ import (
 
 type APIProjectEvent struct {
 	Timestamp time.Time          `json:"ts"`
-	User      *string          `json:"user"`
+	User      *string            `json:"user"`
 	Before    APIProjectSettings `json:"before"`
 	After     APIProjectSettings `json:"after"`
 }
@@ -37,7 +37,7 @@ type APIProjectAlias struct {
 	Task        *string   `json:"task"`
 	VariantTags []*string `json:"variant_tags,omitempty"`
 	TaskTags    []*string `json:"tags,omitempty"`
-	Delete      bool        `json:"delete,omitempty"`
+	Delete      bool      `json:"delete,omitempty"`
 	ID          *string   `json:"_id,omitempty"`
 }
 
