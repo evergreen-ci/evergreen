@@ -277,9 +277,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 		))
 	}
 
-	// running e2e tests in evergreen for Spruce waits on the local server to start by pinging server with a HEAD http request
-	app.AddRoute("/").Wrap(allowsCORS).Handler(func(_ http.ResponseWriter, _ *http.Request) {}).Head()
-
 	// GraphQL
 	app.AddRoute("/graphql").Wrap(allowsCORS, needsLogin).Handler(playground.Handler("GraphQL playground", "/graphql/query")).Get()
 	app.AddRoute("/graphql/query").Wrap(allowsCORS, needsLogin).Handler(graphql.Handler()).Post().Get()
@@ -287,7 +284,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/graphql/query").Wrap(allowsCORS).Handler(func(_ http.ResponseWriter, _ *http.Request) {}).Options()
 
 	// Waterfall pages
-	app.AddRoute("/").Wrap(needsContext).Handler(uis.waterfallPage).Get()
+	app.AddRoute("/").Wrap(needsContext).Handler(uis.waterfallPage).Get().Head()
 	app.AddRoute("/waterfall").Wrap(needsContext).Handler(uis.waterfallPage).Get()
 	app.AddRoute("/waterfall/{project_id}").Wrap(needsContext, viewTasks).Handler(uis.waterfallPage).Get()
 
