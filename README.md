@@ -1,4 +1,4 @@
-# [Spruce](https://evergreen.mongodb.com) &middot; [![GitHub license](https://img.shields.io/badge/license-Apache2.0-blue.svg)](https://github.com/evergreen-ci/evergreen/master/LICENSE)
+# [Evergreen](https://evergreen.mongodb.com) &middot; [![GitHub license](https://img.shields.io/badge/license-Apache2.0-blue.svg)](https://github.com/evergreen-ci/evergreen/master/LICENSE)
 
 Evergreen is a distributed continuous integration system built by MongoDB.
 It dynamically allocates hosts to run tasks in parallel across many machines.
