@@ -7,12 +7,17 @@ import (
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 func MarshalDuration(b time.Duration) graphql.Marshaler {
 	return graphql.WriterFunc(func(w io.Writer) {
 		num := int64(b / time.Millisecond)
-		w.Write([]byte(strconv.FormatInt(num, 10)))
+		_, err := w.Write([]byte(strconv.FormatInt(num, 10)))
+		if err != nil {
+			grip.Error(errors.Wrap(err, "error marshaling Duration GQL scalar type"))
+		}
 	})
 }
 
