@@ -1,5 +1,6 @@
 type Query {
   userPatches(userId: String!): [Patch]!
+  task(taskId: String!): Task
 }
 
 type Patch {
@@ -32,4 +33,109 @@ type StatusDetails {
   desc: String!
 }
 
+type TaskLogs {
+  agentLogURLs: [LogInfo]
+  systemLogURLs: [LogInfo]
+  taskLogURLs: [LogInfo]
+}
+
+type LogInfo {
+  command: String
+  url: String
+}
+
+type Dependency {
+  taskId: String
+  status: String
+  unattainable: Boolean
+}
+
+type TaskEndDetail {
+  status: String
+  type: String
+  description: String
+  timedOut: Boolean
+  logs: TaskLogs
+}
+type CachedDurationValue {
+  Value: Duration
+  stdDev: Duration
+  ttl: Duration
+  collectedAt: Time
+}
+type TestResult {
+  status: String
+  testFile: String
+  url: String
+  urlRaw: String
+  logId: String
+  lineNum: Int
+  exitCode: Int
+  startTime: Float
+  endTime: Float
+  logRaw: String
+}
+
+type Task {
+  id: String!
+  secret: String!
+  createTime: Time
+  ingestTime: Time
+  dispatchTime: Time
+  scheduledTime: Time
+  startTime: Time
+  finishTime: Time
+  activatedTime: Time
+  version: String
+  project: String
+  revision: String
+  priority: Int
+  taskGroup: String
+  taskGroupMaxHosts: Int
+  taskGroupOrder: Int
+  logs: TaskLogs
+  lastHeartbeat: Time
+  activated: Boolean
+  activatedBy: String
+  buildId: String
+  distroId: String
+  buildVariant: String
+  dependsOn: [Dependency]
+  numDependents: Int
+  overrideDependencies: Boolean
+  distroAliases: [String]
+  displayName: String
+  tags: [String]
+  hostId: String
+  restarts: Int
+  execution: Int
+  oldTaskId: String
+  archived: Boolean
+  revisionOrderNumber: Int
+  requester: String
+  status: String
+  details: TaskEndDetail
+  aborted: Boolean
+  timeTaken: Duration
+  expectedDuration: Duration
+  expectedDurationStdDev: Duration
+  durationPrediction: CachedDurationValue
+  cost: Float
+  spawnedHostCost: Float
+  localTestResults: [TestResult]
+  displayOnly: Boolean
+  executionTasks: [String]
+  resetWhenFinished: Boolean
+  DisplayTask: Task
+  generateTask: Boolean
+  generatedTasks: Boolean
+  generatedBy: String
+  generateTasksError: String
+  triggerID: String
+  triggerType: String
+  triggerEvent: String
+  commitQueueMerge: Boolean
+}
+
 scalar Time
+scalar Duration

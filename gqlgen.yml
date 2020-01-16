@@ -15,3 +15,19 @@ resolver:
 models:
   Patch:
     model: github.com/evergreen-ci/evergreen/model/patch.Patch
+  Task:
+    model: github.com/evergreen-ci/evergreen/model/task.Task
+  TaskLogs:
+    model: github.com/evergreen-ci/evergreen/apimodels.TaskLogs
+  LogInfo:
+    model: github.com/evergreen-ci/evergreen/apimodels.LogInfo
+  Dependency:
+    model: github.com/evergreen-ci/evergreen/model/task.Dependency
+  TaskEndDetail:
+    model: github.com/evergreen-ci/evergreen/apimodels.TaskEndDetail
+  Duration:
+    model: github.com/evergreen-ci/evergreen/graphql/customscalars.Duration
+  CachedDurationValue:
+    model: github.com/evergreen-ci/evergreen/util.CachedDurationValue
+  TestResult:
+    model: github.com/evergreen-ci/evergreen/model/task.TestResult

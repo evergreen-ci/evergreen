@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/pkg/errors"
 )
@@ -62,6 +63,14 @@ func (r *queryResolver) UserPatches(ctx context.Context, userID string) ([]*patc
 	}
 
 	return patchPointers, nil
+}
+
+func (r *queryResolver) Task(ctx context.Context, taskID string) (*task.Task, error) {
+	task, err := r.sc.FindTaskById(taskID)
+	if err != nil {
+		return nil, errors.New("Error retreiving Task")
+	}
+	return task, err
 }
 
 // New injects resources into the resolvers, such as the data connector
