@@ -1,6 +1,6 @@
 type Query {
   userPatches(userId: String!): [Patch]!
-  task(taskId: String!): [Task]!
+  task(taskId: String!): Task
 }
 
 type Patch {
@@ -32,6 +32,50 @@ type StatusDetails {
   type: String!
   desc: String!
 }
+
+type TaskLogs {
+  agentLogURLs: [LogInfo]
+  systemLogURLs: [LogInfo]
+  taskLogURLs: [LogInfo]
+}
+
+type LogInfo {
+  command: String
+  url: String
+}
+
+type Dependency {
+  taskId: String
+  status: String
+  unattainable: Boolean
+}
+
+type TaskEndDetail {
+  status: String
+  type: String
+  description: String
+  timedOut: Boolean
+  logs: TaskLogs
+}
+type CachedDurationValue {
+  Value: Duration
+  stdDev: Duration
+  ttl: Duration
+  collectedAt: Time
+}
+type TestResult {
+  status: String
+  testFile: String
+  url: String
+  urlRaw: String
+  logId: String
+  lineNum: Int
+  exitCode: Int
+  startTime: Float
+  endTime: Float
+  logRaw: String
+}
+
 type Task {
   id: String!
   secret: String!
@@ -42,11 +86,10 @@ type Task {
   startTime: Time
   finishTime: Time
   activatedTime: Time
-
   version: String
   project: String
   revision: String
-  priority: Float
+  priority: Int
   taskGroup: String
   taskGroupMaxHosts: Int
   taskGroupOrder: Int
@@ -74,12 +117,11 @@ type Task {
   details: TaskEndDetail
   aborted: Boolean
   timeTaken: Duration
-
   expectedDuration: Duration
   expectedDurationStdDev: Duration
   durationPrediction: CachedDurationValue
-  cost: float64
-  spawnedHostCost: float64
+  cost: Float
+  spawnedHostCost: Float
   localTestResults: [TestResult]
   displayOnly: Boolean
   executionTasks: [String]
@@ -88,7 +130,6 @@ type Task {
   generateTask: Boolean
   generatedTasks: Boolean
   generatedBy: String
-  generatedJSON: RawMessage
   generateTasksError: String
   triggerID: String
   triggerType: String
@@ -97,3 +138,4 @@ type Task {
 }
 
 scalar Time
+scalar Duration
