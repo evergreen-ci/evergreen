@@ -133,7 +133,7 @@ type Connector interface {
 	FindHostsById(string, string, string, int) ([]host.Host, error)
 
 	// FindHostsInRange is a method to find a filtered list of hosts
-	FindHostsInRange(time.Time, time.Time, string, string, string, bool) ([]host.Host, error)
+	FindHostsInRange(restModel.APIHostParams, string) ([]host.Host, error)
 
 	FindHostById(string) (*host.Host, error)
 

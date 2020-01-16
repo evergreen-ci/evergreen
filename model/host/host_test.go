@@ -4553,17 +4553,17 @@ func TestFindHostsInRange(t *testing.T) {
 		require.NoError(t, h.Insert())
 	}
 
-	filteredHosts, err := FindHostsInRange(time.Time{}, time.Time{}, "", "", evergreen.HostTerminated, false)
+	filteredHosts, err := FindHostsInRange(HostsInRangeParams{Status: evergreen.HostTerminated})
 	assert.NoError(t, err)
 	assert.Len(t, filteredHosts, 1)
 	assert.Equal(t, "h0", filteredHosts[0].Id)
 
-	filteredHosts, err = FindHostsInRange(time.Time{}, time.Time{}, "", "ubuntu-1604", "", false)
+	filteredHosts, err = FindHostsInRange(HostsInRangeParams{Distro: "ubuntu-1604"})
 	assert.NoError(t, err)
 	assert.Len(t, filteredHosts, 1)
 	assert.Equal(t, "h1", filteredHosts[0].Id)
 
-	filteredHosts, err = FindHostsInRange(time.Time{}, time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), "", "", "", false)
+	filteredHosts, err = FindHostsInRange(HostsInRangeParams{CreatedAfter: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)})
 	assert.NoError(t, err)
 	assert.Len(t, filteredHosts, 1)
 	assert.Equal(t, "h2", filteredHosts[0].Id)

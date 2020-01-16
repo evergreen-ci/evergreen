@@ -41,17 +41,21 @@ func (hc *DBHostConnector) FindHostsById(id, status, user string, limit int) ([]
 	return hostRes, nil
 }
 
-func (hc *DBHostConnector) FindHostsInRange(createdBefore, createdAfter time.Time, user, distro, status string, userSpawned bool) ([]host.Host, error) {
-	hostRes, err := host.FindHostsInRange(createdBefore, createdAfter, user, distro, status, userSpawned)
+func (hc *DBHostConnector) FindHostsInRange(apiParams restmodel.APIHostParams, username string) ([]host.Host, error) {
+	params := host.HostsInRangeParams{
+		CreatedBefore: apiParams.CreatedBefore,
+		CreatedAfter:  apiParams.CreatedAfter,
+		Distro:        apiParams.Distro,
+		UserSpawned:   apiParams.UserSpawned,
+		Status:        apiParams.Status,
+		User:          username,
+	}
+
+	hostRes, err := host.FindHostsInRange(params)
 	if err != nil {
 		return nil, err
 	}
-	if len(hostRes) == 0 {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    "no hosts found",
-		}
-	}
+
 	return hostRes, nil
 }
 
@@ -213,15 +217,15 @@ func (hc *MockHostConnector) FindHostsById(id, status, user string, limit int) (
 }
 
 // FindHostsInRange searches the mock hosts slice for hosts and returns them
-func (hc *MockHostConnector) FindHostsInRange(createdBefore, createdAfter time.Time, user, distro, status string, userSpawned bool) ([]host.Host, error) {
+func (hc *MockHostConnector) FindHostsInRange(params restmodel.APIHostParams, username string) ([]host.Host, error) {
 	var hostsToReturn []host.Host
 	for ix := range hc.CachedHosts {
 		h := hc.CachedHosts[ix]
-		if user != "" && h.StartedBy != user {
+		if username != "" && h.StartedBy != username {
 			continue
 		}
-		if status != "" {
-			if h.Status != status {
+		if params.Status != "" {
+			if h.Status != params.Status {
 				continue
 			}
 		} else {
@@ -230,19 +234,19 @@ func (hc *MockHostConnector) FindHostsInRange(createdBefore, createdAfter time.T
 			}
 		}
 
-		if distro != "" && h.Distro.Id != distro {
+		if params.Distro != "" && h.Distro.Id != params.Distro {
 			continue
 		}
 
-		if userSpawned && !h.UserHost {
+		if params.UserSpawned && !h.UserHost {
 			continue
 		}
 
-		if h.CreationTime.Before(createdAfter) {
+		if h.CreationTime.Before(params.CreatedAfter) {
 			continue
 		}
 
-		if !util.IsZeroTime(createdBefore) && h.CreationTime.After(createdBefore) {
+		if !util.IsZeroTime(params.CreatedBefore) && h.CreationTime.After(params.CreatedBefore) {
 			continue
 		}
 

@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -325,14 +324,8 @@ func makeFetchHostRange(sc data.Connector) gimlet.RouteHandler {
 }
 
 type hostRangeGetHandler struct {
-	createdBefore time.Time
-	createdAfter  time.Time
-	distro        string
-	userSpawned   bool
-	status        string
-	mine          bool
-
-	sc data.Connector
+	params model.APIHostParams
+	sc     data.Connector
 }
 
 func (h *hostRangeGetHandler) Factory() gimlet.RouteHandler {
@@ -344,16 +337,9 @@ func (h *hostRangeGetHandler) Factory() gimlet.RouteHandler {
 func (h *hostRangeGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	body := util.NewRequestReader(r)
 	defer body.Close()
-	data := &model.APIHostParams{}
-	if err := util.ReadJSONInto(body, data); err != nil {
+	if err := util.ReadJSONInto(body, &h.params); err != nil {
 		return errors.Wrap(err, "Argument read error")
 	}
-	h.createdBefore = data.CreatedBefore
-	h.createdAfter = data.CreatedAfter
-	h.distro = data.Distro
-	h.status = data.Status
-	h.userSpawned = data.UserSpawned
-	h.mine = data.Mine
 
 	return nil
 }
@@ -362,11 +348,11 @@ func (h *hostRangeGetHandler) Run(ctx context.Context) gimlet.Responder {
 	dbUser := MustHaveUser(ctx)
 	username := ""
 	// only admins see hosts that aren't theirs
-	if !util.StringSliceContains(h.sc.GetSuperUsers(), dbUser.Username()) || h.mine {
+	if !util.StringSliceContains(h.sc.GetSuperUsers(), dbUser.Username()) || h.params.Mine {
 		username = dbUser.Username()
 	}
 
-	hosts, err := h.sc.FindHostsInRange(h.createdBefore, h.createdAfter, username, h.distro, h.status, h.userSpawned)
+	hosts, err := h.sc.FindHostsInRange(h.params, username)
 	if err != nil {
 		gimlet.NewJSONErrorResponse(errors.Wrap(err, "Database error"))
 	}

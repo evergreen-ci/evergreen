@@ -411,7 +411,7 @@ func (c *communicatorImpl) GetHosts(ctx context.Context, data model.APIHostParam
 	if resp.StatusCode != http.StatusOK {
 		errMsg := gimlet.ErrorResponse{}
 		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
-			return nil, errors.Wrap(err, "problem reading hosts error")
+			return nil, errors.Wrapf(err, "Got %d code. Problem reading hosts error", resp.StatusCode)
 		}
 		return nil, errors.Wrap(errMsg, "problem getting hosts")
 	}

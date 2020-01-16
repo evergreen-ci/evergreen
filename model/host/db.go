@@ -964,17 +964,26 @@ func GetHostsByFromIDWithStatus(id, status, user string, limit int) ([]Host, err
 	return hosts, nil
 }
 
-func FindHostsInRange(createdBefore, createdAfter time.Time, user, distroID, status string, userSpawned bool) ([]Host, error) {
+type HostsInRangeParams struct {
+	CreatedBefore time.Time
+	CreatedAfter  time.Time
+	User          string
+	Distro        string
+	Status        string
+	UserSpawned   bool
+}
+
+func FindHostsInRange(params HostsInRangeParams) ([]Host, error) {
 	var statusMatch interface{}
-	if status != "" {
-		statusMatch = status
+	if params.Status != "" {
+		statusMatch = params.Status
 	} else {
 		statusMatch = bson.M{"$in": evergreen.UpHostStatus}
 	}
 
-	createTimeFilter := bson.M{"$gt": createdAfter}
-	if !util.IsZeroTime(createdBefore) {
-		createTimeFilter["$lt"] = createdBefore
+	createTimeFilter := bson.M{"$gt": params.CreatedAfter}
+	if !util.IsZeroTime(params.CreatedBefore) {
+		createTimeFilter["$lt"] = params.CreatedBefore
 	}
 
 	filter := bson.M{
@@ -982,15 +991,15 @@ func FindHostsInRange(createdBefore, createdAfter time.Time, user, distroID, sta
 		CreateTimeKey: createTimeFilter,
 	}
 
-	if user != "" {
-		filter[StartedByKey] = user
+	if params.User != "" {
+		filter[StartedByKey] = params.User
 	}
 
-	if distroID != "" {
-		filter[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = distroID
+	if params.Distro != "" {
+		filter[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = params.Distro
 	}
 
-	if userSpawned {
+	if params.UserSpawned {
 		filter[UserHostKey] = true
 	}
 
