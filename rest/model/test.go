@@ -11,20 +11,20 @@ import (
 // APITest contains the data to be returned whenever a test is used in the
 // API.
 type APITest struct {
-	TaskId    *string `json:"task_id"`
-	Status    *string `json:"status"`
-	TestFile  *string `json:"test_file"`
+	TaskId    *string   `json:"task_id"`
+	Status    *string   `json:"status"`
+	TestFile  *string   `json:"test_file"`
 	Logs      TestLogs  `json:"logs"`
 	ExitCode  int       `json:"exit_code"`
-	StartTime time.Time   `json:"start_time"`
-	EndTime   time.Time   `json:"end_time"`
+	StartTime time.Time `json:"start_time"`
+	EndTime   time.Time `json:"end_time"`
 }
 
 // TestLogs is a struct for storing the information about logs that will
 // be written out as part of an APITest.
 type TestLogs struct {
 	URL     *string `json:"url"`
-	LineNum int       `json:"line_num"`
+	LineNum int     `json:"line_num"`
 	URLRaw  *string `json:"url_raw"`
 	LogId   *string `json:"log_id"`
 }
@@ -65,7 +65,7 @@ func (at *APITest) ToService() (interface{}, error) {
 		LogID:     FromStringPtr(at.Logs.LogId),
 		LineNum:   at.Logs.LineNum,
 		ExitCode:  at.ExitCode,
-		StartTime: util.ToPythonTime(time.Time(at.StartTime)),
-		EndTime:   util.ToPythonTime(time.Time(at.EndTime)),
+		StartTime: util.ToPythonTime(at.StartTime),
+		EndTime:   util.ToPythonTime(at.EndTime),
 	}, nil
 }

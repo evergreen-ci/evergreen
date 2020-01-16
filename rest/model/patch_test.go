@@ -67,9 +67,9 @@ func TestAPIPatch(t *testing.T) {
 	assert.Equal(p.Author, FromStringPtr(a.Author))
 	assert.Equal(p.Version, FromStringPtr(a.Version))
 	assert.Equal(p.Status, FromStringPtr(a.Status))
-	assert.Zero(time.Time(a.CreateTime).Sub(p.CreateTime))
-	assert.Equal(-time.Hour, time.Time(a.CreateTime).Sub(p.StartTime))
-	assert.Equal(-2*time.Hour, time.Time(a.CreateTime).Sub(p.FinishTime))
+	assert.Zero(*a.CreateTime.Sub(p.CreateTime))
+	assert.Equal(-time.Hour, time.Time(*a.CreateTime).Sub(p.StartTime))
+	assert.Equal(-2*time.Hour, time.Time(*a.CreateTime).Sub(p.FinishTime))
 	for i, variant := range a.Variants {
 		assert.Equal(p.BuildVariants[i], FromStringPtr(variant))
 	}

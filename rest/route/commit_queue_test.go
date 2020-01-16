@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -36,10 +35,11 @@ func (s *CommitQueueSuite) TestParse() {
 	ctx := context.Background()
 	route := makeCommitQueueEnqueueItem(s.sc).(*commitQueueEnqueueItemHandler)
 
-	patchID := mgobson.NewObjectId()
-	s.sc.CachedPatches = append(s.sc.CachedPatches, patch.Patch{Id: patchID})
-	req, _ := http.NewRequest("PUT", fmt.Sprintf("http://example.com/api/rest/v2/commit_queue/%s?force=true", patchID.Hex()), nil)
-	req = gimlet.SetURLVars(req, map[string]string{"patch_id": patchID.Hex()})
+	patchID := mgobson.NewObjectId().Hex()
+	projectID := "proj"
+	s.sc.CachedPatches = append(s.sc.CachedPatches, model.APIPatch{Id: &patchID, ProjectId: &projectID})
+	req, _ := http.NewRequest("PUT", fmt.Sprintf("http://example.com/api/rest/v2/commit_queue/%s?force=true", patchID), nil)
+	req = gimlet.SetURLVars(req, map[string]string{"patch_id": patchID})
 	s.NoError(route.Parse(ctx, req))
 	s.True(route.force)
 }
@@ -155,11 +155,11 @@ func (s *CommitQueueSuite) TestClearAll() {
 
 func (s *CommitQueueSuite) TestEnqueueItem() {
 	route := makeCommitQueueEnqueueItem(s.sc).(*commitQueueEnqueueItemHandler)
-	id := mgobson.NewObjectId()
-	s.sc.CachedPatches = append(s.sc.CachedPatches, patch.Patch{
-		Id: id,
+	id := mgobson.NewObjectId().Hex()
+	s.sc.CachedPatches = append(s.sc.CachedPatches, model.APIPatch{
+		Id: &id,
 	})
-	route.item = id.Hex()
+	route.item = id
 	response := route.Run(context.Background())
 	s.Equal(200, response.Status())
 	s.Equal(model.APICommitQueuePosition{Position: 0}, response.Data())
@@ -168,9 +168,11 @@ func (s *CommitQueueSuite) TestEnqueueItem() {
 func (s *CommitQueueSuite) TestGetItemAuthor() {
 	ctx := context.Background()
 	route := makeGetCommitQueueItemAuthor(s.sc).(*getCommitQueueItemAuthorHandler)
-	p := patch.Patch{
-		Id:     mgobson.NewObjectId(),
-		Author: "evergreen.user",
+	id := mgobson.NewObjectId().Hex()
+	author := "evergreen.user"
+	p := model.APIPatch{
+		Id:     &id,
+		Author: &author,
 	}
 	s.sc.CachedPatches = append(s.sc.CachedPatches, p)
 	pRef := &dbModel.ProjectRef{
@@ -182,10 +184,10 @@ func (s *CommitQueueSuite) TestGetItemAuthor() {
 	s.NoError(s.sc.CreateProject(pRef))
 
 	route.projectID = pRef.Identifier
-	route.item = p.Id.Hex()
+	route.item = *p.Id
 	resp := route.Run(ctx)
 	s.Equal(200, resp.Status())
-	s.Equal(model.APICommitQueueItemAuthor{Author: model.ToStringPtr(p.Author)}, resp.Data())
+	s.Equal(model.APICommitQueueItemAuthor{Author: p.Author}, resp.Data())
 
 	pRef = &dbModel.ProjectRef{
 		Identifier: "not-mci",

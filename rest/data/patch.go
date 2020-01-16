@@ -68,7 +68,7 @@ func (pc *DBPatchConnector) FindPatchById(patchId string) (*restModel.APIPatch, 
 	}
 
 	apiPatch := restModel.APIPatch{}
-	err = apiPatch.BuildFromService(p)
+	err = apiPatch.BuildFromService(*p)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem fetching converting patch")
 	}
@@ -210,7 +210,7 @@ func (pc *MockPatchConnector) AbortPatch(patchId string, user string) error {
 		}
 	}
 	pc.CachedAborted[patchId] = user
-	if *foundPatch.Version == "" {
+	if foundPatch.Version == nil || *foundPatch.Version == "" {
 		pc.CachedPatches = append(pc.CachedPatches[:foundIdx], pc.CachedPatches[foundIdx+1:]...)
 	}
 	return nil
@@ -240,7 +240,7 @@ func (hp *MockPatchConnector) FindPatchesByUser(user string, ts time.Time, limit
 	}
 	for i := len(hp.CachedPatches) - 1; i >= 0; i-- {
 		p := hp.CachedPatches[i]
-		if *p.Author == user && !p.CreateTime.After(ts) {
+		if p.Author != nil && *p.Author == user && !p.CreateTime.After(ts) {
 			patchesToReturn = append(patchesToReturn, p)
 			if len(patchesToReturn) == limit {
 				break
