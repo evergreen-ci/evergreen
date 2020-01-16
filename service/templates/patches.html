@@ -28,9 +28,9 @@ Evergreen - Patches
       Error loading data from server: [[patchesError]]
     </div>
 
-    <div class="form-inline" ng-if="patches.length > 0">
+    <div class="form-inline">
       <div class="btn-group btn-group-sm header-pagination">
-        <input type="checkbox" id="queue" ng-model="filterCommitQueue" ng-change="toggleFilter()">
+        <input type="checkbox" id="queue" ng-model="filterCommitQueue">
         <label for="queue" style="font-weight:normal;margin-right: 10px;">Filter Commit Queue</label>
         <span ng-if="currentPage > 0">
           <a  class="btn btn-default"
