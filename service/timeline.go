@@ -115,7 +115,7 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 	user := gimlet.GetVars(r)["user_id"]
 	var patches []patch.Patch
 	if len(user) > 0 {
-		patches, err = patch.Find(patch.ByUser(user, filterCommitQueue).
+		patches, err = patch.Find(patch.ByUserAndCommitQueue(user, filterCommitQueue).
 			Project(patch.ExcludePatchDiff).
 			Sort([]string{"-" + patch.CreateTimeKey}).
 			Skip(skip).Limit(DefaultLimit))

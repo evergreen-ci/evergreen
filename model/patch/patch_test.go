@@ -166,7 +166,7 @@ func (s *patchSuite) TestMakeMergePatch() {
 }
 
 func (s *patchSuite) TestUpdateGithashProjectAndTasks() {
-	patch, err := FindOne(ByUser("octocat", false))
+	patch, err := FindOne(ByUserAndCommitQueue("octocat", false))
 	s.NoError(err)
 	s.Empty(patch.Githash)
 	s.Empty(patch.VariantsTasks)

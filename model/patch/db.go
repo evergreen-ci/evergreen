@@ -86,7 +86,7 @@ func ById(id mgobson.ObjectId) db.Q {
 var commitQueueFilter = bson.M{"$ne": evergreen.CommitQueueAlias}
 
 // ByProject produces a query that returns projects with the given identifier.
-func ByProject(project string, filterCommitQueue bool) db.Q {
+func ByProjectAndCommitQueue(project string, filterCommitQueue bool) db.Q {
 	q := bson.M{ProjectKey: project}
 	if filterCommitQueue {
 		q[AliasKey] = commitQueueFilter
@@ -95,7 +95,7 @@ func ByProject(project string, filterCommitQueue bool) db.Q {
 }
 
 // ByUser produces a query that returns patches by the given user.
-func ByUser(user string, filterCommitQueue bool) db.Q {
+func ByUserAndCommitQueue(user string, filterCommitQueue bool) db.Q {
 	q := bson.M{AuthorKey: user}
 	if filterCommitQueue {
 		q[AliasKey] = commitQueueFilter

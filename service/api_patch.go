@@ -248,7 +248,7 @@ func (as *APIServer) listPatches(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	filterCommitQueue := r.FormValue("filter_commit_queue") == "true"
-	query := patch.ByUser(dbUser.Id, filterCommitQueue).Sort([]string{"-" + patch.CreateTimeKey})
+	query := patch.ByUserAndCommitQueue(dbUser.Id, filterCommitQueue).Sort([]string{"-" + patch.CreateTimeKey})
 	if n > 0 {
 		query = query.Limit(n)
 	}
