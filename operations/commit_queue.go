@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -21,6 +23,8 @@ const (
 	pauseFlagName       = "pause"
 	resumeFlagName      = "resume"
 	descriptionFlagName = "description"
+	noCommits           = "No Commits Added"
+	commitFmtString     = "'%s' into '%s/%s:%s'"
 )
 
 func CommitQueue() cli.Command {
@@ -113,10 +117,6 @@ func mergeCommand() cli.Command {
 				Name:  pauseFlagName,
 				Usage: "wait to enqueue an item until finalized",
 			},
-			cli.StringFlag{
-				Name:  joinFlagNames(messageFlagName, "m", "description", "d"),
-				Usage: "commit message",
-			},
 			cli.BoolFlag{
 				Name:  forceFlagName,
 				Usage: "force item to front of queue",
@@ -132,7 +132,6 @@ func mergeCommand() cli.Command {
 				ref:         c.String(refFlagName),
 				id:          c.String(resumeFlagName),
 				pause:       c.Bool(pauseFlagName),
-				message:     c.String(messageFlagName),
 				skipConfirm: c.Bool(yesFlagName),
 				large:       c.Bool(largeFlagName),
 				force:       c.Bool(forceFlagName),
@@ -162,12 +161,7 @@ func setModuleCommand() cli.Command {
 	return cli.Command{
 		Name:  "set-module",
 		Usage: "update or add module to an existing merge patch",
-		Flags: mergeFlagSlices(addLargeFlag(), addPatchIDFlag(), addModuleFlag(), addYesFlag(), addRefFlag(
-			cli.StringFlag{
-				Name:  joinFlagNames(descriptionFlagName, "d"),
-				Usage: "commit message",
-			},
-		)),
+		Flags: mergeFlagSlices(addLargeFlag(), addPatchIDFlag(), addModuleFlag(), addYesFlag(), addRefFlag()),
 		Before: mergeBeforeFuncs(
 			requirePatchIDFlag,
 			requireModuleFlag,
@@ -178,7 +172,6 @@ func setModuleCommand() cli.Command {
 				patchID:     c.String(patchIDFlagName),
 				module:      c.String(moduleFlagName),
 				ref:         c.String(refFlagName),
-				message:     c.String(descriptionFlagName),
 				large:       c.Bool(largeFlagName),
 				skipConfirm: c.Bool(yesFlagName),
 			}
@@ -293,7 +286,6 @@ type mergeParams struct {
 	ref         string
 	id          string
 	pause       bool
-	message     string
 	skipConfirm bool
 	large       bool
 	force       bool
@@ -321,7 +313,6 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 	patchParams := &patchParams{
 		Project:     p.projectID,
 		SkipConfirm: p.skipConfirm,
-		Description: p.message,
 		Large:       p.large,
 		Alias:       evergreen.CommitQueueAlias,
 	}
@@ -354,12 +345,14 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		return errors.Wrap(err, "can't generate patches")
 	}
 
-	if p.message == "" && commitCount != 0 {
-		message, err := gitCommitMessages(ref.Branch, p.ref)
+	if commitCount > 0 {
+		commitMessage, err := gitCommitMessages(ref.Branch, p.ref)
 		if err != nil {
-			return errors.Wrap(err, "can't get commit messages")
+			errors.Wrap(err, "can't get commit messages")
 		}
-		patchParams.Description = message
+		patchParams.Description = fmt.Sprintf("Commit Queue Merge: %s", fmt.Sprintf(commitFmtString, commitMessage, ref.Owner, ref.Repo, ref.Branch))
+	} else {
+		patchParams.Description = fmt.Sprintf("Commit Queue Merge: %s", noCommits)
 	}
 
 	patch, err := patchParams.createPatch(ac, conf, diffData)
@@ -376,7 +369,6 @@ type moduleParams struct {
 	patchID     string
 	module      string
 	ref         string
-	message     string
 	large       bool
 	skipConfirm bool
 }
@@ -386,33 +378,39 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	if err != nil {
 		return err
 	}
-
-	moduleBranch, err := getModuleBranch(p.module, proj)
+	module, err := proj.GetModuleByName(p.module)
 	if err != nil {
-		return errors.Wrapf(err, "could not set specified module: '%s'", p.module)
+		return errors.Wrapf(err, "could not find module '%s'", p.module)
 	}
 
-	commitCount, err := gitCommitCount(moduleBranch, p.ref)
+	commitCount, err := gitCommitCount(module.Branch, p.ref)
 	if err != nil {
 		return errors.Wrap(err, "can't get commit count")
 	}
 	if commitCount == 0 {
 		return errors.New("No commits for module")
 	}
-	if commitCount > 1 && !confirm("Commit queue patch has multiple commits. Continue? (y/n):", false) {
-		return errors.New("patch aborted")
+	if commitCount > 1 && !confirm("Commit queue module patch has multiple commits. Continue? (y/n):", false) {
+		return errors.New("module patch aborted")
 	}
 
-	if p.message == "" {
-		message, err := gitCommitMessages(moduleBranch, p.ref)
-		if err != nil {
-			return errors.Wrap(err, "can't get commit messages")
-		}
-
-		p.message = message
+	owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+	if err != nil {
+		return errors.Wrapf(err, "can't get owner/repo from '%s'", module.Repo)
 	}
 
-	diffData, err := loadGitData(moduleBranch, p.ref, true)
+	patch, err := rc.GetPatch(p.patchID)
+	if err != nil {
+		return errors.Wrapf(err, "can't get patch '%s'", p.patchID)
+	}
+
+	commitMessage, err := gitCommitMessages(module.Branch, p.ref)
+	if err != nil {
+		errors.Wrap(err, "can't get commit messages")
+	}
+	message := fmt.Sprintf("%s %s", strings.TrimSuffix(patch.Description, noCommits), fmt.Sprintf(commitFmtString, commitMessage, owner, repo, module.Branch))
+
+	diffData, err := loadGitData(module.Branch, p.ref, true)
 	if err != nil {
 		return errors.Wrap(err, "can't get patch data")
 	}
@@ -432,13 +430,13 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 		module:    p.module,
 		patch:     diffData.fullPatch,
 		base:      diffData.base,
-		message:   p.message,
+		message:   message,
 		formatted: true,
 	}
 	err = ac.UpdatePatchModule(params)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	grip.Info("Module updated.")
+	grip.Info("Module updated")
 	return nil
 }
