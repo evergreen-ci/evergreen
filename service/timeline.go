@@ -132,7 +132,7 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 				"Error fetching project %v", projectID))
 			return
 		}
-		patches, err = patch.Find(patch.ByProject(project.Identifier, filterCommitQueue).
+		patches, err = patch.Find(patch.ByProjectAndCommitQueue(project.Identifier, filterCommitQueue).
 			Sort([]string{"-" + patch.CreateTimeKey}).
 			Project(patch.ExcludePatchDiff).
 			Skip(skip).Limit(DefaultLimit))
