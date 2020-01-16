@@ -430,14 +430,14 @@ func gitLog(base, ref string) (string, error) {
 }
 
 func gitCommitMessages(base, ref string) (string, error) {
-	args := []string{"--no-show-signature", "--pretty=format:%B", "--reverse", fmt.Sprintf("%s@{upstream}..%s", base, ref)}
+	args := []string{"--no-show-signature", "--pretty=format:%s", "--reverse", fmt.Sprintf("%s@{upstream}..%s", base, ref)}
 	msg, err := gitCmd("log", args...)
 	if err != nil {
 		return "", errors.Wrap(err, "can't get messages")
 	}
 	// separate multiple commits with <-
-	msg = strings.Replace(msg, "\n\n", " <- ", -1)
 	msg = strings.TrimSpace(msg)
+	msg = strings.Replace(msg, "\n", " <- ", -1)
 
 	return msg, nil
 }

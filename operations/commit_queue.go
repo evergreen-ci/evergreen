@@ -345,15 +345,15 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		return errors.Wrap(err, "can't generate patches")
 	}
 
+	commits := noCommits
 	if commitCount > 0 {
 		commitMessage, err := gitCommitMessages(ref.Branch, p.ref)
 		if err != nil {
-			errors.Wrap(err, "can't get commit messages")
+			return errors.Wrap(err, "can't get commit messages")
 		}
-		patchParams.Description = fmt.Sprintf("Commit Queue Merge: %s", fmt.Sprintf(commitFmtString, commitMessage, ref.Owner, ref.Repo, ref.Branch))
-	} else {
-		patchParams.Description = fmt.Sprintf("Commit Queue Merge: %s", noCommits)
+		commits = fmt.Sprintf(commitFmtString, commitMessage, ref.Owner, ref.Repo, ref.Branch)
 	}
+	patchParams.Description = fmt.Sprintf("Commit Queue Merge: %s", commits)
 
 	patch, err := patchParams.createPatch(ac, conf, diffData)
 	if err != nil {
@@ -408,7 +408,8 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	if err != nil {
 		errors.Wrap(err, "can't get commit messages")
 	}
-	message := fmt.Sprintf("%s %s", strings.TrimSuffix(patch.Description, noCommits), fmt.Sprintf(commitFmtString, commitMessage, owner, repo, module.Branch))
+	commits := fmt.Sprintf(commitFmtString, commitMessage, owner, repo, module.Branch)
+	message := fmt.Sprintf("%s || %s", strings.TrimSuffix(patch.Description, noCommits), commits)
 
 	diffData, err := loadGitData(module.Branch, p.ref, true)
 	if err != nil {
