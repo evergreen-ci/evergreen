@@ -112,7 +112,7 @@ func TestCommandFileLogging(t *testing.T) {
 		},
 		taskModel: task,
 	}
-	assert.NoError(agt.resetLogging(ctx, tc))
+	assert.NoError(agt.startLogging(ctx, tc))
 	defer agt.removeTaskDirectory(tc)
 	err = agt.runTaskCommands(ctx, tc)
 	require.NoError(err)
@@ -143,7 +143,7 @@ func TestCommandFileLogging(t *testing.T) {
 	assert.Contains(tc.logs.TaskLogURLs[0].URL, "/logs/t1/0/shell.exec/task.log")
 }
 
-func TestResetLogging(t *testing.T) {
+func TeststartLogging(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	tmpDirName, err := ioutil.TempDir("", "reset-logging-")
@@ -175,7 +175,7 @@ func TestResetLogging(t *testing.T) {
 	assert.EqualValues(model.SplunkLogSender, tc.project.Loggers.System[0].Type)
 	assert.EqualValues(model.FileLogSender, tc.project.Loggers.Task[0].Type)
 
-	assert.NoError(agt.resetLogging(ctx, tc))
+	assert.NoError(agt.startLogging(ctx, tc))
 	tc.logger.Execution().Info("foo")
 	assert.NoError(tc.logger.Close())
 	msgs := agt.comm.(*client.Mock).GetMockMessages()
@@ -191,7 +191,7 @@ func TestResetLogging(t *testing.T) {
 	assert.Equal("bar", logConfig.System[0].SplunkToken)
 }
 
-func TestResetLoggingErrors(t *testing.T) {
+func TeststartLoggingErrors(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	tmpDirName, err := ioutil.TempDir("", "logging-error-")
@@ -226,7 +226,7 @@ func TestResetLoggingErrors(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	assert.Error(agt.resetLogging(ctx, tc))
+	assert.Error(agt.startLogging(ctx, tc))
 }
 
 func TestLogkeeperMetadataPopulated(t *testing.T) {
@@ -269,7 +269,7 @@ func TestLogkeeperMetadataPopulated(t *testing.T) {
 		},
 		taskModel: task,
 	}
-	assert.NoError(agt.resetLogging(ctx, tc))
+	assert.NoError(agt.startLogging(ctx, tc))
 	assert.Equal("logkeeper/build/build1/test/test1", tc.logs.AgentLogURLs[0].URL)
 	assert.Equal("logkeeper/build/build1/test/test2", tc.logs.SystemLogURLs[0].URL)
 	assert.Equal("logkeeper/build/build1/test/test3", tc.logs.TaskLogURLs[0].URL)
@@ -315,7 +315,7 @@ func TestDefaultSender(t *testing.T) {
 		tc.project.Loggers = &model.LoggerConfig{}
 		tc.taskConfig.ProjectRef = &model.ProjectRef{DefaultLogger: model.BuildloggerLogSender}
 
-		assert.NoError(agt.resetLogging(ctx, tc))
+		assert.NoError(agt.startLogging(ctx, tc))
 		expectedLogOpts := []model.LogOpts{{Type: model.BuildloggerLogSender}}
 		assert.Equal(expectedLogOpts, tc.project.Loggers.Agent)
 		assert.Equal(expectedLogOpts, tc.project.Loggers.System)
@@ -325,7 +325,7 @@ func TestDefaultSender(t *testing.T) {
 		tc.project.Loggers = &model.LoggerConfig{}
 		tc.taskConfig.ProjectRef = &model.ProjectRef{DefaultLogger: model.SplunkLogSender}
 
-		assert.NoError(agt.resetLogging(ctx, tc))
+		assert.NoError(agt.startLogging(ctx, tc))
 		expectedLogOpts := []model.LogOpts{{Type: model.EvergreenLogSender}}
 		assert.Equal(expectedLogOpts, tc.project.Loggers.Agent)
 		assert.Equal(expectedLogOpts, tc.project.Loggers.System)
@@ -373,5 +373,5 @@ func TestTimberSender(t *testing.T) {
 		},
 		taskModel: task,
 	}
-	assert.NoError(agt.resetLogging(ctx, tc))
+	assert.NoError(agt.startLogging(ctx, tc))
 }

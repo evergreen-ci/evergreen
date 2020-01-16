@@ -378,7 +378,7 @@ func (s *AgentSuite) TestAbort() {
 	s.a.opts.HeartbeatInterval = time.Nanosecond
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, err := s.a.runTask(ctx, cancel, s.tc)
+	_, err := s.a.runTask(ctx, s.tc)
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
 	shouldFind := map[string]bool{
