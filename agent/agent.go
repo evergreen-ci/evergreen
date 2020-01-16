@@ -363,23 +363,6 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	go a.startTask(innerCtx, tc, complete)
 
 	return a.handleTaskResponse(tskCtx, tc, a.wait(tskCtx, innerCtx, tc, heartbeat, complete))
-
-	/*
-		status = a.wait(tskCtx, innerCtx, tc, heartbeat, complete)
-		var resp *apimodels.EndTaskResponse
-		resp, err = a.finishTask(tskCtx, tc, status)
-		if err != nil {
-			return false, errors.Wrap(err, "error marking task complete")
-		}
-		if resp == nil {
-			grip.Error("response was nil, indicating a 409 or an empty response from the API server")
-			return false, nil
-		}
-		if resp.ShouldExit {
-			return true, nil
-		}
-		return false, errors.WithStack(err)
-	*/
 }
 
 func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status string) (bool, error) {
