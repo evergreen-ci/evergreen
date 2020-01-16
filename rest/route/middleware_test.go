@@ -281,7 +281,7 @@ func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 		Author: "octocat",
 	}
 	assert.NoError(p.Insert())
-	p, err = patch.FindOne(patch.ByUser("octocat", false))
+	p, err = patch.FindOne(patch.ByUserAndCommitQueue("octocat", false))
 	assert.NoError(err)
 	assert.NotNil(p)
 
