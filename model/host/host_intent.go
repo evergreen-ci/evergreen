@@ -134,15 +134,13 @@ func InsertParentIntentsAndGetNumHostsToSpawn(pool *evergreen.ContainerPool, new
 	}
 	newParentHosts := createParents(parentDistro, numNewParentsToSpawn, pool)
 	for _, p := range newParentHosts {
-		if !p.HasContainers {
-			grip.Debug(message.Fields{
-				"message":   "found a parent intent with has_containers not set to true",
-				"ticket":    "EVG-7163",
-				"host_id":   p.Id,
-				"distro":    p.Distro.Id,
-				"operation": "inserting host intent",
-			})
-		}
+		grip.DebugWhen(p.Distro.Id == "archlinux-parent" && !p.HasContainers, message.Fields{
+			"message":   "found a parent intent with has_containers not set to true",
+			"ticket":    "EVG-7163",
+			"host_id":   p.Id,
+			"distro":    p.Distro.Id,
+			"operation": "inserting host intent",
+		})
 	}
 	if err = InsertMany(newParentHosts); err != nil {
 		return nil, 0, errors.Wrap(err, "error inserting new parent hosts")
