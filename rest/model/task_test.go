@@ -47,7 +47,7 @@ func TestTaskBuildFromService(t *testing.T) {
 						"testDepends2",
 					},
 					DisplayName: ToStringPtr("testDisplayName"),
-					Logs: logLinks{
+					Logs: LogLinks{
 						AllLogLink:    ToStringPtr("url/task_log_raw/testId/2?type=ALL"),
 						TaskLogLink:   ToStringPtr("url/task_log_raw/testId/2?type=T"),
 						SystemLogLink: ToStringPtr("url/task_log_raw/testId/2?type=S"),
@@ -86,7 +86,7 @@ func TestTaskBuildFromService(t *testing.T) {
 			},
 			{
 				at: APITask{
-					Logs: logLinks{
+					Logs: LogLinks{
 						AllLogLink:    ToStringPtr("url/task_log_raw//0?type=ALL"),
 						TaskLogLink:   ToStringPtr("url/task_log_raw//0?type=T"),
 						SystemLogLink: ToStringPtr("url/task_log_raw//0?type=S"),
