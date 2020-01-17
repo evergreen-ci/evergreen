@@ -223,6 +223,13 @@ func addRefFlag(flags ...cli.Flag) []cli.Flag {
 	})
 }
 
+func addRevFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.StringFlag{
+		Name:  joinFlagNames(revisionFlagName, "rev"),
+		Usage: "specify commit hash (can also be a range `start..end`)",
+	})
+}
+
 func addUncommittedChangesFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.BoolFlag{
 		Name:  joinFlagNames(uncommittedChangesFlag, "u"),

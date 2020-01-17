@@ -97,7 +97,7 @@ func Patch() cli.Command {
 				return err
 			}
 
-			diffData, err := loadGitData(ref.Branch, params.Ref, false, args...)
+			diffData, err := loadGitData(ref.Branch, params.Ref, "", false, args...)
 			if err != nil {
 				return err
 			}
