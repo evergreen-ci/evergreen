@@ -96,10 +96,21 @@ func MergeGeneratedProjects(projects []GeneratedProject) *GeneratedProject {
 // ParseProjectFromJSON returns a GeneratedTasks type from JSON. We use the
 // YAML parser instead of the JSON parser because the JSON parser will not
 // properly unmarshal into a struct with multiple fields as options, like the YAMLCommandSet.
-func ParseProjectFromJSON(data string) (GeneratedProject, error) {
+func ParseProjectFromJSONString(data string) (GeneratedProject, error) {
 	g := GeneratedProject{}
 	dataAsJSON := []byte(data)
 	if err := yaml.Unmarshal(dataAsJSON, &g); err != nil {
+		return g, errors.Wrap(err, "error unmarshaling into GeneratedTasks")
+	}
+	return g, nil
+}
+
+// ParseProjectFromJSON returns a GeneratedTasks type from JSON. We use the
+// YAML parser instead of the JSON parser because the JSON parser will not
+// properly unmarshal into a struct with multiple fields as options, like the YAMLCommandSet.
+func ParseProjectFromJSON(data []byte) (GeneratedProject, error) {
+	g := GeneratedProject{}
+	if err := yaml.Unmarshal(data, &g); err != nil {
 		return g, errors.Wrap(err, "error unmarshaling into GeneratedTasks")
 	}
 	return g, nil

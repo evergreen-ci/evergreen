@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -73,7 +74,13 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		return nil
 	}
 
-	projects, err := parseProjects(t.GeneratedJSONAsString)
+	var projects []model.GeneratedProject
+	var err error
+	if len(t.GeneratedJSONAsString) > 0 {
+		projects, err = parseProjectsAsString(t.GeneratedJSONAsString)
+	} else {
+		projects, err = parseProjects(t.GeneratedJSON)
+	}
 	if err != nil {
 		return errors.Wrap(err, "error parsing JSON from `generate.tasks`")
 	}
@@ -166,10 +173,26 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	}))
 }
 
-func parseProjects(jsonStrings []string) ([]model.GeneratedProject, error) {
+func parseProjectsAsString(jsonStrings []string) ([]model.GeneratedProject, error) {
 	catcher := grip.NewBasicCatcher()
 	var projects []model.GeneratedProject
 	for _, f := range jsonStrings {
+		p, err := model.ParseProjectFromJSONString(f)
+		if err != nil {
+			catcher.Add(err)
+		}
+		projects = append(projects, p)
+	}
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+	return projects, nil
+}
+
+func parseProjects(jsonBytes []json.RawMessage) ([]model.GeneratedProject, error) {
+	catcher := grip.NewBasicCatcher()
+	var projects []model.GeneratedProject
+	for _, f := range jsonBytes {
 		p, err := model.ParseProjectFromJSON(f)
 		if err != nil {
 			catcher.Add(err)
