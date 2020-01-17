@@ -30,7 +30,7 @@ func TestSetBanner(t *testing.T) {
 
 	// test changing the banner with no change in theme
 	body := model.APIBanner{
-		Text: model.ToAPIString("hello evergreen users!"),
+		Text: model.ToStringPtr("hello evergreen users!"),
 	}
 	jsonBody, err := json.Marshal(&body)
 	assert.NoError(err)
@@ -48,12 +48,12 @@ func TestSetBanner(t *testing.T) {
 
 	settings, err := sc.GetEvergreenSettings()
 	assert.NoError(err)
-	assert.Equal(model.FromAPIString(body.Text), settings.Banner)
+	assert.Equal(model.FromStringPtr(body.Text), settings.Banner)
 
 	// test changing the theme
 	body = model.APIBanner{
-		Text:  model.ToAPIString("banner is changing again"),
-		Theme: model.ToAPIString("important"),
+		Text:  model.ToStringPtr("banner is changing again"),
+		Theme: model.ToStringPtr("important"),
 	}
 	jsonBody, err = json.Marshal(&body)
 	assert.NoError(err)
@@ -69,12 +69,12 @@ func TestSetBanner(t *testing.T) {
 	assert.Equal(http.StatusOK, resp.Status())
 	settings, err = sc.GetEvergreenSettings()
 	assert.NoError(err)
-	assert.Equal(model.FromAPIString(body.Theme), string(settings.BannerTheme))
+	assert.Equal(model.FromStringPtr(body.Theme), string(settings.BannerTheme))
 
 	// test invalid theme enum
 	body = model.APIBanner{
-		Text:  model.ToAPIString(""),
-		Theme: model.ToAPIString("foo"),
+		Text:  model.ToStringPtr(""),
+		Theme: model.ToStringPtr("foo"),
 	}
 	jsonBody, err = json.Marshal(&body)
 	assert.NoError(err)
@@ -118,6 +118,6 @@ func TestFetchBanner(t *testing.T) {
 	modelInterface, err := resp.Data().(model.Model).ToService()
 	assert.NoError(err)
 	banner := modelInterface.(*model.APIBanner)
-	assert.Equal("foo", model.FromAPIString(banner.Text))
-	assert.Equal("warning", model.FromAPIString(banner.Theme))
+	assert.Equal("foo", model.FromStringPtr(banner.Text))
+	assert.Equal("warning", model.FromStringPtr(banner.Theme))
 }

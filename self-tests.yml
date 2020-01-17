@@ -20,7 +20,10 @@ post:
     params:
       aws_key: ${aws_key}
       aws_secret: ${aws_secret}
-      local_files_include_filter: ["gopath/src/github.com/evergreen-ci/evergreen/bin/output.*.coverage.html"]
+      local_files_include_filter:
+        [
+          "gopath/src/github.com/evergreen-ci/evergreen/bin/output.*.coverage.html",
+        ]
       remote_file: evergreen/${task_id}/
       bucket: mciuploads
       content_type: text/html
@@ -31,13 +34,13 @@ post:
     params:
       aws_key: ${aws_key}
       aws_secret: ${aws_secret}
-      local_files_include_filter: ["gopath/src/github.com/evergreen-ci/evergreen/bin/output.*.coverage"]
+      local_files_include_filter:
+        ["gopath/src/github.com/evergreen-ci/evergreen/bin/output.*.coverage"]
       remote_file: evergreen/${task_id}/
       bucket: mciuploads
       content_type: text/plain
       permissions: public-read
       display_name: "(txt) coverage:"
-
 
 #######################################
 #         YAML Templates              #
@@ -101,6 +104,19 @@ variables:
           target: revendor
       - func: run-make
         vars: { target: "${task_name}" }
+  - &run-go-test-suite-with-mongodb-useast
+    # runs a make target above, but only on systems that have a
+    # running mongod started for testing.
+    name: test
+    commands:
+      - func: get-project
+      - func: setup-credentials
+      - func: setup-mongodb
+      - func: run-make
+        vars:
+          target: revendor
+      - func: run-make
+        vars: { target: "${task_name}", tz: "America/New_York" }
   - &run-smoke-test
     name: smoke
     commands:
@@ -136,7 +152,7 @@ variables:
           timeout_secs: 900
       - func: get-project
       - func: run-make
-        vars: {target: "cli"}
+        vars: { target: "cli" }
       - command: s3.put
         type: system
         params:
@@ -150,11 +166,11 @@ variables:
           display_name: evergreen
       - func: setup-mongodb
       - func: run-make
-        vars: {target: "set-var"}
+        vars: { target: "set-var" }
       - func: run-make
-        vars: {target: "set-project-var"}
+        vars: { target: "set-project-var" }
       - func: run-make
-        vars: {target: "load-smoke-data"}
+        vars: { target: "load-smoke-data" }
       - command: subprocess.exec
         params:
           silent: true
@@ -229,6 +245,7 @@ functions:
         SETTINGS_OVERRIDE: creds.yml
         SMOKE_TEST_FILE: ${smoke_test_file}
         TEST_TIMEOUT: ${test_timeout}
+        TZ: ${tz}
         VENDOR_PKG: "github.com/${trigger_repo_owner}/${trigger_repo_name}"
         VENDOR_REVISION: ${trigger_revision}
         XC_BUILD: ${xc_build}
@@ -336,7 +353,7 @@ functions:
 
 tasks:
   - name: coverage
-    tags: [ "report" ]
+    tags: ["report"]
     commands:
       - func: get-project
       - func: setup-credentials
@@ -474,6 +491,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-grid
+  - <<: *run-go-test-suite-with-mongodb-useast
+    tags: ["db", "test"]
+    name: test-graphql
   - name: docker-cleanup
     commands:
       - func: get-project
@@ -500,7 +520,6 @@ tasks:
           target: revendor
       - func: run-make
         vars: { target: "test-repotracker" }
-
 
 buildvariants:
   - name: ubuntu1604
@@ -704,4 +723,4 @@ buildvariants:
       goos: linux
       goarch: amd64
     tasks:
-      -  name: "docker-cleanup"
+      - name: "docker-cleanup"

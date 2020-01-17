@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/google/go-github/github"
 	"github.com/stretchr/testify/assert"
@@ -63,16 +64,24 @@ func TestMockPatchConnectorFetchByProjectSuite(t *testing.T) {
 	s.setup = func() error {
 		s.time = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
 
+		proj1 := "project1"
+		proj2 := "project2"
+		nowPlus2 := s.time.Add(time.Second * 2)
+		nowPlus4 := s.time.Add(time.Second * 4)
+		nowPlus6 := s.time.Add(time.Second * 6)
+		nowPlus8 := s.time.Add(time.Second * 8)
+		nowPlus10 := s.time.Add(time.Second * 10)
 		s.ctx = &MockConnector{MockPatchConnector: MockPatchConnector{
-			CachedPatches: []patch.Patch{
-				{Project: "project1", CreateTime: s.time},
-				{Project: "project2", CreateTime: s.time.Add(time.Second * 2)},
-				{Project: "project1", CreateTime: s.time.Add(time.Second * 4)},
-				{Project: "project1", CreateTime: s.time.Add(time.Second * 6)},
-				{Project: "project2", CreateTime: s.time.Add(time.Second * 8)},
-				{Project: "project1", CreateTime: s.time.Add(time.Second * 10)},
+			CachedPatches: []model.APIPatch{
+				{ProjectId: &proj1, CreateTime: &s.time},
+				{ProjectId: &proj2, CreateTime: &nowPlus2},
+				{ProjectId: &proj1, CreateTime: &nowPlus4},
+				{ProjectId: &proj1, CreateTime: &nowPlus6},
+				{ProjectId: &proj2, CreateTime: &nowPlus8},
+				{ProjectId: &proj1, CreateTime: &nowPlus10},
 			},
-		}}
+		},
+		}
 
 		return nil
 	}
@@ -93,9 +102,9 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchTooManyAsc() {
 	s.NoError(err)
 	s.NotNil(patches)
 	if s.Len(patches, 2) {
-		s.Equal("project2", patches[0].Project)
-		s.Equal("project2", patches[1].Project)
-		s.True(patches[1].CreateTime.Before(patches[0].CreateTime))
+		s.Equal("project2", *patches[0].ProjectId)
+		s.Equal("project2", *patches[1].ProjectId)
+		s.True(patches[1].CreateTime.Before(*patches[0].CreateTime))
 	}
 }
 
@@ -104,9 +113,9 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchTooManyDesc() {
 	s.NoError(err)
 	s.NotNil(patches)
 	if s.Len(patches, 2) {
-		s.Equal("project2", patches[0].Project)
-		s.Equal("project2", patches[1].Project)
-		s.True(patches[0].CreateTime.After(patches[1].CreateTime))
+		s.Equal("project2", *patches[0].ProjectId)
+		s.Equal("project2", *patches[1].ProjectId)
+		s.True(patches[0].CreateTime.After(*patches[1].CreateTime))
 	}
 }
 
@@ -116,7 +125,7 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchExactNumber() {
 	s.NotNil(patches)
 
 	s.Len(patches, 1)
-	s.Equal("project2", patches[0].Project)
+	s.Equal("project2", *patches[0].ProjectId)
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFetchTooFew() {
@@ -124,7 +133,7 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchTooFew() {
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 1)
-	s.Equal(s.time.Add(time.Second*10), patches[0].CreateTime)
+	s.Equal(s.time.Add(time.Second*10), *patches[0].CreateTime)
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFetchNonexistentFail() {
@@ -138,7 +147,7 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchKeyWithinBound() {
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 1)
-	s.Equal(s.time.Add(time.Second*6), patches[0].CreateTime)
+	s.Equal(s.time.Add(time.Second*6), *patches[0].CreateTime)
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFetchKeyOutOfBound() {
@@ -153,7 +162,7 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchKeyOutOfBound() {
 
 type PatchConnectorFetchByIdSuite struct {
 	ctx      Connector
-	obj_ids  []mgobson.ObjectId
+	obj_ids  []string
 	setup    func() error
 	teardown func() error
 	suite.Suite
@@ -164,11 +173,11 @@ func TestPatchConnectorFetchByIdSuite(t *testing.T) {
 	s.setup = func() error {
 		s.ctx = &DBConnector{}
 
-		s.obj_ids = []mgobson.ObjectId{mgobson.NewObjectId(), mgobson.NewObjectId()}
+		s.obj_ids = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
 
-		patches := []*patch.Patch{
-			{Id: s.obj_ids[0]},
-			{Id: s.obj_ids[1]},
+		patches := []patch.Patch{
+			{Id: mgobson.ObjectIdHex(s.obj_ids[0])},
+			{Id: mgobson.ObjectIdHex(s.obj_ids[1])},
 		}
 
 		for _, p := range patches {
@@ -191,12 +200,12 @@ func TestMockPatchConnectorFetchByIdSuite(t *testing.T) {
 	s := new(PatchConnectorFetchByIdSuite)
 	s.setup = func() error {
 
-		s.obj_ids = []mgobson.ObjectId{mgobson.NewObjectId(), mgobson.NewObjectId()}
+		s.obj_ids = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
 
 		s.ctx = &MockConnector{MockPatchConnector: MockPatchConnector{
-			CachedPatches: []patch.Patch{
-				{Id: s.obj_ids[0]},
-				{Id: s.obj_ids[1]},
+			CachedPatches: []model.APIPatch{
+				{Id: &s.obj_ids[0]},
+				{Id: &s.obj_ids[1]},
 			},
 		}}
 
@@ -215,10 +224,10 @@ func (s *PatchConnectorFetchByIdSuite) TearDownSuite() {
 }
 
 func (s *PatchConnectorFetchByIdSuite) TestFetchById() {
-	p, err := s.ctx.FindPatchById(s.obj_ids[0].Hex())
+	p, err := s.ctx.FindPatchById(s.obj_ids[0])
 	s.Require().NoError(err)
 	s.Require().NotNil(p)
-	s.Equal(s.obj_ids[0], p.Id)
+	s.Equal(s.obj_ids[0], *p.Id)
 }
 
 func (s *PatchConnectorFetchByIdSuite) TestFetchByIdFail() {
@@ -237,7 +246,7 @@ func (s *PatchConnectorFetchByIdSuite) TestFetchByIdFail() {
 
 type PatchConnectorAbortByIdSuite struct {
 	ctx      Connector
-	obj_ids  []mgobson.ObjectId
+	obj_ids  []string
 	mock     bool
 	setup    func() error
 	teardown func() error
@@ -251,11 +260,11 @@ func TestPatchConnectorAbortByIdSuite(t *testing.T) {
 	s.setup = func() error {
 		s.ctx = &DBConnector{}
 
-		s.obj_ids = []mgobson.ObjectId{mgobson.NewObjectId(), mgobson.NewObjectId()}
+		s.obj_ids = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
 
 		patches := []*patch.Patch{
-			{Id: s.obj_ids[0], Version: "version1"},
-			{Id: s.obj_ids[1]},
+			{Id: mgobson.ObjectIdHex(s.obj_ids[0]), Version: "version1"},
+			{Id: mgobson.ObjectIdHex(s.obj_ids[1])},
 		}
 
 		for _, p := range patches {
@@ -279,12 +288,12 @@ func TestMockPatchConnectorAbortByIdSuite(t *testing.T) {
 	s := new(PatchConnectorAbortByIdSuite)
 	s.setup = func() error {
 
-		s.obj_ids = []mgobson.ObjectId{mgobson.NewObjectId(), mgobson.NewObjectId()}
+		s.obj_ids = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
 
 		s.ctx = &MockConnector{MockPatchConnector: MockPatchConnector{
-			CachedPatches: []patch.Patch{
-				{Id: s.obj_ids[0], Version: "version1"},
-				{Id: s.obj_ids[1]},
+			CachedPatches: []model.APIPatch{
+				{Id: &s.obj_ids[0], Version: model.ToStringPtr("version1")},
+				{Id: &s.obj_ids[1]},
 			},
 			CachedAborted: make(map[string]string),
 		}}
@@ -311,20 +320,20 @@ func (s *PatchConnectorAbortByIdSuite) TearDownSuite() {
 }
 
 func (s *PatchConnectorAbortByIdSuite) TestAbort() {
-	err := s.ctx.AbortPatch(s.obj_ids[0].Hex(), "user1")
+	err := s.ctx.AbortPatch(s.obj_ids[0], "user1")
 	s.NoError(err)
-	p, err := s.ctx.FindPatchById(s.obj_ids[0].Hex())
+	p, err := s.ctx.FindPatchById(s.obj_ids[0])
 	s.Require().NoError(err)
 	s.Require().NotNil(p)
-	s.Equal(s.obj_ids[0], p.Id)
+	s.Equal(s.obj_ids[0], *p.Id)
 	if s.mock {
-		s.Equal("user1", s.ctx.(*MockConnector).MockPatchConnector.CachedAborted[s.obj_ids[0].Hex()])
+		s.Equal("user1", s.ctx.(*MockConnector).MockPatchConnector.CachedAborted[s.obj_ids[0]])
 	}
 
-	err = s.ctx.AbortPatch(s.obj_ids[1].Hex(), "user1")
+	err = s.ctx.AbortPatch(s.obj_ids[1], "user1")
 	s.NoError(err)
 
-	p, err = s.ctx.FindPatchById(s.obj_ids[1].Hex())
+	p, err = s.ctx.FindPatchById(s.obj_ids[1])
 
 	s.Error(err)
 	s.Nil(p)
@@ -382,7 +391,7 @@ func (s *PatchConnectorAbortByIdSuite) TestVerifyPullRequestEventForAbort() {
 
 type PatchConnectorChangeStatusSuite struct {
 	ctx      Connector
-	obj_ids  []mgobson.ObjectId
+	obj_ids  []string
 	mock     bool
 	setup    func() error
 	teardown func() error
@@ -394,11 +403,11 @@ func TestPatchConnectorChangeStatusSuite(t *testing.T) {
 	s.setup = func() error {
 		s.ctx = &DBConnector{}
 
-		s.obj_ids = []mgobson.ObjectId{mgobson.NewObjectId(), mgobson.NewObjectId()}
+		s.obj_ids = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
 
 		patches := []*patch.Patch{
-			{Id: s.obj_ids[0]},
-			{Id: s.obj_ids[1]},
+			{Id: mgobson.ObjectIdHex(s.obj_ids[0])},
+			{Id: mgobson.ObjectIdHex(s.obj_ids[1])},
 		}
 
 		for _, p := range patches {
@@ -422,12 +431,12 @@ func TestMockPatchConnectorChangeStatusSuite(t *testing.T) {
 	s := new(PatchConnectorChangeStatusSuite)
 	s.setup = func() error {
 
-		s.obj_ids = []mgobson.ObjectId{mgobson.NewObjectId(), mgobson.NewObjectId()}
+		s.obj_ids = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
 
 		s.ctx = &MockConnector{MockPatchConnector: MockPatchConnector{
-			CachedPatches: []patch.Patch{
-				{Id: s.obj_ids[0]},
-				{Id: s.obj_ids[1]},
+			CachedPatches: []model.APIPatch{
+				{Id: &s.obj_ids[0]},
+				{Id: &s.obj_ids[1]},
 			},
 			CachedAborted:  make(map[string]string),
 			CachedPriority: make(map[string]int64),
@@ -451,26 +460,26 @@ func (s *PatchConnectorChangeStatusSuite) TearDownSuite() {
 }
 
 func (s *PatchConnectorChangeStatusSuite) TestSetPriority() {
-	p, err := s.ctx.FindPatchById(s.obj_ids[0].Hex())
+	p, err := s.ctx.FindPatchById(s.obj_ids[0])
 	s.NoError(err)
-	err = s.ctx.SetPatchPriority(s.obj_ids[0].Hex(), 7)
+	err = s.ctx.SetPatchPriority(s.obj_ids[0], 7)
 	s.NoError(err)
 	if s.mock {
-		s.Equal(int64(7), s.ctx.(*MockConnector).MockPatchConnector.CachedPriority[p.Id.Hex()])
+		s.Equal(int64(7), s.ctx.(*MockConnector).MockPatchConnector.CachedPriority[*p.Id])
 	}
 }
 
 func (s *PatchConnectorChangeStatusSuite) TestSetActivation() {
-	err := s.ctx.SetPatchActivated(s.obj_ids[0].Hex(), "user1", true)
+	err := s.ctx.SetPatchActivated(s.obj_ids[0], "user1", true)
 	s.NoError(err)
-	p, err := s.ctx.FindPatchById(s.obj_ids[0].Hex())
+	p, err := s.ctx.FindPatchById(s.obj_ids[0])
 	s.NoError(err)
 	s.Require().NotNil(p)
 	s.True(p.Activated)
 
-	err = s.ctx.SetPatchActivated(s.obj_ids[0].Hex(), "user1", false)
+	err = s.ctx.SetPatchActivated(s.obj_ids[0], "user1", false)
 	s.NoError(err)
-	p, err = s.ctx.FindPatchById(s.obj_ids[0].Hex())
+	p, err = s.ctx.FindPatchById(s.obj_ids[0])
 	s.NoError(err)
 	s.False(p.Activated)
 }
@@ -513,17 +522,24 @@ func TestMockPatchConnectorFetchByUserSuite(t *testing.T) {
 	s := new(PatchConnectorFetchByUserSuite)
 
 	s.time = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
-
+	user1 := "user1"
+	user2 := "user2"
+	nowPlus2 := s.time.Add(time.Second * 2)
+	nowPlus4 := s.time.Add(time.Second * 4)
+	nowPlus6 := s.time.Add(time.Second * 6)
+	nowPlus8 := s.time.Add(time.Second * 8)
+	nowPlus10 := s.time.Add(time.Second * 10)
 	s.ctx = &MockConnector{MockPatchConnector: MockPatchConnector{
-		CachedPatches: []patch.Patch{
-			{Author: "user1", CreateTime: s.time},
-			{Author: "user2", CreateTime: s.time.Add(time.Second * 2)},
-			{Author: "user1", CreateTime: s.time.Add(time.Second * 4)},
-			{Author: "user1", CreateTime: s.time.Add(time.Second * 6)},
-			{Author: "user2", CreateTime: s.time.Add(time.Second * 8)},
-			{Author: "user1", CreateTime: s.time.Add(time.Second * 10)},
+		CachedPatches: []model.APIPatch{
+			{Author: &user1, CreateTime: &s.time},
+			{Author: &user2, CreateTime: &nowPlus2},
+			{Author: &user1, CreateTime: &nowPlus4},
+			{Author: &user1, CreateTime: &nowPlus6},
+			{Author: &user2, CreateTime: &nowPlus8},
+			{Author: &user1, CreateTime: &nowPlus10},
 		},
-	}}
+	},
+	}
 
 	suite.Run(t, s)
 }
@@ -533,16 +549,16 @@ func (s *PatchConnectorFetchByUserSuite) TestFetchTooMany() {
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 2)
-	s.Equal("user2", patches[0].Author)
-	s.Equal("user2", patches[1].Author)
-	s.True(patches[0].CreateTime.After(patches[1].CreateTime))
+	s.Equal("user2", *patches[0].Author)
+	s.Equal("user2", *patches[1].Author)
+	s.True(patches[0].CreateTime.After(*patches[1].CreateTime))
 }
 
 func (s *PatchConnectorFetchByUserSuite) TestFetchExactNumber() {
 	patches, err := s.ctx.FindPatchesByUser("user2", s.time.Add(time.Second*10), 1)
 	s.NoError(err)
 	if s.NotNil(patches) && s.Len(patches, 1) {
-		s.Equal("user2", patches[0].Author)
+		s.Equal("user2", *patches[0].Author)
 	}
 }
 
@@ -551,7 +567,7 @@ func (s *PatchConnectorFetchByUserSuite) TestFetchTooFew() {
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 1)
-	s.Equal(s.time.Add(time.Second*10), patches[0].CreateTime)
+	s.Equal(s.time.Add(time.Second*10), *patches[0].CreateTime)
 }
 
 func (s *PatchConnectorFetchByUserSuite) TestFetchNonexistentFail() {
@@ -565,7 +581,7 @@ func (s *PatchConnectorFetchByUserSuite) TestFetchKeyWithinBound() {
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 1)
-	s.Equal(s.time.Add(time.Second*6), patches[0].CreateTime)
+	s.Equal(s.time.Add(time.Second*6), *patches[0].CreateTime)
 }
 func (s *PatchConnectorFetchByUserSuite) TestFetchKeyOutOfBound() {
 	patches, err := s.ctx.FindPatchesByUser("user1", s.time.Add(-time.Hour), 1)

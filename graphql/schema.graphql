@@ -6,7 +6,7 @@ type Query {
 type Patch {
   id: ID!
   description: String!
-  project: String!
+  projectID: String!
   githash: String!
   patchNumber: Int!
   author: String!
@@ -17,68 +17,48 @@ type Patch {
   finishTime: Time
   variants: [String]!
   tasks: [String]!
-  variantTasks: [VariantTask]!
+  variantsTasks: [VariantTask]!
   activated: Boolean!
   alias: String!
 }
 
 type VariantTask {
-  display_name: String!
+  name: String!
   tasks: [String]!
 }
 
-type StatusDetails {
-  status: String!
-  type: String!
-  desc: String!
-}
-
 type TaskLogs {
-  agentLogURLs: [LogInfo]
-  systemLogURLs: [LogInfo]
-  taskLogURLs: [LogInfo]
-}
-
-type LogInfo {
-  command: String
-  url: String
-}
-
-type Dependency {
-  taskId: String
-  status: String
-  unattainable: Boolean
+  AllLogLink: String
+  AgentLogLink: String
+  SystemLogLink: String
+  TaskLogLink: String
 }
 
 type TaskEndDetail {
-  status: String
-  type: String
+  status: String!
+  type: String!
   description: String
   timedOut: Boolean
-  logs: TaskLogs
 }
-type CachedDurationValue {
-  Value: Duration
-  stdDev: Duration
-  ttl: Duration
-  collectedAt: Time
-}
+
 type TestResult {
-  status: String
-  testFile: String
+  status: String!
+  testFile: String!
+  logs: TestLog!
+  exitCode: Int
+  startTime: Time
+  endTime: Time
+}
+
+type TestLog {
   url: String
   urlRaw: String
-  logId: String
   lineNum: Int
-  exitCode: Int
-  startTime: Float
-  endTime: Float
-  logRaw: String
+  logId: String
 }
 
 type Task {
   id: String!
-  secret: String!
   createTime: Time
   ingestTime: Time
   dispatchTime: Time
@@ -86,55 +66,34 @@ type Task {
   startTime: Time
   finishTime: Time
   activatedTime: Time
-  version: String
-  project: String
+  version: String!
+  projectId: String!
   revision: String
   priority: Int
   taskGroup: String
   taskGroupMaxHosts: Int
-  taskGroupOrder: Int
   logs: TaskLogs
-  lastHeartbeat: Time
-  activated: Boolean
+  activated: Boolean!
   activatedBy: String
-  buildId: String
-  distroId: String
-  buildVariant: String
-  dependsOn: [Dependency]
-  numDependents: Int
-  overrideDependencies: Boolean
-  distroAliases: [String]
-  displayName: String
-  tags: [String]
+  buildId: String!
+  distroId: String!
+  buildVariant: String!
+  dependsOn: [String!]
+  displayName: String!
   hostId: String
   restarts: Int
   execution: Int
-  oldTaskId: String
-  archived: Boolean
-  revisionOrderNumber: Int
-  requester: String
-  status: String
+  order: Int
+  requester: String!
+  status: String!
   details: TaskEndDetail
-  aborted: Boolean
   timeTaken: Duration
   expectedDuration: Duration
-  expectedDurationStdDev: Duration
-  durationPrediction: CachedDurationValue
-  cost: Float
-  spawnedHostCost: Float
-  localTestResults: [TestResult]
+  testResults: [TestResult!]
   displayOnly: Boolean
-  executionTasks: [String]
-  resetWhenFinished: Boolean
-  DisplayTask: Task
+  executionTasks: [String!]
   generateTask: Boolean
-  generatedTasks: Boolean
   generatedBy: String
-  generateTasksError: String
-  triggerID: String
-  triggerType: String
-  triggerEvent: String
-  commitQueueMerge: Boolean
 }
 
 scalar Time

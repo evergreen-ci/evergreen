@@ -123,8 +123,8 @@ func (s *UserRouteSuite) TestUserAuthorInfo() {
 
 	dbUser, err := user.FindOne(user.ById("john.smith"))
 	s.NoError(err)
-	s.Equal(dbUser.DisplayName(), restModel.FromAPIString(authorInfo.DisplayName))
-	s.Equal(dbUser.Email(), restModel.FromAPIString(authorInfo.Email))
+	s.Equal(dbUser.DisplayName(), restModel.FromStringPtr(authorInfo.DisplayName))
+	s.Equal(dbUser.Email(), restModel.FromStringPtr(authorInfo.Email))
 }
 
 func (s *UserRouteSuite) TestSaveFeedback() {

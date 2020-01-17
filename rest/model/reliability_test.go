@@ -54,16 +54,16 @@ func TestAPITaskReliabilityStartAtKey(t *testing.T) {
 	assert := assert.New(t)
 
 	apiDoc := APITaskReliability{
-		TaskName:     ToAPIString("task1"),
-		BuildVariant: ToAPIString("variant1"),
-		Distro:       ToAPIString("distro1"),
-		Date:         ToAPIString("2018-07-15"),
+		TaskName:     ToStringPtr("task1"),
+		BuildVariant: ToStringPtr("variant1"),
+		Distro:       ToStringPtr("distro1"),
+		Date:         ToStringPtr("2018-07-15"),
 	}
 	assert.Equal("2018-07-15|variant1|task1||distro1", apiDoc.StartAtKey())
 
 	apiDoc = APITaskReliability{
-		TaskName: ToAPIString("task1"),
-		Date:     ToAPIString("2018-07-15"),
+		TaskName: ToStringPtr("task1"),
+		Date:     ToStringPtr("2018-07-15"),
 	}
 	assert.Equal("2018-07-15||task1||", apiDoc.StartAtKey())
 }

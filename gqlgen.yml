@@ -14,20 +14,18 @@ resolver:
   type: Resolver
 models:
   Patch:
-    model: github.com/evergreen-ci/evergreen/model/patch.Patch
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPatch
+  VariantTask:
+    model: github.com/evergreen-ci/evergreen/rest/model.VariantTask
   Task:
-    model: github.com/evergreen-ci/evergreen/model/task.Task
+    model: github.com/evergreen-ci/evergreen/rest/model.APITask
   TaskLogs:
-    model: github.com/evergreen-ci/evergreen/apimodels.TaskLogs
-  LogInfo:
-    model: github.com/evergreen-ci/evergreen/apimodels.LogInfo
-  Dependency:
-    model: github.com/evergreen-ci/evergreen/model/task.Dependency
+    model: github.com/evergreen-ci/evergreen/rest/model.LogLinks
   TaskEndDetail:
-    model: github.com/evergreen-ci/evergreen/apimodels.TaskEndDetail
+    model: github.com/evergreen-ci/evergreen/rest/model.ApiTaskEndDetail
+  TestResult:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITest
+  TestLog:
+    model: github.com/evergreen-ci/evergreen/rest/model.TestLogs
   Duration:
     model: github.com/evergreen-ci/evergreen/graphql/customscalars.Duration
-  CachedDurationValue:
-    model: github.com/evergreen-ci/evergreen/util.CachedDurationValue
-  TestResult:
-    model: github.com/evergreen-ci/evergreen/model/task.TestResult
