@@ -25,6 +25,7 @@ type APITask struct {
 	StartTime          time.Time        `json:"start_time"`
 	FinishTime         time.Time        `json:"finish_time"`
 	IngestTime         time.Time        `json:"ingest_time"`
+	ActivatedTime      time.Time        `json:"activated_time"`
 	Version            *string          `json:"version_id"`
 	Revision           *string          `json:"revision"`
 	Priority           int64            `json:"priority"`
@@ -40,8 +41,8 @@ type APITask struct {
 	Execution          int              `json:"execution"`
 	Order              int              `json:"order"`
 	Status             *string          `json:"status"`
-	Details            apiTaskEndDetail `json:"status_details"`
-	Logs               logLinks         `json:"logs"`
+	Details            ApiTaskEndDetail `json:"status_details"`
+	Logs               LogLinks         `json:"logs"`
 	TimeTaken          time.Duration    `json:"time_taken_ms"`
 	ExpectedDuration   time.Duration    `json:"expected_duration_ms"`
 	EstimatedStart     time.Duration    `json:"est_wait_to_start_ms"`
@@ -56,16 +57,18 @@ type APITask struct {
 	TaskGroup          string           `json:"task_group,omitempty"`
 	TaskGroupMaxHosts  int              `json:"task_group_max_hosts,omitempty"`
 	Blocked            bool             `json:"blocked"`
+	Requester          *string          `json:"requester"`
+	TestResults        []APITest        `json:"test_results"`
 }
 
-type logLinks struct {
+type LogLinks struct {
 	AllLogLink    *string `json:"all_log"`
 	TaskLogLink   *string `json:"task_log"`
 	AgentLogLink  *string `json:"agent_log"`
 	SystemLogLink *string `json:"system_log"`
 }
 
-type apiTaskEndDetail struct {
+type ApiTaskEndDetail struct {
 	Status      *string `json:"status"`
 	Type        *string `json:"type"`
 	Description *string `json:"desc"`
@@ -97,6 +100,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			StartTime:     v.StartTime,
 			FinishTime:    v.FinishTime,
 			IngestTime:    v.IngestTime,
+			ActivatedTime: v.ActivatedTime,
 			Version:       ToStringPtr(v.Version),
 			Revision:      ToStringPtr(v.Revision),
 			Priority:      v.Priority,
@@ -110,7 +114,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			Restarts:      v.Restarts,
 			Execution:     v.Execution,
 			Order:         v.RevisionOrderNumber,
-			Details: apiTaskEndDetail{
+			Details: ApiTaskEndDetail{
 				Status:      ToStringPtr(v.Details.Status),
 				Type:        ToStringPtr(v.Details.Type),
 				Description: ToStringPtr(v.Details.Description),
@@ -127,6 +131,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			TaskGroup:         v.TaskGroup,
 			TaskGroupMaxHosts: v.TaskGroupMaxHosts,
 			Blocked:           v.Blocked(),
+			Requester:         ToStringPtr(v.Requester),
 		}
 		if len(v.ExecutionTasks) > 0 {
 			ets := []*string{}
@@ -144,7 +149,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			at.DependsOn = dependsOn
 		}
 	case string:
-		ll := logLinks{
+		ll := LogLinks{
 			AllLogLink:    ToStringPtr(fmt.Sprintf(LogLinkFormat, v, FromStringPtr(at.Id), at.Execution, "ALL")),
 			TaskLogLink:   ToStringPtr(fmt.Sprintf(LogLinkFormat, v, FromStringPtr(at.Id), at.Execution, "T")),
 			AgentLogLink:  ToStringPtr(fmt.Sprintf(LogLinkFormat, v, FromStringPtr(at.Id), at.Execution, "E")),
@@ -169,6 +174,7 @@ func (ad *APITask) ToService() (interface{}, error) {
 		StartTime:           ad.StartTime,
 		FinishTime:          ad.FinishTime,
 		IngestTime:          ad.IngestTime,
+		ActivatedTime:       ad.ActivatedTime,
 		Version:             FromStringPtr(ad.Version),
 		Revision:            FromStringPtr(ad.Revision),
 		Priority:            ad.Priority,
@@ -195,6 +201,7 @@ func (ad *APITask) ToService() (interface{}, error) {
 		GenerateTask:     ad.GenerateTask,
 		GeneratedBy:      ad.GeneratedBy,
 		DisplayOnly:      ad.DisplayOnly,
+		Requester:        FromStringPtr(ad.Requester),
 	}
 	if len(ad.ExecutionTasks) > 0 {
 		ets := []string{}

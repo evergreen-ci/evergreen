@@ -253,7 +253,8 @@ func (as *APIServer) listPatches(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "cannot read value n"))
 		return
 	}
-	query := patch.ByUser(dbUser.Id).Sort([]string{"-" + patch.CreateTimeKey})
+	filterCommitQueue := r.FormValue("filter_commit_queue") == "true"
+	query := patch.ByUserAndCommitQueue(dbUser.Id, filterCommitQueue).Sort([]string{"-" + patch.CreateTimeKey})
 	if n > 0 {
 		query = query.Limit(n)
 	}

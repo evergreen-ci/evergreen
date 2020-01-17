@@ -325,7 +325,7 @@ buildvariants:
 func TestCreateContainerFromTask(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	assert.NoError(db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection, model.ParserProjectCollection, model.ProjectVarsCollection, host.Collection))
+	assert.NoError(db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, host.Collection))
 	t1 := task.Task{
 		Id:           "t1",
 		DisplayName:  "t1",

@@ -1,5 +1,6 @@
 type Query {
   userPatches(userId: String!): [Patch]!
+  task(taskId: String!): Task
 }
 
 type Patch {
@@ -26,10 +27,74 @@ type VariantTask {
   tasks: [String]!
 }
 
-type StatusDetails {
+type TaskLogs {
+  AllLogLink: String
+  AgentLogLink: String
+  SystemLogLink: String
+  TaskLogLink: String
+}
+
+type TaskEndDetail {
   status: String!
   type: String!
-  desc: String!
+  description: String
+  timedOut: Boolean
+}
+
+type TestResult {
+  status: String!
+  testFile: String!
+  logs: TestLog!
+  exitCode: Int
+  startTime: Time
+  endTime: Time
+}
+
+type TestLog {
+  url: String
+  urlRaw: String
+  lineNum: Int
+  logId: String
+}
+
+type Task {
+  id: String!
+  createTime: Time
+  ingestTime: Time
+  dispatchTime: Time
+  scheduledTime: Time
+  startTime: Time
+  finishTime: Time
+  activatedTime: Time
+  version: String!
+  projectId: String!
+  revision: String
+  priority: Int
+  taskGroup: String
+  taskGroupMaxHosts: Int
+  logs: TaskLogs
+  activated: Boolean!
+  activatedBy: String
+  buildId: String!
+  distroId: String!
+  buildVariant: String!
+  dependsOn: [String!]
+  displayName: String!
+  hostId: String
+  restarts: Int
+  execution: Int
+  order: Int
+  requester: String!
+  status: String!
+  details: TaskEndDetail
+  timeTaken: Duration
+  expectedDuration: Duration
+  testResults: [TestResult!]
+  displayOnly: Boolean
+  executionTasks: [String!]
+  generateTask: Boolean
+  generatedBy: String
 }
 
 scalar Time
+scalar Duration

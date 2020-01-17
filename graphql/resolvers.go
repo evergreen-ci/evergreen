@@ -17,6 +17,10 @@ func (r *Resolver) Query() QueryResolver {
 	return &queryResolver{r}
 }
 
+func (r *Resolver) Task() QueryResolver {
+	return &queryResolver{r}
+}
+
 type patchResolver struct{ *Resolver }
 
 func (r *patchResolver) ID(ctx context.Context, obj *model.APIPatch) (string, error) {
@@ -37,6 +41,22 @@ func (r *queryResolver) UserPatches(ctx context.Context, userID string) ([]*mode
 	}
 
 	return patchPointers, nil
+}
+
+func (r *queryResolver) Task(ctx context.Context, taskID string) (*model.APITask, error) {
+	task, err := r.sc.FindTaskById(taskID)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error retreiving Task")
+	}
+	if task == nil {
+		return nil, errors.Errorf("unable to find task %s", taskID)
+	}
+	apiTask := model.APITask{}
+	err = apiTask.BuildFromService(task)
+	if err != nil {
+		return nil, errors.Wrap(err, "error converting task")
+	}
+	return &apiTask, nil
 }
 
 // New injects resources into the resolvers, such as the data connector
