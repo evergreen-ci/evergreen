@@ -361,19 +361,19 @@ func (c *Mock) GetHostsByUser(ctx context.Context, user string) ([]*model.APIHos
 // CreateSpawnHost will return a mock host that would have been intended
 func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostRequestOptions) (*model.APIHost, error) {
 	mockHost := &model.APIHost{
-		Id:      model.ToAPIString("mock_host_id"),
-		HostURL: model.ToAPIString("mock_url"),
+		Id:      model.ToStringPtr("mock_host_id"),
+		HostURL: model.ToStringPtr("mock_url"),
 		Distro: model.DistroInfo{
-			Id:       model.ToAPIString(spawnRequest.DistroID),
-			Provider: model.ToAPIString(evergreen.ProviderNameMock),
+			Id:       model.ToStringPtr(spawnRequest.DistroID),
+			Provider: model.ToStringPtr(evergreen.ProviderNameMock),
 		},
-		Type:         model.ToAPIString("mock_type"),
-		Status:       model.ToAPIString(evergreen.HostUninitialized),
-		StartedBy:    model.ToAPIString("mock_user"),
+		Type:         model.ToStringPtr("mock_type"),
+		Status:       model.ToStringPtr(evergreen.HostUninitialized),
+		StartedBy:    model.ToStringPtr("mock_user"),
 		UserHost:     true,
 		Provisioned:  false,
 		InstanceTags: spawnRequest.InstanceTags,
-		InstanceType: model.ToAPIString(spawnRequest.InstanceType),
+		InstanceType: model.ToStringPtr(spawnRequest.InstanceType),
 	}
 	return mockHost, nil
 }
@@ -516,11 +516,11 @@ func (c *Mock) GetJSONHistory(ctx context.Context, td TaskData, tags bool, tn, d
 func (c *Mock) GetDistrosList(ctx context.Context) ([]model.APIDistro, error) {
 	mockDistros := []model.APIDistro{
 		{
-			Name:             model.ToAPIString("archlinux-build"),
+			Name:             model.ToStringPtr("archlinux-build"),
 			UserSpawnAllowed: true,
 		},
 		{
-			Name:             model.ToAPIString("baas-linux"),
+			Name:             model.ToStringPtr("baas-linux"),
 			UserSpawnAllowed: false,
 		},
 	}
@@ -530,12 +530,12 @@ func (c *Mock) GetDistrosList(ctx context.Context) ([]model.APIDistro, error) {
 func (c *Mock) GetCurrentUsersKeys(ctx context.Context) ([]model.APIPubKey, error) {
 	return []model.APIPubKey{
 		{
-			Name: model.ToAPIString("key0"),
-			Key:  model.ToAPIString("ssh-fake 12345"),
+			Name: model.ToStringPtr("key0"),
+			Key:  model.ToStringPtr("ssh-fake 12345"),
 		},
 		{
-			Name: model.ToAPIString("key1"),
-			Key:  model.ToAPIString("ssh-fake 67890"),
+			Name: model.ToStringPtr("key1"),
+			Key:  model.ToStringPtr("ssh-fake 67890"),
 		},
 	}, nil
 }
@@ -626,23 +626,23 @@ func (c *Mock) CreateVersionFromConfig(ctx context.Context, project, message str
 
 func (c *Mock) GetCommitQueue(ctx context.Context, projectID string) (*model.APICommitQueue, error) {
 	return &model.APICommitQueue{
-		ProjectID: model.ToAPIString("mci"),
+		ProjectID: model.ToStringPtr("mci"),
 		Queue: []model.APICommitQueueItem{
 			model.APICommitQueueItem{
-				Issue: model.ToAPIString("123"),
+				Issue: model.ToStringPtr("123"),
 				Modules: []model.APIModule{
 					model.APIModule{
-						Module: model.ToAPIString("test_module"),
-						Issue:  model.ToAPIString("345"),
+						Module: model.ToStringPtr("test_module"),
+						Issue:  model.ToStringPtr("345"),
 					},
 				},
 			},
 			model.APICommitQueueItem{
-				Issue: model.ToAPIString("345"),
+				Issue: model.ToStringPtr("345"),
 				Modules: []model.APIModule{
 					model.APIModule{
-						Module: model.ToAPIString("test_module2"),
-						Issue:  model.ToAPIString("567"),
+						Module: model.ToStringPtr("test_module2"),
+						Issue:  model.ToStringPtr("567"),
 					},
 				},
 			},
@@ -664,8 +664,8 @@ func (c *Mock) GetCommitQueueItemAuthor(ctx context.Context, projectID, item str
 
 func (c *Mock) GetUserAuthorInfo(ctx context.Context, td TaskData, userID string) (*model.APIUserAuthorInformation, error) {
 	return &model.APIUserAuthorInformation{
-		DisplayName: model.ToAPIString("evergreen"),
-		Email:       model.ToAPIString("evergreen@mongodb.com"),
+		DisplayName: model.ToStringPtr("evergreen"),
+		Email:       model.ToStringPtr("evergreen@mongodb.com"),
 	}, nil
 }
 

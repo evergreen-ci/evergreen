@@ -94,8 +94,8 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 	}
 	hasCommits := false
 	params := pushParams{
-		authorName:  restModel.FromAPIString(u.DisplayName),
-		authorEmail: restModel.FromAPIString(u.Email),
+		authorName:  restModel.FromStringPtr(u.DisplayName),
+		authorEmail: restModel.FromStringPtr(u.Email),
 		token:       projectToken,
 	}
 

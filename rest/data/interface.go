@@ -181,12 +181,12 @@ type Connector interface {
 
 	// FindPatchesByProject provides access to the patches corresponding to the input project ID
 	// as ordered by creation time.
-	FindPatchesByProject(string, time.Time, int) ([]patch.Patch, error)
+	FindPatchesByProject(string, time.Time, int) ([]restModel.APIPatch, error)
 	// FindPatchByUser finds patches for the input user as ordered by creation time
-	FindPatchesByUser(string, time.Time, int) ([]patch.Patch, error)
+	FindPatchesByUser(string, time.Time, int) ([]restModel.APIPatch, error)
 
 	// FindPatchById fetches the patch corresponding to the input patch ID.
-	FindPatchById(string) (*patch.Patch, error)
+	FindPatchById(string) (*restModel.APIPatch, error)
 
 	// AbortVersion aborts all tasks of a version given its ID.
 	AbortVersion(string, string) error

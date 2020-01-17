@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/reliability"
 	"github.com/evergreen-ci/evergreen/model/stats"
 
-	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,7 +31,7 @@ func TestMockGetTaskReliability(t *testing.T) {
 	assert.NoError(err)
 	assert.Len(stats, 100)
 
-	var date model.APIString
+	var date *string
 	for i, doc := range stats {
 		assert.Equal(fmt.Sprintf("task_%v", i), *doc.TaskName)
 		assert.Equal("variant", *doc.BuildVariant)

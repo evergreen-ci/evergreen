@@ -7,27 +7,27 @@ import (
 )
 
 type APISelector struct {
-	Type APIString `json:"type"`
-	Data APIString `json:"data"`
+	Type *string `json:"type"`
+	Data *string `json:"data"`
 }
 
 type APISubscription struct {
-	ID             APIString         `json:"id"`
-	ResourceType   APIString         `json:"resource_type"`
-	Trigger        APIString         `json:"trigger"`
+	ID             *string           `json:"id"`
+	ResourceType   *string           `json:"resource_type"`
+	Trigger        *string           `json:"trigger"`
 	Selectors      []APISelector     `json:"selectors"`
 	RegexSelectors []APISelector     `json:"regex_selectors"`
 	Subscriber     APISubscriber     `json:"subscriber"`
-	OwnerType      APIString         `json:"owner_type"`
-	Owner          APIString         `json:"owner"`
+	OwnerType      *string           `json:"owner_type"`
+	Owner          *string           `json:"owner"`
 	TriggerData    map[string]string `json:"trigger_data,omitempty"`
 }
 
 func (s *APISelector) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case event.Selector:
-		s.Data = ToAPIString(v.Data)
-		s.Type = ToAPIString(v.Type)
+		s.Data = ToStringPtr(v.Data)
+		s.Type = ToStringPtr(v.Type)
 	default:
 		return errors.New("unrecognized type for APISelector")
 	}
@@ -37,19 +37,19 @@ func (s *APISelector) BuildFromService(h interface{}) error {
 
 func (s *APISelector) ToService() (interface{}, error) {
 	return event.Selector{
-		Data: FromAPIString(s.Data),
-		Type: FromAPIString(s.Type),
+		Data: FromStringPtr(s.Data),
+		Type: FromStringPtr(s.Type),
 	}, nil
 }
 
 func (s *APISubscription) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case event.Subscription:
-		s.ID = ToAPIString(v.ID)
-		s.ResourceType = ToAPIString(v.ResourceType)
-		s.Trigger = ToAPIString(v.Trigger)
-		s.Owner = ToAPIString(v.Owner)
-		s.OwnerType = ToAPIString(string(v.OwnerType))
+		s.ID = ToStringPtr(v.ID)
+		s.ResourceType = ToStringPtr(v.ResourceType)
+		s.Trigger = ToStringPtr(v.Trigger)
+		s.Owner = ToStringPtr(v.Owner)
+		s.OwnerType = ToStringPtr(string(v.OwnerType))
 		s.TriggerData = v.TriggerData
 		err := s.Subscriber.BuildFromService(v.Subscriber)
 		if err != nil {
@@ -82,11 +82,11 @@ func (s *APISubscription) BuildFromService(h interface{}) error {
 
 func (s *APISubscription) ToService() (interface{}, error) {
 	out := event.Subscription{
-		ID:             FromAPIString(s.ID),
-		ResourceType:   FromAPIString(s.ResourceType),
-		Trigger:        FromAPIString(s.Trigger),
-		Owner:          FromAPIString(s.Owner),
-		OwnerType:      event.OwnerType(FromAPIString(s.OwnerType)),
+		ID:             FromStringPtr(s.ID),
+		ResourceType:   FromStringPtr(s.ResourceType),
+		Trigger:        FromStringPtr(s.Trigger),
+		Owner:          FromStringPtr(s.Owner),
+		OwnerType:      event.OwnerType(FromStringPtr(s.OwnerType)),
 		Selectors:      []event.Selector{},
 		RegexSelectors: []event.Selector{},
 		TriggerData:    s.TriggerData,
