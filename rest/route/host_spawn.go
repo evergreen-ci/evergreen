@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -22,6 +23,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
@@ -1151,6 +1153,7 @@ func (h *hostRunScript) Run(ctx context.Context) gimlet.Responder {
 	for _, hostID := range h.hostIDs {
 		go func(ctx context.Context, hostID string, u *user.DBUser) {
 			defer wg.Done()
+			defer recovery.LogStackTraceAndContinue(fmt.Sprintf("Running script on host '%s'", hostID))
 			host, err := h.sc.FindHostByIdWithOwner(hostID, u)
 			if err != nil {
 				hostsOutput <- hostOutput{hostID: hostID, output: errors.Wrap(err, "can't get host").Error()}
@@ -1162,8 +1165,9 @@ func (h *hostRunScript) Run(ctx context.Context) gimlet.Responder {
 			}
 
 			if host.JasperCommunication() {
+				bashPath := filepath.Join(host.Distro.BootstrapSettings.RootDir, host.Distro.BootstrapSettings.ShellPath)
 				opts := &options.Create{
-					Args: []string{"bash", "-l", "-c", h.script},
+					Args: []string{bashPath, "-l", "-c", h.script},
 				}
 				processOutput, err := host.RunJasperProcess(ctx, h.env, opts)
 				if err != nil {
