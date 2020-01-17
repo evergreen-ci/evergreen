@@ -19,6 +19,9 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.VariantTask
   Task:
     model: github.com/evergreen-ci/evergreen/rest/model.APITask
+    fields:
+      testResults:
+        resolver: true # force a resolver to be generated
   TaskLogs:
     model: github.com/evergreen-ci/evergreen/rest/model.LogLinks
   TaskEndDetail:

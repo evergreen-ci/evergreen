@@ -17,11 +17,12 @@ func (r *Resolver) Query() QueryResolver {
 	return &queryResolver{r}
 }
 
-func (r *Resolver) Task() QueryResolver {
-	return &queryResolver{r}
+func (r *Resolver) Task() TaskResolver {
+	return &taskResolver{r}
 }
 
 type patchResolver struct{ *Resolver }
+type taskResolver struct{ *Resolver }
 
 func (r *patchResolver) ID(ctx context.Context, obj *model.APIPatch) (string, error) {
 	return *obj.Id, nil
@@ -41,6 +42,23 @@ func (r *queryResolver) UserPatches(ctx context.Context, userID string) ([]*mode
 	}
 
 	return patchPointers, nil
+}
+
+func (r *taskResolver) TestResults(ctx context.Context, obj *model.APITask) ([]*model.APITest, error) {
+	tests, err := r.sc.FindTestsByTaskId(*obj.Id, "", "", "", 0, 0)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error retreiving test")
+	}
+	testPointers := []*model.APITest{}
+	for _, t := range tests {
+		apiTest := model.APITest{}
+		err := apiTest.BuildFromService(&t)
+		if err != nil {
+			return nil, errors.Wrap(err, "error converting test")
+		}
+		testPointers = append(testPointers, &apiTest)
+	}
+	return testPointers, nil
 }
 
 func (r *queryResolver) Task(ctx context.Context, taskID string) (*model.APITask, error) {

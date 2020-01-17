@@ -1,0 +1,41 @@
+{
+  task(taskId: "wuzzup") {
+    id
+    createTime
+    ingestTime
+    dispatchTime
+    scheduledTime
+    startTime
+    finishTime
+    activatedTime
+    version
+    projectId
+    revision
+    priority
+    taskGroup
+    taskGroupMaxHosts
+    activated
+    activatedBy
+    buildId
+    distroId
+    buildVariant
+    dependsOn
+    displayName
+    hostId
+    restarts
+    execution
+    order
+    requester
+    status
+    details {
+      status
+      type
+      description
+      timedOut
+    }
+    displayOnly
+    executionTasks
+    generateTask
+    generatedBy
+  }
+}
