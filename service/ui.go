@@ -283,7 +283,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/graphql/query").Wrap(allowsCORS).Handler(func(_ http.ResponseWriter, _ *http.Request) {}).Options()
 
 	// Waterfall pages
-	app.AddRoute("/").Wrap(needsContext).Handler(uis.waterfallPage).Get()
+	app.AddRoute("/").Wrap(needsContext).Handler(uis.waterfallPage).Get().Head()
 	app.AddRoute("/waterfall").Wrap(needsContext).Handler(uis.waterfallPage).Get()
 	app.AddRoute("/waterfall/{project_id}").Wrap(needsContext, viewTasks).Handler(uis.waterfallPage).Get()
 
@@ -293,7 +293,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/timeline").Wrap(needsContext).Handler(uis.timeline).Get()
 	app.AddRoute("/json/timeline/{project_id}").Wrap(needsContext, allowsCORS, needsLogin, viewTasks).Handler(uis.timelineJson).Get()
 	app.AddRoute("/json/patches/project/{project_id}").Wrap(needsContext, allowsCORS, needsLogin, viewTasks).Handler(uis.patchTimelineJson).Get()
-	app.AddRoute("/json/patches/user/{user_id}").Wrap(needsContext, allowsCORS, needsLogin, viewTasks).Handler(uis.patchTimelineJson).Get()
+	app.AddRoute("/json/patches/user/{user_id}").Wrap(needsContext, allowsCORS, needsLogin).Handler(uis.patchTimelineJson).Get()
 
 	// Grid page
 	app.AddRoute("/grid").Wrap(needsContext).Handler(uis.grid).Get()

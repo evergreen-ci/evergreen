@@ -25,22 +25,22 @@ func TestHostBuildFromService(t *testing.T) {
 		modelPairs := []hostCompare{
 			{
 				ah: APIHost{
-					Id: ToAPIString("testId"),
+					Id: ToStringPtr("testId"),
 					Distro: DistroInfo{
-						Id:       ToAPIString("testDistroId"),
-						Provider: ToAPIString("testDistroProvider"),
+						Id:       ToStringPtr("testDistroId"),
+						Provider: ToStringPtr("testDistroProvider"),
 					},
 					Provisioned: true,
-					StartedBy:   ToAPIString("testStarter"),
-					Type:        ToAPIString("testType"),
-					User:        ToAPIString("testUser"),
-					Status:      ToAPIString("testStatus"),
+					StartedBy:   ToStringPtr("testStarter"),
+					Type:        ToStringPtr("testType"),
+					User:        ToStringPtr("testUser"),
+					Status:      ToStringPtr("testStatus"),
 					RunningTask: taskInfo{
-						Id:           ToAPIString("testRunningTaskId"),
-						Name:         ToAPIString("testRTName"),
-						DispatchTime: NewTime(timeNow),
-						VersionId:    ToAPIString("testVersionId"),
-						BuildId:      ToAPIString("testBuildId"),
+						Id:           ToStringPtr("testRunningTaskId"),
+						Name:         ToStringPtr("testRTName"),
+						DispatchTime: timeNow,
+						VersionId:    ToStringPtr("testVersionId"),
+						BuildId:      ToStringPtr("testBuildId"),
 					},
 				},
 				sh: host.Host{
@@ -67,7 +67,7 @@ func TestHostBuildFromService(t *testing.T) {
 			{
 				ah: APIHost{
 					RunningTask: taskInfo{
-						DispatchTime: NewTime(time.Time{}),
+						DispatchTime: time.Time{},
 					},
 				},
 				sh: host.Host{
@@ -85,8 +85,8 @@ func TestHostBuildFromService(t *testing.T) {
 				So(err, ShouldBeNil)
 				err = apiHost.BuildFromService(hc.sh)
 				So(err, ShouldBeNil)
-				So(FromAPIString(apiHost.Id), ShouldEqual, FromAPIString(hc.ah.Id))
-				So(FromAPIString(apiHost.Status), ShouldEqual, FromAPIString(hc.ah.Status))
+				So(FromStringPtr(apiHost.Id), ShouldEqual, FromStringPtr(hc.ah.Id))
+				So(FromStringPtr(apiHost.Status), ShouldEqual, FromStringPtr(hc.ah.Status))
 			}
 		})
 	})

@@ -93,15 +93,15 @@ func (a *AliasSuite) TestUpdateProjectAliases() {
 	a.Require().Len(found, 2)
 	toUpdate := found[0]
 	toDelete := found[1]
-	toUpdate.Alias = restModel.ToAPIString("different_alias")
+	toUpdate.Alias = restModel.ToStringPtr("different_alias")
 	toDelete.Delete = true
 	aliasUpdates := []restModel.APIProjectAlias{
 		toUpdate,
 		toDelete,
 		{
-			Alias:   restModel.ToAPIString("new_alias"),
-			Task:    restModel.ToAPIString("new_task"),
-			Variant: restModel.ToAPIString("new_variant"),
+			Alias:   restModel.ToStringPtr("new_alias"),
+			Task:    restModel.ToStringPtr("new_task"),
+			Variant: restModel.ToStringPtr("new_variant"),
 		},
 	}
 	a.NoError(a.sc.UpdateProjectAliases("other_project_id", aliasUpdates))
@@ -109,13 +109,13 @@ func (a *AliasSuite) TestUpdateProjectAliases() {
 	a.NoError(err)
 	a.Require().Len(found, 2) // added one alias, deleted another
 
-	a.NotEqual(restModel.FromAPIString(toDelete.ID), found[0].ID)
-	a.NotEqual(restModel.FromAPIString(toDelete.ID), found[1].ID)
-	a.Equal(restModel.FromAPIString(toUpdate.ID), restModel.FromAPIString(found[0].ID))
-	a.Equal("different_alias", restModel.FromAPIString(found[0].Alias))
+	a.NotEqual(restModel.FromStringPtr(toDelete.ID), found[0].ID)
+	a.NotEqual(restModel.FromStringPtr(toDelete.ID), found[1].ID)
+	a.Equal(restModel.FromStringPtr(toUpdate.ID), restModel.FromStringPtr(found[0].ID))
+	a.Equal("different_alias", restModel.FromStringPtr(found[0].Alias))
 
 	a.NotEmpty(found[1].ID)
-	a.Equal("new_alias", restModel.FromAPIString(found[1].Alias))
-	a.Equal("new_task", restModel.FromAPIString(found[1].Task))
-	a.Equal("new_variant", restModel.FromAPIString(found[1].Variant))
+	a.Equal("new_alias", restModel.FromStringPtr(found[1].Alias))
+	a.Equal("new_task", restModel.FromStringPtr(found[1].Task))
+	a.Equal("new_variant", restModel.FromStringPtr(found[1].Variant))
 }

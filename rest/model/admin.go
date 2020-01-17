@@ -50,20 +50,20 @@ type APIAdminSettings struct {
 	Alerts                  *APIAlertsConfig                  `json:"alerts,omitempty"`
 	Amboy                   *APIAmboyConfig                   `json:"amboy,omitempty"`
 	Api                     *APIapiConfig                     `json:"api,omitempty"`
-	ApiUrl                  APIString                         `json:"api_url,omitempty"`
+	ApiUrl                  *string                           `json:"api_url,omitempty"`
 	AuthConfig              *APIAuthConfig                    `json:"auth,omitempty"`
-	Banner                  APIString                         `json:"banner,omitempty"`
-	BannerTheme             APIString                         `json:"banner_theme,omitempty"`
+	Banner                  *string                           `json:"banner,omitempty"`
+	BannerTheme             *string                           `json:"banner_theme,omitempty"`
 	Backup                  *APIBackupConfig                  `json:"backup,omitempty"`
-	ClientBinariesDir       APIString                         `json:"client_binaries_dir,omitempty"`
+	ClientBinariesDir       *string                           `json:"client_binaries_dir,omitempty"`
 	CommitQueue             *APICommitQueueConfig             `json:"commit_queue,omitempty"`
-	ConfigDir               APIString                         `json:"configdir,omitempty"`
+	ConfigDir               *string                           `json:"configdir,omitempty"`
 	ContainerPools          *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
 	Credentials             map[string]string                 `json:"credentials,omitempty"`
-	DomainName              APIString                         `json:"domain_name,omitempty"`
+	DomainName              *string                           `json:"domain_name,omitempty"`
 	Expansions              map[string]string                 `json:"expansions,omitempty"`
-	Bugsnag                 APIString                         `json:"bugsnag,omitempty"`
-	GithubPRCreatorOrg      APIString                         `json:"github_pr_creator_org,omitempty"`
+	Bugsnag                 *string                           `json:"bugsnag,omitempty"`
+	GithubPRCreatorOrg      *string                           `json:"github_pr_creator_org,omitempty"`
 	GithubOrgs              []string                          `json:"github_orgs,omitempty"`
 	HostInit                *APIHostInitConfig                `json:"hostinit,omitempty"`
 	HostJasper              *APIHostJasperConfig              `json:"host_jasper,omitempty"`
@@ -72,11 +72,11 @@ type APIAdminSettings struct {
 	Keys                    map[string]string                 `json:"keys,omitempty"`
 	LDAPRoleMap             *APILDAPRoleMap                   `json:"ldap_role_map,omitempty"`
 	LoggerConfig            *APILoggerConfig                  `json:"logger_config,omitempty"`
-	LogPath                 APIString                         `json:"log_path,omitempty"`
+	LogPath                 *string                           `json:"log_path,omitempty"`
 	NewRelic                *APINewRelicConfig                `json:"newrelic,omitempty"`
 	Notify                  *APINotifyConfig                  `json:"notify,omitempty"`
 	Plugins                 map[string]map[string]interface{} `json:"plugins,omitempty"`
-	PprofPort               APIString                         `json:"pprof_port,omitempty"`
+	PprofPort               *string                           `json:"pprof_port,omitempty"`
 	Providers               *APICloudProviders                `json:"providers,omitempty"`
 	RepoTracker             *APIRepoTrackerConfig             `json:"repotracker,omitempty"`
 	Scheduler               *APISchedulerConfig               `json:"scheduler,omitempty"`
@@ -124,8 +124,8 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.BannerTheme = &tmp
 		as.ClientBinariesDir = &v.ClientBinariesDir
 		as.ConfigDir = &v.ConfigDir
-		as.DomainName = ToAPIString(v.DomainName)
-		as.Bugsnag = ToAPIString(v.Bugsnag)
+		as.DomainName = ToStringPtr(v.DomainName)
+		as.Bugsnag = ToStringPtr(v.Bugsnag)
 		as.GithubPRCreatorOrg = &v.GithubPRCreatorOrg
 		as.LogPath = &v.LogPath
 		as.Plugins = v.Plugins
@@ -173,8 +173,8 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	if as.ConfigDir != nil {
 		settings.ConfigDir = *as.ConfigDir
 	}
-	settings.DomainName = FromAPIString(as.DomainName)
-	settings.Bugsnag = FromAPIString(as.Bugsnag)
+	settings.DomainName = FromStringPtr(as.DomainName)
+	settings.Bugsnag = FromStringPtr(as.Bugsnag)
 
 	if as.GithubPRCreatorOrg != nil {
 		settings.GithubPRCreatorOrg = *as.GithubPRCreatorOrg
@@ -260,26 +260,26 @@ func (a *APIAlertsConfig) ToService() (interface{}, error) {
 }
 
 type APISMTPConfig struct {
-	Server     APIString   `json:"server"`
-	Port       int         `json:"port"`
-	UseSSL     bool        `json:"use_ssl"`
-	Username   APIString   `json:"username"`
-	Password   APIString   `json:"password"`
-	From       APIString   `json:"from"`
-	AdminEmail []APIString `json:"admin_email"`
+	Server     *string   `json:"server"`
+	Port       int       `json:"port"`
+	UseSSL     bool      `json:"use_ssl"`
+	Username   *string   `json:"username"`
+	Password   *string   `json:"password"`
+	From       *string   `json:"from"`
+	AdminEmail []*string `json:"admin_email"`
 }
 
 func (a *APISMTPConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.SMTPConfig:
-		a.Server = ToAPIString(v.Server)
+		a.Server = ToStringPtr(v.Server)
 		a.Port = v.Port
 		a.UseSSL = v.UseSSL
-		a.Username = ToAPIString(v.Username)
-		a.Password = ToAPIString(v.Password)
-		a.From = ToAPIString(v.From)
+		a.Username = ToStringPtr(v.Username)
+		a.Password = ToStringPtr(v.Password)
+		a.From = ToStringPtr(v.From)
 		for _, s := range v.AdminEmail {
-			a.AdminEmail = append(a.AdminEmail, ToAPIString(s))
+			a.AdminEmail = append(a.AdminEmail, ToStringPtr(s))
 		}
 	default:
 		return errors.Errorf("%T is not a supported type", h)
@@ -292,38 +292,38 @@ func (a *APISMTPConfig) ToService() (interface{}, error) {
 		return nil, nil
 	}
 	config := evergreen.SMTPConfig{
-		Server:   FromAPIString(a.Server),
+		Server:   FromStringPtr(a.Server),
 		Port:     a.Port,
 		UseSSL:   a.UseSSL,
-		Username: FromAPIString(a.Username),
-		Password: FromAPIString(a.Password),
-		From:     FromAPIString(a.From),
+		Username: FromStringPtr(a.Username),
+		Password: FromStringPtr(a.Password),
+		From:     FromStringPtr(a.From),
 	}
 	for _, s := range a.AdminEmail {
-		config.AdminEmail = append(config.AdminEmail, FromAPIString(s))
+		config.AdminEmail = append(config.AdminEmail, FromStringPtr(s))
 	}
 	return config, nil
 }
 
 type APIAmboyConfig struct {
-	Name                                  APIString `json:"name"`
-	SingleName                            APIString `json:"single_name"`
-	DB                                    APIString `json:"database"`
-	PoolSizeLocal                         int       `json:"pool_size_local"`
-	PoolSizeRemote                        int       `json:"pool_size_remote"`
-	LocalStorage                          int       `json:"local_storage_size"`
-	GroupDefaultWorkers                   int       `json:"group_default_workers"`
-	GroupBackgroundCreateFrequencyMinutes int       `json:"group_background_create_frequency"`
-	GroupPruneFrequencyMinutes            int       `json:"group_prune_frequency"`
-	GroupTTLMinutes                       int       `json:"group_ttl"`
+	Name                                  *string `json:"name"`
+	SingleName                            *string `json:"single_name"`
+	DB                                    *string `json:"database"`
+	PoolSizeLocal                         int     `json:"pool_size_local"`
+	PoolSizeRemote                        int     `json:"pool_size_remote"`
+	LocalStorage                          int     `json:"local_storage_size"`
+	GroupDefaultWorkers                   int     `json:"group_default_workers"`
+	GroupBackgroundCreateFrequencyMinutes int     `json:"group_background_create_frequency"`
+	GroupPruneFrequencyMinutes            int     `json:"group_prune_frequency"`
+	GroupTTLMinutes                       int     `json:"group_ttl"`
 }
 
 func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.AmboyConfig:
-		a.Name = ToAPIString(v.Name)
-		a.SingleName = ToAPIString(v.SingleName)
-		a.DB = ToAPIString(v.DB)
+		a.Name = ToStringPtr(v.Name)
+		a.SingleName = ToStringPtr(v.SingleName)
+		a.DB = ToStringPtr(v.DB)
 		a.PoolSizeLocal = v.PoolSizeLocal
 		a.PoolSizeRemote = v.PoolSizeRemote
 		a.LocalStorage = v.LocalStorage
@@ -339,9 +339,9 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 
 func (a *APIAmboyConfig) ToService() (interface{}, error) {
 	return evergreen.AmboyConfig{
-		Name:                                  FromAPIString(a.Name),
-		SingleName:                            FromAPIString(a.SingleName),
-		DB:                                    FromAPIString(a.DB),
+		Name:                                  FromStringPtr(a.Name),
+		SingleName:                            FromStringPtr(a.SingleName),
+		DB:                                    FromStringPtr(a.DB),
 		PoolSizeLocal:                         a.PoolSizeLocal,
 		PoolSizeRemote:                        a.PoolSizeRemote,
 		LocalStorage:                          a.LocalStorage,
@@ -353,15 +353,15 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 }
 
 type APIapiConfig struct {
-	HttpListenAddr      APIString `json:"http_listen_addr"`
-	GithubWebhookSecret APIString `json:"github_webhook_secret"`
+	HttpListenAddr      *string `json:"http_listen_addr"`
+	GithubWebhookSecret *string `json:"github_webhook_secret"`
 }
 
 func (a *APIapiConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.APIConfig:
-		a.HttpListenAddr = ToAPIString(v.HttpListenAddr)
-		a.GithubWebhookSecret = ToAPIString(v.GithubWebhookSecret)
+		a.HttpListenAddr = ToStringPtr(v.HttpListenAddr)
+		a.GithubWebhookSecret = ToStringPtr(v.GithubWebhookSecret)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -370,8 +370,8 @@ func (a *APIapiConfig) BuildFromService(h interface{}) error {
 
 func (a *APIapiConfig) ToService() (interface{}, error) {
 	return evergreen.APIConfig{
-		HttpListenAddr:      FromAPIString(a.HttpListenAddr),
-		GithubWebhookSecret: FromAPIString(a.GithubWebhookSecret),
+		HttpListenAddr:      FromStringPtr(a.HttpListenAddr),
+		GithubWebhookSecret: FromStringPtr(a.GithubWebhookSecret),
 	}, nil
 }
 
@@ -441,21 +441,21 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 }
 
 type APIBackupConfig struct {
-	BucketName APIString `bson:"bucket_name" json:"bucket_name" yaml:"bucket_name"`
-	Key        APIString `bson:"key" json:"key" yaml:"key"`
-	Secret     APIString `bson:"secret" json:"secret" yaml:"secret"`
-	Prefix     APIString `bson:"prefix" json:"prefix" yaml:"prefix"`
-	Compress   bool      `bson:"compress" json:"compress" yaml:"compress"`
+	BucketName *string `bson:"bucket_name" json:"bucket_name" yaml:"bucket_name"`
+	Key        *string `bson:"key" json:"key" yaml:"key"`
+	Secret     *string `bson:"secret" json:"secret" yaml:"secret"`
+	Prefix     *string `bson:"prefix" json:"prefix" yaml:"prefix"`
+	Compress   bool    `bson:"compress" json:"compress" yaml:"compress"`
 }
 
 func (a *APIBackupConfig) BuildFromService(c interface{}) error {
 	switch conf := c.(type) {
 	case evergreen.BackupConfig:
-		a.BucketName = ToAPIString(conf.BucketName)
-		a.Key = ToAPIString(conf.Key)
-		a.Secret = ToAPIString(conf.Secret)
+		a.BucketName = ToStringPtr(conf.BucketName)
+		a.Key = ToStringPtr(conf.Key)
+		a.Secret = ToStringPtr(conf.Secret)
 		a.Compress = conf.Compress
-		a.Prefix = ToAPIString(conf.Prefix)
+		a.Prefix = ToStringPtr(conf.Prefix)
 
 		return nil
 	default:
@@ -468,23 +468,23 @@ func (a *APIBackupConfig) ToService() (interface{}, error) {
 	}
 
 	return evergreen.BackupConfig{
-		BucketName: FromAPIString(a.BucketName),
-		Key:        FromAPIString(a.Key),
-		Secret:     FromAPIString(a.Secret),
-		Prefix:     FromAPIString(a.Prefix),
+		BucketName: FromStringPtr(a.BucketName),
+		Key:        FromStringPtr(a.Key),
+		Secret:     FromStringPtr(a.Secret),
+		Prefix:     FromStringPtr(a.Prefix),
 		Compress:   a.Compress,
 	}, nil
 }
 
 type APILDAPConfig struct {
-	URL                APIString `json:"url"`
-	Port               APIString `json:"port"`
-	UserPath           APIString `json:"path"`
-	ServicePath        APIString `json:"service_path"`
-	Group              APIString `json:"group"`
-	ServiceGroup       APIString `json:"service_group"`
-	ExpireAfterMinutes APIString `json:"expire_after_minutes"`
-	GroupOU            APIString `json:"group_ou"`
+	URL                *string `json:"url"`
+	Port               *string `json:"port"`
+	UserPath           *string `json:"path"`
+	ServicePath        *string `json:"service_path"`
+	Group              *string `json:"group"`
+	ServiceGroup       *string `json:"service_group"`
+	ExpireAfterMinutes *string `json:"expire_after_minutes"`
+	GroupOU            *string `json:"group_ou"`
 }
 
 func (a *APILDAPConfig) BuildFromService(h interface{}) error {
@@ -493,14 +493,14 @@ func (a *APILDAPConfig) BuildFromService(h interface{}) error {
 		if v == nil {
 			return nil
 		}
-		a.URL = ToAPIString(v.URL)
-		a.Port = ToAPIString(v.Port)
-		a.UserPath = ToAPIString(v.UserPath)
-		a.ServicePath = ToAPIString(v.ServicePath)
-		a.Group = ToAPIString(v.Group)
-		a.ServiceGroup = ToAPIString(v.ServiceGroup)
-		a.ExpireAfterMinutes = ToAPIString(v.ExpireAfterMinutes)
-		a.GroupOU = ToAPIString(v.GroupOU)
+		a.URL = ToStringPtr(v.URL)
+		a.Port = ToStringPtr(v.Port)
+		a.UserPath = ToStringPtr(v.UserPath)
+		a.ServicePath = ToStringPtr(v.ServicePath)
+		a.Group = ToStringPtr(v.Group)
+		a.ServiceGroup = ToStringPtr(v.ServiceGroup)
+		a.ExpireAfterMinutes = ToStringPtr(v.ExpireAfterMinutes)
+		a.GroupOU = ToStringPtr(v.GroupOU)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -512,14 +512,14 @@ func (a *APILDAPConfig) ToService() (interface{}, error) {
 		return nil, nil
 	}
 	return &evergreen.LDAPConfig{
-		URL:                FromAPIString(a.URL),
-		Port:               FromAPIString(a.Port),
-		UserPath:           FromAPIString(a.UserPath),
-		ServicePath:        FromAPIString(a.ServicePath),
-		Group:              FromAPIString(a.Group),
-		ServiceGroup:       FromAPIString(a.ServiceGroup),
-		ExpireAfterMinutes: FromAPIString(a.ExpireAfterMinutes),
-		GroupOU:            FromAPIString(a.Group),
+		URL:                FromStringPtr(a.URL),
+		Port:               FromStringPtr(a.Port),
+		UserPath:           FromStringPtr(a.UserPath),
+		ServicePath:        FromStringPtr(a.ServicePath),
+		Group:              FromStringPtr(a.Group),
+		ServiceGroup:       FromStringPtr(a.ServiceGroup),
+		ExpireAfterMinutes: FromStringPtr(a.ExpireAfterMinutes),
+		GroupOU:            FromStringPtr(a.Group),
 	}, nil
 }
 
@@ -563,10 +563,10 @@ func (a *APINaiveAuthConfig) ToService() (interface{}, error) {
 }
 
 type APIAuthUser struct {
-	Username    APIString `json:"username"`
-	DisplayName APIString `json:"display_name"`
-	Password    APIString `json:"password"`
-	Email       APIString `json:"email"`
+	Username    *string `json:"username"`
+	DisplayName *string `json:"display_name"`
+	Password    *string `json:"password"`
+	Email       *string `json:"email"`
 }
 
 func (a *APIAuthUser) BuildFromService(h interface{}) error {
@@ -575,10 +575,10 @@ func (a *APIAuthUser) BuildFromService(h interface{}) error {
 		if v == nil {
 			return nil
 		}
-		a.Username = ToAPIString(v.Username)
-		a.Password = ToAPIString(v.Password)
-		a.DisplayName = ToAPIString(v.DisplayName)
-		a.Email = ToAPIString(v.Email)
+		a.Username = ToStringPtr(v.Username)
+		a.Password = ToStringPtr(v.Password)
+		a.DisplayName = ToStringPtr(v.DisplayName)
+		a.Email = ToStringPtr(v.Email)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -590,18 +590,18 @@ func (a *APIAuthUser) ToService() (interface{}, error) {
 		return nil, nil
 	}
 	return &evergreen.AuthUser{
-		Username:    FromAPIString(a.Username),
-		Password:    FromAPIString(a.Password),
-		DisplayName: FromAPIString(a.DisplayName),
-		Email:       FromAPIString(a.Email),
+		Username:    FromStringPtr(a.Username),
+		Password:    FromStringPtr(a.Password),
+		DisplayName: FromStringPtr(a.DisplayName),
+		Email:       FromStringPtr(a.Email),
 	}, nil
 }
 
 type APIGithubAuthConfig struct {
-	ClientId     APIString   `json:"client_id"`
-	ClientSecret APIString   `json:"client_secret"`
-	Users        []APIString `json:"users"`
-	Organization APIString   `json:"organization"`
+	ClientId     *string   `json:"client_id"`
+	ClientSecret *string   `json:"client_secret"`
+	Users        []*string `json:"users"`
+	Organization *string   `json:"organization"`
 }
 
 func (a *APIGithubAuthConfig) BuildFromService(h interface{}) error {
@@ -610,11 +610,11 @@ func (a *APIGithubAuthConfig) BuildFromService(h interface{}) error {
 		if v == nil {
 			return nil
 		}
-		a.ClientId = ToAPIString(v.ClientId)
-		a.ClientSecret = ToAPIString(v.ClientSecret)
-		a.Organization = ToAPIString(v.Organization)
+		a.ClientId = ToStringPtr(v.ClientId)
+		a.ClientSecret = ToStringPtr(v.ClientSecret)
+		a.Organization = ToStringPtr(v.Organization)
 		for _, u := range v.Users {
-			a.Users = append(a.Users, ToAPIString(u))
+			a.Users = append(a.Users, ToStringPtr(u))
 		}
 	default:
 		return errors.Errorf("%T is not a supported type", h)
@@ -627,20 +627,20 @@ func (a *APIGithubAuthConfig) ToService() (interface{}, error) {
 		return nil, nil
 	}
 	config := evergreen.GithubAuthConfig{
-		ClientId:     FromAPIString(a.ClientId),
-		ClientSecret: FromAPIString(a.ClientSecret),
-		Organization: FromAPIString(a.Organization),
+		ClientId:     FromStringPtr(a.ClientId),
+		ClientSecret: FromStringPtr(a.ClientSecret),
+		Organization: FromStringPtr(a.Organization),
 	}
 	for _, u := range a.Users {
-		config.Users = append(config.Users, FromAPIString(u))
+		config.Users = append(config.Users, FromStringPtr(u))
 	}
 	return &config, nil
 }
 
 // APIBanner is a public structure representing the banner part of the admin settings
 type APIBanner struct {
-	Text  APIString `json:"banner"`
-	Theme APIString `json:"theme"`
+	Text  *string `json:"banner"`
+	Theme *string `json:"theme"`
 }
 
 type APIHostInitConfig struct {
@@ -667,19 +667,19 @@ func (a *APIHostInitConfig) ToService() (interface{}, error) {
 }
 
 type APIJiraConfig struct {
-	Host           APIString `json:"host"`
-	Username       APIString `json:"username"`
-	Password       APIString `json:"password"`
-	DefaultProject APIString `json:"default_project"`
+	Host           *string `json:"host"`
+	Username       *string `json:"username"`
+	Password       *string `json:"password"`
+	DefaultProject *string `json:"default_project"`
 }
 
 func (a *APIJiraConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.JiraConfig:
-		a.Host = ToAPIString(v.Host)
-		a.Username = ToAPIString(v.Username)
-		a.Password = ToAPIString(v.Password)
-		a.DefaultProject = ToAPIString(v.DefaultProject)
+		a.Host = ToStringPtr(v.Host)
+		a.Username = ToStringPtr(v.Username)
+		a.Password = ToStringPtr(v.Password)
+		a.DefaultProject = ToStringPtr(v.DefaultProject)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -688,23 +688,23 @@ func (a *APIJiraConfig) BuildFromService(h interface{}) error {
 
 func (a *APIJiraConfig) ToService() (interface{}, error) {
 	return evergreen.JiraConfig{
-		Host:           FromAPIString(a.Host),
-		Username:       FromAPIString(a.Username),
-		Password:       FromAPIString(a.Password),
-		DefaultProject: FromAPIString(a.DefaultProject),
+		Host:           FromStringPtr(a.Host),
+		Username:       FromStringPtr(a.Username),
+		Password:       FromStringPtr(a.Password),
+		DefaultProject: FromStringPtr(a.DefaultProject),
 	}, nil
 }
 
 type APILDAPRoleMapping struct {
-	LDAPGroup APIString `json:"ldap_group"`
-	RoleID    APIString ` json:"role_id"`
+	LDAPGroup *string `json:"ldap_group"`
+	RoleID    *string ` json:"role_id"`
 }
 
 func (a *APILDAPRoleMapping) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.LDAPRoleMapping:
-		a.LDAPGroup = ToAPIString(v.LDAPGroup)
-		a.RoleID = ToAPIString(v.RoleID)
+		a.LDAPGroup = ToStringPtr(v.LDAPGroup)
+		a.RoleID = ToStringPtr(v.RoleID)
 	}
 
 	return nil
@@ -712,8 +712,8 @@ func (a *APILDAPRoleMapping) BuildFromService(h interface{}) error {
 
 func (a *APILDAPRoleMapping) ToService() (interface{}, error) {
 	mapping := evergreen.LDAPRoleMapping{
-		LDAPGroup: FromAPIString(a.LDAPGroup),
-		RoleID:    FromAPIString(a.RoleID),
+		LDAPGroup: FromStringPtr(a.LDAPGroup),
+		RoleID:    FromStringPtr(a.RoleID),
 	}
 
 	return mapping, nil
@@ -750,27 +750,27 @@ func (a *APILDAPRoleMap) ToService() (interface{}, error) {
 
 type APILoggerConfig struct {
 	Buffer              *APILogBuffering `json:"buffer"`
-	DefaultLevel        APIString        `json:"default_level"`
-	ThresholdLevel      APIString        `json:"threshold_level"`
-	LogkeeperURL        APIString        `json:"logkeeper_url"`
-	BuildloggerBaseURL  APIString        `json:"buildlogger_base_url"`
-	BuildloggerRPCPort  APIString        `json:"buildlogger_rpc_port"`
-	BuildloggerUser     APIString        `json:"buildlogger_user"`
-	BuildloggerPassword APIString        `json:"buildlogger_password"`
-	DefaultLogger       APIString        `json:"default_logger"`
+	DefaultLevel        *string          `json:"default_level"`
+	ThresholdLevel      *string          `json:"threshold_level"`
+	LogkeeperURL        *string          `json:"logkeeper_url"`
+	BuildloggerBaseURL  *string          `json:"buildlogger_base_url"`
+	BuildloggerRPCPort  *string          `json:"buildlogger_rpc_port"`
+	BuildloggerUser     *string          `json:"buildlogger_user"`
+	BuildloggerPassword *string          `json:"buildlogger_password"`
+	DefaultLogger       *string          `json:"default_logger"`
 }
 
 func (a *APILoggerConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.LoggerConfig:
-		a.DefaultLevel = ToAPIString(v.DefaultLevel)
-		a.ThresholdLevel = ToAPIString(v.ThresholdLevel)
-		a.LogkeeperURL = ToAPIString(v.LogkeeperURL)
-		a.BuildloggerBaseURL = ToAPIString(v.BuildloggerBaseURL)
-		a.BuildloggerRPCPort = ToAPIString(v.BuildloggerRPCPort)
-		a.BuildloggerUser = ToAPIString(v.BuildloggerUser)
-		a.BuildloggerPassword = ToAPIString(v.BuildloggerPassword)
-		a.DefaultLogger = ToAPIString(v.DefaultLogger)
+		a.DefaultLevel = ToStringPtr(v.DefaultLevel)
+		a.ThresholdLevel = ToStringPtr(v.ThresholdLevel)
+		a.LogkeeperURL = ToStringPtr(v.LogkeeperURL)
+		a.BuildloggerBaseURL = ToStringPtr(v.BuildloggerBaseURL)
+		a.BuildloggerRPCPort = ToStringPtr(v.BuildloggerRPCPort)
+		a.BuildloggerUser = ToStringPtr(v.BuildloggerUser)
+		a.BuildloggerPassword = ToStringPtr(v.BuildloggerPassword)
+		a.DefaultLogger = ToStringPtr(v.DefaultLogger)
 		a.Buffer = &APILogBuffering{}
 		if err := a.Buffer.BuildFromService(v.Buffer); err != nil {
 			return err
@@ -783,14 +783,14 @@ func (a *APILoggerConfig) BuildFromService(h interface{}) error {
 
 func (a *APILoggerConfig) ToService() (interface{}, error) {
 	config := evergreen.LoggerConfig{
-		DefaultLevel:        FromAPIString(a.DefaultLevel),
-		ThresholdLevel:      FromAPIString(a.ThresholdLevel),
-		LogkeeperURL:        FromAPIString(a.LogkeeperURL),
-		BuildloggerBaseURL:  FromAPIString(a.BuildloggerBaseURL),
-		BuildloggerRPCPort:  FromAPIString(a.BuildloggerRPCPort),
-		BuildloggerUser:     FromAPIString(a.BuildloggerUser),
-		BuildloggerPassword: FromAPIString(a.BuildloggerPassword),
-		DefaultLogger:       FromAPIString(a.DefaultLogger),
+		DefaultLevel:        FromStringPtr(a.DefaultLevel),
+		ThresholdLevel:      FromStringPtr(a.ThresholdLevel),
+		LogkeeperURL:        FromStringPtr(a.LogkeeperURL),
+		BuildloggerBaseURL:  FromStringPtr(a.BuildloggerBaseURL),
+		BuildloggerRPCPort:  FromStringPtr(a.BuildloggerRPCPort),
+		BuildloggerUser:     FromStringPtr(a.BuildloggerUser),
+		BuildloggerPassword: FromStringPtr(a.BuildloggerPassword),
+		DefaultLogger:       FromStringPtr(a.DefaultLogger),
 	}
 	i, err := a.Buffer.ToService()
 	if err != nil {
@@ -925,16 +925,16 @@ func (a *APICloudProviders) ToService() (interface{}, error) {
 }
 
 type APICommitQueueConfig struct {
-	MergeTaskDistro APIString `json:"merge_task_distro"`
-	CommitterName   APIString `json:"committer_name"`
-	CommitterEmail  APIString `json:"committer_email"`
+	MergeTaskDistro *string `json:"merge_task_distro"`
+	CommitterName   *string `json:"committer_name"`
+	CommitterEmail  *string `json:"committer_email"`
 }
 
 func (a *APICommitQueueConfig) BuildFromService(h interface{}) error {
 	if v, ok := h.(evergreen.CommitQueueConfig); ok {
-		a.MergeTaskDistro = ToAPIString(v.MergeTaskDistro)
-		a.CommitterName = ToAPIString(v.CommitterName)
-		a.CommitterEmail = ToAPIString(v.CommitterEmail)
+		a.MergeTaskDistro = ToStringPtr(v.MergeTaskDistro)
+		a.CommitterName = ToStringPtr(v.CommitterName)
+		a.CommitterEmail = ToStringPtr(v.CommitterEmail)
 
 		return nil
 	}
@@ -944,9 +944,9 @@ func (a *APICommitQueueConfig) BuildFromService(h interface{}) error {
 
 func (a *APICommitQueueConfig) ToService() (interface{}, error) {
 	return evergreen.CommitQueueConfig{
-		MergeTaskDistro: FromAPIString(a.MergeTaskDistro),
-		CommitterName:   FromAPIString(a.CommitterName),
-		CommitterEmail:  FromAPIString(a.CommitterEmail),
+		MergeTaskDistro: FromStringPtr(a.MergeTaskDistro),
+		CommitterName:   FromStringPtr(a.CommitterName),
+		CommitterEmail:  FromStringPtr(a.CommitterEmail),
 	}, nil
 }
 
@@ -987,17 +987,17 @@ func (a *APIContainerPoolsConfig) ToService() (interface{}, error) {
 }
 
 type APIContainerPool struct {
-	Distro        APIString `json:"distro"`
-	Id            APIString `json:"id"`
-	MaxContainers int       `json:"max_containers"`
-	Port          uint16    `json:"port"`
+	Distro        *string `json:"distro"`
+	Id            *string `json:"id"`
+	MaxContainers int     `json:"max_containers"`
+	Port          uint16  `json:"port"`
 }
 
 func (a *APIContainerPool) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.ContainerPool:
-		a.Distro = ToAPIString(v.Distro)
-		a.Id = ToAPIString(v.Id)
+		a.Distro = ToStringPtr(v.Distro)
+		a.Id = ToStringPtr(v.Id)
 		a.MaxContainers = v.MaxContainers
 		a.Port = v.Port
 	default:
@@ -1008,27 +1008,27 @@ func (a *APIContainerPool) BuildFromService(h interface{}) error {
 
 func (a *APIContainerPool) ToService() (interface{}, error) {
 	return evergreen.ContainerPool{
-		Distro:        FromAPIString(a.Distro),
-		Id:            FromAPIString(a.Id),
+		Distro:        FromStringPtr(a.Distro),
+		Id:            FromStringPtr(a.Id),
 		MaxContainers: a.MaxContainers,
 		Port:          a.Port,
 	}, nil
 }
 
 type APIEC2Key struct {
-	Name   APIString `json:"name"`
-	Region APIString `json:"region"`
-	Key    APIString `json:"key"`
-	Secret APIString `json:"secret"`
+	Name   *string `json:"name"`
+	Region *string `json:"region"`
+	Key    *string `json:"key"`
+	Secret *string `json:"secret"`
 }
 
 func (a *APIEC2Key) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.EC2Key:
-		a.Name = ToAPIString(v.Name)
-		a.Region = ToAPIString(v.Region)
-		a.Key = ToAPIString(v.Key)
-		a.Secret = ToAPIString(v.Secret)
+		a.Name = ToStringPtr(v.Name)
+		a.Region = ToStringPtr(v.Region)
+		a.Key = ToStringPtr(v.Key)
+		a.Secret = ToStringPtr(v.Secret)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1037,21 +1037,21 @@ func (a *APIEC2Key) BuildFromService(h interface{}) error {
 
 func (a *APIEC2Key) ToService() (interface{}, error) {
 	res := evergreen.EC2Key{}
-	res.Name = FromAPIString(a.Name)
-	res.Region = FromAPIString(a.Region)
-	res.Key = FromAPIString(a.Key)
-	res.Secret = FromAPIString(a.Secret)
+	res.Name = FromStringPtr(a.Name)
+	res.Region = FromStringPtr(a.Region)
+	res.Key = FromStringPtr(a.Key)
+	res.Secret = FromStringPtr(a.Secret)
 	return res, nil
 }
 
 type APIAWSConfig struct {
 	EC2Keys              []APIEC2Key `json:"ec2_keys"`
-	S3Key                APIString   `json:"s3_key"`
-	S3Secret             APIString   `json:"s3_secret"`
-	Bucket               APIString   `json:"bucket"`
-	S3BaseURL            APIString   `json:"s3_base_url"`
-	DefaultSecurityGroup APIString   `json:"default_security_group"`
-	AllowedInstanceTypes []APIString `json:"allowed_instance_types"`
+	S3Key                *string     `json:"s3_key"`
+	S3Secret             *string     `json:"s3_secret"`
+	Bucket               *string     `json:"bucket"`
+	S3BaseURL            *string     `json:"s3_base_url"`
+	DefaultSecurityGroup *string     `json:"default_security_group"`
+	AllowedInstanceTypes []*string   `json:"allowed_instance_types"`
 	MaxVolumeSizePerUser *int        `json:"max_volume_size"`
 }
 
@@ -1065,15 +1065,15 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 			}
 			a.EC2Keys = append(a.EC2Keys, apiKey)
 		}
-		a.S3Key = ToAPIString(v.S3Key)
-		a.S3Secret = ToAPIString(v.S3Secret)
-		a.Bucket = ToAPIString(v.Bucket)
-		a.S3BaseURL = ToAPIString(v.S3BaseURL)
-		a.DefaultSecurityGroup = ToAPIString(v.DefaultSecurityGroup)
+		a.S3Key = ToStringPtr(v.S3Key)
+		a.S3Secret = ToStringPtr(v.S3Secret)
+		a.Bucket = ToStringPtr(v.Bucket)
+		a.S3BaseURL = ToStringPtr(v.S3BaseURL)
+		a.DefaultSecurityGroup = ToStringPtr(v.DefaultSecurityGroup)
 		a.MaxVolumeSizePerUser = &v.MaxVolumeSizePerUser
 
 		for _, t := range v.AllowedInstanceTypes {
-			a.AllowedInstanceTypes = append(a.AllowedInstanceTypes, ToAPIString(t))
+			a.AllowedInstanceTypes = append(a.AllowedInstanceTypes, ToStringPtr(t))
 		}
 	default:
 		return errors.Errorf("%T is not a supported type", h)
@@ -1086,11 +1086,11 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		return nil, nil
 	}
 	config := evergreen.AWSConfig{
-		S3Key:                FromAPIString(a.S3Key),
-		S3Secret:             FromAPIString(a.S3Secret),
-		Bucket:               FromAPIString(a.Bucket),
-		S3BaseURL:            FromAPIString(a.S3BaseURL),
-		DefaultSecurityGroup: FromAPIString(a.DefaultSecurityGroup),
+		S3Key:                FromStringPtr(a.S3Key),
+		S3Secret:             FromStringPtr(a.S3Secret),
+		Bucket:               FromStringPtr(a.Bucket),
+		S3BaseURL:            FromStringPtr(a.S3BaseURL),
+		DefaultSecurityGroup: FromStringPtr(a.DefaultSecurityGroup),
 		MaxVolumeSizePerUser: host.DefaultMaxVolumeSizePerUser,
 	}
 	if a.MaxVolumeSizePerUser != nil {
@@ -1110,20 +1110,20 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 	}
 
 	for _, t := range a.AllowedInstanceTypes {
-		config.AllowedInstanceTypes = append(config.AllowedInstanceTypes, FromAPIString(t))
+		config.AllowedInstanceTypes = append(config.AllowedInstanceTypes, FromStringPtr(t))
 	}
 
 	return config, nil
 }
 
 type APIDockerConfig struct {
-	APIVersion APIString `json:"api_version"`
+	APIVersion *string `json:"api_version"`
 }
 
 func (a *APIDockerConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.DockerConfig:
-		a.APIVersion = ToAPIString(v.APIVersion)
+		a.APIVersion = ToStringPtr(v.APIVersion)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1132,24 +1132,24 @@ func (a *APIDockerConfig) BuildFromService(h interface{}) error {
 
 func (a *APIDockerConfig) ToService() (interface{}, error) {
 	return evergreen.DockerConfig{
-		APIVersion: FromAPIString(a.APIVersion),
+		APIVersion: FromStringPtr(a.APIVersion),
 	}, nil
 }
 
 type APIGCEConfig struct {
-	ClientEmail  APIString `json:"client_email"`
-	PrivateKey   APIString `json:"private_key"`
-	PrivateKeyID APIString `json:"private_key_id"`
-	TokenURI     APIString `json:"token_uri"`
+	ClientEmail  *string `json:"client_email"`
+	PrivateKey   *string `json:"private_key"`
+	PrivateKeyID *string `json:"private_key_id"`
+	TokenURI     *string `json:"token_uri"`
 }
 
 func (a *APIGCEConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.GCEConfig:
-		a.ClientEmail = ToAPIString(v.ClientEmail)
-		a.PrivateKey = ToAPIString(v.PrivateKey)
-		a.PrivateKeyID = ToAPIString(v.PrivateKeyID)
-		a.TokenURI = ToAPIString(v.TokenURI)
+		a.ClientEmail = ToStringPtr(v.ClientEmail)
+		a.PrivateKey = ToStringPtr(v.PrivateKey)
+		a.PrivateKeyID = ToStringPtr(v.PrivateKeyID)
+		a.TokenURI = ToStringPtr(v.TokenURI)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1158,36 +1158,36 @@ func (a *APIGCEConfig) BuildFromService(h interface{}) error {
 
 func (a *APIGCEConfig) ToService() (interface{}, error) {
 	return evergreen.GCEConfig{
-		ClientEmail:  FromAPIString(a.ClientEmail),
-		PrivateKey:   FromAPIString(a.PrivateKey),
-		PrivateKeyID: FromAPIString(a.PrivateKeyID),
-		TokenURI:     FromAPIString(a.TokenURI),
+		ClientEmail:  FromStringPtr(a.ClientEmail),
+		PrivateKey:   FromStringPtr(a.PrivateKey),
+		PrivateKeyID: FromStringPtr(a.PrivateKeyID),
+		TokenURI:     FromStringPtr(a.TokenURI),
 	}, nil
 }
 
 type APIOpenStackConfig struct {
-	IdentityEndpoint APIString `json:"identity_endpoint"`
+	IdentityEndpoint *string `json:"identity_endpoint"`
 
-	Username   APIString `json:"username"`
-	Password   APIString `json:"password"`
-	DomainName APIString `json:"domain_name"`
+	Username   *string `json:"username"`
+	Password   *string `json:"password"`
+	DomainName *string `json:"domain_name"`
 
-	ProjectName APIString `json:"project_name"`
-	ProjectID   APIString `json:"project_id"`
+	ProjectName *string `json:"project_name"`
+	ProjectID   *string `json:"project_id"`
 
-	Region APIString `json:"region"`
+	Region *string `json:"region"`
 }
 
 func (a *APIOpenStackConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.OpenStackConfig:
-		a.IdentityEndpoint = ToAPIString(v.IdentityEndpoint)
-		a.Username = ToAPIString(v.Username)
-		a.Password = ToAPIString(v.Password)
-		a.DomainName = ToAPIString(v.DomainName)
-		a.ProjectName = ToAPIString(v.ProjectName)
-		a.ProjectID = ToAPIString(v.ProjectID)
-		a.Region = ToAPIString(v.Region)
+		a.IdentityEndpoint = ToStringPtr(v.IdentityEndpoint)
+		a.Username = ToStringPtr(v.Username)
+		a.Password = ToStringPtr(v.Password)
+		a.DomainName = ToStringPtr(v.DomainName)
+		a.ProjectName = ToStringPtr(v.ProjectName)
+		a.ProjectID = ToStringPtr(v.ProjectID)
+		a.Region = ToStringPtr(v.Region)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1196,28 +1196,28 @@ func (a *APIOpenStackConfig) BuildFromService(h interface{}) error {
 
 func (a *APIOpenStackConfig) ToService() (interface{}, error) {
 	return evergreen.OpenStackConfig{
-		IdentityEndpoint: FromAPIString(a.IdentityEndpoint),
-		Username:         FromAPIString(a.Username),
-		Password:         FromAPIString(a.Password),
-		DomainName:       FromAPIString(a.DomainName),
-		ProjectID:        FromAPIString(a.ProjectID),
-		ProjectName:      FromAPIString(a.ProjectName),
-		Region:           FromAPIString(a.Region),
+		IdentityEndpoint: FromStringPtr(a.IdentityEndpoint),
+		Username:         FromStringPtr(a.Username),
+		Password:         FromStringPtr(a.Password),
+		DomainName:       FromStringPtr(a.DomainName),
+		ProjectID:        FromStringPtr(a.ProjectID),
+		ProjectName:      FromStringPtr(a.ProjectName),
+		Region:           FromStringPtr(a.Region),
 	}, nil
 }
 
 type APIVSphereConfig struct {
-	Host     APIString `json:"host"`
-	Username APIString `json:"username"`
-	Password APIString `json:"password"`
+	Host     *string `json:"host"`
+	Username *string `json:"username"`
+	Password *string `json:"password"`
 }
 
 func (a *APIVSphereConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.VSphereConfig:
-		a.Host = ToAPIString(v.Host)
-		a.Username = ToAPIString(v.Username)
-		a.Password = ToAPIString(v.Password)
+		a.Host = ToStringPtr(v.Host)
+		a.Username = ToStringPtr(v.Username)
+		a.Password = ToStringPtr(v.Password)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1226,9 +1226,9 @@ func (a *APIVSphereConfig) BuildFromService(h interface{}) error {
 
 func (a *APIVSphereConfig) ToService() (interface{}, error) {
 	return evergreen.VSphereConfig{
-		Host:     FromAPIString(a.Host),
-		Username: FromAPIString(a.Username),
-		Password: FromAPIString(a.Password),
+		Host:     FromStringPtr(a.Host),
+		Username: FromStringPtr(a.Username),
+		Password: FromStringPtr(a.Password),
 	}, nil
 }
 
@@ -1259,27 +1259,27 @@ func (a *APIRepoTrackerConfig) ToService() (interface{}, error) {
 }
 
 type APISchedulerConfig struct {
-	TaskFinder                    APIString `json:"task_finder"`
-	HostAllocator                 APIString `json:"host_allocator"`
-	FreeHostFraction              float64   `json:"free_host_fraction"`
-	CacheDurationSeconds          int       `json:"cache_duration_seconds"`
-	Planner                       APIString `json:"planner"`
-	TargetTimeSeconds             int       `json:"target_time_seconds"`
-	AcceptableHostIdleTimeSeconds int       `json:"acceptable_host_idle_time_seconds"`
-	GroupVersions                 bool      `json:"group_versions"`
-	PatchFactor                   int64     `json:"patch_factor"`
-	TimeInQueueFactor             int64     `json:"time_in_queue_factor"`
-	ExpectedRuntimeFactor         int64     `json:"expected_runtime_factor"`
+	TaskFinder                    *string `json:"task_finder"`
+	HostAllocator                 *string `json:"host_allocator"`
+	FreeHostFraction              float64 `json:"free_host_fraction"`
+	CacheDurationSeconds          int     `json:"cache_duration_seconds"`
+	Planner                       *string `json:"planner"`
+	TargetTimeSeconds             int     `json:"target_time_seconds"`
+	AcceptableHostIdleTimeSeconds int     `json:"acceptable_host_idle_time_seconds"`
+	GroupVersions                 bool    `json:"group_versions"`
+	PatchFactor                   int64   `json:"patch_factor"`
+	TimeInQueueFactor             int64   `json:"time_in_queue_factor"`
+	ExpectedRuntimeFactor         int64   `json:"expected_runtime_factor"`
 }
 
 func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.SchedulerConfig:
-		a.TaskFinder = ToAPIString(v.TaskFinder)
-		a.HostAllocator = ToAPIString(v.HostAllocator)
+		a.TaskFinder = ToStringPtr(v.TaskFinder)
+		a.HostAllocator = ToStringPtr(v.HostAllocator)
 		a.FreeHostFraction = v.FreeHostFraction
 		a.CacheDurationSeconds = v.CacheDurationSeconds
-		a.Planner = ToAPIString(v.Planner)
+		a.Planner = ToStringPtr(v.Planner)
 		a.TargetTimeSeconds = v.TargetTimeSeconds
 		a.AcceptableHostIdleTimeSeconds = v.AcceptableHostIdleTimeSeconds
 		a.GroupVersions = v.GroupVersions
@@ -1294,11 +1294,11 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 
 func (a *APISchedulerConfig) ToService() (interface{}, error) {
 	return evergreen.SchedulerConfig{
-		TaskFinder:                    FromAPIString(a.TaskFinder),
-		HostAllocator:                 FromAPIString(a.HostAllocator),
+		TaskFinder:                    FromStringPtr(a.TaskFinder),
+		HostAllocator:                 FromStringPtr(a.HostAllocator),
 		FreeHostFraction:              a.FreeHostFraction,
 		CacheDurationSeconds:          a.CacheDurationSeconds,
-		Planner:                       FromAPIString(a.Planner),
+		Planner:                       FromStringPtr(a.Planner),
 		TargetTimeSeconds:             a.TargetTimeSeconds,
 		AcceptableHostIdleTimeSeconds: a.AcceptableHostIdleTimeSeconds,
 		GroupVersions:                 a.GroupVersions,
@@ -1341,15 +1341,15 @@ type APIServiceFlags struct {
 
 type APISlackConfig struct {
 	Options *APISlackOptions `json:"options"`
-	Token   APIString        `json:"token"`
-	Level   APIString        `json:"level"`
+	Token   *string          `json:"token"`
+	Level   *string          `json:"level"`
 }
 
 func (a *APISlackConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.SlackConfig:
-		a.Token = ToAPIString(v.Token)
-		a.Level = ToAPIString(v.Level)
+		a.Token = ToStringPtr(v.Token)
+		a.Level = ToStringPtr(v.Level)
 		if v.Options != nil {
 			a.Options = &APISlackOptions{}
 			if err := a.Options.BuildFromService(*v.Options); err != nil { //nolint: vet
@@ -1369,18 +1369,18 @@ func (a *APISlackConfig) ToService() (interface{}, error) {
 	}
 	options := i.(send.SlackOptions) //nolint: vet
 	return evergreen.SlackConfig{
-		Token:   FromAPIString(a.Token),
-		Level:   FromAPIString(a.Level),
+		Token:   FromStringPtr(a.Token),
+		Level:   FromStringPtr(a.Level),
 		Options: &options,
 	}, nil
 }
 
 type APISlackOptions struct {
-	Channel       APIString       `json:"channel"`
-	Hostname      APIString       `json:"hostname"`
-	Name          APIString       `json:"name"`
-	Username      APIString       `json:"username"`
-	IconURL       APIString       `json:"icon_url"`
+	Channel       *string         `json:"channel"`
+	Hostname      *string         `json:"hostname"`
+	Name          *string         `json:"name"`
+	Username      *string         `json:"username"`
+	IconURL       *string         `json:"icon_url"`
 	BasicMetadata bool            `json:"add_basic_metadata"`
 	Fields        bool            `json:"use_fields"`
 	AllFields     bool            `json:"all_fields"`
@@ -1390,11 +1390,11 @@ type APISlackOptions struct {
 func (a *APISlackOptions) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case send.SlackOptions:
-		a.Channel = ToAPIString(v.Channel)
-		a.Hostname = ToAPIString(v.Hostname)
-		a.Name = ToAPIString(v.Name)
-		a.Username = ToAPIString(v.Username)
-		a.IconURL = ToAPIString(v.IconURL)
+		a.Channel = ToStringPtr(v.Channel)
+		a.Hostname = ToStringPtr(v.Hostname)
+		a.Name = ToStringPtr(v.Name)
+		a.Username = ToStringPtr(v.Username)
+		a.IconURL = ToStringPtr(v.IconURL)
 		a.BasicMetadata = v.BasicMetadata
 		a.Fields = v.Fields
 		a.AllFields = v.AllFields
@@ -1410,11 +1410,11 @@ func (a *APISlackOptions) ToService() (interface{}, error) {
 		return send.SlackOptions{}, nil
 	}
 	return send.SlackOptions{
-		Channel:       FromAPIString(a.Channel),
-		Hostname:      FromAPIString(a.Hostname),
-		Name:          FromAPIString(a.Name),
-		Username:      FromAPIString(a.Username),
-		IconURL:       FromAPIString(a.IconURL),
+		Channel:       FromStringPtr(a.Channel),
+		Hostname:      FromStringPtr(a.Hostname),
+		Name:          FromStringPtr(a.Name),
+		Username:      FromStringPtr(a.Username),
+		IconURL:       FromStringPtr(a.IconURL),
 		BasicMetadata: a.BasicMetadata,
 		Fields:        a.Fields,
 		AllFields:     a.AllFields,
@@ -1423,17 +1423,17 @@ func (a *APISlackOptions) ToService() (interface{}, error) {
 }
 
 type APISplunkConnectionInfo struct {
-	ServerURL APIString `json:"url"`
-	Token     APIString `json:"token"`
-	Channel   APIString `json:"channel"`
+	ServerURL *string `json:"url"`
+	Token     *string `json:"token"`
+	Channel   *string `json:"channel"`
 }
 
 func (a *APISplunkConnectionInfo) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case send.SplunkConnectionInfo:
-		a.ServerURL = ToAPIString(v.ServerURL)
-		a.Token = ToAPIString(v.Token)
-		a.Channel = ToAPIString(v.Channel)
+		a.ServerURL = ToStringPtr(v.ServerURL)
+		a.Token = ToStringPtr(v.Token)
+		a.Channel = ToStringPtr(v.Channel)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1442,40 +1442,40 @@ func (a *APISplunkConnectionInfo) BuildFromService(h interface{}) error {
 
 func (a *APISplunkConnectionInfo) ToService() (interface{}, error) {
 	return send.SplunkConnectionInfo{
-		ServerURL: FromAPIString(a.ServerURL),
-		Token:     FromAPIString(a.Token),
-		Channel:   FromAPIString(a.Channel),
+		ServerURL: FromStringPtr(a.ServerURL),
+		Token:     FromStringPtr(a.Token),
+		Channel:   FromStringPtr(a.Channel),
 	}, nil
 }
 
 type APIUIConfig struct {
-	Url                     APIString `json:"url"`
-	HelpUrl                 APIString `json:"help_url"`
-	UIv2Url                 APIString `json:"uiv2_url"`
-	HttpListenAddr          APIString `json:"http_listen_addr"`
-	Secret                  APIString `json:"secret"`
-	DefaultProject          APIString `json:"default_project"`
-	CacheTemplates          bool      `json:"cache_templates"`
-	CsrfKey                 APIString `json:"csrf_key"`
-	CORSOrigins             []string  `json:"cors_origins"`
-	LoginDomain             APIString `json:"login_domain"`
-	ExpireLoginCookieDomain APIString `json:"expire_domain"`
+	Url                     *string  `json:"url"`
+	HelpUrl                 *string  `json:"help_url"`
+	UIv2Url                 *string  `json:"uiv2_url"`
+	HttpListenAddr          *string  `json:"http_listen_addr"`
+	Secret                  *string  `json:"secret"`
+	DefaultProject          *string  `json:"default_project"`
+	CacheTemplates          bool     `json:"cache_templates"`
+	CsrfKey                 *string  `json:"csrf_key"`
+	CORSOrigins             []string `json:"cors_origins"`
+	LoginDomain             *string  `json:"login_domain"`
+	ExpireLoginCookieDomain *string  `json:"expire_domain"`
 }
 
 func (a *APIUIConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.UIConfig:
-		a.Url = ToAPIString(v.Url)
-		a.HelpUrl = ToAPIString(v.HelpUrl)
-		a.UIv2Url = ToAPIString(v.UIv2Url)
-		a.HttpListenAddr = ToAPIString(v.HttpListenAddr)
-		a.Secret = ToAPIString(v.Secret)
-		a.DefaultProject = ToAPIString(v.DefaultProject)
+		a.Url = ToStringPtr(v.Url)
+		a.HelpUrl = ToStringPtr(v.HelpUrl)
+		a.UIv2Url = ToStringPtr(v.UIv2Url)
+		a.HttpListenAddr = ToStringPtr(v.HttpListenAddr)
+		a.Secret = ToStringPtr(v.Secret)
+		a.DefaultProject = ToStringPtr(v.DefaultProject)
 		a.CacheTemplates = v.CacheTemplates
-		a.CsrfKey = ToAPIString(v.CsrfKey)
+		a.CsrfKey = ToStringPtr(v.CsrfKey)
 		a.CORSOrigins = v.CORSOrigins
-		a.LoginDomain = ToAPIString(v.LoginDomain)
-		a.ExpireLoginCookieDomain = ToAPIString(v.ExpireLoginCookieDomain)
+		a.LoginDomain = ToStringPtr(v.LoginDomain)
+		a.ExpireLoginCookieDomain = ToStringPtr(v.ExpireLoginCookieDomain)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1484,37 +1484,37 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 
 func (a *APIUIConfig) ToService() (interface{}, error) {
 	return evergreen.UIConfig{
-		Url:                     FromAPIString(a.Url),
-		HelpUrl:                 FromAPIString(a.HelpUrl),
-		UIv2Url:                 FromAPIString(a.UIv2Url),
-		HttpListenAddr:          FromAPIString(a.HttpListenAddr),
-		Secret:                  FromAPIString(a.Secret),
-		DefaultProject:          FromAPIString(a.DefaultProject),
+		Url:                     FromStringPtr(a.Url),
+		HelpUrl:                 FromStringPtr(a.HelpUrl),
+		UIv2Url:                 FromStringPtr(a.UIv2Url),
+		HttpListenAddr:          FromStringPtr(a.HttpListenAddr),
+		Secret:                  FromStringPtr(a.Secret),
+		DefaultProject:          FromStringPtr(a.DefaultProject),
 		CacheTemplates:          a.CacheTemplates,
-		CsrfKey:                 FromAPIString(a.CsrfKey),
+		CsrfKey:                 FromStringPtr(a.CsrfKey),
 		CORSOrigins:             a.CORSOrigins,
-		LoginDomain:             FromAPIString(a.LoginDomain),
-		ExpireLoginCookieDomain: FromAPIString(a.ExpireLoginCookieDomain),
+		LoginDomain:             FromStringPtr(a.LoginDomain),
+		ExpireLoginCookieDomain: FromStringPtr(a.ExpireLoginCookieDomain),
 	}, nil
 }
 
 type APINewRelicConfig struct {
-	AccountID     APIString `json:"accountId"`
-	TrustKey      APIString `json:"trustKey"`
-	AgentID       APIString `json:"agentId"`
-	LicenseKey    APIString `json:"licenseKey"`
-	ApplicationID APIString `json:"applicationId"`
+	AccountID     *string `json:"accountId"`
+	TrustKey      *string `json:"trustKey"`
+	AgentID       *string `json:"agentId"`
+	LicenseKey    *string `json:"licenseKey"`
+	ApplicationID *string `json:"applicationId"`
 }
 
 // BuildFromService builds a model from the service layer
 func (a *APINewRelicConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.NewRelicConfig:
-		a.AccountID = ToAPIString(v.AccountID)
-		a.TrustKey = ToAPIString(v.TrustKey)
-		a.AgentID = ToAPIString(v.AgentID)
-		a.LicenseKey = ToAPIString(v.LicenseKey)
-		a.ApplicationID = ToAPIString(v.ApplicationID)
+		a.AccountID = ToStringPtr(v.AccountID)
+		a.TrustKey = ToStringPtr(v.TrustKey)
+		a.AgentID = ToStringPtr(v.AgentID)
+		a.LicenseKey = ToStringPtr(v.LicenseKey)
+		a.ApplicationID = ToStringPtr(v.ApplicationID)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1524,11 +1524,11 @@ func (a *APINewRelicConfig) BuildFromService(h interface{}) error {
 // ToService returns a service model from an API model
 func (a *APINewRelicConfig) ToService() (interface{}, error) {
 	return evergreen.NewRelicConfig{
-		AccountID:     FromAPIString(a.AccountID),
-		TrustKey:      FromAPIString(a.TrustKey),
-		AgentID:       FromAPIString(a.AgentID),
-		LicenseKey:    FromAPIString(a.LicenseKey),
-		ApplicationID: FromAPIString(a.ApplicationID),
+		AccountID:     FromStringPtr(a.AccountID),
+		TrustKey:      FromStringPtr(a.TrustKey),
+		AgentID:       FromStringPtr(a.AgentID),
+		LicenseKey:    FromStringPtr(a.LicenseKey),
+		ApplicationID: FromStringPtr(a.ApplicationID),
 	}, nil
 }
 
@@ -1760,13 +1760,13 @@ func (j *APIJIRANotificationsProject) ToService() (interface{}, error) {
 }
 
 type APITriggerConfig struct {
-	GenerateTaskDistro APIString `json:"generate_distro"`
+	GenerateTaskDistro *string `json:"generate_distro"`
 }
 
 func (c *APITriggerConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.TriggerConfig:
-		c.GenerateTaskDistro = ToAPIString(v.GenerateTaskDistro)
+		c.GenerateTaskDistro = ToStringPtr(v.GenerateTaskDistro)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1774,26 +1774,26 @@ func (c *APITriggerConfig) BuildFromService(h interface{}) error {
 }
 func (c *APITriggerConfig) ToService() (interface{}, error) {
 	return evergreen.TriggerConfig{
-		GenerateTaskDistro: FromAPIString(c.GenerateTaskDistro),
+		GenerateTaskDistro: FromStringPtr(c.GenerateTaskDistro),
 	}, nil
 }
 
 type APIHostJasperConfig struct {
-	BinaryName       APIString `json:"binary_name,omitempty"`
-	DownloadFileName APIString `json:"download_file_name,omitempty"`
-	Port             int       `json:"port,omitempty"`
-	URL              APIString `json:"url,omitempty"`
-	Version          APIString `json:"version,omitempty"`
+	BinaryName       *string `json:"binary_name,omitempty"`
+	DownloadFileName *string `json:"download_file_name,omitempty"`
+	Port             int     `json:"port,omitempty"`
+	URL              *string `json:"url,omitempty"`
+	Version          *string `json:"version,omitempty"`
 }
 
 func (c *APIHostJasperConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.HostJasperConfig:
-		c.BinaryName = ToAPIString(v.BinaryName)
-		c.DownloadFileName = ToAPIString(v.DownloadFileName)
+		c.BinaryName = ToStringPtr(v.BinaryName)
+		c.DownloadFileName = ToStringPtr(v.DownloadFileName)
 		c.Port = v.Port
-		c.URL = ToAPIString(v.URL)
-		c.Version = ToAPIString(v.Version)
+		c.URL = ToStringPtr(v.URL)
+		c.Version = ToStringPtr(v.Version)
 	default:
 		return errors.Errorf("expected evergreen.HostJasperConfig but got %T instead", h)
 	}
@@ -1802,10 +1802,10 @@ func (c *APIHostJasperConfig) BuildFromService(h interface{}) error {
 
 func (c *APIHostJasperConfig) ToService() (interface{}, error) {
 	return evergreen.HostJasperConfig{
-		BinaryName:       FromAPIString(c.BinaryName),
-		DownloadFileName: FromAPIString(c.DownloadFileName),
+		BinaryName:       FromStringPtr(c.BinaryName),
+		DownloadFileName: FromStringPtr(c.DownloadFileName),
 		Port:             c.Port,
-		URL:              FromAPIString(c.URL),
-		Version:          FromAPIString(c.Version),
+		URL:              FromStringPtr(c.URL),
+		Version:          FromStringPtr(c.Version),
 	}, nil
 }

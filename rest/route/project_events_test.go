@@ -29,11 +29,11 @@ func TestProjectEventsTestSuite(t *testing.T) {
 func getMockProjectSettings(projectId string) restModel.APIProjectSettings {
 	return restModel.APIProjectSettings{
 		ProjectRef: restModel.APIProjectRef{
-			Owner:      restModel.ToAPIString("admin"),
+			Owner:      restModel.ToStringPtr("admin"),
 			Enabled:    true,
 			Private:    true,
-			Identifier: restModel.ToAPIString(projectId),
-			Admins:     []restModel.APIString{},
+			Identifier: restModel.ToStringPtr(projectId),
+			Admins:     []*string{},
 		},
 		GitHubWebhooksEnabled: true,
 		Vars: restModel.APIProjectVars{
@@ -41,17 +41,17 @@ func getMockProjectSettings(projectId string) restModel.APIProjectSettings {
 			PrivateVars: map[string]bool{},
 		},
 		Aliases: []restModel.APIProjectAlias{restModel.APIProjectAlias{
-			Alias:   restModel.ToAPIString("alias1"),
-			Variant: restModel.ToAPIString("ubuntu"),
-			Task:    restModel.ToAPIString("subcommand"),
+			Alias:   restModel.ToStringPtr("alias1"),
+			Variant: restModel.ToStringPtr("ubuntu"),
+			Task:    restModel.ToStringPtr("subcommand"),
 		},
 		},
 		Subscriptions: []restModel.APISubscription{restModel.APISubscription{
-			ID:           restModel.ToAPIString("subscription1"),
-			ResourceType: restModel.ToAPIString("project"),
-			Owner:        restModel.ToAPIString("admin"),
+			ID:           restModel.ToStringPtr("subscription1"),
+			ResourceType: restModel.ToStringPtr("project"),
+			Owner:        restModel.ToStringPtr("admin"),
 			Subscriber: restModel.APISubscriber{
-				Type:   restModel.ToAPIString(event.GithubPullRequestSubscriberType),
+				Type:   restModel.ToStringPtr(event.GithubPullRequestSubscriberType),
 				Target: restModel.APIGithubPRSubscriber{},
 			},
 		},
@@ -68,7 +68,7 @@ func (s *ProjectEventsTestSuite) SetupSuite() {
 
 	s.event = restModel.APIProjectEvent{
 		Timestamp: time.Now(),
-		User:      restModel.ToAPIString("me"),
+		User:      restModel.ToStringPtr("me"),
 		Before:    beforeSettings,
 		After:     afterSettings,
 	}

@@ -182,7 +182,7 @@ func (mc *MockSubscriptionConnector) DeleteSubscriptions(owner string, ids []str
 
 	n := 0
 	for _, sub := range mc.MockSubscriptions {
-		if idMap[restModel.FromAPIString(sub.ID)] {
+		if idMap[restModel.FromStringPtr(sub.ID)] {
 			mc.MockSubscriptions[n] = sub
 			n++
 		}

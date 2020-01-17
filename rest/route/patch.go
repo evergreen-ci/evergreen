@@ -84,11 +84,7 @@ func (p *patchChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
-	patchModel := &model.APIPatch{}
-	if err = patchModel.BuildFromService(*foundPatch); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
-	}
-	return gimlet.NewJSONResponse(patchModel)
+	return gimlet.NewJSONResponse(foundPatch)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -121,13 +117,7 @@ func (p *patchByIdHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
-	patchModel := &model.APIPatch{}
-	err = patchModel.BuildFromService(*foundPatch)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API model error"))
-	}
-
-	return gimlet.NewJSONResponse(patchModel)
+	return gimlet.NewJSONResponse(foundPatch)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -204,16 +194,14 @@ func (p *patchesByUserHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 
-	lastIndex := len(patches)
 	if len(patches) > p.limit {
-		lastIndex = p.limit
 		err = resp.SetPages(&gimlet.ResponsePages{
 			Next: &gimlet.Page{
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
 				BaseURL:         p.sc.GetURL(),
-				Key:             model.NewTime(patches[p.limit].CreateTime).String(),
+				Key:             patches[p.limit].CreateTime.Format(model.APITimeFormat),
 				Limit:           p.limit,
 			},
 		})
@@ -221,21 +209,12 @@ func (p *patchesByUserHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err,
 				"problem paginating response"))
 		}
+		patches = patches[:p.limit]
 	}
-
-	patches = patches[:lastIndex]
-
-	for _, info := range patches {
-		patchModel := &model.APIPatch{}
-		if err = patchModel.BuildFromService(info); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
-				Message:    "problem converting patch document",
-				StatusCode: http.StatusInternalServerError,
-			})
-		}
-
-		if err = resp.AddData(patchModel); err != nil {
-			return gimlet.MakeJSONErrorResponder(err)
+	for _, model := range patches {
+		err = resp.AddData(model)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "problem forming response data"))
 		}
 	}
 
@@ -307,20 +286,18 @@ func (p *patchesByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	resp := gimlet.NewResponseBuilder()
-	if err = resp.SetFormat(gimlet.JSON); err != nil {
-		return gimlet.MakeJSONErrorResponder(err)
+	err = resp.SetFormat(gimlet.JSON)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unable to set response format"))
 	}
-
-	lastIndex := len(patches)
 	if len(patches) > p.limit {
-		lastIndex = p.limit
 		err = resp.SetPages(&gimlet.ResponsePages{
 			Next: &gimlet.Page{
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
 				BaseURL:         p.sc.GetURL(),
-				Key:             model.NewTime(patches[p.limit].CreateTime).String(),
+				Key:             patches[p.limit].CreateTime.Format(model.APITimeFormat),
 				Limit:           p.limit,
 			},
 		})
@@ -328,22 +305,17 @@ func (p *patchesByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err,
 				"problem paginating response"))
 		}
+		patches = patches[:p.limit]
 	}
-
-	patches = patches[:lastIndex]
-
-	for _, info := range patches {
-		patchModel := &model.APIPatch{}
-		if err = patchModel.BuildFromService(info); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
-				Message:    "problem converting patch document",
-				StatusCode: http.StatusInternalServerError,
-			})
+	for _, model := range patches {
+		err = resp.AddData(model)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "problem forming response data"))
 		}
-
-		if err = resp.AddData(patchModel); err != nil {
-			return gimlet.MakeJSONErrorResponder(err)
-		}
+	}
+	err = resp.SetStatus(http.StatusOK)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unable to set response status"))
 	}
 
 	return resp
@@ -388,12 +360,7 @@ func (p *patchAbortHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
-	patchModel := &model.APIPatch{}
-	if err = patchModel.BuildFromService(*foundPatch); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API model error"))
-	}
-
-	return gimlet.NewJSONResponse(patchModel)
+	return gimlet.NewJSONResponse(foundPatch)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -437,10 +404,5 @@ func (p *patchRestartHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
-	patchModel := &model.APIPatch{}
-	if err = patchModel.BuildFromService(*foundPatch); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
-	}
-
-	return gimlet.NewJSONResponse(patchModel)
+	return gimlet.NewJSONResponse(foundPatch)
 }

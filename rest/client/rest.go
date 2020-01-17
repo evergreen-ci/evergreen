@@ -351,7 +351,7 @@ func (c *communicatorImpl) waitForStatus(ctx context.Context, hostID, status str
 			if err = util.ReadJSONInto(resp.Body, &hostResp); err != nil {
 				return fmt.Errorf("Error forming response body response: %v", err)
 			}
-			if model.FromAPIString(hostResp.Status) == status {
+			if model.FromStringPtr(hostResp.Status) == status {
 				return nil
 			}
 			timer.Reset(retryInterval)
@@ -389,7 +389,7 @@ func (c *communicatorImpl) ChangeSpawnHostPassword(ctx context.Context, hostID, 
 		version: apiVersion2,
 	}
 	body := model.APISpawnHostModify{
-		RDPPwd: model.ToAPIString(rdpPassword),
+		RDPPwd: model.ToStringPtr(rdpPassword),
 	}
 	resp, err := c.request(ctx, info, body)
 	if err != nil {
@@ -414,7 +414,7 @@ func (c *communicatorImpl) ExtendSpawnHostExpiration(ctx context.Context, hostID
 		version: apiVersion2,
 	}
 	body := model.APISpawnHostModify{
-		AddHours: model.ToAPIString(fmt.Sprintf("%d", addHours)),
+		AddHours: model.ToStringPtr(fmt.Sprintf("%d", addHours)),
 	}
 	resp, err := c.request(ctx, info, body)
 	if err != nil {
@@ -501,7 +501,7 @@ func (c *communicatorImpl) GetBannerMessage(ctx context.Context) (string, error)
 		return "", errors.Wrap(err, "problem parsing response from server")
 	}
 
-	return model.FromAPIString(banner.Text), nil
+	return model.FromStringPtr(banner.Text), nil
 }
 
 func (c *communicatorImpl) SetServiceFlags(ctx context.Context, f *model.APIServiceFlags) error {
@@ -715,8 +715,8 @@ func (c *communicatorImpl) AddPublicKey(ctx context.Context, keyName, keyValue s
 	}
 
 	key := model.APIPubKey{
-		Name: model.ToAPIString(keyName),
-		Key:  model.ToAPIString(keyValue),
+		Name: model.ToStringPtr(keyName),
+		Key:  model.ToStringPtr(keyValue),
 	}
 
 	resp, err := c.request(ctx, info, key)
@@ -1042,7 +1042,7 @@ func (c *communicatorImpl) GetCommitQueueItemAuthor(ctx context.Context, project
 	if err = util.ReadJSONInto(resp.Body, &authorResp); err != nil {
 		return "", errors.Wrap(err, "error parsing author response")
 	}
-	return model.FromAPIString(authorResp.Author), nil
+	return model.FromStringPtr(authorResp.Author), nil
 }
 
 func (c *communicatorImpl) SendNotification(ctx context.Context, notificationType string, data interface{}) error {

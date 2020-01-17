@@ -1,0 +1,100 @@
+{
+  "setupData": {
+    "patches": [
+      {
+        "_id": { "$oid": "5e1f8ab8834b87d7b5d251a5" },
+        "desc": "mydesc",
+        "branch": "mci",
+        "githash": "7ad0c6bb0d5b8586f3a0442f365e259d40f5a7f1",
+        "patch_number": 1,
+        "author": "testuser",
+        "version": "",
+        "status": "created",
+        "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "build_variants": ["rhel62"],
+        "tasks": ["test-auth"],
+        "variants_tasks": [
+          { "variant": "rhel62", "tasks": ["test-model-host"] }
+        ],
+        "patches": [
+          {
+            "name": "",
+            "githash": "7ad0c6bb0d5b8586f3a0442f365e259d40f5a7f1",
+            "patch_set": {
+              "patch_file_id": "58d05bc79dbe327e79000001",
+              "summary": [
+                {
+                  "filename": "agent/api_integration_test.go",
+                  "additions": 21,
+                  "deletions": 235
+                },
+                {
+                  "filename": "agent/patch_integration_test.go",
+                  "additions": 8,
+                  "deletions": 6
+                },
+                {
+                  "filename": "agent/push_integration_test.go",
+                  "additions": 3,
+                  "deletions": 2
+                },
+                {
+                  "filename": "cli/http.go",
+                  "additions": 30,
+                  "deletions": 0
+                },
+                {
+                  "filename": "cli/patch.go",
+                  "additions": 13,
+                  "deletions": 4
+                },
+                {
+                  "filename": "service/api.go",
+                  "additions": 1,
+                  "deletions": 0
+                },
+                {
+                  "filename": "service/api_patch.go",
+                  "additions": 33,
+                  "deletions": 0
+                }
+              ]
+            }
+          }
+        ],
+        "activated": false
+      }
+    ]
+  },
+  "tests": [
+    {
+      "query_file": "patch1.graphql",
+      "result": {
+        "data": {
+          "userPatches": [
+            {
+              "id": "5e1f8ab8834b87d7b5d251a5",
+              "description": "mydesc",
+              "projectID": "mci",
+              "githash": "7ad0c6bb0d5b8586f3a0442f365e259d40f5a7f1",
+              "patchNumber": 1,
+              "author": "testuser",
+              "version": "",
+              "status": "created",
+              "createTime": "2018-01-10T19:01:36-05:00",
+              "startTime": null,
+              "finishTime": null,
+              "tasks": ["test-auth"],
+              "activated": false,
+              "alias": "",
+              "variants": ["rhel62"],
+              "variantsTasks": [
+                { "name": "rhel62", "tasks": ["test-model-host"] }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -250,7 +250,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
 	}
 
-	identifier := model.FromAPIString(apiProjectRef.Identifier)
+	identifier := model.FromStringPtr(apiProjectRef.Identifier)
 	if h.projectID != identifier {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusForbidden,
@@ -352,7 +352,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	adminsToDelete := []string{}
 	for _, admin := range apiProjectRef.DeleteAdmins {
-		adminsToDelete = append(adminsToDelete, model.FromAPIString(admin))
+		adminsToDelete = append(adminsToDelete, model.FromStringPtr(admin))
 	}
 	allAdmins := util.UniqueStrings(append(p.Admins, dbProjectRef.Admins...)) // get original and new admin
 	dbProjectRef.Admins = []string{}
@@ -375,7 +375,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "error validating triggers"))
 	}
 
-	newRevision := model.FromAPIString(apiProjectRef.Revision)
+	newRevision := model.FromStringPtr(apiProjectRef.Revision)
 	if newRevision != "" {
 		if err = h.sc.UpdateProjectRevision(h.projectID, newRevision); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
@@ -399,8 +399,8 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	for i := range apiProjectRef.Subscriptions {
-		apiProjectRef.Subscriptions[i].OwnerType = model.ToAPIString(string(event.OwnerTypeProject))
-		apiProjectRef.Subscriptions[i].Owner = model.ToAPIString(h.projectID)
+		apiProjectRef.Subscriptions[i].OwnerType = model.ToStringPtr(string(event.OwnerTypeProject))
+		apiProjectRef.Subscriptions[i].Owner = model.ToStringPtr(h.projectID)
 	}
 	if err = h.sc.SaveSubscriptions(h.projectID, apiProjectRef.Subscriptions); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error saving subscriptions for project '%s'", h.projectID))
@@ -408,7 +408,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	toDelete := []string{}
 	for _, deleteSub := range apiProjectRef.DeleteSubscriptions {
-		toDelete = append(toDelete, model.FromAPIString(deleteSub))
+		toDelete = append(toDelete, model.FromStringPtr(deleteSub))
 	}
 	if err = h.sc.DeleteSubscriptions(h.projectID, toDelete); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error deleting subscriptions for project '%s'", h.projectID))
@@ -445,19 +445,19 @@ func (h *projectIDPatchHandler) hasAliasDefined(pRef *model.APIProjectRef, alias
 	aliasesToDelete := map[string]bool{}
 	for _, a := range pRef.Aliases {
 		// return immediately if a new definition has been added
-		if model.FromAPIString(a.Alias) == alias && !a.Delete {
+		if model.FromStringPtr(a.Alias) == alias && !a.Delete {
 			return true, nil
 		}
-		aliasesToDelete[model.FromAPIString(a.ID)] = a.Delete
+		aliasesToDelete[model.FromStringPtr(a.ID)] = a.Delete
 	}
 
 	// check if a definition exists and hasn't been deleted
-	aliases, err := h.sc.FindProjectAliases(model.FromAPIString(pRef.Identifier))
+	aliases, err := h.sc.FindProjectAliases(model.FromStringPtr(pRef.Identifier))
 	if err != nil {
 		return false, errors.Wrapf(err, "Error checking existing patch definitions")
 	}
 	for _, a := range aliases {
-		if model.FromAPIString(a.Alias) == alias && !aliasesToDelete[model.FromAPIString(a.ID)] {
+		if model.FromStringPtr(a.Alias) == alias && !aliasesToDelete[model.FromStringPtr(a.ID)] {
 			return true, nil
 		}
 	}
@@ -513,7 +513,7 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("cannot create project with id '%s'", h.projectID),
 		})
 	}
-	apiProjectRef := &model.APIProjectRef{Identifier: model.ToAPIString(h.projectID)}
+	apiProjectRef := &model.APIProjectRef{Identifier: model.ToStringPtr(h.projectID)}
 	if err = json.Unmarshal(h.body, apiProjectRef); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
 	}
