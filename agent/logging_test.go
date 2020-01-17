@@ -143,7 +143,7 @@ func TestCommandFileLogging(t *testing.T) {
 	assert.Contains(tc.logs.TaskLogURLs[0].URL, "/logs/t1/0/shell.exec/task.log")
 }
 
-func TeststartLogging(t *testing.T) {
+func TestStartLogging(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	tmpDirName, err := ioutil.TempDir("", "reset-logging-")
