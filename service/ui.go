@@ -291,7 +291,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/timeline").Wrap(needsContext).Handler(uis.timeline).Get()
 	app.AddRoute("/json/timeline/{project_id}").Wrap(needsContext, allowsCORS, needsLogin, viewTasks).Handler(uis.timelineJson).Get()
 	app.AddRoute("/json/patches/project/{project_id}").Wrap(needsContext, allowsCORS, needsLogin, viewTasks).Handler(uis.patchTimelineJson).Get()
-	app.AddRoute("/json/patches/user/{user_id}").Wrap(needsContext, allowsCORS, needsLogin, viewTasks).Handler(uis.patchTimelineJson).Get()
+	app.AddRoute("/json/patches/user/{user_id}").Wrap(needsContext, allowsCORS, needsLogin).Handler(uis.patchTimelineJson).Get()
 
 	// Grid page
 	app.AddRoute("/grid").Wrap(needsContext).Handler(uis.grid).Get()
