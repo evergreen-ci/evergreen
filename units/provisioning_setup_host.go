@@ -19,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/google/shlex"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -196,6 +195,10 @@ func (j *setupHostJob) setupHost(ctx context.Context, h *host.Host, settings *ev
 }
 
 func (j *setupHostJob) attachVolume(ctx context.Context) error {
+	if !j.host.Distro.JasperCommunication() {
+		return errors.Errorf("host '%s' of distro '%s' doesn't support Jasper communication", j.host.Id, j.host.Distro.Id)
+	}
+
 	mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
 	if err != nil {
 		return errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id)
@@ -229,32 +232,13 @@ func (j *setupHostJob) attachVolume(ctx context.Context) error {
 	}
 
 	// run the distro's mount script
-	mountCommand := strings.Replace(j.host.Distro.MountCommand, evergreen.DeviceNamePlaceholder, attachment.DeviceName, -1)
-	if j.host.JasperCommunication() {
-		args, err := shlex.Split(mountCommand)
-		if err != nil {
-			return errors.Wrap(err, "can't split mount command")
-		}
-		opts := &options.Create{
-			Args: args,
-		}
-		_, err = j.host.RunJasperProcess(ctx, j.env, opts)
-		if err != nil {
-			return errors.Wrap(err, "can't run mount command with Jasper")
-		}
-	} else {
-		sshOptions, err := j.host.GetSSHOptions(j.env.Settings())
-		sshOptions = append(sshOptions, "-o", "LogLevel=quiet")
-		if err != nil {
-			return errors.Wrap(err, "can't get ssh options")
-		}
-		_, err = j.host.RunSSHCommand(ctx, mountCommand, sshOptions)
-		if err != nil {
-			return errors.Wrap(err, "can't run mount command over ssh")
-		}
+	mountScript := strings.Replace(j.host.Distro.MountScript, evergreen.DeviceNamePlaceholder, attachment.DeviceName, -1)
+	bashPath := filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath)
+	opts := &options.Create{
+		Args: []string{bashPath, "-l", "-c", mountScript},
 	}
-
-	return nil
+	_, err = j.host.RunJasperProcess(ctx, j.env, opts)
+	return errors.Wrap(err, "can't run mount script with Jasper")
 }
 
 func (j *setupHostJob) setDNSName(ctx context.Context, host *host.Host, cloudMgr cloud.Manager, settings *evergreen.Settings) error {

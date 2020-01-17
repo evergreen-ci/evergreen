@@ -754,7 +754,7 @@ const jasperDialTimeout = 15 * time.Second
 // JasperClient returns a remote client that communicates with this host's
 // Jasper service.
 func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (remote.Manager, error) {
-	if (h.LegacyBootstrap() || h.LegacyCommunication()) && h.NeedsReprovision != ReprovisionToLegacy {
+	if (h.Distro.LegacyBootstrap() || h.Distro.LegacyCommunication()) && h.NeedsReprovision != ReprovisionToLegacy {
 		return nil, errors.New("legacy host does not support remote Jasper process management")
 	}
 
@@ -860,7 +860,7 @@ func (h *Host) StartAgentMonitorRequest(settings *evergreen.Settings) (string, e
 // StopAgentMonitor stops the agent monitor (if it is running) on the host via
 // its Jasper service . On legacy hosts, this is a no-op.
 func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) error {
-	if (h.LegacyBootstrap() && h.NeedsReprovision != ReprovisionToLegacy) || h.NeedsReprovision == ReprovisionToNew {
+	if (h.Distro.LegacyBootstrap() && h.NeedsReprovision != ReprovisionToLegacy) || h.NeedsReprovision == ReprovisionToNew {
 		return nil
 	}
 

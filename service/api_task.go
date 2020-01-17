@@ -119,7 +119,7 @@ func checkHostHealth(h *host.Host) bool {
 // agentRevisionIsOld checks that the agent revision is current.
 func agentRevisionIsOld(h *host.Host) bool {
 	if h.AgentRevision != evergreen.BuildRevision {
-		grip.InfoWhen(h.LegacyBootstrap(), message.Fields{
+		grip.InfoWhen(h.Distro.LegacyBootstrap(), message.Fields{
 			"message":        "agent has wrong revision, so it should exit",
 			"host_revision":  h.AgentRevision,
 			"agent_revision": evergreen.BuildRevision,
@@ -572,7 +572,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		"operation":    "next_task",
 	}))
 
-	stoppedAgentMonitor := (h.LegacyBootstrap() && h.NeedsReprovision == host.ReprovisionToLegacy ||
+	stoppedAgentMonitor := (h.Distro.LegacyBootstrap() && h.NeedsReprovision == host.ReprovisionToLegacy ||
 		h.NeedsReprovision == host.ReprovisionJasperRestart)
 	defer func() {
 		grip.DebugWhen(time.Since(begin) > time.Second, message.Fields{
@@ -783,7 +783,7 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, details *apimod
 	// Non-legacy hosts deploying agents via the agent monitor may be
 	// running an agent on the current revision, but the database host has
 	// yet to be updated.
-	if !h.LegacyBootstrap() && details.AgentRevision != h.AgentRevision {
+	if !h.Distro.LegacyBootstrap() && details.AgentRevision != h.AgentRevision {
 		err := h.SetAgentRevision(details.AgentRevision)
 		if err == nil {
 			event.LogHostAgentDeployed(h.Id)

@@ -42,7 +42,7 @@ type Distro struct {
 	DisableShallowClone   bool                    `bson:"disable_shallow_clone" json:"disable_shallow_clone" mapstructure:"disable_shallow_clone"`
 	UseLegacyAgent        bool                    `bson:"use_legacy_agent" json:"use_legacy_agent" mapstructure:"use_legacy_agent"`
 	Note                  string                  `bson:"note" json:"note" mapstructure:"note"`
-	MountCommand          string                  `bson:"mount_command" json:"mount_command" mapstructure:"mount_command"`
+	MountScript           string                  `bson:"mount_script" json:"mount_script" mapstructure:"mount_script"`
 }
 
 // BootstrapSettings encapsulates all settings related to bootstrapping hosts.
@@ -639,4 +639,22 @@ func (d *Distro) AddPermissions(creator *user.DBUser) error {
 		}
 	}
 	return nil
+}
+
+// LegacyBootstrap returns whether hosts of this distro are bootstrapped using the legacy
+// method.
+func (d *Distro) LegacyBootstrap() bool {
+	return d.BootstrapSettings.Method == "" || d.BootstrapSettings.Method == BootstrapMethodLegacySSH
+}
+
+// LegacyCommunication returns whether the app server is communicating with
+// hosts of this distro using the legacy method.
+func (d *Distro) LegacyCommunication() bool {
+	return d.BootstrapSettings.Communication == "" || d.BootstrapSettings.Communication == CommunicationMethodLegacySSH
+}
+
+// JasperCommunication returns whether or not the app server is communicating with
+// hosts of this distro's Jasper service.
+func (d *Distro) JasperCommunication() bool {
+	return d.BootstrapSettings.Communication == CommunicationMethodSSH || d.BootstrapSettings.Communication == CommunicationMethodRPC
 }

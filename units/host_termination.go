@@ -374,7 +374,7 @@ func (j *hostTerminationJob) runHostTeardown(ctx context.Context, settings *ever
 
 	var startTime time.Time
 	var logs string
-	if j.host.LegacyBootstrap() {
+	if j.host.Distro.LegacyBootstrap() {
 		sshOptions, err := j.host.GetSSHOptions(settings)
 		if err != nil {
 			return errors.Wrapf(err, "error getting ssh options for host %s", j.host.Id)

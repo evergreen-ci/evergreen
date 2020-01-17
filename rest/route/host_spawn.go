@@ -1152,7 +1152,7 @@ func (h *hostRunScript) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("can't run script on host with status '%s'", host.Status))
 	}
 
-	if host.JasperCommunication() {
+	if host.Distro.JasperCommunication() {
 		opts := &options.Create{
 			Args: []string{"bash", "-l", "-c", h.script},
 		}
