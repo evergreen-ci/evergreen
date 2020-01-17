@@ -313,6 +313,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	// we want to have separate context trees for tasks and loggers, so
 	// when a task is canceled by a context, it can log its clean up.
 	tskCtx, tskCancel := context.WithCancel(ctx)
+	defer tskCancel()
 
 	var err error
 	defer func() {
