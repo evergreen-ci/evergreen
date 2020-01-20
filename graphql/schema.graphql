@@ -45,7 +45,7 @@ type TestResult {
   taskId: String!
   status: String!
   testFile: String!
-  logs: TestLog
+  logs: TestLog!
   exitCode: Int
   startTime: Time
   endTime: Time
