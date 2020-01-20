@@ -51,11 +51,5 @@
       startTime
       endTime
     }
-    logs {
-      AllLogLink
-      TaskLogLink
-      AgentLogLink
-      SystemLogLink
-    }
   }
 }
