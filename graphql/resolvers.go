@@ -46,7 +46,7 @@ func (r *queryResolver) UserPatches(ctx context.Context, userID string) ([]*mode
 }
 
 func (r *taskResolver) TestResults(ctx context.Context, obj *model.APITask) ([]*model.APITest, error) {
-	tests, err := r.sc.FindTestsByTaskId(*obj.Id, "", "", "", 0, 0)
+	tests, err := r.sc.FindTestsByTaskId(*obj.Id, "", "", "", 0, obj.Execution)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error retreiving test")
 	}
