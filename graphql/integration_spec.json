@@ -158,6 +158,12 @@
       "result": {
         "data": {
           "task": {
+            "logs": {
+              "AllLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=ALL",
+              "TaskLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=T",
+              "AgentLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=E",
+              "SystemLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=S"
+            },
             "id": "wuzzup",
             "createTime": "2018-01-10T19:01:36-05:00",
             "ingestTime": "2018-01-10T19:01:36-05:00",
