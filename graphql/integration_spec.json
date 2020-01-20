@@ -101,7 +101,7 @@
           "timed_out": false
         },
         "display_only": true,
-        "execution_tasks": ["wussup"],
+        "execution_tasks": ["exec1"],
         "generate_task": false,
         "generated_by": "something"
       }
@@ -116,7 +116,7 @@
         "exit_code": 0,
         "start": 1508866591,
         "end": 1508866591,
-        "task_id": "wussup",
+        "task_id": "exec1",
         "task_execution": 5,
         "url": "a url",
         "url_raw": "a raw url"
@@ -192,7 +192,7 @@
               "timedOut": false
             },
             "displayOnly": true,
-            "executionTasks": ["wussup"],
+            "executionTasks": ["exec1"],
             "generateTask": false,
             "generatedBy": "something",
             "testResults": [
