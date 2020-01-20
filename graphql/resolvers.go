@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/pkg/errors"
@@ -66,7 +67,7 @@ func (r *taskResolver) TestResults(ctx context.Context, obj *model.APITask) ([]*
 }
 
 func (r *queryResolver) Task(ctx context.Context, taskID string) (*model.APITask, error) {
-	task, err := r.sc.FindTaskById(taskID)
+	task, err := task.FindOneId(taskID)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error retreiving Task")
 	}
