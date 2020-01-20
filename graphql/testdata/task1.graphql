@@ -37,5 +37,19 @@
     executionTasks
     generateTask
     generatedBy
+    testResults {
+      taskId
+      status
+      testFile
+      logs {
+        lineNum
+        logId
+        url
+        urlRaw
+      }
+      exitCode
+      startTime
+      endTime
+    }
   }
 }

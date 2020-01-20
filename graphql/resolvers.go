@@ -56,6 +56,10 @@ func (r *taskResolver) TestResults(ctx context.Context, obj *model.APITask) ([]*
 		if err != nil {
 			return nil, errors.Wrap(err, "error converting test")
 		}
+		err = apiTest.BuildFromService(*obj.Id)
+		if err != nil {
+			return nil, errors.Wrap(err, "error converting test")
+		}
 		testPointers = append(testPointers, &apiTest)
 	}
 	return testPointers, nil
