@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/gimlet"
 )
 
@@ -35,11 +34,6 @@ func (h *authPermissionGetHandler) Parse(ctx context.Context, r *http.Request) e
 
 func (h *authPermissionGetHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-
-	// TODO: remove with PM-1355
-	if !evergreen.AclCheckingIsEnabled {
-		return gimlet.NewTextResponse(true)
-	}
 
 	opts := gimlet.PermissionOpts{
 		Resource:      h.resource,
