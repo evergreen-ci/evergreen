@@ -88,7 +88,7 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error getting estimated start time"))
 	}
-	taskModel.EstimatedStart = start
+	taskModel.EstimatedStart = model.NewAPIDuration(start)
 
 	err = taskModel.GetArtifacts()
 	if err != nil {
