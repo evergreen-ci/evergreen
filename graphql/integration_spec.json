@@ -64,6 +64,47 @@
         ],
         "activated": false
       }
+    ],
+    "tasks": [
+      {
+        "_id": "wuzzup",
+        "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "scheduled_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "start_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "version": "version",
+        "branch": "id",
+        "gitspec": "revise",
+        "priority": 5,
+        "task_group": "grp",
+        "task_group_max_hosts": 100,
+        "activated": true,
+        "activated_by": "someone",
+        "build_id": "some id",
+        "distro": "distro",
+        "build_variant": "variant",
+        "depends_on": ["one thing"],
+        "display_name": "display name",
+        "host_id": "host",
+        "restarts": 5,
+        "execution": 5,
+        "order": 5,
+        "r": "something",
+        "status": "pass",
+        "details": {
+          "status": "status",
+          "type": "type",
+          "desc": "description",
+          "timed_out": false
+        },
+        "display_only": true,
+        "execution_tasks": ["exec1"],
+        "generate_task": false,
+        "generated_by": "something"
+      }
     ]
   },
   "tests": [
@@ -93,6 +134,21 @@
               ]
             }
           ]
+        }
+      }
+    },
+    {
+      "query_file": "task1.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "logs": {
+              "AllLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=ALL",
+              "TaskLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=T",
+              "AgentLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=E",
+              "SystemLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=S"
+            }
+          }
         }
       }
     }
