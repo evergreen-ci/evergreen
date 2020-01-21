@@ -86,11 +86,13 @@ const (
 	PreferenceSlack UserSubscriptionPreference = event.SlackSubscriberType
 )
 
-func (u *DBUser) Username() string     { return u.Id }
-func (u *DBUser) PublicKeys() []PubKey { return u.PubKeys }
-func (u *DBUser) Email() string        { return u.EmailAddress }
-func (u *DBUser) GetAPIKey() string    { return u.APIKey }
-func (u *DBUser) IsNil() bool          { return u == nil }
+func (u *DBUser) Username() string        { return u.Id }
+func (u *DBUser) PublicKeys() []PubKey    { return u.PubKeys }
+func (u *DBUser) Email() string           { return u.EmailAddress }
+func (u *DBUser) GetAPIKey() string       { return u.APIKey }
+func (u *DBUser) GetAccessToken() string  { return u.LoginCache.AccessToken }
+func (u *DBUser) GetRefreshToken() string { return u.LoginCache.RefreshToken }
+func (u *DBUser) IsNil() bool             { return u == nil }
 
 func (u *DBUser) Roles() []string {
 	if u.SystemRoles == nil {
@@ -104,16 +106,6 @@ func (u *DBUser) DisplayName() string {
 		return u.DispName
 	}
 	return u.Id
-}
-
-func (u *DBUser) GetAccessToken() string {
-	grip.Alert("GetAccessToken not yet implemented for DBUser")
-	return ""
-}
-
-func (u *DBUser) GetRefreshToken() string {
-	grip.Alert("GetRefreshToken not yet implemented for DBUser")
-	return ""
 }
 
 func (u *DBUser) GetPublicKey(keyname string) (string, error) {
@@ -317,55 +309,21 @@ func PutLoginCache(g gimlet.User) (string, error) {
 
 	// Always update the TTL. If the user doesn't have a token, generate and set it.
 	token := u.LoginCache.Token
-	var update bson.M
+	setFields := bson.M{
+		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey): time.Now(),
+	}
 	if token == "" {
 		token = util.RandomString()
-		update = bson.M{"$set": bson.M{
-			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTokenKey): token,
-			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey):   time.Now(),
-		}}
-	} else {
-		update = bson.M{"$set": bson.M{
-			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey): time.Now(),
-		}}
+		setFields[bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTokenKey)] = token
 	}
+	if accessToken := g.GetAccessToken(); accessToken != "" {
+		setFields[bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheAccessTokenKey)] = accessToken
+	}
+	if refreshToken := g.GetRefreshToken(); refreshToken != "" {
+		setFields[bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheRefreshTokenKey)] = refreshToken
+	}
+	update := bson.M{"$set": setFields}
 
-	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
-		return "", errors.Wrap(err, "problem updating user cache")
-	}
-	return token, nil
-}
-
-// PutLoginCacheAndTokens is the same as PutLoginCache but also adds the given
-// access and refresh tokens to the cache.
-func PutLoginCacheAndTokens(gu gimlet.User, accessToken, refreshToken string) (string, error) {
-	u, err := FindOneById(gu.Username())
-	if err != nil {
-		return "", errors.Wrap(err, "problem finding user by id")
-	}
-	if u == nil {
-		return "", errors.Errorf("no user '%s' found", gu.Username())
-	}
-
-	// Always update the TTL. If the user doesn't  have a token, generate and
-	// set it.
-	var update bson.M
-	token := u.LoginCache.Token
-	if token == "" {
-		token = util.RandomString()
-		update = bson.M{"$set": bson.M{
-			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTokenKey):        token,
-			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey):          time.Now(),
-			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheAccessTokenKey):  accessToken,
-			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheRefreshTokenKey): refreshToken,
-		}}
-	} else {
-		update = bson.M{"$set": bson.M{
-			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey):          time.Now(),
-			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheAccessTokenKey):  accessToken,
-			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheRefreshTokenKey): refreshToken,
-		}}
-	}
 	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
 		return "", errors.Wrap(err, "problem updating user cache")
 	}
@@ -389,19 +347,6 @@ func GetLoginCache(token string, expireAfter time.Duration) (gimlet.User, bool, 
 		return u, false, nil
 	}
 	return u, true, nil
-}
-
-// GetLoginCacheAndTokens is the same as GetLoginCache but also returns their
-// access and refresh tokens.
-func GetLoginCacheAndTokens(token string, expireAfter time.Duration) (user gimlet.User, valid bool, accessToken string, refreshToken string, err error) {
-	u, err := FindOneByToken(token)
-	if err != nil {
-		return nil, false, "", "", errors.Wrap(err, "probloem getting user from cache")
-	}
-	if u == nil {
-		return nil, false, "", "", nil
-	}
-	return u, time.Since(u.LoginCache.TTL) < expireAfter, u.LoginCache.AccessToken, u.LoginCache.RefreshToken, nil
 }
 
 // ClearLoginCache clears a user or all users' tokens from the cache, forcibly logging them out

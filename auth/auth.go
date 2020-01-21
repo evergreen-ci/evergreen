@@ -22,6 +22,20 @@ func LoadUserManager(authConfig evergreen.AuthConfig) (um gimlet.UserManager, su
 		}
 		return manager, true, nil
 	}
+	makeOktaManager := func() (gimlet.UserManager, bool, error) {
+		var evgURL, loginDomain string
+		env := evergreen.GetEnvironment()
+		if env != nil {
+			settings := env.Settings()
+			evgURL = settings.Ui.Url
+			loginDomain = settings.Ui.LoginDomain
+		}
+		manager, err := NewOktaUserManager(authConfig.Okta, evgURL, loginDomain)
+		if err != nil {
+			return nil, false, errors.Wrap(err, "problem setting up okta authentication")
+		}
+		return manager, true, nil
+	}
 	makeNaiveManager := func() (gimlet.UserManager, bool, error) {
 		manager, err := NewNaiveUserManager(authConfig.Naive)
 		if err != nil {
@@ -47,6 +61,10 @@ func LoadUserManager(authConfig evergreen.AuthConfig) (um gimlet.UserManager, su
 		if authConfig.LDAP != nil {
 			return makeLDAPManager()
 		}
+	case evergreen.AuthOktaKey:
+		if authConfig.Okta != nil {
+			return makeOktaManager()
+		}
 	case evergreen.AuthGithubKey:
 		if authConfig.Github != nil {
 			return makeGithubManager()
@@ -59,6 +77,9 @@ func LoadUserManager(authConfig evergreen.AuthConfig) (um gimlet.UserManager, su
 
 	if authConfig.LDAP != nil {
 		return makeLDAPManager()
+	}
+	if authConfig.Okta != nil {
+		return makeOktaManager()
 	}
 	if authConfig.Naive != nil {
 		return makeNaiveManager()
@@ -113,7 +134,7 @@ func IsSuperUser(superUsers []string, u gimlet.User) bool {
 }
 
 func getOrCreateUser(u gimlet.User) (gimlet.User, error) {
-	return model.GetOrCreateUser(u.Username(), u.DisplayName(), u.Email())
+	return model.GetOrCreateUser(u.Username(), u.DisplayName(), u.Email(), u.GetAccessToken(), u.GetRefreshToken())
 }
 
 func getUserByID(id string) (gimlet.User, error) { return model.FindUserByID(id) }
