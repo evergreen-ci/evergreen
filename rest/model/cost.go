@@ -1,8 +1,6 @@
 package model
 
 import (
-	"time"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
@@ -10,9 +8,9 @@ import (
 
 // APIVersionCost is the model to be returned by the API whenever cost data is fetched by version id.
 type APIVersionCost struct {
-	VersionId     *string       `json:"version_id"`
-	SumTimeTaken  time.Duration `json:"sum_time_taken"`
-	EstimatedCost float64       `json:"estimated_cost"`
+	VersionId     *string   `json:"version_id"`
+	SumTimeTaken  APIDuration `json:"sum_time_taken"`
+	EstimatedCost float64     `json:"estimated_cost"`
 }
 
 // BuildFromService converts from a service level task by loading the data
@@ -21,7 +19,7 @@ func (apiVersionCost *APIVersionCost) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *task.VersionCost:
 		apiVersionCost.VersionId = ToStringPtr(v.VersionId)
-		apiVersionCost.SumTimeTaken = v.SumTimeTaken
+		apiVersionCost.SumTimeTaken = NewAPIDuration(v.SumTimeTaken)
 		apiVersionCost.EstimatedCost = v.SumEstimatedCost
 	default:
 		return errors.Errorf("incorrect type when fetching converting version cost type")
@@ -36,12 +34,12 @@ func (apiVersionCost *APIVersionCost) ToService() (interface{}, error) {
 
 // APIDistroCost is the model to be returned by the API whenever cost data is fetched by distro id.
 type APIDistroCost struct {
-	DistroId      *string       `json:"distro_id"`
-	SumTimeTaken  time.Duration `json:"sum_time_taken"`
-	Provider      *string       `json:"provider"`
-	InstanceType  *string       `json:"instance_type,omitempty"`
-	EstimatedCost float64       `json:"estimated_cost"`
-	NumTasks      int           `json:"num_tasks"`
+	DistroId      *string   `json:"distro_id"`
+	SumTimeTaken  APIDuration `json:"sum_time_taken"`
+	Provider      *string   `json:"provider"`
+	InstanceType  *string   `json:"instance_type,omitempty"`
+	EstimatedCost float64     `json:"estimated_cost"`
+	NumTasks      int         `json:"num_tasks"`
 }
 
 // BuildFromService converts from a service level task by loading the data
@@ -50,7 +48,7 @@ func (apiDistroCost *APIDistroCost) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *task.DistroCost:
 		apiDistroCost.DistroId = ToStringPtr(v.DistroId)
-		apiDistroCost.SumTimeTaken = v.SumTimeTaken
+		apiDistroCost.SumTimeTaken = NewAPIDuration(v.SumTimeTaken)
 		apiDistroCost.Provider = ToStringPtr(v.Provider)
 		apiDistroCost.EstimatedCost = v.SumEstimatedCost
 		apiDistroCost.NumTasks = v.NumTasks
