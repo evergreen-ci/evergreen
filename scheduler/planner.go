@@ -184,7 +184,6 @@ func (unit *Unit) RankValue() int64 {
 	var (
 		expectedRuntime  time.Duration
 		timeInQueue      time.Duration
-		lifeTime         time.Duration
 		totalPriority    int64
 		numDeps          int64
 		inCommitQueue    bool
@@ -205,16 +204,13 @@ func (unit *Unit) RankValue() int64 {
 
 		if !t.ActivatedTime.IsZero() {
 			timeInQueue += time.Since(t.ActivatedTime)
-		}
-
-		if !t.IngestTime.IsZero() {
-			lifeTime += time.Since(t.IngestTime)
+		} else if !t.IngestTime.IsZero() {
+			timeInQueue += time.Since(t.IngestTime)
 		}
 
 		totalPriority += t.Priority
 		expectedRuntime += t.FetchExpectedDuration().Average
 		numDeps += int64(t.NumDependents)
-
 	}
 
 	length := int64(len(unit.tasks))
@@ -239,14 +235,14 @@ func (unit *Unit) RankValue() int64 {
 		// should get worked on first (because people are
 		// waiting on the results), and because FIFO feels
 		// fair in this context.
-		unit.cachedValue += priority * unit.distro.GetTimeInQueueFactor() * int64(math.Floor(timeInQueue.Minutes()/float64(length)))
+		unit.cachedValue += priority * unit.distro.GetPatchTimeInQueueFactor() * int64(math.Floor(timeInQueue.Minutes()/float64(length)))
 	} else {
 		// for mainline builds that are more recent, give them a bit
 		// of a bump, to avoid running older builds first.
-		avgLifeTime := lifeTime / time.Duration(length)
+		avgLifeTime := timeInQueue / time.Duration(length)
 
-		if avgLifeTime < time.Duration(48)*time.Hour {
-			unit.cachedValue += priority * unit.distro.GetTimeInQueueFactor() * int64((48*time.Hour - avgLifeTime).Hours())
+		if avgLifeTime < time.Duration(7*24)*time.Hour {
+			unit.cachedValue += priority * unit.distro.GetMainlineTimeInQueueFactor() * int64((7*24*time.Hour - avgLifeTime).Hours())
 		}
 	}
 

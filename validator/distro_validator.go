@@ -365,9 +365,15 @@ func ensureHasValidPlannerSettings(ctx context.Context, d *distro.Distro, s *eve
 			Level:   Error,
 		})
 	}
-	if settings.TimeInQueueFactor < 0 || settings.TimeInQueueFactor > 100 {
+	if settings.PatchTimeInQueueFactor < 0 || settings.PatchTimeInQueueFactor > 100 {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("invalid planner_settings.time_in_queue_factor value of %d for distro '%s' - its value must be a non-negative integer between 0 and 100, inclusive", settings.TimeInQueueFactor, d.Id),
+			Message: fmt.Sprintf("invalid planner_settings.patch_time_in_queue_factor value of %d for distro '%s' - its value must be a non-negative integer between 0 and 100, inclusive", settings.PatchTimeInQueueFactor, d.Id),
+			Level:   Error,
+		})
+	}
+	if settings.MainlineTimeInQueueFactor < 0 || settings.MainlineTimeInQueueFactor > 100 {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("invalid planner_settings.mainline_time_in_queue_factor value of %d for distro '%s' - its value must be a non-negative integer between 0 and 100, inclusive", settings.MainlineTimeInQueueFactor, d.Id),
 			Level:   Error,
 		})
 	}

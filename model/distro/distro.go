@@ -139,12 +139,13 @@ type FinderSettings struct {
 }
 
 type PlannerSettings struct {
-	Version               string        `bson:"version" json:"version" mapstructure:"version"`
-	TargetTime            time.Duration `bson:"target_time" json:"target_time" mapstructure:"target_time,omitempty"`
-	GroupVersions         *bool         `bson:"group_versions" json:"group_versions" mapstructure:"group_versions,omitempty"`
-	PatchFactor           int64         `bson:"patch_zipper_factor" json:"patch_factor" mapstructure:"patch_factor"`
-	TimeInQueueFactor     int64         `bson:"time_in_queue_factor" json:"time_in_queue_factor" mapstructure:"time_in_queue_factor"`
-	ExpectedRuntimeFactor int64         `bson:"expected_runtime_factor" json:"expected_runtime_factor" mapstructure:"expected_runtime_factor"`
+	Version                   string        `bson:"version" json:"version" mapstructure:"version"`
+	TargetTime                time.Duration `bson:"target_time" json:"target_time" mapstructure:"target_time,omitempty"`
+	GroupVersions             *bool         `bson:"group_versions" json:"group_versions" mapstructure:"group_versions,omitempty"`
+	PatchFactor               int64         `bson:"patch_zipper_factor" json:"patch_factor" mapstructure:"patch_factor"`
+	PatchTimeInQueueFactor    int64         `bson:"patch_time_in_queue_factor" json:"patch_time_in_queue_factor" mapstructure:"patch_time_in_queue_factor"`
+	MainlineTimeInQueueFactor int64         `bson:"mainline_time_in_queue_factor" json:"mainline_time_in_queue_factor" mapstructure:"mainline_time_in_queue_factor"`
+	ExpectedRuntimeFactor     int64         `bson:"expected_runtime_factor" json:"expected_runtime_factor" mapstructure:"expected_runtime_factor"`
 
 	maxDurationPerHost time.Duration
 }
@@ -273,11 +274,18 @@ func (d *Distro) GetPatchFactor() int64 {
 	return d.PlannerSettings.PatchFactor
 }
 
-func (d *Distro) GetTimeInQueueFactor() int64 {
-	if d.PlannerSettings.TimeInQueueFactor <= 0 {
+func (d *Distro) GetPatchTimeInQueueFactor() int64 {
+	if d.PlannerSettings.PatchTimeInQueueFactor <= 0 {
 		return 1
 	}
-	return d.PlannerSettings.TimeInQueueFactor
+	return d.PlannerSettings.PatchTimeInQueueFactor
+}
+
+func (d *Distro) GetMainlineTimeInQueueFactor() int64 {
+	if d.PlannerSettings.MainlineTimeInQueueFactor <= 0 {
+		return 1
+	}
+	return d.PlannerSettings.MainlineTimeInQueueFactor
 }
 
 func (d *Distro) GetExpectedRuntimeFactor() int64 {
@@ -550,13 +558,14 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	config := s.Scheduler
 	ps := d.PlannerSettings
 	resolved := PlannerSettings{
-		Version:               ps.Version,
-		TargetTime:            ps.TargetTime,
-		GroupVersions:         ps.GroupVersions,
-		PatchFactor:           ps.PatchFactor,
-		TimeInQueueFactor:     ps.TimeInQueueFactor,
-		ExpectedRuntimeFactor: ps.ExpectedRuntimeFactor,
-		maxDurationPerHost:    evergreen.MaxDurationPerDistroHost,
+		Version:                   ps.Version,
+		TargetTime:                ps.TargetTime,
+		GroupVersions:             ps.GroupVersions,
+		PatchFactor:               ps.PatchFactor,
+		PatchTimeInQueueFactor:    ps.PatchTimeInQueueFactor,
+		MainlineTimeInQueueFactor: ps.MainlineTimeInQueueFactor,
+		ExpectedRuntimeFactor:     ps.ExpectedRuntimeFactor,
+		maxDurationPerHost:        evergreen.MaxDurationPerDistroHost,
 	}
 
 	catcher := grip.NewBasicCatcher()
@@ -584,8 +593,11 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	if resolved.PatchFactor == 0 {
 		resolved.PatchFactor = config.PatchFactor
 	}
-	if resolved.TimeInQueueFactor == 0 {
-		resolved.TimeInQueueFactor = config.TimeInQueueFactor
+	if resolved.PatchTimeInQueueFactor == 0 {
+		resolved.PatchTimeInQueueFactor = config.PatchTimeInQueueFactor
+	}
+	if resolved.MainlineTimeInQueueFactor == 0 {
+		resolved.MainlineTimeInQueueFactor = config.MainlineTimeInQueueFactor
 	}
 	if resolved.ExpectedRuntimeFactor == 0 {
 		resolved.ExpectedRuntimeFactor = config.ExpectedRuntimeFactor
