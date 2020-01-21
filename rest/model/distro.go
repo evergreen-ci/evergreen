@@ -13,7 +13,7 @@ import (
 // APIPlannerSettings is the model to be returned by the API whenever distro.PlannerSettings are fetched
 
 type APIPlannerSettings struct {
-	Version               *string   `json:"version"`
+	Version               *string     `json:"version"`
 	TargetTime            APIDuration `json:"target_time"`
 	GroupVersions         *bool       `json:"group_versions"`
 	PatchFactor           int64       `json:"patch_factor"`
@@ -68,7 +68,7 @@ func (s *APIPlannerSettings) ToService() (interface{}, error) {
 // APIHostAllocatorSettings is the model to be returned by the API whenever distro.HostAllocatorSettings are fetched
 
 type APIHostAllocatorSettings struct {
-	Version                *string   `json:"version"`
+	Version                *string     `json:"version"`
 	MinimumHosts           int         `json:"minimum_hosts"`
 	MaximumHosts           int         `json:"maximum_hosts"`
 	AcceptableHostIdleTime APIDuration `json:"acceptable_host_idle_time"`
@@ -197,14 +197,14 @@ func (s *APIDispatcherSettings) ToService() (interface{}, error) {
 // APIBootstrapSettings is the model to be returned by the API whenever distro.BootstrapSettings are fetched
 
 type APIBootstrapSettings struct {
-	Method                *string         `json:"method"`
-	Communication         *string         `json:"communication"`
-	ClientDir             *string         `json:"client_dir"`
-	JasperBinaryDir       *string         `json:"jasper_binary_dir"`
-	JasperCredentialsPath *string         `json:"jasper_credentials_path"`
-	ServiceUser           *string         `json:"service_user"`
-	ShellPath             *string         `json:"shell_path"`
-	RootDir               *string         `json:"root_dir"`
+	Method                *string           `json:"method"`
+	Communication         *string           `json:"communication"`
+	ClientDir             *string           `json:"client_dir"`
+	JasperBinaryDir       *string           `json:"jasper_binary_dir"`
+	JasperCredentialsPath *string           `json:"jasper_credentials_path"`
+	ServiceUser           *string           `json:"service_user"`
+	ShellPath             *string           `json:"shell_path"`
+	RootDir               *string           `json:"root_dir"`
 	Env                   []APIEnvVar       `json:"env"`
 	ResourceLimits        APIResourceLimits `json:"resource_limits"`
 }
@@ -328,33 +328,33 @@ func (s *APIBootstrapSettings) ToService() (interface{}, error) {
 // APIDistro is the model to be returned by the API whenever distros are fetched
 
 type APIDistro struct {
-	Name                  *string                `json:"name"`
+	Name                  *string                  `json:"name"`
 	Aliases               []string                 `json:"aliases"`
 	UserSpawnAllowed      bool                     `json:"user_spawn_allowed"`
-	Provider              *string                `json:"provider"`
+	Provider              *string                  `json:"provider"`
 	ProviderSettings      map[string]interface{}   `json:"settings"`
-	ImageID               *string                `json:"image_id"`
-	Arch                  *string                `json:"arch"`
-	WorkDir               *string                `json:"work_dir"`
+	ImageID               *string                  `json:"image_id"`
+	Arch                  *string                  `json:"arch"`
+	WorkDir               *string                  `json:"work_dir"`
 	SetupAsSudo           bool                     `json:"setup_as_sudo"`
-	Setup                 *string                `json:"setup"`
-	Teardown              *string                `json:"teardown"`
-	User                  *string                `json:"user"`
+	Setup                 *string                  `json:"setup"`
+	Teardown              *string                  `json:"teardown"`
+	User                  *string                  `json:"user"`
 	BootstrapSettings     APIBootstrapSettings     `json:"bootstrap_settings"`
-	CloneMethod           *string                `json:"clone_method"`
-	SSHKey                *string                `json:"ssh_key"`
+	CloneMethod           *string                  `json:"clone_method"`
+	SSHKey                *string                  `json:"ssh_key"`
 	SSHOptions            []string                 `json:"ssh_options"`
 	Expansions            []APIExpansion           `json:"expansions"`
 	Disabled              bool                     `json:"disabled"`
-	ContainerPool         *string                `json:"container_pool"`
+	ContainerPool         *string                  `json:"container_pool"`
 	FinderSettings        APIFinderSettings        `json:"finder_settings"`
 	PlannerSettings       APIPlannerSettings       `json:"planner_settings"`
 	DispatcherSettings    APIDispatcherSettings    `json:"dispatcher_settings"`
 	HostAllocatorSettings APIHostAllocatorSettings `json:"host_allocator_settings"`
 	DisableShallowClone   bool                     `json:"disable_shallow_clone"`
 	UseLegacyAgent        bool                     `json:"use_legacy_agent"`
-	Note                  *string                `json:"note"`
-	ValidProjects         []*string              `json:"valid_projects"`
+	Note                  *string                  `json:"note"`
+	ValidProjects         []*string                `json:"valid_projects"`
 }
 
 // BuildFromService converts from service level distro.Distro to an APIDistro

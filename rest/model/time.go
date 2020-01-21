@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mongodb/grip"
+
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/pkg/errors"
 )
@@ -39,7 +41,8 @@ func (i APIDuration) ToDuration() time.Duration {
 
 func MarshalAPIDuration(b APIDuration) graphql.Marshaler {
 	return graphql.WriterFunc(func(w io.Writer) {
-		w.Write([]byte(strconv.FormatInt(int64(b), 10)))
+		_, err := w.Write([]byte(strconv.FormatInt(int64(b), 10)))
+		grip.Error(err)
 	})
 }
 

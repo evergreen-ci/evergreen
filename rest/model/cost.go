@@ -8,7 +8,7 @@ import (
 
 // APIVersionCost is the model to be returned by the API whenever cost data is fetched by version id.
 type APIVersionCost struct {
-	VersionId     *string   `json:"version_id"`
+	VersionId     *string     `json:"version_id"`
 	SumTimeTaken  APIDuration `json:"sum_time_taken"`
 	EstimatedCost float64     `json:"estimated_cost"`
 }
@@ -34,10 +34,10 @@ func (apiVersionCost *APIVersionCost) ToService() (interface{}, error) {
 
 // APIDistroCost is the model to be returned by the API whenever cost data is fetched by distro id.
 type APIDistroCost struct {
-	DistroId      *string   `json:"distro_id"`
+	DistroId      *string     `json:"distro_id"`
 	SumTimeTaken  APIDuration `json:"sum_time_taken"`
-	Provider      *string   `json:"provider"`
-	InstanceType  *string   `json:"instance_type,omitempty"`
+	Provider      *string     `json:"provider"`
+	InstanceType  *string     `json:"instance_type,omitempty"`
 	EstimatedCost float64     `json:"estimated_cost"`
 	NumTasks      int         `json:"num_tasks"`
 }
