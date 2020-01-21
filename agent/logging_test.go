@@ -191,7 +191,7 @@ func TestStartLogging(t *testing.T) {
 	assert.Equal("bar", logConfig.System[0].SplunkToken)
 }
 
-func TeststartLoggingErrors(t *testing.T) {
+func TestStartLoggingErrors(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	tmpDirName, err := ioutil.TempDir("", "logging-error-")
