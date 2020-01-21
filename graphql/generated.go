@@ -135,7 +135,6 @@ type ComplexityRoot struct {
 		Logs      func(childComplexity int) int
 		StartTime func(childComplexity int) int
 		Status    func(childComplexity int) int
-		TaskId    func(childComplexity int) int
 		TestFile  func(childComplexity int) int
 	}
 
@@ -675,13 +674,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TestResult.Status(childComplexity), true
 
-	case "TestResult.taskId":
-		if e.complexity.TestResult.TaskId == nil {
-			break
-		}
-
-		return e.complexity.TestResult.TaskId(childComplexity), true
-
 	case "TestResult.testFile":
 		if e.complexity.TestResult.TestFile == nil {
 			break
@@ -833,7 +825,6 @@ type TestLog {
 	logId: String
 }
 type TestResult {
-	taskId: String!
 	status: String!
 	testFile: String!
 	logs: TestLog!
@@ -3144,40 +3135,6 @@ func (ec *executionContext) _TestLog_logId(ctx context.Context, field graphql.Co
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _TestResult_taskId(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "TestResult",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.TaskId, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _TestResult_status(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -4898,11 +4855,6 @@ func (ec *executionContext) _TestResult(ctx context.Context, sel ast.SelectionSe
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("TestResult")
-		case "taskId":
-			out.Values[i] = ec._TestResult_taskId(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "status":
 			out.Values[i] = ec._TestResult_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

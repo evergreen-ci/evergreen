@@ -42,7 +42,6 @@ type TaskEndDetail {
 }
 
 type TestResult {
-  taskId: String!
   status: String!
   testFile: String!
   logs: TestLog!

@@ -198,7 +198,6 @@
             "testResults": [
               {
                 "status": "pass",
-                "taskId": "wuzzup",
                 "testFile": "TestAgentSuite/TestTaskWithoutSecret",
                 "logs": {
                   "logId": "59ef7a2097b1d3148d0004f1",
