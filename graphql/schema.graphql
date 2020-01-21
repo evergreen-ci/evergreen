@@ -1,6 +1,7 @@
 type Query {
   userPatches(userId: String!): [Patch]!
   task(taskId: String!): Task
+  taskTests(taskId: String!, cursor: String): [TestResult]
 }
 
 type Patch {

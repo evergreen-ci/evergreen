@@ -56,6 +56,27 @@ func (r *queryResolver) Task(ctx context.Context, taskID string) (*model.APITask
 	return &apiTask, nil
 }
 
+func (r *queryResolver) TaskTests(ctx context.Context, taskID string, cursor *string) ([]*model.APITest, error) {
+	task, err := task.FindOneId(taskID)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error retreiving Task")
+	}
+	tests, err := r.sc.FindTestsByTaskId(taskID, "", "", "", 0, task.Execution)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error retreiving test")
+	}
+	testPointers := []*model.APITest{}
+	for _, t := range tests {
+		apiTest := model.APITest{}
+		err := apiTest.BuildFromService(&t)
+		if err != nil {
+			return nil, errors.Wrap(err, "error converting test")
+		}
+		testPointers = append(testPointers, &apiTest)
+	}
+	return testPointers, nil
+}
+
 // New injects resources into the resolvers, such as the data connector
 func New() Config {
 	return Config{
