@@ -20,11 +20,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (*communicatorImpl) GetAllHosts()     {}
-func (*communicatorImpl) GetHostByID()     {}
-func (*communicatorImpl) SetHostStatus()   {}
-func (*communicatorImpl) SetHostStatuses() {}
-
 // CreateSpawnHost will insert an intent host into the DB that will be spawned later by the runner
 func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostRequestOptions) (*model.APIHost, error) {
 

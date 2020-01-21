@@ -1154,6 +1154,7 @@ func (h *hostRunScript) Run(ctx context.Context) gimlet.Responder {
 		go func(ctx context.Context, hostID string, u *user.DBUser) {
 			defer wg.Done()
 			defer recovery.LogStackTraceAndContinue(fmt.Sprintf("Running script on host '%s'", hostID))
+
 			host, err := h.sc.FindHostByIdWithOwner(hostID, u)
 			if err != nil {
 				hostsOutput <- hostOutput{hostID: hostID, output: errors.Wrap(err, "can't get host").Error()}
@@ -1163,33 +1164,21 @@ func (h *hostRunScript) Run(ctx context.Context) gimlet.Responder {
 				hostsOutput <- hostOutput{hostID: hostID, output: errors.Errorf("can't run script on host with status '%s'", host.Status).Error()}
 				return
 			}
-
-			if host.JasperCommunication() {
-				bashPath := filepath.Join(host.Distro.BootstrapSettings.RootDir, host.Distro.BootstrapSettings.ShellPath)
-				opts := &options.Create{
-					Args: []string{bashPath, "-l", "-c", h.script},
-				}
-				processOutput, err := host.RunJasperProcess(ctx, h.env, opts)
-				if err != nil {
-					hostsOutput <- hostOutput{hostID: hostID, output: errors.Wrap(err, "can't run script with Jasper").Error()}
-					return
-				}
-				hostsOutput <- hostOutput{hostID: hostID, output: strings.Join(processOutput, "\n")}
+			if !host.JasperCommunication() {
+				hostsOutput <- hostOutput{hostID: hostID, output: errors.Errorf("can't run script on host of distro '%s' because it doesn't support Jasper communication", host.Distro.Id).Error()}
 				return
 			}
 
-			sshOptions, err := host.GetSSHOptions(h.env.Settings())
-			sshOptions = append(sshOptions, "-o", "LogLevel=quiet")
+			bashPath := filepath.Join(host.Distro.BootstrapSettings.RootDir, host.Distro.BootstrapSettings.ShellPath)
+			opts := &options.Create{
+				Args: []string{bashPath, "-l", "-c", h.script},
+			}
+			processOutput, err := host.RunJasperProcess(ctx, h.env, opts)
 			if err != nil {
-				hostsOutput <- hostOutput{hostID: hostID, output: errors.Wrap(err, "can't get ssh options").Error()}
+				hostsOutput <- hostOutput{hostID: hostID, output: errors.Wrap(err, "can't run script with Jasper").Error()}
 				return
 			}
-			processOutput, err := host.RunSSHShellScript(ctx, h.script, sshOptions)
-			if err != nil {
-				hostsOutput <- hostOutput{hostID: hostID, output: errors.Wrap(err, "can't run script over ssh").Error()}
-				return
-			}
-			hostsOutput <- hostOutput{hostID: hostID, output: processOutput}
+			hostsOutput <- hostOutput{hostID: hostID, output: strings.Join(processOutput, "\n")}
 		}(ctx, hostID, u)
 	}
 

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
@@ -732,7 +731,8 @@ func hostRunCommand() cli.Command {
 					return errors.Wrapf(err, "can't get matching hosts")
 				}
 				if len(hosts) == 0 {
-					return errors.New("no matching hosts")
+					grip.Info("no matching hosts")
+					return nil
 				}
 				for _, host := range hosts {
 					hostIDs = append(hostIDs, model.FromAPIString(host.Id))
