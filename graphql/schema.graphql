@@ -89,7 +89,6 @@ type Task {
   details: TaskEndDetail
   timeTaken: Duration
   expectedDuration: Duration
-  testResults: [TestResult!]
   displayOnly: Boolean
   executionTasks: [String!]
   generateTask: Boolean

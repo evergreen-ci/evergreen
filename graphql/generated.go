@@ -38,7 +38,6 @@ type Config struct {
 
 type ResolverRoot interface {
 	Query() QueryResolver
-	Task() TaskResolver
 }
 
 type DirectiveRoot struct {
@@ -103,7 +102,6 @@ type ComplexityRoot struct {
 		Status            func(childComplexity int) int
 		TaskGroup         func(childComplexity int) int
 		TaskGroupMaxHosts func(childComplexity int) int
-		TestResults       func(childComplexity int) int
 		TimeTaken         func(childComplexity int) int
 		Version           func(childComplexity int) int
 	}
@@ -147,9 +145,6 @@ type ComplexityRoot struct {
 type QueryResolver interface {
 	UserPatches(ctx context.Context, userID string) ([]*model.APIPatch, error)
 	Task(ctx context.Context, taskID string) (*model.APITask, error)
-}
-type TaskResolver interface {
-	TestResults(ctx context.Context, obj *model.APITask) ([]*model.APITest, error)
 }
 
 type executableSchema struct {
@@ -534,13 +529,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.TaskGroupMaxHosts(childComplexity), true
 
-	case "Task.testResults":
-		if e.complexity.Task.TestResults == nil {
-			break
-		}
-
-		return e.complexity.Task.TestResults(childComplexity), true
-
 	case "Task.timeTaken":
 		if e.complexity.Task.TimeTaken == nil {
 			break
@@ -800,7 +788,6 @@ type Task {
 	details: TaskEndDetail
 	timeTaken: Duration
 	expectedDuration: Duration
-	testResults: [TestResult!]
 	displayOnly: Boolean
 	executionTasks: [String!]
 	generateTask: Boolean
@@ -2600,37 +2587,6 @@ func (ec *executionContext) _Task_expectedDuration(ctx context.Context, field gr
 	res := resTmp.(time.Duration)
 	fc.Result = res
 	return ec.marshalODuration2timeᚐDuration(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Task_testResults(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Task",
-		Field:    field,
-		Args:     nil,
-		IsMethod: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Task().TestResults(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.([]*model.APITest)
-	fc.Result = res
-	return ec.marshalOTestResult2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_displayOnly(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -4626,7 +4582,7 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 		case "id":
 			out.Values[i] = ec._Task_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "createTime":
 			out.Values[i] = ec._Task_createTime(ctx, field, obj)
@@ -4645,12 +4601,12 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 		case "version":
 			out.Values[i] = ec._Task_version(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "projectId":
 			out.Values[i] = ec._Task_projectId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "revision":
 			out.Values[i] = ec._Task_revision(ctx, field, obj)
@@ -4663,36 +4619,36 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 		case "logs":
 			out.Values[i] = ec._Task_logs(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "activated":
 			out.Values[i] = ec._Task_activated(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "activatedBy":
 			out.Values[i] = ec._Task_activatedBy(ctx, field, obj)
 		case "buildId":
 			out.Values[i] = ec._Task_buildId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "distroId":
 			out.Values[i] = ec._Task_distroId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "buildVariant":
 			out.Values[i] = ec._Task_buildVariant(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "dependsOn":
 			out.Values[i] = ec._Task_dependsOn(ctx, field, obj)
 		case "displayName":
 			out.Values[i] = ec._Task_displayName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "hostId":
 			out.Values[i] = ec._Task_hostId(ctx, field, obj)
@@ -4705,12 +4661,12 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 		case "requester":
 			out.Values[i] = ec._Task_requester(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "status":
 			out.Values[i] = ec._Task_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "details":
 			out.Values[i] = ec._Task_details(ctx, field, obj)
@@ -4718,17 +4674,6 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Task_timeTaken(ctx, field, obj)
 		case "expectedDuration":
 			out.Values[i] = ec._Task_expectedDuration(ctx, field, obj)
-		case "testResults":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Task_testResults(ctx, field, obj)
-				return res
-			})
 		case "displayOnly":
 			out.Values[i] = ec._Task_displayOnly(ctx, field, obj)
 		case "executionTasks":
@@ -5330,20 +5275,6 @@ func (ec *executionContext) marshalNTestLog2githubᚗcomᚋevergreenᚑciᚋever
 	return ec._TestLog(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNTestResult2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITest(ctx context.Context, sel ast.SelectionSet, v model.APITest) graphql.Marshaler {
-	return ec._TestResult(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNTestResult2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITest(ctx context.Context, sel ast.SelectionSet, v *model.APITest) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	return ec._TestResult(ctx, sel, v)
-}
-
 func (ec *executionContext) unmarshalNTime2timeᚐTime(ctx context.Context, v interface{}) (time.Time, error) {
 	return graphql.UnmarshalTime(v)
 }
@@ -5797,46 +5728,6 @@ func (ec *executionContext) marshalOTask2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 
 func (ec *executionContext) marshalOTaskEndDetail2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐApiTaskEndDetail(ctx context.Context, sel ast.SelectionSet, v model.ApiTaskEndDetail) graphql.Marshaler {
 	return ec._TaskEndDetail(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalOTestResult2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APITest) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNTestResult2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITest(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-	return ret
 }
 
 func (ec *executionContext) unmarshalOTime2timeᚐTime(ctx context.Context, v interface{}) (time.Time, error) {

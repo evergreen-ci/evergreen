@@ -69,6 +69,7 @@
       {
         "_id": "wuzzup",
         "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "time_taken": { "$numberLong": "1000" },
         "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
         "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
         "scheduled_time": { "$date": "2018-01-11T00:01:36.796Z" },
@@ -194,22 +195,7 @@
             "displayOnly": true,
             "executionTasks": ["exec1"],
             "generateTask": false,
-            "generatedBy": "something",
-            "testResults": [
-              {
-                "status": "pass",
-                "testFile": "TestAgentSuite/TestTaskWithoutSecret",
-                "logs": {
-                  "logId": "59ef7a2097b1d3148d0004f1",
-                  "lineNum": 126,
-                  "url": "a url",
-                  "urlRaw": "a raw url"
-                },
-                "exitCode": 0,
-                "startTime": "2017-10-24T13:36:31-04:00",
-                "endTime": "2017-10-24T13:36:31-04:00"
-              }
-            ]
+            "generatedBy": "something"
           }
         }
       }
