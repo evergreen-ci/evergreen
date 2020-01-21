@@ -143,10 +143,10 @@
         "data": {
           "task": {
             "logs": {
-              "AllLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=ALL",
-              "TaskLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=T",
-              "AgentLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=E",
-              "SystemLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=S"
+              "allLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=ALL",
+              "taskLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=T",
+              "agentLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=E",
+              "systemLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=S"
             }
           }
         }

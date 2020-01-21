@@ -28,10 +28,10 @@ type VariantTask {
 }
 
 type TaskLogs {
-  AllLogLink: String
-  AgentLogLink: String
-  SystemLogLink: String
-  TaskLogLink: String
+  allLogLink: String
+  agentLogLink: String
+  systemLogLink: String
+  taskLogLink: String
 }
 
 type TaskEndDetail {

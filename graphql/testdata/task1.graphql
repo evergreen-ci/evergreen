@@ -1,10 +1,10 @@
 {
   task(taskId: "wuzzup") {
     logs {
-      AllLogLink
-      TaskLogLink
-      AgentLogLink
-      SystemLogLink
+      allLogLink
+      taskLogLink
+      agentLogLink
+      systemLogLink
     }
   }
 }

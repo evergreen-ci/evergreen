@@ -579,28 +579,28 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskEndDetail.Type(childComplexity), true
 
-	case "TaskLogs.AgentLogLink":
+	case "TaskLogs.agentLogLink":
 		if e.complexity.TaskLogs.AgentLogLink == nil {
 			break
 		}
 
 		return e.complexity.TaskLogs.AgentLogLink(childComplexity), true
 
-	case "TaskLogs.AllLogLink":
+	case "TaskLogs.allLogLink":
 		if e.complexity.TaskLogs.AllLogLink == nil {
 			break
 		}
 
 		return e.complexity.TaskLogs.AllLogLink(childComplexity), true
 
-	case "TaskLogs.SystemLogLink":
+	case "TaskLogs.systemLogLink":
 		if e.complexity.TaskLogs.SystemLogLink == nil {
 			break
 		}
 
 		return e.complexity.TaskLogs.SystemLogLink(childComplexity), true
 
-	case "TaskLogs.TaskLogLink":
+	case "TaskLogs.taskLogLink":
 		if e.complexity.TaskLogs.TaskLogLink == nil {
 			break
 		}
@@ -809,10 +809,10 @@ type TaskEndDetail {
 	timedOut: Boolean
 }
 type TaskLogs {
-	AllLogLink: String
-	AgentLogLink: String
-	SystemLogLink: String
-	TaskLogLink: String
+	allLogLink: String
+	agentLogLink: String
+	systemLogLink: String
+	taskLogLink: String
 }
 type TestLog {
 	url: String
@@ -2880,7 +2880,7 @@ func (ec *executionContext) _TaskEndDetail_timedOut(ctx context.Context, field g
 	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _TaskLogs_AllLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
+func (ec *executionContext) _TaskLogs_allLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2911,7 +2911,7 @@ func (ec *executionContext) _TaskLogs_AllLogLink(ctx context.Context, field grap
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _TaskLogs_AgentLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
+func (ec *executionContext) _TaskLogs_agentLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2942,7 +2942,7 @@ func (ec *executionContext) _TaskLogs_AgentLogLink(ctx context.Context, field gr
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _TaskLogs_SystemLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
+func (ec *executionContext) _TaskLogs_systemLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2973,7 +2973,7 @@ func (ec *executionContext) _TaskLogs_SystemLogLink(ctx context.Context, field g
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _TaskLogs_TaskLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
+func (ec *executionContext) _TaskLogs_taskLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -4776,14 +4776,14 @@ func (ec *executionContext) _TaskLogs(ctx context.Context, sel ast.SelectionSet,
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("TaskLogs")
-		case "AllLogLink":
-			out.Values[i] = ec._TaskLogs_AllLogLink(ctx, field, obj)
-		case "AgentLogLink":
-			out.Values[i] = ec._TaskLogs_AgentLogLink(ctx, field, obj)
-		case "SystemLogLink":
-			out.Values[i] = ec._TaskLogs_SystemLogLink(ctx, field, obj)
-		case "TaskLogLink":
-			out.Values[i] = ec._TaskLogs_TaskLogLink(ctx, field, obj)
+		case "allLogLink":
+			out.Values[i] = ec._TaskLogs_allLogLink(ctx, field, obj)
+		case "agentLogLink":
+			out.Values[i] = ec._TaskLogs_agentLogLink(ctx, field, obj)
+		case "systemLogLink":
+			out.Values[i] = ec._TaskLogs_systemLogLink(ctx, field, obj)
+		case "taskLogLink":
+			out.Values[i] = ec._TaskLogs_taskLogLink(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
