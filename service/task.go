@@ -509,6 +509,30 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	defaultLogger, err := getDefaultLogger(projCtx)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if defaultLogger == model.BuildloggerLogSender {
+		url := evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL
+		url += fmt.Sprintf("/rest/v1/buildlogger/task_id/%s?n=%d&execution=%dprint_time=true", projCtx.Task.Id, DefaultLogMessages, execution)
+		if logType != AllLogsType {
+			url += fmt.Sprintf("&proc_name=%s", logType)
+		}
+		c := util.GetHTTPClient()
+		defer util.PutHTTPClient(c)
+		resp, err := c.Get(url)
+		if err == nil {
+			defer resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				gimlet.WriteText(w, resp.Body)
+				return
+			}
+		} else {
+			grip.Error(errors.Wrap(err, "failed to get logs from buildlogger, using evergreen logger"))
+		}
+	}
 	ctx := r.Context()
 	usr := gimlet.GetUser(ctx)
 	taskLogs, err := getTaskLogs(projCtx.Task.Id, execution, DefaultLogMessages, logType, usr != nil)
@@ -518,6 +542,19 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 	}
 	wrapper.LogMessages = taskLogs
 	gimlet.WriteJSON(w, wrapper)
+}
+
+func getDefaultLogger(projCtx projectContext) (string, error) {
+	projRef, err := projCtx.GetProjectRef()
+	if err != nil {
+		return "", errors.Wrap(err, "problem getting project ref to fetch logs")
+	}
+	defaultLogger := projRef.DefaultLogger
+	if defaultLogger == "" {
+		defaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+	}
+
+	return defaultLogger, nil
 }
 
 func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
