@@ -791,7 +791,7 @@ type Task {
 	priority: Int
 	taskGroup: String
 	taskGroupMaxHosts: Int
-	logs: TaskLogs
+	logs: TaskLogs!
 	activated: Boolean!
 	activatedBy: String
 	buildId: String!
@@ -836,7 +836,7 @@ type TestResult {
 	taskId: String!
 	status: String!
 	testFile: String!
-	logs: TestLog
+	logs: TestLog!
 	exitCode: Int
 	startTime: Time
 	endTime: Time
@@ -2084,11 +2084,14 @@ func (ec *executionContext) _Task_logs(ctx context.Context, field graphql.Collec
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(model.LogLinks)
 	fc.Result = res
-	return ec.marshalOTaskLogs2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐLogLinks(ctx, field.Selections, res)
+	return ec.marshalNTaskLogs2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐLogLinks(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_activated(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -3267,11 +3270,14 @@ func (ec *executionContext) _TestResult_logs(ctx context.Context, field graphql.
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(model.TestLogs)
 	fc.Result = res
-	return ec.marshalOTestLog2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTestLogs(ctx, field.Selections, res)
+	return ec.marshalNTestLog2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTestLogs(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TestResult_exitCode(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
@@ -4699,6 +4705,9 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Task_taskGroupMaxHosts(ctx, field, obj)
 		case "logs":
 			out.Values[i] = ec._Task_logs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "activated":
 			out.Values[i] = ec._Task_activated(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -4906,6 +4915,9 @@ func (ec *executionContext) _TestResult(ctx context.Context, sel ast.SelectionSe
 			}
 		case "logs":
 			out.Values[i] = ec._TestResult_logs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "exitCode":
 			out.Values[i] = ec._TestResult_exitCode(ctx, field, obj)
 		case "startTime":
@@ -5356,6 +5368,14 @@ func (ec *executionContext) marshalNString2ᚖstring(ctx context.Context, sel as
 		return graphql.Null
 	}
 	return ec.marshalNString2string(ctx, sel, *v)
+}
+
+func (ec *executionContext) marshalNTaskLogs2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐLogLinks(ctx context.Context, sel ast.SelectionSet, v model.LogLinks) graphql.Marshaler {
+	return ec._TaskLogs(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTestLog2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTestLogs(ctx context.Context, sel ast.SelectionSet, v model.TestLogs) graphql.Marshaler {
+	return ec._TestLog(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNTestResult2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITest(ctx context.Context, sel ast.SelectionSet, v model.APITest) graphql.Marshaler {
@@ -5825,14 +5845,6 @@ func (ec *executionContext) marshalOTask2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 
 func (ec *executionContext) marshalOTaskEndDetail2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐApiTaskEndDetail(ctx context.Context, sel ast.SelectionSet, v model.ApiTaskEndDetail) graphql.Marshaler {
 	return ec._TaskEndDetail(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalOTaskLogs2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐLogLinks(ctx context.Context, sel ast.SelectionSet, v model.LogLinks) graphql.Marshaler {
-	return ec._TaskLogs(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalOTestLog2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTestLogs(ctx context.Context, sel ast.SelectionSet, v model.TestLogs) graphql.Marshaler {
-	return ec._TestLog(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalOTestResult2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APITest) graphql.Marshaler {
