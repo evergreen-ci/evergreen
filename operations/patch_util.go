@@ -358,7 +358,7 @@ func isCommitRange(rev string) bool {
 	return strings.Contains(rev, "..")
 }
 
-func formatRev(rev string) string {
+func formatCommitRange(rev string) string {
 	if rev == "" {
 		return rev
 	}
@@ -368,19 +368,28 @@ func formatRev(rev string) string {
 	return fmt.Sprintf("%s^!", rev)
 }
 
+func getFeatureBranch(ref, commits string) string {
+	if ref != "" {
+		return ref
+	}
+	if commits != "" {
+		// if one commit, this returns just that commit, else the first commit in the range
+		return strings.Split(commits, "..")[0]
+	}
+	return "HEAD"
+}
+
 // loadGitData inspects the current git working directory and returns a patch and its summary.
 // The branch argument is used to determine where to generate the merge base from, and any extra
 // arguments supplied are passed directly in as additional args to git diff.
-func loadGitData(branch, ref, rev string, format bool, extraArgs ...string) (*localDiff, error) {
+func loadGitData(branch, ref, commits string, format bool, extraArgs ...string) (*localDiff, error) {
 	// branch@{upstream} refers to the branch that the branch specified by branchname is set to
 	// build on top of. This allows automatically detecting a branch based on the correct remote,
-	// if the user's repo is a fork, for example.
+	// if the user's repo is a fork, for example. This also works with a commit hash, if given.
+	// In the case a range is passed, we only need one commit to determine the base, so we use the last commit.
 	// For details see: https://git-scm.com/docs/gitrevisions
-	featureBranch := "HEAD"
-	if ref != "" {
-		featureBranch = ref
-	}
-	mergeBase, err := gitMergeBase(branch+"@{upstream}", featureBranch)
+
+	mergeBase, err := gitMergeBase(branch+"@{upstream}", ref, commits)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error getting merge base")
 	}
@@ -388,18 +397,18 @@ func loadGitData(branch, ref, rev string, format bool, extraArgs ...string) (*lo
 	if len(extraArgs) > 0 {
 		statArgs = append(statArgs, extraArgs...)
 	}
-	stat, err := gitDiff(mergeBase, ref, rev, statArgs...)
+	stat, err := gitDiff(mergeBase, ref, commits, statArgs...)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error getting diff summary")
 	}
-	log, err := gitLog(mergeBase, ref, rev)
+	log, err := gitLog(mergeBase, ref, commits)
 	if err != nil {
 		return nil, errors.Wrap(err, "git log")
 	}
 
 	var fullPatch string
 	if format {
-		fullPatch, err = gitFormatPatch(mergeBase, ref, rev)
+		fullPatch, err = gitFormatPatch(mergeBase, ref, commits)
 		if err != nil {
 			return nil, errors.Wrap(err, "Error getting formatted patch")
 		}
@@ -407,7 +416,7 @@ func loadGitData(branch, ref, rev string, format bool, extraArgs ...string) (*lo
 		if !util.StringSliceContains(extraArgs, "--binary") {
 			extraArgs = append(extraArgs, "--binary")
 		}
-		fullPatch, err = gitDiff(mergeBase, ref, rev, extraArgs...)
+		fullPatch, err = gitDiff(mergeBase, ref, commits, extraArgs...)
 		if err != nil {
 			return nil, errors.Wrap(err, "Error getting patch")
 		}
@@ -415,12 +424,11 @@ func loadGitData(branch, ref, rev string, format bool, extraArgs ...string) (*lo
 	return &localDiff{fullPatch, stat, log, mergeBase}, nil
 }
 
-// gitMergeBase runs "git merge-base <branch1> <branch2>" and returns the
-// resulting githash as string
-func gitMergeBase(branch1, branch2 string) (string, error) {
+// gitMergeBase runs "git merge-base <branch1> <branch2>" (where branch2 can optionally be a githash)
+// and returns the resulting githash as string
+func gitMergeBase(branch1, ref, commits string) (string, error) {
+	branch2 := getFeatureBranch(ref, commits)
 	cmd := exec.Command("git", "merge-base", branch1, branch2)
-	// when would the output of this ever not be the same as with HEAD? (referring to the input for branch2)
-	// the only case I can think of i when branch2 is earlier than the base of upstream but that seems wrong then
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", errors.Wrapf(err, "'git merge-base %s %s' failed: %s (%s)", branch1, branch2, out, err)
@@ -428,12 +436,14 @@ func gitMergeBase(branch1, branch2 string) (string, error) {
 	return strings.TrimSpace(string(out)), err
 }
 
-// gitDiff runs "git diff <base> <diffargs ...>" and returns the output of the command as a string
-func gitDiff(base string, ref, rev string, diffArgs ...string) (string, error) {
+// gitDiff runs "git diff <base> <ref> <commits> <diffargs ...>" and returns the output of the command as a string,
+// where ref and commits are mutually exclusive (and not required)
+func gitDiff(base string, ref, commits string, diffArgs ...string) (string, error) {
 	args := []string{base}
-	if rev != "" {
-		args = append(args, formatRev(rev))
-	} else if ref != "" {
+	if commits != "" {
+		args = []string{formatCommitRange(commits)}
+	}
+	if ref != "" {
 		args = append(args, ref)
 	}
 	args = append(args, "--no-ext-diff")
@@ -441,27 +451,27 @@ func gitDiff(base string, ref, rev string, diffArgs ...string) (string, error) {
 	return gitCmd("diff", args...)
 }
 
-func gitFormatPatch(base string, ref, rev string) (string, error) {
+func gitFormatPatch(base string, ref, commits string) (string, error) {
 	revisionRange := fmt.Sprintf("%s..%s", base, ref)
-	if rev != "" {
-		revisionRange = formatRev(rev)
+	if commits != "" {
+		revisionRange = formatCommitRange(commits)
 	}
 	return gitCmd("format-patch", "--keep-subject", "--no-signature", "--stdout", "--no-ext-diff", "--summary", "--binary", revisionRange)
 }
 
-// getLog runs "git log <base>...<ref>
-func gitLog(base, ref, rev string) (string, error) {
+// getLog runs "git log <base>...<ref> or uses the commit range given
+func gitLog(base, ref, commits string) (string, error) {
 	revisionRange := fmt.Sprintf("%s...%s", base, ref)
-	if rev != "" {
-		revisionRange = formatRev(rev)
+	if commits != "" {
+		revisionRange = formatCommitRange(commits)
 	}
 	return gitCmd("log", revisionRange, "--oneline")
 }
 
-func gitCommitMessages(base, ref, rev string) (string, error) {
+func gitCommitMessages(base, ref, commits string) (string, error) {
 	input := fmt.Sprintf("%s@{upstream}..%s", base, ref)
-	if rev != "" {
-		input = formatRev(rev)
+	if commits != "" {
+		input = formatCommitRange(commits)
 	}
 	args := []string{"--no-show-signature", "--pretty=format:%B", input}
 	msg, err := gitCmd("log", args...)
@@ -498,10 +508,10 @@ func getDefaultDescription() string {
 	return fmt.Sprintf("%s: %s", branch, desc)
 }
 
-func gitCommitCount(base, ref, rev string) (int, error) {
+func gitCommitCount(base, ref, commits string) (int, error) {
 	input := fmt.Sprintf("%s@{upstream}..%s", base, ref)
-	if rev != "" {
-		input = formatRev(rev)
+	if commits != "" {
+		input = formatCommitRange(commits)
 	}
 	out, err := gitCmd("rev-list", input, "--count")
 	if err != nil {
