@@ -235,14 +235,14 @@ func (unit *Unit) RankValue() int64 {
 		// should get worked on first (because people are
 		// waiting on the results), and because FIFO feels
 		// fair in this context.
-		unit.cachedValue += priority * unit.distro.GetTimeInQueueFactor() * int64(math.Floor(timeInQueue.Minutes()/float64(length)))
+		unit.cachedValue += priority * unit.distro.GetPatchTimeInQueueFactor() * int64(math.Floor(timeInQueue.Minutes()/float64(length)))
 	} else {
 		// for mainline builds that are more recent, give them a bit
 		// of a bump, to avoid running older builds first.
 		avgLifeTime := timeInQueue / time.Duration(length)
 
 		if avgLifeTime < time.Duration(7*24)*time.Hour {
-			unit.cachedValue += priority * int64((7*24*time.Hour - avgLifeTime).Hours())
+			unit.cachedValue += priority * unit.distro.GetMainlineTimeInQueueFactor() * int64((7*24*time.Hour - avgLifeTime).Hours())
 		}
 	}
 
