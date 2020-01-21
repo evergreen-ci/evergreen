@@ -35,6 +35,11 @@ func (h *authPermissionGetHandler) Parse(ctx context.Context, r *http.Request) e
 func (h *authPermissionGetHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 
+	// TODO: remove with PM-1355
+	if !evergreen.IsAclEnabled {
+		return gimlet.NewTextResponse(false)
+	}
+
 	opts := gimlet.PermissionOpts{
 		Resource:      h.resource,
 		ResourceType:  h.resourceType,
