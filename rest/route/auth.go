@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/pkg/errors"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -36,16 +36,16 @@ func (h *authPermissionGetHandler) Parse(ctx context.Context, r *http.Request) e
 func (h *authPermissionGetHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 
+	// TODO: remove with PM-1355
+	if !evergreen.AclCheckingIsEnabled {
+		return gimlet.NewTextResponse(false)
+	}
+
 	opts := gimlet.PermissionOpts{
 		Resource:      h.resource,
 		ResourceType:  h.resourceType,
 		Permission:    h.permission,
 		RequiredLevel: h.requiredLevel,
 	}
-	ok, err := u.HasPermission(opts)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error checking permission for user"))
-	}
-
-	return gimlet.NewTextResponse(ok)
+	return gimlet.NewTextResponse(u.HasPermission(opts))
 }

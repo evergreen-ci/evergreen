@@ -50,8 +50,8 @@ func (s *VersionCostSuite) TestFindCostByVersionIdSingle() {
 	// it is the right type (model.APIVersionCost) and has correct versionId and SumTimeTaken
 	h, ok := (res.Data()).(*model.APIVersionCost)
 	s.True(ok)
-	s.Equal(model.ToAPIString("version1"), h.VersionId)
-	s.Equal(model.APIDuration(1), h.SumTimeTaken)
+	s.Equal(model.ToStringPtr("version1"), h.VersionId)
+	s.Equal(1*time.Millisecond, h.SumTimeTaken)
 }
 
 // TestFindCostByVersionIdMany tests the handler where information is aggregated on
@@ -65,8 +65,8 @@ func (s *VersionCostSuite) TestFindCostByVersionIdMany() {
 
 	h, ok := (res.Data()).(*model.APIVersionCost)
 	s.True(ok)
-	s.Equal(model.ToAPIString("version2"), h.VersionId)
-	s.Equal(model.APIDuration(2), h.SumTimeTaken)
+	s.Equal(model.ToStringPtr("version2"), h.VersionId)
+	s.Equal(2*time.Millisecond, h.SumTimeTaken)
 }
 
 // TestFindCostByVersionFail tests that the handler correctly returns error when
@@ -171,10 +171,10 @@ func (s *DistroCostSuite) TestFindCostByDistroIdSingle() {
 	// it is the right type (model.APIDistroCost) and has correct distroId and SumTimeTaken
 	h, ok := (res.Data()).(*model.APIDistroCost)
 	s.True(ok)
-	s.Equal(model.ToAPIString("distro1"), h.DistroId)
-	s.Equal(model.APIDuration(1), h.SumTimeTaken)
-	s.Equal(model.ToAPIString("ec2-ondemand"), h.Provider)
-	s.Equal(model.ToAPIString("type"), h.InstanceType)
+	s.Equal(model.ToStringPtr("distro1"), h.DistroId)
+	s.Equal(1*time.Millisecond, h.SumTimeTaken)
+	s.Equal(model.ToStringPtr("ec2-ondemand"), h.Provider)
+	s.Equal(model.ToStringPtr("type"), h.InstanceType)
 }
 
 // TestFindCostByDistroIdMany tests the handler where information is aggregated on
@@ -195,10 +195,10 @@ func (s *DistroCostSuite) TestFindCostByDistroIdMany() {
 	// it is the right type (model.APIDistroCost) and has correct distroId and SumTimeTaken
 	h, ok := (res.Data()).(*model.APIDistroCost)
 	s.True(ok)
-	s.Equal(model.ToAPIString("distro2"), h.DistroId)
-	s.Equal(model.APIDuration(2), h.SumTimeTaken)
-	s.Equal(model.ToAPIString("gce"), h.Provider)
-	s.Equal(model.APIString(nil), h.InstanceType)
+	s.Equal(model.ToStringPtr("distro2"), h.DistroId)
+	s.Equal(2*time.Millisecond, h.SumTimeTaken)
+	s.Equal(model.ToStringPtr("gce"), h.Provider)
+	s.Nil(h.InstanceType)
 }
 
 // TestFindCostByDistroIdNoResult tests that the handler correct returns
@@ -216,10 +216,10 @@ func (s *DistroCostSuite) TestFindCostByDistroIdNoResult() {
 
 	h, ok := (res.Data()).(*model.APIDistroCost)
 	s.True(ok)
-	s.Equal(model.ToAPIString("distro2"), h.DistroId)
-	s.Equal(model.APIDuration(0), h.SumTimeTaken)
-	s.Equal(model.ToAPIString(""), h.Provider)
-	s.Equal(model.APIString(nil), h.InstanceType)
+	s.Equal(model.ToStringPtr("distro2"), h.DistroId)
+	s.Equal(time.Duration(0), h.SumTimeTaken)
+	s.Equal(model.ToStringPtr(""), h.Provider)
+	s.Nil(h.InstanceType)
 }
 
 // TestFindCostByDistroFail tests that the handler correctly returns error when

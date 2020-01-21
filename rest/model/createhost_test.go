@@ -17,9 +17,9 @@ func TestCreateHostBuildFromService(t *testing.T) {
 	c := &CreateHost{}
 	err := c.BuildFromService(h)
 	assert.NoError(err)
-	assert.Equal(FromAPIString(c.DNSName), h.Host)
-	assert.Equal(FromAPIString(c.InstanceID), h.ExternalIdentifier)
-	assert.Equal(FromAPIString(c.IP), h.IP)
+	assert.Equal(FromStringPtr(c.DNSName), h.Host)
+	assert.Equal(FromStringPtr(c.InstanceID), h.ExternalIdentifier)
+	assert.Equal(FromStringPtr(c.IP), h.IP)
 }
 
 func TestCreateHostBuildFromServiceWithContainer(t *testing.T) {
@@ -35,9 +35,9 @@ func TestCreateHostBuildFromServiceWithContainer(t *testing.T) {
 	c := &CreateHost{}
 	err := c.BuildFromService(h)
 	assert.NoError(err)
-	assert.Equal(FromAPIString(c.Image), h.DockerOptions.Image)
-	assert.Equal(FromAPIString(c.Command), h.DockerOptions.Command)
-	assert.Equal(FromAPIString(c.ParentID), h.ParentID)
+	assert.Equal(FromStringPtr(c.Image), h.DockerOptions.Image)
+	assert.Equal(FromStringPtr(c.Command), h.DockerOptions.Command)
+	assert.Equal(FromStringPtr(c.ParentID), h.ParentID)
 
 	assert.Nil(c.DNSName)
 	assert.Nil(c.InstanceID)

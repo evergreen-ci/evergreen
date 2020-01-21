@@ -199,7 +199,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
-	hostId := restModel.FromAPIString(updateParams.HostID)
+	hostId := restModel.FromStringPtr(updateParams.HostID)
 	h, err := host.FindOne(host.ById(hostId))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error finding host with id %v", hostId))
@@ -279,7 +279,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case HostPasswordUpdate:
-		pwd := restModel.FromAPIString(updateParams.RDPPwd)
+		pwd := restModel.FromStringPtr(updateParams.RDPPwd)
 		if !h.Distro.IsWindows() {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("rdp password can only be set on Windows hosts"))
 			return
@@ -296,7 +296,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case HostInstanceTypeUpdate:
-		instanceType := restModel.FromAPIString(updateParams.InstanceType)
+		instanceType := restModel.FromStringPtr(updateParams.InstanceType)
 		if err = cloud.ModifySpawnHost(ctx, uis.env, h, host.HostModifyOptions{
 			InstanceType: instanceType,
 		}); err != nil {
@@ -364,8 +364,8 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		deleteTags := restModel.FromAPIStringList(updateParams.DeleteTags)
-		addTagPairs := restModel.FromAPIStringList(updateParams.AddTags)
+		deleteTags := restModel.FromStringPtrSlice(updateParams.DeleteTags)
+		addTagPairs := restModel.FromStringPtrSlice(updateParams.AddTags)
 		addTags, err := host.MakeHostTags(addTagPairs)
 		if err != nil {
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error creating tags to add: "+err.Error()))

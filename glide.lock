@@ -46,6 +46,9 @@ imports:
   - name: github.com/stretchr/testify
     version: 890a5c3458b43e6104ff5da8dfa139d013d77544
 
+  - name: github.com/sam-falvo/mbox
+    version: 766c02448eff8a6c8397ed1553677fd17af4ba69
+
   - name: github.com/jacobsa/oglematchers
     version: 4fc24f97b5b74022c2a3f4ca7eed57ca29083d3e
   - name: github.com/jtolds/gls
@@ -122,7 +125,7 @@ imports:
   - name: github.com/mongodb/amboy
     version: e5548953650b5d4cc7b6d7aba4cb1b2771e35342
   - name: github.com/evergreen-ci/gimlet
-    version: 4f547e94d38b4aa93fb9505eed83b1e4f50a585d
+    version: 6c68c4698350e9f837cc5dd61562c72ba58d1ea9
   - name: github.com/evergreen-ci/shrub
     version: 32e668cd99410328bf6659e55671c11a6c727d9a
   - name: github.com/evergreen-ci/pail

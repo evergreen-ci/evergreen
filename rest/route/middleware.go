@@ -259,7 +259,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't find item")))
 			return
 		}
-		if user.Id != patch.Author {
+		if user.Id != *patch.Author {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
 				Message:    "Not authorized",
@@ -307,6 +307,12 @@ func RequiresProjectPermission(permission string, level evergreen.PermissionLeve
 	if !evergreen.AclCheckingIsEnabled {
 		return &noopMiddleware{}
 	}
+	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
+	if err != nil {
+		grip.Critical(message.WrapError(err, message.Fields{
+			"message": "unable to get default roles",
+		}))
+	}
 
 	opts := gimlet.RequiresPermissionMiddlewareOpts{
 		RM:            evergreen.GetEnvironment().RoleManager(),
@@ -314,6 +320,7 @@ func RequiresProjectPermission(permission string, level evergreen.PermissionLeve
 		ResourceType:  evergreen.ProjectResourceType,
 		RequiredLevel: level.Value,
 		ResourceFunc:  urlVarsToProjectScopes,
+		DefaultRoles:  defaultRoles,
 	}
 	return gimlet.RequiresPermission(opts)
 }
@@ -322,6 +329,12 @@ func RequiresDistroPermission(permission string, level evergreen.PermissionLevel
 	if !evergreen.AclCheckingIsEnabled {
 		return &noopMiddleware{}
 	}
+	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
+	if err != nil {
+		grip.Critical(message.WrapError(err, message.Fields{
+			"message": "unable to get default roles",
+		}))
+	}
 
 	opts := gimlet.RequiresPermissionMiddlewareOpts{
 		RM:            evergreen.GetEnvironment().RoleManager(),
@@ -329,6 +342,7 @@ func RequiresDistroPermission(permission string, level evergreen.PermissionLevel
 		ResourceType:  evergreen.DistroResourceType,
 		RequiredLevel: level.Value,
 		ResourceFunc:  urlVarsToDistroScopes,
+		DefaultRoles:  defaultRoles,
 	}
 	return gimlet.RequiresPermission(opts)
 }
@@ -337,6 +351,12 @@ func RequiresSuperUserPermission(permission string, level evergreen.PermissionLe
 	if !evergreen.AclCheckingIsEnabled {
 		return &noopMiddleware{}
 	}
+	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
+	if err != nil {
+		grip.Critical(message.WrapError(err, message.Fields{
+			"message": "unable to get default roles",
+		}))
+	}
 
 	opts := gimlet.RequiresPermissionMiddlewareOpts{
 		RM:            evergreen.GetEnvironment().RoleManager(),
@@ -344,6 +364,7 @@ func RequiresSuperUserPermission(permission string, level evergreen.PermissionLe
 		ResourceType:  evergreen.SuperUserResourceType,
 		RequiredLevel: level.Value,
 		ResourceFunc:  superUserResource,
+		DefaultRoles:  defaultRoles,
 	}
 	return gimlet.RequiresPermission(opts)
 
@@ -417,6 +438,18 @@ func urlVarsToProjectScopes(r *http.Request) (string, int, error) {
 		}
 	}
 
+	// check to see if this is an anonymous user requesting a private project
+	user := gimlet.GetUser(r.Context())
+	if user == nil {
+		projectRef, err := model.FindOneProjectRef(projectID)
+		if err != nil || projectRef == nil {
+			return "", http.StatusNotFound, errors.New("no project found")
+		}
+		if projectRef.Private {
+			projectID = ""
+		}
+	}
+
 	// no project found - return a 404
 	if projectID == "" {
 		return "", http.StatusNotFound, errors.New("no project found")
@@ -460,73 +493,4 @@ func urlVarsToDistroScopes(r *http.Request) (string, int, error) {
 
 func superUserResource(_ *http.Request) (string, int, error) {
 	return evergreen.SuperUserPermissionsID, http.StatusOK, nil
-}
-
-// RequiresProjectViewPermission is mostly a copy of gimlet.RequiresPermission, but with special
-// handling for private projects
-type RequiresProjectViewPermission struct{}
-
-func (p *RequiresProjectViewPermission) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	if !evergreen.AclCheckingIsEnabled {
-		next(rw, r)
-		return
-	}
-	projectID, status, err := urlVarsToProjectScopes(r)
-	if err != nil {
-		http.Error(rw, err.Error(), status)
-		return
-	}
-	if projectID == "" {
-		http.Error(rw, "no project found", http.StatusNotFound)
-		return
-	}
-	proj, err := model.FindOneProjectRef(projectID)
-	if err != nil {
-		http.Error(rw, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if proj == nil {
-		http.Error(rw, "no project found", http.StatusNotFound)
-		return
-	}
-	if !proj.Private {
-		next(rw, r)
-		return
-	}
-
-	ctx := r.Context()
-	user := gimlet.GetUser(ctx)
-	if user == nil {
-		http.Error(rw, "no user found", http.StatusUnauthorized)
-		return
-	}
-
-	authenticator := gimlet.GetAuthenticator(ctx)
-	if authenticator == nil {
-		http.Error(rw, "unable to determine an authenticator", http.StatusInternalServerError)
-		return
-	}
-
-	if !authenticator.CheckAuthenticated(user) {
-		http.Error(rw, "not authenticated", http.StatusUnauthorized)
-		return
-	}
-
-	opts := gimlet.PermissionOpts{
-		Resource:      projectID,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionTasks,
-		RequiredLevel: evergreen.TasksView.Value,
-	}
-	hasPermission, err := user.HasPermission(opts)
-	grip.Error(message.WrapError(err, message.Fields{
-		"message": "error checking task view permissions",
-		"user":    user.Username(),
-	}))
-
-	if !hasPermission {
-		http.Error(rw, "not authorized for this action", http.StatusUnauthorized)
-		return
-	}
-	next(rw, r)
 }

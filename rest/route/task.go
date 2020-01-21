@@ -88,7 +88,7 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error getting estimated start time"))
 	}
-	taskModel.EstimatedStart = model.NewAPIDuration(start)
+	taskModel.EstimatedStart = start
 
 	err = taskModel.GetArtifacts()
 	if err != nil {
@@ -274,11 +274,7 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 				Permission:    evergreen.PermissionTasks,
 				RequiredLevel: evergreen.TasksAdmin.Value,
 			}
-			taskAdmin, err := tep.user.HasPermission(requiredPermission)
-			if err != nil {
-				return gimlet.MakeJSONInternalErrorResponder(fmt.Errorf("error checking user permissions"))
-			}
-			if !auth.IsSuperUser(tep.sc.GetSuperUsers(), tep.user) && !taskAdmin { // TODO PM-1355 remove superuser check
+			if !auth.IsSuperUser(tep.sc.GetSuperUsers(), tep.user) && !tep.user.HasPermission(requiredPermission) { // TODO PM-1355 remove superuser check
 				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					Message: fmt.Sprintf("Insufficient privilege to set priority to %d, "+
 						"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),

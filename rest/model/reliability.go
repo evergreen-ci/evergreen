@@ -7,10 +7,10 @@ import (
 
 // APITaskReliability is the model to be returned by the API when querying task execution statistics
 type APITaskReliability struct {
-	TaskName     APIString `json:"task_name"`
-	BuildVariant APIString `json:"variant,omitempty"`
-	Distro       APIString `json:"distro,omitempty"`
-	Date         APIString `json:"date"`
+	TaskName     *string `json:"task_name"`
+	BuildVariant *string `json:"variant,omitempty"`
+	Distro       *string `json:"distro,omitempty"`
+	Date         *string `json:"date"`
 
 	NumSuccess         int     `json:"num_success"`
 	NumFailed          int     `json:"num_failed"`
@@ -27,10 +27,10 @@ type APITaskReliability struct {
 func (apiTaskReliability *APITaskReliability) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *reliability.TaskReliability:
-		apiTaskReliability.TaskName = ToAPIString(v.TaskName)
-		apiTaskReliability.BuildVariant = ToAPIString(v.BuildVariant)
-		apiTaskReliability.Distro = ToAPIString(v.Distro)
-		apiTaskReliability.Date = ToAPIString(v.Date.UTC().Format("2006-01-02"))
+		apiTaskReliability.TaskName = ToStringPtr(v.TaskName)
+		apiTaskReliability.BuildVariant = ToStringPtr(v.BuildVariant)
+		apiTaskReliability.Distro = ToStringPtr(v.Distro)
+		apiTaskReliability.Date = ToStringPtr(v.Date.UTC().Format("2006-01-02"))
 
 		apiTaskReliability.NumSuccess = v.NumSuccess
 		apiTaskReliability.NumFailed = v.NumFailed
@@ -55,9 +55,9 @@ func (apiTaskReliability *APITaskReliability) ToService() (interface{}, error) {
 // StartAtKey returns the start_at key parameter that can be used to paginate and start at this element.
 func (apiTaskReliability *APITaskReliability) StartAtKey() string {
 	return StartAtKey{
-		date:         FromAPIString(apiTaskReliability.Date),
-		buildVariant: FromAPIString(apiTaskReliability.BuildVariant),
-		taskName:     FromAPIString(apiTaskReliability.TaskName),
-		distro:       FromAPIString(apiTaskReliability.Distro),
+		date:         FromStringPtr(apiTaskReliability.Date),
+		buildVariant: FromStringPtr(apiTaskReliability.BuildVariant),
+		taskName:     FromStringPtr(apiTaskReliability.TaskName),
+		distro:       FromStringPtr(apiTaskReliability.Distro),
 	}.String()
 }

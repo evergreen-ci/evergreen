@@ -357,20 +357,18 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, err
 // loadGitData inspects the current git working directory and returns a patch and its summary.
 // The branch argument is used to determine where to generate the merge base from, and any extra
 // arguments supplied are passed directly in as additional args to git diff.
-func loadGitData(branch string, ref string, extraArgs ...string) (*localDiff, error) {
+func loadGitData(branch string, ref string, format bool, extraArgs ...string) (*localDiff, error) {
 	// branch@{upstream} refers to the branch that the branch specified by branchname is set to
 	// build on top of. This allows automatically detecting a branch based on the correct remote,
 	// if the user's repo is a fork, for example.
 	// For details see: https://git-scm.com/docs/gitrevisions
-	var featureBranch string
-	if ref == "" {
-		featureBranch = "HEAD"
-	} else {
+	featureBranch := "HEAD"
+	if ref != "" {
 		featureBranch = ref
 	}
 	mergeBase, err := gitMergeBase(branch+"@{upstream}", featureBranch)
 	if err != nil {
-		return nil, errors.Errorf("Error getting merge base: %v", err)
+		return nil, errors.Wrap(err, "Error getting merge base")
 	}
 	statArgs := []string{"--stat"}
 	if len(extraArgs) > 0 {
@@ -378,22 +376,29 @@ func loadGitData(branch string, ref string, extraArgs ...string) (*localDiff, er
 	}
 	stat, err := gitDiff(mergeBase, ref, statArgs...)
 	if err != nil {
-		return nil, errors.Errorf("Error getting diff summary: %v", err)
+		return nil, errors.Wrap(err, "Error getting diff summary")
 	}
 	log, err := gitLog(mergeBase, ref)
 	if err != nil {
-		return nil, errors.Errorf("git log: %v", err)
+		return nil, errors.Wrap(err, "git log")
 	}
 
-	if !util.StringSliceContains(extraArgs, "--binary") {
-		extraArgs = append(extraArgs, "--binary")
+	var fullPatch string
+	if format {
+		fullPatch, err = gitFormatPatch(mergeBase, ref)
+		if err != nil {
+			return nil, errors.Wrap(err, "Error getting formatted patch")
+		}
+	} else {
+		if !util.StringSliceContains(extraArgs, "--binary") {
+			extraArgs = append(extraArgs, "--binary")
+		}
+		fullPatch, err = gitDiff(mergeBase, ref, extraArgs...)
+		if err != nil {
+			return nil, errors.Wrap(err, "Error getting patch")
+		}
 	}
-
-	patch, err := gitDiff(mergeBase, ref, extraArgs...)
-	if err != nil {
-		return nil, errors.Errorf("Error getting patch: %v", err)
-	}
-	return &localDiff{patch, stat, log, mergeBase}, nil
+	return &localDiff{fullPatch, stat, log, mergeBase}, nil
 }
 
 // gitMergeBase runs "git merge-base <branch1> <branch2>" and returns the
@@ -418,6 +423,11 @@ func gitDiff(base string, ref string, diffArgs ...string) (string, error) {
 	return gitCmd("diff", args...)
 }
 
+func gitFormatPatch(base string, ref string) (string, error) {
+	revisionRange := fmt.Sprintf("%s..%s", base, ref)
+	return gitCmd("format-patch", "--keep-subject", "--no-signature", "--stdout", "--no-ext-diff", "--summary", "--binary", revisionRange)
+}
+
 // getLog runs "git log <base>...<ref>
 func gitLog(base, ref string) (string, error) {
 	args := []string{fmt.Sprintf("%s...%s", base, ref), "--oneline"}
@@ -426,7 +436,8 @@ func gitLog(base, ref string) (string, error) {
 
 func gitCommitMessages(base, ref string) (string, error) {
 	args := []string{"--no-show-signature", "--pretty=format:%B", fmt.Sprintf("%s@{upstream}..%s", base, ref)}
-	return gitCmd("log", args...)
+	msg, err := gitCmd("log", args...)
+	return strings.Replace(msg, "\n\n", "\n", -1), err // remove multiple line format if applicable
 }
 
 // assumes base includes @{upstream}

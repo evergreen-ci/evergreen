@@ -9,11 +9,11 @@ import (
 
 // APITestStats is the model to be returned by the API when querying test execution statistics.
 type APITestStats struct {
-	TestFile     APIString `json:"test_file"`
-	TaskName     APIString `json:"task_name,omitempty"`
-	BuildVariant APIString `json:"variant,omitempty"`
-	Distro       APIString `json:"distro,omitempty"`
-	Date         APIString `json:"date"`
+	TestFile     *string `json:"test_file"`
+	TaskName     *string `json:"task_name,omitempty"`
+	BuildVariant *string `json:"variant,omitempty"`
+	Distro       *string `json:"distro,omitempty"`
+	Date         *string `json:"date"`
 
 	NumPass         int     `json:"num_pass"`
 	NumFail         int     `json:"num_fail"`
@@ -24,11 +24,11 @@ type APITestStats struct {
 func (apiTestStats *APITestStats) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *stats.TestStats:
-		apiTestStats.TestFile = ToAPIString(v.TestFile)
-		apiTestStats.TaskName = ToAPIString(v.TaskName)
-		apiTestStats.BuildVariant = ToAPIString(v.BuildVariant)
-		apiTestStats.Distro = ToAPIString(v.Distro)
-		apiTestStats.Date = ToAPIString(v.Date.UTC().Format("2006-01-02"))
+		apiTestStats.TestFile = ToStringPtr(v.TestFile)
+		apiTestStats.TaskName = ToStringPtr(v.TaskName)
+		apiTestStats.BuildVariant = ToStringPtr(v.BuildVariant)
+		apiTestStats.Distro = ToStringPtr(v.Distro)
+		apiTestStats.Date = ToStringPtr(v.Date.UTC().Format("2006-01-02"))
 
 		apiTestStats.NumPass = v.NumPass
 		apiTestStats.NumFail = v.NumFail
@@ -47,20 +47,20 @@ func (apiTestStats *APITestStats) ToService() (interface{}, error) {
 // StartAtKey returns the start_at key parameter that can be used to paginate and start at this element.
 func (apiTestStats *APITestStats) StartAtKey() string {
 	return StartAtKey{
-		date:         FromAPIString(apiTestStats.Date),
-		buildVariant: FromAPIString(apiTestStats.BuildVariant),
-		taskName:     FromAPIString(apiTestStats.TaskName),
-		testFile:     FromAPIString(apiTestStats.TestFile),
-		distro:       FromAPIString(apiTestStats.Distro),
+		date:         FromStringPtr(apiTestStats.Date),
+		buildVariant: FromStringPtr(apiTestStats.BuildVariant),
+		taskName:     FromStringPtr(apiTestStats.TaskName),
+		testFile:     FromStringPtr(apiTestStats.TestFile),
+		distro:       FromStringPtr(apiTestStats.Distro),
 	}.String()
 }
 
 // APITaskStats is the model to be returned by the API when querying task execution statistics
 type APITaskStats struct {
-	TaskName     APIString `json:"task_name"`
-	BuildVariant APIString `json:"variant,omitempty"`
-	Distro       APIString `json:"distro,omitempty"`
-	Date         APIString `json:"date"`
+	TaskName     *string `json:"task_name"`
+	BuildVariant *string `json:"variant,omitempty"`
+	Distro       *string `json:"distro,omitempty"`
+	Date         *string `json:"date"`
 
 	NumSuccess         int     `json:"num_success"`
 	NumFailed          int     `json:"num_failed"`
@@ -76,10 +76,10 @@ type APITaskStats struct {
 func (apiTaskStats *APITaskStats) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *stats.TaskStats:
-		apiTaskStats.TaskName = ToAPIString(v.TaskName)
-		apiTaskStats.BuildVariant = ToAPIString(v.BuildVariant)
-		apiTaskStats.Distro = ToAPIString(v.Distro)
-		apiTaskStats.Date = ToAPIString(v.Date.UTC().Format("2006-01-02"))
+		apiTaskStats.TaskName = ToStringPtr(v.TaskName)
+		apiTaskStats.BuildVariant = ToStringPtr(v.BuildVariant)
+		apiTaskStats.Distro = ToStringPtr(v.Distro)
+		apiTaskStats.Date = ToStringPtr(v.Date.UTC().Format("2006-01-02"))
 
 		apiTaskStats.NumSuccess = v.NumSuccess
 		apiTaskStats.NumFailed = v.NumFailed
@@ -103,10 +103,10 @@ func (apiTaskStats *APITaskStats) ToService() (interface{}, error) {
 // StartAtKey returns the start_at key parameter that can be used to paginate and start at this element.
 func (apiTaskStats *APITaskStats) StartAtKey() string {
 	return StartAtKey{
-		date:         FromAPIString(apiTaskStats.Date),
-		buildVariant: FromAPIString(apiTaskStats.BuildVariant),
-		taskName:     FromAPIString(apiTaskStats.TaskName),
-		distro:       FromAPIString(apiTaskStats.Distro),
+		date:         FromStringPtr(apiTaskStats.Date),
+		buildVariant: FromStringPtr(apiTaskStats.BuildVariant),
+		taskName:     FromStringPtr(apiTaskStats.TaskName),
+		distro:       FromStringPtr(apiTaskStats.Distro),
 	}.String()
 }
 
