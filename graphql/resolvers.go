@@ -56,14 +56,18 @@ func (r *queryResolver) Task(ctx context.Context, taskID string) (*model.APITask
 	if err != nil {
 		return nil, errors.Wrap(err, "error converting task")
 	}
+	err = apiTask.BuildFromService(r.sc.GetURL())
+	if err != nil {
+		return nil, errors.Wrap(err, "error converting task")
+	}
 	return &apiTask, nil
 }
 
 // New injects resources into the resolvers, such as the data connector
-func New() Config {
+func New(apiURL string) Config {
 	return Config{
 		Resolvers: &Resolver{
-			sc: &data.DBConnector{},
+			sc: &data.DBConnector{URL: apiURL},
 		},
 	}
 }
