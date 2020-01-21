@@ -1265,7 +1265,8 @@ type APISchedulerConfig struct {
 	AcceptableHostIdleTimeSeconds int     `json:"acceptable_host_idle_time_seconds"`
 	GroupVersions                 bool    `json:"group_versions"`
 	PatchFactor                   int64   `json:"patch_factor"`
-	TimeInQueueFactor             int64   `json:"time_in_queue_factor"`
+	PatchTimeInQueueFactor        int64   `json:"patch_time_in_queue_factor"`
+	MainlineTimeInQueueFactor     int64   `json:"mainline_time_in_queue_factor"`
 	ExpectedRuntimeFactor         int64   `json:"expected_runtime_factor"`
 }
 
@@ -1281,7 +1282,8 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 		a.AcceptableHostIdleTimeSeconds = v.AcceptableHostIdleTimeSeconds
 		a.GroupVersions = v.GroupVersions
 		a.PatchFactor = v.PatchFactor
-		a.TimeInQueueFactor = v.TimeInQueueFactor
+		a.PatchTimeInQueueFactor = v.PatchTimeInQueueFactor
+		a.MainlineTimeInQueueFactor = v.MainlineTimeInQueueFactor
 		a.ExpectedRuntimeFactor = v.ExpectedRuntimeFactor
 	default:
 		return errors.Errorf("%T is not a supported type", h)
@@ -1301,7 +1303,8 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 		GroupVersions:                 a.GroupVersions,
 		PatchFactor:                   a.PatchFactor,
 		ExpectedRuntimeFactor:         a.ExpectedRuntimeFactor,
-		TimeInQueueFactor:             a.TimeInQueueFactor,
+		PatchTimeInQueueFactor:        a.PatchTimeInQueueFactor,
+		MainlineTimeInQueueFactor:     a.MainlineTimeInQueueFactor,
 	}, nil
 }
 

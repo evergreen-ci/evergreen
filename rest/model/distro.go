@@ -15,12 +15,13 @@ import (
 // APIPlannerSettings is the model to be returned by the API whenever distro.PlannerSettings are fetched
 
 type APIPlannerSettings struct {
-	Version               *string       `json:"version"`
-	TargetTime            time.Duration `json:"target_time"`
-	GroupVersions         *bool         `json:"group_versions"`
-	PatchFactor           int64         `json:"patch_factor"`
-	TimeInQueueFactor     int64         `json:"time_in_queue_factor"`
-	ExpectedRuntimeFactor int64         `json:"expected_runtime_factor"`
+	Version                   *string       `json:"version"`
+	TargetTime                time.Duration `json:"target_time"`
+	GroupVersions             *bool         `json:"group_versions"`
+	PatchFactor               int64         `json:"patch_factor"`
+	PatchTimeInQueueFactor    int64         `json:"patch_time_in_queue_factor"`
+	MainlineTimeInQueueFactor int64         `json:"mainline_time_in_queue_factor"`
+	ExpectedRuntimeFactor     int64         `json:"expected_runtime_factor"`
 }
 
 // BuildFromService converts from service level distro.PlannerSetting to an APIPlannerSettings
@@ -44,7 +45,8 @@ func (s *APIPlannerSettings) BuildFromService(h interface{}) error {
 	s.GroupVersions = settings.GroupVersions
 	s.PatchFactor = settings.PatchFactor
 	s.ExpectedRuntimeFactor = settings.ExpectedRuntimeFactor
-	s.TimeInQueueFactor = settings.TimeInQueueFactor
+	s.PatchTimeInQueueFactor = settings.PatchTimeInQueueFactor
+	s.MainlineTimeInQueueFactor = settings.MainlineTimeInQueueFactor
 
 	return nil
 }
@@ -59,7 +61,8 @@ func (s *APIPlannerSettings) ToService() (interface{}, error) {
 	settings.TargetTime = s.TargetTime
 	settings.GroupVersions = s.GroupVersions
 	settings.PatchFactor = s.PatchFactor
-	settings.TimeInQueueFactor = s.TimeInQueueFactor
+	settings.PatchTimeInQueueFactor = s.PatchTimeInQueueFactor
+	settings.MainlineTimeInQueueFactor = s.MainlineTimeInQueueFactor
 	settings.ExpectedRuntimeFactor = s.ExpectedRuntimeFactor
 
 	return interface{}(settings), nil
