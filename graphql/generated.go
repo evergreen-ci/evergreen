@@ -741,106 +741,98 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var parsedSchema = gqlparser.MustLoadSchema(
-	&ast.Source{Name: "graphql/schema.graphql", Input: `type Query {
-  userPatches(userId: String!): [Patch]!
-  task(taskId: String!): Task
-}
-
+	&ast.Source{Name: "schema.graphql", Input: `scalar Duration
 type Patch {
-  id: ID!
-  description: String!
-  projectID: String!
-  githash: String!
-  patchNumber: Int!
-  author: String!
-  version: String!
-  status: String!
-  createTime: Time!
-  startTime: Time
-  finishTime: Time
-  variants: [String]!
-  tasks: [String]!
-  variantsTasks: [VariantTask]!
-  activated: Boolean!
-  alias: String!
+	id: ID!
+	description: String!
+	projectID: String!
+	githash: String!
+	patchNumber: Int!
+	author: String!
+	version: String!
+	status: String!
+	createTime: Time!
+	startTime: Time
+	finishTime: Time
+	variants: [String]!
+	tasks: [String]!
+	variantsTasks: [VariantTask]!
+	activated: Boolean!
+	alias: String!
 }
-
-type VariantTask {
-  name: String!
-  tasks: [String]!
+type Query {
+	userPatches(userId: String!): [Patch]!
+	task(taskId: String!): Task
 }
-
-type TaskLogs {
-  AllLogLink: String
-  AgentLogLink: String
-  SystemLogLink: String
-  TaskLogLink: String
-}
-
-type TaskEndDetail {
-  status: String!
-  type: String!
-  description: String
-  timedOut: Boolean
-}
-
-type TestResult {
-  status: String!
-  testFile: String!
-  logs: TestLog!
-  exitCode: Int
-  startTime: Time
-  endTime: Time
-}
-
-type TestLog {
-  url: String
-  urlRaw: String
-  lineNum: Int
-  logId: String
-}
-
 type Task {
-  id: String!
-  createTime: Time
-  ingestTime: Time
-  dispatchTime: Time
-  scheduledTime: Time
-  startTime: Time
-  finishTime: Time
-  activatedTime: Time
-  version: String!
-  projectId: String!
-  revision: String
-  priority: Int
-  taskGroup: String
-  taskGroupMaxHosts: Int
-  logs: TaskLogs
-  activated: Boolean!
-  activatedBy: String
-  buildId: String!
-  distroId: String!
-  buildVariant: String!
-  dependsOn: [String!]
-  displayName: String!
-  hostId: String
-  restarts: Int
-  execution: Int
-  order: Int
-  requester: String!
-  status: String!
-  details: TaskEndDetail
-  timeTaken: Duration
-  expectedDuration: Duration
-  testResults: [TestResult!]
-  displayOnly: Boolean
-  executionTasks: [String!]
-  generateTask: Boolean
-  generatedBy: String
+	id: String!
+	createTime: Time
+	ingestTime: Time
+	dispatchTime: Time
+	scheduledTime: Time
+	startTime: Time
+	finishTime: Time
+	activatedTime: Time
+	version: String!
+	projectId: String!
+	revision: String
+	priority: Int
+	taskGroup: String
+	taskGroupMaxHosts: Int
+	logs: TaskLogs
+	activated: Boolean!
+	activatedBy: String
+	buildId: String!
+	distroId: String!
+	buildVariant: String!
+	dependsOn: [String!]
+	displayName: String!
+	hostId: String
+	restarts: Int
+	execution: Int
+	order: Int
+	requester: String!
+	status: String!
+	details: TaskEndDetail
+	timeTaken: Duration
+	expectedDuration: Duration
+	testResults: [TestResult!]
+	displayOnly: Boolean
+	executionTasks: [String!]
+	generateTask: Boolean
+	generatedBy: String
 }
-
+type TaskEndDetail {
+	status: String!
+	type: String!
+	description: String
+	timedOut: Boolean
+}
+type TaskLogs {
+	AllLogLink: String
+	AgentLogLink: String
+	SystemLogLink: String
+	TaskLogLink: String
+}
+type TestLog {
+	url: String
+	urlRaw: String
+	lineNum: Int
+	logId: String
+}
+type TestResult {
+	status: String!
+	testFile: String!
+	logs: TestLog!
+	exitCode: Int
+	startTime: Time
+	endTime: Time
+}
 scalar Time
-scalar Duration
+type VariantTask {
+	name: String!
+	tasks: [String]!
+}
 `},
 )
 
