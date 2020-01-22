@@ -13,7 +13,6 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
-	"github.com/evergreen-ci/evergreen/graphql/customscalars"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/vektah/gqlparser"
 	"github.com/vektah/gqlparser/ast"
@@ -587,28 +586,28 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskEndDetail.Type(childComplexity), true
 
-	case "TaskLogs.AgentLogLink":
+	case "TaskLogs.agentLogLink":
 		if e.complexity.TaskLogs.AgentLogLink == nil {
 			break
 		}
 
 		return e.complexity.TaskLogs.AgentLogLink(childComplexity), true
 
-	case "TaskLogs.AllLogLink":
+	case "TaskLogs.allLogLink":
 		if e.complexity.TaskLogs.AllLogLink == nil {
 			break
 		}
 
 		return e.complexity.TaskLogs.AllLogLink(childComplexity), true
 
-	case "TaskLogs.SystemLogLink":
+	case "TaskLogs.systemLogLink":
 		if e.complexity.TaskLogs.SystemLogLink == nil {
 			break
 		}
 
 		return e.complexity.TaskLogs.SystemLogLink(childComplexity), true
 
-	case "TaskLogs.TaskLogLink":
+	case "TaskLogs.taskLogLink":
 		if e.complexity.TaskLogs.TaskLogLink == nil {
 			break
 		}
@@ -835,10 +834,10 @@ type TaskEndDetail {
 	timedOut: Boolean
 }
 type TaskLogs {
-	AllLogLink: String
-	AgentLogLink: String
-	SystemLogLink: String
-	TaskLogLink: String
+	allLogLink: String
+	agentLogLink: String
+	systemLogLink: String
+	taskLogLink: String
 }
 enum TaskSortCategory {
 	STATUS
@@ -2679,9 +2678,9 @@ func (ec *executionContext) _Task_timeTaken(ctx context.Context, field graphql.C
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(time.Duration)
+	res := resTmp.(model.APIDuration)
 	fc.Result = res
-	return ec.marshalODuration2timeᚐDuration(ctx, field.Selections, res)
+	return ec.marshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_expectedDuration(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -2710,9 +2709,9 @@ func (ec *executionContext) _Task_expectedDuration(ctx context.Context, field gr
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(time.Duration)
+	res := resTmp.(model.APIDuration)
 	fc.Result = res
-	return ec.marshalODuration2timeᚐDuration(ctx, field.Selections, res)
+	return ec.marshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_displayOnly(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -2969,7 +2968,7 @@ func (ec *executionContext) _TaskEndDetail_timedOut(ctx context.Context, field g
 	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _TaskLogs_AllLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
+func (ec *executionContext) _TaskLogs_allLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3000,7 +2999,7 @@ func (ec *executionContext) _TaskLogs_AllLogLink(ctx context.Context, field grap
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _TaskLogs_AgentLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
+func (ec *executionContext) _TaskLogs_agentLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3031,7 +3030,7 @@ func (ec *executionContext) _TaskLogs_AgentLogLink(ctx context.Context, field gr
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _TaskLogs_SystemLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
+func (ec *executionContext) _TaskLogs_systemLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3062,7 +3061,7 @@ func (ec *executionContext) _TaskLogs_SystemLogLink(ctx context.Context, field g
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _TaskLogs_TaskLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
+func (ec *executionContext) _TaskLogs_taskLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -4942,14 +4941,14 @@ func (ec *executionContext) _TaskLogs(ctx context.Context, sel ast.SelectionSet,
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("TaskLogs")
-		case "AllLogLink":
-			out.Values[i] = ec._TaskLogs_AllLogLink(ctx, field, obj)
-		case "AgentLogLink":
-			out.Values[i] = ec._TaskLogs_AgentLogLink(ctx, field, obj)
-		case "SystemLogLink":
-			out.Values[i] = ec._TaskLogs_SystemLogLink(ctx, field, obj)
-		case "TaskLogLink":
-			out.Values[i] = ec._TaskLogs_TaskLogLink(ctx, field, obj)
+		case "allLogLink":
+			out.Values[i] = ec._TaskLogs_allLogLink(ctx, field, obj)
+		case "agentLogLink":
+			out.Values[i] = ec._TaskLogs_agentLogLink(ctx, field, obj)
+		case "systemLogLink":
+			out.Values[i] = ec._TaskLogs_systemLogLink(ctx, field, obj)
+		case "taskLogLink":
+			out.Values[i] = ec._TaskLogs_taskLogLink(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -5820,12 +5819,12 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return ec.marshalOBoolean2bool(ctx, sel, *v)
 }
 
-func (ec *executionContext) unmarshalODuration2timeᚐDuration(ctx context.Context, v interface{}) (time.Duration, error) {
-	return customscalars.UnmarshalDuration(v)
+func (ec *executionContext) unmarshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx context.Context, v interface{}) (model.APIDuration, error) {
+	return model.UnmarshalAPIDuration(v)
 }
 
-func (ec *executionContext) marshalODuration2timeᚐDuration(ctx context.Context, sel ast.SelectionSet, v time.Duration) graphql.Marshaler {
-	return customscalars.MarshalDuration(v)
+func (ec *executionContext) marshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx context.Context, sel ast.SelectionSet, v model.APIDuration) graphql.Marshaler {
+	return model.MarshalAPIDuration(v)
 }
 
 func (ec *executionContext) unmarshalOFloat2float64(ctx context.Context, v interface{}) (float64, error) {
