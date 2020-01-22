@@ -11,6 +11,7 @@ import (
 // APITest contains the data to be returned whenever a test is used in the
 // API.
 type APITest struct {
+	Id        *string   `json:"test_id"`
 	TaskId    *string   `json:"task_id"`
 	Status    *string   `json:"status"`
 	TestFile  *string   `json:"test_file"`
@@ -35,6 +36,7 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		at.Status = ToStringPtr(v.Status)
 		at.TestFile = ToStringPtr(v.TestFile)
 		at.ExitCode = v.ExitCode
+		at.Id = ToStringPtr(v.ID.Hex())
 
 		startTime := util.FromPythonTime(v.StartTime)
 		endTime := util.FromPythonTime(v.EndTime)
