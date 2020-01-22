@@ -186,13 +186,13 @@ func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
 	exampleConf := confFile{currentUser.Id, currentUser.APIKey, uis.Settings.ApiUrl + "/api", uis.Settings.Ui.Url}
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
-		Data       user.UserSettings
-		Config     confFile
-		Binaries   []evergreen.ClientBinary
-		GithubUser string
-		GithubUID  int
-		AuthIsLDAP bool
+		Data           user.UserSettings
+		Config         confFile
+		Binaries       []evergreen.ClientBinary
+		GithubUser     string
+		GithubUID      int
+		CanClearTokens bool
 		ViewData
-	}{settingsData, exampleConf, uis.clientConfig.ClientBinaries, currentUser.Settings.GithubUser.LastKnownAs, currentUser.Settings.GithubUser.UID, uis.umIsLDAP, uis.GetCommonViewData(w, r, true, true)},
+	}{settingsData, exampleConf, uis.clientConfig.ClientBinaries, currentUser.Settings.GithubUser.LastKnownAs, currentUser.Settings.GithubUser.UID, uis.umCanClearTokens, uis.GetCommonViewData(w, r, true, true)},
 		"base", "settings.html", "base_angular.html", "menu.html")
 }

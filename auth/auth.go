@@ -14,34 +14,57 @@ import (
 
 //LoadUserManager is used to check the configuration for authentication and create a UserManager
 // depending on what type of authentication is used.
-func LoadUserManager(authConfig evergreen.AuthConfig) (gimlet.UserManager, bool, error) {
-	var manager gimlet.UserManager
-	var err error
-	if authConfig.LDAP != nil {
-		manager, err = NewLDAPUserManager(authConfig.LDAP)
+func LoadUserManager(authConfig evergreen.AuthConfig) (um gimlet.UserManager, supportsClearTokens bool, err error) {
+	makeLDAPManager := func() (gimlet.UserManager, bool, error) {
+		manager, err := NewLDAPUserManager(authConfig.LDAP)
 		if err != nil {
 			return nil, false, errors.Wrap(err, "problem setting up ldap authentication")
 		}
 		return manager, true, nil
 	}
-	if authConfig.Naive != nil {
-		manager, err = NewNaiveUserManager(authConfig.Naive)
+	makeNaiveManager := func() (gimlet.UserManager, bool, error) {
+		manager, err := NewNaiveUserManager(authConfig.Naive)
 		if err != nil {
 			return nil, false, errors.Wrap(err, "problem setting up naive authentication")
 		}
 		return manager, false, nil
 	}
-	if authConfig.Github != nil {
-		var domain string
+	makeGithubManager := func() (gimlet.UserManager, bool, error) {
 		env := evergreen.GetEnvironment()
+		var domain string
 		if env != nil {
 			domain = env.Settings().Ui.LoginDomain
 		}
-		manager, err = NewGithubUserManager(authConfig.Github, domain)
+		manager, err := NewGithubUserManager(authConfig.Github, domain)
 		if err != nil {
 			return nil, false, errors.Wrap(err, "problem setting up github authentication")
 		}
 		return manager, false, nil
+	}
+
+	switch authConfig.PreferredType {
+	case evergreen.AuthLDAPKey:
+		if authConfig.LDAP != nil {
+			return makeLDAPManager()
+		}
+	case evergreen.AuthGithubKey:
+		if authConfig.Github != nil {
+			return makeGithubManager()
+		}
+	case evergreen.AuthNaiveKey:
+		if authConfig.Naive != nil {
+			return makeNaiveManager()
+		}
+	}
+
+	if authConfig.LDAP != nil {
+		return makeLDAPManager()
+	}
+	if authConfig.Naive != nil {
+		return makeNaiveManager()
+	}
+	if authConfig.Github != nil {
+		return makeGithubManager()
 	}
 	return nil, false, errors.New("Must have at least one form of authentication, currently there are none")
 }
