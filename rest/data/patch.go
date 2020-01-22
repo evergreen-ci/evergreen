@@ -1,14 +1,17 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
@@ -102,8 +105,7 @@ func (pc *DBPatchConnector) SetPatchPriority(patchId string, priority int64) err
 	return model.SetVersionPriority(patchId, priority)
 }
 
-// SetPatchActivated attempts to set the priority on the patch and the corresponding
-// version. Will not error if no version exists.
+// SetPatchActivated attempts to activate the patch and create a new version (if activated is set to true)
 func (pc *DBPatchConnector) SetPatchActivated(patchId string, user string, activated bool) error {
 	p, err := patch.FindOne(patch.ById(mgobson.ObjectIdHex(patchId)))
 	if err != nil {
@@ -113,6 +115,31 @@ func (pc *DBPatchConnector) SetPatchActivated(patchId string, user string, activ
 	if err != nil {
 		return err
 	}
+	if activated && p.Version == "" {
+		ctx := context.Background()
+		requester := p.GetRequester()
+
+		settings, err := evergreen.GetConfig()
+		if err != nil {
+			return errors.Wrap(err, "error getting settings config")
+		}
+		token, err := settings.GetGithubOauthToken()
+		if err != nil {
+			return errors.Wrap(err, "error getting github token from settings")
+		}
+		if _, err = model.FinalizePatch(ctx, p, requester, token); err != nil {
+			return errors.Wrapf(err, "error finalizing patch '%s'", p.Id.Hex())
+		}
+
+		if p.IsGithubPRPatch() {
+			job := units.NewGithubStatusUpdateJobForNewPatch(p.Id.Hex())
+			q := evergreen.GetEnvironment().LocalQueue()
+			if err := q.Put(ctx, job); err != nil {
+				return errors.Wrap(err, "Error adding github status update job to queue")
+			}
+		}
+	}
+
 	return model.SetVersionActivation(patchId, activated, user)
 }
 
