@@ -199,8 +199,11 @@ type APIHostScript struct {
 	Script string   `json:"script"`
 }
 
-type APIHostScriptResponse struct {
-	Output map[string]string `json:"output"`
+type APIHostProcess struct {
+	HostID   string `json:"host_id"`
+	ProcID   string `json:"proc_id"`
+	Complete bool   `json:"complete"`
+	Output   string `json:"output"`
 }
 
 type APIHostParams struct {

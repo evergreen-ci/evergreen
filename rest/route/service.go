@@ -94,7 +94,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 
 	app.AddRoute("/hooks/github").Version(2).Post().RouteHandler(makeGithubHooksRoute(sc, opts.APIQueue, opts.GithubSecret, settings))
 	app.AddRoute("/host/range").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchHostRange(sc))
-	app.AddRoute("/host/run_script").Version(2).Post().Wrap(checkUser).RouteHandler(makeHostRunScript(sc, env))
+	app.AddRoute("/host/start_processes").Version(2).Post().Wrap(checkUser).RouteHandler(makeHostStartProcesses(sc, env))
+	app.AddRoute("/host/get_processes").Version(2).Get().Wrap(checkUser).RouteHandler(makeHostGetProcesses(sc, env))
 	app.AddRoute("/hosts").Version(2).Get().RouteHandler(makeFetchHosts(sc))
 	app.AddRoute("/hosts").Version(2).Post().Wrap(checkUser).RouteHandler(makeSpawnHostCreateRoute(sc, env.Settings()))
 	app.AddRoute("/hosts").Version(2).Patch().Wrap(superUser).RouteHandler(makeChangeHostsStatuses(sc))

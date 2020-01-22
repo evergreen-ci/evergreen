@@ -756,16 +756,29 @@ func hostRunCommand() cli.Command {
 				}
 			}
 
-			hostOutputs, err := client.RunHostScript(ctx, hostIDs, script)
+			hostsOutput, err := client.StartHostProcesses(ctx, hostIDs, script)
 			if err != nil {
 				return errors.Wrap(err, "problem running command")
 			}
 
-			for hostName, hostOutput := range hostOutputs {
-				if len(hostOutputs) > 1 {
-					grip.Infof("'%s' output: ", hostName)
+			// poll for process output
+			for len(hostsOutput) > 0 {
+				time.Sleep(time.Second * 5)
+
+				runningProcesses := 0
+				for _, hostOutput := range hostsOutput {
+					if hostOutput.Complete {
+						grip.Infof("'%s' output: ", hostOutput.HostID)
+						grip.Info(hostOutput.Output)
+					} else {
+						hostsOutput[runningProcesses] = hostOutput
+						runningProcesses++
+					}
 				}
-				grip.Info(hostOutput)
+				hostsOutput, err = client.GetHostProcessOutput(ctx, hostsOutput[:runningProcesses])
+				if err != nil {
+					return errors.Wrap(err, "can't get process output")
+				}
 			}
 
 			return nil

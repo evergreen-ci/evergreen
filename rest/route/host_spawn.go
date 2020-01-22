@@ -24,6 +24,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
+	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
@@ -1105,9 +1106,9 @@ func (h *hostExtendExpirationHandler) Run(ctx context.Context) gimlet.Responder 
 
 ////////////////////////////////////////////////////////////////////////
 //
-// POST /rest/v2/hosts/{host_id}/run_command
+// POST /rest/v2/host/start_process
 //
-type hostRunScript struct {
+type hostStartProcesses struct {
 	sc  data.Connector
 	env evergreen.Environment
 
@@ -1115,82 +1116,185 @@ type hostRunScript struct {
 	script  string
 }
 
-func makeHostRunScript(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
-	return &hostRunScript{
+func makeHostStartProcesses(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+	return &hostStartProcesses{
 		sc:  sc,
 		env: env,
 	}
 }
 
-func (h *hostRunScript) Factory() gimlet.RouteHandler {
-	return &hostRunScript{
-		sc:  h.sc,
-		env: h.env,
+func (hs *hostStartProcesses) Factory() gimlet.RouteHandler {
+	return &hostStartProcesses{
+		sc:  hs.sc,
+		env: hs.env,
 	}
 }
 
-func (h *hostRunScript) Parse(ctx context.Context, r *http.Request) error {
+func (hs *hostStartProcesses) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	hostScriptOpts := model.APIHostScript{}
 	if err = util.ReadJSONInto(util.NewRequestReader(r), &hostScriptOpts); err != nil {
 		return errors.Wrap(err, "can't read host command from json")
 	}
-	h.script = hostScriptOpts.Script
-	h.hostIDs = hostScriptOpts.Hosts
+	hs.script = hostScriptOpts.Script
+	hs.hostIDs = hostScriptOpts.Hosts
 
 	return nil
 }
 
-func (h *hostRunScript) Run(ctx context.Context) gimlet.Responder {
+func (hs *hostStartProcesses) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	type hostOutput struct {
-		hostID string
-		output string
-	}
-	hostsOutput := make(chan hostOutput, len(h.hostIDs))
+
+	hostsOutput := make(chan model.APIHostProcess, len(hs.hostIDs))
 	wg := &sync.WaitGroup{}
-	wg.Add(len(h.hostIDs))
-	for _, hostID := range h.hostIDs {
+	wg.Add(len(hs.hostIDs))
+	for _, hostID := range hs.hostIDs {
 		go func(ctx context.Context, hostID string, u *user.DBUser) {
 			defer wg.Done()
 			defer recovery.LogStackTraceAndContinue(fmt.Sprintf("Running script on host '%s'", hostID))
 
-			host, err := h.sc.FindHostByIdWithOwner(hostID, u)
+			h, err := hs.sc.FindHostByIdWithOwner(hostID, u)
 			if err != nil {
-				hostsOutput <- hostOutput{hostID: hostID, output: errors.Wrap(err, "can't get host").Error()}
+				hostsOutput <- model.APIHostProcess{
+					HostID:   hostID,
+					Complete: true,
+					Output:   errors.Wrap(err, "can't get host").Error(),
+				}
 				return
 			}
-			if host.Status != evergreen.HostRunning {
-				hostsOutput <- hostOutput{hostID: hostID, output: errors.Errorf("can't run script on host with status '%s'", host.Status).Error()}
+			if h.Status != evergreen.HostRunning {
+				hostsOutput <- model.APIHostProcess{
+					HostID:   hostID,
+					Complete: true,
+					Output:   errors.Errorf("can't run script on host with status '%s'", h.Status).Error(),
+				}
 				return
 			}
-			if !host.JasperCommunication() {
-				hostsOutput <- hostOutput{hostID: hostID, output: errors.Errorf("can't run script on host of distro '%s' because it doesn't support Jasper communication", host.Distro.Id).Error()}
+			if !h.JasperCommunication() {
+				hostsOutput <- model.APIHostProcess{
+					HostID:   hostID,
+					Complete: true,
+					Output:   errors.Errorf("can't run script on host of distro '%s' because it doesn't support Jasper communication", h.Distro.Id).Error(),
+				}
 				return
 			}
 
-			bashPath := filepath.Join(host.Distro.BootstrapSettings.RootDir, host.Distro.BootstrapSettings.ShellPath)
+			bashPath := filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.ShellPath)
 			opts := &options.Create{
-				Args: []string{bashPath, "-l", "-c", h.script},
+				Args:   []string{bashPath, "-l", "-c", hs.script},
+				Output: options.Output{Loggers: []options.Logger{jasper.NewInMemoryLogger(host.OutputBufferSize)}},
 			}
-			processOutput, err := host.RunJasperProcess(ctx, h.env, opts)
+			procID, err := h.StartJasperProcess(ctx, hs.env, opts)
 			if err != nil {
-				hostsOutput <- hostOutput{hostID: hostID, output: errors.Wrap(err, "can't run script with Jasper").Error()}
+				hostsOutput <- model.APIHostProcess{
+					HostID:   hostID,
+					Complete: true,
+					Output:   errors.Wrap(err, "can't run script with Jasper").Error(),
+				}
 				return
 			}
-			hostsOutput <- hostOutput{hostID: hostID, output: strings.Join(processOutput, "\n")}
+			hostsOutput <- model.APIHostProcess{
+				HostID:   hostID,
+				Complete: false,
+				ProcID:   procID,
+			}
 		}(ctx, hostID, u)
 	}
 
 	wg.Wait()
 	close(hostsOutput)
 
-	outputMap := make(map[string]string)
+	response := gimlet.NewResponseBuilder()
 	for output := range hostsOutput {
-		outputMap[output.hostID] = output.output
+		response.AddData(output)
+	}
+	return response
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// GET /rest/v2/host/get_process
+//
+type hostGetProcesses struct {
+	sc  data.Connector
+	env evergreen.Environment
+
+	hostProcesses []model.APIHostProcess
+}
+
+func makeHostGetProcesses(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+	return &hostGetProcesses{
+		sc:  sc,
+		env: env,
+	}
+}
+
+func (h *hostGetProcesses) Factory() gimlet.RouteHandler {
+	return &hostGetProcesses{
+		sc:  h.sc,
+		env: h.env,
+	}
+}
+
+func (h *hostGetProcesses) Parse(ctx context.Context, r *http.Request) error {
+	var err error
+	hostProcesses := []model.APIHostProcess{}
+	if err = util.ReadJSONInto(util.NewRequestReader(r), &hostProcesses); err != nil {
+		return errors.Wrap(err, "can't read host processes from json")
+	}
+	h.hostProcesses = hostProcesses
+
+	return nil
+}
+
+func (h *hostGetProcesses) Run(ctx context.Context) gimlet.Responder {
+	u := MustHaveUser(ctx)
+
+	hostsOutput := make(chan model.APIHostProcess, len(h.hostProcesses))
+	wg := &sync.WaitGroup{}
+	wg.Add(len(h.hostProcesses))
+	for _, process := range h.hostProcesses {
+		go func(ctx context.Context, hostID, processID string, u *user.DBUser) {
+			defer wg.Done()
+			defer recovery.LogStackTraceAndContinue(fmt.Sprintf("Getting output of process '%s'", processID))
+
+			host, err := h.sc.FindHostByIdWithOwner(hostID, u)
+			if err != nil {
+				hostsOutput <- model.APIHostProcess{
+					HostID:   hostID,
+					ProcID:   processID,
+					Complete: true,
+					Output:   errors.Wrap(err, "can't get host").Error(),
+				}
+				return
+			}
+
+			complete, output, err := host.GetJasperProcess(ctx, h.env, processID)
+			if err != nil {
+				hostsOutput <- model.APIHostProcess{
+					HostID:   hostID,
+					Complete: true,
+					Output:   errors.Wrap(err, "can't get process with Jasper").Error(),
+				}
+				return
+			}
+			hostsOutput <- model.APIHostProcess{
+				HostID:   hostID,
+				Complete: complete,
+				ProcID:   processID,
+				Output:   output,
+			}
+		}(ctx, process.HostID, process.ProcID, u)
 	}
 
-	return gimlet.NewJSONResponse(model.APIHostScriptResponse{Output: outputMap})
+	wg.Wait()
+	close(hostsOutput)
+
+	response := gimlet.NewResponseBuilder()
+	for output := range hostsOutput {
+		response.AddData(output)
+	}
+	return response
 }
 
 ////////////////////////////////////////////////////////////////////////

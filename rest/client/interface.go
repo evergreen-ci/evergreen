@@ -152,7 +152,8 @@ type Communicator interface {
 	CreateVolume(context.Context, *host.Volume) (*restmodel.APIVolume, error)
 	DeleteVolume(context.Context, string) error
 	GetVolumesByUser(context.Context) ([]restmodel.APIVolume, error)
-	RunHostScript(context.Context, []string, string) (map[string]string, error)
+	StartHostProcesses(context.Context, []string, string) ([]restmodel.APIHostProcess, error)
+	GetHostProcessOutput(context.Context, []restmodel.APIHostProcess) ([]restmodel.APIHostProcess, error)
 
 	// Fetch list of distributions evergreen can spawn
 	GetDistrosList(context.Context) ([]restmodel.APIDistro, error)

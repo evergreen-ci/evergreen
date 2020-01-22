@@ -30,6 +30,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+const OutputBufferSize = 1000
+
 // SetupCommand returns the command to run the host setup script.
 func (h *Host) SetupCommand() string {
 	cmd := fmt.Sprintf("cd %s && ./%s host setup", h.Distro.HomeDir(), h.Distro.BinaryName())
@@ -697,7 +699,7 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 		}
 	}
 	if !inMemoryLoggerExists {
-		opts.Output.Loggers = append(opts.Output.Loggers, jasper.NewInMemoryLogger(1000))
+		opts.Output.Loggers = append(opts.Output.Loggers, jasper.NewInMemoryLogger(OutputBufferSize))
 	}
 
 	proc, err := client.CreateProcess(ctx, opts)
@@ -710,29 +712,20 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 		catcher.Wrap(err, "problem waiting for process completion")
 	}
 
-	var logs []string
-	for {
-		logStream, err := client.GetLogStream(ctx, proc.ID(), 1000)
-		if err != nil {
-			catcher.Wrap(err, "can't get output of process")
-			break
-		}
-
-		logs = append(logs, logStream.Logs...)
-		if logStream.Done {
-			break
-		}
+	logStream, err := client.GetLogStream(ctx, proc.ID(), OutputBufferSize)
+	if err != nil {
+		catcher.Wrap(err, "can't get output of process")
 	}
 
-	return logs, catcher.Resolve()
+	return logStream.Logs, catcher.Resolve()
 }
 
 // StartJasperProcess makes a request to the host's Jasper service to start a
 // process with the given options without waiting for its completion.
-func (h *Host) StartJasperProcess(ctx context.Context, env evergreen.Environment, opts *options.Create) error {
+func (h *Host) StartJasperProcess(ctx context.Context, env evergreen.Environment, opts *options.Create) (string, error) {
 	client, err := h.JasperClient(ctx, env)
 	if err != nil {
-		return errors.Wrap(err, "could not get a Jasper client")
+		return "", errors.Wrap(err, "could not get a Jasper client")
 	}
 	defer func() {
 		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
@@ -742,11 +735,57 @@ func (h *Host) StartJasperProcess(ctx context.Context, env evergreen.Environment
 		}))
 	}()
 
-	if _, err := client.CreateProcess(ctx, opts); err != nil {
-		return errors.Wrap(err, "problem creating Jasper process")
+	proc, err := client.CreateProcess(ctx, opts)
+	if err != nil {
+		return "", errors.Wrap(err, "problem creating Jasper process")
 	}
 
-	return nil
+	return proc.ID(), nil
+}
+
+// GetJasperProcess makes a request to the host's Jasper service to get a started
+// process's status. Processes with an output logger return output
+func (h *Host) GetJasperProcess(ctx context.Context, env evergreen.Environment, processID string) (bool, string, error) {
+	client, err := h.JasperClient(ctx, env)
+	if err != nil {
+		return false, "", errors.Wrap(err, "could not get a Jasper client")
+	}
+	defer func() {
+		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
+			"message": "could not close connection to Jasper",
+			"host":    h.Id,
+			"distro":  h.Distro.Id,
+		}))
+	}()
+
+	proc, err := client.Get(ctx, processID)
+	if err != nil {
+		return false, "", errors.Wrap(err, "problem getting Jasper process")
+	}
+	info := proc.Info(ctx)
+	if !info.Complete {
+		return false, "", nil
+	}
+
+	bufferSize := 0
+	if len(info.Options.Output.Loggers) > 0 {
+		for _, logger := range info.Options.Output.Loggers {
+			if logger.Type == options.LogInMemory {
+				bufferSize = logger.Options.InMemoryCap
+				break
+			}
+		}
+	}
+	if bufferSize == 0 {
+		return true, "", nil
+	}
+
+	logStream, err := client.GetLogStream(ctx, processID, bufferSize)
+	if err != nil {
+		return true, "", errors.Wrap(err, "can't get output of process")
+	}
+
+	return true, strings.Join(logStream.Logs, "\n"), nil
 }
 
 const jasperDialTimeout = 15 * time.Second
