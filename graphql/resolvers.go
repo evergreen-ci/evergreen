@@ -2,7 +2,6 @@ package graphql
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -84,7 +83,6 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 	}
 	testPointers := []*model.APITest{}
 	for _, t := range tests {
-		fmt.Println(t.TestFile)
 		apiTest := model.APITest{}
 		err := apiTest.BuildFromService(&t)
 		if err != nil {
