@@ -1120,61 +1120,79 @@ func (c *communicatorImpl) GetManifestByTask(ctx context.Context, taskId string)
 	return &mfest, nil
 }
 
-func (c *communicatorImpl) StartHostProcesses(ctx context.Context, hostIDs []string, script string) ([]model.APIHostProcess, error) {
+func (c *communicatorImpl) StartHostProcesses(ctx context.Context, hostIDs []string, script string, batchSize int) ([]model.APIHostProcess, error) {
 	info := requestInfo{
 		method:  post,
 		version: apiVersion2,
 		path:    "/host/start_processes",
 	}
 
-	data := model.APIHostScript{Hosts: hostIDs, Script: script}
-	resp, err := c.request(ctx, info, data)
-	if err != nil {
-		return nil, errors.Wrap(err, "can't make request to run script on host")
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		restErr := gimlet.ErrorResponse{}
-		if err = util.ReadJSONInto(resp.Body, &restErr); err != nil {
-			return nil, errors.Wrap(err, "received an error but was unable to parse")
+	result := []model.APIHostProcess{}
+	for i := 0; i < len(hostIDs); i += batchSize {
+		end := i + batchSize
+		if end > len(hostIDs) {
+			end = len(hostIDs)
 		}
-		return nil, errors.Wrapf(restErr, "response code %d running script on host", resp.StatusCode)
+		data := model.APIHostScript{Hosts: hostIDs[i:end], Script: script}
+		resp, err := c.request(ctx, info, data)
+		if err != nil {
+			return nil, errors.Wrap(err, "can't make request to run script on host")
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			restErr := gimlet.ErrorResponse{}
+			if err = util.ReadJSONInto(resp.Body, &restErr); err != nil {
+				return nil, errors.Wrap(err, "received an error but was unable to parse")
+			}
+			return nil, errors.Wrapf(restErr, "response code %d running script on host", resp.StatusCode)
+		}
+
+		output := []model.APIHostProcess{}
+		if err := util.ReadJSONInto(resp.Body, &output); err != nil {
+			return nil, errors.Wrap(err, "problem reading response")
+		}
+
+		result = append(result, output...)
 	}
 
-	output := []model.APIHostProcess{}
-	if err := util.ReadJSONInto(resp.Body, &output); err != nil {
-		return nil, errors.Wrap(err, "problem reading response")
-	}
-
-	return output, nil
+	return result, nil
 }
 
-func (c *communicatorImpl) GetHostProcessOutput(ctx context.Context, hostProcesses []model.APIHostProcess) ([]model.APIHostProcess, error) {
+func (c *communicatorImpl) GetHostProcessOutput(ctx context.Context, hostProcesses []model.APIHostProcess, batchSize int) ([]model.APIHostProcess, error) {
 	info := requestInfo{
 		method:  get,
 		version: apiVersion2,
 		path:    "/host/get_processes",
 	}
 
-	resp, err := c.request(ctx, info, hostProcesses)
-	if err != nil {
-		return nil, errors.Wrap(err, "can't make request to run script on host")
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		restErr := gimlet.ErrorResponse{}
-		if err = util.ReadJSONInto(resp.Body, &restErr); err != nil {
-			return nil, errors.Wrap(err, "received an error but was unable to parse")
+	result := []model.APIHostProcess{}
+	for i := 0; i < len(hostProcesses); i += batchSize {
+		end := i + batchSize
+		if end > len(hostProcesses) {
+			end = len(hostProcesses)
 		}
-		return nil, errors.Wrapf(restErr, "response code %d running script on host", resp.StatusCode)
+		resp, err := c.request(ctx, info, hostProcesses[i:end])
+		if err != nil {
+			return nil, errors.Wrap(err, "can't make request to run script on host")
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			restErr := gimlet.ErrorResponse{}
+			if err = util.ReadJSONInto(resp.Body, &restErr); err != nil {
+				return nil, errors.Wrap(err, "received an error but was unable to parse")
+			}
+			return nil, errors.Wrapf(restErr, "response code %d running script on host", resp.StatusCode)
+		}
+
+		output := []model.APIHostProcess{}
+		if err := util.ReadJSONInto(resp.Body, &output); err != nil {
+			return nil, errors.Wrap(err, "problem reading response")
+		}
+
+		result = append(result, output...)
 	}
 
-	output := []model.APIHostProcess{}
-	if err := util.ReadJSONInto(resp.Body, &output); err != nil {
-		return nil, errors.Wrap(err, "problem reading response")
-	}
-
-	return output, nil
+	return result, nil
 }

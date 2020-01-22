@@ -643,6 +643,7 @@ func hostRunCommand() cli.Command {
 		distroFlagName        = "distro"
 		userHostFlagName      = "user-host"
 		mineFlagName          = "mine"
+		batchSizeFlagName     = "batch-size"
 	)
 
 	return cli.Command{
@@ -677,6 +678,11 @@ func hostRunCommand() cli.Command {
 				Name:  pathFlagName,
 				Usage: "path to a file containing a script",
 			},
+			cli.IntFlag{
+				Name:  batchSizeFlagName,
+				Usage: "limit requests to batches of `BATCH_SIZE`",
+				Value: 10,
+			},
 		)),
 		Before: mergeBeforeFuncs(setPlainLogger, mutuallyExclusiveArgs(true, scriptFlagName, pathFlagName)),
 		Action: func(c *cli.Context) error {
@@ -690,6 +696,7 @@ func hostRunCommand() cli.Command {
 			script := c.String(scriptFlagName)
 			path := c.String(pathFlagName)
 			skipConfirm := c.Bool(yesFlagName)
+			batchSize := c.Int(batchSizeFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -756,7 +763,7 @@ func hostRunCommand() cli.Command {
 				}
 			}
 
-			hostsOutput, err := client.StartHostProcesses(ctx, hostIDs, script)
+			hostsOutput, err := client.StartHostProcesses(ctx, hostIDs, script, batchSize)
 			if err != nil {
 				return errors.Wrap(err, "problem running command")
 			}
@@ -775,7 +782,7 @@ func hostRunCommand() cli.Command {
 						runningProcesses++
 					}
 				}
-				hostsOutput, err = client.GetHostProcessOutput(ctx, hostsOutput[:runningProcesses])
+				hostsOutput, err = client.GetHostProcessOutput(ctx, hostsOutput[:runningProcesses], batchSize)
 				if err != nil {
 					return errors.Wrap(err, "can't get process output")
 				}

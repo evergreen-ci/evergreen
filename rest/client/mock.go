@@ -667,11 +667,11 @@ func (c *Mock) GetManifestByTask(context.Context, string) (*manifest.Manifest, e
 	return &manifest.Manifest{Id: "manifest0"}, nil
 }
 
-func (c *Mock) StartHostProcesses(context.Context, []string, string) ([]model.APIHostProcess, error) {
+func (c *Mock) StartHostProcesses(context.Context, []string, string, int) ([]model.APIHostProcess, error) {
 	return nil, nil
 }
 
-func (c *Mock) GetHostProcessOutput(context.Context, []model.APIHostProcess) ([]model.APIHostProcess, error) {
+func (c *Mock) GetHostProcessOutput(context.Context, []model.APIHostProcess, int) ([]model.APIHostProcess, error) {
 	return nil, nil
 }
 
