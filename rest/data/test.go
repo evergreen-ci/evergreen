@@ -58,6 +58,43 @@ func (tc *DBTestConnector) FindTestsByTaskId(taskId, testId, testName, status st
 	return res, nil
 }
 
+func (tc *DBTestConnector) FindTestsByTaskIdSortAndPaginate(taskId string, sortOrder []string, page, limit, execution int) ([]testresult.TestResult, error) {
+	t, err := task.FindOneId(taskId)
+	if err != nil {
+		return []testresult.TestResult{}, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task not found %s", err.Error()),
+		}
+	}
+	if t == nil {
+		return []testresult.TestResult{}, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task not found %s", taskId),
+		}
+	}
+	var taskIds []string
+	if t.DisplayOnly {
+		taskIds = t.ExecutionTasks
+	} else {
+		taskIds = []string{taskId}
+	}
+	q := testresult.TestResultsQuerySortAndPaginate(taskIds, sortOrder, page, limit, execution)
+	res, err := testresult.Find(q)
+	if err != nil {
+		return []testresult.TestResult{}, err
+	}
+	if len(res) == 0 {
+		var message string
+		message = fmt.Sprintf("tests for task with taskId '%s' and execution %d not found on page %d with limit %d	", taskId, execution, page, limit)
+		return []testresult.TestResult{}, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    message,
+		}
+	}
+
+	return res, nil
+}
+
 // MockTaskConnector stores a cached set of tests that are queried against by the
 // implementations of the Connector interface's Test related functions.
 type MockTestConnector struct {
@@ -79,6 +116,11 @@ func (mtc *MockTestConnector) FindTestsByTaskId(taskId, testId, testName, status
 			return mtc.findTestsByNameFromIx(testName, ix, limit), nil
 		}
 	}
+	return nil, nil
+}
+
+func (tc *MockTestConnector) FindTestsByTaskIdSortAndPaginate(taskId string, sortOrder []string, page, limit, execution int) ([]testresult.TestResult, error) {
+	//todo
 	return nil, nil
 }
 

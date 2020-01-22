@@ -3,11 +3,22 @@ type Query {
   task(taskId: String!): Task
   taskTests(
     taskId: String!
-    testId: String
-    testName: String
-    status: String
+    sortCategory: TaskSortCategory!
+    sortDirection: SortDirection!
+    page: Int
     limit: Int
   ): [TestResult]
+}
+
+enum TaskSortCategory {
+  STATUS
+  DURATION
+  TEST_NAME
+}
+
+enum SortDirection {
+  ASC
+  DESC
 }
 
 type Patch {

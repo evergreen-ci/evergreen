@@ -82,7 +82,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, testID *st
 	}
 	fmt.Println("%s %s %s %s %s", taskID, testIDParam, testNameParam, statusParam, limitParam)
 	fmt.Println("----------------------------------------------------------------------------")
-	tests, err := r.sc.FindTestsByTaskId(taskID, testIDParam, testNameParam, statusParam, limitParam, task.Execution)
+	tests, err := r.sc.FindTestsByTaskIdSortAndPaginate(taskID, testIDParam, page, limit, task.Execution)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error retreiving test")
 	}

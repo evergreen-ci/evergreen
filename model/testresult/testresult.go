@@ -149,10 +149,35 @@ func TestResultsQuery(taskIds []string, testId, testName, status string, limit, 
 		match[IDKey] = bson.M{"$gte": mgobson.ObjectId(testId)}
 	}
 
-	q := db.Query(match).Sort([]string{IDKey}).Project(bson.M{
+	q := db.Query(match).Project(bson.M{
 		TaskIDKey:    0,
 		ExecutionKey: 0,
-	})
+		"duration":   bson.M{"$subtract": []string{StartTimeKey, EndTimeKey}},
+	}).Sort([]string{"duration"})
+
+	if limit > 0 {
+		q = q.Limit(limit)
+	}
+
+	return q
+}
+
+// TestResultsQueryPaginateAndSort is a query for returning test results to the taskTests GQL Query.
+func TestResultsQuerySortAndPaginate(taskIds []string, sortOrder []string, page, limit, execution int) db.Q {
+	match := bson.M{
+		TaskIDKey:    bson.M{"$in": taskIds},
+		ExecutionKey: execution,
+	}
+
+	q := db.Query(match).Project(bson.M{
+		TaskIDKey:    0,
+		ExecutionKey: 0,
+		"duration":   bson.M{"$subtract": []string{StartTimeKey, EndTimeKey}},
+	}).Sort(sortOrder)
+
+	if page > 0 {
+		q = q.Skip(page * limit)
+	}
 
 	if limit > 0 {
 		q = q.Limit(limit)
