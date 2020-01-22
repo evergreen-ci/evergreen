@@ -1,7 +1,6 @@
 package testresult
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -162,16 +161,24 @@ func TestResultsQuery(taskIds []string, testId, testName, status string, limit, 
 	return q
 }
 
-// TestResultsQueryPaginateAndSort is a query for returning test results to the taskTests GQL Query.
+// TestResultsQuerySortAndPaginate is a query for returning test results to the taskTests GQL Query.
 func TestResultsQuerySortAndPaginate(taskIds []string, sortOrder []string, page, limit, execution int) db.Q {
 	match := bson.M{
 		TaskIDKey:    bson.M{"$in": taskIds},
 		ExecutionKey: execution,
 	}
 
-	fmt.Println(")))))))))))))))))))))))))))))))))))))((((((((((((((((((((((((((((((((((((()))))))))))))))))))))))")
 	q := db.Query(match).Project(bson.M{
-		"duration": bson.M{"$subtract": []string{"$" + StartTimeKey, "$" + EndTimeKey}},
+		"duration":   bson.M{"$subtract": []string{"$" + StartTimeKey, "$" + EndTimeKey}},
+		TestFileKey:  1,
+		EndTimeKey:   1,
+		StartTimeKey: 1,
+		StatusKey:    1,
+		URLRawKey:    1,
+		URLKey:       1,
+		LogIDKey:     1,
+		LineNumKey:   1,
+		ExitCodeKey:  1,
 	}).Sort(sortOrder)
 
 	if page > 0 {
