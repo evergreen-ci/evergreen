@@ -108,7 +108,7 @@ func (j *parentDecommissionJob) Run(ctx context.Context) {
 
 		for _, c := range containersToDeco {
 			if c.Status == evergreen.HostRunning && !c.SpawnOptions.SpawnedByTask {
-				j.AddError(c.SetDecommissioned(evergreen.User, ""))
+				j.AddError(c.SetDecommissioned(evergreen.User, "parent decommissioned due to excess capacity"))
 				continue
 			}
 		}
@@ -120,7 +120,7 @@ func (j *parentDecommissionJob) Run(ctx context.Context) {
 			continue
 		}
 		if idle {
-			j.AddError(h.SetDecommissioned(evergreen.User, ""))
+			j.AddError(h.SetDecommissioned(evergreen.User, "host only contains decomissioned containers and there is excess capacity"))
 		}
 	}
 }
