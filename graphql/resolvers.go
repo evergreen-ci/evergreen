@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -56,12 +57,32 @@ func (r *queryResolver) Task(ctx context.Context, taskID string) (*model.APITask
 	return &apiTask, nil
 }
 
-func (r *queryResolver) TaskTests(ctx context.Context, taskID string, cursor *string) ([]*model.APITest, error) {
+func (r *queryResolver) TaskTests(ctx context.Context, taskID string, testID *string, testName *string, status *string, limit *int) ([]*model.APITest, error) {
 	task, err := task.FindOneId(taskID)
+	fmt.Println("---------------------------------------------------------------------------------------------------------------------------------------")
 	if err != nil {
 		return nil, errors.Wrap(err, "Error retreiving Task")
 	}
-	tests, err := r.sc.FindTestsByTaskId(taskID, "", "", "", 0, task.Execution)
+	fmt.Println("----------------------------------------------------------------------------")
+	testIDParam := ""
+	if testID != nil {
+		testIDParam = *testID
+	}
+	testNameParam := ""
+	if testName != nil {
+		testNameParam = *testName
+	}
+	statusParam := ""
+	if status != nil {
+		statusParam = *status
+	}
+	limitParam := 0
+	if limit != nil {
+		limitParam = *limit
+	}
+	fmt.Println("%s %s %s %s %s", taskID, testIDParam, testNameParam, statusParam, limitParam)
+	fmt.Println("----------------------------------------------------------------------------")
+	tests, err := r.sc.FindTestsByTaskId(taskID, testIDParam, testNameParam, statusParam, limitParam, task.Execution)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error retreiving test")
 	}
