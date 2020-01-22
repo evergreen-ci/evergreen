@@ -66,6 +66,7 @@ type TestResult {
   logs: TestLog!
   exitCode: Int
   startTime: Time
+  duration: Float
   endTime: Time
 }
 

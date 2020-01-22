@@ -129,6 +129,7 @@ type ComplexityRoot struct {
 	}
 
 	TestResult struct {
+		Duration  func(childComplexity int) int
 		EndTime   func(childComplexity int) int
 		ExitCode  func(childComplexity int) int
 		Id        func(childComplexity int) int
@@ -642,6 +643,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TestLog.URLRaw(childComplexity), true
 
+	case "TestResult.duration":
+		if e.complexity.TestResult.Duration == nil {
+			break
+		}
+
+		return e.complexity.TestResult.Duration(childComplexity), true
+
 	case "TestResult.endTime":
 		if e.complexity.TestResult.EndTime == nil {
 			break
@@ -850,6 +858,7 @@ type TestResult {
 	logs: TestLog!
 	exitCode: Int
 	startTime: Time
+	duration: Float
 	endTime: Time
 }
 scalar Time
@@ -3406,6 +3415,37 @@ func (ec *executionContext) _TestResult_startTime(ctx context.Context, field gra
 	return ec.marshalOTime2timeᚐTime(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _TestResult_duration(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TestResult",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Duration, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalOFloat2float64(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TestResult_endTime(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -4986,6 +5026,8 @@ func (ec *executionContext) _TestResult(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._TestResult_exitCode(ctx, field, obj)
 		case "startTime":
 			out.Values[i] = ec._TestResult_startTime(ctx, field, obj)
+		case "duration":
+			out.Values[i] = ec._TestResult_duration(ctx, field, obj)
 		case "endTime":
 			out.Values[i] = ec._TestResult_endTime(ctx, field, obj)
 		default:
@@ -5784,6 +5826,14 @@ func (ec *executionContext) unmarshalODuration2timeᚐDuration(ctx context.Conte
 
 func (ec *executionContext) marshalODuration2timeᚐDuration(ctx context.Context, sel ast.SelectionSet, v time.Duration) graphql.Marshaler {
 	return customscalars.MarshalDuration(v)
+}
+
+func (ec *executionContext) unmarshalOFloat2float64(ctx context.Context, v interface{}) (float64, error) {
+	return graphql.UnmarshalFloat(v)
+}
+
+func (ec *executionContext) marshalOFloat2float64(ctx context.Context, sel ast.SelectionSet, v float64) graphql.Marshaler {
+	return graphql.MarshalFloat(v)
 }
 
 func (ec *executionContext) unmarshalOInt2int(ctx context.Context, v interface{}) (int, error) {
