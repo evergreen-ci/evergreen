@@ -428,7 +428,7 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 	if i != nil {
 		ldap, ok = i.(*evergreen.LDAPConfig)
 		if !ok {
-			return nil, errors.New("expecting LDAPConfig but got %T", i)
+			return nil, errors.Errorf("expecting LDAPConfig but got %T", i)
 		}
 	}
 	i, err = a.Okta.ToService()
@@ -438,7 +438,7 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 	if i != nil {
 		okta, ok = i.(*evergreen.OktaConfig)
 		if !ok {
-			return nil, errors.New("expecting OktaConfig but got %T", i)
+			return nil, errors.Errorf("expecting OktaConfig but got %T", i)
 		}
 	}
 	i, err = a.Naive.ToService()
@@ -448,7 +448,7 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 	if i != nil {
 		naive, ok = i.(*evergreen.NaiveAuthConfig)
 		if !ok {
-			return nil, errors.New("expecting NaiveAuthConfig but got %T", i)
+			return nil, errors.Errorf("expecting NaiveAuthConfig but got %T", i)
 		}
 	}
 	i, err = a.Github.ToService()
@@ -458,7 +458,7 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 	if i != nil {
 		github, ok = i.(*evergreen.GithubAuthConfig)
 		if !ok {
-			return nil, errors.New("expecting GithubAuthConfig but got %T", i)
+			return nil, errors.Errorf("expecting GithubAuthConfig but got %T", i)
 		}
 	}
 	return evergreen.AuthConfig{
