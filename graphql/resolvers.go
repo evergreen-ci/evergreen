@@ -64,7 +64,20 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 		return nil, errors.Wrap(err, "Error retreiving Task")
 	}
 
-	sortOrder := []string{}
+	sortBy := ""
+	if sortCategory == TaskSortCategoryStatus {
+		sortBy = "status"
+	}
+	if sortCategory == TaskSortCategoryDuration {
+		sortBy = "duration"
+	}
+	if sortCategory == TaskSortCategoryTestName {
+		sortBy = "test_name"
+	}
+	if sortDirection == SortDirectionDesc {
+		sortBy = "-" + sortBy
+	}
+	sortOrder := []string{sortBy}
 	tests, err := r.sc.FindTestsByTaskIdSortAndPaginate(taskID, sortOrder, page, limit, task.Execution)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error retreiving test")
