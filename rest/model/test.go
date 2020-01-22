@@ -19,6 +19,7 @@ type APITest struct {
 	ExitCode  int       `json:"exit_code"`
 	StartTime time.Time `json:"start_time"`
 	EndTime   time.Time `json:"end_time"`
+	Duration  float64   `json:"duration"`
 }
 
 // TestLogs is a struct for storing the information about logs that will
@@ -34,7 +35,6 @@ func (at *APITest) BuildFromService(st interface{}) error {
 	switch v := st.(type) {
 	case *testresult.TestResult:
 		at.Status = ToStringPtr(v.Status)
-		fmt.Println("_____________________________________________________________________-")
 		fmt.Println(v.TestFile)
 		at.TestFile = ToStringPtr(v.TestFile)
 		at.ExitCode = v.ExitCode
@@ -42,7 +42,7 @@ func (at *APITest) BuildFromService(st interface{}) error {
 
 		startTime := util.FromPythonTime(v.StartTime)
 		endTime := util.FromPythonTime(v.EndTime)
-
+		at.Duration = v.EndTime - v.StartTime
 		at.StartTime = startTime
 		at.EndTime = endTime
 
