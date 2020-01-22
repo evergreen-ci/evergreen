@@ -420,33 +420,46 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 	var okta *evergreen.OktaConfig
 	var naive *evergreen.NaiveAuthConfig
 	var github *evergreen.GithubAuthConfig
+	var ok bool
 	i, err := a.LDAP.ToService()
 	if err != nil {
 		return nil, err
 	}
 	if i != nil {
-		ldap = i.(*evergreen.LDAPConfig)
+		ldap, ok = i.(*evergreen.LDAPConfig)
+		if !ok {
+			return nil, errors.New("expecting LDAPConfig but got %T", i)
+		}
 	}
 	i, err = a.Okta.ToService()
 	if err != nil {
 		return nil, err
 	}
 	if i != nil {
-		okta = i.(*evergreen.OktaConfig)
+		okta, ok = i.(*evergreen.OktaConfig)
+		if !ok {
+			return nil, errors.New("expecting OktaConfig but got %T", i)
+		}
 	}
 	i, err = a.Naive.ToService()
 	if err != nil {
 		return nil, err
 	}
 	if i != nil {
-		naive = i.(*evergreen.NaiveAuthConfig)
+		naive, ok = i.(*evergreen.NaiveAuthConfig)
+		if !ok {
+			return nil, errors.New("expecting NaiveAuthConfig but got %T", i)
+		}
 	}
 	i, err = a.Github.ToService()
 	if err != nil {
 		return nil, err
 	}
 	if i != nil {
-		github = i.(*evergreen.GithubAuthConfig)
+		github, ok = i.(*evergreen.GithubAuthConfig)
+		if !ok {
+			return nil, errors.New("expecting GithubAuthConfig but got %T", i)
+		}
 	}
 	return evergreen.AuthConfig{
 		LDAP:   ldap,
