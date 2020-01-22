@@ -65,7 +65,7 @@ type ComplexityRoot struct {
 
 	Query struct {
 		Task        func(childComplexity int, taskID string) int
-		TaskTests   func(childComplexity int, taskID string, cursor *string) int
+		TaskTests   func(childComplexity int, taskID string, testID *string, testName *string, status *string, limit *int) int
 		UserPatches func(childComplexity int, userID string) int
 	}
 
@@ -131,6 +131,7 @@ type ComplexityRoot struct {
 	TestResult struct {
 		EndTime   func(childComplexity int) int
 		ExitCode  func(childComplexity int) int
+		Id        func(childComplexity int) int
 		Logs      func(childComplexity int) int
 		StartTime func(childComplexity int) int
 		Status    func(childComplexity int) int
@@ -146,7 +147,7 @@ type ComplexityRoot struct {
 type QueryResolver interface {
 	UserPatches(ctx context.Context, userID string) ([]*model.APIPatch, error)
 	Task(ctx context.Context, taskID string) (*model.APITask, error)
-	TaskTests(ctx context.Context, taskID string, cursor *string) ([]*model.APITest, error)
+	TaskTests(ctx context.Context, taskID string, testID *string, testName *string, status *string, limit *int) ([]*model.APITest, error)
 }
 
 type executableSchema struct {
@@ -298,7 +299,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.TaskTests(childComplexity, args["taskId"].(string), args["cursor"].(*string)), true
+		return e.complexity.Query.TaskTests(childComplexity, args["taskId"].(string), args["testId"].(*string), args["testName"].(*string), args["status"].(*string), args["limit"].(*int)), true
 
 	case "Query.userPatches":
 		if e.complexity.Query.UserPatches == nil {
@@ -655,6 +656,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TestResult.ExitCode(childComplexity), true
 
+	case "TestResult.id":
+		if e.complexity.TestResult.Id == nil {
+			break
+		}
+
+		return e.complexity.TestResult.Id(childComplexity), true
+
 	case "TestResult.logs":
 		if e.complexity.TestResult.Logs == nil {
 			break
@@ -769,7 +777,7 @@ type Patch {
 type Query {
 	userPatches(userId: String!): [Patch]!
 	task(taskId: String!): Task
-	taskTests(taskId: String!, cursor: String): [TestResult]
+	taskTests(taskId: String!, testId: String, testName: String, status: String, limit: Int): [TestResult]
 }
 type Task {
 	id: String!
@@ -827,6 +835,7 @@ type TestLog {
 	logId: String
 }
 type TestResult {
+	id: String!
 	status: String!
 	testFile: String!
 	logs: TestLog!
@@ -872,13 +881,37 @@ func (ec *executionContext) field_Query_taskTests_args(ctx context.Context, rawA
 	}
 	args["taskId"] = arg0
 	var arg1 *string
-	if tmp, ok := rawArgs["cursor"]; ok {
+	if tmp, ok := rawArgs["testId"]; ok {
 		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["cursor"] = arg1
+	args["testId"] = arg1
+	var arg2 *string
+	if tmp, ok := rawArgs["testName"]; ok {
+		arg2, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["testName"] = arg2
+	var arg3 *string
+	if tmp, ok := rawArgs["status"]; ok {
+		arg3, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["status"] = arg3
+	var arg4 *int
+	if tmp, ok := rawArgs["limit"]; ok {
+		arg4, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["limit"] = arg4
 	return args, nil
 }
 
@@ -1587,7 +1620,7 @@ func (ec *executionContext) _Query_taskTests(ctx context.Context, field graphql.
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().TaskTests(rctx, args["taskId"].(string), args["cursor"].(*string))
+		return ec.resolvers.Query().TaskTests(rctx, args["taskId"].(string), args["testId"].(*string), args["testName"].(*string), args["status"].(*string), args["limit"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3164,6 +3197,40 @@ func (ec *executionContext) _TestLog_logId(ctx context.Context, field graphql.Co
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TestResult_id(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TestResult",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Id, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TestResult_status(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
@@ -4886,6 +4953,11 @@ func (ec *executionContext) _TestResult(ctx context.Context, sel ast.SelectionSe
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("TestResult")
+		case "id":
+			out.Values[i] = ec._TestResult_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "status":
 			out.Values[i] = ec._TestResult_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -5701,6 +5773,21 @@ func (ec *executionContext) unmarshalOInt2int64(ctx context.Context, v interface
 
 func (ec *executionContext) marshalOInt2int64(ctx context.Context, sel ast.SelectionSet, v int64) graphql.Marshaler {
 	return graphql.MarshalInt64(v)
+}
+
+func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v interface{}) (*int, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalOInt2int(ctx, v)
+	return &res, err
+}
+
+func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.SelectionSet, v *int) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec.marshalOInt2int(ctx, sel, *v)
 }
 
 func (ec *executionContext) marshalOPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx context.Context, sel ast.SelectionSet, v model.APIPatch) graphql.Marshaler {

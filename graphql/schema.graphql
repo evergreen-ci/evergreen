@@ -1,7 +1,13 @@
 type Query {
   userPatches(userId: String!): [Patch]!
   task(taskId: String!): Task
-  taskTests(taskId: String!, cursor: String): [TestResult]
+  taskTests(
+    taskId: String!
+    testId: String
+    testName: String
+    status: String
+    limit: Int
+  ): [TestResult]
 }
 
 type Patch {
@@ -43,6 +49,7 @@ type TaskEndDetail {
 }
 
 type TestResult {
+  id: String!
   status: String!
   testFile: String!
   logs: TestLog!
