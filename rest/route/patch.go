@@ -24,19 +24,22 @@ type patchChangeStatusHandler struct {
 	Activated *bool  `json:"activated"`
 	Priority  *int64 `json:"priority"`
 
-	patchId string
-	sc      data.Connector
+	patchId  string
+	settings *evergreen.Settings
+	sc       data.Connector
 }
 
-func makeChangePatchStatus(sc data.Connector) gimlet.RouteHandler {
+func makeChangePatchStatus(sc data.Connector, settings *evergreen.Settings) gimlet.RouteHandler {
 	return &patchChangeStatusHandler{
-		sc: sc,
+		sc:       sc,
+		settings: settings,
 	}
 }
 
 func (p *patchChangeStatusHandler) Factory() gimlet.RouteHandler {
 	return &patchChangeStatusHandler{
-		sc: p.sc,
+		sc:       p.sc,
+		settings: p.settings,
 	}
 }
 
@@ -75,7 +78,7 @@ func (p *patchChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 	if p.Activated != nil {
-		if err := p.sc.SetPatchActivated(p.patchId, user.Username(), *p.Activated); err != nil {
+		if err := p.sc.SetPatchActivated(p.patchId, user.Username(), *p.Activated, p.settings); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
 	}

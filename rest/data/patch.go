@@ -106,7 +106,7 @@ func (pc *DBPatchConnector) SetPatchPriority(patchId string, priority int64) err
 }
 
 // SetPatchActivated attempts to activate the patch and create a new version (if activated is set to true)
-func (pc *DBPatchConnector) SetPatchActivated(patchId string, user string, activated bool) error {
+func (pc *DBPatchConnector) SetPatchActivated(patchId string, user string, activated bool, settings *evergreen.Settings) error {
 	p, err := patch.FindOne(patch.ById(mgobson.ObjectIdHex(patchId)))
 	if err != nil {
 		return err
@@ -119,10 +119,6 @@ func (pc *DBPatchConnector) SetPatchActivated(patchId string, user string, activ
 		ctx := context.Background()
 		requester := p.GetRequester()
 
-		settings, err := evergreen.GetConfig()
-		if err != nil {
-			return errors.Wrap(err, "error getting settings config")
-		}
 		token, err := settings.GetGithubOauthToken()
 		if err != nil {
 			return errors.Wrap(err, "error getting github token from settings")
@@ -250,7 +246,7 @@ func (pc *MockPatchConnector) SetPatchPriority(patchId string, priority int64) e
 }
 
 // SetPatchActivated sets the boolean activated field on the input patch.
-func (pc *MockPatchConnector) SetPatchActivated(patchId string, user string, activated bool) error {
+func (pc *MockPatchConnector) SetPatchActivated(patchId string, user string, activated bool, settings *evergreen.Settings) error {
 	p, err := pc.FindPatchById(patchId)
 	if err != nil {
 		return err
