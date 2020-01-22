@@ -680,9 +680,18 @@ func (t *Task) SetGeneratedJSON(json []json.RawMessage) error {
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
+			"$or": []bson.M{
+				{
+					GeneratedJSONKey: bson.M{"$exists": false},
+				},
+				{
+					GeneratedJSONAsStringKey: bson.M{"$exists": false},
+				},
+			},
 		},
 		bson.M{
 			"$set": bson.M{
+				GeneratedJSONKey:         json,
 				GeneratedJSONAsStringKey: s,
 			},
 		},

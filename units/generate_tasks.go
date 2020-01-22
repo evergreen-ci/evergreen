@@ -183,10 +183,7 @@ func parseProjectsAsString(jsonStrings []string) ([]model.GeneratedProject, erro
 		}
 		projects = append(projects, p)
 	}
-	if catcher.HasErrors() {
-		return nil, catcher.Resolve()
-	}
-	return projects, nil
+	return projects, catcher.Resolve()
 }
 
 func parseProjects(jsonBytes []json.RawMessage) ([]model.GeneratedProject, error) {
@@ -202,5 +199,5 @@ func parseProjects(jsonBytes []json.RawMessage) ([]model.GeneratedProject, error
 	if catcher.HasErrors() {
 		return nil, catcher.Resolve()
 	}
-	return projects, nil
+	return projects, catcher.Resolve()
 }
