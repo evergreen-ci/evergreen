@@ -57,37 +57,21 @@ func (r *queryResolver) Task(ctx context.Context, taskID string) (*model.APITask
 	return &apiTask, nil
 }
 
-func (r *queryResolver) TaskTests(ctx context.Context, taskID string, testID *string, testName *string, status *string, limit *int) ([]*model.APITest, error) {
+func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory TaskSortCategory, sortDirection SortDirection, page int, limit int) ([]*model.APITest, error) {
 	task, err := task.FindOneId(taskID)
-	fmt.Println("---------------------------------------------------------------------------------------------------------------------------------------")
+
 	if err != nil {
 		return nil, errors.Wrap(err, "Error retreiving Task")
 	}
-	fmt.Println("----------------------------------------------------------------------------")
-	testIDParam := ""
-	if testID != nil {
-		testIDParam = *testID
-	}
-	testNameParam := ""
-	if testName != nil {
-		testNameParam = *testName
-	}
-	statusParam := ""
-	if status != nil {
-		statusParam = *status
-	}
-	limitParam := 0
-	if limit != nil {
-		limitParam = *limit
-	}
-	fmt.Println("%s %s %s %s %s", taskID, testIDParam, testNameParam, statusParam, limitParam)
-	fmt.Println("----------------------------------------------------------------------------")
-	tests, err := r.sc.FindTestsByTaskIdSortAndPaginate(taskID, testIDParam, page, limit, task.Execution)
+
+	sortOrder := []string{}
+	tests, err := r.sc.FindTestsByTaskIdSortAndPaginate(taskID, sortOrder, page, limit, task.Execution)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error retreiving test")
 	}
 	testPointers := []*model.APITest{}
 	for _, t := range tests {
+		fmt.Println(t.TestFile)
 		apiTest := model.APITest{}
 		err := apiTest.BuildFromService(&t)
 		if err != nil {

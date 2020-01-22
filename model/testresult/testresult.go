@@ -1,6 +1,7 @@
 package testresult
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -149,11 +150,10 @@ func TestResultsQuery(taskIds []string, testId, testName, status string, limit, 
 		match[IDKey] = bson.M{"$gte": mgobson.ObjectId(testId)}
 	}
 
-	q := db.Query(match).Project(bson.M{
+	q := db.Query(match).Sort([]string{IDKey}).Project(bson.M{
 		TaskIDKey:    0,
 		ExecutionKey: 0,
-		"duration":   bson.M{"$subtract": []string{StartTimeKey, EndTimeKey}},
-	}).Sort([]string{"duration"})
+	})
 
 	if limit > 0 {
 		q = q.Limit(limit)
@@ -169,10 +169,9 @@ func TestResultsQuerySortAndPaginate(taskIds []string, sortOrder []string, page,
 		ExecutionKey: execution,
 	}
 
+	fmt.Println(")))))))))))))))))))))))))))))))))))))((((((((((((((((((((((((((((((((((((()))))))))))))))))))))))")
 	q := db.Query(match).Project(bson.M{
-		TaskIDKey:    0,
-		ExecutionKey: 0,
-		"duration":   bson.M{"$subtract": []string{StartTimeKey, EndTimeKey}},
+		"duration": bson.M{"$subtract": []string{"$" + StartTimeKey, "$" + EndTimeKey}},
 	}).Sort(sortOrder)
 
 	if page > 0 {

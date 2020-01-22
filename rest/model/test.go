@@ -34,6 +34,8 @@ func (at *APITest) BuildFromService(st interface{}) error {
 	switch v := st.(type) {
 	case *testresult.TestResult:
 		at.Status = ToStringPtr(v.Status)
+		fmt.Println("_____________________________________________________________________-")
+		fmt.Println(v.TestFile)
 		at.TestFile = ToStringPtr(v.TestFile)
 		at.ExitCode = v.ExitCode
 		at.Id = ToStringPtr(v.ID.Hex())

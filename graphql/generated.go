@@ -65,7 +65,7 @@ type ComplexityRoot struct {
 
 	Query struct {
 		Task        func(childComplexity int, taskID string) int
-		TaskTests   func(childComplexity int, taskID string, sortCategory TaskSortCategory, sortDirection SortDirection, page *int, limit *int) int
+		TaskTests   func(childComplexity int, taskID string, sortCategory TaskSortCategory, sortDirection SortDirection, page int, limit int) int
 		UserPatches func(childComplexity int, userID string) int
 	}
 
@@ -147,7 +147,7 @@ type ComplexityRoot struct {
 type QueryResolver interface {
 	UserPatches(ctx context.Context, userID string) ([]*model.APIPatch, error)
 	Task(ctx context.Context, taskID string) (*model.APITask, error)
-	TaskTests(ctx context.Context, taskID string, sortCategory TaskSortCategory, sortDirection SortDirection, page *int, limit *int) ([]*model.APITest, error)
+	TaskTests(ctx context.Context, taskID string, sortCategory TaskSortCategory, sortDirection SortDirection, page int, limit int) ([]*model.APITest, error)
 }
 
 type executableSchema struct {
@@ -299,7 +299,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.TaskTests(childComplexity, args["taskId"].(string), args["sortCategory"].(TaskSortCategory), args["sortDirection"].(SortDirection), args["page"].(*int), args["limit"].(*int)), true
+		return e.complexity.Query.TaskTests(childComplexity, args["taskId"].(string), args["sortCategory"].(TaskSortCategory), args["sortDirection"].(SortDirection), args["page"].(int), args["limit"].(int)), true
 
 	case "Query.userPatches":
 		if e.complexity.Query.UserPatches == nil {
@@ -777,7 +777,7 @@ type Patch {
 type Query {
 	userPatches(userId: String!): [Patch]!
 	task(taskId: String!): Task
-	taskTests(taskId: String!, sortCategory: TaskSortCategory!, sortDirection: SortDirection!, page: Int, limit: Int): [TestResult]
+	taskTests(taskId: String!, sortCategory: TaskSortCategory!, sortDirection: SortDirection!, page: Int!, limit: Int!): [TestResult]
 }
 enum SortDirection {
 	ASC
@@ -905,17 +905,17 @@ func (ec *executionContext) field_Query_taskTests_args(ctx context.Context, rawA
 		}
 	}
 	args["sortDirection"] = arg2
-	var arg3 *int
+	var arg3 int
 	if tmp, ok := rawArgs["page"]; ok {
-		arg3, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		arg3, err = ec.unmarshalNInt2int(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
 	args["page"] = arg3
-	var arg4 *int
+	var arg4 int
 	if tmp, ok := rawArgs["limit"]; ok {
-		arg4, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		arg4, err = ec.unmarshalNInt2int(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -1629,7 +1629,7 @@ func (ec *executionContext) _Query_taskTests(ctx context.Context, field graphql.
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().TaskTests(rctx, args["taskId"].(string), args["sortCategory"].(TaskSortCategory), args["sortDirection"].(SortDirection), args["page"].(*int), args["limit"].(*int))
+		return ec.resolvers.Query().TaskTests(rctx, args["taskId"].(string), args["sortCategory"].(TaskSortCategory), args["sortDirection"].(SortDirection), args["page"].(int), args["limit"].(int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5800,21 +5800,6 @@ func (ec *executionContext) unmarshalOInt2int64(ctx context.Context, v interface
 
 func (ec *executionContext) marshalOInt2int64(ctx context.Context, sel ast.SelectionSet, v int64) graphql.Marshaler {
 	return graphql.MarshalInt64(v)
-}
-
-func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v interface{}) (*int, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalOInt2int(ctx, v)
-	return &res, err
-}
-
-func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.SelectionSet, v *int) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec.marshalOInt2int(ctx, sel, *v)
 }
 
 func (ec *executionContext) marshalOPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx context.Context, sel ast.SelectionSet, v model.APIPatch) graphql.Marshaler {

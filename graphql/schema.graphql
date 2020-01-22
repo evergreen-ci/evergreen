@@ -5,8 +5,8 @@ type Query {
     taskId: String!
     sortCategory: TaskSortCategory!
     sortDirection: SortDirection!
-    page: Int
-    limit: Int
+    page: Int!
+    limit: Int!
   ): [TestResult]
 }
 
