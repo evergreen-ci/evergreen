@@ -3,7 +3,7 @@ package db
 import (
 	"strings"
 
-	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2"
 )
 
 func IsDuplicateKey(err error) bool {
