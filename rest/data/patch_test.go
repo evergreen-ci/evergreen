@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
@@ -471,14 +472,14 @@ func (s *PatchConnectorChangeStatusSuite) TestSetPriority() {
 
 func (s *PatchConnectorChangeStatusSuite) TestSetActivation() {
 	settings := testutil.MockConfig()
-	err := s.ctx.SetPatchActivated(s.obj_ids[0], "user1", true, settings)
+	err := s.ctx.SetPatchActivated(context.Background(), s.obj_ids[0], "user1", true, settings)
 	s.NoError(err)
 	p, err := s.ctx.FindPatchById(s.obj_ids[0])
 	s.NoError(err)
 	s.Require().NotNil(p)
 	s.True(p.Activated)
 
-	err = s.ctx.SetPatchActivated(s.obj_ids[0], "user1", false, settings)
+	err = s.ctx.SetPatchActivated(context.Background(), s.obj_ids[0], "user1", false, settings)
 	s.NoError(err)
 	p, err = s.ctx.FindPatchById(s.obj_ids[0])
 	s.NoError(err)
