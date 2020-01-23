@@ -88,6 +88,7 @@ var (
 	RunningTeardownSinceKey      = bsonutil.MustHaveTag(Host{}, "RunningTeardownSince")
 	InstanceTagsKey              = bsonutil.MustHaveTag(Host{}, "InstanceTags")
 	HomeVolumeIDKey              = bsonutil.MustHaveTag(Host{}, "HomeVolumeID")
+	HomeVolumeDeviceNameKey      = bsonutil.MustHaveTag(Host{}, "HomeVolumeDeviceName")
 	SpawnOptionsTaskIDKey        = bsonutil.MustHaveTag(SpawnOptions{}, "TaskID")
 	SpawnOptionsBuildIDKey       = bsonutil.MustHaveTag(SpawnOptions{}, "BuildID")
 	SpawnOptionsTimeoutKey       = bsonutil.MustHaveTag(SpawnOptions{}, "TimeoutTeardown")

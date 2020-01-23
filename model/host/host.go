@@ -147,8 +147,9 @@ type Host struct {
 	AttachVolume bool `bson:"attach_volume" json:"attach_volume"`
 
 	// HomeVolumeGB is the size of the home volume in GB
-	HomeVolumeGB int    `bson:"home_volume_gb" json:"home_volume_gb"`
-	HomeVolumeID string `bson:"home_volume_id" json:"home_volume_id"`
+	HomeVolumeGB         int    `bson:"home_volume_gb" json:"home_volume_gb"`
+	HomeVolumeID         string `bson:"home_volume_id" json:"home_volume_id"`
+	HomeVolumeDeviceName string `bson:"home_volume_device_name" json:"home_volume_device_name"`
 }
 
 type Tag struct {
@@ -461,11 +462,12 @@ func (h *Host) SetQuarantined(user string, logs string) error {
 	return h.SetStatus(evergreen.HostQuarantined, user, logs)
 }
 
-func (h *Host) SetHomeVolumeID(volumeID string) error {
+func (h *Host) SetHomeVolume(volumeID, deviceName string) error {
 	h.HomeVolumeID = volumeID
+	h.HomeVolumeDeviceName = deviceName
 	return UpdateOne(
 		bson.M{IdKey: h.Id},
-		bson.M{"$set": bson.M{HomeVolumeIDKey: volumeID}},
+		bson.M{"$set": bson.M{HomeVolumeIDKey: volumeID, HomeVolumeDeviceNameKey: deviceName}},
 	)
 }
 

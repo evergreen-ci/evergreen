@@ -4526,15 +4526,17 @@ func TestStartingHostsByClient(t *testing.T) {
 	}
 }
 
-func TestSetHomeVolumeID(t *testing.T) {
+func TestSetHomeVolume(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 	h := &Host{Id: "h1"}
 	require.NoError(t, h.Insert())
 
-	assert.NoError(t, h.SetHomeVolumeID("v1"))
+	assert.NoError(t, h.SetHomeVolume("v1", "sdg"))
 	assert.Equal(t, "v1", h.HomeVolumeID)
+	assert.Equal(t, "sdg", h.HomeVolumeDeviceName)
 
 	h, err := FindOneId("h1")
 	assert.NoError(t, err)
 	assert.Equal(t, "v1", h.HomeVolumeID)
+	assert.Equal(t, "sdg", h.HomeVolumeDeviceName)
 }

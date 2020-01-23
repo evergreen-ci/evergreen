@@ -170,17 +170,6 @@ func (j *setupHostJob) setupHost(ctx context.Context, h *host.Host, settings *ev
 		return nil
 	}
 
-	if h.AttachVolume {
-		// continue on error
-		grip.Error(message.WrapError(j.attachVolume(ctx), message.Fields{
-			"message":  "can't attach volume",
-			"host":     j.host.Id,
-			"distro":   j.host.Distro.Id,
-			"attempts": h.ProvisionAttempts,
-			"job":      j.ID(),
-		}))
-	}
-
 	grip.Info(message.Fields{
 		"message":  "successfully finished provisioning host",
 		"hostid":   h.Id,
@@ -199,54 +188,45 @@ func (j *setupHostJob) attachVolume(ctx context.Context) error {
 		return errors.Errorf("host '%s' of distro '%s' doesn't support mounting a volume", j.host.Id, j.host.Distro.Id)
 	}
 
-	mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
-	if err != nil {
-		return errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id)
-	}
-	cloudMgr, err := cloud.GetManager(ctx, j.env, mgrOpts)
-	if err != nil {
-		return errors.Wrapf(err,
-			"failed to get cloud manager for host %s with provider %s",
-			j.host.Id, j.host.Provider)
-	}
+	if j.host.HomeVolumeID == "" {
+		mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
+		if err != nil {
+			return errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id)
+		}
+		cloudMgr, err := cloud.GetManager(ctx, j.env, mgrOpts)
+		if err != nil {
+			return errors.Wrapf(err,
+				"failed to get cloud manager for host %s with provider %s",
+				j.host.Id, j.host.Provider)
+		}
 
-	// create the volume
-	volume, err := cloudMgr.CreateVolume(ctx, &host.Volume{
-		Size:             j.host.HomeVolumeGB,
-		AvailabilityZone: j.host.Zone,
-		CreatedBy:        j.host.StartedBy,
-		Type:             evergreen.DefaultEBSType,
-	})
-	if err != nil {
-		return errors.Wrapf(err, "can't create a new volume for host '%s'", j.host.Id)
-	}
+		// create the volume
+		volume, err := cloudMgr.CreateVolume(ctx, &host.Volume{
+			Size:             j.host.HomeVolumeGB,
+			AvailabilityZone: j.host.Zone,
+			CreatedBy:        j.host.StartedBy,
+			Type:             evergreen.DefaultEBSType,
+		})
+		if err != nil {
+			return errors.Wrapf(err, "can't create a new volume for host '%s'", j.host.Id)
+		}
 
-	// attach to the host
-	attachment := host.VolumeAttachment{VolumeID: volume.ID}
-	if err = cloudMgr.AttachVolume(ctx, j.host, &attachment); err != nil {
-		return errors.Wrapf(err, "can't attach volume '%s' to host '%s'", volume.ID, j.host.Id)
-	}
+		// attach to the host
+		attachment := host.VolumeAttachment{VolumeID: volume.ID}
+		if err = cloudMgr.AttachVolume(ctx, j.host, &attachment); err != nil {
+			return errors.Wrapf(err, "can't attach volume '%s' to host '%s'", volume.ID, j.host.Id)
+		}
 
-	if err = j.host.SetHomeVolumeID(volume.ID); err != nil {
-		return errors.Wrapf(err, "can't set home volume ID for host '%s'", j.host.Id)
+		if err = j.host.SetHomeVolume(volume.ID, attachment.DeviceName); err != nil {
+			return errors.Wrapf(err, "can't set home volume for host '%s'", j.host.Id)
+		}
 	}
 
 	// run the distro's mount script
-	return errors.Wrap(j.mountLinuxVolume(ctx, attachment), "can't mount volume")
+	return errors.Wrap(j.mountLinuxVolume(ctx), "can't mount volume")
 }
 
-func (j *setupHostJob) mountLinuxVolume(ctx context.Context, volume host.VolumeAttachment) error {
-	commands := [][]string{}
-	deviceName := volume.DeviceName
-	if j.host.Distro.HomeVolumeDeviceName != "" {
-		deviceName = j.host.Distro.HomeVolumeDeviceName
-	}
-	commands = append(commands, []string{"/sbin/mkfs.xfs", "-f", fmt.Sprintf("/dev/%s", deviceName)})
-	commands = append(commands, []string{"mkdir", fmt.Sprintf("/%s", evergreen.HomeVolumeDir)})
-	commands = append(commands, []string{"mount", fmt.Sprintf("/dev/%s", deviceName), fmt.Sprintf("/%s", evergreen.HomeVolumeDir)})
-	commands = append(commands, []string{"ln", "-s", fmt.Sprintf("/%s", evergreen.HomeVolumeDir), fmt.Sprintf("%s/%s", j.host.Distro.HomeDir(), evergreen.HomeVolumeDir)})
-	commands = append(commands, []string{"chown", "-R", fmt.Sprintf("%s:%s", j.host.User, j.host.User), fmt.Sprintf("%s/%s", j.host.Distro.HomeDir(), evergreen.HomeVolumeDir)})
-
+func (j *setupHostJob) mountLinuxVolume(ctx context.Context) error {
 	jasperClient, err := j.host.JasperClient(ctx, j.env)
 	if err != nil {
 		return errors.Wrap(err, "can't get Jasper client")
@@ -259,23 +239,49 @@ func (j *setupHostJob) mountLinuxVolume(ctx context.Context, volume host.VolumeA
 		}))
 	}()
 
+	deviceName := j.host.HomeVolumeDeviceName
+	if j.host.Distro.HomeVolumeDeviceName != "" {
+		deviceName = j.host.Distro.HomeVolumeDeviceName
+	}
+	proc, err := jasperClient.CreateProcess(ctx, &options.Create{Args: []string{"sudo", "umount", "-f", fmt.Sprintf("/dev/%s", deviceName)}})
+	if err != nil {
+		return errors.Wrap(err, "problem creating process for umount")
+	}
+	// continue on umount error
+	exitCode, err := proc.Wait(ctx)
+	if err != nil && exitCode != 1 {
+		return errors.Wrap(err, "problem waiting for umount command")
+	}
+
+	commands := [][]string{[]string{"sudo", "/sbin/mkfs.xfs", "-f", fmt.Sprintf("/dev/%s", deviceName)}}
+	commands = append(commands, []string{"sudo", "mkdir", "-p", fmt.Sprintf("/%s", evergreen.HomeVolumeDir)})
+	commands = append(commands, []string{"sudo", "mount", fmt.Sprintf("/dev/%s", deviceName), fmt.Sprintf("/%s", evergreen.HomeVolumeDir)})
+	commands = append(commands, []string{"sudo", "ln", "-s", fmt.Sprintf("/%s", evergreen.HomeVolumeDir), fmt.Sprintf("%s/%s", j.host.Distro.HomeDir(), evergreen.HomeVolumeDir)})
+	commands = append(commands, []string{"sudo", "chown", "-R", fmt.Sprintf("%s:%s", j.host.User, j.host.User), fmt.Sprintf("%s/%s", j.host.Distro.HomeDir(), evergreen.HomeVolumeDir)})
 	for _, command := range commands {
 		proc, err := jasperClient.CreateProcess(ctx, &options.Create{Args: command})
 		if err != nil {
-			return errors.Wrap(err, "problem creating process")
+			return errors.Wrapf(err, "problem creating process for command '%s'", strings.Join(command, " "))
 		}
 		if _, err := proc.Wait(ctx); err != nil {
-			return errors.Wrap(err, "problem waiting for process completion")
+			return errors.Wrapf(err, "problem waiting for process completion for command '%s'", strings.Join(command, " "))
 		}
 	}
 
 	// write to /etc/fstab so the volume will be mounted when the host is restarted
-	err = jasperClient.WriteFile(ctx, options.WriteFile{
-		Path:    "/etc/fstab",
-		Append:  true,
-		Content: []byte(fmt.Sprintf("/dev/%s /%s auto noatime 0 0", deviceName, evergreen.HomeVolumeDir)),
-	})
-	return errors.Wrap(err, "can't write to fstab")
+	opts := options.Create{
+		Args:               []string{"sudo", "tee", "--append", "/etc/fstab"},
+		StandardInputBytes: []byte(fmt.Sprintf("/dev/%s /%s auto noatime 0 0", deviceName, evergreen.HomeVolumeDir)),
+	}
+	proc, err = jasperClient.CreateProcess(ctx, &opts)
+	if err != nil {
+		return errors.Wrap(err, "problem creating process for tee command")
+	}
+	if _, err := proc.Wait(ctx); err != nil {
+		return errors.Wrap(err, "problem waiting for process completion for tee command")
+	}
+
+	return nil
 }
 
 func (j *setupHostJob) setDNSName(ctx context.Context, host *host.Host, cloudMgr cloud.Manager, settings *evergreen.Settings) error {
@@ -717,6 +723,20 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 
 		return errors.Wrapf(err, "error initializing host %s", h.Id)
 	}
+
+	if h.AttachVolume {
+		if err := j.attachVolume(ctx); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":  "can't attach volume",
+				"host":     j.host.Id,
+				"distro":   j.host.Distro.Id,
+				"attempts": h.ProvisionAttempts,
+				"job":      j.ID(),
+			}))
+			return nil
+		}
+	}
+
 	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
 		return nil
 	}
