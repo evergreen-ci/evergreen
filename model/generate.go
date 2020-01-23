@@ -183,7 +183,7 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProje
 
 // if the parser project is more recent, update contingent on that and force update the version (and vice versa)
 func updateVersionAndParserProject(v *Version, pp *ParserProject) error {
-	if pp.ConfigUpdateNumber >= v.ConfigUpdateNumber {
+	if pp.ConfigUpdateNumber > v.ConfigUpdateNumber {
 		curNumber := pp.ConfigUpdateNumber
 		if err := pp.UpsertWithConfigNumber(curNumber, true); err != nil {
 			return errors.Wrapf(err, "error upserting parser project '%s'", pp.Id)
