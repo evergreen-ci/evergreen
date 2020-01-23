@@ -4,14 +4,12 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -345,15 +343,12 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		return errors.Wrap(err, "can't generate patches")
 	}
 
-	commits := noCommits
 	if commitCount > 0 {
-		commitMessage, err := gitCommitMessages(ref.Branch, p.ref)
+		patchParams.Description, err = gitCommitMessages(ref.Branch, p.ref)
 		if err != nil {
 			return errors.Wrap(err, "can't get commit messages")
 		}
-		commits = fmt.Sprintf(commitFmtString, commitMessage, ref.Owner, ref.Repo, ref.Branch)
 	}
-	patchParams.Description = fmt.Sprintf("Commit Queue Merge: %s", commits)
 
 	patch, err := patchParams.createPatch(ac, conf, diffData)
 	if err != nil {
@@ -394,22 +389,18 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 		return errors.New("module patch aborted")
 	}
 
-	owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
-	if err != nil {
-		return errors.Wrapf(err, "can't get owner/repo from '%s'", module.Repo)
-	}
-
 	patch, err := rc.GetPatch(p.patchID)
 	if err != nil {
 		return errors.Wrapf(err, "can't get patch '%s'", p.patchID)
 	}
 
-	commitMessage, err := gitCommitMessages(module.Branch, p.ref)
-	if err != nil {
-		errors.Wrap(err, "can't get commit messages")
+	message := ""
+	if patch.Description == "" {
+		message, err = gitCommitMessages(module.Branch, p.ref)
+		if err != nil {
+			errors.Wrap(err, "can't get module commit messages")
+		}
 	}
-	commits := fmt.Sprintf(commitFmtString, commitMessage, owner, repo, module.Branch)
-	message := fmt.Sprintf("%s || %s", strings.TrimSuffix(patch.Description, noCommits), commits)
 
 	diffData, err := loadGitData(module.Branch, p.ref, true)
 	if err != nil {
