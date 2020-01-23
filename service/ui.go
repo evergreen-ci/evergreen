@@ -223,6 +223,7 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 // hard-coded routes as well as those belonging to plugins.
 func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	needsLogin := gimlet.WrapperMiddleware(uis.requireLogin)
+	needsLoginNoRedirect := gimlet.WrapperMiddleware(uis.requireLoginStatusUnauthorized)
 	needsContext := gimlet.WrapperMiddleware(uis.loadCtx)
 	needsSuperUser := gimlet.WrapperMiddleware(uis.requireSuperUser)
 	needsAdmin := gimlet.WrapperMiddleware(uis.requireAdmin)
@@ -276,7 +277,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// GraphQL
 	app.AddRoute("/graphql").Wrap(allowsCORS, needsLogin).Handler(playground.Handler("GraphQL playground", "/graphql/query")).Get()
-	app.AddRoute("/graphql/query").Wrap(allowsCORS, needsLogin).Handler(graphql.Handler(uis.Settings.ApiUrl)).Post().Get()
+	app.AddRoute("/graphql/query").Wrap(allowsCORS, needsLoginNoRedirect).Handler(graphql.Handler(uis.Settings.ApiUrl)).Post().Get()
 	// this route is used solely to introspect the schema of the GQL server. OPTIONS request by design do not include auth headers; therefore must not require login.
 	app.AddRoute("/graphql/query").Wrap(allowsCORS).Handler(func(_ http.ResponseWriter, _ *http.Request) {}).Options()
 
