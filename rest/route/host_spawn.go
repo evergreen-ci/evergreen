@@ -1158,7 +1158,7 @@ func (hs *hostStartProcesses) Run(ctx context.Context) gimlet.Responder {
 			response.AddData(model.APIHostProcess{
 				HostID:   hostID,
 				Complete: true,
-				Output:   errors.Errorf("can't run script on host with status '%s'", h.Status).Error(),
+				Output:   fmt.Sprintf("can't run script on host with status '%s'", h.Status),
 			})
 			continue
 		}
@@ -1166,7 +1166,7 @@ func (hs *hostStartProcesses) Run(ctx context.Context) gimlet.Responder {
 			response.AddData(model.APIHostProcess{
 				HostID:   hostID,
 				Complete: true,
-				Output:   errors.Errorf("can't run script on host of distro '%s' because it doesn't support Jasper communication", h.Distro.Id).Error(),
+				Output:   fmt.Sprintf("can't run script on host of distro '%s' because it doesn't support Jasper communication", h.Distro.Id),
 			})
 			continue
 		}
