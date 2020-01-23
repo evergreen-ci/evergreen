@@ -115,7 +115,7 @@ func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request
 		if d.SpawnAllowed {
 			distroList = append(distroList, map[string]interface{}{
 				"name":          d.Id,
-				"mount_allowed": d.MountScript != "" && d.JasperCommunication(),
+				"mount_allowed": d.JasperCommunication() && d.IsLinux(),
 			})
 		}
 	}

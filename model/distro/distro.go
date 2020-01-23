@@ -42,7 +42,7 @@ type Distro struct {
 	DisableShallowClone   bool                    `bson:"disable_shallow_clone" json:"disable_shallow_clone" mapstructure:"disable_shallow_clone"`
 	UseLegacyAgent        bool                    `bson:"use_legacy_agent" json:"use_legacy_agent" mapstructure:"use_legacy_agent"`
 	Note                  string                  `bson:"note" json:"note" mapstructure:"note"`
-	MountScript           string                  `bson:"mount_script" json:"mount_script" mapstructure:"mount_script"`
+	HomeVolumeDeviceName  string                  `bson:"home_volume_device_name" json:"home_volume_device_name" mapstructure:"home_volume_device_name"`
 }
 
 // BootstrapSettings encapsulates all settings related to bootstrapping hosts.

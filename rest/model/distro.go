@@ -354,7 +354,7 @@ type APIDistro struct {
 	DisableShallowClone   bool                     `json:"disable_shallow_clone"`
 	UseLegacyAgent        bool                     `json:"use_legacy_agent"`
 	Note                  APIString                `json:"note"`
-	MountScript           APIString                `json:"mount_script"`
+	HomeVolumeDeviceName  APIString                `json:"home_volume_device_name"`
 }
 
 // BuildFromService converts from service level distro.Distro to an APIDistro
@@ -440,7 +440,7 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	apiDistro.DisableShallowClone = d.DisableShallowClone
 	apiDistro.UseLegacyAgent = d.UseLegacyAgent
 	apiDistro.Note = ToAPIString(d.Note)
-	apiDistro.MountScript = ToAPIString(d.MountScript)
+	apiDistro.HomeVolumeDeviceName = ToAPIString(d.HomeVolumeDeviceName)
 
 	return nil
 }
@@ -534,7 +534,7 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d.DisableShallowClone = apiDistro.DisableShallowClone
 	d.UseLegacyAgent = apiDistro.UseLegacyAgent
 	d.Note = FromAPIString(apiDistro.Note)
-	d.MountScript = FromAPIString(apiDistro.MountScript)
+	d.HomeVolumeDeviceName = FromAPIString(apiDistro.HomeVolumeDeviceName)
 
 	return &d, nil
 }

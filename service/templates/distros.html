@@ -288,6 +288,10 @@ Evergreen - Distros
               <div class="icon fa fa-warning distro-error" ng-show="form.workDir.$dirty && form.workDir.$error.required || form.workDir.$invalid">Working
                 Directory is required</div>
             </div>
+            <div>
+              <label class="distro-label">Home Volume Device Name:</label>
+              <input ng-readonly="readOnly" type="text" class="form-control" ng-model="activeDistro.home_volume_device_name">
+            </div>
           </div>
           <br>
           <div class="panel-body panel panel-default">
@@ -857,12 +861,6 @@ Evergreen - Distros
               There is no guarantee this script will be run if the host is terminated by mechanisms outside of
               Evergreen.
             </div>
-          </div>
-          <div>
-            <label class="distro-label">Mount Script:</label>
-            <div class="muted small">Use the '${device_name}' placeholder to specify the device name</div>
-            <textarea ng-readonly="readOnly" name="script" type="text" wrap="off" class="form-control" rows="2" ng-model="activeDistro.mount_script"
-            style="margin-left: 0px; font-family: monospace"></textarea>
           </div>
         </div>
         <div>

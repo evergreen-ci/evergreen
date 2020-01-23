@@ -195,8 +195,8 @@ func (j *setupHostJob) setupHost(ctx context.Context, h *host.Host, settings *ev
 }
 
 func (j *setupHostJob) attachVolume(ctx context.Context) error {
-	if !j.host.Distro.JasperCommunication() {
-		return errors.Errorf("host '%s' of distro '%s' doesn't support Jasper communication", j.host.Id, j.host.Distro.Id)
+	if !(j.host.Distro.JasperCommunication() && j.host.Distro.IsLinux()) {
+		return errors.Errorf("host '%s' of distro '%s' doesn't support mounting a volume", j.host.Id, j.host.Distro.Id)
 	}
 
 	mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
@@ -232,13 +232,50 @@ func (j *setupHostJob) attachVolume(ctx context.Context) error {
 	}
 
 	// run the distro's mount script
-	mountScript := strings.Replace(j.host.Distro.MountScript, evergreen.DeviceNamePlaceholder, attachment.DeviceName, -1)
-	bashPath := filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath)
-	opts := &options.Create{
-		Args: []string{bashPath, "-l", "-c", mountScript},
+	return errors.Wrap(j.mountLinuxVolume(ctx, attachment), "can't mount volume")
+}
+
+func (j *setupHostJob) mountLinuxVolume(ctx context.Context, volume host.VolumeAttachment) error {
+	commands := [][]string{}
+	deviceName := volume.DeviceName
+	if j.host.Distro.HomeVolumeDeviceName != "" {
+		deviceName = j.host.Distro.HomeVolumeDeviceName
 	}
-	_, err = j.host.RunJasperProcess(ctx, j.env, opts)
-	return errors.Wrap(err, "can't run mount script with Jasper")
+	commands = append(commands, []string{"/sbin/mkfs.xfs", "-f", fmt.Sprintf("/dev/%s", deviceName)})
+	commands = append(commands, []string{"mkdir", fmt.Sprintf("/%s", evergreen.HomeVolumeDir)})
+	commands = append(commands, []string{"mount", fmt.Sprintf("/dev/%s", deviceName), fmt.Sprintf("/%s", evergreen.HomeVolumeDir)})
+	commands = append(commands, []string{"ln", "-s", fmt.Sprintf("/%s", evergreen.HomeVolumeDir), fmt.Sprintf("%s/%s", j.host.Distro.HomeDir(), evergreen.HomeVolumeDir)})
+	commands = append(commands, []string{"chown", "-R", fmt.Sprintf("%s:%s", j.host.User, j.host.User), fmt.Sprintf("%s/%s", j.host.Distro.HomeDir(), evergreen.HomeVolumeDir)})
+
+	jasperClient, err := j.host.JasperClient(ctx, j.env)
+	if err != nil {
+		return errors.Wrap(err, "can't get Jasper client")
+	}
+	defer func() {
+		grip.Warning(message.WrapError(jasperClient.CloseConnection(), message.Fields{
+			"message": "could not close connection to Jasper",
+			"host":    j.host.Id,
+			"distro":  j.host.Distro.Id,
+		}))
+	}()
+
+	for _, command := range commands {
+		proc, err := jasperClient.CreateProcess(ctx, &options.Create{Args: command})
+		if err != nil {
+			return errors.Wrap(err, "problem creating process")
+		}
+		if _, err := proc.Wait(ctx); err != nil {
+			return errors.Wrap(err, "problem waiting for process completion")
+		}
+	}
+
+	// write to /etc/fstab so the volume will be mounted when the host is restarted
+	err = jasperClient.WriteFile(ctx, options.WriteFile{
+		Path:    "/etc/fstab",
+		Append:  true,
+		Content: []byte(fmt.Sprintf("/dev/%s /%s auto noatime 0 0", deviceName, evergreen.HomeVolumeDir)),
+	})
+	return errors.Wrap(err, "can't write to fstab")
 }
 
 func (j *setupHostJob) setDNSName(ctx context.Context, host *host.Host, cloudMgr cloud.Manager, settings *evergreen.Settings) error {
