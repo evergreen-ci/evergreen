@@ -79,12 +79,7 @@ func (tc *DBTestConnector) FindTestsByTaskIdSortAndPaginate(taskId string, sortO
 		taskIds = []string{taskId}
 	}
 	q := testresult.TestResultsQuerySortAndPaginate(taskIds, sortOrder, page, limit, execution)
-
 	res, err := testresult.Find(q)
-	for _, t := range res {
-		fmt.Println("this is the duration of the sorted models...")
-		fmt.Println(t.Stuff)
-	}
 	if err != nil {
 		return []testresult.TestResult{}, err
 	}

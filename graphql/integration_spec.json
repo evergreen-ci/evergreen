@@ -144,7 +144,7 @@
         "line_num": 126,
         "exit_code": 0,
         "start": 0,
-        "end": 30,
+        "end": 40,
         "task_id": "exec1",
         "task_execution": 5,
         "url": "a url",
@@ -158,7 +158,7 @@
         "line_num": 126,
         "exit_code": 0,
         "start": 0,
-        "end": 40,
+        "end": 30,
         "task_id": "exec1",
         "task_execution": 5,
         "url": "a url",
@@ -248,67 +248,80 @@
         }
       }
     },
+    // {
+    //   "query_file": "taskTestStatusAsc.graphql",
+    //   "result": {
+    //     "data": {
+    //       "taskTests": [
+    //         { "status": "a" },
+    //         { "status": "b" },
+    //         { "status": "c" },
+    //         { "status": "d" }
+    //       ]
+    //     }
+    //   }
+    // },
+    // {
+    //   "query_file": "taskTestStatusDesc.graphql",
+    //   "result": {
+    //     "data": {
+    //       "taskTests": [
+    //         { "status": "d" },
+    //         { "status": "c" },
+    //         { "status": "b" },
+    //         { "status": "a" }
+    //       ]
+    //     }
+    //   }
+    // },
+    // {
+    //   "query_file": "taskTestNameAsc.graphql",
+    //   "result": {
+    //     "data": {
+    //       "taskTests": [
+    //         { "testFile": "a" },
+    //         { "testFile": "b" },
+    //         { "testFile": "c" },
+    //         { "testFile": "d" }
+    //       ]
+    //     }
+    //   }
+    // },
+    // {
+    //   "query_file": "taskTestNameDesc.graphql",
+    //   "result": {
+    //     "data": {
+    //       "taskTests": [
+    //         { "testFile": "d" },
+    //         { "testFile": "c" },
+    //         { "testFile": "b" },
+    //         { "testFile": "a" }
+    //       ]
+    //     }
+    //   }
+    // },
+    // {
+    //   "query_file": "taskTestDurationDesc.graphql",
+    //   "result": {
+    //     "data": {
+    //       "taskTests": [
+    //         { "duration": 40 },
+    //         { "duration": 30 },
+    //         { "duration": 20 },
+    //         { "duration": 10 }
+    //       ]
+    //     }
+    //   }
+    // },
     {
-      "query_file": "taskTestStatusAsc.graphql",
+      "query_file": "taskTestDurationAsc.graphql",
       "result": {
         "data": {
           "taskTests": [
-            { "status": "a" },
-            { "status": "b" },
-            { "status": "c" },
-            { "status": "d" }
-          ]
-        }
-      }
-    },
-    {
-      "query_file": "taskTestStatusDesc.graphql",
-      "result": {
-        "data": {
-          "taskTests": [
-            { "status": "d" },
-            { "status": "c" },
-            { "status": "b" },
-            { "status": "a" }
-          ]
-        }
-      }
-    },
-    {
-      "query_file": "taskTestNameAsc.graphql",
-      "result": {
-        "data": {
-          "taskTests": [
-            { "testFile": "a" },
-            { "testFile": "b" },
-            { "testFile": "c" },
-            { "testFile": "d" }
-          ]
-        }
-      }
-    },
-    {
-      "query_file": "taskTestNameDesc.graphql",
-      "result": {
-        "data": {
-          "taskTests": [
-            { "testFile": "d" },
-            { "testFile": "c" },
-            { "testFile": "b" },
-            { "testFile": "a" }
-          ]
-        }
-      }
-    },
-    {
-      "query_file": "taskTestDurationDesc.graphql",
-      "result": {
-        "data": {
-          "taskTests": [
-            { "duration": 40 },
-            { "duration": 30 },
+            { "duration": 10 },
             { "duration": 20 },
-            { "duration": 10 }
+            { "duration": 30 },
+            { "duration": 40 }
           ]
         }
       }

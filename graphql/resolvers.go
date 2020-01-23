@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -85,14 +86,24 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 	if err != nil {
 		return nil, errors.Wrap(err, "Error retreiving test")
 	}
+
 	testPointers := []*model.APITest{}
+	if sortBy == "stuff" {
+		fmt.Println("these are the ordered durations")
+	}
 	for _, t := range tests {
+		if sortBy == "stuff" {
+			fmt.Println(t.Stuff)
+		}
 		apiTest := model.APITest{}
 		err := apiTest.BuildFromService(&t)
 		if err != nil {
 			return nil, errors.Wrap(err, "error converting test")
 		}
 		testPointers = append(testPointers, &apiTest)
+	}
+	if sortBy == "stuff" {
+		fmt.Println("end of ordered durations")
 	}
 	return testPointers, nil
 }

@@ -1,7 +1,6 @@
 package testresult
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -169,9 +168,6 @@ func TestResultsQuerySortAndPaginate(taskIds []string, sortOrder []string, page,
 		TaskIDKey:    bson.M{"$in": taskIds},
 		ExecutionKey: execution,
 	}
-	fmt.Println("SORT ORDER----------------------------------------------------------------------------------------")
-	fmt.Println(sortOrder)
-	fmt.Println("SORT ORDER----------------------------------------------------------------------------------------")
 	q := db.Query(match).Project(bson.M{
 		"stuff":      bson.M{"$subtract": []string{"$" + EndTimeKey, "$" + StartTimeKey}},
 		TestFileKey:  1,
