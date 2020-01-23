@@ -146,7 +146,6 @@ func (m *dockerManager) GetDNSName(ctx context.Context, h *host.Host) (string, e
 func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, user, reason string) error {
 	if h.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %s - already marked as terminated!", h.Id)
-		grip.Error(err)
 		return err
 	}
 
@@ -366,6 +365,7 @@ func (m *dockerManager) GetContainerImage(ctx context.Context, parent *host.Host
 	grip.Info(message.Fields{
 		"operation": "EnsureImageDownloaded",
 		"details":   "total",
+		"host":      parent.Id,
 		"image":     image,
 		"duration":  time.Since(start),
 		"span":      time.Since(start).String(),
@@ -382,6 +382,7 @@ func (m *dockerManager) GetContainerImage(ctx context.Context, parent *host.Host
 	}
 	grip.Info(message.Fields{
 		"operation": "BuildImageWithAgent",
+		"host":      parent.Id,
 		"details":   "total",
 		"duration":  time.Since(start),
 		"span":      time.Since(start).String(),
