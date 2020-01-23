@@ -437,9 +437,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 			lastRevision = repository.LastRevision
 		}
 
-		// this used to send email, but it happens so
-		// infrequently, and mail is a bad format for this.
-		grip.Critical(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message":      "repotracker configuration problem",
 			"project":      projectRef.Identifier,
 			"runner":       RunnerName,
