@@ -651,6 +651,7 @@ func (e *envState) setupRoleManager() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(e.roleManager.RegisterPermissions(ProjectPermissions))
 	catcher.Add(e.roleManager.RegisterPermissions(DistroPermissions))
+	catcher.Add(e.roleManager.RegisterPermissions(SuperuserPermissions))
 	return catcher.Resolve()
 }
 

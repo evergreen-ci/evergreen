@@ -2,8 +2,10 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
@@ -381,7 +383,7 @@ func urlVarsToProjectScopes(r *http.Request) (string, int, error) {
 	vars := gimlet.GetVars(r)
 	query := r.URL.Query()
 
-	resourceType := util.CoalesceStrings(query["resource_type"], vars["resource_type"])
+	resourceType := strings.ToUpper(util.CoalesceStrings(query["resource_type"], vars["resource_type"]))
 	if resourceType != "" {
 		switch resourceType {
 		case model.EventResourceTypeProject:
@@ -463,9 +465,10 @@ func urlVarsToDistroScopes(r *http.Request) (string, int, error) {
 	vars := gimlet.GetVars(r)
 	query := r.URL.Query()
 
-	resourceType := util.CoalesceStrings(query["resource_type"], vars["resource_type"])
+	resourceType := strings.ToUpper(util.CoalesceStrings(query["resource_type"], vars["resource_type"]))
 	if resourceType != "" {
 		switch resourceType {
+		case event.ResourceTypeScheduler:
 		case event.ResourceTypeDistro:
 			vars["distro_id"] = vars["resource_id"]
 		case event.ResourceTypeHost:
@@ -493,4 +496,76 @@ func urlVarsToDistroScopes(r *http.Request) (string, int, error) {
 
 func superUserResource(_ *http.Request) (string, int, error) {
 	return evergreen.SuperUserPermissionsID, http.StatusOK, nil
+}
+
+type EventLogPermissionsMiddleware struct{}
+
+func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	ctx := r.Context()
+	vars := gimlet.GetVars(r)
+	var resource string
+	var status int
+	var err error
+	resourceType := strings.ToUpper(vars["resource_type"])
+	opts := gimlet.PermissionOpts{}
+	switch resourceType {
+	case event.ResourceTypeTask:
+		resource, status, err = urlVarsToProjectScopes(r)
+		opts.ResourceType = evergreen.ProjectResourceType
+		opts.Permission = evergreen.PermissionTasks
+		opts.RequiredLevel = evergreen.TasksView.Value
+	case model.EventResourceTypeProject:
+		resource, status, err = urlVarsToProjectScopes(r)
+		opts.ResourceType = evergreen.ProjectResourceType
+		opts.Permission = evergreen.PermissionProjectSettings
+		opts.RequiredLevel = evergreen.ProjectSettingsView.Value
+	case event.ResourceTypeDistro:
+		fallthrough
+	case event.ResourceTypeScheduler:
+		resource, status, err = urlVarsToDistroScopes(r)
+		opts.ResourceType = evergreen.DistroResourceType
+		opts.Permission = evergreen.PermissionHosts
+		opts.RequiredLevel = evergreen.HostsView.Value
+	case event.ResourceTypeHost:
+		resource, status, err = urlVarsToDistroScopes(r)
+		opts.ResourceType = evergreen.DistroResourceType
+		opts.Permission = evergreen.PermissionDistroSettings
+		opts.RequiredLevel = evergreen.DistroSettingsView.Value
+	case event.ResourceTypeAdmin:
+		resource = evergreen.SuperUserPermissionsID
+		opts.ResourceType = evergreen.SuperUserResourceType
+		opts.Permission = evergreen.PermissionAdminSettings
+		opts.RequiredLevel = evergreen.AdminSettingsEdit.Value
+	default:
+		http.Error(rw, fmt.Sprintf("%s is not a valid resource type", resourceType), http.StatusBadRequest)
+		return
+	}
+	if err != nil {
+		http.Error(rw, err.Error(), status)
+	}
+	opts.Resource = resource
+
+	user := gimlet.GetUser(ctx)
+	if user == nil {
+		http.Error(rw, "no user found", http.StatusUnauthorized)
+		return
+	}
+
+	authenticator := gimlet.GetAuthenticator(ctx)
+	if authenticator == nil {
+		http.Error(rw, "unable to determine an authenticator", http.StatusInternalServerError)
+		return
+	}
+
+	if !authenticator.CheckAuthenticated(user) {
+		http.Error(rw, "not authenticated", http.StatusUnauthorized)
+		return
+	}
+
+	if !user.HasPermission(opts) {
+		http.Error(rw, "not authorized for this action", http.StatusUnauthorized)
+		return
+	}
+
+	next(rw, r)
 }

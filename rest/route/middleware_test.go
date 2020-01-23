@@ -10,6 +10,8 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -429,4 +431,104 @@ func TestProjectViewPermission(t *testing.T) {
 	authHandler.ServeHTTP(rw, req, checkPermission)
 	assert.Equal(http.StatusOK, rw.Code)
 	assert.Equal(2, counter)
+}
+
+func TestEventLogPermission(t *testing.T) {
+	if !evergreen.AclCheckingIsEnabled {
+		t.Skip("ACL system not on, will not run TestEventLogPermission")
+	}
+	//setup
+	assert := assert.New(t)
+	counter := 0
+	counterFunc := func(rw http.ResponseWriter, r *http.Request) {
+		counter++
+		rw.WriteHeader(http.StatusOK)
+	}
+	env := evergreen.GetEnvironment()
+	assert.NoError(db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection, model.ProjectRefCollection, distro.Collection))
+	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+	projRole := gimlet.Role{
+		ID:          "proj",
+		Scope:       "proj1",
+		Permissions: map[string]int{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsView.Value},
+	}
+	assert.NoError(env.RoleManager().UpdateRole(projRole))
+	distroRole := gimlet.Role{
+		ID:          "distro",
+		Scope:       "distro1",
+		Permissions: map[string]int{evergreen.PermissionHosts: evergreen.HostsView.Value},
+	}
+	assert.NoError(env.RoleManager().UpdateRole(distroRole))
+	superuserRole := gimlet.Role{
+		ID:          "superuser",
+		Scope:       "superuser",
+		Permissions: map[string]int{evergreen.PermissionAdminSettings: evergreen.AdminSettingsEdit.Value},
+	}
+	assert.NoError(env.RoleManager().UpdateRole(superuserRole))
+	scope1 := gimlet.Scope{
+		ID:        "proj1",
+		Resources: []string{"proj1"},
+		Type:      evergreen.ProjectResourceType,
+	}
+	assert.NoError(env.RoleManager().AddScope(scope1))
+	scope2 := gimlet.Scope{
+		ID:        "distro1",
+		Resources: []string{"distro1"},
+		Type:      evergreen.DistroResourceType,
+	}
+	assert.NoError(env.RoleManager().AddScope(scope2))
+	scope3 := gimlet.Scope{
+		ID:        "superuser",
+		Resources: []string{evergreen.SuperUserPermissionsID},
+		Type:      evergreen.SuperUserResourceType,
+	}
+	assert.NoError(env.RoleManager().AddScope(scope3))
+	proj1 := model.ProjectRef{
+		Identifier: "proj1",
+		Private:    true,
+	}
+	assert.NoError(proj1.Insert())
+	distro1 := distro.Distro{
+		Id: "distro1",
+	}
+	assert.NoError(distro1.Insert())
+	permissionMiddleware := EventLogPermissionsMiddleware{}
+	checkPermission := func(rw http.ResponseWriter, r *http.Request) {
+		permissionMiddleware.ServeHTTP(rw, r, counterFunc)
+	}
+	authenticator := gimlet.NewBasicAuthenticator(nil, nil)
+	user := gimlet.NewBasicUser("user", "name", "email", "password", "key", "", "", []string{projRole.ID, distroRole.ID, superuserRole.ID}, false, env.RoleManager())
+	um, err := gimlet.NewBasicUserManager([]gimlet.User{user}, env.RoleManager())
+	assert.NoError(err)
+	authHandler := gimlet.NewAuthenticationHandler(authenticator, um)
+	req := httptest.NewRequest("GET", "http://foo.com/bar", nil)
+
+	// no user + private project should 404
+	rw := httptest.NewRecorder()
+	req = gimlet.SetURLVars(req, map[string]string{"resource_type": model.EventResourceTypeProject, "resource_id": proj1.Identifier})
+	authHandler.ServeHTTP(rw, req, checkPermission)
+	assert.Equal(http.StatusNotFound, rw.Code)
+	assert.Equal(0, counter)
+
+	// have user, project event
+	req = req.WithContext(gimlet.AttachUser(req.Context(), user))
+	req = gimlet.SetURLVars(req, map[string]string{"resource_type": model.EventResourceTypeProject, "resource_id": proj1.Identifier})
+	rw = httptest.NewRecorder()
+	authHandler.ServeHTTP(rw, req, checkPermission)
+	assert.Equal(http.StatusOK, rw.Code)
+	assert.Equal(1, counter)
+
+	// distro event
+	req = gimlet.SetURLVars(req, map[string]string{"resource_type": event.ResourceTypeDistro, "resource_id": distro1.Id})
+	rw = httptest.NewRecorder()
+	authHandler.ServeHTTP(rw, req, checkPermission)
+	assert.Equal(http.StatusOK, rw.Code)
+	assert.Equal(2, counter)
+
+	// superuser event
+	req = gimlet.SetURLVars(req, map[string]string{"resource_type": event.ResourceTypeAdmin, "resource_id": evergreen.SuperUserPermissionsID})
+	rw = httptest.NewRecorder()
+	authHandler.ServeHTTP(rw, req, checkPermission)
+	assert.Equal(http.StatusOK, rw.Code)
+	assert.Equal(3, counter)
 }
