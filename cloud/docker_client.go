@@ -475,8 +475,7 @@ func (c *dockerClientImpl) ListContainers(ctx context.Context, h *host.Host) ([]
 	opts := types.ContainerListOptions{All: false}
 	containers, err := dockerClient.ContainerList(ctx, opts)
 	if err != nil {
-		err = errors.Wrap(err, "Docker list API call failed")
-		return nil, err
+		return nil, errors.Wrap(err, "Docker list API call failed")
 	}
 
 	return containers, nil
@@ -529,8 +528,7 @@ func (c *dockerClientImpl) RemoveContainer(ctx context.Context, h *host.Host, co
 
 	opts := types.ContainerRemoveOptions{Force: true}
 	if err = dockerClient.ContainerRemove(ctx, containerID, opts); err != nil {
-		err = errors.Wrapf(err, "Failed to remove container '%s'", containerID)
-		return err
+		return errors.Wrapf(err, "Failed to remove container '%s'", containerID)
 	}
 
 	return nil
