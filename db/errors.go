@@ -3,7 +3,8 @@ package db
 import (
 	"strings"
 
-	"gopkg.in/mgo.v2"
+	"github.com/pkg/errors"
+	mgo "gopkg.in/mgo.v2"
 )
 
 func IsDuplicateKey(err error) bool {
@@ -11,6 +12,7 @@ func IsDuplicateKey(err error) bool {
 		return false
 	}
 
+	err = errors.Cause(err)
 	if mgo.IsDup(err) {
 		return true
 	}
