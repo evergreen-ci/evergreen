@@ -5,6 +5,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
   $scope.isAdmin = $window.isSuperUser || $window.isAdmin;
   $scope.create = (!$window.acl_enabled && $window.isSuperUser) || ($window.acl_enabled && $window.canCreate); // TODO: PM-1355 remove this
   $scope.acl_enabled = $window.acl_enabled; // TODO PM-1355 remove this
+  $scope.validDefaultLoggers = $window.validDefaultLoggers;
 
   $scope.projectVars = {};
   $scope.patchVariants = [];
@@ -338,6 +339,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
           project_vars: $scope.projectVars,
           private_vars: $scope.privateVars,
           display_name: $scope.projectRef.display_name,
+          default_logger: $scope.projectRef.default_logger,
           remote_path: $scope.projectRef.remote_path,
           batch_time: parseInt($scope.projectRef.batch_time),
           deactivate_previous: $scope.projectRef.deactivate_previous,
