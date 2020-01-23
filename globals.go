@@ -196,7 +196,7 @@ const (
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
 
 	// TODO: remove this when degrading YAML
-	UseParserProject = true
+	UseParserProject = false
 )
 
 func IsFinishedTaskStatus(status string) bool {

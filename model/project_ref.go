@@ -138,6 +138,7 @@ var (
 	ProjectRefRepoKindKey            = bsonutil.MustHaveTag(ProjectRef{}, "RepoKind")
 	ProjectRefEnabledKey             = bsonutil.MustHaveTag(ProjectRef{}, "Enabled")
 	ProjectRefPrivateKey             = bsonutil.MustHaveTag(ProjectRef{}, "Private")
+	ProjectRefRestrictedKey          = bsonutil.MustHaveTag(ProjectRef{}, "Restricted")
 	ProjectRefBatchTimeKey           = bsonutil.MustHaveTag(ProjectRef{}, "BatchTime")
 	ProjectRefIdentifierKey          = bsonutil.MustHaveTag(ProjectRef{}, "Identifier")
 	ProjectRefDisplayNameKey         = bsonutil.MustHaveTag(ProjectRef{}, "DisplayName")
@@ -638,6 +639,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefRepoKindKey:            projectRef.RepoKind,
 				ProjectRefEnabledKey:             projectRef.Enabled,
 				ProjectRefPrivateKey:             projectRef.Private,
+				ProjectRefRestrictedKey:          projectRef.Restricted,
 				ProjectRefBatchTimeKey:           projectRef.BatchTime,
 				ProjectRefOwnerKey:               projectRef.Owner,
 				ProjectRefRepoKey:                projectRef.Repo,

@@ -1,5 +1,11 @@
 {
   task(taskId: "wuzzup") {
+    logs {
+      allLogLink
+      taskLogLink
+      agentLogLink
+      systemLogLink
+    }
     id
     createTime
     ingestTime
