@@ -1,12 +1,15 @@
 package service
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/gimlet/rolemanager"
@@ -515,23 +518,13 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if defaultLogger == model.BuildloggerLogSender {
-		url := evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL
-		url += fmt.Sprintf("/rest/v1/buildlogger/task_id/%s?n=%d&execution=%dprint_time=true", projCtx.Task.Id, DefaultLogMessages, execution)
-		if logType != AllLogsType {
-			url += fmt.Sprintf("&proc_name=%s", logType)
-		}
-		c := util.GetHTTPClient()
-		defer util.PutHTTPClient(c)
-		resp, err := c.Get(url)
+		logReader, err := getBuildloggerLogs(projCtx, r, logType, DefaultLogMessages, execution)
 		if err == nil {
-			defer resp.Body.Close()
-			if resp.StatusCode == http.StatusOK {
-				gimlet.WriteText(w, resp.Body)
-				return
-			}
-		} else {
-			grip.Error(errors.Wrap(err, "failed to get logs from buildlogger, using evergreen logger"))
+			gimlet.WriteText(w, logReader)
+			grip.Warning(logReader.Close())
+			return
 		}
+		grip.Error(err)
 	}
 	ctx := r.Context()
 	usr := gimlet.GetUser(ctx)
@@ -542,19 +535,6 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 	}
 	wrapper.LogMessages = taskLogs
 	gimlet.WriteJSON(w, wrapper)
-}
-
-func getDefaultLogger(projCtx projectContext) (string, error) {
-	projRef, err := projCtx.GetProjectRef()
-	if err != nil {
-		return "", errors.Wrap(err, "problem getting project ref to fetch logs")
-	}
-	defaultLogger := projRef.DefaultLogger
-	if defaultLogger == "" {
-		defaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
-	}
-
-	return defaultLogger, nil
 }
 
 func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
@@ -591,22 +571,111 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	channel, err := model.GetRawTaskLogChannel(projCtx.Task.Id, execution, []string{}, logTypeFilter)
+	data := struct {
+		Buildlogger chan string
+		Data        chan apimodels.LogMessage
+		User        gimlet.User
+	}{Buildlogger: make(chan string, 1024), User: usr}
+	var logReader io.ReadCloser
+
+	defaultLogger, err := getDefaultLogger(projCtx)
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error getting log data"))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	if defaultLogger == model.BuildloggerLogSender {
+		logReader, err = getBuildloggerLogs(projCtx, r, logType, 0, execution)
+		if err == nil {
+			defer logReader.Close()
+		} else {
+			grip.Error(err)
+		}
+	}
 
-	type logTemplateData struct {
-		Data chan apimodels.LogMessage
-		User gimlet.User
+	if logReader == nil {
+		data.Data, err = model.GetRawTaskLogChannel(projCtx.Task.Id, execution, []string{}, logTypeFilter)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error getting log data"))
+			return
+		}
 	}
 
 	if (r.FormValue("text") == "true") || (r.Header.Get("Content-Type") == "text/plain") {
-		uis.renderText.Stream(w, http.StatusOK, logTemplateData{channel, usr}, "base", "task_log_raw.html")
+		if logReader != nil {
+			gimlet.WriteText(w, logReader)
+		} else {
+			uis.renderText.Stream(w, http.StatusOK, data, "base", "task_log_raw.html")
+		}
 		return
 	}
-	uis.render.Stream(w, http.StatusOK, logTemplateData{channel, usr}, "base", "task_log.html")
+
+	go func() {
+		defer close(data.Buildlogger)
+		if logReader == nil {
+			return
+		}
+
+		reader := bufio.NewReader(logReader)
+		var line string
+		var err error
+		for err == nil {
+			line, err = reader.ReadString('\n')
+			if err != nil && err != io.EOF {
+				grip.Error(errors.Wrapf(err, "problem reading buildlogger log lines for '%s'", projCtx.Task.Id))
+				return
+			}
+			data.Buildlogger <- strings.TrimSuffix(line, "\n")
+		}
+	}()
+	uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
+}
+
+func getDefaultLogger(projCtx projectContext) (string, error) {
+	projRef, err := projCtx.GetProjectRef()
+	if err != nil {
+		return "", errors.Wrap(err, "problem getting project ref to fetch logs")
+	}
+	defaultLogger := projRef.DefaultLogger
+	if defaultLogger == "" {
+		defaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+	}
+
+	return defaultLogger, nil
+}
+
+func getBuildloggerLogs(projCtx projectContext, r *http.Request, logType string, tail, execution int) (io.ReadCloser, error) {
+	userCookie, err := r.Cookie(evergreen.AuthTokenCookie)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting auth token cookie for user")
+	}
+
+	url := fmt.Sprintf("https://%s", evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL)
+	url += fmt.Sprintf("/rest/v1/buildlogger/task_id/%s?n=%d&execution=%d&print_time=true", projCtx.Task.Id, tail, execution)
+	switch logType {
+	case apimodels.TaskLogPrefix:
+		url += fmt.Sprintf("&proc_name=%s", evergreen.LogTypeTask)
+	case apimodels.SystemLogPrefix:
+		url += fmt.Sprintf("&proc_name=%s", evergreen.LogTypeSystem)
+	case apimodels.AgentLogPrefix:
+		url += fmt.Sprintf("&proc_name=%s", evergreen.LogTypeAgent)
+	}
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "error creating http request for cedar buildlogger")
+	}
+	req.AddCookie(userCookie)
+
+	c := util.GetHTTPClient()
+	defer util.PutHTTPClient(c)
+
+	resp, err := c.Do(req)
+	if err == nil {
+		if resp.StatusCode == http.StatusOK {
+			return resp.Body, nil
+		}
+		return nil, errors.Errorf("failed to get logs for '%s' from buildlogger with status '%s', using evergreen logger", projCtx.Task.Id, resp.Status)
+	}
+	return nil, errors.Wrapf(err, "failed to get logs for '%s' from buildlogger, using evergreen logger", projCtx.Task.Id)
 }
 
 // avoids type-checking json params for the below function
