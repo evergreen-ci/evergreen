@@ -102,7 +102,7 @@ func hostCreate() cli.Command {
 				return errors.New("Unable to create a spawn host. Double check that the params and .evergreen.yml are correct")
 			}
 
-			grip.Infof("Spawn host created with ID '%s'. Visit the hosts page in Evergreen to check on its status.", model.FromAPIString(host.Id))
+			grip.Infof("Spawn host created with ID '%s'. Visit the hosts page in Evergreen to check on its status.", model.FromStringPtr(host.Id))
 			return nil
 		},
 	}
@@ -431,13 +431,13 @@ func printVolumes(volumes []model.APIVolume, userID string) {
 	}
 	grip.Infof("%d volumes started by %s (total size %d):", len(volumes), userID, totalSize)
 	for _, v := range volumes {
-		grip.Infof("\n%-18s: %s\n", "ID", model.FromAPIString(v.ID))
+		grip.Infof("\n%-18s: %s\n", "ID", model.FromStringPtr(v.ID))
 		grip.Infof("%-18s: %d\n", "Size", v.Size)
-		grip.Infof("%-18s: %s\n", "Type", model.FromAPIString(v.Type))
-		grip.Infof("%-18s: %s\n", "Availability Zone", model.FromAPIString(v.AvailabilityZone))
-		if model.FromAPIString(v.HostID) != "" {
-			grip.Infof("%-18s: %s\n", "Device Name", model.FromAPIString(v.DeviceName))
-			grip.Infof("%-18s: %s\n", "Attached to Host", model.FromAPIString(v.HostID))
+		grip.Infof("%-18s: %s\n", "Type", model.FromStringPtr(v.Type))
+		grip.Infof("%-18s: %s\n", "Availability Zone", model.FromStringPtr(v.AvailabilityZone))
+		if model.FromStringPtr(v.HostID) != "" {
+			grip.Infof("%-18s: %s\n", "Device Name", model.FromStringPtr(v.DeviceName))
+			grip.Infof("%-18s: %s\n", "Attached to Host", model.FromStringPtr(v.HostID))
 
 		}
 	}
@@ -495,7 +495,7 @@ func hostCreateVolume() cli.Command {
 				return err
 			}
 
-			grip.Infof("Created volume '%s'.", model.FromAPIString(volume.ID))
+			grip.Infof("Created volume '%s'.", model.FromStringPtr(volume.ID))
 
 			return nil
 		},
@@ -605,12 +605,12 @@ func hostList() cli.Command {
 func printHosts(hosts []*model.APIHost) error {
 	for _, h := range hosts {
 		grip.Infof("ID: %s; Distro: %s; Status: %s; Host name: %s; User: %s, Availability Zone: %s",
-			model.FromAPIString(h.Id),
-			model.FromAPIString(h.Distro.Id),
-			model.FromAPIString(h.Status),
-			model.FromAPIString(h.HostURL),
-			model.FromAPIString(h.User),
-			model.FromAPIString(h.AvailabilityZone))
+			model.FromStringPtr(h.Id),
+			model.FromStringPtr(h.Distro.Id),
+			model.FromStringPtr(h.Status),
+			model.FromStringPtr(h.HostURL),
+			model.FromStringPtr(h.User),
+			model.FromStringPtr(h.AvailabilityZone))
 	}
 	return nil
 }

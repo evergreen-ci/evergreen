@@ -7,7 +7,6 @@ import (
 	"time"
 
 	serviceModel "github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -22,7 +21,7 @@ import (
 
 type PatchByIdSuite struct {
 	sc     *data.MockConnector
-	objIds []mgobson.ObjectId
+	objIds []string
 	data   data.MockPatchConnector
 	route  *patchByIdHandler
 	suite.Suite
@@ -33,12 +32,12 @@ func TestPatchByIdSuite(t *testing.T) {
 }
 
 func (s *PatchByIdSuite) SetupSuite() {
-	s.objIds = []mgobson.ObjectId{mgobson.NewObjectId(), mgobson.NewObjectId()}
+	s.objIds = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
 
 	s.data = data.MockPatchConnector{
-		CachedPatches: []patch.Patch{
-			{Id: s.objIds[0]},
-			{Id: s.objIds[1]},
+		CachedPatches: []model.APIPatch{
+			{Id: &s.objIds[0]},
+			{Id: &s.objIds[1]},
 		},
 	}
 	s.sc = &data.MockConnector{
@@ -52,14 +51,14 @@ func (s *PatchByIdSuite) SetupTest() {
 }
 
 func (s *PatchByIdSuite) TestFindById() {
-	s.route.patchId = s.objIds[0].Hex()
+	s.route.patchId = s.objIds[0]
 	res := s.route.Run(context.TODO())
 	s.NotNil(res)
 	s.Equal(http.StatusOK, res.Status(), "%+v", res.Data())
 
 	p, ok := res.Data().(*model.APIPatch)
 	s.True(ok)
-	s.Equal(model.ToAPIString(s.objIds[0].Hex()), p.Id)
+	s.Equal(model.ToStringPtr(s.objIds[0]), p.Id)
 }
 func (s *PatchByIdSuite) TestFindByIdFail() {
 	new_id := mgobson.NewObjectId()
@@ -90,14 +89,21 @@ func TestPatchesByProjectSuite(t *testing.T) {
 
 func (s *PatchesByProjectSuite) SetupSuite() {
 	s.now = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.FixedZone("", 0))
+	proj1 := "project1"
+	proj2 := "project2"
+	nowPlus2 := s.now.Add(time.Second * 2)
+	nowPlus4 := s.now.Add(time.Second * 4)
+	nowPlus6 := s.now.Add(time.Second * 6)
+	nowPlus8 := s.now.Add(time.Second * 8)
+	nowPlus10 := s.now.Add(time.Second * 10)
 	s.data = data.MockPatchConnector{
-		CachedPatches: []patch.Patch{
-			{Project: "project1", CreateTime: s.now},
-			{Project: "project2", CreateTime: s.now.Add(time.Second * 2)},
-			{Project: "project1", CreateTime: s.now.Add(time.Second * 4)},
-			{Project: "project1", CreateTime: s.now.Add(time.Second * 6)},
-			{Project: "project2", CreateTime: s.now.Add(time.Second * 8)},
-			{Project: "project1", CreateTime: s.now.Add(time.Second * 10)},
+		CachedPatches: []model.APIPatch{
+			{ProjectId: &proj1, CreateTime: &s.now},
+			{ProjectId: &proj2, CreateTime: &nowPlus2},
+			{ProjectId: &proj1, CreateTime: &nowPlus4},
+			{ProjectId: &proj1, CreateTime: &nowPlus6},
+			{ProjectId: &proj2, CreateTime: &nowPlus8},
+			{ProjectId: &proj1, CreateTime: &nowPlus10},
 		},
 	}
 	s.sc = &data.MockConnector{
@@ -133,8 +139,8 @@ func (s *PatchesByProjectSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	s.NotNil(payload)
 
 	s.Len(payload, 2)
-	s.Equal(model.NewTime(s.now.Add(time.Second*6)), (payload[0]).(*model.APIPatch).CreateTime)
-	s.Equal(model.NewTime(s.now.Add(time.Second*4)), (payload[1]).(*model.APIPatch).CreateTime)
+	s.Equal(s.now.Add(time.Second*6), *(payload[0]).(model.APIPatch).CreateTime)
+	s.Equal(s.now.Add(time.Second*4), *(payload[1]).(model.APIPatch).CreateTime)
 
 	pages := resp.Pages()
 	s.NotNil(pages)
@@ -186,7 +192,7 @@ func (s *PatchesByProjectSuite) TestEmptyTimeShouldSetNow() {
 
 type PatchAbortSuite struct {
 	sc     *data.MockConnector
-	objIds []mgobson.ObjectId
+	objIds []string
 	data   data.MockPatchConnector
 
 	suite.Suite
@@ -197,12 +203,13 @@ func TestPatchAbortSuite(t *testing.T) {
 }
 
 func (s *PatchAbortSuite) SetupSuite() {
-	s.objIds = []mgobson.ObjectId{mgobson.NewObjectId(), mgobson.NewObjectId()}
+	s.objIds = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
+	version1 := "version1"
 
 	s.data = data.MockPatchConnector{
-		CachedPatches: []patch.Patch{
-			{Id: s.objIds[0], Version: "version1"},
-			{Id: s.objIds[1]},
+		CachedPatches: []model.APIPatch{
+			{Id: &s.objIds[0], Version: &version1},
+			{Id: &s.objIds[1]},
 		},
 		CachedAborted: make(map[string]string),
 	}
@@ -216,27 +223,27 @@ func (s *PatchAbortSuite) TestAbort() {
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	rm := makeAbortPatch(s.sc).(*patchAbortHandler)
-	rm.patchId = s.objIds[0].Hex()
+	rm.patchId = s.objIds[0]
 	res := rm.Run(ctx)
 	s.NotNil(res)
 	s.Equal(http.StatusOK, res.Status())
 
-	s.Equal("user1", s.data.CachedAborted[s.objIds[0].Hex()])
-	s.Equal("", s.data.CachedAborted[s.objIds[1].Hex()])
+	s.Equal("user1", s.data.CachedAborted[s.objIds[0]])
+	s.Equal("", s.data.CachedAborted[s.objIds[1]])
 	p, ok := (res.Data()).(*model.APIPatch)
 	s.True(ok)
-	s.Equal(model.ToAPIString(s.objIds[0].Hex()), p.Id)
+	s.Equal(model.ToStringPtr(s.objIds[0]), p.Id)
 
 	res = rm.Run(ctx)
 	s.Equal(http.StatusOK, res.Status())
 	s.NotNil(res)
-	s.Equal("user1", s.data.CachedAborted[s.objIds[0].Hex()])
-	s.Equal("", s.data.CachedAborted[s.objIds[1].Hex()])
+	s.Equal("user1", s.data.CachedAborted[s.objIds[0]])
+	s.Equal("", s.data.CachedAborted[s.objIds[1]])
 	p, ok = (res.Data()).(*model.APIPatch)
 	s.True(ok)
-	s.Equal(model.ToAPIString(s.objIds[0].Hex()), p.Id)
+	s.Equal(model.ToStringPtr(s.objIds[0]), p.Id)
 
-	rm.patchId = s.objIds[1].Hex()
+	rm.patchId = s.objIds[1]
 	res = rm.Run(ctx)
 
 	s.NotEqual(http.StatusOK, res.Status())
@@ -263,7 +270,7 @@ func (s *PatchAbortSuite) TestAbortFail() {
 
 type PatchesChangeStatusSuite struct {
 	sc     *data.MockConnector
-	objIds []mgobson.ObjectId
+	objIds []string
 	data   data.MockPatchConnector
 
 	suite.Suite
@@ -274,12 +281,12 @@ func TestPatchesChangeStatusSuite(t *testing.T) {
 }
 
 func (s *PatchesChangeStatusSuite) SetupSuite() {
-	s.objIds = []mgobson.ObjectId{mgobson.NewObjectId(), mgobson.NewObjectId()}
+	s.objIds = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
 
 	s.data = data.MockPatchConnector{
-		CachedPatches: []patch.Patch{
-			{Id: s.objIds[0]},
-			{Id: s.objIds[1]},
+		CachedPatches: []model.APIPatch{
+			{Id: &s.objIds[0]},
+			{Id: &s.objIds[1]},
 		},
 		CachedAborted:  make(map[string]string),
 		CachedPriority: make(map[string]int64),
@@ -295,15 +302,15 @@ func (s *PatchesChangeStatusSuite) TestChangeStatus() {
 
 	rm := makeChangePatchStatus(s.sc).(*patchChangeStatusHandler)
 
-	rm.patchId = s.objIds[0].Hex()
+	rm.patchId = s.objIds[0]
 	var tmp_true = true
 	rm.Activated = &tmp_true
 	var tmp_seven = int64(7)
 	rm.Priority = &tmp_seven
 	res := rm.Run(ctx)
 	s.NotNil(res)
-	s.Equal(int64(7), s.data.CachedPriority[s.objIds[0].Hex()])
-	s.Equal(int64(0), s.data.CachedPriority[s.objIds[1].Hex()])
+	s.Equal(int64(7), s.data.CachedPriority[s.objIds[0]])
+	s.Equal(int64(0), s.data.CachedPriority[s.objIds[1]])
 	p, ok := res.Data().(*model.APIPatch)
 	s.True(ok)
 	s.True(p.Activated)
@@ -315,7 +322,7 @@ func (s *PatchesChangeStatusSuite) TestChangeStatus() {
 
 type PatchRestartSuite struct {
 	sc          *data.MockConnector
-	objIds      []mgobson.ObjectId
+	objIds      []string
 	patchData   data.MockPatchConnector
 	versionData data.MockVersionConnector
 
@@ -327,19 +334,20 @@ func TestPatchRestartSuite(t *testing.T) {
 }
 
 func (s *PatchRestartSuite) SetupSuite() {
-	s.objIds = []mgobson.ObjectId{mgobson.NewObjectId(), mgobson.NewObjectId()}
+	s.objIds = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
+	version1 := "version1"
 
 	s.patchData = data.MockPatchConnector{
-		CachedPatches: []patch.Patch{
-			{Id: s.objIds[0], Version: "version1"},
-			{Id: s.objIds[1]},
+		CachedPatches: []model.APIPatch{
+			{Id: &s.objIds[0], Version: &version1},
+			{Id: &s.objIds[1]},
 		},
 		CachedAborted: make(map[string]string),
 	}
 	s.versionData = data.MockVersionConnector{
 		CachedVersions: []serviceModel.Version{
-			{Id: s.objIds[0].Hex()},
-			{Id: s.objIds[1].Hex()},
+			{Id: s.objIds[0]},
+			{Id: s.objIds[1]},
 		},
 		CachedRestartedVersions: make(map[string]string),
 	}
@@ -354,12 +362,12 @@ func (s *PatchRestartSuite) TestRestart() {
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	rm := makeRestartPatch(s.sc).(*patchRestartHandler)
-	rm.patchId = s.objIds[0].Hex()
+	rm.patchId = s.objIds[0]
 	res := rm.Run(ctx)
 	s.NotNil(res)
 
 	s.Equal(http.StatusOK, res.Status())
-	s.Equal("user1", s.sc.CachedRestartedVersions[s.objIds[0].Hex()])
+	s.Equal("user1", s.sc.CachedRestartedVersions[s.objIds[0]])
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -378,14 +386,21 @@ type PatchesByUserSuite struct {
 func TestPatchesByUserSuite(t *testing.T) {
 	s := new(PatchesByUserSuite)
 	s.now = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.FixedZone("", 0))
+	user1 := "user1"
+	user2 := "user2"
+	nowPlus2 := s.now.Add(time.Second * 2)
+	nowPlus4 := s.now.Add(time.Second * 4)
+	nowPlus6 := s.now.Add(time.Second * 6)
+	nowPlus8 := s.now.Add(time.Second * 8)
+	nowPlus10 := s.now.Add(time.Second * 10)
 	s.data = data.MockPatchConnector{
-		CachedPatches: []patch.Patch{
-			{Author: "user1", CreateTime: s.now},
-			{Author: "user2", CreateTime: s.now.Add(time.Second * 2)},
-			{Author: "user1", CreateTime: s.now.Add(time.Second * 4)},
-			{Author: "user1", CreateTime: s.now.Add(time.Second * 6)},
-			{Author: "user2", CreateTime: s.now.Add(time.Second * 8)},
-			{Author: "user1", CreateTime: s.now.Add(time.Second * 10)},
+		CachedPatches: []model.APIPatch{
+			{Author: &user1, CreateTime: &s.now},
+			{Author: &user2, CreateTime: &nowPlus2},
+			{Author: &user1, CreateTime: &nowPlus4},
+			{Author: &user1, CreateTime: &nowPlus6},
+			{Author: &user2, CreateTime: &nowPlus8},
+			{Author: &user1, CreateTime: &nowPlus10},
 		},
 	}
 	s.sc = &data.MockConnector{
@@ -423,8 +438,8 @@ func (s *PatchesByUserSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	payload := resp.Data().([]interface{})
 
 	s.Len(payload, 2)
-	s.Equal(model.NewTime(s.now.Add(time.Second*6)), (payload[0]).(*model.APIPatch).CreateTime)
-	s.Equal(model.NewTime(s.now.Add(time.Second*4)), (payload[1]).(*model.APIPatch).CreateTime)
+	s.Equal(s.now.Add(time.Second*6), *(payload[0]).(model.APIPatch).CreateTime)
+	s.Equal(s.now.Add(time.Second*4), *(payload[1]).(model.APIPatch).CreateTime)
 
 	pageData := resp.Pages()
 

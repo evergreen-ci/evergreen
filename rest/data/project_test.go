@@ -158,11 +158,11 @@ func TestMockProjectConnectorGetSuite(t *testing.T) {
 		projectId := "mci2"
 		beforeSettings := restModel.APIProjectSettings{
 			ProjectRef: restModel.APIProjectRef{
-				Owner:      restModel.ToAPIString("admin"),
+				Owner:      restModel.ToStringPtr("admin"),
 				Enabled:    true,
 				Private:    true,
-				Identifier: restModel.ToAPIString(projectId),
-				Admins:     []restModel.APIString{},
+				Identifier: restModel.ToStringPtr(projectId),
+				Admins:     []*string{},
 			},
 			GitHubWebhooksEnabled: true,
 			Vars: restModel.APIProjectVars{
@@ -170,17 +170,17 @@ func TestMockProjectConnectorGetSuite(t *testing.T) {
 				PrivateVars: map[string]bool{},
 			},
 			Aliases: []restModel.APIProjectAlias{restModel.APIProjectAlias{
-				Alias:   restModel.ToAPIString("alias1"),
-				Variant: restModel.ToAPIString("ubuntu"),
-				Task:    restModel.ToAPIString("subcommand"),
+				Alias:   restModel.ToStringPtr("alias1"),
+				Variant: restModel.ToStringPtr("ubuntu"),
+				Task:    restModel.ToStringPtr("subcommand"),
 			},
 			},
 			Subscriptions: []restModel.APISubscription{restModel.APISubscription{
-				ID:           restModel.ToAPIString("subscription1"),
-				ResourceType: restModel.ToAPIString("project"),
-				Owner:        restModel.ToAPIString("admin"),
+				ID:           restModel.ToStringPtr("subscription1"),
+				ResourceType: restModel.ToStringPtr("project"),
+				Owner:        restModel.ToStringPtr("admin"),
 				Subscriber: restModel.APISubscriber{
-					Type:   restModel.ToAPIString(event.GithubPullRequestSubscriberType),
+					Type:   restModel.ToStringPtr(event.GithubPullRequestSubscriberType),
 					Target: restModel.APIGithubPRSubscriber{},
 				},
 			},
@@ -194,7 +194,7 @@ func TestMockProjectConnectorGetSuite(t *testing.T) {
 		for i := 0; i < projEventCount; i++ {
 			projectEvents = append(projectEvents, restModel.APIProjectEvent{
 				Timestamp: time.Now().Add(time.Second * time.Duration(-i)),
-				User:      restModel.ToAPIString("me"),
+				User:      restModel.ToStringPtr("me"),
 				Before:    beforeSettings,
 				After:     afterSettings,
 			})

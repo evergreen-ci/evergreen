@@ -17,9 +17,9 @@ func TestAPIRecentTaskStatsListBuildFromService(t *testing.T) {
 
 	apiList := APIRecentTaskStatsList{}
 	assert.NoError(apiList.BuildFromService(service))
-	assert.Equal(ToAPIString("d1"), apiList["total"][0].Name)
+	assert.Equal(ToStringPtr("d1"), apiList["total"][0].Name)
 	assert.Equal(5, apiList["total"][0].Count)
-	assert.Equal(ToAPIString("d1"), apiList[evergreen.TaskInactive][0].Name)
+	assert.Equal(ToStringPtr("d1"), apiList[evergreen.TaskInactive][0].Name)
 	assert.Equal(3, apiList[evergreen.TaskInactive][0].Count)
 	assert.Empty(apiList[evergreen.TaskSucceeded])
 }

@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -36,10 +35,11 @@ func (s *CommitQueueSuite) TestParse() {
 	ctx := context.Background()
 	route := makeCommitQueueEnqueueItem(s.sc).(*commitQueueEnqueueItemHandler)
 
-	patchID := mgobson.NewObjectId()
-	s.sc.CachedPatches = append(s.sc.CachedPatches, patch.Patch{Id: patchID})
-	req, _ := http.NewRequest("PUT", fmt.Sprintf("http://example.com/api/rest/v2/commit_queue/%s?force=true", patchID.Hex()), nil)
-	req = gimlet.SetURLVars(req, map[string]string{"patch_id": patchID.Hex()})
+	patchID := mgobson.NewObjectId().Hex()
+	projectID := "proj"
+	s.sc.CachedPatches = append(s.sc.CachedPatches, model.APIPatch{Id: &patchID, ProjectId: &projectID})
+	req, _ := http.NewRequest("PUT", fmt.Sprintf("http://example.com/api/rest/v2/commit_queue/%s?force=true", patchID), nil)
+	req = gimlet.SetURLVars(req, map[string]string{"patch_id": patchID})
 	s.NoError(route.Parse(ctx, req))
 	s.True(route.force)
 }
@@ -50,37 +50,37 @@ func (s *CommitQueueSuite) TestGetCommitQueue() {
 	pos, err := s.sc.EnqueueItem(
 		"mci",
 		model.APICommitQueueItem{
-			Issue: model.ToAPIString("1"),
+			Issue: model.ToStringPtr("1"),
 			Modules: []model.APIModule{
 				model.APIModule{
-					Module: model.ToAPIString("test_module"),
-					Issue:  model.ToAPIString("1234"),
+					Module: model.ToStringPtr("test_module"),
+					Issue:  model.ToStringPtr("1234"),
 				},
 			},
 		}, false)
 	s.NoError(err)
 	s.Equal(0, pos)
 
-	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToAPIString("2")}, false)
+	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToStringPtr("2")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
 
 	response := route.Run(context.Background())
 	s.Equal(200, response.Status())
 	s.Equal(&model.APICommitQueue{
-		ProjectID: model.ToAPIString("mci"),
+		ProjectID: model.ToStringPtr("mci"),
 		Queue: []model.APICommitQueueItem{
 			model.APICommitQueueItem{
-				Issue: model.ToAPIString("1"),
+				Issue: model.ToStringPtr("1"),
 				Modules: []model.APIModule{
 					model.APIModule{
-						Module: model.ToAPIString("test_module"),
-						Issue:  model.ToAPIString("1234"),
+						Module: model.ToStringPtr("test_module"),
+						Issue:  model.ToStringPtr("1234"),
 					},
 				},
 			},
 			model.APICommitQueueItem{
-				Issue: model.ToAPIString("2"),
+				Issue: model.ToStringPtr("2"),
 			},
 		},
 	}, response.Data())
@@ -99,10 +99,10 @@ func (s *CommitQueueSuite) TestDeleteItem() {
 	s.Require().NoError(env.Configure(ctx))
 
 	route := makeDeleteCommitQueueItems(s.sc, env).(*commitQueueDeleteItemHandler)
-	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToAPIString("1")}, false)
+	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToStringPtr("1")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
-	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToAPIString("2")}, false)
+	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToStringPtr("2")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
 
@@ -127,16 +127,16 @@ func (s *CommitQueueSuite) TestDeleteItem() {
 
 func (s *CommitQueueSuite) TestClearAll() {
 	route := makeClearCommitQueuesHandler(s.sc).(*commitQueueClearAllHandler)
-	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToAPIString("12")}, false)
+	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToStringPtr("12")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
-	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToAPIString("23")}, false)
+	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToStringPtr("23")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
-	pos, err = s.sc.EnqueueItem("logkeeper", model.APICommitQueueItem{Issue: model.ToAPIString("34")}, false)
+	pos, err = s.sc.EnqueueItem("logkeeper", model.APICommitQueueItem{Issue: model.ToStringPtr("34")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
-	pos, err = s.sc.EnqueueItem("logkeeper", model.APICommitQueueItem{Issue: model.ToAPIString("45")}, false)
+	pos, err = s.sc.EnqueueItem("logkeeper", model.APICommitQueueItem{Issue: model.ToStringPtr("45")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
 
@@ -155,11 +155,11 @@ func (s *CommitQueueSuite) TestClearAll() {
 
 func (s *CommitQueueSuite) TestEnqueueItem() {
 	route := makeCommitQueueEnqueueItem(s.sc).(*commitQueueEnqueueItemHandler)
-	id := mgobson.NewObjectId()
-	s.sc.CachedPatches = append(s.sc.CachedPatches, patch.Patch{
-		Id: id,
+	id := mgobson.NewObjectId().Hex()
+	s.sc.CachedPatches = append(s.sc.CachedPatches, model.APIPatch{
+		Id: &id,
 	})
-	route.item = id.Hex()
+	route.item = id
 	response := route.Run(context.Background())
 	s.Equal(200, response.Status())
 	s.Equal(model.APICommitQueuePosition{Position: 0}, response.Data())
@@ -168,9 +168,11 @@ func (s *CommitQueueSuite) TestEnqueueItem() {
 func (s *CommitQueueSuite) TestGetItemAuthor() {
 	ctx := context.Background()
 	route := makeGetCommitQueueItemAuthor(s.sc).(*getCommitQueueItemAuthorHandler)
-	p := patch.Patch{
-		Id:     mgobson.NewObjectId(),
-		Author: "evergreen.user",
+	id := mgobson.NewObjectId().Hex()
+	author := "evergreen.user"
+	p := model.APIPatch{
+		Id:     &id,
+		Author: &author,
 	}
 	s.sc.CachedPatches = append(s.sc.CachedPatches, p)
 	pRef := &dbModel.ProjectRef{
@@ -182,10 +184,10 @@ func (s *CommitQueueSuite) TestGetItemAuthor() {
 	s.NoError(s.sc.CreateProject(pRef))
 
 	route.projectID = pRef.Identifier
-	route.item = p.Id.Hex()
+	route.item = *p.Id
 	resp := route.Run(ctx)
 	s.Equal(200, resp.Status())
-	s.Equal(model.APICommitQueueItemAuthor{Author: model.ToAPIString(p.Author)}, resp.Data())
+	s.Equal(model.APICommitQueueItemAuthor{Author: p.Author}, resp.Data())
 
 	pRef = &dbModel.ProjectRef{
 		Identifier: "not-mci",
@@ -198,5 +200,5 @@ func (s *CommitQueueSuite) TestGetItemAuthor() {
 	route.item = "1234"
 	resp = route.Run(ctx)
 	s.Equal(200, resp.Status())
-	s.Equal(model.APICommitQueueItemAuthor{Author: model.ToAPIString("github.user")}, resp.Data())
+	s.Equal(model.APICommitQueueItemAuthor{Author: model.ToStringPtr("github.user")}, resp.Data())
 }
