@@ -231,7 +231,6 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 	}
 	numHostsToSpawn := newHostsNeeded
 	hostsSpawned := []host.Host{}
-	distroStartTime := time.Now()
 
 	if ctx.Err() != nil {
 		return nil, errors.New("scheduling run canceled")
@@ -248,13 +247,14 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 		}
 		if len(newParentHosts) > 0 {
 			grip.Info(message.Fields{
-				"runner":          RunnerName,
-				"distro":          d.Id,
-				"pool":            pool.Id,
-				"pool_distro":     pool.Distro,
-				"num_new_parents": len(newParentHosts),
-				"operation":       "spawning new parents",
-				"duration_secs":   time.Since(distroStartTime).Seconds(),
+				"runner":             RunnerName,
+				"distro":             d.Id,
+				"pool":               pool.Id,
+				"pool_distro":        pool.Distro,
+				"num_new_parents":    len(newParentHosts),
+				"num_new_containers": newHostsNeeded,
+				"operation":          "spawning new parents",
+				"duration_secs":      time.Since(startTime).Seconds(),
 			})
 		}
 	}

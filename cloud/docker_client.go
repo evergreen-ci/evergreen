@@ -95,6 +95,7 @@ func (c *dockerClientImpl) generateClient(h *host.Host) (*docker.Client, error) 
 	if err != nil {
 		grip.Error(message.Fields{
 			"message":     "Docker initialize client API call failed",
+			"host":        h.Id,
 			"error":       err,
 			"endpoint":    endpoint,
 			"api_version": c.apiVersion,
@@ -157,6 +158,7 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 	grip.Info(message.Fields{
 		"operation":     "EnsureImageDownloaded",
 		"details":       "ImageInspectWithRaw",
+		"host":          h.Id,
 		"duration_secs": time.Since(start).Seconds(),
 	})
 	if err == nil {
@@ -169,6 +171,7 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 				"operation":     "EnsureImageDownloaded",
 				"details":       "import image",
 				"options_image": options.Image,
+				"host":          h.Id,
 				"duration_secs": time.Since(start).Seconds(),
 			})
 			return imageName, errors.Wrap(err, "error importing image")
@@ -182,6 +185,7 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 				"operation":     "EnsureImageDownloaded",
 				"details":       "pull image",
 				"options_image": options.Image,
+				"host":          h.Id,
 				"duration_secs": time.Since(start).Seconds(),
 			})
 			return imageName, errors.Wrap(err, "error pulling image")
@@ -265,6 +269,7 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 		"operation": "BuildImageWithAgent",
 		"details":   "generateclient",
 		"duration":  time.Since(start),
+		"host":      h.Id,
 		"span":      time.Since(start).String(),
 	})
 
@@ -307,6 +312,7 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 		"operation": "BuildImageWithAgent",
 		"details":   "ImageBuild",
 		"duration":  time.Since(start),
+		"host":      h.Id,
 		"span":      time.Since(start).String(),
 	})
 	grip.Info(msg)
@@ -321,6 +327,7 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 		"operation": "BuildImageWithAgent",
 		"details":   "ReadAll",
 		"duration":  time.Since(start),
+		"host":      h.Id,
 		"span":      time.Since(start).String(),
 	})
 
@@ -469,7 +476,6 @@ func (c *dockerClientImpl) ListContainers(ctx context.Context, h *host.Host) ([]
 	containers, err := dockerClient.ContainerList(ctx, opts)
 	if err != nil {
 		err = errors.Wrap(err, "Docker list API call failed")
-		grip.Error(err)
 		return nil, err
 	}
 
@@ -524,7 +530,6 @@ func (c *dockerClientImpl) RemoveContainer(ctx context.Context, h *host.Host, co
 	opts := types.ContainerRemoveOptions{Force: true}
 	if err = dockerClient.ContainerRemove(ctx, containerID, opts); err != nil {
 		err = errors.Wrapf(err, "Failed to remove container '%s'", containerID)
-		grip.Error(err)
 		return err
 	}
 
