@@ -1,6 +1,7 @@
 package testresult
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -19,6 +20,7 @@ const (
 // TestResult contains test data for a task.
 type TestResult struct {
 	ID        mgobson.ObjectId `bson:"_id,omitempty" json:"id"`
+	Stuff     float64          `bson:"stuff" json:"stuff"`
 	Status    string           `json:"status" bson:"status"`
 	TestFile  string           `json:"test_file" bson:"test_file"`
 	URL       string           `json:"url" bson:"url,omitempty"`
@@ -167,9 +169,11 @@ func TestResultsQuerySortAndPaginate(taskIds []string, sortOrder []string, page,
 		TaskIDKey:    bson.M{"$in": taskIds},
 		ExecutionKey: execution,
 	}
-
+	fmt.Println("SORT ORDER----------------------------------------------------------------------------------------")
+	fmt.Println(sortOrder)
+	fmt.Println("SORT ORDER----------------------------------------------------------------------------------------")
 	q := db.Query(match).Project(bson.M{
-		"duration":   bson.M{"$subtract": []string{"$" + StartTimeKey, "$" + EndTimeKey}},
+		"stuff":      bson.M{"$subtract": []string{"$" + EndTimeKey, "$" + StartTimeKey}},
 		TestFileKey:  1,
 		EndTimeKey:   1,
 		StartTimeKey: 1,

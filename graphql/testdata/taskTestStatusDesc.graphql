@@ -1,0 +1,11 @@
+{
+  taskTests(
+    taskId: "wuzzup"
+    sortCategory: STATUS
+    sortDirection: DESC
+    page: 0
+    limit: 0
+  ) {
+    status
+  }
+}

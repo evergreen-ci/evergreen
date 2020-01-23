@@ -72,10 +72,10 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 		sortBy = "status"
 	}
 	if sortCategory == TaskSortCategoryDuration {
-		sortBy = "duration"
+		sortBy = "stuff"
 	}
 	if sortCategory == TaskSortCategoryTestName {
-		sortBy = "test_name"
+		sortBy = "test_file"
 	}
 	if sortDirection == SortDirectionDesc {
 		sortBy = "-" + sortBy
