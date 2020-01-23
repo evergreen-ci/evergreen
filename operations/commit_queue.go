@@ -20,7 +20,7 @@ const (
 	itemFlagName        = "item"
 	pauseFlagName       = "pause"
 	resumeFlagName      = "resume"
-	commitFlagName      = "commits"
+	commitFlagName      = "commit"
 	commitsFlagName     = "commits"
 	descriptionFlagName = "description"
 )
