@@ -294,7 +294,8 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 		AcceptableHostIdleTimeSeconds: 123,
 		GroupVersions:                 false,
 		PatchFactor:                   50,
-		TimeInQueueFactor:             12,
+		PatchTimeInQueueFactor:        12,
+		MainlineTimeInQueueFactor:     10,
 		ExpectedRuntimeFactor:         7,
 	}
 
@@ -314,12 +315,13 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	d0 := Distro{
 		Id: "distro0",
 		PlannerSettings: PlannerSettings{
-			Version:               "",
-			TargetTime:            0,
-			GroupVersions:         nil,
-			PatchFactor:           0,
-			TimeInQueueFactor:     0,
-			ExpectedRuntimeFactor: 0,
+			Version:                   "",
+			TargetTime:                0,
+			GroupVersions:             nil,
+			PatchFactor:               0,
+			PatchTimeInQueueFactor:    0,
+			MainlineTimeInQueueFactor: 0,
+			ExpectedRuntimeFactor:     0,
 		},
 	}
 	config0 := evergreen.SchedulerConfig{
@@ -332,7 +334,8 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		AcceptableHostIdleTimeSeconds: 132134,
 		GroupVersions:                 false,
 		PatchFactor:                   50,
-		TimeInQueueFactor:             12,
+		PatchTimeInQueueFactor:        12,
+		MainlineTimeInQueueFactor:     10,
 		ExpectedRuntimeFactor:         7,
 	}
 
@@ -346,21 +349,24 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	assert.Equal(t, false, *resolved0.GroupVersions)
 	// Fallback to the SchedulerConfig.PatchFactor as PlannerSettings.PatchFactor is is equal to 0.
 	assert.EqualValues(t, 50, resolved0.PatchFactor)
-	// Fallback to the SchedulerConfig.TimeInQueueFactor as PlannerSettings.TimeInQueueFactor is equal to 0.
-	assert.EqualValues(t, 12, resolved0.TimeInQueueFactor)
-	// Fallback to the SchedulerConfig.TimeInQueueFactor as PlannerSettings.TimeInQueueFactor is equal to 0.
+	// Fallback to the SchedulerConfig.PatchTimeInQueueFactor as PlannerSettings.PatchTimeInQueueFactor is equal to 0.
+	assert.EqualValues(t, 12, resolved0.PatchTimeInQueueFactor)
+	// Fallback to the SchedulerConfig.MainlineTimeInQueueFactor as PlannerSettings.MainlineTimeInQueueFactor is equal to 0.
+	assert.EqualValues(t, 10, resolved0.MainlineTimeInQueueFactor)
+	// Fallback to the SchedulerConfig.ExpectedRuntimeFactor as PlannerSettings.ExpectedRunTimeFactor is equal to 0.
 	assert.EqualValues(t, 7, resolved0.ExpectedRuntimeFactor)
 
 	pTrue := true
 	d1 := Distro{
 		Id: "distro1",
 		PlannerSettings: PlannerSettings{
-			Version:               evergreen.PlannerVersionTunable,
-			TargetTime:            98765000000000,
-			GroupVersions:         &pTrue,
-			PatchFactor:           25,
-			TimeInQueueFactor:     0,
-			ExpectedRuntimeFactor: 0,
+			Version:                   evergreen.PlannerVersionTunable,
+			TargetTime:                98765000000000,
+			GroupVersions:             &pTrue,
+			PatchFactor:               25,
+			PatchTimeInQueueFactor:    0,
+			MainlineTimeInQueueFactor: 0,
+			ExpectedRuntimeFactor:     0,
 		},
 	}
 	config1 := evergreen.SchedulerConfig{
@@ -373,7 +379,8 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		AcceptableHostIdleTimeSeconds: 60,
 		GroupVersions:                 false,
 		PatchFactor:                   50,
-		TimeInQueueFactor:             0,
+		PatchTimeInQueueFactor:        0,
+		MainlineTimeInQueueFactor:     0,
 		ExpectedRuntimeFactor:         0,
 	}
 
@@ -386,16 +393,18 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	assert.Equal(t, time.Duration(98765)*time.Second, resolved1.TargetTime)
 	assert.Equal(t, true, *resolved1.GroupVersions)
 	assert.EqualValues(t, 25, resolved1.PatchFactor)
-	assert.EqualValues(t, 0, resolved1.TimeInQueueFactor)
+	assert.EqualValues(t, 0, resolved1.PatchTimeInQueueFactor)
+	assert.EqualValues(t, 0, resolved1.MainlineTimeInQueueFactor)
 	assert.EqualValues(t, 0, resolved1.ExpectedRuntimeFactor)
 
 	ps := &PlannerSettings{
-		Version:               "",
-		TargetTime:            0,
-		GroupVersions:         nil,
-		PatchFactor:           19,
-		TimeInQueueFactor:     0,
-		ExpectedRuntimeFactor: 0,
+		Version:                   "",
+		TargetTime:                0,
+		GroupVersions:             nil,
+		PatchFactor:               19,
+		PatchTimeInQueueFactor:    0,
+		MainlineTimeInQueueFactor: 0,
+		ExpectedRuntimeFactor:     0,
 	}
 	d2 := Distro{
 		Id:              "distro2",
@@ -411,7 +420,8 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		AcceptableHostIdleTimeSeconds: 67890,
 		GroupVersions:                 false,
 		PatchFactor:                   0,
-		TimeInQueueFactor:             0,
+		PatchTimeInQueueFactor:        0,
+		MainlineTimeInQueueFactor:     0,
 		ExpectedRuntimeFactor:         0,
 	}
 	settings2 := &evergreen.Settings{Scheduler: config2}
@@ -426,7 +436,8 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	// d2.PlannerSetting.GroupVersions is nil -- fallback on the SchedulerConfig.PlannerVersion.GroupVersions value
 	assert.Equal(t, false, *resolved2.GroupVersions)
 	assert.EqualValues(t, 19, resolved2.PatchFactor)
-	assert.EqualValues(t, 0, resolved2.TimeInQueueFactor)
+	assert.EqualValues(t, 0, resolved2.PatchTimeInQueueFactor)
+	assert.EqualValues(t, 0, resolved2.MainlineTimeInQueueFactor)
 	assert.EqualValues(t, 0, resolved2.ExpectedRuntimeFactor)
 }
 

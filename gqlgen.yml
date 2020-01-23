@@ -28,4 +28,4 @@ models:
   TestLog:
     model: github.com/evergreen-ci/evergreen/rest/model.TestLogs
   Duration:
-    model: github.com/evergreen-ci/evergreen/graphql/customscalars.Duration
+    model: github.com/evergreen-ci/evergreen/rest/model.APIDuration

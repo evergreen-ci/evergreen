@@ -28,10 +28,10 @@ type VariantTask {
 }
 
 type TaskLogs {
-  AllLogLink: String
-  AgentLogLink: String
-  SystemLogLink: String
-  TaskLogLink: String
+  allLogLink: String
+  agentLogLink: String
+  systemLogLink: String
+  taskLogLink: String
 }
 
 type TaskEndDetail {
@@ -72,7 +72,7 @@ type Task {
   priority: Int
   taskGroup: String
   taskGroupMaxHosts: Int
-  logs: TaskLogs
+  logs: TaskLogs!
   activated: Boolean!
   activatedBy: String
   buildId: String!
@@ -89,7 +89,6 @@ type Task {
   details: TaskEndDetail
   timeTaken: Duration
   expectedDuration: Duration
-  testResults: [TestResult!]
   displayOnly: Boolean
   executionTasks: [String!]
   generateTask: Boolean

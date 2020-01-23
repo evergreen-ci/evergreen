@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mongodb/anser/bsonutil"
-
+	"github.com/docker/docker/client"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -128,6 +128,9 @@ func (m *dockerManager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cl
 
 	container, err := m.client.GetContainer(ctx, parent, h.Id)
 	if err != nil {
+		if client.IsErrConnectionFailed(err) {
+			return StatusTerminated, nil
+		}
 		return StatusUnknown, errors.Wrapf(err, "Failed to get container information for host '%v'", h.Id)
 	}
 
