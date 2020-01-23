@@ -105,7 +105,7 @@ func Patch() cli.Command {
 			if params.Description == "" {
 				params.Description, err = getDefaultDescription()
 				if err != nil {
-					grip.Debug(err)
+					grip.Error(err)
 				}
 			}
 
@@ -181,7 +181,7 @@ func PatchFile() cli.Command {
 			if params.Description == "" {
 				params.Description, err = getDefaultDescription()
 				if err != nil {
-					grip.Debug(err)
+					grip.Error(err)
 				}
 			}
 
