@@ -12,12 +12,11 @@ func IsDuplicateKey(err error) bool {
 		return false
 	}
 
-	err = errors.Cause(err)
-	if mgo.IsDup(err) {
+	if mgo.IsDup(errors.Cause(err)) {
 		return true
 	}
 
-	if strings.Contains(err.Error(), "duplicate key") {
+	if strings.Contains(errors.Cause(err).Error(), "duplicate key") {
 		return true
 	}
 
