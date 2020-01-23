@@ -542,6 +542,7 @@ func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *htt
 	}
 	if err != nil {
 		http.Error(rw, err.Error(), status)
+		return
 	}
 	opts.Resource = resource
 
