@@ -354,18 +354,18 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, err
 	return out.String(), nil
 }
 
-func isCommitRange(rev string) bool {
-	return strings.Contains(rev, "..")
+func isCommitRange(commits string) bool {
+	return strings.Contains(commits, "..")
 }
 
-func formatCommitRange(rev string) string {
-	if rev == "" {
-		return rev
+func formatCommitRange(commits string) string {
+	if commits == "" {
+		return commits
 	}
-	if isCommitRange(rev) {
-		return rev
+	if isCommitRange(commits) {
+		return commits
 	}
-	return fmt.Sprintf("%s^!", rev)
+	return fmt.Sprintf("%s^!", commits)
 }
 
 func getFeatureBranch(ref, commits string) string {
