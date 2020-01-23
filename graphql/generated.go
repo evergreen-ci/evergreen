@@ -13,7 +13,6 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
-	"github.com/evergreen-ci/evergreen/graphql/customscalars"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/vektah/gqlparser"
 	"github.com/vektah/gqlparser/ast"
@@ -102,7 +101,6 @@ type ComplexityRoot struct {
 		Status            func(childComplexity int) int
 		TaskGroup         func(childComplexity int) int
 		TaskGroupMaxHosts func(childComplexity int) int
-		TestResults       func(childComplexity int) int
 		TimeTaken         func(childComplexity int) int
 		Version           func(childComplexity int) int
 	}
@@ -530,13 +528,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.TaskGroupMaxHosts(childComplexity), true
 
-	case "Task.testResults":
-		if e.complexity.Task.TestResults == nil {
-			break
-		}
-
-		return e.complexity.Task.TestResults(childComplexity), true
-
 	case "Task.timeTaken":
 		if e.complexity.Task.TimeTaken == nil {
 			break
@@ -741,106 +732,97 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var parsedSchema = gqlparser.MustLoadSchema(
-	&ast.Source{Name: "graphql/schema.graphql", Input: `type Query {
-  userPatches(userId: String!): [Patch]!
-  task(taskId: String!): Task
-}
-
+	&ast.Source{Name: "schema.graphql", Input: `scalar Duration
 type Patch {
-  id: ID!
-  description: String!
-  projectID: String!
-  githash: String!
-  patchNumber: Int!
-  author: String!
-  version: String!
-  status: String!
-  createTime: Time!
-  startTime: Time
-  finishTime: Time
-  variants: [String]!
-  tasks: [String]!
-  variantsTasks: [VariantTask]!
-  activated: Boolean!
-  alias: String!
+	id: ID!
+	description: String!
+	projectID: String!
+	githash: String!
+	patchNumber: Int!
+	author: String!
+	version: String!
+	status: String!
+	createTime: Time!
+	startTime: Time
+	finishTime: Time
+	variants: [String]!
+	tasks: [String]!
+	variantsTasks: [VariantTask]!
+	activated: Boolean!
+	alias: String!
 }
-
-type VariantTask {
-  name: String!
-  tasks: [String]!
+type Query {
+	userPatches(userId: String!): [Patch]!
+	task(taskId: String!): Task
 }
-
-type TaskLogs {
-  AllLogLink: String
-  AgentLogLink: String
-  SystemLogLink: String
-  TaskLogLink: String
-}
-
-type TaskEndDetail {
-  status: String!
-  type: String!
-  description: String
-  timedOut: Boolean
-}
-
-type TestResult {
-  status: String!
-  testFile: String!
-  logs: TestLog!
-  exitCode: Int
-  startTime: Time
-  endTime: Time
-}
-
-type TestLog {
-  url: String
-  urlRaw: String
-  lineNum: Int
-  logId: String
-}
-
 type Task {
-  id: String!
-  createTime: Time
-  ingestTime: Time
-  dispatchTime: Time
-  scheduledTime: Time
-  startTime: Time
-  finishTime: Time
-  activatedTime: Time
-  version: String!
-  projectId: String!
-  revision: String
-  priority: Int
-  taskGroup: String
-  taskGroupMaxHosts: Int
-  logs: TaskLogs
-  activated: Boolean!
-  activatedBy: String
-  buildId: String!
-  distroId: String!
-  buildVariant: String!
-  dependsOn: [String!]
-  displayName: String!
-  hostId: String
-  restarts: Int
-  execution: Int
-  order: Int
-  requester: String!
-  status: String!
-  details: TaskEndDetail
-  timeTaken: Duration
-  expectedDuration: Duration
-  testResults: [TestResult!]
-  displayOnly: Boolean
-  executionTasks: [String!]
-  generateTask: Boolean
-  generatedBy: String
+	id: String!
+	createTime: Time
+	ingestTime: Time
+	dispatchTime: Time
+	scheduledTime: Time
+	startTime: Time
+	finishTime: Time
+	activatedTime: Time
+	version: String!
+	projectId: String!
+	revision: String
+	priority: Int
+	taskGroup: String
+	taskGroupMaxHosts: Int
+	logs: TaskLogs!
+	activated: Boolean!
+	activatedBy: String
+	buildId: String!
+	distroId: String!
+	buildVariant: String!
+	dependsOn: [String!]
+	displayName: String!
+	hostId: String
+	restarts: Int
+	execution: Int
+	order: Int
+	requester: String!
+	status: String!
+	details: TaskEndDetail
+	timeTaken: Duration
+	expectedDuration: Duration
+	displayOnly: Boolean
+	executionTasks: [String!]
+	generateTask: Boolean
+	generatedBy: String
 }
-
+type TaskEndDetail {
+	status: String!
+	type: String!
+	description: String
+	timedOut: Boolean
+}
+type TaskLogs {
+	AllLogLink: String
+	AgentLogLink: String
+	SystemLogLink: String
+	TaskLogLink: String
+}
+type TestLog {
+	url: String
+	urlRaw: String
+	lineNum: Int
+	logId: String
+}
+type TestResult {
+	status: String!
+	testFile: String!
+	logs: TestLog!
+	exitCode: Int
+	startTime: Time
+	endTime: Time
+}
 scalar Time
-scalar Duration
+type VariantTask {
+	name: String!
+	tasks: [String]!
+}
 `},
 )
 
@@ -2079,11 +2061,14 @@ func (ec *executionContext) _Task_logs(ctx context.Context, field graphql.Collec
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(model.LogLinks)
 	fc.Result = res
-	return ec.marshalOTaskLogs2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐLogLinks(ctx, field.Selections, res)
+	return ec.marshalNTaskLogs2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐLogLinks(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_activated(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -2567,9 +2552,9 @@ func (ec *executionContext) _Task_timeTaken(ctx context.Context, field graphql.C
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(time.Duration)
+	res := resTmp.(model.APIDuration)
 	fc.Result = res
-	return ec.marshalODuration2timeᚐDuration(ctx, field.Selections, res)
+	return ec.marshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_expectedDuration(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -2598,40 +2583,9 @@ func (ec *executionContext) _Task_expectedDuration(ctx context.Context, field gr
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(time.Duration)
+	res := resTmp.(model.APIDuration)
 	fc.Result = res
-	return ec.marshalODuration2timeᚐDuration(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Task_testResults(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Task",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.TestResults, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.([]model.APITest)
-	fc.Result = res
-	return ec.marshalOTestResult2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestᚄ(ctx, field.Selections, res)
+	return ec.marshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_displayOnly(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -4663,6 +4617,9 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Task_taskGroupMaxHosts(ctx, field, obj)
 		case "logs":
 			out.Values[i] = ec._Task_logs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "activated":
 			out.Values[i] = ec._Task_activated(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -4716,8 +4673,6 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Task_timeTaken(ctx, field, obj)
 		case "expectedDuration":
 			out.Values[i] = ec._Task_expectedDuration(ctx, field, obj)
-		case "testResults":
-			out.Values[i] = ec._Task_testResults(ctx, field, obj)
 		case "displayOnly":
 			out.Values[i] = ec._Task_displayOnly(ctx, field, obj)
 		case "executionTasks":
@@ -5311,12 +5266,12 @@ func (ec *executionContext) marshalNString2ᚖstring(ctx context.Context, sel as
 	return ec.marshalNString2string(ctx, sel, *v)
 }
 
-func (ec *executionContext) marshalNTestLog2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTestLogs(ctx context.Context, sel ast.SelectionSet, v model.TestLogs) graphql.Marshaler {
-	return ec._TestLog(ctx, sel, &v)
+func (ec *executionContext) marshalNTaskLogs2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐLogLinks(ctx context.Context, sel ast.SelectionSet, v model.LogLinks) graphql.Marshaler {
+	return ec._TaskLogs(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNTestResult2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITest(ctx context.Context, sel ast.SelectionSet, v model.APITest) graphql.Marshaler {
-	return ec._TestResult(ctx, sel, &v)
+func (ec *executionContext) marshalNTestLog2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTestLogs(ctx context.Context, sel ast.SelectionSet, v model.TestLogs) graphql.Marshaler {
+	return ec._TestLog(ctx, sel, &v)
 }
 
 func (ec *executionContext) unmarshalNTime2timeᚐTime(ctx context.Context, v interface{}) (time.Time, error) {
@@ -5637,12 +5592,12 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return ec.marshalOBoolean2bool(ctx, sel, *v)
 }
 
-func (ec *executionContext) unmarshalODuration2timeᚐDuration(ctx context.Context, v interface{}) (time.Duration, error) {
-	return customscalars.UnmarshalDuration(v)
+func (ec *executionContext) unmarshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx context.Context, v interface{}) (model.APIDuration, error) {
+	return model.UnmarshalAPIDuration(v)
 }
 
-func (ec *executionContext) marshalODuration2timeᚐDuration(ctx context.Context, sel ast.SelectionSet, v time.Duration) graphql.Marshaler {
-	return customscalars.MarshalDuration(v)
+func (ec *executionContext) marshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx context.Context, sel ast.SelectionSet, v model.APIDuration) graphql.Marshaler {
+	return model.MarshalAPIDuration(v)
 }
 
 func (ec *executionContext) unmarshalOInt2int(ctx context.Context, v interface{}) (int, error) {
@@ -5772,50 +5727,6 @@ func (ec *executionContext) marshalOTask2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 
 func (ec *executionContext) marshalOTaskEndDetail2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐApiTaskEndDetail(ctx context.Context, sel ast.SelectionSet, v model.ApiTaskEndDetail) graphql.Marshaler {
 	return ec._TaskEndDetail(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalOTaskLogs2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐLogLinks(ctx context.Context, sel ast.SelectionSet, v model.LogLinks) graphql.Marshaler {
-	return ec._TaskLogs(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalOTestResult2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APITest) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNTestResult2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITest(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-	return ret
 }
 
 func (ec *executionContext) unmarshalOTime2timeᚐTime(ctx context.Context, v interface{}) (time.Time, error) {

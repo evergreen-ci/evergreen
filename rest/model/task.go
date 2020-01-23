@@ -43,9 +43,9 @@ type APITask struct {
 	Status             *string          `json:"status"`
 	Details            ApiTaskEndDetail `json:"status_details"`
 	Logs               LogLinks         `json:"logs"`
-	TimeTaken          time.Duration    `json:"time_taken_ms"`
-	ExpectedDuration   time.Duration    `json:"expected_duration_ms"`
-	EstimatedStart     time.Duration    `json:"est_wait_to_start_ms"`
+	TimeTaken          APIDuration      `json:"time_taken_ms"`
+	ExpectedDuration   APIDuration      `json:"expected_duration_ms"`
+	EstimatedStart     APIDuration      `json:"est_wait_to_start_ms"`
 	EstimatedCost      float64          `json:"estimated_cost"`
 	PreviousExecutions []APITask        `json:"previous_executions,omitempty"`
 	GenerateTask       bool             `json:"generate_task"`
@@ -121,8 +121,8 @@ func (at *APITask) BuildFromService(t interface{}) error {
 				TimedOut:    v.Details.TimedOut,
 			},
 			Status:            ToStringPtr(v.Status),
-			TimeTaken:         v.TimeTaken,
-			ExpectedDuration:  v.ExpectedDuration,
+			TimeTaken:         NewAPIDuration(v.TimeTaken),
+			ExpectedDuration:  NewAPIDuration(v.ExpectedDuration),
 			EstimatedCost:     v.Cost,
 			GenerateTask:      v.GenerateTask,
 			GeneratedBy:       v.GeneratedBy,
@@ -195,8 +195,8 @@ func (ad *APITask) ToService() (interface{}, error) {
 			TimedOut:    ad.Details.TimedOut,
 		},
 		Status:           FromStringPtr(ad.Status),
-		TimeTaken:        ad.TimeTaken,
-		ExpectedDuration: ad.ExpectedDuration,
+		TimeTaken:        ad.TimeTaken.ToDuration(),
+		ExpectedDuration: ad.ExpectedDuration.ToDuration(),
 		Cost:             ad.EstimatedCost,
 		GenerateTask:     ad.GenerateTask,
 		GeneratedBy:      ad.GeneratedBy,
@@ -253,13 +253,13 @@ func (at *APITask) GetArtifacts() error {
 // APITaskCost is the model to be returned by the API whenever tasks
 // for the cost route are fetched.
 type APITaskCost struct {
-	Id            *string       `json:"task_id"`
-	DisplayName   *string       `json:"display_name"`
-	DistroId      *string       `json:"distro"`
-	BuildVariant  *string       `json:"build_variant"`
-	TimeTaken     time.Duration `json:"time_taken"`
-	Githash       *string       `json:"githash"`
-	EstimatedCost float64       `json:"estimated_cost"`
+	Id            *string     `json:"task_id"`
+	DisplayName   *string     `json:"display_name"`
+	DistroId      *string     `json:"distro"`
+	BuildVariant  *string     `json:"build_variant"`
+	TimeTaken     APIDuration `json:"time_taken"`
+	Githash       *string     `json:"githash"`
+	EstimatedCost float64     `json:"estimated_cost"`
 }
 
 // BuildFromService converts from a service level task by loading the data
@@ -272,7 +272,7 @@ func (atc *APITaskCost) BuildFromService(t interface{}) error {
 		atc.DisplayName = ToStringPtr(v.DisplayName)
 		atc.DistroId = ToStringPtr(v.DistroId)
 		atc.BuildVariant = ToStringPtr(v.BuildVariant)
-		atc.TimeTaken = v.TimeTaken
+		atc.TimeTaken = NewAPIDuration(v.TimeTaken)
 		atc.Githash = ToStringPtr(v.Revision)
 		atc.EstimatedCost = v.Cost
 	default:

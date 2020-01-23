@@ -528,8 +528,12 @@ Admin Settings
 										<input type="number" step="1" min="0" max="100" ng-model="Settings.scheduler.patch_factor">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
-										<label>Time In Queue Factor (0 to 100 inclusive)</label>
-										<input type="number" step="1" min="0" max="100" ng-model="Settings.scheduler.time_in_queue_factor">
+										<label>Patch Time In Queue Factor (0 to 100 inclusive)</label>
+										<input type="number" step="1" min="0" max="100" ng-model="Settings.scheduler.patch_time_in_queue_factor">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Mainline Time In Queue Factor (0 to 100 inclusive)</label>
+										<input type="number" step="1" min="0" max="100" ng-model="Settings.scheduler.mainline_time_in_queue_factor">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>Expected Runtime Factor (0 to 100 inclusive)</label>

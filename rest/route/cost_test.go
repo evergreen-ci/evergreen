@@ -51,7 +51,7 @@ func (s *VersionCostSuite) TestFindCostByVersionIdSingle() {
 	h, ok := (res.Data()).(*model.APIVersionCost)
 	s.True(ok)
 	s.Equal(model.ToStringPtr("version1"), h.VersionId)
-	s.Equal(1*time.Millisecond, h.SumTimeTaken)
+	s.Equal(model.APIDuration(1), h.SumTimeTaken)
 }
 
 // TestFindCostByVersionIdMany tests the handler where information is aggregated on
@@ -66,7 +66,7 @@ func (s *VersionCostSuite) TestFindCostByVersionIdMany() {
 	h, ok := (res.Data()).(*model.APIVersionCost)
 	s.True(ok)
 	s.Equal(model.ToStringPtr("version2"), h.VersionId)
-	s.Equal(2*time.Millisecond, h.SumTimeTaken)
+	s.Equal(model.APIDuration(2), h.SumTimeTaken)
 }
 
 // TestFindCostByVersionFail tests that the handler correctly returns error when
@@ -172,7 +172,7 @@ func (s *DistroCostSuite) TestFindCostByDistroIdSingle() {
 	h, ok := (res.Data()).(*model.APIDistroCost)
 	s.True(ok)
 	s.Equal(model.ToStringPtr("distro1"), h.DistroId)
-	s.Equal(1*time.Millisecond, h.SumTimeTaken)
+	s.Equal(model.APIDuration(1), h.SumTimeTaken)
 	s.Equal(model.ToStringPtr("ec2-ondemand"), h.Provider)
 	s.Equal(model.ToStringPtr("type"), h.InstanceType)
 }
@@ -196,7 +196,7 @@ func (s *DistroCostSuite) TestFindCostByDistroIdMany() {
 	h, ok := (res.Data()).(*model.APIDistroCost)
 	s.True(ok)
 	s.Equal(model.ToStringPtr("distro2"), h.DistroId)
-	s.Equal(2*time.Millisecond, h.SumTimeTaken)
+	s.Equal(model.APIDuration(2), h.SumTimeTaken)
 	s.Equal(model.ToStringPtr("gce"), h.Provider)
 	s.Nil(h.InstanceType)
 }
@@ -217,7 +217,7 @@ func (s *DistroCostSuite) TestFindCostByDistroIdNoResult() {
 	h, ok := (res.Data()).(*model.APIDistroCost)
 	s.True(ok)
 	s.Equal(model.ToStringPtr("distro2"), h.DistroId)
-	s.Equal(time.Duration(0), h.SumTimeTaken)
+	s.Equal(model.APIDuration(0), h.SumTimeTaken)
 	s.Equal(model.ToStringPtr(""), h.Provider)
 	s.Nil(h.InstanceType)
 }

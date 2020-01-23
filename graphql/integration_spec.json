@@ -64,6 +64,64 @@
         ],
         "activated": false
       }
+    ],
+    "tasks": [
+      {
+        "_id": "wuzzup",
+        "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "time_taken": { "$numberLong": "1000" },
+        "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "scheduled_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "start_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "version": "version",
+        "branch": "id",
+        "gitspec": "revise",
+        "priority": 5,
+        "task_group": "grp",
+        "task_group_max_hosts": 100,
+        "activated": true,
+        "activated_by": "someone",
+        "build_id": "some id",
+        "distro": "distro",
+        "build_variant": "variant",
+        "depends_on": ["one thing"],
+        "display_name": "display name",
+        "host_id": "host",
+        "restarts": 5,
+        "execution": 5,
+        "order": 5,
+        "r": "something",
+        "status": "pass",
+        "details": {
+          "status": "status",
+          "type": "type",
+          "desc": "description",
+          "timed_out": false
+        },
+        "display_only": true,
+        "execution_tasks": ["exec1"],
+        "generate_task": false,
+        "generated_by": "something"
+      }
+    ],
+    "testresults": [
+      {
+        "_id": { "$oid": "59ef7a20a7798219e191d00e" },
+        "status": "pass",
+        "test_file": "TestAgentSuite/TestTaskWithoutSecret",
+        "log_id": "59ef7a2097b1d3148d0004f1",
+        "line_num": 126,
+        "exit_code": 0,
+        "start": 1508866591,
+        "end": 1508866591,
+        "task_id": "exec1",
+        "task_execution": 5,
+        "url": "a url",
+        "url_raw": "a raw url"
+      }
     ]
   },
   "tests": [
@@ -93,6 +151,52 @@
               ]
             }
           ]
+        }
+      }
+    },
+    {
+      "query_file": "task1.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "wuzzup",
+            "createTime": "2018-01-10T19:01:36-05:00",
+            "ingestTime": "2018-01-10T19:01:36-05:00",
+            "dispatchTime": "2018-01-10T19:01:36-05:00",
+            "scheduledTime": "2018-01-10T19:01:36-05:00",
+            "startTime": "2018-01-10T19:01:36-05:00",
+            "finishTime": "2018-01-10T19:01:36-05:00",
+            "activatedTime": "2018-01-10T19:01:36-05:00",
+            "version": "version",
+            "projectId": "id",
+            "revision": "revise",
+            "priority": 5,
+            "taskGroup": "grp",
+            "taskGroupMaxHosts": 100,
+            "activatedBy": "someone",
+            "activated": true,
+            "buildId": "some id",
+            "distroId": "distro",
+            "buildVariant": "variant",
+            "dependsOn": ["one thing"],
+            "displayName": "display name",
+            "hostId": "host",
+            "restarts": 5,
+            "execution": 5,
+            "order": 5,
+            "requester": "something",
+            "status": "pass",
+            "details": {
+              "status": "status",
+              "type": "type",
+              "description": "description",
+              "timedOut": false
+            },
+            "displayOnly": true,
+            "executionTasks": ["exec1"],
+            "generateTask": false,
+            "generatedBy": "something"
+          }
         }
       }
     }
