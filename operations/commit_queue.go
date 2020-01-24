@@ -358,6 +358,10 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		return errors.New("patch aborted")
 	}
 
+	if err := isValidCommitsFormat(p.commits); err != nil {
+		return err
+	}
+
 	diffData, err := loadGitData(ref.Branch, p.ref, p.commits, true)
 	if err != nil {
 		return errors.Wrap(err, "can't generate patches")
@@ -411,6 +415,10 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	}
 	if commitCount > 1 && !confirm("Commit queue patch has multiple commits. Continue? (y/n):", false) {
 		return errors.New("patch aborted")
+	}
+
+	if err := isValidCommitsFormat(p.commits); err != nil {
+		return err
 	}
 
 	if p.message == "" {

@@ -379,6 +379,28 @@ func getFeatureBranch(ref, commits string) string {
 	return "HEAD"
 }
 
+func isValidCommitsFormat(commits string) error {
+	errToReturn := errors.New("Invalid commit format: verify input is of the form `<hash1> OR `<hash1>..<hash2>` (where hash1 is an ancestor of hash2)")
+	if commits == "" || !isCommitRange(commits) {
+		return nil
+	}
+
+	commitsList := strings.Split(commits, "..")
+	if len(commitsList) != 2 { // extra check
+		return errToReturn
+	}
+
+	for i := range commitsList {
+		commitsList[i] = strings.Trim(commitsList[i], ".") // handle extra dot notation
+	}
+	if _, err := gitIsAncestor(commitsList[0], commitsList[1]); err != nil {
+		// suppressing given error bc it's not helpful
+		return errToReturn
+	}
+
+	return nil
+}
+
 // loadGitData inspects the current git working directory and returns a patch and its summary.
 // The branch argument is used to determine where to generate the merge base from, and any extra
 // arguments supplied are passed directly in as additional args to git diff.
@@ -434,6 +456,11 @@ func gitMergeBase(branch1, ref, commits string) (string, error) {
 		return "", errors.Wrapf(err, "'git merge-base %s %s' failed: %s (%s)", branch1, branch2, out, err)
 	}
 	return strings.TrimSpace(string(out)), err
+}
+
+func gitIsAncestor(commit1, commit2 string) (string, error) {
+	args := []string{"--is-ancestor", commit1, commit2}
+	return gitCmd("merge-base", args...)
 }
 
 // gitDiff runs "git diff <base> <ref> <commits> <diffargs ...>" and returns the output of the command as a string,
