@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mongodb/anser/bsonutil"
-
+	"github.com/docker/docker/client"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -128,6 +128,9 @@ func (m *dockerManager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cl
 
 	container, err := m.client.GetContainer(ctx, parent, h.Id)
 	if err != nil {
+		if client.IsErrConnectionFailed(err) {
+			return StatusTerminated, nil
+		}
 		return StatusUnknown, errors.Wrapf(err, "Failed to get container information for host '%v'", h.Id)
 	}
 
@@ -143,7 +146,6 @@ func (m *dockerManager) GetDNSName(ctx context.Context, h *host.Host) (string, e
 func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, user, reason string) error {
 	if h.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %s - already marked as terminated!", h.Id)
-		grip.Error(err)
 		return err
 	}
 
@@ -363,6 +365,7 @@ func (m *dockerManager) GetContainerImage(ctx context.Context, parent *host.Host
 	grip.Info(message.Fields{
 		"operation": "EnsureImageDownloaded",
 		"details":   "total",
+		"host":      parent.Id,
 		"image":     image,
 		"duration":  time.Since(start),
 		"span":      time.Since(start).String(),
@@ -379,6 +382,7 @@ func (m *dockerManager) GetContainerImage(ctx context.Context, parent *host.Host
 	}
 	grip.Info(message.Fields{
 		"operation": "BuildImageWithAgent",
+		"host":      parent.Id,
 		"details":   "total",
 		"duration":  time.Since(start),
 		"span":      time.Since(start).String(),

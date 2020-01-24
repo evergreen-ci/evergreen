@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/pkg/errors"
@@ -14,10 +15,6 @@ type Resolver struct {
 }
 
 func (r *Resolver) Query() QueryResolver {
-	return &queryResolver{r}
-}
-
-func (r *Resolver) Task() QueryResolver {
 	return &queryResolver{r}
 }
 
@@ -44,7 +41,7 @@ func (r *queryResolver) UserPatches(ctx context.Context, userID string) ([]*mode
 }
 
 func (r *queryResolver) Task(ctx context.Context, taskID string) (*model.APITask, error) {
-	task, err := r.sc.FindTaskById(taskID)
+	task, err := task.FindOneId(taskID)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error retreiving Task")
 	}
@@ -56,14 +53,18 @@ func (r *queryResolver) Task(ctx context.Context, taskID string) (*model.APITask
 	if err != nil {
 		return nil, errors.Wrap(err, "error converting task")
 	}
+	err = apiTask.BuildFromService(r.sc.GetURL())
+	if err != nil {
+		return nil, errors.Wrap(err, "error converting task")
+	}
 	return &apiTask, nil
 }
 
 // New injects resources into the resolvers, such as the data connector
-func New() Config {
+func New(apiURL string) Config {
 	return Config{
 		Resolvers: &Resolver{
-			sc: &data.DBConnector{},
+			sc: &data.DBConnector{URL: apiURL},
 		},
 	}
 }

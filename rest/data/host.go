@@ -111,7 +111,7 @@ func (hc *DBHostConnector) NewIntentHost(options *restmodel.HostRequestOptions, 
 }
 
 func (hc *DBHostConnector) SetHostStatus(host *host.Host, status, user string) error {
-	return host.SetStatus(status, user, "")
+	return host.SetStatus(status, user, fmt.Sprintf("changed by %s from API", user))
 }
 
 func (hc *DBHostConnector) SetHostExpirationTime(host *host.Host, newExp time.Time) error {

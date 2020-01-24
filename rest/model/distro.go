@@ -1,8 +1,6 @@
 package model
 
 import (
-	"time"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -15,12 +13,13 @@ import (
 // APIPlannerSettings is the model to be returned by the API whenever distro.PlannerSettings are fetched
 
 type APIPlannerSettings struct {
-	Version               *string       `json:"version"`
-	TargetTime            time.Duration `json:"target_time"`
-	GroupVersions         *bool         `json:"group_versions"`
-	PatchFactor           int64         `json:"patch_factor"`
-	TimeInQueueFactor     int64         `json:"time_in_queue_factor"`
-	ExpectedRuntimeFactor int64         `json:"expected_runtime_factor"`
+	Version                   *string     `json:"version"`
+	TargetTime                APIDuration `json:"target_time"`
+	GroupVersions             *bool       `json:"group_versions"`
+	PatchFactor               int64       `json:"patch_factor"`
+	PatchTimeInQueueFactor    int64       `json:"patch_time_in_queue_factor"`
+	MainlineTimeInQueueFactor int64       `json:"mainline_time_in_queue_factor"`
+	ExpectedRuntimeFactor     int64       `json:"expected_runtime_factor"`
 }
 
 // BuildFromService converts from service level distro.PlannerSetting to an APIPlannerSettings
@@ -40,11 +39,12 @@ func (s *APIPlannerSettings) BuildFromService(h interface{}) error {
 	} else {
 		s.Version = ToStringPtr(settings.Version)
 	}
-	s.TargetTime = settings.TargetTime
+	s.TargetTime = NewAPIDuration(settings.TargetTime)
 	s.GroupVersions = settings.GroupVersions
 	s.PatchFactor = settings.PatchFactor
 	s.ExpectedRuntimeFactor = settings.ExpectedRuntimeFactor
-	s.TimeInQueueFactor = settings.TimeInQueueFactor
+	s.PatchTimeInQueueFactor = settings.PatchTimeInQueueFactor
+	s.MainlineTimeInQueueFactor = settings.MainlineTimeInQueueFactor
 
 	return nil
 }
@@ -56,10 +56,11 @@ func (s *APIPlannerSettings) ToService() (interface{}, error) {
 	if settings.Version == "" {
 		settings.Version = evergreen.PlannerVersionLegacy
 	}
-	settings.TargetTime = s.TargetTime
+	settings.TargetTime = s.TargetTime.ToDuration()
 	settings.GroupVersions = s.GroupVersions
 	settings.PatchFactor = s.PatchFactor
-	settings.TimeInQueueFactor = s.TimeInQueueFactor
+	settings.PatchTimeInQueueFactor = s.PatchTimeInQueueFactor
+	settings.MainlineTimeInQueueFactor = s.MainlineTimeInQueueFactor
 	settings.ExpectedRuntimeFactor = s.ExpectedRuntimeFactor
 
 	return interface{}(settings), nil
@@ -70,10 +71,10 @@ func (s *APIPlannerSettings) ToService() (interface{}, error) {
 // APIHostAllocatorSettings is the model to be returned by the API whenever distro.HostAllocatorSettings are fetched
 
 type APIHostAllocatorSettings struct {
-	Version                *string       `json:"version"`
-	MinimumHosts           int           `json:"minimum_hosts"`
-	MaximumHosts           int           `json:"maximum_hosts"`
-	AcceptableHostIdleTime time.Duration `json:"acceptable_host_idle_time"`
+	Version                *string     `json:"version"`
+	MinimumHosts           int         `json:"minimum_hosts"`
+	MaximumHosts           int         `json:"maximum_hosts"`
+	AcceptableHostIdleTime APIDuration `json:"acceptable_host_idle_time"`
 }
 
 // BuildFromService converts from service level distro.HostAllocatorSettings to an APIHostAllocatorSettings
@@ -95,7 +96,7 @@ func (s *APIHostAllocatorSettings) BuildFromService(h interface{}) error {
 	}
 	s.MinimumHosts = settings.MinimumHosts
 	s.MaximumHosts = settings.MaximumHosts
-	s.AcceptableHostIdleTime = settings.AcceptableHostIdleTime
+	s.AcceptableHostIdleTime = NewAPIDuration(settings.AcceptableHostIdleTime)
 
 	return nil
 }
@@ -109,7 +110,7 @@ func (s *APIHostAllocatorSettings) ToService() (interface{}, error) {
 	}
 	settings.MinimumHosts = s.MinimumHosts
 	settings.MaximumHosts = s.MaximumHosts
-	settings.AcceptableHostIdleTime = s.AcceptableHostIdleTime
+	settings.AcceptableHostIdleTime = s.AcceptableHostIdleTime.ToDuration()
 
 	return interface{}(settings), nil
 }
