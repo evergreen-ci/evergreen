@@ -69,7 +69,6 @@
       {
         "_id": "wuzzup",
         "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "time_taken": { "$numberLong": "1000" },
         "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
         "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
         "scheduled_time": { "$date": "2018-01-11T00:01:36.796Z" },
