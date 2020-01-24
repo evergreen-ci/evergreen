@@ -113,6 +113,19 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 		j.AddError(err)
 		return
 	}
+
+	if j.host.AttachVolume {
+		if err := attachVolume(ctx, j.env, j.host); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "can't attach volume",
+				"host":    j.host.Id,
+				"distro":  j.host.Distro.Id,
+				"job":     j.ID(),
+			}))
+			j.AddError(err)
+			return
+		}
+	}
 }
 
 func (j *userDataDoneJob) populateIfUnset() error {
