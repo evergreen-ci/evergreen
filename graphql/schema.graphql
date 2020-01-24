@@ -7,6 +7,7 @@ type Query {
     sortDirection: SortDirection!
     page: Int!
     limit: Int!
+    filter: String!
   ): [TestResult]
 }
 

@@ -19,7 +19,6 @@ const (
 // TestResult contains test data for a task.
 type TestResult struct {
 	ID        mgobson.ObjectId `bson:"_id,omitempty" json:"id"`
-	Stuff     float64          `bson:"stuff" json:"stuff"`
 	Status    string           `json:"status" bson:"status"`
 	TestFile  string           `json:"test_file" bson:"test_file"`
 	URL       string           `json:"url" bson:"url,omitempty"`
@@ -162,32 +161,42 @@ func TestResultsQuery(taskIds []string, testId, testName, status string, limit, 
 	return q
 }
 
-// TestResultsQuerySortAndPaginate is a query for returning test results to the taskTests GQL Query.
-func TestResultsQuerySortAndPaginate(taskIds []string, sortOrder []string, page, limit, execution int) db.Q {
+// TestResultsAggregationSortAndPaginate is a query for returning test results to the taskTests GQL Query.
+func TestResultsAggregationSortAndPaginate(taskIds []string, filter, sortBy string, sortDir, page, limit, execution int) ([]TestResult, error) {
+	tests := []TestResult{}
 	match := bson.M{
 		TaskIDKey:    bson.M{"$in": taskIds},
 		ExecutionKey: execution,
 	}
-	q := db.Query(match).Project(bson.M{
-		"stuff":      bson.M{"$subtract": []string{"$" + EndTimeKey, "$" + StartTimeKey}},
-		TestFileKey:  1,
-		EndTimeKey:   1,
-		StartTimeKey: 1,
-		StatusKey:    1,
-		URLRawKey:    1,
-		URLKey:       1,
-		LogIDKey:     1,
-		LineNumKey:   1,
-		ExitCodeKey:  1,
-	}).Sort(sortOrder)
+	project := bson.M{
+		"duration":     bson.M{"$subtract": []string{"$" + EndTimeKey, "$" + StartTimeKey}},
+		TestFileKey:    1,
+		EndTimeKey:     1,
+		StartTimeKey:   1,
+		StatusKey:      1,
+		URLRawKey:      1,
+		URLKey:         1,
+		LogIDKey:       1,
+		LineNumKey:     1,
+		ExitCodeKey:    1,
+		"FilterResult": bson.M{"$or": []bson.M{}},
+	}
 
+	pipeline := []bson.M{
+		{"$match": match},
+		{"$project": project},
+	}
+
+	pipeline = append(pipeline, bson.M{"$sort": bson.M{sortBy: sortDir}})
 	if page > 0 {
-		q = q.Skip(page * limit)
+		pipeline = append(pipeline, bson.M{"$skip": page * limit})
 	}
-
 	if limit > 0 {
-		q = q.Limit(limit)
+		pipeline = append(pipeline, bson.M{"$limit": limit})
 	}
-
-	return q
+	err := db.Aggregate(Collection, pipeline, &tests)
+	if err != nil {
+		return nil, err
+	}
+	return tests, nil
 }

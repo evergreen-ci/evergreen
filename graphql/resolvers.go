@@ -2,7 +2,6 @@ package graphql
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -61,7 +60,7 @@ func (r *queryResolver) Task(ctx context.Context, taskID string) (*model.APITask
 	return &apiTask, nil
 }
 
-func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory TaskSortCategory, sortDirection SortDirection, page int, limit int) ([]*model.APITest, error) {
+func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory TaskSortCategory, sortDirection SortDirection, page int, limit int, filter string) ([]*model.APITest, error) {
 	task, err := task.FindOneId(taskID)
 
 	if err != nil {
@@ -73,37 +72,29 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 		sortBy = "status"
 	}
 	if sortCategory == TaskSortCategoryDuration {
-		sortBy = "stuff"
+		sortBy = "duration"
 	}
 	if sortCategory == TaskSortCategoryTestName {
 		sortBy = "test_file"
 	}
+	sortDir := 1
 	if sortDirection == SortDirectionDesc {
-		sortBy = "-" + sortBy
+		sortDir = -1
 	}
-	sortOrder := []string{sortBy}
-	tests, err := r.sc.FindTestsByTaskIdSortAndPaginate(taskID, sortOrder, page, limit, task.Execution)
+
+	tests, err := r.sc.FindTestsByTaskIdSortAndPaginate(taskID, filter, sortBy, sortDir, page, limit, task.Execution)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error retreiving test")
 	}
 
 	testPointers := []*model.APITest{}
-	if sortBy == "stuff" {
-		fmt.Println("these are the ordered durations")
-	}
 	for _, t := range tests {
-		if sortBy == "stuff" {
-			fmt.Println(t.Stuff)
-		}
 		apiTest := model.APITest{}
 		err := apiTest.BuildFromService(&t)
 		if err != nil {
 			return nil, errors.Wrap(err, "error converting test")
 		}
 		testPointers = append(testPointers, &apiTest)
-	}
-	if sortBy == "stuff" {
-		fmt.Println("end of ordered durations")
 	}
 	return testPointers, nil
 }
