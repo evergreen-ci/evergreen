@@ -692,3 +692,9 @@ var DistroPermissions = []string{
 	PermissionDistroSettings,
 	PermissionHosts,
 }
+
+var SuperuserPermissions = []string{
+	PermissionAdminSettings,
+	PermissionProjectCreate,
+	PermissionDistroCreate,
+}
