@@ -653,6 +653,7 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
+						Id:        model.ToStringPtr(mgobson.ObjectId(fmt.Sprintf("object_id_%d_", i)).Hex()),
 						StartTime: time.Unix(0, 0),
 						EndTime:   time.Unix(0, 0),
 						Status:    model.ToStringPtr(status),
@@ -696,6 +697,7 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
+						Id:        model.ToStringPtr(mgobson.ObjectId(fmt.Sprintf("object_id_%d_", i)).Hex()),
 						StartTime: time.Unix(0, 0),
 						EndTime:   time.Unix(0, 0),
 						Status:    model.ToStringPtr(status),
@@ -739,6 +741,7 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
+						Id:        model.ToStringPtr(mgobson.ObjectId(fmt.Sprintf("object_id_%d_", i)).Hex()),
 						StartTime: time.Unix(0, 0),
 						EndTime:   time.Unix(0, 0),
 						Status:    model.ToStringPtr(status),
@@ -782,6 +785,7 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
+						Id:        model.ToStringPtr(mgobson.ObjectId(fmt.Sprintf("object_id_%d_", i)).Hex()),
 						StartTime: time.Unix(0, 0),
 						EndTime:   time.Unix(0, 0),
 						Status:    model.ToStringPtr(status),
