@@ -186,15 +186,15 @@ func TestResultsFilterSortPaginate(taskIds []string, filter, sortBy string, sort
 		ExitCodeKey:  1,
 	}
 	if len(filter) > 0 {
-		filterStatus := bson.M{"$regexMatch": bson.M{"input": "$" + TestFileKey, "regex": filter, "options": "i"}}
-		filterTestFileName := bson.M{"$regexMatch": bson.M{"input": "$" + StatusKey, "regex": filter, "options": "i"}}
-		project["FilterResult"] = bson.M{"$or": []bson.M{filterStatus, filterTestFileName}}
+		project["FilterStatus"] = bson.M{"$regexMatch": bson.M{"input": "$" + TestFileKey, "regex": filter, "options": "i"}}
+		project["FilterTestFileName"] = bson.M{"$regexMatch": bson.M{"input": "$" + StatusKey, "regex": filter, "options": "i"}}
+
 	}
 
 	pipeline = append(pipeline, bson.M{"$project": project})
 
 	if len(filter) > 0 {
-		matchFilterResult := bson.M{"$match": bson.M{"FilterResult": true}}
+		matchFilterResult := bson.M{"$match": bson.M{"$or": []bson.M{{"FilterStatus": true}, {"FilterTestFileName": true}}}}
 		pipeline = append(pipeline, matchFilterResult)
 	}
 
