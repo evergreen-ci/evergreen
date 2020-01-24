@@ -82,7 +82,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 		sortDir = -1
 	}
 
-	tests, err := r.sc.FindTestsByTaskIdSortAndPaginate(taskID, filter, sortBy, sortDir, page, limit, task.Execution)
+	tests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, filter, sortBy, sortDir, page, limit, task.Execution)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error retreiving test")
 	}

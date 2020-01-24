@@ -161,8 +161,8 @@ func TestResultsQuery(taskIds []string, testId, testName, status string, limit, 
 	return q
 }
 
-// TestResultsAggregationSortAndPaginate is a query for returning test results to the taskTests GQL Query.
-func TestResultsAggregationSortAndPaginate(taskIds []string, filter, sortBy string, sortDir, page, limit, execution int) ([]TestResult, error) {
+// TestResultsFilterSortPaginate is a query for returning test results to the taskTests GQL Query.
+func TestResultsFilterSortPaginate(taskIds []string, filter, sortBy string, sortDir, page, limit, execution int) ([]TestResult, error) {
 	tests := []TestResult{}
 	match := bson.M{
 		TaskIDKey:    bson.M{"$in": taskIds},
