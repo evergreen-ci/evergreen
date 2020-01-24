@@ -159,7 +159,7 @@ func (g *GeneratedProject) NewVersion() (*Project, *ParserProject, *Version, *ta
 
 func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProject, v *Version, t *task.Task, pm *projectMaps) error {
 	if err := updateVersionAndParserProject(v, pp); err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	if v.Requester == evergreen.MergeTestRequester {
