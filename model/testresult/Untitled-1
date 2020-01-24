@@ -1,5 +1,0 @@
-db.testresults.aggregate(  [{ $project: { 
-    test_file: 1, total: { $subtract: [ "$start", "$end" ] } 
-} } ] )
-    [ { $match : { task_id : "mci_windows_test_agent_8a4f834ba24ddf91f93d0a96b90452e9653f4138_17_10_23_21_58_33"}}]
-    db.testresults.aggregate([ { $match : { execution: 0}}])
