@@ -185,9 +185,6 @@ func TestResultsFilterSortPaginate(taskIds []string, filter, sortBy string, sort
 		LineNumKey:   1,
 		ExitCodeKey:  1,
 	}
-	if len(filter) > 0 {
-
-	}
 
 	pipeline = append(pipeline, bson.M{"$project": project})
 
