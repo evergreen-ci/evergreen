@@ -191,7 +191,7 @@ func TestResultsAggregationSortAndPaginate(taskIds []string, filter, sortBy stri
 		project["FilterResult"] = bson.M{"$or": []bson.M{filterStatus, filterTestFileName}}
 	}
 
-	pipeline = append(pipeline, project)
+	pipeline = append(pipeline, bson.M{"$project": project})
 
 	if len(filter) > 0 {
 		matchFilterResult := bson.M{"$match": bson.M{"FilterResult": true}}
