@@ -125,7 +125,7 @@
       {
         "_id": { "$oid": "29ef7a20a7798219e191d00e" },
         "status": "c",
-        "test_file": "a",
+        "test_file": "apple",
         "log_id": "59ef7a2097b1d3148d0004f1",
         "line_num": 126,
         "exit_code": 0,
@@ -152,7 +152,7 @@
       },
       {
         "_id": { "$oid": "49ef7a20a7798219e191d00e" },
-        "status": "d",
+        "status": "dog",
         "test_file": "c",
         "log_id": "59ef7a2097b1d3148d0004f1",
         "line_num": 126,
@@ -256,7 +256,7 @@
             { "status": "a" },
             { "status": "b" },
             { "status": "c" },
-            { "status": "d" }
+            { "status": "dog" }
           ]
         }
       }
@@ -266,7 +266,7 @@
       "result": {
         "data": {
           "taskTests": [
-            { "status": "d" },
+            { "status": "dog" },
             { "status": "c" },
             { "status": "b" },
             { "status": "a" }
@@ -279,7 +279,7 @@
       "result": {
         "data": {
           "taskTests": [
-            { "testFile": "a" },
+            { "testFile": "apple" },
             { "testFile": "b" },
             { "testFile": "c" },
             { "testFile": "d" }
@@ -295,7 +295,7 @@
             { "testFile": "d" },
             { "testFile": "c" },
             { "testFile": "b" },
-            { "testFile": "a" }
+            { "testFile": "apple" }
           ]
         }
       }
@@ -323,6 +323,46 @@
             { "duration": 30 },
             { "duration": 40 }
           ]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestFilterStatus.graphql",
+      "result": {
+        "data": {
+          "taskTests": [{ "status": "dog" }]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestFilterTestFile.graphql",
+      "result": {
+        "data": {
+          "taskTests": [{ "testFile": "apple" }]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestFilterNoResults.graphql",
+      "result": {
+        "data": {
+          "taskTests": []
+        }
+      }
+    },
+    {
+      "query_file": "taskTestFilterStatusSubstr1.graphql",
+      "result": {
+        "data": {
+          "taskTests": [{ "status": "dog" }]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestFilterStatusSubstr2.graphql",
+      "result": {
+        "data": {
+          "taskTests": [{ "status": "dog" }]
         }
       }
     }

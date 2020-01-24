@@ -84,12 +84,7 @@ func (tc *DBTestConnector) FindTestsByTaskIdSortAndPaginate(taskId, filter, sort
 		return []testresult.TestResult{}, err
 	}
 	if len(res) == 0 {
-		var message string
-		message = fmt.Sprintf("tests for task with taskId '%s' and execution %d not found on page %d with limit %d	", taskId, execution, page, limit)
-		return []testresult.TestResult{}, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    message,
-		}
+		return []testresult.TestResult{}, nil
 	}
 
 	return res, nil
