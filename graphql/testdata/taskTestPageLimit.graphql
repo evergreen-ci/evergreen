@@ -1,0 +1,12 @@
+{
+  taskTests(
+    taskId: "wuzzup"
+    sortCategory: TEST_NAME
+    sortDirection: ASC
+    page: 1
+    limit: 2
+    filter: ""
+  ) {
+    testFile
+  }
+}

@@ -365,6 +365,14 @@
           "taskTests": [{ "status": "dog" }]
         }
       }
+    },
+    {
+      "query_file": "taskTestPageLimit.graphql",
+      "result": {
+        "data": {
+          "taskTests": [{ "testFile": "c" }, { "testFile": "d" }]
+        }
+      }
     }
   ]
 }
