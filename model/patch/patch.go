@@ -387,6 +387,16 @@ func (p *Patch) IsPRMergePatch() bool {
 	return p.GithubPatchData.MergeCommitSHA != ""
 }
 
+func (p *Patch) GetRequester() string {
+	if p.IsGithubPRPatch() {
+		return evergreen.GithubPRRequester
+	}
+	if p.IsPRMergePatch() {
+		return evergreen.MergeTestRequester
+	}
+	return evergreen.PatchVersionRequester
+}
+
 // IsMailbox checks if the first line of a patch file
 // has "From ". If so, it's assumed to be a mailbox-style patch, otherwise
 // it's a diff

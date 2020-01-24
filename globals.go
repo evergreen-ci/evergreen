@@ -693,6 +693,12 @@ var DistroPermissions = []string{
 	PermissionHosts,
 }
 
+var SuperuserPermissions = []string{
+	PermissionAdminSettings,
+	PermissionProjectCreate,
+	PermissionDistroCreate,
+}
+
 // Evergreen log types
 const (
 	LogTypeAgent  = "agent_log"

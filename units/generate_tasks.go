@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -93,8 +94,8 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	// SIGTERM from a deploy. This should maybe be a context with timeout.
 	err = g.Save(context.Background(), p, pp, v, t, pm)
 
-	// If the version has changed there was a race. Another generator will try again.
-	if adb.ResultsNotFound(err) {
+	// If the version or parser project has changed there was a race. Another generator will try again.
+	if adb.ResultsNotFound(err) || db.IsDuplicateKey(err) {
 		return err
 	}
 	if err != nil {
@@ -139,7 +140,8 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	}
 
 	err = j.generate(ctx, t)
-	if !adb.ResultsNotFound(err) {
+	shouldNoop := adb.ResultsNotFound(err) || db.IsDuplicateKey(err)
+	if err != nil && !shouldNoop {
 		j.AddError(err)
 	}
 	j.AddError(task.MarkGeneratedTasks(j.TaskID, err))
@@ -151,14 +153,14 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		"task":          t.Id,
 		"version":       t.Version,
 	})
-	grip.DebugWhen(adb.ResultsNotFound(err), message.WrapError(err, message.Fields{
+	grip.DebugWhen(shouldNoop, message.WrapError(err, message.Fields{
 		"message":       "generate.tasks noop",
 		"operation":     "generate.tasks",
 		"duration_secs": time.Since(start).Seconds(),
 		"task":          t.Id,
 		"version":       t.Version,
 	}))
-	grip.ErrorWhen(!adb.ResultsNotFound(err), message.WrapError(err, message.Fields{
+	grip.ErrorWhen(!shouldNoop, message.WrapError(err, message.Fields{
 		"message":       "generate.tasks finished with errors",
 		"operation":     "generate.tasks",
 		"duration_secs": time.Since(start).Seconds(),

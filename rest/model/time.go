@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mongodb/grip"
-
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -53,4 +53,19 @@ func UnmarshalAPIDuration(v interface{}) (APIDuration, error) {
 	default:
 		return APIDuration(0), fmt.Errorf("%T is not an APIDuration", v)
 	}
+}
+
+func ToTimePtr(t time.Time) *time.Time {
+	if util.IsZeroTime(t) {
+		return nil
+	}
+	return &t
+}
+
+func FromTimePtr(t *time.Time) (time.Time, error) {
+	if t == nil {
+		return time.Time{}, nil
+	}
+
+	return ParseTime(t.Format(APITimeFormat))
 }
