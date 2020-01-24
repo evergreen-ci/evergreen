@@ -168,29 +168,42 @@ func TestResultsAggregationSortAndPaginate(taskIds []string, filter, sortBy stri
 		TaskIDKey:    bson.M{"$in": taskIds},
 		ExecutionKey: execution,
 	}
-	project := bson.M{
-		"duration":     bson.M{"$subtract": []string{"$" + EndTimeKey, "$" + StartTimeKey}},
-		TestFileKey:    1,
-		EndTimeKey:     1,
-		StartTimeKey:   1,
-		StatusKey:      1,
-		URLRawKey:      1,
-		URLKey:         1,
-		LogIDKey:       1,
-		LineNumKey:     1,
-		ExitCodeKey:    1,
-		"FilterResult": bson.M{"$or": []bson.M{}},
-	}
 
 	pipeline := []bson.M{
 		{"$match": match},
-		{"$project": project},
+	}
+
+	project := bson.M{
+		"duration":   bson.M{"$subtract": []string{"$" + EndTimeKey, "$" + StartTimeKey}},
+		TestFileKey:  1,
+		EndTimeKey:   1,
+		StartTimeKey: 1,
+		StatusKey:    1,
+		URLRawKey:    1,
+		URLKey:       1,
+		LogIDKey:     1,
+		LineNumKey:   1,
+		ExitCodeKey:  1,
+	}
+	if len(filter) > 0 {
+		filterStatus := bson.M{"$regexMatch": bson.M{"input": "$" + TestFileKey, "regex": filter, "options": "i"}}
+		filterTestFileName := bson.M{"$regexMatch": bson.M{"input": "$" + StatusKey, "regex": filter, "options": "i"}}
+		project["FilterResult"] = bson.M{"$or": []bson.M{filterStatus, filterTestFileName}}
+	}
+
+	pipeline = append(pipeline, project)
+
+	if len(filter) > 0 {
+		matchFilterResult := bson.M{"$match": bson.M{"FilterResult": true}}
+		pipeline = append(pipeline, matchFilterResult)
 	}
 
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{sortBy: sortDir}})
+
 	if page > 0 {
 		pipeline = append(pipeline, bson.M{"$skip": page * limit})
 	}
+
 	if limit > 0 {
 		pipeline = append(pipeline, bson.M{"$limit": limit})
 	}
