@@ -194,10 +194,6 @@ func FindAll(collection string, query interface{},
 	defer session.Close()
 
 	q := db.C(collection).Find(query)
-	fmt.Println("----------------------")
-	fmt.Println(projection)
-	fmt.Println(sort)
-	fmt.Println("----------------------")
 	if projection != nil {
 		q = q.Select(projection)
 	}
