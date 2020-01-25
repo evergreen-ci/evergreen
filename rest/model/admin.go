@@ -388,25 +388,25 @@ func (a *APIAuthConfig) BuildFromService(h interface{}) error {
 		if v.LDAP != nil {
 			a.LDAP = &APILDAPConfig{}
 			if err := a.LDAP.BuildFromService(v.LDAP); err != nil {
-				return err
+				return errors.Wrap(err, "could not build API LDAP auth settings from service")
 			}
 		}
 		if v.Okta != nil {
 			a.Okta = &APIOktaConfig{}
 			if err := a.Okta.BuildFromService(v.Okta); err != nil {
-				return err
+				return errors.Wrap(err, "could not build API Okta auth settings from service")
 			}
 		}
 		if v.Github != nil {
 			a.Github = &APIGithubAuthConfig{}
 			if err := a.Github.BuildFromService(v.Github); err != nil {
-				return err
+				return errors.Wrap(err, "could not build API GitHub auth settings from service")
 			}
 		}
 		if v.Naive != nil {
 			a.Naive = &APINaiveAuthConfig{}
 			if err := a.Naive.BuildFromService(v.Naive); err != nil {
-				return err
+				return errors.Wrap(err, "could not build API naive auth settings from service")
 			}
 		}
 	default:
