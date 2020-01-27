@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/pkg/errors"
@@ -69,13 +70,13 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 
 	sortBy := ""
 	if sortCategory == TaskSortCategoryStatus {
-		sortBy = "status"
+		sortBy = testresult.StatusKey
 	}
 	if sortCategory == TaskSortCategoryDuration {
 		sortBy = "duration"
 	}
 	if sortCategory == TaskSortCategoryTestName {
-		sortBy = "test_file"
+		sortBy = testresult.TestFileKey
 	}
 	sortDir := 1
 	if sortDirection == SortDirectionDesc {
