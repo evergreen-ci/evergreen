@@ -86,6 +86,13 @@ var (
 	hostAllocatorDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "HostAllocatorDisabled")
 	drBackupDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "DRBackupDisabled")
 
+	// AuthConfig keys
+	AuthLDAPKey          = bsonutil.MustHaveTag(AuthConfig{}, "LDAP")
+	AuthOktaKey          = bsonutil.MustHaveTag(AuthConfig{}, "Okta")
+	AuthGithubKey        = bsonutil.MustHaveTag(AuthConfig{}, "Github")
+	AuthNaiveKey         = bsonutil.MustHaveTag(AuthConfig{}, "Naive")
+	authPreferredTypeKey = bsonutil.MustHaveTag(AuthConfig{}, "PreferredType")
+
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")
 

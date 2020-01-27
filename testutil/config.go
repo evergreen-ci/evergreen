@@ -119,6 +119,13 @@ func MockConfig() *evergreen.Settings {
 				Group:              "group",
 				ExpireAfterMinutes: "60",
 			},
+			Okta: &evergreen.OktaConfig{
+				ClientID:           "id",
+				ClientSecret:       "secret",
+				Issuer:             "issuer",
+				UserGroup:          "group",
+				ExpireAfterMinutes: 60,
+			},
 			Naive: &evergreen.NaiveAuthConfig{
 				Users: []*evergreen.AuthUser{&evergreen.AuthUser{Username: "user", Password: "pw"}},
 			},
@@ -128,6 +135,7 @@ func MockConfig() *evergreen.Settings {
 				Users:        []string{"ghuser"},
 				Organization: "ghorg",
 			},
+			PreferredType: evergreen.AuthLDAPKey,
 		},
 		Banner:            "banner",
 		BannerTheme:       "important",
