@@ -390,10 +390,7 @@ func isValidCommitsFormat(commits string) error {
 		return errToReturn
 	}
 
-	for i := range commitsList {
-		commitsList[i] = strings.Trim(commitsList[i], ".") // handle extra dot notation
-	}
-	if _, err := gitIsAncestor(commitsList[0], commitsList[1]); err != nil {
+	if _, err := gitIsAncestor(commitsList[0], strings.Trim(commitsList[1], ".")); err != nil {
 		// suppressing given error bc it's not helpful
 		return errToReturn
 	}
