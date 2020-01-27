@@ -30,11 +30,12 @@ import (
 )
 
 const (
-	provisionRetryLimit = 15
-	mountRetryLimit     = 10
-	mountSleepDuration  = time.Second * 10
-	setupHostJobName    = "provisioning-setup-host"
-	scpTimeout          = time.Minute
+	provisionRetryLimit  = 15
+	mountRetryLimit      = 10
+	mountSleepDuration   = time.Second * 10
+	umountMountErrorCode = 32
+	setupHostJobName     = "provisioning-setup-host"
+	scpTimeout           = time.Minute
 )
 
 func init() {
@@ -967,12 +968,12 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 }
 
 func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Host) error {
-	jasperClient, err := h.JasperClient(ctx, env)
+	client, err := h.JasperClient(ctx, env)
 	if err != nil {
 		return errors.Wrap(err, "can't get Jasper client")
 	}
 	defer func() {
-		grip.Warning(message.WrapError(jasperClient.CloseConnection(), message.Fields{
+		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
 			"host":    h.Id,
 			"distro":  h.Distro.Id,
@@ -983,13 +984,13 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	if h.Distro.HomeVolumeDeviceName != "" {
 		deviceName = h.Distro.HomeVolumeDeviceName
 	}
-	proc, err := jasperClient.CreateProcess(ctx, &options.Create{Args: []string{"sudo", "umount", "-f", fmt.Sprintf("/dev/%s", deviceName)}})
+	proc, err := client.CreateProcess(ctx, &options.Create{Args: []string{"sudo", "umount", "-f", fmt.Sprintf("/dev/%s", deviceName)}})
 	if err != nil {
 		return errors.Wrap(err, "problem creating process for umount")
 	}
-	// continue on umount error
+	// continue on umount mount error
 	exitCode, err := proc.Wait(ctx)
-	if err != nil && exitCode != 32 {
+	if err != nil && exitCode != umountMountErrorCode {
 		return errors.Wrap(err, "problem waiting for umount command")
 	}
 
@@ -999,7 +1000,7 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	commands = append(commands, []string{"sudo", "ln", "-s", fmt.Sprintf("/%s", evergreen.HomeVolumeDir), fmt.Sprintf("%s/%s", h.Distro.HomeDir(), evergreen.HomeVolumeDir)})
 	commands = append(commands, []string{"sudo", "chown", "-R", fmt.Sprintf("%s:%s", h.User, h.User), fmt.Sprintf("%s/%s", h.Distro.HomeDir(), evergreen.HomeVolumeDir)})
 	for _, command := range commands {
-		proc, err := jasperClient.CreateProcess(ctx, &options.Create{Args: command})
+		proc, err := client.CreateProcess(ctx, &options.Create{Args: command})
 		if err != nil {
 			return errors.Wrapf(err, "problem creating process for command '%s'", strings.Join(command, " "))
 		}
@@ -1013,7 +1014,7 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 		Args:               []string{"sudo", "tee", "--append", "/etc/fstab"},
 		StandardInputBytes: []byte(fmt.Sprintf("/dev/%s /%s auto noatime 0 0", deviceName, evergreen.HomeVolumeDir)),
 	}
-	proc, err = jasperClient.CreateProcess(ctx, &opts)
+	proc, err = client.CreateProcess(ctx, &opts)
 	if err != nil {
 		return errors.Wrap(err, "problem creating process for tee command")
 	}

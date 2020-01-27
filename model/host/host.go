@@ -463,12 +463,15 @@ func (h *Host) SetQuarantined(user string, logs string) error {
 }
 
 func (h *Host) SetHomeVolume(volumeID, deviceName string) error {
-	h.HomeVolumeID = volumeID
-	h.HomeVolumeDeviceName = deviceName
-	return UpdateOne(
+	if err := UpdateOne(
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{HomeVolumeIDKey: volumeID, HomeVolumeDeviceNameKey: deviceName}},
-	)
+	); err != nil {
+		return errors.Wrapf(err, "can't update host '%s'", h.Id)
+	}
+
+	h.HomeVolumeID = volumeID
+	h.HomeVolumeDeviceName = deviceName
 }
 
 // CreateSecret generates a host secret and updates the host both locally
