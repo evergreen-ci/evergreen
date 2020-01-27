@@ -984,42 +984,29 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	if h.Distro.HomeVolumeDeviceName != "" {
 		deviceName = h.Distro.HomeVolumeDeviceName
 	}
-	proc, err := client.CreateProcess(ctx, &options.Create{Args: []string{"sudo", "umount", "-f", fmt.Sprintf("/dev/%s", deviceName)}})
-	if err != nil {
-		return errors.Wrap(err, "problem creating process for umount")
-	}
+
 	// continue on umount mount error
-	exitCode, err := proc.Wait(ctx)
+	exitCode, err := host.RunJasperCommandSynchronously(ctx, client, &options.Create{Args: []string{"sudo", "umount", "-f", fmt.Sprintf("/dev/%s", deviceName)}})
 	if err != nil && exitCode != umountMountErrorCode {
-		return errors.Wrap(err, "problem waiting for umount command")
+		return errors.Wrap(err, "problem running umount command")
 	}
 
-	commands := [][]string{[]string{"sudo", "/sbin/mkfs.xfs", "-f", fmt.Sprintf("/dev/%s", deviceName)}}
-	commands = append(commands, []string{"sudo", "mkdir", "-p", fmt.Sprintf("/%s", evergreen.HomeVolumeDir)})
-	commands = append(commands, []string{"sudo", "mount", fmt.Sprintf("/dev/%s", deviceName), fmt.Sprintf("/%s", evergreen.HomeVolumeDir)})
-	commands = append(commands, []string{"sudo", "ln", "-s", fmt.Sprintf("/%s", evergreen.HomeVolumeDir), fmt.Sprintf("%s/%s", h.Distro.HomeDir(), evergreen.HomeVolumeDir)})
-	commands = append(commands, []string{"sudo", "chown", "-R", fmt.Sprintf("%s:%s", h.User, h.User), fmt.Sprintf("%s/%s", h.Distro.HomeDir(), evergreen.HomeVolumeDir)})
+	commands := []options.Create{
+		{Args: []string{"sudo", "/sbin/mkfs.xfs", "-f", fmt.Sprintf("/dev/%s", deviceName)}},
+		{Args: []string{"sudo", "mkdir", "-p", fmt.Sprintf("/%s", evergreen.HomeVolumeDir)}},
+		{Args: []string{"sudo", "mount", fmt.Sprintf("/dev/%s", deviceName), fmt.Sprintf("/%s", evergreen.HomeVolumeDir)}},
+		{Args: []string{"sudo", "ln", "-s", fmt.Sprintf("/%s", evergreen.HomeVolumeDir), fmt.Sprintf("%s/%s", h.Distro.HomeDir(), evergreen.HomeVolumeDir)}},
+		{Args: []string{"sudo", "chown", "-R", fmt.Sprintf("%s:%s", h.User, h.User), fmt.Sprintf("%s/%s", h.Distro.HomeDir(), evergreen.HomeVolumeDir)}},
+		{
+			Args:               []string{"sudo", "tee", "--append", "/etc/fstab"},
+			StandardInputBytes: []byte(fmt.Sprintf("/dev/%s /%s auto noatime 0 0", deviceName, evergreen.HomeVolumeDir)),
+		},
+	}
 	for _, command := range commands {
-		proc, err := client.CreateProcess(ctx, &options.Create{Args: command})
+		_, err := host.RunJasperCommandSynchronously(ctx, client, &command)
 		if err != nil {
-			return errors.Wrapf(err, "problem creating process for command '%s'", strings.Join(command, " "))
+			return errors.Wrapf(err, "problem running command '%s'", strings.Join(command.Args, " "))
 		}
-		if _, err := proc.Wait(ctx); err != nil {
-			return errors.Wrapf(err, "problem waiting for process completion for command '%s'", strings.Join(command, " "))
-		}
-	}
-
-	// write to /etc/fstab so the volume will be mounted when the host is restarted
-	opts := options.Create{
-		Args:               []string{"sudo", "tee", "--append", "/etc/fstab"},
-		StandardInputBytes: []byte(fmt.Sprintf("/dev/%s /%s auto noatime 0 0", deviceName, evergreen.HomeVolumeDir)),
-	}
-	proc, err = client.CreateProcess(ctx, &opts)
-	if err != nil {
-		return errors.Wrap(err, "problem creating process for tee command")
-	}
-	if _, err := proc.Wait(ctx); err != nil {
-		return errors.Wrap(err, "problem waiting for process completion for tee command")
 	}
 
 	return nil

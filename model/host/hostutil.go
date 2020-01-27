@@ -1070,3 +1070,16 @@ func (h *Host) SetUserDataHostProvisioned() error {
 
 	return nil
 }
+
+func RunJasperCommandSynchronously(ctx context.Context, manager jasper.Manager, opts *options.Create) (int, error) {
+	proc, err := manager.CreateProcess(ctx, opts)
+	if err != nil {
+		return 0, errors.Wrap(err, "problem creating process")
+	}
+	exitCode, err := proc.Wait(ctx)
+	if err != nil {
+		return exitCode, errors.Wrap(err, "problem waiting for process completion")
+	}
+
+	return exitCode, nil
+}

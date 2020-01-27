@@ -472,6 +472,8 @@ func (h *Host) SetHomeVolume(volumeID, deviceName string) error {
 
 	h.HomeVolumeID = volumeID
 	h.HomeVolumeDeviceName = deviceName
+
+	return nil
 }
 
 // CreateSecret generates a host secret and updates the host both locally
