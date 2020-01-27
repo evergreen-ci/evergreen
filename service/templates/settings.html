@@ -10,7 +10,7 @@
   var userApiKey = {{.User.APIKey}};
   var userConf = {{.Config}};
   var binaries = {{.Binaries}};
-  var auth_is_ldap = {{.AuthIsLDAP}};
+  var can_clear_tokens = {{.CanClearTokesn}};
 </script>
 <style type="text/css">
   body{ background: rgb(250,250,250); }
@@ -41,7 +41,7 @@ api_server_host: "[[userConf.api_server_host]]"
 ui_server_host: "[[userConf.ui_server_host]]"</pre>
             <div>
               <button ng-click="newKey()" class="btn btn-primary">Reset API Key</button>
-              <button ng-show="auth_is_ldap" ng-click="clearToken()" class="btn btn-primary">Logout Everywhere</button>
+              <button ng-show="can_clear_tokens" ng-click="clearToken()" class="btn btn-primary">Logout Everywhere</button>
             </div>
           </div>
         </div>

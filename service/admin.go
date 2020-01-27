@@ -30,8 +30,8 @@ func (uis *UIServer) adminSettings(w http.ResponseWriter, r *http.Request) {
 
 	data := struct {
 		ViewData
-		AuthIsLDAP bool
-	}{uis.GetCommonViewData(w, r, true, true), uis.umIsLDAP}
+		CanClearTokens bool
+	}{uis.GetCommonViewData(w, r, true, true), uis.umCanClearTokens}
 	uis.render.WriteResponse(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
 }
 

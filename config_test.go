@@ -293,6 +293,7 @@ func (s *AdminSuite) TestAuthConfig() {
 			Users:        []string{"ghuser"},
 			Organization: "ghorg",
 		},
+		PreferredType: AuthLDAPKey,
 	}
 
 	err := config.Set()

@@ -135,6 +135,7 @@ func MockConfig() *evergreen.Settings {
 				Users:        []string{"ghuser"},
 				Organization: "ghorg",
 			},
+			PreferredType: evergreen.AuthLDAPKey,
 		},
 		Banner:            "banner",
 		BannerTheme:       "important",
