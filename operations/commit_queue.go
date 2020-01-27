@@ -21,8 +21,6 @@ const (
 	pauseFlagName       = "pause"
 	resumeFlagName      = "resume"
 	descriptionFlagName = "description"
-	noCommits           = "No Commits Added"
-	commitFmtString     = "'%s' into '%s/%s:%s'"
 )
 
 func CommitQueue() cli.Command {
