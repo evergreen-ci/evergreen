@@ -196,7 +196,7 @@ const (
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
 
 	// TODO: remove this when degrading YAML
-	UseParserProject = true
+	UseParserProject = false
 )
 
 func IsFinishedTaskStatus(status string) bool {
@@ -691,4 +691,10 @@ var ProjectPermissions = []string{
 var DistroPermissions = []string{
 	PermissionDistroSettings,
 	PermissionHosts,
+}
+
+var SuperuserPermissions = []string{
+	PermissionAdminSettings,
+	PermissionProjectCreate,
+	PermissionDistroCreate,
 }

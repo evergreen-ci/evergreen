@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
@@ -406,8 +407,8 @@ func TestPatchConnectorChangeStatusSuite(t *testing.T) {
 		s.obj_ids = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
 
 		patches := []*patch.Patch{
-			{Id: mgobson.ObjectIdHex(s.obj_ids[0])},
-			{Id: mgobson.ObjectIdHex(s.obj_ids[1])},
+			{Id: mgobson.ObjectIdHex(s.obj_ids[0]), Version: s.obj_ids[0]},
+			{Id: mgobson.ObjectIdHex(s.obj_ids[1]), Version: s.obj_ids[1]},
 		}
 
 		for _, p := range patches {
@@ -435,8 +436,8 @@ func TestMockPatchConnectorChangeStatusSuite(t *testing.T) {
 
 		s.ctx = &MockConnector{MockPatchConnector: MockPatchConnector{
 			CachedPatches: []model.APIPatch{
-				{Id: &s.obj_ids[0]},
-				{Id: &s.obj_ids[1]},
+				{Id: &s.obj_ids[0], Version: &s.obj_ids[0]},
+				{Id: &s.obj_ids[1], Version: &s.obj_ids[1]},
 			},
 			CachedAborted:  make(map[string]string),
 			CachedPriority: make(map[string]int64),
@@ -470,14 +471,15 @@ func (s *PatchConnectorChangeStatusSuite) TestSetPriority() {
 }
 
 func (s *PatchConnectorChangeStatusSuite) TestSetActivation() {
-	err := s.ctx.SetPatchActivated(s.obj_ids[0], "user1", true)
+	settings := testutil.MockConfig()
+	err := s.ctx.SetPatchActivated(context.Background(), s.obj_ids[0], "user1", true, settings)
 	s.NoError(err)
 	p, err := s.ctx.FindPatchById(s.obj_ids[0])
 	s.NoError(err)
 	s.Require().NotNil(p)
 	s.True(p.Activated)
 
-	err = s.ctx.SetPatchActivated(s.obj_ids[0], "user1", false)
+	err = s.ctx.SetPatchActivated(context.Background(), s.obj_ids[0], "user1", false, settings)
 	s.NoError(err)
 	p, err = s.ctx.FindPatchById(s.obj_ids[0])
 	s.NoError(err)

@@ -377,6 +377,7 @@ func (a *APIapiConfig) ToService() (interface{}, error) {
 
 type APIAuthConfig struct {
 	LDAP   *APILDAPConfig       `json:"ldap"`
+	Okta   *APIOktaConfig       `json:"okta"`
 	Naive  *APINaiveAuthConfig  `json:"naive"`
 	Github *APIGithubAuthConfig `json:"github"`
 }
@@ -387,19 +388,25 @@ func (a *APIAuthConfig) BuildFromService(h interface{}) error {
 		if v.LDAP != nil {
 			a.LDAP = &APILDAPConfig{}
 			if err := a.LDAP.BuildFromService(v.LDAP); err != nil {
-				return err
+				return errors.Wrap(err, "could not build API LDAP auth settings from service")
+			}
+		}
+		if v.Okta != nil {
+			a.Okta = &APIOktaConfig{}
+			if err := a.Okta.BuildFromService(v.Okta); err != nil {
+				return errors.Wrap(err, "could not build API Okta auth settings from service")
 			}
 		}
 		if v.Github != nil {
 			a.Github = &APIGithubAuthConfig{}
 			if err := a.Github.BuildFromService(v.Github); err != nil {
-				return err
+				return errors.Wrap(err, "could not build API GitHub auth settings from service")
 			}
 		}
 		if v.Naive != nil {
 			a.Naive = &APINaiveAuthConfig{}
 			if err := a.Naive.BuildFromService(v.Naive); err != nil {
-				return err
+				return errors.Wrap(err, "could not build API naive auth settings from service")
 			}
 		}
 	default:
@@ -410,31 +417,53 @@ func (a *APIAuthConfig) BuildFromService(h interface{}) error {
 
 func (a *APIAuthConfig) ToService() (interface{}, error) {
 	var ldap *evergreen.LDAPConfig
+	var okta *evergreen.OktaConfig
 	var naive *evergreen.NaiveAuthConfig
 	var github *evergreen.GithubAuthConfig
+	var ok bool
 	i, err := a.LDAP.ToService()
 	if err != nil {
 		return nil, err
 	}
 	if i != nil {
-		ldap = i.(*evergreen.LDAPConfig)
+		ldap, ok = i.(*evergreen.LDAPConfig)
+		if !ok {
+			return nil, errors.Errorf("expecting LDAPConfig but got %T", i)
+		}
+	}
+	i, err = a.Okta.ToService()
+	if err != nil {
+		return nil, err
+	}
+	if i != nil {
+		okta, ok = i.(*evergreen.OktaConfig)
+		if !ok {
+			return nil, errors.Errorf("expecting OktaConfig but got %T", i)
+		}
 	}
 	i, err = a.Naive.ToService()
 	if err != nil {
 		return nil, err
 	}
 	if i != nil {
-		naive = i.(*evergreen.NaiveAuthConfig)
+		naive, ok = i.(*evergreen.NaiveAuthConfig)
+		if !ok {
+			return nil, errors.Errorf("expecting NaiveAuthConfig but got %T", i)
+		}
 	}
 	i, err = a.Github.ToService()
 	if err != nil {
 		return nil, err
 	}
 	if i != nil {
-		github = i.(*evergreen.GithubAuthConfig)
+		github, ok = i.(*evergreen.GithubAuthConfig)
+		if !ok {
+			return nil, errors.Errorf("expecting GithubAuthConfig but got %T", i)
+		}
 	}
 	return evergreen.AuthConfig{
 		LDAP:   ldap,
+		Okta:   okta,
 		Naive:  naive,
 		Github: github,
 	}, nil
@@ -520,6 +549,44 @@ func (a *APILDAPConfig) ToService() (interface{}, error) {
 		ServiceGroup:       FromStringPtr(a.ServiceGroup),
 		ExpireAfterMinutes: FromStringPtr(a.ExpireAfterMinutes),
 		GroupOU:            FromStringPtr(a.Group),
+	}, nil
+}
+
+type APIOktaConfig struct {
+	ClientID           *string `json:"client_id"`
+	ClientSecret       *string `json:"client_secret"`
+	Issuer             *string `json:"issuer"`
+	UserGroup          *string `json:"user_group"`
+	ExpireAfterMinutes int     `json:"expire_after_minutes"`
+}
+
+func (a *APIOktaConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case *evergreen.OktaConfig:
+		if v == nil {
+			return nil
+		}
+		a.ClientID = ToStringPtr(v.ClientID)
+		a.ClientSecret = ToStringPtr(v.ClientSecret)
+		a.Issuer = ToStringPtr(v.Issuer)
+		a.UserGroup = ToStringPtr(v.UserGroup)
+		a.ExpireAfterMinutes = v.ExpireAfterMinutes
+		return nil
+	default:
+		return errors.Errorf("%T is not a supported type", h)
+	}
+}
+
+func (a *APIOktaConfig) ToService() (interface{}, error) {
+	if a == nil {
+		return nil, nil
+	}
+	return &evergreen.OktaConfig{
+		ClientID:           FromStringPtr(a.ClientID),
+		ClientSecret:       FromStringPtr(a.ClientSecret),
+		Issuer:             FromStringPtr(a.Issuer),
+		UserGroup:          FromStringPtr(a.UserGroup),
+		ExpireAfterMinutes: a.ExpireAfterMinutes,
 	}, nil
 }
 

@@ -630,7 +630,7 @@ func (t *Task) MarkAsUndispatched() error {
 
 // MarkGeneratedTasks marks that the task has generated tasks.
 func MarkGeneratedTasks(taskID string, errorToSet error) error {
-	if adb.ResultsNotFound(errorToSet) {
+	if adb.ResultsNotFound(errorToSet) || db.IsDuplicateKey(errorToSet) {
 		return nil
 	}
 	query := bson.M{
