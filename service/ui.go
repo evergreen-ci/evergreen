@@ -40,7 +40,7 @@ type UIServer struct {
 	//authManager
 	UserManager        gimlet.UserManager
 	umconf             gimlet.UserMiddlewareConfiguration
-	umIsLDAP           bool
+	umCanClearTokens   bool
 	Settings           evergreen.Settings
 	CookieStore        *sessions.CookieStore
 	clientConfig       *evergreen.ClientConfig
@@ -71,7 +71,7 @@ type ViewData struct {
 
 func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo TemplateFunctionOptions) (*UIServer, error) {
 	settings := env.Settings()
-	userManager, isLDAP, err := auth.LoadUserManager(settings.AuthConfig)
+	userManager, canClearTokens, err := auth.LoadUserManager(settings.AuthConfig)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -88,7 +88,7 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo T
 		queue:              queue,
 		Home:               home,
 		UserManager:        userManager,
-		umIsLDAP:           isLDAP,
+		umCanClearTokens:   canClearTokens,
 		clientConfig:       evergreen.GetEnvironment().ClientConfig(),
 		CookieStore:        sessions.NewCookieStore([]byte(settings.Ui.Secret)),
 		buildBaronProjects: bbGetConfig(settings),
@@ -223,6 +223,7 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 // hard-coded routes as well as those belonging to plugins.
 func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	needsLogin := gimlet.WrapperMiddleware(uis.requireLogin)
+	needsLoginNoRedirect := gimlet.WrapperMiddleware(uis.requireLoginStatusUnauthorized)
 	needsContext := gimlet.WrapperMiddleware(uis.loadCtx)
 	needsSuperUser := gimlet.WrapperMiddleware(uis.requireSuperUser)
 	needsAdmin := gimlet.WrapperMiddleware(uis.requireAdmin)
@@ -276,7 +277,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// GraphQL
 	app.AddRoute("/graphql").Wrap(allowsCORS, needsLogin).Handler(playground.Handler("GraphQL playground", "/graphql/query")).Get()
-	app.AddRoute("/graphql/query").Wrap(allowsCORS, needsLogin).Handler(graphql.Handler(uis.Settings.ApiUrl)).Post().Get()
+	app.AddRoute("/graphql/query").Wrap(allowsCORS, needsLoginNoRedirect).Handler(graphql.Handler(uis.Settings.ApiUrl)).Post().Get()
 	// this route is used solely to introspect the schema of the GQL server. OPTIONS request by design do not include auth headers; therefore must not require login.
 	app.AddRoute("/graphql/query").Wrap(allowsCORS).Handler(func(_ http.ResponseWriter, _ *http.Request) {}).Options()
 
@@ -344,7 +345,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/distros/{distro_id}").Wrap(needsSuperUser, needsContext, removeDistroSettings).Handler(uis.removeDistro).Delete()
 
 	// Event Logs
-	app.AddRoute("/event_log/{resource_type}/{resource_id:[\\w_\\-\\:\\.\\@]+}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.fullEventLogs).Get()
+	app.AddRoute("/event_log/{resource_type}/{resource_id:[\\w_\\-\\:\\.\\@]+}").Wrap(needsLogin, needsContext, &route.EventLogPermissionsMiddleware{}).Handler(uis.fullEventLogs).Get()
 
 	// Task History
 	app.AddRoute("/task_history/{task_name}").Wrap(needsContext).Handler(uis.taskHistoryPage).Get()

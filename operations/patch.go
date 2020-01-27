@@ -102,6 +102,13 @@ func Patch() cli.Command {
 				return err
 			}
 
+			if params.Description == "" {
+				params.Description, err = getDefaultDescription()
+				if err != nil {
+					grip.Error(err)
+				}
+			}
+
 			_, err = params.createPatch(ac, conf, diffData)
 			return err
 		},
@@ -170,6 +177,13 @@ func PatchFile() cli.Command {
 			}
 
 			diffData := &localDiff{string(fullPatch), "", "", base}
+
+			if params.Description == "" {
+				params.Description, err = getDefaultDescription()
+				if err != nil {
+					grip.Error(err)
+				}
+			}
 
 			_, err = params.createPatch(ac, conf, diffData)
 			return err

@@ -95,11 +95,6 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 		}
 	}
 
-	var err error
-	if p.Description == "" {
-		p.Description = getDefaultDescription()
-	}
-
 	patchSub := patchSubmission{
 		projectId:   p.Project,
 		patchData:   diffData.fullPatch,
@@ -497,9 +492,16 @@ func gitCommitMessages(base, ref, commits string) (string, error) {
 	if commits != "" {
 		input = formatCommitRange(commits)
 	}
-	args := []string{"--no-show-signature", "--pretty=format:%B", input}
+	args := []string{"--no-show-signature", "--pretty=format:%s", "--reverse", input}
 	msg, err := gitCmd("log", args...)
-	return strings.Replace(msg, "\n\n", "\n", -1), err // remove multiple line format if applicable
+	if err != nil {
+		return "", errors.Wrap(err, "can't get messages")
+	}
+	// separate multiple commits with <-
+	msg = strings.TrimSpace(msg)
+	msg = strings.Replace(msg, "\n", " <- ", -1)
+
+	return msg, nil
 }
 
 // assumes base includes @{upstream}
@@ -513,23 +515,21 @@ func gitBranch() (string, error) {
 	return gitCmd("rev-parse", args...)
 }
 
-func getDefaultDescription() string {
+func getDefaultDescription() (string, error) {
 	desc, err := gitLastCommitMessage()
 	if err != nil {
-		grip.Debug("Couldn't create patch description using commit messages: " + err.Error())
+		return "", errors.Wrap(err, "Couldn't get last commit message")
 	}
 	branch, err := gitBranch()
 	if err != nil {
-		grip.Debug("Couldn't add branch to patch description: " + err.Error())
+		return "", errors.Wrap(err, "Couldn't get branch name")
 	}
+
 	branch = strings.TrimSpace(branch)
-	if desc == "" {
-		return branch
+	if strings.HasPrefix(desc, branch) {
+		return desc, nil
 	}
-	if branch == "" || strings.HasPrefix(desc, branch) {
-		return desc
-	}
-	return fmt.Sprintf("%s: %s", branch, desc)
+	return fmt.Sprintf("%s: %s", branch, desc), nil
 }
 
 func gitCommitCount(base, ref, commits string) (int, error) {

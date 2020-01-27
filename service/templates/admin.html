@@ -1,6 +1,6 @@
 {{define "scripts"}}
 <script>
-	window.auth_is_ldap = {{.AuthIsLDAP}};
+	window.can_logout = {{.CanClearTokens}};
 </script>
 <script src="{{Static "js" "admin.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="{{Static "thirdparty" "js-yaml.min.js"}}?hash={{ BuildRevision }}"></script>
@@ -61,7 +61,9 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('api')">API Config</li>
 						<li class="link" ng-click="scrollTo('ui')">UI Config</li>
 						<div>Authentication</div>
+						<li class="link" ng-click="scrollTo('preferred_auth')">Preferred Authentication</li>
 						<li class="link" ng-click="scrollTo('ldap')">LDAP</li>
+						<li class="link" ng-click="scrollTo('okta')">Okta</li>
 						<li class="link" ng-click="scrollTo('github')">Github</li>
 						<li class="link" ng-click="scrollTo('naive')">Naive</li>
 						<div>External Communication</div>
@@ -681,6 +683,22 @@ Admin Settings
 
 						</section>
 
+						<section layout="row" flex style="max-width=49%">
+							<md-card flex=50 id="preferred_auth">
+								<md-card-title-text>
+									<span>Preferred Authentication</span>
+								</md-card-title-text>
+								<md-card-content>
+									<md-radio-group data-ng-model="Settings.auth.preferred_type" layout="row">
+										  <md-radio-button value="ldap">LDAP</md-radio-button>
+										  <md-radio-button value="okta">Okta</md-radio-button>
+										  <md-radio-button value="naive">Naive</md-radio-button>
+										  <md-radio-button value="github">Github</md-radio-button>
+										  <md-radio-button value="">None</md-radio-button>
+									</md-radio-group>
+								</md-card-content>
+							</md-card>
+						</section>
 
 						<section layout="row" flex>
 
@@ -725,6 +743,74 @@ Admin Settings
 									<md-input-container class="control" style="width:45%;">
 										<label>Group OU Name</label>
 										<input type="text" ng-model="Settings.auth.ldap.group_ou">
+									</md-input-container>
+									<div><button ng-show="can_clear_tokens" ng-click="clearAllUserTokens()" class="btn btn-primary">Logout Everyone</button></div>
+								</md-card-content>
+							</md-card>
+
+							<md-card flex=50 id="okta">
+								<md-card-title>
+									<md-card-title-text>
+										<span>Okta Authentication</span>
+									</md-card-title-text>
+									<md-button ng-click="clearSection('auth','okta')">
+										<i class="fa fa-trash"></i>
+									</md-button>
+								</md-card-title>
+								<md-card-content>
+									<md-input-container class="control" style="width:45%;">
+										<label>Client ID</label>
+										<input type="text" ng-model="Settings.auth.okta.client_id">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Client Secret</label>
+										<input type="text" ng-model="Settings.auth.okta.client_secret">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Issuer</label>
+										<input type="text" ng-model="Settings.auth.okta.issuer">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>User Group</label>
+										<input type="text" ng-model="Settings.auth.okta.user_group">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Expire User Session After Minutes</label>
+										<input type="number" ng-model="Settings.auth.okta.expire_after_minutes">
+									</md-input-container>
+									<div><button ng-show="can_clear_tokens" ng-click="clearAllUserTokens()" class="btn btn-primary">Logout Everyone</button></div>
+								</md-card-content>
+							</md-card>
+
+							<md-card flex=50 id="okta">
+								<md-card-title>
+									<md-card-title-text>
+										<span>Okta Authentication</span>
+									</md-card-title-text>
+									<md-button ng-click="clearSection('auth','okta')">
+										<i class="fa fa-trash"></i>
+									</md-button>
+								</md-card-title>
+								<md-card-content>
+									<md-input-container class="control" style="width:45%;">
+										<label>Client ID</label>
+										<input type="text" ng-model="Settings.auth.okta.client_id">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Client Secret</label>
+										<input type="text" ng-model="Settings.auth.okta.client_secret">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Issuer</label>
+										<input type="text" ng-model="Settings.auth.okta.issuer">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>User Group</label>
+										<input type="text" ng-model="Settings.auth.okta.user_group">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Expire User Session After Minutes</label>
+										<input type="number" ng-model="Settings.auth.okta.expire_after_minutes">
 									</md-input-container>
 									<div><button ng-show="auth_is_ldap" ng-click="clearAllUserTokens()" class="btn btn-primary">Logout Everyone</button></div>
 								</md-card-content>
@@ -1449,7 +1535,7 @@ Admin Settings
 						</section>
 
 						<section layout="row" flex>
-							<md-card flex=50 id="host_jasper" style="max-width:49%">
+							<md-card flex=50 id="host_jasper">
 								<md-card-title>
 									<md-card-title-text>
 										<span>Host Jasper</span>

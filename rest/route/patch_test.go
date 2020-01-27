@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/testutil"
+
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -299,8 +301,8 @@ func (s *PatchesChangeStatusSuite) SetupSuite() {
 func (s *PatchesChangeStatusSuite) TestChangeStatus() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
-
-	rm := makeChangePatchStatus(s.sc).(*patchChangeStatusHandler)
+	env := testutil.NewEnvironment(ctx, s.T())
+	rm := makeChangePatchStatus(s.sc, env).(*patchChangeStatusHandler)
 
 	rm.patchId = s.objIds[0]
 	var tmp_true = true

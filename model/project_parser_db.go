@@ -1,8 +1,6 @@
 package model
 
 import (
-	"strings"
-
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -114,17 +112,18 @@ func checkConfigNumberQuery(id string, configNum int) bson.M {
 	return q
 }
 
-// TryInsert suppresses the error of inserting if it's a duplicate key error and attempts to
-// upsert if config number matches
+// TryUpsert suppresses the error of inserting if it's a duplicate key error
+// and attempts to upsert if config number matches.
 func (pp *ParserProject) TryUpsert() error {
 	err := ParserProjectUpsertOne(checkConfigNumberQuery(pp.Id, pp.ConfigUpdateNumber), setAllFieldsUpdate(pp))
-	if isValidErr(err) {
+	if !db.IsDuplicateKey(err) {
 		return errors.Wrapf(err, "database error upserting parser project")
 	}
 
 	// log this error but don't return it
 	grip.Debug(message.WrapError(err, message.Fields{
 		"message":                      "parser project not upserted",
+		"operation":                    "TryUpsert",
 		"version":                      pp.Id,
 		"attempted_to_update_with_num": pp.ConfigUpdateNumber,
 	}))
@@ -146,23 +145,17 @@ func (pp *ParserProject) UpsertWithConfigNumber(num int, shouldEqual bool) error
 	}
 
 	err := ParserProjectUpsertOne(q, setAllFieldsUpdate(pp))
-	if isValidErr(err) {
+	// If shouldEqual, then we expose all errors to check for a race.
+	// Otherwise, only return errors database errors.
+	if shouldEqual || !db.IsDuplicateKey(err) {
 		return errors.Wrapf(err, "database error upserting parser project '%s'", pp.Id)
 	}
 	// log this error but don't return it
 	grip.Debug(message.WrapError(err, message.Fields{
 		"message":                      "parser project not upserted",
+		"operation":                    "UpsertWithConfigNumber",
 		"version":                      pp.Id,
 		"attempted_to_update_with_num": num + 1,
 	}))
 	return nil
-}
-
-// return true if this is an error we want to expose
-func isValidErr(err error) bool {
-	if err == nil || adb.ResultsNotFound(err) || strings.Contains(err.Error(), "duplicate key error") {
-		return false
-	}
-
-	return true
 }
