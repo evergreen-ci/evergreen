@@ -98,7 +98,7 @@ func (c *AuthConfig) Set() error {
 			AuthNaiveKey:         c.Naive,
 			AuthGithubKey:        c.Github,
 			authPreferredTypeKey: c.PreferredType,
-	}, options.Update().SetUpsert(true))
+		}}, options.Update().SetUpsert(true))
 
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
