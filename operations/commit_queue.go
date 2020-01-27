@@ -396,7 +396,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	if patch.Description == "" {
 		message, err = gitCommitMessages(module.Branch, p.ref)
 		if err != nil {
-			errors.Wrap(err, "can't get module commit messages")
+			return errors.Wrap(err, "can't get module commit messages")
 		}
 	}
 
