@@ -18,7 +18,7 @@ func TestBadHostTaskRelationship(t *testing.T) {
 	require := require.New(t)
 	require.NoError(db.Clear(task.Collection))
 
-	h := &host.Host{}
+	var h *host.Host
 	var k *task.Task
 	assert.False(badHostTaskRelationship(h, k), "false for nil task")
 
