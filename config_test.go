@@ -277,6 +277,13 @@ func (s *AdminSuite) TestAuthConfig() {
 			Group:              "group",
 			ExpireAfterMinutes: "60",
 		},
+		Okta: &OktaConfig{
+			ClientID:           "id",
+			ClientSecret:       "secret",
+			Issuer:             "issuer",
+			UserGroup:          "group",
+			ExpireAfterMinutes: 60,
+		},
 		Naive: &NaiveAuthConfig{
 			Users: []*AuthUser{{Username: "user", Password: "pw"}},
 		},
