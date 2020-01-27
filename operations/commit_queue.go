@@ -20,7 +20,6 @@ const (
 	itemFlagName        = "item"
 	pauseFlagName       = "pause"
 	resumeFlagName      = "resume"
-	commitFlagName      = "commit"
 	commitsFlagName     = "commits"
 	descriptionFlagName = "description"
 )
@@ -106,7 +105,7 @@ func mergeCommand() cli.Command {
 	return cli.Command{
 		Name:  "merge",
 		Usage: "test and merge a feature branch",
-		Flags: mergeFlagSlices(addProjectFlag(), addLargeFlag(), addRefFlag(), addCommitFlag(), addYesFlag(
+		Flags: mergeFlagSlices(addProjectFlag(), addLargeFlag(), addRefFlag(), addCommitsFlag(), addYesFlag(
 			cli.StringFlag{
 				Name:  joinFlagNames(resumeFlagName, "r", patchFinalizeFlagName, "f"),
 				Usage: "resume testing a preexisting item with `ID`",
@@ -126,7 +125,7 @@ func mergeCommand() cli.Command {
 		)),
 		Before: mergeBeforeFuncs(
 			setPlainLogger,
-			mutuallyExclusiveArgs(false, refFlagName, commitFlagName),
+			mutuallyExclusiveArgs(false, refFlagName, commitsFlagName),
 		),
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
@@ -135,7 +134,7 @@ func mergeCommand() cli.Command {
 			params := mergeParams{
 				projectID:   c.String(projectFlagName),
 				ref:         c.String(refFlagName),
-				commits:     c.String(commitFlagName),
+				commits:     c.String(commitsFlagName),
 				id:          c.String(resumeFlagName),
 				pause:       c.Bool(pauseFlagName),
 				message:     c.String(messageFlagName),
@@ -168,7 +167,7 @@ func setModuleCommand() cli.Command {
 	return cli.Command{
 		Name:  "set-module",
 		Usage: "update or add module to an existing merge patch",
-		Flags: mergeFlagSlices(addLargeFlag(), addPatchIDFlag(), addModuleFlag(), addRefFlag(), addCommitFlag(), addYesFlag(
+		Flags: mergeFlagSlices(addLargeFlag(), addPatchIDFlag(), addModuleFlag(), addRefFlag(), addCommitsFlag(), addYesFlag(
 			cli.StringFlag{
 				Name:  joinFlagNames(descriptionFlagName, "d"),
 				Usage: "commit message",
@@ -178,14 +177,14 @@ func setModuleCommand() cli.Command {
 			requirePatchIDFlag,
 			requireModuleFlag,
 			setPlainLogger,
-			mutuallyExclusiveArgs(false, refFlagName, commitFlagName),
+			mutuallyExclusiveArgs(false, refFlagName, commitsFlagName),
 		),
 		Action: func(c *cli.Context) error {
 			params := moduleParams{
 				patchID:     c.String(patchIDFlagName),
 				module:      c.String(moduleFlagName),
 				ref:         c.String(refFlagName),
-				commits:     c.String(commitFlagName),
+				commits:     c.String(commitsFlagName),
 				message:     c.String(descriptionFlagName),
 				large:       c.Bool(largeFlagName),
 				skipConfirm: c.Bool(yesFlagName),

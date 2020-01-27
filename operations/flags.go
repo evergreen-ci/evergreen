@@ -223,9 +223,9 @@ func addRefFlag(flags ...cli.Flag) []cli.Flag {
 	})
 }
 
-func addCommitFlag(flags ...cli.Flag) []cli.Flag {
+func addCommitsFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringFlag{
-		Name:  joinFlagNames(commitFlagName, commitsFlagName),
+		Name:  joinFlagNames(commitsFlagName, "c"),
 		Usage: "specify commit hash <hash1> (can also be a range <hash1>..<hash2>, where hash1 is excluded)",
 	})
 }
