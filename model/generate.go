@@ -272,7 +272,7 @@ func addDependencies(t *task.Task, p *Project, v *Version, newTasks TVPairSet) e
 		newDependencyIDs = append(newDependencyIDs, taskIDTable.ExecutionTasks.GetId(newTask.Variant, newTask.TaskName))
 	}
 
-	statuses := []string{evergreen.TaskSucceeded, evergreen.TaskFailed, task.AllStatuses}
+	statuses := []string{evergreen.TaskSucceeded, task.AllStatuses}
 	for _, status := range statuses {
 		if err := t.UpdateDependsOn(status, newDependencyIDs); err != nil {
 			return errors.Wrapf(err, "can't update tasks depending on '%s'", t.Id)
