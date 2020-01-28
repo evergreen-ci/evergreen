@@ -11,7 +11,7 @@ import (
 )
 
 func DoProjectActivation(id string) error {
-	// fetch the most recent, non-ignored version version to activate
+	// fetch the most recent, non-ignored version to activate
 	activateVersion, err := VersionFindOne(VersionByMostRecentNonIgnored(id))
 	if err != nil {
 		return errors.WithStack(err)

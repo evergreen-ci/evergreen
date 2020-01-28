@@ -814,29 +814,15 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata VersionM
 			tasksToCreate = append(tasksToCreate, t)
 		}
 
-		var lastActivated *model.Version
 		activateAt := time.Now()
 		if metadata.TriggerID == "" && v.Requester != evergreen.AdHocRequester {
-			lastActivated, err = model.VersionFindOne(model.VersionByLastVariantActivation(projectInfo.Ref.Identifier, buildvariant.Name))
+			activateAt, err = projectInfo.Ref.GetActivationTime(&buildvariant)
 			if err != nil {
+				// should we be returning her?
 				grip.Error(message.WrapError(err, message.Fields{
 					"message": "error finding last activated",
 					"version": v.Id,
 				}))
-			}
-
-			var lastActivation *time.Time
-			if lastActivated != nil {
-				for _, buildStatus := range lastActivated.BuildVariants {
-					if buildStatus.BuildVariant == buildvariant.Name && buildStatus.Activated {
-						lastActivation = &buildStatus.ActivateAt
-						break
-					}
-				}
-			}
-
-			if lastActivation != nil {
-				activateAt = lastActivation.Add(time.Minute * time.Duration(projectInfo.Ref.GetBatchTime(&buildvariant)))
 			}
 		}
 
