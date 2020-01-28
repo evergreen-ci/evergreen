@@ -12,7 +12,7 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -175,7 +175,7 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProje
 		}
 	}
 
-	if err := g.saveNewBuildsAndTasks(ctx, pm, v, p, t.Priority); err != nil {
+	if err := g.saveNewBuildsAndTasks(ctx, pm, v, p, t); err != nil {
 		return errors.Wrap(err, "error savings new builds and tasks")
 	}
 	return nil
@@ -224,11 +224,11 @@ func cacheProjectData(p *Project) projectMaps {
 }
 
 // saveNewBuildsAndTasks saves new builds and tasks to the db.
-func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProject *projectMaps, v *Version, p *Project, parentPriority int64) error {
+func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProject *projectMaps, v *Version, p *Project, t *task.Task) error {
 	// inherit priority from the parent task
 	for i, projBv := range p.BuildVariants {
 		for j := range projBv.Tasks {
-			p.BuildVariants[i].Tasks[j].Priority = parentPriority
+			p.BuildVariants[i].Tasks[j].Priority = t.Priority
 		}
 	}
 
@@ -270,6 +270,35 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 	if err := AddNewBuilds(ctx, true, v, p, newTVPairsForNewVariants, g.TaskID); err != nil {
 		return errors.Wrap(err, "errors adding new builds")
 	}
+
+	newTasks := TaskVariantPairs{
+		DisplayTasks: append(newTVPairsForExistingVariants.DisplayTasks, newTVPairsForNewVariants.DisplayTasks...),
+		ExecTasks:    append(newTVPairsForExistingVariants.ExecTasks, newTVPairsForNewVariants.ExecTasks...),
+	}
+	if err = addDependencies(t, p, v, newTasks); err != nil {
+		return errors.Wrap(err, "error adding dependencies")
+	}
+
+	return nil
+}
+
+func addDependencies(t *task.Task, p *Project, v *Version, newTasks TaskVariantPairs) error {
+	taskIDTable := NewTaskIdTable(p, v, "", "")
+	newDependencyIDs := []string{}
+	for _, newDisplayTask := range newTasks.DisplayTasks {
+		newDependencyIDs = append(newDependencyIDs, taskIDTable.DisplayTasks.GetId(newDisplayTask.Variant, newDisplayTask.TaskName))
+	}
+	for _, newExecTask := range newTasks.ExecTasks {
+		newDependencyIDs = append(newDependencyIDs, taskIDTable.ExecutionTasks.GetId(newExecTask.Variant, newExecTask.TaskName))
+	}
+
+	statuses := []string{evergreen.TaskSucceeded, evergreen.TaskFailed, task.AllStatuses}
+	for _, status := range statuses {
+		if err := t.UpdateDependsOn(status, newDependencyIDs); err != nil {
+			return errors.Wrapf(err, "can't update tasks depending on '%s'", t.Id)
+		}
+	}
+
 	return nil
 }
 

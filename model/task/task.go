@@ -1984,6 +1984,29 @@ func (t *Task) UpdateDependencies(dependsOn []Dependency) error {
 	return nil
 }
 
+// UpdateDependsOn appends new dependnecies to tasks that already depend on this task
+func (t *Task) UpdateDependsOn(status string, newDependencyIDs []string) error {
+	newDependencies := make([]Dependency, 0, len(newDependencyIDs))
+	for _, depID := range newDependencyIDs {
+		newDependencies = append(newDependencies, Dependency{
+			TaskId: depID,
+			Status: status,
+		})
+	}
+
+	_, err := UpdateAll(
+		bson.M{
+			"$elemMatch": bson.M{
+				bsonutil.GetDottedKeyName(DependsOnKey, DependencyTaskIdKey): t.Id,
+				bsonutil.GetDottedKeyName(DependsOnKey, DependencyStatusKey): status,
+			},
+		},
+		bson.M{"$push": bson.M{DependsOnKey: bson.M{"$each": newDependencies}}},
+	)
+
+	return errors.Wrap(err, "can't update dependencies")
+}
+
 func (t *Task) SetTaskGroupInfo() error {
 	return errors.WithStack(UpdateOne(bson.M{IdKey: t.Id},
 		bson.M{"$set": bson.M{
