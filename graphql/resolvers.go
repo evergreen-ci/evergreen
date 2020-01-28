@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"context"
+	"sort"
 	s "strings"
 	"time"
 
@@ -82,20 +83,27 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 
 		if projs, ok := groupsMap[groupName]; ok {
 			groupsMap[groupName] = append(projs, &uiProj)
-			continue
+		} else {
+			groupsMap[groupName] = []*restModel.UIProjectFields{&uiProj}
 		}
-
-		groupsMap[groupName] = []*restModel.UIProjectFields{&uiProj}
 	}
 
-	groupsArr := make([]*GroupedProjects, len(groupsMap))
+	groupsArr := []*GroupedProjects{}
 
 	for groupName, groupedProjects := range groupsMap {
-		groupsArr = append(groupsArr, &GroupedProjects{
-			Group:    &groupName,
+		name := groupName
+		gp := GroupedProjects{
+			Group:    &name,
 			Projects: groupedProjects,
-		})
+		}
+		groupsArr = append(groupsArr, &gp)
 	}
+
+	sort.SliceStable(groupsArr, func(i, j int) bool {
+		s1 := *groupsArr[i].Group
+		s2 := *groupsArr[j].Group
+		return s1 < s2
+	})
 
 	return groupsArr, nil
 }
