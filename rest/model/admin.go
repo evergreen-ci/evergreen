@@ -376,10 +376,11 @@ func (a *APIapiConfig) ToService() (interface{}, error) {
 }
 
 type APIAuthConfig struct {
-	LDAP   *APILDAPConfig       `json:"ldap"`
-	Okta   *APIOktaConfig       `json:"okta"`
-	Naive  *APINaiveAuthConfig  `json:"naive"`
-	Github *APIGithubAuthConfig `json:"github"`
+	LDAP          *APILDAPConfig       `json:"ldap"`
+	Okta          *APIOktaConfig       `json:"okta"`
+	Naive         *APINaiveAuthConfig  `json:"naive"`
+	Github        *APIGithubAuthConfig `json:"github"`
+	PreferredType *string              `json:"preferred_type"`
 }
 
 func (a *APIAuthConfig) BuildFromService(h interface{}) error {
@@ -397,6 +398,12 @@ func (a *APIAuthConfig) BuildFromService(h interface{}) error {
 				return errors.Wrap(err, "could not build API Okta auth settings from service")
 			}
 		}
+		if v.Okta != nil {
+			a.Okta = &APIOktaConfig{}
+			if err := a.Okta.BuildFromService(v.Okta); err != nil {
+				return err
+			}
+		}
 		if v.Github != nil {
 			a.Github = &APIGithubAuthConfig{}
 			if err := a.Github.BuildFromService(v.Github); err != nil {
@@ -409,6 +416,7 @@ func (a *APIAuthConfig) BuildFromService(h interface{}) error {
 				return errors.Wrap(err, "could not build API naive auth settings from service")
 			}
 		}
+		a.PreferredType = ToStringPtr(v.PreferredType)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -441,6 +449,13 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 			return nil, errors.Errorf("expecting OktaConfig but got %T", i)
 		}
 	}
+	i, err = a.Okta.ToService()
+	if err != nil {
+		return nil, err
+	}
+	if i != nil {
+		okta = i.(*evergreen.OktaConfig)
+	}
 	i, err = a.Naive.ToService()
 	if err != nil {
 		return nil, err
@@ -462,10 +477,11 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 		}
 	}
 	return evergreen.AuthConfig{
-		LDAP:   ldap,
-		Okta:   okta,
-		Naive:  naive,
-		Github: github,
+		LDAP:          ldap,
+		Okta:          okta,
+		Naive:         naive,
+		Github:        github,
+		PreferredType: FromStringPtr(a.PreferredType),
 	}, nil
 }
 

@@ -87,10 +87,11 @@ var (
 	drBackupDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "DRBackupDisabled")
 
 	// AuthConfig keys
-	authLDAPKey   = bsonutil.MustHaveTag(AuthConfig{}, "LDAP")
-	authOktaKey   = bsonutil.MustHaveTag(AuthConfig{}, "Okta")
-	authGithubKey = bsonutil.MustHaveTag(AuthConfig{}, "Github")
-	authNaiveKey  = bsonutil.MustHaveTag(AuthConfig{}, "Naive")
+	AuthLDAPKey          = bsonutil.MustHaveTag(AuthConfig{}, "LDAP")
+	AuthOktaKey          = bsonutil.MustHaveTag(AuthConfig{}, "Okta")
+	AuthGithubKey        = bsonutil.MustHaveTag(AuthConfig{}, "Github")
+	AuthNaiveKey         = bsonutil.MustHaveTag(AuthConfig{}, "Naive")
+	authPreferredTypeKey = bsonutil.MustHaveTag(AuthConfig{}, "PreferredType")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")

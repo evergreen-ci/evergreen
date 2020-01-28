@@ -98,6 +98,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Amboy.GroupPruneFrequencyMinutes, apiSettings.Amboy.GroupPruneFrequencyMinutes)
 	assert.EqualValues(testSettings.Amboy.GroupTTLMinutes, apiSettings.Amboy.GroupTTLMinutes)
 	assert.EqualValues(testSettings.Api.HttpListenAddr, FromStringPtr(apiSettings.Api.HttpListenAddr))
+	assert.EqualValues(testSettings.AuthConfig.PreferredType, FromStringPtr(apiSettings.AuthConfig.PreferredType))
 	assert.EqualValues(testSettings.AuthConfig.LDAP.URL, FromStringPtr(apiSettings.AuthConfig.LDAP.URL))
 	assert.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, FromStringPtr(apiSettings.AuthConfig.Naive.Users[0].Username))
 	assert.EqualValues(testSettings.AuthConfig.Okta.ClientID, FromStringPtr(apiSettings.AuthConfig.Okta.ClientID))

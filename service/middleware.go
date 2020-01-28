@@ -160,6 +160,10 @@ func (uis *UIServer) requireLogin(next http.HandlerFunc) http.HandlerFunc {
 	return requireUser(next, uis.RedirectToLogin)
 }
 
+func (uis *UIServer) requireLoginStatusUnauthorized(next http.HandlerFunc) http.HandlerFunc {
+	return requireUser(next, nil)
+}
+
 // isSuperUser verifies that a given user has super user permissions.
 // A user has these permission if they are in the super users list or if the list is empty,
 // in which case all users are super users.
