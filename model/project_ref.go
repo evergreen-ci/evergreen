@@ -609,16 +609,21 @@ func (p *ProjectRef) getBatchTime(variant *BuildVariant) int {
 	}
 }
 
-func GetActivationTimeWithCron(prevActivation time.Time, cronBatchTime string) (time.Time, error) {
+// return the next valid batch time
+func GetActivationTimeWithCron(curTime time.Time, cronBatchTime string) (time.Time, error) {
 	parser := cron.NewParser(cron.Hour | cron.Dom | cron.DowOptional | cron.Descriptor)
 	sched, err := parser.Parse(cronBatchTime)
 	if err != nil {
 		return time.Now(), errors.Wrapf(err, "error parsing cron batchtime '%s'", cronBatchTime)
 	}
-	return sched.Next(prevActivation), nil
+	return sched.Next(curTime), nil
 }
 
 func (p *ProjectRef) GetActivationTime(variant *BuildVariant) (time.Time, error) {
+	if variant.CronBatchTime != "" {
+		return GetActivationTimeWithCron(time.Now(), variant.CronBatchTime)
+	}
+
 	lastActivated, err := VersionFindOne(VersionByLastVariantActivation(p.Identifier, variant.Name))
 	if err != nil {
 		return time.Now(), errors.Wrap(err, "error finding version")
@@ -633,9 +638,7 @@ func (p *ProjectRef) GetActivationTime(variant *BuildVariant) (time.Time, error)
 		if buildStatus.BuildVariant != variant.Name || !buildStatus.Activated {
 			continue
 		}
-		if variant.CronBatchTime != "" {
-			return GetActivationTimeWithCron(buildStatus.ActivateAt, variant.CronBatchTime)
-		}
+
 		return buildStatus.ActivateAt.Add(time.Minute * time.Duration(p.getBatchTime(variant))), nil
 	}
 
