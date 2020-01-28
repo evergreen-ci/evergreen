@@ -1,5 +1,4 @@
 mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', 'mciAdminRestService', 'notificationService', '$mdpTimePicker', function($scope, $window, $http, mciAdminRestService, notificationService) {
-  $scope.auth_is_ldap = $window.auth_is_ldap;
   $scope.validDefaultLoggers = $window.validDefaultLoggers;
   $scope.can_clear_tokens = $window.can_clear_tokens;
 
