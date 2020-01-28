@@ -1,18 +1,20 @@
 package task
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // this is about a month.
 const oneMonthIsh = 30 * 24 * time.Hour
+const durationIndex = "branch_1_build_variant_1_display_name_1_status_1_finish_time_1_start_time_1"
 
 type expectedDurationResults struct {
 	DisplayName      string  `bson:"_id"`
@@ -69,7 +71,13 @@ func getExpectedDurationsForWindow(name, project, buildvariant string, start, en
 	// anonymous struct for unmarshalling result bson
 	results := []expectedDurationResults{}
 
-	err := db.Aggregate(Collection, pipeline, &results)
+	coll := evergreen.GetEnvironment().DB().Collection(Collection)
+	ctx := context.Background()
+	cursor, err := coll.Aggregate(ctx, pipeline, &options.AggregateOptions{Hint: durationIndex})
+	if err != nil {
+		return nil, errors.Wrap(err, "error aggregating task average duration")
+	}
+	err = cursor.All(ctx, &results)
 	if err != nil {
 		return nil, errors.Wrap(err, "error aggregating task average duration")
 	}
