@@ -213,35 +213,6 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 	return versions, nil
 }
 
-func (v *Version) UpdateMergeTaskDependencies(p *Project, mergeTask *task.Task) error {
-	existingDependencies := make(map[string]bool)
-	for _, dep := range mergeTask.DependsOn {
-		existingDependencies[dep.TaskId] = true
-	}
-
-	execPairs, _, err := p.BuildProjectTVPairsWithAlias(evergreen.CommitQueueAlias)
-	if err != nil {
-		return errors.Wrap(err, "can't get alias pairs")
-	}
-
-	mergeTaskDependencies := []task.Dependency{}
-	execTaskIDTable := NewTaskIdTable(p, v, "", "").ExecutionTasks
-	for _, pair := range execPairs {
-		taskID := execTaskIDTable.GetId(pair.Variant, pair.TaskName)
-		if !existingDependencies[taskID] {
-			mergeTaskDependencies = append(
-				mergeTaskDependencies,
-				task.Dependency{
-					TaskId: taskID,
-					Status: evergreen.TaskSucceeded,
-				},
-			)
-		}
-	}
-
-	return mergeTask.UpdateDependencies(mergeTaskDependencies)
-}
-
 type VersionsByCreateTime []Version
 
 func (v VersionsByCreateTime) Len() int {

@@ -1652,24 +1652,29 @@ func TestGetTimeSpent(t *testing.T) {
 	assert.EqualValues(0, makespan)
 }
 
-func TestUpdateDependencies(t *testing.T) {
+func TestUpdateDependsOn(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
-	t1 := &Task{
-		Id:        "t1",
-		DependsOn: []Dependency{{TaskId: "t2"}},
-	}
+	t1 := &Task{Id: "t1"}
 	assert.NoError(t, t1.Insert())
+	t2 := &Task{
+		Id: "t2",
+		DependsOn: []Dependency{
+			{TaskId: "t1", Status: evergreen.TaskSucceeded},
+			{TaskId: "t5", Status: evergreen.TaskSucceeded},
+		},
+	}
+	assert.NoError(t, t2.Insert())
 
-	dependsOn := []Dependency{{TaskId: "t3"}}
-	assert.NoError(t, t1.UpdateDependencies(dependsOn))
-	assert.Len(t, t1.DependsOn, 2)
-	dbT1, err := FindOneId("t1")
+	var err error
+	assert.NoError(t, t1.UpdateDependsOn(evergreen.TaskFailed, []string{"t3", "t4"}))
+	t2, err = FindOneId("t2")
 	assert.NoError(t, err)
-	assert.Len(t, dbT1.DependsOn, 2)
+	assert.Len(t, t2.DependsOn, 2)
 
-	// If the task is out of sync with the db the update fails
-	t1.DependsOn = []Dependency{{TaskId: "t4"}}
-	assert.Error(t, t1.UpdateDependencies(dependsOn))
+	assert.NoError(t, t1.UpdateDependsOn(evergreen.TaskSucceeded, []string{"t3", "t4"}))
+	t2, err = FindOneId("t2")
+	assert.NoError(t, err)
+	assert.Len(t, t2.DependsOn, 4)
 }
 
 func TestDisplayTaskCache(t *testing.T) {

@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
@@ -160,19 +159,6 @@ func (g *GeneratedProject) NewVersion() (*Project, *ParserProject, *Version, *ta
 func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProject, v *Version, t *task.Task, pm *projectMaps) error {
 	if err := updateVersionAndParserProject(v, pp); err != nil {
 		return errors.WithStack(err)
-	}
-
-	if v.Requester == evergreen.MergeTestRequester {
-		mergeTask, err := task.FindMergeTaskForVersion(v.Id)
-		if err != nil && !adb.ResultsNotFound(err) {
-			return errors.Wrap(err, "error finding merge task")
-		}
-		// if a merge task exists then update its dependencies
-		if !adb.ResultsNotFound(err) {
-			if err = v.UpdateMergeTaskDependencies(p, mergeTask); err != nil {
-				return errors.Wrap(err, "error updating merge task")
-			}
-		}
 	}
 
 	if err := g.saveNewBuildsAndTasks(ctx, pm, v, p, t); err != nil {

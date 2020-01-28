@@ -10,7 +10,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/task"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -82,59 +81,6 @@ func TestVersionSortByCreateTime(t *testing.T) {
 	assert.Equal("4", versions[2].Id)
 	assert.Equal("5", versions[3].Id)
 	assert.Equal("100", versions[4].Id)
-}
-
-func TestUpdateMergeTaskDependencies(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, ProjectAliasCollection))
-
-	project := &Project{
-		Identifier: "evergreen",
-		BuildVariants: []BuildVariant{
-			{
-				Name: "v1",
-				Tasks: []BuildVariantTaskUnit{
-					{Name: "t1"},
-				},
-			},
-		},
-		Tasks: []ProjectTask{
-			{Name: evergreen.MergeTaskName},
-			{Name: "t1"},
-		},
-	}
-
-	version := &Version{
-		Id:        "v1",
-		Requester: evergreen.MergeTestRequester,
-	}
-
-	mergeTask := task.Task{
-		Id: "merge-task",
-		DependsOn: []task.Dependency{
-			{
-				TaskId:       "t2",
-				Status:       evergreen.TaskSucceeded,
-				Unattainable: true,
-			},
-		},
-		CommitQueueMerge: true,
-	}
-	assert.NoError(t, mergeTask.Insert())
-
-	alias := ProjectAlias{
-		ProjectID: "evergreen",
-		Alias:     evergreen.CommitQueueAlias,
-		Variant:   "v1",
-		Task:      "t1",
-	}
-	assert.NoError(t, alias.Upsert())
-
-	assert.NoError(t, version.UpdateMergeTaskDependencies(project, &mergeTask))
-
-	tDb, err := task.FindOneId(mergeTask.Id)
-	assert.NoError(t, err)
-	require.Len(t, tDb.DependsOn, 2)
-	assert.True(t, tDb.DependsOn[0].Unattainable)
 }
 
 func TestFindLastPeriodicBuild(t *testing.T) {

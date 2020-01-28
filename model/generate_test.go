@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -13,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 var (
@@ -869,5 +871,57 @@ func TestUpdateVersionAndParserProject(t *testing.T) {
 			assert.Equal(t, 6, v.ConfigUpdateNumber)
 			assert.Equal(t, 6, pp.ConfigUpdateNumber)
 		})
+	}
+}
+
+func TestAddDependencies(t *testing.T) {
+	require.NoError(t, db.Clear(task.Collection))
+
+	v := &Version{CreateTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)}
+	p := &Project{
+		BuildVariants: BuildVariants{
+			{
+				Name: "bv1",
+				Tasks: []BuildVariantTaskUnit{
+					{Name: "t3"},
+				},
+				DisplayTasks: []DisplayTask{
+					{Name: "dt1"},
+				},
+			},
+		},
+	}
+
+	existingTasks := []task.Task{
+		{Id: "t1", DependsOn: []task.Dependency{{TaskId: "generator", Status: evergreen.TaskSucceeded}}},
+		{Id: "t2", DependsOn: []task.Dependency{{TaskId: "generator", Status: evergreen.TaskFailed}}},
+	}
+	for _, task := range existingTasks {
+		assert.NoError(t, task.Insert())
+	}
+
+	newTasks := TaskVariantPairs{
+		ExecTasks: TVPairSet{
+			{Variant: "bv1", TaskName: "t3"},
+		},
+		DisplayTasks: TVPairSet{
+			{Variant: "bv1", TaskName: "dt1"},
+		},
+	}
+
+	assert.NoError(t, addDependencies(&task.Task{Id: "generator"}, p, v, newTasks))
+
+	t1, err := task.FindOneId("t1")
+	assert.NoError(t, err)
+	assert.Len(t, t1.DependsOn, 3)
+	for _, dep := range t1.DependsOn {
+		assert.Equal(t, evergreen.TaskSucceeded, dep.Status)
+	}
+
+	t2, err := task.FindOneId("t2")
+	assert.NoError(t, err)
+	assert.Len(t, t2.DependsOn, 3)
+	for _, dep := range t2.DependsOn {
+		assert.Equal(t, evergreen.TaskFailed, dep.Status)
 	}
 }
