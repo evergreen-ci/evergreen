@@ -8,6 +8,7 @@ type Query {
     page: Int = 0
     limit: Int = 0
     filter: String = ""
+    status: String = ""
   ): [TestResult]
 }
 

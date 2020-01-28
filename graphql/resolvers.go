@@ -61,7 +61,7 @@ func (r *queryResolver) Task(ctx context.Context, taskID string) (*model.APITask
 	return &apiTask, nil
 }
 
-func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, filter *string) ([]*model.APITest, error) {
+func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, filter *string, status *string) ([]*model.APITest, error) {
 	task, err := task.FindOneId(taskID)
 
 	if err != nil {
@@ -69,19 +69,32 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 	}
 
 	sortBy := ""
-	if *sortCategory == TaskSortCategoryStatus {
-		sortBy = testresult.StatusKey
+	if sortCategory != nil {
+		switch *sortCategory {
+		case TaskSortCategoryStatus:
+			sortBy = testresult.StatusKey
+			break
+		case TaskSortCategoryDuration:
+			sortBy = "duration"
+			break
+		case TaskSortCategoryTestName:
+			sortBy = testresult.TestFileKey
+		}
 	}
-	if *sortCategory == TaskSortCategoryDuration {
-		sortBy = "duration"
-	}
-	if *sortCategory == TaskSortCategoryTestName {
-		sortBy = testresult.TestFileKey
-	}
+
 	sortDir := 1
+	if sortDirection != nil {
+		switch *sortDirection {
+		case SortDirectionDesc:
+			sortDir = -1
+			break
+		}
+	}
+
 	if *sortDirection == SortDirectionDesc {
 		sortDir = -1
 	}
+
 	filterParam := ""
 	if filter != nil {
 		filterParam = *filter
@@ -94,7 +107,11 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 	if limit != nil {
 		limitParam = *limit
 	}
-	tests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, filterParam, "", sortBy, sortDir, pageParam, limitParam, task.Execution)
+	statusParam := ""
+	if status != nil {
+		statusParam = *status
+	}
+	tests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, filterParam, statusParam, sortBy, sortDir, pageParam, limitParam, task.Execution)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error retreiving test")
 	}
