@@ -2,13 +2,14 @@ package graphql
 
 import (
 	"context"
+	s "strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/pkg/errors"
-	"github.com/evergreen-ci/evergreen/model"
 )
 
 type Resolver struct {
@@ -61,25 +62,42 @@ func (r *queryResolver) Task(ctx context.Context, taskID string) (*restModel.API
 	return &apiTask, nil
 }
 
-func (r *queryResolver) Projects(ctx context.Context) ([]*restModel.UIProjectFields, error) {
+func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error) {
 	allProjs, err := model.FindAllTrackedProjectRefs()
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving projects")
 	}
 
-	projects := make([]*restModel.UIProjectFields, 0, len(allProjs))
+	groupsMap := make(map[string][]*restModel.UIProjectFields)
 
 	for _, p := range allProjs {
+		groupName := s.Join([]string{p.Owner, p.Repo}, "/")
+
 		uiProj := restModel.UIProjectFields{
 			DisplayName: p.DisplayName,
 			Identifier:  p.Identifier,
 			Repo:        p.Repo,
 			Owner:       p.Owner,
 		}
-		projects = append(projects, &uiProj)
+
+		if projs, ok := groupsMap[groupName]; ok {
+			groupsMap[groupName] = append(projs, &uiProj)
+			continue
+		}
+
+		groupsMap[groupName] = []*restModel.UIProjectFields{&uiProj}
 	}
 
-	return projects, nil
+	groupsArr := make([]*GroupedProjects, len(groupsMap))
+
+	for groupName, groupedProjects := range groupsMap {
+		groupsArr = append(groupsArr, &GroupedProjects{
+			Group:    &groupName,
+			Projects: groupedProjects,
+		})
+	}
+
+	return groupsArr, nil
 }
 
 // New injects resources into the resolvers, such as the data connector
