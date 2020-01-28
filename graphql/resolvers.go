@@ -100,9 +100,7 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 	}
 
 	sort.SliceStable(groupsArr, func(i, j int) bool {
-		s1 := *groupsArr[i].Group
-		s2 := *groupsArr[j].Group
-		return s1 < s2
+		return *groupsArr[i].Group < *groupsArr[j].Group
 	})
 
 	return groupsArr, nil
