@@ -85,7 +85,7 @@ func PatchSetModule() cli.Command {
 			}
 
 			// diff against the module branch.
-			diffData, err := loadGitData(moduleBranch, ref, false, args...)
+			diffData, err := loadGitData(moduleBranch, ref, "", false, args...)
 			if err != nil {
 				return err
 			}

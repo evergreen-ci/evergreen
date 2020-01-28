@@ -20,6 +20,7 @@ const (
 	itemFlagName        = "item"
 	pauseFlagName       = "pause"
 	resumeFlagName      = "resume"
+	commitsFlagName     = "commits"
 	descriptionFlagName = "description"
 )
 
@@ -104,7 +105,7 @@ func mergeCommand() cli.Command {
 	return cli.Command{
 		Name:  "merge",
 		Usage: "test and merge a feature branch",
-		Flags: mergeFlagSlices(addProjectFlag(), addLargeFlag(), addRefFlag(), addYesFlag(
+		Flags: mergeFlagSlices(addProjectFlag(), addLargeFlag(), addRefFlag(), addCommitsFlag(), addYesFlag(
 			cli.StringFlag{
 				Name:  joinFlagNames(resumeFlagName, "r", patchFinalizeFlagName, "f"),
 				Usage: "resume testing a preexisting item with `ID`",
@@ -118,7 +119,10 @@ func mergeCommand() cli.Command {
 				Usage: "force item to front of queue",
 			},
 		)),
-		Before: setPlainLogger,
+		Before: mergeBeforeFuncs(
+			setPlainLogger,
+			mutuallyExclusiveArgs(false, refFlagName, commitsFlagName),
+		),
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -126,6 +130,7 @@ func mergeCommand() cli.Command {
 			params := mergeParams{
 				projectID:   c.String(projectFlagName),
 				ref:         c.String(refFlagName),
+				commits:     c.String(commitsFlagName),
 				id:          c.String(resumeFlagName),
 				pause:       c.Bool(pauseFlagName),
 				skipConfirm: c.Bool(yesFlagName),
@@ -157,17 +162,19 @@ func setModuleCommand() cli.Command {
 	return cli.Command{
 		Name:  "set-module",
 		Usage: "update or add module to an existing merge patch",
-		Flags: mergeFlagSlices(addLargeFlag(), addPatchIDFlag(), addModuleFlag(), addYesFlag(), addRefFlag()),
+		Flags: mergeFlagSlices(addLargeFlag(), addPatchIDFlag(), addModuleFlag(), addYesFlag(), addRefFlag(), addCommitsFlag()),
 		Before: mergeBeforeFuncs(
 			requirePatchIDFlag,
 			requireModuleFlag,
 			setPlainLogger,
+			mutuallyExclusiveArgs(false, refFlagName, commitsFlagName),
 		),
 		Action: func(c *cli.Context) error {
 			params := moduleParams{
 				patchID:     c.String(patchIDFlagName),
 				module:      c.String(moduleFlagName),
 				ref:         c.String(refFlagName),
+				commits:     c.String(commitsFlagName),
 				large:       c.Bool(largeFlagName),
 				skipConfirm: c.Bool(yesFlagName),
 			}
@@ -279,6 +286,7 @@ func deleteCommitQueueItem(ctx context.Context, client client.Communicator, proj
 
 type mergeParams struct {
 	projectID   string
+	commits     string
 	ref         string
 	id          string
 	pause       bool
@@ -328,7 +336,7 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		return errors.New("CLI commit queue not enabled for project")
 	}
 
-	commitCount, err := gitCommitCount(ref.Branch, p.ref)
+	commitCount, err := gitCommitCount(ref.Branch, p.ref, p.commits)
 	if err != nil {
 		return errors.Wrap(err, "can't get commit count")
 	}
@@ -336,13 +344,17 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		return errors.New("patch aborted")
 	}
 
-	diffData, err := loadGitData(ref.Branch, p.ref, true)
+	if err := isValidCommitsFormat(p.commits); err != nil {
+		return err
+	}
+
+	diffData, err := loadGitData(ref.Branch, p.ref, p.commits, true)
 	if err != nil {
 		return errors.Wrap(err, "can't generate patches")
 	}
 
 	if commitCount > 0 {
-		patchParams.Description, err = gitCommitMessages(ref.Branch, p.ref)
+		patchParams.Description, err = gitCommitMessages(ref.Branch, p.ref, p.commits)
 		if err != nil {
 			return errors.Wrap(err, "can't get commit messages")
 		}
@@ -362,6 +374,7 @@ type moduleParams struct {
 	patchID     string
 	module      string
 	ref         string
+	commits     string
 	large       bool
 	skipConfirm bool
 }
@@ -376,7 +389,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 		return errors.Wrapf(err, "could not find module '%s'", p.module)
 	}
 
-	commitCount, err := gitCommitCount(module.Branch, p.ref)
+	commitCount, err := gitCommitCount(module.Branch, p.ref, p.commits)
 	if err != nil {
 		return errors.Wrap(err, "can't get commit count")
 	}
@@ -392,15 +405,19 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 		return errors.Wrapf(err, "can't get patch '%s'", p.patchID)
 	}
 
+	if err := isValidCommitsFormat(p.commits); err != nil {
+		return err
+	}
+
 	message := ""
 	if patch.Description == "" {
-		message, err = gitCommitMessages(module.Branch, p.ref)
+		message, err = gitCommitMessages(module.Branch, p.ref, p.commits)
 		if err != nil {
 			return errors.Wrap(err, "can't get module commit messages")
 		}
 	}
 
-	diffData, err := loadGitData(module.Branch, p.ref, true)
+	diffData, err := loadGitData(module.Branch, p.ref, p.commits, true)
 	if err != nil {
 		return errors.Wrap(err, "can't get patch data")
 	}
