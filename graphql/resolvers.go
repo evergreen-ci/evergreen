@@ -63,7 +63,6 @@ func (r *queryResolver) Task(ctx context.Context, taskID string) (*model.APITask
 
 func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, filter *string, status *string) ([]*model.APITest, error) {
 	task, err := task.FindOneId(taskID)
-
 	if err != nil {
 		return nil, errors.Wrap(err, "Error retreiving Task")
 	}
