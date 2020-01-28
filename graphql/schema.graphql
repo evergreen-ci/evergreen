@@ -3,11 +3,11 @@ type Query {
   task(taskId: String!): Task
   taskTests(
     taskId: String!
-    sortCategory: TaskSortCategory!
-    sortDirection: SortDirection!
-    page: Int!
-    limit: Int!
-    filter: String!
+    sortCategory: TaskSortCategory = TEST_NAME
+    sortDirection: SortDirection = ASC
+    page: Int = 0
+    limit: Int = 0
+    filter: String = ""
   ): [TestResult]
 }
 

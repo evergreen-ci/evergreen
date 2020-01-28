@@ -372,6 +372,19 @@
           "taskTests": [{ "testFile": "c" }, { "testFile": "d" }]
         }
       }
+    },
+    {
+      "query_file": "taskTestDefaultParams.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "testFile": "apple" },
+            { "testFile": "b" },
+            { "testFile": "c" },
+            { "testFile": "d" }
+          ]
+        }
+      }
     }
   ]
 }

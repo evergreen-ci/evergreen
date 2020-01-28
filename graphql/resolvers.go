@@ -61,7 +61,7 @@ func (r *queryResolver) Task(ctx context.Context, taskID string) (*model.APITask
 	return &apiTask, nil
 }
 
-func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory TaskSortCategory, sortDirection SortDirection, page int, limit int, filter string) ([]*model.APITest, error) {
+func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, filter *string) ([]*model.APITest, error) {
 	task, err := task.FindOneId(taskID)
 
 	if err != nil {
@@ -69,21 +69,32 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 	}
 
 	sortBy := ""
-	if sortCategory == TaskSortCategoryStatus {
+	if *sortCategory == TaskSortCategoryStatus {
 		sortBy = testresult.StatusKey
 	}
-	if sortCategory == TaskSortCategoryDuration {
+	if *sortCategory == TaskSortCategoryDuration {
 		sortBy = "duration"
 	}
-	if sortCategory == TaskSortCategoryTestName {
+	if *sortCategory == TaskSortCategoryTestName {
 		sortBy = testresult.TestFileKey
 	}
 	sortDir := 1
-	if sortDirection == SortDirectionDesc {
+	if *sortDirection == SortDirectionDesc {
 		sortDir = -1
 	}
-
-	tests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, filter, sortBy, sortDir, page, limit, task.Execution)
+	filterParam := ""
+	if filter != nil {
+		filterParam = *filter
+	}
+	pageParam := 0
+	if page != nil {
+		pageParam = *page
+	}
+	limitParam := 0
+	if limit != nil {
+		limitParam = *limit
+	}
+	tests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, filterParam, sortBy, sortDir, pageParam, limitParam, task.Execution)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error retreiving test")
 	}

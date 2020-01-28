@@ -1,0 +1,5 @@
+{
+  taskTests(taskId: "wuzzup") {
+    testFile
+  }
+}

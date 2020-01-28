@@ -64,7 +64,7 @@ type ComplexityRoot struct {
 
 	Query struct {
 		Task        func(childComplexity int, taskID string) int
-		TaskTests   func(childComplexity int, taskID string, sortCategory TaskSortCategory, sortDirection SortDirection, page int, limit int, filter string) int
+		TaskTests   func(childComplexity int, taskID string, sortCategory *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, filter *string) int
 		UserPatches func(childComplexity int, userID string) int
 	}
 
@@ -147,7 +147,7 @@ type ComplexityRoot struct {
 type QueryResolver interface {
 	UserPatches(ctx context.Context, userID string) ([]*model.APIPatch, error)
 	Task(ctx context.Context, taskID string) (*model.APITask, error)
-	TaskTests(ctx context.Context, taskID string, sortCategory TaskSortCategory, sortDirection SortDirection, page int, limit int, filter string) ([]*model.APITest, error)
+	TaskTests(ctx context.Context, taskID string, sortCategory *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, filter *string) ([]*model.APITest, error)
 }
 
 type executableSchema struct {
@@ -299,7 +299,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.TaskTests(childComplexity, args["taskId"].(string), args["sortCategory"].(TaskSortCategory), args["sortDirection"].(SortDirection), args["page"].(int), args["limit"].(int), args["filter"].(string)), true
+		return e.complexity.Query.TaskTests(childComplexity, args["taskId"].(string), args["sortCategory"].(*TaskSortCategory), args["sortDirection"].(*SortDirection), args["page"].(*int), args["limit"].(*int), args["filter"].(*string)), true
 
 	case "Query.userPatches":
 		if e.complexity.Query.UserPatches == nil {
@@ -784,7 +784,7 @@ type Patch {
 type Query {
 	userPatches(userId: String!): [Patch]!
 	task(taskId: String!): Task
-	taskTests(taskId: String!, sortCategory: TaskSortCategory!, sortDirection: SortDirection!, page: Int!, limit: Int!, filter: String!): [TestResult]
+	taskTests(taskId: String!, sortCategory: TaskSortCategory = TEST_NAME, sortDirection: SortDirection = ASC, page: Int = 0, limit: Int = 0, filter: String = ""): [TestResult]
 }
 enum SortDirection {
 	ASC
@@ -897,41 +897,41 @@ func (ec *executionContext) field_Query_taskTests_args(ctx context.Context, rawA
 		}
 	}
 	args["taskId"] = arg0
-	var arg1 TaskSortCategory
+	var arg1 *TaskSortCategory
 	if tmp, ok := rawArgs["sortCategory"]; ok {
-		arg1, err = ec.unmarshalNTaskSortCategory2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskSortCategory(ctx, tmp)
+		arg1, err = ec.unmarshalOTaskSortCategory2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskSortCategory(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
 	args["sortCategory"] = arg1
-	var arg2 SortDirection
+	var arg2 *SortDirection
 	if tmp, ok := rawArgs["sortDirection"]; ok {
-		arg2, err = ec.unmarshalNSortDirection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx, tmp)
+		arg2, err = ec.unmarshalOSortDirection2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
 	args["sortDirection"] = arg2
-	var arg3 int
+	var arg3 *int
 	if tmp, ok := rawArgs["page"]; ok {
-		arg3, err = ec.unmarshalNInt2int(ctx, tmp)
+		arg3, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
 	args["page"] = arg3
-	var arg4 int
+	var arg4 *int
 	if tmp, ok := rawArgs["limit"]; ok {
-		arg4, err = ec.unmarshalNInt2int(ctx, tmp)
+		arg4, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
 	args["limit"] = arg4
-	var arg5 string
+	var arg5 *string
 	if tmp, ok := rawArgs["filter"]; ok {
-		arg5, err = ec.unmarshalNString2string(ctx, tmp)
+		arg5, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -1645,7 +1645,7 @@ func (ec *executionContext) _Query_taskTests(ctx context.Context, field graphql.
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().TaskTests(rctx, args["taskId"].(string), args["sortCategory"].(TaskSortCategory), args["sortDirection"].(SortDirection), args["page"].(int), args["limit"].(int), args["filter"].(string))
+		return ec.resolvers.Query().TaskTests(rctx, args["taskId"].(string), args["sortCategory"].(*TaskSortCategory), args["sortDirection"].(*SortDirection), args["page"].(*int), args["limit"].(*int), args["filter"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5422,15 +5422,6 @@ func (ec *executionContext) marshalNPatch2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋ
 	return ret
 }
 
-func (ec *executionContext) unmarshalNSortDirection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx context.Context, v interface{}) (SortDirection, error) {
-	var res SortDirection
-	return res, res.UnmarshalGQL(v)
-}
-
-func (ec *executionContext) marshalNSortDirection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx context.Context, sel ast.SelectionSet, v SortDirection) graphql.Marshaler {
-	return v
-}
-
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {
 	return graphql.UnmarshalString(v)
 }
@@ -5494,15 +5485,6 @@ func (ec *executionContext) marshalNString2ᚖstring(ctx context.Context, sel as
 
 func (ec *executionContext) marshalNTaskLogs2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐLogLinks(ctx context.Context, sel ast.SelectionSet, v model.LogLinks) graphql.Marshaler {
 	return ec._TaskLogs(ctx, sel, &v)
-}
-
-func (ec *executionContext) unmarshalNTaskSortCategory2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskSortCategory(ctx context.Context, v interface{}) (TaskSortCategory, error) {
-	var res TaskSortCategory
-	return res, res.UnmarshalGQL(v)
-}
-
-func (ec *executionContext) marshalNTaskSortCategory2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskSortCategory(ctx context.Context, sel ast.SelectionSet, v TaskSortCategory) graphql.Marshaler {
-	return v
 }
 
 func (ec *executionContext) marshalNTestLog2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTestLogs(ctx context.Context, sel ast.SelectionSet, v model.TestLogs) graphql.Marshaler {
@@ -5859,6 +5841,21 @@ func (ec *executionContext) marshalOInt2int64(ctx context.Context, sel ast.Selec
 	return graphql.MarshalInt64(v)
 }
 
+func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v interface{}) (*int, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalOInt2int(ctx, v)
+	return &res, err
+}
+
+func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.SelectionSet, v *int) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec.marshalOInt2int(ctx, sel, *v)
+}
+
 func (ec *executionContext) marshalOPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx context.Context, sel ast.SelectionSet, v model.APIPatch) graphql.Marshaler {
 	return ec._Patch(ctx, sel, &v)
 }
@@ -5868,6 +5865,30 @@ func (ec *executionContext) marshalOPatch2ᚖgithubᚗcomᚋevergreenᚑciᚋeve
 		return graphql.Null
 	}
 	return ec._Patch(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOSortDirection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx context.Context, v interface{}) (SortDirection, error) {
+	var res SortDirection
+	return res, res.UnmarshalGQL(v)
+}
+
+func (ec *executionContext) marshalOSortDirection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx context.Context, sel ast.SelectionSet, v SortDirection) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalOSortDirection2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx context.Context, v interface{}) (*SortDirection, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalOSortDirection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx, v)
+	return &res, err
+}
+
+func (ec *executionContext) marshalOSortDirection2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx context.Context, sel ast.SelectionSet, v *SortDirection) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {
@@ -5970,6 +5991,30 @@ func (ec *executionContext) marshalOTask2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 
 func (ec *executionContext) marshalOTaskEndDetail2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐApiTaskEndDetail(ctx context.Context, sel ast.SelectionSet, v model.ApiTaskEndDetail) graphql.Marshaler {
 	return ec._TaskEndDetail(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalOTaskSortCategory2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskSortCategory(ctx context.Context, v interface{}) (TaskSortCategory, error) {
+	var res TaskSortCategory
+	return res, res.UnmarshalGQL(v)
+}
+
+func (ec *executionContext) marshalOTaskSortCategory2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskSortCategory(ctx context.Context, sel ast.SelectionSet, v TaskSortCategory) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalOTaskSortCategory2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskSortCategory(ctx context.Context, v interface{}) (*TaskSortCategory, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalOTaskSortCategory2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskSortCategory(ctx, v)
+	return &res, err
+}
+
+func (ec *executionContext) marshalOTaskSortCategory2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskSortCategory(ctx context.Context, sel ast.SelectionSet, v *TaskSortCategory) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalOTestResult2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITest(ctx context.Context, sel ast.SelectionSet, v model.APITest) graphql.Marshaler {
