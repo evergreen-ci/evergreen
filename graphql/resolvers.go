@@ -94,7 +94,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 	if limit != nil {
 		limitParam = *limit
 	}
-	tests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, filterParam, sortBy, sortDir, pageParam, limitParam, task.Execution)
+	tests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, filterParam, "", sortBy, sortDir, pageParam, limitParam, task.Execution)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error retreiving test")
 	}

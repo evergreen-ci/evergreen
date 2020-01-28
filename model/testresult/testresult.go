@@ -162,11 +162,14 @@ func TestResultsQuery(taskIds []string, testId, testName, status string, limit, 
 }
 
 // TestResultsFilterSortPaginate is a query for returning test results to the taskTests GQL Query.
-func TestResultsFilterSortPaginate(taskIds []string, filter, sortBy string, sortDir, page, limit, execution int) ([]TestResult, error) {
+func TestResultsFilterSortPaginate(taskIds []string, filter, status, sortBy string, sortDir, page, limit, execution int) ([]TestResult, error) {
 	tests := []TestResult{}
 	match := bson.M{
 		TaskIDKey:    bson.M{"$in": taskIds},
 		ExecutionKey: execution,
+	}
+	if len(status) > 0 {
+		match[StatusKey] = status
 	}
 
 	pipeline := []bson.M{
