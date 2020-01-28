@@ -178,6 +178,18 @@ func TestFindTestsByTaskIdFilterSortPaginate(t *testing.T) {
 		for i, test := range foundTests {
 			assert.True(test.EndTime == float64(i))
 		}
+
+		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", "pass", "duration", 1, 0, 0, 0)
+		assert.NoError(err)
+		assert.Len(foundTests, 5)
+
+		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", "not_a_real_status", "duration", 1, 0, 0, 0)
+		assert.NoError(err)
+		assert.Len(foundTests, 0)
+
+		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "fail", "pass", "duration", 1, 0, 0, 0)
+		assert.NoError(err)
+		assert.Len(foundTests, 0)
 	}
 	foundTests, err := serviceContext.FindTestsByTaskIdFilterSortPaginate("fake_task", "", "", "duration", 1, 0, 0, 0)
 	assert.Error(err)
