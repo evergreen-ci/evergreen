@@ -14,6 +14,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/service"
 	"github.com/vektah/gqlparser"
 	"github.com/vektah/gqlparser/ast"
 )
@@ -62,7 +63,15 @@ type ComplexityRoot struct {
 		Version       func(childComplexity int) int
 	}
 
+	Project struct {
+		DisplayName func(childComplexity int) int
+		Identifier  func(childComplexity int) int
+		Owner       func(childComplexity int) int
+		Repo        func(childComplexity int) int
+	}
+
 	Query struct {
+		Projects    func(childComplexity int) int
 		Task        func(childComplexity int, taskID string) int
 		UserPatches func(childComplexity int, userID string) int
 	}
@@ -144,6 +153,7 @@ type ComplexityRoot struct {
 type QueryResolver interface {
 	UserPatches(ctx context.Context, userID string) ([]*model.APIPatch, error)
 	Task(ctx context.Context, taskID string) (*model.APITask, error)
+	Projects(ctx context.Context) ([]*service.UIProjectFields, error)
 }
 
 type executableSchema struct {
@@ -272,6 +282,41 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Patch.Version(childComplexity), true
+
+	case "Project.DisplayName":
+		if e.complexity.Project.DisplayName == nil {
+			break
+		}
+
+		return e.complexity.Project.DisplayName(childComplexity), true
+
+	case "Project.Identifier":
+		if e.complexity.Project.Identifier == nil {
+			break
+		}
+
+		return e.complexity.Project.Identifier(childComplexity), true
+
+	case "Project.Owner":
+		if e.complexity.Project.Owner == nil {
+			break
+		}
+
+		return e.complexity.Project.Owner(childComplexity), true
+
+	case "Project.Repo":
+		if e.complexity.Project.Repo == nil {
+			break
+		}
+
+		return e.complexity.Project.Repo(childComplexity), true
+
+	case "Query.projects":
+		if e.complexity.Query.Projects == nil {
+			break
+		}
+
+		return e.complexity.Query.Projects(childComplexity), true
 
 	case "Query.task":
 		if e.complexity.Query.Task == nil {
@@ -732,97 +777,113 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var parsedSchema = gqlparser.MustLoadSchema(
-	&ast.Source{Name: "schema.graphql", Input: `scalar Duration
+	&ast.Source{Name: "graphql/schema.graphql", Input: `type Query {
+  userPatches(userId: String!): [Patch]!
+  task(taskId: String!): Task
+  projects: [Project!]!
+}
+
 type Patch {
-	id: ID!
-	description: String!
-	projectID: String!
-	githash: String!
-	patchNumber: Int!
-	author: String!
-	version: String!
-	status: String!
-	createTime: Time!
-	startTime: Time
-	finishTime: Time
-	variants: [String]!
-	tasks: [String]!
-	variantsTasks: [VariantTask]!
-	activated: Boolean!
-	alias: String!
+  id: ID!
+  description: String!
+  projectID: String!
+  githash: String!
+  patchNumber: Int!
+  author: String!
+  version: String!
+  status: String!
+  createTime: Time!
+  startTime: Time
+  finishTime: Time
+  variants: [String]!
+  tasks: [String]!
+  variantsTasks: [VariantTask]!
+  activated: Boolean!
+  alias: String!
 }
-type Query {
-	userPatches(userId: String!): [Patch]!
-	task(taskId: String!): Task
-}
-type Task {
-	id: String!
-	createTime: Time
-	ingestTime: Time
-	dispatchTime: Time
-	scheduledTime: Time
-	startTime: Time
-	finishTime: Time
-	activatedTime: Time
-	version: String!
-	projectId: String!
-	revision: String
-	priority: Int
-	taskGroup: String
-	taskGroupMaxHosts: Int
-	logs: TaskLogs!
-	activated: Boolean!
-	activatedBy: String
-	buildId: String!
-	distroId: String!
-	buildVariant: String!
-	dependsOn: [String!]
-	displayName: String!
-	hostId: String
-	restarts: Int
-	execution: Int
-	order: Int
-	requester: String!
-	status: String!
-	details: TaskEndDetail
-	timeTaken: Duration
-	expectedDuration: Duration
-	displayOnly: Boolean
-	executionTasks: [String!]
-	generateTask: Boolean
-	generatedBy: String
-}
-type TaskEndDetail {
-	status: String!
-	type: String!
-	description: String
-	timedOut: Boolean
-}
-type TaskLogs {
-	allLogLink: String
-	agentLogLink: String
-	systemLogLink: String
-	taskLogLink: String
-}
-type TestLog {
-	url: String
-	urlRaw: String
-	lineNum: Int
-	logId: String
-}
-type TestResult {
-	status: String!
-	testFile: String!
-	logs: TestLog!
-	exitCode: Int
-	startTime: Time
-	endTime: Time
-}
-scalar Time
+
 type VariantTask {
-	name: String!
-	tasks: [String]!
+  name: String!
+  tasks: [String]!
 }
+
+type TaskLogs {
+  allLogLink: String
+  agentLogLink: String
+  systemLogLink: String
+  taskLogLink: String
+}
+
+type TaskEndDetail {
+  status: String!
+  type: String!
+  description: String
+  timedOut: Boolean
+}
+
+type TestResult {
+  status: String!
+  testFile: String!
+  logs: TestLog!
+  exitCode: Int
+  startTime: Time
+  endTime: Time
+}
+
+type TestLog {
+  url: String
+  urlRaw: String
+  lineNum: Int
+  logId: String
+}
+
+type Task {
+  id: String!
+  createTime: Time
+  ingestTime: Time
+  dispatchTime: Time
+  scheduledTime: Time
+  startTime: Time
+  finishTime: Time
+  activatedTime: Time
+  version: String!
+  projectId: String!
+  revision: String
+  priority: Int
+  taskGroup: String
+  taskGroupMaxHosts: Int
+  logs: TaskLogs!
+  activated: Boolean!
+  activatedBy: String
+  buildId: String!
+  distroId: String!
+  buildVariant: String!
+  dependsOn: [String!]
+  displayName: String!
+  hostId: String
+  restarts: Int
+  execution: Int
+  order: Int
+  requester: String!
+  status: String!
+  details: TaskEndDetail
+  timeTaken: Duration
+  expectedDuration: Duration
+  displayOnly: Boolean
+  executionTasks: [String!]
+  generateTask: Boolean
+  generatedBy: String
+}
+
+type Project {
+  Identifier: String!
+  DisplayName: String!
+  Repo: String!
+  Owner: String!
+}
+
+scalar Time
+scalar Duration
 `},
 )
 
@@ -1446,6 +1507,142 @@ func (ec *executionContext) _Patch_alias(ctx context.Context, field graphql.Coll
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Project_Identifier(ctx context.Context, field graphql.CollectedField, obj *service.UIProjectFields) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Project",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Identifier, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Project_DisplayName(ctx context.Context, field graphql.CollectedField, obj *service.UIProjectFields) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Project",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisplayName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Project_Repo(ctx context.Context, field graphql.CollectedField, obj *service.UIProjectFields) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Project",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Repo, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Project_Owner(ctx context.Context, field graphql.CollectedField, obj *service.UIProjectFields) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Project",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Owner, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query_userPatches(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -1523,6 +1720,40 @@ func (ec *executionContext) _Query_task(ctx context.Context, field graphql.Colle
 	res := resTmp.(*model.APITask)
 	fc.Result = res
 	return ec.marshalOTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_projects(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Projects(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*service.UIProjectFields)
+	fc.Result = res
+	return ec.marshalNProject2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋserviceᚐUIProjectFieldsᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -4512,6 +4743,48 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 	return out
 }
 
+var projectImplementors = []string{"Project"}
+
+func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, obj *service.UIProjectFields) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, projectImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Project")
+		case "Identifier":
+			out.Values[i] = ec._Project_Identifier(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "DisplayName":
+			out.Values[i] = ec._Project_DisplayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "Repo":
+			out.Values[i] = ec._Project_Repo(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "Owner":
+			out.Values[i] = ec._Project_Owner(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var queryImplementors = []string{"Query"}
 
 func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -4550,6 +4823,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_task(ctx, field)
+				return res
+			})
+		case "projects":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_projects(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "__type":
@@ -5203,6 +5490,57 @@ func (ec *executionContext) marshalNPatch2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋ
 	}
 	wg.Wait()
 	return ret
+}
+
+func (ec *executionContext) marshalNProject2githubᚗcomᚋevergreenᚑciᚋevergreenᚋserviceᚐUIProjectFields(ctx context.Context, sel ast.SelectionSet, v service.UIProjectFields) graphql.Marshaler {
+	return ec._Project(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNProject2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋserviceᚐUIProjectFieldsᚄ(ctx context.Context, sel ast.SelectionSet, v []*service.UIProjectFields) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋserviceᚐUIProjectFields(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalNProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋserviceᚐUIProjectFields(ctx context.Context, sel ast.SelectionSet, v *service.UIProjectFields) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Project(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {
