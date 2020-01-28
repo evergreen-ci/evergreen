@@ -384,7 +384,7 @@ type IndexFieldSpec struct {
 func (ik IndexKey) MarshalBSON() ([]byte, error) {
 	d := make(bson.D, 0, len(ik.Fields))
 	for _, field := range ik.Fields {
-		d = append(d, bson.E{field.Name, field.Value})
+		d = append(d, bson.E{Key: field.Name, Value: field.Value})
 	}
 	return bson.Marshal(d)
 }
@@ -421,8 +421,8 @@ func CreateIndexes(ctx context.Context, collName string, indexSpecs ...Index) er
 	}
 
 	createIndexCommand := bson.D{
-		{"createIndexes", collName},
-		{"indexes", newSpecs},
+		{Key: "createIndexes", Value: collName},
+		{Key: "indexes", Value: newSpecs},
 	}
 
 	db := evergreen.GetEnvironment().DB()
