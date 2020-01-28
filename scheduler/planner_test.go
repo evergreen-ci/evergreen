@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"testing"
@@ -14,6 +15,8 @@ import (
 )
 
 func TestPlanner(t *testing.T) {
+	indices := []map[string]interface{}{{"name": "branch_1_build_variant_1_display_name_1_status_1_finish_time_1_start_time_1", "key": map[string]int{"branch": 1}}}
+	_ = evergreen.GetEnvironment().DB().RunCommand(context.Background(), map[string]interface{}{"createIndexes": task.Collection, "indexes": indices})
 	t.Run("Caches", func(t *testing.T) {
 		t.Run("StringSet", func(t *testing.T) {
 			t.Run("ZeroValue", func(t *testing.T) {

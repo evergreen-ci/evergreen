@@ -1,6 +1,7 @@
 package task
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -12,6 +13,8 @@ import (
 func TestExpectedDuration(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
+	indices := []map[string]interface{}{{"name": "branch_1_build_variant_1_display_name_1_status_1_finish_time_1_start_time_1", "key": map[string]int{"branch": 1}}}
+	_ = evergreen.GetEnvironment().DB().RunCommand(context.Background(), map[string]interface{}{"createIndexes": Collection, "indexes": indices})
 	bv := "bv"
 	project := "proj"
 	now := time.Now()
