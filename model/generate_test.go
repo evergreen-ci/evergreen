@@ -885,9 +885,6 @@ func TestAddDependencies(t *testing.T) {
 				Tasks: []BuildVariantTaskUnit{
 					{Name: "t3"},
 				},
-				DisplayTasks: []DisplayTask{
-					{Name: "dt1"},
-				},
 			},
 		},
 	}
@@ -900,27 +897,19 @@ func TestAddDependencies(t *testing.T) {
 		assert.NoError(t, task.Insert())
 	}
 
-	newTasks := TaskVariantPairs{
-		ExecTasks: TVPairSet{
-			{Variant: "bv1", TaskName: "t3"},
-		},
-		DisplayTasks: TVPairSet{
-			{Variant: "bv1", TaskName: "dt1"},
-		},
-	}
-
+	newTasks := TVPairSet{{Variant: "bv1", TaskName: "t3"}}
 	assert.NoError(t, addDependencies(&task.Task{Id: "generator"}, p, v, newTasks))
 
 	t1, err := task.FindOneId("t1")
 	assert.NoError(t, err)
-	assert.Len(t, t1.DependsOn, 3)
+	assert.Len(t, t1.DependsOn, 2)
 	for _, dep := range t1.DependsOn {
 		assert.Equal(t, evergreen.TaskSucceeded, dep.Status)
 	}
 
 	t2, err := task.FindOneId("t2")
 	assert.NoError(t, err)
-	assert.Len(t, t2.DependsOn, 3)
+	assert.Len(t, t2.DependsOn, 2)
 	for _, dep := range t2.DependsOn {
 		assert.Equal(t, evergreen.TaskFailed, dep.Status)
 	}
