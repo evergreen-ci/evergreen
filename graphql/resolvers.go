@@ -93,14 +93,14 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 	for groupName, groupedProjects := range groupsMap {
 		name := groupName
 		gp := GroupedProjects{
-			Group:    &name,
+			Name:     &name,
 			Projects: groupedProjects,
 		}
 		groupsArr = append(groupsArr, &gp)
 	}
 
 	sort.SliceStable(groupsArr, func(i, j int) bool {
-		return *groupsArr[i].Group < *groupsArr[j].Group
+		return *groupsArr[i].Name < *groupsArr[j].Name
 	})
 
 	return groupsArr, nil

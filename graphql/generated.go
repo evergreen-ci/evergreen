@@ -44,7 +44,7 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	GroupedProjects struct {
-		Group    func(childComplexity int) int
+		Name     func(childComplexity int) int
 		Projects func(childComplexity int) int
 	}
 
@@ -175,12 +175,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	_ = ec
 	switch typeName + "." + field {
 
-	case "GroupedProjects.group":
-		if e.complexity.GroupedProjects.Group == nil {
+	case "GroupedProjects.name":
+		if e.complexity.GroupedProjects.Name == nil {
 			break
 		}
 
-		return e.complexity.GroupedProjects.Group(childComplexity), true
+		return e.complexity.GroupedProjects.Name(childComplexity), true
 
 	case "GroupedProjects.projects":
 		if e.complexity.GroupedProjects.Projects == nil {
@@ -894,7 +894,7 @@ type Task {
 }
 
 type GroupedProjects {
-  group: String
+  name: String
   projects: [Project]!
 }
 
@@ -992,7 +992,7 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 
 // region    **************************** field.gotpl *****************************
 
-func (ec *executionContext) _GroupedProjects_group(ctx context.Context, field graphql.CollectedField, obj *GroupedProjects) (ret graphql.Marshaler) {
+func (ec *executionContext) _GroupedProjects_name(ctx context.Context, field graphql.CollectedField, obj *GroupedProjects) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1009,7 +1009,7 @@ func (ec *executionContext) _GroupedProjects_group(ctx context.Context, field gr
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Group, nil
+		return obj.Name, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4746,8 +4746,8 @@ func (ec *executionContext) _GroupedProjects(ctx context.Context, sel ast.Select
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("GroupedProjects")
-		case "group":
-			out.Values[i] = ec._GroupedProjects_group(ctx, field, obj)
+		case "name":
+			out.Values[i] = ec._GroupedProjects_name(ctx, field, obj)
 		case "projects":
 			out.Values[i] = ec._GroupedProjects_projects(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

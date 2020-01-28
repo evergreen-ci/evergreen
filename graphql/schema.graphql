@@ -97,7 +97,7 @@ type Task {
 }
 
 type GroupedProjects {
-  group: String
+  name: String
   projects: [Project]!
 }
 

@@ -7,6 +7,6 @@ import (
 )
 
 type GroupedProjects struct {
-	Group    *string                  `json:"group"`
+	Name     *string                  `json:"name"`
 	Projects []*model.UIProjectFields `json:"projects"`
 }
