@@ -70,7 +70,7 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 		MaxHostsPerUser            int
 		MaxUnexpirableHostsPerUser int
 		ViewData
-	}{spawnDistro, spawnTask, maxHosts, uis.Settings.UnexpirableHostsPerUser, uis.GetCommonViewData(w, r, false, true)}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
+	}{spawnDistro, spawnTask, maxHosts, settings.UnexpirableHostsPerUser, uis.GetCommonViewData(w, r, false, true)}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) getSpawnedHosts(w http.ResponseWriter, r *http.Request) {
@@ -311,7 +311,13 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 
 	case HostExpirationExtension:
 		if updateParams.Expiration.IsZero() { // set expiration to never expire
-			if err := route.CheckUnexpirableHostLimitExceeded(u.Id, uis.Settings.UnexpirableHostsPerUser); err != nil {
+			settings, err := evergreen.GetConfig()
+			if err != nil {
+				PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error updating host expiration"))
+				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error retrieving settings"))
+				return
+			}
+			if err := route.CheckUnexpirableHostLimitExceeded(u.Id, settings.UnexpirableHostsPerUser); err != nil {
 				PushFlash(uis.CookieStore, r, w, NewErrorFlash(err.Error()))
 				uis.LoggedError(w, r, http.StatusBadRequest, err)
 				return
