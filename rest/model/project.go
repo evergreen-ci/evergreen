@@ -5,6 +5,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+// publicProjectFields are the fields needed by the UI
+// on base_angular and the menu
 type UIProjectFields struct {
 	Identifier  string `json:"identifier"`
 	DisplayName string `json:"display_name"`

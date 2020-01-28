@@ -24,15 +24,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// publicProjectFields are the fields needed by the UI
-// on base_angular and the menu
-type UIProjectFields struct {
-	Identifier  string `json:"identifier"`
-	DisplayName string `json:"display_name"`
-	Repo        string `json:"repo_name"`
-	Owner       string `json:"owner_name"`
-}
-
 // filterAuthorizedProjects iterates through a list of projects and returns a list of all the projects that a user
 // is authorized to view and edit the settings of.
 func (uis *UIServer) filterAuthorizedProjects(u gimlet.User) ([]model.ProjectRef, error) {
