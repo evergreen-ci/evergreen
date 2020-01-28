@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/pkg/errors"
-	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/model"
 )
 
@@ -62,16 +61,16 @@ func (r *queryResolver) Task(ctx context.Context, taskID string) (*restModel.API
 	return &apiTask, nil
 }
 
-func (r *queryResolver) Projects(ctx context.Context) ([]*service.UIProjectFields, error) {
+func (r *queryResolver) Projects(ctx context.Context) ([]*restModel.UIProjectFields, error) {
 	allProjs, err := model.FindAllTrackedProjectRefs()
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving projects")
 	}
 
-	projects := make([]*service.UIProjectFields, 0, len(allProjs))
+	projects := make([]*restModel.UIProjectFields, 0, len(allProjs))
 
 	for _, p := range allProjs {
-		uiProj := service.UIProjectFields{
+		uiProj := restModel.UIProjectFields{
 			DisplayName: p.DisplayName,
 			Identifier:  p.Identifier,
 			Repo:        p.Repo,

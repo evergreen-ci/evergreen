@@ -30,4 +30,4 @@ models:
   Duration:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDuration
   Project:
-    model: github.com/evergreen-ci/evergreen/service.UIProjectFields
+    model: github.com/evergreen-ci/evergreen/rest/model.UIProjectFields

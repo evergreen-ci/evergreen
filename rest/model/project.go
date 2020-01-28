@@ -5,6 +5,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+type UIProjectFields struct {
+	Identifier  string `json:"identifier"`
+	DisplayName string `json:"display_name"`
+	Repo        string `json:"repo_name"`
+	Owner       string `json:"owner_name"`
+}
+
 type APIProject struct {
 	BatchTime           int                  `json:"batch_time"`
 	Branch              *string              `json:"branch_name"`
