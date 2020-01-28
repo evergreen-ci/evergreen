@@ -282,28 +282,28 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Patch.Version(childComplexity), true
 
-	case "Project.DisplayName":
+	case "Project.displayName":
 		if e.complexity.Project.DisplayName == nil {
 			break
 		}
 
 		return e.complexity.Project.DisplayName(childComplexity), true
 
-	case "Project.Identifier":
+	case "Project.identifier":
 		if e.complexity.Project.Identifier == nil {
 			break
 		}
 
 		return e.complexity.Project.Identifier(childComplexity), true
 
-	case "Project.Owner":
+	case "Project.owner":
 		if e.complexity.Project.Owner == nil {
 			break
 		}
 
 		return e.complexity.Project.Owner(childComplexity), true
 
-	case "Project.Repo":
+	case "Project.repo":
 		if e.complexity.Project.Repo == nil {
 			break
 		}
@@ -875,10 +875,10 @@ type Task {
 }
 
 type Project {
-  Identifier: String!
-  DisplayName: String!
-  Repo: String!
-  Owner: String!
+  identifier: String!
+  displayName: String!
+  repo: String!
+  owner: String!
 }
 
 scalar Time
@@ -1506,7 +1506,7 @@ func (ec *executionContext) _Patch_alias(ctx context.Context, field graphql.Coll
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Project_Identifier(ctx context.Context, field graphql.CollectedField, obj *model.UIProjectFields) (ret graphql.Marshaler) {
+func (ec *executionContext) _Project_identifier(ctx context.Context, field graphql.CollectedField, obj *model.UIProjectFields) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1540,7 +1540,7 @@ func (ec *executionContext) _Project_Identifier(ctx context.Context, field graph
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Project_DisplayName(ctx context.Context, field graphql.CollectedField, obj *model.UIProjectFields) (ret graphql.Marshaler) {
+func (ec *executionContext) _Project_displayName(ctx context.Context, field graphql.CollectedField, obj *model.UIProjectFields) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1574,7 +1574,7 @@ func (ec *executionContext) _Project_DisplayName(ctx context.Context, field grap
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Project_Repo(ctx context.Context, field graphql.CollectedField, obj *model.UIProjectFields) (ret graphql.Marshaler) {
+func (ec *executionContext) _Project_repo(ctx context.Context, field graphql.CollectedField, obj *model.UIProjectFields) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1608,7 +1608,7 @@ func (ec *executionContext) _Project_Repo(ctx context.Context, field graphql.Col
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Project_Owner(ctx context.Context, field graphql.CollectedField, obj *model.UIProjectFields) (ret graphql.Marshaler) {
+func (ec *executionContext) _Project_owner(ctx context.Context, field graphql.CollectedField, obj *model.UIProjectFields) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -4753,23 +4753,23 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Project")
-		case "Identifier":
-			out.Values[i] = ec._Project_Identifier(ctx, field, obj)
+		case "identifier":
+			out.Values[i] = ec._Project_identifier(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "DisplayName":
-			out.Values[i] = ec._Project_DisplayName(ctx, field, obj)
+		case "displayName":
+			out.Values[i] = ec._Project_displayName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "Repo":
-			out.Values[i] = ec._Project_Repo(ctx, field, obj)
+		case "repo":
+			out.Values[i] = ec._Project_repo(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "Owner":
-			out.Values[i] = ec._Project_Owner(ctx, field, obj)
+		case "owner":
+			out.Values[i] = ec._Project_owner(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

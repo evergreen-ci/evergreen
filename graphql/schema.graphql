@@ -97,10 +97,10 @@ type Task {
 }
 
 type Project {
-  Identifier: String!
-  DisplayName: String!
-  Repo: String!
-  Owner: String!
+  identifier: String!
+  displayName: String!
+  repo: String!
+  owner: String!
 }
 
 scalar Time
