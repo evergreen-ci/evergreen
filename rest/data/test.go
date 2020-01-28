@@ -81,7 +81,7 @@ func (tc *DBTestConnector) FindTestsByTaskIdFilterSortPaginate(taskId, filter, s
 
 	res, err := testresult.TestResultsFilterSortPaginate(taskIds, filter, status, sortBy, sortDir, page, limit, execution)
 	if err != nil {
-		return []testresult.TestResult{}, err
+		return nil, err
 	}
 	if len(res) == 0 {
 		return []testresult.TestResult{}, nil
