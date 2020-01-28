@@ -1,8 +1,12 @@
 package db
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"io"
+
+	"go.mongodb.org/mongo-driver/bson/bsontype"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
@@ -358,4 +362,74 @@ func Aggregate(collection string, pipeline interface{}, out interface{}) error {
 	pipe := db.C(collection).Pipe(pipeline)
 
 	return errors.WithStack(pipe.All(out))
+}
+
+type Index struct {
+	Name                    string   `bson:"name"`
+	Key                     IndexKey `bson:"key"`
+	Unique                  bool     `bson:"unique"`
+	ExpireAfter             int      `bson:"expireAfterSeconds,omitempty"`
+	PartialFilterExpression bson.D   `bson:"partialFilterExpression,omitempty"`
+}
+
+type IndexKey struct {
+	Fields []IndexFieldSpec
+}
+
+type IndexFieldSpec struct {
+	Name  string
+	Value interface{}
+}
+
+func (ik IndexKey) MarshalBSON() ([]byte, error) {
+	d := make(bson.D, 0, len(ik.Fields))
+	for _, field := range ik.Fields {
+		d = append(d, bson.E{field.Name, field.Value})
+	}
+	return bson.Marshal(d)
+}
+
+func (ik *IndexKey) UnmarshalBSONValue(t bsontype.Type, data []byte) error {
+	var d bson.D
+	if err := (bson.RawValue{Type: t, Value: data}).Unmarshal(&d); err != nil {
+		return err
+	}
+	ik.Fields = make([]IndexFieldSpec, 0, len(d))
+	for _, elem := range d {
+		ik.Fields = append(ik.Fields, IndexFieldSpec{Name: elem.Key, Value: elem.Value})
+	}
+	return nil
+}
+
+func CreateIndexes(ctx context.Context, collName string, indexSpecs ...Index) error {
+	newSpecs := make([]Index, 0, len(indexSpecs))
+	for _, spec := range indexSpecs {
+		if spec.Name == "" {
+			var buff bytes.Buffer
+			for i, field := range spec.Key.Fields {
+				if i > 0 {
+					buff.WriteRune('_')
+				}
+				buff.WriteString(field.Name)
+				buff.WriteRune('_')
+
+				buff.WriteString(fmt.Sprintf("%v", field.Value))
+			}
+			spec.Name = buff.String()
+		}
+		newSpecs = append(newSpecs, spec)
+	}
+
+	createIndexCommand := bson.D{
+		{"createIndexes", collName},
+		{"indexes", newSpecs},
+	}
+
+	db := evergreen.GetEnvironment().DB()
+	result := db.RunCommand(ctx, createIndexCommand)
+	err := result.Err()
+	if err != nil {
+		return err
+	}
+	return nil
 }

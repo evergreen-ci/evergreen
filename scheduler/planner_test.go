@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/stretchr/testify/assert"
@@ -15,8 +16,8 @@ import (
 )
 
 func TestPlanner(t *testing.T) {
-	indices := []map[string]interface{}{{"name": "branch_1_build_variant_1_display_name_1_status_1_finish_time_1_start_time_1", "key": map[string]int{"branch": 1}}}
-	_ = evergreen.GetEnvironment().DB().RunCommand(context.Background(), map[string]interface{}{"createIndexes": task.Collection, "indexes": indices})
+	index := db.Index{Key: db.IndexKey{Fields: []db.IndexFieldSpec{{Name: "branch", Value: 1}, {Name: "build_variant", Value: 1}, {Name: "display_name", Value: 1}, {Name: "status", Value: 1}, {Name: "finish_time", Value: 1}, {Name: "start_time", Value: 1}}}}
+	assert.NoError(t, db.CreateIndexes(context.Background(), task.Collection, index))
 	t.Run("Caches", func(t *testing.T) {
 		t.Run("StringSet", func(t *testing.T) {
 			t.Run("ZeroValue", func(t *testing.T) {
