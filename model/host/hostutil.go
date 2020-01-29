@@ -744,8 +744,8 @@ func (h *Host) StartJasperProcess(ctx context.Context, env evergreen.Environment
 }
 
 // GetJasperProcess makes a request to the host's Jasper service to get a started
-// process's status. Processes with an output logger return output
-func (h *Host) GetJasperProcess(ctx context.Context, env evergreen.Environment, processID string) (bool, string, error) {
+// process's status. Processes with an output logger return output.
+func (h *Host) GetJasperProcess(ctx context.Context, env evergreen.Environment, processID string) (complete bool, output string, err error) {
 	client, err := h.JasperClient(ctx, env)
 	if err != nil {
 		return false, "", errors.Wrap(err, "could not get a Jasper client")
