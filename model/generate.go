@@ -250,31 +250,27 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 		}
 	}
 
-	if err := AddNewTasks(ctx, true, v, p, newTVPairsForExistingVariants, g.TaskID); err != nil {
+	tasksInExistingBuilds, err := AddNewTasks(ctx, true, v, p, newTVPairsForExistingVariants, g.TaskID)
+	if err != nil {
 		return errors.Wrap(err, "errors adding new tasks")
 	}
-	if err := AddNewBuilds(ctx, true, v, p, newTVPairsForNewVariants, g.TaskID); err != nil {
+
+	_, tasksInNewBuilds, err := AddNewBuilds(ctx, true, v, p, newTVPairsForNewVariants, g.TaskID)
+	if err != nil {
 		return errors.Wrap(err, "errors adding new builds")
 	}
 
-	newTasks := append(newTVPairsForExistingVariants.ExecTasks, newTVPairsForNewVariants.ExecTasks...)
-	if err = addDependencies(t, p, v, newTasks); err != nil {
+	if err = addDependencies(t, append(tasksInExistingBuilds, tasksInNewBuilds...)); err != nil {
 		return errors.Wrap(err, "error adding dependencies")
 	}
 
 	return nil
 }
 
-func addDependencies(t *task.Task, p *Project, v *Version, newTasks TVPairSet) error {
-	taskIDTable := NewTaskIdTable(p, v, "", "")
-	newDependencyIDs := []string{}
-	for _, newTask := range newTasks {
-		newDependencyIDs = append(newDependencyIDs, taskIDTable.ExecutionTasks.GetId(newTask.Variant, newTask.TaskName))
-	}
-
+func addDependencies(t *task.Task, newTaskIds []string) error {
 	statuses := []string{evergreen.TaskSucceeded, task.AllStatuses}
 	for _, status := range statuses {
-		if err := t.UpdateDependsOn(status, newDependencyIDs); err != nil {
+		if err := t.UpdateDependsOn(status, newTaskIds); err != nil {
 			return errors.Wrapf(err, "can't update tasks depending on '%s'", t.Id)
 		}
 	}

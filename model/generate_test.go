@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -877,28 +876,15 @@ func TestUpdateVersionAndParserProject(t *testing.T) {
 func TestAddDependencies(t *testing.T) {
 	require.NoError(t, db.Clear(task.Collection))
 
-	v := &Version{CreateTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)}
-	p := &Project{
-		BuildVariants: BuildVariants{
-			{
-				Name: "bv1",
-				Tasks: []BuildVariantTaskUnit{
-					{Name: "t3"},
-				},
-			},
-		},
-	}
-
 	existingTasks := []task.Task{
 		{Id: "t1", DependsOn: []task.Dependency{{TaskId: "generator", Status: evergreen.TaskSucceeded}}},
-		{Id: "t2", DependsOn: []task.Dependency{{TaskId: "generator", Status: evergreen.TaskFailed}}},
+		{Id: "t2", DependsOn: []task.Dependency{{TaskId: "generator", Status: task.AllStatuses}}},
 	}
 	for _, task := range existingTasks {
 		assert.NoError(t, task.Insert())
 	}
 
-	newTasks := TVPairSet{{Variant: "bv1", TaskName: "t3"}}
-	assert.NoError(t, addDependencies(&task.Task{Id: "generator"}, p, v, newTasks))
+	assert.NoError(t, addDependencies(&task.Task{Id: "generator"}, []string{"t3"}))
 
 	t1, err := task.FindOneId("t1")
 	assert.NoError(t, err)
@@ -911,6 +897,6 @@ func TestAddDependencies(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, t2.DependsOn, 2)
 	for _, dep := range t2.DependsOn {
-		assert.Equal(t, evergreen.TaskFailed, dep.Status)
+		assert.Equal(t, task.AllStatuses, dep.Status)
 	}
 }
