@@ -3,7 +3,7 @@ package graphql
 import (
 	"context"
 	"sort"
-	s "strings"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -72,7 +72,7 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 	groupsMap := make(map[string][]*restModel.UIProjectFields)
 
 	for _, p := range allProjs {
-		groupName := s.Join([]string{p.Owner, p.Repo}, "/")
+		groupName := strings.Join([]string{p.Owner, p.Repo}, "/")
 
 		uiProj := restModel.UIProjectFields{
 			DisplayName: p.DisplayName,
@@ -91,16 +91,15 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 	groupsArr := []*GroupedProjects{}
 
 	for groupName, groupedProjects := range groupsMap {
-		name := groupName
 		gp := GroupedProjects{
-			Name:     &name,
+			Name:     groupName,
 			Projects: groupedProjects,
 		}
 		groupsArr = append(groupsArr, &gp)
 	}
 
 	sort.SliceStable(groupsArr, func(i, j int) bool {
-		return *groupsArr[i].Name < *groupsArr[j].Name
+		return groupsArr[i].Name < groupsArr[j].Name
 	})
 
 	return groupsArr, nil
