@@ -271,7 +271,7 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 	for _, t := range tasks {
 		taskIDs[t.Id] = t.Execution
 	}
-	tasks, err = host.StaleRunningTaskIDs(heartbeatTimeoutThreshold)
+	tasks, err = task.Find(task.ByStaleRunningTask(heartbeatTimeoutThreshold).WithFields(task.IdKey, task.ExecutionKey))
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error finding tasks with timed-out or stale heartbeats"))
 		return
