@@ -1238,30 +1238,30 @@ func (h *hostGetProcesses) Run(ctx context.Context) gimlet.Responder {
 	for _, process := range h.hostProcesses {
 		host, err := h.sc.FindHostByIdWithOwner(process.HostID, u)
 		if err != nil {
-			response.AddData(model.APIHostProcess{
+			grip.Error(errors.Wrapf(response.AddData(model.APIHostProcess{
 				HostID:   process.HostID,
 				ProcID:   process.ProcID,
 				Complete: true,
 				Output:   errors.Wrap(err, "can't get host").Error(),
-			})
+			}), "can't add data for host '%s'", process.HostID))
 			continue
 		}
 
 		complete, output, err := host.GetJasperProcess(ctx, h.env, process.ProcID)
 		if err != nil {
-			response.AddData(model.APIHostProcess{
+			grip.Error(errors.Wrapf(response.AddData(model.APIHostProcess{
 				HostID:   process.HostID,
 				Complete: true,
 				Output:   errors.Wrap(err, "can't get process with Jasper").Error(),
-			})
+			}), "can't add data for host '%s'", process.HostID))
 			continue
 		}
-		response.AddData(model.APIHostProcess{
+		grip.Error(errors.Wrapf(response.AddData(model.APIHostProcess{
 			HostID:   process.HostID,
 			Complete: complete,
 			ProcID:   process.ProcID,
 			Output:   output,
-		})
+		}), "can't add data for host '%s'", process.HostID))
 	}
 
 	return response
