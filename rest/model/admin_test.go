@@ -221,7 +221,7 @@ func TestEventConversion(t *testing.T) {
 	}
 	apiEvent := APIAdminEvent{}
 	assert.NoError(apiEvent.BuildFromService(evt))
-	assert.EqualValues(evt.Timestamp, apiEvent.Timestamp)
+	assert.EqualValues(evt.Timestamp, *apiEvent.Timestamp)
 	assert.EqualValues("me", apiEvent.User)
 	assert.NotEmpty(apiEvent.Guid)
 	before := apiEvent.Before.(*APIAdminSettings)
