@@ -1147,27 +1147,27 @@ func (hs *hostStartProcesses) Run(ctx context.Context) gimlet.Responder {
 	for _, hostID := range hs.hostIDs {
 		h, err := hs.sc.FindHostByIdWithOwner(hostID, u)
 		if err != nil {
-			response.AddData(model.APIHostProcess{
+			grip.Error(errors.Wrapf(response.AddData(model.APIHostProcess{
 				HostID:   hostID,
 				Complete: true,
 				Output:   errors.Wrap(err, "can't get host").Error(),
-			})
+			}), "can't add data for host '%s'", hostID))
 			continue
 		}
 		if h.Status != evergreen.HostRunning {
-			response.AddData(model.APIHostProcess{
+			grip.Error(errors.Wrapf(response.AddData(model.APIHostProcess{
 				HostID:   hostID,
 				Complete: true,
 				Output:   fmt.Sprintf("can't run script on host with status '%s'", h.Status),
-			})
+			}), "can't add data for host '%s'", hostID))
 			continue
 		}
 		if !h.JasperCommunication() {
-			response.AddData(model.APIHostProcess{
+			grip.Error(errors.Wrapf(response.AddData(model.APIHostProcess{
 				HostID:   hostID,
 				Complete: true,
 				Output:   fmt.Sprintf("can't run script on host of distro '%s' because it doesn't support Jasper communication", h.Distro.Id),
-			})
+			}), "can't add data for host '%s'", hostID))
 			continue
 		}
 
@@ -1178,18 +1178,18 @@ func (hs *hostStartProcesses) Run(ctx context.Context) gimlet.Responder {
 		}
 		procID, err := h.StartJasperProcess(ctx, hs.env, opts)
 		if err != nil {
-			response.AddData(model.APIHostProcess{
+			grip.Error(errors.Wrapf(response.AddData(model.APIHostProcess{
 				HostID:   hostID,
 				Complete: true,
 				Output:   errors.Wrap(err, "can't run script with Jasper").Error(),
-			})
+			}), "can't add data for host '%s'", hostID))
 			continue
 		}
-		response.AddData(model.APIHostProcess{
+		grip.Error(errors.Wrapf(response.AddData(model.APIHostProcess{
 			HostID:   hostID,
 			Complete: false,
 			ProcID:   procID,
-		})
+		}), "can't add data for host '%s'", hostID))
 	}
 
 	return response
