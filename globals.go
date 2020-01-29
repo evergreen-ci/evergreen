@@ -490,7 +490,7 @@ func IsGitHubPatchRequester(requester string) bool {
 }
 
 // Permissions-related constants
-var AclCheckingIsEnabled = (os.Getenv("ACL_ENABLED") == "true")
+var AclCheckingIsEnabled = false
 
 const (
 	SuperUserResourceType = "super_user"
@@ -508,6 +508,7 @@ type PermissionLevel struct {
 }
 
 var (
+	UnauthedUserRoles = []string{"unauthorized_project"}
 	// SuperUserPermissions resource ID.
 	SuperUserPermissionsID = "super_user"
 
@@ -691,4 +692,10 @@ var ProjectPermissions = []string{
 var DistroPermissions = []string{
 	PermissionDistroSettings,
 	PermissionHosts,
+}
+
+var SuperuserPermissions = []string{
+	PermissionAdminSettings,
+	PermissionProjectCreate,
+	PermissionDistroCreate,
 }

@@ -36,26 +36,31 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		Description string   `json:"desc"`
 		Project     string   `json:"project"`
-		Patch       string   `json:"patch"`
+		PatchBytes  []byte   `json:"patch_bytes"`
+		PatchString string   `json:"patch"`
 		Githash     string   `json:"githash"`
 		Variants    []string `json:"buildvariants_new"`
 		Tasks       []string `json:"tasks"`
 		Finalize    bool     `json:"finalize"`
 		Alias       string   `json:"alias"`
-		CommitQueue bool     `json:"commit_queue"`
 	}{}
 	if err := util.ReadJSONInto(util.NewRequestReaderWithSize(r, patch.SizeLimit), &data); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
-	if len(data.Patch) > patch.SizeLimit {
+
+	patchString := string(data.PatchBytes)
+	if patchString == "" {
+		patchString = data.PatchString
+	}
+	if len(patchString) > patch.SizeLimit {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("Patch is too large"))
 		return
 	}
 
 	pref, err := model.FindOneProjectRef(data.Project)
 	if err != nil {
-		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "project %s is not specified", data.Project))
+		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "project '%s' is not specified", data.Project))
 		return
 	}
 	if pref == nil {
@@ -72,7 +77,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	intent, err := patch.NewCliIntent(dbUser.Id, data.Project, data.Githash, r.FormValue("module"), data.Patch, data.Description, data.Finalize, data.Variants, data.Tasks, data.Alias)
+	intent, err := patch.NewCliIntent(dbUser.Id, data.Project, data.Githash, r.FormValue("module"), patchString, data.Description, data.Finalize, data.Variants, data.Tasks, data.Alias)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
@@ -144,25 +149,21 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var moduleName, patchContent, githash, message string
-
-	if r.Header.Get("Content-Type") == formMimeType {
-		moduleName = r.FormValue("module")
-		patchContent = r.FormValue("patch")
-		githash = r.FormValue("githash")
-		message = r.FormValue("message")
-	} else {
-		data := struct {
-			Module  string `json:"module"`
-			Patch   string `json:"patch"`
-			Githash string `json:"githash"`
-			Message string `json:"message"`
-		}{}
-		if err = util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
-			as.LoggedError(w, r, http.StatusBadRequest, err)
-			return
-		}
-		moduleName, patchContent, githash, message = data.Module, data.Patch, data.Githash, data.Message
+	data := struct {
+		Module      string `json:"module"`
+		PatchBytes  []byte `json:"patch_bytes"`
+		PatchString string `json:"patch"`
+		Githash     string `json:"githash"`
+		Message     string `json:"message"`
+	}{}
+	if err = util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
+		as.LoggedError(w, r, http.StatusBadRequest, err)
+		return
+	}
+	moduleName, githash, message := data.Module, data.Githash, data.Message
+	patchContent := string(data.PatchBytes)
+	if patchContent == "" {
+		patchContent = data.PatchString
 	}
 
 	projectRef, err := model.FindOneProjectRef(p.Project)
@@ -186,11 +187,22 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	summaries, err := thirdparty.GetPatchSummaries(patchContent)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
+	var summaries []patch.Summary
+	if patch.IsMailboxDiff(patchContent) {
+		reader := strings.NewReader(patchContent)
+		summaries, err = units.GetPatchSummariesByCommit(reader)
+		if err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("Error getting summaries by commit"))
+			return
+		}
+	} else {
+		summaries, err = thirdparty.GetPatchSummaries(patchContent)
+		if err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
 	}
+
 	repoOwner, repo := module.GetRepoOwnerAndName()
 
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
@@ -241,7 +253,8 @@ func (as *APIServer) listPatches(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "cannot read value n"))
 		return
 	}
-	query := patch.ByUser(dbUser.Id).Sort([]string{"-" + patch.CreateTimeKey})
+	filterCommitQueue := r.FormValue("filter_commit_queue") == "true"
+	query := patch.ByUserAndCommitQueue(dbUser.Id, filterCommitQueue).Sort([]string{"-" + patch.CreateTimeKey})
 	if n > 0 {
 		query = query.Limit(n)
 	}

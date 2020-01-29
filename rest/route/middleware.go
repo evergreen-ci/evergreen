@@ -2,8 +2,10 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
@@ -259,7 +261,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't find item")))
 			return
 		}
-		if user.Id != patch.Author {
+		if user.Id != *patch.Author {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
 				Message:    "Not authorized",
@@ -307,6 +309,12 @@ func RequiresProjectPermission(permission string, level evergreen.PermissionLeve
 	if !evergreen.AclCheckingIsEnabled {
 		return &noopMiddleware{}
 	}
+	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
+	if err != nil {
+		grip.Critical(message.WrapError(err, message.Fields{
+			"message": "unable to get default roles",
+		}))
+	}
 
 	opts := gimlet.RequiresPermissionMiddlewareOpts{
 		RM:            evergreen.GetEnvironment().RoleManager(),
@@ -314,6 +322,7 @@ func RequiresProjectPermission(permission string, level evergreen.PermissionLeve
 		ResourceType:  evergreen.ProjectResourceType,
 		RequiredLevel: level.Value,
 		ResourceFunc:  urlVarsToProjectScopes,
+		DefaultRoles:  defaultRoles,
 	}
 	return gimlet.RequiresPermission(opts)
 }
@@ -322,6 +331,12 @@ func RequiresDistroPermission(permission string, level evergreen.PermissionLevel
 	if !evergreen.AclCheckingIsEnabled {
 		return &noopMiddleware{}
 	}
+	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
+	if err != nil {
+		grip.Critical(message.WrapError(err, message.Fields{
+			"message": "unable to get default roles",
+		}))
+	}
 
 	opts := gimlet.RequiresPermissionMiddlewareOpts{
 		RM:            evergreen.GetEnvironment().RoleManager(),
@@ -329,6 +344,7 @@ func RequiresDistroPermission(permission string, level evergreen.PermissionLevel
 		ResourceType:  evergreen.DistroResourceType,
 		RequiredLevel: level.Value,
 		ResourceFunc:  urlVarsToDistroScopes,
+		DefaultRoles:  defaultRoles,
 	}
 	return gimlet.RequiresPermission(opts)
 }
@@ -337,6 +353,12 @@ func RequiresSuperUserPermission(permission string, level evergreen.PermissionLe
 	if !evergreen.AclCheckingIsEnabled {
 		return &noopMiddleware{}
 	}
+	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
+	if err != nil {
+		grip.Critical(message.WrapError(err, message.Fields{
+			"message": "unable to get default roles",
+		}))
+	}
 
 	opts := gimlet.RequiresPermissionMiddlewareOpts{
 		RM:            evergreen.GetEnvironment().RoleManager(),
@@ -344,6 +366,7 @@ func RequiresSuperUserPermission(permission string, level evergreen.PermissionLe
 		ResourceType:  evergreen.SuperUserResourceType,
 		RequiredLevel: level.Value,
 		ResourceFunc:  superUserResource,
+		DefaultRoles:  defaultRoles,
 	}
 	return gimlet.RequiresPermission(opts)
 
@@ -360,7 +383,7 @@ func urlVarsToProjectScopes(r *http.Request) (string, int, error) {
 	vars := gimlet.GetVars(r)
 	query := r.URL.Query()
 
-	resourceType := util.CoalesceStrings(query["resource_type"], vars["resource_type"])
+	resourceType := strings.ToUpper(util.CoalesceStrings(query["resource_type"], vars["resource_type"]))
 	if resourceType != "" {
 		switch resourceType {
 		case model.EventResourceTypeProject:
@@ -417,6 +440,18 @@ func urlVarsToProjectScopes(r *http.Request) (string, int, error) {
 		}
 	}
 
+	// check to see if this is an anonymous user requesting a private project
+	user := gimlet.GetUser(r.Context())
+	if user == nil {
+		projectRef, err := model.FindOneProjectRef(projectID)
+		if err != nil || projectRef == nil {
+			return "", http.StatusNotFound, errors.New("no project found")
+		}
+		if projectRef.Private {
+			projectID = ""
+		}
+	}
+
 	// no project found - return a 404
 	if projectID == "" {
 		return "", http.StatusNotFound, errors.New("no project found")
@@ -430,9 +465,10 @@ func urlVarsToDistroScopes(r *http.Request) (string, int, error) {
 	vars := gimlet.GetVars(r)
 	query := r.URL.Query()
 
-	resourceType := util.CoalesceStrings(query["resource_type"], vars["resource_type"])
+	resourceType := strings.ToUpper(util.CoalesceStrings(query["resource_type"], vars["resource_type"]))
 	if resourceType != "" {
 		switch resourceType {
+		case event.ResourceTypeScheduler:
 		case event.ResourceTypeDistro:
 			vars["distro_id"] = vars["resource_id"]
 		case event.ResourceTypeHost:
@@ -462,39 +498,54 @@ func superUserResource(_ *http.Request) (string, int, error) {
 	return evergreen.SuperUserPermissionsID, http.StatusOK, nil
 }
 
-// RequiresProjectViewPermission is mostly a copy of gimlet.RequiresPermission, but with special
-// handling for private projects
-type RequiresProjectViewPermission struct{}
+type EventLogPermissionsMiddleware struct{}
 
-func (p *RequiresProjectViewPermission) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	if !evergreen.AclCheckingIsEnabled {
-		next(rw, r)
+func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	ctx := r.Context()
+	vars := gimlet.GetVars(r)
+	var resource string
+	var status int
+	var err error
+	resourceType := strings.ToUpper(vars["resource_type"])
+	opts := gimlet.PermissionOpts{}
+	switch resourceType {
+	case event.ResourceTypeTask:
+		resource, status, err = urlVarsToProjectScopes(r)
+		opts.ResourceType = evergreen.ProjectResourceType
+		opts.Permission = evergreen.PermissionTasks
+		opts.RequiredLevel = evergreen.TasksView.Value
+	case model.EventResourceTypeProject:
+		resource, status, err = urlVarsToProjectScopes(r)
+		opts.ResourceType = evergreen.ProjectResourceType
+		opts.Permission = evergreen.PermissionProjectSettings
+		opts.RequiredLevel = evergreen.ProjectSettingsView.Value
+	case event.ResourceTypeDistro:
+		fallthrough
+	case event.ResourceTypeScheduler:
+		resource, status, err = urlVarsToDistroScopes(r)
+		opts.ResourceType = evergreen.DistroResourceType
+		opts.Permission = evergreen.PermissionHosts
+		opts.RequiredLevel = evergreen.HostsView.Value
+	case event.ResourceTypeHost:
+		resource, status, err = urlVarsToDistroScopes(r)
+		opts.ResourceType = evergreen.DistroResourceType
+		opts.Permission = evergreen.PermissionDistroSettings
+		opts.RequiredLevel = evergreen.DistroSettingsView.Value
+	case event.ResourceTypeAdmin:
+		resource = evergreen.SuperUserPermissionsID
+		opts.ResourceType = evergreen.SuperUserResourceType
+		opts.Permission = evergreen.PermissionAdminSettings
+		opts.RequiredLevel = evergreen.AdminSettingsEdit.Value
+	default:
+		http.Error(rw, fmt.Sprintf("%s is not a valid resource type", resourceType), http.StatusBadRequest)
 		return
 	}
-	projectID, status, err := urlVarsToProjectScopes(r)
 	if err != nil {
 		http.Error(rw, err.Error(), status)
 		return
 	}
-	if projectID == "" {
-		http.Error(rw, "no project found", http.StatusNotFound)
-		return
-	}
-	proj, err := model.FindOneProjectRef(projectID)
-	if err != nil {
-		http.Error(rw, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if proj == nil {
-		http.Error(rw, "no project found", http.StatusNotFound)
-		return
-	}
-	if !proj.Private {
-		next(rw, r)
-		return
-	}
+	opts.Resource = resource
 
-	ctx := r.Context()
 	user := gimlet.GetUser(ctx)
 	if user == nil {
 		http.Error(rw, "no user found", http.StatusUnauthorized)
@@ -512,21 +563,10 @@ func (p *RequiresProjectViewPermission) ServeHTTP(rw http.ResponseWriter, r *htt
 		return
 	}
 
-	opts := gimlet.PermissionOpts{
-		Resource:      projectID,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionTasks,
-		RequiredLevel: evergreen.TasksView.Value,
-	}
-	hasPermission, err := user.HasPermission(opts)
-	grip.Error(message.WrapError(err, message.Fields{
-		"message": "error checking task view permissions",
-		"user":    user.Username(),
-	}))
-
-	if !hasPermission {
+	if !user.HasPermission(opts) {
 		http.Error(rw, "not authorized for this action", http.StatusUnauthorized)
 		return
 	}
+
 	next(rw, r)
 }

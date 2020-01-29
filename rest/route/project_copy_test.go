@@ -88,11 +88,11 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 	s.Equal(http.StatusOK, resp.Status())
 
 	newProject := resp.Data().(*restmodel.APIProjectRef)
-	s.Equal("projectC", restmodel.FromAPIString(newProject.Identifier))
-	s.Equal("abcd", restmodel.FromAPIString(newProject.Branch))
+	s.Equal("projectC", restmodel.FromStringPtr(newProject.Identifier))
+	s.Equal("abcd", restmodel.FromStringPtr(newProject.Branch))
 	s.False(newProject.Enabled)
 	s.Require().Len(newProject.Admins, 1)
-	s.Equal("my-user", restmodel.FromAPIString(newProject.Admins[0]))
+	s.Equal("my-user", restmodel.FromStringPtr(newProject.Admins[0]))
 
 	res, err := s.route.sc.FindProjectById("projectC")
 	s.NoError(err)

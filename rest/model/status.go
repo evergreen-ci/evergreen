@@ -49,8 +49,8 @@ func (apiStatus *APIRecentTaskStats) ToService() (interface{}, error) {
 }
 
 type APIStat struct {
-	Name  APIString `json:"name"`
-	Count int       `json:"count"`
+	Name  *string `json:"name"`
+	Count int     `json:"count"`
 }
 
 type APIStatList []APIStat
@@ -59,7 +59,7 @@ func (s *APIStatList) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case []task.Stat:
 		for _, stat := range v {
-			*s = append(*s, APIStat{Name: ToAPIString(stat.Name), Count: stat.Count})
+			*s = append(*s, APIStat{Name: ToStringPtr(stat.Name), Count: stat.Count})
 		}
 	default:
 		return errors.Errorf("incorrect type when converting API stat list (%T)", v)
@@ -97,11 +97,11 @@ type APIHostStatsByDistro struct {
 }
 
 type apiHostStatsForDistro struct {
-	Distro   APIString `json:"distro"`
-	Status   APIString `json:"status"`
-	NumHosts int       `json:"num_hosts"`
-	NumTasks int       `json:"running_tasks"`
-	MaxHosts int       `json:"max_hosts"`
+	Distro   *string `json:"distro"`
+	Status   *string `json:"status"`
+	NumHosts int     `json:"num_hosts"`
+	NumTasks int     `json:"running_tasks"`
+	MaxHosts int     `json:"max_hosts"`
 }
 
 // BuildFromService takes the slice of stats returned by GetHostStatsByDistro and embeds
@@ -111,8 +111,8 @@ func (s *APIHostStatsByDistro) BuildFromService(h interface{}) error {
 	case []host.StatsByDistro:
 		for _, entry := range v {
 			d := apiHostStatsForDistro{
-				Distro:   ToAPIString(entry.Distro),
-				Status:   ToAPIString(entry.Status),
+				Distro:   ToStringPtr(entry.Distro),
+				Status:   ToStringPtr(entry.Status),
 				NumHosts: entry.Count,
 				NumTasks: entry.NumTasks,
 				MaxHosts: entry.MaxHosts,

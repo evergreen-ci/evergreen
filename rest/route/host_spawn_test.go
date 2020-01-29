@@ -379,16 +379,16 @@ func TestGetVolumesHandler(t *testing.T) {
 	require.Len(t, volumes, 2)
 
 	for _, v := range volumes {
-		assert.Equal(t, "user", model.FromAPIString(v.CreatedBy))
-		assert.Equal(t, evergreen.DefaultEBSType, model.FromAPIString(v.Type))
-		assert.Equal(t, evergreen.DefaultEBSAvailabilityZone, model.FromAPIString(v.AvailabilityZone))
-		if model.FromAPIString(v.ID) == "volume1" {
-			assert.Equal(t, h1.Id, model.FromAPIString(v.HostID))
-			assert.Equal(t, h1.Volumes[0].DeviceName, model.FromAPIString(v.DeviceName))
+		assert.Equal(t, "user", model.FromStringPtr(v.CreatedBy))
+		assert.Equal(t, evergreen.DefaultEBSType, model.FromStringPtr(v.Type))
+		assert.Equal(t, evergreen.DefaultEBSAvailabilityZone, model.FromStringPtr(v.AvailabilityZone))
+		if model.FromStringPtr(v.ID) == "volume1" {
+			assert.Equal(t, h1.Id, model.FromStringPtr(v.HostID))
+			assert.Equal(t, h1.Volumes[0].DeviceName, model.FromStringPtr(v.DeviceName))
 			assert.Equal(t, v.Size, 64)
 		} else {
-			assert.Empty(t, model.FromAPIString(v.HostID))
-			assert.Empty(t, model.FromAPIString(v.DeviceName))
+			assert.Empty(t, model.FromStringPtr(v.HostID))
+			assert.Empty(t, model.FromStringPtr(v.DeviceName))
 			assert.Equal(t, v.Size, 36)
 		}
 	}
@@ -406,8 +406,8 @@ func TestMakeSpawnHostSubscription(t *testing.T) {
 
 	sub, err := makeSpawnHostSubscription("id", event.SlackSubscriberType, user)
 	assert.NoError(t, err)
-	assert.Equal(t, event.ResourceTypeHost, model.FromAPIString(sub.ResourceType))
+	assert.Equal(t, event.ResourceTypeHost, model.FromStringPtr(sub.ResourceType))
 	assert.Len(t, sub.Selectors, 1)
-	assert.Equal(t, event.SlackSubscriberType, model.FromAPIString(sub.Subscriber.Type))
+	assert.Equal(t, event.SlackSubscriberType, model.FromStringPtr(sub.Subscriber.Type))
 	assert.Equal(t, "@mci", sub.Subscriber.Target)
 }

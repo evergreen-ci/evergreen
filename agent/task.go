@@ -294,7 +294,7 @@ func (tc *taskContext) getExecTimeout() time.Duration {
 	if dynamicTimeout := tc.taskConfig.GetExecTimeout(); dynamicTimeout > 0 {
 		return time.Duration(dynamicTimeout) * time.Second
 	}
-	if pt := tc.taskConfig.Project.FindProjectTask(tc.taskConfig.Task.DisplayName); pt.ExecTimeoutSecs > 0 {
+	if pt := tc.taskConfig.Project.FindProjectTask(tc.taskConfig.Task.DisplayName); pt != nil && pt.ExecTimeoutSecs > 0 {
 		return time.Duration(pt.ExecTimeoutSecs) * time.Second
 	}
 	if tc.taskConfig.Project.ExecTimeoutSecs > 0 {

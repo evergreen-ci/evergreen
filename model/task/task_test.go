@@ -1775,4 +1775,15 @@ func TestMarkGeneratedTasks(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, false, found.GeneratedTasks, "document not found should not set generated tasks, since this was a race and did not generate.tasks")
 	require.Equal(t, "", found.GenerateTasksError)
+
+	t4 := &Task{
+		Id: "t4",
+	}
+	dupError := errors.New("duplicate key error")
+	require.NoError(t, t4.Insert())
+	require.NoError(t, MarkGeneratedTasks(t4.Id, dupError))
+	found, err = FindOneId(t4.Id)
+	require.NoError(t, err)
+	require.Equal(t, false, found.GeneratedTasks, "duplicate key error should not set generated tasks, since this was a race and did not generate.tasks")
+	require.Equal(t, "", found.GenerateTasksError)
 }

@@ -79,11 +79,11 @@ func (msc *MockStatsConnector) SetTestStats(baseTestName string, numStats int) {
 	day := util.GetUTCDay(time.Now()).Format("2006-01-02")
 	for i := 0; i < numStats; i++ {
 		msc.CachedTestStats[i] = model.APITestStats{
-			TestFile:     model.ToAPIString(fmt.Sprintf("%v%v", baseTestName, i)),
-			TaskName:     model.ToAPIString("task"),
-			BuildVariant: model.ToAPIString("variant"),
-			Distro:       model.ToAPIString("distro"),
-			Date:         model.ToAPIString(day),
+			TestFile:     model.ToStringPtr(fmt.Sprintf("%v%v", baseTestName, i)),
+			TaskName:     model.ToStringPtr("task"),
+			BuildVariant: model.ToStringPtr("variant"),
+			Distro:       model.ToStringPtr("distro"),
+			Date:         model.ToStringPtr(day),
 		}
 	}
 }
@@ -94,10 +94,10 @@ func (msc *MockStatsConnector) SetTaskStats(baseTaskName string, numStats int) {
 	day := util.GetUTCDay(time.Now()).Format("2006-01-02")
 	for i := 0; i < numStats; i++ {
 		msc.CachedTaskStats[i] = model.APITaskStats{
-			TaskName:     model.ToAPIString(fmt.Sprintf("%v%v", baseTaskName, i)),
-			BuildVariant: model.ToAPIString("variant"),
-			Distro:       model.ToAPIString("distro"),
-			Date:         model.ToAPIString(day),
+			TaskName:     model.ToStringPtr(fmt.Sprintf("%v%v", baseTaskName, i)),
+			BuildVariant: model.ToStringPtr("variant"),
+			Distro:       model.ToStringPtr("distro"),
+			Date:         model.ToStringPtr(day),
 		}
 	}
 }

@@ -34,7 +34,7 @@ func TestSubscriberModelsGithubStatusAPI(t *testing.T) {
 
 	// incoming subscribers have target serialized as a map
 	incoming := APISubscriber{
-		Type: ToAPIString(event.GithubPullRequestSubscriberType),
+		Type: ToStringPtr(event.GithubPullRequestSubscriberType),
 		Target: map[string]interface{}{
 			"owner":     "me",
 			"repo":      "mine",
@@ -81,7 +81,7 @@ func TestSubscriberModelsGithubMerge(t *testing.T) {
 
 	// incoming subscribers have target serialized as a map
 	incoming := APISubscriber{
-		Type: ToAPIString(event.GithubMergeSubscriberType),
+		Type: ToStringPtr(event.GithubMergeSubscriberType),
 		Target: map[string]interface{}{
 			"prs": []map[string]interface{}{
 				{
@@ -127,7 +127,7 @@ func TestSubscriberModelsWebhook(t *testing.T) {
 
 	// incoming subscribers have target serialized as a map
 	incoming := APISubscriber{
-		Type: ToAPIString(event.EvergreenWebhookSubscriberType),
+		Type: ToStringPtr(event.EvergreenWebhookSubscriberType),
 		Target: map[string]interface{}{
 			"url":    "foo",
 			"secret": "bar",
@@ -164,7 +164,7 @@ func TestSubscriberModelsJIRAIssue(t *testing.T) {
 
 	// incoming subscribers have target serialized as a map
 	incoming := APISubscriber{
-		Type: ToAPIString(event.JIRAIssueSubscriberType),
+		Type: ToStringPtr(event.JIRAIssueSubscriberType),
 		Target: map[string]interface{}{
 			"project":    "ABC",
 			"issue_type": "123",

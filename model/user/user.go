@@ -10,6 +10,8 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -35,8 +37,10 @@ func (u *DBUser) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(u) }
 func (u *DBUser) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, u) }
 
 type LoginCache struct {
-	Token string    `bson:"token"`
-	TTL   time.Time `bson:"ttl"`
+	Token        string    `bson:"token"`
+	TTL          time.Time `bson:"ttl"`
+	AccessToken  string    `bson:"access_token,omitempty"`
+	RefreshToken string    `bson:"refresh_token,omitempty"`
 }
 
 type GithubUser struct {
@@ -100,6 +104,16 @@ func (u *DBUser) DisplayName() string {
 		return u.DispName
 	}
 	return u.Id
+}
+
+func (u *DBUser) GetAccessToken() string {
+	grip.Alert("GetAccessToken not yet implemented for DBUser")
+	return ""
+}
+
+func (u *DBUser) GetRefreshToken() string {
+	grip.Alert("GetRefreshToken not yet implemented for DBUser")
+	return ""
 }
 
 func (u *DBUser) GetPublicKey(keyname string) (string, error) {
@@ -226,23 +240,29 @@ func (u *DBUser) RemoveRole(role string) error {
 	return event.LogUserEvent(u.Id, event.UserEventTypeRolesUpdate, before, u.SystemRoles)
 }
 
-func (u *DBUser) HasPermission(opts gimlet.PermissionOpts) (bool, error) {
+func (u *DBUser) HasPermission(opts gimlet.PermissionOpts) bool {
 	roleManager := evergreen.GetEnvironment().RoleManager()
 	roles, err := roleManager.GetRoles(u.Roles())
 	if err != nil {
-		return false, errors.Wrap(err, "error getting roles")
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error getting roles",
+		}))
+		return false
 	}
 	roles, err = roleManager.FilterForResource(roles, opts.Resource, opts.ResourceType)
 	if err != nil {
-		return false, errors.Wrap(err, "error filtering resources")
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error filtering resources",
+		}))
+		return false
 	}
 	for _, role := range roles {
 		level, hasPermission := role.Permissions[opts.Permission]
 		if hasPermission && level >= opts.RequiredLevel {
-			return true, nil
+			return true
 		}
 	}
-	return false, nil
+	return false
 }
 
 func GetPatchUser(gitHubUID int) (*DBUser, error) {
@@ -316,6 +336,42 @@ func PutLoginCache(g gimlet.User) (string, error) {
 	return token, nil
 }
 
+// PutLoginCacheAndTokens is the same as PutLoginCache but also adds the given
+// access and refresh tokens to the cache.
+func PutLoginCacheAndTokens(gu gimlet.User, accessToken, refreshToken string) (string, error) {
+	u, err := FindOneById(gu.Username())
+	if err != nil {
+		return "", errors.Wrap(err, "problem finding user by id")
+	}
+	if u == nil {
+		return "", errors.Errorf("no user '%s' found", gu.Username())
+	}
+
+	// Always update the TTL. If the user doesn't  have a token, generate and
+	// set it.
+	var update bson.M
+	token := u.LoginCache.Token
+	if token == "" {
+		token = util.RandomString()
+		update = bson.M{"$set": bson.M{
+			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTokenKey):        token,
+			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey):          time.Now(),
+			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheAccessTokenKey):  accessToken,
+			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheRefreshTokenKey): refreshToken,
+		}}
+	} else {
+		update = bson.M{"$set": bson.M{
+			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey):          time.Now(),
+			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheAccessTokenKey):  accessToken,
+			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheRefreshTokenKey): refreshToken,
+		}}
+	}
+	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+		return "", errors.Wrap(err, "problem updating user cache")
+	}
+	return token, nil
+}
+
 // GetLoginCache retrieve a cached user by token.
 // It returns an error if and only if there was an error retrieving the user from the cache.
 // It returns (<user>, true, nil) if the user is present in the cache and is valid.
@@ -333,6 +389,19 @@ func GetLoginCache(token string, expireAfter time.Duration) (gimlet.User, bool, 
 		return u, false, nil
 	}
 	return u, true, nil
+}
+
+// GetLoginCacheAndTokens is the same as GetLoginCache but also returns their
+// access and refresh tokens.
+func GetLoginCacheAndTokens(token string, expireAfter time.Duration) (user gimlet.User, valid bool, accessToken string, refreshToken string, err error) {
+	u, err := FindOneByToken(token)
+	if err != nil {
+		return nil, false, "", "", errors.Wrap(err, "probloem getting user from cache")
+	}
+	if u == nil {
+		return nil, false, "", "", nil
+	}
+	return u, time.Since(u.LoginCache.TTL) < expireAfter, u.LoginCache.AccessToken, u.LoginCache.RefreshToken, nil
 }
 
 // ClearLoginCache clears a user or all users' tokens from the cache, forcibly logging them out

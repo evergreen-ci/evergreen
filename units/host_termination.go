@@ -162,7 +162,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	}
 	// set host as decommissioned in DB so no new task will be assigned
 	prevStatus := j.host.Status
-	if err = j.host.SetDecommissioned(evergreen.User, ""); err != nil {
+	if err = j.host.SetDecommissioned(evergreen.User, "host will be terminated shortly, preventing task dispatch"); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"host":     j.host.Id,
 			"provider": j.host.Distro.Provider,

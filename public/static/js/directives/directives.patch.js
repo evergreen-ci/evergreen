@@ -8,6 +8,17 @@ directives.patch.directive('patchCommitPanel', function() {
     restrict : 'E',
     templateUrl : '/static/partials/patch_commit_panel.html',
     link : function(scope, element, attrs) {
+      scope.formatByCommit = function(summaries) {
+          var byCommits = {};
+          _.each(summaries, function(summary) {
+              if (byCommits[summary.Description] !== undefined) {
+                  byCommits[summary.Description].push(summary);
+              } else {
+                  byCommits[summary.Description] = [summary];
+              }
+          });
+          return byCommits
+      };
       scope.patchinfo = {};
       scope.basecommit = {};
       if(attrs.hideDescription){
@@ -23,6 +34,8 @@ directives.patch.directive('patchCommitPanel', function() {
         totalAdd = 0;
         totalDel = 0;
         _.each(scope.patchinfo.Patch.Patches, function(patch) {
+          patch.formatted = scope.formatByCommit(patch.PatchSet.Summary);
+
           _.each(patch.PatchSet.Summary, function(diff) {
             totalAdd += diff.Additions;
             totalDel += diff.Deletions;

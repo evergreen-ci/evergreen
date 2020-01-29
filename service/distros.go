@@ -55,13 +55,7 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 		Permission:    evergreen.PermissionDistroCreate,
 		RequiredLevel: evergreen.DistroCreate.Value,
 	}
-	createDistro, err := u.HasPermission(opts)
-	if err != nil {
-		message := "error fetching distro create permissions"
-		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
-		http.Error(w, message, http.StatusInternalServerError)
-		return
-	}
+	createDistro := u.HasPermission(opts)
 
 	settings, err := evergreen.GetConfig()
 	if err != nil {

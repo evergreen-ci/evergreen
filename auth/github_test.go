@@ -18,9 +18,9 @@ func TestGithubAuthManager(t *testing.T) {
 			authConfig := evergreen.AuthConfig{
 				Github: &g,
 			}
-			userManager, isLDAP, err := LoadUserManager(authConfig)
+			userManager, canClearTokens, err := LoadUserManager(authConfig)
 			So(err, ShouldBeNil)
-			So(isLDAP, ShouldBeFalse)
+			So(canClearTokens, ShouldBeFalse)
 			So(userManager.GetLoginHandler(""), ShouldNotBeNil)
 			So(userManager.GetLoginCallbackHandler(), ShouldNotBeNil)
 		})

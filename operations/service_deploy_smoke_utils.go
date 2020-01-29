@@ -167,55 +167,71 @@ OUTER:
 				continue OUTER
 			}
 
-			grip.Infof("checking for log %s", task.Logs["task_log"])
-			body, err := makeSmokeRequest(username, key, client, task.Logs["task_log"]+"&text=true")
+			// retry for *slightly* delayed logger closing
+			for i := 0; i < 3; i++ {
+				grip.Infof("checking for log %s (%d/3)", task.Logs["task_log"], i+1)
+				body, err := makeSmokeRequest(username, key, client, task.Logs["task_log"]+"&text=true")
+				if err != nil {
+					err = errors.Wrap(err, "error getting log data")
+					grip.Debug(err)
+					continue
+				}
+				if err = checkTaskLog(body); err == nil {
+					break
+				}
+			}
 			if err != nil {
-				return errors.Wrap(err, "error getting log data")
-			}
-			page := string(body)
-
-			// Validate that task contains task completed message
-			if strings.Contains(page, "Task completed - SUCCESS") {
-				grip.Infof("Found task completed message in log:\n%s", page)
-			} else {
-				grip.Errorf("did not find task completed message in log:\n%s", page)
-				return errors.New("did not find task completed message in log")
-			}
-
-			// Validate that setup_group only runs in first task
-			if strings.Contains(page, "first") {
-				if !strings.Contains(page, "setup_group") {
-					return errors.New("did not find setup_group in logs for first task")
-				}
-			} else {
-				if strings.Contains(page, "setup_group") {
-					return errors.New("setup_group should only run in first task")
-				}
-			}
-
-			// Validate that setup_task and teardown_task run for all tasks
-			if !strings.Contains(page, "setup_task") {
-				return errors.New("did not find setup_task in logs")
-			}
-			if !strings.Contains(page, "teardown_task") {
-				return errors.New("did not find teardown_task in logs")
-			}
-
-			// Validate that teardown_group only runs in last task
-			if strings.Contains(page, "fourth") {
-				if !strings.Contains(page, "teardown_group") {
-					return errors.New("did not find teardown_group in logs for last (fourth) task")
-				}
-			} else {
-				if strings.Contains(page, "teardown_group") {
-					return errors.New("teardown_group should only run in last (fourth) task")
-				}
+				return err
 			}
 		}
 		grip.Info("Successfully checked tasks")
 		return nil
 	}
 	return errors.New("this code should be unreachable")
+}
+
+func checkTaskLog(body []byte) error {
+	page := string(body)
+
+	// Validate that task contains task completed message
+	if strings.Contains(page, "Task completed - SUCCESS") {
+		grip.Infof("Found task completed message in log:\n%s", page)
+	} else {
+		grip.Errorf("did not find task completed message in log:\n%s", page)
+		return errors.New("did not find task completed message in log")
+	}
+
+	// Validate that setup_group only runs in first task
+	if strings.Contains(page, "first") {
+		if !strings.Contains(page, "setup_group") {
+			return errors.New("did not find setup_group in logs for first task")
+		}
+	} else {
+		if strings.Contains(page, "setup_group") {
+			return errors.New("setup_group should only run in first task")
+		}
+	}
+
+	// Validate that setup_task and teardown_task run for all tasks
+	if !strings.Contains(page, "setup_task") {
+		return errors.New("did not find setup_task in logs")
+	}
+	if !strings.Contains(page, "teardown_task") {
+		return errors.New("did not find teardown_task in logs")
+	}
+
+	// Validate that teardown_group only runs in last task
+	if strings.Contains(page, "fourth") {
+		if !strings.Contains(page, "teardown_group") {
+			return errors.New("did not find teardown_group in logs for last (fourth) task")
+		}
+	} else {
+		if strings.Contains(page, "teardown_group") {
+			return errors.New("teardown_group should only run in last (fourth) task")
+		}
+	}
+
+	return nil
 }
 
 func checkTask(client *http.Client, username, key string, builds []apimodels.APIBuild, taskIndex int) (apimodels.APITask, error) {
@@ -234,13 +250,16 @@ func checkTask(client *http.Client, username, key string, builds []apimodels.API
 	if err != nil {
 		return task, errors.Wrap(err, "error getting task data")
 	}
-
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		err = errors.Wrap(err, "error reading response body")
 		grip.Error(err)
 		return task, err
 	}
+	if resp.StatusCode >= 400 {
+		return task, errors.Errorf("got HTTP response code %d with error %s", resp.StatusCode, string(body))
+	}
+
 	err = json.Unmarshal(body, &task)
 	if err != nil {
 		return task, errors.Wrap(err, "error unmarshaling json")
@@ -273,15 +292,16 @@ func makeSmokeRequest(username, key string, client *http.Client, url string) ([]
 		grip.Error(err)
 		return nil, err
 	}
+	if resp.StatusCode >= 400 {
+		return body, errors.Errorf("got HTTP response code %d with error %s", resp.StatusCode, string(body))
+	}
 
 	return body, nil
 }
 
 func makeSmokeRequestAndCheck(username, key string, client *http.Client, url string, expected []string) error {
 	body, err := makeSmokeRequest(username, key, client, url)
-	if err != nil {
-		return err
-	}
+	grip.Error(err)
 	page := string(body)
 	catcher := grip.NewSimpleCatcher()
 	for _, text := range expected {

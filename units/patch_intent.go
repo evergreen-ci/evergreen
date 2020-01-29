@@ -1,12 +1,15 @@
 package units
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"strings"
 	"time"
+
+	"github.com/sam-falvo/mbox"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -172,8 +175,8 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	default:
 		return errors.Errorf("Intent type '%s' is unknown", j.IntentType)
 	}
-	if len := len(patchDoc.Patches); len != 1 {
-		catcher.Add(errors.Errorf("patch document should have 1 patch, found %d", len))
+	if len(patchDoc.Patches) != 1 {
+		catcher.Add(errors.Errorf("patch document should have 1 patch, found %d", len(patchDoc.Patches)))
 	}
 
 	if err = catcher.Resolve(); err != nil {
@@ -342,32 +345,101 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	_, err = thirdparty.GetCommitEvent(ctx, githubOauthToken, projectRef.Owner,
+	commit, err := thirdparty.GetCommitEvent(ctx, githubOauthToken, projectRef.Owner,
 		projectRef.Repo, patchDoc.Githash)
 	if err != nil {
 		return errors.Wrapf(err, "could not find base revision '%s' for project '%s'",
 			patchDoc.Githash, projectRef.Identifier)
 	}
-
-	var reader io.ReadCloser
-	reader, err = db.GetGridFile(patch.GridFSPrefix, patchDoc.Patches[0].PatchSet.PatchFileId)
-	if err != nil {
-		return err
-	}
-	defer reader.Close()
-	bytes, err := ioutil.ReadAll(reader)
-	if err != nil {
-		return err
+	// With `evergreen patch-file`, a user can pass a branch name or tag instead of a hash. We
+	// must normalize this to a hash before storing the patch doc.
+	if commit != nil && commit.SHA != nil && patchDoc.Githash != *commit.SHA {
+		patchDoc.Githash = *commit.SHA
 	}
 
-	summaries, err := thirdparty.GetPatchSummaries(string(bytes))
+	readCloser, err := db.GetGridFile(patch.GridFSPrefix, patchDoc.Patches[0].PatchSet.PatchFileId)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error getting patch file")
 	}
+	defer readCloser.Close()
+	patchBytes, err := ioutil.ReadAll(readCloser)
+	if err != nil {
+		return errors.Wrap(err, "error parsing patch")
+	}
+
+	var summaries []patch.Summary
+	if patch.IsMailboxDiff(string(patchBytes)) {
+		reader := strings.NewReader(string(patchBytes))
+		summaries, err = GetPatchSummariesByCommit(reader)
+		if err != nil {
+			return errors.Wrapf(err, "error getting summaries by commit")
+		}
+	} else {
+		summaries, err = thirdparty.GetPatchSummaries(string(patchBytes))
+		if err != nil {
+			return err
+		}
+	}
+
 	patchDoc.Patches[0].ModuleName = ""
 	patchDoc.Patches[0].PatchSet.Summary = summaries
-
 	return nil
+}
+
+// if commit queue then mbox format, organize summaries by commit
+func GetPatchSummariesByCommit(reader io.Reader) ([]patch.Summary, error) {
+	stream, err := mbox.CreateMboxStream(reader)
+	if err != nil {
+		if err == io.EOF {
+			return nil, errors.Errorf("patch is empty")
+		}
+		return nil, errors.Wrap(err, "error creating stream")
+	}
+	if stream == nil {
+		return nil, errors.New("mbox stream is nil")
+	}
+	result := []patch.Summary{}
+
+	// iterate through patches
+	for err == nil {
+		var buffer []byte
+		msg, err := stream.ReadMessage()
+		if err != nil {
+			if err == io.EOF { // no more patches
+				return result, nil
+			}
+			return nil, errors.Wrap(err, "error reading message")
+		}
+
+		var description string
+		if subject := msg.Headers()["Subject"]; len(subject) > 0 {
+			description = strings.TrimSpace(subject[0])
+		}
+
+		reader := msg.BodyReader()
+		// iterate through patch body
+		for {
+			curBytes := make([]byte, bytes.MinRead)
+			n, err := reader.Read(curBytes)
+			if err != nil {
+				if err == io.EOF { // finished reading body of this patch
+					summaries, err := thirdparty.GetPatchSummaries(string(buffer))
+					if err != nil {
+						return nil, errors.Wrapf(err, "error getting patch summaries for commit '%s'", description)
+					}
+					for i := range summaries {
+						summaries[i].Description = description
+					}
+					result = append(result, summaries...)
+					break
+				}
+				return nil, errors.Wrap(err, "error reading body")
+			}
+			buffer = append(buffer, curBytes[0:n]...)
+		}
+	}
+
+	return result, nil
 }
 
 func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) (bool, error) {

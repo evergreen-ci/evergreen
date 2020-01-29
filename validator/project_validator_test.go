@@ -631,6 +631,19 @@ func TestVerifyTaskRequirements(t *testing.T) {
 			}
 			So(verifyTaskRequirements(p), ShouldResemble, ValidationErrors{})
 		})
+		Convey("a task requiring a task outside its own variant should be allowed", func() {
+			p := &model.Project{
+				Tasks: []model.ProjectTask{
+					{Name: "1", Requires: []model.TaskUnitRequirement{{Name: "2", Variant: "v2"}}},
+					{Name: "2"},
+				},
+				BuildVariants: []model.BuildVariant{
+					{Name: "v1", Tasks: []model.BuildVariantTaskUnit{{Name: "1"}}},
+					{Name: "v2", Tasks: []model.BuildVariantTaskUnit{{Name: "2"}}},
+				},
+			}
+			So(verifyTaskRequirements(p), ShouldResemble, ValidationErrors{})
+		})
 		Convey("hiding a nonexistent requirement in a task group is found", func() {
 			p := &model.Project{
 				Tasks: []model.ProjectTask{
@@ -2107,4 +2120,33 @@ buildvariants:
 	errs := CheckProjectSyntax(&proj)
 	assert.Len(errs, 1, "one warning was found")
 	assert.NoError(CheckProjectConfigurationIsValid(&proj), "no errors are reported because they are warnings")
+}
+
+func TestGetDistroIdsForProject(t *testing.T) {
+	require := require.New(t)
+	require.NoError(db.Clear(distro.Collection))
+	d := distro.Distro{
+		Id:            "distro1",
+		ValidProjects: []string{"project1", "project2"},
+	}
+	require.NoError(d.Insert())
+	d = distro.Distro{
+		Id: "distro2",
+	}
+	require.NoError(d.Insert())
+	d = distro.Distro{
+		Id:            "distro3",
+		ValidProjects: []string{"project5"},
+	}
+	require.NoError(d.Insert())
+
+	ids, err := getDistroIds()
+	require.NoError(err)
+	require.Len(ids, 3)
+	ids, err = getDistroIdsForProject("project1")
+	require.NoError(err)
+	require.Len(ids, 2)
+	ids, err = getDistroIdsForProject("project3")
+	require.NoError(err)
+	require.Len(ids, 1)
 }

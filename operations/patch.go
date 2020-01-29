@@ -97,9 +97,16 @@ func Patch() cli.Command {
 				return err
 			}
 
-			diffData, err := loadGitData(ref.Branch, params.Ref, args...)
+			diffData, err := loadGitData(ref.Branch, params.Ref, "", false, args...)
 			if err != nil {
 				return err
+			}
+
+			if params.Description == "" {
+				params.Description, err = getDefaultDescription()
+				if err != nil {
+					grip.Error(err)
+				}
 			}
 
 			_, err = params.createPatch(ac, conf, diffData)
@@ -170,6 +177,13 @@ func PatchFile() cli.Command {
 			}
 
 			diffData := &localDiff{string(fullPatch), "", "", base}
+
+			if params.Description == "" {
+				params.Description, err = getDefaultDescription()
+				if err != nil {
+					grip.Error(err)
+				}
+			}
 
 			_, err = params.createPatch(ac, conf, diffData)
 			return err

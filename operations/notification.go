@@ -52,8 +52,8 @@ func notificationSlack() cli.Command {
 			defer cancel()
 
 			apiSlack := model.APISlack{
-				Target: model.ToAPIString(target),
-				Msg:    model.ToAPIString(msg),
+				Target: model.ToStringPtr(target),
+				Msg:    model.ToStringPtr(msg),
 			}
 
 			conf, err := NewClientSettings(confPath)
@@ -120,10 +120,10 @@ func notificationEmail() cli.Command {
 			defer cancel()
 
 			apiEmail := model.APIEmail{
-				From:       model.ToAPIString(from),
-				Subject:    model.ToAPIString(subject),
+				From:       model.ToStringPtr(from),
+				Subject:    model.ToStringPtr(subject),
 				Recipients: recipients,
-				Body:       model.ToAPIString(body),
+				Body:       model.ToStringPtr(body),
 			}
 
 			conf, err := NewClientSettings(confPath)

@@ -52,7 +52,7 @@ func (d *DBAliasConnector) UpdateProjectAliases(projectId string, aliases []rest
 	catcher := grip.NewBasicCatcher()
 	for _, aliasModel := range aliases {
 		if aliasModel.Delete {
-			aliasesToDelete = append(aliasesToDelete, restModel.FromAPIString(aliasModel.ID))
+			aliasesToDelete = append(aliasesToDelete, restModel.FromStringPtr(aliasModel.ID))
 		} else {
 			v, err := aliasModel.ToService()
 			catcher.Add(errors.Wrap(err, "problem converting to project variable model"))

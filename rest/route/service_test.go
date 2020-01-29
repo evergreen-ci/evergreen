@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -79,20 +80,20 @@ func TestHostPaginator(t *testing.T) {
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					nextModelHost := &model.APIHost{
-						Id:      model.ToAPIString(fmt.Sprintf("host%d", i)),
-						HostURL: model.ToAPIString(""),
+						Id:      model.ToStringPtr(fmt.Sprintf("host%d", i)),
+						HostURL: model.ToStringPtr(""),
 						Distro: model.DistroInfo{
-							Id:       model.ToAPIString(""),
-							Provider: model.ToAPIString(evergreen.ProviderNameMock),
-							ImageId:  model.ToAPIString(""),
+							Id:       model.ToStringPtr(""),
+							Provider: model.ToStringPtr(evergreen.ProviderNameMock),
+							ImageId:  model.ToStringPtr(""),
 						},
-						StartedBy:        model.ToAPIString(""),
-						Type:             model.ToAPIString(""),
-						User:             model.ToAPIString(""),
-						Status:           model.ToAPIString(""),
-						InstanceType:     model.ToAPIString(""),
-						AvailabilityZone: model.ToAPIString(""),
-						HomeVolumeID:     model.ToAPIString(""),
+						StartedBy:        model.ToStringPtr(""),
+						Type:             model.ToStringPtr(""),
+						User:             model.ToStringPtr(""),
+						Status:           model.ToStringPtr(""),
+						InstanceType:     model.ToStringPtr(""),
+						AvailabilityZone: model.ToStringPtr(""),
+						HomeVolumeID:     model.ToStringPtr(""),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
@@ -120,20 +121,20 @@ func TestHostPaginator(t *testing.T) {
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					nextModelHost := &model.APIHost{
-						Id:      model.ToAPIString(fmt.Sprintf("host%d", i)),
-						HostURL: model.ToAPIString(""),
+						Id:      model.ToStringPtr(fmt.Sprintf("host%d", i)),
+						HostURL: model.ToStringPtr(""),
 						Distro: model.DistroInfo{
-							Id:       model.ToAPIString(""),
-							Provider: model.ToAPIString(evergreen.ProviderNameMock),
-							ImageId:  model.ToAPIString(""),
+							Id:       model.ToStringPtr(""),
+							Provider: model.ToStringPtr(evergreen.ProviderNameMock),
+							ImageId:  model.ToStringPtr(""),
 						},
-						StartedBy:        model.ToAPIString(""),
-						Type:             model.ToAPIString(""),
-						User:             model.ToAPIString(""),
-						Status:           model.ToAPIString(""),
-						InstanceType:     model.ToAPIString(""),
-						AvailabilityZone: model.ToAPIString(""),
-						HomeVolumeID:     model.ToAPIString(""),
+						StartedBy:        model.ToStringPtr(""),
+						Type:             model.ToStringPtr(""),
+						User:             model.ToStringPtr(""),
+						Status:           model.ToStringPtr(""),
+						InstanceType:     model.ToStringPtr(""),
+						AvailabilityZone: model.ToStringPtr(""),
+						HomeVolumeID:     model.ToStringPtr(""),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
@@ -162,20 +163,20 @@ func TestHostPaginator(t *testing.T) {
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					nextModelHost := &model.APIHost{
-						Id:      model.ToAPIString(fmt.Sprintf("host%d", i)),
-						HostURL: model.ToAPIString(""),
+						Id:      model.ToStringPtr(fmt.Sprintf("host%d", i)),
+						HostURL: model.ToStringPtr(""),
 						Distro: model.DistroInfo{
-							Id:       model.ToAPIString(""),
-							Provider: model.ToAPIString(evergreen.ProviderNameMock),
-							ImageId:  model.ToAPIString(""),
+							Id:       model.ToStringPtr(""),
+							Provider: model.ToStringPtr(evergreen.ProviderNameMock),
+							ImageId:  model.ToStringPtr(""),
 						},
-						StartedBy:        model.ToAPIString(""),
-						Type:             model.ToAPIString(""),
-						User:             model.ToAPIString(""),
-						Status:           model.ToAPIString(""),
-						InstanceType:     model.ToAPIString(""),
-						AvailabilityZone: model.ToAPIString(""),
-						HomeVolumeID:     model.ToAPIString(""),
+						StartedBy:        model.ToStringPtr(""),
+						Type:             model.ToStringPtr(""),
+						User:             model.ToStringPtr(""),
+						Status:           model.ToStringPtr(""),
+						InstanceType:     model.ToStringPtr(""),
+						AvailabilityZone: model.ToStringPtr(""),
+						HomeVolumeID:     model.ToStringPtr(""),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
@@ -203,20 +204,20 @@ func TestHostPaginator(t *testing.T) {
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					nextModelHost := &model.APIHost{
-						Id:      model.ToAPIString(fmt.Sprintf("host%d", i)),
-						HostURL: model.ToAPIString(""),
+						Id:      model.ToStringPtr(fmt.Sprintf("host%d", i)),
+						HostURL: model.ToStringPtr(""),
 						Distro: model.DistroInfo{
-							Id:       model.ToAPIString(""),
-							Provider: model.ToAPIString(evergreen.ProviderNameMock),
-							ImageId:  model.ToAPIString(""),
+							Id:       model.ToStringPtr(""),
+							Provider: model.ToStringPtr(evergreen.ProviderNameMock),
+							ImageId:  model.ToStringPtr(""),
 						},
-						StartedBy:        model.ToAPIString(""),
-						Type:             model.ToAPIString(""),
-						User:             model.ToAPIString(""),
-						Status:           model.ToAPIString(""),
-						InstanceType:     model.ToAPIString(""),
-						AvailabilityZone: model.ToAPIString(""),
-						HomeVolumeID:     model.ToAPIString(""),
+						StartedBy:        model.ToStringPtr(""),
+						Type:             model.ToStringPtr(""),
+						User:             model.ToStringPtr(""),
+						Status:           model.ToStringPtr(""),
+						InstanceType:     model.ToStringPtr(""),
+						AvailabilityZone: model.ToStringPtr(""),
+						HomeVolumeID:     model.ToStringPtr(""),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
@@ -656,15 +657,15 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						StartTime: model.NewTime(time.Unix(0, 0)),
-						EndTime:   model.NewTime(time.Unix(0, 0)),
-						Status:    model.ToAPIString(status),
-						TaskId:    model.ToAPIString(""),
-						TestFile:  model.ToAPIString(""),
+						StartTime: time.Unix(0, 0),
+						EndTime:   time.Unix(0, 0),
+						Status:    model.ToStringPtr(status),
+						TaskId:    model.ToStringPtr(""),
+						TestFile:  model.ToStringPtr(""),
 						Logs: model.TestLogs{
-							URL:    model.ToAPIString(""),
-							URLRaw: model.ToAPIString(""),
-							LogId:  model.ToAPIString(""),
+							URL:    model.ToStringPtr(""),
+							URLRaw: model.ToStringPtr(""),
+							LogId:  model.ToStringPtr(""),
 						},
 					}
 					expectedTests = append(expectedTests, nextModelTest)
@@ -699,15 +700,15 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						StartTime: model.NewTime(time.Unix(0, 0)),
-						EndTime:   model.NewTime(time.Unix(0, 0)),
-						Status:    model.ToAPIString(status),
-						TaskId:    model.ToAPIString(""),
-						TestFile:  model.ToAPIString(""),
+						StartTime: time.Unix(0, 0),
+						EndTime:   time.Unix(0, 0),
+						Status:    model.ToStringPtr(status),
+						TaskId:    model.ToStringPtr(""),
+						TestFile:  model.ToStringPtr(""),
 						Logs: model.TestLogs{
-							URL:    model.ToAPIString(""),
-							URLRaw: model.ToAPIString(""),
-							LogId:  model.ToAPIString(""),
+							URL:    model.ToStringPtr(""),
+							URLRaw: model.ToStringPtr(""),
+							LogId:  model.ToStringPtr(""),
 						},
 					}
 					expectedTests = append(expectedTests, nextModelTest)
@@ -742,15 +743,15 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						StartTime: model.NewTime(time.Unix(0, 0)),
-						EndTime:   model.NewTime(time.Unix(0, 0)),
-						Status:    model.ToAPIString(status),
-						TaskId:    model.ToAPIString(""),
-						TestFile:  model.ToAPIString(""),
+						StartTime: time.Unix(0, 0),
+						EndTime:   time.Unix(0, 0),
+						Status:    model.ToStringPtr(status),
+						TaskId:    model.ToStringPtr(""),
+						TestFile:  model.ToStringPtr(""),
 						Logs: model.TestLogs{
-							URL:    model.ToAPIString(""),
-							URLRaw: model.ToAPIString(""),
-							LogId:  model.ToAPIString(""),
+							URL:    model.ToStringPtr(""),
+							URLRaw: model.ToStringPtr(""),
+							LogId:  model.ToStringPtr(""),
 						},
 					}
 					expectedTests = append(expectedTests, nextModelTest)
@@ -785,15 +786,15 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						StartTime: model.NewTime(time.Unix(0, 0)),
-						EndTime:   model.NewTime(time.Unix(0, 0)),
-						Status:    model.ToAPIString(status),
-						TaskId:    model.ToAPIString(""),
-						TestFile:  model.ToAPIString(""),
+						StartTime: time.Unix(0, 0),
+						EndTime:   time.Unix(0, 0),
+						Status:    model.ToStringPtr(status),
+						TaskId:    model.ToStringPtr(""),
+						TestFile:  model.ToStringPtr(""),
 						Logs: model.TestLogs{
-							URL:    model.ToAPIString(""),
-							URLRaw: model.ToAPIString(""),
-							LogId:  model.ToAPIString(""),
+							URL:    model.ToStringPtr(""),
+							URLRaw: model.ToStringPtr(""),
+							LogId:  model.ToStringPtr(""),
 						},
 					}
 					expectedTests = append(expectedTests, nextModelTest)
@@ -955,7 +956,7 @@ func TestTaskExecutionPatchExecute(t *testing.T) {
 			So(ok, ShouldBeTrue)
 			So(resTask.Priority, ShouldEqual, int64(100))
 			So(resTask.Activated, ShouldBeTrue)
-			So(model.FromAPIString(resTask.ActivatedBy), ShouldEqual, "testUser")
+			So(model.FromStringPtr(resTask.ActivatedBy), ShouldEqual, "testUser")
 		})
 	})
 }
@@ -1039,8 +1040,8 @@ func TestTaskGetHandler(t *testing.T) {
 				res := model.APITask{}
 				err = json.Unmarshal(rr.Body.Bytes(), &res)
 				So(err, ShouldBeNil)
-				So(model.FromAPIString(res.Id), ShouldEqual, "testTaskId")
-				So(model.FromAPIString(res.ProjectId), ShouldEqual, "testProject")
+				So(model.FromStringPtr(res.Id), ShouldEqual, "testTaskId")
+				So(model.FromStringPtr(res.ProjectId), ShouldEqual, "testProject")
 				So(len(res.PreviousExecutions), ShouldEqual, 0)
 			})
 			Convey("and old tasks are available", func() {
@@ -1119,7 +1120,7 @@ func TestTaskResetExecute(t *testing.T) {
 			resTask, ok := res.Data().(*model.APITask)
 			So(ok, ShouldBeTrue)
 			So(resTask.Activated, ShouldBeTrue)
-			So(resTask.DispatchTime, ShouldResemble, model.APIZeroTime)
+			So(resTask.DispatchTime, ShouldResemble, util.ZeroTime)
 			dbTask, err := sc.FindTaskById("testTaskId")
 			So(err, ShouldBeNil)
 			So(dbTask.Secret, ShouldNotResemble, "initialSecret")

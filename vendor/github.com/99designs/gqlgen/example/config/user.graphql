@@ -1,0 +1,5 @@
+type User
+@goModel(model:"github.com/99designs/gqlgen/example/config.User") {
+  id: ID!
+  name: String! @goField(name:"FullName")
+}

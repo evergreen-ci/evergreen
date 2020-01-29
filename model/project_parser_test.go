@@ -12,7 +12,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1389,6 +1388,14 @@ tasks:
       system:
        - type: commandLogger
 functions:
+  function-with-updates:
+    command: expansions.update
+    params:
+      updates: 
+      - key: ssh_connection_options
+        value: -o GSSAPIAuthentication=no -o CheckHostIP=no -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 -o ConnectionAttempts=20
+      - key: ssh_retries
+        value: "10"
   run-make:
     command: subprocess.exec
     params:
@@ -1406,13 +1413,14 @@ buildvariants:
 
 	for name, test := range map[string]func(t *testing.T){
 		"simpleYaml": func(t *testing.T) {
-			assert.NoError(t, checkProjectPersists([]byte(simpleYaml)))
+			checkProjectPersists(t, []byte(simpleYaml))
 		},
 		"self-tests.yml": func(t *testing.T) {
 			filepath := filepath.Join(testutil.GetDirectoryOfFile(), "..", "self-tests.yml")
+
 			yml, err := ioutil.ReadFile(filepath)
 			assert.NoError(t, err)
-			assert.NoError(t, checkProjectPersists(yml))
+			checkProjectPersists(t, yml)
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -1422,53 +1430,42 @@ buildvariants:
 	}
 }
 
-func checkProjectPersists(yml []byte) error {
+func checkProjectPersists(t *testing.T, yml []byte) {
 	pp, err := createIntermediateProject(yml)
-	if err != nil {
-		return errors.Wrapf(err, "error creating project")
-	}
+	assert.NoError(t, err)
 	pp.Id = "my-project"
 	pp.Identifier = "old-project-identifier"
 	pp.ConfigUpdateNumber = 1
 
 	yamlToCompare, err := yaml.Marshal(pp)
-	if err != nil {
-		return errors.Wrapf(err, "error marshalling original project")
-	}
+	assert.NoError(t, err)
+	assert.NoError(t, pp.TryUpsert())
 
-	if err = pp.TryUpsert(); err != nil {
-		return errors.Wrapf(err, "error inserting parser project")
-	}
 	newPP, err := ParserProjectFindOneById(pp.Id)
-	if err != nil {
-		return errors.Wrapf(err, "error finding version")
-	}
+	assert.NoError(t, err)
+
 	newYaml, err := yaml.Marshal(newPP)
-	if err != nil {
-		return errors.Wrapf(err, "error marshalling database project")
-	}
-	if !bytes.Equal(newYaml, yamlToCompare) {
-		return errors.New("yamls not equal")
-	}
+	assert.NoError(t, err)
+
+	assert.True(t, bytes.Equal(newYaml, yamlToCompare))
 
 	// ensure that updating with the re-parsed project doesn't error
 	pp, err = createIntermediateProject(newYaml)
+	assert.NoError(t, err)
 	pp.Id = "my-project"
 	pp.Identifier = "new-project-identifier"
-	if err != nil {
-		return errors.Wrap(err, "error creating intermediate project from stored config")
-	}
-	if err = pp.TryUpsert(); err != nil {
-		return errors.Wrap(err, "error updating version's project")
-	}
+
+	assert.NoError(t, pp.TryUpsert())
 
 	newPP, err = ParserProjectFindOneById(pp.Id)
-	if err != nil {
-		return errors.Wrapf(err, "error finding updated project")
-	}
-	if newPP.Identifier != pp.Identifier {
-		return errors.New("version project not updated")
-	}
+	assert.NoError(t, err)
 
-	return nil
+	assert.Equal(t, newPP.Identifier, pp.Identifier)
+
+	for i, f := range pp.Functions {
+		list := f.List()
+		for j := range list {
+			assert.EqualValues(t, list[j].Params, newPP.Functions[i].List()[j].Params)
+		}
+	}
 }

@@ -17,8 +17,8 @@ func makeSetAdminBanner(sc data.Connector) gimlet.RouteHandler {
 }
 
 type bannerPostHandler struct {
-	Banner model.APIString `json:"banner"`
-	Theme  model.APIString `json:"theme"`
+	Banner *string `json:"banner"`
+	Theme  *string `json:"theme"`
 	model  model.APIBanner
 
 	sc data.Connector
@@ -46,10 +46,10 @@ func (h *bannerPostHandler) Parse(ctx context.Context, r *http.Request) error {
 func (h *bannerPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 
-	if err := h.sc.SetAdminBanner(model.FromAPIString(h.Banner), u); err != nil {
+	if err := h.sc.SetAdminBanner(model.FromStringPtr(h.Banner), u); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "problem setting banner text"))
 	}
-	if err := h.sc.SetBannerTheme(model.FromAPIString(h.Theme), u); err != nil {
+	if err := h.sc.SetBannerTheme(model.FromStringPtr(h.Theme), u); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "problem setting banner theme"))
 	}
 
@@ -83,7 +83,7 @@ func (h *bannerGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(&model.APIBanner{
-		Text:  model.ToAPIString(banner),
-		Theme: model.ToAPIString(theme),
+		Text:  model.ToStringPtr(banner),
+		Theme: model.ToStringPtr(theme),
 	})
 }

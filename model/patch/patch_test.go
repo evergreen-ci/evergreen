@@ -1,6 +1,7 @@
 package patch
 
 import (
+	"path/filepath"
 	"sort"
 	"testing"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/google/go-github/github"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -165,7 +167,7 @@ func (s *patchSuite) TestMakeMergePatch() {
 }
 
 func (s *patchSuite) TestUpdateGithashProjectAndTasks() {
-	patch, err := FindOne(ByUser("octocat"))
+	patch, err := FindOne(ByUserAndCommitQueue("octocat", false))
 	s.NoError(err)
 	s.Empty(patch.Githash)
 	s.Empty(patch.VariantsTasks)
@@ -220,4 +222,58 @@ func TestPatchSortByCreateTime(t *testing.T) {
 	assert.Equal(4, patches[2].PatchNumber)
 	assert.Equal(5, patches[3].PatchNumber)
 	assert.Equal(100, patches[4].PatchNumber)
+}
+
+func TestIsMailbox(t *testing.T) {
+	isMBP, err := IsMailbox(filepath.Join(testutil.GetDirectoryOfFile(), "..", "testdata", "filethatdoesntexist.txt"))
+	assert.Error(t, err)
+	assert.False(t, isMBP)
+
+	isMBP, err = IsMailbox(filepath.Join(testutil.GetDirectoryOfFile(), "..", "testdata", "test.patch"))
+	assert.NoError(t, err)
+	assert.True(t, isMBP)
+
+	isMBP, err = IsMailbox(filepath.Join(testutil.GetDirectoryOfFile(), "..", "testdata", "patch.diff"))
+	assert.NoError(t, err)
+	assert.False(t, isMBP)
+
+	isMBP, err = IsMailbox(filepath.Join(testutil.GetDirectoryOfFile(), "..", "testdata", "emptyfile.txt"))
+	assert.NoError(t, err)
+	assert.False(t, isMBP)
+}
+
+func TestUpdateModulePatch(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	p := &Patch{Description: "original message"}
+	require.NoError(t, p.Insert())
+	p, err := FindOne(db.Q{})
+	require.NoError(t, err)
+
+	// with a new module patch
+	assert.NoError(t, p.UpdateModulePatch(ModulePatch{
+		ModuleName: "mod1",
+		Message:    "new message",
+	}))
+
+	assert.Len(t, p.Patches, 1)
+	assert.Equal(t, "new message", p.Description)
+
+	pDb, err := FindOne(db.Q{})
+	assert.NoError(t, err)
+	assert.Equal(t, "new message", pDb.Description)
+	assert.Len(t, pDb.Patches, 1)
+
+	// with an existing module patch
+	assert.NoError(t, p.UpdateModulePatch(ModulePatch{
+		ModuleName: "mod1",
+		Message:    "newer message",
+	}))
+
+	assert.Len(t, p.Patches, 1)
+	assert.Equal(t, "newer message", p.Description)
+
+	pDb, err = FindOne(db.Q{})
+	assert.NoError(t, err)
+	assert.Equal(t, "newer message", pDb.Description)
+	assert.Len(t, pDb.Patches, 1)
 }

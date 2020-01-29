@@ -57,6 +57,7 @@ var (
 	commitQueueKey        = bsonutil.MustHaveTag(Settings{}, "CommitQueue")
 	ldapRoleMapKey        = bsonutil.MustHaveTag(Settings{}, "LDAPRoleMap")
 	backupConfig          = bsonutil.MustHaveTag(Settings{}, "Backup")
+	aclEnabledKey         = bsonutil.MustHaveTag(Settings{}, "ACLCheckingEnabled")
 
 	// degraded mode flags
 	taskDispatchKey                 = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")
@@ -84,6 +85,13 @@ var (
 	plannerDisabledKey              = bsonutil.MustHaveTag(ServiceFlags{}, "PlannerDisabled")
 	hostAllocatorDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "HostAllocatorDisabled")
 	drBackupDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "DRBackupDisabled")
+
+	// AuthConfig keys
+	AuthLDAPKey          = bsonutil.MustHaveTag(AuthConfig{}, "LDAP")
+	AuthOktaKey          = bsonutil.MustHaveTag(AuthConfig{}, "Okta")
+	AuthGithubKey        = bsonutil.MustHaveTag(AuthConfig{}, "Github")
+	AuthNaiveKey         = bsonutil.MustHaveTag(AuthConfig{}, "Naive")
+	authPreferredTypeKey = bsonutil.MustHaveTag(AuthConfig{}, "PreferredType")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")

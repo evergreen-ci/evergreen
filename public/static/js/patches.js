@@ -3,7 +3,6 @@ mciModule.controller('PatchesController', function($scope, $filter, $http, $wind
   $scope.userTz = $window.userTz;
 
   $scope.loading = true;
-
   $scope.patchesForUsername = $window.patchesForUsername;
   var endpoint = $scope.patchesForUsername ?
     '/json/patches/user/' + encodeURIComponent($window.patchesForUsername) :
@@ -18,13 +17,14 @@ mciModule.controller('PatchesController', function($scope, $filter, $http, $wind
   };
 
   $scope.loadCurrentPage = function() {
+    $scope.filterCommitQueue = localStorage.getItem("filterCommitQueue") === "true";
     $scope.loading = true;
     $scope.patches = [];
     $scope.patchesError = null;
-
     var params = {
       params: {
-        page: $scope.currentPage
+        page: $scope.currentPage,
+        filter_commit_queue: $scope.filterCommitQueue,
       }
     };
     $http.get(endpoint, params).then(
@@ -35,7 +35,7 @@ mciModule.controller('PatchesController', function($scope, $filter, $http, $wind
       $scope.patches = data['UIPatches'];
 
       _.each($scope.patches, function(patch) {
-          patch.canEdit = (($window.user.Id === patch.Author ) || $window.isSuperUser) && patch.alias !== "__commit_queue"
+          patch.canEdit = (($window.user.Id === patch.author ) || $window.isSuperUser) && patch.alias !== "__commit_queue"
       });
 
       _.each($scope.buildsMap, function(buildArray) {
@@ -56,6 +56,11 @@ mciModule.controller('PatchesController', function($scope, $filter, $http, $wind
       $scope.patchesError = resp.err;
     });
   };
+
+  $scope.$watch("filterCommitQueue", function() {
+      localStorage.setItem("filterCommitQueue", $scope.filterCommitQueue);
+      $scope.loadCurrentPage();
+  });
 
   $rootScope.$on('$locationChangeStart', function() {
     var page = $location.search()['page'];

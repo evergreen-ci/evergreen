@@ -181,10 +181,10 @@ func (pc *MockCommitQueueConnector) EnqueueItem(projectID string, item restModel
 	if enqueueNext && len(pc.Queue[projectID]) > 0 {
 		q := pc.Queue[projectID]
 		pc.Queue[projectID] = append([]restModel.APICommitQueueItem{q[0], item}, q[1:]...)
-		return 2, nil
+		return 1, nil
 	}
 	pc.Queue[projectID] = append(pc.Queue[projectID], item)
-	return len(pc.Queue[projectID]), nil
+	return len(pc.Queue[projectID]) - 1, nil
 }
 
 func (pc *MockCommitQueueConnector) FindCommitQueueByID(id string) (*restModel.APICommitQueue, error) {
@@ -192,7 +192,7 @@ func (pc *MockCommitQueueConnector) FindCommitQueueByID(id string) (*restModel.A
 		return nil, nil
 	}
 
-	return &restModel.APICommitQueue{ProjectID: restModel.ToAPIString(id), Queue: pc.Queue[id]}, nil
+	return &restModel.APICommitQueue{ProjectID: restModel.ToStringPtr(id), Queue: pc.Queue[id]}, nil
 }
 
 func (pc *MockCommitQueueConnector) CommitQueueRemoveItem(id, item string) (bool, error) {
@@ -201,7 +201,7 @@ func (pc *MockCommitQueueConnector) CommitQueueRemoveItem(id, item string) (bool
 	}
 
 	for i := range pc.Queue[id] {
-		if restModel.FromAPIString(pc.Queue[id][i].Issue) == item {
+		if restModel.FromStringPtr(pc.Queue[id][i].Issue) == item {
 			pc.Queue[id] = append(pc.Queue[id][:i], pc.Queue[id][i+1:]...)
 			return true, nil
 		}
@@ -216,7 +216,7 @@ func (pc *MockCommitQueueConnector) IsItemOnCommitQueue(id, item string) (bool, 
 		return false, errors.Errorf("can't get commit queue for id '%s'", id)
 	}
 	for _, queueItem := range queue {
-		if restModel.FromAPIString(queueItem.Issue) == item {
+		if restModel.FromStringPtr(queueItem.Issue) == item {
 			return true, nil
 		}
 	}

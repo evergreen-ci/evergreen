@@ -47,12 +47,12 @@ func (s *CommitQueueSuite) SetupTest() {
 
 func (s *CommitQueueSuite) TestEnqueue() {
 	s.ctx = &DBConnector{}
-	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("1234")}, false)
+	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("1234")}, false)
+	s.NoError(err)
+	s.Equal(0, pos)
+	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("5678")}, false)
 	s.NoError(err)
 	s.Equal(1, pos)
-	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("5678")}, false)
-	s.NoError(err)
-	s.Equal(2, pos)
 
 	q, err := commitqueue.FindOneId("mci")
 	s.NoError(err)
@@ -61,9 +61,9 @@ func (s *CommitQueueSuite) TestEnqueue() {
 	s.Equal("5678", q.Queue[1].Issue)
 
 	// move to front
-	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("important")}, true)
+	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("important")}, true)
 	s.NoError(err)
-	s.Equal(2, pos)
+	s.Equal(1, pos)
 	q, err = commitqueue.FindOneId("mci")
 	s.NoError(err)
 	s.Require().Len(q.Queue, 3)
@@ -77,20 +77,20 @@ func (s *CommitQueueSuite) TestFindCommitQueueByID() {
 	s.ctx = &DBConnector{}
 	cq, err := s.ctx.FindCommitQueueByID("mci")
 	s.NoError(err)
-	s.Equal(restModel.ToAPIString("mci"), cq.ProjectID)
+	s.Equal(restModel.ToStringPtr("mci"), cq.ProjectID)
 }
 
 func (s *CommitQueueSuite) TestCommitQueueRemoveItem() {
 	s.ctx = &DBConnector{}
-	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("1")}, false)
+	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("1")}, false)
+	s.Require().NoError(err)
+	s.Require().Equal(0, pos)
+	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("2")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
-	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("2")}, false)
+	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("3")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(2, pos)
-	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("3")}, false)
-	s.Require().NoError(err)
-	s.Require().Equal(3, pos)
 
 	s.NoError(s.queue.SetProcessing(true))
 
@@ -103,15 +103,15 @@ func (s *CommitQueueSuite) TestCommitQueueRemoveItem() {
 	s.True(found)
 	cq, err := s.ctx.FindCommitQueueByID("mci")
 	s.NoError(err)
-	s.Equal(restModel.ToAPIString("2"), cq.Queue[0].Issue)
-	s.Equal(restModel.ToAPIString("3"), cq.Queue[1].Issue)
+	s.Equal(restModel.ToStringPtr("2"), cq.Queue[0].Issue)
+	s.Equal(restModel.ToStringPtr("3"), cq.Queue[1].Issue)
 }
 
 func (s *CommitQueueSuite) TestIsItemOnCommitQueue() {
 	s.ctx = &DBConnector{}
-	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("1")}, false)
+	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("1")}, false)
 	s.Require().NoError(err)
-	s.Require().Equal(1, pos)
+	s.Require().Equal(0, pos)
 
 	exists, err := s.ctx.IsItemOnCommitQueue("mci", "1")
 	s.NoError(err)
@@ -128,15 +128,15 @@ func (s *CommitQueueSuite) TestIsItemOnCommitQueue() {
 
 func (s *CommitQueueSuite) TestCommitQueueClearAll() {
 	s.ctx = &DBConnector{}
-	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("12")}, false)
+	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("12")}, false)
+	s.Require().NoError(err)
+	s.Require().Equal(0, pos)
+	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("34")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
-	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("34")}, false)
+	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("56")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(2, pos)
-	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("56")}, false)
-	s.Require().NoError(err)
-	s.Require().Equal(3, pos)
 
 	q := &commitqueue.CommitQueue{ProjectID: "logkeeper"}
 	s.Require().NoError(commitqueue.InsertQueue(q))
@@ -147,12 +147,12 @@ func (s *CommitQueueSuite) TestCommitQueueClearAll() {
 	s.Equal(1, clearedCount)
 
 	// both queues have items
-	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("12")}, false)
+	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("12")}, false)
 	s.Require().NoError(err)
-	s.Require().Equal(1, pos)
+	s.Require().Equal(0, pos)
 	pos, err = q.Enqueue(commitqueue.CommitQueueItem{Issue: "78"})
 	s.NoError(err)
-	s.Equal(1, pos)
+	s.Equal(0, pos)
 	clearedCount, err = s.ctx.CommitQueueClearAll()
 	s.NoError(err)
 	s.Equal(2, clearedCount)
@@ -195,58 +195,58 @@ func (s *CommitQueueSuite) TestMockGetGitHubPR() {
 
 func (s *CommitQueueSuite) TestMockEnqueue() {
 	s.ctx = &MockConnector{}
-	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("1234")}, false)
+	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("1234")}, false)
+	s.NoError(err)
+	s.Equal(0, pos)
+	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("5678")}, false)
 	s.NoError(err)
 	s.Equal(1, pos)
-	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("5678")}, false)
-	s.NoError(err)
-	s.Equal(2, pos)
 
 	conn := s.ctx.(*MockConnector)
 	q, ok := conn.MockCommitQueueConnector.Queue["mci"]
 	s.True(ok)
 	s.Require().Len(q, 2)
 
-	s.Equal("1234", restModel.FromAPIString(q[0].Issue))
-	s.Equal("5678", restModel.FromAPIString(q[1].Issue))
+	s.Equal("1234", restModel.FromStringPtr(q[0].Issue))
+	s.Equal("5678", restModel.FromStringPtr(q[1].Issue))
 
 	// move to front
-	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("important")}, true)
+	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("important")}, true)
 	s.NoError(err)
-	s.Equal(2, pos)
+	s.Equal(1, pos)
 	q, ok = conn.MockCommitQueueConnector.Queue["mci"]
 	s.True(ok)
 	s.Require().Len(q, 3)
 
-	s.Equal("1234", restModel.FromAPIString(q[0].Issue))
-	s.Equal("important", restModel.FromAPIString(q[1].Issue))
-	s.Equal("5678", restModel.FromAPIString(q[2].Issue))
+	s.Equal("1234", restModel.FromStringPtr(q[0].Issue))
+	s.Equal("important", restModel.FromStringPtr(q[1].Issue))
+	s.Equal("5678", restModel.FromStringPtr(q[2].Issue))
 
 }
 
 func (s *CommitQueueSuite) TestMockFindCommitQueueByID() {
 	s.ctx = &MockConnector{}
-	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("1234")}, false)
+	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("1234")}, false)
 	s.Require().NoError(err)
-	s.Require().Equal(1, pos)
+	s.Require().Equal(0, pos)
 
 	cq, err := s.ctx.FindCommitQueueByID("mci")
 	s.NoError(err)
-	s.Equal(restModel.ToAPIString("mci"), cq.ProjectID)
-	s.Equal(restModel.ToAPIString("1234"), cq.Queue[0].Issue)
+	s.Equal(restModel.ToStringPtr("mci"), cq.ProjectID)
+	s.Equal(restModel.ToStringPtr("1234"), cq.Queue[0].Issue)
 }
 
 func (s *CommitQueueSuite) TestMockCommitQueueRemoveItem() {
 	s.ctx = &MockConnector{}
-	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("1")}, false)
+	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("1")}, false)
+	s.Require().NoError(err)
+	s.Require().Equal(0, pos)
+	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("2")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
-	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("2")}, false)
+	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("3")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(2, pos)
-	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("3")}, false)
-	s.Require().NoError(err)
-	s.Require().Equal(3, pos)
 
 	found, err := s.ctx.CommitQueueRemoveItem("mci", "not_here")
 	s.NoError(err)
@@ -257,15 +257,15 @@ func (s *CommitQueueSuite) TestMockCommitQueueRemoveItem() {
 	s.True(found)
 	cq, err := s.ctx.FindCommitQueueByID("mci")
 	s.NoError(err)
-	s.Equal(restModel.ToAPIString("2"), cq.Queue[0].Issue)
-	s.Equal(restModel.ToAPIString("3"), cq.Queue[1].Issue)
+	s.Equal(restModel.ToStringPtr("2"), cq.Queue[0].Issue)
+	s.Equal(restModel.ToStringPtr("3"), cq.Queue[1].Issue)
 }
 
 func (s *CommitQueueSuite) TestMockIsItemOnCommitQueue() {
 	s.ctx = &MockConnector{}
-	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("1")}, false)
+	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("1")}, false)
 	s.Require().NoError(err)
-	s.Require().Equal(1, pos)
+	s.Require().Equal(0, pos)
 
 	exists, err := s.ctx.IsItemOnCommitQueue("mci", "1")
 	s.NoError(err)
@@ -282,19 +282,19 @@ func (s *CommitQueueSuite) TestMockIsItemOnCommitQueue() {
 
 func (s *CommitQueueSuite) TestMockCommitQueueClearAll() {
 	s.ctx = &MockConnector{}
-	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("12")}, false)
+	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("12")}, false)
+	s.Require().NoError(err)
+	s.Require().Equal(0, pos)
+	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("34")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
-	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("34")}, false)
-	s.Require().NoError(err)
-	s.Require().Equal(2, pos)
 
-	pos, err = s.ctx.EnqueueItem("logkeeper", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("12")}, false)
+	pos, err = s.ctx.EnqueueItem("logkeeper", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("12")}, false)
+	s.Require().NoError(err)
+	s.Require().Equal(0, pos)
+	pos, err = s.ctx.EnqueueItem("logkeeper", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("34")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
-	pos, err = s.ctx.EnqueueItem("logkeeper", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("34")}, false)
-	s.Require().NoError(err)
-	s.Require().Equal(2, pos)
 
 	clearedCount, err := s.ctx.CommitQueueClearAll()
 	s.NoError(err)

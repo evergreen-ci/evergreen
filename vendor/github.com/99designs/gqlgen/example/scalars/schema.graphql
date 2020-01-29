@@ -1,0 +1,36 @@
+type Query {
+    user(id: ID!): User
+    search(input: SearchArgs = {location: "37,144", isBanned: false}): [User!]!
+}
+
+type User {
+    id: ID!
+    name: String!
+    created: Timestamp
+    isBanned: Banned!
+    primitiveResolver: String!
+    customResolver: Point!
+    address: Address
+    tier: Tier
+}
+
+type Address {
+    id: ID!
+    location: Point
+}
+
+input SearchArgs {
+    location: Point
+    createdAfter: Timestamp
+    isBanned: Banned # TODO: This can be a Boolean again once multiple backing types are allowed
+}
+
+enum Tier {
+    A
+    B
+    C
+}
+
+scalar Timestamp
+scalar Point
+scalar Banned

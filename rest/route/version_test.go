@@ -123,18 +123,18 @@ func (s *VersionSuite) TestFindByVersionId() {
 
 	h, ok := res.Data().(*model.APIVersion)
 	s.True(ok)
-	s.Equal(model.ToAPIString(versionId), h.Id)
-	s.Equal(model.NewTime(timeField), h.CreateTime)
-	s.Equal(model.NewTime(timeField), h.StartTime)
-	s.Equal(model.NewTime(timeField), h.FinishTime)
-	s.Equal(model.ToAPIString(revision), h.Revision)
-	s.Equal(model.ToAPIString(author), h.Author)
-	s.Equal(model.ToAPIString(authorEmail), h.AuthorEmail)
-	s.Equal(model.ToAPIString(msg), h.Message)
-	s.Equal(model.ToAPIString(status), h.Status)
-	s.Equal(model.ToAPIString(repo), h.Repo)
-	s.Equal(model.ToAPIString(branch), h.Branch)
-	s.Equal(model.ToAPIString(project), h.Project)
+	s.Equal(model.ToStringPtr(versionId), h.Id)
+	s.Equal(timeField, h.CreateTime)
+	s.Equal(timeField, h.StartTime)
+	s.Equal(timeField, h.FinishTime)
+	s.Equal(model.ToStringPtr(revision), h.Revision)
+	s.Equal(model.ToStringPtr(author), h.Author)
+	s.Equal(model.ToStringPtr(authorEmail), h.AuthorEmail)
+	s.Equal(model.ToStringPtr(msg), h.Message)
+	s.Equal(model.ToStringPtr(status), h.Status)
+	s.Equal(model.ToStringPtr(repo), h.Repo)
+	s.Equal(model.ToStringPtr(branch), h.Branch)
+	s.Equal(model.ToStringPtr(project), h.Project)
 }
 
 // TestFindAllBuildsForVersion tests the route for finding all builds for a version.
@@ -153,12 +153,12 @@ func (s *VersionSuite) TestFindAllBuildsForVersion() {
 		b, ok := (build).(*model.APIBuild)
 		s.True(ok)
 
-		s.Equal(model.ToAPIString(s.bi[idx]), b.Id)
-		s.Equal(model.NewTime(timeField), b.CreateTime)
-		s.Equal(model.NewTime(timeField), b.StartTime)
-		s.Equal(model.NewTime(timeField), b.FinishTime)
-		s.Equal(model.ToAPIString(versionId), b.Version)
-		s.Equal(model.ToAPIString(s.bv[idx]), b.BuildVariant)
+		s.Equal(model.ToStringPtr(s.bi[idx]), b.Id)
+		s.Equal(timeField, b.CreateTime)
+		s.Equal(timeField, b.StartTime)
+		s.Equal(timeField, b.FinishTime)
+		s.Equal(model.ToStringPtr(versionId), b.Version)
+		s.Equal(model.ToStringPtr(s.bv[idx]), b.BuildVariant)
 	}
 }
 
@@ -178,9 +178,9 @@ func (s *VersionSuite) TestFindBuildsForVersionByVariant() {
 		b, ok := (builds[0]).(*model.APIBuild)
 		s.True(ok)
 
-		s.Equal(versionId, model.FromAPIString(b.Version))
-		s.Equal(s.bi[i], model.FromAPIString(b.Id))
-		s.Equal(variant, model.FromAPIString(b.BuildVariant))
+		s.Equal(versionId, model.FromStringPtr(b.Version))
+		s.Equal(s.bi[i], model.FromStringPtr(b.Id))
+		s.Equal(variant, model.FromStringPtr(b.BuildVariant))
 	}
 }
 
@@ -196,7 +196,7 @@ func (s *VersionSuite) TestAbortVersion() {
 	version := res.Data()
 	h, ok := (version).(*model.APIVersion)
 	s.True(ok)
-	s.Equal(model.ToAPIString(versionId), h.Id)
+	s.Equal(model.ToStringPtr(versionId), h.Id)
 
 	// Check that all tasks have been aborted.
 	for _, t := range s.versionData.CachedTasks {
@@ -220,6 +220,6 @@ func (s *VersionSuite) TestRestartVersion() {
 	version := res.Data()
 	h, ok := (version).(*model.APIVersion)
 	s.True(ok)
-	s.Equal(model.ToAPIString(versionId), h.Id)
+	s.Equal(model.ToStringPtr(versionId), h.Id)
 	s.Equal("caller1", s.versionData.CachedRestartedVersions["versionId"])
 }

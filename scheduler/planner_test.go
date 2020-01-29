@@ -192,18 +192,18 @@ func TestPlanner(t *testing.T) {
 				t.Run("SingleTask", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo"})
 					unit.SetDistro(&distro.Distro{})
-					assert.EqualValues(t, 60, unit.RankValue())
+					assert.EqualValues(t, 180, unit.RankValue())
 				})
 				t.Run("MultipleTasks", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo"})
 					unit.SetDistro(&distro.Distro{})
 					unit.Add(task.Task{Id: "bar"})
-					assert.EqualValues(t, 61, unit.RankValue())
+					assert.EqualValues(t, 181, unit.RankValue())
 				})
 				t.Run("CommitQueue", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.MergeTestRequester})
 					unit.SetDistro(&distro.Distro{})
-					assert.EqualValues(t, 11860, unit.RankValue())
+					assert.EqualValues(t, 35980, unit.RankValue())
 				})
 				t.Run("Patches", func(t *testing.T) {
 					t.Run("CLI", func(t *testing.T) {
@@ -222,7 +222,7 @@ func TestPlanner(t *testing.T) {
 				t.Run("Priority", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", Priority: 10})
 					unit.SetDistro(&distro.Distro{})
-					assert.EqualValues(t, 650, unit.RankValue())
+					assert.EqualValues(t, 1970, unit.RankValue())
 				})
 				t.Run("TimeInQueuePatch", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.PatchVersionRequester, ActivatedTime: time.Now().Add(-time.Hour)})
@@ -232,41 +232,41 @@ func TestPlanner(t *testing.T) {
 				t.Run("TimeInQueueMainline", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.RepotrackerVersionRequester, ActivatedTime: time.Now().Add(-time.Hour)})
 					unit.SetDistro(&distro.Distro{})
-					assert.EqualValues(t, 60, unit.RankValue())
+					assert.EqualValues(t, 178, unit.RankValue())
 				})
 				t.Run("LifeTimePatch", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.PatchVersionRequester, IngestTime: time.Now().Add(-10 * time.Hour)})
 					unit.SetDistro(&distro.Distro{})
-					assert.EqualValues(t, 13, unit.RankValue())
+					assert.EqualValues(t, 613, unit.RankValue())
 				})
 				t.Run("LifeTimeMainlineNew", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.RepotrackerVersionRequester, IngestTime: time.Now().Add(-10 * time.Minute)})
 					unit.SetDistro(&distro.Distro{})
-					assert.EqualValues(t, 59, unit.RankValue())
+					assert.EqualValues(t, 179, unit.RankValue())
 				})
 				t.Run("LifeTimeMainlineOld", func(t *testing.T) {
-					unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.RepotrackerVersionRequester, IngestTime: time.Now().Add(-48 * time.Hour)})
+					unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.RepotrackerVersionRequester, IngestTime: time.Now().Add(-7 * 24 * time.Hour)})
 					unit.SetDistro(&distro.Distro{})
 					assert.EqualValues(t, 12, unit.RankValue())
 				})
 				t.Run("NumDeps", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", NumDependents: 2})
 					unit.SetDistro(&distro.Distro{})
-					assert.EqualValues(t, 62, unit.RankValue())
+					assert.EqualValues(t, 182, unit.RankValue())
 				})
 			})
 			t.Run("RankCachesValue", func(t *testing.T) {
 				unit := NewUnit(task.Task{Id: "foo", Priority: 100})
 				unit.SetDistro(&distro.Distro{})
 
-				assert.EqualValues(t, 5960, unit.RankValue())
+				assert.EqualValues(t, 18080, unit.RankValue())
 				unit.Add(task.Task{Id: "bar"})
-				assert.EqualValues(t, 5960, unit.RankValue())
+				assert.EqualValues(t, 18080, unit.RankValue())
 			})
 			t.Run("RankForCommitQueue", func(t *testing.T) {
 				unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.MergeTestRequester})
 				unit.SetDistro(&distro.Distro{})
-				assert.EqualValues(t, 11860, unit.RankValue())
+				assert.EqualValues(t, 35980, unit.RankValue())
 			})
 		})
 		t.Run("TaskPlan", func(t *testing.T) {

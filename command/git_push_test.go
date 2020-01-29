@@ -77,7 +77,7 @@ func TestGitPush(t *testing.T) {
 
 			commands := []string{
 				"git checkout master",
-				"git rev-parse HEAD",
+				"git rev-parse master@{upstream}",
 				`git -c "user.name=octocat" -c "user.email=octocat@github.com" commit --file - --author="evergreen <evergreen@mongodb.com>"`,
 				"git push origin master",
 			}
@@ -107,6 +107,7 @@ func TestGitPush(t *testing.T) {
 				commitMessage: "testing 123",
 				branch:        "master",
 				token:         token,
+				skipCommit:    false,
 			}
 
 			assert.NoError(t, c.pushPatch(context.Background(), logger, params))
@@ -161,6 +162,7 @@ func TestGitPush(t *testing.T) {
 				authorEmail:   "baxter@thehacker.com",
 				commitMessage: "testing 123",
 				branch:        "master",
+				skipCommit:    false,
 			}
 			assert.NoError(t, c.pushPatch(ctx, logger, params))
 
@@ -170,7 +172,7 @@ func TestGitPush(t *testing.T) {
 
 			filesChanged := strings.TrimSpace(stdout.String())
 			filesChangedSlice := strings.Split(strings.Replace(filesChanged, "\r\n", "\n", -1), "\n")
-			assert.Len(t, filesChangedSlice, 2)
+			require.Len(t, filesChangedSlice, 2)
 			assert.Equal(t, "test1.txt", filesChangedSlice[0])
 			assert.Equal(t, "test3.txt", filesChangedSlice[1])
 
@@ -179,9 +181,9 @@ func TestGitPush(t *testing.T) {
 		"RevParse": func(*testing.T) {
 			manager := &mock.Manager{}
 			c.base.jasper = manager
-			_, err = c.revParse(context.Background(), conf, logger, "HEAD")
+			_, err = c.revParse(context.Background(), conf, logger, "master@{upstream}")
 			assert.NoError(t, err)
-			commands := []string{"git rev-parse HEAD"}
+			commands := []string{"git rev-parse master@{upstream}"}
 
 			require.Len(t, manager.Procs, len(commands))
 			for i, proc := range manager.Procs {

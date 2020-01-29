@@ -294,7 +294,7 @@ func (s *HostSuite) TestFindByIdFirst() {
 	s.NotNil(res)
 
 	s.True(ok)
-	s.Equal(model.ToAPIString("host1"), h.Id)
+	s.Equal(model.ToStringPtr("host1"), h.Id)
 }
 
 func (s *HostSuite) TestFindByIdLast() {
@@ -308,7 +308,7 @@ func (s *HostSuite) TestFindByIdLast() {
 	s.NotNil(res)
 
 	s.True(ok)
-	s.Equal(model.ToAPIString("host2"), h.Id)
+	s.Equal(model.ToStringPtr("host2"), h.Id)
 
 }
 
@@ -324,17 +324,17 @@ func (s *HostSuite) TestBuildFromServiceHost() {
 	host := s.sc.MockHostConnector.CachedHosts[0]
 	apiHost := model.APIHost{}
 	s.NoError(apiHost.BuildFromService(host))
-	s.Equal(apiHost.Id, model.ToAPIString(host.Id))
-	s.Equal(apiHost.HostURL, model.ToAPIString(host.Host))
+	s.Equal(apiHost.Id, model.ToStringPtr(host.Id))
+	s.Equal(apiHost.HostURL, model.ToStringPtr(host.Host))
 	s.Equal(apiHost.Provisioned, host.Provisioned)
-	s.Equal(apiHost.StartedBy, model.ToAPIString(host.StartedBy))
-	s.Equal(apiHost.Type, model.ToAPIString(host.InstanceType))
-	s.Equal(apiHost.User, model.ToAPIString(host.User))
-	s.Equal(apiHost.Status, model.ToAPIString(host.Status))
+	s.Equal(apiHost.StartedBy, model.ToStringPtr(host.StartedBy))
+	s.Equal(apiHost.Type, model.ToStringPtr(host.InstanceType))
+	s.Equal(apiHost.User, model.ToStringPtr(host.User))
+	s.Equal(apiHost.Status, model.ToStringPtr(host.Status))
 	s.Equal(apiHost.UserHost, host.UserHost)
-	s.Equal(apiHost.Distro.Id, model.ToAPIString(host.Distro.Id))
-	s.Equal(apiHost.Distro.Provider, model.ToAPIString(host.Distro.Provider))
-	s.Equal(apiHost.Distro.ImageId, model.ToAPIString(""))
+	s.Equal(apiHost.Distro.Id, model.ToStringPtr(host.Distro.Id))
+	s.Equal(apiHost.Distro.Provider, model.ToStringPtr(host.Distro.Provider))
+	s.Equal(apiHost.Distro.ImageId, model.ToStringPtr(""))
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -513,14 +513,14 @@ func (s *hostChangeRDPPasswordHandlerSuite) TestExecuteWithInvalidHost() {
 }
 
 func (s *hostChangeRDPPasswordHandlerSuite) TestParseAndValidateRejectsInvalidPasswords() {
-	invalidPasswords := []model.APIString{
-		model.ToAPIString(""),
-		model.ToAPIString("weak"),
-		model.ToAPIString("stilltooweak1"),
-		model.ToAPIString("火a111")}
+	invalidPasswords := []*string{
+		model.ToStringPtr(""),
+		model.ToStringPtr("weak"),
+		model.ToStringPtr("stilltooweak1"),
+		model.ToStringPtr("火a111")}
 	for _, password := range invalidPasswords {
 		mod := model.APISpawnHostModify{
-			HostID: model.ToAPIString("host1"),
+			HostID: model.ToStringPtr("host1"),
 			RDPPwd: password,
 		}
 		err := s.tryParseAndValidate(mod)
@@ -603,16 +603,16 @@ func (s *hostExtendExpirationHandlerSuite) TestExecuteWithInvalidHost() {
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestParseAndValidateRejectsInvalidExpirations() {
-	invalidExpirations := []model.APIString{
-		model.ToAPIString("not a number"),
-		model.ToAPIString("0"),
-		model.ToAPIString("9223372036854775807"),
-		model.ToAPIString(""),
+	invalidExpirations := []*string{
+		model.ToStringPtr("not a number"),
+		model.ToStringPtr("0"),
+		model.ToStringPtr("9223372036854775807"),
+		model.ToStringPtr(""),
 	}
 	for _, extendBy := range invalidExpirations {
 		mod := model.APISpawnHostModify{
-			HostID:   model.ToAPIString("host1"),
-			RDPPwd:   model.ToAPIString(""),
+			HostID:   model.ToStringPtr("host1"),
+			RDPPwd:   model.ToStringPtr(""),
 			AddHours: extendBy,
 		}
 
@@ -710,7 +710,7 @@ func makeMockHostRequest(mod model.APISpawnHostModify) (*http.Request, error) {
 	}
 
 	var r *http.Request
-	r, err = http.NewRequest("POST", fmt.Sprintf("https://example.com/hosts/%s", model.FromAPIString(mod.HostID)), bytes.NewReader(data))
+	r, err = http.NewRequest("POST", fmt.Sprintf("https://example.com/hosts/%s", model.FromStringPtr(mod.HostID)), bytes.NewReader(data))
 	if err != nil {
 		return nil, err
 	}

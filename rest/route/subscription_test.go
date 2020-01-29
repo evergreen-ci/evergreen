@@ -181,7 +181,7 @@ func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 	resp = h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
 	sub := resp.Data().([]model.APISubscription)
-	s.Equal(event.ResourceTypePatch, model.FromAPIString(sub[0].ResourceType))
+	s.Equal(event.ResourceTypePatch, model.FromStringPtr(sub[0].ResourceType))
 
 	// delete the subscription
 	d := &subscriptionDeleteHandler{sc: s.sc, id: id}

@@ -1,14 +1,21 @@
 package gimlet
 
+import (
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+)
+
 // NewBasicUser constructs a simple user. The underlying type has
 // serialization tags.
-func NewBasicUser(id, name, email, password, key string, roles []string, invalid bool, rm RoleManager) User {
+func NewBasicUser(id, name, email, password, key string, accessToken, refreshToken string, roles []string, invalid bool, rm RoleManager) User {
 	return &basicUser{
 		ID:           id,
 		Name:         name,
 		EmailAddress: email,
 		Password:     password,
 		Key:          key,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
 		AccessRoles:  roles,
 		Invalid:      invalid,
 		roleManager:  rm,
@@ -25,37 +32,33 @@ type basicUser struct {
 	EmailAddress string   `bson:"email" json:"email" yaml:"email"`
 	Password     string   `bson:"password" json:"password" yaml:"password"`
 	Key          string   `bson:"key" json:"key" yaml:"key"`
+	AccessToken  string   `bson:"access_token,omitempty" json:"access_token,omitempty" yaml:"access_token,omitempty"`
+	RefreshToken string   `bson:"refresh_token,omitempty" json:"refresh_token,omitempty" yaml:"refresh_token,omitempty"`
 	AccessRoles  []string `bson:"roles" json:"roles" yaml:"roles"`
 	Invalid      bool     `bson:"invalid" json:"invalid" yaml:"invalid"`
 	roleManager  RoleManager
 }
 
-func (u *basicUser) Username() string    { return u.ID }
-func (u *basicUser) Email() string       { return u.EmailAddress }
-func (u *basicUser) DisplayName() string { return u.Name }
-func (u *basicUser) GetAPIKey() string   { return u.Key }
+func (u *basicUser) Username() string        { return u.ID }
+func (u *basicUser) Email() string           { return u.EmailAddress }
+func (u *basicUser) DisplayName() string     { return u.Name }
+func (u *basicUser) GetAPIKey() string       { return u.Key }
+func (u *basicUser) GetAccessToken() string  { return u.AccessToken }
+func (u *basicUser) GetRefreshToken() string { return u.RefreshToken }
 func (u *basicUser) Roles() []string {
 	out := make([]string, len(u.AccessRoles))
 	copy(out, u.AccessRoles)
 	return out
 }
-func (u *basicUser) HasPermission(opts PermissionOpts) (bool, error) {
+func (u *basicUser) HasPermission(opts PermissionOpts) bool {
 	roles, err := u.roleManager.GetRoles(u.Roles())
 	if err != nil {
-		return false, err
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error getting roles",
+		}))
+		return false
 	}
-	roles, err = u.roleManager.FilterForResource(roles, opts.Resource, opts.ResourceType)
-	if err != nil {
-		return false, err
-	}
-
-	for _, role := range roles {
-		level, hasPermission := role.Permissions[opts.Permission]
-		if hasPermission && level >= opts.RequiredLevel {
-			return true, nil
-		}
-	}
-	return false, nil
+	return HasPermission(u.roleManager, opts, roles)
 }
 
 // userHasRole determines if the user has the defined role.

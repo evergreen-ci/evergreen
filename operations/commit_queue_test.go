@@ -103,13 +103,13 @@ func (s *CommitQueueSuite) TestListContentsForCLI() {
 
 	pos, err := cq.Enqueue(commitqueue.CommitQueueItem{Issue: p1.Id.Hex()})
 	s.NoError(err)
-	s.Equal(1, pos)
+	s.Equal(0, pos)
 	pos, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: p2.Id.Hex()})
 	s.NoError(err)
-	s.Equal(2, pos)
+	s.Equal(1, pos)
 	pos, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: p3.Id.Hex()})
 	s.NoError(err)
-	s.Equal(3, pos)
+	s.Equal(2, pos)
 
 	origStdout := os.Stdout
 	r, w, _ := os.Pipe()

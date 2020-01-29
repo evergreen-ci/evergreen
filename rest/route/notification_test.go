@@ -42,8 +42,8 @@ func (s *JiraCommentNotificationSuite) TestParseValidJSON() {
 	s.NoError(err)
 
 	apiJiraComment := s.rm.(*jiraCommentNotificationPostHandler).APIJiraComment
-	s.Equal(restModel.ToAPIString("This is the JIRA issue's ID"), apiJiraComment.IssueID)
-	s.Equal(restModel.ToAPIString("This is the JIRA comment's body"), apiJiraComment.Body)
+	s.Equal(restModel.ToStringPtr("This is the JIRA issue's ID"), apiJiraComment.IssueID)
+	s.Equal(restModel.ToStringPtr("This is the JIRA comment's body"), apiJiraComment.Body)
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -84,13 +84,13 @@ func (s *JiraIssueNotificationSuite) TestParseValidJSON() {
 	s.NoError(err)
 
 	apiJiraIssue := s.rm.(*jiraIssueNotificationPostHandler).APIJiraIssue
-	s.Equal(restModel.ToAPIString("This is the JIRA issue's key"), apiJiraIssue.IssueKey)
-	s.Equal(restModel.ToAPIString("This is the JIRA issue's project"), apiJiraIssue.Project)
-	s.Equal(restModel.ToAPIString("This is the JIRA issue's summary"), apiJiraIssue.Summary)
-	s.Equal(restModel.ToAPIString("This is the JIRA issue's description"), apiJiraIssue.Description)
-	s.Equal(restModel.ToAPIString("This is the JIRA issue's reporter"), apiJiraIssue.Reporter)
-	s.Equal(restModel.ToAPIString("This is the JIRA issue's assignee"), apiJiraIssue.Assignee)
-	s.Equal(restModel.ToAPIString("This is the JIRA issue's type"), apiJiraIssue.Type)
+	s.Equal(restModel.ToStringPtr("This is the JIRA issue's key"), apiJiraIssue.IssueKey)
+	s.Equal(restModel.ToStringPtr("This is the JIRA issue's project"), apiJiraIssue.Project)
+	s.Equal(restModel.ToStringPtr("This is the JIRA issue's summary"), apiJiraIssue.Summary)
+	s.Equal(restModel.ToStringPtr("This is the JIRA issue's description"), apiJiraIssue.Description)
+	s.Equal(restModel.ToStringPtr("This is the JIRA issue's reporter"), apiJiraIssue.Reporter)
+	s.Equal(restModel.ToStringPtr("This is the JIRA issue's assignee"), apiJiraIssue.Assignee)
+	s.Equal(restModel.ToStringPtr("This is the JIRA issue's type"), apiJiraIssue.Type)
 	s.Equal([]string{"c1", "c2"}, apiJiraIssue.Components)
 	s.Equal([]string{"l1", "l2"}, apiJiraIssue.Labels)
 	mock := map[string]interface{}{"f1": true, "f2": 12.34, "f3": "string"}
@@ -167,32 +167,32 @@ func (s *SlackNotificationSuite) TestParseValidJSON() {
 	s.NoError(err)
 
 	apiSlack := s.rm.(*slackNotificationPostHandler).APISlack
-	s.Equal(restModel.ToAPIString("This is the Slack's target"), apiSlack.Target)
-	s.Equal(restModel.ToAPIString("This the Slack's message"), apiSlack.Msg)
+	s.Equal(restModel.ToStringPtr("This is the Slack's target"), apiSlack.Target)
+	s.Equal(restModel.ToStringPtr("This the Slack's message"), apiSlack.Msg)
 
-	s.Equal(restModel.ToAPIString("I'm the first attachment's color"), apiSlack.Attachments[0].Color)
-	s.Equal(restModel.ToAPIString("I'm the first attachment's fallback"), apiSlack.Attachments[0].Fallback)
-	s.Equal(restModel.ToAPIString("I'm the first attachment's author's name"), apiSlack.Attachments[0].AuthorName)
-	s.Equal(restModel.ToAPIString("I'm the first attachment's author's icon"), apiSlack.Attachments[0].AuthorIcon)
-	s.Equal(restModel.ToAPIString("I'm the first attachment's title"), apiSlack.Attachments[0].Title)
-	s.Equal(restModel.ToAPIString("I'm the first attachment's text"), apiSlack.Attachments[0].Text)
-	s.Equal(restModel.ToAPIString("I'm the first attachment's first field title"), apiSlack.Attachments[0].Fields[0].Title)
-	s.Equal(restModel.ToAPIString("I'm the first attachment's first field value"), apiSlack.Attachments[0].Fields[0].Value)
+	s.Equal(restModel.ToStringPtr("I'm the first attachment's color"), apiSlack.Attachments[0].Color)
+	s.Equal(restModel.ToStringPtr("I'm the first attachment's fallback"), apiSlack.Attachments[0].Fallback)
+	s.Equal(restModel.ToStringPtr("I'm the first attachment's author's name"), apiSlack.Attachments[0].AuthorName)
+	s.Equal(restModel.ToStringPtr("I'm the first attachment's author's icon"), apiSlack.Attachments[0].AuthorIcon)
+	s.Equal(restModel.ToStringPtr("I'm the first attachment's title"), apiSlack.Attachments[0].Title)
+	s.Equal(restModel.ToStringPtr("I'm the first attachment's text"), apiSlack.Attachments[0].Text)
+	s.Equal(restModel.ToStringPtr("I'm the first attachment's first field title"), apiSlack.Attachments[0].Fields[0].Title)
+	s.Equal(restModel.ToStringPtr("I'm the first attachment's first field value"), apiSlack.Attachments[0].Fields[0].Value)
 	s.Equal(true, apiSlack.Attachments[0].Fields[0].Short)
 	s.Equal([]string{"m11", "m12"}, apiSlack.Attachments[0].MarkdownIn)
-	s.Equal(restModel.ToAPIString("I'm the first attachment's footer"), apiSlack.Attachments[0].Footer)
+	s.Equal(restModel.ToStringPtr("I'm the first attachment's footer"), apiSlack.Attachments[0].Footer)
 
-	s.Equal(restModel.ToAPIString("I'm the second attachment's color"), apiSlack.Attachments[1].Color)
-	s.Equal(restModel.ToAPIString("I'm the second attachment's fallback"), apiSlack.Attachments[1].Fallback)
-	s.Equal(restModel.ToAPIString("I'm the second attachment's author's name"), apiSlack.Attachments[1].AuthorName)
-	s.Equal(restModel.ToAPIString("I'm the second attachment's author's icon"), apiSlack.Attachments[1].AuthorIcon)
-	s.Equal(restModel.ToAPIString("I'm the second attachment's title"), apiSlack.Attachments[1].Title)
-	s.Equal(restModel.ToAPIString("I'm the second attachment's text"), apiSlack.Attachments[1].Text)
-	s.Equal(restModel.ToAPIString("I'm the second attachment's first field title"), apiSlack.Attachments[1].Fields[0].Title)
-	s.Equal(restModel.ToAPIString("I'm the second attachment's first field value"), apiSlack.Attachments[1].Fields[0].Value)
+	s.Equal(restModel.ToStringPtr("I'm the second attachment's color"), apiSlack.Attachments[1].Color)
+	s.Equal(restModel.ToStringPtr("I'm the second attachment's fallback"), apiSlack.Attachments[1].Fallback)
+	s.Equal(restModel.ToStringPtr("I'm the second attachment's author's name"), apiSlack.Attachments[1].AuthorName)
+	s.Equal(restModel.ToStringPtr("I'm the second attachment's author's icon"), apiSlack.Attachments[1].AuthorIcon)
+	s.Equal(restModel.ToStringPtr("I'm the second attachment's title"), apiSlack.Attachments[1].Title)
+	s.Equal(restModel.ToStringPtr("I'm the second attachment's text"), apiSlack.Attachments[1].Text)
+	s.Equal(restModel.ToStringPtr("I'm the second attachment's first field title"), apiSlack.Attachments[1].Fields[0].Title)
+	s.Equal(restModel.ToStringPtr("I'm the second attachment's first field value"), apiSlack.Attachments[1].Fields[0].Value)
 	s.Equal(false, apiSlack.Attachments[1].Fields[0].Short)
 	s.Equal([]string{"m21", "m22"}, apiSlack.Attachments[1].MarkdownIn)
-	s.Equal(restModel.ToAPIString("I'm the second attachment's footer"), apiSlack.Attachments[1].Footer)
+	s.Equal(restModel.ToStringPtr("I'm the second attachment's footer"), apiSlack.Attachments[1].Footer)
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -230,10 +230,10 @@ func (s *EmailNotificationSuite) TestParseValidJSON() {
 	s.NoError(err)
 
 	apiEmail := s.rm.(*emailNotificationPostHandler).APIEmail
-	s.Equal(restModel.ToAPIString("me"), apiEmail.From)
+	s.Equal(restModel.ToStringPtr("me"), apiEmail.From)
 	s.Equal([]string{"Tom", "Dick", "Harry"}, apiEmail.Recipients)
-	s.Equal(restModel.ToAPIString("This is the email's subject"), apiEmail.Subject)
-	s.Equal(restModel.ToAPIString("This is the email's body"), apiEmail.Body)
+	s.Equal(restModel.ToStringPtr("This is the email's subject"), apiEmail.Subject)
+	s.Equal(restModel.ToStringPtr("This is the email's body"), apiEmail.Body)
 	s.Equal(true, apiEmail.PlainTextContents)
 	s.Equal(map[string][]string{"h1": []string{"v11", "v12"}, "h2": []string{"v21", "v22"}}, apiEmail.Headers)
 }

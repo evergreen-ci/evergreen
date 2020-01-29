@@ -494,7 +494,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
       newDistro.planner_settings = _.clone($scope.activeDistro.planner_settings);
       newDistro.finder_settings = _.clone($scope.activeDistro.finder_settings);
       newDistro.dispatcher_settings = _.clone($scope.activeDistro.dispatcher_settings);
-      newDistro.host_allocator_settings = _.clone($scope.activeDistro.host_allocator_setting);
+      newDistro.host_allocator_settings = _.clone($scope.activeDistro.host_allocator_settings);
 
       $scope.distroIds.unshift(newDistro._id);
       $scope.tempDistro = newDistro;

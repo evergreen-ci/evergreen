@@ -8,19 +8,19 @@ import (
 )
 
 type APICommitQueue struct {
-	ProjectID APIString            `json:"queue_id"`
+	ProjectID *string              `json:"queue_id"`
 	Queue     []APICommitQueueItem `json:"queue"`
 }
 
 type APICommitQueueItem struct {
-	Issue   APIString   `json:"issue"`
-	Version APIString   `json:"version"`
+	Issue   *string     `json:"issue"`
+	Version *string     `json:"version"`
 	Modules []APIModule `json:"modules"`
 }
 
 type APIModule struct {
-	Module APIString `json:"module"`
-	Issue  APIString `json:"issue"`
+	Module *string `json:"module"`
+	Issue  *string `json:"issue"`
 }
 
 type APICommitQueuePosition struct {
@@ -28,7 +28,7 @@ type APICommitQueuePosition struct {
 }
 
 type APICommitQueueItemAuthor struct {
-	Author APIString `json:"author"`
+	Author *string `json:"author"`
 }
 
 func (cq *APICommitQueue) BuildFromService(h interface{}) error {
@@ -37,7 +37,7 @@ func (cq *APICommitQueue) BuildFromService(h interface{}) error {
 		return errors.Errorf("incorrect type '%T' when converting commit queue", h)
 	}
 
-	cq.ProjectID = ToAPIString(cqService.ProjectID)
+	cq.ProjectID = ToStringPtr(cqService.ProjectID)
 	for _, item := range cqService.Queue {
 		cqItem := APICommitQueueItem{}
 		if err := cqItem.BuildFromService(item); err != nil {
@@ -58,12 +58,12 @@ func (item *APICommitQueueItem) BuildFromService(h interface{}) error {
 	if !ok {
 		return errors.Errorf("incorrect type '%T' when converting commit queue item", h)
 	}
-	item.Issue = ToAPIString(cqItemService.Issue)
-	item.Version = ToAPIString(cqItemService.Version)
+	item.Issue = ToStringPtr(cqItemService.Issue)
+	item.Version = ToStringPtr(cqItemService.Version)
 	for _, module := range cqItemService.Modules {
 		item.Modules = append(item.Modules, APIModule{
-			Module: ToAPIString(module.Module),
-			Issue:  ToAPIString(module.Issue),
+			Module: ToStringPtr(module.Module),
+			Issue:  ToStringPtr(module.Issue),
 		})
 	}
 
@@ -72,13 +72,13 @@ func (item *APICommitQueueItem) BuildFromService(h interface{}) error {
 
 func (item *APICommitQueueItem) ToService() (interface{}, error) {
 	serviceItem := commitqueue.CommitQueueItem{
-		Issue:   FromAPIString(item.Issue),
-		Version: FromAPIString(item.Version),
+		Issue:   FromStringPtr(item.Issue),
+		Version: FromStringPtr(item.Version),
 	}
 	for _, module := range item.Modules {
 		serviceModule := commitqueue.Module{
-			Module: FromAPIString(module.Module),
-			Issue:  FromAPIString(module.Issue),
+			Module: FromStringPtr(module.Module),
+			Issue:  FromStringPtr(module.Issue),
 		}
 		serviceItem.Modules = append(serviceItem.Modules, serviceModule)
 	}
@@ -93,8 +93,8 @@ func ParseGitHubCommentModules(comment string) []APIModule {
 
 	for _, moduleSlice := range moduleSlices {
 		modules = append(modules, APIModule{
-			Module: ToAPIString(moduleSlice[1]),
-			Issue:  ToAPIString(moduleSlice[2]),
+			Module: ToStringPtr(moduleSlice[1]),
+			Issue:  ToStringPtr(moduleSlice[2]),
 		})
 	}
 

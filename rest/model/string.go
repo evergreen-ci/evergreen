@@ -1,30 +1,28 @@
 package model
 
-type APIString *string
-
-func ToAPIString(in string) APIString {
-	return APIString(&in)
+func ToStringPtr(in string) *string {
+	return &in
 }
 
-func FromAPIString(in APIString) string {
+func FromStringPtr(in *string) string {
 	if in == nil {
 		return ""
 	}
 	return *in
 }
 
-func ToAPIStringList(in []string) []APIString {
-	res := []APIString{}
+func ToStringPtrSlice(in []string) []*string {
+	res := []*string{}
 	for _, each := range in {
-		res = append(res, ToAPIString(each))
+		res = append(res, ToStringPtr(each))
 	}
 	return res
 }
 
-func FromAPIStringList(in []APIString) []string {
+func FromStringPtrSlice(in []*string) []string {
 	res := []string{}
 	for _, each := range in {
-		res = append(res, FromAPIString(each))
+		res = append(res, FromStringPtr(each))
 	}
 	return res
 }

@@ -153,7 +153,7 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "Invalid host modify request"))
 	}
 
-	modifyJob := units.NewSpawnhostModifyJob(foundHost, *h.options, units.TSFormat)
+	modifyJob := units.NewSpawnhostModifyJob(foundHost, *h.options, util.RoundPartOfMinute(1).Format(units.TSFormat))
 	if err = h.env.RemoteQueue().Put(ctx, modifyJob); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error creating spawnhost modify job"))
 	}
@@ -847,10 +847,10 @@ func (h *getVolumesHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error querying for host"))
 		}
 		if h != nil {
-			volumeDoc.HostID = model.ToAPIString(h.Id)
+			volumeDoc.HostID = model.ToStringPtr(h.Id)
 			for _, attachment := range h.Volumes {
 				if attachment.VolumeID == v.ID {
-					volumeDoc.DeviceName = model.ToAPIString(attachment.DeviceName)
+					volumeDoc.DeviceName = model.ToStringPtr(attachment.DeviceName)
 				}
 			}
 		}
@@ -966,7 +966,7 @@ func (h *hostChangeRDPPasswordHandler) Parse(ctx context.Context, r *http.Reques
 		return err
 	}
 
-	h.rdpPassword = model.FromAPIString(hostModify.RDPPwd)
+	h.rdpPassword = model.FromStringPtr(hostModify.RDPPwd)
 	if !host.ValidateRDPPassword(h.rdpPassword) {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -1042,7 +1042,7 @@ func (h *hostExtendExpirationHandler) Parse(ctx context.Context, r *http.Request
 		return err
 	}
 
-	addHours, err := strconv.Atoi(model.FromAPIString(hostModify.AddHours))
+	addHours, err := strconv.Atoi(model.FromStringPtr(hostModify.AddHours))
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -1196,12 +1196,12 @@ func makeSpawnHostSubscription(hostID, subscriberType string, user *user.DBUser)
 	var subscriber model.APISubscriber
 	if subscriberType == event.SlackSubscriberType {
 		subscriber = model.APISubscriber{
-			Type:   model.ToAPIString(event.SlackSubscriberType),
+			Type:   model.ToStringPtr(event.SlackSubscriberType),
 			Target: fmt.Sprintf("@%s", user.Settings.SlackUsername),
 		}
 	} else if subscriberType == event.EmailSubscriberType {
 		subscriber = model.APISubscriber{
-			Type:   model.ToAPIString(event.EmailSubscriberType),
+			Type:   model.ToStringPtr(event.EmailSubscriberType),
 			Target: user.Email(),
 		}
 	} else {
@@ -1209,13 +1209,13 @@ func makeSpawnHostSubscription(hostID, subscriberType string, user *user.DBUser)
 	}
 
 	return model.APISubscription{
-		OwnerType:    model.ToAPIString(string(event.OwnerTypePerson)),
-		ResourceType: model.ToAPIString(event.ResourceTypeHost),
-		Trigger:      model.ToAPIString(event.TriggerOutcome),
+		OwnerType:    model.ToStringPtr(string(event.OwnerTypePerson)),
+		ResourceType: model.ToStringPtr(event.ResourceTypeHost),
+		Trigger:      model.ToStringPtr(event.TriggerOutcome),
 		Selectors: []model.APISelector{
 			{
-				Type: model.ToAPIString(event.SelectorID),
-				Data: model.ToAPIString(hostID),
+				Type: model.ToStringPtr(event.SelectorID),
+				Data: model.ToStringPtr(hostID),
 			},
 		},
 		Subscriber: subscriber,

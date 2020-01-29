@@ -1,10 +1,15 @@
 package model
 
 import (
+	"fmt"
+	"io"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -23,49 +28,8 @@ func ParseTime(tval string) (time.Time, error) {
 	return t, errors.WithStack(err)
 }
 
-type APITime time.Time
-
 // Represents duration in milliseconds
 type APIDuration uint64
-
-var APIZeroTime APITime = APITime(util.ZeroTime.UTC())
-
-// NewTime creates a new APITime from an existing time.Time. It handles changing
-// converting from the times time zone to UTC.
-func NewTime(t time.Time) APITime {
-	return APITime(t.In(time.UTC))
-}
-
-// UnmarshalJSON implements the custom unmarshalling of this type so that it can
-// be correctly parsed from an API request.
-func (at *APITime) UnmarshalJSON(b []byte) error {
-	str := string(b)
-	t := time.Time{}
-	var err error
-	if str != "null" {
-		t, err = ParseTime(str)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-	}
-	(*at) = APITime(t)
-	return nil
-
-}
-
-// MarshalJSON implements the custom marshalling of this type so that it can
-// be correctly written out in an API response.
-func (at APITime) MarshalJSON() ([]byte, error) {
-	t := time.Time(at)
-	if util.IsZeroTime(t) {
-		return []byte("null"), nil
-	}
-	return []byte(t.Format(APITimeFormat)), nil
-}
-
-func (at APITime) String() string {
-	return time.Time(at).Format(APITimeFormat)
-}
 
 func NewAPIDuration(d time.Duration) APIDuration {
 	return APIDuration(d / time.Millisecond)
@@ -73,4 +37,35 @@ func NewAPIDuration(d time.Duration) APIDuration {
 
 func (i APIDuration) ToDuration() time.Duration {
 	return time.Duration(i) * time.Millisecond
+}
+
+func MarshalAPIDuration(b APIDuration) graphql.Marshaler {
+	return graphql.WriterFunc(func(w io.Writer) {
+		_, err := w.Write([]byte(strconv.FormatInt(int64(b), 10)))
+		grip.Error(err)
+	})
+}
+
+func UnmarshalAPIDuration(v interface{}) (APIDuration, error) {
+	switch v := v.(type) {
+	case int:
+		return APIDuration(v), nil
+	default:
+		return APIDuration(0), fmt.Errorf("%T is not an APIDuration", v)
+	}
+}
+
+func ToTimePtr(t time.Time) *time.Time {
+	if util.IsZeroTime(t) {
+		return nil
+	}
+	return &t
+}
+
+func FromTimePtr(t *time.Time) (time.Time, error) {
+	if t == nil {
+		return time.Time{}, nil
+	}
+
+	return ParseTime(t.Format(APITimeFormat))
 }

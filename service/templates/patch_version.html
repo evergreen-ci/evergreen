@@ -21,7 +21,7 @@ Evergreen - Configure Patch
 
 
 {{define "content"}}
-<div ng-controller="PatchController">
+<div ng-controller="PatchController" class="container-fluid ng-scope">
   <div ng-show="patch.Alias == '__commit_queue'">
     <div ng-show="patch.Version.length > 0">
       Tasks for this patch have already been scheduled. <br/>
@@ -30,6 +30,7 @@ Evergreen - Configure Patch
     <div ng-show="patch.Version.length == 0">
       <div ng-show="commitQueuePosition >= 0">
         <h3>This patch is at position [[commitQueuePosition]] in the commit queue.</h3>
+        <button type="button" class="btn btn-danger" ng-click="deleteFromQueue()" data-dismiss="modal">Delete From Queue</button>
       </div>
       <div ng-show="commitQueuePosition < 0">
         <h3>This patch is not on the queue (paused or deleted).</h3>
