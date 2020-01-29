@@ -996,7 +996,7 @@ func (h *Host) SetupSpawnHostCommands(settings *evergreen.Settings) (string, err
 		fmt.Sprintf("mkdir -m 777 -p %s", binDir),
 		fmt.Sprintf("echo '%s' > %s", confJSON, confPath),
 		fmt.Sprintf("cp %s %s", binaryPath, binDir),
-		fmt.Sprintf("(echo 'export PATH=\"${PATH}:%s\"' >> %s/.profile || true; echo 'export PATH=\"${PATH}:%s\"' >> %s/.bash_profile || true)", binDir, h.Distro.HomeDir(), binDir, h.Distro.HomeDir()),
+		fmt.Sprintf("(echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.profile || true; echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.bash_profile || true)", binDir, h.Distro.HomeDir(), binDir, h.Distro.HomeDir()),
 	}, " && ")
 
 	script := setupBinDirCmds
