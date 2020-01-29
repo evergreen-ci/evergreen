@@ -19,18 +19,19 @@ import (
 )
 
 type DBUser struct {
-	Id           string       `bson:"_id"`
-	FirstName    string       `bson:"first_name"`
-	LastName     string       `bson:"last_name"`
-	DispName     string       `bson:"display_name"`
-	EmailAddress string       `bson:"email"`
-	PatchNumber  int          `bson:"patch_number"`
-	PubKeys      []PubKey     `bson:"public_keys" json:"public_keys"`
-	CreatedAt    time.Time    `bson:"created_at"`
-	Settings     UserSettings `bson:"settings"`
-	APIKey       string       `bson:"apikey"`
-	SystemRoles  []string     `bson:"roles"`
-	LoginCache   LoginCache   `bson:"login_cache,omitempty"`
+	Id               string       `bson:"_id"`
+	FirstName        string       `bson:"first_name"`
+	LastName         string       `bson:"last_name"`
+	DispName         string       `bson:"display_name"`
+	EmailAddress     string       `bson:"email"`
+	PatchNumber      int          `bson:"patch_number"`
+	PubKeys          []PubKey     `bson:"public_keys" json:"public_keys"`
+	CreatedAt        time.Time    `bson:"created_at"`
+	Settings         UserSettings `bson:"settings"`
+	APIKey           string       `bson:"apikey"`
+	SystemRoles      []string     `bson:"roles"`
+	LoginCache       LoginCache   `bson:"login_cache,omitempty"`
+	FavoriteProjects []string     `bson:"favorite_projects"`
 }
 
 func (u *DBUser) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(u) }
@@ -206,6 +207,23 @@ func (u *DBUser) IncPatchNumber() (int, error) {
 		return 0, err
 	}
 	return dbUser.PatchNumber, nil
+}
+
+func (u *DBUser) AddFavoritedProject(projectId string) ([]string, error) {
+	if util.StringSliceContains(u.FavoriteProjects, projectId) {
+		return nil, errors.Errorf("cannot add duplicate project '%s'", projectId)
+	}
+	update := bson.M{
+		"$push": bson.M{FavoriteProjectsKey: projectId},
+	}
+	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+		return nil, err
+	}
+	u.SystemRoles = append(u.FavoriteProjects, projectId)
+
+	event.LogUserEvent(u.Id, event.UserEventTypeFavoriteProjectsUpdate, u.FavoriteProjects[:len(u.FavoriteProjects)-1], u.FavoriteProjects)
+
+	return u.FavoriteProjects, nil
 }
 
 func (u *DBUser) AddRole(role string) error {

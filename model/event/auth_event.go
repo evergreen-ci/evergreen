@@ -15,12 +15,15 @@ const (
 type UserEventType string
 
 const (
-	UserEventTypeRolesUpdate UserEventType = "USER_ROLES_UPDATED"
+	UserEventTypeRolesUpdate            UserEventType = "USER_ROLES_UPDATED"
+	UserEventTypeFavoriteProjectsUpdate UserEventType = "USER_FAVORITE_PROJECTS_UPDATED"
 )
 
 func (e UserEventType) validate() error {
 	switch e {
 	case UserEventTypeRolesUpdate:
+		return nil
+	case UserEventTypeFavoriteProjectsUpdate:
 		return nil
 	default:
 		return errors.Errorf("invalid user event type '%s'", e)
