@@ -5,6 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/stretchr/testify/assert"
@@ -13,8 +16,11 @@ import (
 func TestExpectedDuration(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
-	index := db.Index{Key: db.IndexKey{Fields: []db.IndexFieldSpec{{Name: "branch", Value: 1}, {Name: "build_variant", Value: 1}, {Name: "display_name", Value: 1}, {Name: "status", Value: 1}, {Name: "finish_time", Value: 1}, {Name: "start_time", Value: 1}}}}
-	assert.NoError(db.CreateIndexes(context.Background(), Collection, index))
+	index := mongo.IndexModel{
+		Keys: bson.D{{Key: "branch", Value: 1}, {Key: "build_variant", Value: 1}, {Key: "display_name", Value: 1}, {Key: "status", Value: 1}, {Key: "finish_time", Value: 1}, {Key: "start_time", Value: 1}},
+	}
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).Indexes().CreateOne(context.Background(), index)
+	assert.NoError(err)
 	bv := "bv"
 	project := "proj"
 	now := time.Now()
