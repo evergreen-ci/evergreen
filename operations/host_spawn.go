@@ -742,7 +742,7 @@ func hostRunCommand() cli.Command {
 					return nil
 				}
 				for _, host := range hosts {
-					hostIDs = append(hostIDs, model.FromAPIString(host.Id))
+					hostIDs = append(hostIDs, model.FromStringPtr(host.Id))
 				}
 
 				if !skipConfirm {

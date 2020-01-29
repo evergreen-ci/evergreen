@@ -830,7 +830,7 @@ func TestHostRangeGetHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Status())
 	hosts := resp.Data().([]interface{})
 	require.Len(t, hosts, 1)
-	assert.Equal(t, "h0", model.FromAPIString(hosts[0].(*model.APIHost).Id))
+	assert.Equal(t, "h0", model.FromStringPtr(hosts[0].(*model.APIHost).Id))
 
 	handler = hostRangeGetHandler{
 		sc:     connector,
@@ -840,7 +840,7 @@ func TestHostRangeGetHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Status())
 	hosts = resp.Data().([]interface{})
 	require.Len(t, hosts, 1)
-	assert.Equal(t, "h1", model.FromAPIString(hosts[0].(*model.APIHost).Id))
+	assert.Equal(t, "h1", model.FromStringPtr(hosts[0].(*model.APIHost).Id))
 
 	handler = hostRangeGetHandler{
 		sc:     connector,
@@ -850,5 +850,5 @@ func TestHostRangeGetHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Status())
 	hosts = resp.Data().([]interface{})
 	require.Len(t, hosts, 1)
-	assert.Equal(t, "h2", model.FromAPIString(hosts[0].(*model.APIHost).Id))
+	assert.Equal(t, "h2", model.FromStringPtr(hosts[0].(*model.APIHost).Id))
 }
