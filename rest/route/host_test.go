@@ -824,7 +824,7 @@ func TestHostRangeGetHandler(t *testing.T) {
 
 	handler := hostRangeGetHandler{
 		sc:     connector,
-		status: evergreen.HostTerminated,
+		params: model.APIHostParams{Status: evergreen.HostTerminated},
 	}
 	resp := handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user0"}))
 	assert.Equal(t, http.StatusOK, resp.Status())
@@ -834,7 +834,7 @@ func TestHostRangeGetHandler(t *testing.T) {
 
 	handler = hostRangeGetHandler{
 		sc:     connector,
-		distro: "ubuntu-1604",
+		params: model.APIHostParams{Distro: "ubuntu-1604"},
 	}
 	resp = handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user0"}))
 	assert.Equal(t, http.StatusOK, resp.Status())
@@ -843,8 +843,8 @@ func TestHostRangeGetHandler(t *testing.T) {
 	assert.Equal(t, "h1", model.FromAPIString(hosts[0].(*model.APIHost).Id))
 
 	handler = hostRangeGetHandler{
-		sc:           connector,
-		createdAfter: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+		sc:     connector,
+		params: model.APIHostParams{CreatedAfter: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)},
 	}
 	resp = handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user1"}))
 	assert.Equal(t, http.StatusOK, resp.Status())

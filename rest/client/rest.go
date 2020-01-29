@@ -1134,23 +1134,30 @@ func (c *communicatorImpl) StartHostProcesses(ctx context.Context, hostIDs []str
 			end = len(hostIDs)
 		}
 		data := model.APIHostScript{Hosts: hostIDs[i:end], Script: script}
-		resp, err := c.request(ctx, info, data)
-		if err != nil {
-			return nil, errors.Wrap(err, "can't make request to run script on host")
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			restErr := gimlet.ErrorResponse{}
-			if err = util.ReadJSONInto(resp.Body, &restErr); err != nil {
-				return nil, errors.Wrap(err, "received an error but was unable to parse")
+		output, err := func() ([]model.APIHostProcess, error) {
+			resp, err := c.request(ctx, info, data)
+			if err != nil {
+				return nil, errors.Wrap(err, "can't make request to run script on host")
 			}
-			return nil, errors.Wrapf(restErr, "response code %d running script on host", resp.StatusCode)
-		}
+			defer resp.Body.Close()
 
-		output := []model.APIHostProcess{}
-		if err := util.ReadJSONInto(resp.Body, &output); err != nil {
-			return nil, errors.Wrap(err, "problem reading response")
+			if resp.StatusCode != http.StatusOK {
+				restErr := gimlet.ErrorResponse{}
+				if err = util.ReadJSONInto(resp.Body, &restErr); err != nil {
+					return nil, errors.Wrap(err, "received an error but was unable to parse")
+				}
+				return nil, errors.Wrapf(restErr, "response code %d running script on host", resp.StatusCode)
+			}
+
+			output := []model.APIHostProcess{}
+			if err := util.ReadJSONInto(resp.Body, &output); err != nil {
+				return nil, errors.Wrap(err, "problem reading response")
+			}
+
+			return output, nil
+		}()
+		if err != nil {
+			return nil, errors.Wrap(err, "can't start processes")
 		}
 
 		result = append(result, output...)
@@ -1167,28 +1174,36 @@ func (c *communicatorImpl) GetHostProcessOutput(ctx context.Context, hostProcess
 	}
 
 	result := []model.APIHostProcess{}
+
 	for i := 0; i < len(hostProcesses); i += batchSize {
 		end := i + batchSize
 		if end > len(hostProcesses) {
 			end = len(hostProcesses)
 		}
-		resp, err := c.request(ctx, info, hostProcesses[i:end])
-		if err != nil {
-			return nil, errors.Wrap(err, "can't make request to run script on host")
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			restErr := gimlet.ErrorResponse{}
-			if err = util.ReadJSONInto(resp.Body, &restErr); err != nil {
-				return nil, errors.Wrap(err, "received an error but was unable to parse")
+		output, err := func() ([]model.APIHostProcess, error) {
+			resp, err := c.request(ctx, info, hostProcesses[i:end])
+			if err != nil {
+				return nil, errors.Wrap(err, "can't make request to run script on host")
 			}
-			return nil, errors.Wrapf(restErr, "response code %d running script on host", resp.StatusCode)
-		}
+			defer resp.Body.Close()
 
-		output := []model.APIHostProcess{}
-		if err := util.ReadJSONInto(resp.Body, &output); err != nil {
-			return nil, errors.Wrap(err, "problem reading response")
+			if resp.StatusCode != http.StatusOK {
+				restErr := gimlet.ErrorResponse{}
+				if err = util.ReadJSONInto(resp.Body, &restErr); err != nil {
+					return nil, errors.Wrap(err, "received an error but was unable to parse")
+				}
+				return nil, errors.Wrapf(restErr, "response code %d running script on host", resp.StatusCode)
+			}
+
+			output := []model.APIHostProcess{}
+			if err := util.ReadJSONInto(resp.Body, &output); err != nil {
+				return nil, errors.Wrap(err, "problem reading response")
+			}
+
+			return output, nil
+		}()
+		if err != nil {
+			return nil, errors.Wrap(err, "can't get process output")
 		}
 
 		result = append(result, output...)
