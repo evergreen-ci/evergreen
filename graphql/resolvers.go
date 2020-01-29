@@ -92,8 +92,12 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 
 	groupsMap := make(map[string][]*restModel.UIProjectFields)
 
-	// favoriteIds should be fetched from DB
-	favoriteIds := []string{"buildhost-configuration"}
+	usr, err := user.FindOneById("admin")
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting user")
+	}
+
+	favoriteIds := usr.FavoriteProjects
 	favorites := []*restModel.UIProjectFields{}
 
 	for _, p := range allProjs {
