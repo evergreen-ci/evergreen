@@ -183,7 +183,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       return available
     }
 
-    $scope.noExpirationEnabled = function () {
+    $scope.unexpirableEnabled = function () {
       return $scope.availableUnexpirableHosts() > 0 || $scope.curHostData.no_expiration || $scope.curHostData.original_expiration == null
     }
 
