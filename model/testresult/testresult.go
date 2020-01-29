@@ -162,7 +162,7 @@ func TestResultsQuery(taskIds []string, testId, testName, status string, limit, 
 }
 
 // TestResultsFilterSortPaginate is a query for returning test results to the taskTests GQL Query.
-func TestResultsFilterSortPaginate(taskIds []string, filter, status, sortBy string, sortDir, page, limit, execution int) ([]TestResult, error) {
+func TestResultsFilterSortPaginate(taskIds []string, testName, status, sortBy string, sortDir, page, limit, execution int) ([]TestResult, error) {
 	tests := []TestResult{}
 	match := bson.M{
 		TaskIDKey:    bson.M{"$in": taskIds},
@@ -191,9 +191,9 @@ func TestResultsFilterSortPaginate(taskIds []string, filter, status, sortBy stri
 
 	pipeline = append(pipeline, bson.M{"$project": project})
 
-	if len(filter) > 0 {
-		matchFilterResult := bson.M{"$match": bson.M{"$or": []bson.M{{TestFileKey: bson.M{"$regex": filter, "$options": "i"}}, {StatusKey: bson.M{"$regex": filter, "$options": "i"}}}}}
-		pipeline = append(pipeline, matchFilterResult)
+	if len(testName) > 0 {
+		matchTestName := bson.M{"$match": bson.M{TestFileKey: bson.M{"$regex": testName, "$options": "i"}}}
+		pipeline = append(pipeline, matchTestName)
 	}
 
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{sortBy: sortDir}})
