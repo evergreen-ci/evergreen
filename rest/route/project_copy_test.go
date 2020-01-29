@@ -138,7 +138,7 @@ func (s *copyRedactedVarsSuite) SetupSuite() {
 			},
 			{
 				Id:          "projectB",
-				Vars:        map[string]string{"banana": "yellow", "hello": "its me"},
+				Vars:        map[string]string{"banana": "yellow", "apple": "green", "hello": "its me"},
 				PrivateVars: map[string]bool{},
 			},
 		},
@@ -183,8 +183,9 @@ func (s *copyRedactedVarsSuite) TestCopyRedactedVariables() {
 	resp = s.route.Run(ctx)
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
-	s.Len(s.data.CachedVars[1].Vars, 2)
+	s.Len(s.data.CachedVars[1].Vars, 3)
 	s.Equal("world", s.data.CachedVars[1].Vars["hello"])
+	s.Equal("green", s.data.CachedVars[1].Vars["green"])
 	s.True(s.data.CachedVars[1].PrivateVars["hello"])
 }
 
@@ -203,7 +204,7 @@ func (s *copyRedactedVarsSuite) TestCopyRedactedVariablesWithOverlap() {
 	resp = s.route.Run(ctx)
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
-	s.Len(s.data.CachedVars[1].Vars, 2)
+	s.Len(s.data.CachedVars[1].Vars, 3)
 	s.Equal("world", s.data.CachedVars[1].Vars["hello"]) // overwrites old variable
 	s.True(s.data.CachedVars[1].PrivateVars["hello"])
 
