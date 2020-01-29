@@ -42,8 +42,8 @@ type Distro struct {
 	DisableShallowClone   bool                    `bson:"disable_shallow_clone" json:"disable_shallow_clone" mapstructure:"disable_shallow_clone"`
 	UseLegacyAgent        bool                    `bson:"use_legacy_agent" json:"use_legacy_agent" mapstructure:"use_legacy_agent"`
 	Note                  string                  `bson:"note" json:"note" mapstructure:"note"`
-	HomeVolumeDeviceName  string                  `bson:"home_volume_device_name" json:"home_volume_device_name" mapstructure:"home_volume_device_name"`
 	ValidProjects         []string                `bson:"valid_projects,omitempty" json:"valid_projects,omitempty" mapstructure:"valid_projects,omitempty"`
+	HomeVolumeSettings    HomeVolumeSettings      `bson:"home_volume_settings" json:"home_volume_settings" mapstructure:"home_volume_settings"`
 }
 
 // BootstrapSettings encapsulates all settings related to bootstrapping hosts.
@@ -66,6 +66,11 @@ type BootstrapSettings struct {
 
 	// Linux-specific
 	ResourceLimits ResourceLimits `bson:"resource_limits,omitempty" json:"resource_limits,omitempty" mapstructure:"resource_limits,omitempty"`
+}
+
+type HomeVolumeSettings struct {
+	DeviceName        string `bson:"device_name" json:"device_name" mapstructure:"device_name"`
+	FilesystemCommand string `bson:"filesystem_command" json:"filesystem_command" mapstructure:"filesystem_command"`
 }
 
 type EnvVar struct {

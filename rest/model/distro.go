@@ -326,6 +326,30 @@ func (s *APIBootstrapSettings) ToService() (interface{}, error) {
 	return settings, nil
 }
 
+type APIHomeVolumeSettings struct {
+	DeviceName        *string `json:"device_name"`
+	FilesystemCommand *string `json:"filesystem_command"`
+}
+
+func (s *APIHomeVolumeSettings) BuildFromService(h interface{}) error {
+	settings, ok := h.(distro.HomeVolumeSettings)
+	if !ok {
+		return errors.Errorf("Unexpected type '%T' for HomeVolumeSettings", h)
+	}
+
+	s.DeviceName = ToStringPtr(settings.DeviceName)
+	s.FilesystemCommand = ToStringPtr(settings.FilesystemCommand)
+
+	return nil
+}
+
+func (s *APIHomeVolumeSettings) ToService() (interface{}, error) {
+	return distro.HomeVolumeSettings{
+		DeviceName:        FromStringPtr(s.DeviceName),
+		FilesystemCommand: FromStringPtr(s.FilesystemCommand),
+	}, nil
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 // APIDistro is the model to be returned by the API whenever distros are fetched
@@ -356,7 +380,7 @@ type APIDistro struct {
 	HostAllocatorSettings APIHostAllocatorSettings `json:"host_allocator_settings"`
 	DisableShallowClone   bool                     `json:"disable_shallow_clone"`
 	UseLegacyAgent        bool                     `json:"use_legacy_agent"`
-	HomeVolumeDeviceName  *string                  `json:"home_volume_device_name"`
+	HomeVolumeSettings    APIHomeVolumeSettings    `json:"home_volume_settings"`
 	Note                  *string                  `json:"note"`
 	ValidProjects         []*string                `json:"valid_projects"`
 }
@@ -444,8 +468,12 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	apiDistro.DisableShallowClone = d.DisableShallowClone
 	apiDistro.UseLegacyAgent = d.UseLegacyAgent
 	apiDistro.Note = ToStringPtr(d.Note)
-	apiDistro.HomeVolumeDeviceName = ToStringPtr(d.HomeVolumeDeviceName)
 	apiDistro.ValidProjects = ToStringPtrSlice(d.ValidProjects)
+	homeVolumeSettings := APIHomeVolumeSettings{}
+	if err := homeVolumeSettings.BuildFromService(d.HomeVolumeSettings); err != nil {
+		return errors.Wrap(err, "Error converting from distro.HomeVolumeSettings to model.API.HomeVolumeSettings")
+	}
+	apiDistro.HomeVolumeSettings = homeVolumeSettings
 
 	return nil
 }
@@ -539,8 +567,16 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d.DisableShallowClone = apiDistro.DisableShallowClone
 	d.UseLegacyAgent = apiDistro.UseLegacyAgent
 	d.Note = FromStringPtr(apiDistro.Note)
-	d.HomeVolumeDeviceName = FromStringPtr(apiDistro.HomeVolumeDeviceName)
 	d.ValidProjects = FromStringPtrSlice(apiDistro.ValidProjects)
+	i, err = apiDistro.HomeVolumeSettings.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "Error converting from model.APIHomeVolumeSettings to distro.HomeVolumeSettings")
+	}
+	homeVolumeSettings, ok := i.(distro.HomeVolumeSettings)
+	if !ok {
+		return nil, errors.Errorf("Unexpected type %T for distro.HomeVolumeSettings", i)
+	}
+	d.HomeVolumeSettings = homeVolumeSettings
 
 	return &d, nil
 }

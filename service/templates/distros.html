@@ -290,7 +290,11 @@ Evergreen - Distros
             </div>
             <div>
               <label class="distro-label">Home Volume Device Name:</label>
-              <input ng-readonly="readOnly" type="text" class="form-control" ng-model="activeDistro.home_volume_device_name">
+              <input ng-readonly="readOnly" type="text" class="form-control" ng-model="activeDistro.home_volume_settings.device_name">
+            </div>
+            <div>
+              <label class="distro-label">Home Volume Filesystem:</label>
+              <input ng-readonly="readOnly" type="text" class="form-control" ng-model="activeDistro.home_volume_settings.filesystem_command">
             </div>
           </div>
           <br>

@@ -981,8 +981,8 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	}()
 
 	deviceName := h.HomeVolumeDeviceName
-	if h.Distro.HomeVolumeDeviceName != "" {
-		deviceName = h.Distro.HomeVolumeDeviceName
+	if h.Distro.HomeVolumeSettings.DeviceName != "" {
+		deviceName = h.Distro.HomeVolumeSettings.DeviceName
 	}
 
 	// continue on umount mount error
