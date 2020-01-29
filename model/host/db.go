@@ -84,8 +84,6 @@ var (
 	LastContainerFinishTimeKey   = bsonutil.MustHaveTag(Host{}, "LastContainerFinishTime")
 	SpawnOptionsKey              = bsonutil.MustHaveTag(Host{}, "SpawnOptions")
 	ContainerPoolSettingsKey     = bsonutil.MustHaveTag(Host{}, "ContainerPoolSettings")
-	RunningTeardownForTaskKey    = bsonutil.MustHaveTag(Host{}, "RunningTeardownForTask")
-	RunningTeardownSinceKey      = bsonutil.MustHaveTag(Host{}, "RunningTeardownSince")
 	InstanceTagsKey              = bsonutil.MustHaveTag(Host{}, "InstanceTags")
 	SpawnOptionsTaskIDKey        = bsonutil.MustHaveTag(SpawnOptions{}, "TaskID")
 	SpawnOptionsBuildIDKey       = bsonutil.MustHaveTag(SpawnOptions{}, "BuildID")
@@ -681,6 +679,10 @@ func FindStaleRunningTasks(cutoff time.Duration) ([]task.Task, error) {
 				{
 					task.StatusKey:        task.SelectorTaskInProgress,
 					task.LastHeartbeatKey: bson.M{"$lte": time.Now().Add(-cutoff)},
+				},
+				{
+					task.StatusKey:       evergreen.TaskDispatched,
+					task.DispatchTimeKey: bson.M{"$lte": time.Now().Add(-2 * cutoff)},
 				},
 				{
 					task.StatusKey:        evergreen.TaskUndispatched,

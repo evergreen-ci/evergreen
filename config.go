@@ -26,10 +26,10 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2020-01-24"
+	ClientVersion = "2020-01-27"
 )
 
-// ConfigSection defines a sub-document in the evegreen config
+// ConfigSection defines a sub-document in the evergreen config
 // any config sections must also be added to registry.go
 type ConfigSection interface {
 	// SectionId() returns the ID of the section to be used in the database document and struct tag
