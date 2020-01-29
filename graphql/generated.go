@@ -74,6 +74,11 @@ type ComplexityRoot struct {
 		Repo        func(childComplexity int) int
 	}
 
+	Projects struct {
+		AllProjects func(childComplexity int) int
+		Favorites   func(childComplexity int) int
+	}
+
 	Query struct {
 		Projects    func(childComplexity int) int
 		Task        func(childComplexity int, taskID string) int
@@ -157,7 +162,7 @@ type ComplexityRoot struct {
 type QueryResolver interface {
 	UserPatches(ctx context.Context, userID string) ([]*model.APIPatch, error)
 	Task(ctx context.Context, taskID string) (*model.APITask, error)
-	Projects(ctx context.Context) ([]*GroupedProjects, error)
+	Projects(ctx context.Context) (*Projects, error)
 }
 
 type executableSchema struct {
@@ -328,6 +333,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Project.Repo(childComplexity), true
+
+	case "Projects.allProjects":
+		if e.complexity.Projects.AllProjects == nil {
+			break
+		}
+
+		return e.complexity.Projects.AllProjects(childComplexity), true
+
+	case "Projects.favorites":
+		if e.complexity.Projects.Favorites == nil {
+			break
+		}
+
+		return e.complexity.Projects.Favorites(childComplexity), true
 
 	case "Query.projects":
 		if e.complexity.Query.Projects == nil {
@@ -798,7 +817,7 @@ var parsedSchema = gqlparser.MustLoadSchema(
 	&ast.Source{Name: "graphql/schema.graphql", Input: `type Query {
   userPatches(userId: String!): [Patch]!
   task(taskId: String!): Task
-  projects: [GroupedProjects!]!
+  projects: Projects!
 }
 
 type Patch {
@@ -891,6 +910,11 @@ type Task {
   executionTasks: [String!]
   generateTask: Boolean
   generatedBy: String
+}
+
+type Projects {
+  favorites: [Project]!
+  allProjects: [GroupedProjects!]!
 }
 
 type GroupedProjects {
@@ -1731,6 +1755,74 @@ func (ec *executionContext) _Project_owner(ctx context.Context, field graphql.Co
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Projects_favorites(ctx context.Context, field graphql.CollectedField, obj *Projects) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Projects",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Favorites, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.UIProjectFields)
+	fc.Result = res
+	return ec.marshalNProject2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐUIProjectFields(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Projects_allProjects(ctx context.Context, field graphql.CollectedField, obj *Projects) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Projects",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AllProjects, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*GroupedProjects)
+	fc.Result = res
+	return ec.marshalNGroupedProjects2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGroupedProjectsᚄ(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query_userPatches(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -1839,9 +1931,9 @@ func (ec *executionContext) _Query_projects(ctx context.Context, field graphql.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*GroupedProjects)
+	res := resTmp.(*Projects)
 	fc.Result = res
-	return ec.marshalNGroupedProjects2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGroupedProjectsᚄ(ctx, field.Selections, res)
+	return ec.marshalNProjects2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjects(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -4902,6 +4994,38 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 	return out
 }
 
+var projectsImplementors = []string{"Projects"}
+
+func (ec *executionContext) _Projects(ctx context.Context, sel ast.SelectionSet, obj *Projects) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, projectsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Projects")
+		case "favorites":
+			out.Values[i] = ec._Projects_favorites(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "allProjects":
+			out.Values[i] = ec._Projects_allProjects(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var queryImplementors = []string{"Query"}
 
 func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -5695,6 +5819,20 @@ func (ec *executionContext) marshalNProject2ᚕᚖgithubᚗcomᚋevergreenᚑci�
 	}
 	wg.Wait()
 	return ret
+}
+
+func (ec *executionContext) marshalNProjects2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjects(ctx context.Context, sel ast.SelectionSet, v Projects) graphql.Marshaler {
+	return ec._Projects(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNProjects2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjects(ctx context.Context, sel ast.SelectionSet, v *Projects) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Projects(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {

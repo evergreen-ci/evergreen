@@ -1,7 +1,7 @@
 type Query {
   userPatches(userId: String!): [Patch]!
   task(taskId: String!): Task
-  projects: [GroupedProjects!]!
+  projects: Projects!
 }
 
 type Patch {
@@ -94,6 +94,11 @@ type Task {
   executionTasks: [String!]
   generateTask: Boolean
   generatedBy: String
+}
+
+type Projects {
+  favorites: [Project]!
+  allProjects: [GroupedProjects!]!
 }
 
 type GroupedProjects {

@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 )
 
@@ -63,13 +64,17 @@ func (r *queryResolver) Task(ctx context.Context, taskID string) (*restModel.API
 	return &apiTask, nil
 }
 
-func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error) {
+func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 	allProjs, err := model.FindAllTrackedProjectRefs()
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving projects")
 	}
 
 	groupsMap := make(map[string][]*restModel.UIProjectFields)
+
+	// favoriteIds should be fetched from DB
+	favoriteIds := []string{"buildhost-configuration"}
+	favorites := []*restModel.UIProjectFields{}
 
 	for _, p := range allProjs {
 		groupName := s.Join([]string{p.Owner, p.Repo}, "/")
@@ -85,6 +90,11 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 			groupsMap[groupName] = append(projs, &uiProj)
 		} else {
 			groupsMap[groupName] = []*restModel.UIProjectFields{&uiProj}
+		}
+
+		// if proj ID is in favoriteIds then add proj to favorites
+		if util.StringSliceContains(favoriteIds, p.Identifier) {
+			favorites = append(favorites, &uiProj)
 		}
 	}
 
@@ -103,7 +113,12 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 		return *groupsArr[i].Name < *groupsArr[j].Name
 	})
 
-	return groupsArr, nil
+	pjs := Projects{
+		Favorites:   favorites,
+		AllProjects: groupsArr,
+	}
+
+	return &pjs, nil
 }
 
 // New injects resources into the resolvers, such as the data connector

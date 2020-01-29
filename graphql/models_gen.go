@@ -10,3 +10,8 @@ type GroupedProjects struct {
 	Name     *string                  `json:"name"`
 	Projects []*model.UIProjectFields `json:"projects"`
 }
+
+type Projects struct {
+	Favorites   []*model.UIProjectFields `json:"favorites"`
+	AllProjects []*GroupedProjects       `json:"allProjects"`
+}
