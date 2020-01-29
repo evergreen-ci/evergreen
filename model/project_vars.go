@@ -154,6 +154,16 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	)
 }
 
+func (projectVars *ProjectVars) RedactedOnly() {
+	privateVars := map[string]string{}
+	for name, isPrivate := range projectVars.PrivateVars {
+		if val, ok := projectVars.Vars[name]; ok && isPrivate {
+			privateVars[name] = val
+		}
+	}
+	projectVars.Vars = privateVars
+}
+
 func (projectVars *ProjectVars) RedactPrivateVars() {
 	if projectVars != nil &&
 		projectVars.Vars != nil &&

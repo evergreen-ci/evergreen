@@ -357,12 +357,18 @@ func (s *ProjectConnectorGetSuite) TestGetProjectSettingsEventNoRepo() {
 }
 
 func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
-	res, err := s.ctx.FindProjectVarsById(projectId)
+	res, err := s.ctx.FindProjectVarsById(projectId, false)
 	s.NoError(err)
 	s.Require().NotNil(res)
 	s.Equal("1", res.Vars["a"])
 	s.Equal("", res.Vars["b"])
 	s.True(res.PrivateVars["b"])
+
+	res, err = s.ctx.FindProjectVarsById(projectId, true)
+	s.NoError(err)
+	s.Require().NotNil(res)
+	s.Equal("3", res.Vars["b"])
+	s.Equal("", res.Vars["a"])
 }
 
 func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
@@ -390,10 +396,10 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 
 func (s *ProjectConnectorGetSuite) TestCopyProjectVars() {
 	s.NoError(s.ctx.CopyProjectVars(projectId, "project-copy"))
-	origProj, err := s.ctx.FindProjectVarsById(projectId)
+	origProj, err := s.ctx.FindProjectVarsById(projectId, false)
 	s.NoError(err)
 
-	newProj, err := s.ctx.FindProjectVarsById("project-copy")
+	newProj, err := s.ctx.FindProjectVarsById("project-copy", false)
 	s.NoError(err)
 
 	s.Equal(origProj.PrivateVars, newProj.PrivateVars)

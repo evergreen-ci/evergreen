@@ -394,7 +394,10 @@ func urlVarsToProjectScopes(r *http.Request) (string, int, error) {
 	}
 
 	projectID := util.CoalesceStrings(append(query["project_id"], query["projectId"]...), vars["project_id"], vars["projectId"])
-
+	destProjectID := util.CoalesceString(query["dest_project"]...)
+	if destProjectID != "" {
+		return projectID, http.StatusOK, nil
+	}
 	versionID := util.CoalesceStrings(append(query["version_id"], query["versionId"]...), vars["version_id"], vars["versionId"])
 	if projectID == "" && versionID != "" {
 		projectID, err = model.FindProjectForVersion(versionID)

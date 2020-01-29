@@ -91,7 +91,7 @@ func (s *ProjectPatchByIDSuite) TestRunValid() {
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
-	vars, err := s.sc.FindProjectVarsById("dimoxinil")
+	vars, err := s.sc.FindProjectVarsById("dimoxinil", false)
 	s.NoError(err)
 	_, ok := vars.Vars["apple"]
 	s.False(ok)

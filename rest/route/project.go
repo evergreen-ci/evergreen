@@ -582,7 +582,7 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	variables, err := h.sc.FindProjectVarsById(h.projectID)
+	variables, err := h.sc.FindProjectVarsById(h.projectID, false)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}

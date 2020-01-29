@@ -91,3 +91,83 @@ func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
 
 	return gimlet.NewJSONResponse(apiProjectRef)
 }
+
+////////////////////////////////////////////////////////////////////////
+//
+// POST /rest/v2/projects/{project_id}/copy_redacted
+
+type copyRedactedVarsHandler struct {
+	copyFrom string
+	copyTo   string
+	dryRun   bool
+	sc       data.Connector
+}
+
+func makeCopyRedactedVars(sc data.Connector) gimlet.RouteHandler {
+	return &copyRedactedVarsHandler{
+		sc: sc,
+	}
+}
+
+func (p *copyRedactedVarsHandler) Factory() gimlet.RouteHandler {
+	return &copyRedactedVarsHandler{
+		sc: p.sc,
+	}
+}
+
+func (p *copyRedactedVarsHandler) Parse(ctx context.Context, r *http.Request) error {
+	p.copyFrom = gimlet.GetVars(r)["project_id"]
+	p.copyTo = r.FormValue("dest_project")
+	p.dryRun = r.FormValue("dry_run") == "true"
+	if p.copyTo == "" {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "must provide new project ID",
+		}
+	}
+	return nil
+}
+
+func (p *copyRedactedVarsHandler) Run(ctx context.Context) gimlet.Responder {
+	_, err := p.sc.FindProjectById(p.copyTo) // ensure project is existing
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.copyTo))
+	}
+
+	varsToCopy, err := p.sc.FindProjectVarsById(p.copyFrom, true)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding variables for '%s'", p.copyFrom))
+	}
+
+	// return any variables that will be overwritten in the new project
+	if p.dryRun {
+		if err := p.willOverwriteVars(varsToCopy); err != nil {
+			return gimlet.NewJSONErrorResponse(err)
+		}
+		return gimlet.NewJSONResponse(struct{}{})
+	}
+
+	if err := p.sc.UpdateProjectVars(p.copyTo, varsToCopy); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error copying project vars from project '%s'", p.copyFrom))
+	}
+
+	return gimlet.NewJSONResponse(struct{}{})
+}
+
+func (p *copyRedactedVarsHandler) willOverwriteVars(varsToCopy *model.APIProjectVars) error {
+
+	overwrittenVars := []string{}
+	existingVars, err := p.sc.FindProjectVarsById(p.copyTo, false)
+	if err != nil {
+		return errors.Wrapf(err, "Database error finding variables for '%s'", p.copyTo)
+	}
+	for v := range varsToCopy.Vars {
+		if _, ok := existingVars.Vars[v]; ok {
+			overwrittenVars = append(overwrittenVars, v)
+		}
+	}
+	if len(overwrittenVars) > 0 {
+		return errors.Errorf("These variables will be overwritten: %v", overwrittenVars)
+	}
+	return nil
+}
