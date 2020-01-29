@@ -1331,17 +1331,6 @@
         "data": {
           "projects": [
             {
-              "name": "10gen/buildslave-cookbooks",
-              "projects": [
-                {
-                  "identifier": "evergreen-packer",
-                  "displayName": "Evergreen Packer",
-                  "repo": "buildslave-cookbooks",
-                  "owner": "10gen"
-                }
-              ]
-            },
-            {
               "name": "10gen/mms",
               "projects": [
                 {
@@ -1365,17 +1354,6 @@
               ]
             },
             {
-              "name": "10gen/mongo-release-tools",
-              "projects": [
-                {
-                  "identifier": "mongo-release-tools",
-                  "displayName": "MongoDB Release Tools",
-                  "repo": "mongo-release-tools",
-                  "owner": "10gen"
-                }
-              ]
-            },
-            {
               "name": "annie.black/buildhost-configuration",
               "projects": [
                 {
@@ -1383,17 +1361,6 @@
                   "displayName": "buildhost-test",
                   "repo": "buildhost-configuration",
                   "owner": "annie.black"
-                }
-              ]
-            },
-            {
-              "name": "briananthonymccarthy/mongo",
-              "projects": [
-                {
-                  "identifier": "shared-cache",
-                  "displayName": "Shared Cache",
-                  "repo": "mongo",
-                  "owner": "briananthonymccarthy"
                 }
               ]
             },
