@@ -217,7 +217,7 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 	viewData.Bugsnag = settings.Bugsnag
 	viewData.NewRelic = settings.NewRelic
 	viewData.ACLEnabled = evergreen.AclCheckingIsEnabled
-	viewData.ValidDefaultLoggers = []string{model.EvergreenLogSender, model.BuildloggerLogSender}
+	viewData.ValidDefaultLoggers = []string{"", model.EvergreenLogSender, model.BuildloggerLogSender}
 	return viewData
 }
 
