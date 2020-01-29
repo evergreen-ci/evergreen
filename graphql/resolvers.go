@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -18,8 +19,27 @@ type Resolver struct {
 	sc data.Connector
 }
 
+func (r *Resolver) Mutation() MutationResolver {
+	return &mutationResolver{r}
+}
 func (r *Resolver) Query() QueryResolver {
 	return &queryResolver{r}
+}
+
+type mutationResolver struct{ *Resolver }
+
+func (r *mutationResolver) AddFavoriteProject(ctx context.Context, projID string) ([]string, error) {
+	usr, err := user.FindOneById("admin")
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting user")
+	}
+
+	newFavorites, err := usr.AddFavoritedProject(projID)
+	if err != nil {
+		return nil, errors.Wrap(err, err.Error())
+	}
+
+	return newFavorites, nil
 }
 
 type patchResolver struct{ *Resolver }

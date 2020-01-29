@@ -4,6 +4,10 @@ type Query {
   projects: Projects!
 }
 
+type Mutation {
+  addFavoriteProject(projId: String!): [String!]!
+}
+
 type Patch {
   id: ID!
   description: String!
