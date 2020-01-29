@@ -613,11 +613,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		Permission:    evergreen.PermissionTasks,
 		RequiredLevel: evergreen.TasksAdmin.Value,
 	}
-	taskAdmin, err := authUser.HasPermission(requiredPermission)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error checking permissions: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
+	taskAdmin := authUser.HasPermission(requiredPermission)
 
 	// determine what action needs to be taken
 	switch putParams.Action {

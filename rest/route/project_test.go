@@ -119,10 +119,10 @@ func (s *ProjectPatchByIDSuite) TestHasAliasDefined() {
 	projectID := "evergreen"
 	// a new definition for the github alias is added
 	pref := &model.APIProjectRef{
-		Identifier: model.ToAPIString(projectID),
+		Identifier: model.ToStringPtr(projectID),
 		Aliases: []model.APIProjectAlias{
 			{
-				Alias: model.ToAPIString(evergreen.GithubAlias),
+				Alias: model.ToStringPtr(evergreen.GithubAlias),
 			},
 		},
 	}
@@ -134,8 +134,8 @@ func (s *ProjectPatchByIDSuite) TestHasAliasDefined() {
 	// a definition already exists
 	s.sc.MockAliasConnector.Aliases = []model.APIProjectAlias{
 		{
-			ID:    model.ToAPIString("abcdef"),
-			Alias: model.ToAPIString(evergreen.GithubAlias),
+			ID:    model.ToStringPtr("abcdef"),
+			Alias: model.ToStringPtr(evergreen.GithubAlias),
 		},
 	}
 	pref.Aliases = nil
@@ -146,7 +146,7 @@ func (s *ProjectPatchByIDSuite) TestHasAliasDefined() {
 	// the only existing github alias is being deleted
 	pref.Aliases = []model.APIProjectAlias{
 		{
-			ID:     model.ToAPIString("abcdef"),
+			ID:     model.ToStringPtr("abcdef"),
 			Delete: true,
 		},
 	}
@@ -298,7 +298,7 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	s.Equal(model.ToAPIString("dimoxinil"), resp.Data().(*model.APIProjectRef).Identifier)
+	s.Equal(model.ToStringPtr("dimoxinil"), resp.Data().(*model.APIProjectRef).Identifier)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -357,7 +357,7 @@ func (s *ProjectGetSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	payload := resp.Data().([]interface{})
 
 	s.Len(payload, 1)
-	s.Equal(model.ToAPIString("projectC"), (payload[0]).(*model.APIProjectRef).Identifier)
+	s.Equal(model.ToStringPtr("projectC"), (payload[0]).(*model.APIProjectRef).Identifier)
 
 	pageData := resp.Pages()
 	s.Nil(pageData.Prev)
@@ -375,8 +375,8 @@ func (s *ProjectGetSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
 	payload := resp.Data().([]interface{})
 
 	s.Len(payload, 6)
-	s.Equal(model.ToAPIString("projectA"), (payload[0]).(*model.APIProjectRef).Identifier, payload[0])
-	s.Equal(model.ToAPIString("projectB"), (payload[1]).(*model.APIProjectRef).Identifier, payload[1])
+	s.Equal(model.ToStringPtr("projectA"), (payload[0]).(*model.APIProjectRef).Identifier, payload[0])
+	s.Equal(model.ToStringPtr("projectB"), (payload[1]).(*model.APIProjectRef).Identifier, payload[1])
 
 	s.Nil(resp.Pages())
 }

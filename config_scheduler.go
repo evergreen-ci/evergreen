@@ -19,7 +19,8 @@ type SchedulerConfig struct {
 	AcceptableHostIdleTimeSeconds int     `bson:"acceptable_host_idle_time_seconds" json:"acceptable_host_idle_time_seconds" mapstructure:"acceptable_host_idle_time_seconds"`
 	GroupVersions                 bool    `bson:"group_versions" json:"group_versions" mapstructure:"group_versions"`
 	PatchFactor                   int64   `bson:"patch_zipper_factor" json:"patch_factor" mapstructure:"patch_zipper"`
-	TimeInQueueFactor             int64   `bson:"time_in_queue_factor" json:"time_in_queue_factor" mapstructure:"time_in_queue_factor"`
+	PatchTimeInQueueFactor        int64   `bson:"patch_time_in_queue_factor" json:"patch_time_in_queue_factor" mapstructure:"patch_time_in_queue_factor"`
+	MainlineTimeInQueueFactor     int64   `bson:"mainline_time_in_queue_factor" json:"mainline_time_in_queue_factor" mapstructure:"mainline_time_in_queue_factor"`
 	ExpectedRuntimeFactor         int64   `bson:"expected_runtime_factor" json:"expected_runtime_factor" mapstructure:"expected_runtime_factor"`
 }
 
@@ -62,7 +63,8 @@ func (c *SchedulerConfig) Set() error {
 			"acceptable_host_idle_time_seconds": c.AcceptableHostIdleTimeSeconds,
 			"group_versions":                    c.GroupVersions,
 			"patch_zipper_factor":               c.PatchFactor,
-			"time_in_queue_factor":              c.TimeInQueueFactor,
+			"patch_time_in_queue_factor":        c.PatchTimeInQueueFactor,
+			"mainline_time_in_queue_factor":     c.MainlineTimeInQueueFactor,
 			"expected_runtime_factor":           c.ExpectedRuntimeFactor,
 		},
 	}, options.Update().SetUpsert(true))
@@ -125,8 +127,12 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 		return errors.New("patch factor must be between 0 and 100")
 	}
 
-	if c.TimeInQueueFactor < 0 || c.TimeInQueueFactor > 100 {
-		return errors.New("time in queue factor must be between 0 and 100")
+	if c.PatchTimeInQueueFactor < 0 || c.PatchTimeInQueueFactor > 100 {
+		return errors.New("patch time in queue factor must be between 0 and 100")
+	}
+
+	if c.MainlineTimeInQueueFactor < 0 || c.MainlineTimeInQueueFactor > 100 {
+		return errors.New("mainline time in queue factor must be between 0 and 100")
 	}
 
 	if c.ExpectedRuntimeFactor < 0 || c.ExpectedRuntimeFactor > 100 {

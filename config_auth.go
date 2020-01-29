@@ -3,6 +3,7 @@ package evergreen
 import (
 	"fmt"
 
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -35,6 +36,14 @@ type LDAPConfig struct {
 	GroupOU            string `bson:"group_ou" json:"group_ou" yaml:"group_ou"`
 }
 
+type OktaConfig struct {
+	ClientID           string `bson:"client_id" json:"client_id" yaml:"client_id"`
+	ClientSecret       string `bson:"client_secret" json:"client_secret" yaml:"client_secret"`
+	Issuer             string `bson:"issuer" json:"issuer" yaml:"issuer"`
+	UserGroup          string `bson:"user_group" json:"user_group" yaml:"user_group"`
+	ExpireAfterMinutes int    `bson:"expire_after_minutes" json:"expire_after_minutes" yaml:"expire_after_minutes"`
+}
+
 // GithubAuthConfig holds settings for interacting with Github Authentication including the
 // ClientID, ClientSecret and CallbackUri which are given when registering the application
 // Furthermore,
@@ -47,9 +56,11 @@ type GithubAuthConfig struct {
 
 // AuthConfig has a pointer to either a CrowConfig or a NaiveAuthConfig.
 type AuthConfig struct {
-	LDAP   *LDAPConfig       `bson:"ldap,omitempty" json:"ldap" yaml:"ldap"`
-	Naive  *NaiveAuthConfig  `bson:"naive,omitempty" json:"naive" yaml:"naive"`
-	Github *GithubAuthConfig `bson:"github,omitempty" json:"github" yaml:"github"`
+	LDAP          *LDAPConfig       `bson:"ldap,omitempty" json:"ldap" yaml:"ldap"`
+	Okta          *OktaConfig       `bson:"okta,omitempty" json:"okta" yaml:"okta"`
+	Naive         *NaiveAuthConfig  `bson:"naive,omitempty" json:"naive" yaml:"naive"`
+	Github        *GithubAuthConfig `bson:"github,omitempty" json:"github" yaml:"github"`
+	PreferredType string            `bson:"preferred_type,omitempty" json:"preferred_type" yaml:"preferred_type"`
 }
 
 func (c *AuthConfig) SectionId() string { return "auth" }
@@ -82,18 +93,25 @@ func (c *AuthConfig) Set() error {
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			"ldap":   c.LDAP,
-			"naive":  c.Naive,
-			"github": c.Github,
-		},
-	}, options.Update().SetUpsert(true))
+			AuthLDAPKey:          c.LDAP,
+			AuthOktaKey:          c.Okta,
+			AuthNaiveKey:         c.Naive,
+			AuthGithubKey:        c.Github,
+			authPreferredTypeKey: c.PreferredType,
+		}}, options.Update().SetUpsert(true))
 
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 
 func (c *AuthConfig) ValidateAndDefault() error {
 	catcher := grip.NewSimpleCatcher()
-	if c.LDAP == nil && c.Naive == nil && c.Github == nil {
+	catcher.ErrorfWhen(!util.StringSliceContains([]string{
+		"",
+		AuthLDAPKey,
+		AuthOktaKey,
+		AuthNaiveKey,
+		AuthGithubKey}, c.PreferredType), "invalid auth type '%s'", c.PreferredType)
+	if c.LDAP == nil && c.Naive == nil && c.Github == nil && c.Okta == nil {
 		catcher.Add(errors.New("You must specify one form of authentication"))
 	}
 	if c.Naive != nil {

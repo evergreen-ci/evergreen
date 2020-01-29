@@ -79,14 +79,14 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 	c := &DBSubscriptionConnector{}
 	for name, test := range map[string]func(t *testing.T, subs []restModel.APISubscription){
 		"InvalidSubscription": func(t *testing.T, subs []restModel.APISubscription) {
-			subs[0].RegexSelectors[0].Data = restModel.ToAPIString("")
+			subs[0].RegexSelectors[0].Data = restModel.ToStringPtr("")
 			assert.Error(t, c.SaveSubscriptions("me", []restModel.APISubscription{subs[0]}))
 		},
 		"ValidSubscription": func(t *testing.T, subs []restModel.APISubscription) {
 			assert.NoError(t, c.SaveSubscriptions("me", []restModel.APISubscription{subs[0]}))
 		},
 		"ModifyExistingSubscription": func(t *testing.T, subs []restModel.APISubscription) {
-			newData := restModel.ToAPIString("5678")
+			newData := restModel.ToStringPtr("5678")
 			subs[1].Selectors[0].Data = newData
 			assert.NoError(t, c.SaveSubscriptions("my-project", []restModel.APISubscription{subs[1]}))
 
@@ -135,18 +135,18 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 				},
 			}
 			newSubscription := restModel.APISubscription{
-				ResourceType: restModel.ToAPIString(event.ResourceTypeTask),
-				Trigger:      restModel.ToAPIString("outcome"),
-				Owner:        restModel.ToAPIString("me"),
-				OwnerType:    restModel.ToAPIString(string(event.OwnerTypePerson)),
+				ResourceType: restModel.ToStringPtr(event.ResourceTypeTask),
+				Trigger:      restModel.ToStringPtr("outcome"),
+				Owner:        restModel.ToStringPtr("me"),
+				OwnerType:    restModel.ToStringPtr(string(event.OwnerTypePerson)),
 				RegexSelectors: []restModel.APISelector{
 					{
-						Type: restModel.ToAPIString("object"),
-						Data: restModel.ToAPIString("object_data"),
+						Type: restModel.ToStringPtr("object"),
+						Data: restModel.ToStringPtr("object_data"),
 					},
 				},
 				Subscriber: restModel.APISubscriber{
-					Type:   restModel.ToAPIString(event.EmailSubscriberType),
+					Type:   restModel.ToStringPtr(event.EmailSubscriberType),
 					Target: "a@domain.invalid",
 				},
 			}

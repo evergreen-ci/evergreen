@@ -80,6 +80,8 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 	_, err := s.a.runTask(ctx, cancel, tc)
 	s.NoError(err)
 
+	// TODO: remove this line with MAKE-1090
+	s.Require().NoError(tc.logger.Close())
 	messages := s.mockCommunicator.GetMockMessages()
 	s.Len(messages, 1)
 	foundSuccessLogMessage := false
@@ -143,6 +145,8 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 	_, err := s.a.runTask(ctx, cancel, tc)
 	s.NoError(err)
 
+	// TODO: remove this line with MAKE-1090
+	s.Require().NoError(tc.logger.Close())
 	messages := s.mockCommunicator.GetMockMessages()
 	s.Len(messages, 1)
 	foundSuccessLogMessage := false
@@ -205,6 +209,8 @@ func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 	_, err := s.a.runTask(ctx, cancel, tc)
 	s.NoError(err)
 
+	// TODO: remove this line with MAKE-1090
+	s.Require().NoError(tc.logger.Close())
 	messages := s.mockCommunicator.GetMockMessages()
 	s.Len(messages, 1)
 	foundSuccessLogMessage := false
@@ -267,6 +273,8 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 	_, err := s.a.runTask(ctx, cancel, tc)
 	s.NoError(err)
 
+	// TODO: remove this line with MAKE-1090
+	s.Require().NoError(tc.logger.Close())
 	messages := s.mockCommunicator.GetMockMessages()
 	s.Len(messages, 1)
 	foundSuccessLogMessage := false
@@ -329,6 +337,8 @@ func (s *TimeoutSuite) TestDynamicIdleTimeout() {
 	_, err := s.a.runTask(ctx, cancel, tc)
 	s.NoError(err)
 
+	// TODO: remove this line with MAKE-1090
+	s.Require().NoError(tc.logger.Close())
 	messages := s.mockCommunicator.GetMockMessages()
 	s.Len(messages, 1)
 	foundSuccessLogMessage := false
@@ -391,6 +401,8 @@ func (s *TimeoutSuite) TestDynamicExecTimeoutTask() {
 	_, err := s.a.runTask(ctx, cancel, tc)
 	s.NoError(err)
 
+	// TODO: remove this line with MAKE-1090
+	s.Require().NoError(tc.logger.Close())
 	messages := s.mockCommunicator.GetMockMessages()
 	s.Len(messages, 1)
 	foundSuccessLogMessage := false

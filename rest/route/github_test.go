@@ -238,9 +238,9 @@ func (s *GithubWebhookRouteSuite) TestCommitQueueCommentTrigger() {
 
 	s.NoError(err)
 	if s.Len(s.sc.MockCommitQueueConnector.Queue, 1) {
-		s.Equal("1", restModel.FromAPIString(s.sc.MockCommitQueueConnector.Queue["bth"][0].Issue))
-		s.Equal("test_module", restModel.FromAPIString(s.sc.MockCommitQueueConnector.Queue["bth"][0].Modules[0].Module))
-		s.Equal("1234", restModel.FromAPIString(s.sc.MockCommitQueueConnector.Queue["bth"][0].Modules[0].Issue))
+		s.Equal("1", restModel.FromStringPtr(s.sc.MockCommitQueueConnector.Queue["bth"][0].Issue))
+		s.Equal("test_module", restModel.FromStringPtr(s.sc.MockCommitQueueConnector.Queue["bth"][0].Modules[0].Module))
+		s.Equal("1234", restModel.FromStringPtr(s.sc.MockCommitQueueConnector.Queue["bth"][0].Modules[0].Issue))
 	}
 }
 
@@ -301,7 +301,7 @@ func (s *GithubWebhookRouteSuite) TestTryDequeueCommitQueueItemForPR() {
 	s.NoError(s.h.tryDequeueCommitQueueItemForPR(pr))
 
 	// try dequeue works when an item matches
-	_, err := s.sc.EnqueueItem("bth", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("1")}, false)
+	_, err := s.sc.EnqueueItem("bth", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("1")}, false)
 	s.NoError(err)
 	s.NoError(s.h.tryDequeueCommitQueueItemForPR(pr))
 	queue, err := s.sc.FindCommitQueueByID("bth")

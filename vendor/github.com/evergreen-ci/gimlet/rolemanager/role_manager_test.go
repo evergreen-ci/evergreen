@@ -247,7 +247,7 @@ func (s *RoleManagerSuite) TestRequiresPermissionMiddleware() {
 		permissionMiddleware.ServeHTTP(rw, r, counterFunc)
 	}
 	authenticator := gimlet.NewBasicAuthenticator(nil, nil)
-	user := gimlet.NewBasicUser("user", "name", "email", "password", "key", nil, false, s.m)
+	user := gimlet.NewBasicUser("user", "name", "email", "password", "key", "", "", nil, false, s.m)
 	um, err := gimlet.NewBasicUserManager([]gimlet.User{user}, s.m)
 	s.NoError(err)
 	authHandler := gimlet.NewAuthenticationHandler(authenticator, um)
@@ -269,7 +269,7 @@ func (s *RoleManagerSuite) TestRequiresPermissionMiddleware() {
 	s.Equal(0, counter)
 
 	// give user the right permissions
-	user = gimlet.NewBasicUser("user", "name", "email", "password", "key", []string{role1.ID}, false, s.m)
+	user = gimlet.NewBasicUser("user", "name", "email", "password", "key", "", "", []string{role1.ID}, false, s.m)
 	_, err = um.GetOrCreateUser(user)
 	s.NoError(err)
 	ctx = gimlet.AttachUser(req.Context(), user)
@@ -286,12 +286,12 @@ func (s *RoleManagerSuite) TestRequiresPermissionMiddleware() {
 	s.Equal(http.StatusUnauthorized, rw.Code)
 	s.Equal(1, counter)
 
-	// no resource found = allowed
+	// no resource found = not allowed
 	rw = httptest.NewRecorder()
 	req = mux.SetURLVars(req, map[string]string{})
 	authHandler.ServeHTTP(rw, req, checkPermission)
-	s.Equal(http.StatusOK, rw.Code)
-	s.Equal(2, counter)
+	s.Equal(http.StatusUnauthorized, rw.Code)
+	s.Equal(1, counter)
 }
 
 func (s *RoleManagerSuite) TestHighestPermissionsForRoles() {
@@ -492,4 +492,34 @@ func (s *RoleManagerSuite) TestAddAndRemoveResources() {
 	foundScope, err = s.m.FindScopeForResources("project", "resource2", "resource3", "resource4", "somethingelse")
 	s.NoError(err)
 	s.Equal(foundScope.ID, "root")
+}
+
+func (s *RoleManagerSuite) TestFindRolesWithResources() {
+	r1 := gimlet.Role{
+		ID:    "r1",
+		Scope: "1",
+	}
+	s.NoError(s.m.UpdateRole(r1))
+	r2 := gimlet.Role{
+		ID:    "r2",
+		Scope: "2",
+	}
+	s.NoError(s.m.UpdateRole(r2))
+	r3 := gimlet.Role{
+		ID:    "r3",
+		Scope: "1",
+	}
+	s.NoError(s.m.UpdateRole(r3))
+
+	roles, err := s.m.FindRolesWithResources("project", []string{"resource1", "resource2"})
+	s.NoError(err)
+	s.Len(roles, 2)
+
+	roles, err = s.m.FindRolesWithResources("project", []string{"resource1"})
+	s.NoError(err)
+	s.Len(roles, 0)
+
+	roles, err = s.m.FindRolesWithResources("project", []string{"resource4"})
+	s.NoError(err)
+	s.Len(roles, 0)
 }

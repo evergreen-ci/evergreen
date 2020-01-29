@@ -93,7 +93,7 @@ func (s *payloadSuite) TestEmailWithTaskContent() {
 
 func (s *payloadSuite) TestEvergreenWebhook() {
 	model := restModel.APIPatch{}
-	model.Author = restModel.ToAPIString("somebody")
+	model.Author = restModel.ToStringPtr("somebody")
 
 	m, err := webhookPayload(&model, s.t.Headers)
 	s.NoError(err)

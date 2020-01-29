@@ -111,11 +111,11 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 		pageNum = 0
 	}
 	skip := pageNum * DefaultLimit
-
+	filterCommitQueue := r.FormValue("filter_commit_queue") == "true"
 	user := gimlet.GetVars(r)["user_id"]
 	var patches []patch.Patch
 	if len(user) > 0 {
-		patches, err = patch.Find(patch.ByUser(user).
+		patches, err = patch.Find(patch.ByUserAndCommitQueue(user, filterCommitQueue).
 			Project(patch.ExcludePatchDiff).
 			Sort([]string{"-" + patch.CreateTimeKey}).
 			Skip(skip).Limit(DefaultLimit))
@@ -132,7 +132,7 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 				"Error fetching project %v", projectID))
 			return
 		}
-		patches, err = patch.Find(patch.ByProject(project.Identifier).
+		patches, err = patch.Find(patch.ByProjectAndCommitQueue(project.Identifier, filterCommitQueue).
 			Sort([]string{"-" + patch.CreateTimeKey}).
 			Project(patch.ExcludePatchDiff).
 			Skip(skip).Limit(DefaultLimit))

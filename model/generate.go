@@ -9,10 +9,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -159,23 +158,10 @@ func (g *GeneratedProject) NewVersion() (*Project, *ParserProject, *Version, *ta
 
 func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProject, v *Version, t *task.Task, pm *projectMaps) error {
 	if err := updateVersionAndParserProject(v, pp); err != nil {
-		return errors.Wrapf(err, "error saving version/parser project")
+		return errors.WithStack(err)
 	}
 
-	if v.Requester == evergreen.MergeTestRequester {
-		mergeTask, err := task.FindMergeTaskForVersion(v.Id)
-		if err != nil && !adb.ResultsNotFound(err) {
-			return errors.Wrap(err, "error finding merge task")
-		}
-		// if a merge task exists then update its dependencies
-		if !adb.ResultsNotFound(err) {
-			if err = v.UpdateMergeTaskDependencies(p, mergeTask); err != nil {
-				return errors.Wrap(err, "error updating merge task")
-			}
-		}
-	}
-
-	if err := g.saveNewBuildsAndTasks(ctx, pm, v, p, t.Priority); err != nil {
+	if err := g.saveNewBuildsAndTasks(ctx, pm, v, p, t); err != nil {
 		return errors.Wrap(err, "error savings new builds and tasks")
 	}
 	return nil
@@ -224,11 +210,11 @@ func cacheProjectData(p *Project) projectMaps {
 }
 
 // saveNewBuildsAndTasks saves new builds and tasks to the db.
-func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProject *projectMaps, v *Version, p *Project, parentPriority int64) error {
+func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProject *projectMaps, v *Version, p *Project, t *task.Task) error {
 	// inherit priority from the parent task
 	for i, projBv := range p.BuildVariants {
 		for j := range projBv.Tasks {
-			p.BuildVariants[i].Tasks[j].Priority = parentPriority
+			p.BuildVariants[i].Tasks[j].Priority = t.Priority
 		}
 	}
 
@@ -264,12 +250,31 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 		}
 	}
 
-	if err := AddNewTasks(ctx, true, v, p, newTVPairsForExistingVariants, g.TaskID); err != nil {
+	tasksInExistingBuilds, err := AddNewTasks(ctx, true, v, p, newTVPairsForExistingVariants, g.TaskID)
+	if err != nil {
 		return errors.Wrap(err, "errors adding new tasks")
 	}
-	if err := AddNewBuilds(ctx, true, v, p, newTVPairsForNewVariants, g.TaskID); err != nil {
+
+	_, tasksInNewBuilds, err := AddNewBuilds(ctx, true, v, p, newTVPairsForNewVariants, g.TaskID)
+	if err != nil {
 		return errors.Wrap(err, "errors adding new builds")
 	}
+
+	if err = addDependencies(t, append(tasksInExistingBuilds, tasksInNewBuilds...)); err != nil {
+		return errors.Wrap(err, "error adding dependencies")
+	}
+
+	return nil
+}
+
+func addDependencies(t *task.Task, newTaskIds []string) error {
+	statuses := []string{evergreen.TaskSucceeded, task.AllStatuses}
+	for _, status := range statuses {
+		if err := t.UpdateDependsOn(status, newTaskIds); err != nil {
+			return errors.Wrapf(err, "can't update tasks depending on '%s'", t.Id)
+		}
+	}
+
 	return nil
 }
 

@@ -33,6 +33,7 @@ var (
 	HostAllocatorSettingsKey = bsonutil.MustHaveTag(Distro{}, "HostAllocatorSettings")
 	DisableShallowCloneKey   = bsonutil.MustHaveTag(Distro{}, "DisableShallowClone")
 	UseLegacyAgentKey        = bsonutil.MustHaveTag(Distro{}, "UseLegacyAgent")
+	ValidProjectsKey         = bsonutil.MustHaveTag(Distro{}, "ValidProjects")
 )
 
 var (

@@ -17,14 +17,14 @@ func TestStringMarshal(t *testing.T) {
 	Convey("When checking string", t, func() {
 		Convey("and marshalling", func() {
 			Convey("then empty string should produce an empty string as output", func() {
-				str := ToAPIString("")
+				str := ToStringPtr("")
 				data, err := json.Marshal(str)
 				So(err, ShouldBeNil)
 				So(string(data), ShouldEqual, "\"\"")
 			})
 			Convey("then non empty string should produce regular output", func() {
 				testStr := "testStr"
-				str := ToAPIString(testStr)
+				str := ToStringPtr(testStr)
 				data, err := json.Marshal(str)
 				So(err, ShouldBeNil)
 				So(string(data), ShouldEqual, fmt.Sprintf("\"%s\"", testStr))
@@ -33,12 +33,12 @@ func TestStringMarshal(t *testing.T) {
 		})
 		Convey("and unmarshalling", func() {
 			Convey("then non empty string should produce regular output", func() {
-				var res APIString
+				var res *string
 				testStr := "testStr"
 				str := fmt.Sprintf("\"%s\"", testStr)
 				err := json.Unmarshal([]byte(str), &res)
 				So(err, ShouldBeNil)
-				So(FromAPIString(res), ShouldEqual, testStr)
+				So(FromStringPtr(res), ShouldEqual, testStr)
 			})
 		})
 	})

@@ -20,6 +20,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-git-ignore"
+	mgobson "gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )
 
@@ -319,6 +320,13 @@ func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) err
 	return c.unmarshalParams()
 }
 
+func (c *PluginCommandConf) UnmarshalBSON(in []byte) error {
+	if err := mgobson.Unmarshal(in, c); err != nil {
+		return err
+	}
+	return c.unmarshalParams()
+}
+
 // we maintain Params for backwards compatibility, but we read from YAML when available, as the
 // given params could be corrupted from the roundtrip
 func (c *PluginCommandConf) unmarshalParams() error {
@@ -346,8 +354,8 @@ type ArtifactInstructions struct {
 }
 
 type YAMLCommandSet struct {
-	SingleCommand *PluginCommandConf  `bson:"single_command,omitempty"`
-	MultiCommand  []PluginCommandConf `bson:"multi_command,omitempty"`
+	SingleCommand *PluginCommandConf  `yaml:"single_command,omitempty" bson:"single_command,omitempty"`
+	MultiCommand  []PluginCommandConf `yaml:"multi_command,omitempty" bson:"multi_command,omitempty"`
 }
 
 func (c *YAMLCommandSet) List() []PluginCommandConf {
@@ -1045,7 +1053,7 @@ func FindLastKnownGoodProject(identifier string) (*Project, error) {
 		}
 		grip.Critical(message.WrapError(err, message.Fields{
 			"message": "last known good version has malformed config",
-			"version": lastGoodVersion.Identifier,
+			"version": lastGoodVersion.Id,
 			"project": identifier,
 		}))
 	}

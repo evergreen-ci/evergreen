@@ -11,45 +11,45 @@ import (
 // APITest contains the data to be returned whenever a test is used in the
 // API.
 type APITest struct {
-	TaskId    APIString `json:"task_id"`
-	Status    APIString `json:"status"`
-	TestFile  APIString `json:"test_file"`
+	TaskId    *string   `json:"task_id"`
+	Status    *string   `json:"status"`
+	TestFile  *string   `json:"test_file"`
 	Logs      TestLogs  `json:"logs"`
 	ExitCode  int       `json:"exit_code"`
-	StartTime APITime   `json:"start_time"`
-	EndTime   APITime   `json:"end_time"`
+	StartTime time.Time `json:"start_time"`
+	EndTime   time.Time `json:"end_time"`
 }
 
 // TestLogs is a struct for storing the information about logs that will
 // be written out as part of an APITest.
 type TestLogs struct {
-	URL     APIString `json:"url"`
-	LineNum int       `json:"line_num"`
-	URLRaw  APIString `json:"url_raw"`
-	LogId   APIString `json:"log_id"`
+	URL     *string `json:"url"`
+	LineNum int     `json:"line_num"`
+	URLRaw  *string `json:"url_raw"`
+	LogId   *string `json:"log_id"`
 }
 
 func (at *APITest) BuildFromService(st interface{}) error {
 	switch v := st.(type) {
 	case *testresult.TestResult:
-		at.Status = ToAPIString(v.Status)
-		at.TestFile = ToAPIString(v.TestFile)
+		at.Status = ToStringPtr(v.Status)
+		at.TestFile = ToStringPtr(v.TestFile)
 		at.ExitCode = v.ExitCode
 
 		startTime := util.FromPythonTime(v.StartTime)
 		endTime := util.FromPythonTime(v.EndTime)
 
-		at.StartTime = NewTime(startTime)
-		at.EndTime = NewTime(endTime)
+		at.StartTime = startTime
+		at.EndTime = endTime
 
 		at.Logs = TestLogs{
-			URL:     ToAPIString(v.URL),
-			URLRaw:  ToAPIString(v.URLRaw),
-			LogId:   ToAPIString(v.LogID),
+			URL:     ToStringPtr(v.URL),
+			URLRaw:  ToStringPtr(v.URLRaw),
+			LogId:   ToStringPtr(v.LogID),
 			LineNum: v.LineNum,
 		}
 	case string:
-		at.TaskId = ToAPIString(v)
+		at.TaskId = ToStringPtr(v)
 	default:
 		return fmt.Errorf("Incorrect type when creating APITest")
 	}
@@ -58,14 +58,14 @@ func (at *APITest) BuildFromService(st interface{}) error {
 
 func (at *APITest) ToService() (interface{}, error) {
 	return &testresult.TestResult{
-		Status:    FromAPIString(at.Status),
-		TestFile:  FromAPIString(at.TestFile),
-		URL:       FromAPIString(at.Logs.URL),
-		URLRaw:    FromAPIString(at.Logs.URLRaw),
-		LogID:     FromAPIString(at.Logs.LogId),
+		Status:    FromStringPtr(at.Status),
+		TestFile:  FromStringPtr(at.TestFile),
+		URL:       FromStringPtr(at.Logs.URL),
+		URLRaw:    FromStringPtr(at.Logs.URLRaw),
+		LogID:     FromStringPtr(at.Logs.LogId),
 		LineNum:   at.Logs.LineNum,
 		ExitCode:  at.ExitCode,
-		StartTime: util.ToPythonTime(time.Time(at.StartTime)),
-		EndTime:   util.ToPythonTime(time.Time(at.EndTime)),
+		StartTime: util.ToPythonTime(at.StartTime),
+		EndTime:   util.ToPythonTime(at.EndTime),
 	}, nil
 }

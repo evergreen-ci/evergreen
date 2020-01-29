@@ -3,7 +3,6 @@ mciModule.controller('PatchesController', function($scope, $filter, $http, $wind
   $scope.userTz = $window.userTz;
 
   $scope.loading = true;
-
   $scope.patchesForUsername = $window.patchesForUsername;
   var endpoint = $scope.patchesForUsername ?
     '/json/patches/user/' + encodeURIComponent($window.patchesForUsername) :
@@ -18,13 +17,14 @@ mciModule.controller('PatchesController', function($scope, $filter, $http, $wind
   };
 
   $scope.loadCurrentPage = function() {
+    $scope.filterCommitQueue = localStorage.getItem("filterCommitQueue") === "true";
     $scope.loading = true;
     $scope.patches = [];
     $scope.patchesError = null;
-
     var params = {
       params: {
-        page: $scope.currentPage
+        page: $scope.currentPage,
+        filter_commit_queue: $scope.filterCommitQueue,
       }
     };
     $http.get(endpoint, params).then(
@@ -56,6 +56,11 @@ mciModule.controller('PatchesController', function($scope, $filter, $http, $wind
       $scope.patchesError = resp.err;
     });
   };
+
+  $scope.$watch("filterCommitQueue", function() {
+      localStorage.setItem("filterCommitQueue", $scope.filterCommitQueue);
+      $scope.loadCurrentPage();
+  });
 
   $rootScope.$on('$locationChangeStart', function() {
     var page = $location.search()['page'];

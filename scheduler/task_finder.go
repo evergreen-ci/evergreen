@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -71,6 +72,18 @@ func LegacyFindRunnableTasks(d distro.Distro) ([]task.Task, error) {
 				"outcome": "skipping",
 				"task":    t.Id,
 				"planner": d.PlannerSettings.Version,
+				"project": t.Project,
+			})
+			continue
+		}
+
+		if len(d.ValidProjects) > 0 && !util.StringSliceContains(d.ValidProjects, ref.Identifier) {
+			grip.Notice(message.Fields{
+				"runner":  RunnerName,
+				"message": "project is not valid for distro",
+				"outcome": "skipping",
+				"planner": d.PlannerSettings.Version,
+				"task":    t.Id,
 				"project": t.Project,
 			})
 			continue
@@ -178,6 +191,18 @@ func AlternateTaskFinder(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
+		if len(d.ValidProjects) > 0 && !util.StringSliceContains(d.ValidProjects, ref.Identifier) {
+			grip.Notice(message.Fields{
+				"runner":  RunnerName,
+				"message": "project is not valid for distro",
+				"outcome": "skipping",
+				"planner": d.PlannerSettings.Version,
+				"task":    t.Id,
+				"project": t.Project,
+			})
+			continue
+		}
+
 		if t.IsPatchRequest() && ref.PatchingDisabled {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
@@ -280,6 +305,18 @@ func ParallelTaskFinder(d distro.Distro) ([]task.Task, error) {
 				"runner":  RunnerName,
 				"message": "project disabled",
 				"outcome": "skipping",
+				"task":    t.Id,
+				"project": t.Project,
+			})
+			continue
+		}
+
+		if len(d.ValidProjects) > 0 && !util.StringSliceContains(d.ValidProjects, ref.Identifier) {
+			grip.Notice(message.Fields{
+				"runner":  RunnerName,
+				"message": "project is not valid for distro",
+				"outcome": "skipping",
+				"planner": d.PlannerSettings.Version,
 				"task":    t.Id,
 				"project": t.Project,
 			})

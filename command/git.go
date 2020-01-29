@@ -1,14 +1,12 @@
 package command
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/url"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -578,35 +576,11 @@ func (c *gitFetchProject) getPatchContents(ctx context.Context, comm client.Comm
 	return nil
 }
 
-// isMailboxPatch checks if the first line of a patch file
-// has "From ". If so, it's assumed to be a mailbox-style patch, otherwise
-// it's a diff
-func isMailboxPatch(patchFile string) (bool, error) {
-	file, err := os.Open(patchFile)
-	if err != nil {
-		return false, errors.Wrap(err, "failed to read patch file")
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	if !scanner.Scan() {
-		if err = scanner.Err(); err != nil {
-			return false, errors.Wrap(err, "failed to read patch file")
-		}
-
-		// otherwise, it's EOF. Empty patches are not errors!
-		return false, nil
-	}
-	line := scanner.Text()
-
-	return strings.HasPrefix(line, "From "), nil
-}
-
 // getApplyCommand determines the patch type. If the patch is a mailbox-style
 // patch, it uses git-am (see https://git-scm.com/docs/git-am), otherwise
 // it uses git apply
 func getApplyCommand(patchFile string) (string, error) {
-	isMBP, err := isMailboxPatch(patchFile)
+	isMBP, err := patch.IsMailbox(patchFile)
 	if err != nil {
 		return "", errors.Wrap(err, "can't check patch type")
 	}

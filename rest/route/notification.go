@@ -232,8 +232,8 @@ func (h *slackNotificationPostHandler) Run(ctx context.Context) gimlet.Responder
 		}
 		attachments = append(attachments, *attachment)
 	}
-	target := model.FromAPIString(h.APISlack.Target)
-	msg := model.FromAPIString(h.APISlack.Msg)
+	target := model.FromStringPtr(h.APISlack.Target)
+	msg := model.FromStringPtr(h.APISlack.Msg)
 
 	h.composer = message.NewSlackMessage(level.Notice, target, msg, attachments)
 	s, err := h.environment.GetSender(evergreen.SenderSlack)

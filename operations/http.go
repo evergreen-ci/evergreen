@@ -307,11 +307,12 @@ func (ac *legacyClient) DeletePatchModule(patchId, module string) error {
 }
 
 type UpdatePatchModuleParams struct {
-	patchID string
-	module  string
-	patch   string
-	base    string
-	message string
+	patchID   string
+	module    string
+	patch     string
+	base      string
+	message   string
+	formatted bool
 }
 
 // UpdatePatchModule makes a request to the API server to set a module patch on the given patch ID.

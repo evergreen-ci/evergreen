@@ -118,7 +118,7 @@ func keysList() cli.Command {
 			} else {
 				grip.Info("Public keys stored in Evergreen:")
 				for _, key := range keys {
-					grip.Infof("Name: '%s', Key: '%s'\n", model.FromAPIString(key.Name), model.FromAPIString(key.Key))
+					grip.Infof("Name: '%s', Key: '%s'\n", model.FromStringPtr(key.Name), model.FromStringPtr(key.Key))
 				}
 			}
 

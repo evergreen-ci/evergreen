@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -15,14 +16,22 @@ func (uis *UIServer) adminSettings(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	template := "not_admin.html"
 	DBUser := gimlet.GetUser(ctx)
-	if DBUser != nil && uis.isSuperUser(DBUser) {
-		template = "admin.html"
+	permissions := gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionAdminSettings,
+		RequiredLevel: evergreen.AdminSettingsEdit.Value,
+	}
+	if DBUser != nil {
+		if uis.isSuperUser(DBUser) || DBUser.HasPermission(permissions) {
+			template = "admin.html"
+		}
 	}
 
 	data := struct {
 		ViewData
-		AuthIsLDAP bool
-	}{uis.GetCommonViewData(w, r, true, true), uis.umIsLDAP}
+		CanClearTokens bool
+	}{uis.GetCommonViewData(w, r, true, true), uis.umCanClearTokens}
 	uis.render.WriteResponse(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
 }
 
@@ -30,8 +39,16 @@ func (uis *UIServer) adminEvents(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	DBUser := gimlet.GetUser(ctx)
 	template := "not_admin.html"
-	if DBUser != nil && uis.isSuperUser(DBUser) {
-		template = "admin_events.html"
+	permissions := gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionAdminSettings,
+		RequiredLevel: evergreen.AdminSettingsEdit.Value,
+	}
+	if DBUser != nil {
+		if uis.isSuperUser(DBUser) || DBUser.HasPermission(permissions) {
+			template = "admin_events.html"
+		}
 	}
 	dc := &data.DBAdminConnector{}
 	events, err := dc.GetAdminEventLog(time.Now(), 15)

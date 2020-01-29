@@ -59,7 +59,7 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
   $scope.binaries = $window.binaries;
   $scope.notifications = $window.notifications;
   $scope.slack_username = $window.slack_username;
-  $scope.auth_is_ldap = $window.auth_is_ldap;
+  $scope.can_clear_tokens = $window.can_clear_tokens;
   $scope.spruce_feedback = {};
 
   $scope.newKey = function(){

@@ -62,7 +62,7 @@ func (s *TaskAbortSuite) TestAbort() {
 	s.Equal("", s.data.CachedAborted["task2"])
 	t, ok := res.Data().(*model.APITask)
 	s.True(ok)
-	s.Equal(model.ToAPIString("task1"), t.Id)
+	s.Equal(model.ToStringPtr("task1"), t.Id)
 
 	res = rm.Run(ctx)
 	s.Equal(http.StatusOK, res.Status())
@@ -71,7 +71,7 @@ func (s *TaskAbortSuite) TestAbort() {
 	s.Equal("", s.data.CachedAborted["task2"])
 	t, ok = (res.Data()).(*model.APITask)
 	s.True(ok)
-	s.Equal(model.ToAPIString("task1"), t.Id)
+	s.Equal(model.ToStringPtr("task1"), t.Id)
 }
 
 func (s *TaskAbortSuite) TestAbortFail() {

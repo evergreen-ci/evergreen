@@ -219,17 +219,10 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		requester := evergreen.PatchVersionRequester
-		if projCtx.Patch.IsGithubPRPatch() {
-			requester = evergreen.GithubPRRequester
-		}
-		if projCtx.Patch.IsPRMergePatch() {
-			requester = evergreen.MergeTestRequester
-		}
-
 		ctx, cancel := context.WithCancel(r.Context())
 		defer cancel()
 
+		requester := projCtx.Patch.GetRequester()
 		ver, err := model.FinalizePatch(ctx, projCtx.Patch, requester, githubOauthToken)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
@@ -268,7 +261,7 @@ func (uis *UIServer) diffPage(w http.ResponseWriter, r *http.Request) {
 			http.StatusInternalServerError)
 		return
 	}
-	if err = fullPatch.FetchPatchFiles(); err != nil {
+	if err = fullPatch.FetchPatchFiles(false); err != nil {
 		http.Error(w, fmt.Sprintf("finding patch files: %s", err.Error()),
 			http.StatusInternalServerError)
 		return
@@ -288,7 +281,7 @@ func (uis *UIServer) fileDiffPage(w http.ResponseWriter, r *http.Request) {
 			http.StatusInternalServerError)
 		return
 	}
-	if err = fullPatch.FetchPatchFiles(); err != nil {
+	if err = fullPatch.FetchPatchFiles(false); err != nil {
 		http.Error(w, fmt.Sprintf("error finding patch: %s", err.Error()),
 			http.StatusInternalServerError)
 	}
@@ -312,7 +305,7 @@ func (uis *UIServer) rawDiffPage(w http.ResponseWriter, r *http.Request) {
 			http.StatusInternalServerError)
 		return
 	}
-	if err = fullPatch.FetchPatchFiles(); err != nil {
+	if err = fullPatch.FetchPatchFiles(true); err != nil {
 		http.Error(w, fmt.Sprintf("error fetching patch files: %s", err.Error()),
 			http.StatusInternalServerError)
 		return

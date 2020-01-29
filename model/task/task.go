@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
@@ -629,7 +630,7 @@ func (t *Task) MarkAsUndispatched() error {
 
 // MarkGeneratedTasks marks that the task has generated tasks.
 func MarkGeneratedTasks(taskID string, errorToSet error) error {
-	if adb.ResultsNotFound(errorToSet) {
+	if adb.ResultsNotFound(errorToSet) || db.IsDuplicateKey(errorToSet) {
 		return nil
 	}
 	query := bson.M{
@@ -1444,12 +1445,22 @@ func FindSchedulableForAlias(id string) ([]Task, error) {
 
 func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 	match := scheduleableTasksQuery()
+	var d distro.Distro
+	var err error
 	if distroID != "" {
 		match[DistroIdKey] = distroID
+		d, err = distro.FindOne(distro.ById(distroID).WithFields(distro.ValidProjectsKey))
+		if err != nil {
+			return nil, errors.Wrapf(err, "problem finding distro '%s'", distroID)
+		}
 	}
 
 	matchActivatedUndispatchedTasks := bson.M{
 		"$match": match,
+	}
+
+	filterInvalidDistros := bson.M{
+		"$match": bson.M{ProjectKey: bson.M{"$in": d.ValidProjects}},
 	}
 
 	removeFields := bson.M{
@@ -1571,6 +1582,10 @@ func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 		matchActivatedUndispatchedTasks,
 		removeFields,
 		graphLookupTaskDeps,
+	}
+
+	if distroID != "" && len(d.ValidProjects) > 0 {
+		pipeline = append(pipeline, filterInvalidDistros)
 	}
 
 	if removeDeps {
@@ -1945,28 +1960,27 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 	return timeTaken, latestFinishTime.Sub(earliestStartTime)
 }
 
-// UpdateDependencies replaces the dependencies of a task with
-// the dependencies provided
-func (t *Task) UpdateDependencies(dependsOn []Dependency) error {
-	err := UpdateOne(
-		bson.M{
-			IdKey:        t.Id,
-			DependsOnKey: t.DependsOn,
-		},
-		bson.M{
-			"$push": bson.M{DependsOnKey: bson.M{"$each": dependsOn}},
-		},
-	)
-	if err != nil {
-		if adb.ResultsNotFound(err) {
-			grip.Alert(errors.Wrapf(err, "atomic update failed for %s", t.Id))
-		}
-		return errors.Wrap(err, "can't update dependencies")
+// UpdateDependsOn appends new dependnecies to tasks that already depend on this task
+func (t *Task) UpdateDependsOn(status string, newDependencyIDs []string) error {
+	newDependencies := make([]Dependency, 0, len(newDependencyIDs))
+	for _, depID := range newDependencyIDs {
+		newDependencies = append(newDependencies, Dependency{
+			TaskId: depID,
+			Status: status,
+		})
 	}
 
-	t.DependsOn = append(t.DependsOn, dependsOn...)
+	_, err := UpdateAll(
+		bson.M{
+			DependsOnKey: bson.M{"$elemMatch": bson.M{
+				DependencyTaskIdKey: t.Id,
+				DependencyStatusKey: status,
+			}},
+		},
+		bson.M{"$push": bson.M{DependsOnKey: bson.M{"$each": newDependencies}}},
+	)
 
-	return nil
+	return errors.Wrap(err, "can't update dependencies")
 }
 
 func (t *Task) SetTaskGroupInfo() error {

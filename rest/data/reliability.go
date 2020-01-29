@@ -51,10 +51,10 @@ func (msc *MockTaskReliabilityConnector) SetTaskReliabilityScores(baseTaskName s
 	day := util.GetUTCDay(time.Now()).Format("2006-01-02")
 	for i := 0; i < numStats; i++ {
 		msc.CachedTaskReliability[i] = model.APITaskReliability{
-			TaskName:     model.ToAPIString(fmt.Sprintf("%v%v", baseTaskName, i)),
-			BuildVariant: model.ToAPIString("variant"),
-			Distro:       model.ToAPIString("distro"),
-			Date:         model.ToAPIString(day),
+			TaskName:     model.ToStringPtr(fmt.Sprintf("%v%v", baseTaskName, i)),
+			BuildVariant: model.ToStringPtr("variant"),
+			Distro:       model.ToStringPtr("distro"),
+			Date:         model.ToStringPtr(day),
 		}
 	}
 }
