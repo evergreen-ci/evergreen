@@ -61,7 +61,7 @@ func (r *queryResolver) Task(ctx context.Context, taskID string) (*model.APITask
 	return &apiTask, nil
 }
 
-func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, filter *string, status *string) ([]*model.APITest, error) {
+func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, status *string) ([]*model.APITest, error) {
 	task, err := task.FindOneId(taskID)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error retreiving Task")
@@ -94,9 +94,9 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 		sortDir = -1
 	}
 
-	filterParam := ""
-	if filter != nil {
-		filterParam = *filter
+	testNameParam := ""
+	if testName != nil {
+		testNameParam = *testName
 	}
 	pageParam := 0
 	if page != nil {
@@ -110,7 +110,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 	if status != nil {
 		statusParam = *status
 	}
-	tests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, filterParam, statusParam, sortBy, sortDir, pageParam, limitParam, task.Execution)
+	tests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, testNameParam, statusParam, sortBy, sortDir, pageParam, limitParam, task.Execution)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error retreiving test")
 	}

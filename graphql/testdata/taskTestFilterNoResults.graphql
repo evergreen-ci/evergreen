@@ -5,7 +5,7 @@
     sortDirection: ASC
     page: 0
     limit: 0
-    filter: "sratoenrastioen"
+    testName: "arstrasttras"
   ) {
     testFile
   }

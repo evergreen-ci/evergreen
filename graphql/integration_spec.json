@@ -353,7 +353,7 @@
       "query_file": "taskTestFilterStatusSubstr1.graphql",
       "result": {
         "data": {
-          "taskTests": [{ "status": "dog" }]
+          "taskTests": []
         }
       }
     },
@@ -361,7 +361,7 @@
       "query_file": "taskTestFilterStatusSubstr2.graphql",
       "result": {
         "data": {
-          "taskTests": [{ "status": "dog" }]
+          "taskTests": []
         }
       }
     },
