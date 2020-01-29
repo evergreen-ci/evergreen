@@ -793,7 +793,7 @@ func getMockHostsConnector() *data.MockConnector {
 	return connector
 }
 
-func TestHostRangeGetHandler(t *testing.T) {
+func TestHostFilterGetHandler(t *testing.T) {
 	connector := &data.MockConnector{
 		MockHostConnector: data.MockHostConnector{
 			CachedHosts: []host.Host{
@@ -822,7 +822,7 @@ func TestHostRangeGetHandler(t *testing.T) {
 		},
 	}
 
-	handler := hostRangeGetHandler{
+	handler := hostFilterGetHandler{
 		sc:     connector,
 		params: model.APIHostParams{Status: evergreen.HostTerminated},
 	}
@@ -832,7 +832,7 @@ func TestHostRangeGetHandler(t *testing.T) {
 	require.Len(t, hosts, 1)
 	assert.Equal(t, "h0", model.FromStringPtr(hosts[0].(*model.APIHost).Id))
 
-	handler = hostRangeGetHandler{
+	handler = hostFilterGetHandler{
 		sc:     connector,
 		params: model.APIHostParams{Distro: "ubuntu-1604"},
 	}
@@ -842,7 +842,7 @@ func TestHostRangeGetHandler(t *testing.T) {
 	require.Len(t, hosts, 1)
 	assert.Equal(t, "h1", model.FromStringPtr(hosts[0].(*model.APIHost).Id))
 
-	handler = hostRangeGetHandler{
+	handler = hostFilterGetHandler{
 		sc:     connector,
 		params: model.APIHostParams{CreatedAfter: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)},
 	}

@@ -315,26 +315,26 @@ func getLimit(vals url.Values) (int, error) {
 
 ////////////////////////////////////////////////////////////////////////
 //
-// GET /host/range
+// GET /host/filter
 
-func makeFetchHostRange(sc data.Connector) gimlet.RouteHandler {
-	return &hostRangeGetHandler{
+func makeFetchHostFilter(sc data.Connector) gimlet.RouteHandler {
+	return &hostFilterGetHandler{
 		sc: sc,
 	}
 }
 
-type hostRangeGetHandler struct {
+type hostFilterGetHandler struct {
 	params model.APIHostParams
 	sc     data.Connector
 }
 
-func (h *hostRangeGetHandler) Factory() gimlet.RouteHandler {
-	return &hostRangeGetHandler{
+func (h *hostFilterGetHandler) Factory() gimlet.RouteHandler {
+	return &hostFilterGetHandler{
 		sc: h.sc,
 	}
 }
 
-func (h *hostRangeGetHandler) Parse(ctx context.Context, r *http.Request) error {
+func (h *hostFilterGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	body := util.NewRequestReader(r)
 	defer body.Close()
 	if err := util.ReadJSONInto(body, &h.params); err != nil {
@@ -344,7 +344,7 @@ func (h *hostRangeGetHandler) Parse(ctx context.Context, r *http.Request) error 
 	return nil
 }
 
-func (h *hostRangeGetHandler) Run(ctx context.Context) gimlet.Responder {
+func (h *hostFilterGetHandler) Run(ctx context.Context) gimlet.Responder {
 	dbUser := MustHaveUser(ctx)
 	username := ""
 	// only admins see hosts that aren't theirs

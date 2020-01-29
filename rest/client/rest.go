@@ -393,7 +393,7 @@ func (c *communicatorImpl) ExtendSpawnHostExpiration(ctx context.Context, hostID
 func (c *communicatorImpl) GetHosts(ctx context.Context, data model.APIHostParams) ([]*model.APIHost, error) {
 	info := requestInfo{
 		method:  get,
-		path:    "host/range",
+		path:    "host/filter",
 		version: apiVersion2,
 	}
 
