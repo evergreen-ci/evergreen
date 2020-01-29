@@ -219,7 +219,7 @@ func (u *DBUser) AddFavoritedProject(projectId string) ([]string, error) {
 	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
 		return nil, err
 	}
-	u.SystemRoles = append(u.FavoriteProjects, projectId)
+	u.FavoriteProjects = append(u.FavoriteProjects, projectId)
 
 	event.LogUserEvent(u.Id, event.UserEventTypeFavoriteProjectsUpdate, u.FavoriteProjects[:len(u.FavoriteProjects)-1], u.FavoriteProjects)
 

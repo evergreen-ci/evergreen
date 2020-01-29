@@ -29,6 +29,7 @@ func (r *Resolver) Query() QueryResolver {
 type mutationResolver struct{ *Resolver }
 
 func (r *mutationResolver) AddFavoriteProject(ctx context.Context, projID string) ([]string, error) {
+	// TODO: replace hardcoded uid with uid from context
 	usr, err := user.FindOneById("admin")
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting user")
@@ -36,7 +37,7 @@ func (r *mutationResolver) AddFavoriteProject(ctx context.Context, projID string
 
 	newFavorites, err := usr.AddFavoritedProject(projID)
 	if err != nil {
-		return nil, errors.Wrap(err, err.Error())
+		return nil, errors.Wrap(err, "error adding project to user's favorites")
 	}
 
 	return newFavorites, nil
@@ -92,6 +93,7 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 
 	groupsMap := make(map[string][]*restModel.UIProjectFields)
 
+	// TODO: replace hardcoded uid with uid from context
 	usr, err := user.FindOneById("admin")
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting user")
