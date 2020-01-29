@@ -328,7 +328,7 @@ func (s *APIBootstrapSettings) ToService() (interface{}, error) {
 
 type APIHomeVolumeSettings struct {
 	DeviceName        *string `json:"device_name"`
-	FilesystemCommand *string `json:"filesystem_command"`
+	FormatCommand *string `json:"format_command"`
 }
 
 func (s *APIHomeVolumeSettings) BuildFromService(h interface{}) error {
@@ -338,7 +338,7 @@ func (s *APIHomeVolumeSettings) BuildFromService(h interface{}) error {
 	}
 
 	s.DeviceName = ToStringPtr(settings.DeviceName)
-	s.FilesystemCommand = ToStringPtr(settings.FilesystemCommand)
+	s.FormatCommand = ToStringPtr(settings.FormatCommand)
 
 	return nil
 }
@@ -346,7 +346,7 @@ func (s *APIHomeVolumeSettings) BuildFromService(h interface{}) error {
 func (s *APIHomeVolumeSettings) ToService() (interface{}, error) {
 	return distro.HomeVolumeSettings{
 		DeviceName:        FromStringPtr(s.DeviceName),
-		FilesystemCommand: FromStringPtr(s.FilesystemCommand),
+		FormatCommand: FromStringPtr(s.FormatCommand),
 	}, nil
 }
 

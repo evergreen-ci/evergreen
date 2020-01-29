@@ -70,7 +70,7 @@ type BootstrapSettings struct {
 
 type HomeVolumeSettings struct {
 	DeviceName        string `bson:"device_name" json:"device_name" mapstructure:"device_name"`
-	FilesystemCommand string `bson:"filesystem_command" json:"filesystem_command" mapstructure:"filesystem_command"`
+	FormatCommand string `bson:"format_command" json:"format_command" mapstructure:"format_command"`
 }
 
 type EnvVar struct {

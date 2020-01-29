@@ -25,7 +25,6 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
 
@@ -986,27 +985,29 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	}
 
 	// continue on umount mount error
-	exitCode, err := host.RunJasperCommandSynchronously(ctx, client, &options.Create{Args: []string{"sudo", "umount", "-f", fmt.Sprintf("/dev/%s", deviceName)}})
+	cmd := client.CreateCommand(ctx).Sudo(true).Append(fmt.Sprintf("umount -f /dev/%s", deviceName)).Background(true)
+	if err = cmd.Run(ctx); err != nil {
+		return errors.Wrap(err, "can't run umount command")
+	}
+	exitCode, err := cmd.Wait(ctx)
 	if err != nil && exitCode != umountMountErrorCode {
-		return errors.Wrap(err, "problem running umount command")
+		return errors.Wrap(err, "problem waiting for umount command")
 	}
 
-	commands := []options.Create{
-		{Args: []string{"sudo", "/sbin/mkfs.xfs", "-f", fmt.Sprintf("/dev/%s", deviceName)}},
-		{Args: []string{"sudo", "mkdir", "-p", fmt.Sprintf("/%s", evergreen.HomeVolumeDir)}},
-		{Args: []string{"sudo", "mount", fmt.Sprintf("/dev/%s", deviceName), fmt.Sprintf("/%s", evergreen.HomeVolumeDir)}},
-		{Args: []string{"sudo", "ln", "-s", fmt.Sprintf("/%s", evergreen.HomeVolumeDir), fmt.Sprintf("%s/%s", h.Distro.HomeDir(), evergreen.HomeVolumeDir)}},
-		{Args: []string{"sudo", "chown", "-R", fmt.Sprintf("%s:%s", h.User, h.User), fmt.Sprintf("%s/%s", h.Distro.HomeDir(), evergreen.HomeVolumeDir)}},
-		{
-			Args:               []string{"sudo", "tee", "--append", "/etc/fstab"},
-			StandardInputBytes: []byte(fmt.Sprintf("/dev/%s /%s auto noatime 0 0", deviceName, evergreen.HomeVolumeDir)),
-		},
+	cmd = client.CreateCommand(ctx).Sudo(true)
+	cmd.Append(fmt.Sprintf("%s /dev/%s", h.Distro.HomeVolumeSettings.FormatCommand, deviceName))
+	cmd.Append(fmt.Sprintf("mkdir -p /%s", evergreen.HomeVolumeDir))
+	cmd.Append(fmt.Sprintf("mount /dev/%s /%s", deviceName, evergreen.HomeVolumeDir))
+	cmd.Append(fmt.Sprintf("ln -s /%s %s/%s", evergreen.HomeVolumeDir, h.Distro.HomeDir(), evergreen.HomeVolumeDir))
+	cmd.Append(fmt.Sprintf("chown -R %s:%s %s/%s", h.User, h.User, h.Distro.HomeDir(), evergreen.HomeVolumeDir))
+	if err := cmd.Run(ctx); err != nil {
+		return errors.Wrap(err, "problem running mount commands")
 	}
-	for _, command := range commands {
-		_, err := host.RunJasperCommandSynchronously(ctx, client, &command)
-		if err != nil {
-			return errors.Wrapf(err, "problem running command '%s'", strings.Join(command.Args, " "))
-		}
+
+	// write to fstab so the volume is mounted on restart
+	err = client.CreateCommand(ctx).Sudo(true).SetInputBytes([]byte(fmt.Sprintf("/dev/%s /%s auto noatime 0 0", deviceName, evergreen.HomeVolumeDir))).Append("tee --append /etc/fstab").Run(ctx)
+	if err != nil {
+		return errors.Wrap(err, "problem appending to fstab")
 	}
 
 	return nil
