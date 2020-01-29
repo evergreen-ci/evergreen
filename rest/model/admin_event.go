@@ -9,18 +9,18 @@ import (
 )
 
 type APIAdminEvent struct {
-	Timestamp time.Time `json:"ts"`
-	User      string    `json:"user"`
-	Section   string    `json:"section"`
-	Before    Model     `json:"before"`
-	After     Model     `json:"after"`
-	Guid      string    `json:"guid"`
+	Timestamp *time.Time `json:"ts"`
+	User      string     `json:"user"`
+	Section   string     `json:"section"`
+	Before    Model      `json:"before"`
+	After     Model      `json:"after"`
+	Guid      string     `json:"guid"`
 }
 
 func (e *APIAdminEvent) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case event.EventLogEntry:
-		e.Timestamp = v.Timestamp
+		e.Timestamp = ToTimePtr(v.Timestamp)
 		data, ok := v.Data.(*event.AdminEventData)
 		if !ok {
 			return errors.New("unable to convert event type to admin event")

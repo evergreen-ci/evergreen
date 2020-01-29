@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/mongodb/grip"
+
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
 )
@@ -11,15 +13,15 @@ import (
 // APITest contains the data to be returned whenever a test is used in the
 // API.
 type APITest struct {
-	Id        *string   `json:"test_id"`
-	TaskId    *string   `json:"task_id"`
-	Status    *string   `json:"status"`
-	TestFile  *string   `json:"test_file"`
-	Logs      TestLogs  `json:"logs"`
-	ExitCode  int       `json:"exit_code"`
-	StartTime time.Time `json:"start_time"`
-	EndTime   time.Time `json:"end_time"`
-	Duration  float64   `json:"duration"`
+	Id        *string    `json:"test_id"`
+	TaskId    *string    `json:"task_id"`
+	Status    *string    `json:"status"`
+	TestFile  *string    `json:"test_file"`
+	Logs      TestLogs   `json:"logs"`
+	ExitCode  int        `json:"exit_code"`
+	StartTime *time.Time `json:"start_time"`
+	EndTime   *time.Time `json:"end_time"`
+	Duration  float64    `json:"duration"`
 }
 
 // TestLogs is a struct for storing the information about logs that will
@@ -42,8 +44,8 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		startTime := util.FromPythonTime(v.StartTime)
 		endTime := util.FromPythonTime(v.EndTime)
 		at.Duration = v.EndTime - v.StartTime
-		at.StartTime = startTime
-		at.EndTime = endTime
+		at.StartTime = ToTimePtr(startTime)
+		at.EndTime = ToTimePtr(endTime)
 
 		at.Logs = TestLogs{
 			URL:     ToStringPtr(v.URL),
@@ -60,6 +62,14 @@ func (at *APITest) BuildFromService(st interface{}) error {
 }
 
 func (at *APITest) ToService() (interface{}, error) {
+	catcher := grip.NewBasicCatcher()
+	start, err := FromTimePtr(at.StartTime)
+	catcher.Add(err)
+	end, err := FromTimePtr(at.EndTime)
+	catcher.Add(err)
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
 	return &testresult.TestResult{
 		Status:    FromStringPtr(at.Status),
 		TestFile:  FromStringPtr(at.TestFile),
@@ -68,7 +78,7 @@ func (at *APITest) ToService() (interface{}, error) {
 		LogID:     FromStringPtr(at.Logs.LogId),
 		LineNum:   at.Logs.LineNum,
 		ExitCode:  at.ExitCode,
-		StartTime: util.ToPythonTime(at.StartTime),
-		EndTime:   util.ToPythonTime(at.EndTime),
+		StartTime: util.ToPythonTime(start),
+		EndTime:   util.ToPythonTime(end),
 	}, nil
 }

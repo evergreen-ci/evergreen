@@ -258,7 +258,7 @@ func (u *APIUserAuthorInformation) ToService() (interface{}, error) {
 type APIFeedbackSubmission struct {
 	Type        *string             `json:"type"`
 	User        *string             `json:"user"`
-	SubmittedAt time.Time           `json:"submitted_at"`
+	SubmittedAt *time.Time          `json:"submitted_at"`
 	Questions   []APIQuestionAnswer `json:"questions"`
 }
 
@@ -267,10 +267,14 @@ func (a *APIFeedbackSubmission) BuildFromService(h interface{}) error {
 }
 
 func (a *APIFeedbackSubmission) ToService() (interface{}, error) {
+	submittedAt, err := FromTimePtr(a.SubmittedAt)
+	if err != nil {
+		return nil, errors.Wrap(err, "error converting time")
+	}
 	result := model.FeedbackSubmission{
 		Type:        FromStringPtr(a.Type),
 		User:        FromStringPtr(a.User),
-		SubmittedAt: a.SubmittedAt,
+		SubmittedAt: submittedAt,
 	}
 	for _, question := range a.Questions {
 		answerInterface, _ := question.ToService()
