@@ -611,26 +611,27 @@ func (p *ProjectRef) getBatchTime(variant *BuildVariant) int {
 
 // return the next valid batch time
 func GetActivationTimeWithCron(curTime time.Time, cronBatchTime string) (time.Time, error) {
-	parser := cron.NewParser(cron.Hour | cron.Dom | cron.DowOptional | cron.Descriptor)
+	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.DowOptional | cron.Descriptor)
 	sched, err := parser.Parse(cronBatchTime)
 	if err != nil {
-		return time.Now(), errors.Wrapf(err, "error parsing cron batchtime '%s'", cronBatchTime)
+		return time.Time{}, errors.Wrapf(err, "error parsing cron batchtime '%s'", cronBatchTime)
 	}
 	return sched.Next(curTime), nil
 }
 
 func (p *ProjectRef) GetActivationTime(variant *BuildVariant) (time.Time, error) {
+	defaultRes := time.Now()
 	if variant.CronBatchTime != "" {
 		return GetActivationTimeWithCron(time.Now(), variant.CronBatchTime)
 	}
 
 	lastActivated, err := VersionFindOne(VersionByLastVariantActivation(p.Identifier, variant.Name))
 	if err != nil {
-		return time.Now(), errors.Wrap(err, "error finding version")
+		return time.Time{}, errors.Wrap(err, "error finding version")
 	}
 
 	if lastActivated == nil {
-		return time.Now(), nil
+		return defaultRes, nil
 	}
 
 	// find matching activated build variant
@@ -642,7 +643,7 @@ func (p *ProjectRef) GetActivationTime(variant *BuildVariant) (time.Time, error)
 		return buildStatus.ActivateAt.Add(time.Minute * time.Duration(p.getBatchTime(variant))), nil
 	}
 
-	return time.Now(), nil
+	return defaultRes, nil
 }
 
 func (p *ProjectRef) IsAdmin(userID string, settings evergreen.Settings) bool {

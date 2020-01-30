@@ -68,25 +68,24 @@ func TestGetBatchTimeDoesNotExceedMaxInt32(t *testing.T) {
 
 func TestGetActivationTimeWithCron(t *testing.T) {
 	prevTime := time.Date(2020, time.June, 9, 0, 0, 0, 0, time.UTC) // Tuesday
-	// parser := cron.NewParser(cron.Hour | cron.Dom | cron.DowOptional | cron.Descriptor)
 	for name, test := range map[string]func(t *testing.T){
 		"Empty": func(t *testing.T) {
 			_, err := GetActivationTimeWithCron(prevTime, "")
 			assert.Error(t, err)
 		},
 		"InvalidBatchSyntax": func(t *testing.T) {
-			batchStr := "* * * *"
+			batchStr := "* * *"
 			_, err := GetActivationTimeWithCron(prevTime, batchStr)
 			assert.Error(t, err)
 		},
 		"EveryHourEveryDay": func(t *testing.T) {
-			batchStr := "* *"
+			batchStr := "0 * * * *"
 			res, err := GetActivationTimeWithCron(prevTime, batchStr)
 			assert.NoError(t, err)
 			assert.Equal(t, prevTime.Add(time.Hour), res)
 		},
 		"SpecifyDOW": func(t *testing.T) {
-			batchStr := "0 ? MON,WED,FRI"
+			batchStr := "0 0 ? * MON,WED,FRI"
 			res, err := GetActivationTimeWithCron(prevTime, batchStr)
 			assert.NoError(t, err)
 			assert.Equal(t, prevTime.Add(time.Hour*24), res) // i.e. Wednesday
@@ -96,7 +95,7 @@ func TestGetActivationTimeWithCron(t *testing.T) {
 			assert.Equal(t, res.Add(time.Hour*48), newRes)
 		},
 		"15thOfTheMonth": func(t *testing.T) {
-			batchStr := "0 15"
+			batchStr := "0 0 15 *"
 			res, err := GetActivationTimeWithCron(prevTime, batchStr)
 			assert.NoError(t, err)
 			assert.Equal(t, prevTime.Add(time.Hour*24*6), res)

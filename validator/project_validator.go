@@ -682,7 +682,7 @@ func validateBVBatchTimes(project *model.Project) ValidationErrors {
 		if buildVariant.BatchTime != nil {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("variant '%s' cannot specify cron_batchtime and batchtime", buildVariant.Name),
+					Message: fmt.Sprintf("variant '%s' cannot specify cron and batchtime", buildVariant.Name),
 					Level:   Error,
 				})
 		}

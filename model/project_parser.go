@@ -291,7 +291,7 @@ type parserBV struct {
 	Disabled      bool               `yaml:"disabled,omitempty" bson:"disabled,omitempty"`
 	Push          bool               `yaml:"push,omitempty" bson:"push,omitempty"`
 	BatchTime     *int               `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
-	CronBatchTime string             `yaml:"cron_batchtime,omitempty" bson:"cron_batchtime,omitempty"`
+	CronBatchTime string             `yaml:"cron,omitempty" bson:"cron,omitempty"`
 	Stepback      *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	RunOn         parserStringSlice  `yaml:"run_on,omitempty" bson:"run_on,omitempty"`
 	Tasks         parserBVTaskUnits  `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
