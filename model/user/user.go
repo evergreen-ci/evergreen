@@ -213,7 +213,6 @@ func (u *DBUser) AddFavoritedProject(identifier string) ([]string, error) {
 	if util.StringSliceContains(u.FavoriteProjects, identifier) {
 		return nil, errors.Errorf("cannot add duplicate project '%s'", identifier)
 	}
-
 	update := bson.M{
 		"$push": bson.M{FavoriteProjectsKey: identifier},
 	}
