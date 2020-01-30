@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"go.mongodb.org/mongo-driver/mongo"
-
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -22,6 +20,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
