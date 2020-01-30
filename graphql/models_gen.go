@@ -6,7 +6,14 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+
+	"github.com/evergreen-ci/evergreen/rest/model"
 )
+
+type GroupedProjects struct {
+	Name     string                   `json:"name"`
+	Projects []*model.UIProjectFields `json:"projects"`
+}
 
 type SortDirection string
 

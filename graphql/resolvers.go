@@ -2,12 +2,15 @@ package graphql
 
 import (
 	"context"
+	"sort"
+	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/evergreen-ci/evergreen/rest/model"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/pkg/errors"
 )
 
@@ -21,14 +24,14 @@ func (r *Resolver) Query() QueryResolver {
 
 type patchResolver struct{ *Resolver }
 
-func (r *patchResolver) ID(ctx context.Context, obj *model.APIPatch) (string, error) {
+func (r *patchResolver) ID(ctx context.Context, obj *restModel.APIPatch) (string, error) {
 	return *obj.Id, nil
 }
 
 type queryResolver struct{ *Resolver }
 
-func (r *queryResolver) UserPatches(ctx context.Context, userID string) ([]*model.APIPatch, error) {
-	patchPointers := []*model.APIPatch{}
+func (r *queryResolver) UserPatches(ctx context.Context, userID string) ([]*restModel.APIPatch, error) {
+	patchPointers := []*restModel.APIPatch{}
 	patches, err := r.sc.FindPatchesByUser(userID, time.Now(), 10)
 	if err != nil {
 		return patchPointers, errors.Wrap(err, "error retrieving patches")
@@ -41,7 +44,7 @@ func (r *queryResolver) UserPatches(ctx context.Context, userID string) ([]*mode
 	return patchPointers, nil
 }
 
-func (r *queryResolver) Task(ctx context.Context, taskID string) (*model.APITask, error) {
+func (r *queryResolver) Task(ctx context.Context, taskID string) (*restModel.APITask, error) {
 	task, err := task.FindOneId(taskID)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error retreiving Task")
@@ -49,7 +52,7 @@ func (r *queryResolver) Task(ctx context.Context, taskID string) (*model.APITask
 	if task == nil {
 		return nil, errors.Errorf("unable to find task %s", taskID)
 	}
-	apiTask := model.APITask{}
+	apiTask := restModel.APITask{}
 	err = apiTask.BuildFromService(task)
 	if err != nil {
 		return nil, errors.Wrap(err, "error converting task")
@@ -61,7 +64,49 @@ func (r *queryResolver) Task(ctx context.Context, taskID string) (*model.APITask
 	return &apiTask, nil
 }
 
-func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, status *string) ([]*model.APITest, error) {
+func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error) {
+	allProjs, err := model.FindAllTrackedProjectRefs()
+	if err != nil {
+		return nil, errors.Wrap(err, "error retrieving projects")
+	}
+
+	groupsMap := make(map[string][]*restModel.UIProjectFields)
+
+	for _, p := range allProjs {
+		groupName := strings.Join([]string{p.Owner, p.Repo}, "/")
+
+		uiProj := restModel.UIProjectFields{
+			DisplayName: p.DisplayName,
+			Identifier:  p.Identifier,
+			Repo:        p.Repo,
+			Owner:       p.Owner,
+		}
+
+		if projs, ok := groupsMap[groupName]; ok {
+			groupsMap[groupName] = append(projs, &uiProj)
+		} else {
+			groupsMap[groupName] = []*restModel.UIProjectFields{&uiProj}
+		}
+	}
+
+	groupsArr := []*GroupedProjects{}
+
+	for groupName, groupedProjects := range groupsMap {
+		gp := GroupedProjects{
+			Name:     groupName,
+			Projects: groupedProjects,
+		}
+		groupsArr = append(groupsArr, &gp)
+	}
+
+	sort.SliceStable(groupsArr, func(i, j int) bool {
+		return groupsArr[i].Name < groupsArr[j].Name
+	})
+
+	return groupsArr, nil
+}
+
+func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, status *string) ([]*restModel.APITest, error) {
 	task, err := task.FindOneId(taskID)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error retreiving Task")
@@ -115,9 +160,9 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 		return nil, errors.Wrap(err, "Error retreiving test")
 	}
 
-	testPointers := []*model.APITest{}
+	testPointers := []*restModel.APITest{}
 	for _, t := range tests {
-		apiTest := model.APITest{}
+		apiTest := restModel.APITest{}
 		err := apiTest.BuildFromService(&t)
 		if err != nil {
 			return nil, errors.Wrap(err, "error converting test")

@@ -1,6 +1,7 @@
 type Query {
   userPatches(userId: String!): [Patch]!
   task(taskId: String!): Task
+  projects: [GroupedProjects!]!
   taskTests(
     taskId: String!
     sortCategory: TaskSortCategory = TEST_NAME
@@ -115,6 +116,18 @@ type Task {
   executionTasks: [String!]
   generateTask: Boolean
   generatedBy: String
+}
+
+type GroupedProjects {
+  name: String!
+  projects: [Project]!
+}
+
+type Project {
+  identifier: String!
+  displayName: String!
+  repo: String!
+  owner: String!
 }
 
 scalar Time
