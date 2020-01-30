@@ -817,14 +817,13 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata VersionM
 		activateAt := time.Now()
 		if metadata.TriggerID == "" && v.Requester != evergreen.AdHocRequester {
 			res, err := projectInfo.Ref.GetActivationTime(&buildvariant)
-			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message": "error finding last activated",
-					"version": v.Id,
-				}))
-			} else {
+			if err == nil {
 				activateAt = res
 			}
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "error finding last activated",
+				"version": v.Id,
+			}))
 		}
 
 		grip.Debug(message.Fields{
