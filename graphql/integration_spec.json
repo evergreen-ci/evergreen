@@ -1583,6 +1583,15 @@
         "notify_on_failure": false,
         "repotracker_error": null
       }
+    ],
+    "users": [
+      {
+        "_id": "admin",
+        "apikey": "480550ebb70b5604c2abd26185d8a680",
+        "display_name": "Evergreen Admin",
+        "email": "",
+        "favorite_projects": []
+      }
     ]
   },
   "tests": [
@@ -2068,6 +2077,19 @@
             "executionTasks": ["exec1"],
             "generateTask": false,
             "generatedBy": "something"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "add-favorite-project-mutation.graphql",
+      "result": {
+        "data": {
+          "addFavoriteProject": {
+            "identifier": "buildhost-test",
+            "displayName": "buildhost-test",
+            "repo": "buildhost-configuration",
+            "owner": "annie.black"
           }
         }
       }
