@@ -18,6 +18,8 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/jasper/options"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -789,4 +791,64 @@ func getMockHostsConnector() *data.MockConnector {
 	}
 	connector.SetSuperUsers([]string{"root"})
 	return connector
+}
+
+func TestHostFilterGetHandler(t *testing.T) {
+	connector := &data.MockConnector{
+		MockHostConnector: data.MockHostConnector{
+			CachedHosts: []host.Host{
+				{
+					Id:           "h0",
+					StartedBy:    "user0",
+					Status:       evergreen.HostTerminated,
+					CreationTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+					Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
+				},
+				{
+					Id:           "h1",
+					StartedBy:    "user0",
+					Status:       evergreen.HostRunning,
+					CreationTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+					Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
+				},
+				{
+					Id:           "h2",
+					StartedBy:    "user1",
+					Status:       evergreen.HostRunning,
+					CreationTime: time.Date(2009, time.December, 10, 23, 0, 0, 0, time.UTC),
+					Distro:       distro.Distro{Id: "ubuntu-1804", Provider: evergreen.ProviderNameMock},
+				},
+			},
+		},
+	}
+
+	handler := hostFilterGetHandler{
+		sc:     connector,
+		params: model.APIHostParams{Status: evergreen.HostTerminated},
+	}
+	resp := handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user0"}))
+	assert.Equal(t, http.StatusOK, resp.Status())
+	hosts := resp.Data().([]interface{})
+	require.Len(t, hosts, 1)
+	assert.Equal(t, "h0", model.FromStringPtr(hosts[0].(*model.APIHost).Id))
+
+	handler = hostFilterGetHandler{
+		sc:     connector,
+		params: model.APIHostParams{Distro: "ubuntu-1604"},
+	}
+	resp = handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user0"}))
+	assert.Equal(t, http.StatusOK, resp.Status())
+	hosts = resp.Data().([]interface{})
+	require.Len(t, hosts, 1)
+	assert.Equal(t, "h1", model.FromStringPtr(hosts[0].(*model.APIHost).Id))
+
+	handler = hostFilterGetHandler{
+		sc:     connector,
+		params: model.APIHostParams{CreatedAfter: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)},
+	}
+	resp = handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user1"}))
+	assert.Equal(t, http.StatusOK, resp.Status())
+	hosts = resp.Data().([]interface{})
+	require.Len(t, hosts, 1)
+	assert.Equal(t, "h2", model.FromStringPtr(hosts[0].(*model.APIHost).Id))
 }

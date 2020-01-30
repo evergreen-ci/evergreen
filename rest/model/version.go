@@ -10,9 +10,9 @@ import (
 // APIVersion is the model to be returned by the API whenever versions are fetched.
 type APIVersion struct {
 	Id            *string       `json:"version_id"`
-	CreateTime    time.Time     `json:"create_time"`
-	StartTime     time.Time     `json:"start_time"`
-	FinishTime    time.Time     `json:"finish_time"`
+	CreateTime    *time.Time    `json:"create_time"`
+	StartTime     *time.Time    `json:"start_time"`
+	FinishTime    *time.Time    `json:"finish_time"`
 	Revision      *string       `json:"revision"`
 	Order         int           `json:"order"`
 	Project       *string       `json:"project"`
@@ -39,9 +39,9 @@ func (apiVersion *APIVersion) BuildFromService(h interface{}) error {
 	}
 
 	apiVersion.Id = ToStringPtr(v.Id)
-	apiVersion.CreateTime = v.CreateTime
-	apiVersion.StartTime = v.StartTime
-	apiVersion.FinishTime = v.FinishTime
+	apiVersion.CreateTime = ToTimePtr(v.CreateTime)
+	apiVersion.StartTime = ToTimePtr(v.StartTime)
+	apiVersion.FinishTime = ToTimePtr(v.FinishTime)
 	apiVersion.Revision = ToStringPtr(v.Revision)
 	apiVersion.Author = ToStringPtr(v.Author)
 	apiVersion.AuthorEmail = ToStringPtr(v.AuthorEmail)

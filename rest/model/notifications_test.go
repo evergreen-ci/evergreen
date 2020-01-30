@@ -15,7 +15,7 @@ func TestEventStats(t *testing.T) {
 	nstats := notification.NotificationStats{Email: 5}
 
 	stats := APIEventStats{
-		LastProcessedAt:      time.Now(),
+		LastProcessedAt:      ToTimePtr(time.Now()),
 		NumUnprocessedEvents: 1234,
 	}
 

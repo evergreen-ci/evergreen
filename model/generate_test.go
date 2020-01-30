@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -13,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 var (
@@ -869,5 +870,33 @@ func TestUpdateVersionAndParserProject(t *testing.T) {
 			assert.Equal(t, 6, v.ConfigUpdateNumber)
 			assert.Equal(t, 6, pp.ConfigUpdateNumber)
 		})
+	}
+}
+
+func TestAddDependencies(t *testing.T) {
+	require.NoError(t, db.Clear(task.Collection))
+
+	existingTasks := []task.Task{
+		{Id: "t1", DependsOn: []task.Dependency{{TaskId: "generator", Status: evergreen.TaskSucceeded}}},
+		{Id: "t2", DependsOn: []task.Dependency{{TaskId: "generator", Status: task.AllStatuses}}},
+	}
+	for _, task := range existingTasks {
+		assert.NoError(t, task.Insert())
+	}
+
+	assert.NoError(t, addDependencies(&task.Task{Id: "generator"}, []string{"t3"}))
+
+	t1, err := task.FindOneId("t1")
+	assert.NoError(t, err)
+	assert.Len(t, t1.DependsOn, 2)
+	for _, dep := range t1.DependsOn {
+		assert.Equal(t, evergreen.TaskSucceeded, dep.Status)
+	}
+
+	t2, err := task.FindOneId("t2")
+	assert.NoError(t, err)
+	assert.Len(t, t2.DependsOn, 2)
+	for _, dep := range t2.DependsOn {
+		assert.Equal(t, task.AllStatuses, dep.Status)
 	}
 }

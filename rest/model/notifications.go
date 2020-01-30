@@ -8,7 +8,7 @@ import (
 )
 
 type APIEventStats struct {
-	LastProcessedAt            time.Time            `json:"last_processed_at"`
+	LastProcessedAt            *time.Time           `json:"last_processed_at"`
 	NumUnprocessedEvents       int                  `json:"unprocessed_events"`
 	PendingNotificationsByType apiNotificationStats `json:"pending_notifications_by_type"`
 }

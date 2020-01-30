@@ -1278,6 +1278,9 @@ func (p *Project) TasksThatCallCommand(find string) map[string]int {
 	// get all functions that call `generate.tasks`
 	fs := map[string]int{}
 	for f, cmds := range p.Functions {
+		if cmds == nil {
+			continue
+		}
 		for _, c := range cmds.List() {
 			if c.Command == find {
 				fs[f] = fs[f] + 1

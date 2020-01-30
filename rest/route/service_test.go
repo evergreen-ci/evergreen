@@ -21,7 +21,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -657,8 +656,9 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						StartTime: time.Unix(0, 0),
-						EndTime:   time.Unix(0, 0),
+						Id:        model.ToStringPtr(mgobson.ObjectId(fmt.Sprintf("object_id_%d_", i)).Hex()),
+						StartTime: model.ToTimePtr(time.Unix(0, 0)),
+						EndTime:   model.ToTimePtr(time.Unix(0, 0)),
 						Status:    model.ToStringPtr(status),
 						TaskId:    model.ToStringPtr(""),
 						TestFile:  model.ToStringPtr(""),
@@ -700,8 +700,9 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						StartTime: time.Unix(0, 0),
-						EndTime:   time.Unix(0, 0),
+						Id:        model.ToStringPtr(mgobson.ObjectId(fmt.Sprintf("object_id_%d_", i)).Hex()),
+						StartTime: model.ToTimePtr(time.Unix(0, 0)),
+						EndTime:   model.ToTimePtr(time.Unix(0, 0)),
 						Status:    model.ToStringPtr(status),
 						TaskId:    model.ToStringPtr(""),
 						TestFile:  model.ToStringPtr(""),
@@ -743,8 +744,9 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						StartTime: time.Unix(0, 0),
-						EndTime:   time.Unix(0, 0),
+						Id:        model.ToStringPtr(mgobson.ObjectId(fmt.Sprintf("object_id_%d_", i)).Hex()),
+						StartTime: model.ToTimePtr(time.Unix(0, 0)),
+						EndTime:   model.ToTimePtr(time.Unix(0, 0)),
 						Status:    model.ToStringPtr(status),
 						TaskId:    model.ToStringPtr(""),
 						TestFile:  model.ToStringPtr(""),
@@ -786,8 +788,9 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						StartTime: time.Unix(0, 0),
-						EndTime:   time.Unix(0, 0),
+						Id:        model.ToStringPtr(mgobson.ObjectId(fmt.Sprintf("object_id_%d_", i)).Hex()),
+						StartTime: model.ToTimePtr(time.Unix(0, 0)),
+						EndTime:   model.ToTimePtr(time.Unix(0, 0)),
 						Status:    model.ToStringPtr(status),
 						TaskId:    model.ToStringPtr(""),
 						TestFile:  model.ToStringPtr(""),
@@ -1120,7 +1123,7 @@ func TestTaskResetExecute(t *testing.T) {
 			resTask, ok := res.Data().(*model.APITask)
 			So(ok, ShouldBeTrue)
 			So(resTask.Activated, ShouldBeTrue)
-			So(resTask.DispatchTime, ShouldResemble, util.ZeroTime)
+			So(resTask.DispatchTime, ShouldEqual, nil)
 			dbTask, err := sc.FindTaskById("testTaskId")
 			So(err, ShouldBeNil)
 			So(dbTask.Secret, ShouldNotResemble, "initialSecret")
