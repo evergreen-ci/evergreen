@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"go.mongodb.org/mongo-driver/mongo"
+
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -1256,7 +1258,11 @@ func RemoveStrict(id string) error {
 // Replace overwrites an existing host document with a new one. If no existing host is found, the new one will be inserted anyway.
 func (h *Host) Replace() error {
 	result := evergreen.GetEnvironment().DB().Collection(Collection).FindOneAndReplace(context.Background(), bson.M{IdKey: h.Id}, h, options.FindOneAndReplace().SetUpsert(true))
-	return result.Err()
+	err := result.Err()
+	if errors.Cause(err) == mongo.ErrNoDocuments {
+		return nil
+	}
+	return err
 }
 
 // GetElapsedCommunicationTime returns how long since this host has communicated with evergreen or vice versa
