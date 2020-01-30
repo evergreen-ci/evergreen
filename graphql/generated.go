@@ -50,7 +50,7 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AddFavoriteProject func(childComplexity int, projID string) int
+		AddFavoriteProject func(childComplexity int, identifier string) int
 	}
 
 	Patch struct {
@@ -165,7 +165,7 @@ type ComplexityRoot struct {
 }
 
 type MutationResolver interface {
-	AddFavoriteProject(ctx context.Context, projID string) ([]string, error)
+	AddFavoriteProject(ctx context.Context, identifier string) ([]string, error)
 }
 type QueryResolver interface {
 	UserPatches(ctx context.Context, userID string) ([]*model.APIPatch, error)
@@ -212,7 +212,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.AddFavoriteProject(childComplexity, args["projId"].(string)), true
+		return e.complexity.Mutation.AddFavoriteProject(childComplexity, args["identifier"].(string)), true
 
 	case "Patch.activated":
 		if e.complexity.Patch.Activated == nil {
@@ -855,7 +855,7 @@ var parsedSchema = gqlparser.MustLoadSchema(
 }
 
 type Mutation {
-  addFavoriteProject(projId: String!): [String!]!
+  addFavoriteProject(identifier: String!): [String!]!
 }
 
 type Patch {
@@ -980,13 +980,13 @@ func (ec *executionContext) field_Mutation_addFavoriteProject_args(ctx context.C
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["projId"]; ok {
+	if tmp, ok := rawArgs["identifier"]; ok {
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["projId"] = arg0
+	args["identifier"] = arg0
 	return args, nil
 }
 
@@ -1157,7 +1157,7 @@ func (ec *executionContext) _Mutation_addFavoriteProject(ctx context.Context, fi
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().AddFavoriteProject(rctx, args["projId"].(string))
+		return ec.resolvers.Mutation().AddFavoriteProject(rctx, args["identifier"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

@@ -3,12 +3,11 @@ package graphql
 import (
 	"context"
 	"sort"
-	s "strings"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -28,14 +27,15 @@ func (r *Resolver) Query() QueryResolver {
 
 type mutationResolver struct{ *Resolver }
 
-func (r *mutationResolver) AddFavoriteProject(ctx context.Context, projID string) ([]string, error) {
-	// TODO: replace hardcoded uid with uid from context
-	usr, err := user.FindOneById("admin")
+func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) ([]string, error) {
+	_, err := model.FindOneProjectRef(identifier)
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting user")
+		return nil, errors.Errorf("could not find project '%s'", identifier)
 	}
 
-	newFavorites, err := usr.AddFavoritedProject(projID)
+	usr := GetDBUserFromContext(ctx)
+
+	newFavorites, err := usr.AddFavoritedProject(identifier)
 	if err != nil {
 		return nil, errors.Wrap(err, "error adding project to user's favorites")
 	}
@@ -93,17 +93,13 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 
 	groupsMap := make(map[string][]*restModel.UIProjectFields)
 
-	// TODO: replace hardcoded uid with uid from context
-	usr, err := user.FindOneById("admin")
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting user")
-	}
+	usr := GetDBUserFromContext(ctx)
 
 	favoriteIds := usr.FavoriteProjects
 	favorites := []*restModel.UIProjectFields{}
 
 	for _, p := range allProjs {
-		groupName := s.Join([]string{p.Owner, p.Repo}, "/")
+		groupName := strings.Join([]string{p.Owner, p.Repo}, "/")
 
 		uiProj := restModel.UIProjectFields{
 			DisplayName: p.DisplayName,

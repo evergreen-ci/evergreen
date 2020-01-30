@@ -209,17 +209,18 @@ func (u *DBUser) IncPatchNumber() (int, error) {
 	return dbUser.PatchNumber, nil
 }
 
-func (u *DBUser) AddFavoritedProject(projectId string) ([]string, error) {
-	if util.StringSliceContains(u.FavoriteProjects, projectId) {
-		return nil, errors.Errorf("cannot add duplicate project '%s'", projectId)
+func (u *DBUser) AddFavoritedProject(identifier string) ([]string, error) {
+	if util.StringSliceContains(u.FavoriteProjects, identifier) {
+		return nil, errors.Errorf("cannot add duplicate project '%s'", identifier)
 	}
+
 	update := bson.M{
-		"$push": bson.M{FavoriteProjectsKey: projectId},
+		"$push": bson.M{FavoriteProjectsKey: identifier},
 	}
 	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
 		return nil, err
 	}
-	u.FavoriteProjects = append(u.FavoriteProjects, projectId)
+	u.FavoriteProjects = append(u.FavoriteProjects, identifier)
 
 	event.LogUserEvent(u.Id, event.UserEventTypeFavoriteProjectsUpdate, u.FavoriteProjects[:len(u.FavoriteProjects)-1], u.FavoriteProjects)
 
