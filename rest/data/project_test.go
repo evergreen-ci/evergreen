@@ -368,7 +368,7 @@ func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
 	s.NoError(err)
 	s.Require().NotNil(res)
 	s.Equal("3", res.Vars["b"])
-	s.Equal("", res.Vars["a"])
+	s.Equal("", res.Vars["a"]) // not returned bc not private
 }
 
 func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {

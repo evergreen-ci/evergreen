@@ -358,10 +358,15 @@ func (pc *MockProjectConnector) UpdateProject(projectRef *model.ProjectRef) erro
 
 func (pc *MockProjectConnector) FindProjectVarsById(id string, redactedOnly bool) (*restModel.APIProjectVars, error) {
 	varsModel := &restModel.APIProjectVars{}
-	res := &model.ProjectVars{Id: id}
+	res := &model.ProjectVars{
+		Id:   id,
+		Vars: map[string]string{},
+	}
 	for _, v := range pc.CachedVars {
 		if v.Id == id {
-			res.Vars = v.Vars
+			for key, val := range v.Vars {
+				res.Vars[key] = val
+			}
 			res.PrivateVars = v.PrivateVars
 			if redactedOnly {
 				res.RedactedOnly()
@@ -382,6 +387,7 @@ func (pc *MockProjectConnector) FindProjectVarsById(id string, redactedOnly bool
 
 func (pc *MockProjectConnector) UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars) error {
 	tempVars := model.ProjectVars{
+		Id:   projectId,
 		Vars: map[string]string{},
 	}
 	for _, cachedVars := range pc.CachedVars {

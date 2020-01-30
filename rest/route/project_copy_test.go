@@ -176,8 +176,7 @@ func (s *copyRedactedVarsSuite) TestCopyRedactedVariables() {
 	resp := s.route.Run(ctx)
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
-
-	s.Len(s.data.CachedVars[1].Vars, 1)
+	s.Len(s.data.CachedVars[1].Vars, 2)
 
 	s.route.dryRun = false
 	resp = s.route.Run(ctx)
@@ -185,7 +184,7 @@ func (s *copyRedactedVarsSuite) TestCopyRedactedVariables() {
 	s.Equal(http.StatusOK, resp.Status())
 	s.Len(s.data.CachedVars[1].Vars, 3)
 	s.Equal("world", s.data.CachedVars[1].Vars["hello"])
-	s.Equal("green", s.data.CachedVars[1].Vars["green"])
+	s.Equal("green", s.data.CachedVars[1].Vars["apple"])
 	s.True(s.data.CachedVars[1].PrivateVars["hello"])
 }
 
