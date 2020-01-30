@@ -137,9 +137,6 @@ type Communicator interface {
 	GetEvents(context.Context, time.Time, int) ([]interface{}, error)
 	RevertSettings(context.Context, string) error
 
-	// Host methods
-	GetHostsByUser(context.Context, string) ([]*restmodel.APIHost, error)
-
 	// Spawnhost methods
 	//
 	CreateSpawnHost(context.Context, *restmodel.HostRequestOptions) (*restmodel.APIHost, error)
@@ -149,13 +146,14 @@ type Communicator interface {
 	TerminateSpawnHost(context.Context, string) error
 	ChangeSpawnHostPassword(context.Context, string, string) error
 	ExtendSpawnHostExpiration(context.Context, string, int) error
-	GetHosts(context.Context, func([]*restmodel.APIHost) error) error
+	GetHosts(context.Context, restmodel.APIHostParams) ([]*restmodel.APIHost, error)
 	AttachVolume(context.Context, string, *host.VolumeAttachment) error
 	DetachVolume(context.Context, string, string) error
 	CreateVolume(context.Context, *host.Volume) (*restmodel.APIVolume, error)
 	DeleteVolume(context.Context, string) error
 	GetVolumesByUser(context.Context) ([]restmodel.APIVolume, error)
-	RunHostScript(context.Context, string, string) ([]string, error)
+	StartHostProcesses(context.Context, []string, string, int) ([]restmodel.APIHostProcess, error)
+	GetHostProcessOutput(context.Context, []restmodel.APIHostProcess, int) ([]restmodel.APIHostProcess, error)
 
 	// Fetch list of distributions evergreen can spawn
 	GetDistrosList(context.Context) ([]restmodel.APIDistro, error)

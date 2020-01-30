@@ -131,6 +131,10 @@ type Connector interface {
 	// FindHostsById is a method to find a sorted list of hosts given an ID to
 	// start from.
 	FindHostsById(string, string, string, int) ([]host.Host, error)
+
+	// FindHostsInRange is a method to find a filtered list of hosts
+	FindHostsInRange(restModel.APIHostParams, string) ([]host.Host, error)
+
 	FindHostById(string) (*host.Host, error)
 
 	// FindHostByIdWithOwner finds a host with given host ID that was

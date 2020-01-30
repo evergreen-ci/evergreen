@@ -664,7 +664,8 @@ func TestJasperProcess(t *testing.T) {
 		},
 		"StartJasperProcessPasses": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
 			assert.NoError(t, withJasperServiceSetupAndTeardown(ctx, env, manager, h, func() {
-				assert.NoError(t, h.StartJasperProcess(ctx, env, opts))
+				_, err := h.StartJasperProcess(ctx, env, opts)
+				assert.NoError(t, err)
 			}))
 		},
 		"RunJasperProcessFailsIfProcessCreationFails": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
@@ -686,7 +687,8 @@ func TestJasperProcess(t *testing.T) {
 		"StartJasperProcessFailsIfProcessCreationFails": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
 			manager.FailCreate = true
 			assert.NoError(t, withJasperServiceSetupAndTeardown(ctx, env, manager, h, func() {
-				assert.Error(t, h.StartJasperProcess(ctx, env, opts))
+				_, err := h.StartJasperProcess(ctx, env, opts)
+				assert.Error(t, err)
 			}))
 		},
 	} {

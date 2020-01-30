@@ -4444,3 +4444,46 @@ func TestStartingHostsByClient(t *testing.T) {
 		}
 	}
 }
+
+func TestFindHostsInRange(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+
+	hosts := []Host{
+		{
+			Id:           "h0",
+			Status:       evergreen.HostTerminated,
+			CreationTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+			Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
+		},
+		{
+			Id:           "h1",
+			Status:       evergreen.HostRunning,
+			CreationTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+			Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
+		},
+		{
+			Id:           "h2",
+			Status:       evergreen.HostRunning,
+			CreationTime: time.Date(2009, time.December, 10, 23, 0, 0, 0, time.UTC),
+			Distro:       distro.Distro{Id: "ubuntu-1804", Provider: evergreen.ProviderNameMock},
+		},
+	}
+	for _, h := range hosts {
+		require.NoError(t, h.Insert())
+	}
+
+	filteredHosts, err := FindHostsInRange(HostsInRangeParams{Status: evergreen.HostTerminated})
+	assert.NoError(t, err)
+	assert.Len(t, filteredHosts, 1)
+	assert.Equal(t, "h0", filteredHosts[0].Id)
+
+	filteredHosts, err = FindHostsInRange(HostsInRangeParams{Distro: "ubuntu-1604"})
+	assert.NoError(t, err)
+	assert.Len(t, filteredHosts, 1)
+	assert.Equal(t, "h1", filteredHosts[0].Id)
+
+	filteredHosts, err = FindHostsInRange(HostsInRangeParams{CreatedAfter: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)})
+	assert.NoError(t, err)
+	assert.Len(t, filteredHosts, 1)
+	assert.Equal(t, "h2", filteredHosts[0].Id)
+}

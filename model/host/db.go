@@ -966,6 +966,52 @@ func GetHostsByFromIDWithStatus(id, status, user string, limit int) ([]Host, err
 	return hosts, nil
 }
 
+type HostsInRangeParams struct {
+	CreatedBefore time.Time
+	CreatedAfter  time.Time
+	User          string
+	Distro        string
+	Status        string
+	UserSpawned   bool
+}
+
+func FindHostsInRange(params HostsInRangeParams) ([]Host, error) {
+	var statusMatch interface{}
+	if params.Status != "" {
+		statusMatch = params.Status
+	} else {
+		statusMatch = bson.M{"$in": evergreen.UpHostStatus}
+	}
+
+	createTimeFilter := bson.M{"$gt": params.CreatedAfter}
+	if !util.IsZeroTime(params.CreatedBefore) {
+		createTimeFilter["$lt"] = params.CreatedBefore
+	}
+
+	filter := bson.M{
+		StatusKey:     statusMatch,
+		CreateTimeKey: createTimeFilter,
+	}
+
+	if params.User != "" {
+		filter[StartedByKey] = params.User
+	}
+
+	if params.Distro != "" {
+		filter[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = params.Distro
+	}
+
+	if params.UserSpawned {
+		filter[UserHostKey] = true
+	}
+
+	hosts, err := Find(db.Query(filter))
+	if err != nil {
+		return nil, errors.Wrap(err, "Error querying database")
+	}
+	return hosts, nil
+}
+
 type InactiveHostCounts struct {
 	HostType string `bson:"_id"`
 	Count    int    `bson:"count"`
