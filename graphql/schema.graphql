@@ -5,7 +5,7 @@ type Query {
 }
 
 type Mutation {
-  addFavoriteProject(identifier: String!): [String!]!
+  addFavoriteProject(identifier: String!): Project!
 }
 
 type Patch {

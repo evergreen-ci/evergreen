@@ -27,20 +27,25 @@ func (r *Resolver) Query() QueryResolver {
 
 type mutationResolver struct{ *Resolver }
 
-func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) ([]string, error) {
-	_, err := model.FindOneProjectRef(identifier)
+func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) (*restModel.UIProjectFields, error) {
+	p, err := model.FindOneProjectRef(identifier)
 	if err != nil {
 		return nil, errors.Errorf("could not find project '%s'", identifier)
 	}
 
 	usr := GetDBUserFromContext(ctx)
 
-	newFavorites, err := usr.AddFavoritedProject(identifier)
+	_, err = usr.AddFavoritedProject(identifier)
 	if err != nil {
 		return nil, errors.Wrap(err, "error adding project to user's favorites")
 	}
 
-	return newFavorites, nil
+	return &restModel.UIProjectFields{
+		DisplayName: p.DisplayName,
+		Identifier:  p.Identifier,
+		Repo:        p.Repo,
+		Owner:       p.Owner,
+	}, nil
 }
 
 type patchResolver struct{ *Resolver }
