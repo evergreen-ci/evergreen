@@ -20,7 +20,7 @@ func (c *NotificationConnector) GetNotificationsStats() (*restModel.APIEventStat
 		return nil, errors.Wrap(err, "failed to fetch most recently processed event")
 	}
 	if e != nil {
-		stats.LastProcessedAt = e.ProcessedAt
+		stats.LastProcessedAt = &e.ProcessedAt
 	}
 
 	n, err := event.CountUnprocessedEvents()

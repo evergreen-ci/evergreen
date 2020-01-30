@@ -94,7 +94,7 @@ func (s *ProjectEventSuite) SetupTest() {
 }
 
 func (s *ProjectEventSuite) TestProjectEventMetadata() {
-	s.Equal(s.modelEvent.Timestamp, s.APIEvent.Timestamp)
+	s.Equal(s.modelEvent.Timestamp, *s.APIEvent.Timestamp)
 	s.Equal(s.projChanges.User, FromStringPtr(s.APIEvent.User))
 }
 
