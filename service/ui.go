@@ -71,7 +71,7 @@ type ViewData struct {
 
 func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo TemplateFunctionOptions) (*UIServer, error) {
 	settings := env.Settings()
-	userManager, canClearTokens, err := auth.LoadUserManager(settings.AuthConfig)
+	userManager, canClearTokens, err := auth.LoadUserManager(settings)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

@@ -14,7 +14,8 @@ import (
 
 //LoadUserManager is used to check the configuration for authentication and create a UserManager
 // depending on what type of authentication is used.
-func LoadUserManager(authConfig evergreen.AuthConfig) (um gimlet.UserManager, supportsClearTokens bool, err error) {
+func LoadUserManager(settings *evergreen.Settings) (um gimlet.UserManager, supportsClearTokens bool, err error) {
+	authConfig := settings.AuthConfig
 	makeLDAPManager := func() (gimlet.UserManager, bool, error) {
 		manager, err := NewLDAPUserManager(authConfig.LDAP)
 		if err != nil {
@@ -23,14 +24,7 @@ func LoadUserManager(authConfig evergreen.AuthConfig) (um gimlet.UserManager, su
 		return manager, true, nil
 	}
 	makeOktaManager := func() (gimlet.UserManager, bool, error) {
-		var evgURL, loginDomain string
-		env := evergreen.GetEnvironment()
-		if env != nil {
-			settings := env.Settings()
-			evgURL = settings.Ui.Url
-			loginDomain = settings.Ui.LoginDomain
-		}
-		manager, err := NewOktaUserManager(authConfig.Okta, evgURL, loginDomain)
+		manager, err := NewOktaUserManager(authConfig.Okta, settings.Ui.Url, settings.Ui.LoginDomain)
 		if err != nil {
 			return nil, false, errors.Wrap(err, "problem setting up okta authentication")
 		}
@@ -44,12 +38,7 @@ func LoadUserManager(authConfig evergreen.AuthConfig) (um gimlet.UserManager, su
 		return manager, false, nil
 	}
 	makeGithubManager := func() (gimlet.UserManager, bool, error) {
-		env := evergreen.GetEnvironment()
-		var domain string
-		if env != nil {
-			domain = env.Settings().Ui.LoginDomain
-		}
-		manager, err := NewGithubUserManager(authConfig.Github, domain)
+		manager, err := NewGithubUserManager(authConfig.Github, settings.Ui.LoginDomain)
 		if err != nil {
 			return nil, false, errors.Wrap(err, "problem setting up github authentication")
 		}
