@@ -4487,3 +4487,25 @@ func TestFindHostsInRange(t *testing.T) {
 	assert.Len(t, filteredHosts, 1)
 	assert.Equal(t, "h2", filteredHosts[0].Id)
 }
+
+func TestRemoveAndReplace(t *testing.T) {
+	assert.NoError(t, db.Clear(Collection))
+	// removing a nonexistent host errors
+	assert.Error(t, RemoveStrict("asdf"))
+
+	h := Host{
+		Id:                 "bar",
+		Status:             evergreen.HostUninitialized,
+		ComputeCostPerHour: 50,
+	}
+	assert.NoError(t, h.Insert())
+
+	h.ComputeCostPerHour = 100
+	h.DockerOptions.Command = "hello world"
+	assert.NoError(t, h.Replace())
+	dbHost, err := FindOneId(h.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.HostUninitialized, dbHost.Status)
+	assert.EqualValues(t, 100, dbHost.ComputeCostPerHour)
+	assert.Equal(t, "hello world", dbHost.DockerOptions.Command)
+}

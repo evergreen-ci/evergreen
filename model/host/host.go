@@ -20,6 +20,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
@@ -1238,6 +1239,24 @@ func (h *Host) Remove() error {
 			IdKey: h.Id,
 		},
 	)
+}
+
+// RemoveStrict deletes a host and errors if the host is not found
+func RemoveStrict(id string) error {
+	result, err := evergreen.GetEnvironment().DB().Collection(Collection).DeleteOne(context.Background(), bson.M{IdKey: id})
+	if err != nil {
+		return err
+	}
+	if result.DeletedCount == 0 {
+		return errors.Errorf("host %s not found", id)
+	}
+	return nil
+}
+
+// Replace overwrites an existing host document with a new one. If no existing host is found, the new one will be inserted anyway.
+func (h *Host) Replace() error {
+	result := evergreen.GetEnvironment().DB().Collection(Collection).FindOneAndReplace(context.Background(), bson.M{IdKey: h.Id}, h, options.FindOneAndReplace().SetUpsert(true))
+	return result.Err()
 }
 
 // GetElapsedCommunicationTime returns how long since this host has communicated with evergreen or vice versa
