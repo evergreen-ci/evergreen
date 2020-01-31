@@ -49,7 +49,7 @@ func TestDecommissioningParentWithTerminatedContainers(t *testing.T) {
 	}
 	host3 := &host.Host{
 		Id:       "host3",
-		Status:   evergreen.HostDecommissioned,
+		Status:   evergreen.HostRunning,
 		ParentID: "host1",
 	}
 	host4 := &host.Host{
@@ -81,7 +81,7 @@ func TestDecommissioningParentWithTerminatedContainers(t *testing.T) {
 
 	h3, err := host.FindOne(host.ById("host3"))
 	assert.NoError(err)
-	assert.Equal(evergreen.HostDecommissioned, h3.Status)
+	assert.Equal(evergreen.HostRunning, h3.Status)
 
 	h4, err := host.FindOne(host.ById("host4"))
 	assert.NoError(err)
