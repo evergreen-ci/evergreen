@@ -154,8 +154,8 @@ func (p *copyRedactedVarsHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
+// errors if any redacted variable keys in the source project match ANY variable keys in the destination project.
 func (p *copyRedactedVarsHandler) willOverwriteVars(varsToCopy *model.APIProjectVars) error {
-
 	overwrittenVars := []string{}
 	existingVars, err := p.sc.FindProjectVarsById(p.copyTo, false)
 	if err != nil {
