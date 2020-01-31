@@ -1350,17 +1350,17 @@ func FindHostsToTerminate() ([]Host, error) {
 	query := bson.M{
 		ProviderKey: bson.M{"$in": evergreen.ProviderSpawnable},
 		"$or": []bson.M{
-			{ // host.ByExpiredSince(time.Now())
+			{ // expired spawn hosts
 				StartedByKey: bson.M{"$ne": evergreen.User},
 				StatusKey: bson.M{
 					"$nin": []string{evergreen.HostTerminated, evergreen.HostQuarantined},
 				},
 				ExpirationTimeKey: bson.M{"$lte": now},
 			},
-			{ // host.IsProvisioningFailure
+			{ // hosts that failed to provision
 				StatusKey: evergreen.HostProvisionFailed,
 			},
-			{ // host.ByUnprovisionedSince
+			{ // hosts that are taking too long to provision
 				"$or": []bson.M{
 					bson.M{ProvisionedKey: false},
 					bson.M{StatusKey: evergreen.HostProvisioning},
@@ -1370,7 +1370,7 @@ func FindHostsToTerminate() ([]Host, error) {
 				StartedByKey:  evergreen.User,
 				ProviderKey:   bson.M{"$ne": evergreen.ProviderNameStatic},
 			},
-			{ // host.IsDecommissioned
+			{ // decommissioned hosts not running tasks
 				RunningTaskKey: bson.M{"$exists": false},
 				StatusKey:      evergreen.HostDecommissioned,
 			},
@@ -1493,8 +1493,7 @@ func (h *Host) GetParent() (*Host, error) {
 	return host, nil
 }
 
-// IsIdleParent determines whether a host with containers has exclusively
-// terminated containers
+// IsIdleParent determines whether a host has only inactive containers
 func (h *Host) IsIdleParent() (bool, error) {
 	const idleTimeCutoff = 20 * time.Minute
 	if !h.HasContainers {
@@ -1506,7 +1505,7 @@ func (h *Host) IsIdleParent() (bool, error) {
 	}
 	query := db.Query(bson.M{
 		ParentIDKey: h.Id,
-		StatusKey:   bson.M{"$ne": evergreen.HostTerminated},
+		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
 	})
 	num, err := Count(query)
 	if err != nil {
