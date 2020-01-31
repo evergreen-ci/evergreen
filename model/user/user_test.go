@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -18,8 +17,7 @@ var userTestConfig = testutil.TestConfig()
 
 type UserTestSuite struct {
 	suite.Suite
-	users    []*DBUser
-	projects []*model.ProjectRef
+	users []*DBUser
 }
 
 func TestDBUser(t *testing.T) {
@@ -178,42 +176,6 @@ func (s *UserTestSuite) SetupTest() {
 		},
 	}
 	s.NoError(rm.UpdateRole(r1234p2))
-
-	s.projects = []*model.ProjectRef{
-		&model.ProjectRef{
-			Owner:              "something crazy",
-			Repo:               "grip",
-			Branch:             "master",
-			RepoKind:           "github",
-			Enabled:            false,
-			Private:            false,
-			BatchTime:          0,
-			RemotePath:         "evergreen.yml",
-			Identifier:         "annie-copy5",
-			DisplayName:        "something temporary",
-			DeactivatePrevious: false,
-			TracksPushEvents:   false,
-			PRTestingEnabled:   false,
-			CommitQueue: model.CommitQueueParams{
-				Enabled:     false,
-				MergeMethod: "squash",
-				PatchType:   "PR",
-			},
-			Tracked:               true,
-			PatchingDisabled:      false,
-			Admins:                []string{"annie.black"},
-			NotifyOnBuildFailure:  false,
-			RepotrackerError:      nil,
-			DisabledStatsCache:    false,
-			FilesIgnoredFromCache: nil,
-			PeriodicBuilds:        []model.PeriodicBuildDefinition{},
-			Triggers:              []model.TriggerDefinition{},
-		},
-	}
-
-	for _, proj := range s.projects {
-		s.NoError(proj.Insert())
-	}
 }
 
 func (s *UserTestSuite) TearDownTest() {
