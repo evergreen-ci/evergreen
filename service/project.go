@@ -215,7 +215,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		Restricted          bool                           `json:"restricted"`
 		Owner               string                         `json:"owner_name"`
 		Repo                string                         `json:"repo_name"`
-		Admins              []string                       `json:"admins"` //TODO: update roles for this project if admins change
+		Admins              []string                       `json:"admins"`
 		TracksPushEvents    bool                           `json:"tracks_push_events"`
 		PRTestingEnabled    bool                           `json:"pr_testing_enabled"`
 		CommitQueue         restModel.APICommitQueueParams `json:"commit_queue"`

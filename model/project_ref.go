@@ -207,9 +207,11 @@ func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
 	}
 	newRole := gimlet.Role{
 		ID:          fmt.Sprintf("admin_project_%s", p.Identifier),
-		Owners:      []string{creator.Id},
 		Scope:       newScope.ID,
 		Permissions: adminPermissions,
+	}
+	if creator != nil {
+		newRole.Owners = []string{creator.Id}
 	}
 	if err := rm.UpdateRole(newRole); err != nil {
 		return errors.Wrapf(err, "error adding admin role for project '%s'", p.Identifier)
