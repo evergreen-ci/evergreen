@@ -10,13 +10,14 @@ import (
 	"github.com/evergreen-ci/gimlet/usercache"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
-	ldap "gopkg.in/ldap.v2"
+	ldap "gopkg.in/ldap.v3"
 )
 
 type LDAPSuite struct {
 	um             gimlet.UserManager
 	badGroupUm     gimlet.UserManager
 	serviceGroupUm gimlet.UserManager
+	serviceUserUm  gimlet.UserManager
 	realConnUm     gimlet.UserManager
 	suite.Suite
 }
@@ -86,6 +87,29 @@ func (s *LDAPSuite) SetupTest() {
 	s.Require().NoError(err)
 	s.Require().NotNil(s.badGroupUm)
 
+	s.serviceUserUm, err = NewUserService(CreationOpts{
+		URL:                 "url",
+		Port:                "port",
+		UserPath:            "path",
+		ServicePath:         "bots",
+		UserGroup:           "badgroup",
+		ServiceGroup:        "cn=10gen,ou=groups,dc=mongodb,dc=com",
+		GroupOuName:         "groups",
+		ServiceUserName:     "service_user",
+		ServiceUserPassword: "service_password",
+		ServiceUserPath:     "service_path",
+		ExternalCache: &usercache.ExternalOptions{
+			PutUserGetToken: mockPutSuccess,
+			GetUserByToken:  mockGetValid,
+			ClearUserToken:  mockClearUserToken,
+			GetUserByID:     mockGetUserByID,
+			GetOrCreateUser: mockGetOrCreateUser,
+		},
+		connect: mockConnect,
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(s.serviceUserUm)
+
 	s.realConnUm, err = NewUserService(CreationOpts{
 		URL:         "url",
 		Port:        "port",
@@ -123,10 +147,10 @@ type mockConnErr struct {
 
 type mockConn struct{}
 
-func (m *mockConn) Start()                               { return }
+func (m *mockConn) Start()                               {}
 func (m *mockConn) StartTLS(config *tls.Config) error    { return nil }
-func (m *mockConn) Close()                               { return }
-func (m *mockConn) SetTimeout(time.Duration)             { return }
+func (m *mockConn) Close()                               {}
+func (m *mockConn) SetTimeout(time.Duration)             {}
 func (m *mockConn) ModifyDN(*ldap.ModifyDNRequest) error { return nil }
 func (m *mockConn) Bind(username, password string) error {
 	if username == "uid=foo,path" && password == "hunter2" {
@@ -135,8 +159,12 @@ func (m *mockConn) Bind(username, password string) error {
 	if username == "uid=foo,bots" && password == "hunter3" {
 		return nil
 	}
+	if username == "uid=service_user,service_path" && password == "service_password" {
+		return nil
+	}
 	return errors.Errorf("failed to Bind (%s, %s)", username, password)
 }
+func (m *mockConn) UnauthenticatedBind(username string) error { return nil }
 func (m *mockConn) SimpleBind(simpleBindRequest *ldap.SimpleBindRequest) (*ldap.SimpleBindResult, error) {
 	return nil, nil
 }
@@ -147,6 +175,8 @@ func (m *mockConn) Compare(dn, attribute, value string) (bool, error) { return f
 func (m *mockConn) PasswordModify(passwordModifyRequest *ldap.PasswordModifyRequest) (*ldap.PasswordModifyResult, error) {
 	return nil, nil
 }
+
+func (m *mockConn) ExternalBind() error { return nil }
 
 func (m *mockConnSuccess) Search(searchRequest *ldap.SearchRequest) (*ldap.SearchResult, error) {
 	return &ldap.SearchResult{
@@ -195,7 +225,7 @@ func (u *mockUser) HasPermission(gimlet.PermissionOpts) bool {
 	return true
 }
 
-// TODO
+// TODO: avoid using this global variable as a state check.
 var mockPutUser gimlet.User
 
 func mockPutErr(u gimlet.User) (string, error) {
@@ -289,14 +319,31 @@ func (s *LDAPSuite) TestLDAPConstructorRequiresNonEmptyArgs() {
 			GetOrCreateUser: mockGetOrCreateUser,
 		},
 	})
-	s.Error(err)
-	s.Nil(l)
+	s.NoError(err)
+	s.NotNil(l)
 
 	l, err = NewUserService(CreationOpts{
 		URL:         "url",
 		Port:        "port",
 		UserPath:    "",
 		ServicePath: "bots",
+		UserGroup:   "group",
+		ExternalCache: &usercache.ExternalOptions{
+			PutUserGetToken: mockPutSuccess,
+			GetUserByToken:  mockGetValid,
+			ClearUserToken:  mockClearUserToken,
+			GetUserByID:     mockGetUserByID,
+			GetOrCreateUser: mockGetOrCreateUser,
+		},
+	})
+	s.Error(err)
+	s.Nil(l)
+
+	l, err = NewUserService(CreationOpts{
+		URL:         "url",
+		Port:        "port",
+		UserPath:    "path",
+		ServicePath: "",
 		UserGroup:   "group",
 		ExternalCache: &usercache.ExternalOptions{
 			PutUserGetToken: mockPutSuccess,
@@ -410,54 +457,158 @@ func (s *LDAPSuite) TestLDAPConstructorRequiresNonEmptyArgs() {
 	})
 	s.Error(err)
 	s.Nil(l)
+
+	l, err = NewUserService(CreationOpts{
+		URL:                 "url",
+		Port:                "port",
+		ServiceUserName:     "service_user",
+		ServiceUserPassword: "service_password",
+		ServiceUserPath:     "service_path",
+		UserPath:            "path",
+		ServicePath:         "bots",
+		UserGroup:           "group",
+		ExternalCache: &usercache.ExternalOptions{
+			PutUserGetToken: mockPutSuccess,
+			GetUserByToken:  mockGetValid,
+			ClearUserToken:  mockClearUserToken,
+			GetUserByID:     mockGetUserByID,
+			GetOrCreateUser: mockGetOrCreateUser,
+		},
+	})
+	s.NoError(err)
+	s.NotNil(l)
+
+	l, err = NewUserService(CreationOpts{
+		URL:                 "url",
+		Port:                "port",
+		ServiceUserName:     "",
+		ServiceUserPassword: "service_password",
+		ServiceUserPath:     "service_path",
+		UserPath:            "path",
+		ServicePath:         "bots",
+		UserGroup:           "group",
+		ExternalCache: &usercache.ExternalOptions{
+			PutUserGetToken: mockPutSuccess,
+			GetUserByToken:  mockGetValid,
+			ClearUserToken:  mockClearUserToken,
+			GetUserByID:     mockGetUserByID,
+			GetOrCreateUser: mockGetOrCreateUser,
+		},
+	})
+	s.Error(err)
+	s.Nil(l)
+
+	l, err = NewUserService(CreationOpts{
+		URL:                 "url",
+		Port:                "port",
+		ServiceUserName:     "service_user",
+		ServiceUserPassword: "",
+		ServiceUserPath:     "service_path",
+		UserPath:            "path",
+		ServicePath:         "bots",
+		UserGroup:           "group",
+		ExternalCache: &usercache.ExternalOptions{
+			PutUserGetToken: mockPutSuccess,
+			GetUserByToken:  mockGetValid,
+			ClearUserToken:  mockClearUserToken,
+			GetUserByID:     mockGetUserByID,
+			GetOrCreateUser: mockGetOrCreateUser,
+		},
+	})
+	s.Error(err)
+	s.Nil(l)
+
+	l, err = NewUserService(CreationOpts{
+		URL:                 "url",
+		Port:                "port",
+		ServiceUserName:     "service_user",
+		ServiceUserPassword: "service_password",
+		ServiceUserPath:     "",
+		UserPath:            "path",
+		ServicePath:         "bots",
+		UserGroup:           "group",
+		ExternalCache: &usercache.ExternalOptions{
+			PutUserGetToken: mockPutSuccess,
+			GetUserByToken:  mockGetValid,
+			ClearUserToken:  mockClearUserToken,
+			GetUserByID:     mockGetUserByID,
+			GetOrCreateUser: mockGetOrCreateUser,
+		},
+	})
+	s.Error(err)
+	s.Nil(l)
 }
 
 func (s *LDAPSuite) TestGetUserByToken() {
 	ctx := context.Background()
 
-	impl, ok := s.um.(*userService).cache.(*usercache.ExternalCache)
-	s.True(ok)
-	impl.Opts.GetUserByToken = mockGetErr
+	setCacheGetUserByToken := func(um gimlet.UserManager, getUserByToken usercache.GetUserByToken) {
+		impl, ok := um.(*userService).cache.(*usercache.ExternalCache)
+		s.Require().True(ok)
+		impl.Opts.GetUserByToken = getUserByToken
+	}
+
+	setCacheGetUserByToken(s.um, mockGetErr)
 	u, err := s.um.GetUserByToken(ctx, "foo")
 	s.Error(err)
 	s.Nil(u)
 
-	impl.Opts.GetUserByToken = mockGetValid
+	setCacheGetUserByToken(s.serviceUserUm, mockGetErr)
+	u, err = s.serviceUserUm.GetUserByToken(ctx, "foo")
+	s.Error(err)
+	s.Nil(u)
+
+	setCacheGetUserByToken(s.um, mockGetValid)
 	u, err = s.um.GetUserByToken(ctx, "foo")
 	s.NoError(err)
 	s.Equal("foo", u.Username())
 
-	impl.Opts.GetUserByToken = mockGetExpired
+	setCacheGetUserByToken(s.serviceUserUm, mockGetValid)
+	u, err = s.serviceUserUm.GetUserByToken(ctx, "foo")
+	s.NoError(err)
+	s.Equal("foo", u.Username())
+
+	setCacheGetUserByToken(s.um, mockGetExpired)
 	u, err = s.um.GetUserByToken(ctx, "foo")
 	s.NoError(err)
 	s.Equal("foo", u.Username())
 
-	serviceGroupImpl, ok := s.serviceGroupUm.(*userService).cache.(*usercache.ExternalCache)
-	s.True(ok)
-	serviceGroupImpl.Opts.GetUserByToken = mockGetExpired
+	setCacheGetUserByToken(s.serviceUserUm, mockGetExpired)
+	u, err = s.um.GetUserByToken(ctx, "foo")
+	s.NoError(err)
+	s.Equal("foo", u.Username())
+
+	setCacheGetUserByToken(s.serviceGroupUm, mockGetExpired)
 	u, err = s.badGroupUm.GetUserByToken(ctx, "foo")
 	s.NoError(err)
 	s.Equal("foo", u.Username())
 
-	badGroupImpl, ok := s.badGroupUm.(*userService).cache.(*usercache.ExternalCache)
-	s.True(ok)
-	badGroupImpl.Opts.GetUserByToken = mockGetExpired
+	setCacheGetUserByToken(s.badGroupUm, mockGetExpired)
 	u, err = s.badGroupUm.GetUserByToken(ctx, "foo")
 	s.Error(err)
 	s.Nil(u)
 
+	setCacheGetUserByToken(s.um, mockGetExpired)
 	u, err = s.um.GetUserByToken(ctx, "badUser")
 	s.Error(err)
 	s.Nil(u)
 
-	impl.Opts.GetUserByToken = mockGetMissing
+	setCacheGetUserByToken(s.serviceUserUm, mockGetExpired)
+	u, err = s.um.GetUserByToken(ctx, "badUser")
+	s.Error(err)
+	s.Nil(u)
+
+	setCacheGetUserByToken(s.um, mockGetMissing)
 	u, err = s.um.GetUserByToken(ctx, "foo")
 	s.Error(err)
 	s.Nil(u)
 
-	realConnImpl, ok := s.realConnUm.(*userService).cache.(*usercache.ExternalCache)
-	s.True(ok)
-	realConnImpl.Opts.GetUserByToken = mockGetExpired
+	setCacheGetUserByToken(s.serviceUserUm, mockGetMissing)
+	u, err = s.um.GetUserByToken(ctx, "foo")
+	s.Error(err)
+	s.Nil(u)
+
+	setCacheGetUserByToken(s.realConnUm, mockGetExpired)
 	u, err = s.realConnUm.GetUserByToken(ctx, "foo")
 	s.Error(err)
 	s.Nil(u)
@@ -467,10 +618,24 @@ func (s *LDAPSuite) TestCreateUserToken() {
 	_, err := s.um.CreateUserToken("foo", "badpassword")
 	s.Error(err)
 
+	_, err = s.serviceUserUm.CreateUserToken("foo", "badpassword")
+	s.Error(err)
+
 	_, err = s.um.CreateUserToken("nosuchuser", "")
 	s.Error(err)
 
+	_, err = s.serviceUserUm.CreateUserToken("nosuchuser", "")
+	s.Error(err)
+
 	token, err := s.um.CreateUserToken("foo", "hunter2")
+	s.Require().NoError(err)
+	s.Equal("123456", token)
+	s.Equal("foo", mockPutUser.Username())
+	s.Equal("Foo Bar", mockPutUser.DisplayName())
+	s.Equal("foo@example.com", mockPutUser.Email())
+
+	mockPutUser = nil
+	token, err = s.serviceUserUm.CreateUserToken("foo", "hunter2")
 	s.Require().NoError(err)
 	s.Equal("123456", token)
 	s.Equal("foo", mockPutUser.Username())
@@ -510,43 +675,63 @@ func (s *LDAPSuite) TestIsRedirect() {
 }
 
 func (s *LDAPSuite) TestGetUser() {
-	impl, ok := s.um.(*userService).cache.(*usercache.ExternalCache)
-	s.True(ok)
-	impl.Opts.GetUserByID = mockGetErr
+	setCacheGetUserByID := func(um gimlet.UserManager, getUserByID usercache.GetUserByID) {
+		impl, ok := um.(*userService).cache.(*usercache.ExternalCache)
+		s.True(ok)
+		impl.Opts.GetUserByID = getUserByID
+	}
+
+	setCacheGetUserByID(s.um, mockGetErr)
 	u, err := s.um.GetUserByID("foo")
 	s.Error(err)
 	s.Nil(u)
 
-	impl.Opts.GetUserByID = mockGetValid
+	setCacheGetUserByID(s.serviceUserUm, mockGetErr)
+	s.Error(err)
+	s.Nil(u)
+
+	setCacheGetUserByID(s.um, mockGetValid)
 	u, err = s.um.GetUserByID("foo")
 	s.NoError(err)
 	s.Equal("foo", u.Username())
 
-	impl.Opts.GetUserByID = mockGetExpired
+	setCacheGetUserByID(s.serviceUserUm, mockGetValid)
+	u, err = s.serviceUserUm.GetUserByID("foo")
+	s.NoError(err)
+	s.Equal("foo", u.Username())
+
+	setCacheGetUserByID(s.um, mockGetExpired)
 	u, err = s.um.GetUserByID("foo")
 	s.NoError(err)
 	s.Equal("foo", u.Username())
 
-	serviceGroupImpl, ok := s.serviceGroupUm.(*userService).cache.(*usercache.ExternalCache)
-	s.True(ok)
-	serviceGroupImpl.Opts.GetUserByID = mockGetExpired
-	u, err = s.badGroupUm.GetUserByID("foo")
+	setCacheGetUserByID(s.serviceUserUm, mockGetExpired)
+	u, err = s.serviceUserUm.GetUserByID("foo")
 	s.NoError(err)
 	s.Equal("foo", u.Username())
 
-	badGroupImpl, ok := s.badGroupUm.(*userService).cache.(*usercache.ExternalCache)
-	s.True(ok)
-	badGroupImpl.Opts.GetUserByID = mockGetExpired
+	setCacheGetUserByID(s.serviceGroupUm, mockGetExpired)
+	u, err = s.serviceGroupUm.GetUserByID("foo")
+	s.NoError(err)
+	s.Equal("foo", u.Username())
+
+	setCacheGetUserByID(s.badGroupUm, mockGetExpired)
 	u, err = s.badGroupUm.GetUserByID("foo")
 	s.Error(err)
 	s.Nil(u)
 
+	setCacheGetUserByID(s.um, mockGetExpired)
 	u, err = s.um.GetUserByID("badUser")
 	s.Error(err)
 	s.Nil(u)
 
-	impl.Opts.GetUserByID = mockGetMissing
-	u, err = s.um.GetUserByID("foo")
+	setCacheGetUserByID(s.serviceUserUm, mockGetExpired)
+	u, err = s.um.GetUserByID("badUser")
+	s.Error(err)
+	s.Nil(u)
+
+	setCacheGetUserByID(s.serviceUserUm, mockGetMissing)
+	u, err = s.serviceUserUm.GetUserByID("foo")
 	s.Error(err)
 	s.Nil(u)
 
@@ -565,13 +750,21 @@ func (s *LDAPSuite) TestGetOrCreateUser() {
 	s.Equal("foo", user.Username())
 }
 
-func (s *LDAPSuite) TestLoginUsesBothPaths() {
+func (s *LDAPSuite) TestLoginUsesValidPaths() {
 	userManager, ok := s.um.(*userService)
 	s.True(ok)
 	s.NotNil(userManager)
 	s.Error(userManager.login("foo", "hunter1"))
 	s.NoError(userManager.login("foo", "hunter2"))
-	s.NoError(userManager.login("foo", "hunter3"))
+	s.Error(userManager.login("service_user", "service_password"))
+	s.NoError(userManager.loginServiceUserIfNeeded())
+
+	serviceUserUm, ok := s.serviceUserUm.(*userService)
+	s.Require().True(ok)
+	s.Error(serviceUserUm.login("foo", "hunter1"))
+	s.NoError(serviceUserUm.login("foo", "hunter2"))
+	s.Error(serviceUserUm.login("service_user", "service_password"))
+	s.NoError(serviceUserUm.loginServiceUserIfNeeded())
 }
 
 func (s *LDAPSuite) TestClearUserToken() {
@@ -585,6 +778,6 @@ func (s *LDAPSuite) TestClearUserToken() {
 
 func (s *LDAPSuite) TestGetGroupsForUser() {
 	groups, err := s.um.GetGroupsForUser("foo")
+	s.Require().NoError(err)
 	s.Equal("10gen", groups[0])
-	s.NoError(err)
 }
