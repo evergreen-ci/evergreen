@@ -3,16 +3,13 @@ package units
 import (
 	"context"
 	"fmt"
-	"math"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -54,66 +51,16 @@ func NewParentDecommissionJob(id, d string, maxContainers int) amboy.Job {
 	return j
 }
 
-// findParentsToDecommission finds hosts with containers to deco
-func (j *parentDecommissionJob) findParentsToDecommission() ([]host.Host, error) {
-
-	// Find hosts that will finish all container tasks soonest
-	parents, err := host.FindAllRunningParentsByDistro(j.DistroId)
-	if err != nil {
-		return nil, errors.Wrap(err, "Error retrieving running parents by distro")
-	}
-	numParents := len(parents)
-
-	numContainers, err := host.HostGroup(parents).CountContainersOnParents()
-	if err != nil {
-		return nil, errors.Wrap(err, "Error counting containers on specified parents")
-	}
-
-	// Compute number of hosts to decommission based on excess capacity
-	numParentsToDeco := numParents - int(math.Ceil(float64(numContainers)/float64(j.MaxContainers)))
-
-	// Sanity check
-	if numParentsToDeco < 0 || numParentsToDeco > numParents {
-		return nil, errors.New("Invalid number of parents to decommission")
-	}
-
-	// Get desired number parents with nearest LastContainerFinishTime
-	parentsToDeco := parents[:numParentsToDeco]
-
-	return parentsToDeco, nil
-}
-
 func (j *parentDecommissionJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
-
-	_, err := distro.FindOne(distro.ById(j.DistroId))
-	if err != nil {
-		j.AddError(err)
-	}
-
-	parentsToDeco, err := j.findParentsToDecommission()
+	parents, err := host.FindAllRunningParentsByDistro(j.DistroId)
 	if err != nil {
 		j.AddError(err)
 		return
 	}
 
-	for _, h := range parentsToDeco {
-
-		// Decommission each container on parent host
-		containersToDeco, err := h.GetContainers()
-		if err != nil {
-			j.AddError(err)
-			continue
-		}
-
-		for _, c := range containersToDeco {
-			if c.Status == evergreen.HostRunning && !c.SpawnOptions.SpawnedByTask {
-				j.AddError(c.SetDecommissioned(evergreen.User, "parent decommissioned due to excess capacity"))
-				continue
-			}
-		}
-
-		// Decommission parent only if all containers have terminated
+	for _, h := range parents {
+		// Decommission parent if its containers aren't running anymore
 		idle, err := h.IsIdleParent()
 		if err != nil {
 			j.AddError(err)

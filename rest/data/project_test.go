@@ -193,7 +193,7 @@ func TestMockProjectConnectorGetSuite(t *testing.T) {
 		projectEvents := []restModel.APIProjectEvent{}
 		for i := 0; i < projEventCount; i++ {
 			projectEvents = append(projectEvents, restModel.APIProjectEvent{
-				Timestamp: time.Now().Add(time.Second * time.Duration(-i)),
+				Timestamp: restModel.ToTimePtr(time.Now().Add(time.Second * time.Duration(-i))),
 				User:      restModel.ToStringPtr("me"),
 				Before:    beforeSettings,
 				After:     afterSettings,

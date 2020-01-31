@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/csrf"
@@ -37,7 +38,7 @@ type projectContext struct {
 
 	// AllProjects is a list of all available projects, limited to only the set of fields
 	// necessary for display. If user is logged in, this will include private projects.
-	AllProjects []UIProjectFields
+	AllProjects []restModel.UIProjectFields
 
 	// AuthRedirect indicates whether or not redirecting during authentication is necessary.
 	AuthRedirect bool
@@ -269,7 +270,7 @@ func (pc *projectContext) populateProjectRefs(includePrivate, isSuperUser bool, 
 	if err != nil {
 		return err
 	}
-	pc.AllProjects = make([]UIProjectFields, 0, len(allProjs))
+	pc.AllProjects = make([]restModel.UIProjectFields, 0, len(allProjs))
 	// User is not logged in, so only include public projects.
 	for _, p := range allProjs {
 		if includePrivate && (isSuperUser || isAdmin(user, &p)) {
@@ -280,7 +281,7 @@ func (pc *projectContext) populateProjectRefs(includePrivate, isSuperUser bool, 
 			continue
 		}
 		if !p.Private || includePrivate {
-			uiProj := UIProjectFields{
+			uiProj := restModel.UIProjectFields{
 				DisplayName: p.DisplayName,
 				Identifier:  p.Identifier,
 				Repo:        p.Repo,

@@ -67,7 +67,7 @@ func (s *ProjectEventsTestSuite) SetupSuite() {
 	afterSettings.ProjectRef.Enabled = false
 
 	s.event = restModel.APIProjectEvent{
-		Timestamp: time.Now(),
+		Timestamp: restModel.ToTimePtr(time.Now()),
 		User:      restModel.ToStringPtr("me"),
 		Before:    beforeSettings,
 		After:     afterSettings,

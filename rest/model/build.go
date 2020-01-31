@@ -22,16 +22,16 @@ var (
 type APIBuild struct {
 	Id                  *string        `json:"_id"`
 	ProjectId           *string        `json:"project_id"`
-	CreateTime          time.Time      `json:"create_time"`
-	StartTime           time.Time      `json:"start_time"`
-	FinishTime          time.Time      `json:"finish_time"`
+	CreateTime          *time.Time     `json:"create_time"`
+	StartTime           *time.Time     `json:"start_time"`
+	FinishTime          *time.Time     `json:"finish_time"`
 	Version             *string        `json:"version"`
 	Revision            *string        `json:"git_hash"`
 	BuildVariant        *string        `json:"build_variant"`
 	Status              *string        `json:"status"`
 	Activated           bool           `json:"activated"`
 	ActivatedBy         *string        `json:"activated_by"`
-	ActivatedTime       time.Time      `json:"activated_time"`
+	ActivatedTime       *time.Time     `json:"activated_time"`
 	RevisionOrderNumber int            `json:"order"`
 	TaskCache           []APITaskCache `json:"task_cache"`
 	// Tasks is the build's task cache with just the names
@@ -52,16 +52,16 @@ func (apiBuild *APIBuild) BuildFromService(h interface{}) error {
 		return fmt.Errorf("incorrect type when fetching converting build type")
 	}
 	apiBuild.Id = ToStringPtr(v.Id)
-	apiBuild.CreateTime = v.CreateTime
-	apiBuild.StartTime = v.StartTime
-	apiBuild.FinishTime = v.FinishTime
+	apiBuild.CreateTime = ToTimePtr(v.CreateTime)
+	apiBuild.StartTime = ToTimePtr(v.StartTime)
+	apiBuild.FinishTime = ToTimePtr(v.FinishTime)
 	apiBuild.Version = ToStringPtr(v.Version)
 	apiBuild.Revision = ToStringPtr(v.Revision)
 	apiBuild.BuildVariant = ToStringPtr(v.BuildVariant)
 	apiBuild.Status = ToStringPtr(v.Status)
 	apiBuild.Activated = v.Activated
 	apiBuild.ActivatedBy = ToStringPtr(v.ActivatedBy)
-	apiBuild.ActivatedTime = v.ActivatedTime
+	apiBuild.ActivatedTime = ToTimePtr(v.ActivatedTime)
 	apiBuild.RevisionOrderNumber = v.RevisionOrderNumber
 	apiBuild.ProjectId = ToStringPtr(v.Project)
 	for _, t := range v.Tasks {
@@ -94,7 +94,7 @@ func (apiBuild *APIBuild) BuildFromService(h interface{}) error {
 			DisplayName:   t.DisplayName,
 			Status:        t.Status,
 			StatusDetails: t.StatusDetails,
-			StartTime:     t.StartTime,
+			StartTime:     ToTimePtr(t.StartTime),
 			TimeTaken:     t.TimeTaken,
 			Activated:     t.Activated,
 		})
@@ -113,7 +113,7 @@ type APITaskCache struct {
 	DisplayName     string                  `json:"display_name"`
 	Status          string                  `json:"status"`
 	StatusDetails   apimodels.TaskEndDetail `json:"task_end_details"`
-	StartTime       time.Time               `json:"start_time"`
+	StartTime       *time.Time              `json:"start_time"`
 	TimeTaken       time.Duration           `json:"time_taken"`
 	Activated       bool                    `json:"activated"`
 	FailedTestNames []string                `json:"failed_test_names,omitempty"`

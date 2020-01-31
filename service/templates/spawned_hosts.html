@@ -6,6 +6,7 @@
 <script type="text/javascript">
   window.userTz = {{ GetTimezone $.User }};
   window.maxHostsPerUser = {{$.MaxHostsPerUser}}
+  window.maxUnexpirableHostsPerUser = {{$.MaxUnexpirableHostsPerUser}}
   {{if .Task}}
   window.spawnTask = {{.Task}}
   {{end}}

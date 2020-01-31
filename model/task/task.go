@@ -1960,28 +1960,27 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 	return timeTaken, latestFinishTime.Sub(earliestStartTime)
 }
 
-// UpdateDependencies replaces the dependencies of a task with
-// the dependencies provided
-func (t *Task) UpdateDependencies(dependsOn []Dependency) error {
-	err := UpdateOne(
-		bson.M{
-			IdKey:        t.Id,
-			DependsOnKey: t.DependsOn,
-		},
-		bson.M{
-			"$push": bson.M{DependsOnKey: bson.M{"$each": dependsOn}},
-		},
-	)
-	if err != nil {
-		if adb.ResultsNotFound(err) {
-			grip.Alert(errors.Wrapf(err, "atomic update failed for %s", t.Id))
-		}
-		return errors.Wrap(err, "can't update dependencies")
+// UpdateDependsOn appends new dependnecies to tasks that already depend on this task
+func (t *Task) UpdateDependsOn(status string, newDependencyIDs []string) error {
+	newDependencies := make([]Dependency, 0, len(newDependencyIDs))
+	for _, depID := range newDependencyIDs {
+		newDependencies = append(newDependencies, Dependency{
+			TaskId: depID,
+			Status: status,
+		})
 	}
 
-	t.DependsOn = append(t.DependsOn, dependsOn...)
+	_, err := UpdateAll(
+		bson.M{
+			DependsOnKey: bson.M{"$elemMatch": bson.M{
+				DependencyTaskIdKey: t.Id,
+				DependencyStatusKey: status,
+			}},
+		},
+		bson.M{"$push": bson.M{DependsOnKey: bson.M{"$each": newDependencies}}},
+	)
 
-	return nil
+	return errors.Wrap(err, "can't update dependencies")
 }
 
 func (t *Task) SetTaskGroupInfo() error {
