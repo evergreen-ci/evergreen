@@ -221,7 +221,10 @@ func (u *DBUser) AddFavoritedProject(identifier string) ([]string, error) {
 	}
 	u.FavoriteProjects = append(u.FavoriteProjects, identifier)
 
-	event.LogUserEvent(u.Id, event.UserEventTypeFavoriteProjectsUpdate, u.FavoriteProjects[:len(u.FavoriteProjects)-1], u.FavoriteProjects)
+	err := event.LogUserEvent(u.Id, event.UserEventTypeFavoriteProjectsUpdate, u.FavoriteProjects[:len(u.FavoriteProjects)-1], u.FavoriteProjects)
+	if err != nil {
+		return u.FavoriteProjects, errors.Errorf("error logging event for adding '%s' to user favorites", identifier)
+	}
 
 	return u.FavoriteProjects, nil
 }
