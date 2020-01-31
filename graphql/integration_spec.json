@@ -108,14 +108,56 @@
     ],
     "testresults": [
       {
-        "_id": { "$oid": "59ef7a20a7798219e191d00e" },
-        "status": "pass",
-        "test_file": "TestAgentSuite/TestTaskWithoutSecret",
+        "_id": { "$oid": "19ef7a20a7798219e191d00e" },
+        "status": "a",
+        "test_file": "b",
         "log_id": "59ef7a2097b1d3148d0004f1",
         "line_num": 126,
         "exit_code": 0,
-        "start": 1508866591,
-        "end": 1508866591,
+        "start": 0,
+        "end": 10,
+        "task_id": "exec1",
+        "task_execution": 5,
+        "url": "a url",
+        "url_raw": "a raw url"
+      },
+      {
+        "_id": { "$oid": "29ef7a20a7798219e191d00e" },
+        "status": "c",
+        "test_file": "apple",
+        "log_id": "59ef7a2097b1d3148d0004f1",
+        "line_num": 126,
+        "exit_code": 0,
+        "start": 0,
+        "end": 20,
+        "task_id": "exec1",
+        "task_execution": 5,
+        "url": "a url",
+        "url_raw": "a raw url"
+      },
+      {
+        "_id": { "$oid": "39ef7a20a7798219e191d00e" },
+        "status": "b",
+        "test_file": "d",
+        "log_id": "59ef7a2097b1d3148d0004f1",
+        "line_num": 126,
+        "exit_code": 0,
+        "start": 0,
+        "end": 40,
+        "task_id": "exec1",
+        "task_execution": 5,
+        "url": "a url",
+        "url_raw": "a raw url"
+      },
+      {
+        "_id": { "$oid": "49ef7a20a7798219e191d00e" },
+        "status": "dog",
+        "test_file": "c",
+        "log_id": "59ef7a2097b1d3148d0004f1",
+        "line_num": 126,
+        "exit_code": 0,
+        "start": 0,
+        "end": 30,
         "task_id": "exec1",
         "task_execution": 5,
         "url": "a url",
@@ -124,7 +166,7 @@
     ],
     "project_ref": [
       {
-        "_id": { "$oid": "53920694b14ed89d844ad6e1" },
+        "_id": { "$oid": "5723cdaa7bd5c9f79a7fc666" },
         "batch_time": 1200,
         "branch_name": "master",
         "display_name": "Evergreen Self-Tests",
@@ -171,41 +213,6 @@
         },
         "periodic_builds": [],
         "repotracker_disabled": false
-      },
-      {
-        "_id": { "$oid": "56099f69a79f7e66de391e28" },
-        "owner_name": "10gen",
-        "repo_name": "mongo-release-tools",
-        "branch_name": "master",
-        "repo_kind": "github",
-        "enabled": false,
-        "private": true,
-        "batch_time": 0,
-        "remote_path": "evergreen.yaml",
-        "identifier": "mongo-release-tools",
-        "display_name": "MongoDB Release Tools",
-        "local_config": "",
-        "deactivate_previous": false,
-        "tracked": true,
-        "repotracker_error": {
-          "exists": false,
-          "invalid_revision": "",
-          "merge_base_revision": ""
-        },
-        "admins": [],
-        "tracks_push_events": false,
-        "commit_queue": {
-          "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
-        },
-        "disabled_stats_cache": false,
-        "files_ignored_from_cache": null,
-        "notify_on_failure": false,
-        "patching_disabled": false,
-        "periodic_builds": [],
-        "pr_testing_enabled": false,
-        "triggers": []
       },
       {
         "_id": { "$oid": "5723cdaa7bd5c9f79a7fc782" },
@@ -409,37 +416,6 @@
         "triggers": []
       },
       {
-        "_id": { "$oid": "5a0487bca2c574da3bb5404e" },
-        "owner_name": "10gen",
-        "repo_name": "buildslave-cookbooks",
-        "branch_name": "master",
-        "repo_kind": "github",
-        "enabled": false,
-        "private": true,
-        "batch_time": 0,
-        "remote_path": "evergreen.yml",
-        "identifier": "evergreen-packer",
-        "display_name": "Evergreen Packer",
-        "local_config": "",
-        "deactivate_previous": false,
-        "tracked": true,
-        "admins": ["mathew.robinson"],
-        "repotracker_error": null,
-        "commit_queue": {
-          "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
-        },
-        "disabled_stats_cache": false,
-        "files_ignored_from_cache": null,
-        "notify_on_failure": false,
-        "patching_disabled": false,
-        "periodic_builds": [],
-        "pr_testing_enabled": false,
-        "tracks_push_events": false,
-        "triggers": []
-      },
-      {
         "_id": { "$oid": "5a05e2a5a2c574da3bfbadf2" },
         "owner_name": "mongodb",
         "repo_name": "grip",
@@ -502,76 +478,6 @@
         "triggers": []
       },
       {
-        "_id": { "$oid": "5a60dbc06536c2ae88dc74b2" },
-        "owner_name": "briananthonymccarthy",
-        "repo_name": "mongo",
-        "branch_name": "win_scons",
-        "repo_kind": "github",
-        "enabled": false,
-        "private": true,
-        "batch_time": 0,
-        "remote_path": "etc/evergreen.yml",
-        "identifier": "shared-cache",
-        "display_name": "Shared Cache",
-        "local_config": "",
-        "deactivate_previous": false,
-        "tracked": true,
-        "admins": [],
-        "repotracker_error": {
-          "exists": false,
-          "invalid_revision": "",
-          "merge_base_revision": ""
-        },
-        "tracks_push_events": false,
-        "patching_disabled": false,
-        "pr_testing_enabled": false,
-        "commit_queue": {
-          "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
-        },
-        "disabled_stats_cache": false,
-        "files_ignored_from_cache": null,
-        "notify_on_failure": false,
-        "triggers": [],
-        "periodic_builds": []
-      },
-      {
-        "_id": { "$oid": "5aa19843aefc119aa06357a7" },
-        "owner_name": "bsamek",
-        "repo_name": "evergreen",
-        "branch_name": "master",
-        "repo_kind": "github",
-        "enabled": false,
-        "private": true,
-        "batch_time": 0,
-        "remote_path": "self-tests.yml",
-        "identifier": "mci-test",
-        "display_name": "Test project (feel free to edit)",
-        "local_config": "",
-        "deactivate_previous": true,
-        "tracks_push_events": true,
-        "pr_testing_enabled": true,
-        "tracked": true,
-        "admins": [],
-        "repotracker_error": {
-          "exists": false,
-          "invalid_revision": "",
-          "merge_base_revision": ""
-        },
-        "patching_disabled": false,
-        "notify_on_failure": false,
-        "commit_queue": {
-          "enabled": true,
-          "merge_method": "squash",
-          "merge_action": "github",
-          "status_action": "github"
-        },
-        "disabled_stats_cache": false,
-        "files_ignored_from_cache": [],
-        "triggers": []
-      },
-      {
         "_id": { "$oid": "5b4787e710b1a2e1813a6272" },
         "owner_name": "evergreen-ci",
         "repo_name": "lobster",
@@ -603,34 +509,6 @@
         "triggers": []
       },
       {
-        "_id": { "$oid": "5b689a6921251d35286a1f44" },
-        "owner_name": "10gen",
-        "repo_name": "buildhost-configuration",
-        "branch_name": "master",
-        "repo_kind": "github",
-        "enabled": false,
-        "private": true,
-        "batch_time": { "$numberLong": "100000000000000000" },
-        "remote_path": "evergreen.yml",
-        "identifier": "buildhost-configuration",
-        "display_name": "Buildhost Configuration",
-        "local_config": "",
-        "deactivate_previous": true,
-        "tracks_push_events": false,
-        "pr_testing_enabled": false,
-        "tracked": true,
-        "patching_disabled": false,
-        "admins": ["mathew.robinson"],
-        "notify_on_failure": false,
-        "repotracker_error": {
-          "exists": false,
-          "invalid_revision": "",
-          "merge_base_revision": ""
-        },
-        "files_ignored_from_cache": [],
-        "triggers": []
-      },
-      {
         "_id": { "$oid": "5c018817f7cc44870a1074d2" },
         "owner_name": "john-m-liu",
         "repo_name": "evergreen",
@@ -659,73 +537,6 @@
           "merge_method": "squash",
           "patch_type": "PR"
         },
-        "periodic_builds": []
-      },
-      {
-        "_id": { "$oid": "5c5b368dbedb55a6ed03264c" },
-        "owner_name": "evergreen-ci",
-        "repo_name": "commit-queue-sandbox",
-        "branch_name": "master",
-        "repo_kind": "github",
-        "enabled": false,
-        "private": true,
-        "batch_time": 0,
-        "remote_path": "evergreen.yml",
-        "identifier": "yb_mci",
-        "display_name": "Commit Queue Sandbox",
-        "local_config": "",
-        "deactivate_previous": true,
-        "tracks_push_events": true,
-        "pr_testing_enabled": false,
-        "commit_queue": {
-          "enabled": true,
-          "merge_method": "squash",
-          "patch_type": "PR"
-        },
-        "tracked": true,
-        "patching_disabled": false,
-        "admins": [],
-        "notify_on_failure": true,
-        "repotracker_error": {
-          "exists": false,
-          "invalid_revision": "",
-          "merge_base_revision": ""
-        },
-        "disabled_stats_cache": false,
-        "files_ignored_from_cache": null,
-        "triggers": [],
-        "periodic_builds": [],
-        "repotracker_disabled": false
-      },
-      {
-        "_id": { "$oid": "5c76c1e2bedb55a6ed6a3e46" },
-        "owner_name": "10gen",
-        "repo_name": "mongo-release-tools",
-        "branch_name": "master",
-        "repo_kind": "github",
-        "enabled": false,
-        "private": true,
-        "batch_time": 0,
-        "remote_path": "evergreen.yaml",
-        "identifier": "a-test-project",
-        "display_name": "MongoDB Release Tools",
-        "local_config": "",
-        "deactivate_previous": false,
-        "tracks_push_events": false,
-        "pr_testing_enabled": false,
-        "commit_queue": {
-          "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
-        },
-        "tracked": true,
-        "patching_disabled": false,
-        "admins": ["brian.samek"],
-        "notify_on_failure": false,
-        "repotracker_error": null,
-        "disabled_stats_cache": false,
-        "files_ignored_from_cache": null,
-        "triggers": [],
         "periodic_builds": []
       },
       {
@@ -1114,36 +925,6 @@
         "triggers": []
       },
       {
-        "_id": { "$oid": "5d94b89af448ed57e26e3cf9" },
-        "owner_name": "mongodb",
-        "repo_name": "mongo",
-        "branch_name": "master",
-        "repo_kind": "github",
-        "enabled": false,
-        "private": true,
-        "batch_time": 1440,
-        "remote_path": "etc/evergreen.yml",
-        "identifier": "mongo-master",
-        "display_name": "MongoDB (master)",
-        "deactivate_previous": true,
-        "tracks_push_events": false,
-        "pr_testing_enabled": false,
-        "commit_queue": {
-          "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
-        },
-        "tracked": true,
-        "patching_disabled": false,
-        "admins": [],
-        "notify_on_failure": false,
-        "repotracker_error": null,
-        "disabled_stats_cache": false,
-        "files_ignored_from_cache": null,
-        "periodic_builds": [],
-        "triggers": []
-      },
-      {
         "_id": { "$oid": "5da89aa2ce6ce31e950fc33c" },
         "owner_name": "mongodb",
         "repo_name": "grip",
@@ -1228,37 +1009,6 @@
         "admins": [],
         "notify_on_failure": false,
         "repotracker_error": null
-      },
-      {
-        "_id": { "$oid": "5db30488cbb83eba63b28ade" },
-        "owner_name": "10gen",
-        "repo_name": "mms",
-        "branch_name": "CLOUDP-51714-2",
-        "repo_kind": "github",
-        "enabled": false,
-        "private": false,
-        "batch_time": 100,
-        "remote_path": ".evergreen.yml",
-        "identifier": "ron_one",
-        "display_name": "1st project to be moved around",
-        "deactivate_previous": false,
-        "tracks_push_events": false,
-        "pr_testing_enabled": false,
-        "commit_queue": {
-          "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
-        },
-        "tracked": true,
-        "patching_disabled": false,
-        "repotracker_disabled": false,
-        "admins": ["ron.neuman"],
-        "notify_on_failure": false,
-        "repotracker_error": null,
-        "disabled_stats_cache": false,
-        "files_ignored_from_cache": null,
-        "periodic_builds": [],
-        "triggers": []
       },
       {
         "_id": { "$oid": "5db6ee1b24be490956065d15" },
@@ -1438,37 +1188,6 @@
         "triggers": []
       },
       {
-        "_id": { "$oid": "5db75757d94fd938d5e2a94d" },
-        "owner_name": "10gen",
-        "repo_name": "mms",
-        "branch_name": "CLOUDP-51714-1",
-        "repo_kind": "github",
-        "enabled": false,
-        "private": false,
-        "batch_time": 100,
-        "remote_path": ".evergreen.yml",
-        "identifier": "ron_two",
-        "display_name": "1st project to be moved around",
-        "deactivate_previous": false,
-        "tracks_push_events": false,
-        "pr_testing_enabled": false,
-        "commit_queue": {
-          "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
-        },
-        "tracked": true,
-        "patching_disabled": false,
-        "repotracker_disabled": false,
-        "admins": ["ron.neuman"],
-        "notify_on_failure": false,
-        "repotracker_error": null,
-        "disabled_stats_cache": false,
-        "files_ignored_from_cache": null,
-        "periodic_builds": [],
-        "triggers": []
-      },
-      {
         "_id": { "$oid": "5db757ecb2e2e54d509b99ed" },
         "owner_name": "rongodb",
         "repo_name": "ron_repo_1",
@@ -1524,64 +1243,6 @@
         "files_ignored_from_cache": null,
         "periodic_builds": [],
         "triggers": []
-      },
-      {
-        "_id": { "$oid": "5dd6d8a61e8067fe822ebe28" },
-        "owner_name": "gmishkin",
-        "repo_name": "mms",
-        "branch_name": "CLOUDP-51714-1",
-        "repo_kind": "github",
-        "enabled": false,
-        "private": false,
-        "batch_time": 90,
-        "remote_path": ".evergreen.yml",
-        "identifier": "CLOUDP-51714-1",
-        "display_name": "1st project to be moved around",
-        "deactivate_previous": false,
-        "tracks_push_events": false,
-        "pr_testing_enabled": false,
-        "commit_queue": {
-          "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
-        },
-        "tracked": true,
-        "patching_disabled": true,
-        "repotracker_disabled": false,
-        "admins": ["ron.neuman", "geoff.mishkin"],
-        "notify_on_failure": false,
-        "repotracker_error": null,
-        "disabled_stats_cache": false,
-        "files_ignored_from_cache": null,
-        "periodic_builds": [],
-        "triggers": []
-      },
-      {
-        "_id": { "$oid": "5dd83a0c41141f9d9ac67176" },
-        "owner_name": "10gen",
-        "repo_name": "mms",
-        "branch_name": "v11111111",
-        "repo_kind": "github",
-        "enabled": false,
-        "private": false,
-        "batch_time": 100,
-        "remote_path": ".evergreen.yml",
-        "identifier": "v11111111",
-        "display_name": "v11111111",
-        "deactivate_previous": false,
-        "tracks_push_events": false,
-        "pr_testing_enabled": false,
-        "commit_queue": {
-          "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
-        },
-        "tracked": true,
-        "patching_disabled": false,
-        "repotracker_disabled": false,
-        "admins": ["ron.neuman"],
-        "notify_on_failure": false,
-        "repotracker_error": null
       }
     ],
     "users": [
@@ -1601,68 +1262,6 @@
         "data": {
           "projects": [
             {
-              "name": "10gen/buildhost-configuration",
-              "projects": [
-                {
-                  "identifier": "buildhost-configuration",
-                  "displayName": "Buildhost Configuration",
-                  "repo": "buildhost-configuration",
-                  "owner": "10gen"
-                }
-              ]
-            },
-            {
-              "name": "10gen/buildslave-cookbooks",
-              "projects": [
-                {
-                  "identifier": "evergreen-packer",
-                  "displayName": "Evergreen Packer",
-                  "repo": "buildslave-cookbooks",
-                  "owner": "10gen"
-                }
-              ]
-            },
-            {
-              "name": "10gen/mms",
-              "projects": [
-                {
-                  "identifier": "ron_one",
-                  "displayName": "1st project to be moved around",
-                  "repo": "mms",
-                  "owner": "10gen"
-                },
-                {
-                  "identifier": "ron_two",
-                  "displayName": "1st project to be moved around",
-                  "repo": "mms",
-                  "owner": "10gen"
-                },
-                {
-                  "identifier": "v11111111",
-                  "displayName": "v11111111",
-                  "repo": "mms",
-                  "owner": "10gen"
-                }
-              ]
-            },
-            {
-              "name": "10gen/mongo-release-tools",
-              "projects": [
-                {
-                  "identifier": "mongo-release-tools",
-                  "displayName": "MongoDB Release Tools",
-                  "repo": "mongo-release-tools",
-                  "owner": "10gen"
-                },
-                {
-                  "identifier": "a-test-project",
-                  "displayName": "MongoDB Release Tools",
-                  "repo": "mongo-release-tools",
-                  "owner": "10gen"
-                }
-              ]
-            },
-            {
               "name": "annie.black/buildhost-configuration",
               "projects": [
                 {
@@ -1674,28 +1273,6 @@
               ]
             },
             {
-              "name": "briananthonymccarthy/mongo",
-              "projects": [
-                {
-                  "identifier": "shared-cache",
-                  "displayName": "Shared Cache",
-                  "repo": "mongo",
-                  "owner": "briananthonymccarthy"
-                }
-              ]
-            },
-            {
-              "name": "bsamek/evergreen",
-              "projects": [
-                {
-                  "identifier": "mci-test",
-                  "displayName": "Test project (feel free to edit)",
-                  "repo": "evergreen",
-                  "owner": "bsamek"
-                }
-              ]
-            },
-            {
               "name": "bsamek/mongo",
               "projects": [
                 {
@@ -1703,17 +1280,6 @@
                   "displayName": "System Performance (master)",
                   "repo": "mongo",
                   "owner": "bsamek"
-                }
-              ]
-            },
-            {
-              "name": "evergreen-ci/commit-queue-sandbox",
-              "projects": [
-                {
-                  "identifier": "yb_mci",
-                  "displayName": "Commit Queue Sandbox",
-                  "repo": "commit-queue-sandbox",
-                  "owner": "evergreen-ci"
                 }
               ]
             },
@@ -1764,17 +1330,6 @@
                   "displayName": "Logkeeper",
                   "repo": "logkeeper",
                   "owner": "evergreen-ci"
-                }
-              ]
-            },
-            {
-              "name": "gmishkin/mms",
-              "projects": [
-                {
-                  "identifier": "CLOUDP-51714-1",
-                  "displayName": "1st project to be moved around",
-                  "repo": "mms",
-                  "owner": "gmishkin"
                 }
               ]
             },
@@ -1907,17 +1462,6 @@
                   "identifier": "annie_api_copy2",
                   "displayName": "something temporary",
                   "repo": "grip",
-                  "owner": "mongodb"
-                }
-              ]
-            },
-            {
-              "name": "mongodb/mongo",
-              "projects": [
-                {
-                  "identifier": "mongo-master",
-                  "displayName": "MongoDB (master)",
-                  "repo": "mongo",
                   "owner": "mongodb"
                 }
               ]

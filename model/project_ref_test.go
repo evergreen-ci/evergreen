@@ -3,6 +3,7 @@ package model
 import (
 	"math"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -56,13 +57,64 @@ func TestGetBatchTimeDoesNotExceedMaxInt32(t *testing.T) {
 
 	emptyVariant := &BuildVariant{}
 
-	assert.Equal(projectRef.GetBatchTime(emptyVariant), math.MaxInt32,
-		"ProjectRef.GetBatchTime() is not capping BatchTime to MaxInt32")
+	assert.Equal(projectRef.getBatchTime(emptyVariant), math.MaxInt32,
+		"ProjectRef.getBatchTime() is not capping BatchTime to MaxInt32")
 
 	projectRef.BatchTime = 55
-	assert.Equal(projectRef.GetBatchTime(emptyVariant), 55,
-		"ProjectRef.GetBatchTime() is not returning the correct BatchTime")
+	assert.Equal(projectRef.getBatchTime(emptyVariant), 55,
+		"ProjectRef.getBatchTime() is not returning the correct BatchTime")
 
+}
+
+func TestGetActivationTimeWithCron(t *testing.T) {
+	prevTime := time.Date(2020, time.June, 9, 0, 0, 0, 0, time.UTC) // Tuesday
+	for name, test := range map[string]func(t *testing.T){
+		"Empty": func(t *testing.T) {
+			_, err := GetActivationTimeWithCron(prevTime, "")
+			assert.Error(t, err)
+		},
+		"InvalidBatchSyntax": func(t *testing.T) {
+			batchStr := "* * *"
+			_, err := GetActivationTimeWithCron(prevTime, batchStr)
+			assert.Error(t, err)
+		},
+		"EveryHourEveryDay": func(t *testing.T) {
+			batchStr := "0 * * * *"
+			res, err := GetActivationTimeWithCron(prevTime, batchStr)
+			assert.NoError(t, err)
+			assert.Equal(t, prevTime.Add(time.Hour), res)
+		},
+		"SpecifyDOW": func(t *testing.T) {
+			batchStr := "0 0 ? * MON,WED,FRI"
+			res, err := GetActivationTimeWithCron(prevTime, batchStr)
+			assert.NoError(t, err)
+			assert.Equal(t, prevTime.Add(time.Hour*24), res) // i.e. Wednesday
+
+			newRes, err := GetActivationTimeWithCron(res, batchStr) // i.e. Friday
+			assert.NoError(t, err)
+			assert.Equal(t, res.Add(time.Hour*48), newRes)
+		},
+		"15thOfTheMonth": func(t *testing.T) {
+			batchStr := "0 0 15 *"
+			res, err := GetActivationTimeWithCron(prevTime, batchStr)
+			assert.NoError(t, err)
+			assert.Equal(t, prevTime.Add(time.Hour*24*6), res)
+		},
+		"Descriptor": func(t *testing.T) {
+			batchStr := "@daily"
+			res, err := GetActivationTimeWithCron(prevTime, batchStr)
+			assert.NoError(t, err)
+			assert.Equal(t, prevTime.Add(time.Hour*24), res)
+		},
+		"Interval": func(t *testing.T) {
+			batchStr := "@every 2h"
+			res, err := GetActivationTimeWithCron(prevTime, batchStr)
+			assert.NoError(t, err)
+			assert.Equal(t, prevTime.Add(time.Hour*2), res)
+		},
+	} {
+		t.Run(name, test)
+	}
 }
 
 func TestFindProjectRefsByRepoAndBranch(t *testing.T) {

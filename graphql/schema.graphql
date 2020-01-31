@@ -6,6 +6,27 @@ type Query {
 
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
+  projects: [GroupedProjects!]!
+  taskTests(
+    taskId: String!
+    sortCategory: TaskSortCategory = TEST_NAME
+    sortDirection: SortDirection = ASC
+    page: Int = 0
+    limit: Int = 0
+    testName: String = ""
+    status: String = ""
+  ): [TestResult]
+}
+
+enum TaskSortCategory {
+  STATUS
+  DURATION
+  TEST_NAME
+}
+
+enum SortDirection {
+  ASC
+  DESC
 }
 
 type Patch {
@@ -47,11 +68,13 @@ type TaskEndDetail {
 }
 
 type TestResult {
+  id: String!
   status: String!
   testFile: String!
   logs: TestLog!
   exitCode: Int
   startTime: Time
+  duration: Float
   endTime: Time
 }
 
@@ -106,7 +129,7 @@ type Projects {
 }
 
 type GroupedProjects {
-  name: String
+  name: String!
   projects: [Project]!
 }
 

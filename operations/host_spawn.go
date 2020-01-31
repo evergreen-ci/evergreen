@@ -2,9 +2,12 @@ package operations
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
+	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
@@ -554,18 +557,13 @@ func hostList() cli.Command {
 		Flags: []cli.Flag{
 			cli.BoolFlag{
 				Name:  mineFlagName,
-				Usage: "list hosts spawned but the current user",
-			},
-			cli.BoolFlag{
-				Name:  allFlagName,
-				Usage: "list all hosts",
+				Usage: "list hosts spawned by the current user",
 			},
 		},
-		Before: mergeBeforeFuncs(setPlainLogger, requireOnlyOneBool(mineFlagName, allFlagName)),
+		Before: setPlainLogger,
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			showMine := c.Bool(mineFlagName)
-			showAll := c.Bool(allFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -577,32 +575,22 @@ func hostList() cli.Command {
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
-			switch {
-			case showMine:
-				var hosts []*model.APIHost
-
-				hosts, err = client.GetHostsByUser(ctx, conf.User)
-				if err != nil {
-					return err
-				}
-
-				grip.Infof("%d hosts started by '%s':", len(hosts), conf.User)
-
-				if err = printHosts(hosts); err != nil {
-					return errors.Wrap(err, "problem printing hosts")
-				}
-			case showAll:
-				if err = client.GetHosts(ctx, printHosts); err != nil {
-					return errors.Wrap(err, "problem printing hosts")
-				}
+			params := model.APIHostParams{
+				UserSpawned: true,
+				Mine:        showMine,
 			}
+			hosts, err := client.GetHosts(ctx, params)
+			if err != nil {
+				return errors.Wrap(err, "problem getting hosts")
+			}
+			printHosts(hosts)
 
 			return nil
 		},
 	}
 }
 
-func printHosts(hosts []*model.APIHost) error {
+func printHosts(hosts []*model.APIHost) {
 	for _, h := range hosts {
 		grip.Infof("ID: %s; Distro: %s; Status: %s; Host name: %s; User: %s, Availability Zone: %s",
 			model.FromStringPtr(h.Id),
@@ -612,7 +600,6 @@ func printHosts(hosts []*model.APIHost) error {
 			model.FromStringPtr(h.User),
 			model.FromStringPtr(h.AvailabilityZone))
 	}
-	return nil
 }
 
 func hostTerminate() cli.Command {
@@ -648,13 +635,41 @@ func hostTerminate() cli.Command {
 }
 
 func hostRunCommand() cli.Command {
-	const scriptFlagName = "script"
-	const pathFlagName = "path"
+	const (
+		scriptFlagName        = "script"
+		pathFlagName          = "path"
+		createdBeforeFlagName = "created-before"
+		createdAfterFlagName  = "created-after"
+		distroFlagName        = "distro"
+		userHostFlagName      = "user-host"
+		mineFlagName          = "mine"
+		batchSizeFlagName     = "batch-size"
+	)
 
 	return cli.Command{
 		Name:  "exec",
-		Usage: "run a bash shell script on a host and print the output",
-		Flags: addHostFlag(
+		Usage: "run a bash shell script on host(s) and print the output",
+		Flags: mergeFlagSlices(addHostFlag(), addYesFlag(
+			cli.StringFlag{
+				Name:  createdBeforeFlagName,
+				Usage: "only run on hosts created before `TIME` in RFC3339 format",
+			},
+			cli.StringFlag{
+				Name:  createdAfterFlagName,
+				Usage: "only run on hosts created after `TIME` in RFC3339 format",
+			},
+			cli.StringFlag{
+				Name:  distroFlagName,
+				Usage: "only run on hosts of `DISTRO`",
+			},
+			cli.BoolFlag{
+				Name:  userHostFlagName,
+				Usage: "only run on user hosts",
+			},
+			cli.BoolFlag{
+				Name:  mineFlagName,
+				Usage: "only run on my hosts",
+			},
 			cli.StringFlag{
 				Name:  scriptFlagName,
 				Usage: "script to pass to bash",
@@ -663,13 +678,25 @@ func hostRunCommand() cli.Command {
 				Name:  pathFlagName,
 				Usage: "path to a file containing a script",
 			},
-		),
-		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag, mutuallyExclusiveArgs(true, scriptFlagName, pathFlagName)),
+			cli.IntFlag{
+				Name:  batchSizeFlagName,
+				Usage: "limit requests to batches of `BATCH_SIZE`",
+				Value: 10,
+			},
+		)),
+		Before: mergeBeforeFuncs(setPlainLogger, mutuallyExclusiveArgs(true, scriptFlagName, pathFlagName)),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			hostID := c.String(hostFlagName)
+			createdBefore := c.String(createdBeforeFlagName)
+			createdAfter := c.String(createdAfterFlagName)
+			distro := c.String(distroFlagName)
+			userSpawned := c.Bool(userHostFlagName)
+			mine := c.Bool(mineFlagName)
 			script := c.String(scriptFlagName)
 			path := c.String(pathFlagName)
+			skipConfirm := c.Bool(yesFlagName)
+			batchSize := c.Int(batchSizeFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -680,6 +707,50 @@ func hostRunCommand() cli.Command {
 			}
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
+
+			var hostIDs []string
+			if hostID != "" {
+				hostIDs = []string{hostID}
+			} else {
+				var createdBeforeTime, createdAfterTime time.Time
+				if createdBefore != "" {
+					createdBeforeTime, err = time.Parse(time.RFC3339, createdBefore)
+					if err != nil {
+						return errors.Wrap(err, "can't parse created before time")
+					}
+				}
+				if createdAfter != "" {
+					createdAfterTime, err = time.Parse(time.RFC3339, createdAfter)
+					if err != nil {
+						return errors.Wrap(err, "can't parse create after time")
+					}
+				}
+
+				hosts, err := client.GetHosts(ctx, model.APIHostParams{
+					CreatedBefore: createdBeforeTime,
+					CreatedAfter:  createdAfterTime,
+					Distro:        distro,
+					UserSpawned:   userSpawned,
+					Mine:          mine,
+					Status:        evergreen.HostRunning,
+				})
+				if err != nil {
+					return errors.Wrapf(err, "can't get matching hosts")
+				}
+				if len(hosts) == 0 {
+					grip.Info("no matching hosts")
+					return nil
+				}
+				for _, host := range hosts {
+					hostIDs = append(hostIDs, model.FromStringPtr(host.Id))
+				}
+
+				if !skipConfirm {
+					if !confirm(fmt.Sprintf("The script will run on %d host(s), \n%s\nContinue? (y/n): ", len(hostIDs), strings.Join(hostIDs, "\n")), true) {
+						return nil
+					}
+				}
+			}
 
 			if path != "" {
 				scriptBytes, err := ioutil.ReadFile(path)
@@ -692,13 +763,29 @@ func hostRunCommand() cli.Command {
 				}
 			}
 
-			output, err := client.RunHostScript(ctx, hostID, script)
+			hostsOutput, err := client.StartHostProcesses(ctx, hostIDs, script, batchSize)
 			if err != nil {
 				return errors.Wrap(err, "problem running command")
 			}
 
-			for _, line := range output {
-				grip.Info(line)
+			// poll for process output
+			for len(hostsOutput) > 0 {
+				time.Sleep(time.Second * 5)
+
+				runningProcesses := 0
+				for _, hostOutput := range hostsOutput {
+					if hostOutput.Complete {
+						grip.Infof("'%s' output: ", hostOutput.HostID)
+						grip.Info(hostOutput.Output)
+					} else {
+						hostsOutput[runningProcesses] = hostOutput
+						runningProcesses++
+					}
+				}
+				hostsOutput, err = client.GetHostProcessOutput(ctx, hostsOutput[:runningProcesses], batchSize)
+				if err != nil {
+					return errors.Wrap(err, "can't get process output")
+				}
 			}
 
 			return nil

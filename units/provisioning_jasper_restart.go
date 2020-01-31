@@ -237,7 +237,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 			},
 		}
 
-		if err = j.host.StartJasperProcess(ctx, j.env, restartJasperOpts); err != nil {
+		if _, err = j.host.StartJasperProcess(ctx, j.env, restartJasperOpts); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not restart Jasper service",
 				"host":    j.host.Id,

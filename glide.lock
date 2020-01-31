@@ -184,3 +184,6 @@ imports:
     version: ee956134f90a4fca4e25fa69d52e20293d715a45
   - name: github.com/hashicorp/golang-lru
     version: 7f827b33c0f158ec5dfbba01bb0b14a4541fd81d
+
+  - name: github.com/robfig/cron
+    version: 70971dc81bab3671fde85647b0a1367929f92be8

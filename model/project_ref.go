@@ -5,6 +5,7 @@ import (
 	"math"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -17,6 +18,7 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"github.com/robfig/cron"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -590,8 +592,8 @@ func (projectRef *ProjectRef) String() string {
 	return projectRef.Identifier
 }
 
-// GetBatchTime returns the Batch Time of the ProjectRef
-func (p *ProjectRef) GetBatchTime(variant *BuildVariant) int {
+// getBatchTime returns the Batch Time of the ProjectRef
+func (p *ProjectRef) getBatchTime(variant *BuildVariant) int {
 	var val int = p.BatchTime
 	if variant.BatchTime != nil {
 		val = *variant.BatchTime
@@ -605,6 +607,43 @@ func (p *ProjectRef) GetBatchTime(variant *BuildVariant) int {
 	} else {
 		return val
 	}
+}
+
+// return the next valid batch time
+func GetActivationTimeWithCron(curTime time.Time, cronBatchTime string) (time.Time, error) {
+	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.DowOptional | cron.Descriptor)
+	sched, err := parser.Parse(cronBatchTime)
+	if err != nil {
+		return time.Time{}, errors.Wrapf(err, "error parsing cron batchtime '%s'", cronBatchTime)
+	}
+	return sched.Next(curTime), nil
+}
+
+func (p *ProjectRef) GetActivationTime(variant *BuildVariant) (time.Time, error) {
+	defaultRes := time.Now()
+	if variant.CronBatchTime != "" {
+		return GetActivationTimeWithCron(time.Now(), variant.CronBatchTime)
+	}
+
+	lastActivated, err := VersionFindOne(VersionByLastVariantActivation(p.Identifier, variant.Name))
+	if err != nil {
+		return time.Time{}, errors.Wrap(err, "error finding version")
+	}
+
+	if lastActivated == nil {
+		return defaultRes, nil
+	}
+
+	// find matching activated build variant
+	for _, buildStatus := range lastActivated.BuildVariants {
+		if buildStatus.BuildVariant != variant.Name || !buildStatus.Activated {
+			continue
+		}
+
+		return buildStatus.ActivateAt.Add(time.Minute * time.Duration(p.getBatchTime(variant))), nil
+	}
+
+	return defaultRes, nil
 }
 
 func (p *ProjectRef) IsAdmin(userID string, settings evergreen.Settings) bool {

@@ -86,7 +86,10 @@
             <strong>Expiration:</strong>
             <md-datepicker  ng-disabled="curHostData.no_expiration" ng-model="curHostData.current_expiration" md-min-date="curHostData.original_expiration" md-placeholder="Date"></md-datepicker>
             <md-time-picker read-only="curHostData.no_expiration"   ng-model="curHostData.current_expiration" class="inline" message="message"></md-time-picker>
-            <md-checkbox id="no-expiration" class="inline" ng-show="curHostData.host_type == 'ec2-ondemand'" ng-model="curHostData.no_expiration" ng-click="setCurrentExpirationOnClick()" style="margin-left:25px">Never</md-checkbox>
+            <md-checkbox id="no-expiration" class="inline" ng-show="curHostData.host_type == 'ec2-ondemand'" ng-model="curHostData.no_expiration" ng-disabled="!unexpirableEnabled()" ng-click="setCurrentExpirationOnClick()" style="margin-left:25px">Never</md-checkbox>
+            <em ng-class="{'text-muted': unexpirableEnabled(), 'text-error': !unexpirableEnabled()}" style="margin-left: 5px;" ng-show="curHostData.host_type == 'ec2-ondemand'" ng-cloak>
+              [[availableUnexpirableHosts()]] [[availableUnexpirableHosts() | pluralize:'unexpirable host']] remaining
+            </em>
           </md-card-content>
         </md-card>
 

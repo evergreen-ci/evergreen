@@ -114,7 +114,7 @@ func (s *notificationSuite) TestStatsCollector() {
 
 	stats := resp.Data().(*model.APIEventStats)
 
-	s.Equal(s.expectedTime, stats.LastProcessedAt)
+	s.Equal(s.expectedTime, *stats.LastProcessedAt)
 	s.Equal(2, stats.NumUnprocessedEvents)
 	s.NotEmpty(stats.PendingNotificationsByType)
 	s.Equal(1, stats.PendingNotificationsByType.Email)

@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -128,16 +129,15 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 	groupsArr := []*GroupedProjects{}
 
 	for groupName, groupedProjects := range groupsMap {
-		name := groupName
 		gp := GroupedProjects{
-			Name:     &name,
+			Name:     groupName,
 			Projects: groupedProjects,
 		}
 		groupsArr = append(groupsArr, &gp)
 	}
 
 	sort.SliceStable(groupsArr, func(i, j int) bool {
-		return *groupsArr[i].Name < *groupsArr[j].Name
+		return groupsArr[i].Name < groupsArr[j].Name
 	})
 
 	pjs := Projects{
@@ -146,6 +146,72 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 	}
 
 	return &pjs, nil
+}
+
+func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, status *string) ([]*restModel.APITest, error) {
+	task, err := task.FindOneId(taskID)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error retreiving Task")
+	}
+
+	sortBy := ""
+	if sortCategory != nil {
+		switch *sortCategory {
+		case TaskSortCategoryStatus:
+			sortBy = testresult.StatusKey
+			break
+		case TaskSortCategoryDuration:
+			sortBy = "duration"
+			break
+		case TaskSortCategoryTestName:
+			sortBy = testresult.TestFileKey
+		}
+	}
+
+	sortDir := 1
+	if sortDirection != nil {
+		switch *sortDirection {
+		case SortDirectionDesc:
+			sortDir = -1
+			break
+		}
+	}
+
+	if *sortDirection == SortDirectionDesc {
+		sortDir = -1
+	}
+
+	testNameParam := ""
+	if testName != nil {
+		testNameParam = *testName
+	}
+	pageParam := 0
+	if page != nil {
+		pageParam = *page
+	}
+	limitParam := 0
+	if limit != nil {
+		limitParam = *limit
+	}
+	statusParam := ""
+	if status != nil {
+		statusParam = *status
+	}
+	tests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, testNameParam, statusParam, sortBy, sortDir, pageParam, limitParam, task.Execution)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error retreiving test")
+	}
+
+	testPointers := []*restModel.APITest{}
+	for _, t := range tests {
+		apiTest := restModel.APITest{}
+		err := apiTest.BuildFromService(&t)
+		if err != nil {
+			return nil, errors.Wrap(err, "error converting test")
+		}
+		testPointers = append(testPointers, &apiTest)
+	}
+	return testPointers, nil
 }
 
 // New injects resources into the resolvers, such as the data connector

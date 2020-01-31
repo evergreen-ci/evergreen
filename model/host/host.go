@@ -20,6 +20,8 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
@@ -57,13 +59,11 @@ type Host struct {
 	RunningTaskProject      string `bson:"running_task_project,omitempty" json:"running_task_project,omitempty"`
 
 	// the task the most recently finished running on the host
-	LastTask               string    `bson:"last_task" json:"last_task"`
-	LastGroup              string    `bson:"last_group,omitempty" json:"last_group,omitempty"`
-	LastBuildVariant       string    `bson:"last_bv,omitempty" json:"last_bv,omitempty"`
-	LastVersion            string    `bson:"last_version,omitempty" json:"last_version,omitempty"`
-	LastProject            string    `bson:"last_project,omitempty" json:"last_project,omitempty"`
-	RunningTeardownForTask string    `bson:"running_teardown,omitempty" json:"running_teardown,omitempty"`
-	RunningTeardownSince   time.Time `bson:"running_teardown_since,omitempty" json:"running_teardown_since,omitempty"`
+	LastTask         string `bson:"last_task" json:"last_task"`
+	LastGroup        string `bson:"last_group,omitempty" json:"last_group,omitempty"`
+	LastBuildVariant string `bson:"last_bv,omitempty" json:"last_bv,omitempty"`
+	LastVersion      string `bson:"last_version,omitempty" json:"last_version,omitempty"`
+	LastProject      string `bson:"last_project,omitempty" json:"last_project,omitempty"`
 
 	// the full task struct that is running on the host (only populated by certain aggregations)
 	RunningTaskFull *task.Task `bson:"task_full,omitempty" json:"task_full,omitempty"`
@@ -397,6 +397,20 @@ func (h *Host) SetProvisioning() error {
 }
 
 func (h *Host) SetDecommissioned(user string, logs string) error {
+	if h.HasContainers {
+		containers, err := h.GetContainers()
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error getting containers",
+			"host":    h.Id,
+		}))
+		for _, c := range containers {
+			err = c.SetStatus(evergreen.HostDecommissioned, user, "parent is being decommissioned")
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "error decommissioning container",
+				"host":    c.Id,
+			}))
+		}
+	}
 	return h.SetStatus(evergreen.HostDecommissioned, user, logs)
 }
 
@@ -1242,6 +1256,32 @@ func (h *Host) Remove() error {
 	)
 }
 
+// RemoveStrict deletes a host and errors if the host is not found
+func RemoveStrict(id string) error {
+	ctx, cancel := evergreen.GetEnvironment().Context()
+	defer cancel()
+	result, err := evergreen.GetEnvironment().DB().Collection(Collection).DeleteOne(ctx, bson.M{IdKey: id})
+	if err != nil {
+		return err
+	}
+	if result.DeletedCount == 0 {
+		return errors.Errorf("host %s not found", id)
+	}
+	return nil
+}
+
+// Replace overwrites an existing host document with a new one. If no existing host is found, the new one will be inserted anyway.
+func (h *Host) Replace() error {
+	ctx, cancel := evergreen.GetEnvironment().Context()
+	defer cancel()
+	result := evergreen.GetEnvironment().DB().Collection(Collection).FindOneAndReplace(ctx, bson.M{IdKey: h.Id}, h, options.FindOneAndReplace().SetUpsert(true))
+	err := result.Err()
+	if errors.Cause(err) == mongo.ErrNoDocuments {
+		return nil
+	}
+	return errors.Wrap(err, "error replacing host")
+}
+
 // GetElapsedCommunicationTime returns how long since this host has communicated with evergreen or vice versa
 func (h *Host) GetElapsedCommunicationTime() time.Duration {
 	if h.LastCommunicationTime.After(h.CreationTime) {
@@ -1293,32 +1333,6 @@ func (h *Host) SetExtId() error {
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{ExtIdKey: h.ExternalIdentifier}},
 	)
-}
-
-// SetRunningTeardownGroup marks the host as running teardown_group for a task group, no-oping if it's already set to the same task
-func (h *Host) SetRunningTeardownGroup(taskID string) error {
-	if h.RunningTeardownForTask == taskID && !util.IsZeroTime(h.RunningTeardownSince) {
-		return nil
-	}
-
-	return UpdateOne(bson.M{IdKey: h.Id}, bson.M{
-		"$set": bson.M{
-			RunningTeardownForTaskKey: taskID,
-			RunningTeardownSinceKey:   time.Now(),
-		},
-	})
-}
-
-func (h *Host) ClearRunningTeardownGroup() error {
-	if h.RunningTeardownForTask == "" {
-		return nil
-	}
-	return UpdateOne(bson.M{IdKey: h.Id}, bson.M{
-		"$unset": bson.M{
-			RunningTeardownForTaskKey: "",
-			RunningTeardownSinceKey:   "",
-		},
-	})
 }
 
 func FindHostsToTerminate() ([]Host, error) {
@@ -1878,51 +1892,6 @@ func (h *Host) EstimateNumContainersForDuration(start, end time.Time) (float64, 
 		return 0, errors.Wrapf(err, "Error counting containers running at %v", end)
 	}
 	return float64(containersAtStart+containersAtEnd) / 2, nil
-}
-
-// StaleRunningTaskIDs finds any running tasks whose last heartbeat was at least the specified threshold ago
-// and whose host thinks it's still running that task. Projects out everything but the ID and execution
-func StaleRunningTaskIDs(staleness time.Duration) ([]task.Task, error) {
-	var out []task.Task
-	pipeline := []bson.M{
-		{"$match": bson.M{
-			task.StatusKey:        task.SelectorTaskInProgress,
-			task.LastHeartbeatKey: bson.M{"$lte": time.Now().Add(-staleness)},
-		}},
-		{"$lookup": bson.M{
-			"from": Collection,
-			"as":   "host",
-			"let":  bson.M{"id": "$" + task.IdKey},
-			"pipeline": []bson.M{
-				{
-					"$match": bson.M{
-						"$expr": bson.M{
-							"$and": []bson.M{
-								{"$eq": []string{"$$id", "$" + RunningTaskKey}},
-								{"$or": []bson.M{ // this expression checks that the host is not currently running teardown_group of a different task
-									{"$not": []bson.M{{"$ifNull": []interface{}{"$" + RunningTeardownForTaskKey, nil}}}},
-									{"$eq": []string{"$" + RunningTeardownForTaskKey, ""}},
-									{"$and": []bson.M{
-										{"$ifNull": []interface{}{"$" + RunningTeardownForTaskKey, nil}},
-										{"$lt": []interface{}{"$" + RunningTeardownSinceKey, time.Now().Add(-1*evergreen.MaxTeardownGroupTimeoutSecs*time.Second - 5*time.Minute)}},
-									}},
-								}},
-							},
-						},
-					},
-				},
-			},
-		}},
-		{"$unwind": "$host"},
-		{"$project": bson.M{
-			task.IdKey:        1,
-			task.ExecutionKey: 1,
-			"host":            1,
-		}},
-	}
-
-	err := db.Aggregate(task.Collection, pipeline, &out)
-	return out, err
 }
 
 func (h *Host) addTag(new Tag, hasPermissions bool) {

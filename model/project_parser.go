@@ -283,20 +283,21 @@ func (ts *taskSelector) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // parserBV is a helper type storing intermediary variant definitions.
 type parserBV struct {
-	Name         string             `yaml:"name,omitempty" bson:"name,omitempty"`
-	DisplayName  string             `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
-	Expansions   util.Expansions    `yaml:"expansions,omitempty" bson:"expansions,omitempty"`
-	Tags         parserStringSlice  `yaml:"tags,omitempty,omitempty" bson:"tags,omitempty"`
-	Modules      parserStringSlice  `yaml:"modules,omitempty" bson:"modules,omitempty"`
-	Disabled     bool               `yaml:"disabled,omitempty" bson:"disabled,omitempty"`
-	Push         bool               `yaml:"push,omitempty" bson:"push,omitempty"`
-	BatchTime    *int               `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
-	Stepback     *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	RunOn        parserStringSlice  `yaml:"run_on,omitempty" bson:"run_on,omitempty"`
-	Tasks        parserBVTaskUnits  `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
-	DisplayTasks []displayTask      `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
-	DependsOn    parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
-	Requires     taskSelectors      `yaml:"requires,omitempty" bson:"requires,omitempty"`
+	Name          string             `yaml:"name,omitempty" bson:"name,omitempty"`
+	DisplayName   string             `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
+	Expansions    util.Expansions    `yaml:"expansions,omitempty" bson:"expansions,omitempty"`
+	Tags          parserStringSlice  `yaml:"tags,omitempty,omitempty" bson:"tags,omitempty"`
+	Modules       parserStringSlice  `yaml:"modules,omitempty" bson:"modules,omitempty"`
+	Disabled      bool               `yaml:"disabled,omitempty" bson:"disabled,omitempty"`
+	Push          bool               `yaml:"push,omitempty" bson:"push,omitempty"`
+	BatchTime     *int               `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
+	CronBatchTime string             `yaml:"cron,omitempty" bson:"cron,omitempty"`
+	Stepback      *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	RunOn         parserStringSlice  `yaml:"run_on,omitempty" bson:"run_on,omitempty"`
+	Tasks         parserBVTaskUnits  `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
+	DisplayTasks  []displayTask      `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
+	DependsOn     parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
+	Requires      taskSelectors      `yaml:"requires,omitempty" bson:"requires,omitempty"`
 
 	// internal matrix stuff
 	MatrixId  string      `yaml:"matrix_id,omitempty" bson:"matrix_id,omitempty"`
@@ -661,16 +662,17 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 	var evalErrs, errs []error
 	for _, pbv := range pbvs {
 		bv := BuildVariant{
-			DisplayName: pbv.DisplayName,
-			Name:        pbv.Name,
-			Expansions:  pbv.Expansions,
-			Modules:     pbv.Modules,
-			Disabled:    pbv.Disabled,
-			Push:        pbv.Push,
-			BatchTime:   pbv.BatchTime,
-			Stepback:    pbv.Stepback,
-			RunOn:       pbv.RunOn,
-			Tags:        pbv.Tags,
+			DisplayName:   pbv.DisplayName,
+			Name:          pbv.Name,
+			Expansions:    pbv.Expansions,
+			Modules:       pbv.Modules,
+			Disabled:      pbv.Disabled,
+			Push:          pbv.Push,
+			BatchTime:     pbv.BatchTime,
+			CronBatchTime: pbv.CronBatchTime,
+			Stepback:      pbv.Stepback,
+			RunOn:         pbv.RunOn,
+			Tags:          pbv.Tags,
 		}
 		bv.Tasks, errs = evaluateBVTasks(tse, tgse, vse, pbv)
 
