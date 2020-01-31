@@ -189,6 +189,9 @@ type BuildVariant struct {
 	// nil - not overriding the project setting
 	// non-nil - overriding the project setting with this BatchTime
 	BatchTime *int `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
+	// if BatchTimeCron is not empty, then overriding the project settings with cron syntax,
+	// with BatchTime and BatchTimeCron being mutually exclusive.
+	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
 
 	// Use a *bool so that there are 3 possible states:
 	//   1. nil   = not overriding the project setting (default)

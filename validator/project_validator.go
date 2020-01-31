@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/command"
@@ -82,6 +83,7 @@ var projectSyntaxValidators = []projectValidator{
 	verifyTaskRequirements,
 	validateTaskNames,
 	validateBVNames,
+	validateBVBatchTimes,
 	validateDisplayTaskNames,
 	validateBVTaskNames,
 	validateBVsContainTasks,
@@ -429,7 +431,7 @@ func ensureHasNecessaryProjectFields(project *model.Project) ValidationErrors {
 	if project.BatchTime > math.MaxInt32 {
 		// Error level is warning for backwards compatibility with
 		// existing projects. This value will be capped at MaxInt32
-		// in ProjectRef.GetBatchTime()
+		// in ProjectRef.getBatchTime()
 		errs = append(errs,
 			ValidationError{
 				Message: fmt.Sprintf("project '%s' field 'batchtime' should not exceed %d)",
@@ -664,6 +666,31 @@ func validateBVsContainTasks(project *model.Project) ValidationErrors {
 				ValidationError{
 					Message: fmt.Sprintf("buildvariant '%s' contains no tasks", buildVariant.Name),
 					Level:   Warning,
+				},
+			)
+		}
+	}
+	return errs
+}
+
+func validateBVBatchTimes(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
+	for _, buildVariant := range project.BuildVariants {
+		if buildVariant.CronBatchTime == "" {
+			continue
+		}
+		if buildVariant.BatchTime != nil {
+			errs = append(errs,
+				ValidationError{
+					Message: fmt.Sprintf("variant '%s' cannot specify cron and batchtime", buildVariant.Name),
+					Level:   Error,
+				})
+		}
+		if _, err := model.GetActivationTimeWithCron(time.Now(), buildVariant.CronBatchTime); err != nil {
+			errs = append(errs,
+				ValidationError{
+					Message: errors.Wrapf(err, "cron batchtime '%s' has invalid syntax", buildVariant.CronBatchTime).Error(),
+					Level:   Error,
 				},
 			)
 		}
