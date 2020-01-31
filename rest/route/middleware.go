@@ -500,8 +500,8 @@ func urlVarsToDistroScopes(r *http.Request) ([]string, int, error) {
 	return []string{distroID}, http.StatusOK, nil
 }
 
-func superUserResource(_ *http.Request) (string, int, error) {
-	return evergreen.SuperUserPermissionsID, http.StatusOK, nil
+func superUserResource(_ *http.Request) ([]string, int, error) {
+	return []string{evergreen.SuperUserPermissionsID}, http.StatusOK, nil
 }
 
 type EventLogPermissionsMiddleware struct{}
@@ -509,36 +509,36 @@ type EventLogPermissionsMiddleware struct{}
 func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	ctx := r.Context()
 	vars := gimlet.GetVars(r)
-	var resource []string{}
+	var resources []string
 	var status int
 	var err error
 	resourceType := strings.ToUpper(vars["resource_type"])
 	opts := gimlet.PermissionOpts{}
 	switch resourceType {
 	case event.ResourceTypeTask:
-		resource, status, err = urlVarsToProjectScopes(r)
+		resources, status, err = urlVarsToProjectScopes(r)
 		opts.ResourceType = evergreen.ProjectResourceType
 		opts.Permission = evergreen.PermissionTasks
 		opts.RequiredLevel = evergreen.TasksView.Value
 	case model.EventResourceTypeProject:
-		resource, status, err = urlVarsToProjectScopes(r)
+		resources, status, err = urlVarsToProjectScopes(r)
 		opts.ResourceType = evergreen.ProjectResourceType
 		opts.Permission = evergreen.PermissionProjectSettings
 		opts.RequiredLevel = evergreen.ProjectSettingsView.Value
 	case event.ResourceTypeDistro:
 		fallthrough
 	case event.ResourceTypeScheduler:
-		resource, status, err = urlVarsToDistroScopes(r)
+		resources, status, err = urlVarsToDistroScopes(r)
 		opts.ResourceType = evergreen.DistroResourceType
 		opts.Permission = evergreen.PermissionHosts
 		opts.RequiredLevel = evergreen.HostsView.Value
 	case event.ResourceTypeHost:
-		resource, status, err = urlVarsToDistroScopes(r)
+		resources, status, err = urlVarsToDistroScopes(r)
 		opts.ResourceType = evergreen.DistroResourceType
 		opts.Permission = evergreen.PermissionDistroSettings
 		opts.RequiredLevel = evergreen.DistroSettingsView.Value
 	case event.ResourceTypeAdmin:
-		resource = []string{evergreen.SuperUserPermissionsID}
+		resources = []string{evergreen.SuperUserPermissionsID}
 		opts.ResourceType = evergreen.SuperUserResourceType
 		opts.Permission = evergreen.PermissionAdminSettings
 		opts.RequiredLevel = evergreen.AdminSettingsEdit.Value
@@ -550,7 +550,11 @@ func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *htt
 		http.Error(rw, err.Error(), status)
 		return
 	}
-	opts.Resource = []string{resource}
+
+	if len(resources) == 0 {
+		http.Error(rw, "no resources found", http.StatusNotFound)
+		return
+	}
 
 	user := gimlet.GetUser(ctx)
 	if user == nil {
@@ -569,9 +573,12 @@ func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *htt
 		return
 	}
 
-	if !user.HasPermission(opts) {
-		http.Error(rw, "not authorized for this action", http.StatusUnauthorized)
-		return
+	for _, item := range resources {
+		opts.Resource = item
+		if !user.HasPermission(opts) {
+			http.Error(rw, "not authorized for this action", http.StatusUnauthorized)
+			return
+		}
 	}
 
 	next(rw, r)
