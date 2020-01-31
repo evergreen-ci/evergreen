@@ -1244,7 +1244,9 @@ func (h *Host) Remove() error {
 
 // RemoveStrict deletes a host and errors if the host is not found
 func RemoveStrict(id string) error {
-	result, err := evergreen.GetEnvironment().DB().Collection(Collection).DeleteOne(context.Background(), bson.M{IdKey: id})
+	ctx, cancel := evergreen.GetEnvironment().Context()
+	defer cancel()
+	result, err := evergreen.GetEnvironment().DB().Collection(Collection).DeleteOne(ctx, bson.M{IdKey: id})
 	if err != nil {
 		return err
 	}
@@ -1256,12 +1258,14 @@ func RemoveStrict(id string) error {
 
 // Replace overwrites an existing host document with a new one. If no existing host is found, the new one will be inserted anyway.
 func (h *Host) Replace() error {
-	result := evergreen.GetEnvironment().DB().Collection(Collection).FindOneAndReplace(context.Background(), bson.M{IdKey: h.Id}, h, options.FindOneAndReplace().SetUpsert(true))
+	ctx, cancel := evergreen.GetEnvironment().Context()
+	defer cancel()
+	result := evergreen.GetEnvironment().DB().Collection(Collection).FindOneAndReplace(ctx, bson.M{IdKey: h.Id}, h, options.FindOneAndReplace().SetUpsert(true))
 	err := result.Err()
 	if errors.Cause(err) == mongo.ErrNoDocuments {
 		return nil
 	}
-	return err
+	return errors.Wrap(err, "error replacing host")
 }
 
 // GetElapsedCommunicationTime returns how long since this host has communicated with evergreen or vice versa
