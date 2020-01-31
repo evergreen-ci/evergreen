@@ -18,7 +18,6 @@ func Host() cli.Command {
 			hostSetup(),
 			hostTeardown(),
 			hostRunCommand(),
-			hostRsync(),
 		},
 	}
 }
