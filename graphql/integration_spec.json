@@ -1257,10 +1257,275 @@
   },
   "tests": [
     {
+      "query_file": "patch1.graphql",
+      "result": {
+        "data": {
+          "userPatches": [
+            {
+              "id": "5e1f8ab8834b87d7b5d251a5",
+              "description": "mydesc",
+              "projectID": "mci",
+              "githash": "7ad0c6bb0d5b8586f3a0442f365e259d40f5a7f1",
+              "patchNumber": 1,
+              "author": "testuser",
+              "version": "",
+              "status": "created",
+              "createTime": "2018-01-10T19:01:36-05:00",
+              "startTime": null,
+              "finishTime": null,
+              "tasks": ["test-auth"],
+              "activated": false,
+              "alias": "",
+              "variants": ["rhel62"],
+              "variantsTasks": [
+                { "name": "rhel62", "tasks": ["test-model-host"] }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "task1.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "logs": {
+              "allLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=ALL",
+              "taskLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=T",
+              "agentLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=E",
+              "systemLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=S"
+            },
+            "id": "wuzzup",
+            "createTime": "2018-01-10T19:01:36-05:00",
+            "ingestTime": "2018-01-10T19:01:36-05:00",
+            "dispatchTime": "2018-01-10T19:01:36-05:00",
+            "scheduledTime": "2018-01-10T19:01:36-05:00",
+            "startTime": "2018-01-10T19:01:36-05:00",
+            "finishTime": "2018-01-10T19:01:36-05:00",
+            "activatedTime": "2018-01-10T19:01:36-05:00",
+            "version": "version",
+            "projectId": "id",
+            "revision": "revise",
+            "priority": 5,
+            "taskGroup": "grp",
+            "taskGroupMaxHosts": 100,
+            "activatedBy": "someone",
+            "activated": true,
+            "buildId": "some id",
+            "distroId": "distro",
+            "buildVariant": "variant",
+            "dependsOn": ["one thing"],
+            "displayName": "display name",
+            "hostId": "host",
+            "restarts": 5,
+            "execution": 5,
+            "order": 5,
+            "requester": "something",
+            "status": "pass",
+            "details": {
+              "status": "status",
+              "type": "type",
+              "description": "description",
+              "timedOut": false
+            },
+            "displayOnly": true,
+            "executionTasks": ["exec1"],
+            "generateTask": false,
+            "generatedBy": "something"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "taskTestStatusAsc.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "status": "a" },
+            { "status": "b" },
+            { "status": "c" },
+            { "status": "dog" }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestStatusDesc.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "status": "dog" },
+            { "status": "c" },
+            { "status": "b" },
+            { "status": "a" }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestNameAsc.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "testFile": "apple" },
+            { "testFile": "b" },
+            { "testFile": "c" },
+            { "testFile": "d" }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestNameDesc.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "testFile": "d" },
+            { "testFile": "c" },
+            { "testFile": "b" },
+            { "testFile": "apple" }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestDurationDesc.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "duration": 40 },
+            { "duration": 30 },
+            { "duration": 20 },
+            { "duration": 10 }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestDurationAsc.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "duration": 10 },
+            { "duration": 20 },
+            { "duration": 30 },
+            { "duration": 40 }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestFilterStatus.graphql",
+      "result": {
+        "data": {
+          "taskTests": [{ "status": "dog" }]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestFilterTestFile.graphql",
+      "result": {
+        "data": {
+          "taskTests": [{ "testFile": "apple" }]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestFilterNoResults.graphql",
+      "result": {
+        "data": {
+          "taskTests": []
+        }
+      }
+    },
+    {
+      "query_file": "taskTestFilterStatusSubstr1.graphql",
+      "result": {
+        "data": {
+          "taskTests": []
+        }
+      }
+    },
+    {
+      "query_file": "taskTestFilterStatusSubstr2.graphql",
+      "result": {
+        "data": {
+          "taskTests": []
+        }
+      }
+    },
+    {
+      "query_file": "taskTestPageLimit.graphql",
+      "result": {
+        "data": {
+          "taskTests": [{ "testFile": "c" }, { "testFile": "d" }]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestDefaultParams.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "testFile": "apple" },
+            { "testFile": "b" },
+            { "testFile": "c" },
+            { "testFile": "d" }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "add-favorite-project-mutation.graphql",
+      "result": {
+        "data": {
+          "addFavoriteProject": {
+            "identifier": "buildhost-test",
+            "displayName": "buildhost-test",
+            "repo": "buildhost-configuration",
+            "owner": "annie.black"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "add-favorite-project-mutation.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "error adding project to user's favorites: cannot add duplicate project 'buildhost-test'",
+            "path": ["addFavoriteProject"]
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "add-favorite-project-that-does-not-exist.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "could not find project 'i-dont-exist'",
+            "path": ["addFavoriteProject"]
+          }
+        ],
+        "data": null
+      }
+    },
+    {
       "query_file": "projects1.graphql",
       "result": {
         "data": {
-          "projects": [
+          "favorites": [
+            {
+              "identifier": "buildhost-test",
+              "displayName": "buildhost-test",
+              "repo": "buildhost-configuration",
+              "owner": "annie.black"
+            }
+          ],
+          "allProjects": [
             {
               "name": "annie.black/buildhost-configuration",
               "projects": [
@@ -1542,263 +1807,6 @@
             }
           ]
         }
-      }
-    },
-    {
-      "query_file": "patch1.graphql",
-      "result": {
-        "data": {
-          "userPatches": [
-            {
-              "id": "5e1f8ab8834b87d7b5d251a5",
-              "description": "mydesc",
-              "projectID": "mci",
-              "githash": "7ad0c6bb0d5b8586f3a0442f365e259d40f5a7f1",
-              "patchNumber": 1,
-              "author": "testuser",
-              "version": "",
-              "status": "created",
-              "createTime": "2018-01-10T19:01:36-05:00",
-              "startTime": null,
-              "finishTime": null,
-              "tasks": ["test-auth"],
-              "activated": false,
-              "alias": "",
-              "variants": ["rhel62"],
-              "variantsTasks": [
-                { "name": "rhel62", "tasks": ["test-model-host"] }
-              ]
-            }
-          ]
-        }
-      }
-    },
-    {
-      "query_file": "task1.graphql",
-      "result": {
-        "data": {
-          "task": {
-            "logs": {
-              "allLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=ALL",
-              "taskLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=T",
-              "agentLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=E",
-              "systemLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=S"
-            },
-            "id": "wuzzup",
-            "createTime": "2018-01-10T19:01:36-05:00",
-            "ingestTime": "2018-01-10T19:01:36-05:00",
-            "dispatchTime": "2018-01-10T19:01:36-05:00",
-            "scheduledTime": "2018-01-10T19:01:36-05:00",
-            "startTime": "2018-01-10T19:01:36-05:00",
-            "finishTime": "2018-01-10T19:01:36-05:00",
-            "activatedTime": "2018-01-10T19:01:36-05:00",
-            "version": "version",
-            "projectId": "id",
-            "revision": "revise",
-            "priority": 5,
-            "taskGroup": "grp",
-            "taskGroupMaxHosts": 100,
-            "activatedBy": "someone",
-            "activated": true,
-            "buildId": "some id",
-            "distroId": "distro",
-            "buildVariant": "variant",
-            "dependsOn": ["one thing"],
-            "displayName": "display name",
-            "hostId": "host",
-            "restarts": 5,
-            "execution": 5,
-            "order": 5,
-            "requester": "something",
-            "status": "pass",
-            "details": {
-              "status": "status",
-              "type": "type",
-              "description": "description",
-              "timedOut": false
-            },
-            "displayOnly": true,
-            "executionTasks": ["exec1"],
-            "generateTask": false,
-            "generatedBy": "something"
-          }
-        }
-      }
-    },
-    {
-      "query_file": "taskTestStatusAsc.graphql",
-      "result": {
-        "data": {
-          "taskTests": [
-            { "status": "a" },
-            { "status": "b" },
-            { "status": "c" },
-            { "status": "dog" }
-          ]
-        }
-      }
-    },
-    {
-      "query_file": "taskTestStatusDesc.graphql",
-      "result": {
-        "data": {
-          "taskTests": [
-            { "status": "dog" },
-            { "status": "c" },
-            { "status": "b" },
-            { "status": "a" }
-          ]
-        }
-      }
-    },
-    {
-      "query_file": "taskTestNameAsc.graphql",
-      "result": {
-        "data": {
-          "taskTests": [
-            { "testFile": "apple" },
-            { "testFile": "b" },
-            { "testFile": "c" },
-            { "testFile": "d" }
-          ]
-        }
-      }
-    },
-    {
-      "query_file": "taskTestNameDesc.graphql",
-      "result": {
-        "data": {
-          "taskTests": [
-            { "testFile": "d" },
-            { "testFile": "c" },
-            { "testFile": "b" },
-            { "testFile": "apple" }
-          ]
-        }
-      }
-    },
-    {
-      "query_file": "taskTestDurationDesc.graphql",
-      "result": {
-        "data": {
-          "taskTests": [
-            { "duration": 40 },
-            { "duration": 30 },
-            { "duration": 20 },
-            { "duration": 10 }
-          ]
-        }
-      }
-    },
-    {
-      "query_file": "taskTestDurationAsc.graphql",
-      "result": {
-        "data": {
-          "taskTests": [
-            { "duration": 10 },
-            { "duration": 20 },
-            { "duration": 30 },
-            { "duration": 40 }
-          ]
-        }
-      }
-    },
-    {
-      "query_file": "taskTestFilterStatus.graphql",
-      "result": {
-        "data": {
-          "taskTests": [{ "status": "dog" }]
-        }
-      }
-    },
-    {
-      "query_file": "taskTestFilterTestFile.graphql",
-      "result": {
-        "data": {
-          "taskTests": [{ "testFile": "apple" }]
-        }
-      }
-    },
-    {
-      "query_file": "taskTestFilterNoResults.graphql",
-      "result": {
-        "data": {
-          "taskTests": []
-        }
-      }
-    },
-    {
-      "query_file": "taskTestFilterStatusSubstr1.graphql",
-      "result": {
-        "data": {
-          "taskTests": []
-        }
-      }
-    },
-    {
-      "query_file": "taskTestFilterStatusSubstr2.graphql",
-      "result": {
-        "data": {
-          "taskTests": []
-        }
-      }
-    },
-    {
-      "query_file": "taskTestPageLimit.graphql",
-      "result": {
-        "data": {
-          "taskTests": [{ "testFile": "c" }, { "testFile": "d" }]
-        }
-      }
-    },
-    {
-      "query_file": "taskTestDefaultParams.graphql",
-      "result": {
-        "data": {
-          "taskTests": [
-            { "testFile": "apple" },
-            { "testFile": "b" },
-            { "testFile": "c" },
-            { "testFile": "d" }
-          ]
-        }
-      }
-    },
-    {
-      "query_file": "add-favorite-project-mutation.graphql",
-      "result": {
-        "data": {
-          "addFavoriteProject": {
-            "identifier": "buildhost-test",
-            "displayName": "buildhost-test",
-            "repo": "buildhost-configuration",
-            "owner": "annie.black"
-          }
-        }
-      }
-    },
-    {
-      "query_file": "add-favorite-project-mutation.graphql",
-      "result": {
-        "errors": [
-          {
-            "message": "error adding project to user's favorites: cannot add duplicate project 'buildhost-test'",
-            "path": ["addFavoriteProject"]
-          }
-        ],
-        "data": null
-      }
-    },
-    {
-      "query_file": "add-favorite-project-that-does-not-exist.graphql",
-      "result": {
-        "errors": [
-          {
-            "message": "could not find project 'i-dont-exist'",
-            "path": ["addFavoriteProject"]
-          }
-        ],
-        "data": null
       }
     }
   ]
