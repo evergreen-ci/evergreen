@@ -1626,6 +1626,145 @@
       }
     },
     {
+      "query_file": "taskTestStatusAsc.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "status": "a" },
+            { "status": "b" },
+            { "status": "c" },
+            { "status": "dog" }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestStatusDesc.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "status": "dog" },
+            { "status": "c" },
+            { "status": "b" },
+            { "status": "a" }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestNameAsc.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "testFile": "apple" },
+            { "testFile": "b" },
+            { "testFile": "c" },
+            { "testFile": "d" }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestNameDesc.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "testFile": "d" },
+            { "testFile": "c" },
+            { "testFile": "b" },
+            { "testFile": "apple" }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestDurationDesc.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "duration": 40 },
+            { "duration": 30 },
+            { "duration": 20 },
+            { "duration": 10 }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestDurationAsc.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "duration": 10 },
+            { "duration": 20 },
+            { "duration": 30 },
+            { "duration": 40 }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestFilterStatus.graphql",
+      "result": {
+        "data": {
+          "taskTests": [{ "status": "dog" }]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestFilterTestFile.graphql",
+      "result": {
+        "data": {
+          "taskTests": [{ "testFile": "apple" }]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestFilterNoResults.graphql",
+      "result": {
+        "data": {
+          "taskTests": []
+        }
+      }
+    },
+    {
+      "query_file": "taskTestFilterStatusSubstr1.graphql",
+      "result": {
+        "data": {
+          "taskTests": []
+        }
+      }
+    },
+    {
+      "query_file": "taskTestFilterStatusSubstr2.graphql",
+      "result": {
+        "data": {
+          "taskTests": []
+        }
+      }
+    },
+    {
+      "query_file": "taskTestPageLimit.graphql",
+      "result": {
+        "data": {
+          "taskTests": [{ "testFile": "c" }, { "testFile": "d" }]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestDefaultParams.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "testFile": "apple" },
+            { "testFile": "b" },
+            { "testFile": "c" },
+            { "testFile": "d" }
+          ]
+        }
+      }
+    },
+    {
       "query_file": "add-favorite-project-mutation.graphql",
       "result": {
         "data": {
