@@ -173,12 +173,8 @@ type MutationResolver interface {
 type QueryResolver interface {
 	UserPatches(ctx context.Context, userID string) ([]*model.APIPatch, error)
 	Task(ctx context.Context, taskID string) (*model.APITask, error)
-<<<<<<< HEAD
 	Projects(ctx context.Context) (*Projects, error)
-=======
-	Projects(ctx context.Context) ([]*GroupedProjects, error)
 	TaskTests(ctx context.Context, taskID string, sortCategory *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, status *string) ([]*model.APITest, error)
->>>>>>> TG_projects-query
 }
 
 type executableSchema struct {
@@ -885,14 +881,7 @@ var parsedSchema = gqlparser.MustLoadSchema(
 	&ast.Source{Name: "graphql/schema.graphql", Input: `type Query {
   userPatches(userId: String!): [Patch]!
   task(taskId: String!): Task
-<<<<<<< HEAD
   projects: Projects!
-}
-
-type Mutation {
-  addFavoriteProject(identifier: String!): Project!
-=======
-  projects: [GroupedProjects!]!
   taskTests(
     taskId: String!
     sortCategory: TaskSortCategory = TEST_NAME
@@ -904,6 +893,10 @@ type Mutation {
   ): [TestResult]
 }
 
+type Mutation {
+  addFavoriteProject(identifier: String!): Project!
+}
+
 enum TaskSortCategory {
   STATUS
   DURATION
@@ -913,7 +906,6 @@ enum TaskSortCategory {
 enum SortDirection {
   ASC
   DESC
->>>>>>> TG_projects-query
 }
 
 type Patch {

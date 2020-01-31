@@ -2,11 +2,6 @@ type Query {
   userPatches(userId: String!): [Patch]!
   task(taskId: String!): Task
   projects: Projects!
-}
-
-type Mutation {
-  addFavoriteProject(identifier: String!): Project!
-  projects: [GroupedProjects!]!
   taskTests(
     taskId: String!
     sortCategory: TaskSortCategory = TEST_NAME
@@ -16,6 +11,10 @@ type Mutation {
     testName: String = ""
     status: String = ""
   ): [TestResult]
+}
+
+type Mutation {
+  addFavoriteProject(identifier: String!): Project!
 }
 
 enum TaskSortCategory {

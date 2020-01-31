@@ -49,13 +49,13 @@ func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier st
 	}, nil
 }
 
+type queryResolver struct{ *Resolver }
+
 type patchResolver struct{ *Resolver }
 
 func (r *patchResolver) ID(ctx context.Context, obj *restModel.APIPatch) (string, error) {
 	return *obj.Id, nil
 }
-
-type queryResolver struct{ *Resolver }
 
 func (r *queryResolver) UserPatches(ctx context.Context, userID string) ([]*restModel.APIPatch, error) {
 	patchPointers := []*restModel.APIPatch{}

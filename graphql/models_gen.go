@@ -15,11 +15,11 @@ type GroupedProjects struct {
 	Projects []*model.UIProjectFields `json:"projects"`
 }
 
-<<<<<<< HEAD
 type Projects struct {
 	Favorites   []*model.UIProjectFields `json:"favorites"`
 	AllProjects []*GroupedProjects       `json:"allProjects"`
-=======
+}
+
 type SortDirection string
 
 const (
@@ -102,5 +102,4 @@ func (e *TaskSortCategory) UnmarshalGQL(v interface{}) error {
 
 func (e TaskSortCategory) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
->>>>>>> TG_projects-query
 }
