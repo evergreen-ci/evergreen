@@ -1,15 +1,19 @@
 package operations
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io/ioutil"
+	"os"
+	"os/exec"
 	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -791,4 +795,223 @@ func hostRunCommand() cli.Command {
 			return nil
 		},
 	}
+}
+
+type rsyncParams {
+	localPath string
+	remotePath string
+	timeout time.Duration
+	pull bool
+	sanityCheck bool
+	dryRun bool
+}
+
+func hostRsync() cli.Command {
+	const (
+		// TODO (kim): maybe remove user and just pull from distro settings
+		localPathFlagName           = "local"
+		remotePathFlagName          = "remote"
+		pullFlagName                = "pull"
+		timeoutFlagName             = "timeout"
+		disableSanityChecksFlagName = "no-checks"
+		dryRunFlagName              = "dry-run"
+	)
+	// TODO (kim): do we want to always synchronize dirs to be exactly the same?
+	// TODO (kim): provide option to synchronize file vs directory?
+	// TODO (kim): same problem of host running command where it can take
+	// arbitrary amount of time to rsync. Should this be made to basically be
+	// the same as the run command semantics?
+	return cli.Command{
+		Name:  "rsync",
+		Usage: "synchronize files between local and remote hosts",
+		Flags: addHostFlag(
+			cli.StringFlag{
+				Name:  joinFlagNames(localPathFlagName, "l"),
+				Usage: "the local directory/file",
+			},
+			cli.StringFlag{
+				Name:  joinFlagNames(remotePathFlagName, "r"),
+				Usage: "the remote directory/file",
+			},
+			cli.DurationFlag{
+				Name:  joinFlagNames(timeoutFlagName, "t"),
+				Usage: "timeout for rsync command, e.g. '5m' = 5 minutes, '30s' = 30 seconds (default: no timeout)",
+			},
+			cli.BoolFlag{
+				Name:  joinFlagNames(pullFlagName, "p"),
+				Usage: "pull files from the remote host to the local host (default is to push files from the local host to the remote host)",
+			},
+			cli.BoolFlag{
+				Name:  disableSanityChecksFlagName,
+				Usage: "disable basic sanity checks for common sources of error (ignored if this is a dry run)",
+			},
+			cli.BoolFlag{
+				Name:  joinFlagNames(dryRunFlagName, "n"),
+				Usage: "do not execute - show what would occur if executed",
+			},
+		),
+		Before: mergeBeforeFuncs(
+			requireHostFlag,
+			requireStringFlag(localPathFlagName),
+			requireStringFlag(remotePathFlagName),
+		),
+		Action: func(c *cli.Context) error {
+			doSanityCheck := !c.Bool(disableSanityChecksFlagName)
+			pp.Println("sanity check?", doSanityCheck)
+			confPath := c.Parent().Parent().String(confFlagName)
+			localPath := c.String(localPathFlagName)
+			remotePath := c.String(remotePathFlagName)
+			pull := c.Bool(pullFlagName)
+			dryRun := c.Bool(dryRunFlagName)
+
+			localPathIsDir := strings.HasSuffix(localPath, "/")
+			remotePathIsDir := strings.HasSuffix(remotePath, "/")
+			pp.Println("local path:", localPath)
+			pp.Println("remote path:", remotePath)
+			pp.Println("pull", pull)
+			if localPathIsDir && !pull && doSanityCheck && !dryRun {
+				pp.Println("local path is dir")
+				sanityPrompt(fmt.Sprintf("The local directory '%s' will overwrite all contents in the remote directory '%s'", localPath, remotePath))
+			}
+			if remotePathIsDir && pull && doSanityCheck && !dryRun {
+				sanityPrompt(fmt.Sprintf("The remote directory '%s' will overwrite all contents in the local directory '%s'", localPath, remotePath))
+			}
+
+			// if localPathIsDir && !remotePathIsDir && doSanityCheck {
+			//     ok, err := sanityPrompt(fmt.Sprintf("Local path '%s' ends with '/' (suggesting it is a directory) but remote path '%s' does not (suggesting it is a file).", localPath, remotePath))
+			//     if err != nil {
+			//         return errors.Wrap(err, "could not perform sanity check")
+			//     }
+			//     if !ok {
+			//         return nil
+			//     }
+			// }
+			// if remotePathIsDir && !localPathIsDir && doSanityCheck {
+			//     ok, err := sanityPrompt(fmt.Sprintf("Remote path '%s' ends with '/' (suggesting it is a directory) but local path '%s' does not (suggesting it is a file).", remotePath, localPath))
+			//     if err != nil {
+			//         return errors.Wrap(err, "could not perform sanity check")
+			//     }
+			//     if !ok {
+			//         return nil
+			//     }
+			// }
+			// if localPathIsDir && remotePathIsDir && doSanityCheck {
+			//     if !pull {
+			//         ok, err := sanityPrompt(fmt.Sprintf("Local directory '%s' will overwrite remote directory '%s'.", localPath, remotePath))
+			//         if err != nil {
+			//             return errors.Wrap(err, "could not perform sanity check")
+			//         }
+			//         if !ok {
+			//             return nil
+			//         }
+			//     } else {
+			//         ok, err := sanityPrompt(fmt.Sprintf("Remote directory '%s' will overwrite local directory '%s'.", remotePath, localPath))
+			//         if err != nil {
+			//             return errors.Wrap(err, "could not perform sanity check")
+			//         }
+			//         if !ok {
+			//             return nil
+			//         }
+			//     }
+			// }
+			// if !localPathIsDir && !remotePathIsDir && doSanityCheck {
+			//     if !pull {
+			//         ok, err := sanityPrompt(fmt.Sprintf("Local file '%s' will overwrite remote file '%s'.", localPath, remotePath))
+			//         if err != nil {
+			//             return errors.Wrap(err, "could not perform sanity check")
+			//         }
+			//         if !ok {
+			//             return nil
+			//         }
+			//     } else {
+			//         ok, err := sanityPrompt(fmt.Sprintf("Remote file '%s' will overwrite local file '%s'.", remotePath, localPath))
+			//         if err != nil {
+			//             return errors.Wrap(err, "could not perform sanity check")
+			//         }
+			//         if !ok {
+			//             return nil
+			//         }
+			//     }
+			// }
+			// TODO (kim): should there be some sanity prompt saying the
+			// contents of local directory will be synced to remote directory
+			// and/or a copy of local directory will be put in remote directory?
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.setupRestCommunicator(ctx)
+			defer client.Close()
+
+			params := model.APIHostParams{
+				UserSpawned: true,
+				Mine:        true,
+			}
+			hosts, err := client.GetHosts(ctx, params)
+			if err != nil {
+				return errors.Wrap(err, "problem getting your hosts")
+			}
+
+			hostID := c.String(hostFlagName)
+			var user, hostname string
+			for _, h := range hosts {
+				if model.FromStringPtr(h.Id) == hostID {
+					user = model.FromStringPtr(h.User)
+					hostname = model.FromStringPtr(h.HostURL)
+					break
+				}
+			}
+			if user == "" || hostname == "" {
+				catcher := grip.NewBasicCatcher()
+				catcher.ErrorfWhen(user == "", "could not find login user for host '%s'", hostID)
+				catcher.ErrorfWhen(hostname == "", "could not find hostname for host '%s'", hostID)
+				return catcher.Resolve()
+			}
+
+			rsync, err := exec.LookPath("rsync")
+			if err != nil {
+				return errors.Wrap(err, "could not find local rsync binary")
+			}
+
+			// TODO (kim): unsure if we want to preserve symlinks (I have no
+			// clue if they're even the same between MacOS/Linux)
+			args := []string{"-a", "-h", "--progress", "-e", "ssh", "--delete"}
+
+			remote := fmt.Sprintf("%s@%s:%s", user, hostname, remotePath)
+			if dryRun {
+				args = append(args, "-n")
+			}
+			if !pull {
+				args = append(args, localPath, remote)
+			} else {
+				args = append(args, remote, localPath)
+			}
+			if timeout := c.Duration(timeoutFlagName); timeout != time.Duration(0) {
+				ctx, cancel = context.WithTimeout(context.Background(), timeout)
+				defer cancel()
+			}
+			if dryRun {
+				fmt.Printf("Going to execute the following command: %s\n", strings.Join(append([]string{rsync}, args...), " "))
+			}
+			cmd := exec.CommandContext(ctx, rsync, args...)
+			cmd.Stdout = os.Stdout
+			return cmd.Run()
+		},
+	}
+}
+
+// sanityPrompt prints the message and asks the user if they would like to
+// continue or exit.
+func sanityPrompt(msg string) (ok bool, err error) {
+	fmt.Printf(msg + " Continue? (y/n) ")
+	r := bufio.NewReader(os.Stdin)
+	input, err := r.ReadString('\n')
+	if err != nil {
+		return false, errors.Wrap(err, "could not read input")
+	}
+	return input == "y", nil
 }
