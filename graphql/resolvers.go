@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/k0kubun/pp"
 	"github.com/pkg/errors"
 )
 
@@ -31,8 +30,6 @@ type mutationResolver struct{ *Resolver }
 
 func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) (*restModel.UIProjectFields, error) {
 	p, err := model.FindOneProjectRef(identifier)
-	pp.Print(err)
-	pp.Print(p)
 	if err != nil || p == nil {
 		return nil, errors.Errorf("could not find project '%s'", identifier)
 	}
