@@ -397,6 +397,20 @@ func (h *Host) SetProvisioning() error {
 }
 
 func (h *Host) SetDecommissioned(user string, logs string) error {
+	if h.HasContainers {
+		containers, err := h.GetContainers()
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error getting containers",
+			"host":    h.Id,
+		}))
+		for _, c := range containers {
+			err = c.SetStatus(evergreen.HostDecommissioned, user, "parent is being decommissioned")
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "error decommissioning container",
+				"host":    c.Id,
+			}))
+		}
+	}
 	return h.SetStatus(evergreen.HostDecommissioned, user, logs)
 }
 

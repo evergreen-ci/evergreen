@@ -76,6 +76,11 @@ func GenerateContainerHostIntents(d distro.Distro, newContainersNeeded int, host
 	if err != nil {
 		return nil, errors.Wrap(err, "Could not find number of containers on each parent")
 	}
+	image, err := d.GetImageID()
+	if err != nil {
+		return nil, errors.Wrapf(err, "error getting image for distro %s", d.Id)
+	}
+	parents = partitionParents(parents, image)
 	containerHostIntents := make([]Host, 0)
 	for _, parent := range parents {
 		// find out how many more containers this parent can fit
@@ -95,6 +100,19 @@ func GenerateContainerHostIntents(d distro.Distro, newContainersNeeded int, host
 		}
 	}
 	return containerHostIntents, nil
+}
+
+func partitionParents(parents []ContainersOnParents, image string) []ContainersOnParents {
+	matched := []ContainersOnParents{}
+	notMatched := []ContainersOnParents{}
+	for _, h := range parents {
+		if h.ParentHost.ContainerImages[image] {
+			matched = append(matched, h)
+		} else {
+			notMatched = append(notMatched, h)
+		}
+	}
+	return append(matched, notMatched...)
 }
 
 // createParents creates host intent documents for each parent
