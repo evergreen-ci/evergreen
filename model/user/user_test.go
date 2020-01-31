@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -531,9 +530,9 @@ func (s *UserTestSuite) TestFavoriteProjects() {
 	s.EqualValues(projs1, u.FavoriteProjects)
 
 	// try to add the same project again
-	projs2, err := u.AddFavoritedProject(projID)
-	s.EqualValues(err, errors.Errorf("cannot add duplicate project '%s'", projID))
-	s.EqualValues(projs2, nil)
+	_, err = u.AddFavoritedProject(projID)
+	s.Require().Error(err)
+
 	// value of favorite projects should be the same as it was before
 	s.EqualValues(projs1, u.FavoriteProjects)
 }

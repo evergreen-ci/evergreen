@@ -1776,6 +1776,30 @@
           }
         }
       }
+    },
+    {
+      "query_file": "add-favorite-project-mutation.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "error adding project to user's favorites: cannot add duplicate project 'buildhost-test'",
+            "path": ["addFavoriteProject"]
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "add-favorite-project-that-does-not-exist.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "could not find project 'i-dont-exist'",
+            "path": ["addFavoriteProject"]
+          }
+        ],
+        "data": null
+      }
     }
   ]
 }
