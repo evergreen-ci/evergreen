@@ -523,18 +523,17 @@ func (s *UserTestSuite) TestRoles() {
 func (s *UserTestSuite) TestFavoriteProjects() {
 	u := s.users[0]
 	projID := "annie-copy5"
+	expected := []string{projID}
 
 	// add a project
-	projs1, err := u.AddFavoritedProject(projID)
+	err := u.AddFavoritedProject(projID)
 	s.NoError(err)
-	s.EqualValues(projs1, u.FavoriteProjects)
+	s.EqualValues(u.FavoriteProjects, expected)
 
 	// try to add the same project again
-	_, err = u.AddFavoritedProject(projID)
+	err = u.AddFavoritedProject(projID)
 	s.Require().Error(err)
-
-	// value of favorite projects should be the same as it was before
-	s.EqualValues(projs1, u.FavoriteProjects)
+	s.EqualValues(u.FavoriteProjects, expected)
 }
 
 func (s *UserTestSuite) TestHasPermission() {

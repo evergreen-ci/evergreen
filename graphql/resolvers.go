@@ -100,7 +100,7 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 
 	groupsMap := make(map[string][]*restModel.UIProjectFields)
 
-	usr := GetDBUserFromContext(ctx)
+	usr := route.MustHaveUser(ctx)
 
 	favoriteIds := usr.FavoriteProjects
 	favorites := []*restModel.UIProjectFields{}
@@ -142,8 +142,8 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 	})
 
 	pjs := Projects{
-		Favorites:   favorites,
-		AllProjects: groupsArr,
+		Favorites: favorites,
+		All:       groupsArr,
 	}
 
 	return &pjs, nil

@@ -40,8 +40,8 @@ type Patch {
   createTime: Time!
   startTime: Time
   finishTime: Time
-  variants: [String]!
-  tasks: [String]!
+  variants: [String!]!
+  tasks: [String!]!
   variantsTasks: [VariantTask]!
   activated: Boolean!
   alias: String!
@@ -123,8 +123,8 @@ type Task {
 }
 
 type Projects {
-  favorites: [Project!!]!
-  allProjects: [GroupedProjects!!]!
+  favorites: [Project!]!
+  all: [GroupedProjects!]!
 }
 
 type GroupedProjects {
