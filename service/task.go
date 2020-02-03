@@ -658,7 +658,7 @@ func getBuildloggerLogs(projCtx projectContext, r *http.Request, logType string,
 		return nil, errors.Wrap(err, "error getting auth token cookie for user")
 	}
 
-	url += fmt.Sprintf(
+	url := fmt.Sprintf(
 		"https://%s/rest/v1/buildlogger/task_id/%s?n=%d&execution=%d&print_time=true&print_priority=true",
 		evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL,
 		projCtx.Task.Id,

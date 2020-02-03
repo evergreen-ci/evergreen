@@ -476,7 +476,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (
 	}
 
 	if projectRefs[target].DefaultLogger == "" {
-		projectRefs[i].checkDefaultLogger()
+		projectRefs[target].checkDefaultLogger()
 	}
 
 	return &projectRefs[target], nil
