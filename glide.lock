@@ -120,6 +120,7 @@ imports:
   - name: github.com/Masterminds/glide
     version: 23f6a9d8e774f597faabae8b58b8c6020b3f79ef
 
+    # TODO: revendor grip once MAKE-1139 merged
   - name: github.com/mongodb/grip
     version: 584e10f183651989291528fc432824587903b6fd
   - name: github.com/mongodb/amboy

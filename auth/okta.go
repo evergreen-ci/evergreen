@@ -26,7 +26,7 @@ func NewOktaUserManager(conf *evergreen.OktaConfig, evgURL, loginDomain string) 
 		LoginCookieName:      evergreen.AuthTokenCookie,
 		LoginCookieTTL:       365 * 24 * time.Hour,
 		AllowReauthorization: true,
-		AlwaysRefreshTokens:  true,
+		ValidateGroups:       true,
 		ReconciliateID: func(id string) string {
 			emailDomainStart := strings.LastIndex(id, "@")
 			if emailDomainStart == -1 {
