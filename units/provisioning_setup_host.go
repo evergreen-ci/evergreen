@@ -921,7 +921,7 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 		return errors.Errorf("host '%s' of distro '%s' doesn't support mounting a volume", h.Id, h.Distro.Id)
 	}
 
-	if h.HomeVolumeID == "" {
+	if h.HomeVolume() == nil {
 		mgrOpts, err := cloud.GetManagerOptions(h.Distro)
 		if err != nil {
 			return errors.Wrapf(err, "can't get ManagerOpts for '%s'", h.Id)
@@ -945,13 +945,9 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 		}
 
 		// attach to the host
-		attachment := host.VolumeAttachment{VolumeID: volume.ID}
+		attachment := host.VolumeAttachment{VolumeID: volume.ID, IsHome: true}
 		if err = cloudMgr.AttachVolume(ctx, h, &attachment); err != nil {
 			return errors.Wrapf(err, "can't attach volume '%s' to host '%s'", volume.ID, h.Id)
-		}
-
-		if err = h.SetHomeVolume(volume.ID, attachment.DeviceName); err != nil {
-			return errors.Wrapf(err, "can't set home volume for host '%s'", h.Id)
 		}
 	}
 
@@ -979,7 +975,11 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 		}))
 	}()
 
-	deviceName := h.HomeVolumeDeviceName
+	homeVolume := h.HomeVolume()
+	if homeVolume == nil {
+		return errors.Errorf("host '%s' has no home volume", h.Id)
+	}
+	deviceName := homeVolume.DeviceName
 	if h.Distro.HomeVolumeSettings.DeviceName != "" {
 		deviceName = h.Distro.HomeVolumeSettings.DeviceName
 	}

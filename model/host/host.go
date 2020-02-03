@@ -143,11 +143,8 @@ type Host struct {
 	InstanceTags []Tag `bson:"instance_tags,omitempty" json:"instance_tags,omitempty"`
 
 	AttachVolume bool `bson:"attach_volume" json:"attach_volume"`
-
 	// HomeVolumeGB is the size of the home volume in GB
-	HomeVolumeGB         int    `bson:"home_volume_gb" json:"home_volume_gb"`
-	HomeVolumeID         string `bson:"home_volume_id" json:"home_volume_id"`
-	HomeVolumeDeviceName string `bson:"home_volume_device_name" json:"home_volume_device_name"`
+	HomeVolumeGB int `bson:"home_volume_gb" json:"home_volume_gb"`
 }
 
 type Tag struct {
@@ -190,6 +187,7 @@ type HostGroup []Host
 type VolumeAttachment struct {
 	VolumeID   string `bson:"volume_id" json:"volume_id"`
 	DeviceName string `bson:"device_name" json:"device_name"`
+	IsHome     bool   `bson:"is_home" json:"is_home"`
 }
 
 // DockerOptions contains options for starting a container
@@ -458,20 +456,6 @@ func (h *Host) SetUnprovisioned() error {
 
 func (h *Host) SetQuarantined(user string, logs string) error {
 	return h.SetStatus(evergreen.HostQuarantined, user, logs)
-}
-
-func (h *Host) SetHomeVolume(volumeID, deviceName string) error {
-	if err := UpdateOne(
-		bson.M{IdKey: h.Id},
-		bson.M{"$set": bson.M{HomeVolumeIDKey: volumeID, HomeVolumeDeviceNameKey: deviceName}},
-	); err != nil {
-		return errors.Wrapf(err, "can't update host '%s'", h.Id)
-	}
-
-	h.HomeVolumeID = volumeID
-	h.HomeVolumeDeviceName = deviceName
-
-	return nil
 }
 
 // CreateSecret generates a host secret and updates the host both locally
@@ -2124,6 +2108,16 @@ func (h *Host) MarkShouldExpire(expireOnValue string) error {
 			},
 		},
 	)
+}
+
+func (h *Host) HomeVolume() *VolumeAttachment {
+	for _, vol := range h.Volumes {
+		if vol.IsHome {
+			return &vol
+		}
+	}
+
+	return nil
 }
 
 // FindHostWithVolume finds the host associated with the

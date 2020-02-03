@@ -23,7 +23,6 @@ type APIHost struct {
 	InstanceTags     []host.Tag `json:"instance_tags"`
 	InstanceType     *string    `json:"instance_type"`
 	AvailabilityZone *string    `json:"zone"`
-	HomeVolumeID     *string    `json:"home_volume_id"`
 }
 
 // HostPostRequest is a struct that holds the format of a POST request to /hosts
@@ -102,7 +101,6 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	apiHost.InstanceTags = v.InstanceTags
 	apiHost.InstanceType = ToStringPtr(v.InstanceType)
 	apiHost.AvailabilityZone = ToStringPtr(v.Zone)
-	apiHost.HomeVolumeID = ToStringPtr(v.HomeVolumeID)
 
 	imageId, err := v.Distro.GetImageID()
 	if err != nil {
@@ -127,7 +125,6 @@ func (apiHost *APIHost) ToService() (interface{}, error) {
 		User:         FromStringPtr(apiHost.User),
 		Status:       FromStringPtr(apiHost.Status),
 		Zone:         FromStringPtr(apiHost.AvailabilityZone),
-		HomeVolumeID: FromStringPtr(apiHost.HomeVolumeID),
 	}
 	return interface{}(h), nil
 }
