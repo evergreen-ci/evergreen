@@ -17,6 +17,7 @@ var (
 	ArchKey                  = bsonutil.MustHaveTag(Distro{}, "Arch")
 	ProviderKey              = bsonutil.MustHaveTag(Distro{}, "Provider")
 	ProviderSettingsKey      = bsonutil.MustHaveTag(Distro{}, "ProviderSettings")
+	ProviderSettingsListKey  = bsonutil.MustHaveTag(Distro{}, "ProviderSettingsList")
 	SetupAsSudoKey           = bsonutil.MustHaveTag(Distro{}, "SetupAsSudo")
 	SetupKey                 = bsonutil.MustHaveTag(Distro{}, "Setup")
 	UserKey                  = bsonutil.MustHaveTag(Distro{}, "User")
@@ -109,12 +110,12 @@ func (d *Distro) Update() error {
 }
 
 func (d *Distro) UpdateProviderSettings(bytes []byte) error {
-	doc := birch.Document{}
+	doc := &birch.Document{}
 	if err := doc.UnmarshalBSON(bytes); err != nil {
 		return errors.Wrapf(err, "error unmarshalling settings bytes into document")
 	}
 	if d.ProviderSettingsList == nil {
-		d.ProviderSettingsList = []birch.Document{}
+		d.ProviderSettingsList = []*birch.Document{}
 	}
 	d.ProviderSettingsList = append(d.ProviderSettingsList, doc)
 	if err := d.Update(); err != nil {

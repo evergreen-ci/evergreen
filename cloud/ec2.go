@@ -95,14 +95,9 @@ func (s *EC2ProviderSettings) Validate() error {
 	return nil
 }
 
-func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, zone string) error {
-	region := evergreen.DefaultEC2Region
-	var err error
-	if zone != "" {
-		region, err = zoneToRegion(zone)
-		if err != nil {
-			return errors.Wrapf(err, "invalid host zone '%s'", zone)
-		}
+func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string) error {
+	if region == "" {
+		region = evergreen.DefaultEC2Region
 	}
 	if len(d.ProviderSettingsList) != 0 {
 		settingsDoc, err := d.GetProviderSettingByRegion(region)
@@ -130,7 +125,7 @@ func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, zone string) e
 			if region == evergreen.DefaultEC2Region && s.Region == "" {
 				s.Region = region
 			} else {
-				return errors.Wrapf(err, "provider region '%s' doesn't match region '%s'", s.Region, region)
+				return errors.Errorf("provider region '%s' doesn't match region '%s'", s.Region, region)
 			}
 		}
 		bytes, err := bson.Marshal(s)
@@ -143,9 +138,6 @@ func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, zone string) e
 				"settings": d.Provider,
 			}))
 		}
-	}
-	if err := s.Validate(); err != nil {
-		return errors.Wrapf(err, "Invalid EC2 settings in distro %s: %+v", d.Id, s)
 	}
 
 	return nil
@@ -462,6 +454,9 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	err := ec2Settings.FromDistroSettings(h.Distro, m.region)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting EC2 settings")
+	}
+	if err := ec2Settings.Validate(); err != nil {
+		return nil, errors.Wrapf(err, "Invalid EC2 settings in distro %s: %+v", h.Distro.Id, ec2Settings)
 	}
 	if ec2Settings.KeyName == "" && !h.UserHost {
 		if !h.SpawnOptions.SpawnedByTask {

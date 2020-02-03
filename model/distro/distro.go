@@ -25,7 +25,7 @@ type Distro struct {
 	WorkDir               string                  `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
 	Provider              string                  `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
 	ProviderSettings      *map[string]interface{} `bson:"settings" json:"settings,omitempty" mapstructure:"settings,omitempty"`
-	ProviderSettingsList  []birch.Document        `bson:"provider_settings" json:"provider_settings,omitempty" mapstructure:"provider_settings,omitempty"`
+	ProviderSettingsList  []*birch.Document       `bson:"provider_settings,omitempty" json:"provider_settings,omitempty" mapstructure:"provider_settings,omitempty"`
 	SetupAsSudo           bool                    `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`
 	Setup                 string                  `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
 	Teardown              string                  `bson:"teardown,omitempty" json:"teardown,omitempty" mapstructure:"teardown,omitempty"`
@@ -515,10 +515,10 @@ func (d *Distro) RemoveExtraneousProviderSettings(region string) {
 		}))
 		return
 	}
-	d.ProviderSettingsList = []birch.Document{doc}
+	d.ProviderSettingsList = []*birch.Document{doc}
 }
 
-func (d *Distro) GetProviderSettingByRegion(region string) (birch.Document, error) {
+func (d *Distro) GetProviderSettingByRegion(region string) (*birch.Document, error) {
 	for _, s := range d.ProviderSettingsList {
 		if val, ok := s.Lookup("region").StringValueOK(); ok {
 			if val == region {
@@ -526,7 +526,7 @@ func (d *Distro) GetProviderSettingByRegion(region string) (birch.Document, erro
 			}
 		}
 	}
-	return birch.Document{}, errors.Errorf("distro '%s' has no settings for region '%s'", d.Id, region)
+	return nil, errors.Errorf("distro '%s' has no settings for region '%s'", d.Id, region)
 }
 
 // GetResolvedHostAllocatorSettings combines the distro's HostAllocatorSettings fields with the

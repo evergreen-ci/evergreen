@@ -337,7 +337,7 @@ type APIDistro struct {
 	UserSpawnAllowed      bool                     `json:"user_spawn_allowed"`
 	Provider              *string                  `json:"provider"`
 	ProviderSettings      map[string]interface{}   `json:"settings"`
-	ProviderSettingsList  []birch.Document         `json:"provider_settings"`
+	ProviderSettingsList  []*birch.Document        `json:"provider_settings"`
 	ImageID               *string                  `json:"image_id"`
 	Arch                  *string                  `json:"arch"`
 	WorkDir               *string                  `json:"work_dir"`
@@ -378,8 +378,6 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	apiDistro.Aliases = d.Aliases
 	apiDistro.UserSpawnAllowed = d.SpawnAllowed
 	apiDistro.Provider = ToStringPtr(d.Provider)
-	// TODO: we should get rid of this now that providerSettings is included in APIDistro,
-	//  but I'm not sure if build currently relies on this field.
 	if d.ProviderSettings != nil && cloud.IsEc2Provider(d.Provider) {
 		ec2Settings := &cloud.EC2ProviderSettings{}
 		err := mapstructure.Decode(d.ProviderSettings, ec2Settings)

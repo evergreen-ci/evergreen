@@ -310,7 +310,7 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 	if err := doc.UnmarshalBSON(bytes); err != nil {
 		return nil, errors.Wrap(err, "error umarshalling settings bytes into document")
 	}
-	d.ProviderSettingsList = []birch.Document{doc}
+	d.ProviderSettingsList = []*birch.Document{&doc}
 
 	options, err := getAgentOptions(taskID, userID, createHost)
 	if err != nil {

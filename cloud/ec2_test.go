@@ -1167,7 +1167,7 @@ func (s *EC2Suite) TestGetRegion() {
 	s.Equal(evergreen.DefaultEC2Region, r)
 
 	(*s.h.Distro.ProviderSettings)["region"] = "us-west-2"
-	s.NoError(ec2Settings.FromDistroSettings(s.h.Distro, "us-west-2a"))
+	s.NoError(ec2Settings.FromDistroSettings(s.h.Distro, "us-west-2"))
 	r = ec2Settings.getRegion()
 	s.Equal("us-west-2", r)
 }
@@ -1284,16 +1284,16 @@ func (s *EC2Suite) TestFromDistroSettings() {
 	}
 	bytes, err := bson.Marshal(ec2Settings)
 	s.NoError(err)
-	doc1 := birch.Document{}
+	doc1 := &birch.Document{}
 	s.NoError(doc1.UnmarshalBSON(bytes))
 
 	bytes, err = bson.Marshal(settings2)
 	s.NoError(err)
-	doc2 := birch.Document{}
+	doc2 := &birch.Document{}
 	s.NoError(doc2.UnmarshalBSON(bytes))
-	d.ProviderSettingsList = []birch.Document{doc1, doc2}
+	d.ProviderSettingsList = []*birch.Document{doc1, doc2}
 
-	s.NoError(ec2Settings.FromDistroSettings(d, "us-east-2a"))
+	s.NoError(ec2Settings.FromDistroSettings(d, "us-east-2"))
 	s.Equal(ec2Settings.Region, "us-east-2")
 	s.Equal(ec2Settings.InstanceType, "other_instance")
 }
