@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 )
@@ -34,9 +35,9 @@ func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier st
 		return nil, errors.Errorf("could not find project '%s'", identifier)
 	}
 
-	usr := GetDBUserFromContext(ctx)
+	usr := route.MustHaveUser(ctx)
 
-	_, err = usr.AddFavoritedProject(identifier)
+	err = usr.AddFavoritedProject(identifier)
 	if err != nil {
 		return nil, errors.Wrap(err, "error adding project to user's favorites")
 	}

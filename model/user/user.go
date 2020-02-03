@@ -209,24 +209,25 @@ func (u *DBUser) IncPatchNumber() (int, error) {
 	return dbUser.PatchNumber, nil
 }
 
-func (u *DBUser) AddFavoritedProject(identifier string) ([]string, error) {
+func (u *DBUser) AddFavoritedProject(identifier string) error {
 	if util.StringSliceContains(u.FavoriteProjects, identifier) {
-		return nil, errors.Errorf("cannot add duplicate project '%s'", identifier)
+		return errors.Errorf("cannot add duplicate project '%s'", identifier)
 	}
 	update := bson.M{
 		"$push": bson.M{FavoriteProjectsKey: identifier},
 	}
 	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
-		return nil, err
+		return err
 	}
+
+	before := u.FavoriteProjects
 	u.FavoriteProjects = append(u.FavoriteProjects, identifier)
 
-	err := event.LogUserEvent(u.Id, event.UserEventTypeFavoriteProjectsUpdate, u.FavoriteProjects[:len(u.FavoriteProjects)-1], u.FavoriteProjects)
+	err := event.LogUserEvent(u.Id, event.UserEventTypeFavoriteProjectsUpdate, before, u.FavoriteProjects)
 	if err != nil {
-		return u.FavoriteProjects, errors.Errorf("error logging event for adding '%s' to user favorites", identifier)
+		grip.Alert(errors.Errorf("error logging event for adding '%s' to user favorites", identifier))
 	}
-
-	return u.FavoriteProjects, nil
+	return nil
 }
 
 func (u *DBUser) AddRole(role string) error {
