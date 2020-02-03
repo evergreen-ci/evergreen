@@ -519,6 +519,13 @@ func (d *Distro) RemoveExtraneousProviderSettings(region string) {
 }
 
 func (d *Distro) GetProviderSettingByRegion(region string) (*birch.Document, error) {
+	// if no region given, we assume the provided settings list is accurate
+	if region == "" {
+		if len(d.ProviderSettingsList) > 1 {
+			return nil, errors.Errorf("multiple provider settings available but no region given")
+		}
+		return d.ProviderSettingsList[0], nil
+	}
 	for _, s := range d.ProviderSettingsList {
 		if val, ok := s.Lookup("region").StringValueOK(); ok {
 			if val == region {

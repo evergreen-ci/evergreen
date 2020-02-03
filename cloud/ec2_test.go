@@ -1302,15 +1302,15 @@ func (s *EC2Suite) TestGetEC2ManagerOptions() {
 	d1 := distro.Distro{
 		Provider: evergreen.ProviderNameEc2OnDemand,
 		ProviderSettings: &map[string]interface{}{
-			"region":                "test-region",
+			"region":                evergreen.DefaultEC2Region,
 			"aws_access_key_id":     "key",
 			"aws_secret_access_key": "secret",
 		},
 	}
 
-	managerOpts, err := getEC2ManagerOptions(d1.Provider, d1.ProviderSettings)
+	managerOpts, err := getEC2ManagerOptions(d1)
 	s.NoError(err)
-	s.Equal("test-region", managerOpts.Region)
+	s.Equal(evergreen.DefaultEC2Region, managerOpts.Region)
 	s.Equal("key", managerOpts.ProviderKey)
 	s.Equal("secret", managerOpts.ProviderSecret)
 }

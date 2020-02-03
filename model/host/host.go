@@ -40,7 +40,6 @@ type Host struct {
 
 	// physical location of host
 	Project string `bson:"project" json:"project"`
-	Region  string `bson:"region" json:"region"`
 	Zone    string `bson:"zone" json:"zone"`
 
 	// True if the app server has done all necessary host setup work (although

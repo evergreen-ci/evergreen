@@ -188,7 +188,7 @@ func GetManager(ctx context.Context, env evergreen.Environment, mgrOpts ManagerO
 // provider name.
 func GetManagerOptions(d distro.Distro) (ManagerOpts, error) {
 	if IsEc2Provider(d.Provider) {
-		return getEC2ManagerOptions(d.Provider, d.ProviderSettings)
+		return getEC2ManagerOptions(d)
 	}
 	if d.Provider == evergreen.ProviderNameMock {
 		return getMockManagerOptions(d.Provider, d.ProviderSettings)

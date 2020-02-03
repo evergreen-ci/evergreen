@@ -273,9 +273,6 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 	if userID == "" {
 		ec2Settings.KeyName = createHost.KeyName // never use the distro's key
 	}
-	if createHost.Region != "" {
-		ec2Settings.Region = createHost.Region
-	}
 	if createHost.Subnet != "" {
 		ec2Settings.SubnetId = createHost.Subnet
 	}

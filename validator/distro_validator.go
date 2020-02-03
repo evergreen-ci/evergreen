@@ -123,6 +123,7 @@ func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, s *evergreen
 		})
 	}
 
+	// TODO: this later need to go through every manager to check
 	mgrOpts, err := cloud.GetManagerOptions(*d)
 	if err != nil {
 		return append(errs, ValidationError{
@@ -139,7 +140,6 @@ func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, s *evergreen
 	}
 
 	settings := mgr.GetSettings()
-
 	if d.ProviderSettings != nil {
 		if err = settings.FromDistroSettings(*d, mgrOpts.Region); err != nil {
 			return append(errs, ValidationError{

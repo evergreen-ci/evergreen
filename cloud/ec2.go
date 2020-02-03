@@ -95,10 +95,8 @@ func (s *EC2ProviderSettings) Validate() error {
 	return nil
 }
 
+// region is only provided if we want to filter by region
 func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string) error {
-	if region == "" {
-		region = evergreen.DefaultEC2Region
-	}
 	if len(d.ProviderSettingsList) != 0 {
 		settingsDoc, err := d.GetProviderSettingByRegion(region)
 		if err != nil {
@@ -121,7 +119,7 @@ func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string)
 			"output":  *s,
 		})
 		// error if region doesn't match (unless region is default)
-		if s.Region != region {
+		if region != "" && s.Region != region {
 			if region == evergreen.DefaultEC2Region && s.Region == "" {
 				s.Region = region
 			} else {
@@ -444,7 +442,6 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 			h.Distro.Id, h.Distro.Provider)
 	}
 
-	// TODO: either add h.Zone to this, or make m.region already know about h.Zone
 	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return nil, errors.Wrap(err, "error creating client")
 	}

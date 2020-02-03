@@ -71,7 +71,7 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 	defer m.client.Close()
 
 	ec2Settings := &EC2ProviderSettings{}
-	if err := ec2Settings.FromDistroSettings(h.Distro, h.Region); err != nil {
+	if err := ec2Settings.FromDistroSettings(h.Distro, ""); err != nil {
 		return nil, errors.Wrap(err, "error getting EC2 settings")
 	}
 	if err := ec2Settings.Validate(); err != nil {
