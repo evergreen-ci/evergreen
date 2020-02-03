@@ -13,7 +13,7 @@ func TestNaiveAuthManager(t *testing.T) {
 		authConfig := evergreen.AuthConfig{
 			Naive: &n,
 		}
-		userManager, canClearTokens, err := LoadUserManager(authConfig)
+		userManager, canClearTokens, err := LoadUserManager(&evergreen.Settings{AuthConfig: authConfig})
 		So(err, ShouldBeNil)
 		So(canClearTokens, ShouldBeFalse)
 		Convey("user manager should have nil functions for Login and LoginCallback handlers", func() {

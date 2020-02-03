@@ -4,6 +4,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -34,18 +35,25 @@ func FindUserByID(id string) (*user.DBUser, error) {
 
 // GetOrCreateUser fetches a user with the given userId and returns it. If no document exists for
 // that userId, inserts it along with the provided display name and email.
-func GetOrCreateUser(userId, displayName, email string) (*user.DBUser, error) {
+func GetOrCreateUser(userId, displayName, email, accessToken, refreshToken string) (*user.DBUser, error) {
 	u := &user.DBUser{}
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
+	setFields := bson.M{
+		user.DispNameKey:     displayName,
+		user.EmailAddressKey: email,
+	}
+	if accessToken != "" {
+		setFields[bsonutil.GetDottedKeyName(user.LoginCacheKey, user.LoginCacheAccessTokenKey)] = accessToken
+	}
+	if refreshToken != "" {
+		setFields[bsonutil.GetDottedKeyName(user.LoginCacheKey, user.LoginCacheRefreshTokenKey)] = refreshToken
+	}
 	res := env.DB().Collection(user.Collection).FindOneAndUpdate(ctx,
 		bson.M{user.IdKey: userId},
 		bson.M{
-			"$set": bson.M{
-				user.DispNameKey:     displayName,
-				user.EmailAddressKey: email,
-			},
+			"$set": setFields,
 			"$setOnInsert": bson.M{
 				user.APIKeyKey: util.RandomString(),
 			},

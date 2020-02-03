@@ -22,8 +22,8 @@ func TestBasicUserImplementation(t *testing.T) {
 		ID:           "usrid",
 		EmailAddress: "usr@example.net",
 		Key:          "sekret",
-		AccessToken:  "access",
-		RefreshToken: "refresh",
+		AccessToken:  "access_token",
+		RefreshToken: "refresh_token",
 		AccessRoles:  []string{"admin"},
 		Name:         "name",
 	}
@@ -31,8 +31,8 @@ func TestBasicUserImplementation(t *testing.T) {
 	assert.Equal(usr.Username(), "usrid")
 	assert.Equal(usr.Email(), "usr@example.net")
 	assert.Equal(usr.GetAPIKey(), "sekret")
-	assert.Equal(usr.GetAccessToken(), "access")
-	assert.Equal(usr.GetRefreshToken(), "refresh")
+	assert.Equal(usr.GetAccessToken(), "access_token")
+	assert.Equal(usr.GetRefreshToken(), "refresh_token")
 	assert.Equal(usr.Roles()[0], "admin")
 	assert.Equal(usr.DisplayName(), "name")
 

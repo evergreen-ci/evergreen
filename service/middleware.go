@@ -210,10 +210,9 @@ func (uis *UIServer) RedirectToLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	path := "/login#?"
 	if uis.UserManager.IsRedirect() {
-		path = "login/redirect?"
+		path = "/login/redirect?"
 	}
-	location := fmt.Sprintf("%v%vredirect=%v%v%v",
-		uis.Settings.Ui.Url,
+	location := fmt.Sprintf("%sredirect=%s%s%s",
 		path,
 		url.QueryEscape(r.URL.Path),
 		querySep,

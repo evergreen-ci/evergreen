@@ -14,25 +14,18 @@ type GithubLoginUser struct {
 	OrganizationsURL string
 }
 
-func (u *GithubLoginUser) DisplayName() string { return u.Name }
-func (u *GithubLoginUser) Email() string       { return u.EmailAddress }
-func (u *GithubLoginUser) Username() string    { return u.Login }
-func (u *GithubLoginUser) IsNil() bool         { return u == nil }
-func (u *GithubLoginUser) GetAPIKey() string   { return "" }
-func (u *GithubLoginUser) Roles() []string     { return []string{} }
+func (u *GithubLoginUser) DisplayName() string     { return u.Name }
+func (u *GithubLoginUser) Email() string           { return u.EmailAddress }
+func (u *GithubLoginUser) Username() string        { return u.Login }
+func (u *GithubLoginUser) IsNil() bool             { return u == nil }
+func (u *GithubLoginUser) GetAPIKey() string       { return "" }
+func (u *GithubLoginUser) GetAccessToken() string  { return "" }
+func (u *GithubLoginUser) GetRefreshToken() string { return "" }
+func (u *GithubLoginUser) Roles() []string         { return []string{} }
 
 func (u *GithubLoginUser) HasPermission(gimlet.PermissionOpts) bool {
 	grip.Alert("HasPermission has not been implemented for GithubLoginUser")
 	return false
-}
-func (u *GithubLoginUser) GetAccessToken() string {
-	grip.Alert("GetAccessToken not yet implemented for GithubLoginUser")
-	return ""
-}
-
-func (u *GithubLoginUser) GetRefreshToken() string {
-	grip.Alert("GetRefreshToken not yet implemented for GithubLoginUser")
-	return ""
 }
 
 type GithubAuthParameters struct {

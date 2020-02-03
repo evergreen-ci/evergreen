@@ -107,7 +107,7 @@ func TestBytesConverter(t *testing.T) {
 	assert := assert.New(t)
 
 	cases := [][]interface{}{
-		{fmt.Sprintf("%v", t), t},
+		{fmt.Sprintf("%v", http.DefaultClient), http.DefaultClient},
 		{"gimlet", "gimlet"},
 		{"gimlet", errors.New("gimlet")},
 		{"gimlet", []byte("gimlet")},
@@ -124,12 +124,14 @@ func TestBytesConverter(t *testing.T) {
 		in := c[1]
 
 		buf := &bytes.Buffer{}
-		_, _ = writePayload(buf, in)
+		_, err := writePayload(buf, in)
+		assert.NoError(err)
 		assert.Equal([]byte(out), buf.Bytes())
 	}
 
 	buf := &bytes.Buffer{}
-	_, _ = writePayload(buf, []string{"gimlet", "gimlet"})
+	_, err := writePayload(buf, []string{"gimlet", "gimlet"})
+	assert.NoError(err)
 	assert.Equal([]byte("gimlet\ngimlet"), buf.Bytes())
 }
 
