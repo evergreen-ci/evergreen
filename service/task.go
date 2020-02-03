@@ -524,7 +524,10 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 			grip.Warning(logReader.Close())
 			return
 		}
-		grip.Error(err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"task_id": projCtx.Task.Id,
+			"message": "problem getting buildlogger logs",
+		}))
 	}
 	ctx := r.Context()
 	usr := gimlet.GetUser(ctx)
@@ -588,7 +591,10 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		if err == nil {
 			defer logReader.Close()
 		} else {
-			grip.Error(err)
+			grip.Error(message.WrapError(err, message.Fields{
+				"task_id": projCtx.Task.Id,
+				"message": "problem getting buildlogger logs",
+			}))
 		}
 	}
 
@@ -621,7 +627,10 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		for err == nil {
 			line, err = reader.ReadString('\n')
 			if err != nil && err != io.EOF {
-				grip.Error(errors.Wrapf(err, "problem reading buildlogger log lines for '%s'", projCtx.Task.Id))
+				grip.Error(message.WrapError(err, message.Fields{
+					"task_id": projCtx.Task.Id,
+					"message": "problem reading buildlogger log lines",
+				}))
 				return
 			}
 			data.Buildlogger <- strings.TrimSuffix(line, "\n")
@@ -649,8 +658,13 @@ func getBuildloggerLogs(projCtx projectContext, r *http.Request, logType string,
 		return nil, errors.Wrap(err, "error getting auth token cookie for user")
 	}
 
-	url := fmt.Sprintf("https://%s", evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL)
-	url += fmt.Sprintf("/rest/v1/buildlogger/task_id/%s?n=%d&execution=%d&print_time=true", projCtx.Task.Id, tail, execution)
+	url += fmt.Sprintf(
+		"https://%s/rest/v1/buildlogger/task_id/%s?n=%d&execution=%d&print_time=true&print_priority=true",
+		evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL,
+		projCtx.Task.Id,
+		tail,
+		execution,
+	)
 	switch logType {
 	case apimodels.TaskLogPrefix:
 		url += fmt.Sprintf("&proc_name=%s", evergreen.LogTypeTask)

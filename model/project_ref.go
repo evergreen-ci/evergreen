@@ -233,6 +233,12 @@ func (projectRef *ProjectRef) Update() error {
 	)
 }
 
+func (projectRef *ProjectRef) checkDefaultLogger() {
+	if projectRef.DefaultLogger == "" {
+		projectRef.DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+	}
+}
+
 // FindOneProjectRef gets a project ref given the owner name, the repo
 // name and the project name
 func FindOneProjectRef(identifier string) (*ProjectRef, error) {
@@ -250,9 +256,7 @@ func FindOneProjectRef(identifier string) (*ProjectRef, error) {
 		return nil, nil
 	}
 
-	if projectRef.DefaultLogger == "" {
-		projectRef.DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
-	}
+	projectRef.checkDefaultLogger()
 
 	return projectRef, err
 }
@@ -269,9 +273,7 @@ func FindFirstProjectRef() (*ProjectRef, error) {
 		projectRef,
 	)
 
-	if projectRef.DefaultLogger == "" {
-		projectRef.DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
-	}
+	projectRef.checkDefaultLogger()
 
 	return projectRef, err
 }
@@ -312,9 +314,7 @@ func FindTaggedProjectRefs(includeDisabled bool, tags ...string) ([]ProjectRef, 
 	}
 
 	for i := range projectRefs {
-		if projectRefs[i].DefaultLogger == "" {
-			projectRefs[i].DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
-		}
+		projectRefs[i].checkDefaultLogger()
 	}
 
 	return projectRefs, nil
@@ -336,9 +336,7 @@ func FindAllTrackedProjectRefs() ([]ProjectRef, error) {
 	)
 
 	for i := range projectRefs {
-		if projectRefs[i].DefaultLogger == "" {
-			projectRefs[i].DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
-		}
+		projectRefs[i].checkDefaultLogger()
 	}
 
 	return projectRefs, err
@@ -362,9 +360,7 @@ func FindAllTrackedProjectRefsWithRepoInfo() ([]ProjectRef, error) {
 	)
 
 	for i := range projectRefs {
-		if projectRefs[i].DefaultLogger == "" {
-			projectRefs[i].DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
-		}
+		projectRefs[i].checkDefaultLogger()
 	}
 
 	return projectRefs, err
@@ -384,9 +380,7 @@ func FindAllProjectRefs() ([]ProjectRef, error) {
 	)
 
 	for i := range projectRefs {
-		if projectRefs[i].DefaultLogger == "" {
-			projectRefs[i].DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
-		}
+		projectRefs[i].checkDefaultLogger()
 	}
 
 	return projectRefs, err
@@ -416,9 +410,7 @@ func FindProjectRefsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRe
 	}
 
 	for i := range projectRefs {
-		if projectRefs[i].DefaultLogger == "" {
-			projectRefs[i].DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
-		}
+		projectRefs[i].checkDefaultLogger()
 	}
 
 	return projectRefs, err
@@ -444,9 +436,7 @@ func FindDownstreamProjects(project string) ([]ProjectRef, error) {
 	}
 
 	for i := range projectRefs {
-		if projectRefs[i].DefaultLogger == "" {
-			projectRefs[i].DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
-		}
+		projectRefs[i].checkDefaultLogger()
 	}
 
 	return projectRefs, err
@@ -486,7 +476,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (
 	}
 
 	if projectRefs[target].DefaultLogger == "" {
-		projectRefs[target].DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+		projectRefs[i].checkDefaultLogger()
 	}
 
 	return &projectRefs[target], nil
@@ -516,10 +506,6 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 		return nil, errors.Wrapf(err, "can't query for project with commit queue. owner: %s, repo: %s, branch: %s", owner, repo, branch)
 	}
 
-	if projectRef.DefaultLogger == "" {
-		projectRef.DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
-	}
-
 	return projectRef, nil
 }
 
@@ -543,9 +529,7 @@ func FindProjectRefsWithCommitQueueEnabled() ([]ProjectRef, error) {
 	}
 
 	for i := range projectRefs {
-		if projectRefs[i].DefaultLogger == "" {
-			projectRefs[i].DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
-		}
+		projectRefs[i].checkDefaultLogger()
 	}
 
 	return projectRefs, nil
@@ -574,9 +558,7 @@ func FindPeriodicProjects() ([]ProjectRef, error) {
 	}
 
 	for i := range projectRefs {
-		if projectRefs[i].DefaultLogger == "" {
-			projectRefs[i].DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
-		}
+		projectRefs[i].checkDefaultLogger()
 	}
 
 	return projectRefs, nil
@@ -607,9 +589,7 @@ func FindProjectRefs(key string, limit int, sortDir int) ([]ProjectRef, error) {
 	)
 
 	for i := range projectRefs {
-		if projectRefs[i].DefaultLogger == "" {
-			projectRefs[i].DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
-		}
+		projectRefs[i].checkDefaultLogger()
 	}
 
 	return projectRefs, err

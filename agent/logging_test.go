@@ -273,8 +273,6 @@ func TestLogkeeperMetadataPopulated(t *testing.T) {
 }
 
 func TestDefaultSender(t *testing.T) {
-	assert := assert.New(t)
-
 	agt := &Agent{
 		opts: Options{
 			HostID:       "host",
@@ -311,27 +309,25 @@ func TestDefaultSender(t *testing.T) {
 		tc.project.Loggers = &model.LoggerConfig{}
 		tc.taskConfig.ProjectRef = &model.ProjectRef{DefaultLogger: model.BuildloggerLogSender}
 
-		assert.NoError(agt.startLogging(ctx, tc))
+		assert.NoError(t, agt.startLogging(ctx, tc))
 		expectedLogOpts := []model.LogOpts{{Type: model.BuildloggerLogSender}}
-		assert.Equal(expectedLogOpts, tc.project.Loggers.Agent)
-		assert.Equal(expectedLogOpts, tc.project.Loggers.System)
-		assert.Equal(expectedLogOpts, tc.project.Loggers.Task)
+		assert.Equal(t, expectedLogOpts, tc.project.Loggers.Agent)
+		assert.Equal(t, expectedLogOpts, tc.project.Loggers.System)
+		assert.Equal(t, expectedLogOpts, tc.project.Loggers.Task)
 	})
 	t.Run("Invalid", func(t *testing.T) {
 		tc.project.Loggers = &model.LoggerConfig{}
 		tc.taskConfig.ProjectRef = &model.ProjectRef{DefaultLogger: model.SplunkLogSender}
 
-		assert.NoError(agt.startLogging(ctx, tc))
+		assert.NoError(t, agt.startLogging(ctx, tc))
 		expectedLogOpts := []model.LogOpts{{Type: model.EvergreenLogSender}}
-		assert.Equal(expectedLogOpts, tc.project.Loggers.Agent)
-		assert.Equal(expectedLogOpts, tc.project.Loggers.System)
-		assert.Equal(expectedLogOpts, tc.project.Loggers.Task)
+		assert.Equal(t, expectedLogOpts, tc.project.Loggers.Agent)
+		assert.Equal(t, expectedLogOpts, tc.project.Loggers.System)
+		assert.Equal(t, expectedLogOpts, tc.project.Loggers.Task)
 	})
 }
 
 func TestTimberSender(t *testing.T) {
-	assert := assert.New(t)
-
 	agt := &Agent{
 		opts: Options{
 			HostID:       "host",
@@ -369,5 +365,5 @@ func TestTimberSender(t *testing.T) {
 		},
 		taskModel: task,
 	}
-	assert.NoError(agt.startLogging(ctx, tc))
+	assert.NoError(t, agt.startLogging(ctx, tc))
 }
