@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -808,21 +809,25 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 		}
 
 		hosts, err := host.Find(host.IsUninitialized)
+		if err != nil {
+			return errors.Wrap(err, "error fetching uninitialized hosts")
+		}
 		grip.Info(message.Fields{
 			"message": "uninitialized hosts",
 			"number":  len(hosts),
 			"runner":  "hostinit",
 		})
+
+		runningHosts, err := host.Find(db.Query(host.IsLive()))
 		if err != nil {
-			return errors.Wrap(err, "error fetching uninitialized hosts")
+			return errors.Wrap(err, "problem getting running hosts")
 		}
-		grip.Error(message.WrapError(err, message.Fields{
-			"operation": "background task creation",
-			"cron":      createHostJobName,
-			"impact":    "hosts cannot start",
-		}))
-		if err != nil {
-			return errors.WithStack(err)
+		distroCount := map[string]int{}
+		for _, h := range runningHosts {
+			if _, exists := distroCount[h.Distro.Id]; !exists {
+				distroCount[h.Distro.Id] = 0
+			}
+			distroCount[h.Distro.Id] += 1
 		}
 
 		ts := util.RoundPartOfHour(part).Format(TSFormat)
@@ -846,19 +851,25 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 			if h.UserHost || h.SpawnOptions.SpawnedByTask {
 				// pass:
 				//    always start spawn hosts asap
+
 			} else {
-				if submitted > env.Settings().HostInit.HostThrottle {
-					// throttle hosts, so that we're starting very
-					// few hosts on every pass. Hostinit runs very
-					// frequently, lets not start too many all at
-					// once.
-					continue
+				num, _ := distroCount[h.Distro.Id]
+				if num == 0 || num < len(runningHosts)/100 {
+					// if there aren't many of these hosts up, start them even
+					// if `submitted` exceeds the throttle
 				} else {
-					// only increment for task hosts, since otherwise
-					// spawn hosts and hosts spawned by tasks could
-					// starve task hosts
-					submitted++
+					if submitted > env.Settings().HostInit.HostThrottle {
+						// throttle hosts, so that we're starting very
+						// few hosts on every pass. Hostinit runs very
+						// frequently, lets not start too many all at
+						// once.
+						continue
+					}
 				}
+				// only increment for task hosts, since otherwise
+				// spawn hosts and hosts spawned by tasks could
+				// starve task hosts
+				submitted++
 			}
 
 			catcher.Add(queue.Put(ctx, NewHostCreateJob(env, h, ts, 1, 0, false)))
