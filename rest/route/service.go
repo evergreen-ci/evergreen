@@ -129,7 +129,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/projects/{project_id}").Version(2).Patch().Wrap(checkUser, checkProjectAdmin, editProjectSettings).RouteHandler(makePatchProjectByID(sc, env.Settings()))
 	app.AddRoute("/projects/{project_id}").Version(2).Put().Wrap(superUser, createProject).RouteHandler(makePutProjectByID(sc))
 	app.AddRoute("/projects/{project_id}/copy").Version(2).Post().Wrap(checkUser, createProject, checkProjectAdmin, editProjectSettings).RouteHandler(makeCopyProject(sc))
-	app.AddRoute("/projects/{project_id}/copy_redacted").Version(2).Post().Wrap(checkUser, checkProjectAdmin, editProjectSettings).RouteHandler(makeCopyRedactedVars(sc))
+	app.AddRoute("/projects/{project_id}/copy_redacted_variables").Version(2).Post().Wrap(checkUser, checkProjectAdmin, editProjectSettings).RouteHandler(makeCopyRedactedVars(sc))
 	app.AddRoute("/projects/{project_id}/events").Version(2).Get().Wrap(checkUser, checkProjectAdmin, viewProjectSettings).RouteHandler(makeFetchProjectEvents(sc))
 	app.AddRoute("/projects/{project_id}/patches").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makePatchesByProjectRoute(sc))
 	app.AddRoute("/projects/{project_id}/recent_versions").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeFetchProjectVersions(sc))

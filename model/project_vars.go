@@ -154,25 +154,44 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	)
 }
 
-func (projectVars *ProjectVars) RedactedOnly() {
-	privateVars := map[string]string{}
+func (projectVars *ProjectVars) RedactedOnly() *ProjectVars {
+	res := ProjectVars{
+		Id:          projectVars.Id,
+		Vars:        map[string]string{},
+		PrivateVars: map[string]bool{},
+	}
 	for name, isPrivate := range projectVars.PrivateVars {
 		if val, ok := projectVars.Vars[name]; ok && isPrivate {
-			privateVars[name] = val
+			res.Vars[name] = val
+			res.PrivateVars[name] = true
 		}
 	}
-	projectVars.Vars = privateVars
+	return &res
 }
 
-func (projectVars *ProjectVars) RedactPrivateVars() {
-	if projectVars != nil &&
-		projectVars.Vars != nil &&
-		projectVars.PrivateVars != nil {
-		// Redact private variables
-		for k := range projectVars.Vars {
-			if val, ok := projectVars.PrivateVars[k]; ok && val {
-				projectVars.Vars[k] = ""
-			}
+func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
+	res := &ProjectVars{
+		Vars:        map[string]string{},
+		PrivateVars: map[string]bool{},
+	}
+	if projectVars == nil {
+		return res
+	}
+	res.Id = projectVars.Id
+	if projectVars.Vars == nil {
+		return res
+	}
+	if projectVars.PrivateVars == nil {
+		res.PrivateVars = map[string]bool{}
+	}
+	// Redact private variables
+	for k, v := range projectVars.Vars {
+		if val, ok := projectVars.PrivateVars[k]; ok && val {
+			res.Vars[k] = ""
+			res.PrivateVars[k] = projectVars.PrivateVars[k]
+		} else {
+			res.Vars[k] = v
 		}
 	}
+	return res
 }

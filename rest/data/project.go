@@ -162,9 +162,9 @@ func (pc *DBProjectConnector) FindProjectVarsById(id string, redactedOnly bool) 
 		}
 	}
 	if redactedOnly {
-		vars.RedactedOnly()
+		vars = vars.RedactedOnly()
 	} else { // only return values for redacted variables
-		vars.RedactPrivateVars()
+		vars = vars.RedactPrivateVars()
 	}
 
 	varsModel := restModel.APIProjectVars{}
@@ -190,7 +190,7 @@ func (pc *DBProjectConnector) UpdateProjectVars(projectId string, varsModel *res
 		return errors.Wrapf(err, "problem updating variables for project '%s'", vars.Id)
 	}
 
-	vars.RedactPrivateVars()
+	vars = vars.RedactPrivateVars()
 	varsModel.Vars = vars.Vars
 	varsModel.PrivateVars = vars.PrivateVars
 	varsModel.VarsToDelete = []string{}
@@ -369,9 +369,9 @@ func (pc *MockProjectConnector) FindProjectVarsById(id string, redactedOnly bool
 			}
 			res.PrivateVars = v.PrivateVars
 			if redactedOnly {
-				res.RedactedOnly()
+				res = res.RedactedOnly()
 			} else {
-				res.RedactPrivateVars()
+				res = res.RedactPrivateVars()
 			}
 			if err := varsModel.BuildFromService(res); err != nil {
 				return nil, errors.Wrapf(err, "error building project variables from service")
@@ -386,7 +386,7 @@ func (pc *MockProjectConnector) FindProjectVarsById(id string, redactedOnly bool
 }
 
 func (pc *MockProjectConnector) UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars) error {
-	tempVars := model.ProjectVars{
+	tempVars := &model.ProjectVars{
 		Id:   projectId,
 		Vars: map[string]string{},
 	}
@@ -409,7 +409,7 @@ func (pc *MockProjectConnector) UpdateProjectVars(projectId string, varsModel *r
 				tempVars.Vars[k] = v
 			}
 			tempVars.PrivateVars = cachedVars.PrivateVars
-			tempVars.RedactPrivateVars()
+			tempVars = tempVars.RedactPrivateVars()
 
 			// return modified variables
 			varsModel.Vars = tempVars.Vars
@@ -422,7 +422,10 @@ func (pc *MockProjectConnector) UpdateProjectVars(projectId string, varsModel *r
 	tempVars.Vars = varsModel.Vars
 	tempVars.PrivateVars = varsModel.PrivateVars
 	tempVars.Id = projectId
-	pc.CachedVars = append(pc.CachedVars, &tempVars)
+	pc.CachedVars = append(pc.CachedVars, tempVars)
+	// redact private variables
+	tempVars = tempVars.RedactPrivateVars()
+	varsModel.Vars = tempVars.Vars
 	return nil
 }
 
