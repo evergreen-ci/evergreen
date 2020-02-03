@@ -113,7 +113,10 @@ func (d *Distro) UpdateProviderSettings(bytes []byte) error {
 	if err := doc.UnmarshalBSON(bytes); err != nil {
 		return errors.Wrapf(err, "error unmarshalling settings bytes into document")
 	}
-	d.ProviderSettingsList = []birch.Document{doc}
+	if d.ProviderSettingsList == nil {
+		d.ProviderSettingsList = []birch.Document{}
+	}
+	d.ProviderSettingsList = append(d.ProviderSettingsList, doc)
 	if err := d.Update(); err != nil {
 		return errors.Wrapf(err, "error updating distro")
 	}

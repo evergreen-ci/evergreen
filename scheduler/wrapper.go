@@ -117,7 +117,6 @@ func UpdateStaticDistro(d distro.Distro) error {
 }
 
 func doStaticHostUpdate(d distro.Distro) ([]string, error) {
-	// TODO: Does a provider label fit this? I think ProviderNameStatic
 	settings := &cloud.StaticSettings{}
 	if err := settings.FromDistroSettings(d, ""); err != nil {
 		return nil, errors.Wrapf(err, "invalid static settings for '%s'", d.Id)

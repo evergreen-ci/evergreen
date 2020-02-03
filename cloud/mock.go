@@ -5,9 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model/distro"
-
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"

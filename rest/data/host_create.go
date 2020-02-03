@@ -11,10 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/birch"
-	"go.mongodb.org/mongo-driver/bson"
-
 	"github.com/docker/docker/api/types"
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -27,6 +25,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // DBCreateHostConnector supports `host.create` commands from the agent.
