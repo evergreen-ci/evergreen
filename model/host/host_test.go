@@ -2465,9 +2465,9 @@ func TestIsIdleParent(t *testing.T) {
 	assert.True(idle)
 	assert.NoError(err)
 
-	// has decommissioned container --> false
+	// has decommissioned container --> true
 	idle, err = host4.IsIdleParent()
-	assert.False(idle)
+	assert.True(idle)
 	assert.NoError(err)
 
 	// ios a container --> false

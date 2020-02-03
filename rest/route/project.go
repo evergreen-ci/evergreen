@@ -534,7 +534,8 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = responder.SetStatus(http.StatusCreated); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusCreated))
 	}
-	if err = h.sc.CreateProject(dbProjectRef); err != nil {
+	u := gimlet.GetUser(ctx).(*user.DBUser)
+	if err = h.sc.CreateProject(dbProjectRef, u); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error for insert() distro with distro id '%s'", h.projectID))
 	}
 

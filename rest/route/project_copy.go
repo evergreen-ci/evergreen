@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -70,7 +71,8 @@ func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
 	projectToCopy.Enabled = false
 	projectToCopy.PRTestingEnabled = false
 	projectToCopy.CommitQueue.Enabled = false
-	if err = p.sc.CreateProject(projectToCopy); err != nil {
+	u := gimlet.GetUser(ctx).(*user.DBUser)
+	if err = p.sc.CreateProject(projectToCopy, u); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error creating project for id '%s'", p.newProjectId))
 	}
 	apiProjectRef := &model.APIProjectRef{}

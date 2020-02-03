@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	adb "github.com/mongodb/anser/db"
@@ -38,8 +39,8 @@ func (pc *DBProjectConnector) FindProjectById(id string) (*model.ProjectRef, err
 }
 
 // CreateProject inserts the given model.ProjectRef.
-func (pc *DBProjectConnector) CreateProject(projectRef *model.ProjectRef) error {
-	err := projectRef.Insert()
+func (pc *DBProjectConnector) CreateProject(projectRef *model.ProjectRef, u *user.DBUser) error {
+	err := projectRef.Add(u)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -331,7 +332,7 @@ func (pc *MockProjectConnector) FindProjectById(projectId string) (*model.Projec
 	}
 }
 
-func (pc *MockProjectConnector) CreateProject(projectRef *model.ProjectRef) error {
+func (pc *MockProjectConnector) CreateProject(projectRef *model.ProjectRef, u *user.DBUser) error {
 	for _, p := range pc.CachedProjects {
 		if p.Identifier == projectRef.Identifier {
 			return gimlet.ErrorResponse{

@@ -1,6 +1,7 @@
 package cron
 
 import (
+	"log"
 	"time"
 )
 
@@ -23,23 +24,15 @@ func WithSeconds() Option {
 }
 
 // WithParser overrides the parser used for interpreting job schedules.
-func WithParser(p ScheduleParser) Option {
+func WithParser(p Parser) Option {
 	return func(c *Cron) {
 		c.parser = p
 	}
 }
 
-// WithChain specifies Job wrappers to apply to all jobs added to this cron.
-// Refer to the Chain* functions in this package for provided wrappers.
-func WithChain(wrappers ...JobWrapper) Option {
+// WithPanicLogger overrides the logger used for logging job panics.
+func WithPanicLogger(l *log.Logger) Option {
 	return func(c *Cron) {
-		c.chain = NewChain(wrappers...)
-	}
-}
-
-// WithLogger uses the provided logger.
-func WithLogger(logger Logger) Option {
-	return func(c *Cron) {
-		c.logger = logger
+		c.logger = l
 	}
 }

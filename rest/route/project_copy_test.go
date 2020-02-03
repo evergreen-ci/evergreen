@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -81,6 +82,7 @@ func (s *ProjectCopySuite) TestCopyToExistingProjectFails() {
 
 func (s *ProjectCopySuite) TestCopyToNewProject() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{})
 	s.route.oldProjectId = "projectA"
 	s.route.newProjectId = "projectC"
 	resp := s.route.Run(ctx)

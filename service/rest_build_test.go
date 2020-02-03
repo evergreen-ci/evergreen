@@ -26,7 +26,7 @@ var buildTestConfig = testutil.TestConfig()
 
 func TestGetBuildInfo(t *testing.T) {
 
-	userManager, _, err := auth.LoadUserManager(buildTestConfig.AuthConfig)
+	userManager, _, err := auth.LoadUserManager(buildTestConfig)
 	require.NoError(t, err, "Failure in loading UserManager from config")
 
 	uis := UIServer{
@@ -189,7 +189,7 @@ func TestGetBuildInfo(t *testing.T) {
 
 func TestGetBuildStatus(t *testing.T) {
 
-	userManager, _, err := auth.LoadUserManager(buildTestConfig.AuthConfig)
+	userManager, _, err := auth.LoadUserManager(buildTestConfig)
 	require.NoError(t, err, "Failure in loading UserManager from config")
 
 	uis := UIServer{

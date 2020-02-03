@@ -88,8 +88,8 @@ type Connector interface {
 	// Find the project matching the given ProjectId.
 	FindProjectById(string) (*model.ProjectRef, error)
 	// Create/Update a project the given projectRef
-	CreateProject(projectRef *model.ProjectRef) error
-	UpdateProject(projectRef *model.ProjectRef) error
+	CreateProject(*model.ProjectRef, *user.DBUser) error
+	UpdateProject(*model.ProjectRef) error
 
 	// EnableWebhooks creates a webhook for the project's owner/repo if one does not exist.
 	// If unable to setup the new webhook, returns false but no error.

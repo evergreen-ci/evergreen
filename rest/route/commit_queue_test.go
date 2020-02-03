@@ -181,7 +181,7 @@ func (s *CommitQueueSuite) TestGetItemAuthor() {
 			PatchType: commitqueue.CLIPatchType,
 		},
 	}
-	s.NoError(s.sc.CreateProject(pRef))
+	s.NoError(s.sc.CreateProject(pRef, nil))
 
 	route.projectID = pRef.Identifier
 	route.item = *p.Id
@@ -195,7 +195,7 @@ func (s *CommitQueueSuite) TestGetItemAuthor() {
 			PatchType: commitqueue.PRPatchType,
 		},
 	}
-	s.NoError(s.sc.CreateProject(pRef))
+	s.NoError(s.sc.CreateProject(pRef, nil))
 	route.projectID = pRef.Identifier
 	route.item = "1234"
 	resp = route.Run(ctx)

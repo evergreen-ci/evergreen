@@ -104,6 +104,20 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		return
 	}
 
+	if j.host.HasContainers {
+		idle, err := j.host.IsIdleParent()
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "problem checking if host is an idle parent",
+				"host":    j.host.Id,
+				"job":     j.ID(),
+			}))
+		}
+		if !idle {
+			return
+		}
+	}
+
 	if err = j.host.DeleteJasperCredentials(ctx, j.env); err != nil {
 		j.AddError(err)
 		grip.Error(message.WrapError(err, message.Fields{

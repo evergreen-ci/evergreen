@@ -14,11 +14,19 @@ import (
 
 //LoadUserManager is used to check the configuration for authentication and create a UserManager
 // depending on what type of authentication is used.
-func LoadUserManager(authConfig evergreen.AuthConfig) (um gimlet.UserManager, supportsClearTokens bool, err error) {
+func LoadUserManager(settings *evergreen.Settings) (um gimlet.UserManager, supportsClearTokens bool, err error) {
+	authConfig := settings.AuthConfig
 	makeLDAPManager := func() (gimlet.UserManager, bool, error) {
 		manager, err := NewLDAPUserManager(authConfig.LDAP)
 		if err != nil {
 			return nil, false, errors.Wrap(err, "problem setting up ldap authentication")
+		}
+		return manager, true, nil
+	}
+	makeOktaManager := func() (gimlet.UserManager, bool, error) {
+		manager, err := NewOktaUserManager(authConfig.Okta, settings.Ui.Url, settings.Ui.LoginDomain)
+		if err != nil {
+			return nil, false, errors.Wrap(err, "problem setting up okta authentication")
 		}
 		return manager, true, nil
 	}
@@ -30,12 +38,7 @@ func LoadUserManager(authConfig evergreen.AuthConfig) (um gimlet.UserManager, su
 		return manager, false, nil
 	}
 	makeGithubManager := func() (gimlet.UserManager, bool, error) {
-		env := evergreen.GetEnvironment()
-		var domain string
-		if env != nil {
-			domain = env.Settings().Ui.LoginDomain
-		}
-		manager, err := NewGithubUserManager(authConfig.Github, domain)
+		manager, err := NewGithubUserManager(authConfig.Github, settings.Ui.LoginDomain)
 		if err != nil {
 			return nil, false, errors.Wrap(err, "problem setting up github authentication")
 		}
@@ -46,6 +49,10 @@ func LoadUserManager(authConfig evergreen.AuthConfig) (um gimlet.UserManager, su
 	case evergreen.AuthLDAPKey:
 		if authConfig.LDAP != nil {
 			return makeLDAPManager()
+		}
+	case evergreen.AuthOktaKey:
+		if authConfig.Okta != nil {
+			return makeOktaManager()
 		}
 	case evergreen.AuthGithubKey:
 		if authConfig.Github != nil {
@@ -59,6 +66,9 @@ func LoadUserManager(authConfig evergreen.AuthConfig) (um gimlet.UserManager, su
 
 	if authConfig.LDAP != nil {
 		return makeLDAPManager()
+	}
+	if authConfig.Okta != nil {
+		return makeOktaManager()
 	}
 	if authConfig.Naive != nil {
 		return makeNaiveManager()
@@ -113,7 +123,7 @@ func IsSuperUser(superUsers []string, u gimlet.User) bool {
 }
 
 func getOrCreateUser(u gimlet.User) (gimlet.User, error) {
-	return model.GetOrCreateUser(u.Username(), u.DisplayName(), u.Email())
+	return model.GetOrCreateUser(u.Username(), u.DisplayName(), u.Email(), u.GetAccessToken(), u.GetRefreshToken())
 }
 
 func getUserByID(id string) (gimlet.User, error) { return model.FindUserByID(id) }
