@@ -7,11 +7,13 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // vsphereManager implements the Manager interface for vSphere.
@@ -48,6 +50,33 @@ func (opts *vsphereSettings) Validate() error {
 		return errors.New("memory in Mb must be non-negative")
 	}
 
+	return nil
+}
+
+func (opts *vsphereSettings) FromDistroSettings(d distro.Distro, _ string) error {
+	if len(d.ProviderSettingsList) != 0 {
+		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		if err := bson.Unmarshal(bytes, opts); err != nil {
+			return errors.Wrap(err, "error unmarshalling bson into provider settings")
+		}
+	} else if d.ProviderSettings != nil {
+		if err := mapstructure.Decode(d.ProviderSettings, opts); err != nil {
+			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, opts)
+		}
+		bytes, err := bson.Marshal(opts)
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		if err := d.UpdateProviderSettings(bytes); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"distro":   d.Id,
+				"settings": d.Provider,
+			}))
+		}
+	}
 	return nil
 }
 
@@ -92,7 +121,7 @@ func (m *vsphereManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Hos
 
 	s := &vsphereSettings{}
 	if h.Distro.ProviderSettings != nil {
-		if err := mapstructure.Decode(h.Distro.ProviderSettings, s); err != nil {
+		if err := s.FromDistroSettings(h.Distro, ""); err != nil {
 			return nil, errors.Wrapf(err, "Error decoding params for distro %s", h.Distro.Id)
 		}
 	}

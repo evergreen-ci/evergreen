@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
 
@@ -142,7 +141,7 @@ func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, s *evergreen
 	settings := mgr.GetSettings()
 
 	if d.ProviderSettings != nil {
-		if err = mapstructure.Decode(d.ProviderSettings, settings); err != nil {
+		if err = settings.FromDistroSettings(*d, mgrOpts.Region); err != nil {
 			return append(errs, ValidationError{
 				Message: fmt.Sprintf("distro '%v' decode error: %v", distro.ProviderSettingsKey, err),
 				Level:   Error,

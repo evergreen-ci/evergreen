@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
@@ -118,10 +117,10 @@ func UpdateStaticDistro(d distro.Distro) error {
 }
 
 func doStaticHostUpdate(d distro.Distro) ([]string, error) {
+	// TODO: Does a provider label fit this? I think ProviderNameStatic
 	settings := &cloud.StaticSettings{}
-	err := mapstructure.Decode(d.ProviderSettings, settings)
-	if err != nil {
-		return nil, errors.Errorf("invalid static settings for '%v'", d.Id)
+	if err := settings.FromDistroSettings(d, ""); err != nil {
+		return nil, errors.Wrapf(err, "invalid static settings for '%s'", d.Id)
 	}
 
 	staticHosts := []string{}

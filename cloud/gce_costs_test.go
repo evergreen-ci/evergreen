@@ -43,6 +43,10 @@ func (s *GCESuite) TestZoneToRegion() {
 	s.NoError(err)
 	s.Equal("us-west1", reg)
 
+	reg, err := zoneToRegion("us-west1")
+	s.NoError(err)
+	s.Equal("us-west1", reg)
+
 	reg, err = zoneToRegion("europe-west2-a")
 	s.NoError(err)
 	s.Equal("europe-west2", reg)

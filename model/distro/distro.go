@@ -8,11 +8,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -23,6 +25,7 @@ type Distro struct {
 	WorkDir               string                  `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
 	Provider              string                  `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
 	ProviderSettings      *map[string]interface{} `bson:"settings" json:"settings,omitempty" mapstructure:"settings,omitempty"`
+	ProviderSettingsList  []birch.Document        `bson:"provider_settings" json:"provider_settings,omitempty" mapstructure:"provider_settings,omitempty"`
 	SetupAsSudo           bool                    `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`
 	Setup                 string                  `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
 	Teardown              string                  `bson:"teardown,omitempty" json:"teardown,omitempty" mapstructure:"teardown,omitempty"`
@@ -496,6 +499,34 @@ func (distros DistroGroup) GetDistroIds() []string {
 		ids = append(ids, d.Id)
 	}
 	return ids
+}
+
+func (d *Distro) RemoveExtraneousProviderSettings(region string) {
+	if len(d.ProviderSettingsList) <= 1 {
+		return
+	}
+	doc, err := d.GetProviderSettingByRegion(region)
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":       "provider list missing region",
+			"distro":        d.Id,
+			"region":        region,
+			"settings_list": d.ProviderSettingsList,
+		}))
+		return
+	}
+	d.ProviderSettingsList = []birch.Document{doc}
+}
+
+func (d *Distro) GetProviderSettingByRegion(region string) (birch.Document, error) {
+	for _, s := range d.ProviderSettingsList {
+		if val, ok := s.Lookup("region").StringValueOK(); ok {
+			if val == region {
+				return s, nil
+			}
+		}
+	}
+	return birch.Document{}, errors.Errorf("distro '%s' has no settings for region '%s'", d.Id, region)
 }
 
 // GetResolvedHostAllocatorSettings combines the distro's HostAllocatorSettings fields with the

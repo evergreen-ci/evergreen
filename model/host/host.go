@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -203,6 +204,42 @@ type DockerOptions struct {
 	SkipImageBuild bool `mapstructure:"skip_build" bson:"skip_build,omitempty" json:"skip_build,omitempty"`
 	// list of container environment variables KEY=VALUE
 	EnvironmentVars []string `mapstructure:"environment_vars" bson:"environment_vars,omitempty" json:"environment_vars,omitempty"`
+}
+
+func (opts *DockerOptions) FromDistroSettings(d distro.Distro, _ string) error {
+	if len(d.ProviderSettingsList) != 0 {
+		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		if err := bson.Unmarshal(bytes, opts); err != nil {
+			return errors.Wrap(err, "error unmarshalling bson into provider settings")
+		}
+	} else if d.ProviderSettings != nil {
+		if err := mapstructure.Decode(d.ProviderSettings, opts); err != nil {
+			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, opts)
+		}
+		bytes, err := bson.Marshal(opts)
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		if err := d.UpdateProviderSettings(bytes); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"distro":   d.Id,
+				"settings": d.Provider,
+			}))
+		}
+	}
+	return nil
+}
+
+// Validate checks that the settings from the config file are sane.
+func (opts *DockerOptions) Validate() error {
+	if opts.Image == "" {
+		return errors.New("Image must not be empty")
+	}
+
+	return nil
 }
 
 // ProvisionOptions is struct containing options about how a new host should be set up.

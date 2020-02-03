@@ -11,6 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/birch"
+	"go.mongodb.org/mongo-driver/bson"
+
 	"github.com/docker/docker/api/types"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -233,8 +236,8 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 		if err != nil {
 			return nil, errors.Wrap(err, "problem finding distro")
 		}
-		if err = mapstructure.Decode(d.ProviderSettings, &ec2Settings); err != nil {
-			return nil, errors.Wrap(err, "problem unmarshaling provider settings")
+		if err := ec2Settings.FromDistroSettings(d, createHost.Region); err != nil {
+			return nil, errors.Wrapf(err, "error getting ec2 provider from distro")
 		}
 	}
 
@@ -295,9 +298,20 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 
 	ec2Settings.IPv6 = createHost.IPv6
 	ec2Settings.IsVpc = true // task-spawned hosts do not support ec2 classic
+
+	// update local distro with modified settings
 	if err = mapstructure.Decode(ec2Settings, &d.ProviderSettings); err != nil {
 		return nil, errors.Wrap(err, "error marshaling provider settings")
 	}
+	bytes, err := bson.Marshal(ec2Settings)
+	if err != nil {
+		return nil, errors.Wrap(err, "error marshalling provider setting into bson")
+	}
+	doc := birch.Document{}
+	if err := doc.UnmarshalBSON(bytes); err != nil {
+		return nil, errors.Wrap(err, "error umarshalling settings bytes into document")
+	}
+	d.ProviderSettingsList = []birch.Document{doc}
 
 	options, err := getAgentOptions(taskID, userID, createHost)
 	if err != nil {

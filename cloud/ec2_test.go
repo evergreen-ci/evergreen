@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/birch"
+	"go.mongodb.org/mongo-driver/bson"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
@@ -1160,12 +1163,12 @@ func (s *EC2Suite) TestGetRegion() {
 	s.Equal(evergreen.DefaultEC2Region, r)
 
 	(*s.h.Distro.ProviderSettings)["region"] = evergreen.DefaultEC2Region
-	s.NoError(ec2Settings.fromDistroSettings(s.h.Distro))
+	s.NoError(ec2Settings.FromDistroSettings(s.h.Distro, evergreen.DefaultEC2Region))
 	r = ec2Settings.getRegion()
 	s.Equal(evergreen.DefaultEC2Region, r)
 
 	(*s.h.Distro.ProviderSettings)["region"] = "us-west-2"
-	s.NoError(ec2Settings.fromDistroSettings(s.h.Distro))
+	s.NoError(ec2Settings.FromDistroSettings(s.h.Distro, "us-west-2a"))
 	r = ec2Settings.getRegion()
 	s.Equal("us-west-2", r)
 }
@@ -1261,13 +1264,39 @@ func (s *EC2Suite) TestFromDistroSettings() {
 	}
 
 	ec2Settings := &EC2ProviderSettings{}
-	s.NoError(ec2Settings.fromDistroSettings(d))
+	s.NoError(ec2Settings.FromDistroSettings(d, evergreen.DefaultEC2Region))
 	s.Equal("key", ec2Settings.KeyName)
 	s.Equal("ami", ec2Settings.AMI)
 	s.Equal("instance", ec2Settings.InstanceType)
 	s.Len(ec2Settings.SecurityGroupIDs, 1)
 	s.Equal("abcdef", ec2Settings.SecurityGroupIDs[0])
 	s.Equal(float64(0.001), ec2Settings.BidPrice)
+	s.Equal(evergreen.DefaultEC2Region, ec2Settings.Region)
+
+	// create provider list, choose by region
+	settings2 := EC2ProviderSettings{
+		Region:           "us-east-2",
+		AMI:              "other_ami",
+		InstanceType:     "other_instance",
+		SecurityGroupIDs: []string{"ghijkl"},
+		BidPrice:         float64(0.002),
+		AWSKeyID:         "other_key_id",
+		KeyName:          "other_key",
+	}
+	bytes, err := bson.Marshal(ec2Settings)
+	s.NoError(err)
+	doc1 := birch.Document{}
+	s.NoError(doc1.UnmarshalBSON(bytes))
+
+	bytes, err = bson.Marshal(settings2)
+	s.NoError(err)
+	doc2 := birch.Document{}
+	s.NoError(doc2.UnmarshalBSON(bytes))
+	d.ProviderSettingsList = []birch.Document{doc1, doc2}
+
+	s.NoError(ec2Settings.FromDistroSettings(d, "us-east-2a"))
+	s.Equal(ec2Settings.Region, "us-east-2")
+	s.Equal(ec2Settings.InstanceType, "other_instance")
 }
 
 func (s *EC2Suite) TestGetEC2ManagerOptions() {

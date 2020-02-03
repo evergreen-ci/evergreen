@@ -19,6 +19,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func isHostSpot(h *host.Host) bool {
@@ -30,6 +31,10 @@ func isHostOnDemand(h *host.Host) bool {
 
 // EC2ProviderSettings describes properties of managed instances.
 type EC2ProviderSettings struct {
+	// Region is the EC2 region in which the instance will start. Empty is equivalent to the Evergreen default region.
+	// This should remain one of the first fields to speed up the birch document iterator.
+	Region string `mapstructure:"region" json:"region" bson:"region,omitempty"`
+
 	// AMI is the AMI ID.
 	AMI string `mapstructure:"ami" json:"ami,omitempty" bson:"ami,omitempty"`
 
@@ -68,10 +73,6 @@ type EC2ProviderSettings struct {
 
 	// UserData are commands to run after the instance starts.
 	UserData string `mapstructure:"user_data" json:"user_data" bson:"user_data,omitempty"`
-
-	// Region is the EC2 region in which the instance will start. If empty,
-	// the ec2Manager will spawn in "us-east-1".
-	Region string `mapstructure:"region" json:"region" bson:"region,omitempty"`
 }
 
 // Validate that essential EC2ProviderSettings fields are not empty.
@@ -94,8 +95,28 @@ func (s *EC2ProviderSettings) Validate() error {
 	return nil
 }
 
-func (s *EC2ProviderSettings) fromDistroSettings(d distro.Distro) error {
-	if d.ProviderSettings != nil {
+func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, zone string) error {
+	region := evergreen.DefaultEC2Region
+	var err error
+	if zone != "" {
+		region, err = zoneToRegion(zone)
+		if err != nil {
+			return errors.Wrapf(err, "invalid host zone '%s'", zone)
+		}
+	}
+	if len(d.ProviderSettingsList) != 0 {
+		settingsDoc, err := d.GetProviderSettingByRegion(region)
+		if err != nil {
+			return errors.Wrapf(err, "providers list doesn't contain region '%s'", region)
+		}
+		bytes, err := settingsDoc.MarshalBSON()
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		if err := bson.Unmarshal(bytes, s); err != nil {
+			return errors.Wrap(err, "error unmarshalling bson into provider settings")
+		}
+	} else if d.ProviderSettings != nil {
 		if err := mapstructure.Decode(d.ProviderSettings, s); err != nil {
 			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, s)
 		}
@@ -104,6 +125,24 @@ func (s *EC2ProviderSettings) fromDistroSettings(d distro.Distro) error {
 			"input":   *d.ProviderSettings,
 			"output":  *s,
 		})
+		// error if region doesn't match (unless region is default)
+		if s.Region != region {
+			if region == evergreen.DefaultEC2Region && s.Region == "" {
+				s.Region = region
+			} else {
+				return errors.Wrapf(err, "provider region '%s' doesn't match region '%s'", s.Region, region)
+			}
+		}
+		bytes, err := bson.Marshal(s)
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		if err := d.UpdateProviderSettings(bytes); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"distro":   d.Id,
+				"settings": d.Provider,
+			}))
+		}
 	}
 	if err := s.Validate(); err != nil {
 		return errors.Wrapf(err, "Invalid EC2 settings in distro %s: %+v", d.Id, s)
@@ -413,13 +452,14 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 			h.Distro.Id, h.Distro.Provider)
 	}
 
+	// TODO: either add h.Zone to this, or make m.region already know about h.Zone
 	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return nil, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
 
 	ec2Settings := &EC2ProviderSettings{}
-	err := ec2Settings.fromDistroSettings(h.Distro)
+	err := ec2Settings.FromDistroSettings(h.Distro, m.region)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting EC2 settings")
 	}

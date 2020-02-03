@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model/distro"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mitchellh/mapstructure"
@@ -232,6 +234,10 @@ func (_ *mockManager) GetSettings() ProviderSettings {
 }
 
 func (_ *mockManager) Validate() error {
+	return nil
+}
+
+func (_ *mockManager) FromDistroSettings(_ distro.Distro, _ string) error {
 	return nil
 }
 

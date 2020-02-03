@@ -13,6 +13,10 @@ import (
 // ProviderSettings exposes provider-specific configuration settings for a Manager.
 type ProviderSettings interface {
 	Validate() error
+
+	// If zone is specified, returns the provider settings for that region.
+	// This is currently only being implemented for EC2 hosts.
+	FromDistroSettings(distro.Distro, string) error
 }
 
 //Manager is an interface which handles creating new hosts or modifying

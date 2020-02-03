@@ -1,6 +1,7 @@
 package distro
 
 import (
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
@@ -105,6 +106,18 @@ func (d *Distro) Insert() error {
 // Update updates one distro.
 func (d *Distro) Update() error {
 	return db.UpdateId(Collection, d.Id, d)
+}
+
+func (d *Distro) UpdateProviderSettings(bytes []byte) error {
+	doc := birch.Document{}
+	if err := doc.UnmarshalBSON(bytes); err != nil {
+		return errors.Wrapf(err, "error unmarshalling settings bytes into document")
+	}
+	d.ProviderSettingsList = []birch.Document{doc}
+	if err := d.Update(); err != nil {
+		return errors.Wrapf(err, "error updating distro")
+	}
+	return nil
 }
 
 // Remove removes one distro.
