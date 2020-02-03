@@ -822,12 +822,9 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 		if err != nil {
 			return errors.Wrap(err, "problem getting running hosts")
 		}
-		distroCount := map[string]int{}
+		runningDistroCount := make(map[string]int)
 		for _, h := range runningHosts {
-			if _, exists := distroCount[h.Distro.Id]; !exists {
-				distroCount[h.Distro.Id] = 0
-			}
-			distroCount[h.Distro.Id] += 1
+			runningDistroCount[h.Distro.Id] += 1
 		}
 
 		ts := util.RoundPartOfHour(part).Format(TSFormat)
@@ -853,10 +850,12 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 				//    always start spawn hosts asap
 
 			} else {
-				num, _ := distroCount[h.Distro.Id]
+				num := runningDistroCount[h.Distro.Id]
 				if num == 0 || num < len(runningHosts)/100 {
 					// if there aren't many of these hosts up, start them even
-					// if `submitted` exceeds the throttle
+					// if `submitted` exceeds the throttle, but increment each
+					// time so we only create hosts up to the threshold
+					runningDistroCount[h.Distro.Id] += 1
 				} else {
 					if submitted > env.Settings().HostInit.HostThrottle {
 						// throttle hosts, so that we're starting very
