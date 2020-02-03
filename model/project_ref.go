@@ -506,6 +506,8 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 		return nil, errors.Wrapf(err, "can't query for project with commit queue. owner: %s, repo: %s, branch: %s", owner, repo, branch)
 	}
 
+	projectRef.checkDefaultLogger()
+
 	return projectRef, nil
 }
 
