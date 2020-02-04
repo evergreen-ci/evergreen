@@ -324,16 +324,10 @@ func TestHostRsync(t *testing.T) {
 			assert.Equal(t, remoteFileContent, newLocalContent)
 		},
 		"ParentDirectoriesWillBeCreatedForRemoteFile": func(ctx context.Context, t *testing.T, localFile, remoteFile, localDir, remoteDir string) {
-			cmd, err := buildRsyncCommand(ctx, rsyncOpts{local: localDir, remote: remoteDir, makeParentDirs: true})
+			cmd, err := buildRsyncCommand(ctx, rsyncOpts{local: localDir, remote: remoteDir, makeRemoteParentDirs: true})
 			require.NoError(t, err)
 			require.NotNil(t, cmd)
 			assert.Contains(t, cmd.Args, fmt.Sprintf(`--rsync-path='mkdir -p "%s" && rsync'`, filepath.Dir(remoteDir)))
-		},
-		"ParentDirectoriesWillBeCreatedForLocalFile": func(ctx context.Context, t *testing.T, localFile, remoteFile, localDir, remoteDir string) {
-			cmd, err := buildRsyncCommand(ctx, rsyncOpts{local: localDir, remote: remoteDir, makeParentDirs: true, pull: true})
-			require.NoError(t, err)
-			require.NotNil(t, cmd)
-			assert.Contains(t, cmd.Args, fmt.Sprintf(`--rsync-path='mkdir -p "%s" && rsync'`, filepath.Dir(localDir)))
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
