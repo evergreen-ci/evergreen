@@ -826,9 +826,9 @@ Examples:
 
 	evergreen host rsync -l /path/to/local/file1 -r /path/to/remote/file2 -h <host_id>
 
-	If file2 does not exist on the remote host, it will be created and its
-	contents will exactly match those of file1 on the local filesystem.
-	Otherwrise, file2 will be overwritten.
+	If file2 does not exist on the remote host, it will be created (including
+	any parent directories) and its contents will exactly match those of file1
+	on the local filesystem.  Otherwrise, file2 will be overwritten.
 
 * A more practical example to upload your .bashrc to the host:
 	evergreen host rsync -l ~/.bashrc -r .bashrc -h <host_id>
@@ -837,15 +837,7 @@ Examples:
 
 	evergreen host rsync -l /path/to/local/dir1/ -r /path/to/remote/dir2/ -h <host_id>
 
-	NOTE: the trailing slash is required here.
-	This will replace all the contents of the remote directory dir2 to match the
-	contents of the local directory dir1.
-
-* Mirror directory contents and create the remote directory structure if it doesn't exist already:
-
-	evergreen host rsync -l /path/to/local/dir1/ -r /path/to/remote/dir2/ -p -h <host_id>
-
-	NOTE: the trailing slash is required here.
+	NOTE: the trailing slash in the file paths are required here.
 	This will replace all the contents of the remote directory dir2 to match the
 	contents of the local directory dir1.
 
@@ -853,15 +845,15 @@ Examples:
 
 	evergreen host rsync -l /path/to/local/dir1/ -r /path/to/remote/dir2/ --pull -h <host_id>
 
-	NOTE: this will replace all the contents of the local directory.
+	NOTE: the trailing slash in the file paths are required here.
 	This will replace all the contents of the local directory dir1 to match the
 	contents of the remote directory dir2.
 
-* Push a local directory as a subdirectory on the remote spawn host:
+* Push a local directory to become a subdirectory at the remote path on the remote spawn host:
 
 	evergreen host rsync -l /path/to/local/dir1 -r /path/to/remote/dir2 -h <host_id>
 
-	NOTE: the absence of the trailing slash is required.
+	NOTE: this should not have a trailing slash at the end of the file paths.
 	This will create a subdirectory dir1 containing the local dir1's contents below
 	dir2 (i.e. it will create /path/to/remote/dir2/dir1).
 
