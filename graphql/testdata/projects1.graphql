@@ -6,7 +6,7 @@
       owner
       displayName
     }
-    allProjects {
+    all {
       name
       projects {
         identifier

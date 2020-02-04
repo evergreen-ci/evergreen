@@ -1526,7 +1526,7 @@
                 "owner": "annie.black"
               }
             ],
-            "allProjects": [
+            "all": [
               {
                 "name": "annie.black/buildhost-configuration",
                 "projects": [
