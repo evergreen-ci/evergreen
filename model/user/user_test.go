@@ -443,6 +443,22 @@ func (s *UserTestSuite) TestRoles() {
 	s.EqualValues(dbUser.SystemRoles, u.SystemRoles)
 }
 
+func (s *UserTestSuite) TestFavoriteProjects() {
+	u := s.users[0]
+	projID := "annie-copy5"
+	expected := []string{projID}
+
+	// add a project
+	err := u.AddFavoritedProject(projID)
+	s.NoError(err)
+	s.EqualValues(u.FavoriteProjects, expected)
+
+	// try to add the same project again
+	err = u.AddFavoritedProject(projID)
+	s.Require().Error(err)
+	s.EqualValues(u.FavoriteProjects, expected)
+}
+
 func (s *UserTestSuite) TestHasPermission() {
 	u := s.users[0]
 

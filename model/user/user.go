@@ -19,18 +19,19 @@ import (
 )
 
 type DBUser struct {
-	Id           string       `bson:"_id"`
-	FirstName    string       `bson:"first_name"`
-	LastName     string       `bson:"last_name"`
-	DispName     string       `bson:"display_name"`
-	EmailAddress string       `bson:"email"`
-	PatchNumber  int          `bson:"patch_number"`
-	PubKeys      []PubKey     `bson:"public_keys" json:"public_keys"`
-	CreatedAt    time.Time    `bson:"created_at"`
-	Settings     UserSettings `bson:"settings"`
-	APIKey       string       `bson:"apikey"`
-	SystemRoles  []string     `bson:"roles"`
-	LoginCache   LoginCache   `bson:"login_cache,omitempty"`
+	Id               string       `bson:"_id"`
+	FirstName        string       `bson:"first_name"`
+	LastName         string       `bson:"last_name"`
+	DispName         string       `bson:"display_name"`
+	EmailAddress     string       `bson:"email"`
+	PatchNumber      int          `bson:"patch_number"`
+	PubKeys          []PubKey     `bson:"public_keys" json:"public_keys"`
+	CreatedAt        time.Time    `bson:"created_at"`
+	Settings         UserSettings `bson:"settings"`
+	APIKey           string       `bson:"apikey"`
+	SystemRoles      []string     `bson:"roles"`
+	LoginCache       LoginCache   `bson:"login_cache,omitempty"`
+	FavoriteProjects []string     `bson:"favorite_projects"`
 }
 
 func (u *DBUser) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(u) }
@@ -198,6 +199,27 @@ func (u *DBUser) IncPatchNumber() (int, error) {
 		return 0, err
 	}
 	return dbUser.PatchNumber, nil
+}
+
+func (u *DBUser) AddFavoritedProject(identifier string) error {
+	if util.StringSliceContains(u.FavoriteProjects, identifier) {
+		return errors.Errorf("cannot add duplicate project '%s'", identifier)
+	}
+	update := bson.M{
+		"$push": bson.M{FavoriteProjectsKey: identifier},
+	}
+	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+		return err
+	}
+
+	before := u.FavoriteProjects
+	u.FavoriteProjects = append(u.FavoriteProjects, identifier)
+
+	err := event.LogUserEvent(u.Id, event.UserEventTypeFavoriteProjectsUpdate, before, u.FavoriteProjects)
+	if err != nil {
+		grip.Error(errors.Errorf("error logging event for adding '%s' to user favorites", identifier))
+	}
+	return nil
 }
 
 func (u *DBUser) AddRole(role string) error {

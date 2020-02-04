@@ -11,6 +11,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/rest/route"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 )
 
@@ -18,17 +20,43 @@ type Resolver struct {
 	sc data.Connector
 }
 
+func (r *Resolver) Mutation() MutationResolver {
+	return &mutationResolver{r}
+}
 func (r *Resolver) Query() QueryResolver {
 	return &queryResolver{r}
 }
+
+type mutationResolver struct{ *Resolver }
+
+func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) (*restModel.UIProjectFields, error) {
+	p, err := model.FindOneProjectRef(identifier)
+	if err != nil || p == nil {
+		return nil, errors.Errorf("could not find project '%s'", identifier)
+	}
+
+	usr := route.MustHaveUser(ctx)
+
+	err = usr.AddFavoritedProject(identifier)
+	if err != nil {
+		return nil, errors.Wrap(err, "error adding project to user's favorites")
+	}
+
+	return &restModel.UIProjectFields{
+		DisplayName: p.DisplayName,
+		Identifier:  p.Identifier,
+		Repo:        p.Repo,
+		Owner:       p.Owner,
+	}, nil
+}
+
+type queryResolver struct{ *Resolver }
 
 type patchResolver struct{ *Resolver }
 
 func (r *patchResolver) ID(ctx context.Context, obj *restModel.APIPatch) (string, error) {
 	return *obj.Id, nil
 }
-
-type queryResolver struct{ *Resolver }
 
 func (r *queryResolver) UserPatches(ctx context.Context, userID string) ([]*restModel.APIPatch, error) {
 	patchPointers := []*restModel.APIPatch{}
@@ -64,13 +92,18 @@ func (r *queryResolver) Task(ctx context.Context, taskID string) (*restModel.API
 	return &apiTask, nil
 }
 
-func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error) {
+func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 	allProjs, err := model.FindAllTrackedProjectRefs()
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving projects")
 	}
 
 	groupsMap := make(map[string][]*restModel.UIProjectFields)
+
+	usr := route.MustHaveUser(ctx)
+
+	favoriteIds := usr.FavoriteProjects
+	favorites := []*restModel.UIProjectFields{}
 
 	for _, p := range allProjs {
 		groupName := strings.Join([]string{p.Owner, p.Repo}, "/")
@@ -86,6 +119,11 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 			groupsMap[groupName] = append(projs, &uiProj)
 		} else {
 			groupsMap[groupName] = []*restModel.UIProjectFields{&uiProj}
+		}
+
+		// if proj ID is in favoriteIds then add proj to favorites
+		if util.StringSliceContains(favoriteIds, p.Identifier) {
+			favorites = append(favorites, &uiProj)
 		}
 	}
 
@@ -103,7 +141,12 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 		return groupsArr[i].Name < groupsArr[j].Name
 	})
 
-	return groupsArr, nil
+	pjs := Projects{
+		Favorites: favorites,
+		All:       groupsArr,
+	}
+
+	return &pjs, nil
 }
 
 func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, status *string) ([]*restModel.APITest, error) {
