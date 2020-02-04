@@ -277,6 +277,14 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 			}))
 			return errors.Wrapf(err, "error inserting host %s", j.host.Id)
 		}
+		if j.host.HasContainers {
+			grip.Error(message.WrapError(j.host.UpdateParentIDs(), message.Fields{
+				"message": "unable to update parent ID of containers",
+				"host":    j.host.Id,
+				"distro":  j.host.Distro.Id,
+				"job":     j.ID(),
+			}))
+		}
 	}
 
 	event.LogHostStartFinished(j.host.Id, true)

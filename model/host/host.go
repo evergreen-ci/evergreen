@@ -1515,6 +1515,18 @@ func (h *Host) IsIdleParent() (bool, error) {
 	return num == 0, nil
 }
 
+func (h *Host) UpdateParentIDs() error {
+	query := bson.M{
+		ParentIDKey: h.Tag,
+	}
+	update := bson.M{
+		"$set": bson.M{
+			ParentIDKey: h.Id,
+		},
+	}
+	return UpdateAll(query, update)
+}
+
 // For spawn hosts that have never been set unexpirable, this will
 // prevent spawn hosts from being set further than 30 days.
 // For unexpirable hosts, this will prevent them from being extended any further
