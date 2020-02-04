@@ -239,16 +239,21 @@ $http.get(templateUrl).success(function(template) {
 
     // Creates new, non-isolated scope for charts
     var chartsScope = scope.$new()
+    $scope.selectedThreads = {};
     for (var i = 0; i < tests.length; i++) {
-      var key = tests[i];
-      var series = _.filter(trendSamples.seriesByName[key] || [], function (sample) {
+      let key = tests[i];
+      let series = _.filter(trendSamples.seriesByName[key] || [], function (sample) {
         return _.some(sample.threadResults, (singleResult) => {
           return singleResult[scope.metricSelect.value.key];
         });
       });
-      var containerId = 'perf-trendchart-' + cleanId(taskId) + '-' + i;
-      var cps = scope.changePoints || {};
-      var bfs = scope.buildFailures || {};
+
+      let updateThreadLevels = (threads) => {
+        $scope.selectedThreads[key] = threads;
+      }
+      let containerId = 'perf-trendchart-' + cleanId(taskId) + '-' + i;
+      let cps = scope.changePoints || {};
+      let bfs = scope.buildFailures || {};
 
       DrawPerfTrendChart({
         series: series || [],
@@ -263,6 +268,7 @@ $http.get(templateUrl).success(function(template) {
         linearMode: scope.scaleModel.linearMode,
         originMode: scope.rangeModel.originMode,
         metric: scope.metricSelect.value.key,
+        updateThreadLevels: updateThreadLevels,
       })
     }
     scope.showToolbar = true
@@ -317,6 +323,18 @@ $http.get(templateUrl).success(function(template) {
 
   $scope.percentDiff = function (val1, val2) {
     return (val1 - val2) / Math.abs(val2);
+  }
+
+  $scope.comparisonPct = function (compareSample, testName) {
+    const threadLevel = _.max($scope.selectedThreads[testName]);
+    let hoverResults = _.findWhere($scope.hoverSamples[testName].threadResults, {
+      threadLevel: threadLevel
+    });
+    if (!hoverResults) {
+      hoverResults = $scope.hoverSamples[testName];
+    }
+    const diff = 100 * $scope.percentDiff(hoverResults[$scope.metricSelect.value.key], compareSample.maxThroughputForTest(testName, $scope.metricSelect.value.key, threadLevel));
+    return diff;
   }
 
   let cleanId = function (id) {

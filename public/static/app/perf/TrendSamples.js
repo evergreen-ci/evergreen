@@ -1,6 +1,6 @@
-mciModule.factory('TrendSamples', function() {
+mciModule.factory('TrendSamples', function () {
   // Class to contain a collection of samples in a series.
-  return function(samples){
+  return function (samples) {
     this.samples = samples;
     var NON_THREAD_LEVELS = ['start', 'end']
 
@@ -39,7 +39,7 @@ mciModule.factory('TrendSamples', function() {
             this.seriesByName[rec.name] = [];
           }
 
-          var maxValues = _.max(rec.results, function(d) {
+          var maxValues = _.max(rec.results, function (d) {
             return null;
           })
 
@@ -47,7 +47,7 @@ mciModule.factory('TrendSamples', function() {
           // Change dict to array
           var threadResults = _.chain(rec.results)
             .omit(NON_THREAD_LEVELS)
-            .map(function(v, k) {
+            .map(function (v, k) {
               _.each(_.keys(v), (d) => metricsSet.add(d))
               v.threadLevel = k
               return v
@@ -83,15 +83,14 @@ mciModule.factory('TrendSamples', function() {
     for (let i = 0; i < this.testNames.length; i++) {
       //make an index for commit hash -> sample for each test series
       var k = this.testNames[i];
-      // FIXME Unknown behavior (coma operator after _groupBy stmt)
-      this._sampleByCommitIndexes[k] = _.groupBy(this.seriesByName[k], "revision"), function(x){return x[0]};
-      for(let t in this._sampleByCommitIndexes[k]){
+      this._sampleByCommitIndexes[k] = _.groupBy(this.seriesByName[k], "revision");
+      for (let t in this._sampleByCommitIndexes[k]) {
         this._sampleByCommitIndexes[k][t] = this._sampleByCommitIndexes[k][t][0];
       }
     }
 
     // Returns a list of samples for a given test, sorted in the order that they were committed.
-    this.tasksByCommitOrder = function(){
+    this.tasksByCommitOrder = function () {
       if (!this._tasks) {
         this._tasks = _.chain(this.seriesByName)
           .values()
@@ -103,14 +102,16 @@ mciModule.factory('TrendSamples', function() {
       return this._tasks;
     }
 
-    this.tasksByCommitOrderByTestName = function(testName){
-       if(!(testName in this._tasksByName)){
-          this._tasksByName[testName] = _.sortBy(_.uniq(this.seriesByName[testName], function(x){return x.task_id}), "order")
-       }
-       return this._tasksByName[testName]
+    this.tasksByCommitOrderByTestName = function (testName) {
+      if (!(testName in this._tasksByName)) {
+        this._tasksByName[testName] = _.sortBy(_.uniq(this.seriesByName[testName], function (x) {
+          return x.task_id
+        }), "order")
+      }
+      return this._tasksByName[testName]
     }
 
-    this.sampleInSeriesAtCommit = function(testName, revision){
+    this.sampleInSeriesAtCommit = function (testName, revision) {
       let sample = this._sampleByCommitIndexes[testName];
       if (sample) {
         return this._sampleByCommitIndexes[testName][revision];
@@ -118,14 +119,16 @@ mciModule.factory('TrendSamples', function() {
       return null;
     }
 
-    this.indexOfCommitInSeries = function(testName, revision){
+    this.indexOfCommitInSeries = function (testName, revision) {
       var t = this.tasksByCommitOrderByTestName(testName)
-      return findIndex(t, function(x) { return x.revision==revision })
+      return findIndex(t, function (x) {
+        return x.revision == revision
+      })
     }
 
-    this.noiseAtCommit = function(testName, revision){
+    this.noiseAtCommit = function (testName, revision) {
       var sample = this._sampleByCommitIndexes[testName][revision];
-      if(sample && sample.ops_per_sec_values && sample.ops_per_sec_values.length > 1){
+      if (sample && sample.ops_per_sec_values && sample.ops_per_sec_values.length > 1) {
         var r = (_.max(sample.ops_per_sec_values) - _.min(sample.ops_per_sec_values)) / d3.mean(sample.ops_per_sec_values);
         return r;
       }
