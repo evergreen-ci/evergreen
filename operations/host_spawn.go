@@ -1129,7 +1129,7 @@ func buildRsyncCommand(ctx context.Context, opts rsyncOpts) (*exec.Cmd, error) {
 		args = append(args, "--exclude", pattern)
 	}
 	if opts.makeRemoteParentDirs {
-		args = append(args, fmt.Sprintf(`--rsync-path='mkdir -p "%s" && rsync'`, filepath.Dir(opts.remote)))
+		args = append(args, fmt.Sprintf(`--rsync-path=mkdir -p "%s" && rsync`, filepath.Dir(opts.remote)))
 	}
 
 	var dryRunIndex int
