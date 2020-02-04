@@ -42,8 +42,8 @@ func (p *ProjectChangeEvents) RedactPrivateVars() {
 		if !isChangeEvent {
 			continue
 		}
-		changeEvent.After.Vars.RedactPrivateVars()
-		changeEvent.Before.Vars.RedactPrivateVars()
+		changeEvent.After.Vars = *changeEvent.After.Vars.RedactPrivateVars()
+		changeEvent.Before.Vars = *changeEvent.Before.Vars.RedactPrivateVars()
 		event.EventLogEntry.Data = changeEvent
 	}
 }

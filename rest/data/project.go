@@ -151,7 +151,7 @@ func (pc *DBProjectConnector) FindProjects(key string, limit int, sortDir int) (
 }
 
 // FindProjectVarsById returns the variables associated with the given project.
-func (pc *DBProjectConnector) FindProjectVarsById(id string) (*restModel.APIProjectVars, error) {
+func (pc *DBProjectConnector) FindProjectVarsById(id string, redactedOnly bool) (*restModel.APIProjectVars, error) {
 	vars, err := model.FindOneProjectVars(id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem fetching variables for project '%s'", id)
@@ -162,7 +162,11 @@ func (pc *DBProjectConnector) FindProjectVarsById(id string) (*restModel.APIProj
 			Message:    fmt.Sprintf("variables for project '%s' not found", id),
 		}
 	}
-	vars.RedactPrivateVars()
+	if redactedOnly {
+		vars = vars.RedactedOnly()
+	} else { // only return values for redacted variables
+		vars = vars.RedactPrivateVars()
+	}
 
 	varsModel := restModel.APIProjectVars{}
 	if err := varsModel.BuildFromService(vars); err != nil {
@@ -187,7 +191,7 @@ func (pc *DBProjectConnector) UpdateProjectVars(projectId string, varsModel *res
 		return errors.Wrapf(err, "problem updating variables for project '%s'", vars.Id)
 	}
 
-	vars.RedactPrivateVars()
+	vars = vars.RedactPrivateVars()
 	varsModel.Vars = vars.Vars
 	varsModel.PrivateVars = vars.PrivateVars
 	varsModel.VarsToDelete = []string{}
@@ -353,12 +357,24 @@ func (pc *MockProjectConnector) UpdateProject(projectRef *model.ProjectRef) erro
 	}
 }
 
-func (pc *MockProjectConnector) FindProjectVarsById(id string) (*restModel.APIProjectVars, error) {
+func (pc *MockProjectConnector) FindProjectVarsById(id string, redactedOnly bool) (*restModel.APIProjectVars, error) {
 	varsModel := &restModel.APIProjectVars{}
+	res := &model.ProjectVars{
+		Id:   id,
+		Vars: map[string]string{},
+	}
 	for _, v := range pc.CachedVars {
 		if v.Id == id {
-			v.RedactPrivateVars()
-			if err := varsModel.BuildFromService(v); err != nil {
+			for key, val := range v.Vars {
+				res.Vars[key] = val
+			}
+			res.PrivateVars = v.PrivateVars
+			if redactedOnly {
+				res = res.RedactedOnly()
+			} else {
+				res = res.RedactPrivateVars()
+			}
+			if err := varsModel.BuildFromService(res); err != nil {
 				return nil, errors.Wrapf(err, "error building project variables from service")
 			}
 			return varsModel, nil
@@ -371,7 +387,10 @@ func (pc *MockProjectConnector) FindProjectVarsById(id string) (*restModel.APIPr
 }
 
 func (pc *MockProjectConnector) UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars) error {
-	tempVars := model.ProjectVars{}
+	tempVars := &model.ProjectVars{
+		Id:   projectId,
+		Vars: map[string]string{},
+	}
 	for _, cachedVars := range pc.CachedVars {
 		if cachedVars.Id == projectId {
 			// update cached variables by adding new variables and deleting variables
@@ -387,9 +406,11 @@ func (pc *MockProjectConnector) UpdateProjectVars(projectId string, varsModel *r
 				delete(cachedVars.Vars, varToDelete)
 				delete(cachedVars.PrivateVars, varToDelete)
 			}
-			tempVars.Vars = cachedVars.Vars
+			for k, v := range cachedVars.Vars {
+				tempVars.Vars[k] = v
+			}
 			tempVars.PrivateVars = cachedVars.PrivateVars
-			tempVars.RedactPrivateVars()
+			tempVars = tempVars.RedactPrivateVars()
 
 			// return modified variables
 			varsModel.Vars = tempVars.Vars
@@ -398,10 +419,14 @@ func (pc *MockProjectConnector) UpdateProjectVars(projectId string, varsModel *r
 			return nil
 		}
 	}
+	// handle new project
 	tempVars.Vars = varsModel.Vars
 	tempVars.PrivateVars = varsModel.PrivateVars
 	tempVars.Id = projectId
-	pc.CachedVars = append(pc.CachedVars, &tempVars)
+	pc.CachedVars = append(pc.CachedVars, tempVars)
+	// redact private variables
+	tempVars = tempVars.RedactPrivateVars()
+	varsModel.Vars = tempVars.Vars
 	return nil
 }
 

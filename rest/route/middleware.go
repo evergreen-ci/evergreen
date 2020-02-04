@@ -324,6 +324,7 @@ func RequiresProjectPermission(permission string, level evergreen.PermissionLeve
 		ResourceFunc:  urlVarsToProjectScopes,
 		DefaultRoles:  defaultRoles,
 	}
+
 	return gimlet.RequiresPermission(opts)
 }
 
@@ -378,11 +379,10 @@ func (n *noopMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next
 	next(rw, r)
 }
 
-func urlVarsToProjectScopes(r *http.Request) (string, int, error) {
+func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 	var err error
 	vars := gimlet.GetVars(r)
 	query := r.URL.Query()
-
 	resourceType := strings.ToUpper(util.CoalesceStrings(query["resource_type"], vars["resource_type"]))
 	if resourceType != "" {
 		switch resourceType {
@@ -394,12 +394,13 @@ func urlVarsToProjectScopes(r *http.Request) (string, int, error) {
 	}
 
 	projectID := util.CoalesceStrings(append(query["project_id"], query["projectId"]...), vars["project_id"], vars["projectId"])
+	destProjectID := util.CoalesceString(query["dest_project"]...)
 
 	versionID := util.CoalesceStrings(append(query["version_id"], query["versionId"]...), vars["version_id"], vars["versionId"])
 	if projectID == "" && versionID != "" {
 		projectID, err = model.FindProjectForVersion(versionID)
 		if err != nil {
-			return "", http.StatusNotFound, err
+			return nil, http.StatusNotFound, err
 		}
 	}
 
@@ -407,7 +408,7 @@ func urlVarsToProjectScopes(r *http.Request) (string, int, error) {
 	if projectID == "" && patchID != "" && patch.IsValidId(patchID) {
 		projectID, err = patch.FindProjectForPatch(patch.NewId(patchID))
 		if err != nil {
-			return "", http.StatusNotFound, err
+			return nil, http.StatusNotFound, err
 		}
 	}
 
@@ -415,7 +416,7 @@ func urlVarsToProjectScopes(r *http.Request) (string, int, error) {
 	if projectID == "" && buildID != "" {
 		projectID, err = build.FindProjectForBuild(buildID)
 		if err != nil {
-			return "", http.StatusNotFound, err
+			return nil, http.StatusNotFound, err
 		}
 	}
 
@@ -423,11 +424,11 @@ func urlVarsToProjectScopes(r *http.Request) (string, int, error) {
 	if projectID == "" && testLog != "" {
 		test, err := model.FindOneTestLogById(testLog)
 		if err != nil {
-			return "", http.StatusNotFound, err
+			return nil, http.StatusNotFound, err
 		}
 		projectID, err = task.FindProjectForTask(test.Task)
 		if err != nil {
-			return "", http.StatusNotFound, err
+			return nil, http.StatusNotFound, err
 		}
 	}
 
@@ -436,7 +437,7 @@ func urlVarsToProjectScopes(r *http.Request) (string, int, error) {
 	if projectID == "" && taskID != "" {
 		projectID, err = task.FindProjectForTask(taskID)
 		if err != nil {
-			return "", http.StatusNotFound, err
+			return nil, http.StatusNotFound, err
 		}
 	}
 
@@ -445,7 +446,7 @@ func urlVarsToProjectScopes(r *http.Request) (string, int, error) {
 	if user == nil {
 		projectRef, err := model.FindOneProjectRef(projectID)
 		if err != nil || projectRef == nil {
-			return "", http.StatusNotFound, errors.New("no project found")
+			return nil, http.StatusNotFound, errors.New("no project found")
 		}
 		if projectRef.Private {
 			projectID = ""
@@ -454,13 +455,17 @@ func urlVarsToProjectScopes(r *http.Request) (string, int, error) {
 
 	// no project found - return a 404
 	if projectID == "" {
-		return "", http.StatusNotFound, errors.New("no project found")
+		return nil, http.StatusNotFound, errors.New("no project found")
+	}
+	res := []string{projectID}
+	if destProjectID != "" {
+		res = append(res, destProjectID)
 	}
 
-	return projectID, http.StatusOK, nil
+	return res, http.StatusOK, nil
 }
 
-func urlVarsToDistroScopes(r *http.Request) (string, int, error) {
+func urlVarsToDistroScopes(r *http.Request) ([]string, int, error) {
 	var err error
 	vars := gimlet.GetVars(r)
 	query := r.URL.Query()
@@ -482,20 +487,20 @@ func urlVarsToDistroScopes(r *http.Request) (string, int, error) {
 	if distroID == "" && hostID != "" {
 		distroID, err = host.FindDistroForHost(hostID)
 		if err != nil {
-			return "", http.StatusNotFound, err
+			return nil, http.StatusNotFound, err
 		}
 	}
 
 	// no distro found - return a 404
 	if distroID == "" {
-		return "", http.StatusNotFound, errors.New("no distro found")
+		return nil, http.StatusNotFound, errors.New("no distro found")
 	}
 
-	return distroID, http.StatusOK, nil
+	return []string{distroID}, http.StatusOK, nil
 }
 
-func superUserResource(_ *http.Request) (string, int, error) {
-	return evergreen.SuperUserPermissionsID, http.StatusOK, nil
+func superUserResource(_ *http.Request) ([]string, int, error) {
+	return []string{evergreen.SuperUserPermissionsID}, http.StatusOK, nil
 }
 
 type EventLogPermissionsMiddleware struct{}
@@ -503,36 +508,36 @@ type EventLogPermissionsMiddleware struct{}
 func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	ctx := r.Context()
 	vars := gimlet.GetVars(r)
-	var resource string
+	var resources []string
 	var status int
 	var err error
 	resourceType := strings.ToUpper(vars["resource_type"])
 	opts := gimlet.PermissionOpts{}
 	switch resourceType {
 	case event.ResourceTypeTask:
-		resource, status, err = urlVarsToProjectScopes(r)
+		resources, status, err = urlVarsToProjectScopes(r)
 		opts.ResourceType = evergreen.ProjectResourceType
 		opts.Permission = evergreen.PermissionTasks
 		opts.RequiredLevel = evergreen.TasksView.Value
 	case model.EventResourceTypeProject:
-		resource, status, err = urlVarsToProjectScopes(r)
+		resources, status, err = urlVarsToProjectScopes(r)
 		opts.ResourceType = evergreen.ProjectResourceType
 		opts.Permission = evergreen.PermissionProjectSettings
 		opts.RequiredLevel = evergreen.ProjectSettingsView.Value
 	case event.ResourceTypeDistro:
 		fallthrough
 	case event.ResourceTypeScheduler:
-		resource, status, err = urlVarsToDistroScopes(r)
+		resources, status, err = urlVarsToDistroScopes(r)
 		opts.ResourceType = evergreen.DistroResourceType
 		opts.Permission = evergreen.PermissionHosts
 		opts.RequiredLevel = evergreen.HostsView.Value
 	case event.ResourceTypeHost:
-		resource, status, err = urlVarsToDistroScopes(r)
+		resources, status, err = urlVarsToDistroScopes(r)
 		opts.ResourceType = evergreen.DistroResourceType
 		opts.Permission = evergreen.PermissionDistroSettings
 		opts.RequiredLevel = evergreen.DistroSettingsView.Value
 	case event.ResourceTypeAdmin:
-		resource = evergreen.SuperUserPermissionsID
+		resources = []string{evergreen.SuperUserPermissionsID}
 		opts.ResourceType = evergreen.SuperUserResourceType
 		opts.Permission = evergreen.PermissionAdminSettings
 		opts.RequiredLevel = evergreen.AdminSettingsEdit.Value
@@ -544,7 +549,11 @@ func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *htt
 		http.Error(rw, err.Error(), status)
 		return
 	}
-	opts.Resource = resource
+
+	if len(resources) == 0 {
+		http.Error(rw, "no resources found", http.StatusNotFound)
+		return
+	}
 
 	user := gimlet.GetUser(ctx)
 	if user == nil {
@@ -563,9 +572,12 @@ func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *htt
 		return
 	}
 
-	if !user.HasPermission(opts) {
-		http.Error(rw, "not authorized for this action", http.StatusUnauthorized)
-		return
+	for _, item := range resources {
+		opts.Resource = item
+		if !user.HasPermission(opts) {
+			http.Error(rw, "not authorized for this action", http.StatusUnauthorized)
+			return
+		}
 	}
 
 	next(rw, r)

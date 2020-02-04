@@ -290,7 +290,7 @@ func (s *RoleManagerSuite) TestRequiresPermissionMiddleware() {
 	rw = httptest.NewRecorder()
 	req = mux.SetURLVars(req, map[string]string{})
 	authHandler.ServeHTTP(rw, req, checkPermission)
-	s.Equal(http.StatusUnauthorized, rw.Code)
+	s.Equal(http.StatusNotFound, rw.Code)
 	s.Equal(1, counter)
 }
 

@@ -93,7 +93,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	projVars.RedactPrivateVars()
+	projVars = projVars.RedactPrivateVars()
 
 	projectAliases, err := model.FindAliasesForProject(id)
 	if err != nil {

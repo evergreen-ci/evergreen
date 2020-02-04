@@ -103,3 +103,110 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 	s.NoError(err)
 	s.NotNil(res)
 }
+
+type copyRedactedVarsSuite struct {
+	data  data.MockProjectConnector
+	sc    *data.MockConnector
+	route *copyRedactedVarsHandler
+
+	suite.Suite
+}
+
+func TestCopyRedactedVarsSuite(t *testing.T) {
+	suite.Run(t, new(copyRedactedVarsSuite))
+}
+
+func (s *copyRedactedVarsSuite) SetupSuite() {
+	s.data = data.MockProjectConnector{
+		CachedProjects: []model.ProjectRef{
+			{
+				Identifier: "projectA",
+				Branch:     "abcd",
+				Enabled:    true,
+				Admins:     []string{"my-user"},
+			},
+			{
+				Identifier: "projectB",
+				Branch:     "bcde",
+				Enabled:    true,
+				Admins:     []string{"my-user"},
+			},
+		},
+		CachedVars: []*model.ProjectVars{
+			{
+				Id:          "projectA",
+				Vars:        map[string]string{"apple": "red", "hello": "world"},
+				PrivateVars: map[string]bool{"hello": true},
+			},
+			{
+				Id:          "projectB",
+				Vars:        map[string]string{"banana": "yellow", "apple": "green", "hello": "its me"},
+				PrivateVars: map[string]bool{},
+			},
+		},
+	}
+
+	s.sc = &data.MockConnector{
+		URL:                  "https://evergreen.example.net",
+		MockProjectConnector: s.data,
+	}
+}
+
+func (s *copyRedactedVarsSuite) SetupTest() {
+	s.route = &copyRedactedVarsHandler{sc: s.sc}
+}
+
+func (s *copyRedactedVarsSuite) TestParse() {
+	ctx := context.Background()
+	request, err := http.NewRequest("POST", "/projects/projectA/copy_redacted?dest_project=projectB&dry_run=true", nil)
+	options := map[string]string{"project_id": "projectA"}
+	request = gimlet.SetURLVars(request, options)
+	s.NoError(err)
+	s.NoError(s.route.Parse(ctx, request))
+	s.Equal("projectA", s.route.copyFrom)
+	s.Equal("projectB", s.route.copyTo)
+	s.Equal(true, s.route.dryRun)
+}
+
+func (s *copyRedactedVarsSuite) TestCopyRedactedVariables() {
+	ctx := context.Background()
+	s.route.copyFrom = "projectA"
+	s.route.copyTo = "projectB"
+	s.route.dryRun = true
+	delete(s.data.CachedVars[1].Vars, "hello")
+
+	resp := s.route.Run(ctx)
+	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.Status())
+	s.Len(s.data.CachedVars[1].Vars, 2)
+
+	s.route.dryRun = false
+	resp = s.route.Run(ctx)
+	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.Status())
+	s.Len(s.data.CachedVars[1].Vars, 3)
+	s.Equal("world", s.data.CachedVars[1].Vars["hello"])
+	s.Equal("green", s.data.CachedVars[1].Vars["apple"])
+	s.True(s.data.CachedVars[1].PrivateVars["hello"])
+}
+
+func (s *copyRedactedVarsSuite) TestCopyRedactedVariablesWithOverlap() {
+	ctx := context.Background()
+	s.route.copyFrom = "projectA"
+	s.route.copyTo = "projectB"
+	s.route.dryRun = true
+	resp := s.route.Run(ctx)
+	s.NotNil(resp)
+	s.Equal(http.StatusBadRequest, resp.Status())
+	errResp := (resp.Data()).(gimlet.ErrorResponse)
+	s.Contains(errResp.Message, "These variables will be overwritten: [hello]")
+
+	s.route.dryRun = false
+	resp = s.route.Run(ctx)
+	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.Status())
+	s.Len(s.data.CachedVars[1].Vars, 3)
+	s.Equal("world", s.data.CachedVars[1].Vars["hello"]) // overwrites old variable
+	s.True(s.data.CachedVars[1].PrivateVars["hello"])
+
+}
