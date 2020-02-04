@@ -414,8 +414,13 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 	}
 	if taskGroup.Timeout != nil {
 		err := a.runCommands(ctx, tc, taskGroup.Timeout.List(), runCommandsOptions{})
-		tc.logger.Execution().ErrorWhen(err != nil, fmt.Sprintf("Error running timeout command: %v", err))
-		tc.logger.Task().InfoWhen(err == nil, fmt.Sprintf("Finished running timeout commands in %v.", time.Since(start).String()))
+		tc.logger.Execution().ErrorWhen(err != nil, message.WrapError(err, message.Fields{
+			"message": "Error running timeout command",
+		}))
+		tc.logger.Task().InfoWhen(err == nil, message.Fields{
+			"message":    "Finished running timeout commands",
+			"total_time": time.Since(start).String(),
+		})
 	}
 }
 
@@ -491,8 +496,13 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 	}
 	if taskGroup.TeardownTask != nil {
 		err := a.runCommands(ctx, tc, taskGroup.TeardownTask.List(), runCommandsOptions{})
-		tc.logger.Task().ErrorWhen(err != nil, fmt.Sprintf("Error running post-task command: %v", err))
-		tc.logger.Task().InfoWhen(err == nil, fmt.Sprintf("Finished running post-task commands in %v.", time.Since(start).String()))
+		tc.logger.Task().ErrorWhen(err != nil, message.WrapError(err, message.Fields{
+			"message": "Error running post-task command.",
+		}))
+		tc.logger.Task().InfoWhen(err == nil, message.Fields{
+			"message":    "Finished running post-task commands.",
+			"total_time": time.Since(start).String(),
+		})
 	}
 }
 
@@ -519,7 +529,9 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()
 		err := a.runCommands(ctx, tc, taskGroup.TeardownGroup.List(), runCommandsOptions{})
-		grip.ErrorWhen(err != nil, fmt.Sprintf("Error running post-task command: %v", err))
+		grip.ErrorWhen(err != nil, message.WrapError(err, message.Fields{
+			"message": "Error running post-task command.",
+		}))
 		grip.InfoWhen(err == nil, "Finished running post-group commands")
 	}
 }
