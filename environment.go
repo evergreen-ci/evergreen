@@ -317,7 +317,8 @@ func (e *envState) createApplicationQueue(ctx context.Context) error {
 	opts.URI = e.settings.Database.Url
 	opts.DB = e.settings.Amboy.DB
 	opts.Priority = true
-	opts.SkipIndexBuilds = true
+	opts.SkipQueueIndexBuilds = true
+	opts.SkipReportingIndexBuilds = true
 	opts.UseGroups = false
 
 	args := queue.MongoDBQueueCreationOptions{
@@ -350,7 +351,8 @@ func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
 	opts.URI = e.settings.Database.Url
 	opts.DB = e.settings.Amboy.DB
 	opts.Priority = false
-	opts.SkipIndexBuilds = true
+	opts.SkipQueueIndexBuilds = true
+	opts.SkipReportingIndexBuilds = true
 	opts.UseGroups = true
 	opts.GroupName = e.settings.Amboy.Name
 

@@ -44,6 +44,8 @@ type mockStatusSender struct{}
 
 func (mockStatusSender) Send(c message.Composer) {}
 
+func (mockStatusSender) Flush(_ context.Context) error { return nil }
+
 type mockErrorLogger struct {
 	errList []error
 }

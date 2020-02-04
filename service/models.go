@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"html/template"
 	"time"
 
@@ -131,7 +132,7 @@ func getTimelineData(projectName string, versionsToSkip, versionsPerPage int) (*
 
 		buildIds := version.BuildIds
 		dbBuilds, err := build.Find(build.ByIds(buildIds))
-		grip.ErrorWhenln(err != nil, "Ids:", buildIds)
+		grip.ErrorWhen(err != nil, fmt.Sprintf("Ids:%s\n", buildIds))
 
 		buildsMap := make(map[string]build.Build)
 		for _, dbBuild := range dbBuilds {

@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -251,9 +252,9 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 		return errors.WithStack(err)
 	}
 
-	logger.Execution().WarningWhenf(filepath.IsAbs(c.WorkingDir) && !strings.HasPrefix(c.WorkingDir, conf.WorkDir),
-		"the working directory is an absolute path [%s], which isn't supported except when prefixed by '%s'",
-		c.WorkingDir, conf.WorkDir)
+	logger.Execution().WarningWhen(filepath.IsAbs(c.WorkingDir) && !strings.HasPrefix(c.WorkingDir, conf.WorkDir),
+		fmt.Sprintf("the working directory is an absolute path [%s], which isn't supported except when prefixed by '%s'",
+			c.WorkingDir, conf.WorkDir))
 
 	c.WorkingDir, err = conf.GetWorkingDirectory(c.WorkingDir)
 	if err != nil {

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -111,8 +112,8 @@ func UpsertOneProcessRuntime(query interface{}, update interface{}) error {
 		return err
 	}
 
-	grip.InfoWhenf(info.UpsertedId != nil, "Added '%s' process to ProcessRuntime  db",
-		info.UpsertedId)
+	grip.InfoWhen(info.UpsertedId != nil, fmt.Sprintf("Added '%s' process to ProcessRuntime  db",
+		info.UpsertedId))
 
 	return nil
 }

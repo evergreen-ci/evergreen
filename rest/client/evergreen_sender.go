@@ -141,6 +141,8 @@ func (s *evergreenLogSender) Send(m message.Composer) {
 	}
 }
 
+func (s *evergreenLogSender) Flush(_ context.Context) error { return nil }
+
 func (s *evergreenLogSender) convertMessage(m message.Composer) apimodels.LogMessage {
 	return apimodels.LogMessage{
 		Type:      s.logChannel,
