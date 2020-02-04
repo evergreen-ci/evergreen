@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -797,211 +798,279 @@ func hostRunCommand() cli.Command {
 	}
 }
 
-type rsyncParams {
-	localPath string
-	remotePath string
-	timeout time.Duration
-	pull bool
-	sanityCheck bool
-	dryRun bool
-}
-
 func hostRsync() cli.Command {
 	const (
-		// TODO (kim): maybe remove user and just pull from distro settings
-		localPathFlagName           = "local"
-		remotePathFlagName          = "remote"
-		pullFlagName                = "pull"
-		timeoutFlagName             = "timeout"
-		disableSanityChecksFlagName = "no-checks"
-		dryRunFlagName              = "dry-run"
+		localPathFlagName             = "local"
+		remotePathFlagName            = "remote"
+		remoteIsLocalFlagName         = "remote-is-local"
+		makeParentDirectoriesFlagName = "make-parent-dirs"
+		excludeFlagName               = "exclude"
+		deleteFlagName                = "delete"
+		pullFlagName                  = "pull"
+		timeoutFlagName               = "timeout"
+		sanityChecksFlagName          = "sanity-checks"
+		dryRunFlagName                = "dry-run"
 	)
-	// TODO (kim): do we want to always synchronize dirs to be exactly the same?
-	// TODO (kim): provide option to synchronize file vs directory?
-	// TODO (kim): same problem of host running command where it can take
-	// arbitrary amount of time to rsync. Should this be made to basically be
-	// the same as the run command semantics?
 	return cli.Command{
 		Name:  "rsync",
 		Usage: "synchronize files between local and remote hosts",
+		Description: `
+Rsync is a utility for mirroring files and directories between two
+hosts.
+
+Examples:
+* Create or overwrite a file between the local filesystem and remote spawn host:
+
+	evergreen host rsync -l /path/to/local/file1 -r /path/to/remote/file2 -h <host_id>
+
+	If file2 does not exist on the remote host, it will be created and its contents
+	will exactly match those of file1 on the local filesystem. Otherwrise, file2
+	will be overwritten.
+
+* Push (mirror) the directory contents from the local filesystem to the directory on the remote spawn host:
+
+	evergreen host rsync -l /path/to/local/dir1/ -r /path/to/remote/dir2/ -h <host_id>
+
+	NOTE: the trailing slash is required here.
+	This will replace all the contents of the remote directory dir2 to match the
+	contents of the local directory dir1.
+
+* Mirror directory contents and create the remote directory structure if it doesn't exist already:
+
+	evergreen host rsync -l /path/to/local/dir1/ -r /path/to/remote/dir2/ -p -h <host_id>
+
+	NOTE: the trailing slash is required here.
+	This will replace all the contents of the remote directory dir2 to match the
+	contents of the local directory dir1.
+
+* Pull (mirror) a spawn host's remote directory onto the local filesystem:
+
+	evergreen host rsync -l /path/to/local/dir1/ -r /path/to/remote/dir2/ --pull -h <host_id>
+
+	NOTE: this will replace all the contents of the local directory.
+	This will replace all the contents of the local directory dir1 to match the
+	contents of the remote directory dir2.
+
+* Push a local directory as a subdirectory on the remote spawn host:
+
+	evergreen host rsync -l /path/to/local/dir1 -r /path/to/remote/dir2 -h <host_id>
+
+	NOTE: the absence of the trailing slash is required.
+	This will create a subdirectory dir1 containing the local dir1's contents below
+	dir2 (i.e. it will create /path/to/remote/dir2/dir1).
+
+* Mirror two directories on the same host:
+
+	evergreen host rsync -l /path/to/first/local/dir1/ -r /path/to/second/local/dir2/ --remote-is-local
+
+	This will make the contents of dir2 match the contents of dir1, both of which
+	are on your local machine.
+
+* Exclude files/directories from being synced:
+
+	evergreen host rsync -l /path/to/local/dir1/ -r /path/to/remote/dir2/ -h <host_id> -x /path/to/local/dir1/excluded_dir -x /path/to/local/dir1/excluded_file
+
+	This will mirror all the contents of the local dir1 in the remote dir2 except
+	for dir1/excluded_dir and dir1/excluded_file.
+
+* Disable sanity checking prompt when mirroring directories:
+
+	evergreen host rsync -l /path/to/local/dir1/ -r /path/to/remote/dir2/ -h <host_id> --sanity-checks=false
+`,
 		Flags: addHostFlag(
 			cli.StringFlag{
 				Name:  joinFlagNames(localPathFlagName, "l"),
-				Usage: "the local directory/file",
+				Usage: "the local directory/file (required)",
 			},
 			cli.StringFlag{
 				Name:  joinFlagNames(remotePathFlagName, "r"),
-				Usage: "the remote directory/file",
+				Usage: "the remote directory/file (required)",
+			},
+			cli.BoolFlag{
+				Name:  remoteIsLocalFlagName,
+				Usage: "if set, both the source and destination filepaths are on the local machine (host does not need to be specified)",
+			},
+			cli.StringSliceFlag{
+				Name:  joinFlagNames(excludeFlagName, "x"),
+				Usage: "ignore syncing any files matched by the given pattern",
+			},
+			cli.BoolTFlag{
+				Name:  joinFlagNames(deleteFlagName, "d"),
+				Usage: "delete any files in the destination directory that are not present on the source directory (default: true)",
+			},
+			cli.BoolTFlag{
+				Name:  joinFlagNames(makeParentDirectoriesFlagName, "p"),
+				Usage: "create parent directories for the destination if they do not already exist (default: true)",
 			},
 			cli.DurationFlag{
 				Name:  joinFlagNames(timeoutFlagName, "t"),
-				Usage: "timeout for rsync command, e.g. '5m' = 5 minutes, '30s' = 30 seconds (default: no timeout)",
+				Usage: "timeout for rsync command, e.g. '5m' = 5 minutes, '30s' = 30 seconds (if unset, there is no timeout)",
 			},
 			cli.BoolFlag{
-				Name:  joinFlagNames(pullFlagName, "p"),
+				Name:  joinFlagNames(pullFlagName),
 				Usage: "pull files from the remote host to the local host (default is to push files from the local host to the remote host)",
 			},
 			cli.BoolFlag{
-				Name:  disableSanityChecksFlagName,
-				Usage: "disable basic sanity checks for common sources of error (ignored if this is a dry run)",
+				Name:  sanityChecksFlagName,
+				Usage: "disable basic sanity checks for common sources of error (ignored on dry runs)",
 			},
 			cli.BoolFlag{
 				Name:  joinFlagNames(dryRunFlagName, "n"),
-				Usage: "do not execute - show what would occur if executed",
+				Usage: "show what would occur if executed, but do not actually execute",
 			},
 		),
 		Before: mergeBeforeFuncs(
-			requireHostFlag,
-			requireStringFlag(localPathFlagName),
-			requireStringFlag(remotePathFlagName),
+			func(c *cli.Context) error {
+				if c.Bool(remoteIsLocalFlagName) {
+					if c.String(hostFlagName) != "" {
+						return errors.New("should not specify a remote host ID when both filepaths are on the local machine")
+					}
+					return nil
+				}
+				return requireHostFlag(c)
+			},
+			// requireStringFlag(localPathFlagName),
+			// requireStringFlag(remotePathFlagName),
 		),
 		Action: func(c *cli.Context) error {
-			doSanityCheck := !c.Bool(disableSanityChecksFlagName)
-			pp.Println("sanity check?", doSanityCheck)
-			confPath := c.Parent().Parent().String(confFlagName)
+			doSanityCheck := c.BoolT(sanityChecksFlagName)
 			localPath := c.String(localPathFlagName)
 			remotePath := c.String(remotePathFlagName)
 			pull := c.Bool(pullFlagName)
 			dryRun := c.Bool(dryRunFlagName)
-
-			localPathIsDir := strings.HasSuffix(localPath, "/")
-			remotePathIsDir := strings.HasSuffix(remotePath, "/")
-			pp.Println("local path:", localPath)
-			pp.Println("remote path:", remotePath)
-			pp.Println("pull", pull)
-			if localPathIsDir && !pull && doSanityCheck && !dryRun {
-				pp.Println("local path is dir")
-				sanityPrompt(fmt.Sprintf("The local directory '%s' will overwrite all contents in the remote directory '%s'", localPath, remotePath))
-			}
-			if remotePathIsDir && pull && doSanityCheck && !dryRun {
-				sanityPrompt(fmt.Sprintf("The remote directory '%s' will overwrite all contents in the local directory '%s'", localPath, remotePath))
-			}
-
-			// if localPathIsDir && !remotePathIsDir && doSanityCheck {
-			//     ok, err := sanityPrompt(fmt.Sprintf("Local path '%s' ends with '/' (suggesting it is a directory) but remote path '%s' does not (suggesting it is a file).", localPath, remotePath))
-			//     if err != nil {
-			//         return errors.Wrap(err, "could not perform sanity check")
-			//     }
-			//     if !ok {
-			//         return nil
-			//     }
-			// }
-			// if remotePathIsDir && !localPathIsDir && doSanityCheck {
-			//     ok, err := sanityPrompt(fmt.Sprintf("Remote path '%s' ends with '/' (suggesting it is a directory) but local path '%s' does not (suggesting it is a file).", remotePath, localPath))
-			//     if err != nil {
-			//         return errors.Wrap(err, "could not perform sanity check")
-			//     }
-			//     if !ok {
-			//         return nil
-			//     }
-			// }
-			// if localPathIsDir && remotePathIsDir && doSanityCheck {
-			//     if !pull {
-			//         ok, err := sanityPrompt(fmt.Sprintf("Local directory '%s' will overwrite remote directory '%s'.", localPath, remotePath))
-			//         if err != nil {
-			//             return errors.Wrap(err, "could not perform sanity check")
-			//         }
-			//         if !ok {
-			//             return nil
-			//         }
-			//     } else {
-			//         ok, err := sanityPrompt(fmt.Sprintf("Remote directory '%s' will overwrite local directory '%s'.", remotePath, localPath))
-			//         if err != nil {
-			//             return errors.Wrap(err, "could not perform sanity check")
-			//         }
-			//         if !ok {
-			//             return nil
-			//         }
-			//     }
-			// }
-			// if !localPathIsDir && !remotePathIsDir && doSanityCheck {
-			//     if !pull {
-			//         ok, err := sanityPrompt(fmt.Sprintf("Local file '%s' will overwrite remote file '%s'.", localPath, remotePath))
-			//         if err != nil {
-			//             return errors.Wrap(err, "could not perform sanity check")
-			//         }
-			//         if !ok {
-			//             return nil
-			//         }
-			//     } else {
-			//         ok, err := sanityPrompt(fmt.Sprintf("Remote file '%s' will overwrite local file '%s'.", remotePath, localPath))
-			//         if err != nil {
-			//             return errors.Wrap(err, "could not perform sanity check")
-			//         }
-			//         if !ok {
-			//             return nil
-			//         }
-			//     }
-			// }
-			// TODO (kim): should there be some sanity prompt saying the
-			// contents of local directory will be synced to remote directory
-			// and/or a copy of local directory will be put in remote directory?
+			remoteIsLocal := c.Bool(remoteIsLocalFlagName)
+			pp.Println("remote:", remotePath)
+			pp.Println("local:", localPath)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			conf, err := NewClientSettings(confPath)
-			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
-			}
-			client := conf.setupRestCommunicator(ctx)
-			defer client.Close()
-
-			params := model.APIHostParams{
-				UserSpawned: true,
-				Mine:        true,
-			}
-			hosts, err := client.GetHosts(ctx, params)
-			if err != nil {
-				return errors.Wrap(err, "problem getting your hosts")
-			}
-
-			hostID := c.String(hostFlagName)
-			var user, hostname string
-			for _, h := range hosts {
-				if model.FromStringPtr(h.Id) == hostID {
-					user = model.FromStringPtr(h.User)
-					hostname = model.FromStringPtr(h.HostURL)
-					break
+			var user, host string
+			var err error
+			if !remoteIsLocal {
+				hostID := c.String(hostFlagName)
+				user, host, err = getUserAndHostname(ctx, c.String(hostFlagName), c.Parent().Parent().String(confFlagName))
+				if err != nil {
+					return errors.Wrapf(err, "could not get username and host for host ID '%s'", hostID)
 				}
 			}
-			if user == "" || hostname == "" {
-				catcher := grip.NewBasicCatcher()
-				catcher.ErrorfWhen(user == "", "could not find login user for host '%s'", hostID)
-				catcher.ErrorfWhen(hostname == "", "could not find hostname for host '%s'", hostID)
-				return catcher.Resolve()
+
+			if doSanityCheck && !dryRun {
+				ok, err := sanityCheckRsync(localPath, remotePath, pull)
+				if err != nil {
+					return errors.Wrap(err, "could not perform sanity checks, exiting")
+				}
+				if !ok {
+					return nil
+				}
 			}
 
-			rsync, err := exec.LookPath("rsync")
-			if err != nil {
-				return errors.Wrap(err, "could not find local rsync binary")
-			}
-
-			// TODO (kim): unsure if we want to preserve symlinks (I have no
-			// clue if they're even the same between MacOS/Linux)
-			args := []string{"-a", "-h", "--progress", "-e", "ssh", "--delete"}
-
-			remote := fmt.Sprintf("%s@%s:%s", user, hostname, remotePath)
-			if dryRun {
-				args = append(args, "-n")
-			}
-			if !pull {
-				args = append(args, localPath, remote)
-			} else {
-				args = append(args, remote, localPath)
-			}
 			if timeout := c.Duration(timeoutFlagName); timeout != time.Duration(0) {
 				ctx, cancel = context.WithTimeout(context.Background(), timeout)
 				defer cancel()
 			}
-			if dryRun {
-				fmt.Printf("Going to execute the following command: %s\n", strings.Join(append([]string{rsync}, args...), " "))
+			makeParentDirs := c.BoolT(makeParentDirectoriesFlagName)
+			// makeParentDirsOnRemote := makeParentDirs && !pull && !remoteIsLocal
+			opts := rsyncOpts{
+				local:           localPath,
+				remote:          remotePath,
+				user:            user,
+				host:            host,
+				makeParentDirs:  makeParentDirs,
+				excludePatterns: c.StringSlice(excludeFlagName),
+				shouldDelete:    c.BoolT(deleteFlagName),
+				pull:            pull,
+				dryRun:          dryRun,
 			}
-			cmd := exec.CommandContext(ctx, rsync, args...)
-			cmd.Stdout = os.Stdout
+			// if makeParentDirs && !makeParentDirsOnRemote {
+			//     if err := makeLocalRsyncDirs(localPath, remotePath, pull); err != nil {
+			//         return errors.Wrap(err, "could not create necessary directories")
+			//     }
+			// }
+			cmd, err := buildRsyncCommand(ctx, opts)
+			if err != nil {
+				return errors.Wrap(err, "could not build rsync command")
+			}
 			return cmd.Run()
 		},
 	}
+}
+
+// makeLocalRsyncDirs creates the parent directories for the rsync destination
+// depending on whether or not we are doing a push or pull operation.
+func makeLocalRsyncDirs(local, remote string, pull bool) error {
+	var dirs string
+	if pull {
+		dirs = filepath.Dir(local)
+	} else {
+		dirs = filepath.Dir(remote)
+	}
+
+	return errors.Wrapf(os.MkdirAll(dirs, 0755), "could not create local parent directories '%s'", dirs)
+}
+
+// getUserAndHostname gets the user's spawn hosts and if the hostID matches one
+// of the user's spawn hosts, it returns the username and hostname for that
+// host.
+func getUserAndHostname(ctx context.Context, hostID, confPath string) (user, hostname string, err error) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	conf, err := NewClientSettings(confPath)
+	if err != nil {
+		return "", "", errors.Wrap(err, "problem loading configuration")
+	}
+	client := conf.setupRestCommunicator(ctx)
+	defer client.Close()
+
+	params := model.APIHostParams{
+		UserSpawned: true,
+		Mine:        true,
+	}
+	hosts, err := client.GetHosts(ctx, params)
+	if err != nil {
+		return "", "", errors.Wrap(err, "problem getting your spawn hosts")
+	}
+
+	for _, h := range hosts {
+		if model.FromStringPtr(h.Id) == hostID {
+			catcher := grip.NewBasicCatcher()
+			user = model.FromStringPtr(h.User)
+			catcher.ErrorfWhen(user == "", "could not find login user for host '%s'", hostID)
+			hostname = model.FromStringPtr(h.HostURL)
+			catcher.ErrorfWhen(hostname == "", "could not find hostname for host '%s'", hostID)
+			return user, hostname, catcher.Resolve()
+		}
+	}
+	return "", "", errors.Errorf("could not find host '%s' in user's spawn hosts", hostID)
+}
+
+// sanityCheckRsync performs some basic sanity  checks for the common case in
+// which you want to mirror two directories. The trailing slash means to
+// overwrite all of the contents of the destination directory.
+func sanityCheckRsync(localPath, remotePath string, pull bool) (ok bool, err error) {
+	localPathIsDir := strings.HasSuffix(localPath, "/")
+	remotePathIsDir := strings.HasSuffix(remotePath, "/")
+
+	if localPathIsDir && !pull {
+		ok, err := sanityPrompt(fmt.Sprintf("The local directory '%s' will overwrite all contents in the remote directory '%s'", localPath, remotePath))
+		if err != nil {
+			return false, errors.Wrap(err, "error while asking user to sanity check rsync command")
+		}
+		if !ok {
+			return false, nil
+		}
+	}
+	if remotePathIsDir && pull {
+		ok, err := sanityPrompt(fmt.Sprintf("The remote directory '%s' will overwrite all contents in the local directory '%s'", localPath, remotePath))
+		if err != nil {
+			return false, errors.Wrap(err, "error while asking user to sanity check rsync command")
+		}
+		if !ok {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 // sanityPrompt prints the message and asks the user if they would like to
@@ -1013,5 +1082,84 @@ func sanityPrompt(msg string) (ok bool, err error) {
 	if err != nil {
 		return false, errors.Wrap(err, "could not read input")
 	}
-	return input == "y", nil
+	input = strings.TrimSpace(input)
+	return input == "y" || input == "yes", nil
+}
+
+type rsyncOpts struct {
+	local           string
+	remote          string
+	user            string
+	host            string
+	makeParentDirs  bool
+	excludePatterns []string
+	shouldDelete    bool
+	pull            bool
+	dryRun          bool
+}
+
+func (opts *rsyncOpts) validate() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(opts.local == "", "local path must be specified")
+	catcher.NewWhen(opts.remote == "", "remote path must be specified")
+	return catcher.Resolve()
+}
+
+// buildRsyncCommand takes the given options and constructs an rsync command.
+func buildRsyncCommand(ctx context.Context, opts rsyncOpts) (*exec.Cmd, error) {
+	if err := opts.validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid rsync options")
+	}
+
+	rsync, err := exec.LookPath("rsync")
+	if err != nil {
+		return nil, errors.Wrap(err, "could not find rsync binary in the PATH")
+	}
+
+	args := []string{"-a", "-h", "-I", "-z", "--progress"}
+	if opts.shouldDelete {
+		args = append(args, "-e", "ssh", "--delete")
+	}
+	for _, pattern := range opts.excludePatterns {
+		args = append(args, "--exclude", pattern)
+	}
+	if opts.makeParentDirs {
+		var dirs string
+		if opts.pull {
+			dirs = filepath.Dir(opts.local)
+		} else {
+			dirs = filepath.Dir(opts.remote)
+		}
+		args = append(args, fmt.Sprintf(`--rsync-path=mkdir -p "%s" && rsync`, dirs))
+	}
+
+	var dryRunIndex int
+	if opts.dryRun {
+		dryRunIndex = len(args)
+		args = append(args, "-n")
+	}
+
+	var remote string
+	if opts.user != "" && opts.host != "" {
+		remote = fmt.Sprintf("%s@%s:%s", opts.user, opts.host, opts.remote)
+	} else {
+		remote = opts.remote
+	}
+	if opts.pull {
+		args = append(args, remote, opts.local)
+	} else {
+		args = append(args, opts.local, remote)
+	}
+	pp.Println("args:", args)
+
+	if opts.dryRun {
+		cmdWithoutDryRun := append([]string{rsync}, args[:dryRunIndex]...)
+		cmdWithoutDryRun = append(cmdWithoutDryRun, args[dryRunIndex+1:]...)
+		fmt.Printf("Going to execute the following command: %s\n", strings.Join(cmdWithoutDryRun, " "))
+	}
+	pp.Println("args:", args)
+	cmd := exec.CommandContext(ctx, rsync, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd, nil
 }
