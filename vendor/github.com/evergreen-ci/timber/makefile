@@ -3,14 +3,21 @@ srcFiles := $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name 
 testFiles := $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
 
 packages := ./ ./internal
-lintPackages := timber internal
+lintPackages := timber
 # override the go binary path if set
-ifneq (,$(GO_BIN_PATH))
+ifneq ($(GO_BIN_PATH),)
 gobin := $(GO_BIN_PATH)
 else
 gobin := go
 endif
-
+gopath := $(GOPATH)
+ifeq ($(OS),Windows_NT)
+gopath := $(shell cygpath -m $(gopath))
+endif
+ifeq ($(gopath),)
+gopath := $($(gobin) env GOPATH)
+endif
+goEnv := GOPATH=$(gopath)$(if $(GO_BIN_PATH), PATH="$(shell dirname $(GO_BIN_PATH)):$(PATH)")
 
 # start linting configuration
 #   package, testing, and linter dependencies specified
@@ -44,33 +51,21 @@ lintArgs += --exclude="deadcode"
 
 # start dependency installation tools
 #   implementation details for being able to lazily install dependencies
-gopath := $(GOPATH)
-ifeq ($(OS),Windows_NT)
-gopath := $(shell cygpath -m $(gopath))
-endif
 $(gopath)/src/%:
 	@-[ ! -d $(gopath) ] && mkdir -p $(gopath) || true
-	$(gobin) get $(subst $(gopath)/src/,,$@)
+	$(goEnv) $(gobin) get $(subst $(gopath)/src/,,$@)
 # end dependency installation tools
 
 # lint setup targets
 lintDeps := $(addprefix $(gopath)/src/,$(lintDeps))
 $(buildDir)/.lintSetup:$(lintDeps)
 	@mkdir -p $(buildDir)
-	$(gopath)/bin/gometalinter --force --install >/dev/null && touch $@
+	$(goEnv) $(gopath)/bin/gometalinter --force --install >/dev/null && touch $@
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
 	@mkdir -p $(buildDir)
-	$(gobin) build -o $@ $<
+	$(goEnv) $(gobin) build -o $@ $<
 
 # end lint setup targets
-
-# generate lint JSON document for evergreen
-generate-lint:$(buildDir)/generate-lint.json
-$(buildDir)/generate-lint.json:$(buildDir)/generate-lint $(srcFiles)
-	./$(buildDir)/generate-lint
-$(buildDir)/generate-lint:cmd/generate-lint/generate-lint.go
-	$(gobin) build -o $@ $<
-# end generate lint
 
 testArgs := -v
 ifneq (,$(RUN_TEST))
@@ -84,17 +79,17 @@ testArgs += -short
 endif
 
 compile:
-	GOPATH=$(gopath) $(gobin) build $(packages)
+	$(goEnv) $(gobin) build $(packages)
 race:
 	@mkdir -p $(buildDir)
-	GOPATH=$(gopath) $(gobin) test $(testArgs) -race $(packages) | tee $(buildDir)/race.out
+	$(goEnv) $(gobin) test $(testArgs) -race $(packages) | tee $(buildDir)/race.out
 	@grep -s -q -e "^PASS" $(buildDir)/race.out && ! grep -s -q "^WARNING: DATA RACE" $(buildDir)/race.out
 test:
 	@mkdir -p $(buildDir)
-	GOPATH=$(gopath) $(gobin) test $(testArgs) $(if $(DISABLE_COVERAGE),, -cover) $(packages) | tee $(buildDir)/test.out
+	$(goEnv) $(gobin) test $(testArgs) $(if $(DISABLE_COVERAGE),, -cover) $(packages) | tee $(buildDir)/test.out
 	@grep -s -q -e "^PASS" $(buildDir)/test.out
 coverage:$(buildDir)/cover.out
-	@go tool cover -func=$< | sed -E 's%github.com/.*/jasper/%%' | column -t
+	@$(goEnv) $(gobin) tool cover -func=$< | sed -E 's%github.com/.*/jasper/%%' | column -t
 coverage-html:$(buildDir)/cover.html
 lint:$(foreach target,$(lintPackages),$(buildDir)/output.$(target).lint)
 phony += lint lint-deps build build-race race test coverage coverage-html
@@ -105,14 +100,14 @@ phony += lint lint-deps build build-race race test coverage coverage-html
 $(buildDir):$(srcFiles) compile
 	@mkdir -p $@
 $(buildDir)/cover.out:$(buildDir) $(testFiles) .FORCE
-	GOPATH=$(gopath) $(gobin) test $(testArgs) -coverprofile $@ -cover $(packages)
+	$(goEnv) $(gobin) test $(testArgs) -coverprofile $@ -cover $(packages)
 $(buildDir)/cover.html:$(buildDir)/cover.out
-	GOPATH=$(gopath) $(gobin) tool cover -html=$< -o $@
+	$(goEnv) $(gobin) tool cover -html=$< -o $@
 #  targets to generate gotest output from the linter.
 $(buildDir)/output.%.lint:$(buildDir)/run-linter $(buildDir)/ .FORCE
-	@./$< --output=$@ --lintArgs='$(lintArgs)' --packages='$*'
+	@$(goEnv) ./$< --output=$@ --lintArgs='$(lintArgs)' --packages='$*'
 $(buildDir)/output.lint:$(buildDir)/run-linter $(buildDir)/ .FORCE
-	@./$< --output="$@" --lintArgs='$(lintArgs)' --packages="$(lintPackages)"
+	@$(goEnv) ./$< --output="$@" --lintArgs='$(lintArgs)' --packages="$(lintPackages)"
 #  targets to process and generate coverage reports
 # end test and coverage artifacts
 
