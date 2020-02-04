@@ -1,6 +1,7 @@
 package send
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/url"
@@ -82,6 +83,8 @@ func (s *sumoLogger) Send(m message.Composer) {
 		}
 	}
 }
+
+func (s *sumoLogger) Flush(_ context.Context) error { return nil }
 
 ////////////////////////////////////////////////////////////////////////
 //

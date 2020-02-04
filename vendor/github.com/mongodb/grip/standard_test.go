@@ -14,12 +14,10 @@ import (
 const testMessage = "hello world"
 
 type (
-	basicMethod  func(interface{})
-	lnMethod     func(...interface{})
-	fMethod      func(string, ...interface{})
-	whenMethod   func(bool, interface{})
-	whenlnMethod func(bool, ...interface{})
-	whenfMethod  func(bool, string, ...interface{})
+	basicMethod func(interface{})
+	lnMethod    func(...interface{})
+	fMethod     func(string, ...interface{})
+	whenMethod  func(bool, interface{})
 )
 
 type LoggingMethodSuite struct {
@@ -80,88 +78,6 @@ func (s *LoggingMethodSuite) TestWhenMethods() {
 		stdMsg = s.stdSender.GetMessage()
 		s.False(stdMsg.Logged)
 
-	}
-}
-
-func (s *LoggingMethodSuite) TestWhenlnMethods() {
-	cases := map[string][]whenlnMethod{
-		"emergency": []whenlnMethod{EmergencyWhenln, s.logger.EmergencyWhenln},
-		"alert":     []whenlnMethod{AlertWhenln, s.logger.AlertWhenln},
-		"critical":  []whenlnMethod{CriticalWhenln, s.logger.CriticalWhenln},
-		"error":     []whenlnMethod{ErrorWhenln, s.logger.ErrorWhenln},
-		"warning":   []whenlnMethod{WarningWhenln, s.logger.WarningWhenln},
-		"notice":    []whenlnMethod{NoticeWhenln, s.logger.NoticeWhenln},
-		"info":      []whenlnMethod{InfoWhenln, s.logger.InfoWhenln},
-		"debug":     []whenlnMethod{DebugWhenln, s.logger.DebugWhenln},
-	}
-
-	for kind, loggers := range cases {
-
-		s.Len(loggers, 2)
-		s.False(s.loggingSender.HasMessage())
-		s.False(s.stdSender.HasMessage())
-
-		loggers[0](true, testMessage, testMessage)
-		loggers[1](true, testMessage, testMessage)
-
-		s.True(s.loggingSender.HasMessage())
-		s.True(s.stdSender.HasMessage())
-
-		lgrMsg := s.loggingSender.GetMessage()
-		s.True(lgrMsg.Logged)
-		stdMsg := s.stdSender.GetMessage()
-		s.True(stdMsg.Logged)
-
-		s.Equal(lgrMsg.Rendered, stdMsg.Rendered,
-			fmt.Sprintf("%s: \n\tlogger: %+v \n\tstandard: %+v", kind, lgrMsg, stdMsg))
-
-		loggers[0](false, testMessage, testMessage)
-		loggers[1](false, testMessage, testMessage)
-
-		lgrMsg = s.loggingSender.GetMessage()
-		s.False(lgrMsg.Logged)
-		stdMsg = s.stdSender.GetMessage()
-		s.False(stdMsg.Logged)
-	}
-}
-
-func (s *LoggingMethodSuite) TestWhenfMethods() {
-	cases := map[string][]whenfMethod{
-		"emergency": []whenfMethod{EmergencyWhenf, s.logger.EmergencyWhenf},
-		"alert":     []whenfMethod{AlertWhenf, s.logger.AlertWhenf},
-		"critical":  []whenfMethod{CriticalWhenf, s.logger.CriticalWhenf},
-		"error":     []whenfMethod{ErrorWhenf, s.logger.ErrorWhenf},
-		"warning":   []whenfMethod{WarningWhenf, s.logger.WarningWhenf},
-		"notice":    []whenfMethod{NoticeWhenf, s.logger.NoticeWhenf},
-		"info":      []whenfMethod{InfoWhenf, s.logger.InfoWhenf},
-		"debug":     []whenfMethod{DebugWhenf, s.logger.DebugWhenf},
-	}
-
-	for kind, loggers := range cases {
-		s.Len(loggers, 2)
-		s.False(s.loggingSender.HasMessage(), kind)
-		s.False(s.stdSender.HasMessage(), kind)
-
-		loggers[0](true, "%s: %d", testMessage, 3)
-		loggers[1](true, "%s: %d", testMessage, 3)
-
-		s.True(s.loggingSender.HasMessage())
-		s.True(s.stdSender.HasMessage())
-		lgrMsg := s.loggingSender.GetMessage()
-		s.True(lgrMsg.Logged)
-		stdMsg := s.stdSender.GetMessage()
-		s.True(stdMsg.Logged)
-
-		s.Equal(lgrMsg.Rendered, stdMsg.Rendered,
-			fmt.Sprintf("%s: \n\tlogger: %+v \n\tstandard: %+v", kind, lgrMsg, stdMsg))
-
-		loggers[0](false, "%s: %d", testMessage, 3)
-		loggers[1](false, "%s: %d", testMessage, 3)
-
-		lgrMsg = s.loggingSender.GetMessage()
-		s.False(lgrMsg.Logged)
-		stdMsg = s.stdSender.GetMessage()
-		s.False(stdMsg.Logged)
 	}
 }
 
@@ -268,12 +184,10 @@ func (s *LoggingMethodSuite) TestProgramaticLevelMethods() {
 	)
 
 	cases := map[string]interface{}{
-		"when":   []lgwhen{LogWhen, s.logger.LogWhen},
-		"whenln": []lgwhenln{LogWhenln, s.logger.LogWhenln},
-		"whenf":  []lgwhenf{LogWhenf, s.logger.LogWhenf},
-		"lg":     []lg{Log, s.logger.Log},
-		"lgln":   []lgln{Logln, s.logger.Logln},
-		"lgf":    []lgf{Logf, s.logger.Logf},
+		"when": []lgwhen{LogWhen, s.logger.LogWhen},
+		"lg":   []lg{Log, s.logger.Log},
+		"lgln": []lgln{Logln, s.logger.Logln},
+		"lgf":  []lgf{Logf, s.logger.Logf},
 	}
 
 	const l = level.Emergency

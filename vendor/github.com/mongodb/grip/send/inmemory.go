@@ -1,6 +1,7 @@
 package send
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -193,6 +194,9 @@ func (s *InMemorySender) Send(msg message.Composer) {
 
 	s.totalBytesSent += int64(len(msg.String()))
 }
+
+// Flush noops since this is a non-buffered sender.
+func (s *InMemorySender) Flush(_ context.Context) error { return nil }
 
 // TotalBytesSent returns the total number of bytes sent.
 func (s *InMemorySender) TotalBytesSent() int64 {

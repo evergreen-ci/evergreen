@@ -1,6 +1,7 @@
 package send
 
 import (
+	"context"
 	"testing"
 
 	"github.com/mongodb/grip/level"
@@ -37,4 +38,6 @@ func TestMultiSenderRespectsLevel(t *testing.T) {
 	m, ok = mock.GetMessageSafe()
 	assert.True(ok)
 	assert.True(m.Logged)
+
+	assert.NoError(multi.Flush(context.TODO()))
 }
