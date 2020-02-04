@@ -518,7 +518,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if defaultLogger == model.BuildloggerLogSender {
-		logReader, err := getBuildloggerLogs(projCtx, r, logType, DefaultLogMessages, execution)
+		logReader, err := uis.getBuildloggerLogs(projCtx, r, logType, DefaultLogMessages, execution)
 		if err == nil {
 			gimlet.WriteText(w, logReader)
 			grip.Warning(logReader.Close())
@@ -587,7 +587,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if defaultLogger == model.BuildloggerLogSender {
-		logReader, err = getBuildloggerLogs(projCtx, r, logType, 0, execution)
+		logReader, err = uis.getBuildloggerLogs(projCtx, r, logType, 0, execution)
 		if err == nil {
 			defer logReader.Close()
 		} else {
@@ -652,7 +652,7 @@ func getDefaultLogger(projCtx projectContext) (string, error) {
 	return defaultLogger, nil
 }
 
-func getBuildloggerLogs(projCtx projectContext, r *http.Request, logType string, tail, execution int) (io.ReadCloser, error) {
+func (uis *UIServer) getBuildloggerLogs(projCtx projectContext, r *http.Request, logType string, tail, execution int) (io.ReadCloser, error) {
 	userCookie, err := r.Cookie(evergreen.AuthTokenCookie)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting auth token cookie for user")
@@ -660,7 +660,7 @@ func getBuildloggerLogs(projCtx projectContext, r *http.Request, logType string,
 
 	url := fmt.Sprintf(
 		"https://%s/rest/v1/buildlogger/task_id/%s?n=%d&execution=%d&print_time=true&print_priority=true",
-		evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL,
+		uis.env.Settings().LoggerConfig.BuildloggerBaseURL,
 		projCtx.Task.Id,
 		tail,
 		execution,
