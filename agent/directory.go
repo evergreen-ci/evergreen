@@ -65,7 +65,7 @@ func (a *Agent) removeTaskDirectory(tc *taskContext) {
 	}
 	err = os.RemoveAll(abs)
 	grip.Critical(errors.Wrapf(err, "Error removing working directory for the task: %s", tc.taskDirectory))
-	grip.InfoWhen(err == nil, messsage.Fields{
+	grip.InfoWhen(err == nil, message.Fields{
 		"message":   "Successfully deleted directory for completed task",
 		"directory": tc.taskDirectory,
 	})

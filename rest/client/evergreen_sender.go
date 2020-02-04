@@ -14,32 +14,34 @@ import (
 )
 
 type evergreenLogSender struct {
-	logTaskData TaskData
-	logChannel  string
-	comm        Communicator
-	cancel      context.CancelFunc
-	pipe        chan message.Composer
-	signalFlush chan struct{}
-	lastBatch   chan struct{}
-	signalEnd   chan struct{}
-	bufferTime  time.Duration
-	bufferSize  int
-	closed      bool
+	logTaskData         TaskData
+	logChannel          string
+	comm                Communicator
+	cancel              context.CancelFunc
+	pipe                chan message.Composer
+	signalFlush         chan struct{}
+	signalFlushComplete chan struct{}
+	lastBatch           chan struct{}
+	signalEnd           chan struct{}
+	bufferTime          time.Duration
+	bufferSize          int
+	closed              bool
 	sync.RWMutex
 	*send.Base
 }
 
 func newEvergreenLogSender(ctx context.Context, comm Communicator, channel string, taskData TaskData, bufferSize int, bufferTime time.Duration) send.Sender {
 	s := &evergreenLogSender{
-		comm:        comm,
-		logChannel:  channel,
-		logTaskData: taskData,
-		Base:        send.NewBase(taskData.ID),
-		bufferSize:  bufferSize,
-		pipe:        make(chan message.Composer, bufferSize/2),
-		signalFlush: make(chan struct{}),
-		lastBatch:   make(chan struct{}),
-		signalEnd:   make(chan struct{}),
+		comm:                comm,
+		logChannel:          channel,
+		logTaskData:         taskData,
+		Base:                send.NewBase(taskData.ID),
+		bufferSize:          bufferSize,
+		pipe:                make(chan message.Composer, bufferSize/2),
+		signalFlush:         make(chan struct{}),
+		signalFlushComplete: make(chan struct{}),
+		lastBatch:           make(chan struct{}),
+		signalEnd:           make(chan struct{}),
 	}
 	ctx, s.cancel = context.WithCancel(ctx)
 
@@ -105,6 +107,7 @@ backgroundSender:
 				buffer = []apimodels.LogMessage{}
 			}
 			timer.Reset(bufferTime)
+			s.signalFlushComplete <- struct{}{}
 		case m := <-s.pipe:
 			buffer = append(buffer, s.convertMessage(m))
 			if len(buffer) >= s.bufferSize/2 {
@@ -158,6 +161,7 @@ func (s *evergreenLogSender) Flush(_ context.Context) error {
 	}
 
 	s.signalFlush <- struct{}{}
+	<-s.signalFlushComplete
 
 	return nil
 }

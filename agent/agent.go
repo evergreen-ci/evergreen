@@ -452,6 +452,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) 
 		err := a.uploadToS3(ctx, tc)
 		tc.logger.Execution().Error(errors.Wrap(err, "error uploading log files"))
 		tc.logger.Execution().Infof("Sending final status as: %v", detail.Status)
+		grip.Info("FLUSHING")
 		grip.Error(tc.logger.Flush(ctx))
 	}
 	grip.Infof("Sending final status as: %v", detail.Status)
