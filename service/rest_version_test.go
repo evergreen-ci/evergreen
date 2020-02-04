@@ -304,6 +304,7 @@ func TestGetVersionInfo(t *testing.T) {
 			Remote:              false,
 			RemotePath:          "",
 			Requester:           evergreen.RepotrackerVersionRequester,
+			Config:              "this is my config",
 		}
 		So(v.Insert(), ShouldBeNil)
 
@@ -500,6 +501,7 @@ func TestActivateVersion(t *testing.T) {
 			Remote:              false,
 			RemotePath:          "",
 			Requester:           evergreen.RepotrackerVersionRequester,
+			Config:              "this is my config",
 		}
 		So(v.Insert(), ShouldBeNil)
 
