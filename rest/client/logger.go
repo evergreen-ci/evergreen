@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"io"
 	"sync"
 
@@ -22,6 +23,9 @@ type LoggerProducer interface {
 	Execution() grip.Journaler
 	Task() grip.Journaler
 	System() grip.Journaler
+
+	// Flush flushes the underlying senders.
+	Flush(context.Context) error
 
 	// Close releases all resources by calling Close on all underlying senders.
 	Close() error
@@ -47,6 +51,22 @@ type logHarness struct {
 func (l *logHarness) Execution() grip.Journaler { return l.execution }
 func (l *logHarness) Task() grip.Journaler      { return l.task }
 func (l *logHarness) System() grip.Journaler    { return l.system }
+
+func (l *logHarness) Flush(ctx context.Context) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	if l.closed {
+		return nil
+	}
+
+	catcher := grip.NewBasicCatcher()
+	catcher.Add(l.execution.GetSender().Flush(ctx))
+	catcher.Add(l.task.GetSender().Flush(ctx))
+	catcher.Add(l.system.GetSender().Flush(ctx))
+
+	return catcher.Resolve()
+}
 
 func (l *logHarness) Close() error {
 	l.mu.Lock()
@@ -101,6 +121,17 @@ func NewSingleChannelLogHarness(name string, sender send.Sender) LoggerProducer 
 func (l *singleChannelLogHarness) Execution() grip.Journaler { return l.logger }
 func (l *singleChannelLogHarness) Task() grip.Journaler      { return l.logger }
 func (l *singleChannelLogHarness) System() grip.Journaler    { return l.logger }
+
+func (l *singleChannelLogHarness) Flush(ctx context.Context) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	if l.closed {
+		return nil
+	}
+
+	return l.logger.GetSender().Flush(ctx)
+}
 
 func (l *singleChannelLogHarness) Close() error {
 	l.mu.Lock()

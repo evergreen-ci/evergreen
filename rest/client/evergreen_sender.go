@@ -19,6 +19,7 @@ type evergreenLogSender struct {
 	comm        Communicator
 	cancel      context.CancelFunc
 	pipe        chan message.Composer
+	signalFlush chan struct{}
 	lastBatch   chan struct{}
 	signalEnd   chan struct{}
 	bufferTime  time.Duration
@@ -36,6 +37,7 @@ func newEvergreenLogSender(ctx context.Context, comm Communicator, channel strin
 		Base:        send.NewBase(taskData.ID),
 		bufferSize:  bufferSize,
 		pipe:        make(chan message.Composer, bufferSize/2),
+		signalFlush: make(chan struct{}),
 		lastBatch:   make(chan struct{}),
 		signalEnd:   make(chan struct{}),
 	}
@@ -97,6 +99,12 @@ backgroundSender:
 				buffer = []apimodels.LogMessage{}
 			}
 			timer.Reset(bufferTime)
+		case <-s.signalFlush:
+			if len(buffer) > 0 {
+				s.flush(ctx, buffer)
+				buffer = []apimodels.LogMessage{}
+			}
+			timer.Reset(bufferTime)
 		case m := <-s.pipe:
 			buffer = append(buffer, s.convertMessage(m))
 			if len(buffer) >= s.bufferSize/2 {
@@ -141,7 +149,18 @@ func (s *evergreenLogSender) Send(m message.Composer) {
 	}
 }
 
-func (s *evergreenLogSender) Flush(_ context.Context) error { return nil }
+func (s *evergreenLogSender) Flush(_ context.Context) error {
+	s.RLock()
+	defer s.RUnlock()
+
+	if s.closed {
+		return nil
+	}
+
+	s.signalFlush <- struct{}{}
+
+	return nil
+}
 
 func (s *evergreenLogSender) convertMessage(m message.Composer) apimodels.LogMessage {
 	return apimodels.LogMessage{

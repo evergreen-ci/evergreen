@@ -386,8 +386,6 @@ func (s *AgentSuite) TestAbort() {
 		"Running post-task commands":      false,
 		"Sending final status as: failed": false,
 	}
-	// TODO: remove this line with MAKE-1090
-	s.Require().NoError(s.tc.logger.Close())
 	for _, m := range s.mockCommunicator.GetMockMessages()["task_id"] {
 		for toFind, _ := range shouldFind {
 			if strings.Contains(m.Message, toFind) {
