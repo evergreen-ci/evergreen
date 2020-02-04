@@ -1037,6 +1037,7 @@ func (h *Host) SetupSpawnHostCommands(settings *evergreen.Settings) (string, err
 		fmt.Sprintf("cp %s %s", binaryPath, binDir),
 		fmt.Sprintf("(echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.profile || true; echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.bash_profile || true)", binDir, h.Distro.HomeDir(), binDir, h.Distro.HomeDir()),
 		fmt.Sprintf("chown -R %s %s", h.Distro.User, binDir),
+		fmt.Sprintf("chmod +x %s", filepath.Join(binDir, h.Distro.BinaryName())),
 	}, " && ")
 
 	script := setupBinDirCmds
