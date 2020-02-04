@@ -64,7 +64,8 @@ func (s *dockerSettings) FromDistroSettings(d distro.Distro, _ string) error {
 		if err := d.UpdateProviderSettings(bytes); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"distro":   d.Id,
-				"settings": d.Provider,
+				"provider": d.Provider,
+				"settings": d.ProviderSettings,
 			}))
 		}
 	}
@@ -83,8 +84,8 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 			evergreen.ProviderNameDocker, h.Distro.Id, h.Distro.Provider)
 	}
 
-	if h.DockerOptions.Image == "" {
-		return nil, errors.Errorf("Docker image empty for host '%s'", h.Id)
+	if err := h.DockerOptions.Validate(); err != nil {
+		return nil, errors.Wrapf(err, "Docker options not valid for host '%s'", h.Id)
 	}
 
 	// get parent of host
@@ -95,11 +96,6 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	hostIP := parentHost.Host
 	if hostIP == "" {
 		return nil, errors.Wrapf(err, "Error getting host IP for parent host %s", parentHost.Id)
-	}
-
-	settings := dockerSettings{ImageURL: h.DockerOptions.Image}
-	if err = settings.Validate(); err != nil {
-		return nil, errors.Wrapf(err, "Invalid Docker settings for host '%s'", h.Id)
 	}
 
 	// Create container

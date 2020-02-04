@@ -226,7 +226,8 @@ func (opts *DockerOptions) FromDistroSettings(d distro.Distro, _ string) error {
 		if err := d.UpdateProviderSettings(bytes); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"distro":   d.Id,
-				"settings": d.Provider,
+				"provider": d.Provider,
+				"settings": d.ProviderSettings,
 			}))
 		}
 	}

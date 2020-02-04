@@ -4,7 +4,6 @@ import (
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
-
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
