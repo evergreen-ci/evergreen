@@ -2477,6 +2477,35 @@ func TestIsIdleParent(t *testing.T) {
 
 }
 
+func TestUpdateParentIDs(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.Clear(Collection))
+	parent := Host{
+		Id:            "parent",
+		Tag:           "foo",
+		HasContainers: true,
+	}
+	assert.NoError(parent.Insert())
+	container1 := Host{
+		Id:       "c1",
+		ParentID: parent.Tag,
+	}
+	assert.NoError(container1.Insert())
+	container2 := Host{
+		Id:       "c2",
+		ParentID: parent.Tag,
+	}
+	assert.NoError(container2.Insert())
+
+	assert.NoError(parent.UpdateParentIDs())
+	dbContainer1, err := FindOneId(container1.Id)
+	assert.NoError(err)
+	assert.Equal(parent.Id, dbContainer1.ParentID)
+	dbContainer2, err := FindOneId(container2.Id)
+	assert.NoError(err)
+	assert.Equal(parent.Id, dbContainer2.ParentID)
+}
+
 func TestFindParentOfContainer(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
