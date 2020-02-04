@@ -1,6 +1,7 @@
 package mongowire
 
 import (
+	"bytes"
 	"context"
 	"io"
 
@@ -40,26 +41,24 @@ func ReadMessage(ctx context.Context, reader io.Reader) (Message, error) {
 	}
 
 	header := MessageHeader{}
-
 	header.Size = readInt32(sizeBuf)
-
 	if header.Size > int32(200*1024*1024) {
 		if header.Size == 542393671 {
 			return nil, errors.Errorf("message too big, probably http request %d", header.Size)
 		}
 		return nil, errors.Errorf("message too big %d", header.Size)
 	}
-
 	if header.Size < 0 || header.Size-4 > MaxInt32 {
 		return nil, errors.New("message header has invalid size")
 	}
-	restBuf := make([]byte, header.Size-4)
 
+	restBuf := &bytes.Buffer{}
 	for read := 0; int32(read) < header.Size-4; {
 		readFinished = make(chan readResult)
+		tempBuf := make([]byte, header.Size-4)
 		go func() {
 			defer close(readFinished)
-			n, err := reader.Read(restBuf)
+			n, err := reader.Read(tempBuf)
 			select {
 			case readFinished <- readResult{n: n, err: err}:
 			case <-ctx.Done():
@@ -69,6 +68,10 @@ func ReadMessage(ctx context.Context, reader io.Reader) (Message, error) {
 		case <-ctx.Done():
 			return nil, errors.WithStack(ctx.Err())
 		case res := <-readFinished:
+			if res.err == io.EOF {
+				read = int(header.Size - 4)
+				break
+			}
 			if res.err != nil {
 				return nil, errors.WithStack(res.err)
 			}
@@ -76,17 +79,19 @@ func ReadMessage(ctx context.Context, reader io.Reader) (Message, error) {
 				break
 			}
 			read += res.n
+			restBuf.Write(tempBuf[:res.n])
 		}
 	}
 
-	if len(restBuf) < 12 {
+	buf := restBuf.Bytes()
+	if len(buf) < 12 {
 		return nil, errors.Errorf("invalid message header. either header.Size = %v is shorter than message length, or message is missing RequestId, ResponseTo, or OpCode fields.", header.Size)
 	}
-	header.RequestID = readInt32(restBuf)
-	header.ResponseTo = readInt32(restBuf[4:])
-	header.OpCode = OpType(readInt32(restBuf[8:]))
+	header.RequestID = readInt32(buf)
+	header.ResponseTo = readInt32(buf[4:])
+	header.OpCode = OpType(readInt32(buf[8:]))
 
-	return header.Parse(restBuf[12:])
+	return header.Parse(buf[12:])
 }
 
 func SendMessage(ctx context.Context, m Message, writer io.Writer) error {

@@ -19,24 +19,41 @@ import (
 )
 
 func makeInsecureRPCServiceAndClient(ctx context.Context, mngr jasper.Manager) (Manager, error) {
-	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", testutil.GetPortNumber()))
+	addr, err := tryStartRPCService(ctx, func(ctx context.Context, addr net.Addr) error {
+		return startTestRPCService(ctx, mngr, addr, nil)
+	})
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.Wrap(err, "failed to start RPC service")
 	}
-
-	if err := startTestRPCService(ctx, mngr, addr, nil); err != nil {
-		return nil, errors.WithStack(err)
-	}
-
 	return newTestRPCClient(ctx, addr, nil)
 }
 
-func makeTLSRPCServiceAndClient(ctx context.Context, mngr jasper.Manager) (Manager, error) {
-	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", testutil.GetPortNumber()))
-	if err != nil {
+func tryStartRPCService(ctx context.Context, startService func(context.Context, net.Addr) error) (net.Addr, error) {
+	var addr net.Addr
+	var err error
+tryPort:
+	for {
+		select {
+		case <-ctx.Done():
+			err = ctx.Err()
+			break tryPort
+		default:
+			addr, err = net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", testutil.GetPortNumber()))
+			if err != nil {
+				continue
+			}
 
-		return nil, errors.WithStack(err)
+			if err = startService(ctx, addr); err != nil {
+				continue
+			}
+
+			break tryPort
+		}
 	}
+	return addr, err
+}
+
+func makeTLSRPCServiceAndClient(ctx context.Context, mngr jasper.Manager) (Manager, error) {
 	caCertFile := filepath.Join("testdata", "ca.crt")
 
 	serverCertFile := filepath.Join("testdata", "server.crt")
@@ -65,8 +82,11 @@ func makeTLSRPCServiceAndClient(ctx context.Context, mngr jasper.Manager) (Manag
 		return nil, errors.Wrap(err, "failed to initialize test server credentials")
 	}
 
-	if err = startTestRPCService(ctx, mngr, addr, serverCreds); err != nil {
-		return nil, errors.Wrap(err, "failed to start test server")
+	addr, err := tryStartRPCService(ctx, func(ctx context.Context, addr net.Addr) error {
+		return startTestRPCService(ctx, mngr, addr, serverCreds)
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to start RPC service")
 	}
 
 	clientCert, err := ioutil.ReadFile(clientCertFile)

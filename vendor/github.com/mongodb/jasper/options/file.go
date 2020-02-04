@@ -13,14 +13,14 @@ import (
 
 // WriteFile represents the options necessary to write to a file.
 type WriteFile struct {
-	Path string `json:"path"`
+	Path string `json:"path" bson:"path"`
 	// File content can come from either Content or Reader, but not both.
 	// Content should only be used if the entire file's contents can be held in
 	// memory.
-	Content []byte      `json:"content"`
-	Reader  io.Reader   `json:"-"`
-	Append  bool        `json:"append"`
-	Perm    os.FileMode `json:"perm"`
+	Content []byte      `json:"content" bson:"content"`
+	Reader  io.Reader   `json:"-" bson:"-"`
+	Append  bool        `json:"append" bson:"append"`
+	Perm    os.FileMode `json:"perm" bson:"perm"`
 }
 
 // validateContent ensures that there is at most one source of content for

@@ -16,7 +16,7 @@ func (s *OpScope) Validate() error {
 	switch s.Type {
 	case OP_COMMAND:
 		if s.Command == "" {
-			return errors.New("commands much identify a named command")
+			return errors.New("commands must identify a named command")
 		}
 
 		return nil
@@ -77,6 +77,12 @@ func (s *OpScope) Validate() error {
 
 		if s.Command != "" {
 			return errors.New("get more ops cannot specify a command name")
+		}
+
+		return nil
+	case OP_MSG:
+		if s.Command == "" {
+			return errors.New("msg ops must identify a command name")
 		}
 
 		return nil

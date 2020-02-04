@@ -45,6 +45,8 @@ func (m *CommandMessage) Serialize() []byte {
 	m.header.WriteInto(buf)
 
 	loc := int64(16)
+	loc += int64(writeCString(m.DB, buf, int(loc)))
+	loc += int64(writeCString(m.CmdName, buf, int(loc)))
 
 	offset, _ := m.CommandArgs.WriteDocument(uint(loc), buf)
 	loc += offset

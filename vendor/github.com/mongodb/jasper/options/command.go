@@ -3,7 +3,6 @@ package options
 import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
-	"github.com/pkg/errors"
 )
 
 // Command represents jasper.Command options that are configurable by the
@@ -32,12 +31,7 @@ func (opts *Command) Validate() error {
 		opts.Process.Args = []string{""}
 	}
 	catcher.Add(opts.Process.Validate())
-	if opts.Priority != 0 && !level.IsValidPriority(opts.Priority) {
-		catcher.Add(errors.New("priority is not in the valid range of values"))
-	}
-
-	if len(opts.Commands) == 0 {
-		catcher.Add(errors.New("must specify at least one command"))
-	}
+	catcher.NewWhen(opts.Priority != 0 && opts.Priority.IsValid(), "priority is not in the valid range of values")
+	catcher.NewWhen(len(opts.Commands) == 0, "must specify at least one command")
 	return catcher.Resolve()
 }
