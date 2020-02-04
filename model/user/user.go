@@ -225,7 +225,7 @@ func (u *DBUser) AddFavoritedProject(identifier string) error {
 
 	err := event.LogUserEvent(u.Id, event.UserEventTypeFavoriteProjectsUpdate, before, u.FavoriteProjects)
 	if err != nil {
-		grip.Alert(errors.Errorf("error logging event for adding '%s' to user favorites", identifier))
+		grip.Error(errors.Errorf("error logging event for adding '%s' to user favorites", identifier))
 	}
 	return nil
 }
