@@ -1,6 +1,31 @@
 type Query {
-  userPatches(userId: String!): [Patch]!
+  userPatches(userId: String!): [Patch!]!
   task(taskId: String!): Task
+  projects: Projects!
+  taskTests(
+    taskId: String!
+    sortCategory: TaskSortCategory = TEST_NAME
+    sortDirection: SortDirection = ASC
+    page: Int = 0
+    limit: Int = 0
+    testName: String = ""
+    status: String = ""
+  ): [TestResult!]
+}
+
+type Mutation {
+  addFavoriteProject(identifier: String!): Project!
+}
+
+enum TaskSortCategory {
+  STATUS
+  DURATION
+  TEST_NAME
+}
+
+enum SortDirection {
+  ASC
+  DESC
 }
 
 type Patch {
@@ -15,8 +40,8 @@ type Patch {
   createTime: Time!
   startTime: Time
   finishTime: Time
-  variants: [String]!
-  tasks: [String]!
+  variants: [String!]!
+  tasks: [String!]!
   variantsTasks: [VariantTask]!
   activated: Boolean!
   alias: String!
@@ -24,7 +49,7 @@ type Patch {
 
 type VariantTask {
   name: String!
-  tasks: [String]!
+  tasks: [String!]!
 }
 
 type TaskLogs {
@@ -42,11 +67,13 @@ type TaskEndDetail {
 }
 
 type TestResult {
+  id: String!
   status: String!
   testFile: String!
   logs: TestLog!
   exitCode: Int
   startTime: Time
+  duration: Float
   endTime: Time
 }
 
@@ -93,6 +120,23 @@ type Task {
   executionTasks: [String!]
   generateTask: Boolean
   generatedBy: String
+}
+
+type Projects {
+  favorites: [Project!]!
+  all: [GroupedProjects!]!
+}
+
+type GroupedProjects {
+  name: String!
+  projects: [Project!]!
+}
+
+type Project {
+  identifier: String!
+  displayName: String!
+  repo: String!
+  owner: String!
 }
 
 scalar Time

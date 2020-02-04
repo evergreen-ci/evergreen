@@ -813,6 +813,24 @@ func TestValidateBVTaskNames(t *testing.T) {
 	})
 }
 
+func TestValidateBVBatchTimes(t *testing.T) {
+	batchtime := 126
+	p := &model.Project{
+		BuildVariants: []model.BuildVariant{
+			{
+				Name:          "linux",
+				BatchTime:     &batchtime,
+				CronBatchTime: "@notadescriptor",
+			},
+		},
+	}
+	assert.Len(t, validateBVBatchTimes(p), 2)
+
+	p.BuildVariants[0].BatchTime = nil
+	p.BuildVariants[0].CronBatchTime = "@daily"
+	assert.Empty(t, validateBVBatchTimes(p))
+}
+
 func TestValidateBVsContainTasks(t *testing.T) {
 	Convey("When validating a project's build variants", t, func() {
 		Convey("if any build variant contains no tasks an error should be returned", func() {

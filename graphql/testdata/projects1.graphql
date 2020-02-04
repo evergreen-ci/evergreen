@@ -1,0 +1,19 @@
+{
+  projects {
+    favorites {
+      identifier
+      repo
+      owner
+      displayName
+    }
+    all {
+      name
+      projects {
+        identifier
+        repo
+        owner
+        displayName
+      }
+    }
+  }
+}

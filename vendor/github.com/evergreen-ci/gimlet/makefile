@@ -64,10 +64,10 @@ lintArgs += --linter="evg:$(gopath)/bin/evg-lint:PATH:LINE:COL:MESSAGE" --enable
 lintDeps := $(addprefix $(gopath)/src/,$(lintDeps))
 srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go")
 testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*")
-testOutput := $(subst -,/,$(foreach target,$(packages),$(buildDir)/test.$(target).out))
-raceOutput := $(subst -,/,$(foreach target,$(packages),$(buildDir)/race.$(target).out))
-coverageOutput := $(subst -,/,$(foreach target,$(packages),$(buildDir)/coverage.$(target).out))
-coverageHtmlOutput := $(subst -,/,$(foreach target,$(packages),$(buildDir)/coverage.$(target).html))
+testOutput := $(subst -,/,$(foreach target,$(packages),$(buildDir)/output.$(target).test))
+raceOutput := $(subst -,/,$(foreach target,$(packages),$(buildDir)/output.$(target).race))
+coverageOutput := $(subst -,/,$(foreach target,$(packages),$(buildDir)/output.$(target).coverage))
+coverageHtmlOutput := $(subst -,/,$(foreach target,$(packages),$(buildDir)/output.$(target).coverage.html))
 $(gopath)/src/%:
 	@-[ ! -d $(gopath) ] && mkdir -p $(gopath) || true
 	$(goEnv) $(gobin) get $(subst $(gopath)/src/,,$@)
@@ -119,13 +119,13 @@ $(buildDir)/output.%.test:
 
 # convenience targets for runing tests and coverage tasks on a
 # specific package.
-race-%:$(buildDir)/race.%.out
+race-%:$(buildDir)/output.%.race
 	@grep -s -q -e "^PASS" $< && ! grep -s -q "^WARNING: DATA RACE" $<
-test-%:$(buildDir)/test.%.out
+test-%:$(buildDir)/output.%.test
 	@grep -s -q -e "^PASS" $<
-coverage-%:$(buildDir)/coverage.%.out
+coverage-%:$(buildDir)/output.%.coverage
 	@grep -s -q -e "^PASS" $(subst coverage,test,$<)
-html-coverage-%:$(buildDir)/coverage.%.out $(buildDir)/coverage.%.html
+html-coverage-%:$(buildDir)/output.%.coverage.html $(buildDir)/output.%.coverage.html
 	@grep -s -q -e "^PASS" $(subst coverage,test,$<)
 lint-%:$(buildDir)/output.%.lint
 	@grep -v -s -q "^--- FAIL" $<
@@ -154,21 +154,21 @@ testArgs += -test.timeout=10m
 endif
 #    implementation for package coverage and test running,mongodb to produce
 #    and save test output.
-$(buildDir)/coverage.%.html:$(buildDir)/coverage.%.out
-	$(goEnv) $(gobin) tool cover -html=$(buildDir)/coverage.$(subst /,-,$*).out -o $(buildDir)/coverage.$(subst /,-,$*).html
-$(buildDir)/coverage.%.out:$(testRunDeps)
-	$(goEnv) $(gobin) test $(testArgs) -covermode=count -coverprofile=$(buildDir)/coverage.$(subst /,-,$*).out $(projectPath)/$(subst -,/,$*)
-	@-[ -f $(buildDir)/coverage.$(subst /,-,$*).out ] && $(goEnv) $(gobin) tool cover -func=$(buildDir)/coverage.$(subst /,-,$*).out | sed 's%$(projectPath)/%%' | column -t
-$(buildDir)/coverage.$(name).out:$(testRunDeps)
+$(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
+	$(goEnv) $(gobin) tool cover -html=$(buildDir)/output.$(subst /,-,$*).coverage -o $(buildDir)/output.$(subst /,-,$*).coverage.html
+$(buildDir)/output.%.coverage:$(testRunDeps)
+	$(goEnv) $(gobin) test $(testArgs) -covermode=count -coverprofile=$(buildDir)/output.$(subst /,-,$*).coverage $(projectPath)/$(subst -,/,$*)
+	@-[ -f $(buildDir)/output.$(subst /,-,$*).coverage ] && $(goEnv) $(gobin) tool cover -func=$(buildDir)/output.$(subst /,-,$*).coverage | sed 's%$(projectPath)/%%' | column -t
+$(buildDir)/output.$(name).coverage:$(testRunDeps)
 	$(goEnv) $(gobin) test -covermode=count -coverprofile=$@ $(projectPath)
 	@-[ -f $@ ] && $(goEnv) $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
-$(buildDir)/test.%.out:$(testRunDeps) .FORCE
-	$(goEnv) $(gobin) test $(testArgs) ./$(subst -,/,$*) | tee $(buildDir)/test.$(subst /,-,$*).out
-$(buildDir)/race.%.out:$(testRunDeps) .FORCE
-	$(goEnv) $(gobin) test $(testArgs) -race ./$(subst -,/,$*) | tee $(buildDir)/race.$(subst /,-,$*).out
-$(buildDir)/test.$(name).out:$(testRunDeps) .FORCE
+$(buildDir)/output.%.test:$(testRunDeps) .FORCE
+	$(goEnv) $(gobin) test $(testArgs) ./$(subst -,/,$*) | tee $(buildDir)/output.$(subst /,-,$*).test
+$(buildDir)/output.%.race:$(testRunDeps) .FORCE
+	$(goEnv) $(gobin) test $(testArgs) -race ./$(subst -,/,$*) | tee $(buildDir)/output.$(subst /,-,$*).race
+$(buildDir)/output.$(name).test:$(testRunDeps) .FORCE
 	$(goEnv) $(gobin) test $(testArgs) ./ | tee $@
-$(buildDir)/race.$(name).out:$(testRunDeps) .FORCE
+$(buildDir)/output.$(name).race:$(testRunDeps) .FORCE
 	$(goEnv) $(gobin) test $(testArgs) -race ./ | tee $@
 #  targets to generate gotest output from the linter.
 $(buildDir)/output.%.lint:$(buildDir)/run-linter $(testSrcFiles)  $(buildDir)/.lintSetup .FORCE
@@ -192,7 +192,7 @@ phony += vendor-clean
 
 # clean and other utility targets
 clean:
-	rm -rf $(name) $(lintDeps) $(buildDir)/test.* $(buildDir)/coverage.* $(buildDir)/race.*
+	rm -rf $(name) $(lintDeps) $(buildDir)/output.*
 phony += clean
 # end dependency targets
 

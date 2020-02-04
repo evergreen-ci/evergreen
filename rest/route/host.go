@@ -312,3 +312,64 @@ func getLimit(vals url.Values) (int, error) {
 
 	return limit, nil
 }
+
+////////////////////////////////////////////////////////////////////////
+//
+// GET /host/filter
+
+func makeFetchHostFilter(sc data.Connector) gimlet.RouteHandler {
+	return &hostFilterGetHandler{
+		sc: sc,
+	}
+}
+
+type hostFilterGetHandler struct {
+	params model.APIHostParams
+	sc     data.Connector
+}
+
+func (h *hostFilterGetHandler) Factory() gimlet.RouteHandler {
+	return &hostFilterGetHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *hostFilterGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	body := util.NewRequestReader(r)
+	defer body.Close()
+	if err := util.ReadJSONInto(body, &h.params); err != nil {
+		return errors.Wrap(err, "Argument read error")
+	}
+
+	return nil
+}
+
+func (h *hostFilterGetHandler) Run(ctx context.Context) gimlet.Responder {
+	dbUser := MustHaveUser(ctx)
+	username := ""
+	// only admins see hosts that aren't theirs
+	if !util.StringSliceContains(h.sc.GetSuperUsers(), dbUser.Username()) || h.params.Mine {
+		username = dbUser.Username()
+	}
+
+	hosts, err := h.sc.FindHostsInRange(h.params, username)
+	if err != nil {
+		gimlet.NewJSONErrorResponse(errors.Wrap(err, "Database error"))
+	}
+
+	resp := gimlet.NewResponseBuilder()
+	if err = resp.SetFormat(gimlet.JSON); err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+	for _, host := range hosts {
+		apiHost := &model.APIHost{}
+		if err = apiHost.BuildFromService(host); err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
+		}
+		if err = resp.AddData(apiHost); err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
+		}
+	}
+
+	return resp
+}

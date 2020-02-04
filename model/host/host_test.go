@@ -2465,9 +2465,9 @@ func TestIsIdleParent(t *testing.T) {
 	assert.True(idle)
 	assert.NoError(err)
 
-	// has decommissioned container --> false
+	// has decommissioned container --> true
 	idle, err = host4.IsIdleParent()
-	assert.False(idle)
+	assert.True(idle)
 	assert.NoError(err)
 
 	// ios a container --> false
@@ -3548,68 +3548,6 @@ func TestStaleRunningTasks(t *testing.T) {
 	assert.Len(tasks, 2)
 }
 
-func TestStaleRunningTasksAgg(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection, task.Collection))
-	now := time.Now()
-	staleness := 5 * time.Minute
-
-	staleTask := &task.Task{
-		Id:            "stale",
-		Status:        evergreen.TaskStarted,
-		Execution:     2,
-		LastHeartbeat: now.Add(-2 * staleness),
-		HostId:        "staleHost",
-	}
-	assert.NoError(staleTask.Insert())
-	staleHost := &Host{
-		Id:          "staleHost",
-		RunningTask: staleTask.Id,
-	}
-	assert.NoError(staleHost.Insert())
-	unstaleTask := &task.Task{
-		Id:            "unstale",
-		Status:        evergreen.TaskStarted,
-		LastHeartbeat: now.Add(-1 * time.Second),
-		HostId:        "unstaleHost",
-	}
-	assert.NoError(unstaleTask.Insert())
-	unstaleHost := &Host{
-		Id:          "unstaleHost",
-		RunningTask: unstaleTask.Id,
-	}
-	assert.NoError(unstaleHost.Insert())
-	// task assigned to host that is running teardown_group of the previous task
-	unrelatedTask := &task.Task{
-		Id:            "unrelatedTask",
-		Status:        evergreen.TaskStarted,
-		LastHeartbeat: now.Add(-2 * staleness),
-		HostId:        "teardownGroupHost",
-	}
-	assert.NoError(unrelatedTask.Insert())
-
-	// task assigned to host that is running teardown_group of the previous task, but is not timed out
-	task3 := task.Task{
-		Id:            "task3",
-		Status:        evergreen.TaskStarted,
-		LastHeartbeat: now.Add(-2 * staleness),
-		HostId:        "teardownGroupHost",
-	}
-	assert.NoError(task3.Insert())
-
-	teardownGroupHost := Host{
-		Id:          "teardownGroupHost",
-		RunningTask: staleTask.Id,
-	}
-	assert.NoError(teardownGroupHost.Insert())
-
-	tasks, err := StaleRunningTaskIDs(staleness)
-	assert.NoError(err)
-	assert.Len(tasks, 1)
-	assert.Equal(staleTask.Id, tasks[0].Id)
-	assert.Equal(staleTask.Execution, tasks[0].Execution)
-}
-
 func TestNumNewParentsNeeded(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections("hosts", "distro", "tasks"))
@@ -4505,4 +4443,81 @@ func TestStartingHostsByClient(t *testing.T) {
 			assert.Fail(t, "unrecognized client options")
 		}
 	}
+}
+
+func TestFindHostsInRange(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+
+	hosts := []Host{
+		{
+			Id:           "h0",
+			Status:       evergreen.HostTerminated,
+			CreationTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+			Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
+		},
+		{
+			Id:           "h1",
+			Status:       evergreen.HostRunning,
+			CreationTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+			Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
+		},
+		{
+			Id:           "h2",
+			Status:       evergreen.HostRunning,
+			CreationTime: time.Date(2009, time.December, 10, 23, 0, 0, 0, time.UTC),
+			Distro:       distro.Distro{Id: "ubuntu-1804", Provider: evergreen.ProviderNameMock},
+		},
+	}
+	for _, h := range hosts {
+		require.NoError(t, h.Insert())
+	}
+
+	filteredHosts, err := FindHostsInRange(HostsInRangeParams{Status: evergreen.HostTerminated})
+	assert.NoError(t, err)
+	assert.Len(t, filteredHosts, 1)
+	assert.Equal(t, "h0", filteredHosts[0].Id)
+
+	filteredHosts, err = FindHostsInRange(HostsInRangeParams{Distro: "ubuntu-1604"})
+	assert.NoError(t, err)
+	assert.Len(t, filteredHosts, 1)
+	assert.Equal(t, "h1", filteredHosts[0].Id)
+
+	filteredHosts, err = FindHostsInRange(HostsInRangeParams{CreatedAfter: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)})
+	assert.NoError(t, err)
+	assert.Len(t, filteredHosts, 1)
+	assert.Equal(t, "h2", filteredHosts[0].Id)
+}
+
+func TestRemoveAndReplace(t *testing.T) {
+	assert.NoError(t, db.Clear(Collection))
+
+	// removing a nonexistent host errors
+	assert.Error(t, RemoveStrict("asdf"))
+
+	// replacing an existing host works
+	h := Host{
+		Id:                 "bar",
+		Status:             evergreen.HostUninitialized,
+		ComputeCostPerHour: 50,
+	}
+	assert.NoError(t, h.Insert())
+
+	h.ComputeCostPerHour = 100
+	h.DockerOptions.Command = "hello world"
+	assert.NoError(t, h.Replace())
+	dbHost, err := FindOneId(h.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.HostUninitialized, dbHost.Status)
+	assert.EqualValues(t, 100, dbHost.ComputeCostPerHour)
+	assert.Equal(t, "hello world", dbHost.DockerOptions.Command)
+
+	// replacing a nonexisting host will just insert
+	h2 := Host{
+		Id:     "host2",
+		Status: evergreen.HostRunning,
+	}
+	assert.NoError(t, h2.Replace())
+	dbHost, err = FindOneId(h2.Id)
+	assert.NoError(t, err)
+	assert.NotNil(t, dbHost)
 }

@@ -1,8 +1,12 @@
 package task
 
 import (
+	"context"
 	"testing"
 	"time"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -12,6 +16,11 @@ import (
 func TestExpectedDuration(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
+	index := mongo.IndexModel{
+		Keys: bson.D{{Key: "branch", Value: 1}, {Key: "build_variant", Value: 1}, {Key: "display_name", Value: 1}, {Key: "status", Value: 1}, {Key: "finish_time", Value: 1}, {Key: "start_time", Value: 1}},
+	}
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).Indexes().CreateOne(context.Background(), index)
+	assert.NoError(err)
 	bv := "bv"
 	project := "proj"
 	now := time.Now()

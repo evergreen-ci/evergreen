@@ -77,8 +77,8 @@ type Connector interface {
 	// RestartBuild is a method to restart the build matching the same BuildId.
 	RestartBuild(string, string) error
 
-	// Find project variables matching given projectId.
-	FindProjectVarsById(string) (*restModel.APIProjectVars, error)
+	// Find project variables matching given projectId. If bool is set, returns only redacted values.
+	FindProjectVarsById(string, bool) (*restModel.APIProjectVars, error)
 	// UpdateProjectVars updates the project using the variables given in the model.ggg
 	// If successful, updates the given projectVars with the updated projectVars.
 	UpdateProjectVars(string, *restModel.APIProjectVars) error
@@ -88,8 +88,8 @@ type Connector interface {
 	// Find the project matching the given ProjectId.
 	FindProjectById(string) (*model.ProjectRef, error)
 	// Create/Update a project the given projectRef
-	CreateProject(projectRef *model.ProjectRef) error
-	UpdateProject(projectRef *model.ProjectRef) error
+	CreateProject(*model.ProjectRef, *user.DBUser) error
+	UpdateProject(*model.ProjectRef) error
 
 	// EnableWebhooks creates a webhook for the project's owner/repo if one does not exist.
 	// If unable to setup the new webhook, returns false but no error.
@@ -124,13 +124,17 @@ type Connector interface {
 	// a given task. It takes a taskId, testId to start from, test name and status to filter,
 	// limit, and sort to provide additional control over the results.
 	FindTestsByTaskId(string, string, string, string, int, int) ([]testresult.TestResult, error)
-
+	FindTestsByTaskIdFilterSortPaginate(string, string, string, string, int, int, int, int) ([]testresult.TestResult, error)
 	// FindUserById is a method to find a specific user given its ID.
 	FindUserById(string) (gimlet.User, error)
 
 	// FindHostsById is a method to find a sorted list of hosts given an ID to
 	// start from.
 	FindHostsById(string, string, string, int) ([]host.Host, error)
+
+	// FindHostsInRange is a method to find a filtered list of hosts
+	FindHostsInRange(restModel.APIHostParams, string) ([]host.Host, error)
+
 	FindHostById(string) (*host.Host, error)
 
 	// FindHostByIdWithOwner finds a host with given host ID that was

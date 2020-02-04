@@ -125,7 +125,7 @@ imports:
   - name: github.com/mongodb/amboy
     version: e5548953650b5d4cc7b6d7aba4cb1b2771e35342
   - name: github.com/evergreen-ci/gimlet
-    version: 6c68c4698350e9f837cc5dd61562c72ba58d1ea9
+    version: 5ca77021ff9b964bababef0fd454ccf3dd29e752
   - name: github.com/evergreen-ci/shrub
     version: 32e668cd99410328bf6659e55671c11a6c727d9a
   - name: github.com/evergreen-ci/pail
@@ -184,3 +184,6 @@ imports:
     version: ee956134f90a4fca4e25fa69d52e20293d715a45
   - name: github.com/hashicorp/golang-lru
     version: 7f827b33c0f158ec5dfbba01bb0b14a4541fd81d
+
+  - name: github.com/robfig/cron
+    version: 70971dc81bab3671fde85647b0a1367929f92be8

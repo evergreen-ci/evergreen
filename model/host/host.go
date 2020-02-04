@@ -20,6 +20,8 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
@@ -395,6 +397,20 @@ func (h *Host) SetProvisioning() error {
 }
 
 func (h *Host) SetDecommissioned(user string, logs string) error {
+	if h.HasContainers {
+		containers, err := h.GetContainers()
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error getting containers",
+			"host":    h.Id,
+		}))
+		for _, c := range containers {
+			err = c.SetStatus(evergreen.HostDecommissioned, user, "parent is being decommissioned")
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "error decommissioning container",
+				"host":    c.Id,
+			}))
+		}
+	}
 	return h.SetStatus(evergreen.HostDecommissioned, user, logs)
 }
 
@@ -1240,6 +1256,32 @@ func (h *Host) Remove() error {
 	)
 }
 
+// RemoveStrict deletes a host and errors if the host is not found
+func RemoveStrict(id string) error {
+	ctx, cancel := evergreen.GetEnvironment().Context()
+	defer cancel()
+	result, err := evergreen.GetEnvironment().DB().Collection(Collection).DeleteOne(ctx, bson.M{IdKey: id})
+	if err != nil {
+		return err
+	}
+	if result.DeletedCount == 0 {
+		return errors.Errorf("host %s not found", id)
+	}
+	return nil
+}
+
+// Replace overwrites an existing host document with a new one. If no existing host is found, the new one will be inserted anyway.
+func (h *Host) Replace() error {
+	ctx, cancel := evergreen.GetEnvironment().Context()
+	defer cancel()
+	result := evergreen.GetEnvironment().DB().Collection(Collection).FindOneAndReplace(ctx, bson.M{IdKey: h.Id}, h, options.FindOneAndReplace().SetUpsert(true))
+	err := result.Err()
+	if errors.Cause(err) == mongo.ErrNoDocuments {
+		return nil
+	}
+	return errors.Wrap(err, "error replacing host")
+}
+
 // GetElapsedCommunicationTime returns how long since this host has communicated with evergreen or vice versa
 func (h *Host) GetElapsedCommunicationTime() time.Duration {
 	if h.LastCommunicationTime.After(h.CreationTime) {
@@ -1308,17 +1350,17 @@ func FindHostsToTerminate() ([]Host, error) {
 	query := bson.M{
 		ProviderKey: bson.M{"$in": evergreen.ProviderSpawnable},
 		"$or": []bson.M{
-			{ // host.ByExpiredSince(time.Now())
+			{ // expired spawn hosts
 				StartedByKey: bson.M{"$ne": evergreen.User},
 				StatusKey: bson.M{
 					"$nin": []string{evergreen.HostTerminated, evergreen.HostQuarantined},
 				},
 				ExpirationTimeKey: bson.M{"$lte": now},
 			},
-			{ // host.IsProvisioningFailure
+			{ // hosts that failed to provision
 				StatusKey: evergreen.HostProvisionFailed,
 			},
-			{ // host.ByUnprovisionedSince
+			{ // hosts that are taking too long to provision
 				"$or": []bson.M{
 					bson.M{ProvisionedKey: false},
 					bson.M{StatusKey: evergreen.HostProvisioning},
@@ -1328,7 +1370,7 @@ func FindHostsToTerminate() ([]Host, error) {
 				StartedByKey:  evergreen.User,
 				ProviderKey:   bson.M{"$ne": evergreen.ProviderNameStatic},
 			},
-			{ // host.IsDecommissioned
+			{ // decommissioned hosts not running tasks
 				RunningTaskKey: bson.M{"$exists": false},
 				StatusKey:      evergreen.HostDecommissioned,
 			},
@@ -1451,8 +1493,7 @@ func (h *Host) GetParent() (*Host, error) {
 	return host, nil
 }
 
-// IsIdleParent determines whether a host with containers has exclusively
-// terminated containers
+// IsIdleParent determines whether a host has only inactive containers
 func (h *Host) IsIdleParent() (bool, error) {
 	const idleTimeCutoff = 20 * time.Minute
 	if !h.HasContainers {
@@ -1464,7 +1505,7 @@ func (h *Host) IsIdleParent() (bool, error) {
 	}
 	query := db.Query(bson.M{
 		ParentIDKey: h.Id,
-		StatusKey:   bson.M{"$ne": evergreen.HostTerminated},
+		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
 	})
 	num, err := Count(query)
 	if err != nil {
@@ -1850,39 +1891,6 @@ func (h *Host) EstimateNumContainersForDuration(start, end time.Time) (float64, 
 		return 0, errors.Wrapf(err, "Error counting containers running at %v", end)
 	}
 	return float64(containersAtStart+containersAtEnd) / 2, nil
-}
-
-// StaleRunningTaskIDs finds any running tasks whose last heartbeat was at least the specified threshold ago
-// and whose host thinks it's still running that task. Projects out everything but the ID and execution
-func StaleRunningTaskIDs(staleness time.Duration) ([]task.Task, error) {
-	var out []task.Task
-	pipeline := []bson.M{
-		{"$match": bson.M{
-			task.StatusKey:        task.SelectorTaskInProgress,
-			task.LastHeartbeatKey: bson.M{"$lte": time.Now().Add(-staleness)},
-		}},
-		{"$lookup": bson.M{
-			"from":         Collection,
-			"localField":   task.HostIdKey,
-			"foreignField": IdKey,
-			"as":           "hosts",
-		}},
-		{"$project": bson.M{
-			task.IdKey:        1,
-			task.ExecutionKey: 1,
-			"host": bson.M{
-				"$arrayElemAt": []interface{}{"$hosts", 0},
-			},
-		}},
-		{"$match": bson.M{
-			"$expr": bson.M{
-				"$eq": []string{"$_id", bsonutil.GetDottedKeyName("$host", RunningTaskKey)},
-			},
-		}},
-	}
-
-	err := db.Aggregate(task.Collection, pipeline, &out)
-	return out, err
 }
 
 func (h *Host) addTag(new Tag, hasPermissions bool) {

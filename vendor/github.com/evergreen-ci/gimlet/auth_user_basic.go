@@ -7,7 +7,7 @@ import (
 
 // NewBasicUser constructs a simple user. The underlying type has
 // serialization tags.
-func NewBasicUser(id, name, email, password, key string, accessToken, refreshToken string, roles []string, invalid bool, rm RoleManager) User {
+func NewBasicUser(id, name, email, password, key, accessToken, refreshToken string, roles []string, invalid bool, rm RoleManager) User {
 	return &basicUser{
 		ID:           id,
 		Name:         name,
@@ -32,8 +32,8 @@ type basicUser struct {
 	EmailAddress string   `bson:"email" json:"email" yaml:"email"`
 	Password     string   `bson:"password" json:"password" yaml:"password"`
 	Key          string   `bson:"key" json:"key" yaml:"key"`
-	AccessToken  string   `bson:"access_token,omitempty" json:"access_token,omitempty" yaml:"access_token,omitempty"`
-	RefreshToken string   `bson:"refresh_token,omitempty" json:"refresh_token,omitempty" yaml:"refresh_token,omitempty"`
+	AccessToken  string   `bson:"access_token" json:"access_token" yaml:"access_token"`
+	RefreshToken string   `bson:"refresh_token" json:"refresh_token" yaml:"refresh_token"`
 	AccessRoles  []string `bson:"roles" json:"roles" yaml:"roles"`
 	Invalid      bool     `bson:"invalid" json:"invalid" yaml:"invalid"`
 	roleManager  RoleManager

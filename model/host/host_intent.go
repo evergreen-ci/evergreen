@@ -6,8 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -76,6 +74,11 @@ func GenerateContainerHostIntents(d distro.Distro, newContainersNeeded int, host
 	if err != nil {
 		return nil, errors.Wrap(err, "Could not find number of containers on each parent")
 	}
+	image, err := d.GetImageID()
+	if err != nil {
+		return nil, errors.Wrapf(err, "error getting image for distro %s", d.Id)
+	}
+	parents = partitionParents(parents, image)
 	containerHostIntents := make([]Host, 0)
 	for _, parent := range parents {
 		// find out how many more containers this parent can fit
@@ -95,6 +98,19 @@ func GenerateContainerHostIntents(d distro.Distro, newContainersNeeded int, host
 		}
 	}
 	return containerHostIntents, nil
+}
+
+func partitionParents(parents []ContainersOnParents, image string) []ContainersOnParents {
+	matched := []ContainersOnParents{}
+	notMatched := []ContainersOnParents{}
+	for _, h := range parents {
+		if h.ParentHost.ContainerImages[image] {
+			matched = append(matched, h)
+		} else {
+			notMatched = append(notMatched, h)
+		}
+	}
+	return append(matched, notMatched...)
 }
 
 // createParents creates host intent documents for each parent
@@ -133,15 +149,6 @@ func InsertParentIntentsAndGetNumHostsToSpawn(pool *evergreen.ContainerPool, new
 		return nil, 0, errors.Wrap(err, "error find parent distro")
 	}
 	newParentHosts := createParents(parentDistro, numNewParentsToSpawn, pool)
-	for _, p := range newParentHosts {
-		grip.DebugWhen(p.Distro.Id == "archlinux-parent" && !p.HasContainers, message.Fields{
-			"message":   "found a parent intent with has_containers not set to true",
-			"ticket":    "EVG-7163",
-			"host_id":   p.Id,
-			"distro":    p.Distro.Id,
-			"operation": "inserting host intent",
-		})
-	}
 	if err = InsertMany(newParentHosts); err != nil {
 		return nil, 0, errors.Wrap(err, "error inserting new parent hosts")
 	}

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/command"
@@ -82,6 +83,7 @@ var projectSyntaxValidators = []projectValidator{
 	verifyTaskRequirements,
 	validateTaskNames,
 	validateBVNames,
+	validateBVBatchTimes,
 	validateDisplayTaskNames,
 	validateBVTaskNames,
 	validateBVsContainTasks,
@@ -429,7 +431,7 @@ func ensureHasNecessaryProjectFields(project *model.Project) ValidationErrors {
 	if project.BatchTime > math.MaxInt32 {
 		// Error level is warning for backwards compatibility with
 		// existing projects. This value will be capped at MaxInt32
-		// in ProjectRef.GetBatchTime()
+		// in ProjectRef.getBatchTime()
 		errs = append(errs,
 			ValidationError{
 				Message: fmt.Sprintf("project '%s' field 'batchtime' should not exceed %d)",
@@ -671,6 +673,31 @@ func validateBVsContainTasks(project *model.Project) ValidationErrors {
 	return errs
 }
 
+func validateBVBatchTimes(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
+	for _, buildVariant := range project.BuildVariants {
+		if buildVariant.CronBatchTime == "" {
+			continue
+		}
+		if buildVariant.BatchTime != nil {
+			errs = append(errs,
+				ValidationError{
+					Message: fmt.Sprintf("variant '%s' cannot specify cron and batchtime", buildVariant.Name),
+					Level:   Error,
+				})
+		}
+		if _, err := model.GetActivationTimeWithCron(time.Now(), buildVariant.CronBatchTime); err != nil {
+			errs = append(errs,
+				ValidationError{
+					Message: errors.Wrapf(err, "cron batchtime '%s' has invalid syntax", buildVariant.CronBatchTime).Error(),
+					Level:   Error,
+				},
+			)
+		}
+	}
+	return errs
+}
+
 func validateDisplayTaskNames(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 
@@ -729,11 +756,12 @@ func validatePluginCommands(project *model.Project) ValidationErrors {
 
 	// validate each function definition
 	for funcName, commands := range project.Functions {
-		if commands == nil {
+		if commands == nil || len(commands.List()) == 0 {
 			errs = append(errs,
 				ValidationError{
 					Message: fmt.Sprintf("'%s' project's '%s' function contains no commands",
 						project.Identifier, funcName),
+					Level: Error,
 				},
 			)
 			continue
@@ -746,14 +774,6 @@ func validatePluginCommands(project *model.Project) ValidationErrors {
 						project.Identifier, funcName, err),
 				},
 			)
-		}
-
-		if len(commands.List()) == 0 {
-			errs = append(errs,
-				ValidationError{
-					Message: fmt.Sprintf("function %s must have a command", funcName),
-					Level:   Warning,
-				})
 		}
 
 		for _, c := range commands.List() {

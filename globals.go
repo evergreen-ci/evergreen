@@ -415,6 +415,7 @@ var (
 	// they're just intents, so this list omits that value.
 	ActiveStatus = []string{
 		HostRunning,
+		HostBuilding,
 		HostStarting,
 		HostProvisioning,
 		HostProvisionFailed,

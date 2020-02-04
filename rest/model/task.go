@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/mongodb/grip"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -19,13 +21,13 @@ const (
 type APITask struct {
 	Id                 *string          `json:"task_id"`
 	ProjectId          *string          `json:"project_id"`
-	CreateTime         time.Time        `json:"create_time"`
-	DispatchTime       time.Time        `json:"dispatch_time"`
-	ScheduledTime      time.Time        `json:"scheduled_time"`
-	StartTime          time.Time        `json:"start_time"`
-	FinishTime         time.Time        `json:"finish_time"`
-	IngestTime         time.Time        `json:"ingest_time"`
-	ActivatedTime      time.Time        `json:"activated_time"`
+	CreateTime         *time.Time       `json:"create_time"`
+	DispatchTime       *time.Time       `json:"dispatch_time"`
+	ScheduledTime      *time.Time       `json:"scheduled_time"`
+	StartTime          *time.Time       `json:"start_time"`
+	FinishTime         *time.Time       `json:"finish_time"`
+	IngestTime         *time.Time       `json:"ingest_time"`
+	ActivatedTime      *time.Time       `json:"activated_time"`
 	Version            *string          `json:"version_id"`
 	Revision           *string          `json:"revision"`
 	Priority           int64            `json:"priority"`
@@ -94,13 +96,13 @@ func (at *APITask) BuildFromService(t interface{}) error {
 		(*at) = APITask{
 			Id:            ToStringPtr(v.Id),
 			ProjectId:     ToStringPtr(v.Project),
-			CreateTime:    v.CreateTime,
-			DispatchTime:  v.DispatchTime,
-			ScheduledTime: v.ScheduledTime,
-			StartTime:     v.StartTime,
-			FinishTime:    v.FinishTime,
-			IngestTime:    v.IngestTime,
-			ActivatedTime: v.ActivatedTime,
+			CreateTime:    ToTimePtr(v.CreateTime),
+			DispatchTime:  ToTimePtr(v.DispatchTime),
+			ScheduledTime: ToTimePtr(v.ScheduledTime),
+			StartTime:     ToTimePtr(v.StartTime),
+			FinishTime:    ToTimePtr(v.FinishTime),
+			IngestTime:    ToTimePtr(v.IngestTime),
+			ActivatedTime: ToTimePtr(v.ActivatedTime),
 			Version:       ToStringPtr(v.Version),
 			Revision:      ToStringPtr(v.Revision),
 			Priority:      v.Priority,
@@ -168,13 +170,6 @@ func (ad *APITask) ToService() (interface{}, error) {
 	st := &task.Task{
 		Id:                  FromStringPtr(ad.Id),
 		Project:             FromStringPtr(ad.ProjectId),
-		CreateTime:          ad.CreateTime,
-		DispatchTime:        ad.DispatchTime,
-		ScheduledTime:       ad.ScheduledTime,
-		StartTime:           ad.StartTime,
-		FinishTime:          ad.FinishTime,
-		IngestTime:          ad.IngestTime,
-		ActivatedTime:       ad.ActivatedTime,
 		Version:             FromStringPtr(ad.Version),
 		Revision:            FromStringPtr(ad.Revision),
 		Priority:            ad.Priority,
@@ -203,6 +198,32 @@ func (ad *APITask) ToService() (interface{}, error) {
 		DisplayOnly:      ad.DisplayOnly,
 		Requester:        FromStringPtr(ad.Requester),
 	}
+	catcher := grip.NewBasicCatcher()
+	createTime, err := FromTimePtr(ad.CreateTime)
+	catcher.Add(err)
+	dispatchTime, err := FromTimePtr(ad.DispatchTime)
+	catcher.Add(err)
+	scheduledTime, err := FromTimePtr(ad.ScheduledTime)
+	catcher.Add(err)
+	startTime, err := FromTimePtr(ad.StartTime)
+	catcher.Add(err)
+	finishTime, err := FromTimePtr(ad.FinishTime)
+	catcher.Add(err)
+	ingestTime, err := FromTimePtr(ad.IngestTime)
+	catcher.Add(err)
+	activatedTime, err := FromTimePtr(ad.ActivatedTime)
+	catcher.Add(err)
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+
+	st.CreateTime = createTime
+	st.DispatchTime = dispatchTime
+	st.ScheduledTime = scheduledTime
+	st.StartTime = startTime
+	st.FinishTime = finishTime
+	st.IngestTime = ingestTime
+	st.ActivatedTime = activatedTime
 	if len(ad.ExecutionTasks) > 0 {
 		ets := []string{}
 		for _, t := range ad.ExecutionTasks {

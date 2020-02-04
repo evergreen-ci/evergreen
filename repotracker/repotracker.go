@@ -437,9 +437,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 			lastRevision = repository.LastRevision
 		}
 
-		// this used to send email, but it happens so
-		// infrequently, and mail is a bad format for this.
-		grip.Critical(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message":      "repotracker configuration problem",
 			"project":      projectRef.Identifier,
 			"runner":       RunnerName,
@@ -814,30 +812,16 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata VersionM
 			tasksToCreate = append(tasksToCreate, t)
 		}
 
-		var lastActivated *model.Version
 		activateAt := time.Now()
 		if metadata.TriggerID == "" && v.Requester != evergreen.AdHocRequester {
-			lastActivated, err = model.VersionFindOne(model.VersionByLastVariantActivation(projectInfo.Ref.Identifier, buildvariant.Name))
-			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message": "error finding last activated",
-					"version": v.Id,
-				}))
+			res, err := projectInfo.Ref.GetActivationTime(&buildvariant)
+			if err == nil {
+				activateAt = res
 			}
-
-			var lastActivation *time.Time
-			if lastActivated != nil {
-				for _, buildStatus := range lastActivated.BuildVariants {
-					if buildStatus.BuildVariant == buildvariant.Name && buildStatus.Activated {
-						lastActivation = &buildStatus.ActivateAt
-						break
-					}
-				}
-			}
-
-			if lastActivation != nil {
-				activateAt = lastActivation.Add(time.Minute * time.Duration(projectInfo.Ref.GetBatchTime(&buildvariant)))
-			}
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "error finding last activated",
+				"version": v.Id,
+			}))
 		}
 
 		grip.Debug(message.Fields{

@@ -54,7 +54,7 @@ func (s *ResponderSuite) TesteStatusSetter() {
 		s.Equal(good, s.resp.Status())
 	}
 
-	for _, bad := range []int{42, 99, 103, 150, 199, 227, 299, 309, 399, 419, 452, 420, 499, 512, 9001} {
+	for _, bad := range []int{42, 99, 120, 150, 199, 227, 299, 309, 399, 419, 452, 420, 499, 512, 9001} {
 		s.Error(s.resp.SetStatus(bad))
 		s.NotEqual(bad, s.resp.Status())
 		s.NotZero(s.resp.Status())

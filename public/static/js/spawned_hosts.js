@@ -13,6 +13,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     $scope.spawnInfo = {};
     $scope.curHostData;
     $scope.maxHostsPerUser = $window.maxHostsPerUser;
+    $scope.maxUnexpirableHostsPerUser = $window.maxUnexpirableHostsPerUser;
     $scope.spawnReqSent = false;
     $scope.useTaskConfig = false;
     $scope.allowedInstanceTypes = [];
@@ -166,10 +167,24 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       $scope.updateSpawnedHosts();
     }, 60000);
 
-    // Returns true if the user can spawn another host. If hosts has not been initialized it
+    // Returns true if the user can spawn another host. If hosts have not been initialized it
     // assumes true.
     $scope.availableHosts = function () {
       return ($scope.hosts == null) || ($scope.hosts.length < $scope.maxHostsPerUser)
+    }
+
+    $scope.availableUnexpirableHosts = function () {
+      var available = $scope.maxUnexpirableHostsPerUser;
+      for (host of $scope.hosts) {
+        if (host.original_expiration == null) {
+          available--
+        }
+      }
+      return available
+    }
+
+    $scope.unexpirableEnabled = function () {
+      return $scope.availableUnexpirableHosts() > 0 || $scope.curHostData.no_expiration || $scope.curHostData.original_expiration == null
     }
 
     $scope.generatePassword = function () {

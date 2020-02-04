@@ -105,13 +105,35 @@ func TestRedactPrivateVars(t *testing.T) {
 	privateVars := map[string]bool{
 		"a": true,
 	}
-	projectVars := ProjectVars{
+	projectVars := &ProjectVars{
 		Id:          "mongodb",
 		Vars:        vars,
 		PrivateVars: privateVars,
 	}
-	projectVars.RedactPrivateVars()
-	assert.Equal("", projectVars.Vars["a"], "redacted variables should be empty strings")
+	newVars := projectVars.RedactPrivateVars()
+	assert.Equal("", newVars.Vars["a"], "redacted variables should be empty strings")
+	assert.NotEqual("", projectVars.Vars["a"], "original vars should not be modified")
+}
+
+func TestRedactedOnly(t *testing.T) {
+	assert := assert.New(t)
+
+	vars := map[string]string{
+		"a": "a",
+		"b": "b",
+	}
+	privateVars := map[string]bool{
+		"a": true,
+	}
+	projectVars := &ProjectVars{
+		Id:          "mongodb",
+		Vars:        vars,
+		PrivateVars: privateVars,
+	}
+	newVars := projectVars.RedactedOnly()
+	assert.Equal("a", newVars.Vars["a"])
+	assert.Equal("", newVars.Vars["b"], "shouldn't return un-redacted variables")
+	assert.NotEqual("", projectVars.Vars["b"], "original vars should not be modified")
 }
 
 func TestAWSVars(t *testing.T) {

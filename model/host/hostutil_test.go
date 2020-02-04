@@ -664,7 +664,8 @@ func TestJasperProcess(t *testing.T) {
 		},
 		"StartJasperProcessPasses": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
 			assert.NoError(t, withJasperServiceSetupAndTeardown(ctx, env, manager, h, func() {
-				assert.NoError(t, h.StartJasperProcess(ctx, env, opts))
+				_, err := h.StartJasperProcess(ctx, env, opts)
+				assert.NoError(t, err)
 			}))
 		},
 		"RunJasperProcessFailsIfProcessCreationFails": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
@@ -686,7 +687,8 @@ func TestJasperProcess(t *testing.T) {
 		"StartJasperProcessFailsIfProcessCreationFails": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
 			manager.FailCreate = true
 			assert.NoError(t, withJasperServiceSetupAndTeardown(ctx, env, manager, h, func() {
-				assert.Error(t, h.StartJasperProcess(ctx, env, opts))
+				_, err := h.StartJasperProcess(ctx, env, opts)
+				assert.Error(t, err)
 			}))
 		},
 	} {
@@ -985,7 +987,11 @@ func TestSetupSpawnHostCommands(t *testing.T) {
 	cmd, err := h.SetupSpawnHostCommands(settings)
 	require.NoError(t, err)
 
-	expected := `mkdir -m 777 -p /home/user/cli_bin && echo '{"api_key":"key","api_server_host":"www.example0.com/api","ui_server_host":"www.example1.com","user":"user"}' > /home/user/cli_bin/.evergreen.yml && cp /home/user/evergreen /home/user/cli_bin && (echo 'export PATH="${PATH}:/home/user/cli_bin"' >> /home/user/.profile || true; echo 'export PATH="${PATH}:/home/user/cli_bin"' >> /home/user/.bash_profile || true)`
+	expected := "mkdir -m 777 -p /home/user/cli_bin" +
+		" && echo '{\"api_key\":\"key\",\"api_server_host\":\"www.example0.com/api\",\"ui_server_host\":\"www.example1.com\",\"user\":\"user\"}' > /home/user/cli_bin/.evergreen.yml" +
+		" && cp /home/user/evergreen /home/user/cli_bin" +
+		" && (echo '\nexport PATH=\"${PATH}:/home/user/cli_bin\"\n' >> /home/user/.profile || true; echo '\nexport PATH=\"${PATH}:/home/user/cli_bin\"\n' >> /home/user/.bash_profile || true)" +
+		" && chown -R user /home/user/cli_bin"
 	assert.Equal(t, expected, cmd)
 
 	h.ProvisionOptions.TaskId = "task_id"

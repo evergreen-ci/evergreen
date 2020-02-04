@@ -43,8 +43,10 @@ func (s *UserTestSuite) SetupTest() {
 				},
 			},
 			LoginCache: LoginCache{
-				Token: "1234",
-				TTL:   time.Now(),
+				AccessToken:  "access_token",
+				RefreshToken: "refresh_token",
+				Token:        "1234",
+				TTL:          time.Now(),
 			},
 		},
 		&DBUser{
@@ -307,10 +309,14 @@ func (s *UserTestSuite) TestPutLoginCache() {
 	u1, err := FindOneById(s.users[0].Id)
 	s.NoError(err)
 	s.Equal(s.users[0].Id, u1.Id)
+	s.Equal(s.users[0].LoginCache.AccessToken, u1.LoginCache.AccessToken)
+	s.Equal(s.users[0].LoginCache.RefreshToken, u1.LoginCache.RefreshToken)
 
 	u2, err := FindOneById(s.users[1].Id)
 	s.NoError(err)
 	s.Equal(s.users[1].Id, u2.Id)
+	s.Equal(s.users[0].LoginCache.AccessToken, u1.LoginCache.AccessToken)
+	s.Equal(s.users[0].LoginCache.RefreshToken, u1.LoginCache.RefreshToken)
 
 	s.NotEqual(u1.LoginCache.Token, u2.LoginCache.Token)
 	s.WithinDuration(time.Now(), u1.LoginCache.TTL, time.Second)
@@ -326,89 +332,30 @@ func (s *UserTestSuite) TestPutLoginCache() {
 	s.NotEqual(u1.LoginCache.TTL, u4.LoginCache.TTL)
 	s.Equal(token1, token4)
 
+	// Change access and refresh tokens, which should update
+	s.users[0].LoginCache.AccessToken = "new_access_token"
+	s.users[0].LoginCache.RefreshToken = "new_refresh_token"
+	token5, err := PutLoginCache(s.users[0])
+	s.NoError(err)
+	u5, err := FindOneById(s.users[0].Id)
+	s.NoError(err)
+	s.Equal(u1.LoginCache.Token, u5.LoginCache.Token)
+	s.Equal(token1, token5)
+	s.Equal(s.users[0].LoginCache.AccessToken, u5.LoginCache.AccessToken)
+	s.Equal(s.users[0].LoginCache.RefreshToken, u5.LoginCache.RefreshToken)
+
 	// Fresh user with no token should generate new token
-	token5, err := PutLoginCache(s.users[2])
+	token6, err := PutLoginCache(s.users[2])
 	s.NoError(err)
-	u5, err := FindOneById(s.users[2].Id)
-	s.Equal(token5, u5.LoginCache.Token)
+	u6, err := FindOneById(s.users[2].Id)
+	s.Equal(token6, u6.LoginCache.Token)
 	s.NoError(err)
-	s.NotEmpty(token5)
-	s.NotEqual(token1, token5)
-	s.NotEqual(token2, token5)
-	s.NotEqual(token3, token5)
-	s.NotEqual(token4, token5)
-}
-
-func (s *UserTestSuite) TestPutLoginCacheAndTokens() {
-	token1, err := PutLoginCacheAndTokens(s.users[0], "access1", "refresh1")
-	s.Require().NoError(err)
-	s.NotEmpty(token1)
-
-	token2, err := PutLoginCacheAndTokens(s.users[1], "access2", "refresh2")
-	s.Require().NoError(err)
-	s.NotEmpty(token2)
-
-	token3, err := PutLoginCacheAndTokens(&DBUser{Id: "nonexistent"}, "access3", "refresh3")
-	s.Require().Error(err)
-	s.Empty(token3)
-
-	token4, err := PutLoginCacheAndTokens(s.users[3], "", "refresh4")
-	s.Require().NoError(err)
-	s.NotEmpty(token4)
-
-	token5, err := PutLoginCacheAndTokens(s.users[3], "access5", "")
-	s.Require().NoError(err)
-	s.NotEmpty(token5)
-
-	token6, err := PutLoginCacheAndTokens(s.users[3], "", "")
-	s.Require().NoError(err)
 	s.NotEmpty(token6)
-
-	u1, err := FindOneById(s.users[0].Id)
-	s.Require().NoError(err)
-
-	s.Equal(s.users[0].Id, u1.Id)
-	s.Equal(token1, u1.LoginCache.Token)
-	s.Equal("access1", u1.LoginCache.AccessToken)
-	s.Equal("refresh1", u1.LoginCache.RefreshToken)
-	s.WithinDuration(time.Now(), u1.LoginCache.TTL, time.Second)
-
-	u2, err := FindOneById(s.users[1].Id)
-	s.Require().NoError(err)
-
-	s.Equal(s.users[1].Id, u2.Id)
-	s.Equal(token2, u2.LoginCache.Token)
-	s.Equal("access2", u2.LoginCache.AccessToken)
-	s.Equal("refresh2", u2.LoginCache.RefreshToken)
-	s.WithinDuration(time.Now(), u2.LoginCache.TTL, time.Second)
-
-	s.NotEqual(u1.LoginCache.Token, u2.LoginCache.Token)
-
-	// Change the TTL, which should be updated.
-	time.Sleep(time.Millisecond)
-	token1Again, err := PutLoginCacheAndTokens(s.users[0], "newaccess1", "newrefresh1")
-	s.Require().NoError(err)
-	u1Again, err := FindOneById(s.users[0].Id)
-	s.Require().NoError(err)
-	s.Equal(u1.LoginCache.Token, u1Again.LoginCache.Token)
-	s.NotEqual(u1.LoginCache.TTL, u1Again.LoginCache.TTL)
-	s.Equal(token1, token1Again)
-
-	// Fresh user with no token should generate new token
-	token7, err := PutLoginCacheAndTokens(s.users[2], "access6", "refresh6")
-	s.Require().NoError(err)
-	u3, err := FindOneById(s.users[2].Id)
-	s.Equal(token7, u3.LoginCache.Token)
-	s.Equal("access6", u3.LoginCache.AccessToken)
-	s.Equal("refresh6", u3.LoginCache.RefreshToken)
-	s.NoError(err)
-	s.NotEmpty(token7)
-	s.NotEqual(token1, token7)
-	s.NotEqual(token2, token7)
-	s.NotEqual(token3, token7)
-	s.NotEqual(token4, token7)
-	s.NotEqual(token5, token7)
-	s.NotEqual(token6, token7)
+	s.NotEqual(token1, token6)
+	s.NotEqual(token2, token6)
+	s.NotEqual(token3, token6)
+	s.NotEqual(token4, token6)
+	s.NotEqual(token5, token6)
 }
 
 func (s *UserTestSuite) TestGetLoginCache() {
@@ -426,30 +373,6 @@ func (s *UserTestSuite) TestGetLoginCache() {
 	s.NoError(err)
 	s.False(valid)
 	s.Nil(u)
-}
-
-// kim: TODO: add access and refresh tokens to pre-defined suite DBUsers.
-func (s *UserTestSuite) TestGetLoginCacheAndTokens() {
-	u, valid, access, refresh, err := GetLoginCacheAndTokens("token5", time.Minute)
-	s.Require().NoError(err)
-	s.True(valid)
-	s.Equal("Test5", u.Username())
-	s.Equal("access5", access)
-	s.Equal("refresh5", refresh)
-
-	u, valid, access, refresh, err = GetLoginCacheAndTokens("token6", time.Minute)
-	s.Require().NoError(err)
-	s.False(valid)
-	s.Equal("Test6", u.Username())
-	s.Equal("access6", access)
-	s.Equal("refresh6", refresh)
-
-	u, valid, access, refresh, err = GetLoginCacheAndTokens("nonexistent", time.Minute)
-	s.Require().NoError(err)
-	s.False(valid)
-	s.Nil(u)
-	s.Empty(access)
-	s.Empty(refresh)
 }
 
 func (s *UserTestSuite) TestClearLoginCacheSingleUser() {
@@ -518,6 +441,22 @@ func (s *UserTestSuite) TestRoles() {
 	dbUser, err = FindOneById(u.Id)
 	s.NoError(err)
 	s.EqualValues(dbUser.SystemRoles, u.SystemRoles)
+}
+
+func (s *UserTestSuite) TestFavoriteProjects() {
+	u := s.users[0]
+	projID := "annie-copy5"
+	expected := []string{projID}
+
+	// add a project
+	err := u.AddFavoritedProject(projID)
+	s.NoError(err)
+	s.EqualValues(u.FavoriteProjects, expected)
+
+	// try to add the same project again
+	err = u.AddFavoritedProject(projID)
+	s.Require().Error(err)
+	s.EqualValues(u.FavoriteProjects, expected)
 }
 
 func (s *UserTestSuite) TestHasPermission() {
