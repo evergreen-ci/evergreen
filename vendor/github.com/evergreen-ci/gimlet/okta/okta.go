@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/usercache"
 	"github.com/evergreen-ci/gimlet/util"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	jwtverifier "github.com/okta/okta-jwt-verifier-golang"
@@ -92,8 +91,10 @@ type userManager struct {
 	validateGroups       bool
 	allowReauthorization bool
 
-	// This is used only for testing purposes. It skips all token validation.
-	insecureSkipTokenValidation bool
+	// Injected functions for validating tokens. Should only be set for mocking
+	// purposes.
+	doValidateIDToken     func(string, string) (*jwtverifier.Jwt, error)
+	doValidateAccessToken func(string) error
 
 	cookiePath   string
 	cookieDomain string
@@ -144,6 +145,8 @@ func NewUserManager(opts CreationOptions) (gimlet.UserManager, error) {
 		putHTTPClient:        opts.PutHTTPClient,
 		reconciliateID:       opts.ReconciliateID,
 	}
+	m.doValidateIDToken = m.validateIDToken
+	m.doValidateAccessToken = m.validateAccessToken
 	return m, nil
 }
 
@@ -170,13 +173,9 @@ func (m *userManager) GetUserByToken(ctx context.Context, token string) (gimlet.
 // reauthorizeGroup attempts to reauthorize the user based on their groups.
 func (m *userManager) reauthorizeGroup(accessToken, refreshToken string) error {
 	catcher := grip.NewBasicCatcher()
-	var err error
-	if !m.insecureSkipTokenValidation {
-		err = m.validateAccessToken(accessToken)
-		catcher.Wrap(err, "invalid access token")
-	}
+	err := m.doValidateAccessToken(accessToken)
+	catcher.Wrap(err, "invalid access token")
 	if err == nil {
-		pp.Println("generating user from access token")
 		user, err := m.generateUserFromInfo(accessToken, refreshToken)
 		catcher.Wrap(err, "could not generate user from Okta user info")
 		if err == nil {
@@ -194,20 +193,19 @@ func (m *userManager) reauthorizeGroup(accessToken, refreshToken string) error {
 // Reauthorization succeeds if the username derived from their ID token matches
 // the given username.
 func (m *userManager) reauthorizeID(username string, tokens *tokenResponse) error {
-	idToken, err := m.validateIDToken(tokens.IDToken, "")
+	idToken, err := m.doValidateIDToken(tokens.IDToken, "")
 	// When we receive an ID token from a refresh grant (i.e. during
 	// reauthorization), the ID token does not contain a nonce. However, the
 	// Okta token verification library requires that a nonce always be specified
 	// for verifying ID tokens.
 	// We ignore this error if it occurs. More info can be found here:
 	// https://bitbucket.org/openid/connect/issues/1025/ambiguity-with-how-nonce-is-handled-on
-	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "nonce") {
+	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "the `Nonce` was not able to be validated") {
 		return errors.Wrap(err, "invalid ID token")
 	}
 	email, ok := idToken.Claims["email"].(string)
 	if ok {
 		checkUsername := m.reconciliateID(email)
-		pp.Println("checking username:", checkUsername, username)
 		if checkUsername != username {
 			return errors.Errorf("user name from ID token '%s' did not match user '%s'", checkUsername, username)
 		}
@@ -221,7 +219,6 @@ func (m *userManager) reauthorizeID(username string, tokens *tokenResponse) erro
 		_, err = m.cache.Put(user)
 		catcher.Wrapf(err, "could not update reauthorized user in cache")
 		if err == nil {
-			pp.Println("reauthorize ID passed")
 			return nil
 		}
 	}
@@ -239,6 +236,7 @@ func (m *userManager) reauthorizeID(username string, tokens *tokenResponse) erro
 func (m *userManager) reauthorizeUser(ctx context.Context, user gimlet.User) error {
 	refreshToken := user.GetRefreshToken()
 	catcher := grip.NewBasicCatcher()
+
 	if m.validateGroups {
 		accessToken := user.GetAccessToken()
 		if accessToken == "" {
@@ -259,15 +257,16 @@ func (m *userManager) reauthorizeUser(ctx context.Context, user gimlet.User) err
 	if err == nil {
 		if m.validateGroups {
 			err = m.reauthorizeGroup(tokens.AccessToken, tokens.RefreshToken)
-			catcher.Wrap(err, "could  not reauthorize user after refreshing tokens")
+			catcher.Wrap(err, "could not reauthorize user after refreshing tokens")
 			if err == nil {
 				return nil
 			}
-		} else if !m.insecureSkipTokenValidation {
-			err = m.reauthorizeID(user.Username(), tokens)
 		} else {
-			grip.Criticalf("cannot reauthorize user '%s' if we cannot validate the user's groups and we are cannot validate their ID token", user.Username())
-			catcher.New("no valid method of reauthorizing user")
+			err = m.reauthorizeID(user.Username(), tokens)
+			catcher.Wrap(err, "could not reauthorize user after refreshing tokens")
+			if err == nil {
+				return nil
+			}
 		}
 	}
 
@@ -438,16 +437,7 @@ func (m *userManager) GetLoginCallbackHandler() http.HandlerFunc {
 		}
 
 		var user gimlet.User
-		if !m.validateGroups && !m.insecureSkipTokenValidation {
-			pp.Println("login user from ID token")
-			user, err = makeUserFromIDToken(idToken, tokens.AccessToken, tokens.RefreshToken, m.reconciliateID)
-			if err != nil {
-				grip.Error(err)
-				writeError(w, err)
-				return
-			}
-		} else if m.validateGroups {
-			pp.Println("login user from access token")
+		if m.validateGroups {
 			user, err = m.generateUserFromInfo(tokens.AccessToken, tokens.RefreshToken)
 			if err != nil {
 				grip.Error(err)
@@ -455,9 +445,12 @@ func (m *userManager) GetLoginCallbackHandler() http.HandlerFunc {
 				return
 			}
 		} else {
-			grip.Criticalf("cannot login user if we cannot validate the user's groups and we are validate their ID token")
-			writeError(w, errors.New("programmatic error: invalid state reached"))
-			return
+			user, err = makeUserFromIDToken(idToken, tokens.AccessToken, tokens.RefreshToken, m.reconciliateID)
+			if err != nil {
+				grip.Error(err)
+				writeError(w, err)
+				return
+			}
 		}
 
 		user, err = m.GetOrCreateUser(user)
@@ -492,19 +485,14 @@ func (m *userManager) getUserTokens(code, nonce string) (*tokenResponse, *jwtver
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "could not redeem authorization code for tokens")
 	}
-
-	if m.insecureSkipTokenValidation {
-		return tokens, nil, nil
-	}
-
-	idToken, err := m.validateIDToken(tokens.IDToken, nonce)
+	idToken, err := m.doValidateIDToken(tokens.IDToken, nonce)
 	if err != nil {
 		return tokens, nil, errors.Wrap(err, "invalid ID token from Okta")
 	}
-	if m.insecureSkipTokenValidation || !m.validateGroups {
+	if !m.validateGroups {
 		return tokens, idToken, nil
 	}
-	if err := m.validateAccessToken(tokens.AccessToken); err != nil {
+	if err := m.doValidateAccessToken(tokens.AccessToken); err != nil {
 		return tokens, idToken, errors.Wrap(err, "invalid access token from Okta")
 	}
 	return tokens, idToken, nil
@@ -519,7 +507,6 @@ func (m *userManager) generateUserFromInfo(accessToken, refreshToken string) (gi
 		return nil, err
 	}
 	if m.validateGroups {
-		pp.Println("validating groups")
 		if err := m.validateGroup(userInfo.Groups); err != nil {
 			err = errors.Wrap(err, "could not authorize user")
 			grip.Error(message.WrapError(err, message.Fields{
