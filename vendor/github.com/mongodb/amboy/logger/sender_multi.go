@@ -2,14 +2,17 @@ package logger
 
 import (
 	"context"
+	"sync"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 )
 
 type multiQueueSender struct {
+	mu       sync.RWMutex
 	ctx      context.Context
 	queue    amboy.Queue
 	senders  []send.Sender
@@ -59,7 +62,26 @@ func NewQueueMultiSender(ctx context.Context, workers, capacity int, senders ...
 }
 
 func (s *multiQueueSender) Send(m message.Composer) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	s.ErrorHandler()(s.queue.Put(s.ctx, NewMultiSendMessageJob(m, s.senders)), m)
+}
+
+func (s *multiQueueSender) Flush(ctx context.Context) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if !amboy.Wait(ctx, s.queue) {
+		return ctx.Err()
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for _, sender := range s.senders {
+		catcher.Add(sender.Flush(ctx))
+	}
+
+	return catcher.Resolve()
 }
 
 func (s *multiQueueSender) Close() error {
