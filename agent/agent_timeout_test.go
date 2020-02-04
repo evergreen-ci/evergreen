@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/suite"
@@ -66,6 +67,7 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
+		taskModel:     &task.Task{},
 		runGroupSetup: true,
 	}
 	// Windows may not have finished deleting task directories when
@@ -75,9 +77,9 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	s.NoError(s.a.resetLogging(ctx, tc))
+	s.NoError(s.a.startLogging(ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
-	_, err := s.a.runTask(ctx, cancel, tc)
+	_, err := s.a.runTask(ctx, tc)
 	s.NoError(err)
 
 	// TODO: remove this line with MAKE-1090
@@ -133,6 +135,7 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
+		taskModel:     &task.Task{},
 		runGroupSetup: true,
 	}
 	// Windows may not have finished deleting task directories when
@@ -140,9 +143,9 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 	// tests in this suite to create differently-named task directories.
 	s.mockCommunicator.TaskExecution = 1
 
-	s.NoError(s.a.resetLogging(ctx, tc))
+	s.NoError(s.a.startLogging(ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
-	_, err := s.a.runTask(ctx, cancel, tc)
+	_, err := s.a.runTask(ctx, tc)
 	s.NoError(err)
 
 	// TODO: remove this line with MAKE-1090
@@ -197,6 +200,7 @@ func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
+		taskModel:     &task.Task{},
 		runGroupSetup: true,
 	}
 	// Windows may not have finished deleting task directories when
@@ -204,9 +208,9 @@ func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 	// tests in this suite to create differently-named task directories.
 	s.mockCommunicator.TaskExecution = 2
 
-	s.NoError(s.a.resetLogging(ctx, tc))
+	s.NoError(s.a.startLogging(ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
-	_, err := s.a.runTask(ctx, cancel, tc)
+	_, err := s.a.runTask(ctx, tc)
 	s.NoError(err)
 
 	// TODO: remove this line with MAKE-1090
@@ -261,6 +265,7 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
+		taskModel:     &task.Task{},
 		runGroupSetup: true,
 	}
 	// Windows may not have finished deleting task directories when
@@ -268,9 +273,9 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 	// tests in this suite to create differently-named task directories.
 	s.mockCommunicator.TaskExecution = 3
 
-	s.NoError(s.a.resetLogging(ctx, tc))
+	s.NoError(s.a.startLogging(ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
-	_, err := s.a.runTask(ctx, cancel, tc)
+	_, err := s.a.runTask(ctx, tc)
 	s.NoError(err)
 
 	// TODO: remove this line with MAKE-1090
@@ -325,6 +330,7 @@ func (s *TimeoutSuite) TestDynamicIdleTimeout() {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
+		taskModel:     &task.Task{},
 		runGroupSetup: true,
 	}
 	// Windows may not have finished deleting task directories when
@@ -332,9 +338,9 @@ func (s *TimeoutSuite) TestDynamicIdleTimeout() {
 	// tests in this suite to create differently-named task directories.
 	s.mockCommunicator.TaskExecution = 3
 
-	s.NoError(s.a.resetLogging(ctx, tc))
+	s.NoError(s.a.startLogging(ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
-	_, err := s.a.runTask(ctx, cancel, tc)
+	_, err := s.a.runTask(ctx, tc)
 	s.NoError(err)
 
 	// TODO: remove this line with MAKE-1090
@@ -389,6 +395,7 @@ func (s *TimeoutSuite) TestDynamicExecTimeoutTask() {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
+		taskModel:     &task.Task{},
 		runGroupSetup: true,
 	}
 	// Windows may not have finished deleting task directories when
@@ -396,9 +403,9 @@ func (s *TimeoutSuite) TestDynamicExecTimeoutTask() {
 	// tests in this suite to create differently-named task directories.
 	s.mockCommunicator.TaskExecution = 1
 
-	s.NoError(s.a.resetLogging(ctx, tc))
+	s.NoError(s.a.startLogging(ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
-	_, err := s.a.runTask(ctx, cancel, tc)
+	_, err := s.a.runTask(ctx, tc)
 	s.NoError(err)
 
 	// TODO: remove this line with MAKE-1090

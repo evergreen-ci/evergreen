@@ -699,3 +699,10 @@ var SuperuserPermissions = []string{
 	PermissionProjectCreate,
 	PermissionDistroCreate,
 }
+
+// Evergreen log types
+const (
+	LogTypeAgent  = "agent_log"
+	LogTypeTask   = "task_log"
+	LogTypeSystem = "system_log"
+)

@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/assert"
@@ -107,7 +108,7 @@ func TestCommandFileLogging(t *testing.T) {
 		},
 		taskModel: task,
 	}
-	assert.NoError(agt.resetLogging(ctx, tc))
+	assert.NoError(agt.startLogging(ctx, tc))
 	defer agt.removeTaskDirectory(tc)
 	err = agt.runTaskCommands(ctx, tc)
 	require.NoError(err)
@@ -138,7 +139,7 @@ func TestCommandFileLogging(t *testing.T) {
 	assert.Contains(tc.logs.TaskLogURLs[0].URL, "/logs/t1/0/shell.exec/task.log")
 }
 
-func TestResetLogging(t *testing.T) {
+func TestStartLogging(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	tmpDirName, err := ioutil.TempDir("", "reset-logging-")
@@ -170,7 +171,7 @@ func TestResetLogging(t *testing.T) {
 	assert.EqualValues(model.SplunkLogSender, tc.project.Loggers.System[0].Type)
 	assert.EqualValues(model.FileLogSender, tc.project.Loggers.Task[0].Type)
 
-	assert.NoError(agt.resetLogging(ctx, tc))
+	assert.NoError(agt.startLogging(ctx, tc))
 	tc.logger.Execution().Info("foo")
 	assert.NoError(tc.logger.Close())
 	msgs := agt.comm.(*client.Mock).GetMockMessages()
@@ -186,7 +187,7 @@ func TestResetLogging(t *testing.T) {
 	assert.Equal("bar", logConfig.System[0].SplunkToken)
 }
 
-func TestResetLoggingErrors(t *testing.T) {
+func TestStartLoggingErrors(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	tmpDirName, err := ioutil.TempDir("", "logging-error-")
@@ -221,7 +222,7 @@ func TestResetLoggingErrors(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	assert.Error(agt.resetLogging(ctx, tc))
+	assert.Error(agt.startLogging(ctx, tc))
 }
 
 func TestLogkeeperMetadataPopulated(t *testing.T) {
@@ -264,16 +265,69 @@ func TestLogkeeperMetadataPopulated(t *testing.T) {
 		},
 		taskModel: task,
 	}
-	assert.NoError(agt.resetLogging(ctx, tc))
+	assert.NoError(agt.startLogging(ctx, tc))
 	assert.Equal("logkeeper/build/build1/test/test1", tc.logs.AgentLogURLs[0].URL)
 	assert.Equal("logkeeper/build/build1/test/test2", tc.logs.SystemLogURLs[0].URL)
 	assert.Equal("logkeeper/build/build1/test/test3", tc.logs.TaskLogURLs[0].URL)
 	assert.Equal("", tc.logs.TaskLogURLs[0].Command)
 }
 
-func TestTimberSender(t *testing.T) {
-	assert := assert.New(t)
+func TestDefaultSender(t *testing.T) {
+	agt := &Agent{
+		opts: Options{
+			HostID:       "host",
+			HostSecret:   "secret",
+			StatusPort:   2286,
+			LogPrefix:    evergreen.LocalLoggingOverride,
+			LogkeeperURL: "logkeeper",
+		},
+		comm: client.NewMock("mock"),
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
+	taskID := "logging"
+	taskSecret := "mock_task_secret"
+	task := &task.Task{
+		DisplayName: "task1",
+	}
+	tc := &taskContext{
+		task: client.TaskData{
+			ID:     taskID,
+			Secret: taskSecret,
+		},
+		project: &model.Project{},
+		taskConfig: &model.TaskConfig{
+			Task:         task,
+			BuildVariant: &model.BuildVariant{Name: "bv"},
+			Timeout:      &model.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
+		},
+		taskModel: task,
+	}
+
+	t.Run("Valid", func(t *testing.T) {
+		tc.project.Loggers = &model.LoggerConfig{}
+		tc.taskConfig.ProjectRef = &model.ProjectRef{DefaultLogger: model.BuildloggerLogSender}
+
+		assert.NoError(t, agt.startLogging(ctx, tc))
+		expectedLogOpts := []model.LogOpts{{Type: model.BuildloggerLogSender}}
+		assert.Equal(t, expectedLogOpts, tc.project.Loggers.Agent)
+		assert.Equal(t, expectedLogOpts, tc.project.Loggers.System)
+		assert.Equal(t, expectedLogOpts, tc.project.Loggers.Task)
+	})
+	t.Run("Invalid", func(t *testing.T) {
+		tc.project.Loggers = &model.LoggerConfig{}
+		tc.taskConfig.ProjectRef = &model.ProjectRef{DefaultLogger: model.SplunkLogSender}
+
+		assert.NoError(t, agt.startLogging(ctx, tc))
+		expectedLogOpts := []model.LogOpts{{Type: model.EvergreenLogSender}}
+		assert.Equal(t, expectedLogOpts, tc.project.Loggers.Agent)
+		assert.Equal(t, expectedLogOpts, tc.project.Loggers.System)
+		assert.Equal(t, expectedLogOpts, tc.project.Loggers.Task)
+	})
+}
+
+func TestTimberSender(t *testing.T) {
 	agt := &Agent{
 		opts: Options{
 			HostID:       "host",
@@ -311,5 +365,5 @@ func TestTimberSender(t *testing.T) {
 		},
 		taskModel: task,
 	}
-	assert.NoError(agt.resetLogging(ctx, tc))
+	assert.NoError(t, agt.startLogging(ctx, tc))
 }

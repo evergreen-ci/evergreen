@@ -127,6 +127,25 @@ func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName s
 		grip.Error(errors.Wrapf(os.MkdirAll(logDir, os.ModeDir|os.ModePerm), "error making log directory for command %s", commandName))
 	}
 	config := client.LoggerConfig{}
+
+	var defaultLogger string
+	if tc.taskConfig != nil && tc.taskConfig.ProjectRef != nil {
+		defaultLogger = tc.taskConfig.ProjectRef.DefaultLogger
+	}
+	if !model.IsValidDefaultLogger(defaultLogger) {
+		grip.Warningf("default logger '%s' is not valid, setting Evergreen logger as default", defaultLogger)
+		defaultLogger = model.EvergreenLogSender
+	}
+	if len(c.Agent) == 0 {
+		c.Agent = []model.LogOpts{{Type: defaultLogger}}
+	}
+	if len(c.System) == 0 {
+		c.System = []model.LogOpts{{Type: defaultLogger}}
+	}
+	if len(c.Task) == 0 {
+		c.Task = []model.LogOpts{{Type: defaultLogger}}
+	}
+
 	for _, agentConfig := range c.Agent {
 		config.Agent = append(config.Agent, a.prepSingleLogger(tc, agentConfig, logDir, agentLogFileName))
 	}

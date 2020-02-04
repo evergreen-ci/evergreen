@@ -68,25 +68,15 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	tc.logger.Execution().Info("Execution logger initialized.")
 	tc.logger.System().Info("System logger initialized.")
 
-	taskConfig, err := a.makeTaskConfig(ctx, tc)
-	if err != nil {
-		tc.logger.Execution().Errorf("Error fetching task configuration: %s", err)
-		complete <- evergreen.TaskFailed
-		return
-	}
-	taskConfig.Redacted = tc.expVars.PrivateVars
-	tc.setTaskConfig(taskConfig)
-
 	if ctx.Err() != nil {
 		grip.Info("task canceled")
 		return
 	}
-	tc.logger.Task().Infof("Starting task %v, execution %v.", taskConfig.Task.Id, taskConfig.Task.Execution)
+	tc.logger.Task().Infof("Starting task %v, execution %v.", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution)
 
 	var innerCtx context.Context
 	innerCtx, cancel = context.WithCancel(ctx)
 	defer cancel()
-
 	go a.startMaxExecTimeoutWatch(ctx, tc, cancel)
 
 	// set up the system stats collector
@@ -104,6 +94,8 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		tc.logger.Task().Info("task canceled")
 		return
 	}
+
+	var err error
 	if tc.runGroupSetup {
 		tc.taskDirectory, err = a.createTaskDirectory(tc)
 		if err != nil {
@@ -113,7 +105,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		}
 	}
 	tc.taskConfig.WorkDir = tc.taskDirectory
-	taskConfig.Expansions.Put("workdir", tc.taskConfig.WorkDir)
+	tc.taskConfig.Expansions.Put("workdir", tc.taskConfig.WorkDir)
 
 	// notify API server that the task has been started.
 	tc.logger.Execution().Info("Reporting task started.")
@@ -249,19 +241,19 @@ func (tc *taskContext) hadTimedOut() bool {
 // makeTaskConfig fetches task configuration data required to run the task from the API server.
 func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*model.TaskConfig, error) {
 	if tc.project == nil && tc.version == nil {
-		tc.logger.Execution().Info("Fetching project config.")
+		grip.Info("Fetching project config.")
 		err := a.fetchProjectConfig(ctx, tc)
 		if err != nil {
 			return nil, err
 		}
 	}
-	tc.logger.Execution().Info("Fetching distro configuration.")
+	grip.Info("Fetching distro configuration.")
 	confDistro, err := a.comm.GetDistro(ctx, tc.task)
 	if err != nil {
 		return nil, err
 	}
 
-	tc.logger.Execution().Info("Fetching project ref.")
+	grip.Info("Fetching project ref.")
 	confRef, err := a.comm.GetProjectRef(ctx, tc.task)
 	if err != nil {
 		return nil, err
@@ -272,16 +264,16 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*model.Tas
 
 	var confPatch *patch.Patch
 	if evergreen.IsGitHubPatchRequester(tc.version.Requester) {
-		tc.logger.Execution().Info("Fetching patch document for Github PR request.")
+		grip.Info("Fetching patch document for Github PR request.")
 		confPatch, err = a.comm.GetTaskPatch(ctx, tc.task)
 		if err != nil {
 			err = errors.Wrap(err, "couldn't fetch patch for Github PR request")
-			tc.logger.Execution().Error(err.Error())
+			grip.Error(err.Error())
 			return nil, err
 		}
 	}
 
-	tc.logger.Execution().Info("Constructing TaskConfig.")
+	grip.Info("Constructing TaskConfig.")
 	return model.NewTaskConfig(confDistro, tc.version, tc.project, tc.taskModel, confRef, confPatch, tc.expansions)
 }
 
