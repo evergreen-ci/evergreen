@@ -135,12 +135,6 @@ func TestBuildRsyncCommand(t *testing.T) {
 }
 
 func TestHostRsync(t *testing.T) {
-	// Push/pull test on all subtests:
-	// * Directory contents get synced - old files removed
-	// * File contents get synced
-	// * Creates nonexistent files
-	// * Creates nonexistent directories
-	// * Dry run actually enables dry run and doesn't change anything
 	localFileContent := []byte("foo")
 	remoteFileContent := []byte("bar")
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, localFile, remoteFile, localDir, remoteDir string){
