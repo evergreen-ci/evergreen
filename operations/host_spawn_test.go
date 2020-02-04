@@ -321,7 +321,7 @@ func TestHostRsync(t *testing.T) {
 			cmd, err := buildRsyncCommand(ctx, rsyncOpts{local: localDir, remote: remoteDir, makeRemoteParentDirs: true})
 			require.NoError(t, err)
 			require.NotNil(t, cmd)
-			assert.Contains(t, cmd.Args, fmt.Sprintf(`--rsync-path='mkdir -p "%s" && rsync'`, filepath.Dir(remoteDir)))
+			assert.Contains(t, cmd.Args, fmt.Sprintf(`--rsync-path=mkdir -p "%s" && rsync`, filepath.Dir(remoteDir)))
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
