@@ -276,6 +276,9 @@ $http.get(templateUrl).success(function(template) {
 
   // converts a percentage to a color. Higher -> greener, Lower -> redder.
   $scope.percentToColor = function (percent) {
+    if (percent === null) {
+      return "";
+    }
     var percentColorRanges = [{
         min: -Infinity,
         max: -15,
@@ -333,7 +336,12 @@ $http.get(templateUrl).success(function(template) {
     if (!hoverResults) {
       hoverResults = $scope.hoverSamples[testName];
     }
-    const diff = 100 * $scope.percentDiff(hoverResults[$scope.metricSelect.value.key], compareSample.maxThroughputForTest(testName, $scope.metricSelect.value.key, threadLevel));
+    const currentResults = hoverResults[$scope.metricSelect.value.key];
+    const compareResults = compareSample.maxThroughputForTest(testName, $scope.metricSelect.value.key, threadLevel);
+    if (currentResults === null || compareResults === null) {
+      return "no comparison data";
+    }
+    const diff = 100 * $scope.percentDiff(currentResults, compareResults);
     return diff;
   }
 

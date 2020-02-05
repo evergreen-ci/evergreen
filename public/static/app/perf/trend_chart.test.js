@@ -8,18 +8,24 @@ describe('DrawPerfTrendChartTest', function () {
     rootScope = $rootScope
   }));
 
-  it('should not generate error when given non-constant max indices', function () {
+  it('should create a trend graph without errors', function () {
     let scope = {
-      task:{
+      task: {
         id: "sys_perf_linux_standalone_big_update_bb9114dc71bfcf42422471f7789eca00881b8864_19_01_03_20_13_57",
       },
       $parent: rootScope,
-      $on: function(){}
+      $on: function () {}
     }
 
+    let spy = {
+      checkThreadLevels: (threads) => {
+        expect(threads).toEqual(["1", "100"]);
+      }
+    }
+    let checkThreadLevels = spyOn(spy, "checkThreadLevels").and.callThrough();
+
     let params = {
-      series: [
-        {
+      series: [{
           "revision": "bb9114dc71bfcf42422471f7789eca00881b8864",
           "task_id": "sys_perf_linux_standalone_big_update_bb9114dc71bfcf42422471f7789eca00881b8864_19_01_03_20_13_57",
           "order": 14925,
@@ -54,14 +60,16 @@ describe('DrawPerfTrendChartTest', function () {
       scope: scope,
       containerId: 'containerId',
       compareSamples: [],
-      threadMode: 'maxonly',
+      threadMode: 'all',
       linearMode: true,
-      originMode: true
+      originMode: true,
+      updateThreadLevels: checkThreadLevels
     };
 
-    document.getElementById = function (){
+    document.getElementById = function () {
       return {}
     };
     svcFactory(params)
+    expect(checkThreadLevels).toHaveBeenCalled();
   });
 });

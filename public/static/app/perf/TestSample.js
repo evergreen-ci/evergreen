@@ -73,7 +73,7 @@ mciModule.factory('TestSample', function () {
     this.maxThroughputForTest = function (testName, metric, threadLevel) {
       const d = this.resultForTest(testName);
       if (!d) {
-        return 0;
+        return null;
       }
       if (threadLevel) {
         return d.results[threadLevel][metric];
