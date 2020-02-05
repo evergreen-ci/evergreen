@@ -4637,18 +4637,26 @@ func TestSetNewSSHKeys(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.Clear(Collection))
 	}()
-	names := []string{"foo", "bar"}
 	h := &Host{
 		Id: "foo",
 	}
-	assert.Error(t, h.SetSSHKeyNames(names))
+	assert.Error(t, h.AddSSHKeyName("foo"))
 	assert.Empty(t, h.SSHKeyNames)
 
 	require.NoError(t, h.Insert())
-	require.NoError(t, h.SetSSHKeyNames(names))
-	assert.Equal(t, names, h.SSHKeyNames)
+	require.NoError(t, h.AddSSHKeyName("foo"))
+	assert.Equal(t, []string{"foo"}, h.SSHKeyNames)
 
 	dbHost, err := FindOneId(h.Id)
 	require.NoError(t, err)
-	assert.Equal(t, names, dbHost.SSHKeyNames)
+	assert.Equal(t, []string{"foo"}, dbHost.SSHKeyNames)
+
+	require.NoError(t, h.AddSSHKeyName("bar"))
+	assert.Subset(t, []string{"foo", "bar"}, h.SSHKeyNames)
+	assert.Subset(t, h.SSHKeyNames, []string{"foo", "bar"})
+
+	dbHost, err = FindOneId(h.Id)
+	require.NoError(t, err)
+	assert.Subset(t, []string{"foo", "bar"}, dbHost.SSHKeyNames)
+	assert.Subset(t, dbHost.SSHKeyNames, []string{"foo", "bar"})
 }

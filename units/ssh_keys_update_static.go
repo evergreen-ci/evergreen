@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -74,17 +73,6 @@ func (j *staticUpdateSSHKeysJob) Run(ctx context.Context) {
 		return
 	}
 
-	pubKeys := []string{}
-	names := []string{}
-	for _, pair := range settings.SSHKeyPairs {
-		// Ignore if host already contains the public key.
-		if util.StringSliceContains(j.host.SSHKeyNames, pair.Name) {
-			continue
-		}
-		pubKeys = append(pubKeys, fmt.Sprintf("'%s'", pair.Public))
-		names = append(names, pair.Name)
-	}
-
 	sshOpts, err := j.host.GetSSHOptions(settings)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
@@ -96,30 +84,34 @@ func (j *staticUpdateSSHKeysJob) Run(ctx context.Context) {
 		return
 	}
 
-	// Either key is already in authorized keys or it is appended.
-	addKeysCmd := fmt.Sprintf(`pub_keys=(%s);
-		for key in "${pub_keys[@]}"; do
-			grep "^${key}$" ~/.ssh/authorized_keys2 || echo "${key}" >> ~/.ssh/authorized_keys2;
-		done`, strings.Join(pubKeys, " "))
-	if out, err := j.host.RunSSHCommand(ctx, addKeysCmd, sshOpts); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "could not run SSH command to add to authorized keys",
-			"host":    j.host.Id,
-			"logs":    out,
-		}))
-		j.AddError(err)
-	}
-	if j.HasErrors() {
-		return
-	}
+	for _, pair := range settings.SSHKeyPairs {
+		// Ignore if host already contains the public key.
+		if util.StringSliceContains(j.host.SSHKeyNames, pair.Name) {
+			continue
+		}
 
-	if err := j.host.SetSSHKeyNames(names); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "could not set host SSH key names",
-			"host":    j.host.Id,
-			"job":     j.ID(),
-		}))
-		j.AddError(err)
+		// Either key is already in authorized keys or it is appended.
+		addKeyCmd := fmt.Sprintf(" grep \"^%s$\" ~/.ssh/authorized_keys2 || echo \"%s\" >> ~/.ssh/authorized_keys2", pair.Public, pair.Public)
+		if logs, err := j.host.RunSSHCommand(ctx, addKeyCmd, sshOpts); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "could not run SSH command to add to authorized keys",
+				"host":    j.host.Id,
+				"key":     pair.Name,
+				"logs":    logs,
+			}))
+			j.AddError(err)
+			return
+		}
+		if err := j.host.AddSSHKeyName(pair.Name); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "could not add SSH key name to host",
+				"host":    j.host.Id,
+				"name":    pair.Name,
+				"job":     j.ID(),
+			}))
+			j.AddError(err)
+			return
+		}
 	}
 
 	return

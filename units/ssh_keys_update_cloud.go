@@ -78,8 +78,12 @@ func (j *cloudUpdateSSHKeysJob) Run(ctx context.Context) {
 	settings := j.env.Settings()
 
 	for _, pair := range settings.SSHKeyPairs {
-		if util.StringSliceContains(pair.EC2Regions, j.Region) {
-			continue
+		switch j.Provider {
+		case evergreen.ProviderNameEc2Fleet, evergreen.ProviderNameEc2Auto, evergreen.ProviderNameEc2OnDemand, evergreen.ProviderNameEc2Spot:
+			// Ignore if region already contains the public key.
+			if util.StringSliceContains(pair.EC2Regions, j.Region) {
+				continue
+			}
 		}
 
 		if err := mgr.AddSSHKey(ctx, pair); err != nil {

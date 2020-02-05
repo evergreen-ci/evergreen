@@ -1339,12 +1339,15 @@ func (h *Host) SetExtId() error {
 	)
 }
 
-// SetSSHKeyNames updates the host with the given SSH key names.
-func (h *Host) SetSSHKeyNames(names []string) error {
-	if err := UpdateOne(bson.M{IdKey: h.Id}, bson.M{"$set": bson.M{SSHKeyNamesKey: names}}); err != nil {
-		return errors.Wrap(err, "could not update SSH key names")
+// AddSSHKeyName adds the SSH key name for the host.
+func (h *Host) AddSSHKeyName(name string) error {
+	if _, err := db.FindAndModify(Collection, bson.M{IdKey: h.Id}, db.NoSort, adb.Change{
+		ReturnNew: true,
+		Update:    bson.M{"$addToSet": bson.M{SSHKeyNamesKey: name}},
+	}, h); err != nil {
+		return errors.Wrap(err, "could not add SSH key to host")
 	}
-	h.SSHKeyNames = names
+
 	return nil
 }
 
