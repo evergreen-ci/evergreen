@@ -112,7 +112,8 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 			Owner:       p.Owner,
 		}
 
-		if isFavorite := util.StringSliceContains(usr.FavoriteProjects, p.Identifier); isFavorite {
+		// favorite projects are filtered out and appended to their own array
+		if util.StringSliceContains(usr.FavoriteProjects, p.Identifier) {
 			favorites = append(favorites, &uiProj)
 			continue
 		}
