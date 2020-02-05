@@ -386,6 +386,7 @@ func (s *AgentSuite) TestAbort() {
 		"Running post-task commands":      false,
 		"Sending final status as: failed": false,
 	}
+	s.Require().NoError(tc.logger.Close())
 	for _, m := range s.mockCommunicator.GetMockMessages()["task_id"] {
 		for toFind, _ := range shouldFind {
 			if strings.Contains(m.Message, toFind) {
