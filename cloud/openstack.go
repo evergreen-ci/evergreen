@@ -115,8 +115,8 @@ func (m *openStackManager) SpawnHost(ctx context.Context, h *host.Host) (*host.H
 		grip.Error(err)
 		if rmErr := h.Remove(); rmErr != nil {
 			grip.Errorf("Could not remove intent host: %s", message.Fields{
-				"host":  h.Id,
-				"error": rmErr,
+				"host_id": h.Id,
+				"error":   rmErr,
 			})
 		}
 		return nil, errors.Wrapf(err, "Could not start new instance for distro '%s'", h.Distro.Id)

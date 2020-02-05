@@ -83,7 +83,7 @@ func (j *convertHostToLegacyProvisioningJob) Run(ctx context.Context) {
 			if err := j.tryRequeue(ctx); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message": "could not enqueue job to retry provisioning conversion",
-					"host":    j.host.Id,
+					"host_id": j.host.Id,
 					"distro":  j.host.Distro.Id,
 					"job":     j.ID(),
 				}))
@@ -92,7 +92,7 @@ func (j *convertHostToLegacyProvisioningJob) Run(ctx context.Context) {
 		}
 		grip.Error(message.WrapError(j.host.SetReprovisioningLocked(false), message.Fields{
 			"message": "could not clear host reprovisioning lock",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -103,7 +103,7 @@ func (j *convertHostToLegacyProvisioningJob) Run(ctx context.Context) {
 	if err := j.host.SetReprovisioningLockedAtomically(true); err != nil {
 		grip.Info(message.WrapError(err, message.Fields{
 			"message": "reprovisioning job currently in progress, returning from job",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -115,7 +115,7 @@ func (j *convertHostToLegacyProvisioningJob) Run(ctx context.Context) {
 	if !j.host.NeedsNewAgent {
 		grip.Error(message.WrapError(j.tryRequeue(ctx), message.Fields{
 			"message": "could not enqueue job to retry provisioning conversion when host's agent is still running",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -125,7 +125,7 @@ func (j *convertHostToLegacyProvisioningJob) Run(ctx context.Context) {
 	if err := j.host.UpdateLastCommunicated(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not update host communication time",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -136,7 +136,7 @@ func (j *convertHostToLegacyProvisioningJob) Run(ctx context.Context) {
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not get SSH options",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -149,7 +149,7 @@ func (j *convertHostToLegacyProvisioningJob) Run(ctx context.Context) {
 	if logs, err := j.host.RunSSHCommandLiterally(ctx, fmt.Sprintf("[ -a \"%s\" ] && %s", j.host.JasperBinaryFilePath(settings.HostJasper), j.host.QuietUninstallJasperCommand(settings.HostJasper)), sshOpts); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not uninstall Jasper service",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 			"logs":    logs,
@@ -161,7 +161,7 @@ func (j *convertHostToLegacyProvisioningJob) Run(ctx context.Context) {
 	if err := j.host.DeleteJasperCredentials(ctx, j.env); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not delete Jasper credentials",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -172,7 +172,7 @@ func (j *convertHostToLegacyProvisioningJob) Run(ctx context.Context) {
 	if err := j.host.MarkAsReprovisioned(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not mark host as provisioned",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -184,7 +184,7 @@ func (j *convertHostToLegacyProvisioningJob) Run(ctx context.Context) {
 
 	grip.Info(message.Fields{
 		"message": "successfully converted host from non-legacy to legacy provisioning",
-		"host":    j.host.Id,
+		"host_id": j.host.Id,
 		"distro":  j.host.Distro.Id,
 		"job":     j.ID(),
 	})

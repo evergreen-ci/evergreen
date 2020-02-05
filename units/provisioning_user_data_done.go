@@ -79,7 +79,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error getting user data done file path",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -95,7 +95,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "host was checked but is not yet ready",
 			"output":  output,
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -106,7 +106,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 	if err := j.host.SetUserDataHostProvisioned(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not mark host that has finished running user data as done provisioning",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))

@@ -181,7 +181,7 @@ func SetHostRDPPassword(ctx context.Context, env evergreen.Environment, host *ho
 			"stdout":    stdout.Buffer.String(),
 			"stderr":    stderr.Buffer.String(),
 			"operation": "set host rdp password",
-			"host":      host.Id,
+			"host_id":   host.Id,
 			"cmd":       pwdUpdateCmd.String(),
 			"err":       err.Error(),
 		})
@@ -192,7 +192,7 @@ func SetHostRDPPassword(ctx context.Context, env evergreen.Environment, host *ho
 		"stdout":    stdout.Buffer.String(),
 		"stderr":    stderr.Buffer.String(),
 		"operation": "set host rdp password",
-		"host":      host.Id,
+		"host_id":   host.Id,
 		"cmd":       pwdUpdateCmd.String(),
 	})
 

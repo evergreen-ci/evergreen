@@ -112,7 +112,7 @@ func terminateAgentHandler(w http.ResponseWriter, r *http.Request) {
 
 	msg := map[string]interface{}{
 		"message": "terminating agent triggered",
-		"host":    r.Host,
+		"host_id": r.Host,
 	}
 	grip.Info(msg)
 

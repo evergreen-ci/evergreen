@@ -94,7 +94,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	if !j.host.IsEphemeral() {
 		grip.Notice(message.Fields{
 			"job":      j.ID(),
-			"host":     j.HostID,
+			"host_id":  j.HostID,
 			"job_type": j.Type().Name,
 			"status":   j.host.Status,
 			"provider": j.host.Distro.Provider,
@@ -109,7 +109,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "problem checking if host is an idle parent",
-				"host":    j.host.Id,
+				"host_id": j.host.Id,
 				"job":     j.ID(),
 			}))
 		}
@@ -122,7 +122,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		j.AddError(err)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":  "problem deleting Jasper credentials",
-			"host":     j.host.Id,
+			"host_id":  j.host.Id,
 			"provider": j.host.Distro.Provider,
 			"job":      j.ID(),
 		}))
@@ -133,7 +133,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	// terminated.
 	grip.InfoWhen(j.host.Status == evergreen.HostTerminated,
 		message.Fields{
-			"host":     j.host.Id,
+			"host_id":  j.host.Id,
 			"provider": j.host.Distro.Provider,
 			"job_type": j.Type().Name,
 			"job":      j.ID(),
@@ -147,7 +147,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		if err = j.host.Terminate(evergreen.User, j.Reason); err != nil {
 			j.AddError(errors.Wrap(err, "problem terminating intent host in db"))
 			grip.Error(message.WrapError(err, message.Fields{
-				"host":     j.host.Id,
+				"host_id":  j.host.Id,
 				"provider": j.host.Distro.Provider,
 				"job_type": j.Type().Name,
 				"job":      j.ID(),
@@ -164,7 +164,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				"message":  "Host has running task; clearing before terminating",
 				"job":      j.ID(),
 				"job_type": j.Type().Name,
-				"host":     j.host.Id,
+				"host_id":  j.host.Id,
 				"provider": j.host.Distro.Provider,
 				"task":     j.host.RunningTask,
 			})
@@ -178,7 +178,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	prevStatus := j.host.Status
 	if err = j.host.SetDecommissioned(evergreen.User, "host will be terminated shortly, preventing task dispatch"); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"host":     j.host.Id,
+			"host_id":  j.host.Id,
 			"provider": j.host.Distro.Provider,
 			"job_type": j.Type().Name,
 			"job":      j.ID(),
@@ -203,7 +203,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				"message":  "Host has running task; clearing before terminating",
 				"job":      j.ID(),
 				"job_type": j.Type().Name,
-				"host":     j.host.Id,
+				"host_id":  j.host.Id,
 				"provider": j.host.Distro.Provider,
 				"task":     j.host.RunningTask,
 			})
@@ -226,7 +226,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			if err = j.host.Terminate(evergreen.User, "parent was already terminated"); err != nil {
 				j.AddError(errors.Wrap(err, "problem terminating container in db"))
 				grip.Error(message.WrapError(err, message.Fields{
-					"host":     j.host.Id,
+					"host_id":  j.host.Id,
 					"provider": j.host.Distro.Provider,
 					"job_type": j.Type().Name,
 					"job":      j.ID(),
@@ -248,7 +248,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			}
 			j.AddError(errors.Wrap(err, "problem terminating intent host in db"))
 			grip.Error(message.WrapError(err, message.Fields{
-				"host":     j.host.Id,
+				"host_id":  j.host.Id,
 				"provider": j.host.Distro.Provider,
 				"job_type": j.Type().Name,
 				"job":      j.ID(),
@@ -271,7 +271,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		err = errors.Wrapf(err, "error getting cloud host for %s", j.HostID)
 		j.AddError(err)
 		grip.Error(message.WrapError(err, message.Fields{
-			"host":     j.host.Id,
+			"host_id":  j.host.Id,
 			"provider": j.host.Distro.Provider,
 			"job_type": j.Type().Name,
 			"job":      j.ID(),
@@ -285,7 +285,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		// other problem getting cloud status
 		j.AddError(err)
 		grip.Error(message.WrapError(err, message.Fields{
-			"host":     j.host.Id,
+			"host_id":  j.host.Id,
 			"provider": j.host.Distro.Provider,
 			"job_type": j.Type().Name,
 			"job":      j.ID(),
@@ -304,7 +304,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	if cloudStatus == cloud.StatusTerminated {
 		j.AddError(errors.New("host is already terminated"))
 		grip.Warning(message.Fields{
-			"host":     j.host.Id,
+			"host_id":  j.host.Id,
 			"provider": j.host.Distro.Provider,
 			"job_type": j.Type().Name,
 			"job":      j.ID(),
@@ -314,7 +314,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		if err := j.host.Terminate(evergreen.User, "cloud provider indicated host was terminated"); err != nil {
 			j.AddError(errors.Wrap(err, "problem terminating host in db"))
 			grip.Error(message.WrapError(err, message.Fields{
-				"host":     j.host.Id,
+				"host_id":  j.host.Id,
 				"provider": j.host.Distro.Provider,
 				"job_type": j.Type().Name,
 				"job":      j.ID(),
@@ -329,7 +329,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		grip.Error(message.WrapError(err, message.Fields{
 			"job_type": j.Type().Name,
 			"message":  "Error running teardown script",
-			"host":     j.host.Id,
+			"host_id":  j.host.Id,
 		}))
 	}
 
@@ -337,7 +337,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		j.AddError(err)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":  "problem terminating host",
-			"host":     j.host.Id,
+			"host_id":  j.host.Id,
 			"job":      j.ID(),
 			"job_type": j.Type().Name,
 		}))

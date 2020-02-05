@@ -69,7 +69,7 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 	if j.host.Status != evergreen.HostRunning {
 		grip.Debug(message.Fields{
 			"message": "host is down, not attempting to run script",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		})
@@ -80,7 +80,7 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not get ssh options",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -93,7 +93,7 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 		event.LogHostScriptExecuteFailed(j.host.Id, err)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "script failed during execution",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"logs":    logs,
 			"job":     j.ID(),
@@ -106,7 +106,7 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 
 	grip.Info(message.Fields{
 		"message": "host executed script successfully",
-		"host":    j.host.Id,
+		"host_id": j.host.Id,
 		"distro":  j.host.Distro.Id,
 		"logs":    logs,
 		"job":     j.ID(),

@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/suite"
@@ -68,11 +67,10 @@ func (s *CommandSuite) TestShellExec() {
 			Secret: taskSecret,
 		},
 		runGroupSetup: true,
-		taskModel:     &task.Task{},
 	}
-	s.NoError(s.a.startLogging(ctx, tc))
+	s.NoError(s.a.resetLogging(ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
-	_, err = s.a.runTask(ctx, tc)
+	_, err = s.a.runTask(ctx, cancel, tc)
 	s.NoError(err)
 
 	messages := s.mockCommunicator.GetMockMessages()
@@ -116,11 +114,10 @@ func (s *CommandSuite) TestS3Copy() {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
-		taskModel: &task.Task{},
 	}
-	s.NoError(s.a.startLogging(ctx, tc))
+	s.NoError(s.a.resetLogging(ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
-	_, err := s.a.runTask(ctx, tc)
+	_, err := s.a.runTask(ctx, cancel, tc)
 	s.NoError(err)
 
 	messages := s.mockCommunicator.GetMockMessages()

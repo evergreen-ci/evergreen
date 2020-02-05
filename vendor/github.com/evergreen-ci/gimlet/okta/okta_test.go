@@ -60,8 +60,16 @@ func TestUserManagerCreation(t *testing.T) {
 			modifyOpts: func(opts CreationOptions) CreationOptions { opts.Issuer = ""; return opts },
 			shouldPass: false,
 		},
-		"MissingUserGroup": {
+		"NoValidateGroupMissingUserGroup": {
 			modifyOpts: func(opts CreationOptions) CreationOptions { opts.UserGroup = ""; return opts },
+			shouldPass: true,
+		},
+		"ValidateGroupsButMissingUserGroup": {
+			modifyOpts: func(opts CreationOptions) CreationOptions {
+				opts.ValidateGroups = true
+				opts.UserGroup = ""
+				return opts
+			},
 			shouldPass: false,
 		},
 		"MissingCookiePath": {
@@ -411,19 +419,19 @@ func TestRequestHelpers(t *testing.T) {
 
 func mockCreationOptions() CreationOptions {
 	return CreationOptions{
-		ClientID:             "client_id",
-		ClientSecret:         "client_secret",
-		RedirectURI:          "redirect_uri",
-		Issuer:               "issuer",
-		UserGroup:            "user_group",
-		CookiePath:           "cookie_path",
-		CookieDomain:         "example.com",
-		LoginCookieName:      "login_cookie",
-		LoginCookieTTL:       time.Hour,
-		UserCache:            usercache.NewInMemory(context.Background(), time.Minute),
-		GetHTTPClient:        func() *http.Client { return &http.Client{} },
-		PutHTTPClient:        func(*http.Client) {},
-		SkipGroupPopulation:  true,
+		ClientID:        "client_id",
+		ClientSecret:    "client_secret",
+		RedirectURI:     "redirect_uri",
+		Issuer:          "issuer",
+		UserGroup:       "user_group",
+		CookiePath:      "cookie_path",
+		CookieDomain:    "example.com",
+		LoginCookieName: "login_cookie",
+		LoginCookieTTL:  time.Hour,
+		UserCache:       usercache.NewInMemory(context.Background(), time.Minute),
+		GetHTTPClient:   func() *http.Client { return &http.Client{} },
+		PutHTTPClient:   func(*http.Client) {},
+		// SkipGroupPopulation:  true,
 		AllowReauthorization: false,
 		ReconciliateID:       func(id string) string { return id },
 	}
@@ -865,16 +873,102 @@ func TestLoginHandlerCallback(t *testing.T) {
 	}
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, um *userManager, s *mockAuthorizationServer){
 		"Succeeds": func(ctx context.Context, t *testing.T, um *userManager, s *mockAuthorizationServer) {
-			um.insecureSkipTokenValidation = true
+			email := "email"
+			name := "name"
+			group := "user_group"
 
-			s.UserInfoResponse = &userInfoResponse{
-				Name:   "name",
-				Email:  "email",
-				Groups: []string{"user_group"},
+			um.doValidateIDToken = func(string, string) (*jwtverifier.Jwt, error) {
+				return &jwtverifier.Jwt{
+					Claims: map[string]interface{}{
+						"email": email,
+						"name":  name,
+					},
+				}, nil
 			}
+			um.doValidateAccessToken = func(string) error { return nil }
+
 			s.TokenResponse = &tokenResponse{
 				AccessToken: "access_token",
 				IDToken:     "id_token",
+			}
+			s.UserInfoResponse = &userInfoResponse{
+				Name:   name,
+				Email:  email,
+				Groups: []string{group},
+			}
+
+			state := "some_state"
+			nonce := "some_nonce"
+			redirect := "/redirect"
+			code := "some_code"
+
+			rw := httptest.NewRecorder()
+			q := makeQuery(state, code, nonce)
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/login/callback?%s", q.Encode()), strings.NewReader(q.Encode()))
+			require.NoError(t, err)
+			req.Header["Cookie"] = makeCookieHeader(nonce, state, redirect)
+
+			um.GetLoginCallbackHandler()(rw, req)
+
+			resp := rw.Result()
+			assert.NoError(t, resp.Body.Close())
+
+			assert.Equal(t, http.StatusFound, resp.StatusCode)
+			assert.Equal(t, []string{redirect}, resp.Header["Location"])
+
+			mapContains(t, s.TokenHeaders, map[string][]string{
+				"Accept":        []string{"application/json"},
+				"Content-Type":  []string{"application/x-www-form-urlencoded"},
+				"Authorization": []string{"Basic " + base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", um.clientID, um.clientSecret)))},
+			})
+			mapContains(t, s.TokenParameters, map[string][]string{
+				"grant_type":   []string{"authorization_code"},
+				"code":         []string{code},
+				"redirect_uri": []string{um.redirectURI},
+			})
+			assert.Empty(t, s.UserInfoHeaders)
+
+			cookies, err := cookieMap(resp.Cookies())
+			require.NoError(t, err)
+			loginToken, ok := cookies[um.loginCookieName]
+			assert.True(t, ok)
+			assert.NotEmpty(t, loginToken)
+
+			user, err := um.GetUserByID(email)
+			require.NoError(t, err)
+			require.NotNil(t, user)
+			assert.Equal(t, email, user.Email())
+			assert.Empty(t, user.Roles())
+
+			checkUser, err := um.GetUserByToken(ctx, loginToken)
+			require.NoError(t, err)
+			assert.Equal(t, user, checkUser)
+		},
+		"SucceedsWithGroupValidation": func(ctx context.Context, t *testing.T, um *userManager, s *mockAuthorizationServer) {
+
+			email := "email"
+			name := "name"
+
+			um.validateGroups = true
+
+			um.doValidateIDToken = func(string, string) (*jwtverifier.Jwt, error) {
+				return &jwtverifier.Jwt{
+					Claims: map[string]interface{}{
+						"email": email,
+						"name":  name,
+					},
+				}, nil
+			}
+			um.doValidateAccessToken = func(string) error { return nil }
+
+			s.TokenResponse = &tokenResponse{
+				AccessToken: "access_token",
+				IDToken:     "id_token",
+			}
+			s.UserInfoResponse = &userInfoResponse{
+				Name:   name,
+				Email:  email,
+				Groups: []string{"user_group"},
 			}
 
 			state := "some_state"
@@ -918,10 +1012,10 @@ func TestLoginHandlerCallback(t *testing.T) {
 			assert.True(t, ok)
 			assert.NotEmpty(t, loginToken)
 
-			user, err := um.GetUserByID("email")
+			user, err := um.GetUserByID(email)
 			require.NoError(t, err)
 			require.NotNil(t, user)
-			assert.Equal(t, "email", user.Email())
+			assert.Equal(t, email, user.Email())
 			assert.ElementsMatch(t, []string{"user_group"}, user.Roles())
 
 			checkUser, err := um.GetUserByToken(ctx, loginToken)
@@ -929,11 +1023,22 @@ func TestLoginHandlerCallback(t *testing.T) {
 			assert.Equal(t, user, checkUser)
 		},
 		"FailsForReturnedErrors": func(ctx context.Context, t *testing.T, um *userManager, s *mockAuthorizationServer) {
-			um.insecureSkipTokenValidation = true
+			name := "name"
+			email := "email"
+
+			um.doValidateIDToken = func(string, string) (*jwtverifier.Jwt, error) {
+				return &jwtverifier.Jwt{
+					Claims: map[string]interface{}{
+						"email": email,
+						"name":  name,
+					},
+				}, nil
+			}
+			um.doValidateAccessToken = func(string) error { return nil }
 
 			s.UserInfoResponse = &userInfoResponse{
-				Name:   "name",
-				Email:  "email",
+				Name:   name,
+				Email:  email,
 				Groups: []string{"user_group"},
 			}
 
@@ -957,8 +1062,6 @@ func TestLoginHandlerCallback(t *testing.T) {
 			assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 		},
 		"FailsForMismatchedState": func(ctx context.Context, t *testing.T, um *userManager, s *mockAuthorizationServer) {
-			um.insecureSkipTokenValidation = true
-
 			s.UserInfoResponse = &userInfoResponse{
 				Name:   "name",
 				Email:  "email",
@@ -992,7 +1095,7 @@ func TestLoginHandlerCallback(t *testing.T) {
 			opts := mockCreationOptions()
 			opts.Issuer = fmt.Sprintf("http://localhost:%d/v1", port)
 			opts.ReconciliateID = func(id string) string { return id }
-			opts.SkipGroupPopulation = false
+			// opts.SkipGroupPopulation = false
 			um, err := NewUserManager(opts)
 			require.NoError(t, err)
 			impl, ok := um.(*userManager)
@@ -1004,7 +1107,9 @@ func TestLoginHandlerCallback(t *testing.T) {
 
 func TestReauthorization(t *testing.T) {
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, um *userManager, s *mockAuthorizationServer){
-		"SucceedsWithValidAccessToken": func(ctx context.Context, t *testing.T, um *userManager, s *mockAuthorizationServer) {
+		"SucceedsWithValidAccessTokenAndGroupValidation": func(ctx context.Context, t *testing.T, um *userManager, s *mockAuthorizationServer) {
+			um.validateGroups = true
+
 			accessToken := "access_token"
 			user := gimlet.NewBasicUser("foo", "foo", "foo@bar.com", "password", "key", accessToken, "", nil, false, nil)
 			_, err := um.cache.GetOrCreate(user)
@@ -1027,15 +1132,87 @@ func TestReauthorization(t *testing.T) {
 				"Accept":        []string{"application/json"},
 				"Authorization": []string{"Bearer " + accessToken},
 			})
-			assert.Empty(t, s.TokenParameters)
-			assert.Empty(t, s.TokenHeaders)
+			assert.Empty(t, s.TokenParameters, "reauthorization should succeed without requesting new tokens")
+			assert.Empty(t, s.TokenHeaders, "reauthorization should succeed without requesting new tokens")
 
 			cachedUser, _, err := um.cache.Find(user.Username())
 			require.NoError(t, err)
 			assert.Equal(t, user.GetAccessToken(), cachedUser.GetAccessToken())
 			assert.Equal(t, user.GetRefreshToken(), cachedUser.GetRefreshToken())
 		},
+		"SucceedsWithoutGroupValidation": func(ctx context.Context, t *testing.T, um *userManager, s *mockAuthorizationServer) {
+			refreshToken := "refresh_token"
+			user := gimlet.NewBasicUser("foo", "foo", "foo@bar.com", "password", "key", "", refreshToken, nil, false, nil)
+			_, err := um.cache.GetOrCreate(user)
+			require.NoError(t, err)
+
+			newAccessToken := "new_access_token"
+			newRefreshToken := "new_refresh_token"
+
+			um.doValidateIDToken = func(string, string) (*jwtverifier.Jwt, error) {
+				return &jwtverifier.Jwt{
+					Claims: map[string]interface{}{
+						"name":  user.Username(),
+						"email": user.Email(),
+					},
+				}, nil
+			}
+
+			s.IntrospectResponse = &introspectResponse{Active: true}
+			s.UserInfoResponse = &userInfoResponse{Name: "foo", Email: "foo@bar.com", Groups: []string{um.userGroup}}
+			s.TokenResponse = &tokenResponse{
+				AccessToken:  newAccessToken,
+				RefreshToken: newRefreshToken,
+				IDToken:      "new_id_token",
+				TokenType:    "token_type",
+				ExpiresIn:    3600,
+				Scope:        "scope",
+			}
+
+			require.NoError(t, um.reauthorizeUser(ctx, user))
+
+			mapContains(t, s.TokenParameters, map[string][]string{
+				"grant_type":    []string{"refresh_token"},
+				"refresh_token": []string{refreshToken},
+				"scope":         []string{"openid email profile offline_access groups"},
+			})
+			mapContains(t, s.TokenHeaders, map[string][]string{
+				"Content-Type": []string{"application/x-www-form-urlencoded"},
+				"Accept":       []string{"application/json"},
+			})
+			assert.Empty(t, s.IntrospectParameters, "should not check access token if not validating groups")
+			assert.Empty(t, s.IntrospectHeaders, "should not check access token if not validating groups")
+			assert.Empty(t, s.UserInfoHeaders, "should not get user info if not validating groups")
+
+			cachedUser, _, err := um.cache.Find(user.Username())
+			require.NoError(t, err)
+			assert.Equal(t, newAccessToken, cachedUser.GetAccessToken())
+			assert.Equal(t, newRefreshToken, cachedUser.GetRefreshToken())
+		},
+		"FailsIfAccessTokenAndRefreshTokensMissingAndValidatingGroups": func(ctx context.Context, t *testing.T, um *userManager, s *mockAuthorizationServer) {
+			um.validateGroups = true
+			user := gimlet.NewBasicUser("foo", "foo", "foo@bar.com", "password", "key", "", "", nil, false, nil)
+
+			require.Error(t, um.reauthorizeUser(ctx, user))
+			assert.Empty(t, s.TokenHeaders, "should not refresh tokens if refresh token missing")
+			assert.Empty(t, s.TokenParameters, "should not refresh tokens if refresh token missing")
+			assert.Empty(t, s.IntrospectHeaders, "should not check access token if missing access and refresh tokens")
+			assert.Empty(t, s.IntrospectParameters, "should not check access token if missing access and refresh tokens")
+			assert.Empty(t, s.UserInfoHeaders, "should not get user info if missing access and refresh tokens")
+		},
+		"FailsIfRefreshTokensMissingAndNotValidatingGroups": func(ctx context.Context, t *testing.T, um *userManager, s *mockAuthorizationServer) {
+			user := gimlet.NewBasicUser("foo", "foo", "foo@bar.com", "password", "key", "access_token", "", nil, false, nil)
+
+			require.Error(t, um.reauthorizeUser(ctx, user))
+			assert.Empty(t, s.TokenHeaders, "should not refresh tokens if refresh token missing")
+			assert.Empty(t, s.TokenParameters, "should not refresh tokens if refresh token missing")
+			assert.Empty(t, s.IntrospectHeaders, "should not check access token if not validating groups")
+			assert.Empty(t, s.IntrospectParameters, "should not check access token if not validating groups")
+			assert.Empty(t, s.UserInfoHeaders, "should not get user info if not validating groups")
+		},
 		"FailsIfAccessTokenExpiredAndTokensCannotRefresh": func(ctx context.Context, t *testing.T, um *userManager, s *mockAuthorizationServer) {
+			um.validateGroups = true
+
 			accessToken := "access_token"
 			refreshToken := "refresh_token"
 			user := gimlet.NewBasicUser("foo", "foo", "foo@bar.com", "password", "key", accessToken, refreshToken, nil, false, nil)
@@ -1076,6 +1253,7 @@ func TestReauthorization(t *testing.T) {
 			assert.Equal(t, user.GetRefreshToken(), cachedUser.GetRefreshToken())
 		},
 		"FailsForInvalidGroups": func(ctx context.Context, t *testing.T, um *userManager, s *mockAuthorizationServer) {
+			um.validateGroups = true
 			accessToken := "access_token"
 			refreshToken := "refresh_token"
 			newAccessToken := "new_access_token"

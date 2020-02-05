@@ -100,7 +100,7 @@ func (j *hostAlertingJob) monitorLongRunningTasks() {
 		"message":     "host running task for too long",
 		"op":          hostAlertingName,
 		"op_id":       j.ID(),
-		"host":        j.HostID,
+		"host_id":     j.HostID,
 		"distro":      j.host.Distro.Id,
 		"task":        runningTask.Id,
 		"elapsed":     elapsed.String(),

@@ -77,7 +77,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		err = errors.Wrapf(err, "Failed to create container for host '%s'", h.Id)
 		grip.Info(message.WrapError(err, message.Fields{
 			"message": "spawn container host failed",
-			"host":    h.Id,
+			"host_id": h.Id,
 		}))
 		return nil, err
 	}
@@ -100,14 +100,14 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		}
 		grip.Info(message.WrapError(err, message.Fields{
 			"message": "start container host failed",
-			"host":    h.Id,
+			"host_id": h.Id,
 		}))
 		return nil, err
 	}
 
 	grip.Info(message.Fields{
 		"message": "created and started Docker container",
-		"host":    h.Id,
+		"host_id": h.Id,
 	})
 
 	return h, nil
@@ -365,7 +365,7 @@ func (m *dockerManager) GetContainerImage(ctx context.Context, parent *host.Host
 	grip.Info(message.Fields{
 		"operation": "EnsureImageDownloaded",
 		"details":   "total",
-		"host":      parent.Id,
+		"host_id":   parent.Id,
 		"image":     image,
 		"duration":  time.Since(start),
 		"span":      time.Since(start).String(),
@@ -382,7 +382,7 @@ func (m *dockerManager) GetContainerImage(ctx context.Context, parent *host.Host
 	}
 	grip.Info(message.Fields{
 		"operation": "BuildImageWithAgent",
-		"host":      parent.Id,
+		"host_id":   parent.Id,
 		"details":   "total",
 		"duration":  time.Since(start),
 		"span":      time.Since(start).String(),

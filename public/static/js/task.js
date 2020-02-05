@@ -732,7 +732,6 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
       $scope.getLogs = function() {
         $http.get('/json/task_log/' + $scope.taskId + '/' + $scope.task.execution + '?type=' + $scope.currentLogs).then(
           function(resp) {
-            $scope.buildlogger = false;
             var taskScheduledStatus = "TASK_SCHEDULED";
             var data = resp.data;
             if ($scope.currentLogs == $scope.eventLogs) {
@@ -764,8 +763,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
                   };
                 });
               } else {
-                $scope.buildlogger = true;
-                $scope.logs = data;
+                $scope.logs = [];
               }
             }
           },
