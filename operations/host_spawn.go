@@ -1,7 +1,6 @@
 package operations
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -918,15 +917,7 @@ Examples:
 			},
 		),
 		Before: mergeBeforeFuncs(
-			func(c *cli.Context) error {
-				if c.Bool(remoteIsLocalFlagName) {
-					if c.String(hostFlagName) != "" {
-						return errors.New("should not specify a remote host ID when both filepaths are on the local machine")
-					}
-					return nil
-				}
-				return requireHostFlag(c)
-			},
+			mutuallyExclusiveArgs(true, hostFlagName, remoteIsLocalFlagName),
 			requireStringFlag(localPathFlagName),
 			requireStringFlag(remotePathFlagName),
 		),
@@ -1058,7 +1049,7 @@ func sanityCheckRsync(localPath, remotePath string, pull bool) (ok bool, err err
 	remotePathIsDir := strings.HasSuffix(remotePath, string(os.PathSeparator))
 
 	if localPathIsDir && !pull {
-		ok, err := sanityPrompt(fmt.Sprintf("The local directory '%s' will overwrite any existing contents in the remote directory '%s'", localPath, remotePath))
+		ok, err := confirm(fmt.Sprintf("The local directory '%s' will overwrite any existing contents in the remote directory '%s'. Continue? (y/n)", localPath, remotePath), false)
 		if err != nil {
 			return false, errors.Wrap(err, "error while asking user to sanity check rsync command")
 		}
@@ -1067,7 +1058,7 @@ func sanityCheckRsync(localPath, remotePath string, pull bool) (ok bool, err err
 		}
 	}
 	if remotePathIsDir && pull {
-		ok, err := sanityPrompt(fmt.Sprintf("The remote directory '%s' will overwrite any existing contents in the local directory '%s'", remotePath, localPath))
+		ok, err := confirm(fmt.Sprintf("The remote directory '%s' will overwrite any existing contents in the local directory '%s'. Continue? (y/n)", remotePath, localPath), false)
 		if err != nil {
 			return false, errors.Wrap(err, "error while asking user to sanity check rsync command")
 		}
@@ -1076,19 +1067,6 @@ func sanityCheckRsync(localPath, remotePath string, pull bool) (ok bool, err err
 		}
 	}
 	return true, nil
-}
-
-// sanityPrompt prints the message and asks the user if they would like to
-// continue or exit.
-func sanityPrompt(msg string) (ok bool, err error) {
-	fmt.Printf(msg + " Continue? (y/n) ")
-	r := bufio.NewReader(os.Stdin)
-	input, err := r.ReadString('\n')
-	if err != nil {
-		return false, errors.Wrap(err, "could not read input")
-	}
-	input = strings.TrimSpace(input)
-	return input == "y" || input == "yes", nil
 }
 
 type rsyncOpts struct {

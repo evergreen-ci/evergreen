@@ -89,6 +89,11 @@ func TestSanityCheckRsync(t *testing.T) {
 			require.NoError(t, err)
 			assert.True(t, ok)
 		},
+		"DoesNotCheckIfBothAreTreatedAsFilesWithPull": func(t *testing.T) {
+			ok, err := sanityCheckRsync("local_file", "remote_file", true)
+			require.NoError(t, err)
+			assert.True(t, ok)
+		},
 	} {
 		t.Run(testName, testCase)
 	}
