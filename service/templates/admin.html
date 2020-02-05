@@ -1,7 +1,7 @@
 {{define "scripts"}}
 <script>
-        window.validDefaultLoggers = {{.ValidDefaultLoggers}};
-	window.can_logout = {{.CanClearTokens}};
+	window.validDefaultLoggers = {{.ValidDefaultLoggers}};
+	window.can_clear_tokens = {{.CanClearTokens}};
 </script>
 <script src="{{Static "js" "admin.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="{{Static "thirdparty" "js-yaml.min.js"}}?hash={{ BuildRevision }}"></script>
