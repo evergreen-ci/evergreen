@@ -572,7 +572,6 @@ type SSHKeyPair struct {
 
 // AddEC2Region adds the given EC2 region to the set of regions containing the
 // SSH key.
-// TODO (kim): test this actually works.
 func (p *SSHKeyPair) AddEC2Region(region string) error {
 	env := GetEnvironment()
 	ctx, cancel := env.Context()
@@ -587,15 +586,25 @@ func (p *SSHKeyPair) AddEC2Region(region string) error {
 			},
 		},
 	}
-	_, err := coll.UpdateOne(ctx, query, bson.M{
+	if _, err := coll.UpdateOne(ctx, query, bson.M{
 		"$addToSet": bson.M{bsonutil.GetDottedKeyName(sshKeyPairsKey, "$", sshKeyPairEC2RegionsKey): region},
-	})
+	}); err != nil {
+		if len(p.EC2Regions) != 0 {
+			return errors.WithStack(err)
+		}
+		// In case this is the first element, we have to push to create the
+		// array first.
+		if _, err := coll.UpdateOne(ctx, query, bson.M{
+			"$push": bson.M{bsonutil.GetDottedKeyName(sshKeyPairsKey, "$", sshKeyPairEC2RegionsKey): region},
+		}); err != nil {
+			return errors.WithStack(err)
+		}
+	}
 	if !util.StringSliceContains(p.EC2Regions, region) {
 		p.EC2Regions = append(p.EC2Regions, region)
 	}
 
-	return errors.WithStack(err)
-
+	return nil
 }
 
 type WriteConcern struct {

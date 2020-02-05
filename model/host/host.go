@@ -1345,7 +1345,17 @@ func (h *Host) AddSSHKeyName(name string) error {
 		ReturnNew: true,
 		Update:    bson.M{"$addToSet": bson.M{SSHKeyNamesKey: name}},
 	}, h); err != nil {
-		return errors.Wrap(err, "could not add SSH key to host")
+		if len(h.SSHKeyNames) != 0 {
+			return errors.WithStack(err)
+		}
+		// In case this is the first element, we have to push to create the
+		// array first.
+		if _, err := db.FindAndModify(Collection, bson.M{IdKey: h.Id}, db.NoSort, adb.Change{
+			ReturnNew: true,
+			Update:    bson.M{"$push": bson.M{SSHKeyNamesKey: name}},
+		}, h); err != nil {
+			return errors.Wrap(err, "could not add SSH key to host")
+		}
 	}
 
 	return nil
@@ -2214,7 +2224,7 @@ func FindNeedsNewSSHKeys(settings *evergreen.Settings) ([]Host, error) {
 	}
 
 	return Find(db.Query(bson.M{
-		StatusKey:      bson.M{"$ne": evergreen.HostTerminated},
+		StatusKey:      evergreen.HostRunning,
 		ProviderKey:    evergreen.ProviderNameStatic,
 		SSHKeyNamesKey: bson.M{"$not": bson.M{"$all": names}},
 	}))
