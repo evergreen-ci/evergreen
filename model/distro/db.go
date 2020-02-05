@@ -114,7 +114,7 @@ func (d *Distro) UpdateProviderSettings(doc *birch.Document) error {
 		d.ProviderSettingsList = []*birch.Document{}
 	}
 	d.ProviderSettingsList = append(d.ProviderSettingsList, doc)
-	if err := d.Update(); err != nil {
+	if err := d.Update(); err != nil && !adb.ResultsNotFound(err) {
 		return errors.Wrapf(err, "error updating distro")
 	}
 	return nil
