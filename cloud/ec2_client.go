@@ -963,7 +963,7 @@ func (c *awsClientImpl) SetTags(ctx context.Context, resources []string, h *host
 	}); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error attaching tags",
-			"host":          h.Id,
+			"host_id":       h.Id,
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		}))
@@ -977,7 +977,7 @@ func (c *awsClientImpl) SetTags(ctx context.Context, resources []string, h *host
 
 	grip.Debug(message.Fields{
 		"message":       "attached tags for host",
-		"host":          h.Id,
+		"host_id":       h.Id,
 		"host_provider": h.Distro.Provider,
 		"distro":        h.Distro.Id,
 		"tags":          h.InstanceTags,

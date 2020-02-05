@@ -686,7 +686,7 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 	defer func() {
 		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
-			"host":    h.Id,
+			"host_id": h.Id,
 			"distro":  h.Distro.Id,
 		}))
 	}()
@@ -730,7 +730,7 @@ func (h *Host) StartJasperProcess(ctx context.Context, env evergreen.Environment
 	defer func() {
 		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
-			"host":    h.Id,
+			"host_id": h.Id,
 			"distro":  h.Distro.Id,
 		}))
 	}()
@@ -753,7 +753,7 @@ func (h *Host) GetJasperProcess(ctx context.Context, env evergreen.Environment, 
 	defer func() {
 		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
-			"host":    h.Id,
+			"host_id": h.Id,
 			"distro":  h.Distro.Id,
 		}))
 	}()
@@ -910,7 +910,7 @@ func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) 
 	defer func() {
 		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
-			"host":    h.Id,
+			"host_id": h.Id,
 			"distro":  h.Distro.Id,
 		}))
 	}()
@@ -922,7 +922,7 @@ func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) 
 
 	grip.WarningWhen(len(procs) != 1, message.Fields{
 		"message": fmt.Sprintf("host should be running exactly one agent monitor, but found %d", len(procs)),
-		"host":    h.Id,
+		"host_id": h.Id,
 		"distro":  h.Distro.Id,
 	})
 
@@ -1104,7 +1104,7 @@ func (h *Host) SetUserDataHostProvisioned() error {
 
 	grip.Info(message.Fields{
 		"message":              "host successfully provisioned",
-		"host":                 h.Id,
+		"host_id":              h.Id,
 		"distro":               h.Distro.Id,
 		"time_to_running_secs": time.Since(h.CreationTime).Seconds(),
 	})
