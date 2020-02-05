@@ -1251,7 +1251,7 @@
         "apikey": "480550ebb70b5604c2abd26185d8a680",
         "display_name": "Evergreen Admin",
         "email": "",
-        "favorite_projects": []
+        "favorite_projects": ["mci", "lobster"]
       }
     ]
   },
@@ -1520,6 +1520,18 @@
           "projects": {
             "favorites": [
               {
+                "identifier": "mci",
+                "displayName": "Evergreen Self-Tests",
+                "repo": "evergreen",
+                "owner": "evergreen-ci"
+              },
+              {
+                "identifier": "lobster",
+                "displayName": "Lobster",
+                "repo": "lobster",
+                "owner": "evergreen-ci"
+              },
+              {
                 "identifier": "buildhost-test",
                 "displayName": "buildhost-test",
                 "repo": "buildhost-configuration",
@@ -1553,12 +1565,6 @@
                 "name": "evergreen-ci/evergreen",
                 "projects": [
                   {
-                    "identifier": "mci",
-                    "displayName": "Evergreen Self-Tests",
-                    "repo": "evergreen",
-                    "owner": "evergreen-ci"
-                  },
-                  {
                     "identifier": "clone-of-mci-to-test-a-thing",
                     "displayName": "Evergreen Self-Tests",
                     "repo": "evergreen",
@@ -1573,17 +1579,6 @@
                     "identifier": "annie-copy2",
                     "displayName": "something temporary",
                     "repo": "grip",
-                    "owner": "evergreen-ci"
-                  }
-                ]
-              },
-              {
-                "name": "evergreen-ci/lobster",
-                "projects": [
-                  {
-                    "identifier": "lobster",
-                    "displayName": "Lobster",
-                    "repo": "lobster",
                     "owner": "evergreen-ci"
                   }
                 ]

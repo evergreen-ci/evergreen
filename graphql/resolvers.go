@@ -115,15 +115,14 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 			Owner:       p.Owner,
 		}
 
+		if isFavorite := util.StringSliceContains(favoriteIds, p.Identifier); isFavorite {
+			favorites = append(favorites, &uiProj)
+			continue
+		}
 		if projs, ok := groupsMap[groupName]; ok {
 			groupsMap[groupName] = append(projs, &uiProj)
 		} else {
 			groupsMap[groupName] = []*restModel.UIProjectFields{&uiProj}
-		}
-
-		// if proj ID is in favoriteIds then add proj to favorites
-		if util.StringSliceContains(favoriteIds, p.Identifier) {
-			favorites = append(favorites, &uiProj)
 		}
 	}
 
