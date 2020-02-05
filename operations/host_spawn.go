@@ -830,6 +830,7 @@ Examples:
 	on the local filesystem.  Otherwrise, file2 will be overwritten.
 
 * A more practical example to upload your .bashrc to the host:
+
 	evergreen host rsync -l ~/.bashrc -r .bashrc -h <host_id>
 
 * Push (mirror) the directory contents from the local filesystem to the directory on the remote spawn host:
@@ -860,19 +861,24 @@ Examples:
 
 	evergreen host rsync -l /path/to/first/local/dir1/ -r /path/to/second/local/dir2/ --remote-is-local
 
-	This will make the contents of dir2 match the contents of dir1, both of which
-	are on your local machine.
+	This will make the contents of dir2 match the contents of dir1, both of
+	which are on your local machine.
 
 * Exclude files/directories from being synced:
 
-	evergreen host rsync -l /path/to/local/dir1/ -r /path/to/remote/dir2/ -h <host_id> -x /path/to/local/dir1/excluded_dir -x /path/to/local/dir1/excluded_file
+	evergreen host rsync -l /path/to/local/dir1/ -r /path/to/remote/dir2/ -h <host_id> -x excluded_dir/ -x excluded_file
 
-	This will mirror all the contents of the local dir1 in the remote dir2 except
-	for dir1/excluded_dir and dir1/excluded_file.
+	NOTE: paths to excluded files/directory are relative to the source directory.
+	This will mirror all the contents of the local dir1 in the remote dir2
+	except for dir1/excluded_dir and dir1/excluded_file.
 
 * Disable sanity checking prompt when mirroring directories:
 
 	evergreen host rsync -l /path/to/local/dir1/ -r /path/to/remote/dir2/ -h <host_id> --sanity-checks=false
+
+* Dry run the command to see what will be changed without actually changing anything:
+
+	evergreen host rsync -l /path/to/local/dir1/ -r /path/to/remote/dir2/ -h <host_id> --dry-run
 `,
 		Flags: addHostFlag(
 			cli.StringFlag{
@@ -1018,6 +1024,7 @@ func getUserAndHostname(ctx context.Context, hostID, confPath string) (user, hos
 	params := model.APIHostParams{
 		UserSpawned: true,
 		Mine:        true,
+		Status:      evergreen.HostRunning,
 	}
 	hosts, err := client.GetHosts(ctx, params)
 	if err != nil {
