@@ -14,7 +14,6 @@ type HandlerOpts struct {
 	APIQueue     amboy.Queue
 	QueueGroup   amboy.QueueGroup
 	URL          string
-	SuperUsers   []string
 	GithubSecret []byte
 }
 
@@ -25,10 +24,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	sc := &data.DBConnector{}
 
 	sc.SetURL(opts.URL)
-	sc.SetSuperUsers(opts.SuperUsers)
 
 	// Middleware
-	superUser := gimlet.NewRestrictAccessToUsers(sc.GetSuperUsers()) //TODO: remove
 	checkUser := gimlet.NewRequireAuthHandler()
 	checkTask := NewTaskAuthMiddleware(sc)
 	addProject := NewProjectContextMiddleware(sc)
@@ -42,7 +39,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	submitPatches := RequiresProjectPermission(evergreen.PermissionPatches, evergreen.PatchSubmit)
 	viewProjectSettings := RequiresProjectPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsView)
 	editProjectSettings := RequiresProjectPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsEdit)
-	viewDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsView)
 	editDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsEdit)
 	removeDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsRemove)
 
@@ -53,20 +49,20 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/").Version(2).Get().RouteHandler(makePlaceHolderManger(sc))
 	app.AddRoute("/admin").Version(2).Get().RouteHandler(makeLegacyAdminConfig(sc))
 	app.AddRoute("/admin/banner").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchAdminBanner(sc))
-	app.AddRoute("/admin/banner").Version(2).Post().Wrap(superUser, adminSettings).RouteHandler(makeSetAdminBanner(sc))
+	app.AddRoute("/admin/banner").Version(2).Post().Wrap(adminSettings).RouteHandler(makeSetAdminBanner(sc))
 	app.AddRoute("/admin/bugsnag").Version(2).Get().RouteHandler(makeFetchBugsnag(sc))
-	app.AddRoute("/admin/events").Version(2).Get().Wrap(superUser, adminSettings).RouteHandler(makeFetchAdminEvents(sc))
-	app.AddRoute("/admin/spawn_hosts").Version(2).Get().Wrap(superUser, adminSettings).RouteHandler(makeFetchSpawnHostUsage(sc))
-	app.AddRoute("/admin/restart/versions").Version(2).Post().Wrap(superUser, adminSettings).RouteHandler(makeRestartRoute(sc, evergreen.RestartVersions, nil))
-	app.AddRoute("/admin/restart/tasks").Version(2).Post().Wrap(superUser, adminSettings).RouteHandler(makeRestartRoute(sc, evergreen.RestartTasks, opts.APIQueue))
-	app.AddRoute("/admin/revert").Version(2).Post().Wrap(superUser, adminSettings).RouteHandler(makeRevertRouteManager(sc))
-	app.AddRoute("/admin/service_flags").Version(2).Post().Wrap(superUser, adminSettings).RouteHandler(makeSetServiceFlagsRouteManager(sc))
-	app.AddRoute("/admin/settings").Version(2).Get().Wrap(superUser, adminSettings).RouteHandler(makeFetchAdminSettings(sc))
-	app.AddRoute("/admin/settings").Version(2).Post().Wrap(superUser, adminSettings).RouteHandler(makeSetAdminSettings(sc))
-	app.AddRoute("/admin/task_queue").Version(2).Delete().Wrap(superUser, adminSettings).RouteHandler(makeClearTaskQueueHandler(sc))
-	app.AddRoute("/admin/commit_queues").Version(2).Delete().Wrap(superUser, adminSettings).RouteHandler(makeClearCommitQueuesHandler(sc))
-	app.AddRoute("/admin/role_mapping").Version(2).Post().Wrap(superUser, adminSettings).RouteHandler(makeAddLDAPRoleMappingHandler(sc))
-	app.AddRoute("/admin/role_mapping").Version(2).Delete().Wrap(superUser, adminSettings).RouteHandler(makeRemoveLDAPRoleMappingHandler(sc))
+	app.AddRoute("/admin/events").Version(2).Get().Wrap(adminSettings).RouteHandler(makeFetchAdminEvents(sc))
+	app.AddRoute("/admin/spawn_hosts").Version(2).Get().Wrap(adminSettings).RouteHandler(makeFetchSpawnHostUsage(sc))
+	app.AddRoute("/admin/restart/versions").Version(2).Post().Wrap(adminSettings).RouteHandler(makeRestartRoute(sc, evergreen.RestartVersions, nil))
+	app.AddRoute("/admin/restart/tasks").Version(2).Post().Wrap(adminSettings).RouteHandler(makeRestartRoute(sc, evergreen.RestartTasks, opts.APIQueue))
+	app.AddRoute("/admin/revert").Version(2).Post().Wrap(adminSettings).RouteHandler(makeRevertRouteManager(sc))
+	app.AddRoute("/admin/service_flags").Version(2).Post().Wrap(adminSettings).RouteHandler(makeSetServiceFlagsRouteManager(sc))
+	app.AddRoute("/admin/settings").Version(2).Get().Wrap(adminSettings).RouteHandler(makeFetchAdminSettings(sc))
+	app.AddRoute("/admin/settings").Version(2).Post().Wrap(adminSettings).RouteHandler(makeSetAdminSettings(sc))
+	app.AddRoute("/admin/task_queue").Version(2).Delete().Wrap(adminSettings).RouteHandler(makeClearTaskQueueHandler(sc))
+	app.AddRoute("/admin/commit_queues").Version(2).Delete().Wrap(adminSettings).RouteHandler(makeClearCommitQueuesHandler(sc))
+	app.AddRoute("/admin/role_mapping").Version(2).Post().Wrap(adminSettings).RouteHandler(makeAddLDAPRoleMappingHandler(sc))
+	app.AddRoute("/admin/role_mapping").Version(2).Delete().Wrap(adminSettings).RouteHandler(makeRemoveLDAPRoleMappingHandler(sc))
 	app.AddRoute("/alias/{name}").Version(2).Get().RouteHandler(makeFetchAliases(sc))
 	app.AddRoute("/auth").Version(2).Get().Wrap(checkUser).RouteHandler(&authPermissionGetHandler{})
 	app.AddRoute("/builds/{build_id}").Version(2).Get().Wrap(viewTasks).RouteHandler(makeGetBuildByID(sc))
@@ -82,15 +78,15 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/cost/project/{project_id}/tasks").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeTaskCostByProjectRoute(sc))
 	app.AddRoute("/cost/version/{version_id}").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeCostByVersionHandler(sc))
 	app.AddRoute("/distros").Version(2).Get().Wrap(checkUser).RouteHandler(makeDistroRoute(sc))
-	app.AddRoute("/distros/{distro_id}").Version(2).Get().Wrap(superUser, viewDistroSettings).RouteHandler(makeGetDistroByID(sc))
-	app.AddRoute("/distros/{distro_id}").Version(2).Patch().Wrap(superUser, editDistroSettings).RouteHandler(makePatchDistroByID(sc, settings))
-	app.AddRoute("/distros/{distro_id}").Version(2).Delete().Wrap(superUser, removeDistroSettings).RouteHandler(makeDeleteDistroByID(sc))
-	app.AddRoute("/distros/{distro_id}").Version(2).Put().Wrap(superUser, createDistro).RouteHandler(makePutDistro(sc, settings))
-	app.AddRoute("/distros/{distro_id}/setup").Version(2).Get().Wrap(superUser, viewDistroSettings).RouteHandler(makeGetDistroSetup(sc))
-	app.AddRoute("/distros/{distro_id}/setup").Version(2).Patch().Wrap(superUser, editDistroSettings).RouteHandler(makeChangeDistroSetup(sc))
-	app.AddRoute("/distros/{distro_id}/teardown").Version(2).Get().Wrap(superUser, viewDistroSettings).RouteHandler(makeGetDistroTeardown(sc))
-	app.AddRoute("/distros/{distro_id}/teardown").Version(2).Patch().Wrap(superUser, editDistroSettings).RouteHandler(makeChangeDistroTeardown(sc))
-	app.AddRoute("/distros/{distro_id}/execute").Version(2).Post().Wrap(superUser, editDistroSettings).RouteHandler(makeDistroExecute(sc, env))
+	app.AddRoute("/distros/{distro_id}").Version(2).Get().Wrap(editDistroSettings).RouteHandler(makeGetDistroByID(sc))
+	app.AddRoute("/distros/{distro_id}").Version(2).Patch().Wrap(editDistroSettings).RouteHandler(makePatchDistroByID(sc, settings))
+	app.AddRoute("/distros/{distro_id}").Version(2).Delete().Wrap(removeDistroSettings).RouteHandler(makeDeleteDistroByID(sc))
+	app.AddRoute("/distros/{distro_id}").Version(2).Put().Wrap(createDistro).RouteHandler(makePutDistro(sc, settings))
+	app.AddRoute("/distros/{distro_id}/setup").Version(2).Get().Wrap(editDistroSettings).RouteHandler(makeGetDistroSetup(sc))
+	app.AddRoute("/distros/{distro_id}/setup").Version(2).Patch().Wrap(editDistroSettings).RouteHandler(makeChangeDistroSetup(sc))
+	app.AddRoute("/distros/{distro_id}/teardown").Version(2).Get().Wrap(editDistroSettings).RouteHandler(makeGetDistroTeardown(sc))
+	app.AddRoute("/distros/{distro_id}/teardown").Version(2).Patch().Wrap(editDistroSettings).RouteHandler(makeChangeDistroTeardown(sc))
+	app.AddRoute("/distros/{distro_id}/execute").Version(2).Post().Wrap(editDistroSettings).RouteHandler(makeDistroExecute(sc, env))
 
 	app.AddRoute("/hooks/github").Version(2).Post().RouteHandler(makeGithubHooksRoute(sc, opts.APIQueue, opts.GithubSecret, settings))
 	app.AddRoute("/host/filter").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchHostFilter(sc))
@@ -98,7 +94,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/host/get_processes").Version(2).Get().Wrap(checkUser).RouteHandler(makeHostGetProcesses(sc, env))
 	app.AddRoute("/hosts").Version(2).Get().RouteHandler(makeFetchHosts(sc))
 	app.AddRoute("/hosts").Version(2).Post().Wrap(checkUser).RouteHandler(makeSpawnHostCreateRoute(sc, env.Settings()))
-	app.AddRoute("/hosts").Version(2).Patch().Wrap(superUser).RouteHandler(makeChangeHostsStatuses(sc))
+	app.AddRoute("/hosts").Version(2).Patch().Wrap(checkUser).RouteHandler(makeChangeHostsStatuses(sc))
 	app.AddRoute("/hosts/{host_id}").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetHostByID(sc))
 	app.AddRoute("/hosts/{host_id}").Version(2).Patch().Wrap(checkUser).RouteHandler(makeHostModifyRouteManager(sc, env))
 	app.AddRoute("/hosts/{host_id}/stop").Version(2).Post().Wrap(checkUser).RouteHandler(makeHostStopManager(sc, env))
@@ -127,7 +123,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/projects").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchProjectsRoute(sc))
 	app.AddRoute("/projects/{project_id}").Version(2).Get().Wrap(checkUser, addProject, checkProjectAdmin, viewProjectSettings).RouteHandler(makeGetProjectByID(sc))
 	app.AddRoute("/projects/{project_id}").Version(2).Patch().Wrap(checkUser, addProject, checkProjectAdmin, editProjectSettings).RouteHandler(makePatchProjectByID(sc, env.Settings()))
-	app.AddRoute("/projects/{project_id}").Version(2).Put().Wrap(superUser, createProject).RouteHandler(makePutProjectByID(sc))
+	app.AddRoute("/projects/{project_id}").Version(2).Put().Wrap(createProject).RouteHandler(makePutProjectByID(sc))
 	app.AddRoute("/projects/{project_id}/copy").Version(2).Post().Wrap(checkUser, addProject, createProject, checkProjectAdmin, editProjectSettings).RouteHandler(makeCopyProject(sc))
 	app.AddRoute("/projects/{project_id}/copy_redacted_variables").Version(2).Post().Wrap(checkUser, addProject, checkProjectAdmin, editProjectSettings).RouteHandler(makeCopyRedactedVars(sc))
 	app.AddRoute("/projects/{project_id}/events").Version(2).Get().Wrap(checkUser, addProject, checkProjectAdmin, viewProjectSettings).RouteHandler(makeFetchProjectEvents(sc))

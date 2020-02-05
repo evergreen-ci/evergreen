@@ -157,7 +157,6 @@ func (s *AdminSuite) TestBaseConfig() {
 			Token:     "token",
 			Channel:   "channel",
 		},
-		SuperUsers: []string{"user"},
 	}
 
 	err := config.Set()
@@ -180,7 +179,6 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.LogPath, settings.LogPath)
 	s.Equal(config.Plugins, settings.Plugins)
 	s.Equal(config.PprofPort, settings.PprofPort)
-	s.Equal(config.SuperUsers, settings.SuperUsers)
 }
 
 func (s *AdminSuite) TestServiceFlags() {

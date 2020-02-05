@@ -192,7 +192,7 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 	ctx := gimlet.AttachUser(context.Background(), user)
 	s.NotNil(routeManager)
 	changes := restModel.APIAdminSettings{
-		SuperUsers: []string{"me"},
+		ApiUrl: restModel.ToStringPtr("foo"),
 	}
 	before := evergreen.Settings{}
 	_, err := s.sc.SetEvergreenSettings(&changes, &before, user, true)

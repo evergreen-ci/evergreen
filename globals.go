@@ -490,7 +490,11 @@ func IsGitHubPatchRequester(requester string) bool {
 }
 
 // Permissions-related constants
-var AclCheckingIsEnabled = false
+var PermissionSystemDisabled = false // don't ever access this directly except from testutil
+
+func PermissionsDisabledForTests() bool {
+	return PermissionSystemDisabled
+}
 
 const (
 	SuperUserResourceType = "super_user"

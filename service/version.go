@@ -278,7 +278,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 				Permission:    evergreen.PermissionTasks,
 				RequiredLevel: evergreen.TasksAdmin.Value,
 			}
-			if !uis.isSuperUser(user) && !user.HasPermission(requiredPermission) { // TODO PM-1355 remove superuser check
+			if !user.HasPermission(requiredPermission) {
 				http.Error(w, fmt.Sprintf("Insufficient access to set priority %v, can only set priority less than or equal to %v", jsonMap.Priority, evergreen.MaxTaskPriority),
 					http.StatusUnauthorized)
 				return

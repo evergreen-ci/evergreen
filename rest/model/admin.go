@@ -46,7 +46,6 @@ func NewConfigModel() *APIAdminSettings {
 
 // APIAdminSettings is the structure of a response to the admin route
 type APIAdminSettings struct {
-	ACLCheckingEnabled      *bool                             `json:"acl_enabled,omitempty"`
 	Alerts                  *APIAlertsConfig                  `json:"alerts,omitempty"`
 	Amboy                   *APIAmboyConfig                   `json:"amboy,omitempty"`
 	Api                     *APIapiConfig                     `json:"api,omitempty"`
@@ -84,7 +83,6 @@ type APIAdminSettings struct {
 	Slack                   *APISlackConfig                   `json:"slack,omitempty"`
 	SpawnHostsPerUser       *int                              `json:"spawn_hosts_per_user"`
 	Splunk                  *APISplunkConnectionInfo          `json:"splunk,omitempty"`
-	SuperUsers              []string                          `json:"superusers,omitempty"`
 	Triggers                *APITriggerConfig                 `json:"triggers,omitempty"`
 	Ui                      *APIUIConfig                      `json:"ui,omitempty"`
 	UnexpirableHostsPerUser *int                              `json:"unexpirable_hosts_per_user"`
@@ -117,7 +115,6 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 				return errors.Wrapf(err, "error converting model section %s", propName)
 			}
 		}
-		as.ACLCheckingEnabled = &v.ACLCheckingEnabled
 		as.ApiUrl = &v.ApiUrl
 		as.Banner = &v.Banner
 		tmp := string(v.BannerTheme)
@@ -133,7 +130,6 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.Credentials = v.Credentials
 		as.Expansions = v.Expansions
 		as.Keys = v.Keys
-		as.SuperUsers = v.SuperUsers
 		as.GithubOrgs = v.GithubOrgs
 		as.UnexpirableHostsPerUser = &v.UnexpirableHostsPerUser
 		as.SpawnHostsPerUser = &v.SpawnHostsPerUser
@@ -150,13 +146,9 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 		Expansions:              map[string]string{},
 		Keys:                    map[string]string{},
 		Plugins:                 evergreen.PluginConfig{},
-		SuperUsers:              as.SuperUsers,
 		GithubOrgs:              as.GithubOrgs,
 		SpawnHostsPerUser:       cloud.DefaultMaxSpawnHostsPerUser,
 		UnexpirableHostsPerUser: host.DefaultUnexpirableHostsPerUser,
-	}
-	if as.ACLCheckingEnabled != nil {
-		settings.ACLCheckingEnabled = *as.ACLCheckingEnabled
 	}
 	if as.ApiUrl != nil {
 		settings.ApiUrl = *as.ApiUrl

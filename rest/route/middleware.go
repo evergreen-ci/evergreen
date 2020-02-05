@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -117,9 +116,14 @@ func MustHaveUser(ctx context.Context) *user.DBUser {
 	return usr
 }
 
-func validPriority(priority int64, user gimlet.User, sc data.Connector) bool {
+func validPriority(priority int64, project string, user gimlet.User, sc data.Connector) bool {
 	if priority > evergreen.MaxTaskPriority {
-		return auth.IsSuperUser(sc.GetSuperUsers(), user)
+		return user.HasPermission(gimlet.PermissionOpts{
+			Resource:      project,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionTasks,
+			RequiredLevel: evergreen.TasksAdmin.Value,
+		})
 	}
 	return true
 }
@@ -147,9 +151,13 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	isSuperuser := util.StringSliceContains(m.sc.GetSuperUsers(), user.Username())
-	isAdmin := util.StringSliceContains(opCtx.ProjectRef.Admins, user.Username())
-	if !(isSuperuser || isAdmin) {
+	isAdmin := util.StringSliceContains(opCtx.ProjectRef.Admins, user.Username()) || user.HasPermission(gimlet.PermissionOpts{
+		Resource:      opCtx.ProjectRef.Identifier,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	})
+	if !isAdmin {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    "Not authorized",
@@ -234,9 +242,13 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 	}
 
 	// A superuser or project admin is authorized
-	isSuperuser := util.StringSliceContains(m.sc.GetSuperUsers(), user.Username())
-	isAdmin := util.StringSliceContains(projRef.Admins, user.Username())
-	if isSuperuser || isAdmin {
+	isAdmin := util.StringSliceContains(projRef.Admins, user.Username()) || user.HasPermission(gimlet.PermissionOpts{
+		Resource:      opCtx.ProjectRef.Identifier,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	})
+	if isAdmin {
 		next(rw, r)
 		return
 	}
@@ -306,9 +318,6 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 }
 
 func RequiresProjectPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
-	if !evergreen.AclCheckingIsEnabled {
-		return &noopMiddleware{}
-	}
 	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
 	if err != nil {
 		grip.Critical(message.WrapError(err, message.Fields{
@@ -329,9 +338,6 @@ func RequiresProjectPermission(permission string, level evergreen.PermissionLeve
 }
 
 func RequiresDistroPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
-	if !evergreen.AclCheckingIsEnabled {
-		return &noopMiddleware{}
-	}
 	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
 	if err != nil {
 		grip.Critical(message.WrapError(err, message.Fields{
@@ -351,9 +357,6 @@ func RequiresDistroPermission(permission string, level evergreen.PermissionLevel
 }
 
 func RequiresSuperUserPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
-	if !evergreen.AclCheckingIsEnabled {
-		return &noopMiddleware{}
-	}
 	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
 	if err != nil {
 		grip.Critical(message.WrapError(err, message.Fields{
@@ -371,12 +374,6 @@ func RequiresSuperUserPermission(permission string, level evergreen.PermissionLe
 	}
 	return gimlet.RequiresPermission(opts)
 
-}
-
-type noopMiddleware struct{}
-
-func (n *noopMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	next(rw, r)
 }
 
 func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {

@@ -158,8 +158,6 @@ func (s *BuildChangeStatusSuite) TestSetPriorityPrivilegeFail() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
-	s.sc.SetSuperUsers([]string{"admin"})
-
 	s.rm.(*buildChangeStatusHandler).buildId = "build1"
 	tmpInt := int64(1000)
 	s.rm.(*buildChangeStatusHandler).Priority = &tmpInt

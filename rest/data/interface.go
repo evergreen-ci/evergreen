@@ -34,10 +34,6 @@ import (
 // between the service and the API layers, allowing for changes in the
 // service architecture without forcing changes to the API.
 type Connector interface {
-	// Get and Set SuperUsers provide access to the list of API super users.
-	GetSuperUsers() []string
-	SetSuperUsers([]string)
-
 	// Get and Set URL provide access to the main url string of the API.
 	GetURL() string
 	SetURL(string)

@@ -46,7 +46,6 @@ type ConfigSection interface {
 // with the "id" struct tag should implement the ConfigSection interface.
 type Settings struct {
 	Id                      string                    `bson:"_id" json:"id" yaml:"id"`
-	ACLCheckingEnabled      bool                      `yaml:"acl_enabled" bson:"acl_enabled" json:"acl_enabled"`
 	Alerts                  AlertsConfig              `yaml:"alerts" bson:"alerts" json:"alerts" id:"alerts"`
 	Amboy                   AmboyConfig               `yaml:"amboy" bson:"amboy" json:"amboy" id:"amboy"`
 	Api                     APIConfig                 `yaml:"api" bson:"api" json:"api" id:"api"`
@@ -89,7 +88,6 @@ type Settings struct {
 	Slack                   SlackConfig               `yaml:"slack" bson:"slack" json:"slack" id:"slack"`
 	SpawnHostsPerUser       int                       `yaml:"spawn_hosts_per_user" bson:"spawn_hosts_per_user" json:"spawn_hosts_per_user"`
 	Splunk                  send.SplunkConnectionInfo `yaml:"splunk" bson:"splunk" json:"splunk"`
-	SuperUsers              []string                  `yaml:"superusers" bson:"superusers" json:"superusers"`
 	Triggers                TriggerConfig             `yaml:"triggers" bson:"triggers" json:"triggers" id:"triggers"`
 	Ui                      UIConfig                  `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
 	UnexpirableHostsPerUser int                       `yaml:"unexpirable_hosts_per_user" bson:"unexpirable_hosts_per_user" json:"unexpirable_hosts_per_user"`
@@ -125,7 +123,6 @@ func (c *Settings) Set() error {
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			aclEnabledKey:         c.ACLCheckingEnabled,
 			apiUrlKey:             c.ApiUrl,
 			bannerKey:             c.Banner,
 			bannerThemeKey:        c.BannerTheme,
@@ -150,7 +147,6 @@ func (c *Settings) Set() error {
 			pluginsKey:            c.Plugins,
 			pluginsNewKey:         c.PluginsNew,
 			splunkKey:             c.Splunk,
-			superUsersKey:         c.SuperUsers,
 			spawnHostsKey:         c.SpawnHostsPerUser,
 			unexpirableHostsKey:   c.UnexpirableHostsPerUser,
 		},

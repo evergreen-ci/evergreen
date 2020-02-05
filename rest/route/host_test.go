@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -17,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper/options"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -107,7 +109,7 @@ func (s *HostsChangeStatusesSuite) TestRunSuperUserSetStatusAnyHost() {
 	h := s.route.Factory().(*hostsChangeStatusesHandler)
 	h.HostToStatus = map[string]hostStatus{
 		"host3": hostStatus{Status: "decommissioned"},
-		"host4": hostStatus{Status: "terminated"},
+		"host2": hostStatus{Status: "terminated"},
 	}
 
 	ctx := context.Background()
@@ -783,13 +785,31 @@ func getMockHostsConnector() *data.MockConnector {
 					APIKey: "user1-key",
 				},
 				"root": {
-					Id:     "root",
-					APIKey: "root-key",
+					Id:          "root",
+					APIKey:      "root-key",
+					SystemRoles: []string{"root"},
 				},
 			},
 		},
 	}
-	connector.SetSuperUsers([]string{"root"})
+	grip.Error(db.ClearCollections(evergreen.ScopeCollection, evergreen.RoleCollection))
+	cmd := map[string]string{
+		"create": evergreen.ScopeCollection,
+	}
+	grip.Error(evergreen.GetEnvironment().DB().RunCommand(nil, cmd).Err())
+	rm := evergreen.GetEnvironment().RoleManager()
+	grip.Error(rm.AddScope(gimlet.Scope{
+		ID:        "root",
+		Resources: []string{windowsDistro.Id},
+		Type:      evergreen.DistroResourceType,
+	}))
+	grip.Error(rm.UpdateRole(gimlet.Role{
+		ID:    "root",
+		Scope: "root",
+		Permissions: gimlet.Permissions{
+			evergreen.PermissionHosts: evergreen.HostsEdit.Value,
+		},
+	}))
 	return connector
 }
 

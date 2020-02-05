@@ -197,7 +197,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 			foundRootEvent = true
 			s.Equal(testSettings.ClientBinariesDir, v.ClientBinariesDir)
 			s.Equal(testSettings.Credentials, v.Credentials)
-			s.Equal(testSettings.SuperUsers, v.SuperUsers)
 		case *evergreen.UIConfig:
 			foundUiEvent = true
 			s.Equal(testSettings.Ui.Url, v.Url)

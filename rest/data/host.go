@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -444,7 +443,12 @@ func findHostByIdWithOwner(c Connector, hostID string, user gimlet.User) (*host.
 	}
 
 	if user.Username() != host.StartedBy {
-		if !auth.IsSuperUser(c.GetSuperUsers(), user) {
+		if !user.HasPermission(gimlet.PermissionOpts{
+			Resource:      host.Distro.Id,
+			ResourceType:  evergreen.DistroResourceType,
+			Permission:    evergreen.PermissionHosts,
+			RequiredLevel: evergreen.HostsEdit.Value,
+		}) {
 			return nil, gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
 				Message:    "not authorized to modify host",
