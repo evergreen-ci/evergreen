@@ -2,6 +2,7 @@ package logger
 
 import (
 	"context"
+	"sync"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
@@ -10,6 +11,7 @@ import (
 )
 
 type queueSender struct {
+	mu       sync.RWMutex
 	ctx      context.Context
 	queue    amboy.Queue
 	canceler context.CancelFunc
@@ -59,12 +61,25 @@ func NewQueueBackedSender(ctx context.Context, sender send.Sender, workers, capa
 
 func (s *queueSender) Send(m message.Composer) {
 	if s.Level().ShouldLog(m) {
-		err := s.queue.Put(s.ctx, NewSendMessageJob(m, s.Sender))
+		s.mu.RLock()
+		defer s.mu.RUnlock()
 
+		err := s.queue.Put(s.ctx, NewSendMessageJob(m, s.Sender))
 		if err != nil {
 			s.Send(message.NewErrorWrap(err, m.String()))
 		}
 	}
+}
+
+func (s *queueSender) Flush(ctx context.Context) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if !amboy.Wait(ctx, s.queue) {
+		return ctx.Err()
+	}
+
+	return s.Sender.Flush(ctx)
 }
 
 func (s *queueSender) Close() error {

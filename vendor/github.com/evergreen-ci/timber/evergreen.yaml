@@ -141,6 +141,8 @@ buildvariants:
     display_name: Race Detector (Arch Linux)
     expansions:
       mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.1.tgz
+      goroot: /opt/golang/go1.12
+      gobin: /opt/golang/go1.12/bin/go
     run_on:
       - archlinux-test
     tasks:

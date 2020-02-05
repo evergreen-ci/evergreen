@@ -4,7 +4,6 @@ type OpType int32
 
 const (
 	OP_REPLY         OpType = 1
-	OP_MSG           OpType = 1000
 	OP_UPDATE        OpType = 2001
 	OP_INSERT        OpType = 2002
 	RESERVED         OpType = 2003
@@ -14,6 +13,7 @@ const (
 	OP_KILL_CURSORS  OpType = 2007
 	OP_COMMAND       OpType = 2010
 	OP_COMMAND_REPLY OpType = 2011
+	OP_MSG           OpType = 2013
 )
 
 func (op OpType) String() string {

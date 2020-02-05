@@ -113,14 +113,15 @@ type CommandReplyMessage struct {
 }
 
 // OP_MSG
-type opMessage struct {
-	header MessageHeader
+type OpMessage struct {
+	header     MessageHeader
+	serialized []byte
 
 	Flags      uint32
 	DB         string
 	Collection string
 	Operation  string
-	Items      []opMessageSection
+	Items      []OpMessageSection
 	Checksum   int32
 }
 
@@ -135,7 +136,7 @@ func GetModel(msg Message) (interface{}, OpType) {
 			Inputs:             m.InputDocs,
 			ConvertedFromQuery: m.upconverted,
 		}, OP_COMMAND
-	case *opMessage:
+	case *OpMessage:
 		op := &model.Message{
 			Database:   m.DB,
 			Collection: m.Collection,
@@ -152,7 +153,12 @@ func GetModel(msg Message) (interface{}, OpType) {
 			op.MoreToCome = true
 		}
 
-		// TODO parse sequence/payload
+		for _, section := range m.Items {
+			op.Items = append(op.Items, model.SequenceItem{
+				Identifier: section.Name(),
+				Documents:  section.Documents(),
+			})
+		}
 
 		return op, OP_MSG
 	case *deleteMessage:

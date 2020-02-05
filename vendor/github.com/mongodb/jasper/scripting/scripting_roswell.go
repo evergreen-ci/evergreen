@@ -7,7 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
@@ -94,4 +96,42 @@ func (e *roswellEnvironment) Cleanup(ctx context.Context) error {
 		return errors.Wrapf(os.RemoveAll(e.opts.Path),
 			"problem removing local roswell environment '%s'", e.opts.Path)
 	}
+}
+
+func (e *roswellEnvironment) Test(ctx context.Context, dir string, tests ...TestOptions) ([]TestResult, error) {
+	out := make([]TestResult, len(tests))
+
+	catcher := grip.NewBasicCatcher()
+	for idx, t := range tests {
+		if t.Count == 0 {
+			t.Count++
+		}
+		startAt := time.Now()
+
+		var (
+			cancel context.CancelFunc
+			tctx   context.Context
+		)
+		if t.Timeout > 0 {
+			tctx, cancel = context.WithTimeout(ctx, t.Timeout)
+		} else {
+			tctx, cancel = context.WithCancel(ctx)
+		}
+
+		cmd := e.manager.CreateCommand(ctx).Directory(dir).Environment(e.opts.Environment).AddEnv("ROSWELL_HOME", e.opts.Path).SetOutputOptions(e.opts.Output).
+			Add([]string{e.opts.Interpreter(), "install", t.Name})
+
+		for i := 0; i < t.Count; i++ {
+			cmd.Add(append(append([]string{e.opts.Interpreter(), "run", "-e", fmt.Sprintf("'(asdf:test-system :%s)'", t.Name)}, t.Args...), "-q"))
+		}
+
+		err := cmd.Run(tctx)
+
+		catcher.Wrapf(err, "roswell test %s", t)
+
+		out[idx] = t.getResult(ctx, err, startAt)
+		cancel()
+	}
+
+	return out, catcher.Resolve()
 }

@@ -3,6 +3,7 @@
 package send
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"log/syslog"
@@ -111,3 +112,5 @@ func (s *syslogger) sendToSysLog(p level.Priority, message string) error {
 
 	return fmt.Errorf("encountered error trying to send: {%s}. Possibly, priority related", message)
 }
+
+func (s *syslogger) Flush(_ context.Context) error { return nil }

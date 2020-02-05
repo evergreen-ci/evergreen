@@ -43,10 +43,24 @@ func (r ErrorResponse) SuccessOrError() error {
 	return nil
 }
 
+type isMasterResponse struct {
+	ErrorResponse  `bson:"error_response,inline"`
+	MinWireVersion int `bson:"minWireVersion"`
+	MaxWireVersion int `bson:"maxWireVersion"`
+}
+
+func makeIsMasterResponse(minWireVersion, maxWireVersion int) isMasterResponse {
+	return isMasterResponse{
+		MinWireVersion: minWireVersion,
+		MaxWireVersion: maxWireVersion,
+		ErrorResponse:  MakeSuccessResponse(),
+	}
+}
+
 // whatsMyURIResponse represents a response indicating the service's URI.
 type whatsMyURIResponse struct {
-	ErrorResponse ErrorResponse `bson:"error_response,inline"`
-	You           string        `bson:"you"`
+	ErrorResponse `bson:"error_response,inline"`
+	You           string `bson:"you"`
 }
 
 func makeWhatsMyURIResponse(uri string) whatsMyURIResponse {
@@ -56,8 +70,8 @@ func makeWhatsMyURIResponse(uri string) whatsMyURIResponse {
 // buildInfoResponse represents a response indicating the service's build
 // information.
 type buildInfoResponse struct {
-	ErrorResponse ErrorResponse `bson:"error_response,inline"`
-	Version       string        `bson:"version"`
+	ErrorResponse `bson:"error_response,inline"`
+	Version       string `bson:"version"`
 }
 
 func makeBuildInfoResponse(version string) buildInfoResponse {
@@ -67,8 +81,8 @@ func makeBuildInfoResponse(version string) buildInfoResponse {
 // getLogResponse represents a response indicating the service's currently
 // available logs.
 type getLogResponse struct {
-	ErrorResponse ErrorResponse `bson:"error_response,inline"`
-	Log           []string      `bson:"log"`
+	ErrorResponse `bson:"error_response,inline"`
+	Log           []string `bson:"log"`
 }
 
 func makeGetLogResponse(log []string) getLogResponse {

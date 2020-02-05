@@ -26,7 +26,7 @@ endif
 goEnv := GOPATH=$(gopath) GOCACHE=$(gocache)$(if $(GO_BIN_PATH), PATH="$(shell dirname $(GO_BIN_PATH)):$(PATH)")
 # end environment setup
 
-compile:
+compile build:
 	$(goEnv) $(gobin) build $(_compilePackages)
 compile-base:
 	$(goEnv) $(gobin) build  ./
@@ -76,8 +76,6 @@ ifneq (,$(SKIP_LONG))
 testArgs += -short
 endif
 # test execution and output handlers
-$(buildDir):
-	@mkdir -p $@
 $(buildDir)/output.%.test:$(buildDir) .FORCE
 	$(goEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) | tee $@
 	@!( grep -s -q "^FAIL" $@ && grep -s -q "^WARNING: DATA RACE" $@)
@@ -95,19 +93,21 @@ $(buildDir)/output.%.lint:$(buildDir)/run-linter $(buildDir) .FORCE
 
 
 # user-facing targets for basic build and development operations
+$(buildDir)/:
+	@mkdir -p $@
 proto:
 	@mkdir -p remote/internal
 	protoc --go_out=plugins=grpc:remote/internal *.proto
 lint:$(buildDir) $(foreach target,$(packages),$(buildDir)/output.$(target).lint)
-	
+
 test:$(buildDir) $(foreach target,$(testPackages),$(buildDir)/output.$(target).test)
-	
+
 benchmarks:$(buildDir)/run-benchmarks $(buildDir) .FORCE
 	$(goEnv) ./$(buildDir)/run-benchmarks $(run-benchmark)
 coverage:$(buildDir) $(coverageOutput)
 coverage-html:$(buildDir) $(coverageHtmlOutput)
 phony += lint $(buildDir) test coverage coverage-html
-.PHONY: $(phony) .FORCE
+.PHONY: $(phony) .FORCE build
 .PRECIOUS:$(coverageOutput) $(coverageHtmlOutput)
 .PRECIOUS:$(foreach target,$(testPackages),$(buildDir)/output.$(target).test)
 .PRECIOUS:$(foreach target,$(packages),$(buildDir)/output.$(target).lint)

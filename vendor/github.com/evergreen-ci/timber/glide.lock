@@ -2,7 +2,7 @@ hash: ""
 updated: 2016-10-20T16:48:42.872025812-04:00
 imports:
 - name: github.com/mongodb/grip
-  version: 8b8accd7a3ec9b31a2d3eea610d5bf906bddfd11
+  version: 7b77abce30e2f707b37c8321f192e5a83c597e7f
 - name: github.com/evergreen-ci/aviation
   version: d74791c0d819b6f7908cced0dd37e6ab3fb9eeae
 - name: go.mongodb.org/mongo-driver
@@ -21,7 +21,7 @@ imports:
 - name: golang.org/x/net
   version: 3a22650c66bd7f4fb6d1e8072ffd7b75c8a27898
 - name: golang.org/x/sys
-  version: a9d3bda3a223baa6bba6ef412cb273f0fd163c05
+  version: bd437916bb0eb726b873ee8e9b2dcf212d32e2fd
 - name: golang.org/x/text
   version: 6c92c7dc7f53607809182301b96e4cc1975143f1
 - name: google.golang.org/genproto

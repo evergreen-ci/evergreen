@@ -30,6 +30,7 @@ type sqsFIFOQueue struct {
 	id         string
 	started    bool
 	numRunning int
+	dispatcher Dispatcher
 	tasks      struct { // map jobID to job information
 		completed map[string]bool
 		all       map[string]amboy.Job
@@ -52,6 +53,7 @@ func NewSQSFifoQueue(queueName string, workers int) (amboy.Queue, error) {
 	q.tasks.completed = make(map[string]bool)
 	q.tasks.all = make(map[string]amboy.Job)
 	q.runner = pool.NewLocalWorkers(workers, q)
+	q.dispatcher = NewDispatcher(q)
 	result, err := q.sqsClient.CreateQueue(&sqs.CreateQueueInput{
 		QueueName: aws.String(fmt.Sprintf("%s.fifo", queueName)),
 		Attributes: map[string]*string{
@@ -175,6 +177,11 @@ func (q *sqsFIFOQueue) Next(ctx context.Context) amboy.Job {
 		return nil
 	}
 
+	if err := q.dispatcher.Dispatch(ctx, job); err != nil {
+		_ = q.Put(ctx, job)
+		return nil
+	}
+
 	if job.TimeInfo().IsStale() {
 		return nil
 	}
@@ -203,6 +210,7 @@ func (q *sqsFIFOQueue) Complete(ctx context.Context, job amboy.Job) {
 		return
 	}
 	name := job.ID()
+	q.dispatcher.Complete(ctx, job)
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 	if ctx.Err() != nil {
@@ -219,7 +227,6 @@ func (q *sqsFIFOQueue) Complete(ctx context.Context, job amboy.Job) {
 		savedJob.SetStatus(job.Status())
 		savedJob.UpdateTimeInfo(job.TimeInfo())
 	}
-
 }
 
 // Returns a channel that produces completed Job objects.

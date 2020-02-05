@@ -23,9 +23,9 @@ const (
 )
 
 func (s *service) managerID(ctx context.Context, w io.Writer, msg mongowire.Message) {
-	resp, err := shell.ResponseToMessage(makeIDResponse(s.manager.ID()))
+	resp, err := shell.ResponseToMessage(mongowire.OP_REPLY, makeIDResponse(s.manager.ID()))
 	if err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.New("could not make response"), ManagerIDCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.New("could not make response"), ManagerIDCommand)
 		return
 	}
 	shell.WriteResponse(ctx, w, resp, ManagerIDCommand)
@@ -34,7 +34,7 @@ func (s *service) managerID(ctx context.Context, w io.Writer, msg mongowire.Mess
 func (s *service) managerCreateProcess(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := createProcessRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "could not read request"), CreateProcessCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), CreateProcessCommand)
 		return
 	}
 	opts := req.Options
@@ -47,7 +47,7 @@ func (s *service) managerCreateProcess(ctx context.Context, w io.Writer, msg mon
 	proc, err := s.manager.CreateProcess(pctx, &opts)
 	if err != nil {
 		cancel()
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "could not create process"), CreateProcessCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not create process"), CreateProcessCommand)
 		return
 	}
 
@@ -60,15 +60,15 @@ func (s *service) managerCreateProcess(ctx context.Context, w io.Writer, msg mon
 		// the reason for it isn't just because the process has exited already,
 		// since that should not be considered an error.
 		if !info.Complete {
-			shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "could not register trigger"), CreateProcessCommand)
+			shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not register trigger"), CreateProcessCommand)
 			return
 		}
 	}
 
-	resp, err := shell.ResponseToMessage(makeInfoResponse(getProcInfoNoHang(ctx, proc)))
+	resp, err := shell.ResponseToMessage(mongowire.OP_REPLY, makeInfoResponse(getProcInfoNoHang(ctx, proc)))
 	if err != nil {
 		cancel()
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "could not make response"), CreateProcessCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not make response"), CreateProcessCommand)
 		return
 	}
 	shell.WriteResponse(ctx, w, resp, CreateProcessCommand)
@@ -77,14 +77,14 @@ func (s *service) managerCreateProcess(ctx context.Context, w io.Writer, msg mon
 func (s *service) managerList(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := listRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "could not read request"), ListCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), ListCommand)
 		return
 	}
 	filter := req.Filter
 
 	procs, err := s.manager.List(ctx, filter)
 	if err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "could not list processes"), ListCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not list processes"), ListCommand)
 		return
 	}
 
@@ -92,9 +92,9 @@ func (s *service) managerList(ctx context.Context, w io.Writer, msg mongowire.Me
 	for _, proc := range procs {
 		infos = append(infos, proc.Info(ctx))
 	}
-	resp, err := shell.ResponseToMessage(makeInfosResponse(infos))
+	resp, err := shell.ResponseToMessage(mongowire.OP_REPLY, makeInfosResponse(infos))
 	if err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "could not make response"), ListCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not make response"), ListCommand)
 		return
 	}
 	shell.WriteResponse(ctx, w, resp, ListCommand)
@@ -103,14 +103,14 @@ func (s *service) managerList(ctx context.Context, w io.Writer, msg mongowire.Me
 func (s *service) managerGroup(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := groupRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "could not read request"), GroupCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), GroupCommand)
 		return
 	}
 	tag := req.Tag
 
 	procs, err := s.manager.Group(ctx, tag)
 	if err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "could not get process group"), GroupCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not get process group"), GroupCommand)
 		return
 	}
 
@@ -119,9 +119,9 @@ func (s *service) managerGroup(ctx context.Context, w io.Writer, msg mongowire.M
 		infos = append(infos, proc.Info(ctx))
 	}
 
-	resp, err := shell.ResponseToMessage(makeInfosResponse(infos))
+	resp, err := shell.ResponseToMessage(mongowire.OP_REPLY, makeInfosResponse(infos))
 	if err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "could not make response"), GroupCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not make response"), GroupCommand)
 		return
 	}
 	shell.WriteResponse(ctx, w, resp, GroupCommand)
@@ -130,20 +130,20 @@ func (s *service) managerGroup(ctx context.Context, w io.Writer, msg mongowire.M
 func (s *service) managerGetProcess(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := getProcessRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "could not read request"), GetProcessCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), GetProcessCommand)
 		return
 	}
 	id := req.ID
 
 	proc, err := s.manager.Get(ctx, id)
 	if err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "could not get process"), GetProcessCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not get process"), GetProcessCommand)
 		return
 	}
 
-	resp, err := shell.ResponseToMessage(makeInfoResponse(proc.Info(ctx)))
+	resp, err := shell.ResponseToMessage(mongowire.OP_REPLY, makeInfoResponse(proc.Info(ctx)))
 	if err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "could not make response"), GetProcessCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not make response"), GetProcessCommand)
 		return
 	}
 	shell.WriteResponse(ctx, w, resp, GetProcessCommand)
@@ -151,33 +151,33 @@ func (s *service) managerGetProcess(ctx context.Context, w io.Writer, msg mongow
 
 func (s *service) managerClear(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	s.manager.Clear(ctx)
-	shell.WriteOKResponse(ctx, w, ClearCommand)
+	shell.WriteOKResponse(ctx, w, mongowire.OP_REPLY, ClearCommand)
 }
 
 func (s *service) managerClose(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	if err := s.manager.Close(ctx); err != nil {
-		shell.WriteErrorResponse(ctx, w, err, CloseCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, err, CloseCommand)
 		return
 	}
-	shell.WriteOKResponse(ctx, w, CloseCommand)
+	shell.WriteOKResponse(ctx, w, mongowire.OP_REPLY, CloseCommand)
 }
 
 func (s *service) managerWriteFile(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := &writeFileRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "could not read request"), WriteFileCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), WriteFileCommand)
 		return
 	}
 	opts := req.Options
 
 	if err := opts.Validate(); err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "invalid write file options"), WriteFileCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "invalid write file options"), WriteFileCommand)
 		return
 	}
 	if err := opts.DoWrite(); err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "failed to write to file"), WriteFileCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "failed to write to file"), WriteFileCommand)
 		return
 	}
 
-	shell.WriteOKResponse(ctx, w, WriteFileCommand)
+	shell.WriteOKResponse(ctx, w, mongowire.OP_REPLY, WriteFileCommand)
 }

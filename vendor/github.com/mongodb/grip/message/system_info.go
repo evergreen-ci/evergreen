@@ -26,7 +26,7 @@ type SystemInfo struct {
 	Usage      []disk.UsageStat      `json:"usage" bson:"usage"`
 	IOStat     []disk.IOCountersStat `json:"iostat" bson:"iostat"`
 	Errors     []string              `json:"errors" bson:"errors"`
-	Base       `json:"metadata,omitempty" bson:"metadata,omitempty"`
+	Base       `json:"metadata,omitempty" bson:"metadata,omitempty"`
 	loggable   bool
 	rendered   string
 }

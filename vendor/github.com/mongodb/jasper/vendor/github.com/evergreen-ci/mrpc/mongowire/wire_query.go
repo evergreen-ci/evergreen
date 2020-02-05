@@ -35,18 +35,16 @@ func (m *queryMessage) Serialize() []byte {
 	buf := make([]byte, size)
 	m.header.WriteInto(buf)
 
-	writeInt32(m.Flags, buf, 16)
+	loc := 16
+	loc += writeInt32(m.Flags, buf, loc)
 
-	loc := 20
-	writeCString(m.Namespace, buf, &loc)
-	writeInt32(m.Skip, buf, loc)
-	loc += 4
+	loc += writeCString(m.Namespace, buf, loc)
+	loc += writeInt32(m.Skip, buf, loc)
 
-	writeInt32(m.NReturn, buf, loc)
-	loc += 4
+	loc += writeInt32(m.NReturn, buf, loc)
 
-	loc += writeDocAt(loc, m.Query, buf)
-	loc += writeDocAt(loc, m.Project, buf)
+	loc += writeDocAt(m.Query, buf, loc)
+	loc += writeDocAt(m.Project, buf, loc)
 
 	return buf
 }

@@ -1,6 +1,7 @@
 package send
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net/http"
@@ -80,6 +81,8 @@ func (s *splunkLogger) Send(m message.Composer) {
 		}
 	}
 }
+
+func (s *splunkLogger) Flush(_ context.Context) error { return nil }
 
 // NewSplunkLogger constructs a new Sender implementation that sends
 // messages to a Splunk event collector using the credentials specified

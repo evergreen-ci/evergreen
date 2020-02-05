@@ -6,6 +6,19 @@ orgPath := github.com/mongodb
 projectPath := $(orgPath)/$(name)
 # end project configuration
 
+ # start environment setup
+gobin := ${GO_BIN_PATH}
+ifeq (,$(gobin))
+gobin := go
+endif
+gopath := ${GOPATH}
+gocache := $(abspath $(buildDir)/.cache)
+ifeq ($(OS),Windows_NT)
+gocache := $(shell cygpath -m $(gocache))
+gopath := $(shell cygpath -m $(gopath))
+endif
+goEnv := GOPATH=$(gopath) GOCACHE=$(gocache) $(if ${GO_BIN_PATH},PATH="$(shell dirname ${GO_BIN_PATH}):${PATH}")
+# end environment setup
 
 # start linting configuration
 #   package, testing, and linter dependencies specified
@@ -16,7 +29,7 @@ lintDeps := github.com/alecthomas/gometalinter
 lintArgs := --tests --deadline=5m --vendor
 #   gotype produces false positives because it reads .a files which
 #   are rarely up to date.
-lintArgs += --disable="gotype" --disable="gas" --disable="gocyclo" --enable="goimports"
+lintArgs += --disable="gotype" --disable="gocyclo" --enable="goimports"
 lintArgs += --skip="$(buildDir)" --skip="buildscripts"
 #  add and configure additional linters
 lintArgs += --line-length=100 --dupl-threshold=175 --cyclo-over=30
@@ -42,13 +55,11 @@ lintArgs += --exclude="should check returned error before deferring .*\.Close"
 
 
 # start environment setup
-gopath := $(GOPATH)
 gocache := $(abspath $(buildDir)/.cache)
 ifeq ($(OS),Windows_NT)
 gocache := $(shell cygpath -m $(gocache))
 gopath := $(shell cygpath -m $(gopath))
 endif
-buildEnv := GOCACHE=$(gocache)
 # end environment setup
 
 
@@ -65,21 +76,21 @@ coverageOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).cove
 coverageHtmlOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage.html)
 $(gopath)/src/%:
 	@-[ ! -d $(gopath) ] && mkdir -p $(gopath) || true
-	go get $(subst $(gopath)/src/,,$@)
+	$(goEnv) $(gobin) get $(subst $(gopath)/src/,,$@)
 $(buildDir)/run-linter:buildscripts/run-linter.go $(buildDir)/.lintSetup
-	$(buildEnv) go build -o $@ $<
+	$(goEnv) $(gobin) build -o $@ $<
 $(buildDir)/.lintSetup:$(lintDeps)
 	@mkdir -p $(buildDir)
-	@-$(gopath)/bin/gometalinter --install >/dev/null && touch $@
+	@-$(goEnv) $(gopath)/bin/gometalinter --install >/dev/null && touch $@
 # end dependency installation tools
 
 
 # userfacing targets for basic build and development operations
 lint:$(buildDir)/output.lint
 build:$(deps) $(srcFiles) $(gopath)/src/$(projectPath)
-	$(buildEnv) go build $(subst $(name),,$(subst -,/,$(foreach pkg,$(packages),./$(pkg))))
+	$(goEnv) $(gobin) build $(subst $(name),,$(subst -,/,$(foreach pkg,$(packages),./$(pkg))))
 build-race:$(deps) $(srcFiles) $(gopath)/src/$(projectPath)
-	$(buildEnv) go build -race $(subst $(name),,$(subst -,/,$(foreach pkg,$(packages),./$(pkg))))
+	$(goEnv) $(gobin) build -race $(subst $(name),,$(subst -,/,$(foreach pkg,$(packages),./$(pkg))))
 test:$(testOutput)
 race:$(raceOutput)
 coverage:$(coverageOutput)
@@ -102,9 +113,9 @@ $(gopath)/src/$(projectPath):$(gopath)/src/$(orgPath)
 $(name):$(buildDir)/$(name)
 	@[ -L $@ ] || ln -s $< $@
 $(buildDir)/$(name):$(gopath)/src/$(projectPath) $(srcFiles) $(deps)
-	$(buildEnv) go build -o $@ main/$(name).go
+	$(goEnv) $(gobin) build -o $@ main/$(name).go
 $(buildDir)/$(name).race:$(gopath)/src/$(projectPath) $(srcFiles) $(deps)
-	$(buildEnv) go build -race -o $@ main/$(name).go
+	$(goEnv) $(gobin) build -race -o $@ main/$(name).go
 # end main build
 
 
@@ -144,30 +155,30 @@ coverDeps := $(addprefix $(gopath)/src/,$(coverDeps))
 #    implementation for package coverage and test running,mongodb to produce
 #    and save test output.
 $(buildDir)/test.%:$(testSrcFiles) $(coverDeps)
-	$(buildEnv) go test $(if $(DISABLE_COVERAGE),,-covermode=count) -c -o $@ ./$(subst -,/,$*)
+	$(goEnv) $(gobin) test $(if $(DISABLE_COVERAGE),,-covermode=count) -c -o $@ ./$(subst -,/,$*)
 $(buildDir)/race.%:$(testSrcFiles)
-	$(buildEnv) go test -race -c -o $@ ./$(subst -,/,$*)
+	$(goEnv) $(gobin) test -race -c -o $@ ./$(subst -,/,$*)
 #  targets to run any tests in the top-level package
 $(buildDir)/test.$(name):$(testSrcFiles) $(coverDeps)
-	$(buildEnv) go test $(if $(DISABLE_COVERAGE),,-covermode=count) -c -o $@ ./
+	$(goEnv) $(gobin) test $(if $(DISABLE_COVERAGE),,-covermode=count) -c -o $@ ./
 $(buildDir)/race.$(name):$(testSrcFiles)
-	$(buildEnv) go test -race -c -o $@ ./
+	$(goEnv) $(gobin) test -race -c -o $@ ./
 #  targets to run the tests and report the output
 $(buildDir)/output.%.test:$(buildDir)/test.% .FORCE
-	$(testRunEnv) ./$< $(testArgs) 2>&1 | tee $@
+	$(goEnv) ./$< $(testArgs) 2>&1 | tee $@
 $(buildDir)/output.%.race:$(buildDir)/race.% .FORCE
-	$(testRunEnv) ./$< $(testArgs) 2>&1 | tee $@
+	$(goEnv) ./$< $(testArgs) 2>&1 | tee $@
 #  targets to generate gotest output from the linter.
 $(buildDir)/output.%.lint:$(buildDir)/run-linter $(testSrcFiles) .FORCE
-	@./$< --output=$@ --lintArgs='$(lintArgs)' --packages='$*'
+	@$(goEnv) ./$< --output=$@ --lintArgs='$(lintArgs)' --packages='$*'
 $(buildDir)/output.lint:$(buildDir)/run-linter .FORCE
-	@./$< --output="$@" --lintArgs='$(lintArgs)' --packages="$(packages)"
+	@$(goEnv) ./$< --output="$@" --lintArgs='$(lintArgs)' --packages="$(packages)"
 #  targets to process and generate coverage reports
 $(buildDir)/output.%.coverage:$(buildDir)/test.% .FORCE $(coverDeps)
-	$(testRunEnv) ./$< $(testArgs) -test.coverprofile=$@ | tee $(subst coverage,test,$@)
-	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
+	$(goEnv) ./$< $(testArgs) -test.coverprofile=$@ | tee $(subst coverage,test,$@)
+	@-[ -f $@ ] && $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage $(coverDeps)
-	go tool cover -html=$< -o $@
+	$(goEnv) $(gobin) tool cover -html=$< -o $@
 # end test and coverage artifacts
 
 

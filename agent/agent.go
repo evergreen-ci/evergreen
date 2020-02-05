@@ -421,8 +421,13 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 	if taskGroup.Timeout != nil {
 
 		err := a.runCommands(ctx, tc, taskGroup.Timeout.List(), runCommandsOptions{})
-		tc.logger.Execution().ErrorWhenf(err != nil, "Error running timeout command: %v", err)
-		tc.logger.Task().InfoWhenf(err == nil, "Finished running timeout commands in %v.", time.Since(start).String())
+		tc.logger.Execution().Error(message.WrapError(err, message.Fields{
+			"message": "Error running timeout command",
+		}))
+		tc.logger.Task().InfoWhen(err == nil, message.Fields{
+			"message":    "Finished running timeout commands",
+			"total_time": time.Since(start).String(),
+		})
 	}
 }
 
@@ -451,7 +456,12 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) 
 
 	a.killProcs(ctx, tc, false)
 
-	tc.logger.Execution().Infof("Sending final status as: %v", detail.Status)
+	if tc.logger != nil {
+		err := a.uploadToS3(ctx, tc)
+		tc.logger.Execution().Error(errors.Wrap(err, "error uploading log files"))
+		tc.logger.Execution().Infof("Sending final status as: %v", detail.Status)
+		grip.Error(tc.logger.Flush(ctx))
+	}
 	grip.Infof("Sending final status as: %v", detail.Status)
 	resp, err := a.comm.EndTask(ctx, detail, tc.task)
 	grip.Infof("Sent final status as: %v", detail.Status)
@@ -488,8 +498,13 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 	}
 	if taskGroup.TeardownTask != nil {
 		err := a.runCommands(ctx, tc, taskGroup.TeardownTask.List(), runCommandsOptions{})
-		tc.logger.Task().ErrorWhenf(err != nil, "Error running post-task command: %v", err)
-		tc.logger.Task().InfoWhenf(err == nil, "Finished running post-task commands in %v.", time.Since(start).String())
+		tc.logger.Task().Error(message.WrapError(err, message.Fields{
+			"message": "Error running post-task command.",
+		}))
+		tc.logger.Task().InfoWhen(err == nil, message.Fields{
+			"message":    "Finished running post-task commands.",
+			"total_time": time.Since(start).String(),
+		})
 	}
 }
 
@@ -514,7 +529,9 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()
 		err := a.runCommands(ctx, tc, taskGroup.TeardownGroup.List(), runCommandsOptions{})
-		grip.ErrorWhenf(err != nil, "Error running post-task command: %v", err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "Error running post-task command.",
+		}))
 		grip.InfoWhen(err == nil, "Finished running post-group commands")
 	}
 }

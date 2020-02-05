@@ -1,121 +1,165 @@
 package send
 
 import (
+	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
-	"github.com/stretchr/testify/suite"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-type BufferedSenderSuite struct {
-	sender *InternalSender
-	buffs  *bufferedSender
-	dur    time.Duration
-	num    int
-	suite.Suite
-}
+func TestBufferedSend(t *testing.T) {
+	s, err := NewInternalLogger("buffs", LevelInfo{level.Debug, level.Debug})
+	require.NoError(t, err)
 
-func TestBufferedSenderSuite(t *testing.T) {
-	suite.Run(t, new(BufferedSenderSuite))
-}
+	t.Run("RespectsPriority", func(t *testing.T) {
+		bs := newBufferedSender(s, time.Minute, 10)
+		defer bs.cancel()
 
-func (s *BufferedSenderSuite) SetupSuite() {
-	s.dur = minBufferLength
-	s.num = 10
-}
+		bs.Send(message.ConvertToComposer(level.Trace, fmt.Sprintf("should not send")))
+		assert.Empty(t, bs.buffer)
+		_, ok := s.GetMessageSafe()
+		assert.False(t, ok)
+	})
+	t.Run("FlushesAtCapactiy", func(t *testing.T) {
+		bs := newBufferedSender(s, time.Minute, 10)
+		defer bs.cancel()
 
-func (s *BufferedSenderSuite) SetupTest() {
-	var err error
-	s.sender, err = NewInternalLogger("buffs", LevelInfo{level.Trace, level.Trace})
-	s.Require().NoError(err)
-	s.buffs = NewBufferedSender(s.sender, s.dur, s.num).(*bufferedSender)
-	s.Require().NotNil(s.buffs)
-}
-
-func (s *BufferedSenderSuite) TearDownTest() {
-	//	_ = s.buffs.Close()
-}
-
-func (s *BufferedSenderSuite) TestConstructor() {
-	s.NoError(s.buffs.Close())
-
-	// check override for very small numbers
-	s.buffs = NewBufferedSender(s.sender, 0, 0).(*bufferedSender)
-	s.Equal(100, s.buffs.number)
-	s.Equal(24*time.Hour, s.buffs.duration)
-	//	s.buffs.Close()
-
-	s.buffs = NewBufferedSender(s.sender, time.Second, 0).(*bufferedSender)
-	s.Equal(100, s.buffs.number)
-	s.Equal(5*time.Second, s.buffs.duration)
-}
-
-func (s *BufferedSenderSuite) TestSendingSingleMessage() {
-	m, ok := s.sender.GetMessageSafe()
-	s.False(ok)
-	s.Nil(m)
-
-	s.buffs.Send(message.NewDefaultMessage(level.Warning, "hello"))
-	m, ok = s.sender.GetMessageSafe()
-	s.False(ok)
-	s.Nil(m)
-
-	time.Sleep(s.dur)
-	m = s.sender.GetMessage()
-	s.Equal(m.Rendered, "hello")
-}
-
-func (s *BufferedSenderSuite) TestSendingBigGroup() {
-	m, ok := s.sender.GetMessageSafe()
-	s.False(ok)
-	s.Nil(m)
-
-	for i := 0; i < 80; i++ {
-		s.buffs.Send(message.NewLineMessage(level.Notice, "hi", i))
-	}
-
-	time.Sleep(100 * time.Millisecond)
-	for i := 0; i < 8; i++ {
-		m, ok = s.sender.GetMessageSafe()
-		if s.True(ok, "%+v", m) {
-			s.True(strings.HasPrefix(m.Rendered, "hi"))
+		for i := 0; i < 12; i++ {
+			require.Len(t, bs.buffer, i%10)
+			bs.Send(message.ConvertToComposer(level.Debug, fmt.Sprintf("message %d", i+1)))
 		}
-	}
+		assert.Len(t, bs.buffer, 2)
+		msg, ok := s.GetMessageSafe()
+		require.True(t, ok)
+		msgs := strings.Split(msg.Message.String(), "\n")
+		assert.Len(t, msgs, 10)
+		for i, msg := range msgs {
+			require.Equal(t, fmt.Sprintf("message %d", i+1), msg)
+		}
+	})
+	t.Run("FlushesOnInterval", func(t *testing.T) {
+		bs := newBufferedSender(s, 5*time.Second, 10)
+		defer bs.cancel()
 
-	m, ok = s.sender.GetMessageSafe()
-	s.False(ok)
-	s.Nil(m)
+		bs.Send(message.ConvertToComposer(level.Debug, "should flush"))
+		time.Sleep(6 * time.Second)
+		bs.mu.Lock()
+		assert.True(t, time.Since(bs.lastFlush) <= 2*time.Second)
+		bs.mu.Unlock()
+		msg, ok := s.GetMessageSafe()
+		require.True(t, ok)
+		assert.Equal(t, "should flush", msg.Message.String())
+	})
+	t.Run("ClosedSender", func(t *testing.T) {
+		bs := newBufferedSender(s, time.Minute, 10)
+		bs.closed = true
+		defer bs.cancel()
+
+		bs.Send(message.ConvertToComposer(level.Debug, "should not send"))
+		assert.Empty(t, bs.buffer)
+		_, ok := s.GetMessageSafe()
+		assert.False(t, ok)
+	})
 }
 
-func (s *BufferedSenderSuite) TestSendingGroup() {
-	msgs := []message.Composer{}
-	for i := 0; i < 100; i++ {
-		msgs = append(msgs, message.NewLineMessage(level.Notice, "hi", i))
-	}
+func TestFlush(t *testing.T) {
+	s, err := NewInternalLogger("buffs", LevelInfo{level.Debug, level.Debug})
+	require.NoError(t, err)
 
-	m := message.NewGroupComposer(msgs)
+	t.Run("ForceFlush", func(t *testing.T) {
+		bs := newBufferedSender(s, time.Minute, 10)
+		defer bs.cancel()
 
-	out, ok := s.sender.GetMessageSafe()
-	s.False(ok)
-	s.Nil(out)
+		bs.Send(message.ConvertToComposer(level.Debug, "message"))
+		assert.Len(t, bs.buffer, 1)
+		require.NoError(t, bs.Flush(context.TODO()))
+		bs.mu.Lock()
+		assert.True(t, time.Since(bs.lastFlush) <= time.Second)
+		bs.mu.Unlock()
+		assert.Empty(t, bs.buffer)
+		msg, ok := s.GetMessageSafe()
+		require.True(t, ok)
+		assert.Equal(t, "message", msg.Message.String())
+	})
+	t.Run("ClosedSender", func(t *testing.T) {
+		bs := newBufferedSender(s, time.Minute, 10)
+		bs.buffer = append(bs.buffer, message.ConvertToComposer(level.Debug, "message"))
+		bs.cancel()
+		bs.closed = true
 
-	s.buffs.Send(m)
-	time.Sleep(s.dur)
-	for i := 0; i < 10; i++ {
-		out, ok = s.sender.GetMessageSafe()
-		s.True(ok)
-		s.Len(strings.Split(out.Rendered, "\n"), 10)
-	}
-
-	out, ok = s.sender.GetMessageSafe()
-	s.False(ok)
-	s.Nil(out)
+		assert.NoError(t, bs.Flush(context.TODO()))
+		assert.Len(t, bs.buffer, 1)
+		_, ok := s.GetMessageSafe()
+		assert.False(t, ok)
+	})
 }
 
-func (s *BufferedSenderSuite) TestCloseTwiceReturnsAnError() {
-	s.NoError(s.buffs.Close())
-	s.Error(s.buffs.Close())
+func TestBufferedClose(t *testing.T) {
+	s, err := NewInternalLogger("buffs", LevelInfo{level.Debug, level.Debug})
+	require.NoError(t, err)
+
+	t.Run("EmptyBuffer", func(t *testing.T) {
+		bs := newBufferedSender(s, time.Minute, 10)
+
+		assert.Nil(t, bs.Close())
+		assert.True(t, bs.closed)
+		_, ok := s.GetMessageSafe()
+		assert.False(t, ok)
+	})
+	t.Run("NonEmptyBuffer", func(t *testing.T) {
+		bs := newBufferedSender(s, time.Minute, 10)
+		bs.buffer = append(
+			bs.buffer,
+			message.ConvertToComposer(level.Debug, "message1"),
+			message.ConvertToComposer(level.Debug, "message2"),
+			message.ConvertToComposer(level.Debug, "message3"),
+		)
+
+		assert.Nil(t, bs.Close())
+		assert.True(t, bs.closed)
+		assert.Empty(t, bs.buffer)
+		msgs, ok := s.GetMessageSafe()
+		require.True(t, ok)
+		assert.Equal(t, "message1\nmessage2\nmessage3", msgs.Message.String())
+	})
+	t.Run("NoopWhenClosed", func(t *testing.T) {
+		bs := newBufferedSender(s, time.Minute, 10)
+
+		assert.NoError(t, bs.Close())
+		assert.True(t, bs.closed)
+		assert.NoError(t, bs.Close())
+	})
+}
+
+func TestIntervalFlush(t *testing.T) {
+	s, err := NewInternalLogger("buffs", LevelInfo{level.Debug, level.Debug})
+	require.NoError(t, err)
+
+	t.Run("ReturnsWhenClosed", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		bs := &bufferedSender{
+			Sender: s,
+			buffer: []message.Composer{},
+			cancel: cancel,
+		}
+		canceled := make(chan bool)
+
+		go func() {
+			bs.intervalFlush(ctx, time.Minute)
+			canceled <- true
+		}()
+		assert.NoError(t, bs.Close())
+		assert.True(t, <-canceled)
+	})
+}
+
+func newBufferedSender(sender Sender, interval time.Duration, size int) *bufferedSender {
+	bs := NewBufferedSender(sender, interval, size)
+	return bs.(*bufferedSender)
 }

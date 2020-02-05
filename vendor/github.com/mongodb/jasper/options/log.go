@@ -16,14 +16,14 @@ import (
 type LogType string
 
 const (
-	LogBuildloggerV2 LogType = "buildloggerv2" // nolint
-	LogBuildloggerV3         = "buildloggerv3" // nolint
-	LogDefault               = "default"       // nolint
-	LogFile                  = "file"          // nolint
-	LogInherit               = "inherit"       // nolint
-	LogSplunk                = "splunk"        // nolint
-	LogSumologic             = "sumologic"     // nolint
-	LogInMemory              = "inmemory"      // nolint
+	LogBuildloggerV2 LogType = "buildloggerv2"
+	LogBuildloggerV3 LogType = "buildloggerv3"
+	LogDefault       LogType = "default"
+	LogFile          LogType = "file"
+	LogInherit       LogType = "inherit"
+	LogSplunk        LogType = "splunk"
+	LogSumologic     LogType = "sumologic"
+	LogInMemory      LogType = "inmemory"
 )
 
 // Validate ensures that the LogType is valid.
@@ -47,10 +47,10 @@ const (
 type LogFormat string
 
 const (
-	LogFormatPlain   LogFormat = "plain"   // nolint
-	LogFormatDefault LogFormat = "default" // nolint
-	LogFormatJSON    LogFormat = "json"    // nolint
-	LogFormatInvalid LogFormat = "invalid" // nolint
+	LogFormatPlain   LogFormat = "plain"
+	LogFormatDefault LogFormat = "default"
+	LogFormatJSON    LogFormat = "json"
+	LogFormatInvalid LogFormat = "invalid"
 )
 
 // Validate ensures that the LogFormat is valid.
@@ -103,16 +103,16 @@ func (opts Buffer) Validate() error {
 //
 // By default, logger reads from both standard output and standard error.
 type Log struct {
-	BufferOptions        Buffer                    `json:"buffer_options,omitempty"`
-	BuildloggerOptions   send.BuildloggerConfig    `json:"buildlogger_options,omitempty"`
-	BuildloggerV3Options timber.LoggerOptions      `json:"buildlogger_v3_options"`
-	DefaultPrefix        string                    `json:"default_prefix,omitempty"`
-	FileName             string                    `json:"file_name,omitempty"`
-	Format               LogFormat                 `json:"format"`
-	InMemoryCap          int                       `json:"in_memory_cap,omitempty"`
-	Level                send.LevelInfo            `json:"level,omitempty"`
-	SplunkOptions        send.SplunkConnectionInfo `json:"splunk_options,omitempty"`
-	SumoEndpoint         string                    `json:"sumo_endpoint,omitempty"`
+	BufferOptions        Buffer                    `json:"buffer_options,omitempty" bson:"buffer_options"`
+	BuildloggerOptions   send.BuildloggerConfig    `json:"buildlogger_options,omitempty" bson:"buildlogger_options"`
+	BuildloggerV3Options timber.LoggerOptions      `json:"buildlogger_v3_options" bson:"buildlogger_v_3_options"`
+	DefaultPrefix        string                    `json:"default_prefix,omitempty" bson:"default_prefix"`
+	FileName             string                    `json:"file_name,omitempty" bson:"file_name"`
+	Format               LogFormat                 `json:"format" bson:"format"`
+	InMemoryCap          int                       `json:"in_memory_cap,omitempty" bson:"in_memory_cap"`
+	Level                send.LevelInfo            `json:"level,omitempty" bson:"level"`
+	SplunkOptions        send.SplunkConnectionInfo `json:"splunk_options,omitempty" bson:"splunk_options"`
+	SumoEndpoint         string                    `json:"sumo_endpoint,omitempty" bson:"sumo_endpoint"`
 }
 
 // Validate ensures that LogOptions is valid.
@@ -147,7 +147,7 @@ func (l Logger) Validate() error {
 
 // Configure will configure the grip/send.Sender used by the Logger to use the
 // specified LogType as specified in Logger.Type.
-func (l *Logger) Configure() (send.Sender, error) {
+func (l *Logger) Configure() (send.Sender, error) { //nolint: gocognit
 	if l.sender != nil {
 		return l.sender, nil
 	}
