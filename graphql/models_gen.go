@@ -17,7 +17,7 @@ type GroupedProjects struct {
 
 type Projects struct {
 	Favorites     []*model.UIProjectFields `json:"favorites"`
-	OtherProjects []*GroupedProjects       `json:"other_projects"`
+	OtherProjects []*GroupedProjects       `json:"otherProjects"`
 }
 
 type SortDirection string

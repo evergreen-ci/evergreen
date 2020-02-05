@@ -365,7 +365,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Projects.Favorites(childComplexity), true
 
-	case "Projects.other_projects":
+	case "Projects.otherProjects":
 		if e.complexity.Projects.OtherProjects == nil {
 			break
 		}
@@ -1004,7 +1004,7 @@ type Task {
 
 type Projects {
   favorites: [Project!]!
-  other_projects: [GroupedProjects!]!
+  otherProjects: [GroupedProjects!]!
 }
 
 type GroupedProjects {
@@ -1999,7 +1999,7 @@ func (ec *executionContext) _Projects_favorites(ctx context.Context, field graph
 	return ec.marshalNProject2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐUIProjectFieldsᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Projects_other_projects(ctx context.Context, field graphql.CollectedField, obj *Projects) (ret graphql.Marshaler) {
+func (ec *executionContext) _Projects_otherProjects(ctx context.Context, field graphql.CollectedField, obj *Projects) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -5357,8 +5357,8 @@ func (ec *executionContext) _Projects(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "other_projects":
-			out.Values[i] = ec._Projects_other_projects(ctx, field, obj)
+		case "otherProjects":
+			out.Values[i] = ec._Projects_otherProjects(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
