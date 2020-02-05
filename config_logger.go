@@ -18,7 +18,6 @@ type LoggerConfig struct {
 	BuildloggerRPCPort  string       `bson:"buildlogger_rpc_port" json:"buildlogger_rpc_port" yaml:"buildlogger_rpc_port"`
 	BuildloggerUser     string       `bson:"buildlogger_user" json:"buildlogger_user" yaml:"buildlogger_user"`
 	BuildloggerPassword string       `bson:"buildlogger_password" json:"buildlogger_password" yaml:"buildlogger_password"`
-	DefaultLogger       string       `bson:"default_logger" json:"default_logger" yaml:"default_logger"`
 }
 
 func (c LoggerConfig) Info() send.LevelInfo {
@@ -66,7 +65,6 @@ func (c *LoggerConfig) Set() error {
 			"buildlogger_rpc_port": c.BuildloggerRPCPort,
 			"buildlogger_user":     c.BuildloggerUser,
 			"buildlogger_password": c.BuildloggerPassword,
-			"default_logger":       c.DefaultLogger,
 		},
 	}, options.Update().SetUpsert(true))
 

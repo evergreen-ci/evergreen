@@ -43,8 +43,6 @@ type ProjectRef struct {
 	// Github PushEvents for this project, instead of the Repotracker runner
 	TracksPushEvents bool `bson:"tracks_push_events" json:"tracks_push_events" yaml:"tracks_push_events"`
 
-	DefaultLogger string `bson:"default_logger" json:"default_logger" yaml:"default_logger"`
-
 	PRTestingEnabled bool              `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
 	CommitQueue      CommitQueueParams `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
 
@@ -152,7 +150,6 @@ var (
 	ProjectRefDisabledStatsCache     = bsonutil.MustHaveTag(ProjectRef{}, "DisabledStatsCache")
 	ProjectRefAdminsKey              = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	projectRefTracksPushEventsKey    = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
-	projectRefDefaultLogger          = bsonutil.MustHaveTag(ProjectRef{}, "DefaultLogger")
 	projectRefPRTestingEnabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
 	projectRefRepotrackerDisabledKey = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerDisabled")
 	projectRefCommitQueueKey         = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueue")
@@ -237,12 +234,6 @@ func (projectRef *ProjectRef) Update() error {
 	)
 }
 
-func (projectRef *ProjectRef) checkDefaultLogger() {
-	if projectRef.DefaultLogger == "" {
-		projectRef.DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
-	}
-}
-
 // FindOneProjectRef gets a project ref given the owner name, the repo
 // name and the project name
 func FindOneProjectRef(identifier string) (*ProjectRef, error) {
@@ -259,9 +250,6 @@ func FindOneProjectRef(identifier string) (*ProjectRef, error) {
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
-
-	projectRef.checkDefaultLogger()
-
 	return projectRef, err
 }
 
@@ -276,9 +264,6 @@ func FindFirstProjectRef() (*ProjectRef, error) {
 		[]string{"-" + ProjectRefDisplayNameKey},
 		projectRef,
 	)
-
-	projectRef.checkDefaultLogger()
-
 	return projectRef, err
 }
 
@@ -317,10 +302,6 @@ func FindTaggedProjectRefs(includeDisabled bool, tags ...string) ([]ProjectRef, 
 		return nil, errors.WithStack(err)
 	}
 
-	for i := range projectRefs {
-		projectRefs[i].checkDefaultLogger()
-	}
-
 	return projectRefs, nil
 }
 
@@ -338,11 +319,6 @@ func FindAllTrackedProjectRefs() ([]ProjectRef, error) {
 		db.NoLimit,
 		&projectRefs,
 	)
-
-	for i := range projectRefs {
-		projectRefs[i].checkDefaultLogger()
-	}
-
 	return projectRefs, err
 }
 
@@ -362,11 +338,6 @@ func FindAllTrackedProjectRefsWithRepoInfo() ([]ProjectRef, error) {
 		db.NoLimit,
 		&projectRefs,
 	)
-
-	for i := range projectRefs {
-		projectRefs[i].checkDefaultLogger()
-	}
-
 	return projectRefs, err
 }
 
@@ -382,11 +353,6 @@ func FindAllProjectRefs() ([]ProjectRef, error) {
 		db.NoLimit,
 		&projectRefs,
 	)
-
-	for i := range projectRefs {
-		projectRefs[i].checkDefaultLogger()
-	}
-
 	return projectRefs, err
 }
 
@@ -413,10 +379,6 @@ func FindProjectRefsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRe
 		return nil, err
 	}
 
-	for i := range projectRefs {
-		projectRefs[i].checkDefaultLogger()
-	}
-
 	return projectRefs, err
 }
 
@@ -438,11 +400,6 @@ func FindDownstreamProjects(project string) ([]ProjectRef, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	for i := range projectRefs {
-		projectRefs[i].checkDefaultLogger()
-	}
-
 	return projectRefs, err
 }
 
@@ -479,10 +436,6 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (
 		return nil, nil
 	}
 
-	if projectRefs[target].DefaultLogger == "" {
-		projectRefs[target].checkDefaultLogger()
-	}
-
 	return &projectRefs[target], nil
 }
 
@@ -490,7 +443,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (
 // There should only ever be one project for the query because we only enable commit queue if
 // no other project ref with the same specification has it enabled.
 func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {
-	projectRef := &ProjectRef{}
+	projRef := &ProjectRef{}
 	err := db.FindOne(
 		ProjectRefCollection,
 		bson.M{
@@ -501,7 +454,7 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 		},
 		db.NoProjection,
 		db.NoSort,
-		projectRef,
+		projRef,
 	)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
@@ -509,10 +462,7 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't query for project with commit queue. owner: %s, repo: %s, branch: %s", owner, repo, branch)
 	}
-
-	projectRef.checkDefaultLogger()
-
-	return projectRef, nil
+	return projRef, nil
 }
 
 func FindProjectRefsWithCommitQueueEnabled() ([]ProjectRef, error) {
@@ -533,11 +483,6 @@ func FindProjectRefsWithCommitQueueEnabled() ([]ProjectRef, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	for i := range projectRefs {
-		projectRefs[i].checkDefaultLogger()
-	}
-
 	return projectRefs, nil
 }
 
@@ -562,11 +507,6 @@ func FindPeriodicProjects() ([]ProjectRef, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	for i := range projectRefs {
-		projectRefs[i].checkDefaultLogger()
-	}
-
 	return projectRefs, nil
 }
 
@@ -593,11 +533,6 @@ func FindProjectRefs(key string, limit int, sortDir int) ([]ProjectRef, error) {
 		limit,
 		&projectRefs,
 	)
-
-	for i := range projectRefs {
-		projectRefs[i].checkDefaultLogger()
-	}
-
 	return projectRefs, err
 }
 
@@ -641,7 +576,6 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefDisabledStatsCache:     projectRef.DisabledStatsCache,
 				ProjectRefAdminsKey:              projectRef.Admins,
 				projectRefTracksPushEventsKey:    projectRef.TracksPushEvents,
-				projectRefDefaultLogger:          projectRef.DefaultLogger,
 				projectRefPRTestingEnabledKey:    projectRef.PRTestingEnabled,
 				projectRefCommitQueueKey:         projectRef.CommitQueue,
 				projectRefPatchingDisabledKey:    projectRef.PatchingDisabled,

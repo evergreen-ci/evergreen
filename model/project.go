@@ -494,6 +494,8 @@ func (c *LoggerConfig) IsValid() error {
 			catcher.New("file logger is disallowed for system logs; will use Evergreen logger")
 		} else if opts.Type == LogkeeperLogSender {
 			catcher.New("logkeeper is disallowed for system logs; will use Evergreen logger")
+		} else if opts.Type == BuildloggerLogSender {
+			catcher.New("buildlogger is disallowed for system logs; will use Evergreen logger")
 		}
 	}
 	for _, opts := range c.Task {
@@ -525,19 +527,6 @@ const (
 	BuildloggerLogSender = "buildlogger"
 	SplunkLogSender      = "splunk"
 )
-
-// IsValidDefaultLogger returns whether the given logger, set either globally
-// or at the project level, is a valid default logger. Default loggers must be
-// configured globally or not require configuration and must be valid for use
-// with system logs.
-func IsValidDefaultLogger(logger string) bool {
-	switch logger {
-	case EvergreenLogSender, BuildloggerLogSender:
-		return true
-	default:
-		return false
-	}
-}
 
 var ValidLogSenders = []string{
 	EvergreenLogSender,
