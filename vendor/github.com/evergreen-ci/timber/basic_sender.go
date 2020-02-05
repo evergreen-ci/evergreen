@@ -291,6 +291,7 @@ func (b *buildlogger) Send(m message.Composer) {
 			continue
 		}
 		logLine := &internal.LogLine{
+			Priority:  int32(m.Priority()),
 			Timestamp: &timestamp.Timestamp{Seconds: ts.Unix(), Nanos: int32(ts.Nanosecond())},
 			Data:      strings.TrimRightFunc(line, unicode.IsSpace),
 		}
@@ -298,12 +299,25 @@ func (b *buildlogger) Send(m message.Composer) {
 		b.buffer = append(b.buffer, logLine)
 		b.bufferSize += len(logLine.Data)
 		if b.bufferSize > b.opts.MaxBufferSize {
-			if err := b.flush(); err != nil {
+			if err := b.flush(b.ctx); err != nil {
 				b.opts.Local.Send(message.NewErrorMessage(level.Error, err))
 				return
 			}
 		}
 	}
+}
+
+// Flush flushes anything messages that may be in the buffer to cedar
+// Buildlogger backend via RPC.
+func (b *buildlogger) Flush(ctx context.Context) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if b.closed {
+		return nil
+	}
+
+	return b.flush(ctx)
 }
 
 // Close flushes anything that may be left in the underlying buffer and closes
@@ -324,7 +338,7 @@ func (b *buildlogger) Close() error {
 	catcher := grip.NewBasicCatcher()
 
 	if len(b.buffer) > 0 {
-		if err := b.flush(); err != nil {
+		if err := b.flush(b.ctx); err != nil {
 			b.opts.Local.Send(message.NewErrorMessage(level.Error, err))
 			catcher.Add(errors.Wrap(err, "problem flushing buffer"))
 		}
@@ -391,7 +405,7 @@ func (b *buildlogger) timedFlush() {
 		case <-b.timer.C:
 			b.mu.Lock()
 			if len(b.buffer) > 0 && time.Since(b.lastFlush) >= b.opts.FlushInterval {
-				if err := b.flush(); err != nil {
+				if err := b.flush(b.ctx); err != nil {
 					b.opts.Local.Send(message.NewErrorMessage(level.Error, err))
 				}
 			}
@@ -401,8 +415,8 @@ func (b *buildlogger) timedFlush() {
 	}
 }
 
-func (b *buildlogger) flush() error {
-	_, err := b.client.AppendLogLines(b.ctx, &internal.LogLines{
+func (b *buildlogger) flush(ctx context.Context) error {
+	_, err := b.client.AppendLogLines(ctx, &internal.LogLines{
 		LogId: b.opts.logID,
 		Lines: b.buffer,
 	})
