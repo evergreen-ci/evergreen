@@ -1244,15 +1244,6 @@
         "periodic_builds": [],
         "triggers": []
       }
-    ],
-    "users": [
-      {
-        "_id": "admin",
-        "apikey": "480550ebb70b5604c2abd26185d8a680",
-        "display_name": "Evergreen Admin",
-        "email": "",
-        "favorite_projects": []
-      }
     ]
   },
   "tests": [
@@ -1520,21 +1511,44 @@
           "projects": {
             "favorites": [
               {
+                "identifier": "mci",
+                "displayName": "Evergreen Self-Tests",
+                "repo": "evergreen",
+                "owner": "evergreen-ci"
+              },
+              {
+                "identifier": "lobster",
+                "displayName": "Lobster",
+                "repo": "lobster",
+                "owner": "evergreen-ci"
+              },
+              {
                 "identifier": "buildhost-test",
+                "displayName": "buildhost-test",
                 "repo": "buildhost-configuration",
-                "owner": "annie.black",
-                "displayName": "buildhost-test"
+                "owner": "annie.black"
               }
             ],
             "all": [
+              {
+                "name": "annie.black/buildhost-configuration",
+                "projects": [
+                  {
+                    "identifier": "buildhost-test",
+                    "displayName": "buildhost-test",
+                    "repo": "buildhost-configuration",
+                    "owner": "annie.black"
+                  }
+                ]
+              },
               {
                 "name": "bsamek/mongo",
                 "projects": [
                   {
                     "identifier": "sys-perf",
+                    "displayName": "System Performance (master)",
                     "repo": "mongo",
-                    "owner": "bsamek",
-                    "displayName": "System Performance (master)"
+                    "owner": "bsamek"
                   }
                 ]
               },
@@ -1542,16 +1556,10 @@
                 "name": "evergreen-ci/evergreen",
                 "projects": [
                   {
-                    "identifier": "mci",
-                    "repo": "evergreen",
-                    "owner": "evergreen-ci",
-                    "displayName": "Evergreen Self-Tests"
-                  },
-                  {
                     "identifier": "clone-of-mci-to-test-a-thing",
+                    "displayName": "Evergreen Self-Tests",
                     "repo": "evergreen",
-                    "owner": "evergreen-ci",
-                    "displayName": "Evergreen Self-Tests"
+                    "owner": "evergreen-ci"
                   }
                 ]
               },
@@ -1560,20 +1568,9 @@
                 "projects": [
                   {
                     "identifier": "annie-copy2",
+                    "displayName": "something temporary",
                     "repo": "grip",
-                    "owner": "evergreen-ci",
-                    "displayName": "something temporary"
-                  }
-                ]
-              },
-              {
-                "name": "evergreen-ci/lobster",
-                "projects": [
-                  {
-                    "identifier": "lobster",
-                    "repo": "lobster",
-                    "owner": "evergreen-ci",
-                    "displayName": "Lobster"
+                    "owner": "evergreen-ci"
                   }
                 ]
               },
@@ -1582,9 +1579,9 @@
                 "projects": [
                   {
                     "identifier": "logkeeper",
+                    "displayName": "Logkeeper",
                     "repo": "logkeeper",
-                    "owner": "evergreen-ci",
-                    "displayName": "Logkeeper"
+                    "owner": "evergreen-ci"
                   }
                 ]
               },
@@ -1593,9 +1590,9 @@
                 "projects": [
                   {
                     "identifier": "amboy",
+                    "displayName": "Not Amboy",
                     "repo": "amboy",
-                    "owner": "hello it's me",
-                    "displayName": "Not Amboy"
+                    "owner": "hello it's me"
                   }
                 ]
               },
@@ -1604,9 +1601,9 @@
                 "projects": [
                   {
                     "identifier": "john_test",
+                    "displayName": "john test",
                     "repo": "evergreen",
-                    "owner": "john-m-liu",
-                    "displayName": "john test"
+                    "owner": "john-m-liu"
                   }
                 ]
               },
@@ -1615,9 +1612,9 @@
                 "projects": [
                   {
                     "identifier": "curator",
+                    "displayName": "Curator",
                     "repo": "curator",
-                    "owner": "mongodb",
-                    "displayName": "Curator"
+                    "owner": "mongodb"
                   }
                 ]
               },
@@ -1626,9 +1623,9 @@
                 "projects": [
                   {
                     "identifier": "Greenbay",
+                    "displayName": "Greenbay",
                     "repo": "greenbay",
-                    "owner": "mongodb",
-                    "displayName": "Greenbay"
+                    "owner": "mongodb"
                   }
                 ]
               },
@@ -1637,87 +1634,87 @@
                 "projects": [
                   {
                     "identifier": "grip",
+                    "displayName": "Grip (Logging)",
                     "repo": "grip",
-                    "owner": "mongodb",
-                    "displayName": "Grip (Logging)"
+                    "owner": "mongodb"
                   },
                   {
                     "identifier": "ernietest20171110",
+                    "displayName": "test display name update",
                     "repo": "grip",
-                    "owner": "mongodb",
-                    "displayName": "test display name update"
+                    "owner": "mongodb"
                   },
                   {
                     "identifier": "ernietest2017111002",
+                    "displayName": "Grip (Logging)",
                     "repo": "grip",
-                    "owner": "mongodb",
-                    "displayName": "Grip (Logging)"
+                    "owner": "mongodb"
                   },
                   {
                     "identifier": "ernie-copy",
+                    "displayName": "test display name update",
                     "repo": "grip",
-                    "owner": "mongodb",
-                    "displayName": "test display name update"
+                    "owner": "mongodb"
                   },
                   {
                     "identifier": "ernie-copy2",
+                    "displayName": "test display name update",
                     "repo": "grip",
-                    "owner": "mongodb",
-                    "displayName": "test display name update"
+                    "owner": "mongodb"
                   },
                   {
                     "identifier": "ernie-copy3",
+                    "displayName": "test display name update",
                     "repo": "grip",
-                    "owner": "mongodb",
-                    "displayName": "test display name update"
+                    "owner": "mongodb"
                   },
                   {
                     "identifier": "ernie-copy4",
+                    "displayName": "test display name update",
                     "repo": "grip",
-                    "owner": "mongodb",
-                    "displayName": "test display name update"
+                    "owner": "mongodb"
                   },
                   {
                     "identifier": "annie-test",
+                    "displayName": "something temporary",
                     "repo": "grip",
-                    "owner": "mongodb",
-                    "displayName": "something temporary"
+                    "owner": "mongodb"
                   },
                   {
                     "identifier": "annie-test-copy",
+                    "displayName": "something temporary",
                     "repo": "grip",
-                    "owner": "mongodb",
-                    "displayName": "something temporary"
+                    "owner": "mongodb"
                   },
                   {
                     "identifier": "annie-copy3",
+                    "displayName": "something temporary",
                     "repo": "grip",
-                    "owner": "mongodb",
-                    "displayName": "something temporary"
+                    "owner": "mongodb"
                   },
                   {
                     "identifier": "annie-copy4",
+                    "displayName": "something temporary",
                     "repo": "grip",
-                    "owner": "mongodb",
-                    "displayName": "something temporary"
+                    "owner": "mongodb"
                   },
                   {
                     "identifier": "annie-copy-vars",
+                    "displayName": "something temporary",
                     "repo": "grip",
-                    "owner": "mongodb",
-                    "displayName": "something temporary"
+                    "owner": "mongodb"
                   },
                   {
                     "identifier": "annie_api_copy",
+                    "displayName": "something temporary",
                     "repo": "grip",
-                    "owner": "mongodb",
-                    "displayName": "something temporary"
+                    "owner": "mongodb"
                   },
                   {
                     "identifier": "annie_api_copy2",
+                    "displayName": "something temporary",
                     "repo": "grip",
-                    "owner": "mongodb",
-                    "displayName": "something temporary"
+                    "owner": "mongodb"
                   }
                 ]
               },
@@ -1726,39 +1723,39 @@
                 "projects": [
                   {
                     "identifier": "ron_test_copy_1",
+                    "displayName": "1st project to be moved around",
                     "repo": "ron_repo_1",
-                    "owner": "rongodb",
-                    "displayName": "1st project to be moved around"
+                    "owner": "rongodb"
                   },
                   {
                     "identifier": "qa-template",
+                    "displayName": "1st project to be moved around",
                     "repo": "ron_repo_1",
-                    "owner": "rongodb",
-                    "displayName": "1st project to be moved around"
+                    "owner": "rongodb"
                   },
                   {
                     "identifier": "qa-template-copy-for-testing",
+                    "displayName": "1st project to be moved around",
                     "repo": "ron_repo_1",
-                    "owner": "rongodb",
-                    "displayName": "1st project to be moved around"
+                    "owner": "rongodb"
                   },
                   {
                     "identifier": "ron_test_output",
+                    "displayName": "1st project to be moved around",
                     "repo": "ron_repo_1",
-                    "owner": "rongodb",
-                    "displayName": "1st project to be moved around"
+                    "owner": "rongodb"
                   },
                   {
                     "identifier": "ron_three",
+                    "displayName": "1st project to be moved around",
                     "repo": "ron_repo_1",
-                    "owner": "rongodb",
-                    "displayName": "1st project to be moved around"
+                    "owner": "rongodb"
                   },
                   {
                     "identifier": "qa-template-for-testing",
+                    "displayName": "1st project to be moved around",
                     "repo": "ron_repo_1",
-                    "owner": "rongodb",
-                    "displayName": "1st project to be moved around"
+                    "owner": "rongodb"
                   }
                 ]
               },
@@ -1767,9 +1764,9 @@
                 "projects": [
                   {
                     "identifier": "ron_two_via_postman",
+                    "displayName": "1st project to be moved around",
                     "repo": "v20380713",
-                    "owner": "rongodb",
-                    "displayName": "1st project to be moved around"
+                    "owner": "rongodb"
                   }
                 ]
               },
@@ -1778,9 +1775,9 @@
                 "projects": [
                   {
                     "identifier": "annie-copy5",
+                    "displayName": "something temporary",
                     "repo": "grip",
-                    "owner": "something crazy",
-                    "displayName": "something temporary"
+                    "owner": "something crazy"
                   }
                 ]
               },
@@ -1789,9 +1786,9 @@
                 "projects": [
                   {
                     "identifier": "thomas-test",
+                    "displayName": "thomas test",
                     "repo": "evergreen",
-                    "owner": "tzembo",
-                    "displayName": "thomas test"
+                    "owner": "tzembo"
                   }
                 ]
               }
