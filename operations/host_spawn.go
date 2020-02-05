@@ -950,10 +950,7 @@ Examples:
 			}
 
 			if doSanityCheck && !dryRun {
-				ok, err := sanityCheckRsync(localPath, remotePath, pull)
-				if err != nil {
-					return errors.Wrap(err, "could not perform sanity checks, exiting")
-				}
+				ok := sanityCheckRsync(localPath, remotePath, pull)
 				if !ok {
 					fmt.Println("Refusing to perform rsync, exiting")
 					return nil
@@ -1044,29 +1041,23 @@ func getUserAndHostname(ctx context.Context, hostID, confPath string) (user, hos
 // which you want to mirror two directories. The trailing slash means to
 // overwrite all of the contents of the destination directory, so we check that
 // they really want to do this.
-func sanityCheckRsync(localPath, remotePath string, pull bool) (ok bool, err error) {
+func sanityCheckRsync(localPath, remotePath string, pull bool) bool {
 	localPathIsDir := strings.HasSuffix(localPath, string(os.PathSeparator))
 	remotePathIsDir := strings.HasSuffix(remotePath, string(os.PathSeparator))
 
 	if localPathIsDir && !pull {
-		ok, err := confirm(fmt.Sprintf("The local directory '%s' will overwrite any existing contents in the remote directory '%s'. Continue? (y/n)", localPath, remotePath), false)
-		if err != nil {
-			return false, errors.Wrap(err, "error while asking user to sanity check rsync command")
-		}
+		ok := confirm(fmt.Sprintf("The local directory '%s' will overwrite any existing contents in the remote directory '%s'. Continue? (y/n)", localPath, remotePath), false)
 		if !ok {
-			return false, nil
+			return false
 		}
 	}
 	if remotePathIsDir && pull {
-		ok, err := confirm(fmt.Sprintf("The remote directory '%s' will overwrite any existing contents in the local directory '%s'. Continue? (y/n)", remotePath, localPath), false)
-		if err != nil {
-			return false, errors.Wrap(err, "error while asking user to sanity check rsync command")
-		}
+		ok := confirm(fmt.Sprintf("The remote directory '%s' will overwrite any existing contents in the local directory '%s'. Continue? (y/n)", remotePath, localPath), false)
 		if !ok {
-			return false, nil
+			return false
 		}
 	}
-	return true, nil
+	return true
 }
 
 type rsyncOpts struct {
@@ -1081,19 +1072,8 @@ type rsyncOpts struct {
 	dryRun               bool
 }
 
-func (opts *rsyncOpts) validate() error {
-	catcher := grip.NewBasicCatcher()
-	catcher.NewWhen(opts.local == "", "local path must be specified")
-	catcher.NewWhen(opts.remote == "", "remote path must be specified")
-	return catcher.Resolve()
-}
-
 // buildRsyncCommand takes the given options and constructs an rsync command.
 func buildRsyncCommand(ctx context.Context, opts rsyncOpts) (*exec.Cmd, error) {
-	if err := opts.validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid rsync options")
-	}
-
 	rsync, err := exec.LookPath("rsync")
 	if err != nil {
 		return nil, errors.Wrap(err, "could not find rsync binary in the PATH")

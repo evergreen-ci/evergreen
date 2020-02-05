@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -48,94 +47,38 @@ func TestSanityCheckRsync(t *testing.T) {
 	for testName, testCase := range map[string]func(t *testing.T){
 		"SucceedsIfUserSaysYes": func(t *testing.T) {
 			withYesResponse(t, func() {
-				ok, err := sanityCheckRsync("local_dir/", "remote_dir", false)
-				require.NoError(t, err)
-				assert.True(t, ok)
+				assert.True(t, sanityCheckRsync("local_dir/", "remote_dir", false))
 			})
 		},
 		"NotOkIfUserSaysNo": func(t *testing.T) {
 			withNoResponse(t, func() {
-				ok, err := sanityCheckRsync("local_dir/", "remote_dir", false)
-				require.NoError(t, err)
-				assert.False(t, ok)
+				assert.False(t, sanityCheckRsync("local_dir/", "remote_dir", false))
 			})
 		},
 		"ErrorsIfNoResponse": func(t *testing.T) {
-			ok, err := sanityCheckRsync("local_dir/", "remote_dir", false)
-			assert.Error(t, err)
-			assert.False(t, ok)
+			assert.False(t, sanityCheckRsync("local_dir/", "remote_dir", false))
 		},
 		"SucceedsIfUserSaysYesWithPull": func(t *testing.T) {
 			withYesResponse(t, func() {
-				ok, err := sanityCheckRsync("local_dir", "remote_dir/", true)
-				require.NoError(t, err)
-				assert.True(t, ok)
+				assert.True(t, sanityCheckRsync("local_dir", "remote_dir/", true))
 			})
 		},
 		"NotOkIfUserSaysNoWithPull": func(t *testing.T) {
 			withNoResponse(t, func() {
-				ok, err := sanityCheckRsync("local_dir", "remote_dir/", true)
-				require.NoError(t, err)
-				assert.False(t, ok)
+				assert.False(t, sanityCheckRsync("local_dir", "remote_dir/", true))
 			})
 		},
 		"ErrorsIfNoResponseWithPull": func(t *testing.T) {
-			ok, err := sanityCheckRsync("local_dir", "remote_dir/", true)
-			assert.Error(t, err)
-			assert.False(t, ok)
+			assert.False(t, sanityCheckRsync("local_dir", "remote_dir/", true))
 		},
 		"DoesNotCheckIfBothAreTreatedAsFiles": func(t *testing.T) {
-			ok, err := sanityCheckRsync("local_file", "remote_file", false)
-			require.NoError(t, err)
-			assert.True(t, ok)
+			assert.True(t, sanityCheckRsync("local_file", "remote_file", false))
 		},
 		"DoesNotCheckIfBothAreTreatedAsFilesWithPull": func(t *testing.T) {
-			ok, err := sanityCheckRsync("local_file", "remote_file", true)
-			require.NoError(t, err)
-			assert.True(t, ok)
+			assert.True(t, sanityCheckRsync("local_file", "remote_file", true))
 		},
 	} {
 		t.Run(testName, testCase)
-	}
-}
-
-func TestBuildRsyncCommand(t *testing.T) {
-	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T){
-		"FailsWithNoOptions": func(ctx context.Context, t *testing.T) {
-			_, err := buildRsyncCommand(ctx, rsyncOpts{})
-			assert.Error(t, err)
-		},
-		"SucceedsWithPopulatedOptions": func(ctx context.Context, t *testing.T) {
-			cmd, err := buildRsyncCommand(ctx, rsyncOpts{
-				local:  "local",
-				remote: "remote",
-			})
-			require.NoError(t, err)
-			require.NotNil(t, cmd)
-
-			assert.Equal(t, os.Stdout, cmd.Stdout)
-			assert.Equal(t, os.Stderr, cmd.Stderr)
-			rsyncPath, err := exec.LookPath("rsync")
-			require.NoError(t, err)
-			assert.Equal(t, rsyncPath, cmd.Path)
-		},
-		"WithDryRun": func(ctx context.Context, t *testing.T) {
-			cmd, err := buildRsyncCommand(ctx, rsyncOpts{
-				local:  "local",
-				remote: "remote",
-				dryRun: true,
-			})
-			require.NoError(t, err)
-			require.NotNil(t, cmd)
-
-			assert.Contains(t, cmd.Args, "-n")
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-			testCase(ctx, t)
-		})
 	}
 }
 
@@ -143,21 +86,6 @@ func TestHostRsync(t *testing.T) {
 	localFileContent := []byte("foo")
 	remoteFileContent := []byte("bar")
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, localFile, remoteFile, localDir, remoteDir string){
-		"FailsForNoOptions": func(ctx context.Context, t *testing.T, localFile, remoteFile, localDir, remoteDir string) {
-			cmd, err := buildRsyncCommand(ctx, rsyncOpts{})
-			assert.Error(t, err)
-			assert.Nil(t, cmd)
-		},
-		"FailsWithoutLocalPath": func(ctx context.Context, t *testing.T, localFile, remoteFile, localDir, remoteDir string) {
-			cmd, err := buildRsyncCommand(ctx, rsyncOpts{remote: remoteFile})
-			assert.Error(t, err)
-			assert.Nil(t, cmd)
-		},
-		"FailsWithoutRemotePath": func(ctx context.Context, t *testing.T, localFile, remoteFile, localDir, remoteDir string) {
-			cmd, err := buildRsyncCommand(ctx, rsyncOpts{local: localFile})
-			assert.Error(t, err)
-			assert.Nil(t, cmd)
-		},
 		"RemoteFileCreatedIfNonexistent": func(ctx context.Context, t *testing.T, localFile, remoteFile, localDir, remoteDir string) {
 			newRemoteFile := filepath.Join(remoteDir, filepath.Base(localFile))
 			cmd, err := buildRsyncCommand(ctx, rsyncOpts{local: localFile, remote: newRemoteFile})
