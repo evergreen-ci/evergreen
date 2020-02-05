@@ -52,7 +52,7 @@ func (s *graphQLSuite) SetupSuite() {
 	env := evergreen.GetEnvironment()
 	ctx := context.Background()
 	s.Require().NoError(env.DB().Drop(ctx))
-	testUser := user.DBUser{Id: apiUser, APIKey: apiKey, FavoriteProjects: []string{"mci", "lobster"}}
+	testUser := user.DBUser{Id: apiUser, APIKey: apiKey}
 	s.Require().NoError(testUser.Insert())
 	s.url = server.URL
 	s.apiKey = apiKey
