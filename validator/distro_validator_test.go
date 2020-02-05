@@ -180,6 +180,7 @@ func TestEnsureHasRequiredFields(t *testing.T) {
 
 	i := -1
 	Convey("When validating a distro...", t, func() {
+		db.ClearCollections(distro.Collection)
 		d := []distro.Distro{
 			{},
 			{Id: "a"},
@@ -222,6 +223,7 @@ func TestEnsureHasRequiredFields(t *testing.T) {
 			}},
 		}
 		i++
+		So(d[i].Insert(), ShouldBeNil)
 		Convey("an error should be returned if the distro does not contain an id", func() {
 			So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, ValidationErrors{})
 		})

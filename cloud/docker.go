@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/client"
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -61,7 +62,11 @@ func (s *dockerSettings) FromDistroSettings(d distro.Distro, _ string) error {
 		if err != nil {
 			return errors.Wrap(err, "error marshalling provider setting into bson")
 		}
-		if err := d.UpdateProviderSettings(bytes); err != nil {
+		doc := &birch.Document{}
+		if err := doc.UnmarshalBSON(bytes); err != nil {
+			return errors.Wrapf(err, "error unmarshalling settings bytes into document")
+		}
+		if err := d.UpdateProviderSettings(doc); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"distro":   d.Id,
 				"provider": d.Provider,

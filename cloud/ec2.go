@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -110,6 +111,9 @@ func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string)
 			return errors.Wrap(err, "error unmarshalling bson into provider settings")
 		}
 	} else if d.ProviderSettings != nil {
+		if region != "" && region != evergreen.DefaultEC2Region {
+			return errors.Errorf("only default region should be saved in provider settings")
+		}
 		if err := mapstructure.Decode(d.ProviderSettings, s); err != nil {
 			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, s)
 		}
@@ -118,19 +122,17 @@ func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string)
 			"input":   *d.ProviderSettings,
 			"output":  *s,
 		})
-		// error if region doesn't match (unless region is default)
-		if region != "" && s.Region != region {
-			if region == evergreen.DefaultEC2Region && s.Region == "" {
-				s.Region = region
-			} else {
-				return errors.Errorf("provider region '%s' doesn't match region '%s'", s.Region, region)
-			}
-		}
+
+		s.Region = evergreen.DefaultEC2Region
 		bytes, err := bson.Marshal(s)
 		if err != nil {
 			return errors.Wrap(err, "error marshalling provider setting into bson")
 		}
-		if err := d.UpdateProviderSettings(bytes); err != nil {
+		doc := &birch.Document{}
+		if err := doc.UnmarshalBSON(bytes); err != nil {
+			return errors.Wrapf(err, "error unmarshalling settings bytes into document")
+		}
+		if err := d.UpdateProviderSettings(doc); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"distro":   d.Id,
 				"provider": d.Provider,
