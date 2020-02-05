@@ -39,7 +39,7 @@ const (
 var descriptionTemplate = template.Must(template.New("Desc").Funcs(template.FuncMap{
 	"taskurl":           getTaskURL,
 	"formatAsTimestamp": formatAsTimestamp,
-	"host_id":           getHostMetadata,
+	"host":              getHostMetadata,
 	"taskLogUrl":        getTaskLogURL,
 }).Parse(descriptionTemplateString))
 

@@ -47,7 +47,7 @@ func (c *JiraConfig) Set() error {
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			"host_id":         c.Host,
+			"host":            c.Host,
 			"username":        c.Username,
 			"password":        c.Password,
 			"default_project": c.DefaultProject,
