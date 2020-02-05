@@ -98,11 +98,8 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 		return nil, errors.Wrap(err, "error retrieving projects")
 	}
 
-	groupsMap := make(map[string][]*restModel.UIProjectFields)
-
 	usr := route.MustHaveUser(ctx)
-
-	favoriteIds := usr.FavoriteProjects
+	groupsMap := make(map[string][]*restModel.UIProjectFields)
 	favorites := []*restModel.UIProjectFields{}
 
 	for _, p := range allProjs {
@@ -115,7 +112,7 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 			Owner:       p.Owner,
 		}
 
-		if isFavorite := util.StringSliceContains(favoriteIds, p.Identifier); isFavorite {
+		if isFavorite := util.StringSliceContains(usr.FavoriteProjects, p.Identifier); isFavorite {
 			favorites = append(favorites, &uiProj)
 			continue
 		}
@@ -141,8 +138,8 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 	})
 
 	pjs := Projects{
-		Favorites: favorites,
-		All:       groupsArr,
+		Favorites:     favorites,
+		OtherProjects: groupsArr,
 	}
 
 	return &pjs, nil

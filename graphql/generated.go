@@ -80,8 +80,8 @@ type ComplexityRoot struct {
 	}
 
 	Projects struct {
-		All       func(childComplexity int) int
-		Favorites func(childComplexity int) int
+		Favorites     func(childComplexity int) int
+		OtherProjects func(childComplexity int) int
 	}
 
 	Query struct {
@@ -358,19 +358,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.Repo(childComplexity), true
 
-	case "Projects.all":
-		if e.complexity.Projects.All == nil {
-			break
-		}
-
-		return e.complexity.Projects.All(childComplexity), true
-
 	case "Projects.favorites":
 		if e.complexity.Projects.Favorites == nil {
 			break
 		}
 
 		return e.complexity.Projects.Favorites(childComplexity), true
+
+	case "Projects.other_projects":
+		if e.complexity.Projects.OtherProjects == nil {
+			break
+		}
+
+		return e.complexity.Projects.OtherProjects(childComplexity), true
 
 	case "Query.projects":
 		if e.complexity.Query.Projects == nil {
@@ -1004,7 +1004,7 @@ type Task {
 
 type Projects {
   favorites: [Project!]!
-  all: [GroupedProjects!]!
+  other_projects: [GroupedProjects!]!
 }
 
 type GroupedProjects {
@@ -1999,7 +1999,7 @@ func (ec *executionContext) _Projects_favorites(ctx context.Context, field graph
 	return ec.marshalNProject2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐUIProjectFieldsᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Projects_all(ctx context.Context, field graphql.CollectedField, obj *Projects) (ret graphql.Marshaler) {
+func (ec *executionContext) _Projects_other_projects(ctx context.Context, field graphql.CollectedField, obj *Projects) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2016,7 +2016,7 @@ func (ec *executionContext) _Projects_all(ctx context.Context, field graphql.Col
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.All, nil
+		return obj.OtherProjects, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5357,8 +5357,8 @@ func (ec *executionContext) _Projects(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "all":
-			out.Values[i] = ec._Projects_all(ctx, field, obj)
+		case "other_projects":
+			out.Values[i] = ec._Projects_other_projects(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

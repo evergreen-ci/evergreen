@@ -1517,7 +1517,7 @@
                 "displayName": "buildhost-test"
               }
             ],
-            "all": [
+            "other_projects": [
               {
                 "name": "bsamek/mongo",
                 "projects": [

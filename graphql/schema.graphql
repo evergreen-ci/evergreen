@@ -124,7 +124,7 @@ type Task {
 
 type Projects {
   favorites: [Project!]!
-  all: [GroupedProjects!]!
+  other_projects: [GroupedProjects!]!
 }
 
 type GroupedProjects {
