@@ -180,7 +180,7 @@ func TestEnsureHasRequiredFields(t *testing.T) {
 
 	i := -1
 	Convey("When validating a distro...", t, func() {
-		db.ClearCollections(distro.Collection)
+		So(db.ClearCollections(distro.Collection), ShouldBeNil)
 		d := []distro.Distro{
 			{},
 			{Id: "a"},

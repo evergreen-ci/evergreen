@@ -1165,11 +1165,6 @@ func (s *EC2Suite) TestGetRegion() {
 	s.NoError(ec2Settings.FromDistroSettings(s.h.Distro, evergreen.DefaultEC2Region))
 	r = ec2Settings.getRegion()
 	s.Equal(evergreen.DefaultEC2Region, r)
-
-	(*s.h.Distro.ProviderSettings)["region"] = "us-west-2"
-	s.NoError(ec2Settings.FromDistroSettings(s.h.Distro, "us-west-2"))
-	r = ec2Settings.getRegion()
-	s.Equal("us-west-2", r)
 }
 
 func (s *EC2Suite) TestUserDataExpand() {
