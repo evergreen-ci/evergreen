@@ -50,17 +50,11 @@
         </md-card>
 
         <md-card style="width:99%">
-          <md-card-content>
+          <md-card-content ng-show="curHostData.status!='initializing' && curHostData.status!='building'">
             <div class="entry">
               <strong>User Tags</strong>
             </div>
-            <div >
-              <em class="text-error" style="margin-left: 5px;" ng-show="curHostData.status=='initializing' || curHostData.status=='building'"  ng-cloak>
-                <!-- building -->
-                Cannot set tags while host is initializing or building.  
-              </em>
-            </div>
-            <div ng-show="curHostData.status!='initializing' && curHostData.status!='building'">
+            <div>
               <div class="variables" style="display: grid;"></div>
               <div id="userTagsList" class="form-group" ng-repeat="(key, value) in curHostData.userTags">
                 <div class="col-lg-2"> <label class="control-label">[[key]]</label></div>
