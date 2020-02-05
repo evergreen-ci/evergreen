@@ -421,7 +421,7 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 	if taskGroup.Timeout != nil {
 
 		err := a.runCommands(ctx, tc, taskGroup.Timeout.List(), runCommandsOptions{})
-		tc.logger.Execution().ErrorWhen(err != nil, message.WrapError(err, message.Fields{
+		tc.logger.Execution().Error(message.WrapError(err, message.Fields{
 			"message": "Error running timeout command",
 		}))
 		tc.logger.Task().InfoWhen(err == nil, message.Fields{
@@ -498,7 +498,7 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 	}
 	if taskGroup.TeardownTask != nil {
 		err := a.runCommands(ctx, tc, taskGroup.TeardownTask.List(), runCommandsOptions{})
-		tc.logger.Task().ErrorWhen(err != nil, message.WrapError(err, message.Fields{
+		tc.logger.Task().Error(message.WrapError(err, message.Fields{
 			"message": "Error running post-task command.",
 		}))
 		tc.logger.Task().InfoWhen(err == nil, message.Fields{
@@ -529,7 +529,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()
 		err := a.runCommands(ctx, tc, taskGroup.TeardownGroup.List(), runCommandsOptions{})
-		grip.ErrorWhen(err != nil, message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message": "Error running post-task command.",
 		}))
 		grip.InfoWhen(err == nil, "Finished running post-group commands")
