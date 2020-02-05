@@ -16,7 +16,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const cloudUpdateSSHKeysJobName = "update-ssh-key-pairs-host"
+const cloudUpdateSSHKeysJobName = "update-ssh-keys-cloud"
 
 type cloudUpdateSSHKeysJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
@@ -60,6 +60,8 @@ func (j *cloudUpdateSSHKeysJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
+	// TODO: we should eventually remove the assumption that we're only using
+	// the default region in EC2.
 	if j.Provider == "" {
 		j.Provider = evergreen.ProviderNameEc2Fleet
 	}
@@ -84,6 +86,15 @@ func (j *cloudUpdateSSHKeysJob) Run(ctx context.Context) {
 			if util.StringSliceContains(pair.EC2Regions, j.Region) {
 				continue
 			}
+		default:
+			err := errors.New("adding SSH keys has not been implemented for this provider")
+			grip.Critical(message.WrapError(err, message.Fields{
+				"provider": j.Provider,
+				"region":   j.Region,
+				"job":      j.ID(),
+			}))
+			j.AddError(err)
+			return
 		}
 
 		if err := mgr.AddSSHKey(ctx, pair); err != nil {

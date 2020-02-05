@@ -15,7 +15,7 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
-const staticUpdateSSHKeysJobName = "update-ssh-key-pairs-host"
+const staticUpdateSSHKeysJobName = "update-ssh-keys-host"
 
 type staticUpdateSSHKeysJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
@@ -55,19 +55,16 @@ func NewStaticUpdateSSHKeysJob(h host.Host, id string) amboy.Job {
 }
 
 func (j *staticUpdateSSHKeysJob) Run(ctx context.Context) {
-	if j.env == nil {
-		j.env = evergreen.GetEnvironment()
-	}
-
 	if j.host == nil {
 		h, err := host.FindOneId(j.HostID)
 		if err != nil {
 			j.AddError(err)
+			return
 		}
 		j.host = h
 	}
 
-	settings := j.env.Settings()
+	settings := evergreen.GetEnvironment().Settings()
 
 	if len(settings.SSHKeyPairs) == 0 {
 		return
@@ -90,7 +87,7 @@ func (j *staticUpdateSSHKeysJob) Run(ctx context.Context) {
 			continue
 		}
 
-		// Either key is already in authorized keys or it is appended.
+		// Either key is already in the authorized keys or it is appended.
 		addKeyCmd := fmt.Sprintf(" grep \"^%s$\" ~/.ssh/authorized_keys2 || echo \"%s\" >> ~/.ssh/authorized_keys2", pair.Public, pair.Public)
 		if logs, err := j.host.RunSSHCommand(ctx, addKeyCmd, sshOpts); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{

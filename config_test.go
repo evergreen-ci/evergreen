@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -707,4 +709,77 @@ func (s *AdminSuite) TestHostJasperConfig() {
 	s.Require().NoError(err)
 
 	s.Equal(config, settings.HostJasper)
+}
+
+func (s *AdminSuite) TestAddEC2RegionToSSHKey() {
+	env := GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	pairs := []SSHKeyPair{
+		{
+			Name:        "ssh_key_pair0",
+			Public:      "public0",
+			Private:     "private0",
+			PublicPath:  "public_path0",
+			PrivatePath: "private_path0",
+			EC2Regions:  []string{},
+		},
+		{
+			Name:        "ssh_key_pair1",
+			Public:      "public1",
+			Private:     "private1",
+			PublicPath:  "public_path1",
+			PrivatePath: "private_path1",
+			EC2Regions:  []string{},
+		},
+	}
+	coll := env.DB().Collection(ConfigCollection)
+	_, err := coll.UpdateOne(ctx, bson.M{
+		idKey: ConfigDocID,
+	}, bson.M{
+		"$set": bson.M{sshKeyPairsKey: pairs},
+	}, options.Update().SetUpsert(true))
+	s.Require().NoError(err)
+
+	region0 := "region0"
+	region1 := "region1"
+	s.Require().NoError(pairs[0].AddEC2Region(region0))
+	s.Contains(pairs[0].EC2Regions, region0)
+	getDBPairs := func() []SSHKeyPair {
+		dbSettings := &Settings{}
+		s.Require().NoError(coll.FindOne(ctx, bson.M{
+			idKey: ConfigDocID,
+		}).Decode(dbSettings))
+		return dbSettings.SSHKeyPairs
+	}
+	dbPairs := getDBPairs()
+	s.Require().Len(dbPairs, 2)
+	s.Require().Len(dbPairs[0].EC2Regions, 1)
+	s.Equal(region0, dbPairs[0].EC2Regions[0])
+	s.Empty(dbPairs[1].EC2Regions)
+
+	s.Require().NoError(pairs[1].AddEC2Region(region1))
+	dbPairs = getDBPairs()
+	s.Require().Len(dbPairs, 2)
+	s.Require().Len(dbPairs[0].EC2Regions, 1)
+	s.Equal(region0, dbPairs[0].EC2Regions[0])
+	s.Require().Len(dbPairs[1].EC2Regions, 1)
+	s.Equal(region1, dbPairs[1].EC2Regions[0])
+
+	s.Require().NoError(pairs[0].AddEC2Region(region0))
+	dbPairs = getDBPairs()
+	s.Require().Len(dbPairs, 2)
+	s.Require().Len(dbPairs[0].EC2Regions, 1)
+	s.Equal(region0, dbPairs[0].EC2Regions[0])
+	s.Require().Len(dbPairs[1].EC2Regions, 1)
+	s.Equal(region1, dbPairs[1].EC2Regions[0])
+
+	s.Require().NoError(pairs[0].AddEC2Region(region1))
+	dbPairs = getDBPairs()
+	s.Require().Len(dbPairs, 2)
+	s.Require().Len(dbPairs[0].EC2Regions, 2)
+	s.Equal(region0, dbPairs[0].EC2Regions[0])
+	s.Equal(region1, dbPairs[0].EC2Regions[1])
+	s.Require().Len(dbPairs[1].EC2Regions, 1)
+	s.Equal(region1, dbPairs[1].EC2Regions[0])
 }

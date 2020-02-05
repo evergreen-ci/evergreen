@@ -221,6 +221,9 @@ func (c *Settings) ValidateAndDefault() error {
 		if c.SSHKeyPairs[i].PrivatePath == "" {
 			c.SSHKeyPairs[i].PrivatePath = filepath.Join(c.SSHKeyDirectory, c.SSHKeyPairs[i].Name)
 		}
+		if c.SSHKeyPairs[i].EC2Regions == nil {
+			c.SSHKeyPairs[i].EC2Regions = []string{}
+		}
 	}
 
 	if catcher.HasErrors() {
@@ -587,6 +590,9 @@ func (p *SSHKeyPair) AddEC2Region(region string) error {
 	_, err := coll.UpdateOne(ctx, query, bson.M{
 		"$addToSet": bson.M{bsonutil.GetDottedKeyName(sshKeyPairsKey, "$", sshKeyPairEC2RegionsKey): region},
 	})
+	if !util.StringSliceContains(p.EC2Regions, region) {
+		p.EC2Regions = append(p.EC2Regions, region)
+	}
 
 	return errors.WithStack(err)
 
