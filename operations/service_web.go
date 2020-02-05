@@ -62,7 +62,8 @@ func startWebService() cli.Command {
 
 			grip.EmergencyFatal(errors.Wrap(startSystemCronJobs(ctx, env), "problem starting background work"))
 
-			// Enqueue jobs to synchronize SSH keys.
+			// Enqueue jobs to ensure each app server has the correct SSH key
+			// files.
 			ts := util.RoundPartOfHour(30).Format(units.TSFormat)
 			grip.Error(env.LocalQueue().Put(ctx, units.NewLocalUpdateSSHKeysJob(ts)))
 

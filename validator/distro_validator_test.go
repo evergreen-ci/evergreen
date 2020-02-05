@@ -20,6 +20,7 @@ func TestCheckDistro(t *testing.T) {
 	env := evergreen.GetEnvironment()
 	conf := env.Settings()
 	conf.Providers.AWS.EC2Keys = []evergreen.EC2Key{{Region: evergreen.DefaultEC2Region, Key: "key", Secret: "secret"}}
+	conf.SSHKeyPairs = []evergreen.SSHKeyPair{{Name: "a"}}
 
 	Convey("When validating a distro", t, func() {
 
@@ -578,4 +579,23 @@ func TestEnsureValidCloneMethod(t *testing.T) {
 	assert.NotNil(t, ensureValidCloneMethod(ctx, &distro.Distro{}, &evergreen.Settings{}))
 	assert.Nil(t, ensureValidCloneMethod(ctx, &distro.Distro{CloneMethod: distro.CloneMethodLegacySSH}, &evergreen.Settings{}))
 	assert.Nil(t, ensureValidCloneMethod(ctx, &distro.Distro{CloneMethod: distro.CloneMethodOAuth}, &evergreen.Settings{}))
+}
+
+func TestEnsureValidSSHKeyName(t *testing.T) {
+	ctx := context.Background()
+	defaultKeyName := "default_key"
+	settings := &evergreen.Settings{
+		Keys: map[string]string{
+			defaultKeyName: "default_key_value",
+		},
+		SSHKeyPairs: []evergreen.SSHKeyPair{
+			{
+				Name: "ssh_key1",
+			},
+		},
+	}
+	assert.Nil(t, ensureValidSSHKeyName(ctx, &distro.Distro{SSHKey: defaultKeyName}, settings))
+	assert.Nil(t, ensureValidSSHKeyName(ctx, &distro.Distro{SSHKey: settings.SSHKeyPairs[0].Name}, settings))
+	assert.NotNil(t, ensureValidSSHKeyName(ctx, &distro.Distro{}, settings))
+	assert.NotNil(t, ensureValidSSHKeyName(ctx, &distro.Distro{SSHKey: "nonexistent"}, settings))
 }

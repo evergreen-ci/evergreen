@@ -146,7 +146,6 @@ func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
 			keyPaths = append(keyPaths, pair.PrivatePath)
 		}
 	}
-	// Fallback SSH key
 	if defaultKeyPath := settings.Keys[h.Distro.SSHKey]; defaultKeyPath != "" {
 		keyPaths = append(keyPaths, defaultKeyPath)
 	}

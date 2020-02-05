@@ -90,11 +90,11 @@ func TestModelConversion(t *testing.T) {
 	}
 	require.Len(apiSettings.SSHKeyPairs, len(testSettings.SSHKeyPairs))
 	for i := 0; i < len(testSettings.SSHKeyPairs); i++ {
-		assert.Equal(testSettings.SSHKeyPairs[i].Name, FromAPIString(apiSettings.SSHKeyPairs[i].Name))
-		assert.Equal(testSettings.SSHKeyPairs[i].Public, FromAPIString(apiSettings.SSHKeyPairs[i].Public))
-		assert.Equal(testSettings.SSHKeyPairs[i].PublicPath, FromAPIString(apiSettings.SSHKeyPairs[i].PublicPath))
-		assert.Equal(testSettings.SSHKeyPairs[i].Private, FromAPIString(apiSettings.SSHKeyPairs[i].Private))
-		assert.Equal(testSettings.SSHKeyPairs[i].PrivatePath, FromAPIString(apiSettings.SSHKeyPairs[i].PrivatePath))
+		assert.Equal(testSettings.SSHKeyPairs[i].Name, FromStringPtr(apiSettings.SSHKeyPairs[i].Name))
+		assert.Equal(testSettings.SSHKeyPairs[i].Public, FromStringPtr(apiSettings.SSHKeyPairs[i].Public))
+		assert.Equal(testSettings.SSHKeyPairs[i].PublicPath, FromStringPtr(apiSettings.SSHKeyPairs[i].PublicPath))
+		assert.Equal(testSettings.SSHKeyPairs[i].Private, FromStringPtr(apiSettings.SSHKeyPairs[i].Private))
+		assert.Equal(testSettings.SSHKeyPairs[i].PrivatePath, FromStringPtr(apiSettings.SSHKeyPairs[i].PrivatePath))
 	}
 
 	assert.EqualValues(testSettings.Alerts.SMTP.From, FromStringPtr(apiSettings.Alerts.SMTP.From))

@@ -25,6 +25,7 @@ var distroSyntaxValidators = []distroValidator{
 	ensureHasNonZeroID,
 	ensureHasRequiredFields,
 	ensureValidSSHOptions,
+	ensureValidSSHKeyName,
 	ensureValidExpansions,
 	ensureStaticHostsAreNotSpawnable,
 	ensureValidContainerPool,
@@ -37,7 +38,6 @@ var distroSyntaxValidators = []distroValidator{
 	ensureHasValidPlannerSettings,
 	ensureHasValidFinderSettings,
 	ensureHasValidDispatcherSettings,
-	ensureValidSSHKeyName,
 }
 
 // CheckDistro checks if the distro configuration syntax is valid. Returns
@@ -201,6 +201,25 @@ func ensureValidSSHOptions(ctx context.Context, d *distro.Distro, s *evergreen.S
 		}
 	}
 	return nil
+}
+
+// ensureValidSSHKeyName checks that the SSH key name corresponds to an actual
+// SSH key.
+func ensureValidSSHKeyName(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
+	if key := s.Keys[d.SSHKey]; key != "" {
+		return nil
+	}
+	for _, key := range s.SSHKeyPairs {
+		if key.Name == d.SSHKey {
+			return nil
+		}
+	}
+	return ValidationErrors{
+		{
+			Message: fmt.Sprintf("ssh key '%s' not found", d.SSHKey),
+			Level:   Error,
+		},
+	}
 }
 
 // ensureValidArch checks that the architecture is one of the supported
@@ -414,22 +433,4 @@ func ensureHasValidDispatcherSettings(ctx context.Context, d *distro.Distro, s *
 	}
 
 	return nil
-}
-
-// kim: TODO: test this
-func ensureValidSSHKeyName(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
-	if key := s.Keys[d.SSHKey]; key != "" {
-		return nil
-	}
-	for _, key := range s.SSHKeyPairs {
-		if key.Name == d.SSHKey {
-			return nil
-		}
-	}
-	return ValidationErrors{
-		{
-			Message: fmt.Sprintf("ssh key '%s' not found", d.SSHKey),
-			Level:   Error,
-		},
-	}
 }
