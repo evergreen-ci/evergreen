@@ -61,6 +61,9 @@ var (
 	sshKeyPairsKey        = bsonutil.MustHaveTag(Settings{}, "SSHKeyPairs")
 	sshKeyDirectoryKey    = bsonutil.MustHaveTag(Settings{}, "SSHKeyDirectory")
 
+	sshKeyPairNameKey       = bsonutil.MustHaveTag(SSHKeyPair{}, "Name")
+	sshKeyPairEC2RegionsKey = bsonutil.MustHaveTag(SSHKeyPair{}, "EC2Regions")
+
 	// degraded mode flags
 	taskDispatchKey                 = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")
 	hostInitKey                     = bsonutil.MustHaveTag(ServiceFlags{}, "HostInitDisabled")

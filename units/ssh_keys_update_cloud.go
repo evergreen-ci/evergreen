@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -44,8 +45,8 @@ func makeCloudUpdateSSHKeysJob() *cloudUpdateSSHKeysJob {
 	return j
 }
 
-// NewCloudUpdateSSHKeysJob updates the SSH key files available for a single
-// region in the cloud provider.
+// NewCloudUpdateSSHKeysJob updates the SSH keys available for a single region
+// in the given cloud provider.
 func NewCloudUpdateSSHKeysJob(provider, region, id string) amboy.Job {
 	j := makeCloudUpdateSSHKeysJob()
 	j.Provider = provider
@@ -62,6 +63,9 @@ func (j *cloudUpdateSSHKeysJob) Run(ctx context.Context) {
 	if j.Provider == "" {
 		j.Provider = evergreen.ProviderNameEc2Fleet
 	}
+	if j.Region == "" {
+		j.Region = evergreen.DefaultEC2Region
+	}
 	mgr, err := cloud.GetManager(ctx, j.env, cloud.ManagerOpts{
 		Provider: j.Provider,
 		Region:   j.Region,
@@ -71,10 +75,39 @@ func (j *cloudUpdateSSHKeysJob) Run(ctx context.Context) {
 		return
 	}
 
-	for _, pair := range j.env.Settings().SSHKeyPairs {
+	settings := j.env.Settings()
+
+	for _, pair := range settings.SSHKeyPairs {
+		if util.StringSliceContains(pair.EC2Regions, j.Region) {
+			continue
+		}
+
 		if err := mgr.AddSSHKey(ctx, pair); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":  "could not add SSH key to cloud manager",
+				"provider": j.Provider,
+				"region":   j.Region,
+				"job":      j.ID(),
+			}))
+			j.AddError(err)
+			return
+		}
+
+		switch j.Provider {
+		case evergreen.ProviderNameEc2Fleet, evergreen.ProviderNameEc2Auto, evergreen.ProviderNameEc2OnDemand, evergreen.ProviderNameEc2Spot:
+			if err := pair.AddEC2Region(j.Region); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message":  "could not update EC2 regions for SSH key",
+					"provider": j.Provider,
+					"region":   j.Region,
+					"job":      j.ID(),
+				}))
+				j.AddError(err)
+				return
+			}
+		default:
+			err := errors.New("adding SSH keys has not been implemented for this provider")
+			grip.Critical(message.WrapError(err, message.Fields{
 				"provider": j.Provider,
 				"region":   j.Region,
 				"job":      j.ID(),

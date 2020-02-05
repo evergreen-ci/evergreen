@@ -37,6 +37,7 @@ var distroSyntaxValidators = []distroValidator{
 	ensureHasValidPlannerSettings,
 	ensureHasValidFinderSettings,
 	ensureHasValidDispatcherSettings,
+	ensureValidSSHKeyName,
 }
 
 // CheckDistro checks if the distro configuration syntax is valid. Returns
@@ -413,4 +414,22 @@ func ensureHasValidDispatcherSettings(ctx context.Context, d *distro.Distro, s *
 	}
 
 	return nil
+}
+
+// kim: TODO: test this
+func ensureValidSSHKeyName(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
+	if key := s.Keys[d.SSHKey]; key != "" {
+		return nil
+	}
+	for _, key := range s.SSHKeyPairs {
+		if key.Name == d.SSHKey {
+			return nil
+		}
+	}
+	return ValidationErrors{
+		{
+			Message: fmt.Sprintf("ssh key '%s' not found", d.SSHKey),
+			Level:   Error,
+		},
+	}
 }

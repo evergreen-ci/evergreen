@@ -138,15 +138,6 @@ func (h *Host) GetSSHInfo() (*util.StaticHostInfo, error) {
 	return hostInfo, nil
 }
 
-func (h *Host) GetSSHKeyPath(settings *evergreen.Settings) (string, error) {
-	keyPath := settings.Keys[h.Distro.SSHKey]
-	if keyPath == "" {
-		return "", errors.New("no SSH key specified for host")
-	}
-
-	return keyPath, nil
-}
-
 // GetSSHOptions returns the options to SSH into this host.
 // TODO (kim): EVG-6389: this currently relies on the fact that the EC2 provider has a
 // single distro-level SSH key name corresponding to an existing SSH key file on

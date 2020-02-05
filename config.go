@@ -11,6 +11,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy/logger"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
@@ -555,11 +556,40 @@ type PluginConfig map[string]map[string]interface{}
 
 // SSHKeyPair represents a public and private SSH key pair.
 type SSHKeyPair struct {
-	Name        string `yaml:"name" bson:"name" json:"name"`
-	Public      string `yaml:"public" bson:"public" json:"public"`
-	PublicPath  string `yaml:"path" bson:"path" json:"path"`
-	Private     string `yaml:"private" bson:"private" json:"private"`
-	PrivatePath string `yaml:"private_path" bson:"private_path" json:"private_path"`
+	Name   string `bson:"name" json:"name" yaml:"name"`
+	Public string `bson:"public" json:"public" yaml:"public"`
+	// PublicPath is the path to the file containing the public key.
+	PublicPath string `bson:"public_path" json:"public_path" yaml:"public_path"`
+	Private    string `bson:"private" json:"private" yaml:"private"`
+	// PrivatePath is the path to the identity file containing the private key.
+	PrivatePath string `bson:"private_path" json:"private_path" yaml:"private_path"`
+	// EC2Regions contains all EC2 regions that have stored this SSH key.
+	EC2Regions []string `bson:"ec2_regions" json:"ec2_regions" yaml:"ec2_regions"`
+}
+
+// AddEC2Region adds the given EC2 region to the set of regions containing the
+// SSH key.
+// TODO (kim): test this actually works.
+func (p *SSHKeyPair) AddEC2Region(region string) error {
+	env := GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	coll := env.DB().Collection(ConfigCollection)
+
+	query := bson.M{
+		idKey: ConfigDocID,
+		sshKeyPairsKey: bson.M{
+			"$elemMatch": bson.M{
+				sshKeyPairNameKey: p.Name,
+			},
+		},
+	}
+	_, err := coll.UpdateOne(ctx, query, bson.M{
+		"$addToSet": bson.M{bsonutil.GetDottedKeyName(sshKeyPairsKey, "$", sshKeyPairEC2RegionsKey): region},
+	})
+
+	return errors.WithStack(err)
+
 }
 
 type WriteConcern struct {
