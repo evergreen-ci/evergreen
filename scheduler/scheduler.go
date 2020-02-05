@@ -300,7 +300,7 @@ func getCreateOptionsFromDistro(d distro.Distro) (*host.CreateOptions, error) {
 		return nil, errors.Wrapf(err, "Error getting docker options from distro %s", d.Id)
 	}
 	if err := dockerOptions.Validate(); err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	hostOptions := host.CreateOptions{

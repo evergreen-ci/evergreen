@@ -136,6 +136,7 @@ func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string)
 				"provider": d.Provider,
 				"settings": d.ProviderSettings,
 			}))
+			return errors.Wrapf(err, "error updating provider settings")
 		}
 	}
 

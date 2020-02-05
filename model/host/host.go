@@ -229,6 +229,8 @@ func (opts *DockerOptions) FromDistroSettings(d distro.Distro, _ string) error {
 				"provider": d.Provider,
 				"settings": d.ProviderSettings,
 			}))
+			return errors.Wrapf(err, "error updating provider settings")
+
 		}
 	}
 	return nil

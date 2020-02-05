@@ -74,6 +74,7 @@ func (opts *openStackSettings) FromDistroSettings(d distro.Distro, _ string) err
 				"provider": d.Provider,
 				"settings": d.ProviderSettings,
 			}))
+			return errors.Wrapf(err, "error updating provider settings")
 		}
 	}
 	return nil
