@@ -172,7 +172,7 @@ func (j *buildingContainerImageJob) tryRequeue(ctx context.Context) {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":   "failed to requeue setup job",
 			"operation": "container build",
-			"host":      j.ParentID,
+			"host_id":   j.ParentID,
 			"job":       j.ID(),
 			"attempts":  j.parent.ContainerBuildAttempt,
 		}))
