@@ -1,13 +1,13 @@
 package model
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -112,8 +112,10 @@ func UpsertOneProcessRuntime(query interface{}, update interface{}) error {
 		return err
 	}
 
-	grip.InfoWhen(info.UpsertedId != nil, fmt.Sprintf("Added '%s' process to ProcessRuntime  db",
-		info.UpsertedId))
+	grip.InfoWhen(info.UpsertedId != nil, message.Fields{
+		"id":      info.UpsertedId,
+		"message": "Added process to ProcessRuntime db",
+	})
 
 	return nil
 }
