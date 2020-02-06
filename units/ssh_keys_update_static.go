@@ -63,12 +63,11 @@ func (j *staticUpdateSSHKeysJob) Run(ctx context.Context) {
 		}
 		j.host = h
 	}
-
-	settings := evergreen.GetEnvironment().Settings()
-
-	if len(settings.SSHKeyPairs) == 0 {
+	if j.host.Status != evergreen.HostRunning {
 		return
 	}
+
+	settings := evergreen.GetEnvironment().Settings()
 
 	sshOpts, err := j.host.GetSSHOptions(settings)
 	if err != nil {
