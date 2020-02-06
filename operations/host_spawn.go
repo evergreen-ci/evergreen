@@ -14,6 +14,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/send"
+	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -985,11 +988,11 @@ Examples:
 					return errors.Wrap(err, "could not create directory structure")
 				}
 			}
-			cmd, err := buildRsyncCommand(ctx, opts)
+			cmd, err := buildRsyncCommand(opts)
 			if err != nil {
 				return errors.Wrap(err, "could not build rsync command")
 			}
-			return cmd.Run()
+			return cmd.Run(ctx)
 		},
 	}
 }
@@ -1080,13 +1083,13 @@ type rsyncOpts struct {
 }
 
 // buildRsyncCommand takes the given options and constructs an rsync command.
-func buildRsyncCommand(ctx context.Context, opts rsyncOpts) (*exec.Cmd, error) {
+func buildRsyncCommand(opts rsyncOpts) (*jasper.Command, error) {
 	rsync, err := exec.LookPath("rsync")
 	if err != nil {
 		return nil, errors.Wrap(err, "could not find rsync binary in the PATH")
 	}
 
-	args := []string{"-a", "--no-links", "--no-devices", "--no-specials", "-hh", "-I", "-z", "--progress", "-e", "ssh"}
+	args := []string{rsync, "-a", "--no-links", "--no-devices", "--no-specials", "-hh", "-I", "-z", "--progress", "-e", "ssh"}
 	if opts.shouldDelete {
 		args = append(args, "--delete")
 	}
@@ -1116,12 +1119,19 @@ func buildRsyncCommand(ctx context.Context, opts rsyncOpts) (*exec.Cmd, error) {
 	}
 
 	if opts.dryRun {
-		cmdWithoutDryRun := append([]string{rsync}, args[:dryRunIndex]...)
+		cmdWithoutDryRun := make([]string, 0, len(args)-1)
+		_ = copy(cmdWithoutDryRun, args[:dryRunIndex])
 		cmdWithoutDryRun = append(cmdWithoutDryRun, args[dryRunIndex+1:]...)
 		fmt.Printf("Going to execute the following command: %s\n", strings.Join(cmdWithoutDryRun, " "))
 	}
-	cmd := exec.CommandContext(ctx, rsync, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd, nil
+	logLevel := level.Info
+	stdout, err := send.NewPlainLogger("stdout", send.LevelInfo{Threshold: logLevel, Default: logLevel})
+	if err != nil {
+		return nil, errors.Wrap(err, "problem setting up standard output")
+	}
+	stderr, err := send.NewPlainErrorLogger("stderr", send.LevelInfo{Threshold: logLevel, Default: logLevel})
+	if err != nil {
+		return nil, errors.Wrap(err, "problem setting up standard error")
+	}
+	return jasper.NewCommand().Add(args).SetOutputSender(logLevel, stdout).SetOutputSender(logLevel, stderr), nil
 }
