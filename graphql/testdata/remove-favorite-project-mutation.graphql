@@ -1,0 +1,8 @@
+mutation {
+  removeFavoriteProject(identifier: "buildhost-test") {
+    identifier
+    repo
+    owner
+    displayName
+  }
+}

@@ -50,6 +50,27 @@ func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier st
 	}, nil
 }
 
+func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier string) (*restModel.UIProjectFields, error) {
+	p, err := model.FindOneProjectRef(identifier)
+	if err != nil || p == nil {
+		return nil, errors.Errorf("could not find project '%s'", identifier)
+	}
+
+	usr := route.MustHaveUser(ctx)
+
+	err = usr.RemoveFavoriteProject(identifier)
+	if err != nil {
+		return nil, errors.Wrap(err, "error removing project from user's favorites")
+	}
+
+	return &restModel.UIProjectFields{
+		DisplayName: p.DisplayName,
+		Identifier:  p.Identifier,
+		Repo:        p.Repo,
+		Owner:       p.Owner,
+	}, nil
+}
+
 type queryResolver struct{ *Resolver }
 
 type patchResolver struct{ *Resolver }

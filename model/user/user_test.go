@@ -457,6 +457,18 @@ func (s *UserTestSuite) TestFavoriteProjects() {
 	err = u.AddFavoritedProject(projID)
 	s.Require().Error(err)
 	s.EqualValues(u.FavoriteProjects, expected)
+
+	// remove a project
+	expected = []string{}
+
+	err = u.RemoveFavoriteProject(projID)
+	s.Require().Error(err)
+	s.EqualValues(u.FavoriteProjects, expected)
+
+	// try to remove a project that does not exist
+	err = u.RemoveFavoriteProject(projID)
+	s.Require().Error(err)
+	s.EqualValues(u.FavoriteProjects, expected)
 }
 
 func (s *UserTestSuite) TestHasPermission() {
