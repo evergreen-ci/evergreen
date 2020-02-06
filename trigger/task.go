@@ -635,37 +635,50 @@ func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *
 	if test.Status != evergreen.TestFailedStatus {
 		return false, nil
 	}
-	record, err := alertrecord.FindByLastTaskRegressionByTest(sub.ID, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project)
+
+	alertForTask, err := alertrecord.FindByTaskRegressionByTaskTest(sub.ID, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, t.task.Id)
 	if err != nil {
-		return false, errors.Wrap(err, "Failed to fetch alert record")
+		return false, errors.Wrap(err, "can't find alerts for task test")
 	}
-	if record != nil {
-		if record.RevisionOrderNumber == t.task.RevisionOrderNumber || previousTask == nil {
-			return false, nil
-		}
-
-		oldTestResult, ok := t.oldTestResults[test.TestFile]
-		if !ok {
-			if test.Status != evergreen.TestFailedStatus {
-				return false, nil
-			}
-
-		} else if !isTestStatusRegression(oldTestResult.Status, test.Status) {
-			if len(record.TaskId) != 0 {
-				var isOld bool
-				isOld, err = taskFinishedTwoOrMoreDaysAgo(record.TaskId, sub)
-				if err != nil || !isOld {
-					return false, errors.Wrap(err, "failed to fetch last alert age")
-				}
-			}
-		}
+	// we've already alerted for this task
+	if alertForTask != nil {
+		return false, nil
 	}
 
-	err = alertrecord.InsertNewTaskRegressionByTestRecord(sub.ID, t.task.Id, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, t.task.RevisionOrderNumber)
+	// a test in a new task is defined as a regression
+	if previousTask == nil {
+		return true, nil
+	}
+
+	oldTestResult, ok := t.oldTestResults[test.TestFile]
+	// a new test in an existing task is defined as a regression
+	if !ok {
+		return true, nil
+	}
+
+	// try to find a stepback alert
+	alertForStepback, err := alertrecord.FindByTaskRegressionTestAndOrderNumber(sub.ID, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, previousTask.RevisionOrderNumber)
 	if err != nil {
-		return false, errors.Wrap(err, "failed to save alert record")
+		return false, errors.Wrap(err, "can't get alert record")
 	}
-	return true, nil
+	// never alerted for this regression before
+	if alertForStepback == nil && isTestStatusRegression(oldTestResult.Status, test.Status) {
+		return true, nil
+	}
+
+	mostRecentAlert, err := alertrecord.FindByLastTaskRegressionByTest(sub.ID, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project)
+	if mostRecentAlert != nil {
+		isOld, err := taskFinishedTwoOrMoreDaysAgo(mostRecentAlert.TaskId, sub)
+		if err != nil {
+			return false, errors.Wrap(err, "failed to fetch last alert age")
+		}
+		// resend the alert for this regression if it's past the threshold
+		if isOld {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notification.Notification, error) {
@@ -707,13 +720,20 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 		if !match {
 			continue
 		}
-		var shouldInclude bool
-		shouldInclude, err = t.shouldIncludeTest(sub, previousCompleteTask, &t.task.LocalTestResults[i])
+		shouldInclude, err := t.shouldIncludeTest(sub, previousCompleteTask, &t.task.LocalTestResults[i])
 		if err != nil {
 			catcher.Add(err)
 			continue
 		}
 		if shouldInclude {
+			orderNumber := t.task.RevisionOrderNumber
+			if previousCompleteTask != nil {
+				orderNumber = previousCompleteTask.RevisionOrderNumber
+			}
+			if err = alertrecord.InsertNewTaskRegressionByTestRecord(sub.ID, t.task.Id, t.task.LocalTestResults[i].TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, orderNumber); err != nil {
+				catcher.Add(err)
+				continue
+			}
 			testsToAlert = append(testsToAlert, t.task.LocalTestResults[i])
 		}
 	}
