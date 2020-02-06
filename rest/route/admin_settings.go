@@ -79,7 +79,7 @@ func (h *adminPostHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if err := newSettings.Validate(); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validation error"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Validation error"))
 	}
 
 	err = distro.ValidateContainerPoolDistros(newSettings)

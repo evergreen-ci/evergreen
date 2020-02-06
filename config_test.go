@@ -716,20 +716,16 @@ func (s *AdminSuite) TestAddEC2RegionToSSHKey() {
 	defer cancel()
 	pairs := []SSHKeyPair{
 		{
-			Name:        "ssh_key_pair0",
-			Public:      "public0",
-			Private:     "private0",
-			PublicPath:  "public_path0",
-			PrivatePath: "private_path0",
-			EC2Regions:  []string{},
+			Name:       "ssh_key_pair0",
+			Public:     "public0",
+			Private:    "private0",
+			EC2Regions: []string{},
 		},
 		{
-			Name:        "ssh_key_pair1",
-			Public:      "public1",
-			Private:     "private1",
-			PublicPath:  "public_path1",
-			PrivatePath: "private_path1",
-			EC2Regions:  []string{},
+			Name:       "ssh_key_pair1",
+			Public:     "public1",
+			Private:    "private1",
+			EC2Regions: []string{},
 		},
 	}
 	coll := env.DB().Collection(ConfigCollection)

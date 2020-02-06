@@ -10,6 +10,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/mongodb/grip/level"
+	"github.com/pkg/errors"
 	mgobson "gopkg.in/mgo.v2/bson"
 
 	"github.com/evergreen-ci/evergreen"
@@ -122,7 +124,16 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.HostInit.SSHTimeoutSeconds, settings.HostInit.SSHTimeoutSeconds)
 	s.EqualValues(testSettings.HostInit.HostThrottle, settings.HostInit.HostThrottle)
 	s.EqualValues(testSettings.Jira.Username, settings.Jira.Username)
-	s.Equal(testSettings.LoggerConfig.DefaultLevel, settings.LoggerConfig.DefaultLevel)
+	// We have to check different cases because the mock connector does not set
+	// defaults for the settings.
+	switch s.sc.(type) {
+	case *data.MockConnector:
+		s.Equal(testSettings.LoggerConfig.DefaultLevel, settings.LoggerConfig.DefaultLevel)
+	case *data.DBConnector:
+		s.Equal(level.Info.String(), settings.LoggerConfig.DefaultLevel)
+	default:
+		s.Error(errors.New("data connector was not a DBConnector or MockConnector"))
+	}
 	s.EqualValues(testSettings.LoggerConfig.Buffer.Count, settings.LoggerConfig.Buffer.Count)
 	s.EqualValues(testSettings.Notify.SMTP.From, settings.Notify.SMTP.From)
 	s.EqualValues(testSettings.Notify.SMTP.Port, settings.Notify.SMTP.Port)

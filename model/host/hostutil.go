@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -142,7 +143,9 @@ func (h *Host) GetSSHInfo() (*util.StaticHostInfo, error) {
 func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
 	var keyPaths []string
 	for _, pair := range settings.SSHKeyPairs {
+		pp.Println("private ssh key path", pair.PrivatePath(settings))
 		if _, err := os.Stat(pair.PrivatePath(settings)); err == nil {
+			pp.Println("found key in path")
 			keyPaths = append(keyPaths, pair.PrivatePath(settings))
 		}
 	}

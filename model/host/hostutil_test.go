@@ -100,24 +100,24 @@ func TestGetSSHOptions(t *testing.T) {
 			checkContainsOptionsAndValues(t, expected, opts)
 		},
 		"IncludesMultipleIdentityFiles": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			anotherKeyName := "another_key"
-			anotherKeyFile, err := ioutil.TempFile("", anotherKeyName)
+			keyName := "key_file"
+			keyFile, err := ioutil.TempFile(settings.SSHKeyDirectory, keyName)
 			require.NoError(t, err)
+			assert.NoError(t, keyFile.Close())
 			defer func() {
-				assert.NoError(t, anotherKeyFile.Close())
-				assert.NoError(t, os.RemoveAll(anotherKeyFile.Name()))
+				assert.NoError(t, os.RemoveAll(keyFile.Name()))
 			}()
 
-			anotherKey := evergreen.SSHKeyPair{Name: anotherKeyName, PrivatePath: anotherKeyFile.Name()}
-			settings.SSHKeyPairs = []evergreen.SSHKeyPair{anotherKey}
+			key := evergreen.SSHKeyPair{Name: filepath.Base(keyFile.Name())}
+			settings.SSHKeyPairs = []evergreen.SSHKeyPair{key}
 
-			expected := []string{"-i", defaultKeyPath, "-i", anotherKey.PrivatePath, "-o", "UserKnownHostsFile=/dev/null"}
+			expected := []string{"-i", key.PrivatePath(settings), "-i", defaultKeyPath, "-o", "UserKnownHostsFile=/dev/null"}
 			opts, err := h.GetSSHOptions(settings)
 			require.NoError(t, err)
 			checkContainsOptionsAndValues(t, expected, opts)
 		},
 		"IgnoresNonexistentIdentityFiles": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			nonexistentKey := evergreen.SSHKeyPair{Name: "nonexistent", PrivatePath: "nonexistent"}
+			nonexistentKey := evergreen.SSHKeyPair{Name: "nonexistent"}
 			settings.SSHKeyPairs = []evergreen.SSHKeyPair{nonexistentKey}
 
 			expected := []string{"-i", defaultKeyPath, "-o", "UserKnownHostsFile=/dev/null"}
@@ -141,6 +141,11 @@ func TestGetSSHOptions(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
+			sshKeyDir, err := ioutil.TempDir("", "ssh_key_directory")
+			require.NoError(t, err)
+			defer func() {
+				assert.NoError(t, os.RemoveAll(sshKeyDir))
+			}()
 			testCase(t, &Host{
 				Id: "id",
 				Distro: distro.Distro{
@@ -150,6 +155,7 @@ func TestGetSSHOptions(t *testing.T) {
 				Keys: map[string]string{
 					defaultKeyName: defaultKeyPath,
 				},
+				SSHKeyDirectory: sshKeyDir,
 			})
 		})
 	}
