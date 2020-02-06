@@ -660,7 +660,7 @@ func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *
 		// try to find a stepback alert
 		alertForStepback, err := alertrecord.FindByTaskRegressionTestAndOrderNumber(sub.ID, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, previousTask.RevisionOrderNumber)
 		if err != nil {
-			return false, errors.Wrap(err, "can't get alert record")
+			return false, errors.Wrap(err, "can't get alert for stepback")
 		}
 		// never alerted for this regression before
 		if alertForStepback == nil {
@@ -668,6 +668,9 @@ func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *
 		}
 	} else {
 		mostRecentAlert, err := alertrecord.FindByLastTaskRegressionByTest(sub.ID, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project)
+		if err != nil {
+			return false, errors.Wrap(err, "can't get most recent alert")
+		}
 		if mostRecentAlert == nil {
 			return true, nil
 		}
