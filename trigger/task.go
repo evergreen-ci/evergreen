@@ -656,18 +656,21 @@ func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *
 		return true, nil
 	}
 
-	// try to find a stepback alert
-	alertForStepback, err := alertrecord.FindByTaskRegressionTestAndOrderNumber(sub.ID, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, previousTask.RevisionOrderNumber)
-	if err != nil {
-		return false, errors.Wrap(err, "can't get alert record")
-	}
-	// never alerted for this regression before
-	if alertForStepback == nil && isTestStatusRegression(oldTestResult.Status, test.Status) {
-		return true, nil
-	}
-
-	mostRecentAlert, err := alertrecord.FindByLastTaskRegressionByTest(sub.ID, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project)
-	if mostRecentAlert != nil {
+	if isTestStatusRegression(oldTestResult.Status, test.Status) {
+		// try to find a stepback alert
+		alertForStepback, err := alertrecord.FindByTaskRegressionTestAndOrderNumber(sub.ID, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, previousTask.RevisionOrderNumber)
+		if err != nil {
+			return false, errors.Wrap(err, "can't get alert record")
+		}
+		// never alerted for this regression before
+		if alertForStepback == nil {
+			return true, nil
+		}
+	} else {
+		mostRecentAlert, err := alertrecord.FindByLastTaskRegressionByTest(sub.ID, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project)
+		if mostRecentAlert == nil {
+			return true, nil
+		}
 		isOld, err := taskFinishedTwoOrMoreDaysAgo(mostRecentAlert.TaskId, sub)
 		if err != nil {
 			return false, errors.Wrap(err, "failed to fetch last alert age")
