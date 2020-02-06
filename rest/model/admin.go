@@ -141,11 +141,9 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.SSHKeyPairs = []APISSHKeyPair{}
 		for _, pair := range v.SSHKeyPairs {
 			as.SSHKeyPairs = append(as.SSHKeyPairs, APISSHKeyPair{
-				Name:        ToStringPtr(pair.Name),
-				Public:      ToStringPtr(pair.Public),
-				PublicPath:  ToStringPtr(pair.PublicPath),
-				Private:     ToStringPtr(pair.Private),
-				PrivatePath: ToStringPtr(pair.PrivatePath),
+				Name:    ToStringPtr(pair.Name),
+				Public:  ToStringPtr(pair.Public),
+				Private: ToStringPtr(pair.Private),
 			})
 		}
 		as.UnexpirableHostsPerUser = &v.UnexpirableHostsPerUser
@@ -247,11 +245,9 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	settings.SSHKeyPairs = []evergreen.SSHKeyPair{}
 	for _, pair := range as.SSHKeyPairs {
 		settings.SSHKeyPairs = append(settings.SSHKeyPairs, evergreen.SSHKeyPair{
-			Name:        FromStringPtr(pair.Name),
-			Public:      FromStringPtr(pair.Public),
-			PublicPath:  FromStringPtr(pair.PublicPath),
-			Private:     FromStringPtr(pair.Private),
-			PrivatePath: FromStringPtr(pair.PrivatePath),
+			Name:    FromStringPtr(pair.Name),
+			Public:  FromStringPtr(pair.Public),
+			Private: FromStringPtr(pair.Private),
 		})
 	}
 	return settings, nil
@@ -1450,11 +1446,9 @@ type APIServiceFlags struct {
 }
 
 type APISSHKeyPair struct {
-	Name        *string `json:"name"`
-	Public      *string `json:"public"`
-	PublicPath  *string `json:"public_path"`
-	Private     *string `json:"private"`
-	PrivatePath *string `json:"private_path"`
+	Name    *string `json:"name"`
+	Public  *string `json:"public"`
+	Private *string `json:"private"`
 }
 
 type APISlackConfig struct {

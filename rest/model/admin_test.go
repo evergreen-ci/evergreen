@@ -92,9 +92,7 @@ func TestModelConversion(t *testing.T) {
 	for i := 0; i < len(testSettings.SSHKeyPairs); i++ {
 		assert.Equal(testSettings.SSHKeyPairs[i].Name, FromStringPtr(apiSettings.SSHKeyPairs[i].Name))
 		assert.Equal(testSettings.SSHKeyPairs[i].Public, FromStringPtr(apiSettings.SSHKeyPairs[i].Public))
-		assert.Equal(testSettings.SSHKeyPairs[i].PublicPath, FromStringPtr(apiSettings.SSHKeyPairs[i].PublicPath))
 		assert.Equal(testSettings.SSHKeyPairs[i].Private, FromStringPtr(apiSettings.SSHKeyPairs[i].Private))
-		assert.Equal(testSettings.SSHKeyPairs[i].PrivatePath, FromStringPtr(apiSettings.SSHKeyPairs[i].PrivatePath))
 	}
 
 	assert.EqualValues(testSettings.Alerts.SMTP.From, FromStringPtr(apiSettings.Alerts.SMTP.From))
@@ -197,9 +195,7 @@ func TestModelConversion(t *testing.T) {
 	for i := 0; i < len(testSettings.SSHKeyPairs); i++ {
 		assert.Equal(dbSettings.SSHKeyPairs[i].Name, testSettings.SSHKeyPairs[i].Name)
 		assert.Equal(dbSettings.SSHKeyPairs[i].Public, testSettings.SSHKeyPairs[i].Public)
-		assert.Equal(dbSettings.SSHKeyPairs[i].PublicPath, testSettings.SSHKeyPairs[i].PublicPath)
 		assert.Equal(dbSettings.SSHKeyPairs[i].Private, testSettings.SSHKeyPairs[i].Private)
-		assert.Equal(dbSettings.SSHKeyPairs[i].PrivatePath, testSettings.SSHKeyPairs[i].PrivatePath)
 	}
 	assert.EqualValues(testSettings.Slack.Level, dbSettings.Slack.Level)
 	assert.EqualValues(testSettings.Slack.Options.Channel, dbSettings.Slack.Options.Channel)

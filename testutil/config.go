@@ -265,11 +265,9 @@ func MockConfig() *evergreen.Settings {
 		SSHKeyDirectory: "/ssh_key_directory",
 		SSHKeyPairs: []evergreen.SSHKeyPair{
 			{
-				Name:        "key",
-				Public:      "public",
-				PublicPath:  "/ssh_key_directory/key.pub",
-				Private:     "private",
-				PrivatePath: "/ssh_key_directory/key",
+				Name:    "key",
+				Public:  "public",
+				Private: "private",
 			},
 		},
 		Slack: evergreen.SlackConfig{
