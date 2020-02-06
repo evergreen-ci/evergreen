@@ -36,6 +36,7 @@ mciModule.factory('TestSample', function () {
     // Returns only the keys that have results stored in them
     this.resultKeys = function (testName) {
       var testInfo = this.resultForTest(testName);
+      // FIXME: questionable null handling. see https://github.com/evergreen-ci/evergreen/pull/3103/files#r375279754
       return _.pluck(_(testInfo.results).pairs().filter(function (x) {
         return typeof (x[1]) == "object"
       }), 0)
