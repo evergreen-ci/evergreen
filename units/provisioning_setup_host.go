@@ -935,7 +935,7 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 
 		// create the volume
 		volume, err := cloudMgr.CreateVolume(ctx, &host.Volume{
-			Size:             h.HomeVolumeGB,
+			Size:             h.HomeVolumeSize,
 			AvailabilityZone: h.Zone,
 			CreatedBy:        h.StartedBy,
 			Type:             evergreen.DefaultEBSType,

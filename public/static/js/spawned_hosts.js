@@ -17,7 +17,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     $scope.spawnReqSent = false;
     $scope.useTaskConfig = false;
     $scope.attach_volume = false;
-    $scope.home_volume_gb = 500;
+    $scope.home_volume_size = 500;
     $scope.allowedInstanceTypes = [];
 
     // max of 7 days time to expiration
@@ -258,7 +258,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       $scope.spawnInfo.saveKey = $scope.saveKey;
       $scope.spawnInfo.userData = $scope.userdata;
       $scope.spawnInfo.attach_volume = $scope.attach_volume;
-      $scope.spawnInfo.home_volume_gb = $scope.home_volume_gb;
+      $scope.spawnInfo.home_volume_size = $scope.home_volume_size;
       $scope.spawnInfo.useTaskConfig = $scope.useTaskConfig;
       if ($scope.spawnTaskChecked && !!$scope.spawnTask) {
         $scope.spawnInfo.task_id = $scope.spawnTask.id;
@@ -432,7 +432,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
 
       // clear home volume settings when switching between distros
       $scope.attach_volume = false
-      $scope.home_volume_gb = 500
+      $scope.home_volume_size = 500
     };
 
     // set the spawn host update instance type based on user selection

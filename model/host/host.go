@@ -143,8 +143,8 @@ type Host struct {
 	InstanceTags []Tag `bson:"instance_tags,omitempty" json:"instance_tags,omitempty"`
 
 	AttachVolume bool `bson:"attach_volume" json:"attach_volume"`
-	// HomeVolumeGB is the size of the home volume in GB
-	HomeVolumeGB int `bson:"home_volume_gb" json:"home_volume_gb"`
+	// HomeVolumeSize is the size of the home volume in GB
+	HomeVolumeSize int `bson:"home_volume_size" json:"home_volume_size"`
 }
 
 type Tag struct {

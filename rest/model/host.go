@@ -35,7 +35,7 @@ type HostRequestOptions struct {
 	InstanceType string     `json:"instance_type"`
 	NoExpiration bool       `json:"no_expiration"`
 	AttachVolume bool       `json:"attach_volume"`
-	HomeVolumeGB int        `json:"home_volume_gb"`
+	HomeVolumeSize int        `json:"home_volume_size"`
 }
 
 type DistroInfo struct {
