@@ -98,19 +98,7 @@ func (s *EC2ProviderSettings) Validate() error {
 
 // region is only provided if we want to filter by region
 func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string) error {
-	if len(d.ProviderSettingsList) != 0 {
-		settingsDoc, err := d.GetProviderSettingByRegion(region)
-		if err != nil {
-			return errors.Wrapf(err, "providers list doesn't contain region '%s'", region)
-		}
-		bytes, err := settingsDoc.MarshalBSON()
-		if err != nil {
-			return errors.Wrap(err, "error marshalling provider setting into bson")
-		}
-		if err := bson.Unmarshal(bytes, s); err != nil {
-			return errors.Wrap(err, "error unmarshalling bson into provider settings")
-		}
-	} else if d.ProviderSettings != nil {
+	if d.ProviderSettings != nil {
 		if region != "" && region != evergreen.DefaultEC2Region {
 			return errors.Errorf("only default region should be saved in provider settings")
 		}
@@ -132,13 +120,27 @@ func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string)
 		if err := doc.UnmarshalBSON(bytes); err != nil {
 			return errors.Wrapf(err, "error unmarshalling settings bytes into document")
 		}
-		if err := d.UpdateProviderSettings(doc); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"distro":   d.Id,
-				"provider": d.Provider,
-				"settings": d.ProviderSettings,
-			}))
-			return errors.Wrapf(err, "error updating provider settings")
+		if len(d.ProviderSettingsList) == 0 {
+			if err := d.UpdateProviderSettings(doc); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"distro":   d.Id,
+					"provider": d.Provider,
+					"settings": d.ProviderSettings,
+				}))
+				return errors.Wrapf(err, "error updating provider settings")
+			}
+		}
+	} else if len(d.ProviderSettingsList) != 0 {
+		settingsDoc, err := d.GetProviderSettingByRegion(region)
+		if err != nil {
+			return errors.Wrapf(err, "providers list doesn't contain region '%s'", region)
+		}
+		bytes, err := settingsDoc.MarshalBSON()
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		if err := bson.Unmarshal(bytes, s); err != nil {
+			return errors.Wrap(err, "error unmarshalling bson into provider settings")
 		}
 	}
 

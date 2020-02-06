@@ -46,15 +46,7 @@ func (s *StaticSettings) Validate() error {
 }
 
 func (s *StaticSettings) FromDistroSettings(d distro.Distro, _ string) error {
-	if len(d.ProviderSettingsList) != 0 {
-		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
-		if err != nil {
-			return errors.Wrap(err, "error marshalling provider setting into bson")
-		}
-		if err := bson.Unmarshal(bytes, s); err != nil {
-			return errors.Wrap(err, "error unmarshalling bson into provider settings")
-		}
-	} else if d.ProviderSettings != nil {
+	if d.ProviderSettings != nil {
 		if err := mapstructure.Decode(d.ProviderSettings, s); err != nil {
 			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, s)
 		}
@@ -66,13 +58,23 @@ func (s *StaticSettings) FromDistroSettings(d distro.Distro, _ string) error {
 		if err := doc.UnmarshalBSON(bytes); err != nil {
 			return errors.Wrapf(err, "error unmarshalling settings bytes into document")
 		}
-		if err := d.UpdateProviderSettings(doc); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"distro":   d.Id,
-				"provider": d.Provider,
-				"settings": d.ProviderSettings,
-			}))
-			return errors.Wrapf(err, "error updating provider settings")
+		if len(d.ProviderSettingsList) == 0 {
+			if err := d.UpdateProviderSettings(doc); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"distro":   d.Id,
+					"provider": d.Provider,
+					"settings": d.ProviderSettings,
+				}))
+				return errors.Wrapf(err, "error updating provider settings")
+			}
+		}
+	} else if len(d.ProviderSettingsList) != 0 {
+		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		if err := bson.Unmarshal(bytes, s); err != nil {
+			return errors.Wrap(err, "error unmarshalling bson into provider settings")
 		}
 	}
 	return nil
