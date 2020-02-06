@@ -1196,13 +1196,14 @@ func PopulateUserDataDoneJobs(env evergreen.Environment) amboy.QueueOperation {
 func PopulateSSHKeyUpdates(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
-		ts := util.RoundPartOfDay(0).Format(TSFormat)
+		ts := util.RoundPartOfHour(0).Format(TSFormat)
 		settings := env.Settings()
 
 		allRegions := map[string]bool{}
 		for _, key := range settings.Providers.AWS.EC2Keys {
 			allRegions[key.Region] = true
 		}
+		// Enqueue jobs to update SSH keys in the cloud provider.
 		updateRegions := map[string]bool{}
 		for _, key := range settings.SSHKeyPairs {
 			for region := range allRegions {
@@ -1216,6 +1217,7 @@ func PopulateSSHKeyUpdates(env evergreen.Environment) amboy.QueueOperation {
 			catcher.Wrap(queue.Put(ctx, NewCloudUpdateSSHKeysJob(evergreen.ProviderNameEc2Fleet, region, ts)), "could not enqueue jobs to update cloud provider SSH keys")
 		}
 
+		// Enqueue jobs to update authorized keys on static hosts.
 		hosts, err := host.FindNeedsNewSSHKeys(settings)
 		if err != nil {
 			catcher.Wrap(err, "could not find hosts that need to update their SSH keys")
@@ -1224,6 +1226,7 @@ func PopulateSSHKeyUpdates(env evergreen.Environment) amboy.QueueOperation {
 		for _, h := range hosts {
 			catcher.Wrap(env.RemoteQueue().Put(ctx, NewStaticUpdateSSHKeysJob(h, ts)), "could not enqueue jobs to update static host SSH keys")
 		}
+
 		return catcher.Resolve()
 	}
 }

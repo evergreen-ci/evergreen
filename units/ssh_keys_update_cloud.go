@@ -60,13 +60,16 @@ func (j *cloudUpdateSSHKeysJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	// TODO: we should eventually remove the assumption that we're only using
-	// the default region in EC2.
-	if j.Provider == "" {
-		j.Provider = evergreen.ProviderNameEc2Fleet
-	}
-	if j.Region == "" {
-		j.Region = evergreen.DefaultEC2Region
+	if j.Provider == "" || j.Region == "" {
+		err := errors.New("provider or region was not specified")
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":  "could not update ssh keys",
+			"provider": j.Provider,
+			"region":   j.Region,
+			"job":      j.ID(),
+		}))
+		j.AddError(err)
+		return
 	}
 	mgr, err := cloud.GetManager(ctx, j.env, cloud.ManagerOpts{
 		Provider: j.Provider,
