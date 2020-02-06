@@ -779,6 +779,11 @@ func (c *awsClientImpl) ImportKeyPair(ctx context.Context, input *ec2.ImportKeyP
 			output, err = c.EC2.ImportKeyPairWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
+					// Don't retry if the key already exists
+					if ec2err.Code() == EC2DuplicateKeyPair {
+						grip.Info(msg)
+						return false, ec2err
+					}
 					grip.Error(message.WrapError(ec2err, msg))
 				}
 				return true, err
