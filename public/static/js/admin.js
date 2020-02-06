@@ -5,10 +5,6 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
   $scope.load = function() {
     $scope.Settings = {};
 
-    $scope.newSSHKeyPair = {};
-    $scope.tempSSHKeyPairs = [];
-    $scope.Settings.ssh_key_pairs = [];
-
     $scope.getSettings();
     $scope.disableRestart = false;
     $scope.disableSubmit = false;
@@ -45,8 +41,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       });
 
       $scope.newSSHKeyPair = {};
-      $scope.tempSSHKeyPairs = [];
-      $scope.Settings.ssh_key_pairs = resp.data.ssh_key_pairs || [];
+      $scope.tempSSHKeyPairs = _.clone(resp.data.ssh_key_pairs) || [];
 
       $scope.tempPlugins = resp.data.plugins ? jsyaml.safeDump(resp.data.plugins) : ""
       $scope.tempContainerPools = resp.data.container_pools.pools ? jsyaml.safeDump(resp.data.container_pools.pools) : ""
@@ -84,6 +79,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
         $scope.Settings.credentials[key] = elem[key];
       }
     });
+    $scope.Settings.ssh_key_pairs = $scope.tempSSHKeyPairs;
 
     $scope.Settings.expansions = {};
     _.map($scope.tempExpansions, function(elem, index) {
@@ -129,10 +125,6 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       uniqueIds[p.id] = true
     }
 
-    for (var pair in $scope.newSSHKeyPairs) {
-      $scope.Settings.ssh_key_pairs.push(pair);
-    } 
-
     $scope.Settings.container_pools.pools = parsedContainerPools;
 
     if ($scope.tempPlugins === null || $scope.tempPlugins === undefined || $scope.tempPlugins == "") {
@@ -158,19 +150,16 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
         "aws": {"ec2_keys": []}
       };
     }
-    for (let i = 0; i < $scope.Settings.providers.aws.ec2_keys.length; i++) {
-      if ($scope.Settings.providers.aws.ec2_keys[i].region === $scope.new_item.region) {
-        $scope.invalidCredential = "Only one key/secret per region.";
-          return
-      }
+    if ($scope.Settings.providers.aws.ec2_keys === undefined || $scope.Settings.providers.aws.ec2_keys === null) {
+        $scope.Settings.providers.aws = {"ec2_keys": []}
     }
-      if (!$scope.validEC2Credentials($scope.new_item)){
-          $scope.invalidCredential = "EC2 Region, Key, and Secret required.";
-          return
-      }
-      $scope.Settings.providers.aws.ec2_keys.push($scope.new_item);
-      $scope.new_item = {};
-      $scope.invalidCredential = "";
+    if (!$scope.validEC2Credentials($scope.new_item)){
+        $scope.invalidCredential = "EC2 Region, Key, and Secret required.";
+        return
+    }
+    $scope.Settings.providers.aws.ec2_keys.push($scope.new_item);
+    $scope.new_item = {};
+    $scope.invalidCredential = "";
   }
 
   $scope.deleteEC2Credential = function(index){
@@ -341,6 +330,9 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
   }
 
   $scope.addSSHKeyPair = function() {
+    if ($scope.tempSSHKeyPairs.length === 0) {
+        $scope.tempSSHKeyPairs = [];
+    }
     $scope.tempSSHKeyPairs.push($scope.newSSHKeyPair);
     $scope.newSSHKeyPair = {};
   }
