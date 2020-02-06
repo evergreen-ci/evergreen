@@ -121,6 +121,8 @@ func (c *Settings) Get(env Environment) error {
 	return nil
 }
 
+// Set saves the global fields in the configuration (i.e. those that are not
+// ConfigSections).
 func (c *Settings) Set() error {
 	env := GetEnvironment()
 	ctx, cancel := env.Context()
@@ -137,7 +139,6 @@ func (c *Settings) Set() error {
 			clientBinariesDirKey:  c.ClientBinariesDir,
 			commitQueueKey:        c.CommitQueue,
 			configDirKey:          c.ConfigDir,
-			containerPoolsKey:     c.ContainerPools,
 			credentialsKey:        c.Credentials,
 			credentialsNewKey:     c.CredentialsNew,
 			domainNameKey:         c.DomainName,
@@ -145,7 +146,6 @@ func (c *Settings) Set() error {
 			expansionsNewKey:      c.ExpansionsNew,
 			githubPRCreatorOrgKey: c.GithubPRCreatorOrg,
 			githubOrgsKey:         c.GithubOrgs,
-			hostJasperKey:         c.HostJasper,
 			keysKey:               c.Keys,
 			keysNewKey:            c.KeysNew,
 			ldapRoleMapKey:        c.LDAPRoleMap,
@@ -215,12 +215,9 @@ func (c *Settings) ValidateAndDefault() error {
 		catcher.New("cannot use SSH key pairs without setting a directory for them")
 	}
 	for i := 0; i < len(c.SSHKeyPairs); i++ {
-		if c.SSHKeyPairs[i].PublicPath == "" {
-			c.SSHKeyPairs[i].PublicPath = filepath.Join(c.SSHKeyDirectory, fmt.Sprintf("%s.pub", c.SSHKeyPairs[i].Name))
-		}
-		if c.SSHKeyPairs[i].PrivatePath == "" {
-			c.SSHKeyPairs[i].PrivatePath = filepath.Join(c.SSHKeyDirectory, c.SSHKeyPairs[i].Name)
-		}
+		catcher.NewWhen(c.SSHKeyPairs[i].Name == "", "must specify a name for SSH key pairs")
+		catcher.ErrorfWhen(c.SSHKeyPairs[i].Public == "", "must specify a public key for SSH key pair '%s'", c.SSHKeyPairs[i].Name)
+		catcher.ErrorfWhen(c.SSHKeyPairs[i].Private == "", "must specify a private key for SSH key pair '%s'", c.SSHKeyPairs[i].Name)
 		if c.SSHKeyPairs[i].EC2Regions == nil {
 			c.SSHKeyPairs[i].EC2Regions = []string{}
 		}
@@ -346,6 +343,7 @@ func UpdateConfig(config *Settings) error {
 			catcher.Add(fmt.Errorf("unable to convert config section %s", propName))
 			continue
 		}
+
 		catcher.Add(section.Set())
 	}
 
@@ -559,13 +557,9 @@ type PluginConfig map[string]map[string]interface{}
 
 // SSHKeyPair represents a public and private SSH key pair.
 type SSHKeyPair struct {
-	Name   string `bson:"name" json:"name" yaml:"name"`
-	Public string `bson:"public" json:"public" yaml:"public"`
-	// PublicPath is the path to the file containing the public key.
-	PublicPath string `bson:"public_path" json:"public_path" yaml:"public_path"`
-	Private    string `bson:"private" json:"private" yaml:"private"`
-	// PrivatePath is the path to the identity file containing the private key.
-	PrivatePath string `bson:"private_path" json:"private_path" yaml:"private_path"`
+	Name    string `bson:"name" json:"name" yaml:"name"`
+	Public  string `bson:"public" json:"public" yaml:"public"`
+	Private string `bson:"private" json:"private" yaml:"private"`
 	// EC2Regions contains all EC2 regions that have stored this SSH key.
 	EC2Regions []string `bson:"ec2_regions" json:"ec2_regions" yaml:"ec2_regions"`
 }
@@ -605,6 +599,10 @@ func (p *SSHKeyPair) AddEC2Region(region string) error {
 	}
 
 	return nil
+}
+
+func (p *SSHKeyPair) PrivatePath(settings *Settings) string {
+	return filepath.Join(settings.SSHKeyDirectory, p.Name)
 }
 
 type WriteConcern struct {

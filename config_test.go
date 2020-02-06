@@ -188,9 +188,8 @@ func (s *AdminSuite) TestBaseConfig() {
 	for i := 0; i < len(settings.SSHKeyPairs); i++ {
 		s.Equal(config.SSHKeyPairs[i].Name, settings.SSHKeyPairs[i].Name)
 		s.Equal(config.SSHKeyPairs[i].Public, settings.SSHKeyPairs[i].Public)
-		s.Equal(config.SSHKeyPairs[i].PublicPath, settings.SSHKeyPairs[i].PublicPath)
 		s.Equal(config.SSHKeyPairs[i].Private, settings.SSHKeyPairs[i].Private)
-		s.Equal(config.SSHKeyPairs[i].PrivatePath, settings.SSHKeyPairs[i].PrivatePath)
+		s.Empty(config.SSHKeyPairs[i].EC2Regions)
 	}
 	s.Equal(config.SuperUsers, settings.SuperUsers)
 }
@@ -488,8 +487,8 @@ func (s *AdminSuite) TestConfigDefaults() {
 	s.Equal("v1", config.Expansions["k1"])
 	s.Equal("v2", config.Expansions["k2"])
 	for _, pair := range config.SSHKeyPairs {
-		s.Equal(filepath.Join(config.SSHKeyDirectory, pair.Name+".pub"), pair.PublicPath)
-		s.Equal(filepath.Join(config.SSHKeyDirectory, pair.Name), pair.PrivatePath)
+		s.NotNil(pair.EC2Regions)
+		s.Equal([]string{}, pair.EC2Regions)
 	}
 }
 

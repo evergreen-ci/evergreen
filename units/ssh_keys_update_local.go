@@ -48,10 +48,10 @@ func NewLocalUpdateSSHKeysJob(id string) amboy.Job {
 }
 
 func (j *localUpdateSSHKeysJob) Run(ctx context.Context) {
-	for _, pair := range evergreen.GetEnvironment().Settings().SSHKeyPairs {
-		j.AddError(errors.Wrap(writeFileWithPerm(pair.PrivatePath, []byte(pair.Private), 0600), "could not make private key file"))
+	settings := evergreen.GetEnvironment().Settings()
+	for _, pair := range settings.SSHKeyPairs {
+		j.AddError(errors.Wrap(writeFileWithPerm(pair.PrivatePath(settings), []byte(pair.Private), 0600), "could not make private key file"))
 	}
-
 	return
 }
 

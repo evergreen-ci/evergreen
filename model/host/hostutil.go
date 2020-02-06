@@ -142,8 +142,8 @@ func (h *Host) GetSSHInfo() (*util.StaticHostInfo, error) {
 func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
 	var keyPaths []string
 	for _, pair := range settings.SSHKeyPairs {
-		if _, err := os.Stat(pair.PrivatePath); err == nil {
-			keyPaths = append(keyPaths, pair.PrivatePath)
+		if _, err := os.Stat(pair.PrivatePath(settings)); err == nil {
+			keyPaths = append(keyPaths, pair.PrivatePath(settings))
 		}
 	}
 	if defaultKeyPath := settings.Keys[h.Distro.SSHKey]; defaultKeyPath != "" {
