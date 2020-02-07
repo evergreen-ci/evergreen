@@ -297,7 +297,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 				})
 			}
 
-			var ghAliasDefined bool
+			var ghAliasesDefined bool
 			ghAliasesDefined, err = h.hasAliasDefined(apiProjectRef, evergreen.GithubAlias)
 			if err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't check for alias definitions"))
@@ -335,7 +335,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 				})
 			}
 
-			var cqAliasDefined bool
+			var cqAliasesDefined bool
 			cqAliasesDefined, err = h.hasAliasDefined(apiProjectRef, evergreen.CommitQueueAlias)
 			if err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't check for alias definitions"))

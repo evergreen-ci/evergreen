@@ -105,7 +105,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	}
 
 	if j.host.HasContainers {
-		var bool idle
+		var idle bool
 		idle, err = j.host.IsIdleParent()
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{

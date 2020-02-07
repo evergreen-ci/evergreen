@@ -82,8 +82,7 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 		if !h.SpawnOptions.SpawnedByTask {
 			return nil, errors.New("key name must not be empty")
 		}
-		var k string
-		k, err = m.client.GetKey(ctx, h)
+		k, err := m.client.GetKey(ctx, h)
 		if err != nil {
 			return nil, errors.Wrap(err, "not spawning host, problem creating key")
 		}

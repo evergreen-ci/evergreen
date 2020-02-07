@@ -458,7 +458,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting EC2 settings")
 	}
-	if err := ec2Settings.Validate(); err != nil {
+	if err = ec2Settings.Validate(); err != nil {
 		return nil, errors.Wrapf(err, "Invalid EC2 settings in distro %s: %+v", h.Distro.Id, ec2Settings)
 	}
 	if ec2Settings.KeyName == "" && !h.UserHost {
@@ -538,7 +538,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 func (m *ec2Manager) getResources(ctx context.Context, h *host.Host) ([]string, error) {
 	instanceID := h.Id
 	if isHostSpot(h) {
-		var instanceID string
+		var err error
 		instanceID, err = m.client.GetSpotInstanceId(ctx, h)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error getting spot request info",
