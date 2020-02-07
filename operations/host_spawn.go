@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
@@ -732,7 +733,8 @@ func hostRunCommand() cli.Command {
 					}
 				}
 
-				hosts, err := client.GetHosts(ctx, model.APIHostParams{
+				var hosts []*restmodel.APIHost
+				hosts, err = client.GetHosts(ctx, model.APIHostParams{
 					CreatedBefore: createdBeforeTime,
 					CreatedAfter:  createdAfterTime,
 					Distro:        distro,
@@ -759,7 +761,8 @@ func hostRunCommand() cli.Command {
 			}
 
 			if path != "" {
-				scriptBytes, err := ioutil.ReadFile(path)
+				var scriptBytes []byte
+				scriptBytes, err = ioutil.ReadFile(path)
 				if err != nil {
 					return errors.Wrapf(err, "can't read script from '%s'", path)
 				}
@@ -984,7 +987,7 @@ Examples:
 				dryRun:               dryRun,
 			}
 			if makeParentDirs && !makeParentDirsOnRemote {
-				if err := makeLocalParentDirs(localPath, remotePath, pull); err != nil {
+				if err = makeLocalParentDirs(localPath, remotePath, pull); err != nil {
 					return errors.Wrap(err, "could not create directory structure")
 				}
 			}

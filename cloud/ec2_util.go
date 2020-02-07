@@ -249,7 +249,7 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, cl
 	var err error
 	if h.ComputeCostPerHour == 0 {
 		ec2Settings := &EC2ProviderSettings{}
-		err := ec2Settings.FromDistroSettings(h.Distro, "")
+		err = ec2Settings.FromDistroSettings(h.Distro, "")
 		if err != nil {
 			return errors.Wrapf(err, "error getting EC2 settings for host '%s'", h.Id)
 		}

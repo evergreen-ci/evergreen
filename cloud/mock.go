@@ -174,7 +174,7 @@ func (mockMgr *mockManager) ModifyHost(ctx context.Context, host *host.Host, cha
 		host.AddTags(changes.AddInstanceTags)
 		instance.Tags = host.InstanceTags
 		mockMgr.Instances[host.Id] = instance
-		if err := host.SetTags(); err != nil {
+		if err = host.SetTags(); err != nil {
 			return errors.Errorf("error adding tags in db")
 		}
 	}
@@ -183,7 +183,7 @@ func (mockMgr *mockManager) ModifyHost(ctx context.Context, host *host.Host, cha
 		instance.Tags = host.InstanceTags
 		mockMgr.Instances[host.Id] = instance
 		host.DeleteTags(changes.DeleteInstanceTags)
-		if err := host.SetTags(); err != nil {
+		if err = host.SetTags(); err != nil {
 			return errors.Errorf("error deleting tags in db")
 		}
 	}

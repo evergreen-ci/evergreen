@@ -458,14 +458,15 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting EC2 settings")
 	}
-	if err := ec2Settings.Validate(); err != nil {
+	if err = ec2Settings.Validate(); err != nil {
 		return nil, errors.Wrapf(err, "Invalid EC2 settings in distro %s: %+v", h.Distro.Id, ec2Settings)
 	}
 	if ec2Settings.KeyName == "" && !h.UserHost {
 		if !h.SpawnOptions.SpawnedByTask {
 			return nil, errors.New("key name must not be empty")
 		}
-		k, err := m.client.GetKey(ctx, h)
+		var k string
+		k, err = m.client.GetKey(ctx, h)
 		if err != nil {
 			return nil, errors.Wrap(err, "not spawning host, problem creating key")
 		}
@@ -494,8 +495,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 		return nil, errors.Wrap(err, msg)
 	}
 	if provider == onDemandProvider {
-		err := m.spawnOnDemandHost(ctx, h, ec2Settings, blockDevices)
-		if err != nil {
+		if err = m.spawnOnDemandHost(ctx, h, ec2Settings, blockDevices); err != nil {
 			msg := "error spawning on-demand host"
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       msg,
@@ -538,7 +538,8 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 func (m *ec2Manager) getResources(ctx context.Context, h *host.Host) ([]string, error) {
 	instanceID := h.Id
 	if isHostSpot(h) {
-		instanceID, err := m.client.GetSpotInstanceId(ctx, h)
+		var err error
+		instanceID, err = m.client.GetSpotInstanceId(ctx, h)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error getting spot request info",
 			"host_id":       h.Id,
@@ -959,7 +960,8 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 	err = util.Retry(
 		ctx,
 		func() (bool, error) {
-			instance, err := m.client.GetInstanceInfo(ctx, h.Id)
+			var instance *ec2.Instance
+			instance, err = m.client.GetInstanceInfo(ctx, h.Id)
 			if err != nil {
 				return false, errors.Wrap(err, "error getting instance info")
 			}

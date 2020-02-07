@@ -1071,7 +1071,8 @@ func (c *awsClientImpl) GetPublicDNSName(ctx context.Context, h *host.Host) (str
 func (c *awsClientImpl) getHostInstanceID(ctx context.Context, h *host.Host) (string, error) {
 	id := h.Id
 	if isHostSpot(h) {
-		id, err := c.GetSpotInstanceId(ctx, h)
+		var err error
+		id, err = c.GetSpotInstanceId(ctx, h)
 		if err != nil {
 			return "", errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
 		}

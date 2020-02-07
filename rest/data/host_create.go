@@ -235,7 +235,7 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 		if err != nil {
 			return nil, errors.Wrap(err, "problem finding distro")
 		}
-		if err := ec2Settings.FromDistroSettings(d, createHost.Region); err != nil {
+		if err = ec2Settings.FromDistroSettings(d, createHost.Region); err != nil {
 			return nil, errors.Wrapf(err, "error getting ec2 provider from distro")
 		}
 	}
@@ -285,7 +285,8 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 	if len(createHost.SecurityGroups) > 0 {
 		ec2Settings.SecurityGroupIDs = createHost.SecurityGroups
 	} else {
-		settings, err := evergreen.GetConfig()
+		var settings *evergreen.Settings
+		settings, err = evergreen.GetConfig()
 		if err != nil {
 			return nil, errors.Wrap(err, "error retrieving evergreen settings")
 		}
@@ -304,7 +305,7 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 		return nil, errors.Wrap(err, "error marshalling provider setting into bson")
 	}
 	doc := birch.Document{}
-	if err := doc.UnmarshalBSON(bytes); err != nil {
+	if err = doc.UnmarshalBSON(bytes); err != nil {
 		return nil, errors.Wrap(err, "error umarshalling settings bytes into document")
 	}
 	d.ProviderSettingsList = []*birch.Document{&doc}

@@ -238,7 +238,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel = context.WithCancel(r.Context())
 		defer cancel()
 
-		if err := cloud.TerminateSpawnHost(ctx, uis.env, h, u.Id, fmt.Sprintf("terminated via UI by %s", u.Username())); err != nil {
+		if err = cloud.TerminateSpawnHost(ctx, uis.env, h, u.Id, fmt.Sprintf("terminated via UI by %s", u.Username())); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
@@ -316,13 +316,14 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 
 	case HostExpirationExtension:
 		if updateParams.Expiration.IsZero() { // set expiration to never expire
-			settings, err := evergreen.GetConfig()
+			var settings *evergreen.Settings
+			settings, err = evergreen.GetConfig()
 			if err != nil {
 				PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error updating host expiration"))
 				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error retrieving settings"))
 				return
 			}
-			if err := route.CheckUnexpirableHostLimitExceeded(u.Id, settings.UnexpirableHostsPerUser); err != nil {
+			if err = route.CheckUnexpirableHostLimitExceeded(u.Id, settings.UnexpirableHostsPerUser); err != nil {
 				PushFlash(uis.CookieStore, r, w, NewErrorFlash(err.Error()))
 				uis.LoggedError(w, r, http.StatusBadRequest, err)
 				return
@@ -361,7 +362,8 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		loc, err := time.LoadLocation(u.Settings.Timezone)
+		var loc *time.Location
+		loc, err = time.LoadLocation(u.Settings.Timezone)
 		if err != nil || loc == nil {
 			loc = time.UTC
 		}

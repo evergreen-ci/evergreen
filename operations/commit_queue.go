@@ -344,7 +344,7 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		return errors.New("patch aborted")
 	}
 
-	if err := isValidCommitsFormat(p.commits); err != nil {
+	if err = isValidCommitsFormat(p.commits); err != nil {
 		return err
 	}
 
@@ -405,7 +405,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 		return errors.Wrapf(err, "can't get patch '%s'", p.patchID)
 	}
 
-	if err := isValidCommitsFormat(p.commits); err != nil {
+	if err = isValidCommitsFormat(p.commits); err != nil {
 		return err
 	}
 

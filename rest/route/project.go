@@ -270,7 +270,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if err := dbProjectRef.ValidateOwnerAndRepo(h.settings.GithubOrgs); err != nil {
+	if err = dbProjectRef.ValidateOwnerAndRepo(h.settings.GithubOrgs); err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    err.Error(),
@@ -297,7 +297,8 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 				})
 			}
 
-			ghAliasesDefined, err := h.hasAliasDefined(apiProjectRef, evergreen.GithubAlias)
+			var ghAliasesDefined bool
+			ghAliasesDefined, err = h.hasAliasDefined(apiProjectRef, evergreen.GithubAlias)
 			if err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't check for alias definitions"))
 			}
@@ -334,7 +335,8 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 				})
 			}
 
-			cqAliasesDefined, err := h.hasAliasDefined(apiProjectRef, evergreen.CommitQueueAlias)
+			var cqAliasesDefined bool
+			cqAliasesDefined, err = h.hasAliasDefined(apiProjectRef, evergreen.CommitQueueAlias)
 			if err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't check for alias definitions"))
 			}

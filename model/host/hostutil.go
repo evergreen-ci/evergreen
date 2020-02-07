@@ -713,7 +713,7 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 	}
 
 	catcher := grip.NewBasicCatcher()
-	if _, err := proc.Wait(ctx); err != nil {
+	if _, err = proc.Wait(ctx); err != nil {
 		catcher.Wrap(err, "problem waiting for process completion")
 	}
 

@@ -172,7 +172,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if projCtx.Build.Requester == evergreen.MergeTestRequester {
-			_, err := commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
+			_, err = commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
 				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Build.Version, true)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -218,7 +218,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if !putParams.Active && projCtx.Build.Requester == evergreen.MergeTestRequester {
-			_, err := commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
+			_, err = commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
 				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Build.Version, true)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)

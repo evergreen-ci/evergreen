@@ -726,7 +726,8 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 		if !match {
 			continue
 		}
-		shouldInclude, err := t.shouldIncludeTest(sub, previousCompleteTask, &t.task.LocalTestResults[i])
+		var shouldInclude bool
+		shouldInclude, err = t.shouldIncludeTest(sub, previousCompleteTask, &t.task.LocalTestResults[i])
 		if err != nil {
 			catcher.Add(err)
 			continue

@@ -99,7 +99,6 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 	var statsStatus stats.StatsStatus
 	timingMsg["status_check"] = reportTiming(func() {
 		// Lookup last sync date for project
-		var err error
 		statsStatus, err = stats.GetStatsStatus(j.ProjectID)
 		j.AddError(errors.Wrap(err, "error retrieving last sync date"))
 	}).Seconds()
@@ -109,7 +108,6 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 
 	var tasksToIgnore []*regexp.Regexp
 	timingMsg["tasks_to_ignore_lookup"] = reportTiming(func() {
-		var err error
 		tasksToIgnore, err = getTasksToIgnore(j.ProjectID)
 		j.AddError(errors.Wrap(err, "error retrieving project settings"))
 	}).Seconds()
@@ -135,7 +133,6 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 	timingMsg["sync_to"] = syncToTime
 	var statsToUpdate []stats.StatsToUpdate
 	timingMsg["find_stats_to_update"] = reportTiming(func() {
-		var err error
 		statsToUpdate, err = stats.FindStatsToUpdate(stats.FindStatsOptions{
 			ProjectID:       j.ProjectID,
 			Requesters:      j.Requesters,

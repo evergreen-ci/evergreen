@@ -65,7 +65,7 @@ func (so *SpawnOptions) validate() error {
 		return errors.Wrap(err, "Error occurred finding user's current hosts")
 	}
 
-	if err := checkSpawnHostLimitExceeded(len(activeSpawnedHosts)); err != nil {
+	if err = checkSpawnHostLimitExceeded(len(activeSpawnedHosts)); err != nil {
 		return err
 	}
 

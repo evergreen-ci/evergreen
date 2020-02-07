@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 
 	"github.com/evergreen-ci/shrub"
+	"github.com/mongodb/grip"
 )
 
 var (
@@ -22,7 +23,7 @@ var (
 func main() {
 	config := makeTasks()
 	jsonBytes, _ := json.MarshalIndent(config, "", "  ")
-	ioutil.WriteFile(fileName, jsonBytes, 0644)
+	grip.Error(ioutil.WriteFile(fileName, jsonBytes, 0644))
 }
 
 func makeTasks() *shrub.Configuration {

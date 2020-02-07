@@ -450,7 +450,8 @@ func LoadProjectForVersion(v *Version, identifier string, shouldSave bool) (*Pro
 		// and we should default to the version config
 		if ppFromDB.ConfigUpdateNumber >= v.ConfigUpdateNumber {
 			ppFromDB.Identifier = identifier
-			p, err := TranslateProject(ppFromDB)
+			var p *Project
+			p, err = TranslateProject(ppFromDB)
 			return p, ppFromDB, err
 		}
 	}
