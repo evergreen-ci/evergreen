@@ -516,8 +516,6 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/validate").Handler(as.validateProjectConfig).Post()
 
 	// Internal status reporting
-	app.AddRoute("/runtimes/").Handler(as.listRuntimes).Get()
-	app.AddRoute("/runtimes/timeout/{seconds:\\d*}").Handler(as.lateRuntimes).Get()
 	app.AddRoute("/status/consistent_task_assignment").Handler(as.consistentTaskAssignment).Get()
 	app.AddRoute("/status/stuck_hosts").Handler(as.getStuckHosts).Get()
 	app.AddRoute("/status/info").Handler(as.serviceStatusSimple).Get()
