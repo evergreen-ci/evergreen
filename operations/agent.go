@@ -120,7 +120,7 @@ func Agent() cli.Command {
 				"message":  "starting agent",
 				"commands": command.RegisteredCommandNames(),
 				"dir":      opts.WorkingDirectory,
-				"host":     opts.HostID,
+				"host_id":  opts.HostID,
 			})
 
 			comm := client.NewCommunicator(c.String(apiServerURLFlagName))

@@ -23,7 +23,6 @@ type UserMiddlewareConfiguration struct {
 	CookiePath      string
 	CookieTTL       time.Duration
 	CookieDomain    string
-	SetRedirect     func(*http.Request, string)
 }
 
 // Validate ensures that the UserMiddlewareConfiguration is correct

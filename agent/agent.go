@@ -116,15 +116,8 @@ func (a *Agent) loop(ctx context.Context) error {
 	}
 	agentSleepInterval := minAgentSleepInterval
 
-	// we want to have separate context trees for tasks and
-	// loggers, so that when a task is canceled by a context, it
-	// can log its clean up.
-	var (
-		lgrCtx        context.Context
-		cancel        context.CancelFunc
-		jitteredSleep time.Duration
-	)
-	lgrCtx, cancel = context.WithCancel(ctx)
+	var jitteredSleep time.Duration
+	tskCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	timer := time.NewTimer(0)
@@ -194,33 +187,9 @@ LOOP:
 						"task":    tc.task.ID,
 					}))
 				}
-				err = a.resetLogging(lgrCtx, tc)
-				if err != nil {
-					detail := &apimodels.TaskEndDetail{
-						Status:      evergreen.TaskFailed,
-						Type:        evergreen.CommandTypeSetup,
-						Description: fmt.Sprintf("error setting up task logger: %s", err.Error()),
-					}
-					resp, err := a.comm.EndTask(ctx, detail, tc.task)
-					if err != nil {
-						grip.Critical(errors.Wrap(err, "error calling EndTask"))
-						timer.Reset(0)
-						agentSleepInterval = minAgentSleepInterval
-						continue LOOP
-					}
-					if resp.ShouldExit {
-						grip.Notice("Next task response indicates agent should exit")
-						return nil
-					}
-					timer.Reset(0)
-					agentSleepInterval = minAgentSleepInterval
-					continue LOOP
-				}
-				tskCtx, tskCancel := context.WithCancel(ctx)
 				a.jasper.Clear(ctx)
 				tc.jasper = a.jasper
-				defer tskCancel()
-				shouldExit, err := a.runTask(tskCtx, tskCancel, tc)
+				shouldExit, err := a.runTask(tskCtx, tc)
 				if err != nil {
 					grip.Critical(message.WrapError(err, message.Fields{
 						"message": "error running task",
@@ -317,7 +286,7 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 	return nil
 }
 
-func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
+func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
 	var err error
 	if tc.logger != nil {
 		grip.Error(tc.logger.Close())
@@ -326,7 +295,7 @@ func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
 	if tc.project != nil && tc.project.Loggers != nil {
 		tc.logger, err = a.makeLoggerProducer(ctx, tc, tc.project.Loggers, "")
 	} else {
-		tc.logger, err = a.comm.GetLoggerProducer(ctx, tc.task, nil)
+		tc.logger, err = a.makeLoggerProducer(ctx, tc, &model.LoggerConfig{}, "")
 	}
 	if err != nil {
 		return err
@@ -340,9 +309,32 @@ func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
 }
 
 // runTask returns true if the agent should exit, and separate an error if relevant
-func (a *Agent) runTask(ctx context.Context, cancel context.CancelFunc, tc *taskContext) (bool, error) {
+func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
+	// we want to have separate context trees for tasks and loggers, so
+	// when a task is canceled by a context, it can log its clean up.
+	tskCtx, tskCancel := context.WithCancel(ctx)
+	defer tskCancel()
+
 	var err error
-	defer func() { err = recovery.HandlePanicWithError(recover(), err, "running task") }()
+	defer func() {
+		err = recovery.HandlePanicWithError(recover(), err, "running task")
+	}()
+
+	var taskConfig *model.TaskConfig
+	taskConfig, err = a.makeTaskConfig(ctx, tc)
+	if err != nil {
+		grip.Errorf("Error fetching task configuration: %s", err)
+		grip.Infof("task complete: %s", tc.task.ID)
+		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskSystemFailed)
+	}
+	taskConfig.Redacted = tc.expVars.PrivateVars
+	tc.setTaskConfig(taskConfig)
+
+	if err = a.startLogging(ctx, tc); err != nil {
+		grip.Errorf("Error setting up logger producer: %s", err)
+		grip.Infof("task complete: %s", tc.task.ID)
+		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskSystemFailed)
+	}
 
 	grip.Info(message.Fields{
 		"message":     "running task",
@@ -351,7 +343,7 @@ func (a *Agent) runTask(ctx context.Context, cancel context.CancelFunc, tc *task
 	})
 
 	defer a.killProcs(ctx, tc, false)
-	defer cancel()
+	defer tskCancel()
 
 	// If the heartbeat aborts the task immediately, we should report that
 	// the task failed during initial task setup.
@@ -362,18 +354,20 @@ func (a *Agent) runTask(ctx context.Context, cancel context.CancelFunc, tc *task
 	tc.setCurrentCommand(factory())
 
 	heartbeat := make(chan string, 1)
-	go a.startHeartbeat(ctx, cancel, tc, heartbeat)
+	go a.startHeartbeat(tskCtx, tskCancel, tc, heartbeat)
 
-	innerCtx, innerCancel := context.WithCancel(ctx)
+	innerCtx, innerCancel := context.WithCancel(tskCtx)
 
-	go a.startIdleTimeoutWatch(ctx, tc, innerCancel)
+	go a.startIdleTimeoutWatch(tskCtx, tc, innerCancel)
 
 	complete := make(chan string)
 	go a.startTask(innerCtx, tc, complete)
 
-	status := a.wait(ctx, innerCtx, tc, heartbeat, complete)
-	var resp *apimodels.EndTaskResponse
-	resp, err = a.finishTask(ctx, tc, status)
+	return a.handleTaskResponse(tskCtx, tc, a.wait(tskCtx, innerCtx, tc, heartbeat, complete))
+}
+
+func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status string) (bool, error) {
+	resp, err := a.finishTask(ctx, tc, status)
 	if err != nil {
 		return false, errors.Wrap(err, "error marking task complete")
 	}
@@ -419,18 +413,19 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 		return
 	}
 	if taskGroup.Timeout != nil {
-
 		err := a.runCommands(ctx, tc, taskGroup.Timeout.List(), runCommandsOptions{})
-		tc.logger.Execution().ErrorWhenf(err != nil, "Error running timeout command: %v", err)
-		tc.logger.Task().InfoWhenf(err == nil, "Finished running timeout commands in %v.", time.Since(start).String())
+		tc.logger.Execution().Error(message.WrapError(err, message.Fields{
+			"message": "Error running timeout command",
+		}))
+		tc.logger.Task().InfoWhen(err == nil, message.Fields{
+			"message":    "Finished running timeout commands",
+			"total_time": time.Since(start).String(),
+		})
 	}
 }
 
 // finishTask sends the returned EndTaskResponse and error
 func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) (*apimodels.EndTaskResponse, error) {
-	err := a.uploadToS3(ctx, tc)
-	tc.logger.Execution().Error(errors.Wrap(err, "error uploading log files"))
-
 	detail := a.endTaskResponse(tc, status)
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
@@ -445,13 +440,20 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) 
 		tc.logger.Task().Error("Task completed - CANCELED.")
 		// If we receive a 409, return control to the loop (ask for a new task)
 		return nil, nil
+	case evergreen.TaskSystemFailed:
+		grip.Error("Task system failure")
 	default:
 		tc.logger.Task().Errorf("Programmer error: Invalid task status %s", detail.Status)
 	}
 
 	a.killProcs(ctx, tc, false)
 
-	tc.logger.Execution().Infof("Sending final status as: %v", detail.Status)
+	if tc.logger != nil {
+		err := a.uploadToS3(ctx, tc)
+		tc.logger.Execution().Error(errors.Wrap(err, "error uploading log files"))
+		tc.logger.Execution().Infof("Sending final status as: %v", detail.Status)
+		grip.Error(tc.logger.Flush(ctx))
+	}
 	grip.Infof("Sending final status as: %v", detail.Status)
 	resp, err := a.comm.EndTask(ctx, detail, tc.task)
 	grip.Infof("Sent final status as: %v", detail.Status)
@@ -463,9 +465,15 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) 
 }
 
 func (a *Agent) endTaskResponse(tc *taskContext, status string) *apimodels.TaskEndDetail {
+	var description string
+	var cmdType string
+	if tc.getCurrentCommand() != nil {
+		description = tc.getCurrentCommand().DisplayName()
+		cmdType = tc.getCurrentCommand().Type()
+	}
 	return &apimodels.TaskEndDetail{
-		Description: tc.getCurrentCommand().DisplayName(),
-		Type:        tc.getCurrentCommand().Type(),
+		Description: description,
+		Type:        cmdType,
 		TimedOut:    tc.hadTimedOut(),
 		Status:      status,
 		Logs:        tc.logs,
@@ -488,8 +496,13 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 	}
 	if taskGroup.TeardownTask != nil {
 		err := a.runCommands(ctx, tc, taskGroup.TeardownTask.List(), runCommandsOptions{})
-		tc.logger.Task().ErrorWhenf(err != nil, "Error running post-task command: %v", err)
-		tc.logger.Task().InfoWhenf(err == nil, "Finished running post-task commands in %v.", time.Since(start).String())
+		tc.logger.Task().Error(message.WrapError(err, message.Fields{
+			"message": "Error running post-task command.",
+		}))
+		tc.logger.Task().InfoWhen(err == nil, message.Fields{
+			"message":    "Finished running post-task commands.",
+			"total_time": time.Since(start).String(),
+		})
 	}
 }
 
@@ -500,7 +513,9 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 		return
 	}
 	defer func() {
-		grip.Error(tc.logger.Close())
+		if tc.logger != nil {
+			grip.Error(tc.logger.Close())
+		}
 	}()
 	taskGroup, err := model.GetTaskGroup(tc.taskGroup, tc.taskConfig)
 	if err != nil {
@@ -514,7 +529,9 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()
 		err := a.runCommands(ctx, tc, taskGroup.TeardownGroup.List(), runCommandsOptions{})
-		grip.ErrorWhenf(err != nil, "Error running post-task command: %v", err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "Error running post-task command.",
+		}))
 		grip.InfoWhen(err == nil, "Finished running post-group commands")
 	}
 }

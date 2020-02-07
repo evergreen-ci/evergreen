@@ -209,6 +209,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		CommitQueueAliases  []model.ProjectAlias           `json:"commit_queue_aliases"`
 		PatchAliases        []model.ProjectAlias           `json:"patch_aliases"`
 		DeleteAliases       []string                       `json:"delete_aliases"`
+		DefaultLogger       string                         `json:"default_logger"`
 		PrivateVars         map[string]bool                `json:"private_vars"`
 		Enabled             bool                           `json:"enabled"`
 		Private             bool                           `json:"private"`
@@ -423,6 +424,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.BatchTime = responseRef.BatchTime
 	projectRef.Branch = responseRef.Branch
 	projectRef.Enabled = responseRef.Enabled
+	projectRef.DefaultLogger = responseRef.DefaultLogger
 	projectRef.Private = responseRef.Private
 	projectRef.Restricted = responseRef.Restricted
 	projectRef.Owner = responseRef.Owner

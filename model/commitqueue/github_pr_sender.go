@@ -121,6 +121,8 @@ func (s *githubPRLogger) Send(m message.Composer) {
 	s.ErrorHandler()(dequeueFromCommitQueue(msg.ProjectID, msg.Item), m)
 }
 
+func (s *githubPRLogger) Flush(_ context.Context) error { return nil }
+
 func (s *githubPRLogger) sendMergeFailedStatus(githubMessage string, pr event.PRInfo) error {
 	state := message.GithubStateFailure
 	description := fmt.Sprintf("merge failed: %s", githubMessage)

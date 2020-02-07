@@ -840,6 +840,7 @@ type APILoggerConfig struct {
 	BuildloggerRPCPort  *string          `json:"buildlogger_rpc_port"`
 	BuildloggerUser     *string          `json:"buildlogger_user"`
 	BuildloggerPassword *string          `json:"buildlogger_password"`
+	DefaultLogger       *string          `json:"default_logger"`
 }
 
 func (a *APILoggerConfig) BuildFromService(h interface{}) error {
@@ -852,6 +853,7 @@ func (a *APILoggerConfig) BuildFromService(h interface{}) error {
 		a.BuildloggerRPCPort = ToStringPtr(v.BuildloggerRPCPort)
 		a.BuildloggerUser = ToStringPtr(v.BuildloggerUser)
 		a.BuildloggerPassword = ToStringPtr(v.BuildloggerPassword)
+		a.DefaultLogger = ToStringPtr(v.DefaultLogger)
 		a.Buffer = &APILogBuffering{}
 		if err := a.Buffer.BuildFromService(v.Buffer); err != nil {
 			return err
@@ -871,6 +873,7 @@ func (a *APILoggerConfig) ToService() (interface{}, error) {
 		BuildloggerRPCPort:  FromStringPtr(a.BuildloggerRPCPort),
 		BuildloggerUser:     FromStringPtr(a.BuildloggerUser),
 		BuildloggerPassword: FromStringPtr(a.BuildloggerPassword),
+		DefaultLogger:       FromStringPtr(a.DefaultLogger),
 	}
 	i, err := a.Buffer.ToService()
 	if err != nil {

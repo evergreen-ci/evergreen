@@ -6,10 +6,15 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/golang/protobuf/ptypes"
+	duration "github.com/golang/protobuf/ptypes/duration"
+	timestamp "github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
+	"github.com/mongodb/jasper/scripting"
 	"github.com/pkg/errors"
 	"github.com/tychoish/bond"
 )
@@ -692,6 +697,7 @@ func (o *ScriptingOptions) Export() (options.ScriptingHarness, error) {
 			HostPythonInterpreter: val.Python.HostPython,
 			Packages:              val.Python.Packages,
 			LegacyPython:          val.Python.LegacyPython,
+			AddTestRequirements:   val.Python.AddTestDeps,
 			CachedDuration:        time.Duration(o.Duration),
 			Environment:           o.Environment,
 			Output:                o.Output.Export(),
@@ -711,6 +717,135 @@ func (o *ScriptingOptions) Export() (options.ScriptingHarness, error) {
 }
 
 func ConvertScriptingOptions(opts options.ScriptingHarness) *ScriptingOptions {
-	return nil
+	switch val := opts.(type) {
+	case *options.ScriptingGolang:
+		out := ConvertOutputOptions(val.Output)
+		return &ScriptingOptions{
+			Duration:    int64(val.CachedDuration),
+			Environment: val.Environment,
+			Output:      &out,
+			Value: &ScriptingOptions_Golang{
+				Golang: &ScriptingOptionsGolang{
+					Gopath:     val.Gopath,
+					Goroot:     val.Goroot,
+					Packages:   val.Packages,
+					Context:    val.Context,
+					WithUpdate: val.WithUpdate,
+				},
+			},
+		}
+	case *options.ScriptingPython:
+		out := ConvertOutputOptions(val.Output)
+		return &ScriptingOptions{
+			Duration:    int64(val.CachedDuration),
+			Environment: val.Environment,
+			Output:      &out,
+			Value: &ScriptingOptions_Python{
+				Python: &ScriptingOptionsPython{
+					VirtualEnvPath:   val.VirtualEnvPath,
+					RequirementsPath: val.RequirementsFilePath,
+					HostPython:       val.HostPythonInterpreter,
+					Packages:         val.Packages,
+					LegacyPython:     val.LegacyPython,
+					AddTestDeps:      val.AddTestRequirements,
+				},
+			},
+		}
+	case *options.ScriptingRoswell:
+		out := ConvertOutputOptions(val.Output)
+		return &ScriptingOptions{
+			Duration:    int64(val.CachedDuration),
+			Environment: val.Environment,
+			Output:      &out,
+			Value: &ScriptingOptions_Roswell{
+				Roswell: &ScriptingOptionsRoswell{
+					Path:    val.Path,
+					Systems: val.Systems,
+					Lisp:    val.Lisp,
+				},
+			},
+		}
+	default:
+		grip.Criticalf("'%T' is not supported", opts)
+		return nil
+	}
+}
 
+func mustConvertTimestamp(t time.Time) *timestamp.Timestamp {
+	out, err := ptypes.TimestampProto(t)
+	if err != nil {
+		panic(err)
+	}
+	return out
+}
+
+func mustConvertPTimestamp(t *timestamp.Timestamp) time.Time {
+	out, err := ptypes.Timestamp(t)
+	if err != nil {
+		panic(err)
+	}
+	return out
+}
+
+func ConvertScriptingTestResults(res []scripting.TestResult) []*ScriptingHarnessTestResult {
+	out := make([]*ScriptingHarnessTestResult, len(res))
+	for idx, r := range res {
+		out[idx] = &ScriptingHarnessTestResult{
+			Name:     r.Name,
+			StartAt:  mustConvertTimestamp(r.StartAt),
+			Duration: ptypes.DurationProto(r.Duration),
+			Outcome:  string(r.Outcome),
+		}
+	}
+	return out
+}
+
+func (r *ScriptingHarnessTestResponse) Export() []scripting.TestResult {
+	out := make([]scripting.TestResult, len(r.Results))
+	for idx, res := range r.Results {
+		out[idx] = scripting.TestResult{
+			Name:     res.Name,
+			StartAt:  mustConvertPTimestamp(res.StartAt),
+			Duration: mustConvertDuration(res.Duration),
+			Outcome:  scripting.TestOutcome(res.Outcome),
+		}
+	}
+	return out
+}
+
+func mustConvertDuration(in *duration.Duration) time.Duration {
+	dur, err := ptypes.Duration(in)
+	if err != nil {
+		panic(err)
+	}
+
+	return dur
+}
+
+func (a *ScriptingHarnessTestArgs) Export() []scripting.TestOptions {
+	out := make([]scripting.TestOptions, len(a.Options))
+	for idx, opts := range a.Options {
+		out[idx] = scripting.TestOptions{
+			Name:    opts.Name,
+			Args:    opts.Args,
+			Pattern: opts.Pattern,
+			Timeout: mustConvertDuration(opts.Timeout),
+			Count:   int(opts.Count),
+		}
+	}
+	return out
+}
+
+func ConvertScriptingTestOptions(args []scripting.TestOptions) []*ScriptingHarnessTestOptions {
+	out := make([]*ScriptingHarnessTestOptions, len(args))
+	for idx, opt := range args {
+		out[idx] = &ScriptingHarnessTestOptions{
+			Name:    opt.Name,
+			Args:    opt.Args,
+			Pattern: opt.Pattern,
+			Timeout: ptypes.DurationProto(opt.Timeout),
+			Count:   int32(opt.Count),
+		}
+	}
+	return out
 }

@@ -110,7 +110,7 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 		"operation": j.Type().Name,
 		"id":        j.ID(),
 		"task":      t.Id,
-		"host":      t.HostId,
+		"host_id":   t.HostId,
 	}
 
 	err = cleanUpTimedOutTask(ctx, env, j.ID(), t)
@@ -157,7 +157,7 @@ func cleanUpTimedOutTask(ctx context.Context, env evergreen.Environment, id stri
 			grip.Error(message.Fields{
 				"message":   "no entry found for host",
 				"task":      t.Id,
-				"host":      t.HostId,
+				"host_id":   t.HostId,
 				"operation": "cleanup timed out task",
 			})
 		}

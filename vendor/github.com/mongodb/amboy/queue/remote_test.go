@@ -306,7 +306,7 @@ checkResults:
 	s.True(qStat.Running >= numLocked)
 	s.True(qStat.Total == created)
 	s.True(qStat.Completed <= observed, fmt.Sprintf("%d <= %d", qStat.Completed, observed))
-	s.Equal(numLocked, qStat.Running)
+	s.Equal(created, observed+numLocked, "%+v", qStat)
 }
 
 func (s *RemoteUnorderedSuite) TestJobStatsIterator() {

@@ -686,7 +686,7 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 	defer func() {
 		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
-			"host":    h.Id,
+			"host_id": h.Id,
 			"distro":  h.Distro.Id,
 		}))
 	}()
@@ -730,7 +730,7 @@ func (h *Host) StartJasperProcess(ctx context.Context, env evergreen.Environment
 	defer func() {
 		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
-			"host":    h.Id,
+			"host_id": h.Id,
 			"distro":  h.Distro.Id,
 		}))
 	}()
@@ -753,7 +753,7 @@ func (h *Host) GetJasperProcess(ctx context.Context, env evergreen.Environment, 
 	defer func() {
 		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
-			"host":    h.Id,
+			"host_id": h.Id,
 			"distro":  h.Distro.Id,
 		}))
 	}()
@@ -910,7 +910,7 @@ func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) 
 	defer func() {
 		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
-			"host":    h.Id,
+			"host_id": h.Id,
 			"distro":  h.Distro.Id,
 		}))
 	}()
@@ -922,7 +922,7 @@ func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) 
 
 	grip.WarningWhen(len(procs) != 1, message.Fields{
 		"message": fmt.Sprintf("host should be running exactly one agent monitor, but found %d", len(procs)),
-		"host":    h.Id,
+		"host_id": h.Id,
 		"distro":  h.Distro.Id,
 	})
 
@@ -1037,6 +1037,7 @@ func (h *Host) SetupSpawnHostCommands(settings *evergreen.Settings) (string, err
 		fmt.Sprintf("cp %s %s", binaryPath, binDir),
 		fmt.Sprintf("(echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.profile || true; echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.bash_profile || true)", binDir, h.Distro.HomeDir(), binDir, h.Distro.HomeDir()),
 		fmt.Sprintf("chown -R %s %s", h.Distro.User, binDir),
+		fmt.Sprintf("chmod +x %s", filepath.Join(binDir, h.Distro.BinaryName())),
 	}, " && ")
 
 	script := setupBinDirCmds
@@ -1103,7 +1104,7 @@ func (h *Host) SetUserDataHostProvisioned() error {
 
 	grip.Info(message.Fields{
 		"message":              "host successfully provisioned",
-		"host":                 h.Id,
+		"host_id":              h.Id,
 		"distro":               h.Distro.Id,
 		"time_to_running_secs": time.Since(h.CreationTime).Seconds(),
 	})

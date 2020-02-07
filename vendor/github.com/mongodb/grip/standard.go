@@ -28,6 +28,12 @@ func MakeStandardLogger(p level.Priority) *log.Logger {
 	return send.MakeStandardLogger(std.GetSender(), p)
 }
 
+// GetDefaultJournaler returns the default journal instance used by
+// this library.
+func GetDefaultJournaler() Journaler {
+	return std
+}
+
 // SetDefaultStandardLogger set's the standard library's global
 // logging instance to use grip's global logger at the specified
 // level.

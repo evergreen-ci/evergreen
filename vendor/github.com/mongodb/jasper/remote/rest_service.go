@@ -87,6 +87,7 @@ func (s *Service) App(ctx context.Context) *gimlet.APIApp {
 	app.AddRoute("/scripting/{id}/run").Version(1).Post().Handler(s.scriptingRun)
 	app.AddRoute("/scripting/{id}/script").Version(1).Post().Handler(s.scriptingRunScript)
 	app.AddRoute("/scripting/{id}/build").Version(1).Post().Handler(s.scriptingBuild)
+	app.AddRoute("/scripting/{id}/test").Version(1).Post().Handler(s.scriptingTest)
 	app.AddRoute("/file/write").Version(1).Put().Handler(s.writeFile)
 	app.AddRoute("/clear").Version(1).Post().Handler(s.clearManager)
 	app.AddRoute("/close").Version(1).Delete().Handler(s.closeManager)
@@ -941,6 +942,44 @@ func (s *Service) scriptingBuild(rw http.ResponseWriter, r *http.Request) {
 		Path string `json:"path"`
 	}{
 		Path: path,
+	})
+}
+
+func (s *Service) scriptingTest(rw http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	se, err := s.harnesses.Get(gimlet.GetVars(r)["id"])
+	if err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    err.Error(),
+		})
+		return
+	}
+
+	args := &struct {
+		Directory string                  `json:"directory"`
+		Options   []scripting.TestOptions `json:"options"`
+	}{}
+	if err = gimlet.GetJSON(r.Body, args); err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		})
+		return
+	}
+	var errOut string
+	res, err := se.Test(ctx, args.Directory, args.Options...)
+	if err != nil {
+		errOut = err.Error()
+	}
+
+	gimlet.WriteJSON(rw, struct {
+		Results []scripting.TestResult `json:"results"`
+		Error   string                 `json:"error"`
+	}{
+		Results: res,
+		Error:   errOut,
 	})
 }
 

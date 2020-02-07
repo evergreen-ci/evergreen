@@ -87,7 +87,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 	if flags.HostInitDisabled {
 		grip.Debug(message.Fields{
 			"mode":     "degraded",
-			"host":     j.HostID,
+			"host_id":  j.HostID,
 			"job":      j.ID(),
 			"job_type": j.Type().Name,
 		})
@@ -186,7 +186,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "problem getting cloud provider for host",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"job":     j.ID(),
 		}))
 		return errors.Wrapf(errIgnorableCreateHost, "problem getting cloud provider for host '%s' [%s]", j.host.Id, err.Error())
@@ -204,7 +204,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	if err = j.host.SetStatusAtomically(evergreen.HostBuilding, evergreen.User, ""); err != nil {
 		grip.Info(message.WrapError(err, message.Fields{
 			"message": "host could not be transitioned from initializing to building, so it may already be building",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -253,7 +253,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 			defer cancel()
 			grip.Error(message.WrapError(cloudManager.TerminateInstance(terminateCtx, j.host, evergreen.User, "hit database error trying to update host"), message.Fields{
 				"message":     "problem terminating instance after cloud host was spawned",
-				"host":        j.host.Id,
+				"host_id":     j.host.Id,
 				"intent_host": j.HostID,
 				"distro":      j.host.Distro.Id,
 				"job":         j.ID(),
@@ -261,7 +261,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 			grip.Notice(message.WrapError(err, message.Fields{
 				"message": "problem removing intent host",
 				"job":     j.ID(),
-				"host":    j.HostID,
+				"host_id": j.HostID,
 			}))
 			return errors.Wrapf(err, "problem removing intent host '%s' [%s]", j.HostID, err.Error())
 		}
@@ -271,11 +271,19 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 			defer cancel()
 			grip.Error(message.WrapError(cloudManager.TerminateInstance(terminateCtx, j.host, evergreen.User, "hit database error trying to update host"), message.Fields{
 				"message": "problem terminating instance after cloud host was spawned",
-				"host":    j.host.Id,
+				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),
 			}))
 			return errors.Wrapf(err, "error inserting host %s", j.host.Id)
+		}
+		if j.host.HasContainers {
+			grip.Error(message.WrapError(j.host.UpdateParentIDs(), message.Fields{
+				"message": "unable to update parent ID of containers",
+				"host_id": j.host.Id,
+				"distro":  j.host.Distro.Id,
+				"job":     j.ID(),
+			}))
 		}
 	}
 
@@ -308,7 +316,7 @@ func (j *createHostJob) tryRequeue(ctx context.Context) {
 		err := j.env.RemoteQueue().Put(ctx, job)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":  "failed to requeue setup job",
-			"host":     j.host.Id,
+			"host_id":  j.host.Id,
 			"job":      j.ID(),
 			"distro":   j.host.Distro.Id,
 			"attempts": j.CurrentAttempt,
@@ -340,7 +348,7 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 	if ok := parent.ContainerImages[j.host.DockerOptions.Image]; ok {
 		grip.Info(message.Fields{
 			"message":  "image already exists, will start container",
-			"host":     j.host.Id,
+			"host_id":  j.host.Id,
 			"image":    j.host.DockerOptions.Image,
 			"attempts": j.CurrentAttempt,
 			"job":      j.ID(),
@@ -352,7 +360,7 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 	if j.BuildImageStarted == false {
 		grip.Info(message.Fields{
 			"message":  "image not on host, will import image",
-			"host":     j.host.Id,
+			"host_id":  j.host.Id,
 			"image":    j.host.DockerOptions.Image,
 			"attempts": j.CurrentAttempt,
 			"job":      j.ID(),

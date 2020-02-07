@@ -146,6 +146,7 @@ type APIProjectRef struct {
 	DeactivatePrevious   bool                 `json:"deactivate_previous"`
 	TracksPushEvents     bool                 `json:"tracks_push_events"`
 	PRTestingEnabled     bool                 `json:"pr_testing_enabled"`
+	DefaultLogger        *string              `json:"default_logger"`
 	CommitQueue          APICommitQueueParams `json:"commit_queue"`
 	Tracked              bool                 `json:"tracked"`
 	PatchingDisabled     bool                 `json:"patching_disabled"`
@@ -184,6 +185,7 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		DisplayName:          FromStringPtr(p.DisplayName),
 		DeactivatePrevious:   p.DeactivatePrevious,
 		TracksPushEvents:     p.TracksPushEvents,
+		DefaultLogger:        FromStringPtr(p.DefaultLogger),
 		PRTestingEnabled:     p.PRTestingEnabled,
 		CommitQueue:          commitQueue.(model.CommitQueueParams),
 		Tracked:              p.Tracked,
@@ -257,6 +259,7 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.DisplayName = ToStringPtr(projectRef.DisplayName)
 	p.DeactivatePrevious = projectRef.DeactivatePrevious
 	p.TracksPushEvents = projectRef.TracksPushEvents
+	p.DefaultLogger = ToStringPtr(projectRef.DefaultLogger)
 	p.PRTestingEnabled = projectRef.PRTestingEnabled
 	p.CommitQueue = cq
 	p.Tracked = projectRef.Tracked

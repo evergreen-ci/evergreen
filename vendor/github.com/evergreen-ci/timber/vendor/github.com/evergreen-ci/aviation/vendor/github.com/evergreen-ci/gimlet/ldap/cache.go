@@ -1,17 +1,32 @@
-package usercache
+package ldap
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"sync"
 	"time"
 
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/gimlet/util"
 	"github.com/pkg/errors"
 )
 
-// NewInMemory returns a user cache which keeps entries in memory.
-func NewInMemory(ctx context.Context, ttl time.Duration) Cache {
+func randStr() string {
+	b := make([]byte, 16)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
+type UserCache interface {
+	Add(gimlet.User) error
+	Put(gimlet.User) (string, error)
+	Clear(gimlet.User, bool) error
+	GetOrCreate(gimlet.User) (gimlet.User, error)
+	Get(string) (gimlet.User, bool, error)
+	Find(string) (gimlet.User, bool, error)
+}
+
+func NewInMemoryUserCache(ctx context.Context, ttl time.Duration) UserCache {
 	c := &userCache{
 		ttl:         ttl,
 		cache:       make(map[string]cacheValue),
@@ -35,8 +50,8 @@ func NewInMemory(ctx context.Context, ttl time.Duration) Cache {
 }
 
 type cacheValue struct {
-	user    gimlet.User
-	created time.Time
+	user gimlet.User
+	time time.Time
 }
 
 type userCache struct {
@@ -52,7 +67,7 @@ func (c *userCache) clean() {
 	defer c.mu.Unlock()
 
 	for k, v := range c.cache {
-		if time.Since(v.created) < c.ttl {
+		if time.Since(v.time) < c.ttl {
 			continue
 		}
 		delete(c.userToToken, v.user.Username())
@@ -71,15 +86,12 @@ func (c *userCache) Put(u gimlet.User) (string, error) {
 	defer c.mu.Unlock()
 
 	id := u.Username()
-	token, err := util.RandomString()
-	if err != nil {
-		return "", errors.Wrap(err, "error generating token")
-	}
+	token := randStr()
 
 	c.userToToken[id] = token
 	c.cache[token] = cacheValue{
-		user:    u,
-		created: time.Now(),
+		user: u,
+		time: time.Now(),
 	}
 
 	return token, nil
@@ -94,7 +106,7 @@ func (c *userCache) Get(token string) (gimlet.User, bool, error) {
 		return nil, false, nil
 	}
 
-	if time.Since(u.created) >= c.ttl {
+	if time.Since(u.time) >= c.ttl {
 		return u.user, false, nil
 	}
 
@@ -136,7 +148,7 @@ func (c *userCache) Find(id string) (gimlet.User, bool, error) {
 		return nil, false, errors.Errorf("could not find user of id %s", id)
 	}
 
-	if time.Since(user.created) >= c.ttl {
+	if time.Since(user.time) >= c.ttl {
 		return user.user, false, nil
 	}
 
@@ -155,3 +167,36 @@ func (c *userCache) GetOrCreate(u gimlet.User) (gimlet.User, error) {
 
 	return u, nil
 }
+
+////////////////////////////////////////////////////////////////////////
+//
+// User cache wrapping external functions
+
+type externalUserCache struct {
+	put         PutUserGetToken // Put user to cache
+	get         GetUserByToken  // Get user from cache
+	clear       ClearUserToken  // Clear user from cache
+	find        GetUserByID     // Get user from storage
+	getOrCreate GetOrCreateUser // Get or create user from storage
+}
+
+func (opts CreationOpts) MakeUserCache() UserCache {
+	if opts.UserCache != nil {
+		return opts.UserCache
+	}
+
+	return &externalUserCache{
+		put:         opts.PutCache,
+		get:         opts.GetCache,
+		clear:       opts.ClearCache,
+		find:        opts.GetUser,
+		getOrCreate: opts.GetCreateUser,
+	}
+}
+
+func (c *externalUserCache) Add(u gimlet.User) error                        { _, err := c.getOrCreate(u); return err }
+func (c *externalUserCache) Put(u gimlet.User) (string, error)              { return c.put(u) }
+func (c *externalUserCache) Get(token string) (gimlet.User, bool, error)    { return c.get(token) }
+func (c *externalUserCache) Clear(u gimlet.User, all bool) error            { return c.clear(u, all) }
+func (c *externalUserCache) Find(id string) (gimlet.User, bool, error)      { return c.find(id) }
+func (c *externalUserCache) GetOrCreate(u gimlet.User) (gimlet.User, error) { return c.getOrCreate(u) }

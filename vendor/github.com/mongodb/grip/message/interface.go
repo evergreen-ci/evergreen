@@ -37,14 +37,29 @@ type Composer interface {
 }
 
 // ConvertToComposer can coerce unknown objects into Composer
-// instances, as possible.
+// instances, as possible. This method will override the priority of
+// composers set to it.
 func ConvertToComposer(p level.Priority, message interface{}) Composer {
+	return convert(p, message, true)
+}
+
+// ConvertToComposerWithLevel can coerce unknown objects into
+// Composers, but will only override the priority of Composers.
+func ConvertToComposerWithLevel(p level.Priority, message interface{}) Composer {
+	return convert(p, message, false)
+}
+
+func convert(p level.Priority, message interface{}, overRideLevel bool) Composer {
 	switch message := message.(type) {
 	case Composer:
-		_ = message.SetPriority(p)
+		if overRideLevel || message.Priority() == level.Invalid {
+			_ = message.SetPriority(p)
+		}
 		return message
 	case []Composer:
 		out := NewGroupComposer(message)
+		// this only sets constituent
+		// messages priority when its not otherwise set.
 		_ = out.SetPriority(p)
 		return out
 	case string:

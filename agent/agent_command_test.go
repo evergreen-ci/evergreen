@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/suite"
@@ -67,13 +68,13 @@ func (s *CommandSuite) TestShellExec() {
 			Secret: taskSecret,
 		},
 		runGroupSetup: true,
+		taskModel:     &task.Task{},
 	}
-	s.NoError(s.a.resetLogging(ctx, tc))
+	s.NoError(s.a.startLogging(ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
-	_, err = s.a.runTask(ctx, cancel, tc)
+	_, err = s.a.runTask(ctx, tc)
 	s.NoError(err)
 
-	// TODO: remove this line with MAKE-1091
 	s.Require().NoError(tc.logger.Close())
 	messages := s.mockCommunicator.GetMockMessages()
 	s.Len(messages, 1)
@@ -116,13 +117,13 @@ func (s *CommandSuite) TestS3Copy() {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
+		taskModel: &task.Task{},
 	}
-	s.NoError(s.a.resetLogging(ctx, tc))
+	s.NoError(s.a.startLogging(ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
-	_, err := s.a.runTask(ctx, cancel, tc)
+	_, err := s.a.runTask(ctx, tc)
 	s.NoError(err)
 
-	// TODO: remove this line with MAKE-1090
 	s.Require().NoError(tc.logger.Close())
 	messages := s.mockCommunicator.GetMockMessages()
 	s.Len(messages, 1)
