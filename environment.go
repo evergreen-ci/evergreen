@@ -35,6 +35,9 @@ import (
 var (
 	globalEnv     Environment
 	globalEnvLock *sync.RWMutex
+
+	// don't ever access this directly except from testutil
+	PermissionSystemDisabled = false
 )
 
 const (
