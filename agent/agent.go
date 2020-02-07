@@ -554,7 +554,8 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 		}
 
 		logger.Info("cleaning up Docker artifacts")
-		ctx, cancel := context.WithTimeout(ctx, dockerTimeout)
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, dockerTimeout)
 		defer cancel()
 		if err := docker.Cleanup(ctx, logger); err != nil {
 			msg := fmt.Sprintf("Error cleaning up Docker artifacts (agent-exit): %s", err)

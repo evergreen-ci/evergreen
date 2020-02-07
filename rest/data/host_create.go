@@ -285,7 +285,8 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 	if len(createHost.SecurityGroups) > 0 {
 		ec2Settings.SecurityGroupIDs = createHost.SecurityGroups
 	} else {
-		settings, err := evergreen.GetConfig()
+		var settings *evergreen.Settings
+		settings, err = evergreen.GetConfig()
 		if err != nil {
 			return nil, errors.Wrap(err, "error retrieving evergreen settings")
 		}

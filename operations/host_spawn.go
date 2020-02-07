@@ -732,7 +732,8 @@ func hostRunCommand() cli.Command {
 					}
 				}
 
-				hosts, err := client.GetHosts(ctx, model.APIHostParams{
+				var hosts []*restmodel.APIHost
+				hosts, err = client.GetHosts(ctx, model.APIHostParams{
 					CreatedBefore: createdBeforeTime,
 					CreatedAfter:  createdAfterTime,
 					Distro:        distro,
@@ -759,7 +760,8 @@ func hostRunCommand() cli.Command {
 			}
 
 			if path != "" {
-				scriptBytes, err := ioutil.ReadFile(path)
+				var scriptBytes []byte
+				scriptBytes, err = ioutil.ReadFile(path)
 				if err != nil {
 					return errors.Wrapf(err, "can't read script from '%s'", path)
 				}

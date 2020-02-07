@@ -979,7 +979,7 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 		return errors.Wrap(err, "problem marking task failed")
 	}
 	if !t.IsPartOfDisplay() {
-		if err := build.UpdateCachedTask(t, 0); err != nil {
+		if err = build.UpdateCachedTask(t, 0); err != nil {
 			return errors.Wrap(err, "problem resetting cached task")
 		}
 	}
@@ -988,7 +988,8 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 		updates := StatusChanges{}
 		if t.DisplayOnly {
 			for _, etID := range t.ExecutionTasks {
-				execTask, err := task.FindOne(task.ById(etID))
+				var execTask *task.Task
+				execTask, err = task.FindOne(task.ById(etID))
 				if err != nil {
 					return errors.Wrap(err, "error finding execution task")
 				}

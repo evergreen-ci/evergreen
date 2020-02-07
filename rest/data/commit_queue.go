@@ -50,7 +50,8 @@ func (pc *DBCommitQueueConnector) EnqueueItem(projectID string, item restModel.A
 
 	itemService := itemInterface.(commitqueue.CommitQueueItem)
 	if enqueueNext {
-		position, err := q.EnqueueAtFront(itemService)
+		var position int
+		position, err = q.EnqueueAtFront(itemService)
 		if err != nil {
 			return 0, errors.Wrapf(err, "can't force enqueue item to queue '%s'", projectID)
 		}

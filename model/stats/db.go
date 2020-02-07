@@ -1052,7 +1052,8 @@ func aggregateIntoCollection(ctx context.Context, collection string, pipeline []
 
 	buf := make([]mongo.WriteModel, 0, bulkSize)
 	for cursor.Next(ctx) {
-		doc, err := birch.DC.ReaderErr(birch.Reader(cursor.Current))
+		var doc *birch.Document
+		doc, err = birch.DC.ReaderErr(birch.Reader(cursor.Current))
 		if err != nil {
 			return errors.WithStack(err)
 		}

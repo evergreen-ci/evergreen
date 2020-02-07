@@ -31,12 +31,14 @@ func TestCleanup(t *testing.T) {
 
 	for name, test := range map[string]func(*testing.T){
 		"cleanContainers": func(*testing.T) {
-			resp, err := dockerClient.ContainerCreate(ctx, &container.Config{
+			var resp container.ContainerCreateCreatedBody
+			resp, err = dockerClient.ContainerCreate(ctx, &container.Config{
 				Image: "hello-world",
 			}, nil, nil, "")
 			require.NoError(t, err)
 			require.NoError(t, dockerClient.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}))
-			info, err := dockerClient.Info(ctx)
+			var info types.Info
+			info, err = dockerClient.Info(ctx)
 			require.NoError(t, err)
 			require.True(t, info.ContainersRunning > 0)
 
@@ -49,7 +51,8 @@ func TestCleanup(t *testing.T) {
 		"cleanImages": func(*testing.T) {
 			assert.NoError(t, cleanImages(context.Background(), dockerClient))
 
-			info, err := dockerClient.Info(ctx)
+			var info types.Info
+			info, err = dockerClient.Info(ctx)
 			assert.NoError(t, err)
 			assert.Equal(t, 0, info.Images)
 		},
