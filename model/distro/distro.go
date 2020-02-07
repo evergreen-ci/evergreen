@@ -16,6 +16,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type Distro struct {
@@ -81,6 +83,10 @@ type ResourceLimits struct {
 	NumProcesses    int `bson:"num_processes,omitempty" json:"num_processes,omitempty" mapstructure:"num_processes,omitempty"`
 	LockedMemoryKB  int `bson:"locked_memory,omitempty" json:"locked_memory,omitempty" mapstructure:"locked_memory,omitempty"`
 	VirtualMemoryKB int `bson:"virtual_memory,omitempty" json:"virtual_memory,omitempty" mapstructure:"virtual_memory,omitempty"`
+}
+
+func (d *Distro) SetBSON(raw mgobson.Raw) error {
+	return bson.Unmarshal(raw.Data, d)
 }
 
 // ValidateBootstrapSettings checks if all of the bootstrap settings are valid

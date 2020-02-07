@@ -168,7 +168,6 @@ const (
 	ReprovisionJasperRestart ReprovisionType = "jasper-restart"
 )
 
-func (h *Host) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(h) }
 func (h *Host) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, h) }
 
 type IdleHostsByDistroID struct {
@@ -270,10 +269,10 @@ type SpawnOptions struct {
 	// TimeoutTeardown is the time that this host should be torn down. In most cases, a host
 	// should be torn down due to its task or build. TimeoutTeardown is a backstop to ensure that Evergreen
 	// tears down a host if a task hangs or otherwise does not finish within an expected period of time.
-	TimeoutTeardown time.Time `bson:"timeout_teardown" json:"timeout_teardown"`
+	TimeoutTeardown time.Time `bson:"timeout_teardown,omitempty" json:"timeout_teardown,omitempty"`
 
 	// TimeoutTeardown is the time after which Evergreen should give up trying to set up this host.
-	TimeoutSetup time.Time `bson:"timeout_setup" json:"timeout_setup"`
+	TimeoutSetup time.Time `bson:"timeout_setup,omitempty" json:"timeout_setup,omitempty"`
 
 	// TaskID is the task_id of the task to which this host is pinned. When the task finishes,
 	// this host should be torn down. Only one of TaskID or BuildID should be set.
@@ -1597,9 +1596,7 @@ func FindRunningHosts(includeSpawnHosts bool) ([]Host, error) {
 func FindAllHostsSpawnedByTasks() ([]Host, error) {
 	query := db.Query(bson.M{
 		StatusKey: evergreen.HostRunning,
-		SpawnOptionsKey: bson.M{
-			"$exists": true,
-		},
+		bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey): true,
 	})
 	hosts, err := Find(query)
 	if err != nil {

@@ -53,12 +53,7 @@ func TestMakeIntentHost(t *testing.T) {
 	}
 	handler.createHost = c
 	handler.taskID = "task-id"
-	intent, err := handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
-	assert.NoError(err)
-	require.NotNil(intent)
-	fmt.Println("PROVIDER_SETTING_LIST: " + intent.Distro.ProviderSettingsList[0].String())
-	assert.NoError(intent.Insert())
-	h, err := host.FindOneByIdOrTag(intent.Id)
+	h, err := handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	assert.NoError(err)
 	require.NotNil(h)
 
@@ -75,6 +70,11 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.Equal("mock_key", ec2Settings.KeyName)
 	assert.Equal(true, ec2Settings.IsVpc)
 
+	// test roundtripping
+	assert.NoError(h.Insert())
+	h, err = host.FindOneByIdOrTag(h.Id)
+	assert.NoError(err)
+	require.NotNil(h)
 	ec2Settings2 := &cloud.EC2ProviderSettings{}
 	require.Len(h.Distro.ProviderSettingsList, 1)
 	bytes, err := h.Distro.ProviderSettingsList[0].MarshalBSON()
@@ -135,17 +135,22 @@ func TestMakeIntentHost(t *testing.T) {
 	ec2Settings = &cloud.EC2ProviderSettings{}
 	err = mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings)
 	assert.NoError(err)
+	assert.Equal("ami-123456", ec2Settings.AMI)
+	assert.Equal("mock_key", ec2Settings.KeyName)
+	assert.Equal(true, ec2Settings.IsVpc)
+
+	assert.NoError(h.Insert())
+	h, err = host.FindOneByIdOrTag(h.Id)
+	assert.NoError(err)
+	require.NotNil(h)
 	ec2Settings2 = &cloud.EC2ProviderSettings{}
 	require.Len(h.Distro.ProviderSettingsList, 1)
 	bytes, err = h.Distro.ProviderSettingsList[0].MarshalBSON()
 	assert.NoError(err)
 	assert.NoError(bson.Unmarshal(bytes, ec2Settings2))
-
-	for _, settings := range []*cloud.EC2ProviderSettings{ec2Settings, ec2Settings2} {
-		assert.Equal("ami-123456", settings.AMI)
-		assert.Equal("mock_key", settings.KeyName)
-		assert.Equal(true, settings.IsVpc)
-	}
+	assert.Equal("ami-123456", ec2Settings2.AMI)
+	assert.Equal("mock_key", ec2Settings2.KeyName)
+	assert.Equal(true, ec2Settings2.IsVpc)
 
 	// override some evergreen distro settings
 	c = apimodels.CreateHost{
@@ -172,19 +177,22 @@ func TestMakeIntentHost(t *testing.T) {
 	ec2Settings = &cloud.EC2ProviderSettings{}
 	err = mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings)
 	assert.NoError(err)
+	assert.Equal("ami-123456", ec2Settings.AMI)
+	assert.Equal("my_aws_key", ec2Settings.AWSKeyID)
+	assert.Equal("my_secret_key", ec2Settings.AWSSecret)
+	assert.Equal("subnet-123456", ec2Settings.SubnetId)
+	assert.Equal(true, ec2Settings.IsVpc)
+
 	ec2Settings2 = &cloud.EC2ProviderSettings{}
 	require.Len(h.Distro.ProviderSettingsList, 1)
 	bytes, err = h.Distro.ProviderSettingsList[0].MarshalBSON()
 	assert.NoError(err)
 	assert.NoError(bson.Unmarshal(bytes, ec2Settings2))
-
-	for _, settings := range []*cloud.EC2ProviderSettings{ec2Settings, ec2Settings2} {
-		assert.Equal("ami-123456", settings.AMI)
-		assert.Equal("my_aws_key", settings.AWSKeyID)
-		assert.Equal("my_secret_key", settings.AWSSecret)
-		assert.Equal("subnet-123456", settings.SubnetId)
-		assert.Equal(true, settings.IsVpc)
-	}
+	assert.Equal("ami-123456", ec2Settings2.AMI)
+	assert.Equal("my_aws_key", ec2Settings2.AWSKeyID)
+	assert.Equal("my_secret_key", ec2Settings2.AWSSecret)
+	assert.Equal("subnet-123456", ec2Settings2.SubnetId)
+	assert.Equal(true, ec2Settings2.IsVpc)
 
 	// bring your own ami
 	c = apimodels.CreateHost{
@@ -211,20 +219,22 @@ func TestMakeIntentHost(t *testing.T) {
 	ec2Settings = &cloud.EC2ProviderSettings{}
 	err = mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings)
 	assert.NoError(err)
+	assert.Equal("ami-654321", ec2Settings.AMI)
+	assert.Equal("my_aws_key", ec2Settings.AWSKeyID)
+	assert.Equal("my_secret_key", ec2Settings.AWSSecret)
+	assert.Equal("subnet-123456", ec2Settings.SubnetId)
+	assert.Equal(true, ec2Settings.IsVpc)
 
 	ec2Settings2 = &cloud.EC2ProviderSettings{}
 	require.Len(h.Distro.ProviderSettingsList, 1)
 	bytes, err = h.Distro.ProviderSettingsList[0].MarshalBSON()
 	assert.NoError(err)
 	assert.NoError(bson.Unmarshal(bytes, ec2Settings2))
-
-	for _, settings := range []*cloud.EC2ProviderSettings{ec2Settings, ec2Settings2} {
-		assert.Equal("ami-654321", settings.AMI)
-		assert.Equal("my_aws_key", settings.AWSKeyID)
-		assert.Equal("my_secret_key", settings.AWSSecret)
-		assert.Equal("subnet-123456", settings.SubnetId)
-		assert.Equal(true, settings.IsVpc)
-	}
+	assert.Equal("ami-654321", ec2Settings2.AMI)
+	assert.Equal("my_aws_key", ec2Settings2.AWSKeyID)
+	assert.Equal("my_secret_key", ec2Settings2.AWSSecret)
+	assert.Equal("subnet-123456", ec2Settings2.SubnetId)
+	assert.Equal(true, ec2Settings2.IsVpc)
 }
 
 func TestHostCreateDocker(t *testing.T) {
