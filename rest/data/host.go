@@ -117,7 +117,7 @@ func (hc *DBHostConnector) NewIntentHost(options *restmodel.HostRequestOptions, 
 		InstanceType:     options.InstanceType,
 		NoExpiration:     options.NoExpiration,
 		AttachVolume:     options.AttachVolume,
-		HomeVolumeSize:     options.HomeVolumeSize,
+		HomeVolumeSize:   options.HomeVolumeSize,
 	}
 
 	intentHost, err := cloud.CreateSpawnHost(spawnOptions)
