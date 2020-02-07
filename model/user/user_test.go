@@ -462,7 +462,7 @@ func (s *UserTestSuite) TestFavoriteProjects() {
 	expected = []string{}
 
 	err = u.RemoveFavoriteProject(projID)
-	s.Require().Error(err)
+	s.NoError(err)
 	s.EqualValues(u.FavoriteProjects, expected)
 
 	// try to remove a project that does not exist
