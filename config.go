@@ -230,10 +230,12 @@ func (c *Settings) ValidateAndDefault() error {
 		// initialized.
 		if env != nil {
 			// Ensure we are not modify any existing keys.
-			for _, key := range env.Settings().SSHKeyPairs {
-				if key.Name == c.SSHKeyPairs[i].Name {
-					catcher.ErrorfWhen(c.SSHKeyPairs[i].Public != key.Public, "cannot modify public key for existing SSH key pair '%s'", key.Name)
-					catcher.ErrorfWhen(c.SSHKeyPairs[i].Private != key.Private, "cannot modify private key for existing SSH key pair '%s'", key.Name)
+			if settings := env.Settings(); settings != nil {
+				for _, key := range env.Settings().SSHKeyPairs {
+					if key.Name == c.SSHKeyPairs[i].Name {
+						catcher.ErrorfWhen(c.SSHKeyPairs[i].Public != key.Public, "cannot modify public key for existing SSH key pair '%s'", key.Name)
+						catcher.ErrorfWhen(c.SSHKeyPairs[i].Private != key.Private, "cannot modify private key for existing SSH key pair '%s'", key.Name)
+					}
 				}
 			}
 		}
@@ -245,15 +247,17 @@ func (c *Settings) ValidateAndDefault() error {
 	// ValidateAndDefault can be called before the environment has been
 	// initialized.
 	if env != nil {
-		// Ensure we are not deleting any existing keys.
-		for _, key := range GetEnvironment().Settings().SSHKeyPairs {
-			var found bool
-			for _, newKey := range c.SSHKeyPairs {
-				if newKey.Name == key.Name {
-					break
+		if settings := env.Settings(); settings != nil {
+			// Ensure we are not deleting any existing keys.
+			for _, key := range GetEnvironment().Settings().SSHKeyPairs {
+				var found bool
+				for _, newKey := range c.SSHKeyPairs {
+					if newKey.Name == key.Name {
+						break
+					}
 				}
+				catcher.ErrorfWhen(!found, "cannot find existing SSH key '%s'", key.Name)
 			}
-			catcher.ErrorfWhen(!found, "cannot find existing SSH key '%s'", key.Name)
 		}
 	}
 
