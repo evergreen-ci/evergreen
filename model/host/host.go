@@ -1339,23 +1339,21 @@ func (h *Host) SetExtId() error {
 	)
 }
 
-// AddSSHKeyName adds the SSH key name for the host.
+// AddSSHKeyName adds the SSH key name for the host if it doesn't already have
+// it.
 func (h *Host) AddSSHKeyName(name string) error {
-	if _, err := db.FindAndModify(Collection, bson.M{IdKey: h.Id}, db.NoSort, adb.Change{
-		ReturnNew: true,
-		Update:    bson.M{"$addToSet": bson.M{SSHKeyNamesKey: name}},
-	}, h); err != nil {
-		if len(h.SSHKeyNames) != 0 {
-			return errors.WithStack(err)
-		}
-		// In case this is the first element, we have to push to create the
-		// array first.
-		if _, err := db.FindAndModify(Collection, bson.M{IdKey: h.Id}, db.NoSort, adb.Change{
-			ReturnNew: true,
-			Update:    bson.M{"$push": bson.M{SSHKeyNamesKey: name}},
-		}, h); err != nil {
-			return errors.Wrap(err, "could not add SSH key to host")
-		}
+	var update bson.M
+	if len(h.SSHKeyNames) == 0 {
+		update = bson.M{"$push": bson.M{SSHKeyNamesKey: name}}
+	} else {
+		update = bson.M{"$addToSet": bson.M{SSHKeyNamesKey: name}}
+	}
+	if err := UpdateOne(bson.M{IdKey: h.Id}, update); err != nil {
+		return errors.WithStack(err)
+	}
+
+	if !util.StringSliceContains(h.SSHKeyNames, name) {
+		h.SSHKeyNames = append(h.SSHKeyNames, name)
 	}
 
 	return nil
@@ -2215,9 +2213,9 @@ func FindHostWithVolume(volumeID string) (*Host, error) {
 	return FindOne(q)
 }
 
-// FindNeedsNewSSHKeys finds all hosts that do not have the same set of SSH keys
-// as those in the global settings.
-func FindNeedsNewSSHKeys(settings *evergreen.Settings) ([]Host, error) {
+// FindStaticNeedsNewSSHKeys finds all static hosts that do not have the same
+// set of SSH keys as those in the global settings.
+func FindStaticNeedsNewSSHKeys(settings *evergreen.Settings) ([]Host, error) {
 	names := []string{}
 	for _, pair := range settings.SSHKeyPairs {
 		names = append(names, pair.Name)

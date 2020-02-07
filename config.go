@@ -129,6 +129,7 @@ func (c *Settings) Set() error {
 	defer cancel()
 	coll := env.DB().Collection(ConfigCollection)
 
+	// SSH keys are append-only.
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
 			aclEnabledKey:         c.ACLCheckingEnabled,
@@ -214,12 +215,46 @@ func (c *Settings) ValidateAndDefault() error {
 	if len(c.SSHKeyPairs) != 0 && c.SSHKeyDirectory == "" {
 		catcher.New("cannot use SSH key pairs without setting a directory for them")
 	}
+
 	for i := 0; i < len(c.SSHKeyPairs); i++ {
 		catcher.NewWhen(c.SSHKeyPairs[i].Name == "", "must specify a name for SSH key pairs")
 		catcher.ErrorfWhen(c.SSHKeyPairs[i].Public == "", "must specify a public key for SSH key pair '%s'", c.SSHKeyPairs[i].Name)
 		catcher.ErrorfWhen(c.SSHKeyPairs[i].Private == "", "must specify a private key for SSH key pair '%s'", c.SSHKeyPairs[i].Name)
+		// Avoid overwriting the filepath stored in Keys, which is a special
+		// case for the path to the legacy SSH identity file.
+		for _, key := range c.Keys {
+			catcher.ErrorfWhen(c.SSHKeyPairs[i].PrivatePath(c) == key, "cannot overwrite the legacy SSH key '%s'", key)
+		}
+
+		env := GetEnvironment()
+		// ValidateAndDefault can be called before the environment has been
+		// initialized.
+		if env != nil {
+			// Ensure we are not modify any existing keys.
+			for _, key := range env.Settings().SSHKeyPairs {
+				if key.Name == c.SSHKeyPairs[i].Name {
+					catcher.ErrorfWhen(c.SSHKeyPairs[i].Public != key.Public, "cannot modify public key for existing SSH key pair '%s'", key.Name)
+					catcher.ErrorfWhen(c.SSHKeyPairs[i].Private != key.Private, "cannot modify private key for existing SSH key pair '%s'", key.Name)
+				}
+			}
+		}
 		if c.SSHKeyPairs[i].EC2Regions == nil {
 			c.SSHKeyPairs[i].EC2Regions = []string{}
+		}
+	}
+	env := GetEnvironment()
+	// ValidateAndDefault can be called before the environment has been
+	// initialized.
+	if env != nil {
+		// Ensure we are not deleting any existing keys.
+		for _, key := range GetEnvironment().Settings().SSHKeyPairs {
+			var found bool
+			for _, newKey := range c.SSHKeyPairs {
+				if newKey.Name == key.Name {
+					break
+				}
+			}
+			catcher.ErrorfWhen(!found, "cannot find existing SSH key '%s'", key.Name)
 		}
 	}
 
@@ -580,20 +615,22 @@ func (p *SSHKeyPair) AddEC2Region(region string) error {
 			},
 		},
 	}
-	if _, err := coll.UpdateOne(ctx, query, bson.M{
-		"$addToSet": bson.M{bsonutil.GetDottedKeyName(sshKeyPairsKey, "$", sshKeyPairEC2RegionsKey): region},
-	}); err != nil {
-		if len(p.EC2Regions) != 0 {
-			return errors.WithStack(err)
-		}
+	var update bson.M
+	if len(p.EC2Regions) == 0 {
 		// In case this is the first element, we have to push to create the
 		// array first.
-		if _, err := coll.UpdateOne(ctx, query, bson.M{
+		update = bson.M{
 			"$push": bson.M{bsonutil.GetDottedKeyName(sshKeyPairsKey, "$", sshKeyPairEC2RegionsKey): region},
-		}); err != nil {
-			return errors.WithStack(err)
+		}
+	} else {
+		update = bson.M{
+			"$addToSet": bson.M{bsonutil.GetDottedKeyName(sshKeyPairsKey, "$", sshKeyPairEC2RegionsKey): region},
 		}
 	}
+	if _, err := coll.UpdateOne(ctx, query, update); err != nil {
+		return errors.WithStack(err)
+	}
+
 	if !util.StringSliceContains(p.EC2Regions, region) {
 		p.EC2Regions = append(p.EC2Regions, region)
 	}

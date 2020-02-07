@@ -144,6 +144,11 @@ func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
 	for _, pair := range settings.SSHKeyPairs {
 		if _, err := os.Stat(pair.PrivatePath(settings)); err == nil {
 			keyPaths = append(keyPaths, pair.PrivatePath(settings))
+		} else {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message": "could not find local SSH key file (this should only be a temporary problem)",
+				"key":     pair.Name,
+			}))
 		}
 	}
 	if defaultKeyPath := settings.Keys[h.Distro.SSHKey]; defaultKeyPath != "" {

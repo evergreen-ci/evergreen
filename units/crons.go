@@ -1218,7 +1218,7 @@ func PopulateSSHKeyUpdates(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		// Enqueue jobs to update authorized keys on static hosts.
-		hosts, err := host.FindNeedsNewSSHKeys(settings)
+		hosts, err := host.FindStaticNeedsNewSSHKeys(settings)
 		if err != nil {
 			catcher.Wrap(err, "could not find hosts that need to update their SSH keys")
 			return catcher.Resolve()

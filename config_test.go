@@ -778,3 +778,59 @@ func (s *AdminSuite) TestAddEC2RegionToSSHKey() {
 	s.Require().Len(dbPairs[1].EC2Regions, 1)
 	s.Equal(region1, dbPairs[1].EC2Regions[0])
 }
+
+func (s *AdminSuite) TestSSHKeysAppendOnly() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	defaultPair := func() SSHKeyPair {
+		return SSHKeyPair{
+			Name:    "foo",
+			Public:  "public",
+			Private: "private",
+		}
+	}
+
+	config := testConfig()
+	config.SSHKeyPairs = []SSHKeyPair{defaultPair()}
+	config.SSHKeyDirectory = "/ssh_key_directory"
+	s.Require().NoError(UpdateConfig(config))
+	// We have to do this because we want to load the settings from the db
+	// instead of a file, which requires information to connect to the db first.
+	env, err := NewEnvironment(ctx, "", &DBSettings{
+		Url:                  DefaultDatabaseUrl,
+		DB:                   "mci_test",
+		WriteConcernSettings: WriteConcern{WMode: DefaultDatabaseWriteMode}},
+	)
+	s.Require().NoError(err)
+	SetEnvironment(env)
+	defer func() {
+		SetEnvironment(s.env)
+	}()
+
+	pair := defaultPair()
+	pair.Public = "new_public"
+	config.SSHKeyPairs = []SSHKeyPair{pair}
+	s.Error(config.Validate(), "should not be able to modify existing key pair")
+
+	pair = defaultPair()
+	pair.Private = "new_private"
+	config.SSHKeyPairs = []SSHKeyPair{pair}
+	s.Error(config.Validate(), "should not be able to modify existing key pair")
+
+	pair = defaultPair()
+	pair.Public = "new_public"
+	pair.Private = "new_private"
+	config.SSHKeyPairs = []SSHKeyPair{defaultPair(), pair}
+	s.Error(config.Validate(), "should not be able to add a new pair with the same name and different public/private keys")
+
+	config.SSHKeyPairs = nil
+	s.Error(config.Validate(), "should not be able to delete existing key pair")
+
+	config.SSHKeyPairs = []SSHKeyPair{defaultPair(), SSHKeyPair{
+		Name:    "bar",
+		Public:  "public",
+		Private: "private",
+	}}
+	s.Error(config.Validate(), "should be able to append new key pair")
+}

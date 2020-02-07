@@ -50,7 +50,7 @@ func NewStaticUpdateSSHKeysJob(h host.Host, id string) amboy.Job {
 	j.host = &h
 
 	j.HostID = h.Id
-	j.SetID(fmt.Sprintf("%s.%s", staticUpdateSSHKeysJobName, id))
+	j.SetID(fmt.Sprintf("%s.%s.%s", staticUpdateSSHKeysJobName, h.Id, id))
 	return j
 }
 

@@ -4551,13 +4551,13 @@ func TestRemoveAndReplace(t *testing.T) {
 	assert.NotNil(t, dbHost)
 }
 
-func TestFindNeedsNewSSHKeys(t *testing.T) {
+func TestFindStaticNeedsNewSSHKeys(t *testing.T) {
 	keyName := "key"
 	for testName, testCase := range map[string]func(t *testing.T, settings *evergreen.Settings, h *Host){
 		"IgnoresHostsWithMatchingKeys": func(t *testing.T, settings *evergreen.Settings, h *Host) {
 			require.NoError(t, h.Insert())
 
-			hosts, err := FindNeedsNewSSHKeys(settings)
+			hosts, err := FindStaticNeedsNewSSHKeys(settings)
 			require.NoError(t, err)
 			assert.Empty(t, hosts)
 		},
@@ -4565,7 +4565,7 @@ func TestFindNeedsNewSSHKeys(t *testing.T) {
 			h.SSHKeyNames = []string{}
 			require.NoError(t, h.Insert())
 
-			hosts, err := FindNeedsNewSSHKeys(settings)
+			hosts, err := FindStaticNeedsNewSSHKeys(settings)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0].Id)
@@ -4580,7 +4580,7 @@ func TestFindNeedsNewSSHKeys(t *testing.T) {
 				Private: "new_private",
 			})
 
-			hosts, err := FindNeedsNewSSHKeys(settings)
+			hosts, err := FindStaticNeedsNewSSHKeys(settings)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0].Id)
@@ -4590,7 +4590,7 @@ func TestFindNeedsNewSSHKeys(t *testing.T) {
 			h.Provider = evergreen.ProviderNameMock
 			require.NoError(t, h.Insert())
 
-			hosts, err := FindNeedsNewSSHKeys(settings)
+			hosts, err := FindStaticNeedsNewSSHKeys(settings)
 			require.NoError(t, err)
 			assert.Empty(t, hosts)
 		},
@@ -4598,7 +4598,7 @@ func TestFindNeedsNewSSHKeys(t *testing.T) {
 			h.SSHKeyNames = append(h.SSHKeyNames, "other_key")
 			require.NoError(t, h.Insert())
 
-			hosts, err := FindNeedsNewSSHKeys(settings)
+			hosts, err := FindStaticNeedsNewSSHKeys(settings)
 			require.NoError(t, err)
 			assert.Empty(t, hosts)
 		},
