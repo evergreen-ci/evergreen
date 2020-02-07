@@ -225,10 +225,9 @@ func (c *Settings) ValidateAndDefault() error {
 			catcher.ErrorfWhen(c.SSHKeyPairs[i].PrivatePath(c) == key, "cannot overwrite the legacy SSH key '%s'", key)
 		}
 
-		env := GetEnvironment()
 		// ValidateAndDefault can be called before the environment has been
 		// initialized.
-		if env != nil {
+		if env := GetEnvironment(); env != nil {
 			// Ensure we are not modify any existing keys.
 			if settings := env.Settings(); settings != nil {
 				for _, key := range env.Settings().SSHKeyPairs {
@@ -243,10 +242,9 @@ func (c *Settings) ValidateAndDefault() error {
 			c.SSHKeyPairs[i].EC2Regions = []string{}
 		}
 	}
-	env := GetEnvironment()
 	// ValidateAndDefault can be called before the environment has been
 	// initialized.
-	if env != nil {
+	if env := GetEnvironment(); env != nil {
 		if settings := env.Settings(); settings != nil {
 			// Ensure we are not deleting any existing keys.
 			for _, key := range GetEnvironment().Settings().SSHKeyPairs {
