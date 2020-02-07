@@ -53,10 +53,6 @@ db.project_ref.ensureIndex({ "identifier" : 1 })
 db.project_ref.ensureIndex({ "owner" : 1, "repo" : 1 })
 db.project_ref.ensureIndex({ "triggers.project" : 1})
 
-//======spawn_requests======//
-db.spawn_requests.ensureIndex({ "host" : 1 })
-db.spawn_requests.ensureIndex({ "user" : 1, "status" : 1 })
-
 //======task_bk======//
 db.task_bk.ensureIndex({ "branch" : 1, "build_variant" : 1, "name" : 1 })
 
@@ -101,9 +97,6 @@ db.versions.ensureIndex({ "versions.build_variant_status.build_variant" : 1, "ve
 db.versions.ensureIndex({ "identifier" : 1, "r" : 1, "create_time" : 1 })
 db.versions.createIndex({ "project": 1, "periodic_build_id": 1, "create_time": -1 }, {"partialFilterExpression": { "periodic_build_id": { "$exists": true}}})
 db.versions.createIndex({ "identifier": 1, "order": 1 })
-
-//======alerts=======//
-db.alerts.ensureIndex({ "queue_status" : 1 })
 
 //======test_logs=====//
 db.test_logs.ensureIndex({ "execution" : 1, "name" : 1, "task" : 1 })
