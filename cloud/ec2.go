@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -19,6 +20,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func isHostSpot(h *host.Host) bool {
@@ -30,6 +32,10 @@ func isHostOnDemand(h *host.Host) bool {
 
 // EC2ProviderSettings describes properties of managed instances.
 type EC2ProviderSettings struct {
+	// Region is the EC2 region in which the instance will start. Empty is equivalent to the Evergreen default region.
+	// This should remain one of the first fields to speed up the birch document iterator.
+	Region string `mapstructure:"region" json:"region" bson:"region,omitempty"`
+
 	// AMI is the AMI ID.
 	AMI string `mapstructure:"ami" json:"ami,omitempty" bson:"ami,omitempty"`
 
@@ -68,10 +74,6 @@ type EC2ProviderSettings struct {
 
 	// UserData are commands to run after the instance starts.
 	UserData string `mapstructure:"user_data" json:"user_data" bson:"user_data,omitempty"`
-
-	// Region is the EC2 region in which the instance will start. If empty,
-	// the ec2Manager will spawn in "us-east-1".
-	Region string `mapstructure:"region" json:"region" bson:"region,omitempty"`
 }
 
 // Validate that essential EC2ProviderSettings fields are not empty.
@@ -94,8 +96,12 @@ func (s *EC2ProviderSettings) Validate() error {
 	return nil
 }
 
-func (s *EC2ProviderSettings) fromDistroSettings(d distro.Distro) error {
+// region is only provided if we want to filter by region
+func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string) error {
 	if d.ProviderSettings != nil {
+		if region != "" && region != evergreen.DefaultEC2Region {
+			return errors.Errorf("only default region should be saved in provider settings")
+		}
 		if err := mapstructure.Decode(d.ProviderSettings, s); err != nil {
 			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, s)
 		}
@@ -104,9 +110,38 @@ func (s *EC2ProviderSettings) fromDistroSettings(d distro.Distro) error {
 			"input":   *d.ProviderSettings,
 			"output":  *s,
 		})
-	}
-	if err := s.Validate(); err != nil {
-		return errors.Wrapf(err, "Invalid EC2 settings in distro %s: %+v", d.Id, s)
+
+		s.Region = evergreen.DefaultEC2Region
+		bytes, err := bson.Marshal(s)
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		doc := &birch.Document{}
+		if err := doc.UnmarshalBSON(bytes); err != nil {
+			return errors.Wrapf(err, "error unmarshalling settings bytes into document")
+		}
+		if len(d.ProviderSettingsList) == 0 {
+			if err := d.UpdateProviderSettings(doc); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"distro":   d.Id,
+					"provider": d.Provider,
+					"settings": d.ProviderSettings,
+				}))
+				return errors.Wrapf(err, "error updating provider settings")
+			}
+		}
+	} else if len(d.ProviderSettingsList) != 0 {
+		settingsDoc, err := d.GetProviderSettingByRegion(region)
+		if err != nil {
+			return errors.Wrapf(err, "providers list doesn't contain region '%s'", region)
+		}
+		bytes, err := settingsDoc.MarshalBSON()
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		if err := bson.Unmarshal(bytes, s); err != nil {
+			return errors.Wrap(err, "error unmarshalling bson into provider settings")
+		}
 	}
 
 	return nil
@@ -257,7 +292,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	grip.Debug(message.Fields{
 		"message":       "starting on-demand instance",
 		"args":          input,
-		"host":          h.Id,
+		"host_id":       h.Id,
 		"host_provider": h.Distro.Provider,
 		"distro":        h.Distro.Id,
 	})
@@ -266,20 +301,20 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
 			grip.Error(message.WrapError(h.DeleteJasperCredentials(ctx, m.env), message.Fields{
 				"message": "problem cleaning up user data credentials",
-				"host":    h.Id,
+				"host_id": h.Id,
 				"distro":  h.Distro.Id,
 			}))
 		}
 		msg := "RunInstances API call returned an error"
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       msg,
-			"host":          h.Id,
+			"host_id":       h.Id,
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		}))
 		grip.Error(message.WrapError(h.Remove(), message.Fields{
 			"message":       "error removing intent host",
-			"host":          h.Id,
+			"host_id":       h.Id,
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		}))
@@ -289,7 +324,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		msg = "reservation was nil"
 		grip.Error(message.Fields{
 			"message":       msg,
-			"host":          h.Id,
+			"host_id":       h.Id,
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		})
@@ -300,7 +335,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
 			grip.Error(message.WrapError(h.DeleteJasperCredentials(ctx, m.env), message.Fields{
 				"message": "problem cleaning up user data credentials",
-				"host":    h.Id,
+				"host_id": h.Id,
 				"distro":  h.Distro.Id,
 			}))
 		}
@@ -310,7 +345,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	instance := reservation.Instances[0]
 	grip.Debug(message.Fields{
 		"message":       "started ec2 instance",
-		"host":          *instance.InstanceId,
+		"host_id":       *instance.InstanceId,
 		"distro":        h.Distro.Id,
 		"host_provider": h.Distro.Provider,
 	})
@@ -369,7 +404,7 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 	grip.Debug(message.Fields{
 		"message":       "starting spot instance",
 		"args":          spotRequest,
-		"host":          h.Id,
+		"host_id":       h.Id,
 		"host_provider": h.Distro.Provider,
 		"distro":        h.Distro.Id,
 	})
@@ -378,7 +413,7 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 		if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
 			grip.Error(message.WrapError(h.DeleteJasperCredentials(ctx, m.env), message.Fields{
 				"message": "problem cleaning up user data credentials",
-				"host":    h.Id,
+				"host_id": h.Id,
 				"distro":  h.Distro.Id,
 			}))
 		}
@@ -391,7 +426,7 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 		if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
 			grip.Error(message.WrapError(h.DeleteJasperCredentials(ctx, m.env), message.Fields{
 				"message": "problem cleaning up user data credentials",
-				"host":    h.Id,
+				"host_id": h.Id,
 				"distro":  h.Distro.Id,
 			}))
 		}
@@ -419,9 +454,12 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	defer m.client.Close()
 
 	ec2Settings := &EC2ProviderSettings{}
-	err := ec2Settings.fromDistroSettings(h.Distro)
+	err := ec2Settings.FromDistroSettings(h.Distro, m.region)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting EC2 settings")
+	}
+	if err := ec2Settings.Validate(); err != nil {
+		return nil, errors.Wrapf(err, "Invalid EC2 settings in distro %s: %+v", h.Distro.Id, ec2Settings)
 	}
 	if ec2Settings.KeyName == "" && !h.UserHost {
 		if !h.SpawnOptions.SpawnedByTask {
@@ -449,7 +487,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 		msg := "error getting provider"
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       msg,
-			"host":          h.Id,
+			"host_id":       h.Id,
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		}))
@@ -461,7 +499,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 			msg := "error spawning on-demand host"
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       msg,
-				"host":          h.Id,
+				"host_id":       h.Id,
 				"host_provider": h.Distro.Provider,
 				"distro":        h.Distro.Id,
 			}))
@@ -469,7 +507,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 		}
 		grip.Debug(message.Fields{
 			"message":       "spawned on-demand host",
-			"host":          h.Id,
+			"host_id":       h.Id,
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		})
@@ -479,7 +517,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 			msg := "error spawning spot host"
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       msg,
-				"host":          h.Id,
+				"host_id":       h.Id,
 				"host_provider": h.Distro.Provider,
 				"distro":        h.Distro.Id,
 			}))
@@ -487,7 +525,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 		}
 		grip.Debug(message.Fields{
 			"message":       "spawned spot host",
-			"host":          h.Id,
+			"host_id":       h.Id,
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		})
@@ -503,7 +541,7 @@ func (m *ec2Manager) getResources(ctx context.Context, h *host.Host) ([]string, 
 		instanceID, err := m.client.GetSpotInstanceId(ctx, h)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error getting spot request info",
-			"host":          h.Id,
+			"host_id":       h.Id,
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		}))
@@ -726,7 +764,7 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 					if h.Id == *hostsToCheck[i] {
 						grip.Error(message.WrapError(h.Terminate(evergreen.User, "host is missing from DescribeInstances response"), message.Fields{
 							"message":       "can't mark instance as terminated",
-							"host":          h.Id,
+							"host_id":       h.Id,
 							"host_provider": h.Distro.Provider,
 							"distro":        h.Distro.Id,
 						}))
@@ -790,14 +828,14 @@ func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cloud
 		if err == noReservationError {
 			grip.Error(message.WrapError(h.Terminate(evergreen.User, "host is unknown to AWS"), message.Fields{
 				"message":       "can't mark instance as terminated",
-				"host":          h.Id,
+				"host_id":       h.Id,
 				"host_provider": h.Distro.Provider,
 				"distro":        h.Distro.Id,
 			}))
 		}
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error getting instance info",
-			"host":          h.Id,
+			"host_id":       h.Id,
 			"instance_id":   id,
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
@@ -828,7 +866,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
 		grip.Error(message.WrapError(h.DeleteJasperCredentials(ctx, m.env), message.Fields{
 			"message": "problem deleting Jasper credentials during host termination",
-			"host":    h.Id,
+			"host_id": h.Id,
 			"distro":  h.Distro.Id,
 		}))
 	}
@@ -845,7 +883,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       "error canceling spot request",
-				"host":          h.Id,
+				"host_id":       h.Id,
 				"host_provider": h.Distro.Provider,
 				"user":          user,
 				"distro":        h.Distro.Id,
@@ -868,7 +906,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error terminating instance",
 			"user":          user,
-			"host":          h.Id,
+			"host_id":       h.Id,
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		}))
@@ -881,7 +919,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 			"user":          user,
 			"host_provider": h.Distro.Provider,
 			"instance_id":   *stateChange.InstanceId,
-			"host":          h.Id,
+			"host_id":       h.Id,
 			"distro":        h.Distro.Id,
 		})
 	}
@@ -939,7 +977,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 		"message":       "stopped instance",
 		"user":          user,
 		"host_provider": h.Distro.Provider,
-		"host":          h.Id,
+		"host_id":       h.Id,
 		"distro":        h.Distro.Id,
 	})
 
@@ -995,7 +1033,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		"message":       "started instance",
 		"user":          user,
 		"host_provider": h.Distro.Provider,
-		"host":          h.Id,
+		"host_id":       h.Id,
 		"distro":        h.Distro.Id,
 	})
 
@@ -1012,7 +1050,7 @@ func (m *ec2Manager) cancelSpotRequest(ctx context.Context, h *host.Host) (strin
 		}
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error getting spot request info",
-			"host":          h.Id,
+			"host_id":       h.Id,
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		}))
@@ -1028,7 +1066,7 @@ func (m *ec2Manager) cancelSpotRequest(ctx context.Context, h *host.Host) (strin
 		}
 		grip.Error(message.Fields{
 			"message":       "failed to cancel spot request",
-			"host":          h.Id,
+			"host_id":       h.Id,
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		})
@@ -1036,7 +1074,7 @@ func (m *ec2Manager) cancelSpotRequest(ctx context.Context, h *host.Host) (strin
 	}
 	grip.Info(message.Fields{
 		"message":       "canceled spot request",
-		"host":          h.Id,
+		"host_id":       h.Id,
 		"host_provider": h.Distro.Provider,
 		"distro":        h.Distro.Id,
 	})
@@ -1060,7 +1098,7 @@ func (m *ec2Manager) IsUp(ctx context.Context, h *host.Host) (bool, error) {
 func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 	grip.Debug(message.Fields{
 		"message":       "host is up",
-		"host":          h.Id,
+		"host_id":       h.Id,
 		"host_provider": h.Distro.Provider,
 		"distro":        h.Distro.Id,
 		"is_spot":       isHostSpot(h),

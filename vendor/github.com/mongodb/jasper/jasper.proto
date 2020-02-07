@@ -4,6 +4,8 @@ package jasper;
 option go_package = "internal";
 
 import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
 
 message Logger {
     LogType log_type = 1;
@@ -249,45 +251,71 @@ message ScriptingOptionsPython {
   string host_python = 3;
   repeated string packages = 4;
   bool legacy_python = 5;
+  bool add_test_deps = 6;
 }
 
 message ScriptingOptionsRoswell {
   string path = 1;
-  repeated string systems = 2; 
+  repeated string systems = 2;
   string lisp = 3;
 }
 
 message ScriptingOptions {
   oneof value {
-    ScriptingOptionsGolang golang = 1; 
-    ScriptingOptionsPython python = 2; 
+    ScriptingOptionsGolang golang = 1;
+    ScriptingOptionsPython python = 2;
     ScriptingOptionsRoswell roswell = 3;
   }
   map<string, string> environment = 4;
-  OutputOptions output = 5; 
+  OutputOptions output = 5;
   int64 duration = 6;
 }
 
 message ScriptingHarnessRunArgs {
-  string id = 1; 
-  repeated string args = 2; 
+  string id = 1;
+  repeated string args = 2;
 }
 
 message ScriptingHarnessBuildArgs {
-  string id = 1; 
+  string id = 1;
   string directory = 2;
-  repeated string args = 3; 
+  repeated string args = 3;
 }
 
 message ScriptingHarnessBuildResponse {
   OperationOutcome outcome = 1;
-  string path = 2; 
+  string path = 2;
 }
-
 
 message ScriptingHarnessRunScriptArgs {
   string id = 1;
   string script = 2;
+}
+
+message ScriptingHarnessTestArgs {
+  string id = 1;
+  string directory = 2;
+  repeated ScriptingHarnessTestOptions options = 3;
+}
+
+message ScriptingHarnessTestOptions {
+  string name = 1;
+  repeated string args = 2;
+  string pattern = 3;
+  google.protobuf.Duration timeout = 4;
+  int32 count = 5;
+}
+
+message ScriptingHarnessTestResult {
+  string name = 1;
+  google.protobuf.Timestamp start_at = 2;
+  google.protobuf.Duration duration = 3;
+  string outcome = 4;
+}
+
+message ScriptingHarnessTestResponse {
+  OperationOutcome outcome = 1;
+  repeated ScriptingHarnessTestResult results = 2;
 }
 
 service JasperProcessManager {
@@ -310,13 +338,14 @@ service JasperProcessManager {
   rpc Respawn(JasperProcessID) returns (ProcessInfo);
 
   // ScriptingHarness functions
-  rpc ScriptingHarnessCreate(ScriptingOptions) returns (ScriptingHarnessID); 
+  rpc ScriptingHarnessCreate(ScriptingOptions) returns (ScriptingHarnessID);
   rpc ScriptingHarnessCheck(ScriptingHarnessID) returns (OperationOutcome);
   rpc ScriptingHarnessSetup(ScriptingHarnessID) returns (OperationOutcome);
   rpc ScriptingHarnessCleanup(ScriptingHarnessID) returns (OperationOutcome);
   rpc ScriptingHarnessRun(ScriptingHarnessRunArgs) returns (OperationOutcome);
   rpc ScriptingHarnessBuild(ScriptingHarnessBuildArgs) returns (ScriptingHarnessBuildResponse);
   rpc ScriptingHarnessRunScript(ScriptingHarnessRunScriptArgs) returns (OperationOutcome);
+  rpc ScriptingHarnessTest(ScriptingHarnessTestArgs) returns (ScriptingHarnessTestResponse);
 
   // RPC-specific functions
   rpc Status(google.protobuf.Empty) returns (StatusResponse);

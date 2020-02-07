@@ -1,6 +1,9 @@
 package grip
 
-import "github.com/mongodb/grip/logging"
+import (
+	"github.com/mongodb/grip/logging"
+	"github.com/mongodb/grip/send"
+)
 
 // The base type for all Journaling methods provided by the Grip
 // package. The package logger uses systemd logging on Linux, when
@@ -25,4 +28,9 @@ func Name() string {
 // message. Typically this is included on the output of the command.
 func SetName(name string) {
 	std.SetName(name)
+}
+
+// SetLevel sets the default and threshold level in the underlying sender.
+func SetLevel(info send.LevelInfo) error {
+	return std.SetLevel(info)
 }

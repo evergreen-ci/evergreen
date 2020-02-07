@@ -149,6 +149,7 @@ func IntervalQueueOperation(ctx context.Context, q Queue, interval time.Duration
 				grip.InfoWhen(conf.DebugLogging, message.Fields{
 					"message":       "exiting interval job scheduler",
 					"num_intervals": count,
+					"queue":         "single",
 					"reason":        "operation canceled",
 					"conf":          conf,
 				})

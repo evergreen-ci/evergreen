@@ -23,7 +23,7 @@ func (p *process) Info(ctx context.Context) jasper.ProcessInfo {
 	if p.info.Complete {
 		return p.info
 	}
-	req, err := shell.RequestToMessage(infoRequest{ID: p.ID()})
+	req, err := shell.RequestToMessage(mongowire.OP_QUERY, infoRequest{ID: p.ID()})
 	if err != nil {
 		grip.Warning(message.WrapErrorf(err, "failed to get process info for process %s", p.ID()))
 		return jasper.ProcessInfo{}
@@ -50,7 +50,7 @@ func (p *process) Running(ctx context.Context) bool {
 	if p.info.Complete {
 		return false
 	}
-	req, err := shell.RequestToMessage(runningRequest{ID: p.ID()})
+	req, err := shell.RequestToMessage(mongowire.OP_QUERY, runningRequest{ID: p.ID()})
 	if err != nil {
 		grip.Warning(message.WrapErrorf(err, "failed to get process running status for process %s", p.ID()))
 		return false
@@ -73,7 +73,7 @@ func (p *process) Complete(ctx context.Context) bool {
 	if p.info.Complete {
 		return true
 	}
-	req, err := shell.RequestToMessage(completeRequest{ID: p.ID()})
+	req, err := shell.RequestToMessage(mongowire.OP_QUERY, completeRequest{ID: p.ID()})
 	if err != nil {
 		grip.Warning(message.WrapErrorf(err, "failed to get process completion status for process %s", p.ID()))
 		return false
@@ -96,7 +96,7 @@ func (p *process) Signal(ctx context.Context, sig syscall.Signal) error {
 	r := signalRequest{}
 	r.Params.ID = p.ID()
 	r.Params.Signal = int(sig)
-	req, err := shell.RequestToMessage(r)
+	req, err := shell.RequestToMessage(mongowire.OP_QUERY, r)
 	if err != nil {
 		return errors.Wrap(err, "could not create request")
 	}
@@ -112,7 +112,7 @@ func (p *process) Signal(ctx context.Context, sig syscall.Signal) error {
 }
 
 func (p *process) Wait(ctx context.Context) (int, error) {
-	req, err := shell.RequestToMessage(waitRequest{p.ID()})
+	req, err := shell.RequestToMessage(mongowire.OP_QUERY, waitRequest{p.ID()})
 	if err != nil {
 		return -1, errors.Wrap(err, "could not create request")
 	}
@@ -128,7 +128,7 @@ func (p *process) Wait(ctx context.Context) (int, error) {
 }
 
 func (p *process) Respawn(ctx context.Context) (jasper.Process, error) {
-	req, err := shell.RequestToMessage(respawnRequest{ID: p.ID()})
+	req, err := shell.RequestToMessage(mongowire.OP_QUERY, respawnRequest{ID: p.ID()})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create request")
 	}
@@ -158,7 +158,7 @@ func (p *process) RegisterSignalTriggerID(ctx context.Context, sigID jasper.Sign
 	r := registerSignalTriggerIDRequest{}
 	r.Params.ID = p.ID()
 	r.Params.SignalTriggerID = sigID
-	req, err := shell.RequestToMessage(r)
+	req, err := shell.RequestToMessage(mongowire.OP_QUERY, r)
 	if err != nil {
 		return errors.Wrap(err, "could not create request")
 	}
@@ -177,7 +177,7 @@ func (p *process) Tag(tag string) {
 	r := tagRequest{}
 	r.Params.ID = p.ID()
 	r.Params.Tag = tag
-	req, err := shell.RequestToMessage(r)
+	req, err := shell.RequestToMessage(mongowire.OP_QUERY, r)
 	if err != nil {
 		grip.Warningf("failed to tag process %s with tag %s", p.ID(), tag)
 		return
@@ -196,7 +196,7 @@ func (p *process) Tag(tag string) {
 }
 
 func (p *process) GetTags() []string {
-	req, err := shell.RequestToMessage(getTagsRequest{p.ID()})
+	req, err := shell.RequestToMessage(mongowire.OP_QUERY, getTagsRequest{p.ID()})
 	if err != nil {
 		grip.Warningf("failed to get tags for process %s", p.ID())
 		return nil
@@ -215,7 +215,7 @@ func (p *process) GetTags() []string {
 }
 
 func (p *process) ResetTags() {
-	req, err := shell.RequestToMessage(resetTagsRequest{p.ID()})
+	req, err := shell.RequestToMessage(mongowire.OP_QUERY, resetTagsRequest{p.ID()})
 	if err != nil {
 		grip.Warningf("failed to reset tags for process %s", p.ID())
 		return

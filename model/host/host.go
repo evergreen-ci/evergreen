@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -14,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -147,6 +149,10 @@ type Host struct {
 	// SSHKeyNames contains the names of the SSH key that have been distributed
 	// to this host.
 	SSHKeyNames []string `bson:"ssh_key_names,omitempty" json:"ssh_key_names,omitempty"`
+
+	AttachVolume bool `bson:"attach_volume" json:"attach_volume"`
+	// HomeVolumeSize is the size of the home volume in GB
+	HomeVolumeSize int `bson:"home_volume_size" json:"home_volume_size"`
 }
 
 type Tag struct {
@@ -172,7 +178,6 @@ const (
 	ReprovisionJasperRestart ReprovisionType = "jasper-restart"
 )
 
-func (h *Host) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(h) }
 func (h *Host) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, h) }
 
 type IdleHostsByDistroID struct {
@@ -189,6 +194,7 @@ type HostGroup []Host
 type VolumeAttachment struct {
 	VolumeID   string `bson:"volume_id" json:"volume_id"`
 	DeviceName string `bson:"device_name" json:"device_name"`
+	IsHome     bool   `bson:"is_home" json:"is_home"`
 }
 
 // DockerOptions contains options for starting a container
@@ -211,6 +217,50 @@ type DockerOptions struct {
 	EnvironmentVars []string `mapstructure:"environment_vars" bson:"environment_vars,omitempty" json:"environment_vars,omitempty"`
 }
 
+func (opts *DockerOptions) FromDistroSettings(d distro.Distro, _ string) error {
+	if d.ProviderSettings != nil {
+		if err := mapstructure.Decode(d.ProviderSettings, opts); err != nil {
+			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, opts)
+		}
+		bytes, err := bson.Marshal(opts)
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		doc := &birch.Document{}
+		if err := doc.UnmarshalBSON(bytes); err != nil {
+			return errors.Wrapf(err, "error unmarshalling settings bytes into document")
+		}
+		if len(d.ProviderSettingsList) == 0 {
+			if err := d.UpdateProviderSettings(doc); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"distro":   d.Id,
+					"provider": d.Provider,
+					"settings": d.ProviderSettings,
+				}))
+				return errors.Wrapf(err, "error updating provider settings")
+			}
+		}
+	} else if len(d.ProviderSettingsList) != 0 {
+		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		if err := bson.Unmarshal(bytes, opts); err != nil {
+			return errors.Wrap(err, "error unmarshalling bson into provider settings")
+		}
+	}
+	return nil
+}
+
+// Validate checks that the settings from the config file are sane.
+func (opts *DockerOptions) Validate() error {
+	if opts.Image == "" {
+		return errors.New("Image must not be empty")
+	}
+
+	return nil
+}
+
 // ProvisionOptions is struct containing options about how a new host should be set up.
 type ProvisionOptions struct {
 	// LoadCLI indicates (if set) that while provisioning the host, the CLI binary should
@@ -230,10 +280,10 @@ type SpawnOptions struct {
 	// TimeoutTeardown is the time that this host should be torn down. In most cases, a host
 	// should be torn down due to its task or build. TimeoutTeardown is a backstop to ensure that Evergreen
 	// tears down a host if a task hangs or otherwise does not finish within an expected period of time.
-	TimeoutTeardown time.Time `bson:"timeout_teardown" json:"timeout_teardown"`
+	TimeoutTeardown time.Time `bson:"timeout_teardown,omitempty" json:"timeout_teardown,omitempty"`
 
 	// TimeoutTeardown is the time after which Evergreen should give up trying to set up this host.
-	TimeoutSetup time.Time `bson:"timeout_setup" json:"timeout_setup"`
+	TimeoutSetup time.Time `bson:"timeout_setup,omitempty" json:"timeout_setup,omitempty"`
 
 	// TaskID is the task_id of the task to which this host is pinned. When the task finishes,
 	// this host should be torn down. Only one of TaskID or BuildID should be set.
@@ -405,13 +455,13 @@ func (h *Host) SetDecommissioned(user string, logs string) error {
 		containers, err := h.GetContainers()
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error getting containers",
-			"host":    h.Id,
+			"host_id": h.Id,
 		}))
 		for _, c := range containers {
 			err = c.SetStatus(evergreen.HostDecommissioned, user, "parent is being decommissioned")
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "error decommissioning container",
-				"host":    c.Id,
+				"host_id": c.Id,
 			}))
 		}
 	}
@@ -981,7 +1031,7 @@ func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
 			grip.Debug(message.Fields{
 				"message": "found duplicate running task",
 				"task":    t.Id,
-				"host":    h.Id,
+				"host_id": h.Id,
 			})
 			return false, nil
 		}
@@ -1006,11 +1056,11 @@ func (h *Host) SetAgentRevision(agentRevision string) error {
 // IsWaitingForAgent provides a local predicate for the logic for
 // whether the host needs either a new agent or agent monitor.
 func (h *Host) IsWaitingForAgent() bool {
-	if h.LegacyBootstrap() && h.NeedsNewAgent {
+	if h.Distro.LegacyBootstrap() && h.NeedsNewAgent {
 		return true
 	}
 
-	if !h.LegacyBootstrap() && h.NeedsNewAgentMonitor {
+	if !h.Distro.LegacyBootstrap() && h.NeedsNewAgentMonitor {
 		return true
 	}
 
@@ -1105,28 +1155,10 @@ func (h *Host) SetReprovisioningLockedAtomically(locked bool) error {
 	return nil
 }
 
-// LegacyBootstrap returns whether the host was bootstrapped using the legacy
-// method.
-func (h *Host) LegacyBootstrap() bool {
-	return h.Distro.BootstrapSettings.Method == "" || h.Distro.BootstrapSettings.Method == distro.BootstrapMethodLegacySSH
-}
-
-// LegacyCommunication returns whether the app server is communicating with this
-// host using the legacy method.
-func (h *Host) LegacyCommunication() bool {
-	return h.Distro.BootstrapSettings.Communication == "" || h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodLegacySSH
-}
-
-// JasperCommunication returns whether or not the app server is communicating
-// with this host's Jasper service.
-func (h *Host) JasperCommunication() bool {
-	return h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodSSH || h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC
-}
-
 // SetNeedsAgentDeploy indicates that the host's agent or agent monitor needs
 // to be deployed.
 func (h *Host) SetNeedsAgentDeploy(needsDeploy bool) error {
-	if !h.LegacyBootstrap() {
+	if !h.Distro.LegacyBootstrap() {
 		if err := h.SetNeedsNewAgentMonitor(needsDeploy); err != nil {
 			return errors.Wrap(err, "error setting host needs new agent monitor")
 		}
@@ -1319,7 +1351,7 @@ func (h *Host) DisablePoisonedHost(logs string) error {
 		}
 
 		grip.Error(message.Fields{
-			"host":     h.Id,
+			"host_id":  h.Id,
 			"provider": h.Provider,
 			"distro":   h.Distro.Id,
 			"message":  "host may be poisoned",
@@ -1628,9 +1660,7 @@ func FindRunningHosts(includeSpawnHosts bool) ([]Host, error) {
 func FindAllHostsSpawnedByTasks() ([]Host, error) {
 	query := db.Query(bson.M{
 		StatusKey: evergreen.HostRunning,
-		SpawnOptionsKey: bson.M{
-			"$exists": true,
-		},
+		bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey): true,
 	})
 	hosts, err := Find(query)
 	if err != nil {
@@ -2198,6 +2228,16 @@ func (h *Host) MarkShouldExpire(expireOnValue string) error {
 			},
 		},
 	)
+}
+
+func (h *Host) HomeVolume() *VolumeAttachment {
+	for _, vol := range h.Volumes {
+		if vol.IsHome {
+			return &vol
+		}
+	}
+
+	return nil
 }
 
 // FindHostWithVolume finds the host associated with the

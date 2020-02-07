@@ -288,6 +288,14 @@ Evergreen - Distros
               <div class="icon fa fa-warning distro-error" ng-show="form.workDir.$dirty && form.workDir.$error.required || form.workDir.$invalid">Working
                 Directory is required</div>
             </div>
+            <div>
+              <label class="distro-label">Home Volume Device Name:</label>
+              <input ng-readonly="readOnly" type="text" class="form-control" ng-model="activeDistro.home_volume_settings.device_name">
+            </div>
+            <div>
+              <label class="distro-label">Home Volume Format Command:</label>
+              <input ng-readonly="readOnly" type="text" class="form-control" ng-model="activeDistro.home_volume_settings.format_command">
+            </div>
           </div>
           <br>
           <div class="panel-body panel panel-default">

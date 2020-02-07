@@ -2730,8 +2730,9 @@ func TestFindHostsSpawnedByTasks(t *testing.T) {
 			Id:     "1",
 			Status: evergreen.HostRunning,
 			SpawnOptions: SpawnOptions{
-				TaskID:  "task_1",
-				BuildID: "build_1",
+				TaskID:        "task_1",
+				BuildID:       "build_1",
+				SpawnedByTask: true,
 			},
 		},
 		{
@@ -2746,24 +2747,27 @@ func TestFindHostsSpawnedByTasks(t *testing.T) {
 			Id:     "4",
 			Status: evergreen.HostRunning,
 			SpawnOptions: SpawnOptions{
-				TaskID:  "task_2",
-				BuildID: "build_1",
+				TaskID:        "task_2",
+				BuildID:       "build_1",
+				SpawnedByTask: true,
 			},
 		},
 		{
 			Id:     "5",
 			Status: evergreen.HostDecommissioned,
 			SpawnOptions: SpawnOptions{
-				TaskID:  "task_1",
-				BuildID: "build_1",
+				TaskID:        "task_1",
+				BuildID:       "build_1",
+				SpawnedByTask: true,
 			},
 		},
 		{
 			Id:     "6",
 			Status: evergreen.HostTerminated,
 			SpawnOptions: SpawnOptions{
-				TaskID:  "task_2",
-				BuildID: "build_1",
+				TaskID:        "task_2",
+				BuildID:       "build_1",
+				SpawnedByTask: true,
 			},
 		},
 	}

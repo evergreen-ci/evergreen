@@ -1,6 +1,7 @@
 package slogger
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -73,3 +74,5 @@ func (a *appenderSender) Send(m message.Composer) {
 		}
 	}
 }
+
+func (a *appenderSender) Flush(_ context.Context) error { return nil }

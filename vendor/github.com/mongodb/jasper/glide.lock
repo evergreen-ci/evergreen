@@ -8,7 +8,7 @@ imports:
   - name: github.com/stretchr/testify
     version: 890a5c3458b43e6104ff5da8dfa139d013d77544
   - name: github.com/mongodb/grip
-    version: e78519fadff49ae1fd719a10d124755089615238
+    version: 2e402613ba129030dffcf05f53f185ea52d350c2
   - name: github.com/evergreen-ci/gimlet
     version: 8a317d725d0315a97c5d0c08ec04921f3ba498d5
   - name: github.com/tychoish/bond
@@ -20,7 +20,7 @@ imports:
   - name: github.com/montanaflynn/stats
     version: db72e6cae808b936b0c01fd330ff1fcd2c86c95e
   - name: github.com/mongodb/amboy
-    version: fd4248208c6bd99bc3793b02c8b338dd4fb560cc
+    version: 85bb9679689a39093947de9b5590064e2a264ae5
   - name: github.com/google/shlex
     version: 6f45313302b9c56850fc17f99e40caebce98c716
   - name: github.com/urfave/cli
@@ -34,11 +34,11 @@ imports:
   - name: github.com/evergreen-ci/certdepot
     version: d2c7b2f7c9c7af6311d211fe7fb127d99bdc5d43
   - name: github.com/evergreen-ci/mrpc
-    version: 1eaf67addbd7d8eb1481cd3ff45a2e7fdc1d98b2
+    version: 81a9a1863205a153bc1662255d724adb0b4f5739
   - name: github.com/evergreen-ci/birch
     version: 5b054047680765b089c1e6f77d0896803d1fd73d
   - name: github.com/evergreen-ci/timber
-    version: 1cdd00ad2f2eaf6fb1cb9dedacaddbc3b0e03149
+    version: 9a33c650233106e021bcb51bfc87de1910a8b6fc
   - name: github.com/evergreen-ci/poplar
     version: 3043bd036e01aa6abbad6af0df031a8315308ff9
 

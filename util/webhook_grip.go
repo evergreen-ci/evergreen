@@ -160,3 +160,5 @@ func (w *evergreenWebhookLogger) send(m message.Composer) error {
 
 	return nil
 }
+
+func (w *evergreenWebhookLogger) Flush(_ context.Context) error { return nil }

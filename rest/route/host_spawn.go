@@ -1162,7 +1162,7 @@ func (hs *hostStartProcesses) Run(ctx context.Context) gimlet.Responder {
 			}), "can't add data for host '%s'", hostID))
 			continue
 		}
-		if !h.JasperCommunication() {
+		if !h.Distro.JasperCommunication() {
 			grip.Error(errors.Wrapf(response.AddData(model.APIHostProcess{
 				HostID:   hostID,
 				Complete: true,

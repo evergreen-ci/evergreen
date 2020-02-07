@@ -187,7 +187,7 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     name: test-reporting
     tags: ["test"]
-    
+
   # run the suites with the race detector (one variant only)
   - <<: *run-go-test-suite
     name: race-dependency
@@ -261,6 +261,7 @@ buildvariants:
   - name: race-detector
     display_name: Race Detector
     expansions:
+      build_env: "GOROOT=/opt/golang/go1.12 GO_BIN_PATH=/opt/golang/go1.12/bin/go DISABLE_COVERAGE=1"
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
       test_timeout: 15m
     run_on:
@@ -273,6 +274,7 @@ buildvariants:
     run_on:
       - archlinux-build
     expansions:
+      build_env: "GOROOT=/opt/golang/go1.12 GO_BIN_PATH=/opt/golang/go1.12/bin/go"
       mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
       test_timeout: 15m
     tasks:
@@ -284,7 +286,7 @@ buildvariants:
     run_on:
       - ubuntu1604-build
     expansions:
-      build_env: "DISABLE_COVERAGE=yes GOROOT=/opt/golang/go1.9 PATH=/opt/golang/go1.9/bin:$PATH"
+      build_env: "DISABLE_COVERAGE=yes GOROOT=/opt/golang/go1.9 GO_BIN_PATH=/opt/golang/go1.9/bin/go"
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-3.6.4.tgz
     tasks:
       - name: ".dist"

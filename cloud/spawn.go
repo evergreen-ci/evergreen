@@ -38,6 +38,8 @@ type SpawnOptions struct {
 	InstanceTags     []host.Tag
 	InstanceType     string
 	NoExpiration     bool
+	AttachVolume     bool
+	HomeVolumeSize   int
 }
 
 // Validate returns an instance of BadOptionsErr if the SpawnOptions object contains invalid
@@ -148,6 +150,8 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 		InstanceTags:       so.InstanceTags,
 		InstanceType:       so.InstanceType,
 		NoExpiration:       so.NoExpiration,
+		AttachVolume:       so.AttachVolume,
+		HomeVolumeSize:     so.HomeVolumeSize,
 	}
 
 	intentHost := host.NewIntent(d, d.GenerateName(), d.Provider, hostOptions)
@@ -181,7 +185,7 @@ func SetHostRDPPassword(ctx context.Context, env evergreen.Environment, host *ho
 			"stdout":    stdout.Buffer.String(),
 			"stderr":    stderr.Buffer.String(),
 			"operation": "set host rdp password",
-			"host":      host.Id,
+			"host_id":   host.Id,
 			"cmd":       pwdUpdateCmd.String(),
 			"err":       err.Error(),
 		})
@@ -192,7 +196,7 @@ func SetHostRDPPassword(ctx context.Context, env evergreen.Environment, host *ho
 		"stdout":    stdout.Buffer.String(),
 		"stderr":    stderr.Buffer.String(),
 		"operation": "set host rdp password",
-		"host":      host.Id,
+		"host_id":   host.Id,
 		"cmd":       pwdUpdateCmd.String(),
 	})
 

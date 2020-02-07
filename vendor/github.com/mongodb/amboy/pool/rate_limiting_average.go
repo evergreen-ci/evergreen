@@ -188,6 +188,9 @@ func (p *ewmaRateLimiting) addCanceler(id string, cancel context.CancelFunc) {
 }
 
 func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duration {
+	ti := j.TimeInfo()
+	ti.Start = time.Now()
+
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithCancel(ctx)
 	p.addCanceler(j.ID(), cancel)
@@ -200,8 +203,9 @@ func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duratio
 	}()
 
 	executeJob(ctx, "rate-limited-average", j, p.queue)
+	ti.End = time.Now()
 
-	return j.TimeInfo().Duration()
+	return ti.Duration()
 }
 
 func (p *ewmaRateLimiting) SetQueue(q amboy.Queue) error {

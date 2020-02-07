@@ -200,7 +200,7 @@ func (m *userManager) reauthorizeID(username string, tokens *tokenResponse) erro
 	// for verifying ID tokens.
 	// We ignore this error if it occurs. More info can be found here:
 	// https://bitbucket.org/openid/connect/issues/1025/ambiguity-with-how-nonce-is-handled-on
-	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "the `Nonce` was not able to be validated") {
+	if err != nil && !strings.Contains(err.Error(), "the `Nonce` was not able to be validated") {
 		return errors.Wrap(err, "invalid ID token")
 	}
 	email, ok := idToken.Claims["email"].(string)

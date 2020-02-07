@@ -495,6 +495,19 @@ func (s *rpcScripting) Build(ctx context.Context, dir string, args []string) (st
 	return resp.Path, nil
 }
 
+func (s *rpcScripting) Test(ctx context.Context, dir string, args ...scripting.TestOptions) ([]scripting.TestResult, error) {
+	resp, err := s.client.ScriptingHarnessTest(ctx, &internal.ScriptingHarnessTestArgs{Id: s.id, Directory: dir, Options: internal.ConvertScriptingTestOptions(args)})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	if !resp.Outcome.Success {
+		err = errors.New(resp.Outcome.Text)
+	}
+
+	return resp.Export(), err
+}
+
 func (s *rpcScripting) Cleanup(ctx context.Context) error {
 	resp, err := s.client.ScriptingHarnessCleanup(ctx, &internal.ScriptingHarnessID{Id: s.id})
 	if err != nil {

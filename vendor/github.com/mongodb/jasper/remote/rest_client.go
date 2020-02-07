@@ -602,6 +602,41 @@ func (s *restScripting) Build(ctx context.Context, dir string, args []string) (s
 	return out.Path, nil
 }
 
+func (s *restScripting) Test(ctx context.Context, dir string, args ...scripting.TestOptions) ([]scripting.TestResult, error) {
+	body, err := makeBody(struct {
+		Directory string                  `json:"directory"`
+		Options   []scripting.TestOptions `json:"options"`
+	}{
+		Directory: dir,
+		Options:   args,
+	})
+
+	if err != nil {
+		return nil, errors.Wrap(err, "problem building request")
+	}
+
+	resp, err := s.client.doRequest(ctx, http.MethodPost, s.client.getURL("/scripting/%s/test", s.id), body)
+	if err != nil {
+		return nil, errors.Wrap(err, "request returned error")
+	}
+	defer resp.Body.Close()
+
+	out := struct {
+		Results []scripting.TestResult `json:"results"`
+		Error   string                 `json:"error"`
+	}{}
+
+	if err = gimlet.GetJSON(resp.Body, &out); err != nil {
+		return nil, errors.Wrap(err, "problem reading response")
+	}
+
+	if out.Error != "" {
+		err = errors.New(out.Error)
+	}
+
+	return out.Results, err
+}
+
 func (s *restScripting) Cleanup(ctx context.Context) error {
 	resp, err := s.client.doRequest(ctx, http.MethodDelete, s.client.getURL("/scripting/%s", s.id), nil)
 	if err != nil {

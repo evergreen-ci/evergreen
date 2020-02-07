@@ -41,7 +41,7 @@ func (m *ReplyMessage) Serialize() []byte {
 
 	loc := 36
 	for _, d := range m.Docs {
-		loc += writeDocAt(loc, &d, buf)
+		loc += writeDocAt(&d, buf, loc)
 	}
 
 	return buf

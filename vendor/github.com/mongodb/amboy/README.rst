@@ -129,7 +129,8 @@ The following patterns have emerged during our use of Amboy.
 Base Job
 ~~~~~~~~
 
-Embed the `job.Base <godoc.org/github.com/mongodb/amboy/job/#Base>`_
+Embed the `job.Base
+<https://godoc.org/github.com/mongodb/amboy/job/#Base>`_
 type in your amboy.Job implementations. This provides a number of
 helpers for basic job defintion in addition to implementations of all
 general methods in the interface. With the Base, you only need to

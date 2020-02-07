@@ -8,7 +8,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/util"
@@ -33,7 +35,7 @@ func (e *pythonEnvironment) Setup(ctx context.Context) error {
 	e.cachedHash = e.opts.ID()
 	venvpy := e.opts.Interpreter()
 
-	cmd := e.manager.CreateCommand(ctx).AppendArgs(e.opts.HostPythonInterpreter, "-m", e.venvMod(), e.opts.VirtualEnvPath)
+	cmd := e.manager.CreateCommand(ctx).AppendArgs(e.opts.HostPythonInterpreter, "-m", e.venvMod(), e.opts.VirtualEnvPath).Environment(e.opts.Environment)
 
 	if e.opts.RequirementsFilePath != "" {
 		cmd.AppendArgs(venvpy, "-m", "pip", "install", "-r", e.opts.RequirementsFilePath)
@@ -75,13 +77,13 @@ func (e *pythonEnvironment) RunScript(ctx context.Context, script string) error 
 		return errors.Wrap(err, "problem writing file")
 	}
 
-	return e.manager.CreateCommand(ctx).SetOutputOptions(e.opts.Output).AppendArgs(e.opts.Interpreter(), wo.Path).Run(ctx)
+	return e.manager.CreateCommand(ctx).Environment(e.opts.Environment).SetOutputOptions(e.opts.Output).AppendArgs(e.opts.Interpreter(), wo.Path).Run(ctx)
 }
 
 func (e *pythonEnvironment) Build(ctx context.Context, dir string, args []string) (string, error) {
 	output := &util.LocalBuffer{}
 
-	err := e.manager.CreateCommand(ctx).Directory(dir).RedirectErrorToOutput(true).
+	err := e.manager.CreateCommand(ctx).Directory(dir).RedirectErrorToOutput(true).Environment(e.opts.Environment).
 		Add(append([]string{e.opts.Interpreter(), "setup.py", "bdist_wheel"}, args...)).
 		SetOutputWriter(output).SetOutputOptions(e.opts.Output).Run(ctx)
 	if err != nil {
@@ -111,4 +113,33 @@ func (e *pythonEnvironment) Cleanup(ctx context.Context) error {
 		return errors.Wrapf(os.RemoveAll(e.opts.VirtualEnvPath),
 			"problem removing local python environment '%s'", e.opts.VirtualEnvPath)
 	}
+}
+
+func (e *pythonEnvironment) Test(ctx context.Context, dir string, tests ...TestOptions) ([]TestResult, error) {
+	out := make([]TestResult, len(tests))
+
+	catcher := grip.NewBasicCatcher()
+	for idx, t := range tests {
+		startAt := time.Now()
+		args := []string{e.opts.Interpreter(), "-m", "pytest"}
+		if t.Count > 0 {
+			args = append(args, fmt.Sprintf("--count=%d", t.Count))
+		}
+		if t.Timeout > 0 {
+			args = append(args, fmt.Sprintf("--timeout='%s'", t.Timeout.String()))
+		}
+		if t.Pattern != "" {
+			args = append(args, "-k", t.Pattern)
+		}
+
+		args = append(args, t.Args...)
+
+		err := e.manager.CreateCommand(ctx).Directory(dir).Environment(e.opts.Environment).SetOutputOptions(e.opts.Output).Add(args).Run(ctx)
+
+		catcher.Wrapf(err, "python test %s", t)
+
+		out[idx] = t.getResult(ctx, err, startAt)
+	}
+
+	return out, catcher.Resolve()
 }

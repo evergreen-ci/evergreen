@@ -33,6 +33,12 @@ type Harness interface {
 	// The Build operation returns the path of the build artifact
 	// produced by the operation.
 	Build(context.Context, string, []string) (string, error)
+	// Test provides a way for scripting harness to run tests. The
+	// first argument should be a directory, and the successive
+	// (optional) arguments should either be arguments to the test
+	// runner or names of specific tests to run, depending on the
+	// implementation.
+	Test(context.Context, string, ...TestOptions) ([]TestResult, error)
 	// Cleanup should remove the files created by the scripting environment.
 	Cleanup(context.Context) error
 }

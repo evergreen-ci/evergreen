@@ -10,7 +10,6 @@ import (
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
 )
@@ -20,12 +19,14 @@ import (
 // interface to determine priority. These queues do not have shared
 // storage.
 type priorityLocalQueue struct {
-	storage  *priorityStorage
-	fixed    *fixedStorage
-	channel  chan amboy.Job
-	runner   amboy.Runner
-	id       string
-	counters struct {
+	storage    *priorityStorage
+	fixed      *fixedStorage
+	channel    chan amboy.Job
+	scopes     ScopeManager
+	dispatcher Dispatcher
+	runner     amboy.Runner
+	id         string
+	counters   struct {
 		started   int
 		completed int
 		sync.RWMutex
@@ -37,11 +38,12 @@ type priorityLocalQueue struct {
 // worker processes.
 func NewLocalPriorityQueue(workers, capacity int) amboy.Queue {
 	q := &priorityLocalQueue{
+		scopes:  NewLocalScopeManager(),
 		storage: makePriorityStorage(),
 		fixed:   newFixedStorage(capacity),
 		id:      fmt.Sprintf("queue.local.unordered.priority.%s", uuid.NewV4().String()),
 	}
-
+	q.dispatcher = NewDispatcher(q)
 	q.runner = pool.NewLocalWorkers(workers, q)
 	return q
 }
@@ -96,10 +98,16 @@ func (q *priorityLocalQueue) Next(ctx context.Context) amboy.Job {
 			}
 
 			if !ti.IsDispatchable() {
-				go func() {
-					defer recovery.LogStackTraceAndContinue("re-queue waiting job", job.ID())
-					q.channel <- job
-				}()
+				q.storage.Insert(job)
+				continue
+			}
+			if err := q.dispatcher.Dispatch(ctx, job); err != nil {
+				q.storage.Insert(job)
+				continue
+			}
+
+			if err := q.scopes.Acquire(job.ID(), job.Scopes()); err != nil {
+				q.storage.Insert(job)
 				continue
 			}
 
@@ -209,8 +217,17 @@ func (q *priorityLocalQueue) Complete(ctx context.Context, j amboy.Job) {
 	grip.Debugf("marking job (%s) as complete", id)
 	q.counters.Lock()
 	defer q.counters.Unlock()
-
 	q.fixed.Push(id)
+
+	grip.Warning(message.WrapError(
+		q.scopes.Release(j.ID(), j.Scopes()),
+		message.Fields{
+			"id":     j.ID(),
+			"scopes": j.Scopes(),
+			"queue":  q.ID(),
+			"op":     "releasing scope lock during completion",
+		}))
+	q.dispatcher.Complete(ctx, j)
 
 	if num := q.fixed.Oversize(); num > 0 {
 		for i := 0; i < num; i++ {

@@ -9,7 +9,7 @@ imports:
   version: 9deed8c6c1c89e0b6d68d727f215de8e851d1064
   subpackages:
     - container/intsets
-    
+
 - name: github.com/cheynewallace/tabby
   version: b7224f6123093cc04ce961170a360e1d22e214a5
 - name: github.com/urfave/cli
@@ -30,7 +30,7 @@ imports:
   version: e4d366fc3c7938e2958e662b4258c7a89e1f0e3e
 
 - name: github.com/mongodb/grip
-  version: b1dabf523db900adb1bce209a0df2a459eae1f7f
+  version: 2e402613ba129030dffcf05f53f185ea52d350c2
 - name: github.com/evergreen-ci/gimlet
   version: afeadc9b9f628ce2a9d11a7e5b25dac8a0970727
 
