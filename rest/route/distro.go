@@ -291,25 +291,30 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
 	}
 
-	distro, error := validateDistro(ctx, apiDistro, h.distroID, h.settings, false)
-	if error != nil {
-		return error
-	}
-
 	// Existing resource
 	if original != nil {
-		if err = h.sc.UpdateDistro(original, distro); err != nil {
+		newDistro, respErr := validateDistro(ctx, apiDistro, h.distroID, h.settings, false)
+		if respErr != nil {
+			return respErr
+		}
+
+		if err = h.sc.UpdateDistro(original, newDistro); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() distro with distro id '%s'", h.distroID))
 		}
-		event.LogDistroModified(h.distroID, user.Username(), distro)
+		event.LogDistroModified(h.distroID, user.Username(), newDistro)
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 	// New resource
+	newDistro, respErr := validateDistro(ctx, apiDistro, h.distroID, h.settings, true)
+	if respErr != nil {
+		return respErr
+	}
+
 	responder := gimlet.NewJSONResponse(struct{}{})
 	if err = responder.SetStatus(http.StatusCreated); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusCreated))
 	}
-	if err = h.sc.CreateDistro(distro); err != nil {
+	if err = h.sc.CreateDistro(newDistro); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for insert() distro with distro id '%s'", h.distroID))
 	}
 
