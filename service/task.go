@@ -524,7 +524,8 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if defaultLogger == model.BuildloggerLogSender {
-		logReader, err := uis.getBuildloggerLogs(projCtx, r, logType, DefaultLogMessages, execution)
+		var logReader io.ReadCloser
+		logReader, err = uis.getBuildloggerLogs(projCtx, r, logType, DefaultLogMessages, execution)
 		if err == nil {
 			gimlet.WriteText(w, logReader)
 			grip.Warning(logReader.Close())
@@ -758,7 +759,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if projCtx.Task.Requester == evergreen.MergeTestRequester {
-			_, err := commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
+			_, err = commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
 				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Task.Version, true)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -782,7 +783,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if !active && projCtx.Task.Requester == evergreen.MergeTestRequester {
-			_, err := commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
+			_, err = commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
 				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Task.Version, true)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)

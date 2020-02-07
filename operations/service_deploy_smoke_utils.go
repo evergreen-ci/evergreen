@@ -170,7 +170,8 @@ OUTER:
 			// retry for *slightly* delayed logger closing
 			for i := 0; i < 3; i++ {
 				grip.Infof("checking for log %s (%d/3)", task.Logs["task_log"], i+1)
-				body, err := makeSmokeRequest(username, key, client, task.Logs["task_log"]+"&text=true")
+				var body []byte
+				body, err = makeSmokeRequest(username, key, client, task.Logs["task_log"]+"&text=true")
 				if err != nil {
 					err = errors.Wrap(err, "error getting log data")
 					grip.Debug(err)

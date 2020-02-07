@@ -987,7 +987,7 @@ Examples:
 				dryRun:               dryRun,
 			}
 			if makeParentDirs && !makeParentDirsOnRemote {
-				if err := makeLocalParentDirs(localPath, remotePath, pull); err != nil {
+				if err = makeLocalParentDirs(localPath, remotePath, pull); err != nil {
 					return errors.Wrap(err, "could not create directory structure")
 				}
 			}
