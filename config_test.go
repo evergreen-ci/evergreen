@@ -780,9 +780,6 @@ func (s *AdminSuite) TestAddEC2RegionToSSHKey() {
 }
 
 func (s *AdminSuite) TestSSHKeysAppendOnly() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	defaultPair := func() SSHKeyPair {
 		return SSHKeyPair{
 			Name:    "foo",
@@ -791,46 +788,46 @@ func (s *AdminSuite) TestSSHKeysAppendOnly() {
 		}
 	}
 
-	config := testConfig()
-	config.SSHKeyPairs = []SSHKeyPair{defaultPair()}
-	config.SSHKeyDirectory = "/ssh_key_directory"
-	s.Require().NoError(UpdateConfig(config))
-	// We have to do this because we want to load the settings from the db
-	// instead of a file, which requires information to connect to the db first.
-	env, err := NewEnvironment(ctx, "", &DBSettings{
-		Url:                  DefaultDatabaseUrl,
-		DB:                   "mci_test",
-		WriteConcernSettings: WriteConcern{WMode: DefaultDatabaseWriteMode}},
-	)
-	s.Require().NoError(err)
-	SetEnvironment(env)
+	env, ok := s.env.(*envState)
+	s.Require().True(ok)
+	oldSettings := env.settings
+
+	settings := testConfig()
+	settings.SSHKeyPairs = []SSHKeyPair{defaultPair()}
+	settings.SSHKeyDirectory = "/ssh_key_directory"
+
+	newSettings := testConfig()
+	newSettings.SSHKeyPairs = []SSHKeyPair{defaultPair()}
+	newSettings.SSHKeyDirectory = "/ssh_key_directory"
+
+	env.settings = settings
 	defer func() {
-		SetEnvironment(s.env)
+		env.settings = oldSettings
 	}()
 
 	pair := defaultPair()
 	pair.Public = "new_public"
-	config.SSHKeyPairs = []SSHKeyPair{pair}
-	s.Error(config.Validate(), "should not be able to modify existing key pair")
+	newSettings.SSHKeyPairs = []SSHKeyPair{pair}
+	s.Error(newSettings.Validate(), "should not be able to modify existing key pair")
 
 	pair = defaultPair()
 	pair.Private = "new_private"
-	config.SSHKeyPairs = []SSHKeyPair{pair}
-	s.Error(config.Validate(), "should not be able to modify existing key pair")
+	newSettings.SSHKeyPairs = []SSHKeyPair{pair}
+	s.Error(newSettings.Validate(), "should not be able to modify existing key pair")
 
 	pair = defaultPair()
 	pair.Public = "new_public"
 	pair.Private = "new_private"
-	config.SSHKeyPairs = []SSHKeyPair{defaultPair(), pair}
-	s.Error(config.Validate(), "should not be able to add a new pair with the same name and different public/private keys")
+	newSettings.SSHKeyPairs = []SSHKeyPair{defaultPair(), pair}
+	s.Error(newSettings.Validate(), "should not be able to add a new pair with the same name and different public/private keys")
 
-	config.SSHKeyPairs = nil
-	s.Error(config.Validate(), "should not be able to delete existing key pair")
+	newSettings.SSHKeyPairs = nil
+	s.Error(newSettings.Validate(), "should not be able to delete existing key pair")
 
-	config.SSHKeyPairs = []SSHKeyPair{defaultPair(), SSHKeyPair{
+	newSettings.SSHKeyPairs = []SSHKeyPair{defaultPair(), SSHKeyPair{
 		Name:    "bar",
 		Public:  "public",
 		Private: "private",
 	}}
-	s.Error(config.Validate(), "should be able to append new key pair")
+	s.Error(newSettings.Validate(), "should be able to append new key pair")
 }

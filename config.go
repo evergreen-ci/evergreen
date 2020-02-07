@@ -129,7 +129,6 @@ func (c *Settings) Set() error {
 	defer cancel()
 	coll := env.DB().Collection(ConfigCollection)
 
-	// SSH keys are append-only.
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
 			aclEnabledKey:         c.ACLCheckingEnabled,
@@ -287,7 +286,7 @@ func NewSettings(filename string) (*Settings, error) {
 }
 
 // GetConfig retrieves the Evergreen config document. If no document is
-// present in the DB, it will return the defaults
+// present in the DB, it will return the defaults.
 func GetConfig() (*Settings, error) { return BootstrapConfig(GetEnvironment()) }
 
 // Bootstrap config gets a config from the database defined in the environment.
