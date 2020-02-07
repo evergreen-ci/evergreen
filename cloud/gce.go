@@ -279,3 +279,8 @@ func (m *gceManager) GetDNSName(ctx context.Context, host *host.Host) (string, e
 
 	return configs[0].NatIP, nil
 }
+
+//  TODO: this must be implemented to support adding SSH keys.
+func (m *gceManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
+	return nil
+}

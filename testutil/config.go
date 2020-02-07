@@ -262,6 +262,14 @@ func MockConfig() *evergreen.Settings {
 			WebhookNotificationsDisabled: true,
 			GithubStatusAPIDisabled:      true,
 		},
+		SSHKeyDirectory: "/ssh_key_directory",
+		SSHKeyPairs: []evergreen.SSHKeyPair{
+			{
+				Name:    "key",
+				Public:  "public",
+				Private: "private",
+			},
+		},
 		Slack: evergreen.SlackConfig{
 			Options: &send.SlackOptions{
 				Channel:   "#channel",

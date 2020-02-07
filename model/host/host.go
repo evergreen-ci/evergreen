@@ -146,6 +146,10 @@ type Host struct {
 	// InstanceTags stores user-specified tags for instances
 	InstanceTags []Tag `bson:"instance_tags,omitempty" json:"instance_tags,omitempty"`
 
+	// SSHKeyNames contains the names of the SSH key that have been distributed
+	// to this host.
+	SSHKeyNames []string `bson:"ssh_key_names,omitempty" json:"ssh_key_names,omitempty"`
+
 	AttachVolume bool `bson:"attach_volume" json:"attach_volume"`
 	// HomeVolumeSize is the size of the home volume in GB
 	HomeVolumeSize int `bson:"home_volume_size" json:"home_volume_size"`
@@ -1367,6 +1371,26 @@ func (h *Host) SetExtId() error {
 	)
 }
 
+// AddSSHKeyName adds the SSH key name for the host if it doesn't already have
+// it.
+func (h *Host) AddSSHKeyName(name string) error {
+	var update bson.M
+	if len(h.SSHKeyNames) == 0 {
+		update = bson.M{"$push": bson.M{SSHKeyNamesKey: name}}
+	} else {
+		update = bson.M{"$addToSet": bson.M{SSHKeyNamesKey: name}}
+	}
+	if err := UpdateOne(bson.M{IdKey: h.Id}, update); err != nil {
+		return errors.WithStack(err)
+	}
+
+	if !util.StringSliceContains(h.SSHKeyNames, name) {
+		h.SSHKeyNames = append(h.SSHKeyNames, name)
+	}
+
+	return nil
+}
+
 func FindHostsToTerminate() ([]Host, error) {
 	const (
 		// provisioningCutoff is the threshold to consider as too long for a host to take provisioning
@@ -2227,4 +2251,19 @@ func FindHostWithVolume(volumeID string) (*Host, error) {
 		},
 	)
 	return FindOne(q)
+}
+
+// FindStaticNeedsNewSSHKeys finds all static hosts that do not have the same
+// set of SSH keys as those in the global settings.
+func FindStaticNeedsNewSSHKeys(settings *evergreen.Settings) ([]Host, error) {
+	names := []string{}
+	for _, pair := range settings.SSHKeyPairs {
+		names = append(names, pair.Name)
+	}
+
+	return Find(db.Query(bson.M{
+		StatusKey:      evergreen.HostRunning,
+		ProviderKey:    evergreen.ProviderNameStatic,
+		SSHKeyNamesKey: bson.M{"$not": bson.M{"$all": names}},
+	}))
 }

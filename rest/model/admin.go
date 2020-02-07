@@ -82,6 +82,8 @@ type APIAdminSettings struct {
 	Scheduler               *APISchedulerConfig               `json:"scheduler,omitempty"`
 	ServiceFlags            *APIServiceFlags                  `json:"service_flags,omitempty"`
 	Slack                   *APISlackConfig                   `json:"slack,omitempty"`
+	SSHKeyDirectory         *string                           `json:"ssh_key_directory,omitempty"`
+	SSHKeyPairs             []APISSHKeyPair                   `json:"ssh_key_pairs,omitempty"`
 	SpawnHostsPerUser       *int                              `json:"spawn_hosts_per_user"`
 	Splunk                  *APISplunkConnectionInfo          `json:"splunk,omitempty"`
 	SuperUsers              []string                          `json:"superusers,omitempty"`
@@ -135,6 +137,15 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.Keys = v.Keys
 		as.SuperUsers = v.SuperUsers
 		as.GithubOrgs = v.GithubOrgs
+		as.SSHKeyDirectory = ToStringPtr(v.SSHKeyDirectory)
+		as.SSHKeyPairs = []APISSHKeyPair{}
+		for _, pair := range v.SSHKeyPairs {
+			as.SSHKeyPairs = append(as.SSHKeyPairs, APISSHKeyPair{
+				Name:    ToStringPtr(pair.Name),
+				Public:  ToStringPtr(pair.Public),
+				Private: ToStringPtr(pair.Private),
+			})
+		}
 		as.UnexpirableHostsPerUser = &v.UnexpirableHostsPerUser
 		as.SpawnHostsPerUser = &v.SpawnHostsPerUser
 	default:
@@ -229,6 +240,15 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 		for k2, v2 := range v {
 			settings.Plugins[k][k2] = v2
 		}
+	}
+	settings.SSHKeyDirectory = FromStringPtr(as.SSHKeyDirectory)
+	settings.SSHKeyPairs = []evergreen.SSHKeyPair{}
+	for _, pair := range as.SSHKeyPairs {
+		settings.SSHKeyPairs = append(settings.SSHKeyPairs, evergreen.SSHKeyPair{
+			Name:    FromStringPtr(pair.Name),
+			Public:  FromStringPtr(pair.Public),
+			Private: FromStringPtr(pair.Private),
+		})
 	}
 	return settings, nil
 }
@@ -1423,6 +1443,12 @@ type APIServiceFlags struct {
 	EmailNotificationsDisabled   bool `json:"email_notifications_disabled"`
 	WebhookNotificationsDisabled bool `json:"webhook_notifications_disabled"`
 	GithubStatusAPIDisabled      bool `json:"github_status_api_disabled"`
+}
+
+type APISSHKeyPair struct {
+	Name    *string `json:"name"`
+	Public  *string `json:"public"`
+	Private *string `json:"private"`
 }
 
 type APISlackConfig struct {

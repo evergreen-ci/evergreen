@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"net"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -75,6 +77,88 @@ func TestClientURL(t *testing.T) {
 	h.Distro.Arch = distro.ArchLinuxAmd64
 	expected = "www.example.com/clients/linux_amd64/evergreen"
 	assert.Equal(t, expected, h.ClientURL(settings))
+}
+
+func TestGetSSHOptions(t *testing.T) {
+	defaultKeyName := "key_name"
+	defaultKeyPath := "/path/to/key/file"
+
+	checkContainsOptionsAndValues := func(t *testing.T, expected []string, actual []string) {
+		exists := map[string]bool{}
+		for i := 0; i < len(actual); i += 2 {
+			exists[actual[i]+actual[i+1]] = true
+		}
+		for i := 0; i < len(expected); i += 2 {
+			assert.True(t, exists[expected[i]+expected[i+1]])
+		}
+	}
+	for testName, testCase := range map[string]func(t *testing.T, h *Host, settings *evergreen.Settings){
+		"ReturnsExpectedArguments": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			expected := []string{"-i", defaultKeyPath, "-o", "UserKnownHostsFile=/dev/null"}
+			opts, err := h.GetSSHOptions(settings)
+			require.NoError(t, err)
+			checkContainsOptionsAndValues(t, expected, opts)
+		},
+		"IncludesMultipleIdentityFiles": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			keyName := "key_file"
+			keyFile, err := ioutil.TempFile(settings.SSHKeyDirectory, keyName)
+			require.NoError(t, err)
+			assert.NoError(t, keyFile.Close())
+			defer func() {
+				assert.NoError(t, os.RemoveAll(keyFile.Name()))
+			}()
+
+			key := evergreen.SSHKeyPair{Name: filepath.Base(keyFile.Name())}
+			settings.SSHKeyPairs = []evergreen.SSHKeyPair{key}
+
+			expected := []string{"-i", key.PrivatePath(settings), "-i", defaultKeyPath, "-o", "UserKnownHostsFile=/dev/null"}
+			opts, err := h.GetSSHOptions(settings)
+			require.NoError(t, err)
+			checkContainsOptionsAndValues(t, expected, opts)
+		},
+		"IgnoresNonexistentIdentityFiles": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			nonexistentKey := evergreen.SSHKeyPair{Name: "nonexistent"}
+			settings.SSHKeyPairs = []evergreen.SSHKeyPair{nonexistentKey}
+
+			expected := []string{"-i", defaultKeyPath, "-o", "UserKnownHostsFile=/dev/null"}
+			opts, err := h.GetSSHOptions(settings)
+			require.NoError(t, err)
+			checkContainsOptionsAndValues(t, expected, opts)
+		},
+		"FailsWithoutIdentityFile": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			h.Distro.SSHKey = ""
+
+			_, err := h.GetSSHOptions(settings)
+			assert.Error(t, err)
+		},
+		"IncludesAdditionalArguments": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			h.Distro.SSHOptions = []string{"UserKnownHostsFile=/path/to/file"}
+
+			expected := []string{"-i", defaultKeyPath, "-o", h.Distro.SSHOptions[0]}
+			opts, err := h.GetSSHOptions(settings)
+			require.NoError(t, err)
+			checkContainsOptionsAndValues(t, expected, opts)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			sshKeyDir, err := ioutil.TempDir("", "ssh_key_directory")
+			require.NoError(t, err)
+			defer func() {
+				assert.NoError(t, os.RemoveAll(sshKeyDir))
+			}()
+			testCase(t, &Host{
+				Id: "id",
+				Distro: distro.Distro{
+					SSHKey: defaultKeyName,
+				},
+			}, &evergreen.Settings{
+				Keys: map[string]string{
+					defaultKeyName: defaultKeyPath,
+				},
+				SSHKeyDirectory: sshKeyDir,
+			})
+		})
+	}
 }
 
 func TestJasperCommands(t *testing.T) {

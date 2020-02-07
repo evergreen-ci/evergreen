@@ -1267,3 +1267,12 @@ func (m *ec2Manager) CostForDuration(ctx context.Context, h *host.Host, start, e
 
 	return total, nil
 }
+
+func (m *ec2Manager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+
+	return errors.Wrap(addSSHKey(ctx, m.client, pair), "could not add SSH key")
+}

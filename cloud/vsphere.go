@@ -249,3 +249,8 @@ func (m *vsphereManager) GetDNSName(ctx context.Context, h *host.Host) (string, 
 func (m *vsphereManager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return time.Duration(0)
 }
+
+//  TODO: this must be implemented to support adding SSH keys.
+func (m *vsphereManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
+	return nil
+}
