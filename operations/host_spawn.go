@@ -1119,7 +1119,7 @@ func buildRsyncCommand(opts rsyncOpts) (*jasper.Command, error) {
 	}
 
 	if opts.dryRun {
-		cmdWithoutDryRun := make([]string, 0, len(args)-1)
+		cmdWithoutDryRun := make([]string, len(args[:dryRunIndex]), len(args)-1)
 		_ = copy(cmdWithoutDryRun, args[:dryRunIndex])
 		cmdWithoutDryRun = append(cmdWithoutDryRun, args[dryRunIndex+1:]...)
 		fmt.Printf("Going to execute the following command: %s\n", strings.Join(cmdWithoutDryRun, " "))
