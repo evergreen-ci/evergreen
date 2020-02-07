@@ -43,6 +43,7 @@ type Distro struct {
 	UseLegacyAgent        bool                    `bson:"use_legacy_agent" json:"use_legacy_agent" mapstructure:"use_legacy_agent"`
 	Note                  string                  `bson:"note" json:"note" mapstructure:"note"`
 	ValidProjects         []string                `bson:"valid_projects,omitempty" json:"valid_projects,omitempty" mapstructure:"valid_projects,omitempty"`
+	HomeVolumeSettings    HomeVolumeSettings      `bson:"home_volume_settings" json:"home_volume_settings" mapstructure:"home_volume_settings"`
 }
 
 // BootstrapSettings encapsulates all settings related to bootstrapping hosts.
@@ -65,6 +66,11 @@ type BootstrapSettings struct {
 
 	// Linux-specific
 	ResourceLimits ResourceLimits `bson:"resource_limits,omitempty" json:"resource_limits,omitempty" mapstructure:"resource_limits,omitempty"`
+}
+
+type HomeVolumeSettings struct {
+	DeviceName    string `bson:"device_name" json:"device_name" mapstructure:"device_name"`
+	FormatCommand string `bson:"format_command" json:"format_command" mapstructure:"format_command"`
 }
 
 type EnvVar struct {
@@ -651,4 +657,22 @@ func (d *Distro) AddPermissions(creator *user.DBUser) error {
 		}
 	}
 	return nil
+}
+
+// LegacyBootstrap returns whether hosts of this distro are bootstrapped using the legacy
+// method.
+func (d *Distro) LegacyBootstrap() bool {
+	return d.BootstrapSettings.Method == "" || d.BootstrapSettings.Method == BootstrapMethodLegacySSH
+}
+
+// LegacyCommunication returns whether the app server is communicating with
+// hosts of this distro using the legacy method.
+func (d *Distro) LegacyCommunication() bool {
+	return d.BootstrapSettings.Communication == "" || d.BootstrapSettings.Communication == CommunicationMethodLegacySSH
+}
+
+// JasperCommunication returns whether or not the app server is communicating with
+// hosts of this distro's Jasper service.
+func (d *Distro) JasperCommunication() bool {
+	return d.BootstrapSettings.Communication == CommunicationMethodSSH || d.BootstrapSettings.Communication == CommunicationMethodRPC
 }

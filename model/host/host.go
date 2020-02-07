@@ -143,6 +143,10 @@ type Host struct {
 
 	// InstanceTags stores user-specified tags for instances
 	InstanceTags []Tag `bson:"instance_tags,omitempty" json:"instance_tags,omitempty"`
+
+	AttachVolume bool `bson:"attach_volume" json:"attach_volume"`
+	// HomeVolumeSize is the size of the home volume in GB
+	HomeVolumeSize int `bson:"home_volume_size" json:"home_volume_size"`
 }
 
 type Tag struct {
@@ -185,6 +189,7 @@ type HostGroup []Host
 type VolumeAttachment struct {
 	VolumeID   string `bson:"volume_id" json:"volume_id"`
 	DeviceName string `bson:"device_name" json:"device_name"`
+	IsHome     bool   `bson:"is_home" json:"is_home"`
 }
 
 // DockerOptions contains options for starting a container
@@ -1002,11 +1007,11 @@ func (h *Host) SetAgentRevision(agentRevision string) error {
 // IsWaitingForAgent provides a local predicate for the logic for
 // whether the host needs either a new agent or agent monitor.
 func (h *Host) IsWaitingForAgent() bool {
-	if h.LegacyBootstrap() && h.NeedsNewAgent {
+	if h.Distro.LegacyBootstrap() && h.NeedsNewAgent {
 		return true
 	}
 
-	if !h.LegacyBootstrap() && h.NeedsNewAgentMonitor {
+	if !h.Distro.LegacyBootstrap() && h.NeedsNewAgentMonitor {
 		return true
 	}
 
@@ -1101,28 +1106,10 @@ func (h *Host) SetReprovisioningLockedAtomically(locked bool) error {
 	return nil
 }
 
-// LegacyBootstrap returns whether the host was bootstrapped using the legacy
-// method.
-func (h *Host) LegacyBootstrap() bool {
-	return h.Distro.BootstrapSettings.Method == "" || h.Distro.BootstrapSettings.Method == distro.BootstrapMethodLegacySSH
-}
-
-// LegacyCommunication returns whether the app server is communicating with this
-// host using the legacy method.
-func (h *Host) LegacyCommunication() bool {
-	return h.Distro.BootstrapSettings.Communication == "" || h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodLegacySSH
-}
-
-// JasperCommunication returns whether or not the app server is communicating
-// with this host's Jasper service.
-func (h *Host) JasperCommunication() bool {
-	return h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodSSH || h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC
-}
-
 // SetNeedsAgentDeploy indicates that the host's agent or agent monitor needs
 // to be deployed.
 func (h *Host) SetNeedsAgentDeploy(needsDeploy bool) error {
-	if !h.LegacyBootstrap() {
+	if !h.Distro.LegacyBootstrap() {
 		if err := h.SetNeedsNewAgentMonitor(needsDeploy); err != nil {
 			return errors.Wrap(err, "error setting host needs new agent monitor")
 		}
@@ -2174,6 +2161,16 @@ func (h *Host) MarkShouldExpire(expireOnValue string) error {
 			},
 		},
 	)
+}
+
+func (h *Host) HomeVolume() *VolumeAttachment {
+	for _, vol := range h.Volumes {
+		if vol.IsHome {
+			return &vol
+		}
+	}
+
+	return nil
 }
 
 // FindHostWithVolume finds the host associated with the

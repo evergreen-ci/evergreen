@@ -23,7 +23,8 @@ func TestDistroBuildFromService(t *testing.T) {
 			ServiceUser:           "service_user",
 			ShellPath:             "/shell_path",
 		},
-		Note: "note1",
+		Note:               "note1",
+		HomeVolumeSettings: distro.HomeVolumeSettings{DeviceName: "nvme1n1"},
 	}
 	apiDistro := &APIDistro{}
 	err := apiDistro.BuildFromService(d)
@@ -37,6 +38,7 @@ func TestDistroBuildFromService(t *testing.T) {
 	assert.Equal(t, d.BootstrapSettings.ServiceUser, FromStringPtr(apiDistro.BootstrapSettings.ServiceUser))
 	assert.Equal(t, d.BootstrapSettings.ShellPath, FromStringPtr(apiDistro.BootstrapSettings.ShellPath))
 	assert.Equal(t, d.Note, FromStringPtr(apiDistro.Note))
+	assert.Equal(t, d.HomeVolumeSettings.DeviceName, FromStringPtr(apiDistro.HomeVolumeSettings.DeviceName))
 }
 
 func TestDistroBuildFromServiceDefaults(t *testing.T) {
@@ -72,7 +74,8 @@ func TestDistroToService(t *testing.T) {
 				VirtualMemoryKB: 4,
 			},
 		},
-		Note: ToStringPtr("note1"),
+		Note:               ToStringPtr("note1"),
+		HomeVolumeSettings: APIHomeVolumeSettings{DeviceName: ToStringPtr("nvme1n1")},
 	}
 
 	res, err := apiDistro.ToService()
@@ -95,6 +98,7 @@ func TestDistroToService(t *testing.T) {
 	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.LockedMemoryKB, d.BootstrapSettings.ResourceLimits.LockedMemoryKB)
 	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.VirtualMemoryKB, d.BootstrapSettings.ResourceLimits.VirtualMemoryKB)
 	assert.Equal(t, apiDistro.Note, ToStringPtr(d.Note))
+	assert.Equal(t, apiDistro.HomeVolumeSettings.DeviceName, ToStringPtr(d.HomeVolumeSettings.DeviceName))
 }
 
 func TestDistroToServiceDefaults(t *testing.T) {

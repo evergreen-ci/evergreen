@@ -29,9 +29,12 @@ import (
 )
 
 const (
-	provisionRetryLimit = 15
-	setupHostJobName    = "provisioning-setup-host"
-	scpTimeout          = time.Minute
+	provisionRetryLimit  = 15
+	mountRetryLimit      = 10
+	mountSleepDuration   = time.Second * 10
+	umountMountErrorCode = 32
+	setupHostJobName     = "provisioning-setup-host"
+	scpTimeout           = time.Minute
 )
 
 func init() {
@@ -621,8 +624,22 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 
 		return errors.Wrapf(err, "error initializing host %s", h.Id)
 	}
+
 	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
 		return nil
+	}
+
+	if h.AttachVolume {
+		if err := attachVolume(ctx, j.env, j.host); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":  "can't attach volume",
+				"host":     j.host.Id,
+				"distro":   j.host.Distro.Id,
+				"attempts": h.ProvisionAttempts,
+				"job":      j.ID(),
+			}))
+			return nil
+		}
 	}
 
 	// If this is a spawn host
@@ -897,4 +914,101 @@ func (j *setupHostJob) tryRequeue(ctx context.Context) {
 
 func shouldRetryProvisioning(h *host.Host) bool {
 	return h.ProvisionAttempts <= provisionRetryLimit && h.Status == evergreen.HostProvisioning && !h.Provisioned
+}
+
+func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) error {
+	if !(h.Distro.JasperCommunication() && h.Distro.IsLinux()) {
+		return errors.Errorf("host '%s' of distro '%s' doesn't support mounting a volume", h.Id, h.Distro.Id)
+	}
+
+	if h.HomeVolume() == nil {
+		mgrOpts, err := cloud.GetManagerOptions(h.Distro)
+		if err != nil {
+			return errors.Wrapf(err, "can't get ManagerOpts for '%s'", h.Id)
+		}
+		cloudMgr, err := cloud.GetManager(ctx, env, mgrOpts)
+		if err != nil {
+			return errors.Wrapf(err,
+				"failed to get cloud manager for host %s with provider %s",
+				h.Id, h.Provider)
+		}
+
+		// create the volume
+		volume, err := cloudMgr.CreateVolume(ctx, &host.Volume{
+			Size:             h.HomeVolumeSize,
+			AvailabilityZone: h.Zone,
+			CreatedBy:        h.StartedBy,
+			Type:             evergreen.DefaultEBSType,
+		})
+		if err != nil {
+			return errors.Wrapf(err, "can't create a new volume for host '%s'", h.Id)
+		}
+
+		// attach to the host
+		attachment := host.VolumeAttachment{VolumeID: volume.ID, IsHome: true}
+		if err = cloudMgr.AttachVolume(ctx, h, &attachment); err != nil {
+			return errors.Wrapf(err, "can't attach volume '%s' to host '%s'", volume.ID, h.Id)
+		}
+	}
+
+	// run the distro's mount script
+	var err error
+	for i := 0; i < mountRetryLimit; i++ {
+		if err = errors.Wrap(mountLinuxVolume(ctx, env, h), "can't mount volume"); err == nil {
+			return nil
+		}
+		time.Sleep(mountSleepDuration)
+	}
+	return err
+}
+
+func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Host) error {
+	client, err := h.JasperClient(ctx, env)
+	if err != nil {
+		return errors.Wrap(err, "can't get Jasper client")
+	}
+	defer func() {
+		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
+			"message": "could not close connection to Jasper",
+			"host":    h.Id,
+			"distro":  h.Distro.Id,
+		}))
+	}()
+
+	homeVolume := h.HomeVolume()
+	if homeVolume == nil {
+		return errors.Errorf("host '%s' has no home volume", h.Id)
+	}
+	deviceName := homeVolume.DeviceName
+	if h.Distro.HomeVolumeSettings.DeviceName != "" {
+		deviceName = h.Distro.HomeVolumeSettings.DeviceName
+	}
+
+	// continue on umount mount error
+	cmd := client.CreateCommand(ctx).Sudo(true).Append(fmt.Sprintf("umount -f /dev/%s", deviceName)).Background(true)
+	if err = cmd.Run(ctx); err != nil {
+		return errors.Wrap(err, "can't run umount command")
+	}
+	exitCode, err := cmd.Wait(ctx)
+	if err != nil && exitCode != umountMountErrorCode {
+		return errors.Wrap(err, "problem waiting for umount command")
+	}
+
+	cmd = client.CreateCommand(ctx).Sudo(true)
+	cmd.Append(fmt.Sprintf("%s /dev/%s", h.Distro.HomeVolumeSettings.FormatCommand, deviceName))
+	cmd.Append(fmt.Sprintf("mkdir -p /%s", evergreen.HomeVolumeDir))
+	cmd.Append(fmt.Sprintf("mount /dev/%s /%s", deviceName, evergreen.HomeVolumeDir))
+	cmd.Append(fmt.Sprintf("ln -s /%s %s/%s", evergreen.HomeVolumeDir, h.Distro.HomeDir(), evergreen.HomeVolumeDir))
+	cmd.Append(fmt.Sprintf("chown -R %s:%s %s/%s", h.User, h.User, h.Distro.HomeDir(), evergreen.HomeVolumeDir))
+	if err := cmd.Run(ctx); err != nil {
+		return errors.Wrap(err, "problem running mount commands")
+	}
+
+	// write to fstab so the volume is mounted on restart
+	err = client.CreateCommand(ctx).Sudo(true).SetInputBytes([]byte(fmt.Sprintf("/dev/%s /%s auto noatime 0 0", deviceName, evergreen.HomeVolumeDir))).Append("tee --append /etc/fstab").Run(ctx)
+	if err != nil {
+		return errors.Wrap(err, "problem appending to fstab")
+	}
+
+	return nil
 }
