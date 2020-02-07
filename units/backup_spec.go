@@ -72,7 +72,6 @@ func appendIndexOnlyBackupCollections(dbName string, in []backup.Options) []back
 		model.TaskQueuesCollection,
 		model.TestLogCollection,
 		testresult.Collection,
-		model.NotifyTimesCollection,
 		event.AllLogCollection,
 		event.SubscriptionsCollection,
 		patch.IntentCollection,
