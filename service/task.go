@@ -124,6 +124,12 @@ type uiTestResult struct {
 	TaskName   string          `json:"task_name"`
 }
 
+type logData struct {
+	Buildlogger chan string
+	Data        chan apimodels.LogMessage
+	User        gimlet.User
+}
+
 func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 
@@ -574,11 +580,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	data := struct {
-		Buildlogger chan string
-		Data        chan apimodels.LogMessage
-		User        gimlet.User
-	}{Buildlogger: make(chan string, 1024), User: usr}
+	data := logData{Buildlogger: make(chan string, 1024), User: usr}
 	var logReader io.ReadCloser
 
 	defaultLogger, err := getDefaultLogger(projCtx)
@@ -893,11 +895,7 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	}()
 	usr := gimlet.GetUser(ctx)
 	template := "task_log.html"
-	data := struct {
-		Data chan apimodels.LogMessage
-		User gimlet.User
-	}{displayLogs, usr}
-
+	data := logData{Data: displayLogs, User: usr}
 	if (r.FormValue("raw") == "1") || (r.Header.Get("Content-type") == "text/plain") {
 		template = "task_log_raw.html"
 		uis.renderText.Stream(w, http.StatusOK, data, "base", template)
