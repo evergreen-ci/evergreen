@@ -4,13 +4,16 @@ import (
 	"context"
 	"testing"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	_ "github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func TestCheckDistro(t *testing.T) {
@@ -223,7 +226,6 @@ func TestEnsureHasRequiredFields(t *testing.T) {
 			}},
 		}
 		i++
-		So(d[i].Insert(), ShouldBeNil)
 		Convey("an error should be returned if the distro does not contain an id", func() {
 			So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, ValidationErrors{})
 		})
@@ -263,6 +265,73 @@ func TestEnsureHasRequiredFields(t *testing.T) {
 			So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldResemble, ValidationErrors{})
 		})
 	})
+}
+
+func TestEnsureHasRequiredFieldsWithProviderList(t *testing.T) {
+	ctx := context.Background()
+	validSettings := cloud.EC2ProviderSettings{
+		AMI:              "a",
+		KeyName:          "a",
+		InstanceType:     "a",
+		SecurityGroupIDs: []string{"a"},
+		MountPoints:      nil,
+		Region:           evergreen.DefaultEC2Region,
+	}
+	invalidSettings := cloud.EC2ProviderSettings{
+		KeyName:          "a",
+		InstanceType:     "a",
+		SecurityGroupIDs: []string{"a"},
+		MountPoints:      nil,
+		Region:           "us-west-1",
+	}
+	invalidSettings2 := cloud.EC2ProviderSettings{
+		AMI:              "b",
+		KeyName:          "b",
+		SecurityGroupIDs: []string{"b"},
+		MountPoints:      nil,
+		Region:           "us-west-2",
+	}
+
+	validDoc := &birch.Document{}
+	validDoc2 := &birch.Document{}
+	invalidDoc := &birch.Document{}
+	invalidDoc2 := &birch.Document{}
+
+	bytes, err := bson.Marshal(validSettings)
+	assert.NoError(t, err)
+	assert.NoError(t, validDoc.UnmarshalBSON(bytes))
+	validSettings.Region = "us-west-1"
+	bytes, err = bson.Marshal(validSettings)
+	assert.NoError(t, err)
+	assert.NoError(t, validDoc2.UnmarshalBSON(bytes))
+	bytes, err = bson.Marshal(invalidSettings)
+	assert.NoError(t, err)
+	assert.NoError(t, invalidDoc.UnmarshalBSON(bytes))
+	bytes, err = bson.Marshal(invalidSettings2)
+	assert.NoError(t, err)
+	assert.NoError(t, invalidDoc2.UnmarshalBSON(bytes))
+
+	validList := []*birch.Document{validDoc, validDoc2}
+	invalidList1 := []*birch.Document{invalidDoc, validDoc, invalidDoc2}
+	invalidList2 := []*birch.Document{validDoc, validDoc}
+
+	d1 := &distro.Distro{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettingsList: invalidList1}
+	d2 := &distro.Distro{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettingsList: invalidList2}
+	d3 := &distro.Distro{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettingsList: validList}
+
+	for name, test := range map[string]func(*testing.T){
+		"ListWithErrors": func(t *testing.T) {
+			assert.Len(t, ensureHasRequiredFields(ctx, d1, nil), 2)
+		},
+		"ListWithRepeatRegions": func(t *testing.T) {
+			assert.Len(t, ensureHasRequiredFields(ctx, d2, nil), 1)
+		},
+		"ValidList": func(t *testing.T) {
+			assert.Len(t, ensureHasRequiredFields(ctx, d3, nil), 0)
+		},
+	} {
+		t.Run(name, test)
+	}
 }
 
 func TestEnsureValidExpansions(t *testing.T) {
