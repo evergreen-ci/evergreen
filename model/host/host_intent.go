@@ -14,6 +14,7 @@ import (
 type CreateOptions struct {
 	ProvisionOptions   *ProvisionOptions
 	ExpirationDuration *time.Duration
+	Region             string
 	UserName           string
 	UserHost           bool
 
@@ -39,6 +40,11 @@ func NewIntent(d distro.Distro, instanceName, provider string, options CreateOpt
 	// to the host we want to create. this way, if we are unable
 	// to start it or record its instance id, we have a way of knowing
 	// something went wrong - and what
+
+	// remove extraneous provider settings from the host's saved distro document
+	if len(d.ProviderSettingsList) > 1 {
+		d.RemoveExtraneousProviderSettings(options.Region)
+	}
 	intentHost := &Host{
 		Id:                    instanceName,
 		User:                  d.User,

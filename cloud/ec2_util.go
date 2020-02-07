@@ -15,9 +15,9 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	ec2aws "github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -247,7 +247,7 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, cl
 	var err error
 	if h.ComputeCostPerHour == 0 {
 		ec2Settings := &EC2ProviderSettings{}
-		err := ec2Settings.fromDistroSettings(h.Distro)
+		err := ec2Settings.FromDistroSettings(h.Distro, "")
 		if err != nil {
 			return errors.Wrapf(err, "error getting EC2 settings for host '%s'", h.Id)
 		}
@@ -508,19 +508,16 @@ func IsEc2Provider(provider string) bool {
 		provider == evergreen.ProviderNameEc2Fleet
 }
 
-// Get EC2 region from an EC2 ProviderSettings object
-func getEC2ManagerOptions(provider string, providerSettings *map[string]interface{}) (ManagerOpts, error) {
+// Get EC2 region from a distro
+func getEC2ManagerOptions(d distro.Distro) (ManagerOpts, error) {
 	opts := ManagerOpts{}
-	if providerSettings == nil {
-		return opts, errors.New("nil ProviderSettings map")
-	}
 
 	s := &EC2ProviderSettings{}
-	if err := mapstructure.Decode(providerSettings, s); err != nil {
-		return opts, errors.Wrap(err, "can't decode into EC2ProviderSettings")
+	if err := s.FromDistroSettings(d, ""); err != nil {
+		return ManagerOpts{}, errors.Wrapf(err, "error getting EC2 provider settings from distro")
 	}
 
-	opts.Provider = provider
+	opts.Provider = d.Provider
 	opts.Region = s.Region
 	opts.ProviderKey = s.AWSKeyID
 	opts.ProviderSecret = s.AWSSecret

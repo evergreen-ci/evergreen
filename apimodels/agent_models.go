@@ -3,6 +3,7 @@ package apimodels
 import (
 	"strconv"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -174,6 +175,9 @@ func (ch *CreateHost) ValidateEC2() error {
 
 	catcher.Add(ch.setNumHosts())
 	catcher.Add(ch.validateAgentOptions())
+	if ch.Region == "" {
+		ch.Region = evergreen.DefaultEC2Region
+	}
 
 	if (ch.AMI != "" && ch.Distro != "") || (ch.AMI == "" && ch.Distro == "") {
 		catcher.New("must set exactly one of ami or distro")

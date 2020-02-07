@@ -1,6 +1,7 @@
 package model
 
 import (
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -360,6 +361,7 @@ type APIDistro struct {
 	UserSpawnAllowed      bool                     `json:"user_spawn_allowed"`
 	Provider              *string                  `json:"provider"`
 	ProviderSettings      map[string]interface{}   `json:"settings"`
+	ProviderSettingsList  []*birch.Document        `json:"provider_settings"`
 	ImageID               *string                  `json:"image_id"`
 	Arch                  *string                  `json:"arch"`
 	WorkDir               *string                  `json:"work_dir"`
@@ -409,7 +411,9 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 		}
 		apiDistro.ImageID = ToStringPtr(ec2Settings.AMI)
 	}
-	if d.ProviderSettings != nil {
+	if len(d.ProviderSettingsList) > 0 {
+		apiDistro.ProviderSettingsList = d.ProviderSettingsList
+	} else if d.ProviderSettings != nil {
 		apiDistro.ProviderSettings = *d.ProviderSettings
 	}
 	apiDistro.Arch = ToStringPtr(d.Arch)
@@ -486,6 +490,7 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d.Arch = FromStringPtr(apiDistro.Arch)
 	d.WorkDir = FromStringPtr(apiDistro.WorkDir)
 	d.Provider = FromStringPtr(apiDistro.Provider)
+	d.ProviderSettingsList = apiDistro.ProviderSettingsList
 	if apiDistro.ProviderSettings != nil {
 		d.ProviderSettings = &apiDistro.ProviderSettings
 	}

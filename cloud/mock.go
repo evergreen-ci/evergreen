@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -56,6 +57,14 @@ type MockProviderSettings struct {
 
 func GetMockProvider() MockProvider {
 	return globalMockState
+}
+
+func (_ *MockProviderSettings) Validate() error {
+	return nil
+}
+
+func (_ *MockProviderSettings) FromDistroSettings(_ distro.Distro, _ string) error {
+	return nil
 }
 
 type mockState struct {
@@ -228,11 +237,7 @@ func (mockMgr *mockManager) GetDNSName(ctx context.Context, host *host.Host) (st
 }
 
 func (_ *mockManager) GetSettings() ProviderSettings {
-	return &mockManager{}
-}
-
-func (_ *mockManager) Validate() error {
-	return nil
+	return &MockProviderSettings{}
 }
 
 // terminate an instance

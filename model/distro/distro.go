@@ -8,12 +8,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type Distro struct {
@@ -23,6 +27,7 @@ type Distro struct {
 	WorkDir               string                  `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
 	Provider              string                  `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
 	ProviderSettings      *map[string]interface{} `bson:"settings" json:"settings,omitempty" mapstructure:"settings,omitempty"`
+	ProviderSettingsList  []*birch.Document       `bson:"provider_settings,omitempty" json:"provider_settings,omitempty" mapstructure:"provider_settings,omitempty"`
 	SetupAsSudo           bool                    `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`
 	Setup                 string                  `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
 	Teardown              string                  `bson:"teardown,omitempty" json:"teardown,omitempty" mapstructure:"teardown,omitempty"`
@@ -84,6 +89,10 @@ type ResourceLimits struct {
 	NumProcesses    int `bson:"num_processes,omitempty" json:"num_processes,omitempty" mapstructure:"num_processes,omitempty"`
 	LockedMemoryKB  int `bson:"locked_memory,omitempty" json:"locked_memory,omitempty" mapstructure:"locked_memory,omitempty"`
 	VirtualMemoryKB int `bson:"virtual_memory,omitempty" json:"virtual_memory,omitempty" mapstructure:"virtual_memory,omitempty"`
+}
+
+func (d *Distro) SetBSON(raw mgobson.Raw) error {
+	return bson.Unmarshal(raw.Data, d)
 }
 
 // ValidateBootstrapSettings checks if all of the bootstrap settings are valid
@@ -502,6 +511,41 @@ func (distros DistroGroup) GetDistroIds() []string {
 		ids = append(ids, d.Id)
 	}
 	return ids
+}
+
+func (d *Distro) RemoveExtraneousProviderSettings(region string) {
+	if len(d.ProviderSettingsList) <= 1 {
+		return
+	}
+	doc, err := d.GetProviderSettingByRegion(region)
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":       "provider list missing region",
+			"distro":        d.Id,
+			"region":        region,
+			"settings_list": d.ProviderSettingsList,
+		}))
+		return
+	}
+	d.ProviderSettingsList = []*birch.Document{doc}
+}
+
+func (d *Distro) GetProviderSettingByRegion(region string) (*birch.Document, error) {
+	// if no region given, we assume the provided settings list is accurate
+	if region == "" {
+		if len(d.ProviderSettingsList) > 1 {
+			return nil, errors.Errorf("multiple provider settings available but no region given")
+		}
+		return d.ProviderSettingsList[0], nil
+	}
+	for _, s := range d.ProviderSettingsList {
+		if val, ok := s.Lookup("region").StringValueOK(); ok {
+			if val == region {
+				return s, nil
+			}
+		}
+	}
+	return nil, errors.Errorf("distro '%s' has no settings for region '%s'", d.Id, region)
 }
 
 // GetResolvedHostAllocatorSettings combines the distro's HostAllocatorSettings fields with the

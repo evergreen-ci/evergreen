@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -14,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -172,7 +174,6 @@ const (
 	ReprovisionJasperRestart ReprovisionType = "jasper-restart"
 )
 
-func (h *Host) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(h) }
 func (h *Host) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, h) }
 
 type IdleHostsByDistroID struct {
@@ -212,6 +213,50 @@ type DockerOptions struct {
 	EnvironmentVars []string `mapstructure:"environment_vars" bson:"environment_vars,omitempty" json:"environment_vars,omitempty"`
 }
 
+func (opts *DockerOptions) FromDistroSettings(d distro.Distro, _ string) error {
+	if d.ProviderSettings != nil {
+		if err := mapstructure.Decode(d.ProviderSettings, opts); err != nil {
+			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, opts)
+		}
+		bytes, err := bson.Marshal(opts)
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		doc := &birch.Document{}
+		if err := doc.UnmarshalBSON(bytes); err != nil {
+			return errors.Wrapf(err, "error unmarshalling settings bytes into document")
+		}
+		if len(d.ProviderSettingsList) == 0 {
+			if err := d.UpdateProviderSettings(doc); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"distro":   d.Id,
+					"provider": d.Provider,
+					"settings": d.ProviderSettings,
+				}))
+				return errors.Wrapf(err, "error updating provider settings")
+			}
+		}
+	} else if len(d.ProviderSettingsList) != 0 {
+		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		if err := bson.Unmarshal(bytes, opts); err != nil {
+			return errors.Wrap(err, "error unmarshalling bson into provider settings")
+		}
+	}
+	return nil
+}
+
+// Validate checks that the settings from the config file are sane.
+func (opts *DockerOptions) Validate() error {
+	if opts.Image == "" {
+		return errors.New("Image must not be empty")
+	}
+
+	return nil
+}
+
 // ProvisionOptions is struct containing options about how a new host should be set up.
 type ProvisionOptions struct {
 	// LoadCLI indicates (if set) that while provisioning the host, the CLI binary should
@@ -231,10 +276,10 @@ type SpawnOptions struct {
 	// TimeoutTeardown is the time that this host should be torn down. In most cases, a host
 	// should be torn down due to its task or build. TimeoutTeardown is a backstop to ensure that Evergreen
 	// tears down a host if a task hangs or otherwise does not finish within an expected period of time.
-	TimeoutTeardown time.Time `bson:"timeout_teardown" json:"timeout_teardown"`
+	TimeoutTeardown time.Time `bson:"timeout_teardown,omitempty" json:"timeout_teardown,omitempty"`
 
 	// TimeoutTeardown is the time after which Evergreen should give up trying to set up this host.
-	TimeoutSetup time.Time `bson:"timeout_setup" json:"timeout_setup"`
+	TimeoutSetup time.Time `bson:"timeout_setup,omitempty" json:"timeout_setup,omitempty"`
 
 	// TaskID is the task_id of the task to which this host is pinned. When the task finishes,
 	// this host should be torn down. Only one of TaskID or BuildID should be set.
@@ -1591,9 +1636,7 @@ func FindRunningHosts(includeSpawnHosts bool) ([]Host, error) {
 func FindAllHostsSpawnedByTasks() ([]Host, error) {
 	query := db.Query(bson.M{
 		StatusKey: evergreen.HostRunning,
-		SpawnOptionsKey: bson.M{
-			"$exists": true,
-		},
+		bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey): true,
 	})
 	hosts, err := Find(query)
 	if err != nil {
