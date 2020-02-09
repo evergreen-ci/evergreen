@@ -45,6 +45,7 @@ type Options struct {
 	MaxAgentSleepInterval time.Duration
 	Cleanup               bool
 	S3Opts                pail.S3Options
+	SetupData             apimodels.AgentSetupData
 }
 
 type taskContext struct {
@@ -181,12 +182,12 @@ LOOP:
 				if prevLogger != nil {
 					grip.Error(prevLogger.Close())
 				}
-				if err = a.fetchProjectConfig(ctx, tc); err != nil {
-					grip.Error(message.WrapError(err, message.Fields{
-						"message": "error fetching project config; will attempt at a later point",
-						"task":    tc.task.ID,
-					}))
-				}
+
+				grip.Error(message.WrapError(a.fetchProjectConfig(ctx, tc), message.Fields{
+					"message": "error fetching project config; will attempt at a later point",
+					"task":    tc.task.ID,
+				}))
+
 				a.jasper.Clear(ctx)
 				tc.jasper = a.jasper
 				shouldExit, err := a.runTask(tskCtx, tc)
@@ -301,7 +302,7 @@ func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
 		return err
 	}
 
-	sender, err := GetSender(ctx, a.opts.LogPrefix, tc.task.ID)
+	sender, err := a.GetSender(ctx, a.opts.LogPrefix, tc.task.ID)
 	grip.Error(errors.Wrap(err, "problem getting sender"))
 	grip.Error(errors.Wrap(grip.SetSender(sender), "problem setting sender"))
 
