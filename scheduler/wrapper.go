@@ -185,7 +185,7 @@ func needsReprovisioning(d distro.Distro, h *host.Host) host.ReprovisionType {
 	}
 
 	// If the host has already been marked as needing reprovisioning before but
-	// has not done the reprovisioned yet, preserve the transition.
+	// has not performed reprovisioning yet, preserve the transition.
 	if h.NeedsReprovision != host.ReprovisionNone {
 		if d.LegacyBootstrap() && h.NeedsReprovision == host.ReprovisionToLegacy {
 			return host.ReprovisionToLegacy
