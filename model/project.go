@@ -1440,7 +1440,7 @@ func FetchVersionsAndAssociatedBuilds(project *Project, skip int, numVersions in
 	// fetch all of the builds (with only relevant fields)
 	buildsFromDb, err := build.Find(
 		build.ByVersions(versionIds).
-			WithFields(build.BuildVariantKey, build.TasksKey, build.VersionKey))
+			WithFields(build.BuildVariantKey, build.TasksKey, build.VersionKey, build.DisplayNameKey))
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error fetching builds from database")
 	}
