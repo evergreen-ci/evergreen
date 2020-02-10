@@ -100,10 +100,14 @@ func Agent() cli.Command {
 				"host_id":  opts.HostID,
 			})
 
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			comm := client.NewCommunicator(c.String(apiServerURLFlagName))
 			defer comm.Close()
+
 			if setupData, err := comm.GetAgentSetupData(ctx); err != nil {
-				opts.SetupData = setupData
+				opts.SetupData = *setupData
 				opts.LogkeeperURL = setupData.LogkeeperURL
 				opts.S3BaseURL = setupData.S3Base
 				opts.S3Opts = pail.S3Options{
@@ -120,8 +124,6 @@ func Agent() cli.Command {
 				return errors.Wrap(err, "problem constructing agent")
 			}
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
 			go hardShutdownForSignals(ctx, cancel)
 
 			sender, err := agt.GetSender(ctx, opts.LogPrefix, "init")

@@ -77,7 +77,7 @@ type Communicator interface {
 	// the base URL, RPC port, and LDAP credentials.
 	GetBuildloggerInfo(context.Context) (*apimodels.BuildloggerInfo, error)
 
-	GetAgentSetupData(context.Context) (*apimodels.AgentSetupData, erro)
+	GetAgentSetupData(context.Context) (*apimodels.AgentSetupData, error)
 
 	// Constructs a new LogProducer instance for use by tasks.
 	GetLoggerProducer(context.Context, TaskData, *LoggerConfig) (LoggerProducer, error)

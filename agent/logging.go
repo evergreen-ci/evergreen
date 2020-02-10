@@ -54,11 +54,11 @@ func (a *Agent) GetSender(ctx context.Context, prefix, taskId string) (send.Send
 	)
 
 	if os.Getenv(util.MarkerAgentPID) == "" { // this var is set if the agent is started via a command
-		if token := a.SetupData.SplunkClientTokent; token != "" {
+		if token := a.opts.SetupData.SplunkClientToken; token != "" {
 			info := send.SplunkConnectionInfo{
-				ServerURL: a.SetupData.SplunkURL,
-				Token:     a.SetupData.SplunkClientToken,
-				Channel:   a.SetupData.SplunkChannel,
+				ServerURL: a.opts.SetupData.SplunkServerURL,
+				Token:     a.opts.SetupData.SplunkClientToken,
+				Channel:   a.opts.SetupData.SplunkChannel,
 			}
 			grip.Info("configuring splunk sender")
 			sender, err = send.NewSplunkLogger("evergreen.agent", info, send.LevelInfo{Default: level.Alert, Threshold: level.Alert})
