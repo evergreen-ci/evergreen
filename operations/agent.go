@@ -6,11 +6,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -106,20 +104,7 @@ func Agent() cli.Command {
 			comm := client.NewCommunicator(c.String(apiServerURLFlagName))
 			defer comm.Close()
 
-			if setupData, err := comm.GetAgentSetupData(ctx); err != nil {
-				opts.SetupData = *setupData
-				opts.LogkeeperURL = setupData.LogkeeperURL
-				opts.S3BaseURL = setupData.S3Base
-				opts.S3Opts = pail.S3Options{
-					Credentials: pail.CreateAWSCredentials(setupData.S3Key, setupData.S3Secret, ""),
-					Region:      endpoints.UsEast1RegionID,
-					Name:        setupData.S3Bucket,
-					Permissions: pail.S3PermissionsPublicRead,
-					ContentType: "text/plain",
-				}
-			}
-
-			agt, err := agent.New(opts, comm)
+			agt, err := agent.New(ctx, opts, comm)
 			if err != nil {
 				return errors.Wrap(err, "problem constructing agent")
 			}
