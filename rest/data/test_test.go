@@ -211,23 +211,33 @@ func TestFindTestsByTaskIdFilterSortPaginatePaginationOrderDependsOnObjectId(t *
 		Id: id,
 	}
 
-	tests := []testresult.TestResult{testresult.TestResult{
-		ID:        mgobson.ObjectIdHex("507f191e810c19729de860ea"),
-		TaskID:    id,
-		Execution: 0,
-		Status:    "pass",
-		TestFile:  "one",
-		EndTime:   0,
-		StartTime: 0,
-	}, testresult.TestResult{
-		ID:        mgobson.ObjectIdHex("407f191e810c19729de860ea"),
-		TaskID:    id,
-		Execution: 0,
-		Status:    "pass",
-		TestFile:  "two",
-		EndTime:   0,
-		StartTime: 0,
-	}}
+	tests := []testresult.TestResult{
+		testresult.TestResult{
+			ID:        mgobson.ObjectIdHex("507f191e810c19729de860ea"),
+			TaskID:    id,
+			Execution: 0,
+			Status:    "pass",
+			TestFile:  "one",
+			EndTime:   0,
+			StartTime: 0,
+		}, testresult.TestResult{
+			ID:        mgobson.ObjectIdHex("407f191e810c19729de860ea"),
+			TaskID:    id,
+			Execution: 0,
+			Status:    "pass",
+			TestFile:  "two",
+			EndTime:   0,
+			StartTime: 0,
+		}, testresult.TestResult{
+			ID:        mgobson.ObjectIdHex("307f191e810c19729de860ea"),
+			TaskID:    id,
+			Execution: 0,
+			Status:    "pass",
+			TestFile:  "three",
+			EndTime:   0,
+			StartTime: 0,
+		},
+	}
 
 	assert.NoError(Task.Insert())
 	for _, test := range tests {
@@ -237,9 +247,14 @@ func TestFindTestsByTaskIdFilterSortPaginatePaginationOrderDependsOnObjectId(t *
 	foundTests, err := serviceContext.FindTestsByTaskIdFilterSortPaginate(id, "", "", "status", 1, 0, 1, 0)
 	assert.NoError(err)
 	assert.Len(foundTests, 1)
+	assert.True(foundTests[0].TestFile == "three")
+
+	foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(id, "", "", "status", 1, 1, 1, 0)
+	assert.NoError(err)
+	assert.Len(foundTests, 1)
 	assert.True(foundTests[0].TestFile == "two")
 
-	foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(id, "", "", "status", -1, 1, 1, 0)
+	foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(id, "", "", "status", 1, 2, 1, 0)
 	assert.NoError(err)
 	assert.Len(foundTests, 1)
 	assert.True(foundTests[0].TestFile == "one")
