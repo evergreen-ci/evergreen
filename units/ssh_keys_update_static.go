@@ -69,10 +69,10 @@ func (j *staticUpdateSSHKeysJob) Run(ctx context.Context) {
 	}
 
 	settings := evergreen.GetEnvironment().Settings()
-	if settings.AuthorizedKeysFile == "" {
+	if j.host.Distro.AuthorizedKeysFile == "" {
 		err := errors.New("authorized keys file on static hosts must be set")
 		grip.Warning(message.WrapError(err, message.Fields{
-			"message": "cannot deploy SSH keys to static hosts",
+			"message": "cannot deploy SSH keys to static host",
 			"host":    j.host.Id,
 			"job":     j.ID(),
 		}))
@@ -98,7 +98,7 @@ func (j *staticUpdateSSHKeysJob) Run(ctx context.Context) {
 		}
 
 		// Either key is already in the authorized keys or it is appended.
-		addKeyCmd := fmt.Sprintf(" grep \"^%s$\" %s || echo \"%s\" >> %s", pair.Public, settings.AuthorizedKeysFile, pair.Public, settings.AuthorizedKeysFile)
+		addKeyCmd := fmt.Sprintf(" grep \"^%s$\" %s || echo \"%s\" >> %s", pair.Public, j.host.Distro.AuthorizedKeysFile, pair.Public, j.host.Distro.AuthorizedKeysFile)
 		if logs, err := j.host.RunSSHCommand(ctx, addKeyCmd, sshOpts); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not run SSH command to add to authorized keys",

@@ -604,3 +604,19 @@ func TestEnsureValidSSHKeyName(t *testing.T) {
 	assert.NotNil(t, ensureValidSSHKeyName(ctx, &distro.Distro{}, settings))
 	assert.NotNil(t, ensureValidSSHKeyName(ctx, &distro.Distro{SSHKey: "nonexistent"}, settings))
 }
+
+func TestEnsureStaticHasAuthorizedKeysFile(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	settings := &evergreen.Settings{
+		SSHKeyPairs: []evergreen.SSHKeyPair{
+			{
+				Name: "ssh_key_pair1",
+			},
+		},
+	}
+	assert.Nil(t, ensureStaticHasAuthorizedKeysFile(ctx, &distro.Distro{Provider: evergreen.ProviderNameStatic, AuthorizedKeysFile: "~/.ssh/authorized_keys"}, settings))
+	assert.NotNil(t, ensureStaticHasAuthorizedKeysFile(ctx, &distro.Distro{Provider: evergreen.ProviderNameStatic}, settings))
+	assert.Nil(t, ensureStaticHasAuthorizedKeysFile(ctx, &distro.Distro{Provider: evergreen.ProviderNameEc2Fleet}, settings))
+}

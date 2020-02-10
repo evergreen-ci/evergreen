@@ -25,6 +25,7 @@ var distroSyntaxValidators = []distroValidator{
 	ensureHasRequiredFields,
 	ensureValidSSHOptions,
 	ensureValidSSHKeyName,
+	ensureStaticHasAuthorizedKeysFile,
 	ensureValidExpansions,
 	ensureStaticHostsAreNotSpawnable,
 	ensureValidContainerPool,
@@ -217,6 +218,20 @@ func ensureValidSSHKeyName(ctx context.Context, d *distro.Distro, s *evergreen.S
 			Level:   Error,
 		},
 	}
+}
+
+// ensureStaticHasAuthorizedKeysFile checks that the SSH key name corresponds to an actual
+// SSH key.
+func ensureStaticHasAuthorizedKeysFile(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
+	if len(s.SSHKeyPairs) != 0 && d.Provider == evergreen.ProviderNameStatic && d.AuthorizedKeysFile == "" {
+		return ValidationErrors{
+			{
+				Message: fmt.Sprintf("authorized keys file was not specified"),
+				Level:   Error,
+			},
+		}
+	}
+	return nil
 }
 
 // ensureValidArch checks that the architecture is one of the supported

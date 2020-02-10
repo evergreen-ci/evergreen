@@ -599,12 +599,12 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 		CachedDistros: []*distro.Distro{
 			{
 				Id:      "fedora8",
-				Arch:    "linux_amd64",
+				Arch:    distro.ArchLinuxAmd64,
 				WorkDir: "/data/mci",
 				HostAllocatorSettings: distro.HostAllocatorSettings{
 					MaximumHosts: 30,
 				},
-				Provider: "mock",
+				Provider: evergreen.ProviderNameMock,
 				ProviderSettings: &map[string]interface{}{
 					"bid_price":      0.2,
 					"instance_type":  "m3.large",

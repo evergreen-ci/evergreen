@@ -848,6 +848,12 @@ Evergreen - Distros
             option can not be blank<br /></div>
           <button type="button" class="btn btn-primary" ng-hide="readOnly" ng-disabled="sshForm.opt.$dirty && sshForm.$invalid || sshForm.opt.$error.required"
             ng-click="form.$setDirty();addSSHOption()"><i class="fa fa-plus"></i>Add SSH Option</button>
+
+		  <div ng-show="isStatic()">
+		    <label class="distro-label">Authorized Keys File:</label>
+		    <input type="text" ng-readonly="readOnly" name="authorizedKeysFile"
+		  	class="form-control" ng-model="activeDistro.authorized_keys_file" placeholder="Path to file containing authorized SSH keys (e.g. ~/.ssh/authorized_keys)">
+		  </div>
         </div>
         <div>
           <div>

@@ -373,6 +373,7 @@ type APIDistro struct {
 	CloneMethod           *string                  `json:"clone_method"`
 	SSHKey                *string                  `json:"ssh_key"`
 	SSHOptions            []string                 `json:"ssh_options"`
+	AuthorizedKeysFile    *string                  `json:"authorized_keys_file"`
 	Expansions            []APIExpansion           `json:"expansions"`
 	Disabled              bool                     `json:"disabled"`
 	ContainerPool         *string                  `json:"container_pool"`
@@ -432,9 +433,10 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	}
 	apiDistro.CloneMethod = ToStringPtr(d.CloneMethod)
 	apiDistro.SSHKey = ToStringPtr(d.SSHKey)
+	apiDistro.SSHOptions = d.SSHOptions
+	apiDistro.AuthorizedKeysFile = ToStringPtr(d.AuthorizedKeysFile)
 	apiDistro.Disabled = d.Disabled
 	apiDistro.ContainerPool = ToStringPtr(d.ContainerPool)
-	apiDistro.SSHOptions = d.SSHOptions
 	if d.Expansions != nil {
 		apiDistro.Expansions = []APIExpansion{}
 		for _, e := range d.Expansions {
@@ -513,6 +515,7 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	}
 	d.SSHKey = FromStringPtr(apiDistro.SSHKey)
 	d.SSHOptions = apiDistro.SSHOptions
+	d.AuthorizedKeysFile = FromStringPtr(apiDistro.AuthorizedKeysFile)
 	d.SpawnAllowed = apiDistro.UserSpawnAllowed
 	d.Expansions = []distro.Expansion{}
 	for _, e := range apiDistro.Expansions {
