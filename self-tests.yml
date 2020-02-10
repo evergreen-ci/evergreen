@@ -354,6 +354,7 @@ tasks:
         vars:
           target: "coverage-html"
           make_args: "-k"
+          tz: "America/New_York"
   - <<: *run-smoke-test
     name: smoke-test-task
     tags: ["smoke"]
