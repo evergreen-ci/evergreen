@@ -545,6 +545,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/dockerfile").Handler(getDockerfile).Get()
 
 	// Agent routes
+	app.Route().Version(2).Route("/agent/setup").Wrap(checkHost).Handler(as.agentSetup).Get()
 	app.Route().Version(2).Route("/agent/next_task").Wrap(checkHost).Handler(as.NextTask).Get()
 	app.Route().Version(2).Route("/agent/buildlogger_info").Wrap(checkHost).Handler(as.Buildlogger).Get()
 	app.Route().Version(2).Route("/task/{taskId}/end").Wrap(checkTaskSecret, checkHost).Handler(as.EndTask).Post()

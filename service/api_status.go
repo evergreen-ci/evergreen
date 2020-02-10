@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -176,4 +177,23 @@ func (as *APIServer) serviceStatusSimple(w http.ResponseWriter, r *http.Request)
 	}
 
 	gimlet.WriteJSON(w, &out)
+}
+
+func (as *APIServer) agentSetup(w http.ResponseWriter, r *http.Request) {
+	out := &apimodels.AgentSetupData{
+		SumoLogicEndpoint: as.Settings.Credentials["sumologic"],
+		SplunkServerURL:   as.Settings.Splunk.ServerURL,
+		SplunkClientToken: as.Settings.Splunk.Token,
+		SplunkChannel:     as.Settings.Splunk.Channel,
+		S3Key:             as.Settings.Providers.AWS.S3Key,
+		S3Secret:          as.Settings.Providers.AWS.S3Secret,
+		S3Bucket:          as.Settings.Providers.AWS.Bucket,
+		S3Base:            as.Settings.Providers.AWS.S3BaseURL,
+		LogkeeperURL:      as.Settings.LoggerConfig.LogkeeperURL,
+	}
+	if out.S3Base == "" {
+		out.S3Base = "https://s3.amazonaws.com"
+	}
+
+	gimlet.WriteJSON(w, out)
 }

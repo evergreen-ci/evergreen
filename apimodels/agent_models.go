@@ -69,6 +69,18 @@ type ExpansionVars struct {
 	PrivateVars map[string]bool   `json:"private_vars"`
 }
 
+type AgentSetupData struct {
+	SumoLogicEndpoint string `json:"sumo_logic_endpoint"`
+	SplunkServerURL   string `json:"splunk_server_url"`
+	SplunkClientToken string `json:"splunk_client_token"`
+	SplunkChannel     string `json:"splunk_channel"`
+	S3Base            string `json:"s3_base"`
+	S3Key             string `json:"s3_key"`
+	S3Secret          string `json:"s3_secret"`
+	S3Bucket          string `json:"s3_bucket"`
+	LogkeeperURL      string `json:"logkeeper_url"`
+}
+
 // NextTaskResponse represents the response sent back when an agent asks for a next task
 type NextTaskResponse struct {
 	TaskId              string `json:"task_id,omitempty"`
