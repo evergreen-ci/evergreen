@@ -218,7 +218,7 @@ func (c *Settings) ValidateAndDefault() error {
 		catcher.New("cannot use SSH key pairs without setting a directory for them")
 	}
 	if len(c.SSHKeyPairs) != 0 && c.AuthorizedKeysFile == "" {
-		catcher.New("need to specify the path to an authorized keys file for static hosts")
+		catcher.New("need to specify the path to an authorized keys file for static hosts (usually \"~/.ssh/authorized_keys\")")
 	}
 
 	for i := 0; i < len(c.SSHKeyPairs); i++ {
