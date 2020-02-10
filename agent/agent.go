@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/command"
@@ -72,9 +73,23 @@ type taskContext struct {
 
 // New creates a new Agent with some Options and a client.Communicator. Call the
 // Agent's Start method to begin listening for tasks to run.
-func New(opts Options, comm client.Communicator) (*Agent, error) {
+func New(ctx context.Context, opts Options, comm client.Communicator) (*Agent, error) {
 	comm.SetHostID(opts.HostID)
 	comm.SetHostSecret(opts.HostSecret)
+
+	if setupData, err := comm.GetAgentSetupData(ctx); err != nil {
+		opts.SetupData = *setupData
+		opts.LogkeeperURL = setupData.LogkeeperURL
+		opts.S3BaseURL = setupData.S3Base
+		opts.S3Opts = pail.S3Options{
+			Credentials: pail.CreateAWSCredentials(setupData.S3Key, setupData.S3Secret, ""),
+			Region:      endpoints.UsEast1RegionID,
+			Name:        setupData.S3Bucket,
+			Permissions: pail.S3PermissionsPublicRead,
+			ContentType: "text/plain",
+		}
+	}
+
 	agent := &Agent{
 		opts: opts,
 		comm: comm,
