@@ -92,6 +92,39 @@ mciModule.controller('PerformanceDiscoveryCtrl', function (
     vm.updateData(true);
   }
 
+  $scope.changeMetric = function () {
+    const fromVersion = vm.fromSelect.selected
+    const toVersion = vm.toSelect.selected
+    const expandedCurrent = vm.expandedOptions && vm.expandedOptions.includes("current");
+    const expandedBaseline = vm.expandedOptions && vm.expandedOptions.includes("baseline");
+    const expandedHistory = vm.expandedOptions && vm.expandedOptions.includes("history");
+    updateColumnDefs(vm.gridApi.grid);
+
+    vm.isLoading = true;
+    $q.all({
+        fromVersionObj: dataUtil.getCompItemVersion(fromVersion),
+        toVersionObj: dataUtil.getCompItemVersion(toVersion),
+      })
+      .then(function (promise) {
+        return dataUtil.changeMetric(vm.metric_name);
+      })
+      .then(function (res) {
+        vm.gridOptions.data = res
+        vm.all_metrics = _.chain(res).map(test => test.all_metrics).flatten().uniq().sort().value();
+        // Apply options data to filter drop downs
+        gridUtil.applyMultiselectOptions(
+          res,
+          ['build', 'storageEngine', 'task', 'threads'],
+          vm.gridApi,
+          true
+        );
+        return res
+      })
+      .finally(function () {
+        vm.isLoading = false
+      })
+  }
+
   let oldFromVersion, oldToVersion;
 
   // Convert the name to a revision that can be used to query atlas.
