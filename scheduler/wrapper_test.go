@@ -76,6 +76,42 @@ func TestNeedsReprovision(t *testing.T) {
 			},
 			expected: host.ReprovisionToLegacy,
 		},
+		"ExistingHostsPreservesExistingReprovisioning": {
+			d: distro.Distro{
+				BootstrapSettings: distro.BootstrapSettings{
+					Method:        distro.BootstrapMethodSSH,
+					Communication: distro.CommunicationMethodSSH,
+				},
+			},
+			h: &host.Host{
+				Distro: distro.Distro{
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodSSH,
+						Communication: distro.CommunicationMethodSSH,
+					},
+				},
+				NeedsReprovision: host.ReprovisionToNew,
+			},
+			expected: host.ReprovisionToNew,
+		},
+		"ExistingLegacyHostsPreservesExistingReprovisioning": {
+			d: distro.Distro{
+				BootstrapSettings: distro.BootstrapSettings{
+					Method:        distro.BootstrapMethodLegacySSH,
+					Communication: distro.CommunicationMethodLegacySSH,
+				},
+			},
+			h: &host.Host{
+				Distro: distro.Distro{
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodLegacySSH,
+						Communication: distro.CommunicationMethodLegacySSH,
+					},
+				},
+				NeedsReprovision: host.ReprovisionToLegacy,
+			},
+			expected: host.ReprovisionToLegacy,
+		},
 	} {
 		t.Run(testName, func(t *testing.T) {
 			assert.Equal(t, testCase.expected, needsReprovisioning(testCase.d, testCase.h))

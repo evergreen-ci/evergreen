@@ -184,6 +184,20 @@ func needsReprovisioning(d distro.Distro, h *host.Host) host.ReprovisionType {
 		return host.ReprovisionNone
 	}
 
+	// If the host has already been marked as needing reprovisioning before but
+	// has not done the reprovisioned yet, preserve the transition.
+	if h.NeedsReprovision != host.ReprovisionNone {
+		if d.LegacyBootstrap() && h.NeedsReprovision == host.ReprovisionToLegacy {
+			return host.ReprovisionToLegacy
+		}
+		if !d.LegacyBootstrap() && h.NeedsReprovision == host.ReprovisionToNew {
+			return host.ReprovisionToNew
+		}
+		return host.ReprovisionNone
+	}
+
+	// Transition the host to legacy or non-legacy depending on current distro
+	// settings.
 	if h.Distro.LegacyBootstrap() && d.BootstrapSettings.Method != "" && d.BootstrapSettings.Method != distro.BootstrapMethodLegacySSH {
 		return host.ReprovisionToNew
 	}
