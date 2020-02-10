@@ -206,36 +206,29 @@ func TestFindTestsByTaskIdFilterSortPaginatePaginationOrderDependsOnObjectId(t *
 
 	serviceContext := &DBConnector{}
 
-	id := "TaskOne"
+	taskId := "TaskOne"
 	Task := &task.Task{
-		Id: id,
+		Id: taskId,
 	}
-
+	idOne := mgobson.ObjectIdHex("507f191e810c19729de860ea")
+	idTwo := mgobson.ObjectIdHex("407f191e810c19729de860ea")
+	idThree := mgobson.ObjectIdHex("307f191e810c19729de860ea")
 	tests := []testresult.TestResult{
 		testresult.TestResult{
-			ID:        mgobson.ObjectIdHex("507f191e810c19729de860ea"),
-			TaskID:    id,
+			ID:        idOne,
+			TaskID:    taskId,
 			Execution: 0,
 			Status:    "pass",
-			TestFile:  "one",
-			EndTime:   0,
-			StartTime: 0,
 		}, testresult.TestResult{
-			ID:        mgobson.ObjectIdHex("407f191e810c19729de860ea"),
-			TaskID:    id,
+			ID:        idTwo,
+			TaskID:    taskId,
 			Execution: 0,
 			Status:    "pass",
-			TestFile:  "two",
-			EndTime:   0,
-			StartTime: 0,
 		}, testresult.TestResult{
-			ID:        mgobson.ObjectIdHex("307f191e810c19729de860ea"),
-			TaskID:    id,
+			ID:        idThree,
+			TaskID:    taskId,
 			Execution: 0,
 			Status:    "pass",
-			TestFile:  "three",
-			EndTime:   0,
-			StartTime: 0,
 		},
 	}
 
@@ -247,18 +240,17 @@ func TestFindTestsByTaskIdFilterSortPaginatePaginationOrderDependsOnObjectId(t *
 	foundTests, err := serviceContext.FindTestsByTaskIdFilterSortPaginate(id, "", "", "status", 1, 0, 1, 0)
 	assert.NoError(err)
 	assert.Len(foundTests, 1)
-	assert.True(foundTests[0].TestFile == "three")
+	assert.True(foundTests[0].ID == idThree)
 
 	foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(id, "", "", "status", 1, 1, 1, 0)
 	assert.NoError(err)
 	assert.Len(foundTests, 1)
-	assert.True(foundTests[0].TestFile == "two")
+	assert.True(foundTests[0].ID == idTwo)
 
 	foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(id, "", "", "status", 1, 2, 1, 0)
 	assert.NoError(err)
 	assert.Len(foundTests, 1)
-	assert.True(foundTests[0].TestFile == "one")
-
+	assert.True(foundTests[0].ID == idOne)
 }
 func TestFindTestsByTaskIdFilterSortPaginatePaginationTest(t *testing.T) {
 
