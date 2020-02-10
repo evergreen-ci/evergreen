@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -19,6 +20,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func isHostSpot(h *host.Host) bool {
@@ -30,6 +32,10 @@ func isHostOnDemand(h *host.Host) bool {
 
 // EC2ProviderSettings describes properties of managed instances.
 type EC2ProviderSettings struct {
+	// Region is the EC2 region in which the instance will start. Empty is equivalent to the Evergreen default region.
+	// This should remain one of the first fields to speed up the birch document iterator.
+	Region string `mapstructure:"region" json:"region" bson:"region,omitempty"`
+
 	// AMI is the AMI ID.
 	AMI string `mapstructure:"ami" json:"ami,omitempty" bson:"ami,omitempty"`
 
@@ -68,10 +74,6 @@ type EC2ProviderSettings struct {
 
 	// UserData are commands to run after the instance starts.
 	UserData string `mapstructure:"user_data" json:"user_data" bson:"user_data,omitempty"`
-
-	// Region is the EC2 region in which the instance will start. If empty,
-	// the ec2Manager will spawn in "us-east-1".
-	Region string `mapstructure:"region" json:"region" bson:"region,omitempty"`
 }
 
 // Validate that essential EC2ProviderSettings fields are not empty.
@@ -94,8 +96,12 @@ func (s *EC2ProviderSettings) Validate() error {
 	return nil
 }
 
-func (s *EC2ProviderSettings) fromDistroSettings(d distro.Distro) error {
+// region is only provided if we want to filter by region
+func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string) error {
 	if d.ProviderSettings != nil {
+		if region != "" && region != evergreen.DefaultEC2Region {
+			return errors.Errorf("only default region should be saved in provider settings")
+		}
 		if err := mapstructure.Decode(d.ProviderSettings, s); err != nil {
 			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, s)
 		}
@@ -104,9 +110,38 @@ func (s *EC2ProviderSettings) fromDistroSettings(d distro.Distro) error {
 			"input":   *d.ProviderSettings,
 			"output":  *s,
 		})
-	}
-	if err := s.Validate(); err != nil {
-		return errors.Wrapf(err, "Invalid EC2 settings in distro %s: %+v", d.Id, s)
+
+		s.Region = evergreen.DefaultEC2Region
+		bytes, err := bson.Marshal(s)
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		doc := &birch.Document{}
+		if err := doc.UnmarshalBSON(bytes); err != nil {
+			return errors.Wrapf(err, "error unmarshalling settings bytes into document")
+		}
+		if len(d.ProviderSettingsList) == 0 {
+			if err := d.UpdateProviderSettings(doc); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"distro":   d.Id,
+					"provider": d.Provider,
+					"settings": d.ProviderSettings,
+				}))
+				return errors.Wrapf(err, "error updating provider settings")
+			}
+		}
+	} else if len(d.ProviderSettingsList) != 0 {
+		settingsDoc, err := d.GetProviderSettingByRegion(region)
+		if err != nil {
+			return errors.Wrapf(err, "providers list doesn't contain region '%s'", region)
+		}
+		bytes, err := settingsDoc.MarshalBSON()
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		if err := bson.Unmarshal(bytes, s); err != nil {
+			return errors.Wrap(err, "error unmarshalling bson into provider settings")
+		}
 	}
 
 	return nil
@@ -419,15 +454,19 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	defer m.client.Close()
 
 	ec2Settings := &EC2ProviderSettings{}
-	err := ec2Settings.fromDistroSettings(h.Distro)
+	err := ec2Settings.FromDistroSettings(h.Distro, m.region)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting EC2 settings")
+	}
+	if err = ec2Settings.Validate(); err != nil {
+		return nil, errors.Wrapf(err, "Invalid EC2 settings in distro %s: %+v", h.Distro.Id, ec2Settings)
 	}
 	if ec2Settings.KeyName == "" && !h.UserHost {
 		if !h.SpawnOptions.SpawnedByTask {
 			return nil, errors.New("key name must not be empty")
 		}
-		k, err := m.client.GetKey(ctx, h)
+		var k string
+		k, err = m.client.GetKey(ctx, h)
 		if err != nil {
 			return nil, errors.Wrap(err, "not spawning host, problem creating key")
 		}
@@ -456,8 +495,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 		return nil, errors.Wrap(err, msg)
 	}
 	if provider == onDemandProvider {
-		err := m.spawnOnDemandHost(ctx, h, ec2Settings, blockDevices)
-		if err != nil {
+		if err = m.spawnOnDemandHost(ctx, h, ec2Settings, blockDevices); err != nil {
 			msg := "error spawning on-demand host"
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       msg,
@@ -500,7 +538,8 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 func (m *ec2Manager) getResources(ctx context.Context, h *host.Host) ([]string, error) {
 	instanceID := h.Id
 	if isHostSpot(h) {
-		instanceID, err := m.client.GetSpotInstanceId(ctx, h)
+		var err error
+		instanceID, err = m.client.GetSpotInstanceId(ctx, h)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error getting spot request info",
 			"host_id":       h.Id,
@@ -921,7 +960,8 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 	err = util.Retry(
 		ctx,
 		func() (bool, error) {
-			instance, err := m.client.GetInstanceInfo(ctx, h.Id)
+			var instance *ec2.Instance
+			instance, err = m.client.GetInstanceInfo(ctx, h.Id)
 			if err != nil {
 				return false, errors.Wrap(err, "error getting instance info")
 			}
@@ -1228,4 +1268,13 @@ func (m *ec2Manager) CostForDuration(ctx context.Context, h *host.Host, start, e
 	}
 
 	return total, nil
+}
+
+func (m *ec2Manager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+
+	return errors.Wrap(addSSHKey(ctx, m.client, pair), "could not add SSH key")
 }

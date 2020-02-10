@@ -10,6 +10,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/mongodb/grip"
 )
 
 type result struct {
@@ -123,7 +125,10 @@ func main() {
 		}()
 
 		for _, r := range results {
-			f.WriteString(r.String() + "\n")
+			if _, err = f.WriteString(r.String() + "\n"); err != nil {
+				grip.Error(err)
+				os.Exit(1)
+			}
 		}
 	}
 

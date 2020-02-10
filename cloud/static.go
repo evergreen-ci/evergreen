@@ -4,12 +4,17 @@ import (
 	"context"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type staticManager struct{}
@@ -35,6 +40,41 @@ func (s *StaticSettings) Validate() error {
 	for _, h := range s.Hosts {
 		if h.Name == "" {
 			return errors.New("host 'name' field can not be blank")
+		}
+	}
+	return nil
+}
+
+func (s *StaticSettings) FromDistroSettings(d distro.Distro, _ string) error {
+	if d.ProviderSettings != nil {
+		if err := mapstructure.Decode(d.ProviderSettings, s); err != nil {
+			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, s)
+		}
+		bytes, err := bson.Marshal(s)
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		doc := &birch.Document{}
+		if err := doc.UnmarshalBSON(bytes); err != nil {
+			return errors.Wrapf(err, "error unmarshalling settings bytes into document")
+		}
+		if len(d.ProviderSettingsList) == 0 {
+			if err := d.UpdateProviderSettings(doc); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"distro":   d.Id,
+					"provider": d.Provider,
+					"settings": d.ProviderSettings,
+				}))
+				return errors.Wrapf(err, "error updating provider settings")
+			}
+		}
+	} else if len(d.ProviderSettingsList) != 0 {
+		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		if err := bson.Unmarshal(bytes, s); err != nil {
+			return errors.Wrap(err, "error unmarshalling bson into provider settings")
 		}
 	}
 	return nil
@@ -119,4 +159,8 @@ func (staticMgr *staticManager) DeleteVolume(context.Context, *host.Volume) erro
 // return 0 for this number
 func (staticMgr *staticManager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return time.Duration(0)
+}
+
+func (staticMgr *staticManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
+	return nil
 }

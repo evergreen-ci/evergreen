@@ -129,12 +129,14 @@ func TestGitPush(t *testing.T) {
 		},
 		"PushPatch": func(*testing.T) {
 			ctx := context.Background()
-			jpm, err := jasper.NewSynchronizedManager(false)
+			var jpm jasper.Manager
+			jpm, err = jasper.NewSynchronizedManager(false)
 			require.NoError(t, err)
 			c.base.jasper = jpm
 			c.DryRun = true
 
-			repoDir, err := ioutil.TempDir("", "test_repo")
+			var repoDir string
+			repoDir, err = ioutil.TempDir("", "test_repo")
 			require.NoError(t, err)
 			require.NoError(t, ioutil.WriteFile(path.Join(repoDir, "test1.txt"), []byte("test1"), 0644))
 			require.NoError(t, ioutil.WriteFile(path.Join(repoDir, "test2.txt"), []byte("test2"), 0644))

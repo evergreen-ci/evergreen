@@ -165,6 +165,28 @@ func FindByLastTaskRegressionByTest(subscriptionID, testName, taskDisplayName, v
 	return FindOne(db.Query(q).Sort([]string{"-" + AlertTimeKey, "-" + RevisionOrderNumberKey}))
 }
 
+func FindByTaskRegressionByTaskTest(subscriptionID, testName, taskDisplayName, variant, projectID, taskID string) (*AlertRecord, error) {
+	q := subscriptionIDQuery(subscriptionID)
+	q[TypeKey] = taskRegressionByTest
+	q[testNameKey] = testName
+	q[TaskNameKey] = taskDisplayName
+	q[VariantKey] = variant
+	q[ProjectIdKey] = projectID
+	q[TaskIdKey] = taskID
+	return FindOne(db.Query(q).Sort([]string{"-" + AlertTimeKey}))
+}
+
+func FindByTaskRegressionTestAndOrderNumber(subscriptionID, testName, taskDisplayName, variant, projectID string, revisionOrderNumber int) (*AlertRecord, error) {
+	q := subscriptionIDQuery(subscriptionID)
+	q[TypeKey] = taskRegressionByTest
+	q[testNameKey] = testName
+	q[TaskNameKey] = taskDisplayName
+	q[VariantKey] = variant
+	q[ProjectIdKey] = projectID
+	q[RevisionOrderNumberKey] = revisionOrderNumber
+	return FindOne(db.Query(q))
+}
+
 func FindBySpawnHostExpirationWithHours(hostID string, hours int) (*AlertRecord, error) {
 	alerttype := fmt.Sprintf(spawnHostWarningTemplate, hours)
 	q := subscriptionIDQuery(legacyAlertsSubscription)

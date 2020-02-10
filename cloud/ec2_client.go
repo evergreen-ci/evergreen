@@ -103,6 +103,9 @@ type AWSClient interface {
 	// CreateKeyPair is a wrapper for ec2.CreateKeyPairWithContext.
 	CreateKeyPair(context.Context, *ec2.CreateKeyPairInput) (*ec2.CreateKeyPairOutput, error)
 
+	// ImportKeyPair is a wrapper for ec2.ImportKeyPairWithContext.
+	ImportKeyPair(context.Context, *ec2.ImportKeyPairInput) (*ec2.ImportKeyPairOutput, error)
+
 	// DeleteKeyPair is a wrapper for ec2.DeleteKeyPairWithContext.
 	DeleteKeyPair(context.Context, *ec2.DeleteKeyPairInput) (*ec2.DeleteKeyPairOutput, error)
 
@@ -767,6 +770,33 @@ func (c *awsClientImpl) CreateKeyPair(ctx context.Context, input *ec2.CreateKeyP
 	return output, nil
 }
 
+func (c *awsClientImpl) ImportKeyPair(ctx context.Context, input *ec2.ImportKeyPairInput) (*ec2.ImportKeyPairOutput, error) {
+	var output *ec2.ImportKeyPairOutput
+	var err error
+	msg := makeAWSLogMessage("ImportKeyPair", fmt.Sprintf("%T", c), input)
+	err = util.Retry(
+		ctx, func() (bool, error) {
+			output, err = c.EC2.ImportKeyPairWithContext(ctx, input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					// Don't retry if the key already exists
+					if ec2err.Code() == EC2DuplicateKeyPair {
+						grip.Info(msg)
+						return false, ec2err
+					}
+					grip.Error(message.WrapError(ec2err, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
 // DeleteKeyPair is a wrapper for ec2.DeleteKeyPair.
 func (c *awsClientImpl) DeleteKeyPair(ctx context.Context, input *ec2.DeleteKeyPairInput) (*ec2.DeleteKeyPairOutput, error) {
 	var output *ec2.DeleteKeyPairOutput
@@ -1041,7 +1071,8 @@ func (c *awsClientImpl) GetPublicDNSName(ctx context.Context, h *host.Host) (str
 func (c *awsClientImpl) getHostInstanceID(ctx context.Context, h *host.Host) (string, error) {
 	id := h.Id
 	if isHostSpot(h) {
-		id, err := c.GetSpotInstanceId(ctx, h)
+		var err error
+		id, err = c.GetSpotInstanceId(ctx, h)
 		if err != nil {
 			return "", errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
 		}
@@ -1076,6 +1107,7 @@ type awsClientMock struct { //nolint
 	*ec2.DescribeSubnetsInput
 	*ec2.DescribeVpcsInput
 	*ec2.CreateKeyPairInput
+	*ec2.ImportKeyPairInput
 	*ec2.DeleteKeyPairInput
 	*pricing.GetProductsInput
 	*ec2.CreateLaunchTemplateInput
@@ -1407,6 +1439,11 @@ func (c *awsClientMock) CreateKeyPair(ctx context.Context, input *ec2.CreateKeyP
 		KeyName:     aws.String("key_name"),
 		KeyMaterial: aws.String("key_material"),
 	}, nil
+}
+
+func (c *awsClientMock) ImportKeyPair(ctx context.Context, input *ec2.ImportKeyPairInput) (*ec2.ImportKeyPairOutput, error) {
+	c.ImportKeyPairInput = input
+	return &ec2.ImportKeyPairOutput{KeyName: input.KeyName}, nil
 }
 
 // DeleteKeyPair is a mock for ec2.DeleteKeyPair.

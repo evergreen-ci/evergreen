@@ -126,8 +126,8 @@ func TestPipeline(t *testing.T) {
 		},
 		// Test BuildTaskPaginationOrBranches creation for the task reliability pipeline.
 		"BuildTaskPaginationOrBranches": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
-			after := time.Date(2018, 7, 12, 0, 0, 0, 0, time.UTC)
-			before := time.Date(2018, 9, 13, 0, 0, 0, 0, time.UTC)
+			after = time.Date(2018, 7, 12, 0, 0, 0, 0, time.UTC)
+			before = time.Date(2018, 9, 13, 0, 0, 0, 0, time.UTC)
 
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter){
 				"Sort Latest, GroupBy task, Num Days 1": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {

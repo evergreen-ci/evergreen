@@ -1,9 +1,11 @@
 package scheduler
 
 import (
-	"encoding/json"
 	"testing"
 	"time"
+
+	"github.com/evergreen-ci/birch"
+	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -81,18 +83,18 @@ func TestNeedsReprovision(t *testing.T) {
 	}
 }
 
-func makeStaticHostProviderSettings(t *testing.T, names ...string) *map[string]interface{} {
+func makeStaticHostProviderSettings(t *testing.T, names ...string) *birch.Document {
 	settings := cloud.StaticSettings{
 		Hosts: []cloud.StaticHost{},
 	}
 	for _, name := range names {
 		settings.Hosts = append(settings.Hosts, cloud.StaticHost{Name: name})
 	}
-	b, err := json.Marshal(settings)
+	b, err := bson.Marshal(settings)
 	require.NoError(t, err)
-	m := make(map[string]interface{})
-	require.NoError(t, json.Unmarshal(b, &m))
-	return &m
+	doc := &birch.Document{}
+	require.NoError(t, doc.UnmarshalBSON(b))
+	return doc
 }
 
 func TestDoStaticHostUpdate(t *testing.T) {
@@ -130,10 +132,10 @@ func TestDoStaticHostUpdate(t *testing.T) {
 			name := "host"
 			user := "user"
 			d := distro.Distro{
-				Id:               "distro",
-				ProviderSettings: makeStaticHostProviderSettings(t, name),
-				Provider:         evergreen.ProviderNameStatic,
-				User:             user,
+				Id:                   "distro",
+				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, name)},
+				Provider:             evergreen.ProviderNameStatic,
+				User:                 user,
 			}
 
 			hosts, err := doStaticHostUpdate(d)
@@ -154,9 +156,9 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		"NewHostOnLegacyDistro": func(t *testing.T) {
 			name := "user@host"
 			d := distro.Distro{
-				Id:               "distro",
-				ProviderSettings: makeStaticHostProviderSettings(t, name),
-				Provider:         evergreen.ProviderNameStatic,
+				Id:                   "distro",
+				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, name)},
+				Provider:             evergreen.ProviderNameStatic,
 				BootstrapSettings: distro.BootstrapSettings{
 					Method:        distro.BootstrapMethodLegacySSH,
 					Communication: distro.CommunicationMethodLegacySSH,
@@ -177,9 +179,9 @@ func TestDoStaticHostUpdate(t *testing.T) {
 		"NewHostOnNonLegacyDistro": func(t *testing.T) {
 			name := "user@host"
 			d := distro.Distro{
-				Id:               "distro",
-				ProviderSettings: makeStaticHostProviderSettings(t, name),
-				Provider:         evergreen.ProviderNameStatic,
+				Id:                   "distro",
+				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, name)},
+				Provider:             evergreen.ProviderNameStatic,
 				BootstrapSettings: distro.BootstrapSettings{
 					Method:        distro.BootstrapMethodSSH,
 					Communication: distro.BootstrapMethodSSH,
@@ -201,9 +203,9 @@ func TestDoStaticHostUpdate(t *testing.T) {
 			h := legacyHost()
 			require.NoError(t, h.Insert())
 			d := distro.Distro{
-				Id:               "distro",
-				ProviderSettings: makeStaticHostProviderSettings(t, h.Id),
-				Provider:         evergreen.ProviderNameStatic,
+				Id:                   "distro",
+				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
+				Provider:             evergreen.ProviderNameStatic,
 				BootstrapSettings: distro.BootstrapSettings{
 					Method:        distro.BootstrapMethodLegacySSH,
 					Communication: distro.BootstrapMethodLegacySSH,
@@ -224,9 +226,9 @@ func TestDoStaticHostUpdate(t *testing.T) {
 			h := legacyHost()
 			require.NoError(t, h.Insert())
 			d := distro.Distro{
-				Id:               "distro",
-				ProviderSettings: makeStaticHostProviderSettings(t, h.Id),
-				Provider:         evergreen.ProviderNameStatic,
+				Id:                   "distro",
+				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
+				Provider:             evergreen.ProviderNameStatic,
 				BootstrapSettings: distro.BootstrapSettings{
 					Method:        distro.BootstrapMethodSSH,
 					Communication: distro.BootstrapMethodSSH,
@@ -247,9 +249,9 @@ func TestDoStaticHostUpdate(t *testing.T) {
 			h := nonLegacyHost()
 			require.NoError(t, h.Insert())
 			d := distro.Distro{
-				Id:               "distro",
-				ProviderSettings: makeStaticHostProviderSettings(t, h.Id),
-				Provider:         evergreen.ProviderNameStatic,
+				Id:                   "distro",
+				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
+				Provider:             evergreen.ProviderNameStatic,
 				BootstrapSettings: distro.BootstrapSettings{
 					Method:        distro.BootstrapMethodLegacySSH,
 					Communication: distro.BootstrapMethodLegacySSH,
@@ -270,9 +272,9 @@ func TestDoStaticHostUpdate(t *testing.T) {
 			h := nonLegacyHost()
 			require.NoError(t, h.Insert())
 			d := distro.Distro{
-				Id:               "distro",
-				ProviderSettings: makeStaticHostProviderSettings(t, h.Id),
-				Provider:         evergreen.ProviderNameStatic,
+				Id:                   "distro",
+				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
+				Provider:             evergreen.ProviderNameStatic,
 				BootstrapSettings: distro.BootstrapSettings{
 					Method:        distro.BootstrapMethodSSH,
 					Communication: distro.BootstrapMethodSSH,
@@ -295,9 +297,9 @@ func TestDoStaticHostUpdate(t *testing.T) {
 			h.Status = evergreen.HostTerminated
 			require.NoError(t, h.Insert())
 			d := distro.Distro{
-				Id:               "distro",
-				ProviderSettings: makeStaticHostProviderSettings(t, h.Id),
-				Provider:         evergreen.ProviderNameStatic,
+				Id:                   "distro",
+				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
+				Provider:             evergreen.ProviderNameStatic,
 				BootstrapSettings: distro.BootstrapSettings{
 					Method:        distro.BootstrapMethodLegacySSH,
 					Communication: distro.BootstrapMethodLegacySSH,
@@ -320,9 +322,9 @@ func TestDoStaticHostUpdate(t *testing.T) {
 			h.Status = evergreen.HostTerminated
 			require.NoError(t, h.Insert())
 			d := distro.Distro{
-				Id:               "distro",
-				ProviderSettings: makeStaticHostProviderSettings(t, h.Id),
-				Provider:         evergreen.ProviderNameStatic,
+				Id:                   "distro",
+				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
+				Provider:             evergreen.ProviderNameStatic,
 				BootstrapSettings: distro.BootstrapSettings{
 					Method:        distro.BootstrapMethodSSH,
 					Communication: distro.BootstrapMethodSSH,
@@ -345,9 +347,9 @@ func TestDoStaticHostUpdate(t *testing.T) {
 			h.Status = evergreen.HostTerminated
 			require.NoError(t, h.Insert())
 			d := distro.Distro{
-				Id:               "distro",
-				ProviderSettings: makeStaticHostProviderSettings(t, h.Id),
-				Provider:         evergreen.ProviderNameStatic,
+				Id:                   "distro",
+				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
+				Provider:             evergreen.ProviderNameStatic,
 				BootstrapSettings: distro.BootstrapSettings{
 					Method:        distro.BootstrapMethodSSH,
 					Communication: distro.BootstrapMethodSSH,
@@ -370,9 +372,9 @@ func TestDoStaticHostUpdate(t *testing.T) {
 			h.Status = evergreen.HostTerminated
 			require.NoError(t, h.Insert())
 			d := distro.Distro{
-				Id:               "distro",
-				ProviderSettings: makeStaticHostProviderSettings(t, h.Id),
-				Provider:         evergreen.ProviderNameStatic,
+				Id:                   "distro",
+				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
+				Provider:             evergreen.ProviderNameStatic,
 				BootstrapSettings: distro.BootstrapSettings{
 					Method:        distro.BootstrapMethodLegacySSH,
 					Communication: distro.BootstrapMethodLegacySSH,
@@ -395,9 +397,9 @@ func TestDoStaticHostUpdate(t *testing.T) {
 			h.Status = evergreen.HostQuarantined
 			require.NoError(t, h.Insert())
 			d := distro.Distro{
-				Id:               "distro",
-				ProviderSettings: makeStaticHostProviderSettings(t, h.Id),
-				Provider:         evergreen.ProviderNameStatic,
+				Id:                   "distro",
+				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
+				Provider:             evergreen.ProviderNameStatic,
 				BootstrapSettings: distro.BootstrapSettings{
 					Method:        distro.BootstrapMethodLegacySSH,
 					Communication: distro.BootstrapMethodLegacySSH,
@@ -420,9 +422,9 @@ func TestDoStaticHostUpdate(t *testing.T) {
 			h.Status = evergreen.HostQuarantined
 			require.NoError(t, h.Insert())
 			d := distro.Distro{
-				Id:               "distro",
-				ProviderSettings: makeStaticHostProviderSettings(t, h.Id),
-				Provider:         evergreen.ProviderNameStatic,
+				Id:                   "distro",
+				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
+				Provider:             evergreen.ProviderNameStatic,
 				BootstrapSettings: distro.BootstrapSettings{
 					Method:        distro.BootstrapMethodSSH,
 					Communication: distro.BootstrapMethodSSH,
@@ -445,9 +447,9 @@ func TestDoStaticHostUpdate(t *testing.T) {
 			h.Status = evergreen.HostQuarantined
 			require.NoError(t, h.Insert())
 			d := distro.Distro{
-				Id:               "distro",
-				ProviderSettings: makeStaticHostProviderSettings(t, h.Id),
-				Provider:         evergreen.ProviderNameStatic,
+				Id:                   "distro",
+				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
+				Provider:             evergreen.ProviderNameStatic,
 				BootstrapSettings: distro.BootstrapSettings{
 					Method:        distro.BootstrapMethodSSH,
 					Communication: distro.BootstrapMethodSSH,
@@ -470,9 +472,9 @@ func TestDoStaticHostUpdate(t *testing.T) {
 			h.Status = evergreen.HostQuarantined
 			require.NoError(t, h.Insert())
 			d := distro.Distro{
-				Id:               "distro",
-				ProviderSettings: makeStaticHostProviderSettings(t, h.Id),
-				Provider:         evergreen.ProviderNameStatic,
+				Id:                   "distro",
+				ProviderSettingsList: []*birch.Document{makeStaticHostProviderSettings(t, h.Id)},
+				Provider:             evergreen.ProviderNameStatic,
 				BootstrapSettings: distro.BootstrapSettings{
 					Method:        distro.BootstrapMethodLegacySSH,
 					Communication: distro.BootstrapMethodLegacySSH,

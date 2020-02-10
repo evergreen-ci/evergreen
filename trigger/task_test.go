@@ -875,6 +875,22 @@ func (s *taskSuite) TestRegressionByTestWithDuplicateTestNames() {
 	s.tryDoubleTrigger(true)
 }
 
+func (s *taskSuite) TestRegressionByTestWithTestsWithStepback() {
+	s.NoError(db.ClearCollections(task.Collection, testresult.Collection))
+
+	// TestFailed should generate
+	s.makeTask(22, evergreen.TaskSucceeded)
+	s.makeTest(22, 0, "", evergreen.TestSucceededStatus)
+	s.makeTask(24, evergreen.TaskFailed)
+	s.makeTest(24, 0, "", evergreen.TestFailedStatus)
+	s.tryDoubleTrigger(true)
+
+	// but not when we run the earlier task
+	s.makeTask(23, evergreen.TaskFailed)
+	s.makeTest(23, 0, "", evergreen.TestFailedStatus)
+	s.tryDoubleTrigger(false)
+}
+
 func (s *taskSuite) TestRegressionByTestWithRegex() {
 	sub := event.Subscription{
 		ID:           mgobson.NewObjectId().Hex(),

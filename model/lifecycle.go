@@ -411,7 +411,7 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 		}
 	}
 
-	if err := build.UpdateActivation([]string{buildId}, true, caller); err != nil {
+	if err = build.UpdateActivation([]string{buildId}, true, caller); err != nil {
 		return errors.Wrapf(err, "can't activate build '%s'", buildId)
 	}
 

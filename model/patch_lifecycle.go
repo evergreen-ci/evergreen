@@ -388,7 +388,9 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			DistroAliases:  distroAliases,
 			TaskCreateTime: createTime,
 		}
-		build, tasks, err := CreateBuildFromVersionNoInsert(buildArgs)
+		var build *build.Build
+		var tasks task.Tasks
+		build, tasks, err = CreateBuildFromVersionNoInsert(buildArgs)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}

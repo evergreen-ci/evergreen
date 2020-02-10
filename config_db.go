@@ -56,6 +56,11 @@ var (
 	commitQueueKey        = bsonutil.MustHaveTag(Settings{}, "CommitQueue")
 	ldapRoleMapKey        = bsonutil.MustHaveTag(Settings{}, "LDAPRoleMap")
 	backupConfig          = bsonutil.MustHaveTag(Settings{}, "Backup")
+	sshKeyDirectoryKey    = bsonutil.MustHaveTag(Settings{}, "SSHKeyDirectory")
+	sshKeyPairsKey        = bsonutil.MustHaveTag(Settings{}, "SSHKeyPairs")
+
+	sshKeyPairNameKey       = bsonutil.MustHaveTag(SSHKeyPair{}, "Name")
+	sshKeyPairEC2RegionsKey = bsonutil.MustHaveTag(SSHKeyPair{}, "EC2Regions")
 
 	// degraded mode flags
 	taskDispatchKey                 = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")

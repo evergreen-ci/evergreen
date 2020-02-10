@@ -38,7 +38,7 @@ func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, spawnRequest *mo
 
 	if resp.StatusCode != http.StatusOK {
 		errMsg := gimlet.ErrorResponse{}
-		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+		if err = util.ReadJSONInto(resp.Body, &errMsg); err != nil {
 			return nil, errors.Wrap(err, "problem spawning host and parsing error message")
 		}
 		return nil, errors.Wrap(errMsg, "problem spawning host")
@@ -175,7 +175,7 @@ func (c *communicatorImpl) CreateVolume(ctx context.Context, volume *host.Volume
 
 	if resp.StatusCode != http.StatusOK {
 		errMsg := gimlet.ErrorResponse{}
-		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+		if err = util.ReadJSONInto(resp.Body, &errMsg); err != nil {
 			return nil, errors.Wrap(err, "problem creating volume and parsing error message")
 		}
 		return nil, errors.Wrap(errMsg, "problem creating volume")
@@ -299,7 +299,7 @@ func (c *communicatorImpl) waitForStatus(ctx context.Context, hostID, status str
 			}
 			if resp.StatusCode != http.StatusOK {
 				errMsg := gimlet.ErrorResponse{}
-				if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+				if err = util.ReadJSONInto(resp.Body, &errMsg); err != nil {
 					return errors.Wrap(err, "problem getting host and parsing error message")
 				}
 				return errors.Wrap(errMsg, "problem getting host")
@@ -405,7 +405,7 @@ func (c *communicatorImpl) GetHosts(ctx context.Context, data model.APIHostParam
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		errMsg := gimlet.ErrorResponse{}
-		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+		if err = util.ReadJSONInto(resp.Body, &errMsg); err != nil {
 			return nil, errors.Wrapf(err, "Got %d code. Problem reading hosts error", resp.StatusCode)
 		}
 		return nil, errors.Wrap(errMsg, "problem getting hosts")

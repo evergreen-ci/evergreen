@@ -342,7 +342,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// verify there are PR aliases defined
-		aliasesDefined, err := verifyAliasExists(evergreen.GithubAlias, projectRef.Identifier, responseRef.GitHubAliases, responseRef.DeleteAliases)
+		var aliasesDefined bool
+		aliasesDefined, err = verifyAliasExists(evergreen.GithubAlias, projectRef.Identifier, responseRef.GitHubAliases, responseRef.DeleteAliases)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if GitHub aliases are set"))
 			return
@@ -379,7 +380,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// verify there are commit queue aliases defined
-		exists, err := verifyAliasExists(evergreen.CommitQueueAlias, projectRef.Identifier, responseRef.CommitQueueAliases, responseRef.DeleteAliases)
+		var exists bool
+		exists, err = verifyAliasExists(evergreen.CommitQueueAlias, projectRef.Identifier, responseRef.CommitQueueAliases, responseRef.DeleteAliases)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if commit queue aliases are set"))
 			return
@@ -578,7 +580,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if origProjectRef.Restricted != projectRef.Restricted {
-		var err error
 		if projectRef.Restricted {
 			err = projectRef.MakeRestricted()
 		} else {

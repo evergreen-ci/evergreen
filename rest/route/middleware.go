@@ -419,7 +419,8 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 
 	testLog := util.CoalesceStrings(query["log_id"], vars["log_id"])
 	if projectID == "" && testLog != "" {
-		test, err := model.FindOneTestLogById(testLog)
+		var test *model.TestLog
+		test, err = model.FindOneTestLogById(testLog)
 		if err != nil {
 			return nil, http.StatusNotFound, err
 		}

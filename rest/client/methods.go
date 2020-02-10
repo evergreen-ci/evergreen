@@ -27,6 +27,25 @@ import (
 	"github.com/pkg/errors"
 )
 
+func (c *communicatorImpl) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData, error) {
+	out := &apimodels.AgentSetupData{}
+	info := requestInfo{
+		method:  get,
+		version: apiVersion1,
+		path:    "agent/setup",
+	}
+
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get agent setup info")
+	}
+	defer resp.Body.Close()
+	if err = util.ReadJSONInto(resp.Body, out); err != nil {
+		return nil, errors.Wrap(err, "failed to get agent setup info")
+	}
+	return out, nil
+}
+
 // StartTask marks the task as started.
 func (c *communicatorImpl) StartTask(ctx context.Context, taskData TaskData) error {
 	grip.Info(message.Fields{

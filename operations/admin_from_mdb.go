@@ -205,7 +205,8 @@ func fromMdbForLocal() cli.Command {
 
 			for _, collection := range collections {
 				coll := client.Database(dbName).Collection(collection)
-				size, err := coll.CountDocuments(ctx, struct{}{})
+				var size int64
+				size, err = coll.CountDocuments(ctx, struct{}{})
 				if err != nil {
 					return errors.Wrap(err, "problem finding number of source documents")
 				}

@@ -38,6 +38,8 @@ type SpawnOptions struct {
 	InstanceTags     []host.Tag
 	InstanceType     string
 	NoExpiration     bool
+	AttachVolume     bool
+	HomeVolumeSize   int
 }
 
 // Validate returns an instance of BadOptionsErr if the SpawnOptions object contains invalid
@@ -63,7 +65,7 @@ func (so *SpawnOptions) validate() error {
 		return errors.Wrap(err, "Error occurred finding user's current hosts")
 	}
 
-	if err := checkSpawnHostLimitExceeded(len(activeSpawnedHosts)); err != nil {
+	if err = checkSpawnHostLimitExceeded(len(activeSpawnedHosts)); err != nil {
 		return err
 	}
 
@@ -148,6 +150,8 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 		InstanceTags:       so.InstanceTags,
 		InstanceType:       so.InstanceType,
 		NoExpiration:       so.NoExpiration,
+		AttachVolume:       so.AttachVolume,
+		HomeVolumeSize:     so.HomeVolumeSize,
 	}
 
 	intentHost := host.NewIntent(d, d.GenerateName(), d.Provider, hostOptions)

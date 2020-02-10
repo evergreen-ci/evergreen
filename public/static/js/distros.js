@@ -483,6 +483,7 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
         'user': $scope.activeDistro.user,
         'ssh_key': $scope.activeDistro.ssh_key,
         'ssh_options': $scope.activeDistro.ssh_options,
+        'authorized_keys_file': $scope.activeDistro.authorized_keys_file,
         'setup': $scope.activeDistro.setup,
         'setup': $scope.activeDistro.teardown,
         'setup': $scope.activeDistro.user_data,
@@ -573,6 +574,12 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
       return $scope.activeDistro.arch.includes('linux');
     }
     return false;
+  }
+
+  $scope.isStatic = function () {
+    if ($scope.activeDistro) {
+      return $scope.activeDistro.provider === 'static'
+    }
   }
 
   $scope.isNonLegacyProvisioning = function () {

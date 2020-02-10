@@ -26,9 +26,7 @@ func Agent() cli.Command {
 		hostSecretFlagName       = "host_secret"
 		apiServerURLFlagName     = "api_server"
 		workingDirectoryFlagName = "working_directory"
-		logkeeperURLFlagName     = "logkeeper_url"
 		logPrefixFlagName        = "log_prefix"
-		s3BaseURLFlagName        = "s3_base_url"
 		statusPortFlagName       = "status_port"
 		cleanupFlagName          = "cleanup"
 	)
@@ -61,14 +59,6 @@ func Agent() cli.Command {
 				Value: "evg.agent",
 				Usage: "prefix for the agent's log filename",
 			},
-			cli.StringFlag{
-				Name:  logkeeperURLFlagName,
-				Usage: "URL of the logkeeper service to be used by tasks",
-			},
-			cli.StringFlag{
-				Name:  s3BaseURLFlagName,
-				Usage: "base URL for S3 uploads (defaults to 'https://s3.amazonaws.com'",
-			},
 			cli.IntFlag{
 				Name:  statusPortFlagName,
 				Value: defaultAgentStatusPort,
@@ -90,10 +80,6 @@ func Agent() cli.Command {
 			},
 		),
 		Action: func(c *cli.Context) error {
-			s3Base := c.String(s3BaseURLFlagName)
-			if s3Base == "" {
-				s3Base = "https://s3.amazonaws.com"
-			}
 			opts := agent.Options{
 				HostID:           c.String(hostIDFlagName),
 				HostSecret:       c.String(hostSecretFlagName),
@@ -101,15 +87,6 @@ func Agent() cli.Command {
 				LogPrefix:        c.String(logPrefixFlagName),
 				WorkingDirectory: c.String(workingDirectoryFlagName),
 				Cleanup:          c.Bool(cleanupFlagName),
-				LogkeeperURL:     c.String(logkeeperURLFlagName),
-				S3BaseURL:        s3Base,
-				S3Opts: pail.S3Options{
-					Credentials: pail.CreateAWSCredentials(os.Getenv("S3_KEY"), os.Getenv("S3_SECRET"), ""),
-					Region:      endpoints.UsEast1RegionID,
-					Name:        os.Getenv("S3_BUCKET"),
-					Permissions: pail.S3PermissionsPublicRead,
-					ContentType: "text/plain",
-				},
 			}
 
 			if err := os.MkdirAll(opts.WorkingDirectory, 0777); err != nil {
@@ -123,19 +100,33 @@ func Agent() cli.Command {
 				"host_id":  opts.HostID,
 			})
 
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			comm := client.NewCommunicator(c.String(apiServerURLFlagName))
 			defer comm.Close()
+
+			if setupData, err := comm.GetAgentSetupData(ctx); err != nil {
+				opts.SetupData = *setupData
+				opts.LogkeeperURL = setupData.LogkeeperURL
+				opts.S3BaseURL = setupData.S3Base
+				opts.S3Opts = pail.S3Options{
+					Credentials: pail.CreateAWSCredentials(setupData.S3Key, setupData.S3Secret, ""),
+					Region:      endpoints.UsEast1RegionID,
+					Name:        setupData.S3Bucket,
+					Permissions: pail.S3PermissionsPublicRead,
+					ContentType: "text/plain",
+				}
+			}
 
 			agt, err := agent.New(opts, comm)
 			if err != nil {
 				return errors.Wrap(err, "problem constructing agent")
 			}
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
 			go hardShutdownForSignals(ctx, cancel)
 
-			sender, err := agent.GetSender(ctx, opts.LogPrefix, "init")
+			sender, err := agt.GetSender(ctx, opts.LogPrefix, "init")
 			if err != nil {
 				return errors.Wrap(err, "problem configuring logger")
 			}

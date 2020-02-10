@@ -243,3 +243,61 @@ func (s *alertRecordSuite) TestFindByLastTaskRegressionByTest() {
 	s.NoError(err)
 	s.Equal("t3", alert.TaskId)
 }
+
+func (s *alertRecordSuite) TestFindByTaskRegressionByTaskTest() {
+	alert1 := AlertRecord{
+		Id:        mgobson.NewObjectId(),
+		Type:      taskRegressionByTest,
+		TaskName:  "t",
+		Variant:   "v",
+		ProjectId: "p",
+		TaskId:    "t1",
+		TestName:  "test",
+		AlertTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+	}
+	s.NoError(alert1.Insert())
+	alert2 := AlertRecord{
+		Id:        mgobson.NewObjectId(),
+		Type:      taskRegressionByTest,
+		TaskName:  "t",
+		Variant:   "v",
+		ProjectId: "p",
+		TaskId:    "t2",
+		TestName:  "test",
+		AlertTime: time.Date(2010, time.November, 10, 23, 0, 0, 0, time.UTC),
+	}
+	s.NoError(alert2.Insert())
+
+	alert, err := FindByTaskRegressionByTaskTest("", "test", "t", "v", "p", "t2")
+	s.NoError(err)
+	s.True(time.Date(2010, time.November, 10, 23, 0, 0, 0, time.UTC).Equal(alert.AlertTime))
+}
+
+func (s *alertRecordSuite) TestFindByTaskRegressionTestAndOrderNumber() {
+	alert1 := AlertRecord{
+		Id:                  mgobson.NewObjectId(),
+		Type:                taskRegressionByTest,
+		TaskName:            "t",
+		Variant:             "v",
+		ProjectId:           "p",
+		TaskId:              "t1",
+		TestName:            "test",
+		RevisionOrderNumber: 1,
+	}
+	s.NoError(alert1.Insert())
+	alert2 := AlertRecord{
+		Id:                  mgobson.NewObjectId(),
+		Type:                taskRegressionByTest,
+		TaskName:            "t",
+		Variant:             "v",
+		ProjectId:           "p",
+		TaskId:              "t2",
+		TestName:            "test",
+		RevisionOrderNumber: 2,
+	}
+	s.NoError(alert2.Insert())
+
+	alert, err := FindByTaskRegressionTestAndOrderNumber("", "test", "t", "v", "p", 1)
+	s.NoError(err)
+	s.Equal("t1", alert.TaskId)
+}

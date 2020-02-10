@@ -13,6 +13,10 @@ import (
 // ProviderSettings exposes provider-specific configuration settings for a Manager.
 type ProviderSettings interface {
 	Validate() error
+
+	// If zone is specified, returns the provider settings for that region.
+	// This is currently only being implemented for EC2 hosts.
+	FromDistroSettings(distro.Distro, string) error
 }
 
 //Manager is an interface which handles creating new hosts or modifying
@@ -70,6 +74,10 @@ type Manager interface {
 	// TimeTilNextPayment returns how long there is until the next payment
 	// is due for a particular host
 	TimeTilNextPayment(*host.Host) time.Duration
+
+	// AddSSHKey adds an SSH key for this manager's hosts. Adding an existing
+	// key is a no-op.
+	AddSSHKey(context.Context, evergreen.SSHKeyPair) error
 }
 
 type ContainerManager interface {
@@ -184,7 +192,7 @@ func GetManager(ctx context.Context, env evergreen.Environment, mgrOpts ManagerO
 // provider name.
 func GetManagerOptions(d distro.Distro) (ManagerOpts, error) {
 	if IsEc2Provider(d.Provider) {
-		return getEC2ManagerOptions(d.Provider, d.ProviderSettings)
+		return getEC2ManagerOptions(d)
 	}
 	if d.Provider == evergreen.ProviderNameMock {
 		return getMockManagerOptions(d.Provider, d.ProviderSettings)

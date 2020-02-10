@@ -314,7 +314,6 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 		fmt.Sprintf("--host_secret='%s'", hostObj.Secret),
 		fmt.Sprintf("--log_prefix='%s'", filepath.Join(hostObj.Distro.WorkDir, "agent")),
 		fmt.Sprintf("--working_directory='%s'", hostObj.Distro.WorkDir),
-		fmt.Sprintf("--logkeeper_url='%s'", settings.LoggerConfig.LogkeeperURL),
 		"--cleanup",
 	}
 
@@ -333,31 +332,12 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 		return errors.Wrapf(err, "error parsing ssh info %v", hostObj.Host)
 	}
 
-	// run the command to kick off the agent remotely
-	env := map[string]string{}
-	if sumoEndpoint, ok := settings.Credentials["sumologic"]; ok {
-		env["GRIP_SUMO_ENDPOINT"] = sumoEndpoint
-	}
-
-	if settings.Splunk.Populated() {
-		env["GRIP_SPLUNK_SERVER_URL"] = settings.Splunk.ServerURL
-		env["GRIP_SPLUNK_CLIENT_TOKEN"] = settings.Splunk.Token
-
-		if settings.Splunk.Channel != "" {
-			env["GRIP_SPLUNK_CHANNEL"] = settings.Splunk.Channel
-		}
-	}
-
-	// env["S3_KEY"] = settings.Providers.AWS.S3Key
-	// env["S3_SECRET"] = settings.Providers.AWS.S3Secret
-	env["S3_BUCKET"] = settings.Providers.AWS.Bucket
-
 	ctx, cancel := context.WithTimeout(ctx, sshTimeout)
 	defer cancel()
 
 	remoteCmd = fmt.Sprintf("nohup %s > /tmp/start 2>1 &", remoteCmd)
 
-	startAgentCmd := j.env.JasperManager().CreateCommand(ctx).Environment(env).Append(remoteCmd).
+	startAgentCmd := j.env.JasperManager().CreateCommand(ctx).Append(remoteCmd).
 		User(hostObj.User).Host(hostInfo.Hostname).ExtendRemoteArgs("-p", hostInfo.Port).ExtendRemoteArgs(sshOptions...)
 
 	if err = startAgentCmd.Run(ctx); err != nil {

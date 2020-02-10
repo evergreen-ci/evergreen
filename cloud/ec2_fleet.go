@@ -71,9 +71,11 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 	defer m.client.Close()
 
 	ec2Settings := &EC2ProviderSettings{}
-	err := ec2Settings.fromDistroSettings(h.Distro)
-	if err != nil {
+	if err := ec2Settings.FromDistroSettings(h.Distro, ""); err != nil {
 		return nil, errors.Wrap(err, "error getting EC2 settings")
+	}
+	if err := ec2Settings.Validate(); err != nil {
+		return nil, errors.Wrapf(err, "Invalid EC2 settings in distro %s: %+v", h.Distro.Id, ec2Settings)
 	}
 
 	if ec2Settings.KeyName == "" && !h.UserHost {
@@ -535,4 +537,13 @@ func subnetMatchesAz(subnet *ec2.Subnet) bool {
 	}
 
 	return false
+}
+
+func (m *ec2FleetManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+
+	return errors.Wrap(addSSHKey(ctx, m.client, pair), "could not add SSH key")
 }

@@ -12,12 +12,13 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	ec2aws "github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -25,7 +26,8 @@ import (
 )
 
 const (
-	EC2ErrorNotFound = "InvalidInstanceID.NotFound"
+	EC2ErrorNotFound    = "InvalidInstanceID.NotFound"
+	EC2DuplicateKeyPair = "InvalidKeyPair.Duplicate"
 )
 
 type MountPoint struct {
@@ -247,7 +249,7 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, cl
 	var err error
 	if h.ComputeCostPerHour == 0 {
 		ec2Settings := &EC2ProviderSettings{}
-		err := ec2Settings.fromDistroSettings(h.Distro)
+		err = ec2Settings.FromDistroSettings(h.Distro, "")
 		if err != nil {
 			return errors.Wrapf(err, "error getting EC2 settings for host '%s'", h.Id)
 		}
@@ -508,19 +510,16 @@ func IsEc2Provider(provider string) bool {
 		provider == evergreen.ProviderNameEc2Fleet
 }
 
-// Get EC2 region from an EC2 ProviderSettings object
-func getEC2ManagerOptions(provider string, providerSettings *map[string]interface{}) (ManagerOpts, error) {
+// Get EC2 region from a distro
+func getEC2ManagerOptions(d distro.Distro) (ManagerOpts, error) {
 	opts := ManagerOpts{}
-	if providerSettings == nil {
-		return opts, errors.New("nil ProviderSettings map")
-	}
 
 	s := &EC2ProviderSettings{}
-	if err := mapstructure.Decode(providerSettings, s); err != nil {
-		return opts, errors.Wrap(err, "can't decode into EC2ProviderSettings")
+	if err := s.FromDistroSettings(d, ""); err != nil {
+		return ManagerOpts{}, errors.Wrapf(err, "error getting EC2 provider settings from distro")
 	}
 
-	opts.Provider = provider
+	opts.Provider = d.Provider
 	opts.Region = s.Region
 	opts.ProviderKey = s.AWSKeyID
 	opts.ProviderSecret = s.AWSSecret
@@ -565,5 +564,20 @@ func validateEC2HostModifyOptions(h *host.Host, opts host.HostModifyOptions) err
 		return errors.Errorf("cannot extend host '%s' expiration by '%s' -- maximum host duration is limited to %s", h.Id, opts.AddHours.String(), MaxSpawnHostExpirationDurationHours.String())
 	}
 
+	return nil
+}
+
+// addSSHKey adds an SSH key for the given client. If an SSH key already exists
+// with the given name, this no-ops.
+func addSSHKey(ctx context.Context, client AWSClient, pair evergreen.SSHKeyPair) error {
+	if _, err := client.ImportKeyPair(ctx, &ec2.ImportKeyPairInput{
+		KeyName:           aws.String(pair.Name),
+		PublicKeyMaterial: []byte(pair.Public),
+	}); err != nil {
+		if ec2err, ok := err.(awserr.Error); ok && ec2err.Code() == EC2DuplicateKeyPair {
+			return nil
+		}
+		return errors.Wrap(err, "could not add new SSH key")
+	}
 	return nil
 }

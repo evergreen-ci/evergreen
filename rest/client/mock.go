@@ -119,6 +119,11 @@ func (c *Mock) SetAPIUser(apiUser string)                  { c.apiUser = apiUser
 func (c *Mock) SetAPIKey(apiKey string)                    { c.apiKey = apiKey }
 
 // nolint
+func (c *Mock) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData, error) {
+	return nil, nil
+}
+
+// nolint
 func (c *Mock) StartTask(ctx context.Context, td TaskData) error { return nil }
 
 // EndTask returns a mock EndTaskResponse.

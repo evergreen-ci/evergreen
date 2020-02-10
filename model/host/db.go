@@ -85,6 +85,7 @@ var (
 	SpawnOptionsKey              = bsonutil.MustHaveTag(Host{}, "SpawnOptions")
 	ContainerPoolSettingsKey     = bsonutil.MustHaveTag(Host{}, "ContainerPoolSettings")
 	InstanceTagsKey              = bsonutil.MustHaveTag(Host{}, "InstanceTags")
+	SSHKeyNamesKey               = bsonutil.MustHaveTag(Host{}, "SSHKeyNames")
 	SpawnOptionsTaskIDKey        = bsonutil.MustHaveTag(SpawnOptions{}, "TaskID")
 	SpawnOptionsBuildIDKey       = bsonutil.MustHaveTag(SpawnOptions{}, "BuildID")
 	SpawnOptionsTimeoutKey       = bsonutil.MustHaveTag(SpawnOptions{}, "TimeoutTeardown")

@@ -81,6 +81,8 @@ type APIAdminSettings struct {
 	Scheduler               *APISchedulerConfig               `json:"scheduler,omitempty"`
 	ServiceFlags            *APIServiceFlags                  `json:"service_flags,omitempty"`
 	Slack                   *APISlackConfig                   `json:"slack,omitempty"`
+	SSHKeyDirectory         *string                           `json:"ssh_key_directory,omitempty"`
+	SSHKeyPairs             []APISSHKeyPair                   `json:"ssh_key_pairs,omitempty"`
 	SpawnHostsPerUser       *int                              `json:"spawn_hosts_per_user"`
 	Splunk                  *APISplunkConnectionInfo          `json:"splunk,omitempty"`
 	Triggers                *APITriggerConfig                 `json:"triggers,omitempty"`
@@ -131,6 +133,15 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.Expansions = v.Expansions
 		as.Keys = v.Keys
 		as.GithubOrgs = v.GithubOrgs
+		as.SSHKeyDirectory = ToStringPtr(v.SSHKeyDirectory)
+		as.SSHKeyPairs = []APISSHKeyPair{}
+		for _, pair := range v.SSHKeyPairs {
+			as.SSHKeyPairs = append(as.SSHKeyPairs, APISSHKeyPair{
+				Name:    ToStringPtr(pair.Name),
+				Public:  ToStringPtr(pair.Public),
+				Private: ToStringPtr(pair.Private),
+			})
+		}
 		as.UnexpirableHostsPerUser = &v.UnexpirableHostsPerUser
 		as.SpawnHostsPerUser = &v.SpawnHostsPerUser
 	default:
@@ -221,6 +232,15 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 		for k2, v2 := range v {
 			settings.Plugins[k][k2] = v2
 		}
+	}
+	settings.SSHKeyDirectory = FromStringPtr(as.SSHKeyDirectory)
+	settings.SSHKeyPairs = []evergreen.SSHKeyPair{}
+	for _, pair := range as.SSHKeyPairs {
+		settings.SSHKeyPairs = append(settings.SSHKeyPairs, evergreen.SSHKeyPair{
+			Name:    FromStringPtr(pair.Name),
+			Public:  FromStringPtr(pair.Public),
+			Private: FromStringPtr(pair.Private),
+		})
 	}
 	return settings, nil
 }
@@ -1417,6 +1437,12 @@ type APIServiceFlags struct {
 	GithubStatusAPIDisabled      bool `json:"github_status_api_disabled"`
 }
 
+type APISSHKeyPair struct {
+	Name    *string `json:"name"`
+	Public  *string `json:"public"`
+	Private *string `json:"private"`
+}
+
 type APISlackConfig struct {
 	Options *APISlackOptions `json:"options"`
 	Token   *string          `json:"token"`
@@ -1430,7 +1456,7 @@ func (a *APISlackConfig) BuildFromService(h interface{}) error {
 		a.Level = ToStringPtr(v.Level)
 		if v.Options != nil {
 			a.Options = &APISlackOptions{}
-			if err := a.Options.BuildFromService(*v.Options); err != nil { //nolint: vet
+			if err := a.Options.BuildFromService(*v.Options); err != nil { //nolint: govet
 				return err
 			}
 		}
@@ -1445,7 +1471,7 @@ func (a *APISlackConfig) ToService() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	options := i.(send.SlackOptions) //nolint: vet
+	options := i.(send.SlackOptions) //nolint: govet
 	return evergreen.SlackConfig{
 		Token:   FromStringPtr(a.Token),
 		Level:   FromStringPtr(a.Level),

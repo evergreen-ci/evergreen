@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
 
@@ -25,6 +24,8 @@ var distroSyntaxValidators = []distroValidator{
 	ensureHasNonZeroID,
 	ensureHasRequiredFields,
 	ensureValidSSHOptions,
+	ensureValidSSHKeyName,
+	ensureStaticHasAuthorizedKeysFile,
 	ensureValidExpansions,
 	ensureStaticHostsAreNotSpawnable,
 	ensureValidContainerPool,
@@ -124,6 +125,7 @@ func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, s *evergreen
 		})
 	}
 
+	// TODO: this later will need to go through every region to check
 	mgrOpts, err := cloud.GetManagerOptions(*d)
 	if err != nil {
 		return append(errs, ValidationError{
@@ -140,14 +142,11 @@ func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, s *evergreen
 	}
 
 	settings := mgr.GetSettings()
-
-	if d.ProviderSettings != nil {
-		if err = mapstructure.Decode(d.ProviderSettings, settings); err != nil {
-			return append(errs, ValidationError{
-				Message: fmt.Sprintf("distro '%v' decode error: %v", distro.ProviderSettingsKey, err),
-				Level:   Error,
-			})
-		}
+	if err = settings.FromDistroSettings(*d, mgrOpts.Region); err != nil {
+		return append(errs, ValidationError{
+			Message: fmt.Sprintf("distro '%v' decode error: %v", distro.ProviderSettingsKey, err),
+			Level:   Error,
+		})
 	}
 
 	if err := settings.Validate(); err != nil {
@@ -197,6 +196,39 @@ func ensureValidSSHOptions(ctx context.Context, d *distro.Distro, s *evergreen.S
 	for _, o := range d.SSHOptions {
 		if o == "" {
 			return ValidationErrors{{Error, fmt.Sprintf("distro cannot be blank SSH option")}}
+		}
+	}
+	return nil
+}
+
+// ensureValidSSHKeyName checks that the SSH key name corresponds to an actual
+// SSH key.
+func ensureValidSSHKeyName(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
+	if key := s.Keys[d.SSHKey]; key != "" {
+		return nil
+	}
+	for _, key := range s.SSHKeyPairs {
+		if key.Name == d.SSHKey {
+			return nil
+		}
+	}
+	return ValidationErrors{
+		{
+			Message: fmt.Sprintf("ssh key '%s' not found", d.SSHKey),
+			Level:   Error,
+		},
+	}
+}
+
+// ensureStaticHasAuthorizedKeysFile checks that the SSH key name corresponds to an actual
+// SSH key.
+func ensureStaticHasAuthorizedKeysFile(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
+	if len(s.SSHKeyPairs) != 0 && d.Provider == evergreen.ProviderNameStatic && d.AuthorizedKeysFile == "" {
+		return ValidationErrors{
+			{
+				Message: fmt.Sprintf("authorized keys file was not specified"),
+				Level:   Error,
+			},
 		}
 	}
 	return nil

@@ -430,9 +430,9 @@ $(buildDir)/output.%.coverage:$(tmpDir) .FORCE
 	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
 	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 #  targets to generate gotest output from the linter.
-$(buildDir)/output.%.lint:$(buildDir)/run-linter $(buildDir)/golangci-lint $(testSrcFiles) .FORCE
+$(buildDir)/output.%.lint:$(buildDir)/run-linter $(testSrcFiles) .FORCE
 	@./$< --output=$@ --lintBin="$(buildDir)/golangci-lint" --customLinters="$(gopath)/bin/evg-lint -set_exit_status" --packages='$*'
-$(buildDir)/output.lint:$(buildDir)/run-linter $(buildDir)/golangci-lint .FORCE
+$(buildDir)/output.lint:$(buildDir)/run-linter .FORCE
 	@./$< --output="$@" --lintBin="$(buildDir)/golangci-lint" --customLinters="$(gopath)/bin/evg-lint -set_exit_status" --packages="$(packages)"
 #  targets to process and generate coverage reports
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage

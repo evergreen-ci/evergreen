@@ -9,3 +9,7 @@ linters:
     - interfacer
     - misspell
     - unconvert
+
+linters-settings:
+  govet:
+    check-shadowing: true

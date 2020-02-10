@@ -20,6 +20,10 @@ func TestCheckDistro(t *testing.T) {
 	env := evergreen.GetEnvironment()
 	conf := env.Settings()
 	conf.Providers.AWS.EC2Keys = []evergreen.EC2Key{{Region: evergreen.DefaultEC2Region, Key: "key", Secret: "secret"}}
+	conf.SSHKeyPairs = []evergreen.SSHKeyPair{{Name: "a"}}
+	defer func() {
+		conf.SSHKeyPairs = nil
+	}()
 
 	Convey("When validating a distro", t, func() {
 
@@ -180,6 +184,7 @@ func TestEnsureHasRequiredFields(t *testing.T) {
 
 	i := -1
 	Convey("When validating a distro...", t, func() {
+		So(db.ClearCollections(distro.Collection), ShouldBeNil)
 		d := []distro.Distro{
 			{},
 			{Id: "a"},
@@ -222,6 +227,7 @@ func TestEnsureHasRequiredFields(t *testing.T) {
 			}},
 		}
 		i++
+		So(d[i].Insert(), ShouldBeNil)
 		Convey("an error should be returned if the distro does not contain an id", func() {
 			So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, ValidationErrors{})
 		})
@@ -578,4 +584,39 @@ func TestEnsureValidCloneMethod(t *testing.T) {
 	assert.NotNil(t, ensureValidCloneMethod(ctx, &distro.Distro{}, &evergreen.Settings{}))
 	assert.Nil(t, ensureValidCloneMethod(ctx, &distro.Distro{CloneMethod: distro.CloneMethodLegacySSH}, &evergreen.Settings{}))
 	assert.Nil(t, ensureValidCloneMethod(ctx, &distro.Distro{CloneMethod: distro.CloneMethodOAuth}, &evergreen.Settings{}))
+}
+
+func TestEnsureValidSSHKeyName(t *testing.T) {
+	ctx := context.Background()
+	defaultKeyName := "default_key"
+	settings := &evergreen.Settings{
+		Keys: map[string]string{
+			defaultKeyName: "default_key_value",
+		},
+		SSHKeyPairs: []evergreen.SSHKeyPair{
+			{
+				Name: "ssh_key1",
+			},
+		},
+	}
+	assert.Nil(t, ensureValidSSHKeyName(ctx, &distro.Distro{SSHKey: defaultKeyName}, settings))
+	assert.Nil(t, ensureValidSSHKeyName(ctx, &distro.Distro{SSHKey: settings.SSHKeyPairs[0].Name}, settings))
+	assert.NotNil(t, ensureValidSSHKeyName(ctx, &distro.Distro{}, settings))
+	assert.NotNil(t, ensureValidSSHKeyName(ctx, &distro.Distro{SSHKey: "nonexistent"}, settings))
+}
+
+func TestEnsureStaticHasAuthorizedKeysFile(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	settings := &evergreen.Settings{
+		SSHKeyPairs: []evergreen.SSHKeyPair{
+			{
+				Name: "ssh_key_pair1",
+			},
+		},
+	}
+	assert.Nil(t, ensureStaticHasAuthorizedKeysFile(ctx, &distro.Distro{Provider: evergreen.ProviderNameStatic, AuthorizedKeysFile: "~/.ssh/authorized_keys"}, settings))
+	assert.NotNil(t, ensureStaticHasAuthorizedKeysFile(ctx, &distro.Distro{Provider: evergreen.ProviderNameStatic}, settings))
+	assert.Nil(t, ensureStaticHasAuthorizedKeysFile(ctx, &distro.Distro{Provider: evergreen.ProviderNameEc2Fleet}, settings))
 }

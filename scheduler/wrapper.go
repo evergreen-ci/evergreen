@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
@@ -119,9 +118,8 @@ func UpdateStaticDistro(d distro.Distro) error {
 
 func doStaticHostUpdate(d distro.Distro) ([]string, error) {
 	settings := &cloud.StaticSettings{}
-	err := mapstructure.Decode(d.ProviderSettings, settings)
-	if err != nil {
-		return nil, errors.Errorf("invalid static settings for '%v'", d.Id)
+	if err := settings.FromDistroSettings(d, ""); err != nil {
+		return nil, errors.Wrapf(err, "invalid static settings for '%s'", d.Id)
 	}
 
 	staticHosts := []string{}
@@ -186,11 +184,11 @@ func needsReprovisioning(d distro.Distro, h *host.Host) host.ReprovisionType {
 		return host.ReprovisionNone
 	}
 
-	if h.LegacyBootstrap() && d.BootstrapSettings.Method != "" && d.BootstrapSettings.Method != distro.BootstrapMethodLegacySSH {
+	if h.Distro.LegacyBootstrap() && d.BootstrapSettings.Method != "" && d.BootstrapSettings.Method != distro.BootstrapMethodLegacySSH {
 		return host.ReprovisionToNew
 	}
 
-	if !h.LegacyBootstrap() && (d.BootstrapSettings.Method == "" || d.BootstrapSettings.Method == distro.BootstrapMethodLegacySSH) {
+	if !h.Distro.LegacyBootstrap() && (d.BootstrapSettings.Method == "" || d.BootstrapSettings.Method == distro.BootstrapMethodLegacySSH) {
 		return host.ReprovisionToLegacy
 	}
 
