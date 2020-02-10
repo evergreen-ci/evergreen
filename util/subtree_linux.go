@@ -92,9 +92,10 @@ func cleanup(key string, logger grip.Journaler) error {
 		return err
 	}
 
+	var env []string
 	// Kill processes
 	for _, pid := range pids {
-		env, err := getEnv(pid)
+		env, err = getEnv(pid)
 		if err != nil {
 			if !strings.Contains(err.Error(), os.ErrPermission.Error()) {
 				logger.Infof("Could not get environment for process %d", pid)
@@ -104,7 +105,7 @@ func cleanup(key string, logger grip.Journaler) error {
 		if pid != myPid && envHasMarkers(key, env) {
 			p := os.Process{}
 			p.Pid = pid
-			if err := p.Kill(); err != nil {
+g			if err = p.Kill(); err != nil {
 				logger.Infof("Killing %d failed: %s", pid, err.Error())
 			} else {
 				logger.Infof("Killed process %d", pid)
@@ -112,7 +113,7 @@ func cleanup(key string, logger grip.Journaler) error {
 		}
 	}
 
-	unkilledPids := []int{}
+	var unkilledPids []int
 	// Retry listing processes until all have successfully exited
 	ctx, cancel := context.WithTimeout(context.Background(), contextTimeout)
 	defer cancel()
@@ -125,7 +126,7 @@ func cleanup(key string, logger grip.Journaler) error {
 				return false, err
 			}
 			for _, pid := range pids {
-				env, err := getEnv(pid)
+				env, err = getEnv(pid)
 				if err != nil {
 					if !strings.Contains(err.Error(), os.ErrPermission.Error()) {
 						logger.Infof("Could not get environment for process %s", pid)

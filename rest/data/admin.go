@@ -67,7 +67,7 @@ func (ac *DBAdminConnector) SetEvergreenSettings(changes *restModel.APIAdminSett
 	// evergreen.Settings internally calls ValidateAndDefault to set the default
 	// values.
 	if persist {
-		if err := newSettings.Validate(); err != nil {
+		if err = newSettings.Validate(); err != nil {
 			return nil, errors.Wrap(err, "validation failed")
 		}
 		err = evergreen.UpdateConfig(&newSettings)
