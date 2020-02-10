@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/amboy/logger"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
@@ -89,6 +90,7 @@ type Settings struct {
 	Scheduler               SchedulerConfig           `yaml:"scheduler" bson:"scheduler" json:"scheduler" id:"scheduler"`
 	ServiceFlags            ServiceFlags              `bson:"service_flags" json:"service_flags" id:"service_flags" yaml:"service_flags"`
 	SSHKeyDirectory         string                    `yaml:"ssh_key_directory" bson:"ssh_key_directory" json:"ssh_key_directory"`
+	AuthorizedKeysFile      string                    `yaml:"authorized_keys_file" bson:"authorized_keys_file" json:"authorized_keys_file"`
 	SSHKeyPairs             []SSHKeyPair              `yaml:"ssh_key_pairs" bson:"ssh_key_pairs" json:"ssh_key_pairs"`
 	Slack                   SlackConfig               `yaml:"slack" bson:"slack" json:"slack" id:"slack"`
 	SpawnHostsPerUser       int                       `yaml:"spawn_hosts_per_user" bson:"spawn_hosts_per_user" json:"spawn_hosts_per_user"`
@@ -156,6 +158,7 @@ func (c *Settings) Set() error {
 			splunkKey:             c.Splunk,
 			sshKeyDirectoryKey:    c.SSHKeyDirectory,
 			sshKeyPairsKey:        c.SSHKeyPairs,
+			authorizedKeysFileKey: c.AuthorizedKeysFile,
 			superUsersKey:         c.SuperUsers,
 			spawnHostsKey:         c.SpawnHostsPerUser,
 			unexpirableHostsKey:   c.UnexpirableHostsPerUser,
@@ -214,6 +217,9 @@ func (c *Settings) ValidateAndDefault() error {
 	if len(c.SSHKeyPairs) != 0 && c.SSHKeyDirectory == "" {
 		catcher.New("cannot use SSH key pairs without setting a directory for them")
 	}
+	if len(c.SSHKeyPairs) != 0 && c.AuthorizedKeysFile == "" {
+		catcher.New("need to specify the path to an authorized keys file for static hosts")
+	}
 
 	for i := 0; i < len(c.SSHKeyPairs); i++ {
 		catcher.NewWhen(c.SSHKeyPairs[i].Name == "", "must specify a name for SSH key pairs")
@@ -249,8 +255,11 @@ func (c *Settings) ValidateAndDefault() error {
 			// Ensure we are not deleting any existing keys.
 			for _, key := range GetEnvironment().Settings().SSHKeyPairs {
 				var found bool
+				pp.Println("looking for key:", key.Name)
+				pp.Println("SSH key pairs:", c.SSHKeyPairs)
 				for _, newKey := range c.SSHKeyPairs {
 					if newKey.Name == key.Name {
+						found = true
 						break
 					}
 				}

@@ -155,6 +155,7 @@ func (s *AdminSuite) TestBaseConfig() {
 		Plugins:            map[string]map[string]interface{}{"k4": {"k5": "v5"}},
 		PprofPort:          "port",
 		SSHKeyDirectory:    "/ssh_key_directory",
+		AuthorizedKeysFile: "/authorized_keys",
 		SSHKeyPairs:        []SSHKeyPair{{Name: "key", Public: "public", Private: "private"}},
 		Splunk: send.SplunkConnectionInfo{
 			ServerURL: "server",
@@ -184,6 +185,8 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.LogPath, settings.LogPath)
 	s.Equal(config.Plugins, settings.Plugins)
 	s.Equal(config.PprofPort, settings.PprofPort)
+	s.Equal(config.AuthorizedKeysFile, settings.AuthorizedKeysFile)
+	s.Equal(config.SSHKeyDirectory, settings.SSHKeyDirectory)
 	s.Require().Len(settings.SSHKeyPairs, len(config.SSHKeyPairs))
 	for i := 0; i < len(settings.SSHKeyPairs); i++ {
 		s.Equal(config.SSHKeyPairs[i].Name, settings.SSHKeyPairs[i].Name)

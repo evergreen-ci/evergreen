@@ -83,6 +83,7 @@ type APIAdminSettings struct {
 	ServiceFlags            *APIServiceFlags                  `json:"service_flags,omitempty"`
 	Slack                   *APISlackConfig                   `json:"slack,omitempty"`
 	SSHKeyDirectory         *string                           `json:"ssh_key_directory,omitempty"`
+	AuthorizedKeysFile      *string                           `json:"authorized_keys_file,omitempty"`
 	SSHKeyPairs             []APISSHKeyPair                   `json:"ssh_key_pairs,omitempty"`
 	SpawnHostsPerUser       *int                              `json:"spawn_hosts_per_user"`
 	Splunk                  *APISplunkConnectionInfo          `json:"splunk,omitempty"`
@@ -138,6 +139,7 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.SuperUsers = v.SuperUsers
 		as.GithubOrgs = v.GithubOrgs
 		as.SSHKeyDirectory = ToStringPtr(v.SSHKeyDirectory)
+		as.AuthorizedKeysFile = ToStringPtr(v.AuthorizedKeysFile)
 		as.SSHKeyPairs = []APISSHKeyPair{}
 		for _, pair := range v.SSHKeyPairs {
 			as.SSHKeyPairs = append(as.SSHKeyPairs, APISSHKeyPair{
@@ -242,6 +244,7 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 		}
 	}
 	settings.SSHKeyDirectory = FromStringPtr(as.SSHKeyDirectory)
+	settings.AuthorizedKeysFile = FromStringPtr(as.AuthorizedKeysFile)
 	settings.SSHKeyPairs = []evergreen.SSHKeyPair{}
 	for _, pair := range as.SSHKeyPairs {
 		settings.SSHKeyPairs = append(settings.SSHKeyPairs, evergreen.SSHKeyPair{
