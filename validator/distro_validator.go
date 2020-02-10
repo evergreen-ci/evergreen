@@ -170,7 +170,7 @@ func validateMultipleProviderSettings(d *distro.Distro) ValidationErrors {
 		}
 		if err := settings.FromDistroSettings(*d, region); err != nil {
 			errs = append(errs, ValidationError{
-				Message: errors.Wrapf(err, "distro '%v' decode error", distro.ProviderSettingsListKey).Error(),
+				Message: fmt.Sprintf("distro '%v' decode error: %v", distro.ProviderSettingsListKey, err),
 				Level:   Error,
 			})
 			continue
