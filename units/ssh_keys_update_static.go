@@ -13,6 +13,7 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
 const staticUpdateSSHKeysJobName = "update-ssh-keys-host"
@@ -68,6 +69,16 @@ func (j *staticUpdateSSHKeysJob) Run(ctx context.Context) {
 	}
 
 	settings := evergreen.GetEnvironment().Settings()
+	if j.host.Distro.AuthorizedKeysFile == "" {
+		err := errors.New("authorized keys file on static hosts must be set")
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "cannot deploy SSH keys to static host",
+			"host":    j.host.Id,
+			"job":     j.ID(),
+		}))
+		j.AddError(err)
+		return
+	}
 
 	sshOpts, err := j.host.GetSSHOptions(settings)
 	if err != nil {
@@ -87,7 +98,7 @@ func (j *staticUpdateSSHKeysJob) Run(ctx context.Context) {
 		}
 
 		// Either key is already in the authorized keys or it is appended.
-		addKeyCmd := fmt.Sprintf(" grep \"^%s$\" ~/.ssh/authorized_keys2 || echo \"%s\" >> ~/.ssh/authorized_keys2", pair.Public, pair.Public)
+		addKeyCmd := fmt.Sprintf(" grep \"^%s$\" %s || echo \"%s\" >> %s", pair.Public, j.host.Distro.AuthorizedKeysFile, pair.Public, j.host.Distro.AuthorizedKeysFile)
 		if logs, err := j.host.RunSSHCommand(ctx, addKeyCmd, sshOpts); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not run SSH command to add to authorized keys",

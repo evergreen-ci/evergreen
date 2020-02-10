@@ -251,6 +251,7 @@ func (c *Settings) ValidateAndDefault() error {
 				var found bool
 				for _, newKey := range c.SSHKeyPairs {
 					if newKey.Name == key.Name {
+						found = true
 						break
 					}
 				}

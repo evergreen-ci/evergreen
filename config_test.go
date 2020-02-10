@@ -184,6 +184,7 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.LogPath, settings.LogPath)
 	s.Equal(config.Plugins, settings.Plugins)
 	s.Equal(config.PprofPort, settings.PprofPort)
+	s.Equal(config.SSHKeyDirectory, settings.SSHKeyDirectory)
 	s.Require().Len(settings.SSHKeyPairs, len(config.SSHKeyPairs))
 	for i := 0; i < len(settings.SSHKeyPairs); i++ {
 		s.Equal(config.SSHKeyPairs[i].Name, settings.SSHKeyPairs[i].Name)
@@ -829,5 +830,5 @@ func (s *AdminSuite) TestSSHKeysAppendOnly() {
 		Public:  "public",
 		Private: "private",
 	}}
-	s.Error(newSettings.Validate(), "should be able to append new key pair")
+	s.NoError(newSettings.Validate(), "should be able to append new key pair")
 }

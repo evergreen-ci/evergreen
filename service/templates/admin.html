@@ -1520,9 +1520,14 @@ Admin Settings
 							<md-card-content>
 								<md-input-container class="control" style="width:45%;">
 									<label>SSH Key Directory</label>
-									<input type=text ng-model="Settings.ssh_key_directory" />
+									<input type=text ng-model="Settings.ssh_key_directory" placeholder="Path to the directory containing each server's SSH key files"/>
+								</md-input-container>
+								<md-input-container class="control" style="width:45%;">
+									<label>Authorized Keys File</label>
+									<input type=text ng-model="Settings.authorized_keys_file" placeholder="Path where authorized SSH keys are stored on static hosts"/>
 								</md-input-container>
 							</md-card-content>
+
 							</md-card>
 
 							<md-card flex=50 id="expansions">

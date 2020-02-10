@@ -58,8 +58,8 @@ var (
 	ldapRoleMapKey        = bsonutil.MustHaveTag(Settings{}, "LDAPRoleMap")
 	backupConfig          = bsonutil.MustHaveTag(Settings{}, "Backup")
 	aclEnabledKey         = bsonutil.MustHaveTag(Settings{}, "ACLCheckingEnabled")
-	sshKeyPairsKey        = bsonutil.MustHaveTag(Settings{}, "SSHKeyPairs")
 	sshKeyDirectoryKey    = bsonutil.MustHaveTag(Settings{}, "SSHKeyDirectory")
+	sshKeyPairsKey        = bsonutil.MustHaveTag(Settings{}, "SSHKeyPairs")
 
 	sshKeyPairNameKey       = bsonutil.MustHaveTag(SSHKeyPair{}, "Name")
 	sshKeyPairEC2RegionsKey = bsonutil.MustHaveTag(SSHKeyPair{}, "EC2Regions")
