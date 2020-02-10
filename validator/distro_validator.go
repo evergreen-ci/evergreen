@@ -148,6 +148,7 @@ func validateMultipleProviderSettings(d *distro.Distro) ValidationErrors {
 				Message: fmt.Sprintf("defined region %s more than once", region),
 				Level:   Error,
 			})
+			continue
 		}
 		definedRegions[region] = true
 		bytes, err := doc.MarshalBSON()
@@ -169,7 +170,7 @@ func validateMultipleProviderSettings(d *distro.Distro) ValidationErrors {
 		}
 		if err := settings.FromDistroSettings(*d, region); err != nil {
 			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("distro '%v' decode error: %v", distro.ProviderSettingsListKey, err),
+				Message: errors.Wrapf(err, "distro '%v' decode error", distro.ProviderSettingsListKey).Error(),
 				Level:   Error,
 			})
 			continue
