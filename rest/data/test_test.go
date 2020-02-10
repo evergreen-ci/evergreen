@@ -237,17 +237,17 @@ func TestFindTestsByTaskIdFilterSortPaginatePaginationOrderDependsOnObjectId(t *
 		assert.NoError(test.Insert())
 	}
 
-	foundTests, err := serviceContext.FindTestsByTaskIdFilterSortPaginate(id, "", "", "status", 1, 0, 1, 0)
+	foundTests, err := serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", "", "status", 1, 0, 1, 0)
 	assert.NoError(err)
 	assert.Len(foundTests, 1)
 	assert.True(foundTests[0].ID == idThree)
 
-	foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(id, "", "", "status", 1, 1, 1, 0)
+	foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", "", "status", 1, 1, 1, 0)
 	assert.NoError(err)
 	assert.Len(foundTests, 1)
 	assert.True(foundTests[0].ID == idTwo)
 
-	foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(id, "", "", "status", 1, 2, 1, 0)
+	foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", "", "status", 1, 2, 1, 0)
 	assert.NoError(err)
 	assert.Len(foundTests, 1)
 	assert.True(foundTests[0].ID == idOne)
