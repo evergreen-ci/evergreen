@@ -557,7 +557,10 @@ func (s *AgentSuite) TestPrepareNextTask() {
 }
 
 func (s *AgentSuite) TestAgentConstructorSetsHostData() {
-	agent, err := New(Options{HostID: "host_id", HostSecret: "host_secret"}, client.NewMock("url"))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	agent, err := New(ctx, Options{HostID: "host_id", HostSecret: "host_secret"}, client.NewMock("url"))
 	s.Require().NoError(err)
 	s.Equal("host_id", agent.comm.GetHostID())
 	s.Equal("host_secret", agent.comm.GetHostSecret())
@@ -853,9 +856,9 @@ timeout:
     params:
       shell: bash
       script: |
-        echo "hi"
-        sleep 5
-        echo "bye"
+	echo "hi"
+	sleep 5
+	echo "bye"
 `
 	v := &model.Version{
 		Id:     versionId,
