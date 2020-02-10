@@ -105,7 +105,7 @@ func cleanup(key string, logger grip.Journaler) error {
 		if pid != myPid && envHasMarkers(key, env) {
 			p := os.Process{}
 			p.Pid = pid
-g			if err = p.Kill(); err != nil {
+			if err = p.Kill(); err != nil {
 				logger.Infof("Killing %d failed: %s", pid, err.Error())
 			} else {
 				logger.Infof("Killed process %d", pid)
