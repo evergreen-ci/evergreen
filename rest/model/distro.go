@@ -411,10 +411,11 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 		}
 		apiDistro.ImageID = ToStringPtr(ec2Settings.AMI)
 	}
+	if d.ProviderSettings != nil {
+		apiDistro.ProviderSettings = *d.ProviderSettings
+	}
 	if len(d.ProviderSettingsList) > 0 {
 		apiDistro.ProviderSettingsList = d.ProviderSettingsList
-	} else if d.ProviderSettings != nil {
-		apiDistro.ProviderSettings = *d.ProviderSettings
 	}
 	apiDistro.Arch = ToStringPtr(d.Arch)
 	apiDistro.WorkDir = ToStringPtr(d.WorkDir)
