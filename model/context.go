@@ -49,9 +49,6 @@ func LoadContext(taskId, buildId, versionId, patchId, projectId string) (Context
 		// Also lookup the ProjectRef itself and add it to context.
 		ctx.ProjectRef, err = FindOneProjectRef(projectId)
 		if err != nil {
-			// if errors.Cause(err) == ErrProjectNotFound {
-			// 	return ctx, errors.Errorf("error finding the project %s", projectId)
-			// }
 			return ctx, err
 		}
 	}
