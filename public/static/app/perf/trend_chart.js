@@ -710,8 +710,15 @@ mciModule.factory('DrawPerfTrendChart', function (
           'stroke-width': '4',
         });
 
-        const changePointIndex = (index, level, series) => {
-          for (;index >= 0 && getValueFor(level)(series[index]) == null;index--) {}
+        // Walk backwards and find the index of the first non-null value.
+        const changePointIndex = (index, getValueFor) => {
+          while(getValueFor(index) == null) {
+            if (index <= 0) {
+              index = 0;
+              break;
+            }
+            index -= 1;
+          }
           return index;
         };
 
@@ -719,11 +726,11 @@ mciModule.factory('DrawPerfTrendChart', function (
         .transition()
         .attr({
           x1: function (d) {
-            const index = changePointIndex(d.changePoint._meta.firstRevIdx, d.level, series)
+            const index = changePointIndex(d.changePoint._meta.firstRevIdx, (index) => getValueFor(d.level)(series[index]))
             return xScale(index)
           },
           y1: function (d) {
-            const index = changePointIndex(d.changePoint._meta.firstRevIdx, d.level, series)
+            const index = changePointIndex(d.changePoint._meta.firstRevIdx, (index) => getValueFor(d.level)(series[index]))
             return yScale(getValueFor(d.level)(series[index]))
           },
           x2: function (d) {
