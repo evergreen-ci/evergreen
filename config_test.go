@@ -830,5 +830,5 @@ func (s *AdminSuite) TestSSHKeysAppendOnly() {
 		Public:  "public",
 		Private: "private",
 	}}
-	s.Error(newSettings.Validate(), "should be able to append new key pair")
+	s.NoError(newSettings.Validate(), "should be able to append new key pair")
 }
