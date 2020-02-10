@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 func TestFindTestsByTaskId(t *testing.T) {
@@ -199,8 +200,53 @@ func TestFindTestsByTaskIdFilterSortPaginate(t *testing.T) {
 	assert.Equal(http.StatusNotFound, apiErr.StatusCode)
 
 }
+func TestFindTestsByTaskIdFilterSortPaginatePaginationOrderDependsOnObjectId(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(task.Collection, testresult.Collection))
 
+	serviceContext := &DBConnector{}
+
+	id := "TaskOne"
+	Task := &task.Task{
+		Id: id,
+	}
+
+	tests := []testresult.TestResult{testresult.TestResult{
+		ID:        mgobson.ObjectIdHex("507f191e810c19729de860ea"),
+		TaskID:    id,
+		Execution: 0,
+		Status:    "pass",
+		TestFile:  "one",
+		EndTime:   0,
+		StartTime: 0,
+	}, testresult.TestResult{
+		ID:        mgobson.ObjectIdHex("407f191e810c19729de860ea"),
+		TaskID:    id,
+		Execution: 0,
+		Status:    "pass",
+		TestFile:  "two",
+		EndTime:   0,
+		StartTime: 0,
+	}}
+
+	assert.NoError(Task.Insert())
+	for _, test := range tests {
+		assert.NoError(test.Insert())
+	}
+
+	foundTests, err := serviceContext.FindTestsByTaskIdFilterSortPaginate(id, "", "", "status", 1, 0, 1, 0)
+	assert.NoError(err)
+	assert.Len(foundTests, 1)
+	assert.True(foundTests[0].TestFile == "two")
+
+	foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(id, "", "", "status", -1, 1, 1, 0)
+	assert.NoError(err)
+	assert.Len(foundTests, 1)
+	assert.True(foundTests[0].TestFile == "one")
+
+}
 func TestFindTestsByTaskIdFilterSortPaginatePaginationTest(t *testing.T) {
+
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, testresult.Collection))
 
@@ -218,6 +264,9 @@ func TestFindTestsByTaskIdFilterSortPaginatePaginationTest(t *testing.T) {
 	tests := make([]testresult.TestResult, numTests)
 	for j := 0; j < len(testObjects); j++ {
 		status := "pass"
+		if j < 5 {
+			status = "skip"
+		}
 		tests[j] = testresult.TestResult{
 			TaskID:    id,
 			Execution: 0,
