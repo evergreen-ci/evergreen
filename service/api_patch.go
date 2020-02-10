@@ -155,7 +155,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		PatchString string `json:"patch"`
 		Githash     string `json:"githash"`
 		Message     string `json:"message"`
-		CommitQueue bool   `json:commit_queue`
+		CommitQueue bool   `json:"commit_queue"`
 	}{}
 	if err = util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
