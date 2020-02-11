@@ -201,6 +201,7 @@ func (u *DBUser) IncPatchNumber() (int, error) {
 	return dbUser.PatchNumber, nil
 }
 
+// AddFavoritedProject adds a project ID to the user favorites in user DB model
 func (u *DBUser) AddFavoritedProject(identifier string) error {
 	if util.StringSliceContains(u.FavoriteProjects, identifier) {
 		return errors.Errorf("cannot add duplicate project '%s'", identifier)
@@ -212,21 +213,16 @@ func (u *DBUser) AddFavoritedProject(identifier string) error {
 		return err
 	}
 
-	before := u.FavoriteProjects
 	u.FavoriteProjects = append(u.FavoriteProjects, identifier)
 
-	err := event.LogUserEvent(u.Id, event.UserEventTypeFavoriteProjectsUpdate, before, u.FavoriteProjects)
-	if err != nil {
-		grip.Error(errors.Errorf("error logging event for adding '%s' to user favorites", identifier))
-	}
 	return nil
 }
 
+// RemoveFavoriteProject removes a project ID from the user favorites in user DB model
 func (u *DBUser) RemoveFavoriteProject(identifier string) error {
 	if !util.StringSliceContains(u.FavoriteProjects, identifier) {
 		return errors.Errorf("project '%s' does not exist in user's favorites", identifier)
 	}
-	before := u.FavoriteProjects
 
 	update := bson.M{
 		"$pull": bson.M{FavoriteProjectsKey: identifier},
@@ -239,11 +235,6 @@ func (u *DBUser) RemoveFavoriteProject(identifier string) error {
 		if u.FavoriteProjects[i] == identifier {
 			u.FavoriteProjects = append(u.FavoriteProjects[:i], u.FavoriteProjects[i+1:]...)
 		}
-	}
-
-	err := event.LogUserEvent(u.Id, event.UserEventTypeFavoriteProjectsUpdate, before, u.FavoriteProjects)
-	if err != nil {
-		grip.Error(errors.Errorf("error logging event for removing '%s' from user favorites", identifier))
 	}
 
 	return nil
