@@ -34,14 +34,14 @@ type mutationResolver struct{ *Resolver }
 func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) (*restModel.UIProjectFields, error) {
 	p, err := model.FindOneProjectRef(identifier)
 	if err != nil || p == nil {
-		return nil, errors.Errorf("could not find project '%s'", identifier)
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", identifier))
 	}
 
 	usr := route.MustHaveUser(ctx)
 
 	err = usr.AddFavoritedProject(identifier)
 	if err != nil {
-		return nil, errors.Wrap(err, "error adding project to user's favorites")
+		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 
 	return &restModel.UIProjectFields{
@@ -96,7 +96,7 @@ func (r *queryResolver) UserPatches(ctx context.Context, userID string) ([]*rest
 	patchPointers := []*restModel.APIPatch{}
 	patches, err := r.sc.FindPatchesByUser(userID, time.Now(), 10)
 	if err != nil {
-		return patchPointers, errors.Wrap(err, "error retrieving patches")
+		return patchPointers, InternalServerError.Send(ctx, err.Error())
 	}
 
 	for _, p := range patches {
@@ -109,7 +109,7 @@ func (r *queryResolver) UserPatches(ctx context.Context, userID string) ([]*rest
 func (r *queryResolver) Task(ctx context.Context, taskID string) (*restModel.APITask, error) {
 	task, err := task.FindOneId(taskID)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error retreiving Task")
+		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	if task == nil {
 		return nil, errors.Errorf("unable to find task %s", taskID)
@@ -117,11 +117,11 @@ func (r *queryResolver) Task(ctx context.Context, taskID string) (*restModel.API
 	apiTask := restModel.APITask{}
 	err = apiTask.BuildFromService(task)
 	if err != nil {
-		return nil, errors.Wrap(err, "error converting task")
+		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	err = apiTask.BuildFromService(r.sc.GetURL())
 	if err != nil {
-		return nil, errors.Wrap(err, "error converting task")
+		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	return &apiTask, nil
 }
@@ -129,7 +129,7 @@ func (r *queryResolver) Task(ctx context.Context, taskID string) (*restModel.API
 func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 	allProjs, err := model.FindAllTrackedProjectRefs()
 	if err != nil {
-		return nil, errors.Wrap(err, "error retrieving projects")
+		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 
 	usr := route.MustHaveUser(ctx)
@@ -183,7 +183,7 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, status *string) ([]*restModel.APITest, error) {
 	task, err := task.FindOneId(taskID)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error retreiving Task")
+		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 
 	sortBy := ""
@@ -231,7 +231,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 	}
 	tests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, testNameParam, statusParam, sortBy, sortDir, pageParam, limitParam, task.Execution)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error retreiving test")
+		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 
 	testPointers := []*restModel.APITest{}
@@ -239,7 +239,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 		apiTest := restModel.APITest{}
 		err := apiTest.BuildFromService(&t)
 		if err != nil {
-			return nil, errors.Wrap(err, "error converting test")
+			return nil, InternalServerError.Send(ctx, err.Error())
 		}
 		testPointers = append(testPointers, &apiTest)
 	}
