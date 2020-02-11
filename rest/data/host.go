@@ -8,12 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
@@ -96,41 +94,19 @@ func (hc *DBHostConnector) NewIntentHost(options *restmodel.HostRequestOptions, 
 		return nil, errors.New("invalid key")
 	}
 
-	var providerSettings *map[string]interface{}
-	var providerSettingsDoc *birch.Document
-	// set user settings
-	if options.UserData != "" {
-		d, err := distro.FindOne(distro.ById(options.DistroID))
-		if err != nil {
-			return nil, errors.Wrapf(err, "error finding distro '%s'", options.DistroID)
-		}
-		if !cloud.IsEc2Provider(d.Provider) {
-			return nil, errors.Errorf("cannot set userdata for provider '%s'", d.Provider)
-		}
-		if d.ProviderSettings != nil {
-			providerSettings = d.ProviderSettings
-			(*providerSettings)["user_data"] = options.UserData
-		}
-		providerSettingsDoc, err = d.SetUserdata(options.UserData, options.Region)
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-	}
-
 	spawnOptions := cloud.SpawnOptions{
-		DistroId:            options.DistroID,
-		ProviderSettings:    providerSettings,
-		ProviderSettingsDoc: providerSettingsDoc,
-		UserName:            user.Username(),
-		PublicKey:           keyVal,
-		TaskId:              options.TaskID,
-		Owner:               user,
-		InstanceTags:        options.InstanceTags,
-		InstanceType:        options.InstanceType,
-		NoExpiration:        options.NoExpiration,
-		AttachVolume:        options.AttachVolume,
-		HomeVolumeSize:      options.HomeVolumeSize,
-		Region:              options.Region,
+		DistroId:       options.DistroID,
+		Userdata:       options.UserData,
+		UserName:       user.Username(),
+		PublicKey:      keyVal,
+		TaskId:         options.TaskID,
+		Owner:          user,
+		InstanceTags:   options.InstanceTags,
+		InstanceType:   options.InstanceType,
+		NoExpiration:   options.NoExpiration,
+		AttachVolume:   options.AttachVolume,
+		HomeVolumeSize: options.HomeVolumeSize,
+		Region:         options.Region,
 	}
 
 	intentHost, err := cloud.CreateSpawnHost(spawnOptions)
@@ -314,14 +290,13 @@ func (hc *MockHostConnector) NewIntentHost(options *restmodel.HostRequestOptions
 	keyVal := strings.Join([]string{"ssh-rsa", base64.StdEncoding.EncodeToString([]byte("foo"))}, " ")
 
 	spawnOptions := cloud.SpawnOptions{
-		DistroId:         options.DistroID,
-		UserName:         user.Username(),
-		ProviderSettings: &map[string]interface{}{"user_data": options.UserData, "ami": "ami-123456"},
-		PublicKey:        keyVal,
-		TaskId:           options.TaskID,
-		Owner:            user,
-		InstanceTags:     options.InstanceTags,
-		InstanceType:     options.InstanceType,
+		DistroId:     options.DistroID,
+		UserName:     user.Username(),
+		PublicKey:    keyVal,
+		TaskId:       options.TaskID,
+		Owner:        user,
+		InstanceTags: options.InstanceTags,
+		InstanceType: options.InstanceType,
 	}
 
 	intentHost, err := cloud.CreateSpawnHost(spawnOptions)

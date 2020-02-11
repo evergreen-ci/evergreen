@@ -547,19 +547,24 @@ func (d *Distro) GetProviderSettingByRegion(region string) (*birch.Document, err
 	return nil, errors.Errorf("distro '%s' has no settings for region '%s'", d.Id, region)
 }
 
-func (d *Distro) SetUserdata(userdata, region string) (*birch.Document, error) {
+func (d *Distro) SetUserdata(userdata, region string) error {
+	if d.ProviderSettings != nil {
+		(*d.ProviderSettings)["user_data"] = userdata
+	}
 	if len(d.ProviderSettingsList) == 0 && evergreen.UseSpawnHostRegions {
-		return nil, errors.Errorf("distro '%s' has no provider settings", d.Id)
+		return errors.Errorf("distro '%s' has no provider settings", d.Id)
 	}
 	if region == "" {
 		region = evergreen.DefaultEC2Region
 	}
 	doc, err := d.GetProviderSettingByRegion(region)
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting provider setting from list")
+		return errors.Wrap(err, "error getting provider setting from list")
 	}
+
 	e := birch.EC.String("user_data", userdata)
-	return doc.Set(e), nil
+	d.ProviderSettingsList = []*birch.Document{doc.Set(e)}
+	return nil
 }
 
 // GetResolvedHostAllocatorSettings combines the distro's HostAllocatorSettings fields with the

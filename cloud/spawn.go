@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -30,19 +29,18 @@ const (
 
 // Options holds the required parameters for spawning a host.
 type SpawnOptions struct {
-	DistroId            string
-	ProviderSettings    *map[string]interface{}
-	ProviderSettingsDoc *birch.Document
-	UserName            string
-	PublicKey           string
-	TaskId              string
-	Owner               *user.DBUser
-	InstanceTags        []host.Tag
-	InstanceType        string
-	Region              string
-	NoExpiration        bool
-	AttachVolume        bool
-	HomeVolumeSize      int
+	DistroId       string
+	Userdata       string
+	UserName       string
+	PublicKey      string
+	TaskId         string
+	Owner          *user.DBUser
+	InstanceTags   []host.Tag
+	InstanceType   string
+	Region         string
+	NoExpiration   bool
+	AttachVolume   bool
+	HomeVolumeSize int
 }
 
 // Validate returns an instance of BadOptionsErr if the SpawnOptions object contains invalid
@@ -126,11 +124,14 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 		return nil, errors.WithStack(err)
 	}
 
-	if so.ProviderSettings != nil {
-		d.ProviderSettings = so.ProviderSettings
-	}
-	if so.ProviderSettingsDoc != nil {
-		d.ProviderSettingsList = []*birch.Document{so.ProviderSettingsDoc}
+	if so.Userdata != "" {
+		if !IsEc2Provider(d.Provider) {
+			return nil, errors.Errorf("cannot set userdata for provider '%s'", d.Provider)
+		}
+		err = d.SetUserdata(so.Userdata, so.Region)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
 	}
 
 	// modify the setup script to add the user's public key
