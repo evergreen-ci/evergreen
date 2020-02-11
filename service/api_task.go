@@ -244,7 +244,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// update the bookkeeping entry for the task
-	err = task.UpdateExpectedDuration(t, t.TimeTaken)
 	if err != nil {
 		grip.Warning(message.WrapError(err, "problem updating expected duration"))
 	}
