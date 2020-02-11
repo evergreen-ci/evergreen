@@ -623,6 +623,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *ProjectInfo,
 		return nil, errors.Wrap(err, "problem updating version project")
 	}
 	projectInfo.IntermediateProject.Id = v.Id
+	projectInfo.IntermediateProject.CreateTime = v.CreateTime
 	v.Ignored = ignore
 
 	// validate the project
