@@ -118,7 +118,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 		if err := attachVolume(ctx, j.env, j.host); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "can't attach volume",
-				"host":    j.host.Id,
+				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),
 			}))

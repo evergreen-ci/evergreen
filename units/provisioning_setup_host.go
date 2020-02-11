@@ -106,43 +106,43 @@ func (j *setupHostJob) Run(ctx context.Context) {
 
 	settings := j.env.Settings()
 
-	j.AddError(j.setupHost(ctx, j.host, settings))
+	j.AddError(j.setupHost(ctx, settings))
 }
 
 var (
 	errIgnorableCreateHost = errors.New("host.create encountered internal error")
 )
 
-func (j *setupHostJob) setupHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) error {
+func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settings) error {
 	grip.Info(message.Fields{
 		"message": "attempting to setup host",
-		"distro":  h.Distro.Id,
-		"hostid":  h.Id,
-		"DNS":     h.Host,
+		"distro":  j.host.Distro.Id,
+		"hostid":  j.host.Id,
+		"DNS":     j.host.Host,
 		"job":     j.ID(),
 	})
 
 	if err := ctx.Err(); err != nil {
-		return errors.Wrapf(err, "hostinit canceled during setup for host %s", h.Id)
+		return errors.Wrapf(err, "hostinit canceled during setup for host %s", j.host.Id)
 	}
 
 	setupStartTime := time.Now()
 	grip.Info(message.Fields{
 		"message": "provisioning host",
 		"job":     j.ID(),
-		"distro":  h.Distro.Id,
-		"hostid":  h.Id,
+		"distro":  j.host.Distro.Id,
+		"hostid":  j.host.Id,
 	})
 
-	if err := j.provisionHost(ctx, h, settings); err != nil {
-		event.LogHostProvisionError(h.Id)
+	if err := j.provisionHost(ctx, settings); err != nil {
+		event.LogHostProvisionError(j.host.Id)
 
-		if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodSSH {
+		if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodSSH {
 			grip.Error(message.WrapError(j.host.DeleteJasperCredentials(ctx, j.env), message.Fields{
 				"message":  "could not delete Jasper credentials after failed provision attempt",
 				"host_id":  j.host.Id,
 				"distro":   j.host.Distro.Id,
-				"attempts": h.ProvisionAttempts,
+				"attempts": j.host.ProvisionAttempts,
 				"job":      j.ID(),
 			}))
 		}
@@ -150,9 +150,9 @@ func (j *setupHostJob) setupHost(ctx context.Context, h *host.Host, settings *ev
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":  "provisioning host encountered error",
 			"job":      j.ID(),
-			"distro":   h.Distro.Id,
-			"hostid":   h.Id,
-			"attempts": h.ProvisionAttempts,
+			"distro":   j.host.Distro.Id,
+			"hostid":   j.host.Id,
+			"attempts": j.host.ProvisionAttempts,
 		}))
 	}
 
@@ -162,10 +162,10 @@ func (j *setupHostJob) setupHost(ctx context.Context, h *host.Host, settings *ev
 	//
 	// In these cases, ProvisionHost returns a nil error but
 	// does not change the host status.
-	if h.Status == evergreen.HostProvisioning && !h.Provisioned {
+	if j.host.Status == evergreen.HostProvisioning && !j.host.Provisioned {
 		grip.Info(message.Fields{
-			"attempts": h.ProvisionAttempts,
-			"host_id":  h.Id,
+			"attempts": j.host.ProvisionAttempts,
+			"host_id":  j.host.Id,
 			"job":      j.ID(),
 			"message":  "retrying provisioning",
 		})
@@ -174,40 +174,40 @@ func (j *setupHostJob) setupHost(ctx context.Context, h *host.Host, settings *ev
 
 	grip.Info(message.Fields{
 		"message":  "successfully finished provisioning host",
-		"hostid":   h.Id,
-		"DNS":      h.Host,
-		"distro":   h.Distro.Id,
+		"hostid":   j.host.Id,
+		"DNS":      j.host.Host,
+		"distro":   j.host.Distro.Id,
 		"job":      j.ID(),
-		"attempts": h.ProvisionAttempts,
+		"attempts": j.host.ProvisionAttempts,
 		"runtime":  time.Since(setupStartTime),
 	})
 
 	return nil
 }
 
-func (j *setupHostJob) setDNSName(ctx context.Context, host *host.Host, cloudMgr cloud.Manager, settings *evergreen.Settings) error {
-	if host.Host != "" {
+func (j *setupHostJob) setDNSName(ctx context.Context, cloudMgr cloud.Manager, settings *evergreen.Settings) error {
+	if j.host.Host != "" {
 		return nil
 	}
 
 	// get the DNS name for the host
-	hostDNS, err := cloudMgr.GetDNSName(ctx, host)
+	hostDNS, err := cloudMgr.GetDNSName(ctx, j.host)
 	if err != nil {
-		return errors.Wrapf(err, "error checking DNS name for host %s", host.Id)
+		return errors.Wrapf(err, "error checking DNS name for host %s", j.host.Id)
 	}
 
 	// sanity check for the host DNS name
 	if hostDNS == "" {
 		// DNS name not required if IP address set
-		if host.IP != "" {
+		if j.host.IP != "" {
 			return nil
 		}
-		return errors.Errorf("instance %s is running but not returning a DNS name or IP address", host.Id)
+		return errors.Errorf("instance %s is running but not returning a DNS name or IP address", j.host.Id)
 	}
 
 	// update the host's DNS name
-	if err = host.SetDNSName(hostDNS); err != nil {
-		return errors.Wrapf(err, "error setting DNS name for host %s", host.Id)
+	if err = j.host.SetDNSName(hostDNS); err != nil {
+		return errors.Wrapf(err, "error setting DNS name for host %s", j.host.Id)
 	}
 
 	return nil
@@ -217,58 +217,58 @@ func (j *setupHostJob) setDNSName(ctx context.Context, host *host.Host, cloudMgr
 // Returns the output from running the script remotely, as well as any error
 // that occurs. If the script exits with a non-zero exit code, the error will be
 // non-nil.
-func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, settings *evergreen.Settings) error {
+func (j *setupHostJob) runHostSetup(ctx context.Context, settings *evergreen.Settings) error {
 	// fetch the appropriate cloud provider for the host
-	mgrOpts, err := cloud.GetManagerOptions(targetHost.Distro)
+	mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
 	if err != nil {
-		return errors.Wrapf(err, "can't get ManagerOpts for '%s'", targetHost.Id)
+		return errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id)
 	}
 	cloudMgr, err := cloud.GetManager(ctx, j.env, mgrOpts)
 	if err != nil {
 		return errors.Wrapf(err,
 			"failed to get cloud manager for host %s with provider %s",
-			targetHost.Id, targetHost.Provider)
+			j.host.Id, j.host.Provider)
 	}
 
-	if err = j.setDNSName(ctx, targetHost, cloudMgr, settings); err != nil {
+	if err = j.setDNSName(ctx, cloudMgr, settings); err != nil {
 		return errors.Wrap(err, "error setting DNS name")
 	}
 
 	// run the function scheduled for when the host is up
-	if err = cloudMgr.OnUp(ctx, targetHost); err != nil {
-		err = errors.Wrapf(err, "OnUp callback failed for host %s", targetHost.Id)
+	if err = cloudMgr.OnUp(ctx, j.host); err != nil {
+		err = errors.Wrapf(err, "OnUp callback failed for host %s", j.host.Id)
 		return err
 	}
 
-	switch targetHost.Distro.BootstrapSettings.Method {
+	switch j.host.Distro.BootstrapSettings.Method {
 	case distro.BootstrapMethodNone:
 		return nil
 	case distro.BootstrapMethodUserData:
 		// Updating the host LCT prevents the agent monitor deploy job from
 		// running. The agent monitor should be started by the user data script.
-		grip.Error(message.WrapError(targetHost.UpdateLastCommunicated(), message.Fields{
+		grip.Error(message.WrapError(j.host.UpdateLastCommunicated(), message.Fields{
 			"message": "failed to update host's last communication time",
-			"host_id": targetHost.Id,
-			"distro":  targetHost.Distro.Id,
+			"host_id": j.host.Id,
+			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
 
 		// Do not set the host to running - hosts bootstrapped with user data
 		// are not considered done provisioning until user data has finished
 		// running.
-		if err = targetHost.SetProvisionedNotRunning(); err != nil {
-			return errors.Wrapf(err, "error marking host %s as provisioned", targetHost.Id)
+		if err = j.host.SetProvisionedNotRunning(); err != nil {
+			return errors.Wrapf(err, "error marking host %s as provisioned", j.host.Id)
 		}
 
 		grip.Info(message.Fields{
 			"message":                 "host successfully provisioned by app server, awaiting host to finish provisioning itself",
-			"host_id":                 targetHost.Id,
-			"distro":                  targetHost.Distro.Id,
-			"provisioning":            targetHost.Distro.BootstrapSettings.Method,
-			"provider":                targetHost.Provider,
-			"attempts":                targetHost.ProvisionAttempts,
+			"host_id":                 j.host.Id,
+			"distro":                  j.host.Distro.Id,
+			"provisioning":            j.host.Distro.BootstrapSettings.Method,
+			"provider":                j.host.Provider,
+			"attempts":                j.host.ProvisionAttempts,
 			"job":                     j.ID(),
-			"provision_duration_secs": time.Since(targetHost.CreationTime).Seconds(),
+			"provision_duration_secs": time.Since(j.host.CreationTime).Seconds(),
 		})
 		return nil
 	case distro.BootstrapMethodSSH:
@@ -279,7 +279,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),
 			}))
-			return errors.Wrapf(err, "error putting Jasper on host '%s'", targetHost.Id)
+			return errors.Wrapf(err, "error putting Jasper on host '%s'", j.host.Id)
 		}
 		grip.Info(message.Fields{
 			"message": "successfully fetched Jasper binary and started service",
@@ -290,27 +290,27 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 	}
 
 	// Do not copy setup scripts to task-spawned hosts
-	if targetHost.SpawnOptions.SpawnedByTask {
+	if j.host.SpawnOptions.SpawnedByTask {
 		return nil
 	}
 
-	if targetHost.Distro.Setup != "" {
+	if j.host.Distro.Setup != "" {
 		scriptName := evergreen.SetupScriptName
-		if targetHost.Distro.IsPowerShellSetup() {
+		if j.host.Distro.IsPowerShellSetup() {
 			scriptName = evergreen.PowerShellSetupScriptName
 		}
-		err = j.copyScript(ctx, settings, targetHost, filepath.Join("~", scriptName), targetHost.Distro.Setup)
+		err = j.copyScript(ctx, settings, filepath.Join("~", scriptName), j.host.Distro.Setup)
 		if err != nil {
 			return errors.Wrapf(err, "error copying setup script %s to host %s",
-				scriptName, targetHost.Id)
+				scriptName, j.host.Id)
 		}
 	}
 
-	if targetHost.Distro.Teardown != "" {
-		err = j.copyScript(ctx, settings, targetHost, filepath.Join("~", evergreen.TeardownScriptName), targetHost.Distro.Teardown)
+	if j.host.Distro.Teardown != "" {
+		err = j.copyScript(ctx, settings, filepath.Join("~", evergreen.TeardownScriptName), j.host.Distro.Teardown)
 		if err != nil {
 			return errors.Wrapf(err, "error copying teardown script %s to host %s",
-				evergreen.TeardownScriptName, targetHost.Id)
+				evergreen.TeardownScriptName, j.host.Id)
 		}
 	}
 
@@ -488,16 +488,16 @@ func copyScript(ctx context.Context, env evergreen.Environment, settings *evergr
 // copyScript writes a given script as file "name" to the target host. This works
 // by creating a local copy of the script on the runner's machine, scping it over
 // then removing the local copy.
-func (j *setupHostJob) copyScript(ctx context.Context, settings *evergreen.Settings, target *host.Host, name, script string) error {
+func (j *setupHostJob) copyScript(ctx context.Context, settings *evergreen.Settings, name, script string) error {
 	// parse the hostname into the user, host and port
 	startAt := time.Now()
 
-	hostInfo, err := target.GetSSHInfo()
+	hostInfo, err := j.host.GetSSHInfo()
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	user := target.Distro.User
+	user := j.host.Distro.User
 	if hostInfo.User != "" {
 		user = hostInfo.User
 	}
@@ -515,8 +515,8 @@ func (j *setupHostJob) copyScript(ctx context.Context, settings *evergreen.Setti
 			"job":       j.ID(),
 			"operation": "cleaning up after script copy",
 			"file":      file.Name(),
-			"distro":    target.Distro.Id,
-			"host_id":   target.Host,
+			"distro":    j.host.Distro.Id,
+			"host_id":   j.host.Host,
 			"name":      name,
 		}
 		grip.Error(message.WrapError(file.Close(), errCtx))
@@ -525,8 +525,8 @@ func (j *setupHostJob) copyScript(ctx context.Context, settings *evergreen.Setti
 			"job":           j.ID(),
 			"operation":     "copy script",
 			"file":          file.Name(),
-			"distro":        target.Distro.Id,
-			"host_id":       target.Host,
+			"distro":        j.host.Distro.Id,
+			"host_id":       j.host.Host,
 			"name":          name,
 			"duration_secs": time.Since(startAt).Seconds(),
 		})
@@ -534,15 +534,15 @@ func (j *setupHostJob) copyScript(ctx context.Context, settings *evergreen.Setti
 
 	expanded, err := expandScript(script, settings)
 	if err != nil {
-		return errors.Wrapf(err, "error expanding script for host %s", target.Id)
+		return errors.Wrapf(err, "error expanding script for host %s", j.host.Id)
 	}
 	if _, err = io.WriteString(file, expanded); err != nil {
 		return errors.Wrap(err, "error writing local script")
 	}
 
-	sshOptions, err := target.GetSSHOptions(settings)
+	sshOptions, err := j.host.GetSSHOptions(settings)
 	if err != nil {
-		return errors.Wrapf(err, "error getting ssh options for host %v", target.Id)
+		return errors.Wrapf(err, "error getting ssh options for host %v", j.host.Id)
 	}
 
 	scpCmdOut := &util.CappedWriter{
@@ -565,8 +565,8 @@ func (j *setupHostJob) copyScript(ctx context.Context, settings *evergreen.Setti
 		"message": "problem copying script to host",
 		"job":     j.ID(),
 		"command": strings.Join(scpArgs, " "),
-		"distro":  target.Distro.Id,
-		"host_id": target.Host,
+		"distro":  j.host.Distro.Id,
+		"host_id": j.host.Host,
 		"output":  scpCmdOut.String(),
 	}))
 
@@ -589,53 +589,53 @@ func expandScript(s string, settings *evergreen.Settings) (string, error) {
 }
 
 // Provision the host, and update the database accordingly.
-func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) error {
+func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Settings) error {
 	grip.Info(message.Fields{
 		"job":     j.ID(),
-		"host_id": h.Id,
-		"distro":  h.Distro.Id,
+		"host_id": j.host.Id,
+		"distro":  j.host.Distro.Id,
 		"message": "setting up host",
 	})
 
-	incErr := h.IncProvisionAttempts()
+	incErr := j.host.IncProvisionAttempts()
 	grip.Critical(message.WrapError(incErr, message.Fields{
 		"job":           j.ID(),
-		"host_id":       h.Id,
-		"attempt_value": h.ProvisionAttempts,
-		"distro":        h.Distro.Id,
+		"host_id":       j.host.Id,
+		"attempt_value": j.host.ProvisionAttempts,
+		"distro":        j.host.Distro.Id,
 		"operation":     "increment provisioning errors failed",
 	}))
 
-	err := j.runHostSetup(ctx, h, settings)
+	err := j.runHostSetup(ctx, settings)
 	if err != nil {
-		if shouldRetryProvisioning(h) {
+		if shouldRetryProvisioning(j.host) {
 			return nil
 		}
 
-		event.LogProvisionFailed(h.Id, "")
+		event.LogProvisionFailed(j.host.Id, "")
 		// mark the host's provisioning as failed
-		grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
+		grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
 			"operation": "setting host unprovisioned",
-			"attempts":  h.ProvisionAttempts,
-			"distro":    h.Distro.Id,
+			"attempts":  j.host.ProvisionAttempts,
+			"distro":    j.host.Distro.Id,
 			"job":       j.ID(),
-			"host_id":   h.Id,
+			"host_id":   j.host.Id,
 		}))
 
-		return errors.Wrapf(err, "error initializing host %s", h.Id)
+		return errors.Wrapf(err, "error initializing host %s", j.host.Id)
 	}
 
-	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
+	if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
 		return nil
 	}
 
-	if h.AttachVolume {
+	if j.host.AttachVolume {
 		if err := attachVolume(ctx, j.env, j.host); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":  "can't attach volume",
-				"host":     j.host.Id,
+				"host_id":  j.host.Id,
 				"distro":   j.host.Distro.Id,
-				"attempts": h.ProvisionAttempts,
+				"attempts": j.host.ProvisionAttempts,
 				"job":      j.ID(),
 			}))
 			return nil
@@ -643,76 +643,64 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 	}
 
 	// If this is a spawn host
-	if h.ProvisionOptions != nil && h.ProvisionOptions.LoadCLI {
-		grip.Infof("Uploading client binary to host %s", h.Id)
-		lcr, err := j.loadClient(ctx, h, settings)
+	if j.host.ProvisionOptions != nil && j.host.ProvisionOptions.LoadCLI {
+		grip.Infof("Uploading client binary to host %s", j.host.Id)
+		lcr, err := j.loadClient(ctx, settings)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "failed to load client binary onto host",
 				"job":     j.ID(),
-				"host_id": h.Id,
-				"distro":  h.Distro.Id,
+				"host_id": j.host.Id,
+				"distro":  j.host.Distro.Id,
 			}))
 
-			grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
+			grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
 				"operation": "setting host unprovisioned",
 				"job":       j.ID(),
-				"distro":    h.Distro.Id,
-				"host_id":   h.Id,
+				"distro":    j.host.Distro.Id,
+				"host_id":   j.host.Id,
 			}))
-			return errors.Wrapf(err, "Failed to load client binary onto host %s: %+v", h.Id, err)
+			return errors.Wrapf(err, "Failed to load client binary onto host %s: %+v", j.host.Id, err)
 		}
 
-		sshOptions, err := h.GetSSHOptions(settings)
+		sshOptions, err := j.host.GetSSHOptions(settings)
 		if err != nil {
-			grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
+			grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
 				"operation": "setting host unprovisioned",
-				"distro":    h.Distro.Id,
+				"distro":    j.host.Distro.Id,
 				"job":       j.ID(),
-				"host_id":   h.Id,
+				"host_id":   j.host.Id,
 			}))
-			return errors.Wrapf(err, "Error getting ssh options for host %s", h.Id)
+			return errors.Wrapf(err, "Error getting ssh options for host %s", j.host.Id)
 		}
 
-		d, err := distro.FindOne(distro.ById(h.Distro.Id))
-		if err != nil {
-			grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
-				"operation": "setting host unprovisioned",
-				"distro":    h.Distro.Id,
-				"job":       j.ID(),
-				"host_id":   h.Id,
-			}))
-			return errors.Wrapf(err, "Error finding distro for host %s", h.Id)
-		}
-		h.Distro = d
-
-		grip.Infof("Running setup script for spawn host %s", h.Id)
+		grip.Infof("Running setup script for spawn host %s", j.host.Id)
 		// run the setup script with the agent
-		if logs, err := h.RunSSHCommand(ctx, h.SetupCommand(), sshOptions); err != nil {
-			grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
+		if logs, err := j.host.RunSSHCommand(ctx, j.host.SetupCommand(), sshOptions); err != nil {
+			grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
 				"operation": "setting host unprovisioned",
-				"host_id":   h.Id,
-				"distro":    h.Distro.Id,
+				"host_id":   j.host.Id,
+				"distro":    j.host.Distro.Id,
 				"job":       j.ID(),
 			}))
-			event.LogProvisionFailed(h.Id, logs)
+			event.LogProvisionFailed(j.host.Id, logs)
 			return errors.Wrapf(err, "error running setup script on remote host: %s", logs)
 		}
 
-		if h.ProvisionOptions.OwnerId != "" && len(h.ProvisionOptions.TaskId) > 0 {
+		if j.host.ProvisionOptions.OwnerId != "" && len(j.host.ProvisionOptions.TaskId) > 0 {
 			grip.Info(message.Fields{
 				"message": "fetching data for task on host",
-				"task":    h.ProvisionOptions.TaskId,
-				"distro":  h.Distro.Id,
-				"host_id": h.Id,
+				"task":    j.host.ProvisionOptions.TaskId,
+				"distro":  j.host.Distro.Id,
+				"host_id": j.host.Id,
 				"job":     j.ID(),
 			})
 
-			grip.Error(message.WrapError(j.fetchRemoteTaskData(ctx, h.ProvisionOptions.TaskId, lcr.BinaryPath, lcr.ConfigPath, h, settings),
+			grip.Error(message.WrapError(j.fetchRemoteTaskData(ctx, j.host.ProvisionOptions.TaskId, lcr.BinaryPath, lcr.ConfigPath, settings),
 				message.Fields{
 					"message": "failed to fetch data onto host",
-					"task":    h.ProvisionOptions.TaskId,
-					"host_id": h.Id,
+					"task":    j.host.ProvisionOptions.TaskId,
+					"host_id": j.host.Id,
 					"job":     j.ID(),
 				}))
 		}
@@ -720,31 +708,31 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 
 	grip.Info(message.Fields{
 		"message": "setup complete for host",
-		"host_id": h.Id,
+		"host_id": j.host.Id,
 		"job":     j.ID(),
-		"distro":  h.Distro.Id,
+		"distro":  j.host.Distro.Id,
 	})
 
 	// the setup was successful. update the host accordingly in the database
-	if err := h.MarkAsProvisioned(); err != nil {
-		return errors.Wrapf(err, "error marking host %s as provisioned", h.Id)
+	if err := j.host.MarkAsProvisioned(); err != nil {
+		return errors.Wrapf(err, "error marking host %s as provisioned", j.host.Id)
 	}
 
 	grip.Info(message.Fields{
-		"host_id":                 h.Id,
-		"distro":                  h.Distro.Id,
-		"provider":                h.Provider,
-		"attempts":                h.ProvisionAttempts,
+		"host_id":                 j.host.Id,
+		"distro":                  j.host.Distro.Id,
+		"provider":                j.host.Provider,
+		"attempts":                j.host.ProvisionAttempts,
 		"job":                     j.ID(),
 		"message":                 "host successfully provisioned",
-		"provision_duration_secs": h.ProvisionTime.Sub(h.CreationTime).Seconds(),
+		"provision_duration_secs": j.host.ProvisionTime.Sub(j.host.CreationTime).Seconds(),
 	})
 
 	return nil
 }
 
-// loadClientResult indicates the locations on a target host where the CLI binary and it's config
-// file have been written to.
+// loadClientResult indicates the locations on a target host where the CLI
+// binary and its config file have been written to.
 type loadClientResult struct {
 	BinaryPath string
 	ConfigPath string
@@ -754,38 +742,38 @@ type loadClientResult struct {
 // settings onto the host, and makes the binary appear in the $PATH when the user logs in.
 // If successful, returns an instance of loadClientResult which contains the paths where the
 // binary and config file were written to.
-func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settings *evergreen.Settings) (*loadClientResult, error) {
-	if target.ProvisionOptions == nil {
+func (j *setupHostJob) loadClient(ctx context.Context, settings *evergreen.Settings) (*loadClientResult, error) {
+	if j.host.ProvisionOptions == nil {
 		return nil, errors.New("ProvisionOptions is nil")
 	}
-	if target.ProvisionOptions.OwnerId == "" {
+	if j.host.ProvisionOptions.OwnerId == "" {
 		return nil, errors.New("OwnerId not set")
 	}
 
 	// get the information about the owner of the host
-	owner, err := user.FindOne(user.ById(target.ProvisionOptions.OwnerId))
+	owner, err := user.FindOne(user.ById(j.host.ProvisionOptions.OwnerId))
 	if err != nil {
-		return nil, errors.Wrapf(err, "couldn't fetch owner %v for host", target.ProvisionOptions.OwnerId)
+		return nil, errors.Wrapf(err, "couldn't fetch owner %v for host", j.host.ProvisionOptions.OwnerId)
 	}
 
 	// 1. mkdir the destination directory on the host,
 	//    and modify ~/.profile so the target binary will be on the $PATH
 	targetDir := "cli_bin"
-	hostSSHInfo, err := target.GetSSHInfo()
+	hostSSHInfo, err := j.host.GetSSHInfo()
 	if err != nil {
-		return nil, errors.Wrapf(err, "error parsing ssh info %s", target.Host)
+		return nil, errors.Wrapf(err, "error parsing ssh info %s", j.host.Host)
 	}
 
-	sshOptions, err := target.GetSSHOptions(settings)
+	sshOptions, err := j.host.GetSSHOptions(settings)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error getting ssh options for host %v", target.Id)
+		return nil, errors.Wrapf(err, "Error getting ssh options for host %v", j.host.Id)
 	}
 	sshOptions = append(sshOptions, "-o", "UserKnownHostsFile=/dev/null")
 
 	mkdirctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	output, err := target.RunSSHCommandLiterally(mkdirctx, fmt.Sprintf("mkdir -m 777 -p ~/%s && (echo 'export PATH=\"$PATH:~/%s\"' >> ~/.profile || true; echo 'export PATH=\"$PATH:~/%s\"' >> ~/.bash_profile || true)", targetDir, targetDir, targetDir), sshOptions)
+	output, err := j.host.RunSSHCommandLiterally(mkdirctx, fmt.Sprintf("mkdir -m 777 -p ~/%s && (echo 'export PATH=\"$PATH:~/%s\"' >> ~/.profile || true; echo 'export PATH=\"$PATH:~/%s\"' >> ~/.bash_profile || true)", targetDir, targetDir, targetDir), sshOptions)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error running setup command for cli: %s", output)
 	}
@@ -799,10 +787,10 @@ func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settin
 		MaxBytes: 1024 * 1024,
 	}
 
-	curlcmd := j.env.JasperManager().CreateCommand(curlctx).Host(hostSSHInfo.Hostname).User(target.User).
+	curlcmd := j.env.JasperManager().CreateCommand(curlctx).Host(hostSSHInfo.Hostname).User(j.host.User).
 		ExtendRemoteArgs("-p", hostSSHInfo.Port).ExtendRemoteArgs(sshOptions...).
 		RedirectErrorToOutput(true).SetOutputWriter(curlOut).
-		Append(target.CurlCommand(settings))
+		Append(j.host.CurlCommand(settings))
 
 	if err = curlcmd.Run(curlctx); err != nil {
 		return nil, errors.Wrapf(err, "error running curl command for cli, %s", curlOut.Buffer.String())
@@ -836,7 +824,7 @@ func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settin
 		MaxBytes: 1024 * 1024,
 	}
 
-	scpArgs := buildScpCommand(tempFileName, filepath.Join("~", targetDir, ".evergreen.yml"), hostSSHInfo, target.User, sshOptions)
+	scpArgs := buildScpCommand(tempFileName, filepath.Join("~", targetDir, ".evergreen.yml"), hostSSHInfo, j.host.User, sshOptions)
 	scpYmlCommand := j.env.JasperManager().CreateCommand(ctx).Add(scpArgs).
 		RedirectErrorToOutput(true).SetOutputWriter(scpOut)
 
@@ -853,15 +841,15 @@ func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settin
 	}, nil
 }
 
-func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, taskId, cliPath, confPath string, target *host.Host, settings *evergreen.Settings) error {
-	hostSSHInfo, err := target.GetSSHInfo()
+func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, taskId, cliPath, confPath string, settings *evergreen.Settings) error {
+	hostSSHInfo, err := j.host.GetSSHInfo()
 	if err != nil {
-		return errors.Wrapf(err, "error parsing ssh info %s", target.Host)
+		return errors.Wrapf(err, "error parsing ssh info %s", j.host.Host)
 	}
 
-	sshOptions, err := target.GetSSHOptions(settings)
+	sshOptions, err := j.host.GetSSHOptions(settings)
 	if err != nil {
-		return errors.Wrapf(err, "Error getting ssh options for host %v", target.Id)
+		return errors.Wrapf(err, "Error getting ssh options for host %v", j.host.Id)
 	}
 	sshOptions = append(sshOptions, "-o", "UserKnownHostsFile=/dev/null")
 
@@ -869,9 +857,9 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, taskId, cliPath,
 		Buffer:   &bytes.Buffer{},
 		MaxBytes: 1024 * 1024,
 	}
-	fetchCmd := fmt.Sprintf("%s -c %s fetch -t %s --source --artifacts --dir='%s'", cliPath, confPath, taskId, target.Distro.WorkDir)
+	fetchCmd := fmt.Sprintf("%s -c %s fetch -t %s --source --artifacts --dir='%s'", cliPath, confPath, taskId, j.host.Distro.WorkDir)
 
-	makeShellCmd := j.env.JasperManager().CreateCommand(ctx).Host(hostSSHInfo.Hostname).User(target.User).
+	makeShellCmd := j.env.JasperManager().CreateCommand(ctx).Host(hostSSHInfo.Hostname).User(j.host.User).
 		ExtendRemoteArgs("-p", hostSSHInfo.Port).ExtendRemoteArgs(sshOptions...).
 		RedirectErrorToOutput(true).SetOutputWriter(cmdOutput).
 		Append(fetchCmd)
@@ -970,7 +958,7 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	defer func() {
 		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
-			"host":    h.Id,
+			"host_id": h.Id,
 			"distro":  h.Distro.Id,
 		}))
 	}()
