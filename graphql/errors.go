@@ -2,10 +2,12 @@ package graphql
 
 import (
 	"context"
+
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/vektah/gqlparser/gqlerror"
 )
 
+// GqlError represents the error codes send alongside gql errors
 type GqlError string
 
 const (
