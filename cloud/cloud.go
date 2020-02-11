@@ -220,7 +220,7 @@ func GetManagerOptions(d distro.Distro) (ManagerOpts, error) {
 			return ManagerOpts{}, errors.Wrapf(err, "error getting EC2 provider settings from distro")
 		}
 
-		return GetEC2ManagerOptionsFromSettings(d.Provider, s), nil
+		return getEC2ManagerOptionsFromSettings(d.Provider, s), nil
 	}
 	if d.Provider == evergreen.ProviderNameMock {
 		return getMockManagerOptions(d.Provider, d.ProviderSettings)

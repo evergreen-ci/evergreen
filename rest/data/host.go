@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -96,28 +97,40 @@ func (hc *DBHostConnector) NewIntentHost(options *restmodel.HostRequestOptions, 
 	}
 
 	var providerSettings *map[string]interface{}
+	var providerSettingsDoc *birch.Document
+	// set user settings
 	if options.UserData != "" {
-		var d distro.Distro
-		d, err = distro.FindOne(distro.ById(options.DistroID))
+		d, err := distro.FindOne(distro.ById(options.DistroID))
 		if err != nil {
 			return nil, errors.Wrapf(err, "error finding distro '%s'", options.DistroID)
 		}
-		providerSettings = d.ProviderSettings
-		(*providerSettings)["user_data"] = options.UserData
+		if !cloud.IsEc2Provider(d.Provider) {
+			return nil, errors.Errorf("cannot set userdata for provider '%s'", d.Provider)
+		}
+		if d.ProviderSettings != nil {
+			providerSettings = d.ProviderSettings
+			(*providerSettings)["user_data"] = options.UserData
+		}
+		providerSettingsDoc, err = d.SetUserdata(options.UserData, options.Region)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
 	}
 
 	spawnOptions := cloud.SpawnOptions{
-		DistroId:         options.DistroID,
-		ProviderSettings: providerSettings,
-		UserName:         user.Username(),
-		PublicKey:        keyVal,
-		TaskId:           options.TaskID,
-		Owner:            user,
-		InstanceTags:     options.InstanceTags,
-		InstanceType:     options.InstanceType,
-		NoExpiration:     options.NoExpiration,
-		AttachVolume:     options.AttachVolume,
-		HomeVolumeSize:   options.HomeVolumeSize,
+		DistroId:            options.DistroID,
+		ProviderSettings:    providerSettings,
+		ProviderSettingsDoc: providerSettingsDoc,
+		UserName:            user.Username(),
+		PublicKey:           keyVal,
+		TaskId:              options.TaskID,
+		Owner:               user,
+		InstanceTags:        options.InstanceTags,
+		InstanceType:        options.InstanceType,
+		NoExpiration:        options.NoExpiration,
+		AttachVolume:        options.AttachVolume,
+		HomeVolumeSize:      options.HomeVolumeSize,
+		Region:              options.Region,
 	}
 
 	intentHost, err := cloud.CreateSpawnHost(spawnOptions)

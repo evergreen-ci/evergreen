@@ -30,6 +30,7 @@ func hostCreate() cli.Command {
 		tagFlagName          = "tag"
 		instanceTypeFlagName = "type"
 		noExpireFlagName     = "no-expire"
+		regionFlagName       = "region"
 	)
 
 	return cli.Command{
@@ -52,6 +53,10 @@ func hostCreate() cli.Command {
 				Name:  joinFlagNames(instanceTypeFlagName, "i"),
 				Usage: "name of an instance type",
 			},
+			cli.StringFlag{
+				Name:  joinFlagNames(regionFlagName, "r"),
+				Usage: "AWS region to spawn host in",
+			},
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(tagFlagName, "t"),
 				Usage: "key=value pair representing an instance tag, with one pair per flag",
@@ -68,6 +73,7 @@ func hostCreate() cli.Command {
 			fn := c.String(scriptFlagName)
 			tagSlice := c.StringSlice(tagFlagName)
 			instanceType := c.String(instanceTypeFlagName)
+			region := c.String(regionFlagName)
 			noExpire := c.Bool(noExpireFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -101,6 +107,7 @@ func hostCreate() cli.Command {
 				UserData:     script,
 				InstanceTags: tags,
 				InstanceType: instanceType,
+				Region:       region,
 				NoExpiration: noExpire,
 			}
 

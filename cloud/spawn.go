@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -29,17 +30,19 @@ const (
 
 // Options holds the required parameters for spawning a host.
 type SpawnOptions struct {
-	DistroId         string
-	ProviderSettings *map[string]interface{}
-	UserName         string
-	PublicKey        string
-	TaskId           string
-	Owner            *user.DBUser
-	InstanceTags     []host.Tag
-	InstanceType     string
-	NoExpiration     bool
-	AttachVolume     bool
-	HomeVolumeSize   int
+	DistroId            string
+	ProviderSettings    *map[string]interface{}
+	ProviderSettingsDoc *birch.Document
+	UserName            string
+	PublicKey           string
+	TaskId              string
+	Owner               *user.DBUser
+	InstanceTags        []host.Tag
+	InstanceType        string
+	Region              string
+	NoExpiration        bool
+	AttachVolume        bool
+	HomeVolumeSize      int
 }
 
 // Validate returns an instance of BadOptionsErr if the SpawnOptions object contains invalid
@@ -69,6 +72,9 @@ func (so *SpawnOptions) validate() error {
 		return err
 	}
 
+	if !evergreen.UseSpawnHostRegions && so.Region != "" && so.Region != evergreen.DefaultEC2Region {
+		return errors.Wrap(err, "no configurable regions supported")
+	}
 	// validate public key
 	rsa := "ssh-rsa"
 	dss := "ssh-dss"
@@ -123,6 +129,9 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 	if so.ProviderSettings != nil {
 		d.ProviderSettings = so.ProviderSettings
 	}
+	if so.ProviderSettingsDoc != nil {
+		d.ProviderSettingsList = []*birch.Document{so.ProviderSettingsDoc}
+	}
 
 	// modify the setup script to add the user's public key
 	d.Setup += fmt.Sprintf("\necho \"\n%s\" >> %s\n", so.PublicKey, filepath.Join(d.HomeDir(), ".ssh", "authorized_keys"))
@@ -152,6 +161,7 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 		NoExpiration:       so.NoExpiration,
 		AttachVolume:       so.AttachVolume,
 		HomeVolumeSize:     so.HomeVolumeSize,
+		Region:             so.Region,
 	}
 
 	intentHost := host.NewIntent(d, d.GenerateName(), d.Provider, hostOptions)
