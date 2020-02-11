@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -15,7 +16,12 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+)
+
+const (
+	signedConst = "signed"
 )
 
 func TestS3PutValidateParams(t *testing.T) {
@@ -302,6 +308,55 @@ func TestExpandS3PutParams(t *testing.T) {
 	})
 }
 
+func TestSignedUrlVisibility(t *testing.T) {
+	for _, vis := range []string{"signed", "private"} {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		var err error
+		s := s3put{
+			AwsKey:        "key",
+			AwsSecret:     "secret",
+			Bucket:        "bucket",
+			BuildVariants: []string{},
+			ContentType:   "content-type",
+			Permissions:   s3.BucketCannedACLPublicRead,
+			RemoteFile:    "remote",
+			Visibility:    vis,
+		}
+
+		comm := client.NewMock("http://localhost.com")
+		conf := &model.TaskConfig{
+			Expansions:   &util.Expansions{},
+			Task:         &task.Task{Id: "mock_id", Secret: "mock_secret"},
+			Project:      &model.Project{},
+			BuildVariant: &model.BuildVariant{},
+		}
+		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+		require.NoError(t, err)
+
+		localFiles := []string{"file1", "file2"}
+		remoteFile := "remote file"
+
+		require.NoError(t, s.attachFiles(ctx, comm, logger, localFiles, remoteFile))
+
+		attachedFiles := comm.AttachedFiles
+		assert := assert.New(t)
+		if v, found := attachedFiles[""]; found {
+			fmt.Println(v)
+			for _, file := range v {
+				if file.Visibility == artifact.Signed {
+					assert.Equal(file.AwsKey, s.AwsKey)
+					assert.Equal(file.AwsSecret, s.AwsSecret)
+
+				} else {
+					assert.Equal(file.AwsKey, "")
+					assert.Equal(file.AwsSecret, "")
+				}
+			}
+		}
+	}
+}
+
 func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 	for _, prefix := range []string{"emptyPrefix", "subDir"} {
 		t.Run(prefix, func(t *testing.T) {
@@ -323,6 +378,7 @@ func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 			} else {
 				localFilesIncludeFilterPrefix = prefix
 			}
+			//set visibility based on the prefix
 			s := s3put{
 				AwsKey:                        "key",
 				AwsSecret:                     "secret",

@@ -7,9 +7,10 @@ const (
 	Public  = "public"
 	Private = "private"
 	None    = "none"
+	Signed  = "signed"
 )
 
-var ValidVisibilities = []string{Public, Private, None, ""}
+var ValidVisibilities = []string{Public, Private, None, Signed, ""}
 
 // Entry stores groups of names and links (not content!) for
 // files uploaded to the api server by a running agent. These links could
@@ -38,6 +39,9 @@ type File struct {
 	Visibility string `json:"visibility" bson:"visibility"`
 	// When true, these artifacts are excluded from reproduction
 	IgnoreForFetch bool `bson:"fetch_ignore,omitempty" json:"ignore_for_fetch"`
+	//AwsKey and AwsSercret are the key and secret with which the file was uploaded to s3
+	AwsKey    string `json:"aws_key" bson:"aws_key"`
+	AwsSecret string `json:"aws_secret" bson:"aws_secret"`
 }
 
 // Array turns the parameter map into an array of File structs.
