@@ -586,7 +586,6 @@ buildvariants:
       race_detector: true
       test_timeout: 15m
     tasks:
-      - name: "dist"
       - name: ".test"
 
   - name: lint
