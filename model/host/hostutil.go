@@ -182,15 +182,6 @@ func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
 // RunSSHCommand runs an SSH command on a remote host.
 func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []string) (string, error) {
 	return h.runSSHCommandWithOutput(ctx, func(c *jasper.Command) *jasper.Command {
-		return c.Append(cmd)
-	}, sshOptions)
-}
-
-// RunSSHCommandLiterally is the same as RunSSHCommand but passes the given
-// arguments to the SSH process without performing any premature shell parsing
-// on cmd.
-func (h *Host) RunSSHCommandLiterally(ctx context.Context, cmd string, sshOptions []string) (string, error) {
-	return h.runSSHCommandWithOutput(ctx, func(c *jasper.Command) *jasper.Command {
 		return c.Add([]string{cmd})
 	}, sshOptions)
 }
@@ -209,6 +200,7 @@ func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*ja
 		return "", errors.WithStack(err)
 	}
 
+	// kim: TODO: standardize this
 	output := &util.CappedWriter{
 		Buffer:   &bytes.Buffer{},
 		MaxBytes: 1024 * 1024, // 1MB
@@ -223,53 +215,6 @@ func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*ja
 		SetCombinedWriter(output)).Run(ctx)
 
 	return output.String(), errors.Wrap(err, "error running SSH command")
-}
-
-// InitSystem determines the current Linux init system used by this host.
-func (h *Host) InitSystem(ctx context.Context, sshOptions []string) (string, error) {
-	logs, err := h.RunSSHCommand(ctx, initSystemCommand(), sshOptions)
-	if err != nil {
-		return "", errors.Wrapf(err, "init system command returned: %s", logs)
-	}
-
-	if strings.Contains(logs, InitSystemSystemd) {
-		return InitSystemSystemd, nil
-	} else if strings.Contains(logs, InitSystemSysV) {
-		return InitSystemSysV, nil
-	} else if strings.Contains(logs, InitSystemUpstart) {
-		return InitSystemUpstart, nil
-	}
-
-	return "", errors.Errorf("could not determine init system: init system command returned: %s", logs)
-}
-
-// initSystemCommand returns the string command to determine a Linux host's
-// init system. If it succeeds, it returns the init system as a string.
-func initSystemCommand() string {
-	return `
-	if [[ -x /sbin/init ]] && /sbin/init --version 2>/dev/null | grep -i 'upstart' >/dev/null 2>&1; then
-		echo 'upstart';
-		exit 0;
-	fi
-	if file /sbin/init 2>/dev/null | grep -i 'systemd' >/dev/null 2>&1; then
-		echo 'systemd';
-		exit 0;
-	elif file /sbin/init 2>/dev/null | grep -i 'upstart' >/dev/null 2>&1; then
-		echo 'upstart'
-		exit 0;
-	elif file /sbin/init 2>/dev/null | grep -i 'sysv' >/dev/null 2>&1; then
-		echo 'sysv'
-		exit 0;
-	fi
-	if type systemctl >/dev/null 2>&1; then
-		echo 'systemd'
-		exit 0;
-	fi
-	if ps -p 1 2>/dev/null | grep -i 'systemd' >/dev/null 2>&1; then
-		echo 'systemd';
-		exit 0;
-	fi
-	`
 }
 
 // FetchAndReinstallJasperCommands returns the command to fetch Jasper and
@@ -941,6 +886,20 @@ func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) 
 	return catcher.Resolve()
 }
 
+// AgentCommand returns the arguments to start the agent.
+func (h *Host) AgentCommand(binary string, settings *evergreen.Settings) []string {
+	return []string{
+		binary,
+		"agent",
+		fmt.Sprintf("--api_server='%s'", settings.ApiUrl),
+		fmt.Sprintf("--host_id='%s'", h.Id),
+		fmt.Sprintf("--host_secret='%s'", h.Secret),
+		fmt.Sprintf("--log_prefix='%s'", filepath.Join(h.Distro.WorkDir, "agent")),
+		fmt.Sprintf("--working_directory='%s'", h.Distro.WorkDir),
+		"--cleanup",
+	}
+}
+
 // AgentMonitorOptions  assembles the input to a Jasper request to start the
 // agent monitor.
 func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create {
@@ -949,15 +908,7 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 	credsPath := filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.JasperCredentialsPath)
 	shellPath := filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.ShellPath)
 
-	args := []string{
-		binary,
-		"agent",
-		fmt.Sprintf("--api_server=%s", settings.ApiUrl),
-		fmt.Sprintf("--host_id=%s", h.Id),
-		fmt.Sprintf("--host_secret=%s", h.Secret),
-		fmt.Sprintf("--log_prefix=%s", filepath.Join(h.Distro.WorkDir, "agent")),
-		fmt.Sprintf("--working_directory=%s", h.Distro.WorkDir),
-		"--cleanup",
+	args := append(h.AgentCommand(binary, settings),
 		"monitor",
 		fmt.Sprintf("--log_prefix=%s", filepath.Join(h.Distro.WorkDir, "agent.monitor")),
 		fmt.Sprintf("--client_url=%s", h.ClientURL(settings)),
@@ -965,7 +916,7 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 		fmt.Sprintf("--shell_path=%s", shellPath),
 		fmt.Sprintf("--jasper_port=%d", settings.HostJasper.Port),
 		fmt.Sprintf("--credentials=%s", credsPath),
-	}
+	)
 
 	return &options.Create{
 		Args: args,

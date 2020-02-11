@@ -363,7 +363,7 @@ func putJasperCredentials(ctx context.Context, env evergreen.Environment, settin
 	ctx, cancel := context.WithTimeout(ctx, scpTimeout)
 	defer cancel()
 
-	if logs, err := h.RunSSHCommandLiterally(ctx, writeCmds, sshOptions); err != nil {
+	if logs, err := h.RunSSHCommand(ctx, writeCmds, sshOptions); err != nil {
 		return errors.Wrapf(err, "error copying credentials to remote machine: command returned %s", logs)
 	}
 
@@ -402,7 +402,7 @@ func setupServiceUser(ctx context.Context, env evergreen.Environment, settings *
 // Jasper binary and restarts the service.
 func doFetchAndReinstallJasper(ctx context.Context, env evergreen.Environment, h *host.Host, sshOptions []string) error {
 	cmd := h.FetchAndReinstallJasperCommands(env.Settings())
-	if logs, err := h.RunSSHCommandLiterally(ctx, cmd, sshOptions); err != nil {
+	if logs, err := h.RunSSHCommand(ctx, cmd, sshOptions); err != nil {
 		return errors.Wrapf(err, "error while fetching Jasper binary and installing service on remote host: command returned '%s'", logs)
 	}
 	return nil
@@ -773,7 +773,7 @@ func (j *setupHostJob) loadClient(ctx context.Context, settings *evergreen.Setti
 	mkdirctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	output, err := j.host.RunSSHCommandLiterally(mkdirctx, fmt.Sprintf("mkdir -m 777 -p ~/%s && (echo 'export PATH=\"$PATH:~/%s\"' >> ~/.profile || true; echo 'export PATH=\"$PATH:~/%s\"' >> ~/.bash_profile || true)", targetDir, targetDir, targetDir), sshOptions)
+	output, err := j.host.RunSSHCommand(mkdirctx, fmt.Sprintf("mkdir -m 777 -p ~/%s && (echo 'export PATH=\"$PATH:~/%s\"' >> ~/.profile || true; echo 'export PATH=\"$PATH:~/%s\"' >> ~/.bash_profile || true)", targetDir, targetDir, targetDir), sshOptions)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error running setup command for cli: %s", output)
 	}
