@@ -930,9 +930,6 @@ func TestStartAgentMonitorRequest(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, cmd, string(expectedCmd))
 
-	expectedEnv, err := json.Marshal(buildAgentEnv(settings))
-	require.NoError(t, err)
-	assert.Contains(t, cmd, string(expectedEnv))
 	assert.Contains(t, cmd, evergreen.AgentMonitorTag)
 }
 
