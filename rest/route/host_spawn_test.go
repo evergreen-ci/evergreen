@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/birch"
+
 	"github.com/evergreen-ci/evergreen/cloud"
 
 	"github.com/evergreen-ci/evergreen"
@@ -31,11 +33,15 @@ func TestHostPostHandler(t *testing.T) {
 	assert.NoError(err)
 	config.SpawnHostsPerUser = cloud.DefaultMaxSpawnHostsPerUser
 	assert.NoError(config.Set())
-
+	doc := birch.NewDocument(
+		birch.EC.String("ami", "ami-123"),
+		birch.EC.String("region", evergreen.DefaultEC2Region),
+	)
 	d := &distro.Distro{
-		Id:           "distro",
-		SpawnAllowed: true,
-		Provider:     evergreen.ProviderNameEc2OnDemand,
+		Id:                   "distro",
+		SpawnAllowed:         true,
+		Provider:             evergreen.ProviderNameEc2OnDemand,
+		ProviderSettingsList: []*birch.Document{doc},
 	}
 	require.NoError(d.Insert())
 	settings, err := evergreen.GetConfig()
@@ -78,13 +84,17 @@ func TestHostPostHandler(t *testing.T) {
 	assert.Len(h.sc.(*data.MockConnector).MockHostConnector.CachedHosts, 4)
 	h0 := h.sc.(*data.MockConnector).MockHostConnector.CachedHosts[0]
 	d0 := h0.Distro
-	assert.Empty((*d0.ProviderSettings)["user_data"])
+	userdata, ok := d0.ProviderSettingsList[0].Lookup("user_data").StringValueOK()
+	assert.False(ok)
+	assert.Empty(userdata)
 	assert.Empty(h0.InstanceTags)
 	assert.Empty(h0.InstanceType)
 
 	h1 := h.sc.(*data.MockConnector).MockHostConnector.CachedHosts[1]
 	d1 := h1.Distro
-	assert.Equal("my script", (*d1.ProviderSettings)["user_data"].(string))
+	userdata, ok = d1.ProviderSettingsList[0].Lookup("user_data").StringValueOK()
+	assert.True(ok)
+	assert.Equal("my script", userdata)
 	assert.Empty(h1.InstanceTags)
 	assert.Empty(h1.InstanceType)
 

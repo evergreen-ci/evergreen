@@ -196,6 +196,12 @@ func TestGetImageID(t *testing.T) {
 			expectedOutput: "",
 		},
 		{
+			name:     "Ec2NoKey",
+			provider: evergreen.ProviderNameEc2Fleet,
+			noKey:    true,
+			err:      true,
+		},
+		{
 			name:           "Docker",
 			provider:       evergreen.ProviderNameDocker,
 			key:            "image_url",
@@ -239,11 +245,10 @@ func TestGetImageID(t *testing.T) {
 			noKey:    true,
 		},
 		{
-			name:       "UnknownProvider",
-			provider:   "unknown",
-			noKey:      true,
-			err:        true,
-			legacyOnly: true,
+			name:     "UnknownProvider",
+			provider: "unknown",
+			noKey:    true,
+			err:      true,
 		},
 		{
 			name:       "InvalidKey",

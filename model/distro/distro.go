@@ -440,7 +440,10 @@ func (d *Distro) GetImageID() (string, error) {
 	}
 
 	if len(d.ProviderSettingsList) == 1 {
-		res, _ := d.ProviderSettingsList[0].Lookup(key).StringValueOK()
+		res, ok := d.ProviderSettingsList[0].Lookup(key).StringValueOK()
+		if !ok {
+			return "", errors.Errorf("provider setting key '%s' is empty", key)
+		}
 		return res, nil
 	}
 	return "", errors.New("provider settings not configured correctly")

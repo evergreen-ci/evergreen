@@ -291,6 +291,7 @@ func (hc *MockHostConnector) NewIntentHost(options *restmodel.HostRequestOptions
 
 	spawnOptions := cloud.SpawnOptions{
 		DistroId:     options.DistroID,
+		Userdata:     options.UserData,
 		UserName:     user.Username(),
 		PublicKey:    keyVal,
 		TaskId:       options.TaskID,
