@@ -69,6 +69,7 @@ type s3put struct {
 	//  "private", which allows logged-in users to see the file;
 	//  "public", which allows anyone to see the file; or
 	//  "none", which hides the file from the UI for everybody.
+	//  "signed" which grants access to private S3 objects to logged-in users
 	// If unset, the file will be public.
 	Visibility string `mapstructure:"visibility" plugin:"expand"`
 
@@ -379,6 +380,8 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 			Name:       displayName,
 			Link:       fileLink,
 			Visibility: s3pc.Visibility,
+			AwsKey:     s3pc.AwsKey,
+			AwsSecret:  s3pc.AwsSecret,
 		})
 	}
 
