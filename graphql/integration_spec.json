@@ -1485,8 +1485,11 @@
       "result": {
         "errors": [
           {
-            "message": "error adding project to user's favorites: cannot add duplicate project 'buildhost-test'",
-            "path": ["addFavoriteProject"]
+            "message": "cannot add duplicate project 'buildhost-test'",
+            "path": ["addFavoriteProject"],
+            "extensions": {
+              "code": "INTERNAL_SERVER_ERROR"
+            }
           }
         ],
         "data": null
@@ -1498,7 +1501,10 @@
         "errors": [
           {
             "message": "could not find project 'i-dont-exist'",
-            "path": ["addFavoriteProject"]
+            "path": ["addFavoriteProject"],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
           }
         ],
         "data": null
