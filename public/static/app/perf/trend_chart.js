@@ -710,17 +710,31 @@ mciModule.factory('DrawPerfTrendChart', function (
           'stroke-width': '4',
         });
 
-      changePointSegments.select('line')
+        // Walk backwards and find the index of the first non-null value.
+        const changePointIndex = (index, getValueFor) => {
+          while(getValueFor(index) == null) {
+            if (index <= 0) {
+              index = 0;
+              break;
+            }
+            index -= 1;
+          }
+          return index;
+        };
+
+        changePointSegments.select('line')
         .transition()
         .attr({
           x1: function (d) {
-            return xScale(d.changePoint._meta.firstRevIdx)
+            const index = changePointIndex(d.changePoint._meta.firstRevIdx, (index) => getValueFor(d.level)(series[index]))
+            return xScale(index)
+          },
+          y1: function (d) {
+            const index = changePointIndex(d.changePoint._meta.firstRevIdx, (index) => getValueFor(d.level)(series[index]))
+            return yScale(getValueFor(d.level)(series[index]))
           },
           x2: function (d) {
             return xScale(d.changePoint._meta.lastRevIdx)
-          },
-          y1: function (d) {
-            return yScale(getValueFor(d.level)(series[d.changePoint._meta.firstRevIdx]))
           },
           y2: function (d) {
             return yScale(getValueFor(d.level)(series[d.changePoint._meta.lastRevIdx]))
