@@ -957,10 +957,8 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 		fmt.Sprintf("--host_secret=%s", h.Secret),
 		fmt.Sprintf("--log_prefix=%s", filepath.Join(h.Distro.WorkDir, "agent")),
 		fmt.Sprintf("--working_directory=%s", h.Distro.WorkDir),
-		fmt.Sprintf("--logkeeper_url=%s", settings.LoggerConfig.LogkeeperURL),
 		"--cleanup",
 		"monitor",
-		fmt.Sprintf("--log_prefix=%s", filepath.Join(h.Distro.WorkDir, "agent.monitor")),
 		fmt.Sprintf("--client_url=%s", h.ClientURL(settings)),
 		fmt.Sprintf("--client_path=%s", clientPath),
 		fmt.Sprintf("--shell_path=%s", shellPath),
@@ -969,33 +967,9 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 	}
 
 	return &options.Create{
-		Args:        args,
-		Environment: buildAgentEnv(settings),
-		Tags:        []string{evergreen.AgentMonitorTag},
+		Args: args,
+		Tags: []string{evergreen.AgentMonitorTag},
 	}
-}
-
-// buildAgentEnv returns the agent environment variables.
-func buildAgentEnv(settings *evergreen.Settings) map[string]string {
-	env := map[string]string{
-		"S3_KEY":    settings.Providers.AWS.S3Key,
-		"S3_SECRET": settings.Providers.AWS.S3Secret,
-		"S3_BUCKET": settings.Providers.AWS.Bucket,
-	}
-
-	if sumoEndpoint, ok := settings.Credentials["sumologic"]; ok {
-		env["GRIP_SUMO_ENDPOINT"] = sumoEndpoint
-	}
-
-	if settings.Splunk.Populated() {
-		env["GRIP_SPLUNK_SERVER_URL"] = settings.Splunk.ServerURL
-		env["GRIP_SPLUNK_CLIENT_TOKEN"] = settings.Splunk.Token
-		if settings.Splunk.Channel != "" {
-			env["GRIP_SPLUNK_CHANNEL"] = settings.Splunk.Channel
-		}
-	}
-
-	return env
 }
 
 // SetupSpawnHostCommands returns the commands to handle setting up a spawn
