@@ -1,120 +1,55 @@
 package send
 
 import (
-	"errors"
+	"context"
+	"sync"
 	"time"
 
 	"github.com/mongodb/grip/message"
 )
 
-const minBufferLength = 5 * time.Second
+const minInterval = 5 * time.Second
 
 type bufferedSender struct {
-	Sender
+	mu        sync.Mutex
+	cancel    context.CancelFunc
+	buffer    []message.Composer
+	size      int
+	lastFlush time.Time
+	closed    bool
 
-	duration time.Duration
-	number   int
-	pipe     chan message.Composer
-	signal   chan struct{}
-	errs     chan error
+	Sender
 }
 
-// NewBufferedSender provides a Sender implementation that wraps an
-// existing Sender sending messages in batches, on a specified
-// duration or after an interval has passed.
+// NewBufferedSender provides a Sender implementation that wraps an existing
+// Sender sending messages in batches, on a specified buffer size or after an
+// interval has passed.
 //
-// Be aware that while messages are sent asynchronously, each message
-// is sent individually. Furthermore, no more than 2 batches of events
-// can be sent at once.
-//
-// If the duration is 0, the constructor sets a duration of 24 hours,
-// and if the duration is not 5 seconds, the constructor sets a 5 second
-// duration. If the number threshold is 0, then the constructor sets a
-// threshold of 100.
-func NewBufferedSender(sender Sender, duration time.Duration, number int) Sender {
-	if duration == 0 {
-		duration = time.Hour * 24
-	} else if duration < minBufferLength {
-		duration = minBufferLength
+// If the interval is 0, the constructor sets an interval of 1 minute, and if
+// it is less than 5 seconds, the constructor sets it to 5 seconds. If the
+// size threshold is 0, then the constructor sets a threshold of 100.
+func NewBufferedSender(sender Sender, interval time.Duration, size int) Sender {
+	if interval == 0 {
+		interval = time.Minute
+	} else if interval < minInterval {
+		interval = minInterval
 	}
 
-	if number == 0 {
-		number = 100
+	if size <= 0 {
+		size = 100
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
 	s := &bufferedSender{
-		Sender:   sender,
-		duration: duration,
-		number:   number,
-		pipe:     make(chan message.Composer, number),
-		signal:   make(chan struct{}),
-		errs:     make(chan error),
+		Sender: sender,
+		cancel: cancel,
+		buffer: []message.Composer{},
+		size:   size,
 	}
 
-	go s.backgroundDispatcher()
+	go s.intervalFlush(ctx, interval)
 
 	return s
-}
-
-func (s *bufferedSender) backgroundDispatcher() {
-	buffer := []message.Composer{}
-	timer := time.NewTimer(s.duration)
-	work := make(chan []message.Composer)
-	complete := make(chan struct{})
-
-	go s.backgroundWorker(work, complete)
-
-daemon:
-	for {
-		select {
-		case msg := <-s.pipe:
-			buffer = append(buffer, msg)
-
-			if len(buffer) < s.number {
-				continue daemon
-			}
-
-			work <- buffer
-			buffer = []message.Composer{}
-			timer.Reset(s.duration)
-		case <-timer.C:
-			work <- buffer
-			buffer = []message.Composer{}
-			timer.Reset(s.duration)
-		case <-s.signal:
-			close(s.signal)
-			close(s.pipe)
-
-			for m := range s.pipe {
-				buffer = append(buffer, m)
-			}
-
-			if len(buffer) != 0 {
-				work <- buffer
-			}
-
-			close(work)
-
-			break daemon
-		}
-
-	}
-
-	<-complete
-	s.errs <- s.Sender.Close()
-	close(s.errs)
-}
-
-func (s *bufferedSender) backgroundWorker(work <-chan []message.Composer, complete chan<- struct{}) {
-	for msgs := range work {
-		if len(msgs) == 1 {
-			s.Sender.Send(msgs[0])
-		} else if len(msgs) > 1 {
-			s.Sender.Send(message.NewGroupComposer(msgs))
-		}
-	}
-
-	complete <- struct{}{}
 }
 
 func (s *bufferedSender) Send(msg message.Composer) {
@@ -122,30 +57,73 @@ func (s *bufferedSender) Send(msg message.Composer) {
 		return
 	}
 
-	switch msg := msg.(type) {
-	case *message.GroupComposer:
-		for _, m := range msg.Messages() {
-			s.pipe <- m
-		}
-	default:
-		s.pipe <- msg
-	}
-}
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-func (s *bufferedSender) Close() (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = errors.New("cannot close alreday closed buffered sender")
-		}
-	}()
-
-	s.signal <- struct{}{}
-
-	if err != nil {
+	if s.closed {
 		return
 	}
 
-	err = <-s.errs
+	s.buffer = append(s.buffer, msg)
+	if len(s.buffer) >= s.size {
+		s.flush()
+	}
+}
 
-	return
+func (s *bufferedSender) Flush(_ context.Context) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if !s.closed {
+		s.flush()
+	}
+
+	return nil
+}
+
+func (s *bufferedSender) Close() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.closed {
+		return nil
+	}
+
+	s.cancel()
+	if len(s.buffer) > 0 {
+		s.flush()
+	}
+	s.closed = true
+
+	return nil
+}
+
+func (s *bufferedSender) intervalFlush(ctx context.Context, interval time.Duration) {
+	timer := time.NewTimer(interval)
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-timer.C:
+			s.mu.Lock()
+			if len(s.buffer) > 0 && time.Since(s.lastFlush) >= interval {
+				s.flush()
+			}
+			s.mu.Unlock()
+			_ = timer.Reset(interval)
+		}
+	}
+}
+
+func (s *bufferedSender) flush() {
+	if len(s.buffer) == 1 {
+		s.Sender.Send(s.buffer[0])
+	} else {
+		s.Sender.Send(message.NewGroupComposer(s.buffer))
+	}
+
+	s.buffer = []message.Composer{}
+	s.lastFlush = time.Now()
 }

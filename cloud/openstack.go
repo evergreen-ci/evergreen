@@ -4,13 +4,16 @@ import (
 	"context"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/gophercloud/gophercloud"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // openStackManager implements the Manager interface for OpenStack.
@@ -46,6 +49,41 @@ func (opts *openStackSettings) Validate() error {
 		return errors.New("Security group must not be blank")
 	}
 
+	return nil
+}
+
+func (opts *openStackSettings) FromDistroSettings(d distro.Distro, _ string) error {
+	if d.ProviderSettings != nil {
+		if err := mapstructure.Decode(d.ProviderSettings, opts); err != nil {
+			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, opts)
+		}
+		bytes, err := bson.Marshal(opts)
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		doc := &birch.Document{}
+		if err := doc.UnmarshalBSON(bytes); err != nil {
+			return errors.Wrapf(err, "error unmarshalling settings bytes into document")
+		}
+		if len(d.ProviderSettingsList) == 0 {
+			if err := d.UpdateProviderSettings(doc); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"distro":   d.Id,
+					"provider": d.Provider,
+					"settings": d.ProviderSettings,
+				}))
+				return errors.Wrapf(err, "error updating provider settings")
+			}
+		}
+	} else if len(d.ProviderSettingsList) != 0 {
+		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		if err := bson.Unmarshal(bytes, opts); err != nil {
+			return errors.Wrap(err, "error unmarshalling bson into provider settings")
+		}
+	}
 	return nil
 }
 
@@ -115,8 +153,8 @@ func (m *openStackManager) SpawnHost(ctx context.Context, h *host.Host) (*host.H
 		grip.Error(err)
 		if rmErr := h.Remove(); rmErr != nil {
 			grip.Errorf("Could not remove intent host: %s", message.Fields{
-				"host":  h.Id,
-				"error": rmErr,
+				"host_id": h.Id,
+				"error":   rmErr,
 			})
 		}
 		return nil, errors.Wrapf(err, "Could not start new instance for distro '%s'", h.Distro.Id)
@@ -238,4 +276,9 @@ func (m *openStackManager) DeleteVolume(context.Context, *host.Volume) error {
 // plugins for billing, monitoring, and other management tools.
 func (m *openStackManager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return time.Duration(0)
+}
+
+//  TODO: this must be implemented to support adding SSH keys.
+func (m *openStackManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
+	return nil
 }

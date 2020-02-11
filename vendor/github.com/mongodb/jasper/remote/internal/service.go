@@ -717,3 +717,31 @@ func (s *jasperService) ScriptingHarnessBuild(ctx context.Context, args *Scripti
 			ExitCode: 0,
 		}}, nil
 }
+
+func (s *jasperService) ScriptingHarnessTest(ctx context.Context, args *ScriptingHarnessTestArgs) (*ScriptingHarnessTestResponse, error) {
+	se, err := s.scripting.Get(args.Id)
+	if err != nil {
+		return &ScriptingHarnessTestResponse{
+			Outcome: &OperationOutcome{
+				Success:  false,
+				Text:     err.Error(),
+				ExitCode: 1,
+			}}, nil
+	}
+
+	res, err := se.Test(ctx, args.Directory, args.Export()...)
+	resp := &ScriptingHarnessTestResponse{
+		Outcome: &OperationOutcome{
+			Success: true,
+		},
+		Results: ConvertScriptingTestResults(res),
+	}
+
+	if err != nil {
+		resp.Outcome.Success = false
+		resp.Outcome.Text = err.Error()
+		resp.Outcome.ExitCode = 1
+	}
+
+	return resp, nil
+}

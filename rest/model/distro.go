@@ -1,6 +1,7 @@
 package model
 
 import (
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -326,6 +327,30 @@ func (s *APIBootstrapSettings) ToService() (interface{}, error) {
 	return settings, nil
 }
 
+type APIHomeVolumeSettings struct {
+	DeviceName    *string `json:"device_name"`
+	FormatCommand *string `json:"format_command"`
+}
+
+func (s *APIHomeVolumeSettings) BuildFromService(h interface{}) error {
+	settings, ok := h.(distro.HomeVolumeSettings)
+	if !ok {
+		return errors.Errorf("Unexpected type '%T' for HomeVolumeSettings", h)
+	}
+
+	s.DeviceName = ToStringPtr(settings.DeviceName)
+	s.FormatCommand = ToStringPtr(settings.FormatCommand)
+
+	return nil
+}
+
+func (s *APIHomeVolumeSettings) ToService() (interface{}, error) {
+	return distro.HomeVolumeSettings{
+		DeviceName:    FromStringPtr(s.DeviceName),
+		FormatCommand: FromStringPtr(s.FormatCommand),
+	}, nil
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 // APIDistro is the model to be returned by the API whenever distros are fetched
@@ -336,6 +361,7 @@ type APIDistro struct {
 	UserSpawnAllowed      bool                     `json:"user_spawn_allowed"`
 	Provider              *string                  `json:"provider"`
 	ProviderSettings      map[string]interface{}   `json:"settings"`
+	ProviderSettingsList  []*birch.Document        `json:"provider_settings"`
 	ImageID               *string                  `json:"image_id"`
 	Arch                  *string                  `json:"arch"`
 	WorkDir               *string                  `json:"work_dir"`
@@ -347,6 +373,7 @@ type APIDistro struct {
 	CloneMethod           *string                  `json:"clone_method"`
 	SSHKey                *string                  `json:"ssh_key"`
 	SSHOptions            []string                 `json:"ssh_options"`
+	AuthorizedKeysFile    *string                  `json:"authorized_keys_file"`
 	Expansions            []APIExpansion           `json:"expansions"`
 	Disabled              bool                     `json:"disabled"`
 	ContainerPool         *string                  `json:"container_pool"`
@@ -356,6 +383,7 @@ type APIDistro struct {
 	HostAllocatorSettings APIHostAllocatorSettings `json:"host_allocator_settings"`
 	DisableShallowClone   bool                     `json:"disable_shallow_clone"`
 	UseLegacyAgent        bool                     `json:"use_legacy_agent"`
+	HomeVolumeSettings    APIHomeVolumeSettings    `json:"home_volume_settings"`
 	Note                  *string                  `json:"note"`
 	ValidProjects         []*string                `json:"valid_projects"`
 }
@@ -387,6 +415,9 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	if d.ProviderSettings != nil {
 		apiDistro.ProviderSettings = *d.ProviderSettings
 	}
+	if len(d.ProviderSettingsList) > 0 {
+		apiDistro.ProviderSettingsList = d.ProviderSettingsList
+	}
 	apiDistro.Arch = ToStringPtr(d.Arch)
 	apiDistro.WorkDir = ToStringPtr(d.WorkDir)
 	apiDistro.SetupAsSudo = d.SetupAsSudo
@@ -403,9 +434,10 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	}
 	apiDistro.CloneMethod = ToStringPtr(d.CloneMethod)
 	apiDistro.SSHKey = ToStringPtr(d.SSHKey)
+	apiDistro.SSHOptions = d.SSHOptions
+	apiDistro.AuthorizedKeysFile = ToStringPtr(d.AuthorizedKeysFile)
 	apiDistro.Disabled = d.Disabled
 	apiDistro.ContainerPool = ToStringPtr(d.ContainerPool)
-	apiDistro.SSHOptions = d.SSHOptions
 	if d.Expansions != nil {
 		apiDistro.Expansions = []APIExpansion{}
 		for _, e := range d.Expansions {
@@ -444,6 +476,11 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	apiDistro.UseLegacyAgent = d.UseLegacyAgent
 	apiDistro.Note = ToStringPtr(d.Note)
 	apiDistro.ValidProjects = ToStringPtrSlice(d.ValidProjects)
+	homeVolumeSettings := APIHomeVolumeSettings{}
+	if err := homeVolumeSettings.BuildFromService(d.HomeVolumeSettings); err != nil {
+		return errors.Wrap(err, "Error converting from distro.HomeVolumeSettings to model.API.HomeVolumeSettings")
+	}
+	apiDistro.HomeVolumeSettings = homeVolumeSettings
 
 	return nil
 }
@@ -456,6 +493,7 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d.Arch = FromStringPtr(apiDistro.Arch)
 	d.WorkDir = FromStringPtr(apiDistro.WorkDir)
 	d.Provider = FromStringPtr(apiDistro.Provider)
+	d.ProviderSettingsList = apiDistro.ProviderSettingsList
 	if apiDistro.ProviderSettings != nil {
 		d.ProviderSettings = &apiDistro.ProviderSettings
 	}
@@ -478,6 +516,7 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	}
 	d.SSHKey = FromStringPtr(apiDistro.SSHKey)
 	d.SSHOptions = apiDistro.SSHOptions
+	d.AuthorizedKeysFile = FromStringPtr(apiDistro.AuthorizedKeysFile)
 	d.SpawnAllowed = apiDistro.UserSpawnAllowed
 	d.Expansions = []distro.Expansion{}
 	for _, e := range apiDistro.Expansions {
@@ -538,6 +577,15 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d.UseLegacyAgent = apiDistro.UseLegacyAgent
 	d.Note = FromStringPtr(apiDistro.Note)
 	d.ValidProjects = FromStringPtrSlice(apiDistro.ValidProjects)
+	i, err = apiDistro.HomeVolumeSettings.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "Error converting from model.APIHomeVolumeSettings to distro.HomeVolumeSettings")
+	}
+	homeVolumeSettings, ok := i.(distro.HomeVolumeSettings)
+	if !ok {
+		return nil, errors.Errorf("Unexpected type %T for distro.HomeVolumeSettings", i)
+	}
+	d.HomeVolumeSettings = homeVolumeSettings
 
 	return &d, nil
 }

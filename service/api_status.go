@@ -1,10 +1,7 @@
 package service
 
 import (
-	"fmt"
 	"net/http"
-	"strconv"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -77,48 +74,6 @@ func (as *APIServer) consistentTaskAssignment(w http.ResponseWriter, r *http.Req
 		resp.TaskHostIds = util.UniqueStrings(resp.TaskHostIds)
 	}
 	gimlet.WriteJSON(w, resp)
-}
-
-// Returns a list of all processes with runtime entries, i.e. all processes being tracked.
-func (as *APIServer) listRuntimes(w http.ResponseWriter, r *http.Request) {
-	runtimes, err := model.FindEveryProcessRuntime()
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-	gimlet.WriteJSON(w, runtimes)
-}
-
-// Given a timeout cutoff in seconds, returns a JSON response with a SUCCESS flag
-// if all processes have run within the cutoff, or ERROR and a list of late processes
-// if one or more processes last finished before the timeout cutoff. DevOps tools
-// should be able to do a regex for "SUCCESS" or "ERROR" to check for timeouts.
-func (as *APIServer) lateRuntimes(w http.ResponseWriter, r *http.Request) {
-	timeAsString := gimlet.GetVars(r)["seconds"]
-	if len(timeAsString) == 0 {
-		http.Error(w, "Must supply an amount in seconds with timeout query", http.StatusBadRequest)
-		return
-	}
-	timeInSeconds, err := strconv.Atoi(timeAsString)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Invalid time param: %v", timeAsString), http.StatusBadRequest)
-		return
-	}
-	cutoff := time.Now().Add(time.Duration(-1*timeInSeconds) * time.Second)
-	runtimes, err := model.FindAllLateProcessRuntimes(cutoff)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
-	timeoutResponse := apimodels.ProcessTimeoutResponse{}
-	timeoutResponse.LateProcesses = &runtimes
-	if len(runtimes) > 0 {
-		timeoutResponse.Status = apiStatusError
-	} else {
-		timeoutResponse.Status = apiStatusSuccess
-	}
-	gimlet.WriteJSON(w, timeoutResponse)
 }
 
 func (as *APIServer) getTaskQueueSizes(w http.ResponseWriter, r *http.Request) {
@@ -222,4 +177,23 @@ func (as *APIServer) serviceStatusSimple(w http.ResponseWriter, r *http.Request)
 	}
 
 	gimlet.WriteJSON(w, &out)
+}
+
+func (as *APIServer) agentSetup(w http.ResponseWriter, r *http.Request) {
+	out := &apimodels.AgentSetupData{
+		SumoLogicEndpoint: as.Settings.Credentials["sumologic"],
+		SplunkServerURL:   as.Settings.Splunk.ServerURL,
+		SplunkClientToken: as.Settings.Splunk.Token,
+		SplunkChannel:     as.Settings.Splunk.Channel,
+		S3Key:             as.Settings.Providers.AWS.S3Key,
+		S3Secret:          as.Settings.Providers.AWS.S3Secret,
+		S3Bucket:          as.Settings.Providers.AWS.Bucket,
+		S3Base:            as.Settings.Providers.AWS.S3BaseURL,
+		LogkeeperURL:      as.Settings.LoggerConfig.LogkeeperURL,
+	}
+	if out.S3Base == "" {
+		out.S3Base = "https://s3.amazonaws.com"
+	}
+
+	gimlet.WriteJSON(w, out)
 }

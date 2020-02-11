@@ -11,7 +11,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -25,7 +24,8 @@ func jitterNilJobWait() time.Duration {
 }
 
 func executeJob(ctx context.Context, id string, job amboy.Job, q amboy.Queue) {
-	res := runJob(ctx, job, q, time.Now())
+	job.Run(ctx)
+	q.Complete(ctx, job)
 	ti := job.TimeInfo()
 	r := message.Fields{
 		"job":           job.ID(),
@@ -34,8 +34,6 @@ func executeJob(ctx context.Context, id string, job amboy.Job, q amboy.Queue) {
 		"queue_type":    fmt.Sprintf("%T", q),
 		"stat":          job.Status(),
 		"pool":          id,
-		"executed":      res.executed,
-		"aborted":       res.aborted,
 		"max_time_secs": ti.MaxTime.Seconds(),
 	}
 	err := job.Error()
@@ -43,94 +41,11 @@ func executeJob(ctx context.Context, id string, job amboy.Job, q amboy.Queue) {
 		r["error"] = err.Error()
 	}
 
-	if res.executed && !res.aborted && err != nil {
+	if err != nil {
 		grip.Error(r)
 	} else {
 		grip.Debug(r)
 	}
-}
-
-type runJobResult struct {
-	executed bool
-	aborted  bool
-}
-
-func runJob(ctx context.Context, job amboy.Job, q amboy.Queue, startAt time.Time) (res runJobResult) {
-	ti := amboy.JobTimeInfo{
-		Start: time.Now(),
-	}
-	job.UpdateTimeInfo(ti)
-	defer func() {
-		ti.End = time.Now()
-		job.UpdateTimeInfo(ti)
-	}()
-
-	maxTime := job.TimeInfo().MaxTime
-	if maxTime > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, maxTime)
-		defer cancel()
-	}
-
-	if err := job.Lock(q.ID()); err != nil {
-		job.AddError(errors.Wrap(err, "problem locking job"))
-		return
-	}
-	if err := q.Save(ctx, job); err != nil {
-		job.AddError(errors.Wrap(err, "problem saving job state"))
-		return
-	}
-
-	jctx, jcancel := context.WithCancel(ctx)
-	defer jcancel()
-
-	pingerCtx, stopPing := context.WithCancel(ctx)
-	defer stopPing()
-	go func() {
-		defer recovery.LogStackTraceAndContinue("background lock ping", job.ID())
-		iters := 0
-		ticker := time.NewTicker(amboy.LockTimeout / 4)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-pingerCtx.Done():
-				return
-			case <-ticker.C:
-				if err := job.Lock(q.ID()); err != nil {
-					job.AddError(errors.Wrapf(err, "problem pinging job lock on cycle #%d", iters))
-					jcancel()
-					return
-				}
-				if err := q.Save(ctx, job); err != nil {
-					job.AddError(errors.Wrapf(err, "problem saving job for lock ping on cycle #%d", iters))
-					jcancel()
-					return
-				}
-				grip.Debug(message.Fields{
-					"queue_id":  q.ID(),
-					"job_id":    job.ID(),
-					"ping_iter": iters,
-					"stat":      job.Status(),
-				})
-			}
-			iters++
-		}
-	}()
-
-	job.Run(jctx)
-	res.aborted = jctx.Err() != nil
-	res.executed = true
-	// we want the final end time to include
-	// marking complete, but setting it twice is
-	// necessary for some queues
-	ti.End = time.Now()
-	job.UpdateTimeInfo(ti)
-
-	stopPing()
-
-	q.Complete(ctx, job)
-
-	return
 }
 
 func worker(bctx context.Context, id string, q amboy.Queue, wg *sync.WaitGroup) {

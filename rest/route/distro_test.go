@@ -366,7 +366,15 @@ func (s *DistroPutSuite) SetupTest() {
 	s.sc = &data.MockConnector{
 		MockDistroConnector: s.data,
 	}
-	s.settings = &evergreen.Settings{}
+	s.settings = &evergreen.Settings{
+		SSHKeyPairs: []evergreen.SSHKeyPair{
+			{
+				Name:    "SSH Key",
+				Public:  "public_key",
+				Private: "private_key",
+			},
+		},
+	}
 	s.rm = makePutDistro(s.sc, s.settings)
 }
 
@@ -376,7 +384,7 @@ func (s *DistroPutSuite) TestParse() {
   	{
 		"arch": "linux_amd64",
     	"work_dir": "/data/mci",
-    	"ssh_key": "SSH string",
+    	"ssh_key": "SSH key",
     	"provider": "mock",
     	"user": "tibor",
     	"planner_settings": {
@@ -445,7 +453,7 @@ func (s *DistroPutSuite) TestRunNewWithInvalidEntity() {
 func (s *DistroPutSuite) TestRunNewConflictingName() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
-	json := []byte(`{"name": "distro5", "arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "", "provider": "mock", "user": "tibor"}`)
+	json := []byte(`{"name": "distro5", "arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "SSH Key", "provider": "mock", "user": "tibor"}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro4"
 	h.body = json
@@ -490,7 +498,7 @@ func (s *DistroPutSuite) TestRunExistingWithInvalidEntity() {
 func (s *DistroPutSuite) TestRunExistingConflictingName() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
-	json := []byte(`{"name": "distro5", "arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "", "provider": "mock", "user": "tibor"}`)
+	json := []byte(`{"name": "distro5", "arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "SSH Key", "provider": "mock", "user": "tibor"}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro3"
 	h.body = json
@@ -586,16 +594,17 @@ func TestDistroPatchSuite(t *testing.T) {
 }
 
 func (s *DistroPatchByIDSuite) SetupTest() {
+	sshKey := "SSH Key"
 	s.data = data.MockDistroConnector{
 		CachedDistros: []*distro.Distro{
 			{
 				Id:      "fedora8",
-				Arch:    "linux_amd64",
+				Arch:    distro.ArchLinuxAmd64,
 				WorkDir: "/data/mci",
 				HostAllocatorSettings: distro.HostAllocatorSettings{
 					MaximumHosts: 30,
 				},
-				Provider: "mock",
+				Provider: evergreen.ProviderNameMock,
 				ProviderSettings: &map[string]interface{}{
 					"bid_price":      0.2,
 					"instance_type":  "m3.large",
@@ -610,7 +619,7 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 				Setup:       "Set-up string",
 				Teardown:    "Tear-down string",
 				User:        "root",
-				SSHKey:      "SSH key string",
+				SSHKey:      sshKey,
 				SSHOptions: []string{
 					"StrictHostKeyChecking=no",
 					"BatchMode=yes",
@@ -635,7 +644,20 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 			},
 		},
 	}
-	s.settings = &evergreen.Settings{}
+	s.settings = &evergreen.Settings{
+		SSHKeyPairs: []evergreen.SSHKeyPair{
+			{
+				Name:    sshKey,
+				Public:  "public",
+				Private: "private",
+			},
+			{
+				Name:    "New SSH Key",
+				Public:  "new_public",
+				Private: "new_private",
+			},
+		},
+	}
 	s.sc = &data.MockConnector{
 		MockDistroConnector: s.data,
 	}
@@ -823,7 +845,7 @@ func (s *DistroPatchByIDSuite) TestRunValidUser() {
 
 func (s *DistroPatchByIDSuite) TestRunValidSSHKey() {
 	ctx := context.Background()
-	json := []byte(`{"ssh_key": "New SSH key string"}`)
+	json := []byte(`{"ssh_key": "New SSH Key"}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
 	h.body = json
@@ -834,7 +856,7 @@ func (s *DistroPatchByIDSuite) TestRunValidSSHKey() {
 
 	apiDistro, ok := (resp.Data()).(*model.APIDistro)
 	s.Require().True(ok)
-	s.Equal(apiDistro.SSHKey, model.ToStringPtr("New SSH key string"))
+	s.Equal(apiDistro.SSHKey, model.ToStringPtr("New SSH Key"))
 }
 
 func (s *DistroPatchByIDSuite) TestRunValidSSHOptions() {
@@ -1193,7 +1215,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 					}
 				},
 				"clone_method": "legacy-ssh",
-				"ssh_key" : "~SSH string",
+				"ssh_key" : "New SSH Key",
 				"ssh_options" : [
 					"~StrictHostKeyChecking=no",
 					"~BatchMode=no",
@@ -1263,10 +1285,10 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(2, apiDistro.BootstrapSettings.ResourceLimits.NumProcesses)
 	s.Equal(3, apiDistro.BootstrapSettings.ResourceLimits.LockedMemoryKB)
 	s.Equal(4, apiDistro.BootstrapSettings.ResourceLimits.VirtualMemoryKB)
-	s.Equal(apiDistro.User, model.ToStringPtr("~root"))
-	s.Equal(apiDistro.SSHKey, model.ToStringPtr("~SSH string"))
-	s.Equal(apiDistro.SSHOptions, []string{"~StrictHostKeyChecking=no", "~BatchMode=no", "~ConnectTimeout=10"})
-	s.Equal(apiDistro.UserSpawnAllowed, false)
+	s.Equal(model.ToStringPtr("~root"), apiDistro.User)
+	s.Equal(model.ToStringPtr("New SSH Key"), apiDistro.SSHKey)
+	s.Equal([]string{"~StrictHostKeyChecking=no", "~BatchMode=no", "~ConnectTimeout=10"}, apiDistro.SSHOptions)
+	s.False(apiDistro.UserSpawnAllowed)
 
 	s.Equal(apiDistro.Expansions, []model.APIExpansion{
 		model.APIExpansion{Key: model.ToStringPtr("~decompress"), Value: model.ToStringPtr("~tar zxvf")},

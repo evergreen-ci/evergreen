@@ -1,6 +1,7 @@
 package send
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -138,4 +139,15 @@ func (s *multiSender) Send(m message.Composer) {
 	for _, sender := range s.senders {
 		sender.Send(m)
 	}
+}
+
+func (s *multiSender) Flush(ctx context.Context) error {
+	var lastErr error
+	for _, sender := range s.senders {
+		if err := sender.Flush(ctx); err != nil {
+			lastErr = err
+		}
+	}
+
+	return lastErr
 }

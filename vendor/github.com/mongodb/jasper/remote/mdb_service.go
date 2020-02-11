@@ -155,12 +155,12 @@ const (
 func (s *service) configureCache(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := configureCacheRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "could not read request"), ConfigureCacheCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), ConfigureCacheCommand)
 		return
 	}
 	opts := req.Options
 	if err := opts.Validate(); err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "invalid cache options"), ConfigureCacheCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "invalid cache options"), ConfigureCacheCommand)
 		return
 	}
 
@@ -174,55 +174,55 @@ func (s *service) configureCache(ctx context.Context, w io.Writer, msg mongowire
 	}
 	s.cacheOpts.Disabled = opts.Disabled
 
-	shell.WriteOKResponse(ctx, w, ConfigureCacheCommand)
+	shell.WriteOKResponse(ctx, w, mongowire.OP_REPLY, ConfigureCacheCommand)
 }
 
 func (s *service) downloadFile(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := downloadFileRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "could not read request"), DownloadFileCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), DownloadFileCommand)
 		return
 	}
 	opts := req.Options
 
 	if err := opts.Validate(); err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "invalid download options"), DownloadFileCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "invalid download options"), DownloadFileCommand)
 		return
 	}
 
 	if err := opts.Download(); err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "could not download file"), DownloadFileCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not download file"), DownloadFileCommand)
 		return
 	}
 
-	shell.WriteOKResponse(ctx, w, DownloadFileCommand)
+	shell.WriteOKResponse(ctx, w, mongowire.OP_REPLY, DownloadFileCommand)
 }
 
 func (s *service) downloadMongoDB(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := &downloadMongoDBRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "could not read request"), DownloadMongoDBCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), DownloadMongoDBCommand)
 		return
 	}
 	opts := req.Options
 
 	if err := opts.Validate(); err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "invalid download options"), DownloadMongoDBCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "invalid download options"), DownloadMongoDBCommand)
 		return
 	}
 
 	if err := jasper.SetupDownloadMongoDBReleases(ctx, s.cache, opts); err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "problem setting up download"), DownloadMongoDBCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "problem setting up download"), DownloadMongoDBCommand)
 		return
 	}
 
-	shell.WriteOKResponse(ctx, w, DownloadMongoDBCommand)
+	shell.WriteOKResponse(ctx, w, mongowire.OP_REPLY, DownloadMongoDBCommand)
 }
 
 func (s *service) getLogStream(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := getLogStreamRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "could not read request"), DownloadMongoDBCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), DownloadMongoDBCommand)
 		return
 	}
 	id := req.Params.ID
@@ -230,7 +230,7 @@ func (s *service) getLogStream(ctx context.Context, w io.Writer, msg mongowire.M
 
 	proc, err := s.manager.Get(ctx, id)
 	if err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "could not get process"), GetLogStreamCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not get process"), GetLogStreamCommand)
 		return
 	}
 
@@ -239,13 +239,13 @@ func (s *service) getLogStream(ctx context.Context, w io.Writer, msg mongowire.M
 	if err == io.EOF {
 		done = true
 	} else if err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "could not get logs"), GetLogStreamCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not get logs"), GetLogStreamCommand)
 		return
 	}
 
-	resp, err := shell.ResponseToMessage(makeGetLogStreamResponse(logs, done))
+	resp, err := shell.ResponseToMessage(mongowire.OP_REPLY, makeGetLogStreamResponse(logs, done))
 	if err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "could not make response"), GetLogStreamCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not make response"), GetLogStreamCommand)
 		return
 	}
 
@@ -255,14 +255,14 @@ func (s *service) getLogStream(ctx context.Context, w io.Writer, msg mongowire.M
 func (s *service) getBuildloggerURLs(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := &getBuildloggerURLsRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "could not read request"), GetBuildloggerURLsCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), GetBuildloggerURLsCommand)
 		return
 	}
 	id := req.ID
 
 	proc, err := s.manager.Get(ctx, id)
 	if err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "could not get process"), GetBuildloggerURLsCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not get process"), GetBuildloggerURLsCommand)
 		return
 	}
 
@@ -273,13 +273,13 @@ func (s *service) getBuildloggerURLs(ctx context.Context, w io.Writer, msg mongo
 		}
 	}
 	if len(urls) == 0 {
-		shell.WriteErrorResponse(ctx, w, errors.Errorf("process '%s' does not use buildlogger", proc.ID()), GetBuildloggerURLsCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Errorf("process '%s' does not use buildlogger", proc.ID()), GetBuildloggerURLsCommand)
 		return
 	}
 
-	resp, err := shell.ResponseToMessage(urls)
+	resp, err := shell.ResponseToMessage(mongowire.OP_REPLY, urls)
 	if err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "could not make response"), GetBuildloggerURLsCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not make response"), GetBuildloggerURLsCommand)
 		return
 	}
 	shell.WriteResponse(ctx, w, resp, GetBuildloggerURLsCommand)
@@ -288,15 +288,15 @@ func (s *service) getBuildloggerURLs(ctx context.Context, w io.Writer, msg mongo
 func (s *service) signalEvent(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := &signalEventRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrap(err, "could not read request"), SignalEventCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), SignalEventCommand)
 		return
 	}
 	name := req.Name
 
 	if err := jasper.SignalEvent(ctx, name); err != nil {
-		shell.WriteErrorResponse(ctx, w, errors.Wrapf(err, "could not signal event '%s'", name), SignalEventCommand)
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrapf(err, "could not signal event '%s'", name), SignalEventCommand)
 		return
 	}
 
-	shell.WriteOKResponse(ctx, w, SignalEventCommand)
+	shell.WriteOKResponse(ctx, w, mongowire.OP_REPLY, SignalEventCommand)
 }

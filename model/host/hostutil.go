@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -137,27 +138,31 @@ func (h *Host) GetSSHInfo() (*util.StaticHostInfo, error) {
 	return hostInfo, nil
 }
 
-func (h *Host) GetSSHKeyPath(settings *evergreen.Settings) (string, error) {
-	keyPath := settings.Keys[h.Distro.SSHKey]
-	if keyPath == "" {
-		return "", errors.New("no SSH key specified for host")
-	}
-
-	return keyPath, nil
-}
-
 // GetSSHOptions returns the options to SSH into this host.
-// EVG-6389: this currently relies on the fact that the EC2 provider has a
-// single distro-level SSH key name corresponding to an existing SSH key file on
-// the app servers. We should be able to handle multiple keys configured in
-// admin settings rather than from a file name in distro settings.
 func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
-	keyPath, err := h.GetSSHKeyPath(settings)
-	if err != nil {
-		return nil, errors.WithStack(err)
+	var keyPaths []string
+	for _, pair := range settings.SSHKeyPairs {
+		if _, err := os.Stat(pair.PrivatePath(settings)); err == nil {
+			keyPaths = append(keyPaths, pair.PrivatePath(settings))
+		} else {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message": "could not find local SSH key file (this should only be a temporary problem)",
+				"key":     pair.Name,
+			}))
+		}
+	}
+	if defaultKeyPath := settings.Keys[h.Distro.SSHKey]; defaultKeyPath != "" {
+		keyPaths = append(keyPaths, defaultKeyPath)
+	}
+	if len(keyPaths) == 0 {
+		return nil, errors.New("no SSH identity files available")
 	}
 
-	opts := []string{"-i", keyPath}
+	opts := []string{}
+	for _, path := range keyPaths {
+		opts = append(opts, "-i", path)
+	}
+
 	hasKnownHostsFile := false
 
 	for _, opt := range h.Distro.SSHOptions {
@@ -686,7 +691,7 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 	defer func() {
 		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
-			"host":    h.Id,
+			"host_id": h.Id,
 			"distro":  h.Distro.Id,
 		}))
 	}()
@@ -708,7 +713,7 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 	}
 
 	catcher := grip.NewBasicCatcher()
-	if _, err := proc.Wait(ctx); err != nil {
+	if _, err = proc.Wait(ctx); err != nil {
 		catcher.Wrap(err, "problem waiting for process completion")
 	}
 
@@ -730,7 +735,7 @@ func (h *Host) StartJasperProcess(ctx context.Context, env evergreen.Environment
 	defer func() {
 		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
-			"host":    h.Id,
+			"host_id": h.Id,
 			"distro":  h.Distro.Id,
 		}))
 	}()
@@ -753,7 +758,7 @@ func (h *Host) GetJasperProcess(ctx context.Context, env evergreen.Environment, 
 	defer func() {
 		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
-			"host":    h.Id,
+			"host_id": h.Id,
 			"distro":  h.Distro.Id,
 		}))
 	}()
@@ -793,7 +798,7 @@ const jasperDialTimeout = 15 * time.Second
 // JasperClient returns a remote client that communicates with this host's
 // Jasper service.
 func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (remote.Manager, error) {
-	if (h.LegacyBootstrap() || h.LegacyCommunication()) && h.NeedsReprovision != ReprovisionToLegacy {
+	if (h.Distro.LegacyBootstrap() || h.Distro.LegacyCommunication()) && h.NeedsReprovision != ReprovisionToLegacy {
 		return nil, errors.New("legacy host does not support remote Jasper process management")
 	}
 
@@ -899,7 +904,7 @@ func (h *Host) StartAgentMonitorRequest(settings *evergreen.Settings) (string, e
 // StopAgentMonitor stops the agent monitor (if it is running) on the host via
 // its Jasper service . On legacy hosts, this is a no-op.
 func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) error {
-	if (h.LegacyBootstrap() && h.NeedsReprovision != ReprovisionToLegacy) || h.NeedsReprovision == ReprovisionToNew {
+	if (h.Distro.LegacyBootstrap() && h.NeedsReprovision != ReprovisionToLegacy) || h.NeedsReprovision == ReprovisionToNew {
 		return nil
 	}
 
@@ -910,7 +915,7 @@ func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) 
 	defer func() {
 		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
-			"host":    h.Id,
+			"host_id": h.Id,
 			"distro":  h.Distro.Id,
 		}))
 	}()
@@ -922,7 +927,7 @@ func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) 
 
 	grip.WarningWhen(len(procs) != 1, message.Fields{
 		"message": fmt.Sprintf("host should be running exactly one agent monitor, but found %d", len(procs)),
-		"host":    h.Id,
+		"host_id": h.Id,
 		"distro":  h.Distro.Id,
 	})
 
@@ -1104,7 +1109,7 @@ func (h *Host) SetUserDataHostProvisioned() error {
 
 	grip.Info(message.Fields{
 		"message":              "host successfully provisioned",
-		"host":                 h.Id,
+		"host_id":              h.Id,
 		"distro":               h.Distro.Id,
 		"time_to_running_secs": time.Since(h.CreationTime).Seconds(),
 	})

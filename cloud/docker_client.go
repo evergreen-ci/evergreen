@@ -95,7 +95,7 @@ func (c *dockerClientImpl) generateClient(h *host.Host) (*docker.Client, error) 
 	if err != nil {
 		grip.Error(message.Fields{
 			"message":     "Docker initialize client API call failed",
-			"host":        h.Id,
+			"host_id":     h.Id,
 			"error":       err,
 			"endpoint":    endpoint,
 			"api_version": c.apiVersion,
@@ -158,7 +158,7 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 	grip.Info(message.Fields{
 		"operation":     "EnsureImageDownloaded",
 		"details":       "ImageInspectWithRaw",
-		"host":          h.Id,
+		"host_id":       h.Id,
 		"duration_secs": time.Since(start).Seconds(),
 	})
 	if err == nil {
@@ -171,7 +171,7 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 				"operation":     "EnsureImageDownloaded",
 				"details":       "import image",
 				"options_image": options.Image,
-				"host":          h.Id,
+				"host_id":       h.Id,
 				"duration_secs": time.Since(start).Seconds(),
 			})
 			return imageName, errors.Wrap(err, "error importing image")
@@ -185,7 +185,7 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 				"operation":     "EnsureImageDownloaded",
 				"details":       "pull image",
 				"options_image": options.Image,
-				"host":          h.Id,
+				"host_id":       h.Id,
 				"duration_secs": time.Since(start).Seconds(),
 			})
 			return imageName, errors.Wrap(err, "error pulling image")
@@ -269,7 +269,7 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 		"operation": "BuildImageWithAgent",
 		"details":   "generateclient",
 		"duration":  time.Since(start),
-		"host":      h.Id,
+		"host_id":   h.Id,
 		"span":      time.Since(start).String(),
 	})
 
@@ -312,7 +312,7 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 		"operation": "BuildImageWithAgent",
 		"details":   "ImageBuild",
 		"duration":  time.Since(start),
-		"host":      h.Id,
+		"host_id":   h.Id,
 		"span":      time.Since(start).String(),
 	})
 	grip.Info(msg)
@@ -327,7 +327,7 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 		"operation": "BuildImageWithAgent",
 		"details":   "ReadAll",
 		"duration":  time.Since(start),
-		"host":      h.Id,
+		"host_id":   h.Id,
 		"span":      time.Since(start).String(),
 	})
 

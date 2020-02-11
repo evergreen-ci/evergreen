@@ -186,7 +186,7 @@ func (j *collectHostIdleDataJob) getHostStatsMessage(cost float64, idleTime time
 		"distro":       j.host.Distro.Id,
 		"provider":     j.host.Distro.Provider,
 		"provisioning": j.host.Distro.BootstrapSettings.Method,
-		"host":         j.host.Id,
+		"host_id":      j.host.Id,
 		"status":       j.host.Status,
 		"idle_secs":    idleTime.Seconds(),
 	}

@@ -26,6 +26,7 @@ type JobTest struct {
 	T           amboy.JobType       `bson:"type" json:"type" yaml:"type"`
 	Stat        amboy.JobStatusInfo `bson:"status" json:"status" yaml:"status"`
 	TimingInfo  amboy.JobTimeInfo   `bson:"time_info" json:"time_info" yaml:"time_info"`
+	LockScopes  []string            `bson:"scopes" json:"scopes" yaml:"scopes"`
 
 	dep dependency.Manager
 }
@@ -134,4 +135,12 @@ func (j *JobTest) TimeInfo() amboy.JobTimeInfo {
 
 func (j *JobTest) UpdateTimeInfo(i amboy.JobTimeInfo) {
 	j.TimingInfo = i
+}
+
+func (j *JobTest) SetScopes(in []string) {
+	j.LockScopes = in
+}
+
+func (j *JobTest) Scopes() []string {
+	return j.LockScopes
 }

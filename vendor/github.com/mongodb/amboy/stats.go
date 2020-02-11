@@ -64,11 +64,11 @@ func (s QueueStats) Priority() level.Priority { return s.priority }
 // SetPriority  is part of the grip/message.Composer interface and
 // allows the caller to configure the piroity of the message.
 func (s *QueueStats) SetPriority(l level.Priority) error {
-	if level.IsValidPriority(l) {
-		s.priority = l
-		return nil
+	if !l.IsValid() {
+		return errors.Errorf("%s (%d) is not a valid level", l, l)
 	}
-	return errors.Errorf("%s (%d) is not a valid level", l, l)
+	s.priority = l
+	return nil
 }
 
 // Annotate is part of the grip/message.Composer interface and allows

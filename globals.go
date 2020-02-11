@@ -155,6 +155,7 @@ const (
 	PowerShellSetupScriptName     = "setup.ps1"
 	PowerShellTempSetupScriptName = "setup-temp.ps1"
 	TeardownScriptName            = "teardown.sh"
+	HomeVolumeDir                 = "user_home"
 
 	RoutePaginatorNextPageHeaderKey = "Link"
 
@@ -196,7 +197,7 @@ const (
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
 
 	// TODO: remove this when degrading YAML
-	UseParserProject = true
+	UseParserProject = false
 )
 
 func IsFinishedTaskStatus(status string) bool {

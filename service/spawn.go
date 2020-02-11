@@ -115,7 +115,8 @@ func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request
 	for _, d := range distros {
 		if d.SpawnAllowed {
 			distroList = append(distroList, map[string]interface{}{
-				"name": d.Id,
+				"name":          d.Id,
+				"mount_allowed": d.JasperCommunication() && d.IsLinux() && d.HomeVolumeSettings.FormatCommand != "",
 			})
 		}
 	}
@@ -126,15 +127,17 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	authedUser := MustHaveUser(r)
 
 	putParams := struct {
-		Task          string     `json:"task_id"`
-		Distro        string     `json:"distro"`
-		KeyName       string     `json:"key_name"`
-		PublicKey     string     `json:"public_key"`
-		SaveKey       bool       `json:"save_key"`
-		UserData      string     `json:"userdata"`
-		UseTaskConfig bool       `json:"use_task_config"`
-		InstanceTags  []host.Tag `json:"instance_tags"`
-		InstanceType  string     `json:"instance_type"`
+		Task           string     `json:"task_id"`
+		Distro         string     `json:"distro"`
+		KeyName        string     `json:"key_name"`
+		PublicKey      string     `json:"public_key"`
+		SaveKey        bool       `json:"save_key"`
+		UserData       string     `json:"userdata"`
+		UseTaskConfig  bool       `json:"use_task_config"`
+		AttachVolume   bool       `json:"attach_volume"`
+		HomeVolumeSize int        `json:"home_volume_size"`
+		InstanceTags   []host.Tag `json:"instance_tags"`
+		InstanceType   string     `json:"instance_type"`
 	}{}
 
 	err := util.ReadJSONInto(util.NewRequestReader(r), &putParams)
@@ -153,12 +156,14 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	}
 	hc := &data.DBConnector{}
 	options := &restModel.HostRequestOptions{
-		DistroID:     putParams.Distro,
-		KeyName:      putParams.PublicKey,
-		TaskID:       putParams.Task,
-		UserData:     putParams.UserData,
-		InstanceTags: putParams.InstanceTags,
-		InstanceType: putParams.InstanceType,
+		DistroID:       putParams.Distro,
+		KeyName:        putParams.PublicKey,
+		TaskID:         putParams.Task,
+		UserData:       putParams.UserData,
+		InstanceTags:   putParams.InstanceTags,
+		InstanceType:   putParams.InstanceType,
+		AttachVolume:   putParams.AttachVolume,
+		HomeVolumeSize: putParams.HomeVolumeSize,
 	}
 	spawnHost, err := hc.NewIntentHost(options, authedUser)
 
@@ -233,7 +238,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel = context.WithCancel(r.Context())
 		defer cancel()
 
-		if err := cloud.TerminateSpawnHost(ctx, uis.env, h, u.Id, fmt.Sprintf("terminated via UI by %s", u.Username())); err != nil {
+		if err = cloud.TerminateSpawnHost(ctx, uis.env, h, u.Id, fmt.Sprintf("terminated via UI by %s", u.Username())); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
@@ -311,13 +316,14 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 
 	case HostExpirationExtension:
 		if updateParams.Expiration.IsZero() { // set expiration to never expire
-			settings, err := evergreen.GetConfig()
+			var settings *evergreen.Settings
+			settings, err = evergreen.GetConfig()
 			if err != nil {
 				PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error updating host expiration"))
 				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error retrieving settings"))
 				return
 			}
-			if err := route.CheckUnexpirableHostLimitExceeded(u.Id, settings.UnexpirableHostsPerUser); err != nil {
+			if err = route.CheckUnexpirableHostLimitExceeded(u.Id, settings.UnexpirableHostsPerUser); err != nil {
 				PushFlash(uis.CookieStore, r, w, NewErrorFlash(err.Error()))
 				uis.LoggedError(w, r, http.StatusBadRequest, err)
 				return
@@ -356,7 +362,8 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		loc, err := time.LoadLocation(u.Settings.Timezone)
+		var loc *time.Location
+		loc, err = time.LoadLocation(u.Settings.Timezone)
 		if err != nil || loc == nil {
 			loc = time.UTC
 		}

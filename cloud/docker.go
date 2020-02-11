@@ -6,12 +6,16 @@ import (
 	"time"
 
 	"github.com/docker/docker/client"
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // dockerManager implements the Manager interface for Docker.
@@ -41,6 +45,41 @@ func (settings *dockerSettings) Validate() error {
 	return nil
 }
 
+func (s *dockerSettings) FromDistroSettings(d distro.Distro, _ string) error {
+	if d.ProviderSettings != nil {
+		if err := mapstructure.Decode(d.ProviderSettings, s); err != nil {
+			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, s)
+		}
+		bytes, err := bson.Marshal(s)
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		doc := &birch.Document{}
+		if err := doc.UnmarshalBSON(bytes); err != nil {
+			return errors.Wrapf(err, "error unmarshalling settings bytes into document")
+		}
+		if len(d.ProviderSettingsList) == 0 {
+			if err := d.UpdateProviderSettings(doc); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"distro":   d.Id,
+					"provider": d.Provider,
+					"settings": d.ProviderSettings,
+				}))
+				return errors.Wrapf(err, "error updating provider settings")
+			}
+		}
+	} else if len(d.ProviderSettingsList) != 0 {
+		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		if err := bson.Unmarshal(bytes, s); err != nil {
+			return errors.Wrap(err, "error unmarshalling bson into provider settings")
+		}
+	}
+	return nil
+}
+
 // GetSettings returns an empty ProviderSettings struct.
 func (*dockerManager) GetSettings() ProviderSettings {
 	return &dockerSettings{}
@@ -53,8 +92,8 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 			evergreen.ProviderNameDocker, h.Distro.Id, h.Distro.Provider)
 	}
 
-	if h.DockerOptions.Image == "" {
-		return nil, errors.Errorf("Docker image empty for host '%s'", h.Id)
+	if err := h.DockerOptions.Validate(); err != nil {
+		return nil, errors.Wrapf(err, "Docker options not valid for host '%s'", h.Id)
 	}
 
 	// get parent of host
@@ -67,17 +106,12 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		return nil, errors.Wrapf(err, "Error getting host IP for parent host %s", parentHost.Id)
 	}
 
-	settings := dockerSettings{ImageURL: h.DockerOptions.Image}
-	if err = settings.Validate(); err != nil {
-		return nil, errors.Wrapf(err, "Invalid Docker settings for host '%s'", h.Id)
-	}
-
 	// Create container
 	if err = m.client.CreateContainer(ctx, parentHost, h); err != nil {
 		err = errors.Wrapf(err, "Failed to create container for host '%s'", h.Id)
 		grip.Info(message.WrapError(err, message.Fields{
 			"message": "spawn container host failed",
-			"host":    h.Id,
+			"host_id": h.Id,
 		}))
 		return nil, err
 	}
@@ -100,14 +134,14 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		}
 		grip.Info(message.WrapError(err, message.Fields{
 			"message": "start container host failed",
-			"host":    h.Id,
+			"host_id": h.Id,
 		}))
 		return nil, err
 	}
 
 	grip.Info(message.Fields{
 		"message": "created and started Docker container",
-		"host":    h.Id,
+		"host_id": h.Id,
 	})
 
 	return h, nil
@@ -365,7 +399,7 @@ func (m *dockerManager) GetContainerImage(ctx context.Context, parent *host.Host
 	grip.Info(message.Fields{
 		"operation": "EnsureImageDownloaded",
 		"details":   "total",
-		"host":      parent.Id,
+		"host_id":   parent.Id,
 		"image":     image,
 		"duration":  time.Since(start),
 		"span":      time.Since(start).String(),
@@ -382,11 +416,15 @@ func (m *dockerManager) GetContainerImage(ctx context.Context, parent *host.Host
 	}
 	grip.Info(message.Fields{
 		"operation": "BuildImageWithAgent",
-		"host":      parent.Id,
+		"host_id":   parent.Id,
 		"details":   "total",
 		"duration":  time.Since(start),
 		"span":      time.Since(start).String(),
 	})
 
+	return nil
+}
+
+func (m *dockerManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
 	return nil
 }

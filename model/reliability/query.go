@@ -94,7 +94,7 @@ func (s *TaskReliability) calculateSuccessRate() {
 	p := 0.0
 
 	if total != 0 {
-		p := success / total
+		p = success / total
 
 		dist := s.Z * math.Sqrt((p*(1.-p)+s.Z*s.Z/(4.*total))/total)
 		denominator := 1. + s.Z*s.Z/total

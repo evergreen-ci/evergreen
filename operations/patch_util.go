@@ -475,7 +475,7 @@ func gitFormatPatch(base string, ref, commits string) (string, error) {
 	if commits != "" {
 		revisionRange = formatCommitRange(commits)
 	}
-	return gitCmd("format-patch", "--keep-subject", "--no-signature", "--stdout", "--no-ext-diff", "--summary", "--binary", revisionRange)
+	return gitCmd("format-patch", "--keep-subject", "--no-signature", "--stdout", "--no-ext-diff", "--binary", revisionRange)
 }
 
 // getLog runs "git log <base>...<ref> or uses the commit range given

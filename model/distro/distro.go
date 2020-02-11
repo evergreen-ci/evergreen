@@ -8,12 +8,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type Distro struct {
@@ -23,6 +27,7 @@ type Distro struct {
 	WorkDir               string                  `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
 	Provider              string                  `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
 	ProviderSettings      *map[string]interface{} `bson:"settings" json:"settings,omitempty" mapstructure:"settings,omitempty"`
+	ProviderSettingsList  []*birch.Document       `bson:"provider_settings,omitempty" json:"provider_settings,omitempty" mapstructure:"provider_settings,omitempty"`
 	SetupAsSudo           bool                    `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`
 	Setup                 string                  `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
 	Teardown              string                  `bson:"teardown,omitempty" json:"teardown,omitempty" mapstructure:"teardown,omitempty"`
@@ -31,6 +36,7 @@ type Distro struct {
 	CloneMethod           string                  `bson:"clone_method" json:"clone_method,omitempty" mapstructure:"clone_method,omitempty"`
 	SSHKey                string                  `bson:"ssh_key,omitempty" json:"ssh_key,omitempty" mapstructure:"ssh_key,omitempty"`
 	SSHOptions            []string                `bson:"ssh_options,omitempty" json:"ssh_options,omitempty" mapstructure:"ssh_options,omitempty"`
+	AuthorizedKeysFile    string                  `bson:"authorized_keys_file,omitempty" json:"authorized_keys_file,omitempty" mapstructure:"authorized_keys_file,omitempty"`
 	SpawnAllowed          bool                    `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`
 	Expansions            []Expansion             `bson:"expansions,omitempty" json:"expansions,omitempty" mapstructure:"expansions,omitempty"`
 	Disabled              bool                    `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
@@ -43,6 +49,7 @@ type Distro struct {
 	UseLegacyAgent        bool                    `bson:"use_legacy_agent" json:"use_legacy_agent" mapstructure:"use_legacy_agent"`
 	Note                  string                  `bson:"note" json:"note" mapstructure:"note"`
 	ValidProjects         []string                `bson:"valid_projects,omitempty" json:"valid_projects,omitempty" mapstructure:"valid_projects,omitempty"`
+	HomeVolumeSettings    HomeVolumeSettings      `bson:"home_volume_settings" json:"home_volume_settings" mapstructure:"home_volume_settings"`
 }
 
 // BootstrapSettings encapsulates all settings related to bootstrapping hosts.
@@ -67,6 +74,11 @@ type BootstrapSettings struct {
 	ResourceLimits ResourceLimits `bson:"resource_limits,omitempty" json:"resource_limits,omitempty" mapstructure:"resource_limits,omitempty"`
 }
 
+type HomeVolumeSettings struct {
+	DeviceName    string `bson:"device_name" json:"device_name" mapstructure:"device_name"`
+	FormatCommand string `bson:"format_command" json:"format_command" mapstructure:"format_command"`
+}
+
 type EnvVar struct {
 	Key   string `bson:"key" json:"key"`
 	Value string `bson:"value" json:"value"`
@@ -78,6 +90,10 @@ type ResourceLimits struct {
 	NumProcesses    int `bson:"num_processes,omitempty" json:"num_processes,omitempty" mapstructure:"num_processes,omitempty"`
 	LockedMemoryKB  int `bson:"locked_memory,omitempty" json:"locked_memory,omitempty" mapstructure:"locked_memory,omitempty"`
 	VirtualMemoryKB int `bson:"virtual_memory,omitempty" json:"virtual_memory,omitempty" mapstructure:"virtual_memory,omitempty"`
+}
+
+func (d *Distro) SetBSON(raw mgobson.Raw) error {
+	return bson.Unmarshal(raw.Data, d)
 }
 
 // ValidateBootstrapSettings checks if all of the bootstrap settings are valid
@@ -498,6 +514,41 @@ func (distros DistroGroup) GetDistroIds() []string {
 	return ids
 }
 
+func (d *Distro) RemoveExtraneousProviderSettings(region string) {
+	if len(d.ProviderSettingsList) <= 1 {
+		return
+	}
+	doc, err := d.GetProviderSettingByRegion(region)
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":       "provider list missing region",
+			"distro":        d.Id,
+			"region":        region,
+			"settings_list": d.ProviderSettingsList,
+		}))
+		return
+	}
+	d.ProviderSettingsList = []*birch.Document{doc}
+}
+
+func (d *Distro) GetProviderSettingByRegion(region string) (*birch.Document, error) {
+	// if no region given, we assume the provided settings list is accurate
+	if region == "" {
+		if len(d.ProviderSettingsList) > 1 {
+			return nil, errors.Errorf("multiple provider settings available but no region given")
+		}
+		return d.ProviderSettingsList[0], nil
+	}
+	for _, s := range d.ProviderSettingsList {
+		if val, ok := s.Lookup("region").StringValueOK(); ok {
+			if val == region {
+				return s, nil
+			}
+		}
+	}
+	return nil, errors.Errorf("distro '%s' has no settings for region '%s'", d.Id, region)
+}
+
 // GetResolvedHostAllocatorSettings combines the distro's HostAllocatorSettings fields with the
 // SchedulerConfig defaults to resolve and validate a canonical set of HostAllocatorSettings' field values.
 func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAllocatorSettings, error) {
@@ -651,4 +702,22 @@ func (d *Distro) AddPermissions(creator *user.DBUser) error {
 		}
 	}
 	return nil
+}
+
+// LegacyBootstrap returns whether hosts of this distro are bootstrapped using the legacy
+// method.
+func (d *Distro) LegacyBootstrap() bool {
+	return d.BootstrapSettings.Method == "" || d.BootstrapSettings.Method == BootstrapMethodLegacySSH
+}
+
+// LegacyCommunication returns whether the app server is communicating with
+// hosts of this distro using the legacy method.
+func (d *Distro) LegacyCommunication() bool {
+	return d.BootstrapSettings.Communication == "" || d.BootstrapSettings.Communication == CommunicationMethodLegacySSH
+}
+
+// JasperCommunication returns whether or not the app server is communicating with
+// hosts of this distro's Jasper service.
+func (d *Distro) JasperCommunication() bool {
+	return d.BootstrapSettings.Communication == CommunicationMethodSSH || d.BootstrapSettings.Communication == CommunicationMethodRPC
 }

@@ -55,9 +55,9 @@ func (p Priority) String() string {
 	}
 }
 
-// IsValidPriority takes a value (generally a number or a Priority
-// value) and returns true if it's valid.
-func IsValidPriority(p Priority) bool {
+// IsValid returns false when the priority valid is not a valid
+// priority value.
+func (p Priority) IsValid() bool {
 	return p > 1 && p <= 100
 }
 

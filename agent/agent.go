@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/command"
@@ -45,6 +46,7 @@ type Options struct {
 	MaxAgentSleepInterval time.Duration
 	Cleanup               bool
 	S3Opts                pail.S3Options
+	SetupData             apimodels.AgentSetupData
 }
 
 type taskContext struct {
@@ -71,9 +73,23 @@ type taskContext struct {
 
 // New creates a new Agent with some Options and a client.Communicator. Call the
 // Agent's Start method to begin listening for tasks to run.
-func New(opts Options, comm client.Communicator) (*Agent, error) {
+func New(ctx context.Context, opts Options, comm client.Communicator) (*Agent, error) {
 	comm.SetHostID(opts.HostID)
 	comm.SetHostSecret(opts.HostSecret)
+
+	if setupData, err := comm.GetAgentSetupData(ctx); err != nil {
+		opts.SetupData = *setupData
+		opts.LogkeeperURL = setupData.LogkeeperURL
+		opts.S3BaseURL = setupData.S3Base
+		opts.S3Opts = pail.S3Options{
+			Credentials: pail.CreateAWSCredentials(setupData.S3Key, setupData.S3Secret, ""),
+			Region:      endpoints.UsEast1RegionID,
+			Name:        setupData.S3Bucket,
+			Permissions: pail.S3PermissionsPublicRead,
+			ContentType: "text/plain",
+		}
+	}
+
 	agent := &Agent{
 		opts: opts,
 		comm: comm,
@@ -181,12 +197,12 @@ LOOP:
 				if prevLogger != nil {
 					grip.Error(prevLogger.Close())
 				}
-				if err = a.fetchProjectConfig(ctx, tc); err != nil {
-					grip.Error(message.WrapError(err, message.Fields{
-						"message": "error fetching project config; will attempt at a later point",
-						"task":    tc.task.ID,
-					}))
-				}
+
+				grip.Error(message.WrapError(a.fetchProjectConfig(ctx, tc), message.Fields{
+					"message": "error fetching project config; will attempt at a later point",
+					"task":    tc.task.ID,
+				}))
+
 				a.jasper.Clear(ctx)
 				tc.jasper = a.jasper
 				shouldExit, err := a.runTask(tskCtx, tc)
@@ -301,7 +317,7 @@ func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
 		return err
 	}
 
-	sender, err := GetSender(ctx, a.opts.LogPrefix, tc.task.ID)
+	sender, err := a.GetSender(ctx, a.opts.LogPrefix, tc.task.ID)
 	grip.Error(errors.Wrap(err, "problem getting sender"))
 	grip.Error(errors.Wrap(grip.SetSender(sender), "problem setting sender"))
 
@@ -414,8 +430,13 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 	}
 	if taskGroup.Timeout != nil {
 		err := a.runCommands(ctx, tc, taskGroup.Timeout.List(), runCommandsOptions{})
-		tc.logger.Execution().ErrorWhenf(err != nil, "Error running timeout command: %v", err)
-		tc.logger.Task().InfoWhenf(err == nil, "Finished running timeout commands in %v.", time.Since(start).String())
+		tc.logger.Execution().Error(message.WrapError(err, message.Fields{
+			"message": "Error running timeout command",
+		}))
+		tc.logger.Task().InfoWhen(err == nil, message.Fields{
+			"message":    "Finished running timeout commands",
+			"total_time": time.Since(start).String(),
+		})
 	}
 }
 
@@ -447,6 +468,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) 
 		err := a.uploadToS3(ctx, tc)
 		tc.logger.Execution().Error(errors.Wrap(err, "error uploading log files"))
 		tc.logger.Execution().Infof("Sending final status as: %v", detail.Status)
+		grip.Error(tc.logger.Flush(ctx))
 	}
 	grip.Infof("Sending final status as: %v", detail.Status)
 	resp, err := a.comm.EndTask(ctx, detail, tc.task)
@@ -490,8 +512,13 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 	}
 	if taskGroup.TeardownTask != nil {
 		err := a.runCommands(ctx, tc, taskGroup.TeardownTask.List(), runCommandsOptions{})
-		tc.logger.Task().ErrorWhenf(err != nil, "Error running post-task command: %v", err)
-		tc.logger.Task().InfoWhenf(err == nil, "Finished running post-task commands in %v.", time.Since(start).String())
+		tc.logger.Task().Error(message.WrapError(err, message.Fields{
+			"message": "Error running post-task command.",
+		}))
+		tc.logger.Task().InfoWhen(err == nil, message.Fields{
+			"message":    "Finished running post-task commands.",
+			"total_time": time.Since(start).String(),
+		})
 	}
 }
 
@@ -518,7 +545,9 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()
 		err := a.runCommands(ctx, tc, taskGroup.TeardownGroup.List(), runCommandsOptions{})
-		grip.ErrorWhenf(err != nil, "Error running post-task command: %v", err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "Error running post-task command.",
+		}))
 		grip.InfoWhen(err == nil, "Finished running post-group commands")
 	}
 }
@@ -541,7 +570,8 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 		}
 
 		logger.Info("cleaning up Docker artifacts")
-		ctx, cancel := context.WithTimeout(ctx, dockerTimeout)
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, dockerTimeout)
 		defer cancel()
 		if err := docker.Cleanup(ctx, logger); err != nil {
 			msg := fmt.Sprintf("Error cleaning up Docker artifacts (agent-exit): %s", err)

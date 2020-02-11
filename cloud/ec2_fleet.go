@@ -71,9 +71,11 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 	defer m.client.Close()
 
 	ec2Settings := &EC2ProviderSettings{}
-	err := ec2Settings.fromDistroSettings(h.Distro)
-	if err != nil {
+	if err := ec2Settings.FromDistroSettings(h.Distro, ""); err != nil {
 		return nil, errors.Wrap(err, "error getting EC2 settings")
+	}
+	if err := ec2Settings.Validate(); err != nil {
+		return nil, errors.Wrapf(err, "Invalid EC2 settings in distro %s: %+v", h.Distro.Id, ec2Settings)
 	}
 
 	if ec2Settings.KeyName == "" && !h.UserHost {
@@ -96,7 +98,7 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 		msg := "error spawning spot host with Fleet"
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       msg,
-			"host":          h.Id,
+			"host_id":       h.Id,
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		}))
@@ -104,7 +106,7 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 	}
 	grip.Debug(message.Fields{
 		"message":       "spawned spot host with Fleet",
-		"host":          h.Id,
+		"host_id":       h.Id,
 		"host_provider": h.Distro.Provider,
 		"distro":        h.Distro.Id,
 	})
@@ -155,7 +157,7 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 			// cache instance information so we can make fewer calls to AWS's API
 			grip.Error(message.WrapError(cacheHostData(ctx, &h, instanceMap[h.Id], m.client), message.Fields{
 				"message": "can't update host cached data",
-				"host":    h.Id,
+				"host_id": h.Id,
 			}))
 		}
 		statuses = append(statuses, status)
@@ -175,7 +177,7 @@ func (m *ec2FleetManager) GetInstanceStatus(ctx context.Context, h *host.Host) (
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error getting instance info",
-			"host":          h.Id,
+			"host_id":       h.Id,
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		}))
@@ -190,7 +192,7 @@ func (m *ec2FleetManager) GetInstanceStatus(ctx context.Context, h *host.Host) (
 		// cache instance information so we can make fewer calls to AWS's API
 		grip.Error(message.WrapError(cacheHostData(ctx, h, instance, m.client), message.Fields{
 			"message": "can't update host cached data",
-			"host":    h.Id,
+			"host_id": h.Id,
 		}))
 	}
 
@@ -213,7 +215,7 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error terminating instance",
 			"user":          user,
-			"host":          h.Id,
+			"host_id":       h.Id,
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		}))
@@ -226,7 +228,7 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 				"message":       "state change missing instance ID",
 				"user":          user,
 				"host_provider": h.Distro.Provider,
-				"host":          h.Id,
+				"host_id":       h.Id,
 				"distro":        h.Distro.Id,
 			})
 			return errors.New("invalid terminate instances response")
@@ -236,7 +238,7 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 			"user":          user,
 			"host_provider": h.Distro.Provider,
 			"instance_id":   *stateChange.InstanceId,
-			"host":          h.Id,
+			"host_id":       h.Id,
 			"distro":        h.Distro.Id,
 		})
 	}
@@ -282,7 +284,7 @@ func (m *ec2FleetManager) OnUp(ctx context.Context, h *host.Host) error {
 	if err := m.client.SetTags(ctx, resources, h); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error attaching tags",
-			"host":          h.Id,
+			"host_id":       h.Id,
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		}))
@@ -290,7 +292,7 @@ func (m *ec2FleetManager) OnUp(ctx context.Context, h *host.Host) error {
 	}
 	grip.Debug(message.Fields{
 		"message":       "attached tags for host",
-		"host":          h.Id,
+		"host_id":       h.Id,
 		"host_provider": h.Distro.Provider,
 		"distro":        h.Distro.Id,
 	})
@@ -364,7 +366,7 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 			_, err := m.client.DeleteLaunchTemplate(ctx, &ec2.DeleteLaunchTemplateInput{LaunchTemplateId: templateID})
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":  "can't delete launch template",
-				"host":     h.Id,
+				"host_id":  h.Id,
 				"template": *templateID,
 			}))
 		}
@@ -535,4 +537,13 @@ func subnetMatchesAz(subnet *ec2.Subnet) bool {
 	}
 
 	return false
+}
+
+func (m *ec2FleetManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+
+	return errors.Wrap(addSSHKey(ctx, m.client, pair), "could not add SSH key")
 }

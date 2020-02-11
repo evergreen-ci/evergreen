@@ -1,6 +1,7 @@
 package send
 
 import (
+	"context"
 	"errors"
 
 	"github.com/mongodb/grip/level"
@@ -107,3 +108,5 @@ func (s *InternalSender) Send(m message.Composer) {
 		Logged:   s.Level().ShouldLog(m),
 	}
 }
+
+func (s *InternalSender) Flush(_ context.Context) error { return nil }

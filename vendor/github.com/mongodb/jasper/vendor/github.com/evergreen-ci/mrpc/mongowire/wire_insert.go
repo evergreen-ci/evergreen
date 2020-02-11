@@ -2,7 +2,6 @@ package mongowire
 
 import (
 	"github.com/evergreen-ci/birch"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -37,14 +36,12 @@ func (m *insertMessage) Serialize() []byte {
 	m.header.WriteInto(buf)
 
 	loc := 16
+	loc += writeInt32(m.Flags, buf, loc)
 
-	writeInt32(m.Flags, buf, loc)
-	loc += 4
-
-	writeCString(m.Namespace, buf, &loc)
+	loc += writeCString(m.Namespace, buf, loc)
 
 	for _, d := range m.Docs {
-		loc += writeDocAt(loc, &d, buf)
+		loc += writeDocAt(&d, buf, loc)
 	}
 
 	return buf
@@ -61,8 +58,6 @@ func (h *MessageHeader) parseInsertMessage(buf []byte) (Message, error) {
 	if len(buf) < 4 {
 		return m, errors.New("invalid insert message -- message must have length of at least 4 bytes")
 	}
-
-	grip.Debug("ConnectionPool::Get")
 
 	m.Flags = readInt32(buf[loc:])
 	loc += 4

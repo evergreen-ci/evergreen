@@ -23,6 +23,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
@@ -37,6 +38,8 @@ type shuffledLocal struct {
 	capacity   int
 	id         string
 	starter    sync.Once
+	scopes     ScopeManager
+	dispatcher Dispatcher
 	runner     amboy.Runner
 }
 
@@ -44,10 +47,11 @@ type shuffledLocal struct {
 // order of jobs, relative the insertion order.
 func NewShuffledLocal(workers, capacity int) amboy.Queue {
 	q := &shuffledLocal{
+		scopes:   NewLocalScopeManager(),
 		capacity: capacity,
 		id:       fmt.Sprintf("queue.local.unordered.shuffled.%s", uuid.NewV4().String()),
 	}
-
+	q.dispatcher = NewDispatcher(q)
 	q.runner = pool.NewLocalWorkers(workers, q)
 	return q
 }
@@ -356,6 +360,10 @@ func (q *shuffledLocal) Next(ctx context.Context) amboy.Job {
 				continue
 			}
 
+			if err := q.scopes.Acquire(j.ID(), j.Scopes()); err != nil {
+				continue
+			}
+
 			select {
 			case <-ctx.Done():
 				return
@@ -371,7 +379,16 @@ func (q *shuffledLocal) Next(ctx context.Context) amboy.Job {
 	case <-ctx.Done():
 		return nil
 	case q.operations <- op:
-		return <-ret
+		j := <-ret
+		if j == nil {
+			return nil
+		}
+		if err := q.dispatcher.Dispatch(ctx, j); err != nil {
+			q.Put(ctx, j)
+			return nil
+		}
+
+		return j
 	}
 }
 
@@ -383,13 +400,13 @@ func (q *shuffledLocal) Complete(ctx context.Context, j amboy.Job) {
 		return
 	}
 
+	q.dispatcher.Complete(ctx, j)
 	op := func(
 		pending map[string]amboy.Job,
 		completed map[string]amboy.Job,
 		dispatched map[string]amboy.Job,
 		toDelete *fixedStorage,
 	) {
-
 		id := j.ID()
 
 		completed[id] = j
@@ -401,6 +418,15 @@ func (q *shuffledLocal) Complete(ctx context.Context, j amboy.Job) {
 				delete(completed, toDelete.Pop())
 			}
 		}
+
+		grip.Warning(message.WrapError(
+			q.scopes.Release(j.ID(), j.Scopes()),
+			message.Fields{
+				"id":     j.ID(),
+				"scopes": j.Scopes(),
+				"queue":  q.ID(),
+				"op":     "releasing scope lock during completion",
+			}))
 	}
 
 	select {

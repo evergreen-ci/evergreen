@@ -65,13 +65,14 @@ func (s *StatusSuite) TestProcessTreeInfo() {
 }
 
 func (s *StatusSuite) TestAgentStartsStatusServer() {
-	agt, err := New(s.testOpts, client.NewMock("url"))
+	ctx, cancel := context.WithCancel(context.Background())
+	s.cancel = cancel
+
+	agt, err := New(ctx, s.testOpts, client.NewMock("url"))
 	s.Require().NoError(err)
 
 	mockCommunicator := agt.comm.(*client.Mock)
 	mockCommunicator.NextTaskIsNil = true
-	ctx, cancel := context.WithCancel(context.Background())
-	s.cancel = cancel
 	go func() {
 		_ = agt.Start(ctx)
 	}()
@@ -85,14 +86,15 @@ func (s *StatusSuite) TestAgentFailsToStartTwice() {
 	resp, err := http.Get("http://127.0.0.1:2287/status")
 	s.Error(err)
 
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	s.cancel = cancel
+
 	s.testOpts.StatusPort = 2287
-	agt, err := New(s.testOpts, client.NewMock("url"))
+	agt, err := New(ctx, s.testOpts, client.NewMock("url"))
 	s.Require().NoError(err)
 
 	mockCommunicator := agt.comm.(*client.Mock)
 	mockCommunicator.NextTaskIsNil = true
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	s.cancel = cancel
 
 	first := make(chan error, 1)
 	go func(c chan error) {
@@ -150,12 +152,14 @@ func (s *StatusSuite) TestCheckOOMSucceeds() {
 	if os.Getenv("IS_DOCKER") == "true" {
 		s.T().Skip("OOM checker is not supported for docker")
 	}
-	agt, err := New(s.testOpts, client.NewMock("url"))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	s.cancel = cancel
+
+	agt, err := New(ctx, s.testOpts, client.NewMock("url"))
 	s.Require().NoError(err)
 	mockCommunicator := agt.comm.(*client.Mock)
 	mockCommunicator.NextTaskIsNil = true
-	ctx, cancel := context.WithCancel(context.Background())
-	s.cancel = cancel
 
 	go func() {
 		_ = agt.Start(ctx)

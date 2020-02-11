@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 
-	"github.com/mongodb/grip/level"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/remote"
@@ -118,7 +117,7 @@ func managerCreateCommand() cli.Command {
 				if opts.SudoUser != "" {
 					cmd.SudoAs(opts.SudoUser)
 				}
-				if level.IsValidPriority(opts.Priority) {
+				if opts.Priority == 0 || opts.Priority.IsValid() {
 					cmd = cmd.Priority(opts.Priority)
 				}
 				return makeOutcomeResponse(cmd.Run(ctx))

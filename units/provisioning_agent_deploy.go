@@ -77,7 +77,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	if flags.AgentStartDisabled {
 		grip.Debug(message.Fields{
 			"mode":     "degraded",
-			"host":     j.HostID,
+			"host_id":  j.HostID,
 			"job":      j.ID(),
 			"job_type": j.Type().Name,
 		})
@@ -97,7 +97,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	}
 	if util.StringSliceContains(evergreen.DownHostStatus, j.host.Status) {
 		grip.Debug(message.Fields{
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"status":  j.host.Status,
 			"message": "host already down, not attempting to deploy agent",
 		})
@@ -118,7 +118,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	if err = j.host.SetNeedsNewAgentAtomically(false); err != nil {
 		grip.Info(message.WrapError(err, message.Fields{
 			"distro":  j.host.Distro,
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"job":     j.ID(),
 			"message": "needs new agent flag already false, not deploying new agent",
 		}))
@@ -134,7 +134,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message": "could not check whether host can retry agent deploy",
-					"host":    j.host.Id,
+					"host_id": j.host.Id,
 					"distro":  j.host.Distro.Id,
 					"job":     j.ID(),
 				}))
@@ -155,7 +155,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 				grip.Error(message.WrapError(j.env.RemoteQueue().Put(ctx, NewDecoHostNotifyJob(j.env, j.host, nil, "error starting agent on host")),
 					message.Fields{
 						"message": fmt.Sprintf("tried %d times to put agent on host", agentPutRetries),
-						"host":    j.host.Id,
+						"host_id": j.host.Id,
 						"distro":  j.host.Distro,
 					}))
 
@@ -166,7 +166,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 			// failure.
 			grip.Info(message.WrapError(j.host.SetNeedsNewAgent(true), message.Fields{
 				"distro":  j.host.Distro,
-				"host":    j.host.Id,
+				"host_id": j.host.Id,
 				"job":     j.ID(),
 				"message": "problem setting needs agent flag to true",
 			}))
@@ -183,7 +183,7 @@ func (j *agentDeployJob) getHostMessage(h host.Host) message.Fields {
 	m := message.Fields{
 		"message":  "starting agent on host",
 		"runner":   "taskrunner",
-		"host":     h.Host,
+		"host_id":  h.Host,
 		"distro":   h.Distro.Id,
 		"provider": h.Distro.Provider,
 	}
@@ -228,7 +228,7 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 		return errors.Wrap(err, "could not prep remote host")
 	}
 
-	grip.Info(message.Fields{"runner": "taskrunner", "message": "prepping host finished successfully", "host": hostObj.Id})
+	grip.Info(message.Fields{"runner": "taskrunner", "message": "prepping host finished successfully", "host_id": hostObj.Id})
 
 	// generate the host secret if none exists
 	if hostObj.Secret == "" {
@@ -243,12 +243,12 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 		event.LogHostAgentDeployFailed(hostObj.Id, err)
 		grip.Info(message.WrapError(err, message.Fields{
 			"message": "error starting agent on remote",
-			"host":    j.HostID,
+			"host_id": j.HostID,
 			"job":     j.ID(),
 		}))
 		return errors.Wrap(err, "could not start agent on remote")
 	}
-	grip.Info(message.Fields{"runner": "taskrunner", "message": "agent successfully started for host", "host": hostObj.Id})
+	grip.Info(message.Fields{"runner": "taskrunner", "message": "agent successfully started for host", "host_id": hostObj.Id})
 
 	if err = hostObj.SetAgentRevision(evergreen.BuildRevision); err != nil {
 		return errors.Wrapf(err, "error setting agent revision on host %s", hostObj.Id)
@@ -274,7 +274,7 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context, hostObj host.Host, 
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error running setup script",
 			"runner":  "taskrunner",
-			"host":    hostObj.Id,
+			"host_id": hostObj.Id,
 			"distro":  hostObj.Distro.Id,
 			"logs":    logs,
 			"job":     j.ID(),
@@ -288,7 +288,7 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context, hostObj host.Host, 
 		grip.Error(message.WrapError(j.env.RemoteQueue().Put(ctx, NewDecoHostNotifyJob(j.env, j.host, nil, "error running setup script on host")),
 			message.Fields{
 				"message": fmt.Sprintf("tried %d times to put agent on host", agentPutRetries),
-				"host":    hostObj.Id,
+				"host_id": hostObj.Id,
 				"distro":  hostObj.Distro,
 			}))
 
@@ -314,7 +314,6 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 		fmt.Sprintf("--host_secret='%s'", hostObj.Secret),
 		fmt.Sprintf("--log_prefix='%s'", filepath.Join(hostObj.Distro.WorkDir, "agent")),
 		fmt.Sprintf("--working_directory='%s'", hostObj.Distro.WorkDir),
-		fmt.Sprintf("--logkeeper_url='%s'", settings.LoggerConfig.LogkeeperURL),
 		"--cleanup",
 	}
 
@@ -322,7 +321,7 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 	remoteCmd := strings.Join(agentCmdParts, " ")
 	grip.Info(message.Fields{
 		"message": "starting agent on host",
-		"host":    hostObj.Id,
+		"host_id": hostObj.Id,
 		"command": remoteCmd,
 		"runner":  "taskrunner",
 	})
@@ -333,31 +332,12 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 		return errors.Wrapf(err, "error parsing ssh info %v", hostObj.Host)
 	}
 
-	// run the command to kick off the agent remotely
-	env := map[string]string{}
-	if sumoEndpoint, ok := settings.Credentials["sumologic"]; ok {
-		env["GRIP_SUMO_ENDPOINT"] = sumoEndpoint
-	}
-
-	if settings.Splunk.Populated() {
-		env["GRIP_SPLUNK_SERVER_URL"] = settings.Splunk.ServerURL
-		env["GRIP_SPLUNK_CLIENT_TOKEN"] = settings.Splunk.Token
-
-		if settings.Splunk.Channel != "" {
-			env["GRIP_SPLUNK_CHANNEL"] = settings.Splunk.Channel
-		}
-	}
-
-	// env["S3_KEY"] = settings.Providers.AWS.S3Key
-	// env["S3_SECRET"] = settings.Providers.AWS.S3Secret
-	env["S3_BUCKET"] = settings.Providers.AWS.Bucket
-
 	ctx, cancel := context.WithTimeout(ctx, sshTimeout)
 	defer cancel()
 
 	remoteCmd = fmt.Sprintf("nohup %s > /tmp/start 2>1 &", remoteCmd)
 
-	startAgentCmd := j.env.JasperManager().CreateCommand(ctx).Environment(env).Append(remoteCmd).
+	startAgentCmd := j.env.JasperManager().CreateCommand(ctx).Append(remoteCmd).
 		User(hostObj.User).Host(hostInfo.Hostname).ExtendRemoteArgs("-p", hostInfo.Port).ExtendRemoteArgs(sshOptions...)
 
 	if err = startAgentCmd.Run(ctx); err != nil {

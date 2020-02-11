@@ -3,7 +3,10 @@ package remote
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io/ioutil"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -23,18 +26,17 @@ import (
 
 func init() {
 	sender := grip.GetSender()
-	grip.Error(sender.SetLevel(send.LevelInfo{Threshold: level.Info}))
+	grip.Error(sender.SetLevel(send.LevelInfo{Default: level.Info, Threshold: level.Info}))
 	grip.Error(grip.SetSender(sender))
 }
 
-type ClientTestCase struct {
-	Name       string
-	Case       func(context.Context, *testing.T, Manager)
-	ShouldSkip bool
+type clientTestCase struct {
+	Name string
+	Case func(context.Context, *testing.T, Manager)
 }
 
-func AddBasicClientTests(modify testutil.OptsModify, tests ...ClientTestCase) []ClientTestCase {
-	return append([]ClientTestCase{
+func addBasicClientTests(modify testutil.OptsModify, tests ...clientTestCase) []clientTestCase {
+	return append([]clientTestCase{
 		{
 			Name: "ValidateFixture",
 			Case: func(ctx context.Context, t *testing.T, client Manager) {
@@ -61,36 +63,13 @@ func AddBasicClientTests(modify testutil.OptsModify, tests ...ClientTestCase) []
 			},
 		},
 		{
-			Name: "ListDoesNotErrorWhenEmpty",
-			Case: func(ctx context.Context, t *testing.T, client Manager) {
-				all, err := client.List(ctx, options.All)
-				require.NoError(t, err)
-				assert.Len(t, all, 0)
-			},
-		},
-		{
-			Name: "CreateProcessFails",
+			Name: "CreateProcessFailsWithEmptyOptions",
 			Case: func(ctx context.Context, t *testing.T, client Manager) {
 				opts := &options.Create{}
 				modify(opts)
 				proc, err := client.CreateProcess(ctx, opts)
 				require.Error(t, err)
 				assert.Nil(t, proc)
-			},
-		},
-		{
-			Name: "ListAllReturnsErrorWithCanceledContext",
-			Case: func(ctx context.Context, t *testing.T, client Manager) {
-				cctx, cancel := context.WithCancel(ctx)
-				opts := testutil.TrueCreateOpts()
-				modify(opts)
-				created, err := createProcs(ctx, opts, client, 10)
-				require.NoError(t, err)
-				assert.Len(t, created, 10)
-				cancel()
-				output, err := client.List(cctx, options.All)
-				require.Error(t, err)
-				assert.Nil(t, output)
 			},
 		},
 		{
@@ -116,6 +95,37 @@ func AddBasicClientTests(modify testutil.OptsModify, tests ...ClientTestCase) []
 			},
 		},
 		{
+			Name: "ListDoesNotErrorWhenEmptyResult",
+			Case: func(ctx context.Context, t *testing.T, client Manager) {
+				all, err := client.List(ctx, options.All)
+				require.NoError(t, err)
+				assert.Len(t, all, 0)
+			},
+		},
+		{
+			Name: "ListErrorsWithInvalidFilter",
+			Case: func(ctx context.Context, t *testing.T, client Manager) {
+				procs, err := client.List(ctx, options.Filter("foo"))
+				assert.Error(t, err)
+				assert.Nil(t, procs)
+			},
+		},
+		{
+			Name: "ListAllReturnsErrorWithCanceledContext",
+			Case: func(ctx context.Context, t *testing.T, client Manager) {
+				cctx, cancel := context.WithCancel(ctx)
+				opts := testutil.TrueCreateOpts()
+				modify(opts)
+				created, err := createProcs(ctx, opts, client, 10)
+				require.NoError(t, err)
+				assert.Len(t, created, 10)
+				cancel()
+				output, err := client.List(cctx, options.All)
+				require.Error(t, err)
+				assert.Nil(t, output)
+			},
+		},
+		{
 			Name: "ListReturnsOneSuccessfulCommand",
 			Case: func(ctx context.Context, t *testing.T, client Manager) {
 				opts := testutil.TrueCreateOpts()
@@ -135,6 +145,17 @@ func AddBasicClientTests(modify testutil.OptsModify, tests ...ClientTestCase) []
 			},
 		},
 		{
+			Name: "RegisterAlwaysErrors",
+			Case: func(ctx context.Context, t *testing.T, client Manager) {
+				proc, err := client.CreateProcess(ctx, &options.Create{Args: []string{"ls"}})
+				assert.NotNil(t, proc)
+				require.NoError(t, err)
+
+				assert.Error(t, client.Register(ctx, nil))
+				assert.Error(t, client.Register(ctx, proc))
+			},
+		},
+		{
 			Name: "GetMethodErrorsWithNoResponse",
 			Case: func(ctx context.Context, t *testing.T, client Manager) {
 				proc, err := client.Get(ctx, "foo")
@@ -143,7 +164,7 @@ func AddBasicClientTests(modify testutil.OptsModify, tests ...ClientTestCase) []
 			},
 		},
 		{
-			Name: "GetMethodReturnsMatchingDoc",
+			Name: "GetMethodReturnsMatchingProc",
 			Case: func(ctx context.Context, t *testing.T, client Manager) {
 				opts := testutil.TrueCreateOpts()
 				modify(opts)
@@ -156,7 +177,7 @@ func AddBasicClientTests(modify testutil.OptsModify, tests ...ClientTestCase) []
 			},
 		},
 		{
-			Name: "GroupDoesNotErrorWithoutResults",
+			Name: "GroupDoesNotErrorWhenEmptyResult",
 			Case: func(ctx context.Context, t *testing.T, client Manager) {
 				procs, err := client.Group(ctx, "foo")
 				require.NoError(t, err)
@@ -451,10 +472,9 @@ func TestManager(t *testing.T) {
 				},
 			} {
 				t.Run(modify.Name, func(t *testing.T) {
-					for _, test := range AddBasicClientTests(modify.Options,
-						ClientTestCase{
-							Name:       "StandardInput",
-							ShouldSkip: factory.Name == "MDB",
+					for _, test := range addBasicClientTests(modify.Options,
+						clientTestCase{
+							Name: "StandardInput",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
 								for subTestName, subTestCase := range map[string]func(ctx context.Context, t *testing.T, opts *options.Create, expectedOutput string, stdin []byte){
 									"ReaderIsIgnored": func(ctx context.Context, t *testing.T, opts *options.Create, expectedOutput string, stdin []byte) {
@@ -529,16 +549,15 @@ func TestManager(t *testing.T) {
 								}
 							},
 						},
-						ClientTestCase{
-							Name:       "WriteFileSucceeds",
-							ShouldSkip: factory.Name == "MDB",
+						clientTestCase{
+							Name: "WriteFileSucceeds",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
 								tmpFile, err := ioutil.TempFile(buildDir(t), filepath.Base(t.Name()))
 								require.NoError(t, err)
 								defer func() {
-									assert.NoError(t, tmpFile.Close())
 									assert.NoError(t, os.RemoveAll(tmpFile.Name()))
 								}()
+								require.NoError(t, tmpFile.Close())
 
 								opts := options.WriteFile{Path: tmpFile.Name(), Content: []byte("foo")}
 								require.NoError(t, client.WriteFile(ctx, opts))
@@ -549,16 +568,15 @@ func TestManager(t *testing.T) {
 								assert.Equal(t, opts.Content, content)
 							},
 						},
-						ClientTestCase{
-							Name:       "WriteFileAcceptsContentFromReader",
-							ShouldSkip: factory.Name == "MDB",
+						clientTestCase{
+							Name: "WriteFileAcceptsContentFromReader",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
 								tmpFile, err := ioutil.TempFile(buildDir(t), filepath.Base(t.Name()))
 								require.NoError(t, err)
 								defer func() {
-									assert.NoError(t, tmpFile.Close())
 									assert.NoError(t, os.RemoveAll(tmpFile.Name()))
 								}()
+								require.NoError(t, tmpFile.Close())
 
 								buf := []byte("foo")
 								opts := options.WriteFile{Path: tmpFile.Name(), Reader: bytes.NewBuffer(buf)}
@@ -570,16 +588,15 @@ func TestManager(t *testing.T) {
 								assert.Equal(t, buf, content)
 							},
 						},
-						ClientTestCase{
-							Name:       "WriteFileSucceedsWithLargeContent",
-							ShouldSkip: factory.Name == "MDB",
+						clientTestCase{
+							Name: "WriteFileSucceedsWithLargeContent",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
 								tmpFile, err := ioutil.TempFile(buildDir(t), filepath.Base(t.Name()))
 								require.NoError(t, err)
 								defer func() {
-									assert.NoError(t, tmpFile.Close())
 									assert.NoError(t, os.RemoveAll(tmpFile.Name()))
 								}()
+								require.NoError(t, tmpFile.Close())
 
 								const mb = 1024 * 1024
 								opts := options.WriteFile{Path: tmpFile.Name(), Content: bytes.Repeat([]byte("foo"), mb)}
@@ -591,9 +608,29 @@ func TestManager(t *testing.T) {
 								assert.Equal(t, opts.Content, content)
 							},
 						},
-						ClientTestCase{
-							Name:       "WriteFileSucceedsWithNoContent",
-							ShouldSkip: factory.Name == "MDB",
+						clientTestCase{
+							Name: "WriteFileSucceedsWithLargeContentFromReader",
+							Case: func(ctx context.Context, t *testing.T, client Manager) {
+								tmpFile, err := ioutil.TempFile(buildDir(t), filepath.Base(t.Name()))
+								require.NoError(t, err)
+								defer func() {
+									assert.NoError(t, tmpFile.Close())
+									assert.NoError(t, os.RemoveAll(tmpFile.Name()))
+								}()
+
+								const mb = 1024 * 1024
+								buf := bytes.Repeat([]byte("foo"), 2*mb)
+								opts := options.WriteFile{Path: tmpFile.Name(), Reader: bytes.NewBuffer(buf)}
+								require.NoError(t, client.WriteFile(ctx, opts))
+
+								content, err := ioutil.ReadFile(tmpFile.Name())
+								require.NoError(t, err)
+
+								assert.Equal(t, buf, content)
+							},
+						},
+						clientTestCase{
+							Name: "WriteFileSucceedsWithNoContent",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
 								path := filepath.Join(buildDir(t), filepath.Base(t.Name()))
 								require.NoError(t, os.RemoveAll(path))
@@ -610,19 +647,16 @@ func TestManager(t *testing.T) {
 								assert.Zero(t, stat.Size())
 							},
 						},
-
-						ClientTestCase{
-							Name:       "GetLogStreamFromNonexistentProcessFails",
-							ShouldSkip: factory.Name == "MDB",
+						clientTestCase{
+							Name: "GetLogStreamFromNonexistentProcessFails",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
 								stream, err := client.GetLogStream(ctx, "foo", 1)
 								assert.Error(t, err)
 								assert.Zero(t, stream)
 							},
 						},
-						ClientTestCase{
-							Name:       "GetLogStreamFailsWithoutInMemoryLogger",
-							ShouldSkip: factory.Name == "MDB",
+						clientTestCase{
+							Name: "GetLogStreamFailsWithoutInMemoryLogger",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
 								opts := &options.Create{Args: []string{"echo", "foo"}}
 								modify.Options(opts)
@@ -638,9 +672,8 @@ func TestManager(t *testing.T) {
 								assert.Zero(t, stream)
 							},
 						},
-						ClientTestCase{
-							Name:       "WithInMemoryLogger",
-							ShouldSkip: factory.Name == "MDB",
+						clientTestCase{
+							Name: "WithInMemoryLogger",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
 								output := "foo"
 								opts := &options.Create{
@@ -684,10 +717,283 @@ func TestManager(t *testing.T) {
 								}
 							},
 						},
+						clientTestCase{
+							Name: "DownloadFile",
+							Case: func(ctx context.Context, t *testing.T, client Manager) {
+								for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, client Manager, tempDir string){
+									"CreatesFileIfNonexistent": func(ctx context.Context, t *testing.T, client Manager, tempDir string) {
+										opts := options.Download{
+											URL:  "https://example.com",
+											Path: filepath.Join(tempDir, filepath.Base(t.Name())),
+										}
+										require.NoError(t, client.DownloadFile(ctx, opts))
+										defer func() {
+											assert.NoError(t, os.RemoveAll(opts.Path))
+										}()
+
+										fileInfo, err := os.Stat(opts.Path)
+										require.NoError(t, err)
+										assert.NotZero(t, fileInfo.Size())
+									},
+									"WritesFileIfExists": func(ctx context.Context, t *testing.T, client Manager, tempDir string) {
+										file, err := ioutil.TempFile(tempDir, "out.txt")
+										require.NoError(t, err)
+										defer func() {
+											assert.NoError(t, os.RemoveAll(file.Name()))
+										}()
+										require.NoError(t, file.Close())
+
+										opts := options.Download{
+											URL:  "https://example.com",
+											Path: file.Name(),
+										}
+										require.NoError(t, client.DownloadFile(ctx, opts))
+										defer func() {
+											assert.NoError(t, os.RemoveAll(opts.Path))
+										}()
+
+										fileInfo, err := os.Stat(file.Name())
+										require.NoError(t, err)
+										assert.NotZero(t, fileInfo.Size())
+									},
+									"CreatesFileAndExtracts": func(ctx context.Context, t *testing.T, client Manager, tempDir string) {
+										downloadDir, err := ioutil.TempDir(tempDir, "out")
+										require.NoError(t, err)
+										defer func() {
+											assert.NoError(t, os.RemoveAll(downloadDir))
+										}()
+
+										fileServerDir, err := ioutil.TempDir(tempDir, "file_server")
+										require.NoError(t, err)
+										defer func() {
+											assert.NoError(t, os.RemoveAll(fileServerDir))
+										}()
+
+										fileName := "foo.zip"
+										fileContents := "foo"
+										require.NoError(t, testutil.AddFileToDirectory(fileServerDir, fileName, fileContents))
+
+										absDownloadDir, err := filepath.Abs(downloadDir)
+										require.NoError(t, err)
+										destFilePath := filepath.Join(absDownloadDir, fileName)
+										destExtractDir := filepath.Join(absDownloadDir, "extracted")
+
+										port := testutil.GetPortNumber()
+										fileServerAddr := fmt.Sprintf("localhost:%d", port)
+										fileServer := &http.Server{Addr: fileServerAddr, Handler: http.FileServer(http.Dir(fileServerDir))}
+										defer func() {
+											assert.NoError(t, fileServer.Close())
+										}()
+										listener, err := net.Listen("tcp", fileServerAddr)
+										require.NoError(t, err)
+										go func() {
+											grip.Info(fileServer.Serve(listener))
+										}()
+
+										baseURL := fmt.Sprintf("http://%s", fileServerAddr)
+										require.NoError(t, testutil.WaitForRESTService(ctx, baseURL))
+
+										opts := options.Download{
+											URL:  fmt.Sprintf("%s/%s", baseURL, fileName),
+											Path: destFilePath,
+											ArchiveOpts: options.Archive{
+												ShouldExtract: true,
+												Format:        options.ArchiveZip,
+												TargetPath:    destExtractDir,
+											},
+										}
+										require.NoError(t, client.DownloadFile(ctx, opts))
+
+										fileInfo, err := os.Stat(destFilePath)
+										require.NoError(t, err)
+										assert.NotZero(t, fileInfo.Size())
+
+										dirContents, err := ioutil.ReadDir(destExtractDir)
+										require.NoError(t, err)
+
+										assert.NotZero(t, len(dirContents))
+									},
+									"FailsForInvalidArchiveFormat": func(ctx context.Context, t *testing.T, client Manager, tempDir string) {
+										file, err := ioutil.TempFile(tempDir, filepath.Base(t.Name()))
+										require.NoError(t, err)
+										defer func() {
+											assert.NoError(t, os.RemoveAll(file.Name()))
+										}()
+										require.NoError(t, file.Close())
+										extractDir, err := ioutil.TempDir(tempDir, filepath.Base(t.Name())+"_extract")
+										require.NoError(t, err)
+										defer func() {
+											assert.NoError(t, os.RemoveAll(file.Name()))
+										}()
+
+										opts := options.Download{
+											URL:  "https://example.com",
+											Path: file.Name(),
+											ArchiveOpts: options.Archive{
+												ShouldExtract: true,
+												Format:        options.ArchiveFormat("foo"),
+												TargetPath:    extractDir,
+											},
+										}
+										assert.Error(t, client.DownloadFile(ctx, opts))
+									},
+									"FailsForUnarchivedFile": func(ctx context.Context, t *testing.T, client Manager, tempDir string) {
+										extractDir, err := ioutil.TempDir(tempDir, filepath.Base(t.Name())+"_extract")
+										require.NoError(t, err)
+										defer func() {
+											assert.NoError(t, os.RemoveAll(extractDir))
+										}()
+										opts := options.Download{
+											URL:  "https://example.com",
+											Path: filepath.Join(tempDir, filepath.Base(t.Name())),
+											ArchiveOpts: options.Archive{
+												ShouldExtract: true,
+												Format:        options.ArchiveAuto,
+												TargetPath:    extractDir,
+											},
+										}
+										assert.Error(t, client.DownloadFile(ctx, opts))
+
+										dirContents, err := ioutil.ReadDir(extractDir)
+										require.NoError(t, err)
+										assert.Zero(t, len(dirContents))
+									},
+									"FailsForInvalidURL": func(ctx context.Context, t *testing.T, client Manager, tempDir string) {
+										file, err := ioutil.TempFile(tempDir, filepath.Base(t.Name()))
+										require.NoError(t, err)
+										defer func() {
+											assert.NoError(t, os.RemoveAll(file.Name()))
+										}()
+										require.NoError(t, file.Close())
+										assert.Error(t, client.DownloadFile(ctx, options.Download{URL: "", Path: file.Name()}))
+									},
+									"FailsForNonexistentURL": func(ctx context.Context, t *testing.T, client Manager, tempDir string) {
+										file, err := ioutil.TempFile(tempDir, "out.txt")
+										require.NoError(t, err)
+										defer func() {
+											assert.NoError(t, os.RemoveAll(file.Name()))
+										}()
+										require.NoError(t, file.Close())
+										assert.Error(t, client.DownloadFile(ctx, options.Download{URL: "https://example.com/foo", Path: file.Name()}))
+									},
+									"FailsForInsufficientPermissions": func(ctx context.Context, t *testing.T, client Manager, tempDir string) {
+										if os.Geteuid() == 0 {
+											t.Skip("cannot test download permissions as root")
+										} else if runtime.GOOS == "windows" {
+											t.Skip("cannot test download permissions on windows")
+										}
+										assert.Error(t, client.DownloadFile(ctx, options.Download{URL: "https://example.com", Path: "/foo/bar"}))
+									},
+								} {
+									t.Run(testName, func(t *testing.T) {
+										tempDir, err := ioutil.TempDir(buildDir(t), filepath.Base(t.Name()))
+										require.NoError(t, err)
+										defer func() {
+											assert.NoError(t, os.RemoveAll(tempDir))
+										}()
+										testCase(ctx, t, client, tempDir)
+									})
+								}
+							},
+						},
+						clientTestCase{
+							Name: "GetBuildloggerURLsFailsWithoutBuildlogger",
+							Case: func(ctx context.Context, t *testing.T, client Manager) {
+								logger := options.Logger{
+									Type:    options.LogDefault,
+									Options: options.Log{Format: options.LogFormatPlain},
+								}
+								opts := &options.Create{
+									Args: []string{"echo", "foobar"},
+									Output: options.Output{
+										Loggers: []options.Logger{logger},
+									},
+								}
+
+								info, err := client.CreateProcess(ctx, opts)
+								require.NoError(t, err)
+								id := info.ID()
+								assert.NotEmpty(t, id)
+
+								urls, err := client.GetBuildloggerURLs(ctx, id)
+								assert.Error(t, err)
+								assert.Nil(t, urls)
+							},
+						},
+						clientTestCase{
+							Name: "GetBuildloggerURLsFailsWithNonexistentProcess",
+							Case: func(ctx context.Context, t *testing.T, client Manager) {
+								urls, err := client.GetBuildloggerURLs(ctx, "foo")
+								assert.Error(t, err)
+								assert.Nil(t, urls)
+							},
+						},
+						clientTestCase{
+							Name: "CreateWithLogFile",
+							Case: func(ctx context.Context, t *testing.T, client Manager) {
+								file, err := ioutil.TempFile(buildDir(t), filepath.Base(t.Name()))
+								require.NoError(t, err)
+								defer func() {
+									assert.NoError(t, os.RemoveAll(file.Name()))
+								}()
+								require.NoError(t, file.Close())
+
+								logger := options.Logger{
+									Type: options.LogFile,
+									Options: options.Log{
+										FileName: file.Name(),
+										Format:   options.LogFormatPlain,
+									},
+								}
+								output := "foobar"
+								opts := &options.Create{
+									Args: []string{"echo", output},
+									Output: options.Output{
+										Loggers: []options.Logger{logger},
+									},
+								}
+
+								proc, err := client.CreateProcess(ctx, opts)
+								require.NoError(t, err)
+
+								exitCode, err := proc.Wait(ctx)
+								require.NoError(t, err)
+								require.Zero(t, exitCode)
+
+								info, err := os.Stat(file.Name())
+								require.NoError(t, err)
+								assert.NotZero(t, info.Size())
+
+								fileContents, err := ioutil.ReadFile(file.Name())
+								require.NoError(t, err)
+								assert.Contains(t, string(fileContents), output)
+							},
+						},
+						clientTestCase{
+							Name: "RegisterSignalTriggerIDChecksForInvalidTriggerID",
+							Case: func(ctx context.Context, t *testing.T, client Manager) {
+								proc, err := client.CreateProcess(ctx, testutil.YesCreateOpts(0))
+								require.NoError(t, err)
+								assert.True(t, proc.Running(ctx))
+
+								assert.Error(t, proc.RegisterSignalTriggerID(ctx, jasper.SignalTriggerID("foo")))
+
+								assert.NoError(t, proc.Signal(ctx, syscall.SIGTERM))
+							},
+						},
+						clientTestCase{
+							Name: "RegisterSignalTriggerIDPassesWithValidArgs",
+							Case: func(ctx context.Context, t *testing.T, client Manager) {
+								proc, err := client.CreateProcess(ctx, testutil.YesCreateOpts(0))
+								require.NoError(t, err)
+								assert.True(t, proc.Running(ctx))
+
+								assert.NoError(t, proc.RegisterSignalTriggerID(ctx, jasper.CleanTerminationSignalTrigger))
+
+								assert.NoError(t, proc.Signal(ctx, syscall.SIGTERM))
+							},
+						},
 					) {
-						if test.ShouldSkip {
-							continue
-						}
 						t.Run(test.Name, func(t *testing.T) {
 							tctx, cancel := context.WithTimeout(ctx, testutil.RPCTestTimeout)
 							defer cancel()

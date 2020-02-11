@@ -30,8 +30,6 @@ func RunCMD() cli.Command {
 		execFlagName    = "exec"
 		tagFlagName     = "tag"
 		waitFlagName    = "wait"
-
-		logPollInterval = 100 * time.Millisecond
 	)
 
 	defaultID := uuid.Must(uuid.NewV4())
@@ -140,59 +138,15 @@ func RunCMD() cli.Command {
 					}
 				}
 
-				ids := cmd.GetProcIDs()
-
 				if wait {
-					logDone := make(chan struct{})
-					go func() {
-						defer recovery.LogStackTraceAndContinue("log handling thread")
-						defer close(logDone)
-						timer := time.NewTimer(0)
-						defer timer.Stop()
-
-						t := tabby.New()
-						t.AddHeader("ID", "Logs")
-						for _, id := range ids {
-						logSingleProcess:
-							for {
-								select {
-								case <-ctx.Done():
-									grip.Notice("operation canceled")
-									return
-								case <-timer.C:
-									logLines, err := client.GetLogStream(ctx, id, logger.Options.InMemoryCap)
-									if err != nil {
-										grip.Error(message.WrapError(err, "problem polling for log lines, aborting log streaming"))
-										break logSingleProcess
-									}
-
-									for _, ln := range logLines.Logs {
-										t.AddLine(id, ln)
-										t.Print()
-									}
-
-									if logLines.Done {
-										timer.Reset(0)
-										break logSingleProcess
-									}
-
-									timer.Reset(randDur(logPollInterval))
-								}
-							}
-							t.AddLine()
-							t.Print()
-						}
-					}()
-
-					<-logDone
-					exitCode, err := cmd.Wait(ctx)
+					exitCode, err := printLogs(ctx, client, cmd, logger)
 					grip.Error(err)
 					os.Exit(exitCode)
 				} else {
 					t := tabby.New()
 					t.AddHeader("ID")
 					t.Print()
-					for _, id := range ids {
+					for _, id := range cmd.GetProcIDs() {
 						t.AddLine(id)
 						t.Print()
 					}
@@ -202,6 +156,55 @@ func RunCMD() cli.Command {
 			})
 		},
 	}
+}
+
+// printLogs prints the logs outputted from a process until the process
+// terminates.
+func printLogs(ctx context.Context, client remote.Manager, cmd *jasper.Command, logger options.Logger) (int, error) {
+	const logPollInterval = 100 * time.Millisecond
+	logDone := make(chan struct{})
+
+	go func() {
+		defer recovery.LogStackTraceAndContinue("log printing thread")
+		defer close(logDone)
+		timer := time.NewTimer(0)
+		defer timer.Stop()
+
+		t := tabby.New()
+		t.AddHeader("ID", "Logs")
+		for _, id := range cmd.GetProcIDs() {
+		logSingleProcess:
+			for {
+				select {
+				case <-ctx.Done():
+					grip.Notice("log fetching canceled")
+					return
+				case <-timer.C:
+					logLines, err := client.GetLogStream(ctx, id, logger.Options.InMemoryCap)
+					if err != nil {
+						grip.Error(message.WrapError(err, "problem polling for log lines, aborting log streaming"))
+						return
+					}
+
+					for _, ln := range logLines.Logs {
+						t.AddLine(id, ln)
+						t.Print()
+					}
+
+					if logLines.Done {
+						break logSingleProcess
+					}
+
+					timer.Reset(randDur(logPollInterval))
+				}
+			}
+			t.AddLine()
+			t.Print()
+		}
+	}()
+
+	<-logDone
+	return cmd.Wait(ctx)
 }
 
 // ListCMD provides a user interface to inspect processes managed by a

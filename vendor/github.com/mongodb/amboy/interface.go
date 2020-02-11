@@ -79,6 +79,11 @@ type Job interface {
 	// of queue.ID()
 	Lock(string) error
 	Unlock(string)
+
+	// Scope provides the ability to provide more configurable
+	// exclusion a job can provide.
+	Scopes() []string
+	SetScopes([]string)
 }
 
 // JobType contains information about the type of a job, which queues

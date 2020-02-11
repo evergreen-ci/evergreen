@@ -812,7 +812,8 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 		expansions.Put("trigger_id", t.TriggerEvent)
 		var upstreamProjectID string
 		if t.TriggerType == ProjectTriggerLevelTask {
-			upstreamTask, err := task.FindOneId(t.TriggerID)
+			var upstreamTask *task.Task
+			upstreamTask, err = task.FindOneId(t.TriggerID)
 			if err != nil {
 				return nil, errors.Wrap(err, "error finding task")
 			}
@@ -823,7 +824,8 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 			expansions.Put("trigger_revision", upstreamTask.Revision)
 			upstreamProjectID = upstreamTask.Project
 		} else if t.TriggerType == ProjectTriggerLevelBuild {
-			upstreamBuild, err := build.FindOneId(t.TriggerID)
+			var upstreamBuild *build.Build
+			upstreamBuild, err = build.FindOneId(t.TriggerID)
 			if err != nil {
 				return nil, errors.Wrap(err, "error finding build")
 			}
@@ -834,7 +836,8 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 			expansions.Put("trigger_revision", upstreamBuild.Revision)
 			upstreamProjectID = upstreamBuild.Project
 		}
-		upstreamProject, err := FindOneProjectRef(upstreamProjectID)
+		var upstreamProject *ProjectRef
+		upstreamProject, err = FindOneProjectRef(upstreamProjectID)
 		if err != nil {
 			return nil, errors.Wrap(err, "error finding project")
 		}
@@ -1440,7 +1443,7 @@ func FetchVersionsAndAssociatedBuilds(project *Project, skip int, numVersions in
 	// fetch all of the builds (with only relevant fields)
 	buildsFromDb, err := build.Find(
 		build.ByVersions(versionIds).
-			WithFields(build.BuildVariantKey, build.TasksKey, build.VersionKey))
+			WithFields(build.BuildVariantKey, build.TasksKey, build.VersionKey, build.DisplayNameKey))
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error fetching builds from database")
 	}

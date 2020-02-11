@@ -90,7 +90,7 @@ func (j *spawnhostExpirationWarningsJob) Run(ctx context.Context) {
 				"runner":  "monitor",
 				"id":      j.ID(),
 				"message": "Error queuing alert",
-				"host":    h.Id,
+				"host_id": h.Id,
 			}))
 		}
 	}

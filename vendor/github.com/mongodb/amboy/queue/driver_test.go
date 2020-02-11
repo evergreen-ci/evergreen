@@ -187,29 +187,6 @@ func (s *DriverSuite) TestStatsCallReportsCompletedJobs() {
 	s.Equal(0, s.driver.Stats(s.ctx).Running)
 }
 
-func (s *DriverSuite) TestNextMethodReturnsJob() {
-	s.Equal(0, s.driver.Stats(s.ctx).Total)
-
-	j := job.NewShellJob("echo foo", "")
-
-	s.NoError(s.driver.Put(s.ctx, j))
-	stats := s.driver.Stats(s.ctx)
-	s.Equal(1, stats.Total, "%+v", stats)
-	s.Equal(1, stats.Pending)
-
-	nj := s.driver.Next(s.ctx)
-	stats = s.driver.Stats(s.ctx)
-	s.Equal(0, stats.Completed)
-	s.Equal(1, stats.Pending)
-	s.Equal(0, stats.Blocked)
-	s.Equal(0, stats.Running)
-
-	if s.NotNil(nj) {
-		s.Equal(j.ID(), nj.ID())
-		s.NoError(j.Lock(s.driver.ID()))
-	}
-}
-
 func (s *DriverSuite) TestNextMethodSkipsCompletedJos() {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()

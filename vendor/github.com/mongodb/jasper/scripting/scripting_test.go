@@ -13,6 +13,7 @@ import (
 
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
+	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/testutil"
 	"github.com/stretchr/testify/assert"
@@ -28,8 +29,8 @@ func evgTaskContains(subs string) bool {
 	return strings.Contains(os.Getenv("EVR_TASK_ID"), subs)
 }
 
-func makeScriptingEnv(ctx context.Context, t *testing.T, mgr Manager, opts options.ScriptingHarness) ScriptingHarness {
-	se, err := mgr.CreateScripting(ctx, opts)
+func makeScriptingEnv(ctx context.Context, t *testing.T, mgr jasper.Manager, opts options.ScriptingHarness) Harness {
+	se, err := NewHarness(mgr, opts)
 	require.NoError(t, err)
 	return se
 }
@@ -38,11 +39,11 @@ func TestScriptingHarness(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	manager, err := NewSynchronizedManager(false)
+	manager, err := jasper.NewSynchronizedManager(false)
 	require.NoError(t, err)
 	defer manager.Close(ctx)
 
-	tmpdir, err := ioutil.TempDir(filepath.Join(testutil.GetDirectoryOfFile(), "build"), "scripting_tests")
+	tmpdir, err := ioutil.TempDir(filepath.Join(testutil.GetDirectoryOfFile(), "..", "build"), "scripting_tests")
 	require.NoError(t, err)
 	defer func() {
 		assert.NoError(t, os.RemoveAll(tmpdir))
@@ -290,6 +291,7 @@ func TestScriptingHarness(t *testing.T) {
 			t.Run("Config", func(t *testing.T) {
 				start := time.Now()
 				se := makeScriptingEnv(ctx, t, manager, env.DefaultOptions)
+				require.NoError(t, se.Setup(ctx))
 				dur := time.Since(start)
 				require.NotNil(t, se)
 
@@ -300,7 +302,9 @@ func TestScriptingHarness(t *testing.T) {
 				t.Run("Caching", func(t *testing.T) {
 					start := time.Now()
 					require.NoError(t, se.Setup(ctx))
-					assert.True(t, time.Since(start) < dur)
+
+					assert.True(t, time.Since(start) < dur, "%s < %s",
+						time.Since(start), dur)
 				})
 			})
 			for _, test := range env.Tests {
@@ -308,6 +312,12 @@ func TestScriptingHarness(t *testing.T) {
 					test.Case(t, env.DefaultOptions)
 				})
 			}
+			t.Run("Testing", func(t *testing.T) {
+				se := makeScriptingEnv(ctx, t, manager, env.DefaultOptions)
+				res, err := se.Test(ctx, tmpdir)
+				require.NoError(t, err)
+				require.Len(t, res, 0)
+			})
 			t.Run("Cleanup", func(t *testing.T) {
 				se := makeScriptingEnv(ctx, t, manager, env.DefaultOptions)
 				require.NoError(t, se.Cleanup(ctx))

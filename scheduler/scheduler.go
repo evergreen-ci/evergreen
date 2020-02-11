@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -296,28 +295,19 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 }
 
 func getCreateOptionsFromDistro(d distro.Distro) (*host.CreateOptions, error) {
-	dockerOptions, err := getDockerOptionsFromProviderSettings(*d.ProviderSettings)
-	if err != nil {
+	dockerOptions := &host.DockerOptions{}
+	if err := dockerOptions.FromDistroSettings(d, ""); err != nil {
 		return nil, errors.Wrapf(err, "Error getting docker options from distro %s", d.Id)
 	}
+	if err := dockerOptions.Validate(); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
 	hostOptions := host.CreateOptions{
 		UserName:      evergreen.User,
 		DockerOptions: *dockerOptions,
 	}
 	return &hostOptions, nil
-}
-
-func getDockerOptionsFromProviderSettings(settings map[string]interface{}) (*host.DockerOptions, error) {
-	dockerOptions := &host.DockerOptions{}
-	if settings != nil {
-		if err := mapstructure.Decode(settings, dockerOptions); err != nil {
-			return nil, errors.Wrap(err, "Error decoding params")
-		}
-	}
-	if dockerOptions.Image == "" {
-		return nil, errors.New("docker image cannot be empty")
-	}
-	return dockerOptions, nil
 }
 
 // generateIntentHost creates a host intent document for a regular host

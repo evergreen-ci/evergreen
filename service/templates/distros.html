@@ -106,10 +106,10 @@ Evergreen - Distros
             <div class="icon fa fa-warning distro-error" ng-show="form.hostAllocatorSettingsVersion.$dirty && form.hostAllocatorSettingsVersion.$error.required ||
               form.hostAllocatorSettingsVersion.$invalid">Host Allocator Version is required
             </div>
-            <div ng-show="activeDistro.provider != 'static' && activeDistro.provider != 'docker'">
+            <div ng-show="!isStatic() && activeDistro.provider != 'docker'">
               <div>
                 <label class="distro-label">Maximum Number of Hosts Allowed:</label>
-                <input ng-readonly="readOnly" type="number" ng-required="activeDistro.provider != 'static' && activeDistro.provider != 'docker'"
+                <input ng-readonly="readOnly" type="number" ng-required="!isStatic() && activeDistro.provider != 'docker'"
                   name="hostAllocatorSettingsMaximumHosts" class="form-control" ng-model="activeDistro.host_allocator_settings.maximum_hosts" placeholder="Maximum number of hosts e.g. 10">
                 <div class="icon fa fa-warning distro-error" ng-show="form.hostAllocatorSettingsMaximumHosts.$dirty && form.hostAllocatorSettingsMaximumHosts.$error.required ||
                   form.hostAllocatorSettingsMaximumHosts.$invalid ||
@@ -171,7 +171,7 @@ Evergreen - Distros
             <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsVersion.$dirty && form.plannerSettingsVersion.$error.required ||
               form.plannerSettingsVersion.$invalid">Planner Version is required
             </div>
-            <div ng-show="activeDistro.provider != 'static' && activeDistro.provider != 'docker' && activeDistro.planner_settings.version == 'tunable'">
+            <div ng-show="!isStatic() && activeDistro.provider != 'docker' && activeDistro.planner_settings.version == 'tunable'">
               <div>
                 <label class="distro-label">Target Time (sec):</label>
                 <input ng-readonly="readOnly" type="number" ng-required="activeDistro.planner_settings.version == 'tunable'"
@@ -228,7 +228,7 @@ Evergreen - Distros
                 </label>
                 </div>
             </div>
-            <div ng-form name="hostProviderForm" ng-show="activeDistro.provider == 'static'">
+            <div ng-form name="hostProviderForm" ng-show="isStatic()">
               <label class="distro-label">Hosts<span ng-show="activeDistro.settings.hosts && activeDistro.settings.hosts.length != 0">([[activeDistro.settings.hosts.length]])</span>:</label>
               <div id="hosts-table" class="distro-table-scroll">
                 <table style="margin-left: -8px;" class="table distro-table" ng-show="activeDistro.settings.hosts">
@@ -287,6 +287,14 @@ Evergreen - Distros
                 placeholder="Absolute path in which agent runs tasks on host machine" ng-readonly="readOnly">
               <div class="icon fa fa-warning distro-error" ng-show="form.workDir.$dirty && form.workDir.$error.required || form.workDir.$invalid">Working
                 Directory is required</div>
+            </div>
+            <div>
+              <label class="distro-label">Home Volume Device Name:</label>
+              <input ng-readonly="readOnly" type="text" class="form-control" ng-model="activeDistro.home_volume_settings.device_name">
+            </div>
+            <div>
+              <label class="distro-label">Home Volume Format Command:</label>
+              <input ng-readonly="readOnly" type="text" class="form-control" ng-model="activeDistro.home_volume_settings.format_command">
             </div>
           </div>
           <br>
@@ -840,6 +848,12 @@ Evergreen - Distros
             option can not be blank<br /></div>
           <button type="button" class="btn btn-primary" ng-hide="readOnly" ng-disabled="sshForm.opt.$dirty && sshForm.$invalid || sshForm.opt.$error.required"
             ng-click="form.$setDirty();addSSHOption()"><i class="fa fa-plus"></i>Add SSH Option</button>
+
+		  <div ng-show="isStatic()">
+		    <label class="distro-label">Authorized Keys File:</label>
+		    <input type="text" ng-readonly="readOnly" name="authorizedKeysFile"
+		  	class="form-control" ng-model="activeDistro.authorized_keys_file" placeholder="Path to file containing authorized SSH keys (e.g. ~/.ssh/authorized_keys)">
+		  </div>
         </div>
         <div>
           <div>
@@ -849,7 +863,7 @@ Evergreen - Distros
           </div>
           <textarea ng-readonly="readOnly" name="script" type="text" wrap="off" class="form-control" rows="7" ng-model="activeDistro.setup"
             style="margin-left: 0px; font-family: monospace"></textarea>
-          <div ng-hide="activeDistro.provider=='static'">
+          <div ng-hide="isStatic()">
             <label class="distro-label">Teardown Script:</label>
             <textarea ng-readonly="readOnly" name="script" type="text" wrap="off" class="form-control" rows="2"
               ng-model="activeDistro.teardown" style="margin-left: 0px; font-family: monospace"></textarea>

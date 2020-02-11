@@ -386,7 +386,6 @@ func (s *AgentSuite) TestAbort() {
 		"Running post-task commands":      false,
 		"Sending final status as: failed": false,
 	}
-	// TODO: remove this line with MAKE-1090
 	s.Require().NoError(s.tc.logger.Close())
 	for _, m := range s.mockCommunicator.GetMockMessages()["task_id"] {
 		for toFind, _ := range shouldFind {
@@ -558,7 +557,10 @@ func (s *AgentSuite) TestPrepareNextTask() {
 }
 
 func (s *AgentSuite) TestAgentConstructorSetsHostData() {
-	agent, err := New(Options{HostID: "host_id", HostSecret: "host_secret"}, client.NewMock("url"))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	agent, err := New(ctx, Options{HostID: "host_id", HostSecret: "host_secret"}, client.NewMock("url"))
 	s.Require().NoError(err)
 	s.Equal("host_id", agent.comm.GetHostID())
 	s.Equal("host_secret", agent.comm.GetHostSecret())
@@ -854,9 +856,9 @@ timeout:
     params:
       shell: bash
       script: |
-        echo "hi"
-        sleep 5
-        echo "bye"
+	echo "hi"
+	sleep 5
+	echo "bye"
 `
 	v := &model.Version{
 		Id:     versionId,

@@ -423,7 +423,8 @@ func GetPatchSummariesByCommit(reader io.Reader) ([]patch.Summary, error) {
 			n, err := reader.Read(curBytes)
 			if err != nil {
 				if err == io.EOF { // finished reading body of this patch
-					summaries, err := thirdparty.GetPatchSummaries(string(buffer))
+					var summaries []patch.Summary
+					summaries, err = thirdparty.GetPatchSummaries(string(buffer))
 					if err != nil {
 						return nil, errors.Wrapf(err, "error getting patch summaries for commit '%s'", description)
 					}

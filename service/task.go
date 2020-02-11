@@ -124,6 +124,12 @@ type uiTestResult struct {
 	TaskName   string          `json:"task_name"`
 }
 
+type logData struct {
+	Buildlogger chan string
+	Data        chan apimodels.LogMessage
+	User        gimlet.User
+}
+
 func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 
@@ -518,7 +524,8 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if defaultLogger == model.BuildloggerLogSender {
-		logReader, err := uis.getBuildloggerLogs(projCtx, r, logType, DefaultLogMessages, execution)
+		var logReader io.ReadCloser
+		logReader, err = uis.getBuildloggerLogs(projCtx, r, logType, DefaultLogMessages, execution)
 		if err == nil {
 			gimlet.WriteText(w, logReader)
 			grip.Warning(logReader.Close())
@@ -574,11 +581,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	data := struct {
-		Buildlogger chan string
-		Data        chan apimodels.LogMessage
-		User        gimlet.User
-	}{Buildlogger: make(chan string, 1024), User: usr}
+	data := logData{Buildlogger: make(chan string, 1024), User: usr}
 	var logReader io.ReadCloser
 
 	defaultLogger, err := getDefaultLogger(projCtx)
@@ -756,7 +759,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if projCtx.Task.Requester == evergreen.MergeTestRequester {
-			_, err := commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
+			_, err = commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
 				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Task.Version, true)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -780,7 +783,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if !active && projCtx.Task.Requester == evergreen.MergeTestRequester {
-			_, err := commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
+			_, err = commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
 				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Task.Version, true)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -893,11 +896,7 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	}()
 	usr := gimlet.GetUser(ctx)
 	template := "task_log.html"
-	data := struct {
-		Data chan apimodels.LogMessage
-		User gimlet.User
-	}{displayLogs, usr}
-
+	data := logData{Data: displayLogs, User: usr}
 	if (r.FormValue("raw") == "1") || (r.Header.Get("Content-type") == "text/plain") {
 		template = "task_log_raw.html"
 		uis.renderText.Stream(w, http.StatusOK, data, "base", template)
