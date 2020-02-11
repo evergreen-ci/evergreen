@@ -6,12 +6,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 )
 
 // LocalPriorityQueue is an amboy.Queue implementation that dispatches
@@ -41,7 +41,7 @@ func NewLocalPriorityQueue(workers, capacity int) amboy.Queue {
 		scopes:  NewLocalScopeManager(),
 		storage: makePriorityStorage(),
 		fixed:   newFixedStorage(capacity),
-		id:      fmt.Sprintf("queue.local.unordered.priority.%s", uuid.NewV4().String()),
+		id:      fmt.Sprintf("queue.local.unordered.priority.%s", uuid.New().String()),
 	}
 	q.dispatcher = NewDispatcher(q)
 	q.runner = pool.NewLocalWorkers(workers, q)
@@ -98,16 +98,16 @@ func (q *priorityLocalQueue) Next(ctx context.Context) amboy.Job {
 			}
 
 			if !ti.IsDispatchable() {
-				q.storage.Insert(job)
+				_ = q.storage.Insert(job)
 				continue
 			}
 			if err := q.dispatcher.Dispatch(ctx, job); err != nil {
-				q.storage.Insert(job)
+				_ = q.storage.Insert(job)
 				continue
 			}
 
 			if err := q.scopes.Acquire(job.ID(), job.Scopes()); err != nil {
-				q.storage.Insert(job)
+				_ = q.storage.Insert(job)
 				continue
 			}
 

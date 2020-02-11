@@ -4,11 +4,11 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 )
 
 type basicProcessManager struct {
@@ -21,7 +21,7 @@ type basicProcessManager struct {
 func newBasicProcessManager(procs map[string]Process, trackProcs bool, useSSHLibrary bool) (Manager, error) {
 	m := basicProcessManager{
 		procs:         procs,
-		id:            uuid.Must(uuid.NewV4()).String(),
+		id:            uuid.New().String(),
 		useSSHLibrary: useSSHLibrary,
 	}
 	if trackProcs {

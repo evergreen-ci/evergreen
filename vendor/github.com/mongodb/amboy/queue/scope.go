@@ -6,6 +6,9 @@ import (
 	"github.com/pkg/errors"
 )
 
+// ScopeManager provides a service to queue implementation to support
+// additional locking semantics for queues that cannot push that into
+// their backing storage.
 type ScopeManager interface {
 	Acquire(string, []string) error
 	Release(string, []string) error
@@ -16,6 +19,8 @@ type scopeManagerImpl struct {
 	scopes map[string]string
 }
 
+// NewLocalScopeManager constructs a ScopeManager implementation
+// suitable for use in most local (in memeory) queue implementations.
 func NewLocalScopeManager() ScopeManager {
 	return &scopeManagerImpl{
 		scopes: map[string]string{},

@@ -133,6 +133,8 @@ func (s Signals) Export() syscall.Signal {
 		return syscall.SIGTERM
 	case Signals_KILL:
 		return syscall.SIGKILL
+	case Signals_ABRT:
+		return syscall.SIGABRT
 	default:
 		return syscall.Signal(0)
 	}

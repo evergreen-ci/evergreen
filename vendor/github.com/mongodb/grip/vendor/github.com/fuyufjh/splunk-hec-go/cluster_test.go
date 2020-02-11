@@ -1,6 +1,8 @@
 package hec
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -21,7 +23,10 @@ func TestCluster_WriteEvent(t *testing.T) {
 		Event:      String("hello, world"),
 	}
 
-	c := NewCluster(testSplunkURLs, testSplunkToken)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"text":"Success","code":0}`))
+	}))
+	c := NewCluster([]string{ts.URL}, testSplunkToken)
 	c.SetHTTPClient(testHttpClient)
 	err := c.WriteEvent(event)
 	assert.NoError(t, err)
@@ -39,7 +44,10 @@ func TestCluster_WriteEventBatch(t *testing.T) {
 		},
 	}
 
-	c := NewCluster(testSplunkURLs, testSplunkToken)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"text":"Success","code":0}`))
+	}))
+	c := NewCluster([]string{ts.URL}, testSplunkToken)
 	c.SetHTTPClient(testHttpClient)
 	for _, batch := range eventBatches {
 		err := c.WriteBatch(batch)
@@ -57,7 +65,10 @@ func TestCluster_WriteEventRaw(t *testing.T) {
 	metadata := EventMetadata{
 		Source: String("test-hec-raw"),
 	}
-	c := NewCluster(testSplunkURLs, testSplunkToken)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"text":"Success","code":0}`))
+	}))
+	c := NewCluster([]string{ts.URL}, testSplunkToken)
 	c.SetHTTPClient(testHttpClient)
 	for _, block := range eventBlocks {
 		err := c.WriteRaw(strings.NewReader(block), &metadata)
@@ -67,7 +78,10 @@ func TestCluster_WriteEventRaw(t *testing.T) {
 
 func TestCluster_Retrying(t *testing.T) {
 	event := &Event{Event: "test retrying"}
-	partlyBrokenUrls := []string{"http://127.0.0.1:8088", "http://example.com:8088", "http://example.com:88"}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"text":"Success","code":0}`))
+	}))
+	partlyBrokenUrls := []string{ts.URL, "http://example.com:8088", "http://example.com:88"}
 	c := NewCluster(partlyBrokenUrls, testSplunkToken)
 	c.SetHTTPClient(testHttpClient)
 	for i := 0; i < 5; i++ {

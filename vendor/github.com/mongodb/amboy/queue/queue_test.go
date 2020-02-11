@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/pool"
@@ -19,7 +20,6 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -39,7 +39,7 @@ func init() {
 	job.RegisterDefaultJobs()
 }
 
-func newDriverID() string { return strings.Replace(uuid.NewV4().String(), "-", ".", -1) }
+func newDriverID() string { return strings.Replace(uuid.New().String(), "-", ".", -1) }
 
 type TestCloser func(context.Context) error
 
@@ -581,7 +581,7 @@ func OrderedTest(bctx context.Context, t *testing.T, test QueueTestCase, runner 
 	numJobs := size.Size / 2 * len(testNames)
 
 	tempDir, err := ioutil.TempDir("", strings.Join([]string{"amboy-ordered-queue-smoke-test",
-		uuid.NewV4().String()}, "-"))
+		uuid.New().String()}, "-"))
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 

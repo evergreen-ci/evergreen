@@ -13,7 +13,7 @@ import:
 - package: github.com/StackExchange/wmi
 - package: github.com/go-ole/go-ole
 - package: github.com/fuyufjh/splunk-hec-go
-- package: github.com/satori/go.uuid
+- package: github.com/google/uuid
 - package: github.com/andygrunwald/go-jira
 - package: github.com/trivago/tgo
 - package: github.com/fatih/structs

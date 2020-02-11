@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/satori/go.uuid"
+	"github.com/google/uuid"
 )
 
 type Cluster struct {
@@ -21,7 +21,9 @@ type Cluster struct {
 }
 
 func NewCluster(serverURLs []string, token string) HEC {
-	channel := uuid.NewV4().String()
+	id := uuid.New()
+
+	channel := id.String()
 	clients := make([]*Client, len(serverURLs))
 	for i, serverURL := range serverURLs {
 		clients[i] = &Client{

@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
-	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -28,7 +28,7 @@ type ReportingSuite struct {
 
 func TestReportingSuiteBackedByMongoDB(t *testing.T) {
 	s := new(ReportingSuite)
-	name := uuid.NewV4().String()
+	name := uuid.New().String()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	opts := queue.DefaultMongoDBOptions()
@@ -68,7 +68,7 @@ func TestReportingSuiteBackedByMongoDB(t *testing.T) {
 
 func TestReportingSuiteBackedByMongoDBSingleGroup(t *testing.T) {
 	s := new(ReportingSuite)
-	name := uuid.NewV4().String()
+	name := uuid.New().String()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	opts := queue.DefaultMongoDBOptions()
@@ -113,7 +113,7 @@ func TestReportingSuiteBackedByMongoDBSingleGroup(t *testing.T) {
 
 func TestReportingSuiteBackedByMongoDBMultiGroup(t *testing.T) {
 	s := new(ReportingSuite)
-	name := uuid.NewV4().String()
+	name := uuid.New().String()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	opts := queue.DefaultMongoDBOptions()

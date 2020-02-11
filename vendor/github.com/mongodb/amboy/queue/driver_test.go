@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/grip"
-	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -30,7 +30,7 @@ type DriverSuite struct {
 
 func TestDriverSuiteWithMongoDBInstance(t *testing.T) {
 	tests := new(DriverSuite)
-	tests.uuid = uuid.NewV4().String()
+	tests.uuid = uuid.New().String()
 	opts := DefaultMongoDBOptions()
 	opts.DB = "amboy_test"
 	mDriver := newMongoDriver(

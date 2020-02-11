@@ -23,6 +23,9 @@ type multiSender struct {
 //
 // Use the AddToMulti helper to add additioanl senders to one of these
 // multi Sender implementations after construction.
+//
+// The Sender takes ownership of the underlying Senders, so closing this Sender
+// closes all underlying Senders.
 func NewMultiSender(name string, l LevelInfo, senders []Sender) (Sender, error) {
 	if !l.Valid() {
 		return nil, fmt.Errorf("invalid level specification: %+v", l)
@@ -53,6 +56,9 @@ func NewMultiSender(name string, l LevelInfo, senders []Sender) (Sender, error) 
 //
 // Use the AddToMulti helper to add additioanl senders to one of these
 // multi Sender implementations after construction.
+//
+// The Sender takes ownership of the underlying Senders, so closing this Sender
+// closes all underlying Senders.
 func NewConfiguredMultiSender(senders ...Sender) Sender {
 	s := &multiSender{senders: senders, Base: NewBase("")}
 	_ = s.Base.SetLevel(LevelInfo{Default: level.Invalid, Threshold: level.Invalid})

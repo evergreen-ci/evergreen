@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
+	"github.com/google/uuid"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/amboy/registry"
@@ -19,7 +20,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 )
 
 const region string = "us-east-1"
@@ -48,7 +48,7 @@ func NewSQSFifoQueue(queueName string, workers int) (amboy.Queue, error) {
 		sqsClient: sqs.New(session.Must(session.NewSession(&aws.Config{
 			Region: aws.String(region),
 		}))),
-		id: fmt.Sprintf("queue.remote.sqs.fifo..%s", uuid.NewV4().String()),
+		id: fmt.Sprintf("queue.remote.sqs.fifo..%s", uuid.New().String()),
 	}
 	q.tasks.completed = make(map[string]bool)
 	q.tasks.all = make(map[string]amboy.Job)
@@ -93,7 +93,7 @@ func (q *sqsFIFOQueue) Put(ctx context.Context, j amboy.Job) error {
 	}
 
 	if _, ok := q.tasks.all[name]; ok {
-		return errors.Errorf("cannot add %s because duplicate job already exists", name)
+		return amboy.NewDuplicateJobErrorf("cannot add %s because duplicate job already exists", name)
 	}
 
 	dedupID := strings.Replace(j.ID(), " ", "", -1) //remove all spaces

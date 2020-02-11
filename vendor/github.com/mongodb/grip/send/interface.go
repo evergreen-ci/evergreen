@@ -57,7 +57,8 @@ type Sender interface {
 
 	// If the logging sender holds any resources that require desecration
 	// they should be cleaned up in the Close() method. Close() is called
-	// by the SetSender() method before changing loggers.
+	// by the SetSender() method before changing loggers. Sender implementations
+	// that wrap other Senders may or may not close their underlying Senders.
 	Close() error
 }
 

@@ -347,6 +347,10 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/anser/vendor/github.com/mongodb/ftdc
 	rm -rf vendor/github.com/mongodb/anser/vendor/github.com/mongodb/amboy
 	rm -rf vendor/github.com/mongodb/anser/vendor/github.com/evergreen-ci/birch
+	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/google/
+	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/google/uuid/
+	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/google/uuid/
+	rm -rf vendor/github.com/vmware/govmomi/vendor/github.com/google/uuid
 	find vendor/ -name "*.gif" -o -name "*.jpg" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" | xargs rm -rf
 phony += vendor-clean
 $(buildDir)/run-glide:cmd/revendor/run-glide.go

@@ -19,7 +19,10 @@ type Output struct {
 	SuppressError     bool      `bson:"suppress_error" json:"suppress_error" yaml:"suppress_error"`
 	SendOutputToError bool      `bson:"redirect_output_to_error" json:"redirect_output_to_error" yaml:"redirect_output_to_error"`
 	SendErrorToOutput bool      `bson:"redirect_error_to_output" json:"redirect_error_to_output" yaml:"redirect_error_to_output"`
-	Loggers           []Logger  `bson:"loggers" json:"loggers,omitempty" yaml:"loggers"`
+	// Loggers are self-contained and specific to the process they are attached
+	// to. They are closed and cleaned up when the process exits. If this
+	// behavior is not desired, use Output instead of Loggers.
+	Loggers []Logger `bson:"loggers" json:"loggers,omitempty" yaml:"loggers"`
 
 	outputSender *send.WriterSender
 	errorSender  *send.WriterSender
@@ -99,9 +102,10 @@ func (o *Output) Validate() error {
 	return catcher.Resolve()
 }
 
-// GetOutput returns a Writer that has the stdout output from the process that the
-// Output that this method is called on is attached to.
-func (o *Output) GetOutput() (io.Writer, error) {
+// GetOutput returns a Writer that has the stdout output from the process that
+// the Output that this method is called on is attached to. The caller is
+// responsible for calling closeLoggers when the loggers are not needed anymore.
+func (o *Output) GetOutput() (w io.Writer, err error) {
 	if o.SendOutputToError {
 		return o.GetError()
 	}
@@ -115,22 +119,22 @@ func (o *Output) GetOutput() (io.Writer, error) {
 	}
 
 	if o.outputLogging() {
-		outSenders := []send.Sender{}
+		outLoggers := []send.Sender{}
 
 		for i := range o.Loggers {
 			sender, err := o.Loggers[i].Configure()
 			if err != nil {
 				return ioutil.Discard, err
 			}
-			outSenders = append(outSenders, sender)
+			outLoggers = append(outLoggers, sender)
 		}
 
 		var outMulti send.Sender
-		if len(outSenders) == 1 {
-			outMulti = outSenders[0]
+		if len(outLoggers) == 1 {
+			outMulti = outLoggers[0]
 		} else {
 			var err error
-			outMulti, err = send.NewMultiSender(DefaultLogName, send.LevelInfo{Default: level.Info, Threshold: level.Trace}, outSenders)
+			outMulti, err = send.NewMultiSender(DefaultLogName, send.LevelInfo{Default: level.Info, Threshold: level.Trace}, outLoggers)
 			if err != nil {
 				return ioutil.Discard, err
 			}
@@ -179,6 +183,7 @@ func (o *Output) GetError() (io.Writer, error) {
 		if err != nil {
 			return ioutil.Discard, err
 		}
+		// This will not close the Loggers' underlying senders.
 		o.errorSender = send.NewWriterSender(errMulti)
 	}
 
@@ -214,6 +219,8 @@ func (o *Output) Copy() *Output {
 // Close calls all of the processes' output senders' Close method.
 func (o *Output) Close() error {
 	catcher := grip.NewBasicCatcher()
+	// Closing the outputSender and errorSender does not close the underlying
+	// send.Sender.
 	if o.outputSender != nil {
 		catcher.Add(o.outputSender.Close())
 	}
@@ -223,9 +230,15 @@ func (o *Output) Close() error {
 	if o.outputSender != nil {
 		catcher.Add(o.outputSender.Sender.Close())
 	}
-	// Since senders are shared, only close error's senders if output hasn't already closed them.
+	// Since senders are shared, only close error's senders if output hasn't
+	// already closed them.
 	if o.errorSender != nil && (o.SuppressOutput || o.SendOutputToError) {
 		catcher.Add(o.errorSender.Sender.Close())
+	}
+	// Since loggers are owned by this process, we close the loggers to clean up
+	// their underlying send.Senders.
+	for _, logger := range o.Loggers {
+		catcher.Add(logger.Close())
 	}
 
 	return errors.WithStack(catcher.Resolve())

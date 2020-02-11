@@ -10,7 +10,7 @@ import (
 	"sort"
 	"time"
 
-	uuid "github.com/satori/go.uuid"
+	"github.com/google/uuid"
 )
 
 // ScriptingPython defines the configuration of a python environment.
@@ -63,7 +63,7 @@ func (opts *ScriptingPython) Validate() error {
 	}
 
 	if opts.VirtualEnvPath == "" {
-		opts.VirtualEnvPath = filepath.Join("venv", uuid.Must(uuid.NewV4()).String())
+		opts.VirtualEnvPath = filepath.Join("venv", uuid.New().String())
 	}
 
 	if opts.HostPythonInterpreter == "" {

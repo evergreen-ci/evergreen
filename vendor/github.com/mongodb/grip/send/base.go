@@ -1,11 +1,11 @@
 package send
 
 import (
-	"errors"
 	"fmt"
 	"sync"
 
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
 // Base provides most of the functionality of the Sender interface,
@@ -13,9 +13,10 @@ import (
 // implementations. All implementations of the functions
 type Base struct {
 	// data exposed via the interface and tools to track them
-	name  string
-	level LevelInfo
-	mutex sync.RWMutex
+	name   string
+	level  LevelInfo
+	mutex  sync.RWMutex
+	closed bool
 
 	// function literals which allow customizable functionality.
 	// they are set either in the constructor (e.g. MakeBase) of
@@ -47,8 +48,24 @@ func MakeBase(n string, reseter func(), closer func() error) *Base {
 	return b
 }
 
-// Close calls the closer function.
-func (b *Base) Close() error { return b.closer() }
+// Close calls the closer function if it is defined and it has not already been
+// closed.
+func (b *Base) Close() error {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	if b.closed {
+		return nil
+	}
+
+	if b.closer != nil {
+		if err := b.closer(); err != nil {
+			return errors.WithStack(err)
+		}
+	}
+	b.closed = true
+	return nil
+}
 
 // Name returns the name of the Sender.
 func (b *Base) Name() string {

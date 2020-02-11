@@ -3,8 +3,12 @@ package jasper
 import "syscall"
 
 func makeCompatible(sig syscall.Signal) syscall.Signal {
-	if sig == syscall.SIGTERM {
+	switch sig {
+	case syscall.SIGTERM:
 		return syscall.SIGKILL
+	case syscall.SIGABRT:
+		return syscall.SIGKILL
+	default:
+		return sig
 	}
-	return sig
 }

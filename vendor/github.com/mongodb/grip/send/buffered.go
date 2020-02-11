@@ -28,6 +28,10 @@ type bufferedSender struct {
 // If the interval is 0, the constructor sets an interval of 1 minute, and if
 // it is less than 5 seconds, the constructor sets it to 5 seconds. If the
 // size threshold is 0, then the constructor sets a threshold of 100.
+//
+// This Sender does not own the underlying Sender, so users are responsible for
+// closing the underlying Sender if/when it is appropriate to release its
+// resources.
 func NewBufferedSender(sender Sender, interval time.Duration, size int) Sender {
 	if interval == 0 {
 		interval = time.Minute
@@ -81,6 +85,8 @@ func (s *bufferedSender) Flush(_ context.Context) error {
 	return nil
 }
 
+// Close writes any buffered messages to the underlying Sender. This does not
+// close the underlying sender.
 func (s *bufferedSender) Close() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
