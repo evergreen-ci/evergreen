@@ -15,6 +15,7 @@ type Query {
 
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
+  removeFavoriteProject(identifier: String!): Project!
 }
 
 enum TaskSortCategory {

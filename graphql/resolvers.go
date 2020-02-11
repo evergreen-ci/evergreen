@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
+	"github.com/vektah/gqlparser/gqlerror"
 )
 
 type Resolver struct {
@@ -40,6 +42,38 @@ func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier st
 	err = usr.AddFavoritedProject(identifier)
 	if err != nil {
 		return nil, errors.Wrap(err, "error adding project to user's favorites")
+	}
+
+	return &restModel.UIProjectFields{
+		DisplayName: p.DisplayName,
+		Identifier:  p.Identifier,
+		Repo:        p.Repo,
+		Owner:       p.Owner,
+	}, nil
+}
+
+func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier string) (*restModel.UIProjectFields, error) {
+	p, err := model.FindOneProjectRef(identifier)
+	if err != nil || p == nil {
+		return nil, &gqlerror.Error{
+			Message: fmt.Sprintln("Could not find proj", identifier),
+			Extensions: map[string]interface{}{
+				"code": "RESOURCE_NOT_FOUND",
+			},
+		}
+
+	}
+
+	usr := route.MustHaveUser(ctx)
+
+	err = usr.RemoveFavoriteProject(identifier)
+	if err != nil {
+		return nil, &gqlerror.Error{
+			Message: fmt.Sprintln("Error removing project", identifier),
+			Extensions: map[string]interface{}{
+				"code": "INTERNAL_SERVER_ERROR",
+			},
+		}
 	}
 
 	return &restModel.UIProjectFields{
