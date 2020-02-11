@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -941,11 +942,11 @@ Examples:
 			dryRun := c.Bool(dryRunFlagName)
 			remoteIsLocal := c.Bool(remoteIsLocalFlagName)
 
-			if strings.HasSuffix(localPath, string(os.PathSeparator)) && !strings.HasSuffix(remotePath, string(os.PathSeparator)) {
-				remotePath = remotePath + string(os.PathSeparator)
+			if strings.HasSuffix(localPath, "/") && !strings.HasSuffix(remotePath, "/") {
+				remotePath = remotePath + "/"
 			}
-			if strings.HasSuffix(remotePath, string(os.PathSeparator)) && !strings.HasSuffix(localPath, string(os.PathSeparator)) {
-				localPath = localPath + string(os.PathSeparator)
+			if strings.HasSuffix(remotePath, "/") && !strings.HasSuffix(localPath, "/") {
+				localPath = localPath + "/"
 			}
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -1055,8 +1056,8 @@ func getUserAndHostname(ctx context.Context, hostID, confPath string) (user, hos
 // overwrite all of the contents of the destination directory, so we check that
 // they really want to do this.
 func sanityCheckRsync(localPath, remotePath string, pull bool) bool {
-	localPathIsDir := strings.HasSuffix(localPath, string(os.PathSeparator))
-	remotePathIsDir := strings.HasSuffix(remotePath, string(os.PathSeparator))
+	localPathIsDir := strings.HasSuffix(localPath, "/")
+	remotePathIsDir := strings.HasSuffix(remotePath, "/")
 
 	if localPathIsDir && !pull {
 		ok := confirm(fmt.Sprintf("The local directory '%s' will overwrite any existing contents in the remote directory '%s'. Continue? (y/n)", localPath, remotePath), false)
@@ -1100,7 +1101,22 @@ func buildRsyncCommand(opts rsyncOpts) (*jasper.Command, error) {
 		args = append(args, "--exclude", pattern)
 	}
 	if opts.makeRemoteParentDirs {
-		args = append(args, fmt.Sprintf(`--rsync-path=mkdir -p "%s" && rsync`, filepath.Dir(opts.remote)))
+		var parentDir string
+		if runtime.GOOS == "windows" {
+			// If we're using cygwin rsync, we have to use the Unix path and not
+			// the native one.
+			baseIndex := strings.LastIndex(opts.remote, "/")
+			if baseIndex == -1 {
+				parentDir = opts.remote
+			} else if baseIndex == 0 {
+				parentDir = "/"
+			} else {
+				parentDir = opts.remote[:baseIndex]
+			}
+		} else {
+			parentDir = filepath.Dir(opts.remote)
+		}
+		args = append(args, fmt.Sprintf(`--rsync-path=mkdir -p "%s" && rsync`, parentDir))
 	}
 
 	var dryRunIndex int
