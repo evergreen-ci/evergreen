@@ -959,6 +959,7 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 		fmt.Sprintf("--working_directory=%s", h.Distro.WorkDir),
 		"--cleanup",
 		"monitor",
+		fmt.Sprintf("--log_prefix=%s", filepath.Join(h.Distro.WorkDir, "agent.monitor")),
 		fmt.Sprintf("--client_url=%s", h.ClientURL(settings)),
 		fmt.Sprintf("--client_path=%s", clientPath),
 		fmt.Sprintf("--shell_path=%s", shellPath),
