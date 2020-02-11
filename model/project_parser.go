@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	mgobson "gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
@@ -70,6 +71,7 @@ type ParserProject struct {
 	Tasks              []parserTask               `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
 	ExecTimeoutSecs    int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 	Loggers            *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+	CreateTime         time.Time                  `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
 
 	// Matrix code
 	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
@@ -467,6 +469,7 @@ func LoadProjectForVersion(v *Version, identifier string, shouldSave bool) (*Pro
 	pp.Id = v.Id
 	pp.Identifier = identifier
 	pp.ConfigUpdateNumber = v.ConfigUpdateNumber
+	pp.CreateTime = v.CreateTime
 
 	// TODO: don't need separate ppFromDB variable once UseParserProject = true
 	if shouldSave && ppFromDB == nil {
