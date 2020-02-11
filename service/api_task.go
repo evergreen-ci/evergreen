@@ -243,11 +243,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// update the bookkeeping entry for the task
-	if err != nil {
-		grip.Warning(message.WrapError(err, "problem updating expected duration"))
-	}
-
 	if checkHostHealth(currentHost) {
 		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 		defer cancel()
