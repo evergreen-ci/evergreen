@@ -326,7 +326,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err := j.runHostTeardown(ctx, settings); err != nil {
+	if err := j.runHostTeardown(ctx, j.env, settings); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"job_type": j.Type().Name,
 			"message":  "Error running teardown script",
@@ -380,7 +380,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	}
 }
 
-func (j *hostTerminationJob) runHostTeardown(ctx context.Context, settings *evergreen.Settings) error {
+func (j *hostTerminationJob) runHostTeardown(ctx context.Context, env evergreen.Environment, settings *evergreen.Settings) error {
 	if j.host.Distro.Teardown == "" ||
 		j.host.Status == evergreen.HostProvisionFailed ||
 		j.host.SpawnOptions.SpawnedByTask {
@@ -388,55 +388,73 @@ func (j *hostTerminationJob) runHostTeardown(ctx context.Context, settings *ever
 	}
 
 	var startTime time.Time
-	var logs string
-	if j.host.Distro.LegacyBootstrap() {
-		sshOptions, err := j.host.GetSSHOptions(settings)
-		if err != nil {
-			return errors.Wrapf(err, "error getting ssh options for host %s", j.host.Id)
-		}
-		startTime = time.Now()
-		// run the teardown script with the agent
-		logs, err = j.host.RunSSHCommand(ctx, j.host.TearDownCommand(), sshOptions)
-		if err != nil {
-			event.LogHostTeardown(j.host.Id, logs, false, time.Since(startTime))
-			// Try again, this time without the agent, just in case.
-			logs, err = j.host.RunSSHCommand(ctx, host.TearDownDirectlyCommand(), sshOptions)
+	if !j.host.Distro.LegacyBootstrap() {
+		// We do not write the teardown script in user data because the user
+		// data script is subject to a 16kB text limit, which is easy to exceed.
+		// kim: TODO: test in staging that the file still gets put on the host.
+		// I'm not entirely certain that tee works, especially over SSH.
+		if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
+			script, err := expandScript(j.host.Distro.Teardown, settings)
 			if err != nil {
-				event.LogHostTeardown(j.host.Id, logs, false, time.Since(startTime))
-				return errors.Wrapf(err, "error running teardown script on remote host: %s", logs)
+				return errors.Wrapf(err, "error expanding script for host %s", j.host.Id)
+			}
+			args := []string{j.host.Distro.ShellBinary(), "-c",
+				fmt.Sprintf("tee %s", filepath.Join(j.host.Distro.HomeDir(), evergreen.TeardownScriptName))}
+			if output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
+				Args:               args,
+				StandardInputBytes: []byte(script),
+			}); err != nil {
+				grip.Error(errors.Wrapf(err, "could not write teardown file to host '%s': %s", j.host.Id, strings.Join(output, "\n")))
+
+				// If Jasper fails to write the file, fall back to SCPing it onto the host.
+				if err := copyScript(ctx, env, settings, j.host, evergreen.TeardownScriptName, script); err != nil {
+					return errors.Wrapf(err, "failed to copy teardown script to host")
+				}
 			}
 		}
-		event.LogHostTeardown(j.host.Id, logs, true, time.Since(startTime))
-		return nil
-	}
 
-	// We do not write the teardown script in user data because the user
-	// data script is subject to a 16kB text limit, which is easy to exceed.
-	if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
-		args := []string{filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath), "-c", fmt.Sprintf("cat > %s <<'EOF'\n%s\nEOF", filepath.Join(j.host.Distro.HomeDir(), evergreen.TeardownScriptName), j.host.Distro.Teardown)}
-		if output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
-			Args: args,
-		}); err != nil {
-			return errors.Wrapf(err, "could not write teardown file to host: %s", strings.Join(output, "\n"))
-		}
-	}
-
-	startTime = time.Now()
-	output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
-		Args: []string{filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath), "-l", "-c", j.host.TearDownCommand()},
-	})
-	if err != nil {
-		event.LogHostTeardown(j.host.Id, strings.Join(output, "\n"), false, time.Since(startTime))
+		// Attempt to run the teardown command through Jasper.
 		startTime = time.Now()
-		output, err = j.host.RunJasperProcess(ctx, j.env, &options.Create{
-			Args: []string{filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath), "-l", "-c", host.TearDownDirectlyCommand()},
+		output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
+			Args: []string{j.host.Distro.ShellBinary(), "-l", "-c", j.host.TearDownCommand()},
 		})
 		if err != nil {
-			return errors.Wrapf(err, "error running teardown script on remote host")
+			event.LogHostTeardown(j.host.Id, strings.Join(output, "\n"), false, time.Since(startTime))
+
+			// Try tearing down again with Jasper but without the evergreen
+			// binary.
+			startTime = time.Now()
+			output, err = j.host.RunJasperProcess(ctx, j.env, &options.Create{
+				Args: []string{j.host.Distro.ShellBinary(), "-l", "-c", host.TearDownDirectlyCommand()},
+			})
+			if err == nil {
+				event.LogHostTeardown(j.host.Id, strings.Join(output, "\n"), true, time.Since(startTime))
+				return nil
+			}
+
+			// If we fail to run the teardown script with Jasper, fall back to
+			// running the teardown command via SSH.
+			grip.Error(errors.Wrap(err, "could not run teardown through Jasper"))
 		}
 	}
-	logs = strings.Join(output, "\n")
 
+	sshOptions, err := j.host.GetSSHOptions(settings)
+	if err != nil {
+		return errors.Wrapf(err, "error getting ssh options for host %s", j.host.Id)
+	}
+	startTime = time.Now()
+	// Run the teardown script with the agent binary.
+	var logs string
+	logs, err = j.host.RunSSHCommand(ctx, j.host.TearDownCommand(), sshOptions)
+	if err != nil {
+		event.LogHostTeardown(j.host.Id, logs, false, time.Since(startTime))
+		// Try again, this time without the agent, just in case.
+		logs, err = j.host.RunSSHCommand(ctx, host.TearDownDirectlyCommand(), sshOptions)
+		if err != nil {
+			event.LogHostTeardown(j.host.Id, logs, false, time.Since(startTime))
+			return errors.Wrapf(err, "error running teardown script on remote host: %s", logs)
+		}
+	}
 	event.LogHostTeardown(j.host.Id, logs, true, time.Since(startTime))
 	return nil
 }

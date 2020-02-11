@@ -64,7 +64,7 @@ func makeJasperRestartJob() *jasperRestartJob {
 
 // NewJasperRestartJob creates a job that restarts an existing Jasper service
 // with new credentials.
-// kim: TODO: test this in staging.
+// kim: TODO: test this in staging with the mac host.
 func NewJasperRestartJob(env evergreen.Environment, h host.Host, expiration time.Time, restartThroughJasper bool, ts string, attempt int) amboy.Job {
 	j := makeJasperRestartJob()
 	j.env = env

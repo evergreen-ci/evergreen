@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -89,7 +88,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 
 	if output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
 		Args: []string{
-			filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath),
+			j.host.Distro.ShellBinary(),
 			"-l", "-c",
 			fmt.Sprintf("ls %s", path)}}); err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{

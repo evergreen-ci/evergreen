@@ -336,11 +336,6 @@ type SpawnHostUsage struct {
 const (
 	MaxLCTInterval = 5 * time.Minute
 
-	// Potential init systems supported by a Linux host.
-	InitSystemSystemd = "systemd"
-	InitSystemSysV    = "sysv"
-	InitSystemUpstart = "upstart"
-
 	// Max number of spawn hosts with no expiration for user
 	DefaultUnexpirableHostsPerUser = 1
 	// Max total EBS volume size for user

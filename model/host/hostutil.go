@@ -394,7 +394,7 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 		bashCmds = append(bashCmds, fetchClient, h.SetupCommand(), postFetchClient, markDone)
 
 		for i := range bashCmds {
-			bashCmds[i] = fmt.Sprintf("%s -l -c %s", filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.ShellPath), util.PowerShellQuotedString(bashCmds[i]))
+			bashCmds[i] = fmt.Sprintf("%s -l -c %s", h.Distro.ShellBinary(), util.PowerShellQuotedString(bashCmds[i]))
 		}
 
 		powershellCmds := append(append([]string{
@@ -452,7 +452,7 @@ func (h *Host) SetupServiceUserCommands() (string, error) {
 			cmd(fmt.Sprintf(`wmic useraccount where name="%s" set passwordexpires=false`, h.Distro.BootstrapSettings.ServiceUser)),
 			// Allow the user to run the service by granting the "Log on as a
 			// service" right.
-			fmt.Sprintf(`%s -l -c 'editrights -u %s -a SeServiceLogonRight'`, filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.ShellPath), h.Distro.BootstrapSettings.ServiceUser),
+			fmt.Sprintf(`%s -l -c 'editrights -u %s -a SeServiceLogonRight'`, h.Distro.ShellBinary(), h.Distro.BootstrapSettings.ServiceUser),
 		}, "\n"), nil
 }
 

@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -221,7 +220,7 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, settings *everg
 	})
 
 	opts := &options.Create{
-		Args: []string{filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath), "-l", "-c", j.host.CurlCommand(settings)},
+		Args: []string{j.host.Distro.ShellBinary(), "-l", "-c", j.host.CurlCommand(settings)},
 	}
 	output, err := j.host.RunJasperProcess(ctx, j.env, opts)
 	if err != nil {
@@ -251,7 +250,7 @@ func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context, settings *ev
 	})
 
 	opts := &options.Create{
-		Args: []string{filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath), "-l", "-c", j.host.SetupCommand()},
+		Args: []string{j.host.Distro.ShellBinary(), "-l", "-c", j.host.SetupCommand()},
 	}
 	output, err := j.host.RunJasperProcess(ctx, j.env, opts)
 	if err != nil {
