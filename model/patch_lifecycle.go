@@ -332,6 +332,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		RevisionOrderNumber: p.PatchNumber,
 		AuthorID:            p.Author,
 	}
+	intermediateProject.CreateTime = patchVersion.CreateTime
 
 	tasks := TaskVariantPairs{}
 	if len(p.VariantsTasks) > 0 {

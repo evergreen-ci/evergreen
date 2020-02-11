@@ -42,6 +42,7 @@ var (
 	ParserProjectExecTimeoutSecsKey   = bsonutil.MustHaveTag(ParserProject{}, "ExecTimeoutSecs")
 	ParserProjectLoggersKey           = bsonutil.MustHaveTag(ParserProject{}, "Loggers")
 	ParserProjectAxesKey              = bsonutil.MustHaveTag(ParserProject{}, "Axes")
+	ParserProjectCreateTimeKey        = bsonutil.MustHaveTag(ParserProject{}, "CreateTime")
 )
 
 // ProjectById returns the parser project for the version
@@ -94,6 +95,7 @@ func setAllFieldsUpdate(pp *ParserProject) interface{} {
 			ParserProjectLoggersKey:           pp.Loggers,
 			ParserProjectAxesKey:              pp.Axes,
 			ParserProjectConfigNumberKey:      pp.ConfigUpdateNumber,
+			ParserProjectCreateTimeKey:        pp.CreateTime,
 		},
 	}
 }
