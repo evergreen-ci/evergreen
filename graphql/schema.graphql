@@ -12,7 +12,7 @@ type Query {
     testName: String = ""
     status: String = ""
   ): [TestResult!]
-  testFiles(taskId: String!): [Files!]
+  testFiles(taskId: String!): [File!]
 }
 
 type Mutation {
