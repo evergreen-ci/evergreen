@@ -1,5 +1,6 @@
 type Query {
   userPatches(userId: String!): [Patch!]!
+  patch(id: String!): Patch!
   task(taskId: String!): Task
   projects: Projects!
   taskTests(
