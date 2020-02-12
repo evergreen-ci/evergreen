@@ -745,7 +745,9 @@ func NeedsAgentDeploy(currentTime time.Time) bson.M {
 // recently.
 func NeedsAgentMonitorDeploy(currentTime time.Time) bson.M {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
-	cutoffTime := currentTime.Add(-MaxLCTInterval)
+	// Agent monitors should have a longer grace period than agents until they
+	// are considered unreachable.
+	cutoffTime := currentTime.Add(-3 * MaxLCTInterval)
 	return bson.M{
 		StartedByKey:     evergreen.User,
 		HasContainersKey: bson.M{"$ne": true},
