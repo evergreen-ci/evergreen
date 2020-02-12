@@ -39,9 +39,10 @@ type File struct {
 	Visibility string `json:"visibility" bson:"visibility"`
 	// When true, these artifacts are excluded from reproduction
 	IgnoreForFetch bool `bson:"fetch_ignore,omitempty" json:"ignore_for_fetch"`
-	//AwsKey and AwsSercret are the key and secret with which the file was uploaded to s3
-	AwsKey    string `json:"aws_key" bson:"aws_key"`
-	AwsSecret string `json:"aws_secret" bson:"aws_secret"`
+	//AwsKey is the key with which the file was uploaded to s3
+	AwsKey string `json:"aws_key,omitempty" bson:"aws_key"`
+	//AwsSercret is the secret with which the file was uploaded to s3
+	AwsSecret string `json:"aws_secret,omitempty" bson:"aws_secret"`
 }
 
 // Array turns the parameter map into an array of File structs.

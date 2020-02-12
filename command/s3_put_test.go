@@ -20,10 +20,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	signedConst = "signed"
-)
-
 func TestS3PutValidateParams(t *testing.T) {
 
 	Convey("With an s3 put command", t, func() {
