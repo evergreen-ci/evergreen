@@ -398,8 +398,6 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	}{uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, isAdmin, permissions, uis.GetCommonViewData(w, r, false, true)}, "base", "task.html", "base_angular.html", "menu.html")
 }
 
- //find where the url is created. update to a signedUrl. 
-
 type taskHistoryPageData struct {
 	TaskName    string
 	Tasks       []bson.M
