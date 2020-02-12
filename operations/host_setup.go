@@ -2,6 +2,7 @@ package operations
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"time"
@@ -69,6 +70,9 @@ func runScript(ctx context.Context, wd, scriptFileName, tempFileName string, run
 	catcher := grip.NewSimpleCatcher()
 
 	out, err = runScript.CombinedOutput()
+	if err == nil {
+		fmt.Println(string(out))
+	}
 	catcher.Add(err)
 	catcher.Add(os.Remove(tempFileName))
 
@@ -85,12 +89,12 @@ func hostTeardown() cli.Command {
 			ctx, cancel := context.WithTimeout(context.Background(), setupTimeout)
 			defer cancel()
 
-			return errors.WithStack(runHostTeardownScript(ctx))
+			return errors.WithStack(runTeardownScript(ctx))
 		},
 	}
 }
 
-func runHostTeardownScript(ctx context.Context) error {
+func runTeardownScript(ctx context.Context) error {
 	if _, err := os.Stat(evergreen.TeardownScriptName); os.IsNotExist(err) {
 		return errors.Errorf("no teardown script '%s' found", evergreen.TeardownScriptName)
 	}
@@ -103,6 +107,9 @@ func runHostTeardownScript(ctx context.Context) error {
 
 	cmd := host.ShCommandWithSudo(ctx, evergreen.TeardownScriptName, false)
 	out, err = cmd.CombinedOutput()
+	if err == nil {
+		fmt.Println(string(out))
+	}
 	if err != nil {
 		return errors.Wrap(err, string(out))
 	}

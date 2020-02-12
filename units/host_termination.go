@@ -406,10 +406,11 @@ func (j *hostTerminationJob) runHostTeardown(ctx context.Context, env evergreen.
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),
 			})
-			if output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
+			output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
 				Args:               args,
 				StandardInputBytes: []byte(script),
-			}); err != nil {
+			})
+			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message": "could not write teardown script to host through Jasper",
 					"host_id": j.host.Id,
@@ -477,6 +478,9 @@ func (j *hostTerminationJob) runHostTeardown(ctx context.Context, env evergreen.
 
 			// If we fail to run the teardown script with Jasper, fall back to
 			// running the teardown command via SSH.
+		} else {
+			event.LogHostTeardown(j.host.Id, strings.Join(output, "\n"), true, time.Since(startTime))
+			return nil
 		}
 	}
 
