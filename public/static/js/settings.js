@@ -54,7 +54,7 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
   $scope.github_user = $window.github_user;
   $scope.use_spruce_options = $window.use_spruce_options;
   $scope.should_show_feedback = false;
-  $scope.opt_in_initially_checked = $scope.use_spruce_options === undefined ? false : $scope.use_spruce_options;
+  $scope.opt_in_initially_checked = $scope.use_spruce_options === undefined ? false : $scope.use_spruce_options.patch_page;
   $scope.userConf = $window.userConf;
   $scope.binaries = $window.binaries;
   $scope.notifications = $window.notifications;
