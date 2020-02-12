@@ -413,39 +413,40 @@ func (d *Distro) IsParent(s *evergreen.Settings) bool {
 }
 
 func (d *Distro) GetImageID() (string, error) {
-	var i interface{}
+	key := ""
+
 	switch d.Provider {
-	case evergreen.ProviderNameEc2Auto:
-		i = (*d.ProviderSettings)["ami"]
-	case evergreen.ProviderNameEc2OnDemand:
-		i = (*d.ProviderSettings)["ami"]
-	case evergreen.ProviderNameEc2Spot:
-		i = (*d.ProviderSettings)["ami"]
-	case evergreen.ProviderNameEc2Fleet:
-		i = (*d.ProviderSettings)["ami"]
-	case evergreen.ProviderNameDocker:
-		i = (*d.ProviderSettings)["image_url"]
-	case evergreen.ProviderNameDockerMock:
-		i = (*d.ProviderSettings)["image_url"]
+	case evergreen.ProviderNameEc2Auto, evergreen.ProviderNameEc2OnDemand, evergreen.ProviderNameEc2Spot, evergreen.ProviderNameEc2Fleet:
+		key = "ami"
+	case evergreen.ProviderNameDocker, evergreen.ProviderNameDockerMock:
+		key = "image_url"
 	case evergreen.ProviderNameGce:
-		i = (*d.ProviderSettings)["image_name"]
+		key = "image_name"
 	case evergreen.ProviderNameVsphere:
-		i = (*d.ProviderSettings)["template"]
-	case evergreen.ProviderNameMock:
-		return "", nil
-	case evergreen.ProviderNameStatic:
-		return "", nil
-	case evergreen.ProviderNameOpenstack:
+		key = "template"
+	case evergreen.ProviderNameMock, evergreen.ProviderNameStatic, evergreen.ProviderNameOpenstack:
 		return "", nil
 	default:
 		return "", errors.New("unknown provider name")
 	}
 
-	s, ok := i.(string)
-	if !ok {
-		return "", errors.New("cannot extract image ID from provider settings")
+	if d.ProviderSettings != nil {
+		i := (*d.ProviderSettings)[key]
+		s, ok := i.(string)
+		if !ok {
+			return "", errors.New("cannot extract image ID from provider settings")
+		}
+		return s, nil
 	}
-	return s, nil
+
+	if len(d.ProviderSettingsList) == 1 {
+		res, ok := d.ProviderSettingsList[0].Lookup(key).StringValueOK()
+		if !ok {
+			return "", errors.Errorf("provider setting key '%s' is empty", key)
+		}
+		return res, nil
+	}
+	return "", errors.New("provider settings not configured correctly")
 }
 
 func (d *Distro) GetPoolSize() int {
@@ -547,6 +548,25 @@ func (d *Distro) GetProviderSettingByRegion(region string) (*birch.Document, err
 		}
 	}
 	return nil, errors.Errorf("distro '%s' has no settings for region '%s'", d.Id, region)
+}
+
+func (d *Distro) SetUserdata(userdata, region string) error {
+	if d.ProviderSettings != nil {
+		(*d.ProviderSettings)["user_data"] = userdata
+	}
+	if len(d.ProviderSettingsList) == 0 && evergreen.UseSpawnHostRegions {
+		return errors.Errorf("distro '%s' has no provider settings", d.Id)
+	}
+	if region == "" {
+		region = evergreen.DefaultEC2Region
+	}
+	doc, err := d.GetProviderSettingByRegion(region)
+	if err != nil {
+		return errors.Wrap(err, "error getting provider setting from list")
+	}
+
+	d.ProviderSettingsList = []*birch.Document{doc.Set(birch.EC.String("user_data", userdata))}
+	return nil
 }
 
 // GetResolvedHostAllocatorSettings combines the distro's HostAllocatorSettings fields with the

@@ -12,6 +12,8 @@ mciModule.factory('PerfDiscoveryDataService', function (
     return resp.data;
   }
 
+  var cachedData = {};
+
   function slug(data) {
     return [
       data.build,
@@ -155,6 +157,7 @@ mciModule.factory('PerfDiscoveryDataService', function (
   //   {...}
   // ]
   function onProcessData(data, metricName) {
+    cachedData = data;
     var now = {},
       baseline = {},
       history = {}
@@ -520,6 +523,13 @@ mciModule.factory('PerfDiscoveryDataService', function (
     )
   }
 
+  function changeMetric(metricName) {
+    let p = new Promise((resolve) => {
+      resolve(cachedData);
+    })
+    return getRows(processData(p, metricName));
+  }
+
   return {
     // public api
     getData: getData,
@@ -529,6 +539,7 @@ mciModule.factory('PerfDiscoveryDataService', function (
     getCompItemVersion: getCompItemVersion,
     getQueryBasedItem: getQueryBasedItem,
     getBFTicketsForRows: getBFTicketsForRows,
+    changeMetric: changeMetric,
 
     // For teting
     _extractTasks: extractTasks,

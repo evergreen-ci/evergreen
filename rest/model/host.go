@@ -29,6 +29,7 @@ type APIHost struct {
 type HostRequestOptions struct {
 	DistroID       string     `json:"distro"`
 	TaskID         string     `json:"task"`
+	Region         string     `json:"region"`
 	KeyName        string     `json:"keyname"`
 	UserData       string     `json:"userdata"`
 	InstanceTags   []host.Tag `json:"instance_tags"`

@@ -195,6 +195,9 @@ const (
 
 	DefaultJasperPort          = 2385
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
+
+	// can flip this when regions are configured
+	UseSpawnHostRegions = false
 )
 
 func IsFinishedTaskStatus(status string) bool {
