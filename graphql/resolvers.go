@@ -257,7 +257,6 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 func setScheduled(ctx context.Context, sc data.Connector, taskID string, isActive bool) (*restModel.APITask, error) {
 	usr := route.MustHaveUser(ctx)
 	if err := model.SetActiveState(taskID, usr.Username(), isActive); err != nil {
-		fmt.Println(err)
 		return nil, &gqlerror.Error{
 			Message: fmt.Sprintln("Error scheduling task", taskID),
 			Extensions: map[string]interface{}{
