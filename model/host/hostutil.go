@@ -1,14 +1,12 @@
 package host
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -57,27 +55,27 @@ func (h *Host) TearDownCommand() string {
 // (https://jira.mongodb.org/browse/EVG-5972). It likely can be removed after work to improve amboy
 // job locking or the SSH dependency.
 func TearDownDirectlyCommand() string {
-	chmod := ChmodCommandWithSudo(context.Background(), evergreen.TeardownScriptName, false).Args
+	chmod := ChmodCommandWithSudo(evergreen.TeardownScriptName, false)
 	chmodString := strings.Join(chmod, " ")
-	sh := ShCommandWithSudo(context.Background(), evergreen.TeardownScriptName, false).Args
+	sh := ShCommandWithSudo(evergreen.TeardownScriptName, false)
 	shString := strings.Join(sh, " ")
 	return fmt.Sprintf("%s && %s", chmodString, shString)
 }
 
-func ShCommandWithSudo(ctx context.Context, script string, sudo bool) *exec.Cmd {
-	if sudo {
-		return exec.CommandContext(ctx, "sudo", "sh", script)
-	}
-	return exec.CommandContext(ctx, "sh", script)
-}
-
-func ChmodCommandWithSudo(ctx context.Context, script string, sudo bool) *exec.Cmd {
+func ShCommandWithSudo(script string, sudo bool) []string {
 	args := []string{}
 	if sudo {
 		args = append(args, "sudo")
 	}
-	args = append(args, "chmod", "+x", script)
-	return exec.CommandContext(ctx, args[0], args[1:]...)
+	return append(args, "sh", script)
+}
+
+func ChmodCommandWithSudo(script string, sudo bool) []string {
+	args := []string{}
+	if sudo {
+		args = append(args, "sudo")
+	}
+	return append(args, "chmod", "+x", script)
 }
 
 // CurlCommand returns the command to curl the evergreen client.
@@ -200,11 +198,7 @@ func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*ja
 		return "", errors.WithStack(err)
 	}
 
-	// kim: TODO: standardize this
-	output := &util.CappedWriter{
-		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024, // 1MB
-	}
+	output := util.NewMBCappedWriter()
 
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(ctx, sshTimeout)

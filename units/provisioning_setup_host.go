@@ -1,7 +1,6 @@
 package units
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -466,10 +465,7 @@ func copyScript(ctx context.Context, env evergreen.Environment, settings *evergr
 		return errors.Wrapf(err, "error getting ssh options for host %s", h.Id)
 	}
 
-	scpCmdOut := &util.CappedWriter{
-		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024,
-	}
+	scpCmdOut := util.NewMBCappedWriter()
 	scpArgs := buildScpCommand(file.Name(), name, hostInfo, user, sshOptions)
 
 	scpCmd := env.JasperManager().CreateCommand(ctx).Add(scpArgs).
@@ -545,10 +541,7 @@ func (j *setupHostJob) copyScript(ctx context.Context, settings *evergreen.Setti
 		return errors.Wrapf(err, "error getting ssh options for host %v", j.host.Id)
 	}
 
-	scpCmdOut := &util.CappedWriter{
-		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024,
-	}
+	scpCmdOut := util.NewMBCappedWriter()
 	scpArgs := buildScpCommand(file.Name(), name, hostInfo, user, sshOptions)
 
 	scpCmd := j.env.JasperManager().CreateCommand(ctx).Add(scpArgs).
@@ -782,10 +775,7 @@ func (j *setupHostJob) loadClient(ctx context.Context, settings *evergreen.Setti
 	curlctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 
-	curlOut := &util.CappedWriter{
-		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024,
-	}
+	curlOut := util.NewMBCappedWriter()
 
 	curlcmd := j.env.JasperManager().CreateCommand(curlctx).Host(hostSSHInfo.Hostname).User(j.host.User).
 		ExtendRemoteArgs("-p", hostSSHInfo.Port).ExtendRemoteArgs(sshOptions...).
@@ -819,10 +809,7 @@ func (j *setupHostJob) loadClient(ctx context.Context, settings *evergreen.Setti
 	}
 	defer os.Remove(tempFileName)
 
-	scpOut := &util.CappedWriter{
-		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024,
-	}
+	scpOut := util.NewMBCappedWriter()
 
 	scpArgs := buildScpCommand(tempFileName, filepath.Join("~", targetDir, ".evergreen.yml"), hostSSHInfo, j.host.User, sshOptions)
 	scpYmlCommand := j.env.JasperManager().CreateCommand(ctx).Add(scpArgs).
@@ -853,10 +840,7 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, taskId, cliPath,
 	}
 	sshOptions = append(sshOptions, "-o", "UserKnownHostsFile=/dev/null")
 
-	cmdOutput := &util.CappedWriter{
-		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024,
-	}
+	cmdOutput := util.NewMBCappedWriter()
 	fetchCmd := fmt.Sprintf("%s -c %s fetch -t %s --source --artifacts --dir='%s'", cliPath, confPath, taskId, j.host.Distro.WorkDir)
 
 	makeShellCmd := j.env.JasperManager().CreateCommand(ctx).Host(hostSSHInfo.Hostname).User(j.host.User).

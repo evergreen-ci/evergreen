@@ -1,7 +1,6 @@
 package cloud
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -178,23 +177,16 @@ func SetHostRDPPassword(ctx context.Context, env evergreen.Environment, host *ho
 		return errors.Wrap(err, "Error constructing host RDP password")
 	}
 
-	stdout := &util.CappedWriter{
-		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024,
-	}
-
-	stderr := &util.CappedWriter{
-		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024,
-	}
+	stdout := util.NewMBCappedWriter()
+	stderr := util.NewMBCappedWriter()
 
 	pwdUpdateCmd.SetErrorWriter(stderr).SetOutputWriter(stdout)
 
 	// update RDP and sshd password
 	if err = pwdUpdateCmd.Run(ctx); err != nil {
 		grip.Warning(message.Fields{
-			"stdout":    stdout.Buffer.String(),
-			"stderr":    stderr.Buffer.String(),
+			"stdout":    stdout.String(),
+			"stderr":    stderr.String(),
 			"operation": "set host rdp password",
 			"host_id":   host.Id,
 			"cmd":       pwdUpdateCmd.String(),
@@ -204,8 +196,8 @@ func SetHostRDPPassword(ctx context.Context, env evergreen.Environment, host *ho
 	}
 
 	grip.Debug(message.Fields{
-		"stdout":    stdout.Buffer.String(),
-		"stderr":    stderr.Buffer.String(),
+		"stdout":    stdout.String(),
+		"stderr":    stderr.String(),
 		"operation": "set host rdp password",
 		"host_id":   host.Id,
 		"cmd":       pwdUpdateCmd.String(),

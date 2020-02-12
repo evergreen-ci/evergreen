@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -47,38 +48,49 @@ func runSetupScript(ctx context.Context, wd string, setupAsSudo bool) error {
 	grip.Warning(os.MkdirAll(wd, 0777))
 
 	if _, err := os.Stat(evergreen.SetupScriptName); err == nil {
-		cmd := host.ShCommandWithSudo(ctx, evergreen.TempSetupScriptName, setupAsSudo)
-		return runScript(ctx, wd, evergreen.SetupScriptName, evergreen.TempSetupScriptName, cmd, setupAsSudo)
+		setup := host.ShCommandWithSudo(evergreen.TempSetupScriptName, setupAsSudo)
+		return runScript(ctx,
+			wd,
+			evergreen.SetupScriptName,
+			evergreen.TempSetupScriptName,
+			setup,
+			setupAsSudo)
 	} else if _, err = os.Stat(evergreen.PowerShellSetupScriptName); err == nil {
-		cmd := exec.CommandContext(ctx, "powershell", "./"+evergreen.PowerShellTempSetupScriptName)
-		return runScript(ctx, wd, evergreen.PowerShellSetupScriptName, evergreen.PowerShellTempSetupScriptName, cmd, setupAsSudo)
+		setup := []string{"powershell", "./" + evergreen.PowerShellTempSetupScriptName}
+		return runScript(ctx,
+			wd,
+			evergreen.PowerShellSetupScriptName,
+			evergreen.PowerShellTempSetupScriptName,
+			setup,
+			setupAsSudo)
 	}
 	return nil
 }
 
-func runScript(ctx context.Context, wd, scriptFileName, tempFileName string, runScript *exec.Cmd, sudo bool) error {
+// runScript ensures a shell script has proper permissions and runs it. The
+// script is deleted.
+func runScript(ctx context.Context, wd, scriptFileName, tempFileName string, runScriptArgs []string, sudo bool) error {
 	if err := os.Rename(scriptFileName, tempFileName); os.IsNotExist(err) {
 		return nil
 	}
 
-	chmod := host.ChmodCommandWithSudo(ctx, tempFileName, sudo)
-	out, err := chmod.CombinedOutput()
-	if err != nil {
-		return errors.Wrap(err, string(out))
+	chmod := host.ChmodCommandWithSudo(tempFileName, sudo)
+	if output, err := runCmd(ctx, chmod); err != nil {
+		return errors.Wrap(err, output)
 	}
 
 	catcher := grip.NewSimpleCatcher()
 
-	out, err = runScript.CombinedOutput()
-	if err == nil {
-		fmt.Println(string(out))
-	}
+	output, err := runCmd(ctx, runScriptArgs)
 	catcher.Add(err)
+	if err == nil {
+		fmt.Println(output)
+	}
 	catcher.Add(os.Remove(tempFileName))
 
 	grip.Warning(os.MkdirAll(wd, 0777))
 
-	return errors.Wrap(catcher.Resolve(), string(out))
+	return errors.Wrap(catcher.Resolve(), output)
 }
 
 func hostTeardown() cli.Command {
@@ -99,20 +111,25 @@ func runTeardownScript(ctx context.Context) error {
 		return errors.Errorf("no teardown script '%s' found", evergreen.TeardownScriptName)
 	}
 
-	chmod := host.ChmodCommandWithSudo(ctx, evergreen.TeardownScriptName, false)
-	out, err := chmod.CombinedOutput()
-	if err != nil {
-		return errors.Wrap(err, string(out))
+	chmod := host.ChmodCommandWithSudo(evergreen.TeardownScriptName, false)
+	if output, err := runCmd(ctx, chmod); err != nil {
+		return errors.Wrap(err, output)
 	}
 
-	cmd := host.ShCommandWithSudo(ctx, evergreen.TeardownScriptName, false)
-	out, err = cmd.CombinedOutput()
-	if err == nil {
-		fmt.Println(string(out))
-	}
+	teardown := host.ShCommandWithSudo(evergreen.TeardownScriptName, false)
+	output, err := runCmd(ctx, teardown)
 	if err != nil {
-		return errors.Wrap(err, string(out))
+		return errors.Wrap(err, output)
 	}
+	fmt.Println(output)
 
 	return nil
+}
+
+// runCmd runs the given command and returns the output.
+func runCmd(ctx context.Context, args []string) (string, error) {
+	output := util.NewMBCappedWriter()
+	cmd := jasper.NewCommand().Add(args).SetCombinedWriter(output)
+	err := cmd.Run(ctx)
+	return output.String(), err
 }
