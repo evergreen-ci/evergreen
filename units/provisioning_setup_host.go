@@ -386,8 +386,8 @@ func setupServiceUser(ctx context.Context, env evergreen.Environment, settings *
 	}
 
 	path := filepath.Join(h.Distro.HomeDir(), "setup-user.ps1")
-	if err := copyScript(ctx, env, settings, h, path, cmds); err != nil {
-		return errors.Wrap(err, "error copying script to set up service user")
+	if output, err := copyScript(ctx, env, settings, h, path, cmds); err != nil {
+		return errors.Wrapf(err, "error copying script to set up service user: %s", output)
 	}
 
 	if logs, err := h.RunSSHCommand(ctx, fmt.Sprintf("powershell ./%s && rm -f ./%s", filepath.Base(path), filepath.Base(path)), sshOptions); err != nil {
@@ -410,13 +410,13 @@ func doFetchAndReinstallJasper(ctx context.Context, env evergreen.Environment, h
 // copyScript writes a given script as file "name" to the target host. This works
 // by creating a local copy of the script on the runner's machine, scping it over
 // then removing the local copy.
-func copyScript(ctx context.Context, env evergreen.Environment, settings *evergreen.Settings, h *host.Host, name, script string) error {
+func copyScript(ctx context.Context, env evergreen.Environment, settings *evergreen.Settings, h *host.Host, name, script string) (string, error) {
 	// parse the hostname into the user, host and port
 	startAt := time.Now()
 
 	hostInfo, err := h.GetSSHInfo()
 	if err != nil {
-		return errors.WithStack(err)
+		return "", errors.WithStack(err)
 	}
 
 	user := h.Distro.User
@@ -427,10 +427,10 @@ func copyScript(ctx context.Context, env evergreen.Environment, settings *evergr
 	// create a temp file for the script
 	file, err := ioutil.TempFile("", filepath.Base(name))
 	if err != nil {
-		return errors.Wrap(err, "error creating temporary script file")
+		return "", errors.Wrap(err, "error creating temporary script file")
 	}
 	if err = os.Chmod(file.Name(), 0700); err != nil {
-		return errors.Wrap(err, "error setting file permissions")
+		return "", errors.Wrap(err, "error setting file permissions")
 	}
 	defer func() {
 		errCtx := message.Fields{
@@ -454,15 +454,15 @@ func copyScript(ctx context.Context, env evergreen.Environment, settings *evergr
 
 	expanded, err := expandScript(script, settings)
 	if err != nil {
-		return errors.Wrapf(err, "error expanding script for host %s", h.Id)
+		return "", errors.Wrapf(err, "error expanding script for host %s", h.Id)
 	}
 	if _, err = io.WriteString(file, expanded); err != nil {
-		return errors.Wrap(err, "error writing local script")
+		return "", errors.Wrap(err, "error writing local script")
 	}
 
 	sshOptions, err := h.GetSSHOptions(settings)
 	if err != nil {
-		return errors.Wrapf(err, "error getting ssh options for host %s", h.Id)
+		return "", errors.Wrapf(err, "error getting ssh options for host %s", h.Id)
 	}
 
 	scpCmdOut := util.NewMBCappedWriter()
@@ -478,7 +478,7 @@ func copyScript(ctx context.Context, env evergreen.Environment, settings *evergr
 
 	err = scpCmd.Run(ctx)
 
-	return errors.Wrap(err, "error copying script to remote machine")
+	return scpCmdOut.String(), errors.Wrap(err, "error copying script to remote machine")
 }
 
 // copyScript writes a given script as file "name" to the target host. This works
