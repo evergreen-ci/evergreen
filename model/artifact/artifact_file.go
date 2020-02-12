@@ -1,5 +1,7 @@
 package artifact
 
+import "github.com/pkg/errors"
+
 const Collection = "artifact_files"
 
 const (
@@ -38,6 +40,31 @@ type File struct {
 	Visibility string `json:"visibility" bson:"visibility"`
 	// When true, these artifacts are excluded from reproduction
 	IgnoreForFetch bool `bson:"fetch_ignore,omitempty" json:"ignore_for_fetch"`
+}
+
+func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {
+	artifacts, err := FindAll(ByTaskIdsAndExecutions(tasks))
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding artifact files for task")
+	}
+	if artifacts == nil {
+		taskIds := []string{}
+		for _, t := range tasks {
+			taskIds = append(taskIds, t.TaskID)
+		}
+		artifacts, err = FindAll(ByTaskIds(taskIds))
+		if err != nil {
+			return nil, errors.Wrap(err, "error finding artifact files for task without execution number")
+		}
+		if artifacts == nil {
+			return []File{}, nil
+		}
+	}
+	files := []File{}
+	for _, artifact := range artifacts {
+		files = append(files, artifact.Files...)
+	}
+	return files, nil
 }
 
 // Array turns the parameter map into an array of File structs.
