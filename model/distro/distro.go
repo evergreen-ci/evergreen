@@ -565,8 +565,7 @@ func (d *Distro) SetUserdata(userdata, region string) error {
 		return errors.Wrap(err, "error getting provider setting from list")
 	}
 
-	e := birch.EC.String("user_data", userdata)
-	d.ProviderSettingsList = []*birch.Document{doc.Set(e)}
+	d.ProviderSettingsList = []*birch.Document{doc.Set(birch.EC.String("user_data", userdata))}
 	return nil
 }
 
