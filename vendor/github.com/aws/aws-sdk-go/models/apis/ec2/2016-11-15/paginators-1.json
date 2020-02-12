@@ -78,8 +78,20 @@
       "output_token": "NextToken",
       "result_key": "EgressOnlyInternetGateways"
     },
+    "DescribeExportImageTasks": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "ExportImageTasks"
+    },
     "DescribeExportTasks": {
       "result_key": "ExportTasks"
+    },
+    "DescribeFastSnapshotRestores": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "FastSnapshotRestores"
     },
     "DescribeFleets": {
       "input_token": "NextToken",
@@ -161,6 +173,12 @@
       "limit_key": "MaxResults",
       "output_token": "NextToken",
       "result_key": "InternetGateways"
+    },
+    "DescribeIpv6Pools": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "Ipv6Pools"
     },
     "DescribeKeyPairs": {
       "result_key": "KeyPairs"
@@ -314,6 +332,24 @@
       "output_token": "NextToken",
       "result_key": "Tags"
     },
+    "DescribeTrafficMirrorFilters": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "TrafficMirrorFilters"
+    },
+    "DescribeTrafficMirrorSessions": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "TrafficMirrorSessions"
+    },
+    "DescribeTrafficMirrorTargets": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "TrafficMirrorTargets"
+    },
     "DescribeTransitGatewayAttachments": {
       "input_token": "NextToken",
       "limit_key": "MaxResults",
@@ -409,6 +445,12 @@
     },
     "DescribeVpnGateways": {
       "result_key": "VpnGateways"
+    },
+    "GetAssociatedIpv6PoolCidrs": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "Ipv6CidrAssociations"
     },
     "GetTransitGatewayAttachmentPropagations": {
       "input_token": "NextToken",

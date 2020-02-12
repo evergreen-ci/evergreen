@@ -16,22 +16,35 @@
 // You can use the resource groups tagging API operations to complete the following
 // tasks:
 //
-//    * Tag and untag supported resources located in the specified region for
-//    the AWS account
+//    * Tag and untag supported resources located in the specified Region for
+//    the AWS account.
 //
 //    * Use tag-based filters to search for resources located in the specified
-//    region for the AWS account
+//    Region for the AWS account.
 //
-//    * List all existing tag keys in the specified region for the AWS account
+//    * List all existing tag keys in the specified Region for the AWS account.
 //
-//    * List all existing values for the specified key in the specified region
-//    for the AWS account
+//    * List all existing values for the specified key in the specified Region
+//    for the AWS account.
 //
-// To make full use of the resource groups tagging API operations, you might
-// need additional IAM permissions, including permission to access the resources
-// of individual services as well as permission to view and apply tags to those
-// resources. For more information, see Obtaining Permissions for Resource Groups
-// and Tag Editor (http://docs.aws.amazon.com/awsconsolehelpdocs/latest/gsg/obtaining-permissions-for-resource-groups.html).
+// To use resource groups tagging API operations, you must add the following
+// permissions to your IAM policy:
+//
+//    * tag:GetResources
+//
+//    * tag:TagResources
+//
+//    * tag:UntagResources
+//
+//    * tag:GetTagKeys
+//
+//    * tag:GetTagValues
+//
+// You'll also need permissions to access the resources of individual services
+// so that you can tag and untag those resources.
+//
+// For more information on IAM policies, see Managing IAM Policies (http://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage.html)
+// in the IAM User Guide.
 //
 // You can use the Resource Groups Tagging API to tag resources for the following
 // AWS services.
@@ -40,13 +53,17 @@
 //
 //    * API Gateway
 //
-//    * AWS AppStream
+//    * Amazon AppStream
 //
 //    * AWS AppSync
+//
+//    * AWS App Mesh
 //
 //    * Amazon Athena
 //
 //    * Amazon Aurora
+//
+//    * AWS Backup
 //
 //    * AWS Certificate Manager
 //
@@ -70,6 +87,10 @@
 //
 //    * AWS CodeBuild
 //
+//    * AWS CodeCommit
+//
+//    * AWS CodePipeline
+//
 //    * AWS CodeStar
 //
 //    * Amazon Cognito Identity
@@ -80,11 +101,15 @@
 //
 //    * AWS Config
 //
+//    * AWS Data Exchange
+//
 //    * AWS Data Pipeline
 //
 //    * AWS Database Migration Service
 //
-//    * AWS Datasync
+//    * AWS DataSync
+//
+//    * AWS Device Farm
 //
 //    * AWS Direct Connect
 //
@@ -99,6 +124,8 @@
 //    * Amazon ECR
 //
 //    * Amazon ECS
+//
+//    * Amazon EKS
 //
 //    * AWS Elastic Beanstalk
 //
@@ -120,9 +147,11 @@
 //
 //    * Amazon FSx
 //
-//    * Amazon Glacier
+//    * Amazon S3 Glacier
 //
 //    * AWS Glue
+//
+//    * Amazon GuardDuty
 //
 //    * Amazon Inspector
 //
@@ -134,7 +163,11 @@
 //
 //    * AWS IoT Device Management
 //
+//    * AWS IoT Events
+//
 //    * AWS IoT Greengrass
+//
+//    * AWS IoT 1-Click
 //
 //    * AWS Key Management Service
 //
@@ -158,6 +191,10 @@
 //
 //    * AWS OpsWorks
 //
+//    * AWS Organizations
+//
+//    * Amazon Quantum Ledger Database (QLDB)
+//
 //    * Amazon RDS
 //
 //    * Amazon Redshift
@@ -178,17 +215,21 @@
 //
 //    * AWS Secrets Manager
 //
+//    * AWS Security Hub
+//
 //    * AWS Service Catalog
 //
 //    * Amazon Simple Notification Service (SNS)
 //
 //    * Amazon Simple Queue Service (SQS)
 //
-//    * AWS Simple System Manager (SSM)
+//    * Amazon Simple Workflow Service
 //
 //    * AWS Step Functions
 //
 //    * AWS Storage Gateway
+//
+//    * AWS Systems Manager
 //
 //    * AWS Transfer for SFTP
 //
