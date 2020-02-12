@@ -2,7 +2,6 @@ package command
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -308,7 +307,6 @@ func TestSignedUrlVisibility(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	for _, vis := range []string{"signed", "private"} {
-		var err error
 		s := s3put{
 			AwsKey:        "key",
 			AwsSecret:     "secret",
@@ -336,17 +334,15 @@ func TestSignedUrlVisibility(t *testing.T) {
 		require.NoError(t, s.attachFiles(ctx, comm, logger, localFiles, remoteFile))
 
 		attachedFiles := comm.AttachedFiles
-		assert := assert.New(t)
 		if v, found := attachedFiles[""]; found {
-			fmt.Println(v)
 			for _, file := range v {
 				if file.Visibility == artifact.Signed {
-					assert.Equal(file.AwsKey, s.AwsKey)
-					assert.Equal(file.AwsSecret, s.AwsSecret)
+					assert.Equal(t, file.AwsKey, s.AwsKey)
+					assert.Equal(t, file.AwsSecret, s.AwsSecret)
 
 				} else {
-					assert.Equal(file.AwsKey, "")
-					assert.Equal(file.AwsSecret, "")
+					assert.Equal(t, file.AwsKey, "")
+					assert.Equal(t, file.AwsSecret, "")
 				}
 			}
 		}
