@@ -22,6 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -258,6 +259,8 @@ func TestGetVersionInfo(t *testing.T) {
 		DisableCache: true,
 	})
 
+	flags := evergreen.ServiceFlags{ParserProjectDisabled: true}
+	assert.NoError(t, evergreen.SetServiceFlags(flags))
 	app := GetRESTv1App(&uis)
 	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
 	router, err := app.Handler()
@@ -465,6 +468,9 @@ func TestActivateVersion(t *testing.T) {
 	}))
 	router, err := app.Handler()
 	require.NoError(t, err, "error setting up router")
+
+	flags := evergreen.ServiceFlags{ParserProjectDisabled: true}
+	assert.NoError(t, evergreen.SetServiceFlags(flags))
 
 	Convey("When marking a particular version as active", t, func() {
 		require.NoError(t, db.ClearCollections(model.VersionCollection, build.Collection),

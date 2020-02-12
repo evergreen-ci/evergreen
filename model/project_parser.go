@@ -439,15 +439,19 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 func LoadProjectForVersion(v *Version, identifier string, shouldSave bool) (*Project, *ParserProject, error) {
 	var ppFromDB *ParserProject
 	var err error
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return nil, nil, errors.WithStack(err)
+	}
 	// if not using parser project anyway, only lookup if saving
-	if evergreen.UseParserProject || shouldSave {
+	if !flags.ParserProjectDisabled || shouldSave {
 		ppFromDB, err = ParserProjectFindOneById(v.Id)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error finding parser project")
 		}
 	}
 
-	if evergreen.UseParserProject && ppFromDB != nil {
+	if !flags.ParserProjectDisabled && ppFromDB != nil {
 		// if parser project config number is old then there was a race,
 		// and we should default to the version config
 		if ppFromDB.ConfigUpdateNumber >= v.ConfigUpdateNumber {
@@ -471,7 +475,7 @@ func LoadProjectForVersion(v *Version, identifier string, shouldSave bool) (*Pro
 	pp.ConfigUpdateNumber = v.ConfigUpdateNumber
 	pp.CreateTime = v.CreateTime
 
-	// TODO: don't need separate ppFromDB variable once UseParserProject = true
+	// TODO: don't need separate ppFromDB variable once using parser project
 	if shouldSave && ppFromDB == nil {
 		if err = pp.TryUpsert(); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
