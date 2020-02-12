@@ -309,9 +309,9 @@ func TestExpandS3PutParams(t *testing.T) {
 }
 
 func TestSignedUrlVisibility(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	for _, vis := range []string{"signed", "private"} {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
 		var err error
 		s := s3put{
 			AwsKey:        "key",
