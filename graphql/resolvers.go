@@ -257,19 +257,14 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 func setScheduled(ctx context.Context, sc data.Connector, taskID string, isActive bool) (*restModel.APITask, error) {
 	usr := route.MustHaveUser(ctx)
 	if err := model.SetActiveState(taskID, usr.Username(), isActive); err != nil {
-		return nil, &gqlerror.Error{
-			Message: fmt.Sprintln("Error scheduling task", taskID),
-			Extensions: map[string]interface{}{
-				"code": "INTERNAL_SERVER_ERROR",
-			},
-		}
+		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	task, err := task.FindOneId(taskID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	if task == nil {
-		return nil, errors.Errorf("unable to find task %s", taskID)
+		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	apiTask := restModel.APITask{}
 	err = apiTask.BuildFromService(task)
