@@ -247,6 +247,7 @@ func TestExpandS3PutParams(t *testing.T) {
 			cmd.ResourceDisplayName = "${display_name}"
 			cmd.Visibility = "${visibility}"
 			cmd.Optional = "${optional}"
+			cmd.LocalFile = "${workdir}/foo"
 
 			conf.Expansions.Update(
 				map[string]string{
@@ -269,9 +270,10 @@ func TestExpandS3PutParams(t *testing.T) {
 			So(cmd.ContentType, ShouldEqual, "ct")
 			So(cmd.ResourceDisplayName, ShouldEqual, "file")
 			So(cmd.Visibility, ShouldEqual, "private")
-			So(cmd.workDir, ShouldEqual, "working_directory")
 			So(cmd.Optional, ShouldEqual, "true")
 
+			// EVG-7226 Since LocalFile is an absolute path, workDir should be empty
+			So(cmd.workDir, ShouldEqual, "")
 		})
 
 		Convey("the expandParams function should error for invalid optional values", func() {
