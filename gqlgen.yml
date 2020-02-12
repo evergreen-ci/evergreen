@@ -31,3 +31,5 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDuration
   Project:
     model: github.com/evergreen-ci/evergreen/rest/model.UIProjectFields
+  File:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIFile
