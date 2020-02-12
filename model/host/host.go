@@ -305,8 +305,8 @@ type newParentsNeededParams struct {
 }
 
 type ContainersOnParents struct {
-	ParentHost    Host
-	NumContainers int
+	ParentHost Host
+	Containers []Host
 }
 
 type HostModifyOptions struct {
@@ -1794,13 +1794,13 @@ func (hosts HostGroup) Uphosts() HostGroup {
 // getNumContainersOnParents returns a slice of uphost parents and their respective
 // number of current containers currently running in order of longest expected
 // finish time
-func GetNumContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
+func GetContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
 	allParents, err := findUphostParentsByContainerPool(d.ContainerPool)
 	if err != nil {
 		return nil, errors.Wrap(err, "Could not find running parent hosts")
 	}
 
-	numContainersOnParents := make([]ContainersOnParents, 0)
+	containersOnParents := make([]ContainersOnParents, 0)
 	// parents come in sorted order from soonest to latest expected finish time
 	for i := len(allParents) - 1; i >= 0; i-- {
 		parent := allParents[i]
@@ -1808,16 +1808,14 @@ func GetNumContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
 		if err != nil && !adb.ResultsNotFound(err) {
 			return nil, errors.Wrapf(err, "Problem finding containers for parent %s", parent.Id)
 		}
-		if len(currentContainers) < parent.ContainerPoolSettings.MaxContainers {
-			numContainersOnParents = append(numContainersOnParents,
-				ContainersOnParents{
-					ParentHost:    parent,
-					NumContainers: len(currentContainers),
-				})
-		}
+		containersOnParents = append(containersOnParents,
+			ContainersOnParents{
+				ParentHost: parent,
+				Containers: currentContainers,
+			})
 	}
 
-	return numContainersOnParents, nil
+	return containersOnParents, nil
 }
 
 func getNumNewParentsAndHostsToSpawn(pool *evergreen.ContainerPool, newHostsNeeded int, ignoreMaxHosts bool) (int, int, error) {

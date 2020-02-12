@@ -3771,7 +3771,7 @@ func TestFindAvailableParent(t *testing.T) {
 	assert.NoError(task1.Insert())
 	assert.NoError(task2.Insert())
 
-	availableParent, err := GetNumContainersOnParents(d)
+	availableParent, err := GetContainersOnParents(d)
 	assert.NoError(err)
 
 	assert.Equal(2, len(availableParent))
@@ -3844,7 +3844,7 @@ func TestFindNoAvailableParent(t *testing.T) {
 	assert.NoError(task1.Insert())
 	assert.NoError(task2.Insert())
 
-	availableParent, err := GetNumContainersOnParents(d)
+	availableParent, err := GetContainersOnParents(d)
 	assert.NoError(err)
 	assert.Equal(0, len(availableParent))
 }
@@ -4663,4 +4663,30 @@ func TestSetNewSSHKeys(t *testing.T) {
 	require.NoError(t, err)
 	assert.Subset(t, []string{"foo", "bar"}, dbHost.SSHKeyNames)
 	assert.Subset(t, dbHost.SSHKeyNames, []string{"foo", "bar"})
+}
+
+func TestPartitionParents(t *testing.T) {
+	assert := assert.New(t)
+	const distroId = "match"
+
+	parents := []ContainersOnParents{
+		{ParentHost: Host{Id: "1"}, Containers: []Host{{}, {}, {Distro: distro.Distro{Id: distroId}}}},
+		{ParentHost: Host{Id: "2"}, Containers: []Host{{}, {Distro: distro.Distro{Id: "foo"}}}},
+		{ParentHost: Host{Id: "3"}, Containers: []Host{{Distro: distro.Distro{Id: distroId}}, {Distro: distro.Distro{Id: "foo"}}}},
+		{ParentHost: Host{Id: "4"}, Containers: []Host{{Distro: distro.Distro{Id: "foo"}}}},
+	}
+	matched, notMatched := partitionParents(parents, distroId)
+	assert.Len(matched, 2)
+	assert.Len(notMatched, 2)
+	assert.Equal("1", matched[0].ParentHost.Id)
+	assert.Equal("3", matched[1].ParentHost.Id)
+	assert.Equal("2", notMatched[0].ParentHost.Id)
+	assert.Equal("4", notMatched[1].ParentHost.Id)
+
+	parents = []ContainersOnParents{
+		{ParentHost: Host{Id: "1"}, Containers: []Host{{Distro: distro.Distro{Id: "1"}}, {Distro: distro.Distro{Id: "2"}}, {Distro: distro.Distro{Id: "3"}}}},
+	}
+	matched, notMatched = partitionParents(parents, distroId)
+	assert.Len(matched, 0)
+	assert.Len(notMatched, 0)
 }
