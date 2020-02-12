@@ -93,8 +93,6 @@ mciModule.controller('PerformanceDiscoveryCtrl', function (
   }
 
   $scope.changeMetric = function () {
-    const fromVersion = vm.fromSelect.selected
-    const toVersion = vm.toSelect.selected
     updateColumnDefs(vm.gridApi.grid);
 
     vm.isLoading = true;
