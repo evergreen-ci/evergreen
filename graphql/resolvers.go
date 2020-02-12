@@ -52,6 +52,36 @@ func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier st
 	}, nil
 }
 
+func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string, isActive bool) (*restModel.APITask, error) {
+	usr := route.MustHaveUser(ctx)
+	if err := model.SetActiveState(taskID, usr.Username(), isActive); err != nil {
+		fmt.Println(err)
+		return nil, &gqlerror.Error{
+			Message: fmt.Sprintln("Error scheduling task", taskID),
+			Extensions: map[string]interface{}{
+				"code": "INTERNAL_SERVER_ERROR",
+			},
+		}
+	}
+	task, err := task.FindOneId(taskID)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
+	if task == nil {
+		return nil, errors.Errorf("unable to find task %s", taskID)
+	}
+	apiTask := restModel.APITask{}
+	err = apiTask.BuildFromService(task)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	err = apiTask.BuildFromService(r.sc.GetURL())
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	return &apiTask, nil
+}
+
 func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier string) (*restModel.UIProjectFields, error) {
 	p, err := model.FindOneProjectRef(identifier)
 	if err != nil || p == nil {

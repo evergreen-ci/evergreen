@@ -1,0 +1,6 @@
+mutation {
+  scheduleTask(taskId: "wuzzup", isActive: true) {
+    activated
+    activatedBy
+  }
+}
