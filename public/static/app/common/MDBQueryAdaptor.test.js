@@ -119,8 +119,8 @@ describe('MDBQueryAdaptorSpec', function() {
       b: {$gt: 5},
       c: {$regex: 'term', $options: 'i'},
       d: {
-        $gte: '2010-10-10T00:00:00+00:00',
-        $lte: '2010-10-10T23:59:59+00:00',
+        $gte: '2010-10-10T00:00:00Z',
+        $lte: '2010-10-10T23:59:59Z',
       },
     }})
   })
