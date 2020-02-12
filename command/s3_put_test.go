@@ -374,7 +374,6 @@ func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 			} else {
 				localFilesIncludeFilterPrefix = prefix
 			}
-			//set visibility based on the prefix
 			s := s3put{
 				AwsKey:                        "key",
 				AwsSecret:                     "secret",
