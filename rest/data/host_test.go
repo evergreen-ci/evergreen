@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
@@ -210,17 +211,20 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	const testUserID = "TestSpawnHostUser"
 	const testUserAPIKey = "testApiKey"
 	const testInstanceType = "testInstanceType"
+	const testUserdata = "this is a dummy sentence"
 
 	config, err := evergreen.GetConfig()
 	s.NoError(err)
 	config.SpawnHostsPerUser = cloud.DefaultMaxSpawnHostsPerUser
 	s.NoError(config.Set())
 
-	distro := &distro.Distro{
-		Id:           testDistroID,
-		SpawnAllowed: true,
+	d := &distro.Distro{
+		Id:                   testDistroID,
+		SpawnAllowed:         true,
+		Provider:             evergreen.ProviderNameEc2OnDemand,
+		ProviderSettingsList: []*birch.Document{birch.NewDocument(birch.EC.String("region", evergreen.DefaultEC2Region))},
 	}
-	s.NoError(distro.Insert())
+	s.NoError(d.Insert())
 	testUser := &user.DBUser{
 		Id:     testUserID,
 		APIKey: testUserAPIKey,
@@ -235,19 +239,24 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 		DistroID:     testDistroID,
 		TaskID:       "",
 		KeyName:      testPublicKeyName,
-		UserData:     "",
+		UserData:     testUserdata,
 		InstanceTags: nil,
 		InstanceType: testInstanceType,
 	}
 
 	intentHost, err := (&DBHostConnector{}).NewIntentHost(options, testUser)
-	s.Require().NotNil(intentHost)
 	s.NoError(err)
+	s.Require().NotNil(intentHost)
 	foundHost, err := host.FindOne(host.ById(intentHost.Id))
 	s.NotNil(foundHost)
 	s.NoError(err)
 	s.True(foundHost.UserHost)
 	s.Equal(testUserID, foundHost.StartedBy)
+
+	s.Require().Len(foundHost.Distro.ProviderSettingsList, 1)
+	ec2Settings := &cloud.EC2ProviderSettings{}
+	s.NoError(ec2Settings.FromDistroSettings(foundHost.Distro, ""))
+	s.Equal(ec2Settings.UserData, options.UserData)
 }
 
 func (s *HostConnectorSuite) TestSetHostStatus() {

@@ -198,6 +198,8 @@ const (
 
 	// TODO: remove this when degrading YAML
 	UseParserProject = false
+	// can flip this when regions are configured
+	UseSpawnHostRegions = false
 )
 
 func IsFinishedTaskStatus(status string) bool {
