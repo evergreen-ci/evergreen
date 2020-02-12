@@ -143,5 +143,11 @@ type Project {
   owner: String!
 }
 
+type File {
+  name: String!
+  link: String!
+  visibility: String!
+}
+
 scalar Time
 scalar Duration
