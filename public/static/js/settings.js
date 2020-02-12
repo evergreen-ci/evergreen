@@ -1,5 +1,6 @@
 mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificationService', 'mciUserSettingsService', function($scope, $http, $window, notifier, mciUserSettingsService) {
   $scope.timezones = [
+    {str: "Coordinated Universal Time", value: "UTC"},
     {str: "American Samoa, Niue", value: "Pacific/Niue"},
     {str: "Hawaii", value: "Pacific/Tahiti"},
     {str: "Marquesas Islands", value: "Pacific/Marquesas"},

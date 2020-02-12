@@ -90,7 +90,7 @@ phony += cli clis
 
 # start smoke test specific rules
 $(buildDir)/load-smoke-data:cmd/load-smoke-data/load-smoke-data.go
-	$(gobin) build -o $@ $<
+	$(gobin) build -ldflags="-w" -o $@ $<
 $(buildDir)/set-var:cmd/set-var/set-var.go
 	$(gobin) build -o $@ $<
 $(buildDir)/set-project-var:cmd/set-project-var/set-project-var.go
