@@ -52,7 +52,8 @@ type ComplexityRoot struct {
 	Mutation struct {
 		AddFavoriteProject    func(childComplexity int, identifier string) int
 		RemoveFavoriteProject func(childComplexity int, identifier string) int
-		ScheduleTask          func(childComplexity int, taskID string, isActive bool) int
+		ScheduleTask          func(childComplexity int, taskID string) int
+		UnscheduleTask        func(childComplexity int, taskID string) int
 	}
 
 	Patch struct {
@@ -172,7 +173,8 @@ type ComplexityRoot struct {
 type MutationResolver interface {
 	AddFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
 	RemoveFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
-	ScheduleTask(ctx context.Context, taskID string, isActive bool) (*model.APITask, error)
+	ScheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
+	UnscheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 }
 type QueryResolver interface {
 	UserPatches(ctx context.Context, userID string) ([]*model.APIPatch, error)
@@ -244,7 +246,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.ScheduleTask(childComplexity, args["taskId"].(string), args["isActive"].(bool)), true
+		return e.complexity.Mutation.ScheduleTask(childComplexity, args["taskId"].(string)), true
+
+	case "Mutation.unscheduleTask":
+		if e.complexity.Mutation.UnscheduleTask == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_unscheduleTask_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UnscheduleTask(childComplexity, args["taskId"].(string)), true
 
 	case "Patch.activated":
 		if e.complexity.Patch.Activated == nil {
@@ -914,7 +928,8 @@ type GroupedProjects {
 type Mutation {
 	addFavoriteProject(identifier: String!): Project!
 	removeFavoriteProject(identifier: String!): Project!
-	scheduleTask(taskId: String!, isActive: Boolean!): Task!
+	scheduleTask(taskId: String!): Task!
+	unscheduleTask(taskId: String!): Task!
 }
 type Patch {
 	id: ID!
@@ -1075,14 +1090,20 @@ func (ec *executionContext) field_Mutation_scheduleTask_args(ctx context.Context
 		}
 	}
 	args["taskId"] = arg0
-	var arg1 bool
-	if tmp, ok := rawArgs["isActive"]; ok {
-		arg1, err = ec.unmarshalNBoolean2bool(ctx, tmp)
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_unscheduleTask_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["taskId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["isActive"] = arg1
+	args["taskId"] = arg0
 	return args, nil
 }
 
@@ -1400,7 +1421,48 @@ func (ec *executionContext) _Mutation_scheduleTask(ctx context.Context, field gr
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().ScheduleTask(rctx, args["taskId"].(string), args["isActive"].(bool))
+		return ec.resolvers.Mutation().ScheduleTask(rctx, args["taskId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APITask)
+	fc.Result = res
+	return ec.marshalNTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_unscheduleTask(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_unscheduleTask_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UnscheduleTask(rctx, args["taskId"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5325,6 +5387,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "scheduleTask":
 			out.Values[i] = ec._Mutation_scheduleTask(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "unscheduleTask":
+			out.Values[i] = ec._Mutation_unscheduleTask(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

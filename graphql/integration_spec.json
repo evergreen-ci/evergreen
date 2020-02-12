@@ -1907,7 +1907,7 @@
       "query_file": "unschedule-task-mutation.graphql",
       "result": {
         "data": {
-          "scheduleTask": {
+          "unscheduleTask": {
             "activated": false
           }
         }

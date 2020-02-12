@@ -1,5 +1,5 @@
 mutation {
-  scheduleTask(taskId: "wuzzup-activated", isActive: false) {
+  unscheduleTask(taskId: "wuzzup-activated") {
     activated
   }
 }
