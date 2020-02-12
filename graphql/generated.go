@@ -52,6 +52,7 @@ type ComplexityRoot struct {
 	Mutation struct {
 		AddFavoriteProject    func(childComplexity int, identifier string) int
 		RemoveFavoriteProject func(childComplexity int, identifier string) int
+		ScheduleTask          func(childComplexity int, taskID string) int
 	}
 
 	Patch struct {
@@ -171,6 +172,7 @@ type ComplexityRoot struct {
 type MutationResolver interface {
 	AddFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
 	RemoveFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
+	ScheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 }
 type QueryResolver interface {
 	UserPatches(ctx context.Context, userID string) ([]*model.APIPatch, error)
@@ -231,6 +233,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.RemoveFavoriteProject(childComplexity, args["identifier"].(string)), true
+
+	case "Mutation.scheduleTask":
+		if e.complexity.Mutation.ScheduleTask == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_scheduleTask_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ScheduleTask(childComplexity, args["taskId"].(string)), true
 
 	case "Patch.activated":
 		if e.complexity.Patch.Activated == nil {
@@ -892,150 +906,129 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var parsedSchema = gqlparser.MustLoadSchema(
-	&ast.Source{Name: "graphql/schema.graphql", Input: `type Query {
-  userPatches(userId: String!): [Patch!]!
-  task(taskId: String!): Task
-  projects: Projects!
-  taskTests(
-    taskId: String!
-    sortCategory: TaskSortCategory = TEST_NAME
-    sortDirection: SortDirection = ASC
-    page: Int = 0
-    limit: Int = 0
-    testName: String = ""
-    status: String = ""
-  ): [TestResult!]
-}
-
-type Mutation {
-  addFavoriteProject(identifier: String!): Project!
-  removeFavoriteProject(identifier: String!): Project!
-}
-
-enum TaskSortCategory {
-  STATUS
-  DURATION
-  TEST_NAME
-}
-
-enum SortDirection {
-  ASC
-  DESC
-}
-
-type Patch {
-  id: ID!
-  description: String!
-  projectID: String!
-  githash: String!
-  patchNumber: Int!
-  author: String!
-  version: String!
-  status: String!
-  createTime: Time!
-  startTime: Time
-  finishTime: Time
-  variants: [String!]!
-  tasks: [String!]!
-  variantsTasks: [VariantTask]!
-  activated: Boolean!
-  alias: String!
-}
-
-type VariantTask {
-  name: String!
-  tasks: [String!]!
-}
-
-type TaskLogs {
-  allLogLink: String
-  agentLogLink: String
-  systemLogLink: String
-  taskLogLink: String
-}
-
-type TaskEndDetail {
-  status: String!
-  type: String!
-  description: String
-  timedOut: Boolean
-}
-
-type TestResult {
-  id: String!
-  status: String!
-  testFile: String!
-  logs: TestLog!
-  exitCode: Int
-  startTime: Time
-  duration: Float
-  endTime: Time
-}
-
-type TestLog {
-  url: String
-  urlRaw: String
-  lineNum: Int
-  logId: String
-}
-
-type Task {
-  id: String!
-  createTime: Time
-  ingestTime: Time
-  dispatchTime: Time
-  scheduledTime: Time
-  startTime: Time
-  finishTime: Time
-  activatedTime: Time
-  version: String!
-  projectId: String!
-  revision: String
-  priority: Int
-  taskGroup: String
-  taskGroupMaxHosts: Int
-  logs: TaskLogs!
-  activated: Boolean!
-  activatedBy: String
-  buildId: String!
-  distroId: String!
-  buildVariant: String!
-  dependsOn: [String!]
-  displayName: String!
-  hostId: String
-  restarts: Int
-  execution: Int
-  order: Int
-  requester: String!
-  status: String!
-  details: TaskEndDetail
-  timeTaken: Duration
-  expectedDuration: Duration
-  displayOnly: Boolean
-  executionTasks: [String!]
-  generateTask: Boolean
-  generatedBy: String
-}
-
-type Projects {
-  favorites: [Project!]!
-  otherProjects: [GroupedProjects!]!
-}
-
+	&ast.Source{Name: "schema.graphql", Input: `scalar Duration
 type GroupedProjects {
-  name: String!
-  projects: [Project!]!
+	name: String!
+	projects: [Project!]!
 }
-
+type Mutation {
+	addFavoriteProject(identifier: String!): Project!
+	removeFavoriteProject(identifier: String!): Project!
+	scheduleTask(taskId: String!): Task!
+}
+type Patch {
+	id: ID!
+	description: String!
+	projectID: String!
+	githash: String!
+	patchNumber: Int!
+	author: String!
+	version: String!
+	status: String!
+	createTime: Time!
+	startTime: Time
+	finishTime: Time
+	variants: [String!]!
+	tasks: [String!]!
+	variantsTasks: [VariantTask]!
+	activated: Boolean!
+	alias: String!
+}
 type Project {
-  identifier: String!
-  displayName: String!
-  repo: String!
-  owner: String!
+	identifier: String!
+	displayName: String!
+	repo: String!
+	owner: String!
 }
-
+type Projects {
+	favorites: [Project!]!
+	otherProjects: [GroupedProjects!]!
+}
+type Query {
+	userPatches(userId: String!): [Patch!]!
+	task(taskId: String!): Task
+	projects: Projects!
+	taskTests(taskId: String!, sortCategory: TaskSortCategory = TEST_NAME, sortDirection: SortDirection = ASC, page: Int = 0, limit: Int = 0, testName: String = "", status: String = ""): [TestResult!]
+}
+enum SortDirection {
+	ASC
+	DESC
+}
+type Task {
+	id: String!
+	createTime: Time
+	ingestTime: Time
+	dispatchTime: Time
+	scheduledTime: Time
+	startTime: Time
+	finishTime: Time
+	activatedTime: Time
+	version: String!
+	projectId: String!
+	revision: String
+	priority: Int
+	taskGroup: String
+	taskGroupMaxHosts: Int
+	logs: TaskLogs!
+	activated: Boolean!
+	activatedBy: String
+	buildId: String!
+	distroId: String!
+	buildVariant: String!
+	dependsOn: [String!]
+	displayName: String!
+	hostId: String
+	restarts: Int
+	execution: Int
+	order: Int
+	requester: String!
+	status: String!
+	details: TaskEndDetail
+	timeTaken: Duration
+	expectedDuration: Duration
+	displayOnly: Boolean
+	executionTasks: [String!]
+	generateTask: Boolean
+	generatedBy: String
+}
+type TaskEndDetail {
+	status: String!
+	type: String!
+	description: String
+	timedOut: Boolean
+}
+type TaskLogs {
+	allLogLink: String
+	agentLogLink: String
+	systemLogLink: String
+	taskLogLink: String
+}
+enum TaskSortCategory {
+	STATUS
+	DURATION
+	TEST_NAME
+}
+type TestLog {
+	url: String
+	urlRaw: String
+	lineNum: Int
+	logId: String
+}
+type TestResult {
+	id: String!
+	status: String!
+	testFile: String!
+	logs: TestLog!
+	exitCode: Int
+	startTime: Time
+	duration: Float
+	endTime: Time
+}
 scalar Time
-scalar Duration
+type VariantTask {
+	name: String!
+	tasks: [String!]!
+}
 `},
 )
 
@@ -1068,6 +1061,20 @@ func (ec *executionContext) field_Mutation_removeFavoriteProject_args(ctx contex
 		}
 	}
 	args["identifier"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_scheduleTask_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["taskId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["taskId"] = arg0
 	return args, nil
 }
 
@@ -1359,6 +1366,47 @@ func (ec *executionContext) _Mutation_removeFavoriteProject(ctx context.Context,
 	res := resTmp.(*model.UIProjectFields)
 	fc.Result = res
 	return ec.marshalNProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐUIProjectFields(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_scheduleTask(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_scheduleTask_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ScheduleTask(rctx, args["taskId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APITask)
+	fc.Result = res
+	return ec.marshalNTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Patch_id(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
@@ -5267,6 +5315,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "scheduleTask":
+			out.Values[i] = ec._Mutation_scheduleTask(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -6362,6 +6415,20 @@ func (ec *executionContext) marshalNString2ᚖstring(ctx context.Context, sel as
 		return graphql.Null
 	}
 	return ec.marshalNString2string(ctx, sel, *v)
+}
+
+func (ec *executionContext) marshalNTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx context.Context, sel ast.SelectionSet, v model.APITask) graphql.Marshaler {
+	return ec._Task(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx context.Context, sel ast.SelectionSet, v *model.APITask) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Task(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNTaskLogs2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐLogLinks(ctx context.Context, sel ast.SelectionSet, v model.LogLinks) graphql.Marshaler {
