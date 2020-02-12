@@ -52,7 +52,7 @@ type ComplexityRoot struct {
 	Mutation struct {
 		AddFavoriteProject    func(childComplexity int, identifier string) int
 		RemoveFavoriteProject func(childComplexity int, identifier string) int
-		ScheduleTask          func(childComplexity int, taskID string) int
+		ScheduleTask          func(childComplexity int, taskID string, isActive bool) int
 	}
 
 	Patch struct {
@@ -172,7 +172,7 @@ type ComplexityRoot struct {
 type MutationResolver interface {
 	AddFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
 	RemoveFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
-	ScheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
+	ScheduleTask(ctx context.Context, taskID string, isActive bool) (*model.APITask, error)
 }
 type QueryResolver interface {
 	UserPatches(ctx context.Context, userID string) ([]*model.APIPatch, error)
@@ -244,7 +244,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.ScheduleTask(childComplexity, args["taskId"].(string)), true
+		return e.complexity.Mutation.ScheduleTask(childComplexity, args["taskId"].(string), args["isActive"].(bool)), true
 
 	case "Patch.activated":
 		if e.complexity.Patch.Activated == nil {
@@ -914,7 +914,7 @@ type GroupedProjects {
 type Mutation {
 	addFavoriteProject(identifier: String!): Project!
 	removeFavoriteProject(identifier: String!): Project!
-	scheduleTask(taskId: String!): Task!
+	scheduleTask(taskId: String!, isActive: Boolean!): Task!
 }
 type Patch {
 	id: ID!
@@ -1075,6 +1075,14 @@ func (ec *executionContext) field_Mutation_scheduleTask_args(ctx context.Context
 		}
 	}
 	args["taskId"] = arg0
+	var arg1 bool
+	if tmp, ok := rawArgs["isActive"]; ok {
+		arg1, err = ec.unmarshalNBoolean2bool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["isActive"] = arg1
 	return args, nil
 }
 
@@ -1392,7 +1400,7 @@ func (ec *executionContext) _Mutation_scheduleTask(ctx context.Context, field gr
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().ScheduleTask(rctx, args["taskId"].(string))
+		return ec.resolvers.Mutation().ScheduleTask(rctx, args["taskId"].(string), args["isActive"].(bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
