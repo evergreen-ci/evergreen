@@ -12,7 +12,7 @@ type Query {
     testName: String = ""
     status: String = ""
   ): [TestResult!]
-  testFiles(taskId: String!): [File!]
+  testFiles(taskId: String!): [GroupedFiles!]
 }
 
 type Mutation {
@@ -31,6 +31,11 @@ enum TaskSortCategory {
 enum SortDirection {
   ASC
   DESC
+}
+
+type GroupedFiles {
+  name: String
+  files: [File!]
 }
 
 type Patch {
