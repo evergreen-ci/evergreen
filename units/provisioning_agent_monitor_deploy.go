@@ -223,6 +223,8 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, settings *everg
 	opts := &options.Create{
 		Args: []string{filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath), "-l", "-c", j.host.CurlCommand(settings)},
 	}
+	ctx, cancel := context.WithTimeout(ctx, 61*time.Second)
+	defer cancel()
 	output, err := j.host.RunJasperProcess(ctx, j.env, opts)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
@@ -234,6 +236,9 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, settings *everg
 			"job":           j.ID(),
 		}))
 		return errors.WithStack(err)
+	}
+	if err = ctx.Err(); err != nil {
+		return errors.Wrap(err, "timed out curling agent monitor")
 	}
 
 	return nil
