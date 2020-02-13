@@ -50,6 +50,11 @@ type ComplexityRoot struct {
 		Visibility func(childComplexity int) int
 	}
 
+	GroupedFiles struct {
+		Files func(childComplexity int) int
+		Name  func(childComplexity int) int
+	}
+
 	GroupedProjects struct {
 		Name     func(childComplexity int) int
 		Projects func(childComplexity int) int
@@ -228,6 +233,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.File.Visibility(childComplexity), true
+
+	case "GroupedFiles.files":
+		if e.complexity.GroupedFiles.Files == nil {
+			break
+		}
+
+		return e.complexity.GroupedFiles.Files(childComplexity), true
+
+	case "GroupedFiles.name":
+		if e.complexity.GroupedFiles.Name == nil {
+			break
+		}
+
+		return e.complexity.GroupedFiles.Name(childComplexity), true
 
 	case "GroupedProjects.name":
 		if e.complexity.GroupedProjects.Name == nil {
@@ -981,6 +1000,10 @@ type File {
 	link: String!
 	visibility: String!
 }
+type GroupedFiles {
+	name: String
+	files: [File!]
+}
 type GroupedProjects {
 	name: String!
 	projects: [Project!]!
@@ -1437,6 +1460,68 @@ func (ec *executionContext) _File_visibility(ctx context.Context, field graphql.
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _GroupedFiles_name(ctx context.Context, field graphql.CollectedField, obj *GroupedFiles) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "GroupedFiles",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _GroupedFiles_files(ctx context.Context, field graphql.CollectedField, obj *GroupedFiles) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "GroupedFiles",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Files, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APIFile)
+	fc.Result = res
+	return ec.marshalOFile2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFileᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _GroupedProjects_name(ctx context.Context, field graphql.CollectedField, obj *GroupedProjects) (ret graphql.Marshaler) {
@@ -5625,6 +5710,32 @@ func (ec *executionContext) _File(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var groupedFilesImplementors = []string{"GroupedFiles"}
+
+func (ec *executionContext) _GroupedFiles(ctx context.Context, sel ast.SelectionSet, obj *GroupedFiles) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, groupedFilesImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GroupedFiles")
+		case "name":
+			out.Values[i] = ec._GroupedFiles_name(ctx, field, obj)
+		case "files":
+			out.Values[i] = ec._GroupedFiles_files(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

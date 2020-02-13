@@ -10,6 +10,11 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 )
 
+type GroupedFiles struct {
+	Name  *string          `json:"name"`
+	Files []*model.APIFile `json:"files"`
+}
+
 type GroupedProjects struct {
 	Name     string                   `json:"name"`
 	Projects []*model.UIProjectFields `json:"projects"`
