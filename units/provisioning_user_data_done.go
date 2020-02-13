@@ -74,7 +74,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 		return
 	}
 
-	path, err := j.host.UserDataDoneFilePath()
+	path, err := j.host.UserDataDoneFile()
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error getting user data done file path",

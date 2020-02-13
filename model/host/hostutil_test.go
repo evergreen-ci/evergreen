@@ -1067,7 +1067,7 @@ func TestSetupSpawnHostCommands(t *testing.T) {
 	currIndex := 0
 	for _, arg := range fetchCmd {
 		foundIndex := strings.Index(cmd[currIndex:], arg)
-		require.NotEqual(t, foundIndex, -1)
+		require.NotEqual(t, foundIndex, -1, "missing fetch command arg '%s'", arg)
 		currIndex += foundIndex
 	}
 }

@@ -928,16 +928,76 @@ func (h *Host) SetupSpawnHostCommands(settings *evergreen.Settings) (string, err
 		return "", errors.New("missing spawn host owner")
 	}
 
-	binaryPath := filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())
-	binDir := filepath.Join(h.Distro.HomeDir(), "cli_bin")
-	confPath := filepath.Join(binDir, ".evergreen.yml")
-
-	owner, err := user.FindOne(user.ById(h.ProvisionOptions.OwnerId))
+	confJSON, err := h.SpawnHostConfigJSON(settings)
 	if err != nil {
-		return "", errors.Wrapf(err, "could not get owner %s for host", h.ProvisionOptions.OwnerId)
+		return "", errors.Wrap(err, "could not create JSON configuration settings")
 	}
 
-	confSettings := struct {
+	script := h.SpawnHostSetupConfigDirScript(confJSON)
+	if h.ProvisionOptions.TaskId != "" {
+		fetchCmd := h.SpawnHostGetTaskDataCommand()
+		jasperFetchCmd, err := h.buildLocalJasperClientRequest(settings.HostJasper, strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "), &options.Command{Commands: [][]string{fetchCmd}})
+		if err != nil {
+			return "", errors.Wrap(err, "could not construct Jasper command to fetch task data")
+		}
+		script += " && " + jasperFetchCmd
+	}
+
+	return script, nil
+}
+
+// SpawnHostGetTaskDataCommand returns the command that fetches the task data
+// for a spawn host.
+func (h *Host) SpawnHostGetTaskDataCommand() []string {
+	return []string{h.AgentBinary(),
+		"-c", h.SpawnHostConfigFile(),
+		"fetch",
+		"-t", h.ProvisionOptions.TaskId,
+		"--source", "--artifacts",
+		"--dir", h.Distro.WorkDir,
+	}
+}
+
+// SpawnHostSetupConfigDirCommands returns the shell script that sets up the
+// config directory on a spawn host. In particular, it makes the client binary
+// directory, puts both the evergreen yaml and the client into it, and attempts
+// to add the directory to the path.
+func (h *Host) SpawnHostSetupConfigDirScript(confJSON []byte) string {
+	return strings.Join([]string{
+		fmt.Sprintf("mkdir -m 777 -p %s", h.SpawnHostConfigDir()),
+		fmt.Sprintf("echo '%s' > %s", confJSON, h.SpawnHostConfigFile()),
+		fmt.Sprintf("cp %s %s", h.AgentBinary(), h.SpawnHostConfigDir()),
+		fmt.Sprintf("(echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.profile || true; echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.bash_profile || true)", h.SpawnHostConfigDir(), h.Distro.HomeDir(), h.SpawnHostConfigDir(), h.Distro.HomeDir()),
+		fmt.Sprintf("chown -R %s %s", h.Distro.User, h.SpawnHostConfigDir()),
+		fmt.Sprintf("chmod +x %s", filepath.Join(h.SpawnHostConfigDir(), h.Distro.BinaryName())),
+	}, " && ")
+}
+
+// AgentBinary returns the path to the evergreen agent binary.
+func (h *Host) AgentBinary() string {
+	return filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())
+}
+
+// SpawnHostConfigDir returns the directory containing the CLI and evergreen
+// yaml for a spawn host.
+func (h *Host) SpawnHostConfigDir() string {
+	return filepath.Join(h.Distro.HomeDir(), "cli_bin")
+}
+
+// SpawnHostConfigFile returns the path to the evergreen yaml for a spawn host.
+func (h *Host) SpawnHostConfigFile() string {
+	return filepath.Join(h.SpawnHostConfigDir(), ".evergreen.yml")
+}
+
+// SpawnHostConfigJSON returns evergreen yaml configuration for a spawn host in
+// JSON format.
+func (h *Host) SpawnHostConfigJSON(settings *evergreen.Settings) ([]byte, error) {
+	owner, err := user.FindOne(user.ById(h.ProvisionOptions.OwnerId))
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not get owner %s for host", h.ProvisionOptions.OwnerId)
+	}
+
+	conf := struct {
 		APIKey        string `json:"api_key"`
 		APIServerHost string `json:"api_server_host"`
 		UIServerHost  string `json:"ui_server_host"`
@@ -949,47 +1009,13 @@ func (h *Host) SetupSpawnHostCommands(settings *evergreen.Settings) (string, err
 		User:          owner.Id,
 	}
 
-	confJSON, err := json.Marshal(confSettings)
-	if err != nil {
-		return "", errors.Wrap(err, "could not marshal configuration settings to JSON")
-	}
-
-	// Make the client binary directory, put both the evergreen.yml and the
-	// client into it, and attempt to add the directory to the path.
-	setupBinDirCmds := strings.Join([]string{
-		fmt.Sprintf("mkdir -m 777 -p %s", binDir),
-		fmt.Sprintf("echo '%s' > %s", confJSON, confPath),
-		fmt.Sprintf("cp %s %s", binaryPath, binDir),
-		fmt.Sprintf("(echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.profile || true; echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.bash_profile || true)", binDir, h.Distro.HomeDir(), binDir, h.Distro.HomeDir()),
-		fmt.Sprintf("chown -R %s %s", h.Distro.User, binDir),
-		fmt.Sprintf("chmod +x %s", filepath.Join(binDir, h.Distro.BinaryName())),
-	}, " && ")
-
-	script := setupBinDirCmds
-	if h.ProvisionOptions.TaskId != "" {
-		fetchCmd := []string{
-			binaryPath,
-			"-c", confPath,
-			"fetch",
-			"-t", h.ProvisionOptions.TaskId,
-			"--source",
-			"--artifacts",
-			"--dir", h.Distro.WorkDir,
-		}
-		jasperFetchCmd, err := h.buildLocalJasperClientRequest(settings.HostJasper, strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "), &options.Command{Commands: [][]string{fetchCmd}})
-		if err != nil {
-			return "", errors.Wrap(err, "could not construct Jasper command to fetch task data")
-		}
-		script += " && " + jasperFetchCmd
-	}
-
-	return script, nil
+	return json.Marshal(conf)
 }
 
 const userDataDoneFileName = "user_data_done"
 
-// UserDataDoneFilePath returns the path to the user data done marker file.
-func (h *Host) UserDataDoneFilePath() (string, error) {
+// UserDataDoneFile returns the path to the user data done marker file.
+func (h *Host) UserDataDoneFile() (string, error) {
 	if h.Distro.BootstrapSettings.JasperBinaryDir == "" {
 		return "", errors.New("distro jasper binary directory must be specified")
 	}
@@ -1000,7 +1026,7 @@ func (h *Host) UserDataDoneFilePath() (string, error) {
 // MarkUserDataDoneCommands creates the command to make the marker file
 // indicating user data has finished executing.
 func (h *Host) MarkUserDataDoneCommands() (string, error) {
-	path, err := h.UserDataDoneFilePath()
+	path, err := h.UserDataDoneFile()
 	if err != nil {
 		return "", errors.Wrap(err, "could not get path to user data done file")
 	}
