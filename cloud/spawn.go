@@ -182,14 +182,7 @@ func CheckInstanceTypeValid(ctx context.Context, d distro.Distro, requestedType 
 	if !IsEc2Provider(d.Provider) {
 		return errors.Errorf("cannot specify instance type for provider '%s'", d.Provider)
 	}
-	foundType := false
-	for _, allowedType := range allowedTypes {
-		if requestedType == allowedType {
-			foundType = true
-			break
-		}
-	}
-	if !foundType {
+	if !util.StringSliceContains(allowedTypes, requestedType) {
 		return errors.New("This instance type has not been allowed by admins")
 	}
 	env := evergreen.GetEnvironment()
