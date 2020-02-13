@@ -201,8 +201,10 @@ func (h *Host) RunSSHShellScript(ctx context.Context, script string, sshOpts []s
 func (h *Host) RunSSHShellScriptWithTimeout(ctx context.Context, script string, sshOpts []string, timeout time.Duration) (string, error) {
 	// We read the shell script verbatim from stdin  (i.e. with "bash -s"
 	// instead of "bash -c") to avoid additional shell processing.
+	// kim: TODO: figure out why this can run on local machine but not on spawn
+	// host from app server.
 	return h.runSSHCommandWithOutput(ctx, func(c *jasper.Command) *jasper.Command {
-		return c.Bash("-s").SetInputBytes([]byte(script))
+		return c.Add([]string{"bash", "-s"}).SetInputBytes([]byte(script))
 	}, sshOpts, timeout)
 }
 
@@ -224,9 +226,18 @@ func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*ja
 		defer cancel()
 	}
 
+	errOut := util.NewMBCappedWriter()
 	err = addCommands(env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
-		ExtendRemoteArgs("-p", hostInfo.Port, "-t", "-t").ExtendRemoteArgs(sshOpts...).
-		SetCombinedWriter(output)).Run(ctx)
+		ExtendRemoteArgs("-p", hostInfo.Port "-T"/* "-t", "-t"*/).ExtendRemoteArgs(sshOpts...).
+		SetOutputWriter(output).SetErrorWriter(errOut)).Run(ctx)
+	//     SetCombinedWriter(output)).Run(ctx)
+
+	grip.Error(message.WrapError(err, message.Fields{
+		"host_id": h.Id,
+		"distro":  h.Distro.Id,
+		"output":  output.String(),
+		"errout":  errOut.String(),
+	}))
 
 	return output.String(), errors.Wrap(err, "error running SSH command")
 }
@@ -979,6 +990,7 @@ func (h *Host) spawnHostSetupConfigDirCommands(confJSON []byte) string {
 		fmt.Sprintf("chown -R %s %s", h.Distro.User, h.spawnHostConfigDir()),
 		fmt.Sprintf("chmod +x %s", filepath.Join(h.spawnHostConfigDir(), h.Distro.BinaryName())),
 	}, " && ")
+	// }, " && ")
 }
 
 // AgentBinary returns the path to the evergreen agent binary.

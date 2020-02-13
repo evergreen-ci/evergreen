@@ -116,7 +116,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 	grip.Info(message.Fields{
 		"message": "attempting to setup host",
 		"distro":  j.host.Distro.Id,
-		"hostid":  j.host.Id,
+		"host_id": j.host.Id,
 		"DNS":     j.host.Host,
 		"job":     j.ID(),
 	})
@@ -130,7 +130,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 		"message": "provisioning host",
 		"job":     j.ID(),
 		"distro":  j.host.Distro.Id,
-		"hostid":  j.host.Id,
+		"host_id": j.host.Id,
 	})
 
 	if err := j.provisionHost(ctx, settings); err != nil {
@@ -150,7 +150,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 			"message":  "provisioning host encountered error",
 			"job":      j.ID(),
 			"distro":   j.host.Distro.Id,
-			"hostid":   j.host.Id,
+			"host_id":  j.host.Id,
 			"attempts": j.host.ProvisionAttempts,
 		}))
 	}
@@ -173,7 +173,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 
 	grip.Info(message.Fields{
 		"message":  "successfully finished provisioning host",
-		"hostid":   j.host.Id,
+		"host_id":  j.host.Id,
 		"DNS":      j.host.Host,
 		"distro":   j.host.Distro.Id,
 		"job":      j.ID(),
@@ -781,7 +781,9 @@ func (j *setupHostJob) setupSpawnHost(ctx context.Context, settings *evergreen.S
 	// defer cancel()
 
 	grip.Info(message.Fields{
-		"message": "running script to setup spawn host",
+		"message": "kim: running script to setup spawn host",
+		"host_id": j.host.Id,
+		"distro":  j.host.Distro.Id,
 		"script":  script,
 	})
 	if output, err := j.host.RunSSHShellScriptWithTimeout(ctx, script, sshOpts, 2*time.Minute); err != nil {
