@@ -43,6 +43,10 @@ type File struct {
 	AwsKey string `json:"aws_key,omitempty" bson:"aws_key,omitempty"`
 	//AwsSercret is the secret with which the file was uploaded to s3
 	AwsSecret string `json:"aws_secret,omitempty" bson:"aws_secret,omitempty"`
+	//Bucket is the aws bucket in which the file is stored
+	Bucket string `json:"bucket,omitempty" bson:"bucket,omitempty"`
+	//FileKey is the path to the file in the buckt
+	FileKey string `json:"filekey,omitempty" bson:"filekey,omitempty"`
 }
 
 // Array turns the parameter map into an array of File structs.

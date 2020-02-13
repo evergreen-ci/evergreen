@@ -103,8 +103,13 @@ func TestFetchArtifacts(t *testing.T) {
 		Execution:       1,
 		Files: []artifact.File{
 			{
-				Name: "file1",
-				Link: "l1",
+				Name:       "file1",
+				Link:       "l1",
+				Visibility: "signed",
+				AwsKey:     "key",
+				AwsSecret:  "secret",
+				Bucket:     "bucket",
+				FileKey:    "filekey",
 			},
 			{
 				Name: "file2",

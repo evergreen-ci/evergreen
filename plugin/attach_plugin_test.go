@@ -23,25 +23,29 @@ func (s *TestFileVisibilitySuite) SetupTest() {
 		{Name: "Private", Visibility: artifact.Private},
 		{Name: "Public", Visibility: artifact.Public},
 		{Name: "Hidden", Visibility: artifact.None},
+		{Name: "Signed", Visibility: artifact.Signed, Link: "link"},
 		{Name: "Unset", Visibility: ""},
 	}
 }
 
 func (s *TestFileVisibilitySuite) TestFileVisibilityWithoutUser() {
 	stripped := stripHiddenFiles(s.files, nil)
-	s.Len(s.files, 4)
+	s.Len(s.files, 5)
 
 	s.Equal("Public", stripped[0].Name)
-	s.Equal("Unset", stripped[1].Name)
-	s.Len(stripped, 2)
+	//todo: this will be changed. Signed urls should not be visible
+	s.Equal("Signed", stripped[1].Name)
+	s.Equal("Unset", stripped[2].Name)
+	s.Len(stripped, 3)
 }
 
 func (s *TestFileVisibilitySuite) TestFileVisibilityWithUser() {
 	stripped := stripHiddenFiles(s.files, &user.DBUser{})
-	s.Len(s.files, 4)
+	s.Len(s.files, 5)
 
 	s.Equal("Private", stripped[0].Name)
 	s.Equal("Public", stripped[1].Name)
-	s.Equal("Unset", stripped[2].Name)
-	s.Len(stripped, 3)
+	s.Equal("Signed", stripped[2].Name)
+	s.Equal("Unset", stripped[3].Name)
+	s.Len(stripped, 4)
 }

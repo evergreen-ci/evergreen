@@ -78,6 +78,9 @@ type s3put struct {
 	// for missing files.
 	Optional string `mapstructure:"optional" plugin:"expand"`
 
+	//filekey is the filepath needed to retrieve the file from aws
+	FileKey string `mapstructure:"filekey" plugin:"expand"`
+
 	// workDir sets the working directory relative to which s3put should look for files to upload.
 	// workDir will be empty if an absolute path is provided to the file.
 	workDir     string
@@ -136,6 +139,9 @@ func (s3pc *s3put) validate() error {
 	}
 	if s3pc.isMulti() && filepath.IsAbs(s3pc.LocalFile) {
 		catcher.Add(errors.New("cannot use absolute path with local_files_include_filter"))
+	}
+	if s3pc.Visibility == "signed" && (s3pc.Permissions == "public-read" || s3pc.Permissions == "public-read-write") {
+		catcher.Add(errors.New("visibility: signed should be combined with permissions: private"))
 	}
 
 	if !util.StringSliceContains(artifact.ValidVisibilities, s3pc.Visibility) {
@@ -309,6 +315,10 @@ retryLoop:
 
 				fpath = filepath.Join(filepath.Join(s3pc.workDir, s3pc.LocalFilesIncludeFilterPrefix), fpath)
 				err = s3pc.bucket.Upload(ctx, remoteName, fpath)
+
+				if s3pc.Visibility == "signed" {
+					s3pc.FileKey = remoteName
+				}
 				if err != nil {
 					// retry errors other than "file doesn't exist", which we handle differently based on what
 					// kind of upload it is
@@ -375,10 +385,12 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 		if s3pc.isMulti() || displayName == "" {
 			displayName = fmt.Sprintf("%s %s", s3pc.ResourceDisplayName, filepath.Base(fn))
 		}
-		var key, secret string
+		var key, secret, bucket, fileKey string
 		if s3pc.Visibility == "signed" {
 			key = s3pc.AwsKey
 			secret = s3pc.AwsSecret
+			bucket = s3pc.Bucket
+			fileKey = s3pc.FileKey
 		}
 
 		files = append(files, &artifact.File{
@@ -387,6 +399,8 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 			Visibility: s3pc.Visibility,
 			AwsKey:     key,
 			AwsSecret:  secret,
+			Bucket:     bucket,
+			FileKey:    fileKey,
 		})
 	}
 
