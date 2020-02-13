@@ -257,6 +257,10 @@ func (m *dockerManager) CreateVolume(context.Context, *host.Volume) (*host.Volum
 	return nil, errors.New("can't create volume with docker provider")
 }
 
+func (m *dockerManager) CheckInstanceType(context.Context, string) error {
+	return errors.New("can't specify instance type with docker provider")
+}
+
 func (m *dockerManager) DeleteVolume(context.Context, *host.Volume) error {
 	return errors.New("can't delete volume with docker provider")
 }

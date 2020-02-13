@@ -623,6 +623,25 @@ func (m *ec2Manager) setInstanceType(ctx context.Context, h *host.Host, instance
 	return errors.Wrapf(h.SetInstanceType(instanceType), "error changing instance type in db for '%s'", h.Id)
 }
 
+func (m *ec2Manager) CheckInstanceType(ctx context.Context, instanceType string) error {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+	output, err := m.client.DescribeInstanceTypeOfferings(ctx, &ec2.DescribeInstanceTypeOfferingsInput{})
+	if err != nil {
+		return errors.Wrapf(err, "error describe instance types offered for region '%s", m.region)
+	}
+	validTypes := []string{}
+	for _, availableType := range output.InstanceTypeOfferings {
+		if availableType.InstanceType != nil && (*availableType.InstanceType) == instanceType {
+			return nil
+		}
+		validTypes = append(validTypes, *availableType.InstanceType)
+	}
+	return errors.Errorf("available types for region '%s' are: %v", m.region, validTypes)
+}
+
 // setNoExpiration changes whether a host should expire
 func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpiration bool) error {
 	resources, err := m.getResources(ctx, h)

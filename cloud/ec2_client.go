@@ -43,6 +43,9 @@ type AWSClient interface {
 	// ModifyInstanceAttribute is a wrapper for ec2.ModifyInstanceAttribute
 	ModifyInstanceAttribute(context.Context, *ec2.ModifyInstanceAttributeInput) (*ec2.ModifyInstanceAttributeOutput, error)
 
+	// DescribeInstanceTypeOfferings is a wrapper for ec2.DescribeInstanceTypeOfferings.
+	DescribeInstanceTypeOfferings(context.Context, *ec2.DescribeInstanceTypeOfferingsInput) (*ec2.DescribeInstanceTypeOfferingsOutput, error)
+
 	// CreateTags is a wrapper for ec2.CreateTags.
 	CreateTags(context.Context, *ec2.CreateTagsInput) (*ec2.CreateTagsOutput, error)
 
@@ -238,6 +241,29 @@ func (c *awsClientImpl) ModifyInstanceAttribute(ctx context.Context, input *ec2.
 		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.ModifyInstanceAttributeWithContext(ctx, input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+func (c *awsClientImpl) DescribeInstanceTypeOfferings(ctx context.Context, input *ec2.DescribeInstanceTypeOfferingsInput) (*ec2.DescribeInstanceTypeOfferingsOutput, error) {
+	var output *ec2.DescribeInstanceTypeOfferingsOutput
+	var err error
+	msg := makeAWSLogMessage("DescribeInstanceTypeOfferings", fmt.Sprintf("%T", c), input)
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			output, err = c.EC2.DescribeInstanceTypeOfferingsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, msg))

@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -244,7 +245,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 		InstanceType: testInstanceType,
 	}
 
-	intentHost, err := (&DBHostConnector{}).NewIntentHost(options, testUser)
+	intentHost, err := (&DBHostConnector{}).NewIntentHost(context.Background(), options, testUser, config)
 	s.NoError(err)
 	s.Require().NotNil(intentHost)
 	foundHost, err := host.FindOne(host.ById(intentHost.Id))

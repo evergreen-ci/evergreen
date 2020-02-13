@@ -53,7 +53,7 @@ func (so *SpawnOptions) validate() error {
 
 	d, err := distro.FindOne(distro.ById(so.DistroId))
 	if err != nil {
-		return errors.Errorf("Invalid spawn options: distro %v", so.DistroId)
+		return errors.Errorf("error finding distro '%s'", so.DistroId)
 	}
 
 	if !d.SpawnAllowed {
@@ -113,7 +113,7 @@ func checkSpawnHostLimitExceeded(numCurrentHosts int) error {
 }
 
 // CreateSpawnHost spawns a host with the given options.
-func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
+func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.Settings) (*host.Host, error) {
 	if err := so.validate(); err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -121,7 +121,7 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 	// load in the appropriate distro
 	d, err := distro.FindOne(distro.ById(so.DistroId))
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.WithStack(errors.Wrap(err, "error finding distro"))
 	}
 
 	if so.Userdata != "" {
@@ -131,6 +131,12 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 		err = d.SetUserdata(so.Userdata, so.Region)
 		if err != nil {
 			return nil, errors.WithStack(err)
+		}
+	}
+
+	if so.InstanceType != "" {
+		if err := CheckInstanceTypeValid(ctx, d, so.InstanceType, settings.Providers.AWS.AllowedInstanceTypes); err != nil {
+			return nil, errors.Wrap(err, "error validating instance type")
 		}
 	}
 
@@ -170,6 +176,35 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 		return nil, errors.New("unable to intent host: NewIntent did not return a host")
 	}
 	return intentHost, nil
+}
+
+func CheckInstanceTypeValid(ctx context.Context, d distro.Distro, requestedType string, allowedTypes []string) error {
+	if !IsEc2Provider(d.Provider) {
+		return errors.Errorf("cannot specify instance type for provider '%s'", d.Provider)
+	}
+	foundType := false
+	for _, allowedType := range allowedTypes {
+		if requestedType == allowedType {
+			foundType = true
+			break
+		}
+	}
+	if !foundType {
+		return errors.New("This instance type has not been allowed by admins")
+	}
+	env := evergreen.GetEnvironment()
+	opts, err := GetManagerOptions(d)
+	if err != nil {
+		return errors.Wrap(err, "error getting manager options")
+	}
+	m, err := GetManager(ctx, env, opts)
+	if err != nil {
+		return errors.Wrap(err, "error getting manager")
+	}
+	if err := m.CheckInstanceType(ctx, requestedType); err != nil {
+		return errors.Wrapf(err, "error checking instance type '%s'", requestedType)
+	}
+	return nil
 }
 
 func SetHostRDPPassword(ctx context.Context, env evergreen.Environment, host *host.Host, password string) error {
