@@ -108,6 +108,48 @@
         "activated": false
       }
     ],
+    "artifact_files": [
+      {
+        "task": "exec1",
+        "task_name": "wuzzup-activated",
+        "build": "some_thang",
+        "files": [
+          {
+            "name": "awesome_test!!!",
+            "link": "www.wikipedia.com",
+            "visibility": "the whole world",
+            "fetch_ignore": false
+          }
+        ],
+        "execution": 5
+      },
+      {
+        "task": "exec2",
+        "task_name": "wuzzup-activated",
+        "build": "some_thang",
+        "files": [
+          {
+            "name": "THIS IS REALLY COOL",
+            "link": "www.wikipedia.com",
+            "visibility": "the whole world",
+            "fetch_ignore": false
+          },
+          {
+            "name": "really cool test file",
+            "link": "www.wikipedia.com",
+            "visibility": "the whole world",
+            "fetch_ignore": false
+          },
+          {
+            "name": "PRIVATE TEST FILEEEEEE",
+            "link": "stuffff",
+            "visibility": "none",
+            "fetch_ignore": false
+          }
+        ],
+        "execution": 5
+      }
+    ],
     "tasks": [
       {
         "_id": "wuzzup-activated",
@@ -144,6 +186,84 @@
           "timed_out": false
         },
         "display_only": true,
+        "execution_tasks": ["exec1", "exec2"],
+        "generate_task": false,
+        "generated_by": "something"
+      },
+      {
+        "_id": "exec1",
+        "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "scheduled_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "start_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "version": "version",
+        "branch": "id",
+        "gitspec": "revise",
+        "priority": 5,
+        "task_group": "grp",
+        "task_group_max_hosts": 100,
+        "activated": true,
+        "activated_by": "someone",
+        "build_id": "some_thang",
+        "distro": "distro",
+        "build_variant": "variant",
+        "depends_on": [],
+        "display_name": "exec 1 display!!",
+        "host_id": "host",
+        "restarts": 5,
+        "execution": 5,
+        "order": 5,
+        "r": "something",
+        "status": "pass",
+        "details": {
+          "status": "status",
+          "type": "type",
+          "desc": "description",
+          "timed_out": false
+        },
+        "display_only": false,
+        "execution_tasks": ["exec1"],
+        "generate_task": false,
+        "generated_by": "something"
+      },
+      {
+        "_id": "exec2",
+        "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "scheduled_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "start_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "version": "version",
+        "branch": "id",
+        "gitspec": "revise",
+        "priority": 5,
+        "task_group": "grp",
+        "task_group_max_hosts": 100,
+        "activated": true,
+        "activated_by": "someone",
+        "build_id": "some_thang",
+        "distro": "distro",
+        "build_variant": "variant",
+        "depends_on": [],
+        "display_name": "exec 2 display!!",
+        "host_id": "host",
+        "restarts": 5,
+        "execution": 5,
+        "order": 5,
+        "r": "something",
+        "status": "pass",
+        "details": {
+          "status": "status",
+          "type": "type",
+          "desc": "description",
+          "timed_out": false
+        },
+        "display_only": false,
         "execution_tasks": ["exec1"],
         "generate_task": false,
         "generated_by": "something"
@@ -169,7 +289,7 @@
         "distro": "distro",
         "build_variant": "variant",
         "depends_on": [],
-        "display_name": "display name",
+        "display_name": "exec1 display name",
         "host_id": "host",
         "restarts": 5,
         "execution": 5,
@@ -1431,7 +1551,7 @@
             "distroId": "distro",
             "buildVariant": "variant",
             "dependsOn": null,
-            "displayName": "display name",
+            "displayName": "exec1 display name",
             "hostId": "host",
             "restarts": 5,
             "execution": 5,
@@ -1952,6 +2072,59 @@
           "unscheduleTask": {
             "activated": false
           }
+        }
+      }
+    },
+    {
+      "query_file": "test-files-query-display.graphql",
+      "result": {
+        "data": {
+          "testFiles": [
+            {
+              "name": "exec 1 display!!",
+              "files": [
+                {
+                  "name": "awesome_test!!!",
+                  "link": "www.wikipedia.com",
+                  "visibility": "the whole world"
+                }
+              ]
+            },
+            {
+              "name": "exec 2 display!!",
+              "files": [
+                {
+                  "name": "THIS IS REALLY COOL",
+                  "link": "www.wikipedia.com",
+                  "visibility": "the whole world"
+                },
+                {
+                  "name": "really cool test file",
+                  "link": "www.wikipedia.com",
+                  "visibility": "the whole world"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "test-files-query-exec.graphql",
+      "result": {
+        "data": {
+          "testFiles": [
+            {
+              "name": "exec 1 display!!",
+              "files": [
+                {
+                  "name": "awesome_test!!!",
+                  "link": "www.wikipedia.com",
+                  "visibility": "the whole world"
+                }
+              ]
+            }
+          ]
         }
       }
     }

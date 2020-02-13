@@ -1,0 +1,10 @@
+query {
+  testFiles(taskId: "exec1") {
+    name
+    files {
+      name
+      link
+      visibility
+    }
+  }
+}

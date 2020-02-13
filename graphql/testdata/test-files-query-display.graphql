@@ -1,0 +1,10 @@
+query {
+  testFiles(taskId: "wuzzup-activated") {
+    name
+    files {
+      name
+      link
+      visibility
+    }
+  }
+}
