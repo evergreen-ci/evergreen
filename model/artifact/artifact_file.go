@@ -1,6 +1,9 @@
 package artifact
 
-import "github.com/pkg/errors"
+import (
+	"github.com/evergreen-ci/gimlet"
+	"github.com/pkg/errors"
+)
 
 const Collection = "artifact_files"
 
@@ -40,6 +43,22 @@ type File struct {
 	Visibility string `json:"visibility" bson:"visibility"`
 	// When true, these artifacts are excluded from reproduction
 	IgnoreForFetch bool `bson:"fetch_ignore,omitempty" json:"ignore_for_fetch"`
+}
+
+// stripHiddenFiles is a helper for only showing users the files they are allowed to see.
+func StripHiddenFiles(files []File, pluginUser gimlet.User) []File {
+	publicFiles := []File{}
+	for _, file := range files {
+		switch {
+		case file.Visibility == None:
+			continue
+		case file.Visibility == Private && pluginUser == nil:
+			continue
+		default:
+			publicFiles = append(publicFiles, file)
+		}
+	}
+	return publicFiles
 }
 
 func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {

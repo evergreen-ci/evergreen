@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -38,22 +37,6 @@ type displayTaskFiles struct {
 // the 'Plugin' interface
 func (self *AttachPlugin) Name() string                           { return AttachPluginName }
 func (self *AttachPlugin) Configure(map[string]interface{}) error { return nil }
-
-// stripHiddenFiles is a helper for only showing users the files they are allowed to see.
-func stripHiddenFiles(files []artifact.File, pluginUser gimlet.User) []artifact.File {
-	publicFiles := []artifact.File{}
-	for _, file := range files {
-		switch {
-		case file.Visibility == artifact.None:
-			continue
-		case file.Visibility == artifact.Private && pluginUser == nil:
-			continue
-		default:
-			publicFiles = append(publicFiles, file)
-		}
-	}
-	return publicFiles
-}
 
 // GetPanelConfig returns a plugin.PanelConfig struct representing panels
 // that will be added to the Task and Build pages.
@@ -88,7 +71,7 @@ func (self *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 							if err != nil {
 								return nil, err
 							}
-							strippedFiles := stripHiddenFiles(execTaskFiles, context.User)
+							strippedFiles := artifact.StripHiddenFiles(execTaskFiles, context.User)
 
 							var execTask *task.Task
 							execTask, err = task.FindOne(task.ById(execTaskID))
@@ -114,7 +97,7 @@ func (self *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 						return nil, err
 					}
 
-					return stripHiddenFiles(files, context.User), nil
+					return artifact.StripHiddenFiles(files, context.User), nil
 				},
 			},
 			{
@@ -132,7 +115,7 @@ func (self *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 					}
 					for i := range taskArtifactFiles {
 						// remove hidden files if the user isn't logged in
-						taskArtifactFiles[i].Files = stripHiddenFiles(taskArtifactFiles[i].Files, context.User)
+						taskArtifactFiles[i].Files = artifact.StripHiddenFiles(taskArtifactFiles[i].Files, context.User)
 					}
 					return taskArtifactFiles, nil
 				},
