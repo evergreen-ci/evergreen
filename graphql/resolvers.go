@@ -7,7 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/gimlet"
+
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -252,6 +255,54 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 		testPointers = append(testPointers, &apiTest)
 	}
 	return testPointers, nil
+}
+
+func TestFiles(ctx context.Context, taskID string) ([]*restModel.APIFile, error) {
+	var err error
+	t, err := task.FindOneId(taskID)
+	if t.OldTaskId != "" {
+		t, err = task.FindOneId(t.OldTaskId)
+		if err != nil {
+			return nil, ResourceNotFound.Send(ctx, err.Error())
+		}
+	}
+
+	groupedFilesList := []*GroupedFiles{}
+
+	if t.DisplayOnly {
+		for _, execTaskID := range t.ExecutionTasks {
+			var execTaskFiles []artifact.File
+			execTaskFiles, err = artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: execTaskID, Execution: t.Execution}})
+			if err != nil {
+				return nil, ResourceNotFound.Send(ctx, err.Error())
+			}
+			strippedFiles := artifact.StripHiddenFiles(execTaskFiles, gimlet.GetUser(ctx))
+
+			var execTask *task.Task
+			execTask, err = task.FindOne(task.ById(execTaskID))
+			if err != nil {
+				return nil, ResourceNotFound.Send(ctx, err.Error())
+			}
+			if execTask == nil {
+				continue
+			}
+			apiFilesList := []*
+			for _, f := range strippedFiles {
+				apiFile := restModel.APIFile{}
+				err := apiFile.BuildFromService(f)
+				if err != nil {
+					return nil, InternalServerError.Send(ctx, err.Error())
+				}
+				files = append(files, &apiFile)
+			}
+		}
+	}
+	modelFiles, err := artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: taskID, Execution: t.Execution}})
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
+
+	return artifact.StripHiddenFiles(files, context.User), nil
 }
 
 func setScheduled(ctx context.Context, sc data.Connector, taskID string, isActive bool) (*restModel.APITask, error) {
