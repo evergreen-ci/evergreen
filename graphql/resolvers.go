@@ -257,8 +257,25 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 	return testPointers, nil
 }
 
-func TestFiles(ctx context.Context, taskID string) ([]*GroupedFiles, error) {
-	var err error
+func getGroupedFiles(ctx context.Context, name string, taskID string, execution int) (*GroupedFiles, error) {
+	taskFiles, err := artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: taskID, Execution: execution}})
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
+	strippedFiles := artifact.StripHiddenFiles(taskFiles, gimlet.GetUser(ctx))
+	apiFileList := []*restModel.APIFile{}
+	for _, file := range strippedFiles {
+		apiFile := restModel.APIFile{}
+		err := apiFile.BuildFromService(file)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, err.Error())
+		}
+		apiFileList = append(apiFileList, &apiFile)
+	}
+	return &GroupedFiles{Name: &name, Files: apiFileList}, nil
+}
+
+func (r *queryResolver) TestFiles(ctx context.Context, taskID string) ([]*GroupedFiles, error) {
 	t, err := task.FindOneId(taskID)
 	if t.OldTaskId != "" {
 		t, err = task.FindOneId(t.OldTaskId)
@@ -266,43 +283,30 @@ func TestFiles(ctx context.Context, taskID string) ([]*GroupedFiles, error) {
 			return nil, ResourceNotFound.Send(ctx, err.Error())
 		}
 	}
-
 	groupedFilesList := []*GroupedFiles{}
-
 	if t.DisplayOnly {
 		for _, execTaskID := range t.ExecutionTasks {
-			var execTaskFiles []artifact.File
-			execTaskFiles, err = artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: execTaskID, Execution: t.Execution}})
-			if err != nil {
-				return nil, ResourceNotFound.Send(ctx, err.Error())
-			}
-			strippedFiles := artifact.StripHiddenFiles(execTaskFiles, gimlet.GetUser(ctx))
-
-			var execTask *task.Task
-			execTask, err = task.FindOne(task.ById(execTaskID))
+			execTask, err := task.FindOne(task.ById(execTaskID))
 			if err != nil {
 				return nil, ResourceNotFound.Send(ctx, err.Error())
 			}
 			if execTask == nil {
 				continue
 			}
-			apiFilesList := []*
-			for _, f := range strippedFiles {
-				apiFile := restModel.APIFile{}
-				err := apiFile.BuildFromService(f)
-				if err != nil {
-					return nil, InternalServerError.Send(ctx, err.Error())
-				}
-				files = append(files, &apiFile)
+			groupedFiles, err := getGroupedFiles(ctx, execTask.DisplayName, execTaskID, t.Execution)
+			if err != nil {
+				return nil, err
 			}
+			groupedFilesList = append(groupedFilesList, groupedFiles)
 		}
+	} else {
+		groupedFiles, err := getGroupedFiles(ctx, t.DisplayName, taskID, t.Execution)
+		if err != nil {
+			return nil, err
+		}
+		groupedFilesList = append(groupedFilesList, groupedFiles)
 	}
-	modelFiles, err := artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: taskID, Execution: t.Execution}})
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
-	}
-
-	return artifact.StripHiddenFiles(files, context.User), nil
+	return groupedFilesList, nil
 }
 
 func setScheduled(ctx context.Context, sc data.Connector, taskID string, isActive bool) (*restModel.APITask, error) {
