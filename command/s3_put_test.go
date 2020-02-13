@@ -259,6 +259,7 @@ func TestExpandS3PutParams(t *testing.T) {
 					"display_name": "file",
 					"optional":     "true",
 					"visibility":   artifact.Private,
+					"workdir":      "/working_directory",
 				},
 			)
 
