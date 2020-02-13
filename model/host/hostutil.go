@@ -199,8 +199,10 @@ func (h *Host) RunSSHShellScript(ctx context.Context, script string, sshOpts []s
 // RunSSHShellScript runs a shell script on a remote host over SSH with the
 // given timeout.
 func (h *Host) RunSSHShellScriptWithTimeout(ctx context.Context, script string, sshOpts []string, timeout time.Duration) (string, error) {
+	// We read the shell script verbatim from stdin  (i.e. with "bash -s"
+	// instead of "bash -c") to avoid additional shell processing.
 	return h.runSSHCommandWithOutput(ctx, func(c *jasper.Command) *jasper.Command {
-		return c.ShellScript("bash", script)
+		return c.Bash("-s").SetInputBytes([]byte(script))
 	}, sshOpts, timeout)
 }
 
