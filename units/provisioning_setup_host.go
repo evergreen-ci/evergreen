@@ -298,7 +298,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, settings *evergreen.Set
 		if j.host.Distro.IsPowerShellSetup() {
 			scriptName = evergreen.PowerShellSetupScriptName
 		}
-		err = j.copyScript(ctx, settings, filepath.Join("~", scriptName), j.host.Distro.Setup)
+		err = j.copyScript(ctx, settings, filepath.Join(j.host.Distro.HomeDir(), scriptName), j.host.Distro.Setup)
 		if err != nil {
 			return errors.Wrapf(err, "error copying setup script %s to host %s",
 				scriptName, j.host.Id)
@@ -306,7 +306,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, settings *evergreen.Set
 	}
 
 	if j.host.Distro.Teardown != "" {
-		err = j.copyScript(ctx, settings, filepath.Join("~", evergreen.TeardownScriptName), j.host.Distro.Teardown)
+		err = j.copyScript(ctx, settings, filepath.Join(j.host.Distro.HomeDir(), evergreen.TeardownScriptName), j.host.Distro.Teardown)
 		if err != nil {
 			return errors.Wrapf(err, "error copying teardown script %s to host %s",
 				evergreen.TeardownScriptName, j.host.Id)
