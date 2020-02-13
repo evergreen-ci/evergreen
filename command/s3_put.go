@@ -158,15 +158,15 @@ func (s3pc *s3put) validate() error {
 // Apply the expansions from the relevant task config to all appropriate
 // fields of the s3put.
 func (s3pc *s3put) expandParams(conf *model.TaskConfig) error {
+	var err error
+	if err = util.ExpandValues(s3pc, conf.Expansions); err != nil {
+		return errors.WithStack(err)
+	}
+
 	if filepath.IsAbs(s3pc.LocalFile) {
 		s3pc.workDir = ""
 	} else {
 		s3pc.workDir = conf.WorkDir
-	}
-
-	var err error
-	if err = util.ExpandValues(s3pc, conf.Expansions); err != nil {
-		return errors.WithStack(err)
 	}
 
 	if s3pc.Optional != "" {
