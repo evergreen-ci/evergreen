@@ -1,6 +1,10 @@
 package gimlet
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/urfave/negroni"
+)
 
 // WrapperMiddleware is convenience function to produce middlewares
 // from functions that wrap http.HandlerFuncs.
@@ -30,3 +34,18 @@ func (w HandlerWrapper) ServeHTTP(rw http.ResponseWriter, r *http.Request, next 
 // WrapperHandlerMiddleware is convenience function to produce middlewares
 // from functions that wrap http.Handlers.
 func WrapperHandlerMiddleware(w HandlerWrapper) Middleware { return w }
+
+// MergeMiddleware combines a number of middleware into a single
+// middleware instance.
+func MergeMiddleware(mws ...Middleware) Middleware {
+	if len(mws) == 0 {
+		panic("must merge one or more middlewares")
+	}
+
+	n := negroni.New()
+	for _, m := range mws {
+		n.Use(m)
+	}
+
+	return negroni.Wrap(n)
+}

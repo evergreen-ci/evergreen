@@ -50,6 +50,7 @@ func TestSerializationErrors(t *testing.T) {
 	baseCases := map[OutputFormat]writeResponseBaseFunc{
 		JSON: WriteJSONResponse,
 		YAML: WriteYAMLResponse,
+		CSV:  WriteCSVResponse,
 	}
 
 	for _, wf := range baseCases {
@@ -92,7 +93,7 @@ func TestResponsesWritingHelpers(t *testing.T) {
 	for status, cases := range testTable {
 		for of, wf := range cases {
 			r := httptest.NewRecorder()
-			wf(r, struct{}{})
+			wf(r, []struct{}{})
 			assert.Equal(status, r.Code)
 			ct, ok := r.Header()["Content-Type"]
 			assert.True(ok)

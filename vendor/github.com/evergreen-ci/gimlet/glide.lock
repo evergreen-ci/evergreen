@@ -24,6 +24,9 @@ imports:
 - name: go.mongodb.org/mongo-driver
   version: 0622dc2fbb426411e5ee2675962ca80811bb2c37
 
+- name: github.com/phyber/negroni-gzip
+  version: ef6356a5d02936b65ca8e60b604ed6b078aac8d3
+
 # Okta verifier and packages
 - name: github.com/okta/okta-jwt-verifier-golang
   version: 04702def3e1b9b1c6b419c9c3aae1ec184a5d4b2
