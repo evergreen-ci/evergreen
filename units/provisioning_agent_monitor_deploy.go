@@ -228,7 +228,7 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, settings *everg
 			"message":       "error fetching agent monitor binary on host",
 			"host_id":       j.host.Id,
 			"distro":        j.host.Distro.Id,
-			"output":        output,
+			"logs":          output,
 			"communication": j.host.Distro.BootstrapSettings.Communication,
 			"job":           j.ID(),
 		}))

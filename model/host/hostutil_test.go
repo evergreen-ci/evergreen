@@ -239,7 +239,7 @@ func TestJasperCommands(t *testing.T) {
 			setupScript, err := h.setupScriptCommands(settings)
 			require.NoError(t, err)
 
-			setupSpawnHost, err := h.SetupSpawnHostCommands(settings)
+			setupSpawnHost, err := h.SpawnHostSetupCommands(settings)
 			require.NoError(t, err)
 
 			markDone, err := h.MarkUserDataDoneCommands()
@@ -445,7 +445,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			writeCredentialsCmd, err := h.bufferedWriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 			require.NoError(t, err)
 
-			setupSpawnHost, err := h.SetupSpawnHostCommands(settings)
+			setupSpawnHost, err := h.SpawnHostSetupCommands(settings)
 			require.NoError(t, err)
 
 			markDone, err := h.MarkUserDataDoneCommands()
@@ -1013,7 +1013,7 @@ func TestStopAgentMonitor(t *testing.T) {
 	}
 }
 
-func TestSetupSpawnHostCommands(t *testing.T) {
+func TestSpawnHostSetupCommands(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection, user.Collection))
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection, user.Collection))
@@ -1048,7 +1048,7 @@ func TestSetupSpawnHostCommands(t *testing.T) {
 		},
 	}
 
-	cmd, err := h.SetupSpawnHostCommands(settings)
+	cmd, err := h.SpawnHostSetupCommands(settings)
 	require.NoError(t, err)
 
 	expected := "mkdir -m 777 -p /home/user/cli_bin" +
@@ -1060,7 +1060,7 @@ func TestSetupSpawnHostCommands(t *testing.T) {
 	assert.Equal(t, expected, cmd)
 
 	h.ProvisionOptions.TaskId = "task_id"
-	cmd, err = h.SetupSpawnHostCommands(settings)
+	cmd, err = h.SpawnHostSetupCommands(settings)
 	assert.Contains(t, cmd, expected)
 	require.NoError(t, err)
 	fetchCmd := []string{"/home/user/evergreen", "-c", "/home/user/cli_bin/.evergreen.yml", "fetch", "-t", "task_id", "--source", "--artifacts", "--dir", "/dir"}

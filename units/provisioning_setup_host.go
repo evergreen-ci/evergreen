@@ -2,7 +2,6 @@ package units
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -16,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -64,6 +62,8 @@ func makeSetupHostJob() *setupHostJob {
 	return j
 }
 
+// NewHostSetupJob creates a job that performs any additional provisioning for
+// a host to prepare it to run.
 func NewHostSetupJob(env evergreen.Environment, h host.Host, id string) amboy.Job {
 	j := makeSetupHostJob()
 	j.host = &h
@@ -560,7 +560,7 @@ func (j *setupHostJob) copyScript(ctx context.Context, settings *evergreen.Setti
 		"command": strings.Join(scpArgs, " "),
 		"distro":  j.host.Distro.Id,
 		"host_id": j.host.Host,
-		"output":  scpCmdOut.String(),
+		"logs":    scpCmdOut.String(),
 	}))
 
 	return errors.Wrap(err, "error copying script to remote machine")
@@ -638,8 +638,18 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 	// If this is a spawn host
 	if j.host.ProvisionOptions != nil && j.host.ProvisionOptions.LoadCLI {
 		grip.Infof("Uploading client binary to host %s", j.host.Id)
-		lcr, err := j.loadClient(ctx, settings)
+		sshOpts, err := j.host.GetSSHOptions(settings)
 		if err != nil {
+			grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
+				"operation": "setting host unprovisioned",
+				"distro":    j.host.Distro.Id,
+				"job":       j.ID(),
+				"host_id":   j.host.Id,
+			}))
+			return errors.Wrapf(err, "Error getting ssh options for host %s", j.host.Id)
+		}
+
+		if err = j.setupSpawnHost(ctx, settings, sshOpts); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "failed to load client binary onto host",
 				"job":     j.ID(),
@@ -656,20 +666,9 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 			return errors.Wrapf(err, "Failed to load client binary onto host %s: %+v", j.host.Id, err)
 		}
 
-		sshOptions, err := j.host.GetSSHOptions(settings)
-		if err != nil {
-			grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
-				"operation": "setting host unprovisioned",
-				"distro":    j.host.Distro.Id,
-				"job":       j.ID(),
-				"host_id":   j.host.Id,
-			}))
-			return errors.Wrapf(err, "Error getting ssh options for host %s", j.host.Id)
-		}
-
 		grip.Infof("Running setup script for spawn host %s", j.host.Id)
 		// run the setup script with the agent
-		if logs, err := j.host.RunSSHCommand(ctx, j.host.SetupCommand(), sshOptions); err != nil {
+		if logs, err := j.host.RunSSHCommand(ctx, j.host.SetupCommand(), sshOpts); err != nil {
 			grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
 				"operation": "setting host unprovisioned",
 				"host_id":   j.host.Id,
@@ -680,7 +679,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 			return errors.Wrapf(err, "error running setup script on remote host: %s", logs)
 		}
 
-		if j.host.ProvisionOptions.OwnerId != "" && len(j.host.ProvisionOptions.TaskId) > 0 {
+		if j.host.ProvisionOptions.OwnerId != "" && j.host.ProvisionOptions.TaskId != "" {
 			grip.Info(message.Fields{
 				"message": "fetching data for task on host",
 				"task":    j.host.ProvisionOptions.TaskId,
@@ -689,7 +688,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 				"job":     j.ID(),
 			})
 
-			grip.Error(message.WrapError(j.fetchRemoteTaskData(ctx, j.host.ProvisionOptions.TaskId, lcr.BinaryPath, lcr.ConfigPath, settings),
+			grip.Error(message.WrapError(j.fetchRemoteTaskData(ctx, settings, sshOpts),
 				message.Fields{
 					"message": "failed to fetch data onto host",
 					"task":    j.host.ProvisionOptions.TaskId,
@@ -724,146 +723,159 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 	return nil
 }
 
-// loadClientResult indicates the locations on a target host where the CLI
-// binary and its config file have been written to.
-type loadClientResult struct {
-	BinaryPath string
-	ConfigPath string
-}
+// // loadClientResult indicates the locations on a target host where the CLI
+// // binary and its config file have been written to.
+// type loadClientResult struct {
+//     BinaryPath string
+//     ConfigPath string
+// }
 
-// loadClient places the evergreen command line client on the host, places a copy of the user's
-// settings onto the host, and makes the binary appear in the $PATH when the user logs in.
-// If successful, returns an instance of loadClientResult which contains the paths where the
-// binary and config file were written to.
-func (j *setupHostJob) loadClient(ctx context.Context, settings *evergreen.Settings) (*loadClientResult, error) {
-	if j.host.ProvisionOptions == nil {
-		return nil, errors.New("ProvisionOptions is nil")
-	}
-	if j.host.ProvisionOptions.OwnerId == "" {
-		return nil, errors.New("OwnerId not set")
-	}
-
-	// get the information about the owner of the host
-	owner, err := user.FindOne(user.ById(j.host.ProvisionOptions.OwnerId))
+// setupSpawnHost places the evergreen command line client on the host, places a
+// copy of the user's settings onto the host, and makes the binary appear in the
+// PATH when the user logs in.
+func (j *setupHostJob) setupSpawnHost(ctx context.Context, settings *evergreen.Settings, sshOpts []string) error {
+	script, err := j.host.SpawnHostSetupCommands(settings)
 	if err != nil {
-		return nil, errors.Wrapf(err, "couldn't fetch owner %v for host", j.host.ProvisionOptions.OwnerId)
+		return errors.Wrap(err, "could not create script to setup spawn host")
 	}
+	// if j.host.ProvisionOptions == nil {
+	//     return nil, errors.New("ProvisionOptions is nil")
+	// }
+	// if j.host.ProvisionOptions.OwnerId == "" {
+	//     return nil, errors.New("OwnerId not set")
+	// }
+
+	// // get the information about the owner of the host
+	// owner, err := user.FindOne(user.ById(j.host.ProvisionOptions.OwnerId))
+	// if err != nil {
+	//     return nil, errors.Wrapf(err, "couldn't fetch owner %v for host", j.host.ProvisionOptions.OwnerId)
+	// }
 
 	// 1. mkdir the destination directory on the host,
 	//    and modify ~/.profile so the target binary will be on the $PATH
-	targetDir := "cli_bin"
-	hostSSHInfo, err := j.host.GetSSHInfo()
-	if err != nil {
-		return nil, errors.Wrapf(err, "error parsing ssh info %s", j.host.Host)
-	}
+	// targetDir := "cli_bin"
 
-	sshOptions, err := j.host.GetSSHOptions(settings)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Error getting ssh options for host %v", j.host.Id)
-	}
-	sshOptions = append(sshOptions, "-o", "UserKnownHostsFile=/dev/null")
+	// mkdirctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	// defer cancel()
+	//
+	// output, err := j.host.RunSSHCommand(mkdirctx, fmt.Sprintf("mkdir -m 777 -p ~/%s && (echo 'export PATH=\"$PATH:~/%s\"' >> ~/.profile || true; echo 'export PATH=\"$PATH:~/%s\"' >> ~/.bash_profile || true)", targetDir, targetDir, targetDir), sshOptions)
+	// if err != nil {
+	//     return nil, errors.Wrapf(err, "error running setup command for cli: %s", output)
+	// }
 
-	mkdirctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
+	// output := util.NewMBCappedWriter()
 
-	output, err := j.host.RunSSHCommand(mkdirctx, fmt.Sprintf("mkdir -m 777 -p ~/%s && (echo 'export PATH=\"$PATH:~/%s\"' >> ~/.profile || true; echo 'export PATH=\"$PATH:~/%s\"' >> ~/.bash_profile || true)", targetDir, targetDir, targetDir), sshOptions)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error running setup command for cli: %s", output)
-	}
+	// sshInfo, err := j.host.GetSSHInfo()
+	// sshOptions, err := j.host.GetSSHOptions(settings)
+	// if err != nil {
+	//     return errors.Wrapf(err, "Error getting ssh options for host %v", j.host.Id)
+	// }
+	sshOpts = append(sshOpts, "-o", "UserKnownHostsFile=/dev/null")
 
-	// run the command to curl the agent
-	curlctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-	defer cancel()
-
-	curlOut := util.NewMBCappedWriter()
-
-	curlcmd := j.env.JasperManager().CreateCommand(curlctx).Host(hostSSHInfo.Hostname).User(j.host.User).
-		ExtendRemoteArgs("-p", hostSSHInfo.Port).ExtendRemoteArgs(sshOptions...).
-		RedirectErrorToOutput(true).SetOutputWriter(curlOut).
-		Append(j.host.CurlCommand(settings))
-
-	if err = curlcmd.Run(curlctx); err != nil {
-		return nil, errors.Wrapf(err, "error running curl command for cli, %s", curlOut.Buffer.String())
-	}
-
-	// 2. Write a settings file for the user that owns the host, and scp it to the directory
-	outputStruct := struct {
-		APIKey        string `json:"api_key"`
-		APIServerHost string `json:"api_server_host"`
-		UIServerHost  string `json:"ui_server_host"`
-		User          string `json:"user"`
-	}{
-		APIKey:        owner.APIKey,
-		APIServerHost: settings.ApiUrl + "/api",
-		UIServerHost:  settings.Ui.Url,
-		User:          owner.Id,
-	}
-	outputJSON, err := json.Marshal(outputStruct)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	tempFileName, err := util.WriteTempFile("", outputJSON)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	defer os.Remove(tempFileName)
-
-	scpOut := util.NewMBCappedWriter()
-
-	scpArgs := buildScpCommand(tempFileName, filepath.Join("~", targetDir, ".evergreen.yml"), hostSSHInfo, j.host.User, sshOptions)
-	scpYmlCommand := j.env.JasperManager().CreateCommand(ctx).Add(scpArgs).
-		RedirectErrorToOutput(true).SetOutputWriter(scpOut)
-
-	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-
-	if err = scpYmlCommand.Run(ctx); err != nil {
-		return nil, errors.Wrapf(err, "error running SCP command for evergreen.yml, %v", scpOut.String())
-	}
-
-	return &loadClientResult{
-		BinaryPath: filepath.Join("~", "evergreen"),
-		ConfigPath: fmt.Sprintf("%s/.evergreen.yml", targetDir),
-	}, nil
-}
-
-func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, taskId, cliPath, confPath string, settings *evergreen.Settings) error {
-	hostSSHInfo, err := j.host.GetSSHInfo()
 	if err != nil {
 		return errors.Wrapf(err, "error parsing ssh info %s", j.host.Host)
 	}
 
-	sshOptions, err := j.host.GetSSHOptions(settings)
-	if err != nil {
-		return errors.Wrapf(err, "Error getting ssh options for host %v", j.host.Id)
+	// // run the command to curl the agent
+	// curlctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	// defer cancel()
+
+	grip.Info(message.Fields{
+		"message": "running script to setup spawn host",
+		"script":  script,
+	})
+	if output, err := j.host.RunSSHShellScriptWithTimeout(ctx, script, sshOpts, 2*time.Minute); err != nil {
+		return errors.Wrapf(err, "error running command to set up spawn host: %s", output)
 	}
-	sshOptions = append(sshOptions, "-o", "UserKnownHostsFile=/dev/null")
+	// curlcmd := j.env.JasperManager().CreateCommand(curlctx).Host(sshInfo.Hostname).User(j.host.User).
+	//     ExtendRemoteArgs("-p", sshInfo.Port).ExtendRemoteArgs(sshOptions...).
+	//     RedirectErrorToOutput(true).SetOutputWriter(scriptOut).
+	//     Append(j.host.CurlCommand(settings))
+	//
+	// if err = curlcmd.Run(curlctx); err != nil {
+	//     return errors.Wrapf(err, "error running curl command for cli, %s", scriptOut.String())
+	// }
 
-	cmdOutput := util.NewMBCappedWriter()
-	fetchCmd := fmt.Sprintf("%s -c %s fetch -t %s --source --artifacts --dir='%s'", cliPath, confPath, taskId, j.host.Distro.WorkDir)
+	// 2. Write a settings file for the user that owns the host, and scp it to the directory
+	// outputStruct := struct {
+	//     APIKey        string `json:"api_key"`
+	//     APIServerHost string `json:"api_server_host"`
+	//     UIServerHost  string `json:"ui_server_host"`
+	//     User          string `json:"user"`
+	// }{
+	//     APIKey:        owner.APIKey,
+	//     APIServerHost: settings.ApiUrl + "/api",
+	//     UIServerHost:  settings.Ui.Url,
+	//     User:          owner.Id,
+	// }
+	// outputJSON, err := json.Marshal(outputStruct)
+	// if err != nil {
+	//     return nil, errors.WithStack(err)
+	// }
 
-	makeShellCmd := j.env.JasperManager().CreateCommand(ctx).Host(hostSSHInfo.Hostname).User(j.host.User).
-		ExtendRemoteArgs("-p", hostSSHInfo.Port).ExtendRemoteArgs(sshOptions...).
-		RedirectErrorToOutput(true).SetOutputWriter(cmdOutput).
-		Append(fetchCmd)
+	// tempFileName, err := util.WriteTempFile("", outputJSON)
+	// if err != nil {
+	//     return nil, errors.WithStack(err)
+	// }
+	// defer os.Remove(tempFileName)
+	//
+	// scpOut := util.NewMBCappedWriter()
+	//
+	// scpArgs := buildScpCommand(tempFileName, filepath.Join("~", targetDir, ".evergreen.yml"), hostSSHInfo, j.host.User, sshOptions)
+	// scpYmlCommand := j.env.JasperManager().CreateCommand(ctx).Add(scpArgs).
+	//     RedirectErrorToOutput(true).SetOutputWriter(scpOut)
+	//
+	// ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+	// defer cancel()
+	//
+	// if err = scpYmlCommand.Run(ctx); err != nil {
+	//     return nil, errors.Wrapf(err, "error running SCP command for evergreen.yml, %v", scpOut.String())
+	// }
+
+	// return &loadClientResult{
+	//     BinaryPath: filepath.Join("~", "evergreen"),
+	//     ConfigPath: fmt.Sprintf("%s/.evergreen.yml", targetDir),
+	// }, nil
+	return nil
+}
+
+func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, settings *evergreen.Settings, sshOpts []string) error {
+	sshInfo, err := j.host.GetSSHInfo()
+	if err != nil {
+		return errors.Wrapf(err, "error parsing ssh info %s", j.host.Host)
+	}
+
+	// sshOptions, err := j.host.GetSSHOptions(settings)
+	// if err != nil {
+	//     return errors.Wrapf(err, "Error getting ssh options for host %v", j.host.Id)
+	// }
+	// sshOptions = append(sshOptions, "-o", "UserKnownHostsFile=/dev/null")
+
+	// output := util.NewMBCappedWriter()
+	cmd := strings.Join(j.host.SpawnHostGetTaskDataCommand(), " ")
+
+	output, err := j.host.RunSSHCommandWithTimeout(ctx, cmd, sshOpts, 15*time.Minute)
+
+	// cmd := j.env.JasperManager().CreateCommand(ctx).Host(sshInfo.Hostname).User(j.host.User).
+	//     ExtendRemoteArgs("-p", sshInfo.Port).ExtendRemoteArgs(sshOptions...).
+	//     SetCombinedWriter(output).Add(args)
 
 	// run the make shell command with a timeout
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, 15*time.Minute)
-	defer cancel()
-
-	err = makeShellCmd.Run(ctx)
+	// var cancel context.CancelFunc
+	// ctx, cancel = context.WithTimeout(ctx, 15*time.Minute)
+	// defer cancel()
+	//
+	// err = cmd.Run(ctx)
 
 	grip.Error(message.WrapError(err, message.Fields{
-		"message": fmt.Sprintf("fetch-artifacts-%s", taskId),
-		"host_id": hostSSHInfo.Hostname,
-		"cmd":     fetchCmd,
+		"message": fmt.Sprintf("fetch-artifacts-%s", j.host.ProvisionOptions.TaskId),
+		"host_id": sshInfo.Hostname,
+		"cmd":     cmd,
 		"job":     j.ID(),
-		"output":  cmdOutput.Buffer.String(),
+		"logs":    output,
 	}))
 
-	return errors.WithStack(err)
+	return errors.Wrap(err, "could not fetch remote task data")
 }
 
 func (j *setupHostJob) tryRequeue(ctx context.Context) {

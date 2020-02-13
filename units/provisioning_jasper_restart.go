@@ -312,7 +312,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 		if output, err := j.host.RunSSHCommand(ctx, writeCredentialsCmd, sshOpts); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not run SSH command to write credentials file",
-				"output":  output,
+				"logs":    output,
 				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),
@@ -324,7 +324,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 		if output, err := j.host.RunSSHCommand(ctx, j.host.RestartJasperCommand(j.settings.HostJasper), sshOpts); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not run SSH command to restart Jasper",
-				"output":  output,
+				"logs":    output,
 				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),

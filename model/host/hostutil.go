@@ -177,21 +177,34 @@ func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
 	return opts, nil
 }
 
-// RunSSHCommand runs an SSH command on a remote host.
-func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []string) (string, error) {
+// RunSSHCommand runs an SSH command on the host with the default SSH timeout.
+func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOpts []string) (string, error) {
+	return h.RunSSHCommandWithTimeout(ctx, cmd, sshOpts, time.Duration(0))
+}
+
+// RunSSHCommandWithTimeout runs an SSH command on the host with the given
+// timeout.
+func (h *Host) RunSSHCommandWithTimeout(ctx context.Context, cmd string, sshOpts []string, timeout time.Duration) (string, error) {
 	return h.runSSHCommandWithOutput(ctx, func(c *jasper.Command) *jasper.Command {
 		return c.Add([]string{cmd})
-	}, sshOptions)
+	}, sshOpts, timeout)
 }
 
-// RunSSHShellScript runs a shell script on a remote host over SSH.
-func (h *Host) RunSSHShellScript(ctx context.Context, script string, sshOptions []string) (string, error) {
+// RunSSHShellScript runs a shell script on a remote host over SSH with the
+// default SSH timeout.
+func (h *Host) RunSSHShellScript(ctx context.Context, script string, sshOpts []string) (string, error) {
+	return h.RunSSHShellScriptWithTimeout(ctx, script, sshOpts, time.Duration(0))
+}
+
+// RunSSHShellScript runs a shell script on a remote host over SSH with the
+// given timeout.
+func (h *Host) RunSSHShellScriptWithTimeout(ctx context.Context, script string, sshOpts []string, timeout time.Duration) (string, error) {
 	return h.runSSHCommandWithOutput(ctx, func(c *jasper.Command) *jasper.Command {
 		return c.ShellScript("bash", script)
-	}, sshOptions)
+	}, sshOpts, timeout)
 }
 
-func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*jasper.Command) *jasper.Command, sshOptions []string) (string, error) {
+func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*jasper.Command) *jasper.Command, sshOpts []string, timeout time.Duration) (string, error) {
 	env := evergreen.GetEnvironment()
 	hostInfo, err := h.GetSSHInfo()
 	if err != nil {
@@ -201,11 +214,16 @@ func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*ja
 	output := util.NewMBCappedWriter()
 
 	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, sshTimeout)
-	defer cancel()
+	if timeout != time.Duration(0) {
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	} else {
+		ctx, cancel = context.WithTimeout(ctx, sshTimeout)
+		defer cancel()
+	}
 
 	err = addCommands(env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
-		ExtendRemoteArgs("-p", hostInfo.Port, "-t", "-t").ExtendRemoteArgs(sshOptions...).
+		ExtendRemoteArgs("-p", hostInfo.Port, "-t", "-t").ExtendRemoteArgs(sshOpts...).
 		SetCombinedWriter(output)).Run(ctx)
 
 	return output.String(), errors.Wrap(err, "error running SSH command")
@@ -350,7 +368,7 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 		}
 	} else if h.ProvisionOptions != nil && h.ProvisionOptions.LoadCLI {
 		// Set up a spawn host.
-		if postFetchClient, err = h.SetupSpawnHostCommands(settings); err != nil {
+		if postFetchClient, err = h.SpawnHostSetupCommands(settings); err != nil {
 			return "", errors.Wrap(err, "error creating commands to load task data")
 		}
 	}
@@ -918,9 +936,9 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 	}
 }
 
-// SetupSpawnHostCommands returns the commands to handle setting up a spawn
+// SpawnHostSetupCommands returns the commands to handle setting up a spawn
 // host.
-func (h *Host) SetupSpawnHostCommands(settings *evergreen.Settings) (string, error) {
+func (h *Host) SpawnHostSetupCommands(settings *evergreen.Settings) (string, error) {
 	if h.ProvisionOptions == nil {
 		return "", errors.New("missing spawn host provisioning options")
 	}
@@ -928,12 +946,12 @@ func (h *Host) SetupSpawnHostCommands(settings *evergreen.Settings) (string, err
 		return "", errors.New("missing spawn host owner")
 	}
 
-	confJSON, err := h.SpawnHostConfigJSON(settings)
+	confJSON, err := h.spawnHostConfigJSON(settings)
 	if err != nil {
 		return "", errors.Wrap(err, "could not create JSON configuration settings")
 	}
 
-	script := h.SpawnHostSetupConfigDirScript(confJSON)
+	script := h.spawnHostSetupConfigDirCommands(confJSON)
 	if h.ProvisionOptions.TaskId != "" {
 		fetchCmd := h.SpawnHostGetTaskDataCommand()
 		jasperFetchCmd, err := h.buildLocalJasperClientRequest(settings.HostJasper, strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "), &options.Command{Commands: [][]string{fetchCmd}})
@@ -946,30 +964,18 @@ func (h *Host) SetupSpawnHostCommands(settings *evergreen.Settings) (string, err
 	return script, nil
 }
 
-// SpawnHostGetTaskDataCommand returns the command that fetches the task data
-// for a spawn host.
-func (h *Host) SpawnHostGetTaskDataCommand() []string {
-	return []string{h.AgentBinary(),
-		"-c", h.SpawnHostConfigFile(),
-		"fetch",
-		"-t", h.ProvisionOptions.TaskId,
-		"--source", "--artifacts",
-		"--dir", h.Distro.WorkDir,
-	}
-}
-
-// SpawnHostSetupConfigDirCommands returns the shell script that sets up the
+// spawnHostSetupConfigDirCommands the shell script that sets up the
 // config directory on a spawn host. In particular, it makes the client binary
 // directory, puts both the evergreen yaml and the client into it, and attempts
 // to add the directory to the path.
-func (h *Host) SpawnHostSetupConfigDirScript(confJSON []byte) string {
+func (h *Host) spawnHostSetupConfigDirCommands(confJSON []byte) string {
 	return strings.Join([]string{
-		fmt.Sprintf("mkdir -m 777 -p %s", h.SpawnHostConfigDir()),
-		fmt.Sprintf("echo '%s' > %s", confJSON, h.SpawnHostConfigFile()),
-		fmt.Sprintf("cp %s %s", h.AgentBinary(), h.SpawnHostConfigDir()),
-		fmt.Sprintf("(echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.profile || true; echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.bash_profile || true)", h.SpawnHostConfigDir(), h.Distro.HomeDir(), h.SpawnHostConfigDir(), h.Distro.HomeDir()),
-		fmt.Sprintf("chown -R %s %s", h.Distro.User, h.SpawnHostConfigDir()),
-		fmt.Sprintf("chmod +x %s", filepath.Join(h.SpawnHostConfigDir(), h.Distro.BinaryName())),
+		fmt.Sprintf("mkdir -m 777 -p %s", h.spawnHostConfigDir()),
+		fmt.Sprintf("echo '%s' > %s", confJSON, h.spawnHostConfigFile()),
+		fmt.Sprintf("cp %s %s", h.AgentBinary(), h.spawnHostConfigDir()),
+		fmt.Sprintf("(echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.profile || true; echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.bash_profile || true)", h.spawnHostConfigDir(), h.Distro.HomeDir(), h.spawnHostConfigDir(), h.Distro.HomeDir()),
+		fmt.Sprintf("chown -R %s %s", h.Distro.User, h.spawnHostConfigDir()),
+		fmt.Sprintf("chmod +x %s", filepath.Join(h.spawnHostConfigDir(), h.Distro.BinaryName())),
 	}, " && ")
 }
 
@@ -978,20 +984,20 @@ func (h *Host) AgentBinary() string {
 	return filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())
 }
 
-// SpawnHostConfigDir returns the directory containing the CLI and evergreen
+// spawnHostConfigDir returns the directory containing the CLI and evergreen
 // yaml for a spawn host.
-func (h *Host) SpawnHostConfigDir() string {
+func (h *Host) spawnHostConfigDir() string {
 	return filepath.Join(h.Distro.HomeDir(), "cli_bin")
 }
 
-// SpawnHostConfigFile returns the path to the evergreen yaml for a spawn host.
-func (h *Host) SpawnHostConfigFile() string {
-	return filepath.Join(h.SpawnHostConfigDir(), ".evergreen.yml")
+// spawnHostConfigFile returns the path to the evergreen yaml for a spawn host.
+func (h *Host) spawnHostConfigFile() string {
+	return filepath.Join(h.spawnHostConfigDir(), ".evergreen.yml")
 }
 
-// SpawnHostConfigJSON returns evergreen yaml configuration for a spawn host in
+// spawnHostConfigJSON returns evergreen yaml configuration for a spawn host in
 // JSON format.
-func (h *Host) SpawnHostConfigJSON(settings *evergreen.Settings) ([]byte, error) {
+func (h *Host) spawnHostConfigJSON(settings *evergreen.Settings) ([]byte, error) {
 	owner, err := user.FindOne(user.ById(h.ProvisionOptions.OwnerId))
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not get owner %s for host", h.ProvisionOptions.OwnerId)
@@ -1010,6 +1016,18 @@ func (h *Host) SpawnHostConfigJSON(settings *evergreen.Settings) ([]byte, error)
 	}
 
 	return json.Marshal(conf)
+}
+
+// SpawnHostGetTaskDataCommand returns the command that fetches the task data
+// for a spawn host.
+func (h *Host) SpawnHostGetTaskDataCommand() []string {
+	return []string{h.AgentBinary(),
+		"-c", h.spawnHostConfigFile(),
+		"fetch",
+		"-t", h.ProvisionOptions.TaskId,
+		"--source", "--artifacts",
+		"--dir", h.Distro.WorkDir,
+	}
 }
 
 const userDataDoneFileName = "user_data_done"
