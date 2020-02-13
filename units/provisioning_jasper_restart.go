@@ -64,7 +64,6 @@ func makeJasperRestartJob() *jasperRestartJob {
 
 // NewJasperRestartJob creates a job that restarts an existing Jasper service
 // with new credentials.
-// kim: TODO: test this in staging with the mac host.
 func NewJasperRestartJob(env evergreen.Environment, h host.Host, expiration time.Time, restartThroughJasper bool, ts string, attempt int) amboy.Job {
 	j := makeJasperRestartJob()
 	j.env = env
@@ -91,7 +90,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 		return
 	}
 
-	if j.host.NeedsReprovision != host.ReprovisionJasperRestart || j.host.Status != evergreen.HostProvisioning {
+	if j.host.NeedsReprovision != host.ReprovisionJasperRestart || j.host.Status != evergreen.HostProvisioning || j.host.RunningTask != "" {
 		return
 	}
 
@@ -133,7 +132,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 
 	// The host cannot be reprovisioned until the host's agent monitor has been
 	// stopped.
-	if j.host.StartedBy == evergreen.User && !j.host.NeedsNewAgentMonitor {
+	if j.host.StartedBy == evergreen.User && (!j.host.NeedsNewAgentMonitor || j.host.RunningTask != "") {
 		grip.Error(message.WrapError(j.tryRequeue(ctx), message.Fields{
 			"message": "could not enqueue job to retry provisioning conversion when host's agent monitor is still running",
 			"host_id": j.host.Id,

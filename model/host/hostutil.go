@@ -200,9 +200,7 @@ func (h *Host) RunSSHShellScript(ctx context.Context, script string, sshOpts []s
 // given timeout.
 func (h *Host) RunSSHShellScriptWithTimeout(ctx context.Context, script string, sshOpts []string, timeout time.Duration) (string, error) {
 	// We read the shell script verbatim from stdin  (i.e. with "bash -s"
-	// instead of "bash -c") to avoid additional shell processing.
-	// kim: TODO: figure out why this can run on local machine but not on spawn
-	// host from app server.
+	// instead of "bash -c") to avoid shell parsing errors.
 	return h.runSSHCommandWithOutput(ctx, func(c *jasper.Command) *jasper.Command {
 		return c.Add([]string{"bash", "-s"}).SetInputBytes([]byte(script))
 	}, sshOpts, timeout)
@@ -227,10 +225,10 @@ func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*ja
 	}
 
 	errOut := util.NewMBCappedWriter()
+	// Run SSH with "-T" because we are not using an interactive terminal.
 	err = addCommands(env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
-		ExtendRemoteArgs("-p", hostInfo.Port "-T"/* "-t", "-t"*/).ExtendRemoteArgs(sshOpts...).
+		ExtendRemoteArgs("-p", hostInfo.Port, "-T").ExtendRemoteArgs(sshOpts...).
 		SetOutputWriter(output).SetErrorWriter(errOut)).Run(ctx)
-	//     SetCombinedWriter(output)).Run(ctx)
 
 	grip.Error(message.WrapError(err, message.Fields{
 		"host_id": h.Id,
@@ -990,7 +988,6 @@ func (h *Host) spawnHostSetupConfigDirCommands(confJSON []byte) string {
 		fmt.Sprintf("chown -R %s %s", h.Distro.User, h.spawnHostConfigDir()),
 		fmt.Sprintf("chmod +x %s", filepath.Join(h.spawnHostConfigDir(), h.Distro.BinaryName())),
 	}, " && ")
-	// }, " && ")
 }
 
 // AgentBinary returns the path to the evergreen agent binary.
@@ -1035,8 +1032,13 @@ func (h *Host) spawnHostConfigJSON(settings *evergreen.Settings) ([]byte, error)
 // SpawnHostGetTaskDataCommand returns the command that fetches the task data
 // for a spawn host.
 func (h *Host) SpawnHostGetTaskDataCommand() []string {
+	// TODO (EVG-7387): this should be fixed to work with legacy SSH on Windows.
+	// The config file path has to be a native Windows path in order to properly
+	// read the config file, but currently the working directory is specified as
+	// a Cygwin-style directory (i.e. /home/Administrator should actually be
+	// C:/cygwin/home/Administrator).
 	return []string{h.AgentBinary(),
-		"-c", h.spawnHostConfigFile(),
+		"-c", filepath.Join(h.Distro.BootstrapSettings.RootDir, h.spawnHostConfigFile()),
 		"fetch",
 		"-t", h.ProvisionOptions.TaskId,
 		"--source", "--artifacts",

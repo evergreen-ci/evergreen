@@ -738,106 +738,19 @@ func (j *setupHostJob) setupSpawnHost(ctx context.Context, settings *evergreen.S
 	if err != nil {
 		return errors.Wrap(err, "could not create script to setup spawn host")
 	}
-	// if j.host.ProvisionOptions == nil {
-	//     return nil, errors.New("ProvisionOptions is nil")
-	// }
-	// if j.host.ProvisionOptions.OwnerId == "" {
-	//     return nil, errors.New("OwnerId not set")
-	// }
-
-	// // get the information about the owner of the host
-	// owner, err := user.FindOne(user.ById(j.host.ProvisionOptions.OwnerId))
-	// if err != nil {
-	//     return nil, errors.Wrapf(err, "couldn't fetch owner %v for host", j.host.ProvisionOptions.OwnerId)
-	// }
-
-	// 1. mkdir the destination directory on the host,
-	//    and modify ~/.profile so the target binary will be on the $PATH
-	// targetDir := "cli_bin"
-
-	// mkdirctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	// defer cancel()
-	//
-	// output, err := j.host.RunSSHCommand(mkdirctx, fmt.Sprintf("mkdir -m 777 -p ~/%s && (echo 'export PATH=\"$PATH:~/%s\"' >> ~/.profile || true; echo 'export PATH=\"$PATH:~/%s\"' >> ~/.bash_profile || true)", targetDir, targetDir, targetDir), sshOptions)
-	// if err != nil {
-	//     return nil, errors.Wrapf(err, "error running setup command for cli: %s", output)
-	// }
-
-	// output := util.NewMBCappedWriter()
-
-	// sshInfo, err := j.host.GetSSHInfo()
-	// sshOptions, err := j.host.GetSSHOptions(settings)
-	// if err != nil {
-	//     return errors.Wrapf(err, "Error getting ssh options for host %v", j.host.Id)
-	// }
 	sshOpts = append(sshOpts, "-o", "UserKnownHostsFile=/dev/null")
 
 	if err != nil {
 		return errors.Wrapf(err, "error parsing ssh info %s", j.host.Host)
 	}
 
-	// // run the command to curl the agent
-	// curlctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-	// defer cancel()
+	if output, err := j.host.RunSSHCommandWithTimeout(ctx, j.host.CurlCommand(settings), sshOpts, 2*time.Minute); err != nil {
+		return errors.Wrapf(err, "error running command to get evergreen binary on  spawn host: %s", output)
+	}
 
-	grip.Info(message.Fields{
-		"message": "kim: running script to setup spawn host",
-		"host_id": j.host.Id,
-		"distro":  j.host.Distro.Id,
-		"script":  script,
-	})
-	if output, err := j.host.RunSSHShellScriptWithTimeout(ctx, script, sshOpts, 2*time.Minute); err != nil {
+	if output, err := j.host.RunSSHShellScriptWithTimeout(ctx, script, sshOpts, 30*time.Second); err != nil {
 		return errors.Wrapf(err, "error running command to set up spawn host: %s", output)
 	}
-	// curlcmd := j.env.JasperManager().CreateCommand(curlctx).Host(sshInfo.Hostname).User(j.host.User).
-	//     ExtendRemoteArgs("-p", sshInfo.Port).ExtendRemoteArgs(sshOptions...).
-	//     RedirectErrorToOutput(true).SetOutputWriter(scriptOut).
-	//     Append(j.host.CurlCommand(settings))
-	//
-	// if err = curlcmd.Run(curlctx); err != nil {
-	//     return errors.Wrapf(err, "error running curl command for cli, %s", scriptOut.String())
-	// }
-
-	// 2. Write a settings file for the user that owns the host, and scp it to the directory
-	// outputStruct := struct {
-	//     APIKey        string `json:"api_key"`
-	//     APIServerHost string `json:"api_server_host"`
-	//     UIServerHost  string `json:"ui_server_host"`
-	//     User          string `json:"user"`
-	// }{
-	//     APIKey:        owner.APIKey,
-	//     APIServerHost: settings.ApiUrl + "/api",
-	//     UIServerHost:  settings.Ui.Url,
-	//     User:          owner.Id,
-	// }
-	// outputJSON, err := json.Marshal(outputStruct)
-	// if err != nil {
-	//     return nil, errors.WithStack(err)
-	// }
-
-	// tempFileName, err := util.WriteTempFile("", outputJSON)
-	// if err != nil {
-	//     return nil, errors.WithStack(err)
-	// }
-	// defer os.Remove(tempFileName)
-	//
-	// scpOut := util.NewMBCappedWriter()
-	//
-	// scpArgs := buildScpCommand(tempFileName, filepath.Join("~", targetDir, ".evergreen.yml"), hostSSHInfo, j.host.User, sshOptions)
-	// scpYmlCommand := j.env.JasperManager().CreateCommand(ctx).Add(scpArgs).
-	//     RedirectErrorToOutput(true).SetOutputWriter(scpOut)
-	//
-	// ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
-	// defer cancel()
-	//
-	// if err = scpYmlCommand.Run(ctx); err != nil {
-	//     return nil, errors.Wrapf(err, "error running SCP command for evergreen.yml, %v", scpOut.String())
-	// }
-
-	// return &loadClientResult{
-	//     BinaryPath: filepath.Join("~", "evergreen"),
-	//     ConfigPath: fmt.Sprintf("%s/.evergreen.yml", targetDir),
-	// }, nil
 	return nil
 }
 
@@ -847,27 +760,8 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, settings *evergr
 		return errors.Wrapf(err, "error parsing ssh info %s", j.host.Host)
 	}
 
-	// sshOptions, err := j.host.GetSSHOptions(settings)
-	// if err != nil {
-	//     return errors.Wrapf(err, "Error getting ssh options for host %v", j.host.Id)
-	// }
-	// sshOptions = append(sshOptions, "-o", "UserKnownHostsFile=/dev/null")
-
-	// output := util.NewMBCappedWriter()
 	cmd := strings.Join(j.host.SpawnHostGetTaskDataCommand(), " ")
-
 	output, err := j.host.RunSSHCommandWithTimeout(ctx, cmd, sshOpts, 15*time.Minute)
-
-	// cmd := j.env.JasperManager().CreateCommand(ctx).Host(sshInfo.Hostname).User(j.host.User).
-	//     ExtendRemoteArgs("-p", sshInfo.Port).ExtendRemoteArgs(sshOptions...).
-	//     SetCombinedWriter(output).Add(args)
-
-	// run the make shell command with a timeout
-	// var cancel context.CancelFunc
-	// ctx, cancel = context.WithTimeout(ctx, 15*time.Minute)
-	// defer cancel()
-	//
-	// err = cmd.Run(ctx)
 
 	grip.Error(message.WrapError(err, message.Fields{
 		"message": fmt.Sprintf("fetch-artifacts-%s", j.host.ProvisionOptions.TaskId),

@@ -2251,6 +2251,10 @@ func FindHostWithVolume(volumeID string) (*Host, error) {
 // FindStaticNeedsNewSSHKeys finds all static hosts that do not have the same
 // set of SSH keys as those in the global settings.
 func FindStaticNeedsNewSSHKeys(settings *evergreen.Settings) ([]Host, error) {
+	if len(settings.SSHKeyPairs) == 0 {
+		return nil, nil
+	}
+
 	names := []string{}
 	for _, pair := range settings.SSHKeyPairs {
 		names = append(names, pair.Name)
