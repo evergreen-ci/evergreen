@@ -257,7 +257,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 	return testPointers, nil
 }
 
-func TestFiles(ctx context.Context, taskID string) ([]*restModel.APIFile, error) {
+func TestFiles(ctx context.Context, taskID string) ([]*GroupedFiles, error) {
 	var err error
 	t, err := task.FindOneId(taskID)
 	if t.OldTaskId != "" {
