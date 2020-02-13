@@ -230,10 +230,13 @@ func TestS3PutValidateParams(t *testing.T) {
 func TestExpandS3PutParams(t *testing.T) {
 
 	Convey("With an s3 put command and a task config", t, func() {
+		abs, err := filepath.Abs("working_directory")
+		So(err, ShouldBeNil)
+
 		cmd := &s3put{}
 		conf := &model.TaskConfig{
 			Expansions: util.NewExpansions(map[string]string{}),
-			WorkDir:    "/working_directory",
+			WorkDir:    abs,
 		}
 
 		Convey("when expanding the command's params all appropriate values should be expanded, if they"+
@@ -247,7 +250,7 @@ func TestExpandS3PutParams(t *testing.T) {
 			cmd.ResourceDisplayName = "${display_name}"
 			cmd.Visibility = "${visibility}"
 			cmd.Optional = "${optional}"
-			cmd.LocalFile = "${workdir}/foo"
+			cmd.LocalFile = abs
 
 			conf.Expansions.Update(
 				map[string]string{
