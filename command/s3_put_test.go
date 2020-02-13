@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -300,6 +301,52 @@ func TestExpandS3PutParams(t *testing.T) {
 		})
 
 	})
+}
+
+func TestSignedUrlVisibility(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	for _, vis := range []string{"signed", "private"} {
+		s := s3put{
+			AwsKey:        "key",
+			AwsSecret:     "secret",
+			Bucket:        "bucket",
+			BuildVariants: []string{},
+			ContentType:   "content-type",
+			Permissions:   s3.BucketCannedACLPublicRead,
+			RemoteFile:    "remote",
+			Visibility:    vis,
+		}
+
+		comm := client.NewMock("http://localhost.com")
+		conf := &model.TaskConfig{
+			Expansions:   &util.Expansions{},
+			Task:         &task.Task{Id: "mock_id", Secret: "mock_secret"},
+			Project:      &model.Project{},
+			BuildVariant: &model.BuildVariant{},
+		}
+		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+		require.NoError(t, err)
+
+		localFiles := []string{"file1", "file2"}
+		remoteFile := "remote file"
+
+		require.NoError(t, s.attachFiles(ctx, comm, logger, localFiles, remoteFile))
+
+		attachedFiles := comm.AttachedFiles
+		if v, found := attachedFiles[""]; found {
+			for _, file := range v {
+				if file.Visibility == artifact.Signed {
+					assert.Equal(t, file.AwsKey, s.AwsKey)
+					assert.Equal(t, file.AwsSecret, s.AwsSecret)
+
+				} else {
+					assert.Equal(t, file.AwsKey, "")
+					assert.Equal(t, file.AwsSecret, "")
+				}
+			}
+		}
+	}
 }
 
 func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
