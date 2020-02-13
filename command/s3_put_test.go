@@ -233,7 +233,7 @@ func TestExpandS3PutParams(t *testing.T) {
 		cmd := &s3put{}
 		conf := &model.TaskConfig{
 			Expansions: util.NewExpansions(map[string]string{}),
-			WorkDir:    "working_directory",
+			WorkDir:    "/working_directory",
 		}
 
 		Convey("when expanding the command's params all appropriate values should be expanded, if they"+
