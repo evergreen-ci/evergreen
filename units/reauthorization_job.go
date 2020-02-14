@@ -3,13 +3,16 @@ package units
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -21,7 +24,7 @@ type reauthorizationJob struct {
 	UserID   string `bson:"user_id" json:"user_id" yaml:"user_id"`
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
 
-	user gimlet.User
+	user *user.DBUser
 	env  evergreen.Environment
 }
 
@@ -29,7 +32,7 @@ func makeReauthorizationJob() *reauthorizationJob {
 	j := &reauthorizationJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    reauthorizationJob,
+				Name:    reauthorizationJobName,
 				Version: 0,
 			},
 		},
@@ -39,7 +42,9 @@ func makeReauthorizationJob() *reauthorizationJob {
 	return j
 }
 
-func NewReauthorizationJob(env evergreen.Environment, u gimlet.User, id string) amboy.Job {
+// NewReauthorizationJob returns a job that attempts to reauthorize the given
+// user.
+func NewReauthorizationJob(env evergreen.Environment, u *user.DBUser, id string) amboy.Job {
 	j := makeReauthorizationJob()
 	j.env = env
 	j.user = u
@@ -62,11 +67,30 @@ func (j *reauthorizationJob) Run(ctx context.Context) {
 		j.user = user
 	}
 
-	// Get user manager from API server (idk how to do this).
+	// TODO: service degraded flag
 
-	// Check TTL is still expired
-	// Call GetUserByToken and check if reauth succeeds.
+	// Do not reauth them if they are already logged out.
+	if j.user.LoginCache.Token == "" {
+		return
+	}
 
-	// If they can't be reauthenticated, clear their login cache so they're
-	// forced to log in.
+	// TODO: replace with reauthorization timeout from settings
+	if time.Since(j.user.LoginCache.TTL) <= time.Hour {
+		return
+	}
+
+	um, err := auth.UserManager()
+	if err != nil {
+		grip.Notice(errors.Wrap(err, "cannot get user manager"))
+		return
+	}
+
+	if _, err = um.GetUserByID(j.user.Username()); err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "could not reauthorize user",
+			"user":    j.user.Username(),
+		}))
+		j.AddError(err)
+		return
+	}
 }

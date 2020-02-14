@@ -2,6 +2,7 @@ package auth
 
 import (
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -11,8 +12,42 @@ import (
 	"github.com/pkg/errors"
 )
 
-//LoadUserManager is used to check the configuration for authentication and create a UserManager
-// depending on what type of authentication is used.
+var userManager struct {
+	manager        gimlet.UserManager
+	canClearTokens bool
+	mutex          sync.RWMutex
+}
+
+// InitUserManager initializes the global user manager if it does not exist
+// already based on the given settings. If it already exists, it is returned.
+func InitUserManager(settings *evergreen.Settings) (um gimlet.UserManager, supportsClearTokens bool, err error) {
+	userManager.mutex.RLock()
+	if userManager.manager != nil {
+		userManager.mutex.RUnlock()
+		return userManager.manager, userManager.canClearTokens, nil
+	}
+
+	um, canClearTokens, err := LoadUserManager(settings)
+
+	userManager.mutex.Lock()
+	defer userManager.mutex.Unlock()
+	userManager.manager = um
+	userManager.canClearTokens = canClearTokens
+
+	return um, canClearTokens, err
+}
+
+// UserManager returns the global user manager.
+func UserManager() (gimlet.UserManager, error) {
+	if userManager.manager == nil {
+		return nil, errors.New("user manager has not been initialized")
+	}
+	return userManager.manager, nil
+}
+
+// LoadUserManager is used to check the configuration for authentication and
+// create a UserManager depending on what type of authentication is used. The
+// global user manager is not set.
 func LoadUserManager(settings *evergreen.Settings) (um gimlet.UserManager, supportsClearTokens bool, err error) {
 	authConfig := settings.AuthConfig
 	makeLDAPManager := func() (gimlet.UserManager, bool, error) {

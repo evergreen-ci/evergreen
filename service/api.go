@@ -43,7 +43,7 @@ type APIServer struct {
 // NewAPIServer returns an APIServer initialized with the given settings and plugins.
 func NewAPIServer(env evergreen.Environment, queue amboy.Queue) (*APIServer, error) {
 	settings := env.Settings()
-	authManager, _, err := auth.LoadUserManager(settings)
+	authManager, _, err := auth.InitUserManager(settings)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
