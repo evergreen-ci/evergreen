@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -230,10 +231,13 @@ func TestS3PutValidateParams(t *testing.T) {
 func TestExpandS3PutParams(t *testing.T) {
 
 	Convey("With an s3 put command and a task config", t, func() {
+		abs, err := filepath.Abs("working_directory")
+		So(err, ShouldBeNil)
+
 		cmd := &s3put{}
 		conf := &model.TaskConfig{
 			Expansions: util.NewExpansions(map[string]string{}),
-			WorkDir:    "working_directory",
+			WorkDir:    abs,
 		}
 
 		Convey("when expanding the command's params all appropriate values should be expanded, if they"+
@@ -247,6 +251,7 @@ func TestExpandS3PutParams(t *testing.T) {
 			cmd.ResourceDisplayName = "${display_name}"
 			cmd.Visibility = "${visibility}"
 			cmd.Optional = "${optional}"
+			cmd.LocalFile = abs
 
 			conf.Expansions.Update(
 				map[string]string{
@@ -258,6 +263,7 @@ func TestExpandS3PutParams(t *testing.T) {
 					"display_name": "file",
 					"optional":     "true",
 					"visibility":   artifact.Private,
+					"workdir":      "/working_directory",
 				},
 			)
 
@@ -269,9 +275,10 @@ func TestExpandS3PutParams(t *testing.T) {
 			So(cmd.ContentType, ShouldEqual, "ct")
 			So(cmd.ResourceDisplayName, ShouldEqual, "file")
 			So(cmd.Visibility, ShouldEqual, "private")
-			So(cmd.workDir, ShouldEqual, "working_directory")
 			So(cmd.Optional, ShouldEqual, "true")
 
+			// EVG-7226 Since LocalFile is an absolute path, workDir should be empty
+			So(cmd.workDir, ShouldEqual, "")
 		})
 
 		Convey("the expandParams function should error for invalid optional values", func() {
@@ -300,6 +307,52 @@ func TestExpandS3PutParams(t *testing.T) {
 		})
 
 	})
+}
+
+func TestSignedUrlVisibility(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	for _, vis := range []string{"signed", "private"} {
+		s := s3put{
+			AwsKey:        "key",
+			AwsSecret:     "secret",
+			Bucket:        "bucket",
+			BuildVariants: []string{},
+			ContentType:   "content-type",
+			Permissions:   s3.BucketCannedACLPublicRead,
+			RemoteFile:    "remote",
+			Visibility:    vis,
+		}
+
+		comm := client.NewMock("http://localhost.com")
+		conf := &model.TaskConfig{
+			Expansions:   &util.Expansions{},
+			Task:         &task.Task{Id: "mock_id", Secret: "mock_secret"},
+			Project:      &model.Project{},
+			BuildVariant: &model.BuildVariant{},
+		}
+		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+		require.NoError(t, err)
+
+		localFiles := []string{"file1", "file2"}
+		remoteFile := "remote file"
+
+		require.NoError(t, s.attachFiles(ctx, comm, logger, localFiles, remoteFile))
+
+		attachedFiles := comm.AttachedFiles
+		if v, found := attachedFiles[""]; found {
+			for _, file := range v {
+				if file.Visibility == artifact.Signed {
+					assert.Equal(t, file.AwsKey, s.AwsKey)
+					assert.Equal(t, file.AwsSecret, s.AwsSecret)
+
+				} else {
+					assert.Equal(t, file.AwsKey, "")
+					assert.Equal(t, file.AwsSecret, "")
+				}
+			}
+		}
+	}
 }
 
 func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {

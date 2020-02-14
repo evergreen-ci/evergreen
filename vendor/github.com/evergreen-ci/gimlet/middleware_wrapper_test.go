@@ -7,6 +7,30 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestMergeMiddleware(t *testing.T) {
+	t.Run("ValidatesInput", func(t *testing.T) {
+		assert.Panics(t, func() {
+			MergeMiddleware()
+		})
+	})
+	t.Run("ValidateCalling", func(t *testing.T) {
+		legacyCalls := 0
+		legacyFunc := func(h http.HandlerFunc) http.HandlerFunc {
+			return func(w http.ResponseWriter, r *http.Request) {
+				legacyCalls++
+
+				h(w, r)
+			}
+		}
+
+		noop := func(w http.ResponseWriter, r *http.Request) {}
+
+		MergeMiddleware(WrapperMiddleware(legacyFunc), WrapperMiddleware(legacyFunc)).ServeHTTP(nil, nil, noop)
+		assert.Equal(t, 2, legacyCalls)
+	})
+
+}
+
 func TestMiddlewareFuncWrapper(t *testing.T) {
 	assert := assert.New(t)
 

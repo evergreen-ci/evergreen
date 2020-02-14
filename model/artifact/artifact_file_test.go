@@ -27,8 +27,22 @@ func (s *TestArtifactFileSuite) SetupTest() {
 			TaskDisplayName: "Task One",
 			BuildId:         "build1",
 			Files: []File{
-				{"cat_pix", "http://placekitten.com/800/600", "", false},
-				{"fast_download", "https://fastdl.mongodb.org", "", false},
+				{
+					Name:           "cat_pix",
+					Link:           "http://placekitten.com/800/600",
+					Visibility:     "",
+					IgnoreForFetch: false,
+					AwsKey:         "key",
+					AwsSecret:      "secret",
+				},
+				{
+					Name:           "fast_download",
+					Link:           "https://fastdl.mongodb.org",
+					Visibility:     "",
+					IgnoreForFetch: false,
+					AwsKey:         "key",
+					AwsSecret:      "secret",
+				},
 			},
 			Execution: 1,
 		},
@@ -37,7 +51,14 @@ func (s *TestArtifactFileSuite) SetupTest() {
 			TaskDisplayName: "Task Two",
 			BuildId:         "build2",
 			Files: []File{
-				{"other", "http://example.com/other", "", false},
+				{
+					Name:           "other",
+					Link:           "http://example.com/other",
+					Visibility:     "",
+					IgnoreForFetch: false,
+					AwsKey:         "key",
+					AwsSecret:      "secret",
+				},
 			},
 			Execution: 5,
 		},
@@ -55,7 +76,14 @@ func (s *TestArtifactFileSuite) SetupTest() {
 		TaskDisplayName: "Task Two",
 		BuildId:         "build2",
 		Files: []File{
-			{"other", "http://example.com/other", "", false},
+			{
+				Name:           "other",
+				Link:           "http://example.com/other",
+				Visibility:     "",
+				IgnoreForFetch: false,
+				AwsKey:         "key",
+				AwsSecret:      "secret",
+			},
 		},
 	}))
 
@@ -85,8 +113,22 @@ func (s *TestArtifactFileSuite) TestArtifactFieldsArePresent() {
 
 func (s *TestArtifactFileSuite) TestArtifactFieldsAfterUpdate() {
 	s.testEntries[0].Files = []File{
-		{"cat_pix", "http://placekitten.com/300/400", "", false},
-		{"the_value_of_four", "4", "", false},
+		{
+			Name:           "cat_pix",
+			Link:           "http://placekitten.com/300/400",
+			Visibility:     "",
+			IgnoreForFetch: false,
+			AwsKey:         "key",
+			AwsSecret:      "secret",
+		},
+		{
+			Name:           "the_value_of_four",
+			Link:           "4",
+			Visibility:     "",
+			IgnoreForFetch: false,
+			AwsKey:         "key",
+			AwsSecret:      "secret",
+		},
 	}
 	s.NoError(s.testEntries[0].Upsert())
 

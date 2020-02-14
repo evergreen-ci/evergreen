@@ -47,12 +47,13 @@ const (
 	HTML
 	YAML
 	BINARY
+	CSV
 )
 
 // IsValid provides a predicate to validate OutputFormat values.
 func (o OutputFormat) IsValid() bool {
 	switch o {
-	case JSON, TEXT, HTML, BINARY, YAML:
+	case JSON, TEXT, HTML, BINARY, YAML, CSV:
 		return true
 	default:
 		return false
@@ -71,6 +72,8 @@ func (o OutputFormat) String() string {
 		return "binary"
 	case YAML:
 		return "yaml"
+	case CSV:
+		return "csv"
 	default:
 		return "text"
 	}
@@ -90,7 +93,10 @@ func (o OutputFormat) ContentType() string {
 		return "application/octet-stream"
 	case YAML:
 		return "application/yaml; charset=utf-8"
+	case CSV:
+		return "application/csv; charset=utf-8"
 	default:
 		return "text/plain; charset=utf-8"
+
 	}
 }

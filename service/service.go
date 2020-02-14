@@ -44,7 +44,10 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, uis.umconf))
 	app.AddMiddleware(gimlet.NewAuthenticationHandler(gimlet.NewBasicAuthenticator(nil, nil), uis.UserManager))
 	app.AddMiddleware(gimlet.NewStatic("", http.Dir(filepath.Join(uis.Home, "public"))))
-	app.AddMiddleware(gimlet.NewStatic("/clients", http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory))))
+
+	clients := gimlet.NewApp()
+	clients.AddMiddleware(gimlet.NewGzipDefault())
+	clients.AddMiddleware(gimlet.NewStatic("/clients", http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory))))
 
 	// in the future, we'll make the gimlet app here, but we
 	// need/want to access and construct it separately.
@@ -85,5 +88,5 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 
 	// the order that we merge handlers matters here, and we must
 	// define more specific routes before less specific routes.
-	return gimlet.MergeApplications(app, uiService, rest, apiRestV2, apiService)
+	return gimlet.MergeApplications(app, clients, uiService, rest, apiRestV2, apiService)
 }
