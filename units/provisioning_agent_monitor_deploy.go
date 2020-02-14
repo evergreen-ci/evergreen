@@ -239,6 +239,7 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, settings *everg
 	}
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "timed out curling evergreen binary")
+	}
 
 	return nil
 }
