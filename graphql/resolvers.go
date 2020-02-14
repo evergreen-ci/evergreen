@@ -277,32 +277,32 @@ func getGroupedFiles(ctx context.Context, name string, taskID string, execution 
 
 func (r *queryResolver) TestFiles(ctx context.Context, taskID string) ([]*GroupedFiles, error) {
 	t, err := task.FindOneId(taskID)
+	groupedFilesList := []*GroupedFiles{}
 	if t.OldTaskId != "" {
 		t, err = task.FindOneId(t.OldTaskId)
 		if err != nil {
-			return nil, ResourceNotFound.Send(ctx, err.Error())
+			return groupedFilesList, ResourceNotFound.Send(ctx, err.Error())
 		}
 	}
-	groupedFilesList := []*GroupedFiles{}
 	if t.DisplayOnly {
 		for _, execTaskID := range t.ExecutionTasks {
 			execTask, err := task.FindOne(task.ById(execTaskID))
 			if err != nil {
-				return nil, ResourceNotFound.Send(ctx, err.Error())
+				return groupedFilesList, ResourceNotFound.Send(ctx, err.Error())
 			}
 			if execTask == nil {
 				continue
 			}
 			groupedFiles, err := getGroupedFiles(ctx, execTask.DisplayName, execTaskID, t.Execution)
 			if err != nil {
-				return nil, err
+				return groupedFilesList, err
 			}
 			groupedFilesList = append(groupedFilesList, groupedFiles)
 		}
 	} else {
 		groupedFiles, err := getGroupedFiles(ctx, t.DisplayName, taskID, t.Execution)
 		if err != nil {
-			return nil, err
+			return groupedFilesList, err
 		}
 		groupedFilesList = append(groupedFilesList, groupedFiles)
 	}
