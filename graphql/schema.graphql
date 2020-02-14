@@ -155,5 +155,11 @@ type File {
   visibility: String!
 }
 
+type User {
+  username: String!
+  displayName: String!
+  email: String!
+}
+
 scalar Time
 scalar Duration
