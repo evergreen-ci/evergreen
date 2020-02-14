@@ -8,11 +8,13 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	adb "github.com/mongodb/anser/db"
@@ -1225,6 +1227,37 @@ func PopulateSSHKeyUpdates(env evergreen.Environment) amboy.QueueOperation {
 		}
 		for _, h := range hosts {
 			catcher.Wrap(env.RemoteQueue().Put(ctx, NewStaticUpdateSSHKeysJob(h, ts)), "could not enqueue jobs to update static host SSH keys")
+		}
+
+		return catcher.Resolve()
+	}
+}
+
+func PopulateUserReauthorization(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		_, info, err := auth.UserManager()
+		if err != nil {
+			return err
+		}
+		if !info.CanReauthorize {
+			return nil
+		}
+
+		// kim: TODO: check for service degraded
+
+		reauthAfter := time.Duration(env.Settings().AuthConfig.BackgroundReauthMinutes) * time.Minute
+		if reauthAfter == 0 {
+			reauthAfter = defaultBackgroundReauth
+		}
+		users, err := user.FindNeedsReauthorization(reauthAfter)
+		if err != nil {
+			return err
+		}
+
+		catcher := grip.NewBasicCatcher()
+		ts := util.RoundPartOfHour(0).Format(TSFormat)
+		for _, user := range users {
+			catcher.Wrap(env.RemoteQueue().Put(ctx, NewReauthorizationJob(env, &user, ts)), "could not enqueue jobs to reauthorize users")
 		}
 
 		return catcher.Resolve()

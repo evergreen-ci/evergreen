@@ -388,11 +388,12 @@ func (a *APIapiConfig) ToService() (interface{}, error) {
 }
 
 type APIAuthConfig struct {
-	LDAP          *APILDAPConfig       `json:"ldap"`
-	Okta          *APIOktaConfig       `json:"okta"`
-	Naive         *APINaiveAuthConfig  `json:"naive"`
-	Github        *APIGithubAuthConfig `json:"github"`
-	PreferredType *string              `json:"preferred_type"`
+	LDAP                    *APILDAPConfig       `json:"ldap"`
+	Okta                    *APIOktaConfig       `json:"okta"`
+	Naive                   *APINaiveAuthConfig  `json:"naive"`
+	Github                  *APIGithubAuthConfig `json:"github"`
+	PreferredType           *string              `json:"preferred_type"`
+	BackgroundReauthMinutes int                  `json:"background_reauth_minutes"`
 }
 
 func (a *APIAuthConfig) BuildFromService(h interface{}) error {
@@ -429,6 +430,7 @@ func (a *APIAuthConfig) BuildFromService(h interface{}) error {
 			}
 		}
 		a.PreferredType = ToStringPtr(v.PreferredType)
+		a.BackgroundReauthMinutes = v.BackgroundReauthMinutes
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -489,11 +491,12 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 		}
 	}
 	return evergreen.AuthConfig{
-		LDAP:          ldap,
-		Okta:          okta,
-		Naive:         naive,
-		Github:        github,
-		PreferredType: FromStringPtr(a.PreferredType),
+		LDAP:                    ldap,
+		Okta:                    okta,
+		Naive:                   naive,
+		Github:                  github,
+		PreferredType:           FromStringPtr(a.PreferredType),
+		BackgroundReauthMinutes: a.BackgroundReauthMinutes,
 	}, nil
 }
 

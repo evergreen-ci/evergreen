@@ -31,7 +31,7 @@ func (uis *UIServer) adminSettings(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		ViewData
 		CanClearTokens bool
-	}{uis.GetCommonViewData(w, r, true, true), uis.umCanClearTokens}
+	}{uis.GetCommonViewData(w, r, true, true), uis.umInfo.CanClearTokens}
 	uis.render.WriteResponse(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
 }
 

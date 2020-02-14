@@ -204,6 +204,6 @@ func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
 		GithubUID      int
 		CanClearTokens bool
 		ViewData
-	}{settingsData, exampleConf, uis.clientConfig.ClientBinaries, currentUser.Settings.GithubUser.LastKnownAs, currentUser.Settings.GithubUser.UID, uis.umCanClearTokens, uis.GetCommonViewData(w, r, true, true)},
+	}{settingsData, exampleConf, uis.clientConfig.ClientBinaries, currentUser.Settings.GithubUser.LastKnownAs, currentUser.Settings.GithubUser.UID, uis.umInfo.CanClearTokens, uis.GetCommonViewData(w, r, true, true)},
 		"base", "settings.html", "base_angular.html", "menu.html")
 }

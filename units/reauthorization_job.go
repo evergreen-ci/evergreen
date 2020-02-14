@@ -17,7 +17,8 @@ import (
 )
 
 const (
-	reauthorizationJobName = "reauthorize-user"
+	reauthorizationJobName  = "reauthorize-user"
+	defaultBackgroundReauth = time.Hour
 )
 
 type reauthorizationJob struct {
@@ -74,14 +75,21 @@ func (j *reauthorizationJob) Run(ctx context.Context) {
 		return
 	}
 
-	// TODO: replace with reauthorization timeout from settings
-	if time.Since(j.user.LoginCache.TTL) <= time.Hour {
+	reauthAfter := time.Duration(j.env.Settings().AuthConfig.BackgroundReauthMinutes) * time.Minute
+	if reauthAfter == 0 {
+		reauthAfter = defaultBackgroundReauth
+	}
+
+	if time.Since(j.user.LoginCache.TTL) <= reauthAfter {
 		return
 	}
 
-	um, err := auth.UserManager()
+	um, info, err := auth.UserManager()
 	if err != nil {
 		grip.Notice(errors.Wrap(err, "cannot get user manager"))
+		return
+	}
+	if !info.CanReauthorize {
 		return
 	}
 

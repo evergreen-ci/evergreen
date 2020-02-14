@@ -40,7 +40,7 @@ type UIServer struct {
 	//authManager
 	UserManager        gimlet.UserManager
 	umconf             gimlet.UserMiddlewareConfiguration
-	umCanClearTokens   bool
+	umInfo             auth.UserManagerInfo
 	Settings           evergreen.Settings
 	CookieStore        *sessions.CookieStore
 	clientConfig       *evergreen.ClientConfig
@@ -71,7 +71,7 @@ type ViewData struct {
 
 func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo TemplateFunctionOptions) (*UIServer, error) {
 	settings := env.Settings()
-	userManager, canClearTokens, err := auth.InitUserManager(settings)
+	userManager, info, err := auth.InitUserManager(settings)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -88,7 +88,7 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo T
 		queue:              queue,
 		Home:               home,
 		UserManager:        userManager,
-		umCanClearTokens:   canClearTokens,
+		umInfo:             info,
 		clientConfig:       evergreen.GetEnvironment().ClientConfig(),
 		CookieStore:        sessions.NewCookieStore([]byte(settings.Ui.Secret)),
 		buildBaronProjects: bbGetConfig(settings),
