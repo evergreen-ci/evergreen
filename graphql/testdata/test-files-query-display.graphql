@@ -1,6 +1,6 @@
 query {
   taskFiles(taskId: "wuzzup-activated") {
-    name
+    taskName
     files {
       name
       link

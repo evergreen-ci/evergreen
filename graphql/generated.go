@@ -51,8 +51,8 @@ type ComplexityRoot struct {
 	}
 
 	GroupedFiles struct {
-		Files func(childComplexity int) int
-		Name  func(childComplexity int) int
+		Files    func(childComplexity int) int
+		TaskName func(childComplexity int) int
 	}
 
 	GroupedProjects struct {
@@ -241,12 +241,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.GroupedFiles.Files(childComplexity), true
 
-	case "GroupedFiles.name":
-		if e.complexity.GroupedFiles.Name == nil {
+	case "GroupedFiles.taskName":
+		if e.complexity.GroupedFiles.TaskName == nil {
 			break
 		}
 
-		return e.complexity.GroupedFiles.Name(childComplexity), true
+		return e.complexity.GroupedFiles.TaskName(childComplexity), true
 
 	case "GroupedProjects.name":
 		if e.complexity.GroupedProjects.Name == nil {
@@ -1001,7 +1001,7 @@ type File {
 	visibility: String!
 }
 type GroupedFiles {
-	name: String
+	taskName: String
 	files: [File!]
 }
 type GroupedProjects {
@@ -1462,7 +1462,7 @@ func (ec *executionContext) _File_visibility(ctx context.Context, field graphql.
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _GroupedFiles_name(ctx context.Context, field graphql.CollectedField, obj *GroupedFiles) (ret graphql.Marshaler) {
+func (ec *executionContext) _GroupedFiles_taskName(ctx context.Context, field graphql.CollectedField, obj *GroupedFiles) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1479,7 +1479,7 @@ func (ec *executionContext) _GroupedFiles_name(ctx context.Context, field graphq
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Name, nil
+		return obj.TaskName, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5735,8 +5735,8 @@ func (ec *executionContext) _GroupedFiles(ctx context.Context, sel ast.Selection
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("GroupedFiles")
-		case "name":
-			out.Values[i] = ec._GroupedFiles_name(ctx, field, obj)
+		case "taskName":
+			out.Values[i] = ec._GroupedFiles_taskName(ctx, field, obj)
 		case "files":
 			out.Values[i] = ec._GroupedFiles_files(ctx, field, obj)
 		default:

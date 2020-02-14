@@ -28,7 +28,7 @@ func GetGroupedFiles(ctx context.Context, name string, taskID string, execution 
 		}
 		apiFileList = append(apiFileList, &apiFile)
 	}
-	return &GroupedFiles{Name: &name, Files: apiFileList}, nil
+	return &GroupedFiles{TaskName: &name, Files: apiFileList}, nil
 }
 
 func SetScheduled(ctx context.Context, sc data.Connector, taskID string, isActive bool) (*restModel.APITask, error) {

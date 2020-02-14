@@ -34,7 +34,7 @@ enum SortDirection {
 }
 
 type GroupedFiles {
-  name: String
+  taskName: String
   files: [File!]
 }
 

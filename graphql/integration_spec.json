@@ -2081,7 +2081,7 @@
         "data": {
           "taskFiles": [
             {
-              "name": "exec 1 display!!",
+              "taskName": "exec 1 display!!",
               "files": [
                 {
                   "name": "awesome_test!!!",
@@ -2091,7 +2091,7 @@
               ]
             },
             {
-              "name": "exec 2 display!!",
+              "taskName": "exec 2 display!!",
               "files": [
                 {
                   "name": "THIS IS REALLY COOL",
@@ -2115,7 +2115,7 @@
         "data": {
           "taskFiles": [
             {
-              "name": "exec 1 display!!",
+              "taskName": "exec 1 display!!",
               "files": [
                 {
                   "name": "awesome_test!!!",

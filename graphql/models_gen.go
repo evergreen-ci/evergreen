@@ -11,8 +11,8 @@ import (
 )
 
 type GroupedFiles struct {
-	Name  *string          `json:"name"`
-	Files []*model.APIFile `json:"files"`
+	TaskName *string          `json:"taskName"`
+	Files    []*model.APIFile `json:"files"`
 }
 
 type GroupedProjects struct {
