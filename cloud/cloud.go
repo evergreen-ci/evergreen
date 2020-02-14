@@ -71,6 +71,9 @@ type Manager interface {
 	// DeleteVolume deletes a volume.
 	DeleteVolume(context.Context, *host.Volume) error
 
+	// CheckInstanceType determines if the given instance type is available in the current region.
+	CheckInstanceType(context.Context, string) error
+
 	// TimeTilNextPayment returns how long there is until the next payment
 	// is due for a particular host
 	TimeTilNextPayment(*host.Host) time.Duration

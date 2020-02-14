@@ -15,7 +15,7 @@ type APIHost struct {
 	Distro           DistroInfo `json:"distro"`
 	Provisioned      bool       `json:"provisioned"`
 	StartedBy        *string    `json:"started_by"`
-	Type             *string    `json:"host_type"`
+	Provider         *string    `json:"host_type"`
 	User             *string    `json:"user"`
 	Status           *string    `json:"status"`
 	RunningTask      taskInfo   `json:"running_task"`
@@ -95,7 +95,7 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	apiHost.HostURL = ToStringPtr(v.Host)
 	apiHost.Provisioned = v.Provisioned
 	apiHost.StartedBy = ToStringPtr(v.StartedBy)
-	apiHost.Type = ToStringPtr(v.InstanceType)
+	apiHost.Provider = ToStringPtr(v.Provider)
 	apiHost.User = ToStringPtr(v.User)
 	apiHost.Status = ToStringPtr(v.Status)
 	apiHost.UserHost = v.UserHost
@@ -122,7 +122,8 @@ func (apiHost *APIHost) ToService() (interface{}, error) {
 		Id:           FromStringPtr(apiHost.Id),
 		Provisioned:  apiHost.Provisioned,
 		StartedBy:    FromStringPtr(apiHost.StartedBy),
-		InstanceType: FromStringPtr(apiHost.Type),
+		Provider:     FromStringPtr(apiHost.Provider),
+		InstanceType: FromStringPtr(apiHost.InstanceType),
 		User:         FromStringPtr(apiHost.User),
 		Status:       FromStringPtr(apiHost.Status),
 		Zone:         FromStringPtr(apiHost.AvailabilityZone),

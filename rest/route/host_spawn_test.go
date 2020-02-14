@@ -73,8 +73,11 @@ func TestHostPostHandler(t *testing.T) {
 	assert.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
 
+	d.Provider = evergreen.ProviderNameMock
+	assert.NoError(d.Update())
 	h.settings.Providers.AWS.AllowedInstanceTypes = append(h.settings.Providers.AWS.AllowedInstanceTypes, "test_instance_type")
 	h.options.InstanceType = "test_instance_type"
+	h.options.UserData = ""
 	resp = h.Run(ctx)
 	require.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
