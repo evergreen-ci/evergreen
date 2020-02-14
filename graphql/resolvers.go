@@ -276,7 +276,7 @@ func getGroupedFiles(ctx context.Context, name string, taskID string, execution 
 	return &GroupedFiles{Name: &name, Files: apiFileList}, nil
 }
 
-func (r *queryResolver) TestFiles(ctx context.Context, taskID string) ([]*GroupedFiles, error) {
+func (r *queryResolver) TaskFiles(ctx context.Context, taskID string) ([]*GroupedFiles, error) {
 	t, err := task.FindOneId(taskID)
 	groupedFilesList := []*GroupedFiles{}
 	if t.OldTaskId != "" {

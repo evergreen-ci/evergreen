@@ -102,8 +102,8 @@ type ComplexityRoot struct {
 		Patch       func(childComplexity int, id string) int
 		Projects    func(childComplexity int) int
 		Task        func(childComplexity int, taskID string) int
+		TaskFiles   func(childComplexity int, taskID string) int
 		TaskTests   func(childComplexity int, taskID string, sortCategory *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, status *string) int
-		TestFiles   func(childComplexity int, taskID string) int
 		UserPatches func(childComplexity int, userID string) int
 	}
 
@@ -195,7 +195,7 @@ type QueryResolver interface {
 	Task(ctx context.Context, taskID string) (*model.APITask, error)
 	Projects(ctx context.Context) (*Projects, error)
 	TaskTests(ctx context.Context, taskID string, sortCategory *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, status *string) ([]*model.APITest, error)
-	TestFiles(ctx context.Context, taskID string) ([]*GroupedFiles, error)
+	TaskFiles(ctx context.Context, taskID string) ([]*GroupedFiles, error)
 }
 
 type executableSchema struct {
@@ -495,6 +495,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Task(childComplexity, args["taskId"].(string)), true
 
+	case "Query.taskFiles":
+		if e.complexity.Query.TaskFiles == nil {
+			break
+		}
+
+		args, err := ec.field_Query_taskFiles_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.TaskFiles(childComplexity, args["taskId"].(string)), true
+
 	case "Query.taskTests":
 		if e.complexity.Query.TaskTests == nil {
 			break
@@ -506,18 +518,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.TaskTests(childComplexity, args["taskId"].(string), args["sortCategory"].(*TaskSortCategory), args["sortDirection"].(*SortDirection), args["page"].(*int), args["limit"].(*int), args["testName"].(*string), args["status"].(*string)), true
-
-	case "Query.testFiles":
-		if e.complexity.Query.TestFiles == nil {
-			break
-		}
-
-		args, err := ec.field_Query_testFiles_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.TestFiles(childComplexity, args["taskId"].(string)), true
 
 	case "Query.userPatches":
 		if e.complexity.Query.UserPatches == nil {
@@ -1048,7 +1048,7 @@ type Query {
 	task(taskId: String!): Task
 	projects: Projects!
 	taskTests(taskId: String!, sortCategory: TaskSortCategory = TEST_NAME, sortDirection: SortDirection = ASC, page: Int = 0, limit: Int = 0, testName: String = "", status: String = ""): [TestResult!]
-	testFiles(taskId: String!): [GroupedFiles!]!
+	taskFiles(taskId: String!): [GroupedFiles!]!
 }
 enum SortDirection {
 	ASC
@@ -1220,6 +1220,20 @@ func (ec *executionContext) field_Query_patch_args(ctx context.Context, rawArgs 
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_taskFiles_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["taskId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["taskId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_taskTests_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -1283,20 +1297,6 @@ func (ec *executionContext) field_Query_taskTests_args(ctx context.Context, rawA
 }
 
 func (ec *executionContext) field_Query_task_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["taskId"]; ok {
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["taskId"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Query_testFiles_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
@@ -2690,7 +2690,7 @@ func (ec *executionContext) _Query_taskTests(ctx context.Context, field graphql.
 	return ec.marshalOTestResult2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Query_testFiles(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Query_taskFiles(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2706,7 +2706,7 @@ func (ec *executionContext) _Query_testFiles(ctx context.Context, field graphql.
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Query_testFiles_args(ctx, rawArgs)
+	args, err := ec.field_Query_taskFiles_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -2714,7 +2714,7 @@ func (ec *executionContext) _Query_testFiles(ctx context.Context, field graphql.
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().TestFiles(rctx, args["taskId"].(string))
+		return ec.resolvers.Query().TaskFiles(rctx, args["taskId"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -6077,7 +6077,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				res = ec._Query_taskTests(ctx, field)
 				return res
 			})
-		case "testFiles":
+		case "taskFiles":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
 				defer func() {
@@ -6085,7 +6085,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_testFiles(ctx, field)
+				res = ec._Query_taskFiles(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
