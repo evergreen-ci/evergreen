@@ -211,8 +211,8 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	const testPublicKeyName = "testPubKey"
 	const testUserID = "TestSpawnHostUser"
 	const testUserAPIKey = "testApiKey"
-	const testInstanceType = "testInstanceType"
 	const testUserdata = "this is a dummy sentence"
+	const testInstanceType = "testInstanceType"
 
 	config, err := evergreen.GetConfig()
 	s.NoError(err)
@@ -242,7 +242,6 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 		KeyName:      testPublicKeyName,
 		UserData:     testUserdata,
 		InstanceTags: nil,
-		InstanceType: testInstanceType,
 	}
 
 	intentHost, err := (&DBHostConnector{}).NewIntentHost(context.Background(), options, testUser, config)
@@ -258,6 +257,21 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	ec2Settings := &cloud.EC2ProviderSettings{}
 	s.NoError(ec2Settings.FromDistroSettings(foundHost.Distro, ""))
 	s.Equal(ec2Settings.UserData, options.UserData)
+
+	// with instance type
+	options.InstanceType = testInstanceType
+	_, err = (&DBHostConnector{}).NewIntentHost(context.Background(), options, testUser, config)
+	s.Require().Error(err)
+	fmt.Println(err.Error())
+	s.Contains(err.Error(), "not been allowed by admins")
+	config.Providers.AWS.AllowedInstanceTypes = []string{testInstanceType}
+	s.NoError(config.Set())
+
+	// found instance type in config
+	_, err = (&DBHostConnector{}).NewIntentHost(context.Background(), options, testUser, config)
+	s.Require().Error(err)
+	fmt.Println(err.Error())
+	s.Contains(err.Error(), "Unable to find region")
 }
 
 func (s *HostConnectorSuite) TestSetHostStatus() {

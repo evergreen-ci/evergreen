@@ -632,14 +632,12 @@ func (m *ec2Manager) CheckInstanceType(ctx context.Context, instanceType string)
 	if err != nil {
 		return errors.Wrapf(err, "error describe instance types offered for region '%s", m.region)
 	}
-	validTypes := []string{}
 	for _, availableType := range output.InstanceTypeOfferings {
 		if availableType.InstanceType != nil && (*availableType.InstanceType) == instanceType {
 			return nil
 		}
-		validTypes = append(validTypes, *availableType.InstanceType)
 	}
-	return errors.Errorf("available types for region '%s' are: %v", m.region, validTypes)
+	return errors.Errorf("type '%s' is unavailable in region '%s'", instanceType, m.region)
 }
 
 // setNoExpiration changes whether a host should expire
