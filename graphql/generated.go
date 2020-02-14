@@ -37,6 +37,7 @@ type Config struct {
 
 type ResolverRoot interface {
 	Mutation() MutationResolver
+	Patch() PatchResolver
 	Query() QueryResolver
 }
 
@@ -70,9 +71,16 @@ type ComplexityRoot struct {
 		StartTime     func(childComplexity int) int
 		Status        func(childComplexity int) int
 		Tasks         func(childComplexity int) int
+		Time          func(childComplexity int) int
 		Variants      func(childComplexity int) int
 		VariantsTasks func(childComplexity int) int
 		Version       func(childComplexity int) int
+	}
+
+	PatchTime struct {
+		Finished    func(childComplexity int) int
+		Started     func(childComplexity int) int
+		SubmittedAt func(childComplexity int) int
 	}
 
 	Project struct {
@@ -176,6 +184,9 @@ type MutationResolver interface {
 	RemoveFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
 	ScheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 	UnscheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
+}
+type PatchResolver interface {
+	Time(ctx context.Context, obj *model.APIPatch) (*PatchTime, error)
 }
 type QueryResolver interface {
 	UserPatches(ctx context.Context, userID string) ([]*model.APIPatch, error)
@@ -353,6 +364,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Patch.Tasks(childComplexity), true
 
+	case "Patch.time":
+		if e.complexity.Patch.Time == nil {
+			break
+		}
+
+		return e.complexity.Patch.Time(childComplexity), true
+
 	case "Patch.variants":
 		if e.complexity.Patch.Variants == nil {
 			break
@@ -373,6 +391,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Patch.Version(childComplexity), true
+
+	case "PatchTime.finished":
+		if e.complexity.PatchTime.Finished == nil {
+			break
+		}
+
+		return e.complexity.PatchTime.Finished(childComplexity), true
+
+	case "PatchTime.started":
+		if e.complexity.PatchTime.Started == nil {
+			break
+		}
+
+		return e.complexity.PatchTime.Started(childComplexity), true
+
+	case "PatchTime.submittedAt":
+		if e.complexity.PatchTime.SubmittedAt == nil {
+			break
+		}
+
+		return e.complexity.PatchTime.SubmittedAt(childComplexity), true
 
 	case "Project.displayName":
 		if e.complexity.Project.DisplayName == nil {
@@ -934,131 +973,160 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var parsedSchema = gqlparser.MustLoadSchema(
-	&ast.Source{Name: "schema.graphql", Input: `scalar Duration
-type GroupedProjects {
-	name: String!
-	projects: [Project!]!
+	&ast.Source{Name: "graphql/schema.graphql", Input: `type Query {
+  userPatches(userId: String!): [Patch!]!
+  patch(id: String!): Patch!
+  task(taskId: String!): Task
+  projects: Projects!
+  taskTests(
+    taskId: String!
+    sortCategory: TaskSortCategory = TEST_NAME
+    sortDirection: SortDirection = ASC
+    page: Int = 0
+    limit: Int = 0
+    testName: String = ""
+    status: String = ""
+  ): [TestResult!]
 }
+
 type Mutation {
-	addFavoriteProject(identifier: String!): Project!
-	removeFavoriteProject(identifier: String!): Project!
-	scheduleTask(taskId: String!): Task!
-	unscheduleTask(taskId: String!): Task!
+  addFavoriteProject(identifier: String!): Project!
+  removeFavoriteProject(identifier: String!): Project!
+  scheduleTask(taskId: String!): Task!
+  unscheduleTask(taskId: String!): Task!
 }
-type Patch {
-	id: ID!
-	description: String!
-	projectID: String!
-	githash: String!
-	patchNumber: Int!
-	author: String!
-	version: String!
-	status: String!
-	createTime: Time!
-	startTime: Time
-	finishTime: Time
-	variants: [String!]!
-	tasks: [String!]!
-	variantsTasks: [VariantTask]!
-	activated: Boolean!
-	alias: String!
-}
-type Project {
-	identifier: String!
-	displayName: String!
-	repo: String!
-	owner: String!
-}
-type Projects {
-	favorites: [Project!]!
-	otherProjects: [GroupedProjects!]!
-}
-type Query {
-	userPatches(userId: String!): [Patch!]!
-	patch(id: String!): Patch!
-	task(taskId: String!): Task
-	projects: Projects!
-	taskTests(taskId: String!, sortCategory: TaskSortCategory = TEST_NAME, sortDirection: SortDirection = ASC, page: Int = 0, limit: Int = 0, testName: String = "", status: String = ""): [TestResult!]
-}
-enum SortDirection {
-	ASC
-	DESC
-}
-type Task {
-	id: String!
-	createTime: Time
-	ingestTime: Time
-	dispatchTime: Time
-	scheduledTime: Time
-	startTime: Time
-	finishTime: Time
-	activatedTime: Time
-	version: String!
-	projectId: String!
-	revision: String
-	priority: Int
-	taskGroup: String
-	taskGroupMaxHosts: Int
-	logs: TaskLogs!
-	activated: Boolean!
-	activatedBy: String
-	buildId: String!
-	distroId: String!
-	buildVariant: String!
-	dependsOn: [String!]
-	displayName: String!
-	hostId: String
-	restarts: Int
-	execution: Int
-	order: Int
-	requester: String!
-	status: String!
-	details: TaskEndDetail
-	timeTaken: Duration
-	expectedDuration: Duration
-	displayOnly: Boolean
-	executionTasks: [String!]
-	generateTask: Boolean
-	generatedBy: String
-}
-type TaskEndDetail {
-	status: String!
-	type: String!
-	description: String
-	timedOut: Boolean
-}
-type TaskLogs {
-	allLogLink: String
-	agentLogLink: String
-	systemLogLink: String
-	taskLogLink: String
-}
+
 enum TaskSortCategory {
-	STATUS
-	DURATION
-	TEST_NAME
+  STATUS
+  DURATION
+  TEST_NAME
 }
-type TestLog {
-	url: String
-	urlRaw: String
-	lineNum: Int
-	logId: String
+
+enum SortDirection {
+  ASC
+  DESC
 }
-type TestResult {
-	id: String!
-	status: String!
-	testFile: String!
-	logs: TestLog!
-	exitCode: Int
-	startTime: Time
-	duration: Float
-	endTime: Time
+
+type Patch {
+  id: ID!
+  description: String!
+  projectID: String!
+  githash: String!
+  patchNumber: Int!
+  author: String!
+  version: String!
+  status: String!
+  createTime: Time!
+  startTime: Time
+  finishTime: Time
+  variants: [String!]!
+  tasks: [String!]!
+  variantsTasks: [VariantTask]!
+  activated: Boolean!
+  alias: String!
+  time: PatchTime
 }
-scalar Time
+
+type PatchTime {
+  started: String
+  finished: String
+  submittedAt: String!
+}
+
 type VariantTask {
-	name: String!
-	tasks: [String!]!
+  name: String!
+  tasks: [String!]!
 }
+
+type TaskLogs {
+  allLogLink: String
+  agentLogLink: String
+  systemLogLink: String
+  taskLogLink: String
+}
+
+type TaskEndDetail {
+  status: String!
+  type: String!
+  description: String
+  timedOut: Boolean
+}
+
+type TestResult {
+  id: String!
+  status: String!
+  testFile: String!
+  logs: TestLog!
+  exitCode: Int
+  startTime: Time
+  duration: Float
+  endTime: Time
+}
+
+type TestLog {
+  url: String
+  urlRaw: String
+  lineNum: Int
+  logId: String
+}
+
+type Task {
+  id: String!
+  createTime: Time
+  ingestTime: Time
+  dispatchTime: Time
+  scheduledTime: Time
+  startTime: Time
+  finishTime: Time
+  activatedTime: Time
+  version: String!
+  projectId: String!
+  revision: String
+  priority: Int
+  taskGroup: String
+  taskGroupMaxHosts: Int
+  logs: TaskLogs!
+  activated: Boolean!
+  activatedBy: String
+  buildId: String!
+  distroId: String!
+  buildVariant: String!
+  dependsOn: [String!]
+  displayName: String!
+  hostId: String
+  restarts: Int
+  execution: Int
+  order: Int
+  requester: String!
+  status: String!
+  details: TaskEndDetail
+  timeTaken: Duration
+  expectedDuration: Duration
+  displayOnly: Boolean
+  executionTasks: [String!]
+  generateTask: Boolean
+  generatedBy: String
+}
+
+type Projects {
+  favorites: [Project!]!
+  otherProjects: [GroupedProjects!]!
+}
+
+type GroupedProjects {
+  name: String!
+  projects: [Project!]!
+}
+
+type Project {
+  identifier: String!
+  displayName: String!
+  repo: String!
+  owner: String!
+}
+
+scalar Time
+scalar Duration
 `},
 )
 
@@ -2044,6 +2112,133 @@ func (ec *executionContext) _Patch_alias(ctx context.Context, field graphql.Coll
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Patch_time(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Patch",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Patch().Time(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*PatchTime)
+	fc.Result = res
+	return ec.marshalOPatchTime2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PatchTime_started(ctx context.Context, field graphql.CollectedField, obj *PatchTime) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "PatchTime",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Started, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PatchTime_finished(ctx context.Context, field graphql.CollectedField, obj *PatchTime) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "PatchTime",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Finished, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PatchTime_submittedAt(ctx context.Context, field graphql.CollectedField, obj *PatchTime) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "PatchTime",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SubmittedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Project_identifier(ctx context.Context, field graphql.CollectedField, obj *model.UIProjectFields) (ret graphql.Marshaler) {
@@ -5490,47 +5685,47 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 		case "id":
 			out.Values[i] = ec._Patch_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "description":
 			out.Values[i] = ec._Patch_description(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "projectID":
 			out.Values[i] = ec._Patch_projectID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "githash":
 			out.Values[i] = ec._Patch_githash(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "patchNumber":
 			out.Values[i] = ec._Patch_patchNumber(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "author":
 			out.Values[i] = ec._Patch_author(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "version":
 			out.Values[i] = ec._Patch_version(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "status":
 			out.Values[i] = ec._Patch_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "createTime":
 			out.Values[i] = ec._Patch_createTime(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "startTime":
 			out.Values[i] = ec._Patch_startTime(ctx, field, obj)
@@ -5539,25 +5734,67 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 		case "variants":
 			out.Values[i] = ec._Patch_variants(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "tasks":
 			out.Values[i] = ec._Patch_tasks(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "variantsTasks":
 			out.Values[i] = ec._Patch_variantsTasks(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "activated":
 			out.Values[i] = ec._Patch_activated(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "alias":
 			out.Values[i] = ec._Patch_alias(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "time":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Patch_time(ctx, field, obj)
+				return res
+			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var patchTimeImplementors = []string{"PatchTime"}
+
+func (ec *executionContext) _PatchTime(ctx context.Context, sel ast.SelectionSet, obj *PatchTime) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, patchTimeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PatchTime")
+		case "started":
+			out.Values[i] = ec._PatchTime_started(ctx, field, obj)
+		case "finished":
+			out.Values[i] = ec._PatchTime_finished(ctx, field, obj)
+		case "submittedAt":
+			out.Values[i] = ec._PatchTime_submittedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -6975,6 +7212,17 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 		return graphql.Null
 	}
 	return ec.marshalOInt2int(ctx, sel, *v)
+}
+
+func (ec *executionContext) marshalOPatchTime2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchTime(ctx context.Context, sel ast.SelectionSet, v PatchTime) graphql.Marshaler {
+	return ec._PatchTime(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOPatchTime2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchTime(ctx context.Context, sel ast.SelectionSet, v *PatchTime) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._PatchTime(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOSortDirection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx context.Context, v interface{}) (SortDirection, error) {
