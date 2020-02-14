@@ -852,9 +852,8 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 			}
 		}
 
-		// Display tasks depend on all exec task dependencies
+		// Local pointer to display task
 		if displayTask, ok := displayTasks[newTask.DisplayName]; ok {
-			displayTask.DependsOn = append(displayTask.DependsOn, newTask.DependsOn...)
 			newTask.DisplayTask = displayTask
 		}
 
