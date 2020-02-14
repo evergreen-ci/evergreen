@@ -1233,7 +1233,7 @@ func PopulateSSHKeyUpdates(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
-func PopulateUserReauthorization(env evergreen.Environment) amboy.QueueOperation {
+func PopulateReauthorizationJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		_, info, err := auth.UserManager()
 		if err != nil {
