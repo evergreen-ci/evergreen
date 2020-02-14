@@ -56,7 +56,8 @@ func makeMultipartUserData(files map[string]string) (string, error) {
 	return buf.String(), nil
 }
 
-// writeUserDataHeaders writes the multipart MIME headers for user data.
+// writeUserDataHeaders writes the required multipart MIME headers for user
+// data.
 func writeUserDataHeaders(writer io.Writer, boundary string) error {
 	topLevelHeaders := textproto.MIMEHeader{}
 	topLevelHeaders.Add("MIME-Version", "1.0")
@@ -130,7 +131,9 @@ func parseUserDataContentType(userData string) (string, error) {
 }
 
 // bootstrapUserData returns the multipart user data with logic to bootstrap and
-// set up the host and the custom user data.
+// set up the host and the custom user data. Care should be taken when adding
+// more to this script, since the script length is subject to a 16 kB hard limit
+// (https://docs.aws.amazon.com/sdk-for-go/api/service/ec2/#RunInstancesInput).
 func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.Host, customScript string) (string, error) {
 	if h.Distro.BootstrapSettings.Method != distro.BootstrapMethodUserData {
 		return customScript, nil

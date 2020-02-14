@@ -8,9 +8,7 @@ import (
 	"math"
 	"net"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"syscall"
 	"testing"
@@ -241,7 +239,7 @@ func TestJasperCommands(t *testing.T) {
 			setupScript, err := h.setupScriptCommands(settings)
 			require.NoError(t, err)
 
-			setupSpawnHost, err := h.SetupSpawnHostCommands(settings)
+			setupSpawnHost, err := h.SpawnHostSetupCommands(settings)
 			require.NoError(t, err)
 
 			markDone, err := h.MarkUserDataDoneCommands()
@@ -447,7 +445,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			writeCredentialsCmd, err := h.bufferedWriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 			require.NoError(t, err)
 
-			setupSpawnHost, err := h.SetupSpawnHostCommands(settings)
+			setupSpawnHost, err := h.SpawnHostSetupCommands(settings)
 			require.NoError(t, err)
 
 			markDone, err := h.MarkUserDataDoneCommands()
@@ -836,21 +834,6 @@ func TestTearDownDirectlyCommand(t *testing.T) {
 	assert.Equal(t, "chmod +x teardown.sh && sh teardown.sh", cmd)
 }
 
-func TestInitSystemCommand(t *testing.T) {
-	if runtime.GOOS != "linux" {
-		t.Skip("init system test is relevant to Linux only")
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, "/bin/sh", "-c", initSystemCommand())
-	res, err := cmd.Output()
-	require.NoError(t, err)
-	initSystem := strings.TrimSpace(string(res))
-	assert.Contains(t, []string{InitSystemSystemd, InitSystemSysV, InitSystemUpstart}, initSystem)
-}
-
 func TestBuildLocalJasperClientRequest(t *testing.T) {
 	h := &Host{
 		Distro: distro.Distro{
@@ -1030,7 +1013,7 @@ func TestStopAgentMonitor(t *testing.T) {
 	}
 }
 
-func TestSetupSpawnHostCommands(t *testing.T) {
+func TestSpawnHostSetupCommands(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection, user.Collection))
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection, user.Collection))
@@ -1065,7 +1048,7 @@ func TestSetupSpawnHostCommands(t *testing.T) {
 		},
 	}
 
-	cmd, err := h.SetupSpawnHostCommands(settings)
+	cmd, err := h.SpawnHostSetupCommands(settings)
 	require.NoError(t, err)
 
 	expected := "mkdir -m 777 -p /home/user/cli_bin" +
@@ -1077,14 +1060,14 @@ func TestSetupSpawnHostCommands(t *testing.T) {
 	assert.Equal(t, expected, cmd)
 
 	h.ProvisionOptions.TaskId = "task_id"
-	cmd, err = h.SetupSpawnHostCommands(settings)
+	cmd, err = h.SpawnHostSetupCommands(settings)
 	assert.Contains(t, cmd, expected)
 	require.NoError(t, err)
 	fetchCmd := []string{"/home/user/evergreen", "-c", "/home/user/cli_bin/.evergreen.yml", "fetch", "-t", "task_id", "--source", "--artifacts", "--dir", "/dir"}
 	currIndex := 0
 	for _, arg := range fetchCmd {
 		foundIndex := strings.Index(cmd[currIndex:], arg)
-		require.NotEqual(t, foundIndex, -1)
+		require.NotEqual(t, foundIndex, -1, "missing fetch command arg '%s'", arg)
 		currIndex += foundIndex
 	}
 }
