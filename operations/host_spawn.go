@@ -31,6 +31,7 @@ func hostCreate() cli.Command {
 		tagFlagName          = "tag"
 		instanceTypeFlagName = "type"
 		noExpireFlagName     = "no-expire"
+		regionFlagName       = "region"
 	)
 
 	return cli.Command{
@@ -53,6 +54,10 @@ func hostCreate() cli.Command {
 				Name:  joinFlagNames(instanceTypeFlagName, "i"),
 				Usage: "name of an instance type",
 			},
+			cli.StringFlag{
+				Name:  joinFlagNames(regionFlagName, "r"),
+				Usage: "AWS region to spawn host in",
+			},
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(tagFlagName, "t"),
 				Usage: "key=value pair representing an instance tag, with one pair per flag",
@@ -69,6 +74,7 @@ func hostCreate() cli.Command {
 			fn := c.String(scriptFlagName)
 			tagSlice := c.StringSlice(tagFlagName)
 			instanceType := c.String(instanceTypeFlagName)
+			region := c.String(regionFlagName)
 			noExpire := c.Bool(noExpireFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -102,6 +108,7 @@ func hostCreate() cli.Command {
 				UserData:     script,
 				InstanceTags: tags,
 				InstanceType: instanceType,
+				Region:       region,
 				NoExpiration: noExpire,
 			}
 
@@ -113,7 +120,7 @@ func hostCreate() cli.Command {
 				return errors.New("Unable to create a spawn host. Double check that the params and .evergreen.yml are correct")
 			}
 
-			grip.Infof("Spawn host created with ID '%s'. Visit the hosts page in Evergreen to check on its status.", model.FromStringPtr(host.Id))
+			grip.Infof("Spawn host created with ID '%s'. Visit the hosts page in Evergreen to check on its status, or check `evergreen host list --mine", model.FromStringPtr(host.Id))
 			return nil
 		},
 	}

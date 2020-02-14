@@ -69,6 +69,7 @@ type s3put struct {
 	//  "private", which allows logged-in users to see the file;
 	//  "public", which allows anyone to see the file; or
 	//  "none", which hides the file from the UI for everybody.
+	//  "signed" which grants access to private S3 objects to logged-in users
 	// If unset, the file will be public.
 	Visibility string `mapstructure:"visibility" plugin:"expand"`
 
@@ -157,15 +158,15 @@ func (s3pc *s3put) validate() error {
 // Apply the expansions from the relevant task config to all appropriate
 // fields of the s3put.
 func (s3pc *s3put) expandParams(conf *model.TaskConfig) error {
+	var err error
+	if err = util.ExpandValues(s3pc, conf.Expansions); err != nil {
+		return errors.WithStack(err)
+	}
+
 	if filepath.IsAbs(s3pc.LocalFile) {
 		s3pc.workDir = ""
 	} else {
 		s3pc.workDir = conf.WorkDir
-	}
-
-	var err error
-	if err = util.ExpandValues(s3pc, conf.Expansions); err != nil {
-		return errors.WithStack(err)
 	}
 
 	if s3pc.Optional != "" {
@@ -374,11 +375,18 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 		if s3pc.isMulti() || displayName == "" {
 			displayName = fmt.Sprintf("%s %s", s3pc.ResourceDisplayName, filepath.Base(fn))
 		}
+		var key, secret string
+		if s3pc.Visibility == "signed" {
+			key = s3pc.AwsKey
+			secret = s3pc.AwsSecret
+		}
 
 		files = append(files, &artifact.File{
 			Name:       displayName,
 			Link:       fileLink,
 			Visibility: s3pc.Visibility,
+			AwsKey:     key,
+			AwsSecret:  secret,
 		})
 	}
 

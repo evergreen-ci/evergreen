@@ -155,6 +155,10 @@ func (staticMgr *staticManager) DeleteVolume(context.Context, *host.Volume) erro
 	return errors.New("can't delete volume with static provider")
 }
 
+func (staticMgr *staticManager) CheckInstanceType(context.Context, string) error {
+	return errors.New("can't specify instance type with static provider")
+}
+
 // determine how long until a payment is due for the host. static hosts always
 // return 0 for this number
 func (staticMgr *staticManager) TimeTilNextPayment(host *host.Host) time.Duration {

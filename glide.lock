@@ -81,7 +81,7 @@ imports:
   - name: github.com/go-ini/ini
     version: 6e4869b434bd001f6983749881c7ead3545887d8
   - name: github.com/aws/aws-sdk-go
-    version: b0b59fd2ceb03908e5d3bcd1449b46ce75508f4b
+    version: bf58031807a077119bb7e2d93535a08fd353652d
 
   - name: github.com/mholt/archiver
     version: e4ef56d48eb029648b0e895bb0b6a393ef0829c3
@@ -127,7 +127,7 @@ imports:
   - name: github.com/mongodb/amboy
     version: 4f089ad3c37346a21d0b69b6d3c3523628a72a29
   - name: github.com/evergreen-ci/gimlet
-    version: e71f5a4d64124b8049620bb0902f969e1daecc56
+    version: 97349cc5a015b085f0345e4bb0baf770f8eaa29c
   - name: github.com/evergreen-ci/shrub
     version: 32e668cd99410328bf6659e55671c11a6c727d9a
   - name: github.com/evergreen-ci/pail

@@ -1,7 +1,6 @@
 package cloud
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -29,17 +28,18 @@ const (
 
 // Options holds the required parameters for spawning a host.
 type SpawnOptions struct {
-	DistroId         string
-	ProviderSettings *map[string]interface{}
-	UserName         string
-	PublicKey        string
-	TaskId           string
-	Owner            *user.DBUser
-	InstanceTags     []host.Tag
-	InstanceType     string
-	NoExpiration     bool
-	AttachVolume     bool
-	HomeVolumeSize   int
+	DistroId       string
+	Userdata       string
+	UserName       string
+	PublicKey      string
+	TaskId         string
+	Owner          *user.DBUser
+	InstanceTags   []host.Tag
+	InstanceType   string
+	Region         string
+	NoExpiration   bool
+	AttachVolume   bool
+	HomeVolumeSize int
 }
 
 // Validate returns an instance of BadOptionsErr if the SpawnOptions object contains invalid
@@ -52,7 +52,7 @@ func (so *SpawnOptions) validate() error {
 
 	d, err := distro.FindOne(distro.ById(so.DistroId))
 	if err != nil {
-		return errors.Errorf("Invalid spawn options: distro %v", so.DistroId)
+		return errors.Errorf("error finding distro '%s'", so.DistroId)
 	}
 
 	if !d.SpawnAllowed {
@@ -69,6 +69,9 @@ func (so *SpawnOptions) validate() error {
 		return err
 	}
 
+	if !evergreen.UseSpawnHostRegions && so.Region != "" && so.Region != evergreen.DefaultEC2Region {
+		return errors.Wrap(err, "no configurable regions supported")
+	}
 	// validate public key
 	rsa := "ssh-rsa"
 	dss := "ssh-dss"
@@ -109,7 +112,7 @@ func checkSpawnHostLimitExceeded(numCurrentHosts int) error {
 }
 
 // CreateSpawnHost spawns a host with the given options.
-func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
+func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.Settings) (*host.Host, error) {
 	if err := so.validate(); err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -117,11 +120,23 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 	// load in the appropriate distro
 	d, err := distro.FindOne(distro.ById(so.DistroId))
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.WithStack(errors.Wrap(err, "error finding distro"))
 	}
 
-	if so.ProviderSettings != nil {
-		d.ProviderSettings = so.ProviderSettings
+	if so.Userdata != "" {
+		if !IsEc2Provider(d.Provider) {
+			return nil, errors.Errorf("cannot set userdata for provider '%s'", d.Provider)
+		}
+		err = d.SetUserdata(so.Userdata, so.Region)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+	}
+
+	if so.InstanceType != "" {
+		if err := CheckInstanceTypeValid(ctx, d, so.InstanceType, settings.Providers.AWS.AllowedInstanceTypes); err != nil {
+			return nil, errors.Wrap(err, "error validating instance type")
+		}
 	}
 
 	// modify the setup script to add the user's public key
@@ -152,6 +167,7 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 		NoExpiration:       so.NoExpiration,
 		AttachVolume:       so.AttachVolume,
 		HomeVolumeSize:     so.HomeVolumeSize,
+		Region:             so.Region,
 	}
 
 	intentHost := host.NewIntent(d, d.GenerateName(), d.Provider, hostOptions)
@@ -161,29 +177,41 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 	return intentHost, nil
 }
 
+func CheckInstanceTypeValid(ctx context.Context, d distro.Distro, requestedType string, allowedTypes []string) error {
+	if !util.StringSliceContains(allowedTypes, requestedType) {
+		return errors.New("This instance type has not been allowed by admins")
+	}
+	env := evergreen.GetEnvironment()
+	opts, err := GetManagerOptions(d)
+	if err != nil {
+		return errors.Wrap(err, "error getting manager options")
+	}
+	m, err := GetManager(ctx, env, opts)
+	if err != nil {
+		return errors.Wrap(err, "error getting manager")
+	}
+	if err := m.CheckInstanceType(ctx, requestedType); err != nil {
+		return errors.Wrapf(err, "error checking instance type '%s'", requestedType)
+	}
+	return nil
+}
+
 func SetHostRDPPassword(ctx context.Context, env evergreen.Environment, host *host.Host, password string) error {
 	pwdUpdateCmd, err := constructPwdUpdateCommand(ctx, env, host, password)
 	if err != nil {
 		return errors.Wrap(err, "Error constructing host RDP password")
 	}
 
-	stdout := &util.CappedWriter{
-		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024,
-	}
-
-	stderr := &util.CappedWriter{
-		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024,
-	}
+	stdout := util.NewMBCappedWriter()
+	stderr := util.NewMBCappedWriter()
 
 	pwdUpdateCmd.SetErrorWriter(stderr).SetOutputWriter(stdout)
 
 	// update RDP and sshd password
 	if err = pwdUpdateCmd.Run(ctx); err != nil {
 		grip.Warning(message.Fields{
-			"stdout":    stdout.Buffer.String(),
-			"stderr":    stderr.Buffer.String(),
+			"stdout":    stdout.String(),
+			"stderr":    stderr.String(),
 			"operation": "set host rdp password",
 			"host_id":   host.Id,
 			"cmd":       pwdUpdateCmd.String(),
@@ -193,8 +221,8 @@ func SetHostRDPPassword(ctx context.Context, env evergreen.Environment, host *ho
 	}
 
 	grip.Debug(message.Fields{
-		"stdout":    stdout.Buffer.String(),
-		"stderr":    stderr.Buffer.String(),
+		"stdout":    stdout.String(),
+		"stderr":    stderr.String(),
 		"operation": "set host rdp password",
 		"host_id":   host.Id,
 		"cmd":       pwdUpdateCmd.String(),

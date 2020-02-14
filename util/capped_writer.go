@@ -13,6 +13,21 @@ type CappedWriter struct {
 	MaxBytes int
 }
 
+// NewCappedWriter is a convenience constructor to create a CappedWriter with no
+// contents and the given size.
+func NewCappedWriter(size int) *CappedWriter {
+	return &CappedWriter{
+		Buffer:   &bytes.Buffer{},
+		MaxBytes: size,
+	}
+}
+
+// NewMBCappedWriter is the same as NewCappedWriter but sets a default size of
+// 1MB.
+func NewMBCappedWriter() *CappedWriter {
+	return NewCappedWriter(1024 * 1024)
+}
+
 // ErrBufferFull indicates that a CappedWriter's bytes.Buffer has MaxBytes bytes.
 var ErrBufferFull = errors.New("buffer full")
 

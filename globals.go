@@ -196,8 +196,8 @@ const (
 	DefaultJasperPort          = 2385
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
 
-	// TODO: remove this when degrading YAML
-	UseParserProject = false
+	// can flip this when regions are configured
+	UseSpawnHostRegions = false
 )
 
 func IsFinishedTaskStatus(status string) bool {

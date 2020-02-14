@@ -330,7 +330,7 @@ func (s *HostSuite) TestBuildFromServiceHost() {
 	s.Equal(apiHost.HostURL, model.ToStringPtr(host.Host))
 	s.Equal(apiHost.Provisioned, host.Provisioned)
 	s.Equal(apiHost.StartedBy, model.ToStringPtr(host.StartedBy))
-	s.Equal(apiHost.Type, model.ToStringPtr(host.InstanceType))
+	s.Equal(apiHost.Provider, model.ToStringPtr(host.Provider))
 	s.Equal(apiHost.User, model.ToStringPtr(host.User))
 	s.Equal(apiHost.Status, model.ToStringPtr(host.Status))
 	s.Equal(apiHost.UserHost, host.UserHost)

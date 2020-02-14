@@ -71,6 +71,9 @@ type Manager interface {
 	// DeleteVolume deletes a volume.
 	DeleteVolume(context.Context, *host.Volume) error
 
+	// CheckInstanceType determines if the given instance type is available in the current region.
+	CheckInstanceType(context.Context, string) error
+
 	// TimeTilNextPayment returns how long there is until the next payment
 	// is due for a particular host
 	TimeTilNextPayment(*host.Host) time.Duration
@@ -220,7 +223,7 @@ func GetManagerOptions(d distro.Distro) (ManagerOpts, error) {
 			return ManagerOpts{}, errors.Wrapf(err, "error getting EC2 provider settings from distro")
 		}
 
-		return GetEC2ManagerOptionsFromSettings(d.Provider, s), nil
+		return getEC2ManagerOptionsFromSettings(d.Provider, s), nil
 	}
 	if d.Provider == evergreen.ProviderNameMock {
 		return getMockManagerOptions(d.Provider, d.ProviderSettings)

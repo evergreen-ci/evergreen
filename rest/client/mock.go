@@ -357,7 +357,7 @@ func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostReques
 			Id:       model.ToStringPtr(spawnRequest.DistroID),
 			Provider: model.ToStringPtr(evergreen.ProviderNameMock),
 		},
-		Type:         model.ToStringPtr("mock_type"),
+		Provider:     model.ToStringPtr(evergreen.ProviderNameMock),
 		Status:       model.ToStringPtr(evergreen.HostUninitialized),
 		StartedBy:    model.ToStringPtr("mock_user"),
 		UserHost:     true,

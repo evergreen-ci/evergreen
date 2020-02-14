@@ -3,6 +3,8 @@
 package mediapackagevod
 
 import (
+	"fmt"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
 	"github.com/aws/aws-sdk-go/aws/request"
@@ -63,18 +65,18 @@ func (c *MediaPackageVod) CreateAssetRequest(input *CreateAssetInput) (req *requ
 // See the AWS API reference guide for AWS Elemental MediaPackage VOD's
 // API operation CreateAsset for usage and error information.
 //
-// Returned Error Codes:
-//   * ErrCodeUnprocessableEntityException "UnprocessableEntityException"
+// Returned Error Types:
+//   * UnprocessableEntityException
 //
-//   * ErrCodeInternalServerErrorException "InternalServerErrorException"
+//   * InternalServerErrorException
 //
-//   * ErrCodeForbiddenException "ForbiddenException"
+//   * ForbiddenException
 //
-//   * ErrCodeNotFoundException "NotFoundException"
+//   * NotFoundException
 //
-//   * ErrCodeServiceUnavailableException "ServiceUnavailableException"
+//   * ServiceUnavailableException
 //
-//   * ErrCodeTooManyRequestsException "TooManyRequestsException"
+//   * TooManyRequestsException
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/mediapackage-vod-2018-11-07/CreateAsset
 func (c *MediaPackageVod) CreateAsset(input *CreateAssetInput) (*CreateAssetOutput, error) {
@@ -151,18 +153,18 @@ func (c *MediaPackageVod) CreatePackagingConfigurationRequest(input *CreatePacka
 // See the AWS API reference guide for AWS Elemental MediaPackage VOD's
 // API operation CreatePackagingConfiguration for usage and error information.
 //
-// Returned Error Codes:
-//   * ErrCodeUnprocessableEntityException "UnprocessableEntityException"
+// Returned Error Types:
+//   * UnprocessableEntityException
 //
-//   * ErrCodeInternalServerErrorException "InternalServerErrorException"
+//   * InternalServerErrorException
 //
-//   * ErrCodeForbiddenException "ForbiddenException"
+//   * ForbiddenException
 //
-//   * ErrCodeNotFoundException "NotFoundException"
+//   * NotFoundException
 //
-//   * ErrCodeServiceUnavailableException "ServiceUnavailableException"
+//   * ServiceUnavailableException
 //
-//   * ErrCodeTooManyRequestsException "TooManyRequestsException"
+//   * TooManyRequestsException
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/mediapackage-vod-2018-11-07/CreatePackagingConfiguration
 func (c *MediaPackageVod) CreatePackagingConfiguration(input *CreatePackagingConfigurationInput) (*CreatePackagingConfigurationOutput, error) {
@@ -239,18 +241,18 @@ func (c *MediaPackageVod) CreatePackagingGroupRequest(input *CreatePackagingGrou
 // See the AWS API reference guide for AWS Elemental MediaPackage VOD's
 // API operation CreatePackagingGroup for usage and error information.
 //
-// Returned Error Codes:
-//   * ErrCodeUnprocessableEntityException "UnprocessableEntityException"
+// Returned Error Types:
+//   * UnprocessableEntityException
 //
-//   * ErrCodeInternalServerErrorException "InternalServerErrorException"
+//   * InternalServerErrorException
 //
-//   * ErrCodeForbiddenException "ForbiddenException"
+//   * ForbiddenException
 //
-//   * ErrCodeNotFoundException "NotFoundException"
+//   * NotFoundException
 //
-//   * ErrCodeServiceUnavailableException "ServiceUnavailableException"
+//   * ServiceUnavailableException
 //
-//   * ErrCodeTooManyRequestsException "TooManyRequestsException"
+//   * TooManyRequestsException
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/mediapackage-vod-2018-11-07/CreatePackagingGroup
 func (c *MediaPackageVod) CreatePackagingGroup(input *CreatePackagingGroupInput) (*CreatePackagingGroupOutput, error) {
@@ -328,18 +330,18 @@ func (c *MediaPackageVod) DeleteAssetRequest(input *DeleteAssetInput) (req *requ
 // See the AWS API reference guide for AWS Elemental MediaPackage VOD's
 // API operation DeleteAsset for usage and error information.
 //
-// Returned Error Codes:
-//   * ErrCodeUnprocessableEntityException "UnprocessableEntityException"
+// Returned Error Types:
+//   * UnprocessableEntityException
 //
-//   * ErrCodeInternalServerErrorException "InternalServerErrorException"
+//   * InternalServerErrorException
 //
-//   * ErrCodeForbiddenException "ForbiddenException"
+//   * ForbiddenException
 //
-//   * ErrCodeNotFoundException "NotFoundException"
+//   * NotFoundException
 //
-//   * ErrCodeServiceUnavailableException "ServiceUnavailableException"
+//   * ServiceUnavailableException
 //
-//   * ErrCodeTooManyRequestsException "TooManyRequestsException"
+//   * TooManyRequestsException
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/mediapackage-vod-2018-11-07/DeleteAsset
 func (c *MediaPackageVod) DeleteAsset(input *DeleteAssetInput) (*DeleteAssetOutput, error) {
@@ -417,18 +419,18 @@ func (c *MediaPackageVod) DeletePackagingConfigurationRequest(input *DeletePacka
 // See the AWS API reference guide for AWS Elemental MediaPackage VOD's
 // API operation DeletePackagingConfiguration for usage and error information.
 //
-// Returned Error Codes:
-//   * ErrCodeUnprocessableEntityException "UnprocessableEntityException"
+// Returned Error Types:
+//   * UnprocessableEntityException
 //
-//   * ErrCodeInternalServerErrorException "InternalServerErrorException"
+//   * InternalServerErrorException
 //
-//   * ErrCodeForbiddenException "ForbiddenException"
+//   * ForbiddenException
 //
-//   * ErrCodeNotFoundException "NotFoundException"
+//   * NotFoundException
 //
-//   * ErrCodeServiceUnavailableException "ServiceUnavailableException"
+//   * ServiceUnavailableException
 //
-//   * ErrCodeTooManyRequestsException "TooManyRequestsException"
+//   * TooManyRequestsException
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/mediapackage-vod-2018-11-07/DeletePackagingConfiguration
 func (c *MediaPackageVod) DeletePackagingConfiguration(input *DeletePackagingConfigurationInput) (*DeletePackagingConfigurationOutput, error) {
@@ -506,18 +508,18 @@ func (c *MediaPackageVod) DeletePackagingGroupRequest(input *DeletePackagingGrou
 // See the AWS API reference guide for AWS Elemental MediaPackage VOD's
 // API operation DeletePackagingGroup for usage and error information.
 //
-// Returned Error Codes:
-//   * ErrCodeUnprocessableEntityException "UnprocessableEntityException"
+// Returned Error Types:
+//   * UnprocessableEntityException
 //
-//   * ErrCodeInternalServerErrorException "InternalServerErrorException"
+//   * InternalServerErrorException
 //
-//   * ErrCodeForbiddenException "ForbiddenException"
+//   * ForbiddenException
 //
-//   * ErrCodeNotFoundException "NotFoundException"
+//   * NotFoundException
 //
-//   * ErrCodeServiceUnavailableException "ServiceUnavailableException"
+//   * ServiceUnavailableException
 //
-//   * ErrCodeTooManyRequestsException "TooManyRequestsException"
+//   * TooManyRequestsException
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/mediapackage-vod-2018-11-07/DeletePackagingGroup
 func (c *MediaPackageVod) DeletePackagingGroup(input *DeletePackagingGroupInput) (*DeletePackagingGroupOutput, error) {
@@ -594,18 +596,18 @@ func (c *MediaPackageVod) DescribeAssetRequest(input *DescribeAssetInput) (req *
 // See the AWS API reference guide for AWS Elemental MediaPackage VOD's
 // API operation DescribeAsset for usage and error information.
 //
-// Returned Error Codes:
-//   * ErrCodeUnprocessableEntityException "UnprocessableEntityException"
+// Returned Error Types:
+//   * UnprocessableEntityException
 //
-//   * ErrCodeInternalServerErrorException "InternalServerErrorException"
+//   * InternalServerErrorException
 //
-//   * ErrCodeForbiddenException "ForbiddenException"
+//   * ForbiddenException
 //
-//   * ErrCodeNotFoundException "NotFoundException"
+//   * NotFoundException
 //
-//   * ErrCodeServiceUnavailableException "ServiceUnavailableException"
+//   * ServiceUnavailableException
 //
-//   * ErrCodeTooManyRequestsException "TooManyRequestsException"
+//   * TooManyRequestsException
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/mediapackage-vod-2018-11-07/DescribeAsset
 func (c *MediaPackageVod) DescribeAsset(input *DescribeAssetInput) (*DescribeAssetOutput, error) {
@@ -682,18 +684,18 @@ func (c *MediaPackageVod) DescribePackagingConfigurationRequest(input *DescribeP
 // See the AWS API reference guide for AWS Elemental MediaPackage VOD's
 // API operation DescribePackagingConfiguration for usage and error information.
 //
-// Returned Error Codes:
-//   * ErrCodeUnprocessableEntityException "UnprocessableEntityException"
+// Returned Error Types:
+//   * UnprocessableEntityException
 //
-//   * ErrCodeInternalServerErrorException "InternalServerErrorException"
+//   * InternalServerErrorException
 //
-//   * ErrCodeForbiddenException "ForbiddenException"
+//   * ForbiddenException
 //
-//   * ErrCodeNotFoundException "NotFoundException"
+//   * NotFoundException
 //
-//   * ErrCodeServiceUnavailableException "ServiceUnavailableException"
+//   * ServiceUnavailableException
 //
-//   * ErrCodeTooManyRequestsException "TooManyRequestsException"
+//   * TooManyRequestsException
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/mediapackage-vod-2018-11-07/DescribePackagingConfiguration
 func (c *MediaPackageVod) DescribePackagingConfiguration(input *DescribePackagingConfigurationInput) (*DescribePackagingConfigurationOutput, error) {
@@ -770,18 +772,18 @@ func (c *MediaPackageVod) DescribePackagingGroupRequest(input *DescribePackaging
 // See the AWS API reference guide for AWS Elemental MediaPackage VOD's
 // API operation DescribePackagingGroup for usage and error information.
 //
-// Returned Error Codes:
-//   * ErrCodeUnprocessableEntityException "UnprocessableEntityException"
+// Returned Error Types:
+//   * UnprocessableEntityException
 //
-//   * ErrCodeInternalServerErrorException "InternalServerErrorException"
+//   * InternalServerErrorException
 //
-//   * ErrCodeForbiddenException "ForbiddenException"
+//   * ForbiddenException
 //
-//   * ErrCodeNotFoundException "NotFoundException"
+//   * NotFoundException
 //
-//   * ErrCodeServiceUnavailableException "ServiceUnavailableException"
+//   * ServiceUnavailableException
 //
-//   * ErrCodeTooManyRequestsException "TooManyRequestsException"
+//   * TooManyRequestsException
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/mediapackage-vod-2018-11-07/DescribePackagingGroup
 func (c *MediaPackageVod) DescribePackagingGroup(input *DescribePackagingGroupInput) (*DescribePackagingGroupOutput, error) {
@@ -864,18 +866,18 @@ func (c *MediaPackageVod) ListAssetsRequest(input *ListAssetsInput) (req *reques
 // See the AWS API reference guide for AWS Elemental MediaPackage VOD's
 // API operation ListAssets for usage and error information.
 //
-// Returned Error Codes:
-//   * ErrCodeUnprocessableEntityException "UnprocessableEntityException"
+// Returned Error Types:
+//   * UnprocessableEntityException
 //
-//   * ErrCodeInternalServerErrorException "InternalServerErrorException"
+//   * InternalServerErrorException
 //
-//   * ErrCodeForbiddenException "ForbiddenException"
+//   * ForbiddenException
 //
-//   * ErrCodeNotFoundException "NotFoundException"
+//   * NotFoundException
 //
-//   * ErrCodeServiceUnavailableException "ServiceUnavailableException"
+//   * ServiceUnavailableException
 //
-//   * ErrCodeTooManyRequestsException "TooManyRequestsException"
+//   * TooManyRequestsException
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/mediapackage-vod-2018-11-07/ListAssets
 func (c *MediaPackageVod) ListAssets(input *ListAssetsInput) (*ListAssetsOutput, error) {
@@ -942,10 +944,12 @@ func (c *MediaPackageVod) ListAssetsPagesWithContext(ctx aws.Context, input *Lis
 		},
 	}
 
-	cont := true
-	for p.Next() && cont {
-		cont = fn(p.Page().(*ListAssetsOutput), !p.HasNextPage())
+	for p.Next() {
+		if !fn(p.Page().(*ListAssetsOutput), !p.HasNextPage()) {
+			break
+		}
 	}
+
 	return p.Err()
 }
 
@@ -1008,18 +1012,18 @@ func (c *MediaPackageVod) ListPackagingConfigurationsRequest(input *ListPackagin
 // See the AWS API reference guide for AWS Elemental MediaPackage VOD's
 // API operation ListPackagingConfigurations for usage and error information.
 //
-// Returned Error Codes:
-//   * ErrCodeUnprocessableEntityException "UnprocessableEntityException"
+// Returned Error Types:
+//   * UnprocessableEntityException
 //
-//   * ErrCodeInternalServerErrorException "InternalServerErrorException"
+//   * InternalServerErrorException
 //
-//   * ErrCodeForbiddenException "ForbiddenException"
+//   * ForbiddenException
 //
-//   * ErrCodeNotFoundException "NotFoundException"
+//   * NotFoundException
 //
-//   * ErrCodeServiceUnavailableException "ServiceUnavailableException"
+//   * ServiceUnavailableException
 //
-//   * ErrCodeTooManyRequestsException "TooManyRequestsException"
+//   * TooManyRequestsException
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/mediapackage-vod-2018-11-07/ListPackagingConfigurations
 func (c *MediaPackageVod) ListPackagingConfigurations(input *ListPackagingConfigurationsInput) (*ListPackagingConfigurationsOutput, error) {
@@ -1086,10 +1090,12 @@ func (c *MediaPackageVod) ListPackagingConfigurationsPagesWithContext(ctx aws.Co
 		},
 	}
 
-	cont := true
-	for p.Next() && cont {
-		cont = fn(p.Page().(*ListPackagingConfigurationsOutput), !p.HasNextPage())
+	for p.Next() {
+		if !fn(p.Page().(*ListPackagingConfigurationsOutput), !p.HasNextPage()) {
+			break
+		}
 	}
+
 	return p.Err()
 }
 
@@ -1152,18 +1158,18 @@ func (c *MediaPackageVod) ListPackagingGroupsRequest(input *ListPackagingGroupsI
 // See the AWS API reference guide for AWS Elemental MediaPackage VOD's
 // API operation ListPackagingGroups for usage and error information.
 //
-// Returned Error Codes:
-//   * ErrCodeUnprocessableEntityException "UnprocessableEntityException"
+// Returned Error Types:
+//   * UnprocessableEntityException
 //
-//   * ErrCodeInternalServerErrorException "InternalServerErrorException"
+//   * InternalServerErrorException
 //
-//   * ErrCodeForbiddenException "ForbiddenException"
+//   * ForbiddenException
 //
-//   * ErrCodeNotFoundException "NotFoundException"
+//   * NotFoundException
 //
-//   * ErrCodeServiceUnavailableException "ServiceUnavailableException"
+//   * ServiceUnavailableException
 //
-//   * ErrCodeTooManyRequestsException "TooManyRequestsException"
+//   * TooManyRequestsException
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/mediapackage-vod-2018-11-07/ListPackagingGroups
 func (c *MediaPackageVod) ListPackagingGroups(input *ListPackagingGroupsInput) (*ListPackagingGroupsOutput, error) {
@@ -1230,10 +1236,12 @@ func (c *MediaPackageVod) ListPackagingGroupsPagesWithContext(ctx aws.Context, i
 		},
 	}
 
-	cont := true
-	for p.Next() && cont {
-		cont = fn(p.Page().(*ListPackagingGroupsOutput), !p.HasNextPage())
+	for p.Next() {
+		if !fn(p.Page().(*ListPackagingGroupsOutput), !p.HasNextPage()) {
+			break
+		}
 	}
+
 	return p.Err()
 }
 
@@ -1243,6 +1251,9 @@ type AssetShallow struct {
 
 	// The ARN of the Asset.
 	Arn *string `locationName:"arn" type:"string"`
+
+	// The time the Asset was initially submitted for Ingest.
+	CreatedAt *string `locationName:"createdAt" type:"string"`
 
 	// The unique identifier for the Asset.
 	Id *string `locationName:"id" type:"string"`
@@ -1273,6 +1284,12 @@ func (s AssetShallow) GoString() string {
 // SetArn sets the Arn field's value.
 func (s *AssetShallow) SetArn(v string) *AssetShallow {
 	s.Arn = &v
+	return s
+}
+
+// SetCreatedAt sets the CreatedAt field's value.
+func (s *AssetShallow) SetCreatedAt(v string) *AssetShallow {
+	s.CreatedAt = &v
 	return s
 }
 
@@ -1499,6 +1516,8 @@ type CreateAssetOutput struct {
 
 	Arn *string `locationName:"arn" type:"string"`
 
+	CreatedAt *string `locationName:"createdAt" type:"string"`
+
 	EgressEndpoints []*EgressEndpoint `locationName:"egressEndpoints" type:"list"`
 
 	Id *string `locationName:"id" type:"string"`
@@ -1525,6 +1544,12 @@ func (s CreateAssetOutput) GoString() string {
 // SetArn sets the Arn field's value.
 func (s *CreateAssetOutput) SetArn(v string) *CreateAssetOutput {
 	s.Arn = &v
+	return s
+}
+
+// SetCreatedAt sets the CreatedAt field's value.
+func (s *CreateAssetOutput) SetCreatedAt(v string) *CreateAssetOutput {
+	s.CreatedAt = &v
 	return s
 }
 
@@ -1783,6 +1808,8 @@ type CreatePackagingGroupOutput struct {
 
 	Arn *string `locationName:"arn" type:"string"`
 
+	DomainName *string `locationName:"domainName" type:"string"`
+
 	Id *string `locationName:"id" type:"string"`
 }
 
@@ -1799,6 +1826,12 @@ func (s CreatePackagingGroupOutput) GoString() string {
 // SetArn sets the Arn field's value.
 func (s *CreatePackagingGroupOutput) SetArn(v string) *CreatePackagingGroupOutput {
 	s.Arn = &v
+	return s
+}
+
+// SetDomainName sets the DomainName field's value.
+func (s *CreatePackagingGroupOutput) SetDomainName(v string) *CreatePackagingGroupOutput {
+	s.DomainName = &v
 	return s
 }
 
@@ -2172,6 +2205,8 @@ type DescribeAssetOutput struct {
 
 	Arn *string `locationName:"arn" type:"string"`
 
+	CreatedAt *string `locationName:"createdAt" type:"string"`
+
 	EgressEndpoints []*EgressEndpoint `locationName:"egressEndpoints" type:"list"`
 
 	Id *string `locationName:"id" type:"string"`
@@ -2198,6 +2233,12 @@ func (s DescribeAssetOutput) GoString() string {
 // SetArn sets the Arn field's value.
 func (s *DescribeAssetOutput) SetArn(v string) *DescribeAssetOutput {
 	s.Arn = &v
+	return s
+}
+
+// SetCreatedAt sets the CreatedAt field's value.
+func (s *DescribeAssetOutput) SetCreatedAt(v string) *DescribeAssetOutput {
+	s.CreatedAt = &v
 	return s
 }
 
@@ -2394,6 +2435,8 @@ type DescribePackagingGroupOutput struct {
 
 	Arn *string `locationName:"arn" type:"string"`
 
+	DomainName *string `locationName:"domainName" type:"string"`
+
 	Id *string `locationName:"id" type:"string"`
 }
 
@@ -2410,6 +2453,12 @@ func (s DescribePackagingGroupOutput) GoString() string {
 // SetArn sets the Arn field's value.
 func (s *DescribePackagingGroupOutput) SetArn(v string) *DescribePackagingGroupOutput {
 	s.Arn = &v
+	return s
+}
+
+// SetDomainName sets the DomainName field's value.
+func (s *DescribePackagingGroupOutput) SetDomainName(v string) *DescribePackagingGroupOutput {
+	s.DomainName = &v
 	return s
 }
 
@@ -2452,9 +2501,68 @@ func (s *EgressEndpoint) SetUrl(v string) *EgressEndpoint {
 	return s
 }
 
+type ForbiddenException struct {
+	_            struct{} `type:"structure"`
+	respMetadata protocol.ResponseMetadata
+
+	Message_ *string `locationName:"message" type:"string"`
+}
+
+// String returns the string representation
+func (s ForbiddenException) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ForbiddenException) GoString() string {
+	return s.String()
+}
+
+func newErrorForbiddenException(v protocol.ResponseMetadata) error {
+	return &ForbiddenException{
+		respMetadata: v,
+	}
+}
+
+// Code returns the exception type name.
+func (s ForbiddenException) Code() string {
+	return "ForbiddenException"
+}
+
+// Message returns the exception's message.
+func (s ForbiddenException) Message() string {
+	if s.Message_ != nil {
+		return *s.Message_
+	}
+	return ""
+}
+
+// OrigErr always returns nil, satisfies awserr.Error interface.
+func (s ForbiddenException) OrigErr() error {
+	return nil
+}
+
+func (s ForbiddenException) Error() string {
+	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
+}
+
+// Status code returns the HTTP status code for the request's response error.
+func (s ForbiddenException) StatusCode() int {
+	return s.respMetadata.StatusCode
+}
+
+// RequestID returns the service's response RequestID for request.
+func (s ForbiddenException) RequestID() string {
+	return s.respMetadata.RequestID
+}
+
 // An HTTP Live Streaming (HLS) encryption configuration.
 type HlsEncryption struct {
 	_ struct{} `type:"structure"`
+
+	// A constant initialization vector for encryption (optional).When not specified
+	// the initialization vector will be periodically rotated.
+	ConstantInitializationVector *string `locationName:"constantInitializationVector" type:"string"`
 
 	// The encryption method to use.
 	EncryptionMethod *string `locationName:"encryptionMethod" type:"string" enum:"EncryptionMethod"`
@@ -2492,6 +2600,12 @@ func (s *HlsEncryption) Validate() error {
 		return invalidParams
 	}
 	return nil
+}
+
+// SetConstantInitializationVector sets the ConstantInitializationVector field's value.
+func (s *HlsEncryption) SetConstantInitializationVector(v string) *HlsEncryption {
+	s.ConstantInitializationVector = &v
+	return s
 }
 
 // SetEncryptionMethod sets the EncryptionMethod field's value.
@@ -2656,6 +2770,61 @@ func (s *HlsPackage) SetSegmentDurationSeconds(v int64) *HlsPackage {
 func (s *HlsPackage) SetUseAudioRenditionGroup(v bool) *HlsPackage {
 	s.UseAudioRenditionGroup = &v
 	return s
+}
+
+type InternalServerErrorException struct {
+	_            struct{} `type:"structure"`
+	respMetadata protocol.ResponseMetadata
+
+	Message_ *string `locationName:"message" type:"string"`
+}
+
+// String returns the string representation
+func (s InternalServerErrorException) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s InternalServerErrorException) GoString() string {
+	return s.String()
+}
+
+func newErrorInternalServerErrorException(v protocol.ResponseMetadata) error {
+	return &InternalServerErrorException{
+		respMetadata: v,
+	}
+}
+
+// Code returns the exception type name.
+func (s InternalServerErrorException) Code() string {
+	return "InternalServerErrorException"
+}
+
+// Message returns the exception's message.
+func (s InternalServerErrorException) Message() string {
+	if s.Message_ != nil {
+		return *s.Message_
+	}
+	return ""
+}
+
+// OrigErr always returns nil, satisfies awserr.Error interface.
+func (s InternalServerErrorException) OrigErr() error {
+	return nil
+}
+
+func (s InternalServerErrorException) Error() string {
+	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
+}
+
+// Status code returns the HTTP status code for the request's response error.
+func (s InternalServerErrorException) StatusCode() int {
+	return s.respMetadata.StatusCode
+}
+
+// RequestID returns the service's response RequestID for request.
+func (s InternalServerErrorException) RequestID() string {
+	return s.respMetadata.RequestID
 }
 
 type ListAssetsInput struct {
@@ -3033,6 +3202,61 @@ func (s *MssPackage) SetSegmentDurationSeconds(v int64) *MssPackage {
 	return s
 }
 
+type NotFoundException struct {
+	_            struct{} `type:"structure"`
+	respMetadata protocol.ResponseMetadata
+
+	Message_ *string `locationName:"message" type:"string"`
+}
+
+// String returns the string representation
+func (s NotFoundException) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s NotFoundException) GoString() string {
+	return s.String()
+}
+
+func newErrorNotFoundException(v protocol.ResponseMetadata) error {
+	return &NotFoundException{
+		respMetadata: v,
+	}
+}
+
+// Code returns the exception type name.
+func (s NotFoundException) Code() string {
+	return "NotFoundException"
+}
+
+// Message returns the exception's message.
+func (s NotFoundException) Message() string {
+	if s.Message_ != nil {
+		return *s.Message_
+	}
+	return ""
+}
+
+// OrigErr always returns nil, satisfies awserr.Error interface.
+func (s NotFoundException) OrigErr() error {
+	return nil
+}
+
+func (s NotFoundException) Error() string {
+	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
+}
+
+// Status code returns the HTTP status code for the request's response error.
+func (s NotFoundException) StatusCode() int {
+	return s.respMetadata.StatusCode
+}
+
+// RequestID returns the service's response RequestID for request.
+func (s NotFoundException) RequestID() string {
+	return s.respMetadata.RequestID
+}
+
 // A MediaPackage VOD PackagingConfiguration resource.
 type PackagingConfiguration struct {
 	_ struct{} `type:"structure"`
@@ -3118,6 +3342,9 @@ type PackagingGroup struct {
 	// The ARN of the PackagingGroup.
 	Arn *string `locationName:"arn" type:"string"`
 
+	// The fully qualified domain name for Assets in the PackagingGroup.
+	DomainName *string `locationName:"domainName" type:"string"`
+
 	// The ID of the PackagingGroup.
 	Id *string `locationName:"id" type:"string"`
 }
@@ -3138,10 +3365,71 @@ func (s *PackagingGroup) SetArn(v string) *PackagingGroup {
 	return s
 }
 
+// SetDomainName sets the DomainName field's value.
+func (s *PackagingGroup) SetDomainName(v string) *PackagingGroup {
+	s.DomainName = &v
+	return s
+}
+
 // SetId sets the Id field's value.
 func (s *PackagingGroup) SetId(v string) *PackagingGroup {
 	s.Id = &v
 	return s
+}
+
+type ServiceUnavailableException struct {
+	_            struct{} `type:"structure"`
+	respMetadata protocol.ResponseMetadata
+
+	Message_ *string `locationName:"message" type:"string"`
+}
+
+// String returns the string representation
+func (s ServiceUnavailableException) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ServiceUnavailableException) GoString() string {
+	return s.String()
+}
+
+func newErrorServiceUnavailableException(v protocol.ResponseMetadata) error {
+	return &ServiceUnavailableException{
+		respMetadata: v,
+	}
+}
+
+// Code returns the exception type name.
+func (s ServiceUnavailableException) Code() string {
+	return "ServiceUnavailableException"
+}
+
+// Message returns the exception's message.
+func (s ServiceUnavailableException) Message() string {
+	if s.Message_ != nil {
+		return *s.Message_
+	}
+	return ""
+}
+
+// OrigErr always returns nil, satisfies awserr.Error interface.
+func (s ServiceUnavailableException) OrigErr() error {
+	return nil
+}
+
+func (s ServiceUnavailableException) Error() string {
+	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
+}
+
+// Status code returns the HTTP status code for the request's response error.
+func (s ServiceUnavailableException) StatusCode() int {
+	return s.respMetadata.StatusCode
+}
+
+// RequestID returns the service's response RequestID for request.
+func (s ServiceUnavailableException) RequestID() string {
+	return s.respMetadata.RequestID
 }
 
 // A configuration for accessing an external Secure Packager and Encoder Key
@@ -3253,6 +3541,116 @@ func (s *StreamSelection) SetMinVideoBitsPerSecond(v int64) *StreamSelection {
 func (s *StreamSelection) SetStreamOrder(v string) *StreamSelection {
 	s.StreamOrder = &v
 	return s
+}
+
+type TooManyRequestsException struct {
+	_            struct{} `type:"structure"`
+	respMetadata protocol.ResponseMetadata
+
+	Message_ *string `locationName:"message" type:"string"`
+}
+
+// String returns the string representation
+func (s TooManyRequestsException) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s TooManyRequestsException) GoString() string {
+	return s.String()
+}
+
+func newErrorTooManyRequestsException(v protocol.ResponseMetadata) error {
+	return &TooManyRequestsException{
+		respMetadata: v,
+	}
+}
+
+// Code returns the exception type name.
+func (s TooManyRequestsException) Code() string {
+	return "TooManyRequestsException"
+}
+
+// Message returns the exception's message.
+func (s TooManyRequestsException) Message() string {
+	if s.Message_ != nil {
+		return *s.Message_
+	}
+	return ""
+}
+
+// OrigErr always returns nil, satisfies awserr.Error interface.
+func (s TooManyRequestsException) OrigErr() error {
+	return nil
+}
+
+func (s TooManyRequestsException) Error() string {
+	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
+}
+
+// Status code returns the HTTP status code for the request's response error.
+func (s TooManyRequestsException) StatusCode() int {
+	return s.respMetadata.StatusCode
+}
+
+// RequestID returns the service's response RequestID for request.
+func (s TooManyRequestsException) RequestID() string {
+	return s.respMetadata.RequestID
+}
+
+type UnprocessableEntityException struct {
+	_            struct{} `type:"structure"`
+	respMetadata protocol.ResponseMetadata
+
+	Message_ *string `locationName:"message" type:"string"`
+}
+
+// String returns the string representation
+func (s UnprocessableEntityException) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s UnprocessableEntityException) GoString() string {
+	return s.String()
+}
+
+func newErrorUnprocessableEntityException(v protocol.ResponseMetadata) error {
+	return &UnprocessableEntityException{
+		respMetadata: v,
+	}
+}
+
+// Code returns the exception type name.
+func (s UnprocessableEntityException) Code() string {
+	return "UnprocessableEntityException"
+}
+
+// Message returns the exception's message.
+func (s UnprocessableEntityException) Message() string {
+	if s.Message_ != nil {
+		return *s.Message_
+	}
+	return ""
+}
+
+// OrigErr always returns nil, satisfies awserr.Error interface.
+func (s UnprocessableEntityException) OrigErr() error {
+	return nil
+}
+
+func (s UnprocessableEntityException) Error() string {
+	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
+}
+
+// Status code returns the HTTP status code for the request's response error.
+func (s UnprocessableEntityException) StatusCode() int {
+	return s.respMetadata.StatusCode
+}
+
+// RequestID returns the service's response RequestID for request.
+func (s UnprocessableEntityException) RequestID() string {
+	return s.respMetadata.RequestID
 }
 
 const (

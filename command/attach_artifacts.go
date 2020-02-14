@@ -93,7 +93,12 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 
 		files = append(files, segment...)
 	}
-
+	for _, file := range files {
+		if file.Visibility == "signed" {
+			err = errors.New("visibility cannot be set to signed with attach_artifacts. Use s3_put instead")
+			catcher.Add(err)
+		}
+	}
 	if catcher.HasErrors() {
 		err = errors.Wrap(catcher.Resolve(), "encountered errors reading artifact json files")
 		logger.Task().Error(err)

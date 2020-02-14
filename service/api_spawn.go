@@ -44,6 +44,7 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 	hostRequest := struct {
 		Distro    string `json:"distro"`
 		PublicKey string `json:"public_key"`
+		Region    string `json:"region"`
 	}{}
 	err := util.ReadJSONInto(util.NewRequestReader(r), &hostRequest)
 	if err != nil {
@@ -64,12 +65,15 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 	options := &model.HostRequestOptions{
 		DistroID:     hostRequest.Distro,
 		KeyName:      hostRequest.PublicKey,
+		Region:       hostRequest.Region,
 		TaskID:       "",
 		UserData:     "",
 		InstanceTags: nil,
 		InstanceType: "",
 	}
-	spawnHost, err := hc.NewIntentHost(options, user)
+	ctx, cancel := as.env.Context()
+	defer cancel()
+	spawnHost, err := hc.NewIntentHost(ctx, options, user, &as.Settings)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
