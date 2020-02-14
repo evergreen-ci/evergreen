@@ -1529,6 +1529,25 @@ func (h *Host) GetContainers() ([]Host, error) {
 	return hosts, nil
 }
 
+func (h *Host) GetActiveContainers() ([]Host, error) {
+	if !h.HasContainers {
+		return nil, errors.New("Host does not host containers")
+	}
+	query := db.Query(bson.M{"$or": []bson.M{
+		{ParentIDKey: h.Id},
+		{ParentIDKey: h.Tag},
+		{StatusKey: bson.M{
+			"$in": evergreen.UpHostStatus,
+		}},
+	}})
+	hosts, err := Find(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding containers")
+	}
+
+	return hosts, nil
+}
+
 // GetParent finds the parent of this container
 // errors if host is not a container or if parent cannot be found
 func (h *Host) GetParent() (*Host, error) {
@@ -1804,7 +1823,7 @@ func GetContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
 	// parents come in sorted order from soonest to latest expected finish time
 	for i := len(allParents) - 1; i >= 0; i-- {
 		parent := allParents[i]
-		currentContainers, err := parent.GetContainers()
+		currentContainers, err := parent.GetActiveContainers()
 		if err != nil && !adb.ResultsNotFound(err) {
 			return nil, errors.Wrapf(err, "Problem finding containers for parent %s", parent.Id)
 		}
