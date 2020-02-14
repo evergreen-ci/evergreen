@@ -41,18 +41,15 @@ type Patch {
   author: String!
   version: String!
   status: String!
-  createTime: Time!
-  startTime: Time
-  finishTime: Time
   variants: [String!]!
   tasks: [String!]!
   variantsTasks: [VariantTask]!
   activated: Boolean!
   alias: String!
-  time: PatchTime
+  duration: PatchDuration
 }
 
-type PatchTime {
+type PatchDuration {
   makespan: String
   timeTaken: String
 }

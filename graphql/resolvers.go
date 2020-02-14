@@ -91,7 +91,7 @@ type queryResolver struct{ *Resolver }
 
 type patchResolver struct{ *Resolver }
 
-func (r *patchResolver) Time(ctx context.Context, obj *restModel.APIPatch) (*PatchTime, error) {
+func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (*PatchDuration, error) {
 	// excludes display tasks
 	tasks, err := task.Find(task.ByVersion(*obj.Id).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey))
 	if err != nil {
@@ -103,7 +103,7 @@ func (r *patchResolver) Time(ctx context.Context, obj *restModel.APIPatch) (*Pat
 
 	timeTaken, makespan := task.GetTimeSpent(tasks)
 
-	return &PatchTime{
+	return &PatchDuration{
 		Makespan:  GetFormattedDuration(makespan),
 		TimeTaken: GetFormattedDuration(timeTaken),
 	}, nil
