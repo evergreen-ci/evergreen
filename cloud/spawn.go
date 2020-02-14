@@ -179,11 +179,8 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 }
 
 func CheckInstanceTypeValid(ctx context.Context, d distro.Distro, requestedType string, allowedTypes []string) error {
-	if !IsEc2Provider(d.Provider) {
-		return errors.Errorf("cannot specify instance type for provider '%s'", d.Provider)
-	}
 	if !util.StringSliceContains(allowedTypes, requestedType) {
-		return errors.New("This instance type has not been allowed by Evergreen admins")
+		return errors.New("This instance type has not been allowed by admins")
 	}
 	env := evergreen.GetEnvironment()
 	opts, err := GetManagerOptions(d)
