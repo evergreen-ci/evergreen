@@ -286,15 +286,12 @@ func (r *queryResolver) TaskFiles(ctx context.Context, taskID string) ([]*Groupe
 		}
 	}
 	if t.DisplayOnly {
-		for _, execTaskID := range t.ExecutionTasks {
-			execTask, err := task.FindOne(task.ById(execTaskID))
-			if err != nil {
-				return groupedFilesList, ResourceNotFound.Send(ctx, err.Error())
-			}
-			if execTask == nil {
-				continue
-			}
-			groupedFiles, err := getGroupedFiles(ctx, execTask.DisplayName, execTaskID, t.Execution)
+		execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
+		if err != nil {
+			return groupedFilesList, ResourceNotFound.Send(ctx, err.Error())
+		}
+		for _, execTask := range execTasks {
+			groupedFiles, err := getGroupedFiles(ctx, execTask.DisplayName, execTask.Id, t.Execution)
 			if err != nil {
 				return groupedFilesList, err
 			}
