@@ -13,6 +13,7 @@ type Query {
     status: String = ""
   ): [TestResult!]
   taskFiles(taskId: String!): [GroupedFiles!]!
+  user: User!
 }
 
 type Mutation {
