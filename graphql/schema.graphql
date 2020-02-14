@@ -54,12 +54,6 @@ type PatchTime {
   timeTaken: String
 }
 
-type PatchDates {
-  started: String
-  finished: String
-  submitted: String
-}
-
 type VariantTask {
   name: String!
   tasks: [String!]!
