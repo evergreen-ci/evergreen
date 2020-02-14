@@ -71,7 +71,8 @@ func (self *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 							if err != nil {
 								return nil, err
 							}
-							strippedFiles := artifact.StripHiddenFiles(execTaskFiles, context.User)
+							hasUser := context.User != nil
+							strippedFiles := artifact.StripHiddenFiles(execTaskFiles, hasUser)
 
 							var execTask *task.Task
 							execTask, err = task.FindOne(task.ById(execTaskID))
@@ -96,8 +97,8 @@ func (self *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 					if err != nil {
 						return nil, err
 					}
-
-					return artifact.StripHiddenFiles(files, context.User), nil
+					hasUser := context.User != nil
+					return artifact.StripHiddenFiles(files, hasUser), nil
 				},
 			},
 			{
@@ -115,7 +116,8 @@ func (self *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 					}
 					for i := range taskArtifactFiles {
 						// remove hidden files if the user isn't logged in
-						taskArtifactFiles[i].Files = artifact.StripHiddenFiles(taskArtifactFiles[i].Files, context.User)
+						hasUser := context.User != nil
+						taskArtifactFiles[i].Files = artifact.StripHiddenFiles(taskArtifactFiles[i].Files, hasUser)
 					}
 					return taskArtifactFiles, nil
 				},
