@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -97,7 +98,12 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) error {
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Local Queue Jobs
-	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), 30*time.Second, util.RoundPartOfMinute(0), opts, units.PopulateLocalQueueJobs(env))
+	local := env.LocalQueue()
+	amboy.IntervalQueueOperation(ctx, local, 30*time.Second, util.RoundPartOfMinute(0), opts, units.PopulateLocalQueueJobs(env))
+
+	// Enqueue jobs to ensure each app server has the correct SSH key files.
+	ts := util.RoundPartOfHour(30).Format(units.TSFormat)
+	grip.Error(local.Put(ctx, units.NewLocalUpdateSSHKeysJob(ts)))
 
 	return nil
 }
