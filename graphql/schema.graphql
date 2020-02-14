@@ -41,6 +41,9 @@ type Patch {
   author: String!
   version: String!
   status: String!
+  createTime: Time!
+  startTime: Time
+  finishTime: Time
   variants: [String!]!
   tasks: [String!]!
   variantsTasks: [VariantTask]!
