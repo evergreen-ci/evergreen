@@ -1115,6 +1115,7 @@ type awsClientMock struct { //nolint
 	*credentials.Credentials
 	*ec2.RunInstancesInput
 	*ec2.DescribeInstancesInput
+	*ec2.DescribeInstanceTypeOfferingsInput
 	*ec2.CreateTagsInput
 	*ec2.DeleteTagsInput
 	*ec2.ModifyInstanceAttributeInput
@@ -1225,6 +1226,11 @@ func (c *awsClientMock) DeleteTags(ctx context.Context, input *ec2.DeleteTagsInp
 
 func (c *awsClientMock) ModifyInstanceAttribute(ctx context.Context, input *ec2.ModifyInstanceAttributeInput) (*ec2.ModifyInstanceAttributeOutput, error) {
 	c.ModifyInstanceAttributeInput = input
+	return nil, nil
+}
+
+func (c *awsClientMock) DescribeInstanceTypeOfferings(ctx context.Context, input *ec2.DescribeInstanceTypeOfferingsInput) (*ec2.DescribeInstanceTypeOfferingsOutput, error) {
+	c.DescribeInstanceTypeOfferingsInput = input
 	return nil, nil
 }
 
