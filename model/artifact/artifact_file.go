@@ -1,7 +1,6 @@
 package artifact
 
 import (
-	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -51,13 +50,13 @@ type File struct {
 }
 
 // stripHiddenFiles is a helper for only showing users the files they are allowed to see.
-func StripHiddenFiles(files []File, pluginUser gimlet.User) []File {
+func StripHiddenFiles(files []File, hasUser bool) []File {
 	publicFiles := []File{}
 	for _, file := range files {
 		switch {
 		case file.Visibility == None:
 			continue
-		case file.Visibility == Private && pluginUser == nil:
+		case file.Visibility == Private && hasUser == false:
 			continue
 		default:
 			publicFiles = append(publicFiles, file)
