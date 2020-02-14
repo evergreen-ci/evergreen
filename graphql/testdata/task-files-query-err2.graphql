@@ -1,0 +1,10 @@
+query {
+  taskFiles(taskId: "task-with-fake-old-id") {
+    taskName
+    files {
+      name
+      link
+      visibility
+    }
+  }
+}
