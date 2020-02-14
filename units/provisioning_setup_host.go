@@ -723,13 +723,6 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 	return nil
 }
 
-// // loadClientResult indicates the locations on a target host where the CLI
-// // binary and its config file have been written to.
-// type loadClientResult struct {
-//     BinaryPath string
-//     ConfigPath string
-// }
-
 // setupSpawnHost places the evergreen command line client on the host, places a
 // copy of the user's settings onto the host, and makes the binary appear in the
 // PATH when the user logs in.

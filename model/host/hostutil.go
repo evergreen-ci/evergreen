@@ -216,7 +216,7 @@ func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*ja
 	output := util.NewMBCappedWriter()
 
 	var cancel context.CancelFunc
-	if timeout != time.Duration(0) {
+	if timeout != 0 {
 		ctx, cancel = context.WithTimeout(ctx, timeout)
 		defer cancel()
 	} else {
