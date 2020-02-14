@@ -1533,13 +1533,14 @@ func (h *Host) GetActiveContainers() ([]Host, error) {
 	if !h.HasContainers {
 		return nil, errors.New("Host does not host containers")
 	}
-	query := db.Query(bson.M{"$or": []bson.M{
-		{ParentIDKey: h.Id},
-		{ParentIDKey: h.Tag},
-		{StatusKey: bson.M{
+	query := db.Query(bson.M{
+		StatusKey: bson.M{
 			"$in": evergreen.UpHostStatus,
-		}},
-	}})
+		},
+		"$or": []bson.M{
+			{ParentIDKey: h.Id},
+			{ParentIDKey: h.Tag},
+		}})
 	hosts, err := Find(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error finding containers")

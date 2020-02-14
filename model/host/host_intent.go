@@ -136,6 +136,9 @@ func MakeContainersAndParents(d distro.Distro, pool *evergreen.ContainerPool, ne
 
 	// create new parents and add containers to them
 	numNewParents, _, err := getNumNewParentsAndHostsToSpawn(pool, containersLeftToCreate, false)
+	if err != nil {
+		return nil, nil, err
+	}
 	parentDistro, err := distro.FindByID(pool.Distro)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error finding distro")
