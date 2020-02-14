@@ -1994,7 +1994,7 @@
       "result": {
         "data": {
           "patch": {
-            "time": {
+            "duration": {
               "makespan": "186h 45m 04s",
               "timeTaken": "11h 03m 42s"
             }
