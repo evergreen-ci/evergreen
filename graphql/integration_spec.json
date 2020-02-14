@@ -2238,6 +2238,18 @@
       "result": {
         "data": { "taskFiles": [] }
       }
+    },
+    {
+      "query_file": "user.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "email": "",
+            "displayName": "testuser",
+            "username": "testuser"
+          }
+        }
+      }
     }
   ]
 }
