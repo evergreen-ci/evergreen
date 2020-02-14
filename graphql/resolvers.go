@@ -255,10 +255,19 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 }
 
 func (r *queryResolver) TaskFiles(ctx context.Context, taskID string) ([]*GroupedFiles, error) {
-	t, err := task.FindOneId(taskID)
 	groupedFilesList := []*GroupedFiles{}
+	t, err := task.FindOneId(taskID)
+	if t == nil {
+		return groupedFilesList, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
+	}
+	if err != nil {
+		return groupedFilesList, ResourceNotFound.Send(ctx, err.Error())
+	}
 	if t.OldTaskId != "" {
 		t, err = task.FindOneId(t.OldTaskId)
+		if t == nil {
+			return groupedFilesList, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find old task with id %s", taskID))
+		}
 		if err != nil {
 			return groupedFilesList, ResourceNotFound.Send(ctx, err.Error())
 		}

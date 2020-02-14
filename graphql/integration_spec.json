@@ -152,6 +152,85 @@
     ],
     "tasks": [
       {
+        "_id": "task-with-fake-old-id",
+        "old_task_id": "not a real thing",
+        "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "scheduled_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "start_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "version": "version",
+        "branch": "id",
+        "gitspec": "revise",
+        "priority": 5,
+        "task_group": "grp",
+        "task_group_max_hosts": 100,
+        "activated": true,
+        "activated_by": "someone",
+        "build_id": "some_thang",
+        "distro": "distro",
+        "build_variant": "variant",
+        "depends_on": [],
+        "display_name": "display name",
+        "host_id": "host",
+        "restarts": 5,
+        "execution": 5,
+        "order": 5,
+        "r": "something",
+        "status": "pass",
+        "details": {
+          "status": "status",
+          "type": "type",
+          "desc": "description",
+          "timed_out": false
+        },
+        "display_only": true,
+        "execution_tasks": ["fake-exec-task"],
+        "generate_task": false,
+        "generated_by": "something"
+      },
+      {
+        "_id": "task-without-legit-exec-tasks",
+        "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "scheduled_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "start_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "version": "version",
+        "branch": "id",
+        "gitspec": "revise",
+        "priority": 5,
+        "task_group": "grp",
+        "task_group_max_hosts": 100,
+        "activated": true,
+        "activated_by": "someone",
+        "build_id": "some_thang",
+        "distro": "distro",
+        "build_variant": "variant",
+        "depends_on": [],
+        "display_name": "display name",
+        "host_id": "host",
+        "restarts": 5,
+        "execution": 5,
+        "order": 5,
+        "r": "something",
+        "status": "pass",
+        "details": {
+          "status": "status",
+          "type": "type",
+          "desc": "description",
+          "timed_out": false
+        },
+        "display_only": true,
+        "execution_tasks": ["fake-exec-task"],
+        "generate_task": false,
+        "generated_by": "something"
+      },
+      {
         "_id": "wuzzup-activated",
         "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
         "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
@@ -2076,7 +2155,7 @@
       }
     },
     {
-      "query_file": "test-files-query-display.graphql",
+      "query_file": "task-files-query-display.graphql",
       "result": {
         "data": {
           "taskFiles": [
@@ -2110,7 +2189,7 @@
       }
     },
     {
-      "query_file": "test-files-query-exec.graphql",
+      "query_file": "task-files-query-exec.graphql",
       "result": {
         "data": {
           "taskFiles": [
@@ -2126,6 +2205,38 @@
             }
           ]
         }
+      }
+    },
+    {
+      "query_file": "task-files-query-err1.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "cannot find task with id NOT-A-REAL-TASKID",
+            "path": ["taskFiles"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "task-files-query-err2.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "cannot find old task with id task-with-fake-old-id",
+            "path": ["taskFiles"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "task-files-query-empty.graphql",
+      "result": {
+        "data": { "taskFiles": [] }
       }
     }
   ]
