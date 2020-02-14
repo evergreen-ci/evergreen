@@ -106,6 +106,12 @@
           }
         ],
         "activated": false
+      },
+      {
+        "_id": { "$oid": "pikachu" },
+        "create_time": { "$date": "2020-01-11T00:01:36.796Z" },
+        "start_time": { "$date": "2020-01-11T00:01:47.796Z" },
+        "finish_time": { "$date": "2020-01-11T00:01:57.796Z" }
       }
     ],
     "tasks": [
@@ -1951,6 +1957,34 @@
         "data": {
           "unscheduleTask": {
             "activated": false
+          }
+        }
+      }
+    },
+    {
+      "query_file": "patch-time-1.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "time": {
+              "started": null,
+              "finished": null,
+              "submittedAt": "January 11, 2018, 1:36 pm"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "patch-time-2.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "time": {
+              "started": "January 11, 2020, 1:47 pm",
+              "finished": "January 11, 2020, 1:57 pm",
+              "submittedAt": "January 11, 2020, 1:36 pm"
+            }
           }
         }
       }

@@ -93,17 +93,16 @@ type patchResolver struct{ *Resolver }
 
 func (r *patchResolver) Time(ctx context.Context, obj *restModel.APIPatch) (*PatchTime, error) {
 	usr := route.MustHaveUser(ctx)
-	timezone := usr.Settings.Timezone
 
-	started, err := GetFormattedDate(obj.StartTime, timezone)
+	started, err := GetFormattedDate(obj.StartTime, usr.Settings.Timezone)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-	finished, err := GetFormattedDate(obj.FinishTime, timezone)
+	finished, err := GetFormattedDate(obj.FinishTime, usr.Settings.Timezone)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-	submittedAt, err := GetFormattedDate(obj.CreateTime, timezone)
+	submittedAt, err := GetFormattedDate(obj.CreateTime, usr.Settings.Timezone)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}

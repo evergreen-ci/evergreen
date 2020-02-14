@@ -1,0 +1,9 @@
+{
+  patch(id: "pikachu") {
+    time {
+      started
+      finished
+      submittedAt
+    }
+  }
+}
