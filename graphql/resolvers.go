@@ -25,6 +25,9 @@ type Resolver struct {
 func (r *Resolver) Mutation() MutationResolver {
 	return &mutationResolver{r}
 }
+func (r *Resolver) Patch() PatchResolver {
+	return &patchResolver{r}
+}
 func (r *Resolver) Query() QueryResolver {
 	return &queryResolver{r}
 }
@@ -87,6 +90,24 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 type queryResolver struct{ *Resolver }
 
 type patchResolver struct{ *Resolver }
+
+func (r *patchResolver) Time(ctx context.Context, obj *restModel.APIPatch) (*PatchTime, error) {
+	// excludes display tasks
+	tasks, err := task.Find(task.ByVersion(*obj.Id).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	if tasks == nil {
+		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
+
+	timeTaken, makespan := task.GetTimeSpent(tasks)
+
+	return &PatchTime{
+		Makespan:  GetFormattedDuration(makespan),
+		TimeTaken: GetFormattedDuration(timeTaken),
+	}, nil
+}
 
 func (r *patchResolver) ID(ctx context.Context, obj *restModel.APIPatch) (string, error) {
 	return *obj.Id, nil

@@ -104,6 +104,40 @@
         "execution_tasks": ["exec1"],
         "generate_task": false,
         "generated_by": "something"
+      },
+      {
+        "id": "adlkasdkd;slfkjak;dlsfj;aklfd",
+        "createTime": "2020-02-12T16:58:19Z",
+        "ingestTime": "2020-02-12T18:26:36Z",
+        "dispatchTime": "2020-02-12T19:10:02Z",
+        "scheduledTime": "2020-02-12T19:10:01Z",
+        "activatedTime": "2020-02-12T19:10:01Z",
+        "version": { "$oid": "5e1f8ab8834b87d7b5d251a5" },
+        "timeTaken": 218556,
+        "startTime": "2020-02-12T19:10:02Z",
+        "finishTime": "2020-02-12T19:13:41Z",
+        "projectId": "spruce",
+        "revision": "bc288b6c33ce4f289d5bb1b9468abe3bb2e8cbb1",
+        "priority": 11,
+        "taskGroup": "",
+        "taskGroupMaxHosts": 0
+      },
+      {
+        "id": "akdjfjodej47565jhflkld",
+        "createTime": "2020-02-12T16:58:19Z",
+        "ingestTime": "2020-02-12T18:26:36Z",
+        "dispatchTime": "2020-02-12T18:27:02Z",
+        "scheduledTime": "2020-02-12T18:27:02Z",
+        "activatedTime": "2020-02-12T18:26:36Z",
+        "version": { "$oid": "5e1f8ab8834b87d7b5d251a5" },
+        "timeTaken": 159811,
+        "startTime": "2020-02-12T18:27:02Z",
+        "finishTime": "2020-02-12T18:29:42Z",
+        "projectId": "spruce",
+        "revision": "bc288b6c33ce4f289d5bb1b9468abe3bb2e8cbb1",
+        "priority": 0,
+        "taskGroup": "",
+        "taskGroupMaxHosts": 0
       }
     ],
     "testresults": [
@@ -1848,6 +1882,19 @@
             "repo": "buildhost-configuration",
             "owner": "annie.black",
             "displayName": "buildhost-test"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "patch-time-fields.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "time": {
+              "makespan": "186h 45m 04s",
+              "timeTaken": "11h 03m 42s"
+            }
           }
         }
       }
