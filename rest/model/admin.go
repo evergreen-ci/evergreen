@@ -1431,6 +1431,7 @@ type APIServiceFlags struct {
 	HostAllocatorDisabled      bool `json:"host_allocator_disabled"`
 	ParserProjectDisabled      bool `json:"parser_project_disabled"`
 	DRBackupDisabled           bool `json:"dr_backup_disabled"`
+	BackgroundReauthDisabled   bool `json:"background_reauth_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -1693,6 +1694,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.HostAllocatorDisabled = v.HostAllocatorDisabled
 		as.ParserProjectDisabled = v.ParserProjectDisabled
 		as.DRBackupDisabled = v.DRBackupDisabled
+		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
 	default:
 		return errors.Errorf("%T is not a supported service flags type", h)
 	}
@@ -1728,6 +1730,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		HostAllocatorDisabled:        as.HostAllocatorDisabled,
 		ParserProjectDisabled:        as.ParserProjectDisabled,
 		DRBackupDisabled:             as.DRBackupDisabled,
+		BackgroundReauthDisabled:     as.BackgroundReauthDisabled,
 	}, nil
 }
 

@@ -68,7 +68,14 @@ func (j *reauthorizationJob) Run(ctx context.Context) {
 		j.user = user
 	}
 
-	// TODO: service degraded flag
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		j.AddError(err)
+		return
+	}
+	if flags.BackgroundReauthDisabled {
+		return
+	}
 
 	// Do not reauth them if they are already logged out.
 	if j.user.LoginCache.Token == "" {

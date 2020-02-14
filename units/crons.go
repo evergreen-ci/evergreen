@@ -1243,7 +1243,18 @@ func PopulateUserReauthorization(env evergreen.Environment) amboy.QueueOperation
 			return nil
 		}
 
-		// kim: TODO: check for service degraded
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if flags.BackgroundReauthDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "background reauth is disabled",
+				"impact":  "users will reauth on page loads after periodic auth expiration",
+				"mode":    "degraded",
+			})
+			return nil
+		}
 
 		reauthAfter := time.Duration(env.Settings().AuthConfig.BackgroundReauthMinutes) * time.Minute
 		if reauthAfter == 0 {
