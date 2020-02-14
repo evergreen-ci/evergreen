@@ -222,6 +222,9 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, settings *everg
 	opts := &options.Create{
 		Args: []string{j.host.Distro.ShellBinary(), "-l", "-c", j.host.CurlCommand(settings)},
 	}
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, evergreenCurlTimeout)
+	defer cancel()
 	output, err := j.host.RunJasperProcess(ctx, j.env, opts)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
@@ -233,6 +236,9 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, settings *everg
 			"job":           j.ID(),
 		}))
 		return errors.WithStack(err)
+	}
+	if ctx.Err() != nil {
+		return errors.Wrap(ctx.Err(), "timed out curling evergreen binary")
 	}
 
 	return nil

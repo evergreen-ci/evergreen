@@ -256,27 +256,36 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 	return nil
 }
 
+// The app server stops an attempt to curl the evergreen binary after a minute.
+const evergreenCurlTimeout = 61 * time.Second
+
 // Prepare the remote machine to run a task.
 func (j *agentDeployJob) prepRemoteHost(ctx context.Context, sshOptions []string, settings *evergreen.Settings) error {
 	// copy over the correct agent binary to the remote host
-	if logs, err := j.host.RunSSHCommand(ctx, j.host.CurlCommand(settings), sshOptions); err != nil {
+	curlCtx, cancel := context.WithTimeout(ctx, evergreenCurlTimeout)
+	defer cancel()
+	output, err := j.host.RunSSHCommand(curlCtx, j.host.CurlCommand(settings), sshOptions)
+	if err != nil {
 		event.LogHostAgentDeployFailed(j.host.Id, err)
-		return errors.Wrapf(err, "error downloading agent binary on remote host: %s", logs)
+		return errors.Wrapf(err, "error downloading agent binary on remote host: %s", output)
+	}
+	if curlCtx.Err() != nil {
+		return errors.Wrap(curlCtx.Err(), "timed out curling evergreen binary")
 	}
 
 	if j.host.Distro.Setup == "" {
 		return nil
 	}
 
-	if logs, err := j.host.RunSSHCommand(ctx, j.host.SetupCommand(), sshOptions); err != nil {
-		event.LogProvisionFailed(j.host.Id, logs)
+	if output, err = j.host.RunSSHCommand(ctx, j.host.SetupCommand(), sshOptions); err != nil {
+		event.LogProvisionFailed(j.host.Id, output)
 
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error running setup script",
 			"runner":  "taskrunner",
 			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
-			"logs":    logs,
+			"logs":    output,
 			"job":     j.ID(),
 		}))
 
@@ -292,7 +301,7 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context, sshOptions []string
 				"distro":  j.host.Distro,
 			}))
 
-		return errors.Wrapf(err, "error running setup script on remote host: %s", logs)
+		return errors.Wrapf(err, "error running setup script on remote host: %s", output)
 	}
 
 	return nil

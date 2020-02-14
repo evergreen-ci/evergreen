@@ -744,8 +744,15 @@ func (j *setupHostJob) setupSpawnHost(ctx context.Context, settings *evergreen.S
 		return errors.Wrapf(err, "error parsing ssh info %s", j.host.Host)
 	}
 
-	if output, err := j.host.RunSSHCommandWithTimeout(ctx, j.host.CurlCommand(settings), sshOpts, 2*time.Minute); err != nil {
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, evergreenCurlTimeout)
+	defer cancel()
+	output, err := j.host.RunSSHCommandWithTimeout(ctx, j.host.CurlCommand(settings), sshOpts, 2*time.Minute)
+	if err != nil {
 		return errors.Wrapf(err, "error running command to get evergreen binary on  spawn host: %s", output)
+	}
+	if ctx.Err() != nil {
+		return errors.Wrap(ctx.Err(), "timed out curling evergreen binary")
 	}
 
 	if output, err := j.host.RunSSHShellScriptWithTimeout(ctx, script, sshOpts, 30*time.Second); err != nil {
