@@ -2079,7 +2079,7 @@
       "query_file": "test-files-query-display.graphql",
       "result": {
         "data": {
-          "testFiles": [
+          "taskFiles": [
             {
               "name": "exec 1 display!!",
               "files": [
@@ -2113,7 +2113,7 @@
       "query_file": "test-files-query-exec.graphql",
       "result": {
         "data": {
-          "testFiles": [
+          "taskFiles": [
             {
               "name": "exec 1 display!!",
               "files": [

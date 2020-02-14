@@ -1,5 +1,5 @@
 query {
-  testFiles(taskId: "wuzzup-activated") {
+  taskFiles(taskId: "wuzzup-activated") {
     name
     files {
       name

@@ -1,5 +1,5 @@
 query {
-  testFiles(taskId: "exec1") {
+  taskFiles(taskId: "exec1") {
     name
     files {
       name
