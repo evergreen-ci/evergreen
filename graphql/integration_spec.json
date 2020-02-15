@@ -2246,7 +2246,11 @@
           "user": {
             "email": "",
             "displayName": "testuser",
-            "username": "testuser"
+            "username": "testuser",
+            "apiKey": "testapikey",
+            "accessToken": "",
+            "refreshToken": "",
+            "roles": []
           }
         }
       }

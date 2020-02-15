@@ -312,7 +312,15 @@ func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*
 
 func (r *queryResolver) User(ctx context.Context) (*User, error) {
 	usr := route.MustHaveUser(ctx)
-	user := User{Username: usr.Username(), DisplayName: usr.DisplayName(), Email: usr.Email()}
+	user := User{
+		AccessToken:  usr.GetAccessToken(),
+		APIKey:       usr.GetAPIKey(),
+		DisplayName:  usr.DisplayName(),
+		Email:        usr.Email(),
+		RefreshToken: usr.GetRefreshToken(),
+		Roles:        usr.Roles(),
+		Username:     usr.Username(),
+	}
 	return &user, nil
 }
 

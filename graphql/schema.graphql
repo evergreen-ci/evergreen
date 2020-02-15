@@ -160,6 +160,10 @@ type User {
   username: String!
   displayName: String!
   email: String!
+  apiKey: String!
+  accessToken: String!
+  refreshToken: String!
+  roles: [String!]!
 }
 
 scalar Time
