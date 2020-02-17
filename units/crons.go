@@ -482,7 +482,7 @@ func PopulateHostAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		// find all active distros
-		distros, err := distro.Find(distro.ByActiveOrStatic())
+		distros, err := distro.Find(distro.ByNeedsPlanning(env.Settings().ContainerPools.Pools))
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -523,7 +523,7 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 		catcher.Add(err)
 
 		// find all active distros
-		distros, err := distro.Find(distro.ByActiveOrStatic())
+		distros, err := distro.Find(distro.ByNeedsPlanning(env.Settings().ContainerPools.Pools))
 		catcher.Add(err)
 
 		grip.InfoWhen(sometimes.Percent(10), message.Fields{
@@ -586,7 +586,7 @@ func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation 
 		catcher.Add(err)
 
 		// find all active distros
-		distros, err := distro.Find(distro.ByActiveOrStatic())
+		distros, err := distro.Find(distro.ByNeedsPlanning(env.Settings().ContainerPools.Pools))
 		catcher.Add(err)
 
 		lastRuntime, err := model.FindTaskQueueGenerationRuntime()

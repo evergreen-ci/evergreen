@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -58,8 +59,18 @@ func (j *parentDecommissionJob) Run(ctx context.Context) {
 		j.AddError(err)
 		return
 	}
+	parentDistro, err := distro.FindByID(j.DistroId)
+	if err != nil {
+		j.AddError(err)
+		return
+	}
+	minHosts := parentDistro.HostAllocatorSettings.MinimumHosts
+	parentCount := len(parents)
 
 	for _, h := range parents {
+		if parentCount <= minHosts {
+			return
+		}
 		// Decommission parent if its containers aren't running anymore
 		idle, err := h.IsIdleParent()
 		if err != nil {
@@ -67,7 +78,12 @@ func (j *parentDecommissionJob) Run(ctx context.Context) {
 			continue
 		}
 		if idle {
-			j.AddError(h.SetDecommissioned(evergreen.User, "host only contains decommissioned containers and there is excess capacity"))
+			err = h.SetDecommissioned(evergreen.User, "host only contains decommissioned containers and there is excess capacity")
+			if err != nil {
+				j.AddError(err)
+				continue
+			}
+			parentCount--
 		}
 	}
 }
