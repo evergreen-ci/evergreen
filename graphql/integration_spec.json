@@ -108,7 +108,8 @@
         "activated": false
       },
       {
-        "_id": { "$oid": "patch-to-test-time-resolver" },
+        "_id": { "$oid": "123456" },
+        "desc": "patch-to-test-time-resolver",
         "create_time": { "$date": "2020-01-11T00:01:36.796Z" },
         "start_time": { "$date": "2020-01-11T00:01:47.796Z" },
         "finish_time": { "$date": "2020-01-11T00:01:57.796Z" }
