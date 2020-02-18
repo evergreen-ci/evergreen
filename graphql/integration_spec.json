@@ -106,6 +106,9 @@
           }
         ],
         "activated": false
+      },
+      {
+        "_id:": "patch-for-testing-duration-resolver"
       }
     ],
     "artifact_files": [
@@ -419,6 +422,46 @@
         "priority": 0,
         "taskGroup": "",
         "taskGroupMaxHosts": 0
+      },
+      {
+        "id": "task-for-testing-duration-resolver-1",
+        "createTime": "2020-02-12T16:58:19Z",
+        "startTime": "2020-02-14T22:21:13Z",
+        "finishTime": "2020-02-14T22:23:59Z",
+        "version": "patch-for-testing-duration-resolver",
+        "timeTaken": 166715
+      },
+      {
+        "id": "task-for-testing-duration-resolver-2",
+        "createTime": "2020-02-12T16:58:19Z",
+        "startTime": "2020-02-14T22:21:14Z",
+        "finishTime": "2020-02-14T22:22:26Z",
+        "version": "patch-for-testing-duration-resolver",
+        "timeTaken": 72328
+      },
+      {
+        "id": "task-for-testing-duration-resolver-3",
+        "createTime": "2020-02-12T16:58:19Z",
+        "startTime": "2020-02-14T22:21:11Z",
+        "finishTime": "2020-02-14T22:24:50Z",
+        "version": "patch-for-testing-duration-resolver",
+        "timeTaken": 219230
+      },
+      {
+        "id": "task-for-testing-duration-resolver-4",
+        "createTime": "2020-02-12T16:58:19Z",
+        "startTime": "2020-02-14T22:21:13Z",
+        "finishTime": "2020-02-14T22:22:19Z",
+        "version": "patch-for-testing-duration-resolver",
+        "timeTaken": 65589
+      },
+      {
+        "id": "task-for-testing-duration-resolver-5",
+        "createTime": "2020-02-12T16:58:19Z",
+        "startTime": "2020-02-14T22:21:15Z",
+        "finishTime": "2020-02-14T22:22:24Z",
+        "version": "patch-for-testing-duration-resolver",
+        "timeTaken": 69532
       }
     ],
     "testresults": [
@@ -2274,13 +2317,13 @@
       }
     },
     {
-      "query_file": "patch-time-fields.graphql",
+      "query_file": "patch-duration-query.graphql",
       "result": {
         "data": {
           "patch": {
             "duration": {
-              "makespan": "186h 45m 04s",
-              "timeTaken": "11h 03m 42s"
+              "makespan": "0h 3m 39s",
+              "timeTaken": "0h 9m 53s"
             }
           }
         }

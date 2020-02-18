@@ -100,7 +100,6 @@ func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (
 	if tasks == nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
-
 	timeTaken, makespan := task.GetTimeSpent(tasks)
 
 	return &PatchDuration{
