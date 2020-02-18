@@ -100,6 +100,8 @@ func (j *reauthorizationJob) Run(ctx context.Context) {
 		return
 	}
 
+	// GetUserByID internally reauthorizes the user and returns nil if the user
+	// is reauthorized successfully.
 	if _, err = um.GetUserByID(j.user.Username()); err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "could not reauthorize user",
