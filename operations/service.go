@@ -103,7 +103,9 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) error {
 
 	// Enqueue jobs to ensure each app server has the correct SSH key files.
 	ts := util.RoundPartOfHour(30).Format(units.TSFormat)
-	grip.Error(local.Put(ctx, units.NewLocalUpdateSSHKeysJob(ts)))
+	grip.Error(message.WrapError(local.Put(ctx, units.NewLocalUpdateSSHKeysJob(ts), message.Fields{
+		"message": "could not enqueue jobs to update app server's local SSH keys",
+	}))
 
 	return nil
 }
