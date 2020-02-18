@@ -16,6 +16,8 @@ import (
 )
 
 func TestPatchListModulesEndPoints(t *testing.T) {
+	testutil.DisablePermissionsForTests()
+	defer testutil.EnablePermissionsForTests()
 	testDirectory := testutil.GetDirectoryOfFile()
 	testConfig := testutil.TestConfig()
 	testApiServer, err := CreateTestServer(testConfig, nil)

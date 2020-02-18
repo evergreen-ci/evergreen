@@ -115,7 +115,128 @@
         "finish_time": { "$date": "2020-02-14T18:03:19Z" }
       }
     ],
+    "artifact_files": [
+      {
+        "task": "exec1",
+        "task_name": "wuzzup-activated",
+        "build": "some_thang",
+        "files": [
+          {
+            "name": "awesome_test!!!",
+            "link": "www.wikipedia.com",
+            "visibility": "the whole world",
+            "fetch_ignore": false
+          }
+        ],
+        "execution": 5
+      },
+      {
+        "task": "exec2",
+        "task_name": "wuzzup-activated",
+        "build": "some_thang",
+        "files": [
+          {
+            "name": "THIS IS REALLY COOL",
+            "link": "www.wikipedia.com",
+            "visibility": "the whole world",
+            "fetch_ignore": false
+          },
+          {
+            "name": "really cool test file",
+            "link": "www.wikipedia.com",
+            "visibility": "the whole world",
+            "fetch_ignore": false
+          },
+          {
+            "name": "PRIVATE TEST FILEEEEEE",
+            "link": "stuffff",
+            "visibility": "none",
+            "fetch_ignore": false
+          }
+        ],
+        "execution": 5
+      }
+    ],
     "tasks": [
+      {
+        "_id": "task-with-fake-old-id",
+        "old_task_id": "not a real thing",
+        "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "scheduled_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "start_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "version": "version",
+        "branch": "id",
+        "gitspec": "revise",
+        "priority": 5,
+        "task_group": "grp",
+        "task_group_max_hosts": 100,
+        "activated": true,
+        "activated_by": "someone",
+        "build_id": "some_thang",
+        "distro": "distro",
+        "build_variant": "variant",
+        "depends_on": [],
+        "display_name": "display name",
+        "host_id": "host",
+        "restarts": 5,
+        "execution": 5,
+        "order": 5,
+        "r": "something",
+        "status": "pass",
+        "details": {
+          "status": "status",
+          "type": "type",
+          "desc": "description",
+          "timed_out": false
+        },
+        "display_only": true,
+        "execution_tasks": ["fake-exec-task"],
+        "generate_task": false,
+        "generated_by": "something"
+      },
+      {
+        "_id": "task-without-legit-exec-tasks",
+        "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "scheduled_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "start_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "version": "version",
+        "branch": "id",
+        "gitspec": "revise",
+        "priority": 5,
+        "task_group": "grp",
+        "task_group_max_hosts": 100,
+        "activated": true,
+        "activated_by": "someone",
+        "build_id": "some_thang",
+        "distro": "distro",
+        "build_variant": "variant",
+        "depends_on": [],
+        "display_name": "display name",
+        "host_id": "host",
+        "restarts": 5,
+        "execution": 5,
+        "order": 5,
+        "r": "something",
+        "status": "pass",
+        "details": {
+          "status": "status",
+          "type": "type",
+          "desc": "description",
+          "timed_out": false
+        },
+        "display_only": true,
+        "execution_tasks": ["fake-exec-task"],
+        "generate_task": false,
+        "generated_by": "something"
+      },
       {
         "_id": "wuzzup-activated",
         "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
@@ -151,6 +272,84 @@
           "timed_out": false
         },
         "display_only": true,
+        "execution_tasks": ["exec1", "exec2"],
+        "generate_task": false,
+        "generated_by": "something"
+      },
+      {
+        "_id": "exec1",
+        "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "scheduled_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "start_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "version": "version",
+        "branch": "id",
+        "gitspec": "revise",
+        "priority": 5,
+        "task_group": "grp",
+        "task_group_max_hosts": 100,
+        "activated": true,
+        "activated_by": "someone",
+        "build_id": "some_thang",
+        "distro": "distro",
+        "build_variant": "variant",
+        "depends_on": [],
+        "display_name": "exec 1 display!!",
+        "host_id": "host",
+        "restarts": 5,
+        "execution": 5,
+        "order": 5,
+        "r": "something",
+        "status": "pass",
+        "details": {
+          "status": "status",
+          "type": "type",
+          "desc": "description",
+          "timed_out": false
+        },
+        "display_only": false,
+        "execution_tasks": ["exec1"],
+        "generate_task": false,
+        "generated_by": "something"
+      },
+      {
+        "_id": "exec2",
+        "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "scheduled_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "start_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "version": "version",
+        "branch": "id",
+        "gitspec": "revise",
+        "priority": 5,
+        "task_group": "grp",
+        "task_group_max_hosts": 100,
+        "activated": true,
+        "activated_by": "someone",
+        "build_id": "some_thang",
+        "distro": "distro",
+        "build_variant": "variant",
+        "depends_on": [],
+        "display_name": "exec 2 display!!",
+        "host_id": "host",
+        "restarts": 5,
+        "execution": 5,
+        "order": 5,
+        "r": "something",
+        "status": "pass",
+        "details": {
+          "status": "status",
+          "type": "type",
+          "desc": "description",
+          "timed_out": false
+        },
+        "display_only": false,
         "execution_tasks": ["exec1"],
         "generate_task": false,
         "generated_by": "something"
@@ -176,7 +375,7 @@
         "distro": "distro",
         "build_variant": "variant",
         "depends_on": [],
-        "display_name": "display name",
+        "display_name": "exec1 display name",
         "host_id": "host",
         "restarts": 5,
         "execution": 5,
@@ -1432,7 +1631,7 @@
             "distroId": "distro",
             "buildVariant": "variant",
             "dependsOn": null,
-            "displayName": "display name",
+            "displayName": "exec1 display name",
             "hostId": "host",
             "restarts": 5,
             "execution": 5,
@@ -1957,6 +2156,40 @@
       }
     },
     {
+      "query_file": "task-files-query-display.graphql",
+      "result": {
+        "data": {
+          "taskFiles": [
+            {
+              "taskName": "exec 1 display!!",
+              "files": [
+                {
+                  "name": "awesome_test!!!",
+                  "link": "www.wikipedia.com",
+                  "visibility": "the whole world"
+                }
+              ]
+            },
+            {
+              "taskName": "exec 2 display!!",
+              "files": [
+                {
+                  "name": "THIS IS REALLY COOL",
+                  "link": "www.wikipedia.com",
+                  "visibility": "the whole world"
+                },
+                {
+                  "name": "really cool test file",
+                  "link": "www.wikipedia.com",
+                  "visibility": "the whole world"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
       "query_file": "patch-time-1.graphql",
       "result": {
         "data": {
@@ -1982,6 +2215,57 @@
             }
           }
         }
+      }
+    },
+    {
+      "query_file": "task-files-query-exec.graphql",
+      "result": {
+        "data": {
+          "taskFiles": [
+            {
+              "taskName": "exec 1 display!!",
+              "files": [
+                {
+                  "name": "awesome_test!!!",
+                  "link": "www.wikipedia.com",
+                  "visibility": "the whole world"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "task-files-query-err1.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "cannot find task with id NOT-A-REAL-TASKID",
+            "path": ["taskFiles"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "task-files-query-err2.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "cannot find old task with id task-with-fake-old-id",
+            "path": ["taskFiles"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "task-files-query-empty.graphql",
+      "result": {
+        "data": { "taskFiles": [] }
       }
     }
   ]

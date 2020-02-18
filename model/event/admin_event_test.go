@@ -53,9 +53,8 @@ func (s *AdminEventSuite) TestEventLogging() {
 
 func (s *AdminEventSuite) TestEventLogging2() {
 	before := evergreen.Settings{
-		ApiUrl:     "api",
-		Keys:       map[string]string{"k1": "v1"},
-		SuperUsers: []string{"a", "b", "c"},
+		ApiUrl: "api",
+		Keys:   map[string]string{"k1": "v1"},
 	}
 	after := evergreen.Settings{}
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.username))
@@ -68,10 +67,8 @@ func (s *AdminEventSuite) TestEventLogging2() {
 	afterVal := eventData.Changes.After.(*evergreen.Settings)
 	s.Equal(before.ApiUrl, beforeVal.ApiUrl)
 	s.Equal(before.Keys, beforeVal.Keys)
-	s.Equal(before.SuperUsers, beforeVal.SuperUsers)
 	s.Equal("", afterVal.ApiUrl)
 	s.Equal(map[string]string{}, afterVal.Keys)
-	s.Equal([]string{}, afterVal.SuperUsers)
 }
 
 func (s *AdminEventSuite) TestEventLogging3() {
@@ -173,7 +170,6 @@ func (s *AdminEventSuite) TestRevertingRoot() {
 	before := evergreen.Settings{
 		Banner:      "before_banner",
 		Credentials: map[string]string{"k1": "v1"},
-		SuperUsers:  []string{"su1", "su2"},
 		Ui: evergreen.UIConfig{
 			Url: "before_url",
 		},
@@ -181,7 +177,6 @@ func (s *AdminEventSuite) TestRevertingRoot() {
 	after := evergreen.Settings{
 		Banner:      "after_banner",
 		Credentials: map[string]string{"k2": "v2"},
-		SuperUsers:  []string{"su3"},
 		Ui: evergreen.UIConfig{
 			Url:            "after_url",
 			CacheTemplates: true,
@@ -201,14 +196,12 @@ func (s *AdminEventSuite) TestRevertingRoot() {
 	s.NoError(err)
 	s.Equal(after.Banner, settings.Banner)
 	s.Equal(after.Credentials, settings.Credentials)
-	s.Equal(after.SuperUsers, settings.SuperUsers)
 	s.Equal(after.Ui, settings.Ui)
 	s.NoError(RevertConfig(guid, "me"))
 	settings, err = evergreen.GetConfig()
 	s.NoError(err)
 	s.Equal(before.Banner, settings.Banner)
 	s.Equal(before.Credentials, settings.Credentials)
-	s.Equal(before.SuperUsers, settings.SuperUsers)
 	s.Equal(after.Ui, settings.Ui)
 }
 

@@ -280,32 +280,48 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 	return testPointers, nil
 }
 
-func setScheduled(ctx context.Context, sc data.Connector, taskID string, isActive bool) (*restModel.APITask, error) {
-	usr := route.MustHaveUser(ctx)
-	if err := model.SetActiveState(taskID, usr.Username(), isActive); err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
+func (r *queryResolver) TaskFiles(ctx context.Context, taskID string) ([]*GroupedFiles, error) {
+	groupedFilesList := []*GroupedFiles{}
+	t, err := task.FindOneId(taskID)
+	if t == nil {
+		return groupedFilesList, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
-	task, err := task.FindOneId(taskID)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+		return groupedFilesList, ResourceNotFound.Send(ctx, err.Error())
 	}
-	if task == nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+	if t.OldTaskId != "" {
+		t, err = task.FindOneId(t.OldTaskId)
+		if t == nil {
+			return groupedFilesList, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find old task with id %s", taskID))
+		}
+		if err != nil {
+			return groupedFilesList, ResourceNotFound.Send(ctx, err.Error())
+		}
 	}
-	apiTask := restModel.APITask{}
-	err = apiTask.BuildFromService(task)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
+	if t.DisplayOnly {
+		execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
+		if err != nil {
+			return groupedFilesList, ResourceNotFound.Send(ctx, err.Error())
+		}
+		for _, execTask := range execTasks {
+			groupedFiles, err := GetGroupedFiles(ctx, execTask.DisplayName, execTask.Id, t.Execution)
+			if err != nil {
+				return groupedFilesList, err
+			}
+			groupedFilesList = append(groupedFilesList, groupedFiles)
+		}
+	} else {
+		groupedFiles, err := GetGroupedFiles(ctx, t.DisplayName, taskID, t.Execution)
+		if err != nil {
+			return groupedFilesList, err
+		}
+		groupedFilesList = append(groupedFilesList, groupedFiles)
 	}
-	err = apiTask.BuildFromService(sc.GetURL())
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
-	}
-	return &apiTask, nil
+	return groupedFilesList, nil
 }
 
 func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
-	task, err := setScheduled(ctx, r.sc, taskID, true)
+	task, err := SetScheduled(ctx, r.sc, taskID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -313,7 +329,7 @@ func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*re
 }
 
 func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
-	task, err := setScheduled(ctx, r.sc, taskID, false)
+	task, err := SetScheduled(ctx, r.sc, taskID, false)
 	if err != nil {
 		return nil, err
 	}

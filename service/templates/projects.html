@@ -1,13 +1,9 @@
 {{define "scripts"}}
 <script>
   window.allTrackedProjects = {{.AllProjects}};
-  window.acl_enabled = {{.ACLEnabled}};
   {{if .User}}
-  window.isSuperUser = {{IsSuperUser .User.Id}};
   window.user = {{.User}};
   window.isAdmin = {{.ProjectData.IsAdmin}};
-  {{else}}
-  window.isSuperUser = false;
   {{end}}
   window.canCreate = {{.CanCreate}};
   window.validDefaultLoggers = {{.ValidDefaultLoggers}};
@@ -99,7 +95,7 @@ Evergreen Projects
     </div>
     <div ng-show="isAdmin"><a class="link" href="/project/[[projectRef.identifier]]/events">Event Log</a></div>
     <form name="settingsForm" ng-submit="saveProject(settingsFormData)">
-      <fieldset style="display:inline-block;" ng-disabled="acl_enabled && permissions.project_settings<20">
+      <fieldset style="display:inline-block;" ng-disabled="permissions.project_settings<20">
       <div class ="form-group">
         <div class="col-lg-8">
           <div class="radio">

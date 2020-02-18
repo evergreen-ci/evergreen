@@ -23,7 +23,6 @@ var (
 	clientBinariesDirKey  = bsonutil.MustHaveTag(Settings{}, "ClientBinariesDir")
 	hostJasperKey         = bsonutil.MustHaveTag(Settings{}, "HostJasper")
 	domainNameKey         = bsonutil.MustHaveTag(Settings{}, "DomainName")
-	superUsersKey         = bsonutil.MustHaveTag(Settings{}, "SuperUsers")
 	jiraKey               = bsonutil.MustHaveTag(Settings{}, "Jira")
 	splunkKey             = bsonutil.MustHaveTag(Settings{}, "Splunk")
 	slackKey              = bsonutil.MustHaveTag(Settings{}, "Slack")
@@ -57,7 +56,6 @@ var (
 	commitQueueKey        = bsonutil.MustHaveTag(Settings{}, "CommitQueue")
 	ldapRoleMapKey        = bsonutil.MustHaveTag(Settings{}, "LDAPRoleMap")
 	backupConfig          = bsonutil.MustHaveTag(Settings{}, "Backup")
-	aclEnabledKey         = bsonutil.MustHaveTag(Settings{}, "ACLCheckingEnabled")
 	sshKeyDirectoryKey    = bsonutil.MustHaveTag(Settings{}, "SSHKeyDirectory")
 	sshKeyPairsKey        = bsonutil.MustHaveTag(Settings{}, "SSHKeyPairs")
 

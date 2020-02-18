@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -39,47 +38,6 @@ type displayTaskFiles struct {
 func (self *AttachPlugin) Name() string                           { return AttachPluginName }
 func (self *AttachPlugin) Configure(map[string]interface{}) error { return nil }
 
-// stripHiddenFiles is a helper for only showing users the files they are allowed to see.
-func stripHiddenFiles(files []artifact.File, pluginUser gimlet.User) []artifact.File {
-	publicFiles := []artifact.File{}
-	for _, file := range files {
-		switch {
-		case file.Visibility == artifact.None:
-			continue
-		case file.Visibility == artifact.Private && pluginUser == nil:
-			continue
-		default:
-			publicFiles = append(publicFiles, file)
-		}
-	}
-	return publicFiles
-}
-
-func getAllArtifacts(tasks []artifact.TaskIDAndExecution) ([]artifact.File, error) {
-	artifacts, err := artifact.FindAll(artifact.ByTaskIdsAndExecutions(tasks))
-	if err != nil {
-		return nil, errors.Wrap(err, "error finding artifact files for task")
-	}
-	if artifacts == nil {
-		taskIds := []string{}
-		for _, t := range tasks {
-			taskIds = append(taskIds, t.TaskID)
-		}
-		artifacts, err = artifact.FindAll(artifact.ByTaskIds(taskIds))
-		if err != nil {
-			return nil, errors.Wrap(err, "error finding artifact files for task without execution number")
-		}
-		if artifacts == nil {
-			return []artifact.File{}, nil
-		}
-	}
-	files := []artifact.File{}
-	for _, artifact := range artifacts {
-		files = append(files, artifact.Files...)
-	}
-	return files, nil
-}
-
 // GetPanelConfig returns a plugin.PanelConfig struct representing panels
 // that will be added to the Task and Build pages.
 func (self *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
@@ -109,11 +67,12 @@ func (self *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 						files := []displayTaskFiles{}
 						for _, execTaskID := range t.ExecutionTasks {
 							var execTaskFiles []artifact.File
-							execTaskFiles, err = getAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: execTaskID, Execution: context.Task.Execution}})
+							execTaskFiles, err = artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: execTaskID, Execution: context.Task.Execution}})
 							if err != nil {
 								return nil, err
 							}
-							strippedFiles := stripHiddenFiles(execTaskFiles, context.User)
+							hasUser := context.User != nil
+							strippedFiles := artifact.StripHiddenFiles(execTaskFiles, hasUser)
 
 							var execTask *task.Task
 							execTask, err = task.FindOne(task.ById(execTaskID))
@@ -134,12 +93,12 @@ func (self *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 						return files, nil
 					}
 
-					files, err := getAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: taskId, Execution: context.Task.Execution}})
+					files, err := artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: taskId, Execution: context.Task.Execution}})
 					if err != nil {
 						return nil, err
 					}
-
-					return stripHiddenFiles(files, context.User), nil
+					hasUser := context.User != nil
+					return artifact.StripHiddenFiles(files, hasUser), nil
 				},
 			},
 			{
@@ -157,7 +116,8 @@ func (self *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 					}
 					for i := range taskArtifactFiles {
 						// remove hidden files if the user isn't logged in
-						taskArtifactFiles[i].Files = stripHiddenFiles(taskArtifactFiles[i].Files, context.User)
+						hasUser := context.User != nil
+						taskArtifactFiles[i].Files = artifact.StripHiddenFiles(taskArtifactFiles[i].Files, hasUser)
 					}
 					return taskArtifactFiles, nil
 				},

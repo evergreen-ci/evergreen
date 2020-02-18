@@ -12,6 +12,7 @@ type Query {
     testName: String = ""
     status: String = ""
   ): [TestResult!]
+  taskFiles(taskId: String!): [GroupedFiles!]!
 }
 
 type Mutation {
@@ -30,6 +31,11 @@ enum TaskSortCategory {
 enum SortDirection {
   ASC
   DESC
+}
+
+type GroupedFiles {
+  taskName: String
+  files: [File!]
 }
 
 type Patch {
@@ -145,6 +151,12 @@ type Project {
   displayName: String!
   repo: String!
   owner: String!
+}
+
+type File {
+  name: String!
+  link: String!
+  visibility: String!
 }
 
 scalar Time
