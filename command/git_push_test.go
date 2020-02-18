@@ -78,7 +78,6 @@ func TestGitPush(t *testing.T) {
 			commands := []string{
 				"git checkout master",
 				"git rev-parse master@{upstream}",
-				`git -c "user.name=octocat" -c "user.email=octocat@github.com" commit --file - --author="evergreen <evergreen@mongodb.com>"`,
 				"git push origin master",
 			}
 
@@ -101,18 +100,13 @@ func TestGitPush(t *testing.T) {
 			}
 			c.base.jasper = manager
 			params := pushParams{
-				directory:     c.Directory,
-				authorName:    "baxterthehacker",
-				authorEmail:   "baxter@thehacker.com",
-				commitMessage: "testing 123",
-				branch:        "master",
-				token:         token,
-				skipCommit:    false,
+				directory: c.Directory,
+				branch:    "master",
+				token:     token,
 			}
 
 			assert.NoError(t, c.pushPatch(context.Background(), logger, params))
 			commands := []string{
-				`git -c "user.name=octocat" -c "user.email=octocat@github.com" commit --file - --author="baxterthehacker <baxter@thehacker.com>"`,
 				"git push origin master",
 			}
 			require.Len(t, manager.Procs, len(commands))
@@ -145,26 +139,23 @@ func TestGitPush(t *testing.T) {
 			createRepoCommands := []string{
 				`git init`,
 				`git add --all`,
-				`git -c "user.name=baxterthehacker" -c "user.email=baxter@thehacker.com" commit -m "testing..."`,
+				`git commit -m "testing..."`,
 			}
 			cmd := jpm.CreateCommand(ctx).Directory(repoDir).Append(createRepoCommands...)
 			require.NoError(t, cmd.Run(ctx))
 
 			require.NoError(t, ioutil.WriteFile(path.Join(repoDir, "test3.txt"), []byte("test3"), 0644))
-			addToIndexCommands := []string{
+			toApplyCommands := []string{
 				`git rm test1.txt`,
 				`git add test3.txt`,
+				`git commit -m "changes to push"`,
 			}
-			cmd = jpm.CreateCommand(ctx).Directory(repoDir).Append(addToIndexCommands...)
+			cmd = jpm.CreateCommand(ctx).Directory(repoDir).Append(toApplyCommands...)
 			require.NoError(t, cmd.Run(ctx))
 
 			params := pushParams{
-				directory:     repoDir,
-				authorName:    "baxterthehacker",
-				authorEmail:   "baxter@thehacker.com",
-				commitMessage: "testing 123",
-				branch:        "master",
-				skipCommit:    false,
+				directory: repoDir,
+				branch:    "master",
 			}
 			assert.NoError(t, c.pushPatch(ctx, logger, params))
 

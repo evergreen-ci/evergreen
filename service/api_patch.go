@@ -24,7 +24,7 @@ const formMimeType = "application/x-www-form-urlencoded"
 // PatchAPIResponse is returned by all patch-related API calls
 type PatchAPIResponse struct {
 	Message string       `json:"message"`
-	Action  string       `json:"action"`
+	Action  string       `json:"acgtion"`
 	Patch   *patch.Patch `json:"patch"`
 }
 
@@ -55,6 +55,11 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(patchString) > patch.SizeLimit {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("Patch is too large"))
+		return
+	}
+
+	if data.Alias == evergreen.CommitQueueAlias && !patch.IsMailboxDiff(patchString) {
+		as.LoggedError(w, r, http.StatusBadRequest, errors.New("CLI is out of date: use 'evergreen get-update --install'"))
 		return
 	}
 
