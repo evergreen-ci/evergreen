@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -13,7 +14,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 )
 
-// returns the files of a Task inside a GroupedFile struct
+// GetGroupedFiles returns the files of a Task inside a GroupedFile struct
 func GetGroupedFiles(ctx context.Context, name string, taskID string, execution int) (*GroupedFiles, error) {
 	taskFiles, err := artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: taskID, Execution: execution}})
 	if err != nil {
