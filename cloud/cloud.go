@@ -247,7 +247,6 @@ func ConvertContainerManager(m Manager) (ContainerManager, error) {
 // this updates the local provider settings list
 func UpdateProviderSettings(d *distro.Distro) error {
 	if d.ProviderSettings != nil {
-
 		bytes, err := bson.Marshal(d.ProviderSettings)
 		if err != nil {
 			return errors.Wrap(err, "error marshalling provider setting into bson")

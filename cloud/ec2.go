@@ -101,6 +101,11 @@ func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string)
 		if err := mapstructure.Decode(d.ProviderSettings, s); err != nil {
 			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, s)
 		}
+		grip.Debug(message.Fields{
+			"message": "mapstructure comparison",
+			"input":   *d.ProviderSettings,
+			"output":  *s,
+		})
 		s.Region = s.getRegion()
 		if s.Region != evergreen.DefaultEC2Region {
 			return errors.Errorf("only default region should be saved in provider settings")
