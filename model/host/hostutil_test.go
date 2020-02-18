@@ -24,6 +24,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
+	jcli "github.com/mongodb/jasper/cli"
 	jmock "github.com/mongodb/jasper/mock"
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/remote"
@@ -233,13 +234,18 @@ func TestJasperCommands(t *testing.T) {
 			user := &user.DBUser{Id: userID}
 			require.NoError(t, user.Insert())
 
-			h.ProvisionOptions = &ProvisionOptions{LoadCLI: true, OwnerId: userID}
+			h.ProvisionOptions = &ProvisionOptions{LoadCLI: true, OwnerId: userID, TaskId: "task_id"}
 			require.NoError(t, h.Insert())
 
 			setupScript, err := h.setupScriptCommands(settings)
 			require.NoError(t, err)
 
 			setupSpawnHost, err := h.SpawnHostSetupCommands(settings)
+			require.NoError(t, err)
+
+			getTaskData, err := h.buildLocalJasperClientRequest(settings.HostJasper,
+				strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "),
+				&options.Command{Commands: [][]string{h.SpawnHostGetTaskDataCommand()}})
 			require.NoError(t, err)
 
 			markDone, err := h.MarkUserDataDoneCommands()
@@ -251,6 +257,7 @@ func TestJasperCommands(t *testing.T) {
 				h.ForceReinstallJasperCommand(settings),
 				h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs),
 				setupSpawnHost,
+				getTaskData,
 				markDone,
 			}
 
@@ -272,6 +279,7 @@ func TestJasperCommands(t *testing.T) {
 				require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", expectedCmd))
 				currPos += offset + len(expectedCmd)
 			}
+
 		},
 		"ForceReinstallJasperCommand": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			cmd := h.ForceReinstallJasperCommand(settings)
@@ -1058,18 +1066,6 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 		" && chown -R user /home/user/cli_bin" +
 		" && chmod +x /home/user/cli_bin/evergreen"
 	assert.Equal(t, expected, cmd)
-
-	h.ProvisionOptions.TaskId = "task_id"
-	cmd, err = h.SpawnHostSetupCommands(settings)
-	assert.Contains(t, cmd, expected)
-	require.NoError(t, err)
-	fetchCmd := []string{"/home/user/evergreen", "-c", "/home/user/cli_bin/.evergreen.yml", "fetch", "-t", "task_id", "--source", "--artifacts", "--dir", "/dir"}
-	currIndex := 0
-	for _, arg := range fetchCmd {
-		foundIndex := strings.Index(cmd[currIndex:], arg)
-		require.NotEqual(t, foundIndex, -1, "missing fetch command arg '%s'", arg)
-		currIndex += foundIndex
-	}
 }
 
 func TestMarkUserDataDoneCommands(t *testing.T) {

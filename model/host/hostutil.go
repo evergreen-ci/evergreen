@@ -382,6 +382,15 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 		if postFetchClient, err = h.SpawnHostSetupCommands(settings); err != nil {
 			return "", errors.Wrap(err, "error creating commands to load task data")
 		}
+		if h.ProvisionOptions.TaskId != "" {
+			fetchCmd := h.SpawnHostGetTaskDataCommand()
+			var getTaskDataCmd string
+			getTaskDataCmd, err = h.buildLocalJasperClientRequest(settings.HostJasper, strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "), &options.Command{Commands: [][]string{fetchCmd}})
+			if err != nil {
+				return "", errors.Wrap(err, "could not construct Jasper command to fetch task data")
+			}
+			postFetchClient += " && " + getTaskDataCmd
+		}
 	}
 
 	markDone, err := h.MarkUserDataDoneCommands()
@@ -948,7 +957,7 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 }
 
 // SpawnHostSetupCommands returns the commands to handle setting up a spawn
-// host.
+// host with the evergreen binary and config file for the owner.
 func (h *Host) SpawnHostSetupCommands(settings *evergreen.Settings) (string, error) {
 	if h.ProvisionOptions == nil {
 		return "", errors.New("missing spawn host provisioning options")
@@ -962,17 +971,7 @@ func (h *Host) SpawnHostSetupCommands(settings *evergreen.Settings) (string, err
 		return "", errors.Wrap(err, "could not create JSON configuration settings")
 	}
 
-	script := h.spawnHostSetupConfigDirCommands(confJSON)
-	if h.ProvisionOptions.TaskId != "" {
-		fetchCmd := h.SpawnHostGetTaskDataCommand()
-		jasperFetchCmd, err := h.buildLocalJasperClientRequest(settings.HostJasper, strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "), &options.Command{Commands: [][]string{fetchCmd}})
-		if err != nil {
-			return "", errors.Wrap(err, "could not construct Jasper command to fetch task data")
-		}
-		script += " && " + jasperFetchCmd
-	}
-
-	return script, nil
+	return h.spawnHostSetupConfigDirCommands(confJSON), nil
 }
 
 // spawnHostSetupConfigDirCommands the shell script that sets up the
