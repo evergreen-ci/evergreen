@@ -1,11 +1,5 @@
 {
   user {
-    email
     displayName
-    username
-    apiKey
-    accessToken
-    refreshToken
-    roles
   }
 }

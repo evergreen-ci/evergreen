@@ -26,13 +26,7 @@ type Projects struct {
 }
 
 type User struct {
-	Username     string   `json:"username"`
-	DisplayName  string   `json:"displayName"`
-	Email        string   `json:"email"`
-	APIKey       string   `json:"apiKey"`
-	AccessToken  string   `json:"accessToken"`
-	RefreshToken string   `json:"refreshToken"`
-	Roles        []string `json:"roles"`
+	DisplayName string `json:"displayName"`
 }
 
 type SortDirection string

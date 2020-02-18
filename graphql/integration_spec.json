@@ -2244,13 +2244,7 @@
       "result": {
         "data": {
           "user": {
-            "email": "",
-            "displayName": "testuser",
-            "username": "testuser",
-            "apiKey": "testapikey",
-            "accessToken": "",
-            "refreshToken": "",
-            "roles": []
+            "displayName": "testuser"
           }
         }
       }
