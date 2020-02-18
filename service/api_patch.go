@@ -24,7 +24,7 @@ const formMimeType = "application/x-www-form-urlencoded"
 // PatchAPIResponse is returned by all patch-related API calls
 type PatchAPIResponse struct {
 	Message string       `json:"message"`
-	Action  string       `json:"acgtion"`
+	Action  string       `json:"action"`
 	Patch   *patch.Patch `json:"patch"`
 }
 
