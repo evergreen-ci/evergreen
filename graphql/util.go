@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"context"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
