@@ -25,10 +25,6 @@ type Projects struct {
 	OtherProjects []*GroupedProjects       `json:"otherProjects"`
 }
 
-type User struct {
-	DisplayName string `json:"displayName"`
-}
-
 type SortDirection string
 
 const (
