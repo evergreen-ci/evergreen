@@ -725,7 +725,8 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 
 // setupSpawnHost places the evergreen command line client on the host, places a
 // copy of the user's settings onto the host, and makes the binary appear in the
-// PATH when the user logs in.
+// PATH when the user logs in. If the spawn host is loading task data, it is
+// also retrieved.
 func (j *setupHostJob) setupSpawnHost(ctx context.Context, settings *evergreen.Settings, sshOpts []string) error {
 	script, err := j.host.SpawnHostSetupCommands(settings)
 	if err != nil {
@@ -737,20 +738,20 @@ func (j *setupHostJob) setupSpawnHost(ctx context.Context, settings *evergreen.S
 		return errors.Wrapf(err, "error parsing ssh info %s", j.host.Host)
 	}
 
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, evergreenCurlTimeout)
+	curlCtx, cancel := context.WithTimeout(ctx, evergreenCurlTimeout)
 	defer cancel()
-	output, err := j.host.RunSSHCommandWithTimeout(ctx, j.host.CurlCommand(settings), sshOpts, 2*time.Minute)
+	output, err := j.host.RunSSHCommandWithTimeout(curlCtx, j.host.CurlCommand(settings), sshOpts, 2*time.Minute)
 	if err != nil {
 		return errors.Wrapf(err, "error running command to get evergreen binary on  spawn host: %s", output)
 	}
-	if ctx.Err() != nil {
-		return errors.Wrap(ctx.Err(), "timed out curling evergreen binary")
+	if curlCtx.Err() != nil {
+		return errors.Wrap(curlCtx.Err(), "timed out curling evergreen binary")
 	}
 
 	if output, err := j.host.RunSSHShellScriptWithTimeout(ctx, script, sshOpts, 30*time.Second); err != nil {
 		return errors.Wrapf(err, "error running command to set up spawn host: %s", output)
 	}
+
 	return nil
 }
 
