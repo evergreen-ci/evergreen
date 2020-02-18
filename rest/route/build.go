@@ -117,13 +117,13 @@ func (b *buildChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 			})
 		}
 
-		if err := b.sc.SetBuildPriority(b.buildId, priority); err != nil {
+		if err = b.sc.SetBuildPriority(b.buildId, priority); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
 	}
 
 	if b.Activated != nil {
-		if err := b.sc.SetBuildActivated(b.buildId, user.Username(), *b.Activated); err != nil {
+		if err = b.sc.SetBuildActivated(b.buildId, user.Username(), *b.Activated); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
 	}
