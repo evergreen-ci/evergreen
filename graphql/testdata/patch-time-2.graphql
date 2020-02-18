@@ -1,5 +1,5 @@
 {
-  patch(id: "pikachu") {
+  patch(id: "patch-to-test-time-resolver") {
     time {
       started
       finished
