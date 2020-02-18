@@ -825,6 +825,8 @@ func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
 }
 
 func TestUpdateVersionAndParserProject(t *testing.T) {
+	flags := evergreen.ServiceFlags{ParserProjectDisabled: true}
+	assert.NoError(t, evergreen.SetServiceFlags(flags))
 
 	for testName, setupTest := range map[string]func(t *testing.T, v *Version, pp *ParserProject){
 		"noParserProject": func(t *testing.T, v *Version, pp *ParserProject) {
