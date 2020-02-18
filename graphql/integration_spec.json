@@ -1970,7 +1970,7 @@
             "time": {
               "started": null,
               "finished": null,
-              "submittedAt": "January 11, 2018, 1:36 pm"
+              "submittedAt": "January 11, 2018, 12:01AM"
             }
           }
         }
@@ -1982,9 +1982,9 @@
         "data": {
           "patch": {
             "time": {
-              "started": "January 11, 2020, 1:47 pm",
-              "finished": "January 11, 2020, 1:57 pm",
-              "submittedAt": "January 11, 2020, 1:36 pm"
+              "started": "January 11, 2020, 1:47PM",
+              "finished": "January 11, 2020, 1:57PM",
+              "submittedAt": "January 11, 2020, 1:36PM"
             }
           }
         }
