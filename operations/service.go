@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -105,7 +106,7 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) error {
 	ts := util.RoundPartOfHour(30).Format(units.TSFormat)
 	grip.Error(message.WrapError(local.Put(ctx, units.NewLocalUpdateSSHKeysJob(ts), message.Fields{
 		"message": "could not enqueue jobs to update app server's local SSH keys",
-	}))
+	})))
 
 	return nil
 }
