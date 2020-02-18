@@ -108,7 +108,7 @@
         "activated": false
       },
       {
-        "_id:": "patch-for-testing-duration-resolver"
+        "_id:": { "$oid": "patch-for-testing-duration-resolver" }
       }
     ],
     "artifact_files": [
