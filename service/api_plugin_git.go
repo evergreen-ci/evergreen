@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -36,5 +35,5 @@ func (as *APIServer) gitServePatchFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer data.Close()
-	_, _ = io.Copy(w, data)
+	gimlet.WriteText(w, data)
 }
