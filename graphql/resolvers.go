@@ -310,6 +310,15 @@ func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*
 	return task, nil
 }
 
+func (r *queryResolver) User(ctx context.Context) (*restModel.APIUser, error) {
+	usr := route.MustHaveUser(ctx)
+	displayName := usr.DisplayName()
+	user := restModel.APIUser{
+		DisplayName: &displayName,
+	}
+	return &user, nil
+}
+
 // New injects resources into the resolvers, such as the data connector
 func New(apiURL string) Config {
 	return Config{
