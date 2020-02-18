@@ -31,6 +31,7 @@ func InitUserManager(settings *evergreen.Settings) (gimlet.UserManager, UserMana
 		userManager.mutex.RUnlock()
 		return userManager.manager, userManager.info, nil
 	}
+	userManager.mutex.RUnlock()
 
 	um, info, err := LoadUserManager(settings)
 

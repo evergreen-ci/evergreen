@@ -11,6 +11,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
+	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -27,6 +28,12 @@ type reauthorizationJob struct {
 
 	user *user.DBUser
 	env  evergreen.Environment
+}
+
+func init() {
+	registry.AddJobType(reauthorizationJobName, func() amboy.Job {
+		return makeReauthorizationJob()
+	})
 }
 
 func makeReauthorizationJob() *reauthorizationJob {
@@ -87,6 +94,7 @@ func (j *reauthorizationJob) Run(ctx context.Context) {
 		reauthAfter = defaultBackgroundReauth
 	}
 
+	since := time.Since(j.user.LoginCache.TTL)
 	if time.Since(j.user.LoginCache.TTL) <= reauthAfter {
 		return
 	}
@@ -102,6 +110,7 @@ func (j *reauthorizationJob) Run(ctx context.Context) {
 
 	// GetUserByID internally reauthorizes the user and returns nil if the user
 	// is reauthorized successfully.
+	// kim: TODO: replace with um.ReauthorizeUser(user)
 	if _, err = um.GetUserByID(j.user.Username()); err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "could not reauthorize user",

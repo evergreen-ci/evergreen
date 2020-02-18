@@ -1266,9 +1266,10 @@ func PopulateReauthorizationJobs(env evergreen.Environment) amboy.QueueOperation
 		}
 
 		catcher := grip.NewBasicCatcher()
-		ts := util.RoundPartOfHour(0).Format(TSFormat)
+		ts := util.RoundPartOfMinute(20).Format(TSFormat)
 		for _, user := range users {
 			catcher.Wrap(env.RemoteQueue().Put(ctx, NewReauthorizationJob(env, &user, ts)), "could not enqueue jobs to reauthorize users")
+			catcher.Wrap(env.LocalQueue().Put(ctx, NewReauthorizationJob(env, &user, ts)), "could not enqueue jobs to reauthorize users")
 		}
 
 		return catcher.Resolve()

@@ -94,11 +94,12 @@ func (c *AuthConfig) Set() error {
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			AuthLDAPKey:          c.LDAP,
-			AuthOktaKey:          c.Okta,
-			AuthNaiveKey:         c.Naive,
-			AuthGithubKey:        c.Github,
-			authPreferredTypeKey: c.PreferredType,
+			AuthLDAPKey:                    c.LDAP,
+			AuthOktaKey:                    c.Okta,
+			AuthNaiveKey:                   c.Naive,
+			AuthGithubKey:                  c.Github,
+			authPreferredTypeKey:           c.PreferredType,
+			authBackgroundReauthMinutesKey: c.BackgroundReauthMinutes,
 		}}, options.Update().SetUpsert(true))
 
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
