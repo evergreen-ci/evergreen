@@ -35,6 +35,9 @@ import (
 var (
 	globalEnv     Environment
 	globalEnvLock *sync.RWMutex
+
+	// don't ever access this directly except from testutil
+	PermissionSystemDisabled = false
 )
 
 const (
@@ -252,7 +255,6 @@ func (e *envState) initSettings(path string) error {
 	if err = e.settings.Validate(); err != nil {
 		return errors.Wrap(err, "problem validating settings")
 	}
-	AclCheckingIsEnabled = e.settings.ACLCheckingEnabled || (os.Getenv("ACL_ENABLED") == "true")
 
 	return nil
 }

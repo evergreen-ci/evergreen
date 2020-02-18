@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -75,7 +76,12 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("Unknown project: %v", resourceType), http.StatusBadRequest)
 			return
 		}
-		authorized := isAdmin(u, project) || uis.isSuperUser(u)
+		authorized := u.HasPermission(gimlet.PermissionOpts{
+			Resource:      project.Identifier,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionProjectSettings,
+			RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+		})
 		if !authorized {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return

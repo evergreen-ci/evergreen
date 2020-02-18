@@ -273,6 +273,9 @@ func (u *DBUser) RemoveRole(role string) error {
 }
 
 func (u *DBUser) HasPermission(opts gimlet.PermissionOpts) bool {
+	if evergreen.PermissionsDisabledForTests() {
+		return true
+	}
 	roleManager := evergreen.GetEnvironment().RoleManager()
 	roles, err := roleManager.GetRoles(u.Roles())
 	if err != nil {

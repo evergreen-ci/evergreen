@@ -714,10 +714,6 @@ func (p *ProjectRef) GetActivationTime(variant *BuildVariant) (time.Time, error)
 	return defaultRes, nil
 }
 
-func (p *ProjectRef) IsAdmin(userID string, settings evergreen.Settings) bool {
-	return util.StringSliceContains(p.Admins, userID) || util.StringSliceContains(settings.SuperUsers, userID)
-}
-
 func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {
 	// verify input and webhooks
 	if p.Owner == "" || p.Repo == "" {

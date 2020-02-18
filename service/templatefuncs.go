@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 )
 
@@ -19,12 +18,8 @@ type TemplateFunctionOptions struct {
 }
 
 // MakeTemplateFuncs creates and registers all of our built-in template functions.
-func MakeTemplateFuncs(fo TemplateFunctionOptions, superUsers []string) map[string]interface{} {
+func MakeTemplateFuncs(fo TemplateFunctionOptions) map[string]interface{} {
 	r := map[string]interface{}{
-		// IsSuperUser returns true if the given user Id has super user privileges.
-		"IsSuperUser": func(userName string) bool {
-			return len(superUsers) == 0 || util.StringSliceContains(superUsers, userName)
-		},
 		// DateFormat returns a time Formatted to the given layout and timezone.
 		// If the timezone is unset, it defaults to "New_York."
 		"DateFormat": func(when time.Time, layout string, timezone string) string {

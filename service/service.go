@@ -57,7 +57,6 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 		APIQueue:     as.queue,
 		QueueGroup:   as.env.RemoteQueueGroup(),
 		URL:          as.Settings.Ui.Url,
-		SuperUsers:   as.Settings.SuperUsers,
 		GithubSecret: []byte(as.Settings.Api.GithubWebhookSecret),
 	}
 	route.AttachHandler(rest, opts)
@@ -73,7 +72,6 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 		APIQueue:     as.queue,
 		QueueGroup:   as.env.RemoteQueueGroup(),
 		URL:          as.Settings.Ui.Url,
-		SuperUsers:   as.Settings.SuperUsers,
 		GithubSecret: []byte(as.Settings.Api.GithubWebhookSecret),
 	}
 	route.AttachHandler(apiRestV2, opts)

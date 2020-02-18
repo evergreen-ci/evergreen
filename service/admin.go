@@ -23,7 +23,7 @@ func (uis *UIServer) adminSettings(w http.ResponseWriter, r *http.Request) {
 		RequiredLevel: evergreen.AdminSettingsEdit.Value,
 	}
 	if DBUser != nil {
-		if uis.isSuperUser(DBUser) || DBUser.HasPermission(permissions) {
+		if DBUser.HasPermission(permissions) {
 			template = "admin.html"
 		}
 	}
@@ -46,7 +46,7 @@ func (uis *UIServer) adminEvents(w http.ResponseWriter, r *http.Request) {
 		RequiredLevel: evergreen.AdminSettingsEdit.Value,
 	}
 	if DBUser != nil {
-		if uis.isSuperUser(DBUser) || DBUser.HasPermission(permissions) {
+		if DBUser.HasPermission(permissions) {
 			template = "admin_events.html"
 		}
 	}

@@ -375,10 +375,8 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	usr := gimlet.GetUser(ctx)
 	pluginContext := projCtx.ToPluginContext(uis.Settings, usr)
 	pluginContent := getPluginDataAndHTML(uis, plugin.TaskPage, pluginContext)
-	isAdmin := false
 	permissions := gimlet.Permissions{}
 	if usr != nil {
-		isAdmin = projCtx.ProjectRef.IsAdmin(usr.Username(), uis.Settings)
 		opts := gimlet.PermissionOpts{Resource: projCtx.ProjectRef.Identifier, ResourceType: evergreen.ProjectResourceType}
 		permissions, err = rolemanager.HighestPermissionsForRoles(usr.Roles(), evergreen.GetEnvironment().RoleManager(), opts)
 		if err != nil {
@@ -388,14 +386,13 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
-		Task           uiTaskData
-		Host           *host.Host
-		PluginContent  pluginData
-		JiraHost       string
-		IsProjectAdmin bool
-		Permissions    gimlet.Permissions
+		Task          uiTaskData
+		Host          *host.Host
+		PluginContent pluginData
+		JiraHost      string
+		Permissions   gimlet.Permissions
 		ViewData
-	}{uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, isAdmin, permissions, uis.GetCommonViewData(w, r, false, true)}, "base", "task.html", "base_angular.html", "menu.html")
+	}{uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, permissions, uis.GetCommonViewData(w, r, false, true)}, "base", "task.html", "base_angular.html", "menu.html")
 }
 
 type taskHistoryPageData struct {
@@ -804,7 +801,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if priority > evergreen.MaxTaskPriority {
-			if !uis.isSuperUser(authUser) && !taskAdmin { // TODO PM-1355 remove superuser check
+			if !taskAdmin {
 				http.Error(w, fmt.Sprintf("Insufficient access to set priority %v, can only set priority less than or equal to %v", priority, evergreen.MaxTaskPriority),
 					http.StatusUnauthorized)
 				return
@@ -823,7 +820,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSON(w, projCtx.Task)
 		return
 	case "override_dependencies":
-		if !projCtx.ProjectRef.IsAdmin(authUser.Username(), uis.Settings) && !taskAdmin { // TODO PM-1355 remove admin check
+		if !taskAdmin {
 			http.Error(w, "not authorized to override dependencies", http.StatusUnauthorized)
 			return
 		}

@@ -284,7 +284,6 @@ func MockConfig() *evergreen.Settings {
 			Token:     "token",
 			Channel:   "channel",
 		},
-		SuperUsers: []string{"user"},
 		Triggers: evergreen.TriggerConfig{
 			GenerateTaskDistro: "distro",
 		},
@@ -300,4 +299,12 @@ func MockConfig() *evergreen.Settings {
 		SpawnHostsPerUser:       5,
 		UnexpirableHostsPerUser: 2,
 	}
+}
+
+func DisablePermissionsForTests() {
+	evergreen.PermissionSystemDisabled = true
+}
+
+func EnablePermissionsForTests() {
+	evergreen.PermissionSystemDisabled = false
 }

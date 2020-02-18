@@ -44,7 +44,7 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 	distroIds := []string{}
 	for _, d := range distros {
 		resourcePermissions, ok := permissions[d.Id]
-		if !evergreen.AclCheckingIsEnabled || (ok && resourcePermissions[evergreen.PermissionDistroSettings] > 0) {
+		if ok && resourcePermissions[evergreen.PermissionDistroSettings] > 0 {
 			distroIds = append(distroIds, d.Id)
 		}
 	}

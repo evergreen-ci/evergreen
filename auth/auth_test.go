@@ -82,17 +82,3 @@ func TestLoadUserManager(t *testing.T) {
 	_, ok = um.(*NaiveUserManager)
 	assert.True(t, ok)
 }
-
-func TestSuperUserValidation(t *testing.T) {
-	assert := assert.New(t)
-	superUsers := []string{"super"}
-	su := &simpleUser{
-		UserId: "super",
-	}
-	ru := &simpleUser{
-		UserId: "regular",
-	}
-	assert.True(IsSuperUser(superUsers, su))
-	assert.False(IsSuperUser(superUsers, ru))
-	assert.False(IsSuperUser(superUsers, nil))
-}

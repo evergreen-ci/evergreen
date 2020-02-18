@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -274,7 +273,7 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 				Permission:    evergreen.PermissionTasks,
 				RequiredLevel: evergreen.TasksAdmin.Value,
 			}
-			if !auth.IsSuperUser(tep.sc.GetSuperUsers(), tep.user) && !tep.user.HasPermission(requiredPermission) { // TODO PM-1355 remove superuser check
+			if !tep.user.HasPermission(requiredPermission) {
 				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					Message: fmt.Sprintf("Insufficient privilege to set priority to %d, "+
 						"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),

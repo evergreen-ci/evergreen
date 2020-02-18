@@ -102,9 +102,14 @@ func (b *buildChangeStatusHandler) Parse(ctx context.Context, r *http.Request) e
 
 func (b *buildChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	user := gimlet.GetUser(ctx)
+	foundBuild, err := b.sc.FindBuildById(b.buildId)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+	}
+
 	if b.Priority != nil {
 		priority := *b.Priority
-		if ok := validPriority(priority, user, b.sc); !ok {
+		if ok := validPriority(priority, foundBuild.Project, user, b.sc); !ok {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				Message: fmt.Sprintf("Insufficient privilege to set priority to %d, "+
 					"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),
@@ -112,18 +117,15 @@ func (b *buildChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 			})
 		}
 
-		if err := b.sc.SetBuildPriority(b.buildId, priority); err != nil {
+		if err = b.sc.SetBuildPriority(b.buildId, priority); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
 	}
+
 	if b.Activated != nil {
-		if err := b.sc.SetBuildActivated(b.buildId, user.Username(), *b.Activated); err != nil {
+		if err = b.sc.SetBuildActivated(b.buildId, user.Username(), *b.Activated); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
-	}
-	foundBuild, err := b.sc.FindBuildById(b.buildId)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
 	buildModel := &model.APIBuild{}
