@@ -11,7 +11,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -99,36 +98,11 @@ func (s *EC2ProviderSettings) Validate() error {
 // region is only provided if we want to filter by region
 func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string) error {
 	if d.ProviderSettings != nil {
-		if region != "" && region != evergreen.DefaultEC2Region {
-			return errors.Errorf("only default region should be saved in provider settings")
-		}
 		if err := mapstructure.Decode(d.ProviderSettings, s); err != nil {
 			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, s)
 		}
-		grip.Debug(message.Fields{
-			"message": "mapstructure comparison",
-			"input":   *d.ProviderSettings,
-			"output":  *s,
-		})
-
-		s.Region = evergreen.DefaultEC2Region
-		bytes, err := bson.Marshal(s)
-		if err != nil {
-			return errors.Wrap(err, "error marshalling provider setting into bson")
-		}
-		doc := &birch.Document{}
-		if err := doc.UnmarshalBSON(bytes); err != nil {
-			return errors.Wrapf(err, "error unmarshalling settings bytes into document")
-		}
-		if len(d.ProviderSettingsList) == 0 {
-			if err := d.UpdateProviderSettings(doc); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"distro":   d.Id,
-					"provider": d.Provider,
-					"settings": d.ProviderSettings,
-				}))
-				return errors.Wrapf(err, "error updating provider settings")
-			}
+		if s.getRegion() != evergreen.DefaultEC2Region {
+			return errors.Errorf("only default region should be saved in provider settings")
 		}
 	} else if len(d.ProviderSettingsList) != 0 {
 		settingsDoc, err := d.GetProviderSettingByRegion(region)
@@ -143,7 +117,6 @@ func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string)
 			return errors.Wrap(err, "error unmarshalling bson into provider settings")
 		}
 	}
-
 	return nil
 }
 
