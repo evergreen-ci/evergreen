@@ -6,12 +6,13 @@ import (
 )
 
 type Event struct {
-	Host       *string     `json:"host,omitempty"`
-	Index      *string     `json:"index,omitempty"`
-	Source     *string     `json:"source,omitempty"`
-	SourceType *string     `json:"sourcetype,omitempty"`
-	Time       *string     `json:"time,omitempty"`
-	Event      interface{} `json:"event"`
+	Host       *string                `json:"host,omitempty"`
+	Index      *string                `json:"index,omitempty"`
+	Source     *string                `json:"source,omitempty"`
+	SourceType *string                `json:"sourcetype,omitempty"`
+	Time       *string                `json:"time,omitempty"`
+	Fields     map[string]interface{} `json:"fields,omitempty"`
+	Event      interface{}            `json:"event"`
 }
 
 func NewEvent(data interface{}) *Event {
@@ -44,6 +45,18 @@ func (e *Event) SetSource(source string) {
 
 func (e *Event) SetTime(time time.Time) {
 	e.Time = String(epochTime(&time))
+}
+
+func (e *Event) SetFields(fields map[string]interface{}) {
+	e.Fields = fields
+}
+
+func (e *Event) SetField(fieldName string, val interface{}) {
+	if e.Fields == nil {
+		e.Fields = make(map[string]interface{})
+	}
+
+	e.Fields[fieldName] = val
 }
 
 func (e *Event) empty() bool {

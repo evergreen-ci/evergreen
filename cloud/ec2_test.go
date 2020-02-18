@@ -1302,7 +1302,7 @@ func (s *EC2Suite) TestGetEC2ManagerOptions() {
 		},
 	}
 
-	managerOpts, err := getEC2ManagerOptions(d1)
+	managerOpts, err := GetManagerOptions(d1)
 	s.NoError(err)
 	s.Equal(evergreen.DefaultEC2Region, managerOpts.Region)
 	s.Equal("key", managerOpts.ProviderKey)

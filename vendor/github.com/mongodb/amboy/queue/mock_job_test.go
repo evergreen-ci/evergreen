@@ -5,11 +5,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
-	uuid "github.com/satori/go.uuid"
 )
 
 var mockJobCounters *mockJobRunEnv
@@ -85,7 +85,7 @@ func newSleepJob() *sleepJob {
 		},
 	}
 	j.SetDependency(dependency.NewAlways())
-	j.SetID(uuid.NewV4().String())
+	j.SetID(uuid.New().String())
 	return j
 }
 

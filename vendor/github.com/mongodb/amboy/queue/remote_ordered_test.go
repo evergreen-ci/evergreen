@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
-	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -35,7 +35,7 @@ func TestSimpleRemoteOrderedSuiteMongoDB(t *testing.T) {
 }
 
 func (s *SimpleRemoteOrderedSuite) SetupSuite() {
-	name := "test-" + uuid.NewV4().String()
+	name := "test-" + uuid.New().String()
 	opts := DefaultMongoDBOptions()
 	opts.DB = "amboy_test"
 	s.driverConstructor = func() remoteQueueDriver {

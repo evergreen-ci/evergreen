@@ -24,13 +24,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
@@ -79,7 +79,7 @@ func NewLocalOrdered(workers int) amboy.Queue {
 	q.tasks.nodes = make(map[int64]amboy.Job)
 	q.tasks.completed = make(map[string]bool)
 	q.tasks.graph = simple.NewDirectedGraph()
-	q.id = fmt.Sprintf("queue.local.ordered.graph.%s", uuid.NewV4().String())
+	q.id = fmt.Sprintf("queue.local.ordered.graph.%s", uuid.New().String())
 	r := pool.NewLocalWorkers(workers, q)
 	q.runner = r
 	q.dispatcher = NewDispatcher(q)
@@ -113,7 +113,7 @@ func (q *depGraphOrderedLocal) Put(ctx context.Context, j amboy.Job) error {
 	}
 
 	if _, ok := q.tasks.m[name]; ok {
-		return errors.Errorf("cannot add %s because duplicate job ids are not allowed", name)
+		return amboy.NewDuplicateJobErrorf("cannot add %s because duplicate job ids are not allowed", name)
 	}
 
 	node := q.tasks.graph.NewNode()

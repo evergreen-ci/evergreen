@@ -9,11 +9,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper/internal/executor"
 	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 )
 
 type blockingProcess struct {
@@ -30,7 +30,7 @@ type blockingProcess struct {
 }
 
 func newBlockingProcess(ctx context.Context, opts *options.Create) (Process, error) {
-	id := uuid.Must(uuid.NewV4()).String()
+	id := uuid.New().String()
 	opts.AddEnvVar(EnvironID, id)
 
 	cmd, deadline, err := opts.Resolve(ctx)

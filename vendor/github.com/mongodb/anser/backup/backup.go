@@ -4,10 +4,12 @@ import (
 	"context"
 	"io"
 	"path/filepath"
+	"time"
 
 	"github.com/evergreen-ci/birch"
 	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -22,12 +24,13 @@ type WriterCreator func(context.Context, string) (io.WriteCloser, error)
 // collection. Query, Sort, and Limit are optional, but allow you to
 // constrain the backup.
 type Options struct {
-	NS          model.Namespace `bson:"ns" json:"ns" yaml:"ns"`
-	Target      WriterCreator   `bson:"-" json:"-" yaml:"-"`
-	Query       interface{}     `bson:"query" json:"query" yaml:"query"`
-	Sort        interface{}     `bson:"sort" json:"sort" yaml:"sort"`
-	Limit       int64           `bson:"limit" json:"limit" yaml:"limit"`
-	IndexesOnly bool            `bson:"indexes_only" json:"indexes_only" yaml:"indexes_only"`
+	NS            model.Namespace `bson:"ns" json:"ns" yaml:"ns"`
+	Target        WriterCreator   `bson:"-" json:"-" yaml:"-"`
+	Query         interface{}     `bson:"query" json:"query" yaml:"query"`
+	Sort          interface{}     `bson:"sort" json:"sort" yaml:"sort"`
+	Limit         int64           `bson:"limit" json:"limit" yaml:"limit"`
+	IndexesOnly   bool            `bson:"indexes_only" json:"indexes_only" yaml:"indexes_only"`
+	EnableLogging bool            `bson:"enable_logging" json:"enable_logging" yaml:"enable_logging"`
 }
 
 // Collection creates a backup of a collection using the options to
@@ -77,9 +80,27 @@ func (opts *Options) flushData(ctx context.Context, client *mongo.Client) error 
 	if opts.IndexesOnly {
 		return nil
 	}
+	var (
+		count int64
+		seen  int64
+		err   error
+	)
 
+	if opts.EnableLogging {
+		if opts.Query == nil {
+			count, err = client.Database(opts.NS.DB).Collection(opts.NS.Collection).EstimatedDocumentCount(ctx)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+		} else {
+			count, err = client.Database(opts.NS.DB).Collection(opts.NS.Collection).CountDocuments(ctx, opts.Query)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+		}
+	}
+	startAt := time.Now()
 	catcher := grip.NewCatcher()
-
 	cursor, err := opts.getCursor(ctx, client)
 	if err != nil {
 		return errors.WithStack(err)
@@ -92,13 +113,37 @@ func (opts *Options) flushData(ctx context.Context, client *mongo.Client) error 
 	}
 	defer func() { catcher.Add(target.Close()) }()
 
+	grip.InfoWhen(opts.EnableLogging, message.Fields{
+		"ns":       opts.NS.String(),
+		"dur_secs": time.Since(startAt).Seconds(),
+		"seen":     seen,
+		"count":    count,
+	})
+
 	for cursor.Next(ctx) {
 		_, err := target.Write(cursor.Current)
 		if err != nil {
 			catcher.Add(err)
 			break
 		}
+
+		seen++
+		if opts.EnableLogging && seen%1000 == 0 {
+			grip.Info(message.Fields{
+				"ns":       opts.NS.String(),
+				"dur_secs": time.Since(startAt).Seconds(),
+				"seen":     seen,
+				"count":    count,
+			})
+		}
 	}
+
+	grip.InfoWhen(opts.EnableLogging, message.Fields{
+		"ns":       opts.NS.String(),
+		"dur_secs": time.Since(startAt).Seconds(),
+		"seen":     seen,
+		"count":    count,
+	})
 
 	catcher.Add(cursor.Err())
 	return catcher.Resolve()

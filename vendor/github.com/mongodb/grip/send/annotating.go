@@ -17,7 +17,8 @@ type annotatingSender struct {
 //
 // Calling code should assume that the sender owns the annotations map
 // and it should not attempt to modify that data after calling the
-// sender constructor.
+// sender constructor. Furthermore, since it owns the sender, callin Close on
+// this sender will close the underlying sender.
 //
 // While you can wrap an existing sender with the annotator, changes
 // to the annotating sender (e.g. level, formater, error handler) will

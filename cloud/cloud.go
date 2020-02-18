@@ -71,6 +71,9 @@ type Manager interface {
 	// DeleteVolume deletes a volume.
 	DeleteVolume(context.Context, *host.Volume) error
 
+	// CheckInstanceType determines if the given instance type is available in the current region.
+	CheckInstanceType(context.Context, string) error
+
 	// TimeTilNextPayment returns how long there is until the next payment
 	// is due for a particular host
 	TimeTilNextPayment(*host.Host) time.Duration
@@ -112,6 +115,26 @@ type ManagerOpts struct {
 	Region         string
 	ProviderKey    string
 	ProviderSecret string
+}
+
+func GetSettings(provider string) (ProviderSettings, error) {
+	switch provider {
+	case evergreen.ProviderNameEc2OnDemand, evergreen.ProviderNameEc2Spot, evergreen.ProviderNameEc2Auto, evergreen.ProviderNameEc2Fleet:
+		return &EC2ProviderSettings{}, nil
+	case evergreen.ProviderNameStatic:
+		return &StaticSettings{}, nil
+	case evergreen.ProviderNameMock:
+		return &MockProviderSettings{}, nil
+	case evergreen.ProviderNameDocker, evergreen.ProviderNameDockerMock:
+		return &dockerSettings{}, nil
+	case evergreen.ProviderNameOpenstack:
+		return &openStackSettings{}, nil
+	case evergreen.ProviderNameGce:
+		return &GCESettings{}, nil
+	case evergreen.ProviderNameVsphere:
+		return &vsphereSettings{}, nil
+	}
+	return nil, errors.Errorf("invalid provider name %s", provider)
 }
 
 // GetManager returns an implementation of Manager for the given manager options.
@@ -191,8 +214,16 @@ func GetManager(ctx context.Context, env evergreen.Environment, mgrOpts ManagerO
 // GetManagerOptions gets the manager options from the provider settings object for a given
 // provider name.
 func GetManagerOptions(d distro.Distro) (ManagerOpts, error) {
+	if len(d.ProviderSettingsList) > 1 {
+		return ManagerOpts{}, errors.Errorf("distro should be modified to have only one provider settings")
+	}
 	if IsEc2Provider(d.Provider) {
-		return getEC2ManagerOptions(d)
+		s := &EC2ProviderSettings{}
+		if err := s.FromDistroSettings(d, ""); err != nil {
+			return ManagerOpts{}, errors.Wrapf(err, "error getting EC2 provider settings from distro")
+		}
+
+		return getEC2ManagerOptionsFromSettings(d.Provider, s), nil
 	}
 	if d.Provider == evergreen.ProviderNameMock {
 		return getMockManagerOptions(d.Provider, d.ProviderSettings)

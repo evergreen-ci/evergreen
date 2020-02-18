@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/mongodb/amboy"
-	"github.com/pkg/errors"
 )
 
 // priorityStorage is a local storage system for Jobs in priority
@@ -57,7 +56,7 @@ func (s *priorityStorage) Insert(j amboy.Job) error {
 	name := j.ID()
 	_, ok := s.table[name]
 	if ok {
-		return errors.Errorf("cannot add duplicate job ID %s", name)
+		return amboy.NewDuplicateJobErrorf("cannot add duplicate job ID %s", name)
 	}
 
 	item := &queueItem{

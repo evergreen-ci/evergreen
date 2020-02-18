@@ -42,6 +42,7 @@ lintArgs += --exclude="package comment should be of the form \"Package .* \(goli
 #  no need to check the error of closer read operations in defer cases
 lintArgs += --exclude="error return value not checked \(defer.*"
 lintArgs += --exclude="should check returned error before deferring .*\.Close"
+lintArgs += --exclude="warning: Errors unhandled.*"
 # end lint suppressions
 
 
@@ -196,6 +197,7 @@ vendor-sync:$(vendorDeps)
 	glide install -s
 vendor-clean:
 	rm -rf vendor/gopkg.in/mgo.v2/harness/
+	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/google/uuid
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/pkg/errors/

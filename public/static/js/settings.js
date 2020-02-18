@@ -1,5 +1,6 @@
 mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificationService', 'mciUserSettingsService', function($scope, $http, $window, notifier, mciUserSettingsService) {
   $scope.timezones = [
+    {str: "Coordinated Universal Time", value: "UTC"},
     {str: "American Samoa, Niue", value: "Pacific/Niue"},
     {str: "Hawaii", value: "Pacific/Tahiti"},
     {str: "Marquesas Islands", value: "Pacific/Marquesas"},
@@ -54,7 +55,7 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
   $scope.github_user = $window.github_user;
   $scope.use_spruce_options = $window.use_spruce_options;
   $scope.should_show_feedback = false;
-  $scope.opt_in_initially_checked = $scope.use_spruce_options === undefined ? false : $scope.use_spruce_options;
+  $scope.opt_in_initially_checked = $scope.use_spruce_options === undefined ? false : $scope.use_spruce_options.patch_page;
   $scope.userConf = $window.userConf;
   $scope.binaries = $window.binaries;
   $scope.notifications = $window.notifications;

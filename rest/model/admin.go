@@ -1426,6 +1426,7 @@ type APIServiceFlags struct {
 	CommitQueueDisabled        bool `json:"commit_queue_disabled"`
 	PlannerDisabled            bool `json:"planner_disabled"`
 	HostAllocatorDisabled      bool `json:"host_allocator_disabled"`
+	ParserProjectDisabled      bool `json:"parser_project_disabled"`
 	DRBackupDisabled           bool `json:"dr_backup_disabled"`
 
 	// Notifications Flags
@@ -1687,6 +1688,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.CommitQueueDisabled = v.CommitQueueDisabled
 		as.PlannerDisabled = v.PlannerDisabled
 		as.HostAllocatorDisabled = v.HostAllocatorDisabled
+		as.ParserProjectDisabled = v.ParserProjectDisabled
 		as.DRBackupDisabled = v.DRBackupDisabled
 	default:
 		return errors.Errorf("%T is not a supported service flags type", h)
@@ -1721,6 +1723,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		CommitQueueDisabled:          as.CommitQueueDisabled,
 		PlannerDisabled:              as.PlannerDisabled,
 		HostAllocatorDisabled:        as.HostAllocatorDisabled,
+		ParserProjectDisabled:        as.ParserProjectDisabled,
 		DRBackupDisabled:             as.DRBackupDisabled,
 	}, nil
 }

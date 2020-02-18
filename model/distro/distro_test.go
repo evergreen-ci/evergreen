@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -160,10 +161,11 @@ func TestGetImageID(t *testing.T) {
 		name           string
 		provider       string
 		key            string
-		value          interface{}
+		value          string
 		expectedOutput string
 		err            bool
 		noKey          bool
+		legacyOnly     bool
 	}{
 		{
 			name:           "Ec2Auto",
@@ -190,8 +192,14 @@ func TestGetImageID(t *testing.T) {
 			name:           "Ec2Fleet",
 			provider:       evergreen.ProviderNameEc2Fleet,
 			key:            "ami",
-			value:          "imageID",
-			expectedOutput: "imageID",
+			value:          "",
+			expectedOutput: "",
+		},
+		{
+			name:     "Ec2NoKey",
+			provider: evergreen.ProviderNameEc2Fleet,
+			noKey:    true,
+			err:      true,
 		},
 		{
 			name:           "Docker",
@@ -243,18 +251,12 @@ func TestGetImageID(t *testing.T) {
 			err:      true,
 		},
 		{
-			name:     "InvalidType",
-			provider: evergreen.ProviderNameEc2Auto,
-			key:      "ami",
-			value:    5,
-			err:      true,
-		},
-		{
-			name:     "InvalidKey",
-			provider: evergreen.ProviderNameEc2Auto,
-			key:      "abi",
-			value:    "imageID",
-			err:      true,
+			name:       "InvalidKey",
+			provider:   evergreen.ProviderNameEc2Auto,
+			key:        "abi",
+			value:      "imageID",
+			err:        true,
+			legacyOnly: true,
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -262,13 +264,22 @@ func TestGetImageID(t *testing.T) {
 			if !test.noKey {
 				providerSettings[test.key] = test.value
 			}
-			distro := Distro{Provider: test.provider, ProviderSettings: &providerSettings}
-			output, err := distro.GetImageID()
-			assert.Equal(t, output, test.expectedOutput)
+			d := Distro{Provider: test.provider, ProviderSettings: &providerSettings}
+			output1, err1 := d.GetImageID()
+
+			doc := birch.NewDocument(birch.EC.String(test.key, test.value))
+			d = Distro{Provider: test.provider, ProviderSettingsList: []*birch.Document{doc}}
+			output2, err2 := d.GetImageID()
+			assert.Equal(t, output1, test.expectedOutput)
+			assert.Equal(t, output2, test.expectedOutput)
 			if test.err {
-				assert.Error(t, err)
+				assert.Error(t, err1)
+				if !test.legacyOnly {
+					assert.Error(t, err2)
+				}
 			} else {
-				assert.NoError(t, err)
+				assert.NoError(t, err1)
+				assert.NoError(t, err2)
 			}
 		})
 	}

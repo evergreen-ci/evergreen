@@ -444,8 +444,10 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
     _.each($scope.settingsFormData.triggers, function (trigger) {
       if (trigger.command) {
         trigger.generate_file = trigger.file;
+        trigger.config_file = "";
       } else {
         trigger.config_file = trigger.file;
+        trigger.generate_file = "";
       }
       if (trigger.level === "build") {
         delete(trigger.task_regex);

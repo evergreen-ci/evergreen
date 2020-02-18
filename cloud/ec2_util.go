@@ -16,7 +16,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	ec2aws "github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
@@ -510,25 +509,17 @@ func IsEc2Provider(provider string) bool {
 		provider == evergreen.ProviderNameEc2Fleet
 }
 
-// Get EC2 region from a distro
-func getEC2ManagerOptions(d distro.Distro) (ManagerOpts, error) {
-	opts := ManagerOpts{}
-
-	s := &EC2ProviderSettings{}
-	if err := s.FromDistroSettings(d, ""); err != nil {
-		return ManagerOpts{}, errors.Wrapf(err, "error getting EC2 provider settings from distro")
+func getEC2ManagerOptionsFromSettings(provider string, settings *EC2ProviderSettings) ManagerOpts {
+	region := settings.Region
+	if region == "" {
+		region = evergreen.DefaultEC2Region
 	}
-
-	opts.Provider = d.Provider
-	opts.Region = s.Region
-	opts.ProviderKey = s.AWSKeyID
-	opts.ProviderSecret = s.AWSSecret
-
-	if opts.Region == "" {
-		opts.Region = evergreen.DefaultEC2Region
+	return ManagerOpts{
+		Provider:       provider,
+		Region:         region,
+		ProviderKey:    settings.AWSKeyID,
+		ProviderSecret: settings.AWSSecret,
 	}
-
-	return opts, nil
 }
 
 // Get EC2 key and secret from the AWS configuration for the given region

@@ -2,15 +2,11 @@ package queue
 
 import (
 	"context"
-	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 )
-
-const dispatchWarningThreshold = time.Second
 
 // RemoteUnordered are queues that use a Driver as backend for job
 // storage and processing and do not impose any additional ordering
@@ -38,33 +34,13 @@ func newRemoteUnordered(size int) remoteQueue {
 // undispatched, unlocked job is available. This operation takes a job
 // lock.
 func (q *remoteUnordered) Next(ctx context.Context) amboy.Job {
-	start := time.Now()
 	count := 0
-	dispatchableErrors := 0
 	for {
 		count++
 		select {
 		case <-ctx.Done():
 			return nil
 		case job := <-q.channel:
-			status := job.Status()
-			if !isDispatchable(status) {
-				dispatchableErrors++
-				continue
-			}
-
-			dispatchSecs := time.Since(start).Seconds()
-			grip.DebugWhen(dispatchSecs > dispatchWarningThreshold.Seconds() || count > 3,
-				message.Fields{
-					"message":             "returning job from remote source",
-					"threshold_secs":      dispatchWarningThreshold.Seconds(),
-					"dispatch_secs":       dispatchSecs,
-					"attempts":            count,
-					"stat":                status,
-					"job":                 job.ID(),
-					"dispatchable_errors": dispatchableErrors,
-				})
-
 			return job
 		}
 	}

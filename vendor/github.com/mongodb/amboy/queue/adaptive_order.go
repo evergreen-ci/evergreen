@@ -7,12 +7,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 )
 
 type adaptiveLocalOrdering struct {
@@ -41,7 +41,7 @@ func NewAdaptiveOrderedLocalQueue(workers, capacity int) amboy.Queue {
 	q.dispatcher = NewDispatcher(q)
 	q.capacity = capacity
 	q.runner = r
-	q.id = fmt.Sprintf("queue.local.ordered.adaptive.%s", uuid.NewV4().String())
+	q.id = fmt.Sprintf("queue.local.ordered.adaptive.%s", uuid.New().String())
 	return q
 }
 
@@ -94,6 +94,7 @@ func (q *adaptiveLocalOrdering) Put(ctx context.Context, j amboy.Job) error {
 	out := make(chan error)
 	op := func(ctx context.Context, items *adaptiveOrderItems, fixed *fixedStorage) {
 		defer close(out)
+
 		j.UpdateTimeInfo(amboy.JobTimeInfo{
 			Created: time.Now(),
 		})
@@ -299,7 +300,7 @@ func (q *adaptiveLocalOrdering) Next(ctx context.Context) amboy.Job {
 			return nil
 		}
 		if err := q.dispatcher.Dispatch(ctx, j); err != nil {
-			q.Put(ctx, j)
+			_ = q.Put(ctx, j)
 			return nil
 		}
 

@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -439,10 +440,17 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 		}
 	}
 
+	projectRef, err := model.FindOneProjectRef(projectID)
+	if err != nil {
+		return nil, http.StatusInternalServerError, errors.WithStack(err)
+	}
+	if projectRef == nil {
+		return nil, http.StatusNotFound, errors.Errorf("error finding the project %s", projectID)
+	}
+
 	// check to see if this is an anonymous user requesting a private project
 	user := gimlet.GetUser(r.Context())
 	if user == nil {
-		projectRef, err := model.FindOneProjectRef(projectID)
 		if err != nil || projectRef == nil {
 			return nil, http.StatusNotFound, errors.New("no project found")
 		}
@@ -492,6 +500,14 @@ func urlVarsToDistroScopes(r *http.Request) ([]string, int, error) {
 	// no distro found - return a 404
 	if distroID == "" {
 		return nil, http.StatusNotFound, errors.New("no distro found")
+	}
+
+	distro, err := distro.FindByID(distroID)
+	if err != nil {
+		return nil, http.StatusInternalServerError, errors.WithStack(err)
+	}
+	if distro == nil {
+		return nil, http.StatusNotFound, errors.Errorf("error finding the distro %s", distroID)
 	}
 
 	return []string{distroID}, http.StatusOK, nil

@@ -172,7 +172,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	hostStartTime := j.start
 	grip.Info(message.Fields{
 		"message":      "attempting to start host",
-		"hostid":       j.host.Id,
+		"host_id":      j.host.Id,
 		"job":          j.ID(),
 		"attempt":      j.CurrentAttempt,
 		"max_attempts": j.MaxAttempts,
@@ -290,7 +290,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	event.LogHostStartFinished(j.host.Id, true)
 	grip.Info(message.Fields{
 		"message": "successfully started host",
-		"hostid":  j.host.Id,
+		"host_id": j.host.Id,
 		"job":     j.ID(),
 		"runtime": time.Since(hostStartTime),
 	})

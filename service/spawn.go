@@ -164,7 +164,9 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		AttachVolume:   putParams.AttachVolume,
 		HomeVolumeSize: putParams.HomeVolumeSize,
 	}
-	spawnHost, err := hc.NewIntentHost(options, authedUser)
+	ctx, cancel := uis.env.Context()
+	defer cancel()
+	spawnHost, err := hc.NewIntentHost(ctx, options, authedUser, &uis.Settings)
 
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error spawning host"))

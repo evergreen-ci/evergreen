@@ -118,7 +118,7 @@ func (j *convertHostToNewProvisioningJob) Run(ctx context.Context) {
 
 	// The host cannot be reprovisioned until the host's agent monitor has
 	// stopped.
-	if !j.host.NeedsNewAgentMonitor {
+	if !j.host.NeedsNewAgentMonitor || j.host.RunningTask != "" {
 		grip.Error(message.WrapError(j.tryRequeue(ctx), message.Fields{
 			"message": "could not enqueue job to retry provisioning conversion when host's agent monitor is still running",
 			"host_id": j.host.Id,

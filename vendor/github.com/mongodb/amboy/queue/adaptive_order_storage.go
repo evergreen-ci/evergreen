@@ -6,7 +6,6 @@ import (
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
-	"github.com/pkg/errors"
 )
 
 type adaptiveOrderItems struct {
@@ -21,7 +20,7 @@ type adaptiveOrderItems struct {
 func (items *adaptiveOrderItems) add(j amboy.Job) error {
 	id := j.ID()
 	if _, ok := items.jobs[id]; ok {
-		return errors.Errorf("cannot add duplicate job with id '%s'", id)
+		return amboy.NewDuplicateJobErrorf("cannot add duplicate job with id '%s'", id)
 	}
 
 	items.jobs[id] = j

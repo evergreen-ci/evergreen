@@ -128,7 +128,7 @@ func setCloudHostStatus(ctx context.Context, m cloud.Manager, h host.Host, hostS
 	}
 	grip.Info(message.Fields{
 		"message": "host not ready for setup",
-		"hostid":  h.Id,
+		"host_id": h.Id,
 		"DNS":     h.Host,
 		"distro":  h.Distro.Id,
 		"runner":  "hostinit",

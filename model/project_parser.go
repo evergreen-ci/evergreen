@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	mgobson "gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
@@ -70,6 +71,7 @@ type ParserProject struct {
 	Tasks              []parserTask               `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
 	ExecTimeoutSecs    int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 	Loggers            *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+	CreateTime         time.Time                  `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
 
 	// Matrix code
 	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
@@ -437,15 +439,19 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 func LoadProjectForVersion(v *Version, identifier string, shouldSave bool) (*Project, *ParserProject, error) {
 	var ppFromDB *ParserProject
 	var err error
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return nil, nil, errors.WithStack(err)
+	}
 	// if not using parser project anyway, only lookup if saving
-	if evergreen.UseParserProject || shouldSave {
+	if !flags.ParserProjectDisabled || shouldSave {
 		ppFromDB, err = ParserProjectFindOneById(v.Id)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error finding parser project")
 		}
 	}
 
-	if evergreen.UseParserProject && ppFromDB != nil {
+	if !flags.ParserProjectDisabled && ppFromDB != nil {
 		// if parser project config number is old then there was a race,
 		// and we should default to the version config
 		if ppFromDB.ConfigUpdateNumber >= v.ConfigUpdateNumber {
@@ -467,8 +473,9 @@ func LoadProjectForVersion(v *Version, identifier string, shouldSave bool) (*Pro
 	pp.Id = v.Id
 	pp.Identifier = identifier
 	pp.ConfigUpdateNumber = v.ConfigUpdateNumber
+	pp.CreateTime = v.CreateTime
 
-	// TODO: don't need separate ppFromDB variable once UseParserProject = true
+	// TODO: don't need separate ppFromDB variable once using parser project
 	if shouldSave && ppFromDB == nil {
 		if err = pp.TryUpsert(); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{

@@ -81,19 +81,20 @@ imports:
   - name: github.com/go-ini/ini
     version: 6e4869b434bd001f6983749881c7ead3545887d8
   - name: github.com/aws/aws-sdk-go
-    version: b0b59fd2ceb03908e5d3bcd1449b46ce75508f4b
+    version: bf58031807a077119bb7e2d93535a08fd353652d
 
   - name: github.com/mholt/archiver
     version: e4ef56d48eb029648b0e895bb0b6a393ef0829c3
   - name: github.com/google/shlex
     version: 6f45313302b9c56850fc17f99e40caebce98c716
-
   - name: github.com/pkg/errors
     version: ff09b135c25aae272398c51a07235b90a75aa4f0
   - name: github.com/jpillora/backoff
     version: 06c7a16c845dc8e0bf575fafeeca0f5462f5eb4d
   - name: github.com/tychoish/tarjan
     version: fcd3f3321826209eac4a6f41c0108624d948e499
+  - name: github.com/google/uuid
+    version: c2e93f3ae59f2904160ceaab466009f965df46d6
 
   - name: google.golang.org/api
     version: e6586c9293b9d514c7f5d5076731ec977cff1be6
@@ -122,17 +123,17 @@ imports:
 
     # TODO: revendor grip once MAKE-1139 merged
   - name: github.com/mongodb/grip
-    version: 2e402613ba129030dffcf05f53f185ea52d350c2
+    version: 505d1051058d81836ddb3cb839ba06009588a14e
   - name: github.com/mongodb/amboy
-    version: 85bb9679689a39093947de9b5590064e2a264ae5
+    version: 4f089ad3c37346a21d0b69b6d3c3523628a72a29
   - name: github.com/evergreen-ci/gimlet
-    version: e71f5a4d64124b8049620bb0902f969e1daecc56
+    version: 97349cc5a015b085f0345e4bb0baf770f8eaa29c
   - name: github.com/evergreen-ci/shrub
     version: 32e668cd99410328bf6659e55671c11a6c727d9a
   - name: github.com/evergreen-ci/pail
     version: 4a0b306b2db0e74641aa30b8b9e748054adbee79
   - name: github.com/mongodb/jasper
-    version: 1e6d6e1d9e32949d7407c6798a37db3a9a97493e
+    version: 5fb1ab4916bb2cce94a003fc0277d62dccd9cc90
   - name: go.mongodb.org/mongo-driver
     version: 90164f879ba927bc0fa38682215b7a71d4ff8a92
   - name: github.com/evergreen-ci/timber
@@ -140,7 +141,7 @@ imports:
 
   - name: github.com/evergreen-ci/certdepot
     version: 270990334f8f50e41a803e88f169d2f467e376c5
-    
+
   # git library and its dependencies
   - name: gopkg.in/src-d/go-git.v4
     version: bf3b1f1fb9e0a04d0f87511a7ded2562b48a19d8
@@ -169,14 +170,14 @@ imports:
   - name: github.com/evergreen-ci/birch
     version: 3a26bb67719ad6a9e7daed059abd5d018586f3cd
   - name: github.com/mongodb/anser
-    version: cc2c8355390715b964f103949e92d09139819e2e
+    version: c65a2d95b0615d79b53ef467c2f836a576972857
   - name: github.com/mongodb/ftdc
     version: 7e505d9a86240264dd35b1d900c2e88ce74f6066
 
   # GraphQL deps
   - name: github.com/99designs/gqlgen
     version: f869f5a85385745d5854daaa25eab5571b04b245
-  
+
   - name: github.com/vektah/gqlparser
     version: 6b4a7854a7ef7ee3f626490d1e2d22a823828fc6
   - name: github.com/gorilla/websocket

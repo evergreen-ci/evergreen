@@ -138,8 +138,8 @@ enum Signals {
   INIT = 4;
   USER1 = 5;
   USER2 = 6;
+  ABRT= 7;
 }
-
 
 message TagName {
   string value = 1;

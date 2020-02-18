@@ -11,7 +11,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -60,24 +59,13 @@ func (hph *hostPostHandler) Parse(ctx context.Context, r *http.Request) error {
 func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 
-	// Validate instance type
-	if hph.options.InstanceType != "" {
-		d, err := distro.FindOne(distro.ById(hph.options.DistroID))
-		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error finding distro '%s'", hph.options.DistroID))
-		}
-		if err = checkInstanceTypeValid(d.Provider, hph.options.InstanceType, hph.settings); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Invalid host create request"))
-		}
-	}
-
 	if hph.options.NoExpiration {
 		if err := CheckUnexpirableHostLimitExceeded(user.Id, hph.settings.UnexpirableHostsPerUser); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 	}
 
-	intentHost, err := hph.sc.NewIntentHost(hph.options, user)
+	intentHost, err := hph.sc.NewIntentHost(ctx, hph.options, user, hph.settings)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error spawning host"))
 	}
@@ -146,7 +134,8 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	if h.options.InstanceType != "" {
 		catcher.Add(checkInstanceTypeHostStopped(foundHost))
-		catcher.Add(checkInstanceTypeValid(foundHost.Provider, h.options.InstanceType, h.env.Settings()))
+		allowedTypes := h.env.Settings().Providers.AWS.AllowedInstanceTypes
+		catcher.Add(cloud.CheckInstanceTypeValid(ctx, foundHost.Distro, h.options.InstanceType, allowedTypes))
 	}
 	if h.options.NoExpiration != nil && *h.options.NoExpiration {
 		catcher.Add(CheckUnexpirableHostLimitExceeded(user.Id, h.env.Settings().UnexpirableHostsPerUser))
@@ -198,18 +187,6 @@ func checkInstanceTagsCanBeModified(h *host.Host, toAdd []host.Tag, toDelete []s
 		}
 	}
 	return catcher.Resolve()
-}
-
-// checkInstanceTypeValid checks whether the instance type is allowed by provider config
-func checkInstanceTypeValid(providerName, instanceType string, s *evergreen.Settings) error {
-	if cloud.IsEc2Provider(providerName) {
-		for _, allowedType := range s.Providers.AWS.AllowedInstanceTypes {
-			if instanceType == allowedType {
-				return nil
-			}
-		}
-	}
-	return errors.Errorf("'%s' is not a valid instance type for provider '%s'", instanceType, providerName)
 }
 
 // checkInstanceTypeHostStopped checks whether a host is stopped before modifying an instance type

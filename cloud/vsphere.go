@@ -234,6 +234,10 @@ func (m *vsphereManager) DeleteVolume(context.Context, *host.Volume) error {
 	return errors.New("can't delete volumes with vsphere provider")
 }
 
+func (m *vsphereManager) CheckInstanceType(context.Context, string) error {
+	return errors.New("can't specify instance type with vsphere provider")
+}
+
 // GetDNSName returns the IPv4 address of the host.
 func (m *vsphereManager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
 	ip, err := m.client.GetIP(ctx, h)

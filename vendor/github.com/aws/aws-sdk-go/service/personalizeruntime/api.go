@@ -3,9 +3,12 @@
 package personalizeruntime
 
 import (
+	"fmt"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
 	"github.com/aws/aws-sdk-go/aws/request"
+	"github.com/aws/aws-sdk-go/private/protocol"
 )
 
 const opGetPersonalizedRanking = "GetPersonalizedRanking"
@@ -65,11 +68,11 @@ func (c *PersonalizeRuntime) GetPersonalizedRankingRequest(input *GetPersonalize
 // See the AWS API reference guide for Amazon Personalize Runtime's
 // API operation GetPersonalizedRanking for usage and error information.
 //
-// Returned Error Codes:
-//   * ErrCodeInvalidInputException "InvalidInputException"
+// Returned Error Types:
+//   * InvalidInputException
 //   Provide a valid value for the field or parameter.
 //
-//   * ErrCodeResourceNotFoundException "ResourceNotFoundException"
+//   * ResourceNotFoundException
 //   The specified resource does not exist.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/personalize-runtime-2018-05-22/GetPersonalizedRanking
@@ -155,11 +158,11 @@ func (c *PersonalizeRuntime) GetRecommendationsRequest(input *GetRecommendations
 // See the AWS API reference guide for Amazon Personalize Runtime's
 // API operation GetRecommendations for usage and error information.
 //
-// Returned Error Codes:
-//   * ErrCodeInvalidInputException "InvalidInputException"
+// Returned Error Types:
+//   * InvalidInputException
 //   Provide a valid value for the field or parameter.
 //
-//   * ErrCodeResourceNotFoundException "ResourceNotFoundException"
+//   * ResourceNotFoundException
 //   The specified resource does not exist.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/personalize-runtime-2018-05-22/GetRecommendations
@@ -193,8 +196,15 @@ type GetPersonalizedRankingInput struct {
 	// CampaignArn is a required field
 	CampaignArn *string `locationName:"campaignArn" type:"string" required:"true"`
 
+	// The contextual metadata to use when getting recommendations. Contextual metadata
+	// includes any interaction information that might be relevant when getting
+	// a user's recommendations, such as the user's current location or device type.
+	// For more information, see Contextual Metadata.
+	Context map[string]*string `locationName:"context" type:"map"`
+
 	// A list of items (itemId's) to rank. If an item was not included in the training
-	// dataset, the item is appended to the end of the reranked list.
+	// dataset, the item is appended to the end of the reranked list. The maximum
+	// is 500.
 	//
 	// InputList is a required field
 	InputList []*string `locationName:"inputList" type:"list" required:"true"`
@@ -240,6 +250,12 @@ func (s *GetPersonalizedRankingInput) SetCampaignArn(v string) *GetPersonalizedR
 	return s
 }
 
+// SetContext sets the Context field's value.
+func (s *GetPersonalizedRankingInput) SetContext(v map[string]*string) *GetPersonalizedRankingInput {
+	s.Context = v
+	return s
+}
+
 // SetInputList sets the InputList field's value.
 func (s *GetPersonalizedRankingInput) SetInputList(v []*string) *GetPersonalizedRankingInput {
 	s.InputList = v
@@ -255,7 +271,8 @@ func (s *GetPersonalizedRankingInput) SetUserId(v string) *GetPersonalizedRankin
 type GetPersonalizedRankingOutput struct {
 	_ struct{} `type:"structure"`
 
-	// A list of items in order of most likely interest to the user.
+	// A list of items in order of most likely interest to the user. The maximum
+	// is 500.
 	PersonalizedRanking []*PredictedItem `locationName:"personalizedRanking" type:"list"`
 }
 
@@ -283,12 +300,18 @@ type GetRecommendationsInput struct {
 	// CampaignArn is a required field
 	CampaignArn *string `locationName:"campaignArn" type:"string" required:"true"`
 
+	// The contextual metadata to use when getting recommendations. Contextual metadata
+	// includes any interaction information that might be relevant when getting
+	// a user's recommendations, such as the user's current location or device type.
+	// For more information, see Contextual Metadata.
+	Context map[string]*string `locationName:"context" type:"map"`
+
 	// The item ID to provide recommendations for.
 	//
 	// Required for RELATED_ITEMS recipe type.
 	ItemId *string `locationName:"itemId" type:"string"`
 
-	// The number of results to return. The default is 25. The maximum is 100.
+	// The number of results to return. The default is 25. The maximum is 500.
 	NumResults *int64 `locationName:"numResults" type:"integer"`
 
 	// The user ID to provide recommendations for.
@@ -326,6 +349,12 @@ func (s *GetRecommendationsInput) SetCampaignArn(v string) *GetRecommendationsIn
 	return s
 }
 
+// SetContext sets the Context field's value.
+func (s *GetRecommendationsInput) SetContext(v map[string]*string) *GetRecommendationsInput {
+	s.Context = v
+	return s
+}
+
 // SetItemId sets the ItemId field's value.
 func (s *GetRecommendationsInput) SetItemId(v string) *GetRecommendationsInput {
 	s.ItemId = &v
@@ -347,7 +376,8 @@ func (s *GetRecommendationsInput) SetUserId(v string) *GetRecommendationsInput {
 type GetRecommendationsOutput struct {
 	_ struct{} `type:"structure"`
 
-	// A list of recommendations.
+	// A list of recommendations sorted in ascending order by prediction score.
+	// There can be a maximum of 500 items in the list.
 	ItemList []*PredictedItem `locationName:"itemList" type:"list"`
 }
 
@@ -365,6 +395,62 @@ func (s GetRecommendationsOutput) GoString() string {
 func (s *GetRecommendationsOutput) SetItemList(v []*PredictedItem) *GetRecommendationsOutput {
 	s.ItemList = v
 	return s
+}
+
+// Provide a valid value for the field or parameter.
+type InvalidInputException struct {
+	_            struct{} `type:"structure"`
+	respMetadata protocol.ResponseMetadata
+
+	Message_ *string `locationName:"message" type:"string"`
+}
+
+// String returns the string representation
+func (s InvalidInputException) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s InvalidInputException) GoString() string {
+	return s.String()
+}
+
+func newErrorInvalidInputException(v protocol.ResponseMetadata) error {
+	return &InvalidInputException{
+		respMetadata: v,
+	}
+}
+
+// Code returns the exception type name.
+func (s InvalidInputException) Code() string {
+	return "InvalidInputException"
+}
+
+// Message returns the exception's message.
+func (s InvalidInputException) Message() string {
+	if s.Message_ != nil {
+		return *s.Message_
+	}
+	return ""
+}
+
+// OrigErr always returns nil, satisfies awserr.Error interface.
+func (s InvalidInputException) OrigErr() error {
+	return nil
+}
+
+func (s InvalidInputException) Error() string {
+	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
+}
+
+// Status code returns the HTTP status code for the request's response error.
+func (s InvalidInputException) StatusCode() int {
+	return s.respMetadata.StatusCode
+}
+
+// RequestID returns the service's response RequestID for request.
+func (s InvalidInputException) RequestID() string {
+	return s.respMetadata.RequestID
 }
 
 // An object that identifies an item.
@@ -391,4 +477,60 @@ func (s PredictedItem) GoString() string {
 func (s *PredictedItem) SetItemId(v string) *PredictedItem {
 	s.ItemId = &v
 	return s
+}
+
+// The specified resource does not exist.
+type ResourceNotFoundException struct {
+	_            struct{} `type:"structure"`
+	respMetadata protocol.ResponseMetadata
+
+	Message_ *string `locationName:"message" type:"string"`
+}
+
+// String returns the string representation
+func (s ResourceNotFoundException) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ResourceNotFoundException) GoString() string {
+	return s.String()
+}
+
+func newErrorResourceNotFoundException(v protocol.ResponseMetadata) error {
+	return &ResourceNotFoundException{
+		respMetadata: v,
+	}
+}
+
+// Code returns the exception type name.
+func (s ResourceNotFoundException) Code() string {
+	return "ResourceNotFoundException"
+}
+
+// Message returns the exception's message.
+func (s ResourceNotFoundException) Message() string {
+	if s.Message_ != nil {
+		return *s.Message_
+	}
+	return ""
+}
+
+// OrigErr always returns nil, satisfies awserr.Error interface.
+func (s ResourceNotFoundException) OrigErr() error {
+	return nil
+}
+
+func (s ResourceNotFoundException) Error() string {
+	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
+}
+
+// Status code returns the HTTP status code for the request's response error.
+func (s ResourceNotFoundException) StatusCode() int {
+	return s.respMetadata.StatusCode
+}
+
+// RequestID returns the service's response RequestID for request.
+func (s ResourceNotFoundException) RequestID() string {
+	return s.respMetadata.RequestID
 }

@@ -20,13 +20,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 )
 
 // LocalShuffled provides a queue implementation that shuffles the
@@ -49,7 +49,7 @@ func NewShuffledLocal(workers, capacity int) amboy.Queue {
 	q := &shuffledLocal{
 		scopes:   NewLocalScopeManager(),
 		capacity: capacity,
-		id:       fmt.Sprintf("queue.local.unordered.shuffled.%s", uuid.NewV4().String()),
+		id:       fmt.Sprintf("queue.local.unordered.shuffled.%s", uuid.New().String()),
 	}
 	q.dispatcher = NewDispatcher(q)
 	q.runner = pool.NewLocalWorkers(workers, q)
@@ -125,7 +125,7 @@ func (q *shuffledLocal) Put(ctx context.Context, j amboy.Job) error {
 		_, isDispatched := dispatched[id]
 
 		if isPending || isCompleted || isDispatched {
-			ret <- errors.Errorf("job '%s' already exists", id)
+			ret <- amboy.NewDuplicateJobErrorf("job '%s' already exists", id)
 		}
 
 		pending[id] = j
@@ -384,7 +384,7 @@ func (q *shuffledLocal) Next(ctx context.Context) amboy.Job {
 			return nil
 		}
 		if err := q.dispatcher.Dispatch(ctx, j); err != nil {
-			q.Put(ctx, j)
+			_ = q.Put(ctx, j)
 			return nil
 		}
 

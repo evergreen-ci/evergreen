@@ -1,5 +1,9 @@
 package artifact
 
+import (
+	"github.com/pkg/errors"
+)
+
 const Collection = "artifact_files"
 
 const (
@@ -7,9 +11,10 @@ const (
 	Public  = "public"
 	Private = "private"
 	None    = "none"
+	Signed  = "signed"
 )
 
-var ValidVisibilities = []string{Public, Private, None, ""}
+var ValidVisibilities = []string{Public, Private, None, Signed, ""}
 
 // Entry stores groups of names and links (not content!) for
 // files uploaded to the api server by a running agent. These links could
@@ -38,6 +43,51 @@ type File struct {
 	Visibility string `json:"visibility" bson:"visibility"`
 	// When true, these artifacts are excluded from reproduction
 	IgnoreForFetch bool `bson:"fetch_ignore,omitempty" json:"ignore_for_fetch"`
+	//AwsKey is the key with which the file was uploaded to s3
+	AwsKey string `json:"aws_key,omitempty" bson:"aws_key,omitempty"`
+	//AwsSercret is the secret with which the file was uploaded to s3
+	AwsSecret string `json:"aws_secret,omitempty" bson:"aws_secret,omitempty"`
+}
+
+// stripHiddenFiles is a helper for only showing users the files they are allowed to see.
+func StripHiddenFiles(files []File, hasUser bool) []File {
+	publicFiles := []File{}
+	for _, file := range files {
+		switch {
+		case file.Visibility == None:
+			continue
+		case file.Visibility == Private && hasUser == false:
+			continue
+		default:
+			publicFiles = append(publicFiles, file)
+		}
+	}
+	return publicFiles
+}
+
+func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {
+	artifacts, err := FindAll(ByTaskIdsAndExecutions(tasks))
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding artifact files for task")
+	}
+	if artifacts == nil {
+		taskIds := []string{}
+		for _, t := range tasks {
+			taskIds = append(taskIds, t.TaskID)
+		}
+		artifacts, err = FindAll(ByTaskIds(taskIds))
+		if err != nil {
+			return nil, errors.Wrap(err, "error finding artifact files for task without execution number")
+		}
+		if artifacts == nil {
+			return []File{}, nil
+		}
+	}
+	files := []File{}
+	for _, artifact := range artifacts {
+		files = append(files, artifact.Files...)
+	}
+	return files, nil
 }
 
 // Array turns the parameter map into an array of File structs.

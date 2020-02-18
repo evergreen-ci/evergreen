@@ -2,7 +2,7 @@ package send
 
 import (
 	"context"
-	"errors"
+	"sync"
 
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -14,11 +14,10 @@ import (
 // under-priority and unloggable messages. Used  for testing
 // purposes.
 type InternalSender struct {
-	name         string
-	level        LevelInfo
-	formatter    MessageFormatter
-	errorHandler ErrorHandler
-	output       chan *InternalMessage
+	*Base
+	name   string
+	output chan *InternalMessage
+	mu     sync.RWMutex
 }
 
 // InternalMessage provides a complete representation of all
@@ -52,30 +51,18 @@ func NewInternalLogger(name string, l LevelInfo) (*InternalSender, error) {
 // MakeInternalLogger constructs an internal sender object, typically
 // for use in testing.
 func MakeInternalLogger() *InternalSender {
-	return &InternalSender{
+	s := &InternalSender{
+		Base:   NewBase(""),
 		output: make(chan *InternalMessage, 100),
 	}
-}
 
-func (s *InternalSender) Name() string                           { return s.name }
-func (s *InternalSender) SetName(n string)                       { s.name = n }
-func (s *InternalSender) Close() error                           { close(s.output); return nil }
-func (s *InternalSender) Level() LevelInfo                       { return s.level }
-func (s *InternalSender) SetErrorHandler(eh ErrorHandler) error  { s.errorHandler = eh; return nil }
-func (s *InternalSender) ErrorHandler() ErrorHandler             { return s.errorHandler }
-func (s *InternalSender) SetFormatter(mf MessageFormatter) error { s.formatter = mf; return nil }
-func (s *InternalSender) Formatter() MessageFormatter            { return s.formatter }
-func (s *InternalSender) SetLevel(l LevelInfo) error {
-	if !l.Valid() {
-		return errors.New("invalid level")
-	}
-
-	s.level = l
-	return nil
+	return s
 }
 
 // GetMessage pops the first message in the queue and returns.
 func (s *InternalSender) GetMessage() *InternalMessage {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return <-s.output
 }
 
@@ -91,16 +78,24 @@ func (s *InternalSender) GetMessageSafe() (*InternalMessage, bool) {
 // HasMessage returns true if there is at least one message that has
 // not be removed.
 func (s *InternalSender) HasMessage() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return len(s.output) > 0
 }
 
 // Len returns the number of sent messages that have not been retrieved.
-func (s *InternalSender) Len() int { return len(s.output) }
+func (s *InternalSender) Len() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return len(s.output)
+}
 
 // Send sends a message. Unlike all other sender implementations, all
 // messages are sent, but the InternalMessage format tracks
 // "loggability" for testing purposes.
 func (s *InternalSender) Send(m message.Composer) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.output <- &InternalMessage{
 		Message:  m,
 		Priority: m.Priority(),

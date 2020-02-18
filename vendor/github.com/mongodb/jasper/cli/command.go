@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/cheynewallace/tabby"
+	"github.com/google/uuid"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -14,7 +15,6 @@ import (
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/remote"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 	"github.com/urfave/cli"
 )
 
@@ -32,7 +32,7 @@ func RunCMD() cli.Command {
 		waitFlagName    = "wait"
 	)
 
-	defaultID := uuid.Must(uuid.NewV4())
+	defaultID := uuid.New()
 
 	return cli.Command{
 		Name:  "run",

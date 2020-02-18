@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -30,6 +31,7 @@ func hostCreate() cli.Command {
 		tagFlagName          = "tag"
 		instanceTypeFlagName = "type"
 		noExpireFlagName     = "no-expire"
+		regionFlagName       = "region"
 	)
 
 	return cli.Command{
@@ -52,6 +54,10 @@ func hostCreate() cli.Command {
 				Name:  joinFlagNames(instanceTypeFlagName, "i"),
 				Usage: "name of an instance type",
 			},
+			cli.StringFlag{
+				Name:  joinFlagNames(regionFlagName, "r"),
+				Usage: "AWS region to spawn host in",
+			},
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(tagFlagName, "t"),
 				Usage: "key=value pair representing an instance tag, with one pair per flag",
@@ -68,6 +74,7 @@ func hostCreate() cli.Command {
 			fn := c.String(scriptFlagName)
 			tagSlice := c.StringSlice(tagFlagName)
 			instanceType := c.String(instanceTypeFlagName)
+			region := c.String(regionFlagName)
 			noExpire := c.Bool(noExpireFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -101,6 +108,7 @@ func hostCreate() cli.Command {
 				UserData:     script,
 				InstanceTags: tags,
 				InstanceType: instanceType,
+				Region:       region,
 				NoExpiration: noExpire,
 			}
 
@@ -112,7 +120,7 @@ func hostCreate() cli.Command {
 				return errors.New("Unable to create a spawn host. Double check that the params and .evergreen.yml are correct")
 			}
 
-			grip.Infof("Spawn host created with ID '%s'. Visit the hosts page in Evergreen to check on its status.", model.FromStringPtr(host.Id))
+			grip.Infof("Spawn host created with ID '%s'. Visit the hosts page in Evergreen to check on its status, or check `evergreen host list --mine", model.FromStringPtr(host.Id))
 			return nil
 		},
 	}
@@ -941,11 +949,11 @@ Examples:
 			dryRun := c.Bool(dryRunFlagName)
 			remoteIsLocal := c.Bool(remoteIsLocalFlagName)
 
-			if strings.HasSuffix(localPath, string(os.PathSeparator)) && !strings.HasSuffix(remotePath, string(os.PathSeparator)) {
-				remotePath = remotePath + string(os.PathSeparator)
+			if strings.HasSuffix(localPath, "/") && !strings.HasSuffix(remotePath, "/") {
+				remotePath = remotePath + "/"
 			}
-			if strings.HasSuffix(remotePath, string(os.PathSeparator)) && !strings.HasSuffix(localPath, string(os.PathSeparator)) {
-				localPath = localPath + string(os.PathSeparator)
+			if strings.HasSuffix(remotePath, "/") && !strings.HasSuffix(localPath, "/") {
+				localPath = localPath + "/"
 			}
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -1055,8 +1063,8 @@ func getUserAndHostname(ctx context.Context, hostID, confPath string) (user, hos
 // overwrite all of the contents of the destination directory, so we check that
 // they really want to do this.
 func sanityCheckRsync(localPath, remotePath string, pull bool) bool {
-	localPathIsDir := strings.HasSuffix(localPath, string(os.PathSeparator))
-	remotePathIsDir := strings.HasSuffix(remotePath, string(os.PathSeparator))
+	localPathIsDir := strings.HasSuffix(localPath, "/")
+	remotePathIsDir := strings.HasSuffix(remotePath, "/")
 
 	if localPathIsDir && !pull {
 		ok := confirm(fmt.Sprintf("The local directory '%s' will overwrite any existing contents in the remote directory '%s'. Continue? (y/n)", localPath, remotePath), false)
@@ -1100,7 +1108,22 @@ func buildRsyncCommand(opts rsyncOpts) (*jasper.Command, error) {
 		args = append(args, "--exclude", pattern)
 	}
 	if opts.makeRemoteParentDirs {
-		args = append(args, fmt.Sprintf(`--rsync-path=mkdir -p "%s" && rsync`, filepath.Dir(opts.remote)))
+		var parentDir string
+		if runtime.GOOS == "windows" {
+			// If we're using cygwin rsync, we have to use the Unix path and not
+			// the native one.
+			baseIndex := strings.LastIndex(opts.remote, "/")
+			if baseIndex == -1 {
+				parentDir = opts.remote
+			} else if baseIndex == 0 {
+				parentDir = "/"
+			} else {
+				parentDir = opts.remote[:baseIndex]
+			}
+		} else {
+			parentDir = filepath.Dir(opts.remote)
+		}
+		args = append(args, fmt.Sprintf(`--rsync-path=mkdir -p "%s" && rsync`, parentDir))
 	}
 
 	var dryRunIndex int

@@ -90,7 +90,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 		return
 	}
 
-	if j.host.NeedsReprovision != host.ReprovisionJasperRestart || j.host.Status != evergreen.HostProvisioning {
+	if j.host.NeedsReprovision != host.ReprovisionJasperRestart || j.host.Status != evergreen.HostProvisioning || j.host.RunningTask != "" {
 		return
 	}
 
@@ -132,7 +132,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 
 	// The host cannot be reprovisioned until the host's agent monitor has been
 	// stopped.
-	if j.host.StartedBy == evergreen.User && !j.host.NeedsNewAgentMonitor {
+	if j.host.StartedBy == evergreen.User && (!j.host.NeedsNewAgentMonitor || j.host.RunningTask != "") {
 		grip.Error(message.WrapError(j.tryRequeue(ctx), message.Fields{
 			"message": "could not enqueue job to retry provisioning conversion when host's agent monitor is still running",
 			"host_id": j.host.Id,
@@ -311,7 +311,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 		if output, err := j.host.RunSSHCommand(ctx, writeCredentialsCmd, sshOpts); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not run SSH command to write credentials file",
-				"output":  output,
+				"logs":    output,
 				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),
@@ -323,7 +323,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 		if output, err := j.host.RunSSHCommand(ctx, j.host.RestartJasperCommand(j.settings.HostJasper), sshOpts); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not run SSH command to restart Jasper",
-				"output":  output,
+				"logs":    output,
 				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),

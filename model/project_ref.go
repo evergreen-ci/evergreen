@@ -820,7 +820,10 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 	for _, addedUser := range toAdd {
 		adminUser, err := user.FindOneById(addedUser)
 		if err != nil {
-			return errors.Wrapf(err, "error finding user %s", addedUser)
+			return errors.Wrapf(err, "error finding user '%s'", addedUser)
+		}
+		if adminUser == nil {
+			return errors.Errorf("no user '%s' found", addedUser)
 		}
 		if !util.StringSliceContains(adminUser.Roles(), role.ID) {
 			err = adminUser.AddRole(role.ID)

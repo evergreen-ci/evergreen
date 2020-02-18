@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
@@ -83,7 +82,8 @@ func (hc *DBHostConnector) FindHostsByDistroID(distroID string) ([]host.Host, er
 
 // NewIntentHost is a method to insert an intent host given a distro and a public key
 // The public key can be the name of a saved key or the actual key string
-func (hc *DBHostConnector) NewIntentHost(options *restmodel.HostRequestOptions, user *user.DBUser) (*host.Host, error) {
+func (hc *DBHostConnector) NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, user *user.DBUser,
+	settings *evergreen.Settings) (*host.Host, error) {
 
 	// Get key value if PublicKey is a name
 	keyVal, err := user.GetPublicKey(options.KeyName)
@@ -93,35 +93,27 @@ func (hc *DBHostConnector) NewIntentHost(options *restmodel.HostRequestOptions, 
 	if keyVal == "" {
 		return nil, errors.New("invalid key")
 	}
-
-	var providerSettings *map[string]interface{}
-	if options.UserData != "" {
-		var d distro.Distro
-		d, err = distro.FindOne(distro.ById(options.DistroID))
-		if err != nil {
-			return nil, errors.Wrapf(err, "error finding distro '%s'", options.DistroID)
-		}
-		providerSettings = d.ProviderSettings
-		(*providerSettings)["user_data"] = options.UserData
+	if options.Region == "" {
+		options.Region = evergreen.DefaultEC2Region
 	}
-
 	spawnOptions := cloud.SpawnOptions{
-		DistroId:         options.DistroID,
-		ProviderSettings: providerSettings,
-		UserName:         user.Username(),
-		PublicKey:        keyVal,
-		TaskId:           options.TaskID,
-		Owner:            user,
-		InstanceTags:     options.InstanceTags,
-		InstanceType:     options.InstanceType,
-		NoExpiration:     options.NoExpiration,
-		AttachVolume:     options.AttachVolume,
-		HomeVolumeSize:   options.HomeVolumeSize,
+		DistroId:       options.DistroID,
+		Userdata:       options.UserData,
+		UserName:       user.Username(),
+		PublicKey:      keyVal,
+		TaskId:         options.TaskID,
+		Owner:          user,
+		InstanceTags:   options.InstanceTags,
+		InstanceType:   options.InstanceType,
+		NoExpiration:   options.NoExpiration,
+		AttachVolume:   options.AttachVolume,
+		HomeVolumeSize: options.HomeVolumeSize,
+		Region:         options.Region,
 	}
 
-	intentHost, err := cloud.CreateSpawnHost(spawnOptions)
+	intentHost, err := cloud.CreateSpawnHost(ctx, spawnOptions, settings)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error creating spawn host")
 	}
 
 	if err := intentHost.Insert(); err != nil {
@@ -296,21 +288,21 @@ func (hc *MockHostConnector) FindHostsByDistroID(distroID string) ([]host.Host, 
 
 // NewIntentHost is a method to mock "insert" an intent host given a distro and a public key
 // The public key can be the name of a saved key or the actual key string
-func (hc *MockHostConnector) NewIntentHost(options *restmodel.HostRequestOptions, user *user.DBUser) (*host.Host, error) {
+func (hc *MockHostConnector) NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, user *user.DBUser, settings *evergreen.Settings) (*host.Host, error) {
 	keyVal := strings.Join([]string{"ssh-rsa", base64.StdEncoding.EncodeToString([]byte("foo"))}, " ")
 
 	spawnOptions := cloud.SpawnOptions{
-		DistroId:         options.DistroID,
-		UserName:         user.Username(),
-		ProviderSettings: &map[string]interface{}{"user_data": options.UserData, "ami": "ami-123456"},
-		PublicKey:        keyVal,
-		TaskId:           options.TaskID,
-		Owner:            user,
-		InstanceTags:     options.InstanceTags,
-		InstanceType:     options.InstanceType,
+		DistroId:     options.DistroID,
+		Userdata:     options.UserData,
+		UserName:     user.Username(),
+		PublicKey:    keyVal,
+		TaskId:       options.TaskID,
+		Owner:        user,
+		InstanceTags: options.InstanceTags,
+		InstanceType: options.InstanceType,
 	}
 
-	intentHost, err := cloud.CreateSpawnHost(spawnOptions)
+	intentHost, err := cloud.CreateSpawnHost(ctx, spawnOptions, settings)
 	if err != nil {
 		return nil, err
 	}

@@ -68,11 +68,11 @@ func TestHostSetupScript(t *testing.T) {
 func TestHostSudoShHelper(t *testing.T) {
 	assert := assert.New(t)
 
-	cmd := host.ShCommandWithSudo(context.Background(), "foo", false)
-	assert.Equal([]string{"sh", "foo"}, cmd.Args)
+	cmd := host.ShCommandWithSudo("foo", false)
+	assert.Equal([]string{"sh", "foo"}, cmd)
 
-	cmd = host.ShCommandWithSudo(context.Background(), "foo", true)
-	assert.Equal([]string{"sudo", "sh", "foo"}, cmd.Args)
+	cmd = host.ShCommandWithSudo("foo", true)
+	assert.Equal([]string{"sudo", "sh", "foo"}, cmd)
 }
 
 func TestHostTeardownScript(t *testing.T) {
@@ -90,7 +90,7 @@ func TestHostTeardownScript(t *testing.T) {
 	defer os.Remove(evergreen.TeardownScriptName)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	err = runHostTeardownScript(ctx)
+	err = runTeardownScript(ctx)
 	assert.NoError(err)
 
 	// Script should time out with context and return an error
@@ -99,7 +99,7 @@ func TestHostTeardownScript(t *testing.T) {
 	ctx, cancel = context.WithTimeout(context.Background(), time.Nanosecond)
 	defer cancel()
 	time.Sleep(time.Millisecond)
-	err = runHostTeardownScript(ctx)
+	err = runTeardownScript(ctx)
 	assert.Error(err)
 	assert.Contains(err.Error(), "context deadline exceeded")
 
@@ -109,7 +109,7 @@ func TestHostTeardownScript(t *testing.T) {
 	require.NoError(err)
 	ctx, cancel = context.WithTimeout(context.Background(), time.Nanosecond)
 	defer cancel()
-	err = runHostTeardownScript(ctx)
+	err = runTeardownScript(ctx)
 	assert.Error(err)
 
 }

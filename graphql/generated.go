@@ -44,13 +44,27 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	File struct {
+		Link       func(childComplexity int) int
+		Name       func(childComplexity int) int
+		Visibility func(childComplexity int) int
+	}
+
+	GroupedFiles struct {
+		Files    func(childComplexity int) int
+		TaskName func(childComplexity int) int
+	}
+
 	GroupedProjects struct {
 		Name     func(childComplexity int) int
 		Projects func(childComplexity int) int
 	}
 
 	Mutation struct {
-		AddFavoriteProject func(childComplexity int, identifier string) int
+		AddFavoriteProject    func(childComplexity int, identifier string) int
+		RemoveFavoriteProject func(childComplexity int, identifier string) int
+		ScheduleTask          func(childComplexity int, taskID string) int
+		UnscheduleTask        func(childComplexity int, taskID string) int
 	}
 
 	Patch struct {
@@ -85,8 +99,10 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
+		Patch       func(childComplexity int, id string) int
 		Projects    func(childComplexity int) int
 		Task        func(childComplexity int, taskID string) int
+		TaskFiles   func(childComplexity int, taskID string) int
 		TaskTests   func(childComplexity int, taskID string, sortCategory *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, status *string) int
 		UserPatches func(childComplexity int, userID string) int
 	}
@@ -169,12 +185,17 @@ type ComplexityRoot struct {
 
 type MutationResolver interface {
 	AddFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
+	RemoveFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
+	ScheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
+	UnscheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 }
 type QueryResolver interface {
 	UserPatches(ctx context.Context, userID string) ([]*model.APIPatch, error)
+	Patch(ctx context.Context, id string) (*model.APIPatch, error)
 	Task(ctx context.Context, taskID string) (*model.APITask, error)
 	Projects(ctx context.Context) (*Projects, error)
 	TaskTests(ctx context.Context, taskID string, sortCategory *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, status *string) ([]*model.APITest, error)
+	TaskFiles(ctx context.Context, taskID string) ([]*GroupedFiles, error)
 }
 
 type executableSchema struct {
@@ -191,6 +212,41 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	ec := executionContext{nil, e}
 	_ = ec
 	switch typeName + "." + field {
+
+	case "File.link":
+		if e.complexity.File.Link == nil {
+			break
+		}
+
+		return e.complexity.File.Link(childComplexity), true
+
+	case "File.name":
+		if e.complexity.File.Name == nil {
+			break
+		}
+
+		return e.complexity.File.Name(childComplexity), true
+
+	case "File.visibility":
+		if e.complexity.File.Visibility == nil {
+			break
+		}
+
+		return e.complexity.File.Visibility(childComplexity), true
+
+	case "GroupedFiles.files":
+		if e.complexity.GroupedFiles.Files == nil {
+			break
+		}
+
+		return e.complexity.GroupedFiles.Files(childComplexity), true
+
+	case "GroupedFiles.taskName":
+		if e.complexity.GroupedFiles.TaskName == nil {
+			break
+		}
+
+		return e.complexity.GroupedFiles.TaskName(childComplexity), true
 
 	case "GroupedProjects.name":
 		if e.complexity.GroupedProjects.Name == nil {
@@ -217,6 +273,42 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.AddFavoriteProject(childComplexity, args["identifier"].(string)), true
+
+	case "Mutation.removeFavoriteProject":
+		if e.complexity.Mutation.RemoveFavoriteProject == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeFavoriteProject_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RemoveFavoriteProject(childComplexity, args["identifier"].(string)), true
+
+	case "Mutation.scheduleTask":
+		if e.complexity.Mutation.ScheduleTask == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_scheduleTask_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ScheduleTask(childComplexity, args["taskId"].(string)), true
+
+	case "Mutation.unscheduleTask":
+		if e.complexity.Mutation.UnscheduleTask == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_unscheduleTask_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UnscheduleTask(childComplexity, args["taskId"].(string)), true
 
 	case "Patch.activated":
 		if e.complexity.Patch.Activated == nil {
@@ -372,6 +464,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Projects.OtherProjects(childComplexity), true
 
+	case "Query.patch":
+		if e.complexity.Query.Patch == nil {
+			break
+		}
+
+		args, err := ec.field_Query_patch_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Patch(childComplexity, args["id"].(string)), true
+
 	case "Query.projects":
 		if e.complexity.Query.Projects == nil {
 			break
@@ -390,6 +494,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Task(childComplexity, args["taskId"].(string)), true
+
+	case "Query.taskFiles":
+		if e.complexity.Query.TaskFiles == nil {
+			break
+		}
+
+		args, err := ec.field_Query_taskFiles_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.TaskFiles(childComplexity, args["taskId"].(string)), true
 
 	case "Query.taskTests":
 		if e.complexity.Query.TaskTests == nil {
@@ -878,149 +994,141 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var parsedSchema = gqlparser.MustLoadSchema(
-	&ast.Source{Name: "graphql/schema.graphql", Input: `type Query {
-  userPatches(userId: String!): [Patch!]!
-  task(taskId: String!): Task
-  projects: Projects!
-  taskTests(
-    taskId: String!
-    sortCategory: TaskSortCategory = TEST_NAME
-    sortDirection: SortDirection = ASC
-    page: Int = 0
-    limit: Int = 0
-    testName: String = ""
-    status: String = ""
-  ): [TestResult!]
+	&ast.Source{Name: "schema.graphql", Input: `scalar Duration
+type File {
+	name: String!
+	link: String!
+	visibility: String!
 }
-
-type Mutation {
-  addFavoriteProject(identifier: String!): Project!
+type GroupedFiles {
+	taskName: String
+	files: [File!]
 }
-
-enum TaskSortCategory {
-  STATUS
-  DURATION
-  TEST_NAME
-}
-
-enum SortDirection {
-  ASC
-  DESC
-}
-
-type Patch {
-  id: ID!
-  description: String!
-  projectID: String!
-  githash: String!
-  patchNumber: Int!
-  author: String!
-  version: String!
-  status: String!
-  createTime: Time!
-  startTime: Time
-  finishTime: Time
-  variants: [String!]!
-  tasks: [String!]!
-  variantsTasks: [VariantTask]!
-  activated: Boolean!
-  alias: String!
-}
-
-type VariantTask {
-  name: String!
-  tasks: [String!]!
-}
-
-type TaskLogs {
-  allLogLink: String
-  agentLogLink: String
-  systemLogLink: String
-  taskLogLink: String
-}
-
-type TaskEndDetail {
-  status: String!
-  type: String!
-  description: String
-  timedOut: Boolean
-}
-
-type TestResult {
-  id: String!
-  status: String!
-  testFile: String!
-  logs: TestLog!
-  exitCode: Int
-  startTime: Time
-  duration: Float
-  endTime: Time
-}
-
-type TestLog {
-  url: String
-  urlRaw: String
-  lineNum: Int
-  logId: String
-}
-
-type Task {
-  id: String!
-  createTime: Time
-  ingestTime: Time
-  dispatchTime: Time
-  scheduledTime: Time
-  startTime: Time
-  finishTime: Time
-  activatedTime: Time
-  version: String!
-  projectId: String!
-  revision: String
-  priority: Int
-  taskGroup: String
-  taskGroupMaxHosts: Int
-  logs: TaskLogs!
-  activated: Boolean!
-  activatedBy: String
-  buildId: String!
-  distroId: String!
-  buildVariant: String!
-  dependsOn: [String!]
-  displayName: String!
-  hostId: String
-  restarts: Int
-  execution: Int
-  order: Int
-  requester: String!
-  status: String!
-  details: TaskEndDetail
-  timeTaken: Duration
-  expectedDuration: Duration
-  displayOnly: Boolean
-  executionTasks: [String!]
-  generateTask: Boolean
-  generatedBy: String
-}
-
-type Projects {
-  favorites: [Project!]!
-  otherProjects: [GroupedProjects!]!
-}
-
 type GroupedProjects {
-  name: String!
-  projects: [Project!]!
+	name: String!
+	projects: [Project!]!
 }
-
+type Mutation {
+	addFavoriteProject(identifier: String!): Project!
+	removeFavoriteProject(identifier: String!): Project!
+	scheduleTask(taskId: String!): Task!
+	unscheduleTask(taskId: String!): Task!
+}
+type Patch {
+	id: ID!
+	description: String!
+	projectID: String!
+	githash: String!
+	patchNumber: Int!
+	author: String!
+	version: String!
+	status: String!
+	createTime: Time!
+	startTime: Time
+	finishTime: Time
+	variants: [String!]!
+	tasks: [String!]!
+	variantsTasks: [VariantTask]!
+	activated: Boolean!
+	alias: String!
+}
 type Project {
-  identifier: String!
-  displayName: String!
-  repo: String!
-  owner: String!
+	identifier: String!
+	displayName: String!
+	repo: String!
+	owner: String!
 }
-
+type Projects {
+	favorites: [Project!]!
+	otherProjects: [GroupedProjects!]!
+}
+type Query {
+	userPatches(userId: String!): [Patch!]!
+	patch(id: String!): Patch!
+	task(taskId: String!): Task
+	projects: Projects!
+	taskTests(taskId: String!, sortCategory: TaskSortCategory = TEST_NAME, sortDirection: SortDirection = ASC, page: Int = 0, limit: Int = 0, testName: String = "", status: String = ""): [TestResult!]
+	taskFiles(taskId: String!): [GroupedFiles!]!
+}
+enum SortDirection {
+	ASC
+	DESC
+}
+type Task {
+	id: String!
+	createTime: Time
+	ingestTime: Time
+	dispatchTime: Time
+	scheduledTime: Time
+	startTime: Time
+	finishTime: Time
+	activatedTime: Time
+	version: String!
+	projectId: String!
+	revision: String
+	priority: Int
+	taskGroup: String
+	taskGroupMaxHosts: Int
+	logs: TaskLogs!
+	activated: Boolean!
+	activatedBy: String
+	buildId: String!
+	distroId: String!
+	buildVariant: String!
+	dependsOn: [String!]
+	displayName: String!
+	hostId: String
+	restarts: Int
+	execution: Int
+	order: Int
+	requester: String!
+	status: String!
+	details: TaskEndDetail
+	timeTaken: Duration
+	expectedDuration: Duration
+	displayOnly: Boolean
+	executionTasks: [String!]
+	generateTask: Boolean
+	generatedBy: String
+}
+type TaskEndDetail {
+	status: String!
+	type: String!
+	description: String
+	timedOut: Boolean
+}
+type TaskLogs {
+	allLogLink: String
+	agentLogLink: String
+	systemLogLink: String
+	taskLogLink: String
+}
+enum TaskSortCategory {
+	STATUS
+	DURATION
+	TEST_NAME
+}
+type TestLog {
+	url: String
+	urlRaw: String
+	lineNum: Int
+	logId: String
+}
+type TestResult {
+	id: String!
+	status: String!
+	testFile: String!
+	logs: TestLog!
+	exitCode: Int
+	startTime: Time
+	duration: Float
+	endTime: Time
+}
 scalar Time
-scalar Duration
+type VariantTask {
+	name: String!
+	tasks: [String!]!
+}
 `},
 )
 
@@ -1042,6 +1150,48 @@ func (ec *executionContext) field_Mutation_addFavoriteProject_args(ctx context.C
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_removeFavoriteProject_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["identifier"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["identifier"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_scheduleTask_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["taskId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["taskId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_unscheduleTask_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["taskId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["taskId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -1053,6 +1203,34 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		}
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_patch_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["id"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_taskFiles_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["taskId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["taskId"] = arg0
 	return args, nil
 }
 
@@ -1182,6 +1360,170 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 
 // region    **************************** field.gotpl *****************************
 
+func (ec *executionContext) _File_name(ctx context.Context, field graphql.CollectedField, obj *model.APIFile) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "File",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _File_link(ctx context.Context, field graphql.CollectedField, obj *model.APIFile) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "File",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Link, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _File_visibility(ctx context.Context, field graphql.CollectedField, obj *model.APIFile) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "File",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Visibility, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _GroupedFiles_taskName(ctx context.Context, field graphql.CollectedField, obj *GroupedFiles) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "GroupedFiles",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _GroupedFiles_files(ctx context.Context, field graphql.CollectedField, obj *GroupedFiles) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "GroupedFiles",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Files, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APIFile)
+	fc.Result = res
+	return ec.marshalOFile2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFileᚄ(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _GroupedProjects_name(ctx context.Context, field graphql.CollectedField, obj *GroupedProjects) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -1289,6 +1631,129 @@ func (ec *executionContext) _Mutation_addFavoriteProject(ctx context.Context, fi
 	res := resTmp.(*model.UIProjectFields)
 	fc.Result = res
 	return ec.marshalNProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐUIProjectFields(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_removeFavoriteProject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_removeFavoriteProject_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RemoveFavoriteProject(rctx, args["identifier"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.UIProjectFields)
+	fc.Result = res
+	return ec.marshalNProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐUIProjectFields(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_scheduleTask(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_scheduleTask_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ScheduleTask(rctx, args["taskId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APITask)
+	fc.Result = res
+	return ec.marshalNTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_unscheduleTask(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_unscheduleTask_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UnscheduleTask(rctx, args["taskId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APITask)
+	fc.Result = res
+	return ec.marshalNTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Patch_id(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
@@ -2074,6 +2539,47 @@ func (ec *executionContext) _Query_userPatches(ctx context.Context, field graphq
 	return ec.marshalNPatch2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchᚄ(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Query_patch(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_patch_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Patch(rctx, args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIPatch)
+	fc.Result = res
+	return ec.marshalNPatch2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query_task(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -2182,6 +2688,47 @@ func (ec *executionContext) _Query_taskTests(ctx context.Context, field graphql.
 	res := resTmp.([]*model.APITest)
 	fc.Result = res
 	return ec.marshalOTestResult2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_taskFiles(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_taskFiles_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().TaskFiles(rctx, args["taskId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*GroupedFiles)
+	fc.Result = res
+	return ec.marshalNGroupedFiles2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGroupedFilesᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -5140,6 +5687,69 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 
 // region    **************************** object.gotpl ****************************
 
+var fileImplementors = []string{"File"}
+
+func (ec *executionContext) _File(ctx context.Context, sel ast.SelectionSet, obj *model.APIFile) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, fileImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("File")
+		case "name":
+			out.Values[i] = ec._File_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "link":
+			out.Values[i] = ec._File_link(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "visibility":
+			out.Values[i] = ec._File_visibility(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var groupedFilesImplementors = []string{"GroupedFiles"}
+
+func (ec *executionContext) _GroupedFiles(ctx context.Context, sel ast.SelectionSet, obj *GroupedFiles) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, groupedFilesImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GroupedFiles")
+		case "taskName":
+			out.Values[i] = ec._GroupedFiles_taskName(ctx, field, obj)
+		case "files":
+			out.Values[i] = ec._GroupedFiles_files(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var groupedProjectsImplementors = []string{"GroupedProjects"}
 
 func (ec *executionContext) _GroupedProjects(ctx context.Context, sel ast.SelectionSet, obj *GroupedProjects) graphql.Marshaler {
@@ -5189,6 +5799,21 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = graphql.MarshalString("Mutation")
 		case "addFavoriteProject":
 			out.Values[i] = ec._Mutation_addFavoriteProject(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "removeFavoriteProject":
+			out.Values[i] = ec._Mutation_removeFavoriteProject(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "scheduleTask":
+			out.Values[i] = ec._Mutation_scheduleTask(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "unscheduleTask":
+			out.Values[i] = ec._Mutation_unscheduleTask(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -5402,6 +6027,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
+		case "patch":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_patch(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "task":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -5436,6 +6075,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_taskTests(ctx, field)
+				return res
+			})
+		case "taskFiles":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_taskFiles(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "__type":
@@ -6015,6 +6668,71 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) marshalNFile2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFile(ctx context.Context, sel ast.SelectionSet, v model.APIFile) graphql.Marshaler {
+	return ec._File(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNFile2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFile(ctx context.Context, sel ast.SelectionSet, v *model.APIFile) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._File(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNGroupedFiles2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGroupedFiles(ctx context.Context, sel ast.SelectionSet, v GroupedFiles) graphql.Marshaler {
+	return ec._GroupedFiles(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNGroupedFiles2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGroupedFilesᚄ(ctx context.Context, sel ast.SelectionSet, v []*GroupedFiles) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNGroupedFiles2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGroupedFiles(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalNGroupedFiles2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGroupedFiles(ctx context.Context, sel ast.SelectionSet, v *GroupedFiles) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._GroupedFiles(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNGroupedProjects2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGroupedProjects(ctx context.Context, sel ast.SelectionSet, v GroupedProjects) graphql.Marshaler {
 	return ec._GroupedProjects(ctx, sel, &v)
 }
@@ -6287,6 +7005,20 @@ func (ec *executionContext) marshalNString2ᚖstring(ctx context.Context, sel as
 		return graphql.Null
 	}
 	return ec.marshalNString2string(ctx, sel, *v)
+}
+
+func (ec *executionContext) marshalNTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx context.Context, sel ast.SelectionSet, v model.APITask) graphql.Marshaler {
+	return ec._Task(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx context.Context, sel ast.SelectionSet, v *model.APITask) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Task(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNTaskLogs2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐLogLinks(ctx context.Context, sel ast.SelectionSet, v model.LogLinks) graphql.Marshaler {
@@ -6635,6 +7367,46 @@ func (ec *executionContext) unmarshalODuration2githubᚗcomᚋevergreenᚑciᚋe
 
 func (ec *executionContext) marshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx context.Context, sel ast.SelectionSet, v model.APIDuration) graphql.Marshaler {
 	return model.MarshalAPIDuration(v)
+}
+
+func (ec *executionContext) marshalOFile2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFileᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIFile) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNFile2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFile(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
 }
 
 func (ec *executionContext) unmarshalOFloat2float64(ctx context.Context, v interface{}) (float64, error) {

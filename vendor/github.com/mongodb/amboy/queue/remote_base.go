@@ -6,11 +6,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 )
 
 type remoteQueue interface {
@@ -34,7 +34,7 @@ type remoteBase struct {
 
 func newRemoteBase() *remoteBase {
 	return &remoteBase{
-		id:         uuid.NewV4().String(),
+		id:         uuid.New().String(),
 		channel:    make(chan amboy.Job),
 		blocked:    make(map[string]struct{}),
 		dispatched: make(map[string]struct{}),
@@ -98,10 +98,6 @@ func (q *remoteBase) jobServer(ctx context.Context) {
 				continue
 			}
 
-			if !isDispatchable(job.Status()) {
-				continue
-			}
-
 			// therefore return any pending job or job
 			// that has a timed out lock.
 			q.channel <- job
@@ -158,7 +154,7 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 			err = q.driver.Complete(ctx, j)
 			if err != nil {
 				if time.Since(startAt) > time.Minute+amboy.LockTimeout {
-					grip.Error(message.WrapError(err, message.Fields{
+					grip.Warning(message.WrapError(err, message.Fields{
 						"job_id":      id,
 						"job_type":    j.Type().Name,
 						"driver_type": q.driverType,
@@ -167,7 +163,7 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 						"message":     "job took too long to mark complete",
 					}))
 				} else if count > 10 {
-					grip.Error(message.WrapError(err, message.Fields{
+					grip.Warning(message.WrapError(err, message.Fields{
 						"job_id":      id,
 						"driver_type": q.driverType,
 						"job_type":    j.Type().Name,
@@ -331,5 +327,12 @@ func (q *remoteBase) canDispatch(j amboy.Job) bool {
 }
 
 func isDispatchable(stat amboy.JobStatusInfo) bool {
-	return !stat.Completed
+	if stat.Completed {
+		return false
+	}
+	if stat.InProgress {
+		return false
+	}
+
+	return true
 }

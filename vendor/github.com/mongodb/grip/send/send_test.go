@@ -51,7 +51,7 @@ func (s *SenderSuite) SetupTest() {
 		},
 	}
 
-	internal := new(InternalSender)
+	internal := MakeInternalLogger()
 	internal.name = "internal"
 	internal.output = make(chan *InternalMessage)
 	s.senders["internal"] = internal

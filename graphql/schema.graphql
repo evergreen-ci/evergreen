@@ -1,5 +1,6 @@
 type Query {
   userPatches(userId: String!): [Patch!]!
+  patch(id: String!): Patch!
   task(taskId: String!): Task
   projects: Projects!
   taskTests(
@@ -11,10 +12,14 @@ type Query {
     testName: String = ""
     status: String = ""
   ): [TestResult!]
+  taskFiles(taskId: String!): [GroupedFiles!]!
 }
 
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
+  removeFavoriteProject(identifier: String!): Project!
+  scheduleTask(taskId: String!): Task!
+  unscheduleTask(taskId: String!): Task!
 }
 
 enum TaskSortCategory {
@@ -26,6 +31,11 @@ enum TaskSortCategory {
 enum SortDirection {
   ASC
   DESC
+}
+
+type GroupedFiles {
+  taskName: String
+  files: [File!]
 }
 
 type Patch {
@@ -137,6 +147,12 @@ type Project {
   displayName: String!
   repo: String!
   owner: String!
+}
+
+type File {
+  name: String!
+  link: String!
+  visibility: String!
 }
 
 scalar Time

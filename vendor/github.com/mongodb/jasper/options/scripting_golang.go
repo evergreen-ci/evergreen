@@ -8,7 +8,7 @@ import (
 	"sort"
 	"time"
 
-	uuid "github.com/satori/go.uuid"
+	"github.com/google/uuid"
 )
 
 // ScriptingGolang describes a Go environment for building and running
@@ -57,7 +57,7 @@ func (opts *ScriptingGolang) Validate() error {
 	}
 
 	if opts.Gopath == "" {
-		opts.Gopath = filepath.Join("go", uuid.Must(uuid.NewV4()).String())
+		opts.Gopath = filepath.Join("go", uuid.New().String())
 	}
 
 	return nil

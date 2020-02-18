@@ -1,3 +1,5 @@
+log_path: "server_logs.txt"
+
 database:
   url: "mongodb://localhost:27017"
   db: "mci_smoke"
@@ -17,46 +19,47 @@ ui:
   defaultproject: "logkeeper"
   url: "http://localhost:9090"
   httplistenaddr: ":9090"
+  cors_origins: ["http://localhost:3000"]
 
 notify:
   logfile: "evg_notify.log"
 
 runner:
-    intervalseconds: 10
+  intervalseconds: 10
 
 auth:
-    naive:
-        users:
-        - username: "admin"
-          password: "password"
-          display_name: "Evergreen Admin"
-        - username: "privileged"
-          password: "password"
-          display_name: "Privileged User"
-        - username: "regular"
-          password: "password"
-          display_name: "Regular User"
+  naive:
+    users:
+      - username: "admin"
+        password: "password"
+        display_name: "Evergreen Admin"
+      - username: "privileged"
+        password: "password"
+        display_name: "Privileged User"
+      - username: "regular"
+        password: "password"
+        display_name: "Regular User"
 
 plugins:
   perf:
-      projects: ["sys-perf", "performance"]
+    projects: ["sys-perf", "performance"]
   buildbaron:
-          host: "jira.example.com"
-          username: "foo"
-          password: "bar"
-          projects:
-                  "logkeeper":
-                          ticket_create_project: "foo"
-                          ticket_search_projects: ["foo"]
+    host: "jira.example.com"
+    username: "foo"
+    password: "bar"
+    projects:
+      "logkeeper":
+        ticket_create_project: "foo"
+        ticket_search_projects: ["foo"]
 
 providers:
-    aws:
-        aws_id: "foo"
-        aws_secret: "bar"
+  aws:
+    aws_id: "foo"
+    aws_secret: "bar"
 
 keys:
-      test: "/dev/null"
+  test: "/dev/null"
 
 repotracker:
-    numnewreporevisionstofetch: 10
-    maxreporevisionstosearch: 10
+  numnewreporevisionstofetch: 10
+  maxreporevisionstosearch: 10

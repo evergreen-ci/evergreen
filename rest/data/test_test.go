@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 func TestFindTestsByTaskId(t *testing.T) {
@@ -198,6 +199,58 @@ func TestFindTestsByTaskIdFilterSortPaginate(t *testing.T) {
 	assert.True(ok)
 	assert.Equal(http.StatusNotFound, apiErr.StatusCode)
 
+}
+func TestFindTestsByTaskIdFilterSortPaginatePaginationOrderDependsOnObjectId(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(task.Collection, testresult.Collection))
+
+	serviceContext := &DBConnector{}
+
+	taskId := "TaskOne"
+	Task := &task.Task{
+		Id: taskId,
+	}
+	idOne := mgobson.ObjectIdHex("507f191e810c19729de860ea")
+	idTwo := mgobson.ObjectIdHex("407f191e810c19729de860ea")
+	idThree := mgobson.ObjectIdHex("307f191e810c19729de860ea")
+	tests := []testresult.TestResult{
+		testresult.TestResult{
+			ID:        idOne,
+			TaskID:    taskId,
+			Execution: 0,
+			Status:    "pass",
+		}, testresult.TestResult{
+			ID:        idTwo,
+			TaskID:    taskId,
+			Execution: 0,
+			Status:    "pass",
+		}, testresult.TestResult{
+			ID:        idThree,
+			TaskID:    taskId,
+			Execution: 0,
+			Status:    "pass",
+		},
+	}
+
+	assert.NoError(Task.Insert())
+	for _, test := range tests {
+		assert.NoError(test.Insert())
+	}
+
+	foundTests, err := serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", "", "status", 1, 0, 1, 0)
+	assert.NoError(err)
+	assert.Len(foundTests, 1)
+	assert.True(foundTests[0].ID == idThree)
+
+	foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", "", "status", 1, 1, 1, 0)
+	assert.NoError(err)
+	assert.Len(foundTests, 1)
+	assert.True(foundTests[0].ID == idTwo)
+
+	foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", "", "status", 1, 2, 1, 0)
+	assert.NoError(err)
+	assert.Len(foundTests, 1)
+	assert.True(foundTests[0].ID == idOne)
 }
 
 func TestFindTestsByDisplayTaskId(t *testing.T) {

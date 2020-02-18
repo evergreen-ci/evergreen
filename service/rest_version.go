@@ -258,6 +258,11 @@ func (r *recentVersionsContent) populateBuildsAndTasks(versionIds []string, vers
 // Returns a JSON response with the marshaled output of the version
 // specified in the request.
 func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "error retrieving service flags"})
+		return
+	}
 	projCtx := MustHaveRESTContext(r)
 	srcVersion := projCtx.Version
 	if srcVersion == nil {
@@ -272,7 +277,7 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 		grip.Infof("adding BuildVariant %s", buildStatus.BuildVariant)
 	}
 
-	if evergreen.UseParserProject && destVersion.Config == "" {
+	if !flags.ParserProjectDisabled && destVersion.Config == "" {
 		var err error
 		pp, err := model.ParserProjectFindOneById(projCtx.Version.Id)
 		if err != nil {
@@ -299,17 +304,22 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 	}
 	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "error retrieving service flags"})
+		return
+	}
 	var config []byte
-	var err error
 	pp, err := model.ParserProjectFindOneById(projCtx.Version.Id)
 	if err != nil {
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
+		return
 	}
-	if evergreen.UseParserProject && pp != nil {
+	if !flags.ParserProjectDisabled && pp != nil {
 		config, err = yaml.Marshal(pp)
 		if err != nil {
 			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project"})
+			return
 		}
 	} else {
 		config = []byte(projCtx.Version.Config)

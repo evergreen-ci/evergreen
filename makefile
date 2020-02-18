@@ -90,7 +90,7 @@ phony += cli clis
 
 # start smoke test specific rules
 $(buildDir)/load-smoke-data:cmd/load-smoke-data/load-smoke-data.go
-	$(gobin) build -o $@ $<
+	$(gobin) build -ldflags="-w" -o $@ $<
 $(buildDir)/set-var:cmd/set-var/set-var.go
 	$(gobin) build -o $@ $<
 $(buildDir)/set-project-var:cmd/set-project-var/set-project-var.go
@@ -158,6 +158,7 @@ $(gopath)/bin:
 $(buildDir)/.lintSetup:$(buildDir)/golangci-lint
 	$(gobin) get github.com/evergreen-ci/evg-lint/...
 	@mkdir -p $(buildDir)
+	@touch $@
 $(buildDir)/golangci-lint:
 	@curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(buildDir) v1.10.2 >/dev/null 2>&1 && touch $@
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
@@ -346,6 +347,10 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/anser/vendor/github.com/mongodb/ftdc
 	rm -rf vendor/github.com/mongodb/anser/vendor/github.com/mongodb/amboy
 	rm -rf vendor/github.com/mongodb/anser/vendor/github.com/evergreen-ci/birch
+	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/google/
+	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/google/uuid/
+	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/google/uuid/
+	rm -rf vendor/github.com/vmware/govmomi/vendor/github.com/google/uuid
 	find vendor/ -name "*.gif" -o -name "*.jpg" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" | xargs rm -rf
 phony += vendor-clean
 $(buildDir)/run-glide:cmd/revendor/run-glide.go
