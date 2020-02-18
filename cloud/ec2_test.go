@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/birch"
+	"go.mongodb.org/mongo-driver/bson"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
@@ -1265,31 +1268,31 @@ func (s *EC2Suite) TestFromDistroSettings() {
 	s.Equal(float64(0.001), ec2Settings.BidPrice)
 	s.Equal(evergreen.DefaultEC2Region, ec2Settings.Region)
 
-	// TODO: include this after EVG-7329
 	// create provider list, choose by region
-	//settings2 := EC2ProviderSettings{
-	//	Region:           "us-east-2",
-	//	AMI:              "other_ami",
-	//	InstanceType:     "other_instance",
-	//	SecurityGroupIDs: []string{"ghijkl"},
-	//	BidPrice:         float64(0.002),
-	//	AWSKeyID:         "other_key_id",
-	//	KeyName:          "other_key",
-	//}
-	//bytes, err := bson.Marshal(ec2Settings)
-	//s.NoError(err)
-	//doc1 := &birch.Document{}
-	//s.NoError(doc1.UnmarshalBSON(bytes))
-	//
-	//bytes, err = bson.Marshal(settings2)
-	//s.NoError(err)
-	//doc2 := &birch.Document{}
-	//s.NoError(doc2.UnmarshalBSON(bytes))
-	//d.ProviderSettingsList = []*birch.Document{doc1, doc2}
-	//
-	//s.NoError(ec2Settings.FromDistroSettings(d, "us-east-2"))
-	//s.Equal(ec2Settings.Region, "us-east-2")
-	//s.Equal(ec2Settings.InstanceType, "other_instance")
+	settings2 := EC2ProviderSettings{
+		Region:           "us-east-2",
+		AMI:              "other_ami",
+		InstanceType:     "other_instance",
+		SecurityGroupIDs: []string{"ghijkl"},
+		BidPrice:         float64(0.002),
+		AWSKeyID:         "other_key_id",
+		KeyName:          "other_key",
+	}
+	bytes, err := bson.Marshal(ec2Settings)
+	s.NoError(err)
+	doc1 := &birch.Document{}
+	s.NoError(doc1.UnmarshalBSON(bytes))
+
+	bytes, err = bson.Marshal(settings2)
+	s.NoError(err)
+	doc2 := &birch.Document{}
+	s.NoError(doc2.UnmarshalBSON(bytes))
+	d.ProviderSettingsList = []*birch.Document{doc1, doc2}
+	d.ProviderSettings = nil
+
+	s.NoError(ec2Settings.FromDistroSettings(d, "us-east-2"))
+	s.Equal(ec2Settings.Region, "us-east-2")
+	s.Equal(ec2Settings.InstanceType, "other_instance")
 }
 
 func (s *EC2Suite) TestGetEC2ManagerOptions() {

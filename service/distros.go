@@ -293,7 +293,7 @@ func (uis *UIServer) addDistro(w http.ResponseWriter, r *http.Request) {
 	if hasId {
 		d.Id = id
 	}
-	if err := cloud.UpdateProviderSettings(&d); err != nil {
+	if err = cloud.UpdateProviderSettings(&d); err != nil {
 		message := fmt.Sprintf("error creating provider settings: %v", err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
 		http.Error(w, message, http.StatusInternalServerError)
