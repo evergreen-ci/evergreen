@@ -738,7 +738,11 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 
 	// create and insert all of the actual tasks
 	tasks := task.Tasks{}
-	displayTasks := make(map[string]*task.Task)
+	type displayTaskInfo struct {
+		task          *task.Task
+		dependencyIds map[string]bool
+	}
+	displayTasks := make(map[string]displayTaskInfo)
 
 	// Create display tasks
 	for _, dt := range buildVariant.DisplayTasks {
@@ -771,7 +775,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		t.GeneratedBy = generatedBy
 		tasks = append(tasks, t)
 		for _, et := range dt.ExecutionTasks {
-			displayTasks[et] = t
+			displayTasks[et] = displayTaskInfo{task: t, dependencyIds: map[string]bool{}}
 		}
 	}
 
@@ -852,10 +856,15 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 			}
 		}
 
-		// Display tasks depend on all exec task dependencies
-		if displayTask, ok := displayTasks[newTask.DisplayName]; ok {
-			displayTask.DependsOn = append(displayTask.DependsOn, newTask.DependsOn...)
-			newTask.DisplayTask = displayTask
+		//  Display tasks depend on all exec task dependencies, without duplicates
+		if dtInfo, ok := displayTasks[newTask.DisplayName]; ok {
+			for _, dependency := range newTask.DependsOn {
+				if !dtInfo.dependencyIds[dependency.TaskId] {
+					dtInfo.dependencyIds[dependency.TaskId] = true
+					dtInfo.task.DependsOn = append(dtInfo.task.DependsOn, dependency)
+				}
+			}
+			newTask.DisplayTask = dtInfo.task
 		}
 
 		newTask.GeneratedBy = generatedBy
