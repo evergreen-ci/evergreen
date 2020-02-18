@@ -34,4 +34,4 @@ models:
   Project:
     model: github.com/evergreen-ci/evergreen/rest/model.UIProjectFields
   User:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIAuthUser
+    model: github.com/evergreen-ci/evergreen/rest/model.APIUser

@@ -310,10 +310,10 @@ func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*
 	return task, nil
 }
 
-func (r *queryResolver) User(ctx context.Context) (*restModel.APIAuthUser, error) {
+func (r *queryResolver) User(ctx context.Context) (*restModel.APIUser, error) {
 	usr := route.MustHaveUser(ctx)
 	displayName := usr.DisplayName()
-	user := restModel.APIAuthUser{
+	user := restModel.APIUser{
 		DisplayName: &displayName,
 	}
 	return &user, nil
