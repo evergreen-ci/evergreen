@@ -108,7 +108,7 @@
         "activated": false
       },
       {
-        "_id:": { "$oid": "666-666-666" },
+        "_id:": { "$oid": "666666666" },
         "desc": "patch for testing duration resolver"
       }
     ],
