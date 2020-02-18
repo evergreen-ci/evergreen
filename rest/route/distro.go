@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -420,9 +421,9 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
 	}
 
-	d, error := validateDistro(ctx, apiDistro, h.distroID, h.settings, false)
-	if error != nil {
-		return error
+	d, respErr := validateDistro(ctx, apiDistro, h.distroID, h.settings, false)
+	if respErr != nil {
+		return respErr
 	}
 
 	if err = h.sc.UpdateDistro(old, d); err != nil {
@@ -539,7 +540,13 @@ func validateDistro(ctx context.Context, apiDistro *model.APIDistro, resourceID 
 			Message:    fmt.Sprintf("Unexpected type %T for distro.Distro", i),
 		})
 	}
-
+	if err = cloud.UpdateProviderSettings(d); err != nil {
+		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		})
+	}
+	apiDistro.ProviderSettingsList = d.ProviderSettingsList
 	id := model.FromStringPtr(apiDistro.Name)
 	if resourceID != id {
 		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
