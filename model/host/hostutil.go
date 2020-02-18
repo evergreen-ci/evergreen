@@ -384,7 +384,8 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 		}
 		if h.ProvisionOptions.TaskId != "" {
 			fetchCmd := h.SpawnHostGetTaskDataCommand()
-			getTaskDataCmd, err := h.buildLocalJasperClientRequest(settings.HostJasper, strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "), &options.Command{Commands: [][]string{fetchCmd}})
+			var getTaskDataCmd string
+			getTaskDataCmd, err = h.buildLocalJasperClientRequest(settings.HostJasper, strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "), &options.Command{Commands: [][]string{fetchCmd}})
 			if err != nil {
 				return "", errors.Wrap(err, "could not construct Jasper command to fetch task data")
 			}
