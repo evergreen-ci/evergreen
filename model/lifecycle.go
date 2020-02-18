@@ -772,14 +772,10 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		if err != nil {
 			return tasks, errors.Wrapf(err, "Failed to create display task %s", id)
 		}
-		dependencyIds := map[string]bool{}
-		for _, dtDependency := range t.DependsOn {
-			dependencyIds[dtDependency.TaskId] = true
-		}
 		t.GeneratedBy = generatedBy
 		tasks = append(tasks, t)
 		for _, et := range dt.ExecutionTasks {
-			displayTasks[et] = displayTaskInfo{task: t, dependencyIds: dependencyIds}
+			displayTasks[et] = displayTaskInfo{task: t, dependencyIds: map[string]bool{}}
 		}
 	}
 
