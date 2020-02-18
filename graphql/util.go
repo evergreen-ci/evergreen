@@ -11,7 +11,7 @@ func GetFormattedDate(t *time.Time, timezone string) (*string, error) {
 		return nil, nil
 	}
 
-	loc, err := time.LoadLocation("Pacific/Tahiti")
+	loc, err := time.LoadLocation(timezone)
 	if err != nil {
 		return nil, err
 	}
