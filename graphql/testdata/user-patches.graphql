@@ -8,9 +8,6 @@
     author
     version
     status
-    createTime
-    startTime
-    finishTime
     tasks
     activated
     alias
