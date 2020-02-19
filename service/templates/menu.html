@@ -3,7 +3,6 @@
 <script src="{{Static "thirdparty" "md5.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript">
 {{if .User}}
-  window.isSuperUser = {{IsSuperUser .User.Id}};
   window.user = {{.User}};
 {{end}}
 window.BannerTheme = {{.BannerTheme}};

@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -104,22 +103,6 @@ func SetLoginToken(token, domain string, w http.ResponseWriter) {
 		Expires:  time.Now().Add(365 * 24 * time.Hour),
 	}
 	http.SetCookie(w, authTokenCookie)
-}
-
-// IsSuperUser verifies that a given user has super user permissions.
-// A user has these permission if they are in the super users list or if the list is empty,
-// in which case all users are super users.
-func IsSuperUser(superUsers []string, u gimlet.User) bool {
-	if u == nil {
-		return false
-	}
-
-	if util.StringSliceContains(superUsers, u.Username()) ||
-		len(superUsers) == 0 {
-		return true
-	}
-	return false
-
 }
 
 func getOrCreateUser(u gimlet.User) (gimlet.User, error) {

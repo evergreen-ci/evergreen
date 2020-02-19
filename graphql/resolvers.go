@@ -111,6 +111,29 @@ func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (
 	}, nil
 }
 
+func (r *patchResolver) Time(ctx context.Context, obj *restModel.APIPatch) (*PatchTime, error) {
+	usr := route.MustHaveUser(ctx)
+
+	started, err := GetFormattedDate(obj.StartTime, usr.Settings.Timezone)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	finished, err := GetFormattedDate(obj.FinishTime, usr.Settings.Timezone)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	submittedAt, err := GetFormattedDate(obj.CreateTime, usr.Settings.Timezone)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+
+	return &PatchTime{
+		Started:     started,
+		Finished:    finished,
+		SubmittedAt: *submittedAt,
+	}, nil
+}
+
 func (r *patchResolver) ID(ctx context.Context, obj *restModel.APIPatch) (string, error) {
 	return *obj.Id, nil
 }
@@ -331,6 +354,15 @@ func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*
 		return nil, err
 	}
 	return task, nil
+}
+
+func (r *queryResolver) User(ctx context.Context) (*restModel.APIUser, error) {
+	usr := route.MustHaveUser(ctx)
+	displayName := usr.DisplayName()
+	user := restModel.APIUser{
+		DisplayName: &displayName,
+	}
+	return &user, nil
 }
 
 // New injects resources into the resolvers, such as the data connector

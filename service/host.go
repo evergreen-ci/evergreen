@@ -125,7 +125,7 @@ func (uis *UIServer) hostsPage(w http.ResponseWriter, r *http.Request) {
 	permittedHosts := &hostsData{}
 	for i := range hosts.Hosts {
 		resourcePermissions, ok := permissions[hosts.Hosts[i].Host.Distro.Id]
-		if !evergreen.AclCheckingIsEnabled || (ok && resourcePermissions[evergreen.PermissionHosts] > 0) {
+		if ok && resourcePermissions[evergreen.PermissionHosts] > 0 {
 			permittedHosts.Hosts = append(permittedHosts.Hosts, hosts.Hosts[i])
 		}
 	}
@@ -214,19 +214,15 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 	case "updateStatus":
 		hostsUpdated := 0
 		var permissions map[string]gimlet.Permissions
-		if evergreen.AclCheckingIsEnabled {
-			rm := evergreen.GetEnvironment().RoleManager()
-			permissions, err = rolemanager.HighestPermissionsForRolesAndResourceType(user.Roles(), evergreen.DistroResourceType, rm)
-			if err != nil {
-				http.Error(w, "Unable to get permissions", http.StatusInternalServerError)
-				return
-			}
+		rm := evergreen.GetEnvironment().RoleManager()
+		permissions, err = rolemanager.HighestPermissionsForRolesAndResourceType(user.Roles(), evergreen.DistroResourceType, rm)
+		if err != nil {
+			http.Error(w, "Unable to get permissions", http.StatusInternalServerError)
+			return
 		}
 		for _, h := range hosts {
-			if evergreen.AclCheckingIsEnabled {
-				if permissions[h.Distro.Id][evergreen.PermissionHosts] < evergreen.HostsEdit.Value {
-					continue
-				}
+			if permissions[h.Distro.Id][evergreen.PermissionHosts] < evergreen.HostsEdit.Value {
+				continue
 			}
 			_, err := modifyHostStatus(evergreen.GetEnvironment().RemoteQueue(), &h, opts, user)
 			if err != nil {

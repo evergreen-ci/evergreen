@@ -287,8 +287,8 @@ func (s *PatchesChangeStatusSuite) SetupSuite() {
 
 	s.data = data.MockPatchConnector{
 		CachedPatches: []model.APIPatch{
-			{Id: &s.objIds[0]},
-			{Id: &s.objIds[1]},
+			{Id: &s.objIds[0], ProjectId: model.ToStringPtr("proj")},
+			{Id: &s.objIds[1], ProjectId: model.ToStringPtr("proj")},
 		},
 		CachedAborted:  make(map[string]string),
 		CachedPriority: make(map[string]int64),

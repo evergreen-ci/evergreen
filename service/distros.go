@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -44,7 +45,7 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 	distroIds := []string{}
 	for _, d := range distros {
 		resourcePermissions, ok := permissions[d.Id]
-		if !evergreen.AclCheckingIsEnabled || (ok && resourcePermissions[evergreen.PermissionDistroSettings] > 0) {
+		if ok && resourcePermissions[evergreen.PermissionDistroSettings] > 0 {
 			distroIds = append(distroIds, d.Id)
 		}
 	}
@@ -121,6 +122,13 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// for now, assume we only handle one region, so return a new document
+	if err = cloud.UpdateProviderSettings(&newDistro); err != nil {
+		message := fmt.Sprintf("error updating provider settings: %v", err)
+		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
+		http.Error(w, message, http.StatusInternalServerError)
+		return
+	}
 	if newDistro.PlannerSettings.Version == "" {
 		newDistro.PlannerSettings.Version = evergreen.PlannerVersionLegacy
 	}
@@ -285,7 +293,12 @@ func (uis *UIServer) addDistro(w http.ResponseWriter, r *http.Request) {
 	if hasId {
 		d.Id = id
 	}
-
+	if err = cloud.UpdateProviderSettings(&d); err != nil {
+		message := fmt.Sprintf("error creating provider settings: %v", err)
+		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
+		http.Error(w, message, http.StatusInternalServerError)
+		return
+	}
 	vErrs, err := validator.CheckDistro(r.Context(), &d, &uis.Settings, true)
 	if err != nil {
 		message := fmt.Sprintf("error retrieving distroIds: %v", err)

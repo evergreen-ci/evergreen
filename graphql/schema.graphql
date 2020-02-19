@@ -13,6 +13,7 @@ type Query {
     status: String = ""
   ): [TestResult!]
   taskFiles(taskId: String!): [GroupedFiles!]!
+  user: User!
 }
 
 type Mutation {
@@ -47,20 +48,25 @@ type Patch {
   author: String!
   version: String!
   status: String!
-  createTime: Time!
-  startTime: Time
-  finishTime: Time
   variants: [String!]!
   tasks: [String!]!
   variantsTasks: [VariantTask]!
   activated: Boolean!
   alias: String!
   duration: PatchDuration
+  time: PatchTime
 }
 
 type PatchDuration {
   makespan: String
   timeTaken: String
+  time: PatchTime
+}
+
+type PatchTime {
+  started: String
+  finished: String
+  submittedAt: String!
 }
 
 type VariantTask {
@@ -159,6 +165,10 @@ type File {
   name: String!
   link: String!
   visibility: String!
+}
+
+type User {
+  displayName: String!
 }
 
 scalar Time
