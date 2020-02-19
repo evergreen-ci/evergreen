@@ -20,6 +20,12 @@ type GroupedProjects struct {
 	Projects []*model.UIProjectFields `json:"projects"`
 }
 
+type PatchTime struct {
+	Started     *string `json:"started"`
+	Finished    *string `json:"finished"`
+	SubmittedAt string  `json:"submittedAt"`
+}
+
 type Projects struct {
 	Favorites     []*model.UIProjectFields `json:"favorites"`
 	OtherProjects []*GroupedProjects       `json:"otherProjects"`
