@@ -1536,6 +1536,749 @@
   },
   "tests": [
     {
+      "query_file": "user-patches.graphql",
+      "result": {
+        "data": {
+          "userPatches": [
+            {
+              "id": "5e1f8ab8834b87d7b5d251a5",
+              "description": "mydesc",
+              "projectID": "mci",
+              "githash": "7ad0c6bb0d5b8586f3a0442f365e259d40f5a7f1",
+              "patchNumber": 1,
+              "author": "testuser",
+              "version": "",
+              "status": "created",
+              "tasks": ["test-auth"],
+              "activated": false,
+              "alias": "",
+              "variants": ["rhel62"],
+              "variantsTasks": [
+                { "name": "rhel62", "tasks": ["test-model-host"] }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "patch.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "id": "5e1f8ab8834b87d7b5d251a5",
+            "description": "mydesc",
+            "projectID": "mci",
+            "githash": "7ad0c6bb0d5b8586f3a0442f365e259d40f5a7f1",
+            "patchNumber": 1,
+            "author": "testuser",
+            "version": "",
+            "status": "created",
+            "tasks": ["test-auth"],
+            "activated": false,
+            "alias": "",
+            "variants": ["rhel62"],
+            "variantsTasks": [
+              { "name": "rhel62", "tasks": ["test-model-host"] }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "patch-does-not-exist.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "400 (Bad Request): id 'i-dont-exist' is not a valid patch id",
+            "path": ["patch"],
+            "extensions": {
+              "code": "INTERNAL_SERVER_ERROR"
+            }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "task1.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "logs": {
+              "allLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=ALL",
+              "taskLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=T",
+              "agentLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=E",
+              "systemLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=S"
+            },
+            "id": "wuzzup",
+            "createTime": "2018-01-10T19:01:36-05:00",
+            "ingestTime": "2018-01-10T19:01:36-05:00",
+            "dispatchTime": "2018-01-10T19:01:36-05:00",
+            "scheduledTime": "2018-01-10T19:01:36-05:00",
+            "startTime": "2018-01-10T19:01:36-05:00",
+            "finishTime": "2018-01-10T19:01:36-05:00",
+            "activatedTime": "2018-01-10T19:01:36-05:00",
+            "version": "version",
+            "projectId": "id",
+            "revision": "revise",
+            "priority": 5,
+            "taskGroup": "grp",
+            "taskGroupMaxHosts": 100,
+            "activated": false,
+            "activatedBy": "someone",
+            "buildId": "some_thang",
+            "distroId": "distro",
+            "buildVariant": "variant",
+            "dependsOn": null,
+            "displayName": "exec1 display name",
+            "hostId": "host",
+            "restarts": 5,
+            "execution": 5,
+            "order": 5,
+            "requester": "something",
+            "status": "pass",
+            "details": {
+              "status": "status",
+              "type": "type",
+              "description": "description",
+              "timedOut": false
+            },
+            "displayOnly": true,
+            "executionTasks": ["exec1"],
+            "generateTask": false,
+            "generatedBy": "something"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "taskTestStatusAsc.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "status": "a" },
+            { "status": "b" },
+            { "status": "c" },
+            { "status": "dog" }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestStatusDesc.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "status": "dog" },
+            { "status": "c" },
+            { "status": "b" },
+            { "status": "a" }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestNameAsc.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "testFile": "apple" },
+            { "testFile": "b" },
+            { "testFile": "c" },
+            { "testFile": "d" }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestNameDesc.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "testFile": "d" },
+            { "testFile": "c" },
+            { "testFile": "b" },
+            { "testFile": "apple" }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestDurationDesc.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "duration": 40 },
+            { "duration": 30 },
+            { "duration": 20 },
+            { "duration": 10 }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestDurationAsc.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "duration": 10 },
+            { "duration": 20 },
+            { "duration": 30 },
+            { "duration": 40 }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestFilterStatus.graphql",
+      "result": {
+        "data": {
+          "taskTests": [{ "status": "dog" }]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestFilterTestFile.graphql",
+      "result": {
+        "data": {
+          "taskTests": [{ "testFile": "apple" }]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestFilterNoResults.graphql",
+      "result": {
+        "data": {
+          "taskTests": []
+        }
+      }
+    },
+    {
+      "query_file": "taskTestFilterStatusSubstr1.graphql",
+      "result": {
+        "data": {
+          "taskTests": []
+        }
+      }
+    },
+    {
+      "query_file": "taskTestFilterStatusSubstr2.graphql",
+      "result": {
+        "data": {
+          "taskTests": []
+        }
+      }
+    },
+    {
+      "query_file": "taskTestPageLimit.graphql",
+      "result": {
+        "data": {
+          "taskTests": [{ "testFile": "c" }, { "testFile": "d" }]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestDefaultParams.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "testFile": "apple" },
+            { "testFile": "b" },
+            { "testFile": "c" },
+            { "testFile": "d" }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "add-favorite-project-mutation.graphql",
+      "result": {
+        "data": {
+          "addFavoriteProject": {
+            "identifier": "buildhost-test",
+            "displayName": "buildhost-test",
+            "repo": "buildhost-configuration",
+            "owner": "annie.black"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "add-favorite-project-mutation.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "cannot add duplicate project 'buildhost-test'",
+            "path": ["addFavoriteProject"],
+            "extensions": {
+              "code": "INTERNAL_SERVER_ERROR"
+            }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "add-favorite-project-that-does-not-exist.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "could not find project 'i-dont-exist'",
+            "path": ["addFavoriteProject"],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "projects1.graphql",
+      "result": {
+        "data": {
+          "projects": {
+            "favorites": [
+              {
+                "identifier": "buildhost-test",
+                "repo": "buildhost-configuration",
+                "owner": "annie.black",
+                "displayName": "buildhost-test"
+              }
+            ],
+            "otherProjects": [
+              {
+                "name": "bsamek/mongo",
+                "projects": [
+                  {
+                    "identifier": "sys-perf",
+                    "repo": "mongo",
+                    "owner": "bsamek",
+                    "displayName": "System Performance (master)"
+                  }
+                ]
+              },
+              {
+                "name": "evergreen-ci/evergreen",
+                "projects": [
+                  {
+                    "identifier": "mci",
+                    "repo": "evergreen",
+                    "owner": "evergreen-ci",
+                    "displayName": "Evergreen Self-Tests"
+                  },
+                  {
+                    "identifier": "clone-of-mci-to-test-a-thing",
+                    "repo": "evergreen",
+                    "owner": "evergreen-ci",
+                    "displayName": "Evergreen Self-Tests"
+                  }
+                ]
+              },
+              {
+                "name": "evergreen-ci/grip",
+                "projects": [
+                  {
+                    "identifier": "annie-copy2",
+                    "repo": "grip",
+                    "owner": "evergreen-ci",
+                    "displayName": "something temporary"
+                  }
+                ]
+              },
+              {
+                "name": "evergreen-ci/lobster",
+                "projects": [
+                  {
+                    "identifier": "lobster",
+                    "repo": "lobster",
+                    "owner": "evergreen-ci",
+                    "displayName": "Lobster"
+                  }
+                ]
+              },
+              {
+                "name": "evergreen-ci/logkeeper",
+                "projects": [
+                  {
+                    "identifier": "logkeeper",
+                    "repo": "logkeeper",
+                    "owner": "evergreen-ci",
+                    "displayName": "Logkeeper"
+                  }
+                ]
+              },
+              {
+                "name": "hello it's me/amboy",
+                "projects": [
+                  {
+                    "identifier": "amboy",
+                    "repo": "amboy",
+                    "owner": "hello it's me",
+                    "displayName": "Not Amboy"
+                  }
+                ]
+              },
+              {
+                "name": "john-m-liu/evergreen",
+                "projects": [
+                  {
+                    "identifier": "john_test",
+                    "repo": "evergreen",
+                    "owner": "john-m-liu",
+                    "displayName": "john test"
+                  }
+                ]
+              },
+              {
+                "name": "mongodb/curator",
+                "projects": [
+                  {
+                    "identifier": "curator",
+                    "repo": "curator",
+                    "owner": "mongodb",
+                    "displayName": "Curator"
+                  }
+                ]
+              },
+              {
+                "name": "mongodb/greenbay",
+                "projects": [
+                  {
+                    "identifier": "Greenbay",
+                    "repo": "greenbay",
+                    "owner": "mongodb",
+                    "displayName": "Greenbay"
+                  }
+                ]
+              },
+              {
+                "name": "mongodb/grip",
+                "projects": [
+                  {
+                    "identifier": "grip",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "Grip (Logging)"
+                  },
+                  {
+                    "identifier": "ernietest20171110",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "test display name update"
+                  },
+                  {
+                    "identifier": "ernietest2017111002",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "Grip (Logging)"
+                  },
+                  {
+                    "identifier": "ernie-copy",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "test display name update"
+                  },
+                  {
+                    "identifier": "ernie-copy2",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "test display name update"
+                  },
+                  {
+                    "identifier": "ernie-copy3",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "test display name update"
+                  },
+                  {
+                    "identifier": "ernie-copy4",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "test display name update"
+                  },
+                  {
+                    "identifier": "annie-test",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "something temporary"
+                  },
+                  {
+                    "identifier": "annie-test-copy",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "something temporary"
+                  },
+                  {
+                    "identifier": "annie-copy3",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "something temporary"
+                  },
+                  {
+                    "identifier": "annie-copy4",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "something temporary"
+                  },
+                  {
+                    "identifier": "annie-copy-vars",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "something temporary"
+                  },
+                  {
+                    "identifier": "annie_api_copy",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "something temporary"
+                  },
+                  {
+                    "identifier": "annie_api_copy2",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "something temporary"
+                  }
+                ]
+              },
+              {
+                "name": "rongodb/ron_repo_1",
+                "projects": [
+                  {
+                    "identifier": "ron_test_copy_1",
+                    "repo": "ron_repo_1",
+                    "owner": "rongodb",
+                    "displayName": "1st project to be moved around"
+                  },
+                  {
+                    "identifier": "qa-template",
+                    "repo": "ron_repo_1",
+                    "owner": "rongodb",
+                    "displayName": "1st project to be moved around"
+                  },
+                  {
+                    "identifier": "qa-template-copy-for-testing",
+                    "repo": "ron_repo_1",
+                    "owner": "rongodb",
+                    "displayName": "1st project to be moved around"
+                  },
+                  {
+                    "identifier": "ron_test_output",
+                    "repo": "ron_repo_1",
+                    "owner": "rongodb",
+                    "displayName": "1st project to be moved around"
+                  },
+                  {
+                    "identifier": "ron_three",
+                    "repo": "ron_repo_1",
+                    "owner": "rongodb",
+                    "displayName": "1st project to be moved around"
+                  },
+                  {
+                    "identifier": "qa-template-for-testing",
+                    "repo": "ron_repo_1",
+                    "owner": "rongodb",
+                    "displayName": "1st project to be moved around"
+                  }
+                ]
+              },
+              {
+                "name": "rongodb/v20380713",
+                "projects": [
+                  {
+                    "identifier": "ron_two_via_postman",
+                    "repo": "v20380713",
+                    "owner": "rongodb",
+                    "displayName": "1st project to be moved around"
+                  }
+                ]
+              },
+              {
+                "name": "something crazy/grip",
+                "projects": [
+                  {
+                    "identifier": "annie-copy5",
+                    "repo": "grip",
+                    "owner": "something crazy",
+                    "displayName": "something temporary"
+                  }
+                ]
+              },
+              {
+                "name": "tzembo/evergreen",
+                "projects": [
+                  {
+                    "identifier": "thomas-test",
+                    "repo": "evergreen",
+                    "owner": "tzembo",
+                    "displayName": "thomas test"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "remove-favorite-project-mutation.graphql",
+      "result": {
+        "data": {
+          "removeFavoriteProject": {
+            "identifier": "buildhost-test",
+            "repo": "buildhost-configuration",
+            "owner": "annie.black",
+            "displayName": "buildhost-test"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "schedule-task-mutation.graphql",
+      "result": {
+        "data": {
+          "scheduleTask": {
+            "activated": true,
+            "activatedBy": "testuser"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "unschedule-task-mutation.graphql",
+      "result": {
+        "data": {
+          "unscheduleTask": {
+            "activated": false
+          }
+        }
+      }
+    },
+    {
+      "query_file": "task-files-query-display.graphql",
+      "result": {
+        "data": {
+          "taskFiles": [
+            {
+              "taskName": "exec 1 display!!",
+              "files": [
+                {
+                  "name": "awesome_test!!!",
+                  "link": "www.wikipedia.com",
+                  "visibility": "the whole world"
+                }
+              ]
+            },
+            {
+              "taskName": "exec 2 display!!",
+              "files": [
+                {
+                  "name": "THIS IS REALLY COOL",
+                  "link": "www.wikipedia.com",
+                  "visibility": "the whole world"
+                },
+                {
+                  "name": "really cool test file",
+                  "link": "www.wikipedia.com",
+                  "visibility": "the whole world"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "patch-time-1.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "time": {
+              "started": null,
+              "finished": null,
+              "submittedAt": "January 11, 2018, 12:01AM"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "patch-time-2.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "time": {
+              "started": "February 13, 2020, 5:42PM",
+              "finished": "February 14, 2020, 6:03PM",
+              "submittedAt": "February 12, 2020, 4:58PM"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "task-files-query-exec.graphql",
+      "result": {
+        "data": {
+          "taskFiles": [
+            {
+              "taskName": "exec 1 display!!",
+              "files": [
+                {
+                  "name": "awesome_test!!!",
+                  "link": "www.wikipedia.com",
+                  "visibility": "the whole world"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "task-files-query-err1.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "cannot find task with id NOT-A-REAL-TASKID",
+            "path": ["taskFiles"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "task-files-query-err2.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "cannot find old task with id task-with-fake-old-id",
+            "path": ["taskFiles"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "task-files-query-empty.graphql",
+      "result": {
+        "data": { "taskFiles": [] }
+      }
+    },
+    {
+      "query_file": "user.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "displayName": "testuser"
+          }
+        }
+      }
+    },
+    {
       "query_file": "task_test-logs-empty-str.graphql",
       "result": {
         "data": {
