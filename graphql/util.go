@@ -2,8 +2,6 @@ package graphql
 
 import (
 	"context"
-	"fmt"
-	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -57,4 +55,3 @@ func SetScheduled(ctx context.Context, sc data.Connector, taskID string, isActiv
 	}
 	return &apiTask, nil
 }
-
