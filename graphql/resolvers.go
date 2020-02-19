@@ -3,6 +3,7 @@ package graphql
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -272,6 +273,14 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 	for _, t := range tests {
 		apiTest := restModel.APITest{}
 		err := apiTest.BuildFromService(&t)
+		if _, err := url.ParseRequestURI(*apiTest.Logs.HTMLDisplayURL); len(*apiTest.Logs.HTMLDisplayURL) != 0 && err != nil {
+			formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.HTMLDisplayURL)
+			apiTest.Logs.HTMLDisplayURL = &formattedURL
+		}
+		if _, err := url.ParseRequestURI(*apiTest.Logs.RawDisplayURL); len(*apiTest.Logs.RawDisplayURL) != 0 && err != nil {
+			formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.RawDisplayURL)
+			apiTest.Logs.RawDisplayURL = &formattedURL
+		}
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
