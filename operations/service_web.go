@@ -12,8 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/service"
-	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
@@ -61,11 +59,6 @@ func startWebService() cli.Command {
 			grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
 			grip.EmergencyFatal(errors.Wrap(startSystemCronJobs(ctx, env), "problem starting background work"))
-
-			// Enqueue jobs to ensure each app server has the correct SSH key
-			// files.
-			ts := util.RoundPartOfHour(30).Format(units.TSFormat)
-			grip.Error(env.LocalQueue().Put(ctx, units.NewLocalUpdateSSHKeysJob(ts)))
 
 			var (
 				apiServer *http.Server
