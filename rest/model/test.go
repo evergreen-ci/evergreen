@@ -66,7 +66,7 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		} else if isEmptyLogID {
 			at.Logs.HTMLDisplayURL = &emptyStr
 		} else {
-			dispString := fmt.Sprintf("/test_log/%s/#L%d", *at.Logs.LogId, at.Logs.LineNum)
+			dispString := fmt.Sprintf("/test_log/%s#L%d", *at.Logs.LogId, at.Logs.LineNum)
 			at.Logs.HTMLDisplayURL = &dispString
 		}
 
