@@ -36,10 +36,6 @@ type UIServer struct {
 	// The root URL of the server, used in redirects for instance.
 	RootURL string
 
-	// kim: TODO: remove
-	//authManager
-	// UserManager        gimlet.UserManager
-	// umInfo             evergreen.UserManagerInfo
 	umconf             gimlet.UserMiddlewareConfiguration
 	Settings           evergreen.Settings
 	CookieStore        *sessions.CookieStore
@@ -79,13 +75,10 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo T
 	}
 
 	uis := &UIServer{
-		Settings: *settings,
-		env:      env,
-		queue:    queue,
-		Home:     home,
-		// kim: TODO: remove
-		// UserManager:        env.UserManager(),
-		// umInfo:             env.UserManagerInfo(),
+		Settings:           *settings,
+		env:                env,
+		queue:              queue,
+		Home:               home,
 		clientConfig:       evergreen.GetEnvironment().ClientConfig(),
 		CookieStore:        sessions.NewCookieStore([]byte(settings.Ui.Secret)),
 		buildBaronProjects: bbGetConfig(settings),
@@ -253,13 +246,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 		}
 	})
 
-	// kim: TODO: remove
-	// if h := uis.UserManager.GetLoginHandler(uis.RootURL); h != nil {
-	//     app.AddRoute("/login/redirect").Handler(h).Get()
-	// }
-	// if h := uis.UserManager.GetLoginCallbackHandler(); h != nil {
-	//     app.AddRoute("/login/redirect/callback").Handler(h).Get()
-	// }
 	if h := uis.env.UserManager().GetLoginHandler(uis.RootURL); h != nil {
 		app.AddRoute("/login/redirect").Handler(h).Get()
 	}

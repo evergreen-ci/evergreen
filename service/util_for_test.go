@@ -8,12 +8,11 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/pkg/errors"
 )
 
 // newTestUIRouter is the same as makeAuthTestUIRouter but without any user
 // authentication middleware configuration.
-// kim: TODO: see if we can get rid of config and just replace with
-// env.Settings()
 func newTestUIRouter(ctx context.Context, env evergreen.Environment) (http.Handler, error) {
 	return makeAuthTestUIRouter(ctx, env, gimlet.UserMiddlewareConfiguration{})
 }
@@ -33,6 +32,9 @@ func newAuthTestUIRouter(ctx context.Context, env evergreen.Environment) (http.H
 func makeAuthTestUIRouter(ctx context.Context, env evergreen.Environment, umconf gimlet.UserMiddlewareConfiguration) (http.Handler, error) {
 	settings := env.Settings()
 	um, info, err := auth.LoadUserManager(settings)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
 	env.SetUserManager(um)
 	env.SetUserManagerInfo(info)
 	uis := &UIServer{

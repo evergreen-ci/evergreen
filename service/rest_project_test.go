@@ -19,36 +19,12 @@ import (
 // var projectTestConfig = testutil.TestConfig()
 
 func TestProjectRoutes(t *testing.T) {
-	// kim: TODO: refactor tests to share same UIServer code rather than use the
-	// same copy-paste as the other tests.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 	env.SetUserManager(serviceutil.MockUserManager{})
 	router, err := newAuthTestUIRouter(ctx, env)
-	// uis := UIServer{
-	//     RootURL:  projectTestConfig.Ui.Url,
-	//     Settings: *projectTestConfig,
-	//     env:      env,
-	//     // kim: TODO: remove
-	//     // UserManager: serviceutil.MockUserManager{},
-	// }
-	// home := evergreen.FindEvergreenHome()
-	// uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
-	//     Directory:    filepath.Join(home, WebRootPath, Templates),
-	//     DisableCache: true,
-	// })
-	//
-	// app := GetRESTv1App(&uis)
-	// // kim: TODO: remove
-	// // app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{
-	// app.AddMiddleware(gimlet.UserMiddleware(uis.env.UserManager(), gimlet.UserMiddlewareConfiguration{
-	//     CookieName:     evergreen.AuthTokenCookie,
-	//     HeaderKeyName:  evergreen.APIKeyHeader,
-	//     HeaderUserName: evergreen.APIUserHeader,
-	// }))
-	// n, err := app.Handler()
 	require.NoError(t, err, "error setting up router")
 
 	Convey("When loading a public project, it should be found", t, func() {

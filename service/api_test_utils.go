@@ -57,15 +57,11 @@ func CreateTestServer(settings *evergreen.Settings, tlsConfig *tls.Config) (*Tes
 	if err != nil {
 		return nil, err
 	}
-	// kim: TODO: remove
-	// as.UserManager = testutil.MockUserManager{}
 
 	uis, err := NewUIServer(env, as.queue, home, TemplateFunctionOptions{})
 	if err != nil {
 		return nil, err
 	}
-	// kim: TODO: remove
-	// uis.UserManager = testutil.MockUserManager{}
 
 	var l net.Listener
 	protocol := "http"

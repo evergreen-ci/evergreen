@@ -24,36 +24,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// var versionTestConfig = testutil.TestConfig()
-
 func TestGetRecentVersions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
-	// kim: TODO: remove
-	// userManager, _, err := auth.LoadUserManager(versionTestConfig)
-	// require.NoError(t, err, "Failure in loading UserManager from config")
-
-	// uis := UIServer{
-	//     RootURL:  versionTestConfig.Ui.Url,
-	//     Settings: *versionTestConfig,
-	//     env:      env,
-	//     // UserManager: userManager,
-	// }
-	//
-	// home := evergreen.FindEvergreenHome()
-	//
-	// uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
-	//     Directory:    filepath.Join(home, WebRootPath, Templates),
-	//     DisableCache: true,
-	// })
-	//
-	// app := GetRESTv1App(&uis)
-	// // kim: TODO: remove
-	// // app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
-	// app.AddMiddleware(gimlet.UserMiddleware(uis.env.UserManager(), gimlet.UserMiddlewareConfiguration{}))
-	// router, err := app.Handler()
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
 
@@ -257,25 +232,6 @@ func TestGetVersionInfo(t *testing.T) {
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 	env.SetUserManager(serviceutil.MockUserManager{})
-	// uis := UIServer{
-	//     RootURL:  versionTestConfig.Ui.Url,
-	//     Settings: *versionTestConfig,
-	//     env:      env,
-	//     // kim: TODO: remove
-	//     // UserManager: serviceutil.MockUserManager{},
-	// }
-	// home := evergreen.FindEvergreenHome()
-	//
-	// uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
-	//     Directory:    filepath.Join(home, WebRootPath, Templates),
-	//     DisableCache: true,
-	// })
-
-	// app := GetRESTv1App(&uis)
-	// // kim: TODO: remove
-	// // app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
-	// app.AddMiddleware(gimlet.UserMiddleware(uis.env.UserManager(), gimlet.UserMiddlewareConfiguration{}))
-	// router, err := app.Handler()
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
 
@@ -368,29 +324,6 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 	defer cancel()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
-	// kim: TODO: remove
-	// userManager, _, err := auth.LoadUserManager(versionTestConfig)
-	// require.NoError(t, err, "Failure in loading UserManager from config")
-
-	// uis := UIServer{
-	//     RootURL:  versionTestConfig.Ui.Url,
-	//     Settings: *versionTestConfig,
-	//     env:      env,
-	//     // UserManager: userManager,
-	// }
-	//
-	// home := evergreen.FindEvergreenHome()
-	//
-	// uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
-	//     Directory:    filepath.Join(home, WebRootPath, Templates),
-	//     DisableCache: true,
-	// })
-	//
-	// app := GetRESTv1App(&uis)
-	// // kim: TODO: remove
-	// // app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
-	// app.AddMiddleware(gimlet.UserMiddleware(uis.env.UserManager(), gimlet.UserMiddlewareConfiguration{}))
-	// router, err := app.Handler()
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
 
@@ -623,31 +556,6 @@ func TestGetVersionStatus(t *testing.T) {
 	defer cancel()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
-	// kim: TODO: remove
-	// userManager, _, err := auth.LoadUserManager(versionTestConfig)
-	// require.NoError(t, err, "Failure in loading UserManager from config")
-
-	// uis := UIServer{
-	//     RootURL:  versionTestConfig.Ui.Url,
-	//     Settings: *versionTestConfig,
-	//     env:      env,
-	//     // kim: TODO: remove
-	//     // UserManager: userManager,
-	// }
-	//
-	// home := evergreen.FindEvergreenHome()
-	//
-	// uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
-	//     Directory:    filepath.Join(home, WebRootPath, Templates),
-	//     DisableCache: true,
-	// })
-	//
-	// app := GetRESTv1App(&uis)
-	// // kim: TODO: remove
-	// // app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
-	// app.AddMiddleware(gimlet.UserMiddleware(uis.env.UserManager(), gimlet.UserMiddlewareConfiguration{}))
-	// router, err := app.Handler()
-	// kim: TODO: fix test
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
 

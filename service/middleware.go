@@ -163,10 +163,6 @@ func (uis *UIServer) RedirectToLogin(w http.ResponseWriter, r *http.Request) {
 		querySep = "?"
 	}
 	path := "/login#?"
-	// kim: TODO: remove
-	// if uis.UserManager.IsRedirect() {
-	//     path = "/login/redirect?"
-	// }
 	if uis.env.UserManager().IsRedirect() {
 		path = "/login/redirect?"
 	}

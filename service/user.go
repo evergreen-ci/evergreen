@@ -21,11 +21,6 @@ func (uis *UIServer) loginPage(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login/redirect", http.StatusFound)
 		return
 	}
-	// kim: TODO: remove
-	// if uis.UserManager.IsRedirect() {
-	//     http.Redirect(w, r, "/login/redirect", http.StatusFound)
-	//     return
-	// }
 	uis.render.WriteResponse(w, http.StatusOK, nil, "base", "login.html", "base_angular.html")
 }
 
@@ -45,8 +40,6 @@ func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// kim: TODO: remove
-	// token, err := uis.UserManager.CreateUserToken(creds.Username, creds.Password)
 	token, err := uis.env.UserManager().CreateUserToken(creds.Username, creds.Password)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
@@ -92,8 +85,6 @@ func (uis *UIServer) userGetKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// kim: TODO: remove
-	// token, err := uis.UserManager.CreateUserToken(creds.Username, creds.Password)
 	token, err := uis.env.UserManager().CreateUserToken(creds.Username, creds.Password)
 	if err != nil {
 		gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -114,8 +105,6 @@ func (uis *UIServer) userGetKey(w http.ResponseWriter, r *http.Request) {
 	}
 	uis.umconf.AttachCookie(token, w)
 
-	// kim: TODO: remove
-	// user, err := uis.UserManager.GetUserByToken(r.Context(), token)
 	user, err := uis.env.UserManager().GetUserByToken(r.Context(), token)
 	if err != nil {
 		gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -186,8 +175,6 @@ func (uis *UIServer) newAPIKey(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) clearUserToken(w http.ResponseWriter, r *http.Request) {
 	u := MustHaveUser(r)
-	// kim: TODO: remove
-	// if err := uis.UserManager.ClearUser(u, false); err != nil {
 	if err := uis.env.UserManager().ClearUser(u, false); err != nil {
 		gimlet.WriteJSONInternalError(w, struct {
 			Error string `json:"error"`
@@ -218,7 +205,5 @@ func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
 		CanClearTokens bool
 		ViewData
 	}{settingsData, exampleConf, uis.clientConfig.ClientBinaries, currentUser.Settings.GithubUser.LastKnownAs, currentUser.Settings.GithubUser.UID, uis.env.UserManagerInfo().CanClearTokens, uis.GetCommonViewData(w, r, true, true)},
-		// kim: TODO: remove
-		// }{settingsData, exampleConf, uis.clientConfig.ClientBinaries, currentUser.Settings.GithubUser.LastKnownAs, currentUser.Settings.GithubUser.UID, uis.umInfo.CanClearTokens, uis.GetCommonViewData(w, r, true, true)},
 		"base", "settings.html", "base_angular.html", "menu.html")
 }

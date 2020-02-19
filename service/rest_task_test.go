@@ -23,8 +23,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// var taskTestConfig = testutil.TestConfig()
-
 func insertTaskForTesting(taskId, versionId, projectName string, testResults []testresult.TestResult) (*task.Task, error) {
 	task := &task.Task{
 		Id:                  taskId,
@@ -72,30 +70,6 @@ func TestGetTaskInfo(t *testing.T) {
 	defer cancel()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
-	// kim: TODO: remove
-	// userManager, _, err := auth.LoadUserManager(taskTestConfig)
-	// require.NoError(t, err, "Failure in loading UserManager from config")
-
-	// uis := UIServer{
-	//     RootURL:  taskTestConfig.Ui.Url,
-	//     Settings: *taskTestConfig,
-	//     env:      env,
-	//     // kim: TODO: remove
-	//     // UserManager: userManager,
-	// }
-
-	// home := evergreen.FindEvergreenHome()
-	//
-	// uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
-	//     Directory:    filepath.Join(home, WebRootPath, Templates),
-	//     DisableCache: true,
-	// })
-	//
-	// app := GetRESTv1App(&uis)
-	// // kim: TODO: remove
-	// // app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
-	// app.AddMiddleware(gimlet.UserMiddleware(uis.env.UserManager(), gimlet.UserMiddlewareConfiguration{}))
-	// router, err := app.Handler()
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
 
@@ -280,30 +254,6 @@ func TestGetTaskStatus(t *testing.T) {
 	defer cancel()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
-	// kim: TODO: remove
-	// userManager, _, err := auth.LoadUserManager(taskTestConfig)
-	// require.NoError(t, err, "Failure in loading UserManager from config")
-
-	// uis := UIServer{
-	//     RootURL:  taskTestConfig.Ui.Url,
-	//     Settings: *taskTestConfig,
-	//     // kim: TODO: remove
-	//     // UserManager: userManager,
-	//     env: env,
-	// }
-	//
-	// home := evergreen.FindEvergreenHome()
-	//
-	// uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
-	//     Directory:    filepath.Join(home, WebRootPath, Templates),
-	//     DisableCache: true,
-	// })
-	//
-	// app := GetRESTv1App(&uis)
-	// // kim: TODO: remove
-	// // app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
-	// app.AddMiddleware(gimlet.UserMiddleware(uis.env.UserManager(), gimlet.UserMiddlewareConfiguration{}))
-	// router, err := app.Handler()
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
 
@@ -421,30 +371,6 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 	defer cancel()
 	env := &mock.Environment{}
 	require.NoError(env.Configure(ctx))
-	// kim: TODO: remove
-	// userManager, _, err := auth.LoadUserManager(taskTestConfig)
-	// require.NoError(err)
-
-	// uis := UIServer{
-	//     RootURL:  taskTestConfig.Ui.Url,
-	//     Settings: *taskTestConfig,
-	//     env:      env,
-	//     // kim: TODO: remove
-	//     // UserManager: userManager,
-	// }
-	//
-	// home := evergreen.FindEvergreenHome()
-	//
-	// uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
-	//     Directory:    filepath.Join(home, WebRootPath, Templates),
-	//     DisableCache: true,
-	// })
-	//
-	// app := GetRESTv1App(&uis)
-	// // kim: TODO: remove
-	// // app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
-	// app.AddMiddleware(gimlet.UserMiddleware(uis.env.UserManager(), gimlet.UserMiddlewareConfiguration{}))
-	// router, err := app.Handler()
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(err, "error setting up router")
 
