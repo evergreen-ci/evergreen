@@ -56,9 +56,9 @@ func (at *APITest) BuildFromService(st interface{}) error {
 			LineNum: v.LineNum,
 		}
 
-		isEmptyLogID := len(v.LogID) == 0
-		isEmptyURL := len(v.URL) == 0
-		isEmptyURLRaw := len(v.URLRaw) == 0
+		isEmptyLogID := v.LogID == ""
+		isEmptyURL := v.URL == ""
+		isEmptyURLRaw := v.URLRaw == ""
 
 		if !isEmptyURL {
 			at.Logs.HTMLDisplayURL = at.Logs.URL
