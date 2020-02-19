@@ -8,7 +8,6 @@ import (
 
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
@@ -48,6 +47,8 @@ type Environment struct {
 	userManagerInfo      evergreen.UserManagerInfo
 }
 
+// Configure sets default values on the Environment, except for the user manager
+// and user manager info, which must be explicitly set.
 func (e *Environment) Configure(ctx context.Context) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -86,10 +87,12 @@ func (e *Environment) Configure(ctx context.Context) error {
 		ScopeCollection: evergreen.ScopeCollection,
 	})
 
-	e.userManager, e.userManagerInfo, err = auth.LoadUserManager(e.EvergreenSettings)
-	if err != nil {
-		return errors.WithStack(err)
-	}
+	// Although it would make more sense to call
+	// auth.LoadUserManager(e.EvergreenSettings), we have to avoid an import
+	// cycle where this package would transitively depend on the database
+	// models.
+	e.userManager = nil
+	e.userManagerInfo = evergreen.UserManagerInfo{}
 
 	return nil
 }
