@@ -216,8 +216,8 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 
 func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, status *string) ([]*restModel.APITest, error) {
 	task, err := task.FindOneId(taskID)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+	if task == nil || err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
 
 	sortBy := ""
