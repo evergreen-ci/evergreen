@@ -14,7 +14,7 @@ var (
 	BuildIdKey    = bsonutil.MustHaveTag(Entry{}, "BuildId")
 	FilesKey      = bsonutil.MustHaveTag(Entry{}, "Files")
 	ExecutionKey  = bsonutil.MustHaveTag(Entry{}, "Execution")
-	CreateTimeKey = bsonutil.MustHaveTag(File{}, "CreateTime")
+	CreateTimeKey = bsonutil.MustHaveTag(Entry{}, "CreateTime")
 	NameKey       = bsonutil.MustHaveTag(File{}, "Name")
 	LinkKey       = bsonutil.MustHaveTag(File{}, "Link")
 )
