@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -13,13 +12,11 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
-	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/require"
 )
 
-var projectTestConfig = testutil.TestConfig()
+// var projectTestConfig = testutil.TestConfig()
 
 func TestProjectRoutes(t *testing.T) {
 	// kim: TODO: refactor tests to share same UIServer code rather than use the
@@ -29,28 +26,29 @@ func TestProjectRoutes(t *testing.T) {
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 	env.SetUserManager(serviceutil.MockUserManager{})
-	uis := UIServer{
-		RootURL:  projectTestConfig.Ui.Url,
-		Settings: *projectTestConfig,
-		env:      env,
-		// kim: TODO: remove
-		// UserManager: serviceutil.MockUserManager{},
-	}
-	home := evergreen.FindEvergreenHome()
-	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
-		Directory:    filepath.Join(home, WebRootPath, Templates),
-		DisableCache: true,
-	})
-
-	app := GetRESTv1App(&uis)
-	// kim: TODO: remove
-	// app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{
-	app.AddMiddleware(gimlet.UserMiddleware(uis.env.UserManager(), gimlet.UserMiddlewareConfiguration{
-		CookieName:     evergreen.AuthTokenCookie,
-		HeaderKeyName:  evergreen.APIKeyHeader,
-		HeaderUserName: evergreen.APIUserHeader,
-	}))
-	n, err := app.Handler()
+	router, err := newAuthTestUIRouter(ctx, env)
+	// uis := UIServer{
+	//     RootURL:  projectTestConfig.Ui.Url,
+	//     Settings: *projectTestConfig,
+	//     env:      env,
+	//     // kim: TODO: remove
+	//     // UserManager: serviceutil.MockUserManager{},
+	// }
+	// home := evergreen.FindEvergreenHome()
+	// uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
+	//     Directory:    filepath.Join(home, WebRootPath, Templates),
+	//     DisableCache: true,
+	// })
+	//
+	// app := GetRESTv1App(&uis)
+	// // kim: TODO: remove
+	// // app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{
+	// app.AddMiddleware(gimlet.UserMiddleware(uis.env.UserManager(), gimlet.UserMiddlewareConfiguration{
+	//     CookieName:     evergreen.AuthTokenCookie,
+	//     HeaderKeyName:  evergreen.APIKeyHeader,
+	//     HeaderUserName: evergreen.APIUserHeader,
+	// }))
+	// n, err := app.Handler()
 	require.NoError(t, err, "error setting up router")
 
 	Convey("When loading a public project, it should be found", t, func() {
@@ -73,7 +71,7 @@ func TestProjectRoutes(t *testing.T) {
 		response := httptest.NewRecorder()
 
 		Convey("by a public user", func() {
-			n.ServeHTTP(response, request)
+			router.ServeHTTP(response, request)
 			outRef := &model.ProjectRef{}
 			So(response.Code, ShouldEqual, http.StatusOK)
 			So(json.Unmarshal(response.Body.Bytes(), outRef), ShouldBeNil)
@@ -81,7 +79,7 @@ func TestProjectRoutes(t *testing.T) {
 		})
 		Convey("and a logged-in user", func() {
 			request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
-			n.ServeHTTP(response, request)
+			router.ServeHTTP(response, request)
 			outRef := &model.ProjectRef{}
 			So(response.Code, ShouldEqual, http.StatusOK)
 			So(json.Unmarshal(response.Body.Bytes(), outRef), ShouldBeNil)
@@ -93,7 +91,7 @@ func TestProjectRoutes(t *testing.T) {
 			So(err, ShouldBeNil)
 			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
-			n.ServeHTTP(response, request)
+			router.ServeHTTP(response, request)
 			out := struct {
 				Projects []string `json:"projects"`
 			}{}
@@ -123,7 +121,7 @@ func TestProjectRoutes(t *testing.T) {
 
 			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
-			n.ServeHTTP(response, request)
+			router.ServeHTTP(response, request)
 
 			So(response.Code, ShouldEqual, http.StatusUnauthorized)
 		})
@@ -134,7 +132,7 @@ func TestProjectRoutes(t *testing.T) {
 			So(err, ShouldBeNil)
 			// add auth cookie--this can be anything if we are using a MockUserManager
 			request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
-			n.ServeHTTP(response, request)
+			router.ServeHTTP(response, request)
 
 			outRef := &model.ProjectRef{}
 			So(response.Code, ShouldEqual, http.StatusOK)
@@ -148,7 +146,7 @@ func TestProjectRoutes(t *testing.T) {
 			So(err, ShouldBeNil)
 			Convey("for credentialed users", func() {
 				request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
-				n.ServeHTTP(response, request)
+				router.ServeHTTP(response, request)
 				out := struct {
 					Projects []string `json:"projects"`
 				}{}
@@ -158,7 +156,7 @@ func TestProjectRoutes(t *testing.T) {
 				So(out.Projects[0], ShouldEqual, private.Identifier)
 			})
 			Convey("but not public users", func() {
-				n.ServeHTTP(response, request)
+				router.ServeHTTP(response, request)
 				out := struct {
 					Projects []string `json:"projects"`
 				}{}
@@ -178,7 +176,7 @@ func TestProjectRoutes(t *testing.T) {
 
 		Convey("response should contain a sensible error message", func() {
 			Convey("for a public user", func() {
-				n.ServeHTTP(response, request)
+				router.ServeHTTP(response, request)
 				So(response.Code, ShouldEqual, http.StatusNotFound)
 				var jsonBody map[string]interface{}
 				err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
@@ -187,7 +185,7 @@ func TestProjectRoutes(t *testing.T) {
 			})
 			Convey("and a logged-in user", func() {
 				request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
-				n.ServeHTTP(response, request)
+				router.ServeHTTP(response, request)
 				So(response.Code, ShouldEqual, http.StatusNotFound)
 				var jsonBody map[string]interface{}
 				err = json.Unmarshal(response.Body.Bytes(), &jsonBody)

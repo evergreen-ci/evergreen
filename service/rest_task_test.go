@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -18,15 +17,13 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-var taskTestConfig = testutil.TestConfig()
+// var taskTestConfig = testutil.TestConfig()
 
 func insertTaskForTesting(taskId, versionId, projectName string, testResults []testresult.TestResult) (*task.Task, error) {
 	task := &task.Task{
@@ -79,26 +76,27 @@ func TestGetTaskInfo(t *testing.T) {
 	// userManager, _, err := auth.LoadUserManager(taskTestConfig)
 	// require.NoError(t, err, "Failure in loading UserManager from config")
 
-	uis := UIServer{
-		RootURL:  taskTestConfig.Ui.Url,
-		Settings: *taskTestConfig,
-		env:      env,
-		// kim: TODO: remove
-		// UserManager: userManager,
-	}
+	// uis := UIServer{
+	//     RootURL:  taskTestConfig.Ui.Url,
+	//     Settings: *taskTestConfig,
+	//     env:      env,
+	//     // kim: TODO: remove
+	//     // UserManager: userManager,
+	// }
 
-	home := evergreen.FindEvergreenHome()
-
-	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
-		Directory:    filepath.Join(home, WebRootPath, Templates),
-		DisableCache: true,
-	})
-
-	app := GetRESTv1App(&uis)
-	// kim: TODO: remove
-	// app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
-	app.AddMiddleware(gimlet.UserMiddleware(uis.env.UserManager(), gimlet.UserMiddlewareConfiguration{}))
-	router, err := app.Handler()
+	// home := evergreen.FindEvergreenHome()
+	//
+	// uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
+	//     Directory:    filepath.Join(home, WebRootPath, Templates),
+	//     DisableCache: true,
+	// })
+	//
+	// app := GetRESTv1App(&uis)
+	// // kim: TODO: remove
+	// // app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
+	// app.AddMiddleware(gimlet.UserMiddleware(uis.env.UserManager(), gimlet.UserMiddlewareConfiguration{}))
+	// router, err := app.Handler()
+	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
 
 	Convey("When finding info on a particular task", t, func() {
@@ -286,26 +284,27 @@ func TestGetTaskStatus(t *testing.T) {
 	// userManager, _, err := auth.LoadUserManager(taskTestConfig)
 	// require.NoError(t, err, "Failure in loading UserManager from config")
 
-	uis := UIServer{
-		RootURL:  taskTestConfig.Ui.Url,
-		Settings: *taskTestConfig,
-		// kim: TODO: remove
-		// UserManager: userManager,
-		env: env,
-	}
-
-	home := evergreen.FindEvergreenHome()
-
-	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
-		Directory:    filepath.Join(home, WebRootPath, Templates),
-		DisableCache: true,
-	})
-
-	app := GetRESTv1App(&uis)
-	// kim: TODO: remove
-	// app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
-	app.AddMiddleware(gimlet.UserMiddleware(uis.env.UserManager(), gimlet.UserMiddlewareConfiguration{}))
-	router, err := app.Handler()
+	// uis := UIServer{
+	//     RootURL:  taskTestConfig.Ui.Url,
+	//     Settings: *taskTestConfig,
+	//     // kim: TODO: remove
+	//     // UserManager: userManager,
+	//     env: env,
+	// }
+	//
+	// home := evergreen.FindEvergreenHome()
+	//
+	// uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
+	//     Directory:    filepath.Join(home, WebRootPath, Templates),
+	//     DisableCache: true,
+	// })
+	//
+	// app := GetRESTv1App(&uis)
+	// // kim: TODO: remove
+	// // app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
+	// app.AddMiddleware(gimlet.UserMiddleware(uis.env.UserManager(), gimlet.UserMiddlewareConfiguration{}))
+	// router, err := app.Handler()
+	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
 
 	Convey("When finding the status of a particular task", t, func() {
@@ -426,26 +425,27 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 	// userManager, _, err := auth.LoadUserManager(taskTestConfig)
 	// require.NoError(err)
 
-	uis := UIServer{
-		RootURL:  taskTestConfig.Ui.Url,
-		Settings: *taskTestConfig,
-		env:      env,
-		// kim: TODO: remove
-		// UserManager: userManager,
-	}
-
-	home := evergreen.FindEvergreenHome()
-
-	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
-		Directory:    filepath.Join(home, WebRootPath, Templates),
-		DisableCache: true,
-	})
-
-	app := GetRESTv1App(&uis)
-	// kim: TODO: remove
-	// app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
-	app.AddMiddleware(gimlet.UserMiddleware(uis.env.UserManager(), gimlet.UserMiddlewareConfiguration{}))
-	router, err := app.Handler()
+	// uis := UIServer{
+	//     RootURL:  taskTestConfig.Ui.Url,
+	//     Settings: *taskTestConfig,
+	//     env:      env,
+	//     // kim: TODO: remove
+	//     // UserManager: userManager,
+	// }
+	//
+	// home := evergreen.FindEvergreenHome()
+	//
+	// uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
+	//     Directory:    filepath.Join(home, WebRootPath, Templates),
+	//     DisableCache: true,
+	// })
+	//
+	// app := GetRESTv1App(&uis)
+	// // kim: TODO: remove
+	// // app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
+	// app.AddMiddleware(gimlet.UserMiddleware(uis.env.UserManager(), gimlet.UserMiddlewareConfiguration{}))
+	// router, err := app.Handler()
+	router, err := newTestUIRouter(ctx, env)
 	require.NoError(err, "error setting up router")
 
 	require.NoError(db.ClearCollections(task.Collection, testresult.Collection))

@@ -36,6 +36,7 @@ type UIServer struct {
 	// The root URL of the server, used in redirects for instance.
 	RootURL string
 
+	// kim: TODO: remove
 	//authManager
 	// UserManager        gimlet.UserManager
 	// umInfo             evergreen.UserManagerInfo
