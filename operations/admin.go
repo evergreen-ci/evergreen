@@ -37,7 +37,6 @@ func Admin() cli.Command {
 			fromMdbForLocal(),
 			toMdbForLocal(),
 			updateRoleCmd(),
-			backup(),
 		},
 	}
 }
