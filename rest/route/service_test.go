@@ -659,11 +659,9 @@ func TestTestPaginator(t *testing.T) {
 						TaskId:    model.ToStringPtr(""),
 						TestFile:  model.ToStringPtr(""),
 						Logs: model.TestLogs{
-							URL:            model.ToStringPtr(""),
-							URLRaw:         model.ToStringPtr(""),
-							LogId:          model.ToStringPtr(""),
-							RawDisplayURL:  model.ToStringPtr(""),
-							HTMLDisplayURL: model.ToStringPtr(""),
+							URL:    model.ToStringPtr(""),
+							URLRaw: model.ToStringPtr(""),
+							LogId:  model.ToStringPtr(""),
 						},
 					}
 					expectedTests = append(expectedTests, nextModelTest)
@@ -705,11 +703,9 @@ func TestTestPaginator(t *testing.T) {
 						TaskId:    model.ToStringPtr(""),
 						TestFile:  model.ToStringPtr(""),
 						Logs: model.TestLogs{
-							URL:            model.ToStringPtr(""),
-							URLRaw:         model.ToStringPtr(""),
-							LogId:          model.ToStringPtr(""),
-							RawDisplayURL:  model.ToStringPtr(""),
-							HTMLDisplayURL: model.ToStringPtr(""),
+							URL:    model.ToStringPtr(""),
+							URLRaw: model.ToStringPtr(""),
+							LogId:  model.ToStringPtr(""),
 						},
 					}
 					expectedTests = append(expectedTests, nextModelTest)
@@ -751,11 +747,9 @@ func TestTestPaginator(t *testing.T) {
 						TaskId:    model.ToStringPtr(""),
 						TestFile:  model.ToStringPtr(""),
 						Logs: model.TestLogs{
-							URL:            model.ToStringPtr(""),
-							URLRaw:         model.ToStringPtr(""),
-							LogId:          model.ToStringPtr(""),
-							RawDisplayURL:  model.ToStringPtr(""),
-							HTMLDisplayURL: model.ToStringPtr(""),
+							URL:    model.ToStringPtr(""),
+							URLRaw: model.ToStringPtr(""),
+							LogId:  model.ToStringPtr(""),
 						},
 					}
 					expectedTests = append(expectedTests, nextModelTest)
@@ -797,11 +791,9 @@ func TestTestPaginator(t *testing.T) {
 						TaskId:    model.ToStringPtr(""),
 						TestFile:  model.ToStringPtr(""),
 						Logs: model.TestLogs{
-							URL:            model.ToStringPtr(""),
-							URLRaw:         model.ToStringPtr(""),
-							LogId:          model.ToStringPtr(""),
-							RawDisplayURL:  model.ToStringPtr(""),
-							HTMLDisplayURL: model.ToStringPtr(""),
+							URL:    model.ToStringPtr(""),
+							URLRaw: model.ToStringPtr(""),
+							LogId:  model.ToStringPtr(""),
 						},
 					}
 					expectedTests = append(expectedTests, nextModelTest)
