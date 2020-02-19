@@ -427,43 +427,43 @@
       },
       {
         "id": "task-for-testing-duration-resolver-1",
-        "createTime": "2020-02-12T16:58:19Z",
-        "startTime": "2020-02-14T22:21:13Z",
-        "finishTime": "2020-02-14T22:23:59Z",
+        "create_time": "2020-02-12T16:58:19Z",
+        "start_time": "2020-02-14T22:21:13Z",
+        "finish_time": "2020-02-14T22:23:59Z",
         "version": "9a1f8ab8834b87d7b5d251a5",
-        "timeTaken": 166715
+        "time_taken": 166715
       },
       {
         "id": "task-for-testing-duration-resolver-2",
-        "createTime": "2020-02-12T16:58:19Z",
-        "startTime": "2020-02-14T22:21:14Z",
-        "finishTime": "2020-02-14T22:22:26Z",
+        "create_time": "2020-02-12T16:58:19Z",
+        "start_time": "2020-02-14T22:21:14Z",
+        "finish_time": "2020-02-14T22:22:26Z",
         "version": "9a1f8ab8834b87d7b5d251a5",
-        "timeTaken": 72328
+        "time_taken": 72328
       },
       {
         "id": "task-for-testing-duration-resolver-3",
-        "createTime": "2020-02-12T16:58:19Z",
-        "startTime": "2020-02-14T22:21:11Z",
-        "finishTime": "2020-02-14T22:24:50Z",
+        "create_time": "2020-02-12T16:58:19Z",
+        "start_time": "2020-02-14T22:21:11Z",
+        "finish_time": "2020-02-14T22:24:50Z",
         "version": "9a1f8ab8834b87d7b5d251a5",
-        "timeTaken": 219230
+        "time_taken": 219230
       },
       {
         "id": "task-for-testing-duration-resolver-4",
-        "createTime": "2020-02-12T16:58:19Z",
-        "startTime": "2020-02-14T22:21:13Z",
-        "finishTime": "2020-02-14T22:22:19Z",
+        "create_time": "2020-02-12T16:58:19Z",
+        "start_time": "2020-02-14T22:21:13Z",
+        "finish_time": "2020-02-14T22:22:19Z",
         "version": "9a1f8ab8834b87d7b5d251a5",
-        "timeTaken": 65589
+        "time_taken": 65589
       },
       {
         "id": "task-for-testing-duration-resolver-5",
-        "createTime": "2020-02-12T16:58:19Z",
-        "startTime": "2020-02-14T22:21:15Z",
-        "finishTime": "2020-02-14T22:22:24Z",
+        "create_time": "2020-02-12T16:58:19Z",
+        "start_time": "2020-02-14T22:21:15Z",
+        "finish_time": "2020-02-14T22:22:24Z",
         "version": "9a1f8ab8834b87d7b5d251a5",
-        "timeTaken": 69532
+        "time_taken": 69532
       }
     ],
     "testresults": [
