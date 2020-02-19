@@ -62,7 +62,7 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('api')">API Config</li>
 						<li class="link" ng-click="scrollTo('ui')">UI Config</li>
 						<div>Authentication</div>
-						<li class="link" ng-click="scrollTo('preferred_auth')">Preferred Authentication</li>
+						<li class="link" ng-click="scrollTo('auth')">Global Config</li>
 						<li class="link" ng-click="scrollTo('ldap')">LDAP</li>
 						<li class="link" ng-click="scrollTo('okta')">Okta</li>
 						<li class="link" ng-click="scrollTo('github')">Github</li>
@@ -703,9 +703,9 @@ Admin Settings
 						</section>
 
 						<section layout="row" flex>
-							<md-card flex=50 id="preferred_auth">
+							<md-card flex=50 id="auth">
 								<md-card-title-text>
-									<span>Preferred Authentication</span>
+									<span>Global Config</span>
 								</md-card-title-text>
 								<md-card-content>
 									<md-radio-group data-ng-model="Settings.auth.preferred_type" layout="row">
@@ -721,7 +721,9 @@ Admin Settings
 									<input type="number" ng-model="Settings.auth.background_reauth_minutes">
 								</md-input-container>
 							</md-card>
+						</section>
 
+						<section>
 							<md-card flex=50 id="ldap">
 								<md-card-title>
 									<md-card-title-text>
