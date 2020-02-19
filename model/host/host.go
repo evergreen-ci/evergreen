@@ -348,6 +348,8 @@ const (
 
 	MaxTagKeyLength   = 128
 	MaxTagValueLength = 256
+
+	ErrorParentNotFound = "Parent not found"
 )
 
 func (h *Host) GetTaskGroupString() string {
@@ -1560,7 +1562,7 @@ func (h *Host) GetParent() (*Host, error) {
 		return nil, errors.Wrap(err, "Error finding parent")
 	}
 	if host == nil {
-		return nil, errors.New("Parent not found")
+		return nil, errors.New(ErrorParentNotFound)
 	}
 	if !host.HasContainers {
 		return nil, errors.New("Host found is not a parent")
