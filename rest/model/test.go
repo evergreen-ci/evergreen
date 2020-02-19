@@ -56,7 +56,6 @@ func (at *APITest) BuildFromService(st interface{}) error {
 			LineNum: v.LineNum,
 		}
 
-		emptyStr := ""
 		isEmptyLogID := len(v.LogID) == 0
 		isEmptyURL := len(v.URL) == 0
 		isEmptyURLRaw := len(v.URLRaw) == 0
@@ -64,7 +63,7 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		if !isEmptyURL {
 			at.Logs.HTMLDisplayURL = at.Logs.URL
 		} else if isEmptyLogID {
-			at.Logs.HTMLDisplayURL = &emptyStr
+			at.Logs.HTMLDisplayURL = nil
 		} else {
 			dispString := fmt.Sprintf("/test_log/%s#L%d", *at.Logs.LogId, at.Logs.LineNum)
 			at.Logs.HTMLDisplayURL = &dispString
@@ -73,7 +72,7 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		if !isEmptyURLRaw {
 			at.Logs.RawDisplayURL = at.Logs.URLRaw
 		} else if isEmptyLogID {
-			at.Logs.RawDisplayURL = &emptyStr
+			at.Logs.RawDisplayURL = nil
 		} else {
 			dispString := fmt.Sprintf("/test_log/%s?raw=1", *at.Logs.LogId)
 			at.Logs.RawDisplayURL = &dispString

@@ -275,11 +275,11 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
-		if len(*apiTest.Logs.HTMLDisplayURL) != 0 && IsURL(*apiTest.Logs.HTMLDisplayURL) == false {
+		if apiTest.Logs.HTMLDisplayURL != nil && IsURL(*apiTest.Logs.HTMLDisplayURL) == false {
 			formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.HTMLDisplayURL)
 			apiTest.Logs.HTMLDisplayURL = &formattedURL
 		}
-		if len(*apiTest.Logs.RawDisplayURL) != 0 && IsURL(*apiTest.Logs.RawDisplayURL) == false {
+		if apiTest.Logs.RawDisplayURL != nil && IsURL(*apiTest.Logs.RawDisplayURL) == false {
 			formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.RawDisplayURL)
 			apiTest.Logs.RawDisplayURL = &formattedURL
 		}

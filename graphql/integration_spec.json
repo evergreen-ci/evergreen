@@ -2284,7 +2284,7 @@
         "data": {
           "taskTests": [
             {
-              "logs": { "htmlDisplayURL": "", "rawDisplayURL": "" },
+              "logs": { "htmlDisplayURL": null, "rawDisplayURL": null },
               "id": "29ef7a20a7798219e191d00e"
             }
           ]
