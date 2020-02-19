@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -11,8 +12,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/build"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -25,14 +26,21 @@ import (
 var buildTestConfig = testutil.TestConfig()
 
 func TestGetBuildInfo(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	// kim: TODO: remove
+	// userManager, _, err := auth.LoadUserManager(buildTestConfig)
+	// require.NoError(t, err, "Failure in loading UserManager from config")
 
-	userManager, _, err := auth.LoadUserManager(buildTestConfig)
-	require.NoError(t, err, "Failure in loading UserManager from config")
-
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
 	uis := UIServer{
-		RootURL:     buildTestConfig.Ui.Url,
-		Settings:    *buildTestConfig,
-		UserManager: userManager,
+		RootURL:  buildTestConfig.Ui.Url,
+		Settings: *buildTestConfig,
+		// kim: TODO: remove
+		// UserManager: userManager,
+		// kim: TODO: figure out if this will work
+		env: env,
 	}
 
 	home := evergreen.FindEvergreenHome()
@@ -43,7 +51,9 @@ func TestGetBuildInfo(t *testing.T) {
 	})
 
 	app := GetRESTv1App(&uis)
-	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
+	// kim: TODO: remove
+	// app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
+	app.AddMiddleware(gimlet.UserMiddleware(env.UserManager(), gimlet.UserMiddlewareConfiguration{}))
 	router, err := app.Handler()
 	require.NoError(t, err, "error setting up router")
 
@@ -188,14 +198,20 @@ func TestGetBuildInfo(t *testing.T) {
 }
 
 func TestGetBuildStatus(t *testing.T) {
-
-	userManager, _, err := auth.LoadUserManager(buildTestConfig)
-	require.NoError(t, err, "Failure in loading UserManager from config")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	// kim: TODO: remove
+	// userManager, _, err := auth.LoadUserManager(buildTestConfig)
+	// require.NoError(t, err, "Failure in loading UserManager from config")
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
 
 	uis := UIServer{
-		RootURL:     buildTestConfig.Ui.Url,
-		Settings:    *buildTestConfig,
-		UserManager: userManager,
+		RootURL:  buildTestConfig.Ui.Url,
+		Settings: *buildTestConfig,
+		// kim: TODO: remove
+		// UserManager: userManager,
+		env: env,
 	}
 
 	home := evergreen.FindEvergreenHome()
@@ -206,7 +222,9 @@ func TestGetBuildStatus(t *testing.T) {
 	})
 
 	app := GetRESTv1App(&uis)
-	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
+	// kim: TODO: remove
+	// app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
+	app.AddMiddleware(gimlet.UserMiddleware(env.UserManager(), gimlet.UserMiddlewareConfiguration{}))
 	router, err := app.Handler()
 	require.NoError(t, err, "error setting up router")
 

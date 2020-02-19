@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -20,10 +22,19 @@ import (
 var projectTestConfig = testutil.TestConfig()
 
 func TestProjectRoutes(t *testing.T) {
+	// kim: TODO: refactor tests to share same UIServer code rather than use the
+	// same copy-paste as the other tests.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+	env.SetUserManager(serviceutil.MockUserManager{})
 	uis := UIServer{
-		RootURL:     projectTestConfig.Ui.Url,
-		Settings:    *projectTestConfig,
-		UserManager: serviceutil.MockUserManager{},
+		RootURL:  projectTestConfig.Ui.Url,
+		Settings: *projectTestConfig,
+		env:      env,
+		// kim: TODO: remove
+		// UserManager: serviceutil.MockUserManager{},
 	}
 	home := evergreen.FindEvergreenHome()
 	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
@@ -32,7 +43,9 @@ func TestProjectRoutes(t *testing.T) {
 	})
 
 	app := GetRESTv1App(&uis)
-	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{
+	// kim: TODO: remove
+	// app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{
+	app.AddMiddleware(gimlet.UserMiddleware(uis.env.UserManager(), gimlet.UserMiddlewareConfiguration{
 		CookieName:     evergreen.AuthTokenCookie,
 		HeaderKeyName:  evergreen.APIKeyHeader,
 		HeaderUserName: evergreen.APIUserHeader,

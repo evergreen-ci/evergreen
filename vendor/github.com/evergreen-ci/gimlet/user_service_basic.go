@@ -69,6 +69,14 @@ func (um *BasicUserManager) CreateUserToken(username, password string) (string, 
 func (*BasicUserManager) GetLoginHandler(string) http.HandlerFunc   { return nil }
 func (*BasicUserManager) GetLoginCallbackHandler() http.HandlerFunc { return nil }
 func (*BasicUserManager) IsRedirect() bool                          { return false }
+func (um *BasicUserManager) ReauthorizeUser(user User) error {
+	for _, u := range um.users {
+		if user.Username() == u.Username() {
+			return nil
+		}
+	}
+	return errors.Errorf("user '%s 'not found", user.Username())
+}
 
 func (um *BasicUserManager) IsInvalid(username string) bool {
 	for _, user := range um.users {

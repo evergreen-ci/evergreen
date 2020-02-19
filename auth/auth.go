@@ -2,7 +2,6 @@ package auth
 
 import (
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -12,52 +11,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-var userManager struct {
-	manager gimlet.UserManager
-	info    UserManagerInfo
-	mutex   sync.RWMutex
-}
-
-type UserManagerInfo struct {
-	CanClearTokens bool
-	CanReauthorize bool
-}
-
-// InitUserManager initializes the global user manager if it does not exist
-// already based on the given settings. If it already exists, it is returned.
-func InitUserManager(settings *evergreen.Settings) (gimlet.UserManager, UserManagerInfo, error) {
-	userManager.mutex.RLock()
-	if userManager.manager != nil {
-		userManager.mutex.RUnlock()
-		return userManager.manager, userManager.info, nil
-	}
-	userManager.mutex.RUnlock()
-
-	um, info, err := LoadUserManager(settings)
-
-	userManager.mutex.Lock()
-	defer userManager.mutex.Unlock()
-	userManager.manager = um
-	userManager.info = info
-
-	return um, info, err
-}
-
-// UserManager returns the global user manager.
-func UserManager() (gimlet.UserManager, UserManagerInfo, error) {
-	if userManager.manager == nil {
-		return nil, UserManagerInfo{}, errors.New("user manager has not been initialized")
-	}
-	return userManager.manager, userManager.info, nil
-}
-
 // LoadUserManager is used to check the configuration for authentication and
 // create a UserManager depending on what type of authentication is used. The
 // global user manager is not set.
-func LoadUserManager(settings *evergreen.Settings) (gimlet.UserManager, UserManagerInfo, error) {
+func LoadUserManager(settings *evergreen.Settings) (gimlet.UserManager, evergreen.UserManagerInfo, error) {
 	authConfig := settings.AuthConfig
-	var info UserManagerInfo
-	makeLDAPManager := func() (gimlet.UserManager, UserManagerInfo, error) {
+	var info evergreen.UserManagerInfo
+	makeLDAPManager := func() (gimlet.UserManager, evergreen.UserManagerInfo, error) {
 		manager, err := NewLDAPUserManager(authConfig.LDAP)
 		if err != nil {
 			return nil, info, errors.Wrap(err, "problem setting up ldap authentication")
@@ -66,7 +26,7 @@ func LoadUserManager(settings *evergreen.Settings) (gimlet.UserManager, UserMana
 		info.CanReauthorize = true
 		return manager, info, nil
 	}
-	makeOktaManager := func() (gimlet.UserManager, UserManagerInfo, error) {
+	makeOktaManager := func() (gimlet.UserManager, evergreen.UserManagerInfo, error) {
 		manager, err := NewOktaUserManager(authConfig.Okta, settings.Ui.Url, settings.Ui.LoginDomain)
 		if err != nil {
 			return nil, info, errors.Wrap(err, "problem setting up okta authentication")
@@ -75,14 +35,14 @@ func LoadUserManager(settings *evergreen.Settings) (gimlet.UserManager, UserMana
 		info.CanReauthorize = true
 		return manager, info, nil
 	}
-	makeNaiveManager := func() (gimlet.UserManager, UserManagerInfo, error) {
+	makeNaiveManager := func() (gimlet.UserManager, evergreen.UserManagerInfo, error) {
 		manager, err := NewNaiveUserManager(authConfig.Naive)
 		if err != nil {
 			return nil, info, errors.Wrap(err, "problem setting up naive authentication")
 		}
 		return manager, info, nil
 	}
-	makeGithubManager := func() (gimlet.UserManager, UserManagerInfo, error) {
+	makeGithubManager := func() (gimlet.UserManager, evergreen.UserManagerInfo, error) {
 		manager, err := NewGithubUserManager(authConfig.Github, settings.Ui.LoginDomain)
 		if err != nil {
 			return nil, info, errors.Wrap(err, "problem setting up github authentication")

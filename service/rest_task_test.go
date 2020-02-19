@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -12,8 +13,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -70,14 +71,20 @@ func insertTaskForTesting(taskId, versionId, projectName string, testResults []t
 }
 
 func TestGetTaskInfo(t *testing.T) {
-
-	userManager, _, err := auth.LoadUserManager(taskTestConfig)
-	require.NoError(t, err, "Failure in loading UserManager from config")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+	// kim: TODO: remove
+	// userManager, _, err := auth.LoadUserManager(taskTestConfig)
+	// require.NoError(t, err, "Failure in loading UserManager from config")
 
 	uis := UIServer{
-		RootURL:     taskTestConfig.Ui.Url,
-		Settings:    *taskTestConfig,
-		UserManager: userManager,
+		RootURL:  taskTestConfig.Ui.Url,
+		Settings: *taskTestConfig,
+		env:      env,
+		// kim: TODO: remove
+		// UserManager: userManager,
 	}
 
 	home := evergreen.FindEvergreenHome()
@@ -88,7 +95,9 @@ func TestGetTaskInfo(t *testing.T) {
 	})
 
 	app := GetRESTv1App(&uis)
-	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
+	// kim: TODO: remove
+	// app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
+	app.AddMiddleware(gimlet.UserMiddleware(uis.env.UserManager(), gimlet.UserMiddlewareConfiguration{}))
 	router, err := app.Handler()
 	require.NoError(t, err, "error setting up router")
 
@@ -269,14 +278,20 @@ func TestGetTaskInfo(t *testing.T) {
 }
 
 func TestGetTaskStatus(t *testing.T) {
-
-	userManager, _, err := auth.LoadUserManager(taskTestConfig)
-	require.NoError(t, err, "Failure in loading UserManager from config")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+	// kim: TODO: remove
+	// userManager, _, err := auth.LoadUserManager(taskTestConfig)
+	// require.NoError(t, err, "Failure in loading UserManager from config")
 
 	uis := UIServer{
-		RootURL:     taskTestConfig.Ui.Url,
-		Settings:    *taskTestConfig,
-		UserManager: userManager,
+		RootURL:  taskTestConfig.Ui.Url,
+		Settings: *taskTestConfig,
+		// kim: TODO: remove
+		// UserManager: userManager,
+		env: env,
 	}
 
 	home := evergreen.FindEvergreenHome()
@@ -287,7 +302,9 @@ func TestGetTaskStatus(t *testing.T) {
 	})
 
 	app := GetRESTv1App(&uis)
-	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
+	// kim: TODO: remove
+	// app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
+	app.AddMiddleware(gimlet.UserMiddleware(uis.env.UserManager(), gimlet.UserMiddlewareConfiguration{}))
 	router, err := app.Handler()
 	require.NoError(t, err, "error setting up router")
 
@@ -401,13 +418,20 @@ func TestGetTaskStatus(t *testing.T) {
 func TestGetDisplayTaskInfo(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
-	userManager, _, err := auth.LoadUserManager(taskTestConfig)
-	require.NoError(err)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := &mock.Environment{}
+	require.NoError(env.Configure(ctx))
+	// kim: TODO: remove
+	// userManager, _, err := auth.LoadUserManager(taskTestConfig)
+	// require.NoError(err)
 
 	uis := UIServer{
-		RootURL:     taskTestConfig.Ui.Url,
-		Settings:    *taskTestConfig,
-		UserManager: userManager,
+		RootURL:  taskTestConfig.Ui.Url,
+		Settings: *taskTestConfig,
+		env:      env,
+		// kim: TODO: remove
+		// UserManager: userManager,
 	}
 
 	home := evergreen.FindEvergreenHome()
@@ -418,7 +442,9 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 	})
 
 	app := GetRESTv1App(&uis)
-	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
+	// kim: TODO: remove
+	// app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
+	app.AddMiddleware(gimlet.UserMiddleware(uis.env.UserManager(), gimlet.UserMiddlewareConfiguration{}))
 	router, err := app.Handler()
 	require.NoError(err, "error setting up router")
 

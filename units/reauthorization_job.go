@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -94,24 +93,20 @@ func (j *reauthorizationJob) Run(ctx context.Context) {
 		reauthAfter = defaultBackgroundReauth
 	}
 
-	since := time.Since(j.user.LoginCache.TTL)
 	if time.Since(j.user.LoginCache.TTL) <= reauthAfter {
 		return
 	}
 
-	um, info, err := auth.UserManager()
+	um := j.env.UserManager()
 	if err != nil {
 		grip.Notice(errors.Wrap(err, "cannot get user manager"))
 		return
 	}
-	if !info.CanReauthorize {
+	if !j.env.UserManagerInfo().CanReauthorize {
 		return
 	}
 
-	// GetUserByID internally reauthorizes the user and returns nil if the user
-	// is reauthorized successfully.
-	// kim: TODO: replace with um.ReauthorizeUser(user)
-	if _, err = um.GetUserByID(j.user.Username()); err != nil {
+	if err = um.ReauthorizeUser(j.user); err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "could not reauthorize user",
 			"user":    j.user.Username(),

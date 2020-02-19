@@ -58,6 +58,7 @@ func (b *NaiveUserManager) CreateUserToken(username, password string) (string, e
 func (*NaiveUserManager) GetLoginHandler(string) http.HandlerFunc    { return nil }
 func (*NaiveUserManager) GetLoginCallbackHandler() http.HandlerFunc  { return nil }
 func (*NaiveUserManager) IsRedirect() bool                           { return false }
+func (*NaiveUserManager) ReauthorizeUser(gimlet.User) error          { return errors.New("not implemented") }
 func (*NaiveUserManager) GetUserByID(id string) (gimlet.User, error) { return getUserByID(id) }
 func (*NaiveUserManager) GetOrCreateUser(u gimlet.User) (gimlet.User, error) {
 	return getOrCreateUser(u)

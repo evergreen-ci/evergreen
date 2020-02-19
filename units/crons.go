@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -1235,11 +1234,7 @@ func PopulateSSHKeyUpdates(env evergreen.Environment) amboy.QueueOperation {
 
 func PopulateReauthorizationJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		_, info, err := auth.UserManager()
-		if err != nil {
-			return err
-		}
-		if !info.CanReauthorize {
+		if !env.UserManagerInfo().CanReauthorize {
 			return nil
 		}
 

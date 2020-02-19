@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
@@ -43,6 +44,8 @@ type Environment struct {
 	EnvContext           context.Context
 	InternalSender       *send.InternalSender
 	roleManager          gimlet.RoleManager
+	userManager          gimlet.UserManager
+	userManagerInfo      evergreen.UserManagerInfo
 }
 
 func (e *Environment) Configure(ctx context.Context) error {
@@ -82,6 +85,11 @@ func (e *Environment) Configure(ctx context.Context) error {
 		RoleCollection:  evergreen.RoleCollection,
 		ScopeCollection: evergreen.ScopeCollection,
 	})
+
+	e.userManager, e.userManagerInfo, err = auth.LoadUserManager(e.EvergreenSettings)
+	if err != nil {
+		return errors.WithStack(err)
+	}
 
 	return nil
 }
@@ -214,4 +222,28 @@ func (e *Environment) RoleManager() gimlet.RoleManager {
 	defer e.mu.RUnlock()
 
 	return e.roleManager
+}
+
+func (e *Environment) UserManager() gimlet.UserManager {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.userManager
+}
+
+func (e *Environment) SetUserManager(um gimlet.UserManager) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.userManager = um
+}
+
+func (e *Environment) UserManagerInfo() evergreen.UserManagerInfo {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.userManagerInfo
+}
+
+func (e *Environment) SetUserManagerInfo(umi evergreen.UserManagerInfo) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.userManagerInfo = umi
 }

@@ -55,6 +55,8 @@ func (j *cronsRemoteFifteenSecondJob) Run(ctx context.Context) {
 		PopulateAgentDeployJobs(j.env),
 		PopulateAgentMonitorDeployJobs(j.env),
 		PopulateUserDataDoneJobs(j.env),
+		// kim: TODO: remove once done testing
+		PopulateReauthorizationJobs(j.env),
 	}
 
 	queue := j.env.RemoteQueue()
