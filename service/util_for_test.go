@@ -31,12 +31,14 @@ func newAuthTestUIRouter(ctx context.Context, env evergreen.Environment) (http.H
 // middleware configuration.
 func makeAuthTestUIRouter(ctx context.Context, env evergreen.Environment, umconf gimlet.UserMiddlewareConfiguration) (http.Handler, error) {
 	settings := env.Settings()
-	um, info, err := auth.LoadUserManager(settings)
-	if err != nil {
-		return nil, errors.WithStack(err)
+	if env.UserManager() == nil {
+		um, info, err := auth.LoadUserManager(settings)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		env.SetUserManager(um)
+		env.SetUserManagerInfo(info)
 	}
-	env.SetUserManager(um)
-	env.SetUserManagerInfo(info)
 	uis := &UIServer{
 		RootURL:  settings.Ui.Url,
 		Settings: *settings,
