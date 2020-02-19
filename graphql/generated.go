@@ -73,11 +73,7 @@ type ComplexityRoot struct {
 		Alias         func(childComplexity int) int
 		Author        func(childComplexity int) int
 		Description   func(childComplexity int) int
-<<<<<<< HEAD
 		Duration      func(childComplexity int) int
-		FinishTime    func(childComplexity int) int
-=======
->>>>>>> master
 		Githash       func(childComplexity int) int
 		Id            func(childComplexity int) int
 		PatchNumber   func(childComplexity int) int
@@ -90,16 +86,16 @@ type ComplexityRoot struct {
 		Version       func(childComplexity int) int
 	}
 
-<<<<<<< HEAD
 	PatchDuration struct {
 		Makespan  func(childComplexity int) int
+		Time      func(childComplexity int) int
 		TimeTaken func(childComplexity int) int
-=======
+	}
+
 	PatchTime struct {
 		Finished    func(childComplexity int) int
 		Started     func(childComplexity int) int
 		SubmittedAt func(childComplexity int) int
->>>>>>> master
 	}
 
 	Project struct {
@@ -211,11 +207,8 @@ type MutationResolver interface {
 	UnscheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 }
 type PatchResolver interface {
-<<<<<<< HEAD
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
-=======
 	Time(ctx context.Context, obj *model.APIPatch) (*PatchTime, error)
->>>>>>> master
 }
 type QueryResolver interface {
 	UserPatches(ctx context.Context, userID string) ([]*model.APIPatch, error)
@@ -367,7 +360,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Patch.Description(childComplexity), true
 
-<<<<<<< HEAD
 	case "Patch.duration":
 		if e.complexity.Patch.Duration == nil {
 			break
@@ -375,15 +367,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Patch.Duration(childComplexity), true
 
-	case "Patch.finishTime":
-		if e.complexity.Patch.FinishTime == nil {
-			break
-		}
-
-		return e.complexity.Patch.FinishTime(childComplexity), true
-
-=======
->>>>>>> master
 	case "Patch.githash":
 		if e.complexity.Patch.Githash == nil {
 			break
@@ -454,7 +437,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Patch.Version(childComplexity), true
 
-<<<<<<< HEAD
 	case "PatchDuration.makespan":
 		if e.complexity.PatchDuration.Makespan == nil {
 			break
@@ -462,13 +444,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PatchDuration.Makespan(childComplexity), true
 
+	case "PatchDuration.time":
+		if e.complexity.PatchDuration.Time == nil {
+			break
+		}
+
+		return e.complexity.PatchDuration.Time(childComplexity), true
+
 	case "PatchDuration.timeTaken":
 		if e.complexity.PatchDuration.TimeTaken == nil {
 			break
 		}
 
 		return e.complexity.PatchDuration.TimeTaken(childComplexity), true
-=======
+
 	case "PatchTime.finished":
 		if e.complexity.PatchTime.Finished == nil {
 			break
@@ -489,7 +478,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PatchTime.SubmittedAt(childComplexity), true
->>>>>>> master
 
 	case "Project.displayName":
 		if e.complexity.Project.DisplayName == nil {
@@ -1092,10 +1080,7 @@ var parsedSchema = gqlparser.MustLoadSchema(
     status: String = ""
   ): [TestResult!]
   taskFiles(taskId: String!): [GroupedFiles!]!
-<<<<<<< HEAD
-=======
   user: User!
->>>>>>> master
 }
 
 type Mutation {
@@ -1114,7 +1099,6 @@ enum TaskSortCategory {
 enum SortDirection {
   ASC
   DESC
-<<<<<<< HEAD
 }
 
 type GroupedFiles {
@@ -1122,15 +1106,6 @@ type GroupedFiles {
   files: [File!]
 }
 
-=======
-}
-
-type GroupedFiles {
-  taskName: String
-  files: [File!]
-}
-
->>>>>>> master
 type Patch {
   id: ID!
   description: String!
@@ -1140,25 +1115,18 @@ type Patch {
   author: String!
   version: String!
   status: String!
-<<<<<<< HEAD
-  createTime: Time!
-  startTime: Time
-  finishTime: Time
-=======
->>>>>>> master
   variants: [String!]!
   tasks: [String!]!
   variantsTasks: [VariantTask]!
   activated: Boolean!
   alias: String!
-<<<<<<< HEAD
   duration: PatchDuration
+  time: PatchTime
 }
 
 type PatchDuration {
   makespan: String
   timeTaken: String
-=======
   time: PatchTime
 }
 
@@ -1166,7 +1134,6 @@ type PatchTime {
   started: String
   finished: String
   submittedAt: String!
->>>>>>> master
 }
 
 type VariantTask {
@@ -1179,7 +1146,6 @@ type TaskLogs {
   agentLogLink: String
   systemLogLink: String
   taskLogLink: String
-<<<<<<< HEAD
 }
 
 type TaskEndDetail {
@@ -1200,28 +1166,6 @@ type TestResult {
   endTime: Time
 }
 
-=======
-}
-
-type TaskEndDetail {
-  status: String!
-  type: String!
-  description: String
-  timedOut: Boolean
-}
-
-type TestResult {
-  id: String!
-  status: String!
-  testFile: String!
-  logs: TestLog!
-  exitCode: Int
-  startTime: Time
-  duration: Float
-  endTime: Time
-}
-
->>>>>>> master
 type TestLog {
   url: String
   urlRaw: String
@@ -1265,31 +1209,6 @@ type Task {
   executionTasks: [String!]
   generateTask: Boolean
   generatedBy: String
-<<<<<<< HEAD
-}
-
-type Projects {
-  favorites: [Project!]!
-  otherProjects: [GroupedProjects!]!
-}
-
-type GroupedProjects {
-  name: String!
-  projects: [Project!]!
-}
-
-type Project {
-  identifier: String!
-  displayName: String!
-  repo: String!
-  owner: String!
-}
-
-type File {
-  name: String!
-  link: String!
-  visibility: String!
-=======
 }
 
 type Projects {
@@ -1317,7 +1236,6 @@ type File {
 
 type User {
   displayName: String!
->>>>>>> master
 }
 
 scalar Time
@@ -2391,6 +2309,37 @@ func (ec *executionContext) _Patch_alias(ctx context.Context, field graphql.Coll
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Patch_duration(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Patch",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Patch().Duration(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*PatchDuration)
+	fc.Result = res
+	return ec.marshalOPatchDuration2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchDuration(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Patch_time(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -2409,6 +2358,99 @@ func (ec *executionContext) _Patch_time(ctx context.Context, field graphql.Colle
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return ec.resolvers.Patch().Time(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*PatchTime)
+	fc.Result = res
+	return ec.marshalOPatchTime2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PatchDuration_makespan(ctx context.Context, field graphql.CollectedField, obj *PatchDuration) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "PatchDuration",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Makespan, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PatchDuration_timeTaken(ctx context.Context, field graphql.CollectedField, obj *PatchDuration) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "PatchDuration",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TimeTaken, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PatchDuration_time(ctx context.Context, field graphql.CollectedField, obj *PatchDuration) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "PatchDuration",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Time, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2516,99 +2558,6 @@ func (ec *executionContext) _PatchTime_submittedAt(ctx context.Context, field gr
 	res := resTmp.(string)
 	fc.Result = res
 	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Patch_duration(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Patch",
-		Field:    field,
-		Args:     nil,
-		IsMethod: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Patch().Duration(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*PatchDuration)
-	fc.Result = res
-	return ec.marshalOPatchDuration2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchDuration(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _PatchDuration_makespan(ctx context.Context, field graphql.CollectedField, obj *PatchDuration) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "PatchDuration",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Makespan, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _PatchDuration_timeTaken(ctx context.Context, field graphql.CollectedField, obj *PatchDuration) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "PatchDuration",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.TimeTaken, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Project_identifier(ctx context.Context, field graphql.CollectedField, obj *model.UIProjectFields) (ret graphql.Marshaler) {
@@ -6263,14 +6212,6 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			out.Values[i] = ec._Patch_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
-<<<<<<< HEAD
-			}
-		case "createTime":
-			out.Values[i] = ec._Patch_createTime(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-=======
->>>>>>> master
 			}
 		case "variants":
 			out.Values[i] = ec._Patch_variants(ctx, field, obj)
@@ -6296,9 +6237,18 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			out.Values[i] = ec._Patch_alias(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
-<<<<<<< HEAD
-=======
 			}
+		case "duration":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Patch_duration(ctx, field, obj)
+				return res
+			})
 		case "time":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -6310,6 +6260,34 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 				res = ec._Patch_time(ctx, field, obj)
 				return res
 			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var patchDurationImplementors = []string{"PatchDuration"}
+
+func (ec *executionContext) _PatchDuration(ctx context.Context, sel ast.SelectionSet, obj *PatchDuration) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, patchDurationImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PatchDuration")
+		case "makespan":
+			out.Values[i] = ec._PatchDuration_makespan(ctx, field, obj)
+		case "timeTaken":
+			out.Values[i] = ec._PatchDuration_timeTaken(ctx, field, obj)
+		case "time":
+			out.Values[i] = ec._PatchDuration_time(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -6340,45 +6318,7 @@ func (ec *executionContext) _PatchTime(ctx context.Context, sel ast.SelectionSet
 			out.Values[i] = ec._PatchTime_submittedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
->>>>>>> master
 			}
-		case "duration":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Patch_duration(ctx, field, obj)
-				return res
-			})
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch()
-	if invalids > 0 {
-		return graphql.Null
-	}
-	return out
-}
-
-var patchDurationImplementors = []string{"PatchDuration"}
-
-func (ec *executionContext) _PatchDuration(ctx context.Context, sel ast.SelectionSet, obj *PatchDuration) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, patchDurationImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("PatchDuration")
-		case "makespan":
-			out.Values[i] = ec._PatchDuration_makespan(ctx, field, obj)
-		case "timeTaken":
-			out.Values[i] = ec._PatchDuration_timeTaken(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -7937,7 +7877,6 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 	return ec.marshalOInt2int(ctx, sel, *v)
 }
 
-<<<<<<< HEAD
 func (ec *executionContext) marshalOPatchDuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchDuration(ctx context.Context, sel ast.SelectionSet, v PatchDuration) graphql.Marshaler {
 	return ec._PatchDuration(ctx, sel, &v)
 }
@@ -7947,7 +7886,8 @@ func (ec *executionContext) marshalOPatchDuration2ᚖgithubᚗcomᚋevergreenᚑ
 		return graphql.Null
 	}
 	return ec._PatchDuration(ctx, sel, v)
-=======
+}
+
 func (ec *executionContext) marshalOPatchTime2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchTime(ctx context.Context, sel ast.SelectionSet, v PatchTime) graphql.Marshaler {
 	return ec._PatchTime(ctx, sel, &v)
 }
@@ -7957,7 +7897,6 @@ func (ec *executionContext) marshalOPatchTime2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._PatchTime(ctx, sel, v)
->>>>>>> master
 }
 
 func (ec *executionContext) unmarshalOSortDirection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx context.Context, v interface{}) (SortDirection, error) {
