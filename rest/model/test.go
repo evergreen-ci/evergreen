@@ -27,10 +27,12 @@ type APITest struct {
 // TestLogs is a struct for storing the information about logs that will
 // be written out as part of an APITest.
 type TestLogs struct {
-	URL     *string `json:"url"`
-	LineNum int     `json:"line_num"`
-	URLRaw  *string `json:"url_raw"`
-	LogId   *string `json:"log_id"`
+	URL            *string `json:"url"`
+	LineNum        int     `json:"line_num"`
+	URLRaw         *string `json:"url_raw"`
+	LogId          *string `json:"log_id"`
+	RawDisplayURL  *string `json:"url_raw_display"`
+	HTMLDisplayURL *string `json:"url_html_display"`
 }
 
 func (at *APITest) BuildFromService(st interface{}) error {
@@ -52,6 +54,29 @@ func (at *APITest) BuildFromService(st interface{}) error {
 			URLRaw:  ToStringPtr(v.URLRaw),
 			LogId:   ToStringPtr(v.LogID),
 			LineNum: v.LineNum,
+		}
+
+		emptyStr := ""
+		isEmptyLogID := len(v.LogID) == 0
+		isEmptyURL := len(v.URL) == 0
+		isEmptyURLRaw := len(v.URLRaw) == 0
+
+		if !isEmptyURL {
+			at.Logs.HTMLDisplayURL = at.Logs.URL
+		} else if isEmptyLogID {
+			at.Logs.HTMLDisplayURL = &emptyStr
+		} else {
+			dispString := fmt.Sprintf("/test_log/%s/#L%d", *at.Logs.LogId, at.Logs.LineNum)
+			at.Logs.HTMLDisplayURL = &dispString
+		}
+
+		if !isEmptyURLRaw {
+			at.Logs.RawDisplayURL = at.Logs.URLRaw
+		} else if isEmptyLogID {
+			at.Logs.RawDisplayURL = &emptyStr
+		} else {
+			dispString := fmt.Sprintf("/test_log/%s?raw=1", *at.Logs.LogId)
+			at.Logs.RawDisplayURL = &dispString
 		}
 	case string:
 		at.TaskId = ToStringPtr(v)

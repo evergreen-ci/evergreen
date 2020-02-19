@@ -160,10 +160,8 @@ type ComplexityRoot struct {
 	}
 
 	TestLog struct {
-		LineNum func(childComplexity int) int
-		LogId   func(childComplexity int) int
-		URL     func(childComplexity int) int
-		URLRaw  func(childComplexity int) int
+		HTMLDisplayURL func(childComplexity int) int
+		RawDisplayURL  func(childComplexity int) int
 	}
 
 	TestResult struct {
@@ -832,33 +830,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskLogs.TaskLogLink(childComplexity), true
 
-	case "TestLog.lineNum":
-		if e.complexity.TestLog.LineNum == nil {
+	case "TestLog.htmlDisplayURL":
+		if e.complexity.TestLog.HTMLDisplayURL == nil {
 			break
 		}
 
-		return e.complexity.TestLog.LineNum(childComplexity), true
+		return e.complexity.TestLog.HTMLDisplayURL(childComplexity), true
 
-	case "TestLog.logId":
-		if e.complexity.TestLog.LogId == nil {
+	case "TestLog.rawDisplayURL":
+		if e.complexity.TestLog.RawDisplayURL == nil {
 			break
 		}
 
-		return e.complexity.TestLog.LogId(childComplexity), true
-
-	case "TestLog.url":
-		if e.complexity.TestLog.URL == nil {
-			break
-		}
-
-		return e.complexity.TestLog.URL(childComplexity), true
-
-	case "TestLog.urlRaw":
-		if e.complexity.TestLog.URLRaw == nil {
-			break
-		}
-
-		return e.complexity.TestLog.URLRaw(childComplexity), true
+		return e.complexity.TestLog.RawDisplayURL(childComplexity), true
 
 	case "TestResult.duration":
 		if e.complexity.TestResult.Duration == nil {
@@ -1109,10 +1093,8 @@ enum TaskSortCategory {
 	TEST_NAME
 }
 type TestLog {
-	url: String
-	urlRaw: String
-	lineNum: Int
-	logId: String
+	htmlDisplayURL: String
+	rawDisplayURL: String
 }
 type TestResult {
 	id: String!
@@ -4172,7 +4154,7 @@ func (ec *executionContext) _TaskLogs_taskLogLink(ctx context.Context, field gra
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _TestLog_url(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
+func (ec *executionContext) _TestLog_htmlDisplayURL(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -4189,7 +4171,7 @@ func (ec *executionContext) _TestLog_url(ctx context.Context, field graphql.Coll
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.URL, nil
+		return obj.HTMLDisplayURL, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4203,7 +4185,7 @@ func (ec *executionContext) _TestLog_url(ctx context.Context, field graphql.Coll
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _TestLog_urlRaw(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
+func (ec *executionContext) _TestLog_rawDisplayURL(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -4220,69 +4202,7 @@ func (ec *executionContext) _TestLog_urlRaw(ctx context.Context, field graphql.C
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.URLRaw, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _TestLog_lineNum(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "TestLog",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.LineNum, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalOInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _TestLog_logId(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "TestLog",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.LogId, nil
+		return obj.RawDisplayURL, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -6308,14 +6228,10 @@ func (ec *executionContext) _TestLog(ctx context.Context, sel ast.SelectionSet, 
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("TestLog")
-		case "url":
-			out.Values[i] = ec._TestLog_url(ctx, field, obj)
-		case "urlRaw":
-			out.Values[i] = ec._TestLog_urlRaw(ctx, field, obj)
-		case "lineNum":
-			out.Values[i] = ec._TestLog_lineNum(ctx, field, obj)
-		case "logId":
-			out.Values[i] = ec._TestLog_logId(ctx, field, obj)
+		case "htmlDisplayURL":
+			out.Values[i] = ec._TestLog_htmlDisplayURL(ctx, field, obj)
+		case "rawDisplayURL":
+			out.Values[i] = ec._TestLog_rawDisplayURL(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
