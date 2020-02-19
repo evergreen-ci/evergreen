@@ -2267,6 +2267,16 @@
       "result": {
         "data": { "taskFiles": [] }
       }
+    },
+    {
+      "query_file": "user.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "displayName": "testuser"
+          }
+        }
+      }
     }
   ]
 }

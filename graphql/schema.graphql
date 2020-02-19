@@ -13,6 +13,7 @@ type Query {
     status: String = ""
   ): [TestResult!]
   taskFiles(taskId: String!): [GroupedFiles!]!
+  user: User!
 }
 
 type Mutation {
@@ -157,6 +158,10 @@ type File {
   name: String!
   link: String!
   visibility: String!
+}
+
+type User {
+  displayName: String!
 }
 
 scalar Time

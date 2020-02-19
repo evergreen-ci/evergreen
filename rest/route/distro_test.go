@@ -729,6 +729,17 @@ func (s *DistroPatchByIDSuite) TestRunValidProviderSettings() {
 	s.Equal(apiDistro.ProviderSettings["key_name"], "mci")
 	s.Equal(apiDistro.ProviderSettings["security_group"], "password123")
 	s.Equal(apiDistro.ProviderSettings["ami"], "ami-2814683f")
+
+	s.Require().Len(apiDistro.ProviderSettingsList, 1)
+	doc := apiDistro.ProviderSettingsList[0]
+	mappedDoc := doc.Lookup("mount_points").MutableDocument()
+	s.Equal(mappedDoc.Lookup("device_name").StringValue(), "/dev/xvdb")
+	s.Equal(mappedDoc.Lookup("virtual_name").StringValue(), "ephemeral0")
+	s.Equal(doc.Lookup("bid_price").Double(), .15)
+	s.Equal(doc.Lookup("instance_type").StringValue(), "m3.large")
+	s.Equal(doc.Lookup("key_name").StringValue(), "mci")
+	s.Equal(doc.Lookup("security_group").StringValue(), "password123")
+	s.Equal(doc.Lookup("ami").StringValue(), "ami-2814683f")
 }
 
 func (s *DistroPatchByIDSuite) TestRunValidArch() {
@@ -927,7 +938,7 @@ func (s *DistroPatchByIDSuite) TestRunValidContainer() {
 
 func (s *DistroPatchByIDSuite) TestRunInvalidEmptyStringValues() {
 	ctx := context.Background()
-	json := []byte(`{"arch": "","user": "","work_dir": "","ssh_key": "","provider": ""}`)
+	json := []byte(`{"arch": "","user": "","work_dir": "","ssh_key": "","provider": "mock"}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
 	h.body = json
@@ -942,7 +953,6 @@ func (s *DistroPatchByIDSuite) TestRunInvalidEmptyStringValues() {
 		"ERROR: distro 'user' cannot be blank",
 		"ERROR: distro 'work_dir' cannot be blank",
 		"ERROR: distro 'ssh_key' cannot be blank",
-		"ERROR: distro 'provider' cannot be blank",
 	}
 
 	error := (resp.Data()).(gimlet.ErrorResponse)
