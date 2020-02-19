@@ -4675,7 +4675,7 @@ func TestPartitionParents(t *testing.T) {
 		{ParentHost: Host{Id: "3"}, Containers: []Host{{Distro: distro.Distro{Id: distroId}}, {Distro: distro.Distro{Id: "foo"}}}},
 		{ParentHost: Host{Id: "4"}, Containers: []Host{{Distro: distro.Distro{Id: "foo"}}}},
 	}
-	matched, notMatched := partitionParents(parents, distroId)
+	matched, notMatched := partitionParents(parents, distroId, evergreen.ContainerPool{})
 	assert.Len(matched, 2)
 	assert.Len(notMatched, 2)
 	assert.Equal("1", matched[0].ParentHost.Id)
@@ -4686,7 +4686,7 @@ func TestPartitionParents(t *testing.T) {
 	parents = []ContainersOnParents{
 		{ParentHost: Host{Id: "1"}, Containers: []Host{{Distro: distro.Distro{Id: "1"}}, {Distro: distro.Distro{Id: "2"}}, {Distro: distro.Distro{Id: "3"}}}},
 	}
-	matched, notMatched = partitionParents(parents, distroId)
+	matched, notMatched = partitionParents(parents, distroId, evergreen.ContainerPool{})
 	assert.Len(matched, 0)
 	assert.Len(notMatched, 0)
 }

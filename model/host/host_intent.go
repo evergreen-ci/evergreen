@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const maxImagesPerParent = 3
+const defaultMaxImagesPerParent = 3
 
 // CreateOptions is a struct of options that are commonly passed around when creating a
 // new cloud host.
@@ -81,9 +81,13 @@ func NewIntent(d distro.Distro, instanceName, provider string, options CreateOpt
 // partitionParents will split parent hosts based on those that already have/will have the image for this distro
 // it does not handle scenarios where the image for a distro has changed recently or multiple app servers calling this
 // and racing each other, on the assumption that having to download a small number of extra images is not a big deal
-func partitionParents(parents []ContainersOnParents, distro string) ([]ContainersOnParents, []ContainersOnParents) {
+func partitionParents(parents []ContainersOnParents, distro string, pool evergreen.ContainerPool) ([]ContainersOnParents, []ContainersOnParents) {
 	matched := []ContainersOnParents{}
 	notMatched := []ContainersOnParents{}
+	maxImages := defaultMaxImagesPerParent
+	if pool.MaxImages > 0 {
+		maxImages = pool.MaxImages
+	}
 parentLoop:
 	for _, parent := range parents {
 		currentImages := map[string]bool{}
@@ -95,7 +99,7 @@ parentLoop:
 			}
 		}
 		// only return parent hosts that would be below the max if they downloaded another image
-		if len(currentImages) < maxImagesPerParent {
+		if len(currentImages) < maxImages {
 			notMatched = append(notMatched, parent)
 		}
 	}
@@ -118,7 +122,7 @@ func MakeContainersAndParents(d distro.Distro, pool *evergreen.ContainerPool, ne
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "Could not find number of containers on parents")
 	}
-	matched, notMatched := partitionParents(currentHosts, d.Id)
+	matched, notMatched := partitionParents(currentHosts, d.Id, *pool)
 	existingHosts := append(matched, notMatched...)
 
 	// add containers to existing parents
