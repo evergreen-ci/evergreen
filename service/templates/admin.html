@@ -702,24 +702,31 @@ Admin Settings
 
 						</section>
 
-						<section layout="row" flex>
-							<md-card flex=50 id="auth">
-								<md-card-title-text>
-									<span>Global Config</span>
-								</md-card-title-text>
+						<section>
+							<md-card flex=50 id="auth" style="max-width:49%">
+								<md-card-title>
+									<md-card-title-text>
+										<span>Global Config</span>
+									</md-card-title-text>
+									<md-button ng-click="clearSection('auth')">
+										<i class="fa fa-trash"></i>
+									</md-button>
+								</md-card-title>
 								<md-card-content>
+									<label>Preferred Auth Type</label>
 									<md-radio-group data-ng-model="Settings.auth.preferred_type" layout="row">
-										  <md-radio-button value="ldap">LDAP</md-radio-button>
-										  <md-radio-button value="okta">Okta</md-radio-button>
-										  <md-radio-button value="naive">Naive</md-radio-button>
-										  <md-radio-button value="github">Github</md-radio-button>
-										  <md-radio-button value="">None</md-radio-button>
+										<md-radio-button value="ldap">LDAP</md-radio-button>
+										<md-radio-button value="okta">Okta</md-radio-button>
+										<md-radio-button value="naive">Naive</md-radio-button>
+										<md-radio-button value="github">Github</md-radio-button>
+										<md-radio-button value="">None</md-radio-button>
 									</md-radio-group>
+									<br />
+									<md-input-container class="control" style="width:45%;">
+										<label>Background Reauth (Minutes)</label>
+										<input type="number" ng-model="Settings.auth.background_reauth_minutes">
+									</md-input-container>
 								</md-card-content>
-								<md-input-container class="control" style="width:45%;">
-									<label>Background Reauthorize User After Minutes</label>
-									<input type="number" ng-model="Settings.auth.background_reauth_minutes">
-								</md-input-container>
 							</md-card>
 						</section>
 
