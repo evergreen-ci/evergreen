@@ -408,28 +408,6 @@ func TestActivateVersion(t *testing.T) {
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 	env.SetUserManager(serviceutil.MockUserManager{})
-	// uis := UIServer{
-	//     RootURL:  versionTestConfig.Ui.Url,
-	//     Settings: *versionTestConfig,
-	//     env:      env,
-	//     // UserManager: serviceutil.MockUserManager{},
-	// }
-	//
-	// home := evergreen.FindEvergreenHome()
-	//
-	// uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
-	//     Directory:    filepath.Join(home, WebRootPath, Templates),
-	//     DisableCache: true,
-	// })
-	//
-	// app := GetRESTv1App(&uis)
-	// // app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{
-	// app.AddMiddleware(gimlet.UserMiddleware(uis.env.UserManager(), gimlet.UserMiddlewareConfiguration{
-	//     CookieName:     evergreen.AuthTokenCookie,
-	//     HeaderKeyName:  evergreen.APIKeyHeader,
-	//     HeaderUserName: evergreen.APIUserHeader,
-	// }))
-	// router, err := app.Handler()
 	router, err := newAuthTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
 

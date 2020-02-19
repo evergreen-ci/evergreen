@@ -12,8 +12,7 @@ import (
 )
 
 // LoadUserManager is used to check the configuration for authentication and
-// create a UserManager depending on what type of authentication is used. The
-// global user manager is not set.
+// create a UserManager depending on what type of authentication is used.
 func LoadUserManager(settings *evergreen.Settings) (gimlet.UserManager, evergreen.UserManagerInfo, error) {
 	authConfig := settings.AuthConfig
 	var info evergreen.UserManagerInfo

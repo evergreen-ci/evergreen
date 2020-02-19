@@ -236,9 +236,8 @@ type envState struct {
 // TODO: this should probably be removed by refactoring the optional methods in
 // the gimlet.UserManager.
 type UserManagerInfo struct {
-	CanCreateUserTokens bool
-	CanClearTokens      bool
-	CanReauthorize      bool
+	CanClearTokens bool
+	CanReauthorize bool
 }
 
 type closerOp struct {
