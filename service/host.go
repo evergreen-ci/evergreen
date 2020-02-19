@@ -241,20 +241,32 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) getHostDNS(r *http.Request) ([]string, error) {
-	hID := gimlet.GetVars(r)["host_id"]
-	h, ok := uis.hostCache[hID]
-	if !ok || time.Since(h.Inserted) > hostCacheTTL {
-		hDb, err := host.FindOneId(hID)
-		if err != nil {
-			return nil, errors.Wrapf(err, "can't get host id '%s'", hID)
-		}
-		if hDb == nil {
-			return nil, errors.Errorf("host '%s' not found", hID)
-		}
-
-		h = hostCacheItem{DNSName: hDb.Host, Owner: hDb.StartedBy, Inserted: time.Now()}
-		uis.hostCache[hID] = h
+	hostID := gimlet.GetVars(r)["host_id"]
+	h, err := uis.getHostFromCache(hostID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't get host '%s'", hostID)
+	}
+	if h == nil {
+		return nil, errors.Wrapf(err, "host '%s' does not exist", hostID)
 	}
 
 	return []string{fmt.Sprintf("%s:%d", h.DNSName, evergreen.VSCodePort)}, nil
+}
+
+func (uis *UIServer) getHostFromCache(hostID string) (*hostCacheItem, error) {
+	h, ok := uis.hostCache[hostID]
+	if !ok || time.Since(h.Inserted) > hostCacheTTL {
+		hDb, err := host.FindOneId(hostID)
+		if err != nil {
+			return nil, errors.Wrapf(err, "can't get host id '%s'", hostID)
+		}
+		if hDb == nil {
+			return nil, nil
+		}
+
+		h = hostCacheItem{DNSName: hDb.Host, Owner: hDb.StartedBy, Inserted: time.Now()}
+		uis.hostCache[hostID] = h
+	}
+
+	return &h, nil
 }

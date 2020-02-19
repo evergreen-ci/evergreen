@@ -71,7 +71,7 @@ type ViewData struct {
 	ValidDefaultLoggers []string
 }
 
-const hostCacheTTL = 10 * time.Second
+const hostCacheTTL = 30 * time.Second
 
 type hostCacheItem struct {
 	DNSName  string
@@ -233,6 +233,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	needsLoginNoRedirect := gimlet.WrapperMiddleware(uis.requireLoginStatusUnauthorized)
 	needsContext := gimlet.WrapperMiddleware(uis.loadCtx)
 	allowsCORS := gimlet.WrapperMiddleware(uis.setCORSHeaders)
+	ownsHost := gimlet.WrapperMiddleware(uis.ownsHost)
 	adminSettings := route.RequiresSuperUserPermission(evergreen.PermissionAdminSettings, evergreen.AdminSettingsEdit)
 	createProject := route.RequiresSuperUserPermission(evergreen.PermissionProjectCreate, evergreen.ProjectCreate)
 	createDistro := route.RequiresSuperUserPermission(evergreen.PermissionDistroCreate, evergreen.DistroCreate)
@@ -342,7 +343,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/hosts").Wrap(needsLogin, needsContext).Handler(uis.modifyHosts).Put()
 	app.AddRoute("/host/{host_id}").Wrap(needsLogin, needsContext, viewHosts).Handler(uis.hostPage).Get()
 	app.AddRoute("/host/{host_id}").Wrap(needsContext, editHosts).Handler(uis.modifyHost).Put()
-	app.AddPrefixRoute("/host/{host_id}/vscode/").Proxy(gimlet.ProxyOptions{
+	app.AddPrefixRoute("/host/{host_id}/vscode/").Wrap(needsLogin, ownsHost).Proxy(gimlet.ProxyOptions{
 		FindTarget:        uis.getHostDNS,
 		StripSourcePrefix: true,
 		RemoteScheme:      "http",
