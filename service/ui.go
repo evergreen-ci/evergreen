@@ -47,6 +47,8 @@ type UIServer struct {
 	jiraHandler        thirdparty.JiraHandler
 	buildBaronProjects map[string]evergreen.BuildBaronProject
 
+	hostCache map[string]hostCacheItem
+
 	queue amboy.Queue
 	env   evergreen.Environment
 
@@ -67,6 +69,14 @@ type ViewData struct {
 	NewRelic            evergreen.NewRelicConfig
 	IsAdmin             bool
 	ValidDefaultLoggers []string
+}
+
+const hostCacheTTL = 10 * time.Second
+
+type hostCacheItem struct {
+	DNSName  string
+	Inserted time.Time
+	Owner    string
 }
 
 func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo TemplateFunctionOptions) (*UIServer, error) {
@@ -106,6 +116,7 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo T
 			CookiePath:     "/",
 			CookieDomain:   settings.Ui.LoginDomain,
 		},
+		hostCache: make(map[string]hostCacheItem),
 	}
 
 	if err := uis.umconf.Validate(); err != nil {
@@ -331,6 +342,11 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/hosts").Wrap(needsLogin, needsContext).Handler(uis.modifyHosts).Put()
 	app.AddRoute("/host/{host_id}").Wrap(needsLogin, needsContext, viewHosts).Handler(uis.hostPage).Get()
 	app.AddRoute("/host/{host_id}").Wrap(needsContext, editHosts).Handler(uis.modifyHost).Put()
+	app.AddPrefixRoute("/host/{host_id}/vscode/").Proxy(gimlet.ProxyOptions{
+		FindTarget:        uis.getHostDNS,
+		StripSourcePrefix: true,
+		RemoteScheme:      "http",
+	}).AllMethods()
 
 	// Distros
 	app.AddRoute("/distros").Wrap(needsLogin, needsContext).Handler(uis.distrosPage).Get()

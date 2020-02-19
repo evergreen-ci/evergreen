@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -237,4 +238,23 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Unrecognized action: %v", opts.Action))
 		return
 	}
+}
+
+func (uis *UIServer) getHostDNS(r *http.Request) ([]string, error) {
+	hID := gimlet.GetVars(r)["host_id"]
+	h, ok := uis.hostCache[hID]
+	if !ok || time.Since(h.Inserted) > hostCacheTTL {
+		hDb, err := host.FindOneId(hID)
+		if err != nil {
+			return nil, errors.Wrapf(err, "can't get host id '%s'", hID)
+		}
+		if hDb == nil {
+			return nil, errors.Errorf("host '%s' not found", hID)
+		}
+
+		h = hostCacheItem{DNSName: hDb.Host, Owner: hDb.StartedBy, Inserted: time.Now()}
+		uis.hostCache[hID] = h
+	}
+
+	return []string{fmt.Sprintf("%s:%d", h.DNSName, evergreen.VSCodePort)}, nil
 }
