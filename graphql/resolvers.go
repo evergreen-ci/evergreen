@@ -102,9 +102,12 @@ func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (
 	}
 	timeTaken, makespan := task.GetTimeSpent(tasks)
 
+	t := timeTaken.String()
+	m := makespan.String()
+
 	return &PatchDuration{
-		Makespan:  GetFormattedDuration(makespan),
-		TimeTaken: GetFormattedDuration(timeTaken),
+		Makespan:  &t,
+		TimeTaken: &m,
 	}, nil
 }
 

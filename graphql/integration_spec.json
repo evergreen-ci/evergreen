@@ -2324,8 +2324,8 @@
         "data": {
           "patch": {
             "duration": {
-              "makespan": "0h 3m 39s",
-              "timeTaken": "0h 9m 53s"
+              "makespan": "3m39s",
+              "timeTaken": "9m53s"
             }
           }
         }
