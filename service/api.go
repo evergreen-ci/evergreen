@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -324,6 +325,7 @@ func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 		TaskDisplayName: t.DisplayName,
 		BuildId:         t.BuildId,
 		Execution:       t.Execution,
+		CreateTime:      time.Now(),
 	}
 
 	err := util.ReadJSONInto(util.NewRequestReader(r), &entry.Files)

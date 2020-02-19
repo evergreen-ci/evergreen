@@ -9,13 +9,14 @@ import (
 
 var (
 	// BSON fields for artifact file structs
-	TaskIdKey    = bsonutil.MustHaveTag(Entry{}, "TaskId")
-	TaskNameKey  = bsonutil.MustHaveTag(Entry{}, "TaskDisplayName")
-	BuildIdKey   = bsonutil.MustHaveTag(Entry{}, "BuildId")
-	FilesKey     = bsonutil.MustHaveTag(Entry{}, "Files")
-	ExecutionKey = bsonutil.MustHaveTag(Entry{}, "Execution")
-	NameKey      = bsonutil.MustHaveTag(File{}, "Name")
-	LinkKey      = bsonutil.MustHaveTag(File{}, "Link")
+	TaskIdKey     = bsonutil.MustHaveTag(Entry{}, "TaskId")
+	TaskNameKey   = bsonutil.MustHaveTag(Entry{}, "TaskDisplayName")
+	BuildIdKey    = bsonutil.MustHaveTag(Entry{}, "BuildId")
+	FilesKey      = bsonutil.MustHaveTag(Entry{}, "Files")
+	ExecutionKey  = bsonutil.MustHaveTag(Entry{}, "Execution")
+	CreateTimeKey = bsonutil.MustHaveTag(File{}, "CreateTime")
+	NameKey       = bsonutil.MustHaveTag(File{}, "Name")
+	LinkKey       = bsonutil.MustHaveTag(File{}, "Link")
 )
 
 type TaskIDAndExecution struct {
