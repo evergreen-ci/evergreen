@@ -81,13 +81,9 @@ func NewIntent(d distro.Distro, instanceName, provider string, options CreateOpt
 // partitionParents will split parent hosts based on those that already have/will have the image for this distro
 // it does not handle scenarios where the image for a distro has changed recently or multiple app servers calling this
 // and racing each other, on the assumption that having to download a small number of extra images is not a big deal
-func partitionParents(parents []ContainersOnParents, distro string, pool evergreen.ContainerPool) ([]ContainersOnParents, []ContainersOnParents) {
+func partitionParents(parents []ContainersOnParents, distro string, maxImages int) ([]ContainersOnParents, []ContainersOnParents) {
 	matched := []ContainersOnParents{}
 	notMatched := []ContainersOnParents{}
-	maxImages := defaultMaxImagesPerParent
-	if pool.MaxImages > 0 {
-		maxImages = pool.MaxImages
-	}
 parentLoop:
 	for _, parent := range parents {
 		currentImages := map[string]bool{}
@@ -122,7 +118,11 @@ func MakeContainersAndParents(d distro.Distro, pool *evergreen.ContainerPool, ne
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "Could not find number of containers on parents")
 	}
-	matched, notMatched := partitionParents(currentHosts, d.Id, *pool)
+	maxImages := defaultMaxImagesPerParent
+	if pool != nil && pool.MaxImages > 0 {
+		maxImages = pool.MaxImages
+	}
+	matched, notMatched := partitionParents(currentHosts, d.Id, maxImages)
 	existingHosts := append(matched, notMatched...)
 
 	// add containers to existing parents
