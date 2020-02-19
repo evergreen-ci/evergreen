@@ -102,12 +102,21 @@ func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (
 	}
 	timeTaken, makespan := task.GetTimeSpent(tasks)
 
-	t := timeTaken.Round(time.Second).String()
-	m := makespan.Round(time.Second).String()
+	var t *string
+	if timeTaken > 0 {
+		temp := timeTaken.Round(time.Second).String()
+		t = &temp
+	}
+
+	var m *string
+	if makespan > 0 {
+		temp := makespan.Round(time.Second).String()
+		m = &temp
+	}
 
 	return &PatchDuration{
-		Makespan:  &t,
-		TimeTaken: &m,
+		Makespan:  t,
+		TimeTaken: m,
 	}, nil
 }
 

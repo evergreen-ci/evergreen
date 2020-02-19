@@ -2363,7 +2363,7 @@
         "data": {
           "patch": {
             "duration": {
-              "makespan": "0s",
+              "makespan": null,
               "timeTaken": "3m39s"
             }
           }
