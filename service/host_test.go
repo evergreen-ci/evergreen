@@ -71,7 +71,7 @@ func TestGetHostFromCache(t *testing.T) {
 	assert.Nil(t, h)
 
 	// get a host from the cache
-	uis.hostCache["h1"] = hostCacheItem{Inserted: time.Now()}
+	uis.hostCache["h1"] = hostCacheItem{inserted: time.Now()}
 	h, err = uis.getHostFromCache("h1")
 	assert.NoError(t, err)
 	assert.NotNil(t, h)
@@ -79,11 +79,11 @@ func TestGetHostFromCache(t *testing.T) {
 	// past the TTL fetches from the db
 	h1 := host.Host{Id: "h1", Host: "new_name"}
 	assert.NoError(t, h1.Insert())
-	uis.hostCache["h1"] = hostCacheItem{DNSName: "old_name", Inserted: time.Now().Add(-1 * (hostCacheTTL + time.Second))}
+	uis.hostCache["h1"] = hostCacheItem{dnsName: "old_name", inserted: time.Now().Add(-1 * (hostCacheTTL + time.Second))}
 	h, err = uis.getHostFromCache("h1")
 	assert.NoError(t, err)
 	assert.NotNil(t, h)
-	assert.Equal(t, "new_name", h.DNSName)
+	assert.Equal(t, "new_name", h.dnsName)
 }
 
 func TestGetHostDNS(t *testing.T) {
@@ -91,7 +91,7 @@ func TestGetHostDNS(t *testing.T) {
 	require.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"host_id": "i-1234"})
 
-	uis := UIServer{hostCache: map[string]hostCacheItem{"i-1234": hostCacheItem{DNSName: "www.example.com", Inserted: time.Now()}}}
+	uis := UIServer{hostCache: map[string]hostCacheItem{"i-1234": hostCacheItem{dnsName: "www.example.com", inserted: time.Now()}}}
 	path, err := uis.getHostDNS((r))
 	assert.NoError(t, err)
 	assert.Len(t, path, 1)

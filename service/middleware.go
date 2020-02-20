@@ -169,7 +169,7 @@ func (uis *UIServer) ownsHost(next http.HandlerFunc) http.HandlerFunc {
 			uis.LoggedError(w, r, http.StatusNotFound, errors.Errorf("host '%s' does not exist", hostID))
 			return
 		}
-		if h.Owner != user.Username() {
+		if h.owner != user.Username() {
 			uis.LoggedError(w, r, http.StatusUnauthorized, errors.New("not authorized for this action"))
 			return
 		}
@@ -186,6 +186,28 @@ func (uis *UIServer) redirectSlash(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path[len(r.URL.Path)-1:] != "/" {
 			http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
+			return
+		}
+
+		next(w, r)
+	}
+}
+
+func (uis *UIServer) isVirtualWorkstation(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		hostID := gimlet.GetVars(r)["host_id"]
+		h, err := uis.getHostFromCache(hostID)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("can't get host '%s'", hostID))
+			return
+		}
+		if h == nil {
+			uis.LoggedError(w, r, http.StatusNotFound, errors.Errorf("host '%s' does not exist", hostID))
+			return
+		}
+
+		if !h.isVirtualWorkstation {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("host '%s' is not a virtual workstation", hostID))
 			return
 		}
 

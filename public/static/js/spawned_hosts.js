@@ -16,7 +16,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     $scope.maxUnexpirableHostsPerUser = $window.maxUnexpirableHostsPerUser;
     $scope.spawnReqSent = false;
     $scope.useTaskConfig = false;
-    $scope.attach_volume = false;
+    $scope.is_virtual_workstation = false;
     $scope.home_volume_size = 500;
     $scope.allowedInstanceTypes = [];
 
@@ -257,7 +257,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       $scope.spawnInfo.spawnKey = $scope.selectedKey;
       $scope.spawnInfo.saveKey = $scope.saveKey;
       $scope.spawnInfo.userData = $scope.userdata;
-      $scope.spawnInfo.attach_volume = $scope.attach_volume;
+      $scope.spawnInfo.is_virtual_workstation = $scope.is_virtual_workstation;
       $scope.spawnInfo.home_volume_size = $scope.home_volume_size;
       $scope.spawnInfo.useTaskConfig = $scope.useTaskConfig;
       if ($scope.spawnTaskChecked && !!$scope.spawnTask) {
@@ -431,7 +431,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       $scope.spawnInfo.distroId = spawnableDistro.name;
 
       // clear home volume settings when switching between distros
-      $scope.attach_volume = false
+      $scope.is_virtual_workstation = false
       $scope.home_volume_size = 500
     };
 

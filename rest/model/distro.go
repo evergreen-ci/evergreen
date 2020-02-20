@@ -384,6 +384,7 @@ type APIDistro struct {
 	DisableShallowClone   bool                     `json:"disable_shallow_clone"`
 	UseLegacyAgent        bool                     `json:"use_legacy_agent"`
 	HomeVolumeSettings    APIHomeVolumeSettings    `json:"home_volume_settings"`
+	IsVirtualWorkstation  bool                     `json:"is_virtual_workstation"`
 	Note                  *string                  `json:"note"`
 	ValidProjects         []*string                `json:"valid_projects"`
 }
@@ -481,6 +482,7 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 		return errors.Wrap(err, "Error converting from distro.HomeVolumeSettings to model.API.HomeVolumeSettings")
 	}
 	apiDistro.HomeVolumeSettings = homeVolumeSettings
+	apiDistro.IsVirtualWorkstation = d.IsVirtualWorkstation
 
 	return nil
 }
@@ -586,6 +588,7 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 		return nil, errors.Errorf("Unexpected type %T for distro.HomeVolumeSettings", i)
 	}
 	d.HomeVolumeSettings = homeVolumeSettings
+	d.IsVirtualWorkstation = apiDistro.IsVirtualWorkstation
 
 	return &d, nil
 }

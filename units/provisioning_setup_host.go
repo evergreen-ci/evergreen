@@ -622,7 +622,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		return nil
 	}
 
-	if j.host.AttachVolume {
+	if j.host.IsVirtualWorkstation {
 		if err := attachVolume(ctx, j.env, j.host); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":  "can't attach volume",

@@ -149,7 +149,7 @@ type Host struct {
 	// to this host.
 	SSHKeyNames []string `bson:"ssh_key_names,omitempty" json:"ssh_key_names,omitempty"`
 
-	AttachVolume bool `bson:"attach_volume" json:"attach_volume"`
+	IsVirtualWorkstation bool `bson:"is_virtual_workstation" json:"is_virtual_workstation"`
 	// HomeVolumeSize is the size of the home volume in GB
 	HomeVolumeSize int `bson:"home_volume_size" json:"home_volume_size"`
 }

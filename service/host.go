@@ -250,12 +250,12 @@ func (uis *UIServer) getHostDNS(r *http.Request) ([]string, error) {
 		return nil, errors.Wrapf(err, "host '%s' does not exist", hostID)
 	}
 
-	return []string{fmt.Sprintf("%s:%d", h.DNSName, evergreen.VSCodePort)}, nil
+	return []string{fmt.Sprintf("%s:%d", h.dnsName, evergreen.VSCodePort)}, nil
 }
 
 func (uis *UIServer) getHostFromCache(hostID string) (*hostCacheItem, error) {
 	h, ok := uis.hostCache[hostID]
-	if !ok || time.Since(h.Inserted) > hostCacheTTL {
+	if !ok || time.Since(h.inserted) > hostCacheTTL {
 		hDb, err := host.FindOneId(hostID)
 		if err != nil {
 			return nil, errors.Wrapf(err, "can't get host id '%s'", hostID)
@@ -264,7 +264,7 @@ func (uis *UIServer) getHostFromCache(hostID string) (*hostCacheItem, error) {
 			return nil, nil
 		}
 
-		h = hostCacheItem{DNSName: hDb.Host, Owner: hDb.StartedBy, Inserted: time.Now()}
+		h = hostCacheItem{dnsName: hDb.Host, owner: hDb.StartedBy, isVirtualWorkstation: hDb.IsVirtualWorkstation, inserted: time.Now()}
 		uis.hostCache[hostID] = h
 	}
 

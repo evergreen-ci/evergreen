@@ -97,18 +97,18 @@ func (hc *DBHostConnector) NewIntentHost(ctx context.Context, options *restmodel
 		options.Region = evergreen.DefaultEC2Region
 	}
 	spawnOptions := cloud.SpawnOptions{
-		DistroId:       options.DistroID,
-		Userdata:       options.UserData,
-		UserName:       user.Username(),
-		PublicKey:      keyVal,
-		TaskId:         options.TaskID,
-		Owner:          user,
-		InstanceTags:   options.InstanceTags,
-		InstanceType:   options.InstanceType,
-		NoExpiration:   options.NoExpiration,
-		AttachVolume:   options.AttachVolume,
-		HomeVolumeSize: options.HomeVolumeSize,
-		Region:         options.Region,
+		DistroId:             options.DistroID,
+		Userdata:             options.UserData,
+		UserName:             user.Username(),
+		PublicKey:            keyVal,
+		TaskId:               options.TaskID,
+		Owner:                user,
+		InstanceTags:         options.InstanceTags,
+		InstanceType:         options.InstanceType,
+		NoExpiration:         options.NoExpiration,
+		IsVirtualWorkstation: options.IsVirtualWorkstation,
+		HomeVolumeSize:       options.HomeVolumeSize,
+		Region:               options.Region,
 	}
 
 	intentHost, err := cloud.CreateSpawnHost(ctx, spawnOptions, settings)
