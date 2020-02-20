@@ -53,6 +53,7 @@ func makeReauthorizationJob() *reauthorizationJob {
 // user.
 func NewReauthorizationJob(env evergreen.Environment, u *user.DBUser, id string) amboy.Job {
 	j := makeReauthorizationJob()
+	j.UserID = u.Username()
 	j.env = env
 	j.user = u
 	j.SetPriority(1)
