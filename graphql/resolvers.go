@@ -91,6 +91,35 @@ type queryResolver struct{ *Resolver }
 
 type patchResolver struct{ *Resolver }
 
+func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (*PatchDuration, error) {
+	// excludes display tasks
+	tasks, err := task.Find(task.ByVersion(*obj.Id).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	if tasks == nil {
+		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
+	timeTaken, makespan := task.GetTimeSpent(tasks)
+
+	// return nil if rounded timeTaken/makespan == 0s
+	t := timeTaken.Round(time.Second).String()
+	var tPointer *string
+	if t != "0s" {
+		tPointer = &t
+	}
+	m := makespan.Round(time.Second).String()
+	var mPointer *string
+	if m != "0s" {
+		tPointer = &m
+	}
+
+	return &PatchDuration{
+		Makespan:  tPointer,
+		TimeTaken: mPointer,
+	}, nil
+}
+
 func (r *patchResolver) Time(ctx context.Context, obj *restModel.APIPatch) (*PatchTime, error) {
 	usr := route.MustHaveUser(ctx)
 
