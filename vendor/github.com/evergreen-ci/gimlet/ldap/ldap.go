@@ -131,14 +131,16 @@ func (u *userService) GetUserByToken(_ context.Context, token string) (gimlet.Us
 		return nil, errors.New("token is not present in cache")
 	}
 	if !valid {
-		if err = u.reauthorizeUser(user); err != nil {
+		if err = u.ReauthorizeUser(user); err != nil {
 			return nil, errors.WithStack(err)
 		}
 	}
 	return user, nil
 }
 
-func (u *userService) reauthorizeUser(user gimlet.User) error {
+// ReauthorizeUser validates that the user is still authorized and updates their
+// TTL.
+func (u *userService) ReauthorizeUser(user gimlet.User) error {
 	if err := u.validateGroup(user.Username()); err != nil {
 		return errors.Wrap(err, "could not authorize user")
 	}
@@ -190,7 +192,7 @@ func (u *userService) GetUserByID(id string) (gimlet.User, error) {
 		return nil, errors.New("user is not present in db")
 	}
 	if !valid {
-		if err = u.reauthorizeUser(user); err != nil {
+		if err = u.ReauthorizeUser(user); err != nil {
 			return nil, errors.WithStack(err)
 		}
 	}

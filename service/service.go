@@ -41,8 +41,8 @@ func GetServer(addr string, n http.Handler) *http.Server {
 func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	app := gimlet.NewApp()
 	app.AddMiddleware(gimlet.MakeRecoveryLogger())
-	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, uis.umconf))
-	app.AddMiddleware(gimlet.NewAuthenticationHandler(gimlet.NewBasicAuthenticator(nil, nil), uis.UserManager))
+	app.AddMiddleware(gimlet.UserMiddleware(uis.env.UserManager(), uis.umconf))
+	app.AddMiddleware(gimlet.NewAuthenticationHandler(gimlet.NewBasicAuthenticator(nil, nil), uis.env.UserManager()))
 	app.AddMiddleware(gimlet.NewStatic("", http.Dir(filepath.Join(uis.Home, "public"))))
 
 	clients := gimlet.NewApp()

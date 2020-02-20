@@ -43,8 +43,12 @@ type Environment struct {
 	EnvContext           context.Context
 	InternalSender       *send.InternalSender
 	roleManager          gimlet.RoleManager
+	userManager          gimlet.UserManager
+	userManagerInfo      evergreen.UserManagerInfo
 }
 
+// Configure sets default values on the Environment, except for the user manager
+// and user manager info, which must be explicitly set.
 func (e *Environment) Configure(ctx context.Context) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -82,6 +86,13 @@ func (e *Environment) Configure(ctx context.Context) error {
 		RoleCollection:  evergreen.RoleCollection,
 		ScopeCollection: evergreen.ScopeCollection,
 	})
+
+	// Although it would make more sense to call
+	// auth.LoadUserManager(e.EvergreenSettings), we have to avoid an import
+	// cycle where this package would transitively depend on the database
+	// models.
+	e.userManager = nil
+	e.userManagerInfo = evergreen.UserManagerInfo{}
 
 	return nil
 }
@@ -214,4 +225,28 @@ func (e *Environment) RoleManager() gimlet.RoleManager {
 	defer e.mu.RUnlock()
 
 	return e.roleManager
+}
+
+func (e *Environment) UserManager() gimlet.UserManager {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.userManager
+}
+
+func (e *Environment) SetUserManager(um gimlet.UserManager) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.userManager = um
+}
+
+func (e *Environment) UserManagerInfo() evergreen.UserManagerInfo {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.userManagerInfo
+}
+
+func (e *Environment) SetUserManagerInfo(umi evergreen.UserManagerInfo) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.userManagerInfo = umi
 }

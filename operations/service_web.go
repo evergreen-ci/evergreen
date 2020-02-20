@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/gimlet"
@@ -50,6 +51,12 @@ func startWebService() cli.Command {
 			grip.EmergencyFatal(grip.SetSender(sender))
 			queue := env.RemoteQueue()
 			remoteQueueGroup := env.RemoteQueueGroup()
+
+			// Create the user manager before setting up job queues to allow
+			// background reauthorization jobs to start.
+			if err = setupUserManager(env, settings); err != nil {
+				return errors.Wrap(err, "could not set up user manager")
+			}
 
 			defer cancel()
 			defer sender.Close()
@@ -254,4 +261,15 @@ func getAdminService(ctx context.Context, env evergreen.Environment, settings *e
 	}
 
 	return handler, nil
+}
+
+// setupUserManager sets up the global user authentication manager.
+func setupUserManager(env evergreen.Environment, settings *evergreen.Settings) error {
+	um, info, err := auth.LoadUserManager(settings)
+	if err != nil {
+		return errors.Wrap(err, "failed to load user manager")
+	}
+	env.SetUserManager(um)
+	env.SetUserManagerInfo(info)
+	return nil
 }

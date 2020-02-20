@@ -163,7 +163,7 @@ func (uis *UIServer) RedirectToLogin(w http.ResponseWriter, r *http.Request) {
 		querySep = "?"
 	}
 	path := "/login#?"
-	if uis.UserManager.IsRedirect() {
+	if uis.env.UserManager().IsRedirect() {
 		path = "/login/redirect?"
 	}
 	location := fmt.Sprintf("%sredirect=%s%s%s",
@@ -284,7 +284,7 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 	versionId := vars["version_id"]
 	patchId := vars["patch_id"]
 
-	pc := projectContext{AuthRedirect: uis.UserManager.IsRedirect()}
+	pc := projectContext{AuthRedirect: uis.env.UserManager().IsRedirect()}
 	err := pc.populateProjectRefs(dbUser != nil, dbUser)
 	if err != nil {
 		return pc, err
