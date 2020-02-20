@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
 )
@@ -170,4 +171,77 @@ func (h *userAuthorGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(apiAuthor)
+}
+
+type userPermissionsPostHandler struct {
+	sc          data.Connector
+	userID      string
+	permissions RequestedPermissions
+}
+
+type RequestedPermissions struct {
+	ResourceType string             `json:"resource_type"`
+	Resources    []string           `json:"resources"`
+	Permissions  gimlet.Permissions `json:"permissions"`
+}
+
+func makeModifyUserPermissions(sc data.Connector) gimlet.RouteHandler {
+	return &userPermissionsPostHandler{
+		sc: sc,
+	}
+}
+
+func (h *userPermissionsPostHandler) Factory() gimlet.RouteHandler {
+	return &userAuthorGetHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *userPermissionsPostHandler) Parse(ctx context.Context, r *http.Request) error {
+	vars := gimlet.GetVars(r)
+	h.userID = vars["user_id"]
+	if h.userID == "" {
+		return errors.New("no user found")
+	}
+	permissions := RequestedPermissions{}
+	if err := util.ReadJSONInto(r.Body, &permissions); err != nil {
+		return errors.Wrap(err, "request body is not a valid Permissions request")
+	}
+	if !util.StringSliceContains(evergreen.ValidResourceTypes, permissions.ResourceType) {
+		return errors.Errorf("'%s' is not a valid resource_type", permissions.ResourceType)
+	}
+	if len(permissions.Resources) == 0 {
+		return errors.New("resources cannot be empty")
+	}
+	h.permissions = permissions
+
+	return nil
+}
+
+func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
+	u, err := h.sc.FindUserById(h.userID)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "can't get user for id '%s'", h.userID))
+	}
+	if u == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("no matching user for '%s'", h.userID),
+			StatusCode: 404,
+		})
+	}
+
+	rm := evergreen.GetEnvironment().RoleManager()
+	newRole, err := rolemanager.MakeRoleWithPermissions(rm, h.permissions.ResourceType, h.permissions.Resources, h.permissions.Permissions)
+	if err != nil {
+		return gimlet.NewTextInternalErrorResponse(err.Error())
+	}
+	dbuser, valid := u.(*user.DBUser)
+	if !valid {
+		return gimlet.NewTextInternalErrorResponse("unexpected type of user found")
+	}
+	if err = dbuser.AddRole(newRole.ID); err != nil {
+		return gimlet.NewTextInternalErrorResponse(err.Error())
+	}
+
+	return gimlet.NewJSONResponse(nil)
 }

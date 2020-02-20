@@ -511,7 +511,8 @@ type PermissionLevel struct {
 }
 
 var (
-	UnauthedUserRoles = []string{"unauthorized_project"}
+	UnauthedUserRoles  = []string{"unauthorized_project"}
+	ValidResourceTypes = []string{SuperUserResourceType, ProjectResourceType, DistroResourceType}
 	// SuperUserPermissions resource ID.
 	SuperUserPermissionsID = "super_user"
 
@@ -519,6 +520,7 @@ var (
 	PermissionAdminSettings = "admin_settings"
 	PermissionProjectCreate = "project_create"
 	PermissionDistroCreate  = "distro_create"
+	PermissionRoleModify    = "modify_roles"
 	// Project permissions.
 	PermissionProjectSettings  = "project_settings"
 	PermissionProjectVariables = "project_variables"
@@ -542,6 +544,10 @@ var (
 	}
 	DistroCreate = PermissionLevel{
 		Description: "Create new distros",
+		Value:       10,
+	}
+	RoleModify = PermissionLevel{
+		Description: "Modify system roles and permissions",
 		Value:       10,
 	}
 	ProjectSettingsEdit = PermissionLevel{
@@ -701,6 +707,7 @@ var SuperuserPermissions = []string{
 	PermissionAdminSettings,
 	PermissionProjectCreate,
 	PermissionDistroCreate,
+	PermissionRoleModify,
 }
 
 // Evergreen log types
