@@ -236,7 +236,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	needsContext := gimlet.WrapperMiddleware(uis.loadCtx)
 	allowsCORS := gimlet.WrapperMiddleware(uis.setCORSHeaders)
 	ownsHost := gimlet.WrapperMiddleware(uis.ownsHost)
-	redirectSlash := gimlet.WrapperMiddleware(uis.redirectSlash)
 	vsCodeRunning := gimlet.WrapperMiddleware(uis.vsCodeRunning)
 	adminSettings := route.RequiresSuperUserPermission(evergreen.PermissionAdminSettings, evergreen.AdminSettingsEdit)
 	createProject := route.RequiresSuperUserPermission(evergreen.PermissionProjectCreate, evergreen.ProjectCreate)
@@ -347,7 +346,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/hosts").Wrap(needsLogin, needsContext).Handler(uis.modifyHosts).Put()
 	app.AddRoute("/host/{host_id}").Wrap(needsLogin, needsContext, viewHosts).Handler(uis.hostPage).Get()
 	app.AddRoute("/host/{host_id}").Wrap(needsContext, editHosts).Handler(uis.modifyHost).Put()
-	app.AddPrefixRoute("/host/{host_id}/vscode").Wrap(redirectSlash, needsLogin, ownsHost, vsCodeRunning).Proxy(gimlet.ProxyOptions{
+	app.AddPrefixRoute("/host/{host_id}/vscode").Wrap(needsLogin, ownsHost, vsCodeRunning).Proxy(gimlet.ProxyOptions{
 		FindTarget:        uis.getHostDNS,
 		StripSourcePrefix: true,
 		RemoteScheme:      "http",

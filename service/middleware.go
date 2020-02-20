@@ -178,21 +178,6 @@ func (uis *UIServer) ownsHost(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// redirectSlash will redirect the client to the path with a '/' appended
-// if the path doesn't end in a '/'. This is necessary in AddPrefixRoute routes because
-// the app's StrictSlash setting is ignored by gimlet's underlying library for
-// prefix routes
-func (uis *UIServer) redirectSlash(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path[len(r.URL.Path)-1:] != "/" {
-			http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
-			return
-		}
-
-		next(w, r)
-	}
-}
-
 func (uis *UIServer) vsCodeRunning(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		hostID := gimlet.GetVars(r)["host_id"]
