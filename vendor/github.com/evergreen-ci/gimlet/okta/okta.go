@@ -160,7 +160,7 @@ func (m *userManager) GetUserByToken(ctx context.Context, token string) (gimlet.
 	}
 	if !valid {
 		if m.allowReauthorization {
-			if err := m.reauthorizeUser(ctx, user); err != nil {
+			if err := m.ReauthorizeUser(user); err != nil {
 				return user, gimlet.ErrNeedsReauthentication
 			}
 			return user, nil
@@ -225,7 +225,7 @@ func (m *userManager) reauthorizeID(username string, tokens *tokenResponse) erro
 	return catcher.Resolve()
 }
 
-// reauthorizeUser attempts to reauthorize the user.
+// ReauthorizeUser attempts to reauthorize the user.
 // Reauthorization works as follows: if the user manager is configured to
 // validate their groups, it tries checking their user groups using their access
 // token. Otherwise, it just validates that the ID token user matches the
@@ -233,7 +233,7 @@ func (m *userManager) reauthorizeID(username string, tokens *tokenResponse) erro
 // If reauthorization fails or the user manager is configured to always refresh
 // the user's tokens that fails, it refreshes the tokens and attempts to
 // reauthorize them again.
-func (m *userManager) reauthorizeUser(ctx context.Context, user gimlet.User) error {
+func (m *userManager) ReauthorizeUser(user gimlet.User) error {
 	refreshToken := user.GetRefreshToken()
 	catcher := grip.NewBasicCatcher()
 
@@ -252,7 +252,7 @@ func (m *userManager) reauthorizeUser(ctx context.Context, user gimlet.User) err
 	if refreshToken == "" {
 		return errors.Errorf("user '%s' cannot refresh tokens because refresh token is missing", user.Username())
 	}
-	tokens, err := m.refreshTokens(ctx, refreshToken)
+	tokens, err := m.refreshTokens(context.Background(), refreshToken)
 	catcher.Wrap(err, "could not refresh authorization tokens")
 	if err == nil {
 		if m.validateGroups {
@@ -564,7 +564,7 @@ func (m *userManager) GetUserByID(id string) (gimlet.User, error) {
 	}
 	if !valid {
 		if m.allowReauthorization {
-			if err := m.reauthorizeUser(context.Background(), user); err != nil {
+			if err := m.ReauthorizeUser(user); err != nil {
 				return user, gimlet.ErrNeedsReauthentication
 			}
 			return user, nil

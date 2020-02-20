@@ -100,10 +100,8 @@ type TestResult {
 }
 
 type TestLog {
-  url: String
-  urlRaw: String
-  lineNum: Int
-  logId: String
+  htmlDisplayURL: String
+  rawDisplayURL: String
 }
 
 type Task {

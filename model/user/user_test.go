@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/suite"
 )
@@ -504,4 +505,30 @@ func (s *UserTestSuite) TestHasPermission() {
 	s.NoError(u.AddRole("r1234p2"))
 	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource4", Permission: "permission", RequiredLevel: 2})
 	s.True(hasPermission)
+}
+
+func (s *UserTestSuite) TestFindNeedsReauthorization() {
+	containsUsers := func(users []DBUser, names ...string) bool {
+		foundNames := make([]string, 0, len(users))
+		for _, u := range users {
+			foundNames = append(foundNames, u.Username())
+		}
+		left, right := util.StringSliceSymmetricDifference(foundNames, names)
+		return len(left) == 0 && len(right) == 0
+	}
+
+	users, err := FindNeedsReauthorization(0)
+	s.NoError(err)
+	s.Len(users, 5)
+	s.True(containsUsers(users, "Test1", "Test2", "Test4", "Test5", "Test6"))
+	s.False(containsUsers(users, "Test3"))
+
+	users, err = FindNeedsReauthorization(30 * time.Minute)
+	s.NoError(err)
+	s.Len(users, 2)
+	s.True(containsUsers(users, "Test2", "Test6"))
+
+	users, err = FindNeedsReauthorization(24 * time.Hour)
+	s.NoError(err)
+	s.Empty(users)
 }
