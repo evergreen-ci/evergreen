@@ -34,7 +34,7 @@ func (uis *UIServer) filterAuthorizedProjects(u gimlet.User) ([]model.ProjectRef
 	authorizedProjects := []model.ProjectRef{}
 	// only returns projects for which the user is authorized to see.
 	for _, project := range allProjects {
-		if uis.isSuperUser(u) || isAdmin(u, &project) {
+		if isAdmin(u, &project) {
 			authorizedProjects = append(authorizedProjects, project)
 		}
 	}
@@ -741,7 +741,7 @@ func (uis *UIServer) projectEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	DBUser := MustHaveUser(r)
-	authorized := isAdmin(DBUser, projectRef) || uis.isSuperUser(DBUser)
+	authorized := isAdmin(DBUser, projectRef)
 	template := "not_admin.html"
 	if authorized {
 		template = "project_events.html"

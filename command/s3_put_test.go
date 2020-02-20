@@ -231,10 +231,13 @@ func TestS3PutValidateParams(t *testing.T) {
 func TestExpandS3PutParams(t *testing.T) {
 
 	Convey("With an s3 put command and a task config", t, func() {
+		abs, err := filepath.Abs("working_directory")
+		So(err, ShouldBeNil)
+
 		cmd := &s3put{}
 		conf := &model.TaskConfig{
 			Expansions: util.NewExpansions(map[string]string{}),
-			WorkDir:    "working_directory",
+			WorkDir:    abs,
 		}
 
 		Convey("when expanding the command's params all appropriate values should be expanded, if they"+
@@ -248,6 +251,7 @@ func TestExpandS3PutParams(t *testing.T) {
 			cmd.ResourceDisplayName = "${display_name}"
 			cmd.Visibility = "${visibility}"
 			cmd.Optional = "${optional}"
+			cmd.LocalFile = abs
 
 			conf.Expansions.Update(
 				map[string]string{
@@ -259,6 +263,7 @@ func TestExpandS3PutParams(t *testing.T) {
 					"display_name": "file",
 					"optional":     "true",
 					"visibility":   artifact.Private,
+					"workdir":      "/working_directory",
 				},
 			)
 
@@ -270,9 +275,10 @@ func TestExpandS3PutParams(t *testing.T) {
 			So(cmd.ContentType, ShouldEqual, "ct")
 			So(cmd.ResourceDisplayName, ShouldEqual, "file")
 			So(cmd.Visibility, ShouldEqual, "private")
-			So(cmd.workDir, ShouldEqual, "working_directory")
 			So(cmd.Optional, ShouldEqual, "true")
 
+			// EVG-7226 Since LocalFile is an absolute path, workDir should be empty
+			So(cmd.workDir, ShouldEqual, "")
 		})
 
 		Convey("the expandParams function should error for invalid optional values", func() {

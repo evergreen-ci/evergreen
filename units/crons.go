@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	adb "github.com/mongodb/anser/db"
@@ -482,7 +483,7 @@ func PopulateHostAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		// find all active distros
-		distros, err := distro.Find(distro.ByActiveOrStatic())
+		distros, err := distro.Find(distro.ByNeedsPlanning(env.Settings().ContainerPools.Pools))
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -523,7 +524,7 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 		catcher.Add(err)
 
 		// find all active distros
-		distros, err := distro.Find(distro.ByActiveOrStatic())
+		distros, err := distro.Find(distro.ByNeedsPlanning(env.Settings().ContainerPools.Pools))
 		catcher.Add(err)
 
 		grip.InfoWhen(sometimes.Percent(10), message.Fields{
@@ -586,7 +587,7 @@ func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation 
 		catcher.Add(err)
 
 		// find all active distros
-		distros, err := distro.Find(distro.ByActiveOrStatic())
+		distros, err := distro.Find(distro.ByNeedsPlanning(env.Settings().ContainerPools.Pools))
 		catcher.Add(err)
 
 		lastRuntime, err := model.FindTaskQueueGenerationRuntime()
@@ -1225,6 +1226,44 @@ func PopulateSSHKeyUpdates(env evergreen.Environment) amboy.QueueOperation {
 		}
 		for _, h := range hosts {
 			catcher.Wrap(env.RemoteQueue().Put(ctx, NewStaticUpdateSSHKeysJob(h, ts)), "could not enqueue jobs to update static host SSH keys")
+		}
+
+		return catcher.Resolve()
+	}
+}
+
+func PopulateReauthorizationJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		if !env.UserManagerInfo().CanReauthorize {
+			return nil
+		}
+
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if flags.BackgroundReauthDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "background reauth is disabled",
+				"impact":  "users will reauth on page loads after periodic auth expiration",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		reauthAfter := time.Duration(env.Settings().AuthConfig.BackgroundReauthMinutes) * time.Minute
+		if reauthAfter == 0 {
+			reauthAfter = defaultBackgroundReauth
+		}
+		users, err := user.FindNeedsReauthorization(reauthAfter)
+		if err != nil {
+			return err
+		}
+
+		catcher := grip.NewBasicCatcher()
+		ts := util.RoundPartOfMinute(20).Format(TSFormat)
+		for _, user := range users {
+			catcher.Wrap(env.RemoteQueue().Put(ctx, NewReauthorizationJob(env, &user, ts)), "could not enqueue jobs to reauthorize users")
 		}
 
 		return catcher.Resolve()

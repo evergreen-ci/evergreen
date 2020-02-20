@@ -5,7 +5,6 @@ package cloud
 import (
 	"context"
 
-	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -74,24 +73,6 @@ func (opts *GCESettings) FromDistroSettings(d distro.Distro, _ string) error {
 	if d.ProviderSettings != nil {
 		if err := mapstructure.Decode(d.ProviderSettings, opts); err != nil {
 			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, opts)
-		}
-		bytes, err := bson.Marshal(opts)
-		if err != nil {
-			return errors.Wrap(err, "error marshalling provider setting into bson")
-		}
-		doc := &birch.Document{}
-		if err := doc.UnmarshalBSON(bytes); err != nil {
-			return errors.Wrapf(err, "error unmarshalling settings bytes into document")
-		}
-		if len(d.ProviderSettingsList) == 0 {
-			if err := d.UpdateProviderSettings(doc); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"distro":   d.Id,
-					"provider": d.Provider,
-					"settings": d.ProviderSettings,
-				}))
-				return errors.Wrapf(err, "error updating provider settings")
-			}
 		}
 	} else if len(d.ProviderSettingsList) != 0 {
 		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
@@ -259,6 +240,10 @@ func (m *gceManager) CreateVolume(context.Context, *host.Volume) (*host.Volume, 
 
 func (m *gceManager) DeleteVolume(context.Context, *host.Volume) error {
 	return errors.New("can't delete volume with gce provider")
+}
+
+func (m *gceManager) CheckInstanceType(context.Context, string) error {
+	return errors.New("can't specify instance type with gce provider")
 }
 
 // GetDNSName returns the external IPv4 address of the host.

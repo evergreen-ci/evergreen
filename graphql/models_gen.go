@@ -10,9 +10,26 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 )
 
+type GroupedFiles struct {
+	TaskName *string          `json:"taskName"`
+	Files    []*model.APIFile `json:"files"`
+}
+
 type GroupedProjects struct {
 	Name     string                   `json:"name"`
 	Projects []*model.UIProjectFields `json:"projects"`
+}
+
+type PatchDuration struct {
+	Makespan  *string    `json:"makespan"`
+	TimeTaken *string    `json:"timeTaken"`
+	Time      *PatchTime `json:"time"`
+}
+
+type PatchTime struct {
+	Started     *string `json:"started"`
+	Finished    *string `json:"finished"`
+	SubmittedAt string  `json:"submittedAt"`
 }
 
 type Projects struct {

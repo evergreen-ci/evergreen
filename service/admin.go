@@ -23,7 +23,7 @@ func (uis *UIServer) adminSettings(w http.ResponseWriter, r *http.Request) {
 		RequiredLevel: evergreen.AdminSettingsEdit.Value,
 	}
 	if DBUser != nil {
-		if uis.isSuperUser(DBUser) || DBUser.HasPermission(permissions) {
+		if DBUser.HasPermission(permissions) {
 			template = "admin.html"
 		}
 	}
@@ -31,7 +31,7 @@ func (uis *UIServer) adminSettings(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		ViewData
 		CanClearTokens bool
-	}{uis.GetCommonViewData(w, r, true, true), uis.umCanClearTokens}
+	}{uis.GetCommonViewData(w, r, true, true), uis.env.UserManagerInfo().CanClearTokens}
 	uis.render.WriteResponse(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
 }
 
@@ -46,7 +46,7 @@ func (uis *UIServer) adminEvents(w http.ResponseWriter, r *http.Request) {
 		RequiredLevel: evergreen.AdminSettingsEdit.Value,
 	}
 	if DBUser != nil {
-		if uis.isSuperUser(DBUser) || DBUser.HasPermission(permissions) {
+		if DBUser.HasPermission(permissions) {
 			template = "admin_events.html"
 		}
 	}
@@ -63,7 +63,7 @@ func (uis *UIServer) adminEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) clearAllUserTokens(w http.ResponseWriter, r *http.Request) {
-	if err := uis.UserManager.ClearUser(nil, true); err != nil {
+	if err := uis.env.UserManager().ClearUser(nil, true); err != nil {
 		gimlet.WriteJSONInternalError(w, struct {
 			Error string `json:"error"`
 		}{Error: err.Error()})

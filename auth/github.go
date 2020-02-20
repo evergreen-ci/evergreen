@@ -156,6 +156,7 @@ func (gum *GithubUserManager) GetLoginCallbackHandler() http.HandlerFunc {
 }
 
 func (*GithubUserManager) IsRedirect() bool                           { return true }
+func (*GithubUserManager) ReauthorizeUser(gimlet.User) error          { return errors.New("not implemented") }
 func (*GithubUserManager) GetUserByID(id string) (gimlet.User, error) { return getUserByID(id) }
 func (*GithubUserManager) GetOrCreateUser(u gimlet.User) (gimlet.User, error) {
 	return getOrCreateUser(u)

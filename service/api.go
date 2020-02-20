@@ -8,7 +8,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -43,17 +42,13 @@ type APIServer struct {
 // NewAPIServer returns an APIServer initialized with the given settings and plugins.
 func NewAPIServer(env evergreen.Environment, queue amboy.Queue) (*APIServer, error) {
 	settings := env.Settings()
-	authManager, _, err := auth.LoadUserManager(settings)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
 
 	if err := settings.Validate(); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
 	as := &APIServer{
-		UserManager:         authManager,
+		UserManager:         env.UserManager(),
 		Settings:            *settings,
 		env:                 env,
 		queue:               queue,

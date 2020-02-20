@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -83,7 +82,8 @@ func (hc *DBHostConnector) FindHostsByDistroID(distroID string) ([]host.Host, er
 
 // NewIntentHost is a method to insert an intent host given a distro and a public key
 // The public key can be the name of a saved key or the actual key string
-func (hc *DBHostConnector) NewIntentHost(options *restmodel.HostRequestOptions, user *user.DBUser) (*host.Host, error) {
+func (hc *DBHostConnector) NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, user *user.DBUser,
+	settings *evergreen.Settings) (*host.Host, error) {
 
 	// Get key value if PublicKey is a name
 	keyVal, err := user.GetPublicKey(options.KeyName)
@@ -93,7 +93,9 @@ func (hc *DBHostConnector) NewIntentHost(options *restmodel.HostRequestOptions, 
 	if keyVal == "" {
 		return nil, errors.New("invalid key")
 	}
-
+	if options.Region == "" {
+		options.Region = evergreen.DefaultEC2Region
+	}
 	spawnOptions := cloud.SpawnOptions{
 		DistroId:       options.DistroID,
 		Userdata:       options.UserData,
@@ -109,9 +111,9 @@ func (hc *DBHostConnector) NewIntentHost(options *restmodel.HostRequestOptions, 
 		Region:         options.Region,
 	}
 
-	intentHost, err := cloud.CreateSpawnHost(spawnOptions)
+	intentHost, err := cloud.CreateSpawnHost(ctx, spawnOptions, settings)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error creating spawn host")
 	}
 
 	if err := intentHost.Insert(); err != nil {
@@ -286,7 +288,7 @@ func (hc *MockHostConnector) FindHostsByDistroID(distroID string) ([]host.Host, 
 
 // NewIntentHost is a method to mock "insert" an intent host given a distro and a public key
 // The public key can be the name of a saved key or the actual key string
-func (hc *MockHostConnector) NewIntentHost(options *restmodel.HostRequestOptions, user *user.DBUser) (*host.Host, error) {
+func (hc *MockHostConnector) NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, user *user.DBUser, settings *evergreen.Settings) (*host.Host, error) {
 	keyVal := strings.Join([]string{"ssh-rsa", base64.StdEncoding.EncodeToString([]byte("foo"))}, " ")
 
 	spawnOptions := cloud.SpawnOptions{
@@ -300,7 +302,7 @@ func (hc *MockHostConnector) NewIntentHost(options *restmodel.HostRequestOptions
 		InstanceType: options.InstanceType,
 	}
 
-	intentHost, err := cloud.CreateSpawnHost(spawnOptions)
+	intentHost, err := cloud.CreateSpawnHost(ctx, spawnOptions, settings)
 	if err != nil {
 		return nil, err
 	}
@@ -435,7 +437,12 @@ func findHostByIdWithOwner(c Connector, hostID string, user gimlet.User) (*host.
 	}
 
 	if user.Username() != host.StartedBy {
-		if !auth.IsSuperUser(c.GetSuperUsers(), user) {
+		if !user.HasPermission(gimlet.PermissionOpts{
+			Resource:      host.Distro.Id,
+			ResourceType:  evergreen.DistroResourceType,
+			Permission:    evergreen.PermissionHosts,
+			RequiredLevel: evergreen.HostsEdit.Value,
+		}) {
 			return nil, gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
 				Message:    "not authorized to modify host",

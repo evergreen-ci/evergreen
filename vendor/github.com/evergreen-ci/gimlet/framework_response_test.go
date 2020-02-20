@@ -195,12 +195,12 @@ func TestSimpleResponseBuilder(t *testing.T) {
 	err := errors.New("foo")
 
 	for idx, er := range []error{
-		ErrorResponse{0, "coffee"},
-		&ErrorResponse{0, "coffee"},
-		ErrorResponse{400, "coffee"},
-		&ErrorResponse{400, "coffee"},
-		ErrorResponse{501, "coffee"},
-		&ErrorResponse{501, "coffee"},
+		ErrorResponse{StatusCode: 0, Message: "coffee"},
+		&ErrorResponse{StatusCode: 0, Message: "coffee"},
+		ErrorResponse{StatusCode: 400, Message: "coffee"},
+		&ErrorResponse{StatusCode: 400, Message: "coffee"},
+		ErrorResponse{StatusCode: 501, Message: "coffee"},
+		&ErrorResponse{StatusCode: 501, Message: "coffee"},
 	} {
 		t.Run(fmt.Sprintf("TextConstructorCase%d", idx), func(t *testing.T) {
 			for idx, resp := range []Responder{
@@ -263,7 +263,7 @@ func TestSimpleResponseBuilder(t *testing.T) {
 		})
 	}
 	t.Run("ErrorConstructorGeneric", func(t *testing.T) {
-		er := ErrorResponse{418, "coffee"}
+		er := ErrorResponse{StatusCode: 418, Message: "coffee"}
 		for idx, resp := range []Responder{
 			MakeTextErrorResponder(er),
 			MakeJSONErrorResponder(er),

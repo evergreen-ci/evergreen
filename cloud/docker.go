@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/docker/docker/client"
-	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -49,24 +48,6 @@ func (s *dockerSettings) FromDistroSettings(d distro.Distro, _ string) error {
 	if d.ProviderSettings != nil {
 		if err := mapstructure.Decode(d.ProviderSettings, s); err != nil {
 			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, s)
-		}
-		bytes, err := bson.Marshal(s)
-		if err != nil {
-			return errors.Wrap(err, "error marshalling provider setting into bson")
-		}
-		doc := &birch.Document{}
-		if err := doc.UnmarshalBSON(bytes); err != nil {
-			return errors.Wrapf(err, "error unmarshalling settings bytes into document")
-		}
-		if len(d.ProviderSettingsList) == 0 {
-			if err := d.UpdateProviderSettings(doc); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"distro":   d.Id,
-					"provider": d.Provider,
-					"settings": d.ProviderSettings,
-				}))
-				return errors.Wrapf(err, "error updating provider settings")
-			}
 		}
 	} else if len(d.ProviderSettingsList) != 0 {
 		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
@@ -255,6 +236,10 @@ func (m *dockerManager) DetachVolume(context.Context, *host.Host, string) error 
 
 func (m *dockerManager) CreateVolume(context.Context, *host.Volume) (*host.Volume, error) {
 	return nil, errors.New("can't create volume with docker provider")
+}
+
+func (m *dockerManager) CheckInstanceType(context.Context, string) error {
+	return errors.New("can't specify instance type with docker provider")
 }
 
 func (m *dockerManager) DeleteVolume(context.Context, *host.Volume) error {

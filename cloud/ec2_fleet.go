@@ -199,6 +199,25 @@ func (m *ec2FleetManager) GetInstanceStatus(ctx context.Context, h *host.Host) (
 	return status, nil
 }
 
+func (m *ec2FleetManager) CheckInstanceType(ctx context.Context, instanceType string) error {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+	output, err := m.client.DescribeInstanceTypeOfferings(ctx, &ec2.DescribeInstanceTypeOfferingsInput{})
+	if err != nil {
+		return errors.Wrapf(err, "error describe instance types offered for region '%s", m.region)
+	}
+	validTypes := []string{}
+	for _, availableType := range output.InstanceTypeOfferings {
+		if availableType.InstanceType != nil && (*availableType.InstanceType) == instanceType {
+			return nil
+		}
+		validTypes = append(validTypes, *availableType.InstanceType)
+	}
+	return errors.Errorf("available types for region '%s' are: %v", m.region, validTypes)
+}
+
 func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, user, reason string) error {
 	if h.Status == evergreen.HostTerminated {
 		return errors.Errorf("Can not terminate %s - already marked as terminated!", h.Id)

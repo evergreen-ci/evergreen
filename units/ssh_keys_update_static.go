@@ -73,7 +73,7 @@ func (j *staticUpdateSSHKeysJob) Run(ctx context.Context) {
 		err := errors.New("authorized keys file on static hosts must be set")
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "cannot deploy SSH keys to static host",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"job":     j.ID(),
 		}))
 		j.AddError(err)
@@ -84,7 +84,7 @@ func (j *staticUpdateSSHKeysJob) Run(ctx context.Context) {
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not get SSH options",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"job":     j.ID(),
 		}))
 		j.AddError(err)
@@ -102,7 +102,7 @@ func (j *staticUpdateSSHKeysJob) Run(ctx context.Context) {
 		if logs, err := j.host.RunSSHCommand(ctx, addKeyCmd, sshOpts); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not run SSH command to add to authorized keys",
-				"host":    j.host.Id,
+				"host_id": j.host.Id,
 				"key":     pair.Name,
 				"logs":    logs,
 			}))
@@ -112,7 +112,7 @@ func (j *staticUpdateSSHKeysJob) Run(ctx context.Context) {
 		if err := j.host.AddSSHKeyName(pair.Name); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not add SSH key name to host",
-				"host":    j.host.Id,
+				"host_id": j.host.Id,
 				"name":    pair.Name,
 				"job":     j.ID(),
 			}))

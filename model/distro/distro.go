@@ -74,11 +74,6 @@ type BootstrapSettings struct {
 	ResourceLimits ResourceLimits `bson:"resource_limits,omitempty" json:"resource_limits,omitempty" mapstructure:"resource_limits,omitempty"`
 }
 
-type HomeVolumeSettings struct {
-	DeviceName    string `bson:"device_name" json:"device_name" mapstructure:"device_name"`
-	FormatCommand string `bson:"format_command" json:"format_command" mapstructure:"format_command"`
-}
-
 type EnvVar struct {
 	Key   string `bson:"key" json:"key"`
 	Value string `bson:"value" json:"value"`
@@ -90,6 +85,11 @@ type ResourceLimits struct {
 	NumProcesses    int `bson:"num_processes,omitempty" json:"num_processes,omitempty" mapstructure:"num_processes,omitempty"`
 	LockedMemoryKB  int `bson:"locked_memory,omitempty" json:"locked_memory,omitempty" mapstructure:"locked_memory,omitempty"`
 	VirtualMemoryKB int `bson:"virtual_memory,omitempty" json:"virtual_memory,omitempty" mapstructure:"virtual_memory,omitempty"`
+}
+
+type HomeVolumeSettings struct {
+	DeviceName    string `bson:"device_name" json:"device_name" mapstructure:"device_name"`
+	FormatCommand string `bson:"format_command" json:"format_command" mapstructure:"format_command"`
 }
 
 func (d *Distro) SetBSON(raw mgobson.Raw) error {
@@ -141,6 +141,11 @@ func (d *Distro) ValidateBootstrapSettings() error {
 	catcher.NewWhen(d.IsLinux() && d.BootstrapSettings.ResourceLimits.VirtualMemoryKB < -1, "max virtual memory should be a positive number or -1")
 
 	return catcher.Resolve()
+}
+
+// ShellPath returns the native path to the shell binary.
+func (d *Distro) ShellBinary() string {
+	return filepath.Join(d.BootstrapSettings.RootDir, d.BootstrapSettings.ShellPath)
 }
 
 type HostAllocatorSettings struct {

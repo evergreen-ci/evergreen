@@ -80,6 +80,7 @@ lintTargets := $(foreach target,$(packages),lint-$(target))
 $(buildDir)/.lintSetup:$(lintDeps)
 	@mkdir -p $(buildDir)
 	@-$(goEnv) $(gopath)/bin/gometalinter --force --install >/dev/null && touch $@
+	@touch $@
 $(buildDir)/run-linter:buildscripts/run-linter.go
 	$(goEnv) $(gobin) build -o $@ $<
 .PRECIOUS:$(buildDir)/output.lint

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -165,7 +164,9 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		AttachVolume:   putParams.AttachVolume,
 		HomeVolumeSize: putParams.HomeVolumeSize,
 	}
-	spawnHost, err := hc.NewIntentHost(options, authedUser)
+	ctx, cancel := uis.env.Context()
+	defer cancel()
+	spawnHost, err := hc.NewIntentHost(ctx, options, authedUser, &uis.Settings)
 
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error spawning host"))
@@ -217,7 +218,12 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if u.Username() != h.StartedBy {
-		if !auth.IsSuperUser(uis.Settings.SuperUsers, u) {
+		if !u.HasPermission(gimlet.PermissionOpts{
+			Resource:      h.Distro.Id,
+			ResourceType:  evergreen.DistroResourceType,
+			Permission:    evergreen.PermissionHosts,
+			RequiredLevel: evergreen.HostsEdit.Value,
+		}) {
 			uis.LoggedError(w, r, http.StatusUnauthorized, errors.New("not authorized to modify this host"))
 			return
 		}

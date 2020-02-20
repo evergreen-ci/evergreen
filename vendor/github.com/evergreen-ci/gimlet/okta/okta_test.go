@@ -419,19 +419,18 @@ func TestRequestHelpers(t *testing.T) {
 
 func mockCreationOptions() CreationOptions {
 	return CreationOptions{
-		ClientID:        "client_id",
-		ClientSecret:    "client_secret",
-		RedirectURI:     "redirect_uri",
-		Issuer:          "issuer",
-		UserGroup:       "user_group",
-		CookiePath:      "cookie_path",
-		CookieDomain:    "example.com",
-		LoginCookieName: "login_cookie",
-		LoginCookieTTL:  time.Hour,
-		UserCache:       usercache.NewInMemory(context.Background(), time.Minute),
-		GetHTTPClient:   func() *http.Client { return &http.Client{} },
-		PutHTTPClient:   func(*http.Client) {},
-		// SkipGroupPopulation:  true,
+		ClientID:             "client_id",
+		ClientSecret:         "client_secret",
+		RedirectURI:          "redirect_uri",
+		Issuer:               "issuer",
+		UserGroup:            "user_group",
+		CookiePath:           "cookie_path",
+		CookieDomain:         "example.com",
+		LoginCookieName:      "login_cookie",
+		LoginCookieTTL:       time.Hour,
+		UserCache:            usercache.NewInMemory(context.Background(), time.Minute),
+		GetHTTPClient:        func() *http.Client { return &http.Client{} },
+		PutHTTPClient:        func(*http.Client) {},
 		AllowReauthorization: false,
 		ReconciliateID:       func(id string) string { return id },
 	}
@@ -1106,8 +1105,8 @@ func TestLoginHandlerCallback(t *testing.T) {
 }
 
 func TestReauthorization(t *testing.T) {
-	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, um *userManager, s *mockAuthorizationServer){
-		"SucceedsWithValidAccessTokenAndGroupValidation": func(ctx context.Context, t *testing.T, um *userManager, s *mockAuthorizationServer) {
+	for testName, testCase := range map[string]func(t *testing.T, um *userManager, s *mockAuthorizationServer){
+		"SucceedsWithValidAccessTokenAndGroupValidation": func(t *testing.T, um *userManager, s *mockAuthorizationServer) {
 			um.validateGroups = true
 
 			accessToken := "access_token"
@@ -1118,7 +1117,7 @@ func TestReauthorization(t *testing.T) {
 			s.IntrospectResponse = &introspectResponse{Active: true}
 			s.UserInfoResponse = &userInfoResponse{Name: "foo", Email: "foo@bar.com", Groups: []string{um.userGroup}}
 
-			require.NoError(t, um.reauthorizeUser(ctx, user))
+			require.NoError(t, um.ReauthorizeUser(user))
 
 			mapContains(t, s.IntrospectParameters, map[string][]string{
 				"token":           []string{accessToken},
@@ -1140,7 +1139,7 @@ func TestReauthorization(t *testing.T) {
 			assert.Equal(t, user.GetAccessToken(), cachedUser.GetAccessToken())
 			assert.Equal(t, user.GetRefreshToken(), cachedUser.GetRefreshToken())
 		},
-		"SucceedsWithoutGroupValidation": func(ctx context.Context, t *testing.T, um *userManager, s *mockAuthorizationServer) {
+		"SucceedsWithoutGroupValidation": func(t *testing.T, um *userManager, s *mockAuthorizationServer) {
 			refreshToken := "refresh_token"
 			user := gimlet.NewBasicUser("foo", "foo", "foo@bar.com", "password", "key", "", refreshToken, nil, false, nil)
 			_, err := um.cache.GetOrCreate(user)
@@ -1169,7 +1168,7 @@ func TestReauthorization(t *testing.T) {
 				Scope:        "scope",
 			}
 
-			require.NoError(t, um.reauthorizeUser(ctx, user))
+			require.NoError(t, um.ReauthorizeUser(user))
 
 			mapContains(t, s.TokenParameters, map[string][]string{
 				"grant_type":    []string{"refresh_token"},
@@ -1189,28 +1188,28 @@ func TestReauthorization(t *testing.T) {
 			assert.Equal(t, newAccessToken, cachedUser.GetAccessToken())
 			assert.Equal(t, newRefreshToken, cachedUser.GetRefreshToken())
 		},
-		"FailsIfAccessTokenAndRefreshTokensMissingAndValidatingGroups": func(ctx context.Context, t *testing.T, um *userManager, s *mockAuthorizationServer) {
+		"FailsIfAccessTokenAndRefreshTokensMissingAndValidatingGroups": func(t *testing.T, um *userManager, s *mockAuthorizationServer) {
 			um.validateGroups = true
 			user := gimlet.NewBasicUser("foo", "foo", "foo@bar.com", "password", "key", "", "", nil, false, nil)
 
-			require.Error(t, um.reauthorizeUser(ctx, user))
+			require.Error(t, um.ReauthorizeUser(user))
 			assert.Empty(t, s.TokenHeaders, "should not refresh tokens if refresh token missing")
 			assert.Empty(t, s.TokenParameters, "should not refresh tokens if refresh token missing")
 			assert.Empty(t, s.IntrospectHeaders, "should not check access token if missing access and refresh tokens")
 			assert.Empty(t, s.IntrospectParameters, "should not check access token if missing access and refresh tokens")
 			assert.Empty(t, s.UserInfoHeaders, "should not get user info if missing access and refresh tokens")
 		},
-		"FailsIfRefreshTokensMissingAndNotValidatingGroups": func(ctx context.Context, t *testing.T, um *userManager, s *mockAuthorizationServer) {
+		"FailsIfRefreshTokensMissingAndNotValidatingGroups": func(t *testing.T, um *userManager, s *mockAuthorizationServer) {
 			user := gimlet.NewBasicUser("foo", "foo", "foo@bar.com", "password", "key", "access_token", "", nil, false, nil)
 
-			require.Error(t, um.reauthorizeUser(ctx, user))
+			require.Error(t, um.ReauthorizeUser(user))
 			assert.Empty(t, s.TokenHeaders, "should not refresh tokens if refresh token missing")
 			assert.Empty(t, s.TokenParameters, "should not refresh tokens if refresh token missing")
 			assert.Empty(t, s.IntrospectHeaders, "should not check access token if not validating groups")
 			assert.Empty(t, s.IntrospectParameters, "should not check access token if not validating groups")
 			assert.Empty(t, s.UserInfoHeaders, "should not get user info if not validating groups")
 		},
-		"FailsIfAccessTokenExpiredAndTokensCannotRefresh": func(ctx context.Context, t *testing.T, um *userManager, s *mockAuthorizationServer) {
+		"FailsIfAccessTokenExpiredAndTokensCannotRefresh": func(t *testing.T, um *userManager, s *mockAuthorizationServer) {
 			um.validateGroups = true
 
 			accessToken := "access_token"
@@ -1226,7 +1225,7 @@ func TestReauthorization(t *testing.T) {
 				ErrorDescription: "error_description",
 			}
 
-			assert.Error(t, um.reauthorizeUser(ctx, user))
+			assert.Error(t, um.ReauthorizeUser(user))
 
 			mapContains(t, s.IntrospectParameters, map[string][]string{
 				"token":           []string{accessToken},
@@ -1252,7 +1251,7 @@ func TestReauthorization(t *testing.T) {
 			assert.Equal(t, user.GetAccessToken(), cachedUser.GetAccessToken())
 			assert.Equal(t, user.GetRefreshToken(), cachedUser.GetRefreshToken())
 		},
-		"FailsForInvalidGroups": func(ctx context.Context, t *testing.T, um *userManager, s *mockAuthorizationServer) {
+		"FailsForInvalidGroups": func(t *testing.T, um *userManager, s *mockAuthorizationServer) {
 			um.validateGroups = true
 			accessToken := "access_token"
 			refreshToken := "refresh_token"
@@ -1271,7 +1270,7 @@ func TestReauthorization(t *testing.T) {
 			_, err := um.cache.GetOrCreate(user)
 			require.NoError(t, err)
 
-			assert.Error(t, um.reauthorizeUser(ctx, user))
+			assert.Error(t, um.ReauthorizeUser(user))
 
 			mapContains(t, s.IntrospectParameters, map[string][]string{
 				"token":           []string{newAccessToken},
@@ -1302,7 +1301,7 @@ func TestReauthorization(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			s := &mockAuthorizationServer{}
 			port, err := s.startMockServer(ctx)
@@ -1322,7 +1321,7 @@ func TestReauthorization(t *testing.T) {
 			}
 
 			require.True(t, ok)
-			testCase(ctx, t, impl, s)
+			testCase(t, impl, s)
 		})
 	}
 }

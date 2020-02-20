@@ -4,10 +4,14 @@ import (
 	"context"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // ProviderSettings exposes provider-specific configuration settings for a Manager.
@@ -70,6 +74,9 @@ type Manager interface {
 
 	// DeleteVolume deletes a volume.
 	DeleteVolume(context.Context, *host.Volume) error
+
+	// CheckInstanceType determines if the given instance type is available in the current region.
+	CheckInstanceType(context.Context, string) error
 
 	// TimeTilNextPayment returns how long there is until the next payment
 	// is due for a particular host
@@ -235,4 +242,30 @@ func ConvertContainerManager(m Manager) (ContainerManager, error) {
 		return cm, nil
 	}
 	return nil, errors.New("Error converting manager to container manager")
+}
+
+// this updates the local provider settings list
+func UpdateProviderSettings(d *distro.Distro) error {
+	if d.ProviderSettings != nil {
+		bytes, err := bson.Marshal(d.ProviderSettings)
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		doc := &birch.Document{}
+		if err := doc.UnmarshalBSON(bytes); err != nil {
+			return errors.Wrapf(err, "error unmarshalling settings bytes into document")
+		}
+		if IsEc2Provider(d.Provider) {
+			doc = doc.Set(birch.EC.String("region", evergreen.DefaultEC2Region))
+		}
+		d.ProviderSettingsList = []*birch.Document{doc}
+	}
+	grip.Debug(message.Fields{
+		"message":                "updating provider settings list",
+		"distro_id":              d.Id,
+		"provider_settings_list": d.ProviderSettingsList,
+		"provider_settings":      d.ProviderSettings,
+		"provider":               d.Provider,
+	})
+	return nil
 }

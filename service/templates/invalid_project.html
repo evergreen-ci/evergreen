@@ -1,11 +1,6 @@
 {{define "scripts"}}
 <script type="text/javascript" src="{{Static "js" "projects.js"}}?hash={{ BuildRevision }}"></script>
 <script>
-{{if .User}}
-var isSuperUser = {{IsSuperUser .User.Id}};
-{{else}}
-var isSuperUser = false;
-{{end}}
 </script>
 {{end}}
 
@@ -25,17 +20,11 @@ Evergreen Projects
             <img src='/static/img/evergreen_grey.png' height="250"/>
         </div>
 
-        <h2 ng-if="isSuperUser && allProjects.length > 0">Or create one here:</h2>
-        <h2 ng-if="isSuperUser && allProjects.length == 0">Would you like to create one?</h2>
-        <div class="row" style="text-align: center; margin-top:20px;" ng-show="isSuperUser" >
+        <h2 ng-if="allProjects.length > 0">Or create one here:</h2>
+        <h2 ng-if="allProjects.length == 0">Would you like to create one?</h2>
+        <div class="row" style="text-align: center; margin-top:20px;">
             <a href="/projects" type="submit" class="btn btn-primary">Create Project</a>
         </div>
-
-        <h2 ng-if="!isSuperUser && allProjects.length == 0">Please contact your Evergreen administrator to add a project.</h2>
-
-        <h2 ng-if="!isSuperUser && allProjects.length > 0">If you're looking for something else,</h2>
-        <h2 ng-if="!isSuperUser && allProjects.length > 0">please contact your Evergreen administrator.</h2>
-
     </div>
 </div>
 {{end}}

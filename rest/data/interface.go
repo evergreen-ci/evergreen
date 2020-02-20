@@ -34,10 +34,6 @@ import (
 // between the service and the API layers, allowing for changes in the
 // service architecture without forcing changes to the API.
 type Connector interface {
-	// Get and Set SuperUsers provide access to the list of API super users.
-	GetSuperUsers() []string
-	SetSuperUsers([]string)
-
 	// Get and Set URL provide access to the main url string of the API.
 	GetURL() string
 	SetURL(string)
@@ -149,7 +145,7 @@ type Connector interface {
 	FindHostWithVolume(string) (*host.Host, error)
 
 	// NewIntentHost is a method to insert an intent host given a distro and the name of a saved public key
-	NewIntentHost(*restModel.HostRequestOptions, *user.DBUser) (*host.Host, error)
+	NewIntentHost(context.Context, *restModel.HostRequestOptions, *user.DBUser, *evergreen.Settings) (*host.Host, error)
 
 	FindVolumeById(string) (*host.Volume, error)
 	FindVolumesByUser(string) ([]host.Volume, error)

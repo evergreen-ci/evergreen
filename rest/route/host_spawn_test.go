@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -73,8 +74,11 @@ func TestHostPostHandler(t *testing.T) {
 	assert.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
 
+	d.Provider = evergreen.ProviderNameMock
+	assert.NoError(d.Update())
 	h.settings.Providers.AWS.AllowedInstanceTypes = append(h.settings.Providers.AWS.AllowedInstanceTypes, "test_instance_type")
 	h.options.InstanceType = "test_instance_type"
+	h.options.UserData = ""
 	resp = h.Run(ctx)
 	require.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
@@ -105,6 +109,8 @@ func TestHostPostHandler(t *testing.T) {
 }
 
 func TestHostStopHandler(t *testing.T) {
+	testutil.DisablePermissionsForTests()
+	defer testutil.EnablePermissionsForTests()
 	h := &hostStopHandler{
 		sc:  &data.MockConnector{},
 		env: evergreen.GetEnvironment(),
@@ -147,6 +153,8 @@ func TestHostStopHandler(t *testing.T) {
 }
 
 func TestHostStartHandler(t *testing.T) {
+	testutil.DisablePermissionsForTests()
+	defer testutil.EnablePermissionsForTests()
 	h := &hostStartHandler{
 		sc:  &data.MockConnector{},
 		env: evergreen.GetEnvironment(),

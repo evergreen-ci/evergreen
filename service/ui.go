@@ -10,7 +10,6 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -37,10 +36,7 @@ type UIServer struct {
 	// The root URL of the server, used in redirects for instance.
 	RootURL string
 
-	//authManager
-	UserManager        gimlet.UserManager
 	umconf             gimlet.UserMiddlewareConfiguration
-	umCanClearTokens   bool
 	Settings           evergreen.Settings
 	CookieStore        *sessions.CookieStore
 	clientConfig       *evergreen.ClientConfig
@@ -66,21 +62,16 @@ type ViewData struct {
 	Bugsnag             string
 	NewRelic            evergreen.NewRelicConfig
 	IsAdmin             bool
-	ACLEnabled          bool // TODO PM-1355 remove this
 	ValidDefaultLoggers []string
 }
 
 func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo TemplateFunctionOptions) (*UIServer, error) {
 	settings := env.Settings()
-	userManager, canClearTokens, err := auth.LoadUserManager(settings)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
 
 	ropts := gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: !settings.Ui.CacheTemplates,
-		Functions:    MakeTemplateFuncs(fo, settings.SuperUsers),
+		Functions:    MakeTemplateFuncs(fo),
 	}
 
 	uis := &UIServer{
@@ -88,8 +79,6 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo T
 		env:                env,
 		queue:              queue,
 		Home:               home,
-		UserManager:        userManager,
-		umCanClearTokens:   canClearTokens,
 		clientConfig:       evergreen.GetEnvironment().ClientConfig(),
 		CookieStore:        sessions.NewCookieStore([]byte(settings.Ui.Secret)),
 		buildBaronProjects: bbGetConfig(settings),
@@ -200,10 +189,6 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 			RequiredLevel: evergreen.AdminSettingsEdit.Value,
 		}
 		viewData.IsAdmin = u.HasPermission(opts)
-		// TODO: PM-1355 remove this if statement.
-		if !evergreen.AclCheckingIsEnabled {
-			viewData.IsAdmin = uis.isSuperUser(u)
-		}
 	} else if userCtx != nil {
 		grip.Criticalf("user [%s] is not of the correct type: %T", userCtx.Username(), userCtx)
 	}
@@ -216,7 +201,6 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 	viewData.JiraHost = uis.Settings.Jira.Host
 	viewData.Bugsnag = settings.Bugsnag
 	viewData.NewRelic = settings.NewRelic
-	viewData.ACLEnabled = evergreen.AclCheckingIsEnabled
 	viewData.ValidDefaultLoggers = []string{model.EvergreenLogSender, model.BuildloggerLogSender}
 	return viewData
 }
@@ -227,8 +211,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	needsLogin := gimlet.WrapperMiddleware(uis.requireLogin)
 	needsLoginNoRedirect := gimlet.WrapperMiddleware(uis.requireLoginStatusUnauthorized)
 	needsContext := gimlet.WrapperMiddleware(uis.loadCtx)
-	needsSuperUser := gimlet.WrapperMiddleware(uis.requireSuperUser)
-	needsAdmin := gimlet.WrapperMiddleware(uis.requireAdmin)
 	allowsCORS := gimlet.WrapperMiddleware(uis.setCORSHeaders)
 	adminSettings := route.RequiresSuperUserPermission(evergreen.PermissionAdminSettings, evergreen.AdminSettingsEdit)
 	createProject := route.RequiresSuperUserPermission(evergreen.PermissionProjectCreate, evergreen.ProjectCreate)
@@ -264,10 +246,10 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 		}
 	})
 
-	if h := uis.UserManager.GetLoginHandler(uis.RootURL); h != nil {
+	if h := uis.env.UserManager().GetLoginHandler(uis.RootURL); h != nil {
 		app.AddRoute("/login/redirect").Handler(h).Get()
 	}
-	if h := uis.UserManager.GetLoginCallbackHandler(); h != nil {
+	if h := uis.env.UserManager().GetLoginCallbackHandler(); h != nil {
 		app.AddRoute("/login/redirect/callback").Handler(h).Get()
 	}
 
@@ -338,15 +320,15 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/hosts").Wrap(needsLogin, needsContext).Handler(uis.hostsPage).Get()
 	app.AddRoute("/hosts").Wrap(needsLogin, needsContext).Handler(uis.modifyHosts).Put()
 	app.AddRoute("/host/{host_id}").Wrap(needsLogin, needsContext, viewHosts).Handler(uis.hostPage).Get()
-	app.AddRoute("/host/{host_id}").Wrap(needsSuperUser, needsContext, editHosts).Handler(uis.modifyHost).Put()
+	app.AddRoute("/host/{host_id}").Wrap(needsContext, editHosts).Handler(uis.modifyHost).Put()
 
 	// Distros
 	app.AddRoute("/distros").Wrap(needsLogin, needsContext).Handler(uis.distrosPage).Get()
-	app.AddRoute("/distros").Wrap(needsSuperUser, needsContext, createDistro).Handler(uis.addDistro).Put()
+	app.AddRoute("/distros").Wrap(needsContext, createDistro).Handler(uis.addDistro).Put()
 	app.AddRoute("/distros/{distro_id}").Wrap(needsLogin, needsContext, viewDistroSettings).Handler(uis.getDistro).Get()
-	app.AddRoute("/distros/{distro_id}").Wrap(needsSuperUser, needsContext, editDistroSettings).Handler(uis.addDistro).Put()
-	app.AddRoute("/distros/{distro_id}").Wrap(needsSuperUser, needsContext, editDistroSettings).Handler(uis.modifyDistro).Post()
-	app.AddRoute("/distros/{distro_id}").Wrap(needsSuperUser, needsContext, removeDistroSettings).Handler(uis.removeDistro).Delete()
+	app.AddRoute("/distros/{distro_id}").Wrap(needsContext, createDistro).Handler(uis.addDistro).Put()
+	app.AddRoute("/distros/{distro_id}").Wrap(needsContext, editDistroSettings).Handler(uis.modifyDistro).Post()
+	app.AddRoute("/distros/{distro_id}").Wrap(needsContext, removeDistroSettings).Handler(uis.removeDistro).Delete()
 
 	// Event Logs
 	app.AddRoute("/event_log/{resource_type}/{resource_id:[\\w_\\-\\:\\.\\@]+}").Wrap(needsLogin, needsContext, &route.EventLogPermissionsMiddleware{}).Handler(uis.fullEventLogs).Get()
@@ -408,15 +390,15 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Project routes
 	app.AddRoute("/projects").Wrap(needsLogin, needsContext).Handler(uis.projectsPage).Get()
-	app.AddRoute("/project/{project_id}").Wrap(needsContext, needsAdmin, viewProjectSettings).Handler(uis.projectPage).Get()
-	app.AddRoute("/project/{project_id}/events").Wrap(needsContext, needsAdmin, viewProjectSettings).Handler(uis.projectEvents).Get()
-	app.AddRoute("/project/{project_id}").Wrap(needsContext, needsAdmin, editProjectSettings).Handler(uis.modifyProject).Post()
-	app.AddRoute("/project/{project_id}").Wrap(needsContext, needsAdmin, createProject).Handler(uis.addProject).Put()
+	app.AddRoute("/project/{project_id}").Wrap(needsContext, viewProjectSettings).Handler(uis.projectPage).Get()
+	app.AddRoute("/project/{project_id}/events").Wrap(needsContext, viewProjectSettings).Handler(uis.projectEvents).Get()
+	app.AddRoute("/project/{project_id}").Wrap(needsContext, editProjectSettings).Handler(uis.modifyProject).Post()
+	app.AddRoute("/project/{project_id}").Wrap(needsContext, createProject).Handler(uis.addProject).Put()
 	app.AddRoute("/project/{project_id}/repo_revision").Wrap(needsContext, editProjectSettings).Handler(uis.setRevision).Put()
 
 	// Admin routes
 	app.AddRoute("/admin").Wrap(needsLogin, needsContext, adminSettings).Handler(uis.adminSettings).Get()
-	app.AddRoute("/admin/cleartokens").Wrap(needsSuperUser, adminSettings).Handler(uis.clearAllUserTokens).Post()
+	app.AddRoute("/admin/cleartokens").Wrap(adminSettings).Handler(uis.clearAllUserTokens).Post()
 	app.AddRoute("/admin/events").Wrap(needsLogin, needsContext, adminSettings).Handler(uis.adminEvents).Get()
 
 	// Plugin routes

@@ -6,43 +6,47 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
-//LoadUserManager is used to check the configuration for authentication and create a UserManager
-// depending on what type of authentication is used.
-func LoadUserManager(settings *evergreen.Settings) (um gimlet.UserManager, supportsClearTokens bool, err error) {
+// LoadUserManager is used to check the configuration for authentication and
+// create a UserManager depending on what type of authentication is used.
+func LoadUserManager(settings *evergreen.Settings) (gimlet.UserManager, evergreen.UserManagerInfo, error) {
 	authConfig := settings.AuthConfig
-	makeLDAPManager := func() (gimlet.UserManager, bool, error) {
+	var info evergreen.UserManagerInfo
+	makeLDAPManager := func() (gimlet.UserManager, evergreen.UserManagerInfo, error) {
 		manager, err := NewLDAPUserManager(authConfig.LDAP)
 		if err != nil {
-			return nil, false, errors.Wrap(err, "problem setting up ldap authentication")
+			return nil, info, errors.Wrap(err, "problem setting up ldap authentication")
 		}
-		return manager, true, nil
+		info.CanClearTokens = true
+		info.CanReauthorize = true
+		return manager, info, nil
 	}
-	makeOktaManager := func() (gimlet.UserManager, bool, error) {
+	makeOktaManager := func() (gimlet.UserManager, evergreen.UserManagerInfo, error) {
 		manager, err := NewOktaUserManager(authConfig.Okta, settings.Ui.Url, settings.Ui.LoginDomain)
 		if err != nil {
-			return nil, false, errors.Wrap(err, "problem setting up okta authentication")
+			return nil, info, errors.Wrap(err, "problem setting up okta authentication")
 		}
-		return manager, true, nil
+		info.CanClearTokens = true
+		info.CanReauthorize = true
+		return manager, info, nil
 	}
-	makeNaiveManager := func() (gimlet.UserManager, bool, error) {
+	makeNaiveManager := func() (gimlet.UserManager, evergreen.UserManagerInfo, error) {
 		manager, err := NewNaiveUserManager(authConfig.Naive)
 		if err != nil {
-			return nil, false, errors.Wrap(err, "problem setting up naive authentication")
+			return nil, info, errors.Wrap(err, "problem setting up naive authentication")
 		}
-		return manager, false, nil
+		return manager, info, nil
 	}
-	makeGithubManager := func() (gimlet.UserManager, bool, error) {
+	makeGithubManager := func() (gimlet.UserManager, evergreen.UserManagerInfo, error) {
 		manager, err := NewGithubUserManager(authConfig.Github, settings.Ui.LoginDomain)
 		if err != nil {
-			return nil, false, errors.Wrap(err, "problem setting up github authentication")
+			return nil, info, errors.Wrap(err, "problem setting up github authentication")
 		}
-		return manager, false, nil
+		return manager, info, nil
 	}
 
 	switch authConfig.PreferredType {
@@ -76,7 +80,7 @@ func LoadUserManager(settings *evergreen.Settings) (um gimlet.UserManager, suppo
 	if authConfig.Github != nil {
 		return makeGithubManager()
 	}
-	return nil, false, errors.New("Must have at least one form of authentication, currently there are none")
+	return nil, info, errors.New("Must have at least one form of authentication, currently there are none")
 }
 
 // SetLoginToken sets the token in the session cookie for authentication.
@@ -104,22 +108,6 @@ func SetLoginToken(token, domain string, w http.ResponseWriter) {
 		Expires:  time.Now().Add(365 * 24 * time.Hour),
 	}
 	http.SetCookie(w, authTokenCookie)
-}
-
-// IsSuperUser verifies that a given user has super user permissions.
-// A user has these permission if they are in the super users list or if the list is empty,
-// in which case all users are super users.
-func IsSuperUser(superUsers []string, u gimlet.User) bool {
-	if u == nil {
-		return false
-	}
-
-	if util.StringSliceContains(superUsers, u.Username()) ||
-		len(superUsers) == 0 {
-		return true
-	}
-	return false
-
 }
 
 func getOrCreateUser(u gimlet.User) (gimlet.User, error) {

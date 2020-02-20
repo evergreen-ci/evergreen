@@ -135,7 +135,8 @@ func MockConfig() *evergreen.Settings {
 				Users:        []string{"ghuser"},
 				Organization: "ghorg",
 			},
-			PreferredType: evergreen.AuthLDAPKey,
+			PreferredType:           evergreen.AuthLDAPKey,
+			BackgroundReauthMinutes: 60,
 		},
 		Banner:            "banner",
 		BannerTheme:       "important",
@@ -261,6 +262,7 @@ func MockConfig() *evergreen.Settings {
 			EmailNotificationsDisabled:   true,
 			WebhookNotificationsDisabled: true,
 			GithubStatusAPIDisabled:      true,
+			BackgroundReauthDisabled:     true,
 		},
 		SSHKeyDirectory: "/ssh_key_directory",
 		SSHKeyPairs: []evergreen.SSHKeyPair{
@@ -284,7 +286,6 @@ func MockConfig() *evergreen.Settings {
 			Token:     "token",
 			Channel:   "channel",
 		},
-		SuperUsers: []string{"user"},
 		Triggers: evergreen.TriggerConfig{
 			GenerateTaskDistro: "distro",
 		},
@@ -300,4 +301,12 @@ func MockConfig() *evergreen.Settings {
 		SpawnHostsPerUser:       5,
 		UnexpirableHostsPerUser: 2,
 	}
+}
+
+func DisablePermissionsForTests() {
+	evergreen.PermissionSystemDisabled = true
+}
+
+func EnablePermissionsForTests() {
+	evergreen.PermissionSystemDisabled = false
 }

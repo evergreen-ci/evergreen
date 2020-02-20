@@ -46,7 +46,6 @@ func NewConfigModel() *APIAdminSettings {
 
 // APIAdminSettings is the structure of a response to the admin route
 type APIAdminSettings struct {
-	ACLCheckingEnabled      *bool                             `json:"acl_enabled,omitempty"`
 	Alerts                  *APIAlertsConfig                  `json:"alerts,omitempty"`
 	Amboy                   *APIAmboyConfig                   `json:"amboy,omitempty"`
 	Api                     *APIapiConfig                     `json:"api,omitempty"`
@@ -86,7 +85,6 @@ type APIAdminSettings struct {
 	SSHKeyPairs             []APISSHKeyPair                   `json:"ssh_key_pairs,omitempty"`
 	SpawnHostsPerUser       *int                              `json:"spawn_hosts_per_user"`
 	Splunk                  *APISplunkConnectionInfo          `json:"splunk,omitempty"`
-	SuperUsers              []string                          `json:"superusers,omitempty"`
 	Triggers                *APITriggerConfig                 `json:"triggers,omitempty"`
 	Ui                      *APIUIConfig                      `json:"ui,omitempty"`
 	UnexpirableHostsPerUser *int                              `json:"unexpirable_hosts_per_user"`
@@ -119,7 +117,6 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 				return errors.Wrapf(err, "error converting model section %s", propName)
 			}
 		}
-		as.ACLCheckingEnabled = &v.ACLCheckingEnabled
 		as.ApiUrl = &v.ApiUrl
 		as.Banner = &v.Banner
 		tmp := string(v.BannerTheme)
@@ -135,7 +132,6 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.Credentials = v.Credentials
 		as.Expansions = v.Expansions
 		as.Keys = v.Keys
-		as.SuperUsers = v.SuperUsers
 		as.GithubOrgs = v.GithubOrgs
 		as.SSHKeyDirectory = ToStringPtr(v.SSHKeyDirectory)
 		as.SSHKeyPairs = []APISSHKeyPair{}
@@ -161,13 +157,9 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 		Expansions:              map[string]string{},
 		Keys:                    map[string]string{},
 		Plugins:                 evergreen.PluginConfig{},
-		SuperUsers:              as.SuperUsers,
 		GithubOrgs:              as.GithubOrgs,
 		SpawnHostsPerUser:       cloud.DefaultMaxSpawnHostsPerUser,
 		UnexpirableHostsPerUser: host.DefaultUnexpirableHostsPerUser,
-	}
-	if as.ACLCheckingEnabled != nil {
-		settings.ACLCheckingEnabled = *as.ACLCheckingEnabled
 	}
 	if as.ApiUrl != nil {
 		settings.ApiUrl = *as.ApiUrl
@@ -396,11 +388,12 @@ func (a *APIapiConfig) ToService() (interface{}, error) {
 }
 
 type APIAuthConfig struct {
-	LDAP          *APILDAPConfig       `json:"ldap"`
-	Okta          *APIOktaConfig       `json:"okta"`
-	Naive         *APINaiveAuthConfig  `json:"naive"`
-	Github        *APIGithubAuthConfig `json:"github"`
-	PreferredType *string              `json:"preferred_type"`
+	LDAP                    *APILDAPConfig       `json:"ldap"`
+	Okta                    *APIOktaConfig       `json:"okta"`
+	Naive                   *APINaiveAuthConfig  `json:"naive"`
+	Github                  *APIGithubAuthConfig `json:"github"`
+	PreferredType           *string              `json:"preferred_type"`
+	BackgroundReauthMinutes int                  `json:"background_reauth_minutes"`
 }
 
 func (a *APIAuthConfig) BuildFromService(h interface{}) error {
@@ -437,6 +430,7 @@ func (a *APIAuthConfig) BuildFromService(h interface{}) error {
 			}
 		}
 		a.PreferredType = ToStringPtr(v.PreferredType)
+		a.BackgroundReauthMinutes = v.BackgroundReauthMinutes
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -497,11 +491,12 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 		}
 	}
 	return evergreen.AuthConfig{
-		LDAP:          ldap,
-		Okta:          okta,
-		Naive:         naive,
-		Github:        github,
-		PreferredType: FromStringPtr(a.PreferredType),
+		LDAP:                    ldap,
+		Okta:                    okta,
+		Naive:                   naive,
+		Github:                  github,
+		PreferredType:           FromStringPtr(a.PreferredType),
+		BackgroundReauthMinutes: a.BackgroundReauthMinutes,
 	}, nil
 }
 
@@ -1436,6 +1431,7 @@ type APIServiceFlags struct {
 	HostAllocatorDisabled      bool `json:"host_allocator_disabled"`
 	ParserProjectDisabled      bool `json:"parser_project_disabled"`
 	DRBackupDisabled           bool `json:"dr_backup_disabled"`
+	BackgroundReauthDisabled   bool `json:"background_reauth_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -1698,6 +1694,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.HostAllocatorDisabled = v.HostAllocatorDisabled
 		as.ParserProjectDisabled = v.ParserProjectDisabled
 		as.DRBackupDisabled = v.DRBackupDisabled
+		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
 	default:
 		return errors.Errorf("%T is not a supported service flags type", h)
 	}
@@ -1733,6 +1730,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		HostAllocatorDisabled:        as.HostAllocatorDisabled,
 		ParserProjectDisabled:        as.ParserProjectDisabled,
 		DRBackupDisabled:             as.DRBackupDisabled,
+		BackgroundReauthDisabled:     as.BackgroundReauthDisabled,
 	}, nil
 }
 

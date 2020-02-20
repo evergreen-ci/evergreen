@@ -36,6 +36,8 @@ func TestBasicUserManager(t *testing.T) {
 	assert.Nil(u.GetLoginHandler(""))
 	assert.Nil(u.GetLoginCallbackHandler())
 	assert.False(u.IsRedirect())
+	assert.Nil(u.ReauthorizeUser(&u.users[0]))
+	assert.NotNil(u.ReauthorizeUser(&basicUser{ID: "bar"}))
 
 	user, err = u.GetUserByID("bar")
 	assert.Error(err)

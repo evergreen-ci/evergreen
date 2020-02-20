@@ -207,12 +207,12 @@ func (s *HandlerSuite) TestBinOutputFormatCorrectlyPropogated() {
 }
 
 func (s *HandlerSuite) TestGetErrorHelper() {
-	in := ErrorResponse{100, "foo"}
+	in := ErrorResponse{StatusCode: 100, Message: "foo"}
 	out := newResponder(in, 8998, JSON)
 	s.Equal(100, out.Status())
 	s.Equal("foo", out.Data().(ErrorResponse).Message)
 
-	in2 := &ErrorResponse{101, "foo0"}
+	in2 := &ErrorResponse{StatusCode: 101, Message: "foo0"}
 	out = newResponder(in2, 8999, JSON)
 	s.Equal(101, out.Status())
 	s.Equal("foo0", out.Data().(ErrorResponse).Message)

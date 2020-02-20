@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -15,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -31,7 +33,11 @@ func TestHostConnectorSuite(t *testing.T) {
 	s.ctx = &DBConnector{}
 
 	s.setup = func(s *HostConnectorSuite) {
-		s.NoError(db.ClearCollections(user.Collection, host.Collection))
+		s.NoError(db.ClearCollections(user.Collection, host.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
+		cmd := map[string]string{
+			"create": evergreen.ScopeCollection,
+		}
+		_ = evergreen.GetEnvironment().DB().RunCommand(nil, cmd)
 		host1 := &host.Host{
 			Id:             "host1",
 			StartedBy:      testUser,
@@ -40,8 +46,11 @@ func TestHostConnectorSuite(t *testing.T) {
 			Secret:         "abcdef",
 		}
 		host2 := &host.Host{
-			Id:             "host2",
-			StartedBy:      "user2",
+			Id:        "host2",
+			StartedBy: "user2",
+			Distro: distro.Distro{
+				Id: "distro2",
+			},
 			Status:         evergreen.HostTerminated,
 			ExpirationTime: time.Now().Add(time.Hour),
 		}
@@ -72,7 +81,7 @@ func TestHostConnectorSuite(t *testing.T) {
 		s.NoError(host4.Insert())
 		s.NoError(host5.Insert())
 
-		users := []string{testUser, "user2", "user3", "user4", "root"}
+		users := []string{testUser, "user2", "user3", "user4"}
 
 		for _, id := range users {
 			user := &user.DBUser{
@@ -80,8 +89,24 @@ func TestHostConnectorSuite(t *testing.T) {
 			}
 			s.NoError(user.Insert())
 		}
-
-		s.ctx.SetSuperUsers([]string{"root"})
+		root := user.DBUser{
+			Id:          "root",
+			SystemRoles: []string{"root"},
+		}
+		s.NoError(root.Insert())
+		rm := evergreen.GetEnvironment().RoleManager()
+		s.NoError(rm.AddScope(gimlet.Scope{
+			ID:        "root",
+			Resources: []string{"distro2", "distro5"},
+			Type:      evergreen.DistroResourceType,
+		}))
+		s.NoError(rm.UpdateRole(gimlet.Role{
+			ID:    "root",
+			Scope: "root",
+			Permissions: gimlet.Permissions{
+				evergreen.PermissionHosts: evergreen.HostsEdit.Value,
+			},
+		}))
 	}
 
 	suite.Run(t, s)
@@ -90,11 +115,16 @@ func TestHostConnectorSuite(t *testing.T) {
 func TestMockHostConnectorSuite(t *testing.T) {
 	s := new(HostConnectorSuite)
 	s.setup = func(s *HostConnectorSuite) {
+		s.NoError(db.ClearCollections(evergreen.ScopeCollection, evergreen.RoleCollection))
+		cmd := map[string]string{
+			"create": evergreen.ScopeCollection,
+		}
+		_ = evergreen.GetEnvironment().DB().RunCommand(nil, cmd)
 		s.ctx = &MockConnector{
 			MockHostConnector: MockHostConnector{
 				CachedHosts: []host.Host{
 					{Id: "host1", StartedBy: testUser, Status: evergreen.HostRunning, ExpirationTime: time.Now().Add(time.Hour), Secret: "abcdef"},
-					{Id: "host2", StartedBy: "user2", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)},
+					{Id: "host2", StartedBy: "user2", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour), Distro: distro.Distro{Id: "distro2"}},
 					{Id: "host3", StartedBy: "user3", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)},
 					{Id: "host4", StartedBy: "user4", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)},
 					{Id: "host5", StartedBy: evergreen.User, Status: evergreen.HostRunning, Distro: distro.Distro{Id: "distro5"}}},
@@ -114,12 +144,25 @@ func TestMockHostConnectorSuite(t *testing.T) {
 						Id: "user4",
 					},
 					"root": {
-						Id: "root",
+						Id:          "root",
+						SystemRoles: []string{"root"},
 					},
 				},
 			},
 		}
-		s.ctx.SetSuperUsers([]string{"root"})
+		rm := evergreen.GetEnvironment().RoleManager()
+		s.NoError(rm.AddScope(gimlet.Scope{
+			ID:        "root",
+			Resources: []string{"distro2", "distro5"},
+			Type:      evergreen.DistroResourceType,
+		}))
+		s.NoError(rm.UpdateRole(gimlet.Role{
+			ID:    "root",
+			Scope: "root",
+			Permissions: gimlet.Permissions{
+				evergreen.PermissionHosts: evergreen.HostsEdit.Value,
+			},
+		}))
 	}
 	suite.Run(t, s)
 }
@@ -210,8 +253,8 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	const testPublicKeyName = "testPubKey"
 	const testUserID = "TestSpawnHostUser"
 	const testUserAPIKey = "testApiKey"
-	const testInstanceType = "testInstanceType"
 	const testUserdata = "this is a dummy sentence"
+	const testInstanceType = "testInstanceType"
 
 	config, err := evergreen.GetConfig()
 	s.NoError(err)
@@ -241,10 +284,9 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 		KeyName:      testPublicKeyName,
 		UserData:     testUserdata,
 		InstanceTags: nil,
-		InstanceType: testInstanceType,
 	}
 
-	intentHost, err := (&DBHostConnector{}).NewIntentHost(options, testUser)
+	intentHost, err := (&DBHostConnector{}).NewIntentHost(context.Background(), options, testUser, config)
 	s.NoError(err)
 	s.Require().NotNil(intentHost)
 	foundHost, err := host.FindOne(host.ById(intentHost.Id))
@@ -257,6 +299,21 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	ec2Settings := &cloud.EC2ProviderSettings{}
 	s.NoError(ec2Settings.FromDistroSettings(foundHost.Distro, ""))
 	s.Equal(ec2Settings.UserData, options.UserData)
+
+	// with instance type
+	options.InstanceType = testInstanceType
+	_, err = (&DBHostConnector{}).NewIntentHost(context.Background(), options, testUser, config)
+	s.Require().Error(err)
+	fmt.Println(err.Error())
+	s.Contains(err.Error(), "not been allowed by admins")
+	config.Providers.AWS.AllowedInstanceTypes = []string{testInstanceType}
+	s.NoError(config.Set())
+
+	// found instance type in config
+	_, err = (&DBHostConnector{}).NewIntentHost(context.Background(), options, testUser, config)
+	s.Require().Error(err)
+	fmt.Println(err.Error())
+	s.Contains(err.Error(), "Unable to find region")
 }
 
 func (s *HostConnectorSuite) TestSetHostStatus() {

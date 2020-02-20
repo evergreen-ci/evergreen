@@ -3,6 +3,8 @@
 package mediatailor
 
 import (
+	"fmt"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
 	"github.com/aws/aws-sdk-go/aws/request"
@@ -291,8 +293,8 @@ func (c *MediaTailor) ListTagsForResourceRequest(input *ListTagsForResourceInput
 // See the AWS API reference guide for AWS MediaTailor's
 // API operation ListTagsForResource for usage and error information.
 //
-// Returned Error Codes:
-//   * ErrCodeBadRequestException "BadRequestException"
+// Returned Error Types:
+//   * BadRequestException
 //   One of the parameters in the request is invalid.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/mediatailor-2018-04-23/ListTagsForResource
@@ -446,8 +448,8 @@ func (c *MediaTailor) TagResourceRequest(input *TagResourceInput) (req *request.
 // See the AWS API reference guide for AWS MediaTailor's
 // API operation TagResource for usage and error information.
 //
-// Returned Error Codes:
-//   * ErrCodeBadRequestException "BadRequestException"
+// Returned Error Types:
+//   * BadRequestException
 //   One of the parameters in the request is invalid.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/mediatailor-2018-04-23/TagResource
@@ -527,8 +529,8 @@ func (c *MediaTailor) UntagResourceRequest(input *UntagResourceInput) (req *requ
 // See the AWS API reference guide for AWS MediaTailor's
 // API operation UntagResource for usage and error information.
 //
-// Returned Error Codes:
-//   * ErrCodeBadRequestException "BadRequestException"
+// Returned Error Types:
+//   * BadRequestException
 //   One of the parameters in the request is invalid.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/mediatailor-2018-04-23/UntagResource
@@ -551,6 +553,63 @@ func (c *MediaTailor) UntagResourceWithContext(ctx aws.Context, input *UntagReso
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
+}
+
+// One of the parameters in the request is invalid.
+type BadRequestException struct {
+	_            struct{} `type:"structure"`
+	respMetadata protocol.ResponseMetadata
+
+	// One of the parameters in the request is invalid.
+	Message_ *string `locationName:"Message" type:"string"`
+}
+
+// String returns the string representation
+func (s BadRequestException) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s BadRequestException) GoString() string {
+	return s.String()
+}
+
+func newErrorBadRequestException(v protocol.ResponseMetadata) error {
+	return &BadRequestException{
+		respMetadata: v,
+	}
+}
+
+// Code returns the exception type name.
+func (s BadRequestException) Code() string {
+	return "BadRequestException"
+}
+
+// Message returns the exception's message.
+func (s BadRequestException) Message() string {
+	if s.Message_ != nil {
+		return *s.Message_
+	}
+	return ""
+}
+
+// OrigErr always returns nil, satisfies awserr.Error interface.
+func (s BadRequestException) OrigErr() error {
+	return nil
+}
+
+func (s BadRequestException) Error() string {
+	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
+}
+
+// Status code returns the HTTP status code for the request's response error.
+func (s BadRequestException) StatusCode() int {
+	return s.respMetadata.StatusCode
+}
+
+// RequestID returns the service's response RequestID for request.
+func (s BadRequestException) RequestID() string {
+	return s.respMetadata.RequestID
 }
 
 // The configuration for using a content delivery network (CDN), like Amazon
@@ -806,6 +865,9 @@ type GetPlaybackConfigurationOutput struct {
 	// The configuration for HLS content.
 	HlsConfiguration *HlsConfiguration `type:"structure"`
 
+	// The configuration for pre-roll ad insertion.
+	LivePreRollConfiguration *LivePreRollConfiguration `type:"structure"`
+
 	// The identifier for the playback configuration.
 	Name *string `type:"string"`
 
@@ -873,6 +935,12 @@ func (s *GetPlaybackConfigurationOutput) SetDashConfiguration(v *DashConfigurati
 // SetHlsConfiguration sets the HlsConfiguration field's value.
 func (s *GetPlaybackConfigurationOutput) SetHlsConfiguration(v *HlsConfiguration) *GetPlaybackConfigurationOutput {
 	s.HlsConfiguration = v
+	return s
+}
+
+// SetLivePreRollConfiguration sets the LivePreRollConfiguration field's value.
+func (s *GetPlaybackConfigurationOutput) SetLivePreRollConfiguration(v *LivePreRollConfiguration) *GetPlaybackConfigurationOutput {
+	s.LivePreRollConfiguration = v
 	return s
 }
 
@@ -1088,6 +1156,45 @@ func (s *ListTagsForResourceOutput) SetTags(v map[string]*string) *ListTagsForRe
 	return s
 }
 
+// The configuration for pre-roll ad insertion.
+type LivePreRollConfiguration struct {
+	_ struct{} `type:"structure"`
+
+	// The URL for the ad decision server (ADS) for pre-roll ads. This includes
+	// the specification of static parameters and placeholders for dynamic parameters.
+	// AWS Elemental MediaTailor substitutes player-specific and session-specific
+	// parameters as needed when calling the ADS. Alternately, for testing, you
+	// can provide a static VAST URL. The maximum length is 25,000 characters.
+	AdDecisionServerUrl *string `type:"string"`
+
+	// The maximum allowed duration for the pre-roll ad avail. AWS Elemental MediaTailor
+	// won't play pre-roll ads to exceed this duration, regardless of the total
+	// duration of ads that the ADS returns.
+	MaxDurationSeconds *int64 `type:"integer"`
+}
+
+// String returns the string representation
+func (s LivePreRollConfiguration) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s LivePreRollConfiguration) GoString() string {
+	return s.String()
+}
+
+// SetAdDecisionServerUrl sets the AdDecisionServerUrl field's value.
+func (s *LivePreRollConfiguration) SetAdDecisionServerUrl(v string) *LivePreRollConfiguration {
+	s.AdDecisionServerUrl = &v
+	return s
+}
+
+// SetMaxDurationSeconds sets the MaxDurationSeconds field's value.
+func (s *LivePreRollConfiguration) SetMaxDurationSeconds(v int64) *LivePreRollConfiguration {
+	s.MaxDurationSeconds = &v
+	return s
+}
+
 type PlaybackConfiguration struct {
 	_ struct{} `type:"structure"`
 
@@ -1219,6 +1326,9 @@ type PutPlaybackConfigurationInput struct {
 	// The configuration for DASH content.
 	DashConfiguration *DashConfigurationForPut `type:"structure"`
 
+	// The configuration for pre-roll ad insertion.
+	LivePreRollConfiguration *LivePreRollConfiguration `type:"structure"`
+
 	// The identifier for the playback configuration.
 	Name *string `type:"string"`
 
@@ -1272,6 +1382,12 @@ func (s *PutPlaybackConfigurationInput) SetDashConfiguration(v *DashConfiguratio
 	return s
 }
 
+// SetLivePreRollConfiguration sets the LivePreRollConfiguration field's value.
+func (s *PutPlaybackConfigurationInput) SetLivePreRollConfiguration(v *LivePreRollConfiguration) *PutPlaybackConfigurationInput {
+	s.LivePreRollConfiguration = v
+	return s
+}
+
 // SetName sets the Name field's value.
 func (s *PutPlaybackConfigurationInput) SetName(v string) *PutPlaybackConfigurationInput {
 	s.Name = &v
@@ -1316,6 +1432,9 @@ type PutPlaybackConfigurationOutput struct {
 
 	// The configuration for HLS content.
 	HlsConfiguration *HlsConfiguration `type:"structure"`
+
+	// The configuration for pre-roll ad insertion.
+	LivePreRollConfiguration *LivePreRollConfiguration `type:"structure"`
 
 	Name *string `type:"string"`
 
@@ -1365,6 +1484,12 @@ func (s *PutPlaybackConfigurationOutput) SetDashConfiguration(v *DashConfigurati
 // SetHlsConfiguration sets the HlsConfiguration field's value.
 func (s *PutPlaybackConfigurationOutput) SetHlsConfiguration(v *HlsConfiguration) *PutPlaybackConfigurationOutput {
 	s.HlsConfiguration = v
+	return s
+}
+
+// SetLivePreRollConfiguration sets the LivePreRollConfiguration field's value.
+func (s *PutPlaybackConfigurationOutput) SetLivePreRollConfiguration(v *LivePreRollConfiguration) *PutPlaybackConfigurationOutput {
+	s.LivePreRollConfiguration = v
 	return s
 }
 

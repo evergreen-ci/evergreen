@@ -301,3 +301,15 @@ func (a *APIQuestionAnswer) ToService() (interface{}, error) {
 		Answer: FromStringPtr(a.Answer),
 	}, nil
 }
+
+type APIUser struct {
+	DisplayName *string `json:"display_name"`
+}
+
+func (a *APIUser) BuildFromService(h interface{}) error {
+	return errors.New("BuildFromService not implemented for APIUser")
+}
+
+func (a *APIUser) ToService() (interface{}, error) {
+	return nil, errors.New("ToService not implemented for APIUser")
+}

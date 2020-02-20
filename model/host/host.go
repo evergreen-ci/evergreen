@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -222,24 +221,6 @@ func (opts *DockerOptions) FromDistroSettings(d distro.Distro, _ string) error {
 		if err := mapstructure.Decode(d.ProviderSettings, opts); err != nil {
 			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, opts)
 		}
-		bytes, err := bson.Marshal(opts)
-		if err != nil {
-			return errors.Wrap(err, "error marshalling provider setting into bson")
-		}
-		doc := &birch.Document{}
-		if err := doc.UnmarshalBSON(bytes); err != nil {
-			return errors.Wrapf(err, "error unmarshalling settings bytes into document")
-		}
-		if len(d.ProviderSettingsList) == 0 {
-			if err := d.UpdateProviderSettings(doc); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"distro":   d.Id,
-					"provider": d.Provider,
-					"settings": d.ProviderSettings,
-				}))
-				return errors.Wrapf(err, "error updating provider settings")
-			}
-		}
 	} else if len(d.ProviderSettingsList) != 0 {
 		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
 		if err != nil {
@@ -335,11 +316,6 @@ type SpawnHostUsage struct {
 
 const (
 	MaxLCTInterval = 5 * time.Minute
-
-	// Potential init systems supported by a Linux host.
-	InitSystemSystemd = "systemd"
-	InitSystemSysV    = "sysv"
-	InitSystemUpstart = "upstart"
 
 	// Max number of spawn hosts with no expiration for user
 	DefaultUnexpirableHostsPerUser = 1
@@ -2256,6 +2232,10 @@ func FindHostWithVolume(volumeID string) (*Host, error) {
 // FindStaticNeedsNewSSHKeys finds all static hosts that do not have the same
 // set of SSH keys as those in the global settings.
 func FindStaticNeedsNewSSHKeys(settings *evergreen.Settings) ([]Host, error) {
+	if len(settings.SSHKeyPairs) == 0 {
+		return nil, nil
+	}
+
 	names := []string{}
 	for _, pair := range settings.SSHKeyPairs {
 		names = append(names, pair.Name)

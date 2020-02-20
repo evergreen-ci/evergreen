@@ -1,7 +1,6 @@
 package operations
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -35,10 +34,7 @@ func TestHostRsync(t *testing.T) {
 			return "", err
 		}
 
-		output := &util.CappedWriter{
-			Buffer:   &bytes.Buffer{},
-			MaxBytes: 1024 * 1024,
-		}
+		output := util.NewMBCappedWriter()
 
 		err = jasper.NewCommand().Add([]string{cygpath, "-u", path}).SetCombinedWriter(output).Run(ctx)
 		return strings.TrimSpace(output.String()), err

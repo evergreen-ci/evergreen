@@ -161,7 +161,6 @@ func (s *AdminSuite) TestBaseConfig() {
 			Token:     "token",
 			Channel:   "channel",
 		},
-		SuperUsers: []string{"user"},
 	}
 
 	err := config.Set()
@@ -192,7 +191,6 @@ func (s *AdminSuite) TestBaseConfig() {
 		s.Equal(config.SSHKeyPairs[i].Private, settings.SSHKeyPairs[i].Private)
 		s.Empty(config.SSHKeyPairs[i].EC2Regions)
 	}
-	s.Equal(config.SuperUsers, settings.SuperUsers)
 }
 
 func (s *AdminSuite) TestServiceFlags() {
@@ -305,7 +303,8 @@ func (s *AdminSuite) TestAuthConfig() {
 			Users:        []string{"ghuser"},
 			Organization: "ghorg",
 		},
-		PreferredType: AuthLDAPKey,
+		PreferredType:           AuthLDAPKey,
+		BackgroundReauthMinutes: 60,
 	}
 
 	err := config.Set()

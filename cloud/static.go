@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -12,7 +11,6 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -49,24 +47,6 @@ func (s *StaticSettings) FromDistroSettings(d distro.Distro, _ string) error {
 	if d.ProviderSettings != nil {
 		if err := mapstructure.Decode(d.ProviderSettings, s); err != nil {
 			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, s)
-		}
-		bytes, err := bson.Marshal(s)
-		if err != nil {
-			return errors.Wrap(err, "error marshalling provider setting into bson")
-		}
-		doc := &birch.Document{}
-		if err := doc.UnmarshalBSON(bytes); err != nil {
-			return errors.Wrapf(err, "error unmarshalling settings bytes into document")
-		}
-		if len(d.ProviderSettingsList) == 0 {
-			if err := d.UpdateProviderSettings(doc); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"distro":   d.Id,
-					"provider": d.Provider,
-					"settings": d.ProviderSettings,
-				}))
-				return errors.Wrapf(err, "error updating provider settings")
-			}
 		}
 	} else if len(d.ProviderSettingsList) != 0 {
 		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
@@ -153,6 +133,10 @@ func (staticMgr *staticManager) CreateVolume(context.Context, *host.Volume) (*ho
 
 func (staticMgr *staticManager) DeleteVolume(context.Context, *host.Volume) error {
 	return errors.New("can't delete volume with static provider")
+}
+
+func (staticMgr *staticManager) CheckInstanceType(context.Context, string) error {
+	return errors.New("can't specify instance type with static provider")
 }
 
 // determine how long until a payment is due for the host. static hosts always

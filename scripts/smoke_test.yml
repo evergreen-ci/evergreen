@@ -5,14 +5,14 @@ ui:
   "/waterfall/logkeeper":
     - "logkeeper"
     - "Waterfall"
-  "/task/logkeeper_ubuntu_test_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58/0":
-    - "Added .docker-test.yaml for docker testing"
+  ? "/task/logkeeper_ubuntu_test_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58/0"
+  : - "Added .docker-test.yaml for docker testing"
     - "edd78"
     - "logkeeper"
     - "logkeeper"
     - "Waterfall"
-  "/build/logkeeper_ubuntu_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58":
-    - "Build History"
+  ? "/build/logkeeper_ubuntu_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58"
+  : - "Build History"
     - "Build"
     - "edd78"
     - "logkeeper"
@@ -24,7 +24,16 @@ ui:
     - "edd78"
     - "logkeeper"
   "/waterfall/performance":
-    - var project = "performance"
+    - "not authorized for this action"
+  "/distros":
+    - "localhost"
+    - "localhost2"
+  "/hosts":
+    - "localhost"
+  "/host/localhost":
+    - "Host localhost"
+  "/host/localhost2":
+    - "not authorized for this action"
 api:
   "/":
     - "404"
@@ -38,11 +47,11 @@ api:
     - "404"
   "/ref/evergreen":
     - "evergreen"
-  "/rest/v2/builds/logkeeper_ubuntu_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58":
-    - "logkeeper_ubuntu_test_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58"
+  ? "/rest/v2/builds/logkeeper_ubuntu_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58"
+  : - "logkeeper_ubuntu_test_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58"
     - "display_name"
     - "build_variant"
-  "/rest/v2/builds/sys_perf_linux_3_node_replSet_initialsync_40dc86136f85f88e1782a1c65b49bfba02757009_17_12_05_17_20_27":
-    - "linux-3-node-replSet-initialsync"
-  "/rest/v2/builds/performance_linux_mmap_standalone_37cb7ea09393e88662e3139bd20fa29e59f2a1a3_18_01_11_00_01_36":
-    - "performance_linux_mmap_standalone_insert_37cb7ea09393e88662e3139bd20fa29e59f2a1a3_18_01_11_00_01_36"
+  ? "/rest/v2/builds/sys_perf_linux_3_node_replSet_initialsync_40dc86136f85f88e1782a1c65b49bfba02757009_17_12_05_17_20_27"
+  : - "linux-3-node-replSet-initialsync"
+  ? "/rest/v2/builds/performance_linux_mmap_standalone_37cb7ea09393e88662e3139bd20fa29e59f2a1a3_18_01_11_00_01_36"
+  : - "not authorized for this action"

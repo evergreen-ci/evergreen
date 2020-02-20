@@ -2,7 +2,15 @@
 
 package waf
 
+import (
+	"github.com/aws/aws-sdk-go/private/protocol"
+)
+
 const (
+
+	// ErrCodeBadRequestException for service response error code
+	// "WAFBadRequestException".
+	ErrCodeBadRequestException = "WAFBadRequestException"
 
 	// ErrCodeDisallowedNameException for service response error code
 	// "WAFDisallowedNameException".
@@ -197,4 +205,33 @@ const (
 	//
 	// The specified subscription does not exist.
 	ErrCodeSubscriptionNotFoundException = "WAFSubscriptionNotFoundException"
+
+	// ErrCodeTagOperationException for service response error code
+	// "WAFTagOperationException".
+	ErrCodeTagOperationException = "WAFTagOperationException"
+
+	// ErrCodeTagOperationInternalErrorException for service response error code
+	// "WAFTagOperationInternalErrorException".
+	ErrCodeTagOperationInternalErrorException = "WAFTagOperationInternalErrorException"
 )
+
+var exceptionFromCode = map[string]func(protocol.ResponseMetadata) error{
+	"WAFBadRequestException":                newErrorBadRequestException,
+	"WAFDisallowedNameException":            newErrorDisallowedNameException,
+	"WAFInternalErrorException":             newErrorInternalErrorException,
+	"WAFInvalidAccountException":            newErrorInvalidAccountException,
+	"WAFInvalidOperationException":          newErrorInvalidOperationException,
+	"WAFInvalidParameterException":          newErrorInvalidParameterException,
+	"WAFInvalidPermissionPolicyException":   newErrorInvalidPermissionPolicyException,
+	"WAFInvalidRegexPatternException":       newErrorInvalidRegexPatternException,
+	"WAFLimitsExceededException":            newErrorLimitsExceededException,
+	"WAFNonEmptyEntityException":            newErrorNonEmptyEntityException,
+	"WAFNonexistentContainerException":      newErrorNonexistentContainerException,
+	"WAFNonexistentItemException":           newErrorNonexistentItemException,
+	"WAFReferencedItemException":            newErrorReferencedItemException,
+	"WAFServiceLinkedRoleErrorException":    newErrorServiceLinkedRoleErrorException,
+	"WAFStaleDataException":                 newErrorStaleDataException,
+	"WAFSubscriptionNotFoundException":      newErrorSubscriptionNotFoundException,
+	"WAFTagOperationException":              newErrorTagOperationException,
+	"WAFTagOperationInternalErrorException": newErrorTagOperationInternalErrorException,
+}

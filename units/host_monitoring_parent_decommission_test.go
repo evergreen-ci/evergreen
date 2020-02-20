@@ -24,7 +24,7 @@ func TestDecommissioningParentWithTerminatedContainers(t *testing.T) {
 	require.NoError(t, db.Clear(host.Collection), "error clearing %v collections", host.Collection)
 	require.NoError(t, db.Clear(distro.Collection), "Error clearing '%v' collection", distro.Collection)
 
-	d2 := &distro.Distro{Id: "d2"}
+	d2 := distro.Distro{Id: "d2", HostAllocatorSettings: distro.HostAllocatorSettings{MinimumHosts: 2}}
 	assert.NoError(d2.Insert())
 
 	now := time.Now()
@@ -32,7 +32,7 @@ func TestDecommissioningParentWithTerminatedContainers(t *testing.T) {
 
 	host1 := &host.Host{
 		Id:                      "host1",
-		Distro:                  *d2,
+		Distro:                  d2,
 		Status:                  evergreen.HostRunning,
 		HasContainers:           true,
 		LastContainerFinishTime: now,
@@ -41,7 +41,7 @@ func TestDecommissioningParentWithTerminatedContainers(t *testing.T) {
 	// host2 should be decommissioned as its containers have terminated
 	host2 := &host.Host{
 		Id:                      "host2",
-		Distro:                  *d2,
+		Distro:                  d2,
 		Status:                  evergreen.HostRunning,
 		HasContainers:           true,
 		LastContainerFinishTime: now.Add(10 * time.Minute),
@@ -62,10 +62,19 @@ func TestDecommissioningParentWithTerminatedContainers(t *testing.T) {
 	assert.NoError(host3.Insert())
 	assert.NoError(host4.Insert())
 
-	// MaxContainers: 3
-	j := NewParentDecommissionJob("two", (*d2).Id, 3)
-	assert.False(j.Status().Completed)
+	// Running the job should not drop parents below min hosts
+	j := NewParentDecommissionJob("two", d2.Id, 3)
+	j.Run(context.Background())
 
+	assert.NoError(j.Error())
+	assert.True(j.Status().Completed)
+	h2, err := host.FindOne(host.ById("host2"))
+	assert.NoError(err)
+	assert.Equal(evergreen.HostRunning, h2.Status)
+
+	// Setting min hosts lower should make host2 get decommissioned
+	d2.HostAllocatorSettings.MinimumHosts = 1
+	assert.NoError(d2.Update())
 	j.Run(context.Background())
 
 	assert.NoError(j.Error())
@@ -75,7 +84,7 @@ func TestDecommissioningParentWithTerminatedContainers(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(evergreen.HostRunning, h1.Status)
 
-	h2, err := host.FindOne(host.ById("host2"))
+	h2, err = host.FindOne(host.ById("host2"))
 	assert.NoError(err)
 	assert.Equal(evergreen.HostDecommissioned, h2.Status)
 

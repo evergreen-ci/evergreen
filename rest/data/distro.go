@@ -63,7 +63,6 @@ func (dc *DBDistroConnector) UpdateDistro(old, new *distro.Distro) error {
 			}
 		}
 	}
-	new.ProviderSettingsList = nil
 	err := new.Update()
 	if err != nil {
 		return gimlet.ErrorResponse{

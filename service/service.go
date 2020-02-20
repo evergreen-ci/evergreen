@@ -41,10 +41,13 @@ func GetServer(addr string, n http.Handler) *http.Server {
 func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	app := gimlet.NewApp()
 	app.AddMiddleware(gimlet.MakeRecoveryLogger())
-	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, uis.umconf))
-	app.AddMiddleware(gimlet.NewAuthenticationHandler(gimlet.NewBasicAuthenticator(nil, nil), uis.UserManager))
+	app.AddMiddleware(gimlet.UserMiddleware(uis.env.UserManager(), uis.umconf))
+	app.AddMiddleware(gimlet.NewAuthenticationHandler(gimlet.NewBasicAuthenticator(nil, nil), uis.env.UserManager()))
 	app.AddMiddleware(gimlet.NewStatic("", http.Dir(filepath.Join(uis.Home, "public"))))
-	app.AddMiddleware(gimlet.NewStatic("/clients", http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory))))
+
+	clients := gimlet.NewApp()
+	clients.AddMiddleware(gimlet.NewGzipDefault())
+	clients.AddMiddleware(gimlet.NewStatic("/clients", http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory))))
 
 	// in the future, we'll make the gimlet app here, but we
 	// need/want to access and construct it separately.
@@ -54,7 +57,6 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 		APIQueue:     as.queue,
 		QueueGroup:   as.env.RemoteQueueGroup(),
 		URL:          as.Settings.Ui.Url,
-		SuperUsers:   as.Settings.SuperUsers,
 		GithubSecret: []byte(as.Settings.Api.GithubWebhookSecret),
 	}
 	route.AttachHandler(rest, opts)
@@ -70,7 +72,6 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 		APIQueue:     as.queue,
 		QueueGroup:   as.env.RemoteQueueGroup(),
 		URL:          as.Settings.Ui.Url,
-		SuperUsers:   as.Settings.SuperUsers,
 		GithubSecret: []byte(as.Settings.Api.GithubWebhookSecret),
 	}
 	route.AttachHandler(apiRestV2, opts)
@@ -85,5 +86,5 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 
 	// the order that we merge handlers matters here, and we must
 	// define more specific routes before less specific routes.
-	return gimlet.MergeApplications(app, uiService, rest, apiRestV2, apiService)
+	return gimlet.MergeApplications(app, clients, uiService, rest, apiRestV2, apiService)
 }

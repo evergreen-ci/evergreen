@@ -1,6 +1,19 @@
 package artifact
 
+import (
+	"log"
+	"time"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
+)
+
 const Collection = "artifact_files"
+const PresignExpireTime = 15 * time.Minute
 
 const (
 	// strings for setting visibility
@@ -47,6 +60,79 @@ type File struct {
 	Bucket string `json:"bucket,omitempty" bson:"bucket,omitempty"`
 	//FileKey is the path to the file in the buckt
 	FileKey string `json:"filekey,omitempty" bson:"filekey,omitempty"`
+}
+
+// stripHiddenFiles is a helper for only showing users the files they are allowed to see.
+func StripHiddenFiles(files []File, hasUser bool) []File {
+	publicFiles := []File{}
+	for _, file := range files {
+		switch {
+		case file.Visibility == None:
+			continue
+		case file.Visibility == Private && hasUser == false:
+			continue
+		default:
+			publicFiles = append(publicFiles, file)
+		}
+	}
+	return publicFiles
+}
+
+func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {
+	artifacts, err := FindAll(ByTaskIdsAndExecutions(tasks))
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding artifact files for task")
+	}
+	if artifacts == nil {
+		taskIds := []string{}
+		for _, t := range tasks {
+			taskIds = append(taskIds, t.TaskID)
+		}
+		artifacts, err = FindAll(ByTaskIds(taskIds))
+		if err != nil {
+			return nil, errors.Wrap(err, "error finding artifact files for task without execution number")
+		}
+		if artifacts == nil {
+			return []File{}, nil
+		}
+	}
+	files := []File{}
+	catcher := grip.NewBasicCatcher()
+	for _, artifact := range artifacts {
+		for i := range artifact.Files {
+			if artifact.Files[i].Visibility == "signed" {
+				if artifact.Files[i].AwsSecret == "" || artifact.Files[i].AwsKey == "" || artifact.Files[i].Bucket == "" || artifact.Files[i].FileKey == "" {
+					err = errors.New("error presigning the url for artifact")
+					catcher.Add(err)
+				}
+
+				sess, err := session.NewSession(&aws.Config{
+					Region: aws.String("us-east-1"),
+					Credentials: credentials.NewStaticCredentialsFromCreds(credentials.Value{
+						AccessKeyID:     artifact.Files[i].AwsKey,
+						SecretAccessKey: artifact.Files[i].AwsSecret,
+					}),
+				})
+				if err != nil {
+					log.Fatalf("problem creating session: %s", err.Error())
+				}
+				svc := s3.New(sess)
+
+				req, _ := svc.GetObjectRequest(&s3.GetObjectInput{
+					Bucket: aws.String(artifact.Files[i].Bucket),
+					Key:    aws.String(artifact.Files[i].FileKey),
+				})
+
+				urlStr, err := req.Presign(PresignExpireTime)
+				if err != nil {
+					log.Fatalf("problem signing request: %s", err.Error())
+				}
+				artifact.Files[i].Link = urlStr
+			}
+		}
+		files = append(files, artifact.Files...)
+	}
+	return files, nil
 }
 
 // Array turns the parameter map into an array of File structs.
