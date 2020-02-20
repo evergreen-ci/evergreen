@@ -65,7 +65,7 @@ type ComplexityRoot struct {
 		AddFavoriteProject    func(childComplexity int, identifier string) int
 		RemoveFavoriteProject func(childComplexity int, identifier string) int
 		ScheduleTask          func(childComplexity int, taskID string) int
-		SetPriority           func(childComplexity int, taskID string, value int) int
+		SetPriority           func(childComplexity int, taskID string, priority int) int
 		UnscheduleTask        func(childComplexity int, taskID string) int
 	}
 
@@ -197,7 +197,7 @@ type MutationResolver interface {
 	RemoveFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
 	ScheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 	UnscheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
-	SetPriority(ctx context.Context, taskID string, value int) (*model.APITask, error)
+	SetPriority(ctx context.Context, taskID string, priority int) (*model.APITask, error)
 }
 type PatchResolver interface {
 	Time(ctx context.Context, obj *model.APIPatch) (*PatchTime, error)
@@ -322,7 +322,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SetPriority(childComplexity, args["taskId"].(string), args["value"].(int)), true
+		return e.complexity.Mutation.SetPriority(childComplexity, args["taskId"].(string), args["priority"].(int)), true
 
 	case "Mutation.unscheduleTask":
 		if e.complexity.Mutation.UnscheduleTask == nil {
@@ -1046,7 +1046,7 @@ type Mutation {
 	removeFavoriteProject(identifier: String!): Project!
 	scheduleTask(taskId: String!): Task!
 	unscheduleTask(taskId: String!): Task!
-	setPriority(taskId: String!, value: Int!): Task!
+	setPriority(taskId: String!, priority: Int!): Task!
 }
 type Patch {
 	id: ID!
@@ -1229,13 +1229,13 @@ func (ec *executionContext) field_Mutation_setPriority_args(ctx context.Context,
 	}
 	args["taskId"] = arg0
 	var arg1 int
-	if tmp, ok := rawArgs["value"]; ok {
+	if tmp, ok := rawArgs["priority"]; ok {
 		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["value"] = arg1
+	args["priority"] = arg1
 	return args, nil
 }
 
@@ -1841,7 +1841,7 @@ func (ec *executionContext) _Mutation_setPriority(ctx context.Context, field gra
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().SetPriority(rctx, args["taskId"].(string), args["value"].(int))
+		return ec.resolvers.Mutation().SetPriority(rctx, args["taskId"].(string), args["priority"].(int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
