@@ -2363,8 +2363,8 @@
         "data": {
           "patch": {
             "duration": {
-              "makespan": null,
-              "timeTaken": "3m39s"
+              "makespan": "3m39s",
+              "timeTaken": null
             }
           }
         }
