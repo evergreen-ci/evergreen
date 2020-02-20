@@ -5,7 +5,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
 
@@ -404,20 +403,12 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	apiDistro.Aliases = d.Aliases
 	apiDistro.UserSpawnAllowed = d.SpawnAllowed
 	apiDistro.Provider = ToStringPtr(d.Provider)
-	if d.ProviderSettings != nil && cloud.IsEc2Provider(d.Provider) {
-		ec2Settings := &cloud.EC2ProviderSettings{}
-		err := mapstructure.Decode(d.ProviderSettings, ec2Settings)
-		if err != nil {
-			return err
+	if len(d.ProviderSettingsList) == 0 && d.ProviderSettings != nil {
+		if err := cloud.CreateSettingsListFromLegacy(&d); err != nil {
+			return errors.Wrapf(err, "error creating settings list from legacy settings")
 		}
-		apiDistro.ImageID = ToStringPtr(ec2Settings.AMI)
 	}
-	if d.ProviderSettings != nil {
-		apiDistro.ProviderSettings = *d.ProviderSettings
-	}
-	if len(d.ProviderSettingsList) > 0 {
-		apiDistro.ProviderSettingsList = d.ProviderSettingsList
-	}
+	apiDistro.ProviderSettingsList = d.ProviderSettingsList
 	apiDistro.Arch = ToStringPtr(d.Arch)
 	apiDistro.WorkDir = ToStringPtr(d.WorkDir)
 	apiDistro.SetupAsSudo = d.SetupAsSudo
@@ -494,9 +485,6 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d.WorkDir = FromStringPtr(apiDistro.WorkDir)
 	d.Provider = FromStringPtr(apiDistro.Provider)
 	d.ProviderSettingsList = apiDistro.ProviderSettingsList
-	if apiDistro.ProviderSettings != nil {
-		d.ProviderSettings = &apiDistro.ProviderSettings
-	}
 	d.SetupAsSudo = apiDistro.SetupAsSudo
 	d.Setup = FromStringPtr(apiDistro.Setup)
 	d.Teardown = FromStringPtr(apiDistro.Teardown)

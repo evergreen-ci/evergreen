@@ -3,9 +3,15 @@ package route
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
+
+	"github.com/evergreen-ci/birch"
+	"go.mongodb.org/mongo-driver/bson"
+
+	"github.com/evergreen-ci/evergreen/cloud"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/mock"
@@ -706,13 +712,36 @@ func (s *DistroPatchByIDSuite) TestRunValidProvider() {
 	s.Equal(apiDistro.Provider, model.ToStringPtr("mock"))
 }
 
-func (s *DistroPatchByIDSuite) TestRunValidProviderSettings() {
+func (s *DistroPatchByIDSuite) TestLegacySettingsInvalid() {
 	ctx := context.Background()
 	json := []byte(
-		`{"settings" :{"bid_price": 0.15, "security_group": "password123"}}`)
+		`{"settings" :{"ami": "ami1"}}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
 	h.body = json
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusBadRequest)
+}
+
+func (s *DistroPatchByIDSuite) TestRunProviderSettingsList() {
+	ctx := context.Background()
+	distro1 := s.data.CachedDistros[0]
+	s.NoError(cloud.UpdateProviderSettings(distro1))
+	s.data.CachedDistros[0] = distro1
+	s.Len(s.data.CachedDistros[0].ProviderSettingsList, 1)
+	doc := distro1.ProviderSettingsList[0].Copy()
+	doc = doc.Set(birch.EC.Double("bid_price", 0.15))
+	doc = doc.Set(birch.EC.String("security_group", "password123"))
+	h := s.rm.(*distroIDPatchHandler)
+	h.distroID = "fedora8"
+	temp := distro.Distro{Id: h.distroID, ProviderSettingsList: []*birch.Document{doc}}
+	bytes, err := json.Marshal(temp)
+	s.NoError(err)
+	h.body = bytes
+	temp2 := distro.Distro{}
+	s.NoError(json.Unmarshal(bytes, &temp2))
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
@@ -720,22 +749,14 @@ func (s *DistroPatchByIDSuite) TestRunValidProviderSettings() {
 
 	apiDistro, ok := (resp.Data()).(*model.APIDistro)
 	s.Require().True(ok)
-	points := apiDistro.ProviderSettings["mount_points"]
-	mapped := points.(map[string]interface{})
-	s.Equal(mapped["device_name"], "/dev/xvdb")
-	s.Equal(mapped["virtual_name"], "ephemeral0")
-	s.Equal(apiDistro.ProviderSettings["bid_price"], 0.15)
-	s.Equal(apiDistro.ProviderSettings["instance_type"], "m3.large")
-	s.Equal(apiDistro.ProviderSettings["key_name"], "mci")
-	s.Equal(apiDistro.ProviderSettings["security_group"], "password123")
-	s.Equal(apiDistro.ProviderSettings["ami"], "ami-2814683f")
+	s.Empty(apiDistro.ProviderSettings)
 
 	s.Require().Len(apiDistro.ProviderSettingsList, 1)
-	doc := apiDistro.ProviderSettingsList[0]
+	doc = apiDistro.ProviderSettingsList[0]
 	mappedDoc := doc.Lookup("mount_points").MutableDocument()
 	s.Equal(mappedDoc.Lookup("device_name").StringValue(), "/dev/xvdb")
 	s.Equal(mappedDoc.Lookup("virtual_name").StringValue(), "ephemeral0")
-	s.Equal(doc.Lookup("bid_price").Double(), .15)
+	s.Equal(doc.Lookup("bid_price").Double(), 0.15)
 	s.Equal(doc.Lookup("instance_type").StringValue(), "m3.large")
 	s.Equal(doc.Lookup("key_name").StringValue(), "mci")
 	s.Equal(doc.Lookup("security_group").StringValue(), "password123")
@@ -1184,7 +1205,7 @@ func (s *DistroPatchByIDSuite) TestRunInvalidCloneMethod() {
 
 func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	ctx := context.Background()
-	json := []byte(
+	docToWrite := []byte(
 		`{
 				"arch" : "linux_amd64",
 				"work_dir" : "~/data/mci",
@@ -1192,17 +1213,31 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 					"maximum_hosts": 20
 				},
 				"provider" : "mock",
-				"settings" : {
-					"mount_points" : [{
-						"device_name" : "~/dev/xvdb",
-						"virtual_name" : "~ephemeral0"
+				"provider_settings" : [
+					{
+						"mount_points" : [{
+							"device_name" : "~/dev/xvdb",
+							"virtual_name" : "~ephemeral0"
+						}],
+						"ami" : "~ami-2814683f",
+						"bid_price" : 0.1,
+						"instance_type" : "~m3.large",
+						"key_name" : "~mci",
+						"security_group" : "~mci",
+						"region" : "us-east-1"
+					},
+					{
+						"mount_points" : [{
+							"device_name" : "~/dev/xvdb",
+							"virtual_name" : "~ephemeral0"
+						}],
+						"ami" : "~ami-different",
+						"bid_price" : 1.0,
+						"instance_type" : "~m3.small",
+						"key_name" : "icm",
+						"security_group" : "icm",
+						"region" : "us-west-2"
 					}],
-					"ami" : "~ami-2814683f",
-					"bid_price" : 0.1,
-					"instance_type" : "~m3.large",
-					"key_name" : "~mci",
-					"security_group" : "~mci"
-				},
 				"setup_as_sudo" : false,
 				"setup" : "~Set-up script",
 				"teardown" : "~Tear-down script",
@@ -1255,11 +1290,10 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
-	h.body = json
+	h.body = docToWrite
 
 	resp := s.rm.Run(ctx)
 	s.Equal(resp.Status(), http.StatusOK)
-
 	s.NotNil(resp.Data())
 	apiDistro, ok := (resp.Data()).(*model.APIDistro)
 	s.Require().True(ok)
@@ -1269,15 +1303,17 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(apiDistro.HostAllocatorSettings.MaximumHosts, 20)
 	s.Equal(apiDistro.Provider, model.ToStringPtr("mock"))
 
-	points := apiDistro.ProviderSettings["mount_points"]
-	typed := points.([]interface{})
-	mapped := typed[0].(map[string]interface{})
-	s.Equal(mapped["device_name"], "~/dev/xvdb")
-	s.Equal(mapped["virtual_name"], "~ephemeral0")
+	s.Empty(apiDistro.ProviderSettings)
+	s.Require().Len(apiDistro.ProviderSettingsList, 2)
+	doc := apiDistro.ProviderSettingsList[0]
 
-	s.Equal(apiDistro.ProviderSettings["ami"], "~ami-2814683f")
-	s.Equal(apiDistro.ProviderSettings["bid_price"], 0.1)
-	s.Equal(apiDistro.ProviderSettings["instance_type"], "~m3.large")
+	mountPoint := doc.Lookup("mount_points").MutableArray().Lookup(0).MutableDocument()
+	s.Equal(mountPoint.Lookup("device_name").StringValue(), "~/dev/xvdb")
+	s.Equal(mountPoint.Lookup("virtual_name").StringValue(), "~ephemeral0")
+	s.Equal(doc.Lookup("ami").StringValue(), "~ami-2814683f")
+	s.Equal(doc.Lookup("bid_price").Double(), 0.10)
+	s.Equal(doc.Lookup("instance_type").StringValue(), "~m3.large")
+
 	s.Equal(apiDistro.SetupAsSudo, false)
 	s.Equal(apiDistro.Setup, model.ToStringPtr("~Set-up script"))
 	s.Equal(apiDistro.Teardown, model.ToStringPtr("~Tear-down script"))
@@ -1306,6 +1342,17 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 		model.APIExpansion{Key: model.ToStringPtr("~kill_pid"), Value: model.ToStringPtr("~kill -- -$(ps opgid= %v)")},
 		model.APIExpansion{Key: model.ToStringPtr("~scons_prune_ratio"), Value: model.ToStringPtr("~0.8")},
 	})
+
+	// no problem turning into settings object
+	settings := &cloud.EC2ProviderSettings{}
+	bytes, err := doc.MarshalBSON()
+	s.NoError(err)
+	s.NoError(bson.Unmarshal(bytes, settings))
+	s.NotEmpty(settings)
+	s.NotEqual(settings.Region, "")
+	s.Require().Len(settings.MountPoints, 1)
+	s.Equal(settings.MountPoints[0].DeviceName, "~/dev/xvdb")
+	s.Equal(settings.MountPoints[0].VirtualName, "~ephemeral0")
 }
 
 func (s *DistroPatchByIDSuite) TestRunInvalidNameChange() {

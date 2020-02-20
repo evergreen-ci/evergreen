@@ -8,10 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // ProviderSettings exposes provider-specific configuration settings for a Manager.
@@ -244,28 +242,47 @@ func ConvertContainerManager(m Manager) (ContainerManager, error) {
 	return nil, errors.New("Error converting manager to container manager")
 }
 
-// this updates the local provider settings list
+// If ProviderSettings is populated, then it was modified via UI and we should save this to the list.
+// Otherwise, repopulate ProviderSettings from the list to maintain the UI. This is only necessary temporarily.
 func UpdateProviderSettings(d *distro.Distro) error {
-	if d.ProviderSettings != nil {
-		bytes, err := bson.Marshal(d.ProviderSettings)
+	if d.ProviderSettings != nil && len(*d.ProviderSettings) > 0 {
+		if err := CreateSettingsListFromLegacy(d); err != nil {
+			return errors.Wrapf(err, "error creating new settings list for distro '%s'", d.Id)
+		}
+	} else if len(d.ProviderSettingsList) > 0 {
+		region := ""
+		if len(d.ProviderSettingsList) > 1 {
+			region = evergreen.DefaultEC2Region
+		}
+		s, err := GetSettings(d.Provider)
 		if err != nil {
-			return errors.Wrap(err, "error marshalling provider setting into bson")
+			return errors.Wrap(err, "error getting settings object")
 		}
-		doc := &birch.Document{}
-		if err := doc.UnmarshalBSON(bytes); err != nil {
-			return errors.Wrapf(err, "error unmarshalling settings bytes into document")
+		if err := s.FromDistroSettings(*d, region); err != nil {
+
 		}
-		if IsEc2Provider(d.Provider) {
-			doc = doc.Set(birch.EC.String("region", evergreen.DefaultEC2Region))
+		doc, err := d.GetProviderSettingByRegion(region)
+		if err != nil {
+			return errors.Wrapf(err, "unable to get default provider settings for distro '%s'", d.Id)
 		}
-		d.ProviderSettingsList = []*birch.Document{doc}
+		docMap := doc.ExportMap()
+		d.ProviderSettings = &docMap
 	}
-	grip.Debug(message.Fields{
-		"message":                "updating provider settings list",
-		"distro_id":              d.Id,
-		"provider_settings_list": d.ProviderSettingsList,
-		"provider_settings":      d.ProviderSettings,
-		"provider":               d.Provider,
-	})
+	return nil
+}
+
+func CreateSettingsListFromLegacy(d *distro.Distro) error {
+	bytes, err := bson.Marshal(d.ProviderSettings)
+	if err != nil {
+		return errors.Wrap(err, "error marshalling provider setting into bson")
+	}
+	doc := &birch.Document{}
+	if err := doc.UnmarshalBSON(bytes); err != nil {
+		return errors.Wrapf(err, "error unmarshalling settings bytes into document")
+	}
+	if IsEc2Provider(d.Provider) {
+		doc = doc.Set(birch.EC.String("region", evergreen.DefaultEC2Region))
+	}
+	d.ProviderSettingsList = []*birch.Document{doc}
 	return nil
 }
