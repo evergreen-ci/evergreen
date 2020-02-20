@@ -22,7 +22,6 @@ const (
 
 	AttachResultsPostRetries   = 5
 	AttachResultsRetrySleepSec = 10 * time.Second
-	PresignExpireTime          = 15 * time.Minute
 )
 
 // AttachPlugin has commands for uploading task results and links to files,
