@@ -78,6 +78,7 @@ type hostCacheItem struct {
 	inserted             time.Time
 	owner                string
 	isVirtualWorkstation bool
+	isRunning            bool
 }
 
 func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo TemplateFunctionOptions) (*UIServer, error) {
@@ -236,7 +237,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	allowsCORS := gimlet.WrapperMiddleware(uis.setCORSHeaders)
 	ownsHost := gimlet.WrapperMiddleware(uis.ownsHost)
 	redirectSlash := gimlet.WrapperMiddleware(uis.redirectSlash)
-	isVirtualWorkstation := gimlet.WrapperMiddleware(uis.isVirtualWorkstation)
+	vsCodeRunning := gimlet.WrapperMiddleware(uis.vsCodeRunning)
 	adminSettings := route.RequiresSuperUserPermission(evergreen.PermissionAdminSettings, evergreen.AdminSettingsEdit)
 	createProject := route.RequiresSuperUserPermission(evergreen.PermissionProjectCreate, evergreen.ProjectCreate)
 	createDistro := route.RequiresSuperUserPermission(evergreen.PermissionDistroCreate, evergreen.DistroCreate)
@@ -346,7 +347,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/hosts").Wrap(needsLogin, needsContext).Handler(uis.modifyHosts).Put()
 	app.AddRoute("/host/{host_id}").Wrap(needsLogin, needsContext, viewHosts).Handler(uis.hostPage).Get()
 	app.AddRoute("/host/{host_id}").Wrap(needsContext, editHosts).Handler(uis.modifyHost).Put()
-	app.AddPrefixRoute("/host/{host_id}/vscode").Wrap(redirectSlash, needsLogin, ownsHost, isVirtualWorkstation).Proxy(gimlet.ProxyOptions{
+	app.AddPrefixRoute("/host/{host_id}/vscode").Wrap(redirectSlash, needsLogin, ownsHost, vsCodeRunning).Proxy(gimlet.ProxyOptions{
 		FindTarget:        uis.getHostDNS,
 		StripSourcePrefix: true,
 		RemoteScheme:      "http",

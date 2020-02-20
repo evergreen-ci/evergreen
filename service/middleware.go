@@ -193,7 +193,7 @@ func (uis *UIServer) redirectSlash(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (uis *UIServer) isVirtualWorkstation(next http.HandlerFunc) http.HandlerFunc {
+func (uis *UIServer) vsCodeRunning(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		hostID := gimlet.GetVars(r)["host_id"]
 		h, err := uis.getHostFromCache(hostID)
@@ -209,6 +209,10 @@ func (uis *UIServer) isVirtualWorkstation(next http.HandlerFunc) http.HandlerFun
 		if !h.isVirtualWorkstation {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("host '%s' is not a virtual workstation", hostID))
 			return
+		}
+
+		if !h.isRunning {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("host '%s' is not running", hostID))
 		}
 
 		next(w, r)
