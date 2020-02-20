@@ -2352,6 +2352,19 @@
           ]
         }
       }
+    },
+    {
+      "query_file": "task_test-nonexistent-task_id.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "cannot find task with id THIS-TASK-DOES-NOT-EXIST-!!!!",
+            "path": ["taskTests"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": { "taskTests": null }
+      }
     }
   ]
 }
