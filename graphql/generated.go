@@ -166,10 +166,8 @@ type ComplexityRoot struct {
 	}
 
 	TestLog struct {
-		LineNum func(childComplexity int) int
-		LogId   func(childComplexity int) int
-		URL     func(childComplexity int) int
-		URLRaw  func(childComplexity int) int
+		HTMLDisplayURL func(childComplexity int) int
+		RawDisplayURL  func(childComplexity int) int
 	}
 
 	TestResult struct {
@@ -860,33 +858,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskLogs.TaskLogLink(childComplexity), true
 
-	case "TestLog.lineNum":
-		if e.complexity.TestLog.LineNum == nil {
+	case "TestLog.htmlDisplayURL":
+		if e.complexity.TestLog.HTMLDisplayURL == nil {
 			break
 		}
 
-		return e.complexity.TestLog.LineNum(childComplexity), true
+		return e.complexity.TestLog.HTMLDisplayURL(childComplexity), true
 
-	case "TestLog.logId":
-		if e.complexity.TestLog.LogId == nil {
+	case "TestLog.rawDisplayURL":
+		if e.complexity.TestLog.RawDisplayURL == nil {
 			break
 		}
 
-		return e.complexity.TestLog.LogId(childComplexity), true
-
-	case "TestLog.url":
-		if e.complexity.TestLog.URL == nil {
-			break
-		}
-
-		return e.complexity.TestLog.URL(childComplexity), true
-
-	case "TestLog.urlRaw":
-		if e.complexity.TestLog.URLRaw == nil {
-			break
-		}
-
-		return e.complexity.TestLog.URLRaw(childComplexity), true
+		return e.complexity.TestLog.RawDisplayURL(childComplexity), true
 
 	case "TestResult.duration":
 		if e.complexity.TestResult.Duration == nil {
@@ -1029,174 +1013,146 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var parsedSchema = gqlparser.MustLoadSchema(
-	&ast.Source{Name: "graphql/schema.graphql", Input: `type Query {
-  userPatches(userId: String!): [Patch!]!
-  patch(id: String!): Patch!
-  task(taskId: String!): Task
-  projects: Projects!
-  taskTests(
-    taskId: String!
-    sortCategory: TaskSortCategory = TEST_NAME
-    sortDirection: SortDirection = ASC
-    page: Int = 0
-    limit: Int = 0
-    testName: String = ""
-    status: String = ""
-  ): [TestResult!]
-  taskFiles(taskId: String!): [GroupedFiles!]!
-  user: User!
-}
-
-type Mutation {
-  addFavoriteProject(identifier: String!): Project!
-  removeFavoriteProject(identifier: String!): Project!
-  scheduleTask(taskId: String!): Task!
-  unscheduleTask(taskId: String!): Task!
-}
-
-enum TaskSortCategory {
-  STATUS
-  DURATION
-  TEST_NAME
-}
-
-enum SortDirection {
-  ASC
-  DESC
-}
-
-type GroupedFiles {
-  taskName: String
-  files: [File!]
-}
-
-type Patch {
-  id: ID!
-  description: String!
-  projectID: String!
-  githash: String!
-  patchNumber: Int!
-  author: String!
-  version: String!
-  status: String!
-  variants: [String!]!
-  tasks: [String!]!
-  variantsTasks: [VariantTask]!
-  activated: Boolean!
-  alias: String!
-  time: PatchTime
-}
-
-type PatchTime {
-  started: String
-  finished: String
-  submittedAt: String!
-}
-
-type VariantTask {
-  name: String!
-  tasks: [String!]!
-}
-
-type TaskLogs {
-  allLogLink: String
-  agentLogLink: String
-  systemLogLink: String
-  taskLogLink: String
-}
-
-type TaskEndDetail {
-  status: String!
-  type: String!
-  description: String
-  timedOut: Boolean
-}
-
-type TestResult {
-  id: String!
-  status: String!
-  testFile: String!
-  logs: TestLog!
-  exitCode: Int
-  startTime: Time
-  duration: Float
-  endTime: Time
-}
-
-type TestLog {
-  url: String
-  urlRaw: String
-  lineNum: Int
-  logId: String
-}
-
-type Task {
-  id: String!
-  createTime: Time
-  ingestTime: Time
-  dispatchTime: Time
-  scheduledTime: Time
-  startTime: Time
-  finishTime: Time
-  activatedTime: Time
-  version: String!
-  projectId: String!
-  revision: String
-  priority: Int
-  taskGroup: String
-  taskGroupMaxHosts: Int
-  logs: TaskLogs!
-  activated: Boolean!
-  activatedBy: String
-  buildId: String!
-  distroId: String!
-  buildVariant: String!
-  dependsOn: [String!]
-  displayName: String!
-  hostId: String
-  restarts: Int
-  execution: Int
-  order: Int
-  requester: String!
-  status: String!
-  details: TaskEndDetail
-  timeTaken: Duration
-  expectedDuration: Duration
-  displayOnly: Boolean
-  executionTasks: [String!]
-  generateTask: Boolean
-  generatedBy: String
-}
-
-type Projects {
-  favorites: [Project!]!
-  otherProjects: [GroupedProjects!]!
-}
-
-type GroupedProjects {
-  name: String!
-  projects: [Project!]!
-}
-
-type Project {
-  identifier: String!
-  displayName: String!
-  repo: String!
-  owner: String!
-}
-
+	&ast.Source{Name: "schema.graphql", Input: `scalar Duration
 type File {
-  name: String!
-  link: String!
-  visibility: String!
+	name: String!
+	link: String!
+	visibility: String!
 }
-
-type User {
-  displayName: String!
+type GroupedFiles {
+	taskName: String
+	files: [File!]
 }
-
+type GroupedProjects {
+	name: String!
+	projects: [Project!]!
+}
+type Mutation {
+	addFavoriteProject(identifier: String!): Project!
+	removeFavoriteProject(identifier: String!): Project!
+	scheduleTask(taskId: String!): Task!
+	unscheduleTask(taskId: String!): Task!
+}
+type Patch {
+	id: ID!
+	description: String!
+	projectID: String!
+	githash: String!
+	patchNumber: Int!
+	author: String!
+	version: String!
+	status: String!
+	variants: [String!]!
+	tasks: [String!]!
+	variantsTasks: [VariantTask]!
+	activated: Boolean!
+	alias: String!
+	time: PatchTime
+}
+type PatchTime {
+	started: String
+	finished: String
+	submittedAt: String!
+}
+type Project {
+	identifier: String!
+	displayName: String!
+	repo: String!
+	owner: String!
+}
+type Projects {
+	favorites: [Project!]!
+	otherProjects: [GroupedProjects!]!
+}
+type Query {
+	userPatches(userId: String!): [Patch!]!
+	patch(id: String!): Patch!
+	task(taskId: String!): Task
+	projects: Projects!
+	taskTests(taskId: String!, sortCategory: TaskSortCategory = TEST_NAME, sortDirection: SortDirection = ASC, page: Int = 0, limit: Int = 0, testName: String = "", status: String = ""): [TestResult!]
+	taskFiles(taskId: String!): [GroupedFiles!]!
+	user: User!
+}
+enum SortDirection {
+	ASC
+	DESC
+}
+type Task {
+	id: String!
+	createTime: Time
+	ingestTime: Time
+	dispatchTime: Time
+	scheduledTime: Time
+	startTime: Time
+	finishTime: Time
+	activatedTime: Time
+	version: String!
+	projectId: String!
+	revision: String
+	priority: Int
+	taskGroup: String
+	taskGroupMaxHosts: Int
+	logs: TaskLogs!
+	activated: Boolean!
+	activatedBy: String
+	buildId: String!
+	distroId: String!
+	buildVariant: String!
+	dependsOn: [String!]
+	displayName: String!
+	hostId: String
+	restarts: Int
+	execution: Int
+	order: Int
+	requester: String!
+	status: String!
+	details: TaskEndDetail
+	timeTaken: Duration
+	expectedDuration: Duration
+	displayOnly: Boolean
+	executionTasks: [String!]
+	generateTask: Boolean
+	generatedBy: String
+}
+type TaskEndDetail {
+	status: String!
+	type: String!
+	description: String
+	timedOut: Boolean
+}
+type TaskLogs {
+	allLogLink: String
+	agentLogLink: String
+	systemLogLink: String
+	taskLogLink: String
+}
+enum TaskSortCategory {
+	STATUS
+	DURATION
+	TEST_NAME
+}
+type TestLog {
+	htmlDisplayURL: String
+	rawDisplayURL: String
+}
+type TestResult {
+	id: String!
+	status: String!
+	testFile: String!
+	logs: TestLog!
+	exitCode: Int
+	startTime: Time
+	duration: Float
+	endTime: Time
+}
 scalar Time
-scalar Duration
+type User {
+	displayName: String!
+}
+type VariantTask {
+	name: String!
+	tasks: [String!]!
+}
 `},
 )
 
@@ -4305,7 +4261,7 @@ func (ec *executionContext) _TaskLogs_taskLogLink(ctx context.Context, field gra
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _TestLog_url(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
+func (ec *executionContext) _TestLog_htmlDisplayURL(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -4322,7 +4278,7 @@ func (ec *executionContext) _TestLog_url(ctx context.Context, field graphql.Coll
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.URL, nil
+		return obj.HTMLDisplayURL, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4336,7 +4292,7 @@ func (ec *executionContext) _TestLog_url(ctx context.Context, field graphql.Coll
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _TestLog_urlRaw(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
+func (ec *executionContext) _TestLog_rawDisplayURL(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -4353,69 +4309,7 @@ func (ec *executionContext) _TestLog_urlRaw(ctx context.Context, field graphql.C
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.URLRaw, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _TestLog_lineNum(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "TestLog",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.LineNum, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalOInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _TestLog_logId(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "TestLog",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.LogId, nil
+		return obj.RawDisplayURL, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -6522,14 +6416,10 @@ func (ec *executionContext) _TestLog(ctx context.Context, sel ast.SelectionSet, 
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("TestLog")
-		case "url":
-			out.Values[i] = ec._TestLog_url(ctx, field, obj)
-		case "urlRaw":
-			out.Values[i] = ec._TestLog_urlRaw(ctx, field, obj)
-		case "lineNum":
-			out.Values[i] = ec._TestLog_lineNum(ctx, field, obj)
-		case "logId":
-			out.Values[i] = ec._TestLog_logId(ctx, field, obj)
+		case "htmlDisplayURL":
+			out.Values[i] = ec._TestLog_htmlDisplayURL(ctx, field, obj)
+		case "rawDisplayURL":
+			out.Values[i] = ec._TestLog_rawDisplayURL(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

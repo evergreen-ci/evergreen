@@ -406,22 +406,22 @@
         "end": 10,
         "task_id": "exec1",
         "task_execution": 5,
-        "url": "a url",
-        "url_raw": "a raw url"
+        "url": "https://original-url.com",
+        "url_raw": "https://original-raw-url.com"
       },
       {
         "_id": { "$oid": "29ef7a20a7798219e191d00e" },
         "status": "c",
         "test_file": "apple",
-        "log_id": "59ef7a2097b1d3148d0004f1",
+        "log_id": "",
         "line_num": 126,
         "exit_code": 0,
         "start": 0,
         "end": 20,
         "task_id": "exec1",
         "task_execution": 5,
-        "url": "a url",
-        "url_raw": "a raw url"
+        "url": "",
+        "url_raw": ""
       },
       {
         "_id": { "$oid": "39ef7a20a7798219e191d00e" },
@@ -434,8 +434,8 @@
         "end": 40,
         "task_id": "exec1",
         "task_execution": 5,
-        "url": "a url",
-        "url_raw": "a raw url"
+        "url": "",
+        "url_raw": ""
       },
       {
         "_id": { "$oid": "49ef7a20a7798219e191d00e" },
@@ -448,8 +448,8 @@
         "end": 30,
         "task_id": "exec1",
         "task_execution": 5,
-        "url": "a url",
-        "url_raw": "a raw url"
+        "url": "/url/without/scheme/host",
+        "url_raw": "/raw/url/without/scheme/host"
       }
     ],
     "project_ref": [
@@ -2276,6 +2276,94 @@
             "displayName": "testuser"
           }
         }
+      }
+    },
+    {
+      "query_file": "task_test-logs-empty-str.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            {
+              "logs": { "htmlDisplayURL": null, "rawDisplayURL": null },
+              "id": "29ef7a20a7798219e191d00e"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "task_test-logs-use-original-url-when-provided.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            {
+              "logs": {
+                "htmlDisplayURL": "https://original-url.com",
+                "rawDisplayURL": "https://original-raw-url.com"
+              },
+              "id": "19ef7a20a7798219e191d00e"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "task_test-logs-prepend-api_url-when-scheme-and-host-not-provided.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            {
+              "logs": {
+                "htmlDisplayURL": "https://localhost:8443/url/without/scheme/host",
+                "rawDisplayURL": "https://localhost:8443/raw/url/without/scheme/host"
+              },
+              "id": "49ef7a20a7798219e191d00e"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "task_test-formats-html-url-with-line-num-and-log-id-when-url-empty.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            {
+              "logs": {
+                "htmlDisplayURL": "https://localhost:8443/test_log/59ef7a2097b1d3148d0004f1#L126"
+              },
+              "id": "39ef7a20a7798219e191d00e"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "task_test-formats-raw-url-with-query-param-and-log-id-when-raw-url-empty.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            {
+              "logs": {
+                "rawDisplayURL": "https://localhost:8443/test_log/59ef7a2097b1d3148d0004f1?raw=1"
+              },
+              "id": "39ef7a20a7798219e191d00e"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "task_test-nonexistent-task_id.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "cannot find task with id THIS-TASK-DOES-NOT-EXIST-!!!!",
+            "path": ["taskTests"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": { "taskTests": null }
       }
     }
   ]
