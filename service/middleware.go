@@ -178,6 +178,21 @@ func (uis *UIServer) ownsHost(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// redirectSlash will redirect the client to the path with a '/' appended
+// if the path doesn't end in a '/'. This is necessary in AddPrefixRoute routes because
+// the app's StrictSlash setting is ignored by gimlet's underlying library for
+// prefix routes
+func (uis *UIServer) redirectSlash(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path[len(r.URL.Path)-1:] != "/" {
+			http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
+			return
+		}
+
+		next(w, r)
+	}
+}
+
 // RedirectToLogin forces a redirect to the login page. The redirect param is set on the query
 // so that the user will be returned to the original page after they login.
 func (uis *UIServer) RedirectToLogin(w http.ResponseWriter, r *http.Request) {
