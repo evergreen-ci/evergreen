@@ -11,10 +11,6 @@ type APIFile struct {
 	Link           *string `json:"url"`
 	Visibility     *string `json:"visibility"`
 	IgnoreForFetch bool    `json:"ignore_for_fetch"`
-	// AwsKey         *string `json:"aws_key,omitempty"`
-	// AwsSecret      *string `json:"aws_secret,omitempty"`
-	// Bucket         *string `json:"bucket,omitempty"`
-	// FileKey        *string `json:"filekey,omitempty"`
 }
 
 type APIEntry struct {
@@ -32,10 +28,6 @@ func (f *APIFile) BuildFromService(h interface{}) error {
 		f.Link = ToStringPtr(v.Link)
 		f.Visibility = ToStringPtr(v.Visibility)
 		f.IgnoreForFetch = v.IgnoreForFetch
-		// f.AwsKey = ToStringPtr(v.AwsKey)
-		// f.AwsSecret = ToStringPtr(v.AwsSecret)
-		// f.Bucket = ToStringPtr(v.Bucket)
-		// f.FileKey = ToStringPtr(v.FileKey)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -48,10 +40,6 @@ func (f *APIFile) ToService() (interface{}, error) {
 		Link:           FromStringPtr(f.Link),
 		Visibility:     FromStringPtr(f.Visibility),
 		IgnoreForFetch: f.IgnoreForFetch,
-		// AwsKey:         FromStringPtr(f.AwsKey),
-		// AwsSecret:      FromStringPtr(f.AwsSecret),
-		// Bucket:         FromStringPtr(f.Bucket),
-		// FileKey:        FromStringPtr(f.FileKey),
 	}, nil
 }
 

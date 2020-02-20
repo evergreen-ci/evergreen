@@ -1,7 +1,6 @@
 package plugin
 
 import (
-	"fmt"
 	"log"
 	"time"
 
@@ -13,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -31,6 +29,7 @@ const (
 
 	AttachResultsPostRetries   = 5
 	AttachResultsRetrySleepSec = 10 * time.Second
+	PresignExpireTime          = 15 * time.Minute
 )
 
 // AttachPlugin has commands for uploading task results and links to files,
@@ -86,13 +85,6 @@ func getAllArtifacts(tasks []artifact.TaskIDAndExecution) ([]artifact.File, erro
 	for _, artifact := range artifacts {
 		for i := range artifact.Files {
 			if artifact.Files[i].Visibility == "signed" {
-				grip.Info(message.Fields{
-					"message":         "Chaya : attach_plugin 90. visibility is signed ",
-					"files":           &artifact.Files,
-					"file.visibility": artifact.Files[i].Visibility,
-					"link":            artifact.Files[i].Link,
-					"fileKey":         artifact.Files[i].FileKey,
-				})
 				if artifact.Files[i].AwsSecret == "" || artifact.Files[i].AwsKey == "" || artifact.Files[i].Bucket == "" || artifact.Files[i].FileKey == "" {
 					err = errors.New("error presigning the url for artifact")
 					catcher.Add(err)
@@ -115,33 +107,14 @@ func getAllArtifacts(tasks []artifact.TaskIDAndExecution) ([]artifact.File, erro
 					Key:    aws.String(artifact.Files[i].FileKey),
 				})
 
-				urlStr, err := req.Presign(15 * time.Minute)
+				urlStr, err := req.Presign(PresignExpireTime)
 				if err != nil {
 					log.Fatalf("problem signing request: %s", err.Error())
 				}
-				fmt.Printf("the url is %s\n", urlStr)
 				artifact.Files[i].Link = urlStr
-				grip.Info("Chaya: the url is")
-				grip.Infof("Chaya: the url is %s\n", urlStr)
-				artifact.Files[i].Link = urlStr
-
-				grip.Info(message.Fields{
-					"message":         "Chaya : attach_plugin 129. Files: &artifact.Files: ",
-					"files":           &artifact.Files,
-					"file.visibility": artifact.Files[i].Visibility,
-					"link":            artifact.Files[i].Link,
-					"fileKey":         artifact.Files[i].FileKey,
-				})
-
 			}
 		}
 		files = append(files, artifact.Files...)
-		grip.Info(message.Fields{
-			"message":        "Chaya : api.go 375. Files: &artifact.Files: ",
-			"files":          files,
-			"artifact.Files": artifact.Files,
-		})
-
 	}
 	return files, nil
 }
