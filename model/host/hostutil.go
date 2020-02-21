@@ -878,17 +878,14 @@ func (h *Host) StartAgentMonitorRequest(settings *evergreen.Settings) (string, e
 	)
 }
 
-// StopAgentMonitor stops the agent monitor (if it is running) on the host via
-// its Jasper service . On legacy hosts, this is a no-op.
-func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) error {
-	if (h.Distro.LegacyBootstrap() && h.NeedsReprovision != ReprovisionToLegacy) || h.NeedsReprovision == ReprovisionToNew {
-		return nil
-	}
-
+// withTaggedProcs runs the given handler on all Jasper processes on this host
+// matching the given tag.
+func (h *Host) withTaggedProcs(ctx context.Context, env evergreen.Environment, tag string, handleTaggedProcs func(taggedProcs []jasper.Process) error) error {
 	client, err := h.JasperClient(ctx, env)
 	if err != nil {
 		return errors.Wrap(err, "could not get a Jasper client")
 	}
+
 	defer func() {
 		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
@@ -897,25 +894,44 @@ func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) 
 		}))
 	}()
 
-	procs, err := client.Group(ctx, evergreen.AgentMonitorTag)
+	procs, err := client.Group(ctx, tag)
 	if err != nil {
 		return errors.Wrapf(err, "could not get processes with tag %s", evergreen.AgentMonitorTag)
 	}
 
-	grip.WarningWhen(len(procs) != 1, message.Fields{
-		"message": fmt.Sprintf("host should be running exactly one agent monitor, but found %d", len(procs)),
-		"host_id": h.Id,
-		"distro":  h.Distro.Id,
-	})
+	return handleTaggedProcs(procs)
+}
 
-	catcher := grip.NewBasicCatcher()
-	for _, proc := range procs {
-		if proc.Running(ctx) {
-			catcher.Wrapf(proc.Signal(ctx, syscall.SIGTERM), "problem signalling process with ID %s", proc.ID())
-		}
+// WithAgentMonitor runs the given handler on all agent monitor processes
+// running on the host.
+func (h *Host) WithAgentMonitor(ctx context.Context, env evergreen.Environment, handleAgentMonitor func(procs []jasper.Process) error) error {
+	return h.withTaggedProcs(ctx, env, evergreen.AgentMonitorTag, func(procs []jasper.Process) error {
+		grip.WarningWhen(len(procs) != 1, message.Fields{
+			"message": fmt.Sprintf("host should be running exactly one agent monitor, but found %d", len(procs)),
+			"host_id": h.Id,
+			"distro":  h.Distro.Id,
+		})
+		return handleAgentMonitor(procs)
+	})
+}
+
+// StopAgentMonitor stops the agent monitor (if it is running) on the host via
+// its Jasper service. On legacy hosts, this is a no-op.
+func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) error {
+	if (h.Distro.LegacyBootstrap() && h.NeedsReprovision != ReprovisionToLegacy) || h.NeedsReprovision == ReprovisionToNew {
+		return nil
 	}
 
-	return catcher.Resolve()
+	return h.WithAgentMonitor(ctx, env, func(procs []jasper.Process) error {
+		catcher := grip.NewBasicCatcher()
+		for _, proc := range procs {
+			if proc.Running(ctx) {
+				catcher.Wrapf(proc.Signal(ctx, syscall.SIGTERM), "problem signalling agent monitor process with ID '%s'", proc.ID())
+			}
+		}
+
+		return catcher.Resolve()
+	})
 }
 
 // AgentCommand returns the arguments to start the agent.
