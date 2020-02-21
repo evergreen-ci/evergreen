@@ -68,15 +68,22 @@ func (a *APIApp) attachRoutes(router *mux.Router, addAppPrefix bool) error {
 			methods = append(methods, strings.ToLower(m.String()))
 		}
 
-		handler := route.getHandlerWithMiddlware(a.wrappers)
-
+		routeString := ""
 		if route.version >= 0 {
-			versionedRoute := route.resolveVersionedRoute(a, addAppPrefix)
-			router.Handle(versionedRoute, handler).Methods(methods...)
+			routeString = route.resolveVersionedRoute(a, addAppPrefix)
 		} else if a.NoVersions {
-			router.Handle(route.resolveLegacyRoute(a, addAppPrefix), handler).Methods(methods...)
+			routeString = route.resolveLegacyRoute(a, addAppPrefix)
 		} else {
 			catcher.Add(fmt.Errorf("skipping '%s', because of versioning error", route))
+			continue
+		}
+
+		handler := route.getHandlerWithMiddlware(a.wrappers)
+
+		if route.isPrefix {
+			router.PathPrefix(routeString).Handler(handler).Methods(methods...)
+		} else {
+			router.Handle(routeString, handler).Methods(methods...)
 		}
 	}
 

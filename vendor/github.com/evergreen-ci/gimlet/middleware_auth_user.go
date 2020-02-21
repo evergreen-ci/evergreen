@@ -126,7 +126,7 @@ func UserMiddleware(um UserManager, conf UserMiddlewareConfiguration) Middleware
 
 var ErrNeedsReauthentication = errors.New("user session has expired so they must be reauthenticated")
 
-func (u *userMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+func (u *userMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) { //nolint: gocyclo
 	var err error
 	var usr User
 	ctx := r.Context()
@@ -147,7 +147,6 @@ func (u *userMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next
 
 		// set the user, preferring the cookie, maye change
 		if len(token) > 0 {
-			ctx := r.Context()
 			usr, err = u.manager.GetUserByToken(ctx, token)
 			needsReauth := errors.Cause(err) == ErrNeedsReauthentication
 

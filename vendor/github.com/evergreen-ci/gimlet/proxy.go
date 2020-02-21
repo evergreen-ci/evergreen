@@ -4,9 +4,10 @@ import (
 	"math/rand"
 	"net/http"
 	"net/http/httputil"
-	"net/url"
+	"regexp"
 	"strings"
 
+	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -22,7 +23,8 @@ type ProxyOptions struct {
 	RemotePrefix      string
 	StripSourcePrefix bool
 	TargetPool        []string
-	FindTarget        func(*url.URL) []string
+	FindTarget        func(*http.Request) ([]string, error)
+	RemoteScheme      string
 }
 
 // Validate checks the default configuration of a proxy configuration.
@@ -51,12 +53,35 @@ func getRandomHost(hosts []string) string {
 	}
 }
 
-func (opts *ProxyOptions) resolveTarget(u *url.URL) string {
+func (opts *ProxyOptions) resolveTarget(r *http.Request) string {
 	if opts.FindTarget == nil {
 		return ""
 	}
+	target, err := opts.FindTarget(r)
+	if err != nil {
+		return ""
+	}
+	return getRandomHost(target)
+}
 
-	return getRandomHost(opts.FindTarget(u))
+func (opts *ProxyOptions) getPath(r *http.Request) string {
+	path := r.URL.Path
+	if opts.StripSourcePrefix {
+		route := mux.CurrentRoute(r)
+		regexString, err := route.GetPathRegexp()
+		compiled, err := regexp.Compile(regexString)
+		if err != nil {
+			grip.Error(message.Fields{
+				"message": "can't strip path",
+				"regex":   regexString,
+				"URL":     r.URL.Path,
+			})
+			return path
+		}
+		path = compiled.ReplaceAllLiteralString(path, "")
+	}
+
+	return path
 }
 
 func (opts *ProxyOptions) director(req *http.Request) {
@@ -75,17 +100,17 @@ func (opts *ProxyOptions) director(req *http.Request) {
 
 	if target := opts.getHost(); target != "" {
 		req.URL.Host = target
-	} else if target := opts.resolveTarget(req.URL); target != "" {
+	} else if target := opts.resolveTarget(req); target != "" {
 		req.URL.Host = target
 	} else {
 		panic("could not resolve proxy target host")
 	}
 
-	if opts.StripSourcePrefix {
-		req.URL.Path = "/"
-	}
+	req.URL.Path = singleJoiningSlash(opts.RemotePrefix, opts.getPath(req))
 
-	req.URL.Path = singleJoiningSlash(opts.RemotePrefix, req.URL.Path)
+	if opts.RemoteScheme != "" {
+		req.URL.Scheme = opts.RemoteScheme
+	}
 }
 
 // Proxy adds a simple reverse proxy handler to the specified route,
