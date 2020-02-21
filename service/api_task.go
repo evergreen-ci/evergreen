@@ -106,9 +106,10 @@ func validateTaskEndDetails(details *apimodels.TaskEndDetail) bool {
 
 // checkHostHealth checks that host is running.
 func checkHostHealth(h *host.Host) bool {
-	if h.Status != evergreen.HostRunning {
+	if util.StringSliceContains(evergreen.DownHostStatus, h.Status) {
 		grip.Info(message.Fields{
 			"message": "host is not running, so agent should exit",
+			"status":  h.Status,
 			"host_id": h.Id,
 		})
 		return true
@@ -533,13 +534,6 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
-	// The agent may start before the host has been fully provisioned by the app
-	// server, so no-op until the app server is done provisioning.
-	if !h.Provisioned {
-		gimlet.WriteJSON(w, apimodels.NextTaskResponse{ShouldExit: true})
-		return
-	}
-
 	if h.AgentStartTime.IsZero() {
 		if err := h.SetAgentStartTime(); err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
@@ -581,6 +575,8 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	var response apimodels.NextTaskResponse
 	var err error
 	if checkHostHealth(h) {
+		response.ShouldExit = true
+
 		ctx, cancel = context.WithTimeout(r.Context(), 30*time.Second)
 		defer cancel()
 		if err = h.StopAgentMonitor(ctx, as.env); err != nil {
@@ -590,7 +586,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 				"operation": "next_task",
 				"revision":  evergreen.BuildRevision,
 			}))
-			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
+			gimlet.WriteJSON(w, response)
 			return
 		}
 
@@ -602,10 +598,9 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 				"source":    "database error",
 				"revision":  evergreen.BuildRevision,
 			}))
-			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
+			gimlet.WriteJSON(w, response)
 			return
 		}
-		response.ShouldExit = true
 		gimlet.WriteJSON(w, response)
 		return
 	}
