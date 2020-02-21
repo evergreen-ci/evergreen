@@ -106,7 +106,7 @@ func validateTaskEndDetails(details *apimodels.TaskEndDetail) bool {
 
 // checkHostHealth checks that host is running.
 func checkHostHealth(h *host.Host) bool {
-	if util.StringSliceContains(evergreen.DownHostStatus, h.Status) {
+	if h.Distro.LegacyBootstrap() && h.Status != evergreen.HostRunning || util.StringSliceContains(evergreen.DownHostStatus, h.Status) {
 		grip.Info(message.Fields{
 			"message": "host is not running, so agent should exit",
 			"status":  h.Status,
