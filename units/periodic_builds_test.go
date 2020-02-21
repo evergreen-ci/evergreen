@@ -3,10 +3,10 @@ package units
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -16,12 +16,15 @@ import (
 
 func TestPeriodicBuildsJob(t *testing.T) {
 	assert := assert.New(t)
+	now := time.Now().Truncate(time.Second)
 	assert.NoError(db.ClearCollections(model.VersionCollection, model.ProjectRefCollection, build.Collection, task.Collection))
 	j := makePeriodicBuildsJob()
 	ctx := context.Background()
-	env := &mock.Environment{}
+	env := evergreen.GetEnvironment()
+	_ = env.DB().RunCommand(nil, map[string]string{"create": model.VersionCollection})
+	_ = env.DB().RunCommand(nil, map[string]string{"create": build.Collection})
+	_ = env.DB().RunCommand(nil, map[string]string{"create": task.Collection})
 	j.env = env
-	assert.NoError(env.Configure(ctx))
 	testutil.ConfigureIntegrationTest(t, j.env.Settings(), "TestPeriodicBuildsJob")
 
 	sampleProject := model.ProjectRef{
@@ -31,23 +34,23 @@ func TestPeriodicBuildsJob(t *testing.T) {
 		RemotePath: "evergreen.yml",
 		Branch:     "master",
 		PeriodicBuilds: []model.PeriodicBuildDefinition{
-			{IntervalHours: 1, ID: "abc", ConfigFile: "evergreen.yml", Alias: "alias"},
+			{IntervalHours: 1, ID: "abc", ConfigFile: "evergreen.yml", Alias: "alias", NextRunTime: now.Add(time.Hour)},
 		},
 	}
 	assert.NoError(sampleProject.Insert())
 	j.ProjectID = sampleProject.Identifier
+	j.DefinitionID = "abc"
 
-	// test that a version is created the first time
+	// test that a version is created when the job runs
 	j.Run(ctx)
 	assert.NoError(j.Error())
 	createdVersion, err := model.FindLastPeriodicBuild(sampleProject.Identifier, sampleProject.PeriodicBuilds[0].ID)
 	assert.NoError(err)
 	assert.Equal(evergreen.AdHocRequester, createdVersion.Requester)
-
-	// rerunning the job too soon does not create another build
-	j.Run(ctx)
-	assert.NoError(j.Error())
-	lastVersion, err := model.FindLastPeriodicBuild(sampleProject.Identifier, sampleProject.PeriodicBuilds[0].ID)
+	tasks, err := task.Find(task.ByVersion(createdVersion.Id))
 	assert.NoError(err)
-	assert.Equal(createdVersion.Id, lastVersion.Id)
+	assert.True(tasks[0].Activated)
+	dbProject, err := model.FindOneProjectRef(sampleProject.Identifier)
+	assert.NoError(err)
+	assert.True(sampleProject.PeriodicBuilds[0].NextRunTime.Add(time.Hour).Equal(dbProject.PeriodicBuilds[0].NextRunTime))
 }
