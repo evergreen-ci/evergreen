@@ -107,7 +107,7 @@ func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string)
 			"output":  *s,
 		})
 		s.Region = s.getRegion()
-		if s.Region != evergreen.DefaultEC2Region {
+		if s.Region != evergreen.DefaultEC2Region && s.Region != "" {
 			return errors.Errorf("only default region should be saved in provider settings")
 		}
 	} else if len(d.ProviderSettingsList) != 0 {

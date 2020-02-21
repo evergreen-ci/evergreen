@@ -258,8 +258,8 @@ func UpdateProviderSettings(d *distro.Distro) error {
 		if err != nil {
 			return errors.Wrap(err, "error getting settings object")
 		}
-		if err := s.FromDistroSettings(*d, region); err != nil {
-
+		if err = s.FromDistroSettings(*d, region); err != nil {
+			return errors.Wrapf(err, "error getting region '%s' from distro settings", region)
 		}
 		doc, err := d.GetProviderSettingByRegion(region)
 		if err != nil {

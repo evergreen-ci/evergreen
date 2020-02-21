@@ -361,7 +361,6 @@ type APIDistro struct {
 	Provider              *string                  `json:"provider"`
 	ProviderSettings      map[string]interface{}   `json:"settings"`
 	ProviderSettingsList  []*birch.Document        `json:"provider_settings"`
-	ImageID               *string                  `json:"image_id"`
 	Arch                  *string                  `json:"arch"`
 	WorkDir               *string                  `json:"work_dir"`
 	SetupAsSudo           bool                     `json:"setup_as_sudo"`
