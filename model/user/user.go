@@ -445,9 +445,12 @@ func ClearLoginCache(user gimlet.User, all bool) error {
 func FindNeedsReauthorization(reauthorizeAfter time.Duration, maxAttempts int) ([]DBUser, error) {
 	cutoff := time.Now().Add(-reauthorizeAfter)
 	users, err := Find(db.Query(bson.M{
-		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTokenKey):          bson.M{"$exists": true},
-		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey):            bson.M{"$lte": cutoff},
-		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheReauthAttemptsKey): bson.M{"$lt": maxAttempts},
+		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTokenKey): bson.M{"$exists": true},
+		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey):   bson.M{"$lte": cutoff},
+		"$or": []bson.M{
+			{bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheReauthAttemptsKey): bson.M{"$exists": false}},
+			{bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheReauthAttemptsKey): bson.M{"$lt": maxAttempts}},
+		},
 	}))
 	return users, errors.Wrap(err, "could not find users who need reauthorization")
 }
