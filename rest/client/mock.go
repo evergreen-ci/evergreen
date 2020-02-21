@@ -649,13 +649,6 @@ func (c *Mock) GetCommitQueueItemAuthor(ctx context.Context, projectID, item str
 	return "github.user", nil
 }
 
-func (c *Mock) GetUserAuthorInfo(ctx context.Context, td TaskData, userID string) (*model.APIUserAuthorInformation, error) {
-	return &model.APIUserAuthorInformation{
-		DisplayName: model.ToStringPtr("evergreen"),
-		Email:       model.ToStringPtr("evergreen@mongodb.com"),
-	}, nil
-}
-
 func (c *Mock) SendNotification(_ context.Context, _ string, _ interface{}) error {
 	return nil
 }

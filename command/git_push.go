@@ -142,10 +142,9 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 }
 
 type pushParams struct {
-	token         string
-	directory     string
-	commitMessage string
-	branch        string
+	token     string
+	directory string
+	branch    string
 }
 
 func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p pushParams) error {

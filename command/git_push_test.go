@@ -139,7 +139,7 @@ func TestGitPush(t *testing.T) {
 			createRepoCommands := []string{
 				`git init`,
 				`git add --all`,
-				`git commit -m "testing..."`,
+				`git -c "user.name=baxterthehacker" -c "user.email=baxter@thehacker.com" commit -m "testing..."`,
 			}
 			cmd := jpm.CreateCommand(ctx).Directory(repoDir).Append(createRepoCommands...)
 			require.NoError(t, cmd.Run(ctx))
@@ -148,7 +148,7 @@ func TestGitPush(t *testing.T) {
 			toApplyCommands := []string{
 				`git rm test1.txt`,
 				`git add test3.txt`,
-				`git commit -m "changes to push"`,
+				`git -c "user.name=baxterthehacker" -c "user.email=baxter@thehacker.com" commit -m "changes to push"`,
 			}
 			cmd = jpm.CreateCommand(ctx).Directory(repoDir).Append(toApplyCommands...)
 			require.NoError(t, cmd.Run(ctx))
