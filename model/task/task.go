@@ -1427,18 +1427,39 @@ func MergeTestResultsBulk(tasks []Task, query *db.Q) ([]Task, error) {
 func FindSchedulable(distroID string) ([]Task, error) {
 	query := scheduleableTasksQuery()
 
-	if distroID == "" {
-		return Find(db.Query(query))
+	if err = addApplicableDistroFilter(distroID, DistroIdKey, match); err != nil {
+		return nil, errors.WithStack(err)
 	}
 
-	query[DistroIdKey] = distroID
 	return Find(db.Query(query))
+}
+
+func addApplicableDistroFilter(id string, fieldName string, query bson.M) error {
+	if id == "" {
+		return nil
+	}
+
+	aliases, err := distro.FindApplicalbeDistroIDs(id)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if len(aliases) == 1 {
+		query[fieldName] = aliases[0]
+	} else {
+		query[fieldName] = bson.M{"$in": aliases}
+	}
+
+	return nil
 }
 
 func FindSchedulableForAlias(id string) ([]Task, error) {
 	q := scheduleableTasksQuery()
 
-	q[DistroAliasesKey] = id
+	if err := addApplicableDistroFilter(id, DistroAliasesKey, q); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
 	// Single-host task groups can't be put in an alias queue, because it can
 	// cause a race when assigning tasks to hosts where the tasks in the task
 	// group might be assigned to different hosts.
@@ -1452,11 +1473,14 @@ func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 	var d distro.Distro
 	var err error
 	if distroID != "" {
-		match[DistroIdKey] = distroID
 		d, err = distro.FindOne(distro.ById(distroID).WithFields(distro.ValidProjectsKey))
 		if err != nil {
 			return nil, errors.Wrapf(err, "problem finding distro '%s'", distroID)
 		}
+	}
+
+	if err = addApplicableDistroFilter(id, DistroIdKey, match); err != nil {
+		return nil, errors.WithStack(err)
 	}
 
 	matchActivatedUndispatchedTasks := bson.M{
