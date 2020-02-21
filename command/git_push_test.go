@@ -3,7 +3,6 @@ package command
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -88,38 +87,6 @@ func TestGitPush(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, splitCommand, args)
 			}
-		},
-		"PushPatchMock": func(*testing.T) {
-			manager := &mock.Manager{}
-			manager.Create = func(opts *options.Create) mock.Process {
-				_, err = opts.Output.Error.Write([]byte(fmt.Sprintf("The key: %s", token)))
-				assert.NoError(t, err)
-				proc := mock.Process{}
-				proc.ProcInfo.Options = *opts
-				return proc
-			}
-			c.base.jasper = manager
-			params := pushParams{
-				directory: c.Directory,
-				branch:    "master",
-				token:     token,
-			}
-
-			assert.NoError(t, c.pushPatch(context.Background(), logger, params))
-			commands := []string{
-				"git push origin master",
-			}
-			require.Len(t, manager.Procs, len(commands))
-			for i, proc := range manager.Procs {
-				args := proc.(*mock.Process).ProcInfo.Options.Args
-				splitCommand, err = shlex.Split(commands[i])
-				assert.NoError(t, err)
-				assert.Equal(t, splitCommand, args)
-			}
-
-			assert.NoError(t, logger.Close())
-			msgs := comm.GetMockMessages()[""]
-			assert.Equal(t, "The key: [redacted oauth token]", msgs[len(msgs)-1].Message)
 		},
 		"PushPatch": func(*testing.T) {
 			ctx := context.Background()

@@ -433,12 +433,11 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	}
 
 	params := UpdatePatchModuleParams{
-		patchID:     p.patchID,
-		module:      p.module,
-		patch:       diffData.fullPatch,
-		base:        diffData.base,
-		message:     message,
-		commitQueue: true,
+		patchID: p.patchID,
+		module:  p.module,
+		patch:   diffData.fullPatch,
+		base:    diffData.base,
+		message: message,
 	}
 	err = ac.UpdatePatchModule(params)
 	if err != nil {

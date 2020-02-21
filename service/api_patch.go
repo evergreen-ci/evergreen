@@ -160,14 +160,13 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		PatchString string `json:"patch"`
 		Githash     string `json:"githash"`
 		Message     string `json:"message"`
-		CommitQueue bool   `json:"commit_queue"`
 	}{}
 	if err = util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
 
-	if p.Alias == evergreen.CommitQueueAlias && !data.CommitQueue {
+	if p.Alias == evergreen.CommitQueueAlias && !patch.IsMailboxDiff(data.PatchString) {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("You may be using 'set-module' instead of 'commit-queue set-module', or your CLI may be out of date.\n"+
 			"Please update your CLI if it is not up to date, and use 'commit-queue set-module' instead of 'set-module' for commit queue patches."))
 		return
