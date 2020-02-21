@@ -9,7 +9,7 @@ import (
 )
 
 func FindApplicableDistroIDs(id string) ([]string, error) {
-	d, err := FindOne(ByID(id)).WithFields(AliasesKey)
+	d, err := FindOne(ById(id).WithFields(AliasesKey))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
