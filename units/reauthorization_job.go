@@ -19,6 +19,7 @@ import (
 const (
 	reauthorizationJobName  = "reauthorize-user"
 	defaultBackgroundReauth = time.Hour
+	maxReauthAttempts       = 10
 )
 
 type reauthorizationJob struct {
@@ -74,6 +75,9 @@ func (j *reauthorizationJob) Run(ctx context.Context) {
 		}
 		j.user = user
 	}
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
 
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
@@ -89,6 +93,12 @@ func (j *reauthorizationJob) Run(ctx context.Context) {
 		return
 	}
 
+	// Do not try background reauth if they've exceeded their attempt limit
+	// until they refresh their login cache.
+	if j.user.LoginCache.ReauthAttempts >= maxReauthAttempts {
+		return
+	}
+
 	reauthAfter := time.Duration(j.env.Settings().AuthConfig.BackgroundReauthMinutes) * time.Minute
 	if reauthAfter == 0 {
 		reauthAfter = defaultBackgroundReauth
@@ -99,8 +109,11 @@ func (j *reauthorizationJob) Run(ctx context.Context) {
 	}
 
 	um := j.env.UserManager()
-	if err != nil {
-		grip.Notice(errors.Wrap(err, "cannot get user manager"))
+	if um == nil {
+		grip.Notice(message.WrapError(err, message.Fields{
+			"message": "cannot get user manager",
+			"job":     j.ID(),
+		}))
 		return
 	}
 	if !j.env.UserManagerInfo().CanReauthorize {
@@ -111,8 +124,16 @@ func (j *reauthorizationJob) Run(ctx context.Context) {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "could not reauthorize user",
 			"user":    j.user.Username(),
+			"job":     j.ID(),
 		}))
 		j.AddError(err)
+		if err := j.user.IncReauthAttempts(); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "failed to modify user reauth attempts",
+				"user":    j.user.Username(),
+				"job":     j.ID(),
+			}))
+		}
 		return
 	}
 }
