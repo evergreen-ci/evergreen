@@ -42,7 +42,7 @@ type EC2ProviderSettings struct {
 	AWSKeyID string `mapstructure:"aws_access_key_id" json:"aws_access_key_id,omitempty" bson:"aws_access_key_id,omitempty"`
 
 	// If set, overrides secret from credentials
-	AWSSecret string `mapstructure:"aws_secret_access_key" json:"aws_access_key_id,omitempty" bson:"aws_secret_access_key,omitempty"`
+	AWSSecret string `mapstructure:"aws_secret_access_key" json:"aws_access_key,omitempty" bson:"aws_secret_access_key,omitempty"`
 
 	// InstanceType is the EC2 instance type.
 	InstanceType string `mapstructure:"instance_type" json:"instance_type,omitempty" bson:"instance_type,omitempty"`
