@@ -75,6 +75,9 @@ func (j *reauthorizationJob) Run(ctx context.Context) {
 		}
 		j.user = user
 	}
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
 
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
