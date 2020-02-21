@@ -532,11 +532,13 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	h := MustHaveHost(r)
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
+	var response apimodels.NextTaskResponse
 
-	// The agent may start before the host has been fully provisioned by the app
-	// server, so no-op until the app server is done provisioning.
+	// The agent may start before the host has been fully provisioned by the app server, so
+	// no-op until the app server is done provisioning. Return an empty task instead of
+	// ShouldExit so that the agent does not have to be redeployed.
 	if !h.Provisioned {
-		gimlet.WriteJSON(w, apimodels.NextTaskResponse{ShouldExit: true})
+		gimlet.WriteJSON(w, response)
 		return
 	}
 
@@ -578,7 +580,6 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		})
 	}()
 
-	var response apimodels.NextTaskResponse
 	var err error
 	if checkHostHealth(h) {
 		ctx, cancel = context.WithTimeout(r.Context(), 30*time.Second)
