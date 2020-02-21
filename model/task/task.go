@@ -1427,7 +1427,7 @@ func MergeTestResultsBulk(tasks []Task, query *db.Q) ([]Task, error) {
 func FindSchedulable(distroID string) ([]Task, error) {
 	query := scheduleableTasksQuery()
 
-	if err = addApplicableDistroFilter(distroID, DistroIdKey, match); err != nil {
+	if err := addApplicableDistroFilter(distroID, DistroIdKey, query); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
@@ -1439,7 +1439,7 @@ func addApplicableDistroFilter(id string, fieldName string, query bson.M) error 
 		return nil
 	}
 
-	aliases, err := distro.FindApplicalbeDistroIDs(id)
+	aliases, err := distro.FindApplicableDistroIDs(id)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -1479,7 +1479,7 @@ func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 		}
 	}
 
-	if err = addApplicableDistroFilter(id, DistroIdKey, match); err != nil {
+	if err = addApplicableDistroFilter(distroID, DistroIdKey, match); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
