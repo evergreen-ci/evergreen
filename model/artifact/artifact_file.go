@@ -1,7 +1,6 @@
 package artifact
 
 import (
-	"log"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -114,7 +113,7 @@ func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {
 					}),
 				})
 				if err != nil {
-					log.Fatalf("problem creating session: %s", err.Error())
+					grip.Errorf("problem creating session: %s", err.Error())
 				}
 				svc := s3.New(sess)
 
@@ -125,7 +124,7 @@ func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {
 
 				urlStr, err := req.Presign(PresignExpireTime)
 				if err != nil {
-					log.Fatalf("problem signing request: %s", err.Error())
+					grip.Errorf("problem signing request: %s", err.Error())
 				}
 				artifact.Files[i].Link = urlStr
 			}
