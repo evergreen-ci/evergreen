@@ -303,7 +303,8 @@ func (s *AdminSuite) TestAuthConfig() {
 			Users:        []string{"ghuser"},
 			Organization: "ghorg",
 		},
-		PreferredType: AuthLDAPKey,
+		PreferredType:           AuthLDAPKey,
+		BackgroundReauthMinutes: 60,
 	}
 
 	err := config.Set()

@@ -10,7 +10,6 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -37,10 +36,7 @@ type UIServer struct {
 	// The root URL of the server, used in redirects for instance.
 	RootURL string
 
-	//authManager
-	UserManager        gimlet.UserManager
 	umconf             gimlet.UserMiddlewareConfiguration
-	umCanClearTokens   bool
 	Settings           evergreen.Settings
 	CookieStore        *sessions.CookieStore
 	clientConfig       *evergreen.ClientConfig
@@ -71,10 +67,6 @@ type ViewData struct {
 
 func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo TemplateFunctionOptions) (*UIServer, error) {
 	settings := env.Settings()
-	userManager, canClearTokens, err := auth.LoadUserManager(settings)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
 
 	ropts := gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
@@ -87,8 +79,6 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo T
 		env:                env,
 		queue:              queue,
 		Home:               home,
-		UserManager:        userManager,
-		umCanClearTokens:   canClearTokens,
 		clientConfig:       evergreen.GetEnvironment().ClientConfig(),
 		CookieStore:        sessions.NewCookieStore([]byte(settings.Ui.Secret)),
 		buildBaronProjects: bbGetConfig(settings),
@@ -256,10 +246,10 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 		}
 	})
 
-	if h := uis.UserManager.GetLoginHandler(uis.RootURL); h != nil {
+	if h := uis.env.UserManager().GetLoginHandler(uis.RootURL); h != nil {
 		app.AddRoute("/login/redirect").Handler(h).Get()
 	}
-	if h := uis.UserManager.GetLoginCallbackHandler(); h != nil {
+	if h := uis.env.UserManager().GetLoginCallbackHandler(); h != nil {
 		app.AddRoute("/login/redirect/callback").Handler(h).Get()
 	}
 

@@ -757,9 +757,25 @@ func TestNextTask(t *testing.T) {
 					So(err, ShouldBeNil)
 					So(dbHost.Status, ShouldEqual, evergreen.HostRunning)
 				})
-				Convey("should exit when it has not yet been provisioned by the app server", func() {
-					So(nonLegacyHost.SetStatus(evergreen.HostProvisioning, evergreen.User, ""), ShouldBeNil)
-					So(db.Update(host.Collection, bson.M{host.IdKey: nonLegacyHost.Id}, bson.M{"$set": bson.M{host.ProvisionedKey: false}}), ShouldBeNil)
+				Convey("should get next task when provisioning", func() {
+					// setup host
+					So(db.Update(host.Collection, bson.M{host.IdKey: nonLegacyHost.Id}, bson.M{"$set": bson.M{host.StatusKey: evergreen.HostStarting}}), ShouldBeNil)
+					So(nonLegacyHost.SetProvisioning(), ShouldBeNil)
+					dbHost, err := host.FindOneId(nonLegacyHost.Id)
+					So(err, ShouldBeNil)
+					So(dbHost.Status, ShouldEqual, evergreen.HostProvisioning)
+
+					// next task action
+					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.BuildRevision}
+					resp := getNextTaskEndpoint(t, as, nonLegacyHost.Id, reqDetails)
+					respDetails := &apimodels.NextTaskResponse{}
+					So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
+					So(respDetails.TaskId, ShouldNotBeEmpty)
+					So(respDetails.Build, ShouldEqual, "buildId")
+				})
+				Convey("should exit when it is quarantined", func() {
+					So(nonLegacyHost.SetStatus(evergreen.HostQuarantined, evergreen.User, ""), ShouldBeNil)
+					So(db.Update(host.Collection, bson.M{host.IdKey: nonLegacyHost.Id}, bson.M{"$set": bson.M{host.StatusKey: evergreen.HostQuarantined}}), ShouldBeNil)
 					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.BuildRevision}
 					resp := getNextTaskEndpoint(t, as, nonLegacyHost.Id, reqDetails)
 					respDetails := &apimodels.NextTaskResponse{}
@@ -768,7 +784,7 @@ func TestNextTask(t *testing.T) {
 					So(respDetails.TaskId, ShouldBeEmpty)
 					dbHost, err := host.FindOneId(nonLegacyHost.Id)
 					So(err, ShouldBeNil)
-					So(dbHost.Status, ShouldEqual, evergreen.HostProvisioning)
+					So(dbHost.Status, ShouldEqual, evergreen.HostQuarantined)
 				})
 				Convey("with the latest agent revision in the next task details", func() {
 					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.BuildRevision}

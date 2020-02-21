@@ -38,10 +38,11 @@ func (u *DBUser) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(u) }
 func (u *DBUser) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, u) }
 
 type LoginCache struct {
-	Token        string    `bson:"token"`
-	TTL          time.Time `bson:"ttl"`
-	AccessToken  string    `bson:"access_token,omitempty"`
-	RefreshToken string    `bson:"refresh_token,omitempty"`
+	Token          string    `bson:"token"`
+	TTL            time.Time `bson:"ttl"`
+	AccessToken    string    `bson:"access_token,omitempty"`
+	RefreshToken   string    `bson:"refresh_token,omitempty"`
+	ReauthAttempts int       `bson:"reauth_attempts,omitempty"`
 }
 
 type GithubUser struct {
@@ -300,6 +301,27 @@ func (u *DBUser) HasPermission(opts gimlet.PermissionOpts) bool {
 	return false
 }
 
+// IncReauthAttempts increases the number of attempted reauths for this user.
+func (u *DBUser) IncReauthAttempts() error {
+	info, err := db.FindAndModify(
+		Collection,
+		bson.M{IdKey: u.Id},
+		nil,
+		adb.Change{
+			Update: bson.M{
+				"$inc": bson.M{bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheReauthAttemptsKey): 1},
+			},
+			ReturnNew: true,
+		}, u)
+	if err != nil {
+		return errors.Wrap(err, "could not increment reauth attempts")
+	}
+	if info.Updated != 1 {
+		return errors.Errorf("could not find user '%s' to update", u.Id)
+	}
+	return nil
+}
+
 func GetPatchUser(gitHubUID int) (*DBUser, error) {
 	u, err := FindByGithubUID(gitHubUID)
 	if err != nil {
@@ -353,7 +375,8 @@ func PutLoginCache(g gimlet.User) (string, error) {
 	// Always update the TTL. If the user doesn't have a token, generate and set it.
 	token := u.LoginCache.Token
 	setFields := bson.M{
-		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey): time.Now(),
+		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey):            time.Now(),
+		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheReauthAttemptsKey): 0,
 	}
 	if token == "" {
 		token = util.RandomString()
@@ -415,4 +438,19 @@ func ClearLoginCache(user gimlet.User, all bool) error {
 		}
 	}
 	return nil
+}
+
+// FindNeedsReauthorization finds all users need to be reauthorized after the
+// given period has passed.
+func FindNeedsReauthorization(reauthorizeAfter time.Duration, maxAttempts int) ([]DBUser, error) {
+	cutoff := time.Now().Add(-reauthorizeAfter)
+	users, err := Find(db.Query(bson.M{
+		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTokenKey): bson.M{"$exists": true},
+		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey):   bson.M{"$lte": cutoff},
+		"$or": []bson.M{
+			{bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheReauthAttemptsKey): bson.M{"$exists": false}},
+			{bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheReauthAttemptsKey): bson.M{"$lt": maxAttempts}},
+		},
+	}))
+	return users, errors.Wrap(err, "could not find users who need reauthorization")
 }

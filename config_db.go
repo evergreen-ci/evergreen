@@ -89,13 +89,15 @@ var (
 	hostAllocatorDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "HostAllocatorDisabled")
 	parserProjectDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "ParserProjectDisabled")
 	drBackupDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "DRBackupDisabled")
+	backgroundReauthDisabledKey     = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundReauthDisabled")
 
 	// AuthConfig keys
-	AuthLDAPKey          = bsonutil.MustHaveTag(AuthConfig{}, "LDAP")
-	AuthOktaKey          = bsonutil.MustHaveTag(AuthConfig{}, "Okta")
-	AuthGithubKey        = bsonutil.MustHaveTag(AuthConfig{}, "Github")
-	AuthNaiveKey         = bsonutil.MustHaveTag(AuthConfig{}, "Naive")
-	authPreferredTypeKey = bsonutil.MustHaveTag(AuthConfig{}, "PreferredType")
+	AuthLDAPKey                    = bsonutil.MustHaveTag(AuthConfig{}, "LDAP")
+	AuthOktaKey                    = bsonutil.MustHaveTag(AuthConfig{}, "Okta")
+	AuthGithubKey                  = bsonutil.MustHaveTag(AuthConfig{}, "Github")
+	AuthNaiveKey                   = bsonutil.MustHaveTag(AuthConfig{}, "Naive")
+	authPreferredTypeKey           = bsonutil.MustHaveTag(AuthConfig{}, "PreferredType")
+	authBackgroundReauthMinutesKey = bsonutil.MustHaveTag(AuthConfig{}, "BackgroundReauthMinutes")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")

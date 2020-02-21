@@ -91,6 +91,35 @@ type queryResolver struct{ *Resolver }
 
 type patchResolver struct{ *Resolver }
 
+func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (*PatchDuration, error) {
+	// excludes display tasks
+	tasks, err := task.Find(task.ByVersion(*obj.Id).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	if tasks == nil {
+		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
+	timeTaken, makespan := task.GetTimeSpent(tasks)
+
+	// return nil if rounded timeTaken/makespan == 0s
+	t := timeTaken.Round(time.Second).String()
+	var tPointer *string
+	if t != "0s" {
+		tPointer = &t
+	}
+	m := makespan.Round(time.Second).String()
+	var mPointer *string
+	if m != "0s" {
+		tPointer = &m
+	}
+
+	return &PatchDuration{
+		Makespan:  tPointer,
+		TimeTaken: mPointer,
+	}, nil
+}
+
 func (r *patchResolver) Time(ctx context.Context, obj *restModel.APIPatch) (*PatchTime, error) {
 	usr := route.MustHaveUser(ctx)
 
@@ -216,8 +245,8 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 
 func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, status *string) ([]*restModel.APITest, error) {
 	task, err := task.FindOneId(taskID)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+	if task == nil || err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
 
 	sortBy := ""
@@ -274,6 +303,14 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 		err := apiTest.BuildFromService(&t)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
+		}
+		if apiTest.Logs.HTMLDisplayURL != nil && IsURL(*apiTest.Logs.HTMLDisplayURL) == false {
+			formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.HTMLDisplayURL)
+			apiTest.Logs.HTMLDisplayURL = &formattedURL
+		}
+		if apiTest.Logs.RawDisplayURL != nil && IsURL(*apiTest.Logs.RawDisplayURL) == false {
+			formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.RawDisplayURL)
+			apiTest.Logs.RawDisplayURL = &formattedURL
 		}
 		testPointers = append(testPointers, &apiTest)
 	}
