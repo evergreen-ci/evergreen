@@ -102,8 +102,7 @@ func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {
 		for i := range artifact.Files {
 			if artifact.Files[i].Visibility == "signed" {
 				if artifact.Files[i].AwsSecret == "" || artifact.Files[i].AwsKey == "" || artifact.Files[i].Bucket == "" || artifact.Files[i].FileKey == "" {
-					err = errors.New("error presigning the url for artifact")
-					catcher.Add(err)
+					catcher.New("error presigning the url for artifact")
 				}
 
 				sess, err := session.NewSession(&aws.Config{
