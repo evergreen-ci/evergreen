@@ -10,10 +10,9 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/service"
-	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
@@ -53,6 +52,12 @@ func startWebService() cli.Command {
 			queue := env.RemoteQueue()
 			remoteQueueGroup := env.RemoteQueueGroup()
 
+			// Create the user manager before setting up job queues to allow
+			// background reauthorization jobs to start.
+			if err = setupUserManager(env, settings); err != nil {
+				return errors.Wrap(err, "could not set up user manager")
+			}
+
 			defer cancel()
 			defer sender.Close()
 			defer recovery.LogStackTraceAndExit("evergreen service")
@@ -61,11 +66,6 @@ func startWebService() cli.Command {
 			grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
 			grip.EmergencyFatal(errors.Wrap(startSystemCronJobs(ctx, env), "problem starting background work"))
-
-			// Enqueue jobs to ensure each app server has the correct SSH key
-			// files.
-			ts := util.RoundPartOfHour(30).Format(units.TSFormat)
-			grip.Error(env.LocalQueue().Put(ctx, units.NewLocalUpdateSSHKeysJob(ts)))
 
 			var (
 				apiServer *http.Server
@@ -261,4 +261,15 @@ func getAdminService(ctx context.Context, env evergreen.Environment, settings *e
 	}
 
 	return handler, nil
+}
+
+// setupUserManager sets up the global user authentication manager.
+func setupUserManager(env evergreen.Environment, settings *evergreen.Settings) error {
+	um, info, err := auth.LoadUserManager(settings)
+	if err != nil {
+		return errors.Wrap(err, "failed to load user manager")
+	}
+	env.SetUserManager(um)
+	env.SetUserManagerInfo(info)
+	return nil
 }

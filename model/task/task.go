@@ -1439,6 +1439,10 @@ func FindSchedulableForAlias(id string) ([]Task, error) {
 	q := scheduleableTasksQuery()
 
 	q[DistroAliasesKey] = id
+	// Single-host task groups can't be put in an alias queue, because it can
+	// cause a race when assigning tasks to hosts where the tasks in the task
+	// group might be assigned to different hosts.
+	q[TaskGroupMaxHostsKey] = bson.M{"$ne": 1}
 
 	return FindAll(db.Query(q))
 }

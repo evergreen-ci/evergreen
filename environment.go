@@ -139,6 +139,13 @@ type Environment interface {
 
 	// RoleManager returns an interface that can be used to interact with roles and permissions
 	RoleManager() gimlet.RoleManager
+
+	// UserManager returns the global user manager for authentication.
+	UserManager() gimlet.UserManager
+	SetUserManager(gimlet.UserManager)
+	// UserManagerInfo returns the information about the user manager.
+	UserManagerInfo() UserManagerInfo
+	SetUserManagerInfo(UserManagerInfo)
 }
 
 // NewEnvironment constructs an Environment instance, establishing a
@@ -220,6 +227,17 @@ type envState struct {
 	closers            []closerOp
 	senders            map[SenderKey]send.Sender
 	roleManager        gimlet.RoleManager
+	userManager        gimlet.UserManager
+	userManagerInfo    UserManagerInfo
+}
+
+// UserManagerInfo lists properties of the UserManager regarding its support for
+// certain features.
+// TODO: this should probably be removed by refactoring the optional methods in
+// the gimlet.UserManager.
+type UserManagerInfo struct {
+	CanClearTokens bool
+	CanReauthorize bool
 }
 
 type closerOp struct {
@@ -657,6 +675,30 @@ func (e *envState) setupRoleManager() error {
 	catcher.Add(e.roleManager.RegisterPermissions(DistroPermissions))
 	catcher.Add(e.roleManager.RegisterPermissions(SuperuserPermissions))
 	return catcher.Resolve()
+}
+
+func (e *envState) UserManager() gimlet.UserManager {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.userManager
+}
+
+func (e *envState) SetUserManager(um gimlet.UserManager) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.userManager = um
+}
+
+func (e *envState) UserManagerInfo() UserManagerInfo {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.userManagerInfo
+}
+
+func (e *envState) SetUserManagerInfo(umi UserManagerInfo) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.userManagerInfo = umi
 }
 
 func (e *envState) Settings() *Settings {

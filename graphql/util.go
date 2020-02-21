@@ -2,6 +2,9 @@ package graphql
 
 import (
 	"context"
+	"fmt"
+	"net/url"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -12,7 +15,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 )
 
-// returns the files of a Task inside a GroupedFile struct
+// GetGroupedFiles returns the files of a Task inside a GroupedFile struct
 func GetGroupedFiles(ctx context.Context, name string, taskID string, execution int) (*GroupedFiles, error) {
 	taskFiles, err := artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: taskID, Execution: execution}})
 	if err != nil {
@@ -54,4 +57,27 @@ func SetScheduled(ctx context.Context, sc data.Connector, taskID string, isActiv
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	return &apiTask, nil
+}
+
+// GetFormattedDate returns a time.Time type in the format "Dec 13, 2020, 11:58:04 pm"
+func GetFormattedDate(t *time.Time, timezone string) (*string, error) {
+	if t == nil {
+		return nil, nil
+	}
+
+	loc, err := time.LoadLocation(timezone)
+	if err != nil {
+		return nil, err
+	}
+
+	timeInUserTimezone := t.In(loc)
+	newTime := fmt.Sprintf("%s %d, %d, %s", timeInUserTimezone.Month(), timeInUserTimezone.Day(), timeInUserTimezone.Year(), timeInUserTimezone.Format(time.Kitchen))
+
+	return &newTime, nil
+}
+
+// IsURL returns true if str is a url with scheme and domain name
+func IsURL(str string) bool {
+	u, err := url.ParseRequestURI(str)
+	return err == nil && u.Scheme != "" && u.Host != ""
 }

@@ -29,6 +29,7 @@ type ServiceFlags struct {
 	HostAllocatorDisabled      bool `bson:"host_allocator_disabled" json:"host_allocator_disabled"`
 	ParserProjectDisabled      bool `bson:"parser_project_disabled" json:"parser_project_disabled"`
 	DRBackupDisabled           bool `bson:"dr_backup_disabled" json:"dr_backup_disabled"`
+	BackgroundReauthDisabled   bool `bson:"background_reauth_disabled" json:"background_reauth_disabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -94,6 +95,7 @@ func (c *ServiceFlags) Set() error {
 			hostAllocatorDisabledKey:        c.HostAllocatorDisabled,
 			parserProjectDisabledKey:        c.ParserProjectDisabled,
 			drBackupDisabledKey:             c.DRBackupDisabled,
+			backgroundReauthDisabledKey:     c.BackgroundReauthDisabled,
 		},
 	}, options.Update().SetUpsert(true))
 

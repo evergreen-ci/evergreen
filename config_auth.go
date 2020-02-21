@@ -56,11 +56,12 @@ type GithubAuthConfig struct {
 
 // AuthConfig has a pointer to either a CrowConfig or a NaiveAuthConfig.
 type AuthConfig struct {
-	LDAP          *LDAPConfig       `bson:"ldap,omitempty" json:"ldap" yaml:"ldap"`
-	Okta          *OktaConfig       `bson:"okta,omitempty" json:"okta" yaml:"okta"`
-	Naive         *NaiveAuthConfig  `bson:"naive,omitempty" json:"naive" yaml:"naive"`
-	Github        *GithubAuthConfig `bson:"github,omitempty" json:"github" yaml:"github"`
-	PreferredType string            `bson:"preferred_type,omitempty" json:"preferred_type" yaml:"preferred_type"`
+	LDAP                    *LDAPConfig       `bson:"ldap,omitempty" json:"ldap" yaml:"ldap"`
+	Okta                    *OktaConfig       `bson:"okta,omitempty" json:"okta" yaml:"okta"`
+	Naive                   *NaiveAuthConfig  `bson:"naive,omitempty" json:"naive" yaml:"naive"`
+	Github                  *GithubAuthConfig `bson:"github,omitempty" json:"github" yaml:"github"`
+	PreferredType           string            `bson:"preferred_type,omitempty" json:"preferred_type" yaml:"preferred_type"`
+	BackgroundReauthMinutes int               `bson:"background_reauth_minutes" json:"background_reauth_minutes" yaml:"background_reauth_minutes"`
 }
 
 func (c *AuthConfig) SectionId() string { return "auth" }
@@ -93,11 +94,12 @@ func (c *AuthConfig) Set() error {
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			AuthLDAPKey:          c.LDAP,
-			AuthOktaKey:          c.Okta,
-			AuthNaiveKey:         c.Naive,
-			AuthGithubKey:        c.Github,
-			authPreferredTypeKey: c.PreferredType,
+			AuthLDAPKey:                    c.LDAP,
+			AuthOktaKey:                    c.Okta,
+			AuthNaiveKey:                   c.Naive,
+			AuthGithubKey:                  c.Github,
+			authPreferredTypeKey:           c.PreferredType,
+			authBackgroundReauthMinutesKey: c.BackgroundReauthMinutes,
 		}}, options.Update().SetUpsert(true))
 
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
