@@ -2365,6 +2365,24 @@
         ],
         "data": { "taskTests": null }
       }
+    },
+    {
+      "query_file": "set_priority-success.graphql",
+      "result": {
+        "data": { "setPriority": { "id": "wuzzup", "priority": 33 } }
+      }
+    },
+    {
+      "query_file": "set_priority-nonexistent-task_id.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "unable to find task WRONG-TASK-ID",
+            "path": ["setPriority"]
+          }
+        ],
+        "data": null
+      }
     }
   ]
 }

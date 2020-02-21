@@ -1,0 +1,6 @@
+mutation {
+  setPriority(taskId: "wuzzup", priority: 33) {
+    priority
+    id
+  }
+}

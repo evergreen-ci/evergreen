@@ -1,0 +1,6 @@
+mutation {
+  setPriority(taskId: "WRONG-TASK-ID", priority: 33) {
+    priority
+    id
+  }
+}
