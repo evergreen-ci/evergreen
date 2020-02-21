@@ -1255,7 +1255,7 @@ func PopulateReauthorizationJobs(env evergreen.Environment) amboy.QueueOperation
 		if reauthAfter == 0 {
 			reauthAfter = defaultBackgroundReauth
 		}
-		users, err := user.FindNeedsReauthorization(reauthAfter)
+		users, err := user.FindNeedsReauthorization(reauthAfter, maxReauthAttempts)
 		if err != nil {
 			return err
 		}

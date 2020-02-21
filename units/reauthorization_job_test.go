@@ -11,9 +11,11 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // mockReauthUserManager is a UserManager for testing reauthorization which
@@ -143,23 +145,36 @@ func TestReauthorizationJob(t *testing.T) {
 			assert.True(t, um.attemptedReauth)
 			assert.Equal(t, 1, u.LoginCache.ReauthAttempts)
 		},
-		"LogsOutIfReauthExceedsMaxAttempts": func(ctx context.Context, t *testing.T, env *mock.Environment, um *mockReauthUserManager, u *user.DBUser) {
+		"DoesNotRetryIfReauthExceedsMaxAttempts": func(ctx context.Context, t *testing.T, env *mock.Environment, um *mockReauthUserManager, u *user.DBUser) {
 			um.failReauth = true
+			require.NoError(t, user.UpdateOne(
+				bson.M{user.IdKey: u.Id},
+				bson.M{"$set": bson.M{bsonutil.GetDottedKeyName(user.LoginCacheKey, user.LoginCacheReauthAttemptsKey): maxReauthAttempts - 1}}),
+			)
 			u.LoginCache.ReauthAttempts = maxReauthAttempts - 1
+
 			j := NewReauthorizationJob(env, u, "test")
 			j.Run(ctx)
 			assert.Error(t, j.Error())
-			needsReauth, err := needsReauth(env, u)
+			stillNeedsReauth, err := needsReauth(env, u)
 			assert.NoError(t, err)
-			assert.False(t, needsReauth)
+			assert.True(t, stillNeedsReauth)
 			assert.True(t, um.attemptedReauth)
+
 			dbUser, err := user.FindOneById(u.Id)
-			require.NoError(t, err)
-			assert.Zero(t, dbUser.LoginCache.Token)
-			assert.Zero(t, dbUser.LoginCache.TTL)
-			assert.Zero(t, dbUser.LoginCache.AccessToken)
-			assert.Zero(t, dbUser.LoginCache.RefreshToken)
-			assert.Zero(t, dbUser.LoginCache.ReauthAttempts)
+			assert.NoError(t, err)
+			assert.NotEmpty(t, u.LoginCache.Token)
+			assert.Equal(t, u.LoginCache.Token, dbUser.LoginCache.Token)
+
+			// Once we've exceeded the max allowed attempts, this should no-op.
+			um.attemptedReauth = false
+			j = NewReauthorizationJob(env, dbUser, "test")
+			j.Run(ctx)
+			assert.NoError(t, j.Error())
+			stillNeedsReauth, err = needsReauth(env, u)
+			assert.NoError(t, err)
+			assert.True(t, stillNeedsReauth)
+			assert.False(t, um.attemptedReauth)
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {

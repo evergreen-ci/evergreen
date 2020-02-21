@@ -19,7 +19,7 @@ import (
 const (
 	reauthorizationJobName  = "reauthorize-user"
 	defaultBackgroundReauth = time.Hour
-	maxReauthAttempts       = 15
+	maxReauthAttempts       = 10
 )
 
 type reauthorizationJob struct {
@@ -90,6 +90,12 @@ func (j *reauthorizationJob) Run(ctx context.Context) {
 		return
 	}
 
+	// Do not try background reauth if they've exceeded their attempt limit
+	// until they refresh their login cache.
+	if j.user.LoginCache.ReauthAttempts >= maxReauthAttempts {
+		return
+	}
+
 	reauthAfter := time.Duration(j.env.Settings().AuthConfig.BackgroundReauthMinutes) * time.Minute
 	if reauthAfter == 0 {
 		reauthAfter = defaultBackgroundReauth
@@ -118,16 +124,6 @@ func (j *reauthorizationJob) Run(ctx context.Context) {
 			"job":     j.ID(),
 		}))
 		j.AddError(err)
-		if j.user.LoginCache.ReauthAttempts+1 >= maxReauthAttempts {
-			err := user.ClearLoginCache(j.user, false)
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "could not clear user's login cache after max failed attempts exceeded",
-				"user":    j.user.Username(),
-				"job":     j.ID(),
-			}))
-			j.AddError(err)
-			return
-		}
 		if err := j.user.IncReauthAttempts(); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "failed to modify user reauth attempts",
