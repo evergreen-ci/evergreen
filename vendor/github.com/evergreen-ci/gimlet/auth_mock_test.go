@@ -112,6 +112,7 @@ func (m *MockUserManager) CreateUserToken(username, password string) (string, er
 func (m *MockUserManager) GetLoginHandler(url string) http.HandlerFunc { return nil }
 func (m *MockUserManager) GetLoginCallbackHandler() http.HandlerFunc   { return nil }
 func (m *MockUserManager) IsRedirect() bool                            { return false }
+func (m *MockUserManager) ReauthorizeUser(User) error                  { return nil }
 
 func (m *MockUserManager) GetUserByID(id string) (User, error) {
 	u, ok := m.TokenToUsers[id]

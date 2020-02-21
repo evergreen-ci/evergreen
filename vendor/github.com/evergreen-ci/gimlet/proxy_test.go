@@ -2,9 +2,9 @@ package gimlet
 
 import (
 	"net/http"
-	"net/url"
 	"testing"
 
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,13 +32,13 @@ func TestProxyService(t *testing.T) {
 		})
 		t.Run("FindFunction", func(t *testing.T) {
 			opts := &ProxyOptions{}
-			opts.FindTarget = func(u *url.URL) []string { return nil }
+			opts.FindTarget = func(r *http.Request) ([]string, error) { return nil, nil }
 			assert.NoError(t, opts.Validate())
 		})
 		t.Run("ErrorWhenAllResolversSpecified", func(t *testing.T) {
 			opts := &ProxyOptions{
 				TargetPool: []string{"a"},
-				FindTarget: func(u *url.URL) []string { return nil },
+				FindTarget: func(r *http.Request) ([]string, error) { return nil, nil },
 			}
 			assert.Error(t, opts.Validate())
 		})
@@ -76,7 +76,7 @@ func TestProxyService(t *testing.T) {
 	t.Run("PanicWithNoHosts", func(t *testing.T) {
 		opts := &ProxyOptions{
 			TargetPool: []string{},
-			FindTarget: func(u *url.URL) []string { return nil },
+			FindTarget: func(r *http.Request) ([]string, error) { return nil, nil },
 		}
 
 		req, err := http.NewRequest(http.MethodGet, "http://example.com/target/path", nil)
@@ -96,26 +96,44 @@ func TestProxyService(t *testing.T) {
 		assert.Equal(t, "/proxy/add/target/path", req.URL.Path)
 	})
 	t.Run("StripPrefix", func(t *testing.T) {
-		opts := &ProxyOptions{
-			TargetPool:        []string{"localhost:8080"},
-			StripSourcePrefix: true,
+		tp := &testProxy{
+			director: (&ProxyOptions{
+				TargetPool:        []string{"localhost:8080"},
+				StripSourcePrefix: true,
+			}).director,
 		}
 
+		router := mux.NewRouter()
+		router.Handle("/target/path", tp)
 		req, err := http.NewRequest(http.MethodGet, "http://example.com/target/path", nil)
 		require.NoError(t, err)
-		opts.director(req)
-		assert.Equal(t, "/", req.URL.Path)
+		router.ServeHTTP(nil, req)
+		assert.Equal(t, "/", tp.finalRequest.URL.Path)
 	})
 	t.Run("ReplacePrefix", func(t *testing.T) {
-		opts := &ProxyOptions{
-			TargetPool:        []string{"localhost:8080"},
-			RemotePrefix:      "/proxy/add/",
-			StripSourcePrefix: true,
+		tp := &testProxy{
+			director: (&ProxyOptions{
+				TargetPool:        []string{"localhost:8080"},
+				RemotePrefix:      "/proxy/add/",
+				StripSourcePrefix: true,
+			}).director,
 		}
 
+		router := mux.NewRouter()
+		router.Handle("/target/path", tp)
 		req, err := http.NewRequest(http.MethodGet, "http://example.com/target/path", nil)
 		require.NoError(t, err)
-		opts.director(req)
-		assert.Equal(t, opts.RemotePrefix, req.URL.Path)
+		router.ServeHTTP(nil, req)
+		assert.Equal(t, "/proxy/add/", tp.finalRequest.URL.Path)
 	})
+}
+
+type testProxy struct {
+	director     func(*http.Request)
+	finalRequest http.Request
+}
+
+func (p *testProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	p.director(r)
+	p.finalRequest = *r
 }

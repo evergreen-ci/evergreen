@@ -198,7 +198,8 @@ func TestPostUserPermissions(t *testing.T) {
 	request = gimlet.SetURLVars(request, map[string]string{"user_id": u.Id})
 	assert.NoError(err)
 	assert.NoError(handler.Parse(ctx, request))
-	//TODO: run
+	resp := handler.Run(ctx)
+	assert.EqualValues("'asdf' is not a valid permission", resp.Data())
 
 	// valid input that should create a new role + scope
 	validBody := `{ "resource_type": "project", "resources": ["foo"], "permissions": {"project_tasks": 10} }`
@@ -206,7 +207,8 @@ func TestPostUserPermissions(t *testing.T) {
 	request = gimlet.SetURLVars(request, map[string]string{"user_id": u.Id})
 	assert.NoError(err)
 	assert.NoError(handler.Parse(ctx, request))
-	_ = handler.Run(ctx)
+	resp = handler.Run(ctx)
+	assert.Equal(http.StatusOK, resp.Status())
 	roles, err := env.RoleManager().GetAllRoles()
 	assert.NoError(err)
 	assert.Len(roles, 1)
