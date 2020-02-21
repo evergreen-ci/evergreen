@@ -2156,6 +2156,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	assert.True(complete)
 	assert.NoError(err)
 	assert.True(b.IsFinished())
+	assert.True(b.Tasks[1].Blocked)
 
 	e, err := event.FindUnprocessedEvents()
 	assert.NoError(err)

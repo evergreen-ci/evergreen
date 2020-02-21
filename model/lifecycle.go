@@ -57,6 +57,7 @@ func cacheFromTask(t task.Task) build.TaskCache {
 		StartTime:     t.StartTime,
 		TimeTaken:     t.TimeTaken,
 		Activated:     t.Activated,
+		Blocked:       t.Blocked(),
 	}
 }
 

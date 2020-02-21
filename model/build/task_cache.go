@@ -107,6 +107,7 @@ func ResetCachedTask(buildId, taskId string) error {
 			},
 			"$unset": bson.M{
 				TasksKey + ".$." + TaskCacheStatusDetailsKey: "",
+				TasksKey + ".$." + TaskCacheBlockedKey:       "",
 			},
 		},
 	)
@@ -131,6 +132,7 @@ func UpdateCachedTask(t *task.Task, timeTaken time.Duration) error {
 		"$set": bson.M{
 			TasksKey + ".$." + TaskCacheStatusKey:        t.Status,
 			TasksKey + ".$." + TaskCacheStatusDetailsKey: t.Details,
+			TasksKey + ".$." + TaskCacheBlockedKey:       t.Blocked(),
 		},
 		"$inc": bson.M{
 			TasksKey + ".$." + TaskCacheTimeTakenKey: timeTaken,
