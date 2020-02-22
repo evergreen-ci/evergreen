@@ -1047,12 +1047,6 @@ func (h *Host) spawnHostConfigJSON(settings *evergreen.Settings) ([]byte, error)
 // SpawnHostGetTaskDataCommand returns the command that fetches the task data
 // for a spawn host.
 func (h *Host) SpawnHostGetTaskDataCommand() []string {
-	// TODO (EVG-7387): this should be fixed to work with legacy SSH on Windows.
-	// The config file path has to be a native Windows path in order to properly
-	// read the config file, but currently the working directory is specified as
-	// a Cygwin-style directory (i.e. /home/Administrator should actually be
-	// C:/cygwin/home/Administrator).
-	// kim: TODO: use Jasper in setupHostJob instead of regular SSH.
 	return []string{h.AgentBinary(),
 		"-c", h.PathToFile(h.spawnHostConfigFile()),
 		"fetch",

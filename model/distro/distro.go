@@ -388,8 +388,12 @@ func (d *Distro) ExecutableSubPath() string {
 	return filepath.Join(arch, d.BinaryName())
 }
 
-// HomeDir gets the absolute path to the home directory for this distro's user.
+// HomeDir gets the absolute path to the home directory for this distro's user
+// for non-legacy provisioned hosts.
 func (d *Distro) HomeDir() string {
+	if d.LegacyBootstrap() {
+		return "~"
+	}
 	if d.User == "root" {
 		return filepath.Join("/", d.User)
 	}
