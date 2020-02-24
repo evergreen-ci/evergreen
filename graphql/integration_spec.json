@@ -275,7 +275,6 @@
       },
       {
         "_id": "wuzzup-activated",
-        "project": "5723cdaa7bd5c9f79a7fc666",
         "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
         "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
         "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
@@ -284,7 +283,7 @@
         "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
         "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
         "version": "version",
-        "branch": "id",
+        "branch": "5723cdaa7bd5c9f79a7fc666",
         "gitspec": "revise",
         "priority": 5,
         "task_group": "grp",
@@ -1606,13 +1605,6 @@
     {
       "query_file": "set_priority-has-permission.graphql",
       "result": {
-        "errors": [
-          {
-            "message": "Insufficient access to set priority 101, can only set priority less than or equal to 100",
-            "path": ["setPriority"],
-            "extensions": { "code": "FORBIDDEN" }
-          }
-        ],
         "data": null
       }
     }
