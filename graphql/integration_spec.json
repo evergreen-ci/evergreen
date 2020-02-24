@@ -2286,11 +2286,13 @@
       "query_file": "patch-time-2.graphql",
       "result": {
         "data": {
-          "patch": {
-            "time": {
-              "started": "February 13, 2020, 5:42PM",
-              "finished": "February 14, 2020, 6:03PM",
-              "submittedAt": "February 12, 2020, 4:58PM"
+          "data": {
+            "patch": {
+              "time": {
+                "started": "February 13, 2020, 12:42PM",
+                "finished": "February 14, 2020, 1:03PM",
+                "submittedAt": "February 12, 2020, 11:58AM"
+              }
             }
           }
         }
