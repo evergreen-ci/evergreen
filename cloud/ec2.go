@@ -39,10 +39,10 @@ type EC2ProviderSettings struct {
 	AMI string `mapstructure:"ami" json:"ami,omitempty" bson:"ami,omitempty"`
 
 	// If set, overrides key from credentials
-	AWSKeyID string `mapstructure:"aws_access_key_id" bson:"aws_access_key_id,omitempty"`
+	AWSKeyID string `mapstructure:"aws_access_key_id" json:"aws_access_key_id,omitempty" bson:"aws_access_key_id,omitempty"`
 
 	// If set, overrides secret from credentials
-	AWSSecret string `mapstructure:"aws_secret_access_key" bson:"aws_secret_access_key,omitempty"`
+	AWSSecret string `mapstructure:"aws_secret_access_key" json:"aws_access_key,omitempty" bson:"aws_secret_access_key,omitempty"`
 
 	// InstanceType is the EC2 instance type.
 	InstanceType string `mapstructure:"instance_type" json:"instance_type,omitempty" bson:"instance_type,omitempty"`
@@ -97,7 +97,7 @@ func (s *EC2ProviderSettings) Validate() error {
 
 // region is only provided if we want to filter by region
 func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string) error {
-	if d.ProviderSettings != nil {
+	if d.ProviderSettings != nil && len(*d.ProviderSettings) > 0 {
 		if err := mapstructure.Decode(d.ProviderSettings, s); err != nil {
 			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, s)
 		}
@@ -107,7 +107,7 @@ func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string)
 			"output":  *s,
 		})
 		s.Region = s.getRegion()
-		if s.Region != evergreen.DefaultEC2Region {
+		if s.Region != evergreen.DefaultEC2Region && s.Region != "" {
 			return errors.Errorf("only default region should be saved in provider settings")
 		}
 	} else if len(d.ProviderSettingsList) != 0 {

@@ -122,7 +122,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// for now, assume we only handle one region, so return a new document
+	// populate settings list with the modified settings (temporary)
 	if err = cloud.UpdateProviderSettings(&newDistro); err != nil {
 		message := fmt.Sprintf("error updating provider settings: %v", err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
