@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -51,8 +52,13 @@ func CreateTestServer(settings *evergreen.Settings, tlsConfig *tls.Config) (*Tes
 	}
 
 	env := evergreen.GetEnvironment()
-	env.SetUserManager(testutil.MockUserManager{})
-
+	um, info, err := auth.LoadUserManager(settings)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load user manager")
+	}
+	env.SetUserManager(um)
+	env.SetUserManagerInfo(info)
+	//env.SetUserManager(testutil.MockUserManager{})
 	as, err := NewAPIServer(env, env.LocalQueue())
 	if err != nil {
 		return nil, err
