@@ -37,6 +37,15 @@ type Projects struct {
 	OtherProjects []*GroupedProjects       `json:"otherProjects"`
 }
 
+type TaskResult struct {
+	ID          string `json:"id"`
+	DisplayName string `json:"displayName"`
+	Version     string `json:"version"`
+	Status      string `json:"status"`
+	BaesStatus  string `json:"baesStatus"`
+	Variant     string `json:"variant"`
+}
+
 type SortDirection string
 
 const (

@@ -1,6 +1,7 @@
 type Query {
   userPatches(userId: String!): [Patch!]!
   patch(id: String!): Patch!
+  patchTasks(patchId: String!): [TaskResult!]!
   task(taskId: String!): Task
   projects: Projects!
   taskTests(
@@ -55,6 +56,15 @@ type Patch {
   alias: String!
   duration: PatchDuration
   time: PatchTime
+}
+
+type TaskResult {
+  id: ID!
+  displayName: String!
+  version: String!
+  status: String!
+  baesStatus: String!
+  variant: String!
 }
 
 type PatchDuration {

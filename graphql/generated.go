@@ -112,6 +112,7 @@ type ComplexityRoot struct {
 
 	Query struct {
 		Patch       func(childComplexity int, id string) int
+		PatchTasks  func(childComplexity int, patchID string) int
 		Projects    func(childComplexity int) int
 		Task        func(childComplexity int, taskID string) int
 		TaskFiles   func(childComplexity int, taskID string) int
@@ -172,6 +173,15 @@ type ComplexityRoot struct {
 		TaskLogLink   func(childComplexity int) int
 	}
 
+	TaskResult struct {
+		BaesStatus  func(childComplexity int) int
+		DisplayName func(childComplexity int) int
+		ID          func(childComplexity int) int
+		Status      func(childComplexity int) int
+		Variant     func(childComplexity int) int
+		Version     func(childComplexity int) int
+	}
+
 	TestLog struct {
 		HTMLDisplayURL func(childComplexity int) int
 		RawDisplayURL  func(childComplexity int) int
@@ -211,6 +221,7 @@ type PatchResolver interface {
 type QueryResolver interface {
 	UserPatches(ctx context.Context, userID string) ([]*model.APIPatch, error)
 	Patch(ctx context.Context, id string) (*model.APIPatch, error)
+	PatchTasks(ctx context.Context, patchID string) ([]*TaskResult, error)
 	Task(ctx context.Context, taskID string) (*model.APITask, error)
 	Projects(ctx context.Context) (*Projects, error)
 	TaskTests(ctx context.Context, taskID string, sortCategory *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, status *string) ([]*model.APITest, error)
@@ -530,6 +541,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Patch(childComplexity, args["id"].(string)), true
+
+	case "Query.patchTasks":
+		if e.complexity.Query.PatchTasks == nil {
+			break
+		}
+
+		args, err := ec.field_Query_patchTasks_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.PatchTasks(childComplexity, args["patchId"].(string)), true
 
 	case "Query.projects":
 		if e.complexity.Query.Projects == nil {
@@ -894,6 +917,48 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskLogs.TaskLogLink(childComplexity), true
 
+	case "TaskResult.baesStatus":
+		if e.complexity.TaskResult.BaesStatus == nil {
+			break
+		}
+
+		return e.complexity.TaskResult.BaesStatus(childComplexity), true
+
+	case "TaskResult.displayName":
+		if e.complexity.TaskResult.DisplayName == nil {
+			break
+		}
+
+		return e.complexity.TaskResult.DisplayName(childComplexity), true
+
+	case "TaskResult.id":
+		if e.complexity.TaskResult.ID == nil {
+			break
+		}
+
+		return e.complexity.TaskResult.ID(childComplexity), true
+
+	case "TaskResult.status":
+		if e.complexity.TaskResult.Status == nil {
+			break
+		}
+
+		return e.complexity.TaskResult.Status(childComplexity), true
+
+	case "TaskResult.variant":
+		if e.complexity.TaskResult.Variant == nil {
+			break
+		}
+
+		return e.complexity.TaskResult.Variant(childComplexity), true
+
+	case "TaskResult.version":
+		if e.complexity.TaskResult.Version == nil {
+			break
+		}
+
+		return e.complexity.TaskResult.Version(childComplexity), true
+
 	case "TestLog.htmlDisplayURL":
 		if e.complexity.TestLog.HTMLDisplayURL == nil {
 			break
@@ -1052,6 +1117,7 @@ var parsedSchema = gqlparser.MustLoadSchema(
 	&ast.Source{Name: "graphql/schema.graphql", Input: `type Query {
   userPatches(userId: String!): [Patch!]!
   patch(id: String!): Patch!
+  patchTasks(patchId: String!): [TaskResult!]!
   task(taskId: String!): Task
   projects: Projects!
   taskTests(
@@ -1106,6 +1172,15 @@ type Patch {
   alias: String!
   duration: PatchDuration
   time: PatchTime
+}
+
+type TaskResult {
+  id: ID!
+  displayName: String!
+  version: String!
+  status: String!
+  baesStatus: String!
+  variant: String!
 }
 
 type PatchDuration {
@@ -1296,6 +1371,20 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		}
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_patchTasks_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["patchId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["patchId"] = arg0
 	return args, nil
 }
 
@@ -2826,6 +2915,47 @@ func (ec *executionContext) _Query_patch(ctx context.Context, field graphql.Coll
 	res := resTmp.(*model.APIPatch)
 	fc.Result = res
 	return ec.marshalNPatch2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_patchTasks(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_patchTasks_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().PatchTasks(rctx, args["patchId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*TaskResult)
+	fc.Result = res
+	return ec.marshalNTaskResult2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskResultᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_task(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -4452,6 +4582,210 @@ func (ec *executionContext) _TaskLogs_taskLogLink(ctx context.Context, field gra
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskResult_id(ctx context.Context, field graphql.CollectedField, obj *TaskResult) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskResult",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNID2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskResult_displayName(ctx context.Context, field graphql.CollectedField, obj *TaskResult) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskResult",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisplayName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskResult_version(ctx context.Context, field graphql.CollectedField, obj *TaskResult) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskResult",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Version, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskResult_status(ctx context.Context, field graphql.CollectedField, obj *TaskResult) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskResult",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Status, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskResult_baesStatus(ctx context.Context, field graphql.CollectedField, obj *TaskResult) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskResult",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BaesStatus, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskResult_variant(ctx context.Context, field graphql.CollectedField, obj *TaskResult) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskResult",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Variant, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TestLog_htmlDisplayURL(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
@@ -6367,6 +6701,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
+		case "patchTasks":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_patchTasks(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "task":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -6626,6 +6974,58 @@ func (ec *executionContext) _TaskLogs(ctx context.Context, sel ast.SelectionSet,
 			out.Values[i] = ec._TaskLogs_systemLogLink(ctx, field, obj)
 		case "taskLogLink":
 			out.Values[i] = ec._TaskLogs_taskLogLink(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var taskResultImplementors = []string{"TaskResult"}
+
+func (ec *executionContext) _TaskResult(ctx context.Context, sel ast.SelectionSet, obj *TaskResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, taskResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TaskResult")
+		case "id":
+			out.Values[i] = ec._TaskResult_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "displayName":
+			out.Values[i] = ec._TaskResult_displayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "version":
+			out.Values[i] = ec._TaskResult_version(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "status":
+			out.Values[i] = ec._TaskResult_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "baesStatus":
+			out.Values[i] = ec._TaskResult_baesStatus(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "variant":
+			out.Values[i] = ec._TaskResult_variant(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -7386,6 +7786,57 @@ func (ec *executionContext) marshalNTask2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 
 func (ec *executionContext) marshalNTaskLogs2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐLogLinks(ctx context.Context, sel ast.SelectionSet, v model.LogLinks) graphql.Marshaler {
 	return ec._TaskLogs(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTaskResult2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskResult(ctx context.Context, sel ast.SelectionSet, v TaskResult) graphql.Marshaler {
+	return ec._TaskResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTaskResult2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskResultᚄ(ctx context.Context, sel ast.SelectionSet, v []*TaskResult) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNTaskResult2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskResult(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalNTaskResult2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskResult(ctx context.Context, sel ast.SelectionSet, v *TaskResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._TaskResult(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNTestLog2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTestLogs(ctx context.Context, sel ast.SelectionSet, v model.TestLogs) graphql.Marshaler {
