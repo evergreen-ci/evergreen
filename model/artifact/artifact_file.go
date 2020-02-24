@@ -3,11 +3,8 @@ package artifact
 import (
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/endpoints"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/evergreen-ci/evergreen/thirdparty/s3"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -97,34 +94,15 @@ func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {
 		}
 	}
 	files := []File{}
-	catcher := grip.NewBasicCatcher()
 	for _, artifact := range artifacts {
 		for i := range artifact.Files {
 			if artifact.Files[i].Visibility == "signed" {
 				if artifact.Files[i].AwsSecret == "" || artifact.Files[i].AwsKey == "" || artifact.Files[i].Bucket == "" || artifact.Files[i].FileKey == "" {
-					catcher.New("error presigning the url for artifact")
+					return "", errors.Errorf("error presigning the url for %s. awsSecret, awsKey, bucket, or filekey missing", artifact.Files[i].name)
 				}
-
-				sess, err := session.NewSession(&aws.Config{
-					Region: aws.String(endpoints.UsEast1RegionID),
-					Credentials: credentials.NewStaticCredentialsFromCreds(credentials.Value{
-						AccessKeyID:     artifact.Files[i].AwsKey,
-						SecretAccessKey: artifact.Files[i].AwsSecret,
-					}),
-				})
+				urlStr, err := s3.PreSign(artifact.Files[i].Bucket, artifact.Files[i].FileKey, artifact.Files[i].AwsKey, artifact.Files[i].AwsSecret)
 				if err != nil {
-					grip.Errorf("problem creating session: %s", err.Error())
-				}
-				svc := s3.New(sess)
-
-				req, _ := svc.GetObjectRequest(&s3.GetObjectInput{
-					Bucket: aws.String(artifact.Files[i].Bucket),
-					Key:    aws.String(artifact.Files[i].FileKey),
-				})
-
-				urlStr, err := req.Presign(PresignExpireTime)
-				if err != nil {
-					grip.Errorf("problem signing request: %s", err.Error())
+					return "", errors.Errorf("problem signing request: %s", err.Error())
 				}
 				artifact.Files[i].Link = urlStr
 			}
