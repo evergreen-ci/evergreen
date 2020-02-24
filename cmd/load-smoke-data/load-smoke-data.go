@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/birch"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -62,7 +62,7 @@ func main() {
 	files, err := getFiles(path)
 	grip.EmergencyFatal(err)
 
-	var doc *birch.Document
+	var doc bson.D
 	catcher := grip.NewBasicCatcher()
 	for _, fn := range files {
 		file, err = os.Open(fn)
@@ -78,10 +78,10 @@ func main() {
 		scanner := bufio.NewScanner(file)
 		count := 0
 		for scanner.Scan() {
-			doc = birch.NewDocument()
+			doc = bson.D{}
 			count++
 
-			if err = doc.UnmarshalJSON(scanner.Bytes()); err != nil {
+			if err = bson.UnmarshalExtJSON(scanner.Bytes(), true, &doc); err != nil {
 				catcher.Add(errors.Wrapf(err, "problem reading document #%d from %s", count, fn))
 				continue
 			}
