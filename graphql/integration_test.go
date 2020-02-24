@@ -56,6 +56,7 @@ func (s *graphQLSuite) SetupSuite() {
 	s.Require().NoError(testUser.Insert())
 	s.url = server.URL
 	s.apiKey = apiKey
+	s.apiUser = apiUser
 }
 
 func (s *graphQLSuite) TestQueries() {
