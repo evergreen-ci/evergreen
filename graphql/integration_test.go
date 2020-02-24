@@ -47,7 +47,7 @@ func (s *graphQLSuite) SetupSuite() {
 	const apiKey = "testapikey"
 	const apiUser = "testuser"
 
-	server, err := service.CreateTestServer(testutil.TestConfig(), nil)
+	server, err := service.CreateTestServer(testutil.TestConfig(), nil, true)
 	s.Require().NoError(err)
 	env := evergreen.GetEnvironment()
 	ctx := context.Background()

@@ -44,7 +44,7 @@ func (s *TestServer) Close() {
 	s.ts.Close()
 }
 
-func CreateTestServer(settings *evergreen.Settings, tlsConfig *tls.Config) (*TestServer, error) {
+func CreateTestServer(settings *evergreen.Settings, tlsConfig *tls.Config, loadUserManager bool) (*TestServer, error) {
 	home := evergreen.FindEvergreenHome()
 	port := testutil.NextPort()
 	if err := os.MkdirAll(filepath.Join(home, evergreen.ClientDirectory), 0644); err != nil {
@@ -52,12 +52,17 @@ func CreateTestServer(settings *evergreen.Settings, tlsConfig *tls.Config) (*Tes
 	}
 
 	env := evergreen.GetEnvironment()
-	um, info, err := auth.LoadUserManager(settings)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to load user manager")
+	if loadUserManager == true {
+		um, info, err := auth.LoadUserManager(settings)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to load user manager")
+		}
+		env.SetUserManager(um)
+		env.SetUserManagerInfo(info)
+	} else {
+		env.SetUserManager(testutil.MockUserManager{})
 	}
-	env.SetUserManager(um)
-	env.SetUserManagerInfo(info)
+
 	as, err := NewAPIServer(env, env.LocalQueue())
 	if err != nil {
 		return nil, err
