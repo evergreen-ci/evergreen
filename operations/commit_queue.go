@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
@@ -213,21 +212,11 @@ func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacy
 	grip.Infof("Queue Length: %d\n", len(cq.Queue))
 	for i, item := range cq.Queue {
 		grip.Infof("%d:", i)
-		issue := restModel.FromStringPtr(item.Issue)
-		p, err := ac.GetPatch(issue)
-		if err != nil {
-			grip.Error(message.WrapErrorf(err, "\terror getting patch for issue '%s'", issue))
-			continue
-		}
-
-		if p.Author != "" {
-			grip.Infof("Author: %s", p.Author)
-		}
 		if projectRef.CommitQueue.PatchType == commitqueue.PRPatchType {
-			listPRCommitQueueItem(ctx, item, projectRef, uiServerHost)
+			listPRCommitQueueItem(item, projectRef, uiServerHost)
 		}
 		if projectRef.CommitQueue.PatchType == commitqueue.CLIPatchType {
-			listCLICommitQueueItem(p, uiServerHost)
+			listCLICommitQueueItem(item, ac, uiServerHost)
 		}
 		listModules(item)
 	}
@@ -235,7 +224,7 @@ func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacy
 	return nil
 }
 
-func listPRCommitQueueItem(ctx context.Context, item restModel.APICommitQueueItem, projectRef *model.ProjectRef, uiServerHost string) {
+func listPRCommitQueueItem(item restModel.APICommitQueueItem, projectRef *model.ProjectRef, uiServerHost string) {
 	issue := restModel.FromStringPtr(item.Issue)
 	prDisplay := `
            PR # : %s
@@ -252,7 +241,17 @@ func listPRCommitQueueItem(ctx context.Context, item restModel.APICommitQueueIte
 	grip.Info("\n")
 }
 
-func listCLICommitQueueItem(p *patch.Patch, uiServerHost string) {
+func listCLICommitQueueItem(item restModel.APICommitQueueItem, ac *legacyClient, uiServerHost string) {
+	issue := restModel.FromStringPtr(item.Issue)
+	p, err := ac.GetPatch(issue)
+	if err != nil {
+		grip.Error(message.WrapErrorf(err, "\terror getting patch for issue '%s'", issue))
+		return
+	}
+
+	if p.Author != "" {
+		grip.Infof("Author: %s", p.Author)
+	}
 	disp, err := getPatchDisplay(p, false, uiServerHost)
 	if err != nil {
 		grip.Error(message.WrapError(err, "\terror getting patch display"))
