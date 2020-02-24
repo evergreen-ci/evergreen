@@ -97,10 +97,11 @@ func (s *UserTestSuite) SetupTest() {
 			Id:     "Test6",
 			APIKey: "api",
 			LoginCache: LoginCache{
-				Token:        "token6",
-				AccessToken:  "access6",
-				RefreshToken: "refresh6",
-				TTL:          time.Now().Add(-time.Hour),
+				Token:          "token6",
+				AccessToken:    "access6",
+				RefreshToken:   "refresh6",
+				TTL:            time.Now().Add(-time.Hour),
+				ReauthAttempts: 5,
 			},
 		},
 	}
@@ -517,18 +518,24 @@ func (s *UserTestSuite) TestFindNeedsReauthorization() {
 		return len(left) == 0 && len(right) == 0
 	}
 
-	users, err := FindNeedsReauthorization(0)
+	users, err := FindNeedsReauthorization(0, 100)
 	s.NoError(err)
 	s.Len(users, 5)
-	s.True(containsUsers(users, "Test1", "Test2", "Test4", "Test5", "Test6"))
-	s.False(containsUsers(users, "Test3"))
+	s.True(containsUsers(users, "Test1", "Test2", "Test4", "Test5", "Test6"), "should find all logged in users")
+	s.False(containsUsers(users, "Test3"), "should not find logged out users")
 
-	users, err = FindNeedsReauthorization(30 * time.Minute)
+	users, err = FindNeedsReauthorization(0, 1)
+	s.NoError(err)
+	s.Len(users, 4)
+	s.True(containsUsers(users, "Test1", "Test2", "Test4", "Test5"), "should find logged in users who have not exceeded max reauth attempts")
+	s.False(containsUsers(users, "Test3", "Test6"), "should not find logged out users or users who have exceeded max reauth attempts")
+
+	users, err = FindNeedsReauthorization(30*time.Minute, 100)
 	s.NoError(err)
 	s.Len(users, 2)
-	s.True(containsUsers(users, "Test2", "Test6"))
+	s.True(containsUsers(users, "Test2", "Test6"), "should find logged in users who have exceeded the reauth limit")
 
-	users, err = FindNeedsReauthorization(24 * time.Hour)
+	users, err = FindNeedsReauthorization(24*time.Hour, 1)
 	s.NoError(err)
-	s.Empty(users)
+	s.Empty(users, "should not find users who have not exceeded the reauth limit")
 }

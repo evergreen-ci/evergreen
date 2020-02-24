@@ -196,6 +196,8 @@ const (
 	DefaultJasperPort          = 2385
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
 
+	VSCodePort = 2021
+
 	// can flip this when regions are configured
 	UseSpawnHostRegions = false
 )

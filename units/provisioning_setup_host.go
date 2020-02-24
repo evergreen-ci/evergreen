@@ -22,6 +22,7 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
 
@@ -622,7 +623,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		return nil
 	}
 
-	if j.host.AttachVolume {
+	if j.host.IsVirtualWorkstation {
 		if err := attachVolume(ctx, j.env, j.host); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":  "can't attach volume",
@@ -762,7 +763,16 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, settings *evergr
 	}
 
 	cmd := strings.Join(j.host.SpawnHostGetTaskDataCommand(), " ")
-	output, err := j.host.RunSSHCommandWithTimeout(ctx, cmd, sshOpts, 15*time.Minute)
+	var output string
+	if j.host.Distro.LegacyBootstrap() {
+		output, err = j.host.RunSSHCommandWithTimeout(ctx, cmd, sshOpts, 15*time.Minute)
+	} else {
+		var logs []string
+		logs, err = j.host.RunJasperProcess(ctx, j.env, &options.Create{
+			Args: []string{j.host.PathByProvisioning(j.host.Distro.BootstrapSettings.ShellPath), "-l", "-c", cmd},
+		})
+		output = strings.Join(logs, " ")
+	}
 
 	grip.Error(message.WrapError(err, message.Fields{
 		"message": fmt.Sprintf("fetch-artifacts-%s", j.host.ProvisionOptions.TaskId),
