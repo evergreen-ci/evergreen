@@ -762,14 +762,14 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, settings *evergr
 		return errors.Wrapf(err, "error parsing ssh info %s", j.host.Host)
 	}
 
-	cmd := j.host.SpawnHostGetTaskDataCommand()
+	cmd := strings.Join(j.host.SpawnHostGetTaskDataCommand(), " ")
 	var output string
 	if j.host.Distro.LegacyBootstrap() {
-		output, err = j.host.RunSSHCommandWithTimeout(ctx, strings.Join(cmd, " "), sshOpts, 15*time.Minute)
+		output, err = j.host.RunSSHCommandWithTimeout(ctx, cmd, sshOpts, 15*time.Minute)
 	} else {
 		var logs []string
 		logs, err = j.host.RunJasperProcess(ctx, j.env, &options.Create{
-			Args: append([]string{j.host.PathByProvisioning(j.host.Distro.BootstrapSettings.ShellPath), "-l", "-c"}, cmd...),
+			Args: []string{j.host.PathByProvisioning(j.host.Distro.BootstrapSettings.ShellPath), "-l", "-c", cmd},
 		})
 		output = strings.Join(logs, " ")
 	}

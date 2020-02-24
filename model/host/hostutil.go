@@ -383,7 +383,7 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 			return "", errors.Wrap(err, "error creating commands to load task data")
 		}
 		if h.ProvisionOptions.TaskId != "" {
-			fetchCmd := append([]string{h.PathByProvisioning(h.Distro.BootstrapSettings.ShellPath), "-l", "-c"}, h.SpawnHostGetTaskDataCommand()...)
+			fetchCmd := []string{h.PathByProvisioning(h.Distro.BootstrapSettings.ShellPath), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
 			var getTaskDataCmd string
 			getTaskDataCmd, err = h.buildLocalJasperClientRequest(settings.HostJasper, strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "), &options.Command{Commands: [][]string{fetchCmd}})
 			if err != nil {
@@ -1013,6 +1013,9 @@ func (h *Host) AgentBinary() string {
 // spawnHostConfigDir returns the directory containing the CLI and evergreen
 // yaml for a spawn host.
 func (h *Host) spawnHostConfigDir() string {
+	if h.Distro.LegacyBootstrap() {
+		return "cli_bin"
+	}
 	return filepath.Join(h.Distro.HomeDir(), "cli_bin")
 }
 

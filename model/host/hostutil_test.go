@@ -243,9 +243,10 @@ func TestJasperCommands(t *testing.T) {
 			setupSpawnHost, err := h.SpawnHostSetupCommands(settings)
 			require.NoError(t, err)
 
+			bashSetupSpawnHost := []string{h.PathByProvisioning(h.Distro.BootstrapSettings.ShellPath), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
 			getTaskData, err := h.buildLocalJasperClientRequest(settings.HostJasper,
 				strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "),
-				&options.Command{Commands: [][]string{h.SpawnHostGetTaskDataCommand()}})
+				&options.Command{Commands: [][]string{bashSetupSpawnHost}})
 			require.NoError(t, err)
 
 			markDone, err := h.MarkUserDataDoneCommands()
@@ -279,7 +280,6 @@ func TestJasperCommands(t *testing.T) {
 				require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", expectedCmd))
 				currPos += offset + len(expectedCmd)
 			}
-
 		},
 		"ForceReinstallJasperCommand": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			cmd := h.ForceReinstallJasperCommand(settings)
@@ -321,6 +321,9 @@ func TestJasperCommands(t *testing.T) {
 				Distro: distro.Distro{
 					Arch: distro.ArchLinuxAmd64,
 					BootstrapSettings: distro.BootstrapSettings{
+						Method:                distro.BootstrapMethodUserData,
+						Communication:         distro.CommunicationMethodRPC,
+						ShellPath:             "/bin/bash",
 						JasperBinaryDir:       "/foo",
 						JasperCredentialsPath: "/bar/bat.txt",
 						Env: []distro.EnvVar{
