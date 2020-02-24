@@ -370,8 +370,10 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 
 	for _, fn := range localFiles {
 		remoteFileName := filepath.ToSlash(remoteFile)
+		logger.Task().Infof("RemoteFileName: %s", remoteFile)
 		if s3pc.isMulti() {
 			remoteFileName = fmt.Sprintf("%s%s", remoteFile, filepath.Base(fn))
+			logger.Task().Infof("Is Multi is true. remoteFileName: %s", remoteFile)
 		}
 
 		fileLink := s3baseURL + s3pc.Bucket + "/" + remoteFileName
