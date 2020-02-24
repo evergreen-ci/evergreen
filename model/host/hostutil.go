@@ -255,7 +255,7 @@ func (h *Host) FetchAndReinstallJasperCommands(settings *evergreen.Settings) str
 func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string {
 	params := []string{"--host=0.0.0.0", fmt.Sprintf("--port=%d", settings.HostJasper.Port)}
 	if h.Distro.BootstrapSettings.JasperCredentialsPath != "" {
-		params = append(params, fmt.Sprintf("--creds_path=%s", filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.JasperCredentialsPath)))
+		params = append(params, fmt.Sprintf("--creds_path=%s", h.PathByProvisioning(h.Distro.BootstrapSettings.JasperCredentialsPath)))
 	}
 
 	if user := h.Distro.BootstrapSettings.ServiceUser; user != "" {
@@ -273,7 +273,7 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 	if settings.Splunk.Populated() {
 		params = append(params,
 			fmt.Sprintf("--splunk_url=%s", settings.Splunk.ServerURL),
-			fmt.Sprintf("--splunk_token_path=%s", filepath.Join(h.Distro.BootstrapSettings.RootDir, h.splunkTokenFilePath())),
+			fmt.Sprintf("--splunk_token_path=%s", h.PathByProvisioning(h.splunkTokenFilePath())),
 		)
 		if settings.Splunk.Channel != "" {
 			params = append(params, fmt.Sprintf("--splunk_channel=%s", settings.Splunk.Channel))
@@ -383,7 +383,7 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 			return "", errors.Wrap(err, "error creating commands to load task data")
 		}
 		if h.ProvisionOptions.TaskId != "" {
-			fetchCmd := h.SpawnHostGetTaskDataCommand()
+			fetchCmd := []string{h.PathByProvisioning(h.Distro.BootstrapSettings.ShellPath), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
 			var getTaskDataCmd string
 			getTaskDataCmd, err = h.buildLocalJasperClientRequest(settings.HostJasper, strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "), &options.Command{Commands: [][]string{fetchCmd}})
 			if err != nil {
@@ -565,7 +565,7 @@ func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, 
 		return "", errors.Wrap(err, "could not marshal input")
 	}
 
-	flags := fmt.Sprintf("--service=%s --port=%d --creds_path=%s", jcli.RPCService, config.Port, filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.JasperCredentialsPath))
+	flags := fmt.Sprintf("--service=%s --port=%d --creds_path=%s", jcli.RPCService, config.Port, h.PathByProvisioning(h.Distro.BootstrapSettings.JasperCredentialsPath))
 
 	clientInput := fmt.Sprintf("<<EOF\n%s\nEOF", inputBytes)
 
@@ -798,7 +798,7 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (rem
 			BinaryPath:          h.JasperBinaryFilePath(settings.HostJasper),
 			Type:                jcli.RPCService,
 			Port:                settings.HostJasper.Port,
-			CredentialsFilePath: h.Distro.BootstrapSettings.JasperCredentialsPath,
+			CredentialsFilePath: h.PathByProvisioning(h.Distro.BootstrapSettings.JasperCredentialsPath),
 		}
 
 		return jcli.NewSSHClient(remoteOpts, clientOpts, true)
@@ -878,17 +878,14 @@ func (h *Host) StartAgentMonitorRequest(settings *evergreen.Settings) (string, e
 	)
 }
 
-// StopAgentMonitor stops the agent monitor (if it is running) on the host via
-// its Jasper service . On legacy hosts, this is a no-op.
-func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) error {
-	if (h.Distro.LegacyBootstrap() && h.NeedsReprovision != ReprovisionToLegacy) || h.NeedsReprovision == ReprovisionToNew {
-		return nil
-	}
-
+// withTaggedProcs runs the given handler on all Jasper processes on this host
+// matching the given tag.
+func (h *Host) withTaggedProcs(ctx context.Context, env evergreen.Environment, tag string, handleTaggedProcs func(taggedProcs []jasper.Process) error) error {
 	client, err := h.JasperClient(ctx, env)
 	if err != nil {
 		return errors.Wrap(err, "could not get a Jasper client")
 	}
+
 	defer func() {
 		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
@@ -897,25 +894,44 @@ func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) 
 		}))
 	}()
 
-	procs, err := client.Group(ctx, evergreen.AgentMonitorTag)
+	procs, err := client.Group(ctx, tag)
 	if err != nil {
 		return errors.Wrapf(err, "could not get processes with tag %s", evergreen.AgentMonitorTag)
 	}
 
-	grip.WarningWhen(len(procs) != 1, message.Fields{
-		"message": fmt.Sprintf("host should be running exactly one agent monitor, but found %d", len(procs)),
-		"host_id": h.Id,
-		"distro":  h.Distro.Id,
-	})
+	return handleTaggedProcs(procs)
+}
 
-	catcher := grip.NewBasicCatcher()
-	for _, proc := range procs {
-		if proc.Running(ctx) {
-			catcher.Wrapf(proc.Signal(ctx, syscall.SIGTERM), "problem signalling process with ID %s", proc.ID())
-		}
+// WithAgentMonitor runs the given handler on all agent monitor processes
+// running on the host.
+func (h *Host) WithAgentMonitor(ctx context.Context, env evergreen.Environment, handleAgentMonitor func(procs []jasper.Process) error) error {
+	return h.withTaggedProcs(ctx, env, evergreen.AgentMonitorTag, func(procs []jasper.Process) error {
+		grip.WarningWhen(len(procs) != 1, message.Fields{
+			"message": fmt.Sprintf("host should be running exactly one agent monitor, but found %d", len(procs)),
+			"host_id": h.Id,
+			"distro":  h.Distro.Id,
+		})
+		return handleAgentMonitor(procs)
+	})
+}
+
+// StopAgentMonitor stops the agent monitor (if it is running) on the host via
+// its Jasper service. On legacy hosts, this is a no-op.
+func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) error {
+	if (h.Distro.LegacyBootstrap() && h.NeedsReprovision != ReprovisionToLegacy) || h.NeedsReprovision == ReprovisionToNew {
+		return nil
 	}
 
-	return catcher.Resolve()
+	return h.WithAgentMonitor(ctx, env, func(procs []jasper.Process) error {
+		catcher := grip.NewBasicCatcher()
+		for _, proc := range procs {
+			if proc.Running(ctx) {
+				catcher.Wrapf(proc.Signal(ctx, syscall.SIGTERM), "problem signalling agent monitor process with ID '%s'", proc.ID())
+			}
+		}
+
+		return catcher.Resolve()
+	})
 }
 
 // AgentCommand returns the arguments to start the agent.
@@ -935,10 +951,10 @@ func (h *Host) AgentCommand(binary string, settings *evergreen.Settings) []strin
 // AgentMonitorOptions  assembles the input to a Jasper request to start the
 // agent monitor.
 func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create {
-	binary := filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.HomeDir(), h.Distro.BinaryName())
-	clientPath := filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.ClientDir, h.Distro.BinaryName())
-	credsPath := filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.JasperCredentialsPath)
-	shellPath := filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.ShellPath)
+	binary := h.PathByProvisioning(h.Distro.HomeDir(), h.Distro.BinaryName())
+	clientPath := h.PathByProvisioning(h.Distro.BootstrapSettings.ClientDir, h.Distro.BinaryName())
+	credsPath := h.PathByProvisioning(h.Distro.BootstrapSettings.JasperCredentialsPath)
+	shellPath := h.PathByProvisioning(h.Distro.BootstrapSettings.ShellPath)
 
 	args := append(h.AgentCommand(binary, settings),
 		"monitor",
@@ -997,6 +1013,9 @@ func (h *Host) AgentBinary() string {
 // spawnHostConfigDir returns the directory containing the CLI and evergreen
 // yaml for a spawn host.
 func (h *Host) spawnHostConfigDir() string {
+	if h.Distro.LegacyBootstrap() {
+		return "cli_bin"
+	}
 	return filepath.Join(h.Distro.HomeDir(), "cli_bin")
 }
 
@@ -1031,18 +1050,22 @@ func (h *Host) spawnHostConfigJSON(settings *evergreen.Settings) ([]byte, error)
 // SpawnHostGetTaskDataCommand returns the command that fetches the task data
 // for a spawn host.
 func (h *Host) SpawnHostGetTaskDataCommand() []string {
-	// TODO (EVG-7387): this should be fixed to work with legacy SSH on Windows.
-	// The config file path has to be a native Windows path in order to properly
-	// read the config file, but currently the working directory is specified as
-	// a Cygwin-style directory (i.e. /home/Administrator should actually be
-	// C:/cygwin/home/Administrator).
-	return []string{h.AgentBinary(),
-		"-c", filepath.Join(h.Distro.BootstrapSettings.RootDir, h.spawnHostConfigFile()),
+	return []string{h.PathByProvisioning(h.AgentBinary()),
+		"-c", h.PathByProvisioning(h.spawnHostConfigFile()),
 		"fetch",
 		"-t", h.ProvisionOptions.TaskId,
 		"--source", "--artifacts",
 		"--dir", h.Distro.WorkDir,
 	}
+}
+
+// PathByProvisioning createa a filepath that is compatible with the host's
+// provisioning settings.
+func (h *Host) PathByProvisioning(path ...string) string {
+	if h.Distro.LegacyBootstrap() {
+		return filepath.Join(path...)
+	}
+	return filepath.Join(append([]string{h.Distro.BootstrapSettings.RootDir}, path...)...)
 }
 
 const userDataDoneFileName = "user_data_done"

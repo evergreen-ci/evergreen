@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -11,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -56,4 +59,41 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 	_, err = modifyHostStatus(env.LocalQueue(), &h3, &opts3, &user3)
 	assert.Error(err)
 	assert.Contains(err.Error(), fmt.Sprintf(InvalidStatusError, "undefined"))
+}
+
+func TestGetHostFromCache(t *testing.T) {
+	require.NoError(t, db.Clear(host.Collection))
+	uis := UIServer{hostCache: make(map[string]hostCacheItem)}
+
+	// get a host that doesn't exist
+	h, err := uis.getHostFromCache("h1")
+	assert.NoError(t, err)
+	assert.Nil(t, h)
+
+	// get a host from the cache
+	uis.hostCache["h1"] = hostCacheItem{inserted: time.Now()}
+	h, err = uis.getHostFromCache("h1")
+	assert.NoError(t, err)
+	assert.NotNil(t, h)
+
+	// past the TTL fetches from the db
+	h1 := host.Host{Id: "h1", Host: "new_name"}
+	assert.NoError(t, h1.Insert())
+	uis.hostCache["h1"] = hostCacheItem{dnsName: "old_name", inserted: time.Now().Add(-1 * (hostCacheTTL + time.Second))}
+	h, err = uis.getHostFromCache("h1")
+	assert.NoError(t, err)
+	assert.NotNil(t, h)
+	assert.Equal(t, "new_name", h.dnsName)
+}
+
+func TestGetHostDNS(t *testing.T) {
+	r, err := http.NewRequest("GET", "", nil)
+	require.NoError(t, err)
+	r = gimlet.SetURLVars(r, map[string]string{"host_id": "i-1234"})
+
+	uis := UIServer{hostCache: map[string]hostCacheItem{"i-1234": hostCacheItem{dnsName: "www.example.com", inserted: time.Now()}}}
+	path, err := uis.getHostDNS((r))
+	assert.NoError(t, err)
+	assert.Len(t, path, 1)
+	assert.Equal(t, fmt.Sprintf("www.example.com:%d", evergreen.VSCodePort), path[0])
 }

@@ -26,7 +26,7 @@ type CreateOptions struct {
 	InstanceTags          []Tag
 	InstanceType          string
 	NoExpiration          bool
-	AttachVolume          bool
+	IsVirtualWorkstation  bool
 	HomeVolumeSize        int
 }
 
@@ -63,7 +63,7 @@ func NewIntent(d distro.Distro, instanceName, provider string, options CreateOpt
 		DockerOptions:         options.DockerOptions,
 		InstanceTags:          options.InstanceTags,
 		InstanceType:          options.InstanceType,
-		AttachVolume:          options.AttachVolume,
+		IsVirtualWorkstation:  options.IsVirtualWorkstation,
 		HomeVolumeSize:        options.HomeVolumeSize,
 	}
 

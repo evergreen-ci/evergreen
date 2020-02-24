@@ -20,7 +20,7 @@ func TestPatchListModulesEndPoints(t *testing.T) {
 	defer testutil.EnablePermissionsForTests()
 	testDirectory := testutil.GetDirectoryOfFile()
 	testConfig := testutil.TestConfig()
-	testApiServer, err := CreateTestServer(testConfig, nil)
+	testApiServer, err := CreateTestServer(testConfig, nil, false)
 	require.NoError(t, err, "failed to create new API server")
 	defer testApiServer.Close()
 

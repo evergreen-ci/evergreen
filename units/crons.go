@@ -1169,9 +1169,14 @@ func PopulatePeriodicBuilds(part int) amboy.QueueOperation {
 		}
 		catcher := grip.NewBasicCatcher()
 		for _, project := range projects {
-			catcher.Add(queue.Put(ctx, NewPeriodicBuildJob(project.Identifier, util.RoundPartOfMinute(30).Format(TSFormat))))
+			for _, definition := range project.PeriodicBuilds {
+				// schedule the job if we want it to start before the next time this cron runs
+				if time.Now().Add(15 * time.Minute).After(definition.NextRunTime) {
+					catcher.Add(queue.Put(ctx, NewPeriodicBuildJob(project.Identifier, definition.ID, definition.NextRunTime)))
+				}
+			}
 		}
-		return nil
+		return catcher.Resolve()
 	}
 }
 
@@ -1255,13 +1260,13 @@ func PopulateReauthorizationJobs(env evergreen.Environment) amboy.QueueOperation
 		if reauthAfter == 0 {
 			reauthAfter = defaultBackgroundReauth
 		}
-		users, err := user.FindNeedsReauthorization(reauthAfter)
+		users, err := user.FindNeedsReauthorization(reauthAfter, maxReauthAttempts)
 		if err != nil {
 			return err
 		}
 
 		catcher := grip.NewBasicCatcher()
-		ts := util.RoundPartOfMinute(20).Format(TSFormat)
+		ts := util.RoundPartOfHour(0).Format(TSFormat)
 		for _, user := range users {
 			catcher.Wrap(env.RemoteQueue().Put(ctx, NewReauthorizationJob(env, &user, ts)), "could not enqueue jobs to reauthorize users")
 		}

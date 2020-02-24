@@ -49,6 +49,7 @@ type Distro struct {
 	UseLegacyAgent        bool                    `bson:"use_legacy_agent" json:"use_legacy_agent" mapstructure:"use_legacy_agent"`
 	Note                  string                  `bson:"note" json:"note" mapstructure:"note"`
 	ValidProjects         []string                `bson:"valid_projects,omitempty" json:"valid_projects,omitempty" mapstructure:"valid_projects,omitempty"`
+	IsVirtualWorkstation  bool                    `bson:"is_virtual_workstation" json:"is_virtual_workstation" mapstructure:"is_virtual_workstation"`
 	HomeVolumeSettings    HomeVolumeSettings      `bson:"home_volume_settings" json:"home_volume_settings" mapstructure:"home_volume_settings"`
 }
 
@@ -388,8 +389,12 @@ func (d *Distro) ExecutableSubPath() string {
 	return filepath.Join(arch, d.BinaryName())
 }
 
-// HomeDir gets the absolute path to the home directory for this distro's user.
+// HomeDir gets the absolute path to the home directory for this distro's user
+// for non-legacy provisioned hosts.
 func (d *Distro) HomeDir() string {
+	if d.LegacyBootstrap() {
+		return "~"
+	}
 	if d.User == "root" {
 		return filepath.Join("/", d.User)
 	}

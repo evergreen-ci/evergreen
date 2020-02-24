@@ -23,13 +23,12 @@ type vsphereManager struct {
 
 // vsphereSettings specifies the settings used to configure a host instance.
 type vsphereSettings struct {
-	Template string `mapstructure:"template"`
+	Template     string `mapstructure:"template" json:"template" bson:"template"`
+	Datastore    string `mapstructure:"datastore" json:"datastore" bson:"datastore"`
+	ResourcePool string `mapstructure:"resource_pool" json:"resource_pool" bson:"resource_pool"`
 
-	Datastore    string `mapstructure:"datastore"`
-	ResourcePool string `mapstructure:"resource_pool"`
-
-	NumCPUs  int32 `mapstructure:"num_cpus"`
-	MemoryMB int64 `mapstructure:"memory_mb"`
+	NumCPUs  int32 `mapstructure:"num_cpus" json:"num_cpus" bson:"num_cpus"`
+	MemoryMB int64 `mapstructure:"memory_mb" json:"memory_mb" bson:"memory_mb"`
 }
 
 // Validate verifies a set of ProviderSettings.

@@ -416,9 +416,13 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = apiDistro.BuildFromService(old); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
 	}
-
+	oldSettingsList := apiDistro.ProviderSettingsList
+	apiDistro.ProviderSettingsList = nil
 	if err = json.Unmarshal(h.body, apiDistro); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
+	}
+	if len(apiDistro.ProviderSettingsList) == 0 {
+		apiDistro.ProviderSettingsList = oldSettingsList
 	}
 
 	d, respErr := validateDistro(ctx, apiDistro, h.distroID, h.settings, false)
@@ -529,6 +533,10 @@ func (h *distroGetHandler) Run(ctx context.Context) gimlet.Responder {
 ////////////////////////////////////////////////////////////////////////
 
 func validateDistro(ctx context.Context, apiDistro *model.APIDistro, resourceID string, settings *evergreen.Settings, isNewDistro bool) (*distro.Distro, gimlet.Responder) {
+	if apiDistro.ProviderSettings != nil && len(apiDistro.ProviderSettings) > 0 {
+		return nil, gimlet.MakeJSONErrorResponder(errors.New("must use provider_settings list to update settings"))
+	}
+
 	i, err := apiDistro.ToService()
 	if err != nil {
 		return nil, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from model.APIDistro to distro.Distro"))
@@ -540,13 +548,14 @@ func validateDistro(ctx context.Context, apiDistro *model.APIDistro, resourceID 
 			Message:    fmt.Sprintf("Unexpected type %T for distro.Distro", i),
 		})
 	}
+
 	if err = cloud.UpdateProviderSettings(d); err != nil {
 		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
 		})
 	}
-	apiDistro.ProviderSettingsList = d.ProviderSettingsList
+
 	id := model.FromStringPtr(apiDistro.Name)
 	if resourceID != id {
 		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{

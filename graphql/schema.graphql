@@ -54,6 +54,13 @@ type Patch {
   variantsTasks: [VariantTask]!
   activated: Boolean!
   alias: String!
+  duration: PatchDuration
+  time: PatchTime
+}
+
+type PatchDuration {
+  makespan: String
+  timeTaken: String
   time: PatchTime
 }
 
