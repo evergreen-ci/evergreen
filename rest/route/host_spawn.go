@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -1148,7 +1147,7 @@ func (hs *hostStartProcesses) Run(ctx context.Context) gimlet.Responder {
 			continue
 		}
 
-		bashPath := filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.ShellPath)
+		bashPath := h.PathByProvisioning(h.Distro.BootstrapSettings.ShellPath)
 		opts := &options.Create{
 			Args:   []string{bashPath, "-l", "-c", hs.script},
 			Output: options.Output{Loggers: []options.Logger{jasper.NewInMemoryLogger(host.OutputBufferSize)}},
