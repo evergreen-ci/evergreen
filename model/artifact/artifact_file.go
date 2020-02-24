@@ -3,9 +3,7 @@ package artifact
 import (
 	"time"
 
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/evergreen-ci/evergreen/thirdparty/s3"
-	"github.com/mongodb/grip"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/pkg/errors"
 )
 
@@ -98,11 +96,11 @@ func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {
 		for i := range artifact.Files {
 			if artifact.Files[i].Visibility == "signed" {
 				if artifact.Files[i].AwsSecret == "" || artifact.Files[i].AwsKey == "" || artifact.Files[i].Bucket == "" || artifact.Files[i].FileKey == "" {
-					return "", errors.Errorf("error presigning the url for %s. awsSecret, awsKey, bucket, or filekey missing", artifact.Files[i].name)
+					return nil, errors.Errorf("error presigning the url for %s, awsSecret, awsKey, bucket, or filekey missing", artifact.Files[i].Name)
 				}
-				urlStr, err := s3.PreSign(artifact.Files[i].Bucket, artifact.Files[i].FileKey, artifact.Files[i].AwsKey, artifact.Files[i].AwsSecret)
+				urlStr, err := thirdparty.PreSign(artifact.Files[i].Bucket, artifact.Files[i].FileKey, artifact.Files[i].AwsKey, artifact.Files[i].AwsSecret)
 				if err != nil {
-					return "", errors.Errorf("problem signing request: %s", err.Error())
+					return nil, errors.Errorf("problem signing request: %s", err.Error())
 				}
 				artifact.Files[i].Link = urlStr
 			}

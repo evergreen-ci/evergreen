@@ -30,18 +30,17 @@ func (s *TestArtifactFileSuite) SetupTest() {
 				{
 					Name:           "cat_pix",
 					Link:           "http://placekitten.com/800/600",
-					Visibility:     "",
+					Visibility:     "signed",
 					IgnoreForFetch: false,
 					AwsKey:         "key",
 					AwsSecret:      "secret",
+					Bucket:         "bucket",
+					FileKey:        "filekey",
 				},
 				{
 					Name:           "fast_download",
 					Link:           "https://fastdl.mongodb.org",
-					Visibility:     "",
 					IgnoreForFetch: false,
-					AwsKey:         "key",
-					AwsSecret:      "secret",
 				},
 			},
 			Execution: 1,
@@ -203,4 +202,20 @@ func (s *TestArtifactFileSuite) TestFindByIds() {
 	entries, err := FindAll(ByTaskIds([]string{"task1", "task2"}))
 	s.NoError(err)
 	s.Len(entries, 3)
+}
+
+func (s *TestArtifactFileSuite) TestGetAllArtifacts() {
+	s.testEntries[0].Files[1].Visibility = ""
+	tasks := []TaskIDAndExecution{
+		{TaskID: "task1", Execution: 1},
+		{TaskID: "task2", Execution: 5},
+	}
+	files, _ := GetAllArtifacts(tasks)
+	for i := range files {
+		if files[i].Visibility == "signed" {
+			s.Contains(files[i].Link, "Signature")
+		}
+
+	}
+
 }

@@ -8,14 +8,13 @@ import (
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/mongodb/grip"
 )
 
 //PresignExpireTime sets the amount of time the link is live before expiring
 const PresignExpireTime = 24 * time.Hour
 
 //PreSign returns a presigned url that expires in 24 hours
-func PreSign(bucket string, filekey string, awsKey string, awsSecret string) (string, error ){
+func PreSign(bucket string, filekey string, awsKey string, awsSecret string) (string, error) {
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String(endpoints.UsEast1RegionID),
 		Credentials: credentials.NewStaticCredentialsFromCreds(credentials.Value{
@@ -34,5 +33,5 @@ func PreSign(bucket string, filekey string, awsKey string, awsSecret string) (st
 	})
 
 	urlStr, err := req.Presign(PresignExpireTime)
-	return urlStr, err 
+	return urlStr, err
 }
