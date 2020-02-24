@@ -321,7 +321,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case HostExpirationExtension:
-		if updateParams.Expiration.IsZero() { // set expiration to never expire
+		if updateParams.Expiration == nil || updateParams.Expiration.IsZero() { // set expiration to never expire
 			var settings *evergreen.Settings
 			settings, err = evergreen.GetConfig()
 			if err != nil {

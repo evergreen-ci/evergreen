@@ -176,13 +176,9 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     }
 
     $scope.availableUnexpirableHosts = function () {
-      var available = $scope.maxUnexpirableHostsPerUser;
-      for (host of $scope.hosts) {
-        if (host.original_expiration == null) {
-          available--
-        }
-      }
-      return available
+      return $scope.maxUnexpirableHostsPerUser - _.where($scope.hosts, {
+        original_expiration: null
+      }).length;
     }
 
     $scope.unexpirableEnabled = function () {
