@@ -2268,7 +2268,6 @@
         }
       }
     },
-
     {
       "query_file": "patch-time-1.graphql",
       "result": {
