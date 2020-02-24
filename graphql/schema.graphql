@@ -21,6 +21,7 @@ type Mutation {
   removeFavoriteProject(identifier: String!): Project!
   scheduleTask(taskId: String!): Task!
   unscheduleTask(taskId: String!): Task!
+  abortTask(taskId: String!): Task!
 }
 
 enum TaskSortCategory {
