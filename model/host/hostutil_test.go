@@ -41,11 +41,11 @@ func TestCurlCommand(t *testing.T) {
 		Ui:                evergreen.UIConfig{Url: "www.example.com"},
 		ClientBinariesDir: "clients",
 	}
-	expected := "cd /home/user && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' && chmod +x evergreen.exe"
+	expected := "cd ~ && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' && chmod +x evergreen.exe"
 	assert.Equal(expected, h.CurlCommand(settings))
 
 	h = &Host{Distro: distro.Distro{Arch: distro.ArchLinuxAmd64, User: "user"}}
-	expected = "cd /home/user && curl -LO 'www.example.com/clients/linux_amd64/evergreen' && chmod +x evergreen"
+	expected = "cd ~ && curl -LO 'www.example.com/clients/linux_amd64/evergreen' && chmod +x evergreen"
 	assert.Equal(expected, h.CurlCommand(settings))
 }
 
@@ -55,11 +55,11 @@ func TestCurlCommandWithRetry(t *testing.T) {
 		Ui:                evergreen.UIConfig{Url: "www.example.com"},
 		ClientBinariesDir: "clients",
 	}
-	expected := "cd /home/user && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10 && chmod +x evergreen.exe"
+	expected := "cd ~ && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10 && chmod +x evergreen.exe"
 	assert.Equal(t, expected, h.CurlCommandWithRetry(settings, 5, 10))
 
 	h = &Host{Distro: distro.Distro{Arch: distro.ArchLinuxAmd64, User: "user"}}
-	expected = "cd /home/user && curl -LO 'www.example.com/clients/linux_amd64/evergreen' --retry 5 --retry-max-time 10 && chmod +x evergreen"
+	expected = "cd ~ && curl -LO 'www.example.com/clients/linux_amd64/evergreen' --retry 5 --retry-max-time 10 && chmod +x evergreen"
 	assert.Equal(t, expected, h.CurlCommandWithRetry(settings, 5, 10))
 }
 
@@ -1036,6 +1036,8 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 			WorkDir: "/dir",
 			User:    "user",
 			BootstrapSettings: distro.BootstrapSettings{
+				Method:                distro.BootstrapMethodUserData,
+				Communication:         distro.CommunicationMethodRPC,
 				JasperCredentialsPath: "/jasper_credentials_path",
 			},
 		},

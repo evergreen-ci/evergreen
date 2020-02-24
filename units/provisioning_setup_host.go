@@ -769,7 +769,7 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, settings *evergr
 	} else {
 		var logs []string
 		logs, err = j.host.RunJasperProcess(ctx, j.env, &options.Create{
-			Args: cmd,
+			Args: append([]string{j.host.PathByProvisioning(j.host.Distro.BootstrapSettings.ShellPath), "-l", "-c"}, cmd...),
 		})
 		output = strings.Join(logs, " ")
 	}

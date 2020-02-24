@@ -255,7 +255,7 @@ func (h *Host) FetchAndReinstallJasperCommands(settings *evergreen.Settings) str
 func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string {
 	params := []string{"--host=0.0.0.0", fmt.Sprintf("--port=%d", settings.HostJasper.Port)}
 	if h.Distro.BootstrapSettings.JasperCredentialsPath != "" {
-		params = append(params, fmt.Sprintf("--creds_path=%s", h.PathToFile(h.Distro.BootstrapSettings.JasperCredentialsPath)))
+		params = append(params, fmt.Sprintf("--creds_path=%s", h.PathByProvisioning(h.Distro.BootstrapSettings.JasperCredentialsPath)))
 	}
 
 	if user := h.Distro.BootstrapSettings.ServiceUser; user != "" {
@@ -273,7 +273,7 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 	if settings.Splunk.Populated() {
 		params = append(params,
 			fmt.Sprintf("--splunk_url=%s", settings.Splunk.ServerURL),
-			fmt.Sprintf("--splunk_token_path=%s", h.PathToFile(h.splunkTokenFilePath())),
+			fmt.Sprintf("--splunk_token_path=%s", h.PathByProvisioning(h.splunkTokenFilePath())),
 		)
 		if settings.Splunk.Channel != "" {
 			params = append(params, fmt.Sprintf("--splunk_channel=%s", settings.Splunk.Channel))
@@ -362,7 +362,7 @@ func (h *Host) jasperBinaryFileName(config evergreen.HostJasperConfig) string {
 
 // JasperBinaryFilePath returns the full path to the Jasper binary.
 func (h *Host) JasperBinaryFilePath(config evergreen.HostJasperConfig) string {
-	return h.PathToFile(filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, h.jasperBinaryFileName(config)))
+	return h.PathByProvisioning(filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, h.jasperBinaryFileName(config)))
 }
 
 // BootstrapScript creates the user data script to bootstrap the host.
@@ -565,7 +565,7 @@ func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, 
 		return "", errors.Wrap(err, "could not marshal input")
 	}
 
-	flags := fmt.Sprintf("--service=%s --port=%d --creds_path=%s", jcli.RPCService, config.Port, h.PathToFile(h.Distro.BootstrapSettings.JasperCredentialsPath))
+	flags := fmt.Sprintf("--service=%s --port=%d --creds_path=%s", jcli.RPCService, config.Port, h.PathByProvisioning(h.Distro.BootstrapSettings.JasperCredentialsPath))
 
 	clientInput := fmt.Sprintf("<<EOF\n%s\nEOF", inputBytes)
 
@@ -798,7 +798,7 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (rem
 			BinaryPath:          h.JasperBinaryFilePath(settings.HostJasper),
 			Type:                jcli.RPCService,
 			Port:                settings.HostJasper.Port,
-			CredentialsFilePath: h.Distro.BootstrapSettings.JasperCredentialsPath,
+			CredentialsFilePath: h.PathByProvisioning(h.Distro.BootstrapSettings.JasperCredentialsPath),
 		}
 
 		return jcli.NewSSHClient(remoteOpts, clientOpts, true)
@@ -951,10 +951,10 @@ func (h *Host) AgentCommand(binary string, settings *evergreen.Settings) []strin
 // AgentMonitorOptions  assembles the input to a Jasper request to start the
 // agent monitor.
 func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create {
-	binary := h.PathToFile(h.Distro.HomeDir(), h.Distro.BinaryName())
-	clientPath := h.PathToFile(h.Distro.BootstrapSettings.ClientDir, h.Distro.BinaryName())
-	credsPath := h.PathToFile(h.Distro.BootstrapSettings.JasperCredentialsPath)
-	shellPath := h.PathToFile(h.Distro.BootstrapSettings.ShellPath)
+	binary := h.PathByProvisioning(h.Distro.HomeDir(), h.Distro.BinaryName())
+	clientPath := h.PathByProvisioning(h.Distro.BootstrapSettings.ClientDir, h.Distro.BinaryName())
+	credsPath := h.PathByProvisioning(h.Distro.BootstrapSettings.JasperCredentialsPath)
+	shellPath := h.PathByProvisioning(h.Distro.BootstrapSettings.ShellPath)
 
 	args := append(h.AgentCommand(binary, settings),
 		"monitor",
@@ -1047,8 +1047,8 @@ func (h *Host) spawnHostConfigJSON(settings *evergreen.Settings) ([]byte, error)
 // SpawnHostGetTaskDataCommand returns the command that fetches the task data
 // for a spawn host.
 func (h *Host) SpawnHostGetTaskDataCommand() []string {
-	return []string{h.PathToFile(h.AgentBinary()),
-		"-c", h.PathToFile(h.spawnHostConfigFile()),
+	return []string{h.PathByProvisioning(h.AgentBinary()),
+		"-c", h.PathByProvisioning(h.spawnHostConfigFile()),
 		"fetch",
 		"-t", h.ProvisionOptions.TaskId,
 		"--source", "--artifacts",
@@ -1056,9 +1056,9 @@ func (h *Host) SpawnHostGetTaskDataCommand() []string {
 	}
 }
 
-// PathToFile createa a filepath that is compatible with the host's provisioning
-// settings.
-func (h *Host) PathToFile(path ...string) string {
+// PathByProvisioning createa a filepath that is compatible with the host's
+// provisioning settings.
+func (h *Host) PathByProvisioning(path ...string) string {
 	if h.Distro.LegacyBootstrap() {
 		return filepath.Join(path...)
 	}
