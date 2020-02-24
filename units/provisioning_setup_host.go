@@ -22,6 +22,7 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
 
@@ -761,8 +762,17 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, settings *evergr
 		return errors.Wrapf(err, "error parsing ssh info %s", j.host.Host)
 	}
 
-	cmd := strings.Join(j.host.SpawnHostGetTaskDataCommand(), " ")
-	output, err := j.host.RunSSHCommandWithTimeout(ctx, cmd, sshOpts, 15*time.Minute)
+	cmd := j.host.SpawnHostGetTaskDataCommand()
+	var output string
+	if j.host.Distro.LegacyBootstrap() {
+		output, err = j.host.RunSSHCommandWithTimeout(ctx, strings.Join(cmd, " "), sshOpts, 15*time.Minute)
+	} else {
+		var logs []string
+		logs, err = j.host.RunJasperProcess(ctx, j.env, &options.Create{
+			Args: cmd,
+		})
+		output = strings.Join(logs, " ")
+	}
 
 	grip.Error(message.WrapError(err, message.Fields{
 		"message": fmt.Sprintf("fetch-artifacts-%s", j.host.ProvisionOptions.TaskId),

@@ -1047,7 +1047,7 @@ func (h *Host) spawnHostConfigJSON(settings *evergreen.Settings) ([]byte, error)
 // SpawnHostGetTaskDataCommand returns the command that fetches the task data
 // for a spawn host.
 func (h *Host) SpawnHostGetTaskDataCommand() []string {
-	return []string{h.AgentBinary(),
+	return []string{h.PathToFile(h.AgentBinary()),
 		"-c", h.PathToFile(h.spawnHostConfigFile()),
 		"fetch",
 		"-t", h.ProvisionOptions.TaskId,
