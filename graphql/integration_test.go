@@ -56,7 +56,7 @@ func (s *graphQLSuite) SetupSuite() {
 		Id:          apiUser,
 		APIKey:      apiKey,
 		Settings:    user.UserSettings{Timezone: "America/New_York"},
-		SystemRoles: []string{"restrictedTaskAccess"},
+		SystemRoles: []string{"unrestrictedTaskAccess"},
 	}
 	s.Require().NoError(testUser.Insert())
 	s.url = server.URL
