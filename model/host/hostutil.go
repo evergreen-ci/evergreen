@@ -362,7 +362,7 @@ func (h *Host) jasperBinaryFileName(config evergreen.HostJasperConfig) string {
 
 // JasperBinaryFilePath returns the full path to the Jasper binary.
 func (h *Host) JasperBinaryFilePath(config evergreen.HostJasperConfig) string {
-	return filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, h.jasperBinaryFileName(config))
+	return h.PathToFile(filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, h.jasperBinaryFileName(config)))
 }
 
 // BootstrapScript creates the user data script to bootstrap the host.
