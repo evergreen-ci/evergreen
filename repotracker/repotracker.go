@@ -24,7 +24,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
 	mgobson "gopkg.in/mgo.v2/bson"
-	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -76,19 +75,7 @@ func (p *ProjectInfo) notPopulated() bool {
 
 // PopulateVersion updates the version's ParserProject if we have or can create it
 func (p *ProjectInfo) populateVersion(v *model.Version) error {
-	config, err := yaml.Marshal(p.IntermediateProject)
-	if err != nil {
-		return errors.Wrap(err, "error marshalling intermediate project")
-	}
-	v.Config = string(config)
 
-	if p.Project == nil {
-		p.Project, err = model.TranslateProject(p.IntermediateProject)
-		if err != nil {
-			return errors.Wrap(err, "error translating intermediate project")
-		}
-	}
-	return nil
 }
 
 // The RepoPoller interface specifies behavior required of all repository poller
@@ -619,8 +606,11 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *ProjectInfo,
 		return nil, errors.Wrap(err, "inconsistent version order")
 	}
 
-	if err = projectInfo.populateVersion(v); err != nil {
-		return nil, errors.Wrap(err, "problem updating version project")
+	if projectInfo.Project == nil {
+		projectInfo.Project, err = model.TranslateProject(projectInfo.IntermediateProject)
+		if err != nil {
+			return nil, errors.Wrap(err, "error translating intermediate project")
+		}
 	}
 	projectInfo.IntermediateProject.Id = v.Id
 	projectInfo.IntermediateProject.CreateTime = v.CreateTime
@@ -857,7 +847,19 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata VersionM
 			if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
 				return errors.Wrap(abortErr, "error aborting transaction")
 			}
-			return errors.Wrapf(err, "error inserting version %s", v.Id)
+			return errors.Wrapf(err, "error inserting version '%s'", v.Id)
+		}
+		_, err = evergreen.GetEnvironment().DB().Collection(model.ParserProjectCollection).InsertOne(sessCtx, projectInfo.IntermediateProject)
+		if err != nil {
+			grip.Notice(message.WrapError(err, message.Fields{
+				"message": "aborting transaction",
+				"cause":   "can't insert parser project",
+				"version": v.Id,
+			}))
+			if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
+				return errors.Wrap(abortErr, "error aborting transaction")
+			}
+			return errors.Wrapf(err, "error inserting parser project '%s'", v.Id)
 		}
 		_, err = evergreen.GetEnvironment().DB().Collection(build.Collection).InsertMany(sessCtx, buildsToCreate)
 		if err != nil {
@@ -895,7 +897,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata VersionM
 				return errors.Wrap(abortErr, "error aborting transaction")
 			}
 
-			return errors.Wrapf(err, "error committing transaction for version %s", v.Id)
+			return errors.Wrapf(err, "error committing transaction for version '%s'", v.Id)
 		}
 		grip.Info(message.Fields{
 			"message": "successfully created version",

@@ -444,18 +444,14 @@ func LoadProjectForVersion(v *Version, identifier string, shouldSave bool) (*Pro
 		return nil, nil, errors.Wrap(err, "error finding parser project")
 	}
 
-	if pp != nil {
-		// if parser project config number is old then there was a race,
-		// and we should default to the version config
-		if pp.ConfigUpdateNumber >= v.ConfigUpdateNumber {
-			pp.Identifier = identifier
-			var p *Project
-			p, err = TranslateProject(pp)
-			return p, pp, err
-		}
+	// if parser project config number is old then we should default to legacy
+	if pp != nil && pp.ConfigUpdateNumber >= v.ConfigUpdateNumber {
+		pp.Identifier = identifier
+		var p *Project
+		p, err = TranslateProject(pp)
+		return p, pp, err
 	}
 
-	// else, use legacy
 	if v.Config == "" {
 		return nil, nil, errors.New("version has no config")
 	}

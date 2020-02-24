@@ -178,7 +178,7 @@ func updateParserProject(v *Version, pp *ParserProject) error {
 	}
 
 	// legacy
-	if err := VersionUpdateConfig(v.Id, v.Config, v.ConfigUpdateNumber, true); err != nil {
+	if err := VersionUpdateConfig(v.Id, v.Config, v.ConfigUpdateNumber); err != nil {
 		return errors.Wrapf(err, "error updating version '%s'", v.Id)
 	}
 
