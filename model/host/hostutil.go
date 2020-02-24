@@ -362,7 +362,7 @@ func (h *Host) jasperBinaryFileName(config evergreen.HostJasperConfig) string {
 
 // JasperBinaryFilePath returns the full path to the Jasper binary.
 func (h *Host) JasperBinaryFilePath(config evergreen.HostJasperConfig) string {
-	return h.PathByProvisioning(filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, h.jasperBinaryFileName(config)))
+	return filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, h.jasperBinaryFileName(config))
 }
 
 // BootstrapScript creates the user data script to bootstrap the host.
@@ -383,7 +383,7 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 			return "", errors.Wrap(err, "error creating commands to load task data")
 		}
 		if h.ProvisionOptions.TaskId != "" {
-			fetchCmd := h.SpawnHostGetTaskDataCommand()
+			fetchCmd := append([]string{h.PathByProvisioning(h.Distro.BootstrapSettings.ShellPath), "-l", "-c"}, h.SpawnHostGetTaskDataCommand()...)
 			var getTaskDataCmd string
 			getTaskDataCmd, err = h.buildLocalJasperClientRequest(settings.HostJasper, strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "), &options.Command{Commands: [][]string{fetchCmd}})
 			if err != nil {
