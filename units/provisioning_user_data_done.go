@@ -113,7 +113,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 		return
 	}
 
-	if j.host.AttachVolume {
+	if j.host.IsVirtualWorkstation {
 		if err := attachVolume(ctx, j.env, j.host); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "can't attach volume",

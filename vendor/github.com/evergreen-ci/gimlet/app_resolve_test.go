@@ -1,11 +1,14 @@
 package gimlet
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"testing"
 
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRouteResolutionHelpers(t *testing.T) {
@@ -96,4 +99,27 @@ func TestRouteResolutionHelpers(t *testing.T) {
 		h = tc.route.getHandlerWithMiddlware(nil)
 		assert.NotEqual(t, fmt.Sprint(hndlr), fmt.Sprint(h))
 	}
+}
+
+func TestPrefixRoute(t *testing.T) {
+	router := mux.NewRouter()
+	app := NewApp()
+	app.NoVersions = true
+	app.AddPrefixRoute("/match/everything/under/this/path").Handler(func(http.ResponseWriter, *http.Request) {}).Get()
+	assert.NoError(t, app.attachRoutes(router, false))
+
+	// match the path itself
+	req, err := http.NewRequest("GET", "http://www.example.com/match/everything/under/this/path", bytes.NewBuffer([]byte{}))
+	require.NoError(t, err)
+	assert.True(t, router.Match(req, &mux.RouteMatch{}))
+
+	// match under this path
+	req, err = http.NewRequest("GET", "http://www.example.com/match/everything/under/this/path/abcd", bytes.NewBuffer([]byte{}))
+	require.NoError(t, err)
+	assert.True(t, router.Match(req, &mux.RouteMatch{}))
+
+	// don't match another path
+	req, err = http.NewRequest("GET", "http://www.example.com/another/path", bytes.NewBuffer([]byte{}))
+	require.NoError(t, err)
+	assert.False(t, router.Match(req, &mux.RouteMatch{}))
 }

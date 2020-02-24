@@ -916,6 +916,10 @@ Evergreen - Distros
               <input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.spawn_allowed">
               Allow users to spawn these hosts for personal use.
             </p>
+            <p class="distro-checkbox checkbox" ng-show="activeDistro.spawn_allowed && isLinux() && home_volume_settings.format_command">
+              <input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.is_virtual_workstation">
+              Allow users to use spawnhosts of this distro as virtual workstations.
+            </p>
             <p class="distro-checkbox checkbox">
               <input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.disable_shallow_clone">
               Disable shallow clone for this distro.
