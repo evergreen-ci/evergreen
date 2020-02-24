@@ -1605,7 +1605,7 @@
     {
       "query_file": "set_priority-has-permission.graphql",
       "result": {
-        "data": null
+        "data": { "setPriority": { "priority": 101, "id": "wuzzup-activated" } }
       }
     }
   ]
