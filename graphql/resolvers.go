@@ -7,13 +7,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 	"github.com/vektah/gqlparser/gqlerror"
 )
@@ -371,6 +374,44 @@ func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*
 		return nil, err
 	}
 	return task, nil
+}
+
+func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
+	t, err := task.FindOneId(taskID)
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
+	}
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
+	p, err := model.FindOneProjectRef(t.Project)
+	if err != nil || p == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", t.Project))
+	}
+	authName := gimlet.GetUser(ctx).DisplayName()
+	if err := model.AbortTask(taskID, authName); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error aborting task %s: %v", taskID, err))
+	}
+	if t.Requester == evergreen.MergeTestRequester {
+		_, err = commitqueue.RemoveCommitQueueItem(p.Identifier,
+			p.CommitQueue.PatchType, t.Version, true)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to remove commit queue item for project %s, version %s: %v", taskID, t.Version, err))
+		}
+	}
+	t, err = task.FindOneId(taskID)
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
+	}
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
+	apiTask := restModel.APITask{}
+	err = apiTask.BuildFromService(t)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	return &apiTask, nil
 }
 
 func (r *queryResolver) User(ctx context.Context) (*restModel.APIUser, error) {
