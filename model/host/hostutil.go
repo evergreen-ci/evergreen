@@ -906,8 +906,8 @@ func (h *Host) withTaggedProcs(ctx context.Context, env evergreen.Environment, t
 // running on the host.
 func (h *Host) WithAgentMonitor(ctx context.Context, env evergreen.Environment, handleAgentMonitor func(procs []jasper.Process) error) error {
 	return h.withTaggedProcs(ctx, env, evergreen.AgentMonitorTag, func(procs []jasper.Process) error {
-		grip.WarningWhen(len(procs) != 1, message.Fields{
-			"message": fmt.Sprintf("host should be running exactly one agent monitor, but found %d", len(procs)),
+		grip.WarningWhen(len(procs) > 1, message.Fields{
+			"message": fmt.Sprintf("host should be running at most one agent monitor, but found %d", len(procs)),
 			"host_id": h.Id,
 			"distro":  h.Distro.Id,
 		})
