@@ -541,3 +541,25 @@ func TestUpdateAdminRoles(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, newAdminFromDB.Roles(), 1)
 }
+
+func TestUpdateNextPeriodicBuild(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.Clear(ProjectRefCollection))
+	now := time.Now().Truncate(time.Second)
+	p := ProjectRef{
+		Identifier: "proj",
+		PeriodicBuilds: []PeriodicBuildDefinition{
+			{ID: "1", NextRunTime: now},
+			{ID: "2", NextRunTime: now.Add(1 * time.Hour)},
+		},
+	}
+	assert.NoError(p.Insert())
+
+	assert.NoError(p.UpdateNextPeriodicBuild("2", now.Add(10*time.Hour)))
+	dbProject, err := FindOneProjectRef(p.Identifier)
+	assert.NoError(err)
+	assert.True(now.Equal(dbProject.PeriodicBuilds[0].NextRunTime))
+	assert.True(now.Equal(p.PeriodicBuilds[0].NextRunTime))
+	assert.True(now.Add(10 * time.Hour).Equal(dbProject.PeriodicBuilds[1].NextRunTime))
+	assert.True(now.Add(10 * time.Hour).Equal(p.PeriodicBuilds[1].NextRunTime))
+}

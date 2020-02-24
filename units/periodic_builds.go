@@ -10,11 +10,13 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -27,7 +29,8 @@ func init() {
 }
 
 type periodicBuildJob struct {
-	ProjectID string `bson:"project_id"`
+	ProjectID    string `bson:"project_id"`
+	DefinitionID string `bson:"def_id"`
 
 	project *model.ProjectRef
 	env     evergreen.Environment
@@ -48,10 +51,12 @@ func makePeriodicBuildsJob() *periodicBuildJob {
 	return j
 }
 
-func NewPeriodicBuildJob(projectID string, ts string) amboy.Job {
+func NewPeriodicBuildJob(projectID, definitionID string, ts time.Time) amboy.Job {
 	j := makePeriodicBuildsJob()
 	j.ProjectID = projectID
-	j.SetID(fmt.Sprintf("%s-%s-%s", periodicBuildJobName, projectID, ts))
+	j.DefinitionID = definitionID
+	j.SetID(fmt.Sprintf("%s-%s-%s-%s", periodicBuildJobName, projectID, definitionID, ts.Format(TSFormat)))
+	j.UpdateTimeInfo(amboy.JobTimeInfo{WaitUntil: ts})
 
 	return j
 }
@@ -70,39 +75,55 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		j.AddError(errors.New("project not found"))
 		return
 	}
-
-	catcher := grip.NewBasicCatcher()
-	for _, definition := range j.project.PeriodicBuilds {
-		shouldRerun, err := j.shouldRerun(definition)
-		if err != nil {
-			catcher.Add(err)
-			continue
-		}
-		if shouldRerun {
-			catcher.Add(j.addVersion(ctx, definition))
+	var definition *model.PeriodicBuildDefinition
+	for _, d := range j.project.PeriodicBuilds {
+		if d.ID == j.DefinitionID {
+			definition = &d
+			break
 		}
 	}
+	if definition == nil {
+		j.AddError(errors.New("no definition ID found"))
+		return
+	}
+	defer func() {
+		baseTime := definition.NextRunTime
+		if util.IsZeroTime(baseTime) {
+			baseTime = time.Now()
+		}
+		err = j.project.UpdateNextPeriodicBuild(definition.ID, baseTime.Add(time.Duration(definition.IntervalHours)*time.Hour))
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":    "unable to set next periodic build job time",
+			"project":    j.ProjectID,
+			"definition": j.DefinitionID,
+		}))
+	}()
 
-	j.AddError(catcher.Resolve())
+	versionID, err := j.addVersion(ctx, *definition)
+	if err != nil {
+		j.AddError(err)
+		return
+	}
+	j.AddError(model.SetVersionActivation(versionID, true, evergreen.User))
 }
 
-func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.PeriodicBuildDefinition) error {
+func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.PeriodicBuildDefinition) (string, error) {
 	token, err := j.env.Settings().GetGithubOauthToken()
 	if err != nil {
-		return errors.Wrap(err, "error getting github token")
+		return "", errors.Wrap(err, "error getting github token")
 	}
 	configFile, err := thirdparty.GetGithubFile(ctx, token, j.project.Owner, j.project.Repo, j.project.RemotePath, "")
 	if err != nil {
-		return errors.Wrap(err, "error getting config file from github")
+		return "", errors.Wrap(err, "error getting config file from github")
 	}
 	configBytes, err := base64.StdEncoding.DecodeString(*configFile.Content)
 	if err != nil {
-		return errors.Wrap(err, "error decoding config file")
+		return "", errors.Wrap(err, "error decoding config file")
 	}
 	proj := &model.Project{}
 	intermediateProject, err := model.LoadProjectInto(configBytes, j.project.Identifier, proj)
 	if err != nil {
-		return errors.Wrap(err, "error parsing config file")
+		return "", errors.Wrap(err, "error parsing config file")
 	}
 	metadata := repotracker.VersionMetadata{
 		IsAdHoc:         true,
@@ -115,18 +136,12 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 		Project:             proj,
 		IntermediateProject: intermediateProject,
 	}
-	_, err = repotracker.CreateVersionFromConfig(ctx, projectInfo, metadata, false, nil)
-	return errors.Wrap(err, "error creating version from config")
-}
-
-func (j *periodicBuildJob) shouldRerun(definition model.PeriodicBuildDefinition) (bool, error) {
-	lastVersion, err := model.FindLastPeriodicBuild(j.ProjectID, definition.ID)
+	v, err := repotracker.CreateVersionFromConfig(ctx, projectInfo, metadata, false, nil)
 	if err != nil {
-		return false, errors.Wrap(err, "error finding last periodic build")
+		return "", errors.Wrap(err, "error creating version from config")
 	}
-	if lastVersion == nil {
-		return true, nil
+	if v == nil {
+		return "", errors.New("no version created")
 	}
-	elapsed := time.Now().Sub(lastVersion.CreateTime)
-	return elapsed >= time.Duration(definition.IntervalHours)*time.Hour, nil
+	return v.Id, nil
 }

@@ -1,4 +1,4 @@
-mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location, $mdDialog) {
+mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location, $mdDialog, timeUtil) {
 
   $scope.availableTriggers = $window.availableTriggers
   $scope.userId = $window.user.Id;
@@ -319,6 +319,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
         $scope.prTestingEnabled = data.ProjectRef.pr_testing_enabled || false;
         $scope.commitQueueConflicts = data.commit_queue_conflicting_refs || [];
         $scope.project_triggers = data.ProjectRef.triggers || [];
+        $scope.periodic_builds = data.ProjectRef.periodic_builds || [];
         $scope.permissions = data.permissions || {};
         $scope.github_valid_orgs = data.github_valid_orgs;
         _.each($scope.project_triggers, function (trigger) {
@@ -441,6 +442,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
   $scope.saveProject = function () {
     $scope.settingsFormData.batch_time = parseInt($scope.settingsFormData.batch_time);
     $scope.settingsFormData.triggers = $scope.project_triggers;
+    $scope.settingsFormData.periodic_builds = $scope.periodic_builds;
     _.each($scope.settingsFormData.triggers, function (trigger) {
       if (trigger.command) {
         trigger.generate_file = trigger.file;
@@ -578,6 +580,13 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
   };
 
   $scope.removePeriodicBuild = function (i) {
+    if ($scope.periodic_builds[i]) {
+      $scope.periodic_builds.splice(i, 1);
+      $scope.isDirty = true;
+    }
+  };
+
+  $scope.removePeriodicBuild = function (i) {
     if ($scope.settingsFormData.periodic_builds[i]) {
       $scope.settingsFormData.periodic_builds.splice(i, 1);
       $scope.isDirty = true;
@@ -629,6 +638,16 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
       out = out + " filtered to alias '" + trigger.alias + "'";
     }
     return out;
+  }
+
+  $scope.periodicBuildLabel = function (definition) {
+    if (!definition) {
+      return "";
+    }
+    if (definition.message) {
+      return definition.message;
+    }
+    return `Every ${definition.interval_hours} hours`;
   }
 
   $scope.$watch("settingsForm.$dirty", function (dirty) {
@@ -720,9 +739,9 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
 
   $scope.showTriggerModal = function (index) {
     if (index != undefined) {
-      var toEdit = $scope.project_triggers[index];
-      if (!toEdit.status) {
-        toEdit.status = "all";
+      var triggerToEdit = $scope.project_triggers[index];
+      if (!triggerToEdit.status) {
+        triggerToEdit.status = "all";
       }
     }
     var modal = $mdDialog.confirm({
@@ -732,17 +751,17 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
       controller: newTriggerController,
       bindToController: true,
       locals: {
-        "toEdit": toEdit,
+        "triggerToEdit": triggerToEdit,
         "index": index
       },
     });
 
     $mdDialog.show(modal).then(function (update) {
-      if (update.index != undefined) {
+      if (update.triggerIndex != undefined) {
         if (update.delete) {
-          $scope.project_triggers.splice(update.index, 1);
+          $scope.project_triggers.splice(update.triggerIndex, 1);
         } else {
-          $scope.project_triggers[update.index] = update.trigger;
+          $scope.project_triggers[update.triggerIndex] = update.trigger;
         }
       } else {
         $scope.project_triggers = $scope.project_triggers.concat([update.trigger]);
@@ -752,9 +771,9 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
   };
 
   function newTriggerController($scope, $mdDialog) {
-    if ($scope.data.toEdit) {
-      $scope.trigger = $scope.data.toEdit;
-      $scope.index = $scope.data.index;
+    if ($scope.data.triggerToEdit) {
+      $scope.trigger = $scope.data.triggerToEdit;
+      $scope.triggerIndex = $scope.data.index;
     } else {
       $scope.trigger = {
         level: "task",
@@ -772,7 +791,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
         }
         $mdDialog.hide({
           "trigger": $scope.trigger,
-          "index": $scope.index
+          "triggerIndex": $scope.triggerIndex
         });
       }
       $mdDialog.cancel();
@@ -781,7 +800,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
     $scope.deleteTrigger = function () {
       $mdDialog.hide({
         "delete": true,
-        "index": $scope.index
+        "triggerIndex": $scope.triggerIndex
       });
     };
 
@@ -794,10 +813,97 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
     };
 
     $scope.modalTitle = function () {
-      if ($scope.data.toEdit) {
+      if ($scope.data.triggerToEdit) {
         return "Edit Trigger";
       } else {
         return "New Trigger";
+      }
+    };
+  }
+
+  function comebineDateTime(date, time) {
+    date.setHours(time.getHours());
+    date.setMinutes(time.getMinutes());
+
+    return date;
+  }
+
+  $scope.showPeriodicBuildModal = function (index) {
+    var modal = $mdDialog.confirm({
+      title: "Edit Periodic Build Definition",
+      templateUrl: "/static/partials/periodic_build_modal.html",
+      controllerAs: "data",
+      controller: newPeriodicBuildController,
+      bindToController: true,
+      locals: {
+        "periodicBuildToEdit": $scope.periodic_builds[index],
+        "index": index,
+        "timezones": timeUtil.timezones,
+        "userTz": window.userTz
+      },
+    });
+
+    $mdDialog.show(modal).then(function (update) {
+      if (update.delete) {
+        $scope.periodic_builds.splice(update.periodicBuildIndex, 1);
+      } else {
+        update.periodic_build.next_run_time = comebineDateTime(update.periodic_build.start_date, update.periodic_build.start_time);
+        // annoying way to set the time zone of the date to the user-specified one
+        let offset = moment.tz(window.userTz).utcOffset() - moment.tz(update.periodic_build.timezone).utcOffset();
+        update.periodic_build.next_run_time.setMinutes(update.periodic_build.next_run_time.getMinutes() + offset);
+        if (update.periodicBuildIndex !== undefined) {
+          $scope.periodic_builds[update.periodicBuildIndex] = update.periodic_build;
+        } else {
+          $scope.periodic_builds = $scope.periodic_builds.concat([update.periodic_build]);
+        }
+      }
+      $scope.isDirty = true;
+    });
+  };
+
+  function newPeriodicBuildController($scope, $mdDialog) {
+    if ($scope.data.periodicBuildToEdit) {
+      $scope.periodic_build = $scope.data.periodicBuildToEdit;
+      $scope.periodicBuildIndex = $scope.data.index;
+    } else {
+      $scope.periodic_build = {};
+    }
+    if ($scope.periodic_build.next_run_time) {
+      if (typeof ($scope.periodic_build.next_run_time) === "string") {
+        $scope.periodic_build.next_run_time = new Date($scope.periodic_build.next_run_time);
+      }
+      $scope.periodic_build.start_date = $scope.periodic_build.next_run_time; // TODO: this deserializes as string
+      $scope.periodic_build.start_time = $scope.periodic_build.next_run_time;
+    } else {
+      $scope.periodic_build.start_date = new Date();
+      $scope.periodic_build.start_time = new Date();
+    }
+    if ($scope.data.userTz) {
+      $scope.periodic_build.timezone = $scope.data.userTz;
+    }
+
+    $scope.closeDialog = function (save) {
+      if (save) {
+        $mdDialog.hide({
+          "periodic_build": $scope.periodic_build,
+          "periodicBuildIndex": $scope.periodicBuildIndex
+        });
+      }
+      $mdDialog.cancel();
+    };
+
+    $scope.deleteDefinition = function () {
+      $mdDialog.hide({
+        "delete": true,
+        "periodicBuildIndex": $scope.periodicBuildIndex
+      });
+    };
+
+    $scope.modalTitle = function () {
+      if ($scope.data.periodic_build) {
+        return "Edit Periodic Build";
+      } else {
+        return "New Periodic Build";
       }
     };
   }

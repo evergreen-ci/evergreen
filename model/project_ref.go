@@ -113,11 +113,12 @@ type TriggerDefinition struct {
 }
 
 type PeriodicBuildDefinition struct {
-	ID            string `bson:"id" json:"id"`
-	ConfigFile    string `bson:"config_file" json:"config_file"`
-	IntervalHours int    `bson:"interval_hours" json:"interval_hours"`
-	Alias         string `bson:"alias,omitempty" json:"alias,omitempty"`
-	Message       string `bson:"message,omitempty" json:"message,omitempty"`
+	ID            string    `bson:"id" json:"id"`
+	ConfigFile    string    `bson:"config_file" json:"config_file"`
+	IntervalHours int       `bson:"interval_hours" json:"interval_hours"`
+	Alias         string    `bson:"alias,omitempty" json:"alias,omitempty"`
+	Message       string    `bson:"message,omitempty" json:"message,omitempty"`
+	NextRunTime   time.Time `bson:"next_run_time,omitempty" json:"next_run_time,omitempty"`
 }
 
 func (a AlertConfig) GetSettingsMap() map[string]string {
@@ -843,6 +844,31 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 		}
 	}
 	return nil
+}
+
+func (p *ProjectRef) UpdateNextPeriodicBuild(definition string, nextRun time.Time) error {
+	for i, d := range p.PeriodicBuilds {
+		if d.ID == definition {
+			d.NextRunTime = nextRun
+			p.PeriodicBuilds[i] = d
+			break
+		}
+	}
+	filter := bson.M{
+		ProjectRefIdentifierKey: p.Identifier,
+		projectRefPeriodicBuildsKey: bson.M{
+			"$elemMatch": bson.M{
+				"id": definition,
+			},
+		},
+	}
+	update := bson.M{
+		"$set": bson.M{
+			bsonutil.GetDottedKeyName(projectRefPeriodicBuildsKey, "$", "next_run_time"): nextRun,
+		},
+	}
+
+	return db.Update(ProjectRefCollection, filter, update)
 }
 
 func (t TriggerDefinition) Validate(parentProject string) error {

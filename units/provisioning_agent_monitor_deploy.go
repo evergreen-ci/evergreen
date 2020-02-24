@@ -15,13 +15,14 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
 
 const (
 	agentMonitorDeployJobName = "agent-monitor-deploy"
-	agentMonitorPutRetries    = 75
+	agentMonitorPutRetries    = 25
 )
 
 func init() {
@@ -163,6 +164,16 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 
 	settings := j.env.Settings()
 
+	var alive bool
+	alive, err = j.checkAgentMonitor(ctx)
+	if err != nil {
+		j.AddError(err)
+		return
+	}
+	if alive {
+		return
+	}
+
 	if err = j.fetchClient(ctx, settings); err != nil {
 		j.AddError(err)
 		return
@@ -207,6 +218,23 @@ func (j *agentMonitorDeployJob) checkNoRetries() (bool, error) {
 	}
 
 	return stat.LastAttemptFailed() && stat.AllAttemptsFailed() && stat.Count >= agentMonitorPutRetries, nil
+}
+
+// checkAgentMonitor returns whether or not the agent monitor is already
+// running.
+func (j *agentMonitorDeployJob) checkAgentMonitor(ctx context.Context) (bool, error) {
+	var alive bool
+	err := j.host.WithAgentMonitor(ctx, j.env, func(procs []jasper.Process) error {
+		for _, proc := range procs {
+			if proc.Running(ctx) {
+				alive = true
+				break
+			}
+		}
+
+		return nil
+	})
+	return alive, errors.Wrap(err, "could not check agent monitor status")
 }
 
 // fetchClient fetches the client on the host through the host's Jasper service.
