@@ -2,20 +2,37 @@
   "setupData": {
     "roles": [
       {
-        "_id": "restrictedTaskAccess",
-        "name": "restricted_task_access",
-        "scope": "restrictedTaskAccess",
+        "_id": "unrestrictedTaskAccess",
+        "name": "unrestricted_task_access",
+        "scope": "unrestrictedTaskAccess",
         "permissions": {
-          "project_tasks": 10
+          "project_tasks": 55
         }
       }
     ],
     "scopes": [
       {
-        "_id": "restrictedTaskAccess",
-        "name": "logkeeper project",
-        "type": "tasks",
-        "resources": ["wuzzup"]
+        "_id": "unrestrictedTaskAccess",
+        "name": "unrestricted access",
+        "type": "project",
+        "resources": ["5723cdaa7bd5c9f79a7fc666"]
+      }
+    ],
+    "distro": [
+      {
+        "_id": "localhost2",
+        "settings": {
+          "hosts": [
+            {
+              "name": "localhost2"
+            }
+          ]
+        },
+        "user": "ubuntu",
+        "spawn_allowed": false,
+        "arch": "linux_amd64",
+        "work_dir": "/home/ubuntu/smoke",
+        "provider": "static"
       }
     ],
     "builds": [
@@ -138,6 +155,7 @@
         "task": "exec1",
         "task_name": "wuzzup-activated",
         "build": "some_thang",
+
         "files": [
           {
             "name": "awesome_test!!!",
@@ -257,6 +275,7 @@
       },
       {
         "_id": "wuzzup-activated",
+        "project": "5723cdaa7bd5c9f79a7fc666",
         "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
         "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
         "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
@@ -273,7 +292,7 @@
         "activated": true,
         "activated_by": "someone",
         "build_id": "some_thang",
-        "distro": "distro",
+        "distro": "localhost2",
         "build_variant": "variant",
         "depends_on": [],
         "display_name": "display name",
@@ -1573,6 +1592,19 @@
     },
     {
       "query_file": "set_priority-no-permission.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Insufficient access to set priority 101, can only set priority less than or equal to 100",
+            "path": ["setPriority"],
+            "extensions": { "code": "FORBIDDEN" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "set_priority-has-permission.graphql",
       "result": {
         "errors": [
           {
