@@ -101,7 +101,7 @@ func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {
 				}
 				urlStr, err := thirdparty.PreSign(artifact.Files[i].Bucket, artifact.Files[i].FileKey, artifact.Files[i].AwsKey, artifact.Files[i].AwsSecret)
 				if err != nil {
-					return nil, errors.Wrapf(err, "problem presigning url")
+					return nil, errors.Wrap(err, "problem presigning url")
 				}
 				artifact.Files[i].Link = urlStr
 			}
