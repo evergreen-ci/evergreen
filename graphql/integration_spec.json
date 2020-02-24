@@ -18,23 +18,6 @@
         "resources": ["5723cdaa7bd5c9f79a7fc666"]
       }
     ],
-    "distro": [
-      {
-        "_id": "localhost2",
-        "settings": {
-          "hosts": [
-            {
-              "name": "localhost2"
-            }
-          ]
-        },
-        "user": "ubuntu",
-        "spawn_allowed": false,
-        "arch": "linux_amd64",
-        "work_dir": "/home/ubuntu/smoke",
-        "provider": "static"
-      }
-    ],
     "builds": [
       {
         "_id": "some_thang",
@@ -160,7 +143,6 @@
         "task": "exec1",
         "task_name": "wuzzup-activated",
         "build": "some_thang",
-
         "files": [
           {
             "name": "awesome_test!!!",
@@ -296,7 +278,7 @@
         "activated": true,
         "activated_by": "someone",
         "build_id": "some_thang",
-        "distro": "localhost2",
+        "distro": "distro",
         "build_variant": "variant",
         "depends_on": [],
         "display_name": "display name",
