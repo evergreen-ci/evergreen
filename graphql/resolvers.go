@@ -380,11 +380,9 @@ func (r *mutationResolver) SetPriority(ctx context.Context, taskID string, prior
 			return nil, Forbidden.Send(ctx, fmt.Sprintf("Insufficient access to set priority %v, can only set priority less than or equal to %v", priority, evergreen.MaxTaskPriority))
 		}
 	}
-
 	if err = t.SetPriority(int64(priority), authUser.Username()); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting task priority %v: %v", taskID, err))
 	}
-
 	t, err = task.FindOneId(taskID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
@@ -392,7 +390,6 @@ func (r *mutationResolver) SetPriority(ctx context.Context, taskID string, prior
 	if t == nil {
 		return nil, errors.Errorf("unable to find task %s", taskID)
 	}
-
 	apiTask := restModel.APITask{}
 	err = apiTask.BuildFromService(t)
 	if err != nil {
@@ -402,7 +399,6 @@ func (r *mutationResolver) SetPriority(ctx context.Context, taskID string, prior
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-
 	return &apiTask, nil
 }
 
