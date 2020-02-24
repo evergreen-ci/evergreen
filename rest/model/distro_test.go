@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
