@@ -336,14 +336,14 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/hosts").Wrap(needsLogin, needsContext).Handler(uis.modifyHosts).Put()
 	app.AddRoute("/host/{host_id}").Wrap(needsLogin, needsContext, viewHosts).Handler(uis.hostPage).Get()
 	app.AddRoute("/host/{host_id}").Wrap(needsContext, editHosts).Handler(uis.modifyHost).Put()
-	app.AddPrefixRoute("/host/{host_id}/vscode/").Wrap(needsLogin, ownsHost, vsCodeRunning).Proxy(gimlet.ProxyOptions{
+	app.AddPrefixRoute("/host/{host_id}/ide/").Wrap(needsLogin, ownsHost, vsCodeRunning).Proxy(gimlet.ProxyOptions{
 		FindTarget:        uis.getHostDNS,
 		StripSourcePrefix: true,
 		RemoteScheme:      "http",
 	}).AllMethods()
 	// Prefix routes not ending in a '/' are not automatically redirected by gimlet's underlying library.
 	// Add another route to match when there's no trailing slash and redirect
-	app.AddRoute("/host/{host_id}/vscode").Handler(func(w http.ResponseWriter, r *http.Request) {
+	app.AddRoute("/host/{host_id}/ide").Handler(func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
 	}).Get()
 
