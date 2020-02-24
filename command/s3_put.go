@@ -141,7 +141,6 @@ func (s3pc *s3put) validate() error {
 	if s3pc.isMulti() && filepath.IsAbs(s3pc.LocalFile) {
 		catcher.Add(errors.New("cannot use absolute path with local_files_include_filter"))
 	}
-	//todo: test this
 	if s3pc.Visibility == "signed" && (s3pc.Permissions == s3.BucketCannedACLPublicRead || s3pc.Permissions == s3.BucketCannedACLPublicReadWrite) {
 		catcher.Add(errors.New("visibility: signed should not be combined with permissions: public-read or permissions: public-read-write"))
 	}
@@ -377,7 +376,9 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 
 	for _, fn := range localFiles {
 		remoteFileName := filepath.ToSlash(remoteFile)
+		logger.Task().Infof("RemoteFileName: %s", remoteFile)
 		if s3pc.isMulti() {
+			logger.Task().Infof("Is Multi is true. remoteFileName: %s", remoteFile)
 			remoteFileName = fmt.Sprintf("%s%s", remoteFile, filepath.Base(fn))
 		}
 
