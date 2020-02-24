@@ -79,9 +79,6 @@ type s3put struct {
 	// for missing files.
 	Optional string `mapstructure:"optional" plugin:"expand"`
 
-	//filekey is the filepath needed to retrieve the file from aws
-	// FileKey string `mapstructure:"filekey" plugin:"expand"`
-
 	// workDir sets the working directory relative to which s3put should look for files to upload.
 	// workDir will be empty if an absolute path is provided to the file.
 	workDir     string
@@ -317,9 +314,6 @@ retryLoop:
 				fpath = filepath.Join(filepath.Join(s3pc.workDir, s3pc.LocalFilesIncludeFilterPrefix), fpath)
 				err = s3pc.bucket.Upload(ctx, remoteName, fpath)
 
-				// if s3pc.Visibility == "signed" {
-				// 	s3pc.FileKey = remoteName
-				// }
 				if err != nil {
 					// retry errors other than "file doesn't exist", which we handle differently based on what
 					// kind of upload it is
@@ -376,9 +370,7 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 
 	for _, fn := range localFiles {
 		remoteFileName := filepath.ToSlash(remoteFile)
-		logger.Task().Infof("RemoteFileName: %s", remoteFile)
 		if s3pc.isMulti() {
-			logger.Task().Infof("Is Multi is true. remoteFileName: %s", remoteFile)
 			remoteFileName = fmt.Sprintf("%s%s", remoteFile, filepath.Base(fn))
 		}
 
