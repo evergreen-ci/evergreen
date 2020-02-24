@@ -9,7 +9,6 @@ import (
 	mgobson "gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
@@ -437,36 +436,31 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 // LoadProjectForVersion returns the project for a version, either from the parser project or the config string.
 // If read from the config string and shouldSave is set, the resulting parser project will be saved.
 func LoadProjectForVersion(v *Version, identifier string, shouldSave bool) (*Project, *ParserProject, error) {
-	var ppFromDB *ParserProject
+	var pp *ParserProject
 	var err error
-	flags, err := evergreen.GetServiceFlags()
+
+	pp, err = ParserProjectFindOneById(v.Id)
 	if err != nil {
-		return nil, nil, errors.WithStack(err)
-	}
-	// if not using parser project anyway, only lookup if saving
-	if !flags.ParserProjectDisabled || shouldSave {
-		ppFromDB, err = ParserProjectFindOneById(v.Id)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "error finding parser project")
-		}
+		return nil, nil, errors.Wrap(err, "error finding parser project")
 	}
 
-	if !flags.ParserProjectDisabled && ppFromDB != nil {
+	if pp != nil {
 		// if parser project config number is old then there was a race,
 		// and we should default to the version config
-		if ppFromDB.ConfigUpdateNumber >= v.ConfigUpdateNumber {
-			ppFromDB.Identifier = identifier
+		if pp.ConfigUpdateNumber >= v.ConfigUpdateNumber {
+			pp.Identifier = identifier
 			var p *Project
-			p, err = TranslateProject(ppFromDB)
-			return p, ppFromDB, err
+			p, err = TranslateProject(pp)
+			return p, pp, err
 		}
 	}
 
+	// else, use legacy
 	if v.Config == "" {
 		return nil, nil, errors.New("version has no config")
 	}
 	p := &Project{}
-	pp, err := LoadProjectInto([]byte(v.Config), identifier, p)
+	pp, err = LoadProjectInto([]byte(v.Config), identifier, p)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error loading project")
 	}
@@ -475,8 +469,7 @@ func LoadProjectForVersion(v *Version, identifier string, shouldSave bool) (*Pro
 	pp.ConfigUpdateNumber = v.ConfigUpdateNumber
 	pp.CreateTime = v.CreateTime
 
-	// TODO: don't need separate ppFromDB variable once using parser project
-	if shouldSave && ppFromDB == nil {
+	if shouldSave {
 		if err = pp.TryUpsert(); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"project": identifier,

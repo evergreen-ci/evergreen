@@ -157,7 +157,7 @@ func (g *GeneratedProject) NewVersion() (*Project, *ParserProject, *Version, *ta
 }
 
 func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProject, v *Version, t *task.Task, pm *projectMaps) error {
-	if err := updateVersionAndParserProject(v, pp); err != nil {
+	if err := updateParserProject(v, pp); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -168,27 +168,16 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProje
 }
 
 // if the parser project is more recent, update contingent on that and force update the version (and vice versa)
-func updateVersionAndParserProject(v *Version, pp *ParserProject) error {
-	flags, err := evergreen.GetServiceFlags()
-	if err != nil {
-		return errors.Wrapf(err, "error getting service flags")
-	}
-	condition := pp.ConfigUpdateNumber >= v.ConfigUpdateNumber
-	if flags.ParserProjectDisabled {
-		condition = pp.ConfigUpdateNumber > v.ConfigUpdateNumber
-	}
-	if condition {
+func updateParserProject(v *Version, pp *ParserProject) error {
+	if pp.ConfigUpdateNumber >= v.ConfigUpdateNumber {
 		curNumber := pp.ConfigUpdateNumber
 		if err := pp.UpsertWithConfigNumber(curNumber, true); err != nil {
 			return errors.Wrapf(err, "error upserting parser project '%s'", pp.Id)
 		}
-
-		if err := VersionUpdateConfig(v.Id, v.Config, curNumber, false); err != nil {
-			return errors.Wrapf(err, "database error updating version '%s'", v.Id)
-		}
 		return nil
 	}
 
+	// legacy
 	if err := VersionUpdateConfig(v.Id, v.Config, v.ConfigUpdateNumber, true); err != nil {
 		return errors.Wrapf(err, "error updating version '%s'", v.Id)
 	}

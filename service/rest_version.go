@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -258,11 +257,6 @@ func (r *recentVersionsContent) populateBuildsAndTasks(versionIds []string, vers
 // Returns a JSON response with the marshaled output of the version
 // specified in the request.
 func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
-	flags, err := evergreen.GetServiceFlags()
-	if err != nil {
-		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "error retrieving service flags"})
-		return
-	}
 	projCtx := MustHaveRESTContext(r)
 	srcVersion := projCtx.Version
 	if srcVersion == nil {
@@ -277,17 +271,19 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 		grip.Infof("adding BuildVariant %s", buildStatus.BuildVariant)
 	}
 
-	if !flags.ParserProjectDisabled && destVersion.Config == "" {
+	if destVersion.Config == "" {
 		var err error
 		pp, err := model.ParserProjectFindOneById(projCtx.Version.Id)
 		if err != nil {
 			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
 		}
-		config, err := yaml.Marshal(pp)
-		if err != nil {
-			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project"})
+		if pp != nil {
+			config, err := yaml.Marshal(pp)
+			if err != nil {
+				gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project"})
+			}
+			destVersion.Config = string(config)
 		}
-		destVersion.Config = string(config)
 	}
 
 	gimlet.WriteJSON(w, destVersion)
@@ -304,18 +300,14 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 	}
 	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	flags, err := evergreen.GetServiceFlags()
-	if err != nil {
-		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "error retrieving service flags"})
-		return
-	}
+
 	var config []byte
 	pp, err := model.ParserProjectFindOneById(projCtx.Version.Id)
 	if err != nil {
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
 		return
 	}
-	if !flags.ParserProjectDisabled && pp != nil {
+	if pp != nil {
 		config, err = yaml.Marshal(pp)
 		if err != nil {
 			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project"})

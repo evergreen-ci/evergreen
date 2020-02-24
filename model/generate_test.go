@@ -824,20 +824,15 @@ func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
 	s.Len(merged.BuildVariants[0].DisplayTasks, 1)
 }
 
-func TestUpdateVersionAndParserProject(t *testing.T) {
-	flags := evergreen.ServiceFlags{ParserProjectDisabled: true}
-	assert.NoError(t, evergreen.SetServiceFlags(flags))
-
+func TestUpdateParserProject(t *testing.T) {
 	for testName, setupTest := range map[string]func(t *testing.T, v *Version, pp *ParserProject){
 		"noParserProject": func(t *testing.T, v *Version, pp *ParserProject) {
 			v.ConfigUpdateNumber = 5
 			assert.NoError(t, v.Insert())
-
 		},
 		"ParserProjectMoreRecent": func(t *testing.T, v *Version, pp *ParserProject) {
 			v.ConfigUpdateNumber = 1
 			pp.ConfigUpdateNumber = 5
-			assert.NoError(t, v.Insert())
 			assert.NoError(t, pp.Insert())
 		},
 		"ConfigMostRecent": func(t *testing.T, v *Version, pp *ParserProject) {
@@ -857,7 +852,7 @@ func TestUpdateVersionAndParserProject(t *testing.T) {
 			v := &Version{Id: "my-version"}
 			pp := &ParserProject{Id: "my-version"}
 			setupTest(t, v, pp)
-			assert.NoError(t, updateVersionAndParserProject(v, pp))
+			assert.NoError(t, updateParserProject(v, pp))
 			v, err := VersionFindOneId(v.Id)
 			assert.NoError(t, err)
 			require.NotNil(t, v)
@@ -865,8 +860,13 @@ func TestUpdateVersionAndParserProject(t *testing.T) {
 			assert.NoError(t, err)
 			require.NotNil(t, pp)
 			if testName == "WithZero" {
-				assert.Equal(t, 1, v.ConfigUpdateNumber)
+				assert.Equal(t, 0, v.ConfigUpdateNumber)
 				assert.Equal(t, 1, pp.ConfigUpdateNumber)
+				return
+			}
+			if testName == "ParserProjectMostRecent" {
+				assert.Equal(t, 1, v.ConfigUpdateNumber)
+				assert.Equal(t, 6, pp.ConfigUpdateNumber)
 				return
 			}
 			assert.Equal(t, 6, v.ConfigUpdateNumber)

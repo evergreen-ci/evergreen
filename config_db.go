@@ -87,7 +87,6 @@ var (
 	commitQueueDisabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "CommitQueueDisabled")
 	plannerDisabledKey              = bsonutil.MustHaveTag(ServiceFlags{}, "PlannerDisabled")
 	hostAllocatorDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "HostAllocatorDisabled")
-	parserProjectDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "ParserProjectDisabled")
 	drBackupDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "DRBackupDisabled")
 	backgroundReauthDisabledKey     = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundReauthDisabled")
 
