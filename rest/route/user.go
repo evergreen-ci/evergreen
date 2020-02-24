@@ -175,6 +175,7 @@ func (h *userAuthorGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 type userPermissionsPostHandler struct {
 	sc          data.Connector
+	rm          gimlet.RoleManager
 	userID      string
 	permissions RequestedPermissions
 }
@@ -185,9 +186,10 @@ type RequestedPermissions struct {
 	Permissions  gimlet.Permissions `json:"permissions"`
 }
 
-func makeModifyUserPermissions(sc data.Connector) gimlet.RouteHandler {
+func makeModifyUserPermissions(sc data.Connector, rm gimlet.RoleManager) gimlet.RouteHandler {
 	return &userPermissionsPostHandler{
 		sc: sc,
+		rm: rm,
 	}
 }
 
@@ -221,7 +223,7 @@ func (h *userPermissionsPostHandler) Parse(ctx context.Context, r *http.Request)
 func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u, err := h.sc.FindUserById(h.userID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "can't get user for id '%s'", h.userID))
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{StatusCode: http.StatusNotFound, Message: fmt.Sprintf("can't get user for id '%s'", h.userID)})
 	}
 	if u == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -230,8 +232,7 @@ func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	rm := evergreen.GetEnvironment().RoleManager()
-	newRole, err := rolemanager.MakeRoleWithPermissions(rm, h.permissions.ResourceType, h.permissions.Resources, h.permissions.Permissions)
+	newRole, err := rolemanager.MakeRoleWithPermissions(h.rm, h.permissions.ResourceType, h.permissions.Resources, h.permissions.Permissions)
 	if err != nil {
 		return gimlet.NewTextInternalErrorResponse(err.Error())
 	}
@@ -243,5 +244,5 @@ func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewTextInternalErrorResponse(err.Error())
 	}
 
-	return gimlet.NewJSONResponse(nil)
+	return gimlet.NewJSONResponse(struct{}{})
 }

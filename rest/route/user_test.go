@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -161,94 +160,112 @@ func (s *UserRouteSuite) TestSaveFeedback() {
 	s.Len(feedback[0].Questions, 1)
 }
 
-func TestPostUserPermissions(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
+type userPermissionPostSuite struct {
+	suite.Suite
+	h gimlet.RouteHandler
+	u user.DBUser
+}
+
+func TestPostUserPermissionSuite(t *testing.T) {
+	suite.Run(t, &userPermissionPostSuite{})
+}
+
+func (s *userPermissionPostSuite) SetupTest() {
+	s.Require().NoError(db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	env := evergreen.GetEnvironment()
-	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
-	u := user.DBUser{
+	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection}).Err()
+	s.u = user.DBUser{
 		Id: "user",
 	}
-	assert.NoError(u.Insert())
-	ctx := context.Background()
-	handler := makeModifyUserPermissions(&data.DBConnector{})
+	s.Require().NoError(s.u.Insert())
+	s.h = makeModifyUserPermissions(&data.DBConnector{}, env.RoleManager())
+}
 
-	// no user should return the appropriate error
+func (s *userPermissionPostSuite) TestNoUser() {
 	invalidBody := `{ "foo": "bar" }`
 	request, err := http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(invalidBody)))
-	assert.NoError(err)
-	assert.EqualError(handler.Parse(ctx, request), "no user found")
+	s.NoError(err)
+	s.EqualError(s.h.Parse(context.Background(), request), "no user found")
+}
 
-	// no resource type should return the appropriate error
-	request, err = http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(invalidBody)))
-	request = gimlet.SetURLVars(request, map[string]string{"user_id": u.Id})
-	assert.NoError(err)
-	assert.EqualError(handler.Parse(ctx, request), "'' is not a valid resource_type")
+func (s *userPermissionPostSuite) TestNoResourceType() {
+	invalidBody := `{ "foo": "bar" }`
+	request, err := http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(invalidBody)))
+	request = gimlet.SetURLVars(request, map[string]string{"user_id": s.u.Id})
+	s.NoError(err)
+	s.EqualError(s.h.Parse(context.Background(), request), "'' is not a valid resource_type")
+}
 
-	// no resources should return the appropriate error
-	invalidBody = `{ "resource_type": "project" }`
-	request, err = http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(invalidBody)))
-	request = gimlet.SetURLVars(request, map[string]string{"user_id": u.Id})
-	assert.NoError(err)
-	assert.EqualError(handler.Parse(ctx, request), "resources cannot be empty")
+func (s *userPermissionPostSuite) TestNoResource() {
+	invalidBody := `{ "resource_type": "project" }`
+	request, err := http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(invalidBody)))
+	request = gimlet.SetURLVars(request, map[string]string{"user_id": s.u.Id})
+	s.NoError(err)
+	s.EqualError(s.h.Parse(context.Background(), request), "resources cannot be empty")
+}
 
-	// valid resources with an invalid permission should error
-	invalidBody = `{ "resource_type": "project", "resources": ["foo"], "permissions": {"asdf": 10} }`
-	request, err = http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(invalidBody)))
-	request = gimlet.SetURLVars(request, map[string]string{"user_id": u.Id})
-	assert.NoError(err)
-	assert.NoError(handler.Parse(ctx, request))
-	resp := handler.Run(ctx)
-	assert.EqualValues("'asdf' is not a valid permission", resp.Data())
+func (s *userPermissionPostSuite) TestInvalidPermissions() {
+	ctx := context.Background()
+	invalidBody := `{ "resource_type": "project", "resources": ["foo"], "permissions": {"asdf": 10} }`
+	request, err := http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(invalidBody)))
+	request = gimlet.SetURLVars(request, map[string]string{"user_id": s.u.Id})
+	s.NoError(err)
+	s.NoError(s.h.Parse(ctx, request))
+	resp := s.h.Run(ctx)
+	s.EqualValues("'asdf' is not a valid permission", resp.Data())
+}
 
+func (s *userPermissionPostSuite) TestValidInput() {
 	// valid input that should create a new role + scope
+	ctx := context.Background()
+	env := evergreen.GetEnvironment()
 	validBody := `{ "resource_type": "project", "resources": ["foo"], "permissions": {"project_tasks": 10} }`
-	request, err = http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(validBody)))
-	request = gimlet.SetURLVars(request, map[string]string{"user_id": u.Id})
-	assert.NoError(err)
-	assert.NoError(handler.Parse(ctx, request))
-	resp = handler.Run(ctx)
-	assert.Equal(http.StatusOK, resp.Status())
+	request, err := http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(validBody)))
+	request = gimlet.SetURLVars(request, map[string]string{"user_id": s.u.Id})
+	s.NoError(err)
+	s.NoError(s.h.Parse(ctx, request))
+	resp := s.h.Run(ctx)
+	s.Equal(http.StatusOK, resp.Status())
 	roles, err := env.RoleManager().GetAllRoles()
-	assert.NoError(err)
-	assert.Len(roles, 1)
-	dbUser, err := user.FindOneById(u.Id)
-	assert.NoError(err)
-	assert.Equal(dbUser.SystemRoles[0], roles[0].ID)
+	s.NoError(err)
+	s.Len(roles, 1)
+	dbUser, err := user.FindOneById(s.u.Id)
+	s.NoError(err)
+	s.Equal(dbUser.SystemRoles[0], roles[0].ID)
 	foundScope, err := env.RoleManager().FindScopeForResources(evergreen.ProjectResourceType, "foo")
-	assert.NoError(err)
-	assert.NotNil(foundScope)
+	s.NoError(err)
+	s.NotNil(foundScope)
 
 	// adjusting existing permissions should create a new role with the existing scope
 	validBody = `{ "resource_type": "project", "resources": ["foo"], "permissions": {"project_tasks": 30} }`
 	request, err = http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(validBody)))
-	request = gimlet.SetURLVars(request, map[string]string{"user_id": u.Id})
-	assert.NoError(err)
-	assert.NoError(handler.Parse(ctx, request))
-	_ = handler.Run(ctx)
+	request = gimlet.SetURLVars(request, map[string]string{"user_id": s.u.Id})
+	s.NoError(err)
+	s.NoError(s.h.Parse(ctx, request))
+	_ = s.h.Run(ctx)
 	roles, err = env.RoleManager().GetAllRoles()
-	assert.NoError(err)
-	assert.Len(roles, 2)
+	s.NoError(err)
+	s.Len(roles, 2)
 	newScope, err := env.RoleManager().FindScopeForResources(evergreen.ProjectResourceType, "foo")
-	assert.NoError(err)
-	assert.NotNil(foundScope)
-	assert.Equal(newScope.ID, foundScope.ID)
+	s.NoError(err)
+	s.NotNil(foundScope)
+	s.Equal(newScope.ID, foundScope.ID)
 
 	// a matching role should just be added
-	dbUser, err = user.FindOneById(u.Id)
-	assert.NoError(err)
+	dbUser, err = user.FindOneById(s.u.Id)
+	s.NoError(err)
 	for _, role := range dbUser.Roles() {
-		assert.NoError(dbUser.RemoveRole(role))
+		s.NoError(dbUser.RemoveRole(role))
 	}
-	_ = handler.Run(ctx)
+	_ = s.h.Run(ctx)
 	roles, err = env.RoleManager().GetAllRoles()
-	assert.NoError(err)
-	assert.Len(roles, 2)
+	s.NoError(err)
+	s.Len(roles, 2)
 	newScope, err = env.RoleManager().FindScopeForResources(evergreen.ProjectResourceType, "foo")
-	assert.NoError(err)
-	assert.NotNil(foundScope)
-	assert.Equal(newScope.ID, foundScope.ID)
-	dbUser, err = user.FindOneById(u.Id)
-	assert.NoError(err)
-	assert.Len(dbUser.Roles(), 1)
+	s.NoError(err)
+	s.NotNil(foundScope)
+	s.Equal(newScope.ID, foundScope.ID)
+	dbUser, err = user.FindOneById(s.u.Id)
+	s.NoError(err)
+	s.Len(dbUser.Roles(), 1)
 }

@@ -161,7 +161,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/user/author/{user_id}").Version(2).Get().Wrap(checkTask).RouteHandler(makeFetchUserAuthor(sc))
 	app.AddRoute("/users/{user_id}/hosts").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchHosts(sc))
 	app.AddRoute("/users/{user_id}/patches").Version(2).Get().Wrap(checkUser).RouteHandler(makeUserPatchHandler(sc))
-	app.AddRoute("/users/{user_id}/permissions").Version(2).Post().Wrap(checkUser, editRoles).RouteHandler(makeModifyUserPermissions(sc))
+	app.AddRoute("/users/{user_id}/permissions").Version(2).Post().Wrap(checkUser, editRoles).RouteHandler(makeModifyUserPermissions(sc, evergreen.GetEnvironment().RoleManager()))
 	app.AddRoute("/versions").Version(2).Put().RouteHandler(makeVersionCreateHandler(sc))
 	app.AddRoute("/versions/{version_id}").Version(2).Get().Wrap(viewTasks).RouteHandler(makeGetVersionByID(sc))
 	app.AddRoute("/versions/{version_id}/abort").Version(2).Post().Wrap(checkUser, editTasks).RouteHandler(makeAbortVersion(sc))
