@@ -53,7 +53,7 @@ type File struct {
 	AwsSecret string `json:"aws_secret,omitempty" bson:"aws_secret,omitempty"`
 	//Bucket is the aws bucket in which the file is stored
 	Bucket string `json:"bucket,omitempty" bson:"bucket,omitempty"`
-	//FileKey is the path to the file in the buckt
+	//FileKey is the path to the file in the bucket
 	FileKey string `json:"filekey,omitempty" bson:"filekey,omitempty"`
 }
 
@@ -100,7 +100,7 @@ func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {
 				}
 				urlStr, err := thirdparty.PreSign(artifact.Files[i].Bucket, artifact.Files[i].FileKey, artifact.Files[i].AwsKey, artifact.Files[i].AwsSecret)
 				if err != nil {
-					return nil, errors.Errorf("problem signing request: %s", err.Error())
+					return nil, errors.Wrapf(err, "problem presigning url")
 				}
 				artifact.Files[i].Link = urlStr
 			}
