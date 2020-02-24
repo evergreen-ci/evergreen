@@ -1,6 +1,8 @@
 package artifact
 
 import (
+	"time"
+
 	"github.com/pkg/errors"
 )
 
@@ -21,11 +23,12 @@ var ValidVisibilities = []string{Public, Private, None, Signed, ""}
 // be for build or task-relevant files (things like extra results,
 // test coverage, etc.)
 type Entry struct {
-	TaskId          string `json:"task" bson:"task"`
-	TaskDisplayName string `json:"task_name" bson:"task_name"`
-	BuildId         string `json:"build" bson:"build"`
-	Files           []File `json:"files" bson:"files"`
-	Execution       int    `json:"execution" bson:"execution"`
+	TaskId          string    `json:"task" bson:"task"`
+	TaskDisplayName string    `json:"task_name" bson:"task_name"`
+	BuildId         string    `json:"build" bson:"build"`
+	Files           []File    `json:"files" bson:"files"`
+	Execution       int       `json:"execution" bson:"execution"`
+	CreateTime      time.Time `json:"create_time" bson:"create_time"`
 }
 
 // Params stores file entries as key-value pairs, for easy parameter parsing.
