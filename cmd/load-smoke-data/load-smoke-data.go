@@ -62,7 +62,7 @@ func main() {
 	files, err := getFiles(path)
 	grip.EmergencyFatal(err)
 
-	var doc map[string]interface{}
+	var doc *birch.Document
 	catcher := grip.NewBasicCatcher()
 	for _, fn := range files {
 		file, err = os.Open(fn)
