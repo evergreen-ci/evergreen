@@ -215,7 +215,5 @@ func (s *TestArtifactFileSuite) TestGetAllArtifacts() {
 		if files[i].Visibility == "signed" {
 			s.Contains(files[i].Link, "Signature")
 		}
-
 	}
-
 }
