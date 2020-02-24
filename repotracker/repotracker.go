@@ -73,11 +73,6 @@ func (p *ProjectInfo) notPopulated() bool {
 	return p.Ref == nil || p.IntermediateProject == nil
 }
 
-// PopulateVersion updates the version's ParserProject if we have or can create it
-func (p *ProjectInfo) populateVersion(v *model.Version) error {
-
-}
-
 // The RepoPoller interface specifies behavior required of all repository poller
 // implementations
 type RepoPoller interface {
