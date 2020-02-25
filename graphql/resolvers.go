@@ -391,12 +391,7 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-	fmt.Println("GOT HERE ATLEAST")
-	authName := ""
-	if authUser := gimlet.GetUser(ctx); authUser != nil {
-		authName = authUser.DisplayName()
-	}
-	if err := model.AbortTask(taskID, authName); err != nil {
+	if err := model.AbortTask(taskID, gimlet.GetUser(ctx).DisplayName()); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error aborting task %s: %s", taskID, err.Error()))
 	}
 	if t.Requester == evergreen.MergeTestRequester {
